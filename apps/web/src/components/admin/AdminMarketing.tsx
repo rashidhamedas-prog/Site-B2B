@@ -1,0 +1,268 @@
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import { Tag, Plus, Trash2, Copy, X, Save, Megaphone, Check } from 'lucide-react';
+import { apiClient } from '@/lib/api';
+import { cn } from '@/lib/cn';
+
+interface DiscountCode {
+  id: string;
+  code: string;
+  type: 'PERCENT' | 'FIXED';
+  value: number;
+  minOrder?: number;
+  maxUses?: number;
+  usedCount: number;
+  isActive: boolean;
+  expiresAt?: string;
+}
+
+const emptyCode = {
+  code: '', type: 'PERCENT' as const, value: '', minOrder: '', maxUses: '', expiresAt: '', isActive: true,
+};
+
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+export function AdminMarketing() {
+  const [codes, setCodes] = useState<DiscountCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ ...emptyCode });
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiClient.get<DiscountCode[]>('/discount-codes')
+      .then(setCodes)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    await apiClient.delete(`/discount-codes/${id}`).catch(() => {});
+    setCodes((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(code);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  };
+
+  const handleSave = useCallback(async () => {
+    if (!form.code || !form.value) return;
+    setSaving(true);
+    try {
+      const created = await apiClient.post<DiscountCode>('/discount-codes', {
+        code: form.code,
+        type: form.type,
+        value: form.type === 'PERCENT' ? Number(form.value) : Number(form.value) * 10,
+        minOrder: form.minOrder ? Number(form.minOrder) * 10 : 0,
+        maxUses: form.maxUses ? Number(form.maxUses) : undefined,
+        expiresAt: form.expiresAt || undefined,
+        isActive: form.isActive,
+      });
+      setCodes((prev) => [created, ...prev]);
+      setModal(false);
+      setForm({ ...emptyCode });
+    } catch {
+      // API not running — silently ignore in dev
+    } finally {
+      setSaving(false);
+    }
+  }, [form]);
+
+  const channels = [
+    { icon: '📱', name: 'تلگرام', handle: '@toliditaranom', desc: 'کانال اصلی اطلاع‌رسانی', color: 'bg-blue-50 border-blue-200 text-blue-700' },
+    { icon: '📸', name: 'اینستاگرام', handle: 'tolidi.taranom', desc: 'کاتالوگ تصویری', color: 'bg-pink-50 border-pink-200 text-pink-700' },
+    { icon: '💬', name: 'روبیکا', handle: 'ترنم', desc: 'مشتریان داخلی', color: 'bg-purple-50 border-purple-200 text-purple-700' },
+    { icon: '📢', name: 'ایتا', handle: 'ترنم', desc: 'کانال پشتیبانی', color: 'bg-green-50 border-green-200 text-green-700' },
+  ];
+
+  const announcements = [
+    { title: 'معرفی کلکسیون بهار ۱۴۰۴', date: '۱۴۰۴/۱/۱۵', reach: '۲۴۰ نفر' },
+    { title: 'تخفیف عمده‌فروشی ویژه نوروز', date: '۱۴۰۴/۱/۱', reach: '۳۱۰ نفر' },
+    { title: 'موجودی جدید مانتو لینن سفید', date: '۱۴۰۳/۱۲/۲۰', reach: '۱۸۵ نفر' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900">بازاریابی</h2>
+        <p className="text-sm text-gray-500 mt-0.5">مدیریت کدهای تخفیف و کانال‌های اطلاع‌رسانی</p>
+      </div>
+
+      {/* Channels */}
+      <div className="card p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Megaphone className="h-5 w-5 text-primary" />
+          <h3 className="font-bold text-gray-900">کانال‌های فروش و اطلاع‌رسانی</h3>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {channels.map((ch) => (
+            <div key={ch.name} className={cn('flex items-center gap-3 rounded-xl border p-3', ch.color)}>
+              <span className="text-2xl">{ch.icon}</span>
+              <div>
+                <p className="font-bold text-sm">{ch.name}</p>
+                <p className="text-xs opacity-80">{ch.handle} — {ch.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Announcements */}
+      <div className="card p-5">
+        <h3 className="font-bold text-gray-900 mb-4">آخرین اطلاعیه‌ها</h3>
+        <div className="space-y-2">
+          {announcements.map((a, i) => (
+            <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{a.title}</p>
+                <p className="text-xs text-gray-400">{a.date}</p>
+              </div>
+              <span className="text-xs bg-primary-50 text-primary px-2 py-1 rounded-full font-medium">{a.reach}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Discount Codes */}
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Tag className="h-5 w-5 text-primary" />
+            <h3 className="font-bold text-gray-900">کدهای تخفیف</h3>
+          </div>
+          <button onClick={() => setModal(true)} className="btn btn-primary btn-sm flex items-center gap-1.5">
+            <Plus className="h-3.5 w-3.5" />ایجاد کد
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="p-10 text-center text-gray-400 text-sm">در حال بارگذاری...</div>
+        ) : codes.length === 0 ? (
+          <div className="p-10 text-center text-gray-400">
+            <Tag className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">کدی تعریف نشده</p>
+            <button onClick={() => setModal(true)} className="btn btn-primary btn-sm mt-3">ایجاد اولین کد</button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px]">
+              <thead className="bg-gray-50">
+                <tr>{['کد', 'نوع', 'مقدار', 'استفاده', 'وضعیت', ''].map((h) => (
+                  <th key={h} className="px-4 py-3 text-right text-xs font-semibold text-gray-500">{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {codes.map((c) => (
+                  <tr key={c.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-sm">{c.code}</span>
+                        <button onClick={() => copyCode(c.code)} className="text-gray-400 hover:text-primary">
+                          {copied === c.code ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                        </button>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{c.type === 'PERCENT' ? 'درصد' : 'مبلغ'}</td>
+                    <td className="px-4 py-3 text-sm font-bold">
+                      {c.type === 'PERCENT' ? `${c.value}%` : `${(c.value / 10).toLocaleString('fa-IR')} ت`}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{c.usedCount} / {c.maxUses ?? '∞'}</td>
+                    <td className="px-4 py-3">
+                      <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium',
+                        c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>
+                        {c.isActive ? 'فعال' : 'غیرفعال'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => handleDelete(c.id)} className="text-gray-400 hover:text-error"><Trash2 className="h-4 w-4" /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Create Code Modal */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">ایجاد کد تخفیف</h3>
+              <button onClick={() => setModal(false)} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">کد تخفیف</label>
+                <div className="flex gap-2">
+                  <input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+                    placeholder="TARANOM20" maxLength={20}
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, code: generateCode() }))}
+                    className="btn btn-outline btn-sm px-3">تصادفی</button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">نوع</label>
+                  <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as any }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none">
+                    <option value="PERCENT">درصد تخفیف</option>
+                    <option value="FIXED">مبلغ ثابت (تومان)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {form.type === 'PERCENT' ? 'درصد (%)' : 'مبلغ (تومان)'}
+                  </label>
+                  <input type="number" value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
+                    placeholder={form.type === 'PERCENT' ? '10' : '50000'}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">حداقل سفارش (تومان)</label>
+                  <input type="number" value={form.minOrder} onChange={(e) => setForm((f) => ({ ...f, minOrder: e.target.value }))}
+                    placeholder="500000"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">حداکثر استفاده</label>
+                  <input type="number" value={form.maxUses} onChange={(e) => setForm((f) => ({ ...f, maxUses: e.target.value }))}
+                    placeholder="100"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ انقضا (اختیاری)</label>
+                <input type="date" value={form.expiresAt} onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />
+                <span className="text-sm text-gray-700">کد فعال باشد</span>
+              </label>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+              <button onClick={() => setModal(false)} className="btn btn-outline btn-md">انصراف</button>
+              <button onClick={handleSave} disabled={saving || !form.code || !form.value}
+                className="btn btn-primary btn-md flex items-center gap-2">
+                <Save className="h-4 w-4" />{saving ? 'در حال ذخیره...' : 'ذخیره'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

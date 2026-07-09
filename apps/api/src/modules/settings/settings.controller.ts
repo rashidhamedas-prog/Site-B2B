@@ -1,0 +1,65 @@
+import { Controller, Get, Put, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { SettingsService } from './settings.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+
+const GROUPS = ['business', 'shipping', 'sms', 'payment'] as const;
+
+@ApiTags('settings')
+@Controller('settings')
+export class SettingsController {
+  constructor(private readonly svc: SettingsService) {}
+
+  // Public, safe subset — used by the storefront (contact info, active
+  // shipping methods). Never exposes API keys.
+  @Get('public')
+  async publicSettings() {
+    const [business, shipping] = await Promise.all([this.svc.business(), this.svc.shipping()]);
+    return {
+      business: {
+        businessName: business.businessName,
+        phone: business.phone,
+        email: business.email,
+        instagram: business.instagram,
+        telegram: business.telegram,
+        address: business.address,
+        officeAddress: business.officeAddress,
+        minOrderToman: business.minOrderToman,
+      },
+      shipping: {
+        methods: shipping.methods,
+        freeThreshold: shipping.freeThreshold,
+      },
+    };
+  }
+
+  // Admin: full resolved settings for the settings page.
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  async adminSettings() {
+    const [business, shipping, sms, payment] = await Promise.all([
+      this.svc.business(),
+      this.svc.shipping(),
+      this.svc.sms(),
+      this.svc.payment(),
+    ]);
+    return { business, shipping, sms, payment };
+  }
+
+  // Admin: save one settings group.
+  @Put('admin/:group')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  async save(@Param('group') group: string, @Body() body: Record<string, any>) {
+    if (!GROUPS.includes(group as any)) {
+      throw new BadRequestException('گروه تنظیمات نامعتبر است');
+    }
+    await this.svc.set(group, body ?? {});
+    return { saved: true, group };
+  }
+}

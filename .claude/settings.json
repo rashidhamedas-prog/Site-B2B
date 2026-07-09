@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": ["Read", "Glob", "Grep", "Bash(git status:*)", "Bash(git diff:*)"],
+    "deny": ["Bash(rm -rf:*)", "Bash(git push --force:*)"],
+    "ask": ["Bash(git push:*)", "Bash(npm publish:*)"]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "npx biome check --write \"$CLAUDE_FILE_PATH\" 2>/dev/null || true" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": ".claude/hooks/pre-bash.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      { "type": "command", "command": ".claude/hooks/on-stop.sh" }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": ".claude/statusline.sh"
+  }
+}
