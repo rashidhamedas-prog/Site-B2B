@@ -102,7 +102,21 @@ export class ProductService {
       data = { ...data, sku };
     }
 
-    const product = this.productRepo.create(data as any);
+    const product = this.productRepo.create({
+      name: data.name,
+      fabric: data.fabric,
+      fabricComposition: data.fabricComposition,
+      description: data.description,
+      wholesalePrice: data.wholesalePrice,
+      retailPrice: data.retailPrice,
+      minOrderQty: data.minOrderQty,
+      status: data.status,
+      isFeatured: data.isFeatured,
+      isNew: data.isNew,
+      images: data.images,
+      sku: data.sku!,
+      categoryId: data.categoryId,
+    });
     const saved = await this.productRepo.save(product);
     await this.syncSearch(saved);
     return saved;

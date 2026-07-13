@@ -16,8 +16,7 @@ fi
 
 if [ -d "$APP_DIR/.git" ]; then
   cd "$APP_DIR"
-  git fetch origin
-  git reset --hard origin/master
+  git reset --hard origin/master || git reset --hard origin/main
 else
   git clone "$REPO_URL" "$APP_DIR"
   cd "$APP_DIR"

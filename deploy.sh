@@ -34,7 +34,7 @@ command -v git      >/dev/null 2>&1 || error "Git نصب نیست."
 if [ -d "$REPO_DIR/.git" ]; then
   info "بروزرسانی کد از مخزن..."
   cd "$REPO_DIR"
-  git pull origin main
+  git pull origin master || git pull origin main
 else
   warn "پوشه $REPO_DIR وجود ندارد — لطفاً کد را آپلود کنید:"
   warn "  scp -r ./\"Site BtoB\" user@server:$REPO_DIR"
