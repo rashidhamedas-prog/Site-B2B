@@ -13,6 +13,7 @@ import { PaymentEntity } from '../modules/payment/entities/payment.entity';
 import { BlogPostEntity } from '../modules/blog/entities/blog-post.entity';
 import { CmsPageEntity } from '../modules/cms/entities/cms-page.entity';
 import { AppSettingEntity } from '../modules/settings/entities/app-setting.entity';
+import { CategoryEntity } from '../modules/category/entities/category.entity';
 
 export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -23,6 +24,7 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
   database: config.get('DB_NAME', 'taranom_db'),
   entities: [
     UserEntity, CustomerEntity,
+    CategoryEntity,
     ProductEntity, ProductVariantEntity,
     OrderEntity, OrderItemEntity,
     InvoiceEntity,

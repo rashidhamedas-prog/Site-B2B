@@ -53,6 +53,28 @@
 
 ---
 
+## 2026-07-13 — فاز 3: دسته‌بندی + تولید خودکار SKU
+
+### خلاصه
+- اضافه شدن `CategoryEntity` با:
+  - `skuPrefix` (مثل `LINEN-`)
+  - `nextSequence` برای تولید SKU یکتا و مقاوم در برابر همزمانی
+- افزودن `products.categoryId` و migration مربوطه.
+- تولید SKU هنگام ایجاد محصول (اگر `sku` ارسال نشود و `categoryId` موجود باشد).
+- UI ادمین:
+  - صفحه `/admin/categories` برای CRUD دسته‌بندی‌ها
+  - انتخاب دسته‌بندی در فرم محصول و امکان خالی گذاشتن SKU برای تولید خودکار
+
+### فایل‌های کلیدی
+- `apps/api/src/modules/category/*`
+- `apps/api/src/database/migrations/20260713-001-create-categories.ts`
+- `apps/api/src/modules/product/product.service.ts`
+- `apps/web/src/components/admin/AdminCategories.tsx`
+- `apps/web/src/components/admin/AdminProducts.tsx`
+- `apps/web/src/components/admin/AdminSidebar.tsx`
+
+---
+
 ## 2026-07-11 — سایت down — redeploy کامل سرور
 
 **گزارش:** [reports/2026-07-11-server-redeploy.md](./reports/2026-07-11-server-redeploy.md)

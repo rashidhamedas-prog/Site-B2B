@@ -5,10 +5,16 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiProperty({ example: 'MANTO-001' })
+  @ApiPropertyOptional({ example: 'LINEN-00001', description: 'اگر ارسال نشود، از روی دسته‌بندی تولید می‌شود' })
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  sku: string;
+  sku?: string;
+
+  @ApiPropertyOptional({ description: 'شناسه دسته‌بندی برای تولید خودکار SKU' })
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
 
   @ApiProperty({ example: 'مانتو بهار' })
   @IsString()

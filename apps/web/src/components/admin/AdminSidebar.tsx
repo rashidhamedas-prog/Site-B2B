@@ -44,6 +44,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'کالا',
     items: [
       { href: '/admin/products', icon: Package, label: 'محصولات' },
+      { href: '/admin/categories', icon: Layers, label: 'دسته‌بندی‌ها' },
       { href: '/admin/inventory', icon: Warehouse, label: 'انبار' },
       { href: '/admin/discounts', icon: Tag, label: 'تخفیف‌ها' },
     ],

@@ -1,8 +1,9 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column, OneToMany,
+  Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn,
   CreateDateColumn, UpdateDateColumn, DeleteDateColumn, BeforeInsert, BeforeUpdate,
 } from 'typeorm';
 import { ProductVariantEntity } from './product-variant.entity';
+import { CategoryEntity } from '../../category/entities/category.entity';
 
 function toSlug(text: string): string {
   return text
@@ -56,6 +57,15 @@ export class ProductEntity {
 
   @Column({ default: 5 })
   minOrderQty: number;
+
+  @Column({ nullable: true })
+  categoryId: string;
+
+  // Optional relation (category can be added later).
+  // Note: this is nullable for backward compatibility.
+  @ManyToOne(() => CategoryEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'categoryId' })
+  category: CategoryEntity;
 
   @Column({ type: 'jsonb', nullable: true })
   images: string[];

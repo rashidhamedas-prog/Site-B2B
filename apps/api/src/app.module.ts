@@ -18,6 +18,7 @@ import { ShippingModule } from './modules/shipping/shipping.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { SearchModule } from './modules/search/search.module';
 import { databaseConfig } from './config/database.config';
+import { CategoryModule } from './modules/category/category.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { databaseConfig } from './config/database.config';
     AuthModule,
     SearchModule,
     CustomerModule,
+    CategoryModule,
     ProductModule,
     OrderModule,
     InvoiceModule,

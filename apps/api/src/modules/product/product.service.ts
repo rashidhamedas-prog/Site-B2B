@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike, In } from 'typeorm';
 import { ProductEntity } from './entities/product.entity';
 import { ProductVariantEntity } from './entities/product-variant.entity';
+import { CategoryEntity } from '../category/entities/category.entity';
 import { StorageService } from '../upload/storage.service';
 import { SearchService } from '../search/search.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -16,6 +17,8 @@ export class ProductService {
     private readonly productRepo: Repository<ProductEntity>,
     @InjectRepository(ProductVariantEntity)
     private readonly variantRepo: Repository<ProductVariantEntity>,
+    @InjectRepository(CategoryEntity)
+    private readonly categoryRepo: Repository<CategoryEntity>,
     private readonly storage: StorageService,
     private readonly search: SearchService,
   ) {}
@@ -84,10 +87,54 @@ export class ProductService {
   }
 
   async create(data: CreateProductDto) {
-    const product = this.productRepo.create(data);
+    // Auto-generate SKU from category when not provided.
+    if (!data.sku) {
+      if (!data.categoryId) {
+        throw new BadRequestException('دسته‌بندی الزامی است (برای تولید خودکار SKU)');
+      }
+      const sku = await this.allocateSku(data.categoryId);
+      data = { ...data, sku };
+    }
+
+    const product = this.productRepo.create(data as any);
     const saved = await this.productRepo.save(product);
     await this.syncSearch(saved);
     return saved;
+  }
+
+  private async allocateSku(categoryId: string): Promise<string> {
+    return this.productRepo.manager.transaction(async (em) => {
+      const catRepo = em.getRepository(CategoryEntity);
+      const productRepo = em.getRepository(ProductEntity);
+
+      const category = await catRepo
+        .createQueryBuilder('c')
+        .setLock('pessimistic_write')
+        .where('c.id = :id', { id: categoryId })
+        .getOne();
+
+      if (!category) throw new BadRequestException('دسته‌بندی یافت نشد');
+      const prefix = (category.skuPrefix ?? '').trim();
+      if (!prefix) throw new BadRequestException('فرمول/پیشوند SKU برای این دسته‌بندی تنظیم نشده است');
+
+      let seq = Math.max(1, Number(category.nextSequence) || 1);
+      // Try a few times in case of collisions with legacy/manual SKUs.
+      for (let attempt = 0; attempt < 25; attempt += 1) {
+        const sku = `${prefix}${String(seq).padStart(5, '0')}`.toUpperCase();
+        try {
+          // Reserve sequence for next caller.
+          category.nextSequence = seq + 1;
+          await catRepo.save(category);
+          // Ensure SKU not already used.
+          const exists = await productRepo.exist({ where: { sku } });
+          if (!exists) return sku;
+        } catch {
+          // ignore and retry
+        }
+        seq += 1;
+      }
+      throw new BadRequestException('تولید SKU ناموفق بود');
+    });
   }
 
   async update(id: string, data: UpdateProductDto) {

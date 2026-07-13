@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Search, Plus, Edit2, Trash2, X, Save, Layers, ImagePlus, Loader2 } from 'lucide-react';
 import { Input, Badge, Pagination } from '@/components/ui';
 import { useProducts, Product } from '@/lib/hooks/useProducts';
@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const emptyForm = {
-  sku: '', name: '', fabric: '', fabricComposition: '', description: '',
+  sku: '', categoryId: '', name: '', fabric: '', fabricComposition: '', description: '',
   wholesalePrice: '', retailPrice: '', minOrderQty: '5',
   status: 'ACTIVE', isFeatured: false, isNew: false,
 };
@@ -203,17 +203,24 @@ export function AdminProducts() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [variantProduct, setVariantProduct] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; skuPrefix: string }>>([]);
 
   const { products, meta, loading, refetch } = useProducts({
     page, search: search || undefined, limit: 20, status: 'ALL',
   });
+
+  useEffect(() => {
+    apiClient.get<Array<{ id: string; name: string; skuPrefix: string }>>('/categories')
+      .then((res) => setCategories(res ?? []))
+      .catch(() => undefined);
+  }, []);
 
   const openCreate = () => { setForm(emptyForm); setImages([]); setEditProduct(null); setModal('create'); };
   const openEdit = (p: Product) => {
     setEditProduct(p);
     setImages((p as any).images ?? []);
     setForm({
-      sku: p.sku, name: p.name, fabric: p.fabric,
+      sku: p.sku, categoryId: (p as any).categoryId ?? '', name: p.name, fabric: p.fabric,
       fabricComposition: (p as any).fabricComposition ?? '',
       description: (p as any).description ?? '',
       wholesalePrice: String(Math.round(Number(p.wholesalePrice) / 10)),
@@ -239,11 +246,14 @@ export function AdminProducts() {
   }, [uploadImage]);
 
   const handleSave = useCallback(async () => {
-    if (!form.sku || !form.name || !form.fabric || !form.wholesalePrice) return;
+    if (!form.name || !form.fabric || !form.wholesalePrice) return;
+    if (!form.sku && !form.categoryId && modal === 'create') return;
     setSaving(true);
     try {
       const payload = {
         ...form,
+        sku: form.sku || undefined,
+        categoryId: form.categoryId || undefined,
         wholesalePrice: Number(form.wholesalePrice) * 10,
         retailPrice: form.retailPrice ? Number(form.retailPrice) * 10 : null,
         minOrderQty: Number(form.minOrderQty),
@@ -379,12 +389,31 @@ export function AdminProducts() {
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                {field('sku', 'کد SKU', 'text', 'MANTO-XXX-001')}
-                {field('name', 'نام محصول', 'text', 'مانتو بهار')}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">دسته‌بندی</label>
+                  <select
+                    value={(form as any).categoryId ?? ''}
+                    onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="">بدون دسته‌بندی</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.skuPrefix ? `(${c.skuPrefix})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1">اگر SKU خالی باشد، از روی این دسته‌بندی تولید می‌شود.</p>
+                </div>
+                {field('sku', 'کد SKU (اختیاری)', 'text', 'LINEN-00001')}
               </div>
               <div className="grid grid-cols-2 gap-4">
+                {field('name', 'نام محصول', 'text', 'مانتو بهار')}
                 {field('fabric', 'جنس پارچه', 'text', 'لینن')}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 {field('fabricComposition', 'ترکیب پارچه', 'text', '100% لینن')}
+                <div />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">توضیحات</label>
@@ -451,7 +480,15 @@ export function AdminProducts() {
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
               <button onClick={closeModal} className="btn btn-outline btn-md">انصراف</button>
-              <button onClick={handleSave} disabled={saving || !form.sku || !form.name || !form.fabric || !form.wholesalePrice}
+              <button
+                onClick={handleSave}
+                disabled={
+                  saving
+                  || !form.name
+                  || !form.fabric
+                  || !form.wholesalePrice
+                  || (modal === 'create' && !form.sku && !(form as any).categoryId)
+                }
                 className="btn btn-primary btn-md flex items-center gap-2">
                 <Save className="h-4 w-4" />{saving ? 'در حال ذخیره...' : 'ذخیره'}
               </button>
