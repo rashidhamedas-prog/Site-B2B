@@ -74,6 +74,7 @@ export function AdminUsers() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full min-w-[600px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">
@@ -122,6 +123,7 @@ export function AdminUsers() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Create modal */}

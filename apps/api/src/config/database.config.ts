@@ -4,6 +4,8 @@ import { CustomerEntity } from '../modules/customer/entities/customer.entity';
 import { UserEntity } from '../modules/auth/entities/user.entity';
 import { ProductEntity } from '../modules/product/entities/product.entity';
 import { ProductVariantEntity } from '../modules/product/entities/product-variant.entity';
+import { VariantColorEntity } from '../modules/product/entities/variant-color.entity';
+import { VariantSizeEntity } from '../modules/product/entities/variant-size.entity';
 import { OrderEntity } from '../modules/order/entities/order.entity';
 import { OrderItemEntity } from '../modules/order/entities/order-item.entity';
 import { InvoiceEntity } from '../modules/invoice/entities/invoice.entity';
@@ -25,7 +27,7 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
   entities: [
     UserEntity, CustomerEntity,
     CategoryEntity,
-    ProductEntity, ProductVariantEntity,
+    ProductEntity, ProductVariantEntity, VariantColorEntity, VariantSizeEntity,
     OrderEntity, OrderItemEntity,
     InvoiceEntity,
     InventoryMovementEntity,

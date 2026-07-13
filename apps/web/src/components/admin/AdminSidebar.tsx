@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell, Megaphone,
   Warehouse, UserCog, LogOut, X, ChevronDown,
-  TrendingUp, Tag, PenSquare,
+  TrendingUp, Tag, PenSquare, Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { clearToken } from '@/lib/auth';
@@ -97,7 +97,6 @@ export function AdminSidebar({ mobileOpen, onClose }: AdminSidebarProps) {
 
       <aside className={cn(
         'fixed top-0 right-0 z-50 flex flex-col w-64 bg-[#0f172a] min-h-screen h-full transition-transform duration-300',
-        'lg:sticky lg:translate-x-0',
         mobileOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
       )}>
         {/* Logo */}

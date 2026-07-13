@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, Phone, X, Send } from 'lucide-react';
 
 const PHONE = '09152424624';
@@ -8,7 +9,10 @@ const WHATSAPP_NUMBER = '989152424624';
 const TELEGRAM_USERNAME = 'toliditaranom';
 
 export function FloatingContact() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  if (pathname.startsWith('/admin')) return null;
 
   return (
     <div className="fixed bottom-6 left-6 z-50 flex flex-col-reverse items-start gap-3">

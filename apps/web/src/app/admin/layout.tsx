@@ -14,11 +14,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex" dir="rtl">
+    <div className="min-h-screen bg-gray-50" dir="rtl">
       <AdminSidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0 lg:mr-64">
+      <div className="flex min-h-screen flex-col min-w-0 lg:mr-64">
         <AdminHeader onMenuToggle={() => setMobileOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 overflow-x-hidden">{children}</main>
       </div>
     </div>
   );

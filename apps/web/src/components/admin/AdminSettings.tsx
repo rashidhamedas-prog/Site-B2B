@@ -382,7 +382,7 @@ export function AdminSettings() {
       )}
 
       {/* Save bar */}
-      <div className="sticky bottom-0 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-white/95 backdrop-blur border-t border-gray-100 flex items-center gap-4">
+      <div className="sticky bottom-0 py-3 bg-white/95 backdrop-blur border-t border-gray-100 flex items-center gap-4">
         <button onClick={save} disabled={saving}
           className="btn btn-primary btn-md flex items-center gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

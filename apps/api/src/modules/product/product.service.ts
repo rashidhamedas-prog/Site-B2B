@@ -4,6 +4,8 @@ import { Repository, ILike, In } from 'typeorm';
 import { ProductEntity } from './entities/product.entity';
 import { ProductVariantEntity } from './entities/product-variant.entity';
 import { CategoryEntity } from '../category/entities/category.entity';
+import { VariantColorEntity } from './entities/variant-color.entity';
+import { VariantSizeEntity } from './entities/variant-size.entity';
 import { StorageService } from '../upload/storage.service';
 import { SearchService } from '../search/search.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -19,6 +21,10 @@ export class ProductService {
     private readonly variantRepo: Repository<ProductVariantEntity>,
     @InjectRepository(CategoryEntity)
     private readonly categoryRepo: Repository<CategoryEntity>,
+    @InjectRepository(VariantColorEntity)
+    private readonly colorRepo: Repository<VariantColorEntity>,
+    @InjectRepository(VariantSizeEntity)
+    private readonly sizeRepo: Repository<VariantSizeEntity>,
     private readonly storage: StorageService,
     private readonly search: SearchService,
   ) {}
@@ -171,16 +177,85 @@ export class ProductService {
   }
 
   async createVariant(productId: string, data: CreateVariantDto) {
-    await this.findOne(productId);
-    const variant = this.variantRepo.create({ ...data, productId });
+    const product = await this.findOne(productId);
+    const minOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
+    const stock = Number(data.stock ?? 0) || 0;
+    if (stock % minOrderQty !== 0) {
+      throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
+    }
+
+    const colorName = String(data.color ?? '').trim();
+    const sizeLabel = String(data.size ?? '').trim();
+    const colorHex = String((data as any).colorHex ?? '').trim();
+
+    const color = await this.upsertColor(colorName, colorHex || undefined);
+    const size = await this.upsertSize(sizeLabel);
+
+    const variant = this.variantRepo.create({
+      ...data,
+      productId,
+      stock,
+      color: color.name,
+      colorHex: color.hex ?? (data as any).colorHex ?? '',
+      size: size.label,
+      colorId: color.id,
+      sizeId: size.id,
+    } as any);
     return this.variantRepo.save(variant);
   }
 
   async updateVariant(variantId: string, data: Partial<ProductVariantEntity>) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
-    Object.assign(variant, data);
+    const product = await this.findOne(variant.productId);
+    const minOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
+    if (typeof (data as any).stock === 'number') {
+      const stock = Number((data as any).stock) || 0;
+      if (stock % minOrderQty !== 0) {
+        throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
+      }
+    }
+
+    if (typeof (data as any).color === 'string' || typeof (data as any).colorHex === 'string') {
+      const colorName = String((data as any).color ?? variant.color).trim();
+      const colorHex = String((data as any).colorHex ?? variant.colorHex).trim();
+      const color = await this.upsertColor(colorName, colorHex || undefined);
+      variant.color = color.name;
+      variant.colorHex = color.hex ?? variant.colorHex;
+      variant.colorId = color.id;
+    }
+
+    if (typeof (data as any).size === 'string') {
+      const sizeLabel = String((data as any).size ?? variant.size).trim();
+      const size = await this.upsertSize(sizeLabel);
+      variant.size = size.label;
+      variant.sizeId = size.id;
+    }
+
+    Object.assign(variant, { ...data, color: variant.color, size: variant.size });
     return this.variantRepo.save(variant);
+  }
+
+  private async upsertColor(name: string, hex?: string) {
+    const n = String(name ?? '').trim();
+    if (!n) throw new BadRequestException('رنگ الزامی است');
+    const existing = await this.colorRepo.findOne({ where: { name: n } });
+    if (existing) {
+      if (hex && !existing.hex) {
+        existing.hex = hex;
+        return this.colorRepo.save(existing);
+      }
+      return existing;
+    }
+    return this.colorRepo.save(this.colorRepo.create({ name: n, hex: hex || null }));
+  }
+
+  private async upsertSize(label: string) {
+    const l = String(label ?? '').trim();
+    if (!l) throw new BadRequestException('سایز الزامی است');
+    const existing = await this.sizeRepo.findOne({ where: { label: l } });
+    if (existing) return existing;
+    return this.sizeRepo.save(this.sizeRepo.create({ label: l, sort: 0 }));
   }
 
   async removeVariant(variantId: string) {

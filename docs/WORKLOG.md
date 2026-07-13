@@ -75,6 +75,19 @@
 
 ---
 
+## 2026-07-13 — رفع دفرمه شدن پنل ادمین + deploy
+
+### خلاصه
+- رفع layout ادمین: حذف `sticky` دوبل‌کاری سایدبار + `mr-64` تکراری
+- import گم‌شده `Layers` در سایدبار (باعث خطای رندر می‌شد)
+- مخفی کردن FloatingContact در مسیر `/admin`
+- جلوگیری از overflow افقی در جداول ادمین
+
+### Deploy
+- push به GitHub + rebuild روی سرور
+
+---
+
 ## 2026-07-11 — سایت down — redeploy کامل سرور
 
 **گزارش:** [reports/2026-07-11-server-redeploy.md](./reports/2026-07-11-server-redeploy.md)
