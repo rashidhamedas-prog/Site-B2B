@@ -34,8 +34,8 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     AppSettingEntity,
   ],
   migrations: ['dist/database/migrations/*.js'],
-  migrationsRun: config.get('NODE_ENV') === 'production',
-  synchronize: config.get('NODE_ENV') !== 'production',
+  migrationsRun: config.get('NODE_ENV') === 'production' && config.get('DB_SYNC') !== 'true',
+  synchronize: config.get('DB_SYNC') === 'true' || config.get('NODE_ENV') !== 'production',
   logging: config.get('NODE_ENV') === 'development',
   ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
 });

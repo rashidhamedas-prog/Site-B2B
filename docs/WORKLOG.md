@@ -11,6 +11,45 @@
 
 ---
 
+## 2026-07-13 — شروع ارتقای Wholesale Ordering (baseline قبل از تغییرات)
+
+### Scope / Baseline
+- **صفحه محصول (انتخاب رنگ/سایز + variant-based cart)**: `apps/web/src/components/wholesale/ProductDetail.tsx`
+- **سبد خرید (localStorage)**: `apps/web/src/lib/cart.tsx`
+- **checkout (تک‌صفحه‌ای + روش ارسال/پرداخت هاردکد)**: `apps/web/src/app/checkout/page.tsx`
+  - Shipping: `CHAPAR`, `TIPAX`, `POST`, `IN_PERSON`
+  - Payment: `CREDIT`, `BANK_TRANSFER`, `CHECK`, `CASH`
+  - ارسال سفارش: `POST /orders` با `productVariantId`, `color`, `size`
+- **API سفارش (تنها چک stock؛ بدون enforce MOQ سمت سرور)**: `apps/api/src/modules/order/order.service.ts`
+- **مدل variant (color/size رشته‌ای + stock روی variant)**: `apps/api/src/modules/product/entities/product-variant.entity.ts`
+- **Settings (ذخیره در `app_settings` JSONB)**: `apps/api/src/modules/settings/settings.service.ts`
+  - Shipping methods فعلی در settings فقط enable-flag دارد (لیست شرکت‌ها dynamic نیست)
+
+### یادداشت اجرای پروژه
+- از این نقطه به بعد هر فاز: update `docs/WORKLOG.md` + در صورت نیاز report + commit جدا.
+
+---
+
+## 2026-07-11 — سایت down — redeploy کامل سرور
+
+**گزارش:** [reports/2026-07-11-server-redeploy.md](./reports/2026-07-11-server-redeploy.md)
+
+### خلاصه
+- علت: پوشه `/opt/taranom` و همه containerهای ترنم از سرور حذف شده بودند
+- redeploy از GitHub + SSL + docker compose up
+- دیتابیس و MinIO volume جدید → داده‌های قبلی (محصولات/عکس‌ها) از بین رفته
+- schema bootstrap + seed ادمین انجام شد
+- سایت: `https://poshaktaranom.com` → HTTP 200
+
+### ادمین
+- `/admin/login` — `09152424624` / `Admin@1234` (رمز را عوض کنید)
+
+### اقدام لازم
+- محصولات را دوباره از پنل ادمین اضافه کنید
+- backup منظم postgres + minio
+
+---
+
 ## 2026-07-09 — تصاویر محصول، صفحه جزئیات، مسیر خرید، deploy
 
 **گزارش کامل:** [reports/2026-07-09-product-images-checkout-deploy.md](./reports/2026-07-09-product-images-checkout-deploy.md)
