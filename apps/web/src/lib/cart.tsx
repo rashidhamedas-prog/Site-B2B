@@ -5,14 +5,11 @@ import { createContext, useContext, useReducer, useEffect, ReactNode } from 'rea
 const CART_STORAGE_KEY = 'taranom_cart';
 
 export interface CartItem {
-  variantId: string;
   productId: string;
   productName: string;
   sku: string;
-  color: string;
-  colorHex?: string;
-  size: string;
   unitPrice: number;
+  minOrderQty: number;
   quantity: number;
   imageUrl?: string;
 }
@@ -23,34 +20,45 @@ interface CartState {
 
 type CartAction =
   | { type: 'ADD'; item: CartItem }
-  | { type: 'UPDATE_QTY'; variantId: string; size: string; quantity: number }
-  | { type: 'REMOVE'; variantId: string; size: string }
+  | { type: 'UPDATE_QTY'; productId: string; quantity: number }
+  | { type: 'REMOVE'; productId: string }
   | { type: 'CLEAR' };
+
+function normalizeQty(quantity: number, minOrderQty: number) {
+  const step = Math.max(1, Number(minOrderQty) || 1);
+  const q = Number(quantity) || 0;
+  if (q <= 0) return step;
+  const snapped = Math.floor(q / step) * step;
+  return Math.max(step, snapped || step);
+}
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD': {
-      const idx = state.items.findIndex(
-        (i) => i.variantId === action.item.variantId && i.size === action.item.size
-      );
+      const idx = state.items.findIndex((i) => i.productId === action.item.productId);
       if (idx >= 0) {
         const items = [...state.items];
-        items[idx] = { ...items[idx], quantity: items[idx].quantity + action.item.quantity };
+        const minOrderQty = action.item.minOrderQty ?? items[idx].minOrderQty ?? 1;
+        items[idx] = {
+          ...items[idx],
+          minOrderQty,
+          quantity: normalizeQty(items[idx].quantity + action.item.quantity, minOrderQty),
+        };
         return { items };
       }
-      return { items: [...state.items, action.item] };
+      return { items: [...state.items, { ...action.item, quantity: normalizeQty(action.item.quantity, action.item.minOrderQty) }] };
     }
     case 'UPDATE_QTY': {
       return {
         items: state.items.map((i) =>
-          i.variantId === action.variantId && i.size === action.size
-            ? { ...i, quantity: Math.max(1, action.quantity) }
+          i.productId === action.productId
+            ? { ...i, quantity: normalizeQty(action.quantity, i.minOrderQty) }
             : i
         ),
       };
     }
     case 'REMOVE':
-      return { items: state.items.filter((i) => !(i.variantId === action.variantId && i.size === action.size)) };
+      return { items: state.items.filter((i) => i.productId !== action.productId) };
     case 'CLEAR':
       return { items: [] };
     default:
@@ -63,8 +71,8 @@ interface CartContextValue {
   count: number;
   total: number;
   addItem: (item: CartItem) => void;
-  updateQty: (variantId: string, size: string, quantity: number) => void;
-  removeItem: (variantId: string, size: string) => void;
+  updateQty: (productId: string, quantity: number) => void;
+  removeItem: (productId: string) => void;
   clear: () => void;
 }
 
@@ -99,8 +107,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       count,
       total,
       addItem: (item) => dispatch({ type: 'ADD', item }),
-      updateQty: (variantId, size, quantity) => dispatch({ type: 'UPDATE_QTY', variantId, size, quantity }),
-      removeItem: (variantId, size) => dispatch({ type: 'REMOVE', variantId, size }),
+      updateQty: (productId, quantity) => dispatch({ type: 'UPDATE_QTY', productId, quantity }),
+      removeItem: (productId) => dispatch({ type: 'REMOVE', productId }),
       clear: () => dispatch({ type: 'CLEAR' }),
     }}>
       {children}

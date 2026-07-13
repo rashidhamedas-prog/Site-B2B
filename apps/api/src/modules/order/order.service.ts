@@ -9,7 +9,18 @@ import { NotificationService } from '../notification/notification.service';
 
 interface CreateOrderDto {
   customerId: string;
-  items: Array<{ productVariantId: string; quantity: number; unitPrice: number; productName: string; sku: string; color: string; size: string }>;
+  items: Array<{
+    // Legacy (variant-based) ordering
+    productVariantId?: string;
+    // New (product-based) ordering — server will allocate across variants
+    productId?: string;
+    quantity: number;
+    unitPrice?: number;
+    productName?: string;
+    sku?: string;
+    color?: string;
+    size?: string;
+  }>;
   shippingMethod?: string;
   paymentMethod?: string;
   notes?: string;
@@ -41,19 +52,91 @@ export class OrderService {
     return `ORD-${year}-${String(count + 1).padStart(5, '0')}`;
   }
 
+  private assertMoq(quantity: number, minOrderQty: number, label: string) {
+    const moq = Math.max(1, Number(minOrderQty) || 1);
+    if (quantity < moq) {
+      throw new BadRequestException(`حداقل سفارش برای ${label} برابر ${moq} عدد است`);
+    }
+    if (quantity % moq !== 0) {
+      throw new BadRequestException(`تعداد سفارش برای ${label} باید مضربی از ${moq} باشد`);
+    }
+  }
+
   async create(dto: CreateOrderDto) {
     await this.customerService.findOne(dto.customerId);
 
     if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
 
+    // Normalize/expand items:
+    // - If productVariantId provided: keep single item, but enforce MOQ from its product.
+    // - If productId provided: allocate across variants (by stock) and create multiple order items.
+    const expandedItems: Array<{
+      productVariantId: string;
+      quantity: number;
+      unitPrice: number;
+      productName: string;
+      sku: string;
+      color: string;
+      size: string;
+    }> = [];
+
     for (const item of dto.items) {
-      const variant = await this.productService.getVariant(item.productVariantId);
-      if (variant.stock < item.quantity) {
-        throw new BadRequestException(`موجودی کافی نیست برای ${item.productName} (${item.color} / ${item.size})`);
+      const qty = Number(item.quantity) || 0;
+      if (qty <= 0) throw new BadRequestException('تعداد سفارش نامعتبر است');
+
+      if (item.productVariantId) {
+        const variant = await this.productService.getVariant(item.productVariantId);
+        this.assertMoq(qty, variant.product?.minOrderQty ?? 1, variant.product?.name ?? 'محصول');
+        if (variant.stock < qty) {
+          throw new BadRequestException(`موجودی کافی نیست برای ${variant.product?.name ?? 'محصول'} (${variant.color} / ${variant.size})`);
+        }
+        expandedItems.push({
+          productVariantId: variant.id,
+          quantity: qty,
+          unitPrice: Number(variant.product?.wholesalePrice ?? item.unitPrice ?? 0),
+          productName: variant.product?.name ?? item.productName ?? '',
+          sku: variant.product?.sku ?? item.sku ?? '',
+          color: variant.color,
+          size: variant.size,
+        });
+        continue;
+      }
+
+      if (!item.productId) {
+        throw new BadRequestException('شناسه محصول/واریانت ارسال نشده است');
+      }
+
+      const product = await this.productService.findOne(item.productId);
+      this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
+      const variants = (product.variants ?? []).map((v) => ({ ...v, stock: Number(v.stock) || 0 }));
+      const totalStock = variants.reduce((s, v) => s + v.stock, 0);
+      if (totalStock < qty) {
+        throw new BadRequestException(`موجودی کافی نیست برای ${product.name} (موجودی کل: ${totalStock})`);
+      }
+
+      // Allocate from most-stocked variants first.
+      const sorted = [...variants].sort((a, b) => b.stock - a.stock);
+      let remaining = qty;
+      for (const v of sorted) {
+        if (remaining <= 0) break;
+        if (v.stock <= 0) continue;
+        const take = Math.min(v.stock, remaining);
+        if (take <= 0) continue;
+        expandedItems.push({
+          productVariantId: v.id,
+          quantity: take,
+          unitPrice: Number(product.wholesalePrice),
+          productName: product.name,
+          sku: product.sku,
+          color: v.color,
+          size: v.size,
+        });
+        remaining -= take;
       }
     }
 
-    const subtotal = dto.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+    // Stock check is already done above. Now compute subtotal on expanded items.
+    const subtotal = expandedItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     const shippingFee = subtotal >= 50_000_000 ? 0 : 1_500_000;
     const total = subtotal + shippingFee;
 
@@ -71,12 +154,12 @@ export class OrderService {
 
     const saved = await this.orderRepo.save(order);
 
-    const items = dto.items.map((i) =>
+    const items = expandedItems.map((i) =>
       this.itemRepo.create({ ...i, orderId: saved.id, totalPrice: i.unitPrice * i.quantity })
     );
     await this.itemRepo.save(items);
 
-    for (const item of dto.items) {
+    for (const item of expandedItems) {
       await this.productService.updateVariantStock(item.productVariantId, -item.quantity);
     }
 

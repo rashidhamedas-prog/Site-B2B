@@ -10,8 +10,6 @@ import { cn } from '@/lib/cn';
 
 interface SearchParams {
   fabric?: string;
-  color?: string;
-  size?: string;
   sort?: string;
   page?: string;
   q?: string;
@@ -30,16 +28,6 @@ interface Product {
 }
 
 const FABRICS = ['همه', 'لینن', 'کتان', 'لینن‌کتان', 'ویسکوز'];
-const SIZES = ['38', '40', '42', '44', '46', '48'];
-const COLORS = [
-  { name: 'سفید', code: '#FFFFFF', border: true },
-  { name: 'بژ', code: '#D4C5A9' },
-  { name: 'نیلی', code: '#1B3A5C' },
-  { name: 'سبز', code: '#2D7A5F' },
-  { name: 'قرمز', code: '#C0392B' },
-  { name: 'خاکستری', code: '#7F8C8D' },
-  { name: 'مشکی', code: '#1A1A1A' },
-];
 const SORT_OPTIONS = [
   { value: 'newest', label: 'جدیدترین' },
   { value: 'popular', label: 'پرفروش‌ترین' },
@@ -64,30 +52,6 @@ function FilterPanel({ activeFilters, onFilter, onReset }: {
                   ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary')}>
               {f}
             </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-3">سایز</h4>
-        <div className="flex flex-wrap gap-2">
-          {SIZES.map((s) => (
-            <button key={s} onClick={() => onFilter('size', activeFilters.size === s ? '' : s)}
-              className={cn('h-9 w-10 rounded-lg text-sm font-medium border transition-colors',
-                activeFilters.size === s ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary')}>
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-3">رنگ</h4>
-        <div className="flex flex-wrap gap-2">
-          {COLORS.map((c) => (
-            <button key={c.name} onClick={() => onFilter('color', activeFilters.color === c.name ? '' : c.name)}
-              title={c.name}
-              className={cn('h-8 w-8 rounded-full transition-all', c.border && 'border border-gray-200',
-                activeFilters.color === c.name && 'ring-2 ring-primary ring-offset-2')}
-              style={{ backgroundColor: c.code }} />
           ))}
         </div>
       </div>
@@ -158,8 +122,6 @@ export function ProductCatalog({ searchParams }: { searchParams: SearchParams })
     params.set('limit', '24');
     if (search) params.set('search', search);
     if (filters.fabric) params.set('fabric', filters.fabric);
-    if (filters.color) params.set('color', filters.color);
-    if (filters.size) params.set('size', filters.size);
     if (sort) params.set('sort', sort);
     return params.toString();
   }, [filters, sort, search]);

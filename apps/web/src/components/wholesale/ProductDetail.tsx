@@ -71,8 +71,6 @@ export function ProductDetail({ slug }: { slug: string }) {
   const { addItem, count } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedColor, setSelectedColor] = useState('');
-  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
@@ -82,34 +80,35 @@ export function ProductDetail({ slug }: { slug: string }) {
     fetchProduct(slug)
       .then((p) => {
         setProduct(p);
-        if (p.variants.length > 0) setSelectedColor(p.variants[0].color);
         setQuantity(p.minOrderQty || 1);
       })
       .catch(() => router.push('/products'))
       .finally(() => setLoading(false));
   }, [slug, router]);
 
-  const colors = product ? [...new Map(product.variants.map((v) => [v.color, v])).values()] : [];
-  const sizesForColor = product ? [...new Set(product.variants.filter((v) => v.color === selectedColor).map((v) => v.size))] : [];
-  const selectedVariant = product?.variants.find((v) => v.color === selectedColor && v.size === selectedSize);
   const minOrder = product?.minOrderQty ?? 1;
-  const availableStock = selectedVariant?.stock ?? 0;
-  const canOrder = !!selectedVariant && availableStock >= minOrder;
-  const maxQty = selectedVariant ? Math.max(availableStock, minOrder) : minOrder;
+  const qtyStep = Math.max(minOrder, 1);
+  const totalStock = product?.variants?.reduce((s, v) => s + (Number(v.stock) || 0), 0) ?? 0;
+  const canOrder = !!product && totalStock >= qtyStep;
+  const maxQty = Math.max(totalStock, qtyStep);
+
+  const availableColors = product
+    ? Array.from(new Set(product.variants.map((v) => v.color).filter(Boolean)))
+    : [];
+  const availableSizes = product
+    ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
+    : [];
 
   const handleAddToCart = () => {
-    if (!selectedSize || !selectedVariant || !product || !canOrder) return;
-    if (quantity > availableStock) return;
+    if (!product || !canOrder) return;
+    const normalizedQty = Math.max(qtyStep, Math.min(maxQty, Math.floor(quantity / qtyStep) * qtyStep || qtyStep));
     addItem({
-      variantId: selectedVariant.id,
       productId: product.id,
       productName: product.name,
-      sku: product.sku ?? selectedVariant.sku ?? '',
-      color: selectedVariant.color,
-      colorHex: selectedVariant.colorHex,
-      size: selectedVariant.size,
+      sku: product.sku ?? '',
       unitPrice: Number(product.wholesalePrice),
-      quantity,
+      minOrderQty: qtyStep,
+      quantity: normalizedQty,
       imageUrl: product.images?.[0],
     });
     setAddedToCart(true);
@@ -211,21 +210,12 @@ export function ProductDetail({ slug }: { slug: string }) {
               </div>
             </div>
 
-            {colors.length > 0 && (
+            {availableColors.length > 0 && (
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-gray-900">رنگ‌بندی</h3>
-                  <span className="text-sm text-gray-500">انتخاب شده: <span className="text-gray-900 font-medium">{selectedColor}</span></span>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {colors.map((c) => (
-                    <button key={c.color} type="button" onClick={() => { setSelectedColor(c.color); setSelectedSize(''); }}
-                      title={c.color}
-                      className={cn('h-10 w-10 rounded-full transition-all border-2 flex items-center justify-center',
-                        selectedColor === c.color ? 'ring-2 ring-primary ring-offset-2 scale-110 border-transparent' : 'border-gray-200 hover:ring-2 hover:ring-gray-300 hover:ring-offset-1')}
-                      style={{ backgroundColor: c.colorHex ?? '#ddd' }}>
-                      {!c.colorHex && <span className="text-[8px] font-bold text-gray-600">{c.color.slice(0, 2)}</span>}
-                    </button>
+                <h3 className="text-sm font-bold text-gray-900 mb-3">رنگ‌های موجود</h3>
+                <div className="flex flex-wrap gap-2">
+                  {availableColors.map((c) => (
+                    <Badge key={c} variant="neutral">{c}</Badge>
                   ))}
                 </div>
               </div>
@@ -233,32 +223,20 @@ export function ProductDetail({ slug }: { slug: string }) {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">سایز</h3>
+                <h3 className="text-sm font-bold text-gray-900">سایزهای موجود</h3>
                 <button type="button" onClick={() => setShowSizeGuide(!showSizeGuide)} className="text-xs text-primary hover:underline">راهنمای سایز</button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {(sizesForColor.length > 0 ? sizesForColor : ['38', '40', '42', '44', '46', '48']).map((s) => {
-                  const v = product.variants.find((vv) => vv.color === selectedColor && vv.size === s);
-                  const outOfStock = v && v.stock === 0;
-                  return (
-                    <button key={s} type="button" onClick={() => !outOfStock && setSelectedSize(s)}
-                      disabled={!!outOfStock}
-                      className={cn('h-10 w-12 rounded-xl text-sm font-medium border-2 transition-all',
-                        selectedSize === s ? 'bg-primary text-white border-primary scale-105'
-                          : outOfStock ? 'border-gray-100 text-gray-300 cursor-not-allowed line-through'
-                            : 'border-gray-200 text-gray-700 hover:border-primary hover:text-primary')}>
-                      {s}
-                    </button>
-                  );
-                })}
+                {availableSizes.map((s) => (
+                  <Badge key={s} variant="neutral">{s}</Badge>
+                ))}
               </div>
               {showSizeGuide && <div className="mt-4 card p-4"><h4 className="text-sm font-bold mb-3">راهنمای سایز‌بندی</h4><SizeGuide /></div>}
-              {!selectedSize && <p className="mt-2 text-xs text-amber-600">لطفاً سایز را انتخاب کنید</p>}
-              {selectedSize && selectedVariant && availableStock < minOrder && (
-                <p className="mt-2 text-xs text-error">موجودی این سایز ({availableStock} عدد) کمتر از حداقل سفارش ({minOrder} عدد) است</p>
+              {!canOrder && (
+                <p className="mt-2 text-xs text-error">موجودی کل ({totalStock} عدد) کمتر از حداقل سفارش ({minOrder} عدد) است</p>
               )}
-              {selectedSize && selectedVariant && availableStock >= minOrder && (
-                <p className="mt-2 text-xs text-gray-500">موجودی: {availableStock} عدد</p>
+              {canOrder && (
+                <p className="mt-2 text-xs text-gray-500">موجودی کل: {totalStock} عدد</p>
               )}
             </div>
 
@@ -266,17 +244,18 @@ export function ProductDetail({ slug }: { slug: string }) {
               <h3 className="text-sm font-bold text-gray-900 mb-3">تعداد</h3>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
-                  <button type="button" onClick={() => setQuantity(Math.max(minOrder, quantity - 1))}
-                    disabled={quantity <= minOrder}
+                  <button type="button" onClick={() => setQuantity(Math.max(qtyStep, quantity - qtyStep))}
+                    disabled={quantity <= qtyStep}
                     className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium disabled:opacity-40">−</button>
                   <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
-                  <button type="button" onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
-                    disabled={quantity >= availableStock}
+                  <button type="button" onClick={() => setQuantity(Math.min(maxQty, quantity + qtyStep))}
+                    disabled={quantity >= maxQty}
                     className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium disabled:opacity-40">+</button>
                 </div>
                 <span className="text-sm text-gray-500">
                   جمع: <span className="font-bold text-gray-900">{totalPrice.toLocaleString('fa-IR')} تومان</span>
                 </span>
+                <span className="text-xs text-gray-400">گام سفارش: {qtyStep} عدد</span>
               </div>
             </div>
 
@@ -288,7 +267,7 @@ export function ProductDetail({ slug }: { slug: string }) {
             )}
 
             <div className="flex gap-3 flex-wrap">
-              <Button size="lg" variant="primary" fullWidth disabled={!selectedSize || !canOrder} onClick={handleAddToCart}
+              <Button size="lg" variant="primary" fullWidth disabled={!canOrder} onClick={handleAddToCart}
                 rightIcon={<ShoppingCart className="h-5 w-5" />}>
                 افزودن به سبد خرید
               </Button>

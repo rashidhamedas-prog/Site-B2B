@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ShoppingCart, Trash2, CheckCircle } from 'lucide-react';
@@ -37,22 +37,27 @@ export default function CheckoutPage() {
   const [done, setDone] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
 
+  useEffect(() => {
+    if (!getToken()) {
+      router.replace('/portal/login?redirect=/checkout');
+    }
+  }, [router]);
+  if (!getToken()) return null;
+
   const shippingFee = total >= 50_000_000 ? 0 : 1_500_000;
   const finalTotal = total + shippingFee;
 
   const handleSubmit = async () => {
     if (!getToken()) { router.push('/portal/login?redirect=/checkout'); return; }
-    if (items.length === 0) return;
+    if (items.length === 0) { setError('سبد خرید خالی است'); return; }
     setLoading(true); setError('');
     try {
       const orderItems = items.map((i) => ({
-        productVariantId: i.variantId,
+        productId: i.productId,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
         productName: i.productName,
         sku: i.sku,
-        color: i.color,
-        size: i.size,
       }));
       const res = await apiClient.post<{ orderNumber: string; id: string }>('/orders', {
         items: orderItems,
@@ -111,28 +116,27 @@ export default function CheckoutPage() {
             <h2 className="font-bold text-gray-900">اقلام سبد خرید</h2>
             <div className="card divide-y divide-gray-50">
               {items.map((item) => (
-                <div key={`${item.variantId}-${item.size}`} className="flex items-start gap-4 p-4">
+                <div key={item.productId} className="flex items-start gap-4 p-4">
                   <div className="relative h-16 w-12 flex-shrink-0 rounded-xl overflow-hidden bg-primary-50">
                     <ProductImage src={item.imageUrl} alt={item.productName} sizes="48px" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.productName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{item.color} / {item.size}</p>
                     <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-sm">
-                      <button onClick={() => updateQty(item.variantId, item.size, item.quantity - 1)}
+                      <button onClick={() => updateQty(item.productId, item.quantity - Math.max(1, item.minOrderQty))}
                         className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">−</button>
                       <span className="w-8 text-center font-bold">{item.quantity}</span>
-                      <button onClick={() => updateQty(item.variantId, item.size, item.quantity + 1)}
+                      <button onClick={() => updateQty(item.productId, item.quantity + Math.max(1, item.minOrderQty))}
                         className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">+</button>
                     </div>
                     <div className="text-left min-w-[80px]">
                       <p className="text-sm font-bold text-gray-900">{toman(item.unitPrice * item.quantity)} ت</p>
                       <p className="text-[10px] text-gray-400">{toman(item.unitPrice)}/عدد</p>
                     </div>
-                    <button onClick={() => removeItem(item.variantId, item.size)} className="text-gray-300 hover:text-error">
+                    <button onClick={() => removeItem(item.productId)} className="text-gray-300 hover:text-error">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
