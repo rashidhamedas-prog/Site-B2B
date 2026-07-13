@@ -21,10 +21,14 @@ export class CreateCategories1783881600000 implements MigrationInterface {
 
     await queryRunner.query(`ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "categoryId" uuid;`);
     await queryRunner.query(`
-      ALTER TABLE "products"
-      ADD CONSTRAINT IF NOT EXISTS "FK_products_categoryId"
-      FOREIGN KEY ("categoryId") REFERENCES "categories"("id")
-      ON DELETE SET NULL ON UPDATE NO ACTION;
+      DO $$ BEGIN
+        ALTER TABLE "products"
+          ADD CONSTRAINT "FK_products_categoryId"
+          FOREIGN KEY ("categoryId") REFERENCES "categories"("id")
+          ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
     `);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_products_categoryId" ON "products" ("categoryId");`);
   }
@@ -37,4 +41,3 @@ export class CreateCategories1783881600000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "categories";`);
   }
 }
-

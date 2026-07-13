@@ -65,16 +65,24 @@ export class VariantLibrary1783881600001 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "product_variants"
-      ADD CONSTRAINT IF NOT EXISTS "FK_product_variants_colorId"
-      FOREIGN KEY ("colorId") REFERENCES "variant_colors"("id")
-      ON DELETE SET NULL ON UPDATE NO ACTION;
+      DO $$ BEGIN
+        ALTER TABLE "product_variants"
+          ADD CONSTRAINT "FK_product_variants_colorId"
+          FOREIGN KEY ("colorId") REFERENCES "variant_colors"("id")
+          ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
     `);
     await queryRunner.query(`
-      ALTER TABLE "product_variants"
-      ADD CONSTRAINT IF NOT EXISTS "FK_product_variants_sizeId"
-      FOREIGN KEY ("sizeId") REFERENCES "variant_sizes"("id")
-      ON DELETE SET NULL ON UPDATE NO ACTION;
+      DO $$ BEGIN
+        ALTER TABLE "product_variants"
+          ADD CONSTRAINT "FK_product_variants_sizeId"
+          FOREIGN KEY ("sizeId") REFERENCES "variant_sizes"("id")
+          ON DELETE SET NULL ON UPDATE NO ACTION;
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
     `);
   }
 
@@ -89,4 +97,3 @@ export class VariantLibrary1783881600001 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS "variant_colors";`);
   }
 }
-
