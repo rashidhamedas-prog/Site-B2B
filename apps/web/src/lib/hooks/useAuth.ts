@@ -31,16 +31,13 @@ export function useAuth() {
       setToken(res.accessToken, res.role);
       setIsLoggedIn(true);
       setRole(res.role);
-      // Check for redirect param in URL
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get('redirect');
-      if (redirect) {
-        router.push(redirect);
-      } else if (res.role === 'ADMIN') {
-        router.push('/admin');
-      } else {
-        router.push('/portal/dashboard');
-      }
+      const target =
+        redirect ??
+        (res.role === 'ADMIN' ? '/admin' : '/portal/dashboard');
+      // Hard navigation ensures middleware sees auth cookies (router.push can race)
+      window.location.href = target;
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'خطا در ورود');
     } finally {

@@ -9,9 +9,10 @@ export function getToken(): string | null {
 export function setToken(token: string, role: string) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(ROLE_KEY, role);
-  // middleware reads cookies — keep cookie in sync
-  document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
-  document.cookie = `${ROLE_KEY}=${role}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+  const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+  const maxAge = 7 * 24 * 60 * 60;
+  document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+  document.cookie = `${ROLE_KEY}=${role}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
 }
 
 export function clearToken() {
