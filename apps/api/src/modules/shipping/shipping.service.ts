@@ -54,6 +54,13 @@ export class ShippingService {
   // Only methods the admin has enabled in settings.
   async methods() {
     const cfg = await this.settings.shipping();
+    // Prefer admin-managed companies list; fall back to METHOD_DEFS.
+    const fromSettings = Array.isArray((cfg as any).companies) ? (cfg as any).companies : null;
+    if (fromSettings?.length) {
+      return fromSettings
+        .filter((c: any) => c?.isActive !== false)
+        .map((c: any) => ({ id: String(c.id), label: String(c.label) }));
+    }
     return ShippingService.METHOD_DEFS.filter((m) => cfg.methods[m.id] !== false);
   }
 }

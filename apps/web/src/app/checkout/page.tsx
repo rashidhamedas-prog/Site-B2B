@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ShoppingCart, Trash2, CheckCircle } from 'lucide-react';
@@ -12,30 +12,24 @@ import { cn } from '@/lib/cn';
 
 function toman(n: number) { return Math.round(n / 10).toLocaleString('fa-IR'); }
 
-const SHIPPING_METHODS = [
-  { value: 'CHAPAR', label: 'چاپار' },
-  { value: 'TIPAX', label: 'تیپاکس' },
-  { value: 'POST', label: 'پست پیشتاز' },
-  { value: 'IN_PERSON', label: 'تحویل حضوری' },
-];
-
-const PAYMENT_METHODS = [
-  { value: 'CREDIT', label: 'نسیه (اعتبار حساب)' },
-  { value: 'BANK_TRANSFER', label: 'کارت به کارت / انتقال بانکی' },
-  { value: 'CHECK', label: 'چک' },
-  { value: 'CASH', label: 'نقد' },
-];
+type ShippingCompany = { id: string; label: string };
+type InstallmentsCfg = { minDownPaymentPercent: number; minDownPaymentAmount: number; maxMonths: number };
+type PublicSettings = { installments: InstallmentsCfg };
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, updateQty, removeItem, clear } = useCart();
-  const [shippingMethod, setShippingMethod] = useState('CHAPAR');
-  const [paymentMethod, setPaymentMethod] = useState('CREDIT');
+  const [shippingMethod, setShippingMethod] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'INSTALLMENT'>('CASH');
+  const [downPaymentAmount, setDownPaymentAmount] = useState<number>(0);
+  const [installmentMonths, setInstallmentMonths] = useState<number>(1);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [shippingCompanies, setShippingCompanies] = useState<ShippingCompany[]>([]);
+  const [installmentsCfg, setInstallmentsCfg] = useState<InstallmentsCfg | null>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -44,12 +38,50 @@ export default function CheckoutPage() {
   }, [router]);
   if (!getToken()) return null;
 
+  useEffect(() => {
+    apiClient.get<ShippingCompany[]>('/shipping/methods')
+      .then((m) => {
+        setShippingCompanies(m ?? []);
+        if (!shippingMethod && m?.length) setShippingMethod(m[0].id);
+      })
+      .catch(() => undefined);
+    apiClient.get<PublicSettings>('/settings/public')
+      .then((s) => {
+        if (s?.installments) {
+          setInstallmentsCfg(s.installments);
+          setInstallmentMonths(Math.min(Math.max(1, installmentMonths), s.installments.maxMonths));
+        }
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const shippingFee = total >= 50_000_000 ? 0 : 1_500_000;
   const finalTotal = total + shippingFee;
+
+  const installmentMinDownPayment = useMemo(() => {
+    if (!installmentsCfg) return 0;
+    const byPercent = installmentsCfg.minDownPaymentPercent > 0
+      ? Math.ceil((finalTotal * installmentsCfg.minDownPaymentPercent) / 100)
+      : 0;
+    return Math.max(byPercent, installmentsCfg.minDownPaymentAmount || 0);
+  }, [finalTotal, installmentsCfg]);
 
   const handleSubmit = async () => {
     if (!getToken()) { router.push('/portal/login?redirect=/checkout'); return; }
     if (items.length === 0) { setError('سبد خرید خالی است'); return; }
+    if (!shippingMethod) { setError('لطفاً روش ارسال را انتخاب کنید'); return; }
+    if (paymentMethod === 'INSTALLMENT') {
+      if (!installmentsCfg) { setError('تنظیمات اقساط هنوز آماده نیست'); return; }
+      if (installmentMonths < 1 || installmentMonths > installmentsCfg.maxMonths) {
+        setError(`حداکثر اقساط مجاز: ${installmentsCfg.maxMonths} ماه`);
+        return;
+      }
+      if (downPaymentAmount < installmentMinDownPayment) {
+        setError(`حداقل پیش‌پرداخت: ${toman(installmentMinDownPayment)} تومان`);
+        return;
+      }
+    }
     setLoading(true); setError('');
     try {
       const orderItems = items.map((i) => ({
@@ -63,6 +95,9 @@ export default function CheckoutPage() {
         items: orderItems,
         shippingMethod,
         paymentMethod,
+        installment: paymentMethod === 'INSTALLMENT'
+          ? { downPaymentAmount, months: installmentMonths }
+          : undefined,
         notes,
       });
       setOrderNumber(res.orderNumber);
@@ -148,10 +183,10 @@ export default function CheckoutPage() {
             <div className="card p-5 space-y-4">
               <h3 className="font-bold text-gray-900">روش ارسال</h3>
               <div className="grid grid-cols-2 gap-3">
-                {SHIPPING_METHODS.map((m) => (
-                  <button key={m.value} onClick={() => setShippingMethod(m.value)}
+                {shippingCompanies.map((m) => (
+                  <button key={m.id} onClick={() => setShippingMethod(m.id)}
                     className={cn('px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all text-right',
-                      shippingMethod === m.value ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-700 hover:border-primary')}>
+                      shippingMethod === m.id ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-700 hover:border-primary')}>
                     {m.label}
                   </button>
                 ))}
@@ -159,7 +194,10 @@ export default function CheckoutPage() {
 
               <h3 className="font-bold text-gray-900 pt-2">روش پرداخت</h3>
               <div className="grid grid-cols-2 gap-3">
-                {PAYMENT_METHODS.map((m) => (
+                {[
+                  { value: 'CASH' as const, label: 'پرداخت نقدی' },
+                  { value: 'INSTALLMENT' as const, label: 'پرداخت اقساطی' },
+                ].map((m) => (
                   <button key={m.value} onClick={() => setPaymentMethod(m.value)}
                     className={cn('px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all text-right',
                       paymentMethod === m.value ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-700 hover:border-primary')}>
@@ -167,6 +205,43 @@ export default function CheckoutPage() {
                   </button>
                 ))}
               </div>
+
+              {paymentMethod === 'INSTALLMENT' && (
+                <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">پیش‌پرداخت (ریال)</label>
+                      <input
+                        type="number"
+                        value={downPaymentAmount}
+                        onChange={(e) => setDownPaymentAmount(Number(e.target.value) || 0)}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      {installmentsCfg && (
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          حداقل: {toman(installmentMinDownPayment)} تومان
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">تعداد اقساط (ماه)</label>
+                      <input
+                        type="number"
+                        value={installmentMonths}
+                        min={1}
+                        max={installmentsCfg?.maxMonths ?? 12}
+                        onChange={(e) => setInstallmentMonths(Number(e.target.value) || 1)}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                      {installmentsCfg && (
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          حداکثر: {installmentsCfg.maxMonths} ماه
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">یادداشت (اختیاری)</label>

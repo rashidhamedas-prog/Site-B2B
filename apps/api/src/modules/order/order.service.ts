@@ -6,6 +6,7 @@ import { OrderItemEntity } from './entities/order-item.entity';
 import { CustomerService } from '../customer/customer.service';
 import { ProductService } from '../product/product.service';
 import { NotificationService } from '../notification/notification.service';
+import { SettingsService } from '../settings/settings.service';
 
 interface CreateOrderDto {
   customerId: string;
@@ -23,6 +24,7 @@ interface CreateOrderDto {
   }>;
   shippingMethod?: string;
   paymentMethod?: string;
+  installment?: { downPaymentAmount: number; months: number };
   notes?: string;
 }
 
@@ -35,6 +37,7 @@ export class OrderService {
     private readonly itemRepo: Repository<OrderItemEntity>,
     private readonly customerService: CustomerService,
     private readonly productService: ProductService,
+    private readonly settings: SettingsService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
 
@@ -66,6 +69,10 @@ export class OrderService {
     await this.customerService.findOne(dto.customerId);
 
     if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
+    const paymentMethod = (dto.paymentMethod ?? 'CASH').toUpperCase();
+    if (!['CASH', 'INSTALLMENT'].includes(paymentMethod)) {
+      throw new BadRequestException('روش پرداخت نامعتبر است');
+    }
 
     // Normalize/expand items:
     // - If productVariantId provided: keep single item, but enforce MOQ from its product.
@@ -140,6 +147,25 @@ export class OrderService {
     const shippingFee = subtotal >= 50_000_000 ? 0 : 1_500_000;
     const total = subtotal + shippingFee;
 
+    if (paymentMethod === 'INSTALLMENT') {
+      const cfg = await this.settings.installments();
+      const down = Number(dto.installment?.downPaymentAmount) || 0;
+      const months = Number(dto.installment?.months) || 0;
+      if (months < 1 || months > cfg.maxMonths) {
+        throw new BadRequestException(`حداکثر اقساط مجاز: ${cfg.maxMonths} ماه`);
+      }
+      const byPercent = cfg.minDownPaymentPercent > 0
+        ? Math.ceil((total * cfg.minDownPaymentPercent) / 100)
+        : 0;
+      const minDown = Math.max(byPercent, cfg.minDownPaymentAmount || 0);
+      if (down < minDown) {
+        throw new BadRequestException(`حداقل پیش‌پرداخت: ${minDown}`);
+      }
+      // Persist in notes (non-breaking; can be normalized later).
+      const tag = `INSTALLMENT downPayment=${down} months=${months}`;
+      dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+    }
+
     const order = this.orderRepo.create({
       orderNumber: await this.generateOrderNumber(),
       customerId: dto.customerId,
@@ -147,7 +173,7 @@ export class OrderService {
       shippingFee,
       total,
       shippingMethod: dto.shippingMethod ?? 'CHAPAR',
-      paymentMethod: dto.paymentMethod ?? 'CREDIT',
+      paymentMethod,
       notes: dto.notes,
       status: 'PENDING_REVIEW',
     });

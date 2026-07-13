@@ -30,6 +30,29 @@
 
 ---
 
+## 2026-07-13 — فاز 2: روش‌های ارسال/پرداخت + قوانین اقساط
+
+### خلاصه
+- Shipping از حالت ثابت خارج شد و **لیست شرکت‌های حمل قابل مدیریت** از پنل ادمین شد (ذخیره در `app_settings.shipping.companies`).
+- Checkout روش‌های ارسال را از API می‌گیرد (`GET /shipping/methods`).
+- روش‌های پرداخت checkout فقط:
+  - `CASH` (نقدی)
+  - `INSTALLMENT` (اقساطی)
+- قوانین اقساط از پنل ادمین قابل تنظیم شد:
+  - حداقل پیش‌پرداخت درصدی / مبلغی
+  - حداکثر ماه اقساط
+- اعتبارسنجی اقساط در **فرانت** و **API** اضافه شد.
+
+### فایل‌های کلیدی
+- `apps/api/src/modules/settings/settings.service.ts`
+- `apps/api/src/modules/settings/settings.controller.ts`
+- `apps/api/src/modules/shipping/shipping.service.ts`
+- `apps/api/src/modules/order/order.service.ts`
+- `apps/web/src/components/admin/AdminSettings.tsx`
+- `apps/web/src/app/checkout/page.tsx`
+
+---
+
 ## 2026-07-11 — سایت down — redeploy کامل سرور
 
 **گزارش:** [reports/2026-07-11-server-redeploy.md](./reports/2026-07-11-server-redeploy.md)

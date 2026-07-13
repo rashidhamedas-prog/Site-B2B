@@ -20,6 +20,7 @@ interface SettingsPayload {
   };
   shipping: {
     baseFee: number; perKgFee: number; freeThreshold: number;
+    companies: Array<{ id: string; label: string; isActive: boolean; sort: number }>;
     methods: Record<string, boolean>;
   };
   sms: {
@@ -30,24 +31,22 @@ interface SettingsPayload {
     enabled: boolean; merchantId: string; sandbox: boolean;
     manualCardNumber: string; manualCardOwner: string;
   };
+  installments: {
+    minDownPaymentPercent: number;
+    minDownPaymentAmount: number;
+    maxMonths: number;
+  };
 }
 
-type TabId = 'business' | 'shipping' | 'sms' | 'payment';
+type TabId = 'business' | 'shipping' | 'sms' | 'payment' | 'installments';
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'business', label: 'کسب‌وکار', icon: Building2 },
   { id: 'shipping', label: 'روش‌های ارسال', icon: Truck },
   { id: 'sms',      label: 'پیامک (sms.ir)', icon: MessageSquare },
   { id: 'payment',  label: 'درگاه پرداخت', icon: CreditCard },
+  { id: 'installments', label: 'قوانین اقساط', icon: CreditCard },
 ];
-
-const SHIP_METHOD_LABELS: Record<string, string> = {
-  CHAPAR: 'چاپار',
-  TIPAX: 'تیپاکس',
-  SNAPP: 'اسنپ‌باکس (درون‌شهری مشهد)',
-  POST: 'پست پیشتاز',
-  FREIGHT: 'باربری (سفارش حجمی)',
-};
 
 const SMS_EVENT_LABELS: Record<string, string> = {
   orderRegistered: 'پیامک ثبت سفارش جدید',
@@ -194,16 +193,72 @@ export function AdminSettings() {
           </div>
 
           <div>
-            <h3 className="font-bold text-gray-800 mb-3 text-sm">روش‌های فعال</h3>
-            <div className="space-y-2">
-              {Object.keys(SHIP_METHOD_LABELS).map((id) => (
-                <ToggleRow
-                  key={id}
-                  label={SHIP_METHOD_LABELS[id]}
-                  hint={id === 'SNAPP' ? 'فقط مشهد و اطراف' : id === 'FREIGHT' ? 'سفارش‌های حجمی' : undefined}
-                  value={data.shipping.methods[id] !== false}
-                  onChange={(v) => patch('shipping', (s) => ({ ...s, methods: { ...s.methods, [id]: v } }))}
-                />
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="font-bold text-gray-800 text-sm">شرکت‌های حمل (قابل مدیریت)</h3>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => patch('shipping', (s) => ({
+                  ...s,
+                  companies: [
+                    ...(s.companies ?? []),
+                    { id: `SHIP_${Date.now()}`, label: 'شرکت جدید', isActive: true, sort: (s.companies?.length ?? 0) * 10 + 10 },
+                  ],
+                }))}
+              >
+                افزودن
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {(data.shipping.companies ?? []).map((c, idx) => (
+                <div key={c.id} className="rounded-2xl border border-gray-100 p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
+                    <div className="sm:col-span-3">
+                      <TextField
+                        label="نام شرکت"
+                        value={c.label}
+                        onChange={(v) => patch('shipping', (s) => ({
+                          ...s,
+                          companies: s.companies.map((x) => x.id === c.id ? { ...x, label: v } : x),
+                        }))}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <NumberField
+                        label="اولویت نمایش"
+                        value={c.sort}
+                        onChange={(v) => patch('shipping', (s) => ({
+                          ...s,
+                          companies: s.companies.map((x) => x.id === c.id ? { ...x, sort: v } : x),
+                        }))}
+                      />
+                    </div>
+                    <div className="sm:col-span-1 flex items-center justify-between gap-2">
+                      <ToggleRow
+                        label="فعال"
+                        value={c.isActive !== false}
+                        onChange={(v) => patch('shipping', (s) => ({
+                          ...s,
+                          companies: s.companies.map((x) => x.id === c.id ? { ...x, isActive: v } : x),
+                        }))}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm text-error"
+                        onClick={() => patch('shipping', (s) => ({
+                          ...s,
+                          companies: s.companies.filter((x) => x.id !== c.id),
+                        }))}
+                      >
+                        حذف
+                      </button>
+                    </div>
+                  </div>
+                  {idx === 0 && (
+                    <p className="text-xs text-gray-400 mt-2">این لیست مستقیماً در checkout نمایش داده می‌شود.</p>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -292,6 +347,35 @@ export function AdminSettings() {
               <TextField label="صاحب کارت" value={data.payment.manualCardOwner}
                 placeholder="حامد رشید"
                 onChange={(v) => patch('payment', (p) => ({ ...p, manualCardOwner: v }))} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Installments tab */}
+      {tab === 'installments' && (
+        <div className="card p-6 space-y-6 max-w-3xl">
+          <div>
+            <h3 className="font-bold text-gray-800 mb-3 text-sm">قوانین پرداخت اقساطی</h3>
+            <p className="text-xs text-gray-500 mb-4">این قوانین هنگام ثبت سفارش با روش پرداخت «اقساطی» اعتبارسنجی می‌شوند.</p>
+            <div className="grid grid-cols-3 gap-4">
+              <NumberField
+                label="حداقل پیش‌پرداخت (%)"
+                value={data.installments.minDownPaymentPercent}
+                onChange={(v) => patch('installments', (x) => ({ ...x, minDownPaymentPercent: v }))}
+                help="اگر ۰ باشد فقط مبلغ ثابت ملاک است"
+              />
+              <NumberField
+                label="حداقل پیش‌پرداخت (ریال)"
+                value={data.installments.minDownPaymentAmount}
+                onChange={(v) => patch('installments', (x) => ({ ...x, minDownPaymentAmount: v }))}
+                help="مثلاً ۵۰٬۰۰۰٬۰۰۰ ریال"
+              />
+              <NumberField
+                label="حداکثر اقساط (ماه)"
+                value={data.installments.maxMonths}
+                onChange={(v) => patch('installments', (x) => ({ ...x, maxMonths: v }))}
+              />
             </div>
           </div>
         </div>
