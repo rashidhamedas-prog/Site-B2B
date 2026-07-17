@@ -7,12 +7,20 @@ import { ProductEntity } from './entities/product.entity';
 import { ProductVariantEntity } from './entities/product-variant.entity';
 import { VariantColorEntity } from './entities/variant-color.entity';
 import { VariantSizeEntity } from './entities/variant-size.entity';
+import { ProductSpecMemoryEntity } from './entities/product-spec-memory.entity';
 import { CategoryEntity } from '../category/entities/category.entity';
 import { AuthModule } from '../auth/auth.module';
 import { UploadModule } from '../upload/upload.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity, CategoryEntity, VariantColorEntity, VariantSizeEntity]), AuthModule, UploadModule],
+  imports: [TypeOrmModule.forFeature([
+    ProductEntity,
+    ProductVariantEntity,
+    CategoryEntity,
+    VariantColorEntity,
+    VariantSizeEntity,
+    ProductSpecMemoryEntity,
+  ]), AuthModule, UploadModule],
   controllers: [ProductController],
   providers: [ProductService, ProductSearchIndexer],
   exports: [ProductService],

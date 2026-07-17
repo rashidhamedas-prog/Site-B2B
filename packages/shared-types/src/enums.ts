@@ -49,6 +49,13 @@ export enum ProductStatus {
   OUT_OF_STOCK = 'OUT_OF_STOCK',
   DISCONTINUED = 'DISCONTINUED',
   ARCHIVED = 'ARCHIVED',
+  COMING_SOON = 'COMING_SOON',
+}
+
+export enum ProductSizeType {
+  TWO = 'TWO',
+  THREE = 'THREE',
+  FREE = 'FREE',
 }
 
 export enum InvoiceType {

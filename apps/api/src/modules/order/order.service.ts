@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
+import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { CustomerService } from '../customer/customer.service';
 import { ProductService } from '../product/product.service';
 import { NotificationService } from '../notification/notification.service';
@@ -11,9 +12,7 @@ import { SettingsService } from '../settings/settings.service';
 interface CreateOrderDto {
   customerId: string;
   items: Array<{
-    // Legacy (variant-based) ordering
     productVariantId?: string;
-    // New (product-based) ordering — server will allocate across variants
     productId?: string;
     quantity: number;
     unitPrice?: number;
@@ -26,6 +25,9 @@ interface CreateOrderDto {
   paymentMethod?: string;
   installment?: { downPaymentAmount: number; months: number };
   notes?: string;
+  freeShipping?: boolean;
+  intraCityFee?: number;
+  perKgFee?: number;
 }
 
 @Injectable()
@@ -35,11 +37,39 @@ export class OrderService {
     private readonly orderRepo: Repository<OrderEntity>,
     @InjectRepository(OrderItemEntity)
     private readonly itemRepo: Repository<OrderItemEntity>,
+    @InjectRepository(InvoiceEntity)
+    private readonly invoiceRepo: Repository<InvoiceEntity>,
     private readonly customerService: CustomerService,
     private readonly productService: ProductService,
     private readonly settings: SettingsService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
+
+  private async countActiveInvoices(customerId: string): Promise<number> {
+    return this.invoiceRepo.count({
+      where: {
+        customerId,
+        status: Not(In(['VOIDED', 'CANCELLED', 'DRAFT'])),
+      },
+    });
+  }
+
+  async installmentEligibility(customerId: string) {
+    const cfg = await this.settings.installments();
+    const activeInvoiceCount = await this.countActiveInvoices(customerId);
+    const required = cfg.minActiveInvoices ?? 2;
+    return {
+      eligible: activeInvoiceCount >= required,
+      activeInvoiceCount,
+      required,
+      rules: cfg.rules,
+      minDownPaymentPercent: cfg.minDownPaymentPercent,
+      maxMonths: cfg.maxMonths,
+      message: activeInvoiceCount >= required
+        ? null
+        : `پرداخت اقساطی فقط برای مشتریانی با حداقل ${required} فاکتور فعال امکان‌پذیر است. شما ${activeInvoiceCount} فاکتور فعال دارید.`,
+    };
+  }
 
   // Fire-and-forget SMS — never blocks or fails the order flow.
   private notify(fn: (phone: string) => Promise<unknown>, customerId: string) {
@@ -147,22 +177,49 @@ export class OrderService {
     const shippingFee = subtotal >= 50_000_000 ? 0 : 1_500_000;
     const total = subtotal + shippingFee;
 
+    const freeShipping = !!dto.freeShipping;
+    const intraCityFee = Number(dto.intraCityFee) || 0;
+    const perKgFee = Number(dto.perKgFee) || 0;
+    const computedShipping = freeShipping ? 0 : (intraCityFee || shippingFee);
+    const orderTotal = subtotal + computedShipping;
+
     if (paymentMethod === 'INSTALLMENT') {
+      const activeInvoiceCount = await this.countActiveInvoices(dto.customerId);
       const cfg = await this.settings.installments();
+      if (activeInvoiceCount < (cfg.minActiveInvoices ?? 2)) {
+        throw new BadRequestException(
+          `پرداخت اقساطی فقط برای مشتریانی با حداقل ${cfg.minActiveInvoices ?? 2} فاکتور فعال امکان‌پذیر است`,
+        );
+      }
+      const categoryIds = [...new Set(
+        (await Promise.all(
+          expandedItems.map(async (i) => {
+            const v = await this.productService.getVariant(i.productVariantId);
+            return (v as any).product?.categoryId as string | undefined;
+          }),
+        )).filter(Boolean),
+      )] as string[];
+      const rules = cfg.rules?.length ? cfg.rules : [{
+        id: 'default',
+        minDownPaymentPercent: cfg.minDownPaymentPercent,
+        maxMonths: cfg.maxMonths,
+        categoryId: null as string | null,
+      }];
+      const matched = rules.find((r: any) => !r.categoryId || categoryIds.includes(r.categoryId))
+        ?? rules[0];
       const down = Number(dto.installment?.downPaymentAmount) || 0;
       const months = Number(dto.installment?.months) || 0;
-      if (months < 1 || months > cfg.maxMonths) {
-        throw new BadRequestException(`حداکثر اقساط مجاز: ${cfg.maxMonths} ماه`);
+      if (months < 1 || months > matched.maxMonths) {
+        throw new BadRequestException(`حداکثر اقساط مجاز: ${matched.maxMonths} ماه`);
       }
-      const byPercent = cfg.minDownPaymentPercent > 0
-        ? Math.ceil((total * cfg.minDownPaymentPercent) / 100)
+      const byPercent = matched.minDownPaymentPercent > 0
+        ? Math.ceil((orderTotal * matched.minDownPaymentPercent) / 100)
         : 0;
       const minDown = Math.max(byPercent, cfg.minDownPaymentAmount || 0);
       if (down < minDown) {
         throw new BadRequestException(`حداقل پیش‌پرداخت: ${minDown}`);
       }
-      // Persist in notes (non-breaking; can be normalized later).
-      const tag = `INSTALLMENT downPayment=${down} months=${months}`;
+      const tag = `INSTALLMENT downPayment=${down} months=${months} rule=${matched.id}`;
       dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
     }
 
@@ -170,12 +227,15 @@ export class OrderService {
       orderNumber: await this.generateOrderNumber(),
       customerId: dto.customerId,
       subtotal,
-      shippingFee,
-      total,
+      shippingFee: computedShipping,
+      total: orderTotal,
       shippingMethod: dto.shippingMethod ?? 'CHAPAR',
       paymentMethod,
       notes: dto.notes,
       status: 'PENDING_REVIEW',
+      intraCityFee,
+      perKgFee,
+      freeShipping,
     });
 
     const saved = await this.orderRepo.save(order);
@@ -240,10 +300,17 @@ export class OrderService {
     return saved;
   }
 
-  async addTracking(id: string, trackingCode: string, shippingMethod?: string) {
+  async addTracking(
+    id: string,
+    trackingCode: string,
+    shippingMethod?: string,
+    extra?: { freightCost?: number; freightReceiptUrl?: string },
+  ) {
     const patch: Partial<OrderEntity> = { trackingCode, status: 'SHIPPED', shippedAt: new Date() };
     if (shippingMethod) patch.shippingMethod = shippingMethod;
-    await this.orderRepo.update(id, patch);
+    if (extra?.freightCost !== undefined) patch.freightCost = Number(extra.freightCost) || 0;
+    if (extra?.freightReceiptUrl !== undefined) patch.freightReceiptUrl = extra.freightReceiptUrl || undefined;
+    await this.orderRepo.update(id, patch as any);
     const order = await this.findOne(id);
     if (this.notifications) {
       this.notify(

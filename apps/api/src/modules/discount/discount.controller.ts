@@ -29,6 +29,7 @@ export class DiscountController {
       value: Number(body.value),
       minOrder: Number(body.minOrder ?? 0),
       maxUses: body.maxUses ? Number(body.maxUses) : undefined,
+      startsAt: body.startsAt ? new Date(body.startsAt) : undefined,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
       isActive: body.isActive ?? true,
       notes: body.notes,
@@ -40,7 +41,10 @@ export class DiscountController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   update(@Param('id') id: string, @Body() body: any) {
-    return this.svc.update(id, body);
+    const patch: any = { ...body };
+    if (body.startsAt !== undefined) patch.startsAt = body.startsAt ? new Date(body.startsAt) : null;
+    if (body.expiresAt !== undefined) patch.expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
+    return this.svc.update(id, patch);
   }
 
   @Delete(':id')
@@ -54,5 +58,74 @@ export class DiscountController {
   @Post('validate')
   validate(@Body() body: { code: string; orderTotal: number }) {
     return this.svc.validate(body.code, body.orderTotal);
+  }
+
+  // ── Tiered ─────────────────────────────────────────────────
+
+  @Get('tiered/list')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  listTiered() {
+    return this.svc.listTiered();
+  }
+
+  @Post('tiered')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  createTiered(@Body() body: any) {
+    return this.svc.createTiered(body);
+  }
+
+  @Put('tiered/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  updateTiered(@Param('id') id: string, @Body() body: any) {
+    if (body.expiresAt !== undefined) body.expiresAt = body.expiresAt ? new Date(body.expiresAt) : null;
+    return this.svc.updateTiered(id, body);
+  }
+
+  @Delete('tiered/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  removeTiered(@Param('id') id: string) {
+    return this.svc.removeTiered(id);
+  }
+
+  // ── Side ───────────────────────────────────────────────────
+
+  @Get('side/list')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  listSide() {
+    return this.svc.listSide();
+  }
+
+  @Post('side')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  createSide(@Body() body: any) {
+    return this.svc.createSide(body);
+  }
+
+  @Put('side/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  updateSide(@Param('id') id: string, @Body() body: any) {
+    return this.svc.updateSide(id, body);
+  }
+
+  @Delete('side/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  removeSide(@Param('id') id: string) {
+    return this.svc.removeSide(id);
   }
 }

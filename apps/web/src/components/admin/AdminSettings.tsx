@@ -4,12 +4,19 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Save, Building2, Phone, Mail, Globe, Instagram, MessageCircle,
   Truck, MessageSquare, CreditCard, CheckCircle, AlertCircle, Loader2,
-  Eye, EyeOff,
+  Eye, EyeOff, Plus, Trash2,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
 // ── Types ─────────────────────────────────────────────────────
+
+interface InstallmentRule {
+  id: string;
+  minDownPaymentPercent: number;
+  maxMonths: number;
+  categoryId: string | null;
+}
 
 interface SettingsPayload {
   business: {
@@ -32,9 +39,14 @@ interface SettingsPayload {
     manualCardNumber: string; manualCardOwner: string;
   };
   installments: {
+    /** @deprecated legacy — kept for API compat; prefer rules[] */
     minDownPaymentPercent: number;
+    /** @deprecated legacy — kept for API compat */
     minDownPaymentAmount: number;
+    /** @deprecated legacy — kept for API compat; prefer rules[] */
     maxMonths: number;
+    rules: InstallmentRule[];
+    minActiveInvoices?: number;
   };
 }
 
@@ -60,6 +72,7 @@ const SMS_EVENT_LABELS: Record<string, string> = {
 export function AdminSettings() {
   const [tab, setTab] = useState<TabId>('business');
   const [data, setData] = useState<SettingsPayload | null>(null);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<TabId | null>(null);
@@ -68,8 +81,28 @@ export function AdminSettings() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<SettingsPayload>('/settings/admin');
-      setData(res);
+      const [res, cats] = await Promise.all([
+        apiClient.get<SettingsPayload>('/settings/admin'),
+        apiClient.get<Array<{ id: string; name: string }>>('/categories').catch(() => []),
+      ]);
+      const installments = res.installments ?? ({} as SettingsPayload['installments']);
+      const rules = Array.isArray(installments.rules) && installments.rules.length
+        ? installments.rules
+        : [{
+            id: 'default',
+            minDownPaymentPercent: Number(installments.minDownPaymentPercent) || 0,
+            maxMonths: Math.max(1, Number(installments.maxMonths) || 6),
+            categoryId: null as string | null,
+          }];
+      setData({
+        ...res,
+        installments: {
+          ...installments,
+          rules,
+          minActiveInvoices: installments.minActiveInvoices ?? 2,
+        },
+      });
+      setCategories(cats ?? []);
     } catch { /* keep null → show error banner */ }
     finally { setLoading(false); }
   }, []);
@@ -80,7 +113,19 @@ export function AdminSettings() {
     if (!data) return;
     setSaving(true);
     try {
-      await apiClient.put(`/settings/admin/${tab}`, data[tab]);
+      let payload: SettingsPayload[TabId] = data[tab];
+      if (tab === 'installments') {
+        const inst = data.installments;
+        const rules = inst.rules ?? [];
+        payload = {
+          ...inst,
+          rules,
+          minDownPaymentPercent: rules[0]?.minDownPaymentPercent ?? inst.minDownPaymentPercent ?? 0,
+          maxMonths: Math.max(...rules.map((r) => r.maxMonths), inst.maxMonths || 1),
+          minActiveInvoices: inst.minActiveInvoices ?? 2,
+        };
+      }
+      await apiClient.put(`/settings/admin/${tab}`, payload);
       setSaved(tab);
       setTimeout(() => setSaved(null), 2500);
     } catch (e: any) {
@@ -180,17 +225,9 @@ export function AdminSettings() {
       {/* Shipping tab */}
       {tab === 'shipping' && (
         <div className="card p-6 space-y-6 max-w-3xl">
-          <div>
-            <h3 className="font-bold text-gray-800 mb-3 text-sm">هزینه‌های ارسال (به ریال)</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <NumberField label="کارمزد پایه" value={data.shipping.baseFee}
-                onChange={(v) => patch('shipping', (s) => ({ ...s, baseFee: v }))} help="مثلاً ۶۰۰٬۰۰۰ ریال = ۶۰٬۰۰۰ تومان" />
-              <NumberField label="کارمزد هر کیلوگرم" value={data.shipping.perKgFee}
-                onChange={(v) => patch('shipping', (s) => ({ ...s, perKgFee: v }))} help="اضافه بر کارمزد پایه" />
-              <NumberField label="ارسال رایگان بالاتر از" value={data.shipping.freeThreshold}
-                onChange={(v) => patch('shipping', (s) => ({ ...s, freeThreshold: v }))} help="مبلغ کل سفارش (ریال)" />
-            </div>
-          </div>
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+            هزینه‌های ارسال در هر فاکتور/سفارش تعیین می‌شود؛ اینجا فقط شرکت‌های حمل را مدیریت کنید.
+          </p>
 
           <div>
             <div className="flex items-center justify-between gap-3 mb-3">
@@ -356,26 +393,90 @@ export function AdminSettings() {
       {tab === 'installments' && (
         <div className="card p-6 space-y-6 max-w-3xl">
           <div>
-            <h3 className="font-bold text-gray-800 mb-3 text-sm">قوانین پرداخت اقساطی</h3>
-            <p className="text-xs text-gray-500 mb-4">این قوانین هنگام ثبت سفارش با روش پرداخت «اقساطی» اعتبارسنجی می‌شوند.</p>
-            <div className="grid grid-cols-3 gap-4">
-              <NumberField
-                label="حداقل پیش‌پرداخت (%)"
-                value={data.installments.minDownPaymentPercent}
-                onChange={(v) => patch('installments', (x) => ({ ...x, minDownPaymentPercent: v }))}
-                help="اگر ۰ باشد فقط مبلغ ثابت ملاک است"
-              />
-              <NumberField
-                label="حداقل پیش‌پرداخت (ریال)"
-                value={data.installments.minDownPaymentAmount}
-                onChange={(v) => patch('installments', (x) => ({ ...x, minDownPaymentAmount: v }))}
-                help="مثلاً ۵۰٬۰۰۰٬۰۰۰ ریال"
-              />
-              <NumberField
-                label="حداکثر اقساط (ماه)"
-                value={data.installments.maxMonths}
-                onChange={(v) => patch('installments', (x) => ({ ...x, maxMonths: v }))}
-              />
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="font-bold text-gray-800 text-sm">قوانین پرداخت اقساطی</h3>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm flex items-center gap-1.5"
+                onClick={() => patch('installments', (x) => ({
+                  ...x,
+                  rules: [
+                    ...(x.rules ?? []),
+                    {
+                      id: `rule_${Date.now()}`,
+                      minDownPaymentPercent: 30,
+                      maxMonths: 6,
+                      categoryId: null,
+                    },
+                  ],
+                }))}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                افزودن قانون
+              </button>
+            </div>
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-4">
+              اقساط فقط برای مشتریان با حداقل ۲ فاکتور فعال
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              هر قانون می‌تواند برای همه دسته‌ها یا یک دسته خاص اعمال شود. هنگام ثبت سفارش اقساطی اعتبارسنجی می‌شود.
+            </p>
+
+            <div className="space-y-3">
+              {(data.installments.rules ?? []).map((rule) => (
+                <div key={rule.id} className="rounded-2xl border border-gray-100 p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                    <NumberField
+                      label="حداقل پیش‌پرداخت (%)"
+                      value={rule.minDownPaymentPercent}
+                      onChange={(v) => patch('installments', (x) => ({
+                        ...x,
+                        rules: x.rules.map((r) => r.id === rule.id ? { ...r, minDownPaymentPercent: v } : r),
+                      }))}
+                    />
+                    <NumberField
+                      label="حداکثر اقساط (ماه)"
+                      value={rule.maxMonths}
+                      onChange={(v) => patch('installments', (x) => ({
+                        ...x,
+                        rules: x.rules.map((r) => r.id === rule.id ? { ...r, maxMonths: Math.max(1, v) } : r),
+                      }))}
+                    />
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">دسته‌بندی</label>
+                      <select
+                        value={rule.categoryId ?? ''}
+                        onChange={(e) => patch('installments', (x) => ({
+                          ...x,
+                          rules: x.rules.map((r) => r.id === rule.id
+                            ? { ...r, categoryId: e.target.value || null }
+                            : r),
+                        }))}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      >
+                        <option value="">همه</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm text-error flex items-center gap-1"
+                        disabled={(data.installments.rules?.length ?? 0) <= 1}
+                        onClick={() => patch('installments', (x) => ({
+                          ...x,
+                          rules: x.rules.filter((r) => r.id !== rule.id),
+                        }))}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        حذف
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

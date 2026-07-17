@@ -3,14 +3,34 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield } from 'lucide-react';
+import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles } from 'lucide-react';
 import { Button, Badge, Alert } from '@/components/ui';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
 
-interface Variant { id: string; color: string; colorHex?: string; size: string; stock: number; sku?: string; }
+interface Variant {
+  id: string;
+  color: string;
+  colorHex?: string;
+  size: string;
+  stock: number;
+  sku?: string;
+}
+
+interface ProductSpecs {
+  fabricType?: string;
+  packQty?: string;
+  length?: string;
+  length2?: string;
+  chestWidth?: string;
+  sleeveModel?: string;
+  buttonModel?: string;
+  collarModel?: string;
+  customFields?: Array<{ key?: string; label: string; value: string }>;
+}
+
 interface Product {
   id: string;
   name: string;
@@ -22,41 +42,61 @@ interface Product {
   sku?: string;
   images: string[];
   variants: Variant[];
+  specs?: ProductSpecs;
+  sizeType?: 'TWO' | 'THREE' | 'FREE';
+  isDiscounted?: boolean;
+  isLimitedStock?: boolean;
+  isNew?: boolean;
+  status?: string;
+  sizeGuide?: string[];
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function SizeGuide() {
-  const sizes = [
-    { size: '38', chest: '88', waist: '70', hip: '94', length: '90' },
-    { size: '40', chest: '92', waist: '74', hip: '98', length: '91' },
-    { size: '42', chest: '96', waist: '78', hip: '102', length: '92' },
-    { size: '44', chest: '100', waist: '82', hip: '106', length: '93' },
-    { size: '46', chest: '104', waist: '86', hip: '110', length: '94' },
-    { size: '48', chest: '108', waist: '90', hip: '114', length: '95' },
-  ];
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead><tr className="border-b border-gray-100">
-          {['سایز', 'دور سینه', 'دور کمر', 'دور باسن', 'طول'].map((h) => (
-            <th key={h} className="py-2 px-3 text-right text-xs font-semibold text-gray-500">{h} (cm)</th>
-          ))}
-        </tr></thead>
-        <tbody className="divide-y divide-gray-50">
-          {sizes.map((row) => (
-            <tr key={row.size} className="hover:bg-gray-50">
-              <td className="py-2 px-3 font-bold text-primary">{row.size}</td>
-              <td className="py-2 px-3 text-gray-600">{row.chest}</td>
-              <td className="py-2 px-3 text-gray-600">{row.waist}</td>
-              <td className="py-2 px-3 text-gray-600">{row.hip}</td>
-              <td className="py-2 px-3 text-gray-600">{row.length}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+const SIZE_GUIDE: Record<'TWO' | 'THREE' | 'FREE', string[]> = {
+  TWO: ['سایز ۱ مناسب ۳۸ تا ۴۲', 'سایز ۲ مناسب ۴۲ تا ۴۸'],
+  THREE: ['سایز ۱ از ۳۸ تا ۴۰', 'سایز ۲ از ۴۲ تا ۴۴', 'سایز ۳ از ۴۶ تا ۴۸'],
+  FREE: ['مناسب از ۳۸ تا ۴۸'],
+};
+
+const SIZE_TYPE_LABEL: Record<'TWO' | 'THREE' | 'FREE', string> = {
+  TWO: 'محصول ۲ سایزی',
+  THREE: 'محصول ۳ سایزی',
+  FREE: 'محصول فری سایز',
+};
+
+const SPEC_LABELS: Array<{ key: keyof ProductSpecs; label: string }> = [
+  { key: 'fabricType', label: 'جنس پارچه' },
+  { key: 'packQty', label: 'تعداد در پک' },
+  { key: 'length', label: 'قد کار' },
+  { key: 'length2', label: 'قد ۲' },
+  { key: 'chestWidth', label: 'عرض سینه' },
+  { key: 'sleeveModel', label: 'مدل آستین' },
+  { key: 'buttonModel', label: 'مدل دکمه' },
+  { key: 'collarModel', label: 'مدل یقه' },
+];
+
+function buildSpecRows(specs?: ProductSpecs): Array<{ label: string; value: string }> {
+  if (!specs) return [];
+  const rows: Array<{ label: string; value: string }> = [];
+  for (const { key, label } of SPEC_LABELS) {
+    const value = String(specs[key] ?? '').trim();
+    if (value) rows.push({ label, value });
+  }
+  for (const cf of specs.customFields ?? []) {
+    const label = String(cf?.label ?? '').trim();
+    const value = String(cf?.value ?? '').trim();
+    if (label && value) rows.push({ label, value });
+  }
+  return rows;
+}
+
+function resolveSizeGuide(product: Product): string[] {
+  if (Array.isArray(product.sizeGuide) && product.sizeGuide.length > 0) {
+    return product.sizeGuide.filter((line) => String(line).trim());
+  }
+  const sizeType = product.sizeType ?? 'FREE';
+  return SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE;
 }
 
 async function fetchProduct(slugOrId: string): Promise<Product> {
@@ -89,8 +129,11 @@ export function ProductDetail({ slug }: { slug: string }) {
   const minOrder = product?.minOrderQty ?? 1;
   const qtyStep = Math.max(minOrder, 1);
   const totalStock = product?.variants?.reduce((s, v) => s + (Number(v.stock) || 0), 0) ?? 0;
-  const canOrder = !!product && totalStock >= qtyStep;
-  const maxQty = Math.max(totalStock, qtyStep);
+  const isComingSoon = product?.status === 'COMING_SOON';
+  const canOrder = !!product && (isComingSoon || totalStock >= qtyStep);
+  const maxQty = isComingSoon
+    ? Math.max(totalStock, qtyStep * 20)
+    : Math.max(totalStock, qtyStep);
 
   const availableColors = product
     ? Array.from(new Set(product.variants.map((v) => v.color).filter(Boolean)))
@@ -98,6 +141,13 @@ export function ProductDetail({ slug }: { slug: string }) {
   const availableSizes = product
     ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
     : [];
+  const sizeType = product?.sizeType ?? 'FREE';
+  const sizeTypeLabel = SIZE_TYPE_LABEL[sizeType];
+  const sharedSizeLabel =
+    availableSizes.length <= 1 ||
+    availableSizes.every((s) => s === availableSizes[0] || s.includes('سایزی') || s.includes('فری'));
+  const sizeGuideLines = product ? resolveSizeGuide(product) : [];
+  const specRows = buildSpecRows(product?.specs);
 
   const handleAddToCart = () => {
     if (!product || !canOrder) return;
@@ -135,6 +185,7 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   const totalPrice = Math.round(Number(product.wholesalePrice) / 10 * quantity);
   const mainImage = product.images?.[activeImage];
+  const fabricLabel = product.specs?.fabricType || product.fabric;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -164,6 +215,20 @@ export function ProductDetail({ slug }: { slug: string }) {
               <button type="button" className="absolute top-3 left-3 z-10 rounded-xl bg-white/90 backdrop-blur-sm p-2 shadow-sm hover:bg-white transition-colors">
                 <Share2 className="h-4 w-4 text-gray-600" />
               </button>
+              <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 items-end">
+                {product.isNew && (
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-secondary text-white">جدید</span>
+                )}
+                {product.isDiscounted && (
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-primary text-white">تخفیف‌دار</span>
+                )}
+                {product.isLimitedStock && !isComingSoon && (
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500 text-white">موجودی محدود</span>
+                )}
+                {isComingSoon && (
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-900 text-white">به زودی</span>
+                )}
+              </div>
             </div>
             {product.images?.length > 1 && (
               <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
@@ -188,11 +253,29 @@ export function ProductDetail({ slug }: { slug: string }) {
           <div className="space-y-6 min-w-0">
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">{product.name}</h1>
-              <div className="flex items-center gap-3 flex-wrap">
-                {product.fabric && <Badge variant="neutral">{product.fabric}</Badge>}
+              <div className="flex items-center gap-2 flex-wrap">
+                {product.isNew && <Badge variant="gold">جدید</Badge>}
+                {product.isDiscounted && <Badge variant="primary">تخفیف‌دار</Badge>}
+                {product.isLimitedStock && !isComingSoon && <Badge variant="warning">موجودی محدود</Badge>}
+                {isComingSoon && <Badge variant="neutral">به زودی</Badge>}
+                {fabricLabel && <Badge variant="neutral">{fabricLabel}</Badge>}
                 {product.sku && <span className="text-sm text-gray-400">کد: {product.sku}</span>}
               </div>
             </div>
+
+            {isComingSoon && (
+              <div className="rounded-2xl bg-gradient-to-l from-secondary/15 via-primary-50 to-primary-50 border border-secondary/30 p-4 flex gap-3 items-start">
+                <div className="rounded-xl bg-secondary/20 p-2 text-secondary-dark flex-shrink-0">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 mb-1">پیش‌خرید ویژه</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    این محصول به‌زودی عرضه می‌شود — همین حالا پیش‌خرید کنید و جزء اولین‌ها باشید
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-2xl bg-primary-50 border border-primary-100 p-4">
               <div className="flex items-baseline justify-between gap-4 flex-wrap">
@@ -223,20 +306,46 @@ export function ProductDetail({ slug }: { slug: string }) {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-900">سایزهای موجود</h3>
-                <button type="button" onClick={() => setShowSizeGuide(!showSizeGuide)} className="text-xs text-primary hover:underline">راهنمای سایز</button>
+                <h3 className="text-sm font-bold text-gray-900">سایز‌بندی</h3>
+                <button type="button" onClick={() => setShowSizeGuide(!showSizeGuide)} className="text-xs text-primary hover:underline">
+                  راهنمای سایز
+                </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {availableSizes.map((s) => (
-                  <Badge key={s} variant="neutral">{s}</Badge>
-                ))}
-              </div>
-              {showSizeGuide && <div className="mt-4 card p-4"><h4 className="text-sm font-bold mb-3">راهنمای سایز‌بندی</h4><SizeGuide /></div>}
-              {!canOrder && (
+              {sharedSizeLabel ? (
+                <div className="flex flex-wrap gap-2 items-center">
+                  <Badge variant="primary">{sizeTypeLabel}</Badge>
+                  {availableSizes.length === 1 && availableSizes[0] !== sizeTypeLabel && (
+                    <span className="text-xs text-gray-500">{availableSizes[0]}</span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {availableSizes.map((s) => (
+                    <Badge key={s} variant="neutral">{s}</Badge>
+                  ))}
+                </div>
+              )}
+              {showSizeGuide && (
+                <div className="mt-4 card p-4">
+                  <h4 className="text-sm font-bold mb-3">راهنمای سایز‌بندی</h4>
+                  <ul className="space-y-2">
+                    {sizeGuideLines.map((line) => (
+                      <li key={line} className="text-sm text-gray-700 flex items-start gap-2">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {!canOrder && !isComingSoon && (
                 <p className="mt-2 text-xs text-error">موجودی کل ({totalStock} عدد) کمتر از حداقل سفارش ({minOrder} عدد) است</p>
               )}
-              {canOrder && (
+              {canOrder && !isComingSoon && (
                 <p className="mt-2 text-xs text-gray-500">موجودی کل: {totalStock} عدد</p>
+              )}
+              {isComingSoon && (
+                <p className="mt-2 text-xs text-secondary-dark font-medium">پیش‌خرید فعال است — موجودی پس از عرضه تأمین می‌شود</p>
               )}
             </div>
 
@@ -269,7 +378,7 @@ export function ProductDetail({ slug }: { slug: string }) {
             <div className="flex gap-3 flex-wrap">
               <Button size="lg" variant="primary" fullWidth disabled={!canOrder} onClick={handleAddToCart}
                 rightIcon={<ShoppingCart className="h-5 w-5" />}>
-                افزودن به سبد خرید
+                {isComingSoon ? 'پیش‌خرید — افزودن به سبد' : 'افزودن به سبد خرید'}
               </Button>
               <a href="tel:09152424624">
                 <Button size="lg" variant="outline" rightIcon={<Phone className="h-5 w-5" />}>تماس</Button>
@@ -298,9 +407,23 @@ export function ProductDetail({ slug }: { slug: string }) {
           </div>
         </div>
 
-        {product.description && (
+        {specRows.length > 0 && (
           <div className="mt-10 card p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">توضیحات محصول</h2>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              {specRows.map((row) => (
+                <div key={`${row.label}-${row.value}`} className="flex items-baseline justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                  <dt className="text-sm text-gray-500 flex-shrink-0">{row.label}</dt>
+                  <dd className="text-sm font-semibold text-gray-900 text-left">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+
+        {product.description && (
+          <div className={cn('card p-6', specRows.length > 0 ? 'mt-4' : 'mt-10')}>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">توضیحات تکمیلی</h2>
             <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description}</p>
           </div>
         )}

@@ -57,6 +57,12 @@ export class OrderController {
     return this.orderService.findAll(page, limit, customerId, status);
   }
 
+  @Get('installment-eligibility/:customerId')
+  @ApiOperation({ summary: 'بررسی واجد شرایط بودن اقساط' })
+  installmentEligibility(@Param('customerId') customerId: string) {
+    return this.orderService.installmentEligibility(customerId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'جزئیات سفارش' })
   async findOne(
@@ -83,12 +89,17 @@ export class OrderController {
   @Patch(':id/tracking')
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'ثبت کد رهگیری و روش ارسال (ادمین)' })
+  @ApiOperation({ summary: 'ثبت کد رهگیری، هزینه باربری و رسید (ادمین)' })
   addTracking(
     @Param('id') id: string,
     @Body('trackingCode') trackingCode: string,
     @Body('shippingMethod') shippingMethod?: string,
+    @Body('freightCost') freightCost?: number,
+    @Body('freightReceiptUrl') freightReceiptUrl?: string,
   ) {
-    return this.orderService.addTracking(id, trackingCode, shippingMethod);
+    return this.orderService.addTracking(id, trackingCode, shippingMethod, {
+      freightCost,
+      freightReceiptUrl,
+    });
   }
 }

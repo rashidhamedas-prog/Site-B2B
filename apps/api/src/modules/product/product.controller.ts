@@ -25,6 +25,30 @@ export class ProductController {
     return this.productService.findAll(page, limit, search, fabric, status);
   }
 
+  @Get('coming-soon')
+  @ApiOperation({ summary: 'محصولات به‌زودی (پیش‌خرید)' })
+  comingSoon(@Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number) {
+    return this.productService.findComingSoon(limit);
+  }
+
+  @Get('meta/spec-memory')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حافظه مقادیر توضیحات محصول' })
+  specMemory(@Query('fieldKey') fieldKey?: string) {
+    return this.productService.listSpecMemory(fieldKey);
+  }
+
+  @Get('meta/colors')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'تاریخچه رنگ‌های ثبت‌شده' })
+  listColors() {
+    return this.productService.listColors();
+  }
+
   @Get('slug/:slug')
   @ApiOperation({ summary: 'جزئیات محصول با slug' })
   findBySlug(@Param('slug') slug: string) {

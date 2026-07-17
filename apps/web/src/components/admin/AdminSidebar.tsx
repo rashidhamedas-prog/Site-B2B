@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
-  CreditCard, BarChart3, Settings, Bell, Megaphone,
+  CreditCard, BarChart3, Settings, Bell,
   Warehouse, UserCog, LogOut, X, ChevronDown,
   TrendingUp, Tag, PenSquare, Layers,
 } from 'lucide-react';
@@ -52,7 +52,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'رشد',
     items: [
-      { href: '/admin/marketing', icon: Megaphone, label: 'بازاریابی' },
       { href: '/admin/blog', icon: PenSquare, label: 'وبلاگ' },
       { href: '/admin/analytics', icon: TrendingUp, label: 'آنالیتیکس' },
       { href: '/admin/notifications', icon: Bell, label: 'اعلان‌ها' },

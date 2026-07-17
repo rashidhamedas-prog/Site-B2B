@@ -50,6 +50,24 @@ export class OrderEntity {
   @Column({ nullable: true })
   trackingCode: string;
 
+  /** Freight cost registered when shipping (IRR) */
+  @Column({ type: 'bigint', default: 0 })
+  freightCost: number;
+
+  /** Shipping receipt image URL */
+  @Column({ nullable: true })
+  freightReceiptUrl: string;
+
+  /** Invoice-time shipping fee fields (IRR) */
+  @Column({ type: 'bigint', default: 0 })
+  intraCityFee: number;
+
+  @Column({ type: 'bigint', default: 0 })
+  perKgFee: number;
+
+  @Column({ default: false })
+  freeShipping: boolean;
+
   @Column({ nullable: true, type: 'text' })
   notes: string;
 

@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString, IsNotEmpty, IsOptional, IsNumber, Min, IsBoolean,
-  IsArray, IsIn,
+  IsArray, IsIn, IsObject,
 } from 'class-validator';
 
 export class CreateProductDto {
@@ -21,20 +21,30 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'لینن' })
+  @ApiPropertyOptional({ description: 'قدیمی — از specs.fabricType استفاده کنید' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  fabric: string;
+  fabric?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   fabricComposition?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'توضیحات SEO' })
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ description: 'مشخصات محصول (توضیحات محصول)' })
+  @IsOptional()
+  @IsObject()
+  specs?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ enum: ['TWO', 'THREE', 'FREE'], default: 'FREE' })
+  @IsOptional()
+  @IsIn(['TWO', 'THREE', 'FREE'])
+  sizeType?: string;
 
   @ApiProperty({ description: 'قیمت عمده به ریال' })
   @IsNumber()
@@ -53,24 +63,24 @@ export class CreateProductDto {
   @Min(1)
   minOrderQty?: number;
 
-  @ApiPropertyOptional({ enum: ['ACTIVE', 'ARCHIVED', 'OUT_OF_STOCK'] })
+  @ApiPropertyOptional({ enum: ['ACTIVE', 'ARCHIVED', 'OUT_OF_STOCK', 'COMING_SOON'] })
   @IsOptional()
-  @IsIn(['ACTIVE', 'ARCHIVED', 'OUT_OF_STOCK'])
+  @IsIn(['ACTIVE', 'ARCHIVED', 'OUT_OF_STOCK', 'COMING_SOON'])
   status?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  isFeatured?: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  isNew?: boolean;
+  isDiscounted?: boolean;
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  seoMeta?: Record<string, string>;
 }

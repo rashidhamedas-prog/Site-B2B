@@ -3,6 +3,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '../api';
 
+export interface ProductCustomField {
+  key?: string;
+  label: string;
+  value: string;
+}
+
+export interface ProductSpecs {
+  fabricType?: string;
+  packQty?: string;
+  length?: string;
+  length2?: string;
+  chestWidth?: string;
+  sleeveModel?: string;
+  buttonModel?: string;
+  collarModel?: string;
+  customFields?: ProductCustomField[];
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -15,7 +33,15 @@ export interface Product {
   retailPrice: number;
   minOrderQty: number;
   images: string[];
-  variants: Array<{ id: string; color: string; colorHex: string; size: string; stock: number }>;
+  variants: Array<{ id: string; color: string; colorHex: string; size: string; stock: number; barcode?: string }>;
+  specs?: ProductSpecs;
+  sizeType?: 'TWO' | 'THREE' | 'FREE';
+  isDiscounted?: boolean;
+  isLimitedStock?: boolean;
+  createdAt?: string;
+  description?: string;
+  categoryId?: string;
+  fabricComposition?: string;
 }
 
 interface ProductsResult {

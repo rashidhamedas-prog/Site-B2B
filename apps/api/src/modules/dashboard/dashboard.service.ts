@@ -117,6 +117,44 @@ export class DashboardService {
         productId: v.productId,
       })),
       topCustomers,
+      monthlyRevenue: await this.monthlyRevenueSeries(6),
+      monthlyOrders: await this.monthlyOrderSeries(6),
     };
+  }
+
+  private async monthlyRevenueSeries(months: number) {
+    const now = new Date();
+    const out: Array<{ label: string; value: number }> = [];
+    for (let i = months - 1; i >= 0; i -= 1) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+      const row = await this.orderRepo.createQueryBuilder('o')
+        .select('SUM(o.total)', 'sum')
+        .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
+        .andWhere("o.status NOT IN ('CANCELLED')")
+        .getRawOne();
+      out.push({
+        label: start.toLocaleDateString('fa-IR', { month: 'short' }),
+        value: Number(row?.sum) || 0,
+      });
+    }
+    return out;
+  }
+
+  private async monthlyOrderSeries(months: number) {
+    const now = new Date();
+    const out: Array<{ label: string; value: number }> = [];
+    for (let i = months - 1; i >= 0; i -= 1) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59);
+      const count = await this.orderRepo.createQueryBuilder('o')
+        .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
+        .getCount();
+      out.push({
+        label: start.toLocaleDateString('fa-IR', { month: 'short' }),
+        value: count,
+      });
+    }
+    return out;
   }
 }

@@ -98,10 +98,32 @@ export class SettingsService {
 
   async installments() {
     const s = await this.get('installments');
-    return {
+    const legacy = {
       minDownPaymentPercent: Number(s.minDownPaymentPercent) || 0,
       minDownPaymentAmount: Number(s.minDownPaymentAmount) || 0,
       maxMonths: Math.max(1, Number(s.maxMonths) || 6),
+    };
+    const rawRules = Array.isArray(s.rules) ? s.rules : null;
+    const rules = (rawRules && rawRules.length
+      ? rawRules
+      : [{
+          id: 'default',
+          minDownPaymentPercent: legacy.minDownPaymentPercent,
+          maxMonths: legacy.maxMonths,
+          categoryId: null as string | null,
+        }]
+    ).map((r: any, i: number) => ({
+      id: String(r?.id ?? `rule_${i + 1}`),
+      minDownPaymentPercent: Number(r?.minDownPaymentPercent) || 0,
+      maxMonths: Math.max(1, Number(r?.maxMonths) || legacy.maxMonths || 6),
+      categoryId: r?.categoryId ? String(r.categoryId) : null,
+    }));
+    return {
+      ...legacy,
+      minDownPaymentPercent: rules[0]?.minDownPaymentPercent ?? legacy.minDownPaymentPercent,
+      maxMonths: Math.max(...rules.map((r) => r.maxMonths), legacy.maxMonths),
+      rules,
+      minActiveInvoices: 2,
     };
   }
 

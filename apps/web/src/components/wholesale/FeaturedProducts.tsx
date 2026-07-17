@@ -10,8 +10,9 @@ interface Product {
   fabric: string;
   wholesalePrice: number;
   status: string;
-  isFeatured: boolean;
-  isNew: boolean;
+  isDiscounted?: boolean;
+  isNew?: boolean;
+  isLimitedStock?: boolean;
   images?: string[];
 }
 
@@ -30,12 +31,12 @@ async function fetchFeatured(): Promise<Product[]> {
 }
 
 const FALLBACK: Product[] = [
-  { id: '1', name: 'مانتو شومیزی لینن مدل بهار', fabric: 'لینن', wholesalePrice: 8500000, status: 'ACTIVE', isFeatured: true, isNew: false },
-  { id: '2', name: 'مانتو کتان مدل نسیم', fabric: 'کتان', wholesalePrice: 7200000, status: 'ACTIVE', isFeatured: false, isNew: true },
-  { id: '3', name: 'مانتو شومیزی اسپرت مدل آفتاب', fabric: 'لینن کتان', wholesalePrice: 9400000, status: 'ACTIVE', isFeatured: true, isNew: false },
-  { id: '4', name: 'مانتو لینن مدل پریسا', fabric: 'لینن', wholesalePrice: 7800000, status: 'ACTIVE', isFeatured: false, isNew: false },
-  { id: '5', name: 'مانتو کتان مدل شکوفه', fabric: 'کتان', wholesalePrice: 8100000, status: 'ACTIVE', isFeatured: false, isNew: true },
-  { id: '6', name: 'مانتو اسپرت مدل رویا', fabric: 'لینن', wholesalePrice: 8600000, status: 'ACTIVE', isFeatured: false, isNew: false },
+  { id: '1', name: 'مانتو شومیزی لینن مدل بهار', fabric: 'لینن', wholesalePrice: 8500000, status: 'ACTIVE', isDiscounted: true, isNew: false, isLimitedStock: false },
+  { id: '2', name: 'مانتو کتان مدل نسیم', fabric: 'کتان', wholesalePrice: 7200000, status: 'ACTIVE', isDiscounted: false, isNew: true, isLimitedStock: false },
+  { id: '3', name: 'مانتو شومیزی اسپرت مدل آفتاب', fabric: 'لینن کتان', wholesalePrice: 9400000, status: 'ACTIVE', isDiscounted: true, isNew: false, isLimitedStock: true },
+  { id: '4', name: 'مانتو لینن مدل پریسا', fabric: 'لینن', wholesalePrice: 7800000, status: 'ACTIVE', isDiscounted: false, isNew: false, isLimitedStock: false },
+  { id: '5', name: 'مانتو کتان مدل شکوفه', fabric: 'کتان', wholesalePrice: 8100000, status: 'ACTIVE', isDiscounted: false, isNew: true, isLimitedStock: false },
+  { id: '6', name: 'مانتو اسپرت مدل رویا', fabric: 'لینن', wholesalePrice: 8600000, status: 'ACTIVE', isDiscounted: false, isNew: false, isLimitedStock: true },
 ];
 
 function ProductPlaceholder() {
@@ -51,6 +52,23 @@ function ProductPlaceholder() {
         <rect x="26" y="82" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-primary" opacity="0.5"/>
         <rect x="60" y="82" width="14" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="0.8" className="text-primary" opacity="0.5"/>
       </svg>
+    </div>
+  );
+}
+
+function ProductBadges({ product }: { product: Product }) {
+  const badges: Array<{ label: string; className: string }> = [];
+  if (product.isNew) badges.push({ label: 'جدید', className: 'bg-secondary text-white' });
+  if (product.isDiscounted) badges.push({ label: 'تخفیف‌دار', className: 'bg-primary text-white' });
+  if (product.isLimitedStock) badges.push({ label: 'موجودی محدود', className: 'bg-amber-500 text-white' });
+  if (badges.length === 0) return null;
+  return (
+    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+      {badges.map((b) => (
+        <span key={b.label} className={`text-xs font-bold px-2 py-0.5 rounded-full ${b.className}`}>
+          {b.label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -77,7 +95,6 @@ export async function FeaturedProducts() {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
           {items.slice(0, 6).map((product) => {
             const priceInTomans = Math.round(product.wholesalePrice / 10).toLocaleString('fa-IR');
-            const tag = product.isNew ? 'جدید' : product.isFeatured ? 'پرفروش' : '';
             const imageUrl = product.images?.[0];
             return (
               <Link
@@ -95,15 +112,7 @@ export async function FeaturedProducts() {
                   ) : (
                     <ProductPlaceholder />
                   )}
-                  {tag && (
-                    <div className="absolute top-2 right-2">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        tag === 'جدید' ? 'bg-secondary text-white' : 'bg-primary text-white'
-                      }`}>
-                        {tag}
-                      </span>
-                    </div>
-                  )}
+                  <ProductBadges product={product} />
                   <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-200" />
                 </div>
 

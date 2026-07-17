@@ -4,6 +4,7 @@ import {
 } from 'typeorm';
 import { ProductVariantEntity } from './product-variant.entity';
 import { CategoryEntity } from '../../category/entities/category.entity';
+import { ProductSizeType, ProductSpecs } from './product-specs';
 
 function toSlug(text: string): string {
   return text
@@ -31,23 +32,37 @@ export class ProductEntity {
   @Column({ nullable: true })
   nameEn: string;
 
+  /** SEO-only description (separate from product specs on PDP) */
   @Column({ nullable: true, type: 'text' })
   description: string;
 
-  @Column()
+  /** Legacy fabric column — kept nullable for backward compatibility */
+  @Column({ nullable: true, default: '' })
   fabric: string;
 
+  /** Legacy — no longer used in admin UI */
   @Column({ nullable: true })
   fabricComposition: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  specs: ProductSpecs;
+
+  @Column({ default: 'FREE' })
+  sizeType: ProductSizeType;
 
   @Column({ default: 'ACTIVE' })
   status: string;
 
+  /** @deprecated use isDiscounted / computed badges */
   @Column({ default: false })
   isFeatured: boolean;
 
+  /** @deprecated auto-badge from createdAt */
   @Column({ default: false })
   isNew: boolean;
+
+  @Column({ default: false })
+  isDiscounted: boolean;
 
   @Column({ type: 'bigint' })
   wholesalePrice: number;
@@ -61,8 +76,6 @@ export class ProductEntity {
   @Column({ nullable: true })
   categoryId: string;
 
-  // Optional relation (category can be added later).
-  // Note: this is nullable for backward compatibility.
   @ManyToOne(() => CategoryEntity, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'categoryId' })
   category: CategoryEntity;

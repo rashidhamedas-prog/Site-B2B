@@ -12,10 +12,10 @@ export class CreateVariantDto {
   @IsString()
   colorHex?: string;
 
-  @ApiProperty({ example: 'M' })
+  @ApiPropertyOptional({ example: 'محصول فری سایز', description: 'اگر خالی باشد از sizeType محصول پر می‌شود' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  size: string;
+  size?: string;
 
   @ApiPropertyOptional({ default: 0 })
   @IsOptional()

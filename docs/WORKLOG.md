@@ -11,6 +11,47 @@
 
 ---
 
+## 2026-07-17 — اعمال تغییرات site.docx (محصول، تخفیف، اقساط، ارسال، آمار)
+
+### خلاصه
+پیاده‌سازی کامل درخواست‌های سند `site.docx` روی ادمین + API + فروشگاه:
+
+**محصولات**
+- حذف فیلدهای ترکیب/جنس پارچه از فرم؛ افزودن `specs` (توضیحات محصول) با حافظه مقادیر
+- `description` فقط SEO؛ وضعیت `COMING_SOON` + سکشن پیش‌خرید در صفحه اصلی
+- برچسب «جدید» خودکار ۷ روز؛ «تخفیف‌دار» دستی؛ «موجودی محدود» وقتی موجودی ≤ ۲× MOQ
+- `sizeType` (۲/۳/فری سایز) + راهنمای سایز روی PDP
+
+**واریانت‌ها**
+- رنگ با پالت + تاریخچه؛ موجودی مضرب MOQ؛ سایز از `sizeType` محصول
+
+**تخفیف‌ها**
+- تاریخ شروع/انقضا شمسی برای کد؛ تخفیف طبقاتی و جانبی (CRUD API + UI تب‌دار)
+- بازاریابی تکراری → redirect به `/admin/discounts`
+
+**اقساط / ارسال**
+- چند قانون اقساط با دسته؛ شرط ≥۲ فاکتور فعال + اخطار در checkout
+- حذف هزینه‌های ارسال از تنظیمات؛ ثبت هزینه باربری + رسید روی سفارش؛ نمایش در پورتال
+
+**آمار**
+- داشبورد بدون داده دمو؛ سری ماهانه واقعی از API
+
+### فایل‌های کلیدی
+- `apps/api/src/modules/product/*`, migration `20260717-001-*`
+- `apps/api/src/modules/discount/*`
+- `apps/api/src/modules/order/*`, `settings.service.ts`, `dashboard.service.ts`
+- `apps/web/src/components/admin/AdminProducts.tsx`, `AdminMarketing.tsx`, `AdminSettings.tsx`, `AdminOrderDetail.tsx`, `AdminDashboard.tsx`
+- `apps/web/src/components/wholesale/ProductDetail.tsx`, `ComingSoonSection.tsx`
+- `apps/web/src/app/checkout/page.tsx`
+
+### تست
+- `npx tsc --noEmit` در `apps/api` و `apps/web` — بدون خطا
+
+### خارج از محدوده
+- بخش «مشتریان» سند ناقص بود و اعمال نشد
+
+---
+
 ## 2026-07-13 — شروع ارتقای Wholesale Ordering (baseline قبل از تغییرات)
 
 ### Scope / Baseline

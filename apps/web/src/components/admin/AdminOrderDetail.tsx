@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Truck, CheckCircle, XCircle, Clock, Package, MapPin, Save } from 'lucide-react';
+import { ArrowRight, Truck, CheckCircle, XCircle, Clock, Package, MapPin, Save, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { OrderStatusBadge } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -32,6 +33,11 @@ interface Order {
   shippingMethod: string;
   shippingAddress?: string;
   trackingCode?: string;
+  freightCost?: number;
+  freightReceiptUrl?: string;
+  intraCityFee?: number;
+  perKgFee?: number;
+  freeShipping?: boolean;
   notes?: string;
   confirmedAt?: string;
   shippedAt?: string;
@@ -72,10 +78,14 @@ const STATUS_FLOW = [
 
 export function AdminOrderDetail({ id }: { id: string }) {
   const router = useRouter();
+  const { upload: uploadImage, uploading: uploadingReceipt } = useImageUpload();
+  const receiptInputRef = useRef<HTMLInputElement>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [trackingCode, setTrackingCode] = useState('');
   const [shipMethod, setShipMethod] = useState('CHAPAR');
+  const [freightCostToman, setFreightCostToman] = useState('');
+  const [freightReceiptUrl, setFreightReceiptUrl] = useState('');
   const [savingTracking, setSavingTracking] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
@@ -85,6 +95,12 @@ export function AdminOrderDetail({ id }: { id: string }) {
         setOrder(data);
         setTrackingCode(data.trackingCode ?? '');
         setShipMethod(data.shippingMethod ?? 'CHAPAR');
+        setFreightCostToman(
+          data.freightCost != null && Number(data.freightCost) > 0
+            ? String(Math.round(Number(data.freightCost) / 10))
+            : '',
+        );
+        setFreightReceiptUrl(data.freightReceiptUrl ?? '');
       })
       .catch(() => router.push('/admin/orders'))
       .finally(() => setLoading(false));
@@ -99,15 +115,39 @@ export function AdminOrderDetail({ id }: { id: string }) {
     } catch {} finally { setUpdatingStatus(false); }
   };
 
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const url = await uploadImage(file);
+      setFreightReceiptUrl(url);
+    } catch {
+      alert('آپلود رسید با خطا مواجه شد');
+    } finally {
+      if (receiptInputRef.current) receiptInputRef.current.value = '';
+    }
+  };
+
   const saveTracking = async () => {
     if (!order || !trackingCode) return;
     setSavingTracking(true);
     try {
+      const freightCost = freightCostToman
+        ? Math.round(Number(freightCostToman) || 0) * 10
+        : 0;
       const updated = await apiClient.patch<Order>(`/orders/${order.id}/tracking`, {
         trackingCode,
         shippingMethod: shipMethod,
+        freightCost,
+        freightReceiptUrl: freightReceiptUrl || undefined,
       });
       setOrder(updated);
+      setFreightCostToman(
+        updated.freightCost != null && Number(updated.freightCost) > 0
+          ? String(Math.round(Number(updated.freightCost) / 10))
+          : freightCostToman,
+      );
+      setFreightReceiptUrl(updated.freightReceiptUrl ?? freightReceiptUrl);
     } catch {} finally { setSavingTracking(false); }
   };
 
@@ -248,8 +288,26 @@ export function AdminOrderDetail({ id }: { id: string }) {
                   >{order.trackingCode}</a>
                 </div>
               )}
+              {Number(order.freightCost) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">هزینه باربری</span>
+                  <span>{toman(Number(order.freightCost))} ت</span>
+                </div>
+              )}
+              {order.freightReceiptUrl && (
+                <div className="pt-1">
+                  <p className="text-gray-500 text-xs mb-1.5">رسید باربری</p>
+                  <a href={order.freightReceiptUrl} target="_blank" rel="noopener noreferrer">
+                    <img
+                      src={order.freightReceiptUrl}
+                      alt="رسید باربری"
+                      className="w-full max-h-40 object-contain rounded-lg border border-gray-100 bg-gray-50"
+                    />
+                  </a>
+                </div>
+              )}
             </div>
-            {/* Ship: method + tracking input */}
+            {/* Ship: method + tracking + freight */}
             {['CONFIRMED', 'PROCESSING'].includes(order.status) && (
               <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
                 <label className="block text-xs font-medium text-gray-600">ارسال مرسوله</label>
@@ -257,15 +315,49 @@ export function AdminOrderDetail({ id }: { id: string }) {
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30">
                   {SHIP_METHODS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                 </select>
-                <div className="flex gap-2">
-                  <input value={trackingCode} onChange={(e) => setTrackingCode(e.target.value)}
-                    placeholder="کد پیگیری — مثلاً: 1234567890"
-                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
-                  <button onClick={saveTracking} disabled={savingTracking || !trackingCode}
-                    className="btn btn-primary btn-sm">
-                    <Save className="h-3.5 w-3.5" />
-                  </button>
+                <input value={trackingCode} onChange={(e) => setTrackingCode(e.target.value)}
+                  placeholder="کد پیگیری — مثلاً: 1234567890"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">هزینه باربری (تومان)</label>
+                  <input
+                    type="number"
+                    value={freightCostToman}
+                    onChange={(e) => setFreightCostToman(e.target.value)}
+                    placeholder="۰"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">رسید باربری</label>
+                  <input
+                    ref={receiptInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleReceiptUpload}
+                    className="w-full text-xs text-gray-500 file:ml-2 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-primary"
+                  />
+                  {uploadingReceipt && (
+                    <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />در حال آپلود...
+                    </p>
+                  )}
+                  {freightReceiptUrl && (
+                    <img
+                      src={freightReceiptUrl}
+                      alt="پیش‌نمایش رسید"
+                      className="mt-2 w-full max-h-28 object-contain rounded-lg border border-gray-100 bg-gray-50"
+                    />
+                  )}
+                </div>
+                <button
+                  onClick={saveTracking}
+                  disabled={savingTracking || !trackingCode || uploadingReceipt}
+                  className="w-full btn btn-primary btn-sm flex items-center justify-center gap-1.5"
+                >
+                  {savingTracking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  ذخیره اطلاعات ارسال
+                </button>
               </div>
             )}
           </div>

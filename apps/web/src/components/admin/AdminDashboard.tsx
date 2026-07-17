@@ -18,6 +18,8 @@ interface DashboardStats {
   recentOrders: { id: string; orderNumber: string; customerName: string; city: string; total: number; status: string; createdAt: string }[];
   lowStock: { id: string; color: string; size: string; stock: number; productId: string }[];
   topCustomers: { id: string; businessName: string; city: string; segment: string; totalSpend: number; orderCount: number }[];
+  monthlyRevenue?: Array<{ label: string; value: number }>;
+  monthlyOrders?: Array<{ label: string; value: number }>;
 }
 
 function toman(n: number) {
@@ -123,26 +125,15 @@ function QuickAction({ href, icon: Icon, label, color }: { href: string; icon: R
 }
 
 // Fallback data for when API is unavailable
-const FALLBACK: DashboardStats = {
-  orders: { total: 48, pending: 7, thisMonth: 12, lastMonth: 9, growth: 33 },
-  customers: { total: 84, pending: 3, active: 71 },
-  revenue: { total: 2400000000, thisMonth: 480000000, outstanding: 120000000 },
-  recentOrders: [
-    { id: '1', orderNumber: 'ORD-00048', customerName: 'بوتیک نسیم', city: 'تهران', total: 48000000, status: 'PENDING', createdAt: new Date(Date.now() - 30 * 60000).toISOString() },
-    { id: '2', orderNumber: 'ORD-00047', customerName: 'پوشاک آفتاب', city: 'اصفهان', total: 72000000, status: 'CONFIRMED', createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
-    { id: '3', orderNumber: 'ORD-00046', customerName: 'بوتیک ستاره', city: 'مشهد', total: 96000000, status: 'SHIPPED', createdAt: new Date(Date.now() - 5 * 3600000).toISOString() },
-    { id: '4', orderNumber: 'ORD-00045', customerName: 'پوشاک پارسیان', city: 'شیراز', total: 36000000, status: 'DELIVERED', createdAt: new Date(Date.now() - 24 * 3600000).toISOString() },
-  ],
-  lowStock: [
-    { id: '1', color: 'بژ', size: 'XL', stock: 2, productId: '1' },
-    { id: '2', color: 'سفید', size: 'L', stock: 3, productId: '2' },
-    { id: '3', color: 'آبی', size: 'M', stock: 1, productId: '3' },
-  ],
-  topCustomers: [
-    { id: '1', businessName: 'بوتیک رویال تهران', city: 'تهران', segment: 'A', totalSpend: 480000000, orderCount: 12 },
-    { id: '2', businessName: 'پوشاک آفتاب', city: 'اصفهان', segment: 'A', totalSpend: 360000000, orderCount: 9 },
-    { id: '3', businessName: 'بوتیک ستاره', city: 'مشهد', segment: 'B', totalSpend: 240000000, orderCount: 6 },
-  ],
+const EMPTY: DashboardStats = {
+  orders: { total: 0, pending: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+  customers: { total: 0, pending: 0, active: 0 },
+  revenue: { total: 0, thisMonth: 0, outstanding: 0 },
+  recentOrders: [],
+  lowStock: [],
+  topCustomers: [],
+  monthlyRevenue: [],
+  monthlyOrders: [],
 };
 
 const SEGMENT_COLORS: Record<string, string> = {
@@ -152,7 +143,7 @@ const SEGMENT_COLORS: Record<string, string> = {
 };
 
 export function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>(FALLBACK);
+  const [stats, setStats] = useState<DashboardStats>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
 
@@ -163,7 +154,7 @@ export function AdminDashboard() {
       setStats(data);
       setUsingFallback(false);
     } catch {
-      setStats(FALLBACK);
+      setStats(EMPTY);
       setUsingFallback(true);
     } finally {
       setLoading(false);
@@ -172,9 +163,15 @@ export function AdminDashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const monthlyValues = [3, 5, 4, 7, 6, 9, 12]; // mock weekly trend
-  const revenueMonths = [38, 42, 55, 48, 61, 70, 48]; // mock 7-month
-  const monthLabels = ['بهمن','اسفند','فرور','اردیب','خرداد','تیر','مرداد'];
+  const monthlyOrders = stats.monthlyOrders?.length
+    ? stats.monthlyOrders
+    : Array.from({ length: 6 }, () => ({ label: '—', value: 0 }));
+  const monthlyRevenue = stats.monthlyRevenue?.length
+    ? stats.monthlyRevenue
+    : Array.from({ length: 6 }, () => ({ label: '—', value: 0 }));
+  const monthlyValues = monthlyOrders.map((m) => m.value);
+  const revenueMonths = monthlyRevenue.map((m) => Math.round(m.value / 10_000_000) || 0);
+  const monthLabels = monthlyRevenue.map((m) => m.label);
 
   const kpis = [
     {
@@ -185,7 +182,7 @@ export function AdminDashboard() {
       up: stats.orders.growth >= 0,
       icon: TrendingUp,
       iconBg: 'bg-emerald-500',
-      sparkValues: [280, 310, 290, 340, 360, 400, Math.round(stats.revenue.thisMonth / 10000000)],
+      sparkValues: revenueMonths.length ? revenueMonths : [0],
       sparkColor: '#10b981',
     },
     {
@@ -196,7 +193,7 @@ export function AdminDashboard() {
       up: true,
       icon: ShoppingCart,
       iconBg: 'bg-blue-500',
-      sparkValues: [4, 6, 5, 8, 7, 9, stats.orders.pending],
+      sparkValues: monthlyValues.length ? monthlyValues : [0],
       sparkColor: '#3b82f6',
     },
     {
@@ -230,7 +227,7 @@ export function AdminDashboard() {
         <div>
           <p className="text-sm text-gray-500">
             {usingFallback ? (
-              <span className="text-amber-500">⚠ اتصال به API برقرار نشد — نمایش داده نمونه</span>
+              <span className="text-amber-500">⚠ اتصال به API برقرار نشد — آمار خالی نمایش داده می‌شود</span>
             ) : (
               'آخرین بروزرسانی: همین الان'
             )}

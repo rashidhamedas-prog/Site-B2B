@@ -1,0 +1,131 @@
+import Link from 'next/link';
+import { ProductImage } from '@/components/ui/ProductImage';
+import { ArrowLeft, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui';
+
+interface Product {
+  id: string;
+  slug?: string;
+  name: string;
+  fabric?: string;
+  wholesalePrice: number;
+  status: string;
+  isDiscounted?: boolean;
+  isNew?: boolean;
+  images?: string[];
+}
+
+async function fetchComingSoon(): Promise<Product[]> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+    const res = await fetch(`${apiUrl}/products/coming-soon?limit=8`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.data ?? []);
+  } catch {
+    return [];
+  }
+}
+
+function ProductPlaceholder() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center p-2">
+      <svg viewBox="0 0 100 140" className="h-full w-auto opacity-30" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 8 Q50 4 54 4 Q58 4 58 8 L65 16 Q72 18 76 23 L24 23 Q28 18 35 16 Z" fill="currentColor" className="text-primary"/>
+        <line x1="50" y1="8" x2="50" y2="16" stroke="currentColor" strokeWidth="1.5" className="text-primary"/>
+        <path d="M30 25 L24 38 L22 72 L22 125 L78 125 L78 72 L76 38 L70 25 Z" fill="currentColor" className="text-primary-light" opacity="0.5"/>
+        <path d="M38 25 L50 36 L62 25 L50 31 Z" fill="currentColor" className="text-primary" opacity="0.7"/>
+        <path d="M30 25 L16 32 L14 62 L24 62 L27 40 Z" fill="currentColor" className="text-primary-light" opacity="0.4"/>
+        <path d="M70 25 L84 32 L86 62 L76 62 L73 40 Z" fill="currentColor" className="text-primary-light" opacity="0.4"/>
+      </svg>
+    </div>
+  );
+}
+
+export async function ComingSoonSection() {
+  const products = await fetchComingSoon();
+  if (products.length === 0) return null;
+
+  return (
+    <section className="section bg-gray-50">
+      <div className="container-site">
+        <div className="flex items-end justify-between mb-8 gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-secondary/15 text-secondary-dark px-3 py-1 text-xs font-bold mb-3">
+              <Sparkles className="h-3.5 w-3.5" />
+              پیش‌خرید ویژه
+            </div>
+            <h2 className="section-title">به‌زودی در ترنم</h2>
+            <p className="section-subtitle mb-0">
+              مدل‌های جدید در راه است — همین حالا پیش‌خرید کنید و جزء اولین بوتیک‌هایی باشید که این مدل‌ها را دریافت می‌کنند
+            </p>
+          </div>
+          <Link href="/products" className="flex-shrink-0 hidden sm:block">
+            <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
+              کاتالوگ کامل
+            </Button>
+          </Link>
+        </div>
+
+        <div className="mb-8 rounded-2xl border border-secondary/25 bg-gradient-to-l from-secondary/10 via-white to-primary-50 p-5 sm:p-6">
+          <p className="text-sm sm:text-base text-gray-800 leading-relaxed font-medium">
+            فرصت محدود برای عمده‌فروشان: با پیش‌خرید محصولات «به‌زودی»، اولویت تأمین و ارسال پس از عرضه را دارید.
+            همین حالا به سبد اضافه کنید و جای خود را رزرو کنید.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {products.slice(0, 8).map((product) => {
+            const priceInTomans = Math.round(Number(product.wholesalePrice) / 10).toLocaleString('fa-IR');
+            const imageUrl = product.images?.[0];
+            return (
+              <Link
+                key={product.id}
+                href={`/products/${product.slug ?? product.id}`}
+                className="group card-hover overflow-hidden flex flex-col bg-white"
+              >
+                <div className="relative aspect-[3/4] bg-gradient-to-b from-primary-50 to-primary-100 overflow-hidden">
+                  {imageUrl ? (
+                    <ProductImage
+                      src={imageUrl}
+                      alt={product.name}
+                      sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
+                    />
+                  ) : (
+                    <ProductPlaceholder />
+                  )}
+                  <div className="absolute top-2 right-2">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-900 text-white">
+                      به زودی
+                    </span>
+                  </div>
+                  {product.isDiscounted && (
+                    <div className="absolute top-2 left-2">
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary text-white">
+                        تخفیف‌دار
+                      </span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-200" />
+                </div>
+
+                <div className="p-3 flex flex-col gap-1 flex-1">
+                  <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-tight">
+                    {product.name}
+                  </h3>
+                  {product.fabric && <p className="text-xs text-gray-400">{product.fabric}</p>}
+                  <div className="flex items-center justify-between mt-auto pt-1">
+                    <p className="text-xs text-secondary-dark font-medium">پیش‌خرید</p>
+                    <p className="text-sm font-bold text-primary">{priceInTomans} ت</p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -24,6 +24,9 @@ export class DiscountCodeEntity {
   usedCount: number;
 
   @Column({ nullable: true })
+  startsAt: Date;
+
+  @Column({ nullable: true })
   expiresAt: Date;
 
   @Column({ default: true })

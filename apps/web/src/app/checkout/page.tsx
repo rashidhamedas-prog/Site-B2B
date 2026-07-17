@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, ShoppingCart, Trash2, CheckCircle } from 'lucide-react';
+import { ArrowRight, ShoppingCart, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/lib/cart';
 import { apiClient } from '@/lib/api';
@@ -13,8 +13,68 @@ import { cn } from '@/lib/cn';
 function toman(n: number) { return Math.round(n / 10).toLocaleString('fa-IR'); }
 
 type ShippingCompany = { id: string; label: string };
-type InstallmentsCfg = { minDownPaymentPercent: number; minDownPaymentAmount: number; maxMonths: number };
+type InstallmentRule = {
+  id: string;
+  minDownPaymentPercent: number;
+  maxMonths: number;
+  categoryId: string | null;
+};
+type InstallmentsCfg = {
+  minDownPaymentPercent: number;
+  minDownPaymentAmount: number;
+  maxMonths: number;
+  rules?: InstallmentRule[];
+  minActiveInvoices?: number;
+};
 type PublicSettings = { installments: InstallmentsCfg };
+type Eligibility = {
+  eligible: boolean;
+  activeInvoiceCount?: number;
+  required?: number;
+  rules?: InstallmentRule[];
+  minDownPaymentPercent?: number;
+  maxMonths?: number;
+  message?: string | null;
+};
+
+function getCustomerIdFromToken(): string | null {
+  try {
+    const token = getToken();
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split('.')[1] ?? ''));
+    return typeof payload?.customerId === 'string' && payload.customerId
+      ? payload.customerId
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function pickInstallmentRule(
+  cfg: InstallmentsCfg | null,
+  categoryIds: string[],
+): { minDownPaymentPercent: number; minDownPaymentAmount: number; maxMonths: number } {
+  if (!cfg) {
+    return { minDownPaymentPercent: 0, minDownPaymentAmount: 0, maxMonths: 12 };
+  }
+  const rules = cfg.rules ?? [];
+  const matched =
+    rules.find((r) => r.categoryId && categoryIds.includes(r.categoryId))
+    ?? rules.find((r) => !r.categoryId)
+    ?? null;
+  if (matched) {
+    return {
+      minDownPaymentPercent: matched.minDownPaymentPercent,
+      minDownPaymentAmount: cfg.minDownPaymentAmount || 0,
+      maxMonths: matched.maxMonths,
+    };
+  }
+  return {
+    minDownPaymentPercent: cfg.minDownPaymentPercent,
+    minDownPaymentAmount: cfg.minDownPaymentAmount || 0,
+    maxMonths: cfg.maxMonths,
+  };
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -30,15 +90,19 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [shippingCompanies, setShippingCompanies] = useState<ShippingCompany[]>([]);
   const [installmentsCfg, setInstallmentsCfg] = useState<InstallmentsCfg | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customerIdReady, setCustomerIdReady] = useState(false);
+  const [eligibility, setEligibility] = useState<Eligibility | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
 
   useEffect(() => {
     if (!getToken()) {
       router.replace('/portal/login?redirect=/checkout');
     }
   }, [router]);
-  if (!getToken()) return null;
 
   useEffect(() => {
+    if (!getToken()) return;
     apiClient.get<ShippingCompany[]>('/shipping/methods')
       .then((m) => {
         setShippingCompanies(m ?? []);
@@ -49,32 +113,124 @@ export default function CheckoutPage() {
       .then((s) => {
         if (s?.installments) {
           setInstallmentsCfg(s.installments);
-          setInstallmentMonths(Math.min(Math.max(1, installmentMonths), s.installments.maxMonths));
+          setInstallmentMonths((prev) => Math.min(Math.max(1, prev), s.installments.maxMonths));
         }
       })
       .catch(() => undefined);
+
+    // Resolve customerId: JWT → profile → first order
+    const fromToken = getCustomerIdFromToken();
+    if (fromToken) {
+      setCustomerId(fromToken);
+      setCustomerIdReady(true);
+    } else {
+      Promise.allSettled([
+        apiClient.get<{ customerId?: string; id?: string }>('/auth/me/profile'),
+        apiClient.get<{ data?: Array<{ customerId?: string }> }>('/orders?limit=1'),
+      ]).then(([profileRes, ordersRes]) => {
+        if (profileRes.status === 'fulfilled') {
+          const p = profileRes.value as { customerId?: string };
+          if (p?.customerId) {
+            setCustomerId(p.customerId);
+            return;
+          }
+        }
+        if (ordersRes.status === 'fulfilled') {
+          const cid = ordersRes.value?.data?.[0]?.customerId;
+          if (cid) setCustomerId(cid);
+        }
+      }).finally(() => setCustomerIdReady(true));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (paymentMethod !== 'INSTALLMENT') {
+      setEligibility(null);
+      return;
+    }
+    if (!customerIdReady) {
+      setEligibilityLoading(true);
+      return;
+    }
+    if (!customerId) {
+      setEligibilityLoading(false);
+      setEligibility({
+        eligible: false,
+        message: 'برای پرداخت اقساطی باید با حساب تأییدشده وارد شوید.',
+      });
+      return;
+    }
+    let cancelled = false;
+    setEligibilityLoading(true);
+    apiClient
+      .get<Eligibility>(`/orders/installment-eligibility/${customerId}`)
+      .then((res) => {
+        if (!cancelled) {
+          setEligibility(res);
+          if (res.rules?.length || res.maxMonths) {
+            setInstallmentsCfg((prev) => ({
+              minDownPaymentPercent: res.minDownPaymentPercent ?? prev?.minDownPaymentPercent ?? 0,
+              minDownPaymentAmount: prev?.minDownPaymentAmount ?? 0,
+              maxMonths: res.maxMonths ?? prev?.maxMonths ?? 6,
+              rules: res.rules ?? prev?.rules,
+              minActiveInvoices: res.required ?? prev?.minActiveInvoices,
+            }));
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEligibility({
+            eligible: false,
+            message: 'بررسی واجد شرایط بودن اقساط ممکن نشد. لطفاً دوباره تلاش کنید.',
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setEligibilityLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [paymentMethod, customerId, customerIdReady]);
 
   const shippingFee = total >= 50_000_000 ? 0 : 1_500_000;
   const finalTotal = total + shippingFee;
 
+  // Cart items currently lack categoryId; match global (null) rule or legacy fields
+  const activeRule = useMemo(
+    () => pickInstallmentRule(installmentsCfg, []),
+    [installmentsCfg],
+  );
+
   const installmentMinDownPayment = useMemo(() => {
-    if (!installmentsCfg) return 0;
-    const byPercent = installmentsCfg.minDownPaymentPercent > 0
-      ? Math.ceil((finalTotal * installmentsCfg.minDownPaymentPercent) / 100)
+    const byPercent = activeRule.minDownPaymentPercent > 0
+      ? Math.ceil((finalTotal * activeRule.minDownPaymentPercent) / 100)
       : 0;
-    return Math.max(byPercent, installmentsCfg.minDownPaymentAmount || 0);
-  }, [finalTotal, installmentsCfg]);
+    return Math.max(byPercent, activeRule.minDownPaymentAmount || 0);
+  }, [finalTotal, activeRule]);
+
+  const installmentBlocked =
+    paymentMethod === 'INSTALLMENT'
+    && (eligibilityLoading || !eligibility?.eligible);
+
+  if (!getToken()) return null;
 
   const handleSubmit = async () => {
     if (!getToken()) { router.push('/portal/login?redirect=/checkout'); return; }
     if (items.length === 0) { setError('سبد خرید خالی است'); return; }
     if (!shippingMethod) { setError('لطفاً روش ارسال را انتخاب کنید'); return; }
     if (paymentMethod === 'INSTALLMENT') {
+      if (!customerId) {
+        setError('برای پرداخت اقساطی باید با حساب تأییدشده وارد شوید.');
+        return;
+      }
+      if (!eligibility?.eligible) {
+        setError(eligibility?.message || 'شما واجد شرایط پرداخت اقساطی نیستید');
+        return;
+      }
       if (!installmentsCfg) { setError('تنظیمات اقساط هنوز آماده نیست'); return; }
-      if (installmentMonths < 1 || installmentMonths > installmentsCfg.maxMonths) {
-        setError(`حداکثر اقساط مجاز: ${installmentsCfg.maxMonths} ماه`);
+      if (installmentMonths < 1 || installmentMonths > activeRule.maxMonths) {
+        setError(`حداکثر اقساط مجاز: ${activeRule.maxMonths} ماه`);
         return;
       }
       if (downPaymentAmount < installmentMinDownPayment) {
@@ -208,38 +364,48 @@ export default function CheckoutPage() {
 
               {paymentMethod === 'INSTALLMENT' && (
                 <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">پیش‌پرداخت (ریال)</label>
-                      <input
-                        type="number"
-                        value={downPaymentAmount}
-                        onChange={(e) => setDownPaymentAmount(Number(e.target.value) || 0)}
-                        className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      {installmentsCfg && (
+                  {eligibilityLoading && (
+                    <p className="text-xs text-gray-500">در حال بررسی واجد شرایط بودن اقساط...</p>
+                  )}
+                  {!eligibilityLoading && eligibility && !eligibility.eligible && (
+                    <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-sm text-amber-800">
+                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <p>{eligibility.message || 'شما واجد شرایط پرداخت اقساطی نیستید'}</p>
+                    </div>
+                  )}
+                  {!eligibilityLoading && eligibility?.eligible && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">پیش‌پرداخت (ریال)</label>
+                        <input
+                          type="number"
+                          value={downPaymentAmount}
+                          onChange={(e) => setDownPaymentAmount(Number(e.target.value) || 0)}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
                         <p className="text-[11px] text-gray-500 mt-1">
                           حداقل: {toman(installmentMinDownPayment)} تومان
+                          {activeRule.minDownPaymentPercent > 0 && (
+                            <> ({activeRule.minDownPaymentPercent}٪)</>
+                          )}
                         </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">تعداد اقساط (ماه)</label>
-                      <input
-                        type="number"
-                        value={installmentMonths}
-                        min={1}
-                        max={installmentsCfg?.maxMonths ?? 12}
-                        onChange={(e) => setInstallmentMonths(Number(e.target.value) || 1)}
-                        className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                      {installmentsCfg && (
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">تعداد اقساط (ماه)</label>
+                        <input
+                          type="number"
+                          value={installmentMonths}
+                          min={1}
+                          max={activeRule.maxMonths}
+                          onChange={(e) => setInstallmentMonths(Number(e.target.value) || 1)}
+                          className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        />
                         <p className="text-[11px] text-gray-500 mt-1">
-                          حداکثر: {installmentsCfg.maxMonths} ماه
+                          حداکثر: {activeRule.maxMonths} ماه
                         </p>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -276,8 +442,11 @@ export default function CheckoutPage() {
                 <span className="text-primary">{toman(finalTotal)} تومان</span>
               </div>
               {error && <p className="text-xs text-error">{error}</p>}
-              <button onClick={handleSubmit} disabled={loading}
-                className="w-full btn btn-primary btn-lg mt-2">
+              <button
+                onClick={handleSubmit}
+                disabled={loading || installmentBlocked}
+                className="w-full btn btn-primary btn-lg mt-2 disabled:opacity-50"
+              >
                 {loading ? 'در حال ثبت سفارش...' : 'ثبت نهایی سفارش'}
               </button>
               <p className="text-xs text-gray-400 text-center">

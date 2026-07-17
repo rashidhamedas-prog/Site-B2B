@@ -9,7 +9,12 @@ import { OrderStatusBadge } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 interface OrderItem { id: string; productName: string; sku: string; color: string; size: string; quantity: number; unitPrice: number; totalPrice: number; }
-interface Order { id: string; orderNumber: string; status: string; subtotal: number; discount: number; shippingFee: number; total: number; paymentMethod: string; shippingMethod: string; trackingCode?: string; notes?: string; createdAt: string; items: OrderItem[]; }
+interface Order {
+  id: string; orderNumber: string; status: string; subtotal: number; discount: number;
+  shippingFee: number; total: number; paymentMethod: string; shippingMethod: string;
+  trackingCode?: string; freightCost?: number; freightReceiptUrl?: string;
+  notes?: string; createdAt: string; items: OrderItem[];
+}
 
 function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa-IR'); }
 
@@ -75,11 +80,23 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             );
           })}
         </div>
-        {order.trackingCode && (
-          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-sm">
-            <Truck className="h-4 w-4 text-primary" />
-            <span className="text-gray-600">کد پیگیری ارسال:</span>
-            <span className="font-mono font-bold text-gray-900">{order.trackingCode}</span>
+        {(order.trackingCode || order.freightCost || order.freightReceiptUrl) && (
+          <div className="mt-4 pt-4 border-t border-gray-100 space-y-2 text-sm">
+            {order.trackingCode && (
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 text-primary" />
+                <span className="text-gray-600">کد پیگیری ارسال:</span>
+                <span className="font-mono font-bold text-gray-900">{order.trackingCode}</span>
+              </div>
+            )}
+            {!!order.freightCost && (
+              <p className="text-gray-600">هزینه باربری: <span className="font-bold text-gray-900">{toman(Number(order.freightCost))} تومان</span></p>
+            )}
+            {order.freightReceiptUrl && (
+              <a href={order.freightReceiptUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline font-medium">
+                مشاهده رسید باربری
+              </a>
+            )}
           </div>
         )}
       </div>
