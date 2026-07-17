@@ -11,6 +11,20 @@
 
 ---
 
+## 2026-07-18 — رفع CI برای deploy خودکار + اسکریپت‌های سرور
+
+### خلاصه
+- SSH از IP فعلی به VPS قطع/ریست می‌شود (احتمالاً fail2ban)
+- CI قبلاً روی `turbo lint` / `next lint` می‌شکست و job deploy اجرا نمی‌شد
+- workflow به typecheck + build تغییر کرد؛ اسکریپت deploy شامل pull/build و ALTER schema لازم برای site.docx
+- اسکریپت‌های `scripts/server-*.sh` هم commit شد
+
+### Deploy
+- مسیر اصلی: GitHub Actions → SSH از runner (IP متفاوت از ویندوز لوکال)
+- اگر secrets (`VPS_HOST` / `VPS_USER` / `VPS_SSH_KEY`) تنظیم نباشد، deploy اکشن fail می‌شود و باید از کنسول هتزنر دستی اجرا شود
+
+---
+
 ## 2026-07-17 — اعمال تغییرات site.docx (محصول، تخفیف، اقساط، ارسال، آمار)
 
 ### خلاصه
