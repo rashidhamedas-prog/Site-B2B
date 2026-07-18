@@ -94,6 +94,14 @@ export default function CheckoutPage() {
   const [customerIdReady, setCustomerIdReady] = useState(false);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
   const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [discountCode, setDiscountCode] = useState('');
+  const [appliedCode, setAppliedCode] = useState('');
+  const [quote, setQuote] = useState<{
+    discount: number;
+    tiered?: { percent: number; discount: number };
+    side?: { percent: number; discount: number; type?: string };
+    code?: { code?: string; discount: number } | null;
+  } | null>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -193,8 +201,33 @@ export default function CheckoutPage() {
     return () => { cancelled = true; };
   }, [paymentMethod, customerId, customerIdReady]);
 
-  const shippingFee = total >= 50_000_000 ? 0 : 1_500_000;
-  const finalTotal = total + shippingFee;
+  useEffect(() => {
+    if (!customerId || total <= 0) {
+      setQuote(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      apiClient
+        .post<{
+          discount: number;
+          tiered?: { percent: number; discount: number };
+          side?: { percent: number; discount: number; type?: string };
+          code?: { code?: string; discount: number } | null;
+        }>('/orders/quote-discounts', {
+          customerId,
+          subtotal: total,
+          discountCode: appliedCode || undefined,
+        })
+        .then(setQuote)
+        .catch(() => setQuote(null));
+    }, 350);
+    return () => clearTimeout(t);
+  }, [customerId, total, appliedCode]);
+
+  const discountAmount = quote?.discount ?? 0;
+  const afterDiscount = Math.max(0, total - discountAmount);
+  const shippingFee = afterDiscount >= 50_000_000 ? 0 : 1_500_000;
+  const finalTotal = afterDiscount + shippingFee;
 
   // Cart items currently lack categoryId; match global (null) rule or legacy fields
   const activeRule = useMemo(
@@ -251,6 +284,7 @@ export default function CheckoutPage() {
         items: orderItems,
         shippingMethod,
         paymentMethod,
+        discountCode: appliedCode || undefined,
         installment: paymentMethod === 'INSTALLMENT'
           ? { downPaymentAmount, months: installmentMonths }
           : undefined,
@@ -422,18 +456,51 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             <div className="card p-5 space-y-3 sticky top-24">
               <h2 className="font-bold text-gray-900">خلاصه سفارش</h2>
+              <div className="flex gap-2">
+                <input
+                  value={discountCode}
+                  onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                  placeholder="کد تخفیف"
+                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  type="button"
+                  onClick={() => setAppliedCode(discountCode.trim())}
+                  className="btn btn-outline btn-sm"
+                >
+                  اعمال
+                </button>
+              </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">جمع اقلام ({items.length})</span>
                   <span className="font-medium">{toman(total)} ت</span>
                 </div>
+                {!!quote?.tiered?.discount && (
+                  <div className="flex justify-between text-success">
+                    <span>تخفیف طبقاتی ({quote.tiered.percent}٪)</span>
+                    <span>−{toman(quote.tiered.discount)} ت</span>
+                  </div>
+                )}
+                {!!quote?.side?.discount && (
+                  <div className="flex justify-between text-success">
+                    <span>تخفیف جانبی ({quote.side.percent}٪)</span>
+                    <span>−{toman(quote.side.discount)} ت</span>
+                  </div>
+                )}
+                {!!quote?.code?.discount && (
+                  <div className="flex justify-between text-success">
+                    <span>کد {quote.code.code}</span>
+                    <span>−{toman(quote.code.discount)} ت</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">هزینه ارسال</span>
                   <span className={cn('font-medium', shippingFee === 0 && 'text-success')}>
                     {shippingFee === 0 ? 'رایگان' : `${toman(shippingFee)} ت`}
                   </span>
                 </div>
-                {total >= 50_000_000 && (
+                {afterDiscount >= 50_000_000 && (
                   <p className="text-xs text-success">✓ ارسال رایگان برای سفارش‌های بالای ۵ میلیون تومان</p>
                 )}
               </div>

@@ -103,16 +103,38 @@ function jalaliToGregorian(jy: number, jm: number, jd: number): [number, number,
   return [gy, gm, gDayNo + 1];
 }
 
-/** Parse Jalali YYYY/MM/DD (or YYYY-MM-DD) to Date at local noon */
+/**
+ * Parse Jalali date/time.
+ * Accepts: YYYY/MM/DD, YYYY-MM-DD, YYYY/MM/DD HH:mm, YYYY/MM/DDTHH:mm
+ * Time defaults to 12:00 when omitted.
+ */
 export function fromJalaliString(input: string): Date | null {
-  const m = String(input ?? '').trim().replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  const normalized = String(input ?? '')
+    .trim()
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+  const m = normalized.match(
+    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/,
+  );
   if (!m) return null;
   const jy = Number(m[1]);
   const jm = Number(m[2]);
   const jd = Number(m[3]);
+  const hh = m[4] !== undefined ? Number(m[4]) : 12;
+  const mm = m[5] !== undefined ? Number(m[5]) : 0;
+  const ss = m[6] !== undefined ? Number(m[6]) : 0;
   if (!jy || jm < 1 || jm > 12 || jd < 1 || jd > 31) return null;
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59 || ss < 0 || ss > 59) return null;
   const [gy, gm, gd] = jalaliToGregorian(jy, jm, jd);
-  return new Date(gy, gm - 1, gd, 12, 0, 0);
+  return new Date(gy, gm - 1, gd, hh, mm, ss);
+}
+
+/** Format Date as Jalali YYYY/MM/DD HH:mm */
+export function toJalaliDateTimeString(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const { year, month, day } = toJalali(d);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${year}/${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')} ${hh}:${mm}`;
 }
 
 /** Relative time in Persian (e.g., "۳ روز پیش") */

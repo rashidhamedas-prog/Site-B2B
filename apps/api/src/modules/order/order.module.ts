@@ -9,6 +9,7 @@ import { UserEntity } from '../auth/entities/user.entity';
 import { CustomerModule } from '../customer/customer.module';
 import { ProductModule } from '../product/product.module';
 import { AuthModule } from '../auth/auth.module';
+import { DiscountModule } from '../discount/discount.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { AuthModule } from '../auth/auth.module';
     CustomerModule,
     ProductModule,
     AuthModule,
+    DiscountModule,
   ],
   controllers: [OrderController],
   providers: [OrderService],

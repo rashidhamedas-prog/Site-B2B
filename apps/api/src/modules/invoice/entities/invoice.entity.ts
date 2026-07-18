@@ -37,6 +37,17 @@ export class InvoiceEntity {
   @Column({ type: 'bigint', default: 0 })
   discount: number;
 
+  /** Intra-city transport cost (IRR) */
+  @Column({ type: 'bigint', default: 0 })
+  intraCityFee: number;
+
+  /** Per-kilogram shipping fee (IRR) */
+  @Column({ type: 'bigint', default: 0 })
+  perKgFee: number;
+
+  @Column({ default: false })
+  freeShipping: boolean;
+
   @Column({ type: 'bigint' })
   total: number;
 

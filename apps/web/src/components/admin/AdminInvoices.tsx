@@ -43,7 +43,10 @@ function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa
 // ── Create Modal ─────────────────────────────────────────────────
 function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => void }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [form, setForm] = useState({ customerId: '', type: 'PROFORMA', subtotal: '', taxAmount: '0', discount: '0', notes: '', dueDate: '' });
+  const [form, setForm] = useState({
+    customerId: '', type: 'PROFORMA', subtotal: '', taxAmount: '0', discount: '0',
+    intraCityFee: '0', perKgFee: '0', freeShipping: false, notes: '', dueDate: '',
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,7 +54,10 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
     apiClient.get<{ data: Customer[] }>('/customers?limit=100').then((r) => setCustomers(r.data)).catch(() => {});
   }, []);
 
-  const total = (Number(form.subtotal) + Number(form.taxAmount) - Number(form.discount)) * 10;
+  const shippingIrr = form.freeShipping
+    ? 0
+    : (Number(form.intraCityFee) + Number(form.perKgFee)) * 10;
+  const total = (Number(form.subtotal) + Number(form.taxAmount) - Number(form.discount)) * 10 + shippingIrr;
 
   const handleSave = async () => {
     if (!form.customerId || !form.subtotal) { setError('مشتری و مبلغ الزامی است'); return; }
@@ -63,6 +69,9 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
         subtotal: Number(form.subtotal) * 10,
         taxAmount: Number(form.taxAmount) * 10,
         discount: Number(form.discount) * 10,
+        intraCityFee: form.freeShipping ? 0 : Number(form.intraCityFee) * 10,
+        perKgFee: form.freeShipping ? 0 : Number(form.perKgFee) * 10,
+        freeShipping: form.freeShipping,
         total,
         notes: form.notes || undefined,
         dueDate: form.dueDate || undefined,
@@ -72,7 +81,8 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
     finally { setSaving(false); }
   };
 
-  const f = (key: keyof typeof form, label: string, type = 'text', placeholder = '') => (
+  type TextKey = Exclude<keyof typeof form, 'freeShipping'>;
+  const f = (key: TextKey, label: string, type = 'text', placeholder = '') => (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
       <input type={type} value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
@@ -110,9 +120,33 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
             {f('taxAmount', 'مالیات (تومان)', 'number', '0')}
             {f('discount', 'تخفیف (تومان)', 'number', '0')}
           </div>
-          <div className="rounded-xl bg-primary-50 px-4 py-3 flex justify-between">
-            <span className="text-sm text-primary-dark">جمع کل</span>
-            <span className="text-base font-bold text-primary">{(total / 10).toLocaleString('fa-IR')} تومان</span>
+          <div className="border-t border-gray-100 pt-3">
+            <p className="text-xs font-semibold text-gray-600 mb-2">هزینه ارسال</p>
+            <div className="grid grid-cols-2 gap-3">
+              {f('intraCityFee', 'حمل درون‌شهری (تومان)', 'number', '0')}
+              {f('perKgFee', 'کارمزد هر کیلوگرم (تومان)', 'number', '0')}
+            </div>
+            <label className="flex items-center gap-2 mt-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.freeShipping}
+                onChange={(e) => setForm((p) => ({ ...p, freeShipping: e.target.checked }))}
+                className="rounded"
+              />
+              <span className="text-sm text-gray-700">ارسال رایگان</span>
+            </label>
+          </div>
+          <div className="rounded-xl bg-primary-50 px-4 py-3 space-y-1">
+            {!form.freeShipping && shippingIrr > 0 && (
+              <div className="flex justify-between text-xs text-primary-dark">
+                <span>هزینه ارسال</span>
+                <span>{(shippingIrr / 10).toLocaleString('fa-IR')} تومان</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-sm text-primary-dark">جمع کل</span>
+              <span className="text-base font-bold text-primary">{(total / 10).toLocaleString('fa-IR')} تومان</span>
+            </div>
           </div>
           {f('dueDate', 'تاریخ سررسید', 'date')}
           <div>

@@ -75,7 +75,8 @@ function ProductBadges({ product }: { product: Product }) {
 
 export async function FeaturedProducts() {
   const products = await fetchFeatured();
-  const items = products.length > 0 ? products : FALLBACK;
+  const items = products.length > 0 ? products : [];
+  if (items.length === 0) return null;
 
   return (
     <section className="section">

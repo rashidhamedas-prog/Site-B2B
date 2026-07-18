@@ -58,9 +58,16 @@ export class ProductSpecsDiscountsShipping1784236800001 implements MigrationInte
     await queryRunner.query(`ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "intraCityFee" bigint NOT NULL DEFAULT 0;`);
     await queryRunner.query(`ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "perKgFee" bigint NOT NULL DEFAULT 0;`);
     await queryRunner.query(`ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "freeShipping" boolean NOT NULL DEFAULT false;`);
+
+    await queryRunner.query(`ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "intraCityFee" bigint NOT NULL DEFAULT 0;`);
+    await queryRunner.query(`ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "perKgFee" bigint NOT NULL DEFAULT 0;`);
+    await queryRunner.query(`ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "freeShipping" boolean NOT NULL DEFAULT false;`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`ALTER TABLE "invoices" DROP COLUMN IF EXISTS "freeShipping";`);
+    await queryRunner.query(`ALTER TABLE "invoices" DROP COLUMN IF EXISTS "perKgFee";`);
+    await queryRunner.query(`ALTER TABLE "invoices" DROP COLUMN IF EXISTS "intraCityFee";`);
     await queryRunner.query(`ALTER TABLE "orders" DROP COLUMN IF EXISTS "freeShipping";`);
     await queryRunner.query(`ALTER TABLE "orders" DROP COLUMN IF EXISTS "perKgFee";`);
     await queryRunner.query(`ALTER TABLE "orders" DROP COLUMN IF EXISTS "intraCityFee";`);

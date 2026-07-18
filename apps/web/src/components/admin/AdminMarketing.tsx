@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Tag, Plus, Trash2, Copy, X, Save, Check, Layers, Gift } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { fromJalaliString, toJalaliString } from '@taranom/persian-utils';
+import { fromJalaliString, toJalaliString, toJalaliDateTimeString } from '@taranom/persian-utils';
 
 interface DiscountCode {
   id: string;
@@ -63,7 +63,9 @@ function jalaliInputToIso(v: string): string | undefined {
 
 function isoToJalaliInput(iso?: string): string {
   if (!iso) return '';
-  try { return toJalaliString(iso); } catch { return ''; }
+  try { return toJalaliDateTimeString(iso); } catch {
+    try { return toJalaliString(iso); } catch { return ''; }
+  }
 }
 
 type Tab = 'codes' | 'tiered' | 'side';
@@ -400,19 +402,19 @@ export function AdminMarketing() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ شروع (شمسی)</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ و ساعت شروع (شمسی)</label>
                   <input value={form.startsAt} onChange={(e) => setForm((f) => ({ ...f, startsAt: e.target.value }))}
-                    placeholder="1405/04/01"
+                    placeholder="1405/04/01 00:00"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ انقضا (شمسی)</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ و ساعت انقضا (شمسی)</label>
                   <input value={form.expiresAt} onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))}
-                    placeholder="1405/12/29"
+                    placeholder="1405/12/29 23:59"
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                 </div>
               </div>
-              <p className="text-[11px] text-gray-400">فرمت تاریخ: سال/ماه/روز شمسی — مثلاً ۱۴۰۵/۰۴/۲۶</p>
+              <p className="text-[11px] text-gray-400">فرمت: سال/ماه/روز ساعت:دقیقه — مثلاً ۱۴۰۵/۰۴/۲۶ ۲۳:۵۹</p>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={form.isActive} onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))} className="rounded" />
                 <span className="text-sm text-gray-700">کد فعال باشد</span>
@@ -456,9 +458,10 @@ export function AdminMarketing() {
               <button type="button" onClick={() => setTierLevels((p) => [...p, { minAmount: '', percent: '' }])}
                 className="btn btn-outline btn-sm">+ سطح بعدی</button>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ انقضا (شمسی)</label>
-                <input value={tierExpires} onChange={(e) => setTierExpires(e.target.value)} placeholder="1405/12/29"
+                <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ و ساعت انقضا (شمسی)</label>
+                <input value={tierExpires} onChange={(e) => setTierExpires(e.target.value)} placeholder="1405/12/29 23:59"
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                <p className="text-[11px] text-gray-400 mt-1">مثال: ۱۴۰۵/۱۲/۲۹ ۲۳:۵۹</p>
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">

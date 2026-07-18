@@ -8,6 +8,7 @@ import { CustomerService } from '../customer/customer.service';
 import { ProductService } from '../product/product.service';
 import { NotificationService } from '../notification/notification.service';
 import { SettingsService } from '../settings/settings.service';
+import { DiscountService } from '../discount/discount.service';
 
 interface CreateOrderDto {
   customerId: string;
@@ -28,6 +29,7 @@ interface CreateOrderDto {
   freeShipping?: boolean;
   intraCityFee?: number;
   perKgFee?: number;
+  discountCode?: string;
 }
 
 @Injectable()
@@ -42,8 +44,52 @@ export class OrderService {
     private readonly customerService: CustomerService,
     private readonly productService: ProductService,
     private readonly settings: SettingsService,
+    private readonly discounts: DiscountService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
+
+  private async customerPurchaseStats(customerId: string) {
+    const invoices = await this.invoiceRepo.find({
+      where: {
+        customerId,
+        status: Not(In(['VOIDED', 'CANCELLED', 'DRAFT'])),
+      },
+    });
+    const orders = await this.orderRepo.find({
+      where: { customerId, status: Not(In(['CANCELLED'])) },
+      relations: ['items'],
+    });
+    const invoiceCount = invoices.length;
+    const invoiceSum = invoices.reduce((s, i) => s + Number(i.total || 0), 0);
+    const productCount = orders.reduce(
+      (s, o) => s + (o.items ?? []).reduce((ss, it) => ss + Number(it.quantity || 0), 0),
+      0,
+    );
+    return {
+      invoiceCount,
+      invoiceSum,
+      productCount,
+      isFirstInvoice: invoiceCount === 0,
+    };
+  }
+
+  async quoteDiscounts(customerId: string, subtotal: number, discountCode?: string, categoryIds: string[] = []) {
+    const stats = await this.customerPurchaseStats(customerId);
+    const tiered = await this.discounts.applyTiered(subtotal);
+    const side = await this.discounts.applySide(subtotal, { ...stats, categoryIds });
+    let code: { id?: string; code?: string; discount: number; percent?: number } | null = null;
+    if (discountCode?.trim()) {
+      const validated = await this.discounts.validate(discountCode.trim(), subtotal);
+      code = { id: validated.id, code: validated.code, discount: validated.discount };
+    }
+    // Stack: take best of (tiered+side) vs code alone? Spec says tiered is automatic without code,
+    // side is extra, code is separate. Apply tiered + side + code (capped at subtotal).
+    const discount = Math.min(
+      subtotal,
+      (tiered.discount || 0) + (side.discount || 0) + (code?.discount || 0),
+    );
+    return { tiered, side, code, discount, stats };
+  }
 
   private async countActiveInvoices(customerId: string): Promise<number> {
     return this.invoiceRepo.count({
@@ -174,14 +220,25 @@ export class OrderService {
 
     // Stock check is already done above. Now compute subtotal on expanded items.
     const subtotal = expandedItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
-    const shippingFee = subtotal >= 50_000_000 ? 0 : 1_500_000;
-    const total = subtotal + shippingFee;
+
+    const categoryIds = [...new Set(
+      (await Promise.all(
+        expandedItems.map(async (i) => {
+          const v = await this.productService.getVariant(i.productVariantId);
+          return (v as any).product?.categoryId as string | undefined;
+        }),
+      )).filter(Boolean),
+    )] as string[];
+
+    const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
+    const discountAmount = quote.discount;
 
     const freeShipping = !!dto.freeShipping;
     const intraCityFee = Number(dto.intraCityFee) || 0;
     const perKgFee = Number(dto.perKgFee) || 0;
-    const computedShipping = freeShipping ? 0 : (intraCityFee || shippingFee);
-    const orderTotal = subtotal + computedShipping;
+    const fallbackShipping = (subtotal - discountAmount) >= 50_000_000 ? 0 : 1_500_000;
+    const computedShipping = freeShipping ? 0 : (intraCityFee || fallbackShipping);
+    const orderTotal = Math.max(0, subtotal - discountAmount + computedShipping);
 
     if (paymentMethod === 'INSTALLMENT') {
       const activeInvoiceCount = await this.countActiveInvoices(dto.customerId);
@@ -191,14 +248,6 @@ export class OrderService {
           `پرداخت اقساطی فقط برای مشتریانی با حداقل ${cfg.minActiveInvoices ?? 2} فاکتور فعال امکان‌پذیر است`,
         );
       }
-      const categoryIds = [...new Set(
-        (await Promise.all(
-          expandedItems.map(async (i) => {
-            const v = await this.productService.getVariant(i.productVariantId);
-            return (v as any).product?.categoryId as string | undefined;
-          }),
-        )).filter(Boolean),
-      )] as string[];
       const rules = cfg.rules?.length ? cfg.rules : [{
         id: 'default',
         minDownPaymentPercent: cfg.minDownPaymentPercent,
@@ -223,10 +272,20 @@ export class OrderService {
       dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
     }
 
+    const discountNotes: string[] = [];
+    if (quote.tiered.discount) discountNotes.push(`TIERED ${quote.tiered.percent}%=${quote.tiered.discount}`);
+    if (quote.side.discount) discountNotes.push(`SIDE ${quote.side.type} ${quote.side.percent}%=${quote.side.discount}`);
+    if (quote.code?.discount) discountNotes.push(`CODE ${quote.code.code}=${quote.code.discount}`);
+    if (discountNotes.length) {
+      const tag = `DISCOUNTS ${discountNotes.join(' | ')}`;
+      dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+    }
+
     const order = this.orderRepo.create({
       orderNumber: await this.generateOrderNumber(),
       customerId: dto.customerId,
       subtotal,
+      discount: discountAmount,
       shippingFee: computedShipping,
       total: orderTotal,
       shippingMethod: dto.shippingMethod ?? 'CHAPAR',
@@ -247,6 +306,10 @@ export class OrderService {
 
     for (const item of expandedItems) {
       await this.productService.updateVariantStock(item.productVariantId, -item.quantity);
+    }
+
+    if (quote.code?.id) {
+      await this.discounts.recordUse(quote.code.id);
     }
 
     if (this.notifications) {

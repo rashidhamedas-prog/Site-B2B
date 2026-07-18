@@ -63,6 +63,19 @@ export class OrderController {
     return this.orderService.installmentEligibility(customerId);
   }
 
+  @Post('quote-discounts')
+  @ApiOperation({ summary: 'محاسبه تخفیف‌های قابل اعمال (کد/طبقاتی/جانبی)' })
+  quoteDiscounts(
+    @Body() body: { customerId: string; subtotal: number; discountCode?: string; categoryIds?: string[] },
+  ) {
+    return this.orderService.quoteDiscounts(
+      body.customerId,
+      Number(body.subtotal) || 0,
+      body.discountCode,
+      body.categoryIds ?? [],
+    );
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'جزئیات سفارش' })
   async findOne(

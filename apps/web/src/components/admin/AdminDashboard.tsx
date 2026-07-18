@@ -204,7 +204,7 @@ export function AdminDashboard() {
       up: stats.customers.pending === 0,
       icon: Users,
       iconBg: 'bg-violet-500',
-      sparkValues: [55, 60, 58, 63, 65, 68, stats.customers.active],
+      sparkValues: monthlyOrders.map(() => stats.customers.active || 0),
       sparkColor: '#8b5cf6',
     },
     {
@@ -215,7 +215,7 @@ export function AdminDashboard() {
       up: false,
       icon: CreditCard,
       iconBg: 'bg-amber-500',
-      sparkValues: [15, 18, 14, 16, 19, 17, Math.round(stats.revenue.outstanding / 10000000)],
+      sparkValues: monthlyRevenue.map(() => Math.round(stats.revenue.outstanding / 10_000_000) || 0),
       sparkColor: '#f59e0b',
     },
   ];
