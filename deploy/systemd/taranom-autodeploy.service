@@ -1,0 +1,13 @@
+[Unit]
+Description=Taranom auto-deploy (poll origin/master and rebuild on change)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=wholesale-admin
+WorkingDirectory=/opt/taranom
+ExecStart=/bin/bash /opt/taranom/scripts/auto-deploy.sh
+# Give a full rebuild enough time to finish.
+TimeoutStartSec=1800
