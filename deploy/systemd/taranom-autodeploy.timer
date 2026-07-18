@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll and deploy Taranom master every few minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=3min
+AccuracySec=30s
+Unit=taranom-autodeploy.service
+
+[Install]
+WantedBy=timers.target
