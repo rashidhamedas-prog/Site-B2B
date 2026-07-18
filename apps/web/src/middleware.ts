@@ -22,9 +22,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // prevent non-admins from accessing admin panel
+  // Non-admins must never land on the customer portal when opening /admin —
+  // send them to the admin login so they can authenticate with an admin account.
   if (isAdminRoute && role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/portal/dashboard', request.url));
+    const loginUrl = new URL('/admin/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();

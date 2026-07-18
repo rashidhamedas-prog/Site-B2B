@@ -28,14 +28,31 @@ export function useAuth() {
     setError(null);
     try {
       const res = await apiClient.post<{ accessToken: string; role: string }>('/auth/login', payload);
+      const onAdminLogin = window.location.pathname.startsWith('/admin');
+
+      // Admin login form must only accept ADMIN accounts — otherwise customers
+      // were bounced to the portal dashboard and thought /admin was broken.
+      if (onAdminLogin && res.role !== 'ADMIN') {
+        setError('این حساب دسترسی به پنل مدیریت ندارد');
+        return;
+      }
+
       setToken(res.accessToken, res.role);
       setIsLoggedIn(true);
       setRole(res.role);
+
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get('redirect');
-      const target =
-        redirect ??
-        (res.role === 'ADMIN' ? '/admin' : '/portal/dashboard');
+      const isAdmin = res.role === 'ADMIN';
+      let target = isAdmin ? '/admin' : '/portal/dashboard';
+
+      if (redirect) {
+        const wantsAdmin = redirect.startsWith('/admin');
+        if ((isAdmin && wantsAdmin) || (!isAdmin && !wantsAdmin)) {
+          target = redirect;
+        }
+      }
+
       // Hard navigation ensures middleware sees auth cookies (router.push can race)
       window.location.href = target;
     } catch (e: unknown) {
