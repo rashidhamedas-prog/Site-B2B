@@ -49,24 +49,47 @@ jobs:
       - name: Deploy to Hetzner VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
+          # Host and user are the already-documented public values; override via
+          # repo secrets if the server changes. Only VPS_SSH_KEY must be set.
+          host: ${{ secrets.VPS_HOST || '5.75.200.102' }}
+          username: ${{ secrets.VPS_USER || 'wholesale-admin' }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 2222 }}
           command_timeout: 30m
           script: |
             set -euo pipefail
             cd /opt/taranom
+
+            echo "=== Pull latest code ==="
             git fetch origin
             git reset --hard origin/master
             git log -1 --oneline
+
+            echo "=== Rebuild & restart services ==="
             docker compose build api web
             docker compose up -d api web
             docker compose restart nginx
-            sleep 20
-            # Apply schema for new product/discount/order columns when synchronize is off
-            docker exec taranom_postgres psql -U taranom -d taranom_db -c "ALTER TABLE products ALTER COLUMN fabric DROP NOT NULL; ALTER TABLE products ALTER COLUMN fabric SET DEFAULT ''; ALTER TABLE products ADD COLUMN IF NOT EXISTS specs jsonb; ALTER TABLE products ADD COLUMN IF NOT EXISTS \"sizeType\" varchar NOT NULL DEFAULT 'FREE'; ALTER TABLE products ADD COLUMN IF NOT EXISTS \"isDiscounted\" boolean NOT NULL DEFAULT false; ALTER TABLE discount_codes ADD COLUMN IF NOT EXISTS \"startsAt\" TIMESTAMP; ALTER TABLE orders ADD COLUMN IF NOT EXISTS \"freightCost\" bigint NOT NULL DEFAULT 0; ALTER TABLE orders ADD COLUMN IF NOT EXISTS \"freightReceiptUrl\" varchar; ALTER TABLE orders ADD COLUMN IF NOT EXISTS \"intraCityFee\" bigint NOT NULL DEFAULT 0; ALTER TABLE orders ADD COLUMN IF NOT EXISTS \"perKgFee\" bigint NOT NULL DEFAULT 0; ALTER TABLE orders ADD COLUMN IF NOT EXISTS \"freeShipping\" boolean NOT NULL DEFAULT false; ALTER TABLE invoices ADD COLUMN IF NOT EXISTS \"intraCityFee\" bigint NOT NULL DEFAULT 0; ALTER TABLE invoices ADD COLUMN IF NOT EXISTS \"perKgFee\" bigint NOT NULL DEFAULT 0; ALTER TABLE invoices ADD COLUMN IF NOT EXISTS \"freeShipping\" boolean NOT NULL DEFAULT false; CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"; CREATE TABLE IF NOT EXISTS product_spec_memory (id uuid NOT NULL DEFAULT uuid_generate_v4(), \"fieldKey\" varchar NOT NULL, value varchar NOT NULL, \"createdAt\" TIMESTAMP NOT NULL DEFAULT now(), \"updatedAt\" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT \"PK_product_spec_memory_id\" PRIMARY KEY (id), CONSTRAINT \"UQ_product_spec_memory_field_value\" UNIQUE (\"fieldKey\", value)); CREATE TABLE IF NOT EXISTS tiered_discounts (id uuid NOT NULL DEFAULT uuid_generate_v4(), levels jsonb NOT NULL DEFAULT '[]', \"expiresAt\" TIMESTAMP, \"isActive\" boolean NOT NULL DEFAULT true, \"createdAt\" TIMESTAMP NOT NULL DEFAULT now(), \"updatedAt\" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT \"PK_tiered_discounts_id\" PRIMARY KEY (id)); CREATE TABLE IF NOT EXISTS side_discounts (id uuid NOT NULL DEFAULT uuid_generate_v4(), type varchar NOT NULL, percent integer NOT NULL, threshold bigint NOT NULL DEFAULT 0, \"categoryId\" uuid, \"isActive\" boolean NOT NULL DEFAULT true, \"createdAt\" TIMESTAMP NOT NULL DEFAULT now(), \"updatedAt\" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT \"PK_side_discounts_id\" PRIMARY KEY (id);"
+
+            # Schema for new product/discount/order/invoice columns is applied
+            # automatically by the TypeORM migrations that run on API startup
+            # (migrationsRun=true in production). We additionally run an
+            # idempotent safety-net script in case migrations are skipped.
+            echo "=== Apply idempotent schema safety-net ==="
+            docker exec -i taranom_postgres psql -U taranom -d taranom_db \
+              < scripts/apply-production-schema.sql
+
+            echo "=== Restart API to pick up schema ==="
             docker compose restart api
-            sleep 10
-            curl -sf http://localhost:4000/v1/health
-            echo
+
+            echo "=== Health checks ==="
+            ok=0
+            for i in $(seq 1 12); do
+              if curl -sf http://localhost:4000/v1/health >/dev/null; then ok=1; break; fi
+              echo "waiting for API... ($i)"; sleep 5
+            done
+            if [ "$ok" != "1" ]; then
+              echo "API health check failed"; docker compose logs --tail 50 api; exit 1
+            fi
+            curl -sf http://localhost:4000/v1/health; echo
             curl -sf -o /dev/null -w "web %{http_code}\n" http://localhost:3000
+            echo "=== DEPLOY COMPLETE ==="

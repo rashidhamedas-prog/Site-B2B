@@ -2,13 +2,18 @@ FROM node:20-alpine AS web-base
 WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
-# Install all deps at root level (monorepo)
+# Install all deps at root level (monorepo).
+# A full `npm ci` (matching CI) is required so shared devDependencies such as
+# @types/node resolve correctly; a workspace-filtered install drops @types/node
+# because it is also declared in apps/api, breaking `next build`'s type step.
+# All workspace manifests must be present for `npm ci` to match the lockfile.
 FROM web-base AS web-deps
 COPY package*.json ./
 COPY apps/web/package*.json ./apps/web/
+COPY apps/api/package*.json ./apps/api/
 COPY packages/shared-types/package*.json ./packages/shared-types/
 COPY packages/persian-utils/package*.json ./packages/persian-utils/
-RUN npm ci --workspace=apps/web --workspace=packages/shared-types --workspace=packages/persian-utils --include-workspace-root
+RUN npm ci
 
 # Build shared packages then Next.js
 FROM web-base AS web-builder
