@@ -8,6 +8,18 @@ import { CustomerEntity } from '../customer/entities/customer.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
+/** True when the DB rejected an insert because the customer `code` already exists. */
+function isDuplicateCodeError(err: unknown): boolean {
+  const e = (err ?? {}) as {
+    code?: string;
+    detail?: string;
+    driverError?: { code?: string; detail?: string };
+  };
+  const code = e.code ?? e.driverError?.code;
+  const detail = e.detail ?? e.driverError?.detail ?? '';
+  return code === '23505' && /\(code\)/i.test(detail);
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -22,10 +34,17 @@ export class AuthService {
     const existing = await this.userRepo.findOne({ where: { phone: dto.phone } });
     if (existing) throw new ConflictException('این شماره قبلاً ثبت شده است');
 
-    const count = await this.customerRepo.count();
-    const code = `TRN-${String(count + 1).padStart(5, '0')}`;
-    const customer = this.customerRepo.create({
-      code,
+    // A customer row (even soft-deleted) keeps the unique phone/code constraints,
+    // so guard against an already-registered phone before inserting.
+    const existingCustomer = await this.customerRepo.findOne({
+      where: { phone: dto.phone },
+      withDeleted: true,
+    });
+    if (existingCustomer && !existingCustomer.deletedAt) {
+      throw new ConflictException('این شماره قبلاً ثبت شده است');
+    }
+
+    const customerData = {
       businessName: dto.businessName,
       ownerName: dto.ownerName,
       phone: dto.phone,
@@ -36,8 +55,18 @@ export class AuthService {
       notes: dto.notes,
       status: 'PENDING',
       segment: 'C',
-    });
-    const savedCustomer = await this.customerRepo.save(customer);
+    };
+
+    let savedCustomer: CustomerEntity;
+    if (existingCustomer?.deletedAt) {
+      // Reactivate a previously soft-deleted customer with the same phone,
+      // reusing its code to avoid violating unique constraints.
+      await this.customerRepo.restore(existingCustomer.id);
+      await this.customerRepo.update(existingCustomer.id, customerData);
+      savedCustomer = await this.customerRepo.findOneOrFail({ where: { id: existingCustomer.id } });
+    } else {
+      savedCustomer = await this.createCustomerWithUniqueCode(customerData);
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const user = this.userRepo.create({
@@ -49,6 +78,40 @@ export class AuthService {
     });
     await this.userRepo.save(user);
     return { message: 'ثبت‌نام با موفقیت انجام شد. منتظر تأیید ادمین باشید.' };
+  }
+
+  /**
+   * Generates the next sequential customer code (TRN-#####) based on the highest
+   * existing code — including soft-deleted rows, whose unique code constraint is
+   * still enforced — and retries on the rare concurrent-insert collision.
+   */
+  private async createCustomerWithUniqueCode(
+    data: Partial<CustomerEntity>,
+  ): Promise<CustomerEntity> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = await this.nextCustomerCode();
+      try {
+        return await this.customerRepo.save(this.customerRepo.create({ ...data, code }));
+      } catch (err) {
+        if (isDuplicateCodeError(err) && attempt < 4) continue;
+        throw err;
+      }
+    }
+    throw new ConflictException('امکان ایجاد کد مشتری نبود، دوباره تلاش کنید');
+  }
+
+  private async nextCustomerCode(): Promise<string> {
+    const rows = await this.customerRepo
+      .createQueryBuilder('c')
+      .withDeleted()
+      .select('c.code', 'code')
+      .where("c.code ~ '^TRN-[0-9]+$'")
+      .getRawMany<{ code: string }>();
+    const max = rows.reduce((m, r) => {
+      const n = parseInt(r.code.slice(4), 10);
+      return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+    return `TRN-${String(max + 1).padStart(5, '0')}`;
   }
 
   async login(dto: LoginDto) {

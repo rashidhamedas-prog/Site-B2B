@@ -3,6 +3,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { CustomerEntity } from './entities/customer.entity';
 
+/** True when the DB rejected an insert because the customer `code` already exists. */
+function isDuplicateCodeError(err: unknown): boolean {
+  const e = (err ?? {}) as {
+    code?: string;
+    detail?: string;
+    driverError?: { code?: string; detail?: string };
+  };
+  const code = e.code ?? e.driverError?.code;
+  const detail = e.detail ?? e.driverError?.detail ?? '';
+  return code === '23505' && /\(code\)/i.test(detail);
+}
+
 @Injectable()
 export class CustomerService {
   constructor(
@@ -43,10 +55,34 @@ export class CustomerService {
   }
 
   async create(data: Partial<CustomerEntity>) {
-    const count = await this.repo.count();
-    const code = `TRN-${String(count + 1).padStart(5, '0')}`;
-    const customer = this.repo.create({ ...data, code, status: 'PENDING' });
-    return this.repo.save(customer);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = await this.nextCode();
+      try {
+        return await this.repo.save(this.repo.create({ ...data, code, status: 'PENDING' }));
+      } catch (err) {
+        if (isDuplicateCodeError(err) && attempt < 4) continue;
+        throw err;
+      }
+    }
+    throw new Error('امکان ایجاد کد مشتری نبود، دوباره تلاش کنید');
+  }
+
+  /**
+   * Next sequential customer code, derived from the highest existing TRN-#####
+   * including soft-deleted rows (whose unique code constraint is still enforced).
+   */
+  private async nextCode(): Promise<string> {
+    const rows = await this.repo
+      .createQueryBuilder('c')
+      .withDeleted()
+      .select('c.code', 'code')
+      .where("c.code ~ '^TRN-[0-9]+$'")
+      .getRawMany<{ code: string }>();
+    const max = rows.reduce((m, r) => {
+      const n = parseInt(r.code.slice(4), 10);
+      return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+    return `TRN-${String(max + 1).padStart(5, '0')}`;
   }
 
   async update(id: string, data: Partial<CustomerEntity>) {
