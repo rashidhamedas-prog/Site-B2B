@@ -71,7 +71,7 @@ const emptyForm = {
   hasLength2: false,
 };
 
-const emptyVariantForm = { color: '', colorHex: '#000000', stock: '0', barcode: '' };
+const emptyVariantForm = { color: '', colorHex: '#000000', barcode: '' };
 
 type FormData = typeof emptyForm;
 type VariantForm = typeof emptyVariantForm;
@@ -124,7 +124,11 @@ function VariantsModal({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [variants, setVariants] = useState<Variant[]>(product.variants ?? []);
   const [colorHistory, setColorHistory] = useState<ColorHistoryItem[]>([]);
-  const [stockError, setStockError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  // Inventory is managed separately from color: per-variant stock drafts.
+  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
+  const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
+  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
 
   const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
   const sizeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
@@ -144,18 +148,17 @@ function VariantsModal({
 
   const startEdit = (v: Variant) => {
     setEditId(v.id);
-    setStockError(null);
+    setSaveError(null);
     setForm({
       color: v.color,
       colorHex: v.colorHex || '#000000',
-      stock: String(v.stock),
       barcode: v.barcode ?? '',
     });
   };
 
   const cancelEdit = () => {
     setEditId(null);
-    setStockError(null);
+    setSaveError(null);
     setForm(emptyVariantForm);
   };
 
@@ -163,35 +166,67 @@ function VariantsModal({
     setForm((p) => ({ ...p, color: name, colorHex: hex || p.colorHex }));
   };
 
+  // Color definition only — inventory (stock) is set separately in the list.
   const handleSave = async () => {
     if (!form.color) return;
-    const stock = Number(form.stock) || 0;
-    if (stock % minOrder !== 0) {
-      setStockError(`موجودی باید مضربی از حداقل سفارش (${minOrder}) باشد`);
-      return;
-    }
-    setStockError(null);
+    setSaveError(null);
     setSaving(true);
     try {
-      const payload = {
-        color: form.color,
-        colorHex: form.colorHex,
-        stock,
-        barcode: form.barcode || undefined,
-        size: sizeLabel,
-      };
       if (editId) {
-        await apiClient.patch(`/products/${product.id}/variants/${editId}`, payload);
+        // Update color attributes without touching the variant's stock.
+        await apiClient.patch(`/products/${product.id}/variants/${editId}`, {
+          color: form.color,
+          colorHex: form.colorHex,
+          barcode: form.barcode || undefined,
+        });
       } else {
-        await apiClient.post(`/products/${product.id}/variants`, payload);
+        // New color starts with zero inventory; stock is added separately.
+        await apiClient.post(`/products/${product.id}/variants`, {
+          color: form.color,
+          colorHex: form.colorHex,
+          barcode: form.barcode || undefined,
+          size: sizeLabel,
+          stock: 0,
+        });
       }
       setEditId(null);
       setForm(emptyVariantForm);
       await refresh();
     } catch (e: unknown) {
-      setStockError(e instanceof Error ? e.message : 'خطا در ذخیره واریانت');
+      setSaveError(e instanceof Error ? e.message : 'خطا در ذخیره رنگ');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleStockSave = async (variant: Variant) => {
+    const raw = stockDrafts[variant.id] ?? String(variant.stock);
+    const stock = Number(raw);
+    if (!Number.isFinite(stock) || stock < 0) {
+      setStockErrors((p) => ({ ...p, [variant.id]: 'عدد نامعتبر' }));
+      return;
+    }
+    if (stock % minOrder !== 0) {
+      setStockErrors((p) => ({ ...p, [variant.id]: `مضربی از ${minOrder} باشد` }));
+      return;
+    }
+    setStockErrors((p) => ({ ...p, [variant.id]: '' }));
+    setStockSavingId(variant.id);
+    try {
+      await apiClient.patch(`/products/${product.id}/variants/${variant.id}`, { stock });
+      setStockDrafts((p) => {
+        const next = { ...p };
+        delete next[variant.id];
+        return next;
+      });
+      await refresh();
+    } catch (e: unknown) {
+      setStockErrors((p) => ({
+        ...p,
+        [variant.id]: e instanceof Error ? e.message : 'خطا در ذخیره موجودی',
+      }));
+    } finally {
+      setStockSavingId(null);
     }
   };
 
@@ -207,10 +242,7 @@ function VariantsModal({
       <input
         type={type}
         value={form[key]}
-        onChange={(e) => {
-          setForm((p) => ({ ...p, [key]: e.target.value }));
-          if (key === 'stock') setStockError(null);
-        }}
+        onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
         placeholder={placeholder}
         className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
       />
@@ -234,9 +266,9 @@ function VariantsModal({
 
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 space-y-3">
           <p className="text-xs font-semibold text-gray-500">
-            {editId ? 'ویرایش واریانت' : 'افزودن واریانت جدید'}
+            {editId ? 'ویرایش رنگ' : 'تعریف رنگ جدید'}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end">
             {f('color', 'نام رنگ', 'text', 'سفید')}
             <div>
               <label className="block text-[10px] font-medium text-gray-500 mb-1">کد رنگ</label>
@@ -247,7 +279,6 @@ function VariantsModal({
                 className="w-full h-[34px] rounded-lg border border-gray-200 cursor-pointer"
               />
             </div>
-            {f('stock', 'موجودی', 'number', String(minOrder))}
             {f('barcode', 'بارکد', 'text', 'اختیاری')}
           </div>
 
@@ -293,9 +324,9 @@ function VariantsModal({
           )}
 
           <p className="text-[11px] text-gray-400">
-            موجودی باید مضربی از حداقل سفارش ({minOrder}) باشد
+            ابتدا رنگ را تعریف کنید؛ موجودی هر رنگ را جداگانه در جدول زیر وارد کنید.
           </p>
-          {stockError && <p className="text-xs text-error">{stockError}</p>}
+          {saveError && <p className="text-xs text-error">{saveError}</p>}
 
           <div className="flex gap-2">
             <button
@@ -304,7 +335,7 @@ function VariantsModal({
               className="btn btn-primary btn-sm flex items-center gap-1.5"
             >
               <Save className="h-3.5 w-3.5" />
-              {saving ? 'ذخیره...' : editId ? 'بروزرسانی' : 'افزودن'}
+              {saving ? 'ذخیره...' : editId ? 'بروزرسانی رنگ' : 'افزودن رنگ'}
             </button>
             {editId && (
               <button onClick={cancelEdit} className="btn btn-outline btn-sm">
@@ -317,7 +348,7 @@ function VariantsModal({
         <div className="overflow-y-auto flex-1">
           {variants.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">
-              واریانتی تعریف نشده — از فرم بالا اضافه کنید
+              رنگی تعریف نشده — از فرم بالا اضافه کنید
             </p>
           ) : (
             <table className="w-full text-sm">
@@ -347,14 +378,37 @@ function VariantsModal({
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-600">{v.size || sizeLabel}</td>
                     <td className="px-4 py-2.5">
-                      <span
-                        className={cn(
-                          'font-bold',
-                          v.stock === 0 ? 'text-error' : v.stock < minOrder * 2 ? 'text-warning' : 'text-success',
-                        )}
-                      >
-                        {v.stock}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          step={minOrder}
+                          value={stockDrafts[v.id] ?? String(v.stock)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setStockDrafts((p) => ({ ...p, [v.id]: val }));
+                            setStockErrors((p) => ({ ...p, [v.id]: '' }));
+                          }}
+                          className={cn(
+                            'w-20 rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30',
+                            v.stock === 0 ? 'border-error/40 text-error' : 'border-gray-200',
+                          )}
+                        />
+                        <button
+                          onClick={() => handleStockSave(v)}
+                          disabled={
+                            stockSavingId === v.id ||
+                            (stockDrafts[v.id] ?? String(v.stock)) === String(v.stock)
+                          }
+                          title="ثبت موجودی"
+                          className="text-gray-400 hover:text-primary disabled:opacity-30 disabled:hover:text-gray-400"
+                        >
+                          <Save className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      {stockErrors[v.id] && (
+                        <p className="text-[10px] text-error mt-0.5">{stockErrors[v.id]}</p>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{v.barcode || '—'}</td>
                     <td className="px-4 py-2.5">
