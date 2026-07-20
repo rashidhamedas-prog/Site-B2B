@@ -60,6 +60,25 @@ export class InventoryController {
     return this.inventoryService.getMovements(variantId, page);
   }
 
+  // ── تنظیم مستقیم موجودی ──────────────────────────────────
+  @Post('set')
+  @ApiOperation({ summary: 'تنظیم موجودی دقیق یک واریانت' })
+  setStock(
+    @Body() body: {
+      productVariantId: string;
+      stock: number;
+      notes?: string;
+      createdBy?: string;
+    },
+  ) {
+    return this.inventoryService.setStock(
+      body.productVariantId,
+      body.stock,
+      body.notes,
+      body.createdBy,
+    );
+  }
+
   // ── تعدیل موجودی ─────────────────────────────────────────
   @Post('adjust')
   @ApiOperation({ summary: 'تعدیل موجودی یک واریانت (ورودی، خروجی، تصحیح)' })

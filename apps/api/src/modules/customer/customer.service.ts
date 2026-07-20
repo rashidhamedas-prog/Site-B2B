@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { CustomerEntity } from './entities/customer.entity';
+import { AuthService } from '../auth/auth.service';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -20,6 +21,7 @@ export class CustomerService {
   constructor(
     @InjectRepository(CustomerEntity)
     private readonly repo: Repository<CustomerEntity>,
+    private readonly authService: AuthService,
   ) {}
 
   async findAll(page = 1, limit = 20, search?: string, segment?: string) {
@@ -86,8 +88,11 @@ export class CustomerService {
   }
 
   async update(id: string, data: Partial<CustomerEntity>) {
-    await this.findOne(id);
+    const before = await this.findOne(id);
     await this.repo.update(id, data);
+    if (data.status && data.status !== before.status) {
+      await this.authService.syncUserActiveByCustomerId(id, data.status);
+    }
     return this.findOne(id);
   }
 
@@ -98,6 +103,7 @@ export class CustomerService {
 
   async remove(id: string) {
     await this.findOne(id);
+    await this.authService.deactivateUserByCustomerId(id);
     await this.repo.softDelete(id);
     return { message: 'مشتری با موفقیت حذف شد' };
   }

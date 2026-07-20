@@ -125,12 +125,7 @@ function VariantsModal({
   const [variants, setVariants] = useState<Variant[]>(product.variants ?? []);
   const [colorHistory, setColorHistory] = useState<ColorHistoryItem[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
-  // Inventory is managed separately from color: per-variant stock drafts.
-  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
-  const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
-  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
 
-  const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
   const sizeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
 
   useEffect(() => {
@@ -186,7 +181,6 @@ function VariantsModal({
           colorHex: form.colorHex,
           barcode: form.barcode || undefined,
           size: sizeLabel,
-          stock: 0,
         });
       }
       setEditId(null);
@@ -196,37 +190,6 @@ function VariantsModal({
       setSaveError(e instanceof Error ? e.message : 'خطا در ذخیره رنگ');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleStockSave = async (variant: Variant) => {
-    const raw = stockDrafts[variant.id] ?? String(variant.stock);
-    const stock = Number(raw);
-    if (!Number.isFinite(stock) || stock < 0) {
-      setStockErrors((p) => ({ ...p, [variant.id]: 'عدد نامعتبر' }));
-      return;
-    }
-    if (stock % minOrder !== 0) {
-      setStockErrors((p) => ({ ...p, [variant.id]: `مضربی از ${minOrder} باشد` }));
-      return;
-    }
-    setStockErrors((p) => ({ ...p, [variant.id]: '' }));
-    setStockSavingId(variant.id);
-    try {
-      await apiClient.patch(`/products/${product.id}/variants/${variant.id}`, { stock });
-      setStockDrafts((p) => {
-        const next = { ...p };
-        delete next[variant.id];
-        return next;
-      });
-      await refresh();
-    } catch (e: unknown) {
-      setStockErrors((p) => ({
-        ...p,
-        [variant.id]: e instanceof Error ? e.message : 'خطا در ذخیره موجودی',
-      }));
-    } finally {
-      setStockSavingId(null);
     }
   };
 
@@ -254,7 +217,7 @@ function VariantsModal({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col relative">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h3 className="text-base font-bold text-gray-900">واریانت‌های محصول</h3>
+            <h3 className="text-base font-bold text-gray-900">رنگ‌بندی محصول</h3>
             <p className="text-xs text-gray-400 mt-0.5">
               {product.name} — {product.sku} — {sizeLabel}
             </p>
@@ -324,7 +287,7 @@ function VariantsModal({
           )}
 
           <p className="text-[11px] text-gray-400">
-            ابتدا رنگ را تعریف کنید؛ موجودی هر رنگ را جداگانه در جدول زیر وارد کنید.
+            موجودی از بخش «مدیریت انبار» تنظیم می‌شود — اینجا فقط رنگ و بارکد تعریف کنید.
           </p>
           {saveError && <p className="text-xs text-error">{saveError}</p>}
 
@@ -354,7 +317,7 @@ function VariantsModal({
             <table className="w-full text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  {['رنگ', 'سایز', 'موجودی', 'بارکد', ''].map((h) => (
+                  {['رنگ', 'سایز', 'بارکد', ''].map((h) => (
                     <th key={h || 'actions'} className="px-4 py-2 text-right text-xs font-semibold text-gray-400">
                       {h}
                     </th>
@@ -377,39 +340,6 @@ function VariantsModal({
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-600">{v.size || sizeLabel}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          min={0}
-                          step={minOrder}
-                          value={stockDrafts[v.id] ?? String(v.stock)}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setStockDrafts((p) => ({ ...p, [v.id]: val }));
-                            setStockErrors((p) => ({ ...p, [v.id]: '' }));
-                          }}
-                          className={cn(
-                            'w-20 rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30',
-                            v.stock === 0 ? 'border-error/40 text-error' : 'border-gray-200',
-                          )}
-                        />
-                        <button
-                          onClick={() => handleStockSave(v)}
-                          disabled={
-                            stockSavingId === v.id ||
-                            (stockDrafts[v.id] ?? String(v.stock)) === String(v.stock)
-                          }
-                          title="ثبت موجودی"
-                          className="text-gray-400 hover:text-primary disabled:opacity-30 disabled:hover:text-gray-400"
-                        >
-                          <Save className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      {stockErrors[v.id] && (
-                        <p className="text-[10px] text-error mt-0.5">{stockErrors[v.id]}</p>
-                      )}
-                    </td>
                     <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{v.barcode || '—'}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
@@ -429,7 +359,7 @@ function VariantsModal({
         </div>
 
         <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-          <p className="text-xs text-gray-400">{variants.length} واریانت ثبت شده</p>
+          <p className="text-xs text-gray-400">{variants.length} رنگ ثبت شده</p>
           <button onClick={onClose} className="btn btn-outline btn-sm">
             بستن
           </button>
@@ -438,7 +368,7 @@ function VariantsModal({
         {deletingId && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
             <div className="bg-white rounded-xl p-6 shadow-xl text-center">
-              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این واریانت؟</p>
+              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این رنگ؟</p>
               <div className="flex gap-3">
                 <button onClick={() => setDeletingId(null)} className="btn btn-outline btn-sm">
                   انصراف
@@ -716,7 +646,7 @@ export function AdminProducts() {
           <table className="w-full min-w-[820px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['SKU', 'نام محصول', 'جنس پارچه', 'واریانت‌ها', 'موجودی کل', 'قیمت عمده (ت)', 'وضعیت', ''].map(
+                {['SKU', 'نام محصول', 'جنس پارچه', 'رنگ‌بندی', 'موجودی کل', 'قیمت عمده (ت)', 'وضعیت', ''].map(
                   (h) => (
                     <th
                       key={h || 'actions'}
@@ -788,7 +718,7 @@ export function AdminProducts() {
                           className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
                         >
                           <Layers className="h-3.5 w-3.5" />
-                          {varCount} واریانت
+                          {varCount} رنگ
                         </button>
                       </td>
                       <td className="px-4 py-3">
@@ -1097,7 +1027,7 @@ export function AdminProducts() {
 
               {modal === 'create' && (
                 <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-                  بعد از ذخیره، واریانت‌ها (رنگ) را از دکمه «واریانت‌ها» اضافه کنید
+                  بعد از ذخیره، رنگ‌ها را از دکمه «رنگ‌بندی» اضافه کنید. موجودی از بخش انبار مدیریت می‌شود.
                 </p>
               )}
             </div>

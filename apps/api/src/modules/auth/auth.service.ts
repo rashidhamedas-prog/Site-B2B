@@ -1,6 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UserEntity } from './entities/user.entity';
@@ -20,6 +25,17 @@ function isDuplicateCodeError(err: unknown): boolean {
   return code === '23505' && /\(code\)/i.test(detail);
 }
 
+function isDuplicatePhoneError(err: unknown): boolean {
+  const e = (err ?? {}) as {
+    code?: string;
+    detail?: string;
+    driverError?: { code?: string; detail?: string };
+  };
+  const code = e.code ?? e.driverError?.code;
+  const detail = e.detail ?? e.driverError?.detail ?? '';
+  return code === '23505' && /\(phone\)/i.test(detail);
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -28,23 +44,37 @@ export class AuthService {
     @InjectRepository(CustomerEntity)
     private readonly customerRepo: Repository<CustomerEntity>,
     private readonly jwtService: JwtService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.userRepo.findOne({ where: { phone: dto.phone } });
-    if (existing) throw new ConflictException('این شماره قبلاً ثبت شده است');
-
-    // A customer row (even soft-deleted) keeps the unique phone/code constraints,
-    // so guard against an already-registered phone before inserting.
+    const existingUser = await this.userRepo.findOne({
+      where: { phone: dto.phone },
+      withDeleted: true,
+    });
     const existingCustomer = await this.customerRepo.findOne({
       where: { phone: dto.phone },
       withDeleted: true,
     });
+
     if (existingCustomer && !existingCustomer.deletedAt) {
       throw new ConflictException('این شماره قبلاً ثبت شده است');
     }
 
-    const customerData = {
+    if (existingUser && !existingUser.deletedAt) {
+      const linkedCustomer = existingUser.customerId
+        ? await this.customerRepo.findOne({
+            where: { id: existingUser.customerId },
+            withDeleted: true,
+          })
+        : null;
+      if (linkedCustomer && !linkedCustomer.deletedAt) {
+        throw new ConflictException('این شماره قبلاً ثبت شده است');
+      }
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 12);
+    const customerData: Partial<CustomerEntity> = {
       businessName: dto.businessName,
       ownerName: dto.ownerName,
       phone: dto.phone,
@@ -57,27 +87,51 @@ export class AuthService {
       segment: 'C',
     };
 
-    let savedCustomer: CustomerEntity;
-    if (existingCustomer?.deletedAt) {
-      // Reactivate a previously soft-deleted customer with the same phone,
-      // reusing its code to avoid violating unique constraints.
-      await this.customerRepo.restore(existingCustomer.id);
-      await this.customerRepo.update(existingCustomer.id, customerData);
-      savedCustomer = await this.customerRepo.findOneOrFail({ where: { id: existingCustomer.id } });
-    } else {
-      savedCustomer = await this.createCustomerWithUniqueCode(customerData);
-    }
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const customerRepo = manager.getRepository(CustomerEntity);
+        const userRepo = manager.getRepository(UserEntity);
 
-    const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = this.userRepo.create({
-      phone: dto.phone,
-      email: dto.email,
-      passwordHash,
-      role: 'CUSTOMER',
-      customerId: savedCustomer.id,
-    });
-    await this.userRepo.save(user);
-    return { message: 'ثبت‌نام با موفقیت انجام شد. منتظر تأیید ادمین باشید.' };
+        let savedCustomer: CustomerEntity;
+        if (existingCustomer?.deletedAt) {
+          await customerRepo.restore(existingCustomer.id);
+          await customerRepo.update(existingCustomer.id, customerData);
+          savedCustomer = await customerRepo.findOneOrFail({ where: { id: existingCustomer.id } });
+        } else {
+          savedCustomer = await this.createCustomerWithUniqueCode(customerData, manager);
+        }
+
+        if (existingUser) {
+          if (existingUser.deletedAt) {
+            await userRepo.restore(existingUser.id);
+          }
+          await userRepo.update(existingUser.id, {
+            email: dto.email,
+            passwordHash,
+            customerId: savedCustomer.id,
+            isActive: false,
+            role: 'CUSTOMER',
+          });
+        } else {
+          const user = userRepo.create({
+            phone: dto.phone,
+            email: dto.email,
+            passwordHash,
+            role: 'CUSTOMER',
+            customerId: savedCustomer.id,
+            isActive: false,
+          });
+          await userRepo.save(user);
+        }
+
+        return { message: 'ثبت‌نام با موفقیت انجام شد. منتظر تأیید ادمین باشید.' };
+      });
+    } catch (err) {
+      if (isDuplicatePhoneError(err)) {
+        throw new ConflictException('این شماره قبلاً ثبت شده است');
+      }
+      throw err;
+    }
   }
 
   /**
@@ -87,11 +141,16 @@ export class AuthService {
    */
   private async createCustomerWithUniqueCode(
     data: Partial<CustomerEntity>,
+    manager?: EntityManager,
   ): Promise<CustomerEntity> {
+    const customerRepo = manager
+      ? manager.getRepository(CustomerEntity)
+      : this.customerRepo;
+
     for (let attempt = 0; attempt < 5; attempt++) {
-      const code = await this.nextCustomerCode();
+      const code = await this.nextCustomerCode(customerRepo);
       try {
-        return await this.customerRepo.save(this.customerRepo.create({ ...data, code }));
+        return await customerRepo.save(customerRepo.create({ ...data, code }));
       } catch (err) {
         if (isDuplicateCodeError(err) && attempt < 4) continue;
         throw err;
@@ -100,8 +159,10 @@ export class AuthService {
     throw new ConflictException('امکان ایجاد کد مشتری نبود، دوباره تلاش کنید');
   }
 
-  private async nextCustomerCode(): Promise<string> {
-    const rows = await this.customerRepo
+  private async nextCustomerCode(
+    repo: Repository<CustomerEntity> = this.customerRepo,
+  ): Promise<string> {
+    const rows = await repo
       .createQueryBuilder('c')
       .withDeleted()
       .select('c.code', 'code')
@@ -116,10 +177,29 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.userRepo.findOne({ where: { phone: dto.phone } });
-    if (!user || !user.isActive) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    if (!user) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+
+    if (user.role === 'CUSTOMER') {
+      const customer = user.customerId
+        ? await this.customerRepo.findOne({ where: { id: user.customerId } })
+        : null;
+
+      if (!user.isActive || !customer || customer.status !== 'ACTIVE') {
+        if (customer?.status === 'PENDING') {
+          throw new UnauthorizedException(
+            'حساب شما هنوز تأیید نشده است. منتظر تأیید ادمین باشید.',
+          );
+        }
+        throw new UnauthorizedException(
+          'حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.',
+        );
+      }
+    } else if (!user.isActive) {
+      throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    }
 
     user.lastLoginAt = new Date();
     await this.userRepo.save(user);
@@ -173,5 +253,20 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.userRepo.update(userId, { passwordHash });
     return { message: 'رمز عبور با موفقیت تغییر یافت' };
+  }
+
+  /** Sync user.isActive when admin changes customer status. */
+  async syncUserActiveByCustomerId(customerId: string, status: string) {
+    const user = await this.userRepo.findOne({ where: { customerId } });
+    if (!user) return;
+    await this.userRepo.update(user.id, { isActive: status === 'ACTIVE' });
+  }
+
+  /** Soft-delete user account when customer is removed. */
+  async deactivateUserByCustomerId(customerId: string) {
+    const user = await this.userRepo.findOne({ where: { customerId } });
+    if (!user) return;
+    await this.userRepo.update(user.id, { isActive: false });
+    await this.userRepo.softDelete(user.id);
   }
 }

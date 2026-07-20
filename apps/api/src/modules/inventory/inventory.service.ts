@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InventoryMovementEntity } from './entities/inventory-movement.entity';
@@ -20,19 +20,48 @@ export class InventoryService {
     createdBy?: string,
     referenceId?: string,
   ) {
-    const delta = type === 'OUT' || type === 'SALE' ? -Math.abs(quantity) : Math.abs(quantity);
-    const variant = await this.productService.updateVariantStock(productVariantId, delta);
+    const variant = await this.productService.getVariant(productVariantId);
+    const minOrderQty = Math.max(1, Number(variant.product?.minOrderQty) || 1);
+
+    let delta: number;
+    let movementQty: number;
+
+    if (type === 'ADJUST') {
+      if (quantity < 0) throw new BadRequestException('موجودی نمی‌تواند منفی باشد');
+      if (quantity % minOrderQty !== 0) {
+        throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
+      }
+      delta = quantity - variant.stock;
+      movementQty = Math.abs(delta);
+      if (delta === 0) {
+        return { productVariantId, stock: variant.stock, message: 'بدون تغییر' };
+      }
+    } else {
+      movementQty = Math.abs(quantity);
+      delta = type === 'OUT' || type === 'SALE' || type === 'DAMAGE' ? -movementQty : movementQty;
+    }
+
+    const updated = await this.productService.updateVariantStock(productVariantId, delta);
     const movement = this.repo.create({
       productVariantId,
       type,
-      quantity: Math.abs(quantity),
-      balanceAfter: variant.stock,
+      quantity: movementQty,
+      balanceAfter: updated.stock,
       notes,
       createdBy,
       referenceId,
       referenceType: referenceId ? 'ORDER' : undefined,
     });
     return this.repo.save(movement);
+  }
+
+  async setStock(
+    productVariantId: string,
+    stock: number,
+    notes?: string,
+    createdBy?: string,
+  ) {
+    return this.adjust(productVariantId, stock, 'ADJUST', notes, createdBy);
   }
 
   async getMovements(productVariantId: string, page = 1, limit = 30) {
