@@ -9,8 +9,6 @@ import { Input } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
-// ── Types ──────────────────────────────────────────────────────
-
 interface Variant {
   id: string;
   color: string;
@@ -27,6 +25,7 @@ interface StockProduct {
   fabric: string;
   status: string;
   wholesalePrice: number;
+  minOrderQty?: number;
   totalStock: number;
   variants: Variant[];
 }
@@ -308,9 +307,49 @@ export function AdminInventory() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [adjustTarget, setAdjustTarget] = useState<{ variant: Variant; productName: string } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
+  const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
+  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
 
   const { products, meta, loading, refetch } = useInventory(filter, search, page);
   const { summary, refetch: refetchSummary } = useSummary();
+
+  const handleDone = () => { refetch(); refetchSummary(); };
+
+  const handleStockSave = async (variant: Variant, minOrderQty = 1) => {
+    const raw = stockDrafts[variant.id] ?? String(variant.stock);
+    const stock = Number(raw);
+    if (!Number.isFinite(stock) || stock < 0) {
+      setStockErrors((p) => ({ ...p, [variant.id]: 'عدد نامعتبر' }));
+      return;
+    }
+    const minOrder = Math.max(1, minOrderQty);
+    if (stock % minOrder !== 0) {
+      setStockErrors((p) => ({ ...p, [variant.id]: `مضربی از ${minOrder} باشد` }));
+      return;
+    }
+    setStockErrors((p) => ({ ...p, [variant.id]: '' }));
+    setStockSavingId(variant.id);
+    try {
+      await apiClient.post('/inventory/set', {
+        productVariantId: variant.id,
+        stock,
+      });
+      setStockDrafts((p) => {
+        const next = { ...p };
+        delete next[variant.id];
+        return next;
+      });
+      handleDone();
+    } catch (e: unknown) {
+      setStockErrors((p) => ({
+        ...p,
+        [variant.id]: e instanceof Error ? e.message : 'خطا در ذخیره موجودی',
+      }));
+    } finally {
+      setStockSavingId(null);
+    }
+  };
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -319,8 +358,6 @@ export function AdminInventory() {
       return n;
     });
   };
-
-  const handleDone = () => { refetch(); refetchSummary(); };
 
   const FILTERS = [
     { key: 'ALL', label: 'همه' },
@@ -334,7 +371,7 @@ export function AdminInventory() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-gray-900">مدیریت انبار</h2>
-          <p className="text-sm text-gray-500 mt-0.5">موجودی محصولات و واریانت‌ها</p>
+          <p className="text-sm text-gray-500 mt-0.5">موجودی محصولات — جدا از بخش رنگ‌بندی</p>
         </div>
         <button onClick={() => setShowHistory(true)}
           className="btn btn-outline btn-md flex items-center gap-2">
@@ -459,11 +496,46 @@ export function AdminInventory() {
                                   </div>
                                 </td>
                                 <td className="px-3 py-2 text-gray-700">{v.size}</td>
-                                <td className="px-3 py-2"><StockBadge stock={v.stock} /></td>
+                                <td className="px-3 py-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step={Math.max(1, product.minOrderQty ?? 1)}
+                                      value={stockDrafts[v.id] ?? String(v.stock)}
+                                      onChange={(e) => {
+                                        setStockDrafts((p) => ({ ...p, [v.id]: e.target.value }));
+                                        setStockErrors((p) => ({ ...p, [v.id]: '' }));
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className={cn(
+                                        'w-20 rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30',
+                                        v.stock === 0 ? 'border-error/40 text-error' : 'border-gray-200',
+                                      )}
+                                    />
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStockSave(v, product.minOrderQty ?? 1);
+                                      }}
+                                      disabled={
+                                        stockSavingId === v.id ||
+                                        (stockDrafts[v.id] ?? String(v.stock)) === String(v.stock)
+                                      }
+                                      title="ثبت موجودی"
+                                      className="text-gray-400 hover:text-primary disabled:opacity-30"
+                                    >
+                                      <Save className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                  {stockErrors[v.id] && (
+                                    <p className="text-[10px] text-error mt-0.5">{stockErrors[v.id]}</p>
+                                  )}
+                                </td>
                                 <td className="px-3 py-2 font-mono text-xs text-gray-400">{v.barcode || '—'}</td>
                                 <td className="px-3 py-2">
                                   <button
-                                    onClick={() => setAdjustTarget({ variant: v, productName: product.name })}
+                                    onClick={(e) => { e.stopPropagation(); setAdjustTarget({ variant: v, productName: product.name }); }}
                                     className="text-xs text-primary hover:underline font-medium">
                                     تعدیل
                                   </button>
@@ -473,7 +545,7 @@ export function AdminInventory() {
                           </tbody>
                         </table>
                         {product.variants.length === 0 && (
-                          <p className="text-xs text-gray-400 py-2 text-center">واریانتی تعریف نشده — از بخش محصولات اضافه کنید</p>
+                          <p className="text-xs text-gray-400 py-2 text-center">رنگی تعریف نشده — از بخش محصولات رنگ اضافه کنید</p>
                         )}
                       </div>
                     </div>

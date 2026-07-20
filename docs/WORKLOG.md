@@ -11,6 +11,7 @@
 
 ---
 
+<<<<<<< HEAD
 ## 2026-07-20 — رفع خطای ثبت‌نام عمده‌فروش
 
 ### خلاصه
@@ -23,6 +24,18 @@
 - `apps/web/src/components/portal/RegisterForm.tsx`, `apps/web/src/lib/api.ts`
 - `apps/api/src/modules/auth/auth.service.ts`, `dto/register.dto.ts`
 - `apps/api/src/modules/customer/customer.service.ts`
+=======
+## 2026-07-20 — جداسازی کامل موجودی از رنگ در ثبت محصول
+
+### خلاصه
+- مودال «رنگ‌بندی» فقط تعریف رنگ/بارکد؛ بدون فیلد یا ویرایش موجودی
+- موجودی فقط از «مدیریت انبار» (`POST /inventory/set` + اعتبارسنجی مضرب MOQ)
+- API: `createVariant` همیشه stock=0؛ `updateVariant` تغییر stock را رد می‌کند
+
+### فایل‌ها
+- `apps/web/src/components/admin/AdminProducts.tsx`, `AdminInventory.tsx`
+- `apps/api/src/modules/product/*`, `inventory/*`
+>>>>>>> 2997a74 (feat(admin): fully separate color definition from inventory stock)
 
 ---
 

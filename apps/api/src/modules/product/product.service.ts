@@ -320,11 +320,6 @@ export class ProductService {
   async createVariant(productId: string, data: CreateVariantDto) {
     const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('محصول یافت نشد');
-    const minOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
-    const stock = Number(data.stock ?? 0) || 0;
-    if (stock % minOrderQty !== 0) {
-      throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
-    }
 
     const colorName = String(data.color ?? '').trim();
     const sizeLabel = String(data.size ?? '').trim() || this.sizeLabelForProduct(product);
@@ -336,7 +331,7 @@ export class ProductService {
     const variant = this.variantRepo.create({
       ...data,
       productId,
-      stock,
+      stock: 0,
       color: color.name,
       colorHex: color.hex ?? (data as any).colorHex ?? '',
       size: size.label,
@@ -349,14 +344,9 @@ export class ProductService {
   async updateVariant(variantId: string, data: Partial<ProductVariantEntity>) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
-    const product = await this.productRepo.findOne({ where: { id: variant.productId } });
-    if (!product) throw new NotFoundException('محصول یافت نشد');
-    const minOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
+
     if (typeof (data as any).stock === 'number') {
-      const stock = Number((data as any).stock) || 0;
-      if (stock % minOrderQty !== 0) {
-        throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
-      }
+      throw new BadRequestException('موجودی فقط از بخش انبار قابل تغییر است');
     }
 
     if (typeof (data as any).color === 'string' || typeof (data as any).colorHex === 'string') {
@@ -375,7 +365,7 @@ export class ProductService {
       variant.sizeId = size.id;
     }
 
-    Object.assign(variant, { ...data, color: variant.color, size: variant.size });
+    Object.assign(variant, { ...data, color: variant.color, size: variant.size, stock: variant.stock });
     return this.variantRepo.save(variant);
   }
 
