@@ -9,43 +9,101 @@ import { CheckCircle } from 'lucide-react';
 const PROVINCES = [
   'تهران', 'اصفهان', 'فارس', 'خراسان رضوی', 'آذربایجان شرقی', 'آذربایجان غربی',
   'کرمان', 'مازندران', 'گیلان', 'خوزستان', 'سیستان و بلوچستان', 'البرز',
-  'قم', 'مشهد', 'شیراز', 'اهواز', 'کرمانشاه', 'ارومیه', 'رشت', 'زاهدان',
-  'همدان', 'کرج', 'بندرعباس', 'اردبیل', 'سمنان', 'یزد', 'زنجان', 'گلستان',
-  'لرستان', 'چهارمحال و بختیاری', 'کهگیلویه و بویراحمد', 'خراسان شمالی',
-  'خراسان جنوبی', 'ایلام', 'بوشهر', 'مرکزی',
+  'قم', 'قزوین', 'کردستان', 'کرمانشاه', 'همدان', 'اردبیل', 'سمنان', 'یزد',
+  'زنجان', 'گلستان', 'لرستان', 'چهارمحال و بختیاری', 'کهگیلویه و بویراحمد',
+  'خراسان شمالی', 'خراسان جنوبی', 'ایلام', 'بوشهر', 'مرکزی', 'هرمزگان',
 ];
+
+/** Normalize Persian/Arabic digits to ASCII so phone validation accepts them. */
+function toAsciiDigits(value: string): string {
+  return value
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - '۰'.charCodeAt(0)))
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - '٠'.charCodeAt(0)));
+}
+
+type FormFields = {
+  businessName: string;
+  ownerName: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  province: string;
+  city: string;
+  businessType: string;
+  notes: string;
+};
+
+type FieldKey = keyof FormFields;
+
+const emptyForm: FormFields = {
+  businessName: '',
+  ownerName: '',
+  phone: '',
+  password: '',
+  confirmPassword: '',
+  province: '',
+  city: '',
+  businessType: 'RETAIL',
+  notes: '',
+};
 
 export function RegisterForm() {
   const { register, loading, error } = useAuth();
   const router = useRouter();
   const [done, setDone] = useState(false);
-  const [form, setForm] = useState({
-    businessName: '', ownerName: '', phone: '', password: '', confirmPassword: '',
-    province: '', city: '', businessType: 'RETAIL', notes: '',
-  });
+  const [form, setForm] = useState<FormFields>(emptyForm);
   const [localError, setLocalError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({});
 
-  const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
+  const set = (k: FieldKey, v: string) => {
+    setForm((p) => ({ ...p, [k]: v }));
+    setFieldErrors((p) => {
+      if (!p[k]) return p;
+      const next = { ...p };
+      delete next[k];
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
-    if (!/^09[0-9]{9}$/.test(form.phone)) { setLocalError('شماره موبایل معتبر نیست'); return; }
-    if (form.password.length < 6) { setLocalError('رمز عبور حداقل ۶ کاراکتر'); return; }
-    if (form.password !== form.confirmPassword) { setLocalError('رمز عبور با تکرار آن مطابقت ندارد'); return; }
-    if (!form.businessName || !form.ownerName || !form.province || !form.city) {
-      setLocalError('لطفاً تمام فیلدهای ستاره‌دار را پر کنید'); return;
+
+    const businessName = form.businessName.trim();
+    const ownerName = form.ownerName.trim();
+    const province = form.province.trim();
+    const city = form.city.trim();
+    const phone = toAsciiDigits(form.phone.trim());
+    const password = form.password;
+    const confirmPassword = form.confirmPassword;
+    const errors: Partial<Record<FieldKey, string>> = {};
+
+    if (!businessName) errors.businessName = 'نام فروشگاه الزامی است';
+    if (!ownerName) errors.ownerName = 'نام و نام خانوادگی الزامی است';
+    if (!province) errors.province = 'انتخاب استان الزامی است';
+    if (!city) errors.city = 'نام شهر الزامی است';
+    if (!phone) errors.phone = 'شماره موبایل الزامی است';
+    else if (!/^09[0-9]{9}$/.test(phone)) errors.phone = 'شماره موبایل معتبر نیست (مثال: ۰۹۱۲۱۲۳۴۵۶۷)';
+    if (!password) errors.password = 'رمز عبور الزامی است';
+    else if (password.length < 6) errors.password = 'رمز عبور حداقل ۶ کاراکتر';
+    if (!confirmPassword) errors.confirmPassword = 'تکرار رمز عبور الزامی است';
+    else if (password !== confirmPassword) errors.confirmPassword = 'رمز عبور با تکرار آن مطابقت ندارد';
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setLocalError('لطفاً فیلدهای مشخص‌شده را اصلاح کنید');
+      return;
     }
 
     const ok = await register({
-      businessName: form.businessName,
-      ownerName: form.ownerName,
-      phone: form.phone,
-      password: form.password,
-      province: form.province,
-      city: form.city,
+      businessName,
+      ownerName,
+      phone,
+      password,
+      province,
+      city,
       businessType: form.businessType,
-      notes: form.notes || undefined,
+      notes: form.notes.trim() || undefined,
     });
     if (ok) setDone(true);
   };
@@ -67,16 +125,32 @@ export function RegisterForm() {
     );
   }
 
-  const inp = (label: string, k: string, type = 'text', placeholder = '', required = false) => (
+  const fieldClass = (key: FieldKey) =>
+    `w-full rounded-xl border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+      fieldErrors[key] ? 'border-error' : 'border-gray-200'
+    }`;
+
+  const inp = (
+    label: string,
+    k: FieldKey,
+    type = 'text',
+    placeholder = '',
+    required = false,
+  ) => (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1.5">
         {label} {required && <span className="text-error">*</span>}
       </label>
       <input
-        type={type} value={(form as any)[k]} onChange={(e) => set(k, e.target.value)}
-        placeholder={placeholder} required={required}
-        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        type={type}
+        value={form[k]}
+        onChange={(e) => set(k, e.target.value)}
+        placeholder={placeholder}
+        required={required}
+        autoComplete={k === 'password' || k === 'confirmPassword' ? 'new-password' : undefined}
+        className={fieldClass(k)}
       />
+      {fieldErrors[k] && <p className="mt-1 text-xs text-error">{fieldErrors[k]}</p>}
     </div>
   );
 
@@ -87,15 +161,18 @@ export function RegisterForm() {
       )}
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div className="grid grid-cols-2 gap-4">
-          {inp('نام فروشگاه/مجموعه', 'businessName', 'text', 'بوتیک گل رز', true)}
-          {inp('نام و نام خانوادگی', 'ownerName', 'text', 'محمد احمدی', true)}
+          {inp('نام فروشگاه/مجموعه', 'businessName', 'text', 'مثلاً بوتیک گل رز', true)}
+          {inp('نام و نام خانوادگی', 'ownerName', 'text', 'مثلاً محمد احمدی', true)}
         </div>
         <div className="grid grid-cols-2 gap-4">
-          {inp('موبایل', 'phone', 'tel', '09120000000', true)}
+          {inp('موبایل', 'phone', 'tel', '۰۹۱۲۱۲۳۴۵۶۷', true)}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">نوع کسب‌وکار</label>
-            <select value={form.businessType} onChange={(e) => set('businessType', e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <select
+              value={form.businessType}
+              onChange={(e) => set('businessType', e.target.value)}
+              className={fieldClass('businessType')}
+            >
               <option value="RETAIL">خرده‌فروش</option>
               <option value="BOUTIQUE">بوتیک</option>
               <option value="WHOLESALE">عمده‌فروش</option>
@@ -105,22 +182,33 @@ export function RegisterForm() {
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">استان <span className="text-error">*</span></label>
-            <select value={form.province} onChange={(e) => set('province', e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              استان <span className="text-error">*</span>
+            </label>
+            <select
+              value={form.province}
+              onChange={(e) => set('province', e.target.value)}
+              className={fieldClass('province')}
+            >
               <option value="">انتخاب استان...</option>
-              {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+              {PROVINCES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
             </select>
+            {fieldErrors.province && (
+              <p className="mt-1 text-xs text-error">{fieldErrors.province}</p>
+            )}
           </div>
-          {inp('شهر', 'city', 'text', 'تهران', true)}
+          {inp('شهر', 'city', 'text', 'نام شهر را وارد کنید', true)}
         </div>
-        {inp('توضیحات (اختیاری)', 'notes', 'text', 'مثلاً: مجتمع تجاری پارسه، طبقه 2')}
+        {inp('توضیحات (اختیاری)', 'notes', 'text', 'مثلاً: مجتمع تجاری پارسه، طبقه ۲')}
         <div className="grid grid-cols-2 gap-4">
           {inp('رمز عبور', 'password', 'password', 'حداقل ۶ کاراکتر', true)}
           {inp('تکرار رمز عبور', 'confirmPassword', 'password', 'تکرار رمز عبور', true)}
         </div>
-        <button type="submit" disabled={loading}
-          className="btn btn-primary btn-lg w-full mt-2">
+        <button type="submit" disabled={loading} className="btn btn-primary btn-lg w-full mt-2">
           {loading ? 'در حال ثبت...' : 'ارسال درخواست'}
         </button>
       </form>
