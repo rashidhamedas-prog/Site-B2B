@@ -2,6 +2,12 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-20 — hotfix: نام migration موجودی سطح محصول
+
+- TypeORM کلاس `ProductLevelStock20260720001` را رد می‌کرد (timestamp باید JS millis باشد)
+- تغییر به `ProductLevelStock1784486400001`؛ schema از قبل با safety-net روی prod اعمال شده بود
+- `CRM_API_KEY` روی سرور اضافه شد؛ rebuild --no-cache برای api/web
+
 ## نحوه ثبت (برای AI و توسعه‌دهنده)
 
 1. یک بلوک جدید با تاریخ ISO و عنوان کوتاه اضافه کنید.

@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class ProductLevelStock20260720001 implements MigrationInterface {
-  name = 'ProductLevelStock20260720001';
+export class ProductLevelStock1784486400001 implements MigrationInterface {
+  name = 'ProductLevelStock1784486400001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
