@@ -1,4 +1,11 @@
-import { IsString, Matches, MinLength, IsOptional, IsEmail } from 'class-validator';
+import {
+  IsString,
+  Matches,
+  MinLength,
+  IsOptional,
+  IsEmail,
+  IsNotEmpty,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -12,13 +19,15 @@ function toAsciiDigits(value: unknown): unknown {
 
 export class RegisterDto {
   @ApiProperty()
-  @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty({ message: 'نام و نام خانوادگی الزامی است' })
   ownerName: string;
 
   @ApiProperty()
-  @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty({ message: 'نام فروشگاه الزامی است' })
   businessName: string;
 
   @ApiProperty({ example: '09151234567' })
@@ -28,17 +37,19 @@ export class RegisterDto {
 
   @ApiProperty({ minLength: 6 })
   @IsString()
-  @MinLength(6)
+  @MinLength(6, { message: 'رمز عبور حداقل ۶ کاراکتر' })
   password: string;
 
   @ApiProperty()
-  @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty({ message: 'انتخاب استان الزامی است' })
   province: string;
 
   @ApiProperty()
-  @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty({ message: 'نام شهر الزامی است' })
   city: string;
 
   @ApiProperty({ required: false })
