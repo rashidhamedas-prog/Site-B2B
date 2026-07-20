@@ -12,6 +12,7 @@ export class InventoryService {
     private readonly productService: ProductService,
   ) {}
 
+  /** Legacy per-variant adjust — kept for older admin flows. */
   async adjust(
     productVariantId: string,
     quantity: number,
@@ -21,32 +22,39 @@ export class InventoryService {
     referenceId?: string,
   ) {
     const variant = await this.productService.getVariant(productVariantId);
+    const productId = variant.productId;
     const minOrderQty = Math.max(1, Number(variant.product?.minOrderQty) || 1);
+    const current = Number(variant.product?.stock) || 0;
 
     let delta: number;
     let movementQty: number;
+    let balanceAfter: number;
 
     if (type === 'ADJUST') {
       if (quantity < 0) throw new BadRequestException('موجودی نمی‌تواند منفی باشد');
       if (quantity % minOrderQty !== 0) {
         throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
       }
-      delta = quantity - variant.stock;
+      delta = quantity - current;
       movementQty = Math.abs(delta);
       if (delta === 0) {
-        return { productVariantId, stock: variant.stock, message: 'بدون تغییر' };
+        return { productId, stock: current, message: 'بدون تغییر' };
       }
+      const updated = await this.productService.setProductStock(productId, quantity);
+      balanceAfter = updated.stock;
     } else {
       movementQty = Math.abs(quantity);
       delta = type === 'OUT' || type === 'SALE' || type === 'DAMAGE' ? -movementQty : movementQty;
+      const updated = await this.productService.updateProductStock(productId, delta);
+      balanceAfter = updated.stock;
     }
 
-    const updated = await this.productService.updateVariantStock(productVariantId, delta);
     const movement = this.repo.create({
       productVariantId,
+      productId,
       type,
       quantity: movementQty,
-      balanceAfter: updated.stock,
+      balanceAfter,
       notes,
       createdBy,
       referenceId,
@@ -62,6 +70,73 @@ export class InventoryService {
     createdBy?: string,
   ) {
     return this.adjust(productVariantId, stock, 'ADJUST', notes, createdBy);
+  }
+
+  /** Product-level absolute stock set (independent of colors). */
+  async setProductStock(
+    productId: string,
+    stock: number,
+    notes?: string,
+    createdBy?: string,
+  ) {
+    const before = await this.productService.findOne(productId);
+    const previous = Number(before.stock) || 0;
+    const updated = await this.productService.setProductStock(productId, stock);
+    const delta = updated.stock - previous;
+    if (delta === 0) {
+      return { productId, stock: updated.stock, message: 'بدون تغییر' };
+    }
+    const movement = this.repo.create({
+      productId,
+      productVariantId: null,
+      type: 'ADJUST',
+      quantity: Math.abs(delta),
+      balanceAfter: updated.stock,
+      notes: notes ?? 'تنظیم موجودی محصول',
+      createdBy,
+    });
+    await this.repo.save(movement);
+    return {
+      productId: updated.id,
+      sku: updated.sku,
+      name: updated.name,
+      stock: updated.stock,
+      minOrderQty: updated.minOrderQty,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  async setProductStockBySku(sku: string, stock: number, notes?: string, createdBy?: string) {
+    const product = await this.productService.findBySku(sku);
+    return this.setProductStock(product.id, stock, notes, createdBy);
+  }
+
+  async bulkSetBySku(
+    items: Array<{ sku: string; stock: number }>,
+    notes?: string,
+    createdBy?: string,
+  ) {
+    if (!items?.length) throw new BadRequestException('لیست موجودی خالی است');
+    const results: Array<Record<string, unknown>> = [];
+    const errors: Array<{ sku: string; error: string }> = [];
+    for (const item of items) {
+      try {
+        const res = await this.setProductStockBySku(item.sku, item.stock, notes, createdBy);
+        results.push(res);
+      } catch (e: unknown) {
+        errors.push({
+          sku: item.sku,
+          error: e instanceof Error ? e.message : 'خطا',
+        });
+      }
+    }
+    return {
+      updated: results.length,
+      failed: errors.length,
+      results,
+      errors,
+      syncedAt: new Date().toISOString(),
+    };
   }
 
   async getMovements(productVariantId: string, page = 1, limit = 30) {
@@ -98,6 +173,7 @@ export class InventoryService {
     return {
       data,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      syncedAt: new Date().toISOString(),
     };
   }
 
@@ -108,6 +184,13 @@ export class InventoryService {
     const lowStock = all.filter((p) => p.totalStock > 0 && p.totalStock < 10).length;
     const zeroStock = all.filter((p) => p.totalStock === 0).length;
     const totalMovements = await this.repo.count();
-    return { totalProducts, totalUnits, lowStock, zeroStock, totalMovements };
+    return {
+      totalProducts,
+      totalUnits,
+      lowStock,
+      zeroStock,
+      totalMovements,
+      syncedAt: new Date().toISOString(),
+    };
   }
 }

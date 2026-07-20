@@ -11,7 +11,20 @@
 
 ---
 
-<<<<<<< HEAD
+## 2026-07-20 — موجودی سطح محصول + CRM API + PDP سایز/پالت
+
+### خلاصه
+- موجودی در سطح محصول (جدا از رنگ/واریانت)، مضرب حداقل سفارش
+- مودال جداگانه «موجودی» در ادمین محصولات؛ واریانت‌ها فقط رنگ
+- CRM API با `CRM_API_KEY` برای sync لحظه‌ای موجودی
+- PDP: پالت رنگ کنار نام؛ راهنمای سایز پیش‌فرض باز و برجسته
+
+### API
+- `PATCH /products/:id/stock`, `POST /inventory/product/set`
+- `GET|PUT /crm/inventory`, `GET|PUT /crm/inventory/:sku`
+
+---
+
 ## 2026-07-20 — رفع خطای ثبت‌نام عمده‌فروش
 
 ### خلاصه
@@ -24,7 +37,9 @@
 - `apps/web/src/components/portal/RegisterForm.tsx`, `apps/web/src/lib/api.ts`
 - `apps/api/src/modules/auth/auth.service.ts`, `dto/register.dto.ts`
 - `apps/api/src/modules/customer/customer.service.ts`
-=======
+
+---
+
 ## 2026-07-20 — جداسازی کامل موجودی از رنگ در ثبت محصول
 
 ### خلاصه
@@ -35,7 +50,6 @@
 ### فایل‌ها
 - `apps/web/src/components/admin/AdminProducts.tsx`, `AdminInventory.tsx`
 - `apps/api/src/modules/product/*`, `inventory/*`
->>>>>>> 2997a74 (feat(admin): fully separate color definition from inventory stock)
 
 ---
 

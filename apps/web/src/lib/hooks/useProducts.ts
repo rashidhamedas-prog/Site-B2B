@@ -32,6 +32,8 @@ export interface Product {
   wholesalePrice: number;
   retailPrice: number;
   minOrderQty: number;
+  stock?: number;
+  totalStock?: number;
   images: string[];
   variants: Array<{ id: string; color: string; colorHex: string; size: string; stock: number; barcode?: string }>;
   specs?: ProductSpecs;

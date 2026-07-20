@@ -40,20 +40,21 @@ export class ProductService {
   }
 
   private withBadges<T extends ProductEntity>(product: T) {
-    const totalStock = (product.variants ?? []).reduce((s, v) => s + (Number(v.stock) || 0), 0);
+    const stock = Number.isFinite(Number(product.stock)) ? Number(product.stock) || 0 : 0;
     const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
     const createdAt = product.createdAt ? new Date(product.createdAt).getTime() : 0;
     const isNewAuto = createdAt > 0 && Date.now() - createdAt < NEW_BADGE_MS;
-    const isLimitedStock = totalStock > 0 && totalStock <= minOrder * 2;
+    const isLimitedStock = stock > 0 && stock <= minOrder * 2;
     const sizeType = (product.sizeType || 'FREE') as ProductSizeType;
     return {
       ...product,
+      stock,
       fabric: this.fabricFromSpecs(product.specs, product.fabric),
       isNew: isNewAuto,
       isFeatured: !!product.isDiscounted,
       isDiscounted: !!product.isDiscounted,
       isLimitedStock,
-      totalStock,
+      totalStock: stock,
       sizeGuide: SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE,
     };
   }
@@ -308,6 +309,48 @@ export class ProductService {
     return this.variantRepo.save(variant);
   }
 
+  /** Adjust product-level stock by delta (orders deduct with negative delta). */
+  async updateProductStock(productId: string, delta: number) {
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('محصول یافت نشد');
+    product.stock = Math.max(0, (Number(product.stock) || 0) + delta);
+    return this.productRepo.save(product);
+  }
+
+  /**
+   * Set absolute product-level stock (independent of colors).
+   * Must be a non-negative multiple of minOrderQty.
+   */
+  async setProductStock(productId: string, stock: number) {
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('محصول یافت نشد');
+    const minOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
+    const next = Math.floor(Number(stock));
+    if (!Number.isFinite(next) || next < 0) {
+      throw new BadRequestException('موجودی نامعتبر است');
+    }
+    if (next % minOrderQty !== 0) {
+      throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
+    }
+    product.stock = next;
+    return this.productRepo.save(product);
+  }
+
+  async setProductStockBySku(sku: string, stock: number) {
+    const product = await this.productRepo.findOne({ where: { sku: String(sku).trim() } });
+    if (!product) throw new NotFoundException(`محصول با SKU «${sku}» یافت نشد`);
+    return this.setProductStock(product.id, stock);
+  }
+
+  async findBySku(sku: string) {
+    const product = await this.productRepo.findOne({
+      where: { sku: String(sku).trim() },
+      relations: ['variants'],
+    });
+    if (!product) throw new NotFoundException(`محصول با SKU «${sku}» یافت نشد`);
+    return this.withBadges(product);
+  }
+
   private sizeLabelForProduct(product: ProductEntity): string {
     const map: Record<string, string> = {
       TWO: 'محصول ۲ سایزی',
@@ -417,7 +460,8 @@ export class ProductService {
       status: p.status,
       wholesalePrice: p.wholesalePrice,
       minOrderQty: p.minOrderQty,
-      totalStock: p.variants.reduce((sum, v) => sum + (v.stock ?? 0), 0),
+      stock: Number(p.stock) || 0,
+      totalStock: Number(p.stock) || 0,
       variants: p.variants.map((v) => ({
         id: v.id,
         color: v.color,

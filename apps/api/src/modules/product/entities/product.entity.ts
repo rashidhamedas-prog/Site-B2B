@@ -73,6 +73,10 @@ export class ProductEntity {
   @Column({ default: 5 })
   minOrderQty: number;
 
+  /** Product-level stock (independent of color variants). Must be a multiple of minOrderQty. */
+  @Column({ type: 'int', default: 0 })
+  stock: number;
+
   @Column({ nullable: true })
   categoryId: string;
 

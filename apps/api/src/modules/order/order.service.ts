@@ -151,8 +151,8 @@ export class OrderService {
     }
 
     // Normalize/expand items:
-    // - If productVariantId provided: keep single item, but enforce MOQ from its product.
-    // - If productId provided: allocate across variants (by stock) and create multiple order items.
+    // - Stock is product-level (independent of colors).
+    // - Variants are used only for order-line color/size metadata when available.
     const expandedItems: Array<{
       productVariantId: string;
       quantity: number;
@@ -161,6 +161,7 @@ export class OrderService {
       sku: string;
       color: string;
       size: string;
+      productId: string;
     }> = [];
 
     for (const item of dto.items) {
@@ -169,18 +170,22 @@ export class OrderService {
 
       if (item.productVariantId) {
         const variant = await this.productService.getVariant(item.productVariantId);
-        this.assertMoq(qty, variant.product?.minOrderQty ?? 1, variant.product?.name ?? 'محصول');
-        if (variant.stock < qty) {
-          throw new BadRequestException(`موجودی کافی نیست برای ${variant.product?.name ?? 'محصول'} (${variant.color} / ${variant.size})`);
+        const product = variant.product;
+        if (!product) throw new BadRequestException('محصول واریانت یافت نشد');
+        this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
+        const stock = Number(product.stock) || 0;
+        if (stock < qty) {
+          throw new BadRequestException(`موجودی کافی نیست برای ${product.name} (موجودی: ${stock})`);
         }
         expandedItems.push({
           productVariantId: variant.id,
           quantity: qty,
-          unitPrice: Number(variant.product?.wholesalePrice ?? item.unitPrice ?? 0),
-          productName: variant.product?.name ?? item.productName ?? '',
-          sku: variant.product?.sku ?? item.sku ?? '',
+          unitPrice: Number(product.wholesalePrice ?? item.unitPrice ?? 0),
+          productName: product.name ?? item.productName ?? '',
+          sku: product.sku ?? item.sku ?? '',
           color: variant.color,
           size: variant.size,
+          productId: product.id,
         });
         continue;
       }
@@ -191,31 +196,26 @@ export class OrderService {
 
       const product = await this.productService.findOne(item.productId);
       this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
-      const variants = (product.variants ?? []).map((v) => ({ ...v, stock: Number(v.stock) || 0 }));
-      const totalStock = variants.reduce((s, v) => s + v.stock, 0);
-      if (totalStock < qty) {
-        throw new BadRequestException(`موجودی کافی نیست برای ${product.name} (موجودی کل: ${totalStock})`);
+      const stock = Number(product.stock) || 0;
+      if (stock < qty) {
+        throw new BadRequestException(`موجودی کافی نیست برای ${product.name} (موجودی: ${stock})`);
       }
 
-      // Allocate from most-stocked variants first.
-      const sorted = [...variants].sort((a, b) => b.stock - a.stock);
-      let remaining = qty;
-      for (const v of sorted) {
-        if (remaining <= 0) break;
-        if (v.stock <= 0) continue;
-        const take = Math.min(v.stock, remaining);
-        if (take <= 0) continue;
-        expandedItems.push({
-          productVariantId: v.id,
-          quantity: take,
-          unitPrice: Number(product.wholesalePrice),
-          productName: product.name,
-          sku: product.sku,
-          color: v.color,
-          size: v.size,
-        });
-        remaining -= take;
+      const variants = product.variants ?? [];
+      const metaVariant = variants[0];
+      if (!metaVariant) {
+        throw new BadRequestException(`برای ${product.name} ابتدا حداقل یک رنگ در واریانت‌ها تعریف کنید`);
       }
+      expandedItems.push({
+        productVariantId: metaVariant.id,
+        quantity: qty,
+        unitPrice: Number(product.wholesalePrice),
+        productName: product.name,
+        sku: product.sku,
+        color: metaVariant.color,
+        size: metaVariant.size,
+        productId: product.id,
+      });
     }
 
     // Stock check is already done above. Now compute subtotal on expanded items.
@@ -300,12 +300,27 @@ export class OrderService {
     const saved = await this.orderRepo.save(order);
 
     const items = expandedItems.map((i) =>
-      this.itemRepo.create({ ...i, orderId: saved.id, totalPrice: i.unitPrice * i.quantity })
+      this.itemRepo.create({
+        productVariantId: i.productVariantId,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        productName: i.productName,
+        sku: i.sku,
+        color: i.color,
+        size: i.size,
+        orderId: saved.id,
+        totalPrice: i.unitPrice * i.quantity,
+      })
     );
     await this.itemRepo.save(items);
 
+    // Deduct product-level stock (aggregate by productId).
+    const byProduct = new Map<string, number>();
     for (const item of expandedItems) {
-      await this.productService.updateVariantStock(item.productVariantId, -item.quantity);
+      byProduct.set(item.productId, (byProduct.get(item.productId) ?? 0) + item.quantity);
+    }
+    for (const [productId, qty] of byProduct) {
+      await this.productService.updateProductStock(productId, -qty);
     }
 
     if (quote.code?.id) {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles } from 'lucide-react';
+import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler } from 'lucide-react';
 import { Button, Badge, Alert } from '@/components/ui';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
@@ -39,6 +39,8 @@ interface Product {
   description?: string;
   wholesalePrice: number;
   minOrderQty: number;
+  stock?: number;
+  totalStock?: number;
   sku?: string;
   images: string[];
   variants: Variant[];
@@ -113,7 +115,7 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
-  const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const [showSizeGuide, setShowSizeGuide] = useState(true);
   const [addedToCart, setAddedToCart] = useState(false);
 
   useEffect(() => {
@@ -128,7 +130,12 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   const minOrder = product?.minOrderQty ?? 1;
   const qtyStep = Math.max(minOrder, 1);
-  const totalStock = product?.variants?.reduce((s, v) => s + (Number(v.stock) || 0), 0) ?? 0;
+  const totalStock =
+    typeof product?.stock === 'number'
+      ? product.stock
+      : typeof product?.totalStock === 'number'
+        ? product.totalStock
+        : product?.variants?.reduce((s, v) => s + (Number(v.stock) || 0), 0) ?? 0;
   const isComingSoon = product?.status === 'COMING_SOON';
   const canOrder = !!product && (isComingSoon || totalStock >= qtyStep);
   const maxQty = isComingSoon
@@ -136,7 +143,13 @@ export function ProductDetail({ slug }: { slug: string }) {
     : Math.max(totalStock, qtyStep);
 
   const availableColors = product
-    ? Array.from(new Set(product.variants.map((v) => v.color).filter(Boolean)))
+    ? Array.from(
+        new Map(
+          product.variants
+            .filter((v) => v.color)
+            .map((v) => [v.color, { name: v.color, hex: v.colorHex || '#ccc' }] as const),
+        ).values(),
+      )
     : [];
   const availableSizes = product
     ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
@@ -298,7 +311,17 @@ export function ProductDetail({ slug }: { slug: string }) {
                 <h3 className="text-sm font-bold text-gray-900 mb-3">رنگ‌های موجود</h3>
                 <div className="flex flex-wrap gap-2">
                   {availableColors.map((c) => (
-                    <Badge key={c} variant="neutral">{c}</Badge>
+                    <span
+                      key={c.name}
+                      className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 shadow-sm"
+                    >
+                      <span
+                        className="h-5 w-5 rounded-full border border-gray-300 shadow-inner flex-shrink-0"
+                        style={{ backgroundColor: c.hex }}
+                        title={c.hex}
+                      />
+                      <span className="font-medium">{c.name}</span>
+                    </span>
                   ))}
                 </div>
               </div>
@@ -307,8 +330,12 @@ export function ProductDetail({ slug }: { slug: string }) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-bold text-gray-900">سایز‌بندی</h3>
-                <button type="button" onClick={() => setShowSizeGuide(!showSizeGuide)} className="text-xs text-primary hover:underline">
-                  راهنمای سایز
+                <button
+                  type="button"
+                  onClick={() => setShowSizeGuide(!showSizeGuide)}
+                  className="text-xs text-primary hover:underline"
+                >
+                  {showSizeGuide ? 'بستن راهنمای سایز' : 'راهنمای سایز'}
                 </button>
               </div>
               {sharedSizeLabel ? (
@@ -325,19 +352,6 @@ export function ProductDetail({ slug }: { slug: string }) {
                   ))}
                 </div>
               )}
-              {showSizeGuide && (
-                <div className="mt-4 card p-4">
-                  <h4 className="text-sm font-bold mb-3">راهنمای سایز‌بندی</h4>
-                  <ul className="space-y-2">
-                    {sizeGuideLines.map((line) => (
-                      <li key={line} className="text-sm text-gray-700 flex items-start gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
               {!canOrder && !isComingSoon && (
                 <p className="mt-2 text-xs text-error">موجودی کل ({totalStock} عدد) کمتر از حداقل سفارش ({minOrder} عدد) است</p>
               )}
@@ -348,6 +362,31 @@ export function ProductDetail({ slug }: { slug: string }) {
                 <p className="mt-2 text-xs text-secondary-dark font-medium">پیش‌خرید فعال است — موجودی پس از عرضه تأمین می‌شود</p>
               )}
             </div>
+
+            {showSizeGuide && sizeGuideLines.length > 0 && (
+              <div className="card p-6 border border-primary-100 bg-gradient-to-l from-primary-50/80 via-white to-white shadow-card">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="rounded-xl bg-primary text-white p-2.5 shadow-sm flex-shrink-0">
+                    <Ruler className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">راهنمای سایز</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">اندازه‌گیری پیشنهادی بر اساس نوع سایزبندی محصول</p>
+                  </div>
+                </div>
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {sizeGuideLines.map((line) => (
+                    <li
+                      key={line}
+                      className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-800 border border-gray-100"
+                    >
+                      <span className="mt-1.5 h-2 w-2 rounded-full bg-primary flex-shrink-0 shadow-sm" />
+                      <span className="font-medium leading-relaxed">{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div>
               <h3 className="text-sm font-bold text-gray-900 mb-3">تعداد</h3>
