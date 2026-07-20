@@ -19,6 +19,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { SearchModule } from './modules/search/search.module';
 import { databaseConfig } from './config/database.config';
 import { CategoryModule } from './modules/category/category.module';
+import { CrmModule } from './modules/crm/crm.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CategoryModule } from './modules/category/category.module';
     OrderModule,
     InvoiceModule,
     InventoryModule,
+    CrmModule,
     DashboardModule,
     UploadModule,
     DiscountModule,

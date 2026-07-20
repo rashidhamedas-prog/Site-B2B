@@ -74,3 +74,18 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS "freeShipping" boolean NOT NULL DEFA
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "intraCityFee" bigint NOT NULL DEFAULT 0;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "perKgFee" bigint NOT NULL DEFAULT 0;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "freeShipping" boolean NOT NULL DEFAULT false;
+
+-- products: product-level stock (independent of color variants)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "stock" integer NOT NULL DEFAULT 0;
+
+-- Backfill product stock from legacy per-variant totals when still zero
+UPDATE products p
+SET "stock" = COALESCE((
+  SELECT SUM(v."stock")::int FROM product_variants v WHERE v."productId" = p."id"
+), 0)
+WHERE COALESCE(p."stock", 0) = 0
+  AND EXISTS (SELECT 1 FROM product_variants v WHERE v."productId" = p."id");
+
+-- inventory_movements: allow product-level movements without a variant
+ALTER TABLE inventory_movements ALTER COLUMN "productVariantId" DROP NOT NULL;
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS "productId" uuid;

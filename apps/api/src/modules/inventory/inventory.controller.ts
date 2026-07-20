@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Body, Param, Query,
-  UseGuards, ParseIntPipe, DefaultValuePipe,
+  UseGuards, ParseIntPipe, DefaultValuePipe, BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -16,9 +16,8 @@ import { InventoryService } from './inventory.service';
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
-  // ── موجودی کامل ──────────────────────────────────────────
   @Get('stock')
-  @ApiOperation({ summary: 'گزارش موجودی انبار — همه محصولات با واریانت‌ها' })
+  @ApiOperation({ summary: 'گزارش موجودی انبار — موجودی سطح محصول' })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'search', required: false })
@@ -32,14 +31,12 @@ export class InventoryController {
     return this.inventoryService.getStock(page, limit, search, filter);
   }
 
-  // ── خلاصه آماری ──────────────────────────────────────────
   @Get('summary')
-  @ApiOperation({ summary: 'خلاصه وضعیت انبار (تعداد محصول، موجودی کل، کمبود)' })
+  @ApiOperation({ summary: 'خلاصه وضعیت انبار' })
   getSummary() {
     return this.inventoryService.getSummary();
   }
 
-  // ── تاریخچه کل تحرکات ────────────────────────────────────
   @Get('movements')
   @ApiOperation({ summary: 'تاریخچه تمام تحرکات انبار' })
   @ApiQuery({ name: 'page', required: false })
@@ -50,7 +47,6 @@ export class InventoryController {
     return this.inventoryService.getAllMovements(page, limit);
   }
 
-  // ── تاریخچه یک واریانت ───────────────────────────────────
   @Get('movements/:variantId')
   @ApiOperation({ summary: 'تاریخچه موجودی یک واریانت' })
   getMovements(
@@ -60,9 +56,57 @@ export class InventoryController {
     return this.inventoryService.getMovements(variantId, page);
   }
 
-  // ── تعدیل موجودی ─────────────────────────────────────────
+  @Post('set')
+  @ApiOperation({ summary: 'تنظیم موجودی محصول (productId یا productVariantId)' })
+  setStock(
+    @Body() body: {
+      productId?: string;
+      productVariantId?: string;
+      stock: number;
+      notes?: string;
+      createdBy?: string;
+    },
+  ) {
+    if (body.productId) {
+      return this.inventoryService.setProductStock(
+        body.productId,
+        body.stock,
+        body.notes,
+        body.createdBy,
+      );
+    }
+    if (body.productVariantId) {
+      return this.inventoryService.setStock(
+        body.productVariantId,
+        body.stock,
+        body.notes,
+        body.createdBy,
+      );
+    }
+    throw new BadRequestException('productId یا productVariantId الزامی است');
+  }
+
+  @Post('product/set')
+  @ApiOperation({ summary: 'تنظیم موجودی سطح محصول (بدون وابستگی به رنگ)' })
+  setProductStock(
+    @Body() body: {
+      productId: string;
+      stock: number;
+      notes?: string;
+      createdBy?: string;
+    },
+  ) {
+    if (!body.productId) throw new BadRequestException('productId الزامی است');
+    return this.inventoryService.setProductStock(
+      body.productId,
+      body.stock,
+      body.notes,
+      body.createdBy,
+    );
+  }
+
   @Post('adjust')
-  @ApiOperation({ summary: 'تعدیل موجودی یک واریانت (ورودی، خروجی، تصحیح)' })
+  @ApiOperation({ summary: 'تعدیل موجودی (روی موجودی محصول اعمال می‌شود)' })
   adjust(
     @Body() body: {
       productVariantId: string;

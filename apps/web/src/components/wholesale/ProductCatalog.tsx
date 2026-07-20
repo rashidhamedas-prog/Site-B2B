@@ -23,8 +23,10 @@ interface Product {
   fabric: string;
   wholesalePrice: number;
   status: string;
+  stock?: number;
+  totalStock?: number;
   images: string[];
-  variants: { id: string; color: string; stock: number }[];
+  variants: { id: string; color: string; colorHex?: string; stock: number }[];
 }
 
 const FABRICS = ['همه', 'لینن', 'کتان', 'لینن‌کتان', 'ویسکوز'];
@@ -62,7 +64,13 @@ function FilterPanel({ activeFilters, onFilter, onReset }: {
 
 function ProductCard({ product }: { product: Product }) {
   const colorCount = [...new Set(product.variants.map((v) => v.color))].length;
-  const inStock = product.variants.some((v) => v.stock > 0);
+  const stock =
+    typeof product.stock === 'number'
+      ? product.stock
+      : typeof product.totalStock === 'number'
+        ? product.totalStock
+        : product.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
+  const inStock = stock > 0 || product.status === 'COMING_SOON';
   return (
     <Link href={`/products/${product.slug}`} className="group card-hover overflow-hidden flex flex-col">
       <div className="relative aspect-[3/4] bg-gradient-to-b from-primary-50 to-primary-100 overflow-hidden">

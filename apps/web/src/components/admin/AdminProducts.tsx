@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Plus, Edit2, Trash2, X, Save, Layers, ImagePlus, Loader2 } from 'lucide-react';
+import { Search, Plus, Edit2, Trash2, X, Save, Layers, ImagePlus, Loader2, Package } from 'lucide-react';
 import { Input, Badge, Pagination } from '@/components/ui';
 import { useProducts, Product, ProductSpecs, ProductCustomField } from '@/lib/hooks/useProducts';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
@@ -125,12 +125,7 @@ function VariantsModal({
   const [variants, setVariants] = useState<Variant[]>(product.variants ?? []);
   const [colorHistory, setColorHistory] = useState<ColorHistoryItem[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
-  // Inventory is managed separately from color: per-variant stock drafts.
-  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
-  const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
-  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
 
-  const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
   const sizeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
 
   useEffect(() => {
@@ -166,27 +161,24 @@ function VariantsModal({
     setForm((p) => ({ ...p, color: name, colorHex: hex || p.colorHex }));
   };
 
-  // Color definition only — inventory (stock) is set separately in the list.
+  // Color definition only — inventory is managed exclusively in Admin Inventory.
   const handleSave = async () => {
     if (!form.color) return;
     setSaveError(null);
     setSaving(true);
     try {
       if (editId) {
-        // Update color attributes without touching the variant's stock.
         await apiClient.patch(`/products/${product.id}/variants/${editId}`, {
           color: form.color,
           colorHex: form.colorHex,
           barcode: form.barcode || undefined,
         });
       } else {
-        // New color starts with zero inventory; stock is added separately.
         await apiClient.post(`/products/${product.id}/variants`, {
           color: form.color,
           colorHex: form.colorHex,
           barcode: form.barcode || undefined,
           size: sizeLabel,
-          stock: 0,
         });
       }
       setEditId(null);
@@ -196,37 +188,6 @@ function VariantsModal({
       setSaveError(e instanceof Error ? e.message : 'خطا در ذخیره رنگ');
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleStockSave = async (variant: Variant) => {
-    const raw = stockDrafts[variant.id] ?? String(variant.stock);
-    const stock = Number(raw);
-    if (!Number.isFinite(stock) || stock < 0) {
-      setStockErrors((p) => ({ ...p, [variant.id]: 'عدد نامعتبر' }));
-      return;
-    }
-    if (stock % minOrder !== 0) {
-      setStockErrors((p) => ({ ...p, [variant.id]: `مضربی از ${minOrder} باشد` }));
-      return;
-    }
-    setStockErrors((p) => ({ ...p, [variant.id]: '' }));
-    setStockSavingId(variant.id);
-    try {
-      await apiClient.patch(`/products/${product.id}/variants/${variant.id}`, { stock });
-      setStockDrafts((p) => {
-        const next = { ...p };
-        delete next[variant.id];
-        return next;
-      });
-      await refresh();
-    } catch (e: unknown) {
-      setStockErrors((p) => ({
-        ...p,
-        [variant.id]: e instanceof Error ? e.message : 'خطا در ذخیره موجودی',
-      }));
-    } finally {
-      setStockSavingId(null);
     }
   };
 
@@ -254,7 +215,7 @@ function VariantsModal({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col relative">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h3 className="text-base font-bold text-gray-900">واریانت‌های محصول</h3>
+            <h3 className="text-base font-bold text-gray-900">واریانت‌ها (رنگ‌بندی)</h3>
             <p className="text-xs text-gray-400 mt-0.5">
               {product.name} — {product.sku} — {sizeLabel}
             </p>
@@ -324,7 +285,7 @@ function VariantsModal({
           )}
 
           <p className="text-[11px] text-gray-400">
-            ابتدا رنگ را تعریف کنید؛ موجودی هر رنگ را جداگانه در جدول زیر وارد کنید.
+            اینجا فقط رنگ و بارکد تعریف می‌شود؛ موجودی را از دکمه «موجودی» جداگانه ثبت کنید.
           </p>
           {saveError && <p className="text-xs text-error">{saveError}</p>}
 
@@ -354,7 +315,7 @@ function VariantsModal({
             <table className="w-full text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  {['رنگ', 'سایز', 'موجودی', 'بارکد', ''].map((h) => (
+                  {['رنگ', 'سایز', 'بارکد', ''].map((h) => (
                     <th key={h || 'actions'} className="px-4 py-2 text-right text-xs font-semibold text-gray-400">
                       {h}
                     </th>
@@ -377,39 +338,6 @@ function VariantsModal({
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-xs text-gray-600">{v.size || sizeLabel}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          min={0}
-                          step={minOrder}
-                          value={stockDrafts[v.id] ?? String(v.stock)}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setStockDrafts((p) => ({ ...p, [v.id]: val }));
-                            setStockErrors((p) => ({ ...p, [v.id]: '' }));
-                          }}
-                          className={cn(
-                            'w-20 rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30',
-                            v.stock === 0 ? 'border-error/40 text-error' : 'border-gray-200',
-                          )}
-                        />
-                        <button
-                          onClick={() => handleStockSave(v)}
-                          disabled={
-                            stockSavingId === v.id ||
-                            (stockDrafts[v.id] ?? String(v.stock)) === String(v.stock)
-                          }
-                          title="ثبت موجودی"
-                          className="text-gray-400 hover:text-primary disabled:opacity-30 disabled:hover:text-gray-400"
-                        >
-                          <Save className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      {stockErrors[v.id] && (
-                        <p className="text-[10px] text-error mt-0.5">{stockErrors[v.id]}</p>
-                      )}
-                    </td>
                     <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{v.barcode || '—'}</td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
@@ -429,7 +357,7 @@ function VariantsModal({
         </div>
 
         <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-          <p className="text-xs text-gray-400">{variants.length} واریانت ثبت شده</p>
+          <p className="text-xs text-gray-400">{variants.length} رنگ ثبت شده</p>
           <button onClick={onClose} className="btn btn-outline btn-sm">
             بستن
           </button>
@@ -438,7 +366,7 @@ function VariantsModal({
         {deletingId && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
             <div className="bg-white rounded-xl p-6 shadow-xl text-center">
-              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این واریانت؟</p>
+              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این رنگ؟</p>
               <div className="flex gap-3">
                 <button onClick={() => setDeletingId(null)} className="btn btn-outline btn-sm">
                   انصراف
@@ -458,6 +386,107 @@ function VariantsModal({
   );
 }
 
+function StockModal({
+  product,
+  onClose,
+  onDone,
+}: {
+  product: Product;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
+  const current =
+    typeof product.stock === 'number'
+      ? product.stock
+      : product.totalStock ??
+        product.variants?.reduce((s, v) => s + v.stock, 0) ??
+        0;
+  const [value, setValue] = useState(String(current));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    const stock = Number(value);
+    if (!Number.isFinite(stock) || stock < 0) {
+      setError('عدد نامعتبر');
+      return;
+    }
+    if (stock % minOrder !== 0) {
+      setError(`موجودی باید مضربی از حداقل سفارش (${minOrder}) باشد`);
+      return;
+    }
+    setError(null);
+    setSaving(true);
+    try {
+      await apiClient.post('/inventory/product/set', {
+        productId: product.id,
+        stock,
+      });
+      onDone();
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'خطا در ذخیره موجودی');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">موجودی محصول</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {product.name} — {product.sku}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-xs text-gray-500 leading-relaxed">
+            موجودی مستقل از رنگ‌ها ثبت می‌شود و باید مضرب حداقل سفارش (
+            <span className="font-bold text-gray-700">{minOrder}</span> عدد) باشد.
+          </p>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              تعداد موجودی
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={minOrder}
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setError(null);
+              }}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            {error && <p className="mt-1.5 text-xs text-error">{error}</p>}
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={onClose} className="btn btn-outline btn-sm">
+              انصراف
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="btn btn-primary btn-sm flex items-center gap-1.5"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {saving ? 'ذخیره...' : 'ثبت موجودی'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminProducts() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -469,6 +498,7 @@ export function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [variantProduct, setVariantProduct] = useState<Product | null>(null);
+  const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; skuPrefix: string }>>([]);
   const [specMemory, setSpecMemory] = useState<SpecMemory>({});
@@ -716,7 +746,7 @@ export function AdminProducts() {
           <table className="w-full min-w-[820px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['SKU', 'نام محصول', 'جنس پارچه', 'واریانت‌ها', 'موجودی کل', 'قیمت عمده (ت)', 'وضعیت', ''].map(
+                {['SKU', 'نام محصول', 'جنس پارچه', 'واریانت‌ها', 'موجودی', 'قیمت عمده (ت)', 'وضعیت', ''].map(
                   (h) => (
                     <th
                       key={h || 'actions'}
@@ -751,7 +781,11 @@ export function AdminProducts() {
               ) : (
                 products.map((p) => {
                   const totalStock =
-                    p.variants?.reduce((s, v) => s + v.stock, 0) ?? 0;
+                    typeof p.stock === 'number'
+                      ? p.stock
+                      : p.totalStock ??
+                        p.variants?.reduce((s, v) => s + v.stock, 0) ??
+                        0;
                   const varCount = p.variants?.length ?? 0;
                   return (
                     <tr key={p.id} className="hover:bg-gray-50 transition-colors">
@@ -788,22 +822,25 @@ export function AdminProducts() {
                           className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
                         >
                           <Layers className="h-3.5 w-3.5" />
-                          {varCount} واریانت
+                          {varCount} رنگ
                         </button>
                       </td>
                       <td className="px-4 py-3">
-                        <span
+                        <button
+                          onClick={() => setStockProduct(p)}
                           className={cn(
-                            'text-sm font-bold',
+                            'flex items-center gap-1 text-sm font-bold hover:underline',
                             p.isLimitedStock
                               ? 'text-amber-600'
                               : totalStock === 0
                                 ? 'text-error'
                                 : 'text-gray-700',
                           )}
+                          title="ثبت/ویرایش موجودی"
                         >
+                          <Package className="h-3.5 w-3.5" />
                           {totalStock} عدد
-                        </span>
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap">
                         {(Number(p.wholesalePrice) / 10).toLocaleString('fa-IR')}
@@ -1097,7 +1134,7 @@ export function AdminProducts() {
 
               {modal === 'create' && (
                 <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-                  بعد از ذخیره، واریانت‌ها (رنگ) را از دکمه «واریانت‌ها» اضافه کنید
+                  بعد از ذخیره، رنگ‌ها را از «واریانت‌ها» و موجودی را از دکمه موجودی (جدا از رنگ) ثبت کنید.
                 </p>
               )}
             </div>
@@ -1127,6 +1164,14 @@ export function AdminProducts() {
         <VariantsModal
           product={variantProduct}
           onClose={() => setVariantProduct(null)}
+          onDone={refetch}
+        />
+      )}
+
+      {stockProduct && (
+        <StockModal
+          product={stockProduct}
+          onClose={() => setStockProduct(null)}
           onDone={refetch}
         />
       )}

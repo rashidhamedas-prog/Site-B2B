@@ -7,8 +7,13 @@ export class InventoryMovementEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  productVariantId: string;
+  /** Optional — product-level stock movements may omit a variant. */
+  @Column({ nullable: true })
+  productVariantId: string | null;
+
+  /** Product-level stock movements reference the product directly. */
+  @Column({ nullable: true })
+  productId: string | null;
 
   @Column()
   type: string;

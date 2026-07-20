@@ -79,6 +79,15 @@ export class ProductController {
     return this.productService.update(id, body);
   }
 
+  @Patch(':id/stock')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'تنظیم موجودی محصول (جدا از رنگ‌ها — مضرب حداقل سفارش)' })
+  setStock(@Param('id') id: string, @Body() body: { stock: number }) {
+    return this.productService.setProductStock(id, body.stock);
+  }
+
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)

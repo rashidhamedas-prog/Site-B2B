@@ -9,8 +9,6 @@ import { Input } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
-// ── Types ──────────────────────────────────────────────────────
-
 interface Variant {
   id: string;
   color: string;
@@ -27,6 +25,7 @@ interface StockProduct {
   fabric: string;
   status: string;
   wholesalePrice: number;
+  minOrderQty?: number;
   totalStock: number;
   variants: Variant[];
 }
@@ -99,14 +98,15 @@ const TYPES = [
   { value: 'DAMAGE', label: 'ضایعات',         icon: XCircle,    color: 'text-gray-500' },
 ];
 
-function AdjustModal({ variant, productName, onClose, onDone }: {
-  variant: Variant; productName: string; onClose: () => void; onDone: () => void;
+function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
+  variant: Variant; productName: string; currentStock?: number; onClose: () => void; onDone: () => void;
 }) {
   const [type, setType] = useState('IN');
   const [qty, setQty] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const baseStock = typeof currentStock === 'number' ? currentStock : variant.stock;
 
   const handleSave = async () => {
     const quantity = parseInt(qty, 10);
@@ -131,10 +131,10 @@ function AdjustModal({ variant, productName, onClose, onDone }: {
 
   const stockAfter = () => {
     const q = parseInt(qty, 10) || 0;
-    if (type === 'IN' || type === 'RETURN') return variant.stock + q;
-    if (type === 'OUT' || type === 'DAMAGE') return Math.max(0, variant.stock - q);
+    if (type === 'IN' || type === 'RETURN') return baseStock + q;
+    if (type === 'OUT' || type === 'DAMAGE') return Math.max(0, baseStock - q);
     if (type === 'ADJUST') return q;
-    return variant.stock;
+    return baseStock;
   };
 
   return (
@@ -142,19 +142,18 @@ function AdjustModal({ variant, productName, onClose, onDone }: {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h3 className="text-base font-bold text-gray-900">تعدیل موجودی</h3>
+            <h3 className="text-base font-bold text-gray-900">تعدیل موجودی محصول</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              {productName} — {variant.color} / {variant.size}
+              {productName}
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Current stock */}
           <div className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
             <span className="text-sm text-gray-600">موجودی فعلی</span>
-            <span className="text-lg font-bold text-gray-900">{variant.stock} عدد</span>
+            <span className="text-lg font-bold text-gray-900">{baseStock} عدد</span>
           </div>
 
           {/* Type */}
@@ -306,11 +305,51 @@ export function AdminInventory() {
   const [filter, setFilter] = useState('ALL');
   const [page, setPage] = useState(1);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [adjustTarget, setAdjustTarget] = useState<{ variant: Variant; productName: string } | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<{ variant: Variant; productName: string; currentStock: number } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
+  const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
+  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
 
   const { products, meta, loading, refetch } = useInventory(filter, search, page);
   const { summary, refetch: refetchSummary } = useSummary();
+
+  const handleDone = () => { refetch(); refetchSummary(); };
+
+  const handleProductStockSave = async (product: StockProduct) => {
+    const raw = stockDrafts[product.id] ?? String(product.totalStock);
+    const stock = Number(raw);
+    if (!Number.isFinite(stock) || stock < 0) {
+      setStockErrors((p) => ({ ...p, [product.id]: 'عدد نامعتبر' }));
+      return;
+    }
+    const minOrder = Math.max(1, product.minOrderQty ?? 1);
+    if (stock % minOrder !== 0) {
+      setStockErrors((p) => ({ ...p, [product.id]: `مضربی از ${minOrder} باشد` }));
+      return;
+    }
+    setStockErrors((p) => ({ ...p, [product.id]: '' }));
+    setStockSavingId(product.id);
+    try {
+      await apiClient.post('/inventory/product/set', {
+        productId: product.id,
+        stock,
+      });
+      setStockDrafts((p) => {
+        const next = { ...p };
+        delete next[product.id];
+        return next;
+      });
+      handleDone();
+    } catch (e: unknown) {
+      setStockErrors((p) => ({
+        ...p,
+        [product.id]: e instanceof Error ? e.message : 'خطا در ذخیره موجودی',
+      }));
+    } finally {
+      setStockSavingId(null);
+    }
+  };
 
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
@@ -319,8 +358,6 @@ export function AdminInventory() {
       return n;
     });
   };
-
-  const handleDone = () => { refetch(); refetchSummary(); };
 
   const FILTERS = [
     { key: 'ALL', label: 'همه' },
@@ -334,7 +371,7 @@ export function AdminInventory() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-gray-900">مدیریت انبار</h2>
-          <p className="text-sm text-gray-500 mt-0.5">موجودی محصولات و واریانت‌ها</p>
+          <p className="text-sm text-gray-500 mt-0.5">موجودی محصولات — جدا از بخش رنگ‌بندی</p>
         </div>
         <button onClick={() => setShowHistory(true)}
           className="btn btn-outline btn-md flex items-center gap-2">
@@ -415,35 +452,70 @@ export function AdminInventory() {
                         <span className="text-sm font-semibold text-gray-900 truncate">{product.name}</span>
                         <span className="hidden sm:inline text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{product.fabric}</span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{product.variants.length} واریانت</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{product.variants.length} رنگ</p>
                     </div>
 
-                    {/* Total stock */}
-                    <div className="text-left flex-shrink-0 min-w-[80px]">
-                      <p className="text-xs text-gray-400 mb-0.5">کل موجودی</p>
-                      <StockBadge stock={product.totalStock} />
-                    </div>
-
-                    {/* Stock bar */}
-                    <div className="hidden md:flex items-center gap-1 flex-shrink-0 w-32">
-                      {product.variants.slice(0, 8).map((v) => (
-                        <div key={v.id} title={`${v.color}/${v.size}: ${v.stock}`}
-                          className={cn('h-6 flex-1 rounded text-[9px] font-bold flex items-center justify-center text-white transition-all',
-                            v.stock === 0 ? 'bg-red-400' : v.stock < 5 ? 'bg-amber-400' : 'bg-green-500')}>
-                          {v.stock}
-                        </div>
-                      ))}
+                    {/* Product-level stock editor */}
+                    <div
+                      className="flex flex-col items-end gap-0.5 flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min={0}
+                          step={Math.max(1, product.minOrderQty ?? 1)}
+                          value={stockDrafts[product.id] ?? String(product.totalStock)}
+                          onChange={(e) => {
+                            setStockDrafts((p) => ({ ...p, [product.id]: e.target.value }));
+                            setStockErrors((p) => ({ ...p, [product.id]: '' }));
+                          }}
+                          className={cn(
+                            'w-24 rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30',
+                            product.totalStock === 0 ? 'border-error/40 text-error' : 'border-gray-200',
+                          )}
+                        />
+                        <button
+                          onClick={() => handleProductStockSave(product)}
+                          disabled={
+                            stockSavingId === product.id ||
+                            (stockDrafts[product.id] ?? String(product.totalStock)) === String(product.totalStock)
+                          }
+                          title="ثبت موجودی محصول"
+                          className="text-gray-400 hover:text-primary disabled:opacity-30"
+                        >
+                          <Save className="h-4 w-4" />
+                        </button>
+                        {product.variants[0] && (
+                          <button
+                            onClick={() => setAdjustTarget({
+                              variant: product.variants[0],
+                              productName: product.name,
+                              currentStock: product.totalStock,
+                            })}
+                            className="text-xs text-primary hover:underline font-medium mr-1"
+                          >
+                            تعدیل
+                          </button>
+                        )}
+                      </div>
+                      {stockErrors[product.id] && (
+                        <p className="text-[10px] text-error">{stockErrors[product.id]}</p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Expanded variants */}
+                  {/* Expanded: colors are display-only */}
                   {isOpen && (
                     <div className="bg-gray-50 border-t border-gray-100">
                       <div className="px-8 py-3 overflow-x-auto">
-                        <table className="w-full min-w-[500px] text-sm">
+                        <p className="text-xs text-gray-500 mb-2">
+                          رنگ‌ها فقط نمایشی هستند — موجودی در سطح محصول (بالا) ثبت می‌شود.
+                        </p>
+                        <table className="w-full min-w-[400px] text-sm">
                           <thead>
                             <tr>
-                              {['رنگ', 'سایز', 'موجودی', 'بارکد', ''].map((h) => (
+                              {['رنگ', 'سایز', 'بارکد'].map((h) => (
                                 <th key={h} className="px-3 py-2 text-right text-xs font-semibold text-gray-400">{h}</th>
                               ))}
                             </tr>
@@ -459,21 +531,13 @@ export function AdminInventory() {
                                   </div>
                                 </td>
                                 <td className="px-3 py-2 text-gray-700">{v.size}</td>
-                                <td className="px-3 py-2"><StockBadge stock={v.stock} /></td>
                                 <td className="px-3 py-2 font-mono text-xs text-gray-400">{v.barcode || '—'}</td>
-                                <td className="px-3 py-2">
-                                  <button
-                                    onClick={() => setAdjustTarget({ variant: v, productName: product.name })}
-                                    className="text-xs text-primary hover:underline font-medium">
-                                    تعدیل
-                                  </button>
-                                </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                         {product.variants.length === 0 && (
-                          <p className="text-xs text-gray-400 py-2 text-center">واریانتی تعریف نشده — از بخش محصولات اضافه کنید</p>
+                          <p className="text-xs text-gray-400 py-2 text-center">رنگی تعریف نشده — از بخش محصولات در واریانت‌ها اضافه کنید</p>
                         )}
                       </div>
                     </div>
@@ -502,6 +566,7 @@ export function AdminInventory() {
         <AdjustModal
           variant={adjustTarget.variant}
           productName={adjustTarget.productName}
+          currentStock={adjustTarget.currentStock}
           onClose={() => setAdjustTarget(null)}
           onDone={handleDone}
         />
