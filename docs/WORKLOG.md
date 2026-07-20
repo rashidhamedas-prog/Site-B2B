@@ -11,6 +11,21 @@
 
 ---
 
+## 2026-07-20 — رفع خطای ثبت‌نام عمده‌فروش
+
+### خلاصه
+- placeholder شهر (`تهران`) شبیه مقدار پرشده بود و باعث خطای «فیلدهای ستاره‌دار» بدون ارسال API می‌شد
+- اعتبارسنجی فیلدبه‌فیلد + نرمال‌سازی ارقام فارسی/عربی موبایل
+- ثبت‌نام تراکنشی با پشتیبانی soft-deleted user/customer؛ کاربر جدید `isActive=false` تا تأیید ادمین
+- همگام‌سازی `user.isActive` با تغییر وضعیت مشتری در ادمین؛ پیام ورود برای حساب PENDING
+
+### فایل‌ها
+- `apps/web/src/components/portal/RegisterForm.tsx`, `apps/web/src/lib/api.ts`
+- `apps/api/src/modules/auth/auth.service.ts`, `dto/register.dto.ts`
+- `apps/api/src/modules/customer/customer.service.ts`
+
+---
+
 ## 2026-07-18 — تکمیل gapهای سند (تخفیف واقعی، فاکتور ارسال، Jalali ساعت)
 
 ### خلاصه

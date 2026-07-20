@@ -22,7 +22,19 @@ class ApiClient {
 
     if (res.status === 204) return undefined as T;
 
-    const data = await res.json();
+    let data: any = null;
+    const text = await res.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        if (!res.ok) {
+          const err = new Error('خطای سرور') as Error & { status: number };
+          err.status = res.status;
+          throw err;
+        }
+      }
+    }
 
     if (!res.ok) {
       const message = data?.message ?? data?.errors?.[0]?.message ?? 'خطای سرور';
