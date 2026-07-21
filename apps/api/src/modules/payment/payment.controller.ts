@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentService } from './payment.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+
+type JwtUser = { sub: string; id: string; role: string; phone: string; customerId?: string };
 
 @ApiTags('payments')
 @Controller('payments')
@@ -38,14 +40,17 @@ export class PaymentController {
   @Post('start')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  start(@Body() body: any) {
+  start(
+    @Request() req: Express.Request & { user: JwtUser },
+    @Body() body: any,
+  ) {
     return this.svc.start({
       amount: Number(body.amount),
       orderId: body.orderId,
       invoiceId: body.invoiceId,
-      customerId: body.customerId,
+      customerId: body.customerId || req.user.customerId,
       description: body.description,
-      mobile: body.mobile,
+      mobile: body.mobile || req.user.phone,
       email: body.email,
     });
   }

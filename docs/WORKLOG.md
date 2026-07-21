@@ -2,18 +2,27 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-21 — fix checkout 500 + پرداخت آنلاین زرین‌پال در checkout
+
+### علت خطای Internal server error
+- entityهای `TieredDiscount` / `SideDiscount` / `ProductSpecMemory` در `database.config.ts` ثبت نشده بودند
+
+### اصلاح و قابلیت جدید
+- ثبت entityهای گم‌شده در TypeORM
+- روش پرداخت `ONLINE` در سفارش + گزینه «پرداخت آنلاین (زرین‌پال)» در checkout
+- پس از ثبت سفارش آنلاین → redirect به درگاه؛ callback به `/payment/callback`
+- `settings/public` پرچم `payment.enabled` را (بدون secret) برمی‌گرداند
+
+### Deploy
+- `poshaktaranom.com` — api + web
+
+---
+
 ## 2026-07-20 — hotfix: نام migration موجودی سطح محصول
 
 - TypeORM کلاس `ProductLevelStock20260720001` را رد می‌کرد (timestamp باید JS millis باشد)
 - تغییر به `ProductLevelStock1784486400001`؛ schema از قبل با safety-net روی prod اعمال شده بود
 - `CRM_API_KEY` روی سرور اضافه شد؛ rebuild --no-cache برای api/web
-
-## نحوه ثبت (برای AI و توسعه‌دهنده)
-
-1. یک بلوک جدید با تاریخ ISO و عنوان کوتاه اضافه کنید.
-2. فایل‌های تغییر یافته، deploy، تست و موارد باقی‌مانده را بنویسید.
-3. برای جلسات بزرگ: `docs/reports/YYYY-MM-DD-<topic>.md` بسازید و از اینجا لینک دهید.
-4. `git add` + `git commit` با Conventional Commits.
 
 ---
 

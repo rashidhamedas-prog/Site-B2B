@@ -26,7 +26,10 @@ type InstallmentsCfg = {
   rules?: InstallmentRule[];
   minActiveInvoices?: number;
 };
-type PublicSettings = { installments: InstallmentsCfg };
+type PublicSettings = {
+  installments: InstallmentsCfg;
+  payment?: { enabled?: boolean; manualCardNumber?: string; manualCardOwner?: string };
+};
 type Eligibility = {
   eligible: boolean;
   activeInvoiceCount?: number;
@@ -80,7 +83,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, updateQty, removeItem, clear } = useCart();
   const [shippingMethod, setShippingMethod] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'INSTALLMENT'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'INSTALLMENT' | 'ONLINE'>('CASH');
   const [downPaymentAmount, setDownPaymentAmount] = useState<number>(0);
   const [installmentMonths, setInstallmentMonths] = useState<number>(1);
   const [notes, setNotes] = useState('');
@@ -90,6 +93,7 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [shippingCompanies, setShippingCompanies] = useState<ShippingCompany[]>([]);
   const [installmentsCfg, setInstallmentsCfg] = useState<InstallmentsCfg | null>(null);
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerIdReady, setCustomerIdReady] = useState(false);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
@@ -122,6 +126,10 @@ export default function CheckoutPage() {
         if (s?.installments) {
           setInstallmentsCfg(s.installments);
           setInstallmentMonths((prev) => Math.min(Math.max(1, prev), s.installments.maxMonths));
+        }
+        if (s?.payment?.enabled) {
+          setOnlinePaymentEnabled(true);
+          setPaymentMethod((prev) => (prev === 'CASH' ? 'ONLINE' : prev));
         }
       })
       .catch(() => undefined);
@@ -280,7 +288,7 @@ export default function CheckoutPage() {
         productName: i.productName,
         sku: i.sku,
       }));
-      const res = await apiClient.post<{ orderNumber: string; id: string }>('/orders', {
+      const res = await apiClient.post<{ orderNumber: string; id: string; total: number }>('/orders', {
         items: orderItems,
         shippingMethod,
         paymentMethod,
@@ -290,6 +298,19 @@ export default function CheckoutPage() {
           : undefined,
         notes,
       });
+
+      if (paymentMethod === 'ONLINE') {
+        const pay = await apiClient.post<{ redirectUrl: string }>('/payments/start', {
+          amount: Number(res.total),
+          orderId: res.id,
+          customerId: customerId || undefined,
+          description: `پرداخت سفارش ${res.orderNumber} — پوشاک ترنم`,
+        });
+        clear();
+        window.location.href = pay.redirectUrl;
+        return;
+      }
+
       setOrderNumber(res.orderNumber);
       clear();
       setDone(true);
@@ -383,8 +404,11 @@ export default function CheckoutPage() {
               </div>
 
               <h3 className="font-bold text-gray-900 pt-2">روش پرداخت</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className={cn('grid gap-3', onlinePaymentEnabled ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2')}>
                 {[
+                  ...(onlinePaymentEnabled
+                    ? [{ value: 'ONLINE' as const, label: 'پرداخت آنلاین (زرین‌پال)' }]
+                    : []),
                   { value: 'CASH' as const, label: 'پرداخت نقدی' },
                   { value: 'INSTALLMENT' as const, label: 'پرداخت اقساطی' },
                 ].map((m) => (
@@ -395,6 +419,12 @@ export default function CheckoutPage() {
                   </button>
                 ))}
               </div>
+
+              {paymentMethod === 'ONLINE' && (
+                <p className="text-xs text-gray-500 rounded-xl bg-primary/5 border border-primary/10 px-3 py-2.5">
+                  پس از ثبت سفارش به درگاه امن زرین‌پال هدایت می‌شوید و بعد از پرداخت موفق به سایت بازمی‌گردید.
+                </p>
+              )}
 
               {paymentMethod === 'INSTALLMENT' && (
                 <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 space-y-3">
@@ -514,7 +544,9 @@ export default function CheckoutPage() {
                 disabled={loading || installmentBlocked}
                 className="w-full btn btn-primary btn-lg mt-2 disabled:opacity-50"
               >
-                {loading ? 'در حال ثبت سفارش...' : 'ثبت نهایی سفارش'}
+                {loading
+                  ? (paymentMethod === 'ONLINE' ? 'در حال اتصال به درگاه...' : 'در حال ثبت سفارش...')
+                  : (paymentMethod === 'ONLINE' ? 'پرداخت و ثبت سفارش' : 'ثبت نهایی سفارش')}
               </button>
               <p className="text-xs text-gray-400 text-center">
                 با ثبت سفارش، <Link href="/terms" className="text-primary hover:underline">شرایط و قوانین</Link> را می‌پذیرید

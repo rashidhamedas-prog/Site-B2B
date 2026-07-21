@@ -64,7 +64,7 @@ function CallbackContent() {
                 کد پیگیری: <span className="font-mono font-bold text-gray-700">{refId}</span>
               </p>
             )}
-            <p className="text-xs text-gray-400 mt-4">رسید پرداخت در بخش فاکتورهای پنل شما ثبت شد</p>
+            <p className="text-xs text-gray-400 mt-4">رسید پرداخت ثبت شد. می‌توانید سفارش را در پنل خود پیگیری کنید.</p>
           </>
         )}
 
@@ -92,13 +92,21 @@ function CallbackContent() {
         )}
 
         {state !== 'verifying' && (
-          <Link
-            href="/portal/dashboard/payments"
-            className="btn btn-primary btn-md mt-6 inline-flex items-center gap-2"
-          >
-            بازگشت به فاکتورها
-            <ArrowRight className="h-4 w-4 rotate-180" />
-          </Link>
+          <div className="flex flex-col gap-2 mt-6">
+            <Link
+              href="/portal/dashboard/orders"
+              className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
+            >
+              مشاهده سفارش‌ها
+              <ArrowRight className="h-4 w-4 rotate-180" />
+            </Link>
+            <Link
+              href="/portal/dashboard/payments"
+              className="btn btn-outline btn-md inline-flex items-center justify-center gap-2"
+            >
+              فاکتورها و پرداخت‌ها
+            </Link>
+          </div>
         )}
       </div>
     </div>

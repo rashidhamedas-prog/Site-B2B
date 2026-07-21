@@ -146,7 +146,7 @@ export class OrderService {
 
     if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
     const paymentMethod = (dto.paymentMethod ?? 'CASH').toUpperCase();
-    if (!['CASH', 'INSTALLMENT'].includes(paymentMethod)) {
+    if (!['CASH', 'INSTALLMENT', 'ONLINE'].includes(paymentMethod)) {
       throw new BadRequestException('روش پرداخت نامعتبر است');
     }
 

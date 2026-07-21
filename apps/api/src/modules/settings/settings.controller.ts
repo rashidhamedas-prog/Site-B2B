@@ -16,10 +16,11 @@ export class SettingsController {
   // shipping methods). Never exposes API keys.
   @Get('public')
   async publicSettings() {
-    const [business, shipping, installments] = await Promise.all([
+    const [business, shipping, installments, payment] = await Promise.all([
       this.svc.business(),
       this.svc.shipping(),
       this.svc.installments(),
+      this.svc.payment(),
     ]);
     return {
       business: {
@@ -37,6 +38,12 @@ export class SettingsController {
         freeThreshold: shipping.freeThreshold,
       },
       installments,
+      // Safe flags only — never expose merchantId / secrets
+      payment: {
+        enabled: !!payment.enabled,
+        manualCardNumber: payment.manualCardNumber || '',
+        manualCardOwner: payment.manualCardOwner || '',
+      },
     };
   }
 
