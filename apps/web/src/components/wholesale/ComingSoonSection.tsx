@@ -49,34 +49,35 @@ export async function ComingSoonSection() {
   if (products.length === 0) return null;
 
   return (
-    <section className="section bg-gray-50">
+    <section className="section bg-surface-muted">
       <div className="container-site">
-        <div className="flex items-end justify-between mb-8 gap-4">
+        <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-secondary/15 text-secondary-dark px-3 py-1 text-xs font-bold mb-3">
+            <div className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-secondary-dark">
               <Sparkles className="h-3.5 w-3.5" />
               پیش‌خرید ویژه
             </div>
-            <h2 className="section-title">به‌زودی در ترنم</h2>
-            <p className="section-subtitle mb-0">
-              مدل‌های جدید در راه است — همین حالا پیش‌خرید کنید و جزء اولین بوتیک‌هایی باشید که این مدل‌ها را دریافت می‌کنند
+            <h2 className="section-title mb-2">به‌زودی در ترنم</h2>
+            <p className="section-subtitle mb-0 max-w-xl">
+              مدل‌های جدید در راه است — پیش‌خرید کنید و جزء اولین بوتیک‌هایی باشید که این مدل‌ها را دریافت
+              می‌کنند
             </p>
           </div>
-          <Link href="/products" className="flex-shrink-0 hidden sm:block">
+          <Link href="/products" className="hidden flex-shrink-0 cursor-pointer sm:block">
             <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
               کاتالوگ کامل
             </Button>
           </Link>
         </div>
 
-        <div className="mb-8 rounded-2xl border border-secondary/25 bg-gradient-to-l from-secondary/10 via-white to-primary-50 p-5 sm:p-6">
-          <p className="text-sm sm:text-base text-gray-800 leading-relaxed font-medium">
-            فرصت محدود برای عمده‌فروشان: با پیش‌خرید محصولات «به‌زودی»، اولویت تأمین و ارسال پس از عرضه را دارید.
-            همین حالا به سبد اضافه کنید و جای خود را رزرو کنید.
+        <div className="mb-10 border-r-4 border-secondary bg-white px-5 py-5 sm:px-6">
+          <p className="text-sm font-medium leading-relaxed text-gray-800 sm:text-base">
+            فرصت محدود برای عمده‌فروشان: با پیش‌خرید محصولات «به‌زودی»، اولویت تأمین و ارسال پس از عرضه را
+            دارید. همین حالا به سبد اضافه کنید و جای خود را رزرو کنید.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-5">
           {products.slice(0, 8).map((product) => {
             const priceInTomans = Math.round(Number(product.wholesalePrice) / 10).toLocaleString('fa-IR');
             const imageUrl = product.images?.[0];
@@ -84,9 +85,9 @@ export async function ComingSoonSection() {
               <Link
                 key={product.id}
                 href={`/products/${product.slug ?? product.id}`}
-                className="group card-hover overflow-hidden flex flex-col bg-white"
+                className="product-tile group"
               >
-                <div className="relative aspect-[3/4] bg-gradient-to-b from-primary-50 to-primary-100 overflow-hidden">
+                <div className="product-tile-media">
                   {imageUrl ? (
                     <ProductImage
                       src={imageUrl}
@@ -96,28 +97,28 @@ export async function ComingSoonSection() {
                   ) : (
                     <ProductPlaceholder />
                   )}
-                  <div className="absolute top-2 right-2">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-900 text-white">
+                  <div className="absolute top-3 right-3">
+                    <span className="rounded bg-gray-900 px-2 py-0.5 text-[10px] font-bold text-white">
                       به زودی
                     </span>
                   </div>
                   {product.isDiscounted && (
-                    <div className="absolute top-2 left-2">
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary text-white">
+                    <div className="absolute top-3 left-3">
+                      <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-bold text-white">
                         تخفیف‌دار
                       </span>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-200" />
+                  <div className="absolute inset-0 bg-primary/0 transition-colors duration-250 group-hover:bg-primary/5" />
                 </div>
 
-                <div className="p-3 flex flex-col gap-1 flex-1">
-                  <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-tight">
+                <div className="flex flex-1 flex-col gap-1 pt-3">
+                  <h3 className="line-clamp-2 text-xs font-semibold leading-tight text-gray-800">
                     {product.name}
                   </h3>
                   {product.fabric && <p className="text-xs text-gray-400">{product.fabric}</p>}
-                  <div className="flex items-center justify-between mt-auto pt-1">
-                    <p className="text-xs text-secondary-dark font-medium">پیش‌خرید</p>
+                  <div className="mt-auto flex items-center justify-between pt-1">
+                    <p className="text-[11px] font-medium text-secondary-dark">پیش‌خرید</p>
                     <p className="text-sm font-bold text-primary">{priceInTomans} ت</p>
                   </div>
                 </div>

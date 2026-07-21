@@ -31,8 +31,8 @@ export default function HomePage() {
       <WhyTaranom />
       <FeaturedProducts />
       <ComingSoonSection />
-      <Testimonials />
       <HowItWorks />
+      <Testimonials />
       <CtaBanner />
     </>
   );

@@ -30,15 +30,6 @@ async function fetchFeatured(): Promise<Product[]> {
   }
 }
 
-const FALLBACK: Product[] = [
-  { id: '1', name: 'مانتو شومیزی لینن مدل بهار', fabric: 'لینن', wholesalePrice: 8500000, status: 'ACTIVE', isDiscounted: true, isNew: false, isLimitedStock: false },
-  { id: '2', name: 'مانتو کتان مدل نسیم', fabric: 'کتان', wholesalePrice: 7200000, status: 'ACTIVE', isDiscounted: false, isNew: true, isLimitedStock: false },
-  { id: '3', name: 'مانتو شومیزی اسپرت مدل آفتاب', fabric: 'لینن کتان', wholesalePrice: 9400000, status: 'ACTIVE', isDiscounted: true, isNew: false, isLimitedStock: true },
-  { id: '4', name: 'مانتو لینن مدل پریسا', fabric: 'لینن', wholesalePrice: 7800000, status: 'ACTIVE', isDiscounted: false, isNew: false, isLimitedStock: false },
-  { id: '5', name: 'مانتو کتان مدل شکوفه', fabric: 'کتان', wholesalePrice: 8100000, status: 'ACTIVE', isDiscounted: false, isNew: true, isLimitedStock: false },
-  { id: '6', name: 'مانتو اسپرت مدل رویا', fabric: 'لینن', wholesalePrice: 8600000, status: 'ACTIVE', isDiscounted: false, isNew: false, isLimitedStock: true },
-];
-
 function ProductPlaceholder() {
   return (
     <div className="absolute inset-0 flex items-center justify-center p-2">
@@ -60,12 +51,12 @@ function ProductBadges({ product }: { product: Product }) {
   const badges: Array<{ label: string; className: string }> = [];
   if (product.isNew) badges.push({ label: 'جدید', className: 'bg-secondary text-white' });
   if (product.isDiscounted) badges.push({ label: 'تخفیف‌دار', className: 'bg-primary text-white' });
-  if (product.isLimitedStock) badges.push({ label: 'موجودی محدود', className: 'bg-amber-500 text-white' });
+  if (product.isLimitedStock) badges.push({ label: 'موجودی محدود', className: 'bg-amber-600 text-white' });
   if (badges.length === 0) return null;
   return (
-    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+    <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
       {badges.map((b) => (
-        <span key={b.label} className={`text-xs font-bold px-2 py-0.5 rounded-full ${b.className}`}>
+        <span key={b.label} className={`rounded px-2 py-0.5 text-[10px] font-bold tracking-wide ${b.className}`}>
           {b.label}
         </span>
       ))}
@@ -79,21 +70,22 @@ export async function FeaturedProducts() {
   if (items.length === 0) return null;
 
   return (
-    <section className="section">
+    <section className="section bg-white">
       <div className="container-site">
-        <div className="flex items-end justify-between mb-8 gap-4">
+        <div className="mb-10 flex items-end justify-between gap-4">
           <div>
-            <h2 className="section-title">محصولات برتر</h2>
+            <p className="mb-2 text-sm font-semibold tracking-wide text-secondary-dark">کاتالوگ فصل</p>
+            <h2 className="section-title mb-2">محصولات برتر</h2>
             <p className="section-subtitle mb-0">پرفروش‌ترین و جدیدترین مدل‌های فصل</p>
           </div>
-          <Link href="/products" className="flex-shrink-0">
+          <Link href="/products" className="hidden flex-shrink-0 cursor-pointer sm:block">
             <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
               همه محصولات
             </Button>
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-5">
           {items.slice(0, 6).map((product) => {
             const priceInTomans = Math.round(product.wholesalePrice / 10).toLocaleString('fa-IR');
             const imageUrl = product.images?.[0];
@@ -101,9 +93,9 @@ export async function FeaturedProducts() {
               <Link
                 key={product.id}
                 href={`/products/${product.slug ?? product.id}`}
-                className="group card-hover overflow-hidden flex flex-col"
+                className="product-tile group"
               >
-                <div className="relative aspect-[3/4] bg-gradient-to-b from-primary-50 to-primary-100 overflow-hidden">
+                <div className="product-tile-media">
                   {imageUrl ? (
                     <ProductImage
                       src={imageUrl}
@@ -114,16 +106,16 @@ export async function FeaturedProducts() {
                     <ProductPlaceholder />
                   )}
                   <ProductBadges product={product} />
-                  <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/10 transition-colors duration-200" />
+                  <div className="absolute inset-0 bg-primary/0 transition-colors duration-250 group-hover:bg-primary/5" />
                 </div>
 
-                <div className="p-3 flex flex-col gap-1 flex-1">
-                  <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-tight">
+                <div className="flex flex-1 flex-col gap-1 pt-3">
+                  <h3 className="line-clamp-2 text-xs font-semibold leading-tight text-gray-800">
                     {product.name}
                   </h3>
                   <p className="text-xs text-gray-400">{product.fabric}</p>
-                  <div className="flex items-center justify-between mt-auto pt-1">
-                    <p className="text-xs text-gray-400">عمده</p>
+                  <div className="mt-auto flex items-center justify-between pt-1">
+                    <p className="text-[11px] text-gray-400">عمده</p>
                     <p className="text-sm font-bold text-primary">{priceInTomans} ت</p>
                   </div>
                 </div>
@@ -132,16 +124,20 @@ export async function FeaturedProducts() {
           })}
         </div>
 
-        <div className="mt-8 rounded-2xl bg-primary-50 border border-primary-100 p-6 text-center">
-          <p className="text-sm font-medium text-primary mb-3">
+        <div className="mt-12 border border-[color:var(--color-border)] bg-surface-muted px-6 py-8 text-center sm:rounded-2xl">
+          <p className="mb-4 text-sm font-medium text-gray-700">
             برای مشاهده قیمت‌های عمده و ثبت سفارش آنلاین، ابتدا وارد پنل مشتری شوید
           </p>
           <div className="flex items-center justify-center gap-3">
-            <Link href="/portal/login">
-              <Button variant="primary" size="sm">ورود به پنل</Button>
+            <Link href="/portal/login" className="cursor-pointer">
+              <Button variant="primary" size="sm">
+                ورود به پنل
+              </Button>
             </Link>
-            <Link href="/portal/register">
-              <Button variant="outline" size="sm">ثبت‌نام عمده‌فروش</Button>
+            <Link href="/portal/register" className="cursor-pointer">
+              <Button variant="outline" size="sm">
+                ثبت‌نام عمده‌فروش
+              </Button>
             </Link>
           </div>
         </div>

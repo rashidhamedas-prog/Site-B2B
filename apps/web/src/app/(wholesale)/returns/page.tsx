@@ -4,15 +4,15 @@ export const metadata: Metadata = { title: 'شرایط مرجوعی | پوشاک
 
 export default function ReturnsPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <section className="bg-primary text-white py-16">
-        <div className="container-site text-center">
-          <h1 className="text-4xl font-extrabold mb-3">شرایط مرجوعی</h1>
+    <div className="min-h-screen bg-atmosphere">
+      <section className="page-hero">
+        <div className="container-site relative z-10 text-center">
+          <h1 className="mb-3 text-4xl font-extrabold tracking-tight">شرایط مرجوعی</h1>
           <p className="text-white/70">راهنمای بازگشت کالا و ضمانت کیفیت</p>
         </div>
       </section>
-      <div className="container-site py-12 max-w-3xl">
-        <div className="card p-8 space-y-6">
+      <div className="container-site max-w-3xl py-12">
+        <div className="space-y-6 border border-[color:var(--color-border)] bg-white p-8">
           {[
             { title: 'شرایط پذیرش مرجوعی', body: 'مرجوعی فقط در صورت عیب تولیدی یا ارسال کالای اشتباه پذیرفته می‌شود. مهلت اعلام: ۷ روز کاری پس از دریافت.' },
             { title: 'نحوه درخواست مرجوعی', body: 'برای ثبت درخواست مرجوعی با پشتیبانی از طریق تلگرام @toliditaranom تماس بگیرید. تصویر عیب را ارسال کنید.' },

@@ -43,6 +43,11 @@ const config: Config = {
         warning: '#D97706',
         error: '#DC2626',
         info: '#2563EB',
+        surface: {
+          DEFAULT: '#FFFFFF',
+          muted: '#F3F6F4',
+          page: '#FAFBF9',
+        },
       },
 
       fontFamily: {
@@ -60,6 +65,7 @@ const config: Config = {
         '3xl': ['1.875rem', { lineHeight: '1.4' }],
         '4xl': ['2.25rem', { lineHeight: '1.3' }],
         '5xl': ['3rem', { lineHeight: '1.2' }],
+        '6xl': ['3.75rem', { lineHeight: '1.15' }],
       },
 
       spacing: {
@@ -77,18 +83,24 @@ const config: Config = {
       },
 
       boxShadow: {
-        sm: '0 1px 2px rgba(0,0,0,0.05)',
-        md: '0 4px 6px rgba(0,0,0,0.07)',
-        lg: '0 10px 15px rgba(0,0,0,0.10)',
-        xl: '0 20px 25px rgba(0,0,0,0.10)',
-        card: '0 2px 8px rgba(27,92,74,0.08)',
-        'card-hover': '0 8px 24px rgba(27,92,74,0.15)',
+        sm: '0 1px 2px rgba(27,92,74,0.04)',
+        md: '0 4px 16px rgba(27,92,74,0.07)',
+        lg: '0 12px 32px rgba(27,92,74,0.12)',
+        xl: '0 24px 48px rgba(18,64,53,0.18)',
+        card: '0 4px 16px rgba(27,92,74,0.07)',
+        'card-hover': '0 12px 32px rgba(27,92,74,0.12)',
       },
 
       backgroundImage: {
         'gradient-brand': 'linear-gradient(135deg, #1B5C4A 0%, #2D7A5F 100%)',
         'gradient-gold': 'linear-gradient(135deg, #A88530 0%, #E5C97C 100%)',
-        'gradient-hero': 'linear-gradient(180deg, rgba(27,92,74,0.9) 0%, rgba(18,64,53,0.95) 100%)',
+        'gradient-hero': 'linear-gradient(160deg, #124035 0%, #1B5C4A 50%, #2D7A5F 100%)',
+        'gradient-hero-soft':
+          'radial-gradient(ellipse 70% 80% at 15% 20%, rgba(201,168,76,0.2), transparent 50%), linear-gradient(160deg, #124035 0%, #1B5C4A 55%, #2D7A5F 100%)',
+      },
+
+      transitionDuration: {
+        250: '250ms',
       },
 
       animation: {
@@ -96,6 +108,8 @@ const config: Config = {
         'slide-up': 'slideUp 0.3s ease-out',
         'slide-down': 'slideDown 0.2s ease-in',
         'spin-slow': 'spin 3s linear infinite',
+        'reveal-up': 'revealUp 0.7s ease both',
+        'fade-in-slow': 'fadeIn 0.8s ease both',
       },
 
       keyframes: {
@@ -109,6 +123,10 @@ const config: Config = {
         },
         slideDown: {
           '0%': { opacity: '0', transform: 'translateY(-16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        revealUp: {
+          '0%': { opacity: '0', transform: 'translateY(18px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
       },

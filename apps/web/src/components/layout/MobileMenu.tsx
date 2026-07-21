@@ -18,7 +18,7 @@ export function MobileMenuButton() {
   return (
     <>
       <button
-        className="lg:hidden flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100"
+        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-surface-muted lg:hidden"
         onClick={() => setOpen(!open)}
         aria-label={open ? 'بستن منو' : 'باز کردن منو'}
       >
@@ -26,21 +26,23 @@ export function MobileMenuButton() {
       </button>
 
       {open && (
-        <div className="lg:hidden fixed top-[108px] inset-x-0 border-t border-gray-100 bg-white animate-slide-down z-40 shadow-lg">
-          <nav className="container-site py-4 space-y-1">
+        <div className="fixed inset-x-0 top-[108px] z-40 animate-slide-down border-t border-[color:var(--color-border)] bg-white/95 shadow-lg backdrop-blur-xl lg:hidden">
+          <nav className="container-site space-y-1 py-4">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="flex items-center px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:text-primary hover:bg-primary-50 transition-colors"
+                className="flex cursor-pointer items-center rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-primary-50 hover:text-primary"
               >
                 {link.label}
               </Link>
             ))}
-            <div className="pt-3 border-t border-gray-100 mt-3">
-              <Link href="/portal/register" onClick={() => setOpen(false)}>
-                <Button variant="primary" fullWidth>ثبت‌نام عمده‌فروش</Button>
+            <div className="mt-3 border-t border-gray-100 pt-3">
+              <Link href="/portal/register" onClick={() => setOpen(false)} className="cursor-pointer">
+                <Button variant="primary" fullWidth>
+                  ثبت‌نام عمده‌فروش
+                </Button>
               </Link>
             </div>
           </nav>

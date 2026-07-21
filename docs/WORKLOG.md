@@ -17,6 +17,27 @@
 
 ---
 
+## 2026-07-21 — بازطراحی UI سایت عمومی + نصب ui-ux-pro-max
+
+### خلاصه
+- نصب skill `ui-ux-pro-max` در `.cursor/skills/` (CLI: `uipro init --ai cursor`)
+- Design system ترنم در `design-system/default/` با پالت سبز+طلایی قفل‌شده (نه navy پیشنهادی خام skill)
+- بازطراحی سایت عمومی: Hero full-bleed، trust strip، Why/How/Testimonials/CTA، کارت محصول editorial
+- هم‌راستاسازی Header/Footer، محصولات، درباره، تماس، عمده، وبلاگ، صفحات حقوقی
+- توکن‌های motion/surface در `globals.css` + `tailwind.config.ts`؛ `prefers-reduced-motion`
+
+### فایل‌های کلیدی
+- `design-system/default/MASTER.md`, `pages/home.md`
+- `apps/web/src/app/globals.css`, `apps/web/tailwind.config.ts`
+- `apps/web/src/components/layout/*`, `components/wholesale/*`
+- `apps/web/src/app/(wholesale)/**`
+- گزارش: `docs/reports/2026-07-21-ui-redesign.md`
+
+### خارج از دامنه
+- پنل ادمین و پورتال مشتری (بدون تغییر layout اختصاصی)
+
+---
+
 ## 2026-07-20 — موجودی سطح محصول + CRM API + PDP سایز/پالت
 
 ### خلاصه
@@ -56,6 +77,18 @@
 ### فایل‌ها
 - `apps/web/src/components/admin/AdminProducts.tsx`, `AdminInventory.tsx`
 - `apps/api/src/modules/product/*`, `inventory/*`
+
+---
+
+## 2026-07-20 — Deploy جداسازی موجودی/رنگ + ثبت‌نام روی production
+
+### خلاصه
+- سرور روی commit قدیمی `f8600e5` بود؛ به `1785365` (origin/master) به‌روز شد
+- شامل PR #8 (جداسازی موجودی از رنگ) و PR #9 (migration نام‌گذاری stock)
+
+### Deploy
+- `scripts/server-force-redeploy.sh` روی VPS (SSH پورت 2222)
+- Health: API ok، web 200
 
 ---
 

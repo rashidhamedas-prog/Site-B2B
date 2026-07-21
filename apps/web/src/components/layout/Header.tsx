@@ -14,69 +14,68 @@ const navLinks = [
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-      {/* Top bar */}
-      <div className="bg-primary text-white">
+    <header className="sticky top-0 z-40 border-b border-[color:var(--color-border)] bg-white/90 backdrop-blur-xl">
+      <div className="bg-primary-dark text-white">
         <div className="container-site flex items-center justify-between py-1.5 text-xs">
           <div className="flex items-center gap-4">
-            <a href="tel:09152424624" className="flex items-center gap-1.5 hover:text-secondary transition-colors">
+            <a
+              href="tel:09152424624"
+              className="flex cursor-pointer items-center gap-1.5 transition-colors duration-200 hover:text-secondary"
+            >
               <Phone className="h-3 w-3" />
               <span>۰۹۱۵-۲۴۲-۴۶۲۴</span>
             </a>
-            <span className="hidden sm:inline text-white/60">|</span>
+            <span className="hidden text-white/40 sm:inline">|</span>
             <a
               href="https://t.me/toliditaranom"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline hover:text-secondary transition-colors"
+              className="hidden cursor-pointer transition-colors duration-200 hover:text-secondary sm:inline"
             >
               @toliditaranom کانال تلگرام
             </a>
           </div>
-          <p className="hidden md:block text-white/80">
-            ارسال به سراسر ایران — حداقل سفارش ۵ عدد
-          </p>
+          <p className="hidden text-white/70 md:block">ارسال به سراسر ایران — حداقل سفارش ۵ عدد</p>
         </div>
       </div>
 
-      {/* Main nav */}
       <div className="container-site">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
+        <div className="flex h-[4.25rem] items-center justify-between">
+          <Link href="/" className="group flex cursor-pointer items-center gap-3">
             <img
               src="/logo-128.png"
               alt="لوگوی پوشاک ترنم"
-              className="h-11 w-11 object-contain group-hover:scale-105 transition-transform"
+              className="h-12 w-12 object-contain transition-transform duration-250 group-hover:scale-[1.03]"
             />
             <div className="leading-tight">
-              <div className="text-base font-bold text-primary">پوشاک ترنم</div>
-              <div className="text-xs text-gray-400">تولیدی مانتو زنانه</div>
+              <div className="text-lg font-extrabold tracking-tight text-primary">پوشاک ترنم</div>
+              <div className="text-[11px] font-medium text-gray-400">تولیدی مانتو زنانه مشهد</div>
             </div>
           </Link>
 
-          {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden items-center gap-0.5 lg:flex">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-primary hover:bg-primary-50 transition-colors"
+                className="cursor-pointer rounded-lg px-3.5 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-primary-50 hover:text-primary"
               >
                 {link.label}
               </Link>
             ))}
           </nav>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            <button className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors" aria-label="جستجو">
+          <div className="flex items-center gap-1.5">
+            <button
+              className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-surface-muted hover:text-primary sm:flex"
+              aria-label="جستجو"
+            >
               <Search className="h-5 w-5" />
             </button>
 
             <Link
               href="/portal"
-              className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors"
+              className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-surface-muted hover:text-primary sm:flex"
               aria-label="پنل مشتری"
             >
               <User className="h-5 w-5" />
@@ -84,8 +83,10 @@ export function Header() {
 
             <CartBadge />
 
-            <Link href="/portal/register" className="hidden sm:flex">
-              <Button variant="primary" size="sm">ثبت‌نام عمده‌فروش</Button>
+            <Link href="/portal/register" className="hidden cursor-pointer sm:flex">
+              <Button variant="primary" size="sm">
+                ثبت‌نام عمده‌فروش
+              </Button>
             </Link>
 
             <MobileMenuButton />

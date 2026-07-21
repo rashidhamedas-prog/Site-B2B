@@ -179,12 +179,12 @@ export function ProductDetail({ slug }: { slug: string }) {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-atmosphere">
       <div className="container-site py-8">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="skeleton aspect-[3/4] rounded-2xl" />
           <div className="space-y-4">
-            <div className="skeleton h-10 rounded w-3/4" />
+            <div className="skeleton h-10 w-3/4 rounded" />
             <div className="skeleton h-24 rounded" />
             <div className="skeleton h-20 rounded" />
             <div className="skeleton h-12 rounded" />
@@ -201,57 +201,57 @@ export function ProductDetail({ slug }: { slug: string }) {
   const fabricLabel = product.specs?.fabricType || product.fabric;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100">
+    <div className="min-h-screen bg-atmosphere">
+      <div className="border-b border-[color:var(--color-border)] bg-white">
         <div className="container-site py-3">
           <nav className="flex items-center gap-2 text-sm text-gray-500">
-            <Link href="/" className="hover:text-primary">خانه</Link>
+            <Link href="/" className="cursor-pointer transition-colors duration-200 hover:text-primary">خانه</Link>
             <ChevronLeft className="h-3 w-3 rtl-flip" />
-            <Link href="/products" className="hover:text-primary">محصولات</Link>
+            <Link href="/products" className="cursor-pointer transition-colors duration-200 hover:text-primary">محصولات</Link>
             <ChevronLeft className="h-3 w-3 rtl-flip" />
-            <span className="text-gray-900 font-medium line-clamp-1">{product.name}</span>
+            <span className="line-clamp-1 font-medium text-gray-900">{product.name}</span>
           </nav>
         </div>
       </div>
 
-      <div className="container-site py-8">
+      <div className="container-site py-8 lg:py-10">
         <div className="grid gap-8 lg:grid-cols-2 xl:gap-12">
           {/* Image gallery */}
-          <div className="space-y-3 max-w-full overflow-hidden">
-            <div className="relative aspect-[3/4] w-full max-h-[70vh] rounded-2xl overflow-hidden bg-gradient-to-b from-primary-50 to-primary-100 shadow-card">
+          <div className="max-w-full space-y-3 overflow-hidden">
+            <div className="relative aspect-[3/4] max-h-[70vh] w-full overflow-hidden rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100">
               <ProductImage
                 src={mainImage}
                 alt={product.name}
                 priority
                 sizes="(max-width:1024px) 100vw, 50vw"
               />
-              <button type="button" className="absolute top-3 left-3 z-10 rounded-xl bg-white/90 backdrop-blur-sm p-2 shadow-sm hover:bg-white transition-colors">
+              <button type="button" className="absolute top-3 left-3 z-10 cursor-pointer rounded-xl bg-white/90 p-2 shadow-sm backdrop-blur-sm transition-colors duration-200 hover:bg-white">
                 <Share2 className="h-4 w-4 text-gray-600" />
               </button>
-              <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 items-end">
+              <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
                 {product.isNew && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-secondary text-white">جدید</span>
+                  <span className="rounded bg-secondary px-2.5 py-0.5 text-xs font-bold text-white">جدید</span>
                 )}
                 {product.isDiscounted && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-primary text-white">تخفیف‌دار</span>
+                  <span className="rounded bg-primary px-2.5 py-0.5 text-xs font-bold text-white">تخفیف‌دار</span>
                 )}
                 {product.isLimitedStock && !isComingSoon && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-amber-500 text-white">موجودی محدود</span>
+                  <span className="rounded bg-amber-600 px-2.5 py-0.5 text-xs font-bold text-white">موجودی محدود</span>
                 )}
                 {isComingSoon && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-900 text-white">به زودی</span>
+                  <span className="rounded bg-gray-900 px-2.5 py-0.5 text-xs font-bold text-white">به زودی</span>
                 )}
               </div>
             </div>
             {product.images?.length > 1 && (
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
                 {product.images.map((img, i) => (
                   <button
                     key={img}
                     type="button"
                     onClick={() => setActiveImage(i)}
                     className={cn(
-                      'relative aspect-[3/4] w-full rounded-xl overflow-hidden border-2 transition-colors',
+                      'relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-xl border-2 transition-colors duration-200',
                       activeImage === i ? 'border-primary' : 'border-transparent hover:border-primary-200',
                     )}
                   >

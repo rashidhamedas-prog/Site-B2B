@@ -2,32 +2,32 @@ import { Package, Truck, CreditCard, Headphones, Shield, Zap } from 'lucide-reac
 
 const features = [
   {
-    icon: <Package className="h-6 w-6" />,
+    icon: Package,
     title: 'تولید مستقیم',
     description: 'مستقیم از کارخانه، بدون واسطه. کیفیت تضمینی و قیمت کارخانه برای همه عمده‌فروشان.',
   },
   {
-    icon: <Truck className="h-6 w-6" />,
+    icon: Truck,
     title: 'ارسال سریع',
     description: 'ارسال چاپار به سراسر ایران. ارسال رایگان برای سفارش‌های بالای ۵۰۰ هزار تومان.',
   },
   {
-    icon: <CreditCard className="h-6 w-6" />,
+    icon: CreditCard,
     title: 'پرداخت اعتباری',
     description: 'مشتریان دائمی می‌توانند از اعتبار خرید استفاده کنند. سیستم فاکتور و حساب‌کتاب دقیق.',
   },
   {
-    icon: <Headphones className="h-6 w-6" />,
+    icon: Headphones,
     title: 'پشتیبانی اختصاصی',
     description: 'ویزیتور اختصاصی برای مشتریان مشهد و چند شهر. پشتیبانی تلفنی و تلگرامی.',
   },
   {
-    icon: <Shield className="h-6 w-6" />,
+    icon: Shield,
     title: 'ضمانت کیفیت',
     description: 'تمام محصولات قبل از ارسال بازرسی می‌شوند. مرجوعی ۷ روزه برای کالای معیوب.',
   },
   {
-    icon: <Zap className="h-6 w-6" />,
+    icon: Zap,
     title: 'مدل‌های جدید',
     description: 'هر فصل کلکسیون جدید. بروزرسانی مستمر و اطلاع‌رسانی اختصاصی به مشتریان.',
   },
@@ -35,24 +35,24 @@ const features = [
 
 export function WhyTaranom() {
   return (
-    <section className="section bg-gray-50">
+    <section className="section bg-surface-muted">
       <div className="container-site">
-        <div className="text-center mb-12">
-          <h2 className="section-title">چرا ترنم؟</h2>
-          <p className="section-subtitle">مزایایی که ما را از دیگر تولیدی‌ها متمایز می‌کند</p>
+        <div className="mx-auto mb-14 max-w-2xl text-center">
+          <p className="mb-3 text-sm font-semibold tracking-wide text-secondary-dark">اعتماد عمده‌فروشان</p>
+          <h2 className="section-title mb-3">چرا ترنم؟</h2>
+          <p className="section-subtitle mx-auto mb-0">
+            مزایایی که همکاری با تولیدی ترنم را برای بوتیک‌ها پایدار و سودآور می‌کند
+          </p>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
-            <div
-              key={feature.title}
-              className="card-hover p-6 group"
-            >
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-50 text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-200">
-                {feature.icon}
+            <div key={feature.title} className="group">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white transition-colors duration-250 group-hover:bg-secondary">
+                <feature.icon className="h-5 w-5" />
               </div>
               <h3 className="mb-2 text-base font-bold text-gray-900">{feature.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{feature.description}</p>
+              <p className="text-sm leading-relaxed text-gray-500">{feature.description}</p>
             </div>
           ))}
         </div>
