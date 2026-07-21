@@ -11,11 +11,14 @@ import { OrderItemEntity } from '../modules/order/entities/order-item.entity';
 import { InvoiceEntity } from '../modules/invoice/entities/invoice.entity';
 import { InventoryMovementEntity } from '../modules/inventory/entities/inventory-movement.entity';
 import { DiscountCodeEntity } from '../modules/discount/entities/discount-code.entity';
+import { TieredDiscountEntity } from '../modules/discount/entities/tiered-discount.entity';
+import { SideDiscountEntity } from '../modules/discount/entities/side-discount.entity';
 import { PaymentEntity } from '../modules/payment/entities/payment.entity';
 import { BlogPostEntity } from '../modules/blog/entities/blog-post.entity';
 import { CmsPageEntity } from '../modules/cms/entities/cms-page.entity';
 import { AppSettingEntity } from '../modules/settings/entities/app-setting.entity';
 import { CategoryEntity } from '../modules/category/entities/category.entity';
+import { ProductSpecMemoryEntity } from '../modules/product/entities/product-spec-memory.entity';
 
 export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -28,10 +31,11 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     UserEntity, CustomerEntity,
     CategoryEntity,
     ProductEntity, ProductVariantEntity, VariantColorEntity, VariantSizeEntity,
+    ProductSpecMemoryEntity,
     OrderEntity, OrderItemEntity,
     InvoiceEntity,
     InventoryMovementEntity,
-    DiscountCodeEntity,
+    DiscountCodeEntity, TieredDiscountEntity, SideDiscountEntity,
     PaymentEntity,
     BlogPostEntity,
     CmsPageEntity,
