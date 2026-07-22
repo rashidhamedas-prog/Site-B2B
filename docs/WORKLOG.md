@@ -2,6 +2,22 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-22 — فاز ۱ siteup: شیشه‌ای Soft UI + تنظیمات تم
+
+### خلاصه
+- توکن‌های glass (`--glass-blur` و …) روی پالت سبز+طلایی قفل‌شده
+- Modal / WhyTaranom / CtaBanner با سطوح شیشه‌ای؛ variant دکمه `glass`
+- گروه تنظیمات `theme` در API (رنگ، حالت نمایش، blur، پاپ‌آپ بوتیک/خبرنامه)
+- تب «تنظیمات تم ترنم» در ادمین + `ThemeRuntime` روی سایت عمومی
+
+### فایل‌های کلیدی
+- `apps/web/src/app/globals.css`, `components/wholesale/Theme*.tsx`, `LandingPopups.tsx`
+- `apps/api/src/modules/settings/*`
+- `apps/web/src/components/admin/AdminSettings.tsx`
+- پلن: `docs/.plans/260722-1351-siteup-redesign/SUMMARY.md`
+
+---
+
 ## 2026-07-21 — fix checkout 500 + پرداخت آنلاین زرین‌پال در checkout
 
 ### علت خطای Internal server error

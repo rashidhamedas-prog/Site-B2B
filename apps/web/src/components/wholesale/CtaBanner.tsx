@@ -11,12 +11,12 @@ export function CtaBanner() {
       />
 
       <div className="container-site relative text-center">
-        <div className="mx-auto max-w-2xl">
+        <div className="glass-dark mx-auto max-w-2xl rounded-2xl px-6 py-10 sm:px-10 sm:py-12">
           <p className="mb-3 text-sm font-semibold tracking-wide text-secondary-light">شروع همکاری</p>
           <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
             آماده همکاری با ترنم هستید؟
           </h2>
-          <p className="mb-10 text-lg leading-relaxed text-white/75">
+          <p className="mb-10 text-lg leading-relaxed text-white/80">
             همین الان ثبت‌نام کنید و به جمع عمده‌فروشان ما در سراسر ایران بپیوندید، یا با تیم فروش تماس
             بگیرید.
           </p>
@@ -31,8 +31,8 @@ export function CtaBanner() {
             <a href="tel:09152424624" className="cursor-pointer">
               <Button
                 size="lg"
-                variant="outline"
-                className="min-w-[180px] border-white/50 text-white hover:border-white hover:bg-white hover:text-primary"
+                variant="glass"
+                className="min-w-[180px] border-white/40 text-white hover:text-primary"
                 rightIcon={<Phone className="h-5 w-5" />}
               >
                 تماس با فروش

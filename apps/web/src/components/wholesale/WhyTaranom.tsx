@@ -35,8 +35,9 @@ const features = [
 
 export function WhyTaranom() {
   return (
-    <section className="section bg-surface-muted">
-      <div className="container-site">
+    <section className="section relative overflow-hidden bg-surface-muted">
+      <div className="pointer-events-none absolute inset-0 bg-atmosphere opacity-80" />
+      <div className="container-site relative">
         <div className="mx-auto mb-14 max-w-2xl text-center">
           <p className="mb-3 text-sm font-semibold tracking-wide text-secondary-dark">اعتماد عمده‌فروشان</p>
           <h2 className="section-title mb-3">چرا ترنم؟</h2>
@@ -45,9 +46,9 @@ export function WhyTaranom() {
           </p>
         </div>
 
-        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
-            <div key={feature.title} className="group">
+            <div key={feature.title} className="group glass-card p-5 transition-all duration-250 hover:-translate-y-0.5">
               <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white transition-colors duration-250 group-hover:bg-secondary">
                 <feature.icon className="h-5 w-5" />
               </div>

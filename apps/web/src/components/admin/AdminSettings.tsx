@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Save, Building2, Phone, Mail, Globe, Instagram, MessageCircle,
   Truck, MessageSquare, CreditCard, CheckCircle, AlertCircle, Loader2,
-  Eye, EyeOff, Plus, Trash2,
+  Eye, EyeOff, Plus, Trash2, Palette,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { DEFAULT_THEME, type ThemeSettings } from '@/components/wholesale/ThemeApply';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -48,9 +49,10 @@ interface SettingsPayload {
     rules: InstallmentRule[];
     minActiveInvoices?: number;
   };
+  theme: ThemeSettings;
 }
 
-type TabId = 'business' | 'shipping' | 'sms' | 'payment' | 'installments';
+type TabId = 'business' | 'shipping' | 'sms' | 'payment' | 'installments' | 'theme';
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'business', label: 'کسب‌وکار', icon: Building2 },
@@ -58,6 +60,7 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'sms',      label: 'پیامک (sms.ir)', icon: MessageSquare },
   { id: 'payment',  label: 'درگاه پرداخت', icon: CreditCard },
   { id: 'installments', label: 'قوانین اقساط', icon: CreditCard },
+  { id: 'theme', label: 'تنظیمات تم ترنم', icon: Palette },
 ];
 
 const SMS_EVENT_LABELS: Record<string, string> = {
@@ -100,6 +103,14 @@ export function AdminSettings() {
           ...installments,
           rules,
           minActiveInvoices: installments.minActiveInvoices ?? 2,
+        },
+        theme: {
+          ...DEFAULT_THEME,
+          ...(res.theme ?? {}),
+          popups: {
+            boutique: { ...DEFAULT_THEME.popups.boutique, ...res.theme?.popups?.boutique },
+            newsletter: { ...DEFAULT_THEME.popups.newsletter, ...res.theme?.popups?.newsletter },
+          },
         },
       });
       setCategories(cats ?? []);
@@ -478,6 +489,197 @@ export function AdminSettings() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Theme tab — Taranom Theme Settings */}
+      {tab === 'theme' && (
+        <div className="card p-6 space-y-6 max-w-3xl">
+          <p className="text-sm text-primary-dark bg-primary-50 border border-primary-100 rounded-xl px-4 py-3">
+            تنظیمات ظاهر سایت عمومی (Soft UI + شیشه‌ای). رنگ‌های پیش‌فرض برند سبز و طلایی هستند.
+          </p>
+
+          <div>
+            <h3 className="font-bold text-gray-800 text-sm mb-3">رنگ‌ها</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">رنگ اصلی (Primary)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={data.theme.primaryColor}
+                    onChange={(e) => patch('theme', (t) => ({ ...t, primaryColor: e.target.value }))}
+                    className="h-10 w-14 cursor-pointer rounded border border-gray-200"
+                  />
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={data.theme.primaryColor}
+                    onChange={(e) => patch('theme', (t) => ({ ...t, primaryColor: e.target.value }))}
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">رنگ ثانویه (Secondary)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={data.theme.secondaryColor}
+                    onChange={(e) => patch('theme', (t) => ({ ...t, secondaryColor: e.target.value }))}
+                    className="h-10 w-14 cursor-pointer rounded border border-gray-200"
+                  />
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={data.theme.secondaryColor}
+                    onChange={(e) => patch('theme', (t) => ({ ...t, secondaryColor: e.target.value }))}
+                    className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-bold text-gray-800 text-sm mb-3">حالت نمایش پس‌زمینه</h3>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { id: 'light', label: 'روشن' },
+                { id: 'dark', label: 'تیره' },
+                { id: 'customImage', label: 'تصویر سفارشی' },
+              ] as const).map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => patch('theme', (t) => ({ ...t, displayMode: m.id }))}
+                  className={cn(
+                    'rounded-lg border px-4 py-2 text-sm font-medium cursor-pointer transition-colors',
+                    data.theme.displayMode === m.id
+                      ? 'border-primary bg-primary text-white'
+                      : 'border-gray-200 text-gray-700 hover:border-primary/40',
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            {data.theme.displayMode === 'customImage' && (
+              <div className="mt-3">
+                <TextField
+                  label="آدرس تصویر پس‌زمینه"
+                  value={data.theme.backgroundImageUrl}
+                  onChange={(v) => patch('theme', (t) => ({ ...t, backgroundImageUrl: v }))}
+                  dir="ltr"
+                  placeholder="https://…"
+                  help="URL کامل تصویر کارگاه یا پارچه لینن"
+                />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="font-bold text-gray-800 text-sm mb-3">شدت بلور شیشه‌ای</h3>
+            <div className="flex items-center gap-4">
+              <input
+                type="range"
+                min={0}
+                max={28}
+                step={1}
+                value={data.theme.glassBlurPx}
+                onChange={(e) => patch('theme', (t) => ({ ...t, glassBlurPx: Number(e.target.value) }))}
+                className="flex-1 accent-primary cursor-pointer"
+              />
+              <span className="text-sm font-mono text-gray-700 w-14 text-left" dir="ltr">
+                {data.theme.glassBlurPx}px
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1">پیشنهاد: ۱۲px — مقدارهای خیلی بالا روی موبایل سنگین‌ترند</p>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4 space-y-4">
+            <h3 className="font-bold text-gray-800 text-sm">پاپ‌آپ‌های لندینگ</h3>
+
+            {(['boutique', 'newsletter'] as const).map((key) => {
+              const popup = data.theme.popups[key];
+              const label = key === 'boutique' ? 'پاپ‌آپ بوتیک‌دار' : 'پاپ‌آپ خبرنامه';
+              return (
+                <div key={key} className="rounded-2xl border border-gray-100 p-4 space-y-3">
+                  <ToggleRow
+                    label={label}
+                    hint="پس از بستن توسط کاربر، تا پاک‌شدن localStorage دوباره نشان داده نمی‌شود"
+                    value={popup.enabled}
+                    onChange={(v) => patch('theme', (t) => ({
+                      ...t,
+                      popups: { ...t.popups, [key]: { ...t.popups[key], enabled: v } },
+                    }))}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">زمان نمایش</label>
+                      <select
+                        value={popup.trigger}
+                        onChange={(e) => patch('theme', (t) => ({
+                          ...t,
+                          popups: {
+                            ...t.popups,
+                            [key]: { ...t.popups[key], trigger: e.target.value as 'delay' | 'exit' },
+                          },
+                        }))}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      >
+                        <option value="delay">بعد از چند ثانیه</option>
+                        <option value="exit">قصد خروج (exit-intent)</option>
+                      </select>
+                    </div>
+                    <NumberField
+                      label="تأخیر (ثانیه)"
+                      value={popup.delaySeconds}
+                      onChange={(v) => patch('theme', (t) => ({
+                        ...t,
+                        popups: { ...t.popups, [key]: { ...t.popups[key], delaySeconds: Math.max(1, v) } },
+                      }))}
+                    />
+                  </div>
+                  <TextField
+                    label="عنوان"
+                    value={popup.title}
+                    onChange={(v) => patch('theme', (t) => ({
+                      ...t,
+                      popups: { ...t.popups, [key]: { ...t.popups[key], title: v } },
+                    }))}
+                  />
+                  <TextAreaField
+                    label="متن"
+                    value={popup.body}
+                    onChange={(v) => patch('theme', (t) => ({
+                      ...t,
+                      popups: { ...t.popups, [key]: { ...t.popups[key], body: v } },
+                    }))}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <TextField
+                      label="متن دکمه"
+                      value={popup.ctaLabel}
+                      onChange={(v) => patch('theme', (t) => ({
+                        ...t,
+                        popups: { ...t.popups, [key]: { ...t.popups[key], ctaLabel: v } },
+                      }))}
+                    />
+                    <TextField
+                      label="لینک دکمه"
+                      value={popup.ctaUrl}
+                      onChange={(v) => patch('theme', (t) => ({
+                        ...t,
+                        popups: { ...t.popups, [key]: { ...t.popups[key], ctaUrl: v } },
+                      }))}
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

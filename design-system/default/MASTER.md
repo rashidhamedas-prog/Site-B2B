@@ -9,8 +9,10 @@
 **Project:** پوشاک ترنم  
 **Updated:** 2026-07-21  
 **Category:** B2B Wholesale Fashion (Manufacturing)  
-**Style:** Trust & Authority + Soft UI Evolution  
+**Style:** Trust & Authority + Soft UI Evolution + Glass accents  
 **Direction:** RTL (فارسی)
+
+Glass evolution (2026-07-22): frosted surfaces via `--glass-*` tokens (default blur 12px). Keep emerald+gold palette locked. Do not swap to rose/pink or full glassmorphism rewrite.
 
 ---
 
@@ -76,7 +78,7 @@
 
 **Pattern:** Trust & Authority + Feature Showcase  
 **CTA:** Above fold + repeated after social proof  
-**Effects:** Soft shadows, gentle hover lift (no layout-shift scale), metric reveal, editorial product grids
+**Effects:** Soft shadows, glass accents (`backdrop-filter` 10–20px), gentle hover lift, metric reveal, editorial product grids
 
 ### Anti-Patterns
 

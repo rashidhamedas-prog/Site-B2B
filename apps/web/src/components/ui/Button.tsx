@@ -3,7 +3,7 @@
 import { forwardRef } from 'react';
 import { cn } from '@/lib/cn';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'glass';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -21,6 +21,7 @@ const variants: Record<Variant, string> = {
   outline:   'border border-primary text-primary bg-transparent hover:bg-primary hover:text-white',
   ghost:     'text-primary bg-transparent hover:bg-primary-50',
   danger:    'bg-error text-white hover:bg-red-700 active:bg-red-800',
+  glass:     'btn-glass text-primary',
 };
 
 const sizes: Record<Size, string> = {

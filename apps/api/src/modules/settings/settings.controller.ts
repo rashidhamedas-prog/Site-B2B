@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
-const GROUPS = ['business', 'shipping', 'sms', 'payment', 'installments'] as const;
+const GROUPS = ['business', 'shipping', 'sms', 'payment', 'installments', 'theme'] as const;
 
 @ApiTags('settings')
 @Controller('settings')
@@ -16,11 +16,12 @@ export class SettingsController {
   // shipping methods). Never exposes API keys.
   @Get('public')
   async publicSettings() {
-    const [business, shipping, installments, payment] = await Promise.all([
+    const [business, shipping, installments, payment, theme] = await Promise.all([
       this.svc.business(),
       this.svc.shipping(),
       this.svc.installments(),
       this.svc.payment(),
+      this.svc.theme(),
     ]);
     return {
       business: {
@@ -44,6 +45,7 @@ export class SettingsController {
         manualCardNumber: payment.manualCardNumber || '',
         manualCardOwner: payment.manualCardOwner || '',
       },
+      theme,
     };
   }
 
@@ -53,14 +55,15 @@ export class SettingsController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   async adminSettings() {
-    const [business, shipping, sms, payment, installments] = await Promise.all([
+    const [business, shipping, sms, payment, installments, theme] = await Promise.all([
       this.svc.business(),
       this.svc.shipping(),
       this.svc.sms(),
       this.svc.payment(),
       this.svc.installments(),
+      this.svc.theme(),
     ]);
-    return { business, shipping, sms, payment, installments };
+    return { business, shipping, sms, payment, installments, theme };
   }
 
   // Admin: save one settings group.

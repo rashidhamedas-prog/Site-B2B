@@ -156,4 +156,44 @@ export class SettingsService {
       manualCardOwner: s.manualCardOwner ?? '',
     };
   }
+
+  async theme() {
+    const s = await this.get('theme');
+    const blur = Number(s.glassBlurPx);
+    const delay = Number(s.popups?.boutique?.delaySeconds ?? s.boutiqueDelaySeconds);
+    const newsDelay = Number(s.popups?.newsletter?.delaySeconds ?? s.newsletterDelaySeconds);
+
+    const boutique = {
+      enabled: s.popups?.boutique?.enabled ?? s.boutiqueEnabled ?? false,
+      trigger: (s.popups?.boutique?.trigger ?? s.boutiqueTrigger ?? 'delay') as 'delay' | 'exit',
+      delaySeconds: Number.isFinite(delay) && delay > 0 ? delay : 5,
+      title: s.popups?.boutique?.title ?? 'همکاری با تولیدی ترنم',
+      body:
+        s.popups?.boutique?.body ??
+        'اگر صاحب بوتیک هستید، مشخصات تماس را بگذارید تا تیم فروش عمده با شما هماهنگ کند.',
+      ctaLabel: s.popups?.boutique?.ctaLabel ?? 'ثبت‌نام عمده‌فروش',
+      ctaUrl: s.popups?.boutique?.ctaUrl ?? '/portal/register',
+    };
+
+    const newsletter = {
+      enabled: s.popups?.newsletter?.enabled ?? s.newsletterEnabled ?? false,
+      trigger: (s.popups?.newsletter?.trigger ?? s.newsletterTrigger ?? 'delay') as 'delay' | 'exit',
+      delaySeconds: Number.isFinite(newsDelay) && newsDelay > 0 ? newsDelay : 12,
+      title: s.popups?.newsletter?.title ?? 'خبر کلکسیون‌های جدید',
+      body:
+        s.popups?.newsletter?.body ??
+        'از مدل‌های لینن و شومیزی جدید ترنم زودتر از بقیه باخبر شوید.',
+      ctaLabel: s.popups?.newsletter?.ctaLabel ?? 'عضویت در خبرنامه',
+      ctaUrl: s.popups?.newsletter?.ctaUrl ?? '/contact',
+    };
+
+    return {
+      primaryColor: s.primaryColor ?? '#1B5C4A',
+      secondaryColor: s.secondaryColor ?? '#C9A84C',
+      displayMode: (s.displayMode ?? 'light') as 'light' | 'dark' | 'customImage',
+      backgroundImageUrl: s.backgroundImageUrl ?? '',
+      glassBlurPx: Number.isFinite(blur) && blur >= 0 && blur <= 40 ? blur : 12,
+      popups: { boutique, newsletter },
+    };
+  }
 }
