@@ -164,26 +164,26 @@ export class SettingsService {
     const newsDelay = Number(s.popups?.newsletter?.delaySeconds ?? s.newsletterDelaySeconds);
 
     const boutique = {
-      enabled: s.popups?.boutique?.enabled ?? s.boutiqueEnabled ?? false,
+      enabled: s.popups?.boutique?.enabled ?? s.boutiqueEnabled ?? true,
       trigger: (s.popups?.boutique?.trigger ?? s.boutiqueTrigger ?? 'delay') as 'delay' | 'exit',
-      delaySeconds: Number.isFinite(delay) && delay > 0 ? delay : 5,
-      title: s.popups?.boutique?.title ?? 'همکاری با تولیدی ترنم',
+      delaySeconds: Number.isFinite(delay) && delay > 0 ? delay : 6,
+      title: s.popups?.boutique?.title ?? 'بوتیک دارید؟ عمده بگیرید',
       body:
         s.popups?.boutique?.body ??
-        'اگر صاحب بوتیک هستید، مشخصات تماس را بگذارید تا تیم فروش عمده با شما هماهنگ کند.',
+        'مستقیم از تولیدی ترنم در مشهد — لینن و کتان، حداقل سفارش عمده، ارسال سراسر ایران. همین حالا ثبت‌نام کنید تا لیست قیمت عمده برایتان فعال شود.',
       ctaLabel: s.popups?.boutique?.ctaLabel ?? 'ثبت‌نام عمده‌فروش',
       ctaUrl: s.popups?.boutique?.ctaUrl ?? '/portal/register',
     };
 
     const newsletter = {
-      enabled: s.popups?.newsletter?.enabled ?? s.newsletterEnabled ?? false,
-      trigger: (s.popups?.newsletter?.trigger ?? s.newsletterTrigger ?? 'delay') as 'delay' | 'exit',
-      delaySeconds: Number.isFinite(newsDelay) && newsDelay > 0 ? newsDelay : 12,
-      title: s.popups?.newsletter?.title ?? 'خبر کلکسیون‌های جدید',
+      enabled: s.popups?.newsletter?.enabled ?? s.newsletterEnabled ?? true,
+      trigger: (s.popups?.newsletter?.trigger ?? s.newsletterTrigger ?? 'exit') as 'delay' | 'exit',
+      delaySeconds: Number.isFinite(newsDelay) && newsDelay > 0 ? newsDelay : 18,
+      title: s.popups?.newsletter?.title ?? 'کلکسیون لینن جدید',
       body:
         s.popups?.newsletter?.body ??
-        'از مدل‌های لینن و شومیزی جدید ترنم زودتر از بقیه باخبر شوید.',
-      ctaLabel: s.popups?.newsletter?.ctaLabel ?? 'عضویت در خبرنامه',
+        'قبل از اتمام موجودی فصل، از مدل‌های جدید شومیزی و مانتو لینن باخبر شوید — تماس با فروش یا عضویت از صفحه تماس.',
+      ctaLabel: s.popups?.newsletter?.ctaLabel ?? 'مشاوره خرید عمده',
       ctaUrl: s.popups?.newsletter?.ctaUrl ?? '/contact',
     };
 

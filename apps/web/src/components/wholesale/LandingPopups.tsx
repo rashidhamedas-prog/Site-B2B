@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Modal, Button } from '@/components/ui';
+import { usePathname } from 'next/navigation';
+import { Modal, Button, Input } from '@/components/ui';
 import type { ThemePopupConfig, ThemeSettings } from './ThemeApply';
 
 const DISMISS_PREFIX = 'taranom_popup_dismissed_';
@@ -36,17 +37,42 @@ function GlassPopup({
   open: boolean;
   onClose: () => void;
 }) {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+
   const handleClose = () => {
     dismiss(id);
     onClose();
   };
 
+  const leadHref =
+    id === 'boutique' && (name.trim() || phone.trim())
+      ? `${config.ctaUrl}${config.ctaUrl.includes('?') ? '&' : '?'}name=${encodeURIComponent(name.trim())}&phone=${encodeURIComponent(phone.trim())}`
+      : config.ctaUrl || '#';
+
   return (
     <Modal open={open} onClose={handleClose} title={config.title} size="md">
       <div className="space-y-5 px-6 py-5">
         <p className="text-sm leading-relaxed text-gray-600">{config.body}</p>
+
+        {id === 'boutique' && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input
+              placeholder="نام بوتیک / فروشگاه"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Input
+              placeholder="موبایل"
+              dir="ltr"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3">
-          <Link href={config.ctaUrl || '#'} onClick={handleClose} className="cursor-pointer">
+          <Link href={leadHref} onClick={handleClose} className="cursor-pointer">
             <Button variant="primary">{config.ctaLabel}</Button>
           </Link>
           <Button variant="glass" onClick={handleClose}>
@@ -58,9 +84,11 @@ function GlassPopup({
   );
 }
 
-/** Landing popups controlled by theme settings (boutique lead + newsletter). */
+/** Landing popups — homepage only; boutique after delay, newsletter on exit-intent. */
 export function LandingPopups({ theme }: { theme: ThemeSettings }) {
+  const pathname = usePathname();
   const [active, setActive] = useState<PopupId | null>(null);
+  const onHome = pathname === '/' || pathname === '';
 
   const tryOpen = useCallback((id: PopupId, config: ThemePopupConfig) => {
     if (!config.enabled || wasDismissed(id)) return;
@@ -68,6 +96,8 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
   }, []);
 
   useEffect(() => {
+    if (!onHome) return;
+
     const timers: ReturnType<typeof setTimeout>[] = [];
     const order: PopupId[] = ['boutique', 'newsletter'];
 
@@ -86,7 +116,7 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
       if (e.clientY > 24) return;
       for (const id of order) {
         const config = theme.popups[id];
-        if (config?.enabled && config.trigger === 'exit') {
+        if (config?.enabled && config.trigger === 'exit' && !wasDismissed(id)) {
           tryOpen(id, config);
           break;
         }
@@ -98,7 +128,9 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
       timers.forEach(clearTimeout);
       document.removeEventListener('mouseout', onExit);
     };
-  }, [theme, tryOpen]);
+  }, [theme, tryOpen, onHome]);
+
+  if (!onHome) return null;
 
   const close = () => setActive(null);
   const boutique = theme.popups.boutique;
