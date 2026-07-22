@@ -20,9 +20,11 @@ export class ProductController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
     @Query('fabric') fabric?: string,
+    @Query('color') color?: string,
+    @Query('size') size?: string,
     @Query('status') status?: string,
   ) {
-    return this.productService.findAll(page, limit, search, fabric, status);
+    return this.productService.findAll(page, limit, search, fabric, status, color, size);
   }
 
   @Get('coming-soon')

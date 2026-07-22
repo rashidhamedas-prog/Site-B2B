@@ -1,18 +1,18 @@
+'use client';
+
 import Link from 'next/link';
 import { User, Phone, Search } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { MobileMenuButton } from './MobileMenu';
 import { CartBadge } from './CartBadge';
-
-const navLinks = [
-  { href: '/products', label: 'محصولات' },
-  { href: '/about', label: 'درباره ترنم' },
-  { href: '/wholesale', label: 'شرایط عمده' },
-  { href: '/blog', label: 'وبلاگ' },
-  { href: '/contact', label: 'تماس با ما' },
-];
+import { MegaNav } from './MegaNav';
+import { useMenus } from '@/lib/hooks/useMenus';
+import { DEFAULT_MENUS } from '@/lib/menus';
 
 export function Header() {
+  const { menus } = useMenus();
+  const main = menus.main?.length ? menus.main : DEFAULT_MENUS.main;
+
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--color-border)] bg-white/90 backdrop-blur-xl">
       <div className="bg-primary-dark text-white">
@@ -53,17 +53,7 @@ export function Header() {
             </div>
           </Link>
 
-          <nav className="hidden items-center gap-0.5 lg:flex">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="cursor-pointer rounded-lg px-3.5 py-2 text-sm font-medium text-gray-600 transition-colors duration-200 hover:bg-primary-50 hover:text-primary"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+          <MegaNav items={main} megaEnabled={menus.megaEnabled !== false} />
 
           <div className="flex items-center gap-1.5">
             <button
@@ -89,7 +79,7 @@ export function Header() {
               </Button>
             </Link>
 
-            <MobileMenuButton />
+            <MobileMenuButton items={menus.mobile?.length ? menus.mobile : main} />
           </div>
         </div>
       </div>

@@ -1,22 +1,15 @@
+'use client';
+
 import Link from 'next/link';
 import { Phone, MapPin, Send, Instagram } from 'lucide-react';
-
-const quickLinks = [
-  { href: '/products', label: 'محصولات' },
-  { href: '/wholesale', label: 'شرایط عمده‌فروشی' },
-  { href: '/about', label: 'درباره ما' },
-  { href: '/blog', label: 'وبلاگ' },
-  { href: '/contact', label: 'تماس با ما' },
-];
-
-const legalLinks = [
-  { href: '/privacy', label: 'حریم خصوصی' },
-  { href: '/terms', label: 'شرایط و قوانین' },
-  { href: '/returns', label: 'شرایط مرجوعی' },
-  { href: '/shipping', label: 'شرایط ارسال' },
-];
+import { useMenus } from '@/lib/hooks/useMenus';
+import { DEFAULT_MENUS } from '@/lib/menus';
 
 export function Footer() {
+  const { menus } = useMenus();
+  const quickLinks = menus.footer?.length ? menus.footer : DEFAULT_MENUS.footer;
+  const legalLinks = menus.legal?.length ? menus.legal : DEFAULT_MENUS.legal;
+
   return (
     <footer className="relative overflow-hidden bg-primary-dark text-gray-300">
       <div
@@ -69,7 +62,7 @@ export function Footer() {
             <h3 className="mb-4 text-sm font-semibold tracking-wide text-white">دسترسی سریع</h3>
             <ul className="space-y-3">
               {quickLinks.map((link) => (
-                <li key={link.href}>
+                <li key={link.id}>
                   <Link
                     href={link.href}
                     className="cursor-pointer text-sm text-white/55 transition-colors duration-200 hover:text-secondary"
@@ -85,7 +78,7 @@ export function Footer() {
             <h3 className="mb-4 text-sm font-semibold tracking-wide text-white">اطلاعات حقوقی</h3>
             <ul className="space-y-3">
               {legalLinks.map((link) => (
-                <li key={link.href}>
+                <li key={link.id}>
                   <Link
                     href={link.href}
                     className="cursor-pointer text-sm text-white/55 transition-colors duration-200 hover:text-secondary"

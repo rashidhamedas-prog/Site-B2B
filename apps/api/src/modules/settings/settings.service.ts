@@ -196,4 +196,80 @@ export class SettingsService {
       popups: { boutique, newsletter },
     };
   }
+
+  async menus() {
+    const s = await this.get('menus');
+    const normalize = (items: any[] | undefined, fallback: any[]) => {
+      const src = Array.isArray(items) && items.length ? items : fallback;
+      return src.map((it: any, i: number) => ({
+        id: String(it?.id ?? `item_${i + 1}`),
+        label: String(it?.label ?? 'لینک'),
+        href: String(it?.href ?? '#'),
+        highlight: !!it?.highlight,
+        imageUrl: it?.imageUrl ? String(it.imageUrl) : '',
+        description: it?.description ? String(it.description) : '',
+        children: Array.isArray(it?.children)
+          ? it.children.map((c: any, j: number) => ({
+              id: String(c?.id ?? `child_${i}_${j}`),
+              label: String(c?.label ?? 'زیرمنو'),
+              href: String(c?.href ?? '#'),
+              imageUrl: c?.imageUrl ? String(c.imageUrl) : '',
+              description: c?.description ? String(c.description) : '',
+            }))
+          : [],
+      }));
+    };
+
+    const defaultMain = [
+      {
+        id: 'products',
+        label: 'محصولات',
+        href: '/products',
+        highlight: false,
+        imageUrl: '',
+        description: '',
+        children: [
+          { id: 'cat-blouse', label: 'شومیزی', href: '/products?fabric=لینن', imageUrl: '', description: 'شومیزی عمده' },
+          { id: 'cat-manteau', label: 'مانتو', href: '/products', imageUrl: '', description: 'مانتو عمده' },
+          { id: 'cat-set', label: 'ست', href: '/products', imageUrl: '', description: 'ست دو و سه تکه' },
+        ],
+      },
+      { id: 'about', label: 'درباره ترنم', href: '/about', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'wholesale', label: 'شرایط عمده', href: '/wholesale', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'blog', label: 'وبلاگ', href: '/blog', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'contact', label: 'تماس با ما', href: '/contact', highlight: false, imageUrl: '', description: '', children: [] },
+      {
+        id: 'linen',
+        label: 'کلکسیون لینن ترنم',
+        href: '/linen-collection',
+        highlight: true,
+        imageUrl: '',
+        description: '',
+        children: [],
+      },
+    ];
+
+    const defaultFooter = [
+      { id: 'f-products', label: 'محصولات', href: '/products', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'f-wholesale', label: 'شرایط عمده‌فروشی', href: '/wholesale', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'f-about', label: 'درباره ما', href: '/about', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'f-blog', label: 'وبلاگ', href: '/blog', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'f-contact', label: 'تماس با ما', href: '/contact', highlight: false, imageUrl: '', description: '', children: [] },
+    ];
+
+    const defaultLegal = [
+      { id: 'l-privacy', label: 'حریم خصوصی', href: '/privacy', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'l-terms', label: 'شرایط و قوانین', href: '/terms', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'l-returns', label: 'شرایط مرجوعی', href: '/returns', highlight: false, imageUrl: '', description: '', children: [] },
+      { id: 'l-shipping', label: 'شرایط ارسال', href: '/shipping', highlight: false, imageUrl: '', description: '', children: [] },
+    ];
+
+    return {
+      megaEnabled: s.megaEnabled !== false,
+      main: normalize(s.main, defaultMain),
+      footer: normalize(s.footer, defaultFooter),
+      mobile: normalize(s.mobile, defaultMain),
+      legal: normalize(s.legal, defaultLegal),
+    };
+  }
 }

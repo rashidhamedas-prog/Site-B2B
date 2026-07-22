@@ -3,8 +3,18 @@ import { Package, Truck, CreditCard, Headphones, Shield, Zap } from 'lucide-reac
 const features = [
   {
     icon: Package,
-    title: 'تولید مستقیم',
-    description: 'مستقیم از کارخانه، بدون واسطه. کیفیت تضمینی و قیمت کارخانه برای همه عمده‌فروشان.',
+    title: 'تولید ۰ تا ۱۰۰ داخل کارگاه',
+    description: 'از برش تا بسته‌بندی در کارگاه ترنم انجام می‌شود؛ کنترل کیفیت مستقیم و قیمت کارخانه برای عمده‌فروشان.',
+  },
+  {
+    icon: Shield,
+    title: 'ضمانت شستشوی آنزیمی',
+    description: 'لینن و پارچه‌های حساس با شستشوی آنزیمی ضدآبرفت آماده می‌شوند تا بوتیک شما مرجوعی کمتری داشته باشد.',
+  },
+  {
+    icon: Zap,
+    title: '۱۴ سال تجربه تولیدی',
+    description: 'از ۱۳۹۴ تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.',
   },
   {
     icon: Truck,
@@ -21,16 +31,6 @@ const features = [
     title: 'پشتیبانی اختصاصی',
     description: 'ویزیتور اختصاصی برای مشتریان مشهد و چند شهر. پشتیبانی تلفنی و تلگرامی.',
   },
-  {
-    icon: Shield,
-    title: 'ضمانت کیفیت',
-    description: 'تمام محصولات قبل از ارسال بازرسی می‌شوند. مرجوعی ۷ روزه برای کالای معیوب.',
-  },
-  {
-    icon: Zap,
-    title: 'مدل‌های جدید',
-    description: 'هر فصل کلکسیون جدید. بروزرسانی مستمر و اطلاع‌رسانی اختصاصی به مشتریان.',
-  },
 ];
 
 export function WhyTaranom() {
@@ -40,7 +40,7 @@ export function WhyTaranom() {
       <div className="container-site relative">
         <div className="mx-auto mb-14 max-w-2xl text-center">
           <p className="mb-3 text-sm font-semibold tracking-wide text-secondary-dark">اعتماد عمده‌فروشان</p>
-          <h2 className="section-title mb-3">چرا ترنم؟</h2>
+          <h2 className="section-title mb-3">چرا تولیدی ترنم؟</h2>
           <p className="section-subtitle mx-auto mb-0">
             مزایایی که همکاری با تولیدی ترنم را برای بوتیک‌ها پایدار و سودآور می‌کند
           </p>

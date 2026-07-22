@@ -11,9 +11,13 @@ export interface ProductCustomField {
 
 export interface ProductSpecs {
   fabricType?: string;
+  designDetails?: string;
+  packageSpecs?: string;
+  manufacturingBadge?: string;
   packQty?: string;
   length?: string;
   length2?: string;
+  length3?: string;
   chestWidth?: string;
   sleeveModel?: string;
   buttonModel?: string;
@@ -42,6 +46,7 @@ export interface Product {
   isLimitedStock?: boolean;
   createdAt?: string;
   description?: string;
+  seoMeta?: { title?: string; description?: string; focusKeyword?: string; canonical?: string };
   categoryId?: string;
   fabricComposition?: string;
 }

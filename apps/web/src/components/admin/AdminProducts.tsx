@@ -46,9 +46,13 @@ interface ColorHistoryItem {
 
 const emptySpecs: ProductSpecs = {
   fabricType: '',
+  designDetails: '',
+  packageSpecs: '',
+  manufacturingBadge: '',
   packQty: '',
   length: '',
   length2: '',
+  length3: '',
   chestWidth: '',
   sleeveModel: '',
   buttonModel: '',
@@ -61,6 +65,10 @@ const emptyForm = {
   categoryId: '',
   name: '',
   description: '',
+  seoTitle: '',
+  seoDescription: '',
+  focusKeyword: '',
+  canonical: '',
   wholesalePrice: '',
   retailPrice: '',
   minOrderQty: '5',
@@ -69,6 +77,7 @@ const emptyForm = {
   sizeType: 'FREE' as 'TWO' | 'THREE' | 'FREE',
   specs: emptySpecs,
   hasLength2: false,
+  hasLength3: false,
 };
 
 const emptyVariantForm = { color: '', colorHex: '#000000', barcode: '' };
@@ -540,6 +549,10 @@ export function AdminProducts() {
       categoryId: p.categoryId ?? '',
       name: p.name,
       description: p.description ?? '',
+      seoTitle: p.seoMeta?.title ?? '',
+      seoDescription: p.seoMeta?.description ?? '',
+      focusKeyword: p.seoMeta?.focusKeyword ?? '',
+      canonical: p.seoMeta?.canonical ?? '',
       wholesalePrice: String(Math.round(Number(p.wholesalePrice) / 10)),
       retailPrice: p.retailPrice ? String(Math.round(Number(p.retailPrice) / 10)) : '',
       minOrderQty: String(p.minOrderQty),
@@ -547,11 +560,16 @@ export function AdminProducts() {
       isDiscounted: !!p.isDiscounted,
       sizeType: (p.sizeType as FormData['sizeType']) || 'FREE',
       hasLength2: !!specs.length2,
+      hasLength3: !!specs.length3,
       specs: {
         fabricType: specs.fabricType ?? '',
+        designDetails: specs.designDetails ?? '',
+        packageSpecs: specs.packageSpecs ?? '',
+        manufacturingBadge: specs.manufacturingBadge ?? '',
         packQty: specs.packQty ?? '',
         length: specs.length ?? '',
         length2: specs.length2 ?? '',
+        length3: specs.length3 ?? '',
         chestWidth: specs.chestWidth ?? '',
         sleeveModel: specs.sleeveModel ?? '',
         buttonModel: specs.buttonModel ?? '',
@@ -630,6 +648,9 @@ export function AdminProducts() {
 
       const specs: ProductSpecs = {
         fabricType: form.specs.fabricType?.trim() || undefined,
+        designDetails: form.specs.designDetails?.trim() || undefined,
+        packageSpecs: form.specs.packageSpecs?.trim() || undefined,
+        manufacturingBadge: form.specs.manufacturingBadge?.trim() || undefined,
         packQty: form.specs.packQty?.trim() || undefined,
         length: form.specs.length?.trim() || undefined,
         chestWidth: form.specs.chestWidth?.trim() || undefined,
@@ -641,12 +662,23 @@ export function AdminProducts() {
       if (form.hasLength2 && form.specs.length2?.trim()) {
         specs.length2 = form.specs.length2.trim();
       }
+      if (form.hasLength3 && form.specs.length3?.trim()) {
+        specs.length3 = form.specs.length3.trim();
+      }
+
+      const seoMeta = {
+        title: form.seoTitle.trim() || undefined,
+        description: form.seoDescription.trim() || undefined,
+        focusKeyword: form.focusKeyword.trim() || undefined,
+        canonical: form.canonical.trim() || undefined,
+      };
 
       const payload = {
         sku: form.sku || undefined,
         categoryId: form.categoryId || undefined,
         name: form.name,
         description: form.description || undefined,
+        seoMeta,
         specs,
         sizeType: form.sizeType,
         wholesalePrice: Number(form.wholesalePrice) * 10,
@@ -931,10 +963,24 @@ export function AdminProducts() {
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
-                  {specField('packQty', 'تعداد در پک', '۶')}
+                  {specField('packQty', 'تعداد در پک / MOQ نمایشی', '۶')}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">جزئیات طراحی</label>
+                  <textarea
+                    value={form.specs.designDetails ?? ''}
+                    onChange={(e) => setSpec('designDetails', e.target.value)}
+                    rows={2}
+                    placeholder="یقه، دکمه، برش، جزئیات دوخت…"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {specField('length', 'قد کار', '۱۱۰')}
+                  {specField('packageSpecs', 'مشخصات پکیج', 'مانتو + شلوار')}
+                  {specField('manufacturingBadge', 'نشان ویژه تولید', 'شستشوی آنزیمی ضدآبرفت')}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {specField('length', 'قد ۱ (سانتی‌متر)', '۱۱۰')}
                   <div>
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                       <input
@@ -944,14 +990,12 @@ export function AdminProducts() {
                           setForm((f) => ({
                             ...f,
                             hasLength2: e.target.checked,
-                            specs: e.target.checked
-                              ? f.specs
-                              : { ...f.specs, length2: '' },
+                            specs: e.target.checked ? f.specs : { ...f.specs, length2: '' },
                           }))
                         }
                         className="rounded"
                       />
-                      <span className="text-xs text-gray-700">محصول ست — قد ۲</span>
+                      <span className="text-xs text-gray-700">قد ۲</span>
                     </label>
                     {form.hasLength2 && (
                       <>
@@ -962,13 +1006,36 @@ export function AdminProducts() {
                           placeholder="قد ۲"
                           className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
-                        <MemoryChips
-                          values={specMemory.length2}
-                          onPick={(v) => setSpec('length2', v)}
-                        />
+                        <MemoryChips values={specMemory.length2} onPick={(v) => setSpec('length2', v)} />
                       </>
                     )}
                   </div>
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <input
+                      type="checkbox"
+                      checked={form.hasLength3}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          hasLength3: e.target.checked,
+                          specs: e.target.checked ? f.specs : { ...f.specs, length3: '' },
+                        }))
+                      }
+                      className="rounded"
+                    />
+                    <span className="text-xs text-gray-700">قد ۳ (ست سه‌تکه)</span>
+                  </label>
+                  {form.hasLength3 && (
+                    <input
+                      type="text"
+                      value={form.specs.length3 ?? ''}
+                      onChange={(e) => setSpec('length3', e.target.value)}
+                      placeholder="قد ۳"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('chestWidth', 'عرض سینه', '۵۰')}
@@ -1029,12 +1096,71 @@ export function AdminProducts() {
                 </div>
               </div>
 
+              <div className="rounded-xl border border-primary/15 bg-primary-50/40 p-4 space-y-3">
+                <p className="text-sm font-semibold text-primary-dark">تنظیمات SEO ترنم</p>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Meta Title</label>
+                  <input
+                    type="text"
+                    value={form.seoTitle}
+                    onChange={(e) => setForm((f) => ({ ...f, seoTitle: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    maxLength={70}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Meta Description</label>
+                  <textarea
+                    value={form.seoDescription}
+                    onChange={(e) => setForm((f) => ({ ...f, seoDescription: e.target.value }))}
+                    rows={2}
+                    maxLength={160}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Focus Keyword</label>
+                    <input
+                      type="text"
+                      value={form.focusKeyword}
+                      onChange={(e) => setForm((f) => ({ ...f, focusKeyword: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
+                    <input
+                      type="text"
+                      dir="ltr"
+                      value={form.canonical}
+                      onChange={(e) => setForm((f) => ({ ...f, canonical: e.target.value }))}
+                      placeholder="https://poshaktaranom.com/..."
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white p-3">
+                  <p className="mb-1 text-[11px] text-gray-400">پیش‌نمایش گوگل</p>
+                  <p className="truncate text-base text-[#1a0dab]">
+                    {form.seoTitle || form.name || 'عنوان محصول'} | پوشاک ترنم
+                  </p>
+                  <p className="truncate text-xs text-[#006621]" dir="ltr">
+                    {form.canonical || 'https://poshaktaranom.com/products/...'}
+                  </p>
+                  <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                    {form.seoDescription || form.description || 'توضیح کوتاه محصول برای نتایج جستجو…'}
+                  </p>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">توضیحات SEO</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">توضیحات کامل و مراقبت (SEO Description)</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  rows={2}
+                  rows={4}
+                  placeholder="متن غنی برای پایین صفحه محصول — مراقبت از پارچه، کاربرد عمده و…"
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
               </div>

@@ -9,9 +9,16 @@ export interface ProductCustomField {
 /** Structured product specifications (توضیحات محصول) */
 export interface ProductSpecs {
   fabricType?: string;
+  /** جزئیات طراحی: یقه، دکمه، برش و … */
+  designDetails?: string;
+  /** مشخصات پکیج: مثلاً مانتو + شلوار */
+  packageSpecs?: string;
+  /** نشان ویژه تولید */
+  manufacturingBadge?: string;
   packQty?: string;
   length?: string;
   length2?: string;
+  length3?: string;
   chestWidth?: string;
   sleeveModel?: string;
   buttonModel?: string;
@@ -21,9 +28,13 @@ export interface ProductSpecs {
 
 export const SPEC_FIELD_KEYS = [
   'fabricType',
+  'designDetails',
+  'packageSpecs',
+  'manufacturingBadge',
   'packQty',
   'length',
   'length2',
+  'length3',
   'chestWidth',
   'sleeveModel',
   'buttonModel',

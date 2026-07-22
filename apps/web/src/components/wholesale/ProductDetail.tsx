@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler } from 'lucide-react';
 import { Button, Badge, Alert } from '@/components/ui';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
@@ -21,9 +22,13 @@ interface Variant {
 
 interface ProductSpecs {
   fabricType?: string;
+  designDetails?: string;
+  packageSpecs?: string;
+  manufacturingBadge?: string;
   packQty?: string;
   length?: string;
   length2?: string;
+  length3?: string;
   chestWidth?: string;
   sleeveModel?: string;
   buttonModel?: string;
@@ -69,9 +74,13 @@ const SIZE_TYPE_LABEL: Record<'TWO' | 'THREE' | 'FREE', string> = {
 
 const SPEC_LABELS: Array<{ key: keyof ProductSpecs; label: string }> = [
   { key: 'fabricType', label: 'جنس پارچه' },
+  { key: 'designDetails', label: 'جزئیات طراحی' },
+  { key: 'packageSpecs', label: 'مشخصات پکیج' },
+  { key: 'manufacturingBadge', label: 'نشان ویژه تولید' },
   { key: 'packQty', label: 'تعداد در پک' },
-  { key: 'length', label: 'قد کار' },
+  { key: 'length', label: 'قد ۱' },
   { key: 'length2', label: 'قد ۲' },
+  { key: 'length3', label: 'قد ۳' },
   { key: 'chestWidth', label: 'عرض سینه' },
   { key: 'sleeveModel', label: 'مدل آستین' },
   { key: 'buttonModel', label: 'مدل دکمه' },
@@ -202,6 +211,25 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   return (
     <div className="min-h-screen bg-atmosphere">
+      <ProductJsonLd
+        name={product.name}
+        description={product.description || fabricLabel}
+        image={product.images?.[0]}
+        sku={product.sku}
+        price={Number(product.wholesalePrice)}
+        availability={totalStock > 0 ? 'InStock' : isComingSoon ? 'PreOrder' : 'OutOfStock'}
+        fabric={fabricLabel}
+        color={availableColors[0]?.name}
+        moq={product.minOrderQty}
+        url={`https://poshaktaranom.com/products/${product.slug}`}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'خانه', url: 'https://poshaktaranom.com/' },
+          { name: 'محصولات', url: 'https://poshaktaranom.com/products' },
+          { name: product.name, url: `https://poshaktaranom.com/products/${product.slug}` },
+        ]}
+      />
       <div className="border-b border-[color:var(--color-border)] bg-white">
         <div className="container-site py-3">
           <nav className="flex items-center gap-2 text-sm text-gray-500">
@@ -272,6 +300,9 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {product.isLimitedStock && !isComingSoon && <Badge variant="warning">موجودی محدود</Badge>}
                 {isComingSoon && <Badge variant="neutral">به زودی</Badge>}
                 {fabricLabel && <Badge variant="neutral">{fabricLabel}</Badge>}
+                {product.specs?.manufacturingBadge && (
+                  <Badge variant="gold">{product.specs.manufacturingBadge}</Badge>
+                )}
                 {product.sku && <span className="text-sm text-gray-400">کد: {product.sku}</span>}
               </div>
             </div>
@@ -462,7 +493,7 @@ export function ProductDetail({ slug }: { slug: string }) {
 
         {product.description && (
           <div className={cn('card p-6', specRows.length > 0 ? 'mt-4' : 'mt-10')}>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">توضیحات تکمیلی</h2>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">توضیحات کامل و دستور مراقبت</h2>
             <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description}</p>
           </div>
         )}

@@ -101,14 +101,29 @@ export class ProductService {
     });
   }
 
-  async findAll(page = 1, limit = 20, search?: string, fabric?: string, status?: string) {
+  async findAll(
+    page = 1,
+    limit = 20,
+    search?: string,
+    fabric?: string,
+    status?: string,
+    color?: string,
+    size?: string,
+  ) {
     const statusFilter = status ?? 'ACTIVE';
+    const sizeType = (size && ['FREE', 'TWO', 'THREE'].includes(size)
+      ? size
+      : undefined) as ProductSizeType | undefined;
 
     if (search?.trim()) {
       const ids = await this.search.searchIds(search, { status: statusFilter, fabric });
       if (ids?.length) {
         const [data, total] = await this.productRepo.findAndCount({
-          where: { id: In(ids), ...(status !== 'ALL' && { status: statusFilter }) },
+          where: {
+            id: In(ids),
+            ...(status !== 'ALL' && { status: statusFilter }),
+            ...(sizeType ? { sizeType } : {}),
+          },
           relations: ['variants'],
           skip: (page - 1) * limit,
           take: limit,
@@ -118,30 +133,49 @@ export class ProductService {
         if (fabric) {
           rows = rows.filter((p) => (p.fabric || '').includes(fabric));
         }
-        return { data: rows, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+        if (color) {
+          rows = rows.filter((p) =>
+            (p.variants ?? []).some((v) => (v.color || '').includes(color)),
+          );
+        }
+        return { data: rows, meta: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) } };
       }
     }
 
     const where: any[] = search
       ? [
-          { name: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }) },
-          { sku: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }) },
-          { fabric: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }) },
+          { name: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }), ...(sizeType ? { sizeType } : {}) },
+          { sku: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }), ...(sizeType ? { sizeType } : {}) },
+          { fabric: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }), ...(sizeType ? { sizeType } : {}) },
         ]
-      : [status === 'ALL' ? {} : { status: statusFilter }];
+      : [status === 'ALL' ? { ...(sizeType ? { sizeType } : {}) } : { status: statusFilter, ...(sizeType ? { sizeType } : {}) }];
 
     if (fabric) where.forEach((w) => (w.fabric = fabric));
 
+    // When filtering by color, load a wider page then filter in-memory (variant relation).
+    const take = color ? Math.min(limit * 8, 200) : limit;
     const [data, total] = await this.productRepo.findAndCount({
       where,
       relations: ['variants'],
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: color ? 0 : (page - 1) * limit,
+      take,
       order: { isDiscounted: 'DESC', createdAt: 'DESC' },
     });
 
+    let rows = data.map((p) => this.withBadges(p));
+    if (color) {
+      rows = rows.filter((p) =>
+        (p.variants ?? []).some((v) => (v.color || '').includes(color)),
+      );
+      const sliced = rows.slice((page - 1) * limit, page * limit);
+      return {
+        data: sliced,
+        meta: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) },
+      };
+    }
+
     return {
-      data: data.map((p) => this.withBadges(p)),
+      data: rows,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }

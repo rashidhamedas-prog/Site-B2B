@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell,
   Warehouse, UserCog, LogOut, X, ChevronDown,
-  TrendingUp, Tag, PenSquare, Layers,
+  TrendingUp, Tag, PenSquare, Layers, Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { clearToken } from '@/lib/auth';
@@ -53,6 +53,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'رشد',
     items: [
       { href: '/admin/blog', icon: PenSquare, label: 'وبلاگ' },
+      { href: '/admin/menus', icon: Menu, label: 'منوهای سایت' },
       { href: '/admin/analytics', icon: TrendingUp, label: 'آنالیتیکس' },
       { href: '/admin/notifications', icon: Bell, label: 'اعلان‌ها' },
     ],

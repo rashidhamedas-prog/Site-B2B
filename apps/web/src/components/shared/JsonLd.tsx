@@ -7,7 +7,9 @@ export function OrganizationJsonLd() {
     url: 'https://poshaktaranom.com',
     logo: 'https://poshaktaranom.com/logo.svg',
     image: 'https://poshaktaranom.com/og-image.jpg',
-    description: 'تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد. فروش عمده به سراسر ایران از سال ۱۳۹۴.',
+    description:
+      'تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد با بیش از ۱۴ سال تجربه. تولید ۰ تا ۱۰۰ داخل کارگاه و فروش عمده به سراسر ایران.',
+    foundingDate: '2011',
     telephone: '+98-915-242-4624',
     email: 'rashidhamedas@gmail.com',
     address: {
@@ -37,6 +39,7 @@ export function OrganizationJsonLd() {
     priceRange: '$$',
     currenciesAccepted: 'IRR',
     paymentAccepted: 'Cash, Bank Transfer',
+    knowsAbout: ['لینن', 'مانتو عمده', 'شومیزی عمده', 'تولیدی پوشاک مشهد'],
   };
 
   return (
@@ -55,6 +58,10 @@ export function ProductJsonLd({
   price,
   currency = 'IRR',
   availability = 'InStock',
+  fabric,
+  color,
+  moq,
+  url,
 }: {
   name: string;
   description?: string;
@@ -63,7 +70,17 @@ export function ProductJsonLd({
   price: number;
   currency?: string;
   availability?: 'InStock' | 'OutOfStock' | 'PreOrder';
+  fabric?: string;
+  color?: string;
+  moq?: number;
+  url?: string;
 }) {
+  const additionalProperty = [
+    fabric ? { '@type': 'PropertyValue', name: 'جنس پارچه', value: fabric } : null,
+    color ? { '@type': 'PropertyValue', name: 'رنگ', value: color } : null,
+    moq ? { '@type': 'PropertyValue', name: 'حداقل سفارش', value: String(moq) } : null,
+  ].filter(Boolean);
+
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -75,12 +92,22 @@ export function ProductJsonLd({
       '@type': 'Brand',
       name: 'پوشاک ترنم',
     },
+    ...(additionalProperty.length ? { additionalProperty } : {}),
+    ...(fabric || color
+      ? {
+          material: fabric,
+          color,
+        }
+      : {}),
     offers: {
       '@type': 'Offer',
-      url: `https://poshaktaranom.com/products`,
+      url: url ?? 'https://poshaktaranom.com/products',
       priceCurrency: currency,
       price,
       availability: `https://schema.org/${availability}`,
+      eligibleQuantity: moq
+        ? { '@type': 'QuantitativeValue', minValue: moq, unitCode: 'C62' }
+        : undefined,
       seller: {
         '@type': 'Organization',
         name: 'پوشاک ترنم',

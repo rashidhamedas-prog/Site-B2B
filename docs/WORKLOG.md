@@ -2,6 +2,17 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-22 — فازهای ۲–۵ siteup + تم 21st
+
+### خلاصه
+- منوی داینامیک (main/footer/mobile/legal) + مگا‌منو شیشه‌ای + دکمه کلکسیون لینن
+- صفحه `/linen-collection` و `/workshop` + فیلتر SEO `/products/fabric/[fabric]`
+- فیلتر پارچه/سایز/رنگ با sync URL و عنوان پویا
+- فیلدهای ساخت‌یافته PDP + پنل SEO محصول + Schema Product/Breadcrumb/Organization
+- تم 21st: https://21st.dev/community/themes/taranom-emerald-gold-1784716637053
+
+---
+
 ## 2026-07-22 — فاز ۱ siteup: شیشه‌ای Soft UI + تنظیمات تم
 
 ### خلاصه

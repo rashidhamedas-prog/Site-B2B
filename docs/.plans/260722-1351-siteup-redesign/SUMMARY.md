@@ -19,15 +19,16 @@
 
 - [x] Phase 0 — Plan bootstrap
 - [x] Phase 1 — Landing glass UI + Theme Settings admin (`theme` settings group)
-- [ ] Phase 2 — Dynamic menus + Mega Menu + Linen Collection landing
-- [ ] Phase 3 — SEO-friendly product filters (fabric/size/color) + glass sidebar/drawer
-- [ ] Phase 4 — PDP structured fields + SEO description placement
-- [ ] Phase 5 — Schema / E-E-A-T / technical SEO / product SEO panel
+- [x] Phase 2 — Dynamic menus + Mega Menu + Linen Collection landing
+- [x] Phase 3 — SEO-friendly product filters (fabric/size/color) + glass sidebar/drawer
+- [x] Phase 4 — PDP structured fields + SEO description placement
+- [x] Phase 5 — Schema / E-E-A-T / technical SEO / product SEO panel
 
 ## Progress
 
 - **2026-07-22 13:51** — Plan created; Phase 1 started (glass tokens + theme settings).
-- **2026-07-22 14:05** — Phase 1 complete. Verified: `tsc --noEmit` api+web exit 0. Glass utilities, Modal/Why/CTA, theme API group, admin tab, ThemeRuntime+LandingPopups.
+- **2026-07-22 14:05** — Phase 1 complete. Verified: `tsc --noEmit` api+web exit 0.
+- **2026-07-22 14:50** — Phases 2–5 implemented; 21st theme published; preparing deploy to production.
 
 ## Surprises & Discoveries
 
