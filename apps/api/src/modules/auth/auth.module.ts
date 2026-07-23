@@ -10,7 +10,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { UserEntity } from './entities/user.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
-import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -23,7 +22,8 @@ import { NotificationModule } from '../notification/notification.module';
         signOptions: { expiresIn: config.get('JWT_EXPIRES', '7d') },
       }),
     }),
-    NotificationModule,
+    // Do NOT import NotificationModule here — it already imports AuthModule (circular).
+    // NotificationModule is @Global in AppModule, so NotificationService injects fine.
   ],
   controllers: [AuthController, UsersController],
   providers: [AuthService, JwtStrategy, RolesGuard],

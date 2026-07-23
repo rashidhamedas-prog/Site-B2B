@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
@@ -61,7 +62,7 @@ export class AuthService {
     private readonly customerRepo: Repository<CustomerEntity>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
-    private readonly notifications: NotificationService,
+    @Optional() private readonly notifications?: NotificationService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -304,7 +305,9 @@ export class AuthService {
       name: name?.trim() || undefined,
     });
 
-    const sent = await this.notifications.sendOtp(phone, code);
+    const sent = this.notifications
+      ? await this.notifications.sendOtp(phone, code)
+      : false;
 
     const res: { message: string; phone: string; sent: boolean; devCode?: string } = {
       message: sent ? 'کد تایید ارسال شد' : 'کد تایید آماده است (پیامک پیکربندی نشده)',
