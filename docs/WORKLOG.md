@@ -2,6 +2,53 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-23 — لندینگ هم‌تراز موکاپ + راهنمای خروج از Webzi
+
+### خلاصه
+- هدر/هیرو/گرید محصول مطابق موکاپ (سبز جنگلی، طلایی، کرم، مدل هیرو)
+- سند انتقال: `docs/MIGRATE-FROM-WEBZI.md` (nic → Cloudflare → سرور `5.75.200.102`)
+- دارایی‌ها: `public/retail/hero-model.png`, `mockup-reference.png`
+
+---
+
+## 2026-07-23 — فید توروب/بام + RMA + پیش‌نمایش
+
+### خلاصه
+- `GET /v1/feeds/torob.xml` و `/v1/feeds/bam.csv`
+- ماژول RMA: ثبت مرجوعی/تعویض + اعتبار کیف پول (+۵٪)
+- صفحه `/retail/returns` و پیش‌نمایش `public/retail-preview.html`
+- چک‌لیست کارهای مالک: `docs/USER-ACTIONS-B2C.md`
+
+---
+
+## 2026-07-23 — تکمیل فاز بعدی B2C (OTP + فیلتر + ادمین)
+
+### خلاصه
+- ورود تکی با OTP: `POST /auth/retail/otp/request|verify` + UI `/retail/account`
+- سفارش تکی: بدون تخفیف عمده، هزینه ارسال خرده‌فروشی، type=`RETAIL_WEBSITE`
+- PLP تکی با فیلتر جستجو/پارچه/رنگ/سایز
+- ادمین سفارش‌ها: فیلتر کانال عمده/تکی + ستون کانال
+- ریدایرکت 401 مسیر `/retail` به ورود OTP
+
+---
+
+## 2026-07-23 — شروع ویترین B2C داخل monorepo
+
+### خلاصه
+- کانال تکی روی دامنه `www.poshaktaranom.ir` داخل همین repo (نه پروژه جدا)
+- مسیر `/retail/*` + middleware بازنویسی هاست `.ir`
+- UI فروشگاهی: هیرو، PLP، PDP، سبد Zustand، چک‌اوت تکی
+- API سفارش: `type=RETAIL_WEBSITE` → قیمت `retailPrice`، بدون MOQ عمده، موجودی مشترک
+- دیزاین: `design-system/b2c/MASTER.md` — برند سبز+طلایی
+- nginx: بلاک سرور `.ir` آماده (نیاز به DNS + SSL)
+- نقشه: `skill site b2c.md` و `docs/B2C.md`
+
+### پیش‌نمایش
+- لوکال: `/retail`
+- هنوز: OTP، RMA، فید توروب، کیف پول
+
+---
+
 ## 2026-07-23 — حذف آمار دمو از پنل ادمین
 
 ### خلاصه

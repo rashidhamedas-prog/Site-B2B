@@ -1,0 +1,29 @@
+.retail-root {
+  --retail-primary: #1b5c4a;
+  --retail-primary-dark: #0f2f28;
+  --retail-gold: #c9a84c;
+  --retail-gold-light: #e5c97c;
+  --retail-ink: #1a1a1a;
+  --retail-bg: #f6f1e8;
+  --retail-surface: #fffcf7;
+  --retail-muted: #6b7280;
+  --retail-border: #e8e0d4;
+  --retail-card: #f3eee6;
+}
+
+.retail-root a {
+  text-decoration: none;
+}
+
+.retail-gold-line {
+  height: 1px;
+  width: 2.5rem;
+  background: linear-gradient(90deg, transparent, var(--retail-gold), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retail-root * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

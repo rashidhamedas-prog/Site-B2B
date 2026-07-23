@@ -19,6 +19,7 @@ import { CmsPageEntity } from '../modules/cms/entities/cms-page.entity';
 import { AppSettingEntity } from '../modules/settings/entities/app-setting.entity';
 import { CategoryEntity } from '../modules/category/entities/category.entity';
 import { ProductSpecMemoryEntity } from '../modules/product/entities/product-spec-memory.entity';
+import { ReturnRequestEntity } from '../modules/rma/entities/return-request.entity';
 
 export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -40,6 +41,7 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     BlogPostEntity,
     CmsPageEntity,
     AppSettingEntity,
+    ReturnRequestEntity,
   ],
   migrations: ['dist/database/migrations/*.js'],
   migrationsRun: config.get('NODE_ENV') === 'production' && config.get('DB_SYNC') !== 'true',

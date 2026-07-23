@@ -8,6 +8,7 @@ export interface Order {
   orderNumber: string;
   customerId: string;
   status: string;
+  type?: string;
   subtotal: number;
   shippingFee: number;
   total: number;
@@ -33,7 +34,7 @@ interface OrdersResult {
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 
-export function useOrders(params?: { page?: number; customerId?: string; status?: string }) {
+export function useOrders(params?: { page?: number; customerId?: string; status?: string; type?: string }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,7 @@ export function useOrders(params?: { page?: number; customerId?: string; status?
       if (params?.page) query.set('page', String(params.page));
       if (params?.customerId) query.set('customerId', params.customerId);
       if (params?.status) query.set('status', params.status);
+      if (params?.type) query.set('type', params.type);
       const res = await apiClient.get<OrdersResult>(`/orders?${query}`);
       setOrders(res.data);
       setMeta(res.meta);
@@ -55,7 +57,7 @@ export function useOrders(params?: { page?: number; customerId?: string; status?
     } finally {
       setLoading(false);
     }
-  }, [params?.page, params?.customerId, params?.status]);
+  }, [params?.page, params?.customerId, params?.status, params?.type]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

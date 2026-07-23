@@ -46,15 +46,16 @@ export class OrderController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('customerId') customerId?: string,
     @Query('status') status?: string,
+    @Query('type') type?: string,
   ) {
     // CUSTOMER role: only see their own orders
     if (req.user.role === 'CUSTOMER') {
       const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
       const cid = user?.customerId;
-      return this.orderService.findAll(page, limit, cid ?? undefined, status);
+      return this.orderService.findAll(page, limit, cid ?? undefined, status, type);
     }
     // ADMIN: can filter by any customer or see all
-    return this.orderService.findAll(page, limit, customerId, status);
+    return this.orderService.findAll(page, limit, customerId, status, type);
   }
 
   @Get('installment-eligibility/:customerId')

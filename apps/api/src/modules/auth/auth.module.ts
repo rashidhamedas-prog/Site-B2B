@@ -10,6 +10,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { UserEntity } from './entities/user.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { CustomerEntity } from '../customer/entities/customer.entity';
         signOptions: { expiresIn: config.get('JWT_EXPIRES', '7d') },
       }),
     }),
+    NotificationModule,
   ],
   controllers: [AuthController, UsersController],
   providers: [AuthService, JwtStrategy, RolesGuard],

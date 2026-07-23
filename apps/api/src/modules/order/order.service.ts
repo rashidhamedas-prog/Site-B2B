@@ -12,6 +12,9 @@ import { DiscountService } from '../discount/discount.service';
 
 interface CreateOrderDto {
   customerId: string;
+  /** WHOLESALE (default) | RETAIL_WEBSITE — drives price + MOQ rules */
+  type?: string;
+  channel?: 'WHOLESALE' | 'RETAIL';
   items: Array<{
     productVariantId?: string;
     productId?: string;
@@ -141,17 +144,40 @@ export class OrderService {
     }
   }
 
+  private resolveOrderChannel(dto: CreateOrderDto): 'WHOLESALE' | 'RETAIL' {
+    const raw = (dto.type || dto.channel || 'WHOLESALE').toUpperCase();
+    if (raw === 'RETAIL' || raw === 'RETAIL_WEBSITE') return 'RETAIL';
+    return 'WHOLESALE';
+  }
+
+  private unitPriceForChannel(
+    channel: 'WHOLESALE' | 'RETAIL',
+    product: { wholesalePrice?: number | string | null; retailPrice?: number | string | null },
+    fallback?: number,
+  ) {
+    if (channel === 'RETAIL') {
+      const retail = Number(product.retailPrice ?? 0);
+      if (retail > 0) return retail;
+      throw new BadRequestException('قیمت خرده‌فروشی برای این محصول تعریف نشده است');
+    }
+    return Number(product.wholesalePrice ?? fallback ?? 0);
+  }
+
   async create(dto: CreateOrderDto) {
     await this.customerService.findOne(dto.customerId);
 
     if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
-    const paymentMethod = (dto.paymentMethod ?? 'CASH').toUpperCase();
-    if (!['CASH', 'INSTALLMENT', 'ONLINE'].includes(paymentMethod)) {
+    const channel = this.resolveOrderChannel(dto);
+    const orderType = channel === 'RETAIL' ? 'RETAIL_WEBSITE' : (dto.type || 'WHOLESALE');
+    const paymentMethod = (dto.paymentMethod ?? (channel === 'RETAIL' ? 'ONLINE' : 'CASH')).toUpperCase();
+    const allowedPay =
+      channel === 'RETAIL' ? ['CASH', 'ONLINE'] : ['CASH', 'INSTALLMENT', 'ONLINE'];
+    if (!allowedPay.includes(paymentMethod)) {
       throw new BadRequestException('روش پرداخت نامعتبر است');
     }
 
     // Normalize/expand items:
-    // - Stock is product-level (independent of colors).
+    // - Stock is product-level (independent of colors) — shared across channels.
     // - Variants are used only for order-line color/size metadata when available.
     const expandedItems: Array<{
       productVariantId: string;
@@ -172,7 +198,9 @@ export class OrderService {
         const variant = await this.productService.getVariant(item.productVariantId);
         const product = variant.product;
         if (!product) throw new BadRequestException('محصول واریانت یافت نشد');
-        this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
+        if (channel === 'WHOLESALE') {
+          this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
+        }
         const stock = Number(product.stock) || 0;
         if (stock < qty) {
           throw new BadRequestException(`موجودی کافی نیست برای ${product.name} (موجودی: ${stock})`);
@@ -180,7 +208,7 @@ export class OrderService {
         expandedItems.push({
           productVariantId: variant.id,
           quantity: qty,
-          unitPrice: Number(product.wholesalePrice ?? item.unitPrice ?? 0),
+          unitPrice: this.unitPriceForChannel(channel, product, Number(item.unitPrice ?? 0)),
           productName: product.name ?? item.productName ?? '',
           sku: product.sku ?? item.sku ?? '',
           color: variant.color,
@@ -195,21 +223,25 @@ export class OrderService {
       }
 
       const product = await this.productService.findOne(item.productId);
-      this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
+      if (channel === 'WHOLESALE') {
+        this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
+      }
       const stock = Number(product.stock) || 0;
       if (stock < qty) {
         throw new BadRequestException(`موجودی کافی نیست برای ${product.name} (موجودی: ${stock})`);
       }
 
       const variants = product.variants ?? [];
-      const metaVariant = variants[0];
+      const metaVariant =
+        variants.find((v) => (!item.color || v.color === item.color) && (!item.size || v.size === item.size))
+        ?? variants[0];
       if (!metaVariant) {
         throw new BadRequestException(`برای ${product.name} ابتدا حداقل یک رنگ در واریانت‌ها تعریف کنید`);
       }
       expandedItems.push({
         productVariantId: metaVariant.id,
         quantity: qty,
-        unitPrice: Number(product.wholesalePrice),
+        unitPrice: this.unitPriceForChannel(channel, product),
         productName: product.name,
         sku: product.sku,
         color: metaVariant.color,
@@ -230,17 +262,48 @@ export class OrderService {
       )).filter(Boolean),
     )] as string[];
 
-    const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
-    const discountAmount = quote.discount;
+    // Wholesale tiered/side discounts must not apply on retail channel.
+    let discountAmount = 0;
+    if (channel === 'WHOLESALE') {
+      const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
+      discountAmount = quote.discount;
+      const discountNotes: string[] = [];
+      if (quote.tiered.discount) discountNotes.push(`TIERED ${quote.tiered.percent}%=${quote.tiered.discount}`);
+      if (quote.side.discount) discountNotes.push(`SIDE ${quote.side.type} ${quote.side.percent}%=${quote.side.discount}`);
+      if (quote.code?.discount) discountNotes.push(`CODE ${quote.code.code}=${quote.code.discount}`);
+      if (discountNotes.length) {
+        const tag = `DISCOUNTS ${discountNotes.join(' | ')}`;
+        dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+      }
+    } else if (dto.discountCode) {
+      // Retail: only explicit discount codes (no wholesale tier/side).
+      const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
+      discountAmount = quote.code?.discount ?? 0;
+      if (discountAmount > 0 && quote.code) {
+        const tag = `DISCOUNTS CODE ${quote.code.code}=${quote.code.discount}`;
+        dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+      }
+    }
 
     const freeShipping = !!dto.freeShipping;
     const intraCityFee = Number(dto.intraCityFee) || 0;
     const perKgFee = Number(dto.perKgFee) || 0;
-    const fallbackShipping = (subtotal - discountAmount) >= 50_000_000 ? 0 : 1_500_000;
+    // Retail shipping is consumer-scale (rial). Wholesale keeps higher B2B defaults.
+    const retailFreeFrom = 5_000_000; // 500,000 تومان
+    const retailDefaultShip = 650_000; // 65,000 تومان
+    const wholesaleFreeFrom = 50_000_000;
+    const wholesaleDefaultShip = 1_500_000;
+    const fallbackShipping =
+      channel === 'RETAIL'
+        ? (subtotal - discountAmount) >= retailFreeFrom ? 0 : retailDefaultShip
+        : (subtotal - discountAmount) >= wholesaleFreeFrom ? 0 : wholesaleDefaultShip;
     const computedShipping = freeShipping ? 0 : (intraCityFee || fallbackShipping);
     const orderTotal = Math.max(0, subtotal - discountAmount + computedShipping);
 
     if (paymentMethod === 'INSTALLMENT') {
+      if (channel === 'RETAIL') {
+        throw new BadRequestException('پرداخت اقساطی فقط برای سفارش عمده است');
+      }
       const activeInvoiceCount = await this.countActiveInvoices(dto.customerId);
       const cfg = await this.settings.installments();
       if (activeInvoiceCount < (cfg.minActiveInvoices ?? 2)) {
@@ -272,23 +335,15 @@ export class OrderService {
       dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
     }
 
-    const discountNotes: string[] = [];
-    if (quote.tiered.discount) discountNotes.push(`TIERED ${quote.tiered.percent}%=${quote.tiered.discount}`);
-    if (quote.side.discount) discountNotes.push(`SIDE ${quote.side.type} ${quote.side.percent}%=${quote.side.discount}`);
-    if (quote.code?.discount) discountNotes.push(`CODE ${quote.code.code}=${quote.code.discount}`);
-    if (discountNotes.length) {
-      const tag = `DISCOUNTS ${discountNotes.join(' | ')}`;
-      dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
-    }
-
     const order = this.orderRepo.create({
       orderNumber: await this.generateOrderNumber(),
       customerId: dto.customerId,
+      type: orderType,
       subtotal,
       discount: discountAmount,
       shippingFee: computedShipping,
       total: orderTotal,
-      shippingMethod: dto.shippingMethod ?? 'CHAPAR',
+      shippingMethod: dto.shippingMethod ?? (channel === 'RETAIL' ? 'PISHTAZ' : 'CHAPAR'),
       paymentMethod,
       notes: dto.notes,
       status: 'PENDING_REVIEW',
@@ -334,10 +389,11 @@ export class OrderService {
     return this.findOne(saved.id);
   }
 
-  async findAll(page = 1, limit = 20, customerId?: string, status?: string) {
+  async findAll(page = 1, limit = 20, customerId?: string, status?: string, type?: string) {
     const where: any = {};
     if (customerId) where.customerId = customerId;
     if (status) where.status = status;
+    if (type) where.type = type;
 
     const [data, total] = await this.orderRepo.findAndCount({
       where,

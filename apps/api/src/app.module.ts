@@ -18,8 +18,10 @@ import { ShippingModule } from './modules/shipping/shipping.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { SearchModule } from './modules/search/search.module';
 import { databaseConfig } from './config/database.config';
+import { FeedsModule } from './modules/feeds/feeds.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CrmModule } from './modules/crm/crm.module';
+import { RmaModule } from './modules/rma/rma.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { CrmModule } from './modules/crm/crm.module';
     CmsModule,
     ShippingModule,
     SettingsModule,
+    RmaModule,
+    FeedsModule,
   ],
 })
 export class AppModule {}

@@ -23,6 +23,20 @@ export class AuthController {
     return this.authService.login(dto);
   }
 
+  @Post('retail/otp/request')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'درخواست کد OTP فروشگاه تکی' })
+  requestRetailOtp(@Body() body: { phone: string; name?: string }) {
+    return this.authService.requestRetailOtp(body.phone, body.name);
+  }
+
+  @Post('retail/otp/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'تأیید OTP و ورود فروشگاه تکی' })
+  verifyRetailOtp(@Body() body: { phone: string; code: string; name?: string }) {
+    return this.authService.verifyRetailOtp(body.phone, body.code, body.name);
+  }
+
   @Get('me/profile')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))

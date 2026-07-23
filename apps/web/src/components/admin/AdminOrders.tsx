@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Search, Eye, CheckCircle, XCircle } from 'lucide-react';
-import { Input, OrderStatusBadge, Pagination } from '@/components/ui';
+import { Eye, CheckCircle, XCircle } from 'lucide-react';
+import { OrderStatusBadge, Pagination } from '@/components/ui';
 import { useOrders } from '@/lib/hooks/useOrders';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -14,11 +14,22 @@ const STATUS_FA: Record<string, string> = {
   SHIPPED: 'ارسال شده', DELIVERED: 'تحویل داده شده', COMPLETED: 'تکمیل شده',
 };
 
+const CHANNEL_FILTERS = [
+  { id: '', label: 'همه کانال‌ها' },
+  { id: 'WHOLESALE', label: 'عمده' },
+  { id: 'RETAIL_WEBSITE', label: 'تکی (.ir)' },
+];
+
 export function AdminOrders() {
   const [status, setStatus] = useState('');
+  const [type, setType] = useState('');
   const [page, setPage] = useState(1);
 
-  const { orders, meta, loading, refetch } = useOrders({ page, status: status || undefined });
+  const { orders, meta, loading, refetch } = useOrders({
+    page,
+    status: status || undefined,
+    type: type || undefined,
+  });
 
   const updateStatus = async (id: string, newStatus: string) => {
     await apiClient.patch(`/orders/${id}/status`, { status: newStatus });
@@ -32,6 +43,21 @@ export function AdminOrders() {
           <h2 className="text-xl font-bold text-gray-900">سفارش‌ها</h2>
           <p className="text-sm text-gray-500 mt-0.5">{meta.total} سفارش</p>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-1.5">
+        {CHANNEL_FILTERS.map((c) => (
+          <button
+            key={c.id || 'all-ch'}
+            onClick={() => { setType(c.id); setPage(1); }}
+            className={cn(
+              'px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap',
+              type === c.id ? 'bg-secondary text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100',
+            )}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -51,10 +77,10 @@ export function AdminOrders() {
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px]">
+          <table className="w-full min-w-[950px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['شماره سفارش', 'تاریخ', 'تعداد', 'مبلغ', 'وضعیت', 'عملیات'].map((h) => (
+                {['شماره سفارش', 'کانال', 'تاریخ', 'تعداد', 'مبلغ', 'وضعیت', 'عملیات'].map((h) => (
                   <th key={h} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -62,15 +88,23 @@ export function AdminOrders() {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 6 }).map((_, j) => (
+                  <tr key={i}>{Array.from({ length: 7 }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><div className="skeleton h-4 rounded w-24" /></td>
                   ))}</tr>
                 ))
               ) : orders.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-400">سفارشی یافت نشد</td></tr>
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">سفارشی یافت نشد</td></tr>
               ) : orders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-sm font-mono font-semibold text-gray-900">{order.orderNumber}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn(
+                      'inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold',
+                      order.type === 'RETAIL_WEBSITE' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-50 text-emerald-800',
+                    )}>
+                      {order.type === 'RETAIL_WEBSITE' ? 'تکی' : 'عمده'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                     {new Date(order.createdAt).toLocaleDateString('fa-IR')}
                   </td>

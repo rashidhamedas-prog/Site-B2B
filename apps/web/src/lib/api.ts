@@ -41,11 +41,17 @@ class ApiClient {
       const err = new Error(Array.isArray(message) ? message[0] : message) as Error & { status: number };
       err.status = res.status;
       // Only auto-redirect on 401 if this is NOT a login request (avoid redirect loop)
-      if (res.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/login')) {
+      if (res.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/login') && !path.includes('/auth/retail')) {
         const { clearToken } = await import('./auth');
         clearToken();
-        const isAdmin = window.location.pathname.startsWith('/admin');
-        window.location.href = isAdmin ? '/admin/login' : '/portal/login';
+        const pathName = window.location.pathname;
+        if (pathName.startsWith('/admin')) {
+          window.location.href = '/admin/login';
+        } else if (pathName.startsWith('/retail')) {
+          window.location.href = `/retail/account?redirect=${encodeURIComponent(pathName)}`;
+        } else {
+          window.location.href = '/portal/login';
+        }
       }
       throw err;
     }

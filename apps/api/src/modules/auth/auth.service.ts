@@ -8,10 +8,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { randomBytes, randomInt } from 'crypto';
 import { UserEntity } from './entities/user.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { NotificationService } from '../notification/notification.service';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -36,8 +38,22 @@ function isDuplicatePhoneError(err: unknown): boolean {
   return code === '23505' && /\(phone\)/i.test(detail);
 }
 
+function normalizePhone(raw: string): string {
+  const digits = String(raw || '')
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/\D/g, '');
+  if (digits.startsWith('98') && digits.length === 12) return `0${digits.slice(2)}`;
+  if (digits.length === 10 && digits.startsWith('9')) return `0${digits}`;
+  return digits;
+}
+
+type OtpEntry = { code: string; expiresAt: number; attempts: number; name?: string };
+
 @Injectable()
 export class AuthService {
+  private readonly otpStore = new Map<string, OtpEntry>();
+
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
@@ -45,6 +61,7 @@ export class AuthService {
     private readonly customerRepo: Repository<CustomerEntity>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
+    private readonly notifications: NotificationService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -270,5 +287,146 @@ export class AuthService {
     if (!user) return;
     await this.userRepo.update(user.id, { isActive: false });
     await this.userRepo.softDelete(user.id);
+  }
+
+  /** Retail (B2C) OTP — request code */
+  async requestRetailOtp(rawPhone: string, name?: string) {
+    const phone = normalizePhone(rawPhone);
+    if (!/^09\d{9}$/.test(phone)) {
+      throw new BadRequestException('شماره موبایل معتبر نیست');
+    }
+
+    const code = String(randomInt(100000, 999999));
+    this.otpStore.set(phone, {
+      code,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      attempts: 0,
+      name: name?.trim() || undefined,
+    });
+
+    const sent = await this.notifications.sendOtp(phone, code);
+
+    const res: { message: string; phone: string; sent: boolean; devCode?: string } = {
+      message: sent ? 'کد تایید ارسال شد' : 'کد تایید آماده است (پیامک پیکربندی نشده)',
+      phone,
+      sent,
+    };
+    // Expose code when SMS did not actually send — needed for local/dev.
+    if (!sent) res.devCode = code;
+    return res;
+  }
+
+  /** Retail (B2C) OTP — verify and issue JWT; auto-create ACTIVE consumer customer */
+  async verifyRetailOtp(rawPhone: string, code: string, name?: string) {
+    const phone = normalizePhone(rawPhone);
+    const entry = this.otpStore.get(phone) as (OtpEntry & { name?: string }) | undefined;
+    if (!entry || entry.expiresAt < Date.now()) {
+      throw new UnauthorizedException('کد منقضی شده یا یافت نشد. دوباره درخواست کنید.');
+    }
+    entry.attempts += 1;
+    if (entry.attempts > 5) {
+      this.otpStore.delete(phone);
+      throw new UnauthorizedException('تعداد تلاش بیش از حد. دوباره کد بگیرید.');
+    }
+    if (entry.code !== String(code).trim()) {
+      throw new UnauthorizedException('کد تایید نادرست است');
+    }
+    this.otpStore.delete(phone);
+
+    const displayName = (name?.trim() || entry.name || 'خریدار ترنم').slice(0, 80);
+
+    let user = await this.userRepo.findOne({ where: { phone }, withDeleted: true });
+    let customer: CustomerEntity | null = null;
+
+    if (user?.customerId) {
+      customer = await this.customerRepo.findOne({ where: { id: user.customerId }, withDeleted: true });
+    }
+    if (!customer) {
+      customer = await this.customerRepo.findOne({ where: { phone }, withDeleted: true });
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      const customerRepo = manager.getRepository(CustomerEntity);
+      const userRepo = manager.getRepository(UserEntity);
+
+      if (customer?.deletedAt) {
+        await customerRepo.restore(customer.id);
+        customer = await customerRepo.findOneOrFail({ where: { id: customer.id } });
+      }
+
+      if (!customer) {
+        customer = await this.createCustomerWithUniqueCode(
+          {
+            businessName: displayName,
+            ownerName: displayName,
+            phone,
+            province: 'تهران',
+            city: 'تهران',
+            type: 'B2C',
+            businessType: 'RETAIL',
+            status: 'ACTIVE',
+            segment: 'C',
+            isActive: true,
+            notes: 'مصرف‌کننده فروشگاه آنلاین (.ir)',
+          },
+          manager,
+        );
+      } else if (customer.type === 'B2C' || (customer.notes || '').includes('فروشگاه آنلاین')) {
+        await customerRepo.update(customer.id, {
+          status: 'ACTIVE',
+          isActive: true,
+          ownerName: customer.ownerName || displayName,
+        });
+        customer.status = 'ACTIVE';
+      } else if (customer.status !== 'ACTIVE') {
+        // B2B pending/blocked: do not silently approve wholesale, but allow retail JWT
+        // by marking user active; orders still need findOne to succeed.
+        await customerRepo.update(customer.id, {
+          notes: `${customer.notes || ''}\n[B2C OTP ${new Date().toISOString().slice(0, 10)}]`.trim(),
+        });
+      }
+
+      const otpPasswordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
+
+      if (user) {
+        if (user.deletedAt) await userRepo.restore(user.id);
+        await userRepo.update(user.id, {
+          customerId: customer!.id,
+          isActive: true,
+          role: 'CUSTOMER',
+          lastLoginAt: new Date(),
+        });
+        user = await userRepo.findOneOrFail({ where: { id: user.id } });
+      } else {
+        user = await userRepo.save(
+          userRepo.create({
+            phone,
+            passwordHash: otpPasswordHash,
+            role: 'CUSTOMER',
+            customerId: customer!.id,
+            isActive: true,
+            lastLoginAt: new Date(),
+          }),
+        );
+      }
+    });
+
+    // Refresh after transaction
+    user = await this.userRepo.findOneOrFail({ where: { phone } });
+    if (!user.customerId) {
+      throw new BadRequestException('حساب مشتری ایجاد نشد');
+    }
+
+    const token = this.jwtService.sign({
+      sub: user.id,
+      phone: user.phone,
+      role: user.role,
+    });
+    return {
+      accessToken: token,
+      role: user.role,
+      customerId: user.customerId,
+      channel: 'RETAIL',
+    };
   }
 }

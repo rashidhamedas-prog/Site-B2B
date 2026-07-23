@@ -82,4 +82,11 @@ Think like a Staff Engineer: long-term maintainability > short-term speed.
 After meaningful changes: update docs/WORKLOG.md, add session report if needed, commit to git (see docs/conventions.md).
 
 Imports (extend per project)
-@docs/conventions.md@docs/WORKLOG.md@docs/reports/README.md@.claude/memory.json@.claude/commands/log-work.md
+@docs/conventions.md
+@docs/WORKLOG.md
+@docs/B2C.md
+@docs/reports/README.md
+@.claude/memory.json
+@.claude/commands/log-work.md
+@skill site b2c.md
+@design-system/b2c/MASTER.md

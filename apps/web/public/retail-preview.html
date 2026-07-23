@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>پیش‌نمایش فروشگاه ترنم | B2C</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #1B5C4A;
+      --primary-dark: #124035;
+      --gold: #C9A84C;
+      --ink: #0F172A;
+      --bg: #F7F8F6;
+      --muted: #64748B;
+      --border: #E2E8E0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Vazirmatn, Tahoma, sans-serif; background: var(--bg); color: var(--ink); }
+    a { text-decoration: none; color: inherit; }
+    .header {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px; padding: 0 24px;
+      background: rgba(255,255,255,.88); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { font-weight: 800; color: var(--primary); }
+    .brand small { display: block; font-size: 10px; color: var(--gold); font-weight: 600; }
+    .nav { display: flex; gap: 28px; font-size: 14px; font-weight: 600; color: rgba(15,23,42,.75); }
+    .hero {
+      min-height: 88vh; color: #fff; position: relative; overflow: hidden;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(201,168,76,.28), transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(45,122,95,.45), transparent 55%),
+        linear-gradient(160deg, #0c271e 0%, #124035 45%, #1b5c4a 100%);
+      display: flex; align-items: flex-end; padding: 64px 24px 80px;
+    }
+    .hero-inner { max-width: 1120px; width: 100%; margin: 0 auto; }
+    .eyebrow { letter-spacing: .2em; font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 16px; }
+    h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.25; max-width: 18ch; }
+    h1 span { color: var(--gold); }
+    .lead { margin-top: 20px; max-width: 36rem; color: rgba(255,255,255,.8); line-height: 2; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 999px; padding: 14px 28px; font-size: 14px; font-weight: 800; cursor: pointer; border: none;
+    }
+    .btn-gold { background: var(--gold); color: #fff; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+    .section { max-width: 1120px; margin: 0 auto; padding: 64px 24px; }
+    .section h2 { font-size: 1.75rem; font-weight: 800; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 32px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: repeat(4, 1fr); gap: 24px; } .nav { display: flex; } }
+    @media (max-width: 899px) { .nav { display: none; } }
+    .card {
+      background: #fff; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 0 0 1px var(--border);
+      transition: transform .25s ease, box-shadow .25s ease;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(27,92,74,.35); }
+    .thumb {
+      aspect-ratio: 3/4;
+      background: linear-gradient(160deg, #d5e9e2, #f6edd3);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--primary); font-weight: 800; opacity: .55;
+    }
+    .card-body { padding: 14px; }
+    .price { margin-top: 8px; font-weight: 800; color: var(--primary); font-size: 14px; }
+    .trust {
+      background: #fff; border-block: 1px solid var(--border);
+      display: grid; gap: 24px; padding: 48px 24px;
+      max-width: 1120px; margin: 0 auto;
+    }
+    @media (min-width: 768px) { .trust { grid-template-columns: repeat(3, 1fr); } }
+    .trust h3 { color: var(--primary); font-size: 1.1rem; }
+    .trust p { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.9; }
+    .banner {
+      text-align: center; padding: 64px 24px;
+    }
+    .banner a {
+      display: inline-flex; margin-top: 20px; border: 1px solid var(--primary);
+      color: var(--primary); border-radius: 999px; padding: 12px 24px; font-weight: 700; font-size: 14px;
+    }
+    .footer {
+      background: var(--primary-dark); color: rgba(255,255,255,.75);
+      text-align: center; padding: 28px; font-size: 12px;
+    }
+    .note {
+      position: fixed; left: 16px; bottom: 16px; z-index: 20;
+      background: #fff; border: 1px solid var(--border); border-radius: 12px;
+      padding: 12px 14px; font-size: 12px; max-width: 260px; box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    .note strong { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">پوشاک ترنم<small>فروشگاه آنلاین</small></div>
+    <nav class="nav">
+      <a href="#shop">فروشگاه</a>
+      <a href="#shop">کلکسیون</a>
+      <a href="#">درباره ترنم</a>
+      <a href="#">تماس</a>
+    </nav>
+    <div style="font-size:13px;font-weight:700;color:var(--muted)">سبد (۰)</div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">POSHAK TARANOM</p>
+      <h1>مانتوهایی که از تولیدی می‌آیند — <span>برای تو</span></h1>
+      <p class="lead">خرید تکی از کلکسیون لینن و کتان ترنم؛ سایز دقیق، ارسال سریع، پرداخت امن.</p>
+      <div class="cta">
+        <a class="btn btn-gold" href="#shop">مشاهده فروشگاه</a>
+        <a class="btn btn-ghost" href="#shop">کلکسیون لینن</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="shop">
+    <h2>جدیدترین‌ها</h2>
+    <div class="grid">
+      <article class="card"><div class="thumb">لینن</div><div class="card-body"><div>مانتو لینن تابستانه</div><div class="price">۱٬۸۹۰٬۰۰۰ تومان</div></div></article>
+      <article class="card"><div class="thumb">کتان</div><div class="card-body"><div>مانتو کتان رسمی</div><div class="price">۲٬۲۵۰٬۰۰۰ تومان</div></div></article>
+      <article class="card"><div class="thumb">لینن</div><div class="card-body"><div>شومیز لینن یقه ۷</div><div class="price">۱٬۴۵۰٬۰۰۰ تومان</div></div></article>
+      <article class="card"><div class="thumb">کتان</div><div class="card-body"><div>مانتو کتان آزاد</div><div class="price">۱٬۹۹۰٬۰۰۰ تومان</div></div></article>
+    </div>
+  </section>
+
+  <section class="trust">
+    <div><h3>ارسال سریع</h3><p>پست پیشتاز، تیپاکس و ارسال تهران</p></div>
+    <div><h3>تعویض سایز</h3><p>درخواست مرجوعی و تعویض از حساب کاربری</p></div>
+    <div><h3>پرداخت امن</h3><p>زرین‌پال، پرداخت در محل (با شرایط)</p></div>
+  </section>
+
+  <section class="banner">
+    <h2 style="font-size:1.5rem;font-weight:800">عمده‌فروش هستید؟</h2>
+    <p style="margin-top:12px;color:var(--muted);font-size:14px">برای خرید عمده به سایت .com سر بزنید.</p>
+    <a href="https://poshaktaranom.com" target="_blank" rel="noopener">ورود به سایت عمده</a>
+  </section>
+
+  <footer class="footer">© 2026 پوشاک ترنم — www.poshaktaranom.ir · پیش‌نمایش طراحی B2C</footer>
+
+  <div class="note">
+    <strong>پیش‌نمایش استاتیک</strong><br />
+    نسخه زنده اپ: مسیر <code>/retail</code> بعد از اجرای dev
+  </div>
+</body>
+</html>
