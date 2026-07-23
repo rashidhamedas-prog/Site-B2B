@@ -510,7 +510,7 @@ export function AdminInventory() {
                     <div className="bg-gray-50 border-t border-gray-100">
                       <div className="px-8 py-3 overflow-x-auto">
                         <p className="text-xs text-gray-500 mb-2">
-                          رنگ‌ها فقط نمایشی هستند — موجودی در سطح محصول (بالا) ثبت می‌شود.
+                          موجودی فقط در سطح محصول (بالا) ثبت می‌شود؛ رنگ‌ها موجودی جداگانه ندارند.
                         </p>
                         <table className="w-full min-w-[400px] text-sm">
                           <thead>

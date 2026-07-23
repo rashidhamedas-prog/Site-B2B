@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp, Users, ShoppingCart, CreditCard, AlertTriangle,
@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 
 interface DashboardStats {
   orders: { total: number; pending: number; thisMonth: number; lastMonth: number; growth: number };
+  ordersByStatus?: Record<string, number>;
   customers: { total: number; pending: number; active: number };
   revenue: { total: number; thisMonth: number; outstanding: number };
   recentOrders: { id: string; orderNumber: string; customerName: string; city: string; total: number; status: string; createdAt: string }[];
@@ -37,13 +38,24 @@ function timeAgo(dateStr: string) {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING:    { label: 'در انتظار',  color: 'text-amber-700',  bg: 'bg-amber-100' },
-  CONFIRMED:  { label: 'تأیید شده', color: 'text-blue-700',   bg: 'bg-blue-100' },
-  PROCESSING: { label: 'در تولید',  color: 'text-purple-700', bg: 'bg-purple-100' },
-  SHIPPED:    { label: 'ارسال شده', color: 'text-teal-700',   bg: 'bg-teal-100' },
-  DELIVERED:  { label: 'تحویل داده',color: 'text-green-700',  bg: 'bg-green-100' },
-  CANCELLED:  { label: 'لغو شده',  color: 'text-red-700',    bg: 'bg-red-100' },
+  PENDING_REVIEW: { label: 'در انتظار بررسی', color: 'text-amber-700', bg: 'bg-amber-100' },
+  PENDING:        { label: 'در انتظار', color: 'text-amber-700', bg: 'bg-amber-100' },
+  CONFIRMED:      { label: 'تأیید شده', color: 'text-blue-700', bg: 'bg-blue-100' },
+  PROCESSING:     { label: 'در حال پردازش', color: 'text-purple-700', bg: 'bg-purple-100' },
+  SHIPPED:        { label: 'ارسال شده', color: 'text-teal-700', bg: 'bg-teal-100' },
+  DELIVERED:      { label: 'تحویل داده', color: 'text-green-700', bg: 'bg-green-100' },
+  COMPLETED:      { label: 'تکمیل شده', color: 'text-emerald-700', bg: 'bg-emerald-100' },
+  CANCELLED:      { label: 'لغو شده', color: 'text-red-700', bg: 'bg-red-100' },
 };
+
+const STATUS_FUNNEL: Array<{ key: string; label: string; color: string }> = [
+  { key: 'PENDING_REVIEW', label: 'در انتظار بررسی', color: 'bg-amber-400' },
+  { key: 'PROCESSING', label: 'در حال پردازش', color: 'bg-blue-400' },
+  { key: 'CONFIRMED', label: 'تأیید شده', color: 'bg-violet-400' },
+  { key: 'SHIPPED', label: 'ارسال شده', color: 'bg-teal-400' },
+  { key: 'DELIVERED', label: 'تحویل داده شده', color: 'bg-emerald-500' },
+  { key: 'COMPLETED', label: 'تکمیل شده', color: 'bg-emerald-600' },
+];
 
 function StatusBadge({ status }: { status: string }) {
   const c = STATUS_CONFIG[status] ?? { label: status, color: 'text-gray-700', bg: 'bg-gray-100' };
@@ -127,6 +139,7 @@ function QuickAction({ href, icon: Icon, label, color }: { href: string; icon: R
 // Fallback data for when API is unavailable
 const EMPTY: DashboardStats = {
   orders: { total: 0, pending: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
+  ordersByStatus: {},
   customers: { total: 0, pending: 0, active: 0 },
   revenue: { total: 0, thisMonth: 0, outstanding: 0 },
   recentOrders: [],
@@ -163,15 +176,13 @@ export function AdminDashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const monthlyOrders = stats.monthlyOrders?.length
-    ? stats.monthlyOrders
-    : Array.from({ length: 6 }, () => ({ label: '—', value: 0 }));
-  const monthlyRevenue = stats.monthlyRevenue?.length
-    ? stats.monthlyRevenue
-    : Array.from({ length: 6 }, () => ({ label: '—', value: 0 }));
+  const monthlyOrders = stats.monthlyOrders ?? [];
+  const monthlyRevenue = stats.monthlyRevenue ?? [];
   const monthlyValues = monthlyOrders.map((m) => m.value);
   const revenueMonths = monthlyRevenue.map((m) => Math.round(m.value / 10_000_000) || 0);
   const monthLabels = monthlyRevenue.map((m) => m.label);
+  const statusMap = stats.ordersByStatus ?? {};
+  const statusTotal = Math.max(stats.orders.total, 1);
 
   const kpis = [
     {
@@ -182,7 +193,7 @@ export function AdminDashboard() {
       up: stats.orders.growth >= 0,
       icon: TrendingUp,
       iconBg: 'bg-emerald-500',
-      sparkValues: revenueMonths.length ? revenueMonths : [0],
+      sparkValues: revenueMonths,
       sparkColor: '#10b981',
     },
     {
@@ -193,7 +204,7 @@ export function AdminDashboard() {
       up: true,
       icon: ShoppingCart,
       iconBg: 'bg-blue-500',
-      sparkValues: monthlyValues.length ? monthlyValues : [0],
+      sparkValues: monthlyValues,
       sparkColor: '#3b82f6',
     },
     {
@@ -204,7 +215,7 @@ export function AdminDashboard() {
       up: stats.customers.pending === 0,
       icon: Users,
       iconBg: 'bg-violet-500',
-      sparkValues: monthlyOrders.map(() => stats.customers.active || 0),
+      sparkValues: [] as number[],
       sparkColor: '#8b5cf6',
     },
     {
@@ -215,7 +226,7 @@ export function AdminDashboard() {
       up: false,
       icon: CreditCard,
       iconBg: 'bg-amber-500',
-      sparkValues: monthlyRevenue.map(() => Math.round(stats.revenue.outstanding / 10_000_000) || 0),
+      sparkValues: [] as number[],
       sparkColor: '#f59e0b',
     },
   ];
@@ -282,9 +293,11 @@ export function AdminDashboard() {
                   </p>
                   <p className="text-xs text-gray-400 mt-1">{kpi.label} ({kpi.unit})</p>
                 </div>
-                <div className="opacity-80">
-                  <Sparkline values={kpi.sparkValues} color={kpi.sparkColor} height={36} />
-                </div>
+                {kpi.sparkValues.length > 0 && (
+                  <div className="opacity-80">
+                    <Sparkline values={kpi.sparkValues} color={kpi.sparkColor} height={36} />
+                  </div>
+                )}
               </div>
             </div>
           ))
@@ -300,14 +313,21 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
                 <h3 className="font-bold text-gray-900">روند فروش ماهانه</h3>
-                <p className="text-xs text-gray-400 mt-0.5">۷ ماه اخیر (میلیون تومان)</p>
+                <p className="text-xs text-gray-400 mt-0.5">۶ ماه اخیر (میلیون تومان)</p>
               </div>
-              <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2.5 py-1 rounded-full">
-                +{stats.orders.growth}٪ رشد
+              <span className={cn(
+                'text-xs font-semibold px-2.5 py-1 rounded-full',
+                stats.orders.growth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700',
+              )}>
+                {stats.orders.growth >= 0 ? '+' : ''}{stats.orders.growth}٪ نسبت به ماه قبل
               </span>
             </div>
             <div className="p-5">
-              <BarChart values={revenueMonths} labels={monthLabels} color="#1B5C4A" />
+              {revenueMonths.length > 0 ? (
+                <BarChart values={revenueMonths} labels={monthLabels} color="#1B5C4A" />
+              ) : (
+                <p className="text-sm text-gray-400 py-8 text-center">هنوز داده فروشی برای نمودار ثبت نشده</p>
+              )}
               <div className="flex gap-6 mt-4 pt-4 border-t border-gray-50">
                 <div>
                   <p className="text-xs text-gray-400">این ماه</p>
@@ -404,22 +424,40 @@ export function AdminDashboard() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="font-bold text-gray-900 text-sm mb-4">وضعیت سفارش‌ها</h3>
             <div className="space-y-3">
-              {[
-                { label: 'در انتظار بررسی', count: stats.orders.pending, color: 'bg-amber-400', pct: Math.round((stats.orders.pending / Math.max(stats.orders.total, 1)) * 100) },
-                { label: 'در حال پردازش', count: Math.round(stats.orders.total * 0.15), color: 'bg-blue-400', pct: 15 },
-                { label: 'ارسال شده', count: Math.round(stats.orders.total * 0.2), color: 'bg-teal-400', pct: 20 },
-                { label: 'تحویل داده شده', count: stats.orders.total - stats.orders.pending - Math.round(stats.orders.total * 0.35), color: 'bg-emerald-500', pct: Math.max(0, 65 - Math.round((stats.orders.pending / Math.max(stats.orders.total, 1)) * 100)) },
-              ].map(item => (
-                <div key={item.label}>
+              {STATUS_FUNNEL.map((item) => {
+                const count = statusMap[item.key] ?? 0;
+                const pct = Math.round((count / statusTotal) * 100);
+                return (
+                  <div key={item.key}>
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                      <span>{item.label}</span>
+                      <span className="font-semibold text-gray-700">{count.toLocaleString('fa-IR')}</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${item.color} transition-all duration-700`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              {(statusMap.CANCELLED ?? 0) > 0 && (
+                <div>
                   <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                    <span>{item.label}</span>
-                    <span className="font-semibold text-gray-700">{item.count.toLocaleString('fa-IR')}</span>
+                    <span>لغو شده</span>
+                    <span className="font-semibold text-gray-700">
+                      {(statusMap.CANCELLED ?? 0).toLocaleString('fa-IR')}
+                    </span>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${item.color} transition-all duration-700`} style={{ width: `${item.pct}%` }} />
+                    <div
+                      className="h-full rounded-full bg-red-400 transition-all duration-700"
+                      style={{ width: `${Math.round(((statusMap.CANCELLED ?? 0) / statusTotal) * 100)}%` }}
+                    />
                   </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -485,6 +523,8 @@ export function AdminDashboard() {
             <div className="divide-y divide-gray-50">
               {loading ? (
                 <div className="p-4"><div className="h-20 bg-gray-100 rounded animate-pulse" /></div>
+              ) : stats.topCustomers.length === 0 ? (
+                <div className="p-4 text-xs text-gray-400 text-center">هنوز مشتری با سفارش ثبت نشده</div>
               ) : (
                 stats.topCustomers.map((c, i) => (
                   <div key={c.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">

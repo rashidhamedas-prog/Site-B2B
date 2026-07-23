@@ -963,7 +963,7 @@ export function AdminProducts() {
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
-                  {specField('packQty', 'تعداد در پک / MOQ نمایشی', '۶')}
+                  {specField('packQty', 'تعداد در پک / حداقل سفارش', '۶')}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">جزئیات طراحی</label>
