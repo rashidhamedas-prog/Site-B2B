@@ -264,9 +264,11 @@ export class OrderService {
 
     // Wholesale tiered/side discounts must not apply on retail channel.
     let discountAmount = 0;
+    let usedDiscountCodeId: string | undefined;
     if (channel === 'WHOLESALE') {
       const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
       discountAmount = quote.discount;
+      usedDiscountCodeId = quote.code?.id;
       const discountNotes: string[] = [];
       if (quote.tiered.discount) discountNotes.push(`TIERED ${quote.tiered.percent}%=${quote.tiered.discount}`);
       if (quote.side.discount) discountNotes.push(`SIDE ${quote.side.type} ${quote.side.percent}%=${quote.side.discount}`);
@@ -279,6 +281,7 @@ export class OrderService {
       // Retail: only explicit discount codes (no wholesale tier/side).
       const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
       discountAmount = quote.code?.discount ?? 0;
+      usedDiscountCodeId = quote.code?.id;
       if (discountAmount > 0 && quote.code) {
         const tag = `DISCOUNTS CODE ${quote.code.code}=${quote.code.discount}`;
         dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
@@ -378,8 +381,8 @@ export class OrderService {
       await this.productService.updateProductStock(productId, -qty);
     }
 
-    if (quote.code?.id) {
-      await this.discounts.recordUse(quote.code.id);
+    if (usedDiscountCodeId) {
+      await this.discounts.recordUse(usedDiscountCodeId);
     }
 
     if (this.notifications) {
