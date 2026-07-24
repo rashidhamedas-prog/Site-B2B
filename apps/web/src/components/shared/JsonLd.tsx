@@ -1,5 +1,5 @@
 import type { SalesChannel } from '@/lib/channel';
-import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo';
+import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 
 const SAME_AS = [
   'https://www.instagram.com/tolidi.taranom',
