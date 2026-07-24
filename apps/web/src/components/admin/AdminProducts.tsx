@@ -78,6 +78,11 @@ const emptyForm = {
   specs: emptySpecs,
   hasLength2: false,
   hasLength3: false,
+  collectionId: '',
+  isPreOrder: false,
+  preOrderDate: '',
+  modelInfo: '',
+  videoUrl: '',
 };
 
 const emptyVariantForm = { color: '', colorHex: '#000000', barcode: '' };
@@ -510,6 +515,7 @@ export function AdminProducts() {
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; skuPrefix: string }>>([]);
+  const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   const [specMemory, setSpecMemory] = useState<SpecMemory>({});
 
   const { products, meta, loading, refetch } = useProducts({
@@ -523,6 +529,10 @@ export function AdminProducts() {
     apiClient
       .get<Array<{ id: string; name: string; skuPrefix: string }>>('/categories')
       .then((res) => setCategories(res ?? []))
+      .catch(() => undefined);
+    apiClient
+      .get<Array<{ id: string; name: string }>>('/collections')
+      .then((res) => setCollections(Array.isArray(res) ? res : []))
       .catch(() => undefined);
   }, []);
 
@@ -561,6 +571,11 @@ export function AdminProducts() {
       sizeType: (p.sizeType as FormData['sizeType']) || 'FREE',
       hasLength2: !!specs.length2,
       hasLength3: !!specs.length3,
+      collectionId: p.collectionId ?? '',
+      isPreOrder: !!p.isPreOrder,
+      preOrderDate: p.preOrderDate ? String(p.preOrderDate).slice(0, 10) : '',
+      modelInfo: p.modelInfo ?? '',
+      videoUrl: p.videoUrl ?? '',
       specs: {
         fabricType: specs.fabricType ?? '',
         designDetails: specs.designDetails ?? '',
@@ -687,6 +702,11 @@ export function AdminProducts() {
         status: form.status,
         isDiscounted: form.isDiscounted,
         images,
+        collectionId: form.collectionId || null,
+        isPreOrder: form.isPreOrder,
+        preOrderDate: form.isPreOrder && form.preOrderDate ? form.preOrderDate : null,
+        modelInfo: form.modelInfo.trim() || null,
+        videoUrl: form.videoUrl.trim() || null,
       };
 
       if (modal === 'create') await apiClient.post('/products', payload);
@@ -1213,6 +1233,66 @@ export function AdminProducts() {
                 />
                 <span className="text-sm text-gray-700">محصول تخفیف‌دار</span>
               </label>
+
+              <div className="rounded-xl border border-dashed border-primary/30 bg-primary-50/40 p-4 space-y-3">
+                <p className="text-xs font-bold text-primary">فروشگاه تکی</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">کالکشن</label>
+                    <select
+                      value={form.collectionId}
+                      onChange={(e) => setForm((f) => ({ ...f, collectionId: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    >
+                      <option value="">بدون کالکشن</option>
+                      {collections.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">لینک ویدیو</label>
+                    <input
+                      type="url"
+                      value={form.videoUrl}
+                      onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))}
+                      placeholder="https://..."
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">اطلاعات مدل / تنخور</label>
+                  <textarea
+                    value={form.modelInfo}
+                    onChange={(e) => setForm((f) => ({ ...f, modelInfo: e.target.value }))}
+                    rows={2}
+                    placeholder="قد مدل ۱۷۵ — سایز پوشیده M"
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none"
+                  />
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.isPreOrder}
+                    onChange={(e) => setForm((f) => ({ ...f, isPreOrder: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">پیش‌فروش (Pre-order)</span>
+                </label>
+                {form.isPreOrder ? (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ عرضه</label>
+                    <input
+                      type="date"
+                      value={form.preOrderDate}
+                      onChange={(e) => setForm((f) => ({ ...f, preOrderDate: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                  </div>
+                ) : null}
+              </div>
 
               <p className="text-[11px] text-gray-400 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
                 نشان «موجودی محدود» به‌صورت خودکار وقتی موجودی کل ≤ ۲× حداقل سفارش فعال می‌شود.

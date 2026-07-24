@@ -48,6 +48,11 @@ export interface Product {
   description?: string;
   seoMeta?: { title?: string; description?: string; focusKeyword?: string; canonical?: string };
   categoryId?: string;
+  collectionId?: string | null;
+  isPreOrder?: boolean;
+  preOrderDate?: string | null;
+  modelInfo?: string | null;
+  videoUrl?: string | null;
   fabricComposition?: string;
 }
 

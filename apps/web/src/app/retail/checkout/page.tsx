@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { apiClient } from '@/lib/api';
 import { getToken } from '@/lib/auth';
+import { getRetailAddresses, saveRetailAddress, type RetailAddress } from '@/lib/retail-addresses';
 
 const PROVINCES = [
   'تهران', 'خراسان رضوی', 'اصفهان', 'فارس', 'آذربایجان شرقی', 'آذربایجان غربی',
@@ -21,14 +22,7 @@ const SHIP_METHODS = [
   { id: 'TEHRAN_BIKE', label: 'پیک تهران' },
 ];
 
-type AddressForm = {
-  province: string;
-  city: string;
-  postalCode: string;
-  street: string;
-  recipient: string;
-  mobile: string;
-};
+type AddressForm = RetailAddress;
 
 function readAff(): string | undefined {
   if (typeof window === 'undefined') return undefined;
@@ -60,6 +54,7 @@ export default function RetailCheckoutPage() {
   const [shipMeta, setShipMeta] = useState<{ freeShipping?: boolean; estimatedDays?: string }>({});
   const [useWallet, setUseWallet] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [savedAddresses, setSavedAddresses] = useState<RetailAddress[]>([]);
   const [address, setAddress] = useState<AddressForm>({
     province: 'خراسان رضوی',
     city: 'مشهد',
@@ -68,6 +63,19 @@ export default function RetailCheckoutPage() {
     recipient: '',
     mobile: '',
   });
+
+  useEffect(() => {
+    const saved = getRetailAddresses();
+    setSavedAddresses(saved);
+    if (saved[0]) {
+      setAddress((a) => ({
+        ...a,
+        ...saved[0],
+        recipient: a.recipient || saved[0]!.recipient,
+        mobile: a.mobile || saved[0]!.mobile,
+      }));
+    }
+  }, []);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -152,6 +160,7 @@ export default function RetailCheckoutPage() {
           size: i.size,
         })),
       });
+      saveRetailAddress(address);
       clear();
       if (order?.paymentUrl) {
         window.location.href = order.paymentUrl;
@@ -185,6 +194,23 @@ export default function RetailCheckoutPage() {
 
         <div className="mt-8 space-y-4">
           <h2 className="text-sm font-extrabold">آدرس تحویل</h2>
+          {savedAddresses.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs text-[var(--retail-muted)]">آدرس‌های ذخیره‌شده</p>
+              <div className="flex flex-wrap gap-2">
+                {savedAddresses.map((a, i) => (
+                  <button
+                    key={`${a.city}-${a.street}-${i}`}
+                    type="button"
+                    onClick={() => setAddress({ ...a })}
+                    className="cursor-pointer rounded-full border border-[var(--retail-border)] px-3 py-1.5 text-xs hover:border-[var(--retail-primary)]"
+                  >
+                    {a.city} — {a.street.slice(0, 28)}{a.street.length > 28 ? '…' : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm">
               <span className="mb-1 block font-bold">استان</span>
