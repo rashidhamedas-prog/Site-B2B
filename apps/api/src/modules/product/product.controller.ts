@@ -19,12 +19,26 @@ export class ProductController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
+    @Query('q') q?: string,
     @Query('fabric') fabric?: string,
     @Query('color') color?: string,
     @Query('size') size?: string,
     @Query('status') status?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('collectionId') collectionId?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+    @Query('collar') collar?: string,
+    @Query('relatedTo') relatedTo?: string,
   ) {
-    return this.productService.findAll(page, limit, search, fabric, status, color, size);
+    return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
+      categoryId,
+      collectionId,
+      minPrice: minPrice != null ? Number(minPrice) : undefined,
+      maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+      collar,
+      relatedTo,
+    });
   }
 
   @Get('coming-soon')

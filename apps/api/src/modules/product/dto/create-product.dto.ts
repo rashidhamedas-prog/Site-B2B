@@ -83,4 +83,29 @@ export class CreateProductDto {
   @IsOptional()
   @IsObject()
   seoMeta?: Record<string, string>;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  collectionId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isPreOrder?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  preOrderDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  modelInfo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  videoUrl?: string;
 }

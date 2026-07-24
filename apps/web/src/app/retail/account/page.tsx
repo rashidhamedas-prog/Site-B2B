@@ -71,6 +71,8 @@ function RetailAccountInner() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [profileName, setProfileName] = useState('');
 
   useEffect(() => {
     setLoggedIn(!!getToken());
@@ -81,8 +83,15 @@ function RetailAccountInner() {
     setWishlist(getWishlist());
     (async () => {
       try {
-        const res = await apiClient.get<{ data: OrderRow[] }>('/orders?limit=20');
+        const [res, profile] = await Promise.all([
+          apiClient.get<{ data: OrderRow[] }>('/orders?limit=20'),
+          apiClient.get<{ balance?: number; ownerName?: string; businessName?: string; phone?: string }>(
+            '/auth/me/profile',
+          ),
+        ]);
         setOrders(Array.isArray(res.data) ? res.data : []);
+        setWalletBalance(Number(profile?.balance) || 0);
+        setProfileName(profile?.ownerName || profile?.businessName || profile?.phone || '');
       } catch {
         setOrders([]);
       }
@@ -185,7 +194,10 @@ function RetailAccountInner() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-extrabold">حساب من</h1>
+        <div>
+          <h1 className="text-2xl font-extrabold">حساب من</h1>
+          {profileName ? <p className="mt-1 text-sm text-[var(--retail-muted)]">{profileName}</p> : null}
+        </div>
         <button
           type="button"
           className="text-sm text-red-600"
@@ -196,6 +208,14 @@ function RetailAccountInner() {
         >
           خروج
         </button>
+      </div>
+
+      <div className="mt-6 rounded-2xl bg-[var(--retail-primary)] px-5 py-4 text-white">
+        <p className="text-xs font-bold opacity-80">اعتبار کیف‌پول</p>
+        <p className="mt-1 text-2xl font-extrabold">
+          {Math.round(walletBalance / 10).toLocaleString('fa-IR')} تومان
+        </p>
+        <p className="mt-1 text-xs opacity-70">در چک‌اوت می‌توانید از اعتبار استفاده کنید</p>
       </div>
 
       <div className="mt-6 flex flex-wrap gap-2">
@@ -281,7 +301,23 @@ function RetailAccountInner() {
                   {STATUS_LABEL[o.status] || o.status}
                 </p>
                 {o.trackingCode ? (
-                  <p className="mt-1 text-xs text-[var(--retail-muted)]">کد پیگیری: {o.trackingCode}</p>
+                  <p className="mt-1 text-xs text-[var(--retail-muted)]">
+                    کد پیگیری:{' '}
+                    <button
+                      type="button"
+                      className="font-bold text-[var(--retail-primary)]"
+                      onClick={() => {
+                        apiClient
+                          .get<{ url?: string }>(`/shipping/track/${encodeURIComponent(o.trackingCode!)}`)
+                          .then((t) => {
+                            if (t?.url) window.open(t.url, '_blank');
+                          })
+                          .catch(() => undefined);
+                      }}
+                    >
+                      {o.trackingCode}
+                    </button>
+                  </p>
                 ) : null}
                 <OrderTimeline status={o.status} />
               </div>

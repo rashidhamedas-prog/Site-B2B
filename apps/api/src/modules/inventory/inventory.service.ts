@@ -12,7 +12,7 @@ export class InventoryService {
     private readonly productService: ProductService,
   ) {}
 
-  /** Legacy per-variant adjust — kept for older admin flows. */
+  /** Legacy per-variant adjust — now updates variant stock and syncs product. */
   async adjust(
     productVariantId: string,
     quantity: number,
@@ -23,8 +23,7 @@ export class InventoryService {
   ) {
     const variant = await this.productService.getVariant(productVariantId);
     const productId = variant.productId;
-    const minOrderQty = Math.max(1, Number(variant.product?.minOrderQty) || 1);
-    const current = Number(variant.product?.stock) || 0;
+    const current = Number(variant.stock) || 0;
 
     let delta: number;
     let movementQty: number;
@@ -32,21 +31,18 @@ export class InventoryService {
 
     if (type === 'ADJUST') {
       if (quantity < 0) throw new BadRequestException('موجودی نمی‌تواند منفی باشد');
-      if (quantity % minOrderQty !== 0) {
-        throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
-      }
       delta = quantity - current;
       movementQty = Math.abs(delta);
       if (delta === 0) {
-        return { productId, stock: current, message: 'بدون تغییر' };
+        return { productId, productVariantId, stock: current, message: 'بدون تغییر' };
       }
-      const updated = await this.productService.setProductStock(productId, quantity);
-      balanceAfter = updated.stock;
+      const updated = await this.productService.updateVariantStock(productVariantId, delta);
+      balanceAfter = Number(updated.stock) || 0;
     } else {
       movementQty = Math.abs(quantity);
       delta = type === 'OUT' || type === 'SALE' || type === 'DAMAGE' ? -movementQty : movementQty;
-      const updated = await this.productService.updateProductStock(productId, delta);
-      balanceAfter = updated.stock;
+      const updated = await this.productService.updateVariantStock(productVariantId, delta);
+      balanceAfter = Number(updated.stock) || 0;
     }
 
     const movement = this.repo.create({

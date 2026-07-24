@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Menu, Search, ShoppingBag, User, X } from 'lucide-react';
+import { ChevronDown, Menu, Search, ShoppingBag, User, X } from 'lucide-react';
 import { useRetailCart } from '@/lib/retail-cart';
 import { RetailCartDrawer } from './RetailCartDrawer';
 import { cn } from '@/lib/cn';
+import { apiClient } from '@/lib/api';
 
-const NAV = [
+type Cat = { id: string; name: string; slug?: string };
+type Collection = { id: string; name: string; slug: string };
+
+const STATIC_NAV = [
   { href: '/', label: 'صفحه اصلی' },
   { href: '/products', label: 'جدیدترین‌ها' },
-  { href: '/products?q=شومیز', label: 'شومیز' },
-  { href: '/products?q=مانتو', label: 'مانتو' },
   { href: '/collections', label: 'کلکسیون' },
   { href: '/about', label: 'درباره ما' },
   { href: '/contact', label: 'تماس با ما' },
@@ -35,11 +37,35 @@ function BrandMark({ className }: { className?: string }) {
 export function RetailHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [categories, setCategories] = useState<Cat[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const count = useRetailCart((s) => s.items.reduce((n, i) => n + i.quantity, 0));
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    // Capture affiliate click id for checkout
+    try {
+      const aff = new URLSearchParams(window.location.search).get('aff');
+      if (aff) sessionStorage.setItem('taranom_aff', aff);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    Promise.all([
+      apiClient.get<Cat[] | { data: Cat[] }>('/categories').catch(() => []),
+      apiClient.get<Collection[]>('/collections?active=1').catch(() => []),
+    ]).then(([cats, cols]) => {
+      const list = Array.isArray(cats) ? cats : (cats as any)?.data ?? [];
+      setCategories(list.slice(0, 16));
+      setCollections(Array.isArray(cols) ? cols.slice(0, 8) : []);
+    });
+  }, []);
 
   return (
     <>
@@ -62,7 +88,85 @@ export function RetailHeader() {
           </Link>
 
           <nav className="hidden items-center gap-6 xl:flex">
-            {NAV.map((item) => {
+            {STATIC_NAV.slice(0, 2).map((item) => {
+              const base = item.href.split('?')[0]!;
+              const active = pathname === base || (base !== '/' && pathname.startsWith(base));
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={cn(
+                    'relative text-[13px] font-medium transition',
+                    active ? 'text-[var(--retail-ink)]' : 'text-[var(--retail-ink)]/70 hover:text-[var(--retail-ink)]',
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            <div
+              className="relative"
+              onMouseEnter={() => setMegaOpen(true)}
+              onMouseLeave={() => setMegaOpen(false)}
+            >
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--retail-ink)]/70 hover:text-[var(--retail-ink)]"
+              >
+                دسته‌بندی
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+              {megaOpen ? (
+                <div className="absolute right-0 top-full z-50 w-[min(90vw,36rem)] rounded-2xl border border-[var(--retail-border)] bg-white p-5 shadow-xl">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <p className="mb-3 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
+                      <ul className="space-y-2">
+                        {categories.length === 0 ? (
+                          <li className="text-sm text-[var(--retail-muted)]">در حال بارگذاری…</li>
+                        ) : (
+                          categories.map((c) => (
+                            <li key={c.id}>
+                              <Link
+                                href={`/products?categoryId=${c.id}`}
+                                className="text-sm font-semibold hover:text-[var(--retail-primary)]"
+                                onClick={() => setMegaOpen(false)}
+                              >
+                                {c.name}
+                              </Link>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="mb-3 text-xs font-bold text-[var(--retail-muted)]">کالکشن‌ها</p>
+                      <ul className="space-y-2">
+                        <li>
+                          <Link href="/collections" className="text-sm font-semibold hover:text-[var(--retail-primary)]">
+                            همه کالکشن‌ها
+                          </Link>
+                        </li>
+                        {collections.map((c) => (
+                          <li key={c.id}>
+                            <Link
+                              href={`/products?collectionId=${c.id}`}
+                              className="text-sm font-semibold hover:text-[var(--retail-primary)]"
+                              onClick={() => setMegaOpen(false)}
+                            >
+                              {c.name}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {STATIC_NAV.slice(2).map((item) => {
               const base = item.href.split('?')[0]!;
               const active = pathname === base || (base !== '/' && pathname.startsWith(base));
               return (
@@ -107,7 +211,7 @@ export function RetailHeader() {
       {open && (
         <div className="fixed inset-0 z-50 xl:hidden">
           <button type="button" className="absolute inset-0 bg-black/40" aria-label="بستن" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col bg-white p-6 shadow-xl">
+          <div className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col overflow-y-auto bg-white p-6 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
               <span className="font-bold">منو</span>
               <button type="button" className="cursor-pointer p-2" onClick={() => setOpen(false)} aria-label="بستن">
@@ -115,7 +219,7 @@ export function RetailHeader() {
               </button>
             </div>
             <nav className="flex flex-col gap-4">
-              {NAV.map((item) => (
+              {STATIC_NAV.map((item) => (
                 <Link
                   key={item.label}
                   href={item.href}
@@ -123,6 +227,17 @@ export function RetailHeader() {
                   onClick={() => setOpen(false)}
                 >
                   {item.label}
+                </Link>
+              ))}
+              <p className="pt-2 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
+              {categories.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/products?categoryId=${c.id}`}
+                  className="text-sm font-semibold"
+                  onClick={() => setOpen(false)}
+                >
+                  {c.name}
                 </Link>
               ))}
             </nav>

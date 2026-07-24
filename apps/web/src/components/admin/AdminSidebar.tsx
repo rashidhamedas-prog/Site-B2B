@@ -36,6 +36,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/customers', icon: Users, label: 'مشتریان (CRM)', badge: 0, badgeColor: 'bg-amber-500' },
       { href: '/admin/orders', icon: ShoppingCart, label: 'سفارش‌ها', badge: 0, badgeColor: 'bg-blue-500' },
+      { href: '/admin/rma', icon: Package, label: 'مرجوعی (RMA)' },
       { href: '/admin/invoices', icon: FileText, label: 'فاکتورها' },
       { href: '/admin/payments', icon: CreditCard, label: 'پرداخت‌ها' },
     ],

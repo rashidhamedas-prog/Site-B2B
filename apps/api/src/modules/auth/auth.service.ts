@@ -247,6 +247,8 @@ export class AuthService {
           segment: customer.segment,
           customerCode: customer.code,
           creditLimit: customer.creditLimit ?? 0,
+          balance: Number(customer.balance) || 0,
+          customerId: customer.id,
           totalSpent: 0,
           lastLoginAt: u.lastLoginAt,
         };

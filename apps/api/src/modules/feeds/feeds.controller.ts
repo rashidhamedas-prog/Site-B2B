@@ -47,17 +47,21 @@ export class FeedsController {
       .filter((p) => Number(p.retailPrice) > 0)
       .map((p) => {
         const price = Number(p.retailPrice);
-        const avail = Number(p.stock) > 0 ? 'true' : 'false';
+        const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.stock) || 0), 0);
+        const stock = variantStock > 0 ? variantStock : Number(p.stock) || 0;
+        const avail = stock > 0 ? 'true' : 'false';
         const img = absMedia(p.images?.[0], base);
         const link = `${base}/products/${p.slug || p.id}`;
         const sizes = [...new Set((p.variants || []).map((v) => v.size).filter(Boolean))].join(',');
         const colors = [...new Set((p.variants || []).map((v) => v.color).filter(Boolean))].join(',');
+        // Only emit old_price when a real compare-at / discount field exists (not fabricated).
+        const oldPrice = '';
         return `
   <product>
     <product_id>${xmlEscape(p.id)}</product_id>
     <title>${xmlEscape(p.name)}</title>
     <price>${price}</price>
-    <old_price>${p.isDiscounted ? Math.round(price * 1.15) : ''}</old_price>
+    <old_price>${oldPrice}</old_price>
     <availability>${avail}</availability>
     <image_link>${xmlEscape(img)}</image_link>
     <link>${xmlEscape(link)}</link>
@@ -88,7 +92,9 @@ export class FeedsController {
       .filter((p) => Number(p.retailPrice) > 0)
       .map((p) => {
         const price = Number(p.retailPrice);
-        const avail = Number(p.stock) > 0 ? 'in stock' : 'out of stock';
+        const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.stock) || 0), 0);
+        const stock = variantStock > 0 ? variantStock : Number(p.stock) || 0;
+        const avail = stock > 0 ? 'in stock' : 'out of stock';
         const img = absMedia(p.images?.[0], base);
         const link = `${base}/products/${p.slug || p.id}`;
         const sizes = [...new Set((p.variants || []).map((v) => v.size).filter(Boolean))].join('|');
@@ -98,7 +104,7 @@ export class FeedsController {
           p.id,
           esc(p.name),
           price,
-          p.isDiscounted ? Math.round(price * 1.15) : '',
+          '', // no fabricated old_price
           avail,
           esc(img),
           esc(link),

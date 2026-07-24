@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { getToken } from '@/lib/auth';
@@ -16,8 +16,24 @@ type RmaRow = {
   createdAt: string;
 };
 
+type OrderItem = {
+  id: string;
+  productName: string;
+  color?: string;
+  size?: string;
+  quantity: number;
+};
+
+type OrderRow = {
+  id: string;
+  orderNumber: string;
+  status: string;
+  items?: OrderItem[];
+};
+
 export default function RetailReturnsPage() {
   const [rows, setRows] = useState<RmaRow[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
   const [orderItemId, setOrderItemId] = useState('');
   const [reason, setReason] = useState('سایز کوچک است');
   const [requestType, setRequestType] = useState<'RETURN' | 'EXCHANGE'>('EXCHANGE');
@@ -26,13 +42,29 @@ export default function RetailReturnsPage() {
   const [err, setErr] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
 
+  const eligibleItems = useMemo(() => {
+    const out: Array<OrderItem & { orderNumber: string }> = [];
+    for (const o of orders) {
+      if (!['DELIVERED', 'COMPLETED', 'SHIPPED'].includes(o.status)) continue;
+      for (const it of o.items ?? []) {
+        out.push({ ...it, orderNumber: o.orderNumber });
+      }
+    }
+    return out;
+  }, [orders]);
+
   const load = async () => {
     if (!getToken()) return;
     try {
-      const data = await apiClient.get<RmaRow[]>('/rma/mine');
-      setRows(Array.isArray(data) ? data : []);
+      const [rma, ord] = await Promise.all([
+        apiClient.get<RmaRow[]>('/rma/mine'),
+        apiClient.get<{ data: OrderRow[] }>('/orders?limit=30&type=RETAIL_WEBSITE'),
+      ]);
+      setRows(Array.isArray(rma) ? rma : []);
+      setOrders(Array.isArray(ord.data) ? ord.data : []);
     } catch {
       setRows([]);
+      setOrders([]);
     }
   };
 
@@ -47,6 +79,10 @@ export default function RetailReturnsPage() {
     setMsg('');
     if (!getToken()) {
       window.location.href = '/account?redirect=/returns';
+      return;
+    }
+    if (!orderItemId) {
+      setErr('یک قلم از سفارش تحویل‌شده انتخاب کنید');
       return;
     }
     try {
@@ -78,14 +114,29 @@ export default function RetailReturnsPage() {
         </Link>
       ) : (
         <form onSubmit={submit} className="mt-8 space-y-4 rounded-2xl bg-white p-6 ring-1 ring-[var(--retail-border)]">
-          <label className="block text-sm font-bold">شناسه قلم سفارش (order item id)</label>
-          <input
-            className="w-full rounded-xl border px-3 py-2 text-sm"
-            value={orderItemId}
-            onChange={(e) => setOrderItemId(e.target.value)}
-            required
-            placeholder="از جزئیات سفارش کپی کنید"
-          />
+          <label className="block text-sm font-bold">انتخاب قلم از سفارش‌های تحویل/ارسال‌شده</label>
+          {eligibleItems.length === 0 ? (
+            <p className="text-sm text-[var(--retail-muted)]">
+              هنوز قلمی واجد شرایط نیست. پس از ارسال یا تحویل سفارش اینجا ظاهر می‌شود.
+            </p>
+          ) : (
+            <select
+              className="w-full rounded-xl border px-3 py-2 text-sm"
+              value={orderItemId}
+              onChange={(e) => setOrderItemId(e.target.value)}
+              required
+            >
+              <option value="">انتخاب کنید…</option>
+              {eligibleItems.map((it) => (
+                <option key={it.id} value={it.id}>
+                  {it.orderNumber} — {it.productName}
+                  {[it.color, it.size].filter(Boolean).length
+                    ? ` (${[it.color, it.size].filter(Boolean).join(' / ')})`
+                    : ''}
+                </option>
+              ))}
+            </select>
+          )}
           <label className="block text-sm font-bold">نوع درخواست</label>
           <div className="flex gap-2">
             {[
@@ -128,8 +179,12 @@ export default function RetailReturnsPage() {
             <option>ایراد دوخت/کیفیت</option>
           </select>
           {err ? <p className="text-sm text-red-600">{err}</p> : null}
-          {msg ? <p className="text-sm text-emerald-700">{msg}</p> : null}
-          <button type="submit" className="cursor-pointer rounded-full bg-[var(--retail-gold)] px-6 py-3 text-sm font-extrabold text-white">
+          {msg ? <p className="mt-1 text-sm text-emerald-700">{msg}</p> : null}
+          <button
+            type="submit"
+            disabled={!eligibleItems.length}
+            className="cursor-pointer rounded-full bg-[var(--retail-gold)] px-6 py-3 text-sm font-extrabold text-white disabled:opacity-50"
+          >
             ثبت درخواست
           </button>
         </form>

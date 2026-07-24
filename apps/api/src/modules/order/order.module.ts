@@ -10,6 +10,8 @@ import { CustomerModule } from '../customer/customer.module';
 import { ProductModule } from '../product/product.module';
 import { AuthModule } from '../auth/auth.module';
 import { DiscountModule } from '../discount/discount.module';
+import { PaymentModule } from '../payment/payment.module';
+import { ShippingModule } from '../shipping/shipping.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { DiscountModule } from '../discount/discount.module';
     ProductModule,
     AuthModule,
     DiscountModule,
+    PaymentModule,
+    ShippingModule,
   ],
   controllers: [OrderController],
   providers: [OrderService],

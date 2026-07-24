@@ -7,6 +7,7 @@ import { CustomerEntity } from '../customer/entities/customer.entity';
 import { UserEntity } from '../auth/entities/user.entity';
 import { RmaService } from './rma.service';
 import { RmaController } from './rma.controller';
+import { ProductModule } from '../product/product.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { RmaController } from './rma.controller';
       CustomerEntity,
       UserEntity,
     ]),
+    ProductModule,
   ],
   controllers: [RmaController],
   providers: [RmaService],

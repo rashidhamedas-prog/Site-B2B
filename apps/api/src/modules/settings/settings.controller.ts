@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
-const GROUPS = ['business', 'shipping', 'sms', 'payment', 'installments', 'theme', 'menus'] as const;
+const GROUPS = ['business', 'shipping', 'sms', 'payment', 'installments', 'theme', 'menus', 'marketing'] as const;
 
 @ApiTags('settings')
 @Controller('settings')
@@ -16,13 +16,14 @@ export class SettingsController {
   // shipping methods). Never exposes API keys.
   @Get('public')
   async publicSettings() {
-    const [business, shipping, installments, payment, theme, menus] = await Promise.all([
+    const [business, shipping, installments, payment, theme, menus, marketing] = await Promise.all([
       this.svc.business(),
       this.svc.shipping(),
       this.svc.installments(),
       this.svc.payment(),
       this.svc.theme(),
       this.svc.menus(),
+      this.svc.marketing(),
     ]);
     return {
       business: {
@@ -48,6 +49,10 @@ export class SettingsController {
       },
       theme,
       menus,
+      marketing: {
+        yektanetPixelId: marketing.yektanetPixelId || '',
+        metaPixelId: marketing.metaPixelId || '',
+      },
     };
   }
 
@@ -57,7 +62,7 @@ export class SettingsController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   async adminSettings() {
-    const [business, shipping, sms, payment, installments, theme, menus] = await Promise.all([
+    const [business, shipping, sms, payment, installments, theme, menus, marketing] = await Promise.all([
       this.svc.business(),
       this.svc.shipping(),
       this.svc.sms(),
@@ -65,8 +70,9 @@ export class SettingsController {
       this.svc.installments(),
       this.svc.theme(),
       this.svc.menus(),
+      this.svc.marketing(),
     ]);
-    return { business, shipping, sms, payment, installments, theme, menus };
+    return { business, shipping, sms, payment, installments, theme, menus, marketing };
   }
 
   // Admin: save one settings group.

@@ -84,6 +84,21 @@ export class ProductEntity {
   @JoinColumn({ name: 'categoryId' })
   category: CategoryEntity;
 
+  @Column({ nullable: true })
+  collectionId: string;
+
+  @Column({ default: false })
+  isPreOrder: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  preOrderDate: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  modelInfo: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  videoUrl: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   images: string[];
 

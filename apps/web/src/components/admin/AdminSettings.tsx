@@ -50,9 +50,10 @@ interface SettingsPayload {
     minActiveInvoices?: number;
   };
   theme: ThemeSettings;
+  marketing: { yektanetPixelId: string; metaPixelId: string };
 }
 
-type TabId = 'business' | 'shipping' | 'sms' | 'payment' | 'installments' | 'theme';
+type TabId = 'business' | 'shipping' | 'sms' | 'payment' | 'installments' | 'theme' | 'marketing';
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'business', label: 'کسب‌وکار', icon: Building2 },
@@ -60,6 +61,7 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'sms',      label: 'پیامک (sms.ir)', icon: MessageSquare },
   { id: 'payment',  label: 'درگاه پرداخت', icon: CreditCard },
   { id: 'installments', label: 'قوانین اقساط', icon: CreditCard },
+  { id: 'marketing', label: 'پیکسل / افیلیت', icon: Globe },
   { id: 'theme', label: 'تنظیمات تم ترنم', icon: Palette },
 ];
 
@@ -111,6 +113,10 @@ export function AdminSettings() {
             boutique: { ...DEFAULT_THEME.popups.boutique, ...res.theme?.popups?.boutique },
             newsletter: { ...DEFAULT_THEME.popups.newsletter, ...res.theme?.popups?.newsletter },
           },
+        },
+        marketing: {
+          yektanetPixelId: res.marketing?.yektanetPixelId ?? '',
+          metaPixelId: res.marketing?.metaPixelId ?? '',
         },
       });
       setCategories(cats ?? []);
@@ -488,6 +494,59 @@ export function AdminSettings() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Theme tab — Taranom Theme Settings */}
+      {tab === 'marketing' && data.marketing && (
+        <div className="card space-y-4 p-6 max-w-3xl">
+          <p className="text-sm text-gray-500">
+            شناسه پیکسل یکتانت / متا را وارد کنید تا در فروشگاه تکی تزریق شود. پارامتر <code>?aff=</code> روی سفارش ذخیره می‌شود.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Yektanet Pixel ID</label>
+              <input
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={data.marketing.yektanetPixelId}
+                onChange={(e) =>
+                  setData((d) =>
+                    d
+                      ? {
+                          ...d,
+                          marketing: {
+                            ...(d.marketing ?? { yektanetPixelId: '', metaPixelId: '' }),
+                            yektanetPixelId: e.target.value,
+                          },
+                        }
+                      : d,
+                  )
+                }
+                dir="ltr"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Meta Pixel ID</label>
+              <input
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={data.marketing.metaPixelId}
+                onChange={(e) =>
+                  setData((d) =>
+                    d
+                      ? {
+                          ...d,
+                          marketing: {
+                            ...(d.marketing ?? { yektanetPixelId: '', metaPixelId: '' }),
+                            metaPixelId: e.target.value,
+                          },
+                        }
+                      : d,
+                  )
+                }
+                dir="ltr"
+              />
             </div>
           </div>
         </div>

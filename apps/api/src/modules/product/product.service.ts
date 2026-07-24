@@ -109,80 +109,102 @@ export class ProductService {
     status?: string,
     color?: string,
     size?: string,
+    opts?: {
+      categoryId?: string;
+      collectionId?: string;
+      minPrice?: number;
+      maxPrice?: number;
+      collar?: string;
+      relatedTo?: string;
+      garmentSize?: string;
+    },
   ) {
     const statusFilter = status ?? 'ACTIVE';
     const sizeType = (size && ['FREE', 'TWO', 'THREE'].includes(size)
       ? size
       : undefined) as ProductSizeType | undefined;
+    const garmentSize = opts?.garmentSize || (size && !sizeType ? size : undefined);
 
+    let related: ProductEntity | null = null;
+    if (opts?.relatedTo) {
+      related =
+        (await this.productRepo.findOne({ where: { id: opts.relatedTo } })) ||
+        (await this.productRepo.findOne({ where: { slug: opts.relatedTo } }));
+    }
+
+    const qb = this.productRepo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.variants', 'v')
+      .where('p.deletedAt IS NULL');
+
+    if (status !== 'ALL') qb.andWhere('p.status = :status', { status: statusFilter });
+    if (sizeType) qb.andWhere('p.sizeType = :sizeType', { sizeType });
+    if (opts?.categoryId || related?.categoryId) {
+      qb.andWhere('p.categoryId = :categoryId', {
+        categoryId: opts?.categoryId || related?.categoryId,
+      });
+    }
+    if (opts?.collectionId) {
+      qb.andWhere('p.collectionId = :collectionId', { collectionId: opts.collectionId });
+    }
+    if (fabric) {
+      qb.andWhere('(p.fabric ILIKE :fabric OR p.specs->>\'fabricType\' ILIKE :fabric)', {
+        fabric: `%${fabric}%`,
+      });
+    }
+    if (opts?.collar) {
+      qb.andWhere("p.specs->>'collarModel' ILIKE :collar", { collar: `%${opts.collar}%` });
+    }
+    if (opts?.minPrice != null && Number.isFinite(opts.minPrice)) {
+      qb.andWhere('COALESCE(p.retailPrice, p.wholesalePrice) >= :minPrice', {
+        minPrice: opts.minPrice,
+      });
+    }
+    if (opts?.maxPrice != null && Number.isFinite(opts.maxPrice)) {
+      qb.andWhere('COALESCE(p.retailPrice, p.wholesalePrice) <= :maxPrice', {
+        maxPrice: opts.maxPrice,
+      });
+    }
     if (search?.trim()) {
-      const ids = await this.search.searchIds(search, { status: statusFilter, fabric });
-      if (ids?.length) {
-        const [data, total] = await this.productRepo.findAndCount({
-          where: {
-            id: In(ids),
-            ...(status !== 'ALL' && { status: statusFilter }),
-            ...(sizeType ? { sizeType } : {}),
-          },
-          relations: ['variants'],
-          skip: (page - 1) * limit,
-          take: limit,
-          order: { isDiscounted: 'DESC', createdAt: 'DESC' },
+      qb.andWhere('(p.name ILIKE :q OR p.sku ILIKE :q OR p.fabric ILIKE :q)', {
+        q: `%${search.trim()}%`,
+      });
+    }
+    if (related) {
+      qb.andWhere('p.id != :rid', { rid: related.id });
+      if (related.fabric) {
+        qb.andWhere('(p.fabric ILIKE :rf OR p.specs->>\'fabricType\' ILIKE :rf)', {
+          rf: `%${related.fabric}%`,
         });
-        let rows = data.map((p) => this.withBadges(p));
-        if (fabric) {
-          rows = rows.filter((p) => (p.fabric || '').includes(fabric));
-        }
-        if (color) {
-          rows = rows.filter((p) =>
-            (p.variants ?? []).some((v) => (v.color || '').includes(color)),
-          );
-        }
-        return { data: rows, meta: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) } };
       }
     }
-
-    const where: any[] = search
-      ? [
-          { name: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }), ...(sizeType ? { sizeType } : {}) },
-          { sku: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }), ...(sizeType ? { sizeType } : {}) },
-          { fabric: ILike(`%${search}%`), ...(status !== 'ALL' && { status: statusFilter }), ...(sizeType ? { sizeType } : {}) },
-        ]
-      : [status === 'ALL' ? { ...(sizeType ? { sizeType } : {}) } : { status: statusFilter, ...(sizeType ? { sizeType } : {}) }];
-
-    if (fabric) where.forEach((w) => (w.fabric = fabric));
-
-    // When filtering by color, load a wider page then filter in-memory (variant relation).
-    const take = color ? Math.min(limit * 8, 200) : limit;
-    const [data, total] = await this.productRepo.findAndCount({
-      where,
-      relations: ['variants'],
-      skip: color ? 0 : (page - 1) * limit,
-      take,
-      order: { isDiscounted: 'DESC', createdAt: 'DESC' },
-    });
-
-    let rows = data.map((p) => this.withBadges(p));
-    if (color) {
-      rows = rows.filter((p) =>
-        (p.variants ?? []).some((v) => (v.color || '').includes(color)),
+    if (color || garmentSize) {
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1 FROM product_variants vv
+          WHERE vv."productId" = p.id
+          ${color ? 'AND vv.color ILIKE :vcolor' : ''}
+          ${garmentSize ? 'AND vv.size ILIKE :vsize' : ''}
+        )`,
+        {
+          ...(color ? { vcolor: `%${color}%` } : {}),
+          ...(garmentSize ? { vsize: `%${garmentSize}%` } : {}),
+        },
       );
-      const sliced = rows.slice((page - 1) * limit, page * limit);
-      return {
-        data: sliced,
-        meta: { page, limit, total: rows.length, totalPages: Math.ceil(rows.length / limit) },
-      };
     }
 
+    qb.orderBy('p.isDiscounted', 'DESC').addOrderBy('p.createdAt', 'DESC');
+    const total = await qb.getCount();
+    const data = await qb.skip((page - 1) * limit).take(limit).getMany();
     return {
-      data: rows,
-      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      data: data.map((p) => this.withBadges(p)),
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
     };
   }
 
   async findComingSoon(limit = 12) {
     const data = await this.productRepo.find({
-      where: { status: 'COMING_SOON' },
+      where: [{ status: 'COMING_SOON' }, { isPreOrder: true, status: 'ACTIVE' }],
       relations: ['variants'],
       order: { createdAt: 'DESC' },
       take: Math.min(Math.max(limit, 1), 48),
@@ -252,6 +274,11 @@ export class ProductService {
       seoMeta: data.seoMeta,
       sku: data.sku!,
       categoryId: data.categoryId,
+      collectionId: data.collectionId,
+      isPreOrder: !!data.isPreOrder,
+      preOrderDate: data.preOrderDate ? new Date(data.preOrderDate) : null,
+      modelInfo: data.modelInfo ?? null,
+      videoUrl: data.videoUrl ?? null,
     });
     const saved = await this.productRepo.save(product);
     await this.rememberSpecs(specs);
@@ -311,6 +338,9 @@ export class ProductService {
       patch.isDiscounted = data.isDiscounted;
       patch.isFeatured = data.isDiscounted;
     }
+    if (data.preOrderDate !== undefined) {
+      patch.preOrderDate = data.preOrderDate ? new Date(data.preOrderDate) : null;
+    }
 
     await this.productRepo.update(id, patch as any);
     const updated = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
@@ -339,8 +369,18 @@ export class ProductService {
   async updateVariantStock(variantId: string, delta: number) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
-    variant.stock = Math.max(0, variant.stock + delta);
-    return this.variantRepo.save(variant);
+    variant.stock = Math.max(0, (Number(variant.stock) || 0) + delta);
+    await this.variantRepo.save(variant);
+    await this.syncProductStockFromVariants(variant.productId);
+    return variant;
+  }
+
+  /** Sum variant stocks onto product.stock (retail truth). */
+  async syncProductStockFromVariants(productId: string) {
+    const variants = await this.variantRepo.find({ where: { productId } });
+    const sum = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
+    await this.productRepo.update(productId, { stock: sum });
+    return sum;
   }
 
   /** Adjust product-level stock by delta (orders deduct with negative delta). */

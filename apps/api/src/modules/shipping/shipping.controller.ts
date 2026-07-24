@@ -17,8 +17,9 @@ export class ShippingController {
     @Query('pieces') pieces: number,
     @Query('orderTotal') orderTotal?: number,
     @Query('method') method?: string,
+    @Query('province') province?: string,
   ) {
-    return this.svc.quote({ pieces, orderTotal, method });
+    return this.svc.quote({ pieces, orderTotal, method, province });
   }
 
   @Get('track/:code')

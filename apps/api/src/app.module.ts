@@ -22,6 +22,7 @@ import { FeedsModule } from './modules/feeds/feeds.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { RmaModule } from './modules/rma/rma.module';
+import { CollectionModule } from './modules/collection/collection.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { RmaModule } from './modules/rma/rma.module';
     SearchModule,
     CustomerModule,
     CategoryModule,
+    CollectionModule,
     ProductModule,
     OrderModule,
     InvoiceModule,

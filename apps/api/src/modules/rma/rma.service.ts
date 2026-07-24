@@ -5,6 +5,7 @@ import { ReturnRequestEntity } from './entities/return-request.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
+import { ProductService } from '../product/product.service';
 
 @Injectable()
 export class RmaService {
@@ -17,6 +18,7 @@ export class RmaService {
     private readonly itemRepo: Repository<OrderItemEntity>,
     @InjectRepository(CustomerEntity)
     private readonly customerRepo: Repository<CustomerEntity>,
+    private readonly productService: ProductService,
   ) {}
 
   async create(dto: {
@@ -77,14 +79,20 @@ export class RmaService {
       throw new BadRequestException('وضعیت نامعتبر');
     }
 
+    const prev = row.status;
     row.status = status;
     if (adminNote !== undefined) row.adminNote = adminNote;
 
-    // Credit wallet on APPROVED return (not exchange)
-    if (status === 'APPROVED' && row.requestType === 'RETURN' && row.refundType === 'WALLET') {
+    if (status === 'APPROVED' && prev !== 'APPROVED' && row.requestType === 'RETURN') {
       const item = await this.itemRepo.findOne({ where: { id: row.orderItemId } });
-      if (item) {
-        const bonusPercent = 5; // encourage wallet refund
+      if (item?.productVariantId) {
+        await this.productService.updateVariantStock(
+          item.productVariantId,
+          Number(item.quantity) || 0,
+        );
+      }
+      if (row.refundType === 'WALLET' && item) {
+        const bonusPercent = 5;
         const credit = Math.round(Number(item.totalPrice) * (1 + bonusPercent / 100));
         await this.customerRepo.increment({ id: row.customerId }, 'balance', credit);
         row.adminNote = `${row.adminNote || ''}\nWALLET_CREDIT=${credit} (+${bonusPercent}%)`.trim();

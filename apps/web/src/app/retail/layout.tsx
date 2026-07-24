@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { RetailHeader } from '@/components/retail/RetailHeader';
 import { RetailFooter } from '@/components/retail/RetailFooter';
+import { RetailPixels } from '@/components/retail/RetailPixels';
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/shared/JsonLd';
 import './retail.css';
 
@@ -38,6 +39,7 @@ export default function RetailLayout({ children }: { children: React.ReactNode }
     <div className="retail-root flex min-h-screen flex-col bg-[var(--retail-bg)] text-[var(--retail-ink)]">
       <OrganizationJsonLd channel="RETAIL" />
       <WebSiteJsonLd channel="RETAIL" />
+      <RetailPixels />
       <RetailHeader />
       <main className="flex-1">{children}</main>
       <RetailFooter />

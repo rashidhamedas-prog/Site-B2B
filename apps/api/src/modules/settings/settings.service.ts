@@ -272,4 +272,12 @@ export class SettingsService {
       legal: normalize(s.legal, defaultLegal),
     };
   }
+
+  async marketing() {
+    const s = await this.get('marketing');
+    return {
+      yektanetPixelId: String(s.yektanetPixelId ?? ''),
+      metaPixelId: String(s.metaPixelId ?? ''),
+    };
+  }
 }

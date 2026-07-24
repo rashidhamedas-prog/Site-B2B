@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
+import { apiClient } from '@/lib/api';
 
 function mediaUrl(url?: string) {
   if (!url) return undefined;
@@ -11,11 +13,33 @@ function mediaUrl(url?: string) {
   return `/media/${url}`;
 }
 
+type Related = { id: string; name: string; slug: string; retailPrice?: number | null; images?: string[] };
+
 export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const items = useRetailCart((s) => s.items);
   const updateQty = useRetailCart((s) => s.updateQty);
   const removeItem = useRetailCart((s) => s.removeItem);
   const total = items.reduce((n, i) => n + i.unitPrice * i.quantity, 0);
+  const [related, setRelated] = useState<Related[]>([]);
+  const seed = items[0]?.productId ?? '';
+  const cartIds = items.map((i) => i.productId).join(',');
+
+  useEffect(() => {
+    if (!open) return;
+    const path = seed
+      ? `/products?relatedTo=${encodeURIComponent(seed)}&limit=3`
+      : '/products?limit=3&status=ACTIVE';
+    apiClient
+      .get<{ data: Related[] }>(path)
+      .then((r) =>
+        setRelated(
+          (r.data ?? [])
+            .filter((p) => !cartIds.split(',').includes(p.id))
+            .slice(0, 3),
+        ),
+      )
+      .catch(() => setRelated([]));
+  }, [open, seed, cartIds]);
 
   if (!open) return null;
 
@@ -84,19 +108,35 @@ export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: ()
             </ul>
           )}
 
-          {items.length > 0 ? (
-            <div className="mt-8 rounded-xl bg-[var(--retail-bg)] p-4">
-              <p className="text-sm font-bold text-[var(--retail-ink)]">ست کامل‌تر؟</p>
-              <p className="mt-1 text-xs leading-6 text-[var(--retail-muted)]">
-                شومیز و مانتوهای هم‌جنس را در فروشگاه ببینید تا استایل‌تان یکدست شود.
-              </p>
-              <Link
-                href="/products"
-                onClick={onClose}
-                className="mt-3 inline-block text-xs font-bold text-[var(--retail-primary)]"
-              >
-                مشاهده محصولات مرتبط
-              </Link>
+          {related.length > 0 ? (
+            <div className="mt-8">
+              <p className="text-sm font-bold text-[var(--retail-ink)]">پیشنهاد برای تکمیل سبد</p>
+              <ul className="mt-3 space-y-3">
+                {related.map((r) => {
+                  const img = mediaUrl(r.images?.[0]);
+                  return (
+                    <li key={r.id}>
+                      <Link
+                        href={`/products/${r.slug}`}
+                        onClick={onClose}
+                        className="flex gap-3 rounded-xl border border-[var(--retail-border)] p-2"
+                      >
+                        <div className="relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-[var(--retail-bg)]">
+                          {img ? <Image src={img} alt={r.name} fill className="object-cover" sizes="48px" /> : null}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-bold">{r.name}</p>
+                          {Number(r.retailPrice) > 0 ? (
+                            <p className="mt-1 text-xs text-[var(--retail-primary)]">
+                              {toman(Number(r.retailPrice))} ت
+                            </p>
+                          ) : null}
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           ) : null}
         </div>

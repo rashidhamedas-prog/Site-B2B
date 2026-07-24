@@ -71,6 +71,10 @@ export class OrderEntity {
   @Column({ nullable: true, type: 'text' })
   notes: string;
 
+  /** Optional CPA / affiliate click id (Yektanet etc.) */
+  @Column({ nullable: true })
+  affiliateId: string;
+
   @Column({ nullable: true })
   confirmedAt: Date;
 

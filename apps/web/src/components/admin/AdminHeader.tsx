@@ -9,6 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin': 'داشبورد',
   '/admin/customers': 'مشتریان',
   '/admin/orders': 'سفارش‌ها',
+  '/admin/rma': 'مرجوعی (RMA)',
   '/admin/invoices': 'فاکتورها',
   '/admin/payments': 'پرداخت‌ها',
   '/admin/products': 'محصولات',
