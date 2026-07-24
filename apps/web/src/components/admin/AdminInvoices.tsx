@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Plus, X, Save, Send, DollarSign, FileText, AlertCircle, Download } from 'lucide-react';
+import { Search, Plus, X, Save, Send, DollarSign, FileText, AlertCircle, Download, Trash2 } from 'lucide-react';
 import { Input, Badge, Pagination } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -222,6 +222,8 @@ export function AdminInvoices() {
   const [showCreate, setShowCreate] = useState(false);
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
   const [sending, setSending] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -239,6 +241,20 @@ export function AdminInvoices() {
   const handleSend = async (id: string) => {
     setSending(id);
     try { await apiClient.patch(`/invoices/${id}/send`, {}); load(); } catch {} finally { setSending(null); }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/invoices/${deleteId}`);
+      setDeleteId(null);
+      await load();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خطا در حذف فاکتور');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // summary stats
@@ -336,6 +352,14 @@ export function AdminInvoices() {
                         >
                           <Download className="h-3 w-3" />PDF
                         </a>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteId(inv.id)}
+                          className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                          title="حذف فاکتور"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -351,6 +375,33 @@ export function AdminInvoices() {
 
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onDone={load} />}
       {payInvoice && <PaymentModal invoice={payInvoice} onClose={() => setPayInvoice(null)} onDone={load} />}
+
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50">
+              <Trash2 className="h-6 w-6 text-error" />
+            </div>
+            <h3 className="mb-2 text-lg font-bold text-gray-900">حذف فاکتور</h3>
+            <p className="mb-6 text-sm text-gray-500">
+              فاکتور از لیست حذف می‌شود (soft-delete). این کار را فقط اگر مطمئن هستید انجام دهید.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setDeleteId(null)} className="btn btn-outline btn-md flex-1">
+                انصراف
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="btn btn-md flex-1 bg-error text-white hover:bg-red-700"
+              >
+                {deleting ? 'در حال حذف…' : 'حذف'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

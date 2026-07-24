@@ -121,10 +121,18 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="relative border-t border-white/10">
+          <div className="relative border-t border-white/10">
         <div className="container-site flex flex-col items-center justify-between gap-3 py-5 text-xs text-white/40 sm:flex-row">
           <p>© ۱۴۰۳ پوشاک ترنم — تمامی حقوق محفوظ است</p>
-          <p>تولید و طراحی در مشهد</p>
+          <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+            <span>تولید و طراحی در مشهد</span>
+            <a
+              href="https://www.poshaktaranom.ir"
+              className="cursor-pointer text-secondary transition-colors hover:text-white"
+            >
+              فروشگاه خرید تکی
+            </a>
+          </p>
         </div>
       </div>
     </footer>

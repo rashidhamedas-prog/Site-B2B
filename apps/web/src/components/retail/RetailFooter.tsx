@@ -4,24 +4,24 @@ const COLS = [
   {
     title: 'فروشگاه',
     links: [
-      { href: '/retail/products', label: 'جدیدترین‌ها' },
-      { href: '/retail/collections', label: 'کلکسیون‌ها' },
-      { href: '/retail/products?q=مانتو', label: 'مانتو' },
+      { href: '/products', label: 'جدیدترین‌ها' },
+      { href: '/collections', label: 'کلکسیون‌ها' },
+      { href: '/products', label: 'مانتو' },
     ],
   },
   {
     title: 'خدمات',
     links: [
-      { href: '/retail/shipping', label: 'ارسال' },
-      { href: '/retail/returns', label: 'مرجوعی و تعویض' },
-      { href: '/retail/account', label: 'حساب کاربری' },
+      { href: '/shipping', label: 'ارسال' },
+      { href: '/returns', label: 'مرجوعی و تعویض' },
+      { href: '/account', label: 'حساب کاربری' },
     ],
   },
   {
     title: 'ترنم',
     links: [
-      { href: '/retail/about', label: 'درباره ما' },
-      { href: '/retail/contact', label: 'تماس' },
+      { href: '/about', label: 'درباره ما' },
+      { href: '/contact', label: 'تماس' },
       { href: 'https://poshaktaranom.com', label: 'خرید عمده' },
     ],
   },
@@ -32,9 +32,11 @@ export function RetailFooter() {
     <footer className="mt-auto border-t border-[var(--retail-border)] bg-[var(--retail-primary-dark)] text-white">
       <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-14 sm:px-6 md:grid-cols-4 lg:px-8">
         <div>
-          <p className="text-sm font-semibold tracking-[0.14em] text-[var(--retail-gold)]">POSHAK TARANOM</p>
+          <p className="text-sm font-semibold tracking-[0.14em] text-[var(--retail-gold)]">
+            POSHAK TARANOM
+          </p>
           <p className="mt-3 text-sm leading-7 text-white/70">
-            فروشگاه آنلاین پوشاک زنانه — استایل شما، امضای ترنم.
+            فروشگاه آنلاین پوشاک زنانه — مستقیم از تولیدی مشهد.
           </p>
         </div>
         {COLS.map((col) => (

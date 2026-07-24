@@ -1,9 +1,10 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
-import { Check, ShoppingBag } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { Check, Heart, ShoppingBag } from 'lucide-react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
+import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 
 type Variant = { id: string; color: string; size: string; stock?: number };
 type Product = {
@@ -35,23 +36,36 @@ export function RetailProductDetail({ product }: { product: Product }) {
   const [size, setSize] = useState(product.variants?.[0]?.size ?? '');
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [wish, setWish] = useState(false);
+
+  useEffect(() => {
+    setWish(isInWishlist(product.id));
+  }, [product.id]);
 
   const colors = useMemo(
     () => [...new Set((product.variants ?? []).map((v) => v.color).filter(Boolean))],
     [product.variants],
   );
-  const sizes = useMemo(
-    () =>
-      [...new Set((product.variants ?? []).filter((v) => !color || v.color === color).map((v) => v.size).filter(Boolean))],
-    [product.variants, color],
-  );
+
+  const sizeRows = useMemo(() => {
+    const map = new Map<string, { size: string; stock: number }>();
+    for (const v of product.variants ?? []) {
+      if (color && v.color !== color) continue;
+      if (!v.size) continue;
+      const prev = map.get(v.size)?.stock ?? 0;
+      map.set(v.size, { size: v.size, stock: prev + Number(v.stock ?? 0) });
+    }
+    return [...map.values()];
+  }, [product.variants, color]);
+
   const selectedVariant = (product.variants ?? []).find((v) => v.color === color && v.size === size);
   const price = Number(product.retailPrice ?? 0);
-  const stock = Number(product.stock ?? 0);
+  const variantStock = selectedVariant ? Number(selectedVariant.stock ?? 0) : Number(product.stock ?? 0);
+  const stock = product.variants?.length ? variantStock : Number(product.stock ?? 0);
   const main = mediaUrl(images[activeImg] ?? images[0]);
 
   const onAdd = () => {
-    if (price <= 0) return;
+    if (price <= 0 || stock <= 0) return;
     addItem({
       productId: product.id,
       productName: product.name,
@@ -67,12 +81,30 @@ export function RetailProductDetail({ product }: { product: Product }) {
     setTimeout(() => setAdded(false), 1800);
   };
 
+  const onWish = () => {
+    const next = toggleWishlist({
+      productId: product.id,
+      slug: product.slug,
+      name: product.name,
+      imageUrl: main,
+      price,
+    });
+    setWish(next);
+  };
+
   return (
     <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-14">
       <div>
         <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-[var(--retail-bg)]">
           {main ? (
-            <Image src={main} alt={product.name} fill className="object-cover" sizes="(max-width:1024px) 100vw, 50vw" priority />
+            <Image
+              src={main}
+              alt={product.name}
+              fill
+              className="object-cover transition duration-300 hover:scale-105"
+              sizes="(max-width:1024px) 100vw, 50vw"
+              priority
+            />
           ) : null}
           {product.isPreOrder ? (
             <span className="absolute right-3 top-3 rounded-full bg-[var(--retail-gold)] px-3 py-1 text-xs font-bold text-white">
@@ -93,7 +125,7 @@ export function RetailProductDetail({ product }: { product: Product }) {
                     i === activeImg ? 'ring-[var(--retail-primary)]' : 'ring-transparent'
                   }`}
                 >
-                  {u ? <Image src={u} alt="" fill className="object-cover" sizes="56px" /> : null}
+                  {u ? <Image src={u} alt={`${product.name} ${i + 1}`} fill className="object-cover" sizes="56px" /> : null}
                 </button>
               );
             })}
@@ -102,7 +134,17 @@ export function RetailProductDetail({ product }: { product: Product }) {
       </div>
 
       <div>
-        <h1 className="text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{product.name}</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{product.name}</h1>
+          <button
+            type="button"
+            onClick={onWish}
+            className="rounded-full border border-[var(--retail-border)] p-2"
+            aria-label="علاقه‌مندی"
+          >
+            <Heart className={`h-5 w-5 ${wish ? 'fill-red-500 text-red-500' : ''}`} />
+          </button>
+        </div>
         <p className="mt-3 text-2xl font-extrabold text-[var(--retail-primary)]">
           {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
         </p>
@@ -120,7 +162,9 @@ export function RetailProductDetail({ product }: { product: Product }) {
                   type="button"
                   onClick={() => {
                     setColor(c);
-                    const first = (product.variants ?? []).find((v) => v.color === c);
+                    const first = (product.variants ?? []).find(
+                      (v) => v.color === c && Number(v.stock ?? 0) > 0,
+                    );
                     if (first?.size) setSize(first.size);
                   }}
                   className={`cursor-pointer rounded-full border px-4 py-1.5 text-sm ${
@@ -136,24 +180,28 @@ export function RetailProductDetail({ product }: { product: Product }) {
           </div>
         )}
 
-        {sizes.length > 0 && (
+        {sizeRows.length > 0 && (
           <div className="mt-6">
             <p className="mb-2 text-sm font-bold">سایز</p>
             <div className="flex flex-wrap gap-2">
-              {sizes.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSize(s)}
-                  className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-semibold ${
-                    size === s
-                      ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)]/10 text-[var(--retail-primary)]'
-                      : 'border-[var(--retail-border)]'
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
+              {sizeRows.map((row) => {
+                const unavailable = row.stock <= 0;
+                return (
+                  <button
+                    key={row.size}
+                    type="button"
+                    disabled={unavailable}
+                    onClick={() => setSize(row.size)}
+                    className={`cursor-pointer rounded-lg border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${
+                      size === row.size
+                        ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)]/10 text-[var(--retail-primary)]'
+                        : 'border-[var(--retail-border)]'
+                    }`}
+                  >
+                    {row.size}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -187,13 +235,13 @@ export function RetailProductDetail({ product }: { product: Product }) {
 
         {product.sizeGuide ? (
           <details className="mt-4 rounded-xl border border-[var(--retail-border)] px-4 py-3">
-            <summary className="cursor-pointer text-sm font-bold">راهنمای سایز</summary>
+            <summary className="cursor-pointer text-sm font-bold">جدول راهنمای سایز</summary>
             <pre className="mt-3 whitespace-pre-wrap text-sm text-[var(--retail-muted)]">{product.sizeGuide}</pre>
           </details>
         ) : null}
 
         {product.description ? (
-          <div className="mt-8 prose prose-sm max-w-none text-[var(--retail-muted)]">
+          <div className="prose prose-sm mt-8 max-w-none text-[var(--retail-muted)]">
             <h2 className="text-base font-bold text-[var(--retail-ink)]">توضیحات</h2>
             <p className="leading-8">{product.description}</p>
           </div>

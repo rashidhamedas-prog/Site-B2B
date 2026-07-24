@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InvoiceEntity } from './entities/invoice.entity';
@@ -57,5 +57,31 @@ export class InvoiceService {
   async send(id: string) {
     await this.repo.update(id, { status: 'SENT' });
     return this.findOne(id);
+  }
+
+  /**
+   * Soft-delete a customer invoice.
+   * Admin: any. Customer: own DRAFT / unpaid SENT only.
+   */
+  async remove(id: string, opts: { role: string; customerId?: string | null }) {
+    const inv = await this.findOne(id);
+
+    if (opts.role === 'CUSTOMER') {
+      if (!opts.customerId || inv.customerId !== opts.customerId) {
+        throw new ForbiddenException('اجازه حذف این فاکتور را ندارید');
+      }
+      const paid = Number(inv.paidAmount ?? 0);
+      if (paid > 0 || ['PAID', 'PARTIALLY_PAID'].includes(inv.status)) {
+        throw new BadRequestException('فاکتور پرداخت‌شده قابل حذف نیست');
+      }
+      if (!['DRAFT', 'SENT'].includes(inv.status)) {
+        throw new BadRequestException('فقط پیش‌نویس یا ارسال‌شدهٔ بدون پرداخت قابل حذف است');
+      }
+    } else if (opts.role !== 'ADMIN') {
+      throw new ForbiddenException('اجازه حذف فاکتور را ندارید');
+    }
+
+    await this.repo.softDelete(id);
+    return { message: 'فاکتور با موفقیت حذف شد' };
   }
 }

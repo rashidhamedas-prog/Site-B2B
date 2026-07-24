@@ -5,21 +5,23 @@ import { FeaturedProducts } from '@/components/wholesale/FeaturedProducts';
 import { ComingSoonSection } from '@/components/wholesale/ComingSoonSection';
 import { HowItWorks } from '@/components/wholesale/HowItWorks';
 import { WholesaleStats } from '@/components/wholesale/WholesaleStats';
-import { CtaBanner } from '@/components/wholesale/CtaBanner';
 import { Testimonials } from '@/components/wholesale/Testimonials';
+import { WholesaleFaq } from '@/components/wholesale/WholesaleFaq';
+import { CtaBanner } from '@/components/wholesale/CtaBanner';
 
 export const metadata: Metadata = {
-  title: 'فروش عمده مانتو زنانه | پوشاک ترنم مشهد',
+  title: 'فروش عمده مانتو زنانه از تولیدی مشهد',
   description:
-    'خرید عمده مانتو شومیزی زنانه لینن و کتان از تولیدی ترنم مشهد. بیش از ۱۰ سال سابقه، حداقل سفارش ۵ عدد، ارسال به سراسر ایران.',
+    'اگر بوتیک یا فروشگاه دارید، مانتو و شومیز لینن و کتان را مستقیم از کارگاه ترنم سفارش دهید. حداقل سفارش منطقی، ارسال به سراسر ایران.',
   alternates: { canonical: 'https://poshaktaranom.com' },
   openGraph: {
     title: 'فروش عمده مانتو زنانه | پوشاک ترنم مشهد',
-    description: 'تولیدکننده مانتو شومیزی زنانه لینن و کتان — مستقیم از کارخانه به بوتیک شما',
+    description: 'دوخت داخل کارگاه خودمان — عمده برای بوتیک‌ها، بدون واسطه.',
     url: 'https://poshaktaranom.com',
     siteName: 'پوشاک ترنم',
     locale: 'fa_IR',
     type: 'website',
+    images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'پوشاک ترنم' }],
   },
 };
 
@@ -33,6 +35,7 @@ export default function HomePage() {
       <ComingSoonSection />
       <HowItWorks />
       <Testimonials />
+      <WholesaleFaq />
       <CtaBanner />
     </>
   );

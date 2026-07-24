@@ -3,7 +3,6 @@ import localFont from 'next/font/local';
 import { CartProvider } from '@/lib/cart';
 import { ToastProvider } from '@/components/shared/Toast';
 import { FloatingContact } from '@/components/shared/FloatingContact';
-import { OrganizationJsonLd } from '@/components/shared/JsonLd';
 import './globals.css';
 
 // Only Regular + Bold are preloaded (above-the-fold critical weights).
@@ -30,10 +29,13 @@ export const metadata: Metadata = {
     template: '%s | پوشاک ترنم',
   },
   description:
-    'تولیدی پوشاک ترنم — تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد. فروش عمده به سراسر ایران.',
+    'از کارگاه خودمان در مشهد مانتو و شومیز لینن و کتان می‌دوزیم و عمده می‌فرستیم برای بوتیک‌ها و فروشنده‌ها در سراسر ایران.',
   keywords: [
-    'مانتو زنانه', 'مانتو لینن', 'مانتو کتان', 'فروش عمده مانتو',
-    'تولیدی مانتو مشهد', 'پوشاک ترنم', 'مانتو شومیزی',
+    'مانتو زنانه',
+    'مانتو لینن',
+    'فروش عمده مانتو',
+    'تولیدی مانتو مشهد',
+    'پوشاک ترنم',
   ],
   authors: [{ name: 'پوشاک ترنم', url: 'https://poshaktaranom.com' }],
   creator: 'پوشاک ترنم',
@@ -41,7 +43,7 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, 'max-video-preview': -1 },
+    googleBot: { index: true, follow: true, 'max-video-preview': -1, 'max-image-preview': 'large' },
   },
   openGraph: {
     type: 'website',
@@ -49,13 +51,15 @@ export const metadata: Metadata = {
     url: 'https://poshaktaranom.com',
     siteName: 'پوشاک ترنم',
     title: 'پوشاک ترنم | تولیدی مانتو زنانه مشهد',
-    description: 'تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد. فروش عمده به سراسر ایران.',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'پوشاک ترنم' }],
+    description:
+      'مانتو شومیزی لینن و کتان، دوخت داخل کارگاه خودمان — فروش عمده با حداقل سفارش منطقی به سراسر ایران.',
+    images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'پوشاک ترنم — تولیدی مانتو مشهد' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'پوشاک ترنم | تولیدی مانتو زنانه',
-    description: 'فروش عمده مانتو شومیزی زنانه لینن و کتان از مشهد',
+    description: 'فروش عمده مانتو و شومیز از کارگاه مشهد',
+    images: ['/og-wholesale.jpg'],
   },
 };
 
@@ -75,7 +79,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-sans antialiased">
-        <OrganizationJsonLd />
         <ToastProvider>
           <CartProvider>
             {children}

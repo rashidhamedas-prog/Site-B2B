@@ -4,8 +4,16 @@ import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react';
 import { fetchPosts, categoryColor, formatJalali, readTime } from '@/lib/blog';
 
 export const metadata: Metadata = {
-  title: 'وبلاگ پوشاک ترنم | راهنمای خرید عمده، ترند پوشاک',
-  description: 'مقالات تخصصی درباره خرید عمده مانتو زنانه، نگهداری لینن و کتان، ترندهای پوشاک و راهنمای بوتیک‌داران',
+  title: 'وبلاگ ترنم',
+  description:
+    'نکته‌های واقعی برای بوتیک‌داران: خرید عمده، نگهداری لینن و کتان، و ترندهایی که در کارگاه خودمان می‌بینیم.',
+  alternates: { canonical: 'https://poshaktaranom.com/blog' },
+  openGraph: {
+    title: 'وبلاگ پوشاک ترنم',
+    description: 'راهنمای عمده‌فروشی و مراقبت از پوشاک زنانه.',
+    url: 'https://poshaktaranom.com/blog',
+    images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'وبلاگ ترنم' }],
+  },
 };
 
 export const revalidate = 300;

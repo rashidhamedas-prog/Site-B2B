@@ -20,14 +20,15 @@ export async function generateMetadata({
   if (bits.length) {
     const label = bits.join(' · ');
     return {
-      title: `عمده شومیزی زنانه ${label} | تولیدی ترنم مشهد`,
-      description: `خرید عمده شومیزی و مانتو با فیلتر ${label} مستقیم از تولیدی ترنم.`,
+      title: `عمده ${label}`,
+      description: `مدل‌های ${label} را برای بوتیک‌تان فیلتر کنید و مستقیم از کارگاه ترنم سفارش دهید.`,
       alternates: { canonical: 'https://poshaktaranom.com/products' },
     };
   }
   return {
-    title: 'کاتالوگ محصولات | پوشاک ترنم',
-    description: 'مشاهده تمام مدل‌های مانتو شومیزی زنانه ترنم. فیلتر بر اساس پارچه، رنگ و سایز.',
+    title: 'کاتالوگ عمده مانتو و شومیز',
+    description:
+      'همه مدل‌های جاری ترنم را ببینید، با پارچه و رنگ فیلتر کنید و برای بوتیک‌تان عمده سفارش دهید.',
     alternates: { canonical: 'https://poshaktaranom.com/products' },
   };
 }

@@ -2,7 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CheckCircle, Package, Truck, CreditCard, AlertCircle, TrendingUp } from 'lucide-react';
 
-export const metadata: Metadata = { title: 'شرایط عمده‌فروشی | پوشاک ترنم' };
+export const metadata: Metadata = {
+  title: 'شرایط همکاری عمده',
+  description:
+    'حداقل سفارش، نحوه ثبت‌نام بوتیک، پرداخت و ارسال — قوانین همکاری عمده با تولیدی ترنم مشهد.',
+  alternates: { canonical: 'https://poshaktaranom.com/wholesale' },
+  openGraph: {
+    title: 'شرایط عمده‌فروشی پوشاک ترنم',
+    description: 'همکاری مستقیم با تولیدی مانتو زنانه در مشهد.',
+    url: 'https://poshaktaranom.com/wholesale',
+  },
+};
 
 export default function WholesalePage() {
   return (

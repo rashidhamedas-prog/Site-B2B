@@ -1,12 +1,20 @@
 import type { Metadata } from 'next';
 import { RetailHero } from '@/components/retail/RetailHero';
 import { RetailProductGrid } from '@/components/retail/RetailProductGrid';
+import { RetailFaq } from '@/components/retail/RetailFaq';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'فروشگاه آنلاین مانتو زنانه',
-  description: 'استایل شما، امضای ترنم — خرید تکی مانتو و شومیز از تولیدی پوشاک ترنم.',
+  title: 'خرید آنلاین مانتو زنانه',
+  description:
+    'مانتو و شومیز را تکی، مستقیم از کارگاه ترنم در مشهد بخرید. ارسال سریع، پرداخت امن، تعویض سایز.',
   alternates: { canonical: 'https://www.poshaktaranom.ir' },
+  openGraph: {
+    title: 'فروشگاه پوشاک ترنم',
+    description: 'استایل روزمره با دوخت کارگاهی — خرید تکی بدون واسطه.',
+    url: 'https://www.poshaktaranom.ir',
+    images: [{ url: '/og-retail.jpg', width: 1200, height: 630, alt: 'فروشگاه پوشاک ترنم' }],
+  },
 };
 
 export default function RetailHomePage() {
@@ -28,6 +36,7 @@ export default function RetailHomePage() {
           ))}
         </div>
       </section>
+      <RetailFaq />
       <section className="bg-[var(--retail-bg)] px-4 py-16 text-center">
         <h2 className="text-2xl font-extrabold text-[var(--retail-ink)]">عمده‌فروش هستید؟</h2>
         <p className="mx-auto mt-3 max-w-lg text-sm text-[var(--retail-muted)]">

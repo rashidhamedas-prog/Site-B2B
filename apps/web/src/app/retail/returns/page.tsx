@@ -46,7 +46,7 @@ export default function RetailReturnsPage() {
     setErr('');
     setMsg('');
     if (!getToken()) {
-      window.location.href = '/retail/account?redirect=/retail/returns';
+      window.location.href = '/account?redirect=/returns';
       return;
     }
     try {
@@ -73,7 +73,7 @@ export default function RetailReturnsPage() {
       </p>
 
       {!loggedIn ? (
-        <Link href="/retail/account?redirect=/retail/returns" className="mt-6 inline-block font-bold text-[var(--retail-primary)]">
+        <Link href="/account?redirect=/returns" className="mt-6 inline-block font-bold text-[var(--retail-primary)]">
           ورود برای ثبت درخواست
         </Link>
       ) : (

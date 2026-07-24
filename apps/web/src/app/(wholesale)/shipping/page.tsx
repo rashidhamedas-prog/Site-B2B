@@ -1,7 +1,12 @@
 import type { Metadata } from 'next';
 import { Truck, Package, Clock, MapPin } from 'lucide-react';
 
-export const metadata: Metadata = { title: 'شرایط ارسال | پوشاک ترنم' };
+export const metadata: Metadata = {
+  title: 'شرایط ارسال عمده',
+  description:
+    'نحوه بسته‌بندی، زمان آماده‌سازی و گزینه‌های ارسال سفارش عمده ترنم به شهرهای مختلف ایران.',
+  alternates: { canonical: 'https://poshaktaranom.com/shipping' },
+};
 
 export default function ShippingPage() {
   return (

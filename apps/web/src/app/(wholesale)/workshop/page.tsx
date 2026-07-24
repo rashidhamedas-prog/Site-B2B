@@ -3,10 +3,15 @@ import Link from 'next/link';
 import { Button } from '@/components/ui';
 
 export const metadata: Metadata = {
-  title: 'گالری کارگاه و تولید | پوشاک ترنم مشهد',
+  title: 'کارگاه و دفتر پخش',
   description:
-    'بازدید مجازی از خط تولید و دفتر پخش عمده پوشاک ترنم در مشهد — بیش از ۱۴ سال تجربه تولیدی مانتو و شومیزی.',
+    'نگاهی کوتاه به خط برش، دوخت و دفتر پخش ترنم در مشهد — جایی که سفارش عمده شما از آنجا راه می‌افتد.',
   alternates: { canonical: 'https://poshaktaranom.com/workshop' },
+  openGraph: {
+    title: 'کارگاه پوشاک ترنم',
+    description: 'از الگو تا بسته‌بندی عمده در مشهد.',
+    url: 'https://poshaktaranom.com/workshop',
+  },
 };
 
 const GALLERY = [

@@ -9,14 +9,13 @@ import { RetailCartDrawer } from './RetailCartDrawer';
 import { cn } from '@/lib/cn';
 
 const NAV = [
-  { href: '/retail', label: 'صفحه اصلی' },
-  { href: '/retail/products', label: 'جدیدترین‌ها' },
-  { href: '/retail/products?q=شومیز', label: 'شومیز' },
-  { href: '/retail/products?q=مانتو', label: 'مانتو' },
-  { href: '/retail/products', label: 'پوشاک' },
-  { href: '/retail/collections', label: 'اکسسوری' },
-  { href: '/retail/about', label: 'درباره ما' },
-  { href: '/retail/contact', label: 'تماس با ما' },
+  { href: '/', label: 'صفحه اصلی' },
+  { href: '/products', label: 'جدیدترین‌ها' },
+  { href: '/products?q=شومیز', label: 'شومیز' },
+  { href: '/products?q=مانتو', label: 'مانتو' },
+  { href: '/collections', label: 'کلکسیون' },
+  { href: '/about', label: 'درباره ما' },
+  { href: '/contact', label: 'تماس با ما' },
 ];
 
 function BrandMark({ className }: { className?: string }) {
@@ -55,7 +54,7 @@ export function RetailHeader() {
             <Menu className="h-5 w-5" strokeWidth={1.5} />
           </button>
 
-          <Link href="/retail" className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <BrandMark className="h-9 w-9" />
             <span className="text-[13px] font-semibold tracking-[0.14em] text-[var(--retail-ink)]">
               POSHAK TARANOM
@@ -64,7 +63,8 @@ export function RetailHeader() {
 
           <nav className="hidden items-center gap-6 xl:flex">
             {NAV.map((item) => {
-              const active = pathname === item.href || (item.href !== '/retail' && pathname.startsWith(item.href.split('?')[0]!));
+              const base = item.href.split('?')[0]!;
+              const active = pathname === base || (base !== '/' && pathname.startsWith(base));
               return (
                 <Link
                   key={item.label}
@@ -75,19 +75,16 @@ export function RetailHeader() {
                   )}
                 >
                   {item.label}
-                  {item.href === '/retail' && pathname === '/retail' ? (
-                    <span className="absolute -bottom-1 right-0 left-0 mx-auto h-px w-full bg-[var(--retail-gold)]" />
-                  ) : null}
                 </Link>
               );
             })}
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            <Link href="/retail/products" className="cursor-pointer p-2 text-[var(--retail-ink)]" aria-label="جستجو">
+            <Link href="/products" className="cursor-pointer p-2 text-[var(--retail-ink)]" aria-label="جستجو">
               <Search className="h-5 w-5" strokeWidth={1.4} />
             </Link>
-            <Link href="/retail/account" className="cursor-pointer p-2 text-[var(--retail-ink)]" aria-label="حساب">
+            <Link href="/account" className="cursor-pointer p-2 text-[var(--retail-ink)]" aria-label="حساب">
               <User className="h-5 w-5" strokeWidth={1.4} />
             </Link>
             <button

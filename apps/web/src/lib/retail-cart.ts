@@ -18,8 +18,8 @@ export interface RetailCartItem {
 interface RetailCartState {
   items: RetailCartItem[];
   addItem: (item: RetailCartItem) => void;
-  updateQty: (productId: string, quantity: number) => void;
-  removeItem: (productId: string) => void;
+  updateQty: (productId: string, quantity: number, variantId?: string) => void;
+  removeItem: (productId: string, variantId?: string) => void;
   clear: () => void;
   count: () => number;
   total: () => number;
@@ -41,16 +41,24 @@ export const useRetailCart = create<RetailCartState>()(
           return { items: [...state.items, { ...item, quantity: qty }] };
         });
       },
-      updateQty: (productId, quantity) => {
+      updateQty: (productId, quantity, variantId) => {
         const q = Math.max(0, Number(quantity) || 0);
+        const match = (i: RetailCartItem) =>
+          i.productId === productId && (variantId === undefined || i.variantId === variantId);
         set((state) => ({
           items:
             q <= 0
-              ? state.items.filter((i) => i.productId !== productId)
-              : state.items.map((i) => (i.productId === productId ? { ...i, quantity: q } : i)),
+              ? state.items.filter((i) => !match(i))
+              : state.items.map((i) => (match(i) ? { ...i, quantity: q } : i)),
         }));
       },
-      removeItem: (productId) => set((state) => ({ items: state.items.filter((i) => i.productId !== productId) })),
+      removeItem: (productId, variantId) =>
+        set((state) => ({
+          items: state.items.filter(
+            (i) =>
+              !(i.productId === productId && (variantId === undefined || i.variantId === variantId)),
+          ),
+        })),
       clear: () => set({ items: [] }),
       count: () => get().items.reduce((n, i) => n + i.quantity, 0),
       total: () => get().items.reduce((n, i) => n + i.unitPrice * i.quantity, 0),

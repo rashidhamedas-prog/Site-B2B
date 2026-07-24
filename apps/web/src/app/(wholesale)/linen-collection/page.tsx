@@ -4,14 +4,15 @@ import { ProductCatalog } from '@/components/wholesale/ProductCatalog';
 import { Button } from '@/components/ui';
 
 export const metadata: Metadata = {
-  title: 'تولیدی لباس لینن مشهد | عمده‌فروشی مانتو و شومیزی لینن - ترنم',
+  title: 'کلکسیون لینن — عمده از کارگاه مشهد',
   description:
-    'تولیدی پوشاک لینن در مشهد — فروش عمده مانتو و شومیزی لینن به بوتیک‌ها. کیفیت کارخانه، حداقل سفارش عمده، ارسال سراسر ایران.',
+    'مانتو و شومیز لینن را برای بوتیک‌تان عمده بگیرید؛ پارچه سبک، دوخت کارگاهی، ارسال به سراسر ایران.',
   alternates: { canonical: 'https://poshaktaranom.com/linen-collection' },
   openGraph: {
-    title: 'کلکسیون لینن ترنم | تولیدی لباس لینن مشهد',
-    description: 'عمده‌فروشی مانتو و شومیزی لینن مستقیم از تولیدی ترنم',
+    title: 'کلکسیون لینن ترنم',
+    description: 'عمده مانتو و شومیز لینن مستقیم از تولیدی مشهد.',
     url: 'https://poshaktaranom.com/linen-collection',
+    images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'کلکسیون لینن ترنم' }],
   },
 };
 

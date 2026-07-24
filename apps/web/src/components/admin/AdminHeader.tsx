@@ -2,7 +2,8 @@
 
 import { usePathname } from 'next/navigation';
 import { Bell, Search, Menu, ExternalLink, Sun } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { apiClient } from '@/lib/api';
 
 const PAGE_TITLES: Record<string, string> = {
   '/admin': 'داشبورد',
@@ -32,18 +33,23 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/admin/reports': 'گزارش‌های فروش و مالی',
 };
 
-// Jalali date — simple approximation
 function getJalaliDate() {
   const d = new Date();
-  // Simple offset — accurate enough for display
-  const days = ['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'];
-  const months = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
-  // 2026-07-01 ≈ 1405/04/10
-  const day = days[d.getDay()];
-  const month = months[(d.getMonth() + 3) % 12]; // rough offset
-  const mDay = d.getDate();
-  return `${day}، ${mDay} ${month}`;
+  const days = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
+  return d.toLocaleDateString('fa-IR', { weekday: 'long', day: 'numeric', month: 'long' }) || days[d.getDay()];
 }
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'همین الان';
+  if (mins < 60) return `${mins.toLocaleString('fa-IR')} دقیقه پیش`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs.toLocaleString('fa-IR')} ساعت پیش`;
+  return `${Math.floor(hrs / 24).toLocaleString('fa-IR')} روز پیش`;
+}
+
+type Notif = { id: string; text: string; time: string; unread: boolean; color: string; href?: string };
 
 interface AdminHeaderProps {
   onMenuToggle?: () => void;
@@ -53,49 +59,105 @@ export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
   const pathname = usePathname();
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notif[]>([]);
 
-  const title = Object.entries(PAGE_TITLES)
-    .sort((a, b) => b[0].length - a[0].length)
-    .find(([k]) => pathname.startsWith(k))?.[1] ?? 'مدیریت';
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const stats = await apiClient.get<{
+          customers: { pending: number };
+          recentOrders: {
+            id: string;
+            orderNumber: string;
+            customerName: string;
+            total: number;
+            status: string;
+            createdAt: string;
+          }[];
+          lowStock: { id: string; color: string; size: string; stock: number }[];
+        }>('/dashboard');
+
+        const list: Notif[] = [];
+
+        if (stats.customers.pending > 0) {
+          list.push({
+            id: 'pending-customers',
+            text: `${stats.customers.pending.toLocaleString('fa-IR')} مشتری منتظر تأیید هستند`,
+            time: 'بر اساس داده زنده',
+            unread: true,
+            color: 'bg-amber-500',
+            href: '/admin/customers',
+          });
+        }
+
+        stats.lowStock.slice(0, 3).forEach((v) => {
+          list.push({
+            id: `stock-${v.id}`,
+            text: `موجودی ${v.color} / ${v.size} به ${v.stock.toLocaleString('fa-IR')} عدد رسید`,
+            time: 'الان',
+            unread: true,
+            color: 'bg-red-500',
+            href: '/admin/inventory',
+          });
+        });
+
+        stats.recentOrders.slice(0, 4).forEach((o) => {
+          list.push({
+            id: `order-${o.id}`,
+            text: `سفارش ${o.orderNumber} — ${o.customerName}`,
+            time: timeAgo(o.createdAt),
+            unread: o.status === 'PENDING_REVIEW',
+            color: o.status === 'PENDING_REVIEW' ? 'bg-blue-500' : 'bg-green-500',
+            href: `/admin/orders/${o.id}`,
+          });
+        });
+
+        if (!cancelled) setNotifications(list.slice(0, 8));
+      } catch {
+        if (!cancelled) setNotifications([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const title =
+    Object.entries(PAGE_TITLES)
+      .sort((a, b) => b[0].length - a[0].length)
+      .find(([k]) => pathname.startsWith(k))?.[1] ?? 'مدیریت';
 
   const subtitle = Object.entries(PAGE_SUBTITLES)
     .sort((a, b) => b[0].length - a[0].length)
     .find(([k]) => pathname.startsWith(k))?.[1];
 
-  const notifications = [
-    { id: 1, text: '۲ مشتری جدید منتظر تأیید هستند', time: '۱۵ دقیقه پیش', unread: true, color: 'bg-amber-500' },
-    { id: 2, text: 'موجودی مانتو لینن مدل بهار به ۳ عدد رسید', time: '۱ ساعت پیش', unread: true, color: 'bg-red-500' },
-    { id: 3, text: 'سفارش ORD-00012 تایید و ارسال شد', time: '۳ ساعت پیش', unread: false, color: 'bg-green-500' },
-  ];
+  const unread = notifications.filter((n) => n.unread).length;
 
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-gray-100 h-16 flex items-center px-4 sm:px-6 gap-4 shadow-sm">
-      {/* Mobile menu */}
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-100 bg-white px-4 shadow-sm sm:px-6">
       <button
+        type="button"
         onClick={onMenuToggle}
-        className="lg:hidden p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
+        className="rounded-xl p-2 text-gray-500 transition-colors hover:bg-gray-100 lg:hidden"
       >
         <Menu className="h-5 w-5" />
       </button>
 
-      {/* Title + Subtitle */}
       <div className="min-w-0">
-        <h1 className="text-base font-bold text-gray-900 leading-tight">{title}</h1>
-        {subtitle && <p className="text-xs text-gray-400 hidden sm:block">{subtitle}</p>}
+        <h1 className="text-base font-bold leading-tight text-gray-900">{title}</h1>
+        {subtitle ? <p className="hidden text-xs text-gray-400 sm:block">{subtitle}</p> : null}
       </div>
 
-      {/* Right actions */}
       <div className="mr-auto flex items-center gap-2">
-        {/* Date badge */}
-        <div className="hidden md:flex items-center gap-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-xl px-3 py-1.5">
+        <div className="hidden items-center gap-1.5 rounded-xl border border-gray-100 bg-gray-50 px-3 py-1.5 text-xs text-gray-400 md:flex">
           <Sun className="h-3.5 w-3.5 text-amber-400" />
           {getJalaliDate()}
         </div>
 
-        {/* Search */}
         {searchOpen ? (
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-1.5">
-            <Search className="h-4 w-4 text-primary flex-shrink-0" />
+            <Search className="h-4 w-4 flex-shrink-0 text-primary" />
             <input
               autoFocus
               placeholder="جستجو در سیستم..."
@@ -105,71 +167,87 @@ export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
           </div>
         ) : (
           <button
+            type="button"
             onClick={() => setSearchOpen(true)}
-            className="hidden sm:flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-400 hover:border-primary/30 hover:bg-primary/5 transition-all"
+            className="hidden items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-400 transition-all hover:border-primary/30 hover:bg-primary/5 sm:flex"
           >
             <Search className="h-4 w-4" />
             <span>جستجو...</span>
-            <kbd className="mr-1 text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 font-mono">Ctrl+K</kbd>
           </button>
         )}
 
-        {/* View site */}
         <a
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="hidden md:flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary transition-colors p-2 rounded-xl hover:bg-gray-50"
+          className="hidden items-center gap-1.5 rounded-xl p-2 text-xs text-gray-400 transition-colors hover:bg-gray-50 hover:text-primary md:flex"
         >
           <ExternalLink className="h-4 w-4" />
           سایت
         </a>
 
-        {/* Notifications */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setNotifOpen(!notifOpen)}
-            className="relative p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
+            className="relative rounded-xl p-2 text-gray-500 transition-colors hover:bg-gray-100"
           >
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+            {unread > 0 ? (
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
+            ) : null}
           </button>
 
-          {notifOpen && (
+          {notifOpen ? (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setNotifOpen(false)} />
-              <div className="absolute left-0 top-12 z-40 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <h3 className="font-bold text-gray-900 text-sm">اعلان‌ها</h3>
-                  <span className="text-xs bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full">
-                    {notifications.filter(n => n.unread).length} جدید
-                  </span>
+              <div className="absolute left-0 top-12 z-40 w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                  <h3 className="text-sm font-bold text-gray-900">اعلان‌ها</h3>
+                  {unread > 0 ? (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
+                      {unread.toLocaleString('fa-IR')} جدید
+                    </span>
+                  ) : (
+                    <span className="text-xs text-gray-400">بدون مورد جدید</span>
+                  )}
                 </div>
-                <div className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
-                  {notifications.map(n => (
-                    <div key={n.id} className={`flex gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer ${n.unread ? 'bg-blue-50/30' : ''}`}>
-                      <div className={`mt-0.5 h-2 w-2 rounded-full flex-shrink-0 ${n.color} ${n.unread ? 'opacity-100' : 'opacity-30'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-700 leading-snug">{n.text}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{n.time}</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="max-h-72 divide-y divide-gray-50 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-sm text-gray-400">اعلانی از داده واقعی نیست</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <a
+                        key={n.id}
+                        href={n.href || '/admin/notifications'}
+                        className={`flex cursor-pointer gap-3 px-4 py-3 hover:bg-gray-50 ${n.unread ? 'bg-blue-50/30' : ''}`}
+                        onClick={() => setNotifOpen(false)}
+                      >
+                        <div
+                          className={`mt-0.5 h-2 w-2 flex-shrink-0 rounded-full ${n.color} ${n.unread ? 'opacity-100' : 'opacity-30'}`}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm leading-snug text-gray-700">{n.text}</p>
+                          <p className="mt-0.5 text-xs text-gray-400">{n.time}</p>
+                        </div>
+                      </a>
+                    ))
+                  )}
                 </div>
-                <div className="p-3 border-t border-gray-100 text-center">
-                  <a href="/admin/notifications" className="text-xs text-primary hover:underline">مشاهده همه اعلان‌ها</a>
+                <div className="border-t border-gray-100 p-3 text-center">
+                  <a href="/admin/notifications" className="text-xs text-primary hover:underline">
+                    مشاهده همه اعلان‌ها
+                  </a>
                 </div>
               </div>
             </>
-          )}
+          ) : null}
         </div>
 
-        {/* Avatar */}
         <div className="relative">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-white font-bold text-sm cursor-pointer ring-2 ring-white shadow-md">
+          <div className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white shadow-md ring-2 ring-white">
             ح
           </div>
-          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-success" />
         </div>
       </div>
     </header>

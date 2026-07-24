@@ -21,14 +21,15 @@ type Props = { params: Promise<{ fabric: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { fabric: slug } = await params;
   const fabric = FABRIC_SLUGS[decodeURIComponent(slug)] ?? decodeURIComponent(slug);
-  const title = `شومیزی زنانه ${fabric} — خرید عمده | پوشاک ترنم مشهد`;
-  const description = `عمده‌فروشی شومیزی و مانتو ${fabric} مستقیم از تولیدی ترنم در مشهد. فیلتر پارچه ${fabric}.`;
+  const title = `مانتو و شومیز ${fabric} — سفارش عمده`;
+  const description = `مدل‌های ${fabric} ترنم را برای بوتیک‌تان ببینید و عمده سفارش دهید؛ دوخت کارگاهی در مشهد.`;
   return {
     title,
     description,
     alternates: {
       canonical: `https://poshaktaranom.com/products/fabric/${encodeURIComponent(slug)}`,
     },
+    openGraph: { title, description },
   };
 }
 

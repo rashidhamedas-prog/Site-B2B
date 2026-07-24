@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe, Res } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -62,6 +62,22 @@ export class InvoiceController {
   @ApiOperation({ summary: 'ثبت پرداخت' })
   recordPayment(@Param('id') id: string, @Body('amount') amount: number) {
     return this.invoiceService.recordPayment(id, amount);
+  }
+
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'CUSTOMER')
+  @ApiOperation({ summary: 'حذف فاکتور مشتری (soft-delete)' })
+  async remove(
+    @Param('id') id: string,
+    @Request() req: Express.Request & { user: JwtUser },
+  ) {
+    let customerId: string | null | undefined;
+    if (req.user.role === 'CUSTOMER') {
+      const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
+      customerId = user?.customerId;
+    }
+    return this.invoiceService.remove(id, { role: req.user.role, customerId });
   }
 
   @Get(':id/pdf')
