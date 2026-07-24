@@ -20,6 +20,7 @@ import { AppSettingEntity } from '../modules/settings/entities/app-setting.entit
 import { CategoryEntity } from '../modules/category/entities/category.entity';
 import { ProductSpecMemoryEntity } from '../modules/product/entities/product-spec-memory.entity';
 import { ReturnRequestEntity } from '../modules/rma/entities/return-request.entity';
+import { CollectionEntity } from '../modules/collection/entities/collection.entity';
 
 export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
@@ -31,6 +32,7 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
   entities: [
     UserEntity, CustomerEntity,
     CategoryEntity,
+    CollectionEntity,
     ProductEntity, ProductVariantEntity, VariantColorEntity, VariantSizeEntity,
     ProductSpecMemoryEntity,
     OrderEntity, OrderItemEntity,
