@@ -75,6 +75,25 @@ export class OrderEntity {
   @Column({ nullable: true })
   affiliateId: string;
 
+  /** Wallet amount applied at create (IRR) — for clean reversal */
+  @Column({ type: 'bigint', default: 0 })
+  walletApplied: number;
+
+  /** Discount code id used at create — for usedCount rollback */
+  @Column({ nullable: true })
+  discountCodeId: string;
+
+  /** Soft-void: row stays in admin list/details, excluded from customer flows */
+  @Column({ nullable: true })
+  voidedAt: Date;
+
+  @Column({ nullable: true, type: 'text' })
+  voidReason: string;
+
+  /** Idempotent flag — stock/wallet/discount already reversed */
+  @Column({ nullable: true })
+  effectsReversedAt: Date;
+
   @Column({ nullable: true })
   confirmedAt: Date;
 

@@ -59,6 +59,13 @@ export class DiscountService {
     await this.repo.increment({ id }, 'usedCount', 1);
   }
 
+  async decrementUse(id: string) {
+    const row = await this.repo.findOne({ where: { id } });
+    if (!row) return;
+    if ((row.usedCount || 0) <= 0) return;
+    await this.repo.decrement({ id }, 'usedCount', 1);
+  }
+
   // ── Tiered (طبقاتی) ────────────────────────────────────────
 
   async listTiered() {

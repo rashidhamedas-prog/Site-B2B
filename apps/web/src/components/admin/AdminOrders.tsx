@@ -2,16 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Trash2, Pencil } from 'lucide-react';
 import { OrderStatusBadge, Pagination } from '@/components/ui';
 import { useOrders } from '@/lib/hooks/useOrders';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
-const STATUS_FILTERS = ['همه', 'PENDING_REVIEW', 'PROCESSING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED'];
+const STATUS_FILTERS = ['همه', 'PENDING_REVIEW', 'PROCESSING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'DELETED'];
 const STATUS_FA: Record<string, string> = {
   PENDING_REVIEW: 'در انتظار بررسی', PROCESSING: 'در حال پردازش', CONFIRMED: 'تأیید شده',
   SHIPPED: 'ارسال شده', DELIVERED: 'تحویل داده شده', COMPLETED: 'تکمیل شده',
+  CANCELLED: 'لغو شده', DELETED: 'حذف‌شده',
 };
 
 const CHANNEL_FILTERS = [
@@ -24,6 +25,7 @@ export function AdminOrders() {
   const [status, setStatus] = useState('');
   const [type, setType] = useState('');
   const [page, setPage] = useState(1);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const { orders, meta, loading, refetch } = useOrders({
     page,
@@ -32,8 +34,30 @@ export function AdminOrders() {
   });
 
   const updateStatus = async (id: string, newStatus: string) => {
-    await apiClient.patch(`/orders/${id}/status`, { status: newStatus });
-    refetch();
+    setBusyId(id);
+    try {
+      await apiClient.patch(`/orders/${id}/status`, { status: newStatus });
+      refetch();
+    } catch (e: any) {
+      alert(e?.message || 'خطا در تغییر وضعیت');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const voidOrder = async (id: string, orderNumber: string) => {
+    if (!confirm(`سفارش ${orderNumber} حذف شود؟\nموجودی برمی‌گردد، کیف‌پول/تخفیف معکوس می‌شود، ولی ردیف برای مشاهده جزئیات می‌ماند.`)) {
+      return;
+    }
+    setBusyId(id);
+    try {
+      await apiClient.delete(`/orders/${id}`, { reason: 'حذف از پنل ادمین' });
+      refetch();
+    } catch (e: any) {
+      alert(e?.message || 'خطا در حذف سفارش');
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
@@ -94,8 +118,10 @@ export function AdminOrders() {
                 ))
               ) : orders.length === 0 ? (
                 <tr><td colSpan={7} className="px-4 py-10 text-center text-gray-400">سفارشی یافت نشد</td></tr>
-              ) : orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+              ) : orders.map((order) => {
+                const deleted = order.status === 'DELETED';
+                return (
+                <tr key={order.id} className={cn('hover:bg-gray-50 transition-colors', deleted && 'bg-red-50/40 opacity-80')}>
                   <td className="px-4 py-3 text-sm font-mono font-semibold text-gray-900">{order.orderNumber}</td>
                   <td className="px-4 py-3">
                     <span className={cn(
@@ -117,21 +143,46 @@ export function AdminOrders() {
                     <div className="flex items-center gap-2">
                       {order.status === 'PENDING_REVIEW' && (
                         <>
-                          <button onClick={() => updateStatus(order.id, 'CONFIRMED')} className="text-success hover:opacity-80" title="تأیید">
+                          <button
+                            disabled={busyId === order.id}
+                            onClick={() => updateStatus(order.id, 'CONFIRMED')}
+                            className="text-success hover:opacity-80"
+                            title="تأیید"
+                          >
                             <CheckCircle className="h-4 w-4" />
                           </button>
-                          <button onClick={() => updateStatus(order.id, 'CANCELLED')} className="text-error hover:opacity-80" title="رد">
+                          <button
+                            disabled={busyId === order.id}
+                            onClick={() => updateStatus(order.id, 'CANCELLED')}
+                            className="text-error hover:opacity-80"
+                            title="لغو"
+                          >
                             <XCircle className="h-4 w-4" />
                           </button>
                         </>
                       )}
-                      <Link href={`/admin/orders/${order.id}`} className="text-gray-400 hover:text-primary">
+                      {!deleted && (
+                        <>
+                          <Link href={`/admin/orders/${order.id}?edit=1`} className="text-gray-400 hover:text-primary" title="ویرایش">
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                          <button
+                            disabled={busyId === order.id}
+                            onClick={() => voidOrder(order.id, order.orderNumber)}
+                            className="text-gray-400 hover:text-error"
+                            title="حذف (با بازگشت موجودی)"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      <Link href={`/admin/orders/${order.id}`} className="text-gray-400 hover:text-primary" title="جزئیات">
                         <Eye className="h-4 w-4" />
                       </Link>
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>
