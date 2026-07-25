@@ -9,21 +9,23 @@
   "retailPreviewPath": "/retail",
   "lastDeploy": "2026-07-24 d852373 — retail B2C complete on server",
   "lastE2e": "PASSED — ORD-2026-00002",
-  "lastRetailComplete": "2026-07-24 d852373",
+  "lastRetailComplete": "2026-07-25 marketplace-affiliate integrations",
   "documentation": {
     "worklog": "docs/WORKLOG.md",
     "b2c": "docs/B2C.md",
     "blueprint": "skill site b2c.md",
     "designRetail": "design-system/b2c/MASTER.md",
     "reports": "docs/reports/",
-    "conventions": "docs/conventions.md"
+    "conventions": "docs/conventions.md",
+    "ownerChecklist": "docs/USER-ACTIONS-B2C.md"
   },
   "knownRisks": [
     "Product images uploaded before sharp remain as original JPG size",
     "Min order qty vs stock can block wholesale checkout if inventory low",
     "DB_SYNC/production: Collection + new product/order columns need sync or migration on server",
     "Zarinpal needs merchantId enabled in admin payment settings for live ONLINE redirects",
-    "Yektanet S2S postback still light-only (affiliateId stored; no full S2S)"
+    "Basalam product map (basalamProductMap) must be filled after creating booth products",
+    "Marketplace panels (Torob/Bam/etc.) require owner registration — feeds/pixels are site-ready"
   ],
   "fixedBugs": [
     "AdminProducts images empty on save (useCallback deps)",
@@ -35,11 +37,11 @@
   ],
   "pending": [
     "IDPay gateway",
-    "Full Yektanet S2S postback",
     "Iran postcode API",
     "Real DB migrations (vs synchronize)",
+    "Owner: register feeds/pixels in Torob Bam Yektanet Affer Afsona Adro Basalam Takhfifan panels",
     "Re-upload legacy product images for WebP standard",
-    "Deploy complete-retail commit f4a8df0 to server"
+    "Deploy marketplace-affiliate commit to server"
   ],
   "retailReady": [
     "/retail storefront shell",
@@ -48,6 +50,6 @@
     "variant stock deduct/restore",
     "PLP filters + load more; PDP zoom/size/cross-sell",
     "wallet UX; RMA item picker; Admin RMA",
-    "Torob/Bam feeds; pixel settings; ?aff="
+    "Torob/Bam feeds; Adro/Affer/Afsona/Takhfifan/Yektanet pixels; S2S postback; Basalam sync API"
   ]
 }

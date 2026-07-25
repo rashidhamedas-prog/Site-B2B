@@ -12,6 +12,7 @@ import { AuthModule } from '../auth/auth.module';
 import { DiscountModule } from '../discount/discount.module';
 import { PaymentModule } from '../payment/payment.module';
 import { ShippingModule } from '../shipping/shipping.module';
+import { AffiliateModule } from '../affiliate/affiliate.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ShippingModule } from '../shipping/shipping.module';
     DiscountModule,
     PaymentModule,
     ShippingModule,
+    AffiliateModule,
   ],
   controllers: [OrderController],
   providers: [OrderService],

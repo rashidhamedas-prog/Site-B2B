@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { RetailHeader } from '@/components/retail/RetailHeader';
 import { RetailFooter } from '@/components/retail/RetailFooter';
 import { RetailPixels } from '@/components/retail/RetailPixels';
+import { RetailAffiliateCapture } from '@/components/retail/RetailAffiliateCapture';
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/shared/JsonLd';
 import './retail.css';
 
@@ -40,6 +41,7 @@ export default function RetailLayout({ children }: { children: React.ReactNode }
       <OrganizationJsonLd channel="RETAIL" />
       <WebSiteJsonLd channel="RETAIL" />
       <RetailPixels />
+      <RetailAffiliateCapture />
       <RetailHeader />
       <main className="flex-1">{children}</main>
       <RetailFooter />

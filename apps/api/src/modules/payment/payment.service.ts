@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { PaymentEntity } from './entities/payment.entity';
 import { SettingsService } from '../settings/settings.service';
+import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 
 interface CreatePaymentInput {
   amount: number; // IRR
@@ -13,6 +14,8 @@ interface CreatePaymentInput {
   description?: string;
   mobile?: string;
   email?: string;
+  /** WHOLESALE uses merchantId; RETAIL uses retailMerchantId + retail callback */
+  channel?: 'WHOLESALE' | 'RETAIL';
 }
 
 export interface StartResult {
@@ -35,12 +38,18 @@ export class PaymentService {
     private readonly repo: Repository<PaymentEntity>,
     private readonly config: ConfigService,
     private readonly settings: SettingsService,
+    private readonly affiliatePostback: AffiliatePostbackService,
   ) {}
 
   // Resolve gateway config live from DB settings (falls back to env).
-  private async resolveGateway() {
+  private async resolveGateway(channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE') {
     const cfg = await this.settings.payment();
-    const sandbox = cfg.sandbox || !cfg.merchantId;
+    const isRetail = channel === 'RETAIL';
+    const merchantId = (isRetail ? cfg.retailMerchantId : cfg.merchantId) || '';
+    const sandbox = isRetail
+      ? cfg.retailSandbox || !merchantId
+      : cfg.sandbox || !merchantId;
+    const enabled = isRetail ? !!cfg.retailEnabled && !!cfg.enabled : !!cfg.enabled;
     const apiBase = sandbox
       ? 'https://sandbox.zarinpal.com/pg/v4/payment'
       : 'https://payment.zarinpal.com/pg/v4/payment';
@@ -48,8 +57,12 @@ export class PaymentService {
       ? 'https://sandbox.zarinpal.com/pg/StartPay'
       : 'https://payment.zarinpal.com/pg/StartPay';
     // ZarinPal sandbox accepts the all-zero merchant id for test transactions.
-    const merchantId = cfg.merchantId || '00000000-0000-0000-0000-000000000000';
-    return { sandbox, apiBase, startPayBase, merchantId, enabled: cfg.enabled };
+    const mid = merchantId || '00000000-0000-0000-0000-000000000000';
+    const callbackBase = isRetail
+      ? (cfg.retailCallbackUrl ||
+          `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`)
+      : this.callbackBase;
+    return { sandbox, apiBase, startPayBase, merchantId: mid, enabled, callbackBase, channel };
   }
 
   get callbackBase(): string {
@@ -75,9 +88,24 @@ export class PaymentService {
       throw new BadRequestException('مبلغ پرداخت نامعتبر است (حداقل ۱۰۰۰ تومان)');
     }
 
-    const gw = await this.resolveGateway();
+    const channel = input.channel === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const gw = await this.resolveGateway(channel);
     if (!gw.enabled) {
-      throw new BadRequestException('پرداخت آنلاین در حال حاضر غیرفعال است');
+      throw new BadRequestException(
+        channel === 'RETAIL'
+          ? 'پرداخت آنلاین فروشگاه تکی غیرفعال است یا مرچنت کد تکی تنظیم نشده'
+          : 'پرداخت آنلاین در حال حاضر غیرفعال است',
+      );
+    }
+    if (!gw.merchantId || gw.merchantId.startsWith('00000000')) {
+      // Allow sandbox zero-uuid only when sandbox=true
+      if (!gw.sandbox) {
+        throw new BadRequestException(
+          channel === 'RETAIL'
+            ? 'مرچنت کد زرین‌پال فروشگاه تکی را در تنظیمات پرداخت وارد کنید'
+            : 'مرچنت کد زرین‌پال عمده را در تنظیمات پرداخت وارد کنید',
+        );
+      }
     }
 
     const payment = this.repo.create({
@@ -88,10 +116,11 @@ export class PaymentService {
       invoiceId: input.invoiceId,
       customerId: input.customerId,
       description: input.description ?? 'پرداخت سفارش پوشاک ترنم',
+      meta: { channel },
     });
     await this.repo.save(payment);
 
-    const callbackUrl = `${this.callbackBase}?paymentId=${payment.id}`;
+    const callbackUrl = `${gw.callbackBase}${gw.callbackBase.includes('?') ? '&' : '?'}paymentId=${payment.id}`;
     payment.callbackUrl = callbackUrl;
 
     try {
@@ -120,13 +149,13 @@ export class PaymentService {
           (Array.isArray(json?.errors) ? json.errors[0]?.message : null) ??
           'خطا در ایجاد تراکنش پرداخت';
         payment.status = 'FAILED';
-        payment.meta = { requestError: json };
+        payment.meta = { ...(payment.meta ?? {}), requestError: json };
         await this.repo.save(payment);
         throw new BadRequestException(errMsg);
       }
 
       payment.authority = authority;
-      payment.meta = { request: json.data };
+      payment.meta = { ...(payment.meta ?? {}), channel, request: json.data };
       await this.repo.save(payment);
 
       return {
@@ -140,7 +169,7 @@ export class PaymentService {
       if (err instanceof BadRequestException) throw err;
       this.logger.error(`ZarinPal request failed: ${err.message}`);
       payment.status = 'FAILED';
-      payment.meta = { requestException: err.message };
+      payment.meta = { ...(payment.meta ?? {}), requestException: err.message };
       await this.repo.save(payment);
       throw new BadRequestException('اتصال به درگاه پرداخت برقرار نشد');
     }
@@ -164,7 +193,12 @@ export class PaymentService {
     }
 
     const authToUse = authority || payment.authority;
-    const gw = await this.resolveGateway();
+    const channel =
+      payment.meta?.channel === 'RETAIL' ||
+      (payment.callbackUrl || '').includes('poshaktaranom.ir')
+        ? 'RETAIL'
+        : 'WHOLESALE';
+    const gw = await this.resolveGateway(channel);
     try {
       const res = await fetch(`${gw.apiBase}/verify.json`, {
         method: 'POST',
@@ -185,6 +219,11 @@ export class PaymentService {
         payment.paidAt = new Date();
         payment.meta = { ...(payment.meta ?? {}), verify: json.data };
         await this.repo.save(payment);
+        if (payment.orderId) {
+          this.affiliatePostback.fireForOrder(payment.orderId, 'paid').catch((err) => {
+            this.logger.warn(`Affiliate postback failed: ${err?.message || err}`);
+          });
+        }
         return { ok: true, payment, refId: payment.refId };
       }
 

@@ -37,6 +37,8 @@ interface SettingsPayload {
   };
   payment: {
     enabled: boolean; merchantId: string; sandbox: boolean;
+    retailEnabled: boolean; retailMerchantId: string; retailSandbox: boolean;
+    retailCallbackUrl: string;
     manualCardNumber: string; manualCardOwner: string;
   };
   installments: {
@@ -50,7 +52,25 @@ interface SettingsPayload {
     minActiveInvoices?: number;
   };
   theme: ThemeSettings;
-  marketing: { yektanetPixelId: string; metaPixelId: string };
+  marketing: {
+    feedBrandName: string;
+    yektanetPixelId: string;
+    metaPixelId: string;
+    adroScriptUrl: string;
+    adroAccountId: string;
+    afferScriptUrl: string;
+    afsonaScriptUrl: string;
+    takhfifanScriptUrl: string;
+    yektanetPostbackUrl: string;
+    afferPostbackUrl: string;
+    afsonaPostbackUrl: string;
+    takhfifanPostbackUrl: string;
+    postbackUrl: string;
+    broadcastPostbacks: boolean;
+    basalamEnabled: boolean;
+    basalamAccessToken: string;
+    basalamVendorId: string;
+  };
 }
 
 type TabId = 'business' | 'shipping' | 'sms' | 'payment' | 'installments' | 'theme' | 'marketing';
@@ -101,6 +121,19 @@ export function AdminSettings() {
           }];
       setData({
         ...res,
+        payment: {
+          enabled: res.payment?.enabled ?? true,
+          merchantId: res.payment?.merchantId ?? '',
+          sandbox: !!res.payment?.sandbox,
+          retailEnabled: res.payment?.retailEnabled !== false,
+          retailMerchantId: res.payment?.retailMerchantId ?? '',
+          retailSandbox: !!res.payment?.retailSandbox,
+          retailCallbackUrl:
+            res.payment?.retailCallbackUrl ??
+            'https://www.poshaktaranom.ir/payment/callback',
+          manualCardNumber: res.payment?.manualCardNumber ?? '',
+          manualCardOwner: res.payment?.manualCardOwner ?? '',
+        },
         installments: {
           ...installments,
           rules,
@@ -115,8 +148,23 @@ export function AdminSettings() {
           },
         },
         marketing: {
+          feedBrandName: res.marketing?.feedBrandName ?? 'پوشاک ترنم',
           yektanetPixelId: res.marketing?.yektanetPixelId ?? '',
           metaPixelId: res.marketing?.metaPixelId ?? '',
+          adroScriptUrl: res.marketing?.adroScriptUrl ?? '',
+          adroAccountId: res.marketing?.adroAccountId ?? '',
+          afferScriptUrl: res.marketing?.afferScriptUrl ?? '',
+          afsonaScriptUrl: res.marketing?.afsonaScriptUrl ?? '',
+          takhfifanScriptUrl: res.marketing?.takhfifanScriptUrl ?? '',
+          yektanetPostbackUrl: res.marketing?.yektanetPostbackUrl ?? '',
+          afferPostbackUrl: res.marketing?.afferPostbackUrl ?? '',
+          afsonaPostbackUrl: res.marketing?.afsonaPostbackUrl ?? '',
+          takhfifanPostbackUrl: res.marketing?.takhfifanPostbackUrl ?? '',
+          postbackUrl: res.marketing?.postbackUrl ?? '',
+          broadcastPostbacks: res.marketing?.broadcastPostbacks === true,
+          basalamEnabled: res.marketing?.basalamEnabled === true,
+          basalamAccessToken: res.marketing?.basalamAccessToken ?? '',
+          basalamVendorId: res.marketing?.basalamVendorId ?? '',
         },
       });
       setCategories(cats ?? []);
@@ -366,27 +414,64 @@ export function AdminSettings() {
       {/* Payment tab */}
       {tab === 'payment' && (
         <div className="card p-6 space-y-6 max-w-3xl">
-          <ToggleRow label="فعال‌سازی پرداخت آنلاین"
-            hint="با غیرفعال کردن، دکمه پرداخت آنلاین در پنل مشتریان مخفی می‌شود"
+          <ToggleRow label="فعال‌سازی پرداخت آنلاین (کلی)"
+            hint="کلید اصلی؛ اگر خاموش باشد هیچ درگاهی کار نمی‌کند"
             value={data.payment.enabled}
             onChange={(v) => patch('payment', (p) => ({ ...p, enabled: v }))} />
 
           <div className="border-t border-gray-100 pt-5">
-            <h3 className="font-bold text-gray-800 mb-3 text-sm">درگاه زرین‌پال</h3>
+            <h3 className="font-bold text-gray-800 mb-1 text-sm">زرین‌پال عمده (.com)</h3>
+            <p className="text-xs text-gray-500 mb-3">برای پورتال عمده‌فروشان — poshaktaranom.com</p>
             <div className="space-y-4">
               <SecretField
-                label="مرچنت کد (Merchant ID)"
+                label="مرچنت کد عمده (Merchant ID / Token)"
                 value={data.payment.merchantId}
                 shown={!!showSecret.merchantId}
                 onToggle={() => setShowSecret((p) => ({ ...p, merchantId: !p.merchantId }))}
                 onChange={(v) => patch('payment', (p) => ({ ...p, merchantId: v }))}
-                help="از پنل zarinpal.com → درگاه‌های پرداخت"
+                help="از پنل zarinpal.com → درگاه‌های پرداخت → مرچنت عمده"
               />
               <ToggleRow
-                label="حالت آزمایشی (Sandbox)"
-                hint="در حالت آزمایشی مبلغ واقعی کسر نمی‌شود — برای تست"
+                label="Sandbox عمده"
+                hint="حالت آزمایشی برای درگاه عمده"
                 value={data.payment.sandbox}
                 onChange={(v) => patch('payment', (p) => ({ ...p, sandbox: v }))}
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-emerald-100 pt-5">
+            <h3 className="font-bold text-emerald-900 mb-1 text-sm">زرین‌پال فروشگاه تکی (.ir)</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              مرچنت جدا برای دامنه www.poshaktaranom.ir — در پنل زرین‌پال درگاه را برای دامنه تکی فعال کنید
+            </p>
+            <div className="space-y-4">
+              <ToggleRow
+                label="فعال‌سازی درگاه تکی"
+                hint="پرداخت آنلاین چک‌اوت فروشگاه تکی"
+                value={data.payment.retailEnabled !== false}
+                onChange={(v) => patch('payment', (p) => ({ ...p, retailEnabled: v }))}
+              />
+              <SecretField
+                label="مرچنت کد / توکن تکی (Retail Merchant ID)"
+                value={data.payment.retailMerchantId ?? ''}
+                shown={!!showSecret.retailMerchantId}
+                onToggle={() => setShowSecret((p) => ({ ...p, retailMerchantId: !p.retailMerchantId }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, retailMerchantId: v }))}
+                help="UUID مرچنت زرین‌پال مخصوص فروشگاه تکی"
+              />
+              <ToggleRow
+                label="Sandbox تکی"
+                hint="تست بدون کسر واقعی برای فروشگاه تکی"
+                value={!!data.payment.retailSandbox}
+                onChange={(v) => patch('payment', (p) => ({ ...p, retailSandbox: v }))}
+              />
+              <TextField
+                label="آدرس بازگشت (Callback) تکی"
+                value={data.payment.retailCallbackUrl ?? ''}
+                dir="ltr"
+                placeholder="https://www.poshaktaranom.ir/payment/callback"
+                onChange={(v) => patch('payment', (p) => ({ ...p, retailCallbackUrl: v }))}
               />
             </div>
           </div>
@@ -501,50 +586,129 @@ export function AdminSettings() {
 
       {/* Theme tab — Taranom Theme Settings */}
       {tab === 'marketing' && data.marketing && (
-        <div className="card space-y-4 p-6 max-w-3xl">
+        <div className="card space-y-6 p-6 max-w-4xl">
           <p className="text-sm text-gray-500">
-            شناسه پیکسل یکتانت / متا را وارد کنید تا در فروشگاه تکی تزریق شود. پارامتر <code>?aff=</code> روی سفارش ذخیره می‌شود.
+            پیکسل‌ها و فیدهای مارکت‌پلیس برای فروشگاه تکی. پارامترهای کلیک مثل{' '}
+            <code dir="ltr">?aff=</code> / <code dir="ltr">?affer=</code> / <code dir="ltr">?yn=</code> روی سفارش ذخیره می‌شوند.
+            پست‌بک سرور پس از پرداخت موفق اجرا می‌شود. پلیس‌هولدرها:{' '}
+            <code dir="ltr">{'{click_id} {order_id} {order_number} {amount} {amount_toman} {status}'}</code>
           </p>
+
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 text-sm text-emerald-900 space-y-2">
+            <p className="font-bold">فیدهای آماده ثبت در پنل‌ها</p>
+            <ul className="list-disc pr-5 space-y-1 font-mono text-xs" dir="ltr">
+              <li>Torob XML → /v1/feeds/torob.xml — panel.torob.com</li>
+              <li>Bam CSV → /v1/feeds/bam.csv — business.bam.ir</li>
+              <li>Bam XML → /v1/feeds/bam.xml</li>
+              <li>فهرست → /v1/feeds</li>
+            </ul>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">نام برند در فید</label>
+            <input
+              className="w-full max-w-md rounded-lg border px-3 py-2 text-sm"
+              value={data.marketing.feedBrandName}
+              onChange={(e) => patch('marketing', (m) => ({ ...m, feedBrandName: e.target.value }))}
+            />
+          </div>
+
+          <h3 className="text-sm font-bold text-gray-800">پیکسل / اسکریپت هد</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {([
+              ['yektanetPixelId', 'Yektanet Pixel ID', 'yektanet.com/advertisers'],
+              ['metaPixelId', 'Meta Pixel ID', ''],
+              ['adroScriptUrl', 'Adro Script URL (از پنل)', 'adro.co/advertisers'],
+              ['adroAccountId', 'Adro Account ID', ''],
+              ['afferScriptUrl', 'Affer Pixel/Script URL', 'affer.com/advertiser'],
+              ['afsonaScriptUrl', 'Afsona Pixel/Script URL', 'afsona.com'],
+              ['takhfifanScriptUrl', 'Takhfifan Tracking Script URL', 'business.takhfifan.com'],
+            ] as const).map(([key, label, hint]) => (
+              <div key={key}>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {label}{hint ? <span className="text-gray-400"> — {hint}</span> : null}
+                </label>
+                <input
+                  className="w-full rounded-lg border px-3 py-2 text-sm"
+                  value={(data.marketing as any)[key] ?? ''}
+                  onChange={(e) => patch('marketing', (m) => ({ ...m, [key]: e.target.value }))}
+                  dir="ltr"
+                />
+              </div>
+            ))}
+          </div>
+
+          <h3 className="text-sm font-bold text-gray-800">پست‌بک S2S (همکاری در فروش)</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {([
+              ['yektanetPostbackUrl', 'Yektanet Postback URL'],
+              ['afferPostbackUrl', 'Affer Postback URL'],
+              ['afsonaPostbackUrl', 'Afsona Callback URL'],
+              ['takhfifanPostbackUrl', 'Takhfifan Postback URL'],
+              ['postbackUrl', 'Generic Postback URL'],
+            ] as const).map(([key, label]) => (
+              <div key={key} className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+                <input
+                  className="w-full rounded-lg border px-3 py-2 text-sm font-mono"
+                  value={(data.marketing as any)[key] ?? ''}
+                  onChange={(e) => patch('marketing', (m) => ({ ...m, [key]: e.target.value }))}
+                  dir="ltr"
+                  placeholder="https://example.com/postback?click={click_id}&order={order_number}&amount={amount_toman}"
+                />
+              </div>
+            ))}
+          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!data.marketing.broadcastPostbacks}
+              onChange={(e) => patch('marketing', (m) => ({ ...m, broadcastPostbacks: e.target.checked }))}
+            />
+            ارسال پست‌بک حتی بدون click id (معمولاً خاموش بماند)
+          </label>
+
+          <h3 className="text-sm font-bold text-gray-800">باسلام (API)</h3>
+          <p className="text-xs text-gray-500">
+            مستندات: <a className="text-primary underline" href="https://doc.basalam.com" target="_blank" rel="noreferrer">doc.basalam.com</a>
+            {' · '}
+            <a className="text-primary underline" href="https://developers.basalam.com" target="_blank" rel="noreferrer">developers.basalam.com</a>
+            — پس از ذخیره، از API ادمین <code dir="ltr">POST /v1/basalam/sync-inventory</code> استفاده کنید.
+          </p>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!data.marketing.basalamEnabled}
+              onChange={(e) => patch('marketing', (m) => ({ ...m, basalamEnabled: e.target.checked }))}
+            />
+            فعال‌سازی همگام‌سازی باسلام
+          </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Yektanet Pixel ID</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Basalam Vendor ID</label>
               <input
                 className="w-full rounded-lg border px-3 py-2 text-sm"
-                value={data.marketing.yektanetPixelId}
-                onChange={(e) =>
-                  setData((d) =>
-                    d
-                      ? {
-                          ...d,
-                          marketing: {
-                            ...(d.marketing ?? { yektanetPixelId: '', metaPixelId: '' }),
-                            yektanetPixelId: e.target.value,
-                          },
-                        }
-                      : d,
-                  )
-                }
+                value={data.marketing.basalamVendorId}
+                onChange={(e) => patch('marketing', (m) => ({ ...m, basalamVendorId: e.target.value }))}
                 dir="ltr"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Meta Pixel ID</label>
+              <label className="mb-1 flex items-center justify-between text-xs font-medium text-gray-600">
+                Access Token
+                <button
+                  type="button"
+                  className="text-gray-400"
+                  onClick={() => setShowSecret((s) => ({ ...s, basalam: !s.basalam }))}
+                >
+                  {showSecret.basalam ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </button>
+              </label>
               <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                value={data.marketing.metaPixelId}
-                onChange={(e) =>
-                  setData((d) =>
-                    d
-                      ? {
-                          ...d,
-                          marketing: {
-                            ...(d.marketing ?? { yektanetPixelId: '', metaPixelId: '' }),
-                            metaPixelId: e.target.value,
-                          },
-                        }
-                      : d,
-                  )
-                }
+                type={showSecret.basalam ? 'text' : 'password'}
+                className="w-full rounded-lg border px-3 py-2 text-sm font-mono"
+                value={data.marketing.basalamAccessToken}
+                onChange={(e) => patch('marketing', (m) => ({ ...m, basalamAccessToken: e.target.value }))}
                 dir="ltr"
               />
             </div>

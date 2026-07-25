@@ -50,8 +50,16 @@ export class SettingsController {
       theme,
       menus,
       marketing: {
+        feedBrandName: marketing.feedBrandName || 'پوشاک ترنم',
         yektanetPixelId: marketing.yektanetPixelId || '',
         metaPixelId: marketing.metaPixelId || '',
+        adroScriptUrl: marketing.adroScriptUrl || '',
+        adroAccountId: marketing.adroAccountId || '',
+        afferScriptUrl: marketing.afferScriptUrl || '',
+        afsonaScriptUrl: marketing.afsonaScriptUrl || '',
+        takhfifanScriptUrl: marketing.takhfifanScriptUrl || '',
+        // Never expose postback URLs, tokens, or product maps publicly
+        basalamEnabled: !!marketing.basalamEnabled,
       },
     };
   }
@@ -84,7 +92,20 @@ export class SettingsController {
     if (!GROUPS.includes(group as any)) {
       throw new BadRequestException('گروه تنظیمات نامعتبر است');
     }
-    await this.svc.set(group, body ?? {});
+    let value = body ?? {};
+    if (group === 'marketing') {
+      const prev = await this.svc.get('marketing');
+      value = {
+        ...prev,
+        ...value,
+        // Preserve product map unless explicitly sent
+        basalamProductMap:
+          value.basalamProductMap && typeof value.basalamProductMap === 'object'
+            ? value.basalamProductMap
+            : prev.basalamProductMap ?? {},
+      };
+    }
+    await this.svc.set(group, value);
     return { saved: true, group };
   }
 }
