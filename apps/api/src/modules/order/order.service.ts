@@ -11,6 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 import { DiscountService } from '../discount/discount.service';
 import { PaymentService } from '../payment/payment.service';
 import { ShippingService } from '../shipping/shipping.service';
+import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 
 interface CreateOrderDto {
   customerId: string;
@@ -56,6 +57,7 @@ export class OrderService {
     private readonly discounts: DiscountService,
     private readonly paymentService: PaymentService,
     private readonly shippingService: ShippingService,
+    private readonly affiliatePostback: AffiliatePostbackService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
 
@@ -435,12 +437,19 @@ export class OrderService {
           customerId: dto.customerId,
           description: `پرداخت سفارش ${saved.orderNumber}`,
           mobile: (customer as any).phone,
+          channel: 'RETAIL',
         });
         return { ...full, paymentUrl: pay.redirectUrl, paymentId: pay.paymentId };
       } catch (err) {
         // Order already created — surface error so client can retry payment or switch to COD.
         throw err;
       }
+    }
+
+    // Retail COD / zero-total: fire affiliate postback as pending/paid conversion.
+    if (channel === 'RETAIL' && dto.affiliateId) {
+      const status = paymentMethod === 'CASH' ? 'pending' : 'paid';
+      this.affiliatePostback.fireForOrder(saved.id, status).catch(() => undefined);
     }
 
     return full;

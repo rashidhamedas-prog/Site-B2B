@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, XCircle, Loader2, ArrowRight } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { RetailConversion } from '@/components/retail/RetailConversion';
 
 function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa-IR'); }
 
@@ -13,6 +14,7 @@ function CallbackContent() {
   const [state, setState] = useState<'verifying' | 'success' | 'failed' | 'cancelled'>('verifying');
   const [refId, setRefId] = useState('');
   const [amount, setAmount] = useState(0);
+  const [orderId, setOrderId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -29,6 +31,7 @@ function CallbackContent() {
           setState('success');
           setRefId(res.refId ?? res.payment?.refId ?? '');
           setAmount(Number(res.payment?.amount ?? 0));
+          setOrderId(res.payment?.orderId ?? '');
         } else if (res.cancelled) {
           setState('cancelled');
         } else {
@@ -42,6 +45,9 @@ function CallbackContent() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
+        {state === 'success' && (
+          <RetailConversion orderId={orderId || undefined} amountIrr={amount} />
+        )}
         {state === 'verifying' && (
           <>
             <Loader2 className="h-14 w-14 text-primary animate-spin mx-auto mb-4" />
@@ -94,17 +100,17 @@ function CallbackContent() {
         {state !== 'verifying' && (
           <div className="flex flex-col gap-2 mt-6">
             <Link
-              href="/portal/dashboard/orders"
+              href="/account"
               className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
             >
-              مشاهده سفارش‌ها
+              پیگیری سفارش تکی
               <ArrowRight className="h-4 w-4 rotate-180" />
             </Link>
             <Link
-              href="/portal/dashboard/payments"
+              href="/portal/dashboard/orders"
               className="btn btn-outline btn-md inline-flex items-center justify-center gap-2"
             >
-              فاکتورها و پرداخت‌ها
+              سفارش‌های عمده
             </Link>
           </div>
         )}

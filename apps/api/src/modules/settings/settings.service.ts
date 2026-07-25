@@ -147,11 +147,31 @@ export class SettingsService {
     const s = await this.get('payment');
     return {
       enabled: s.enabled ?? true,
+      /** Wholesale (.com) Zarinpal merchant */
       merchantId: s.merchantId || this.config.get('ZARINPAL_MERCHANT_ID', ''),
       sandbox:
         typeof s.sandbox === 'boolean'
           ? s.sandbox
           : this.config.get('ZARINPAL_SANDBOX', 'true') === 'true',
+      /** Retail (.ir) Zarinpal merchant — separate terminal for storefront */
+      retailEnabled: s.retailEnabled ?? true,
+      retailMerchantId:
+        s.retailMerchantId ||
+        this.config.get('ZARINPAL_RETAIL_MERCHANT_ID', '') ||
+        s.merchantId ||
+        this.config.get('ZARINPAL_MERCHANT_ID', ''),
+      retailSandbox:
+        typeof s.retailSandbox === 'boolean'
+          ? s.retailSandbox
+          : typeof s.sandbox === 'boolean'
+            ? s.sandbox
+            : this.config.get('ZARINPAL_SANDBOX', 'true') === 'true',
+      retailCallbackUrl:
+        s.retailCallbackUrl ||
+        this.config.get(
+          'PAYMENT_RETAIL_CALLBACK_URL',
+          `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`,
+        ),
       manualCardNumber: s.manualCardNumber ?? '',
       manualCardOwner: s.manualCardOwner ?? '',
     };
@@ -276,8 +296,29 @@ export class SettingsService {
   async marketing() {
     const s = await this.get('marketing');
     return {
+      feedBrandName: String(s.feedBrandName ?? 'پوشاک ترنم'),
+      // Pixels / head scripts (public-safe IDs & script URLs)
       yektanetPixelId: String(s.yektanetPixelId ?? ''),
       metaPixelId: String(s.metaPixelId ?? ''),
+      adroScriptUrl: String(s.adroScriptUrl ?? ''),
+      adroAccountId: String(s.adroAccountId ?? ''),
+      afferScriptUrl: String(s.afferScriptUrl ?? ''),
+      afsonaScriptUrl: String(s.afsonaScriptUrl ?? ''),
+      takhfifanScriptUrl: String(s.takhfifanScriptUrl ?? ''),
+      // S2S postback URL templates — secrets stay admin-only via full marketing()
+      yektanetPostbackUrl: String(s.yektanetPostbackUrl ?? ''),
+      afferPostbackUrl: String(s.afferPostbackUrl ?? ''),
+      afsonaPostbackUrl: String(s.afsonaPostbackUrl ?? ''),
+      takhfifanPostbackUrl: String(s.takhfifanPostbackUrl ?? ''),
+      postbackUrl: String(s.postbackUrl ?? ''),
+      broadcastPostbacks: s.broadcastPostbacks === true,
+      // Basalam (token never exposed on public endpoint)
+      basalamEnabled: s.basalamEnabled === true,
+      basalamAccessToken: String(s.basalamAccessToken ?? ''),
+      basalamVendorId: String(s.basalamVendorId ?? ''),
+      basalamProductMap: (s.basalamProductMap && typeof s.basalamProductMap === 'object'
+        ? s.basalamProductMap
+        : {}) as Record<string, number>,
     };
   }
 }

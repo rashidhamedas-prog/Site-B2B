@@ -6,6 +6,7 @@ import { toman, useRetailCart } from '@/lib/retail-cart';
 import { apiClient } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { getRetailAddresses, saveRetailAddress, type RetailAddress } from '@/lib/retail-addresses';
+import { RetailConversion } from '@/components/retail/RetailConversion';
 
 const PROVINCES = [
   'تهران', 'خراسان رضوی', 'اصفهان', 'فارس', 'آذربایجان شرقی', 'آذربایجان غربی',
@@ -50,6 +51,7 @@ export default function RetailCheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState<string | null>(null);
+  const [doneMeta, setDoneMeta] = useState<{ amount: number; skus: string[] }>({ amount: 0, skus: [] });
   const [shipFee, setShipFee] = useState(0);
   const [shipMeta, setShipMeta] = useState<{ freeShipping?: boolean; estimatedDays?: string }>({});
   const [useWallet, setUseWallet] = useState(false);
@@ -161,11 +163,14 @@ export default function RetailCheckoutPage() {
         })),
       });
       saveRetailAddress(address);
+      const conversionSkus = items.map((i) => i.sku).filter(Boolean);
+      const conversionAmount = payable;
       clear();
       if (order?.paymentUrl) {
         window.location.href = order.paymentUrl;
         return;
       }
+      setDoneMeta({ amount: conversionAmount, skus: conversionSkus });
       setDone(order.orderNumber ?? order.id ?? 'ثبت شد');
     } catch (e: any) {
       setError(e?.message || 'خطا در ثبت سفارش');
@@ -177,6 +182,7 @@ export default function RetailCheckoutPage() {
   if (done) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
+        <RetailConversion orderNumber={done} amountIrr={doneMeta.amount} skus={doneMeta.skus} />
         <h1 className="text-2xl font-extrabold text-[var(--retail-primary)]">سفارش ثبت شد</h1>
         <p className="mt-3 text-[var(--retail-muted)]">شماره سفارش: {done}</p>
         <Link href="/account" className="mt-8 inline-block font-bold text-[var(--retail-primary)]">

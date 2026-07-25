@@ -2,6 +2,19 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-25 — اتصال مارکت‌پلیس و افیلیت فروشگاه تکی
+
+### خلاصه
+- فید تورب غنی‌تر + فید بام CSV/XML + `GET /v1/feeds` فهرست URLها
+- پیکسل‌های Adro / Affer / Afsona / Takhfifan / Yektanet / Meta از تنظیمات ادمین در `<head>`
+- گرفتن click id چندشبکه‌ای (`?yn=` `?affer=` `?afsona=` `?takhfifan=` `?aff=`)
+- رویداد خرید کلاینت (`RetailConversion`) + پست‌بک S2S پس از verify پرداخت و COD
+- ماژول باسلام: وضعیت، sync موجودی، catalog-export
+- **درگاه زرین‌پال جدا برای تکی:** `retailMerchantId` / sandbox / callback در ادمین → تنظیمات → پرداخت
+- چک‌لیست Owner در `docs/USER-ACTIONS-B2C.md` برای ثبت در پنل‌های خارجی
+
+---
+
 ## 2026-07-24 — تکمیل کامل تک‌فروشی (مسیر پول تا RMA)
 
 ### خلاصه

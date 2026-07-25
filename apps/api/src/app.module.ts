@@ -23,6 +23,8 @@ import { CategoryModule } from './modules/category/category.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { RmaModule } from './modules/rma/rma.module';
 import { CollectionModule } from './modules/collection/collection.module';
+import { AffiliateModule } from './modules/affiliate/affiliate.module';
+import { BasalamModule } from './modules/basalam/basalam.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { CollectionModule } from './modules/collection/collection.module';
     SettingsModule,
     RmaModule,
     FeedsModule,
+    AffiliateModule,
+    BasalamModule,
   ],
 })
 export class AppModule {}
