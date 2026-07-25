@@ -390,6 +390,8 @@ export class OrderService {
       perKgFee,
       freeShipping,
       affiliateId: dto.affiliateId?.trim() || undefined,
+      walletApplied,
+      discountCodeId: usedDiscountCodeId,
     });
 
     const saved = await this.orderRepo.save(order);
@@ -455,11 +457,27 @@ export class OrderService {
     return full;
   }
 
-  async findAll(page = 1, limit = 20, customerId?: string, status?: string, type?: string) {
+  async findAll(
+    page = 1,
+    limit = 20,
+    customerId?: string,
+    status?: string,
+    type?: string,
+    opts?: { includeDeleted?: boolean },
+  ) {
     const where: any = {};
     if (customerId) where.customerId = customerId;
-    if (status) where.status = status;
     if (type) where.type = type;
+
+    if (status) {
+      where.status = status;
+      // Customers must not fetch DELETED even with explicit filter
+      if (status === 'DELETED' && !opts?.includeDeleted) {
+        return { data: [], meta: { page, limit, total: 0, totalPages: 0 } };
+      }
+    } else if (!opts?.includeDeleted) {
+      where.status = Not(In(['DELETED']));
+    }
 
     const [data, total] = await this.orderRepo.findAndCount({
       where,
@@ -478,8 +496,59 @@ export class OrderService {
     return order;
   }
 
+  /** Parse wallet from column or legacy notes tag */
+  private resolveWalletApplied(order: OrderEntity): number {
+    const col = Number(order.walletApplied) || 0;
+    if (col > 0) return col;
+    const m = String(order.notes || '').match(/WALLET_APPLIED=(\d+)/);
+    return m ? Number(m[1]) || 0 : 0;
+  }
+
+  private resolveDiscountCodeId(order: OrderEntity): string | undefined {
+    if (order.discountCodeId) return order.discountCodeId;
+    return undefined;
+  }
+
+  /**
+   * Reverse all side-effects of an order (stock, wallet, discount use, pending payments, affiliate).
+   * Idempotent via effectsReversedAt.
+   */
+  private async reverseEffects(order: OrderEntity) {
+    if (order.effectsReversedAt) return order;
+
+    const full = await this.findOne(order.id);
+
+    for (const item of full.items ?? []) {
+      if (item.productVariantId) {
+        await this.productService.updateVariantStock(item.productVariantId, Number(item.quantity) || 0);
+      }
+    }
+
+    const wallet = this.resolveWalletApplied(full);
+    if (wallet > 0) {
+      await this.customerService.updateBalance(full.customerId, wallet);
+    }
+
+    const codeId = this.resolveDiscountCodeId(full);
+    if (codeId) {
+      await this.discounts.decrementUse(codeId);
+    }
+
+    await this.paymentService.cancelPendingForOrder(full.id);
+
+    if (full.affiliateId) {
+      this.affiliatePostback.fireForOrder(full.id, 'cancelled').catch(() => undefined);
+    }
+
+    full.effectsReversedAt = new Date();
+    return this.orderRepo.save(full);
+  }
+
   async updateStatus(id: string, status: string, processedBy?: string) {
     const order = await this.findOne(id);
+    if (order.status === 'DELETED' || order.voidedAt) {
+      throw new BadRequestException('سفارش حذف‌شده قابل تغییر وضعیت نیست');
+    }
     const prev = order.status;
     order.status = status;
     if (processedBy) order.processedBy = processedBy;
@@ -488,13 +557,9 @@ export class OrderService {
     if (status === 'DELIVERED') order.deliveredAt = new Date();
     const saved = await this.orderRepo.save(order);
 
-    // Restore variant stock when cancelling a previously active order.
-    if (status === 'CANCELLED' && prev !== 'CANCELLED') {
-      for (const item of order.items ?? []) {
-        if (item.productVariantId) {
-          await this.productService.updateVariantStock(item.productVariantId, Number(item.quantity) || 0);
-        }
-      }
+    // Full reversal when cancelling (stock + wallet + discount + pending pay)
+    if (status === 'CANCELLED' && prev !== 'CANCELLED' && prev !== 'DELETED') {
+      await this.reverseEffects(saved);
     }
 
     if (this.notifications) {
@@ -507,7 +572,91 @@ export class OrderService {
         );
       }
     }
-    return saved;
+    return this.findOne(id);
+  }
+
+  /**
+   * Soft-void: keep row in admin list/details with status DELETED,
+   * reverse all side-effects, hide from customer flows.
+   */
+  async voidOrder(id: string, reason?: string, processedBy?: string) {
+    const order = await this.findOne(id);
+    if (order.status === 'DELETED' || order.voidedAt) {
+      return order; // already voided — still viewable
+    }
+    await this.reverseEffects(order);
+    const fresh = await this.findOne(id);
+    fresh.status = 'DELETED';
+    fresh.voidedAt = new Date();
+    fresh.voidReason = reason?.trim() || 'حذف توسط ادمین';
+    if (processedBy) fresh.processedBy = processedBy;
+    return this.orderRepo.save(fresh);
+  }
+
+  /**
+   * Admin edit: notes/address/shipping/payment + item qty (stock delta) while active.
+   */
+  async updateOrder(
+    id: string,
+    dto: {
+      notes?: string;
+      shippingAddress?: string | Record<string, unknown>;
+      shippingMethod?: string;
+      paymentMethod?: string;
+      items?: Array<{ id: string; quantity: number }>;
+    },
+  ) {
+    const order = await this.findOne(id);
+    if (order.status === 'DELETED' || order.voidedAt) {
+      throw new BadRequestException('سفارش حذف‌شده قابل ویرایش نیست');
+    }
+
+    const locked = ['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status);
+    if (locked && dto.items?.length) {
+      throw new BadRequestException('اقلام سفارش ارسال‌شده قابل ویرایش نیست');
+    }
+
+    if (dto.notes !== undefined) order.notes = dto.notes;
+    if (dto.shippingMethod !== undefined) order.shippingMethod = dto.shippingMethod;
+    if (dto.paymentMethod !== undefined) order.paymentMethod = dto.paymentMethod;
+    if (dto.shippingAddress !== undefined) {
+      order.shippingAddress =
+        typeof dto.shippingAddress === 'string'
+          ? dto.shippingAddress
+          : JSON.stringify(dto.shippingAddress);
+    }
+
+    if (dto.items?.length && !order.effectsReversedAt) {
+      let subtotal = 0;
+      for (const patch of dto.items) {
+        const item = (order.items ?? []).find((i) => i.id === patch.id);
+        if (!item) continue;
+        const nextQty = Math.max(0, Math.floor(Number(patch.quantity) || 0));
+        const prevQty = Number(item.quantity) || 0;
+        const delta = nextQty - prevQty;
+        if (delta !== 0 && item.productVariantId) {
+          // Same convention as create: negative delta reduces warehouse stock
+          await this.productService.updateVariantStock(item.productVariantId, -delta);
+        }
+        item.quantity = nextQty;
+        item.totalPrice = Number(item.unitPrice) * nextQty;
+        await this.itemRepo.save(item);
+      }
+      const remaining = (order.items ?? []).filter((i) => (Number(i.quantity) || 0) > 0);
+      for (const i of order.items ?? []) {
+        if ((Number(i.quantity) || 0) <= 0) await this.itemRepo.remove(i);
+      }
+      for (const i of remaining) subtotal += Number(i.unitPrice) * Number(i.quantity);
+      const wallet = this.resolveWalletApplied(order);
+      const promoDiscount = Math.max(0, (Number(order.discount) || 0) - wallet);
+      order.subtotal = subtotal;
+      order.discount = promoDiscount + wallet;
+      order.total = Math.max(0, subtotal - promoDiscount + (Number(order.shippingFee) || 0) - wallet);
+      order.items = remaining;
+    }
+
+    await this.orderRepo.save(order);
+    return this.findOne(id);
   }
 
   async addTracking(

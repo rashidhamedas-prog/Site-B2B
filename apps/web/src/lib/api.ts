@@ -75,8 +75,12 @@ class ApiClient {
     return this.request<T>(path, { ...init, method: 'PATCH', body: JSON.stringify(body) });
   }
 
-  delete<T>(path: string, init?: RequestInit) {
-    return this.request<T>(path, { ...init, method: 'DELETE' });
+  delete<T>(path: string, body?: unknown, init?: RequestInit) {
+    return this.request<T>(path, {
+      ...init,
+      method: 'DELETE',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
   }
 
   async uploadImage(file: File): Promise<{ url: string; key: string }> {

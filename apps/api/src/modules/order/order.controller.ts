@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -26,7 +26,6 @@ export class OrderController {
     @Request() req: Express.Request & { user: JwtUser },
     @Body() body: any,
   ) {
-    // For CUSTOMER role, auto-inject their customerId from JWT
     if (req.user.role === 'CUSTOMER' && !body.customerId) {
       const customerId = req.user.customerId
         ?? (await this.userRepo.findOne({ where: { id: req.user.sub } }))?.customerId;
@@ -48,14 +47,16 @@ export class OrderController {
     @Query('status') status?: string,
     @Query('type') type?: string,
   ) {
-    // CUSTOMER role: only see their own orders
     if (req.user.role === 'CUSTOMER') {
       const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
       const cid = user?.customerId;
-      return this.orderService.findAll(page, limit, cid ?? undefined, status, type);
+      return this.orderService.findAll(page, limit, cid ?? undefined, status, type, {
+        includeDeleted: false,
+      });
     }
-    // ADMIN: can filter by any customer or see all
-    return this.orderService.findAll(page, limit, customerId, status, type);
+    return this.orderService.findAll(page, limit, customerId, status, type, {
+      includeDeleted: true,
+    });
   }
 
   @Get('installment-eligibility/:customerId')
@@ -84,12 +85,44 @@ export class OrderController {
     @Param('id') id: string,
   ) {
     const order = await this.orderService.findOne(id);
-    // CUSTOMER: only their own order
     if (req.user.role === 'CUSTOMER') {
       const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
       if (order.customerId !== user?.customerId) throw new ForbiddenException('دسترسی غیرمجاز');
+      if (order.status === 'DELETED' || order.voidedAt) {
+        throw new ForbiddenException('این سفارش حذف شده است');
+      }
     }
     return order;
+  }
+
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'ویرایش سفارش (ادمین)' })
+  update(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      notes?: string;
+      shippingAddress?: string | Record<string, unknown>;
+      shippingMethod?: string;
+      paymentMethod?: string;
+      items?: Array<{ id: string; quantity: number }>;
+    },
+  ) {
+    return this.orderService.updateOrder(id, body ?? {});
+  }
+
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حذف نرم سفارش — ردیف می‌ماند، اثرات معکوس می‌شود' })
+  voidOrder(
+    @Param('id') id: string,
+    @Body() body: { reason?: string } = {},
+    @Request() req?: Express.Request & { user: JwtUser },
+  ) {
+    return this.orderService.voidOrder(id, body?.reason, req?.user?.sub);
   }
 
   @Patch(':id/status')

@@ -240,6 +240,16 @@ export class PaymentService {
     }
   }
 
+  async cancelPendingForOrder(orderId: string) {
+    const rows = await this.repo.find({ where: { orderId, status: 'PENDING' as any } });
+    for (const p of rows) {
+      p.status = 'CANCELLED';
+      p.meta = { ...(p.meta ?? {}), cancelledWithOrder: true };
+      await this.repo.save(p);
+    }
+    return { cancelled: rows.length };
+  }
+
   // Manual payment record (card-to-card / cash) entered by an admin.
   async recordManual(input: {
     amount: number;
