@@ -3,13 +3,19 @@
   "domainWholesale": "poshaktaranom.com",
   "domainRetail": "www.poshaktaranom.ir",
   "serverPath": "/opt/taranom",
+  "serverIp": "5.75.200.102",
+  "sshPort": 2222,
+  "sshUser": "wholesale-admin",
+  "sshPasswordHint": "see TARANOM-SERVER-INFO.txt section 2",
   "ssh": "ssh -i ~/.ssh/wholesale_server -p 2222 wholesale-admin@5.75.200.102",
+  "sshPassword": "j7LhUuEffPfH",
   "stack": ["Next.js 15", "NestJS 10", "PostgreSQL 16", "MinIO", "Meilisearch", "Docker"],
   "architecture": "shared-core-two-storefronts",
   "retailPreviewPath": "/retail",
   "lastDeploy": "2026-07-24 d852373 — retail B2C complete on server",
+  "lastAdminChannelSplit": "2026-07-27 — wholesale/retail inventory + admin channel tabs + CMS pages/site-content",
   "lastE2e": "PASSED — ORD-2026-00002",
-  "lastRetailComplete": "2026-07-25 marketplace-affiliate integrations",
+  "lastRetailComplete": "2026-07-27 channel-split inventory + CMS site content",
   "documentation": {
     "worklog": "docs/WORKLOG.md",
     "b2c": "docs/B2C.md",
@@ -22,10 +28,11 @@
   "knownRisks": [
     "Product images uploaded before sharp remain as original JPG size",
     "Min order qty vs stock can block wholesale checkout if inventory low",
-    "DB_SYNC/production: Collection + new product/order columns need sync or migration on server",
+    "DB_SYNC/production: Warehouse + SiteContent + channel stock columns need sync or migration on server",
     "Zarinpal needs merchantId enabled in admin payment settings for live ONLINE redirects",
     "Basalam product map (basalamProductMap) must be filled after creating booth products",
-    "Marketplace panels (Torob/Bam/etc.) require owner registration — feeds/pixels are site-ready"
+    "Marketplace panels (Torob/Bam/etc.) require owner registration — feeds/pixels are site-ready",
+    "Legacy variant.stock may lag retailStock until first channel-aware sync"
   ],
   "fixedBugs": [
     "AdminProducts images empty on save (useCallback deps)",

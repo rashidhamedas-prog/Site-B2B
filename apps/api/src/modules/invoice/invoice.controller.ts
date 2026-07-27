@@ -35,12 +35,13 @@ export class InvoiceController {
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('customerId') customerId?: string,
+    @Query('channel') channel?: string,
   ) {
     if (req.user.role === 'CUSTOMER') {
       const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
       return this.invoiceService.findAll(page, limit, user?.customerId ?? undefined);
     }
-    return this.invoiceService.findAll(page, limit, customerId);
+    return this.invoiceService.findAll(page, limit, customerId, channel);
   }
 
   @Get(':id')

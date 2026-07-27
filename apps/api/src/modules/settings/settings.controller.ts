@@ -1,11 +1,23 @@
-import { Controller, Get, Put, Body, Param, UseGuards, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Put, Body, Param, Query, UseGuards, BadRequestException } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
-const GROUPS = ['business', 'shipping', 'sms', 'payment', 'installments', 'theme', 'menus', 'marketing'] as const;
+const GROUPS = [
+  'business',
+  'shipping',
+  'sms',
+  'payment',
+  'installments',
+  'theme',
+  'menus',
+  'menus_wholesale',
+  'menus_retail',
+  'marketing',
+  'siteContent',
+] as const;
 
 @ApiTags('settings')
 @Controller('settings')
@@ -15,14 +27,15 @@ export class SettingsController {
   // Public, safe subset — used by the storefront (contact info, active
   // shipping methods). Never exposes API keys.
   @Get('public')
-  async publicSettings() {
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
+  async publicSettings(@Query('channel') channel?: string) {
     const [business, shipping, installments, payment, theme, menus, marketing] = await Promise.all([
       this.svc.business(),
       this.svc.shipping(),
       this.svc.installments(),
       this.svc.payment(),
       this.svc.theme(),
-      this.svc.menus(),
+      this.svc.menus(channel),
       this.svc.marketing(),
     ]);
     return {
@@ -49,6 +62,7 @@ export class SettingsController {
       },
       theme,
       menus,
+      channel: channel ? String(channel).toUpperCase() : undefined,
       marketing: {
         feedBrandName: marketing.feedBrandName || 'پوشاک ترنم',
         yektanetPixelId: marketing.yektanetPixelId || '',
@@ -69,18 +83,21 @@ export class SettingsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth()
-  async adminSettings() {
-    const [business, shipping, sms, payment, installments, theme, menus, marketing] = await Promise.all([
-      this.svc.business(),
-      this.svc.shipping(),
-      this.svc.sms(),
-      this.svc.payment(),
-      this.svc.installments(),
-      this.svc.theme(),
-      this.svc.menus(),
-      this.svc.marketing(),
-    ]);
-    return { business, shipping, sms, payment, installments, theme, menus, marketing };
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
+  async adminSettings(@Query('channel') channel?: string) {
+    const [business, shipping, sms, payment, installments, theme, menus, marketing, siteContent] =
+      await Promise.all([
+        this.svc.business(),
+        this.svc.shipping(),
+        this.svc.sms(),
+        this.svc.payment(),
+        this.svc.installments(),
+        this.svc.theme(),
+        this.svc.menus(channel),
+        this.svc.marketing(),
+        this.svc.siteContent(),
+      ]);
+    return { business, shipping, sms, payment, installments, theme, menus, marketing, siteContent };
   }
 
   // Admin: save one settings group.
@@ -104,6 +121,10 @@ export class SettingsController {
             ? value.basalamProductMap
             : prev.basalamProductMap ?? {},
       };
+    }
+    // Nested menus save: body may be { wholesale, retail } or flat (= wholesale)
+    if (group === 'menus' && body?.wholesale && body?.retail) {
+      value = body;
     }
     await this.svc.set(group, value);
     return { saved: true, group };

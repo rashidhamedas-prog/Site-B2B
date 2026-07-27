@@ -7,6 +7,7 @@ import { OrderStatusBadge, Pagination } from '@/components/ui';
 import { useOrders } from '@/lib/hooks/useOrders';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
 
 const STATUS_FILTERS = ['همه', 'PENDING_REVIEW', 'PROCESSING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'DELETED'];
 const STATUS_FA: Record<string, string> = {
@@ -15,17 +16,19 @@ const STATUS_FA: Record<string, string> = {
   CANCELLED: 'لغو شده', DELETED: 'حذف‌شده',
 };
 
-const CHANNEL_FILTERS = [
-  { id: '', label: 'همه کانال‌ها' },
-  { id: 'WHOLESALE', label: 'عمده' },
-  { id: 'RETAIL_WEBSITE', label: 'تکی (.ir)' },
-];
+function channelToOrderType(ch: AdminChannel | 'ALL'): string {
+  if (ch === 'WHOLESALE') return 'WHOLESALE';
+  if (ch === 'RETAIL') return 'RETAIL_WEBSITE';
+  return '';
+}
 
 export function AdminOrders() {
   const [status, setStatus] = useState('');
-  const [type, setType] = useState('');
+  const [channelFilter, setChannelFilter] = useState<AdminChannel | 'ALL'>('ALL');
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const type = channelToOrderType(channelFilter);
 
   const { orders, meta, loading, refetch } = useOrders({
     page,
@@ -69,28 +72,19 @@ export function AdminOrders() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {CHANNEL_FILTERS.map((c) => (
-          <button
-            key={c.id || 'all-ch'}
-            onClick={() => { setType(c.id); setPage(1); }}
-            className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap',
-              type === c.id ? 'bg-secondary text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100',
-            )}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
+      <AdminChannelFilter
+        value={channelFilter}
+        onChange={(v) => { setChannelFilter(v); setPage(1); }}
+      />
 
       <div className="flex flex-wrap gap-1.5">
         {STATUS_FILTERS.map((s) => (
           <button
             key={s}
+            type="button"
             onClick={() => { setStatus(s === 'همه' ? '' : s); setPage(1); }}
             className={cn(
-              'px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap',
+              'cursor-pointer px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap',
               (s === 'همه' ? status === '' : status === s) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             )}
           >

@@ -24,7 +24,13 @@ export class CustomerService {
     private readonly authService: AuthService,
   ) {}
 
-  async findAll(page = 1, limit = 20, search?: string, segment?: string) {
+  async findAll(
+    page = 1,
+    limit = 20,
+    search?: string,
+    segment?: string,
+    opts?: { businessType?: string; channel?: string; type?: string },
+  ) {
     const where: any[] = search
       ? [
           { businessName: ILike(`%${search}%`) },
@@ -35,6 +41,23 @@ export class CustomerService {
       : [{}];
 
     if (segment) where.forEach((w) => (w.segment = segment));
+
+    // channel WHOLESALE|RETAIL → businessType / type filter
+    let businessType = opts?.businessType;
+    if (!businessType && opts?.channel) {
+      const ch = String(opts.channel).toUpperCase();
+      businessType = ch === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    }
+    if (businessType) {
+      where.forEach((w) => {
+        w.businessType = businessType;
+      });
+    }
+    if (opts?.type) {
+      where.forEach((w) => {
+        w.type = opts.type;
+      });
+    }
 
     const [data, total] = await this.repo.findAndCount({
       where,

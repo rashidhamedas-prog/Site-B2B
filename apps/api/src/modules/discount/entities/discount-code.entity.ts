@@ -32,6 +32,10 @@ export class DiscountCodeEntity {
   @Column({ default: true })
   isActive: boolean;
 
+  /** WHOLESALE | RETAIL | BOTH */
+  @Column({ default: 'WHOLESALE' })
+  channel: string;
+
   @Column({ nullable: true, type: 'text' })
   notes: string;
 

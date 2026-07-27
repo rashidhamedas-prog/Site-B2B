@@ -38,12 +38,6 @@ const COMMON_COLORS: Array<{ name: string; hex: string }> = [
 
 type SpecMemory = Record<string, string[]>;
 
-interface ColorHistoryItem {
-  id?: string;
-  name: string;
-  hex?: string | null;
-}
-
 const emptySpecs: ProductSpecs = {
   fabricType: '',
   designDetails: '',
@@ -137,17 +131,9 @@ function VariantsModal({
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [variants, setVariants] = useState<Variant[]>(product.variants ?? []);
-  const [colorHistory, setColorHistory] = useState<ColorHistoryItem[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const sizeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
-
-  useEffect(() => {
-    apiClient
-      .get<ColorHistoryItem[]>('/products/meta/colors')
-      .then((res) => setColorHistory(Array.isArray(res) ? res : []))
-      .catch(() => undefined);
-  }, []);
 
   const refresh = useCallback(async () => {
     const res = await apiClient.get<{ variants: Variant[] }>(`/products/${product.id}`);
@@ -267,7 +253,7 @@ function VariantsModal({
                   title={c.name}
                   onClick={() => pickColor(c.name, c.hex)}
                   className={cn(
-                    'h-6 w-6 rounded-full border border-gray-200 hover:scale-110 transition-transform',
+                    'h-6 w-6 rounded-full border border-gray-200 hover:scale-110 transition-transform cursor-pointer',
                     form.colorHex?.toLowerCase() === c.hex.toLowerCase() && 'ring-2 ring-primary ring-offset-1',
                   )}
                   style={{ backgroundColor: c.hex }}
@@ -275,28 +261,6 @@ function VariantsModal({
               ))}
             </div>
           </div>
-
-          {colorHistory.length > 0 && (
-            <div>
-              <p className="text-[10px] text-gray-400 mb-1.5">تاریخچه رنگ‌ها</p>
-              <div className="flex flex-wrap gap-1">
-                {colorHistory.slice(0, 20).map((c) => (
-                  <button
-                    key={`${c.name}-${c.hex ?? ''}`}
-                    type="button"
-                    onClick={() => pickColor(c.name, c.hex || form.colorHex)}
-                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600 hover:border-primary hover:text-primary"
-                  >
-                    <span
-                      className="h-2.5 w-2.5 rounded-full border border-gray-200"
-                      style={{ backgroundColor: c.hex || '#ccc' }}
-                    />
-                    {c.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <p className="text-[11px] text-gray-400">
             اینجا فقط رنگ و بارکد تعریف می‌شود؛ موجودی را از دکمه «موجودی» جداگانه ثبت کنید.
