@@ -69,7 +69,7 @@ export class OrderService {
       },
     });
     const orders = await this.orderRepo.find({
-      where: { customerId, status: Not(In(['CANCELLED'])) },
+      where: { customerId, status: Not(In(['CANCELLED', 'DELETED'])) },
       relations: ['items'],
     });
     const invoiceCount = invoices.length;

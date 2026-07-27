@@ -237,6 +237,42 @@ export class ProductService {
     return this.colorRepo.find({ order: { updatedAt: 'DESC' }, take: 200 });
   }
 
+  async createColor(data: { name: string; hex?: string }) {
+    const name = String(data.name ?? '').trim();
+    if (!name) throw new BadRequestException('نام رنگ الزامی است');
+    const hex = data.hex ? String(data.hex).trim() : null;
+    const existing = await this.colorRepo.findOne({ where: { name } });
+    if (existing) {
+      if (hex && existing.hex !== hex) {
+        existing.hex = hex;
+        return this.colorRepo.save(existing);
+      }
+      return existing;
+    }
+    return this.colorRepo.save(this.colorRepo.create({ name, hex }));
+  }
+
+  async updateColor(id: string, data: { name?: string; hex?: string }) {
+    const color = await this.colorRepo.findOne({ where: { id } });
+    if (!color) throw new NotFoundException('رنگ یافت نشد');
+    if (data.name !== undefined) {
+      const name = String(data.name).trim();
+      if (!name) throw new BadRequestException('نام رنگ الزامی است');
+      const clash = await this.colorRepo.findOne({ where: { name } });
+      if (clash && clash.id !== id) throw new BadRequestException('رنگ با این نام قبلاً ثبت شده');
+      color.name = name;
+    }
+    if (data.hex !== undefined) color.hex = String(data.hex).trim() || null;
+    return this.colorRepo.save(color);
+  }
+
+  async deleteColor(id: string) {
+    const color = await this.colorRepo.findOne({ where: { id } });
+    if (!color) throw new NotFoundException('رنگ یافت نشد');
+    await this.colorRepo.remove(color);
+    return { deleted: true };
+  }
+
   async findOne(id: string) {
     const product = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!product) throw new NotFoundException('محصول یافت نشد');
@@ -477,11 +513,19 @@ export class ProductService {
 
   private sizeLabelForProduct(product: ProductEntity): string {
     const map: Record<string, string> = {
-      TWO: 'محصول ۲ سایزی',
-      THREE: 'محصول ۳ سایزی',
-      FREE: 'محصول فری سایز',
+      TWO: 'سایز ۱',
+      THREE: 'سایز ۱',
+      FREE: 'فری سایز',
     };
-    return map[product.sizeType] || 'محصول فری سایز';
+    return map[product.sizeType] || 'فری سایز';
+  }
+
+  /** Available size choices based on product sizeType */
+  sizesForProduct(sizeType?: string): string[] {
+    const t = String(sizeType || 'FREE').toUpperCase();
+    if (t === 'TWO') return ['سایز ۱', 'سایز ۲'];
+    if (t === 'THREE') return ['سایز ۱', 'سایز ۲', 'سایز ۳'];
+    return ['فری سایز'];
   }
 
   async createVariant(productId: string, data: CreateVariantDto) {
@@ -495,28 +539,45 @@ export class ProductService {
     const color = await this.upsertColor(colorName, colorHex || undefined);
     const size = await this.upsertSize(sizeLabel);
 
+    const wholesale =
+      data.wholesaleStock !== undefined && data.wholesaleStock !== null
+        ? Math.max(0, Math.floor(Number(data.wholesaleStock)))
+        : data.stock !== undefined && data.stock !== null
+          ? Math.max(0, Math.floor(Number(data.stock)))
+          : 0;
+    const retail =
+      data.retailStock !== undefined && data.retailStock !== null
+        ? Math.max(0, Math.floor(Number(data.retailStock)))
+        : 0;
+
+    if (!Number.isFinite(wholesale) || !Number.isFinite(retail)) {
+      throw new BadRequestException('موجودی نامعتبر است');
+    }
+
     const variant = this.variantRepo.create({
-      ...data,
       productId,
-      stock: 0,
-      wholesaleStock: 0,
-      retailStock: 0,
+      barcode: data.barcode,
+      stock: wholesale,
+      wholesaleStock: wholesale,
+      retailStock: retail,
       color: color.name,
-      colorHex: color.hex ?? (data as any).colorHex ?? '',
+      colorHex: color.hex ?? colorHex ?? '',
       size: size.label,
       colorId: color.id,
       sizeId: size.id,
     } as any);
-    return this.variantRepo.save(variant);
+    const saved = await this.variantRepo.save(variant);
+    await this.syncProductStockFromVariants(productId);
+    return saved;
   }
 
-  async updateVariant(variantId: string, data: Partial<ProductVariantEntity>) {
+  async updateVariant(variantId: string, data: Partial<ProductVariantEntity> & {
+    wholesaleStock?: number;
+    retailStock?: number;
+    stock?: number;
+  }) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
-
-    if (typeof (data as any).stock === 'number') {
-      throw new BadRequestException('موجودی فقط از بخش انبار قابل تغییر است');
-    }
 
     if (typeof (data as any).color === 'string' || typeof (data as any).colorHex === 'string') {
       const colorName = String((data as any).color ?? variant.color).trim();
@@ -534,8 +595,34 @@ export class ProductService {
       variant.sizeId = size.id;
     }
 
-    Object.assign(variant, { ...data, color: variant.color, size: variant.size, stock: variant.stock });
-    return this.variantRepo.save(variant);
+    if ((data as any).barcode !== undefined) {
+      variant.barcode = (data as any).barcode || null;
+    }
+
+    const hasWholesale = data.wholesaleStock !== undefined && data.wholesaleStock !== null;
+    const hasRetail = data.retailStock !== undefined && data.retailStock !== null;
+    const hasLegacyStock = data.stock !== undefined && data.stock !== null;
+
+    if (hasWholesale || hasLegacyStock) {
+      const next = Math.max(
+        0,
+        Math.floor(Number(hasWholesale ? data.wholesaleStock : data.stock)),
+      );
+      if (!Number.isFinite(next)) throw new BadRequestException('موجودی عمده نامعتبر است');
+      variant.wholesaleStock = next;
+      variant.stock = next;
+    }
+    if (hasRetail) {
+      const next = Math.max(0, Math.floor(Number(data.retailStock)));
+      if (!Number.isFinite(next)) throw new BadRequestException('موجودی تکی نامعتبر است');
+      variant.retailStock = next;
+    }
+
+    const saved = await this.variantRepo.save(variant);
+    if (hasWholesale || hasRetail || hasLegacyStock) {
+      await this.syncProductStockFromVariants(variant.productId);
+    }
+    return saved;
   }
 
   private async upsertColor(name: string, hex?: string) {
@@ -543,7 +630,7 @@ export class ProductService {
     if (!n) throw new BadRequestException('رنگ الزامی است');
     const existing = await this.colorRepo.findOne({ where: { name: n } });
     if (existing) {
-      if (hex && !existing.hex) {
+      if (hex && existing.hex !== hex) {
         existing.hex = hex;
         return this.colorRepo.save(existing);
       }
@@ -563,7 +650,9 @@ export class ProductService {
   async removeVariant(variantId: string) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
+    const productId = variant.productId;
     await this.variantRepo.remove(variant);
+    await this.syncProductStockFromVariants(productId);
     return { message: 'واریانت حذف شد' };
   }
 
