@@ -16,6 +16,8 @@ interface Variant {
   colorHex: string;
   size: string;
   stock: number;
+  wholesaleStock?: number;
+  retailStock?: number;
   barcode?: string;
 }
 
@@ -539,12 +541,12 @@ export function AdminInventory() {
                     <div className="bg-gray-50 border-t border-gray-100">
                       <div className="px-8 py-3 overflow-x-auto">
                         <p className="text-xs text-gray-500 mb-2">
-                          موجودی فقط در سطح محصول (بالا) ثبت می‌شود؛ رنگ‌ها موجودی جداگانه ندارند.
+                          موجودی هر رنگ از بخش «واریانت‌ها» در محصولات تنظیم می‌شود و مجموع آن‌ها اینجا نمایش داده می‌شود.
                         </p>
-                        <table className="w-full min-w-[400px] text-sm">
+                        <table className="w-full min-w-[480px] text-sm">
                           <thead>
                             <tr>
-                              {['رنگ', 'سایز', 'بارکد'].map((h) => (
+                              {['رنگ', 'سایز', 'موجودی کانال', 'بارکد'].map((h) => (
                                 <th key={h} className="px-3 py-2 text-right text-xs font-semibold text-gray-400">{h}</th>
                               ))}
                             </tr>
@@ -560,6 +562,9 @@ export function AdminInventory() {
                                   </div>
                                 </td>
                                 <td className="px-3 py-2 text-gray-700">{v.size}</td>
+                                <td className="px-3 py-2 font-mono font-semibold text-primary">
+                                  {Number(v.stock) || 0}
+                                </td>
                                 <td className="px-3 py-2 font-mono text-xs text-gray-400">{v.barcode || '—'}</td>
                               </tr>
                             ))}
