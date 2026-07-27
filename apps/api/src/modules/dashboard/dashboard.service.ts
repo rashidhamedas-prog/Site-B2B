@@ -11,7 +11,9 @@ import { ProductEntity } from '../product/entities/product.entity';
 export type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
 const CANCELLED = 'CANCELLED';
-const EXCLUDE_REVENUE = ['PENDING_REVIEW', 'CANCELLED'];
+const DELETED = 'DELETED';
+const EXCLUDE_REVENUE = ['PENDING_REVIEW', 'CANCELLED', 'DELETED'];
+const EXCLUDE_ORDERS = ['CANCELLED', 'DELETED'];
 
 @Injectable()
 export class DashboardService {
@@ -36,36 +38,49 @@ export class DashboardService {
       totalRevenue, thisMonthRevenue, outstandingInvoices,
       statusRows,
     ] = await Promise.all([
-      this.orderRepo.count(),
+      this.orderRepo.createQueryBuilder('o')
+        .where('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
+        .getCount(),
       this.orderRepo.count({ where: { status: 'PENDING_REVIEW' } }),
       this.orderRepo.createQueryBuilder('o')
         .where('o.createdAt >= :start', { start: startOfMonth })
+        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
         .getCount(),
       this.orderRepo.createQueryBuilder('o')
         .where('o.createdAt >= :start AND o.createdAt <= :end', { start: startOfLastMonth, end: endOfLastMonth })
+        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
         .getCount(),
       this.customerRepo.count(),
       this.customerRepo.count({ where: { status: 'PENDING' } }),
       this.customerRepo.count({ where: { status: 'ACTIVE', isActive: true } }),
-      this.orderRepo.find({ relations: ['customer'], order: { createdAt: 'DESC' }, take: 6 }),
-      this.variantRepo.createQueryBuilder('v').where('v.stock < 10').orderBy('v.stock', 'ASC').take(5).getMany(),
+      this.orderRepo.createQueryBuilder('o')
+        .leftJoinAndSelect('o.customer', 'customer')
+        .where('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
+        .orderBy('o.createdAt', 'DESC')
+        .take(8)
+        .getMany(),
+      this.variantRepo.createQueryBuilder('v')
+        .where('(COALESCE(v.wholesaleStock, v.stock, 0) < 10 OR COALESCE(v.retailStock, 0) < 10)')
+        .orderBy('COALESCE(v.wholesaleStock, v.stock, 0)', 'ASC')
+        .take(5)
+        .getMany(),
       this.orderRepo.createQueryBuilder('o')
         .select('o.customerId', 'customerId')
         .addSelect('SUM(o.total)', 'totalSpend')
         .addSelect('COUNT(o.id)', 'orderCount')
-        .where("o.status NOT IN ('CANCELLED')")
+        .where('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
         .groupBy('o.customerId')
         .orderBy('SUM(o.total)', 'DESC')
         .limit(5)
         .getRawMany(),
       this.orderRepo.createQueryBuilder('o')
         .select('SUM(o.total)', 'sum')
-        .where("o.status NOT IN ('PENDING_REVIEW', 'CANCELLED')")
+        .where('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
         .getRawOne(),
       this.orderRepo.createQueryBuilder('o')
         .select('SUM(o.total)', 'sum')
         .where('o.createdAt >= :start', { start: startOfMonth })
-        .andWhere("o.status NOT IN ('CANCELLED')")
+        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
         .getRawOne(),
       this.invoiceRepo.createQueryBuilder('i')
         .select('SUM(i.total - i.paidAmount)', 'sum')
@@ -74,6 +89,7 @@ export class DashboardService {
       this.orderRepo.createQueryBuilder('o')
         .select('o.status', 'status')
         .addSelect('COUNT(*)', 'count')
+        .where('o.status NOT IN (:...ex)', { ex: [DELETED] })
         .groupBy('o.status')
         .getRawMany(),
     ]);
@@ -255,7 +271,7 @@ export class DashboardService {
   private async countOrders(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
     const qb = this.orderRepo.createQueryBuilder('o')
       .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status != :cancelled', { cancelled: CANCELLED });
+      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS });
     this.applyOrderChannel(qb, channel);
     return qb.getCount();
   }

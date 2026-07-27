@@ -60,9 +60,36 @@ export class ProductController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'تاریخچه رنگ‌های ثبت‌شده' })
+  @ApiOperation({ summary: 'لیست رنگ‌های ذخیره‌شده برای انتخاب سریع' })
   listColors() {
     return this.productService.listColors();
+  }
+
+  @Post('meta/colors')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'افزودن رنگ به لیست ذخیره‌شده' })
+  createColor(@Body() body: { name: string; hex?: string }) {
+    return this.productService.createColor(body);
+  }
+
+  @Patch('meta/colors/:id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'ویرایش رنگ ذخیره‌شده' })
+  updateColor(@Param('id') id: string, @Body() body: { name?: string; hex?: string }) {
+    return this.productService.updateColor(id, body);
+  }
+
+  @Delete('meta/colors/:id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حذف رنگ از لیست ذخیره‌شده' })
+  deleteColor(@Param('id') id: string) {
+    return this.productService.deleteColor(id);
   }
 
   @Get('slug/:slug')

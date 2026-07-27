@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsNumber, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateVariantDto {
   @ApiProperty({ example: 'سفید' })
@@ -12,7 +13,7 @@ export class CreateVariantDto {
   @IsString()
   colorHex?: string;
 
-  @ApiPropertyOptional({ example: 'محصول فری سایز', description: 'اگر خالی باشد از sizeType محصول پر می‌شود' })
+  @ApiPropertyOptional({ example: 'سایز ۱', description: 'اگر خالی باشد از sizeType محصول پر می‌شود' })
   @IsOptional()
   @IsString()
   size?: string;
@@ -21,4 +22,28 @@ export class CreateVariantDto {
   @IsOptional()
   @IsString()
   barcode?: string;
+
+  /** Absolute wholesale stock for this color/size (synced onto product) */
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  wholesaleStock?: number;
+
+  /** Absolute retail stock for this color/size */
+  @ApiPropertyOptional({ example: 5 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  retailStock?: number;
+
+  /** Legacy alias — applied to wholesaleStock when wholesaleStock omitted */
+  @ApiPropertyOptional({ example: 10 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  stock?: number;
 }

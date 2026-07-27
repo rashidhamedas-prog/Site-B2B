@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp, Users, ShoppingCart, CreditCard, AlertTriangle,
@@ -160,21 +160,32 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const data = await apiClient.get<DashboardStats>('/dashboard');
       setStats(data);
       setUsingFallback(false);
     } catch {
-      setStats(EMPTY);
-      setUsingFallback(true);
+      if (!silent) {
+        setStats(EMPTY);
+        setUsingFallback(true);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load(false);
+    const id = window.setInterval(() => load(true), 15000);
+    const onFocus = () => load(true);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [load]);
 
   const monthlyOrders = stats.monthlyOrders ?? [];
   const monthlyRevenue = stats.monthlyRevenue ?? [];
@@ -245,7 +256,7 @@ export function AdminDashboard() {
           </p>
         </div>
         <button
-          onClick={load}
+          onClick={() => load(false)}
           disabled={loading}
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-primary transition-colors bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm hover:shadow"
         >
