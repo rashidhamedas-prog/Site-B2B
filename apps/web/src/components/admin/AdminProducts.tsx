@@ -36,6 +36,13 @@ const COMMON_COLORS: Array<{ name: string; hex: string }> = [
   { name: 'خردلی', hex: '#D4A017' },
 ];
 
+function sizeOptionsForType(sizeType?: string): string[] {
+  const t = String(sizeType || 'FREE').toUpperCase();
+  if (t === 'TWO') return ['سایز ۱', 'سایز ۲'];
+  if (t === 'THREE') return ['سایز ۱', 'سایز ۲', 'سایز ۳'];
+  return ['فری سایز'];
+}
+
 type SpecMemory = Record<string, string[]>;
 
 const emptySpecs: ProductSpecs = {
@@ -79,7 +86,14 @@ const emptyForm = {
   videoUrl: '',
 };
 
-const emptyVariantForm = { color: '', colorHex: '#000000', barcode: '' };
+const emptyVariantForm = {
+  color: '',
+  colorHex: '#000000',
+  barcode: '',
+  size: 'فری سایز',
+  wholesaleStock: '0',
+  retailStock: '0',
+};
 
 type FormData = typeof emptyForm;
 type VariantForm = typeof emptyVariantForm;
@@ -90,7 +104,15 @@ interface Variant {
   colorHex: string;
   size: string;
   stock: number;
+  wholesaleStock?: number;
+  retailStock?: number;
   barcode?: string;
+}
+
+interface SavedColor {
+  id: string;
+  name: string;
+  hex?: string | null;
 }
 
 function MemoryChips({
@@ -108,7 +130,7 @@ function MemoryChips({
           key={v}
           type="button"
           onClick={() => onPick(v)}
-          className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 hover:bg-primary-50 hover:text-primary transition-colors"
+          className="cursor-pointer text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 hover:bg-primary-50 hover:text-primary transition-colors"
         >
           {v}
         </button>
@@ -126,20 +148,45 @@ function VariantsModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [form, setForm] = useState<VariantForm>(emptyVariantForm);
+  const sizeOpts = sizeOptionsForType(product.sizeType);
+  const [form, setForm] = useState<VariantForm>({
+    ...emptyVariantForm,
+    size: sizeOpts[0],
+  });
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [variants, setVariants] = useState<Variant[]>(product.variants ?? []);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedColors, setSavedColors] = useState<SavedColor[]>([]);
+  const [newColorName, setNewColorName] = useState('');
+  const [newColorHex, setNewColorHex] = useState('#000000');
+  const [colorBusy, setColorBusy] = useState(false);
 
-  const sizeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
+  const sizeTypeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
+
+  const loadSavedColors = useCallback(async () => {
+    try {
+      const res = await apiClient.get<SavedColor[]>('/products/meta/colors');
+      setSavedColors(Array.isArray(res) ? res : []);
+    } catch {
+      setSavedColors([]);
+    }
+  }, []);
+
+  useEffect(() => { loadSavedColors(); }, [loadSavedColors]);
 
   const refresh = useCallback(async () => {
     const res = await apiClient.get<{ variants: Variant[] }>(`/products/${product.id}`);
     setVariants((res as { variants?: Variant[] }).variants ?? []);
     onDone();
   }, [product.id, onDone]);
+
+  const totalWholesale = variants.reduce(
+    (s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0),
+    0,
+  );
+  const totalRetail = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
 
   const startEdit = (v: Variant) => {
     setEditId(v.id);
@@ -148,41 +195,87 @@ function VariantsModal({
       color: v.color,
       colorHex: v.colorHex || '#000000',
       barcode: v.barcode ?? '',
+      size: v.size || sizeOpts[0],
+      wholesaleStock: String(Number(v.wholesaleStock) || Number(v.stock) || 0),
+      retailStock: String(Number(v.retailStock) || 0),
     });
   };
 
   const cancelEdit = () => {
     setEditId(null);
     setSaveError(null);
-    setForm(emptyVariantForm);
+    setForm({ ...emptyVariantForm, size: sizeOpts[0] });
   };
 
   const pickColor = (name: string, hex: string) => {
     setForm((p) => ({ ...p, color: name, colorHex: hex || p.colorHex }));
   };
 
-  // Color definition only — inventory is managed exclusively in Admin Inventory.
+  const addSavedColor = async () => {
+    if (!newColorName.trim()) return;
+    setColorBusy(true);
+    try {
+      await apiClient.post('/products/meta/colors', {
+        name: newColorName.trim(),
+        hex: newColorHex,
+      });
+      setNewColorName('');
+      setNewColorHex('#000000');
+      await loadSavedColors();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خطا در ذخیره رنگ');
+    } finally {
+      setColorBusy(false);
+    }
+  };
+
+  const removeSavedColor = async (id: string) => {
+    if (!confirm('این رنگ از لیست سریع حذف شود؟')) return;
+    setColorBusy(true);
+    try {
+      await apiClient.delete(`/products/meta/colors/${id}`);
+      await loadSavedColors();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خطا در حذف');
+    } finally {
+      setColorBusy(false);
+    }
+  };
+
   const handleSave = async () => {
-    if (!form.color) return;
+    if (!form.color || !form.size) return;
+    const wholesaleStock = Math.max(0, Math.floor(Number(form.wholesaleStock) || 0));
+    const retailStock = Math.max(0, Math.floor(Number(form.retailStock) || 0));
+    if (!Number.isFinite(wholesaleStock) || !Number.isFinite(retailStock)) {
+      setSaveError('موجودی نامعتبر است');
+      return;
+    }
     setSaveError(null);
     setSaving(true);
     try {
+      const payload = {
+        color: form.color,
+        colorHex: form.colorHex,
+        barcode: form.barcode || undefined,
+        size: form.size,
+        wholesaleStock,
+        retailStock,
+        stock: wholesaleStock,
+      };
       if (editId) {
-        await apiClient.patch(`/products/${product.id}/variants/${editId}`, {
-          color: form.color,
-          colorHex: form.colorHex,
-          barcode: form.barcode || undefined,
-        });
+        await apiClient.patch(`/products/${product.id}/variants/${editId}`, payload);
       } else {
-        await apiClient.post(`/products/${product.id}/variants`, {
-          color: form.color,
-          colorHex: form.colorHex,
-          barcode: form.barcode || undefined,
-          size: sizeLabel,
-        });
+        await apiClient.post(`/products/${product.id}/variants`, payload);
       }
+      try {
+        await apiClient.post('/products/meta/colors', {
+          name: form.color,
+          hex: form.colorHex,
+        });
+        await loadSavedColors();
+      } catch { /* ignore */ }
       setEditId(null);
-      setForm(emptyVariantForm);
+      setForm({ ...emptyVariantForm, size: sizeOpts[0] });
       await refresh();
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : 'خطا در ذخیره رنگ');
@@ -197,40 +290,124 @@ function VariantsModal({
     await refresh();
   };
 
-  const f = (key: keyof VariantForm, label: string, type = 'text', placeholder = '') => (
-    <div>
-      <label className="block text-[10px] font-medium text-gray-500 mb-1">{label}</label>
-      <input
-        type={type}
-        value={form[key]}
-        onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
-      />
-    </div>
-  );
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col relative">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col relative">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h3 className="text-base font-bold text-gray-900">واریانت‌ها (رنگ‌بندی)</h3>
+            <h3 className="text-base font-bold text-gray-900">واریانت‌ها (رنگ / سایز / موجودی)</h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              {product.name} — {product.sku} — {sizeLabel}
+              {product.name} — {product.sku} — {sizeTypeLabel}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button type="button" onClick={onClose} className="cursor-pointer text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 space-y-3">
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 space-y-3 overflow-y-auto max-h-[48vh]">
+          <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-2">
+            <p className="text-xs font-semibold text-gray-600">لیست رنگ‌های ذخیره‌شده (انتخاب سریع)</p>
+            <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+              {savedColors.length === 0 ? (
+                <p className="text-[11px] text-gray-400">هنوز رنگی ذخیره نشده — از فرم زیر اضافه کنید</p>
+              ) : (
+                savedColors.map((c) => (
+                  <span
+                    key={c.id}
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 pl-1 pr-2 py-0.5"
+                  >
+                    <button
+                      type="button"
+                      title={`انتخاب ${c.name}`}
+                      onClick={() => pickColor(c.name, c.hex || '#000000')}
+                      className="cursor-pointer flex items-center gap-1.5 text-[11px] text-gray-700 hover:text-primary"
+                    >
+                      <span
+                        className="h-3.5 w-3.5 rounded-full border border-gray-300"
+                        style={{ backgroundColor: c.hex || '#ccc' }}
+                      />
+                      {c.name}
+                    </button>
+                    <button
+                      type="button"
+                      title="حذف از لیست"
+                      disabled={colorBusy}
+                      onClick={() => removeSavedColor(c.id)}
+                      className="cursor-pointer text-gray-300 hover:text-error p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[120px]">
+                <label className="block text-[10px] font-medium text-gray-500 mb-1">نام رنگ جدید</label>
+                <input
+                  value={newColorName}
+                  onChange={(e) => setNewColorName(e.target.value)}
+                  placeholder="مثلاً نسکافه‌ای"
+                  className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-medium text-gray-500 mb-1">کد</label>
+                <input
+                  type="color"
+                  value={newColorHex}
+                  onChange={(e) => setNewColorHex(e.target.value)}
+                  className="h-[34px] w-14 rounded-lg border border-gray-200 cursor-pointer"
+                />
+              </div>
+              <button
+                type="button"
+                disabled={colorBusy || !newColorName.trim()}
+                onClick={addSavedColor}
+                className="btn btn-outline btn-sm cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                افزودن به لیست
+              </button>
+            </div>
+            <div>
+              <p className="text-[10px] text-gray-400 mb-1">پالت پیشنهادی</p>
+              <div className="flex flex-wrap gap-1.5">
+                {COMMON_COLORS.map((c) => (
+                  <button
+                    key={c.hex + c.name}
+                    type="button"
+                    title={c.name}
+                    onClick={() => {
+                      setNewColorName(c.name);
+                      setNewColorHex(c.hex);
+                      pickColor(c.name, c.hex);
+                    }}
+                    className={cn(
+                      'h-6 w-6 rounded-full border border-gray-200 hover:scale-110 transition-transform cursor-pointer',
+                      form.colorHex?.toLowerCase() === c.hex.toLowerCase() && 'ring-2 ring-primary ring-offset-1',
+                    )}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
           <p className="text-xs font-semibold text-gray-500">
-            {editId ? 'ویرایش رنگ' : 'تعریف رنگ جدید'}
+            {editId ? 'ویرایش واریانت' : 'افزودن رنگ + سایز + موجودی'}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end">
-            {f('color', 'نام رنگ', 'text', 'سفید')}
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">نام رنگ</label>
+              <input
+                value={form.color}
+                onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
+                placeholder="سفید"
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+            </div>
             <div>
               <label className="block text-[10px] font-medium text-gray-500 mb-1">کد رنگ</label>
               <input
@@ -240,44 +417,69 @@ function VariantsModal({
                 className="w-full h-[34px] rounded-lg border border-gray-200 cursor-pointer"
               />
             </div>
-            {f('barcode', 'بارکد', 'text', 'اختیاری')}
-          </div>
-
-          <div>
-            <p className="text-[10px] text-gray-400 mb-1.5">پالت رنگ‌های رایج</p>
-            <div className="flex flex-wrap gap-1.5">
-              {COMMON_COLORS.map((c) => (
-                <button
-                  key={c.hex + c.name}
-                  type="button"
-                  title={c.name}
-                  onClick={() => pickColor(c.name, c.hex)}
-                  className={cn(
-                    'h-6 w-6 rounded-full border border-gray-200 hover:scale-110 transition-transform cursor-pointer',
-                    form.colorHex?.toLowerCase() === c.hex.toLowerCase() && 'ring-2 ring-primary ring-offset-1',
-                  )}
-                  style={{ backgroundColor: c.hex }}
-                />
-              ))}
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">سایز</label>
+              <select
+                value={form.size}
+                onChange={(e) => setForm((p) => ({ ...p, size: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer bg-white"
+              >
+                {sizeOpts.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">موجودی عمده</label>
+              <input
+                type="number"
+                min={0}
+                value={form.wholesaleStock}
+                onChange={(e) => setForm((p) => ({ ...p, wholesaleStock: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">موجودی تکی</label>
+              <input
+                type="number"
+                min={0}
+                value={form.retailStock}
+                onChange={(e) => setForm((p) => ({ ...p, retailStock: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">بارکد</label>
+              <input
+                value={form.barcode}
+                onChange={(e) => setForm((p) => ({ ...p, barcode: e.target.value }))}
+                placeholder="اختیاری"
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+              />
             </div>
           </div>
 
-          <p className="text-[11px] text-gray-400">
-            اینجا فقط رنگ و بارکد تعریف می‌شود؛ موجودی را از دکمه «موجودی» جداگانه ثبت کنید.
+          <p className="text-[11px] text-gray-500">
+            مجموع موجودی رنگ‌ها به‌صورت خودکار روی موجودی کالا ثبت می‌شود —
+            عمده: <strong className="text-primary">{totalWholesale}</strong>
+            {' · '}
+            تکی: <strong className="text-amber-700">{totalRetail}</strong>
           </p>
           {saveError && <p className="text-xs text-error">{saveError}</p>}
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={handleSave}
-              disabled={saving || !form.color}
-              className="btn btn-primary btn-sm flex items-center gap-1.5"
+              disabled={saving || !form.color || !form.size}
+              className="btn btn-primary btn-sm flex items-center gap-1.5 cursor-pointer"
             >
               <Save className="h-3.5 w-3.5" />
-              {saving ? 'ذخیره...' : editId ? 'بروزرسانی رنگ' : 'افزودن رنگ'}
+              {saving ? 'ذخیره...' : editId ? 'بروزرسانی واریانت' : 'افزودن واریانت'}
             </button>
             {editId && (
-              <button onClick={cancelEdit} className="btn btn-outline btn-sm">
+              <button type="button" onClick={cancelEdit} className="btn btn-outline btn-sm cursor-pointer">
                 انصراف
               </button>
             )}
@@ -287,14 +489,14 @@ function VariantsModal({
         <div className="overflow-y-auto flex-1">
           {variants.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">
-              رنگی تعریف نشده — از فرم بالا اضافه کنید
+              واریانتی تعریف نشده — از فرم بالا اضافه کنید
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  {['رنگ', 'سایز', 'بارکد', ''].map((h) => (
-                    <th key={h || 'actions'} className="px-4 py-2 text-right text-xs font-semibold text-gray-400">
+                  {['رنگ', 'سایز', 'موجودی عمده', 'موجودی تکی', 'بارکد', ''].map((h) => (
+                    <th key={h || 'actions'} className="px-3 py-2 text-right text-xs font-semibold text-gray-400">
                       {h}
                     </th>
                   ))}
@@ -306,7 +508,7 @@ function VariantsModal({
                     key={v.id}
                     className={cn('hover:bg-gray-50 transition-colors', editId === v.id && 'bg-primary-50')}
                   >
-                    <td className="px-4 py-2.5">
+                    <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <span
                           className="h-4 w-4 rounded-full border border-gray-200 flex-shrink-0"
@@ -315,14 +517,20 @@ function VariantsModal({
                         <span>{v.color}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-gray-600">{v.size || sizeLabel}</td>
-                    <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{v.barcode || '—'}</td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-3 py-2.5 text-xs text-gray-600">{v.size}</td>
+                    <td className="px-3 py-2.5 font-mono text-sm font-semibold text-primary">
+                      {Number(v.wholesaleStock) || Number(v.stock) || 0}
+                    </td>
+                    <td className="px-3 py-2.5 font-mono text-sm font-semibold text-amber-700">
+                      {Number(v.retailStock) || 0}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-gray-400 font-mono">{v.barcode || '—'}</td>
+                    <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => startEdit(v)} className="text-gray-400 hover:text-primary">
+                        <button type="button" onClick={() => startEdit(v)} className="cursor-pointer text-gray-400 hover:text-primary">
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
-                        <button onClick={() => setDeletingId(v.id)} className="text-gray-400 hover:text-error">
+                        <button type="button" onClick={() => setDeletingId(v.id)} className="cursor-pointer text-gray-400 hover:text-error">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -334,9 +542,11 @@ function VariantsModal({
           )}
         </div>
 
-        <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-          <p className="text-xs text-gray-400">{variants.length} رنگ ثبت شده</p>
-          <button onClick={onClose} className="btn btn-outline btn-sm">
+        <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center gap-3 flex-wrap">
+          <p className="text-xs text-gray-500">
+            {variants.length} واریانت · جمع عمده {totalWholesale} · جمع تکی {totalRetail}
+          </p>
+          <button type="button" onClick={onClose} className="btn btn-outline btn-sm cursor-pointer">
             بستن
           </button>
         </div>
@@ -344,14 +554,15 @@ function VariantsModal({
         {deletingId && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
             <div className="bg-white rounded-xl p-6 shadow-xl text-center">
-              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این رنگ؟</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeletingId(null)} className="btn btn-outline btn-sm">
+              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این واریانت؟</p>
+              <div className="flex gap-3 justify-center">
+                <button type="button" onClick={() => setDeletingId(null)} className="btn btn-outline btn-sm cursor-pointer">
                   انصراف
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleDelete(deletingId)}
-                  className="btn btn-sm bg-error text-white hover:bg-red-700"
+                  className="btn btn-sm bg-error text-white hover:bg-red-700 cursor-pointer"
                 >
                   حذف
                 </button>
