@@ -26,6 +26,11 @@ export class BlogPostEntity {
   @Column({ default: 'عمومی' })
   category: string;
 
+  /** WHOLESALE | RETAIL */
+  @Column({ default: 'WHOLESALE' })
+  @Index()
+  channel: string;
+
   @Column({ type: 'simple-array', nullable: true })
   tags: string[];
 

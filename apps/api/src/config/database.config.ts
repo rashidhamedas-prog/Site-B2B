@@ -10,12 +10,14 @@ import { OrderEntity } from '../modules/order/entities/order.entity';
 import { OrderItemEntity } from '../modules/order/entities/order-item.entity';
 import { InvoiceEntity } from '../modules/invoice/entities/invoice.entity';
 import { InventoryMovementEntity } from '../modules/inventory/entities/inventory-movement.entity';
+import { WarehouseEntity } from '../modules/inventory/entities/warehouse.entity';
 import { DiscountCodeEntity } from '../modules/discount/entities/discount-code.entity';
 import { TieredDiscountEntity } from '../modules/discount/entities/tiered-discount.entity';
 import { SideDiscountEntity } from '../modules/discount/entities/side-discount.entity';
 import { PaymentEntity } from '../modules/payment/entities/payment.entity';
 import { BlogPostEntity } from '../modules/blog/entities/blog-post.entity';
 import { CmsPageEntity } from '../modules/cms/entities/cms-page.entity';
+import { SiteContentEntity } from '../modules/cms/entities/site-content.entity';
 import { AppSettingEntity } from '../modules/settings/entities/app-setting.entity';
 import { CategoryEntity } from '../modules/category/entities/category.entity';
 import { ProductSpecMemoryEntity } from '../modules/product/entities/product-spec-memory.entity';
@@ -38,10 +40,12 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     OrderEntity, OrderItemEntity,
     InvoiceEntity,
     InventoryMovementEntity,
+    WarehouseEntity,
     DiscountCodeEntity, TieredDiscountEntity, SideDiscountEntity,
     PaymentEntity,
     BlogPostEntity,
     CmsPageEntity,
+    SiteContentEntity,
     AppSettingEntity,
     ReturnRequestEntity,
   ],

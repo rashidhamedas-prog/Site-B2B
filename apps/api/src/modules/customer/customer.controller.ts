@@ -20,8 +20,15 @@ export class CustomerController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
     @Query('segment') segment?: string,
+    @Query('businessType') businessType?: string,
+    @Query('channel') channel?: string,
+    @Query('type') type?: string,
   ) {
-    return this.customerService.findAll(page, limit, search, segment);
+    return this.customerService.findAll(page, limit, search, segment, {
+      businessType,
+      channel,
+      type,
+    });
   }
 
   @Get(':id')

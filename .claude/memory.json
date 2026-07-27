@@ -9,7 +9,7 @@
   "retailPreviewPath": "/retail",
   "lastDeploy": "2026-07-24 d852373 — retail B2C complete on server",
   "lastE2e": "PASSED — ORD-2026-00002",
-  "lastRetailComplete": "2026-07-25 marketplace-affiliate integrations",
+  "lastRetailComplete": "2026-07-27 channel-split inventory + CMS site content",
   "documentation": {
     "worklog": "docs/WORKLOG.md",
     "b2c": "docs/B2C.md",
@@ -22,10 +22,11 @@
   "knownRisks": [
     "Product images uploaded before sharp remain as original JPG size",
     "Min order qty vs stock can block wholesale checkout if inventory low",
-    "DB_SYNC/production: Collection + new product/order columns need sync or migration on server",
+    "DB_SYNC/production: Warehouse + SiteContent + channel stock columns need sync or migration on server",
     "Zarinpal needs merchantId enabled in admin payment settings for live ONLINE redirects",
     "Basalam product map (basalamProductMap) must be filled after creating booth products",
-    "Marketplace panels (Torob/Bam/etc.) require owner registration — feeds/pixels are site-ready"
+    "Marketplace panels (Torob/Bam/etc.) require owner registration — feeds/pixels are site-ready",
+    "Legacy variant.stock may lag retailStock until first channel-aware sync"
   ],
   "fixedBugs": [
     "AdminProducts images empty on save (useCallback deps)",

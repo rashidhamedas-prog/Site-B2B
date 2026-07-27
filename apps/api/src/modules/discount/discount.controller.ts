@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { DiscountService } from './discount.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,8 +14,8 @@ export class DiscountController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth()
-  findAll() {
-    return this.svc.findAll();
+  findAll(@Query('channel') channel?: string) {
+    return this.svc.findAll(channel);
   }
 
   @Post()
@@ -32,6 +32,7 @@ export class DiscountController {
       startsAt: body.startsAt ? new Date(body.startsAt) : undefined,
       expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
       isActive: body.isActive ?? true,
+      channel: body.channel,
       notes: body.notes,
     });
   }

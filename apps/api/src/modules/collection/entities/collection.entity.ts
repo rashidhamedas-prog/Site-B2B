@@ -38,6 +38,10 @@ export class CollectionEntity {
   @Column({ nullable: true })
   imageUrl: string;
 
+  /** WHOLESALE | RETAIL */
+  @Column({ default: 'WHOLESALE' })
+  channel: string;
+
   @Column({ default: true })
   isActive: boolean;
 
