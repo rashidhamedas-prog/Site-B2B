@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { TrendingUp, Users, ShoppingCart, CreditCard, Calendar, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { AdminChannelTabs, type AdminChannel } from './AdminChannelTabs';
 
 type Period = 'week' | 'month' | 'quarter' | 'year';
 
@@ -153,15 +154,16 @@ const PERIOD_LABEL: Record<Period, string> = {
 
 export function AdminReports() {
   const [period, setPeriod] = useState<Period>('month');
+  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const [data, setData] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const load = useCallback(async (p: Period) => {
+  const load = useCallback(async (p: Period, ch: AdminChannel) => {
     setLoading(true);
     setError(false);
     try {
-      const res = await apiClient.get<ReportsData>(`/dashboard/reports?period=${p}`);
+      const res = await apiClient.get<ReportsData>(`/dashboard/reports?period=${p}&channel=${ch}`);
       setData(res);
     } catch {
       setData(null);
@@ -171,7 +173,7 @@ export function AdminReports() {
     }
   }, []);
 
-  useEffect(() => { load(period); }, [period, load]);
+  useEffect(() => { load(period, channel); }, [period, channel, load]);
 
   const chartValues = (data?.series ?? []).map((s) => Math.round(s.value / 10_000_000));
   const chartLabels = (data?.series ?? []).map((s) => s.label);
@@ -214,21 +216,24 @@ export function AdminReports() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-gray-500">
           {error
             ? <span className="text-amber-600">⚠ دریافت گزارش از API ناموفق بود</span>
             : 'گزارش‌های فروش، مشتریان و محصولات بر اساس داده واقعی'}
         </p>
-        <button
-          type="button"
-          onClick={() => load(period)}
-          disabled={loading}
-          className="flex items-center gap-2 text-sm border border-gray-200 rounded-xl px-3 py-2 text-gray-500 hover:bg-gray-50 transition-all"
-        >
-          <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
-          بروزرسانی
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <AdminChannelTabs value={channel} onChange={setChannel} />
+          <button
+            type="button"
+            onClick={() => load(period, channel)}
+            disabled={loading}
+            className="flex cursor-pointer items-center gap-2 text-sm border border-gray-200 rounded-xl px-3 py-2 text-gray-500 hover:bg-gray-50 transition-all"
+          >
+            <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+            بروزرسانی
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-1.5 bg-gray-100 rounded-2xl p-1 w-fit">

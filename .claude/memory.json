@@ -8,6 +8,7 @@
   "architecture": "shared-core-two-storefronts",
   "retailPreviewPath": "/retail",
   "lastDeploy": "2026-07-24 d852373 — retail B2C complete on server",
+  "lastAdminChannelSplit": "2026-07-27 — wholesale/retail inventory + admin channel tabs + CMS pages/site-content",
   "lastE2e": "PASSED — ORD-2026-00002",
   "lastRetailComplete": "2026-07-27 channel-split inventory + CMS site content",
   "documentation": {
