@@ -20,11 +20,21 @@
  2. اتصال SSH به سرور | SSH ACCESS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  دستور اتصال:
-  ssh -i "C:\Users\DayaTech\.ssh\wholesale_server" wholesale-admin@5.75.200.102
+  آدرس IP سرور   :  5.75.200.102
+  پورت SSH       :  2222
+  کاربر          :  wholesale-admin
+  رمز عبور SSH   :  j7LhUuEffPfH
 
-  کلید SSH روی سیستم:  C:\Users\DayaTech\.ssh\wholesale_server
+  ⚠️  سرور فعلاً PasswordAuthentication را برای پورت 2222 غیرفعال کرده
+      و فقط کلید عمومی (publickey) قبول می‌کند. رمز برای بازیابی /
+      کنسول ابری / فعال‌سازی دوبارهٔ password auth نگه داشته می‌شود.
 
+  دستور اتصال با کلید:
+  ssh -i ~/.ssh/wholesale_server -p 2222 wholesale-admin@5.75.200.102
+
+  کلید SSH (ویندوز):  C:\Users\DayaTech\.ssh\wholesale_server
+  کلید SSH (لینوکس/ایجنت):  ~/.ssh/wholesale_server
+  Secret محیط Cursor:  VPS_SSH_KEY  (کلید خصوصی OpenSSH ed25519)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  3. دامنه‌ها | DOMAINS
