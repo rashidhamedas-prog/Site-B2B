@@ -22,9 +22,10 @@ export class DashboardController {
   @Get('reports')
   @ApiOperation({ summary: 'گزارش‌های واقعی فروش و مشتریان' })
   @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'quarter', 'year'] })
-  getReports(@Query('period') period?: string) {
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
+  getReports(@Query('period') period?: string, @Query('channel') channel?: string) {
     const allowed: ReportPeriod[] = ['week', 'month', 'quarter', 'year'];
     const p = allowed.includes(period as ReportPeriod) ? (period as ReportPeriod) : 'month';
-    return this.dashboardService.getReports(p);
+    return this.dashboardService.getReports(p, channel);
   }
 }

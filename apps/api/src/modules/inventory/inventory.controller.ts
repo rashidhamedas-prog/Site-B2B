@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Body, Param, Query,
+  Controller, Get, Post, Put, Delete, Body, Param, Query,
   UseGuards, ParseIntPipe, DefaultValuePipe, BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
@@ -22,38 +22,51 @@ export class InventoryController {
   @ApiQuery({ name: 'limit', required: false })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'filter', required: false, enum: ['ALL', 'LOW', 'ZERO'] })
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   getStock(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
     @Query('search') search?: string,
     @Query('filter') filter?: string,
+    @Query('channel') channel?: string,
   ) {
-    return this.inventoryService.getStock(page, limit, search, filter);
+    return this.inventoryService.getStock(page, limit, search, filter, channel);
   }
 
   @Get('summary')
   @ApiOperation({ summary: 'خلاصه وضعیت انبار' })
-  getSummary() {
-    return this.inventoryService.getSummary();
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
+  getSummary(@Query('channel') channel?: string) {
+    return this.inventoryService.getSummary(channel);
   }
 
   @Get('movements')
   @ApiOperation({ summary: 'تاریخچه تمام تحرکات انبار' })
   @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   getAllMovements(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(30), ParseIntPipe) limit: number,
+    @Query('channel') channel?: string,
   ) {
-    return this.inventoryService.getAllMovements(page, limit);
+    return this.inventoryService.getAllMovements(page, limit, channel);
+  }
+
+  @Delete('movements/:id')
+  @ApiOperation({ summary: 'حذف ردیف تاریخچه تحرک (بدون برگشت موجودی)' })
+  deleteMovement(@Param('id') id: string) {
+    return this.inventoryService.deleteMovement(id);
   }
 
   @Get('movements/:variantId')
   @ApiOperation({ summary: 'تاریخچه موجودی یک واریانت' })
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   getMovements(
     @Param('variantId') variantId: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('channel') channel?: string,
   ) {
-    return this.inventoryService.getMovements(variantId, page);
+    return this.inventoryService.getMovements(variantId, page, 30, channel);
   }
 
   @Post('set')
@@ -65,6 +78,8 @@ export class InventoryController {
       stock: number;
       notes?: string;
       createdBy?: string;
+      channel?: string;
+      warehouseId?: string;
     },
   ) {
     if (body.productId) {
@@ -73,6 +88,8 @@ export class InventoryController {
         body.stock,
         body.notes,
         body.createdBy,
+        body.channel,
+        body.warehouseId,
       );
     }
     if (body.productVariantId) {
@@ -81,6 +98,8 @@ export class InventoryController {
         body.stock,
         body.notes,
         body.createdBy,
+        body.channel,
+        body.warehouseId,
       );
     }
     throw new BadRequestException('productId یا productVariantId الزامی است');
@@ -94,6 +113,8 @@ export class InventoryController {
       stock: number;
       notes?: string;
       createdBy?: string;
+      channel?: string;
+      warehouseId?: string;
     },
   ) {
     if (!body.productId) throw new BadRequestException('productId الزامی است');
@@ -102,11 +123,13 @@ export class InventoryController {
       body.stock,
       body.notes,
       body.createdBy,
+      body.channel,
+      body.warehouseId,
     );
   }
 
   @Post('adjust')
-  @ApiOperation({ summary: 'تعدیل موجودی (روی موجودی محصول اعمال می‌شود)' })
+  @ApiOperation({ summary: 'تعدیل موجودی (روی موجودی کانال اعمال می‌شود)' })
   adjust(
     @Body() body: {
       productVariantId: string;
@@ -114,6 +137,8 @@ export class InventoryController {
       type: 'IN' | 'OUT' | 'ADJUST' | 'RETURN' | 'DAMAGE';
       notes?: string;
       createdBy?: string;
+      channel?: string;
+      warehouseId?: string;
     },
   ) {
     return this.inventoryService.adjust(
@@ -122,6 +147,46 @@ export class InventoryController {
       body.type,
       body.notes,
       body.createdBy,
+      undefined,
+      body.channel,
+      body.warehouseId,
     );
+  }
+
+  // ── Warehouses ─────────────────────────────────────────────
+
+  @Get('warehouses')
+  @ApiOperation({ summary: 'لیست انبارها (با ایجاد پیش‌فرض در صورت نیاز)' })
+  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
+  listWarehouses(@Query('channel') channel?: string) {
+    return this.inventoryService.listWarehouses(channel);
+  }
+
+  @Post('warehouses')
+  @ApiOperation({ summary: 'ایجاد انبار' })
+  createWarehouse(
+    @Body() body: {
+      name: string;
+      code?: string;
+      channel?: string;
+      address?: string;
+      notes?: string;
+      isActive?: boolean;
+      isDefault?: boolean;
+    },
+  ) {
+    return this.inventoryService.createWarehouse(body);
+  }
+
+  @Put('warehouses/:id')
+  @ApiOperation({ summary: 'ویرایش انبار' })
+  updateWarehouse(@Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.inventoryService.updateWarehouse(id, body as any);
+  }
+
+  @Delete('warehouses/:id')
+  @ApiOperation({ summary: 'حذف انبار' })
+  deleteWarehouse(@Param('id') id: string) {
+    return this.inventoryService.deleteWarehouse(id);
   }
 }

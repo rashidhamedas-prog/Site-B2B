@@ -20,8 +20,9 @@ export class BlogController {
     @Query('limit') limit?: number,
     @Query('category') category?: string,
     @Query('search') search?: string,
+    @Query('channel') channel?: string,
   ) {
-    return this.svc.findPublished({ page, limit, category, search });
+    return this.svc.findPublished({ page, limit, category, search, channel });
   }
 
   @Get('categories')
@@ -40,8 +41,8 @@ export class BlogController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth()
-  findAllAdmin() {
-    return this.svc.findAllAdmin();
+  findAllAdmin(@Query('channel') channel?: string) {
+    return this.svc.findAllAdmin(channel);
   }
 
   @Post('admin/posts')

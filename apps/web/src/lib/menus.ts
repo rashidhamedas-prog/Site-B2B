@@ -63,3 +63,38 @@ export const DEFAULT_MENUS: MenusSettings = {
     { id: 'l-shipping', label: 'شرایط ارسال', href: '/shipping' },
   ],
 };
+
+/** Retail (.ir) storefront defaults — paths under /retail/... */
+export const DEFAULT_RETAIL_MENUS: MenusSettings = {
+  megaEnabled: true,
+  main: [
+    {
+      id: 'products',
+      label: 'محصولات',
+      href: '/retail/products',
+      children: [
+        { id: 'cat-blouse', label: 'شومیزی', href: '/retail/products?fabric=لینن', description: 'شومیزی' },
+        { id: 'cat-manteau', label: 'مانتو', href: '/retail/products', description: 'مانتو' },
+        { id: 'cat-set', label: 'ست', href: '/retail/products', description: 'ست دو و سه تکه' },
+      ],
+    },
+    { id: 'collections', label: 'کالکشن‌ها', href: '/retail/collections' },
+    { id: 'about', label: 'درباره ترنم', href: '/retail/about' },
+    { id: 'blog', label: 'وبلاگ', href: '/retail/blog' },
+    { id: 'contact', label: 'تماس با ما', href: '/retail/contact' },
+  ],
+  footer: [
+    { id: 'f-products', label: 'محصولات', href: '/retail/products' },
+    { id: 'f-collections', label: 'کالکشن‌ها', href: '/retail/collections' },
+    { id: 'f-about', label: 'درباره ما', href: '/retail/about' },
+    { id: 'f-blog', label: 'وبلاگ', href: '/retail/blog' },
+    { id: 'f-contact', label: 'تماس با ما', href: '/retail/contact' },
+  ],
+  mobile: [],
+  legal: [
+    { id: 'l-privacy', label: 'حریم خصوصی', href: '/retail/privacy' },
+    { id: 'l-terms', label: 'شرایط و قوانین', href: '/retail/terms' },
+    { id: 'l-returns', label: 'شرایط مرجوعی', href: '/retail/returns' },
+    { id: 'l-shipping', label: 'شرایط ارسال', href: '/retail/shipping' },
+  ],
+};

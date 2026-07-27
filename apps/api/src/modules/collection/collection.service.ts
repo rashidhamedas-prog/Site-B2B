@@ -10,9 +10,14 @@ export class CollectionService {
     private readonly repo: Repository<CollectionEntity>,
   ) {}
 
-  findAll(activeOnly = false) {
+  findAll(activeOnly = false, channel?: string) {
+    const where: any = activeOnly ? { isActive: true } : {};
+    if (channel) {
+      const c = String(channel).toUpperCase();
+      where.channel = c === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    }
     return this.repo.find({
-      where: activeOnly ? { isActive: true } : {},
+      where,
       order: { createdAt: 'DESC' },
     });
   }

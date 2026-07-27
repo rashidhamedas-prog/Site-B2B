@@ -5,6 +5,7 @@ import { Search, Plus, X, Save, Send, DollarSign, FileText, AlertCircle, Downloa
 import { Input, Badge, Pagination } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
 
 interface Invoice {
   id: string;
@@ -218,6 +219,7 @@ export function AdminInvoices() {
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [channelFilter, setChannelFilter] = useState<AdminChannel | 'ALL'>('ALL');
   const [page, setPage] = useState(1);
   const [showCreate, setShowCreate] = useState(false);
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
@@ -230,11 +232,12 @@ export function AdminInvoices() {
     try {
       const q = new URLSearchParams({ page: String(page), limit: '20' });
       if (search) q.set('search', search);
+      if (channelFilter !== 'ALL') q.set('channel', channelFilter);
       const res = await apiClient.get<{ data: Invoice[]; meta: typeof meta }>(`/invoices?${q}`);
       setInvoices(res.data);
       setMeta(res.meta);
     } catch {} finally { setLoading(false); }
-  }, [page, search]);
+  }, [page, search, channelFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -293,10 +296,16 @@ export function AdminInvoices() {
         ))}
       </div>
 
-      <div className="w-72">
-        <Input placeholder="جستجو شماره یا مشتری..." value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          rightIcon={<Search className="h-4 w-4" />} />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-72">
+          <Input placeholder="جستجو شماره یا مشتری..." value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            rightIcon={<Search className="h-4 w-4" />} />
+        </div>
+        <AdminChannelFilter
+          value={channelFilter}
+          onChange={(v) => { setChannelFilter(v); setPage(1); }}
+        />
       </div>
 
       <div className="card overflow-hidden">

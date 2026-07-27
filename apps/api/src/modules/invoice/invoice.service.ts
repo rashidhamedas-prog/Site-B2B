@@ -25,14 +25,35 @@ export class InvoiceService {
     return this.repo.save(invoice);
   }
 
-  async findAll(page = 1, limit = 20, customerId?: string) {
-    const where: any = customerId ? { customerId } : {};
-    const [data, total] = await this.repo.findAndCount({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(
+    page = 1,
+    limit = 20,
+    customerId?: string,
+    channel?: string,
+  ) {
+    const qb = this.repo
+      .createQueryBuilder('inv')
+      .leftJoinAndSelect('inv.customer', 'customer')
+      .orderBy('inv.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (customerId) {
+      qb.andWhere('inv.customerId = :customerId', { customerId });
+    }
+
+    const ch = String(channel || '').toUpperCase();
+    if (ch === 'RETAIL') {
+      qb.andWhere(
+        `(UPPER(COALESCE(customer.businessType, '')) = 'RETAIL' OR UPPER(COALESCE(customer.type, '')) = 'RETAIL')`,
+      );
+    } else if (ch === 'WHOLESALE') {
+      qb.andWhere(
+        `(UPPER(COALESCE(customer.businessType, '')) <> 'RETAIL' AND UPPER(COALESCE(customer.type, '')) <> 'RETAIL')`,
+      );
+    }
+
+    const [data, total] = await qb.getManyAndCount();
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 

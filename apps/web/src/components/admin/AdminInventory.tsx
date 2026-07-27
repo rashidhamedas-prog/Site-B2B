@@ -3,11 +3,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import {
   Search, Package, AlertTriangle, XCircle, TrendingUp,
-  Plus, Minus, RefreshCw, X, Save, History, ChevronDown, ChevronRight,
+  Plus, Minus, RefreshCw, X, Save, History, ChevronDown, ChevronRight, Trash2,
 } from 'lucide-react';
 import { Input } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 
 interface Variant {
   id: string;
@@ -51,7 +52,7 @@ interface Movement {
 
 // ── Hook ───────────────────────────────────────────────────────
 
-function useInventory(filter: string, search: string, page: number) {
+function useInventory(filter: string, search: string, page: number, channel: AdminChannel) {
   const [products, setProducts] = useState<StockProduct[]>([]);
   const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -59,7 +60,7 @@ function useInventory(filter: string, search: string, page: number) {
   const fetch = useCallback(async () => {
     setLoading(true);
     try {
-      const q = new URLSearchParams({ page: String(page), limit: '40' });
+      const q = new URLSearchParams({ page: String(page), limit: '40', channel });
       if (search) q.set('search', search);
       if (filter !== 'ALL') q.set('filter', filter);
       const res = await apiClient.get<{ data: StockProduct[]; meta: typeof meta }>(`/inventory/stock?${q}`);
@@ -70,20 +71,20 @@ function useInventory(filter: string, search: string, page: number) {
     } finally {
       setLoading(false);
     }
-  }, [filter, search, page]);
+  }, [filter, search, page, channel]);
 
   useEffect(() => { fetch(); }, [fetch]);
   return { products, meta, loading, refetch: fetch };
 }
 
-function useSummary() {
+function useSummary(channel: AdminChannel) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const fetch = useCallback(async () => {
     try {
-      const res = await apiClient.get<Summary>('/inventory/summary');
+      const res = await apiClient.get<Summary>(`/inventory/summary?channel=${channel}`);
       setSummary(res);
     } catch {}
-  }, []);
+  }, [channel]);
   useEffect(() => { fetch(); }, [fetch]);
   return { summary, refetch: fetch };
 }
@@ -98,8 +99,11 @@ const TYPES = [
   { value: 'DAMAGE', label: 'ضایعات',         icon: XCircle,    color: 'text-gray-500' },
 ];
 
-function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
-  variant: Variant; productName: string; currentStock?: number; onClose: () => void; onDone: () => void;
+function AdjustModal({
+  variant, productName, currentStock, channel, onClose, onDone,
+}: {
+  variant: Variant; productName: string; currentStock?: number;
+  channel: AdminChannel; onClose: () => void; onDone: () => void;
 }) {
   const [type, setType] = useState('IN');
   const [qty, setQty] = useState('');
@@ -119,6 +123,7 @@ function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
         quantity,
         type,
         notes: notes || undefined,
+        channel,
       });
       onDone();
       onClose();
@@ -144,10 +149,10 @@ function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
           <div>
             <h3 className="text-base font-bold text-gray-900">تعدیل موجودی محصول</h3>
             <p className="text-xs text-gray-500 mt-0.5">
-              {productName}
+              {productName} — انبار {channelLabel(channel)}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} className="cursor-pointer text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="p-6 space-y-4">
@@ -156,11 +161,10 @@ function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
             <span className="text-lg font-bold text-gray-900">{baseStock} عدد</span>
           </div>
 
-          {/* Type */}
           <div className="grid grid-cols-5 gap-1.5">
             {TYPES.map((t) => (
-              <button key={t.value} onClick={() => setType(t.value)}
-                className={cn('flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all',
+              <button key={t.value} type="button" onClick={() => setType(t.value)}
+                className={cn('cursor-pointer flex flex-col items-center gap-1 p-2 rounded-xl border text-xs font-medium transition-all',
                   type === t.value ? 'border-primary bg-primary-50 text-primary' : 'border-gray-200 text-gray-500 hover:border-gray-300')}>
                 <t.icon className={cn('h-4 w-4', type === t.value ? 'text-primary' : t.color)} />
                 <span className="text-[10px] text-center leading-tight">{t.label}</span>
@@ -168,7 +172,6 @@ function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
             ))}
           </div>
 
-          {/* Quantity */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
               {type === 'ADJUST' ? 'موجودی جدید (عدد دقیق)' : 'تعداد'}
@@ -180,7 +183,6 @@ function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
             />
           </div>
 
-          {/* Preview */}
           {qty && !isNaN(parseInt(qty)) && (
             <div className="flex items-center justify-between rounded-xl bg-primary-50 px-4 py-3 border border-primary-100">
               <span className="text-sm text-primary-dark">موجودی بعد از تعدیل</span>
@@ -190,7 +192,6 @@ function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
             </div>
           )}
 
-          {/* Notes */}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">توضیحات (اختیاری)</label>
             <input
@@ -204,9 +205,9 @@ function AdjustModal({ variant, productName, currentStock, onClose, onDone }: {
         </div>
 
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="btn btn-outline btn-md">انصراف</button>
-          <button onClick={handleSave} disabled={saving || !qty}
-            className="btn btn-primary btn-md flex items-center gap-2">
+          <button type="button" onClick={onClose} className="btn btn-outline btn-md cursor-pointer">انصراف</button>
+          <button type="button" onClick={handleSave} disabled={saving || !qty}
+            className="btn btn-primary btn-md flex items-center gap-2 cursor-pointer">
             <Save className="h-4 w-4" />
             {saving ? 'در حال ذخیره...' : 'ثبت تعدیل'}
           </button>
@@ -227,16 +228,30 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   SALE:   { label: 'فروش',    color: 'bg-purple-100 text-purple-700' },
 };
 
-function HistoryModal({ onClose }: { onClose: () => void }) {
+function HistoryModal({ channel, onClose }: { channel: AdminChannel; onClose: () => void }) {
   const [movements, setMovements] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    apiClient.get<{ data: Movement[] }>('/inventory/movements?limit=50')
+    apiClient.get<{ data: Movement[] }>(`/inventory/movements?limit=50&channel=${channel}`)
       .then((r) => setMovements(r.data))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [channel]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('این تحرک از تاریخچه حذف شود؟')) return;
+    setDeletingId(id);
+    try {
+      await apiClient.delete(`/inventory/movements/${id}`);
+      setMovements((prev) => prev.filter((m) => m.id !== id));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خطا در حذف');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -244,9 +259,9 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
             <History className="h-5 w-5 text-primary" />
-            تاریخچه تحرکات انبار
+            تاریخچه تحرکات — انبار {channelLabel(channel)}
           </h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+          <button type="button" onClick={onClose} className="cursor-pointer text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
         </div>
         <div className="overflow-y-auto flex-1">
           {loading ? (
@@ -257,8 +272,8 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-gray-50">
                 <tr>
-                  {['نوع', 'تعداد', 'موجودی بعد', 'توضیحات', 'تاریخ'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                  {['نوع', 'تعداد', 'موجودی بعد', 'توضیحات', 'تاریخ', ''].map((h) => (
+                    <th key={h || 'actions'} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -278,6 +293,17 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
                       <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                         {new Date(m.createdAt).toLocaleDateString('fa-IR')}
                       </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          disabled={deletingId === m.id}
+                          onClick={() => handleDelete(m.id)}
+                          className="cursor-pointer text-gray-400 hover:text-error disabled:opacity-40"
+                          title="حذف از تاریخچه"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -290,17 +316,10 @@ function HistoryModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Stock Badge ────────────────────────────────────────────────
-
-function StockBadge({ stock }: { stock: number }) {
-  if (stock === 0) return <span className="inline-flex items-center gap-1 text-xs font-bold text-error"><XCircle className="h-3 w-3" />اتمام</span>;
-  if (stock < 5)   return <span className="inline-flex items-center gap-1 text-xs font-bold text-warning"><AlertTriangle className="h-3 w-3" />{stock}</span>;
-  return <span className="text-sm font-bold text-success">{stock}</span>;
-}
-
 // ── Main Component ─────────────────────────────────────────────
 
 export function AdminInventory() {
+  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('ALL');
   const [page, setPage] = useState(1);
@@ -311,10 +330,17 @@ export function AdminInventory() {
   const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
   const [stockSavingId, setStockSavingId] = useState<string | null>(null);
 
-  const { products, meta, loading, refetch } = useInventory(filter, search, page);
-  const { summary, refetch: refetchSummary } = useSummary();
+  const { products, meta, loading, refetch } = useInventory(filter, search, page, channel);
+  const { summary, refetch: refetchSummary } = useSummary(channel);
 
   const handleDone = () => { refetch(); refetchSummary(); };
+
+  const handleChannelChange = (c: AdminChannel) => {
+    setChannel(c);
+    setPage(1);
+    setExpanded(new Set());
+    setStockDrafts({});
+  };
 
   const handleProductStockSave = async (product: StockProduct) => {
     const raw = stockDrafts[product.id] ?? String(product.totalStock);
@@ -334,6 +360,7 @@ export function AdminInventory() {
       await apiClient.post('/inventory/product/set', {
         productId: product.id,
         stock,
+        channel,
       });
       setStockDrafts((p) => {
         const next = { ...p };
@@ -365,22 +392,27 @@ export function AdminInventory() {
     { key: 'ZERO', label: `اتمام موجودی${summary ? ` (${summary.zeroStock})` : ''}` },
   ];
 
+  const warehouseTitle = channel === 'RETAIL' ? 'انبار تکی' : 'انبار عمده';
+
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">مدیریت انبار</h2>
-          <p className="text-sm text-gray-500 mt-0.5">موجودی محصولات — جدا از بخش رنگ‌بندی</p>
+          <h2 className="text-xl font-bold text-gray-900">{warehouseTitle}</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            موجودی محصولات — انبار {channelLabel(channel)}
+          </p>
         </div>
-        <button onClick={() => setShowHistory(true)}
-          className="btn btn-outline btn-md flex items-center gap-2">
-          <History className="h-4 w-4" />
-          تاریخچه تحرکات
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <AdminChannelTabs value={channel} onChange={handleChannelChange} />
+          <button type="button" onClick={() => setShowHistory(true)}
+            className="btn btn-outline btn-md flex items-center gap-2 cursor-pointer">
+            <History className="h-4 w-4" />
+            تاریخچه تحرکات
+          </button>
+        </div>
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'کل محصولات', value: summary?.totalProducts ?? '—', icon: Package, color: 'bg-primary-50 text-primary' },
@@ -400,7 +432,6 @@ export function AdminInventory() {
         ))}
       </div>
 
-      {/* Filters + Search */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="w-64">
           <Input placeholder="جستجو نام یا SKU..." value={search}
@@ -409,20 +440,19 @@ export function AdminInventory() {
         </div>
         <div className="flex gap-1.5">
           {FILTERS.map((f) => (
-            <button key={f.key} onClick={() => { setFilter(f.key); setPage(1); }}
-              className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+            <button key={f.key} type="button" onClick={() => { setFilter(f.key); setPage(1); }}
+              className={cn('cursor-pointer px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
                 filter === f.key ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
               {f.label}
             </button>
           ))}
         </div>
-        <button onClick={() => { refetch(); refetchSummary(); }}
-          className="h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-primary transition-colors" title="بازخوانی">
+        <button type="button" onClick={() => { refetch(); refetchSummary(); }}
+          className="cursor-pointer h-8 w-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-primary transition-colors" title="بازخوانی">
           <RefreshCw className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Products Table */}
       <div className="card overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-400">در حال بارگذاری...</div>
@@ -437,12 +467,11 @@ export function AdminInventory() {
               const isOpen = expanded.has(product.id);
               return (
                 <div key={product.id}>
-                  {/* Product row */}
                   <div
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => toggleExpand(product.id)}
                   >
-                    <button className="text-gray-400 flex-shrink-0">
+                    <button type="button" className="text-gray-400 flex-shrink-0 cursor-pointer">
                       {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </button>
 
@@ -455,7 +484,6 @@ export function AdminInventory() {
                       <p className="text-xs text-gray-400 mt-0.5">{product.variants.length} رنگ</p>
                     </div>
 
-                    {/* Product-level stock editor */}
                     <div
                       className="flex flex-col items-end gap-0.5 flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
@@ -476,24 +504,26 @@ export function AdminInventory() {
                           )}
                         />
                         <button
+                          type="button"
                           onClick={() => handleProductStockSave(product)}
                           disabled={
                             stockSavingId === product.id ||
                             (stockDrafts[product.id] ?? String(product.totalStock)) === String(product.totalStock)
                           }
                           title="ثبت موجودی محصول"
-                          className="text-gray-400 hover:text-primary disabled:opacity-30"
+                          className="cursor-pointer text-gray-400 hover:text-primary disabled:opacity-30"
                         >
                           <Save className="h-4 w-4" />
                         </button>
                         {product.variants[0] && (
                           <button
+                            type="button"
                             onClick={() => setAdjustTarget({
                               variant: product.variants[0],
                               productName: product.name,
                               currentStock: product.totalStock,
                             })}
-                            className="text-xs text-primary hover:underline font-medium mr-1"
+                            className="cursor-pointer text-xs text-primary hover:underline font-medium mr-1"
                           >
                             تعدیل
                           </button>
@@ -505,7 +535,6 @@ export function AdminInventory() {
                     </div>
                   </div>
 
-                  {/* Expanded: colors are display-only */}
                   {isOpen && (
                     <div className="bg-gray-50 border-t border-gray-100">
                       <div className="px-8 py-3 overflow-x-auto">
@@ -548,12 +577,11 @@ export function AdminInventory() {
           </div>
         )}
 
-        {/* Pagination */}
         {meta.totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 px-4 py-3 border-t border-gray-100">
             {Array.from({ length: meta.totalPages }, (_, i) => i + 1).map((p) => (
-              <button key={p} onClick={() => setPage(p)}
-                className={cn('h-8 w-8 rounded-lg text-sm font-medium transition-colors',
+              <button key={p} type="button" onClick={() => setPage(p)}
+                className={cn('cursor-pointer h-8 w-8 rounded-lg text-sm font-medium transition-colors',
                   p === page ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100')}>
                 {p}
               </button>
@@ -567,12 +595,13 @@ export function AdminInventory() {
           variant={adjustTarget.variant}
           productName={adjustTarget.productName}
           currentStock={adjustTarget.currentStock}
+          channel={channel}
           onClose={() => setAdjustTarget(null)}
           onDone={handleDone}
         />
       )}
 
-      {showHistory && <HistoryModal onClose={() => setShowHistory(false)} />}
+      {showHistory && <HistoryModal channel={channel} onClose={() => setShowHistory(false)} />}
     </div>
   );
 }

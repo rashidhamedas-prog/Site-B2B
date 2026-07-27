@@ -142,32 +142,34 @@ export class DashboardService {
     };
   }
 
-  async getReports(period: ReportPeriod = 'month') {
+  async getReports(period: ReportPeriod = 'month', channel?: string) {
     const bounds = this.periodBounds(period);
     const { start, end, prevStart, prevEnd } = bounds;
+    const ch = this.normalizeChannel(channel);
 
     const [revenueNow, revenuePrev, ordersNow, ordersPrev, customersNow, customersPrev] = await Promise.all([
-      this.sumRevenue(start, end),
-      this.sumRevenue(prevStart, prevEnd),
-      this.countOrders(start, end),
-      this.countOrders(prevStart, prevEnd),
-      this.countNewCustomers(start, end),
-      this.countNewCustomers(prevStart, prevEnd),
+      this.sumRevenue(start, end, ch),
+      this.sumRevenue(prevStart, prevEnd, ch),
+      this.countOrders(start, end, ch),
+      this.countOrders(prevStart, prevEnd, ch),
+      this.countNewCustomers(start, end, ch),
+      this.countNewCustomers(prevStart, prevEnd, ch),
     ]);
 
     const avgOrder = ordersNow > 0 ? Math.round(revenueNow / ordersNow) : 0;
     const avgOrderPrev = ordersPrev > 0 ? Math.round(revenuePrev / ordersPrev) : 0;
 
     const [series, byCity, bySegment, byFabric, topProducts] = await Promise.all([
-      this.revenueSeries(period, bounds),
-      this.salesByCity(start, end),
-      this.customersBySegment(),
-      this.salesByFabric(start, end),
-      this.topProducts(start, end, prevStart, prevEnd),
+      this.revenueSeries(period, bounds, ch),
+      this.salesByCity(start, end, ch),
+      this.customersBySegment(ch),
+      this.salesByFabric(start, end, ch),
+      this.topProducts(start, end, prevStart, prevEnd, ch),
     ]);
 
     return {
       period,
+      channel: ch ?? 'ALL',
       kpis: {
         revenue: { value: revenueNow, change: this.pctChange(revenueNow, revenuePrev) },
         orders: { value: ordersNow, change: this.pctChange(ordersNow, ordersPrev) },
@@ -180,6 +182,26 @@ export class DashboardService {
       byFabric,
       topProducts,
     };
+  }
+
+  private normalizeChannel(channel?: string): 'WHOLESALE' | 'RETAIL' | undefined {
+    const c = String(channel || '').toUpperCase();
+    if (c === 'RETAIL') return 'RETAIL';
+    if (c === 'WHOLESALE') return 'WHOLESALE';
+    return undefined;
+  }
+
+  /** Apply order-type filter for wholesale vs retail website. */
+  private applyOrderChannel<T extends { andWhere: Function }>(
+    qb: T,
+    channel?: 'WHOLESALE' | 'RETAIL',
+  ): T {
+    if (channel === 'RETAIL') {
+      qb.andWhere("o.type = 'RETAIL_WEBSITE'");
+    } else if (channel === 'WHOLESALE') {
+      qb.andWhere("(o.type IS NULL OR o.type <> 'RETAIL_WEBSITE')");
+    }
+    return qb;
   }
 
   private pctChange(current: number, previous: number): number {
@@ -220,29 +242,40 @@ export class DashboardService {
     return { start, end, prevStart, prevEnd };
   }
 
-  private async sumRevenue(start: Date, end: Date): Promise<number> {
-    const row = await this.orderRepo.createQueryBuilder('o')
+  private async sumRevenue(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
+    const qb = this.orderRepo.createQueryBuilder('o')
       .select('SUM(o.total)', 'sum')
       .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
-      .getRawOne();
+      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+    this.applyOrderChannel(qb, channel);
+    const row = await qb.getRawOne();
     return Number(row?.sum) || 0;
   }
 
-  private async countOrders(start: Date, end: Date): Promise<number> {
-    return this.orderRepo.createQueryBuilder('o')
+  private async countOrders(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
+    const qb = this.orderRepo.createQueryBuilder('o')
       .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status != :cancelled', { cancelled: CANCELLED })
-      .getCount();
+      .andWhere('o.status != :cancelled', { cancelled: CANCELLED });
+    this.applyOrderChannel(qb, channel);
+    return qb.getCount();
   }
 
-  private async countNewCustomers(start: Date, end: Date): Promise<number> {
-    return this.customerRepo.createQueryBuilder('c')
-      .where('c.createdAt >= :start AND c.createdAt <= :end', { start, end })
-      .getCount();
+  private async countNewCustomers(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
+    const qb = this.customerRepo.createQueryBuilder('c')
+      .where('c.createdAt >= :start AND c.createdAt <= :end', { start, end });
+    if (channel === 'RETAIL') {
+      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) = 'RETAIL' OR UPPER(COALESCE(c.type,'')) = 'RETAIL')`);
+    } else if (channel === 'WHOLESALE') {
+      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) <> 'RETAIL' AND UPPER(COALESCE(c.type,'')) <> 'RETAIL')`);
+    }
+    return qb.getCount();
   }
 
-  private async revenueSeries(period: ReportPeriod, bounds: { start: Date; end: Date }) {
+  private async revenueSeries(
+    period: ReportPeriod,
+    bounds: { start: Date; end: Date },
+    channel?: 'WHOLESALE' | 'RETAIL',
+  ) {
     const now = new Date();
     const out: Array<{ label: string; value: number }> = [];
 
@@ -253,7 +286,7 @@ export class DashboardService {
         day.setDate(day.getDate() - i);
         const dayEnd = new Date(day);
         dayEnd.setHours(23, 59, 59, 999);
-        const value = await this.sumRevenue(day, dayEnd);
+        const value = await this.sumRevenue(day, dayEnd, channel);
         out.push({
           label: day.toLocaleDateString('fa-IR', { weekday: 'short' }),
           value,
@@ -268,7 +301,7 @@ export class DashboardService {
         const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
         out.push({
           label: start.toLocaleDateString('fa-IR', { month: 'short' }),
-          value: await this.sumRevenue(start, end),
+          value: await this.sumRevenue(start, end, channel),
         });
       }
       return out;
@@ -281,7 +314,7 @@ export class DashboardService {
         const end = new Date(now.getFullYear(), (q - i) * 3 + 3, 0, 23, 59, 59, 999);
         out.push({
           label: `Q${((q - i + 4) % 4) + 1}`,
-          value: await this.sumRevenue(start, end),
+          value: await this.sumRevenue(start, end, channel),
         });
       }
       return out;
@@ -295,20 +328,22 @@ export class DashboardService {
       const cappedEnd = end > bounds.end ? bounds.end : end;
       out.push({
         label: start.toLocaleDateString('fa-IR', { year: 'numeric' }),
-        value: await this.sumRevenue(start, cappedEnd),
+        value: await this.sumRevenue(start, cappedEnd, channel),
       });
     }
     return out;
   }
 
-  private async salesByCity(start: Date, end: Date) {
-    const rows = await this.orderRepo.createQueryBuilder('o')
+  private async salesByCity(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.orderRepo.createQueryBuilder('o')
       .innerJoin('o.customer', 'c')
       .select("COALESCE(NULLIF(TRIM(c.city), ''), 'نامشخص')", 'city')
       .addSelect('COUNT(o.id)', 'count')
       .addSelect('SUM(o.total)', 'revenue')
       .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
+      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+    this.applyOrderChannel(qb, channel);
+    const rows = await qb
       .groupBy("COALESCE(NULLIF(TRIM(c.city), ''), 'نامشخص')")
       .orderBy('SUM(o.total)', 'DESC')
       .limit(8)
@@ -321,10 +356,16 @@ export class DashboardService {
     }));
   }
 
-  private async customersBySegment() {
-    const rows = await this.customerRepo.createQueryBuilder('c')
+  private async customersBySegment(channel?: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.customerRepo.createQueryBuilder('c')
       .select("COALESCE(NULLIF(TRIM(c.segment), ''), 'C')", 'segment')
-      .addSelect('COUNT(*)', 'count')
+      .addSelect('COUNT(*)', 'count');
+    if (channel === 'RETAIL') {
+      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) = 'RETAIL' OR UPPER(COALESCE(c.type,'')) = 'RETAIL')`);
+    } else if (channel === 'WHOLESALE') {
+      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) <> 'RETAIL' AND UPPER(COALESCE(c.type,'')) <> 'RETAIL')`);
+    }
+    const rows = await qb
       .groupBy("COALESCE(NULLIF(TRIM(c.segment), ''), 'C')")
       .getRawMany();
 
@@ -353,8 +394,8 @@ export class DashboardService {
       .sort((a, b) => a.segment.localeCompare(b.segment));
   }
 
-  private async salesByFabric(start: Date, end: Date) {
-    const rows = await this.itemRepo.createQueryBuilder('i')
+  private async salesByFabric(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.itemRepo.createQueryBuilder('i')
       .innerJoin('i.order', 'o')
       .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
       .innerJoin(ProductEntity, 'p', 'p.id = v.productId')
@@ -365,7 +406,9 @@ export class DashboardService {
       .addSelect('SUM(i.quantity)', 'qty')
       .addSelect('SUM(i.totalPrice)', 'revenue')
       .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
+      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+    this.applyOrderChannel(qb, channel);
+    const rows = await qb
       .groupBy("COALESCE(NULLIF(TRIM(p.specs->>'fabricType'), ''), NULLIF(TRIM(p.fabric), ''), 'نامشخص')")
       .orderBy('SUM(i.totalPrice)', 'DESC')
       .limit(6)
@@ -380,8 +423,14 @@ export class DashboardService {
     }));
   }
 
-  private async topProducts(start: Date, end: Date, prevStart: Date, prevEnd: Date) {
-    const rows = await this.itemRepo.createQueryBuilder('i')
+  private async topProducts(
+    start: Date,
+    end: Date,
+    prevStart: Date,
+    prevEnd: Date,
+    channel?: 'WHOLESALE' | 'RETAIL',
+  ) {
+    const qb = this.itemRepo.createQueryBuilder('i')
       .innerJoin('i.order', 'o')
       .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
       .innerJoin(ProductEntity, 'p', 'p.id = v.productId')
@@ -394,7 +443,9 @@ export class DashboardService {
       .addSelect('SUM(i.quantity)', 'sold')
       .addSelect('SUM(i.totalPrice)', 'revenue')
       .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
+      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+    this.applyOrderChannel(qb, channel);
+    const rows = await qb
       .groupBy('p.id')
       .addGroupBy('p.name')
       .addGroupBy("COALESCE(NULLIF(TRIM(p.specs->>'fabricType'), ''), NULLIF(TRIM(p.fabric), ''), '—')")
@@ -405,14 +456,15 @@ export class DashboardService {
     const result = [];
     for (let idx = 0; idx < rows.length; idx += 1) {
       const r = rows[idx];
-      const prevSoldRow = await this.itemRepo.createQueryBuilder('i')
+      const prevQb = this.itemRepo.createQueryBuilder('i')
         .innerJoin('i.order', 'o')
         .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
         .select('SUM(i.quantity)', 'sold')
         .where('v.productId = :pid', { pid: r.productId })
         .andWhere('o.createdAt >= :start AND o.createdAt <= :end', { start: prevStart, end: prevEnd })
-        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
-        .getRawOne();
+        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+      this.applyOrderChannel(prevQb, channel);
+      const prevSoldRow = await prevQb.getRawOne();
       const sold = Number(r.sold) || 0;
       const prevSold = Number(prevSoldRow?.sold) || 0;
       const growth = this.pctChange(sold, prevSold);

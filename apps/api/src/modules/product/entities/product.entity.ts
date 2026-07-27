@@ -73,9 +73,20 @@ export class ProductEntity {
   @Column({ default: 5 })
   minOrderQty: number;
 
-  /** Product-level stock (independent of color variants). Must be a multiple of minOrderQty. */
+  /**
+   * @deprecated Prefer wholesaleStock / retailStock.
+   * Kept in sync with wholesaleStock for legacy readers.
+   */
   @Column({ type: 'int', default: 0 })
   stock: number;
+
+  /** Warehouse stock for wholesale (.com) channel */
+  @Column({ type: 'int', default: 0 })
+  wholesaleStock: number;
+
+  /** Warehouse stock for retail (.ir) channel */
+  @Column({ type: 'int', default: 0 })
+  retailStock: number;
 
   @Column({ nullable: true })
   categoryId: string;

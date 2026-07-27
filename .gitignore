@@ -45,3 +45,6 @@ nginx/ssl/
 srs-extracted/
 *.zip
 taranom-deploy*.tgz
+
+__pycache__/
+*.pyc
