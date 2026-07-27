@@ -1,8 +1,9 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState, useCallback } from 'react';
 import { Plus, Trash2, Save, Loader2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 
 type Collection = {
   id: string;
@@ -12,11 +13,13 @@ type Collection = {
   description?: string;
   imageUrl?: string;
   isActive?: boolean;
+  channel?: string;
 };
 
 const empty = { name: '', season: '', description: '', imageUrl: '', isActive: true };
 
 export function AdminCollections() {
+  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const [rows, setRows] = useState<Collection[]>([]);
   const [form, setForm] = useState(empty);
   const [editId, setEditId] = useState<string | null>(null);
@@ -24,31 +27,36 @@ export function AdminCollections() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<Collection[]>('/collections');
-      setRows(Array.isArray(data) ? data : []);
+      const data = await apiClient.get<Collection[]>(`/collections?channel=${channel}`);
+      const list = Array.isArray(data) ? data : [];
+      const filtered = list.some((c) => c.channel)
+        ? list.filter((c) => !c.channel || c.channel === channel)
+        : list;
+      setRows(filtered);
     } catch (e: any) {
       setError(e?.message || 'خطا در بارگذاری');
     } finally {
       setLoading(false);
     }
-  };
+  }, [channel]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError('');
     try {
+      const payload = { ...form, channel };
       if (editId) {
-        await apiClient.patch(`/collections/${editId}`, form);
+        await apiClient.patch(`/collections/${editId}`, payload);
       } else {
-        await apiClient.post('/collections', form);
+        await apiClient.post('/collections', payload);
       }
       setForm(empty);
       setEditId(null);
@@ -79,9 +87,12 @@ export function AdminCollections() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">کالکشن‌ها</h1>
-        <p className="mt-1 text-sm text-gray-500">مدیریت کالکشن‌های فروشگاه تکی</p>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">کالکشن‌ها</h1>
+          <p className="mt-1 text-sm text-gray-500">مدیریت کالکشن‌های کانال {channelLabel(channel)}</p>
+        </div>
+        <AdminChannelTabs value={channel} onChange={setChannel} />
       </div>
 
       <form onSubmit={submit} className="card space-y-3 p-5 max-w-2xl">
@@ -123,7 +134,7 @@ export function AdminCollections() {
             dir="ltr"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={form.isActive}
@@ -136,7 +147,7 @@ export function AdminCollections() {
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {editId ? 'ذخیره' : 'افزودن'}
@@ -144,7 +155,7 @@ export function AdminCollections() {
           {editId ? (
             <button
               type="button"
-              className="rounded-lg border px-4 py-2 text-sm"
+              className="cursor-pointer rounded-lg border px-4 py-2 text-sm"
               onClick={() => {
                 setEditId(null);
                 setForm(empty);
@@ -179,10 +190,10 @@ export function AdminCollections() {
                   <td className="px-4 py-3">{c.isActive === false ? 'غیرفعال' : 'فعال'}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button type="button" className="text-xs font-bold text-primary" onClick={() => startEdit(c)}>
+                      <button type="button" className="cursor-pointer text-xs font-bold text-primary" onClick={() => startEdit(c)}>
                         ویرایش
                       </button>
-                      <button type="button" className="text-xs font-bold text-red-600" onClick={() => remove(c.id)}>
+                      <button type="button" className="cursor-pointer text-xs font-bold text-red-600" onClick={() => remove(c.id)}>
                         <Trash2 className="inline h-3.5 w-3.5" />
                       </button>
                     </div>

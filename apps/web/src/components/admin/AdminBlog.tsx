@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, X, Save, Eye, FileText, ImagePlus, Loader2 } from 
 import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { cn } from '@/lib/cn';
+import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 
 interface Post {
   id: string;
@@ -20,6 +21,7 @@ interface Post {
   seoTitle?: string;
   seoDescription?: string;
   coverImage?: string;
+  channel?: string;
 }
 
 const emptyForm = {
@@ -31,6 +33,7 @@ const emptyForm = {
 const CATEGORIES = ['عمومی', 'راهنمای پارچه', 'راهنمای کسب‌وکار', 'ترند فصلی', 'مدیریت بوتیک'];
 
 export function AdminBlog() {
+  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -44,11 +47,15 @@ export function AdminBlog() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await apiClient.get<Post[]>('/blog/admin/posts');
-      setPosts(res);
+      const res = await apiClient.get<Post[]>(`/blog/admin/posts?channel=${channel}`);
+      const list = Array.isArray(res) ? res : [];
+      const filtered = list.some((p) => p.channel)
+        ? list.filter((p) => !p.channel || p.channel === channel)
+        : list;
+      setPosts(filtered);
     } catch { setPosts([]); }
     finally { setLoading(false); }
-  }, []);
+  }, [channel]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -81,8 +88,9 @@ export function AdminBlog() {
     if (!form.title || !form.content) return;
     setSaving(true);
     try {
-      if (editId) await apiClient.put(`/blog/admin/posts/${editId}`, form);
-      else await apiClient.post('/blog/admin/posts', form);
+      const payload = { ...form, channel };
+      if (editId) await apiClient.put(`/blog/admin/posts/${editId}`, payload);
+      else await apiClient.post('/blog/admin/posts', payload);
       setModal(false);
       await load();
     } catch (e: any) {
@@ -99,11 +107,16 @@ export function AdminBlog() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-gray-900">وبلاگ</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{posts.length} مطلب — مقالات سئو و راهنمای مشتریان</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {posts.length} مطلب — کانال {channelLabel(channel)}
+          </p>
         </div>
-        <button onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
-          <Plus className="h-4 w-4" />مطلب جدید
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <AdminChannelTabs value={channel} onChange={setChannel} />
+          <button type="button" onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2 cursor-pointer">
+            <Plus className="h-4 w-4" />مطلب جدید
+          </button>
+        </div>
       </div>
 
       <div className="card overflow-hidden">

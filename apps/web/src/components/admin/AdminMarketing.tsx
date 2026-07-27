@@ -5,6 +5,7 @@ import { Tag, Plus, Trash2, Copy, X, Save, Check, Layers, Gift } from 'lucide-re
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { fromJalaliString, toJalaliString, toJalaliDateTimeString } from '@taranom/persian-utils';
+import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 
 interface DiscountCode {
   id: string;
@@ -17,6 +18,7 @@ interface DiscountCode {
   isActive: boolean;
   startsAt?: string;
   expiresAt?: string;
+  channel?: string;
 }
 
 interface TierLevel { minAmount: string; percent: string }
@@ -71,6 +73,7 @@ function isoToJalaliInput(iso?: string): string {
 type Tab = 'codes' | 'tiered' | 'side';
 
 export function AdminMarketing() {
+  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const [tab, setTab] = useState<Tab>('codes');
   const [codes, setCodes] = useState<DiscountCode[]>([]);
   const [tiers, setTiers] = useState<TieredDiscount[]>([]);
@@ -94,20 +97,26 @@ export function AdminMarketing() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
+      const q = `?channel=${channel}`;
       const [c, t, s, cats] = await Promise.all([
-        apiClient.get<DiscountCode[]>('/discount-codes').catch(() => []),
-        apiClient.get<TieredDiscount[]>('/discount-codes/tiered/list').catch(() => []),
-        apiClient.get<SideDiscount[]>('/discount-codes/side/list').catch(() => []),
+        apiClient.get<DiscountCode[]>(`/discount-codes${q}`).catch(() => []),
+        apiClient.get<TieredDiscount[]>(`/discount-codes/tiered/list${q}`).catch(() => []),
+        apiClient.get<SideDiscount[]>(`/discount-codes/side/list${q}`).catch(() => []),
         apiClient.get<Array<{ id: string; name: string }>>('/categories').catch(() => []),
       ]);
-      setCodes(c ?? []);
-      setTiers(t ?? []);
-      setSides(s ?? []);
-      setCategories(cats ?? []);
+      const codeList = Array.isArray(c) ? c : [];
+      setCodes(
+        codeList.some((x) => x.channel)
+          ? codeList.filter((x) => !x.channel || x.channel === channel || x.channel === 'BOTH')
+          : codeList,
+      );
+      setTiers(Array.isArray(t) ? t : []);
+      setSides(Array.isArray(s) ? s : []);
+      setCategories(Array.isArray(cats) ? cats : []);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [channel]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -136,6 +145,7 @@ export function AdminMarketing() {
         startsAt: jalaliInputToIso(form.startsAt),
         expiresAt: jalaliInputToIso(form.expiresAt),
         isActive: form.isActive,
+        channel,
       });
       setCodes((prev) => [created, ...prev]);
       setModal(false);
@@ -145,7 +155,7 @@ export function AdminMarketing() {
     } finally {
       setSaving(false);
     }
-  }, [form]);
+  }, [form, channel]);
 
   const handleSaveTier = async () => {
     const levels = tierLevels
@@ -158,6 +168,7 @@ export function AdminMarketing() {
         levels,
         expiresAt: jalaliInputToIso(tierExpires),
         isActive: true,
+        channel,
       });
       setTiers((prev) => [created, ...prev]);
       setTierModal(false);
@@ -182,6 +193,7 @@ export function AdminMarketing() {
         threshold,
         categoryId: sideForm.categoryId || undefined,
         isActive: sideForm.isActive,
+        channel,
       });
       setSides((prev) => [created, ...prev]);
       setSideModal(false);
@@ -201,15 +213,20 @@ export function AdminMarketing() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">تخفیف‌ها</h2>
-        <p className="text-sm text-gray-500 mt-0.5">کد تخفیف، تخفیف طبقاتی و تخفیف جانبی</p>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">تخفیف‌ها</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            کد تخفیف، تخفیف طبقاتی و تخفیف جانبی — {channelLabel(channel)}
+          </p>
+        </div>
+        <AdminChannelTabs value={channel} onChange={setChannel} />
       </div>
 
       <div className="flex gap-2 flex-wrap">
         {tabs.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={cn('btn btn-sm flex items-center gap-1.5', tab === t.id ? 'btn-primary' : 'btn-outline')}>
+          <button key={t.id} type="button" onClick={() => setTab(t.id)}
+            className={cn('btn btn-sm flex cursor-pointer items-center gap-1.5', tab === t.id ? 'btn-primary' : 'btn-outline')}>
             <t.icon className="h-3.5 w-3.5" />{t.label}
           </button>
         ))}

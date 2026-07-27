@@ -6,6 +6,7 @@ import { Input, SegmentBadge, Pagination } from '@/components/ui';
 import { useCustomers } from '@/lib/hooks/useCustomers';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
 
 const SEGMENTS = ['همه', 'VIP', 'A', 'B', 'C'];
 
@@ -29,6 +30,7 @@ interface Customer {
 export function AdminCustomers() {
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState('');
+  const [channelFilter, setChannelFilter] = useState<AdminChannel | 'ALL'>('ALL');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
@@ -36,8 +38,12 @@ export function AdminCustomers() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
+  const businessType =
+    channelFilter === 'ALL' ? undefined : channelFilter;
+
   const { customers, meta, loading, refetch } = useCustomers({
     page, search: search || undefined, segment: segment || undefined,
+    businessType,
   });
 
   const openCreate = () => { setForm(emptyForm); setEditCustomer(null); setModal('create'); };
@@ -114,11 +120,15 @@ export function AdminCustomers() {
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             rightIcon={<Search className="h-4 w-4" />} />
         </div>
+        <AdminChannelFilter
+          value={channelFilter}
+          onChange={(v) => { setChannelFilter(v); setPage(1); }}
+        />
         <div className="flex items-center gap-1.5">
           <Filter className="h-4 w-4 text-gray-400" />
           {SEGMENTS.map((s) => (
-            <button key={s} onClick={() => { setSegment(s === 'همه' ? '' : s); setPage(1); }}
-              className={cn('px-3 py-1 rounded-full text-xs font-medium transition-colors',
+            <button key={s} type="button" onClick={() => { setSegment(s === 'همه' ? '' : s); setPage(1); }}
+              className={cn('cursor-pointer px-3 py-1 rounded-full text-xs font-medium transition-colors',
                 (s === 'همه' ? segment === '' : segment === s) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
               {s}
             </button>

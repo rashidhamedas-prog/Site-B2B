@@ -13,17 +13,12 @@ interface AdminChannelTabsProps {
   value: AdminChannel;
   onChange: (channel: AdminChannel) => void;
   className?: string;
-  /** Optional third "all" for list filters (orders/customers) */
-  allowAll?: boolean;
-  allLabel?: string;
 }
 
 export function AdminChannelTabs({
   value,
   onChange,
   className,
-  allowAll,
-  allLabel = 'همه',
 }: AdminChannelTabsProps) {
   return (
     <div
@@ -34,15 +29,6 @@ export function AdminChannelTabs({
       role="tablist"
       aria-label="انتخاب کانال فروش"
     >
-      {allowAll && (
-        <button
-          type="button"
-          role="tab"
-          onClick={() => onChange('WHOLESALE')}
-          className="hidden"
-          aria-hidden
-        />
-      )}
       {OPTIONS.map((opt) => {
         const active = value === opt.id;
         return (

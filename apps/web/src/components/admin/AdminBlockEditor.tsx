@@ -230,19 +230,17 @@ function BlockFields({
       {block.type === 'products' && (
         <Field label="شناسه محصولات (با کاما)" value={str(p, 'productIds')} dir="ltr" onChange={(v) => set('productIds', v)} />
       )}
-      {block.type !== 'image' || true ? (
-        <div className={cn((['hero', 'text', 'cta', 'html', 'products', 'image'].includes(block.type)) && 'sm:col-span-2')}>
-          {(block.type === 'html' || block.type === 'text' || block.type === 'hero' || block.type === 'cta' || block.type === 'products' || block.type === 'image') && (
-            <Field
-              label={block.type === 'html' ? 'کد HTML' : block.type === 'image' ? 'توضیح تصویر' : 'متن'}
-              multiline
-              value={str(p, 'body')}
-              dir={block.type === 'html' ? 'ltr' : undefined}
-              onChange={(v) => set('body', v)}
-            />
-          )}
+      {(block.type === 'html' || block.type === 'text' || block.type === 'hero' || block.type === 'cta' || block.type === 'products' || block.type === 'image') && (
+        <div className="sm:col-span-2">
+          <Field
+            label={block.type === 'html' ? 'کد HTML' : block.type === 'image' ? 'توضیح تصویر' : 'متن'}
+            multiline
+            value={str(p, 'body')}
+            dir={block.type === 'html' ? 'ltr' : undefined}
+            onChange={(v) => set('body', v)}
+          />
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
