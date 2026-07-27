@@ -39,8 +39,11 @@ export class ProductService {
     return (specs?.fabricType || fallback || '').trim();
   }
 
-  private withBadges<T extends ProductEntity>(product: T) {
-    const stock = Number.isFinite(Number(product.stock)) ? Number(product.stock) || 0 : 0;
+  private withBadges<T extends ProductEntity>(product: T, channel?: string) {
+    const wholesaleStock = Number(product.wholesaleStock) || Number(product.stock) || 0;
+    const retailStock = Number(product.retailStock) || 0;
+    const stock =
+      String(channel || '').toUpperCase() === 'RETAIL' ? retailStock : wholesaleStock;
     const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
     const createdAt = product.createdAt ? new Date(product.createdAt).getTime() : 0;
     const isNewAuto = createdAt > 0 && Date.now() - createdAt < NEW_BADGE_MS;
@@ -48,7 +51,9 @@ export class ProductService {
     const sizeType = (product.sizeType || 'FREE') as ProductSizeType;
     return {
       ...product,
-      stock,
+      stock: wholesaleStock,
+      wholesaleStock,
+      retailStock,
       fabric: this.fabricFromSpecs(product.specs, product.fabric),
       isNew: isNewAuto,
       isFeatured: !!product.isDiscounted,
@@ -366,36 +371,73 @@ export class ProductService {
     return { message: 'محصول با موفقیت حذف شد' };
   }
 
-  async updateVariantStock(variantId: string, delta: number) {
+  /** Resolve channel stock column on product/variant. */
+  stockField(channel?: string): 'wholesaleStock' | 'retailStock' {
+    const c = String(channel || 'WHOLESALE').toUpperCase();
+    return c === 'RETAIL' ? 'retailStock' : 'wholesaleStock';
+  }
+
+  async updateVariantStock(
+    variantId: string,
+    delta: number,
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+  ) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
-    variant.stock = Math.max(0, (Number(variant.stock) || 0) + delta);
+    const field = this.stockField(channel);
+    const next = Math.max(0, (Number(variant[field]) || 0) + delta);
+    variant[field] = next;
+    // Legacy `stock` always mirrors wholesaleStock
+    if (field === 'wholesaleStock') {
+      variant.stock = next;
+    } else {
+      variant.stock = Number(variant.wholesaleStock) || 0;
+    }
     await this.variantRepo.save(variant);
     await this.syncProductStockFromVariants(variant.productId);
     return variant;
   }
 
-  /** Sum variant stocks onto product.stock (retail truth). */
+  /** Sum variant channel stocks onto product wholesale/retail/legacy stock. */
   async syncProductStockFromVariants(productId: string) {
     const variants = await this.variantRepo.find({ where: { productId } });
-    const sum = variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
-    await this.productRepo.update(productId, { stock: sum });
-    return sum;
+    const wholesaleSum = variants.reduce((s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0), 0);
+    const retailSum = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
+    await this.productRepo.update(productId, {
+      wholesaleStock: wholesaleSum,
+      retailStock: retailSum,
+      stock: wholesaleSum,
+    });
+    return { wholesaleStock: wholesaleSum, retailStock: retailSum, stock: wholesaleSum };
   }
 
   /** Adjust product-level stock by delta (orders deduct with negative delta). */
-  async updateProductStock(productId: string, delta: number) {
+  async updateProductStock(
+    productId: string,
+    delta: number,
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+  ) {
     const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('محصول یافت نشد');
-    product.stock = Math.max(0, (Number(product.stock) || 0) + delta);
+    const field = this.stockField(channel);
+    const next = Math.max(0, (Number(product[field]) || 0) + delta);
+    product[field] = next;
+    if (field === 'wholesaleStock') {
+      product.stock = next;
+    }
     return this.productRepo.save(product);
   }
 
   /**
-   * Set absolute product-level stock (independent of colors).
-   * Must be a non-negative multiple of minOrderQty.
+   * Set absolute product-level stock for a channel.
+   * WHOLESALE: must be a non-negative multiple of minOrderQty; also sets legacy stock.
+   * RETAIL: soft check only (no hard MOQ multiple requirement).
    */
-  async setProductStock(productId: string, stock: number) {
+  async setProductStock(
+    productId: string,
+    stock: number,
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+  ) {
     const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('محصول یافت نشد');
     const minOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
@@ -403,17 +445,25 @@ export class ProductService {
     if (!Number.isFinite(next) || next < 0) {
       throw new BadRequestException('موجودی نامعتبر است');
     }
-    if (next % minOrderQty !== 0) {
+    const field = this.stockField(channel);
+    if (field === 'wholesaleStock' && next % minOrderQty !== 0) {
       throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
     }
-    product.stock = next;
+    product[field] = next;
+    if (field === 'wholesaleStock') {
+      product.stock = next;
+    }
     return this.productRepo.save(product);
   }
 
-  async setProductStockBySku(sku: string, stock: number) {
+  async setProductStockBySku(
+    sku: string,
+    stock: number,
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+  ) {
     const product = await this.productRepo.findOne({ where: { sku: String(sku).trim() } });
     if (!product) throw new NotFoundException(`محصول با SKU «${sku}» یافت نشد`);
-    return this.setProductStock(product.id, stock);
+    return this.setProductStock(product.id, stock, channel);
   }
 
   async findBySku(sku: string) {
@@ -449,6 +499,8 @@ export class ProductService {
       ...data,
       productId,
       stock: 0,
+      wholesaleStock: 0,
+      retailStock: 0,
       color: color.name,
       colorHex: color.hex ?? (data as any).colorHex ?? '',
       size: size.label,
@@ -515,7 +567,7 @@ export class ProductService {
     return { message: 'واریانت حذف شد' };
   }
 
-  async findAllWithVariants(search?: string) {
+  async findAllWithVariants(search?: string, channel?: string) {
     const qb = this.productRepo.createQueryBuilder('p')
       .leftJoinAndSelect('p.variants', 'v')
       .where('p.deletedAt IS NULL')
@@ -526,25 +578,40 @@ export class ProductService {
     }
 
     const products = await qb.getMany();
-    return products.map((p) => ({
-      id: p.id,
-      sku: p.sku,
-      name: p.name,
-      fabric: this.fabricFromSpecs(p.specs, p.fabric),
-      status: p.status,
-      wholesalePrice: p.wholesalePrice,
-      minOrderQty: p.minOrderQty,
-      stock: Number(p.stock) || 0,
-      totalStock: Number(p.stock) || 0,
-      variants: p.variants.map((v) => ({
-        id: v.id,
-        color: v.color,
-        colorHex: v.colorHex,
-        size: v.size,
-        stock: v.stock,
-        barcode: v.barcode,
-      })),
-    }));
+    const field = this.stockField(channel);
+    return products.map((p) => {
+      const wholesaleStock = Number(p.wholesaleStock) || Number(p.stock) || 0;
+      const retailStock = Number(p.retailStock) || 0;
+      const totalStock = field === 'retailStock' ? retailStock : wholesaleStock;
+      return {
+        id: p.id,
+        sku: p.sku,
+        name: p.name,
+        fabric: this.fabricFromSpecs(p.specs, p.fabric),
+        status: p.status,
+        wholesalePrice: p.wholesalePrice,
+        minOrderQty: p.minOrderQty,
+        stock: wholesaleStock,
+        wholesaleStock,
+        retailStock,
+        totalStock,
+        channel: field === 'retailStock' ? 'RETAIL' : 'WHOLESALE',
+        variants: (p.variants ?? []).map((v) => {
+          const vWholesale = Number(v.wholesaleStock) || Number(v.stock) || 0;
+          const vRetail = Number(v.retailStock) || 0;
+          return {
+            id: v.id,
+            color: v.color,
+            colorHex: v.colorHex,
+            size: v.size,
+            stock: field === 'retailStock' ? vRetail : vWholesale,
+            wholesaleStock: vWholesale,
+            retailStock: vRetail,
+            barcode: v.barcode,
+          };
+        }),
+      };
+    });
   }
 
   async getVariant(variantId: string) {

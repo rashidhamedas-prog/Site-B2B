@@ -209,7 +209,10 @@ export class OrderService {
         if (channel === 'WHOLESALE') {
           this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
         }
-        const variantStock = Number(variant.stock) || 0;
+        const variantStock =
+          channel === 'RETAIL'
+            ? Number(variant.retailStock) || 0
+            : Number(variant.wholesaleStock) || Number(variant.stock) || 0;
         if (variantStock < qty) {
           throw new BadRequestException(
             `موجودی کافی نیست برای ${product.name} (${variant.color}/${variant.size}) — موجودی: ${variantStock}`,
@@ -244,7 +247,10 @@ export class OrderService {
       if (!metaVariant) {
         throw new BadRequestException(`برای ${product.name} ابتدا حداقل یک رنگ در واریانت‌ها تعریف کنید`);
       }
-      const variantStock = Number(metaVariant.stock) || 0;
+      const variantStock =
+        channel === 'RETAIL'
+          ? Number(metaVariant.retailStock) || 0
+          : Number(metaVariant.wholesaleStock) || Number(metaVariant.stock) || 0;
       if (variantStock < qty) {
         throw new BadRequestException(
           `موجودی کافی نیست برای ${product.name} (${metaVariant.color}/${metaVariant.size}) — موجودی: ${variantStock}`,
@@ -411,9 +417,9 @@ export class OrderService {
     );
     await this.itemRepo.save(items);
 
-    // Deduct variant stock and sync product aggregate.
+    // Deduct channel-aware variant stock and sync product aggregate.
     for (const item of expandedItems) {
-      await this.productService.updateVariantStock(item.productVariantId, -item.quantity);
+      await this.productService.updateVariantStock(item.productVariantId, -item.quantity, channel);
     }
 
     if (walletApplied > 0) {
@@ -463,11 +469,16 @@ export class OrderService {
     customerId?: string,
     status?: string,
     type?: string,
-    opts?: { includeDeleted?: boolean },
+    opts?: { includeDeleted?: boolean; channel?: string },
   ) {
     const where: any = {};
     if (customerId) where.customerId = customerId;
-    if (type) where.type = type;
+    let resolvedType = type;
+    if (!resolvedType && opts?.channel) {
+      const ch = String(opts.channel).toUpperCase();
+      resolvedType = ch === 'RETAIL' ? 'RETAIL_WEBSITE' : 'WHOLESALE';
+    }
+    if (resolvedType) where.type = resolvedType;
 
     if (status) {
       where.status = status;
@@ -509,6 +520,11 @@ export class OrderService {
     return undefined;
   }
 
+  private orderStockChannel(order: { type?: string }): 'WHOLESALE' | 'RETAIL' {
+    const t = String(order.type || 'WHOLESALE').toUpperCase();
+    return t === 'RETAIL' || t === 'RETAIL_WEBSITE' ? 'RETAIL' : 'WHOLESALE';
+  }
+
   /**
    * Reverse all side-effects of an order (stock, wallet, discount use, pending payments, affiliate).
    * Idempotent via effectsReversedAt.
@@ -517,10 +533,15 @@ export class OrderService {
     if (order.effectsReversedAt) return order;
 
     const full = await this.findOne(order.id);
+    const channel = this.orderStockChannel(full);
 
     for (const item of full.items ?? []) {
       if (item.productVariantId) {
-        await this.productService.updateVariantStock(item.productVariantId, Number(item.quantity) || 0);
+        await this.productService.updateVariantStock(
+          item.productVariantId,
+          Number(item.quantity) || 0,
+          channel,
+        );
       }
     }
 
@@ -627,6 +648,7 @@ export class OrderService {
     }
 
     if (dto.items?.length && !order.effectsReversedAt) {
+      const channel = this.orderStockChannel(order);
       let subtotal = 0;
       for (const patch of dto.items) {
         const item = (order.items ?? []).find((i) => i.id === patch.id);
@@ -636,7 +658,7 @@ export class OrderService {
         const delta = nextQty - prevQty;
         if (delta !== 0 && item.productVariantId) {
           // Same convention as create: negative delta reduces warehouse stock
-          await this.productService.updateVariantStock(item.productVariantId, -delta);
+          await this.productService.updateVariantStock(item.productVariantId, -delta, channel);
         }
         item.quantity = nextQty;
         item.totalPrice = Number(item.unitPrice) * nextQty;

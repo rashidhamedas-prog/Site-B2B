@@ -46,16 +46,19 @@ export class OrderController {
     @Query('customerId') customerId?: string,
     @Query('status') status?: string,
     @Query('type') type?: string,
+    @Query('channel') channel?: string,
   ) {
     if (req.user.role === 'CUSTOMER') {
       const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
       const cid = user?.customerId;
       return this.orderService.findAll(page, limit, cid ?? undefined, status, type, {
         includeDeleted: false,
+        channel,
       });
     }
     return this.orderService.findAll(page, limit, customerId, status, type, {
       includeDeleted: true,
+      channel,
     });
   }
 

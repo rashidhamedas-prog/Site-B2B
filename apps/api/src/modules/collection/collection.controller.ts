@@ -12,8 +12,8 @@ export class CollectionController {
 
   @Get()
   @ApiOperation({ summary: 'لیست کالکشن‌ها' })
-  findAll(@Query('active') active?: string) {
-    return this.svc.findAll(active === '1' || active === 'true');
+  findAll(@Query('active') active?: string, @Query('channel') channel?: string) {
+    return this.svc.findAll(active === '1' || active === 'true', channel);
   }
 
   @Get('slug/:slug')

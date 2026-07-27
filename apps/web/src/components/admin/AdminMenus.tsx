@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { DEFAULT_MENUS, type MenuItem, type MenusSettings } from '@/lib/menus';
+import { DEFAULT_MENUS, DEFAULT_RETAIL_MENUS, type MenuItem, type MenusSettings } from '@/lib/menus';
+import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 
 type MenuKey = 'main' | 'footer' | 'mobile' | 'legal';
 
@@ -22,27 +23,63 @@ function newId() {
   return `m_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function isMenusSettings(v: unknown): v is MenusSettings {
+  return !!v && typeof v === 'object' && Array.isArray((v as MenusSettings).main);
+}
+
+function defaultsFor(channel: AdminChannel): MenusSettings {
+  return channel === 'RETAIL' ? DEFAULT_RETAIL_MENUS : DEFAULT_MENUS;
+}
+
+function normalizeMenus(raw: MenusSettings | undefined, channel: AdminChannel): MenusSettings {
+  const base = defaultsFor(channel);
+  if (!raw) return { ...base };
+  return {
+    ...base,
+    ...raw,
+    main: raw.main?.length ? raw.main : base.main,
+    footer: raw.footer?.length ? raw.footer : base.footer,
+    mobile: raw.mobile?.length ? raw.mobile : base.main,
+    legal: raw.legal?.length ? raw.legal : base.legal,
+  };
+}
+
+function pickChannelMenus(
+  menus: unknown,
+  channel: AdminChannel,
+): MenusSettings {
+  if (!menus || typeof menus !== 'object') {
+    return normalizeMenus(undefined, channel);
+  }
+  const obj = menus as Record<string, unknown>;
+  const nestedKey = channel === 'RETAIL' ? 'retail' : 'wholesale';
+  if (isMenusSettings(obj[nestedKey])) {
+    return normalizeMenus(obj[nestedKey] as MenusSettings, channel);
+  }
+  // Flat legacy menus = wholesale; retail falls back to DEFAULT_RETAIL_MENUS
+  if (isMenusSettings(menus) && Array.isArray((menus as MenusSettings).main)) {
+    if (channel === 'WHOLESALE') return normalizeMenus(menus as MenusSettings, channel);
+    return normalizeMenus(undefined, 'RETAIL');
+  }
+  return normalizeMenus(undefined, channel);
+}
+
 export function AdminMenus() {
+  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const [tab, setTab] = useState<MenuKey>('main');
   const [data, setData] = useState<MenusSettings | null>(null);
+  const [rawMenus, setRawMenus] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (ch: AdminChannel) => {
     setLoading(true);
     try {
-      const res = await apiClient.get<{ menus?: MenusSettings }>('/settings/admin');
-      const menus = res.menus ?? DEFAULT_MENUS;
-      setData({
-        ...DEFAULT_MENUS,
-        ...menus,
-        main: menus.main?.length ? menus.main : DEFAULT_MENUS.main,
-        footer: menus.footer?.length ? menus.footer : DEFAULT_MENUS.footer,
-        mobile: menus.mobile?.length ? menus.mobile : DEFAULT_MENUS.main,
-        legal: menus.legal?.length ? menus.legal : DEFAULT_MENUS.legal,
-      });
+      const res = await apiClient.get<{ menus?: unknown }>('/settings/admin');
+      setRawMenus(res.menus ?? null);
+      setData(pickChannelMenus(res.menus, ch));
     } catch {
       setData(null);
     } finally {
@@ -50,13 +87,32 @@ export function AdminMenus() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(channel); }, [channel, load]);
 
   const save = async () => {
     if (!data) return;
     setSaving(true);
     try {
-      await apiClient.put('/settings/admin/menus', data);
+      // Prefer channel-aware body; also keep nested { wholesale, retail } for dual-site
+      const nested: Record<string, MenusSettings> = {};
+      if (rawMenus && typeof rawMenus === 'object') {
+        const r = rawMenus as Record<string, unknown>;
+        if (isMenusSettings(r.wholesale)) nested.wholesale = r.wholesale;
+        if (isMenusSettings(r.retail)) nested.retail = r.retail;
+        // Migrate flat → wholesale if needed
+        if (!nested.wholesale && isMenusSettings(rawMenus) && 'main' in (rawMenus as object)) {
+          nested.wholesale = rawMenus as MenusSettings;
+        }
+      }
+      nested[channel === 'RETAIL' ? 'retail' : 'wholesale'] = data;
+
+      await apiClient.put('/settings/admin/menus', {
+        channel,
+        ...data,
+        wholesale: nested.wholesale,
+        retail: nested.retail,
+      });
+      setRawMenus(nested);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: any) {
@@ -101,7 +157,7 @@ export function AdminMenus() {
       <div className="card p-8 text-center">
         <AlertCircle className="mx-auto mb-3 h-10 w-10 text-error" />
         <p className="font-medium text-gray-700">بارگذاری منو ناموفق بود</p>
-        <button onClick={load} className="btn btn-primary btn-sm mt-4">تلاش مجدد</button>
+        <button type="button" onClick={() => load(channel)} className="btn btn-primary btn-sm mt-4 cursor-pointer">تلاش مجدد</button>
       </div>
     );
   }
@@ -110,11 +166,14 @@ export function AdminMenus() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">مدیریت منوها</h2>
-        <p className="mt-0.5 text-sm text-gray-500">
-          منوی اصلی، موبایل و فوتر را با کشیدن و رها کردن مرتب کنید. برای مگا‌منو، زیرمجموعه‌ها را به آیتم محصولات اضافه کنید.
-        </p>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">مدیریت منوها</h2>
+          <p className="mt-0.5 text-sm text-gray-500">
+            منوهای سایت {channelLabel(channel)} — با کشیدن و رها کردن مرتب کنید
+          </p>
+        </div>
+        <AdminChannelTabs value={channel} onChange={setChannel} />
       </div>
 
       <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-gray-100 p-4">
@@ -126,7 +185,7 @@ export function AdminMenus() {
           type="button"
           onClick={() => setData((p) => (p ? { ...p, megaEnabled: !p.megaEnabled } : p))}
           className={cn(
-            'relative h-6 w-11 flex-shrink-0 rounded-full transition-colors',
+            'relative h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-colors',
             data.megaEnabled ? 'bg-primary' : 'bg-gray-200',
           )}
         >
@@ -146,7 +205,7 @@ export function AdminMenus() {
             type="button"
             onClick={() => setTab(t.id)}
             className={cn(
-              '-mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
+              'cursor-pointer -mb-px flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
               tab === t.id
                 ? 'border-primary text-primary'
                 : 'border-transparent text-gray-500 hover:border-gray-200 hover:text-gray-800',
@@ -162,11 +221,11 @@ export function AdminMenus() {
         <div className="flex justify-end">
           <button
             type="button"
-            className="btn btn-outline btn-sm"
+            className="btn btn-outline btn-sm cursor-pointer"
             onClick={() =>
               setList(tab, [
                 ...list,
-                { id: newId(), label: 'لینک جدید', href: '/', highlight: false, children: [] },
+                { id: newId(), label: 'لینک جدید', href: channel === 'RETAIL' ? '/retail/' : '/', highlight: false, children: [] },
               ])
             }
           >
@@ -212,15 +271,15 @@ export function AdminMenus() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <button type="button" className="btn btn-ghost btn-sm px-2" onClick={() => move(tab, index, index - 1)}>
+                <button type="button" className="btn btn-ghost btn-sm cursor-pointer px-2" onClick={() => move(tab, index, index - 1)}>
                   <ChevronUp className="h-4 w-4" />
                 </button>
-                <button type="button" className="btn btn-ghost btn-sm px-2" onClick={() => move(tab, index, index + 1)}>
+                <button type="button" className="btn btn-ghost btn-sm cursor-pointer px-2" onClick={() => move(tab, index, index + 1)}>
                   <ChevronDown className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm px-2 text-error"
+                  className="btn btn-ghost btn-sm cursor-pointer px-2 text-error"
                   onClick={() => setList(tab, list.filter((_, i) => i !== index))}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -246,14 +305,20 @@ export function AdminMenus() {
                   <p className="text-xs font-medium text-gray-500">زیرمنو / مگا‌منو</p>
                   <button
                     type="button"
-                    className="btn btn-ghost btn-sm text-xs"
+                    className="btn btn-ghost btn-sm cursor-pointer text-xs"
                     onClick={() => {
                       const next = [...list];
                       next[index] = {
                         ...item,
                         children: [
                           ...(item.children ?? []),
-                          { id: newId(), label: 'زیرمنو', href: '/products', imageUrl: '', description: '' },
+                          {
+                            id: newId(),
+                            label: 'زیرمنو',
+                            href: channel === 'RETAIL' ? '/retail/products' : '/products',
+                            imageUrl: '',
+                            description: '',
+                          },
                         ],
                       };
                       setList(tab, next);
@@ -305,7 +370,7 @@ export function AdminMenus() {
                       />
                       <button
                         type="button"
-                        className="btn btn-ghost btn-sm text-error px-2"
+                        className="btn btn-ghost btn-sm cursor-pointer text-error px-2"
                         onClick={() => {
                           const next = [...list];
                           next[index] = {
@@ -327,7 +392,7 @@ export function AdminMenus() {
       </div>
 
       <div className="sticky bottom-0 flex items-center gap-4 border-t border-gray-100 bg-white/95 py-3 backdrop-blur">
-        <button type="button" onClick={save} disabled={saving} className="btn btn-primary btn-md flex items-center gap-2">
+        <button type="button" onClick={save} disabled={saving} className="btn btn-primary btn-md flex cursor-pointer items-center gap-2">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           ذخیره منوها
         </button>

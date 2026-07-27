@@ -36,6 +36,13 @@ export class InventoryMovementEntity {
   @Column({ nullable: true })
   createdBy: string;
 
+  /** WHOLESALE | RETAIL */
+  @Column({ default: 'WHOLESALE' })
+  channel: string;
+
+  @Column({ nullable: true })
+  warehouseId: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

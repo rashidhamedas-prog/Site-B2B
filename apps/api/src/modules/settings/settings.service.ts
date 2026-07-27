@@ -217,8 +217,11 @@ export class SettingsService {
     };
   }
 
-  async menus() {
-    const s = await this.get('menus');
+  async menus(channel?: string) {
+    const nested = await this.get('menus');
+    const wholesaleKey = await this.get('menus_wholesale');
+    const retailKey = await this.get('menus_retail');
+
     const normalize = (items: any[] | undefined, fallback: any[]) => {
       const src = Array.isArray(items) && items.length ? items : fallback;
       return src.map((it: any, i: number) => ({
@@ -284,13 +287,48 @@ export class SettingsService {
       { id: 'l-shipping', label: 'شرایط ارسال', href: '/shipping', highlight: false, imageUrl: '', description: '', children: [] },
     ];
 
-    return {
+    const buildFrom = (s: Record<string, any>) => ({
       megaEnabled: s.megaEnabled !== false,
       main: normalize(s.main, defaultMain),
       footer: normalize(s.footer, defaultFooter),
       mobile: normalize(s.mobile, defaultMain),
       legal: normalize(s.legal, defaultLegal),
+    });
+
+    // Prefer dedicated keys → nested menus.wholesale/retail → flat menus (= wholesale)
+    const hasNested =
+      nested &&
+      typeof nested === 'object' &&
+      (nested.wholesale || nested.retail) &&
+      !Array.isArray(nested.main);
+
+    const wholesaleSource =
+      (wholesaleKey && Object.keys(wholesaleKey).length ? wholesaleKey : null) ||
+      (hasNested ? nested.wholesale : null) ||
+      nested;
+
+    const retailSource =
+      (retailKey && Object.keys(retailKey).length ? retailKey : null) ||
+      (hasNested ? nested.retail : null) ||
+      wholesaleSource;
+
+    const ch = String(channel || '').toUpperCase();
+    if (ch === 'RETAIL') return buildFrom(retailSource || {});
+    if (ch === 'WHOLESALE') return buildFrom(wholesaleSource || {});
+
+    // Admin full view: return both + flat wholesale for backward compat
+    const wholesale = buildFrom(wholesaleSource || {});
+    const retail = buildFrom(retailSource || {});
+    return {
+      ...wholesale,
+      wholesale,
+      retail,
     };
+  }
+
+  async siteContent() {
+    const s = await this.get('siteContent');
+    return s && typeof s === 'object' ? s : {};
   }
 
   async marketing() {

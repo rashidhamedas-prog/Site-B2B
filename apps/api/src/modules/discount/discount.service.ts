@@ -18,12 +18,28 @@ export class DiscountService {
 
   // ── Codes ──────────────────────────────────────────────────
 
-  async findAll() {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
+  async findAll(channel?: string) {
+    if (!channel) {
+      return this.repo.find({ order: { createdAt: 'DESC' } });
+    }
+    const c = String(channel).toUpperCase();
+    const target = c === 'RETAIL' ? 'RETAIL' : c === 'BOTH' ? 'BOTH' : 'WHOLESALE';
+    if (target === 'BOTH') {
+      return this.repo.find({ where: { channel: 'BOTH' }, order: { createdAt: 'DESC' } });
+    }
+    // Include BOTH codes for the selected channel
+    return this.repo
+      .createQueryBuilder('d')
+      .where('d.channel IN (:...channels)', { channels: [target, 'BOTH'] })
+      .orderBy('d.createdAt', 'DESC')
+      .getMany();
   }
 
   async create(data: Partial<DiscountCodeEntity>) {
-    const code = this.repo.create(data);
+    const channelRaw = String(data.channel || 'WHOLESALE').toUpperCase();
+    const channel =
+      channelRaw === 'RETAIL' ? 'RETAIL' : channelRaw === 'BOTH' ? 'BOTH' : 'WHOLESALE';
+    const code = this.repo.create({ ...data, channel });
     return this.repo.save(code);
   }
 

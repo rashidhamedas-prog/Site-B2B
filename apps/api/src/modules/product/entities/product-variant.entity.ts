@@ -41,8 +41,18 @@ export class ProductVariantEntity {
   @JoinColumn({ name: 'sizeId' })
   sizeRef: VariantSizeEntity;
 
+  /**
+   * @deprecated Prefer wholesaleStock / retailStock.
+   * Kept in sync with wholesaleStock for legacy readers.
+   */
   @Column({ default: 0 })
   stock: number;
+
+  @Column({ type: 'int', default: 0 })
+  wholesaleStock: number;
+
+  @Column({ type: 'int', default: 0 })
+  retailStock: number;
 
   @Column({ nullable: true })
   barcode: string;
