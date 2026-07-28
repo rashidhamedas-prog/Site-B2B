@@ -18,7 +18,7 @@ interface Product {
 async function fetchComingSoon(): Promise<Product[]> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
-    const res = await fetch(`${apiUrl}/products/coming-soon?limit=8`, {
+    const res = await fetch(`${apiUrl}/products/coming-soon?limit=8&channel=WHOLESALE`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];

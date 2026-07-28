@@ -57,6 +57,27 @@ export class CreateProductDto {
   @Min(0)
   retailPrice?: number;
 
+  @ApiPropertyOptional({ description: 'قیمت قبل از تخفیف تکی (ریال)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  retailCompareAtPrice?: number | null;
+
+  @ApiPropertyOptional({ description: 'نمایش در عمده', default: true })
+  @IsOptional()
+  @IsBoolean()
+  showOnWholesale?: boolean;
+
+  @ApiPropertyOptional({ description: 'نمایش در فروشگاه تکی', default: true })
+  @IsOptional()
+  @IsBoolean()
+  showOnRetail?: boolean;
+
+  @ApiPropertyOptional({ description: 'ویژه در ویترین تکی', default: false })
+  @IsOptional()
+  @IsBoolean()
+  retailFeatured?: boolean;
+
   @ApiPropertyOptional({ default: 5 })
   @IsOptional()
   @IsNumber()

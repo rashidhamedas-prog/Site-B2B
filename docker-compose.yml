@@ -129,6 +129,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      API_INTERNAL_URL: http://api:4000/v1
     depends_on:
       - api
     ports:

@@ -1,0 +1,9 @@
+You are an expert in TypeScript, Next.js 14 App Router, React, and Tailwind CSS.
+- Use TypeScript strictly (no `any` types).
+- Use functional components with proper typing.
+- Use Next.js App Router conventions (layout.tsx, page.tsx).
+- Write clean, modular, and reusable code.
+- Use Tailwind CSS for all styling. Avoid custom CSS unless absolutely necessary.
+- Ensure components are responsive by default.
+- Write semantic HTML.
+- When creating a component, include brief JSDoc comments for complex logic.

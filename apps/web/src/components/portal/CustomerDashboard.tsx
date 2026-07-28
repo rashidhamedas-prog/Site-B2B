@@ -8,12 +8,20 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
 interface MyStats {
+  generatedAt?: string;
+  live?: boolean;
   ordersThisMonth: number;
   totalSpent: number;
   outstanding: number;
   creditRemaining: number;
   recentOrders: { id: string; orderNumber: string; status: string; total: number; itemCount: number; createdAt: string }[];
-  customer: { businessName: string; ownerName: string; segment: string; customerCode: string; lastLoginAt?: string };
+  customer: {
+    businessName: string;
+    ownerName: string;
+    segment: string;
+    customerCode: string;
+    lastLoginAt?: string;
+  } | null;
 }
 
 function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa-IR'); }
@@ -21,48 +29,20 @@ function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa
 export function CustomerDashboard() {
   const [stats, setStats] = useState<MyStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const load = async () => {
     setLoading(true);
+    setError('');
     try {
-      // Try dedicated customer stats endpoint; fallback assembles from available endpoints
-      const [ordersRes, invoicesRes, profileRes] = await Promise.allSettled([
-        apiClient.get<{ data: MyStats['recentOrders']; total: number }>('/orders?limit=5&sort=createdAt:DESC'),
-        apiClient.get<{ data: { status: string; total: number; paidAmount: number }[] }>('/invoices?limit=50'),
-        apiClient.get<{ businessName: string; ownerName: string; segment: string; customerCode: string; creditLimit: number; totalSpent: number; lastLoginAt?: string }>('/auth/me/profile'),
-      ]);
-
-      const orders = ordersRes.status === 'fulfilled' ? ordersRes.value.data : [];
-      const invoices = invoicesRes.status === 'fulfilled' ? invoicesRes.value.data : [];
-      const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
-
-      const now = new Date();
-      const thisMonthOrders = orders.filter((o) => {
-        const d = new Date((o as unknown as { createdAt: string }).createdAt);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      });
-
-      const outstanding = invoices
-        .filter((i) => !['PAID', 'DRAFT'].includes(i.status))
-        .reduce((sum, i) => sum + Number(i.total) - Number(i.paidAmount), 0);
-
-      setStats({
-        ordersThisMonth: thisMonthOrders.length,
-        totalSpent: profile?.totalSpent ?? 0,
-        outstanding,
-        creditRemaining: Math.max(0, Number(profile?.creditLimit ?? 0) - outstanding),
-        recentOrders: orders.slice(0, 3) as unknown as MyStats['recentOrders'],
-        customer: {
-          businessName: profile?.businessName ?? 'کسب‌وکار شما',
-          ownerName: profile?.ownerName ?? '',
-          segment: profile?.segment ?? 'BRONZE',
-          customerCode: profile?.customerCode ?? '',
-          lastLoginAt: profile?.lastLoginAt,
-        },
-      });
-    } catch {
+      const data = await apiClient.get<MyStats>('/dashboard/mine');
+      setStats(data);
+    } catch (e: unknown) {
       setStats(null);
-    } finally { setLoading(false); }
+      setError(e instanceof Error ? e.message : 'خطا در دریافت آمار');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -76,32 +56,36 @@ export function CustomerDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome */}
       <div className="card p-5 flex items-center justify-between gap-4 flex-wrap">
         <div>
           {loading
             ? <div className="skeleton h-6 w-40 rounded mb-2" />
-            : <h2 className="text-lg font-bold text-gray-900 mb-1">سلام، {stats?.customer.ownerName || stats?.customer.businessName} عزیز</h2>
+            : <h2 className="text-lg font-bold text-gray-900 mb-1">سلام، {stats?.customer?.ownerName || stats?.customer?.businessName || 'مشتری'} عزیز</h2>
           }
           <p className="text-sm text-gray-500">
-            {stats?.customer.lastLoginAt
-              ? `آخرین ورود: ${new Date(stats.customer.lastLoginAt).toLocaleDateString('fa-IR')}`
-              : 'خوش آمدید'}
+            {error
+              ? <span className="text-error">{error}</span>
+              : stats?.customer?.lastLoginAt
+                ? `آخرین ورود: ${new Date(stats.customer.lastLoginAt).toLocaleDateString('fa-IR')}`
+                : 'خوش آمدید'}
+            {stats?.generatedAt && !error && (
+              <span className="mr-2 text-xs text-gray-400">
+                · بروزرسانی {new Date(stats.generatedAt).toLocaleTimeString('fa-IR')}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {stats && <SegmentBadge segment={stats.customer.segment} />}
-          {stats?.customer.customerCode && (
+          {stats?.customer && <SegmentBadge segment={stats.customer.segment} />}
+          {stats?.customer?.customerCode && (
             <span className="text-xs text-gray-400">کد مشتری: {stats.customer.customerCode}</span>
           )}
-          <button onClick={load} disabled={loading}
-            className="text-gray-400 hover:text-primary">
+          <button type="button" onClick={load} disabled={loading} className="text-gray-400 hover:text-primary" aria-label="بروزرسانی">
             <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
           </button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {loading ? Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="card p-5"><div className="skeleton h-20 rounded" /></div>
@@ -119,7 +103,6 @@ export function CustomerDashboard() {
         ))}
       </div>
 
-      {/* Recent orders */}
       <div className="card overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h3 className="font-bold text-gray-900">آخرین سفارش‌ها</h3>
@@ -151,7 +134,6 @@ export function CustomerDashboard() {
         </div>
       </div>
 
-      {/* Quick actions */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         {[
           { href: '/products', icon: ShoppingCart, label: 'ثبت سفارش جدید', color: 'text-primary' },

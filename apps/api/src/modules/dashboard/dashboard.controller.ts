@@ -1,25 +1,59 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { DashboardService, ReportPeriod } from './dashboard.service';
+import { UserEntity } from '../auth/entities/user.entity';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles('ADMIN')
 @Controller({ path: 'dashboard', version: '1' })
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(
+    private readonly dashboardService: DashboardService,
+    @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
+  ) {}
 
   @Get()
-  @ApiOperation({ summary: 'آمار کلی داشبورد ادمین' })
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'آمار کلی داشبورد ادمین (داده زنده)' })
   getStats() {
     return this.dashboardService.getStats();
   }
 
+  @Get('mine')
+  @Roles('CUSTOMER')
+  @ApiOperation({ summary: 'آمار زنده داشبورد مشتری' })
+  async getMine(@Request() req: Express.Request & { user: { sub: string } }) {
+    const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
+    if (!user?.customerId) {
+      return {
+        generatedAt: new Date().toISOString(),
+        live: true,
+        ordersThisMonth: 0,
+        totalSpent: 0,
+        outstanding: 0,
+        creditRemaining: 0,
+        recentOrders: [],
+        customer: null,
+      };
+    }
+    const stats = await this.dashboardService.getCustomerStats(user.customerId);
+    if (stats.customer) {
+      return {
+        ...stats,
+        customer: { ...stats.customer, lastLoginAt: user.lastLoginAt },
+      };
+    }
+    return stats;
+  }
+
   @Get('reports')
+  @Roles('ADMIN')
   @ApiOperation({ summary: 'گزارش‌های واقعی فروش و مشتریان' })
   @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'quarter', 'year'] })
   @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
