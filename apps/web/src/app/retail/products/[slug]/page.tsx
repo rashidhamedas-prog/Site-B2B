@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
 
 async function getProduct(slug: string) {
   try {
-    const res = await fetch(`${API_BASE}/products/slug/${slug}`, {
+    const res = await fetch(`${API_BASE}/products/slug/${encodeURIComponent(slug)}?channel=RETAIL`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;

@@ -6,6 +6,9 @@ const CART_STORAGE_KEY = 'taranom_cart';
 
 export interface CartItem {
   productId: string;
+  productVariantId?: string;
+  color?: string;
+  size?: string;
   productName: string;
   sku: string;
   unitPrice: number;
@@ -14,14 +17,22 @@ export interface CartItem {
   imageUrl?: string;
 }
 
+export function cartLineKey(
+  item: Pick<CartItem, 'productId' | 'productVariantId' | 'color' | 'size'>,
+) {
+  if (item.productVariantId) return `${item.productId}:${item.productVariantId}`;
+  const meta = [item.color, item.size].filter(Boolean).join('|');
+  return meta ? `${item.productId}:${meta}` : item.productId;
+}
+
 interface CartState {
   items: CartItem[];
 }
 
 type CartAction =
   | { type: 'ADD'; item: CartItem }
-  | { type: 'UPDATE_QTY'; productId: string; quantity: number }
-  | { type: 'REMOVE'; productId: string }
+  | { type: 'UPDATE_QTY'; lineKey: string; quantity: number }
+  | { type: 'REMOVE'; lineKey: string }
   | { type: 'CLEAR' };
 
 function normalizeQty(quantity: number, minOrderQty: number) {
@@ -35,30 +46,37 @@ function normalizeQty(quantity: number, minOrderQty: number) {
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD': {
-      const idx = state.items.findIndex((i) => i.productId === action.item.productId);
+      const key = cartLineKey(action.item);
+      const idx = state.items.findIndex((i) => cartLineKey(i) === key);
       if (idx >= 0) {
         const items = [...state.items];
         const minOrderQty = action.item.minOrderQty ?? items[idx].minOrderQty ?? 1;
         items[idx] = {
           ...items[idx],
+          ...action.item,
           minOrderQty,
           quantity: normalizeQty(items[idx].quantity + action.item.quantity, minOrderQty),
         };
         return { items };
       }
-      return { items: [...state.items, { ...action.item, quantity: normalizeQty(action.item.quantity, action.item.minOrderQty) }] };
+      return {
+        items: [
+          ...state.items,
+          { ...action.item, quantity: normalizeQty(action.item.quantity, action.item.minOrderQty) },
+        ],
+      };
     }
     case 'UPDATE_QTY': {
       return {
         items: state.items.map((i) =>
-          i.productId === action.productId
+          cartLineKey(i) === action.lineKey
             ? { ...i, quantity: normalizeQty(action.quantity, i.minOrderQty) }
-            : i
+            : i,
         ),
       };
     }
     case 'REMOVE':
-      return { items: state.items.filter((i) => i.productId !== action.productId) };
+      return { items: state.items.filter((i) => cartLineKey(i) !== action.lineKey) };
     case 'CLEAR':
       return { items: [] };
     default:
@@ -71,8 +89,8 @@ interface CartContextValue {
   count: number;
   total: number;
   addItem: (item: CartItem) => void;
-  updateQty: (productId: string, quantity: number) => void;
-  removeItem: (productId: string) => void;
+  updateQty: (lineKey: string, quantity: number) => void;
+  removeItem: (lineKey: string) => void;
   clear: () => void;
 }
 
@@ -107,8 +125,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       count,
       total,
       addItem: (item) => dispatch({ type: 'ADD', item }),
-      updateQty: (productId, quantity) => dispatch({ type: 'UPDATE_QTY', productId, quantity }),
-      removeItem: (productId) => dispatch({ type: 'REMOVE', productId }),
+      updateQty: (lineKey, quantity) => dispatch({ type: 'UPDATE_QTY', lineKey, quantity }),
+      removeItem: (lineKey) => dispatch({ type: 'REMOVE', lineKey }),
       clear: () => dispatch({ type: 'CLEAR' }),
     }}>
       {children}
