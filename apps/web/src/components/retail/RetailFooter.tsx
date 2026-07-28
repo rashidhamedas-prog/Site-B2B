@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 
 const COLS = [
   {
@@ -28,16 +31,29 @@ const COLS = [
 ];
 
 export function RetailFooter() {
+  const { chrome } = useSiteChrome('RETAIL');
+  const brandName = chromeStr(chrome, 'brandName', 'POSHAK TARANOM');
+  const blurb = chromeStr(
+    chrome,
+    'blurb',
+    'فروشگاه آنلاین پوشاک زنانه — مستقیم از تولیدی مشهد.',
+  );
+  const copyright = chromeStr(
+    chrome,
+    'copyright',
+    `© ${new Date().getFullYear()} پوشاک ترنم — www.poshaktaranom.ir`,
+  );
+
   return (
     <footer className="mt-auto border-t border-[var(--retail-border)] bg-[var(--retail-primary-dark)] text-white">
       <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-14 sm:px-6 md:grid-cols-4 lg:px-8">
         <div>
           <p className="text-sm font-semibold tracking-[0.14em] text-[var(--retail-gold)]">
-            POSHAK TARANOM
+            {brandName}
           </p>
-          <p className="mt-3 text-sm leading-7 text-white/70">
-            فروشگاه آنلاین پوشاک زنانه — مستقیم از تولیدی مشهد.
-          </p>
+          {blurb ? (
+            <p className="mt-3 text-sm leading-7 text-white/70">{blurb}</p>
+          ) : null}
         </div>
         {COLS.map((col) => (
           <div key={col.title}>
@@ -55,7 +71,7 @@ export function RetailFooter() {
         ))}
       </div>
       <div className="border-t border-white/10 py-4 text-center text-xs text-white/45">
-        © {new Date().getFullYear()} پوشاک ترنم — www.poshaktaranom.ir
+        {copyright}
       </div>
     </footer>
   );

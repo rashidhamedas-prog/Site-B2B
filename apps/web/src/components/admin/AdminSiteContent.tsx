@@ -1,25 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Save, Loader2, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import { Save, Loader2, CheckCircle, Image as ImageIcon, RotateCcw, Sparkles } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 import { AdminBlockEditor, type ContentBlock } from './AdminBlockEditor';
+import { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY, getDefaultBlocks } from '@/lib/cms/defaults';
 import { cn } from '@/lib/cn';
-
-const PAGE_KEYS_BASE = [
-  { key: 'home', label: 'صفحه اصلی' },
-  { key: 'about', label: 'درباره ما' },
-  { key: 'contact', label: 'تماس با ما' },
-  { key: 'shipping', label: 'شرایط ارسال' },
-  { key: 'returns', label: 'مرجوعی' },
-  { key: 'products', label: 'محصولات' },
-  { key: 'collections', label: 'کالکشن‌ها' },
-  { key: 'privacy', label: 'حریم خصوصی' },
-  { key: 'terms', label: 'شرایط و قوانین' },
-] as const;
-
-const WHOLESALE_ONLY = { key: 'wholesale', label: 'شرایط عمده' } as const;
 
 interface SiteContent {
   id?: string;
@@ -34,7 +21,7 @@ interface SiteContent {
 export function AdminSiteContent() {
   const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const pageKeys = useMemo(
-    () => (channel === 'WHOLESALE' ? [...PAGE_KEYS_BASE, WHOLESALE_ONLY] : [...PAGE_KEYS_BASE]),
+    () => (channel === 'WHOLESALE' ? [...CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY] : [...CMS_PAGE_KEYS_BASE]),
     [channel],
   );
   const [pageKey, setPageKey] = useState<string>('home');
@@ -42,6 +29,7 @@ export function AdminSiteContent() {
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -59,9 +47,9 @@ export function AdminSiteContent() {
           `/cms/admin/site-content/${channel}/${pageKey}`,
         );
       } catch {
-        const list = await apiClient.get<SiteContent[]>(
-          `/cms/admin/site-content?channel=${channel}`,
-        ).catch(() => [] as SiteContent[]);
+        const list = await apiClient
+          .get<SiteContent[]>(`/cms/admin/site-content?channel=${channel}`)
+          .catch(() => [] as SiteContent[]);
         data = (Array.isArray(list) ? list : []).find((x) => x.pageKey === pageKey) ?? null;
       }
       const label = pageKeys.find((p) => p.key === pageKey)?.label ?? pageKey;
@@ -76,7 +64,9 @@ export function AdminSiteContent() {
     }
   }, [channel, pageKey, pageKeys]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const save = async () => {
     setSaving(true);
@@ -97,16 +87,59 @@ export function AdminSiteContent() {
     }
   };
 
+  const loadDefaults = () => {
+    if (blocks.length > 0 && !confirm('محتوای فعلی جایگزین پیش‌فرض‌ها می‌شود. ادامه؟')) return;
+    const defaults = getDefaultBlocks(channel, pageKey);
+    setBlocks(defaults);
+    const label = pageKeys.find((p) => p.key === pageKey)?.label ?? pageKey;
+    if (!title) setTitle(label);
+  };
+
+  const seedAllPages = async () => {
+    if (
+      !confirm(
+        `تمام صفحات ${channelLabel(channel)} با محتوای پیش‌فرض ذخیره شوند؟ (صفحات موجود بازنویسی می‌شوند)`,
+      )
+    ) {
+      return;
+    }
+    setSeeding(true);
+    try {
+      for (const p of pageKeys) {
+        const defaults = getDefaultBlocks(channel, p.key);
+        await apiClient.put('/cms/admin/site-content', {
+          channel,
+          pageKey: p.key,
+          title: p.label,
+          blocks: defaults,
+          isPublished: true,
+        });
+      }
+      await load();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خطا در بارگذاری پیش‌فرض‌ها');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">محتوای بصری</h2>
+          <h2 className="text-xl font-bold text-gray-900">تنظیمات محتوای سایت</h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            هیرو، بنر و بلوک‌های محتوا — {channelLabel(channel)}
+            ویرایش / حذف / افزودن تمام متن‌ها، لینک‌ها، تصاویر و شمارنده‌ها — {channelLabel(channel)}
           </p>
         </div>
         <AdminChannelTabs value={channel} onChange={setChannel} />
+      </div>
+
+      <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+        از تب «هدر / فوتر / شناور» نوار بالای سایت، لوگو، فوتر و دکمه شناور را ویرایش کنید. صفحه اصلی و
+        سایر صفحات را از تب‌های زیر انتخاب کنید. هر بلوک قابل جابجایی، ویرایش و حذف است.
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -132,10 +165,35 @@ export function AdminSiteContent() {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="card max-w-3xl space-y-4 p-5">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <ImageIcon className="h-4 w-4" />
-            ویرایش محتوای صفحه «{pageKeys.find((p) => p.key === pageKey)?.label}»
+        <div className="card max-w-4xl space-y-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4" />
+              ویرایش «{pageKeys.find((p) => p.key === pageKey)?.label}»
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={loadDefaults}
+                className="btn btn-outline btn-sm flex cursor-pointer items-center gap-1.5"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                پیش‌فرض این صفحه
+              </button>
+              <button
+                type="button"
+                onClick={seedAllPages}
+                disabled={seeding}
+                className="btn btn-outline btn-sm flex cursor-pointer items-center gap-1.5"
+              >
+                {seeding ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                ذخیره پیش‌فرض همه صفحات
+              </button>
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">عنوان صفحه</label>

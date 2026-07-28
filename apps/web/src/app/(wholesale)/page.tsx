@@ -1,13 +1,5 @@
 import type { Metadata } from 'next';
-import { HeroSection } from '@/components/wholesale/HeroSection';
-import { WhyTaranom } from '@/components/wholesale/WhyTaranom';
-import { FeaturedProducts } from '@/components/wholesale/FeaturedProducts';
-import { ComingSoonSection } from '@/components/wholesale/ComingSoonSection';
-import { HowItWorks } from '@/components/wholesale/HowItWorks';
-import { WholesaleStats } from '@/components/wholesale/WholesaleStats';
-import { Testimonials } from '@/components/wholesale/Testimonials';
-import { WholesaleFaq } from '@/components/wholesale/WholesaleFaq';
-import { CtaBanner } from '@/components/wholesale/CtaBanner';
+import { CmsPage } from '@/components/cms/CmsPage';
 
 export const metadata: Metadata = {
   title: 'فروش عمده مانتو زنانه از تولیدی مشهد',
@@ -26,17 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return (
-    <>
-      <HeroSection />
-      <WholesaleStats />
-      <WhyTaranom />
-      <FeaturedProducts />
-      <ComingSoonSection />
-      <HowItWorks />
-      <Testimonials />
-      <WholesaleFaq />
-      <CtaBanner />
-    </>
-  );
+  return <CmsPage channel="WHOLESALE" pageKey="home" />;
 }

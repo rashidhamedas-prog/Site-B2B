@@ -254,6 +254,12 @@ export function AdminSettings() {
         <p className="text-sm text-gray-500 mt-0.5">
           همه تنظیمات کسب‌وکار و یکپارچه‌سازی‌ها را از اینجا کنترل کنید — تغییرات به‌صورت زنده روی سایت اعمال می‌شوند
         </p>
+        <a
+          href="/admin/site-content"
+          className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10"
+        >
+          تنظیمات محتوای صفحات (هیرو، آمار، فوتر، FAQ، …) →
+        </a>
       </div>
 
       {/* Tabs */}

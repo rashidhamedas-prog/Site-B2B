@@ -5,13 +5,46 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 
-export function RetailHero() {
+export function RetailHero({
+  brandEyebrow = 'زیبایی در هارمونی با شما',
+  headline = 'استایل شما، امضای ترنم',
+  headlineAccent = 'ترنم',
+  body = 'کالکشن جدید مانتو و شومیز زنانه — دوخت تولیدی، پارچه‌های لینن و کتان، ارسال سریع به سراسر ایران.',
+  imageUrl = '/retail/hero-model.png',
+  ctaLabel = 'مشاهده جدیدترین‌ها',
+  ctaHref = '/retail/products',
+  ctaSecondaryLabel = 'مشاهده مجموعه',
+  ctaSecondaryHref = '/retail/collections',
+}: {
+  brandEyebrow?: string;
+  headline?: string;
+  headlineAccent?: string;
+  body?: string;
+  imageUrl?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  ctaSecondaryLabel?: string;
+  ctaSecondaryHref?: string;
+}) {
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
 
+  const renderHeadline = () => {
+    if (headlineAccent && headline.includes(headlineAccent)) {
+      const parts = headline.split(headlineAccent);
+      return (
+        <>
+          {parts[0]}
+          <span className="text-[var(--retail-gold)]">{headlineAccent}</span>
+          {parts.slice(1).join(headlineAccent)}
+        </>
+      );
+    }
+    return headline;
+  };
+
   return (
     <section className="relative isolate overflow-hidden bg-[var(--retail-primary-dark)] text-white">
-      {/* fabric-like textured green + gold flares (mockup) */}
       <div
         className="absolute inset-0"
         style={{
@@ -37,50 +70,52 @@ export function RetailHero() {
           ready ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        {/* Text — right in RTL */}
         <div className="order-2 pb-12 text-center lg:order-1 lg:pb-20 lg:text-right">
-          <div className="mb-5 flex items-center justify-center gap-3 lg:justify-start">
-            <span className="retail-gold-line" />
-            <span className="text-sm font-medium text-[var(--retail-gold)]">زیبایی در هارمونی با شما</span>
-            <span className="retail-gold-line" />
-            <svg className="h-4 w-4 text-[var(--retail-gold)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 2l1.2 4.5L18 8l-4.2 1.8L12 14l-1.8-4.2L6 8l4.8-1.5L12 2z" />
-            </svg>
-          </div>
+          {brandEyebrow ? (
+            <div className="mb-5 flex items-center justify-center gap-3 lg:justify-start">
+              <span className="retail-gold-line" />
+              <span className="text-sm font-medium text-[var(--retail-gold)]">{brandEyebrow}</span>
+              <span className="retail-gold-line" />
+            </div>
+          ) : null}
 
           <h1 className="text-[clamp(1.85rem,4.2vw,3.15rem)] font-extrabold leading-[1.45] tracking-tight">
-            استایل شما، امضای{' '}
-            <span className="text-[var(--retail-gold)]">ترنم</span>
+            {renderHeadline()}
           </h1>
 
-          <p className="mx-auto mt-5 max-w-md text-[15px] leading-8 text-white/75 lg:mx-0">
-            کالکشن جدید مانتو و شومیز زنانه — دوخت تولیدی، پارچه‌های لینن و کتان، ارسال سریع به سراسر ایران.
-          </p>
+          {body ? (
+            <p className="mx-auto mt-5 max-w-md text-[15px] leading-8 text-white/75 lg:mx-0">{body}</p>
+          ) : null}
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-            <Link
-              href="/retail/products"
-              className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-6 py-3 text-sm font-extrabold text-[#1a1a1a] shadow-lg transition hover:brightness-105"
-            >
-              مشاهده جدیدترین‌ها
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/retail/collections"
-              className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[var(--retail-gold)]/70 bg-[var(--retail-primary-dark)]/40 px-6 py-3 text-sm font-bold text-[var(--retail-gold)] transition hover:bg-white/5"
-            >
-              مشاهده مجموعه
-              <ChevronLeft className="h-4 w-4" />
-            </Link>
+            {ctaLabel && ctaHref ? (
+              <Link
+                href={ctaHref}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-6 py-3 text-sm font-extrabold text-[#1a1a1a] shadow-lg transition hover:brightness-105"
+              >
+                {ctaLabel}
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
+            ) : null}
+            {ctaSecondaryLabel && ctaSecondaryHref ? (
+              <Link
+                href={ctaSecondaryHref}
+                className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[var(--retail-gold)]/70 bg-[var(--retail-primary-dark)]/40 px-6 py-3 text-sm font-bold text-[var(--retail-gold)] transition hover:bg-white/5"
+              >
+                {ctaSecondaryLabel}
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
+            ) : null}
           </div>
         </div>
 
-        {/* Model — left in RTL = second column visually on left in LTR grid... 
-            In RTL grid, first column is on the right. So order-1 text is right, order-2 image is left. Good. */}
-        <div className="order-1 relative mx-auto flex h-[min(58vh,560px)] w-full max-w-md items-end justify-center lg:order-2 lg:mx-0 lg:h-[min(86vh,760px)] lg:max-w-none">
-          <div className="absolute bottom-0 h-[85%] w-[78%] rounded-[40%_40%_12%_12%/28%_28%_8%_8%] bg-[radial-gradient(circle_at_50%_30%,rgba(201,168,76,0.15),transparent_60%)]" aria-hidden />
+        <div className="relative order-1 mx-auto flex h-[min(58vh,560px)] w-full max-w-md items-end justify-center lg:order-2 lg:mx-0 lg:h-[min(86vh,760px)] lg:max-w-none">
+          <div
+            className="absolute bottom-0 h-[85%] w-[78%] rounded-[40%_40%_12%_12%/28%_28%_8%_8%] bg-[radial-gradient(circle_at_50%_30%,rgba(201,168,76,0.15),transparent_60%)]"
+            aria-hidden
+          />
           <Image
-            src="/retail/hero-model.png"
+            src={imageUrl || '/retail/hero-model.png'}
             alt="مدل پوشاک ترنم"
             width={720}
             height={960}
