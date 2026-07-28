@@ -56,6 +56,12 @@ interface SettingsPayload {
   theme: ThemeSettings;
   marketing: {
     feedBrandName: string;
+    ga4WholesaleId: string;
+    ga4RetailId: string;
+    gtmWholesaleId: string;
+    gtmRetailId: string;
+    gscWholesaleVerification: string;
+    gscRetailVerification: string;
     yektanetPixelId: string;
     metaPixelId: string;
     adroScriptUrl: string;
@@ -83,7 +89,7 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'sms',      label: 'پیامک (sms.ir)', icon: MessageSquare },
   { id: 'payment',  label: 'درگاه پرداخت', icon: CreditCard },
   { id: 'installments', label: 'قوانین اقساط', icon: CreditCard },
-  { id: 'marketing', label: 'پیکسل / افیلیت', icon: Globe },
+  { id: 'marketing', label: 'Google / پیکسل', icon: Globe },
   { id: 'theme', label: 'تنظیمات تم ترنم', icon: Palette },
 ];
 
@@ -164,6 +170,12 @@ export function AdminSettings() {
         },
         marketing: {
           feedBrandName: res.marketing?.feedBrandName ?? 'پوشاک ترنم',
+          ga4WholesaleId: res.marketing?.ga4WholesaleId ?? '',
+          ga4RetailId: res.marketing?.ga4RetailId ?? '',
+          gtmWholesaleId: res.marketing?.gtmWholesaleId ?? '',
+          gtmRetailId: res.marketing?.gtmRetailId ?? '',
+          gscWholesaleVerification: res.marketing?.gscWholesaleVerification ?? '',
+          gscRetailVerification: res.marketing?.gscRetailVerification ?? '',
           yektanetPixelId: res.marketing?.yektanetPixelId ?? '',
           metaPixelId: res.marketing?.metaPixelId ?? '',
           adroScriptUrl: res.marketing?.adroScriptUrl ?? '',
@@ -651,6 +663,45 @@ export function AdminSettings() {
               <li>Bam CSV → /v1/feeds/bam.csv — business.bam.ir</li>
               <li>Bam XML → /v1/feeds/bam.xml</li>
               <li>فهرست → /v1/feeds</li>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-sky-100 bg-sky-50/70 p-4 space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-sky-950">Google Analytics 4 + Search Console</h3>
+              <p className="mt-1 text-xs text-sky-900/80 leading-relaxed">
+                برای هر دامنه یک Property جدا در GA4 و یک Property جدا در Search Console بسازید.
+                راهنمای کامل: <code className="font-mono">docs/GOOGLE-SETUP.md</code>
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {([
+                ['ga4WholesaleId', 'GA4 عمده (G-…)', 'poshaktaranom.com'],
+                ['ga4RetailId', 'GA4 تکی (G-…)', 'www.poshaktaranom.ir'],
+                ['gtmWholesaleId', 'GTM عمده اختیاری (GTM-…)', ''],
+                ['gtmRetailId', 'GTM تکی اختیاری (GTM-…)', ''],
+                ['gscWholesaleVerification', 'کد تأیید GSC عمده', 'محتوای meta google-site-verification'],
+                ['gscRetailVerification', 'کد تأیید GSC تکی', 'محتوای meta google-site-verification'],
+              ] as const).map(([key, label, hint]) => (
+                <div key={key}>
+                  <label className="mb-1 block text-xs font-medium text-sky-950">
+                    {label}
+                    {hint ? <span className="text-sky-800/60"> — {hint}</span> : null}
+                  </label>
+                  <input
+                    className="w-full rounded-lg border border-sky-200 bg-white px-3 py-2 text-sm font-mono"
+                    value={(data.marketing as any)[key] ?? ''}
+                    onChange={(e) => patch('marketing', (m) => ({ ...m, [key]: e.target.value.trim() }))}
+                    dir="ltr"
+                    placeholder={key.startsWith('ga4') ? 'G-XXXXXXXX' : key.startsWith('gtm') ? 'GTM-XXXXXXX' : 'verification-token'}
+                  />
+                </div>
+              ))}
+            </div>
+            <ul className="list-disc pr-5 text-[11px] text-sky-900/80 space-y-1" dir="ltr">
+              <li>Sitemap عمده → https://poshaktaranom.com/sitemap.xml</li>
+              <li>Sitemap تکی → https://www.poshaktaranom.ir/sitemap.xml</li>
+              <li>robots.txt هر دامنه به‌صورت خودکار به sitemap همان دامنه اشاره می‌کند</li>
             </ul>
           </div>
 

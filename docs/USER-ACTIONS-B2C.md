@@ -24,6 +24,13 @@
 
 ## ۵) مارکت‌پلیس و افیلیت (اتصال از سمت سایت آماده است)
 
+### Google Search Console + Google Analytics 4
+- [ ] راهنمای کامل گام‌به‌گام: [`docs/GOOGLE-SETUP.md`](./GOOGLE-SETUP.md)
+- [ ] برای **عمده** و **تکی** دو Property جدا در GA4 بسازید و `G-...` را در ادمین → تنظیمات → Google وارد کنید
+- [ ] برای هر دامنه Search Console را با HTML tag تأیید کنید و sitemap همان دامنه را Submit کنید  
+  - عمده: `https://poshaktaranom.com/sitemap.xml`  
+  - تکی: `https://www.poshaktaranom.ir/sitemap.xml`
+
 ### تورب — https://torob.com | پنل: https://panel.torob.com
 - [ ] در پنل کسب‌وکار تورب فید را ثبت کنید:  
   `https://api.poshaktaranom.com/v1/feeds/torob.xml`  
