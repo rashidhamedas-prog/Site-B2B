@@ -1,4 +1,4 @@
-# اتصال Google Search Console و Google Analytics 4
+# اتصال Google Search Console و Google Analytics 4 / GTM
 
 این راهنما برای **دو سایت جدا** است:
 
@@ -7,7 +7,11 @@
 | عمده | `https://poshaktaranom.com` | B2B |
 | تکی | `https://www.poshaktaranom.ir` | B2C |
 
-کد سایت از قبل آماده است: کافی است Propertyها را در گوگل بسازید و ID/کد تأیید را در پنل ادمین (یا `.env`) وارد کنید.
+فریم‌ورک: **Next.js 15 (App Router)** — اسنیپت رسمی GTM در `apps/web/src/app/layout.tsx` (داخل `<head>` و اول `<body>`) قرار دارد. افزونه وردپرس (مثل GTM4WP) لازم نیست.
+
+### GTM عمده (فعال در سورس)
+- Container ID: `GTM-M3LQFGZV`
+- بعد از Deploy: در [tagmanager.google.com](https://tagmanager.google.com) → **Preview** → آدرس `https://poshaktaranom.com` → باید **Connected** شود → سپس **Submit / Publish**
 
 ---
 

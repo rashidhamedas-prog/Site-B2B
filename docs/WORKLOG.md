@@ -2,6 +2,15 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-28 — GTM رسمی در layout (Next.js)
+
+### خلاصه
+- اسنیپت رسمی Google Tag Manager (`GTM-M3LQFGZV`) در `app/layout.tsx`: اسکریپت داخل `<head>` و `noscript` بلافاصله بعد از `<body>`
+- جلوگیری از دوبار لود شدن در `GoogleAnalytics`
+- دامنه تکی فقط اگر `NEXT_PUBLIC_GTM_RETAIL_ID` ست شود GTM می‌گیرد
+
+---
+
 ## 2026-07-28 — CMS کامل صفحات (عمده + تکی)
 
 ### خلاصه
