@@ -2,17 +2,24 @@
  * Official Google Tag Manager snippets for Next.js App Router.
  * Script goes in <head>; noscript iframe goes immediately after <body>.
  *
- * Default wholesale container: GTM-M3LQFGZV (override via NEXT_PUBLIC_GTM_*).
+ * Defaults:
+ * - wholesale (.com): GTM-M3LQFGZV
+ * - retail (.ir): GTM-NKBCGQJV
+ * Override via NEXT_PUBLIC_GTM_WHOLESALE_ID / NEXT_PUBLIC_GTM_RETAIL_ID.
  */
 
 import { sanitizeGtmId } from '@/lib/google';
 import { hostLooksRetail } from '@/lib/channel';
 
 const DEFAULT_WHOLESALE_GTM = 'GTM-M3LQFGZV';
+const DEFAULT_RETAIL_GTM = 'GTM-NKBCGQJV';
 
 export function resolveGtmIdForHost(host: string | null): string {
   if (hostLooksRetail(host)) {
-    return sanitizeGtmId(process.env.NEXT_PUBLIC_GTM_RETAIL_ID) || '';
+    return (
+      sanitizeGtmId(process.env.NEXT_PUBLIC_GTM_RETAIL_ID) ||
+      sanitizeGtmId(DEFAULT_RETAIL_GTM)
+    );
   }
   return (
     sanitizeGtmId(process.env.NEXT_PUBLIC_GTM_WHOLESALE_ID) ||
