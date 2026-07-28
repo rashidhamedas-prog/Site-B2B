@@ -112,9 +112,9 @@ function resolveSizeGuide(product: Product): string[] {
 
 async function fetchProduct(slugOrId: string): Promise<Product> {
   if (UUID_RE.test(slugOrId)) {
-    return apiClient.get<Product>(`/products/${slugOrId}`);
+    return apiClient.get<Product>(`/products/${slugOrId}?channel=WHOLESALE`);
   }
-  return apiClient.get<Product>(`/products/slug/${slugOrId}`);
+  return apiClient.get<Product>(`/products/slug/${slugOrId}?channel=WHOLESALE`);
 }
 
 export function ProductDetail({ slug }: { slug: string }) {

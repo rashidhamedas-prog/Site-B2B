@@ -37,9 +37,20 @@ export interface Product {
   retailPrice: number;
   minOrderQty: number;
   stock?: number;
+  wholesaleStock?: number;
+  retailStock?: number;
   totalStock?: number;
   images: string[];
-  variants: Array<{ id: string; color: string; colorHex: string; size: string; stock: number; barcode?: string }>;
+  variants: Array<{
+    id: string;
+    color: string;
+    colorHex: string;
+    size: string;
+    stock: number;
+    wholesaleStock?: number;
+    retailStock?: number;
+    barcode?: string;
+  }>;
   specs?: ProductSpecs;
   sizeType?: 'TWO' | 'THREE' | 'FREE';
   isDiscounted?: boolean;
@@ -54,6 +65,9 @@ export interface Product {
   modelInfo?: string | null;
   videoUrl?: string | null;
   fabricComposition?: string;
+  showOnWholesale?: boolean;
+  showOnRetail?: boolean;
+  badgeSettings?: { limitedStockMultiplier?: number; newBadgeDays?: number };
 }
 
 interface ProductsResult {

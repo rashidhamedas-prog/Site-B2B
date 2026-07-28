@@ -1,7 +1,9 @@
 'use client';
 
-import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Plus, Trash2, ChevronUp, ChevronDown, ImagePlus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { useImageUpload } from '@/lib/hooks/useImageUpload';
 
 export type BlockType =
   | 'hero'
@@ -31,6 +33,12 @@ export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
 };
 
 const BLOCK_TYPES = Object.keys(BLOCK_TYPE_LABELS) as BlockType[];
+
+const IMAGE_HINTS: Partial<Record<BlockType, string>> = {
+  hero: 'ابعاد پیشنهادی: ۱۹۲۰×۸۰۰ پیکسل',
+  image: 'ابعاد پیشنهادی: ۱۲۰۰×۸۰۰ پیکسل',
+  gallery: 'ابعاد پیشنهادی: ۱۰۰۰×۱۰۰۰ پیکسل',
+};
 
 export function newBlockId() {
   return `b_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -96,6 +104,79 @@ function Field({
   );
 }
 
+function ImageUrlField({
+  label = 'آدرس تصویر',
+  value,
+  onChange,
+  hint,
+}: {
+  label?: string;
+  value: string;
+  onChange: (v: string) => void;
+  hint?: string;
+}) {
+  const { upload, uploading } = useImageUpload();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const onFile = async (file?: File | null) => {
+    if (!file) return;
+    setError(null);
+    try {
+      const url = await upload(file);
+      onChange(url);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'خطا در آپلود');
+    }
+  };
+
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-medium text-gray-500">{label}</label>
+      <div className="flex gap-2">
+        <input
+          value={value}
+          dir="ltr"
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://…"
+          className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+          className="btn btn-outline btn-sm flex shrink-0 items-center gap-1 cursor-pointer"
+          title="آپلود فایل"
+        >
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+          آپلود
+        </button>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            void onFile(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      <p className="mt-1 text-[11px] text-gray-400">
+        می‌توانید فایل از سیستم/گوشی آپلود کنید یا آدرس کامل https://… وارد کنید
+        {hint ? ` — ${hint}` : ''}
+      </p>
+      {error && <p className="mt-1 text-[11px] text-error">{error}</p>}
+      {value ? (
+        <div className="mt-2 h-16 w-24 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={value} alt="" className="h-full w-full object-cover" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function setProp(block: ContentBlock, key: string, value: unknown): ContentBlock {
   return { ...block, props: { ...block.props, [key]: value } };
 }
@@ -120,10 +201,10 @@ function BlockFields({
       <div className="space-y-2">
         {items.map((item, i) => (
           <div key={i} className="grid gap-2 rounded-lg bg-gray-50 p-2 sm:grid-cols-2">
-            <Field
+            <ImageUrlField
               label="آدرس تصویر"
               value={item.imageUrl ?? ''}
-              dir="ltr"
+              hint={IMAGE_HINTS.gallery}
               onChange={(v) => {
                 const next = [...items];
                 next[i] = { ...item, imageUrl: v };
@@ -219,7 +300,14 @@ function BlockFields({
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
       )}
       {(['hero', 'image'].includes(block.type)) && (
-        <Field label="آدرس تصویر" value={str(p, 'imageUrl')} dir="ltr" onChange={(v) => set('imageUrl', v)} />
+        <div className={block.type === 'image' ? 'sm:col-span-2' : undefined}>
+          <ImageUrlField
+            label="آدرس تصویر"
+            value={str(p, 'imageUrl')}
+            hint={IMAGE_HINTS[block.type]}
+            onChange={(v) => set('imageUrl', v)}
+          />
+        </div>
       )}
       {(['hero', 'cta'].includes(block.type)) && (
         <>
