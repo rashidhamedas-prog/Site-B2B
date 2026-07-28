@@ -60,9 +60,16 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Redirects: .ir → wholesale area if needed in future
+  // Legacy WordPress / Yoast sitemap paths → current Next.js sitemap
   async redirects() {
-    return [];
+    return [
+      { source: '/sitemap_index.xml', destination: '/sitemap.xml', permanent: true },
+      { source: '/product-sitemap.xml', destination: '/sitemap.xml', permanent: true },
+      { source: '/page-sitemap.xml', destination: '/sitemap.xml', permanent: true },
+      { source: '/post-sitemap.xml', destination: '/sitemap.xml', permanent: true },
+      { source: '/category-sitemap.xml', destination: '/sitemap.xml', permanent: true },
+      { source: '/local-sitemap.xml', destination: '/sitemap.xml', permanent: true },
+    ];
   },
 
   experimental: {
