@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Search, Plus, Edit2, Trash2, X, Save, Layers, ImagePlus, Loader2, Package } from 'lucide-react';
 import { Input, Badge, Pagination } from '@/components/ui';
 import { useProducts, Product, ProductSpecs, ProductCustomField } from '@/lib/hooks/useProducts';
@@ -170,21 +170,38 @@ function VariantsModal({
   onDone: () => void;
 }) {
   const sizeOpts = sizeOptionsForType(product.sizeType);
+  const moq = Math.max(1, Math.floor(Number(product.minOrderQty) || 1));
   const [form, setForm] = useState<VariantForm>({
     ...emptyVariantForm,
     size: sizeOpts[0],
+    wholesaleStock: '0',
   });
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [batchSaving, setBatchSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [variants, setVariants] = useState<Variant[]>(product.variants ?? []);
+  const [draftWholesale, setDraftWholesale] = useState<Record<string, string>>({});
+  const [draftRetail, setDraftRetail] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [batchMsg, setBatchMsg] = useState<string | null>(null);
   const [savedColors, setSavedColors] = useState<SavedColor[]>([]);
   const [newColorName, setNewColorName] = useState('');
   const [newColorHex, setNewColorHex] = useState('#000000');
   const [colorBusy, setColorBusy] = useState(false);
 
   const sizeTypeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
+
+  const syncDraftsFromVariants = useCallback((list: Variant[]) => {
+    const w: Record<string, string> = {};
+    const r: Record<string, string> = {};
+    for (const v of list) {
+      w[v.id] = String(Number(v.wholesaleStock) || Number(v.stock) || 0);
+      r[v.id] = String(Number(v.retailStock) || 0);
+    }
+    setDraftWholesale(w);
+    setDraftRetail(r);
+  }, []);
 
   const loadSavedColors = useCallback(async () => {
     try {
@@ -196,18 +213,74 @@ function VariantsModal({
   }, []);
 
   useEffect(() => { loadSavedColors(); }, [loadSavedColors]);
+  useEffect(() => {
+    syncDraftsFromVariants(product.variants ?? []);
+  }, [product.variants, syncDraftsFromVariants]);
 
   const refresh = useCallback(async () => {
     const res = await apiClient.get<{ variants: Variant[] }>(`/products/${product.id}`);
-    setVariants((res as { variants?: Variant[] }).variants ?? []);
+    const list = (res as { variants?: Variant[] }).variants ?? [];
+    setVariants(list);
+    syncDraftsFromVariants(list);
     onDone();
-  }, [product.id, onDone]);
+  }, [product.id, onDone, syncDraftsFromVariants]);
 
-  const totalWholesale = variants.reduce(
-    (s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0),
-    0,
+  const draftTotalWholesale = useMemo(() => {
+    return variants.reduce((s, v) => {
+      const raw = draftWholesale[v.id];
+      const n = raw !== undefined ? Number(raw) : Number(v.wholesaleStock) || Number(v.stock) || 0;
+      return s + Math.max(0, Math.floor(Number.isFinite(n) ? n : 0));
+    }, 0);
+  }, [variants, draftWholesale]);
+
+  const draftTotalRetail = useMemo(() => {
+    return variants.reduce((s, v) => {
+      const raw = draftRetail[v.id];
+      const n = raw !== undefined ? Number(raw) : Number(v.retailStock) || 0;
+      return s + Math.max(0, Math.floor(Number.isFinite(n) ? n : 0));
+    }, 0);
+  }, [variants, draftRetail]);
+
+  const packRemainder = draftTotalWholesale % moq;
+  const packOk = packRemainder === 0;
+  const packCount = packOk ? draftTotalWholesale / moq : Math.floor(draftTotalWholesale / moq);
+  const needToNextPack = packOk ? 0 : moq - packRemainder;
+
+  const uniqueColors = useMemo(
+    () => new Set(variants.map((v) => v.color).filter(Boolean)).size,
+    [variants],
   );
-  const totalRetail = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
+  const uniqueSizes = useMemo(
+    () => new Set(variants.map((v) => v.size).filter(Boolean)).size,
+    [variants],
+  );
+  const fullAssortmentSize = Math.max(1, uniqueColors) * Math.max(1, uniqueSizes || 1);
+  const isAsymmetricHint = uniqueColors > 0 && moq !== fullAssortmentSize;
+
+  const draftsDirty = useMemo(() => {
+    return variants.some((v) => {
+      const w = Math.max(0, Math.floor(Number(draftWholesale[v.id]) || 0));
+      const r = Math.max(0, Math.floor(Number(draftRetail[v.id]) || 0));
+      const ow = Number(v.wholesaleStock) || Number(v.stock) || 0;
+      const orv = Number(v.retailStock) || 0;
+      return w !== ow || r !== orv;
+    });
+  }, [variants, draftWholesale, draftRetail]);
+
+  const formProjectedWholesale = useMemo(() => {
+    const formQty = Math.max(0, Math.floor(Number(form.wholesaleStock) || 0));
+    if (editId) {
+      return variants.reduce((s, v) => {
+        if (v.id === editId) return s + formQty;
+        const raw = draftWholesale[v.id];
+        const n = raw !== undefined ? Number(raw) : Number(v.wholesaleStock) || Number(v.stock) || 0;
+        return s + Math.max(0, Math.floor(Number.isFinite(n) ? n : 0));
+      }, 0);
+    }
+    return draftTotalWholesale + formQty;
+  }, [editId, form.wholesaleStock, variants, draftWholesale, draftTotalWholesale]);
+
+  const formPackOk = formProjectedWholesale % moq === 0;
 
   const startEdit = (v: Variant) => {
     setEditId(v.id);
@@ -217,15 +290,15 @@ function VariantsModal({
       colorHex: v.colorHex || '#000000',
       barcode: v.barcode ?? '',
       size: v.size || sizeOpts[0],
-      wholesaleStock: String(Number(v.wholesaleStock) || Number(v.stock) || 0),
-      retailStock: String(Number(v.retailStock) || 0),
+      wholesaleStock: draftWholesale[v.id] ?? String(Number(v.wholesaleStock) || Number(v.stock) || 0),
+      retailStock: draftRetail[v.id] ?? String(Number(v.retailStock) || 0),
     });
   };
 
   const cancelEdit = () => {
     setEditId(null);
     setSaveError(null);
-    setForm({ ...emptyVariantForm, size: sizeOpts[0] });
+    setForm({ ...emptyVariantForm, size: sizeOpts[0], wholesaleStock: '0' });
   };
 
   const pickColor = (name: string, hex: string) => {
@@ -271,6 +344,13 @@ function VariantsModal({
       setSaveError('موجودی نامعتبر است');
       return;
     }
+    if (formProjectedWholesale % moq !== 0) {
+      const rem = formProjectedWholesale % moq;
+      setSaveError(
+        `جمع موجودی عمده باید مضرب ${moq} (اندازه پک) باشد — بعد از این ذخیره جمع ${formProjectedWholesale} می‌شود (باقیمانده ${rem}). ${moq - rem} عدد کم دارید یا از «ذخیره همه موجودی‌ها» برای پخش نامتقارن استفاده کنید.`,
+      );
+      return;
+    }
     setSaveError(null);
     setSaving(true);
     try {
@@ -296,7 +376,7 @@ function VariantsModal({
         await loadSavedColors();
       } catch { /* ignore */ }
       setEditId(null);
-      setForm({ ...emptyVariantForm, size: sizeOpts[0] });
+      setForm({ ...emptyVariantForm, size: sizeOpts[0], wholesaleStock: '0' });
       await refresh();
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : 'خطا در ذخیره رنگ');
@@ -305,10 +385,66 @@ function VariantsModal({
     }
   };
 
+  const handleBatchSaveStocks = async () => {
+    if (!variants.length) return;
+    if (!packOk) {
+      setBatchMsg(
+        `جمع عمده (${draftTotalWholesale}) مضرب اندازه پک (${moq}) نیست — ${needToNextPack} عدد دیگر لازم است.`,
+      );
+      return;
+    }
+    setBatchMsg(null);
+    setBatchSaving(true);
+    try {
+      const items = variants.map((v) => ({
+        id: v.id,
+        wholesaleStock: Math.max(0, Math.floor(Number(draftWholesale[v.id]) || 0)),
+        retailStock: Math.max(0, Math.floor(Number(draftRetail[v.id]) || 0)),
+      }));
+      await apiClient.patch(`/products/${product.id}/variants/stocks`, { items });
+      setBatchMsg(`ذخیره شد — ${packCount} پک کامل (جمع ${draftTotalWholesale})`);
+      await refresh();
+    } catch (e: unknown) {
+      setBatchMsg(e instanceof Error ? e.message : 'خطا در ذخیره موجودی‌ها');
+    } finally {
+      setBatchSaving(false);
+    }
+  };
+
+  /** Spread N full packs evenly across current variants (standard assortment). */
+  const fillEqualPacks = (packs: number) => {
+    const n = Math.max(0, Math.floor(packs));
+    if (!variants.length || n <= 0) return;
+    const totalUnits = n * moq;
+    const base = Math.floor(totalUnits / variants.length);
+    let rem = totalUnits - base * variants.length;
+    const next: Record<string, string> = {};
+    variants.forEach((v) => {
+      const extra = rem > 0 ? 1 : 0;
+      if (rem > 0) rem -= 1;
+      next[v.id] = String(base + extra);
+    });
+    setDraftWholesale(next);
+    setBatchMsg(null);
+  };
+
+  const addRemainderToFirst = () => {
+    if (packOk || !variants.length) return;
+    const target = variants[0];
+    const cur = Math.max(0, Math.floor(Number(draftWholesale[target.id]) || 0));
+    setDraftWholesale((d) => ({ ...d, [target.id]: String(cur + needToNextPack) }));
+    setBatchMsg(null);
+  };
+
   const handleDelete = async (variantId: string) => {
-    await apiClient.delete(`/products/${product.id}/variants/${variantId}`);
-    setDeletingId(null);
-    await refresh();
+    try {
+      await apiClient.delete(`/products/${product.id}/variants/${variantId}`);
+      setDeletingId(null);
+      await refresh();
+    } catch (e: unknown) {
+      setDeletingId(null);
+      alert(e instanceof Error ? e.message : 'حذف ممکن نیست');
+    }
   };
 
   return (
@@ -327,6 +463,66 @@ function VariantsModal({
         </div>
 
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 space-y-3 overflow-y-auto max-h-[48vh]">
+          <div
+            className={cn(
+              'rounded-xl border px-3 py-2.5 text-xs space-y-1.5',
+              packOk ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-950',
+            )}
+          >
+            <p className="font-bold text-[13px]">
+              اندازه پک / حداقل سفارش: {moq.toLocaleString('fa-IR')} عدد
+              {packOk
+                ? ` · ${packCount.toLocaleString('fa-IR')} پک کامل · جمع عمده ${draftTotalWholesale.toLocaleString('fa-IR')}`
+                : ` · جمع عمده ${draftTotalWholesale.toLocaleString('fa-IR')} (باقیمانده ${packRemainder.toLocaleString('fa-IR')} — ${needToNextPack.toLocaleString('fa-IR')} عدد تا پک بعدی)`}
+            </p>
+            <p className="leading-relaxed text-[11px] opacity-90">
+              در پک استاندارد از هر ترکیب رنگ×سایز یک عدد است
+              {uniqueColors > 0
+                ? ` (الان ${uniqueColors.toLocaleString('fa-IR')} رنگ × ${Math.max(1, uniqueSizes).toLocaleString('fa-IR')} سایز ≈ ${fullAssortmentSize.toLocaleString('fa-IR')} عدد پیشنهاد پک کامل).`
+                : '.'}{' '}
+              <strong>قانون الزامی:</strong> فقط جمع موجودی عمده همه رنگ‌ها باید مضرب اندازه پک باشد — موجودی هر رنگ می‌تواند نامساوی باشد
+              {isAsymmetricHint
+                ? ' (مثلاً ۷ رنگ ولی پک ۵ عددی با ترکیب رندوم در پک‌ها).'
+                : '.'}
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                className="btn btn-outline btn-sm cursor-pointer text-[11px]"
+                onClick={() => fillEqualPacks(1)}
+                disabled={!variants.length}
+              >
+                پخش ۱ پک روی رنگ‌ها
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm cursor-pointer text-[11px]"
+                onClick={() => fillEqualPacks(5)}
+                disabled={!variants.length}
+              >
+                پخش ۵ پک
+              </button>
+              {!packOk && (
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm cursor-pointer text-[11px]"
+                  onClick={addRemainderToFirst}
+                >
+                  تکمیل باقیمانده روی اولین رنگ (+{needToNextPack})
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-primary btn-sm cursor-pointer text-[11px]"
+                disabled={!variants.length || batchSaving || !draftsDirty || !packOk}
+                onClick={handleBatchSaveStocks}
+              >
+                {batchSaving ? 'در حال ذخیره…' : 'ذخیره همه موجودی‌ها'}
+              </button>
+            </div>
+            {batchMsg && <p className={cn('text-[11px]', packOk ? 'text-emerald-800' : 'text-amber-900')}>{batchMsg}</p>}
+          </div>
+
           <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-2">
             <p className="text-xs font-semibold text-gray-600">لیست رنگ‌های ذخیره‌شده (انتخاب سریع)</p>
             <div className="flex flex-wrap gap-1.5 min-h-[28px]">
@@ -417,7 +613,7 @@ function VariantsModal({
           </div>
 
           <p className="text-xs font-semibold text-gray-500">
-            {editId ? 'ویرایش واریانت' : 'افزودن رنگ + سایز + موجودی'}
+            {editId ? 'ویرایش واریانت' : 'افزودن رنگ + سایز (موجودی را می‌توانید ۰ بگذارید و بعد یکجا ذخیره کنید)'}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end">
             <div>
@@ -484,14 +680,15 @@ function VariantsModal({
           <div className="rounded-lg border border-primary/20 bg-primary-50/50 px-3 py-2 flex flex-wrap gap-4 text-sm">
             <span>
               جمع عمده:{' '}
-              <strong className="text-primary text-base font-extrabold tabular-nums">{totalWholesale}</strong>
+              <strong className="text-primary text-base font-extrabold tabular-nums">{draftTotalWholesale}</strong>
             </span>
             <span>
               جمع تکی:{' '}
-              <strong className="text-amber-700 text-base font-extrabold tabular-nums">{totalRetail}</strong>
+              <strong className="text-amber-700 text-base font-extrabold tabular-nums">{draftTotalRetail}</strong>
             </span>
             <span className="text-[11px] text-gray-500 self-center">
-              (از واریانت‌ها همگام می‌شود — فرم بالا برای {editId ? 'ویرایش همین واریانت' : 'واریانت جدید'} است)
+              پیش‌نمایش ذخیره فرم: جمع {formProjectedWholesale}
+              {formPackOk ? ' ✓ مضرب پک' : ' ✗ مضرب پک نیست'}
             </span>
           </div>
           {saveError && <p className="text-xs text-error">{saveError}</p>}
@@ -500,7 +697,7 @@ function VariantsModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !form.color || !form.size}
+              disabled={saving || !form.color || !form.size || !formPackOk}
               className="btn btn-primary btn-sm flex items-center gap-1.5 cursor-pointer"
             >
               <Save className="h-3.5 w-3.5" />
@@ -517,44 +714,57 @@ function VariantsModal({
         <div className="overflow-y-auto flex-1">
           {variants.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">
-              واریانتی تعریف نشده — از فرم بالا اضافه کنید
+              هنوز واریانتی نیست — اول رنگ/سایزها را با موجودی ۰ اضافه کنید، بعد موجودی پک را یکجا تنظیم کنید
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
                   {['رنگ', 'سایز', 'موجودی عمده', 'موجودی تکی', 'بارکد', ''].map((h) => (
-                    <th key={h || 'actions'} className="px-3 py-2 text-right text-xs font-semibold text-gray-400">
+                    <th key={h || 'actions'} className="px-3 py-2 text-right text-[11px] font-semibold text-gray-500">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody>
                 {variants.map((v) => (
-                  <tr
-                    key={v.id}
-                    className={cn('hover:bg-gray-50 transition-colors', editId === v.id && 'bg-primary-50')}
-                  >
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
+                  <tr key={v.id} className="border-t border-gray-50 hover:bg-gray-50/80">
+                    <td className="px-3 py-2">
+                      <span className="inline-flex items-center gap-1.5">
                         <span
-                          className="h-4 w-4 rounded-full border border-gray-200 flex-shrink-0"
-                          style={{ backgroundColor: v.colorHex }}
+                          className="h-3.5 w-3.5 rounded-full border border-gray-200"
+                          style={{ backgroundColor: v.colorHex || '#ccc' }}
                         />
-                        <span>{v.color}</span>
-                      </div>
+                        {v.color}
+                      </span>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600">{v.size}</td>
-                    <td className="px-3 py-2.5 font-mono text-sm font-semibold text-primary">
-                      {Number(v.wholesaleStock) || Number(v.stock) || 0}
+                    <td className="px-3 py-2 text-gray-600">{v.size || '—'}</td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={draftWholesale[v.id] ?? '0'}
+                        onChange={(e) =>
+                          setDraftWholesale((d) => ({ ...d, [v.id]: e.target.value }))
+                        }
+                        className="w-20 rounded-md border border-gray-200 px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      />
                     </td>
-                    <td className="px-3 py-2.5 font-mono text-sm font-semibold text-amber-700">
-                      {Number(v.retailStock) || 0}
+                    <td className="px-3 py-2">
+                      <input
+                        type="number"
+                        min={0}
+                        value={draftRetail[v.id] ?? '0'}
+                        onChange={(e) =>
+                          setDraftRetail((d) => ({ ...d, [v.id]: e.target.value }))
+                        }
+                        className="w-20 rounded-md border border-gray-200 px-2 py-1 text-sm tabular-nums focus:outline-none focus:ring-1 focus:ring-primary/30"
+                      />
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-400 font-mono">{v.barcode || '—'}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
+                    <td className="px-3 py-2 text-gray-400 text-xs">{v.barcode || '—'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2 justify-end">
                         <button type="button" onClick={() => startEdit(v)} className="cursor-pointer text-gray-400 hover:text-primary">
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
@@ -573,19 +783,35 @@ function VariantsModal({
         <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center gap-3 flex-wrap bg-gray-50">
           <p className="text-sm font-semibold text-gray-800">
             {variants.length} واریانت · جمع عمده{' '}
-            <span className="text-primary tabular-nums">{totalWholesale}</span>
+            <span className={cn('tabular-nums', packOk ? 'text-primary' : 'text-amber-700')}>
+              {draftTotalWholesale}
+            </span>
             {' · '}
-            جمع تکی <span className="text-amber-700 tabular-nums">{totalRetail}</span>
+            جمع تکی <span className="text-amber-700 tabular-nums">{draftTotalRetail}</span>
+            {packOk ? ` · ${packCount} پک` : ' · ناقص پک'}
           </p>
-          <button type="button" onClick={onClose} className="btn btn-outline btn-sm cursor-pointer">
-            بستن
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm cursor-pointer"
+              disabled={!variants.length || batchSaving || !draftsDirty || !packOk}
+              onClick={handleBatchSaveStocks}
+            >
+              ذخیره موجودی‌ها
+            </button>
+            <button type="button" onClick={onClose} className="btn btn-outline btn-sm cursor-pointer">
+              بستن
+            </button>
+          </div>
         </div>
 
         {deletingId && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
-            <div className="bg-white rounded-xl p-6 shadow-xl text-center">
-              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این واریانت؟</p>
+            <div className="bg-white rounded-xl p-6 shadow-xl text-center max-w-sm">
+              <p className="text-sm font-semibold text-gray-900 mb-2">حذف این واریانت؟</p>
+              <p className="text-[11px] text-gray-500 mb-4">
+                بعد از حذف، جمع موجودی عمده باید همچنان مضرب {moq} بماند.
+              </p>
               <div className="flex gap-3 justify-center">
                 <button type="button" onClick={() => setDeletingId(null)} className="btn btn-outline btn-sm cursor-pointer">
                   انصراف
@@ -605,6 +831,7 @@ function VariantsModal({
     </div>
   );
 }
+
 
 export function AdminProducts() {
   const [search, setSearch] = useState('');
@@ -803,7 +1030,7 @@ export function AdminProducts() {
         designDetails: form.specs.designDetails?.trim() || undefined,
         packageSpecs: form.specs.packageSpecs?.trim() || undefined,
         manufacturingBadge: form.specs.manufacturingBadge?.trim() || undefined,
-        packQty: form.specs.packQty?.trim() || undefined,
+        packQty: form.specs.packQty?.trim() || String(Number(form.minOrderQty) || ''),
         length: form.specs.length?.trim() || undefined,
         chestWidth: form.specs.chestWidth?.trim() || undefined,
         sleeveModel: form.specs.sleeveModel?.trim() || undefined,
@@ -1129,8 +1356,11 @@ export function AdminProducts() {
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
-                  {specField('packQty', 'تعداد در پک / حداقل سفارش', '۶')}
+                  {specField('packQty', 'تعداد در پک (نمایشی)', '۶')}
                 </div>
+                <p className="text-[11px] text-gray-500 -mt-1">
+                  اندازه عملیاتی پک همان «حداقل سفارش» است؛ اگر خالی بگذارید هنگام ذخیره با حداقل سفارش هم‌تراز می‌شود.
+                </p>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">جزئیات طراحی</label>
                   <textarea
@@ -1340,8 +1570,11 @@ export function AdminProducts() {
               <div className="grid grid-cols-3 gap-4">
                 {field('wholesalePrice', 'قیمت عمده (تومان)', 'number', '125000')}
                 {field('retailPrice', 'قیمت تکی (تومان)', 'number', '180000')}
-                {field('minOrderQty', 'حداقل سفارش', 'number', '5')}
+                {field('minOrderQty', 'حداقل سفارش / اندازه پک', 'number', '5')}
               </div>
+              <p className="text-[11px] text-gray-500 -mt-2">
+                تعداد هر پک عمده. جمع موجودی عمده همه رنگ‌ها باید مضرب همین عدد باشد (پک نامتقارن مجاز است).
+              </p>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
