@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
 import { RETAIL_ORIGIN } from '@/lib/seo';
+import { decodeRouteParam } from '@/lib/route-params';
 import { notFound } from 'next/navigation';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
@@ -23,7 +24,7 @@ export async function generateMetadata({
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = decodeRouteParam((await params).slug);
   const product = await getProduct(slug);
   if (!product) return { title: 'محصول' };
 
@@ -63,7 +64,7 @@ export default async function RetailProductPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = await params;
+  const slug = decodeRouteParam((await params).slug);
   const product = await getProduct(slug);
   if (!product) notFound();
 

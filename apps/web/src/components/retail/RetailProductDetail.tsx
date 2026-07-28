@@ -249,7 +249,7 @@ export function RetailProductDetail({ product }: { product: Product }) {
                     onClick={() => {
                       setColor(c);
                       const first = (product.variants ?? []).find(
-                        (v) => v.color === c && Number(v.stock ?? 0) > 0,
+                        (v) => v.color === c && Number(v.retailStock ?? v.stock ?? 0) > 0,
                       );
                       if (first?.size) setSize(first.size);
                     }}
