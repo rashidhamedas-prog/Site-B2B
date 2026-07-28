@@ -9,7 +9,7 @@ interface Props {
 async function fetchProductMeta(slug: string) {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
-    const res = await fetch(`${apiUrl}/products/slug/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${apiUrl}/products/slug/${encodeURIComponent(slug)}?channel=WHOLESALE`, {
       next: { revalidate: 120 },
     });
     if (!res.ok) return null;

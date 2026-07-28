@@ -328,10 +328,6 @@ export function AdminInventory() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [adjustTarget, setAdjustTarget] = useState<{ variant: Variant; productName: string; currentStock: number } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
-  const [stockErrors, setStockErrors] = useState<Record<string, string>>({});
-  const [stockSavingId, setStockSavingId] = useState<string | null>(null);
-
   const { products, meta, loading, refetch } = useInventory(filter, search, page, channel);
   const { summary, refetch: refetchSummary } = useSummary(channel);
 
@@ -341,43 +337,6 @@ export function AdminInventory() {
     setChannel(c);
     setPage(1);
     setExpanded(new Set());
-    setStockDrafts({});
-  };
-
-  const handleProductStockSave = async (product: StockProduct) => {
-    const raw = stockDrafts[product.id] ?? String(product.totalStock);
-    const stock = Number(raw);
-    if (!Number.isFinite(stock) || stock < 0) {
-      setStockErrors((p) => ({ ...p, [product.id]: 'عدد نامعتبر' }));
-      return;
-    }
-    const minOrder = Math.max(1, product.minOrderQty ?? 1);
-    if (stock % minOrder !== 0) {
-      setStockErrors((p) => ({ ...p, [product.id]: `مضربی از ${minOrder} باشد` }));
-      return;
-    }
-    setStockErrors((p) => ({ ...p, [product.id]: '' }));
-    setStockSavingId(product.id);
-    try {
-      await apiClient.post('/inventory/product/set', {
-        productId: product.id,
-        stock,
-        channel,
-      });
-      setStockDrafts((p) => {
-        const next = { ...p };
-        delete next[product.id];
-        return next;
-      });
-      handleDone();
-    } catch (e: unknown) {
-      setStockErrors((p) => ({
-        ...p,
-        [product.id]: e instanceof Error ? e.message : 'خطا در ذخیره موجودی',
-      }));
-    } finally {
-      setStockSavingId(null);
-    }
   };
 
   const toggleExpand = (id: string) => {
@@ -490,33 +449,18 @@ export function AdminInventory() {
                       className="flex flex-col items-end gap-0.5 flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="number"
-                          min={0}
-                          step={Math.max(1, product.minOrderQty ?? 1)}
-                          value={stockDrafts[product.id] ?? String(product.totalStock)}
-                          onChange={(e) => {
-                            setStockDrafts((p) => ({ ...p, [product.id]: e.target.value }));
-                            setStockErrors((p) => ({ ...p, [product.id]: '' }));
-                          }}
+                      <div className="flex items-center gap-2">
+                        <span
                           className={cn(
-                            'w-24 rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30',
-                            product.totalStock === 0 ? 'border-error/40 text-error' : 'border-gray-200',
+                            'min-w-[4.5rem] rounded-lg border px-2.5 py-1.5 text-sm font-bold tabular-nums text-center bg-gray-50',
+                            product.totalStock === 0
+                              ? 'border-error/40 text-error'
+                              : 'border-gray-200 text-gray-800',
                           )}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleProductStockSave(product)}
-                          disabled={
-                            stockSavingId === product.id ||
-                            (stockDrafts[product.id] ?? String(product.totalStock)) === String(product.totalStock)
-                          }
-                          title="ثبت موجودی محصول"
-                          className="cursor-pointer text-gray-400 hover:text-primary disabled:opacity-30"
+                          title="جمع موجودی واریانت‌ها (فقط خواندنی)"
                         >
-                          <Save className="h-4 w-4" />
-                        </button>
+                          {product.totalStock}
+                        </span>
                         {product.variants[0] && (
                           <button
                             type="button"
@@ -525,15 +469,13 @@ export function AdminInventory() {
                               productName: product.name,
                               currentStock: product.totalStock,
                             })}
-                            className="cursor-pointer text-xs text-primary hover:underline font-medium mr-1"
+                            className="cursor-pointer text-xs text-primary hover:underline font-medium"
                           >
                             تعدیل
                           </button>
                         )}
                       </div>
-                      {stockErrors[product.id] && (
-                        <p className="text-[10px] text-error">{stockErrors[product.id]}</p>
-                      )}
+                      <p className="text-[10px] text-gray-400">از واریانت‌ها</p>
                     </div>
                   </div>
 

@@ -173,6 +173,111 @@ export class OrderService {
     return Number(product.wholesalePrice ?? fallback ?? 0);
   }
 
+  private channelVariantStock(
+    variant: { wholesaleStock?: number | string | null; retailStock?: number | string | null; stock?: number | string | null },
+    channel: 'WHOLESALE' | 'RETAIL',
+  ): number {
+    return channel === 'RETAIL'
+      ? Number(variant.retailStock) || 0
+      : Number(variant.wholesaleStock) || Number(variant.stock) || 0;
+  }
+
+  /**
+   * When cart sends productId without a specific variant, allocate qty across
+   * matching variants (optional color/size filter) using channel stock totals.
+   */
+  private allocateAcrossVariants(
+    product: {
+      id: string;
+      name: string;
+      sku?: string;
+      minOrderQty?: number;
+      wholesalePrice?: number | string | null;
+      retailPrice?: number | string | null;
+      variants?: Array<{
+        id: string;
+        color: string;
+        size: string;
+        wholesaleStock?: number | string | null;
+        retailStock?: number | string | null;
+        stock?: number | string | null;
+      }>;
+    },
+    qty: number,
+    channel: 'WHOLESALE' | 'RETAIL',
+    opts?: { color?: string; size?: string; unitPrice?: number; productName?: string; sku?: string },
+  ): Array<{
+    productVariantId: string;
+    quantity: number;
+    unitPrice: number;
+    productName: string;
+    sku: string;
+    color: string;
+    size: string;
+    productId: string;
+  }> {
+    const variants = product.variants ?? [];
+    const matching = variants.filter(
+      (v) => (!opts?.color || v.color === opts.color) && (!opts?.size || v.size === opts.size),
+    );
+    const pool = matching.length > 0 ? matching : variants;
+    if (!pool.length) {
+      throw new BadRequestException(`برای ${product.name} ابتدا حداقل یک رنگ در واریانت‌ها تعریف کنید`);
+    }
+
+    const totalAvailable = pool.reduce((s, v) => s + this.channelVariantStock(v, channel), 0);
+    if (totalAvailable < qty) {
+      const meta = [opts?.color, opts?.size].filter(Boolean).join('/');
+      throw new BadRequestException(
+        `موجودی کافی نیست برای ${product.name}${meta ? ` (${meta})` : ''} — موجودی: ${totalAvailable}`,
+      );
+    }
+
+    const sorted = [...pool]
+      .map((v) => ({ v, stock: this.channelVariantStock(v, channel) }))
+      .filter((x) => x.stock > 0)
+      .sort((a, b) => b.stock - a.stock);
+
+    const unitPrice = this.unitPriceForChannel(channel, product, Number(opts?.unitPrice ?? 0));
+    const productName = product.name ?? opts?.productName ?? '';
+    const sku = product.sku ?? opts?.sku ?? '';
+    const lines: Array<{
+      productVariantId: string;
+      quantity: number;
+      unitPrice: number;
+      productName: string;
+      sku: string;
+      color: string;
+      size: string;
+      productId: string;
+    }> = [];
+
+    let remaining = qty;
+    for (const { v, stock } of sorted) {
+      if (remaining <= 0) break;
+      const take = Math.min(stock, remaining);
+      if (take <= 0) continue;
+      lines.push({
+        productVariantId: v.id,
+        quantity: take,
+        unitPrice,
+        productName,
+        sku,
+        color: v.color,
+        size: v.size,
+        productId: product.id,
+      });
+      remaining -= take;
+    }
+
+    if (remaining > 0) {
+      throw new BadRequestException(
+        `موجودی کافی نیست برای ${product.name} — موجودی: ${totalAvailable}`,
+      );
+    }
+    return lines;
+  }
+
   async create(dto: CreateOrderDto) {
     const customer = await this.customerService.findOne(dto.customerId);
 
@@ -209,10 +314,7 @@ export class OrderService {
         if (channel === 'WHOLESALE') {
           this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
         }
-        const variantStock =
-          channel === 'RETAIL'
-            ? Number(variant.retailStock) || 0
-            : Number(variant.wholesaleStock) || Number(variant.stock) || 0;
+        const variantStock = this.channelVariantStock(variant, channel);
         if (variantStock < qty) {
           throw new BadRequestException(
             `موجودی کافی نیست برای ${product.name} (${variant.color}/${variant.size}) — موجودی: ${variantStock}`,
@@ -240,32 +342,16 @@ export class OrderService {
         this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
       }
 
-      const variants = product.variants ?? [];
-      const metaVariant =
-        variants.find((v) => (!item.color || v.color === item.color) && (!item.size || v.size === item.size))
-        ?? variants[0];
-      if (!metaVariant) {
-        throw new BadRequestException(`برای ${product.name} ابتدا حداقل یک رنگ در واریانت‌ها تعریف کنید`);
-      }
-      const variantStock =
-        channel === 'RETAIL'
-          ? Number(metaVariant.retailStock) || 0
-          : Number(metaVariant.wholesaleStock) || Number(metaVariant.stock) || 0;
-      if (variantStock < qty) {
-        throw new BadRequestException(
-          `موجودی کافی نیست برای ${product.name} (${metaVariant.color}/${metaVariant.size}) — موجودی: ${variantStock}`,
-        );
-      }
-      expandedItems.push({
-        productVariantId: metaVariant.id,
-        quantity: qty,
-        unitPrice: this.unitPriceForChannel(channel, product),
-        productName: product.name,
-        sku: product.sku,
-        color: metaVariant.color,
-        size: metaVariant.size,
-        productId: product.id,
-      });
+      // Product-level channel stock (sum of matching variants) + greedy allocation
+      expandedItems.push(
+        ...this.allocateAcrossVariants(product, qty, channel, {
+          color: item.color,
+          size: item.size,
+          unitPrice: item.unitPrice,
+          productName: item.productName,
+          sku: item.sku,
+        }),
+      );
     }
 
     const subtotal = expandedItems.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
@@ -319,8 +405,9 @@ export class OrderService {
       computedShipping = Number(shipQuote.fee) || 0;
       freeShipping = !!shipQuote.freeShipping;
     } else if (!freeShipping) {
-      const wholesaleFreeFrom = 50_000_000;
-      const wholesaleDefaultShip = 1_500_000;
+      const shipCfg = await this.settings.shipping();
+      const wholesaleFreeFrom = Number(shipCfg.freeThreshold) || 50_000_000;
+      const wholesaleDefaultShip = Number(shipCfg.baseFee) || 1_500_000;
       computedShipping = intraCityFee || ((subtotal - discountAmount) >= wholesaleFreeFrom ? 0 : wholesaleDefaultShip);
     }
 

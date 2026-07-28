@@ -30,6 +30,7 @@ export class ProductController {
     @Query('maxPrice') maxPrice?: string,
     @Query('collar') collar?: string,
     @Query('relatedTo') relatedTo?: string,
+    @Query('channel') channel?: string,
   ) {
     return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
       categoryId,
@@ -38,13 +39,17 @@ export class ProductController {
       maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
       collar,
       relatedTo,
+      channel,
     });
   }
 
   @Get('coming-soon')
   @ApiOperation({ summary: 'محصولات به‌زودی (پیش‌خرید)' })
-  comingSoon(@Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number) {
-    return this.productService.findComingSoon(limit);
+  comingSoon(
+    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
+    @Query('channel') channel?: string,
+  ) {
+    return this.productService.findComingSoon(limit, channel);
   }
 
   @Get('meta/spec-memory')
@@ -54,6 +59,19 @@ export class ProductController {
   @ApiOperation({ summary: 'حافظه مقادیر توضیحات محصول' })
   specMemory(@Query('fieldKey') fieldKey?: string) {
     return this.productService.listSpecMemory(fieldKey);
+  }
+
+  @Delete('meta/spec-memory')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حذف یک مقدار از حافظه توضیحات محصول' })
+  deleteSpecMemory(
+    @Query('fieldKey') fieldKey?: string,
+    @Query('value') value?: string,
+    @Query('id') id?: string,
+  ) {
+    return this.productService.deleteSpecMemory({ fieldKey, value, id });
   }
 
   @Get('meta/colors')
@@ -94,14 +112,14 @@ export class ProductController {
 
   @Get('slug/:slug')
   @ApiOperation({ summary: 'جزئیات محصول با slug' })
-  findBySlug(@Param('slug') slug: string) {
-    return this.productService.findBySlug(slug);
+  findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
+    return this.productService.findBySlug(slug, channel);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'جزئیات محصول' })
-  findOne(@Param('id') id: string) {
-    return this.productService.findOne(id);
+  findOne(@Param('id') id: string, @Query('channel') channel?: string) {
+    return this.productService.findOne(id, channel);
   }
 
   @Post()

@@ -10,14 +10,18 @@ import { ProductSpecMemoryEntity } from './entities/product-spec-memory.entity';
 import { ProductSizeType, ProductSpecs, SIZE_GUIDE, SPEC_FIELD_KEYS } from './entities/product-specs';
 import { StorageService } from '../upload/storage.service';
 import { SearchService } from '../search/search.service';
+import { SettingsService } from '../settings/settings.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 
-const NEW_BADGE_MS = 7 * 24 * 60 * 60 * 1000;
+type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
 @Injectable()
 export class ProductService {
+  private badgeCache: { value: BadgeConfig; at: number } | null = null;
+  private static readonly BADGE_TTL_MS = 30_000;
+
   constructor(
     @InjectRepository(ProductEntity)
     private readonly productRepo: Repository<ProductEntity>,
@@ -33,27 +37,57 @@ export class ProductService {
     private readonly specMemoryRepo: Repository<ProductSpecMemoryEntity>,
     private readonly storage: StorageService,
     private readonly search: SearchService,
+    private readonly settings: SettingsService,
   ) {}
 
   private fabricFromSpecs(specs?: ProductSpecs | null, fallback?: string): string {
     return (specs?.fabricType || fallback || '').trim();
   }
 
-  private withBadges<T extends ProductEntity>(product: T, channel?: string) {
+  private async badgeConfig(): Promise<BadgeConfig> {
+    if (this.badgeCache && Date.now() - this.badgeCache.at < ProductService.BADGE_TTL_MS) {
+      return this.badgeCache.value;
+    }
+    const business = await this.settings.business();
+    const value: BadgeConfig = {
+      limitedStockMultiplier: Math.max(1, Number(business.limitedStockMultiplier) || 2),
+      newBadgeDays: Math.max(1, Number(business.newBadgeDays) || 7),
+    };
+    this.badgeCache = { value, at: Date.now() };
+    return value;
+  }
+
+  private withBadges<T extends ProductEntity>(product: T, channel?: string, cfg?: BadgeConfig) {
+    const isRetail = String(channel || '').toUpperCase() === 'RETAIL';
     const wholesaleStock = Number(product.wholesaleStock) || Number(product.stock) || 0;
     const retailStock = Number(product.retailStock) || 0;
-    const stock =
-      String(channel || '').toUpperCase() === 'RETAIL' ? retailStock : wholesaleStock;
+    const stock = isRetail ? retailStock : wholesaleStock;
     const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
+    const multiplier = Math.max(1, cfg?.limitedStockMultiplier ?? 2);
+    const newBadgeDays = Math.max(1, cfg?.newBadgeDays ?? 7);
+    const newBadgeMs = newBadgeDays * 24 * 60 * 60 * 1000;
     const createdAt = product.createdAt ? new Date(product.createdAt).getTime() : 0;
-    const isNewAuto = createdAt > 0 && Date.now() - createdAt < NEW_BADGE_MS;
-    const isLimitedStock = stock > 0 && stock <= minOrder * 2;
+    const isNewAuto = createdAt > 0 && Date.now() - createdAt < newBadgeMs;
+    const isLimitedStock = stock > 0 && stock <= minOrder * multiplier;
     const sizeType = (product.sizeType || 'FREE') as ProductSizeType;
+    const variants = (product.variants ?? []).map((v) => {
+      const vWholesale = Number(v.wholesaleStock) || Number(v.stock) || 0;
+      const vRetail = Number(v.retailStock) || 0;
+      return {
+        ...v,
+        stock: isRetail ? vRetail : vWholesale,
+        wholesaleStock: vWholesale,
+        retailStock: vRetail,
+      };
+    });
     return {
       ...product,
-      stock: wholesaleStock,
+      stock,
       wholesaleStock,
       retailStock,
+      showOnWholesale: product.showOnWholesale !== false,
+      showOnRetail: product.showOnRetail !== false,
+      variants,
       fabric: this.fabricFromSpecs(product.specs, product.fabric),
       isNew: isNewAuto,
       isFeatured: !!product.isDiscounted,
@@ -61,6 +95,8 @@ export class ProductService {
       isLimitedStock,
       totalStock: stock,
       sizeGuide: SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE,
+      channel: isRetail ? 'RETAIL' : 'WHOLESALE',
+      badgeSettings: { limitedStockMultiplier: multiplier, newBadgeDays },
     };
   }
 
@@ -92,6 +128,8 @@ export class ProductService {
   }
 
   private async syncSearch(product: ProductEntity) {
+    const cfg = await this.badgeConfig();
+    const newBadgeMs = cfg.newBadgeDays * 24 * 60 * 60 * 1000;
     await this.search.indexProduct({
       id: product.id,
       sku: product.sku,
@@ -101,7 +139,7 @@ export class ProductService {
       status: product.status,
       isFeatured: !!product.isDiscounted,
       isNew: product.createdAt
-        ? Date.now() - new Date(product.createdAt).getTime() < NEW_BADGE_MS
+        ? Date.now() - new Date(product.createdAt).getTime() < newBadgeMs
         : false,
     });
   }
@@ -122,6 +160,7 @@ export class ProductService {
       collar?: string;
       relatedTo?: string;
       garmentSize?: string;
+      channel?: string;
     },
   ) {
     const statusFilter = status ?? 'ACTIVE';
@@ -143,6 +182,12 @@ export class ProductService {
       .where('p.deletedAt IS NULL');
 
     if (status !== 'ALL') qb.andWhere('p.status = :status', { status: statusFilter });
+    const channel = String(opts?.channel || '').toUpperCase();
+    if (channel === 'RETAIL') {
+      qb.andWhere('p.showOnRetail = true');
+    } else if (channel === 'WHOLESALE') {
+      qb.andWhere('p.showOnWholesale = true');
+    }
     if (sizeType) qb.andWhere('p.sizeType = :sizeType', { sizeType });
     if (opts?.categoryId || related?.categoryId) {
       qb.andWhere('p.categoryId = :categoryId', {
@@ -201,20 +246,28 @@ export class ProductService {
     qb.orderBy('p.isDiscounted', 'DESC').addOrderBy('p.createdAt', 'DESC');
     const total = await qb.getCount();
     const data = await qb.skip((page - 1) * limit).take(limit).getMany();
+    const cfg = await this.badgeConfig();
     return {
-      data: data.map((p) => this.withBadges(p)),
+      data: data.map((p) => this.withBadges(p, channel || undefined, cfg)),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
     };
   }
 
-  async findComingSoon(limit = 12) {
+  async findComingSoon(limit = 12, channel?: string) {
     const data = await this.productRepo.find({
       where: [{ status: 'COMING_SOON' }, { isPreOrder: true, status: 'ACTIVE' }],
       relations: ['variants'],
       order: { createdAt: 'DESC' },
       take: Math.min(Math.max(limit, 1), 48),
     });
-    return data.map((p) => this.withBadges(p));
+    const ch = String(channel || '').toUpperCase();
+    const filtered = data.filter((p) => {
+      if (ch === 'RETAIL') return p.showOnRetail !== false;
+      if (ch === 'WHOLESALE') return p.showOnWholesale !== false;
+      return true;
+    });
+    const cfg = await this.badgeConfig();
+    return filtered.map((p) => this.withBadges(p, ch || undefined, cfg));
   }
 
   async listSpecMemory(fieldKey?: string) {
@@ -231,6 +284,24 @@ export class ProductService {
       if (!grouped[r.fieldKey].includes(r.value)) grouped[r.fieldKey].push(r.value);
     }
     return grouped;
+  }
+
+  async deleteSpecMemory(opts: { fieldKey?: string; value?: string; id?: string }) {
+    if (opts.id) {
+      const row = await this.specMemoryRepo.findOne({ where: { id: opts.id } });
+      if (!row) throw new NotFoundException('مقدار حافظه یافت نشد');
+      await this.specMemoryRepo.remove(row);
+      return { deleted: true };
+    }
+    const fieldKey = String(opts.fieldKey ?? '').trim();
+    const value = String(opts.value ?? '').trim();
+    if (!fieldKey || !value) {
+      throw new BadRequestException('fieldKey و value الزامی است');
+    }
+    const row = await this.specMemoryRepo.findOne({ where: { fieldKey, value } });
+    if (!row) throw new NotFoundException('مقدار حافظه یافت نشد');
+    await this.specMemoryRepo.remove(row);
+    return { deleted: true };
   }
 
   async listColors() {
@@ -273,16 +344,32 @@ export class ProductService {
     return { deleted: true };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, channel?: string) {
     const product = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!product) throw new NotFoundException('محصول یافت نشد');
-    return this.withBadges(product);
+    const ch = String(channel || '').toUpperCase();
+    if (ch === 'RETAIL' && product.showOnRetail === false) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
+    if (ch === 'WHOLESALE' && product.showOnWholesale === false) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
+    const cfg = await this.badgeConfig();
+    return this.withBadges(product, channel, cfg);
   }
 
-  async findBySlug(slug: string) {
+  async findBySlug(slug: string, channel?: string) {
     const product = await this.productRepo.findOne({ where: { slug }, relations: ['variants'] });
     if (!product) throw new NotFoundException('محصول یافت نشد');
-    return this.withBadges(product);
+    const ch = String(channel || '').toUpperCase();
+    if (ch === 'RETAIL' && product.showOnRetail === false) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
+    if (ch === 'WHOLESALE' && product.showOnWholesale === false) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
+    const cfg = await this.badgeConfig();
+    return this.withBadges(product, channel, cfg);
   }
 
   async create(data: CreateProductDto) {
@@ -320,11 +407,18 @@ export class ProductService {
       preOrderDate: data.preOrderDate ? new Date(data.preOrderDate) : null,
       modelInfo: data.modelInfo ?? null,
       videoUrl: data.videoUrl ?? null,
+      showOnWholesale: data.showOnWholesale !== false,
+      showOnRetail: data.showOnRetail !== false,
     });
     const saved = await this.productRepo.save(product);
     await this.rememberSpecs(specs);
     await this.syncSearch(saved);
-    return this.withBadges(await this.productRepo.findOne({ where: { id: saved.id }, relations: ['variants'] }) as ProductEntity);
+    const cfg = await this.badgeConfig();
+    return this.withBadges(
+      await this.productRepo.findOne({ where: { id: saved.id }, relations: ['variants'] }) as ProductEntity,
+      undefined,
+      cfg,
+    );
   }
 
   private async allocateSku(categoryId: string): Promise<string> {
@@ -393,7 +487,8 @@ export class ProductService {
     }
 
     await this.syncSearch(updated);
-    return this.withBadges(updated);
+    const cfg = await this.badgeConfig();
+    return this.withBadges(updated, undefined, cfg);
   }
 
   async remove(id: string) {
@@ -508,7 +603,8 @@ export class ProductService {
       relations: ['variants'],
     });
     if (!product) throw new NotFoundException(`محصول با SKU «${sku}» یافت نشد`);
-    return this.withBadges(product);
+    const cfg = await this.badgeConfig();
+    return this.withBadges(product, undefined, cfg);
   }
 
   private sizeLabelForProduct(product: ProductEntity): string {
