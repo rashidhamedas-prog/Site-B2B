@@ -2,6 +2,16 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-28 — Google Analytics 4 + Search Console (عمده و تکی)
+
+### خلاصه
+- فیلدهای GA4 / GTM / GSC جدا برای عمده و تکی در تنظیمات marketing + public API
+- تزریق gtag/GTM per-channel؛ verification meta از env یا ادمین
+- رویداد purchase تکی برای GA4؛ sitemap با `?channel=`
+- راهنمای مالک: `docs/GOOGLE-SETUP.md`
+
+---
+
 ## 2026-07-28 — رفع باگ موجودی عمده در checkout (جمع واریانت‌ها)
 
 ### خلاصه

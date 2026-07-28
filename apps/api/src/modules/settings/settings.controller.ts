@@ -68,6 +68,12 @@ export class SettingsController {
       channel: channel ? String(channel).toUpperCase() : undefined,
       marketing: {
         feedBrandName: marketing.feedBrandName || 'پوشاک ترنم',
+        ga4WholesaleId: marketing.ga4WholesaleId || '',
+        ga4RetailId: marketing.ga4RetailId || '',
+        gtmWholesaleId: marketing.gtmWholesaleId || '',
+        gtmRetailId: marketing.gtmRetailId || '',
+        gscWholesaleVerification: marketing.gscWholesaleVerification || '',
+        gscRetailVerification: marketing.gscRetailVerification || '',
         yektanetPixelId: marketing.yektanetPixelId || '',
         metaPixelId: marketing.metaPixelId || '',
         adroScriptUrl: marketing.adroScriptUrl || '',
