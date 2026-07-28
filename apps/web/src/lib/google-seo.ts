@@ -13,16 +13,26 @@ type MarketingPublic = {
 };
 
 async function fetchMarketing(): Promise<MarketingPublic> {
-  try {
-    const res = await fetch(`${API_URL}/settings/public`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) return {};
-    const json = await res.json();
-    return (json?.marketing ?? {}) as MarketingPublic;
-  } catch {
-    return {};
+  const candidates = [
+    API_URL,
+    process.env.INTERNAL_API_URL,
+    'http://api:4000/v1',
+    'http://127.0.0.1:4000/v1',
+  ].filter(Boolean) as string[];
+
+  for (const base of candidates) {
+    try {
+      const res = await fetch(`${base.replace(/\/$/, '')}/settings/public`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) continue;
+      const json = await res.json();
+      return (json?.marketing ?? {}) as MarketingPublic;
+    } catch {
+      /* try next */
+    }
   }
+  return {};
 }
 
 export async function resolveGoogleChannel(): Promise<GoogleChannel> {

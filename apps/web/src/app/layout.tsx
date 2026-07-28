@@ -83,12 +83,19 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const hdrs = await headers();
-  const gtmId = resolveGtmIdForHost(hdrs.get('host'));
+  const host = hdrs.get('x-forwarded-host') || hdrs.get('host');
+  const gtmId = resolveGtmIdForHost(host);
+  // Explicit <head> meta — Next metadata `verification` can be dropped when a
+  // custom <head> is present; GSC needs this tag in the initial HTML head.
+  const gsc = await resolveGscVerification();
 
   return (
     <html lang="fa" dir="rtl" className={vazirmatn.variable}>
       <head>
         <GtmHeadScript gtmId={gtmId} />
+        {gsc ? (
+          <meta name="google-site-verification" content={gsc} />
+        ) : null}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.svg" sizes="any" />
         <link rel="manifest" href="/manifest.json" />
