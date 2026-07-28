@@ -12,6 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes, randomInt } from 'crypto';
 import { UserEntity } from './entities/user.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
+import { OrderEntity } from '../order/entities/order.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -60,6 +61,8 @@ export class AuthService {
     private readonly userRepo: Repository<UserEntity>,
     @InjectRepository(CustomerEntity)
     private readonly customerRepo: Repository<CustomerEntity>,
+    @InjectRepository(OrderEntity)
+    private readonly orderRepo: Repository<OrderEntity>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
     @Optional() private readonly notifications?: NotificationService,
@@ -238,6 +241,12 @@ export class AuthService {
     if (u.customerId) {
       const customer = await this.customerRepo.findOne({ where: { id: u.customerId } });
       if (customer) {
+        const spentRow = await this.orderRepo
+          .createQueryBuilder('o')
+          .select('SUM(o.total)', 'sum')
+          .where('o.customerId = :cid', { cid: customer.id })
+          .andWhere("o.status NOT IN ('PENDING_REVIEW', 'CANCELLED', 'DELETED')")
+          .getRawOne();
         return {
           userId: u.id,
           phone: u.phone,
@@ -249,7 +258,7 @@ export class AuthService {
           creditLimit: customer.creditLimit ?? 0,
           balance: Number(customer.balance) || 0,
           customerId: customer.id,
-          totalSpent: 0,
+          totalSpent: Number(spentRow?.sum) || 0,
           lastLoginAt: u.lastLoginAt,
         };
       }

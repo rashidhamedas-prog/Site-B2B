@@ -49,7 +49,9 @@ export class PaymentService {
     const sandbox = isRetail
       ? cfg.retailSandbox || !merchantId
       : cfg.sandbox || !merchantId;
-    const enabled = isRetail ? !!cfg.retailEnabled && !!cfg.enabled : !!cfg.enabled;
+    const enabled = isRetail
+      ? !!cfg.retailEnabled && !!cfg.enabled
+      : !!cfg.wholesaleEnabled && !!cfg.enabled;
     const apiBase = sandbox
       ? 'https://sandbox.zarinpal.com/pg/v4/payment'
       : 'https://payment.zarinpal.com/pg/v4/payment';
@@ -61,7 +63,7 @@ export class PaymentService {
     const callbackBase = isRetail
       ? (cfg.retailCallbackUrl ||
           `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`)
-      : this.callbackBase;
+      : (cfg.callbackUrl || this.callbackBase);
     return { sandbox, apiBase, startPayBase, merchantId: mid, enabled, callbackBase, channel };
   }
 
@@ -94,7 +96,7 @@ export class PaymentService {
       throw new BadRequestException(
         channel === 'RETAIL'
           ? 'پرداخت آنلاین فروشگاه تکی غیرفعال است یا مرچنت کد تکی تنظیم نشده'
-          : 'پرداخت آنلاین در حال حاضر غیرفعال است',
+          : 'پرداخت آنلاین عمده غیرفعال است یا مرچنت کد عمده تنظیم نشده',
       );
     }
     if (!gw.merchantId || gw.merchantId.startsWith('00000000')) {

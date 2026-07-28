@@ -153,11 +153,18 @@ export class SettingsService {
     return {
       enabled: s.enabled ?? true,
       /** Wholesale (.com) Zarinpal merchant */
+      wholesaleEnabled: s.wholesaleEnabled ?? true,
       merchantId: s.merchantId || this.config.get('ZARINPAL_MERCHANT_ID', ''),
       sandbox:
         typeof s.sandbox === 'boolean'
           ? s.sandbox
           : this.config.get('ZARINPAL_SANDBOX', 'true') === 'true',
+      callbackUrl:
+        s.callbackUrl ||
+        this.config.get(
+          'PAYMENT_CALLBACK_URL',
+          `${(process.env.NEXT_PUBLIC_SITE_URL || 'https://poshaktaranom.com').replace(/\/$/, '')}/payment/callback`,
+        ),
       /** Retail (.ir) Zarinpal merchant — separate terminal for storefront */
       retailEnabled: s.retailEnabled ?? true,
       retailMerchantId:

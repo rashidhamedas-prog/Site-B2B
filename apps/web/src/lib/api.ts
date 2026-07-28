@@ -1,12 +1,28 @@
 import { getToken } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+function resolveApiBase(): string {
+  // Browser on production hosts: same-origin /api (avoids CORS between .ir ↔ .com)
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('poshaktaranom.com') ||
+      host.endsWith('poshaktaranom.ir')
+    ) {
+      // local next without nginx still needs absolute API
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+      }
+      return '/api/v1';
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+}
 
 class ApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl = API_BASE) {
-    this.baseUrl = baseUrl;
+  private get baseUrl() {
+    return resolveApiBase();
   }
 
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -47,8 +63,8 @@ class ApiClient {
         const pathName = window.location.pathname;
         if (pathName.startsWith('/admin')) {
           window.location.href = '/admin/login';
-        } else if (pathName.startsWith('/retail')) {
-          window.location.href = `/retail/account?redirect=${encodeURIComponent(pathName)}`;
+        } else if (pathName.startsWith('/retail') || pathName.startsWith('/account')) {
+          window.location.href = `/account?redirect=${encodeURIComponent(pathName)}`;
         } else {
           window.location.href = '/portal/login';
         }

@@ -69,7 +69,7 @@ export class FeedsController {
     const brand = await this.brandName();
 
     return rows
-      .filter((p) => Number(p.retailPrice) > 0)
+      .filter((p) => p.showOnRetail !== false && Number(p.retailPrice) > 0)
       .map((p) => {
         const price = Number(p.retailPrice);
         const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.stock) || 0), 0);

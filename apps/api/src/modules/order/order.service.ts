@@ -615,6 +615,7 @@ export class OrderService {
   /**
    * Reverse all side-effects of an order (stock, wallet, discount use, pending payments, affiliate).
    * Idempotent via effectsReversedAt.
+   * Uses UPDATE (not save) so TypeORM does not null customerId when the customer relation is missing/soft-deleted.
    */
   private async reverseEffects(order: OrderEntity) {
     if (order.effectsReversedAt) return order;
@@ -633,7 +634,7 @@ export class OrderService {
     }
 
     const wallet = this.resolveWalletApplied(full);
-    if (wallet > 0) {
+    if (wallet > 0 && full.customerId) {
       await this.customerService.updateBalance(full.customerId, wallet);
     }
 
@@ -648,8 +649,10 @@ export class OrderService {
       this.affiliatePostback.fireForOrder(full.id, 'cancelled').catch(() => undefined);
     }
 
-    full.effectsReversedAt = new Date();
-    return this.orderRepo.save(full);
+    const at = new Date();
+    await this.orderRepo.update(full.id, { effectsReversedAt: at });
+    full.effectsReversedAt = at;
+    return full;
   }
 
   async updateStatus(id: string, status: string, processedBy?: string) {
@@ -658,16 +661,16 @@ export class OrderService {
       throw new BadRequestException('سفارش حذف‌شده قابل تغییر وضعیت نیست');
     }
     const prev = order.status;
-    order.status = status;
-    if (processedBy) order.processedBy = processedBy;
-    if (status === 'CONFIRMED') order.confirmedAt = new Date();
-    if (status === 'SHIPPED') order.shippedAt = new Date();
-    if (status === 'DELIVERED') order.deliveredAt = new Date();
-    const saved = await this.orderRepo.save(order);
+    const patch: Partial<OrderEntity> = { status };
+    if (processedBy) patch.processedBy = processedBy;
+    if (status === 'CONFIRMED') patch.confirmedAt = new Date();
+    if (status === 'SHIPPED') patch.shippedAt = new Date();
+    if (status === 'DELIVERED') patch.deliveredAt = new Date();
+    await this.orderRepo.update(id, patch);
 
     // Full reversal when cancelling (stock + wallet + discount + pending pay)
     if (status === 'CANCELLED' && prev !== 'CANCELLED' && prev !== 'DELETED') {
-      await this.reverseEffects(saved);
+      await this.reverseEffects(order);
     }
 
     if (this.notifications) {
@@ -693,12 +696,14 @@ export class OrderService {
       return order; // already voided — still viewable
     }
     await this.reverseEffects(order);
-    const fresh = await this.findOne(id);
-    fresh.status = 'DELETED';
-    fresh.voidedAt = new Date();
-    fresh.voidReason = reason?.trim() || 'حذف توسط ادمین';
-    if (processedBy) fresh.processedBy = processedBy;
-    return this.orderRepo.save(fresh);
+    const patch: Partial<OrderEntity> = {
+      status: 'DELETED',
+      voidedAt: new Date(),
+      voidReason: reason?.trim() || 'حذف توسط ادمین',
+    };
+    if (processedBy) patch.processedBy = processedBy;
+    await this.orderRepo.update(id, patch);
+    return this.findOne(id);
   }
 
   /**

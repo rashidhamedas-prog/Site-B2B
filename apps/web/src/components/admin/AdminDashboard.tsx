@@ -12,12 +12,14 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
 interface DashboardStats {
+  generatedAt?: string;
+  live?: boolean;
   orders: { total: number; pending: number; thisMonth: number; lastMonth: number; growth: number };
   ordersByStatus?: Record<string, number>;
   customers: { total: number; pending: number; active: number };
   revenue: { total: number; thisMonth: number; outstanding: number };
   recentOrders: { id: string; orderNumber: string; customerName: string; city: string; total: number; status: string; createdAt: string }[];
-  lowStock: { id: string; color: string; size: string; stock: number; productId: string }[];
+  lowStock: { id: string; color: string; size: string; stock: number; productId: string; productName?: string }[];
   topCustomers: { id: string; businessName: string; city: string; segment: string; totalSpend: number; orderCount: number }[];
   monthlyRevenue?: Array<{ label: string; value: number }>;
   monthlyOrders?: Array<{ label: string; value: number }>;
@@ -189,11 +191,16 @@ export function AdminDashboard() {
 
   const monthlyOrders = stats.monthlyOrders ?? [];
   const monthlyRevenue = stats.monthlyRevenue ?? [];
-  const monthlyValues = monthlyOrders.map((m) => m.value);
-  const revenueMonths = monthlyRevenue.map((m) => Math.round(m.value / 10_000_000) || 0);
+  // Chart unit: میلیون تومان (IRR / 10 / 1e6)
+  const monthlyValues = monthlyOrders.map((m) => Number(m.value) || 0);
+  const revenueMonths = monthlyRevenue.map((m) => Math.round((Number(m.value) || 0) / 10_000_000));
+  const sparkRevenue = monthlyRevenue.map((m) => Number(m.value) || 0);
   const monthLabels = monthlyRevenue.map((m) => m.label);
   const statusMap = stats.ordersByStatus ?? {};
   const statusTotal = Math.max(stats.orders.total, 1);
+  const updatedLabel = stats.generatedAt
+    ? `آخرین بروزرسانی: ${new Date(stats.generatedAt).toLocaleString('fa-IR')}`
+    : 'داده زنده از دیتابیس';
 
   const kpis = [
     {
@@ -204,7 +211,7 @@ export function AdminDashboard() {
       up: stats.orders.growth >= 0,
       icon: TrendingUp,
       iconBg: 'bg-emerald-500',
-      sparkValues: revenueMonths,
+      sparkValues: sparkRevenue,
       sparkColor: '#10b981',
     },
     {
@@ -251,7 +258,7 @@ export function AdminDashboard() {
             {usingFallback ? (
               <span className="text-amber-500">⚠ اتصال به API برقرار نشد — آمار خالی نمایش داده می‌شود</span>
             ) : (
-              'آخرین بروزرسانی: همین الان'
+              updatedLabel
             )}
           </p>
         </div>
@@ -500,7 +507,9 @@ export function AdminDashboard() {
                       <Package className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-800">{item.color} / سایز {item.size}</p>
+                      <p className="text-xs font-semibold text-gray-800 truncate">
+                        {item.productName ? `${item.productName} — ` : ''}{item.color} / سایز {item.size}
+                      </p>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="h-1 flex-1 rounded-full bg-gray-100">
                           <div

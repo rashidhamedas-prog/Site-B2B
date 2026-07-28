@@ -13,6 +13,7 @@ type Product = {
   slug: string;
   fabric?: string;
   retailPrice?: number | null;
+  retailCompareAtPrice?: number | null;
   images?: string[];
   variants?: Array<{ color: string; size: string }>;
   specs?: { collarModel?: string; fabricType?: string };
@@ -238,6 +239,8 @@ function RetailProductsInner() {
               {products.map((p) => {
                 const img = mediaUrl(p.images?.[0]);
                 const price = Number(p.retailPrice ?? 0);
+                const compareAt = Number(p.retailCompareAtPrice ?? 0);
+                const showCompare = compareAt > price && price > 0;
                 return (
                   <Link
                     key={p.id}
@@ -257,9 +260,16 @@ function RetailProductsInner() {
                     </div>
                     <div className="p-3 sm:p-4">
                       <h2 className="line-clamp-2 text-sm font-semibold">{p.name}</h2>
-                      <p className="mt-2 text-sm font-extrabold text-[var(--retail-primary)]">
-                        {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
-                      </p>
+                      <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
+                        <p className="text-sm font-extrabold text-[var(--retail-primary)]">
+                          {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
+                        </p>
+                        {showCompare ? (
+                          <p className="text-xs text-[var(--retail-muted)] line-through">
+                            {toman(compareAt)}
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
                   </Link>
                 );

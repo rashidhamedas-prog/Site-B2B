@@ -8,6 +8,7 @@ import { CustomerEntity } from '../customer/entities/customer.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { ProductEntity } from '../product/entities/product.entity';
+import { UserEntity } from '../auth/entities/user.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -19,6 +20,7 @@ import { AuthModule } from '../auth/auth.module';
       InvoiceEntity,
       ProductVariantEntity,
       ProductEntity,
+      UserEntity,
     ]),
     AuthModule,
   ],

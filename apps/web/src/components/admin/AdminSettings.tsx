@@ -38,7 +38,8 @@ interface SettingsPayload {
     events: Record<string, boolean>;
   };
   payment: {
-    enabled: boolean; merchantId: string; sandbox: boolean;
+    enabled: boolean; wholesaleEnabled: boolean; merchantId: string; sandbox: boolean;
+    callbackUrl: string;
     retailEnabled: boolean; retailMerchantId: string; retailSandbox: boolean;
     retailCallbackUrl: string;
     manualCardNumber: string; manualCardOwner: string;
@@ -144,8 +145,12 @@ export function AdminSettings() {
         },
         payment: {
           enabled: res.payment?.enabled ?? true,
+          wholesaleEnabled: res.payment?.wholesaleEnabled !== false,
           merchantId: res.payment?.merchantId ?? '',
           sandbox: !!res.payment?.sandbox,
+          callbackUrl:
+            res.payment?.callbackUrl ??
+            'https://poshaktaranom.com/payment/callback',
           retailEnabled: res.payment?.retailEnabled !== false,
           retailMerchantId: res.payment?.retailMerchantId ?? '',
           retailSandbox: !!res.payment?.retailSandbox,
@@ -491,6 +496,12 @@ export function AdminSettings() {
             <h3 className="font-bold text-gray-800 mb-1 text-sm">زرین‌پال عمده (.com)</h3>
             <p className="text-xs text-gray-500 mb-3">برای پورتال عمده‌فروشان — poshaktaranom.com</p>
             <div className="space-y-4">
+              <ToggleRow
+                label="فعال‌سازی درگاه عمده"
+                hint="پرداخت آنلاین چک‌اوت عمده‌فروشی"
+                value={data.payment.wholesaleEnabled !== false}
+                onChange={(v) => patch('payment', (p) => ({ ...p, wholesaleEnabled: v }))}
+              />
               <SecretField
                 label="مرچنت کد عمده (Merchant ID / Token)"
                 value={data.payment.merchantId}
@@ -504,6 +515,13 @@ export function AdminSettings() {
                 hint="حالت آزمایشی برای درگاه عمده"
                 value={data.payment.sandbox}
                 onChange={(v) => patch('payment', (p) => ({ ...p, sandbox: v }))}
+              />
+              <TextField
+                label="آدرس بازگشت (Callback) عمده"
+                value={data.payment.callbackUrl ?? ''}
+                dir="ltr"
+                placeholder="https://poshaktaranom.com/payment/callback"
+                onChange={(v) => patch('payment', (p) => ({ ...p, callbackUrl: v }))}
               />
             </div>
           </div>

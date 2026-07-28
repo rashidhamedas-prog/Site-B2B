@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, X, Save, Send, DollarSign, FileText, AlertCircle, Download, Trash2 } from 'lucide-react';
 import { Input, Badge, Pagination } from '@/components/ui';
 import { apiClient } from '@/lib/api';
@@ -82,90 +83,156 @@ function CreateModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
     finally { setSaving(false); }
   };
 
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
   type TextKey = Exclude<keyof typeof form, 'freeShipping'>;
+  const fieldCls =
+    'w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30';
   const f = (key: TextKey, label: string, type = 'text', placeholder = '') => (
-    <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-      <input type={type} value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+    <div className="min-w-0">
+      <label className="mb-1.5 block text-xs font-medium text-gray-600">{label}</label>
+      <input
+        type={type}
+        value={form[key]}
+        onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        dir={type === 'number' || type === 'date' ? 'ltr' : undefined}
+        className={cn(fieldCls, (type === 'number' || type === 'date') && 'text-left tabular-nums')}
+      />
     </div>
   );
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-bold text-gray-900">صدور فاکتور جدید</h3>
-          <button onClick={onClose}><X className="h-5 w-5 text-gray-400" /></button>
+  const modal = (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="invoice-create-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
+        aria-label="بستن"
+        onClick={onClose}
+      />
+      <div className="relative z-10 flex max-h-[min(92dvh,920px)] w-full max-w-xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
+          <h3 id="invoice-create-title" className="text-base font-bold text-gray-900">صدور فاکتور جدید</h3>
+          <button type="button" onClick={onClose} className="rounded-lg p-1.5 hover:bg-gray-100" aria-label="بستن">
+            <X className="h-5 w-5 text-gray-400" />
+          </button>
         </div>
-        <div className="p-6 space-y-4">
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-5">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">مشتری</label>
-            <select value={form.customerId} onChange={(e) => setForm((p) => ({ ...p, customerId: e.target.value }))}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">مشتری</label>
+            <select
+              value={form.customerId}
+              onChange={(e) => setForm((p) => ({ ...p, customerId: e.target.value }))}
+              className={fieldCls}
+            >
               <option value="">انتخاب مشتری...</option>
-              {customers.map((c) => <option key={c.id} value={c.id}>{c.businessName} — {c.city}</option>)}
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.businessName} — {c.city}
+                </option>
+              ))}
             </select>
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">نوع فاکتور</label>
-            <select value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">نوع فاکتور</label>
+            <select
+              value={form.type}
+              onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
+              className={fieldCls}
+            >
               <option value="PROFORMA">پیش‌فاکتور</option>
               <option value="FINAL">فاکتور نهایی</option>
             </select>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          {/* One/two columns — never 3: Persian labels overflow */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {f('subtotal', 'مبلغ کالا (تومان)', 'number', '0')}
             {f('taxAmount', 'مالیات (تومان)', 'number', '0')}
             {f('discount', 'تخفیف (تومان)', 'number', '0')}
+            {f('dueDate', 'تاریخ سررسید', 'date')}
           </div>
+
           <div className="border-t border-gray-100 pt-3">
-            <p className="text-xs font-semibold text-gray-600 mb-2">هزینه ارسال</p>
-            <div className="grid grid-cols-2 gap-3">
+            <p className="mb-2 text-xs font-semibold text-gray-600">هزینه ارسال</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {f('intraCityFee', 'حمل درون‌شهری (تومان)', 'number', '0')}
               {f('perKgFee', 'کارمزد هر کیلوگرم (تومان)', 'number', '0')}
             </div>
-            <label className="flex items-center gap-2 mt-3 cursor-pointer">
+            <label className="mt-3 flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
                 checked={form.freeShipping}
                 onChange={(e) => setForm((p) => ({ ...p, freeShipping: e.target.checked }))}
-                className="rounded"
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
               />
               <span className="text-sm text-gray-700">ارسال رایگان</span>
             </label>
           </div>
-          <div className="rounded-xl bg-primary-50 px-4 py-3 space-y-1">
+
+          <div className="space-y-1 rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
             {!form.freeShipping && shippingIrr > 0 && (
-              <div className="flex justify-between text-xs text-primary-dark">
+              <div className="flex justify-between gap-3 text-xs text-emerald-900">
                 <span>هزینه ارسال</span>
-                <span>{(shippingIrr / 10).toLocaleString('fa-IR')} تومان</span>
+                <span className="shrink-0 tabular-nums" dir="ltr">{(shippingIrr / 10).toLocaleString('fa-IR')} تومان</span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-sm text-primary-dark">جمع کل</span>
-              <span className="text-base font-bold text-primary">{(total / 10).toLocaleString('fa-IR')} تومان</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-emerald-900">جمع کل</span>
+              <span className="shrink-0 text-base font-bold tabular-nums text-emerald-800" dir="ltr">
+                {(total / 10).toLocaleString('fa-IR')} تومان
+              </span>
             </div>
           </div>
-          {f('dueDate', 'تاریخ سررسید', 'date')}
+
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">توضیحات</label>
-            <textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} rows={2}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+            <label className="mb-1.5 block text-xs font-medium text-gray-600">توضیحات</label>
+            <textarea
+              value={form.notes}
+              onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+              rows={2}
+              className={cn(fieldCls, 'resize-none')}
+            />
           </div>
           {error && <p className="text-xs text-error">{error}</p>}
         </div>
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="btn btn-outline btn-md">انصراف</button>
-          <button onClick={handleSave} disabled={saving} className="btn btn-primary btn-md flex items-center gap-2">
-            <Save className="h-4 w-4" />{saving ? 'ذخیره...' : 'صدور فاکتور'}
+
+        <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 bg-white px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button type="button" onClick={onClose} className="btn btn-outline btn-md">
+            انصراف
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="btn btn-primary btn-md flex items-center gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'ذخیره...' : 'صدور فاکتور'}
           </button>
         </div>
       </div>
     </div>
   );
+
+  if (typeof window === 'undefined') return null;
+  return createPortal(modal, document.body);
 }
 
 // ── Payment Modal ─────────────────────────────────────────────────
@@ -183,28 +250,35 @@ function PaymentModal({ invoice, onClose, onDone }: { invoice: Invoice; onClose:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+      <div className="flex max-h-[90vh] w-full max-w-sm flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
           <h3 className="text-base font-bold text-gray-900">ثبت پرداخت</h3>
-          <button onClick={onClose}><X className="h-5 w-5 text-gray-400" /></button>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 hover:bg-gray-100" aria-label="بستن">
+            <X className="h-5 w-5 text-gray-400" />
+          </button>
         </div>
-        <div className="p-6 space-y-4">
-          <div className="rounded-xl bg-gray-50 px-4 py-3 space-y-1 text-sm">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+          <div className="space-y-1 rounded-xl bg-gray-50 px-4 py-3 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">فاکتور</span><span className="font-mono">{invoice.invoiceNumber}</span></div>
             <div className="flex justify-between"><span className="text-gray-500">مجموع</span><span className="font-bold">{toman(invoice.total)} تومان</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">پرداخت شده</span><span className="text-green-600 font-bold">{toman(invoice.paidAmount)} تومان</span></div>
-            <div className="flex justify-between"><span className="text-gray-500">مانده</span><span className="text-error font-bold">{toman(remaining)} تومان</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">پرداخت شده</span><span className="font-bold text-green-600">{toman(invoice.paidAmount)} تومان</span></div>
+            <div className="flex justify-between"><span className="text-gray-500">مانده</span><span className="font-bold text-error">{toman(remaining)} تومان</span></div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">مبلغ دریافتی (تومان)</label>
-            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+            <label className="mb-1 block text-xs font-medium text-gray-600">مبلغ دریافتی (تومان)</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              dir="ltr"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
           </div>
         </div>
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button onClick={onClose} className="btn btn-outline btn-md">انصراف</button>
-          <button onClick={handleSave} disabled={saving || !amount} className="btn btn-primary btn-md flex items-center gap-2">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-gray-100 px-6 py-4">
+          <button type="button" onClick={onClose} className="btn btn-outline btn-md">انصراف</button>
+          <button type="button" onClick={handleSave} disabled={saving || !amount} className="btn btn-primary btn-md flex items-center gap-2">
             <DollarSign className="h-4 w-4" />{saving ? 'ذخیره...' : 'ثبت پرداخت'}
           </button>
         </div>

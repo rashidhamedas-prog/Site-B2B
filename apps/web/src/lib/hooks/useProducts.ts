@@ -35,6 +35,10 @@ export interface Product {
   isNew: boolean;
   wholesalePrice: number;
   retailPrice: number;
+  retailCompareAtPrice?: number | null;
+  showOnWholesale?: boolean;
+  showOnRetail?: boolean;
+  retailFeatured?: boolean;
   minOrderQty: number;
   stock?: number;
   wholesaleStock?: number;
