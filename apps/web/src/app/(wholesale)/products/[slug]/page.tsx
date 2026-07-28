@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { ProductDetail } from '@/components/wholesale/ProductDetail';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
+import { decodeRouteParam } from '@/lib/route-params';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -29,7 +30,7 @@ async function fetchProductMeta(slug: string) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = decodeRouteParam((await params).slug);
   const product = await fetchProductMeta(slug);
   const title = product?.seoMeta?.title || product?.name || slug.replace(/-/g, ' ');
   const description =
@@ -63,6 +64,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params }: Props) {
-  const { slug } = await params;
+  const slug = decodeRouteParam((await params).slug);
   return <ProductDetail slug={slug} />;
 }
