@@ -48,10 +48,13 @@ export class SettingsController {
         address: business.address,
         officeAddress: business.officeAddress,
         minOrderToman: business.minOrderToman,
+        limitedStockMultiplier: business.limitedStockMultiplier,
+        newBadgeDays: business.newBadgeDays,
       },
       shipping: {
         companies: shipping.companies,
         freeThreshold: shipping.freeThreshold,
+        baseFee: shipping.baseFee,
       },
       installments,
       // Safe flags only — never expose merchantId / secrets

@@ -40,7 +40,8 @@
     "ProductDetail layout with next/image fill",
     "Checkout 500: TieredDiscountEntity/SideDiscountEntity/ProductSpecMemoryEntity missing from TypeORM entities list",
     "Retail ONLINE orders returned without paymentUrl",
-    "Retail stock deducted at product level instead of variant"
+    "Retail stock deducted at product level instead of variant",
+    "Wholesale checkout compared full qty to variants[0] stock instead of summing/allocating channel stock across variants"
   ],
   "pending": [
     "IDPay gateway",

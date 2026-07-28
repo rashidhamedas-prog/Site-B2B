@@ -58,6 +58,10 @@ export class SettingsService {
       officeAddress: s.officeAddress ?? '',
       minOrderToman: Number(s.minOrderToman) || 1000000,
       defaultCreditDays: Number(s.defaultCreditDays) || 30,
+      /** Auto «موجودی محدود» when stock ≤ minOrder × this (both channels) */
+      limitedStockMultiplier: Math.max(1, Number(s.limitedStockMultiplier) || 2),
+      /** Auto «جدید» badge window in days (both channels) */
+      newBadgeDays: Math.max(1, Number(s.newBadgeDays) || 7),
     };
   }
 
@@ -82,10 +86,11 @@ export class SettingsService {
       .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
     return {
-      baseFee: Number(s.baseFee) || Number(this.config.get('SHIPPING_BASE_FEE', 600000)),
+      baseFee: Number(s.baseFee) || Number(this.config.get('SHIPPING_BASE_FEE', 1500000)),
       perKgFee: Number(s.perKgFee) || Number(this.config.get('SHIPPING_PER_KG_FEE', 250000)),
+      // Default: ۵ میلیون تومان = 50_000_000 IRR
       freeThreshold:
-        Number(s.freeThreshold) || Number(this.config.get('SHIPPING_FREE_THRESHOLD', 200000000)),
+        Number(s.freeThreshold) || Number(this.config.get('SHIPPING_FREE_THRESHOLD', 50_000_000)),
       // Editable shipping companies list (admin-managed). Kept alongside legacy `methods` for backward compat.
       companies,
       // Legacy per-method enable flags; derived from companies (or fall back to stored methods).

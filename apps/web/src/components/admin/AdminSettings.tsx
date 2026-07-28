@@ -25,6 +25,8 @@ interface SettingsPayload {
     website: string; instagram: string; telegram: string;
     address: string; officeAddress: string;
     minOrderToman: number; defaultCreditDays: number;
+    limitedStockMultiplier?: number;
+    newBadgeDays?: number;
   };
   shipping: {
     baseFee: number; perKgFee: number; freeThreshold: number;
@@ -121,6 +123,19 @@ export function AdminSettings() {
           }];
       setData({
         ...res,
+        business: {
+          ...res.business,
+          limitedStockMultiplier: res.business?.limitedStockMultiplier ?? 2,
+          newBadgeDays: res.business?.newBadgeDays ?? 7,
+        },
+        shipping: {
+          ...res.shipping,
+          baseFee: res.shipping?.baseFee ?? 1_500_000,
+          perKgFee: res.shipping?.perKgFee ?? 250_000,
+          freeThreshold: res.shipping?.freeThreshold ?? 50_000_000,
+          companies: res.shipping?.companies ?? [],
+          methods: res.shipping?.methods ?? {},
+        },
         payment: {
           enabled: res.payment?.enabled ?? true,
           merchantId: res.payment?.merchantId ?? '',
@@ -284,6 +299,20 @@ export function AdminSettings() {
             <NumberField label="اعتبار پیش‌فرض نسیه (روز)" value={data.business.defaultCreditDays}
               onChange={(v) => patch('business', (b) => ({ ...b, defaultCreditDays: v }))} />
           </div>
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
+            <NumberField
+              label="ضریب موجودی محدود"
+              value={data.business.limitedStockMultiplier ?? 2}
+              onChange={(v) => patch('business', (b) => ({ ...b, limitedStockMultiplier: Math.max(1, v) }))}
+              help="نشان «موجودی محدود» وقتی موجودی ≤ حداقل‌سفارش × این ضریب — برای هر دو سایت"
+            />
+            <NumberField
+              label="روزهای نشان جدید"
+              value={data.business.newBadgeDays ?? 7}
+              onChange={(v) => patch('business', (b) => ({ ...b, newBadgeDays: Math.max(1, v) }))}
+              help="مدت نمایش خودکار نشان «جدید» پس از ایجاد محصول — برای هر دو سایت"
+            />
+          </div>
         </div>
       )}
 
@@ -291,8 +320,29 @@ export function AdminSettings() {
       {tab === 'shipping' && (
         <div className="card p-6 space-y-6 max-w-3xl">
           <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            هزینه‌های ارسال در هر فاکتور/سفارش تعیین می‌شود؛ اینجا فقط شرکت‌های حمل را مدیریت کنید.
+            هزینه پایه ارسال در فاکتور عمده از «کارمزد پایه» خوانده می‌شود؛ شرکت‌های حمل را پایین‌تر مدیریت کنید.
           </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <NumberField
+              label="کارمزد پایه (تومان)"
+              value={Math.round((data.shipping.baseFee ?? 0) / 10)}
+              onChange={(v) => patch('shipping', (s) => ({ ...s, baseFee: Math.max(0, v) * 10 }))}
+              help="مثلاً ۱۵۰٬۰۰۰ تومان — ذخیره به‌صورت ریال"
+            />
+            <NumberField
+              label="کارمزد هر کیلوگرم (تومان)"
+              value={Math.round((data.shipping.perKgFee ?? 0) / 10)}
+              onChange={(v) => patch('shipping', (s) => ({ ...s, perKgFee: Math.max(0, v) * 10 }))}
+              help="اضافه بر کارمزد پایه (عمدتاً تکی)"
+            />
+            <NumberField
+              label="آستانه ارسال رایگان (تومان)"
+              value={Math.round((data.shipping.freeThreshold ?? 0) / 10)}
+              onChange={(v) => patch('shipping', (s) => ({ ...s, freeThreshold: Math.max(0, v) * 10 }))}
+              help="پیش‌فرض: ۵٬۰۰۰٬۰۰۰ تومان"
+            />
+          </div>
 
           <div>
             <div className="flex items-center justify-between gap-3 mb-3">

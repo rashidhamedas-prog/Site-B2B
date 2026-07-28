@@ -84,6 +84,8 @@ const emptyForm = {
   preOrderDate: '',
   modelInfo: '',
   videoUrl: '',
+  showOnWholesale: true,
+  showOnRetail: true,
 };
 
 const emptyVariantForm = {
@@ -118,22 +120,41 @@ interface SavedColor {
 function MemoryChips({
   values,
   onPick,
+  onDelete,
 }: {
   values?: string[];
   onPick: (v: string) => void;
+  onDelete?: (v: string) => void;
 }) {
   if (!values?.length) return null;
   return (
     <div className="flex flex-wrap gap-1 mt-1.5">
       {values.slice(0, 12).map((v) => (
-        <button
+        <span
           key={v}
-          type="button"
-          onClick={() => onPick(v)}
-          className="cursor-pointer text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 hover:bg-primary-50 hover:text-primary transition-colors"
+          className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 text-gray-600 pl-1 pr-2 py-0.5"
         >
-          {v}
-        </button>
+          <button
+            type="button"
+            onClick={() => onPick(v)}
+            className="cursor-pointer text-[10px] hover:text-primary transition-colors"
+          >
+            {v}
+          </button>
+          {onDelete && (
+            <button
+              type="button"
+              title="حذف از حافظه"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(v);
+              }}
+              className="cursor-pointer text-gray-300 hover:text-error p-0.5"
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          )}
+        </span>
       ))}
     </div>
   );
@@ -460,12 +481,19 @@ function VariantsModal({
             </div>
           </div>
 
-          <p className="text-[11px] text-gray-500">
-            مجموع موجودی رنگ‌ها به‌صورت خودکار روی موجودی کالا ثبت می‌شود —
-            عمده: <strong className="text-primary">{totalWholesale}</strong>
-            {' · '}
-            تکی: <strong className="text-amber-700">{totalRetail}</strong>
-          </p>
+          <div className="rounded-lg border border-primary/20 bg-primary-50/50 px-3 py-2 flex flex-wrap gap-4 text-sm">
+            <span>
+              جمع عمده:{' '}
+              <strong className="text-primary text-base font-extrabold tabular-nums">{totalWholesale}</strong>
+            </span>
+            <span>
+              جمع تکی:{' '}
+              <strong className="text-amber-700 text-base font-extrabold tabular-nums">{totalRetail}</strong>
+            </span>
+            <span className="text-[11px] text-gray-500 self-center">
+              (از واریانت‌ها همگام می‌شود — فرم بالا برای {editId ? 'ویرایش همین واریانت' : 'واریانت جدید'} است)
+            </span>
+          </div>
           {saveError && <p className="text-xs text-error">{saveError}</p>}
 
           <div className="flex gap-2">
@@ -542,9 +570,12 @@ function VariantsModal({
           )}
         </div>
 
-        <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center gap-3 flex-wrap">
-          <p className="text-xs text-gray-500">
-            {variants.length} واریانت · جمع عمده {totalWholesale} · جمع تکی {totalRetail}
+        <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center gap-3 flex-wrap bg-gray-50">
+          <p className="text-sm font-semibold text-gray-800">
+            {variants.length} واریانت · جمع عمده{' '}
+            <span className="text-primary tabular-nums">{totalWholesale}</span>
+            {' · '}
+            جمع تکی <span className="text-amber-700 tabular-nums">{totalRetail}</span>
           </p>
           <button type="button" onClick={onClose} className="btn btn-outline btn-sm cursor-pointer">
             بستن
@@ -575,107 +606,6 @@ function VariantsModal({
   );
 }
 
-function StockModal({
-  product,
-  onClose,
-  onDone,
-}: {
-  product: Product;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
-  const current =
-    typeof product.stock === 'number'
-      ? product.stock
-      : product.totalStock ??
-        product.variants?.reduce((s, v) => s + v.stock, 0) ??
-        0;
-  const [value, setValue] = useState(String(current));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSave = async () => {
-    const stock = Number(value);
-    if (!Number.isFinite(stock) || stock < 0) {
-      setError('عدد نامعتبر');
-      return;
-    }
-    if (stock % minOrder !== 0) {
-      setError(`موجودی باید مضربی از حداقل سفارش (${minOrder}) باشد`);
-      return;
-    }
-    setError(null);
-    setSaving(true);
-    try {
-      await apiClient.post('/inventory/product/set', {
-        productId: product.id,
-        stock,
-      });
-      onDone();
-      onClose();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'خطا در ذخیره موجودی');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div>
-            <h3 className="text-base font-bold text-gray-900">موجودی محصول</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {product.name} — {product.sku}
-            </p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-6 space-y-4">
-          <p className="text-xs text-gray-500 leading-relaxed">
-            موجودی مستقل از رنگ‌ها ثبت می‌شود و باید مضرب حداقل سفارش (
-            <span className="font-bold text-gray-700">{minOrder}</span> عدد) باشد.
-          </p>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              تعداد موجودی
-            </label>
-            <input
-              type="number"
-              min={0}
-              step={minOrder}
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                setError(null);
-              }}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            {error && <p className="mt-1.5 text-xs text-error">{error}</p>}
-          </div>
-          <div className="flex gap-2 justify-end">
-            <button onClick={onClose} className="btn btn-outline btn-sm">
-              انصراف
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="btn btn-primary btn-sm flex items-center gap-1.5"
-            >
-              <Save className="h-3.5 w-3.5" />
-              {saving ? 'ذخیره...' : 'ثبت موجودی'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function AdminProducts() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -687,11 +617,32 @@ export function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [variantProduct, setVariantProduct] = useState<Product | null>(null);
-  const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; skuPrefix: string }>>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   const [specMemory, setSpecMemory] = useState<SpecMemory>({});
+  const [badgeSettings, setBadgeSettings] = useState({ limitedStockMultiplier: 2, newBadgeDays: 7 });
+
+  const refreshSpecMemory = useCallback(() => {
+    apiClient
+      .get<SpecMemory>('/products/meta/spec-memory')
+      .then((res) => setSpecMemory(res && typeof res === 'object' ? res : {}))
+      .catch(() => undefined);
+  }, []);
+
+  const deleteSpecMemoryValue = useCallback(
+    async (fieldKey: string, value: string) => {
+      try {
+        await apiClient.delete(
+          `/products/meta/spec-memory?fieldKey=${encodeURIComponent(fieldKey)}&value=${encodeURIComponent(value)}`,
+        );
+        refreshSpecMemory();
+      } catch (e: unknown) {
+        alert(e instanceof Error ? e.message : 'خطا در حذف');
+      }
+    },
+    [refreshSpecMemory],
+  );
 
   const { products, meta, loading, refetch } = useProducts({
     page,
@@ -712,9 +663,18 @@ export function AdminProducts() {
   }, []);
 
   useEffect(() => {
+    refreshSpecMemory();
+  }, [refreshSpecMemory]);
+
+  useEffect(() => {
     apiClient
-      .get<SpecMemory>('/products/meta/spec-memory')
-      .then((res) => setSpecMemory(res && typeof res === 'object' ? res : {}))
+      .get<{ business?: { limitedStockMultiplier?: number; newBadgeDays?: number } }>('/settings/admin')
+      .then((s) => {
+        setBadgeSettings({
+          limitedStockMultiplier: Math.max(1, Number(s?.business?.limitedStockMultiplier) || 2),
+          newBadgeDays: Math.max(1, Number(s?.business?.newBadgeDays) || 7),
+        });
+      })
       .catch(() => undefined);
   }, []);
 
@@ -751,6 +711,8 @@ export function AdminProducts() {
       preOrderDate: p.preOrderDate ? String(p.preOrderDate).slice(0, 10) : '',
       modelInfo: p.modelInfo ?? '',
       videoUrl: p.videoUrl ?? '',
+      showOnWholesale: p.showOnWholesale !== false,
+      showOnRetail: p.showOnRetail !== false,
       specs: {
         fabricType: specs.fabricType ?? '',
         designDetails: specs.designDetails ?? '',
@@ -882,20 +844,19 @@ export function AdminProducts() {
         preOrderDate: form.isPreOrder && form.preOrderDate ? form.preOrderDate : null,
         modelInfo: form.modelInfo.trim() || null,
         videoUrl: form.videoUrl.trim() || null,
+        showOnWholesale: form.showOnWholesale,
+        showOnRetail: form.showOnRetail,
       };
 
       if (modal === 'create') await apiClient.post('/products', payload);
       else if (modal === 'edit' && editProduct) await apiClient.patch(`/products/${editProduct.id}`, payload);
       closeModal();
       refetch();
-      apiClient
-        .get<SpecMemory>('/products/meta/spec-memory')
-        .then((res) => setSpecMemory(res && typeof res === 'object' ? res : {}))
-        .catch(() => undefined);
+      refreshSpecMemory();
     } finally {
       setSaving(false);
     }
-  }, [form, modal, editProduct, refetch, images]);
+  }, [form, modal, editProduct, refetch, images, refreshSpecMemory]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -937,7 +898,11 @@ export function AdminProducts() {
         placeholder={placeholder}
         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
       />
-      <MemoryChips values={specMemory[key]} onPick={(v) => setSpec(key, v)} />
+      <MemoryChips
+        values={specMemory[key]}
+        onPick={(v) => setSpec(key, v)}
+        onDelete={(v) => deleteSpecMemoryValue(key, v)}
+      />
     </div>
   );
 
@@ -1007,12 +972,19 @@ export function AdminProducts() {
                 </tr>
               ) : (
                 products.map((p) => {
+                  const wholesaleSum =
+                    p.variants?.reduce(
+                      (s, v) => s + (Number((v as { wholesaleStock?: number }).wholesaleStock) || Number(v.stock) || 0),
+                      0,
+                    ) ?? 0;
                   const totalStock =
-                    typeof p.stock === 'number'
-                      ? p.stock
-                      : p.totalStock ??
-                        p.variants?.reduce((s, v) => s + v.stock, 0) ??
-                        0;
+                    typeof p.wholesaleStock === 'number'
+                      ? p.wholesaleStock
+                      : typeof p.stock === 'number'
+                        ? p.stock
+                        : typeof p.totalStock === 'number'
+                          ? p.totalStock
+                          : wholesaleSum;
                   const varCount = p.variants?.length ?? 0;
                   return (
                     <tr key={p.id} className="hover:bg-gray-50 transition-colors">
@@ -1053,21 +1025,20 @@ export function AdminProducts() {
                         </button>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => setStockProduct(p)}
+                        <span
                           className={cn(
-                            'flex items-center gap-1 text-sm font-bold hover:underline',
+                            'inline-flex items-center gap-1 text-sm font-bold tabular-nums',
                             p.isLimitedStock
                               ? 'text-amber-600'
                               : totalStock === 0
                                 ? 'text-error'
                                 : 'text-gray-700',
                           )}
-                          title="ثبت/ویرایش موجودی"
+                          title="جمع موجودی عمده از واریانت‌ها (فقط خواندنی)"
                         >
                           <Package className="h-3.5 w-3.5" />
                           {totalStock} عدد
-                        </button>
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap">
                         {(Number(p.wholesalePrice) / 10).toLocaleString('fa-IR')}
@@ -1201,7 +1172,11 @@ export function AdminProducts() {
                           placeholder="قد ۲"
                           className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
-                        <MemoryChips values={specMemory.length2} onPick={(v) => setSpec('length2', v)} />
+                        <MemoryChips
+                          values={specMemory.length2}
+                          onPick={(v) => setSpec('length2', v)}
+                          onDelete={(v) => deleteSpecMemoryValue('length2', v)}
+                        />
                       </>
                     )}
                   </div>
@@ -1262,6 +1237,7 @@ export function AdminProducts() {
                         <MemoryChips
                           values={specMemory.customLabel}
                           onPick={(v) => updateCustomField(i, { label: v })}
+                          onDelete={(v) => deleteSpecMemoryValue('customLabel', v)}
                         />
                       </div>
                       <div>
@@ -1276,6 +1252,7 @@ export function AdminProducts() {
                           <MemoryChips
                             values={specMemory[`custom:${cf.label.trim()}`]}
                             onPick={(v) => updateCustomField(i, { value: v })}
+                            onDelete={(v) => deleteSpecMemoryValue(`custom:${cf.label.trim()}`, v)}
                           />
                         )}
                       </div>
@@ -1399,15 +1376,35 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.isDiscounted}
-                  onChange={(e) => setForm((f) => ({ ...f, isDiscounted: e.target.checked }))}
-                  className="rounded"
-                />
-                <span className="text-sm text-gray-700">محصول تخفیف‌دار</span>
-              </label>
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.isDiscounted}
+                    onChange={(e) => setForm((f) => ({ ...f, isDiscounted: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">محصول تخفیف‌دار</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.showOnWholesale}
+                    onChange={(e) => setForm((f) => ({ ...f, showOnWholesale: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">نمایش در سایت عمده</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.showOnRetail}
+                    onChange={(e) => setForm((f) => ({ ...f, showOnRetail: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">نمایش در سایت تکی</span>
+                </label>
+              </div>
 
               <div className="rounded-xl border border-dashed border-primary/30 bg-primary-50/40 p-4 space-y-3">
                 <p className="text-xs font-bold text-primary">فروشگاه تکی</p>
@@ -1470,8 +1467,9 @@ export function AdminProducts() {
               </div>
 
               <p className="text-[11px] text-gray-400 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
-                نشان «موجودی محدود» به‌صورت خودکار وقتی موجودی کل ≤ ۲× حداقل سفارش فعال می‌شود.
-                نشان «جدید» به‌صورت خودکار برای یک هفته پس از ایجاد محصول نمایش داده می‌شود.
+                نشان «موجودی محدود» وقتی موجودی ≤ {badgeSettings.limitedStockMultiplier}× حداقل سفارش فعال می‌شود.
+                نشان «جدید» برای {badgeSettings.newBadgeDays} روز پس از ایجاد محصول نمایش داده می‌شود.
+                (قابل تنظیم از تنظیمات ← کسب‌وکار)
               </p>
 
               <div>
@@ -1515,7 +1513,7 @@ export function AdminProducts() {
 
               {modal === 'create' && (
                 <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-                  بعد از ذخیره، رنگ‌ها را از «واریانت‌ها» و موجودی را از دکمه موجودی (جدا از رنگ) ثبت کنید.
+                  بعد از ذخیره، رنگ‌ها و موجودی را از «واریانت‌ها» ثبت کنید — موجودی محصول از جمع واریانت‌ها محاسبه می‌شود.
                 </p>
               )}
             </div>
@@ -1545,14 +1543,6 @@ export function AdminProducts() {
         <VariantsModal
           product={variantProduct}
           onClose={() => setVariantProduct(null)}
-          onDone={refetch}
-        />
-      )}
-
-      {stockProduct && (
-        <StockModal
-          product={stockProduct}
-          onClose={() => setStockProduct(null)}
           onDone={refetch}
         />
       )}

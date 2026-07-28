@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ShoppingCart, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { ProductImage } from '@/components/ui/ProductImage';
-import { useCart } from '@/lib/cart';
+import { cartLineKey, useCart } from '@/lib/cart';
 import { apiClient } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { cn } from '@/lib/cn';
@@ -29,6 +29,7 @@ type InstallmentsCfg = {
 type PublicSettings = {
   installments: InstallmentsCfg;
   payment?: { enabled?: boolean; manualCardNumber?: string; manualCardOwner?: string };
+  shipping?: { freeThreshold?: number; baseFee?: number };
 };
 type Eligibility = {
   eligible: boolean;
@@ -106,6 +107,8 @@ export default function CheckoutPage() {
     side?: { percent: number; discount: number; type?: string };
     code?: { code?: string; discount: number } | null;
   } | null>(null);
+  const [freeThreshold, setFreeThreshold] = useState(50_000_000);
+  const [shippingBaseFee, setShippingBaseFee] = useState(1_500_000);
 
   useEffect(() => {
     if (!getToken()) {
@@ -130,6 +133,12 @@ export default function CheckoutPage() {
         if (s?.payment?.enabled) {
           setOnlinePaymentEnabled(true);
           setPaymentMethod((prev) => (prev === 'CASH' ? 'ONLINE' : prev));
+        }
+        if (s?.shipping?.freeThreshold != null) {
+          setFreeThreshold(Number(s.shipping.freeThreshold) || 50_000_000);
+        }
+        if (s?.shipping?.baseFee != null) {
+          setShippingBaseFee(Number(s.shipping.baseFee) || 1_500_000);
         }
       })
       .catch(() => undefined);
@@ -234,7 +243,7 @@ export default function CheckoutPage() {
 
   const discountAmount = quote?.discount ?? 0;
   const afterDiscount = Math.max(0, total - discountAmount);
-  const shippingFee = afterDiscount >= 50_000_000 ? 0 : 1_500_000;
+  const shippingFee = afterDiscount >= freeThreshold ? 0 : shippingBaseFee;
   const finalTotal = afterDiscount + shippingFee;
 
   // Cart items currently lack categoryId; match global (null) rule or legacy fields
@@ -283,6 +292,9 @@ export default function CheckoutPage() {
     try {
       const orderItems = items.map((i) => ({
         productId: i.productId,
+        productVariantId: i.productVariantId,
+        color: i.color,
+        size: i.size,
         quantity: i.quantity,
         unitPrice: i.unitPrice,
         productName: i.productName,
@@ -361,33 +373,38 @@ export default function CheckoutPage() {
           <div className="lg:col-span-2 space-y-4">
             <h2 className="font-bold text-gray-900">اقلام سبد خرید</h2>
             <div className="card divide-y divide-gray-50">
-              {items.map((item) => (
-                <div key={item.productId} className="flex items-start gap-4 p-4">
+              {items.map((item) => {
+                const lineKey = cartLineKey(item);
+                const meta = [item.color, item.size].filter(Boolean).join(' / ');
+                return (
+                <div key={lineKey} className="flex items-start gap-4 p-4">
                   <div className="relative h-16 w-12 flex-shrink-0 rounded-xl overflow-hidden bg-primary-50">
                     <ProductImage src={item.imageUrl} alt={item.productName} sizes="48px" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.productName}</p>
                     <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
+                    {meta && <p className="text-xs text-gray-500 mt-0.5">{meta}</p>}
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-sm">
-                      <button onClick={() => updateQty(item.productId, item.quantity - Math.max(1, item.minOrderQty))}
+                      <button onClick={() => updateQty(lineKey, item.quantity - Math.max(1, item.minOrderQty))}
                         className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">−</button>
                       <span className="w-8 text-center font-bold">{item.quantity}</span>
-                      <button onClick={() => updateQty(item.productId, item.quantity + Math.max(1, item.minOrderQty))}
+                      <button onClick={() => updateQty(lineKey, item.quantity + Math.max(1, item.minOrderQty))}
                         className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">+</button>
                     </div>
                     <div className="text-left min-w-[80px]">
                       <p className="text-sm font-bold text-gray-900">{toman(item.unitPrice * item.quantity)} ت</p>
                       <p className="text-[10px] text-gray-400">{toman(item.unitPrice)}/عدد</p>
                     </div>
-                    <button onClick={() => removeItem(item.productId)} className="text-gray-300 hover:text-error">
+                    <button onClick={() => removeItem(lineKey)} className="text-gray-300 hover:text-error">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Shipping & payment */}
@@ -530,8 +547,10 @@ export default function CheckoutPage() {
                     {shippingFee === 0 ? 'رایگان' : `${toman(shippingFee)} ت`}
                   </span>
                 </div>
-                {afterDiscount >= 50_000_000 && (
-                  <p className="text-xs text-success">✓ ارسال رایگان برای سفارش‌های بالای ۵ میلیون تومان</p>
+                {afterDiscount >= freeThreshold && freeThreshold > 0 && (
+                  <p className="text-xs text-success">
+                    ✓ ارسال رایگان برای سفارش‌های بالای {toman(freeThreshold)} تومان
+                  </p>
                 )}
               </div>
               <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-base">

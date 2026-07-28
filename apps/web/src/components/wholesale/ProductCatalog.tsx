@@ -239,6 +239,7 @@ export function ProductCatalog({
   const buildQuery = useCallback(() => {
     const params = new URLSearchParams();
     params.set('limit', '24');
+    params.set('channel', 'WHOLESALE');
     if (search) params.set('search', search);
     if (filters.fabric) params.set('fabric', filters.fabric);
     if (filters.color) params.set('color', filters.color);

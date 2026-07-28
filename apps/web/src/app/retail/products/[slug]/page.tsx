@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
 
 async function getProduct(slug: string) {
   try {
-    const res = await fetch(`${API_BASE}/products/slug/${slug}`, {
+    const res = await fetch(`${API_BASE}/products/slug/${encodeURIComponent(slug)}?channel=RETAIL`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) return null;
@@ -69,7 +69,12 @@ export default async function RetailProductPage({
 
   const url = `${RETAIL_ORIGIN}/products/${slug}`;
   const price = Number(product.retailPrice ?? 0);
-  const inStock = Number(product.stock ?? 0) > 0;
+  const inStock =
+    Number(product.totalStock ?? product.retailStock ?? product.stock ?? 0) > 0 ||
+    (product.variants ?? []).some(
+      (v: { retailStock?: number; stock?: number }) =>
+        Number(v.retailStock ?? v.stock ?? 0) > 0,
+    );
 
   return (
     <>

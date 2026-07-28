@@ -61,6 +61,7 @@ function RetailProductsInner() {
         page: String(p),
         limit: String(PAGE_SIZE),
         status: 'ACTIVE',
+        channel: 'RETAIL',
       });
       if (fabric) params.set('fabric', fabric);
       if (color) params.set('color', color);
