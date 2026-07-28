@@ -27,8 +27,8 @@ export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: ()
   useEffect(() => {
     if (!open) return;
     const path = seed
-      ? `/products?relatedTo=${encodeURIComponent(seed)}&limit=3`
-      : '/products?limit=3&status=ACTIVE';
+      ? `/products?relatedTo=${encodeURIComponent(seed)}&limit=3&channel=RETAIL`
+      : '/products?limit=3&status=ACTIVE&channel=RETAIL';
     apiClient
       .get<{ data: Related[] }>(path)
       .then((r) =>

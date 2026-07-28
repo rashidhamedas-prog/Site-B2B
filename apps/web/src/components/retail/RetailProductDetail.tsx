@@ -87,7 +87,7 @@ export function RetailProductDetail({ product }: { product: Product }) {
 
   useEffect(() => {
     apiClient
-      .get<{ data: Related[] }>(`/products?relatedTo=${encodeURIComponent(product.id)}&limit=4`)
+      .get<{ data: Related[] }>(`/products?relatedTo=${encodeURIComponent(product.id)}&limit=4&channel=RETAIL`)
       .then((r) => setRelated(r.data ?? []))
       .catch(() => setRelated([]));
   }, [product.id]);

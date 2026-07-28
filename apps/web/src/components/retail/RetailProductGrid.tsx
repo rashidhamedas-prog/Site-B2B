@@ -36,7 +36,7 @@ export function RetailProductGrid({ title = 'جدیدترین‌ها', limit = 4
     let cancelled = false;
     (async () => {
       try {
-        const data = await apiClient.get<{ data?: Product[] } | Product[]>(`/products?limit=${limit}&status=ACTIVE`);
+        const data = await apiClient.get<{ data?: Product[] } | Product[]>(`/products?limit=${limit}&status=ACTIVE&channel=RETAIL`);
         const list = Array.isArray(data) ? data : data?.data ?? [];
         if (!cancelled) setProducts(list.length ? list : FALLBACK.slice(0, limit));
       } catch {

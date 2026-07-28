@@ -88,6 +88,14 @@ export class ProductEntity {
   @Column({ type: 'int', default: 0 })
   retailStock: number;
 
+  /** Visible on wholesale storefront (.com) */
+  @Column({ default: true })
+  showOnWholesale: boolean;
+
+  /** Visible on retail storefront (.ir) */
+  @Column({ default: true })
+  showOnRetail: boolean;
+
   @Column({ nullable: true })
   categoryId: string;
 
