@@ -9,9 +9,13 @@
 
 فریم‌ورک: **Next.js 15 (App Router)** — اسنیپت رسمی GTM در `apps/web/src/app/layout.tsx` (داخل `<head>` و اول `<body>`) قرار دارد. افزونه وردپرس (مثل GTM4WP) لازم نیست.
 
-### GTM عمده (فعال در سورس)
-- Container ID: `GTM-M3LQFGZV`
-- بعد از Deploy: در [tagmanager.google.com](https://tagmanager.google.com) → **Preview** → آدرس `https://poshaktaranom.com` → باید **Connected** شود → سپس **Submit / Publish**
+### GTM (فعال در سورس Next.js)
+| کانال | دامنه Preview | Container | GA4 Measurement ID |
+|------|----------------|-----------|---------------------|
+| عمده | `https://poshaktaranom.com` | `GTM-M3LQFGZV` | `G-YVT5DXZF5Z` |
+| تکی | `https://www.poshaktaranom.ir` | `GTM-NKBCGQJV` | `G-F2V7VSJMLE` |
+
+در هر کانتینر یک تگ **Google Tag** با Measurement ID همان ردیف + Trigger **All Pages** (یا Initialization - All Pages) بسازید → **Submit / Publish** → **Preview** تا **Connected** و تگ **Fired** شود.
 
 ---
 
