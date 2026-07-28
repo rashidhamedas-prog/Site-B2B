@@ -69,7 +69,12 @@ export default async function RetailProductPage({
 
   const url = `${RETAIL_ORIGIN}/products/${slug}`;
   const price = Number(product.retailPrice ?? 0);
-  const inStock = Number(product.stock ?? 0) > 0;
+  const inStock =
+    Number(product.totalStock ?? product.retailStock ?? product.stock ?? 0) > 0 ||
+    (product.variants ?? []).some(
+      (v: { retailStock?: number; stock?: number }) =>
+        Number(v.retailStock ?? v.stock ?? 0) > 0,
+    );
 
   return (
     <>
