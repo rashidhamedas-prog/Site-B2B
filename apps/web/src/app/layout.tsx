@@ -1,8 +1,14 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
+import { headers } from 'next/headers';
 import { CartProvider } from '@/lib/cart';
 import { ToastProvider } from '@/components/shared/Toast';
 import { FloatingContact } from '@/components/shared/FloatingContact';
+import {
+  GtmBodyNoscript,
+  GtmHeadScript,
+  resolveGtmIdForHost,
+} from '@/components/shared/GoogleTagManager';
 import { resolveGscVerification } from '@/lib/google-seo';
 import './globals.css';
 
@@ -75,15 +81,20 @@ export const viewport: Viewport = {
   themeColor: '#124035',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const hdrs = await headers();
+  const gtmId = resolveGtmIdForHost(hdrs.get('host'));
+
   return (
     <html lang="fa" dir="rtl" className={vazirmatn.variable}>
       <head>
+        <GtmHeadScript gtmId={gtmId} />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.svg" sizes="any" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-sans antialiased">
+        <GtmBodyNoscript gtmId={gtmId} />
         <ToastProvider>
           <CartProvider>
             {children}

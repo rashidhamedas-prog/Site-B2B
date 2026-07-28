@@ -47,7 +47,9 @@ function loadGtag(measurementId: string) {
 
 function loadGtm(containerId: string) {
   if (typeof window === 'undefined' || !containerId) return;
-  if (document.getElementById('gtm-script')) return;
+  // Already injected via server layout <head> snippet
+  if (document.getElementById('gtm-head') || document.getElementById('gtm-script')) return;
+  if (document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${containerId}"]`)) return;
   window.dataLayer = window.dataLayer || [];
   window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
   const s = document.createElement('script');
