@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import { CartProvider } from '@/lib/cart';
 import { ToastProvider } from '@/components/shared/Toast';
 import { FloatingContact } from '@/components/shared/FloatingContact';
+import { resolveGscVerification } from '@/lib/google-seo';
 import './globals.css';
 
 // Only Regular + Bold are preloaded (above-the-fold critical weights).
@@ -22,46 +23,50 @@ const vazirmatn = localFont({
   fallback: ['Tahoma', 'Arial', 'sans-serif'],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL('https://poshaktaranom.com'),
-  title: {
-    default: 'پوشاک ترنم | تولیدی مانتو زنانه مشهد',
-    template: '%s | پوشاک ترنم',
-  },
-  description:
-    'از کارگاه خودمان در مشهد مانتو و شومیز لینن و کتان می‌دوزیم و عمده می‌فرستیم برای بوتیک‌ها و فروشنده‌ها در سراسر ایران.',
-  keywords: [
-    'مانتو زنانه',
-    'مانتو لینن',
-    'فروش عمده مانتو',
-    'تولیدی مانتو مشهد',
-    'پوشاک ترنم',
-  ],
-  authors: [{ name: 'پوشاک ترنم', url: 'https://poshaktaranom.com' }],
-  creator: 'پوشاک ترنم',
-  publisher: 'پوشاک ترنم',
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, 'max-video-preview': -1, 'max-image-preview': 'large' },
-  },
-  openGraph: {
-    type: 'website',
-    locale: 'fa_IR',
-    url: 'https://poshaktaranom.com',
-    siteName: 'پوشاک ترنم',
-    title: 'پوشاک ترنم | تولیدی مانتو زنانه مشهد',
+export async function generateMetadata(): Promise<Metadata> {
+  const google = await resolveGscVerification();
+  return {
+    metadataBase: new URL('https://poshaktaranom.com'),
+    title: {
+      default: 'پوشاک ترنم | تولیدی مانتو زنانه مشهد',
+      template: '%s | پوشاک ترنم',
+    },
     description:
-      'مانتو شومیزی لینن و کتان، دوخت داخل کارگاه خودمان — فروش عمده با حداقل سفارش منطقی به سراسر ایران.',
-    images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'پوشاک ترنم — تولیدی مانتو مشهد' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'پوشاک ترنم | تولیدی مانتو زنانه',
-    description: 'فروش عمده مانتو و شومیز از کارگاه مشهد',
-    images: ['/og-wholesale.jpg'],
-  },
-};
+      'از کارگاه خودمان در مشهد مانتو و شومیز لینن و کتان می‌دوزیم و عمده می‌فرستیم برای بوتیک‌ها و فروشنده‌ها در سراسر ایران.',
+    keywords: [
+      'مانتو زنانه',
+      'مانتو لینن',
+      'فروش عمده مانتو',
+      'تولیدی مانتو مشهد',
+      'پوشاک ترنم',
+    ],
+    authors: [{ name: 'پوشاک ترنم', url: 'https://poshaktaranom.com' }],
+    creator: 'پوشاک ترنم',
+    publisher: 'پوشاک ترنم',
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, 'max-video-preview': -1, 'max-image-preview': 'large' },
+    },
+    openGraph: {
+      type: 'website',
+      locale: 'fa_IR',
+      url: 'https://poshaktaranom.com',
+      siteName: 'پوشاک ترنم',
+      title: 'پوشاک ترنم | تولیدی مانتو زنانه مشهد',
+      description:
+        'مانتو شومیزی لینن و کتان، دوخت داخل کارگاه خودمان — فروش عمده با حداقل سفارش منطقی به سراسر ایران.',
+      images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'پوشاک ترنم — تولیدی مانتو مشهد' }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'پوشاک ترنم | تولیدی مانتو زنانه',
+      description: 'فروش عمده مانتو و شومیز از کارگاه مشهد',
+      images: ['/og-wholesale.jpg'],
+    },
+    ...(google ? { verification: { google } } : {}),
+  };
+}
 
 export const viewport: Viewport = {
   width: 'device-width',

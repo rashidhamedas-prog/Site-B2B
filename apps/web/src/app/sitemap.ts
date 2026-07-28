@@ -12,9 +12,9 @@ interface BlogRow {
   publishedAt?: string;
 }
 
-async function getProducts(): Promise<ProductRow[]> {
+async function getProducts(channel: 'WHOLESALE' | 'RETAIL'): Promise<ProductRow[]> {
   try {
-    const res = await fetch(`${API_URL}/products?limit=500`, {
+    const res = await fetch(`${API_URL}/products?limit=500&channel=${channel}`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
@@ -53,7 +53,7 @@ function productEntries(origin: string, products: ProductRow[]): MetadataRoute.S
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const channel = await getSeoChannel();
-  const products = await getProducts();
+  const products = await getProducts(channel);
 
   if (channel === 'RETAIL') {
     const origin = RETAIL_ORIGIN;

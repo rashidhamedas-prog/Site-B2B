@@ -90,6 +90,23 @@ export function RetailConversion({ orderId, orderNumber, amountIrr = 0, skus = [
     } catch {
       /* ignore */
     }
+
+    // Google Analytics 4 purchase (if gtag loaded by GoogleAnalyticsProvider)
+    try {
+      if (typeof w.gtag === 'function') {
+        w.gtag('event', 'purchase', {
+          transaction_id: orderNumber || orderId,
+          value: amountToman,
+          currency: 'IRR',
+          items: (skus.length ? skus : ['order']).map((sku) => ({
+            item_id: sku,
+            quantity: 1,
+          })),
+        });
+      }
+    } catch {
+      /* ignore */
+    }
   }, [orderId, orderNumber, amountIrr, skus]);
 
   return null;

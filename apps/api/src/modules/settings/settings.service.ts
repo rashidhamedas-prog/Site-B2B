@@ -340,6 +340,13 @@ export class SettingsService {
     const s = await this.get('marketing');
     return {
       feedBrandName: String(s.feedBrandName ?? 'پوشاک ترنم'),
+      // Google Analytics 4 + Search Console (public-safe IDs / verification tokens)
+      ga4WholesaleId: String(s.ga4WholesaleId ?? ''),
+      ga4RetailId: String(s.ga4RetailId ?? ''),
+      gtmWholesaleId: String(s.gtmWholesaleId ?? ''),
+      gtmRetailId: String(s.gtmRetailId ?? ''),
+      gscWholesaleVerification: String(s.gscWholesaleVerification ?? ''),
+      gscRetailVerification: String(s.gscRetailVerification ?? ''),
       // Pixels / head scripts (public-safe IDs & script URLs)
       yektanetPixelId: String(s.yektanetPixelId ?? ''),
       metaPixelId: String(s.metaPixelId ?? ''),
