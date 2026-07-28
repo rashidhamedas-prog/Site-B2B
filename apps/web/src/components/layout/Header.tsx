@@ -8,48 +8,76 @@ import { CartBadge } from './CartBadge';
 import { MegaNav } from './MegaNav';
 import { useMenus } from '@/lib/hooks/useMenus';
 import { DEFAULT_MENUS } from '@/lib/menus';
+import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 
 export function Header() {
   const { menus } = useMenus();
   const main = menus.main?.length ? menus.main : DEFAULT_MENUS.main;
+  const { announcement, chrome } = useSiteChrome('WHOLESALE');
+
+  const brandName = chromeStr(chrome, 'brandName', 'پوشاک ترنم');
+  const brandTagline = chromeStr(chrome, 'brandTagline', 'تولیدی مانتو زنانه مشهد');
+  const logoUrl = chromeStr(chrome, 'logoUrl', '/logo-128.png');
+  const registerLabel = chromeStr(chrome, 'registerLabel', 'ثبت‌نام عمده‌فروش');
+  const registerHref = chromeStr(chrome, 'registerHref', '/portal/register');
+  const portalHref = chromeStr(chrome, 'portalHref', '/portal');
+
+  const showAnn = announcement?.enabled !== false;
+  const phoneLabel = announcement?.phoneLabel || chromeStr(chrome, 'phoneLabel', '۰۹۱۵-۲۴۲-۴۶۲۴');
+  const phoneHref = announcement?.phoneHref || chromeStr(chrome, 'phoneHref', 'tel:09152424624');
+  const telegramLabel = announcement?.telegramLabel || '@toliditaranom کانال تلگرام';
+  const telegramHref =
+    announcement?.telegramHref || chromeStr(chrome, 'telegramHref', 'https://t.me/toliditaranom');
+  const annText = announcement?.text || 'ارسال به سراسر ایران — حداقل سفارش ۵ عدد';
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--color-border)] bg-white/90 backdrop-blur-xl">
-      <div className="bg-primary-dark text-white">
-        <div className="container-site flex items-center justify-between py-1.5 text-xs">
-          <div className="flex items-center gap-4">
-            <a
-              href="tel:09152424624"
-              className="flex cursor-pointer items-center gap-1.5 transition-colors duration-200 hover:text-secondary"
-            >
-              <Phone className="h-3 w-3" />
-              <span>۰۹۱۵-۲۴۲-۴۶۲۴</span>
-            </a>
-            <span className="hidden text-white/40 sm:inline">|</span>
-            <a
-              href="https://t.me/toliditaranom"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden cursor-pointer transition-colors duration-200 hover:text-secondary sm:inline"
-            >
-              @toliditaranom کانال تلگرام
-            </a>
+      {showAnn ? (
+        <div className="bg-primary-dark text-white">
+          <div className="container-site flex items-center justify-between py-1.5 text-xs">
+            <div className="flex items-center gap-4">
+              {phoneLabel ? (
+                <a
+                  href={phoneHref || undefined}
+                  className="flex cursor-pointer items-center gap-1.5 transition-colors duration-200 hover:text-secondary"
+                >
+                  <Phone className="h-3 w-3" />
+                  <span>{phoneLabel}</span>
+                </a>
+              ) : null}
+              {telegramLabel ? (
+                <>
+                  <span className="hidden text-white/40 sm:inline">|</span>
+                  <a
+                    href={telegramHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hidden cursor-pointer transition-colors duration-200 hover:text-secondary sm:inline"
+                  >
+                    {telegramLabel}
+                  </a>
+                </>
+              ) : null}
+            </div>
+            {annText ? <p className="hidden text-white/70 md:block">{annText}</p> : null}
           </div>
-          <p className="hidden text-white/70 md:block">ارسال به سراسر ایران — حداقل سفارش ۵ عدد</p>
         </div>
-      </div>
+      ) : null}
 
       <div className="container-site">
         <div className="flex h-[4.25rem] items-center justify-between">
           <Link href="/" className="group flex cursor-pointer items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-128.png"
-              alt="لوگوی پوشاک ترنم"
+              src={logoUrl}
+              alt={`لوگوی ${brandName}`}
               className="h-12 w-12 object-contain transition-transform duration-250 group-hover:scale-[1.03]"
             />
             <div className="leading-tight">
-              <div className="text-lg font-extrabold tracking-tight text-primary">پوشاک ترنم</div>
-              <div className="text-[11px] font-medium text-gray-400">تولیدی مانتو زنانه مشهد</div>
+              <div className="text-lg font-extrabold tracking-tight text-primary">{brandName}</div>
+              {brandTagline ? (
+                <div className="text-[11px] font-medium text-gray-400">{brandTagline}</div>
+              ) : null}
             </div>
           </Link>
 
@@ -64,7 +92,7 @@ export function Header() {
             </button>
 
             <Link
-              href="/portal"
+              href={portalHref}
               className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-surface-muted hover:text-primary sm:flex"
               aria-label="پنل مشتری"
             >
@@ -73,11 +101,13 @@ export function Header() {
 
             <CartBadge />
 
-            <Link href="/portal/register" className="hidden cursor-pointer sm:flex">
-              <Button variant="primary" size="sm">
-                ثبت‌نام عمده‌فروش
-              </Button>
-            </Link>
+            {registerLabel ? (
+              <Link href={registerHref} className="hidden cursor-pointer sm:flex">
+                <Button variant="primary" size="sm">
+                  {registerLabel}
+                </Button>
+              </Link>
+            ) : null}
 
             <MobileMenuButton items={menus.mobile?.length ? menus.mobile : main} />
           </div>

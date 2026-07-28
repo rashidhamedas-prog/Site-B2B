@@ -16,12 +16,13 @@ interface Product {
   images?: string[];
 }
 
-async function fetchFeatured(): Promise<Product[]> {
+async function fetchFeatured(limit = 6): Promise<Product[]> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
-    const res = await fetch(`${apiUrl}/products?limit=6&status=ACTIVE&channel=WHOLESALE`, {
-      next: { revalidate: 300 },
-    });
+    const res = await fetch(
+      `${apiUrl}/products?limit=${limit}&status=ACTIVE&channel=WHOLESALE`,
+      { next: { revalidate: 300 } },
+    );
     if (!res.ok) return [];
     const data = await res.json();
     return data.data ?? [];
@@ -64,29 +65,50 @@ function ProductBadges({ product }: { product: Product }) {
   );
 }
 
-export async function FeaturedProducts() {
-  const products = await fetchFeatured();
+export async function FeaturedProducts({
+  eyebrow = 'کاتالوگ فصل',
+  headline = 'محصولات برتر',
+  body = 'پرفروش‌ترین و جدیدترین مدل‌های فصل',
+  ctaLabel = 'همه محصولات',
+  ctaHref = '/products',
+  viewAllLabel,
+  limit = 6,
+}: {
+  eyebrow?: string;
+  headline?: string;
+  body?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+  viewAllLabel?: string;
+  limit?: number;
+} = {}) {
+  const products = await fetchFeatured(limit);
   const items = products.length > 0 ? products : [];
   if (items.length === 0) return null;
+  const linkLabel = viewAllLabel || ctaLabel;
 
   return (
     <section className="section bg-white">
       <div className="container-site">
         <div className="mb-10 flex items-end justify-between gap-4">
           <div>
-            <p className="mb-2 text-sm font-semibold tracking-wide text-secondary-dark">کاتالوگ فصل</p>
-            <h2 className="section-title mb-2">محصولات برتر</h2>
-            <p className="section-subtitle mb-0">پرفروش‌ترین و جدیدترین مدل‌های فصل</p>
+            {eyebrow ? (
+              <p className="mb-2 text-sm font-semibold tracking-wide text-secondary-dark">{eyebrow}</p>
+            ) : null}
+            {headline ? <h2 className="section-title mb-2">{headline}</h2> : null}
+            {body ? <p className="section-subtitle mb-0">{body}</p> : null}
           </div>
-          <Link href="/products" className="hidden flex-shrink-0 cursor-pointer sm:block">
-            <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
-              همه محصولات
-            </Button>
-          </Link>
+          {linkLabel && ctaHref ? (
+            <Link href={ctaHref} className="hidden flex-shrink-0 cursor-pointer sm:block">
+              <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
+                {linkLabel}
+              </Button>
+            </Link>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-5">
-          {items.slice(0, 6).map((product) => {
+          {items.slice(0, limit).map((product) => {
             const priceInTomans = Math.round(product.wholesalePrice / 10).toLocaleString('fa-IR');
             const imageUrl = product.images?.[0];
             return (

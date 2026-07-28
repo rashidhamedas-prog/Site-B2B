@@ -56,7 +56,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/blog', icon: PenSquare, label: 'وبلاگ' },
       { href: '/admin/pages', icon: FileStack, label: 'صفحات سایت' },
-      { href: '/admin/site-content', icon: PanelsTopLeft, label: 'محتوای بصری' },
+      { href: '/admin/site-content', icon: PanelsTopLeft, label: 'تنظیمات محتوای سایت' },
       { href: '/admin/menus', icon: Menu, label: 'منوهای سایت' },
       { href: '/admin/analytics', icon: TrendingUp, label: 'آنالیتیکس' },
       { href: '/admin/notifications', icon: Bell, label: 'اعلان‌ها' },

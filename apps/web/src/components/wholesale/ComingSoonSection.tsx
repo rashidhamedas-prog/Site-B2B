@@ -44,7 +44,21 @@ function ProductPlaceholder() {
   );
 }
 
-export async function ComingSoonSection() {
+export async function ComingSoonSection({
+  eyebrow = 'پیش‌خرید ویژه',
+  headline = 'به‌زودی در ترنم',
+  body = 'مدل‌های جدید در راه است — پیش‌خرید کنید و جزء اولین بوتیک‌هایی باشید که این مدل‌ها را دریافت می‌کنند',
+  callout = 'فرصت محدود برای عمده‌فروشان: با پیش‌خرید محصولات «به‌زودی»، اولویت تأمین و ارسال پس از عرضه را دارید. همین حالا به سبد اضافه کنید و جای خود را رزرو کنید.',
+  ctaLabel = 'کاتالوگ کامل',
+  ctaHref = '/products',
+}: {
+  eyebrow?: string;
+  headline?: string;
+  body?: string;
+  callout?: string;
+  ctaLabel?: string;
+  ctaHref?: string;
+} = {}) {
   const products = await fetchComingSoon();
   if (products.length === 0) return null;
 
@@ -53,29 +67,29 @@ export async function ComingSoonSection() {
       <div className="container-site">
         <div className="mb-8 flex items-end justify-between gap-4">
           <div>
-            <div className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-secondary-dark">
-              <Sparkles className="h-3.5 w-3.5" />
-              پیش‌خرید ویژه
-            </div>
-            <h2 className="section-title mb-2">به‌زودی در ترنم</h2>
-            <p className="section-subtitle mb-0 max-w-xl">
-              مدل‌های جدید در راه است — پیش‌خرید کنید و جزء اولین بوتیک‌هایی باشید که این مدل‌ها را دریافت
-              می‌کنند
-            </p>
+            {eyebrow ? (
+              <div className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-secondary-dark">
+                <Sparkles className="h-3.5 w-3.5" />
+                {eyebrow}
+              </div>
+            ) : null}
+            {headline ? <h2 className="section-title mb-2">{headline}</h2> : null}
+            {body ? <p className="section-subtitle mb-0 max-w-xl">{body}</p> : null}
           </div>
-          <Link href="/products" className="hidden flex-shrink-0 cursor-pointer sm:block">
-            <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
-              کاتالوگ کامل
-            </Button>
-          </Link>
+          {ctaLabel && ctaHref ? (
+            <Link href={ctaHref} className="hidden flex-shrink-0 cursor-pointer sm:block">
+              <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
+                {ctaLabel}
+              </Button>
+            </Link>
+          ) : null}
         </div>
 
-        <div className="mb-10 border-r-4 border-secondary bg-white px-5 py-5 sm:px-6">
-          <p className="text-sm font-medium leading-relaxed text-gray-800 sm:text-base">
-            فرصت محدود برای عمده‌فروشان: با پیش‌خرید محصولات «به‌زودی»، اولویت تأمین و ارسال پس از عرضه را
-            دارید. همین حالا به سبد اضافه کنید و جای خود را رزرو کنید.
-          </p>
-        </div>
+        {callout ? (
+          <div className="mb-10 border-r-4 border-secondary bg-white px-5 py-5 sm:px-6">
+            <p className="text-sm font-medium leading-relaxed text-gray-800 sm:text-base">{callout}</p>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-5">
           {products.slice(0, 8).map((product) => {

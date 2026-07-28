@@ -101,13 +101,22 @@ export class CmsService {
     return row;
   }
 
-  /** Public: only published content */
+  /** Public: only published content — empty shell when missing (storefront falls back to defaults) */
   async getPublicSiteContent(channel: string, pageKey: string) {
     const ch = this.normalizeChannel(channel);
     const row = await this.siteContentRepo.findOne({
       where: { channel: ch, pageKey, isPublished: true },
     });
-    if (!row) throw new NotFoundException('محتوای صفحه یافت نشد');
+    if (!row) {
+      return {
+        channel: ch,
+        pageKey,
+        title: pageKey,
+        blocks: [],
+        seo: null,
+        isPublished: false,
+      };
+    }
     return row;
   }
 

@@ -1,36 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Plus, Trash2, ChevronUp, ChevronDown, ImagePlus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
+import {
+  BLOCK_TYPE_LABELS,
+  newBlockId,
+  type BlockType,
+  type ContentBlock,
+} from '@/lib/cms/types';
 
-export type BlockType =
-  | 'hero'
-  | 'text'
-  | 'image'
-  | 'gallery'
-  | 'faq'
-  | 'cta'
-  | 'html'
-  | 'products';
-
-export interface ContentBlock {
-  id: string;
-  type: BlockType;
-  props: Record<string, unknown>;
-}
-
-export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
-  hero: 'هیرو',
-  text: 'متن',
-  image: 'تصویر',
-  gallery: 'گالری',
-  faq: 'سوالات متداول',
-  cta: 'دعوت به اقدام',
-  html: 'HTML',
-  products: 'محصولات',
-};
+export type { BlockType, ContentBlock };
+export { BLOCK_TYPE_LABELS, newBlockId };
 
 const BLOCK_TYPES = Object.keys(BLOCK_TYPE_LABELS) as BlockType[];
 
@@ -38,17 +20,129 @@ const IMAGE_HINTS: Partial<Record<BlockType, string>> = {
   hero: 'ابعاد پیشنهادی: ۱۹۲۰×۸۰۰ پیکسل',
   image: 'ابعاد پیشنهادی: ۱۲۰۰×۸۰۰ پیکسل',
   gallery: 'ابعاد پیشنهادی: ۱۰۰۰×۱۰۰۰ پیکسل',
+  chrome: 'لوگو: مربع ۱۲۸×۱۲۸ یا بزرگ‌تر',
 };
-
-export function newBlockId() {
-  return `b_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-}
 
 export function createEmptyBlock(type: BlockType): ContentBlock {
   const base: Record<string, unknown> = {};
   switch (type) {
+    case 'announcement':
+      Object.assign(base, {
+        enabled: true,
+        text: '',
+        phoneLabel: '',
+        phoneHref: '',
+        telegramLabel: '',
+        telegramHref: '',
+      });
+      break;
+    case 'chrome':
+      Object.assign(base, {
+        brandName: '',
+        brandTagline: '',
+        logoUrl: '',
+        registerLabel: '',
+        registerHref: '',
+        portalHref: '',
+        blurb: '',
+        footerQuickTitle: 'دسترسی سریع',
+        footerLegalTitle: 'اطلاعات حقوقی',
+        footerContactTitle: 'اطلاعات تماس',
+        phoneLabel: '',
+        phoneHref: '',
+        ownerLabel: '',
+        addressTitle: '',
+        addressLines: [''],
+        telegramHref: '',
+        instagramHref: '',
+        copyright: '',
+        madeInLabel: '',
+        retailStoreLabel: '',
+        retailStoreHref: '',
+        floatPhone: '',
+        floatWhatsapp: '',
+        floatTelegram: '',
+        floatWhatsappMessage: '',
+      });
+      break;
     case 'hero':
-      Object.assign(base, { headline: '', body: '', imageUrl: '', ctaLabel: '', ctaHref: '' });
+      Object.assign(base, {
+        brandEyebrow: '',
+        headline: '',
+        headlineAccent: '',
+        body: '',
+        imageUrl: '',
+        ctaLabel: '',
+        ctaHref: '',
+        ctaSecondaryLabel: '',
+        ctaSecondaryHref: '',
+      });
+      break;
+    case 'stats':
+      Object.assign(base, { items: [{ value: '', label: '', sublabel: '' }] });
+      break;
+    case 'features':
+      Object.assign(base, {
+        eyebrow: '',
+        headline: '',
+        body: '',
+        items: [{ icon: 'Package', title: '', description: '' }],
+      });
+      break;
+    case 'process':
+      Object.assign(base, {
+        eyebrow: '',
+        headline: '',
+        body: '',
+        steps: [{ step: '۰۱', title: '', description: '' }],
+      });
+      break;
+    case 'testimonials':
+      Object.assign(base, {
+        eyebrow: '',
+        headline: '',
+        body: '',
+        items: [{ name: '', business: '', city: '', rating: 5, text: '', avatar: '' }],
+        footerStats: [{ value: '', label: '' }],
+      });
+      break;
+    case 'faq':
+      Object.assign(base, { headline: '', body: '', items: [{ question: '', answer: '' }] });
+      break;
+    case 'cta':
+      Object.assign(base, {
+        eyebrow: '',
+        headline: '',
+        body: '',
+        ctaLabel: '',
+        ctaHref: '',
+        ctaSecondaryLabel: '',
+        ctaSecondaryHref: '',
+        ctaTertiaryLabel: '',
+        ctaTertiaryHref: '',
+      });
+      break;
+    case 'products':
+      Object.assign(base, {
+        eyebrow: '',
+        headline: '',
+        body: '',
+        ctaLabel: '',
+        ctaHref: '/products',
+        viewAllLabel: '',
+        productIds: '',
+        limit: 6,
+      });
+      break;
+    case 'comingSoon':
+      Object.assign(base, {
+        eyebrow: '',
+        headline: '',
+        body: '',
+        callout: '',
+        ctaLabel: '',
+        ctaHref: '/products',
+      });
       break;
     case 'text':
       Object.assign(base, { headline: '', body: '' });
@@ -59,27 +153,39 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
     case 'gallery':
       Object.assign(base, { items: [{ imageUrl: '', body: '' }] });
       break;
-    case 'faq':
-      Object.assign(base, { headline: '', items: [{ question: '', answer: '' }] });
-      break;
-    case 'cta':
-      Object.assign(base, { headline: '', body: '', ctaLabel: '', ctaHref: '' });
-      break;
     case 'html':
       Object.assign(base, { body: '' });
       break;
-    case 'products':
-      Object.assign(base, { headline: '', body: '', productIds: '' });
+    case 'contact':
+      Object.assign(base, {
+        headline: '',
+        channels: [{ icon: 'Phone', title: '', value: '', href: '' }],
+        hours: [{ day: '', time: '' }],
+        locations: [{ title: '', address: '', note: '' }],
+      });
+      break;
+    case 'links':
+      Object.assign(base, {
+        headline: '',
+        items: [{ label: '', href: '' }],
+      });
       break;
   }
   return { id: newBlockId(), type, props: base };
 }
 
 function Field({
-  label, value, onChange, multiline, dir,
+  label,
+  value,
+  onChange,
+  multiline,
+  dir,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
-  multiline?: boolean; dir?: 'ltr' | 'rtl';
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  multiline?: boolean;
+  dir?: 'ltr' | 'rtl';
 }) {
   return (
     <div>
@@ -101,6 +207,28 @@ function Field({
         />
       )}
     </div>
+  );
+}
+
+function CheckField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+      />
+      {label}
+    </label>
   );
 }
 
@@ -138,14 +266,14 @@ function ImageUrlField({
           value={value}
           dir="ltr"
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://…"
+          placeholder="https://… یا /logo.png"
           className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
         <button
           type="button"
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
-          className="btn btn-outline btn-sm flex shrink-0 items-center gap-1 cursor-pointer"
+          className="btn btn-outline btn-sm flex shrink-0 cursor-pointer items-center gap-1"
           title="آپلود فایل"
         >
           {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
@@ -163,7 +291,7 @@ function ImageUrlField({
         />
       </div>
       <p className="mt-1 text-[11px] text-gray-400">
-        می‌توانید فایل از سیستم/گوشی آپلود کنید یا آدرس کامل https://… وارد کنید
+        آپلود فایل یا آدرس کامل
         {hint ? ` — ${hint}` : ''}
       </p>
       {error && <p className="mt-1 text-[11px] text-error">{error}</p>}
@@ -185,6 +313,49 @@ function str(props: Record<string, unknown>, key: string) {
   return typeof props[key] === 'string' ? (props[key] as string) : '';
 }
 
+function ItemListEditor<T extends Record<string, unknown>>({
+  items,
+  onChange,
+  blank,
+  addLabel,
+  renderItem,
+}: {
+  items: T[];
+  onChange: (next: T[]) => void;
+  blank: T;
+  addLabel: string;
+  renderItem: (item: T, i: number, update: (patch: Partial<T>) => void) => ReactNode;
+}) {
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => (
+        <div key={i} className="relative space-y-2 rounded-lg bg-gray-50 p-3">
+          <button
+            type="button"
+            className="absolute left-2 top-2 cursor-pointer text-gray-400 hover:text-error"
+            onClick={() => onChange(items.filter((_, j) => j !== i))}
+            title="حذف"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          {renderItem(item, i, (patch) => {
+            const next = [...items];
+            next[i] = { ...item, ...patch };
+            onChange(next);
+          })}
+        </div>
+      ))}
+      <button
+        type="button"
+        className="btn btn-ghost btn-sm cursor-pointer"
+        onClick={() => onChange([...items, { ...blank }])}
+      >
+        <Plus className="h-3 w-3" /> {addLabel}
+      </button>
+    </div>
+  );
+}
+
 function BlockFields({
   block,
   onChange,
@@ -195,109 +366,388 @@ function BlockFields({
   const p = block.props;
   const set = (key: string, value: unknown) => onChange(setProp(block, key, value));
 
+  if (block.type === 'announcement') {
+    return (
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="sm:col-span-2">
+          <CheckField
+            label="نمایش نوار اعلان"
+            checked={p.enabled !== false}
+            onChange={(v) => set('enabled', v)}
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="متن اعلان (وسط)" value={str(p, 'text')} onChange={(v) => set('text', v)} />
+        </div>
+        <Field label="برچسب تلفن" value={str(p, 'phoneLabel')} onChange={(v) => set('phoneLabel', v)} />
+        <Field label="لینک تلفن" value={str(p, 'phoneHref')} dir="ltr" onChange={(v) => set('phoneHref', v)} />
+        <Field label="برچسب تلگرام" value={str(p, 'telegramLabel')} onChange={(v) => set('telegramLabel', v)} />
+        <Field
+          label="لینک تلگرام"
+          value={str(p, 'telegramHref')}
+          dir="ltr"
+          onChange={(v) => set('telegramHref', v)}
+        />
+      </div>
+    );
+  }
+
+  if (block.type === 'chrome') {
+    const lines = Array.isArray(p.addressLines)
+      ? (p.addressLines as string[])
+      : [str(p, 'addressLine1'), str(p, 'addressLine2')].filter(Boolean);
+    return (
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Field label="نام برند" value={str(p, 'brandName')} onChange={(v) => set('brandName', v)} />
+        <Field label="شعار زیر برند" value={str(p, 'brandTagline')} onChange={(v) => set('brandTagline', v)} />
+        <div className="sm:col-span-2">
+          <ImageUrlField
+            label="لوگو"
+            value={str(p, 'logoUrl')}
+            hint={IMAGE_HINTS.chrome}
+            onChange={(v) => set('logoUrl', v)}
+          />
+        </div>
+        <Field label="متن دکمه ثبت‌نام" value={str(p, 'registerLabel')} onChange={(v) => set('registerLabel', v)} />
+        <Field label="لینک ثبت‌نام" value={str(p, 'registerHref')} dir="ltr" onChange={(v) => set('registerHref', v)} />
+        <Field label="لینک پنل" value={str(p, 'portalHref')} dir="ltr" onChange={(v) => set('portalHref', v)} />
+        <div className="sm:col-span-2">
+          <Field label="توضیح فوتر" multiline value={str(p, 'blurb')} onChange={(v) => set('blurb', v)} />
+        </div>
+        <Field label="عنوان ستون لینک‌ها" value={str(p, 'footerQuickTitle')} onChange={(v) => set('footerQuickTitle', v)} />
+        <Field label="عنوان ستون حقوقی" value={str(p, 'footerLegalTitle')} onChange={(v) => set('footerLegalTitle', v)} />
+        <Field label="عنوان ستون تماس" value={str(p, 'footerContactTitle')} onChange={(v) => set('footerContactTitle', v)} />
+        <Field label="برچسب تلفن فوتر" value={str(p, 'phoneLabel')} onChange={(v) => set('phoneLabel', v)} />
+        <Field label="لینک تلفن" value={str(p, 'phoneHref')} dir="ltr" onChange={(v) => set('phoneHref', v)} />
+        <Field label="زیرعنوان تلفن (مدیر فروش)" value={str(p, 'ownerLabel')} onChange={(v) => set('ownerLabel', v)} />
+        <Field label="عنوان آدرس" value={str(p, 'addressTitle')} onChange={(v) => set('addressTitle', v)} />
+        <div className="sm:col-span-2">
+          <Field
+            label="خطوط آدرس (هر خط جدا)"
+            multiline
+            value={lines.join('\n')}
+            onChange={(v) => set('addressLines', v.split('\n'))}
+          />
+        </div>
+        <Field label="لینک تلگرام" value={str(p, 'telegramHref')} dir="ltr" onChange={(v) => set('telegramHref', v)} />
+        <Field label="لینک اینستاگرام" value={str(p, 'instagramHref')} dir="ltr" onChange={(v) => set('instagramHref', v)} />
+        <Field label="کپی‌رایت" value={str(p, 'copyright')} onChange={(v) => set('copyright', v)} />
+        <Field label="متن ساخته‌شده در…" value={str(p, 'madeInLabel')} onChange={(v) => set('madeInLabel', v)} />
+        <Field label="برچسب فروشگاه تکی" value={str(p, 'retailStoreLabel')} onChange={(v) => set('retailStoreLabel', v)} />
+        <Field label="لینک فروشگاه تکی" value={str(p, 'retailStoreHref')} dir="ltr" onChange={(v) => set('retailStoreHref', v)} />
+        <Field label="تلفن شناور" value={str(p, 'floatPhone')} dir="ltr" onChange={(v) => set('floatPhone', v)} />
+        <Field label="واتس‌اپ (با کد کشور)" value={str(p, 'floatWhatsapp')} dir="ltr" onChange={(v) => set('floatWhatsapp', v)} />
+        <Field label="یوزرنیم تلگرام شناور" value={str(p, 'floatTelegram')} dir="ltr" onChange={(v) => set('floatTelegram', v)} />
+        <div className="sm:col-span-2">
+          <Field
+            label="پیام پیش‌فرض واتس‌اپ"
+            value={str(p, 'floatWhatsappMessage')}
+            onChange={(v) => set('floatWhatsappMessage', v)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (block.type === 'gallery') {
     const items = Array.isArray(p.items) ? (p.items as Array<{ imageUrl?: string; body?: string }>) : [];
     return (
-      <div className="space-y-2">
-        {items.map((item, i) => (
-          <div key={i} className="grid gap-2 rounded-lg bg-gray-50 p-2 sm:grid-cols-2">
+      <ItemListEditor
+        items={items}
+        onChange={(next) => set('items', next)}
+        blank={{ imageUrl: '', body: '' }}
+        addLabel="افزودن تصویر"
+        renderItem={(item, _i, update) => (
+          <div className="grid gap-2 pr-6 sm:grid-cols-2">
             <ImageUrlField
               label="آدرس تصویر"
               value={item.imageUrl ?? ''}
               hint={IMAGE_HINTS.gallery}
-              onChange={(v) => {
-                const next = [...items];
-                next[i] = { ...item, imageUrl: v };
-                set('items', next);
-              }}
+              onChange={(v) => update({ imageUrl: v })}
             />
-            <div className="flex gap-1">
-              <div className="flex-1">
-                <Field
-                  label="توضیح"
-                  value={item.body ?? ''}
-                  onChange={(v) => {
-                    const next = [...items];
-                    next[i] = { ...item, body: v };
-                    set('items', next);
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                className="mt-5 cursor-pointer text-gray-400 hover:text-error"
-                onClick={() => set('items', items.filter((_, j) => j !== i))}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
+            <Field label="توضیح" value={item.body ?? ''} onChange={(v) => update({ body: v })} />
           </div>
-        ))}
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm cursor-pointer"
-          onClick={() => set('items', [...items, { imageUrl: '', body: '' }])}
-        >
-          <Plus className="h-3 w-3" /> افزودن تصویر
-        </button>
-      </div>
+        )}
+      />
     );
   }
 
   if (block.type === 'faq') {
     const items = Array.isArray(p.items) ? (p.items as Array<{ question?: string; answer?: string }>) : [];
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <Field label="عنوان بخش" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
-        {items.map((item, i) => (
-          <div key={i} className="space-y-2 rounded-lg bg-gray-50 p-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <Field
-                  label="سوال"
-                  value={item.question ?? ''}
-                  onChange={(v) => {
-                    const next = [...items];
-                    next[i] = { ...item, question: v };
-                    set('items', next);
-                  }}
-                />
-              </div>
-              <button
-                type="button"
-                className="mt-5 cursor-pointer text-gray-400 hover:text-error"
-                onClick={() => set('items', items.filter((_, j) => j !== i))}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+        <Field label="زیرعنوان" multiline value={str(p, 'body')} onChange={(v) => set('body', v)} />
+        <ItemListEditor
+          items={items}
+          onChange={(next) => set('items', next)}
+          blank={{ question: '', answer: '' }}
+          addLabel="افزودن سوال"
+          renderItem={(item, _i, update) => (
+            <div className="space-y-2 pr-6">
+              <Field label="سوال" value={item.question ?? ''} onChange={(v) => update({ question: v })} />
+              <Field label="پاسخ" multiline value={item.answer ?? ''} onChange={(v) => update({ answer: v })} />
             </div>
-            <Field
-              label="پاسخ"
-              multiline
-              value={item.answer ?? ''}
-              onChange={(v) => {
-                const next = [...items];
-                next[i] = { ...item, answer: v };
-                set('items', next);
-              }}
-            />
-          </div>
-        ))}
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm cursor-pointer"
-          onClick={() => set('items', [...items, { question: '', answer: '' }])}
-        >
-          <Plus className="h-3 w-3" /> افزودن سوال
-        </button>
+          )}
+        />
       </div>
     );
   }
 
+  if (block.type === 'stats') {
+    const items = Array.isArray(p.items)
+      ? (p.items as Array<{ value?: string; label?: string; sublabel?: string }>)
+      : [];
+    return (
+      <ItemListEditor
+        items={items}
+        onChange={(next) => set('items', next)}
+        blank={{ value: '', label: '', sublabel: '' }}
+        addLabel="افزودن آمار"
+        renderItem={(item, _i, update) => (
+          <div className="grid gap-2 pr-6 sm:grid-cols-3">
+            <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
+            <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
+            <Field label="زیربرچسب" value={item.sublabel ?? ''} onChange={(v) => update({ sublabel: v })} />
+          </div>
+        )}
+      />
+    );
+  }
+
+  if (block.type === 'features') {
+    const items = Array.isArray(p.items)
+      ? (p.items as Array<{ icon?: string; title?: string; description?: string }>)
+      : [];
+    return (
+      <div className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Field label="ابرو" value={str(p, 'eyebrow')} onChange={(v) => set('eyebrow', v)} />
+          <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
+        </div>
+        <Field label="توضیح" multiline value={str(p, 'body')} onChange={(v) => set('body', v)} />
+        <ItemListEditor
+          items={items}
+          onChange={(next) => set('items', next)}
+          blank={{ icon: 'Package', title: '', description: '' }}
+          addLabel="افزودن ویژگی"
+          renderItem={(item, _i, update) => (
+            <div className="space-y-2 pr-6">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field
+                  label="آیکون (Package, Shield, Truck, …)"
+                  value={item.icon ?? ''}
+                  dir="ltr"
+                  onChange={(v) => update({ icon: v })}
+                />
+                <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
+              </div>
+              <Field
+                label="توضیح"
+                multiline
+                value={item.description ?? ''}
+                onChange={(v) => update({ description: v })}
+              />
+            </div>
+          )}
+        />
+      </div>
+    );
+  }
+
+  if (block.type === 'process') {
+    const steps = Array.isArray(p.steps)
+      ? (p.steps as Array<{ step?: string; title?: string; description?: string }>)
+      : [];
+    return (
+      <div className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Field label="ابرو" value={str(p, 'eyebrow')} onChange={(v) => set('eyebrow', v)} />
+          <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
+        </div>
+        <Field label="توضیح" multiline value={str(p, 'body')} onChange={(v) => set('body', v)} />
+        <ItemListEditor
+          items={steps}
+          onChange={(next) => set('steps', next)}
+          blank={{ step: '', title: '', description: '' }}
+          addLabel="افزودن مرحله"
+          renderItem={(item, _i, update) => (
+            <div className="space-y-2 pr-6">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field label="شماره مرحله" value={item.step ?? ''} onChange={(v) => update({ step: v })} />
+                <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
+              </div>
+              <Field
+                label="توضیح"
+                multiline
+                value={item.description ?? ''}
+                onChange={(v) => update({ description: v })}
+              />
+            </div>
+          )}
+        />
+      </div>
+    );
+  }
+
+  if (block.type === 'testimonials') {
+    const items = Array.isArray(p.items)
+      ? (p.items as Array<{
+          name?: string;
+          business?: string;
+          city?: string;
+          rating?: number;
+          text?: string;
+          avatar?: string;
+        }>)
+      : [];
+    const footerStats = Array.isArray(p.footerStats)
+      ? (p.footerStats as Array<{ value?: string; label?: string }>)
+      : [];
+    return (
+      <div className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Field label="ابرو" value={str(p, 'eyebrow')} onChange={(v) => set('eyebrow', v)} />
+          <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
+        </div>
+        <Field label="توضیح" multiline value={str(p, 'body')} onChange={(v) => set('body', v)} />
+        <p className="text-xs font-semibold text-gray-600">نظرات</p>
+        <ItemListEditor
+          items={items}
+          onChange={(next) => set('items', next)}
+          blank={{ name: '', business: '', city: '', rating: 5, text: '', avatar: '' }}
+          addLabel="افزودن نظر"
+          renderItem={(item, _i, update) => (
+            <div className="space-y-2 pr-6">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field label="نام" value={item.name ?? ''} onChange={(v) => update({ name: v })} />
+                <Field label="حرف آواتار" value={item.avatar ?? ''} onChange={(v) => update({ avatar: v })} />
+                <Field label="بوتیک / کسب‌وکار" value={item.business ?? ''} onChange={(v) => update({ business: v })} />
+                <Field label="شهر" value={item.city ?? ''} onChange={(v) => update({ city: v })} />
+                <Field
+                  label="امتیاز (۱–۵)"
+                  value={String(item.rating ?? 5)}
+                  dir="ltr"
+                  onChange={(v) => update({ rating: Math.min(5, Math.max(1, Number(v) || 5)) })}
+                />
+              </div>
+              <Field label="متن نظر" multiline value={item.text ?? ''} onChange={(v) => update({ text: v })} />
+            </div>
+          )}
+        />
+        <p className="text-xs font-semibold text-gray-600">آمار پایین بخش</p>
+        <ItemListEditor
+          items={footerStats}
+          onChange={(next) => set('footerStats', next)}
+          blank={{ value: '', label: '' }}
+          addLabel="افزودن آمار"
+          renderItem={(item, _i, update) => (
+            <div className="grid gap-2 pr-6 sm:grid-cols-2">
+              <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
+              <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
+            </div>
+          )}
+        />
+      </div>
+    );
+  }
+
+  if (block.type === 'contact') {
+    const channels = Array.isArray(p.channels)
+      ? (p.channels as Array<{ icon?: string; title?: string; value?: string; href?: string }>)
+      : [];
+    const hours = Array.isArray(p.hours) ? (p.hours as Array<{ day?: string; time?: string }>) : [];
+    const locations = Array.isArray(p.locations)
+      ? (p.locations as Array<{ title?: string; address?: string; note?: string }>)
+      : [];
+    return (
+      <div className="space-y-3">
+        <Field label="عنوان بخش" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
+        <p className="text-xs font-semibold text-gray-600">کانال‌های تماس</p>
+        <ItemListEditor
+          items={channels}
+          onChange={(next) => set('channels', next)}
+          blank={{ icon: 'Phone', title: '', value: '', href: '' }}
+          addLabel="افزودن کانال"
+          renderItem={(item, _i, update) => (
+            <div className="grid gap-2 pr-6 sm:grid-cols-2">
+              <Field label="آیکون" value={item.icon ?? ''} dir="ltr" onChange={(v) => update({ icon: v })} />
+              <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
+              <Field label="مقدار" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
+              <Field label="لینک" value={item.href ?? ''} dir="ltr" onChange={(v) => update({ href: v })} />
+            </div>
+          )}
+        />
+        <p className="text-xs font-semibold text-gray-600">ساعات کاری</p>
+        <ItemListEditor
+          items={hours}
+          onChange={(next) => set('hours', next)}
+          blank={{ day: '', time: '' }}
+          addLabel="افزودن ساعت"
+          renderItem={(item, _i, update) => (
+            <div className="grid gap-2 pr-6 sm:grid-cols-2">
+              <Field label="روز" value={item.day ?? ''} onChange={(v) => update({ day: v })} />
+              <Field label="ساعت" value={item.time ?? ''} onChange={(v) => update({ time: v })} />
+            </div>
+          )}
+        />
+        <p className="text-xs font-semibold text-gray-600">آدرس‌ها</p>
+        <ItemListEditor
+          items={locations}
+          onChange={(next) => set('locations', next)}
+          blank={{ title: '', address: '', note: '' }}
+          addLabel="افزودن آدرس"
+          renderItem={(item, _i, update) => (
+            <div className="space-y-2 pr-6">
+              <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
+              <Field label="آدرس" multiline value={item.address ?? ''} onChange={(v) => update({ address: v })} />
+              <Field label="یادداشت" value={item.note ?? ''} onChange={(v) => update({ note: v })} />
+            </div>
+          )}
+        />
+      </div>
+    );
+  }
+
+  if (block.type === 'links') {
+    const items = Array.isArray(p.items) ? (p.items as Array<{ label?: string; href?: string }>) : [];
+    return (
+      <div className="space-y-3">
+        <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
+        <ItemListEditor
+          items={items}
+          onChange={(next) => set('items', next)}
+          blank={{ label: '', href: '' }}
+          addLabel="افزودن لینک"
+          renderItem={(item, _i, update) => (
+            <div className="grid gap-2 pr-6 sm:grid-cols-2">
+              <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
+              <Field label="لینک" value={item.href ?? ''} dir="ltr" onChange={(v) => update({ href: v })} />
+            </div>
+          )}
+        />
+      </div>
+    );
+  }
+
+  // hero, text, image, cta, products, comingSoon, html
   return (
     <div className="grid gap-2 sm:grid-cols-2">
-      {(['hero', 'text', 'cta', 'products'].includes(block.type)) && (
+      {(['hero', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
+        <Field label="ابرو / برچسب بالا" value={str(p, 'brandEyebrow') || str(p, 'eyebrow')} onChange={(v) => {
+          if (block.type === 'hero') set('brandEyebrow', v);
+          else set('eyebrow', v);
+        }} />
+      )}
+      {(['hero', 'text', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
+      )}
+      {block.type === 'hero' && (
+        <Field
+          label="قسمت رنگی عنوان (اختیاری)"
+          value={str(p, 'headlineAccent')}
+          onChange={(v) => set('headlineAccent', v)}
+        />
       )}
       {(['hero', 'image'].includes(block.type)) && (
         <div className={block.type === 'image' ? 'sm:col-span-2' : undefined}>
@@ -309,19 +759,86 @@ function BlockFields({
           />
         </div>
       )}
+      {(['hero', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
+        <>
+          <Field label="متن دکمه اصلی" value={str(p, 'ctaLabel')} onChange={(v) => set('ctaLabel', v)} />
+          <Field label="لینک دکمه اصلی" value={str(p, 'ctaHref')} dir="ltr" onChange={(v) => set('ctaHref', v)} />
+        </>
+      )}
       {(['hero', 'cta'].includes(block.type)) && (
         <>
-          <Field label="متن دکمه" value={str(p, 'ctaLabel')} onChange={(v) => set('ctaLabel', v)} />
-          <Field label="لینک دکمه" value={str(p, 'ctaHref')} dir="ltr" onChange={(v) => set('ctaHref', v)} />
+          <Field
+            label="متن دکمه دوم"
+            value={str(p, 'ctaSecondaryLabel')}
+            onChange={(v) => set('ctaSecondaryLabel', v)}
+          />
+          <Field
+            label="لینک دکمه دوم"
+            value={str(p, 'ctaSecondaryHref')}
+            dir="ltr"
+            onChange={(v) => set('ctaSecondaryHref', v)}
+          />
+        </>
+      )}
+      {block.type === 'cta' && (
+        <>
+          <Field
+            label="متن دکمه سوم"
+            value={str(p, 'ctaTertiaryLabel')}
+            onChange={(v) => set('ctaTertiaryLabel', v)}
+          />
+          <Field
+            label="لینک دکمه سوم"
+            value={str(p, 'ctaTertiaryHref')}
+            dir="ltr"
+            onChange={(v) => set('ctaTertiaryHref', v)}
+          />
         </>
       )}
       {block.type === 'products' && (
-        <Field label="شناسه محصولات (با کاما)" value={str(p, 'productIds')} dir="ltr" onChange={(v) => set('productIds', v)} />
+        <>
+          <Field
+            label="شناسه محصولات (اختیاری، با کاما)"
+            value={str(p, 'productIds')}
+            dir="ltr"
+            onChange={(v) => set('productIds', v)}
+          />
+          <Field
+            label="متن دکمه مشاهده همه"
+            value={str(p, 'viewAllLabel')}
+            onChange={(v) => set('viewAllLabel', v)}
+          />
+          <Field
+            label="تعداد نمایش"
+            value={String(typeof p.limit === 'number' ? p.limit : 6)}
+            dir="ltr"
+            onChange={(v) => set('limit', Math.max(1, Number(v) || 6))}
+          />
+        </>
       )}
-      {(block.type === 'html' || block.type === 'text' || block.type === 'hero' || block.type === 'cta' || block.type === 'products' || block.type === 'image') && (
+      {block.type === 'comingSoon' && (
+        <div className="sm:col-span-2">
+          <Field label="کال‌اوت" value={str(p, 'callout')} onChange={(v) => set('callout', v)} />
+        </div>
+      )}
+      {(
+        block.type === 'html' ||
+        block.type === 'text' ||
+        block.type === 'hero' ||
+        block.type === 'cta' ||
+        block.type === 'products' ||
+        block.type === 'comingSoon' ||
+        block.type === 'image'
+      ) && (
         <div className="sm:col-span-2">
           <Field
-            label={block.type === 'html' ? 'کد HTML' : block.type === 'image' ? 'توضیح تصویر' : 'متن'}
+            label={
+              block.type === 'html'
+                ? 'کد HTML'
+                : block.type === 'image'
+                  ? 'توضیح تصویر'
+                  : 'متن'
+            }
             multiline
             value={str(p, 'body')}
             dir={block.type === 'html' ? 'ltr' : undefined}
@@ -362,7 +879,7 @@ export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEdit
     <div className={cn('space-y-3', className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold text-gray-800">بلوک‌های محتوا</p>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex max-h-28 flex-wrap gap-1 overflow-y-auto">
           {BLOCK_TYPES.map((type) => (
             <button
               key={type}
@@ -379,7 +896,7 @@ export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEdit
 
       {blocks.length === 0 && (
         <p className="rounded-xl border border-dashed border-gray-200 py-8 text-center text-sm text-gray-400">
-          بلوکی اضافه نشده — از دکمه‌های بالا یک نوع انتخاب کنید
+          بلوکی اضافه نشده — از دکمه‌های بالا یک نوع انتخاب کنید یا «بارگذاری پیش‌فرض» را بزنید
         </p>
       )}
 
@@ -387,16 +904,28 @@ export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEdit
         <div key={block.id} className="rounded-xl border border-gray-100 bg-white p-3">
           <div className="mb-3 flex items-center justify-between gap-2">
             <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
-              {BLOCK_TYPE_LABELS[block.type]}
+              {BLOCK_TYPE_LABELS[block.type] ?? block.type}
             </span>
             <div className="flex gap-1">
-              <button type="button" className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700" onClick={() => move(index, index - 1)}>
+              <button
+                type="button"
+                className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+                onClick={() => move(index, index - 1)}
+              >
                 <ChevronUp className="h-4 w-4" />
               </button>
-              <button type="button" className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700" onClick={() => move(index, index + 1)}>
+              <button
+                type="button"
+                className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+                onClick={() => move(index, index + 1)}
+              >
                 <ChevronDown className="h-4 w-4" />
               </button>
-              <button type="button" className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-error" onClick={() => removeAt(index)}>
+              <button
+                type="button"
+                className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-error"
+                onClick={() => removeAt(index)}
+              >
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>
