@@ -7,6 +7,7 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
+import { BatchUpdateVariantStocksDto } from './dto/batch-update-variant-stocks.dto';
 
 @ApiTags('products')
 @Controller({ path: 'products', version: '1' })
@@ -166,6 +167,20 @@ export class ProductController {
   @ApiOperation({ summary: 'افزودن واریانت (رنگ/سایز) به محصول' })
   createVariant(@Param('id') id: string, @Body() body: CreateVariantDto) {
     return this.productService.createVariant(id, body);
+  }
+
+  @Patch(':id/variants/stocks')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({
+    summary: 'ذخیره دسته‌ای موجودی واریانت‌ها (جمع عمده باید مضرب اندازه پک باشد)',
+  })
+  batchUpdateVariantStocks(
+    @Param('id') id: string,
+    @Body() body: BatchUpdateVariantStocksDto,
+  ) {
+    return this.productService.batchUpdateVariantStocks(id, body.items ?? []);
   }
 
   @Patch(':id/variants/:variantId')
