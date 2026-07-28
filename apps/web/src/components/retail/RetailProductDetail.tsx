@@ -8,7 +8,7 @@ import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
 
-type Variant = { id: string; color: string; size: string; stock?: number };
+type Variant = { id: string; color: string; size: string; stock?: number; retailStock?: number; wholesaleStock?: number };
 type Product = {
   id: string;
   name: string;
@@ -17,7 +17,8 @@ type Product = {
   sku?: string;
   retailPrice?: number | null;
   stock?: number;
-  sizeGuide?: string | null;
+  retailStock?: number;
+  sizeGuide?: string | string[] | null;
   modelInfo?: string | null;
   videoUrl?: string | null;
   isPreOrder?: boolean;
@@ -42,8 +43,15 @@ function mediaUrl(url?: string) {
   return `/media/${url}`;
 }
 
-function parseSizeGuide(raw?: string | null): string[][] {
-  if (!raw?.trim()) return [];
+function parseSizeGuide(raw?: string | string[] | null): string[][] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .map((line) => String(line ?? '').trim())
+      .filter(Boolean)
+      .map((line) => line.split(/[|\t,،]/).map((c) => c.trim()).filter(Boolean));
+  }
+  if (typeof raw !== 'string' || !raw.trim()) return [];
   const lines = raw.trim().split(/\r?\n/).filter(Boolean);
   return lines.map((line) => line.split(/[|\t,،]/).map((c) => c.trim()).filter(Boolean));
 }
@@ -97,13 +105,16 @@ export function RetailProductDetail({ product }: { product: Product }) {
     [product.variants],
   );
 
+  const variantUnits = (v: Variant) =>
+    Number(v.retailStock ?? v.stock ?? 0);
+
   const sizeRows = useMemo(() => {
     const map = new Map<string, { size: string; stock: number }>();
     for (const v of product.variants ?? []) {
       if (color && v.color !== color) continue;
       if (!v.size) continue;
       const prev = map.get(v.size)?.stock ?? 0;
-      map.set(v.size, { size: v.size, stock: prev + Number(v.stock ?? 0) });
+      map.set(v.size, { size: v.size, stock: prev + variantUnits(v) });
     }
     return [...map.values()];
   }, [product.variants, color]);
@@ -111,8 +122,9 @@ export function RetailProductDetail({ product }: { product: Product }) {
   const sizeTable = useMemo(() => parseSizeGuide(product.sizeGuide), [product.sizeGuide]);
   const selectedVariant = (product.variants ?? []).find((v) => v.color === color && v.size === size);
   const price = Number(product.retailPrice ?? 0);
-  const variantStock = selectedVariant ? Number(selectedVariant.stock ?? 0) : Number(product.stock ?? 0);
-  const stock = product.variants?.length ? variantStock : Number(product.stock ?? 0);
+  const productRetailStock = Number(product.retailStock ?? product.stock ?? 0);
+  const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
+  const stock = product.variants?.length ? variantStock : productRetailStock;
   const main = mediaUrl(images[activeImg] ?? images[0]);
   const canBuy = product.isPreOrder || (price > 0 && stock > 0);
 
