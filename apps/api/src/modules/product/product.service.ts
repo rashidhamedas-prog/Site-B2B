@@ -382,6 +382,10 @@ export class ProductService {
     }
 
     const specs = (data.specs ?? {}) as ProductSpecs;
+    const moq = Math.max(1, Math.floor(Number(data.minOrderQty) || 5));
+    if (!specs.packQty) {
+      specs.packQty = String(moq);
+    }
     const fabric = this.fabricFromSpecs(specs, data.fabric);
 
     const product = this.productRepo.create({
@@ -393,7 +397,7 @@ export class ProductService {
       sizeType: (data.sizeType as ProductSizeType) || 'FREE',
       wholesalePrice: data.wholesalePrice,
       retailPrice: data.retailPrice,
-      minOrderQty: data.minOrderQty,
+      minOrderQty: data.minOrderQty ?? moq,
       status: data.status,
       isDiscounted: !!data.isDiscounted,
       isFeatured: !!data.isDiscounted,
@@ -477,6 +481,25 @@ export class ProductService {
       patch.preOrderDate = data.preOrderDate ? new Date(data.preOrderDate) : null;
     }
 
+    // When MOQ/pack size changes, existing wholesale sum must remain a valid pack multiple.
+    if (data.minOrderQty !== undefined && data.minOrderQty !== null) {
+      const newMoq = Math.max(1, Math.floor(Number(data.minOrderQty) || 1));
+      const wholesaleSum = (existing.variants ?? []).reduce((s, v) => s + this.wholesaleOf(v), 0);
+      if ((existing.variants?.length ?? 0) > 0) {
+        this.assertWholesalePackMultiple(
+          wholesaleSum,
+          newMoq,
+          'ابتدا موجودی واریانت‌ها را با اندازه پک جدید هماهنگ کنید، سپس حداقل سفارش را ذخیره کنید.',
+        );
+      }
+      // Keep display packQty aligned with operational MOQ when not explicitly set.
+      const specs = { ...(patch.specs ?? existing.specs ?? {}) } as ProductSpecs;
+      if (!data.specs?.packQty) {
+        specs.packQty = String(newMoq);
+        patch.specs = specs;
+      }
+    }
+
     await this.productRepo.update(id, patch as any);
     const updated = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!updated) throw new NotFoundException('محصول یافت نشد');
@@ -508,6 +531,51 @@ export class ProductService {
     return c === 'RETAIL' ? 'retailStock' : 'wholesaleStock';
   }
 
+  private moqOf(product: { minOrderQty?: number } | null | undefined): number {
+    return Math.max(1, Math.floor(Number(product?.minOrderQty) || 1));
+  }
+
+  private wholesaleOf(v: { wholesaleStock?: number; stock?: number } | null | undefined): number {
+    return Math.max(0, Math.floor(Number(v?.wholesaleStock) || Number(v?.stock) || 0));
+  }
+
+  /**
+   * Pack integrity (wholesale only):
+   * sum(variant.wholesaleStock) must be a multiple of minOrderQty (pack size).
+   * Individual colors/sizes may be uneven — asymmetric packs (e.g. 7 colors, pack of 5)
+   * are allowed as long as the TOTAL is a pack multiple.
+   */
+  private assertWholesalePackMultiple(sum: number, minOrderQty: number, context?: string) {
+    const moq = Math.max(1, Math.floor(Number(minOrderQty) || 1));
+    const total = Math.max(0, Math.floor(Number(sum) || 0));
+    if (total % moq !== 0) {
+      const rem = total % moq;
+      const need = moq - rem;
+      throw new BadRequestException(
+        `جمع موجودی عمده رنگ‌ها باید مضرب حداقل سفارش/اندازه پک (${moq}) باشد` +
+          ` — الان ${total} عدد است (باقیمانده ${rem}). ${need} عدد دیگر اضافه کنید یا موجودی را تنظیم کنید.` +
+          (context ? ` ${context}` : ''),
+      );
+    }
+  }
+
+  /** Projected wholesale sum after an admin write (create / update / delete variant). */
+  private async projectedWholesaleSum(
+    productId: string,
+    opts?: { excludeVariantId?: string; includeWholesale?: number },
+  ): Promise<number> {
+    const variants = await this.variantRepo.find({ where: { productId } });
+    let sum = 0;
+    for (const v of variants) {
+      if (opts?.excludeVariantId && v.id === opts.excludeVariantId) continue;
+      sum += this.wholesaleOf(v);
+    }
+    if (opts?.includeWholesale !== undefined) {
+      sum += Math.max(0, Math.floor(Number(opts.includeWholesale) || 0));
+    }
+    return sum;
+  }
+
   async updateVariantStock(
     variantId: string,
     delta: number,
@@ -525,6 +593,7 @@ export class ProductService {
       variant.stock = Number(variant.wholesaleStock) || 0;
     }
     await this.variantRepo.save(variant);
+    // Order/RMA deltas intentionally skip pack-multiple assert; MOQ is enforced on order qty.
     await this.syncProductStockFromVariants(variant.productId);
     return variant;
   }
@@ -569,16 +638,25 @@ export class ProductService {
     stock: number,
     channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
   ) {
-    const product = await this.productRepo.findOne({ where: { id: productId } });
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+      relations: ['variants'],
+    });
     if (!product) throw new NotFoundException('محصول یافت نشد');
-    const minOrderQty = Math.max(1, Number(product.minOrderQty) || 1);
+    const minOrderQty = this.moqOf(product);
     const next = Math.floor(Number(stock));
     if (!Number.isFinite(next) || next < 0) {
       throw new BadRequestException('موجودی نامعتبر است');
     }
     const field = this.stockField(channel);
-    if (field === 'wholesaleStock' && next % minOrderQty !== 0) {
-      throw new BadRequestException(`موجودی باید مضربی از حداقل سفارش (${minOrderQty}) باشد`);
+    if (field === 'wholesaleStock') {
+      this.assertWholesalePackMultiple(next, minOrderQty);
+      // Prefer variant-level edits when colors/sizes exist so product sum stays in sync.
+      if ((product.variants?.length ?? 0) > 0) {
+        throw new BadRequestException(
+          'این محصول واریانت (رنگ/سایز) دارد — موجودی عمده را از بخش واریانت‌ها تنظیم کنید تا جمع رنگ‌ها با اندازه پک هم‌خوان بماند.',
+        );
+      }
     }
     product[field] = next;
     if (field === 'wholesaleStock') {
@@ -650,6 +728,9 @@ export class ProductService {
       throw new BadRequestException('موجودی نامعتبر است');
     }
 
+    const projected = await this.projectedWholesaleSum(productId, { includeWholesale: wholesale });
+    this.assertWholesalePackMultiple(projected, this.moqOf(product));
+
     const variant = this.variantRepo.create({
       productId,
       barcode: data.barcode,
@@ -705,6 +786,13 @@ export class ProductService {
         Math.floor(Number(hasWholesale ? data.wholesaleStock : data.stock)),
       );
       if (!Number.isFinite(next)) throw new BadRequestException('موجودی عمده نامعتبر است');
+      const product = await this.productRepo.findOne({ where: { id: variant.productId } });
+      if (!product) throw new NotFoundException('محصول یافت نشد');
+      const projected = await this.projectedWholesaleSum(variant.productId, {
+        excludeVariantId: variant.id,
+        includeWholesale: next,
+      });
+      this.assertWholesalePackMultiple(projected, this.moqOf(product));
       variant.wholesaleStock = next;
       variant.stock = next;
     }
@@ -747,9 +835,71 @@ export class ProductService {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
     const productId = variant.productId;
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('محصول یافت نشد');
+    const projected = await this.projectedWholesaleSum(productId, { excludeVariantId: variantId });
+    this.assertWholesalePackMultiple(
+      projected,
+      this.moqOf(product),
+      'قبل از حذف، موجودی سایر رنگ‌ها را طوری تنظیم کنید که جمع، مضرب اندازه پک بماند.',
+    );
     await this.variantRepo.remove(variant);
     await this.syncProductStockFromVariants(productId);
     return { message: 'واریانت حذف شد' };
+  }
+
+  /**
+   * Batch-update variant stocks in one transaction and assert pack integrity once.
+   * Enables asymmetric packs (uneven colors) while keeping total % minOrderQty === 0.
+   */
+  async batchUpdateVariantStocks(
+    productId: string,
+    items: Array<{ id: string; wholesaleStock?: number; retailStock?: number }>,
+  ) {
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('محصول یافت نشد');
+    if (!items?.length) throw new BadRequestException('لیست واریانت خالی است');
+
+    const variants = await this.variantRepo.find({ where: { productId } });
+    const byId = new Map(variants.map((v) => [v.id, v]));
+    const touched = new Set<string>();
+
+    for (const item of items) {
+      const v = byId.get(item.id);
+      if (!v) throw new BadRequestException(`واریانت ${item.id} متعلق به این محصول نیست`);
+      if (item.wholesaleStock !== undefined && item.wholesaleStock !== null) {
+        const next = Math.max(0, Math.floor(Number(item.wholesaleStock)));
+        if (!Number.isFinite(next)) throw new BadRequestException('موجودی عمده نامعتبر است');
+        v.wholesaleStock = next;
+        v.stock = next;
+        touched.add(v.id);
+      }
+      if (item.retailStock !== undefined && item.retailStock !== null) {
+        const next = Math.max(0, Math.floor(Number(item.retailStock)));
+        if (!Number.isFinite(next)) throw new BadRequestException('موجودی تکی نامعتبر است');
+        v.retailStock = next;
+        touched.add(v.id);
+      }
+    }
+
+    const wholesaleSum = variants.reduce((s, v) => s + this.wholesaleOf(v), 0);
+    this.assertWholesalePackMultiple(wholesaleSum, this.moqOf(product));
+
+    const toSave = variants.filter((v) => touched.has(v.id));
+    if (toSave.length) await this.variantRepo.save(toSave);
+    const synced = await this.syncProductStockFromVariants(productId);
+    return {
+      ...synced,
+      minOrderQty: this.moqOf(product),
+      packs: synced.wholesaleStock / this.moqOf(product),
+      variants: variants.map((v) => ({
+        id: v.id,
+        color: v.color,
+        size: v.size,
+        wholesaleStock: this.wholesaleOf(v),
+        retailStock: Number(v.retailStock) || 0,
+      })),
+    };
   }
 
   async findAllWithVariants(search?: string, channel?: string) {

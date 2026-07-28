@@ -114,7 +114,13 @@ async function fetchProduct(slugOrId: string): Promise<Product> {
   if (UUID_RE.test(slugOrId)) {
     return apiClient.get<Product>(`/products/${slugOrId}?channel=WHOLESALE`);
   }
-  return apiClient.get<Product>(`/products/slug/${slugOrId}?channel=WHOLESALE`);
+  let decoded = slugOrId;
+  try {
+    decoded = decodeURIComponent(slugOrId);
+  } catch {
+    decoded = slugOrId;
+  }
+  return apiClient.get<Product>(`/products/slug/${encodeURIComponent(decoded)}?channel=WHOLESALE`);
 }
 
 export function ProductDetail({ slug }: { slug: string }) {
