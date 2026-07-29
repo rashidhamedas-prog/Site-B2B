@@ -394,6 +394,8 @@ export class ProductService {
       wholesalePrice: data.wholesalePrice,
       retailPrice: data.retailPrice,
       minOrderQty: data.minOrderQty,
+      allowWholesaleColorSelect: !!data.allowWholesaleColorSelect,
+      minWholesaleColors: Math.max(1, Number(data.minWholesaleColors) || 1),
       status: data.status,
       isDiscounted: !!data.isDiscounted,
       isFeatured: !!data.isDiscounted,
@@ -475,6 +477,12 @@ export class ProductService {
     }
     if (data.preOrderDate !== undefined) {
       patch.preOrderDate = data.preOrderDate ? new Date(data.preOrderDate) : null;
+    }
+    if (data.allowWholesaleColorSelect !== undefined) {
+      patch.allowWholesaleColorSelect = !!data.allowWholesaleColorSelect;
+    }
+    if (data.minWholesaleColors !== undefined) {
+      patch.minWholesaleColors = Math.max(1, Number(data.minWholesaleColors) || 1);
     }
 
     await this.productRepo.update(id, patch as any);

@@ -6,8 +6,8 @@ import { SettingsService } from '../settings/settings.service';
 // All amounts IRR.
 @Injectable()
 export class ShippingService {
-  // Average manteau weight ~ 0.45 kg incl. packaging.
-  private static readonly KG_PER_PIECE = 0.45;
+  /** Fallback average manteau weight (kg) incl. packaging — overridden by settings.kgPerPiece */
+  private static readonly KG_PER_PIECE_DEFAULT = 0.45;
 
   private static readonly METHOD_DEFS = [
     { id: 'CHAPAR', label: 'چاپار', estimatedDays: '۲ تا ۴ روز کاری' },
@@ -36,9 +36,12 @@ export class ShippingService {
   }) {
     const cfg = await this.settings.shipping();
     const pieces = Math.max(1, Number(input.pieces) || 1);
-    const weightKg = Math.ceil(pieces * ShippingService.KG_PER_PIECE * 10) / 10;
+    const kgPerPiece =
+      Number(cfg.kgPerPiece) > 0 ? Number(cfg.kgPerPiece) : ShippingService.KG_PER_PIECE_DEFAULT;
+    const weightKg = Math.ceil(pieces * kgPerPiece * 10) / 10;
     const method = this.normalizeMethod(input.method);
 
+    // Retail formula: fee = baseFee + ceil(weightKg) × perKgFee
     let fee = cfg.baseFee + Math.ceil(weightKg) * cfg.perKgFee;
     // Tehran bike / Snapp: flat intra-city style fee if configured lower
     if (method === 'SNAPP') {
@@ -56,11 +59,15 @@ export class ShippingService {
       normalizedMethod: method,
       pieces,
       weightKg,
+      kgPerPiece,
+      baseFee: cfg.baseFee,
+      perKgFee: cfg.perKgFee,
       fee,
       freeShipping,
       freeThreshold: cfg.freeThreshold,
       estimatedDays: def?.estimatedDays ?? '۲ تا ۴ روز کاری',
       province: input.province || null,
+      formula: 'baseFee + ceil(weightKg) × perKgFee (weightKg from pieces × kgPerPiece)',
     };
   }
 

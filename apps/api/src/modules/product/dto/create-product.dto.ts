@@ -84,6 +84,23 @@ export class CreateProductDto {
   @Min(1)
   minOrderQty?: number;
 
+  @ApiPropertyOptional({
+    description: 'اجازه انتخاب رنگ به مشتری عمده',
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  allowWholesaleColorSelect?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'حداقل تعداد رنگ قابل انتخاب در سفارش عمده',
+    default: 1,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  minWholesaleColors?: number;
+
   @ApiPropertyOptional({ enum: ['ACTIVE', 'ARCHIVED', 'OUT_OF_STOCK', 'COMING_SOON'] })
   @IsOptional()
   @IsIn(['ACTIVE', 'ARCHIVED', 'OUT_OF_STOCK', 'COMING_SOON'])

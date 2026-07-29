@@ -81,7 +81,7 @@ const emptyForm = {
   retailCanonical: '',
   wholesalePrice: '',
   retailPrice: '',
-  minOrderQty: '5',
+  minOrderQty: '1',
   status: 'ACTIVE',
   isDiscounted: false,
   sizeType: 'FREE' as 'TWO' | 'THREE' | 'FREE',
@@ -95,6 +95,8 @@ const emptyForm = {
   videoUrl: '',
   showOnWholesale: true,
   showOnRetail: true,
+  allowWholesaleColorSelect: false,
+  minWholesaleColors: '1',
 };
 
 const emptyVariantForm = {
@@ -770,6 +772,8 @@ export function AdminProducts() {
       videoUrl: p.videoUrl ?? '',
       showOnWholesale: p.showOnWholesale !== false,
       showOnRetail: p.showOnRetail !== false,
+      allowWholesaleColorSelect: !!p.allowWholesaleColorSelect,
+      minWholesaleColors: String(Math.max(1, Number(p.minWholesaleColors) || 1)),
       specs: {
         fabricType: specs.fabricType ?? '',
         designDetails: specs.designDetails ?? '',
@@ -919,6 +923,8 @@ export function AdminProducts() {
         videoUrl: form.videoUrl.trim() || null,
         showOnWholesale: form.showOnWholesale,
         showOnRetail: form.showOnRetail,
+        allowWholesaleColorSelect: !!form.allowWholesaleColorSelect,
+        minWholesaleColors: Math.max(1, Number(form.minWholesaleColors) || 1),
       };
 
       let productId = editProduct?.id;
@@ -1253,7 +1259,7 @@ export function AdminProducts() {
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
-                  {specField('packQty', 'تعداد در پک / حداقل سفارش', '۶')}
+                  {specField('packQty', 'تعداد در هر پک (هر رنگ×سایز)', '۶')}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">جزئیات طراحی</label>
@@ -1540,7 +1546,44 @@ export function AdminProducts() {
               <div className="grid grid-cols-3 gap-4">
                 {field('wholesalePrice', 'قیمت عمده (تومان)', 'number', '125000')}
                 {field('retailPrice', 'قیمت تکی (تومان)', 'number', '180000')}
-                {field('minOrderQty', 'حداقل سفارش', 'number', '5')}
+                {field('minOrderQty', 'حداقل تعداد پک', 'number', '1')}
+              </div>
+
+              <div className="rounded-xl border border-primary-100 bg-primary-50/40 p-4 space-y-3">
+                <p className="text-xs font-bold text-gray-800">سفارش عمده — پک و رنگ</p>
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  در ثبت فاکتور عمده، برای هر رنگ و هر سایز به تعداد «تعداد در هر پک» ردیف ثبت می‌شود.
+                  اگر انتخاب رنگ فعال باشد، مشتری فقط رنگ‌های انتخابی را سفارش می‌دهد (حداقل تعداد زیر).
+                </p>
+                <div className="flex flex-wrap items-end gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.allowWholesaleColorSelect}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, allowWholesaleColorSelect: e.target.checked }))
+                      }
+                      className="rounded"
+                    />
+                    <span className="text-sm text-gray-700">اجازه انتخاب رنگ در سایت عمده</span>
+                  </label>
+                  {form.allowWholesaleColorSelect && (
+                    <div className="w-40">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        حداقل تعداد رنگ
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={form.minWholesaleColors}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, minWholesaleColors: e.target.value }))
+                        }
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
