@@ -42,28 +42,32 @@ function RetailSlideCopy({ slide }: { slide: HeroSlide }) {
   };
 
   return (
-    <div className="pb-16 text-center lg:pb-20 lg:text-right">
+    <div className="max-w-xl text-center lg:ms-auto lg:text-right">
       {slide.brandEyebrow ? (
-        <div className="mb-5 flex items-center justify-center gap-3 lg:justify-start">
+        <div className="mb-5 flex items-center justify-center gap-3 lg:justify-end">
           <span className="retail-gold-line" />
-          <span className="text-sm font-medium text-[var(--retail-gold)]">{slide.brandEyebrow}</span>
+          <span className="text-[13px] font-medium tracking-[0.12em] text-[var(--retail-gold)]">
+            {slide.brandEyebrow}
+          </span>
           <span className="retail-gold-line" />
         </div>
       ) : null}
 
-      <h1 className="text-[clamp(1.85rem,4.2vw,3.15rem)] font-extrabold leading-[1.45] tracking-tight">
+      <h1 className="text-[clamp(2rem,4.5vw,3.4rem)] font-extrabold leading-[1.35] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
         {renderHeadline()}
       </h1>
 
       {slide.body ? (
-        <p className="mx-auto mt-5 max-w-md text-[15px] leading-8 text-white/75 lg:mx-0">{slide.body}</p>
+        <p className="mx-auto mt-5 max-w-md text-[15px] leading-8 text-white/80 lg:mx-0 lg:ms-auto">
+          {slide.body}
+        </p>
       ) : null}
 
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+      <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-end">
         {slide.ctaLabel && slide.ctaHref ? (
           <Link
             href={slide.ctaHref}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-6 py-3 text-sm font-extrabold text-[#1a1a1a] shadow-lg transition hover:brightness-105"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-7 py-3.5 text-sm font-extrabold text-[#1a1a1a] shadow-[0_10px_30px_rgba(201,168,76,0.28)] transition duration-200 hover:brightness-105"
           >
             {slide.ctaLabel}
             <ChevronLeft className="h-4 w-4" />
@@ -72,7 +76,7 @@ function RetailSlideCopy({ slide }: { slide: HeroSlide }) {
         {slide.ctaSecondaryLabel && slide.ctaSecondaryHref ? (
           <Link
             href={slide.ctaSecondaryHref}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[var(--retail-gold)]/70 bg-[var(--retail-primary-dark)]/40 px-6 py-3 text-sm font-bold text-[var(--retail-gold)] transition hover:bg-white/5"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[var(--retail-gold)]/60 bg-black/20 px-7 py-3.5 text-sm font-bold text-[var(--retail-gold)] backdrop-blur-sm transition duration-200 hover:bg-white/10"
           >
             {slide.ctaSecondaryLabel}
             <ChevronLeft className="h-4 w-4" />
@@ -83,6 +87,7 @@ function RetailSlideCopy({ slide }: { slide: HeroSlide }) {
   );
 }
 
+/** B2C editorial hero — full-bleed plates + RTL copy panel (distinct from wholesale). */
 export function RetailHero(props: RetailHeroProps) {
   const slides = normalizeHeroSlides(props, RETAIL_FALLBACK);
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
@@ -95,25 +100,48 @@ export function RetailHero(props: RetailHeroProps) {
 
   return (
     <section
-      className="relative isolate overflow-hidden bg-[var(--retail-primary-dark)] text-white"
+      className="relative isolate min-h-[min(92vh,860px)] overflow-hidden bg-[var(--retail-primary-dark)] text-white"
       onMouseEnter={carousel.pause}
       onMouseLeave={carousel.resume}
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
+      {/* Full-bleed slide media */}
+      {slides.map((s, i) => {
+        const src = s.imageUrl || '/retail/hero-model.png';
+        return (
+          <div
+            key={`${src}-${i}`}
+            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+              i === carousel.index ? 'opacity-100' : 'opacity-0'
+            }`}
+            aria-hidden={i !== carousel.index}
+          >
+            <Image
+              src={src}
+              alt=""
+              fill
+              priority={i === 0}
+              sizes="100vw"
+              className="object-cover object-[20%_center] sm:object-center"
+            />
+          </div>
+        );
+      })}
+
+      {/* Brand wash + RTL readable scrim (copy sits on the right in RTL) */}
       <div
         className="absolute inset-0"
         style={{
           background: `
-            radial-gradient(ellipse 40% 60% at 8% 40%, rgba(201,168,76,0.22), transparent 55%),
-            radial-gradient(ellipse 35% 50% at 92% 55%, rgba(201,168,76,0.18), transparent 50%),
-            linear-gradient(165deg, #0c271e 0%, #124035 42%, #1a4d3e 100%)
+            linear-gradient(100deg, rgba(12,39,30,0.15) 0%, rgba(12,39,30,0.35) 42%, rgba(12,39,30,0.82) 68%, rgba(8,28,22,0.94) 100%),
+            radial-gradient(ellipse 45% 55% at 88% 40%, rgba(201,168,76,0.18), transparent 55%)
           `,
         }}
         aria-hidden
       />
       <div
-        className="absolute inset-0 opacity-[0.07]"
+        className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
             'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
@@ -122,29 +150,12 @@ export function RetailHero(props: RetailHeroProps) {
       />
 
       <div
-        className={`relative mx-auto grid min-h-[min(92vh,820px)] max-w-[1200px] items-end gap-8 px-4 pt-10 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-6 lg:px-8 lg:pt-6 transition-all duration-700 ${
+        className={`relative z-10 mx-auto flex min-h-[min(92vh,860px)] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 lg:items-center lg:px-8 lg:pb-28 transition-opacity duration-700 ${
           ready ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        <div key={`copy-${carousel.index}`} className="order-2 animate-fade-in lg:order-1">
+        <div key={`copy-${carousel.index}`} className="w-full animate-fade-in lg:w-[48%]">
           <RetailSlideCopy slide={slide} />
-        </div>
-
-        <div className="relative order-1 mx-auto flex h-[min(58vh,560px)] w-full max-w-md items-end justify-center lg:order-2 lg:mx-0 lg:h-[min(86vh,760px)] lg:max-w-none">
-          <div
-            className="absolute bottom-0 h-[85%] w-[78%] rounded-[40%_40%_12%_12%/28%_28%_8%_8%] bg-[radial-gradient(circle_at_50%_30%,rgba(201,168,76,0.15),transparent_60%)]"
-            aria-hidden
-          />
-          <div key={`img-${carousel.index}`} className="relative z-[1] h-full w-full animate-fade-in">
-            <Image
-              src={imageSrc}
-              alt={slide.headline}
-              width={720}
-              height={960}
-              priority={carousel.index === 0}
-              className="h-full w-full object-contain object-bottom drop-shadow-[0_20px_40px_rgba(0,0,0,0.35)]"
-            />
-          </div>
         </div>
       </div>
 
