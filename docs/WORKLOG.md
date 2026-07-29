@@ -9,8 +9,13 @@
 - **فاکتور عمده:** اگر `specs.packQty` ست باشد، سفارش به ازای هر رنگ×سایز با تعداد پک ثبت می‌شود (`quantity` = تعداد پک)
 - **محصول:** `allowWholesaleColorSelect` + `minWholesaleColors` در فرم ایجاد/ویرایش؛ PDP عمده انتخاب رنگ و محاسبه پک
 
+### Deploy
+- Merge به `master` (`e0824df`) + push GitHub
+- VPS `/opt/taranom`: reset به `origin/master`، schema SQL، rebuild `api`/`web` — health 200
+
 ### SQL
 - `apps/api/src/database/sql/20260729-wholesale-color-select.sql`
+- `scripts/apply-production-schema.sql` (ستون‌های جدید)
 
 ---
 
