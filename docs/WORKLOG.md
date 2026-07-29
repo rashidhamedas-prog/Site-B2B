@@ -2,6 +2,16 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-29 — کاروسل ۳ اسلاید هیرو تکی و عمده
+
+### خلاصه
+- هیرو تکی و عمده از تک‌بلوک به کاروسل ۳ اسلایدی با عکس محصول واقعی ارتقا یافت
+- سه مفهوم مشترک (لینن / رویه فصل / ست) با کپی و CTA جدا برای RETAIL و WHOLESALE
+- `normalizeHeroSlides` با fallback از props تخت قدیمی؛ ادمین ویرایشگر لیست اسلاید + autoplay
+- فایل‌ها: `hero-slides.ts`, `HeroCarousel.tsx`, `RetailHero`, `HeroSection`, `defaults.ts`, `AdminBlockEditor`, `SiteBlocksRenderer`
+
+---
+
 ## 2026-07-29 — اصلاح فرمول پک عمده = رنگ × سایز
 
 ### خلاصه
