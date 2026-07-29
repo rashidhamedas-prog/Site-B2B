@@ -71,10 +71,14 @@ const emptyForm = {
   categoryId: '',
   name: '',
   description: '',
-  seoTitle: '',
-  seoDescription: '',
-  focusKeyword: '',
-  canonical: '',
+  wholesaleSeoTitle: '',
+  wholesaleSeoDescription: '',
+  wholesaleFocusKeyword: '',
+  wholesaleCanonical: '',
+  retailSeoTitle: '',
+  retailSeoDescription: '',
+  retailFocusKeyword: '',
+  retailCanonical: '',
   wholesalePrice: '',
   retailPrice: '',
   minOrderQty: '5',
@@ -729,22 +733,28 @@ export function AdminProducts() {
 
   const openEdit = (p: Product) => {
     setEditProduct(p);
-    const drafts = draftsFromVariants(p.variants ?? []);
+    const sizeLabels = sizeOptionsForType(p.sizeType);
+    const drafts = draftsFromVariants(p.variants ?? [], sizeLabels);
     setColorDrafts(drafts);
     setInitialColorNames(drafts.map((d) => d.originalColor || d.color).filter(Boolean));
     const colorImgs = drafts.map((d) => d.imageUrl).filter(Boolean);
     const mergedImages = [...new Set([...(p.images ?? []), ...colorImgs])];
     setImages(mergedImages);
     const specs = p.specs ?? {};
+    const seo = (p.seoMeta ?? {}) as Record<string, string | undefined>;
     setForm({
       sku: p.sku,
       categoryId: p.categoryId ?? '',
       name: p.name,
       description: p.description ?? '',
-      seoTitle: p.seoMeta?.title ?? '',
-      seoDescription: p.seoMeta?.description ?? '',
-      focusKeyword: p.seoMeta?.focusKeyword ?? '',
-      canonical: p.seoMeta?.canonical ?? '',
+      wholesaleSeoTitle: seo.wholesaleTitle || seo.title || '',
+      wholesaleSeoDescription: seo.wholesaleDescription || seo.description || '',
+      wholesaleFocusKeyword: seo.wholesaleFocusKeyword || seo.focusKeyword || '',
+      wholesaleCanonical: seo.wholesaleCanonical || seo.canonical || '',
+      retailSeoTitle: seo.retailTitle || '',
+      retailSeoDescription: seo.retailDescription || '',
+      retailFocusKeyword: seo.retailFocusKeyword || '',
+      retailCanonical: seo.retailCanonical || '',
       wholesalePrice: String(Math.round(Number(p.wholesalePrice) / 10)),
       retailPrice: p.retailPrice ? String(Math.round(Number(p.retailPrice) / 10)) : '',
       minOrderQty: String(p.minOrderQty),
@@ -868,14 +878,25 @@ export function AdminProducts() {
       }
 
       const seoMeta = {
-        title: form.seoTitle.trim() || undefined,
-        description: form.seoDescription.trim() || undefined,
-        focusKeyword: form.focusKeyword.trim() || undefined,
-        canonical: form.canonical.trim() || undefined,
+        // wholesale (also mirrored to legacy keys for older readers)
+        wholesaleTitle: form.wholesaleSeoTitle.trim() || undefined,
+        wholesaleDescription: form.wholesaleSeoDescription.trim() || undefined,
+        wholesaleFocusKeyword: form.wholesaleFocusKeyword.trim() || undefined,
+        wholesaleCanonical: form.wholesaleCanonical.trim() || undefined,
+        title: form.wholesaleSeoTitle.trim() || undefined,
+        description: form.wholesaleSeoDescription.trim() || undefined,
+        focusKeyword: form.wholesaleFocusKeyword.trim() || undefined,
+        canonical: form.wholesaleCanonical.trim() || undefined,
+        // retail
+        retailTitle: form.retailSeoTitle.trim() || undefined,
+        retailDescription: form.retailSeoDescription.trim() || undefined,
+        retailFocusKeyword: form.retailFocusKeyword.trim() || undefined,
+        retailCanonical: form.retailCanonical.trim() || undefined,
       };
 
       const colorImageUrls = colorDrafts.map((d) => d.imageUrl).filter(Boolean);
       const galleryImages = [...new Set([...images, ...colorImageUrls])];
+      const sizeLabels = sizeOptionsForType(form.sizeType);
 
       const payload = {
         sku: form.sku || undefined,
@@ -916,19 +937,30 @@ export function AdminProducts() {
             colorHex: d.colorHex,
             barcode: d.barcode || undefined,
             imageUrl: d.imageUrl || null,
-            wholesaleStock: Math.max(0, Math.floor(Number(d.wholesaleStock) || 0)),
-            retailStock: Math.max(0, Math.floor(Number(d.retailStock) || 0)),
-            stock: Math.max(0, Math.floor(Number(d.wholesaleStock) || 0)),
+            sizes: sizeLabels.map((size) => ({
+              size,
+              wholesaleStock: Math.max(
+                0,
+                Math.floor(Number(d.sizeStocks[size]?.wholesale) || 0),
+              ),
+              retailStock: Math.max(
+                0,
+                Math.floor(Number(d.sizeStocks[size]?.retail) || 0),
+              ),
+              stock: Math.max(
+                0,
+                Math.floor(Number(d.sizeStocks[size]?.wholesale) || 0),
+              ),
+            })),
           };
           const wasExisting =
             !!d.originalColor && initialColorNames.includes(d.originalColor);
-          if (wasExisting && d.originalColor === d.color.trim()) {
-            await apiClient.put(`/products/${productId}/variants/color-stock`, body);
-          } else if (wasExisting && d.originalColor !== d.color.trim()) {
-            await apiClient.post(`/products/${productId}/variants`, body);
-          } else {
-            await apiClient.post(`/products/${productId}/variants`, body);
+          if (wasExisting && d.originalColor !== d.color.trim()) {
+            await apiClient.delete(
+              `/products/${productId}/variants/by-color?color=${encodeURIComponent(d.originalColor!)}`,
+            );
           }
+          await apiClient.put(`/products/${productId}/variants/color-stock`, body);
         }
         const keepNames = new Set(colorDrafts.map((d) => d.color.trim()));
         for (const oldName of initialColorNames) {
@@ -1182,9 +1214,9 @@ export function AdminProducts() {
       </div>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <div className="fixed inset-0 z-50 bg-black/50">
+          <div className="bg-white w-full h-full max-h-[100dvh] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0 bg-white z-10">
               <h3 className="text-lg font-bold text-gray-900">
                 {modal === 'create' ? 'افزودن محصول جدید' : 'ویرایش محصول'}
               </h3>
@@ -1192,7 +1224,7 @@ export function AdminProducts() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 max-w-5xl w-full mx-auto flex-1 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">دسته‌بندی</label>
@@ -1360,61 +1392,137 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-primary/15 bg-primary-50/40 p-4 space-y-3">
-                <p className="text-sm font-semibold text-primary-dark">تنظیمات SEO ترنم</p>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Meta Title</label>
-                  <input
-                    type="text"
-                    value={form.seoTitle}
-                    onChange={(e) => setForm((f) => ({ ...f, seoTitle: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    maxLength={70}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Meta Description</label>
-                  <textarea
-                    value={form.seoDescription}
-                    onChange={(e) => setForm((f) => ({ ...f, seoDescription: e.target.value }))}
-                    rows={2}
-                    maxLength={160}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-primary/15 bg-primary-50/40 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-primary-dark">سئو سایت عمده (.com)</p>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Focus Keyword</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Title</label>
                     <input
                       type="text"
-                      value={form.focusKeyword}
-                      onChange={(e) => setForm((f) => ({ ...f, focusKeyword: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      value={form.wholesaleSeoTitle}
+                      onChange={(e) => setForm((f) => ({ ...f, wholesaleSeoTitle: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      maxLength={70}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
-                    <input
-                      type="text"
-                      dir="ltr"
-                      value={form.canonical}
-                      onChange={(e) => setForm((f) => ({ ...f, canonical: e.target.value }))}
-                      placeholder="https://poshaktaranom.com/..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Description</label>
+                    <textarea
+                      value={form.wholesaleSeoDescription}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, wholesaleSeoDescription: e.target.value }))
+                      }
+                      rows={2}
+                      maxLength={160}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Focus Keyword</label>
+                      <input
+                        type="text"
+                        value={form.wholesaleFocusKeyword}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, wholesaleFocusKeyword: e.target.value }))
+                        }
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={form.wholesaleCanonical}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, wholesaleCanonical: e.target.value }))
+                        }
+                        placeholder="https://poshaktaranom.com/..."
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <p className="mb-1 text-[11px] text-gray-400">پیش‌نمایش گوگل (عمده)</p>
+                    <p className="truncate text-base text-[#1a0dab]">
+                      {form.wholesaleSeoTitle || form.name || 'عنوان محصول'} | پوشاک ترنم
+                    </p>
+                    <p className="truncate text-xs text-[#006621]" dir="ltr">
+                      {form.wholesaleCanonical || 'https://poshaktaranom.com/products/...'}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                      {form.wholesaleSeoDescription ||
+                        form.description ||
+                        'توضیح کوتاه محصول برای نتایج جستجو…'}
+                    </p>
+                  </div>
                 </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3">
-                  <p className="mb-1 text-[11px] text-gray-400">پیش‌نمایش گوگل</p>
-                  <p className="truncate text-base text-[#1a0dab]">
-                    {form.seoTitle || form.name || 'عنوان محصول'} | پوشاک ترنم
-                  </p>
-                  <p className="truncate text-xs text-[#006621]" dir="ltr">
-                    {form.canonical || 'https://poshaktaranom.com/products/...'}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-sm text-gray-600">
-                    {form.seoDescription || form.description || 'توضیح کوتاه محصول برای نتایج جستجو…'}
-                  </p>
+
+                <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
+                  <p className="text-sm font-semibold text-amber-900">سئو سایت تکی (.ir)</p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Title</label>
+                    <input
+                      type="text"
+                      value={form.retailSeoTitle}
+                      onChange={(e) => setForm((f) => ({ ...f, retailSeoTitle: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                      maxLength={70}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Description</label>
+                    <textarea
+                      value={form.retailSeoDescription}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, retailSeoDescription: e.target.value }))
+                      }
+                      rows={2}
+                      maxLength={160}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/30 resize-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Focus Keyword</label>
+                      <input
+                        type="text"
+                        value={form.retailFocusKeyword}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, retailFocusKeyword: e.target.value }))
+                        }
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={form.retailCanonical}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, retailCanonical: e.target.value }))
+                        }
+                        placeholder="https://poshaktaranom.ir/..."
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <p className="mb-1 text-[11px] text-gray-400">پیش‌نمایش گوگل (تکی)</p>
+                    <p className="truncate text-base text-[#1a0dab]">
+                      {form.retailSeoTitle || form.name || 'عنوان محصول'} | فروشگاه ترنم
+                    </p>
+                    <p className="truncate text-xs text-[#006621]" dir="ltr">
+                      {form.retailCanonical || 'https://poshaktaranom.ir/products/...'}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-600">
+                      {form.retailSeoDescription ||
+                        form.description ||
+                        'توضیح کوتاه محصول برای نتایج جستجو…'}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -1615,7 +1723,7 @@ export function AdminProducts() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 sticky bottom-0 bg-white">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0 bg-white">
               <button onClick={closeModal} className="btn btn-outline btn-md">
                 انصراف
               </button>

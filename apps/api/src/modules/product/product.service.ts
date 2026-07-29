@@ -721,8 +721,9 @@ export class ProductService {
   }
 
   /**
-   * Set absolute stock for a color across all product sizes.
-   * Stock lives once on the first size row; other sizes stay at 0 (pool for allocate).
+   * Set absolute stock for a color across product sizes.
+   * Prefer `sizes[]` for per-size wholesale/retail stock.
+   * Legacy: single wholesaleStock/retailStock applies only to the first size.
    */
   async setColorStock(
     productId: string,
@@ -734,6 +735,12 @@ export class ProductService {
       wholesaleStock?: number;
       retailStock?: number;
       stock?: number;
+      sizes?: Array<{
+        size: string;
+        wholesaleStock?: number;
+        retailStock?: number;
+        stock?: number;
+      }>;
     },
   ) {
     const product = await this.productRepo.findOne({
@@ -751,30 +758,67 @@ export class ProductService {
         ? String(data.imageUrl || '').trim() || null
         : undefined;
 
-    const wholesale =
-      data.wholesaleStock !== undefined && data.wholesaleStock !== null
-        ? Math.max(0, Math.floor(Number(data.wholesaleStock)))
-        : data.stock !== undefined && data.stock !== null
-          ? Math.max(0, Math.floor(Number(data.stock)))
+    const productSizes = this.sizesForProduct(product.sizeType);
+    const perSize = new Map<
+      string,
+      { wholesale?: number; retail?: number }
+    >();
+
+    if (Array.isArray(data.sizes) && data.sizes.length > 0) {
+      for (const row of data.sizes) {
+        const label = String(row.size ?? '').trim();
+        if (!label) continue;
+        const wholesale =
+          row.wholesaleStock !== undefined && row.wholesaleStock !== null
+            ? Math.max(0, Math.floor(Number(row.wholesaleStock)))
+            : row.stock !== undefined && row.stock !== null
+              ? Math.max(0, Math.floor(Number(row.stock)))
+              : undefined;
+        const retail =
+          row.retailStock !== undefined && row.retailStock !== null
+            ? Math.max(0, Math.floor(Number(row.retailStock)))
+            : undefined;
+        if (wholesale !== undefined && !Number.isFinite(wholesale)) {
+          throw new BadRequestException(`موجودی عمده سایز «${label}» نامعتبر است`);
+        }
+        if (retail !== undefined && !Number.isFinite(retail)) {
+          throw new BadRequestException(`موجودی تکی سایز «${label}» نامعتبر است`);
+        }
+        perSize.set(label, { wholesale, retail });
+      }
+    } else {
+      const wholesale =
+        data.wholesaleStock !== undefined && data.wholesaleStock !== null
+          ? Math.max(0, Math.floor(Number(data.wholesaleStock)))
+          : data.stock !== undefined && data.stock !== null
+            ? Math.max(0, Math.floor(Number(data.stock)))
+            : undefined;
+      const retail =
+        data.retailStock !== undefined && data.retailStock !== null
+          ? Math.max(0, Math.floor(Number(data.retailStock)))
           : undefined;
-    const retail =
-      data.retailStock !== undefined && data.retailStock !== null
-        ? Math.max(0, Math.floor(Number(data.retailStock)))
-        : undefined;
-
-    if (wholesale !== undefined && !Number.isFinite(wholesale)) {
-      throw new BadRequestException('موجودی عمده نامعتبر است');
+      if (wholesale !== undefined && !Number.isFinite(wholesale)) {
+        throw new BadRequestException('موجودی عمده نامعتبر است');
+      }
+      if (retail !== undefined && !Number.isFinite(retail)) {
+        throw new BadRequestException('موجودی تکی نامعتبر است');
+      }
+      for (let i = 0; i < productSizes.length; i++) {
+        perSize.set(productSizes[i], {
+          wholesale: wholesale === undefined ? undefined : i === 0 ? wholesale : 0,
+          retail: retail === undefined ? undefined : i === 0 ? retail : 0,
+        });
+      }
     }
-    if (retail !== undefined && !Number.isFinite(retail)) {
-      throw new BadRequestException('موجودی تکی نامعتبر است');
-    }
 
-    const sizes = this.sizesForProduct(product.sizeType);
+    const sizes = Array.from(
+      new Set([...productSizes, ...Array.from(perSize.keys())]),
+    );
     const existing = product.variants ?? [];
     const updated: ProductVariantEntity[] = [];
 
-    for (let i = 0; i < sizes.length; i++) {
-      const sizeLabel = sizes[i];
+    for (const sizeLabel of sizes) {
+      const stockRow = perSize.get(sizeLabel);
       let row = existing.find((v) => v.color === color.name && v.size === sizeLabel);
       if (!row) {
         const size = await this.upsertSize(sizeLabel);
@@ -799,12 +843,12 @@ export class ProductService {
         if (imageUrl !== undefined) row.imageUrl = imageUrl;
       }
 
-      if (wholesale !== undefined) {
-        row.wholesaleStock = i === 0 ? wholesale : 0;
-        row.stock = i === 0 ? wholesale : 0;
+      if (stockRow?.wholesale !== undefined) {
+        row.wholesaleStock = stockRow.wholesale;
+        row.stock = stockRow.wholesale;
       }
-      if (retail !== undefined) {
-        row.retailStock = i === 0 ? retail : 0;
+      if (stockRow?.retail !== undefined) {
+        row.retailStock = stockRow.retail;
       }
       const saved = await this.variantRepo.save(row);
       updated.push(Array.isArray(saved) ? saved[0] : saved);
