@@ -30,6 +30,10 @@ export class OrderItemEntity {
   @Column()
   size: string;
 
+  /** Snapshot of the color photo at order time (optional) */
+  @Column({ nullable: true })
+  imageUrl: string;
+
   @Column()
   quantity: number;
 

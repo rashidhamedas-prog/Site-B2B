@@ -7,6 +7,11 @@ import { useProducts, Product, ProductSpecs, ProductCustomField } from '@/lib/ho
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import {
+  ColorVariantsEditor,
+  ColorDraft,
+  draftsFromVariants,
+} from '@/components/admin/ColorVariantsEditor';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'فعال',
@@ -92,7 +97,6 @@ const emptyVariantForm = {
   color: '',
   colorHex: '#000000',
   barcode: '',
-  size: 'فری سایز',
   wholesaleStock: '0',
   retailStock: '0',
 };
@@ -109,6 +113,45 @@ interface Variant {
   wholesaleStock?: number;
   retailStock?: number;
   barcode?: string;
+}
+
+interface ColorGroup {
+  color: string;
+  colorHex: string;
+  barcode?: string;
+  sizes: string[];
+  wholesaleStock: number;
+  retailStock: number;
+  variantIds: string[];
+}
+
+function groupVariantsByColor(variants: Variant[]): ColorGroup[] {
+  const map = new Map<string, ColorGroup>();
+  for (const v of variants) {
+    const key = v.color || '—';
+    const existing = map.get(key);
+    const w = Number(v.wholesaleStock) || Number(v.stock) || 0;
+    const r = Number(v.retailStock) || 0;
+    if (!existing) {
+      map.set(key, {
+        color: v.color,
+        colorHex: v.colorHex || '#ccc',
+        barcode: v.barcode,
+        sizes: v.size ? [v.size] : [],
+        wholesaleStock: w,
+        retailStock: r,
+        variantIds: [v.id],
+      });
+    } else {
+      if (v.size && !existing.sizes.includes(v.size)) existing.sizes.push(v.size);
+      existing.wholesaleStock += w;
+      existing.retailStock += r;
+      existing.variantIds.push(v.id);
+      if (!existing.barcode && v.barcode) existing.barcode = v.barcode;
+      if (v.colorHex) existing.colorHex = v.colorHex;
+    }
+  }
+  return Array.from(map.values());
 }
 
 interface SavedColor {
@@ -170,13 +213,10 @@ function VariantsModal({
   onDone: () => void;
 }) {
   const sizeOpts = sizeOptionsForType(product.sizeType);
-  const [form, setForm] = useState<VariantForm>({
-    ...emptyVariantForm,
-    size: sizeOpts[0],
-  });
-  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState<VariantForm>({ ...emptyVariantForm });
+  const [editColor, setEditColor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingColor, setDeletingColor] = useState<string | null>(null);
   const [variants, setVariants] = useState<Variant[]>(product.variants ?? []);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedColors, setSavedColors] = useState<SavedColor[]>([]);
@@ -185,6 +225,7 @@ function VariantsModal({
   const [colorBusy, setColorBusy] = useState(false);
 
   const sizeTypeLabel = SIZE_TYPE_LABELS[product.sizeType || 'FREE'] || SIZE_TYPE_LABELS.FREE;
+  const colorGroups = groupVariantsByColor(variants);
 
   const loadSavedColors = useCallback(async () => {
     try {
@@ -203,29 +244,25 @@ function VariantsModal({
     onDone();
   }, [product.id, onDone]);
 
-  const totalWholesale = variants.reduce(
-    (s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0),
-    0,
-  );
-  const totalRetail = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
+  const totalWholesale = colorGroups.reduce((s, g) => s + g.wholesaleStock, 0);
+  const totalRetail = colorGroups.reduce((s, g) => s + g.retailStock, 0);
 
-  const startEdit = (v: Variant) => {
-    setEditId(v.id);
+  const startEdit = (g: ColorGroup) => {
+    setEditColor(g.color);
     setSaveError(null);
     setForm({
-      color: v.color,
-      colorHex: v.colorHex || '#000000',
-      barcode: v.barcode ?? '',
-      size: v.size || sizeOpts[0],
-      wholesaleStock: String(Number(v.wholesaleStock) || Number(v.stock) || 0),
-      retailStock: String(Number(v.retailStock) || 0),
+      color: g.color,
+      colorHex: g.colorHex || '#000000',
+      barcode: g.barcode ?? '',
+      wholesaleStock: String(g.wholesaleStock),
+      retailStock: String(g.retailStock),
     });
   };
 
   const cancelEdit = () => {
-    setEditId(null);
+    setEditColor(null);
     setSaveError(null);
-    setForm({ ...emptyVariantForm, size: sizeOpts[0] });
+    setForm({ ...emptyVariantForm });
   };
 
   const pickColor = (name: string, hex: string) => {
@@ -264,7 +301,7 @@ function VariantsModal({
   };
 
   const handleSave = async () => {
-    if (!form.color || !form.size) return;
+    if (!form.color.trim()) return;
     const wholesaleStock = Math.max(0, Math.floor(Number(form.wholesaleStock) || 0));
     const retailStock = Math.max(0, Math.floor(Number(form.retailStock) || 0));
     if (!Number.isFinite(wholesaleStock) || !Number.isFinite(retailStock)) {
@@ -275,28 +312,28 @@ function VariantsModal({
     setSaving(true);
     try {
       const payload = {
-        color: form.color,
+        color: form.color.trim(),
         colorHex: form.colorHex,
         barcode: form.barcode || undefined,
-        size: form.size,
         wholesaleStock,
         retailStock,
         stock: wholesaleStock,
       };
-      if (editId) {
-        await apiClient.patch(`/products/${product.id}/variants/${editId}`, payload);
+      // Omit size → API creates all product sizes; stock once on first size (no duplicate totals)
+      if (editColor) {
+        await apiClient.put(`/products/${product.id}/variants/color-stock`, payload);
       } else {
         await apiClient.post(`/products/${product.id}/variants`, payload);
       }
       try {
         await apiClient.post('/products/meta/colors', {
-          name: form.color,
+          name: form.color.trim(),
           hex: form.colorHex,
         });
         await loadSavedColors();
       } catch { /* ignore */ }
-      setEditId(null);
-      setForm({ ...emptyVariantForm, size: sizeOpts[0] });
+      setEditColor(null);
+      setForm({ ...emptyVariantForm });
       await refresh();
     } catch (e: unknown) {
       setSaveError(e instanceof Error ? e.message : 'خطا در ذخیره رنگ');
@@ -305,9 +342,11 @@ function VariantsModal({
     }
   };
 
-  const handleDelete = async (variantId: string) => {
-    await apiClient.delete(`/products/${product.id}/variants/${variantId}`);
-    setDeletingId(null);
+  const handleDeleteColor = async (color: string) => {
+    await apiClient.delete(
+      `/products/${product.id}/variants/by-color?color=${encodeURIComponent(color)}`,
+    );
+    setDeletingColor(null);
     await refresh();
   };
 
@@ -316,9 +355,12 @@ function VariantsModal({
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col relative">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
-            <h3 className="text-base font-bold text-gray-900">واریانت‌ها (رنگ / سایز / موجودی)</h3>
+            <h3 className="text-base font-bold text-gray-900">واریانت‌ها (رنگ / موجودی)</h3>
             <p className="text-xs text-gray-400 mt-0.5">
               {product.name} — {product.sku} — {sizeTypeLabel}
+            </p>
+            <p className="text-[11px] text-primary mt-1">
+              موجودی هر رنگ یک‌بار ثبت می‌شود و روی همه سایزها ({sizeOpts.join('، ')}) اعمال می‌گردد — بدون تکرار در آمار
             </p>
           </div>
           <button type="button" onClick={onClose} className="cursor-pointer text-gray-400 hover:text-gray-600">
@@ -417,7 +459,7 @@ function VariantsModal({
           </div>
 
           <p className="text-xs font-semibold text-gray-500">
-            {editId ? 'ویرایش واریانت' : 'افزودن رنگ + سایز + موجودی'}
+            {editColor ? `ویرایش موجودی رنگ «${editColor}»` : 'افزودن رنگ + موجودی (همه سایزها)'}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end">
             <div>
@@ -426,7 +468,8 @@ function VariantsModal({
                 value={form.color}
                 onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
                 placeholder="سفید"
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+                disabled={!!editColor}
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-gray-100"
               />
             </div>
             <div>
@@ -439,16 +482,10 @@ function VariantsModal({
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">سایز</label>
-              <select
-                value={form.size}
-                onChange={(e) => setForm((p) => ({ ...p, size: e.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 cursor-pointer bg-white"
-              >
-                {sizeOpts.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">سایزها</label>
+              <div className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-600">
+                {sizeOpts.join(' · ')}
+              </div>
             </div>
             <div>
               <label className="block text-[10px] font-medium text-gray-500 mb-1">موجودی عمده</label>
@@ -491,7 +528,7 @@ function VariantsModal({
               <strong className="text-amber-700 text-base font-extrabold tabular-nums">{totalRetail}</strong>
             </span>
             <span className="text-[11px] text-gray-500 self-center">
-              (از واریانت‌ها همگام می‌شود — فرم بالا برای {editId ? 'ویرایش همین واریانت' : 'واریانت جدید'} است)
+              ({colorGroups.length} رنگ — موجودی هر رنگ یک‌بار در جمع حساب می‌شود)
             </span>
           </div>
           {saveError && <p className="text-xs text-error">{saveError}</p>}
@@ -500,13 +537,13 @@ function VariantsModal({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !form.color || !form.size}
+              disabled={saving || !form.color.trim()}
               className="btn btn-primary btn-sm flex items-center gap-1.5 cursor-pointer"
             >
               <Save className="h-3.5 w-3.5" />
-              {saving ? 'ذخیره...' : editId ? 'بروزرسانی واریانت' : 'افزودن واریانت'}
+              {saving ? 'ذخیره...' : editColor ? 'بروزرسانی موجودی رنگ' : 'افزودن رنگ'}
             </button>
-            {editId && (
+            {editColor && (
               <button type="button" onClick={cancelEdit} className="btn btn-outline btn-sm cursor-pointer">
                 انصراف
               </button>
@@ -515,15 +552,15 @@ function VariantsModal({
         </div>
 
         <div className="overflow-y-auto flex-1">
-          {variants.length === 0 ? (
+          {colorGroups.length === 0 ? (
             <p className="text-center text-gray-400 py-8 text-sm">
-              واریانتی تعریف نشده — از فرم بالا اضافه کنید
+              رنگی تعریف نشده — از فرم بالا اضافه کنید
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
-                  {['رنگ', 'سایز', 'موجودی عمده', 'موجودی تکی', 'بارکد', ''].map((h) => (
+                  {['رنگ', 'سایزها', 'موجودی عمده', 'موجودی تکی', 'بارکد', ''].map((h) => (
                     <th key={h || 'actions'} className="px-3 py-2 text-right text-xs font-semibold text-gray-400">
                       {h}
                     </th>
@@ -531,34 +568,34 @@ function VariantsModal({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {variants.map((v) => (
+                {colorGroups.map((g) => (
                   <tr
-                    key={v.id}
-                    className={cn('hover:bg-gray-50 transition-colors', editId === v.id && 'bg-primary-50')}
+                    key={g.color}
+                    className={cn('hover:bg-gray-50 transition-colors', editColor === g.color && 'bg-primary-50')}
                   >
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <span
                           className="h-4 w-4 rounded-full border border-gray-200 flex-shrink-0"
-                          style={{ backgroundColor: v.colorHex }}
+                          style={{ backgroundColor: g.colorHex }}
                         />
-                        <span>{v.color}</span>
+                        <span>{g.color}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600">{v.size}</td>
+                    <td className="px-3 py-2.5 text-xs text-gray-600">{g.sizes.join(' · ') || '—'}</td>
                     <td className="px-3 py-2.5 font-mono text-sm font-semibold text-primary">
-                      {Number(v.wholesaleStock) || Number(v.stock) || 0}
+                      {g.wholesaleStock}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-sm font-semibold text-amber-700">
-                      {Number(v.retailStock) || 0}
+                      {g.retailStock}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-400 font-mono">{v.barcode || '—'}</td>
+                    <td className="px-3 py-2.5 text-xs text-gray-400 font-mono">{g.barcode || '—'}</td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => startEdit(v)} className="cursor-pointer text-gray-400 hover:text-primary">
+                        <button type="button" onClick={() => startEdit(g)} className="cursor-pointer text-gray-400 hover:text-primary">
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
-                        <button type="button" onClick={() => setDeletingId(v.id)} className="cursor-pointer text-gray-400 hover:text-error">
+                        <button type="button" onClick={() => setDeletingColor(g.color)} className="cursor-pointer text-gray-400 hover:text-error">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -572,7 +609,7 @@ function VariantsModal({
 
         <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center gap-3 flex-wrap bg-gray-50">
           <p className="text-sm font-semibold text-gray-800">
-            {variants.length} واریانت · جمع عمده{' '}
+            {colorGroups.length} رنگ · جمع عمده{' '}
             <span className="text-primary tabular-nums">{totalWholesale}</span>
             {' · '}
             جمع تکی <span className="text-amber-700 tabular-nums">{totalRetail}</span>
@@ -582,17 +619,19 @@ function VariantsModal({
           </button>
         </div>
 
-        {deletingId && (
+        {deletingColor && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
             <div className="bg-white rounded-xl p-6 shadow-xl text-center">
-              <p className="text-sm font-semibold text-gray-900 mb-4">حذف این واریانت؟</p>
+              <p className="text-sm font-semibold text-gray-900 mb-4">
+                حذف رنگ «{deletingColor}» و همه سایزهایش؟
+              </p>
               <div className="flex gap-3 justify-center">
-                <button type="button" onClick={() => setDeletingId(null)} className="btn btn-outline btn-sm cursor-pointer">
+                <button type="button" onClick={() => setDeletingColor(null)} className="btn btn-outline btn-sm cursor-pointer">
                   انصراف
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleDelete(deletingId)}
+                  onClick={() => handleDeleteColor(deletingColor)}
                   className="btn btn-sm bg-error text-white hover:bg-red-700 cursor-pointer"
                 >
                   حذف
@@ -613,10 +652,11 @@ export function AdminProducts() {
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [images, setImages] = useState<string[]>([]);
+  const [colorDrafts, setColorDrafts] = useState<ColorDraft[]>([]);
+  const [initialColorNames, setInitialColorNames] = useState<string[]>([]);
   const { upload: uploadImage, uploading: uploadingImg } = useImageUpload();
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [variantProduct, setVariantProduct] = useState<Product | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; skuPrefix: string }>>([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
@@ -681,13 +721,20 @@ export function AdminProducts() {
   const openCreate = () => {
     setForm({ ...emptyForm, specs: { ...emptySpecs, customFields: [] } });
     setImages([]);
+    setColorDrafts([]);
+    setInitialColorNames([]);
     setEditProduct(null);
     setModal('create');
   };
 
   const openEdit = (p: Product) => {
     setEditProduct(p);
-    setImages(p.images ?? []);
+    const drafts = draftsFromVariants(p.variants ?? []);
+    setColorDrafts(drafts);
+    setInitialColorNames(drafts.map((d) => d.originalColor || d.color).filter(Boolean));
+    const colorImgs = drafts.map((d) => d.imageUrl).filter(Boolean);
+    const mergedImages = [...new Set([...(p.images ?? []), ...colorImgs])];
+    setImages(mergedImages);
     const specs = p.specs ?? {};
     setForm({
       sku: p.sku,
@@ -739,6 +786,8 @@ export function AdminProducts() {
     setModal(null);
     setEditProduct(null);
     setImages([]);
+    setColorDrafts([]);
+    setInitialColorNames([]);
   };
 
   const handleImageUpload = useCallback(
@@ -825,6 +874,9 @@ export function AdminProducts() {
         canonical: form.canonical.trim() || undefined,
       };
 
+      const colorImageUrls = colorDrafts.map((d) => d.imageUrl).filter(Boolean);
+      const galleryImages = [...new Set([...images, ...colorImageUrls])];
+
       const payload = {
         sku: form.sku || undefined,
         categoryId: form.categoryId || undefined,
@@ -838,7 +890,7 @@ export function AdminProducts() {
         minOrderQty: Number(form.minOrderQty),
         status: form.status,
         isDiscounted: form.isDiscounted,
-        images,
+        images: galleryImages,
         collectionId: form.collectionId || null,
         isPreOrder: form.isPreOrder,
         preOrderDate: form.isPreOrder && form.preOrderDate ? form.preOrderDate : null,
@@ -848,15 +900,55 @@ export function AdminProducts() {
         showOnRetail: form.showOnRetail,
       };
 
-      if (modal === 'create') await apiClient.post('/products', payload);
-      else if (modal === 'edit' && editProduct) await apiClient.patch(`/products/${editProduct.id}`, payload);
+      let productId = editProduct?.id;
+      if (modal === 'create') {
+        const created = await apiClient.post<{ id: string }>('/products', payload);
+        productId = created.id;
+      } else if (modal === 'edit' && editProduct) {
+        await apiClient.patch(`/products/${editProduct.id}`, payload);
+        productId = editProduct.id;
+      }
+
+      if (productId) {
+        for (const d of colorDrafts) {
+          const body = {
+            color: d.color.trim(),
+            colorHex: d.colorHex,
+            barcode: d.barcode || undefined,
+            imageUrl: d.imageUrl || null,
+            wholesaleStock: Math.max(0, Math.floor(Number(d.wholesaleStock) || 0)),
+            retailStock: Math.max(0, Math.floor(Number(d.retailStock) || 0)),
+            stock: Math.max(0, Math.floor(Number(d.wholesaleStock) || 0)),
+          };
+          const wasExisting =
+            !!d.originalColor && initialColorNames.includes(d.originalColor);
+          if (wasExisting && d.originalColor === d.color.trim()) {
+            await apiClient.put(`/products/${productId}/variants/color-stock`, body);
+          } else if (wasExisting && d.originalColor !== d.color.trim()) {
+            await apiClient.post(`/products/${productId}/variants`, body);
+          } else {
+            await apiClient.post(`/products/${productId}/variants`, body);
+          }
+        }
+        const keepNames = new Set(colorDrafts.map((d) => d.color.trim()));
+        for (const oldName of initialColorNames) {
+          if (oldName && !keepNames.has(oldName)) {
+            await apiClient.delete(
+              `/products/${productId}/variants/by-color?color=${encodeURIComponent(oldName)}`,
+            );
+          }
+        }
+      }
+
       closeModal();
       refetch();
       refreshSpecMemory();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خطا در ذخیره محصول');
     } finally {
       setSaving(false);
     }
-  }, [form, modal, editProduct, refetch, images, refreshSpecMemory]);
+  }, [form, modal, editProduct, refetch, images, colorDrafts, initialColorNames, refreshSpecMemory]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -985,7 +1077,7 @@ export function AdminProducts() {
                         : typeof p.totalStock === 'number'
                           ? p.totalStock
                           : wholesaleSum;
-                  const varCount = p.variants?.length ?? 0;
+                  const varCount = new Set((p.variants ?? []).map((v) => v.color).filter(Boolean)).size;
                   return (
                     <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-xs font-mono text-gray-400">{p.sku}</td>
@@ -1017,7 +1109,7 @@ export function AdminProducts() {
                       <td className="px-4 py-3 text-sm text-gray-600">{fabricLabel(p)}</td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() => setVariantProduct(p)}
+                          onClick={() => openEdit(p)}
                           className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
                         >
                           <Layers className="h-3.5 w-3.5" />
@@ -1473,7 +1565,17 @@ export function AdminProducts() {
               </p>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">تصاویر محصول</label>
+                <ColorVariantsEditor
+                  sizeLabels={sizeOptionsForType(form.sizeType)}
+                  drafts={colorDrafts}
+                  onChange={setColorDrafts}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">
+                  گالری عمومی (اختیاری — علاوه بر عکس رنگ‌ها)
+                </label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {images.map((url, i) => (
                     <div key={url + i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
@@ -1508,14 +1610,10 @@ export function AdminProducts() {
                     onChange={handleImageUpload}
                   />
                 </div>
-                <p className="text-[11px] text-gray-400">حداکثر ۵ مگابایت — JPG، PNG، WebP</p>
-              </div>
-
-              {modal === 'create' && (
-                <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
-                  بعد از ذخیره، رنگ‌ها و موجودی را از «واریانت‌ها» ثبت کنید — موجودی محصول از جمع واریانت‌ها محاسبه می‌شود.
+                <p className="text-[11px] text-gray-400">
+                  عکس اصلی هر رنگ را در بخش رنگ‌بندی آپلود کنید. این گالری فقط برای تصاویر عمومی/اضافی است.
                 </p>
-              )}
+              </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 sticky bottom-0 bg-white">
               <button onClick={closeModal} className="btn btn-outline btn-md">
@@ -1537,14 +1635,6 @@ export function AdminProducts() {
             </div>
           </div>
         </div>
-      )}
-
-      {variantProduct && (
-        <VariantsModal
-          product={variantProduct}
-          onClose={() => setVariantProduct(null)}
-          onDone={refetch}
-        />
       )}
 
       {deleteId && (

@@ -27,6 +27,7 @@ interface CreateOrderDto {
     sku?: string;
     color?: string;
     size?: string;
+    imageUrl?: string;
   }>;
   shippingMethod?: string;
   paymentMethod?: string;
@@ -215,6 +216,7 @@ export class OrderService {
     color: string;
     size: string;
     productId: string;
+    imageUrl?: string | null;
   }> {
     const variants = product.variants ?? [];
     const matching = variants.filter(
@@ -250,6 +252,7 @@ export class OrderService {
       color: string;
       size: string;
       productId: string;
+      imageUrl?: string | null;
     }> = [];
 
     let remaining = qty;
@@ -266,6 +269,7 @@ export class OrderService {
         color: v.color,
         size: v.size,
         productId: product.id,
+        imageUrl: (v as { imageUrl?: string }).imageUrl ?? null,
       });
       remaining -= take;
     }
@@ -301,6 +305,7 @@ export class OrderService {
       color: string;
       size: string;
       productId: string;
+      imageUrl?: string | null;
     }> = [];
 
     for (const item of dto.items) {
@@ -329,6 +334,7 @@ export class OrderService {
           color: variant.color,
           size: variant.size,
           productId: product.id,
+          imageUrl: variant.imageUrl || item.imageUrl || null,
         });
         continue;
       }
@@ -343,14 +349,18 @@ export class OrderService {
       }
 
       // Product-level channel stock (sum of matching variants) + greedy allocation
+      const allocated = this.allocateAcrossVariants(product, qty, channel, {
+        color: item.color,
+        size: item.size,
+        unitPrice: item.unitPrice,
+        productName: item.productName,
+        sku: item.sku,
+      });
       expandedItems.push(
-        ...this.allocateAcrossVariants(product, qty, channel, {
-          color: item.color,
-          size: item.size,
-          unitPrice: item.unitPrice,
-          productName: item.productName,
-          sku: item.sku,
-        }),
+        ...allocated.map((line) => ({
+          ...line,
+          imageUrl: line.imageUrl || item.imageUrl || null,
+        })),
       );
     }
 
@@ -498,6 +508,7 @@ export class OrderService {
         sku: i.sku,
         color: i.color,
         size: i.size,
+        imageUrl: i.imageUrl || null,
         orderId: saved.id,
         totalPrice: i.unitPrice * i.quantity,
       })

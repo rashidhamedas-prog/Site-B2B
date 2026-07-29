@@ -26,15 +26,25 @@ export class OrderController {
     @Request() req: Express.Request & { user: JwtUser },
     @Body() body: any,
   ) {
-    if (req.user.role === 'CUSTOMER' && !body.customerId) {
-      const customerId = req.user.customerId
-        ?? (await this.userRepo.findOne({ where: { id: req.user.sub } }))?.customerId;
-      if (!customerId) {
-        throw new ForbiddenException('حساب مشتری شما هنوز تأیید نشده است. لطفاً با پشتیبانی تماس بگیرید.');
-      }
-      body = { ...body, customerId };
+    // Always resolve customerId for the authenticated user when missing.
+    // (Previously only CUSTOMER role was injected — other roles caused DB 500.)
+    let customerId: string | undefined = body?.customerId || req.user.customerId;
+    if (!customerId) {
+      customerId =
+        (await this.userRepo.findOne({ where: { id: req.user.sub } }))?.customerId ?? undefined;
     }
-    return this.orderService.create(body);
+    if (req.user.role === 'CUSTOMER') {
+      const own =
+        req.user.customerId
+        ?? (await this.userRepo.findOne({ where: { id: req.user.sub } }))?.customerId;
+      if (own) customerId = own;
+    }
+    if (!customerId) {
+      throw new ForbiddenException(
+        'حساب مشتری شما هنوز تأیید نشده است. لطفاً دوباره وارد شوید یا با پشتیبانی تماس بگیرید.',
+      );
+    }
+    return this.orderService.create({ ...body, customerId });
   }
 
   @Get()

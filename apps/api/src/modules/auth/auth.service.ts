@@ -227,8 +227,17 @@ export class AuthService {
     user.lastLoginAt = new Date();
     await this.userRepo.save(user);
 
-    const token = this.jwtService.sign({ sub: user.id, phone: user.phone, role: user.role });
-    return { accessToken: token, role: user.role };
+    const token = this.jwtService.sign({
+      sub: user.id,
+      phone: user.phone,
+      role: user.role,
+      customerId: user.customerId ?? undefined,
+    });
+    return {
+      accessToken: token,
+      role: user.role,
+      customerId: user.customerId ?? undefined,
+    };
   }
 
   async findById(id: string) {
@@ -435,6 +444,7 @@ export class AuthService {
       sub: user.id,
       phone: user.phone,
       role: user.role,
+      customerId: user.customerId,
     });
     return {
       accessToken: token,
