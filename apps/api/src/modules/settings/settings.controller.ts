@@ -51,13 +51,40 @@ export class SettingsController {
         limitedStockMultiplier: business.limitedStockMultiplier,
         newBadgeDays: business.newBadgeDays,
       },
-      shipping: {
-        companies: shipping.companies,
-        freeThreshold: shipping.freeThreshold,
-        baseFee: shipping.baseFee,
-        perKgFee: shipping.perKgFee,
-        kgPerPiece: shipping.kgPerPiece,
-      },
+      shipping: (() => {
+        const ch = String(channel || '').toUpperCase();
+        const retail = shipping.retail;
+        const wholesale = shipping.wholesale;
+        // Channel-aware flat fields for storefront checkout; nested for admin/tools
+        const flat =
+          ch === 'WHOLESALE'
+            ? {
+                freeThreshold: wholesale.freeThreshold,
+                baseFee: wholesale.baseFee,
+                perKgFee: 0,
+                kgPerPiece: retail.kgPerPiece,
+              }
+            : {
+                freeThreshold: retail.freeThreshold,
+                baseFee: retail.baseFee,
+                perKgFee: retail.perKgFee,
+                kgPerPiece: retail.kgPerPiece,
+              };
+        return {
+          companies: shipping.companies,
+          ...flat,
+          retail: {
+            freeThreshold: retail.freeThreshold,
+            baseFee: retail.baseFee,
+            perKgFee: retail.perKgFee,
+            kgPerPiece: retail.kgPerPiece,
+          },
+          wholesale: {
+            freeThreshold: wholesale.freeThreshold,
+            baseFee: wholesale.baseFee,
+          },
+        };
+      })(),
       installments,
       // Safe flags only — never expose merchantId / secrets
       payment: {

@@ -29,9 +29,22 @@ interface SettingsPayload {
     newBadgeDays?: number;
   };
   shipping: {
+    /** @deprecated Prefer retail.* — mirrored from retail for API compat */
     baseFee: number; perKgFee: number; freeThreshold: number;
-    /** Average kg per garment piece (retail weight calc) */
+    /** @deprecated Prefer retail.kgPerPiece */
     kgPerPiece?: number;
+    retail: {
+      baseFee: number;
+      perKgFee: number;
+      freeThreshold: number;
+      kgPerPiece: number;
+      detailsText: string;
+    };
+    wholesale: {
+      baseFee: number;
+      freeThreshold: number;
+      detailsText: string;
+    };
     companies: Array<{ id: string; label: string; isActive: boolean; sort: number }>;
     methods: Record<string, boolean>;
   };
@@ -147,15 +160,55 @@ export function AdminSettings() {
           limitedStockMultiplier: res.business?.limitedStockMultiplier ?? 2,
           newBadgeDays: res.business?.newBadgeDays ?? 7,
         },
-        shipping: {
-          ...res.shipping,
-          baseFee: res.shipping?.baseFee ?? 1_500_000,
-          perKgFee: res.shipping?.perKgFee ?? 250_000,
-          freeThreshold: res.shipping?.freeThreshold ?? 50_000_000,
-          kgPerPiece: res.shipping?.kgPerPiece ?? 0.45,
-          companies: res.shipping?.companies ?? [],
-          methods: res.shipping?.methods ?? {},
-        },
+        shipping: (() => {
+          const ship = res.shipping ?? ({} as SettingsPayload['shipping']);
+          const retailDefaults = {
+            baseFee: ship.baseFee ?? 1_500_000,
+            perKgFee: ship.perKgFee ?? 250_000,
+            freeThreshold: ship.freeThreshold ?? 50_000_000,
+            kgPerPiece: ship.kgPerPiece ?? 0.45,
+            detailsText: [
+              'وزن تقریبی: ceil(تعداد × وزن‌هر‌عدد × ۱۰) / ۱۰ کیلوگرم',
+              'هزینه: کارمزد پایه + ceil(وزن) × کارمزد هر کیلو',
+              'پیک تهران / اسنپ‌باکس: حداکثر برابر کارمزد پایه. اگر مبلغ فاکتور ≥ آستانه ارسال رایگان → هزینه صفر.',
+            ].join('\n'),
+          };
+          const wholesaleDefaults = {
+            baseFee: ship.baseFee ?? 1_500_000,
+            freeThreshold: ship.freeThreshold ?? 50_000_000,
+            detailsText: [
+              'هزینه ثابت = کارمزد پایه (بدون ضرب وزن)، مگر اینکه مبلغ پس از تخفیف ≥ آستانه ارسال رایگان باشد.',
+              'شرکت‌های حمل فعال در checkout نمایش داده می‌شوند.',
+            ].join('\n'),
+          };
+          const retail = {
+            ...retailDefaults,
+            ...(ship.retail ?? {}),
+            baseFee: ship.retail?.baseFee ?? retailDefaults.baseFee,
+            perKgFee: ship.retail?.perKgFee ?? retailDefaults.perKgFee,
+            freeThreshold: ship.retail?.freeThreshold ?? retailDefaults.freeThreshold,
+            kgPerPiece: ship.retail?.kgPerPiece ?? retailDefaults.kgPerPiece,
+            detailsText: ship.retail?.detailsText || retailDefaults.detailsText,
+          };
+          const wholesale = {
+            ...wholesaleDefaults,
+            ...(ship.wholesale ?? {}),
+            baseFee: ship.wholesale?.baseFee ?? wholesaleDefaults.baseFee,
+            freeThreshold: ship.wholesale?.freeThreshold ?? wholesaleDefaults.freeThreshold,
+            detailsText: ship.wholesale?.detailsText || wholesaleDefaults.detailsText,
+          };
+          return {
+            ...ship,
+            baseFee: retail.baseFee,
+            perKgFee: retail.perKgFee,
+            freeThreshold: retail.freeThreshold,
+            kgPerPiece: retail.kgPerPiece,
+            retail,
+            wholesale,
+            companies: ship.companies ?? [],
+            methods: ship.methods ?? {},
+          };
+        })(),
         sms: {
           enabled: res.sms?.enabled ?? true,
           apiKey: res.sms?.apiKey ?? '',
@@ -252,6 +305,19 @@ export function AdminSettings() {
           minDownPaymentPercent: rules[0]?.minDownPaymentPercent ?? inst.minDownPaymentPercent ?? 0,
           maxMonths: Math.max(...rules.map((r) => r.maxMonths), inst.maxMonths || 1),
           minActiveInvoices: inst.minActiveInvoices ?? 2,
+        };
+      }
+      if (tab === 'shipping') {
+        const ship = data.shipping;
+        // Mirror retail → legacy flat fields so older consumers stay in sync
+        payload = {
+          ...ship,
+          baseFee: ship.retail.baseFee,
+          perKgFee: ship.retail.perKgFee,
+          freeThreshold: ship.retail.freeThreshold,
+          kgPerPiece: ship.retail.kgPerPiece,
+          retail: ship.retail,
+          wholesale: ship.wholesale,
         };
       }
       await apiClient.put(`/settings/admin/${tab}`, payload);
@@ -374,85 +440,150 @@ export function AdminSettings() {
       {/* Shipping tab */}
       {tab === 'shipping' && (
         <div className="card p-6 space-y-6 max-w-3xl">
-          <div className="rounded-2xl border border-primary-100 bg-primary-50/60 px-4 py-4 space-y-3 text-sm text-gray-800">
-            <p className="font-bold text-primary">جزئیات محاسبه هزینه ارسال</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-white/80 border border-primary-100/80 p-3 space-y-1.5">
-                <p className="text-xs font-bold text-gray-900">فروشگاه تکی (.ir)</p>
-                <p className="text-xs leading-relaxed text-gray-600">
-                  وزن تقریبی: <span className="font-mono" dir="ltr">ceil(تعداد × وزن‌هر‌عدد × ۱۰) / ۱۰</span> کیلوگرم
-                </p>
-                <p className="text-xs leading-relaxed text-gray-600">
-                  هزینه: <span className="font-mono" dir="ltr">کارمزد پایه + ceil(وزن) × کارمزد هر کیلو</span>
-                </p>
-                <p className="text-xs leading-relaxed text-gray-600">
-                  پیک تهران / اسنپ‌باکس: حداکثر برابر کارمزد پایه. اگر مبلغ فاکتور ≥ آستانه ارسال رایگان → هزینه صفر.
-                </p>
-              </div>
-              <div className="rounded-xl bg-white/80 border border-primary-100/80 p-3 space-y-1.5">
-                <p className="text-xs font-bold text-gray-900">سایت عمده (.com)</p>
-                <p className="text-xs leading-relaxed text-gray-600">
-                  هزینه ثابت = کارمزد پایه (بدون ضرب وزن)، مگر اینکه مبلغ پس از تخفیف ≥ آستانه ارسال رایگان باشد.
-                </p>
-                <p className="text-xs leading-relaxed text-gray-600">
-                  شرکت‌های حمل فعال در checkout نمایش داده می‌شوند.
+          <div className="rounded-2xl border border-primary-100 bg-primary-50/60 px-4 py-4 space-y-4 text-sm text-gray-800">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-bold text-primary">جزئیات محاسبه هزینه ارسال</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  متن راهنما برای هر کانال قابل ویرایش است — فقط نمایش ادمین؛ منطق محاسبه از اعداد زیر پیروی می‌کند.
                 </p>
               </div>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-white/80 border border-primary-100/80 p-3 space-y-2">
+                <p className="text-xs font-bold text-gray-900">فروشگاه تکی (.ir)</p>
+                <textarea
+                  value={data.shipping.retail.detailsText}
+                  onChange={(e) => patch('shipping', (s) => ({
+                    ...s,
+                    retail: { ...s.retail, detailsText: e.target.value },
+                  }))}
+                  rows={5}
+                  className="input w-full text-xs leading-relaxed resize-y min-h-[6rem]"
+                  dir="rtl"
+                />
+              </div>
+              <div className="rounded-xl bg-white/80 border border-primary-100/80 p-3 space-y-2">
+                <p className="text-xs font-bold text-gray-900">سایت عمده (.com)</p>
+                <textarea
+                  value={data.shipping.wholesale.detailsText}
+                  onChange={(e) => patch('shipping', (s) => ({
+                    ...s,
+                    wholesale: { ...s.wholesale, detailsText: e.target.value },
+                  }))}
+                  rows={5}
+                  className="input w-full text-xs leading-relaxed resize-y min-h-[6rem]"
+                  dir="rtl"
+                />
+              </div>
+            </div>
             {(() => {
-              const base = Math.round((data.shipping.baseFee ?? 0) / 10);
-              const perKg = Math.round((data.shipping.perKgFee ?? 0) / 10);
-              const kg = Number(data.shipping.kgPerPiece) > 0 ? Number(data.shipping.kgPerPiece) : 0.45;
+              const base = Math.round((data.shipping.retail.baseFee ?? 0) / 10);
+              const perKg = Math.round((data.shipping.retail.perKgFee ?? 0) / 10);
+              const kg = Number(data.shipping.retail.kgPerPiece) > 0 ? Number(data.shipping.retail.kgPerPiece) : 0.45;
               const samplePieces = 2;
               const weightKg = Math.ceil(samplePieces * kg * 10) / 10;
               const sampleFee = base + Math.ceil(weightKg) * perKg;
+              const wholesaleFee = Math.round((data.shipping.wholesale.baseFee ?? 0) / 10);
               return (
-                <p className="text-xs text-gray-500">
-                  نمونه تکی برای {samplePieces.toLocaleString('fa-IR')} عدد (وزن تقریبی{' '}
-                  {weightKg.toLocaleString('fa-IR')} کیلو):{' '}
-                  <span className="font-bold text-gray-800 tabular-nums">
-                    {sampleFee.toLocaleString('fa-IR')} تومان
-                  </span>
-                  {' '}— اعداد زیر را در تنظیمات سایت ویرایش کنید.
-                </p>
+                <div className="space-y-1 text-xs text-gray-500">
+                  <p>
+                    نمونه تکی برای {samplePieces.toLocaleString('fa-IR')} عدد (وزن تقریبی{' '}
+                    {weightKg.toLocaleString('fa-IR')} کیلو):{' '}
+                    <span className="font-bold text-gray-800 tabular-nums">
+                      {sampleFee.toLocaleString('fa-IR')} تومان
+                    </span>
+                  </p>
+                  <p>
+                    نمونه عمده (هزینه ثابت):{' '}
+                    <span className="font-bold text-gray-800 tabular-nums">
+                      {wholesaleFee.toLocaleString('fa-IR')} تومان
+                    </span>
+                  </p>
+                </div>
               );
             })()}
           </div>
 
           <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            همه مبالغ به تومان وارد می‌شوند و در سرور به‌صورت ریال ذخیره می‌گردند.
+            همه مبالغ به تومان وارد می‌شوند و در سرور به‌صورت ریال ذخیره می‌گردند. تنظیمات تکی و عمده جدا هستند.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <NumberField
-              label="کارمزد پایه (تومان)"
-              value={Math.round((data.shipping.baseFee ?? 0) / 10)}
-              onChange={(v) => patch('shipping', (s) => ({ ...s, baseFee: Math.max(0, v) * 10 }))}
-              help="تکی: پایه فرمول — عمده: هزینه ثابت ارسال"
-            />
-            <NumberField
-              label="کارمزد هر کیلوگرم (تومان)"
-              value={Math.round((data.shipping.perKgFee ?? 0) / 10)}
-              onChange={(v) => patch('shipping', (s) => ({ ...s, perKgFee: Math.max(0, v) * 10 }))}
-              help="فقط در محاسبه وزن‌محور فروشگاه تکی"
-            />
-            <NumberField
-              label="وزن تقریبی هر عدد (کیلو)"
-              value={Number(data.shipping.kgPerPiece) > 0 ? Number(data.shipping.kgPerPiece) : 0.45}
-              step="0.01"
-              min={0.05}
-              onChange={(v) => patch('shipping', (s) => ({
-                ...s,
-                kgPerPiece: Math.max(0.05, Math.round(v * 100) / 100 || 0.45),
-              }))}
-              help="پیش‌فرض ۰٫۴۵ کیلو — برای مانتو با بسته‌بندی"
-            />
-            <NumberField
-              label="آستانه ارسال رایگان (تومان)"
-              value={Math.round((data.shipping.freeThreshold ?? 0) / 10)}
-              onChange={(v) => patch('shipping', (s) => ({ ...s, freeThreshold: Math.max(0, v) * 10 }))}
-              help="پیش‌فرض: ۵٬۰۰۰٬۰۰۰ تومان — برای تکی و عمده"
-            />
+          {/* Retail fees */}
+          <div className="rounded-2xl border border-gray-100 p-4 space-y-4">
+            <h3 className="font-bold text-gray-800 text-sm">فروشگاه تکی (.ir) — کارمزد و آستانه</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <NumberField
+                label="کارمزد پایه (تومان)"
+                value={Math.round((data.shipping.retail.baseFee ?? 0) / 10)}
+                onChange={(v) => patch('shipping', (s) => ({
+                  ...s,
+                  retail: { ...s.retail, baseFee: Math.max(0, v) * 10 },
+                  baseFee: Math.max(0, v) * 10,
+                }))}
+                help="پایه فرمول وزن‌محور تکی"
+              />
+              <NumberField
+                label="کارمزد هر کیلوگرم (تومان)"
+                value={Math.round((data.shipping.retail.perKgFee ?? 0) / 10)}
+                onChange={(v) => patch('shipping', (s) => ({
+                  ...s,
+                  retail: { ...s.retail, perKgFee: Math.max(0, v) * 10 },
+                  perKgFee: Math.max(0, v) * 10,
+                }))}
+                help="در محاسبه وزن‌محور فروشگاه تکی"
+              />
+              <NumberField
+                label="وزن تقریبی هر عدد (کیلو)"
+                value={Number(data.shipping.retail.kgPerPiece) > 0 ? Number(data.shipping.retail.kgPerPiece) : 0.45}
+                step="0.01"
+                min={0.05}
+                onChange={(v) => {
+                  const kg = Math.max(0.05, Math.round(v * 100) / 100 || 0.45);
+                  patch('shipping', (s) => ({
+                    ...s,
+                    retail: { ...s.retail, kgPerPiece: kg },
+                    kgPerPiece: kg,
+                  }));
+                }}
+                help="پیش‌فرض ۰٫۴۵ کیلو — برای مانتو با بسته‌بندی"
+              />
+              <NumberField
+                label="آستانه ارسال رایگان (تومان)"
+                value={Math.round((data.shipping.retail.freeThreshold ?? 0) / 10)}
+                onChange={(v) => patch('shipping', (s) => ({
+                  ...s,
+                  retail: { ...s.retail, freeThreshold: Math.max(0, v) * 10 },
+                  freeThreshold: Math.max(0, v) * 10,
+                }))}
+                help="اگر مبلغ فاکتور ≥ این مقدار → ارسال رایگان تکی"
+              />
+            </div>
+          </div>
+
+          {/* Wholesale fees */}
+          <div className="rounded-2xl border border-gray-100 p-4 space-y-4">
+            <h3 className="font-bold text-gray-800 text-sm">سایت عمده (.com) — کارمزد و آستانه</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <NumberField
+                label="هزینه ثابت ارسال (تومان)"
+                value={Math.round((data.shipping.wholesale.baseFee ?? 0) / 10)}
+                onChange={(v) => patch('shipping', (s) => ({
+                  ...s,
+                  wholesale: { ...s.wholesale, baseFee: Math.max(0, v) * 10 },
+                }))}
+                help="هزینه ثابت ارسال عمده (بدون ضرب وزن)"
+              />
+              <NumberField
+                label="آستانه ارسال رایگان (تومان)"
+                value={Math.round((data.shipping.wholesale.freeThreshold ?? 0) / 10)}
+                onChange={(v) => patch('shipping', (s) => ({
+                  ...s,
+                  wholesale: { ...s.wholesale, freeThreshold: Math.max(0, v) * 10 },
+                }))}
+                help="اگر مبلغ پس از تخفیف ≥ این مقدار → ارسال رایگان عمده"
+              />
+            </div>
           </div>
 
           <div>

@@ -85,20 +85,62 @@ export class SettingsService {
       }))
       .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
-    const kgRaw = Number(s.kgPerPiece);
-    const kgPerPiece =
-      Number.isFinite(kgRaw) && kgRaw > 0
-        ? kgRaw
-        : Number(this.config.get('SHIPPING_KG_PER_PIECE', 0.45)) || 0.45;
+    const defaultBase = Number(this.config.get('SHIPPING_BASE_FEE', 1500000));
+    const defaultPerKg = Number(this.config.get('SHIPPING_PER_KG_FEE', 250000));
+    const defaultFree = Number(this.config.get('SHIPPING_FREE_THRESHOLD', 50_000_000));
+    const defaultKg = Number(this.config.get('SHIPPING_KG_PER_PIECE', 0.45)) || 0.45;
+
+    // Legacy flat fields = retail defaults when nested retail is missing
+    const legacyBase = Number(s.baseFee) || defaultBase;
+    const legacyPerKg = Number(s.perKgFee) || defaultPerKg;
+    const legacyFree = Number(s.freeThreshold) || defaultFree;
+    const legacyKgRaw = Number(s.kgPerPiece);
+    const legacyKg =
+      Number.isFinite(legacyKgRaw) && legacyKgRaw > 0 ? legacyKgRaw : defaultKg;
+
+    const retailSrc = s.retail && typeof s.retail === 'object' ? s.retail : {};
+    const wholesaleSrc = s.wholesale && typeof s.wholesale === 'object' ? s.wholesale : {};
+
+    const retailKgRaw = Number(retailSrc.kgPerPiece);
+    const retail = {
+      baseFee: Number(retailSrc.baseFee) || legacyBase,
+      perKgFee: Number(retailSrc.perKgFee) || legacyPerKg,
+      freeThreshold: Number(retailSrc.freeThreshold) || legacyFree,
+      kgPerPiece:
+        Number.isFinite(retailKgRaw) && retailKgRaw > 0 ? retailKgRaw : legacyKg,
+      detailsText: String(
+        retailSrc.detailsText ??
+          [
+            'وزن تقریبی: ceil(تعداد × وزن‌هر‌عدد × ۱۰) / ۱۰ کیلوگرم',
+            'هزینه: کارمزد پایه + ceil(وزن) × کارمزد هر کیلو',
+            'پیک تهران / اسنپ‌باکس: حداکثر برابر کارمزد پایه. اگر مبلغ فاکتور ≥ آستانه ارسال رایگان → هزینه صفر.',
+          ].join('\n'),
+      ),
+    };
+
+    const wholesale = {
+      baseFee: Number(wholesaleSrc.baseFee) || legacyBase,
+      freeThreshold: Number(wholesaleSrc.freeThreshold) || legacyFree,
+      detailsText: String(
+        wholesaleSrc.detailsText ??
+          [
+            'هزینه ثابت = کارمزد پایه (بدون ضرب وزن)، مگر اینکه مبلغ پس از تخفیف ≥ آستانه ارسال رایگان باشد.',
+            'شرکت‌های حمل فعال در checkout نمایش داده می‌شوند.',
+          ].join('\n'),
+      ),
+    };
 
     return {
-      baseFee: Number(s.baseFee) || Number(this.config.get('SHIPPING_BASE_FEE', 1500000)),
-      perKgFee: Number(s.perKgFee) || Number(this.config.get('SHIPPING_PER_KG_FEE', 250000)),
-      // Default: ۵ میلیون تومان = 50_000_000 IRR
-      freeThreshold:
-        Number(s.freeThreshold) || Number(this.config.get('SHIPPING_FREE_THRESHOLD', 50_000_000)),
-      /** Average garment weight (kg) used for retail quote: weightKg = ceil(pieces × kgPerPiece × 10) / 10 */
-      kgPerPiece,
+      /** @deprecated Prefer retail.* — kept for backward compat (= retail) */
+      baseFee: retail.baseFee,
+      /** @deprecated Prefer retail.perKgFee */
+      perKgFee: retail.perKgFee,
+      /** @deprecated Prefer retail.freeThreshold */
+      freeThreshold: retail.freeThreshold,
+      /** @deprecated Prefer retail.kgPerPiece */
+      kgPerPiece: retail.kgPerPiece,
+      retail,
+      wholesale,
       // Editable shipping companies list (admin-managed). Kept alongside legacy `methods` for backward compat.
       companies,
       // Legacy per-method enable flags; derived from companies (or fall back to stored methods).

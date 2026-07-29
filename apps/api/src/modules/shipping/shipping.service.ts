@@ -35,20 +35,28 @@ export class ShippingService {
     province?: string;
   }) {
     const cfg = await this.settings.shipping();
+    const retail = cfg.retail ?? {
+      baseFee: cfg.baseFee,
+      perKgFee: cfg.perKgFee,
+      freeThreshold: cfg.freeThreshold,
+      kgPerPiece: cfg.kgPerPiece,
+    };
     const pieces = Math.max(1, Number(input.pieces) || 1);
     const kgPerPiece =
-      Number(cfg.kgPerPiece) > 0 ? Number(cfg.kgPerPiece) : ShippingService.KG_PER_PIECE_DEFAULT;
+      Number(retail.kgPerPiece) > 0
+        ? Number(retail.kgPerPiece)
+        : ShippingService.KG_PER_PIECE_DEFAULT;
     const weightKg = Math.ceil(pieces * kgPerPiece * 10) / 10;
     const method = this.normalizeMethod(input.method);
 
     // Retail formula: fee = baseFee + ceil(weightKg) × perKgFee
-    let fee = cfg.baseFee + Math.ceil(weightKg) * cfg.perKgFee;
+    let fee = retail.baseFee + Math.ceil(weightKg) * retail.perKgFee;
     // Tehran bike / Snapp: flat intra-city style fee if configured lower
     if (method === 'SNAPP') {
-      fee = Math.min(fee, cfg.baseFee || fee);
+      fee = Math.min(fee, retail.baseFee || fee);
     }
     const freeShipping =
-      !!input.orderTotal && Number(input.orderTotal) >= cfg.freeThreshold;
+      !!input.orderTotal && Number(input.orderTotal) >= retail.freeThreshold;
     if (freeShipping) fee = 0;
 
     const def =
@@ -60,11 +68,11 @@ export class ShippingService {
       pieces,
       weightKg,
       kgPerPiece,
-      baseFee: cfg.baseFee,
-      perKgFee: cfg.perKgFee,
+      baseFee: retail.baseFee,
+      perKgFee: retail.perKgFee,
       fee,
       freeShipping,
-      freeThreshold: cfg.freeThreshold,
+      freeThreshold: retail.freeThreshold,
       estimatedDays: def?.estimatedDays ?? '۲ تا ۴ روز کاری',
       province: input.province || null,
       formula: 'baseFee + ceil(weightKg) × perKgFee (weightKg from pieces × kgPerPiece)',

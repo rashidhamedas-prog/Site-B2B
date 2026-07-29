@@ -2,6 +2,23 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-29 — تنظیمات ارسال جدا برای تکی/عمده + متن قابل‌ویرایش
+
+### خلاصه
+- جزئیات محاسبه هزینه ارسال در ادمین قابل شخصی‌سازی (textarea جدا برای تکی و عمده)
+- فیلدهای عددی کارمزد/آستانه از هم جدا شدند: `shipping.retail` و `shipping.wholesale`
+- quote تکی از retail؛ سفارش و checkout عمده از wholesale
+- سازگاری با فیلدهای تخت قدیمی (آینه retail)
+
+### فایل‌ها
+- `settings.service.ts`, `settings.controller.ts`, `shipping.service.ts`, `order.service.ts`
+- `AdminSettings.tsx`, `checkout/page.tsx`
+
+### Deploy
+- Commit + push به `master` → CI deploy VPS
+
+---
+
 ## 2026-07-29 — پیامک اعلان per-site + دیپلوی production
 
 ### خلاصه
