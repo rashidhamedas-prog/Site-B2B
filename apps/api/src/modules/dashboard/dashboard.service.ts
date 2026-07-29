@@ -158,6 +158,79 @@ export class DashboardService {
     };
   }
 
+  async getCustomerStats(customerId: string) {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const customer = await this.customerRepo.findOne({ where: { id: customerId } });
+    if (!customer) {
+      return {
+        generatedAt: now.toISOString(),
+        live: true,
+        ordersThisMonth: 0,
+        totalSpent: 0,
+        outstanding: 0,
+        creditRemaining: 0,
+        recentOrders: [],
+        customer: null,
+      };
+    }
+
+    const [ordersThisMonth, totalSpentRow, outstandingRow, recentOrders] = await Promise.all([
+      this.orderRepo.createQueryBuilder('o')
+        .where('o.customerId = :cid', { cid: customerId })
+        .andWhere('o.createdAt >= :start', { start: startOfMonth })
+        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
+        .getCount(),
+      this.orderRepo.createQueryBuilder('o')
+        .select('SUM(o.total)', 'sum')
+        .where('o.customerId = :cid', { cid: customerId })
+        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
+        .getRawOne(),
+      this.invoiceRepo.createQueryBuilder('i')
+        .select('SUM(i.total - i.paidAmount)', 'sum')
+        .where('i.customerId = :cid', { cid: customerId })
+        .andWhere("i.status NOT IN ('PAID', 'CANCELLED', 'VOIDED', 'DRAFT')")
+        .getRawOne(),
+      this.orderRepo
+        .createQueryBuilder('o')
+        .leftJoinAndSelect('o.items', 'items')
+        .where('o.customerId = :cid', { cid: customerId })
+        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
+        .orderBy('o.createdAt', 'DESC')
+        .take(5)
+        .getMany(),
+    ]);
+
+    const totalSpent = Number(totalSpentRow?.sum) || 0;
+    const outstanding = Math.max(0, Number(outstandingRow?.sum) || 0);
+    const creditLimit = Number(customer.creditLimit) || 0;
+
+    return {
+      generatedAt: now.toISOString(),
+      live: true,
+      ordersThisMonth,
+      totalSpent,
+      outstanding,
+      creditRemaining: Math.max(0, creditLimit - outstanding),
+      recentOrders: recentOrders.map((o) => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        status: o.status,
+        total: Number(o.total) || 0,
+        itemCount: (o.items ?? []).reduce((s, it) => s + (Number(it.quantity) || 0), 0),
+        createdAt: o.createdAt,
+      })),
+      customer: {
+        businessName: customer.businessName,
+        ownerName: customer.ownerName,
+        segment: customer.segment,
+        customerCode: customer.code,
+        creditLimit,
+        balance: Number(customer.balance) || 0,
+      },
+    };
+  }
+
   async getReports(period: ReportPeriod = 'month', channel?: string) {
     const bounds = this.periodBounds(period);
     const { start, end, prevStart, prevEnd } = bounds;
