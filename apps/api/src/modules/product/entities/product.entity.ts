@@ -74,6 +74,17 @@ export class ProductEntity {
   minOrderQty: number;
 
   /**
+   * When true, wholesale PDP lets the buyer pick colors.
+   * Order expands: each selected color × each size × packQty (specs.packQty).
+   */
+  @Column({ default: false })
+  allowWholesaleColorSelect: boolean;
+
+  /** Minimum number of colors the wholesale buyer must select (when allowWholesaleColorSelect). */
+  @Column({ type: 'int', default: 1 })
+  minWholesaleColors: number;
+
+  /**
    * @deprecated Prefer wholesaleStock / retailStock.
    * Kept in sync with wholesaleStock for legacy readers.
    */

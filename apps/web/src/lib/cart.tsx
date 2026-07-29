@@ -13,14 +13,34 @@ export interface CartItem {
   sku: string;
   unitPrice: number;
   minOrderQty: number;
+  /** Piece count (legacy) OR pack-set count when packMode */
   quantity: number;
   imageUrl?: string;
+  /** Wholesale pack matrix: quantity = pack sets; expands color×size×packQty on order */
+  packMode?: boolean;
+  selectedColors?: string[];
+  packQty?: number;
+  sizeCount?: number;
+}
+
+/** Total billable pieces for a cart line (pack mode expands color×size×packQty). */
+export function cartItemPieces(item: CartItem): number {
+  if (item.packMode && item.packQty && item.packQty > 0) {
+    const colors = Math.max(1, item.selectedColors?.length || 1);
+    const sizes = Math.max(1, item.sizeCount || 1);
+    return Math.max(1, item.quantity) * item.packQty * colors * sizes;
+  }
+  return Math.max(0, item.quantity);
 }
 
 export function cartLineKey(
-  item: Pick<CartItem, 'productId' | 'productVariantId' | 'color' | 'size'>,
+  item: Pick<CartItem, 'productId' | 'productVariantId' | 'color' | 'size' | 'packMode' | 'selectedColors'>,
 ) {
   if (item.productVariantId) return `${item.productId}:${item.productVariantId}`;
+  if (item.packMode) {
+    const colors = [...(item.selectedColors ?? [])].map((c) => c.trim()).filter(Boolean).sort().join(',');
+    return `${item.productId}:pack:${colors || 'all'}`;
+  }
   const meta = [item.color, item.size].filter(Boolean).join('|');
   return meta ? `${item.productId}:${meta}` : item.productId;
 }
@@ -116,8 +136,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
   }, [state.items]);
 
-  const count = state.items.reduce((s, i) => s + i.quantity, 0);
-  const total = state.items.reduce((s, i) => s + i.unitPrice * i.quantity, 0);
+  const count = state.items.reduce((s, i) => s + cartItemPieces(i), 0);
+  const total = state.items.reduce((s, i) => s + i.unitPrice * cartItemPieces(i), 0);
 
   return (
     <CartContext.Provider value={{

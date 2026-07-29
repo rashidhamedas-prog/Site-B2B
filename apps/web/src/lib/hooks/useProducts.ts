@@ -40,6 +40,8 @@ export interface Product {
   showOnRetail?: boolean;
   retailFeatured?: boolean;
   minOrderQty: number;
+  allowWholesaleColorSelect?: boolean;
+  minWholesaleColors?: number;
   stock?: number;
   wholesaleStock?: number;
   retailStock?: number;
