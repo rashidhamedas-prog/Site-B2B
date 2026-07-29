@@ -2,6 +2,20 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-29 — پیامک اعلان per-site + دیپلوی production
+
+### خلاصه
+- شماره اعلان ادمین جدا برای عمده/تک‌فروشی (تا ۲ شماره، دومی اختیاری)
+- SMS ادمین روی ثبت سفارش؛ SMS ادمین روی ثبت‌نام عمده؛ SMS مشتری روی تأیید عمده
+- پیامک کد رهگیری هنگام ذخیره ارسال در جزئیات سفارش (از قبل؛ hint در UI)
+
+### Deploy
+- Commit `4e4770c` روی `master` + push
+- VPS `/opt/taranom`: `server-force-redeploy.sh` + force-recreate `api`
+- Health: API ok / web 200 — کد `adminPhoneWholesale2` و `orderRegisteredAdmin` در ایمیج تأیید شد
+
+---
+
 ## 2026-07-29 — کاروسل ۳ اسلاید هیرو تکی و عمده
 
 ### خلاصه
