@@ -2,20 +2,25 @@ import type { Metadata } from 'next';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
 import { RETAIL_ORIGIN } from '@/lib/seo';
+import { fetchProductBySlug } from '@/lib/server-api';
 import { notFound } from 'next/navigation';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+type SeoBag = Record<string, string | undefined>;
 
-async function getProduct(slug: string) {
-  try {
-    const res = await fetch(`${API_BASE}/products/slug/${encodeURIComponent(slug)}?channel=RETAIL`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+function retailSeo(product: Record<string, unknown>) {
+  const seo = (product.seoMeta ?? {}) as SeoBag;
+  const title =
+    seo.retailTitle || seo.title || (product.name as string) || 'محصول';
+  const description =
+    seo.retailDescription ||
+    seo.description ||
+    (typeof product.description === 'string' ? product.description.slice(0, 160) : '') ||
+    `خرید تکی «${product.name}» از فروشگاه ترنم — مستقیم از تولیدی مشهد.`;
+  const canonical =
+    seo.retailCanonical ||
+    seo.canonical ||
+    `${RETAIL_ORIGIN}/products/${product.slug ?? ''}`;
+  return { title, description, canonical, focusKeyword: seo.retailFocusKeyword || seo.focusKeyword };
 }
 
 export async function generateMetadata({
@@ -24,16 +29,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await fetchProductBySlug(slug, 'RETAIL');
   if (!product) return { title: 'محصول' };
 
-  const title = product.seoMeta?.title || product.name;
-  const description =
-    product.seoMeta?.description ||
-    product.description?.slice(0, 160) ||
-    `خرید تکی «${product.name}» از فروشگاه ترنم — مستقیم از تولیدی مشهد.`;
-  const canonical = product.seoMeta?.canonical || `${RETAIL_ORIGIN}/products/${slug}`;
-  const image = product.images?.[0];
+  const { title, description, canonical } = retailSeo({ ...product, slug });
+  const image = (product.images as string[] | undefined)?.[0];
 
   return {
     title,
@@ -64,39 +64,41 @@ export default async function RetailProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await getProduct(slug);
+  const product = await fetchProductBySlug(slug, 'RETAIL');
   if (!product) notFound();
 
   const url = `${RETAIL_ORIGIN}/products/${slug}`;
   const price = Number(product.retailPrice ?? 0);
   const inStock =
     Number(product.totalStock ?? product.retailStock ?? product.stock ?? 0) > 0 ||
-    (product.variants ?? []).some(
-      (v: { retailStock?: number; stock?: number }) =>
-        Number(v.retailStock ?? v.stock ?? 0) > 0,
+    ((product.variants as Array<{ retailStock?: number; stock?: number }>) ?? []).some(
+      (v) => Number(v.retailStock ?? v.stock ?? 0) > 0,
     );
 
   return (
     <>
       <ProductJsonLd
         channel="RETAIL"
-        name={product.name}
-        description={product.description}
-        image={product.images?.[0]}
-        sku={product.sku}
+        name={String(product.name ?? '')}
+        description={product.description as string | undefined}
+        image={(product.images as string[] | undefined)?.[0]}
+        sku={product.sku as string | undefined}
         price={price}
         availability={inStock ? 'InStock' : 'OutOfStock'}
-        fabric={product.fabric || product.specs?.fabricType}
+        fabric={
+          (product.fabric as string | undefined) ||
+          ((product.specs as { fabricType?: string } | undefined)?.fabricType)
+        }
         url={url}
       />
       <BreadcrumbJsonLd
         items={[
           { name: 'خانه', url: `${RETAIL_ORIGIN}/` },
           { name: 'محصولات', url: `${RETAIL_ORIGIN}/products` },
-          { name: product.name, url },
+          { name: String(product.name ?? ''), url },
         ]}
       />
-      <RetailProductDetail product={product} />
+      <RetailProductDetail product={product as any} />
     </>
   );
 }

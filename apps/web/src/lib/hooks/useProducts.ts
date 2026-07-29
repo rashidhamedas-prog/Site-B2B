@@ -62,7 +62,20 @@ export interface Product {
   isLimitedStock?: boolean;
   createdAt?: string;
   description?: string;
-  seoMeta?: { title?: string; description?: string; focusKeyword?: string; canonical?: string };
+  seoMeta?: {
+    title?: string;
+    description?: string;
+    focusKeyword?: string;
+    canonical?: string;
+    wholesaleTitle?: string;
+    wholesaleDescription?: string;
+    wholesaleFocusKeyword?: string;
+    wholesaleCanonical?: string;
+    retailTitle?: string;
+    retailDescription?: string;
+    retailFocusKeyword?: string;
+    retailCanonical?: string;
+  };
   categoryId?: string;
   collectionId?: string | null;
   isPreOrder?: boolean;

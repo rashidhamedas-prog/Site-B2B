@@ -172,7 +172,7 @@ export class ProductController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'تنظیم موجودی یک رنگ روی همه سایزهای محصول (بدون تکرار در جمع)' })
+  @ApiOperation({ summary: 'تنظیم موجودی یک رنگ به‌ازای هر سایز (یا یک‌بار روی سایز اول — legacy)' })
   setColorStock(
     @Param('id') id: string,
     @Body()
@@ -184,6 +184,12 @@ export class ProductController {
       wholesaleStock?: number;
       retailStock?: number;
       stock?: number;
+      sizes?: Array<{
+        size: string;
+        wholesaleStock?: number;
+        retailStock?: number;
+        stock?: number;
+      }>;
     },
   ) {
     return this.productService.setColorStock(id, body);

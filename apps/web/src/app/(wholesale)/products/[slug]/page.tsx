@@ -1,43 +1,33 @@
 import type { Metadata } from 'next';
 import { ProductDetail } from '@/components/wholesale/ProductDetail';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
+import { fetchProductBySlug } from '@/lib/server-api';
 
 interface Props {
   params: Promise<{ slug: string }>;
 }
 
-async function fetchProductMeta(slug: string) {
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
-    const res = await fetch(`${apiUrl}/products/slug/${encodeURIComponent(slug)}?channel=WHOLESALE`, {
-      next: { revalidate: 120 },
-    });
-    if (!res.ok) return null;
-    return res.json() as Promise<{
-      name?: string;
-      description?: string;
-      images?: string[];
-      seoMeta?: {
-        title?: string;
-        description?: string;
-        canonical?: string;
-      };
-    }>;
-  } catch {
-    return null;
-  }
+type SeoBag = Record<string, string | undefined>;
+
+function wholesaleSeo(product: Record<string, unknown> | null, slug: string) {
+  const seo = (product?.seoMeta ?? {}) as SeoBag;
+  const title =
+    seo.wholesaleTitle || seo.title || (product?.name as string) || slug.replace(/-/g, ' ');
+  const description =
+    seo.wholesaleDescription ||
+    seo.description ||
+    (typeof product?.description === 'string' ? product.description.slice(0, 160) : '') ||
+    `مشخصات، رنگ‌بندی و حداقل سفارش عمده «${title}» مستقیم از تولیدی ترنم مشهد.`;
+  const canonical =
+    seo.wholesaleCanonical || seo.canonical || `${WHOLESALE_ORIGIN}/products/${slug}`;
+  return { title, description, canonical };
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await fetchProductMeta(slug);
-  const title = product?.seoMeta?.title || product?.name || slug.replace(/-/g, ' ');
-  const description =
-    product?.seoMeta?.description ||
-    product?.description?.slice(0, 160) ||
-    `مشخصات، رنگ‌بندی و حداقل سفارش عمده «${title}» مستقیم از تولیدی ترنم مشهد.`;
-  const canonical = product?.seoMeta?.canonical || `${WHOLESALE_ORIGIN}/products/${slug}`;
-  const image = product?.images?.[0];
+  const product = await fetchProductBySlug(slug, 'WHOLESALE');
+  const { title, description, canonical } = wholesaleSeo(product, slug);
+  const image = (product?.images as string[] | undefined)?.[0];
 
   return {
     title,

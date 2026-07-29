@@ -86,7 +86,7 @@ export function RetailProductGrid({ title = 'جدیدترین‌ها', limit = 4
             {products.map((p) => {
               const img = mediaUrl(p.images?.[0]);
               const price = Number(p.retailPrice ?? 0);
-              const href = p.slug === '#' ? '/retail/products' : `/retail/products/${p.slug}`;
+              const href = p.slug === '#' ? '/products' : `/products/${p.slug}`;
               return (
                 <Link
                   key={p.id}
