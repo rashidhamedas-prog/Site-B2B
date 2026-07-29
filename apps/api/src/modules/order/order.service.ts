@@ -583,8 +583,9 @@ export class OrderService {
       freeShipping = !!shipQuote.freeShipping;
     } else if (!freeShipping) {
       const shipCfg = await this.settings.shipping();
-      const wholesaleFreeFrom = Number(shipCfg.freeThreshold) || 50_000_000;
-      const wholesaleDefaultShip = Number(shipCfg.baseFee) || 1_500_000;
+      const wholesaleCfg = shipCfg.wholesale ?? shipCfg;
+      const wholesaleFreeFrom = Number(wholesaleCfg.freeThreshold) || 50_000_000;
+      const wholesaleDefaultShip = Number(wholesaleCfg.baseFee) || 1_500_000;
       computedShipping = intraCityFee || ((subtotal - discountAmount) >= wholesaleFreeFrom ? 0 : wholesaleDefaultShip);
     }
 

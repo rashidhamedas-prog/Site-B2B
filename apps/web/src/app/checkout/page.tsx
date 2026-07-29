@@ -29,7 +29,12 @@ type InstallmentsCfg = {
 type PublicSettings = {
   installments: InstallmentsCfg;
   payment?: { enabled?: boolean; manualCardNumber?: string; manualCardOwner?: string };
-  shipping?: { freeThreshold?: number; baseFee?: number };
+  shipping?: {
+    freeThreshold?: number;
+    baseFee?: number;
+    retail?: { freeThreshold?: number; baseFee?: number; perKgFee?: number; kgPerPiece?: number };
+    wholesale?: { freeThreshold?: number; baseFee?: number };
+  };
 };
 type Eligibility = {
   eligible: boolean;
@@ -124,7 +129,7 @@ export default function CheckoutPage() {
         if (!shippingMethod && m?.length) setShippingMethod(m[0].id);
       })
       .catch(() => undefined);
-    apiClient.get<PublicSettings>('/settings/public')
+    apiClient.get<PublicSettings>('/settings/public?channel=WHOLESALE')
       .then((s) => {
         if (s?.installments) {
           setInstallmentsCfg(s.installments);
@@ -134,11 +139,15 @@ export default function CheckoutPage() {
           setOnlinePaymentEnabled(true);
           setPaymentMethod((prev) => (prev === 'CASH' ? 'ONLINE' : prev));
         }
-        if (s?.shipping?.freeThreshold != null) {
-          setFreeThreshold(Number(s.shipping.freeThreshold) || 50_000_000);
+        if (s?.shipping?.wholesale?.freeThreshold != null || s?.shipping?.freeThreshold != null) {
+          setFreeThreshold(
+            Number(s.shipping.wholesale?.freeThreshold ?? s.shipping.freeThreshold) || 50_000_000,
+          );
         }
-        if (s?.shipping?.baseFee != null) {
-          setShippingBaseFee(Number(s.shipping.baseFee) || 1_500_000);
+        if (s?.shipping?.wholesale?.baseFee != null || s?.shipping?.baseFee != null) {
+          setShippingBaseFee(
+            Number(s.shipping.wholesale?.baseFee ?? s.shipping.baseFee) || 1_500_000,
+          );
         }
       })
       .catch(() => undefined);
