@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { apiClient } from '@/lib/api';
-import { getToken } from '@/lib/auth';
+import { clearToken, getToken } from '@/lib/auth';
 import { getRetailAddresses, saveRetailAddress, type RetailAddress } from '@/lib/retail-addresses';
 import { RetailConversion } from '@/components/retail/RetailConversion';
 
@@ -122,15 +122,34 @@ export default function RetailCheckoutPage() {
   const walletApplied = useWallet ? Math.min(walletBalance, Math.max(0, subtotal + shipFee)) : 0;
   const payable = Math.max(0, subtotal + shipFee - walletApplied);
 
+  /** No account / incomplete retail customer → open account page (silent). */
+  const goOpenAccount = () => {
+    clearToken();
+    window.location.href = '/account?redirect=/checkout';
+  };
+
+  const ensureRetailAccount = async (): Promise<boolean> => {
+    if (!getToken()) {
+      window.location.href = '/account?redirect=/checkout';
+      return false;
+    }
+    try {
+      const me = await apiClient.get<{ customerId?: string }>('/auth/me/profile');
+      if (!me?.customerId) {
+        goOpenAccount();
+        return false;
+      }
+      return true;
+    } catch {
+      goOpenAccount();
+      return false;
+    }
+  };
+
   const submit = async () => {
     setError('');
     if (!items.length) {
       setError('سبد خالی است');
-      return;
-    }
-    if (!getToken()) {
-      setError('برای ثبت سفارش وارد حساب شوید.');
-      window.location.href = '/account?redirect=/checkout';
       return;
     }
     if (!address.province || !address.city || !address.street || !address.recipient || !address.mobile) {
@@ -139,6 +158,7 @@ export default function RetailCheckoutPage() {
     }
     setBusy(true);
     try {
+      if (!(await ensureRetailAccount())) return;
       const order = await apiClient.post<{
         orderNumber?: string;
         id?: string;
@@ -174,7 +194,17 @@ export default function RetailCheckoutPage() {
       setDoneMeta({ amount: conversionAmount, skus: conversionSkus });
       setDone(order.orderNumber ?? order.id ?? 'ثبت شد');
     } catch (e: any) {
-      setError(e?.message || 'خطا در ثبت سفارش');
+      const msg = String(e?.message || '');
+      const needsAccount =
+        e?.status === 403 ||
+        msg.includes('تأیید نشده') ||
+        msg.includes('حساب مشتری') ||
+        msg.includes('وارد شوید');
+      if (needsAccount) {
+        goOpenAccount();
+        return;
+      }
+      setError(msg || 'خطا در ثبت سفارش');
     } finally {
       setBusy(false);
     }
@@ -348,10 +378,7 @@ export default function RetailCheckoutPage() {
 
           {!getToken() ? (
             <p className="text-center text-sm text-[var(--retail-muted)]">
-              حساب ندارید؟{' '}
-              <Link href="/account?redirect=/checkout" className="font-bold text-[var(--retail-primary)]">
-                ورود با پیامک
-              </Link>
+              با زدن دکمه پرداخت، اگر حساب نداشته باشید به صفحه باز کردن حساب می‌روید.
             </p>
           ) : null}
         </div>
