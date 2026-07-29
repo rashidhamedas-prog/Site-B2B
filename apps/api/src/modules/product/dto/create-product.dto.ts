@@ -129,14 +129,4 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   videoUrl?: string;
-
-  @ApiPropertyOptional({ default: true })
-  @IsOptional()
-  @IsBoolean()
-  showOnWholesale?: boolean;
-
-  @ApiPropertyOptional({ default: true })
-  @IsOptional()
-  @IsBoolean()
-  showOnRetail?: boolean;
 }
