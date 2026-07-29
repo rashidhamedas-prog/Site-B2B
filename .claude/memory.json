@@ -12,7 +12,7 @@
   "stack": ["Next.js 15", "NestJS 10", "PostgreSQL 16", "MinIO", "Meilisearch", "Docker"],
   "architecture": "shared-core-two-storefronts",
   "retailPreviewPath": "/retail",
-  "lastDeploy": "2026-07-29 — retail shipping details in settings + wholesale pack matrix + color select",
+  "lastDeploy": "2026-07-29 — master e0824df on VPS; wholesale pack + shipping settings live; api/web health 200",
   "lastCms": "2026-07-28 — Admin site-content drives storefront; defaults when empty; chrome for header/footer/float",
   "lastAdminChannelSplit": "2026-07-27 — wholesale/retail inventory + admin channel tabs + CMS pages/site-content",
   "lastE2e": "PASSED — ORD-2026-00002",
