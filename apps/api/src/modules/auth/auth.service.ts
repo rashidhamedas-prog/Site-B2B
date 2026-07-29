@@ -109,7 +109,7 @@ export class AuthService {
     };
 
     try {
-      return await this.dataSource.transaction(async (manager) => {
+      const result = await this.dataSource.transaction(async (manager) => {
         const customerRepo = manager.getRepository(CustomerEntity);
         const userRepo = manager.getRepository(UserEntity);
 
@@ -147,8 +147,22 @@ export class AuthService {
           await userRepo.save(user);
         }
 
-        return { message: 'ثبت‌نام با موفقیت انجام شد. منتظر تأیید ادمین باشید.' };
+        return {
+          message: 'ثبت‌نام با موفقیت انجام شد. منتظر تأیید ادمین باشید.',
+          customer: savedCustomer,
+        };
       });
+
+      // Fire-and-forget admin alert for new wholesale registration.
+      if (this.notifications && result.customer) {
+        const label =
+          result.customer.businessName || result.customer.ownerName || result.customer.phone;
+        this.notifications
+          .wholesaleRegistrationAdmin(label, result.customer.phone)
+          .catch(() => undefined);
+      }
+
+      return { message: result.message };
     } catch (err) {
       if (isDuplicatePhoneError(err) || isDuplicateCodeError(err)) {
         throw new ConflictException('این شماره قبلاً ثبت شده است');

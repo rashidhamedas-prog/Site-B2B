@@ -697,6 +697,14 @@ export class OrderService {
 
     if (this.notifications) {
       this.notify((p) => this.notifications!.orderRegistered(p, saved.orderNumber), dto.customerId);
+      const customerLabel =
+        (customer as any)?.businessName ||
+        (customer as any)?.ownerName ||
+        (customer as any)?.phone ||
+        undefined;
+      this.notifications
+        .orderRegisteredAdmin(channel, saved.orderNumber, customerLabel)
+        .catch(() => undefined);
     }
 
     const full = await this.findOne(saved.id);

@@ -147,11 +147,22 @@ export class SettingsService {
       apiKey: s.apiKey || this.config.get('SMSIR_API_KEY', '') || this.config.get('SMS_API_KEY', ''),
       lineNumber: s.lineNumber || this.config.get('SMSIR_LINE_NUMBER', '') || this.config.get('SMS_SENDER', ''),
       otpTemplateId: Number(s.otpTemplateId) || Number(this.config.get('SMSIR_OTP_TEMPLATE_ID', 0)),
+      /** Admin alert phone for wholesale (.com) site events */
+      adminPhoneWholesale: String(s.adminPhoneWholesale || ''),
+      /** Optional second admin phone for wholesale */
+      adminPhoneWholesale2: String(s.adminPhoneWholesale2 || ''),
+      /** Admin alert phone for retail (.ir) site events */
+      adminPhoneRetail: String(s.adminPhoneRetail || ''),
+      /** Optional second admin phone for retail */
+      adminPhoneRetail2: String(s.adminPhoneRetail2 || ''),
       events: {
         orderRegistered: s.events?.orderRegistered ?? true,
         orderConfirmed: s.events?.orderConfirmed ?? true,
         orderShipped: s.events?.orderShipped ?? true,
         paymentReceived: s.events?.paymentReceived ?? true,
+        orderRegisteredAdmin: s.events?.orderRegisteredAdmin ?? true,
+        wholesaleRegistrationAdmin: s.events?.wholesaleRegistrationAdmin ?? true,
+        wholesaleApproved: s.events?.wholesaleApproved ?? true,
       } as Record<string, boolean>,
     };
   }
