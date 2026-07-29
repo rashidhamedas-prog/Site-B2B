@@ -15,7 +15,8 @@
 - `AdminSettings.tsx`, `checkout/page.tsx`
 
 ### Deploy
-- Commit + push به `master` → CI deploy VPS
+- Commit `06636a5` روی `master` + push
+- VPS `/opt/taranom`: pull + rebuild `api`/`web` — health API ok / web 200
 
 ---
 
