@@ -16,19 +16,20 @@ export interface CartItem {
   /** Piece count (legacy) OR pack-set count when packMode */
   quantity: number;
   imageUrl?: string;
-  /** Wholesale pack matrix: quantity = pack sets; expands color×size×packQty on order */
+  /** Wholesale pack matrix: quantity = pack count; 1 pack = 1×each color×each size */
   packMode?: boolean;
   selectedColors?: string[];
+  /** Pieces in one pack (= colorCount × sizeCount) — display only */
   packQty?: number;
   sizeCount?: number;
 }
 
-/** Total billable pieces for a cart line (pack mode expands color×size×packQty). */
+/** Total billable pieces for a cart line (pack mode = packs × colors × sizes). */
 export function cartItemPieces(item: CartItem): number {
-  if (item.packMode && item.packQty && item.packQty > 0) {
+  if (item.packMode) {
     const colors = Math.max(1, item.selectedColors?.length || 1);
     const sizes = Math.max(1, item.sizeCount || 1);
-    return Math.max(1, item.quantity) * item.packQty * colors * sizes;
+    return Math.max(1, item.quantity) * colors * sizes;
   }
   return Math.max(0, item.quantity);
 }

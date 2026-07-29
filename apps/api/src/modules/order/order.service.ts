@@ -286,17 +286,10 @@ export class OrderService {
     return lines;
   }
 
-  /** Parse specs.packQty → positive int (pieces per color×size cell). */
-  private parsePackQty(product: { specs?: { packQty?: string | number } | null }): number {
-    const raw = product.specs?.packQty;
-    if (raw === undefined || raw === null || raw === '') return 0;
-    const n = parseInt(String(raw).replace(/[^\d]/g, ''), 10);
-    return Number.isFinite(n) && n > 0 ? n : 0;
-  }
-
   /**
    * Wholesale invoice expansion:
-   * for each selected (or all) color × each size → quantity = packQty × packSets.
+   * 1 pack = 1 piece of every (selected/all) color × every size
+   * ⇒ pack size = colorCount × sizeCount; N packs ⇒ N pieces per cell.
    */
   private expandByPackMatrix(
     product: {
@@ -333,10 +326,6 @@ export class OrderService {
     productId: string;
     imageUrl?: string | null;
   }> {
-    const packQty = this.parsePackQty(product);
-    if (!packQty) {
-      throw new BadRequestException(`تعداد در پک برای ${product.name} تعریف نشده است`);
-    }
     const sets = Math.max(1, Math.floor(Number(packSets) || 0));
     if (sets < 1) throw new BadRequestException('تعداد پک نامعتبر است');
 
@@ -382,7 +371,8 @@ export class OrderService {
       colors = uniqueSelected;
     }
 
-    const qtyPerCell = packQty * sets;
+    // Pack formula: colors × sizes — one piece per color×size cell per pack
+    const qtyPerCell = sets;
     const unitPrice = this.unitPriceForChannel(channel, product, Number(opts?.unitPrice ?? 0));
     const productName = product.name ?? opts?.productName ?? '';
     const sku = product.sku ?? opts?.sku ?? '';
@@ -496,14 +486,16 @@ export class OrderService {
       }
 
       const product = await this.productService.findOne(item.productId);
-      const packQty = this.parsePackQty(product);
+      const hasVariantMatrix = (product.variants ?? []).some(
+        (v) => String(v.color || '').trim() && String(v.size || '').trim(),
+      );
       const usePackMatrix =
         channel === 'WHOLESALE' &&
         !item.productVariantId &&
-        (item.packMode === true || packQty > 0);
+        (item.packMode === true || hasVariantMatrix);
 
-      if (usePackMatrix && packQty > 0) {
-        // quantity = number of pack sets; expand to each color × each size × packQty
+      if (usePackMatrix) {
+        // quantity = number of packs; 1 pack = 1 pc × each color × each size
         const allocated = this.expandByPackMatrix(product, qty, channel, {
           selectedColors: item.selectedColors,
           unitPrice: item.unitPrice,

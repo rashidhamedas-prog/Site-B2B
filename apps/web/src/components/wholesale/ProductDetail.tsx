@@ -114,13 +114,6 @@ function resolveSizeGuide(product: Product): string[] {
   return SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE;
 }
 
-function parsePackQty(specs?: ProductSpecs): number {
-  const raw = specs?.packQty;
-  if (raw === undefined || raw === null || raw === '') return 0;
-  const n = parseInt(String(raw).replace(/[^\d]/g, ''), 10);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
-
 async function fetchProduct(slugOrId: string): Promise<Product> {
   if (UUID_RE.test(slugOrId)) {
     return apiClient.get<Product>(`/products/${slugOrId}?channel=WHOLESALE`);
@@ -144,8 +137,7 @@ export function ProductDetail({ slug }: { slug: string }) {
     fetchProduct(slug)
       .then((p) => {
         setProduct(p);
-        const packQty = parsePackQty(p.specs);
-        // With pack matrix: quantity = pack sets; minOrderQty = min packs
+        // quantity = pack count; minOrderQty = min packs
         setQuantity(Math.max(1, p.minOrderQty || 1));
         if (p.allowWholesaleColorSelect) {
           setSelectedColors([]);
@@ -155,7 +147,6 @@ export function ProductDetail({ slug }: { slug: string }) {
           );
           setSelectedColors(colors);
         }
-        void packQty;
       })
       .catch(() => router.push('/products'))
       .finally(() => setLoading(false));
@@ -163,8 +154,6 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   const minOrder = product?.minOrderQty ?? 1;
   const qtyStep = Math.max(minOrder, 1);
-  const packQty = product ? parsePackQty(product.specs) : 0;
-  const packMode = packQty > 0;
   const allowColorSelect = !!product?.allowWholesaleColorSelect;
   const minColors = Math.max(1, Number(product?.minWholesaleColors) || 1);
 
@@ -201,18 +190,20 @@ export function ProductDetail({ slug }: { slug: string }) {
   const colorsForOrder = allowColorSelect
     ? selectedColors
     : availableColors.map((c) => c.name);
-  const colorCount = Math.max(1, colorsForOrder.length || availableColors.length || 1);
-  const sizeCount = Math.max(1, availableSizes.length || 1);
-  const piecesPerPackSet = packMode ? packQty * colorCount * sizeCount : qtyStep;
-  const totalPieces = packMode ? quantity * piecesPerPackSet : quantity;
+  const colorCount = Math.max(0, colorsForOrder.length);
+  const sizeCount = Math.max(0, availableSizes.length);
+  // Pack formula: colors × sizes (1 piece per color×size cell)
+  const packMode = availableColors.length > 0 && availableSizes.length > 0;
+  const piecesPerPack = Math.max(1, colorCount * sizeCount);
+  const totalPieces = packMode ? quantity * piecesPerPack : quantity;
 
-  // Stock gate: for pack mode need enough stock on every selected color×size cell
+  // Stock gate: each selected color×size needs ≥ pack count pieces
   const packStockOk = (() => {
     if (!product || !packMode) return totalStock >= qtyStep;
     if (allowColorSelect && selectedColors.length < minColors) return false;
     const colors = colorsForOrder;
-    if (!colors.length) return false;
-    const need = packQty * quantity;
+    if (!colors.length || !availableSizes.length) return false;
+    const need = quantity;
     for (const color of colors) {
       for (const size of availableSizes) {
         const v = product.variants.find((x) => x.color === color && x.size === size);
@@ -236,7 +227,11 @@ export function ProductDetail({ slug }: { slug: string }) {
       : Math.max(effectiveStock, qtyStep);
 
   const sizeGuideLines = product ? resolveSizeGuide(product) : [];
-  const specRows = buildSpecRows(product?.specs);
+  const specRows = buildSpecRows(product?.specs).map((row) =>
+    row.label === 'تعداد در پک'
+      ? { ...row, value: packMode ? String(piecesPerPack) : row.value }
+      : row,
+  );
 
   const toggleColor = (name: string) => {
     setColorError('');
@@ -266,8 +261,8 @@ export function ProductDetail({ slug }: { slug: string }) {
         quantity: normalizedQty,
         imageUrl: product.images?.[0],
         packMode: true,
-        packQty,
-        sizeCount,
+        packQty: piecesPerPack,
+        sizeCount: Math.max(1, sizeCount),
         selectedColors: allowColorSelect ? [...selectedColors] : availableColors.map((c) => c.name),
       });
     } else {
@@ -439,11 +434,17 @@ export function ProductDetail({ slug }: { slug: string }) {
               </div>
               {packMode && (
                 <p className="mt-3 text-xs text-gray-600 leading-relaxed border-t border-primary-100 pt-3">
-                  هر پک: {packQty.toLocaleString('fa-IR')} عدد از هر رنگ×سایز
+                  فرمول پک:{' '}
+                  <span className="font-bold text-gray-900">
+                    {Math.max(colorCount, allowColorSelect ? selectedColors.length : availableColors.length).toLocaleString('fa-IR')} رنگ
+                    {' × '}
+                    {sizeCount.toLocaleString('fa-IR')} سایز
+                    {' = '}
+                    {piecesPerPack.toLocaleString('fa-IR')} عدد
+                  </span>
                   {allowColorSelect
-                    ? ` — شما رنگ را انتخاب می‌کنید (حداقل ${minColors} رنگ)`
-                    : ` — همه ${availableColors.length.toLocaleString('fa-IR')} رنگ`}
-                  {' '}× {sizeCount.toLocaleString('fa-IR')} سایز
+                    ? ` — حداقل ${minColors.toLocaleString('fa-IR')} رنگ انتخاب کنید`
+                    : ' — همه رنگ‌های محصول'}
                 </p>
               )}
             </div>
@@ -455,9 +456,9 @@ export function ProductDetail({ slug }: { slug: string }) {
                 </h3>
                 <p className="text-xs text-gray-500 mb-3">
                   {allowColorSelect
-                    ? `حداقل ${minColors.toLocaleString('fa-IR')} رنگ انتخاب کنید — سفارش برای هر رنگ×سایز با تعداد پک ثبت می‌شود`
+                    ? `حداقل ${minColors.toLocaleString('fa-IR')} رنگ انتخاب کنید — هر پک = رنگ‌های انتخابی × همه سایزها`
                     : packMode
-                      ? 'همه رنگ‌ها در فاکتور ثبت می‌شوند (بر اساس تعداد در پک × هر سایز)'
+                      ? `هر پک = همه رنگ‌ها × همه سایزها (${piecesPerPack.toLocaleString('fa-IR')} عدد)`
                       : 'فقط جهت نمایش — سفارش بر اساس موجودی کل محصول ثبت می‌شود'}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -591,7 +592,7 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {packMode ? (
                   <span className="text-xs text-gray-400">
                     {totalPieces.toLocaleString('fa-IR')} عدد
-                    {' '}({quantity.toLocaleString('fa-IR')} پک × {packQty.toLocaleString('fa-IR')} × {colorCount.toLocaleString('fa-IR')} رنگ × {sizeCount.toLocaleString('fa-IR')} سایز)
+                    {' '}({quantity.toLocaleString('fa-IR')} پک × {Math.max(colorCount, 1).toLocaleString('fa-IR')} رنگ × {Math.max(sizeCount, 1).toLocaleString('fa-IR')} سایز)
                   </span>
                 ) : (
                   <span className="text-xs text-gray-400">گام سفارش: {qtyStep} عدد</span>

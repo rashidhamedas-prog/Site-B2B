@@ -389,8 +389,8 @@ export default function CheckoutPage() {
                       item.selectedColors?.length
                         ? `${item.selectedColors.length} رنگ`
                         : null,
-                      item.packQty ? `پک ${item.packQty}` : null,
                       item.sizeCount ? `${item.sizeCount} سایز` : null,
+                      item.packQty ? `پک=${item.packQty}` : null,
                     ].filter(Boolean).join(' · ')
                   : [item.color, item.size].filter(Boolean).join(' / ');
                 return (

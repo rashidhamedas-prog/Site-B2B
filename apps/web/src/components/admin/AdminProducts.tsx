@@ -861,12 +861,19 @@ export function AdminProducts() {
         .filter((cf) => cf.label.trim() || cf.value.trim())
         .map((cf) => ({ label: cf.label.trim(), value: cf.value.trim() }));
 
+      const sizeLabels = sizeOptionsForType(form.sizeType);
+      const colorCountForPack = Math.max(colorDrafts.length, initialColorNames.length);
+      const computedPackQty =
+        colorCountForPack > 0 && sizeLabels.length > 0
+          ? String(colorCountForPack * sizeLabels.length)
+          : form.specs.packQty?.trim() || undefined;
+
       const specs: ProductSpecs = {
         fabricType: form.specs.fabricType?.trim() || undefined,
         designDetails: form.specs.designDetails?.trim() || undefined,
         packageSpecs: form.specs.packageSpecs?.trim() || undefined,
         manufacturingBadge: form.specs.manufacturingBadge?.trim() || undefined,
-        packQty: form.specs.packQty?.trim() || undefined,
+        packQty: form.specs.packQty?.trim() || computedPackQty,
         length: form.specs.length?.trim() || undefined,
         chestWidth: form.specs.chestWidth?.trim() || undefined,
         sleeveModel: form.specs.sleeveModel?.trim() || undefined,
@@ -900,7 +907,6 @@ export function AdminProducts() {
 
       const colorImageUrls = colorDrafts.map((d) => d.imageUrl).filter(Boolean);
       const galleryImages = [...new Set([...images, ...colorImageUrls])];
-      const sizeLabels = sizeOptionsForType(form.sizeType);
 
       const payload = {
         sku: form.sku || undefined,
@@ -1259,7 +1265,7 @@ export function AdminProducts() {
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
-                  {specField('packQty', 'تعداد در هر پک (هر رنگ×سایز)', '۶')}
+                  {specField('packQty', 'تعداد در پک (= رنگ × سایز)', '۶')}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">جزئیات طراحی</label>
@@ -1552,8 +1558,8 @@ export function AdminProducts() {
               <div className="rounded-xl border border-primary-100 bg-primary-50/40 p-4 space-y-3">
                 <p className="text-xs font-bold text-gray-800">سفارش عمده — پک و رنگ</p>
                 <p className="text-[11px] text-gray-500 leading-relaxed">
-                  در ثبت فاکتور عمده، برای هر رنگ و هر سایز به تعداد «تعداد در هر پک» ردیف ثبت می‌شود.
-                  اگر انتخاب رنگ فعال باشد، مشتری فقط رنگ‌های انتخابی را سفارش می‌دهد (حداقل تعداد زیر).
+                  فرمول پک عمده: <span className="font-semibold text-gray-800">تعداد رنگ × تعداد سایز</span>
+                  {' '}(از هر ترکیب رنگ/سایز یک عدد در هر پک). اگر انتخاب رنگ فعال باشد، فقط رنگ‌های انتخابی مشتری در محاسبه می‌آید.
                 </p>
                 <div className="flex flex-wrap items-end gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
