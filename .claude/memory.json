@@ -12,11 +12,13 @@
   "stack": ["Next.js 15", "NestJS 10", "PostgreSQL 16", "MinIO", "Meilisearch", "Docker"],
   "architecture": "shared-core-two-storefronts",
   "retailPreviewPath": "/retail",
-  "lastDeploy": "2026-07-28 — site CMS editable pages (chrome/home/all pages wholesale+retail)",
+  "lastDeploy": "2026-07-29 — retail shipping details in settings + wholesale pack matrix + color select",
   "lastCms": "2026-07-28 — Admin site-content drives storefront; defaults when empty; chrome for header/footer/float",
   "lastAdminChannelSplit": "2026-07-27 — wholesale/retail inventory + admin channel tabs + CMS pages/site-content",
   "lastE2e": "PASSED — ORD-2026-00002",
   "lastRetailComplete": "2026-07-27 channel-split inventory + CMS site content",
+  "lastWholesalePack": "2026-07-29 packQty×color×size invoice expansion + allowWholesaleColorSelect/minWholesaleColors",
+  "lastShippingSettings": "2026-07-29 kgPerPiece editable; retail formula documented in AdminSettings shipping tab",
   "documentation": {
     "worklog": "docs/WORKLOG.md",
     "b2c": "docs/B2C.md",
@@ -44,7 +46,9 @@
     "Retail stock deducted at product level instead of variant",
     "Wholesale checkout compared full qty to variants[0] stock instead of summing/allocating channel stock across variants",
     "Retail PDP 404: unicode slug stayed percent-encoded after middleware rewrite → double encodeURIComponent",
-    "Free-shipping threshold editable in admin shipping settings (rial×10); applied from invoice/order total"
+    "Free-shipping threshold editable in admin shipping settings (rial×10); applied from invoice/order total",
+    "Wholesale pack matrix: packQty × each color × each size; optional buyer color select with minWholesaleColors",
+    "Retail shipping kgPerPiece configurable in admin shipping settings"
   ],
   "pending": [
     "IDPay gateway",
@@ -52,7 +56,8 @@
     "Real DB migrations (vs synchronize)",
     "Owner: register feeds/pixels in Torob Bam Yektanet Affer Afsona Adro Basalam Takhfifan panels",
     "Re-upload legacy product images for WebP standard",
-    "Deploy marketplace-affiliate commit to server"
+    "Deploy marketplace-affiliate commit to server",
+    "Run 20260729-wholesale-color-select.sql on server if DB_SYNC=false"
   ],
   "retailReady": [
     "/retail storefront shell",

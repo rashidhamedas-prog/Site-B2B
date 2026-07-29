@@ -55,6 +55,8 @@ export class SettingsController {
         companies: shipping.companies,
         freeThreshold: shipping.freeThreshold,
         baseFee: shipping.baseFee,
+        perKgFee: shipping.perKgFee,
+        kgPerPiece: shipping.kgPerPiece,
       },
       installments,
       // Safe flags only — never expose merchantId / secrets
