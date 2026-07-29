@@ -160,6 +160,7 @@ export default function RetailCheckoutPage() {
           sku: i.sku,
           color: i.color,
           size: i.size,
+          imageUrl: i.imageUrl,
         })),
       });
       saveRetailAddress(address);
@@ -363,9 +364,28 @@ export default function RetailCheckoutPage() {
         ) : (
           <ul className="mt-4 space-y-3">
             {items.map((i) => (
-              <li key={`${i.productId}-${i.variantId}`} className="flex justify-between gap-3 text-sm">
-                <span className="truncate">
-                  {i.productName} × {i.quantity.toLocaleString('fa-IR')}
+              <li key={`${i.productId}-${i.variantId}-${i.color}`} className="flex items-center gap-3 text-sm">
+                {i.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={i.imageUrl}
+                    alt={i.color || i.productName}
+                    className="h-12 w-10 shrink-0 rounded-md object-cover ring-1 ring-[var(--retail-border)]"
+                  />
+                ) : (
+                  <span className="h-12 w-10 shrink-0 rounded-md bg-[var(--retail-bg)]" />
+                )}
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="font-semibold">{i.productName}</span>
+                  {(i.color || i.size) ? (
+                    <span className="block text-xs text-[var(--retail-muted)]">
+                      {[i.color, i.size].filter(Boolean).join(' · ')} × {i.quantity.toLocaleString('fa-IR')}
+                    </span>
+                  ) : (
+                    <span className="block text-xs text-[var(--retail-muted)]">
+                      × {i.quantity.toLocaleString('fa-IR')}
+                    </span>
+                  )}
                 </span>
                 <span className="shrink-0 font-bold">{toman(i.unitPrice * i.quantity)}</span>
               </li>

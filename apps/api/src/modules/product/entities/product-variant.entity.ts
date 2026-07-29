@@ -57,6 +57,10 @@ export class ProductVariantEntity {
   @Column({ nullable: true })
   barcode: string;
 
+  /** Optional product photo for this color (shared across all sizes of the color) */
+  @Column({ nullable: true })
+  imageUrl: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

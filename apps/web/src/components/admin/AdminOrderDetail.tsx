@@ -15,6 +15,7 @@ interface OrderItem {
   sku: string;
   color: string;
   size: string;
+  imageUrl?: string | null;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
@@ -313,8 +314,22 @@ function AdminOrderDetailInner({ id }: { id: string }) {
                 {order.items.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <p className="text-sm font-semibold text-gray-900">{item.productName}</p>
-                      <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
+                      <div className="flex items-center gap-3">
+                        {item.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt={item.color || item.productName}
+                            className="h-12 w-10 rounded-lg object-cover border border-gray-100"
+                          />
+                        ) : (
+                          <span className="h-12 w-10 rounded-lg bg-gray-100" />
+                        )}
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{item.productName}</p>
+                          <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{item.color} / {item.size}</td>
                     <td className="px-4 py-3 text-sm font-bold text-gray-900">{item.quantity}</td>

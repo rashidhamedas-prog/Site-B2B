@@ -17,6 +17,7 @@ interface Variant {
   colorHex?: string;
   size: string;
   stock: number;
+  wholesaleStock?: number;
   sku?: string;
 }
 
@@ -45,6 +46,7 @@ interface Product {
   wholesalePrice: number;
   minOrderQty: number;
   stock?: number;
+  wholesaleStock?: number;
   totalStock?: number;
   sku?: string;
   images: string[];
@@ -126,26 +128,12 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [activeImage, setActiveImage] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(true);
   const [addedToCart, setAddedToCart] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<string>('');
-  const [selectedSize, setSelectedSize] = useState<string>('');
 
   useEffect(() => {
     fetchProduct(slug)
       .then((p) => {
         setProduct(p);
         setQuantity(p.minOrderQty || 1);
-        const colors = Array.from(new Set((p.variants ?? []).map((v) => v.color).filter(Boolean)));
-        const firstColor = colors[0] ?? '';
-        setSelectedColor(firstColor);
-        const sizesForColor = Array.from(
-          new Set(
-            (p.variants ?? [])
-              .filter((v) => !firstColor || v.color === firstColor)
-              .map((v) => v.size)
-              .filter(Boolean),
-          ),
-        );
-        setSelectedSize(sizesForColor[0] ?? '');
       })
       .catch(() => router.push('/products'))
       .finally(() => setLoading(false));
@@ -163,16 +151,6 @@ export function ProductDetail({ slug }: { slug: string }) {
         ).values(),
       )
     : [];
-  const sizesForSelectedColor = product
-    ? Array.from(
-        new Set(
-          product.variants
-            .filter((v) => !selectedColor || v.color === selectedColor)
-            .map((v) => v.size)
-            .filter(Boolean),
-        ),
-      )
-    : [];
   const availableSizes = product
     ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
     : [];
@@ -182,26 +160,19 @@ export function ProductDetail({ slug }: { slug: string }) {
     availableSizes.length <= 1 ||
     availableSizes.every((s) => s === availableSizes[0] || s.includes('سایزی') || s.includes('فری'));
 
-  const matchingVariants = product
-    ? product.variants.filter(
-        (v) =>
-          (!selectedColor || v.color === selectedColor) &&
-          (sharedSizeLabel || !selectedSize || v.size === selectedSize),
-      )
-    : [];
-  const selectedVariant =
-    matchingVariants.find((v) => (Number(v.stock) || 0) > 0) ?? matchingVariants[0] ?? null;
+  const variantWholesale = (v: { wholesaleStock?: number; stock?: number }) =>
+    Number(v.wholesaleStock) || Number(v.stock) || 0;
 
-  const selectionStock = matchingVariants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
+  // Wholesale: stock is product-level pool — color is display-only, not order-gating
   const totalStock =
-    typeof product?.totalStock === 'number'
-      ? product.totalStock
-      : typeof product?.stock === 'number'
-        ? product.stock
-        : product?.variants?.reduce((s, v) => s + (Number(v.stock) || 0), 0) ?? 0;
-  const effectiveStock = selectedColor || (!sharedSizeLabel && selectedSize)
-    ? selectionStock
-    : totalStock;
+    typeof product?.wholesaleStock === 'number'
+      ? product.wholesaleStock
+      : typeof product?.totalStock === 'number'
+        ? product.totalStock
+        : typeof product?.stock === 'number'
+          ? product.stock
+          : product?.variants?.reduce((s, v) => s + variantWholesale(v), 0) ?? 0;
+  const effectiveStock = totalStock;
   const isComingSoon = product?.status === 'COMING_SOON';
   const canOrder = !!product && (isComingSoon || effectiveStock >= qtyStep);
   const maxQty = isComingSoon
@@ -211,38 +182,12 @@ export function ProductDetail({ slug }: { slug: string }) {
   const sizeGuideLines = product ? resolveSizeGuide(product) : [];
   const specRows = buildSpecRows(product?.specs);
 
-  const selectColor = (color: string) => {
-    setSelectedColor(color);
-    if (!product) return;
-    const sizes = Array.from(
-      new Set(
-        product.variants
-          .filter((v) => v.color === color)
-          .map((v) => v.size)
-          .filter(Boolean),
-      ),
-    );
-    if (!sizes.includes(selectedSize)) {
-      setSelectedSize(sizes[0] ?? '');
-    }
-  };
-
   const handleAddToCart = () => {
     if (!product || !canOrder) return;
-    if (availableColors.length > 0 && !selectedColor) return;
-    if (!sharedSizeLabel && sizesForSelectedColor.length > 1 && !selectedSize) return;
     const normalizedQty = Math.max(qtyStep, Math.min(maxQty, Math.floor(quantity / qtyStep) * qtyStep || qtyStep));
-    // Only pin a variantId when exactly one match — otherwise server allocates across color/size pool
-    const pinnedVariantId = matchingVariants.length === 1 ? matchingVariants[0].id : undefined;
-    const color = selectedColor || selectedVariant?.color;
-    const size = sharedSizeLabel
-      ? (selectedVariant?.size || availableSizes[0])
-      : (selectedSize || selectedVariant?.size);
+    // Color is display-only on wholesale — omit color/size/variantId so server allocates across full pool
     addItem({
       productId: product.id,
-      productVariantId: pinnedVariantId,
-      color,
-      size,
       productName: product.name,
       sku: product.sku ?? '',
       unitPrice: Number(product.wholesalePrice),
@@ -406,31 +351,22 @@ export function ProductDetail({ slug }: { slug: string }) {
 
             {availableColors.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-gray-900 mb-3">انتخاب رنگ</h3>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">رنگ‌های موجود</h3>
+                <p className="text-xs text-gray-500 mb-3">فقط جهت نمایش — سفارش بر اساس موجودی کل محصول ثبت می‌شود</p>
                 <div className="flex flex-wrap gap-2">
-                  {availableColors.map((c) => {
-                    const active = selectedColor === c.name;
-                    return (
-                      <button
-                        key={c.name}
-                        type="button"
-                        onClick={() => selectColor(c.name)}
-                        className={cn(
-                          'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm shadow-sm transition-colors duration-200',
-                          active
-                            ? 'border-primary bg-primary-50 text-primary font-bold'
-                            : 'border-gray-200 bg-white text-gray-800 hover:border-primary-200',
-                        )}
-                      >
-                        <span
-                          className="h-5 w-5 rounded-full border border-gray-300 shadow-inner flex-shrink-0"
-                          style={{ backgroundColor: c.hex }}
-                          title={c.hex}
-                        />
-                        <span className="font-medium">{c.name}</span>
-                      </button>
-                    );
-                  })}
+                  {availableColors.map((c) => (
+                    <span
+                      key={c.name}
+                      className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 shadow-sm"
+                    >
+                      <span
+                        className="h-5 w-5 rounded-full border border-gray-300 shadow-inner flex-shrink-0"
+                        style={{ backgroundColor: c.hex }}
+                        title={c.hex}
+                      />
+                      <span className="font-medium">{c.name}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -446,44 +382,25 @@ export function ProductDetail({ slug }: { slug: string }) {
                   {showSizeGuide ? 'بستن راهنمای سایز' : 'راهنمای سایز'}
                 </button>
               </div>
-              {sharedSizeLabel ? (
-                <div className="flex flex-wrap gap-2 items-center">
-                  <Badge variant="primary">{sizeTypeLabel}</Badge>
-                  {availableSizes.length === 1 && availableSizes[0] !== sizeTypeLabel && (
-                    <span className="text-xs text-gray-500">{availableSizes[0]}</span>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {sizesForSelectedColor.map((s) => {
-                    const active = selectedSize === s;
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setSelectedSize(s)}
-                        className={cn(
-                          'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors duration-200',
-                          active
-                            ? 'border-primary bg-primary text-white'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-primary-200',
-                        )}
-                      >
-                        {s}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="flex flex-wrap gap-2 items-center">
+                <Badge variant="primary">{sizeTypeLabel}</Badge>
+                {!sharedSizeLabel && availableSizes.map((s) => (
+                  <span key={s} className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700">
+                    {s}
+                  </span>
+                ))}
+                {sharedSizeLabel && availableSizes.length === 1 && availableSizes[0] !== sizeTypeLabel && (
+                  <span className="text-xs text-gray-500">{availableSizes[0]}</span>
+                )}
+              </div>
               {!canOrder && !isComingSoon && (
                 <p className="mt-2 text-xs text-error">
-                  موجودی{selectedColor ? ` رنگ ${selectedColor}` : ' کل'} ({effectiveStock} عدد) کمتر از حداقل سفارش ({minOrder} عدد) است
+                  موجودی کل ({effectiveStock} عدد) کمتر از حداقل سفارش ({minOrder} عدد) است
                 </p>
               )}
               {canOrder && !isComingSoon && (
                 <p className="mt-2 text-xs text-gray-500">
-                  موجودی{selectedColor ? ` انتخاب‌شده` : ' کل'}: {effectiveStock} عدد
-                  {selectedColor && totalStock !== effectiveStock ? ` (کل: ${totalStock})` : ''}
+                  موجودی کل: {effectiveStock} عدد
                 </p>
               )}
               {isComingSoon && (

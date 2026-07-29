@@ -46,4 +46,10 @@ export class CreateVariantDto {
   @IsNumber()
   @Min(0)
   stock?: number;
+
+  /** Optional photo URL for this color (applied to all size rows) */
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/products/red.jpg' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }

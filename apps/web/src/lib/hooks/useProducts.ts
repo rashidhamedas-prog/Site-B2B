@@ -54,6 +54,7 @@ export interface Product {
     wholesaleStock?: number;
     retailStock?: number;
     barcode?: string;
+    imageUrl?: string | null;
   }>;
   specs?: ProductSpecs;
   sizeType?: 'TWO' | 'THREE' | 'FREE';

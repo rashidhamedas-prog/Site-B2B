@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -163,9 +163,39 @@ export class ProductController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'افزودن واریانت (رنگ/سایز) به محصول' })
+  @ApiOperation({ summary: 'افزودن رنگ (بدون سایز = همه سایزها با موجودی یک‌بار)' })
   createVariant(@Param('id') id: string, @Body() body: CreateVariantDto) {
     return this.productService.createVariant(id, body);
+  }
+
+  @Put(':id/variants/color-stock')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'تنظیم موجودی یک رنگ روی همه سایزهای محصول (بدون تکرار در جمع)' })
+  setColorStock(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      color: string;
+      colorHex?: string;
+      barcode?: string;
+      imageUrl?: string | null;
+      wholesaleStock?: number;
+      retailStock?: number;
+      stock?: number;
+    },
+  ) {
+    return this.productService.setColorStock(id, body);
+  }
+
+  @Delete(':id/variants/by-color')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حذف همه سایزهای یک رنگ' })
+  removeColorVariants(@Param('id') id: string, @Query('color') color: string) {
+    return this.productService.removeColorVariants(id, color);
   }
 
   @Patch(':id/variants/:variantId')

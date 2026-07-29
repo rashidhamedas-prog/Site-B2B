@@ -8,7 +8,16 @@ import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
 
-type Variant = { id: string; color: string; size: string; stock?: number; retailStock?: number; wholesaleStock?: number };
+type Variant = {
+  id: string;
+  color: string;
+  colorHex?: string;
+  size: string;
+  stock?: number;
+  retailStock?: number;
+  wholesaleStock?: number;
+  imageUrl?: string | null;
+};
 type Product = {
   id: string;
   name: string;
@@ -37,7 +46,7 @@ type Related = {
   images?: string[];
 };
 
-function mediaUrl(url?: string) {
+function mediaUrl(url?: string | null) {
   if (!url) return undefined;
   if (url.startsWith('http') || url.startsWith('/')) return url;
   return `/media/${url}`;
@@ -78,8 +87,6 @@ function PreOrderCountdown({ date }: { date: string }) {
 
 export function RetailProductDetail({ product }: { product: Product }) {
   const addItem = useRetailCart((s) => s.addItem);
-  const images = product.images?.length ? product.images : [];
-  const [activeImg, setActiveImg] = useState(0);
   const [color, setColor] = useState(product.variants?.[0]?.color ?? '');
   const [size, setSize] = useState(product.variants?.[0]?.size ?? '');
   const [qty, setQty] = useState(1);
@@ -88,6 +95,33 @@ export function RetailProductDetail({ product }: { product: Product }) {
   const [zoomOpen, setZoomOpen] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [related, setRelated] = useState<Related[]>([]);
+
+  const colorMeta = useMemo(() => {
+    const map = new Map<string, { hex?: string; imageUrl?: string }>();
+    for (const v of product.variants ?? []) {
+      if (!v.color) continue;
+      const prev = map.get(v.color) ?? {};
+      map.set(v.color, {
+        hex: prev.hex || v.colorHex,
+        imageUrl: prev.imageUrl || v.imageUrl || undefined,
+      });
+    }
+    return map;
+  }, [product.variants]);
+
+  const colors = useMemo(() => [...colorMeta.keys()], [colorMeta]);
+
+  /** Gallery: color images first (unique), then other product images */
+  const gallery = useMemo(() => {
+    const colorImgs = colors
+      .map((c) => colorMeta.get(c)?.imageUrl)
+      .filter((u): u is string => !!u);
+    const rest = (product.images ?? []).filter((u) => !colorImgs.includes(u));
+    const merged = [...new Set([...colorImgs, ...rest])];
+    return merged.length ? merged : (product.images ?? []);
+  }, [colors, colorMeta, product.images]);
+
+  const [activeImg, setActiveImg] = useState(0);
 
   useEffect(() => {
     setWish(isInWishlist(product.id));
@@ -100,13 +134,15 @@ export function RetailProductDetail({ product }: { product: Product }) {
       .catch(() => setRelated([]));
   }, [product.id]);
 
-  const colors = useMemo(
-    () => [...new Set((product.variants ?? []).map((v) => v.color).filter(Boolean))],
-    [product.variants],
-  );
+  // Sync gallery when color changes
+  useEffect(() => {
+    const url = colorMeta.get(color)?.imageUrl;
+    if (!url) return;
+    const idx = gallery.findIndex((g) => g === url);
+    if (idx >= 0) setActiveImg(idx);
+  }, [color, colorMeta, gallery]);
 
-  const variantUnits = (v: Variant) =>
-    Number(v.retailStock ?? v.stock ?? 0);
+  const variantUnits = (v: Variant) => Number(v.retailStock ?? v.stock ?? 0);
 
   const sizeRows = useMemo(() => {
     const map = new Map<string, { size: string; stock: number }>();
@@ -125,8 +161,29 @@ export function RetailProductDetail({ product }: { product: Product }) {
   const productRetailStock = Number(product.retailStock ?? product.stock ?? 0);
   const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
   const stock = product.variants?.length ? variantStock : productRetailStock;
-  const main = mediaUrl(images[activeImg] ?? images[0]);
+  const colorImage = mediaUrl(colorMeta.get(color)?.imageUrl);
+  const main = colorImage || mediaUrl(gallery[activeImg] ?? gallery[0]);
   const canBuy = product.isPreOrder || (price > 0 && stock > 0);
+
+  const selectColor = (c: string) => {
+    setColor(c);
+    const first = (product.variants ?? []).find(
+      (v) => v.color === c && variantUnits(v) > 0,
+    ) ?? (product.variants ?? []).find((v) => v.color === c);
+    if (first?.size) setSize(first.size);
+  };
+
+  const selectGalleryImage = (i: number) => {
+    setActiveImg(i);
+    const url = gallery[i];
+    if (!url) return;
+    for (const [c, meta] of colorMeta.entries()) {
+      if (meta.imageUrl === url) {
+        selectColor(c);
+        break;
+      }
+    }
+  };
 
   const onAdd = () => {
     if (price <= 0 || (!product.isPreOrder && stock <= 0)) return;
@@ -168,7 +225,7 @@ export function RetailProductDetail({ product }: { product: Product }) {
             {main ? (
               <Image
                 src={main}
-                alt={product.name}
+                alt={color ? `${product.name} — ${color}` : product.name}
                 fill
                 className="object-cover transition duration-300 hover:scale-105"
                 sizes="(max-width:1024px) 100vw, 50vw"
@@ -183,18 +240,27 @@ export function RetailProductDetail({ product }: { product: Product }) {
                 پیش‌فروش
               </span>
             ) : null}
+            {color ? (
+              <span className="absolute right-3 bottom-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-[var(--retail-ink)]">
+                {color}
+              </span>
+            ) : null}
           </button>
-          {images.length > 1 && (
+          {gallery.length > 1 && (
             <div className="mt-3 flex gap-2 overflow-x-auto">
-              {images.map((img, i) => {
+              {gallery.map((img, i) => {
                 const u = mediaUrl(img);
+                const linkedColor = [...colorMeta.entries()].find(([, m]) => m.imageUrl === img)?.[0];
                 return (
                   <button
                     key={i}
                     type="button"
-                    onClick={() => setActiveImg(i)}
+                    onClick={() => selectGalleryImage(i)}
+                    title={linkedColor || undefined}
                     className={`relative h-16 w-14 shrink-0 overflow-hidden rounded-md ring-2 ${
-                      i === activeImg ? 'ring-[var(--retail-primary)]' : 'ring-transparent'
+                      (colorImage ? mediaUrl(gallery[i]) === colorImage : i === activeImg)
+                        ? 'ring-[var(--retail-primary)]'
+                        : 'ring-transparent'
                     }`}
                   >
                     {u ? <Image src={u} alt={`${product.name} ${i + 1}`} fill className="object-cover" sizes="56px" /> : null}
@@ -242,26 +308,34 @@ export function RetailProductDetail({ product }: { product: Product }) {
             <div className="mt-8">
               <p className="mb-2 text-sm font-bold">رنگ</p>
               <div className="flex flex-wrap gap-2">
-                {colors.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setColor(c);
-                      const first = (product.variants ?? []).find(
-                        (v) => v.color === c && Number(v.stock ?? 0) > 0,
-                      );
-                      if (first?.size) setSize(first.size);
-                    }}
-                    className={`cursor-pointer rounded-full border px-4 py-1.5 text-sm ${
-                      color === c
-                        ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)] text-white'
-                        : 'border-[var(--retail-border)]'
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
+                {colors.map((c) => {
+                  const meta = colorMeta.get(c);
+                  const thumb = mediaUrl(meta?.imageUrl);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => selectColor(c)}
+                      className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
+                        color === c
+                          ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)] text-white'
+                          : 'border-[var(--retail-border)]'
+                      }`}
+                    >
+                      {thumb ? (
+                        <span className="relative h-6 w-6 overflow-hidden rounded-full ring-1 ring-black/10">
+                          <Image src={thumb} alt={c} fill className="object-cover" sizes="24px" />
+                        </span>
+                      ) : (
+                        <span
+                          className="h-5 w-5 rounded-full border border-black/10"
+                          style={{ backgroundColor: meta?.hex || '#ccc' }}
+                        />
+                      )}
+                      {c}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

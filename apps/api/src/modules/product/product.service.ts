@@ -624,16 +624,21 @@ export class ProductService {
     return ['فری سایز'];
   }
 
+  /**
+   * Create color×size rows. When `size` is omitted, expands to ALL sizes of the
+   * product and places the entered stock on the first size only (siblings = 0)
+   * so product totals are not inflated by size count.
+   */
   async createVariant(productId: string, data: CreateVariantDto) {
-    const product = await this.productRepo.findOne({ where: { id: productId } });
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+      relations: ['variants'],
+    });
     if (!product) throw new NotFoundException('محصول یافت نشد');
 
     const colorName = String(data.color ?? '').trim();
-    const sizeLabel = String(data.size ?? '').trim() || this.sizeLabelForProduct(product);
     const colorHex = String((data as any).colorHex ?? '').trim();
-
     const color = await this.upsertColor(colorName, colorHex || undefined);
-    const size = await this.upsertSize(sizeLabel);
 
     const wholesale =
       data.wholesaleStock !== undefined && data.wholesaleStock !== null
@@ -650,21 +655,203 @@ export class ProductService {
       throw new BadRequestException('موجودی نامعتبر است');
     }
 
-    const variant = this.variantRepo.create({
-      productId,
-      barcode: data.barcode,
-      stock: wholesale,
-      wholesaleStock: wholesale,
-      retailStock: retail,
-      color: color.name,
-      colorHex: color.hex ?? colorHex ?? '',
-      size: size.label,
-      colorId: color.id,
-      sizeId: size.id,
-    } as any);
-    const saved = await this.variantRepo.save(variant);
+    const explicitSize = String(data.size ?? '').trim();
+    const sizes = explicitSize
+      ? [explicitSize]
+      : this.sizesForProduct(product.sizeType);
+    const imageUrl =
+      data.imageUrl !== undefined
+        ? String(data.imageUrl || '').trim() || null
+        : undefined;
+
+    const existing = product.variants ?? [];
+    const created: ProductVariantEntity[] = [];
+
+    for (let i = 0; i < sizes.length; i++) {
+      const sizeLabel = sizes[i];
+      const found = existing.find((v) => v.color === color.name && v.size === sizeLabel);
+      if (found) {
+        // Color-level create (no explicit size): refresh stock pool onto first size only
+        if (!explicitSize) {
+          found.wholesaleStock = i === 0 ? wholesale : 0;
+          found.stock = i === 0 ? wholesale : 0;
+          found.retailStock = i === 0 ? retail : 0;
+          found.colorHex = color.hex ?? (colorHex || found.colorHex);
+          if (data.barcode !== undefined) found.barcode = data.barcode || null;
+          if (imageUrl !== undefined) found.imageUrl = imageUrl;
+          const savedFound = await this.variantRepo.save(found);
+          created.push(Array.isArray(savedFound) ? savedFound[0] : savedFound);
+        } else {
+          if (imageUrl !== undefined) {
+            found.imageUrl = imageUrl;
+            const savedFound = await this.variantRepo.save(found);
+            created.push(Array.isArray(savedFound) ? savedFound[0] : savedFound);
+          } else {
+            created.push(found);
+          }
+        }
+        continue;
+      }
+
+      const size = await this.upsertSize(sizeLabel);
+      const rowWholesale = explicitSize ? wholesale : i === 0 ? wholesale : 0;
+      const rowRetail = explicitSize ? retail : i === 0 ? retail : 0;
+      const variant = this.variantRepo.create({
+        productId,
+        barcode: data.barcode,
+        stock: rowWholesale,
+        wholesaleStock: rowWholesale,
+        retailStock: rowRetail,
+        color: color.name,
+        colorHex: color.hex ?? colorHex ?? '',
+        size: size.label,
+        colorId: color.id,
+        sizeId: size.id,
+        imageUrl: imageUrl ?? null,
+      });
+      const saved = await this.variantRepo.save(variant);
+      created.push(Array.isArray(saved) ? saved[0] : saved);
+    }
+
     await this.syncProductStockFromVariants(productId);
-    return saved;
+    if (imageUrl) {
+      await this.mergeColorImagesIntoProduct(productId);
+    }
+    return created;
+  }
+
+  /**
+   * Set absolute stock for a color across all product sizes.
+   * Stock lives once on the first size row; other sizes stay at 0 (pool for allocate).
+   */
+  async setColorStock(
+    productId: string,
+    data: {
+      color: string;
+      colorHex?: string;
+      barcode?: string;
+      imageUrl?: string | null;
+      wholesaleStock?: number;
+      retailStock?: number;
+      stock?: number;
+    },
+  ) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+      relations: ['variants'],
+    });
+    if (!product) throw new NotFoundException('محصول یافت نشد');
+
+    const colorName = String(data.color ?? '').trim();
+    if (!colorName) throw new BadRequestException('رنگ الزامی است');
+    const colorHex = String(data.colorHex ?? '').trim();
+    const color = await this.upsertColor(colorName, colorHex || undefined);
+    const imageUrl =
+      data.imageUrl !== undefined
+        ? String(data.imageUrl || '').trim() || null
+        : undefined;
+
+    const wholesale =
+      data.wholesaleStock !== undefined && data.wholesaleStock !== null
+        ? Math.max(0, Math.floor(Number(data.wholesaleStock)))
+        : data.stock !== undefined && data.stock !== null
+          ? Math.max(0, Math.floor(Number(data.stock)))
+          : undefined;
+    const retail =
+      data.retailStock !== undefined && data.retailStock !== null
+        ? Math.max(0, Math.floor(Number(data.retailStock)))
+        : undefined;
+
+    if (wholesale !== undefined && !Number.isFinite(wholesale)) {
+      throw new BadRequestException('موجودی عمده نامعتبر است');
+    }
+    if (retail !== undefined && !Number.isFinite(retail)) {
+      throw new BadRequestException('موجودی تکی نامعتبر است');
+    }
+
+    const sizes = this.sizesForProduct(product.sizeType);
+    const existing = product.variants ?? [];
+    const updated: ProductVariantEntity[] = [];
+
+    for (let i = 0; i < sizes.length; i++) {
+      const sizeLabel = sizes[i];
+      let row = existing.find((v) => v.color === color.name && v.size === sizeLabel);
+      if (!row) {
+        const size = await this.upsertSize(sizeLabel);
+        row = this.variantRepo.create({
+          productId,
+          stock: 0,
+          wholesaleStock: 0,
+          retailStock: 0,
+          color: color.name,
+          colorHex: color.hex ?? colorHex ?? '',
+          size: size.label,
+          colorId: color.id,
+          sizeId: size.id,
+          barcode: data.barcode || null,
+          imageUrl: imageUrl ?? null,
+        });
+      } else {
+        row.color = color.name;
+        row.colorHex = color.hex ?? (colorHex || row.colorHex);
+        row.colorId = color.id;
+        if (data.barcode !== undefined) row.barcode = data.barcode || null;
+        if (imageUrl !== undefined) row.imageUrl = imageUrl;
+      }
+
+      if (wholesale !== undefined) {
+        row.wholesaleStock = i === 0 ? wholesale : 0;
+        row.stock = i === 0 ? wholesale : 0;
+      }
+      if (retail !== undefined) {
+        row.retailStock = i === 0 ? retail : 0;
+      }
+      const saved = await this.variantRepo.save(row);
+      updated.push(Array.isArray(saved) ? saved[0] : saved);
+    }
+
+    await this.syncProductStockFromVariants(productId);
+    await this.mergeColorImagesIntoProduct(productId);
+    return updated;
+  }
+
+  /** Ensure product.images includes each unique color imageUrl (gallery sync). */
+  private async mergeColorImagesIntoProduct(productId: string) {
+    const product = await this.productRepo.findOne({
+      where: { id: productId },
+      relations: ['variants'],
+    });
+    if (!product) return;
+    const colorImages = [
+      ...new Set(
+        (product.variants ?? [])
+          .map((v) => String(v.imageUrl || '').trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (!colorImages.length) return;
+    const current = Array.isArray(product.images) ? [...product.images] : [];
+    let changed = false;
+    for (const url of colorImages) {
+      if (!current.includes(url)) {
+        current.push(url);
+        changed = true;
+      }
+    }
+    if (changed) {
+      product.images = current;
+      await this.productRepo.save(product);
+    }
+  }
+
+  async removeColorVariants(productId: string, colorName: string) {
+    const name = String(colorName ?? '').trim();
+    if (!name) throw new BadRequestException('رنگ الزامی است');
+    const rows = await this.variantRepo.find({ where: { productId, color: name } });
+    if (!rows.length) throw new NotFoundException('واریانتی با این رنگ یافت نشد');
+    await this.variantRepo.remove(rows);
+    await this.syncProductStockFromVariants(productId);
+    return { message: `رنگ «${name}» و ${rows.length} سایز حذف شد`, deleted: rows.length };
   }
 
   async updateVariant(variantId: string, data: Partial<ProductVariantEntity> & {
@@ -793,6 +980,7 @@ export class ProductService {
             wholesaleStock: vWholesale,
             retailStock: vRetail,
             barcode: v.barcode,
+            imageUrl: (v as { imageUrl?: string }).imageUrl ?? null,
           };
         }),
       };

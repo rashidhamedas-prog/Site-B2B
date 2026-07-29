@@ -290,8 +290,14 @@ export default function CheckoutPage() {
     }
     setLoading(true); setError('');
     try {
+      if (!customerId) {
+        setError('شناسه مشتری یافت نشد. لطفاً دوباره وارد شوید.');
+        setLoading(false);
+        return;
+      }
       const orderItems = items.map((i) => ({
         productId: i.productId,
+        // Wholesale: let server allocate across the full product pool (no color/size pin)
         productVariantId: i.productVariantId,
         color: i.color,
         size: i.size,
@@ -301,6 +307,7 @@ export default function CheckoutPage() {
         sku: i.sku,
       }));
       const res = await apiClient.post<{ orderNumber: string; id: string; total: number }>('/orders', {
+        customerId,
         items: orderItems,
         shippingMethod,
         paymentMethod,
@@ -315,7 +322,7 @@ export default function CheckoutPage() {
         const pay = await apiClient.post<{ redirectUrl: string }>('/payments/start', {
           amount: Number(res.total),
           orderId: res.id,
-          customerId: customerId || undefined,
+          customerId,
           description: `پرداخت سفارش ${res.orderNumber} — پوشاک ترنم`,
         });
         clear();
