@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { CustomerEntity } from './entities/customer.entity';
 import { AuthService } from '../auth/auth.service';
+import { NotificationService } from '../notification/notification.service';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -22,6 +23,7 @@ export class CustomerService {
     @InjectRepository(CustomerEntity)
     private readonly repo: Repository<CustomerEntity>,
     private readonly authService: AuthService,
+    @Optional() private readonly notifications?: NotificationService,
   ) {}
 
   async findAll(
@@ -115,6 +117,17 @@ export class CustomerService {
     await this.repo.update(id, data);
     if (data.status && data.status !== before.status) {
       await this.authService.syncUserActiveByCustomerId(id, data.status);
+      // Wholesale / B2B approval → SMS to customer (skip retail B2C OTP accounts).
+      if (
+        data.status === 'ACTIVE' &&
+        before.status !== 'ACTIVE' &&
+        before.type !== 'B2C' &&
+        before.phone &&
+        this.notifications
+      ) {
+        const name = before.ownerName || before.businessName;
+        this.notifications.wholesaleApproved(before.phone, name).catch(() => undefined);
+      }
     }
     return this.findOne(id);
   }

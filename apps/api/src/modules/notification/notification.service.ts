@@ -86,11 +86,64 @@ export class NotificationService {
     return cfg.enabled && cfg.events[event] !== false;
   }
 
+  private async adminPhonesFor(channel: 'WHOLESALE' | 'RETAIL'): Promise<string[]> {
+    const cfg = await this.settings.sms();
+    const primary =
+      channel === 'RETAIL' ? cfg.adminPhoneRetail : cfg.adminPhoneWholesale;
+    const secondary =
+      channel === 'RETAIL' ? cfg.adminPhoneRetail2 : cfg.adminPhoneWholesale2;
+    return [primary, secondary]
+      .map((p) => String(p || '').trim())
+      .filter(Boolean);
+  }
+
   async orderRegistered(phone: string, orderNumber: string) {
     if (!(await this.eventEnabled('orderRegistered'))) return false;
     return this.sendSms(
       phone,
       `پوشاک ترنم\nسفارش ${orderNumber} ثبت شد و در انتظار بررسی است.\nپیگیری: poshaktaranom.com/portal`,
+    );
+  }
+
+  /** Notify site admin(s) when a new order is placed (per-channel phones, up to 2). */
+  async orderRegisteredAdmin(
+    channel: 'WHOLESALE' | 'RETAIL',
+    orderNumber: string,
+    customerLabel?: string,
+  ) {
+    if (!(await this.eventEnabled('orderRegisteredAdmin'))) return false;
+    const phones = await this.adminPhonesFor(channel);
+    if (phones.length === 0) {
+      this.logger.log(`[SMS] orderRegisteredAdmin skipped — no admin phone for ${channel}`);
+      return false;
+    }
+    const site = channel === 'RETAIL' ? 'تک‌فروشی' : 'عمده';
+    const who = customerLabel ? `\nمشتری: ${customerLabel}` : '';
+    const message = `پوشاک ترنم\nسفارش جدید ${site}\nشماره: ${orderNumber}${who}`;
+    const results = await Promise.all(phones.map((p) => this.sendSms(p, message)));
+    return results.some(Boolean);
+  }
+
+  /** Notify wholesale admin(s) when a B2B customer registers. */
+  async wholesaleRegistrationAdmin(customerName: string, phone: string) {
+    if (!(await this.eventEnabled('wholesaleRegistrationAdmin'))) return false;
+    const phones = await this.adminPhonesFor('WHOLESALE');
+    if (phones.length === 0) {
+      this.logger.log('[SMS] wholesaleRegistrationAdmin skipped — no admin phone');
+      return false;
+    }
+    const message = `پوشاک ترنم\nثبت‌نام عمده جدید\n${customerName}\n${phone}`;
+    const results = await Promise.all(phones.map((p) => this.sendSms(p, message)));
+    return results.some(Boolean);
+  }
+
+  /** Notify wholesale customer that their account was approved. */
+  async wholesaleApproved(phone: string, customerName?: string) {
+    if (!(await this.eventEnabled('wholesaleApproved'))) return false;
+    const greet = customerName ? `${customerName} عزیز،\n` : '';
+    return this.sendSms(
+      phone,
+      `پوشاک ترنم\n${greet}حساب عمده شما تأیید شد.\nورود: poshaktaranom.com/portal`,
     );
   }
 
@@ -123,6 +176,10 @@ export class NotificationService {
       provider: 'sms.ir',
       lineNumber: cfg.lineNumber || null,
       otpTemplate: cfg.otpTemplateId || null,
+      adminPhoneWholesale: cfg.adminPhoneWholesale || null,
+      adminPhoneWholesale2: cfg.adminPhoneWholesale2 || null,
+      adminPhoneRetail: cfg.adminPhoneRetail || null,
+      adminPhoneRetail2: cfg.adminPhoneRetail2 || null,
       events: cfg.events,
     };
   }

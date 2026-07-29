@@ -37,6 +37,10 @@ interface SettingsPayload {
   };
   sms: {
     enabled: boolean; apiKey: string; lineNumber: string; otpTemplateId: number;
+    adminPhoneWholesale: string;
+    adminPhoneWholesale2: string;
+    adminPhoneRetail: string;
+    adminPhoneRetail2: string;
     events: Record<string, boolean>;
   };
   payment: {
@@ -96,11 +100,17 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'theme', label: 'تنظیمات تم ترنم', icon: Palette },
 ];
 
-const SMS_EVENT_LABELS: Record<string, string> = {
-  orderRegistered: 'پیامک ثبت سفارش جدید',
-  orderConfirmed:  'پیامک تأیید سفارش',
-  orderShipped:    'پیامک ارسال مرسوله',
-  paymentReceived: 'پیامک دریافت پرداخت',
+const SMS_CUSTOMER_EVENTS: Record<string, string> = {
+  orderRegistered: 'پیامک ثبت سفارش جدید (به مشتری)',
+  orderConfirmed:  'پیامک تأیید سفارش (به مشتری)',
+  orderShipped:    'پیامک ارسال مرسوله + کد رهگیری (به مشتری)',
+  paymentReceived: 'پیامک دریافت پرداخت (به مشتری)',
+  wholesaleApproved: 'پیامک تأیید حساب عمده (به مشتری)',
+};
+
+const SMS_ADMIN_EVENTS: Record<string, string> = {
+  orderRegisteredAdmin: 'پیامک ثبت سفارش جدید (به ادمین)',
+  wholesaleRegistrationAdmin: 'پیامک ثبت‌نام عمده جدید (به ادمین)',
 };
 
 // ── Component ─────────────────────────────────────────────────
@@ -145,6 +155,25 @@ export function AdminSettings() {
           kgPerPiece: res.shipping?.kgPerPiece ?? 0.45,
           companies: res.shipping?.companies ?? [],
           methods: res.shipping?.methods ?? {},
+        },
+        sms: {
+          enabled: res.sms?.enabled ?? true,
+          apiKey: res.sms?.apiKey ?? '',
+          lineNumber: res.sms?.lineNumber ?? '',
+          otpTemplateId: Number(res.sms?.otpTemplateId) || 0,
+          adminPhoneWholesale: res.sms?.adminPhoneWholesale ?? '',
+          adminPhoneWholesale2: res.sms?.adminPhoneWholesale2 ?? '',
+          adminPhoneRetail: res.sms?.adminPhoneRetail ?? '',
+          adminPhoneRetail2: res.sms?.adminPhoneRetail2 ?? '',
+          events: {
+            orderRegistered: res.sms?.events?.orderRegistered !== false,
+            orderConfirmed: res.sms?.events?.orderConfirmed !== false,
+            orderShipped: res.sms?.events?.orderShipped !== false,
+            paymentReceived: res.sms?.events?.paymentReceived !== false,
+            orderRegisteredAdmin: res.sms?.events?.orderRegisteredAdmin !== false,
+            wholesaleRegistrationAdmin: res.sms?.events?.wholesaleRegistrationAdmin !== false,
+            wholesaleApproved: res.sms?.events?.wholesaleApproved !== false,
+          },
         },
         payment: {
           enabled: res.payment?.enabled ?? true,
@@ -528,12 +557,73 @@ export function AdminSettings() {
           </div>
 
           <div className="border-t border-gray-100 pt-5">
-            <h3 className="font-bold text-gray-800 mb-3 text-sm">رویدادهای پیامک خودکار</h3>
+            <h3 className="font-bold text-gray-800 mb-1 text-sm">شماره اعلان ادمین</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              برای هر سایت تا دو شماره — نفر دوم اختیاری است. پیامک ثبت سفارش / ثبت‌نام به هر دو ارسال می‌شود.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-2">عمده (.com)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <TextField
+                    label="شماره ۱"
+                    value={data.sms.adminPhoneWholesale}
+                    dir="ltr"
+                    onChange={(v) => patch('sms', (s) => ({ ...s, adminPhoneWholesale: v }))}
+                    help="مثال: 09121234567"
+                  />
+                  <TextField
+                    label="شماره ۲ (اختیاری)"
+                    value={data.sms.adminPhoneWholesale2}
+                    dir="ltr"
+                    onChange={(v) => patch('sms', (s) => ({ ...s, adminPhoneWholesale2: v }))}
+                    help="خالی بگذارید اگر فقط یک نفر کافی است"
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-2">تک‌فروشی (.ir)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <TextField
+                    label="شماره ۱"
+                    value={data.sms.adminPhoneRetail}
+                    dir="ltr"
+                    onChange={(v) => patch('sms', (s) => ({ ...s, adminPhoneRetail: v }))}
+                    help="مثال: 09121234567"
+                  />
+                  <TextField
+                    label="شماره ۲ (اختیاری)"
+                    value={data.sms.adminPhoneRetail2}
+                    dir="ltr"
+                    onChange={(v) => patch('sms', (s) => ({ ...s, adminPhoneRetail2: v }))}
+                    help="خالی بگذارید اگر فقط یک نفر کافی است"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-5">
+            <h3 className="font-bold text-gray-800 mb-3 text-sm">رویدادهای پیامک به ادمین</h3>
             <div className="space-y-2">
-              {Object.keys(SMS_EVENT_LABELS).map((ev) => (
+              {Object.keys(SMS_ADMIN_EVENTS).map((ev) => (
                 <ToggleRow
                   key={ev}
-                  label={SMS_EVENT_LABELS[ev]}
+                  label={SMS_ADMIN_EVENTS[ev]}
+                  value={data.sms.events[ev] !== false}
+                  onChange={(v) => patch('sms', (s) => ({ ...s, events: { ...s.events, [ev]: v } }))}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-5">
+            <h3 className="font-bold text-gray-800 mb-3 text-sm">رویدادهای پیامک به مشتری</h3>
+            <div className="space-y-2">
+              {Object.keys(SMS_CUSTOMER_EVENTS).map((ev) => (
+                <ToggleRow
+                  key={ev}
+                  label={SMS_CUSTOMER_EVENTS[ev]}
                   value={data.sms.events[ev] !== false}
                   onChange={(v) => patch('sms', (s) => ({ ...s, events: { ...s.events, [ev]: v } }))}
                 />

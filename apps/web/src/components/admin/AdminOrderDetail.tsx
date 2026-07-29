@@ -381,6 +381,7 @@ function AdminOrderDetailInner({ id }: { id: string }) {
                 <input value={trackingCode} onChange={(e) => setTrackingCode(e.target.value)} placeholder="کد پیگیری" className="w-full rounded-lg border px-3 py-2 text-xs" />
                 <input type="number" value={freightCostToman} onChange={(e) => setFreightCostToman(e.target.value)} placeholder="هزینه باربری (تومان)" className="w-full rounded-lg border px-3 py-2 text-xs" />
                 <input ref={receiptInputRef} type="file" accept="image/*" onChange={handleReceiptUpload} className="w-full text-xs" />
+                <p className="text-[11px] text-gray-500">با ذخیره، وضعیت سفارش به «ارسال‌شده» تغییر می‌کند و کد رهگیری برای مشتری پیامک می‌شود.</p>
                 <button onClick={saveTracking} disabled={savingTracking || !trackingCode || uploadingReceipt} className="w-full btn btn-primary btn-sm inline-flex items-center justify-center gap-1.5">
                   {savingTracking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}ذخیره اطلاعات ارسال
                 </button>
