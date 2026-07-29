@@ -30,6 +30,8 @@ interface SettingsPayload {
   };
   shipping: {
     baseFee: number; perKgFee: number; freeThreshold: number;
+    /** Average kg per garment piece (retail weight calc) */
+    kgPerPiece?: number;
     companies: Array<{ id: string; label: string; isActive: boolean; sort: number }>;
     methods: Record<string, boolean>;
   };
@@ -140,6 +142,7 @@ export function AdminSettings() {
           baseFee: res.shipping?.baseFee ?? 1_500_000,
           perKgFee: res.shipping?.perKgFee ?? 250_000,
           freeThreshold: res.shipping?.freeThreshold ?? 50_000_000,
+          kgPerPiece: res.shipping?.kgPerPiece ?? 0.45,
           companies: res.shipping?.companies ?? [],
           methods: res.shipping?.methods ?? {},
         },
@@ -342,28 +345,84 @@ export function AdminSettings() {
       {/* Shipping tab */}
       {tab === 'shipping' && (
         <div className="card p-6 space-y-6 max-w-3xl">
+          <div className="rounded-2xl border border-primary-100 bg-primary-50/60 px-4 py-4 space-y-3 text-sm text-gray-800">
+            <p className="font-bold text-primary">جزئیات محاسبه هزینه ارسال</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl bg-white/80 border border-primary-100/80 p-3 space-y-1.5">
+                <p className="text-xs font-bold text-gray-900">فروشگاه تکی (.ir)</p>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  وزن تقریبی: <span className="font-mono" dir="ltr">ceil(تعداد × وزن‌هر‌عدد × ۱۰) / ۱۰</span> کیلوگرم
+                </p>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  هزینه: <span className="font-mono" dir="ltr">کارمزد پایه + ceil(وزن) × کارمزد هر کیلو</span>
+                </p>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  پیک تهران / اسنپ‌باکس: حداکثر برابر کارمزد پایه. اگر مبلغ فاکتور ≥ آستانه ارسال رایگان → هزینه صفر.
+                </p>
+              </div>
+              <div className="rounded-xl bg-white/80 border border-primary-100/80 p-3 space-y-1.5">
+                <p className="text-xs font-bold text-gray-900">سایت عمده (.com)</p>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  هزینه ثابت = کارمزد پایه (بدون ضرب وزن)، مگر اینکه مبلغ پس از تخفیف ≥ آستانه ارسال رایگان باشد.
+                </p>
+                <p className="text-xs leading-relaxed text-gray-600">
+                  شرکت‌های حمل فعال در checkout نمایش داده می‌شوند.
+                </p>
+              </div>
+            </div>
+            {(() => {
+              const base = Math.round((data.shipping.baseFee ?? 0) / 10);
+              const perKg = Math.round((data.shipping.perKgFee ?? 0) / 10);
+              const kg = Number(data.shipping.kgPerPiece) > 0 ? Number(data.shipping.kgPerPiece) : 0.45;
+              const samplePieces = 2;
+              const weightKg = Math.ceil(samplePieces * kg * 10) / 10;
+              const sampleFee = base + Math.ceil(weightKg) * perKg;
+              return (
+                <p className="text-xs text-gray-500">
+                  نمونه تکی برای {samplePieces.toLocaleString('fa-IR')} عدد (وزن تقریبی{' '}
+                  {weightKg.toLocaleString('fa-IR')} کیلو):{' '}
+                  <span className="font-bold text-gray-800 tabular-nums">
+                    {sampleFee.toLocaleString('fa-IR')} تومان
+                  </span>
+                  {' '}— اعداد زیر را در تنظیمات سایت ویرایش کنید.
+                </p>
+              );
+            })()}
+          </div>
+
           <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-            هزینه پایه ارسال در فاکتور عمده از «کارمزد پایه» خوانده می‌شود؛ شرکت‌های حمل را پایین‌تر مدیریت کنید.
+            همه مبالغ به تومان وارد می‌شوند و در سرور به‌صورت ریال ذخیره می‌گردند.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <NumberField
               label="کارمزد پایه (تومان)"
               value={Math.round((data.shipping.baseFee ?? 0) / 10)}
               onChange={(v) => patch('shipping', (s) => ({ ...s, baseFee: Math.max(0, v) * 10 }))}
-              help="مثلاً ۱۵۰٬۰۰۰ تومان — ذخیره به‌صورت ریال"
+              help="تکی: پایه فرمول — عمده: هزینه ثابت ارسال"
             />
             <NumberField
               label="کارمزد هر کیلوگرم (تومان)"
               value={Math.round((data.shipping.perKgFee ?? 0) / 10)}
               onChange={(v) => patch('shipping', (s) => ({ ...s, perKgFee: Math.max(0, v) * 10 }))}
-              help="اضافه بر کارمزد پایه (عمدتاً تکی)"
+              help="فقط در محاسبه وزن‌محور فروشگاه تکی"
+            />
+            <NumberField
+              label="وزن تقریبی هر عدد (کیلو)"
+              value={Number(data.shipping.kgPerPiece) > 0 ? Number(data.shipping.kgPerPiece) : 0.45}
+              step="0.01"
+              min={0.05}
+              onChange={(v) => patch('shipping', (s) => ({
+                ...s,
+                kgPerPiece: Math.max(0.05, Math.round(v * 100) / 100 || 0.45),
+              }))}
+              help="پیش‌فرض ۰٫۴۵ کیلو — برای مانتو با بسته‌بندی"
             />
             <NumberField
               label="آستانه ارسال رایگان (تومان)"
               value={Math.round((data.shipping.freeThreshold ?? 0) / 10)}
               onChange={(v) => patch('shipping', (s) => ({ ...s, freeThreshold: Math.max(0, v) * 10 }))}
-              help="پیش‌فرض: ۵٬۰۰۰٬۰۰۰ تومان"
+              help="پیش‌فرض: ۵٬۰۰۰٬۰۰۰ تومان — برای تکی و عمده"
             />
           </div>
 
@@ -1072,14 +1131,21 @@ function TextField({ label, value, onChange, icon, type = 'text', placeholder, d
   );
 }
 
-function NumberField({ label, value, onChange, help }: {
+function NumberField({ label, value, onChange, help, step, min }: {
   label: string; value: number; onChange: (v: number) => void; help?: string;
+  step?: string | number; min?: number;
 }) {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-      <input type="number" value={value ?? 0} onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+      <input
+        type="number"
+        step={step}
+        min={min}
+        value={value ?? 0}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
       {help && <p className="text-[11px] text-gray-400 mt-1">{help}</p>}
     </div>
   );

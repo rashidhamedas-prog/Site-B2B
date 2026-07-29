@@ -45,6 +45,8 @@ interface Product {
   description?: string;
   wholesalePrice: number;
   minOrderQty: number;
+  allowWholesaleColorSelect?: boolean;
+  minWholesaleColors?: number;
   stock?: number;
   wholesaleStock?: number;
   totalStock?: number;
@@ -112,6 +114,13 @@ function resolveSizeGuide(product: Product): string[] {
   return SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE;
 }
 
+function parsePackQty(specs?: ProductSpecs): number {
+  const raw = specs?.packQty;
+  if (raw === undefined || raw === null || raw === '') return 0;
+  const n = parseInt(String(raw).replace(/[^\d]/g, ''), 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 async function fetchProduct(slugOrId: string): Promise<Product> {
   if (UUID_RE.test(slugOrId)) {
     return apiClient.get<Product>(`/products/${slugOrId}?channel=WHOLESALE`);
@@ -128,12 +137,25 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [activeImage, setActiveImage] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(true);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [colorError, setColorError] = useState('');
 
   useEffect(() => {
     fetchProduct(slug)
       .then((p) => {
         setProduct(p);
-        setQuantity(p.minOrderQty || 1);
+        const packQty = parsePackQty(p.specs);
+        // With pack matrix: quantity = pack sets; minOrderQty = min packs
+        setQuantity(Math.max(1, p.minOrderQty || 1));
+        if (p.allowWholesaleColorSelect) {
+          setSelectedColors([]);
+        } else {
+          const colors = Array.from(
+            new Set(p.variants.filter((v) => v.color).map((v) => v.color)),
+          );
+          setSelectedColors(colors);
+        }
+        void packQty;
       })
       .catch(() => router.push('/products'))
       .finally(() => setLoading(false));
@@ -141,6 +163,10 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   const minOrder = product?.minOrderQty ?? 1;
   const qtyStep = Math.max(minOrder, 1);
+  const packQty = product ? parsePackQty(product.specs) : 0;
+  const packMode = packQty > 0;
+  const allowColorSelect = !!product?.allowWholesaleColorSelect;
+  const minColors = Math.max(1, Number(product?.minWholesaleColors) || 1);
 
   const availableColors = product
     ? Array.from(
@@ -163,7 +189,6 @@ export function ProductDetail({ slug }: { slug: string }) {
   const variantWholesale = (v: { wholesaleStock?: number; stock?: number }) =>
     Number(v.wholesaleStock) || Number(v.stock) || 0;
 
-  // Wholesale: stock is product-level pool — color is display-only, not order-gating
   const totalStock =
     typeof product?.wholesaleStock === 'number'
       ? product.wholesaleStock
@@ -172,29 +197,90 @@ export function ProductDetail({ slug }: { slug: string }) {
         : typeof product?.stock === 'number'
           ? product.stock
           : product?.variants?.reduce((s, v) => s + variantWholesale(v), 0) ?? 0;
+
+  const colorsForOrder = allowColorSelect
+    ? selectedColors
+    : availableColors.map((c) => c.name);
+  const colorCount = Math.max(1, colorsForOrder.length || availableColors.length || 1);
+  const sizeCount = Math.max(1, availableSizes.length || 1);
+  const piecesPerPackSet = packMode ? packQty * colorCount * sizeCount : qtyStep;
+  const totalPieces = packMode ? quantity * piecesPerPackSet : quantity;
+
+  // Stock gate: for pack mode need enough stock on every selected color×size cell
+  const packStockOk = (() => {
+    if (!product || !packMode) return totalStock >= qtyStep;
+    if (allowColorSelect && selectedColors.length < minColors) return false;
+    const colors = colorsForOrder;
+    if (!colors.length) return false;
+    const need = packQty * quantity;
+    for (const color of colors) {
+      for (const size of availableSizes) {
+        const v = product.variants.find((x) => x.color === color && x.size === size);
+        if (!v || variantWholesale(v) < need) return false;
+      }
+    }
+    return true;
+  })();
+
   const effectiveStock = totalStock;
   const isComingSoon = product?.status === 'COMING_SOON';
-  const canOrder = !!product && (isComingSoon || effectiveStock >= qtyStep);
+  const colorsReady = !allowColorSelect || selectedColors.length >= minColors;
+  const canOrder =
+    !!product &&
+    colorsReady &&
+    (isComingSoon || (packMode ? packStockOk : effectiveStock >= qtyStep));
   const maxQty = isComingSoon
-    ? Math.max(effectiveStock, qtyStep * 20)
-    : Math.max(effectiveStock, qtyStep);
+    ? Math.max(qtyStep * 20, qtyStep)
+    : packMode
+      ? Math.max(qtyStep, 50)
+      : Math.max(effectiveStock, qtyStep);
 
   const sizeGuideLines = product ? resolveSizeGuide(product) : [];
   const specRows = buildSpecRows(product?.specs);
 
+  const toggleColor = (name: string) => {
+    setColorError('');
+    setSelectedColors((prev) =>
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
+    );
+  };
+
   const handleAddToCart = () => {
     if (!product || !canOrder) return;
-    const normalizedQty = Math.max(qtyStep, Math.min(maxQty, Math.floor(quantity / qtyStep) * qtyStep || qtyStep));
-    // Color is display-only on wholesale — omit color/size/variantId so server allocates across full pool
-    addItem({
-      productId: product.id,
-      productName: product.name,
-      sku: product.sku ?? '',
-      unitPrice: Number(product.wholesalePrice),
-      minOrderQty: qtyStep,
-      quantity: normalizedQty,
-      imageUrl: product.images?.[0],
-    });
+    if (allowColorSelect && selectedColors.length < minColors) {
+      setColorError(`حداقل ${minColors} رنگ انتخاب کنید`);
+      return;
+    }
+    const normalizedQty = Math.max(
+      qtyStep,
+      Math.min(maxQty, Math.floor(quantity / qtyStep) * qtyStep || qtyStep),
+    );
+
+    if (packMode) {
+      addItem({
+        productId: product.id,
+        productName: product.name,
+        sku: product.sku ?? '',
+        unitPrice: Number(product.wholesalePrice),
+        minOrderQty: qtyStep,
+        quantity: normalizedQty,
+        imageUrl: product.images?.[0],
+        packMode: true,
+        packQty,
+        sizeCount,
+        selectedColors: allowColorSelect ? [...selectedColors] : availableColors.map((c) => c.name),
+      });
+    } else {
+      addItem({
+        productId: product.id,
+        productName: product.name,
+        sku: product.sku ?? '',
+        unitPrice: Number(product.wholesalePrice),
+        minOrderQty: qtyStep,
+        quantity: normalizedQty,
+        imageUrl: product.images?.[0],
+      });
+    }
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 3000);
   };
@@ -217,7 +303,7 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   if (!product) return null;
 
-  const totalPrice = Math.round(Number(product.wholesalePrice) / 10 * quantity);
+  const totalPrice = Math.round(Number(product.wholesalePrice) / 10 * totalPieces);
   const mainImage = product.images?.[activeImage];
   const fabricLabel = product.specs?.fabricType || product.fabric;
 
@@ -343,31 +429,83 @@ export function ProductDetail({ slug }: { slug: string }) {
                   </p>
                 </div>
                 <div className="text-left">
-                  <p className="text-xs text-gray-500 mb-1">حداقل سفارش</p>
-                  <p className="text-lg font-bold text-gray-700">{minOrder} عدد</p>
+                  <p className="text-xs text-gray-500 mb-1">
+                    {packMode ? 'حداقل تعداد پک' : 'حداقل سفارش'}
+                  </p>
+                  <p className="text-lg font-bold text-gray-700">
+                    {minOrder} {packMode ? 'پک' : 'عدد'}
+                  </p>
                 </div>
               </div>
+              {packMode && (
+                <p className="mt-3 text-xs text-gray-600 leading-relaxed border-t border-primary-100 pt-3">
+                  هر پک: {packQty.toLocaleString('fa-IR')} عدد از هر رنگ×سایز
+                  {allowColorSelect
+                    ? ` — شما رنگ را انتخاب می‌کنید (حداقل ${minColors} رنگ)`
+                    : ` — همه ${availableColors.length.toLocaleString('fa-IR')} رنگ`}
+                  {' '}× {sizeCount.toLocaleString('fa-IR')} سایز
+                </p>
+              )}
             </div>
 
             {availableColors.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-gray-900 mb-1">رنگ‌های موجود</h3>
-                <p className="text-xs text-gray-500 mb-3">فقط جهت نمایش — سفارش بر اساس موجودی کل محصول ثبت می‌شود</p>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">
+                  {allowColorSelect ? 'انتخاب رنگ' : 'رنگ‌های موجود'}
+                </h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  {allowColorSelect
+                    ? `حداقل ${minColors.toLocaleString('fa-IR')} رنگ انتخاب کنید — سفارش برای هر رنگ×سایز با تعداد پک ثبت می‌شود`
+                    : packMode
+                      ? 'همه رنگ‌ها در فاکتور ثبت می‌شوند (بر اساس تعداد در پک × هر سایز)'
+                      : 'فقط جهت نمایش — سفارش بر اساس موجودی کل محصول ثبت می‌شود'}
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {availableColors.map((c) => (
-                    <span
-                      key={c.name}
-                      className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 shadow-sm"
-                    >
-                      <span
-                        className="h-5 w-5 rounded-full border border-gray-300 shadow-inner flex-shrink-0"
-                        style={{ backgroundColor: c.hex }}
-                        title={c.hex}
-                      />
-                      <span className="font-medium">{c.name}</span>
-                    </span>
-                  ))}
+                  {availableColors.map((c) => {
+                    const selected = selectedColors.includes(c.name);
+                    if (!allowColorSelect) {
+                      return (
+                        <span
+                          key={c.name}
+                          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 shadow-sm"
+                        >
+                          <span
+                            className="h-5 w-5 rounded-full border border-gray-300 shadow-inner flex-shrink-0"
+                            style={{ backgroundColor: c.hex }}
+                            title={c.hex}
+                          />
+                          <span className="font-medium">{c.name}</span>
+                        </span>
+                      );
+                    }
+                    return (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => toggleColor(c.name)}
+                        className={cn(
+                          'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm shadow-sm transition-colors duration-200',
+                          selected
+                            ? 'border-primary bg-primary text-white'
+                            : 'border-gray-200 bg-white text-gray-800 hover:border-primary-200',
+                        )}
+                      >
+                        <span
+                          className="h-5 w-5 rounded-full border border-white/40 shadow-inner flex-shrink-0"
+                          style={{ backgroundColor: c.hex }}
+                          title={c.hex}
+                        />
+                        <span className="font-medium">{c.name}</span>
+                      </button>
+                    );
+                  })}
                 </div>
+                {colorError && <p className="mt-2 text-xs text-error">{colorError}</p>}
+                {allowColorSelect && selectedColors.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    {selectedColors.length.toLocaleString('fa-IR')} رنگ انتخاب شده
+                  </p>
+                )}
               </div>
             )}
 
@@ -434,7 +572,9 @@ export function ProductDetail({ slug }: { slug: string }) {
             )}
 
             <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-3">تعداد</h3>
+              <h3 className="text-sm font-bold text-gray-900 mb-3">
+                {packMode ? 'تعداد پک' : 'تعداد'}
+              </h3>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                   <button type="button" onClick={() => setQuantity(Math.max(qtyStep, quantity - qtyStep))}
@@ -448,7 +588,14 @@ export function ProductDetail({ slug }: { slug: string }) {
                 <span className="text-sm text-gray-500">
                   جمع: <span className="font-bold text-gray-900">{totalPrice.toLocaleString('fa-IR')} تومان</span>
                 </span>
-                <span className="text-xs text-gray-400">گام سفارش: {qtyStep} عدد</span>
+                {packMode ? (
+                  <span className="text-xs text-gray-400">
+                    {totalPieces.toLocaleString('fa-IR')} عدد
+                    {' '}({quantity.toLocaleString('fa-IR')} پک × {packQty.toLocaleString('fa-IR')} × {colorCount.toLocaleString('fa-IR')} رنگ × {sizeCount.toLocaleString('fa-IR')} سایز)
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">گام سفارش: {qtyStep} عدد</span>
+                )}
               </div>
             </div>
 

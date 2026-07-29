@@ -28,6 +28,10 @@ interface CreateOrderDto {
     color?: string;
     size?: string;
     imageUrl?: string;
+    /** Wholesale pack matrix: quantity = number of pack sets */
+    packMode?: boolean;
+    /** Colors chosen by wholesale buyer (when allowWholesaleColorSelect) */
+    selectedColors?: string[];
   }>;
   shippingMethod?: string;
   paymentMethod?: string;
@@ -282,6 +286,154 @@ export class OrderService {
     return lines;
   }
 
+  /** Parse specs.packQty → positive int (pieces per color×size cell). */
+  private parsePackQty(product: { specs?: { packQty?: string | number } | null }): number {
+    const raw = product.specs?.packQty;
+    if (raw === undefined || raw === null || raw === '') return 0;
+    const n = parseInt(String(raw).replace(/[^\d]/g, ''), 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  }
+
+  /**
+   * Wholesale invoice expansion:
+   * for each selected (or all) color × each size → quantity = packQty × packSets.
+   */
+  private expandByPackMatrix(
+    product: {
+      id: string;
+      name: string;
+      sku?: string;
+      minOrderQty?: number;
+      wholesalePrice?: number | string | null;
+      retailPrice?: number | string | null;
+      allowWholesaleColorSelect?: boolean;
+      minWholesaleColors?: number;
+      specs?: { packQty?: string | number } | null;
+      variants?: Array<{
+        id: string;
+        color: string;
+        size: string;
+        wholesaleStock?: number | string | null;
+        retailStock?: number | string | null;
+        stock?: number | string | null;
+        imageUrl?: string | null;
+      }>;
+    },
+    packSets: number,
+    channel: 'WHOLESALE' | 'RETAIL',
+    opts?: { selectedColors?: string[]; unitPrice?: number; productName?: string; sku?: string },
+  ): Array<{
+    productVariantId: string;
+    quantity: number;
+    unitPrice: number;
+    productName: string;
+    sku: string;
+    color: string;
+    size: string;
+    productId: string;
+    imageUrl?: string | null;
+  }> {
+    const packQty = this.parsePackQty(product);
+    if (!packQty) {
+      throw new BadRequestException(`تعداد در پک برای ${product.name} تعریف نشده است`);
+    }
+    const sets = Math.max(1, Math.floor(Number(packSets) || 0));
+    if (sets < 1) throw new BadRequestException('تعداد پک نامعتبر است');
+
+    const moqSets = Math.max(1, Number(product.minOrderQty) || 1);
+    if (sets < moqSets) {
+      throw new BadRequestException(`حداقل تعداد پک برای ${product.name} برابر ${moqSets} است`);
+    }
+    if (sets % moqSets !== 0) {
+      throw new BadRequestException(`تعداد پک برای ${product.name} باید مضربی از ${moqSets} باشد`);
+    }
+
+    const variants = product.variants ?? [];
+    if (!variants.length) {
+      throw new BadRequestException(`برای ${product.name} ابتدا حداقل یک رنگ در واریانت‌ها تعریف کنید`);
+    }
+
+    const allColors = Array.from(
+      new Set(variants.map((v) => String(v.color || '').trim()).filter(Boolean)),
+    );
+    const allSizes = Array.from(
+      new Set(variants.map((v) => String(v.size || '').trim()).filter(Boolean)),
+    );
+    if (!allColors.length || !allSizes.length) {
+      throw new BadRequestException(`رنگ/سایز برای ${product.name} ناقص است`);
+    }
+
+    let colors = allColors;
+    if (product.allowWholesaleColorSelect) {
+      const selected = (opts?.selectedColors ?? [])
+        .map((c) => String(c || '').trim())
+        .filter(Boolean);
+      const uniqueSelected = Array.from(new Set(selected));
+      const minColors = Math.max(1, Number(product.minWholesaleColors) || 1);
+      if (uniqueSelected.length < minColors) {
+        throw new BadRequestException(
+          `برای ${product.name} حداقل ${minColors} رنگ باید انتخاب شود`,
+        );
+      }
+      const invalid = uniqueSelected.filter((c) => !allColors.includes(c));
+      if (invalid.length) {
+        throw new BadRequestException(`رنگ نامعتبر برای ${product.name}: ${invalid.join('، ')}`);
+      }
+      colors = uniqueSelected;
+    }
+
+    const qtyPerCell = packQty * sets;
+    const unitPrice = this.unitPriceForChannel(channel, product, Number(opts?.unitPrice ?? 0));
+    const productName = product.name ?? opts?.productName ?? '';
+    const sku = product.sku ?? opts?.sku ?? '';
+    const lines: Array<{
+      productVariantId: string;
+      quantity: number;
+      unitPrice: number;
+      productName: string;
+      sku: string;
+      color: string;
+      size: string;
+      productId: string;
+      imageUrl?: string | null;
+    }> = [];
+
+    for (const color of colors) {
+      for (const size of allSizes) {
+        const variant = variants.find(
+          (v) => String(v.color || '').trim() === color && String(v.size || '').trim() === size,
+        );
+        if (!variant) {
+          throw new BadRequestException(
+            `واریانت ${color}/${size} برای ${product.name} یافت نشد`,
+          );
+        }
+        const stock = this.channelVariantStock(variant, channel);
+        if (stock < qtyPerCell) {
+          throw new BadRequestException(
+            `موجودی کافی نیست برای ${product.name} (${color}/${size}) — نیاز: ${qtyPerCell}، موجودی: ${stock}`,
+          );
+        }
+        lines.push({
+          productVariantId: variant.id,
+          quantity: qtyPerCell,
+          unitPrice,
+          productName,
+          sku,
+          color,
+          size,
+          productId: product.id,
+          imageUrl: variant.imageUrl ?? null,
+        });
+      }
+    }
+
+    if (!lines.length) {
+      throw new BadRequestException(`هیچ ردیف سفارشی برای ${product.name} ساخته نشد`);
+    }
+    return lines;
+  }
+
   async create(dto: CreateOrderDto) {
     const customer = await this.customerService.findOne(dto.customerId);
 
@@ -344,6 +496,29 @@ export class OrderService {
       }
 
       const product = await this.productService.findOne(item.productId);
+      const packQty = this.parsePackQty(product);
+      const usePackMatrix =
+        channel === 'WHOLESALE' &&
+        !item.productVariantId &&
+        (item.packMode === true || packQty > 0);
+
+      if (usePackMatrix && packQty > 0) {
+        // quantity = number of pack sets; expand to each color × each size × packQty
+        const allocated = this.expandByPackMatrix(product, qty, channel, {
+          selectedColors: item.selectedColors,
+          unitPrice: item.unitPrice,
+          productName: item.productName,
+          sku: item.sku,
+        });
+        expandedItems.push(
+          ...allocated.map((line) => ({
+            ...line,
+            imageUrl: line.imageUrl || item.imageUrl || null,
+          })),
+        );
+        continue;
+      }
+
       if (channel === 'WHOLESALE') {
         this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
       }

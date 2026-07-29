@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ShoppingCart, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { ProductImage } from '@/components/ui/ProductImage';
-import { cartLineKey, useCart } from '@/lib/cart';
+import { cartLineKey, cartItemPieces, useCart } from '@/lib/cart';
 import { apiClient } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { cn } from '@/lib/cn';
@@ -297,7 +297,6 @@ export default function CheckoutPage() {
       }
       const orderItems = items.map((i) => ({
         productId: i.productId,
-        // Wholesale: let server allocate across the full product pool (no color/size pin)
         productVariantId: i.productVariantId,
         color: i.color,
         size: i.size,
@@ -305,6 +304,8 @@ export default function CheckoutPage() {
         unitPrice: i.unitPrice,
         productName: i.productName,
         sku: i.sku,
+        packMode: i.packMode || undefined,
+        selectedColors: i.packMode ? i.selectedColors : undefined,
       }));
       const res = await apiClient.post<{ orderNumber: string; id: string; total: number }>('/orders', {
         customerId,
@@ -382,7 +383,16 @@ export default function CheckoutPage() {
             <div className="card divide-y divide-gray-50">
               {items.map((item) => {
                 const lineKey = cartLineKey(item);
-                const meta = [item.color, item.size].filter(Boolean).join(' / ');
+                const pieces = cartItemPieces(item);
+                const meta = item.packMode
+                  ? [
+                      item.selectedColors?.length
+                        ? `${item.selectedColors.length} رنگ`
+                        : null,
+                      item.packQty ? `پک ${item.packQty}` : null,
+                      item.sizeCount ? `${item.sizeCount} سایز` : null,
+                    ].filter(Boolean).join(' · ')
+                  : [item.color, item.size].filter(Boolean).join(' / ');
                 return (
                 <div key={lineKey} className="flex items-start gap-4 p-4">
                   <div className="relative h-16 w-12 flex-shrink-0 rounded-xl overflow-hidden bg-primary-50">
@@ -392,18 +402,29 @@ export default function CheckoutPage() {
                     <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.productName}</p>
                     <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
                     {meta && <p className="text-xs text-gray-500 mt-0.5">{meta}</p>}
+                    {item.packMode && item.selectedColors && item.selectedColors.length > 0 && (
+                      <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">
+                        {item.selectedColors.join('، ')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-sm">
                       <button onClick={() => updateQty(lineKey, item.quantity - Math.max(1, item.minOrderQty))}
                         className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">−</button>
-                      <span className="w-8 text-center font-bold">{item.quantity}</span>
+                      <span className="w-8 text-center font-bold" title={item.packMode ? 'تعداد پک' : 'تعداد'}>
+                        {item.quantity}
+                      </span>
                       <button onClick={() => updateQty(lineKey, item.quantity + Math.max(1, item.minOrderQty))}
                         className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">+</button>
                     </div>
                     <div className="text-left min-w-[80px]">
-                      <p className="text-sm font-bold text-gray-900">{toman(item.unitPrice * item.quantity)} ت</p>
-                      <p className="text-[10px] text-gray-400">{toman(item.unitPrice)}/عدد</p>
+                      <p className="text-sm font-bold text-gray-900">{toman(item.unitPrice * pieces)} ت</p>
+                      <p className="text-[10px] text-gray-400">
+                        {item.packMode
+                          ? `${pieces.toLocaleString('fa-IR')} عدد`
+                          : `${toman(item.unitPrice)}/عدد`}
+                      </p>
                     </div>
                     <button onClick={() => removeItem(lineKey)} className="text-gray-300 hover:text-error">
                       <Trash2 className="h-4 w-4" />

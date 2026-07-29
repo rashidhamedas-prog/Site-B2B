@@ -85,12 +85,20 @@ export class SettingsService {
       }))
       .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
+    const kgRaw = Number(s.kgPerPiece);
+    const kgPerPiece =
+      Number.isFinite(kgRaw) && kgRaw > 0
+        ? kgRaw
+        : Number(this.config.get('SHIPPING_KG_PER_PIECE', 0.45)) || 0.45;
+
     return {
       baseFee: Number(s.baseFee) || Number(this.config.get('SHIPPING_BASE_FEE', 1500000)),
       perKgFee: Number(s.perKgFee) || Number(this.config.get('SHIPPING_PER_KG_FEE', 250000)),
       // Default: ۵ میلیون تومان = 50_000_000 IRR
       freeThreshold:
         Number(s.freeThreshold) || Number(this.config.get('SHIPPING_FREE_THRESHOLD', 50_000_000)),
+      /** Average garment weight (kg) used for retail quote: weightKg = ceil(pieces × kgPerPiece × 10) / 10 */
+      kgPerPiece,
       // Editable shipping companies list (admin-managed). Kept alongside legacy `methods` for backward compat.
       companies,
       // Legacy per-method enable flags; derived from companies (or fall back to stored methods).
