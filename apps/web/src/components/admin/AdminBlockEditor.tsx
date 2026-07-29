@@ -67,15 +67,20 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
       break;
     case 'hero':
       Object.assign(base, {
-        brandEyebrow: '',
-        headline: '',
-        headlineAccent: '',
-        body: '',
-        imageUrl: '',
-        ctaLabel: '',
-        ctaHref: '',
-        ctaSecondaryLabel: '',
-        ctaSecondaryHref: '',
+        autoplayMs: 5500,
+        slides: [
+          {
+            brandEyebrow: '',
+            headline: '',
+            headlineAccent: '',
+            body: '',
+            imageUrl: '',
+            ctaLabel: '',
+            ctaHref: '',
+            ctaSecondaryLabel: '',
+            ctaSecondaryHref: '',
+          },
+        ],
       });
       break;
     case 'stats':
@@ -730,27 +735,154 @@ function BlockFields({
     );
   }
 
-  // hero, text, image, cta, products, comingSoon, html
+  if (block.type === 'hero') {
+    type HeroSlideEdit = {
+      brandEyebrow?: string;
+      headline?: string;
+      headlineAccent?: string;
+      body?: string;
+      imageUrl?: string;
+      ctaLabel?: string;
+      ctaHref?: string;
+      ctaSecondaryLabel?: string;
+      ctaSecondaryHref?: string;
+    };
+
+    const blankSlide: HeroSlideEdit = {
+      brandEyebrow: '',
+      headline: '',
+      headlineAccent: '',
+      body: '',
+      imageUrl: '',
+      ctaLabel: '',
+      ctaHref: '',
+      ctaSecondaryLabel: '',
+      ctaSecondaryHref: '',
+    };
+
+    const slidesFromProps: HeroSlideEdit[] = Array.isArray(p.slides)
+      ? (p.slides as HeroSlideEdit[])
+      : [];
+
+    const legacyFlat: HeroSlideEdit | null =
+      typeof p.headline === 'string' && p.headline.trim()
+        ? {
+            brandEyebrow: str(p, 'brandEyebrow'),
+            headline: str(p, 'headline'),
+            headlineAccent: str(p, 'headlineAccent'),
+            body: str(p, 'body'),
+            imageUrl: str(p, 'imageUrl'),
+            ctaLabel: str(p, 'ctaLabel'),
+            ctaHref: str(p, 'ctaHref'),
+            ctaSecondaryLabel: str(p, 'ctaSecondaryLabel'),
+            ctaSecondaryHref: str(p, 'ctaSecondaryHref'),
+          }
+        : null;
+
+    const slides =
+      slidesFromProps.length > 0 ? slidesFromProps : legacyFlat ? [legacyFlat] : [blankSlide];
+
+    return (
+      <div className="space-y-3">
+        <Field
+          label="فاصله تعویض خودکار (میلی‌ثانیه — ۰ = خاموش)"
+          value={String(typeof p.autoplayMs === 'number' ? p.autoplayMs : 5500)}
+          dir="ltr"
+          onChange={(v) => set('autoplayMs', Math.max(0, Number(v) || 0))}
+        />
+        <p className="text-[11px] text-gray-400">
+          اسلایدهای هیرو — هر اسلاید تصویر محصول + متن و دکمه جدا دارد
+        </p>
+        <ItemListEditor
+          items={slides}
+          onChange={(next) => {
+            onChange({
+              ...block,
+              props: {
+                autoplayMs: typeof p.autoplayMs === 'number' ? p.autoplayMs : 5500,
+                slides: next,
+              },
+            });
+          }}
+          blank={blankSlide}
+          addLabel="افزودن اسلاید"
+          renderItem={(item, i, update) => (
+            <div className="grid gap-2 pr-6 sm:grid-cols-2">
+              <div className="sm:col-span-2 text-[11px] font-semibold text-gray-500">اسلاید {i + 1}</div>
+              <Field
+                label="ابرو / برچسب بالا"
+                value={item.brandEyebrow ?? ''}
+                onChange={(v) => update({ brandEyebrow: v })}
+              />
+              <Field
+                label="قسمت رنگی عنوان"
+                value={item.headlineAccent ?? ''}
+                onChange={(v) => update({ headlineAccent: v })}
+              />
+              <div className="sm:col-span-2">
+                <Field
+                  label="عنوان (خط جدید با Enter)"
+                  value={item.headline ?? ''}
+                  multiline
+                  onChange={(v) => update({ headline: v })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Field
+                  label="توضیح"
+                  value={item.body ?? ''}
+                  multiline
+                  onChange={(v) => update({ body: v })}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <ImageUrlField
+                  label="تصویر اسلاید"
+                  value={item.imageUrl ?? ''}
+                  hint={IMAGE_HINTS.hero}
+                  onChange={(v) => update({ imageUrl: v })}
+                />
+              </div>
+              <Field
+                label="متن دکمه اصلی"
+                value={item.ctaLabel ?? ''}
+                onChange={(v) => update({ ctaLabel: v })}
+              />
+              <Field
+                label="لینک دکمه اصلی"
+                value={item.ctaHref ?? ''}
+                dir="ltr"
+                onChange={(v) => update({ ctaHref: v })}
+              />
+              <Field
+                label="متن دکمه دوم"
+                value={item.ctaSecondaryLabel ?? ''}
+                onChange={(v) => update({ ctaSecondaryLabel: v })}
+              />
+              <Field
+                label="لینک دکمه دوم"
+                value={item.ctaSecondaryHref ?? ''}
+                dir="ltr"
+                onChange={(v) => update({ ctaSecondaryHref: v })}
+              />
+            </div>
+          )}
+        />
+      </div>
+    );
+  }
+
+  // text, image, cta, products, comingSoon, html
   return (
     <div className="grid gap-2 sm:grid-cols-2">
-      {(['hero', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
-        <Field label="ابرو / برچسب بالا" value={str(p, 'brandEyebrow') || str(p, 'eyebrow')} onChange={(v) => {
-          if (block.type === 'hero') set('brandEyebrow', v);
-          else set('eyebrow', v);
-        }} />
+      {(['cta', 'products', 'comingSoon'].includes(block.type)) && (
+        <Field label="ابرو / برچسب بالا" value={str(p, 'eyebrow')} onChange={(v) => set('eyebrow', v)} />
       )}
-      {(['hero', 'text', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
+      {(['text', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
       )}
-      {block.type === 'hero' && (
-        <Field
-          label="قسمت رنگی عنوان (اختیاری)"
-          value={str(p, 'headlineAccent')}
-          onChange={(v) => set('headlineAccent', v)}
-        />
-      )}
-      {(['hero', 'image'].includes(block.type)) && (
-        <div className={block.type === 'image' ? 'sm:col-span-2' : undefined}>
+      {block.type === 'image' && (
+        <div className="sm:col-span-2">
           <ImageUrlField
             label="آدرس تصویر"
             value={str(p, 'imageUrl')}
@@ -759,13 +891,13 @@ function BlockFields({
           />
         </div>
       )}
-      {(['hero', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
+      {(['cta', 'products', 'comingSoon'].includes(block.type)) && (
         <>
           <Field label="متن دکمه اصلی" value={str(p, 'ctaLabel')} onChange={(v) => set('ctaLabel', v)} />
           <Field label="لینک دکمه اصلی" value={str(p, 'ctaHref')} dir="ltr" onChange={(v) => set('ctaHref', v)} />
         </>
       )}
-      {(['hero', 'cta'].includes(block.type)) && (
+      {block.type === 'cta' && (
         <>
           <Field
             label="متن دکمه دوم"
@@ -778,10 +910,6 @@ function BlockFields({
             dir="ltr"
             onChange={(v) => set('ctaSecondaryHref', v)}
           />
-        </>
-      )}
-      {block.type === 'cta' && (
-        <>
           <Field
             label="متن دکمه سوم"
             value={str(p, 'ctaTertiaryLabel')}
@@ -824,7 +952,6 @@ function BlockFields({
       {(
         block.type === 'html' ||
         block.type === 'text' ||
-        block.type === 'hero' ||
         block.type === 'cta' ||
         block.type === 'products' ||
         block.type === 'comingSoon' ||

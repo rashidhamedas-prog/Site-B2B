@@ -164,39 +164,35 @@ export async function SiteBlocksRenderer({
   for (const block of list) {
     const p = block.props;
     switch (block.type) {
-      case 'hero':
+      case 'hero': {
+        const autoplayRaw = p.autoplayMs;
+        const autoplayMs =
+          typeof autoplayRaw === 'number'
+            ? autoplayRaw
+            : typeof autoplayRaw === 'string' && autoplayRaw.trim() !== ''
+              ? Number(autoplayRaw)
+              : undefined;
+        const slides = Array.isArray(p.slides) ? (p.slides as unknown[]) : undefined;
+        const heroProps = {
+          brandEyebrow: str(p, 'brandEyebrow') || undefined,
+          headline: str(p, 'headline') || undefined,
+          headlineAccent: str(p, 'headlineAccent') || undefined,
+          body: str(p, 'body') || undefined,
+          imageUrl: str(p, 'imageUrl') || undefined,
+          ctaLabel: str(p, 'ctaLabel') || undefined,
+          ctaHref: str(p, 'ctaHref') || undefined,
+          ctaSecondaryLabel: str(p, 'ctaSecondaryLabel') || undefined,
+          ctaSecondaryHref: str(p, 'ctaSecondaryHref') || undefined,
+          slides,
+          autoplayMs: Number.isFinite(autoplayMs) ? autoplayMs : undefined,
+        };
         if (channel === 'RETAIL') {
-          nodes.push(
-            <RetailHero
-              key={block.id}
-              brandEyebrow={str(p, 'brandEyebrow') || undefined}
-              headline={str(p, 'headline') || undefined}
-              headlineAccent={str(p, 'headlineAccent') || undefined}
-              body={str(p, 'body') || undefined}
-              imageUrl={str(p, 'imageUrl') || undefined}
-              ctaLabel={str(p, 'ctaLabel') || undefined}
-              ctaHref={str(p, 'ctaHref') || undefined}
-              ctaSecondaryLabel={str(p, 'ctaSecondaryLabel') || undefined}
-              ctaSecondaryHref={str(p, 'ctaSecondaryHref') || undefined}
-            />,
-          );
+          nodes.push(<RetailHero key={block.id} {...heroProps} />);
         } else {
-          nodes.push(
-            <HeroSection
-              key={block.id}
-              brandEyebrow={str(p, 'brandEyebrow')}
-              headline={str(p, 'headline') || undefined}
-              headlineAccent={str(p, 'headlineAccent') || undefined}
-              body={str(p, 'body') || undefined}
-              imageUrl={str(p, 'imageUrl') || undefined}
-              ctaLabel={str(p, 'ctaLabel') || undefined}
-              ctaHref={str(p, 'ctaHref') || undefined}
-              ctaSecondaryLabel={str(p, 'ctaSecondaryLabel') || undefined}
-              ctaSecondaryHref={str(p, 'ctaSecondaryHref') || undefined}
-            />,
-          );
+          nodes.push(<HeroSection key={block.id} {...heroProps} />);
         }
         break;
+      }
       case 'stats':
         if (channel === 'RETAIL') {
           const items = arr<{ value: string; label: string; sublabel?: string }>(p, 'items');
