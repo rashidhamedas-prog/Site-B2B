@@ -78,6 +78,10 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "freeShipping" boolean NOT NULL DE
 -- products: product-level stock (independent of color variants)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS "stock" integer NOT NULL DEFAULT 0;
 
+-- products: wholesale color selection for pack-matrix orders
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "allowWholesaleColorSelect" boolean NOT NULL DEFAULT false;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "minWholesaleColors" integer NOT NULL DEFAULT 1;
+
 -- Backfill product stock from legacy per-variant totals when still zero
 UPDATE products p
 SET "stock" = COALESCE((
