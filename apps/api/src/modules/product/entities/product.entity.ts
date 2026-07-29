@@ -75,7 +75,8 @@ export class ProductEntity {
 
   /**
    * When true, wholesale PDP lets the buyer pick colors.
-   * Order expands: each selected color × each size × packQty (specs.packQty).
+   * Order expands: each selected color × each size gets 1 piece per pack
+   * (pack size = colorCount × sizeCount).
    */
   @Column({ default: false })
   allowWholesaleColorSelect: boolean;
