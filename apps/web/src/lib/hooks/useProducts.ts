@@ -70,8 +70,6 @@ export interface Product {
   modelInfo?: string | null;
   videoUrl?: string | null;
   fabricComposition?: string;
-  showOnWholesale?: boolean;
-  showOnRetail?: boolean;
   badgeSettings?: { limitedStockMultiplier?: number; newBadgeDays?: number };
 }
 
