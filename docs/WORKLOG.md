@@ -2,6 +2,18 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-30 — بازیابی لیست محصولات (ستون viewCount)
+
+### علت
+- Deploy کد با فیلد `viewCount` روی entity، ولی ستون در Postgres ساخته نشده بود (`DB_SYNC=false`)
+- API لیست محصولات خطا می‌داد → ادمین صفر نشان می‌داد؛ داده‌ها حذف نشده بودند (۵۱ فعال در DB)
+
+### رفع
+- `ALTER TABLE products ADD COLUMN "viewCount"` (+ index) و `categories.bannerUrl` روی VPS
+- اسکریپت `apply-production-schema.sql` و `auto-deploy.sh` به‌روز شد تا بعد از هر deploy ستون‌ها اعمال شوند
+
+---
+
 ## 2026-07-30 — Deploy خودکار + CRM/پربازدید/بنر دسته روی تولید
 
 ### خلاصه
