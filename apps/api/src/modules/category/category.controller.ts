@@ -21,7 +21,7 @@ export class CategoryController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'ایجاد دسته‌بندی (ادمین)' })
-  create(@Body() body: { name: string; skuPrefix?: string }) {
+  create(@Body() body: { name: string; skuPrefix?: string; bannerUrl?: string | null }) {
     return this.svc.create(body);
   }
 
@@ -30,7 +30,10 @@ export class CategoryController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'ویرایش دسته‌بندی (ادمین)' })
-  update(@Param('id') id: string, @Body() body: { name?: string; skuPrefix?: string; nextSequence?: number }) {
+  update(
+    @Param('id') id: string,
+    @Body() body: { name?: string; skuPrefix?: string; nextSequence?: number; bannerUrl?: string | null },
+  ) {
     return this.svc.update(id, body);
   }
 

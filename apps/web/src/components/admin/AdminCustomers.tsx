@@ -177,7 +177,7 @@ export function AdminCustomers() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
-                      {c.status === 'PENDING' && (
+                      {(c.status === 'PENDING' || c.status === 'INACTIVE') && (
                         <button onClick={() => handleActivate(c.id, true)} className="text-success hover:opacity-80" title="فعال کردن">
                           <CheckCircle className="h-4 w-4" />
                         </button>

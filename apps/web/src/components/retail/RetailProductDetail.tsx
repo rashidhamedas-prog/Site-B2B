@@ -128,6 +128,18 @@ export function RetailProductDetail({ product }: { product: Product }) {
   }, [product.id]);
 
   useEffect(() => {
+    if (!product.id) return;
+    const key = `retail_view_${product.id}`;
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(key)) return;
+      sessionStorage?.setItem(key, '1');
+    } catch {
+      /* ignore */
+    }
+    apiClient.post(`/products/${product.id}/view`, {}).catch(() => undefined);
+  }, [product.id]);
+
+  useEffect(() => {
     apiClient
       .get<{ data: Related[] }>(`/products?relatedTo=${encodeURIComponent(product.id)}&limit=4&channel=RETAIL`)
       .then((r) => setRelated(r.data ?? []))

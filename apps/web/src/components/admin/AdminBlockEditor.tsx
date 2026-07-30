@@ -136,7 +136,17 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
         ctaHref: '/products',
         viewAllLabel: '',
         productIds: '',
-        limit: 6,
+        limit: 12,
+        sort: 'views',
+      });
+      break;
+    case 'categoryBanners':
+      Object.assign(base, {
+        headline: 'دسته‌بندی‌ها',
+        body: '',
+        columns: 3,
+        maxItems: 9,
+        categoryIds: '',
       });
       break;
     case 'comingSoon':
@@ -878,7 +888,7 @@ function BlockFields({
       {(['cta', 'products', 'comingSoon'].includes(block.type)) && (
         <Field label="ابرو / برچسب بالا" value={str(p, 'eyebrow')} onChange={(v) => set('eyebrow', v)} />
       )}
-      {(['text', 'cta', 'products', 'comingSoon'].includes(block.type)) && (
+      {(['text', 'cta', 'products', 'categoryBanners', 'comingSoon'].includes(block.type)) && (
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
       )}
       {block.type === 'image' && (
@@ -938,9 +948,43 @@ function BlockFields({
           />
           <Field
             label="تعداد نمایش"
-            value={String(typeof p.limit === 'number' ? p.limit : 6)}
+            value={String(typeof p.limit === 'number' ? p.limit : 12)}
             dir="ltr"
-            onChange={(v) => set('limit', Math.max(1, Number(v) || 6))}
+            onChange={(v) => set('limit', Math.max(1, Number(v) || 12))}
+          />
+          <div>
+            <label className="mb-1 block text-[11px] font-medium text-gray-500">مرتب‌سازی</label>
+            <select
+              value={str(p, 'sort') || 'views'}
+              onChange={(e) => set('sort', e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="views">پربازدیدترین</option>
+              <option value="newest">جدیدترین</option>
+              <option value="discounted">تخفیف‌دار + جدید</option>
+            </select>
+          </div>
+        </>
+      )}
+      {block.type === 'categoryBanners' && (
+        <>
+          <Field
+            label="تعداد ستون (۳ = شبکه ۳×۳)"
+            value={String(typeof p.columns === 'number' ? p.columns : 3)}
+            dir="ltr"
+            onChange={(v) => set('columns', Math.min(4, Math.max(2, Number(v) || 3)))}
+          />
+          <Field
+            label="حداکثر بنر"
+            value={String(typeof p.maxItems === 'number' ? p.maxItems : 9)}
+            dir="ltr"
+            onChange={(v) => set('maxItems', Math.max(1, Number(v) || 9))}
+          />
+          <Field
+            label="شناسه دسته‌ها (اختیاری، با کاما — خالی = همه دارای بنر)"
+            value={str(p, 'categoryIds')}
+            dir="ltr"
+            onChange={(v) => set('categoryIds', v)}
           />
         </>
       )}
@@ -954,6 +998,7 @@ function BlockFields({
         block.type === 'text' ||
         block.type === 'cta' ||
         block.type === 'products' ||
+        block.type === 'categoryBanners' ||
         block.type === 'comingSoon' ||
         block.type === 'image'
       ) && (

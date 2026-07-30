@@ -48,7 +48,7 @@ Hooks (.claude/settings.json) to enforce lint+format+typecheck on every Write/Ed
 Slash commands (.claude/commands/) for repeated flows: /bootstrap, /review, /release, /test-changed.
 Use read-only tools first (Glob, Grep, Read) before writing.
 Small, verifiable commits; rerun relevant tests after each.
-Ask before irreversible ops (migrations, deletes, prod deploys).
+Ask before irreversible ops (migrations, deletes) — **except production deploy**: after every meaningful code change, commit + push + deploy to VPS automatically (see docs/conventions.md «Deploy خودکار»).
 Use /rewind checkpoints before risky edits.
 Code Standards (project-specific only — don't restate universal principles)
 Layered architecture: domain → application → infra; clear boundaries

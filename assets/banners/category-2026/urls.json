@@ -1,0 +1,16 @@
+{
+  "updated": "2026-07-30",
+  "aspect": "1:1",
+  "publicBase": "/banners/category-2026",
+  "items": [
+    { "file": "01-linen.png", "labelFa": "لینن", "url": "/banners/category-2026/01-linen.png" },
+    { "file": "02-outerwear.png", "labelFa": "رویه", "url": "/banners/category-2026/02-outerwear.png" },
+    { "file": "03-sets.png", "labelFa": "ست", "url": "/banners/category-2026/03-sets.png" },
+    { "file": "04-mint.png", "labelFa": "تابستانه", "url": "/banners/category-2026/04-mint.png" },
+    { "file": "05-blouse.png", "labelFa": "شومیز", "url": "/banners/category-2026/05-blouse.png" },
+    { "file": "06-cream.png", "labelFa": "رسمی", "url": "/banners/category-2026/06-cream.png" },
+    { "file": "07-jacket.png", "labelFa": "کت", "url": "/banners/category-2026/07-jacket.png" },
+    { "file": "08-plaid.png", "labelFa": "کالکشن", "url": "/banners/category-2026/08-plaid.png" },
+    { "file": "09-blazer.png", "labelFa": "بلیزر", "url": "/banners/category-2026/09-blazer.png" }
+  ]
+}

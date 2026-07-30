@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn,
-  CreateDateColumn, UpdateDateColumn, DeleteDateColumn, BeforeInsert, BeforeUpdate,
+  CreateDateColumn, UpdateDateColumn, DeleteDateColumn, BeforeInsert, BeforeUpdate, Index,
 } from 'typeorm';
 import { ProductVariantEntity } from './product-variant.entity';
 import { CategoryEntity } from '../../category/entities/category.entity';
@@ -63,6 +63,11 @@ export class ProductEntity {
 
   @Column({ default: false })
   isDiscounted: boolean;
+
+  /** Retail PDP view counter — used for homepage “most viewed” sort */
+  @Index()
+  @Column({ type: 'int', default: 0 })
+  viewCount: number;
 
   @Column({ type: 'bigint' })
   wholesalePrice: number;

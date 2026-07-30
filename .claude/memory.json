@@ -13,10 +13,8 @@
   "architecture": "shared-core-two-storefronts",
   "retailPreviewPath": "/retail",
   "lastDeploy": "2026-07-29 — master e0824df on VPS; wholesale pack + shipping settings live; api/web health 200",
-  "lastCms": "2026-07-28 — Admin site-content drives storefront; defaults when empty; chrome for header/footer/float",
-  "lastAdminChannelSplit": "2026-07-27 — wholesale/retail inventory + admin channel tabs + CMS pages/site-content",
-  "lastE2e": "PASSED — ORD-2026-00002",
-  "lastRetailComplete": "2026-07-27 channel-split inventory + CMS site content",
+  "lastCms": "2026-07-30 — retail home: most-viewed products (12) + categoryBanners 3x3; category bannerUrl; CRM reactivate INACTIVE",
+  "lastRetailComplete": "2026-07-30 channel-split inventory + CMS site content + viewCount + category banners",
   "lastWholesalePack": "2026-07-29 packQty×color×size invoice expansion + allowWholesaleColorSelect/minWholesaleColors",
   "lastShippingSettings": "2026-07-29 kgPerPiece editable; retail formula documented in AdminSettings shipping tab",
   "documentation": {
