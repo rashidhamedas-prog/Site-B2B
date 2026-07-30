@@ -5,6 +5,9 @@
 # Safe to run repeatedly: it only rebuilds when origin/master advances, holds
 # a lock so runs never overlap, and leaves the running containers untouched if
 # the build fails.
+#
+# After git reset, the script re-execs itself so newly pulled deploy steps
+# (schema safety-net, etc.) actually run — bash does not re-read a script mid-run.
 # ============================================================================
 set -euo pipefail
 
@@ -20,17 +23,32 @@ if ! flock -n 9; then
   exit 0
 fi
 
-git fetch origin master -q
-LOCAL="$(git rev-parse HEAD)"
-REMOTE="$(git rev-parse origin/master)"
+# Phase A: detect update, pull, re-exec into Phase B with updated script body
+if [ "${TARANOM_DEPLOY_BUILD:-}" != "1" ]; then
+  git fetch origin master -q
+  LOCAL="$(git rev-parse HEAD)"
+  REMOTE="$(git rev-parse origin/master)"
 
-if [ "$LOCAL" = "$REMOTE" ]; then
-  echo "$(date -Is) already up to date (${LOCAL:0:7})"
-  exit 0
+  if [ "$LOCAL" = "$REMOTE" ]; then
+    echo "$(date -Is) already up to date (${LOCAL:0:7})"
+    exit 0
+  fi
+
+  echo "$(date -Is) new revision detected: ${LOCAL:0:7} -> ${REMOTE:0:7}"
+  git reset --hard origin/master
+  export TARANOM_DEPLOY_BUILD=1
+  exec /bin/bash "$APP_DIR/scripts/auto-deploy.sh"
 fi
 
-echo "$(date -Is) new revision detected: ${LOCAL:0:7} -> ${REMOTE:0:7}"
-git reset --hard origin/master
+# Phase B: build + schema + health (always runs from the just-pulled script)
+if [ -f "$APP_DIR/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$APP_DIR/.env"
+  set +a
+fi
+DB_USER="${DB_USER:-taranom}"
+DB_NAME="${DB_NAME:-taranom_db}"
 
 echo "$(date -Is) building images..."
 docker compose build api web
@@ -40,9 +58,10 @@ docker compose up -d api web
 docker compose restart nginx
 
 echo "$(date -Is) applying production schema safety-net..."
-docker compose exec -T postgres psql -U "${DB_USER:-taranom}" -d "${DB_NAME:-taranom_db}" \
-  -f - < "$APP_DIR/scripts/apply-production-schema.sql" \
-  || echo "$(date -Is) WARNING: schema safety-net failed (continuing)"
+if ! docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" \
+  < "$APP_DIR/scripts/apply-production-schema.sql"; then
+  echo "$(date -Is) WARNING: schema safety-net failed (continuing)"
+fi
 
 echo "$(date -Is) waiting for API health..."
 ok=0
