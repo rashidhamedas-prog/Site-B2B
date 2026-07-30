@@ -12,8 +12,8 @@ import {
 import { resolveGscVerification } from '@/lib/google-seo';
 import './globals.css';
 
-// Only Regular + Bold are preloaded (above-the-fold critical weights).
-// Other weights load on demand via font-display:swap.
+// All weights available; preload disabled so Next doesn't preload every file.
+// Critical Regular + Bold are preloaded manually in <head>.
 const vazirmatn = localFont({
   src: [
     { path: '../../public/fonts/Vazirmatn-Regular.woff2',   weight: '400', style: 'normal' },
@@ -24,7 +24,7 @@ const vazirmatn = localFont({
   ],
   variable: '--font-vazirmatn',
   display: 'swap',
-  preload: true,
+  preload: false,
   adjustFontFallback: false,
   fallback: ['Tahoma', 'Arial', 'sans-serif'],
 });
@@ -92,6 +92,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="fa" dir="rtl" className={vazirmatn.variable}>
       <head>
+        <link
+          rel="preload"
+          href="/fonts/Vazirmatn-Regular.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/Vazirmatn-Bold.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <GtmHeadScript gtmId={gtmId} />
         {gsc ? (
           <meta name="google-site-verification" content={gsc} />

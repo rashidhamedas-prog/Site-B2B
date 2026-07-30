@@ -55,6 +55,7 @@ interface SettingsPayload {
     adminPhoneRetail: string;
     adminPhoneRetail2: string;
     events: Record<string, boolean>;
+    templates: Record<string, string>;
   };
   payment: {
     enabled: boolean; wholesaleEnabled: boolean; merchantId: string; sandbox: boolean;
@@ -125,6 +126,34 @@ const SMS_ADMIN_EVENTS: Record<string, string> = {
   orderRegisteredAdmin: 'پیامک ثبت سفارش جدید (به ادمین)',
   wholesaleRegistrationAdmin: 'پیامک ثبت‌نام عمده جدید (به ادمین)',
 };
+
+/** Default bodies — must match API `SMS_TEMPLATE_DEFAULTS` */
+const SMS_TEMPLATE_DEFAULTS: Record<string, string> = {
+  otpFallback: 'پوشاک ترنم\nکد تایید شما: {code}',
+  orderRegistered:
+    'پوشاک ترنم\nسفارش {orderNumber} ثبت شد و در انتظار بررسی است.\nپیگیری: poshaktaranom.com/portal',
+  orderRegisteredAdmin: 'پوشاک ترنم\nسفارش جدید {site}\nشماره: {orderNumber}{customerLine}',
+  wholesaleRegistrationAdmin: 'پوشاک ترنم\nثبت‌نام عمده جدید\n{customerName}\n{phone}',
+  wholesaleApproved: 'پوشاک ترنم\n{greet}حساب عمده شما تأیید شد.\nورود: poshaktaranom.com/portal',
+  orderConfirmed: 'پوشاک ترنم\nسفارش {orderNumber} تایید شد و آماده‌سازی آن آغاز شده است.',
+  orderShipped: 'پوشاک ترنم\nسفارش {orderNumber} ارسال شد.{trackingLine}',
+  paymentReceived: 'پوشاک ترنم\nپرداخت {amountToman} تومان با موفقیت ثبت شد.\nکد پیگیری: {refId}',
+};
+
+const SMS_TEMPLATE_META: Array<{
+  key: string;
+  label: string;
+  placeholders: string;
+}> = [
+  { key: 'otpFallback', label: 'OTP (وقتی قالب sms.ir ست نشده)', placeholders: '{code}' },
+  { key: 'orderRegistered', label: SMS_CUSTOMER_EVENTS.orderRegistered, placeholders: '{orderNumber}' },
+  { key: 'orderConfirmed', label: SMS_CUSTOMER_EVENTS.orderConfirmed, placeholders: '{orderNumber}' },
+  { key: 'orderShipped', label: SMS_CUSTOMER_EVENTS.orderShipped, placeholders: '{orderNumber} {trackingLine} {trackingCode}' },
+  { key: 'paymentReceived', label: SMS_CUSTOMER_EVENTS.paymentReceived, placeholders: '{amountToman} {refId}' },
+  { key: 'wholesaleApproved', label: SMS_CUSTOMER_EVENTS.wholesaleApproved, placeholders: '{greet} {customerName}' },
+  { key: 'orderRegisteredAdmin', label: SMS_ADMIN_EVENTS.orderRegisteredAdmin, placeholders: '{site} {orderNumber} {customerLine}' },
+  { key: 'wholesaleRegistrationAdmin', label: SMS_ADMIN_EVENTS.wholesaleRegistrationAdmin, placeholders: '{customerName} {phone}' },
+];
 
 // ── Component ─────────────────────────────────────────────────
 
@@ -226,6 +255,10 @@ export function AdminSettings() {
             orderRegisteredAdmin: res.sms?.events?.orderRegisteredAdmin !== false,
             wholesaleRegistrationAdmin: res.sms?.events?.wholesaleRegistrationAdmin !== false,
             wholesaleApproved: res.sms?.events?.wholesaleApproved !== false,
+          },
+          templates: {
+            ...SMS_TEMPLATE_DEFAULTS,
+            ...(res.sms?.templates ?? {}),
           },
         },
         payment: {
@@ -758,6 +791,49 @@ export function AdminSettings() {
                   value={data.sms.events[ev] !== false}
                   onChange={(v) => patch('sms', (s) => ({ ...s, events: { ...s.events, [ev]: v } }))}
                 />
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-5">
+            <h3 className="font-bold text-gray-800 mb-1 text-sm">متن پیامک‌ها</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              متن هر رویداد قابل ویرایش است. مقادیر داخل {'{ }'} خودکار جایگزین می‌شوند.
+              خالی گذاشتن یعنی همان متن پیش‌فرض فعلی.
+            </p>
+            <div className="space-y-4">
+              {SMS_TEMPLATE_META.map((meta) => (
+                <div key={meta.key} className="rounded-xl border border-gray-100 p-4 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-bold text-gray-800">{meta.label}</p>
+                    <button
+                      type="button"
+                      className="text-xs text-primary font-medium hover:underline"
+                      onClick={() => patch('sms', (s) => ({
+                        ...s,
+                        templates: {
+                          ...s.templates,
+                          [meta.key]: SMS_TEMPLATE_DEFAULTS[meta.key],
+                        },
+                      }))}
+                    >
+                      بازگردانی پیش‌فرض
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-400 font-mono dir-ltr text-left" dir="ltr">
+                    {meta.placeholders}
+                  </p>
+                  <textarea
+                    value={data.sms.templates?.[meta.key] ?? SMS_TEMPLATE_DEFAULTS[meta.key] ?? ''}
+                    onChange={(e) => patch('sms', (s) => ({
+                      ...s,
+                      templates: { ...s.templates, [meta.key]: e.target.value },
+                    }))}
+                    rows={4}
+                    className="input w-full text-sm leading-relaxed resize-y min-h-[5.5rem]"
+                    dir="rtl"
+                  />
+                </div>
               ))}
             </div>
           </div>

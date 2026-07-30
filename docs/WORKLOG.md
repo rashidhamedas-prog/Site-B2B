@@ -2,6 +2,26 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-30 — متن پیامک قابل‌ویرایش + بهینه‌سازی سرعت (فاز ۱)
+
+### SMS
+- همه متن‌های پیامک رویدادها در ادمین → تنظیمات → پیامک قابل ویرایش
+- پیش‌فرض‌ها همان متن‌های فعلی production + دکمه بازگردانی پیش‌فرض
+- Placeholderها: `{orderNumber}` `{trackingLine}` `{amountToman}` `{refId}` `{customerName}` `{phone}` `{site}` `{greet}` `{code}` …
+
+### Performance (فاز ۱)
+- هیرو/بنر دسته: PNG چندمگابایتی → WebP (~10–85KB) + PNG فشرده
+- هیرو عمده: `next/image`؛ فقط اسلایدهای مجاور
+- هیرو تکی: حذف opacity gate؛ فقط اسلایدهای مجاور
+- فونت: preload فقط Regular+Bold
+- `/settings/public` Cache-Control + TTL ۶۰ث؛ GSC `revalidate: 3600`
+- پیکسل‌های تکی با تأخیر idle
+
+### باقی‌مانده
+- SSR گرید تکی، chunk split کانال، Brotli، list بدون variants، Lighthouse CI
+
+---
+
 ## 2026-07-30 — بازیابی لیست محصولات (ستون viewCount)
 
 ### علت

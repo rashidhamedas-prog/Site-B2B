@@ -23,7 +23,7 @@ async function fetchMarketing(): Promise<MarketingPublic> {
   for (const base of candidates) {
     try {
       const res = await fetch(`${base.replace(/\/$/, '')}/settings/public`, {
-        cache: 'no-store',
+        next: { revalidate: 3600 },
       });
       if (!res.ok) continue;
       const json = await res.json();

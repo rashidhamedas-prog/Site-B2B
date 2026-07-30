@@ -1,10 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
+import {
+  SMS_TEMPLATE_DEFAULTS,
+  fillSmsTemplate,
+  type SmsTemplateKey,
+} from './sms-templates.defaults';
 
 // SMS provider: sms.ir (REST API v1, auth via x-api-key header).
-// API key, line number, per-event toggles and the master switch are all
-// user-configurable from the admin settings panel (DB → env fallback).
-// With no API key configured the service logs and no-ops.
+// API key, line number, per-event toggles, message templates and the master
+// switch are all user-configurable from the admin settings panel
+// (DB → defaults). With no API key configured the service logs and no-ops.
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
@@ -32,6 +37,14 @@ export class NotificationService {
       this.logger.error(`sms.ir ${path} exception: ${err.message}`);
       return false;
     }
+  }
+
+  private async template(key: SmsTemplateKey, vars: Record<string, string>): Promise<string> {
+    const cfg = await this.settings.sms();
+    const tpl =
+      (cfg.templates && cfg.templates[key]) ||
+      SMS_TEMPLATE_DEFAULTS[key];
+    return fillSmsTemplate(tpl, vars);
   }
 
   // Plain SMS to one number. Returns true when actually dispatched.
@@ -70,7 +83,8 @@ export class NotificationService {
       return false;
     }
     if (!cfg.otpTemplateId) {
-      return this.sendSms(receptor, `پوشاک ترنم\nکد تایید شما: ${token}`);
+      const message = await this.template('otpFallback', { code: token });
+      return this.sendSms(receptor, message);
     }
     return this.post(cfg.apiKey, '/send/verify', {
       mobile: receptor,
@@ -99,10 +113,8 @@ export class NotificationService {
 
   async orderRegistered(phone: string, orderNumber: string) {
     if (!(await this.eventEnabled('orderRegistered'))) return false;
-    return this.sendSms(
-      phone,
-      `پوشاک ترنم\nسفارش ${orderNumber} ثبت شد و در انتظار بررسی است.\nپیگیری: poshaktaranom.com/portal`,
-    );
+    const message = await this.template('orderRegistered', { orderNumber });
+    return this.sendSms(phone, message);
   }
 
   /** Notify site admin(s) when a new order is placed (per-channel phones, up to 2). */
@@ -118,8 +130,13 @@ export class NotificationService {
       return false;
     }
     const site = channel === 'RETAIL' ? 'تک‌فروشی' : 'عمده';
-    const who = customerLabel ? `\nمشتری: ${customerLabel}` : '';
-    const message = `پوشاک ترنم\nسفارش جدید ${site}\nشماره: ${orderNumber}${who}`;
+    const customerLine = customerLabel ? `\nمشتری: ${customerLabel}` : '';
+    const message = await this.template('orderRegisteredAdmin', {
+      site,
+      orderNumber,
+      customerLabel: customerLabel || '',
+      customerLine,
+    });
     const results = await Promise.all(phones.map((p) => this.sendSms(p, message)));
     return results.some(Boolean);
   }
@@ -132,7 +149,10 @@ export class NotificationService {
       this.logger.log('[SMS] wholesaleRegistrationAdmin skipped — no admin phone');
       return false;
     }
-    const message = `پوشاک ترنم\nثبت‌نام عمده جدید\n${customerName}\n${phone}`;
+    const message = await this.template('wholesaleRegistrationAdmin', {
+      customerName,
+      phone,
+    });
     const results = await Promise.all(phones.map((p) => this.sendSms(p, message)));
     return results.some(Boolean);
   }
@@ -141,32 +161,34 @@ export class NotificationService {
   async wholesaleApproved(phone: string, customerName?: string) {
     if (!(await this.eventEnabled('wholesaleApproved'))) return false;
     const greet = customerName ? `${customerName} عزیز،\n` : '';
-    return this.sendSms(
-      phone,
-      `پوشاک ترنم\n${greet}حساب عمده شما تأیید شد.\nورود: poshaktaranom.com/portal`,
-    );
+    const message = await this.template('wholesaleApproved', {
+      greet,
+      customerName: customerName || '',
+    });
+    return this.sendSms(phone, message);
   }
 
   async orderConfirmed(phone: string, orderNumber: string) {
     if (!(await this.eventEnabled('orderConfirmed'))) return false;
-    return this.sendSms(
-      phone,
-      `پوشاک ترنم\nسفارش ${orderNumber} تایید شد و آماده‌سازی آن آغاز شده است.`,
-    );
+    const message = await this.template('orderConfirmed', { orderNumber });
+    return this.sendSms(phone, message);
   }
 
   async orderShipped(phone: string, orderNumber: string, trackingCode?: string) {
     if (!(await this.eventEnabled('orderShipped'))) return false;
-    const tracking = trackingCode ? `\nکد رهگیری: ${trackingCode}` : '';
-    return this.sendSms(phone, `پوشاک ترنم\nسفارش ${orderNumber} ارسال شد.${tracking}`);
+    const trackingLine = trackingCode ? `\nکد رهگیری: ${trackingCode}` : '';
+    const message = await this.template('orderShipped', {
+      orderNumber,
+      trackingCode: trackingCode || '',
+      trackingLine,
+    });
+    return this.sendSms(phone, message);
   }
 
   async paymentReceived(phone: string, amountToman: string, refId: string) {
     if (!(await this.eventEnabled('paymentReceived'))) return false;
-    return this.sendSms(
-      phone,
-      `پوشاک ترنم\nپرداخت ${amountToman} تومان با موفقیت ثبت شد.\nکد پیگیری: ${refId}`,
-    );
+    const message = await this.template('paymentReceived', { amountToman, refId });
+    return this.sendSms(phone, message);
   }
 
   async status() {
@@ -181,6 +203,7 @@ export class NotificationService {
       adminPhoneRetail: cfg.adminPhoneRetail || null,
       adminPhoneRetail2: cfg.adminPhoneRetail2 || null,
       events: cfg.events,
+      templates: cfg.templates,
     };
   }
 }
