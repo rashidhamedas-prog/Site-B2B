@@ -19,6 +19,16 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'www.poshaktaranom.ir',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'poshaktaranom.ir',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
         hostname: '*.poshaktaranom.com',
       },
       {

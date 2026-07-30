@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
 import { ArrowLeft } from 'lucide-react';
@@ -89,19 +90,32 @@ export function HeroSection(props: HeroSectionProps) {
       onBlurCapture={carousel.resume}
     >
       <div className="absolute inset-0 bg-gradient-hero-soft" />
-      {slides.map((s, i) =>
-        s.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+      {slides.map((s, i) => {
+        if (!s.imageUrl) return null;
+        const near =
+          Math.abs(i - carousel.index) <= 1 ||
+          (carousel.index === 0 && i === slides.length - 1) ||
+          (carousel.index === slides.length - 1 && i === 0);
+        if (!near) return null;
+        return (
+          <div
             key={`${s.imageUrl}-${i}`}
-            src={s.imageUrl}
-            alt=""
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+            className={`absolute inset-0 transition-opacity duration-700 ${
               i === carousel.index ? 'opacity-40' : 'opacity-0'
             }`}
-          />
-        ) : null,
-      )}
+            aria-hidden={i !== carousel.index}
+          >
+            <Image
+              src={s.imageUrl}
+              alt=""
+              fill
+              priority={i === 0}
+              sizes="100vw"
+              className="object-cover"
+            />
+          </div>
+        );
+      })}
       <div
         className="absolute inset-0 opacity-[0.07]"
         style={{

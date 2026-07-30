@@ -12,15 +12,15 @@ type Category = {
 };
 
 const FALLBACK_BANNERS = [
-  '/banners/category-2026/01-linen.png',
-  '/banners/category-2026/02-outerwear.png',
-  '/banners/category-2026/03-sets.png',
-  '/banners/category-2026/04-mint.png',
-  '/banners/category-2026/05-blouse.png',
-  '/banners/category-2026/06-cream.png',
-  '/banners/category-2026/07-jacket.png',
-  '/banners/category-2026/08-plaid.png',
-  '/banners/category-2026/09-blazer.png',
+  '/banners/category-2026/01-linen.webp',
+  '/banners/category-2026/02-outerwear.webp',
+  '/banners/category-2026/03-sets.webp',
+  '/banners/category-2026/04-mint.webp',
+  '/banners/category-2026/05-blouse.webp',
+  '/banners/category-2026/06-cream.webp',
+  '/banners/category-2026/07-jacket.webp',
+  '/banners/category-2026/08-plaid.webp',
+  '/banners/category-2026/09-blazer.webp',
 ];
 
 function mediaUrl(url?: string | null) {

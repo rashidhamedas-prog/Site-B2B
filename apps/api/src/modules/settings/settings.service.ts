@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AppSettingEntity } from './entities/app-setting.entity';
+import { resolveSmsTemplates } from '../notification/sms-templates.defaults';
 
 // Central user-configurable settings, stored in DB and edited from the admin
 // panel. Consumers (shipping/sms/payment) read through the typed getters,
@@ -12,7 +13,7 @@ import { AppSettingEntity } from './entities/app-setting.entity';
 export class SettingsService {
   // Small in-memory cache so hot paths don't hit the DB on every request.
   private cache = new Map<string, { value: Record<string, any>; at: number }>();
-  private static readonly TTL_MS = 30_000;
+  private static readonly TTL_MS = 60_000;
 
   constructor(
     @InjectRepository(AppSettingEntity)
@@ -206,6 +207,8 @@ export class SettingsService {
         wholesaleRegistrationAdmin: s.events?.wholesaleRegistrationAdmin ?? true,
         wholesaleApproved: s.events?.wholesaleApproved ?? true,
       } as Record<string, boolean>,
+      /** Editable SMS bodies — empty/missing keys fall back to current production defaults */
+      templates: resolveSmsTemplates(s.templates),
     };
   }
 

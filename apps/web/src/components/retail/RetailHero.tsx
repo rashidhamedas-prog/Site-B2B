@@ -2,7 +2,6 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
 import {
@@ -17,7 +16,7 @@ const RETAIL_FALLBACK: HeroSlide = {
   headline: 'استایل شما، امضای ترنم',
   headlineAccent: 'ترنم',
   body: 'کالکشن جدید مانتو و شومیز زنانه — دوخت تولیدی، پارچه‌های لینن و کتان، ارسال سریع به سراسر ایران.',
-  imageUrl: '/retail/hero-model.png',
+  imageUrl: '/retail/hero-model.webp',
   ctaLabel: 'مشاهده جدیدترین‌ها',
   ctaHref: '/retail/products',
   ctaSecondaryLabel: 'مشاهده مجموعه',
@@ -92,11 +91,8 @@ export function RetailHero(props: RetailHeroProps) {
   const slides = normalizeHeroSlides(props, RETAIL_FALLBACK);
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
   const carousel = useHeroCarousel(slides, autoplayMs);
-  const [ready, setReady] = useState(false);
-  useEffect(() => setReady(true), []);
 
   const slide = carousel.slide ?? RETAIL_FALLBACK;
-  const imageSrc = slide.imageUrl || '/retail/hero-model.png';
 
   return (
     <section
@@ -106,9 +102,14 @@ export function RetailHero(props: RetailHeroProps) {
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
-      {/* Full-bleed slide media */}
+      {/* Full-bleed slide media — only active + neighbors for LCP */}
       {slides.map((s, i) => {
-        const src = s.imageUrl || '/retail/hero-model.png';
+        const src = s.imageUrl || '/retail/hero-model.webp';
+        const near =
+          Math.abs(i - carousel.index) <= 1 ||
+          (carousel.index === 0 && i === slides.length - 1) ||
+          (carousel.index === slides.length - 1 && i === 0);
+        if (!near) return null;
         return (
           <div
             key={`${src}-${i}`}
@@ -149,11 +150,7 @@ export function RetailHero(props: RetailHeroProps) {
         aria-hidden
       />
 
-      <div
-        className={`relative z-10 mx-auto flex min-h-[min(92vh,860px)] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 lg:items-center lg:px-8 lg:pb-28 transition-opacity duration-700 ${
-          ready ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
+      <div className="relative z-10 mx-auto flex min-h-[min(92vh,860px)] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 lg:items-center lg:px-8 lg:pb-28">
         <div key={`copy-${carousel.index}`} className="w-full animate-fade-in lg:w-[48%]">
           <RetailSlideCopy slide={slide} />
         </div>

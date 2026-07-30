@@ -37,7 +37,10 @@ function appendInline(id: string, code: string) {
 export function RetailPixels() {
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    let idleId: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const load = async () => {
       try {
         const s = await apiClient.get<{ marketing?: MarketingPublic }>('/settings/public');
         if (cancelled) return;
@@ -60,7 +63,6 @@ t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,do
           );
         }
 
-        // Adro retargeting — paste script URL from https://adro.co/advertisers panel into head.
         const adroSrc = m.adroScriptUrl?.trim();
         if (adroSrc) appendScript('adro-pixel', adroSrc);
         const adroAcc = m.adroAccountId?.trim();
@@ -77,9 +79,22 @@ t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,do
       } catch {
         /* ignore */
       }
-    })();
+    };
+
+    // Defer third-party pixels until browser is idle (or after 3.5s) to protect LCP/INP
+    const schedule = () => {
+      if ('requestIdleCallback' in window) {
+        idleId = window.requestIdleCallback(() => { void load(); }, { timeout: 4000 });
+      } else {
+        timer = setTimeout(() => { void load(); }, 3500);
+      }
+    };
+    schedule();
+
     return () => {
       cancelled = true;
+      if (idleId != null && 'cancelIdleCallback' in window) window.cancelIdleCallback(idleId);
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
