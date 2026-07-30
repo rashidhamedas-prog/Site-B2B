@@ -82,6 +82,13 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS "stock" integer NOT NULL DEFAULT 0
 ALTER TABLE products ADD COLUMN IF NOT EXISTS "allowWholesaleColorSelect" boolean NOT NULL DEFAULT false;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS "minWholesaleColors" integer NOT NULL DEFAULT 1;
 
+-- products: retail PDP view counter (most-viewed homepage sort)
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "viewCount" integer NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS "IDX_products_viewCount" ON products ("viewCount");
+
+-- categories: square 1:1 banner for retail homepage grid
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS "bannerUrl" text;
+
 -- Backfill product stock from legacy per-variant totals when still zero
 UPDATE products p
 SET "stock" = COALESCE((

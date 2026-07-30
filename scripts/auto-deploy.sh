@@ -39,6 +39,11 @@ echo "$(date -Is) starting containers..."
 docker compose up -d api web
 docker compose restart nginx
 
+echo "$(date -Is) applying production schema safety-net..."
+docker compose exec -T postgres psql -U "${DB_USER:-taranom}" -d "${DB_NAME:-taranom_db}" \
+  -f - < "$APP_DIR/scripts/apply-production-schema.sql" \
+  || echo "$(date -Is) WARNING: schema safety-net failed (continuing)"
+
 echo "$(date -Is) waiting for API health..."
 ok=0
 for _ in $(seq 1 24); do
