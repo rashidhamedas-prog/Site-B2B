@@ -669,9 +669,17 @@ export function getDefaultBlocks(
           ],
         }),
         b('products', {
-          headline: 'جدیدترین‌ها',
+          headline: 'پربازدیدترین‌ها',
           body: '',
-          limit: 4,
+          limit: 12,
+          sort: 'views',
+        }),
+        b('categoryBanners', {
+          headline: 'دسته‌بندی‌ها',
+          body: 'با یک ضربه وارد دسته مورد نظر شوید',
+          columns: 3,
+          maxItems: 9,
+          categoryIds: '',
         }),
         b('stats', {
           items: [

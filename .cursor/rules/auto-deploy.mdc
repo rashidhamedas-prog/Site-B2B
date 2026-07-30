@@ -1,0 +1,21 @@
+---
+description: After every meaningful change, commit, push, and deploy to production VPS automatically
+alwaysApply: true
+---
+
+# Auto-deploy after every change (الزامی)
+
+When finishing any meaningful code/docs change that affects the live wholesale or retail sites:
+
+1. Update `docs/WORKLOG.md` (and a report under `docs/reports/` for larger changes).
+2. Commit with Conventional Commits (never commit `.env` or secrets).
+3. `git push origin HEAD` (usually `master`).
+4. Deploy on VPS without waiting for the user to ask again:
+   - SSH: `ssh -i ~/.ssh/wholesale_server -p 2222 wholesale-admin@5.75.200.102`
+   - On server: `cd /opt/taranom && bash scripts/auto-deploy.sh`
+   - Or: `sudo systemctl start taranom-autodeploy.service`
+5. Verify health (`/v1/health`) and that the relevant storefront responds.
+
+Do **not** skip deploy for runtime/UI/API changes. Docs-only pushes may skip docker rebuild if nothing runtime-related changed.
+
+Also keep storefront behavior editable from admin (`/admin/site-content`, `/admin/settings`, entity admin) — see `docs/conventions.md`.

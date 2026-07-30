@@ -31,6 +31,7 @@ export class ProductController {
     @Query('collar') collar?: string,
     @Query('relatedTo') relatedTo?: string,
     @Query('channel') channel?: string,
+    @Query('sort') sort?: string,
   ) {
     return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
       categoryId,
@@ -40,6 +41,7 @@ export class ProductController {
       collar,
       relatedTo,
       channel,
+      sort,
     });
   }
 
@@ -114,6 +116,12 @@ export class ProductController {
   @ApiOperation({ summary: 'جزئیات محصول با slug' })
   findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
     return this.productService.findBySlug(slug, channel);
+  }
+
+  @Post(':id/view')
+  @ApiOperation({ summary: 'افزایش شمارنده بازدید محصول (عمومی)' })
+  incrementView(@Param('id') id: string) {
+    return this.productService.incrementView(id);
   }
 
   @Get(':id')

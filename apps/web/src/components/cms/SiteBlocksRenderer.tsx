@@ -15,6 +15,7 @@ import { CtaBanner } from '@/components/wholesale/CtaBanner';
 import { RetailHero } from '@/components/retail/RetailHero';
 import { RetailFaq } from '@/components/retail/RetailFaq';
 import { RetailProductGrid } from '@/components/retail/RetailProductGrid';
+import { RetailCategoryBannerGrid } from '@/components/retail/RetailCategoryBannerGrid';
 
 const CONTACT_ICONS: Record<string, LucideIcon> = {
   Phone,
@@ -236,8 +237,9 @@ export async function SiteBlocksRenderer({
           nodes.push(
             <RetailProductGrid
               key={block.id}
-              title={str(p, 'headline') || 'جدیدترین‌ها'}
-              limit={typeof p.limit === 'number' ? p.limit : 4}
+              title={str(p, 'headline') || 'پربازدیدترین‌ها'}
+              limit={typeof p.limit === 'number' ? p.limit : 12}
+              sort={str(p, 'sort') || 'views'}
             />,
           );
         } else {
@@ -251,6 +253,20 @@ export async function SiteBlocksRenderer({
               ctaHref={str(p, 'ctaHref') || undefined}
               viewAllLabel={str(p, 'viewAllLabel') || undefined}
               limit={typeof p.limit === 'number' ? p.limit : 6}
+            />,
+          );
+        }
+        break;
+      case 'categoryBanners':
+        if (channel === 'RETAIL') {
+          nodes.push(
+            <RetailCategoryBannerGrid
+              key={block.id}
+              title={str(p, 'headline') || 'دسته‌بندی‌ها'}
+              body={str(p, 'body') || undefined}
+              columns={typeof p.columns === 'number' ? p.columns : 3}
+              maxItems={typeof p.maxItems === 'number' ? p.maxItems : 9}
+              categoryIds={str(p, 'categoryIds') || undefined}
             />,
           );
         }

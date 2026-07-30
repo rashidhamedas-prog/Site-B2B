@@ -2,6 +2,41 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-30 — Deploy خودکار + CRM/پربازدید/بنر دسته روی تولید
+
+### خلاصه
+- قانون: بعد از هر تغییر معنادار → WORKLOG + commit + push + auto-deploy روی VPS
+- ثبت در `docs/conventions.md`، `CLAUDE.md`، `.cursor/rules/auto-deploy.mdc`
+- فیچر CRM فعال‌سازی مجدد، viewCount، ۱۲ پربازدید، categoryBanners ۳×۳
+
+---
+
+## 2026-07-30 — CRM فعال‌سازی مجدد + پربازدید + بنر دسته
+
+### خلاصه
+- CRM: دکمه «فعال کردن» برای مشتری `INACTIVE` در لیست مشتریان
+- محصول: ستون `viewCount` + `POST /products/:id/view` + مرتب‌سازی `sort=views`
+- صفحه اصلی تکی: بلوک محصولات پیش‌فرض ۱۲ پربازدید؛ بلوک جدید `categoryBanners` شبکه ۳×۳
+- دسته: فیلد `bannerUrl` در ادمین دسته‌ها؛ بنرهای نمونه در `/banners/category-2026/`
+- قانون پروژه: هر تغییر ویترین باید در ادمین (site-content / settings / entity) قابل ویرایش باشد
+
+### فایل‌های کلیدی
+- `AdminCustomers.tsx`, `product.entity.ts`, `product.service.ts`, `RetailProductDetail.tsx`
+- `RetailProductGrid.tsx`, `RetailCategoryBannerGrid.tsx`, `AdminCategories.tsx`, CMS types/defaults/editor
+- `docs/conventions.md`, `docs/B2C.md`, `docs/brand-guidelines.md`
+
+---
+
+## 2026-07-30 — آماده‌سازی زیرساخت طراحی بنر هیرو
+
+### خلاصه
+- `docs/brand-guidelines.md` از توکن‌های قفل‌شده برند ساخته شد
+- پوشه intake عکس: `assets/banners/hero-intake/` (+ lifestyle / products / refs)
+- لوگوها کپی به `assets/brand/`
+- fal MCP به `FAL_KEY` وابسته است (لاگین OAuth در چت ندارد)
+
+---
+
 ## 2026-07-30 — پرداخت تکی: هدایت به باز کردن حساب به‌جای پیام خطا
 
 ### خلاصه

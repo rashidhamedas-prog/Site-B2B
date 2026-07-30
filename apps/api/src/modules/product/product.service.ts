@@ -161,6 +161,7 @@ export class ProductService {
       relatedTo?: string;
       garmentSize?: string;
       channel?: string;
+      sort?: string;
     },
   ) {
     const statusFilter = status ?? 'ACTIVE';
@@ -243,7 +244,15 @@ export class ProductService {
       );
     }
 
-    qb.orderBy('p.isDiscounted', 'DESC').addOrderBy('p.createdAt', 'DESC');
+    const sort = String(opts?.sort || '').toLowerCase();
+    if (sort === 'views') {
+      qb.orderBy('p.viewCount', 'DESC').addOrderBy('p.createdAt', 'DESC');
+    } else if (sort === 'newest') {
+      qb.orderBy('p.createdAt', 'DESC');
+    } else {
+      // default: discounted then newest
+      qb.orderBy('p.isDiscounted', 'DESC').addOrderBy('p.createdAt', 'DESC');
+    }
     const total = await qb.getCount();
     const data = await qb.skip((page - 1) * limit).take(limit).getMany();
     const cfg = await this.badgeConfig();
@@ -251,6 +260,16 @@ export class ProductService {
       data: data.map((p) => this.withBadges(p, channel || undefined, cfg)),
       meta: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
     };
+  }
+
+  async incrementView(idOrSlug: string) {
+    const product =
+      (await this.productRepo.findOne({ where: { id: idOrSlug } })) ||
+      (await this.productRepo.findOne({ where: { slug: idOrSlug } }));
+    if (!product) throw new NotFoundException('محصول یافت نشد');
+    await this.productRepo.increment({ id: product.id }, 'viewCount', 1);
+    const updated = await this.productRepo.findOne({ where: { id: product.id } });
+    return { id: product.id, viewCount: updated?.viewCount ?? product.viewCount + 1 };
   }
 
   async findComingSoon(limit = 12, channel?: string) {

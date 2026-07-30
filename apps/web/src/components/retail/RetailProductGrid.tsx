@@ -28,7 +28,15 @@ const FALLBACK = [
   { id: 'f4', name: 'شلوار بگ گلدوزی', slug: '#', retailPrice: 19800000, images: [] },
 ];
 
-export function RetailProductGrid({ title = 'جدیدترین‌ها', limit = 4 }: { title?: string; limit?: number }) {
+export function RetailProductGrid({
+  title = 'پربازدیدترین‌ها',
+  limit = 12,
+  sort = 'views',
+}: {
+  title?: string;
+  limit?: number;
+  sort?: string;
+}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,11 +44,14 @@ export function RetailProductGrid({ title = 'جدیدترین‌ها', limit = 4
     let cancelled = false;
     (async () => {
       try {
-        const data = await apiClient.get<{ data?: Product[] } | Product[]>(`/products?limit=${limit}&status=ACTIVE&channel=RETAIL`);
+        const sortQ = sort ? `&sort=${encodeURIComponent(sort)}` : '';
+        const data = await apiClient.get<{ data?: Product[] } | Product[]>(
+          `/products?limit=${limit}&status=ACTIVE&channel=RETAIL${sortQ}`,
+        );
         const list = Array.isArray(data) ? data : data?.data ?? [];
-        if (!cancelled) setProducts(list.length ? list : FALLBACK.slice(0, limit));
+        if (!cancelled) setProducts(list.length ? list : FALLBACK.slice(0, Math.min(limit, FALLBACK.length)));
       } catch {
-        if (!cancelled) setProducts(FALLBACK.slice(0, limit));
+        if (!cancelled) setProducts(FALLBACK.slice(0, Math.min(limit, FALLBACK.length)));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -48,11 +59,12 @@ export function RetailProductGrid({ title = 'جدیدترین‌ها', limit = 4
     return () => {
       cancelled = true;
     };
-  }, [limit]);
+  }, [limit, sort]);
+
+  const skeletonCount = Math.min(Math.max(limit, 4), 12);
 
   return (
     <section className="relative overflow-hidden bg-[var(--retail-bg)] py-16 sm:py-20">
-      {/* gold floral line-art accent (mockup left side) */}
       <svg
         className="pointer-events-none absolute -left-6 top-10 hidden h-64 w-40 text-[var(--retail-gold)] opacity-40 lg:block"
         viewBox="0 0 120 220"
@@ -77,7 +89,7 @@ export function RetailProductGrid({ title = 'جدیدترین‌ها', limit = 4
 
         {loading ? (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: skeletonCount }).map((_, i) => (
               <div key={i} className="aspect-[3/4] animate-pulse rounded-sm bg-[var(--retail-card)]" />
             ))}
           </div>

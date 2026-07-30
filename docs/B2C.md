@@ -24,6 +24,18 @@
 
 روی هاست `.ir`، middleware مسیر عمومی را به `/retail/*` بازنویسی می‌کند.
 
+## صفحه اصلی تکی (قابل‌ویرایش در CMS)
+
+ادمین: `/admin/site-content` → کانال **تکی** → **صفحه اصلی**
+
+| بلوک | پیش‌فرض | تنظیمات |
+|------|---------|---------|
+| `products` | پربازدیدترین‌ها، `limit: 12`, `sort: views` | تعداد و مرتب‌سازی (views / newest / discounted) |
+| `categoryBanners` | شبکه ۳×۳ | عنوان، ستون، maxItems، categoryIds اختیاری |
+
+بازدید محصول با `POST /products/:id/view` از PDP ثبت می‌شود (`viewCount`).  
+بنر هر دسته از `/admin/categories` (فیلد `bannerUrl`، تصاویر نمونه در `/banners/category-2026/`).
+
 ## مسیر خرید تکی (آماده)
 
 1. `/retail` → فروشگاه

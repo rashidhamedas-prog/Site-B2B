@@ -25,6 +25,10 @@ export class CategoryEntity {
   @Column({ type: 'int', default: 1 })
   nextSequence: number;
 
+  /** Square 1:1 category banner for retail homepage grid */
+  @Column({ type: 'text', nullable: true })
+  bannerUrl: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -34,4 +38,3 @@ export class CategoryEntity {
   @DeleteDateColumn()
   deletedAt: Date;
 }
-

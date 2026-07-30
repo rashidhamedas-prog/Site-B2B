@@ -1,5 +1,18 @@
 # قراردادهای توسعه — ترنم B2B
 
+## قانون ویترین قابل‌تنظیم (الزامی)
+
+هر رفتار یا محتوای قابل‌مشاهده در سایت‌های عمده/تکی **باید از ادمین قابل تغییر باشد** — نه فقط hard-code در کد:
+
+| نوع تغییر | محل تنظیم |
+|-----------|-----------|
+| بلوک‌ها، هیرو، محصولات، بنر دسته، FAQ، کروم | `/admin/site-content` |
+| هزینه ارسال، پرداخت، SMS، تم، مارکتینگ | `/admin/settings` |
+| بنر مربعی هر دسته | `/admin/categories` → فیلد بنر ۱:۱ |
+| فعال/غیرفعال مشتری CRM | `/admin/customers` |
+
+پیش‌فرض‌های کد (`defaults.ts` و مشابه) فقط fallback هستند؛ بعد از ذخیره در ادمین، مقدار ذخیره‌شده اولویت دارد.
+
 ## گزارش‌دهی بعد از هر تغییر (الزامی)
 
 هر agent (Cursor / Claude Code) **بعد از اتمام کار**:
@@ -24,8 +37,20 @@ docs/
 ## Deploy
 
 - سرور: `/opt/taranom` — جزئیات در `TARANOM-SERVER-INFO.txt`
-- اسکریپت: `deploy.sh`
+- اسکریپت: `deploy.sh` / `scripts/auto-deploy.sh`
 - پس از deploy: health check + در صورت امکان `scripts/e2e-purchase-test.sh`
+
+### Deploy خودکار بعد از هر تغییر (الزامی)
+
+بعد از اتمام هر کار معنادار که روی ویترین/API اثر دارد، agent **باید بدون درخواست مجدد** این زنجیره را اجرا کند:
+
+1. به‌روزرسانی `docs/WORKLOG.md` (+ report در صورت نیاز)
+2. `git add` فایل‌های مربوط + `git commit` (Conventional Commits)
+3. `git push origin HEAD` (معمولاً `master`)
+4. Deploy روی VPS: SSH به سرور و اجرای `scripts/auto-deploy.sh` یا `sudo systemctl start taranom-autodeploy.service`
+5. Health check: API `/v1/health` و در صورت امکان صفحهٔ تکی/عمده
+
+استثنا: تغییرات فقط-مستندات بدون اثر runtime می‌توانند بدون rebuild docker تمام شوند، ولی push همچنان انجام شود.
 
 ## Commit
 

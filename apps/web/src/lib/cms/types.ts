@@ -9,6 +9,7 @@ export type BlockType =
   | 'faq'
   | 'cta'
   | 'products'
+  | 'categoryBanners'
   | 'comingSoon'
   | 'text'
   | 'image'
@@ -44,6 +45,7 @@ export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
   faq: 'سوالات متداول',
   cta: 'دعوت به اقدام',
   products: 'محصولات برتر',
+  categoryBanners: 'بنر دسته‌بندی (۳×۳)',
   comingSoon: 'به‌زودی / پیش‌خرید',
   text: 'متن',
   image: 'تصویر',

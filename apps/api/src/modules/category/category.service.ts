@@ -20,22 +20,29 @@ export class CategoryService {
     return c;
   }
 
-  async create(body: { name: string; skuPrefix?: string }) {
+  async create(body: { name: string; skuPrefix?: string; bannerUrl?: string | null }) {
     if (!body?.name?.trim()) throw new BadRequestException('نام دسته‌بندی الزامی است');
     const entity = this.repo.create({
       name: body.name.trim(),
       skuPrefix: String(body.skuPrefix ?? '').trim(),
       nextSequence: 1,
+      bannerUrl: body.bannerUrl?.trim() || null,
     });
     return this.repo.save(entity);
   }
 
-  async update(id: string, body: { name?: string; skuPrefix?: string; nextSequence?: number }) {
+  async update(
+    id: string,
+    body: { name?: string; skuPrefix?: string; nextSequence?: number; bannerUrl?: string | null },
+  ) {
     const existing = await this.findOne(id);
     if (typeof body.name === 'string') existing.name = body.name.trim();
     if (typeof body.skuPrefix === 'string') existing.skuPrefix = body.skuPrefix.trim();
     if (typeof body.nextSequence === 'number' && Number.isFinite(body.nextSequence) && body.nextSequence >= 1) {
       existing.nextSequence = Math.floor(body.nextSequence);
+    }
+    if (body.bannerUrl !== undefined) {
+      existing.bannerUrl = body.bannerUrl?.trim() ? body.bannerUrl.trim() : null;
     }
     return this.repo.save(existing);
   }
