@@ -8,6 +8,7 @@
 - قانون: بعد از هر تغییر معنادار → WORKLOG + commit + push + auto-deploy روی VPS
 - ثبت در `docs/conventions.md`، `CLAUDE.md`، `.cursor/rules/auto-deploy.mdc`
 - فیچر CRM فعال‌سازی مجدد، viewCount، ۱۲ پربازدید، categoryBanners ۳×۳
+- **Deploy تولید:** `adbcad5` روی VPS — API health ok، `.com` و `.ir` HTTP 200
 
 ---
 

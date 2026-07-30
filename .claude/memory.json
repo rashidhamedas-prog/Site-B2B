@@ -12,7 +12,7 @@
   "stack": ["Next.js 15", "NestJS 10", "PostgreSQL 16", "MinIO", "Meilisearch", "Docker"],
   "architecture": "shared-core-two-storefronts",
   "retailPreviewPath": "/retail",
-  "lastDeploy": "2026-07-29 — master e0824df on VPS; wholesale pack + shipping settings live; api/web health 200",
+  "lastDeploy": "2026-07-30 — master adbcad5 on VPS; CRM reactivate + viewCount + category banners; api/web health ok",
   "lastCms": "2026-07-30 — retail home: most-viewed products (12) + categoryBanners 3x3; category bannerUrl; CRM reactivate INACTIVE",
   "lastRetailComplete": "2026-07-30 channel-split inventory + CMS site content + viewCount + category banners",
   "lastWholesalePack": "2026-07-29 packQty×color×size invoice expansion + allowWholesaleColorSelect/minWholesaleColors",
