@@ -9,7 +9,7 @@
 - [x] rotate SSH و credentialهای داخلی
 - [x] بازنویسی و اسکن تاریخچه Git
 - [x] force-push تمام ۲۸ branch و force-sync clone production
-- [-] ثبت یادداشت Cursor، فعال‌سازی timer و تأیید نهایی
+- [x] ثبت یادداشت Cursor، فعال‌سازی timer و تأیید نهایی
 
 ## Progress
 
@@ -19,6 +19,9 @@
 - دو مسیر حساس از ۱۰۷ commit و ۲۸ branch حذف شدند.
 - Gitleaks 8.30.1: صفر finding.
 - master بازنویسی‌شده با SHA `0791278` force-push و clone production sync شد.
+- یادداشت اجباری Cursor در repository ثبت شد؛ master مستندات به `932bd6f` رسید.
+- اسکن نهایی remote: تعداد ۲۸ branch، صفر سابقه برای هر دو مسیر حساس و Gitleaks روی ۱۰۸ commit با صفر finding.
+- timer تولید دوباره فعال و API و هر دو دامنه سالم تأیید شدند.
 
 ## Surprises & Discoveries
 
@@ -34,4 +37,4 @@
 
 ## Outcomes & Retrospective
 
-عملیات اصلی کامل شد. فقط commit مستندات نهایی، فعال‌سازی timer و health check پایانی باقی مانده است.
+عملیات کامل شد. ساختار و محتوای فعلی پروژه حفظ شد، credentialهای داخلی rotate شدند، تاریخچه پاک است، production سالم است و Cursor دستور fresh-clone دارد. follow-upهای بیرونی فقط rotation توکن‌های ارائه‌دهندگان و تنظیمات حفاظتی GitHub هستند.

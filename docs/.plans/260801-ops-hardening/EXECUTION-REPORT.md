@@ -24,7 +24,7 @@
 - Type check: pass — پیش از deploy برای API
 - Tests: pass — OTP logic test
 - Build: pass — API و imageهای API/Web production
-- Secret scan: pass — Gitleaks 8.30.1، ۱۰۷ commit، صفر finding
+- Secret scan: pass — Gitleaks 8.30.1، اسکن نهایی ۱۰۸ commit و ۲۸ branch، صفر finding
 - Manual QA: pass — API و هر دو دامنه HTTPS
 
 ## Deviations
