@@ -28,7 +28,7 @@ export function useHeroCarousel(slides: HeroSlide[], autoplayMs = DEFAULT_AUTOPL
       if (count === 0) return;
       setIndex(((next % count) + count) % count);
     },
-    [count],
+    [count]
   );
 
   const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
@@ -78,8 +78,7 @@ export function HeroCarouselControls({
 }) {
   if (count < 2) return null;
 
-  const active =
-    tone === 'gold' ? 'bg-[var(--retail-gold,#C9A84C)]' : 'bg-secondary';
+  const active = tone === 'gold' ? 'bg-[var(--retail-gold,#C9A84C)]' : 'bg-secondary';
   const idle = 'bg-white/35 hover:bg-white/55';
 
   return (

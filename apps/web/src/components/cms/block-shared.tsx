@@ -22,7 +22,7 @@ export function TextBlock({ headline, body }: { headline?: string; body?: string
       ) : null}
       {body
         ? body.split('\n\n').map((para, i) => (
-            <p key={i} className="mb-4 leading-relaxed text-gray-600 whitespace-pre-line">
+            <p key={i} className="mb-4 whitespace-pre-line leading-relaxed text-gray-600">
               {para}
             </p>
           ))
@@ -35,7 +35,7 @@ export function ContactBlock({ props }: { props: Record<string, unknown> }) {
   const headline = str(props, 'headline');
   const channels = arr<{ icon?: string; title?: string; value?: string; href?: string }>(
     props,
-    'channels',
+    'channels'
   );
   const hours = arr<{ day?: string; time?: string }>(props, 'hours');
   const locations = arr<{ title?: string; address?: string; note?: string }>(props, 'locations');
@@ -54,7 +54,7 @@ export function ContactBlock({ props }: { props: Record<string, unknown> }) {
             const Icon = CONTACT_ICONS[ch.icon || 'Phone'] || Phone;
             const inner = (
               <div className="rounded-2xl border border-[color:var(--color-border)] bg-white p-5 text-center transition hover:shadow-md">
-                <Icon className="mx-auto mb-3 h-6 w-6 text-primary" />
+                <Icon className="text-primary mx-auto mb-3 h-6 w-6" />
                 <p className="text-sm font-bold text-gray-900">{ch.title}</p>
                 <p className="mt-1 text-sm text-gray-600" dir="auto">
                   {ch.value}
@@ -100,12 +100,12 @@ export function ContactBlock({ props }: { props: Record<string, unknown> }) {
               className="space-y-3 border border-[color:var(--color-border)] bg-white p-6"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50">
-                  <MapPin className="h-5 w-5 text-primary" />
+                <div className="bg-primary-50 flex h-10 w-10 items-center justify-center rounded-xl">
+                  <MapPin className="text-primary h-5 w-5" />
                 </div>
                 <h3 className="font-bold text-gray-900">{loc.title}</h3>
               </div>
-              <p className="text-sm leading-relaxed text-gray-600 whitespace-pre-line">
+              <p className="whitespace-pre-line text-sm leading-relaxed text-gray-600">
                 {loc.address}
               </p>
               {loc.note ? <p className="text-xs text-gray-400">{loc.note}</p> : null}
@@ -128,11 +128,11 @@ export function LinksBlock({ props }: { props: Record<string, unknown> }) {
         {items.map((item, i) =>
           item.href && item.label ? (
             <li key={i}>
-              <Link href={item.href} className="cursor-pointer text-primary hover:underline">
+              <Link href={item.href} className="text-primary cursor-pointer hover:underline">
                 {item.label}
               </Link>
             </li>
-          ) : null,
+          ) : null
         )}
       </ul>
     </section>
@@ -175,7 +175,7 @@ export function heroPropsFromBlock(p: Record<string, unknown>) {
 export function pushCommonBlocks(
   block: ContentBlock,
   p: Record<string, unknown>,
-  nodes: ReactNode[],
+  nodes: ReactNode[]
 ) {
   switch (block.type) {
     case 'text':
@@ -187,7 +187,7 @@ export function pushCommonBlocks(
           key={block.id}
           className="container-site prose prose-sm max-w-none py-10"
           dangerouslySetInnerHTML={{ __html: str(p, 'body') }}
-        />,
+        />
       );
       break;
     case 'image':
@@ -204,7 +204,7 @@ export function pushCommonBlocks(
           {str(p, 'body') ? (
             <p className="mt-3 text-center text-sm text-gray-500">{str(p, 'body')}</p>
           ) : null}
-        </section>,
+        </section>
       );
       break;
     case 'gallery': {
@@ -227,9 +227,9 @@ export function pushCommonBlocks(
                   <figcaption className="p-3 text-sm text-gray-600">{item.body}</figcaption>
                 ) : null}
               </figure>
-            ) : null,
+            ) : null
           )}
-        </section>,
+        </section>
       );
       break;
     }

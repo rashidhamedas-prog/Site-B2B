@@ -4,12 +4,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Plus, Trash2, ChevronUp, ChevronDown, ImagePlus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
-import {
-  BLOCK_TYPE_LABELS,
-  newBlockId,
-  type BlockType,
-  type ContentBlock,
-} from '@/lib/cms/types';
+import { BLOCK_TYPE_LABELS, newBlockId, type BlockType, type ContentBlock } from '@/lib/cms/types';
 
 export type { BlockType, ContentBlock };
 export { BLOCK_TYPE_LABELS, newBlockId };
@@ -214,14 +209,14 @@ function Field({
           value={value}
           dir={dir}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
         />
       ) : (
         <input
           value={value}
           dir={dir}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
         />
       )}
     </div>
@@ -243,7 +238,7 @@ function CheckField({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+        className="text-primary focus:ring-primary/30 h-4 w-4 rounded border-gray-300"
       />
       {label}
     </label>
@@ -285,7 +280,7 @@ function ImageUrlField({
           dir="ltr"
           onChange={(e) => onChange(e.target.value)}
           placeholder="https://… یا /logo.png"
-          className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          className="focus:ring-primary/30 min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
         />
         <button
           type="button"
@@ -294,7 +289,11 @@ function ImageUrlField({
           className="btn btn-outline btn-sm flex shrink-0 cursor-pointer items-center gap-1"
           title="آپلود فایل"
         >
-          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+          {uploading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <ImagePlus className="h-3.5 w-3.5" />
+          )}
           آپلود
         </button>
         <input
@@ -312,7 +311,7 @@ function ImageUrlField({
         آپلود فایل یا آدرس کامل
         {hint ? ` — ${hint}` : ''}
       </p>
-      {error && <p className="mt-1 text-[11px] text-error">{error}</p>}
+      {error && <p className="text-error mt-1 text-[11px]">{error}</p>}
       {value ? (
         <div className="mt-2 h-16 w-24 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -350,7 +349,7 @@ function ItemListEditor<T extends Record<string, unknown>>({
         <div key={i} className="relative space-y-2 rounded-lg bg-gray-50 p-3">
           <button
             type="button"
-            className="absolute left-2 top-2 cursor-pointer text-gray-400 hover:text-error"
+            className="hover:text-error absolute left-2 top-2 cursor-pointer text-gray-400"
             onClick={() => onChange(items.filter((_, j) => j !== i))}
             title="حذف"
           >
@@ -397,9 +396,22 @@ function BlockFields({
         <div className="sm:col-span-2">
           <Field label="متن اعلان (وسط)" value={str(p, 'text')} onChange={(v) => set('text', v)} />
         </div>
-        <Field label="برچسب تلفن" value={str(p, 'phoneLabel')} onChange={(v) => set('phoneLabel', v)} />
-        <Field label="لینک تلفن" value={str(p, 'phoneHref')} dir="ltr" onChange={(v) => set('phoneHref', v)} />
-        <Field label="برچسب تلگرام" value={str(p, 'telegramLabel')} onChange={(v) => set('telegramLabel', v)} />
+        <Field
+          label="برچسب تلفن"
+          value={str(p, 'phoneLabel')}
+          onChange={(v) => set('phoneLabel', v)}
+        />
+        <Field
+          label="لینک تلفن"
+          value={str(p, 'phoneHref')}
+          dir="ltr"
+          onChange={(v) => set('phoneHref', v)}
+        />
+        <Field
+          label="برچسب تلگرام"
+          value={str(p, 'telegramLabel')}
+          onChange={(v) => set('telegramLabel', v)}
+        />
         <Field
           label="لینک تلگرام"
           value={str(p, 'telegramHref')}
@@ -417,7 +429,11 @@ function BlockFields({
     return (
       <div className="grid gap-2 sm:grid-cols-2">
         <Field label="نام برند" value={str(p, 'brandName')} onChange={(v) => set('brandName', v)} />
-        <Field label="شعار زیر برند" value={str(p, 'brandTagline')} onChange={(v) => set('brandTagline', v)} />
+        <Field
+          label="شعار زیر برند"
+          value={str(p, 'brandTagline')}
+          onChange={(v) => set('brandTagline', v)}
+        />
         <div className="sm:col-span-2">
           <ImageUrlField
             label="لوگو"
@@ -426,19 +442,67 @@ function BlockFields({
             onChange={(v) => set('logoUrl', v)}
           />
         </div>
-        <Field label="متن دکمه ثبت‌نام" value={str(p, 'registerLabel')} onChange={(v) => set('registerLabel', v)} />
-        <Field label="لینک ثبت‌نام" value={str(p, 'registerHref')} dir="ltr" onChange={(v) => set('registerHref', v)} />
-        <Field label="لینک پنل" value={str(p, 'portalHref')} dir="ltr" onChange={(v) => set('portalHref', v)} />
+        <Field
+          label="متن دکمه ثبت‌نام"
+          value={str(p, 'registerLabel')}
+          onChange={(v) => set('registerLabel', v)}
+        />
+        <Field
+          label="لینک ثبت‌نام"
+          value={str(p, 'registerHref')}
+          dir="ltr"
+          onChange={(v) => set('registerHref', v)}
+        />
+        <Field
+          label="لینک پنل"
+          value={str(p, 'portalHref')}
+          dir="ltr"
+          onChange={(v) => set('portalHref', v)}
+        />
         <div className="sm:col-span-2">
-          <Field label="توضیح فوتر" multiline value={str(p, 'blurb')} onChange={(v) => set('blurb', v)} />
+          <Field
+            label="توضیح فوتر"
+            multiline
+            value={str(p, 'blurb')}
+            onChange={(v) => set('blurb', v)}
+          />
         </div>
-        <Field label="عنوان ستون لینک‌ها" value={str(p, 'footerQuickTitle')} onChange={(v) => set('footerQuickTitle', v)} />
-        <Field label="عنوان ستون حقوقی" value={str(p, 'footerLegalTitle')} onChange={(v) => set('footerLegalTitle', v)} />
-        <Field label="عنوان ستون تماس" value={str(p, 'footerContactTitle')} onChange={(v) => set('footerContactTitle', v)} />
-        <Field label="برچسب تلفن فوتر" value={str(p, 'phoneLabel')} onChange={(v) => set('phoneLabel', v)} />
-        <Field label="لینک تلفن" value={str(p, 'phoneHref')} dir="ltr" onChange={(v) => set('phoneHref', v)} />
-        <Field label="زیرعنوان تلفن (مدیر فروش)" value={str(p, 'ownerLabel')} onChange={(v) => set('ownerLabel', v)} />
-        <Field label="عنوان آدرس" value={str(p, 'addressTitle')} onChange={(v) => set('addressTitle', v)} />
+        <Field
+          label="عنوان ستون لینک‌ها"
+          value={str(p, 'footerQuickTitle')}
+          onChange={(v) => set('footerQuickTitle', v)}
+        />
+        <Field
+          label="عنوان ستون حقوقی"
+          value={str(p, 'footerLegalTitle')}
+          onChange={(v) => set('footerLegalTitle', v)}
+        />
+        <Field
+          label="عنوان ستون تماس"
+          value={str(p, 'footerContactTitle')}
+          onChange={(v) => set('footerContactTitle', v)}
+        />
+        <Field
+          label="برچسب تلفن فوتر"
+          value={str(p, 'phoneLabel')}
+          onChange={(v) => set('phoneLabel', v)}
+        />
+        <Field
+          label="لینک تلفن"
+          value={str(p, 'phoneHref')}
+          dir="ltr"
+          onChange={(v) => set('phoneHref', v)}
+        />
+        <Field
+          label="زیرعنوان تلفن (مدیر فروش)"
+          value={str(p, 'ownerLabel')}
+          onChange={(v) => set('ownerLabel', v)}
+        />
+        <Field
+          label="عنوان آدرس"
+          value={str(p, 'addressTitle')}
+          onChange={(v) => set('addressTitle', v)}
+        />
         <div className="sm:col-span-2">
           <Field
             label="خطوط آدرس (هر خط جدا)"
@@ -447,15 +511,53 @@ function BlockFields({
             onChange={(v) => set('addressLines', v.split('\n'))}
           />
         </div>
-        <Field label="لینک تلگرام" value={str(p, 'telegramHref')} dir="ltr" onChange={(v) => set('telegramHref', v)} />
-        <Field label="لینک اینستاگرام" value={str(p, 'instagramHref')} dir="ltr" onChange={(v) => set('instagramHref', v)} />
+        <Field
+          label="لینک تلگرام"
+          value={str(p, 'telegramHref')}
+          dir="ltr"
+          onChange={(v) => set('telegramHref', v)}
+        />
+        <Field
+          label="لینک اینستاگرام"
+          value={str(p, 'instagramHref')}
+          dir="ltr"
+          onChange={(v) => set('instagramHref', v)}
+        />
         <Field label="کپی‌رایت" value={str(p, 'copyright')} onChange={(v) => set('copyright', v)} />
-        <Field label="متن ساخته‌شده در…" value={str(p, 'madeInLabel')} onChange={(v) => set('madeInLabel', v)} />
-        <Field label="برچسب فروشگاه تکی" value={str(p, 'retailStoreLabel')} onChange={(v) => set('retailStoreLabel', v)} />
-        <Field label="لینک فروشگاه تکی" value={str(p, 'retailStoreHref')} dir="ltr" onChange={(v) => set('retailStoreHref', v)} />
-        <Field label="تلفن شناور" value={str(p, 'floatPhone')} dir="ltr" onChange={(v) => set('floatPhone', v)} />
-        <Field label="واتس‌اپ (با کد کشور)" value={str(p, 'floatWhatsapp')} dir="ltr" onChange={(v) => set('floatWhatsapp', v)} />
-        <Field label="یوزرنیم تلگرام شناور" value={str(p, 'floatTelegram')} dir="ltr" onChange={(v) => set('floatTelegram', v)} />
+        <Field
+          label="متن ساخته‌شده در…"
+          value={str(p, 'madeInLabel')}
+          onChange={(v) => set('madeInLabel', v)}
+        />
+        <Field
+          label="برچسب فروشگاه تکی"
+          value={str(p, 'retailStoreLabel')}
+          onChange={(v) => set('retailStoreLabel', v)}
+        />
+        <Field
+          label="لینک فروشگاه تکی"
+          value={str(p, 'retailStoreHref')}
+          dir="ltr"
+          onChange={(v) => set('retailStoreHref', v)}
+        />
+        <Field
+          label="تلفن شناور"
+          value={str(p, 'floatPhone')}
+          dir="ltr"
+          onChange={(v) => set('floatPhone', v)}
+        />
+        <Field
+          label="واتس‌اپ (با کد کشور)"
+          value={str(p, 'floatWhatsapp')}
+          dir="ltr"
+          onChange={(v) => set('floatWhatsapp', v)}
+        />
+        <Field
+          label="یوزرنیم تلگرام شناور"
+          value={str(p, 'floatTelegram')}
+          dir="ltr"
+          onChange={(v) => set('floatTelegram', v)}
+        />
         <div className="sm:col-span-2">
           <Field
             label="پیام پیش‌فرض واتس‌اپ"
@@ -468,7 +570,9 @@ function BlockFields({
   }
 
   if (block.type === 'gallery') {
-    const items = Array.isArray(p.items) ? (p.items as Array<{ imageUrl?: string; body?: string }>) : [];
+    const items = Array.isArray(p.items)
+      ? (p.items as Array<{ imageUrl?: string; body?: string }>)
+      : [];
     return (
       <ItemListEditor
         items={items}
@@ -491,7 +595,9 @@ function BlockFields({
   }
 
   if (block.type === 'faq') {
-    const items = Array.isArray(p.items) ? (p.items as Array<{ question?: string; answer?: string }>) : [];
+    const items = Array.isArray(p.items)
+      ? (p.items as Array<{ question?: string; answer?: string }>)
+      : [];
     return (
       <div className="space-y-3">
         <Field label="عنوان بخش" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
@@ -503,8 +609,17 @@ function BlockFields({
           addLabel="افزودن سوال"
           renderItem={(item, _i, update) => (
             <div className="space-y-2 pr-6">
-              <Field label="سوال" value={item.question ?? ''} onChange={(v) => update({ question: v })} />
-              <Field label="پاسخ" multiline value={item.answer ?? ''} onChange={(v) => update({ answer: v })} />
+              <Field
+                label="سوال"
+                value={item.question ?? ''}
+                onChange={(v) => update({ question: v })}
+              />
+              <Field
+                label="پاسخ"
+                multiline
+                value={item.answer ?? ''}
+                onChange={(v) => update({ answer: v })}
+              />
             </div>
           )}
         />
@@ -526,7 +641,11 @@ function BlockFields({
           <div className="grid gap-2 pr-6 sm:grid-cols-3">
             <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
             <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
-            <Field label="زیربرچسب" value={item.sublabel ?? ''} onChange={(v) => update({ sublabel: v })} />
+            <Field
+              label="زیربرچسب"
+              value={item.sublabel ?? ''}
+              onChange={(v) => update({ sublabel: v })}
+            />
           </div>
         )}
       />
@@ -558,7 +677,11 @@ function BlockFields({
                   dir="ltr"
                   onChange={(v) => update({ icon: v })}
                 />
-                <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
+                <Field
+                  label="عنوان"
+                  value={item.title ?? ''}
+                  onChange={(v) => update({ title: v })}
+                />
               </div>
               <Field
                 label="توضیح"
@@ -592,8 +715,16 @@ function BlockFields({
           renderItem={(item, _i, update) => (
             <div className="space-y-2 pr-6">
               <div className="grid gap-2 sm:grid-cols-2">
-                <Field label="شماره مرحله" value={item.step ?? ''} onChange={(v) => update({ step: v })} />
-                <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
+                <Field
+                  label="شماره مرحله"
+                  value={item.step ?? ''}
+                  onChange={(v) => update({ step: v })}
+                />
+                <Field
+                  label="عنوان"
+                  value={item.title ?? ''}
+                  onChange={(v) => update({ title: v })}
+                />
               </div>
               <Field
                 label="توضیح"
@@ -639,8 +770,16 @@ function BlockFields({
             <div className="space-y-2 pr-6">
               <div className="grid gap-2 sm:grid-cols-2">
                 <Field label="نام" value={item.name ?? ''} onChange={(v) => update({ name: v })} />
-                <Field label="حرف آواتار" value={item.avatar ?? ''} onChange={(v) => update({ avatar: v })} />
-                <Field label="بوتیک / کسب‌وکار" value={item.business ?? ''} onChange={(v) => update({ business: v })} />
+                <Field
+                  label="حرف آواتار"
+                  value={item.avatar ?? ''}
+                  onChange={(v) => update({ avatar: v })}
+                />
+                <Field
+                  label="بوتیک / کسب‌وکار"
+                  value={item.business ?? ''}
+                  onChange={(v) => update({ business: v })}
+                />
                 <Field label="شهر" value={item.city ?? ''} onChange={(v) => update({ city: v })} />
                 <Field
                   label="امتیاز (۱–۵)"
@@ -649,7 +788,12 @@ function BlockFields({
                   onChange={(v) => update({ rating: Math.min(5, Math.max(1, Number(v) || 5)) })}
                 />
               </div>
-              <Field label="متن نظر" multiline value={item.text ?? ''} onChange={(v) => update({ text: v })} />
+              <Field
+                label="متن نظر"
+                multiline
+                value={item.text ?? ''}
+                onChange={(v) => update({ text: v })}
+              />
             </div>
           )}
         />
@@ -662,7 +806,11 @@ function BlockFields({
           renderItem={(item, _i, update) => (
             <div className="grid gap-2 pr-6 sm:grid-cols-2">
               <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
-              <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
+              <Field
+                label="برچسب"
+                value={item.label ?? ''}
+                onChange={(v) => update({ label: v })}
+              />
             </div>
           )}
         />
@@ -689,10 +837,28 @@ function BlockFields({
           addLabel="افزودن کانال"
           renderItem={(item, _i, update) => (
             <div className="grid gap-2 pr-6 sm:grid-cols-2">
-              <Field label="آیکون" value={item.icon ?? ''} dir="ltr" onChange={(v) => update({ icon: v })} />
-              <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
-              <Field label="مقدار" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
-              <Field label="لینک" value={item.href ?? ''} dir="ltr" onChange={(v) => update({ href: v })} />
+              <Field
+                label="آیکون"
+                value={item.icon ?? ''}
+                dir="ltr"
+                onChange={(v) => update({ icon: v })}
+              />
+              <Field
+                label="عنوان"
+                value={item.title ?? ''}
+                onChange={(v) => update({ title: v })}
+              />
+              <Field
+                label="مقدار"
+                value={item.value ?? ''}
+                onChange={(v) => update({ value: v })}
+              />
+              <Field
+                label="لینک"
+                value={item.href ?? ''}
+                dir="ltr"
+                onChange={(v) => update({ href: v })}
+              />
             </div>
           )}
         />
@@ -717,9 +883,22 @@ function BlockFields({
           addLabel="افزودن آدرس"
           renderItem={(item, _i, update) => (
             <div className="space-y-2 pr-6">
-              <Field label="عنوان" value={item.title ?? ''} onChange={(v) => update({ title: v })} />
-              <Field label="آدرس" multiline value={item.address ?? ''} onChange={(v) => update({ address: v })} />
-              <Field label="یادداشت" value={item.note ?? ''} onChange={(v) => update({ note: v })} />
+              <Field
+                label="عنوان"
+                value={item.title ?? ''}
+                onChange={(v) => update({ title: v })}
+              />
+              <Field
+                label="آدرس"
+                multiline
+                value={item.address ?? ''}
+                onChange={(v) => update({ address: v })}
+              />
+              <Field
+                label="یادداشت"
+                value={item.note ?? ''}
+                onChange={(v) => update({ note: v })}
+              />
             </div>
           )}
         />
@@ -728,7 +907,9 @@ function BlockFields({
   }
 
   if (block.type === 'links') {
-    const items = Array.isArray(p.items) ? (p.items as Array<{ label?: string; href?: string }>) : [];
+    const items = Array.isArray(p.items)
+      ? (p.items as Array<{ label?: string; href?: string }>)
+      : [];
     return (
       <div className="space-y-3">
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
@@ -739,8 +920,17 @@ function BlockFields({
           addLabel="افزودن لینک"
           renderItem={(item, _i, update) => (
             <div className="grid gap-2 pr-6 sm:grid-cols-2">
-              <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
-              <Field label="لینک" value={item.href ?? ''} dir="ltr" onChange={(v) => update({ href: v })} />
+              <Field
+                label="برچسب"
+                value={item.label ?? ''}
+                onChange={(v) => update({ label: v })}
+              />
+              <Field
+                label="لینک"
+                value={item.href ?? ''}
+                dir="ltr"
+                onChange={(v) => update({ href: v })}
+              />
             </div>
           )}
         />
@@ -830,7 +1020,9 @@ function BlockFields({
           addLabel="افزودن اسلاید"
           renderItem={(item, i, update) => (
             <div className="grid gap-2 pr-6 sm:grid-cols-2">
-              <div className="sm:col-span-2 text-[11px] font-semibold text-gray-500">اسلاید {i + 1}</div>
+              <div className="text-[11px] font-semibold text-gray-500 sm:col-span-2">
+                اسلاید {i + 1}
+              </div>
               <Field
                 label="ابرو / برچسب بالا"
                 value={item.brandEyebrow ?? ''}
@@ -882,8 +1074,10 @@ function BlockFields({
                 <span>نوع نمایش اسلاید</span>
                 <select
                   value={item.presentation ?? 'overlay'}
-                  onChange={(e) => update({ presentation: e.target.value as 'overlay' | 'artwork' })}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary"
+                  onChange={(e) =>
+                    update({ presentation: e.target.value as 'overlay' | 'artwork' })
+                  }
+                  className="focus:border-primary w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none"
                 >
                   <option value="overlay">متن HTML روی تصویر</option>
                   <option value="artwork">بنر کامل دارای متن داخلی</option>
@@ -921,10 +1115,14 @@ function BlockFields({
   // text, image, cta, products, comingSoon, html
   return (
     <div className="grid gap-2 sm:grid-cols-2">
-      {(['cta', 'products', 'comingSoon'].includes(block.type)) && (
-        <Field label="ابرو / برچسب بالا" value={str(p, 'eyebrow')} onChange={(v) => set('eyebrow', v)} />
+      {['cta', 'products', 'comingSoon'].includes(block.type) && (
+        <Field
+          label="ابرو / برچسب بالا"
+          value={str(p, 'eyebrow')}
+          onChange={(v) => set('eyebrow', v)}
+        />
       )}
-      {(['text', 'cta', 'products', 'categoryBanners', 'comingSoon'].includes(block.type)) && (
+      {['text', 'cta', 'products', 'categoryBanners', 'comingSoon'].includes(block.type) && (
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
       )}
       {block.type === 'image' && (
@@ -937,10 +1135,19 @@ function BlockFields({
           />
         </div>
       )}
-      {(['cta', 'products', 'comingSoon'].includes(block.type)) && (
+      {['cta', 'products', 'comingSoon'].includes(block.type) && (
         <>
-          <Field label="متن دکمه اصلی" value={str(p, 'ctaLabel')} onChange={(v) => set('ctaLabel', v)} />
-          <Field label="لینک دکمه اصلی" value={str(p, 'ctaHref')} dir="ltr" onChange={(v) => set('ctaHref', v)} />
+          <Field
+            label="متن دکمه اصلی"
+            value={str(p, 'ctaLabel')}
+            onChange={(v) => set('ctaLabel', v)}
+          />
+          <Field
+            label="لینک دکمه اصلی"
+            value={str(p, 'ctaHref')}
+            dir="ltr"
+            onChange={(v) => set('ctaHref', v)}
+          />
         </>
       )}
       {block.type === 'cta' && (
@@ -993,7 +1200,7 @@ function BlockFields({
             <select
               value={str(p, 'sort') || 'views'}
               onChange={(e) => set('sort', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
             >
               <option value="views">پربازدیدترین</option>
               <option value="newest">جدیدترین</option>
@@ -1029,23 +1236,17 @@ function BlockFields({
           <Field label="کال‌اوت" value={str(p, 'callout')} onChange={(v) => set('callout', v)} />
         </div>
       )}
-      {(
-        block.type === 'html' ||
+      {(block.type === 'html' ||
         block.type === 'text' ||
         block.type === 'cta' ||
         block.type === 'products' ||
         block.type === 'categoryBanners' ||
         block.type === 'comingSoon' ||
-        block.type === 'image'
-      ) && (
+        block.type === 'image') && (
         <div className="sm:col-span-2">
           <Field
             label={
-              block.type === 'html'
-                ? 'کد HTML'
-                : block.type === 'image'
-                  ? 'توضیح تصویر'
-                  : 'متن'
+              block.type === 'html' ? 'کد HTML' : block.type === 'image' ? 'توضیح تصویر' : 'متن'
             }
             multiline
             value={str(p, 'body')}
@@ -1093,7 +1294,7 @@ export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEdit
               key={type}
               type="button"
               onClick={() => onChange([...blocks, createEmptyBlock(type)])}
-              className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:border-primary hover:text-primary"
+              className="hover:border-primary hover:text-primary cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600"
             >
               <Plus className="mr-0.5 inline h-3 w-3" />
               {BLOCK_TYPE_LABELS[type]}
@@ -1111,7 +1312,7 @@ export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEdit
       {blocks.map((block, index) => (
         <div key={block.id} className="rounded-xl border border-gray-100 bg-white p-3">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
+            <span className="bg-primary/10 text-primary rounded-lg px-2.5 py-1 text-xs font-bold">
               {BLOCK_TYPE_LABELS[block.type] ?? block.type}
             </span>
             <div className="flex gap-1">
@@ -1131,7 +1332,7 @@ export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEdit
               </button>
               <button
                 type="button"
-                className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-error"
+                className="hover:text-error cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-red-50"
                 onClick={() => removeAt(index)}
               >
                 <Trash2 className="h-4 w-4" />
