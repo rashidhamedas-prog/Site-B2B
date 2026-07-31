@@ -911,3 +911,4 @@
 - commit `ed612da` به `origin/master` push و با سرویس استاندارد `taranom-autodeploy` روی production منتشر شد.
 - migrationهای Hero در جدول `migrations` ثبت شدند؛ API health موفق بود.
 - دامنه‌های `poshaktaranom.com` و `www.poshaktaranom.ir` در دسکتاپ و موبایل بررسی شدند: تصاویر جدید بارگذاری شدند، H1 واحد و بدون overflow افقی.
+- hotfix نمایشگرهای عریض/high-DPR: درخواست Next Image با `w=3840` روی production پاسخ 400 می‌داد؛ فقط WebPهای ازپیش‌بهینه‌شده `hero-human-2026` مستقیم سرو می‌شوند تا تصویر در هیچ DPR حذف نشود.
