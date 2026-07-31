@@ -162,6 +162,8 @@ export class ProductService {
       garmentSize?: string;
       channel?: string;
       sort?: string;
+      /** When false (default for storefront), skip loading variants to cut payload/TTFB */
+      includeVariants?: boolean;
     },
   ) {
     const statusFilter = status ?? 'ACTIVE';
@@ -177,10 +179,15 @@ export class ProductService {
         (await this.productRepo.findOne({ where: { slug: opts.relatedTo } }));
     }
 
+    // Admin list (status=ALL) needs variants for stock/color counts; storefront cards do not.
+    const wantVariants = opts?.includeVariants === true || status === 'ALL';
+
     const qb = this.productRepo
       .createQueryBuilder('p')
-      .leftJoinAndSelect('p.variants', 'v')
       .where('p.deletedAt IS NULL');
+    if (wantVariants) {
+      qb.leftJoinAndSelect('p.variants', 'v');
+    }
 
     if (status !== 'ALL') qb.andWhere('p.status = :status', { status: statusFilter });
     const channel = String(opts?.channel || '').toUpperCase();

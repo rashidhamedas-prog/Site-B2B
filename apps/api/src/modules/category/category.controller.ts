@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -12,7 +13,11 @@ export class CategoryController {
 
   @Get()
   @ApiOperation({ summary: 'لیست دسته‌بندی‌ها' })
-  findAll() {
+  findAll(@Res({ passthrough: true }) res?: Response) {
+    res?.setHeader(
+      'Cache-Control',
+      'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+    );
     return this.svc.findAll();
   }
 

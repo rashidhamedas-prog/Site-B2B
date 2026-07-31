@@ -2,6 +2,16 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-31 — فاز ۲ سرعت: SSR تکی + list بدون variants + chunk کانال
+
+### خلاصه
+- `RetailProductGrid` و `RetailCategoryBannerGrid` از client waterfall به SSR (`revalidate: 300`) تبدیل شدند
+- `GET /products` عمومی: بدون join variants (ادمین با `status=ALL` همچنان variants دارد) + Cache-Control
+- `SiteBlocksRenderer` با dynamic import جداگانهٔ `RetailBlocksRenderer` / `WholesaleBlocksRenderer`
+- فاز ۱ روی VPS تأیید/rebuild شد (`a1e3351`)
+
+---
+
 ## 2026-07-30 — متن پیامک قابل‌ویرایش + بهینه‌سازی سرعت (فاز ۱)
 
 ### SMS
