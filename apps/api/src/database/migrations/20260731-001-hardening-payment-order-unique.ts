@@ -4,8 +4,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Hardening: unique payment authority/refId + order idempotencyKey.
  * Partial unique indexes allow multiple NULLs.
  */
-export class HardeningPaymentOrderUnique20260731 implements MigrationInterface {
-  name = 'HardeningPaymentOrderUnique20260731';
+export class HardeningPaymentOrderUnique1753987200001 implements MigrationInterface {
+  name = 'HardeningPaymentOrderUnique1753987200001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
