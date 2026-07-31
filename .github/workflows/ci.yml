@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [master, main, develop]
   pull_request:
@@ -46,7 +47,8 @@ jobs:
   deploy:
     needs: lint-and-build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
+    environment: production
     steps:
       - uses: actions/checkout@v4
 

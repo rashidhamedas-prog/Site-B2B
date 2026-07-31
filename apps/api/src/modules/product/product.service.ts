@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, In } from 'typeorm';
+import { EntityManager, Repository, ILike, In } from 'typeorm';
 import { ProductEntity } from './entities/product.entity';
 import { ProductVariantEntity } from './entities/product-variant.entity';
 import { CategoryEntity } from '../category/entities/category.entity';
@@ -546,18 +546,20 @@ export class ProductService {
     variantId: string,
     delta: number,
     channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+    manager?: EntityManager,
   ) {
+    const variantRepo = manager?.getRepository(ProductVariantEntity) ?? this.variantRepo;
     const field = this.stockField(channel);
     const qty = Number(delta) || 0;
     if (qty === 0) {
-      const variant = await this.variantRepo.findOne({ where: { id: variantId } });
+      const variant = await variantRepo.findOne({ where: { id: variantId } });
       if (!variant) throw new NotFoundException('واریانت یافت نشد');
       return variant;
     }
 
     if (qty < 0) {
       // Atomic deduct: refuse if insufficient stock (no Math.max clamp).
-      const result = await this.variantRepo
+      const result = await variantRepo
         .createQueryBuilder()
         .update()
         .set({
@@ -570,14 +572,14 @@ export class ProductService {
         .andWhere(`"${field}" >= :need`, { need: Math.abs(qty) })
         .execute();
       if (!result.affected) {
-        const variant = await this.variantRepo.findOne({ where: { id: variantId } });
+        const variant = await variantRepo.findOne({ where: { id: variantId } });
         if (!variant) throw new NotFoundException('واریانت یافت نشد');
         throw new BadRequestException(
           `موجودی کافی نیست (واریانت ${variant.color}/${variant.size})`,
         );
       }
     } else {
-      await this.variantRepo
+      await variantRepo
         .createQueryBuilder()
         .update()
         .set({
