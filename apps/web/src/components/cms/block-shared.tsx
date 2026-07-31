@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { MapPin, Phone, Send, Instagram, type LucideIcon } from 'lucide-react';
 import type { ContentBlock } from '@/lib/cms/types';
+import type { HeroFlatProps } from '@/lib/cms/hero-slides';
 import { arr, str } from '@/lib/cms/fetch';
 
 const CONTACT_ICONS: Record<string, LucideIcon> = {
@@ -145,7 +146,7 @@ export function filterChromeBlocks(blocks: ContentBlock[], skipChrome: boolean) 
     : blocks;
 }
 
-export function heroPropsFromBlock(p: Record<string, unknown>) {
+export function heroPropsFromBlock(p: Record<string, unknown>): HeroFlatProps {
   const autoplayRaw = p.autoplayMs;
   const autoplayMs =
     typeof autoplayRaw === 'number'
@@ -154,6 +155,8 @@ export function heroPropsFromBlock(p: Record<string, unknown>) {
         ? Number(autoplayRaw)
         : undefined;
   const slides = Array.isArray(p.slides) ? (p.slides as unknown[]) : undefined;
+  const presentation: 'overlay' | 'artwork' =
+    str(p, 'presentation') === 'artwork' ? 'artwork' : 'overlay';
   return {
     brandEyebrow: str(p, 'brandEyebrow') || undefined,
     headline: str(p, 'headline') || undefined,
@@ -162,7 +165,7 @@ export function heroPropsFromBlock(p: Record<string, unknown>) {
     imageUrl: str(p, 'imageUrl') || undefined,
     mobileImageUrl: str(p, 'mobileImageUrl') || undefined,
     imageAlt: str(p, 'imageAlt') || undefined,
-    presentation: str(p, 'presentation') === 'artwork' ? 'artwork' : 'overlay',
+    presentation,
     ctaLabel: str(p, 'ctaLabel') || undefined,
     ctaHref: str(p, 'ctaHref') || undefined,
     ctaSecondaryLabel: str(p, 'ctaSecondaryLabel') || undefined,
