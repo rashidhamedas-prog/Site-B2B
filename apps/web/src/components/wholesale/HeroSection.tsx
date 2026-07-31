@@ -130,7 +130,10 @@ export function HeroSection(props: HeroSectionProps) {
                 fill
                 priority={i === 0}
                 fetchPriority={i === 0 ? 'high' : 'auto'}
-                unoptimized={s.imageUrl.startsWith('/banners/hero-human-2026/')}
+                unoptimized={
+                  s.imageUrl.startsWith('/banners/hero-human-2026/') ||
+                  s.imageUrl.startsWith('/banners/hero-product-2026-v2/')
+                }
                 quality={88}
                 sizes="100vw"
                 className={

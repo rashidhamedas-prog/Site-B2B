@@ -912,3 +912,14 @@
 - migrationهای Hero در جدول `migrations` ثبت شدند؛ API health موفق بود.
 - دامنه‌های `poshaktaranom.com` و `www.poshaktaranom.ir` در دسکتاپ و موبایل بررسی شدند: تصاویر جدید بارگذاری شدند، H1 واحد و بدون overflow افقی.
 - hotfix نمایشگرهای عریض/high-DPR: درخواست Next Image با `w=3840` روی production پاسخ 400 می‌داد؛ فقط WebPهای ازپیش‌بهینه‌شده `hero-human-2026` مستقیم سرو می‌شوند تا تصویر در هیچ DPR حذف نشود.
+
+---
+
+## 2026-07-31 — کمپین Hero محصول‌محور V2
+
+**گزارش:** [reports/2026-07-31-product-campaign-hero-v2.md](./reports/2026-07-31-product-campaign-hero-v2.md)
+
+- شش بنر اختصاصی با Image Generation و مرجع لباس‌های واقعی کاتالوگ ترنم ساخته شدند.
+- پنج بنر بدون انسان/مانکن و بنر آخر تکی با یک مدل انسانی و کت آلیس طراحی شد.
+- خروجی WebP مستقل دسکتاپ و موبایل، defaults جدید و migration برگشت‌پذیر CMS اضافه شدند.
+- مسیر جدید `hero-product-2026-v2` نیز مستقیم سرو می‌شود تا خطای optimizer در high-DPR تکرار نشود.
