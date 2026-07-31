@@ -18,10 +18,19 @@ import { OrderEntity } from '../order/entities/order.entity';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET', 'taranom-secret-change-in-prod'),
-        signOptions: { expiresIn: config.get('JWT_EXPIRES', '7d') },
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>('JWT_SECRET');
+        const isProd = config.get<string>('NODE_ENV') === 'production';
+        if (!secret || (isProd && secret.length < 32)) {
+          throw new Error(
+            'JWT_SECRET is required (min 32 chars in production). Refusing to start.',
+          );
+        }
+        return {
+          secret: secret || 'dev-only-insecure-jwt-secret-change-me',
+          signOptions: { expiresIn: config.get('JWT_EXPIRES', '7d') },
+        };
+      },
     }),
     // Do NOT import NotificationModule here — it already imports AuthModule (circular).
     // NotificationModule is @Global in AppModule, so NotificationService injects fine.

@@ -547,18 +547,50 @@ export class ProductService {
     delta: number,
     channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
   ) {
-    const variant = await this.variantRepo.findOne({ where: { id: variantId } });
-    if (!variant) throw new NotFoundException('واریانت یافت نشد');
     const field = this.stockField(channel);
-    const next = Math.max(0, (Number(variant[field]) || 0) + delta);
-    variant[field] = next;
-    // Legacy `stock` always mirrors wholesaleStock
-    if (field === 'wholesaleStock') {
-      variant.stock = next;
-    } else {
-      variant.stock = Number(variant.wholesaleStock) || 0;
+    const qty = Number(delta) || 0;
+    if (qty === 0) {
+      const variant = await this.variantRepo.findOne({ where: { id: variantId } });
+      if (!variant) throw new NotFoundException('واریانت یافت نشد');
+      return variant;
     }
-    await this.variantRepo.save(variant);
+
+    if (qty < 0) {
+      // Atomic deduct: refuse if insufficient stock (no Math.max clamp).
+      const result = await this.variantRepo
+        .createQueryBuilder()
+        .update()
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock'
+            ? { stock: () => `"wholesaleStock" + (${qty})` }
+            : {}),
+        } as any)
+        .where('id = :id', { id: variantId })
+        .andWhere(`"${field}" >= :need`, { need: Math.abs(qty) })
+        .execute();
+      if (!result.affected) {
+        const variant = await this.variantRepo.findOne({ where: { id: variantId } });
+        if (!variant) throw new NotFoundException('واریانت یافت نشد');
+        throw new BadRequestException(
+          `موجودی کافی نیست (واریانت ${variant.color}/${variant.size})`,
+        );
+      }
+    } else {
+      await this.variantRepo
+        .createQueryBuilder()
+        .update()
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock'
+            ? { stock: () => `"wholesaleStock" + (${qty})` }
+            : {}),
+        } as any)
+        .where('id = :id', { id: variantId })
+        .execute();
+    }
+
+    const variant = await this.variantRepo.findOneOrFail({ where: { id: variantId } });
     await this.syncProductStockFromVariants(variant.productId);
     return variant;
   }
@@ -582,15 +614,39 @@ export class ProductService {
     delta: number,
     channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
   ) {
-    const product = await this.productRepo.findOne({ where: { id: productId } });
-    if (!product) throw new NotFoundException('محصول یافت نشد');
     const field = this.stockField(channel);
-    const next = Math.max(0, (Number(product[field]) || 0) + delta);
-    product[field] = next;
-    if (field === 'wholesaleStock') {
-      product.stock = next;
+    const qty = Number(delta) || 0;
+    if (qty === 0) {
+      const product = await this.productRepo.findOne({ where: { id: productId } });
+      if (!product) throw new NotFoundException('محصول یافت نشد');
+      return product;
     }
-    return this.productRepo.save(product);
+    if (qty < 0) {
+      const result = await this.productRepo
+        .createQueryBuilder()
+        .update()
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
+        } as any)
+        .where('id = :id', { id: productId })
+        .andWhere(`"${field}" >= :need`, { need: Math.abs(qty) })
+        .execute();
+      if (!result.affected) {
+        throw new BadRequestException('موجودی کافی نیست');
+      }
+    } else {
+      await this.productRepo
+        .createQueryBuilder()
+        .update()
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
+        } as any)
+        .where('id = :id', { id: productId })
+        .execute();
+    }
+    return this.productRepo.findOneOrFail({ where: { id: productId } });
   }
 
   /**

@@ -26,7 +26,7 @@ const WHOLESALE_FALLBACK: HeroSlide = {
 
 export type HeroSectionProps = HeroFlatProps;
 
-function WholesaleSlideCopy({ slide }: { slide: HeroSlide }) {
+function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork?: boolean }) {
   const lines = slide.headline.split('\n').filter(Boolean);
 
   return (
@@ -51,7 +51,7 @@ function WholesaleSlideCopy({ slide }: { slide: HeroSlide }) {
         <p className="mb-10 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">{slide.body}</p>
       ) : null}
 
-      <div className="flex flex-wrap gap-3 sm:gap-4">
+      <div className={`flex flex-wrap gap-3 sm:gap-4 ${artwork ? 'md:hidden' : ''}`}>
         {slide.ctaLabel && slide.ctaHref ? (
           <Link href={slide.ctaHref} className="cursor-pointer">
             <Button size="lg" variant="secondary" leftIcon={<ArrowLeft className="h-5 w-5 rtl-flip" />}>
@@ -80,16 +80,18 @@ export function HeroSection(props: HeroSectionProps) {
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
   const carousel = useHeroCarousel(slides, autoplayMs);
   const slide = carousel.slide ?? WHOLESALE_FALLBACK;
+  const isArtwork = slide.presentation === 'artwork';
 
   return (
     <section
-      className="relative flex min-h-[88vh] items-end overflow-hidden bg-primary-dark text-white lg:min-h-[92vh]"
+      className={`relative flex min-h-[82vh] items-end overflow-hidden bg-primary-dark text-white ${
+        isArtwork ? 'md:aspect-[192/85] md:min-h-0 md:items-stretch' : 'lg:min-h-[92vh]'
+      }`}
       onMouseEnter={carousel.pause}
       onMouseLeave={carousel.resume}
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
-      <div className="absolute inset-0 bg-gradient-hero-soft" />
       {slides.map((s, i) => {
         if (!s.imageUrl) return null;
         const near =
@@ -101,37 +103,57 @@ export function HeroSection(props: HeroSectionProps) {
           <div
             key={`${s.imageUrl}-${i}`}
             className={`absolute inset-0 transition-opacity duration-700 ${
-              i === carousel.index ? 'opacity-40' : 'opacity-0'
+              i === carousel.index
+                ? s.presentation === 'artwork'
+                  ? 'opacity-100'
+                  : 'opacity-40'
+                : 'pointer-events-none opacity-0'
             }`}
             aria-hidden={i !== carousel.index}
           >
-            <Image
-              src={s.imageUrl}
-              alt=""
-              fill
-              priority={i === 0}
-              sizes="100vw"
-              className="object-cover"
-            />
+            <picture>
+              {s.mobileImageUrl ? (
+                <source media="(max-width: 767px)" srcSet={s.mobileImageUrl} />
+              ) : null}
+              <Image
+                src={s.imageUrl}
+                alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
+                fill
+                priority={i === 0}
+                fetchPriority={i === 0 ? 'high' : 'auto'}
+                quality={88}
+                sizes="100vw"
+                className={s.presentation === 'artwork' ? 'object-cover md:object-fill' : 'object-cover'}
+              />
+            </picture>
           </div>
         );
       })}
+      <div className={`absolute inset-0 bg-gradient-hero-soft ${isArtwork ? 'md:hidden' : ''}`} />
       <div
-        className="absolute inset-0 opacity-[0.07]"
+        className={`absolute inset-0 opacity-[0.07] ${isArtwork ? 'md:hidden' : ''}`}
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M0 40h80M40 0v80'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: '80px 80px',
         }}
       />
-      <div className="bg-grain absolute inset-0" />
-      <div className="pointer-events-none absolute -left-24 top-1/4 h-[28rem] w-[28rem] rounded-full bg-secondary/15 blur-3xl" />
-      <div className="pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-white/5 blur-3xl" />
+      <div className={`bg-grain absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`} />
+      <div className={`pointer-events-none absolute -left-24 top-1/4 h-[28rem] w-[28rem] rounded-full bg-secondary/15 blur-3xl ${isArtwork ? 'md:hidden' : ''}`} />
+      <div className={`pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-white/5 blur-3xl ${isArtwork ? 'md:hidden' : ''}`} />
 
-      <div className="container-site relative z-10 pb-20 pt-28 sm:pb-24 lg:pb-28 lg:pt-32">
+      <div className={`container-site relative z-10 pb-20 pt-28 sm:pb-24 lg:pb-28 lg:pt-32 ${isArtwork ? 'md:pointer-events-none md:sr-only' : ''}`}>
         <div key={`ws-copy-${carousel.index}`} className="animate-fade-in">
-          <WholesaleSlideCopy slide={slide} />
+          <WholesaleSlideCopy slide={slide} artwork={isArtwork} />
         </div>
       </div>
+
+      {isArtwork && slide.ctaHref ? (
+        <Link
+          href={slide.ctaHref}
+          aria-label={`${slide.ctaLabel || 'مشاهده'} — ${slide.headline}`}
+          className="absolute inset-0 z-10 hidden cursor-pointer focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-secondary md:block"
+        />
+      ) : null}
 
       {carousel.showControls ? (
         <HeroCarouselControls
@@ -140,6 +162,8 @@ export function HeroSection(props: HeroSectionProps) {
           onGoTo={carousel.goTo}
           onPrev={carousel.goPrev}
           onNext={carousel.goNext}
+          paused={carousel.isPaused}
+          onTogglePaused={carousel.togglePaused}
           tone="secondary"
         />
       ) : null}

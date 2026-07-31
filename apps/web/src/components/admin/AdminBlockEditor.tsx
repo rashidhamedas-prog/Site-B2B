@@ -75,6 +75,9 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
             headlineAccent: '',
             body: '',
             imageUrl: '',
+            mobileImageUrl: '',
+            imageAlt: '',
+            presentation: 'overlay',
             ctaLabel: '',
             ctaHref: '',
             ctaSecondaryLabel: '',
@@ -752,6 +755,9 @@ function BlockFields({
       headlineAccent?: string;
       body?: string;
       imageUrl?: string;
+      mobileImageUrl?: string;
+      imageAlt?: string;
+      presentation?: 'overlay' | 'artwork';
       ctaLabel?: string;
       ctaHref?: string;
       ctaSecondaryLabel?: string;
@@ -764,6 +770,9 @@ function BlockFields({
       headlineAccent: '',
       body: '',
       imageUrl: '',
+      mobileImageUrl: '',
+      imageAlt: '',
+      presentation: 'overlay',
       ctaLabel: '',
       ctaHref: '',
       ctaSecondaryLabel: '',
@@ -782,6 +791,9 @@ function BlockFields({
             headlineAccent: str(p, 'headlineAccent'),
             body: str(p, 'body'),
             imageUrl: str(p, 'imageUrl'),
+            mobileImageUrl: str(p, 'mobileImageUrl'),
+            imageAlt: str(p, 'imageAlt'),
+            presentation: str(p, 'presentation') === 'artwork' ? 'artwork' : 'overlay',
             ctaLabel: str(p, 'ctaLabel'),
             ctaHref: str(p, 'ctaHref'),
             ctaSecondaryLabel: str(p, 'ctaSecondaryLabel'),
@@ -801,7 +813,7 @@ function BlockFields({
           onChange={(v) => set('autoplayMs', Math.max(0, Number(v) || 0))}
         />
         <p className="text-[11px] text-gray-400">
-          اسلایدهای هیرو — هر اسلاید تصویر محصول + متن و دکمه جدا دارد
+          حالت «متن روی تصویر» برای تصاویر خام؛ حالت «بنر کامل» برای artwork دارای متن داخلی است.
         </p>
         <ItemListEditor
           items={slides}
@@ -853,6 +865,30 @@ function BlockFields({
                   onChange={(v) => update({ imageUrl: v })}
                 />
               </div>
+              <div className="sm:col-span-2">
+                <ImageUrlField
+                  label="تصویر موبایل اسلاید (اختیاری)"
+                  value={item.mobileImageUrl ?? ''}
+                  hint="نسخه عمودی پیشنهادی: ۱۰۸۰×۱۳۵۰ پیکسل"
+                  onChange={(v) => update({ mobileImageUrl: v })}
+                />
+              </div>
+              <Field
+                label="متن جایگزین تصویر"
+                value={item.imageAlt ?? ''}
+                onChange={(v) => update({ imageAlt: v })}
+              />
+              <label className="space-y-1 text-xs font-medium text-gray-600">
+                <span>نوع نمایش اسلاید</span>
+                <select
+                  value={item.presentation ?? 'overlay'}
+                  onChange={(e) => update({ presentation: e.target.value as 'overlay' | 'artwork' })}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary"
+                >
+                  <option value="overlay">متن HTML روی تصویر</option>
+                  <option value="artwork">بنر کامل دارای متن داخلی</option>
+                </select>
+              </label>
               <Field
                 label="متن دکمه اصلی"
                 value={item.ctaLabel ?? ''}

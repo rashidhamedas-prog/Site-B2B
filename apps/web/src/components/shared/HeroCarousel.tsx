@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { DEFAULT_AUTOPLAY_MS, type HeroSlide } from '@/lib/cms/hero-slides';
 
 export function useHeroCarousel(slides: HeroSlide[], autoplayMs = DEFAULT_AUTOPLAY_MS) {
   const count = slides.length;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -34,12 +35,12 @@ export function useHeroCarousel(slides: HeroSlide[], autoplayMs = DEFAULT_AUTOPL
   const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
 
   useEffect(() => {
-    if (count < 2 || paused || reducedMotion || autoplayMs <= 0) return;
+    if (count < 2 || paused || manualPaused || reducedMotion || autoplayMs <= 0) return;
     const id = window.setInterval(() => {
       setIndex((i) => (i + 1) % count);
     }, autoplayMs);
     return () => window.clearInterval(id);
-  }, [autoplayMs, count, paused, reducedMotion]);
+  }, [autoplayMs, count, manualPaused, paused, reducedMotion]);
 
   return {
     index,
@@ -50,6 +51,8 @@ export function useHeroCarousel(slides: HeroSlide[], autoplayMs = DEFAULT_AUTOPL
     goPrev,
     pause: () => setPaused(true),
     resume: () => setPaused(false),
+    isPaused: paused || manualPaused || reducedMotion,
+    togglePaused: () => setManualPaused((value) => !value),
     showControls: count > 1,
   };
 }
@@ -60,6 +63,8 @@ export function HeroCarouselControls({
   onGoTo,
   onPrev,
   onNext,
+  paused = false,
+  onTogglePaused,
   tone = 'gold',
 }: {
   count: number;
@@ -67,6 +72,8 @@ export function HeroCarouselControls({
   onGoTo: (i: number) => void;
   onPrev: () => void;
   onNext: () => void;
+  paused?: boolean;
+  onTogglePaused?: () => void;
   tone?: 'gold' | 'secondary';
 }) {
   if (count < 2) return null;
@@ -85,13 +92,12 @@ export function HeroCarouselControls({
       >
         <ChevronRight className="h-4 w-4" />
       </button>
-      <div className="flex items-center gap-2" role="tablist" aria-label="اسلایدهای هیرو">
+      <div className="flex items-center gap-2" role="group" aria-label="انتخاب اسلاید هیرو">
         {Array.from({ length: count }).map((_, i) => (
           <button
             key={i}
             type="button"
-            role="tab"
-            aria-selected={i === index}
+            aria-current={i === index ? 'true' : undefined}
             aria-label={`اسلاید ${i + 1}`}
             onClick={() => onGoTo(i)}
             className={`h-2 cursor-pointer rounded-full transition-all ${
@@ -108,6 +114,17 @@ export function HeroCarouselControls({
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
+      {onTogglePaused ? (
+        <button
+          type="button"
+          aria-label={paused ? 'ادامه پخش خودکار اسلایدها' : 'توقف پخش خودکار اسلایدها'}
+          aria-pressed={paused}
+          onClick={onTogglePaused}
+          className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+        </button>
+      ) : null}
     </div>
   );
 }

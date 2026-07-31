@@ -83,6 +83,10 @@ export class OrderEntity {
   @Column({ nullable: true })
   discountCodeId: string;
 
+  /** Client idempotency key — unique when set */
+  @Column({ nullable: true, unique: true })
+  idempotencyKey: string;
+
   /** Soft-void: row stays in admin list/details, excluded from customer flows */
   @Column({ nullable: true })
   voidedAt: Date;

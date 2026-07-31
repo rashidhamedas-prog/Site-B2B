@@ -4,6 +4,9 @@ export type HeroSlide = {
   headlineAccent?: string;
   body?: string;
   imageUrl: string;
+  mobileImageUrl?: string;
+  imageAlt?: string;
+  presentation?: 'overlay' | 'artwork';
   ctaLabel?: string;
   ctaHref?: string;
   ctaSecondaryLabel?: string;
@@ -16,6 +19,9 @@ export type HeroFlatProps = {
   headlineAccent?: string;
   body?: string;
   imageUrl?: string;
+  mobileImageUrl?: string;
+  imageAlt?: string;
+  presentation?: 'overlay' | 'artwork';
   ctaLabel?: string;
   ctaHref?: string;
   ctaSecondaryLabel?: string;
@@ -37,6 +43,9 @@ function asSlide(raw: unknown): HeroSlide | null {
     headlineAccent: typeof o.headlineAccent === 'string' ? o.headlineAccent : undefined,
     body: typeof o.body === 'string' ? o.body : undefined,
     imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl : '',
+    mobileImageUrl: typeof o.mobileImageUrl === 'string' ? o.mobileImageUrl : undefined,
+    imageAlt: typeof o.imageAlt === 'string' ? o.imageAlt : undefined,
+    presentation: o.presentation === 'artwork' ? 'artwork' : 'overlay',
     ctaLabel: typeof o.ctaLabel === 'string' ? o.ctaLabel : undefined,
     ctaHref: typeof o.ctaHref === 'string' ? o.ctaHref : undefined,
     ctaSecondaryLabel: typeof o.ctaSecondaryLabel === 'string' ? o.ctaSecondaryLabel : undefined,
@@ -60,6 +69,9 @@ export function normalizeHeroSlides(props: HeroFlatProps, fallback?: HeroSlide):
         headlineAccent: props.headlineAccent,
         body: props.body,
         imageUrl: props.imageUrl || '',
+        mobileImageUrl: props.mobileImageUrl,
+        imageAlt: props.imageAlt,
+        presentation: props.presentation === 'artwork' ? 'artwork' : 'overlay',
         ctaLabel: props.ctaLabel,
         ctaHref: props.ctaHref,
         ctaSecondaryLabel: props.ctaSecondaryLabel,

@@ -63,14 +63,16 @@ cd apps/web && npm run dev
 ## ساخت Admin اولیه
 
 ```bash
+# Development: optional env; otherwise a one-time random password is printed once
+export SEED_ADMIN_PHONE=09xxxxxxxxx
+export SEED_ADMIN_PASSWORD='use-a-strong-password'
+
+# Production: BOTH variables are required (seed fails closed without them)
 cd apps/api
 npm run seed
 ```
 
-اعتبارنامه پیش‌فرض:
-- شماره: `09152424624`
-- رمز: `Admin@1234`
-- **بعد از اول login، رمز را عوض کنید!**
+بعد از اولین ورود، رمز را عوض کنید. هرگز credential واقعی را در README یا اسکریپت‌ها commit نکنید.
 
 ---
 

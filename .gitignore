@@ -16,6 +16,20 @@ out
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
+
+# Private ops / secrets (never commit real credentials)
+TARANOM-SERVER-INFO.private*
+ops/private/
+*.pem
+*.p12
+id_rsa
+id_ed25519
+credentials.json
+secrets/
+
+# Local scratch / debug scripts (do not commit)
+scripts/tmp-*
 
 # Logs
 npm-debug.log*

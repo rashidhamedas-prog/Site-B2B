@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { DataSource, In, Not, Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
@@ -12,40 +13,19 @@ import { DiscountService } from '../discount/discount.service';
 import { PaymentService } from '../payment/payment.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
+import { CreateOrderDto } from './dto/create-order.dto';
 
-interface CreateOrderDto {
-  customerId: string;
-  /** WHOLESALE (default) | RETAIL_WEBSITE — drives price + MOQ rules */
-  type?: string;
-  channel?: 'WHOLESALE' | 'RETAIL';
-  items: Array<{
-    productVariantId?: string;
-    productId?: string;
-    quantity: number;
-    unitPrice?: number;
-    productName?: string;
-    sku?: string;
-    color?: string;
-    size?: string;
-    imageUrl?: string;
-    /** Wholesale pack matrix: quantity = number of pack sets */
-    packMode?: boolean;
-    /** Colors chosen by wholesale buyer (when allowWholesaleColorSelect) */
-    selectedColors?: string[];
-  }>;
-  shippingMethod?: string;
-  paymentMethod?: string;
-  installment?: { downPaymentAmount: number; months: number };
-  notes?: string;
-  shippingAddress?: string | Record<string, unknown>;
-  freeShipping?: boolean;
-  intraCityFee?: number;
-  perKgFee?: number;
-  discountCode?: string;
-  /** Apply customer wallet credit toward order total (retail) */
-  useWallet?: boolean;
-  affiliateId?: string;
-}
+/** Allowed Order status transitions (admin). */
+const ORDER_TRANSITIONS: Record<string, string[]> = {
+  PENDING_REVIEW: ['CONFIRMED', 'PROCESSING', 'CANCELLED', 'DELETED'],
+  CONFIRMED: ['PROCESSING', 'SHIPPED', 'CANCELLED', 'DELETED'],
+  PROCESSING: ['SHIPPED', 'CANCELLED', 'DELETED'],
+  SHIPPED: ['DELIVERED', 'CANCELLED'],
+  DELIVERED: ['REFUNDED'],
+  CANCELLED: ['DELETED'],
+  DELETED: [],
+  REFUNDED: [],
+};
 
 @Injectable()
 export class OrderService {
@@ -63,6 +43,7 @@ export class OrderService {
     private readonly paymentService: PaymentService,
     private readonly shippingService: ShippingService,
     private readonly affiliatePostback: AffiliatePostbackService,
+    private readonly dataSource: DataSource,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
 
@@ -144,9 +125,10 @@ export class OrderService {
   }
 
   private async generateOrderNumber(): Promise<string> {
-    const count = await this.orderRepo.count();
     const year = new Date().getFullYear();
-    return `ORD-${year}-${String(count + 1).padStart(5, '0')}`;
+    const suffix = randomBytes(3).toString('hex').toUpperCase();
+    const count = await this.orderRepo.count();
+    return `ORD-${year}-${String(count + 1).padStart(5, '0')}-${suffix}`;
   }
 
   private assertMoq(quantity: number, minOrderQty: number, label: string) {
@@ -424,8 +406,23 @@ export class OrderService {
     return lines;
   }
 
-  async create(dto: CreateOrderDto) {
+  async create(dto: CreateOrderDto & { customerId: string }) {
     const customer = await this.customerService.findOne(dto.customerId);
+    if ((customer as any).status !== 'ACTIVE' || (customer as any).isActive === false) {
+      throw new ForbiddenException(
+        (customer as any).status === 'PENDING'
+          ? 'حساب شما هنوز تأیید نشده است'
+          : 'حساب شما غیرفعال است و امکان ثبت سفارش ندارد',
+      );
+    }
+
+    if (dto.idempotencyKey) {
+      const existing = await this.orderRepo.findOne({
+        where: { idempotencyKey: dto.idempotencyKey } as any,
+        relations: ['items'],
+      });
+      if (existing) return existing;
+    }
 
     if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
     const channel = this.resolveOrderChannel(dto);
@@ -495,7 +492,6 @@ export class OrderService {
         (item.packMode === true || hasVariantMatrix);
 
       if (usePackMatrix) {
-        // quantity = number of packs; 1 pack = 1 pc × each color × each size
         const allocated = this.expandByPackMatrix(product, qty, channel, {
           selectedColors: item.selectedColors,
           unitPrice: item.unitPrice,
@@ -515,7 +511,6 @@ export class OrderService {
         this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
       }
 
-      // Product-level channel stock (sum of matching variants) + greedy allocation
       const allocated = this.allocateAcrossVariants(product, qty, channel, {
         color: item.color,
         size: item.size,
@@ -545,6 +540,7 @@ export class OrderService {
 
     let discountAmount = 0;
     let usedDiscountCodeId: string | undefined;
+    let notes = dto.notes;
     if (channel === 'WHOLESALE') {
       const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
       discountAmount = quote.discount;
@@ -555,7 +551,7 @@ export class OrderService {
       if (quote.code?.discount) discountNotes.push(`CODE ${quote.code.code}=${quote.code.discount}`);
       if (discountNotes.length) {
         const tag = `DISCOUNTS ${discountNotes.join(' | ')}`;
-        dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+        notes = notes ? `${notes}\n${tag}` : tag;
       }
     } else if (dto.discountCode) {
       const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
@@ -563,17 +559,18 @@ export class OrderService {
       usedDiscountCodeId = quote.code?.id;
       if (discountAmount > 0 && quote.code) {
         const tag = `DISCOUNTS CODE ${quote.code.code}=${quote.code.discount}`;
-        dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+        notes = notes ? `${notes}\n${tag}` : tag;
       }
     }
 
+    // Shipping is ALWAYS computed server-side — ignore client freeShipping / fees.
     const shippingMethod = dto.shippingMethod ?? (channel === 'RETAIL' ? 'PISHTAZ' : 'CHAPAR');
     let computedShipping = 0;
-    let freeShipping = !!dto.freeShipping;
-    const intraCityFee = Number(dto.intraCityFee) || 0;
-    const perKgFee = Number(dto.perKgFee) || 0;
+    let freeShipping = false;
+    let intraCityFee = 0;
+    let perKgFee = 0;
 
-    if (channel === 'RETAIL' && !freeShipping) {
+    if (channel === 'RETAIL') {
       const shipQuote = await this.shippingService.quote({
         pieces,
         orderTotal: Math.max(0, subtotal - discountAmount),
@@ -581,12 +578,15 @@ export class OrderService {
       });
       computedShipping = Number(shipQuote.fee) || 0;
       freeShipping = !!shipQuote.freeShipping;
-    } else if (!freeShipping) {
+    } else {
       const shipCfg = await this.settings.shipping();
       const wholesaleCfg = shipCfg.wholesale ?? shipCfg;
       const wholesaleFreeFrom = Number(wholesaleCfg.freeThreshold) || 50_000_000;
       const wholesaleDefaultShip = Number(wholesaleCfg.baseFee) || 1_500_000;
-      computedShipping = intraCityFee || ((subtotal - discountAmount) >= wholesaleFreeFrom ? 0 : wholesaleDefaultShip);
+      computedShipping =
+        (subtotal - discountAmount) >= wholesaleFreeFrom ? 0 : wholesaleDefaultShip;
+      freeShipping = computedShipping === 0;
+      intraCityFee = computedShipping;
     }
 
     let orderTotal = Math.max(0, subtotal - discountAmount + computedShipping);
@@ -597,7 +597,7 @@ export class OrderService {
       orderTotal = Math.max(0, orderTotal - walletApplied);
       if (walletApplied > 0) {
         const tag = `WALLET_APPLIED=${walletApplied}`;
-        dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+        notes = notes ? `${notes}\n${tag}` : tag;
       }
     }
 
@@ -633,7 +633,7 @@ export class OrderService {
         throw new BadRequestException(`حداقل پیش‌پرداخت: ${minDown}`);
       }
       const tag = `INSTALLMENT downPayment=${down} months=${months} rule=${matched.id}`;
-      dto.notes = dto.notes ? `${dto.notes}\n${tag}` : tag;
+      notes = notes ? `${notes}\n${tag}` : tag;
     }
 
     let shippingAddress: string | undefined;
@@ -644,56 +644,84 @@ export class OrderService {
           : JSON.stringify(dto.shippingAddress);
     }
 
-    const order = this.orderRepo.create({
-      orderNumber: await this.generateOrderNumber(),
-      customerId: dto.customerId,
-      type: orderType,
-      subtotal,
-      discount: discountAmount + walletApplied,
-      shippingFee: computedShipping,
-      total: orderTotal,
-      shippingMethod,
-      shippingAddress,
-      paymentMethod,
-      notes: dto.notes,
-      status: 'PENDING_REVIEW',
-      intraCityFee,
-      perKgFee,
-      freeShipping,
-      affiliateId: dto.affiliateId?.trim() || undefined,
-      walletApplied,
-      discountCodeId: usedDiscountCodeId,
+    // Persist order + items first; then atomic stock/wallet/discount.
+    // Stock uses conditional UPDATE (race-safe). On side-effect failure, reverse + cancel.
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const orderRepo = manager.getRepository(OrderEntity);
+      const itemRepo = manager.getRepository(OrderItemEntity);
+
+      let orderRow: OrderEntity | null = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const orderNumber = await this.generateOrderNumber();
+        try {
+          orderRow = (await orderRepo.save(
+            orderRepo.create({
+              orderNumber,
+              customerId: dto.customerId,
+              type: orderType,
+              subtotal,
+              discount: discountAmount + walletApplied,
+              shippingFee: computedShipping,
+              total: orderTotal,
+              shippingMethod,
+              shippingAddress,
+              paymentMethod,
+              notes,
+              status: 'PENDING_REVIEW',
+              intraCityFee,
+              perKgFee,
+              freeShipping,
+              affiliateId: dto.affiliateId?.trim() || undefined,
+              walletApplied,
+              discountCodeId: usedDiscountCodeId,
+              idempotencyKey: dto.idempotencyKey || undefined,
+            }),
+          )) as OrderEntity;
+          break;
+        } catch (err: any) {
+          if (err?.code === '23505' && attempt < 4) continue;
+          throw err;
+        }
+      }
+      if (!orderRow) throw new BadRequestException('امکان ایجاد شماره سفارش نبود');
+
+      const items = expandedItems.map((i) =>
+        itemRepo.create({
+          productVariantId: i.productVariantId,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          productName: i.productName,
+          sku: i.sku,
+          color: i.color,
+          size: i.size,
+          imageUrl: i.imageUrl || null,
+          orderId: orderRow!.id,
+          totalPrice: i.unitPrice * i.quantity,
+        }),
+      );
+      await itemRepo.save(items);
+      return orderRow;
     });
 
-    const saved = await this.orderRepo.save(order);
-
-    const items = expandedItems.map((i) =>
-      this.itemRepo.create({
-        productVariantId: i.productVariantId,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        productName: i.productName,
-        sku: i.sku,
-        color: i.color,
-        size: i.size,
-        imageUrl: i.imageUrl || null,
-        orderId: saved.id,
-        totalPrice: i.unitPrice * i.quantity,
-      })
-    );
-    await this.itemRepo.save(items);
-
-    // Deduct channel-aware variant stock and sync product aggregate.
-    for (const item of expandedItems) {
-      await this.productService.updateVariantStock(item.productVariantId, -item.quantity, channel);
-    }
-
-    if (walletApplied > 0) {
-      await this.customerService.updateBalance(dto.customerId, -walletApplied);
-    }
-
-    if (usedDiscountCodeId) {
-      await this.discounts.recordUse(usedDiscountCodeId);
+    try {
+      for (const item of expandedItems) {
+        await this.productService.updateVariantStock(item.productVariantId, -item.quantity, channel);
+      }
+      if (walletApplied > 0) {
+        await this.customerService.updateBalance(dto.customerId, -walletApplied);
+      }
+      if (usedDiscountCodeId) {
+        await this.discounts.recordUse(usedDiscountCodeId);
+      }
+    } catch (err) {
+      try {
+        const full = await this.findOne(saved.id);
+        await this.reverseEffects(full);
+        await this.orderRepo.update(saved.id, { status: 'CANCELLED' });
+      } catch {
+        /* best-effort cleanup */
+      }
+      throw err;
     }
 
     if (this.notifications) {
@@ -710,7 +738,6 @@ export class OrderService {
 
     const full = await this.findOne(saved.id);
 
-    // Retail ONLINE: start Zarinpal and return paymentUrl for redirect.
     if (channel === 'RETAIL' && paymentMethod === 'ONLINE' && orderTotal > 0) {
       try {
         const pay = await this.paymentService.start({
@@ -723,12 +750,10 @@ export class OrderService {
         });
         return { ...full, paymentUrl: pay.redirectUrl, paymentId: pay.paymentId };
       } catch (err) {
-        // Order already created — surface error so client can retry payment or switch to COD.
         throw err;
       }
     }
 
-    // Retail COD / zero-total: fire affiliate postback as pending/paid conversion.
     if (channel === 'RETAIL' && dto.affiliateId) {
       const status = paymentMethod === 'CASH' ? 'pending' : 'paid';
       this.affiliatePostback.fireForOrder(saved.id, status).catch(() => undefined);
@@ -848,6 +873,10 @@ export class OrderService {
       throw new BadRequestException('سفارش حذف‌شده قابل تغییر وضعیت نیست');
     }
     const prev = order.status;
+    const allowed = ORDER_TRANSITIONS[prev];
+    if (allowed && prev !== status && !allowed.includes(status)) {
+      throw new BadRequestException(`انتقال وضعیت از ${prev} به ${status} مجاز نیست`);
+    }
     const patch: Partial<OrderEntity> = { status };
     if (processedBy) patch.processedBy = processedBy;
     if (status === 'CONFIRMED') patch.confirmedAt = new Date();

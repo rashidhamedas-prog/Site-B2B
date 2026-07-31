@@ -21,14 +21,9 @@ function toman(irr: number) {
   return Math.round(irr / 10).toLocaleString('fa-IR');
 }
 
-const FALLBACK: Product[] = [
-  { id: 'f1', name: 'شلوار یخی کمربندی', slug: '#', retailPrice: 18800000, images: [] },
-  { id: 'f2', name: 'مانتو جلو باز تابستانه', slug: '#', retailPrice: 24500000, images: [] },
-  { id: 'f3', name: 'شومیز آستین پفی', slug: '#', retailPrice: 16800000, images: [] },
-  { id: 'f4', name: 'شلوار بگ گلدوزی', slug: '#', retailPrice: 19800000, images: [] },
-];
+const FALLBACK: Product[] = [];
 
-async function fetchRetailProducts(limit: number, sort: string): Promise<Product[]> {
+async function fetchRetailProducts(limit: number, sort: string): Promise<{ products: Product[]; error: boolean }> {
   try {
     const base = getServerApiBase();
     const sortQ = sort ? `&sort=${encodeURIComponent(sort)}` : '';
@@ -36,16 +31,16 @@ async function fetchRetailProducts(limit: number, sort: string): Promise<Product
       `${base}/products?limit=${limit}&status=ACTIVE&channel=RETAIL${sortQ}`,
       { next: { revalidate: 300 } },
     );
-    if (!res.ok) return [];
+    if (!res.ok) return { products: [], error: true };
     const data = await res.json();
     const list = Array.isArray(data) ? data : data?.data ?? [];
-    return list as Product[];
+    return { products: list as Product[], error: false };
   } catch {
-    return [];
+    return { products: [], error: true };
   }
 }
 
-/** SSR product grid for retail home — no client waterfall. */
+/** SSR product grid for retail home — no client waterfall. Never shows fake products. */
 export async function RetailProductGrid({
   title = 'پربازدیدترین‌ها',
   limit = 12,
@@ -55,9 +50,8 @@ export async function RetailProductGrid({
   limit?: number;
   sort?: string;
 }) {
-  const fetched = await fetchRetailProducts(limit, sort);
-  const products =
-    fetched.length > 0 ? fetched : FALLBACK.slice(0, Math.min(limit, FALLBACK.length));
+  const { products: fetched, error } = await fetchRetailProducts(limit, sort);
+  const products = fetched.length > 0 ? fetched : FALLBACK;
 
   return (
     <section className="relative overflow-hidden bg-[var(--retail-bg)] py-16 sm:py-20">
@@ -83,6 +77,19 @@ export async function RetailProductGrid({
           <h2 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{title}</h2>
         </div>
 
+        {products.length === 0 ? (
+          <div className="rounded-lg border border-[var(--retail-border)] bg-[var(--retail-card)] px-6 py-16 text-center" role="status">
+            <p className="text-[var(--retail-ink)]">
+              {error ? 'بارگذاری محصولات با خطا مواجه شد. لطفاً بعداً دوباره تلاش کنید.' : 'هنوز محصولی برای نمایش نیست.'}
+            </p>
+            <Link
+              href="/retail/products"
+              className="mt-4 inline-flex cursor-pointer border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
+            >
+              مشاهده همه محصولات
+            </Link>
+          </div>
+        ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
           {products.map((p) => {
             const img = mediaUrl(p.images?.[0]);
@@ -125,6 +132,7 @@ export async function RetailProductGrid({
             );
           })}
         </div>
+        )}
 
         <div className="mt-10 text-center">
           <Link

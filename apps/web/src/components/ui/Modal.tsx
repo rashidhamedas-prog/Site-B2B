@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -24,23 +24,64 @@ const sizeClasses: Record<ModalSize, string> = {
   fullscreen: 'max-w-full h-full rounded-none m-0',
 };
 
+const FOCUSABLE =
+  'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])';
+
 export function Modal({ open, onClose, title, children, size = 'md', className }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
+  const titleId = useId();
 
-  // Trap focus & prevent body scroll
+  // Scroll lock + focus trap/restore
   useEffect(() => {
     if (!open) return;
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
 
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    const panel = panelRef.current;
+    const focusables = () =>
+      Array.from(panel?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter(
+        (el) => !el.hasAttribute('disabled') && el.offsetParent !== null,
+      );
+
+    requestAnimationFrame(() => {
+      const list = focusables();
+      (list[0] ?? panel)?.focus();
+    });
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !panel) return;
+      const list = focusables();
+      if (!list.length) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || active === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKeyDown);
+      previouslyFocused.current?.focus?.();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -52,26 +93,26 @@ export function Modal({ open, onClose, title, children, size = 'md', className }
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? 'modal-title' : undefined}
+      aria-labelledby={title ? titleId : undefined}
     >
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      {/* Panel */}
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={cn(
-          'relative z-10 w-full glass-strong rounded-2xl overflow-hidden animate-slide-up',
+          'relative z-10 w-full glass-strong rounded-2xl overflow-hidden animate-slide-up outline-none',
           sizeClasses[size],
           className
         )}
       >
-        {/* Header */}
         {title && (
           <div className="flex items-center justify-between border-b border-white/40 px-6 py-4">
-            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+            <h2 id={titleId} className="text-lg font-semibold text-gray-900">
               {title}
             </h2>
             <button
+              type="button"
               onClick={onClose}
               className="rounded-lg p-1.5 text-gray-400 hover:bg-white/60 hover:text-gray-600 transition-colors cursor-pointer"
               aria-label="بستن"
@@ -81,7 +122,6 @@ export function Modal({ open, onClose, title, children, size = 'md', className }
           </div>
         )}
 
-        {/* Body */}
         <div className="overflow-y-auto max-h-[80vh]">{children}</div>
       </div>
     </div>

@@ -1,20 +1,22 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { PaymentEntity } from './entities/payment.entity';
+import { OrderEntity } from '../order/entities/order.entity';
+import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { SettingsService } from '../settings/settings.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 
 interface CreatePaymentInput {
-  amount: number; // IRR
+  /** Ignored when orderId/invoiceId present — amount resolved from DB */
+  amount?: number;
   orderId?: string;
   invoiceId?: string;
   customerId?: string;
   description?: string;
   mobile?: string;
   email?: string;
-  /** WHOLESALE uses merchantId; RETAIL uses retailMerchantId + retail callback */
   channel?: 'WHOLESALE' | 'RETAIL';
 }
 
@@ -36,6 +38,10 @@ export class PaymentService {
   constructor(
     @InjectRepository(PaymentEntity)
     private readonly repo: Repository<PaymentEntity>,
+    @InjectRepository(OrderEntity)
+    private readonly orderRepo: Repository<OrderEntity>,
+    @InjectRepository(InvoiceEntity)
+    private readonly invoiceRepo: Repository<InvoiceEntity>,
     private readonly config: ConfigService,
     private readonly settings: SettingsService,
     private readonly affiliatePostback: AffiliatePostbackService,
@@ -86,11 +92,42 @@ export class PaymentService {
 
   // Step 1 — create a payment request with ZarinPal, persist it, return redirect URL.
   async start(input: CreatePaymentInput): Promise<StartResult> {
-    if (!input.amount || input.amount < 10000) {
+    let amount = 0;
+    let customerId = input.customerId;
+    let channel: 'WHOLESALE' | 'RETAIL' = input.channel === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+
+    if (input.orderId) {
+      const order = await this.orderRepo.findOne({ where: { id: input.orderId } });
+      if (!order) throw new NotFoundException('سفارش یافت نشد');
+      if (customerId && order.customerId !== customerId) {
+        throw new ForbiddenException('این سفارش متعلق به شما نیست');
+      }
+      customerId = order.customerId;
+      amount = Number(order.total) || 0;
+      const t = String(order.type || '').toUpperCase();
+      if (t === 'RETAIL' || t === 'RETAIL_WEBSITE') channel = 'RETAIL';
+      if (['CANCELLED', 'DELETED', 'PAID'].includes(order.status)) {
+        throw new BadRequestException('این سفارش قابل پرداخت نیست');
+      }
+    } else if (input.invoiceId) {
+      const invoice = await this.invoiceRepo.findOne({ where: { id: input.invoiceId } });
+      if (!invoice) throw new NotFoundException('فاکتور یافت نشد');
+      if (customerId && invoice.customerId !== customerId) {
+        throw new ForbiddenException('این فاکتور متعلق به شما نیست');
+      }
+      customerId = invoice.customerId;
+      amount = Math.max(0, Number(invoice.total) - Number(invoice.paidAmount || 0));
+    } else if (input.amount && input.amount >= 10000) {
+      // Admin/manual path without order — rare; still validate minimum
+      amount = Number(input.amount);
+    } else {
+      throw new BadRequestException('سفارش یا فاکتور برای پرداخت الزامی است');
+    }
+
+    if (!amount || amount < 10000) {
       throw new BadRequestException('مبلغ پرداخت نامعتبر است (حداقل ۱۰۰۰ تومان)');
     }
 
-    const channel = input.channel === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
     const gw = await this.resolveGateway(channel);
     if (!gw.enabled) {
       throw new BadRequestException(
@@ -100,7 +137,6 @@ export class PaymentService {
       );
     }
     if (!gw.merchantId || gw.merchantId.startsWith('00000000')) {
-      // Allow sandbox zero-uuid only when sandbox=true
       if (!gw.sandbox) {
         throw new BadRequestException(
           channel === 'RETAIL'
@@ -111,12 +147,12 @@ export class PaymentService {
     }
 
     const payment = this.repo.create({
-      amount: input.amount,
+      amount,
       gateway: 'ZARINPAL',
       status: 'PENDING',
       orderId: input.orderId,
       invoiceId: input.invoiceId,
-      customerId: input.customerId,
+      customerId,
       description: input.description ?? 'پرداخت سفارش پوشاک ترنم',
       meta: { channel },
     });
@@ -131,7 +167,7 @@ export class PaymentService {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
           merchant_id: gw.merchantId,
-          amount: Number(input.amount),
+          amount: Number(amount),
           callback_url: callbackUrl,
           description: payment.description,
           metadata: {
@@ -185,6 +221,15 @@ export class PaymentService {
     if (payment.status === 'PAID') {
       return { ok: true, alreadyVerified: true, payment };
     }
+    if (payment.status === 'CANCELLED' || payment.status === 'REFUNDED') {
+      return { ok: false, cancelled: true, payment };
+    }
+
+    // Authority must match the stored gateway token when both are present.
+    if (authority && payment.authority && authority !== payment.authority) {
+      this.logger.warn(`Authority mismatch for payment ${paymentId}`);
+      throw new BadRequestException('شناسه تراکنش نامعتبر است');
+    }
 
     // User cancelled at the gateway.
     if (status && status !== 'OK') {
@@ -194,7 +239,11 @@ export class PaymentService {
       return { ok: false, cancelled: true, payment };
     }
 
-    const authToUse = authority || payment.authority;
+    const authToUse = payment.authority;
+    if (!authToUse) {
+      throw new BadRequestException('تراکنش authority ندارد');
+    }
+
     const channel =
       payment.meta?.channel === 'RETAIL' ||
       (payment.callbackUrl || '').includes('poshaktaranom.ir')
@@ -216,15 +265,38 @@ export class PaymentService {
 
       // 100 = verified now, 101 = already verified previously.
       if (code === 100 || code === 101) {
+        const refId = String(json.data.ref_id ?? '');
+        // Re-check status to avoid double-apply under concurrent callbacks.
+        const fresh = await this.findOne(paymentId);
+        if (fresh.status === 'PAID') {
+          return { ok: true, alreadyVerified: true, payment: fresh };
+        }
+
         payment.status = 'PAID';
-        payment.refId = String(json.data.ref_id ?? '');
+        payment.refId = refId || payment.refId;
         payment.paidAt = new Date();
         payment.meta = { ...(payment.meta ?? {}), verify: json.data };
         await this.repo.save(payment);
+
         if (payment.orderId) {
+          await this.orderRepo.update(payment.orderId, {
+            status: 'CONFIRMED',
+            confirmedAt: new Date(),
+          } as any);
           this.affiliatePostback.fireForOrder(payment.orderId, 'paid').catch((err) => {
             this.logger.warn(`Affiliate postback failed: ${err?.message || err}`);
           });
+        }
+        if (payment.invoiceId) {
+          const inv = await this.invoiceRepo.findOne({ where: { id: payment.invoiceId } });
+          if (inv) {
+            const paidAmount = Number(inv.paidAmount || 0) + Number(payment.amount);
+            const total = Number(inv.total) || 0;
+            await this.invoiceRepo.update(inv.id, {
+              paidAmount,
+              status: paidAmount >= total ? 'PAID' : 'PARTIALLY_PAID',
+            } as any);
+          }
         }
         return { ok: true, payment, refId: payment.refId };
       }
@@ -234,6 +306,7 @@ export class PaymentService {
       await this.repo.save(payment);
       return { ok: false, payment, error: json?.errors?.message ?? 'تایید پرداخت ناموفق بود' };
     } catch (err: any) {
+      if (err instanceof BadRequestException) throw err;
       this.logger.error(`ZarinPal verify failed: ${err.message}`);
       payment.status = 'FAILED';
       payment.meta = { ...(payment.meta ?? {}), verifyException: err.message };

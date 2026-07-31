@@ -2,6 +2,27 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-31 — Hardening جزئی (Tasks 1–4 کد + handoff)
+
+### خلاصه
+- پلن `cursor-project-hardening-plan.md` به‌صورت جزئی اجرا شد (بدون rotate/history rewrite/deploy)
+- OTP → Redis+hash، fail-closed در production، IDOR و DTO برای auth/order/payment
+- Checkout: shipping فقط سرور، موجودی/کیف‌پول/تخفیف atomic، idempotencyKey، state guard
+- Payment: مبلغ از DB، match authority، sync order/invoice، unique indexes
+- UX: حذف محصولات ساختگی retail؛ Modal با focus trap
+- Handoff کامل برای ChatGPT: `docs/chatgpt-hardening-handoff.md`
+- گزارش: `docs/reports/2026-07-31-hardening-partial.md`
+
+### تست
+- API `tsc --noEmit` OK
+- `auth.otp.logic.spec.ts` OK
+
+### باقی‌مانده
+- Task 1 ops (rotate + filter-repo) با تأیید مالک
+- QueryRunner واحد کامل، Company Account، Playwright، observability، backup
+
+---
+
 ## 2026-07-31 — فاز ۲ سرعت: SSR تکی + list بدون variants + chunk کانال
 
 ### خلاصه
@@ -715,3 +736,36 @@
 - ...
 
 -->
+
+---
+
+## 2026-07-31 — تدوین برنامه جامع اصلاح و ارتقای پروژه برای Cursor
+
+### خلاصه
+- ممیزی کامل امنیت، بک‌اند، فرانت‌اند، UX، B2B، GitHub و DevOps به یک برنامه اجرایی ده‌مرحله‌ای تبدیل شد.
+- ترتیب اصلاحات از مهار افشای اسرار و امنیت مالی تا تکمیل B2B، تست، CI/CD، UX، SEO و پایش production مشخص شد.
+- برای هر task معیار پذیرش و verification مستقل تعریف شد.
+- قانون اجباری ثبت هر تغییر در WORKLOG، گزارش جلسه، ADR و `.Codex/memory.json` داخل برنامه درج شد.
+
+### فایل
+- `cursor-project-hardening-plan.md`
+
+### تغییر کد محصول
+- انجام نشد؛ این جلسه فقط مستندات برنامه‌ریزی را اضافه کرد.
+
+---
+
+## 2026-07-31 — بارگذاری شش بنر Hero عمده و تک‌فروشی
+
+**گزارش:** [reports/2026-07-31-hero-campaign-banners.md](./reports/2026-07-31-hero-campaign-banners.md)
+
+### خلاصه
+- کلاژ کاربر به سه بنر WHOLESALE و سه بنر RETAIL تفکیک و به WebP کم‌حجم تبدیل شد.
+- برای هر اسلاید نسخه desktop `1536×680` و mobile `600×800` ساخته شد.
+- حالت `artwork` به schema/CMS و editor هیرو اضافه شد تا بنرهای دارای متن بدون overlay تکراری نمایش داده شوند.
+- H1، متن معادل، alt و CTA واقعی HTML برای SEO و accessibility حفظ شدند.
+- autoplay دارای کنترل توقف/ادامه شد و semantics کنترل‌های carousel اصلاح شد.
+- defaults هر دو کانال و migration برگشت‌پذیر CMS production اضافه شدند؛ deploy اجرا نشد.
+
+### محدودیت
+- منبع یک کلاژ کم‌رزولوشن بود؛ برای Retina ایده‌آل باید شش source مستقل حداقل `1920×800` دریافت شود.

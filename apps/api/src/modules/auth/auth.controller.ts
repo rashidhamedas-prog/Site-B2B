@@ -4,6 +4,12 @@ import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import {
+  RequestRetailOtpDto,
+  VerifyRetailOtpDto,
+  UpdateProfileDto,
+  ChangePasswordDto,
+} from './dto/otp.dto';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -26,14 +32,14 @@ export class AuthController {
   @Post('retail/otp/request')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'درخواست کد OTP فروشگاه تکی' })
-  requestRetailOtp(@Body() body: { phone: string; name?: string }) {
+  requestRetailOtp(@Body() body: RequestRetailOtpDto) {
     return this.authService.requestRetailOtp(body.phone, body.name);
   }
 
   @Post('retail/otp/verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'تأیید OTP و ورود فروشگاه تکی' })
-  verifyRetailOtp(@Body() body: { phone: string; code: string; name?: string }) {
+  verifyRetailOtp(@Body() body: VerifyRetailOtpDto) {
     return this.authService.verifyRetailOtp(body.phone, body.code, body.name);
   }
 
@@ -51,7 +57,7 @@ export class AuthController {
   @ApiOperation({ summary: 'ویرایش پروفایل کاربر' })
   updateProfile(
     @Request() req: Express.Request & { user: { sub: string; role: string; phone: string } },
-    @Body() body: { ownerName?: string; email?: string },
+    @Body() body: UpdateProfileDto,
   ) {
     return this.authService.updateMyProfile(req.user.sub, body);
   }
@@ -62,7 +68,7 @@ export class AuthController {
   @ApiOperation({ summary: 'تغییر رمز عبور' })
   changePassword(
     @Request() req: Express.Request & { user: { sub: string; role: string; phone: string } },
-    @Body() body: { current: string; password: string },
+    @Body() body: ChangePasswordDto,
   ) {
     return this.authService.changePassword(req.user.sub, body.current, body.password);
   }
