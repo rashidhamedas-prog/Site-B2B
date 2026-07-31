@@ -10,6 +10,10 @@
 - `SiteBlocksRenderer` با dynamic import جداگانهٔ `RetailBlocksRenderer` / `WholesaleBlocksRenderer`
 - فاز ۱ روی VPS تأیید/rebuild شد (`a1e3351`)
 
+### hotfix (همان روز)
+- Cache-Control با `res.setHeader` روی Fastify باعث `500` روی `/products` و `/settings/public` شد
+- اصلاح به `FastifyReply.header(...)` در product / settings / category controllers
+
 ---
 
 ## 2026-07-30 — متن پیامک قابل‌ویرایش + بهینه‌سازی سرعت (فاز ۱)

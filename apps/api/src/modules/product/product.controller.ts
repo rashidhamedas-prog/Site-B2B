@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import type { FastifyReply } from 'fastify';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -34,16 +34,16 @@ export class ProductController {
     @Query('channel') channel?: string,
     @Query('sort') sort?: string,
     @Query('includeVariants') includeVariants?: string,
-    @Res({ passthrough: true }) res?: Response,
+    @Res({ passthrough: true }) res?: FastifyReply,
   ) {
-    // Public ACTIVE listings are cacheable; admin ALL is not
+    // Public ACTIVE listings are cacheable; admin ALL is not (Fastify: .header)
     if (String(status || 'ACTIVE').toUpperCase() !== 'ALL') {
-      res?.setHeader(
+      res?.header(
         'Cache-Control',
         'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
       );
     } else {
-      res?.setHeader('Cache-Control', 'private, no-store');
+      res?.header('Cache-Control', 'private, no-store');
     }
     const wantVariants =
       includeVariants === '1' ||

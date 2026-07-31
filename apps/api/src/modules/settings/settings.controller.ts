@@ -1,5 +1,5 @@
 import { Controller, Get, Put, Body, Param, Query, UseGuards, BadRequestException, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import type { FastifyReply } from 'fastify';
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -31,9 +31,9 @@ export class SettingsController {
   @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   async publicSettings(
     @Query('channel') channel?: string,
-    @Res({ passthrough: true }) res?: Response,
+    @Res({ passthrough: true }) res?: FastifyReply,
   ) {
-    res?.setHeader(
+    res?.header(
       'Cache-Control',
       'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
     );
