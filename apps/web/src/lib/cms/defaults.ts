@@ -31,10 +31,7 @@ export function defaultWholesaleChrome(): ContentBlock[] {
       phoneHref: 'tel:09152424624',
       ownerLabel: 'حامد رشید — مدیر فروش',
       addressTitle: 'دفتر پخش:',
-      addressLines: [
-        'مشهد — میدان ۱۷ شهریور',
-        'پاساژ کیمیا — طبقه منفی ۱ — پلاک ۱۳۳',
-      ],
+      addressLines: ['مشهد — میدان ۱۷ شهریور', 'پاساژ کیمیا — طبقه منفی ۱ — پلاک ۱۳۳'],
       telegramHref: 'https://t.me/toliditaranom',
       instagramHref: 'https://instagram.com/tolidi.taranom',
       copyright: '© ۱۴۰۳ پوشاک ترنم — تمامی حقوق محفوظ است',
@@ -126,12 +123,14 @@ export function defaultWholesaleHome(): ContentBlock[] {
         {
           icon: 'Truck',
           title: 'ارسال سریع',
-          description: 'ارسال چاپار به سراسر ایران. ارسال رایگان برای سفارش‌های بالای ۵۰۰ هزار تومان.',
+          description:
+            'ارسال چاپار به سراسر ایران. ارسال رایگان برای سفارش‌های بالای ۵۰۰ هزار تومان.',
         },
         {
           icon: 'CreditCard',
           title: 'پرداخت اعتباری',
-          description: 'مشتریان دائمی می‌توانند از اعتبار خرید استفاده کنند. سیستم فاکتور و حساب‌کتاب دقیق.',
+          description:
+            'مشتریان دائمی می‌توانند از اعتبار خرید استفاده کنند. سیستم فاکتور و حساب‌کتاب دقیق.',
         },
         {
           icon: 'Headphones',
@@ -291,8 +290,7 @@ export function defaultWholesaleAbout(): ContentBlock[] {
     }),
     b('text', {
       headline: 'داستان ما',
-      body:
-        'پوشاک ترنم در سال ۱۳۹۴ توسط حامد رشید از صفر پایه‌گذاری شد. با بیش از ۱۰ سال تجربه در بازاریابی و مدیریت فروش پوشاک، حامد تصمیم گرفت تولیدی خودش را راه‌اندازی کند که بر کیفیت پارچه و طراحی مدرن تمرکز داشته باشد.\n\nتخصص ما مانتو شومیزی زنانه اسپرت از جنس لینن و کتان است — پارچه‌هایی که تهویه مناسب داشته، سبک بوده و برای آب‌وهوای ایران مناسب هستند. امروز با تیمی ۱۵ نفره، هر فصل مدل‌های جدید را به بازار عرضه می‌کنیم.',
+      body: 'پوشاک ترنم در سال ۱۳۹۴ توسط حامد رشید از صفر پایه‌گذاری شد. با بیش از ۱۰ سال تجربه در بازاریابی و مدیریت فروش پوشاک، حامد تصمیم گرفت تولیدی خودش را راه‌اندازی کند که بر کیفیت پارچه و طراحی مدرن تمرکز داشته باشد.\n\nتخصص ما مانتو شومیزی زنانه اسپرت از جنس لینن و کتان است — پارچه‌هایی که تهویه مناسب داشته، سبک بوده و برای آب‌وهوای ایران مناسب هستند. امروز با تیمی ۱۵ نفره، هر فصل مدل‌های جدید را به بازار عرضه می‌کنیم.',
     }),
     b('stats', {
       items: [
@@ -358,7 +356,12 @@ export function defaultWholesaleContact(): ContentBlock[] {
       headline: 'راه‌های ارتباطی',
       channels: [
         { icon: 'Phone', title: 'تلفن', value: '۰۹۱۵-۲۴۲-۴۶۲۴', href: 'tel:09152424624' },
-        { icon: 'Send', title: 'تلگرام', value: '@toliditaranom', href: 'https://t.me/toliditaranom' },
+        {
+          icon: 'Send',
+          title: 'تلگرام',
+          value: '@toliditaranom',
+          href: 'https://t.me/toliditaranom',
+        },
         {
           icon: 'Instagram',
           title: 'اینستاگرام',
@@ -392,10 +395,7 @@ export function defaultTextPage(headline: string, body: string): ContentBlock[] 
   return [b('text', { headline, body })];
 }
 
-export function getDefaultBlocks(
-  channel: 'WHOLESALE' | 'RETAIL',
-  pageKey: string,
-): ContentBlock[] {
+export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: string): ContentBlock[] {
   if (channel === 'WHOLESALE') {
     switch (pageKey) {
       case 'chrome':
@@ -426,12 +426,14 @@ export function getDefaultBlocks(
               {
                 icon: 'Package',
                 title: 'سطح A — عمده بزرگ',
-                description: 'بالای ۱۵۰ پیراهن در ماه — بالاترین تخفیف، اعتبار بیشتر، اولویت رنگ‌بندی، ارسال رایگان',
+                description:
+                  'بالای ۱۵۰ پیراهن در ماه — بالاترین تخفیف، اعتبار بیشتر، اولویت رنگ‌بندی، ارسال رایگان',
               },
               {
                 icon: 'Truck',
                 title: 'سطح B — عمده متوسط',
-                description: '۵۰ تا ۱۵۰ پیراهن در ماه — تخفیف متوسط، اعتبار خرید، ارسال نیمه‌رایگان',
+                description:
+                  '۵۰ تا ۱۵۰ پیراهن در ماه — تخفیف متوسط، اعتبار خرید، ارسال نیمه‌رایگان',
               },
               {
                 icon: 'CreditCard',
@@ -442,8 +444,7 @@ export function getDefaultBlocks(
           }),
           b('text', {
             headline: 'حداقل سفارش و پرداخت',
-            body:
-              'حداقل سفارش اولیه: ۱۲ عدد از یک مدل. ترکیب سایزبندی: ۲ عدد از هر سایز (۳۸ تا ۴۶). حداقل رنگ: ۳ رنگ از هر مدل.\n\nپرداخت: نقد در تحویل، چک یک‌ماهه (مشتریان تأییدشده)، نسیه تا سقف اعتبار، انتقال بانکی.',
+            body: 'حداقل سفارش اولیه: ۱۲ عدد از یک مدل. ترکیب سایزبندی: ۲ عدد از هر سایز (۳۸ تا ۴۶). حداقل رنگ: ۳ رنگ از هر مدل.\n\nپرداخت: نقد در تحویل، چک یک‌ماهه (مشتریان تأییدشده)، نسیه تا سقف اعتبار، انتقال بانکی.',
           }),
           b('cta', {
             eyebrow: '',
@@ -471,15 +472,26 @@ export function getDefaultBlocks(
             headline: '',
             body: '',
             items: [
-              { icon: 'Zap', title: 'زمان آماده‌سازی', description: '۱ تا ۳ روز کاری پس از تأیید سفارش' },
-              { icon: 'Truck', title: 'روش‌های ارسال', description: 'چاپار، تیپاکس، پست، تحویل حضوری (مشهد)' },
-              { icon: 'Package', title: 'پوشش ارسال', description: 'سراسر ایران — شهرهای بزرگ اولویت دارند' },
+              {
+                icon: 'Zap',
+                title: 'زمان آماده‌سازی',
+                description: '۱ تا ۳ روز کاری پس از تأیید سفارش',
+              },
+              {
+                icon: 'Truck',
+                title: 'روش‌های ارسال',
+                description: 'چاپار، تیپاکس، پست، تحویل حضوری (مشهد)',
+              },
+              {
+                icon: 'Package',
+                title: 'پوشش ارسال',
+                description: 'سراسر ایران — شهرهای بزرگ اولویت دارند',
+              },
               { icon: 'Shield', title: 'بسته‌بندی', description: 'کیف‌های پلی‌اتیلن + کارتن محکم' },
             ],
           }),
           b('html', {
-            body:
-              '<div class="max-w-3xl mx-auto"><h2 class="font-bold text-gray-900 mb-4">هزینه ارسال</h2><p class="text-sm text-gray-600 mb-2">سطح A: رایگان مشهد و سراسر ایران</p><p class="text-sm text-gray-600 mb-2">سطح B: رایگان مشهد — نیمه‌رایگان سراسر ایران</p><p class="text-sm text-gray-600 mb-2">سطح C: بر اساس وزن</p><p class="text-xs text-gray-400">* سفارش بالای ۵ میلیون تومان برای همه سطوح ارسال رایگان است.</p></div>',
+            body: '<div class="max-w-3xl mx-auto"><h2 class="font-bold text-gray-900 mb-4">هزینه ارسال</h2><p class="text-sm text-gray-600 mb-2">سطح A: رایگان مشهد و سراسر ایران</p><p class="text-sm text-gray-600 mb-2">سطح B: رایگان مشهد — نیمه‌رایگان سراسر ایران</p><p class="text-sm text-gray-600 mb-2">سطح C: بر اساس وزن</p><p class="text-xs text-gray-400">* سفارش بالای ۵ میلیون تومان برای همه سطوح ارسال رایگان است.</p></div>',
           }),
         ];
       case 'returns':
@@ -589,13 +601,11 @@ export function getDefaultBlocks(
               },
               {
                 question: '۵. مرجوعی و ضمانت',
-                answer:
-                  'مرجوعی تنها در صورت عیب تولیدی و ظرف ۷ روز پس از دریافت پذیرفته می‌شود.',
+                answer: 'مرجوعی تنها در صورت عیب تولیدی و ظرف ۷ روز پس از دریافت پذیرفته می‌شود.',
               },
               {
                 question: '۶. حریم خصوصی',
-                answer:
-                  'اطلاعات مشتریان نزد ترنم محرمانه است و به هیچ شخص ثالثی منتقل نمی‌شود.',
+                answer: 'اطلاعات مشتریان نزد ترنم محرمانه است و به هیچ شخص ثالثی منتقل نمی‌شود.',
               },
             ],
           }),
@@ -733,7 +743,7 @@ export function getDefaultBlocks(
     case 'about':
       return defaultTextPage(
         'درباره پوشاک ترنم',
-        'تولیدی پوشاک ترنم در مشهد؛ مانتوهای لینن و کتان را هم عمده و هم تکی عرضه می‌کند. این فروشگاه، کانال خرید مستقیم برای شماست — با همان کیفیت کارخانه.\n\nدفتر پخش: مشهد، میدان ۱۷ شهریور، پاساژ کیمیا، طبقه منفی یک، پلاک ۱۳۳. تماس: ۰۹۱۵۲۴۲۴۶۲۴',
+        'تولیدی پوشاک ترنم در مشهد؛ مانتوهای لینن و کتان را هم عمده و هم تکی عرضه می‌کند. این فروشگاه، کانال خرید مستقیم برای شماست — با همان کیفیت کارخانه.\n\nدفتر پخش: مشهد، میدان ۱۷ شهریور، پاساژ کیمیا، طبقه منفی یک، پلاک ۱۳۳. تماس: ۰۹۱۵۲۴۲۴۶۲۴'
       );
     case 'contact':
       return [
@@ -761,12 +771,12 @@ export function getDefaultBlocks(
     case 'shipping':
       return defaultTextPage(
         'ارسال سفارش',
-        'بعد از ثبت سفارش، بسته‌تان از مشهد راه می‌افتد:\n\n• پست پیشتاز\n• تیپاکس\n• چاپار\n• پیک موتوری تهران',
+        'بعد از ثبت سفارش، بسته‌تان از مشهد راه می‌افتد:\n\n• پست پیشتاز\n• تیپاکس\n• چاپار\n• پیک موتوری تهران'
       );
     case 'returns':
       return defaultTextPage(
         'مرجوعی و تعویض',
-        'از حساب کاربری درخواست مرجوعی یا تعویض سایز ثبت کنید. شرایط دقیق را از پشتیبانی بپرسید.',
+        'از حساب کاربری درخواست مرجوعی یا تعویض سایز ثبت کنید. شرایط دقیق را از پشتیبانی بپرسید.'
       );
     default:
       return defaultTextPage(pageKey, '');

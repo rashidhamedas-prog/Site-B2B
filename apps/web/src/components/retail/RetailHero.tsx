@@ -62,7 +62,9 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
         </p>
       ) : null}
 
-      <div className={`mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-end ${artwork ? 'md:hidden' : ''}`}>
+      <div
+        className={`mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-end ${artwork ? 'md:hidden' : ''}`}
+      >
         {slide.ctaLabel && slide.ctaHref ? (
           <Link
             href={slide.ctaHref}
@@ -75,7 +77,7 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
         {slide.ctaSecondaryLabel && slide.ctaSecondaryHref ? (
           <Link
             href={slide.ctaSecondaryHref}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-[var(--retail-gold)]/60 bg-black/20 px-7 py-3.5 text-sm font-bold text-[var(--retail-gold)] backdrop-blur-sm transition duration-200 hover:bg-white/10"
+            className="border-[var(--retail-gold)]/60 inline-flex cursor-pointer items-center gap-2 rounded-md border bg-black/20 px-7 py-3.5 text-sm font-bold text-[var(--retail-gold)] backdrop-blur-sm transition duration-200 hover:bg-white/10"
           >
             {slide.ctaSecondaryLabel}
             <ChevronLeft className="h-4 w-4" />
@@ -159,13 +161,15 @@ export function RetailHero(props: RetailHeroProps) {
         className={`absolute inset-0 opacity-[0.05] ${isArtwork ? 'md:hidden' : ''}`}
         style={{
           backgroundImage:
-            'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
+            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
         }}
         aria-hidden
       />
 
-      <div className={`relative z-10 mx-auto flex min-h-[82vh] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 md:min-h-0 lg:items-center lg:px-8 lg:pb-28 ${isArtwork ? 'md:pointer-events-none md:sr-only' : 'md:min-h-[min(92vh,860px)]'}`}>
-        <div key={`copy-${carousel.index}`} className="w-full animate-fade-in lg:w-[48%]">
+      <div
+        className={`relative z-10 mx-auto flex min-h-[82vh] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 md:min-h-0 lg:items-center lg:px-8 lg:pb-28 ${isArtwork ? 'md:sr-only md:pointer-events-none' : 'md:min-h-[min(92vh,860px)]'}`}
+      >
+        <div key={`copy-${carousel.index}`} className="animate-fade-in w-full lg:w-[48%]">
           <RetailSlideCopy slide={slide} artwork={isArtwork} />
         </div>
       </div>

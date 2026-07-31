@@ -146,7 +146,7 @@ export class HeroCampaignBanners1785456000001 implements MigrationInterface {
   private async replaceHero(
     queryRunner: QueryRunner,
     channel: 'WHOLESALE' | 'RETAIL',
-    slides: CampaignSlide[],
+    slides: CampaignSlide[]
   ): Promise<void> {
     const props = JSON.stringify({ autoplayMs: 6000, slides });
     await queryRunner.query(
@@ -171,7 +171,7 @@ export class HeroCampaignBanners1785456000001 implements MigrationInterface {
             WHERE existing.value->>'type' = 'hero'
           )
       `,
-      [props, channel],
+      [props, channel]
     );
   }
 }

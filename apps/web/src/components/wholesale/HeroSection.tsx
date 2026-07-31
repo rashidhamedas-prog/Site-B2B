@@ -32,7 +32,9 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
   return (
     <div className="max-w-3xl">
       {slide.brandEyebrow ? (
-        <p className="mb-5 text-sm font-semibold tracking-[0.18em] text-secondary">{slide.brandEyebrow}</p>
+        <p className="text-secondary mb-5 text-sm font-semibold tracking-[0.18em]">
+          {slide.brandEyebrow}
+        </p>
       ) : null}
 
       <h1 className="mb-6 text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
@@ -48,13 +50,19 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
       </h1>
 
       {slide.body ? (
-        <p className="mb-10 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">{slide.body}</p>
+        <p className="mb-10 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
+          {slide.body}
+        </p>
       ) : null}
 
       <div className={`flex flex-wrap gap-3 sm:gap-4 ${artwork ? 'md:hidden' : ''}`}>
         {slide.ctaLabel && slide.ctaHref ? (
           <Link href={slide.ctaHref} className="cursor-pointer">
-            <Button size="lg" variant="secondary" leftIcon={<ArrowLeft className="h-5 w-5 rtl-flip" />}>
+            <Button
+              size="lg"
+              variant="secondary"
+              leftIcon={<ArrowLeft className="rtl-flip h-5 w-5" />}
+            >
               {slide.ctaLabel}
             </Button>
           </Link>
@@ -64,7 +72,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
             <Button
               size="lg"
               variant="outline"
-              className="border-white/40 text-white hover:border-white hover:bg-white hover:text-primary"
+              className="hover:text-primary border-white/40 text-white hover:border-white hover:bg-white"
             >
               {slide.ctaSecondaryLabel}
             </Button>
@@ -84,7 +92,7 @@ export function HeroSection(props: HeroSectionProps) {
 
   return (
     <section
-      className={`relative flex min-h-[82vh] items-end overflow-hidden bg-primary-dark text-white ${
+      className={`bg-primary-dark relative flex min-h-[82vh] items-end overflow-hidden text-white ${
         isArtwork ? 'md:aspect-[192/85] md:min-h-0 md:items-stretch' : 'lg:min-h-[92vh]'
       }`}
       onMouseEnter={carousel.pause}
@@ -123,13 +131,15 @@ export function HeroSection(props: HeroSectionProps) {
                 fetchPriority={i === 0 ? 'high' : 'auto'}
                 quality={88}
                 sizes="100vw"
-                className={s.presentation === 'artwork' ? 'object-cover md:object-fill' : 'object-cover'}
+                className={
+                  s.presentation === 'artwork' ? 'object-cover md:object-fill' : 'object-cover'
+                }
               />
             </picture>
           </div>
         );
       })}
-      <div className={`absolute inset-0 bg-gradient-hero-soft ${isArtwork ? 'md:hidden' : ''}`} />
+      <div className={`bg-gradient-hero-soft absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`} />
       <div
         className={`absolute inset-0 opacity-[0.07] ${isArtwork ? 'md:hidden' : ''}`}
         style={{
@@ -138,10 +148,16 @@ export function HeroSection(props: HeroSectionProps) {
         }}
       />
       <div className={`bg-grain absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`} />
-      <div className={`pointer-events-none absolute -left-24 top-1/4 h-[28rem] w-[28rem] rounded-full bg-secondary/15 blur-3xl ${isArtwork ? 'md:hidden' : ''}`} />
-      <div className={`pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-white/5 blur-3xl ${isArtwork ? 'md:hidden' : ''}`} />
+      <div
+        className={`bg-secondary/15 pointer-events-none absolute -left-24 top-1/4 h-[28rem] w-[28rem] rounded-full blur-3xl ${isArtwork ? 'md:hidden' : ''}`}
+      />
+      <div
+        className={`pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-white/5 blur-3xl ${isArtwork ? 'md:hidden' : ''}`}
+      />
 
-      <div className={`container-site relative z-10 pb-20 pt-28 sm:pb-24 lg:pb-28 lg:pt-32 ${isArtwork ? 'md:pointer-events-none md:sr-only' : ''}`}>
+      <div
+        className={`container-site relative z-10 pb-20 pt-28 sm:pb-24 lg:pb-28 lg:pt-32 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
+      >
         <div key={`ws-copy-${carousel.index}`} className="animate-fade-in">
           <WholesaleSlideCopy slide={slide} artwork={isArtwork} />
         </div>
@@ -151,7 +167,7 @@ export function HeroSection(props: HeroSectionProps) {
         <Link
           href={slide.ctaHref}
           aria-label={`${slide.ctaLabel || 'مشاهده'} — ${slide.headline}`}
-          className="absolute inset-0 z-10 hidden cursor-pointer focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-secondary md:block"
+          className="focus-visible:outline-secondary absolute inset-0 z-10 hidden cursor-pointer focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-[-4px] md:block"
         />
       ) : null}
 
