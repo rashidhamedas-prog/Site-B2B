@@ -2,11 +2,11 @@
   "project": "Taranom B2B/B2C platform",
   "architecture": "Next.js storefront/admin with NestJS API, TypeORM/PostgreSQL, Redis, MinIO and Meilisearch",
   "hardening": {
-    "lastReviewed": "2026-07-31",
+    "lastReviewed": "2026-08-01",
     "checkoutTransaction": "completed_and_api_build_verified",
     "knownRisks": [
-      "A previously tracked SSH credential must be rotated and removed from Git history with owner approval",
-      "Production auto-deploy is not protected by an approval environment",
+      "All old clones are invalid after the 2026-08-01 history rewrite and must be replaced with fresh clones",
+      "External provider tokens for SMS, payment and CRM still require owner-side rotation",
       "Integration, concurrency and end-to-end coverage is incomplete",
       "Local node_modules is not a trustworthy clean-install baseline"
     ]

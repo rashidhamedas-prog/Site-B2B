@@ -933,3 +933,15 @@
 - پنج بنر بدون انسان/مانکن و بنر آخر تکی با یک مدل انسانی و کت آلیس طراحی شد.
 - خروجی WebP مستقل دسکتاپ و موبایل، defaults جدید و migration برگشت‌پذیر CMS اضافه شدند.
 - مسیر جدید `hero-product-2026-v2` نیز مستقیم سرو می‌شود تا خطای optimizer در high-DPR تکرار نشود.
+
+---
+
+## 2026-08-01 — سخت‌سازی production و پاک‌سازی تاریخچه Git
+
+**گزارش:** [reports/2026-08-01-production-hardening-history-rewrite.md](./reports/2026-08-01-production-hardening-history-rewrite.md)
+
+- backup دیتابیس، MinIO و rollback پیش از عملیات ساخته و بررسی شد.
+- SSH key-only و credentialهای داخلی PostgreSQL/Redis/MinIO/Meilisearch/JWT rotate شدند.
+- دو مسیر حساس از تاریخچه هر ۲۸ branch حذف و Gitleaks با صفر finding اجرا شد.
+- تمام branchها force-push شدند؛ Cursor و سایر ابزارها باید fresh-clone انجام دهند.
+- production، API و هر دو دامنه پس از عملیات سالم تأیید شدند.

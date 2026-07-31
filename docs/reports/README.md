@@ -4,6 +4,7 @@
 
 | تاریخ | موضوع |
 |--------|--------|
+| 2026-08-01 | [سخت‌سازی production و بازنویسی تاریخچه](./2026-08-01-production-hardening-history-rewrite.md) |
 | 2026-07-31 | [سخت‌سازی تراکنش checkout](./2026-07-31-checkout-transaction-hardening.md) |
 | 2026-07-11 | [بازیابی سایت پس از حذف deploy](./2026-07-11-server-redeploy.md) |
 | 2026-07-09 | [تصاویر، checkout، deploy، E2E](./2026-07-09-product-images-checkout-deploy.md) |
