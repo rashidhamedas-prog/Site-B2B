@@ -908,3 +908,6 @@
 - alias امن `wholesale-vps` برای `wholesale-admin@5.75.200.102:2222` در SSH config ثبت و اتصال non-interactive تأیید شد.
 - type-check و build وب/API و `git diff --check` موفق بودند.
 - lint/test سراسری به‌علت نبود executableهای `eslint` و `jest` در وابستگی‌های API متوقف شدند؛ جزئیات در گزارش Cursor ثبت شد.
+- commit `ed612da` به `origin/master` push و با سرویس استاندارد `taranom-autodeploy` روی production منتشر شد.
+- migrationهای Hero در جدول `migrations` ثبت شدند؛ API health موفق بود.
+- دامنه‌های `poshaktaranom.com` و `www.poshaktaranom.ir` در دسکتاپ و موبایل بررسی شدند: تصاویر جدید بارگذاری شدند، H1 واحد و بدون overflow افقی.
