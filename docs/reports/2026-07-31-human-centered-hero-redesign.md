@@ -67,6 +67,13 @@
 - Desktop production: all three hero images loaded at 1200px intrinsic width; retail heading computed color is white.
 - Mobile production at 390x844: dedicated mobile WebP selected on `.com` and `.ir`, exactly one H1, and no horizontal overflow.
 
+### Production hotfix: high-DPR desktop images
+
+- A real 1920px Chrome session exposed missing hero photos while text and gradients remained visible.
+- Root cause: Next Image accepted `w=1920` but returned HTTP 400 for the `w=3840` candidate selected on wide/high-DPR displays.
+- The human hero assets are already compressed WebP files (roughly 32-80KB), so these specific local files now use Next Image `unoptimized` mode and are served directly.
+- CMS/external and legacy hero images retain the existing optimizer behavior; the bypass is scoped to `/banners/hero-human-2026/`.
+
 ### SSH / deployment handoff
 
 - The production key remains outside Git at the standard path `C:\Users\DayaTech\.ssh\wholesale_server`.

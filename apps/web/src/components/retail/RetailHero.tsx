@@ -134,6 +134,7 @@ export function RetailHero(props: RetailHeroProps) {
                 fill
                 priority={i === 0}
                 fetchPriority={i === 0 ? 'high' : 'auto'}
+                unoptimized={src.startsWith('/banners/hero-human-2026/')}
                 quality={88}
                 sizes="100vw"
                 className={
