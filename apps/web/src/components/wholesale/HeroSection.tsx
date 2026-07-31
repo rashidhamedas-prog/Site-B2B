@@ -112,11 +112,7 @@ export function HeroSection(props: HeroSectionProps) {
           <div
             key={`${s.imageUrl}-${i}`}
             className={`absolute inset-0 transition-opacity duration-700 ${
-              i === carousel.index
-                ? s.presentation === 'artwork'
-                  ? 'opacity-100'
-                  : 'opacity-40'
-                : 'pointer-events-none opacity-0'
+              i === carousel.index ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
             aria-hidden={i !== carousel.index}
           >
@@ -144,20 +140,24 @@ export function HeroSection(props: HeroSectionProps) {
           </div>
         );
       })}
-      <div className={`bg-gradient-hero-soft absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`} />
+      {/* Transparent RTL scrim — never an opaque green wash (product heroes are already dark). */}
       <div
-        className={`absolute inset-0 opacity-[0.07] ${isArtwork ? 'md:hidden' : ''}`}
+        className={`absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`}
+        style={{
+          background: `
+            linear-gradient(100deg, rgba(18,64,53,0.18) 0%, rgba(18,64,53,0.32) 40%, rgba(18,64,53,0.78) 68%, rgba(12,40,33,0.92) 100%),
+            radial-gradient(ellipse 42% 55% at 12% 30%, rgba(201,168,76,0.16), transparent 55%)
+          `,
+        }}
+        aria-hidden
+      />
+      <div
+        className={`absolute inset-0 opacity-[0.04] ${isArtwork ? 'md:hidden' : ''}`}
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M0 40h80M40 0v80'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: '80px 80px',
         }}
-      />
-      <div className={`bg-grain absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`} />
-      <div
-        className={`bg-secondary/15 pointer-events-none absolute -left-24 top-1/4 h-[28rem] w-[28rem] rounded-full blur-3xl ${isArtwork ? 'md:hidden' : ''}`}
-      />
-      <div
-        className={`pointer-events-none absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-white/5 blur-3xl ${isArtwork ? 'md:hidden' : ''}`}
+        aria-hidden
       />
 
       <div

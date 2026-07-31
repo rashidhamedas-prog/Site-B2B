@@ -32,6 +32,12 @@ export type HeroFlatProps = {
 
 const DEFAULT_AUTOPLAY_MS = 5500;
 
+function trimUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
 function asSlide(raw: unknown): HeroSlide | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
@@ -42,8 +48,8 @@ function asSlide(raw: unknown): HeroSlide | null {
     headline,
     headlineAccent: typeof o.headlineAccent === 'string' ? o.headlineAccent : undefined,
     body: typeof o.body === 'string' ? o.body : undefined,
-    imageUrl: typeof o.imageUrl === 'string' ? o.imageUrl : '',
-    mobileImageUrl: typeof o.mobileImageUrl === 'string' ? o.mobileImageUrl : undefined,
+    imageUrl: trimUrl(o.imageUrl) || '',
+    mobileImageUrl: trimUrl(o.mobileImageUrl),
     imageAlt: typeof o.imageAlt === 'string' ? o.imageAlt : undefined,
     presentation: o.presentation === 'artwork' ? 'artwork' : 'overlay',
     ctaLabel: typeof o.ctaLabel === 'string' ? o.ctaLabel : undefined,
@@ -68,8 +74,8 @@ export function normalizeHeroSlides(props: HeroFlatProps, fallback?: HeroSlide):
         headline: flatHeadline,
         headlineAccent: props.headlineAccent,
         body: props.body,
-        imageUrl: props.imageUrl || '',
-        mobileImageUrl: props.mobileImageUrl,
+        imageUrl: trimUrl(props.imageUrl) || '',
+        mobileImageUrl: trimUrl(props.mobileImageUrl),
         imageAlt: props.imageAlt,
         presentation: props.presentation === 'artwork' ? 'artwork' : 'overlay',
         ctaLabel: props.ctaLabel,

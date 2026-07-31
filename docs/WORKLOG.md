@@ -2,6 +2,16 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-07-31 — رفع دیده نشدن هیرو عمده
+
+### خلاصه
+
+- بنرهای `hero-product-2026-v2` عمده در CMS و CDN بودند ولی به‌خاطر `opacity-40` + wash مات سبز در `HeroSection` دیده نمی‌شدند
+- اصلاح: opacity کامل + scrim نیمه‌شفاف RTL (مثل تکی) و trim URL تصاویر
+- گزارش: `docs/reports/2026-07-31-wholesale-hero-visibility.md`
+
+---
+
 ## 2026-07-31 — Hardening جزئی (Tasks 1–4 کد + handoff)
 
 ### خلاصه
