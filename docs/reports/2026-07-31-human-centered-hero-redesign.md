@@ -3,7 +3,7 @@
 **تاریخ:** 2026-07-31
 
 **کانال‌ها:** WHOLESALE و RETAIL
-**وضعیت:** پیاده‌سازی محلی؛ deploy/migration production اجرا نشده
+**وضعیت:** روی production منتشر و تأیید شد (`ed612da`)
 
 ## علت بازطراحی
 
@@ -61,7 +61,11 @@
 - Browser desktop at 1440x900: exactly one H1 on both channels, no horizontal overflow, desktop WebP selected.
 - Browser mobile at 390x844: exactly one H1 on both channels, no horizontal overflow, dedicated `-mobile.webp` selected.
 - Retail mobile review exposed a low-contrast heading; `text-white` was added explicitly to `RetailHero` before handoff.
-- Production migration/deploy was not run.
+- Production deploy completed successfully at commit `ed612da`.
+- TypeORM migrations `HumanHeroRedesign1785456000002` and `HeroCampaignBanners1785456000001` are recorded in production.
+- Production API `/v1/health`: passed.
+- Desktop production: all three hero images loaded at 1200px intrinsic width; retail heading computed color is white.
+- Mobile production at 390x844: dedicated mobile WebP selected on `.com` and `.ir`, exactly one H1, and no horizontal overflow.
 
 ### SSH / deployment handoff
 
