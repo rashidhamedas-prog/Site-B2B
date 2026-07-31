@@ -54,6 +54,10 @@ Clear space ≈ ¼ logo height. Prefer gold or white on dark green heroes. Do no
 6. Overlay copy in HTML/CSS (or Figma) — never burn Persian text into AI images when avoidable
 7. Export: desktop `1920×1080` (or `1920×800`), mobile crop `1080×1350` optional; WebP/JPG ≤ 400KB target after compress
 
+### Artwork exception
+
+اگر بنر تأییدشده دارای متن حک‌شده باشد، فقط با `presentation: artwork` استفاده شود: نسخه دسکتاپ کامل و بدون overlay تکراری، نسخه موبایل تصویری جدا همراه متن و CTA واقعی HTML، alt توصیفی و لینک واقعی keyboard-accessible. متن bitmap به‌تنهایی جای H1/body/CTA معنایی را نمی‌گیرد.
+
 ## Category tile banners (retail 3×3)
 
 1. Aspect **1:1** (square); served from `/banners/category-2026/` or admin upload

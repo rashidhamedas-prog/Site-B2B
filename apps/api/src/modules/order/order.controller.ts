@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  ParseIntPipe,
+  DefaultValuePipe,
+  ForbiddenException,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,6 +21,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { OrderService } from './order.service';
 import { UserEntity } from '../auth/entities/user.entity';
+import { CreateOrderDto, QuoteDiscountsDto } from './dto/create-order.dto';
 
 type JwtUser = { sub: string; id: string; role: string; phone: string; customerId?: string };
 
@@ -20,24 +35,27 @@ export class OrderController {
     @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
   ) {}
 
+  private isStaff(role: string) {
+    return role === 'ADMIN' || role === 'STAFF' || role === 'SUPER_ADMIN';
+  }
+
+  private async resolveOwnCustomerId(user: JwtUser): Promise<string | undefined> {
+    if (user.customerId) return user.customerId;
+    return (await this.userRepo.findOne({ where: { id: user.sub } }))?.customerId ?? undefined;
+  }
+
   @Post()
   @ApiOperation({ summary: 'ثبت سفارش جدید' })
   async create(
     @Request() req: Express.Request & { user: JwtUser },
-    @Body() body: any,
+    @Body() body: CreateOrderDto,
   ) {
-    // Always resolve customerId for the authenticated user when missing.
-    // (Previously only CUSTOMER role was injected — other roles caused DB 500.)
-    let customerId: string | undefined = body?.customerId || req.user.customerId;
-    if (!customerId) {
-      customerId =
-        (await this.userRepo.findOne({ where: { id: req.user.sub } }))?.customerId ?? undefined;
-    }
-    if (req.user.role === 'CUSTOMER') {
-      const own =
-        req.user.customerId
-        ?? (await this.userRepo.findOne({ where: { id: req.user.sub } }))?.customerId;
-      if (own) customerId = own;
+    let customerId: string | undefined;
+    if (this.isStaff(req.user.role)) {
+      customerId = body.customerId || (await this.resolveOwnCustomerId(req.user));
+    } else {
+      // CUSTOMER (and any non-staff): always bind to JWT customer — ignore body.customerId
+      customerId = await this.resolveOwnCustomerId(req.user);
     }
     if (!customerId) {
       throw new ForbiddenException(
@@ -58,9 +76,8 @@ export class OrderController {
     @Query('type') type?: string,
     @Query('channel') channel?: string,
   ) {
-    if (req.user.role === 'CUSTOMER') {
-      const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
-      const cid = user?.customerId;
+    if (!this.isStaff(req.user.role)) {
+      const cid = await this.resolveOwnCustomerId(req.user);
       return this.orderService.findAll(page, limit, cid ?? undefined, status, type, {
         includeDeleted: false,
         channel,
@@ -74,17 +91,33 @@ export class OrderController {
 
   @Get('installment-eligibility/:customerId')
   @ApiOperation({ summary: 'بررسی واجد شرایط بودن اقساط' })
-  installmentEligibility(@Param('customerId') customerId: string) {
+  async installmentEligibility(
+    @Request() req: Express.Request & { user: JwtUser },
+    @Param('customerId') customerId: string,
+  ) {
+    if (!this.isStaff(req.user.role)) {
+      const own = await this.resolveOwnCustomerId(req.user);
+      if (!own || own !== customerId) {
+        throw new ForbiddenException('دسترسی غیرمجاز');
+      }
+    }
     return this.orderService.installmentEligibility(customerId);
   }
 
   @Post('quote-discounts')
   @ApiOperation({ summary: 'محاسبه تخفیف‌های قابل اعمال (کد/طبقاتی/جانبی)' })
-  quoteDiscounts(
-    @Body() body: { customerId: string; subtotal: number; discountCode?: string; categoryIds?: string[] },
+  async quoteDiscounts(
+    @Request() req: Express.Request & { user: JwtUser },
+    @Body() body: QuoteDiscountsDto,
   ) {
+    let customerId = body.customerId;
+    if (!this.isStaff(req.user.role)) {
+      customerId = await this.resolveOwnCustomerId(req.user);
+      if (!customerId) throw new ForbiddenException('دسترسی غیرمجاز');
+    }
+    if (!customerId) throw new ForbiddenException('customerId الزامی است');
     return this.orderService.quoteDiscounts(
-      body.customerId,
+      customerId,
       Number(body.subtotal) || 0,
       body.discountCode,
       body.categoryIds ?? [],
@@ -98,9 +131,9 @@ export class OrderController {
     @Param('id') id: string,
   ) {
     const order = await this.orderService.findOne(id);
-    if (req.user.role === 'CUSTOMER') {
-      const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
-      if (order.customerId !== user?.customerId) throw new ForbiddenException('دسترسی غیرمجاز');
+    if (!this.isStaff(req.user.role)) {
+      const cid = await this.resolveOwnCustomerId(req.user);
+      if (order.customerId !== cid) throw new ForbiddenException('دسترسی غیرمجاز');
       if (order.status === 'DELETED' || order.voidedAt) {
         throw new ForbiddenException('این سفارش حذف شده است');
       }

@@ -25,7 +25,7 @@ const RETAIL_FALLBACK: HeroSlide = {
 
 export type RetailHeroProps = HeroFlatProps;
 
-function RetailSlideCopy({ slide }: { slide: HeroSlide }) {
+function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork?: boolean }) {
   const renderHeadline = () => {
     if (slide.headlineAccent && slide.headline.includes(slide.headlineAccent)) {
       const parts = slide.headline.split(slide.headlineAccent);
@@ -62,7 +62,7 @@ function RetailSlideCopy({ slide }: { slide: HeroSlide }) {
         </p>
       ) : null}
 
-      <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-end">
+      <div className={`mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-end ${artwork ? 'md:hidden' : ''}`}>
         {slide.ctaLabel && slide.ctaHref ? (
           <Link
             href={slide.ctaHref}
@@ -93,10 +93,13 @@ export function RetailHero(props: RetailHeroProps) {
   const carousel = useHeroCarousel(slides, autoplayMs);
 
   const slide = carousel.slide ?? RETAIL_FALLBACK;
+  const isArtwork = slide.presentation === 'artwork';
 
   return (
     <section
-      className="relative isolate min-h-[min(92vh,860px)] overflow-hidden bg-[var(--retail-primary-dark)] text-white"
+      className={`relative isolate min-h-[82vh] overflow-hidden bg-[var(--retail-primary-dark)] text-white ${
+        isArtwork ? 'md:aspect-[192/85] md:min-h-0' : 'md:min-h-[min(92vh,860px)]'
+      }`}
       onMouseEnter={carousel.pause}
       onMouseLeave={carousel.resume}
       onFocusCapture={carousel.pause}
@@ -114,25 +117,36 @@ export function RetailHero(props: RetailHeroProps) {
           <div
             key={`${src}-${i}`}
             className={`absolute inset-0 transition-opacity duration-700 ease-out ${
-              i === carousel.index ? 'opacity-100' : 'opacity-0'
+              i === carousel.index ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
             aria-hidden={i !== carousel.index}
           >
-            <Image
-              src={src}
-              alt=""
-              fill
-              priority={i === 0}
-              sizes="100vw"
-              className="object-cover object-[20%_center] sm:object-center"
-            />
+            <picture>
+              {s.mobileImageUrl ? (
+                <source media="(max-width: 767px)" srcSet={s.mobileImageUrl} />
+              ) : null}
+              <Image
+                src={src}
+                alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
+                fill
+                priority={i === 0}
+                fetchPriority={i === 0 ? 'high' : 'auto'}
+                quality={88}
+                sizes="100vw"
+                className={
+                  s.presentation === 'artwork'
+                    ? 'object-cover md:object-fill'
+                    : 'object-cover object-[20%_center] sm:object-center'
+                }
+              />
+            </picture>
           </div>
         );
       })}
 
       {/* Brand wash + RTL readable scrim (copy sits on the right in RTL) */}
       <div
-        className="absolute inset-0"
+        className={`absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`}
         style={{
           background: `
             linear-gradient(100deg, rgba(12,39,30,0.15) 0%, rgba(12,39,30,0.35) 42%, rgba(12,39,30,0.82) 68%, rgba(8,28,22,0.94) 100%),
@@ -142,7 +156,7 @@ export function RetailHero(props: RetailHeroProps) {
         aria-hidden
       />
       <div
-        className="absolute inset-0 opacity-[0.05]"
+        className={`absolute inset-0 opacity-[0.05] ${isArtwork ? 'md:hidden' : ''}`}
         style={{
           backgroundImage:
             'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\'/%3E%3C/svg%3E")',
@@ -150,11 +164,19 @@ export function RetailHero(props: RetailHeroProps) {
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto flex min-h-[min(92vh,860px)] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 lg:items-center lg:px-8 lg:pb-28">
+      <div className={`relative z-10 mx-auto flex min-h-[82vh] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 md:min-h-0 lg:items-center lg:px-8 lg:pb-28 ${isArtwork ? 'md:pointer-events-none md:sr-only' : 'md:min-h-[min(92vh,860px)]'}`}>
         <div key={`copy-${carousel.index}`} className="w-full animate-fade-in lg:w-[48%]">
-          <RetailSlideCopy slide={slide} />
+          <RetailSlideCopy slide={slide} artwork={isArtwork} />
         </div>
       </div>
+
+      {isArtwork && slide.ctaHref ? (
+        <Link
+          href={slide.ctaHref}
+          aria-label={`${slide.ctaLabel || 'مشاهده'} — ${slide.headline}`}
+          className="absolute inset-0 z-10 hidden cursor-pointer focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-[-4px] focus-visible:outline-[var(--retail-gold)] md:block"
+        />
+      ) : null}
 
       {carousel.showControls ? (
         <HeroCarouselControls
@@ -163,6 +185,8 @@ export function RetailHero(props: RetailHeroProps) {
           onGoTo={carousel.goTo}
           onPrev={carousel.goPrev}
           onNext={carousel.goNext}
+          paused={carousel.isPaused}
+          onTogglePaused={carousel.togglePaused}
           tone="gold"
         />
       ) : null}

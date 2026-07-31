@@ -23,12 +23,12 @@ export class PaymentEntity {
   status: string;
 
   // Gateway-issued token used to build the redirect + verify the payment
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   @Index()
   authority: string;
 
   // Gateway reference id returned after a successful verification (receipt no.)
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   refId: string;
 
   @Column({ nullable: true })

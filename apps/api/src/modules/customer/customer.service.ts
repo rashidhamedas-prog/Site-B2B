@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { CustomerEntity } from './entities/customer.entity';
@@ -145,8 +145,28 @@ export class CustomerService {
   }
 
   async updateBalance(id: string, delta: number) {
-    const customer = await this.findOne(id);
-    customer.balance = Number(customer.balance) + delta;
-    return this.repo.save(customer);
+    const amount = Number(delta) || 0;
+    if (amount === 0) return this.findOne(id);
+
+    if (amount < 0) {
+      const result = await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({ balance: () => `"balance" + (${amount})` })
+        .where('id = :id', { id })
+        .andWhere(`"balance" >= :need`, { need: Math.abs(amount) })
+        .execute();
+      if (!result.affected) {
+        throw new BadRequestException('موجودی کیف پول کافی نیست');
+      }
+    } else {
+      await this.repo
+        .createQueryBuilder()
+        .update()
+        .set({ balance: () => `"balance" + (${amount})` })
+        .where('id = :id', { id })
+        .execute();
+    }
+    return this.findOne(id);
   }
 }

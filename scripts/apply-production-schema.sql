@@ -100,3 +100,12 @@ WHERE COALESCE(p."stock", 0) = 0
 -- inventory_movements: allow product-level movements without a variant
 ALTER TABLE inventory_movements ALTER COLUMN "productVariantId" DROP NOT NULL;
 ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS "productId" uuid;
+
+-- Hardening 2026-07-31: order idempotency + payment unique authority/refId
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS "idempotencyKey" varchar;
+CREATE UNIQUE INDEX IF NOT EXISTS "UQ_orders_idempotencyKey"
+  ON orders ("idempotencyKey") WHERE "idempotencyKey" IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS "UQ_payments_authority"
+  ON payments ("authority") WHERE "authority" IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS "UQ_payments_refId"
+  ON payments ("refId") WHERE "refId" IS NOT NULL;

@@ -7,9 +7,16 @@ import { AuthService } from '../auth.service';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService, private readonly authService: AuthService) {
+    const secret = config.get<string>('JWT_SECRET');
+    const isProd = config.get<string>('NODE_ENV') === 'production';
+    if (!secret || (isProd && secret.length < 32)) {
+      throw new Error(
+        'JWT_SECRET is required (min 32 chars in production). Refusing to start.',
+      );
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: config.get('JWT_SECRET', 'taranom-secret-change-in-prod'),
+      secretOrKey: secret || 'dev-only-insecure-jwt-secret-change-me',
     });
   }
 

@@ -72,14 +72,26 @@ export class DiscountService {
   }
 
   async recordUse(id: string) {
-    await this.repo.increment({ id }, 'usedCount', 1);
+    const result = await this.repo
+      .createQueryBuilder()
+      .update()
+      .set({ usedCount: () => '"usedCount" + 1' })
+      .where('id = :id', { id })
+      .andWhere('("maxUses" IS NULL OR "maxUses" = 0 OR "usedCount" < "maxUses")')
+      .execute();
+    if (!result.affected) {
+      throw new BadRequestException('سقف استفاده از کد تخفیف پر شده');
+    }
   }
 
   async decrementUse(id: string) {
-    const row = await this.repo.findOne({ where: { id } });
-    if (!row) return;
-    if ((row.usedCount || 0) <= 0) return;
-    await this.repo.decrement({ id }, 'usedCount', 1);
+    await this.repo
+      .createQueryBuilder()
+      .update()
+      .set({ usedCount: () => 'GREATEST("usedCount" - 1, 0)' })
+      .where('id = :id', { id })
+      .andWhere('"usedCount" > 0')
+      .execute();
   }
 
   // ── Tiered (طبقاتی) ────────────────────────────────────────
