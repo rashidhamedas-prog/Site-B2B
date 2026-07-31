@@ -55,5 +55,11 @@ Migration/deploy روی production بدون تأیید مالک اجرا نشو�
 
 ## Verification
 
-نتایج typecheck/build و بررسی بصری پس از اجرا به انتهای همین گزارش اضافه شوند.
-
+- `npm run type-check --workspace=@taranom/web` — موفق
+- `npx tsc --noEmit -p apps/api/tsconfig.json` — موفق
+- `npm run build --workspace=@taranom/web` — موفق؛ ۶۰ مسیر تولید شد
+- `git diff --check` — موفق
+- مرورگر دسکتاپ `1440×900`: هر دو کانال، H1 واحد، بدون overflow افقی، artwork کامل و کنترل‌ها صحیح
+- مرورگر موبایل `390×844`: source موبایل `600×800` انتخاب شد، H1 و CTA HTML قابل مشاهده و بدون overflow افقی
+- تصاویر desktop بین ۷۴ تا ۱۰۳KB و تصاویر mobile بین ۳۷ تا ۵۱KB هستند.
+- migration در production اجرا نشد؛ فقط TypeScript آن validate شد.
