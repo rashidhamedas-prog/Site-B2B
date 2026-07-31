@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -15,7 +16,7 @@ export class ProductController {
 
   @Get()
   @ApiOperation({ summary: 'کاتالوگ محصولات (عمومی)' })
-  findAll(
+  async findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('search') search?: string,
@@ -32,7 +33,22 @@ export class ProductController {
     @Query('relatedTo') relatedTo?: string,
     @Query('channel') channel?: string,
     @Query('sort') sort?: string,
+    @Query('includeVariants') includeVariants?: string,
+    @Res({ passthrough: true }) res?: Response,
   ) {
+    // Public ACTIVE listings are cacheable; admin ALL is not
+    if (String(status || 'ACTIVE').toUpperCase() !== 'ALL') {
+      res?.setHeader(
+        'Cache-Control',
+        'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+      );
+    } else {
+      res?.setHeader('Cache-Control', 'private, no-store');
+    }
+    const wantVariants =
+      includeVariants === '1' ||
+      includeVariants === 'true' ||
+      String(status || '').toUpperCase() === 'ALL';
     return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
       categoryId,
       collectionId,
@@ -42,6 +58,7 @@ export class ProductController {
       relatedTo,
       channel,
       sort,
+      includeVariants: wantVariants,
     });
   }
 

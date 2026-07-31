@@ -1,11 +1,7 @@
-'use client';
-
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { toman } from '@/lib/retail-cart';
+import { getServerApiBase } from '@/lib/server-api';
 
 type Product = {
   id: string;
@@ -21,14 +17,36 @@ function mediaUrl(url?: string) {
   return `/media/${url}`;
 }
 
-const FALLBACK = [
-  { id: 'f1', name: 'شلوار یخی کمربندی', slug: '#', retailPrice: 18800000, images: [] as string[] },
+function toman(irr: number) {
+  return Math.round(irr / 10).toLocaleString('fa-IR');
+}
+
+const FALLBACK: Product[] = [
+  { id: 'f1', name: 'شلوار یخی کمربندی', slug: '#', retailPrice: 18800000, images: [] },
   { id: 'f2', name: 'مانتو جلو باز تابستانه', slug: '#', retailPrice: 24500000, images: [] },
   { id: 'f3', name: 'شومیز آستین پفی', slug: '#', retailPrice: 16800000, images: [] },
   { id: 'f4', name: 'شلوار بگ گلدوزی', slug: '#', retailPrice: 19800000, images: [] },
 ];
 
-export function RetailProductGrid({
+async function fetchRetailProducts(limit: number, sort: string): Promise<Product[]> {
+  try {
+    const base = getServerApiBase();
+    const sortQ = sort ? `&sort=${encodeURIComponent(sort)}` : '';
+    const res = await fetch(
+      `${base}/products?limit=${limit}&status=ACTIVE&channel=RETAIL${sortQ}`,
+      { next: { revalidate: 300 } },
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : data?.data ?? [];
+    return list as Product[];
+  } catch {
+    return [];
+  }
+}
+
+/** SSR product grid for retail home — no client waterfall. */
+export async function RetailProductGrid({
   title = 'پربازدیدترین‌ها',
   limit = 12,
   sort = 'views',
@@ -37,31 +55,9 @@ export function RetailProductGrid({
   limit?: number;
   sort?: string;
 }) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const sortQ = sort ? `&sort=${encodeURIComponent(sort)}` : '';
-        const data = await apiClient.get<{ data?: Product[] } | Product[]>(
-          `/products?limit=${limit}&status=ACTIVE&channel=RETAIL${sortQ}`,
-        );
-        const list = Array.isArray(data) ? data : data?.data ?? [];
-        if (!cancelled) setProducts(list.length ? list : FALLBACK.slice(0, Math.min(limit, FALLBACK.length)));
-      } catch {
-        if (!cancelled) setProducts(FALLBACK.slice(0, Math.min(limit, FALLBACK.length)));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [limit, sort]);
-
-  const skeletonCount = Math.min(Math.max(limit, 4), 12);
+  const fetched = await fetchRetailProducts(limit, sort);
+  const products =
+    fetched.length > 0 ? fetched : FALLBACK.slice(0, Math.min(limit, FALLBACK.length));
 
   return (
     <section className="relative overflow-hidden bg-[var(--retail-bg)] py-16 sm:py-20">
@@ -87,58 +83,48 @@ export function RetailProductGrid({
           <h2 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{title}</h2>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-            {Array.from({ length: skeletonCount }).map((_, i) => (
-              <div key={i} className="aspect-[3/4] animate-pulse rounded-sm bg-[var(--retail-card)]" />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-            {products.map((p) => {
-              const img = mediaUrl(p.images?.[0]);
-              const price = Number(p.retailPrice ?? 0);
-              const href = p.slug === '#' ? '/products' : `/products/${p.slug}`;
-              return (
-                <Link
-                  key={p.id}
-                  href={href}
-                  className="group relative block border border-[var(--retail-border)] bg-[var(--retail-card)] transition hover:border-[var(--retail-gold)]/50"
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
+          {products.map((p) => {
+            const img = mediaUrl(p.images?.[0]);
+            const price = Number(p.retailPrice ?? 0);
+            const href = p.slug === '#' ? '/products' : `/products/${p.slug}`;
+            return (
+              <Link
+                key={p.id}
+                href={href}
+                className="group relative block border border-[var(--retail-border)] bg-[var(--retail-card)] transition hover:border-[var(--retail-gold)]/50"
+              >
+                <span
+                  className="absolute left-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-[var(--retail-ink)]/50 opacity-80"
+                  aria-hidden
                 >
-                  <button
-                    type="button"
-                    className="absolute left-3 top-3 z-10 cursor-pointer rounded-full bg-white/80 p-1.5 text-[var(--retail-ink)]/50 opacity-80 transition hover:text-red-500"
-                    aria-label="علاقه‌مندی"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <Heart className="h-4 w-4" strokeWidth={1.4} />
-                  </button>
-                  <div className="relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)]">
-                    {img ? (
-                      <Image
-                        src={img}
-                        alt={p.name}
-                        fill
-                        className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
-                        sizes="(max-width:768px) 50vw, 25vw"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-[var(--retail-muted)]">
-                        تصویر به‌زودی
-                      </div>
-                    )}
-                  </div>
-                  <div className="bg-[var(--retail-surface)] px-3 py-4 text-center">
-                    <h3 className="line-clamp-2 text-[13px] font-semibold text-[var(--retail-ink)]">{p.name}</h3>
-                    <p className="mt-2 text-sm font-bold text-[var(--retail-ink)]">
-                      {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                  <Heart className="h-4 w-4" strokeWidth={1.4} />
+                </span>
+                <div className="relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)]">
+                  {img ? (
+                    <Image
+                      src={img}
+                      alt={p.name}
+                      fill
+                      className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
+                      sizes="(max-width:768px) 50vw, 25vw"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-[var(--retail-muted)]">
+                      تصویر به‌زودی
+                    </div>
+                  )}
+                </div>
+                <div className="bg-[var(--retail-surface)] px-3 py-4 text-center">
+                  <h3 className="line-clamp-2 text-[13px] font-semibold text-[var(--retail-ink)]">{p.name}</h3>
+                  <p className="mt-2 text-sm font-bold text-[var(--retail-ink)]">
+                    {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
 
         <div className="mt-10 text-center">
           <Link

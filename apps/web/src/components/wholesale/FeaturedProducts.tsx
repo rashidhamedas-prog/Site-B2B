@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { getServerApiBase } from '@/lib/server-api';
 
 interface Product {
   id: string;
@@ -18,7 +19,7 @@ interface Product {
 
 async function fetchFeatured(limit = 6): Promise<Product[]> {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+    const apiUrl = getServerApiBase();
     const res = await fetch(
       `${apiUrl}/products?limit=${limit}&status=ACTIVE&channel=WHOLESALE`,
       { next: { revalidate: 300 } },
