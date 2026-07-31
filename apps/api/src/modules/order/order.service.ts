@@ -644,8 +644,8 @@ export class OrderService {
           : JSON.stringify(dto.shippingAddress);
     }
 
-    // Persist order + items first; then atomic stock/wallet/discount.
-    // Stock uses conditional UPDATE (race-safe). On side-effect failure, reverse + cancel.
+    // Persist the order and all financial/inventory effects on one DB connection.
+    // Any failed conditional update rolls the entire checkout back.
     const saved = await this.dataSource.transaction(async (manager) => {
       const orderRepo = manager.getRepository(OrderEntity);
       const itemRepo = manager.getRepository(OrderItemEntity);
@@ -700,29 +700,24 @@ export class OrderService {
         }),
       );
       await itemRepo.save(items);
-      return orderRow;
-    });
 
-    try {
       for (const item of expandedItems) {
-        await this.productService.updateVariantStock(item.productVariantId, -item.quantity, channel);
+        await this.productService.updateVariantStock(
+          item.productVariantId,
+          -item.quantity,
+          channel,
+          manager,
+        );
       }
       if (walletApplied > 0) {
-        await this.customerService.updateBalance(dto.customerId, -walletApplied);
+        await this.customerService.updateBalance(dto.customerId, -walletApplied, manager);
       }
       if (usedDiscountCodeId) {
-        await this.discounts.recordUse(usedDiscountCodeId);
+        await this.discounts.recordUse(usedDiscountCodeId, manager);
       }
-    } catch (err) {
-      try {
-        const full = await this.findOne(saved.id);
-        await this.reverseEffects(full);
-        await this.orderRepo.update(saved.id, { status: 'CANCELLED' });
-      } catch {
-        /* best-effort cleanup */
-      }
-      throw err;
-    }
+
+      return orderRow;
+    });
 
     if (this.notifications) {
       this.notify((p) => this.notifications!.orderRegistered(p, saved.orderNumber), dto.customerId);

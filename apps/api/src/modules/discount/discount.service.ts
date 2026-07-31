@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { DiscountCodeEntity } from './entities/discount-code.entity';
 import { TieredDiscountEntity, TierLevel } from './entities/tiered-discount.entity';
 import { SideDiscountEntity, SideDiscountType } from './entities/side-discount.entity';
@@ -71,8 +71,9 @@ export class DiscountService {
     return { id: dc.id, code: dc.code, type: dc.type, value: dc.value, discount };
   }
 
-  async recordUse(id: string) {
-    const result = await this.repo
+  async recordUse(id: string, manager?: EntityManager) {
+    const repo = manager?.getRepository(DiscountCodeEntity) ?? this.repo;
+    const result = await repo
       .createQueryBuilder()
       .update()
       .set({ usedCount: () => '"usedCount" + 1' })

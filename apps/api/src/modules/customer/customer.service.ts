@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, Optional, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { EntityManager, Repository, ILike } from 'typeorm';
 import { CustomerEntity } from './entities/customer.entity';
 import { AuthService } from '../auth/auth.service';
 import { NotificationService } from '../notification/notification.service';
@@ -144,12 +144,18 @@ export class CustomerService {
     return { message: 'مشتری با موفقیت حذف شد' };
   }
 
-  async updateBalance(id: string, delta: number) {
+  async updateBalance(id: string, delta: number, manager?: EntityManager) {
+    const repo = manager?.getRepository(CustomerEntity) ?? this.repo;
     const amount = Number(delta) || 0;
-    if (amount === 0) return this.findOne(id);
+    if (amount === 0) {
+      if (!manager) return this.findOne(id);
+      const customer = await repo.findOne({ where: { id } });
+      if (!customer) throw new NotFoundException('مشتری یافت نشد');
+      return customer;
+    }
 
     if (amount < 0) {
-      const result = await this.repo
+      const result = await repo
         .createQueryBuilder()
         .update()
         .set({ balance: () => `"balance" + (${amount})` })
@@ -160,12 +166,17 @@ export class CustomerService {
         throw new BadRequestException('موجودی کیف پول کافی نیست');
       }
     } else {
-      await this.repo
+      await repo
         .createQueryBuilder()
         .update()
         .set({ balance: () => `"balance" + (${amount})` })
         .where('id = :id', { id })
         .execute();
+    }
+    if (manager) {
+      const customer = await repo.findOne({ where: { id } });
+      if (!customer) throw new NotFoundException('مشتری یافت نشد');
+      return customer;
     }
     return this.findOne(id);
   }
