@@ -37,7 +37,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
         </p>
       ) : null}
 
-      <h1 className="mb-6 text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
+      <h2 className="mb-6 text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
         {lines.map((line, i) => {
           const isAccent = slide.headlineAccent && line.includes(slide.headlineAccent);
           return (
@@ -47,7 +47,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
             </span>
           );
         })}
-      </h1>
+      </h2>
 
       {slide.body ? (
         <p className="mb-10 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
@@ -100,6 +100,7 @@ export function HeroSection(props: HeroSectionProps) {
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
+      <h1 className="sr-only">فروش عمده مانتو و شومیز زنانه از تولیدی ترنم مشهد</h1>
       {slides.map((s, i) => {
         if (!s.imageUrl) return null;
         const near =

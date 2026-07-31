@@ -52,9 +52,9 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
         </div>
       ) : null}
 
-      <h1 className="text-[clamp(2rem,4.5vw,3.4rem)] font-extrabold leading-[1.35] tracking-tight drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
+      <h2 className="text-[clamp(2rem,4.5vw,3.4rem)] font-extrabold leading-[1.35] tracking-tight !text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
         {renderHeadline()}
-      </h1>
+      </h2>
 
       {slide.body ? (
         <p className="mx-auto mt-5 max-w-md text-[15px] leading-8 text-white/80 lg:mx-0 lg:ms-auto">
@@ -107,6 +107,7 @@ export function RetailHero(props: RetailHeroProps) {
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
+      <h1 className="sr-only">خرید آنلاین مانتو، شومیز و پوشاک زنانه ترنم</h1>
       {/* Full-bleed slide media — only active + neighbors for LCP */}
       {slides.map((s, i) => {
         const src = s.imageUrl || '/retail/hero-model.webp';

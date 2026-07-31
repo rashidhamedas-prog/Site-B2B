@@ -5,26 +5,26 @@
 
 ## Identity
 
-| | |
-|--|--|
-| Brand (FA) | پوشاک ترنم |
-| Brand (EN) | POSHAK TARANOM |
-| Category | Women's fashion manufacturing — linen, cotton, outerwear, sets |
-| Voice | Trustworthy, warm, production-first (B2B) · elegant, calm (B2C) |
-| Direction | RTL |
+|            |                                                                 |
+| ---------- | --------------------------------------------------------------- |
+| Brand (FA) | پوشاک ترنم                                                      |
+| Brand (EN) | POSHAK TARANOM                                                  |
+| Category   | Women's fashion manufacturing — linen, cotton, outerwear, sets  |
+| Voice      | Trustworthy, warm, production-first (B2B) · elegant, calm (B2C) |
+| Direction  | RTL                                                             |
 
 ## Colors (locked)
 
-| Role | Hex | Notes |
-|------|-----|--------|
-| Primary | `#1B5C4A` | Forest green |
-| Primary light | `#2D7A5F` | |
-| Primary dark | `#124035` / `#0F2F28` | Hero backgrounds |
-| Gold / Secondary | `#C9A84C` | Accents, CTAs, eyebrow |
-| Gold light | `#E5C97C` | |
-| Gold dark | `#A88530` | |
-| Cream (B2C) | `#F6F1E8` | Page bg only — not hero fill |
-| Ink | `#1A1A1A` | |
+| Role             | Hex                   | Notes                        |
+| ---------------- | --------------------- | ---------------------------- |
+| Primary          | `#1B5C4A`             | Forest green                 |
+| Primary light    | `#2D7A5F`             |                              |
+| Primary dark     | `#124035` / `#0F2F28` | Hero backgrounds             |
+| Gold / Secondary | `#C9A84C`             | Accents, CTAs, eyebrow       |
+| Gold light       | `#E5C97C`             |                              |
+| Gold dark        | `#A88530`             |                              |
+| Cream (B2C)      | `#F6F1E8`             | Page bg only — not hero fill |
+| Ink              | `#1A1A1A`             |                              |
 
 **Do not use:** purple gradients, neon glow, generic AI cream+terracotta look, floating promo badges on hero media.
 
@@ -36,11 +36,11 @@
 
 ## Logo
 
-| File | Use |
-|------|-----|
-| `assets/brand/logo-512.png` | Hero / print |
-| `assets/brand/logo-128.png` | Favicon / chrome |
-| `apps/web/public/logo-512.png` | Live site |
+| File                           | Use              |
+| ------------------------------ | ---------------- |
+| `assets/brand/logo-512.png`    | Hero / print     |
+| `assets/brand/logo-128.png`    | Favicon / chrome |
+| `apps/web/public/logo-512.png` | Live site        |
 
 Clear space ≈ ¼ logo height. Prefer gold or white on dark green heroes. Do not stretch or recolor off-palette.
 
@@ -58,6 +58,10 @@ Clear space ≈ ¼ logo height. Prefer gold or white on dark green heroes. Do no
 
 اگر بنر تأییدشده دارای متن حک‌شده باشد، فقط با `presentation: artwork` استفاده شود: نسخه دسکتاپ کامل و بدون overlay تکراری، نسخه موبایل تصویری جدا همراه متن و CTA واقعی HTML، alt توصیفی و لینک واقعی keyboard-accessible. متن bitmap به‌تنهایی جای H1/body/CTA معنایی را نمی‌گیرد.
 
+### Preferred human-centered pattern
+
+الگوی پیش‌فرض و ترجیحی `presentation: overlay` است: عکس انسانی/محصول واقعی و بدون نوشته، مدل در نیمه چپ یا میانی، فضای متن RTL در راست، یک H1 پایدار برای صفحه و H2 برای اسلایدها، body کوتاه و CTA واقعی HTML. تصویر موبایل باید فایل مستقل ۳:۴ یا ۴:۵ باشد؛ crop خودکار دسکتاپ برای موبایل قابل قبول نیست.
+
 ## Category tile banners (retail 3×3)
 
 1. Aspect **1:1** (square); served from `/banners/category-2026/` or admin upload
@@ -71,10 +75,12 @@ See `assets/banners/category-2026/README.md`.
 ## Messaging (hero)
 
 ### Retail (تکی)
+
 - Eyebrow examples: زیبایی در هارمونی با شما · کالکشن فصل · ست‌های آماده
 - CTA: مشاهده جدیدترین‌ها / مشاهده مجموعه
 
 ### Wholesale (عمده)
+
 - Eyebrow: پوشاک ترنم
 - Themes: مستقیم از تولیدی · پرفروش بوتیک · ست سودآور
 - CTA: مشاهده محصولات / ثبت‌نام عمده‌فروش
