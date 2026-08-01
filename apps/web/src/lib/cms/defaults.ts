@@ -688,13 +688,13 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           headline: 'دسته‌بندی‌ها',
           body: 'هر دسته یک کالکشن کامل است — با یک لمس وارد شوید',
           columns: 5,
-          maxItems: 99,
+          maxItems: 10,
           categoryIds: '',
         }),
         b('products', {
-          headline: 'همه محصولات',
+          headline: 'جدیدترین‌ها',
           body: '',
-          limit: 200,
+          limit: 12,
           sort: 'newest',
         }),
         b('stats', {

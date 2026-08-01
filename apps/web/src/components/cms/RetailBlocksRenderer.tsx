@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 import type { ContentBlock } from '@/lib/cms/types';
 import { arr, str } from '@/lib/cms/fetch';
 import { RetailHero } from '@/components/retail/RetailHero';
@@ -10,6 +11,16 @@ import {
   heroPropsFromBlock,
   pushCommonBlocks,
 } from './block-shared';
+
+const HOME_PRODUCT_CAP = 12;
+
+function SectionSkeleton({ className = 'h-64' }: { className?: string }) {
+  return (
+    <div className={`mx-auto max-w-[1200px] animate-pulse px-4 py-12 sm:px-6 lg:px-8`}>
+      <div className={`rounded-xl bg-[var(--retail-border)]/40 ${className}`} />
+    </div>
+  );
+}
 
 /** Retail-only CMS blocks — keeps wholesale client chunks out of .ir bundle. */
 export async function RetailBlocksRenderer({
@@ -47,26 +58,31 @@ export async function RetailBlocksRenderer({
         );
         break;
       }
-      case 'products':
+      case 'products': {
+        const rawLimit = typeof p.limit === 'number' ? p.limit : HOME_PRODUCT_CAP;
+        const limit = Math.min(Math.max(1, rawLimit), HOME_PRODUCT_CAP);
         nodes.push(
-          <RetailProductGrid
-            key={block.id}
-            title={str(p, 'headline') || 'همه محصولات'}
-            limit={typeof p.limit === 'number' ? p.limit : 200}
-            sort={str(p, 'sort') || 'newest'}
-          />,
+          <Suspense key={block.id} fallback={<SectionSkeleton className="h-96" />}>
+            <RetailProductGrid
+              title={str(p, 'headline') || 'جدیدترین‌ها'}
+              limit={limit}
+              sort={str(p, 'sort') || 'newest'}
+            />
+          </Suspense>,
         );
         break;
+      }
       case 'categoryBanners':
         nodes.push(
-          <RetailCategoryBannerGrid
-            key={block.id}
-            title={str(p, 'headline') || 'دسته‌بندی‌ها'}
-            body={str(p, 'body') || undefined}
-            columns={typeof p.columns === 'number' ? p.columns : 5}
-            maxItems={typeof p.maxItems === 'number' ? p.maxItems : 99}
-            categoryIds={str(p, 'categoryIds') || undefined}
-          />,
+          <Suspense key={block.id} fallback={<SectionSkeleton className="h-80" />}>
+            <RetailCategoryBannerGrid
+              title={str(p, 'headline') || 'دسته‌بندی‌ها'}
+              body={str(p, 'body') || undefined}
+              columns={typeof p.columns === 'number' ? p.columns : 5}
+              maxItems={Math.min(typeof p.maxItems === 'number' ? p.maxItems : 10, 10)}
+              categoryIds={str(p, 'categoryIds') || undefined}
+            />
+          </Suspense>,
         );
         break;
       case 'faq':
@@ -84,7 +100,6 @@ export async function RetailBlocksRenderer({
       case 'process':
       case 'testimonials':
       case 'cta':
-        // Wholesale-oriented blocks ignored on retail home
         break;
       default:
         pushCommonBlocks(block, p, nodes);

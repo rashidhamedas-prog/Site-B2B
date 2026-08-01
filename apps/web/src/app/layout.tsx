@@ -4,9 +4,9 @@ import { headers } from 'next/headers';
 import { CartProvider } from '@/lib/cart';
 import { ToastProvider } from '@/components/shared/Toast';
 import { FloatingContact } from '@/components/shared/FloatingContact';
+import { DeferredGtm } from '@/components/shared/DeferredGtm';
 import {
   GtmBodyNoscript,
-  GtmHeadScript,
   resolveGtmIdForHost,
 } from '@/components/shared/GoogleTagManager';
 import { resolveGscVerification } from '@/lib/google-seo';
@@ -106,7 +106,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           type="font/woff2"
           crossOrigin="anonymous"
         />
-        <GtmHeadScript gtmId={gtmId} />
+        <DeferredGtm gtmId={gtmId} />
         {gsc ? (
           <meta name="google-site-verification" content={gsc} />
         ) : null}

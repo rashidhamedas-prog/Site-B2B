@@ -37,7 +37,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
         </p>
       ) : null}
 
-      <h2 className="mb-6 text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
+      <h2 className="mb-6 text-4xl font-bold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
         {lines.map((line, i) => {
           const isAccent = slide.headlineAccent && line.includes(slide.headlineAccent);
           return (
@@ -103,18 +103,12 @@ export function HeroSection(props: HeroSectionProps) {
       <h1 className="sr-only">فروش عمده مانتو و شومیز زنانه از تولیدی ترنم مشهد</h1>
       {slides.map((s, i) => {
         if (!s.imageUrl) return null;
-        const near =
-          Math.abs(i - carousel.index) <= 1 ||
-          (carousel.index === 0 && i === slides.length - 1) ||
-          (carousel.index === slides.length - 1 && i === 0);
-        if (!near) return null;
+        if (i !== carousel.index) return null;
         return (
           <div
             key={`${s.imageUrl}-${i}`}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              i === carousel.index ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-            aria-hidden={i !== carousel.index}
+            className="absolute inset-0 opacity-100 transition-opacity duration-700"
+            aria-hidden={false}
           >
             <picture>
               {s.mobileImageUrl ? (
@@ -126,11 +120,7 @@ export function HeroSection(props: HeroSectionProps) {
                 fill
                 priority={i === 0}
                 fetchPriority={i === 0 ? 'high' : 'auto'}
-                unoptimized={
-                  s.imageUrl.startsWith('/banners/hero-human-2026/') ||
-                  s.imageUrl.startsWith('/banners/hero-product-2026-v2/')
-                }
-                quality={88}
+                quality={75}
                 sizes="100vw"
                 className={
                   s.presentation === 'artwork' ? 'object-cover md:object-fill' : 'object-cover'

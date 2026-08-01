@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Suspense } from 'react';
 import type { ContentBlock } from '@/lib/cms/types';
 import { arr, str } from '@/lib/cms/fetch';
 import { HeroSection } from '@/components/wholesale/HeroSection';
@@ -15,6 +16,14 @@ import {
   heroPropsFromBlock,
   pushCommonBlocks,
 } from './block-shared';
+
+function SectionSkeleton({ className = 'h-72' }: { className?: string }) {
+  return (
+    <div className="mx-auto max-w-7xl animate-pulse px-4 py-12 sm:px-6 lg:px-8">
+      <div className={`rounded-2xl bg-white/10 ${className}`} />
+    </div>
+  );
+}
 
 /** Wholesale-only CMS blocks — keeps retail client chunks out of .com bundle. */
 export async function WholesaleBlocksRenderer({
@@ -54,29 +63,31 @@ export async function WholesaleBlocksRenderer({
         break;
       case 'products':
         nodes.push(
-          <FeaturedProducts
-            key={block.id}
-            eyebrow={str(p, 'eyebrow') || undefined}
-            headline={str(p, 'headline') || undefined}
-            body={str(p, 'body') || undefined}
-            ctaLabel={str(p, 'ctaLabel') || undefined}
-            ctaHref={str(p, 'ctaHref') || undefined}
-            viewAllLabel={str(p, 'viewAllLabel') || undefined}
-            limit={typeof p.limit === 'number' ? p.limit : 6}
-          />,
+          <Suspense key={block.id} fallback={<SectionSkeleton className="h-80" />}>
+            <FeaturedProducts
+              eyebrow={str(p, 'eyebrow') || undefined}
+              headline={str(p, 'headline') || undefined}
+              body={str(p, 'body') || undefined}
+              ctaLabel={str(p, 'ctaLabel') || undefined}
+              ctaHref={str(p, 'ctaHref') || undefined}
+              viewAllLabel={str(p, 'viewAllLabel') || undefined}
+              limit={Math.min(typeof p.limit === 'number' ? p.limit : 6, 8)}
+            />
+          </Suspense>,
         );
         break;
       case 'comingSoon':
         nodes.push(
-          <ComingSoonSection
-            key={block.id}
-            eyebrow={str(p, 'eyebrow') || undefined}
-            headline={str(p, 'headline') || undefined}
-            body={str(p, 'body') || undefined}
-            callout={str(p, 'callout') || undefined}
-            ctaLabel={str(p, 'ctaLabel') || undefined}
-            ctaHref={str(p, 'ctaHref') || undefined}
-          />,
+          <Suspense key={block.id} fallback={<SectionSkeleton />}>
+            <ComingSoonSection
+              eyebrow={str(p, 'eyebrow') || undefined}
+              headline={str(p, 'headline') || undefined}
+              body={str(p, 'body') || undefined}
+              callout={str(p, 'callout') || undefined}
+              ctaLabel={str(p, 'ctaLabel') || undefined}
+              ctaHref={str(p, 'ctaHref') || undefined}
+            />
+          </Suspense>,
         );
         break;
       case 'process':

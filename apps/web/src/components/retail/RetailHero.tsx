@@ -52,7 +52,7 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
         </div>
       ) : null}
 
-      <h2 className="text-[clamp(2rem,4.5vw,3.4rem)] font-extrabold leading-[1.35] tracking-tight !text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
+      <h2 className="text-[clamp(2rem,4.5vw,3.4rem)] font-bold leading-[1.35] tracking-tight !text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
         {renderHeadline()}
       </h2>
 
@@ -111,18 +111,13 @@ export function RetailHero(props: RetailHeroProps) {
       {/* Full-bleed slide media — only active + neighbors for LCP */}
       {slides.map((s, i) => {
         const src = s.imageUrl || '/retail/hero-model.webp';
-        const near =
-          Math.abs(i - carousel.index) <= 1 ||
-          (carousel.index === 0 && i === slides.length - 1) ||
-          (carousel.index === slides.length - 1 && i === 0);
-        if (!near) return null;
+        // Only the active slide — neighbors load after navigation (LCP first).
+        if (i !== carousel.index) return null;
         return (
           <div
             key={`${src}-${i}`}
-            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
-              i === carousel.index ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-            aria-hidden={i !== carousel.index}
+            className="absolute inset-0 opacity-100 transition-opacity duration-700 ease-out"
+            aria-hidden={false}
           >
             <picture>
               {s.mobileImageUrl ? (
@@ -134,11 +129,7 @@ export function RetailHero(props: RetailHeroProps) {
                 fill
                 priority={i === 0}
                 fetchPriority={i === 0 ? 'high' : 'auto'}
-                unoptimized={
-                  src.startsWith('/banners/hero-human-2026/') ||
-                  src.startsWith('/banners/hero-product-2026-v2/')
-                }
-                quality={88}
+                quality={75}
                 sizes="100vw"
                 className={
                   s.presentation === 'artwork'

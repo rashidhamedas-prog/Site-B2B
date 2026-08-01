@@ -2,7 +2,16 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
-## 2026-08-01 — اسلاگ ASCII برای URL محصولات
+## 2026-08-01 — سرعت لندینگ تکی و عمده
+
+### خلاصه
+
+- قانون دائمی: `.cursor/rules/performance-first.mdc` (+ conventions)
+- هوم تکی: سقف ۱۲ محصول، Suspense، LCP هیرو تک‌اسلاید، بدون priority روی دسته‌ها
+- حذف FloatingContact تکراری عمده؛ GTM بعد از idle
+- اسکریپت `scripts/perf-cap-retail-home-products.sql` برای CMS منتشرشده
+
+---
 
 ### خلاصه
 

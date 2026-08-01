@@ -42,15 +42,16 @@ async function fetchRetailProducts(limit: number, sort: string): Promise<{ produ
 
 /** SSR product grid for retail home — no client waterfall. Never shows fake products. */
 export async function RetailProductGrid({
-  title = 'همه محصولات',
-  limit = 200,
+  title = 'جدیدترین‌ها',
+  limit = 12,
   sort = 'newest',
 }: {
   title?: string;
   limit?: number;
   sort?: string;
 }) {
-  const { products: fetched, error } = await fetchRetailProducts(limit, sort);
+  const safeLimit = Math.min(Math.max(1, Number(limit) || 12), 12);
+  const { products: fetched, error } = await fetchRetailProducts(safeLimit, sort);
   const products = fetched.length > 0 ? fetched : FALLBACK;
 
   return (
@@ -113,6 +114,7 @@ export async function RetailProductGrid({
                       src={img}
                       alt={p.name}
                       fill
+                      loading="lazy"
                       className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
                       sizes="(max-width:768px) 50vw, 25vw"
                     />
