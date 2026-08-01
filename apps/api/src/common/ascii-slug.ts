@@ -44,16 +44,16 @@ const FA_MAP: Record<string, string> = {
   ى: 'y',
   ئ: 'y',
   ء: '',
-  ۰: '0',
-  ۱: '1',
-  ۲: '2',
-  ۳: '3',
-  ۴: '4',
-  ۵: '5',
-  ۶: '6',
-  ۷: '7',
-  ۸: '8',
-  ۹: '9',
+  '۰': '0',
+  '۱': '1',
+  '۲': '2',
+  '۳': '3',
+  '۴': '4',
+  '۵': '5',
+  '۶': '6',
+  '۷': '7',
+  '۸': '8',
+  '۹': '9',
 };
 
 /** Transliterate Persian/Arabic letters then keep only [a-z0-9-]. */
@@ -63,7 +63,7 @@ export function asciiSlug(input: string, fallback = 'item'): string {
 
   let out = '';
   for (const ch of raw) {
-    if (FA_MAP[ch] != null) {
+    if (Object.prototype.hasOwnProperty.call(FA_MAP, ch)) {
       out += FA_MAP[ch];
       continue;
     }

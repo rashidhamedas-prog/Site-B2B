@@ -44,16 +44,16 @@ const FA_MAP: Record<string, string> = {
   ى: 'y',
   ئ: 'y',
   ء: '',
-  ۰: '0',
-  ۱: '1',
-  ۲: '2',
-  ۳: '3',
-  ۴: '4',
-  ۵: '5',
-  ۶: '6',
-  ۷: '7',
-  ۸: '8',
-  ۹: '9',
+  '۰': '0',
+  '۱': '1',
+  '۲': '2',
+  '۳': '3',
+  '۴': '4',
+  '۵': '5',
+  '۶': '6',
+  '۷': '7',
+  '۸': '8',
+  '۹': '9',
 };
 
 /** Transliterate Persian/Arabic letters then keep only [a-z0-9-]. */
@@ -63,7 +63,7 @@ export function asciiSlug(input: string, fallback = 'item'): string {
 
   let out = '';
   for (const ch of raw) {
-    if (FA_MAP[ch] != null) {
+    if (Object.prototype.hasOwnProperty.call(FA_MAP, ch)) {
       out += FA_MAP[ch];
       continue;
     }
@@ -75,7 +75,6 @@ export function asciiSlug(input: string, fallback = 'item'): string {
       out += '-';
       continue;
     }
-    // drop other punctuation / non-latin
     out += '-';
   }
 
@@ -87,7 +86,7 @@ export function asciiSlug(input: string, fallback = 'item'): string {
   return cleaned || fallback;
 }
 
-/** True when slug contains non-ASCII (would percent-encode on copy). */
+/** True when slug contains non-latin (would percent-encode when copy). */
 export function hasNonAsciiSlug(slug: string): boolean {
   return /[^\x00-\x7F]/.test(String(slug || ''));
 }
