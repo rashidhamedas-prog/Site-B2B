@@ -1,6 +1,6 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, MoreThan, Not, Repository } from 'typeorm';
 import { OrderEntity } from '../order/entities/order.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
@@ -25,6 +25,8 @@ type TorobOrder = {
 
 @Injectable()
 export class TorobService {
+  private readonly logger = new Logger(TorobService.name);
+
   constructor(
     @InjectRepository(OrderEntity)
     private readonly orders: Repository<OrderEntity>,
@@ -50,7 +52,6 @@ export class TorobService {
     if (order.voidedAt || order.status === 'CANCELLED' || order.status === 'DELETED' || order.status === 'VOIDED') {
       return 'cancelled';
     }
-    // Only expose attributed orders that progressed past draft/pending unpaid
     if (['PENDING_REVIEW', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status)) {
       return 'completed';
     }
@@ -64,32 +65,56 @@ export class TorobService {
     }
   }
 
-  async listOrders(purchaseTimestampGt: string, limit: number) {
+  async listOrders(purchaseTimestampGt: string | undefined, limitRaw: number | undefined) {
     await this.assertEnabled();
+
+    // Panel health-check may omit params — respond 200 empty JSON rather than 400/500.
+    if (!purchaseTimestampGt?.trim()) {
+      return { success: true as const, data: [] as TorobOrder[] };
+    }
 
     const gt = new Date(purchaseTimestampGt);
     if (Number.isNaN(gt.getTime())) {
       return { success: true as const, data: [] as TorobOrder[] };
     }
 
-    const take = Math.min(1000, Math.max(1, limit || 100));
-    const rows = await this.orders
-      .createQueryBuilder('o')
-      .leftJoinAndSelect('o.items', 'items')
-      .leftJoinAndSelect('o.customer', 'customer')
-      .where('o."torobClid" IS NOT NULL')
-      .andWhere('(o."createdAt" > :gt OR o."updatedAt" > :gt)', { gt })
-      .andWhere('o."deletedAt" IS NULL')
-      .orderBy('o."createdAt"', 'ASC')
-      .take(take)
-      .getMany();
+    const take = Math.min(1000, Math.max(1, Number.isFinite(limitRaw!) ? Number(limitRaw) : 100));
 
-    const skus = [
-      ...new Set(rows.flatMap((o) => (o.items || []).map((i) => i.sku).filter(Boolean))),
-    ];
-    const productRows =
-      skus.length > 0 ? await this.products.find({ where: { sku: In(skus) } }) : [];
-    const bySku = new Map(productRows.map((p) => [p.sku, p]));
+    let rows: OrderEntity[] = [];
+    try {
+      rows = await this.orders.find({
+        where: [
+          { torobClid: Not(IsNull()), createdAt: MoreThan(gt) },
+          { torobClid: Not(IsNull()), updatedAt: MoreThan(gt) },
+        ],
+        relations: ['items', 'customer'],
+        order: { createdAt: 'ASC' },
+        take,
+      });
+    } catch (err) {
+      this.logger.error(`Torob listOrders query failed: ${err instanceof Error ? err.message : err}`);
+      // Never 500 the Torob panel — empty list is safer than breaking validation.
+      return { success: true as const, data: [] as TorobOrder[] };
+    }
+
+    // De-dupe OR matches
+    const seen = new Set<string>();
+    rows = rows.filter((o) => {
+      if (!o.torobClid || seen.has(o.id)) return false;
+      seen.add(o.id);
+      return true;
+    });
+
+    const skus = [...new Set(rows.flatMap((o) => (o.items || []).map((i) => i.sku).filter(Boolean)))];
+    let bySku = new Map<string, ProductEntity>();
+    try {
+      if (skus.length > 0) {
+        const productRows = await this.products.find({ where: { sku: In(skus) } });
+        bySku = new Map(productRows.map((p) => [p.sku, p]));
+      }
+    } catch (err) {
+      this.logger.warn(`Torob product lookup failed: ${err instanceof Error ? err.message : err}`);
+    }
 
     const base = this.retailBase();
     const data: TorobOrder[] = [];
