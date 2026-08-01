@@ -23,15 +23,23 @@ const SHIP_METHODS = [
   { id: 'TEHRAN_BIKE', label: 'پیک تهران' },
 ];
 
+import { readTorobClid } from '@/components/retail/RetailAffiliateCapture';
+
 type AddressForm = RetailAddress;
 
 function readAff(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   try {
-    const q = new URLSearchParams(window.location.search).get('aff');
-    if (q) {
-      sessionStorage.setItem('taranom_aff', q);
-      return q;
+    const q = new URLSearchParams(window.location.search);
+    const torob = q.get('torob_clid') || q.get('torobClid');
+    if (torob?.trim()) {
+      sessionStorage.setItem('taranom_torob_clid', torob.trim());
+      sessionStorage.setItem('taranom_aff', `torob|${torob.trim()}`);
+    }
+    const aff = q.get('aff');
+    if (aff) {
+      sessionStorage.setItem('taranom_aff', aff);
+      return aff;
     }
     return sessionStorage.getItem('taranom_aff') || undefined;
   } catch {
@@ -170,6 +178,7 @@ export default function RetailCheckoutPage() {
         shippingMethod,
         useWallet: useWallet && walletBalance > 0,
         affiliateId: readAff(),
+        torobClid: readTorobClid(),
         shippingAddress: address,
         notes: notes || undefined,
         items: items.map((i) => ({

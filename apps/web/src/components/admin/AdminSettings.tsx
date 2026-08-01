@@ -104,6 +104,7 @@ interface SettingsPayload {
     basalamEnabled: boolean;
     basalamAccessToken: string;
     basalamVendorId: string;
+    torobOrderSyncEnabled: boolean;
   };
 }
 
@@ -330,6 +331,7 @@ export function AdminSettings() {
           basalamEnabled: res.marketing?.basalamEnabled === true,
           basalamAccessToken: res.marketing?.basalamAccessToken ?? '',
           basalamVendorId: res.marketing?.basalamVendorId ?? '',
+          torobOrderSyncEnabled: res.marketing?.torobOrderSyncEnabled === true,
         },
       });
       setCategories(cats ?? []);
@@ -1087,13 +1089,41 @@ export function AdminSettings() {
             <code dir="ltr">{'{click_id} {order_id} {order_number} {amount} {amount_toman} {status}'}</code>
           </p>
 
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 text-sm text-emerald-900 space-y-2">
-            <p className="font-bold">فیدهای آماده ثبت در پنل‌ها</p>
-            <ul className="list-disc pr-5 space-y-1 font-mono text-xs" dir="ltr">
-              <li>Torob XML → /v1/feeds/torob.xml — panel.torob.com</li>
-              <li>Bam CSV → /v1/feeds/bam.csv — business.bam.ir</li>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 text-sm text-emerald-900 space-y-3">
+            <p className="font-bold">ترب — دو آدرس جدا (اشتباه نگیرید)</p>
+            <div className="space-y-2 text-xs leading-relaxed">
+              <p>
+                <span className="font-bold">۱) فید محصولات (XML)</span> — برای ثبت کاتالوگ در پنل ترب، نه صفحه همگام‌سازی سفارش:
+              </p>
+              <p className="font-mono break-all" dir="ltr">
+                https://www.poshaktaranom.ir/api/v1/feeds/torob.xml
+              </p>
+              <p>
+                <span className="font-bold">۲) API همگام‌سازی سفارش (JSON)</span> — همان فیلد «آدرس API» در صفحه
+                تنظیمات همگام‌سازی سفارش‌ها:
+              </p>
+              <p className="font-mono break-all" dir="ltr">
+                https://www.poshaktaranom.ir/api/torob/v1/orders
+              </p>
+              <p className="text-emerald-800/80">
+                مسیر باید دقیقاً به <code dir="ltr">/torob/v1/orders</code> ختم شود و پاسخ JSON باشد. فید XML آنجا خطا می‌دهد.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!data.marketing.torobOrderSyncEnabled}
+                onChange={(e) =>
+                  patch('marketing', (m) => ({ ...m, torobOrderSyncEnabled: e.target.checked }))
+                }
+                className="rounded border-emerald-300"
+              />
+              فعال‌سازی همگام‌سازی سفارش ترب (بدون این، API به ترب کد ۴۰۳ می‌دهد)
+            </label>
+            <ul className="list-disc pr-5 space-y-1 font-mono text-[11px]" dir="ltr">
+              <li>Bam CSV → /v1/feeds/bam.csv</li>
               <li>Bam XML → /v1/feeds/bam.xml</li>
-              <li>فهرست → /v1/feeds</li>
+              <li>فهرست فیدها → /v1/feeds</li>
             </ul>
           </div>
 

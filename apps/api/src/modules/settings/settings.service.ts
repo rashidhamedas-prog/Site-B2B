@@ -461,6 +461,8 @@ export class SettingsService {
       basalamProductMap: (s.basalamProductMap && typeof s.basalamProductMap === 'object'
         ? s.basalamProductMap
         : {}) as Record<string, number>,
+      /** Torob order-tracking Sync API (JSON /torob/v1/orders) */
+      torobOrderSyncEnabled: s.torobOrderSyncEnabled === true,
     };
   }
 }

@@ -122,6 +122,7 @@ export class SettingsController {
         takhfifanScriptUrl: marketing.takhfifanScriptUrl || '',
         // Never expose postback URLs, tokens, or product maps publicly
         basalamEnabled: !!marketing.basalamEnabled,
+        torobOrderSyncEnabled: !!marketing.torobOrderSyncEnabled,
       },
     };
   }

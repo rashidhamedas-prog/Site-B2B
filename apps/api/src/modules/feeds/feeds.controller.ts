@@ -111,8 +111,11 @@ export class FeedsController {
         panel: 'https://panel.torob.com',
         site: 'https://torob.com',
         feed: `${api}/feeds/torob.xml`,
-        format: 'XML',
-        notes: 'ثبت لینک فید در پنل کسب‌وکار تورب؛ فیلدهای الزامی: قیمت، موجودی، لینک محصول، تصویر',
+        feedRetail: 'https://www.poshaktaranom.ir/api/v1/feeds/torob.xml',
+        ordersApi: 'https://www.poshaktaranom.ir/api/torob/v1/orders',
+        format: 'XML (محصولات) + JSON (سفارش‌ها)',
+        notes:
+          'فید XML فقط برای کاتالوگ محصولات است. صفحه «همگام‌سازی سفارش» باید URL مسیر /torob/v1/orders را بگیرد (JSON + JWT). مستند: github.com/Torob/Torob-Sync',
       },
       bam: {
         panel: 'https://business.bam.ir',

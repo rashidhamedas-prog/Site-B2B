@@ -75,6 +75,10 @@ export class OrderEntity {
   @Column({ nullable: true })
   affiliateId: string;
 
+  /** Torob click id from ?torob_clid= — order attribution for Torob Sync */
+  @Column({ nullable: true })
+  torobClid: string;
+
   /** Wallet amount applied at create (IRR) — for clean reversal */
   @Column({ type: 'bigint', default: 0 })
   walletApplied: number;

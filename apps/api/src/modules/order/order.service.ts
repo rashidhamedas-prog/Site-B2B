@@ -672,6 +672,11 @@ export class OrderService {
               perKgFee,
               freeShipping,
               affiliateId: dto.affiliateId?.trim() || undefined,
+              torobClid:
+                dto.torobClid?.trim() ||
+                (dto.affiliateId?.trim()?.startsWith('torob|')
+                  ? dto.affiliateId.trim().slice('torob|'.length)
+                  : undefined),
               walletApplied,
               discountCodeId: usedDiscountCodeId,
               idempotencyKey: dto.idempotencyKey || undefined,

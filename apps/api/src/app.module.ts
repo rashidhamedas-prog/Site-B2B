@@ -26,6 +26,7 @@ import { RmaModule } from './modules/rma/rma.module';
 import { CollectionModule } from './modules/collection/collection.module';
 import { AffiliateModule } from './modules/affiliate/affiliate.module';
 import { BasalamModule } from './modules/basalam/basalam.module';
+import { TorobModule } from './modules/torob/torob.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { BasalamModule } from './modules/basalam/basalam.module';
     FeedsModule,
     AffiliateModule,
     BasalamModule,
+    TorobModule,
   ],
 })
 export class AppModule {}

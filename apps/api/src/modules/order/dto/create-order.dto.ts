@@ -168,6 +168,12 @@ export class CreateOrderDto {
   @MaxLength(128)
   affiliateId?: string;
 
+  @ApiPropertyOptional({ description: 'Torob click id (?torob_clid=)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  torobClid?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

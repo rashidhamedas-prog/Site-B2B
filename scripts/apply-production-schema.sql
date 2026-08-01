@@ -103,6 +103,9 @@ ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS "productId" uuid;
 
 -- Hardening 2026-07-31: order idempotency + payment unique authority/refId
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS "idempotencyKey" varchar;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS "torobClid" varchar;
+CREATE INDEX IF NOT EXISTS "IDX_orders_torobClid"
+  ON orders ("torobClid") WHERE "torobClid" IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS "UQ_orders_idempotencyKey"
   ON orders ("idempotencyKey") WHERE "idempotencyKey" IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS "UQ_payments_authority"

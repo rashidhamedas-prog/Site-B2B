@@ -40,9 +40,23 @@
   - تکی: `https://www.poshaktaranom.ir/sitemap.xml`
 
 ### تورب — https://torob.com | پنل: https://panel.torob.com
-- [ ] در پنل کسب‌وکار تورب فید را ثبت کنید:  
-  `https://api.poshaktaranom.com/v1/feeds/torob.xml`  
-- [ ] قوانین فید (قیمت، موجودی، لینک محصول، تصویر) در پنل تورب موجود است؛ فید ما این فیلدها را دارد.
+
+**دو آدرس جدا — با هم اشتباه نگیرید:**
+
+1) **فید محصولات (XML)** — برای ثبت کاتالوگ / محصولات:  
+   `https://www.poshaktaranom.ir/api/v1/feeds/torob.xml`
+
+2) **API همگام‌سازی سفارش (JSON)** — برای صفحه «تنظیمات همگام سازی اطلاعات سفارش‌ها» با روش «API اختصاصی»:  
+   `https://www.poshaktaranom.ir/api/torob/v1/orders`  
+   - مسیر باید دقیقاً به `/torob/v1/orders` ختم شود  
+   - پاسخ `application/json` است (نه XML)  
+   - در ادمین → تنظیمات → Google/پیکسل: «فعال‌سازی همگام‌سازی سفارش ترب» را روشن کنید  
+   - مستند رسمی: https://github.com/Torob/Torob-Sync/blob/main/order_tracking_api.md
+
+- [ ] فید XML را در بخش محصولات/فید پنل ترب ثبت کنید  
+- [ ] آدرس JSON سفارش را در همگام‌سازی سفارش بگذارید (نه فید XML)  
+- [ ] همگام‌سازی سفارش را از تنظیمات ادمین فعال کنید  
+- [ ] آدرس فروشگاه در پنل ترب: `https://www.poshaktaranom.ir`
 
 ### بام — https://bam.ir | پنل: https://business.bam.ir
 - [ ] فید CSV: `https://api.poshaktaranom.com/v1/feeds/bam.csv`  
