@@ -1,6 +1,4 @@
 -- Cap retail home product block to 12 (performance).
--- site_contents.blocks is jsonb array of CMS blocks.
-
 UPDATE site_contents
 SET blocks = (
   SELECT COALESCE(
@@ -25,4 +23,4 @@ SET blocks = (
 "updatedAt" = NOW()
 WHERE channel = 'RETAIL'
   AND "pageKey" = 'home'
-  AND status = 'PUBLISHED';
+  AND "isPublished" = true;
