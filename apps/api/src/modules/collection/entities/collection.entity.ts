@@ -8,15 +8,7 @@ import {
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm';
-
-function toSlug(text: string): string {
-  return text
-    .replace(/\s+/g, '-')
-    .replace(/[^\w؀-ۿ-]/g, '')
-    .toLowerCase()
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
+import { asciiSlug, hasNonAsciiSlug } from '../../../common/ascii-slug';
 
 @Entity('collections')
 export class CollectionEntity {
@@ -48,7 +40,11 @@ export class CollectionEntity {
   @BeforeInsert()
   @BeforeUpdate()
   ensureSlug() {
-    if (!this.slug && this.name) this.slug = toSlug(this.name);
+    if (!this.slug || hasNonAsciiSlug(this.slug)) {
+      this.slug = asciiSlug(this.name || this.slug || 'collection');
+    } else {
+      this.slug = asciiSlug(this.slug, 'collection');
+    }
   }
 
   @CreateDateColumn()

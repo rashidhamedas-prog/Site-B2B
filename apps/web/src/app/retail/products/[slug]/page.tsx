@@ -3,7 +3,7 @@ import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
 import { RETAIL_ORIGIN } from '@/lib/seo';
 import { fetchProductBySlug } from '@/lib/server-api';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -32,7 +32,7 @@ export async function generateMetadata({
   const product = await fetchProductBySlug(slug, 'RETAIL');
   if (!product) return { title: 'محصول' };
 
-  const { title, description, canonical } = retailSeo({ ...product, slug });
+  const { title, description, canonical } = retailSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
 
   return {
@@ -67,7 +67,18 @@ export default async function RetailProductPage({
   const product = await fetchProductBySlug(slug, 'RETAIL');
   if (!product) notFound();
 
-  const url = `${RETAIL_ORIGIN}/products/${slug}`;
+  const canonicalSlug = String(product.slug || '');
+  let incoming = slug;
+  try {
+    incoming = decodeURIComponent(slug);
+  } catch {
+    /* keep */
+  }
+  if (canonicalSlug && incoming !== canonicalSlug) {
+    permanentRedirect(`/products/${canonicalSlug}`);
+  }
+
+  const url = `${RETAIL_ORIGIN}/products/${canonicalSlug}`;
   const price = Number(product.retailPrice ?? 0);
   const inStock =
     Number(product.totalStock ?? product.retailStock ?? product.stock ?? 0) > 0 ||

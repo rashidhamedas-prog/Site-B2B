@@ -1,14 +1,11 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
+import { asciiSlug } from '../../common/ascii-slug';
 import { BlogPostEntity } from './entities/blog-post.entity';
 
 function slugify(input: string): string {
-  return input
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^؀-ۿa-zA-Z0-9-]/g, '')
-    .toLowerCase();
+  return asciiSlug(input, 'post');
 }
 
 @Injectable()

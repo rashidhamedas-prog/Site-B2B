@@ -385,7 +385,31 @@ export class ProductService {
   }
 
   async findBySlug(slug: string, channel?: string) {
-    const product = await this.productRepo.findOne({ where: { slug }, relations: ['variants'] });
+    let decoded = String(slug || '').trim();
+    try {
+      decoded = decodeURIComponent(decoded);
+    } catch {
+      /* keep raw */
+    }
+
+    let product =
+      (await this.productRepo.findOne({ where: { slug: decoded }, relations: ['variants'] })) ||
+      (await this.productRepo.findOne({
+        where: { sku: ILike(decoded) },
+        relations: ['variants'],
+      }));
+
+    // Legacy Persian slugs ended with "-{sku}" — resolve by trailing SKU.
+    if (!product && decoded.includes('-')) {
+      const tail = decoded.split('-').pop()?.trim();
+      if (tail) {
+        product = await this.productRepo.findOne({
+          where: { sku: ILike(tail) },
+          relations: ['variants'],
+        });
+      }
+    }
+
     if (!product) throw new NotFoundException('محصول یافت نشد');
     const ch = String(channel || '').toUpperCase();
     if (ch === 'RETAIL' && product.showOnRetail === false) {

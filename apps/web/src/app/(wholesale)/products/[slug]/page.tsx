@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ProductDetail } from '@/components/wholesale/ProductDetail';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
 import { fetchProductBySlug } from '@/lib/server-api';
+import { permanentRedirect } from 'next/navigation';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -19,7 +20,9 @@ function wholesaleSeo(product: Record<string, unknown> | null, slug: string) {
     (typeof product?.description === 'string' ? product.description.slice(0, 160) : '') ||
     `مشخصات، رنگ‌بندی و حداقل سفارش عمده «${title}» مستقیم از تولیدی ترنم مشهد.`;
   const canonical =
-    seo.wholesaleCanonical || seo.canonical || `${WHOLESALE_ORIGIN}/products/${slug}`;
+    seo.wholesaleCanonical ||
+    seo.canonical ||
+    `${WHOLESALE_ORIGIN}/products/${product?.slug || slug}`;
   return { title, description, canonical };
 }
 
@@ -54,5 +57,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  return <ProductDetail slug={slug} />;
+  const product = await fetchProductBySlug(slug, 'WHOLESALE');
+  const canonicalSlug = String(product?.slug || '');
+  let incoming = slug;
+  try {
+    incoming = decodeURIComponent(slug);
+  } catch {
+    /* keep */
+  }
+  if (canonicalSlug && incoming !== canonicalSlug) {
+    permanentRedirect(`/products/${canonicalSlug}`);
+  }
+  return <ProductDetail slug={canonicalSlug || slug} />;
 }

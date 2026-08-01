@@ -2,18 +2,10 @@ import {
   Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn,
   CreateDateColumn, UpdateDateColumn, DeleteDateColumn, BeforeInsert, BeforeUpdate, Index,
 } from 'typeorm';
+import { asciiSlug, hasNonAsciiSlug } from '../../../common/ascii-slug';
 import { ProductVariantEntity } from './product-variant.entity';
 import { CategoryEntity } from '../../category/entities/category.entity';
 import { ProductSizeType, ProductSpecs } from './product-specs';
-
-function toSlug(text: string): string {
-  return text
-    .replace(/\s+/g, '-')
-    .replace(/[^\w؀-ۿ-]/g, '')
-    .toLowerCase()
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
 
 @Entity('products')
 export class ProductEntity {
@@ -147,8 +139,20 @@ export class ProductEntity {
   @BeforeInsert()
   @BeforeUpdate()
   generateSlug() {
-    if (!this.slug && this.name) {
-      this.slug = `${toSlug(this.name)}-${this.sku.toLowerCase()}`;
+    const skuSlug = this.sku ? asciiSlug(this.sku, '') : '';
+    // Prefer SKU-only ASCII URLs so copied links stay readable (no %D9…).
+    if (!this.slug || hasNonAsciiSlug(this.slug)) {
+      if (skuSlug) {
+        this.slug = skuSlug;
+        return;
+      }
+      if (this.nameEn) {
+        this.slug = asciiSlug(this.nameEn);
+        return;
+      }
+      if (this.name) this.slug = asciiSlug(this.name);
+    } else {
+      this.slug = asciiSlug(this.slug, skuSlug || 'product');
     }
   }
 

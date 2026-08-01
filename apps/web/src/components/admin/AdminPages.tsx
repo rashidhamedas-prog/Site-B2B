@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Edit2, Trash2, X, Save, FileText, Loader2 } from 'lucide-react';
+import { asciiSlug } from '@taranom/persian-utils';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
@@ -32,13 +33,7 @@ const emptyForm = {
 };
 
 function toSlug(text: string) {
-  return text
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w؀-ۿ-]/g, '')
-    .toLowerCase()
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+  return asciiSlug(text, 'page');
 }
 
 export function AdminPages() {

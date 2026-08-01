@@ -127,7 +127,7 @@ export class TorobService {
         const p = bySku.get(it.sku);
         const slug = p?.slug || it.sku;
         return {
-          product_url: `${base}/products/${encodeURI(slug)}`,
+          product_url: `${base}/products/${encodeURIComponent(slug).replace(/%2F/gi, '/')}`,
           product_price: this.toman(Number(it.unitPrice)),
           quantity: Number(it.quantity) || 1,
         };
