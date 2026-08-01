@@ -42,9 +42,9 @@ async function fetchRetailProducts(limit: number, sort: string): Promise<{ produ
 
 /** SSR product grid for retail home — no client waterfall. Never shows fake products. */
 export async function RetailProductGrid({
-  title = 'پربازدیدترین‌ها',
-  limit = 12,
-  sort = 'views',
+  title = 'همه محصولات',
+  limit = 200,
+  sort = 'newest',
 }: {
   title?: string;
   limit?: number;
@@ -83,7 +83,7 @@ export async function RetailProductGrid({
               {error ? 'بارگذاری محصولات با خطا مواجه شد. لطفاً بعداً دوباره تلاش کنید.' : 'هنوز محصولی برای نمایش نیست.'}
             </p>
             <Link
-              href="/retail/products"
+              href="/products"
               className="mt-4 inline-flex cursor-pointer border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
             >
               مشاهده همه محصولات
@@ -136,7 +136,7 @@ export async function RetailProductGrid({
 
         <div className="mt-10 text-center">
           <Link
-            href="/retail/products"
+            href="/products"
             className="inline-flex cursor-pointer border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
           >
             مشاهده همه محصولات

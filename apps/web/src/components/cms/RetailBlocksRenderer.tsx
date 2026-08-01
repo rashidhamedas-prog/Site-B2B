@@ -51,9 +51,9 @@ export async function RetailBlocksRenderer({
         nodes.push(
           <RetailProductGrid
             key={block.id}
-            title={str(p, 'headline') || 'پربازدیدترین‌ها'}
-            limit={typeof p.limit === 'number' ? p.limit : 12}
-            sort={str(p, 'sort') || 'views'}
+            title={str(p, 'headline') || 'همه محصولات'}
+            limit={typeof p.limit === 'number' ? p.limit : 200}
+            sort={str(p, 'sort') || 'newest'}
           />,
         );
         break;
@@ -63,8 +63,8 @@ export async function RetailBlocksRenderer({
             key={block.id}
             title={str(p, 'headline') || 'دسته‌بندی‌ها'}
             body={str(p, 'body') || undefined}
-            columns={typeof p.columns === 'number' ? p.columns : 3}
-            maxItems={typeof p.maxItems === 'number' ? p.maxItems : 9}
+            columns={typeof p.columns === 'number' ? p.columns : 5}
+            maxItems={typeof p.maxItems === 'number' ? p.maxItems : 99}
             categoryIds={str(p, 'categoryIds') || undefined}
           />,
         );

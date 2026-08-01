@@ -141,9 +141,9 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
     case 'categoryBanners':
       Object.assign(base, {
         headline: 'دسته‌بندی‌ها',
-        body: '',
-        columns: 3,
-        maxItems: 9,
+        body: 'هر دسته یک کالکشن کامل است — با یک لمس وارد شوید',
+        columns: 5,
+        maxItems: 99,
         categoryIds: '',
       });
       break;
@@ -1212,19 +1212,19 @@ function BlockFields({
       {block.type === 'categoryBanners' && (
         <>
           <Field
-            label="تعداد ستون (۳ = شبکه ۳×۳)"
-            value={String(typeof p.columns === 'number' ? p.columns : 3)}
+            label="تعداد ستون (۲ تا ۵)"
+            value={String(typeof p.columns === 'number' ? p.columns : 5)}
             dir="ltr"
-            onChange={(v) => set('columns', Math.min(4, Math.max(2, Number(v) || 3)))}
+            onChange={(v) => set('columns', Math.min(5, Math.max(2, Number(v) || 5)))}
           />
           <Field
-            label="حداکثر بنر"
-            value={String(typeof p.maxItems === 'number' ? p.maxItems : 9)}
+            label="حداکثر بنر (۹۹ = همه)"
+            value={String(typeof p.maxItems === 'number' ? p.maxItems : 99)}
             dir="ltr"
-            onChange={(v) => set('maxItems', Math.max(1, Number(v) || 9))}
+            onChange={(v) => set('maxItems', Math.max(1, Number(v) || 99))}
           />
           <Field
-            label="شناسه دسته‌ها (اختیاری، با کاما — خالی = همه دارای بنر)"
+            label="شناسه دسته‌ها (اختیاری، با کاما — خالی = همه)"
             value={str(p, 'categoryIds')}
             dir="ltr"
             onChange={(v) => set('categoryIds', v)}

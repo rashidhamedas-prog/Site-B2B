@@ -1,25 +1,28 @@
-﻿# Worklog — پلتفرم ترنم B2B
+# Worklog — پلتفرم ترنم B2B
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
+
+## 2026-08-01 — دسته‌بندی لوکس صفحه اصلی تکی
+
+### خلاصه
+
+- بنر لوکس برای ۱۰ دسته (WebP) در `/banners/category-luxury-2026/`
+- بلوک `categoryBanners` بلافاصله بعد از هیرو؛ لینک مستقیم `/products?categoryId=`
+- نمایش همه محصولات در هوم (limit 200 / newest)
+- به‌روزرسانی CMS منتشرشده روی سرور
+
+---
 
 ## 2026-08-01 — اینماد در تنظیمات عمده و تکی
 
 ### خلاصه
 
-- تنظیمات کسب‌وکار: بخش اینماد جدا برای عمده و تکی
-- چسباندن HTML پنل → استخراج خودکار id/Code؛ رندر امن در فوتر
-- ذخیره business با merge
-- نمایش در فوتر عمده/تکی + پیش‌نمایش ادمین
-
----
-
-## 2026-07-31 — رفع دیده نشدن هیرو عمده
-
-### خلاصه
-
-- بنرهای `hero-product-2026-v2` عمده در CMS و CDN بودند ولی به‌خاطر `opacity-40` + wash مات سبز در `HeroSection` دیده نمی‌شدند
-- اصلاح: opacity کامل + scrim نیمه‌شفاف RTL (مثل تکی) و trim URL تصاویر
-- گزارش: `docs/reports/2026-07-31-wholesale-hero-visibility.md`
+- تنظیمات کسب‌وکار: بخش اینماد جدا برای عمده و تکی (enabled، id، Code، لینک، آپلود تصویر، HTML snippet)
+- چسباندن HTML پنل → استخراج خودکار id/Code؛ رندر امن ساختاریافته در فوتر
+- ذخیره business با merge تا فیلدهای اینماد از بین نرود
+- API `business.enamadWholesale` / `enamadRetail` در admin و public
+- نمایش نشان در فوتر عمده و تکی (`EnamadSeal`) + پیش‌نمایش در ادمین
+- چک‌لیست Owner در `docs/USER-ACTIONS-B2C.md`
 
 ---
 
@@ -944,15 +947,3 @@
 - پنج بنر بدون انسان/مانکن و بنر آخر تکی با یک مدل انسانی و کت آلیس طراحی شد.
 - خروجی WebP مستقل دسکتاپ و موبایل، defaults جدید و migration برگشت‌پذیر CMS اضافه شدند.
 - مسیر جدید `hero-product-2026-v2` نیز مستقیم سرو می‌شود تا خطای optimizer در high-DPR تکرار نشود.
-
----
-
-## 2026-08-01 — سخت‌سازی production و پاک‌سازی تاریخچه Git
-
-**گزارش:** [reports/2026-08-01-production-hardening-history-rewrite.md](./reports/2026-08-01-production-hardening-history-rewrite.md)
-
-- backup دیتابیس، MinIO و rollback پیش از عملیات ساخته و بررسی شد.
-- SSH key-only و credentialهای داخلی PostgreSQL/Redis/MinIO/Meilisearch/JWT rotate شدند.
-- دو مسیر حساس از تاریخچه هر ۲۸ branch حذف و Gitleaks با صفر finding اجرا شد.
-- تمام branchها force-push شدند؛ Cursor و سایر ابزارها باید fresh-clone انجام دهند.
-- production، API و هر دو دامنه پس از عملیات سالم تأیید شدند.

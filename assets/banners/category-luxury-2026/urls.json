@@ -1,0 +1,17 @@
+{
+  "updated": "2026-08-01",
+  "aspect": "1:1 / 4:5 crop in UI",
+  "publicBase": "/banners/category-luxury-2026",
+  "items": [
+    { "key": "blouses", "labelFa": "شومیز", "url": "/banners/category-luxury-2026/blouses.webp" },
+    { "key": "coats", "labelFa": "کت", "url": "/banners/category-luxury-2026/coats.webp" },
+    { "key": "kaftans", "labelFa": "کفتان", "url": "/banners/category-luxury-2026/kaftans.webp" },
+    { "key": "pants", "labelFa": "شلوار", "url": "/banners/category-luxury-2026/pants.webp" },
+    { "key": "skirts", "labelFa": "دامن", "url": "/banners/category-luxury-2026/skirts.webp" },
+    { "key": "pantsuits", "labelFa": "کت و شلوار", "url": "/banners/category-luxury-2026/pantsuits.webp" },
+    { "key": "skirt-suits", "labelFa": "کت و دامن", "url": "/banners/category-luxury-2026/skirt-suits.webp" },
+    { "key": "vests-skirts", "labelFa": "وست و دامن", "url": "/banners/category-luxury-2026/vests-skirts.webp" },
+    { "key": "vests-pants", "labelFa": "وست و شلوار", "url": "/banners/category-luxury-2026/vests-pants.webp" },
+    { "key": "winter-wear", "labelFa": "کاپشن و زمستانی", "url": "/banners/category-luxury-2026/winter-wear.webp" }
+  ]
+}

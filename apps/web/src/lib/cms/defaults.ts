@@ -684,18 +684,18 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
             },
           ],
         }),
-        b('products', {
-          headline: 'پربازدیدترین‌ها',
-          body: '',
-          limit: 12,
-          sort: 'views',
-        }),
         b('categoryBanners', {
           headline: 'دسته‌بندی‌ها',
-          body: 'با یک ضربه وارد دسته مورد نظر شوید',
-          columns: 3,
-          maxItems: 9,
+          body: 'هر دسته یک کالکشن کامل است — با یک لمس وارد شوید',
+          columns: 5,
+          maxItems: 99,
           categoryIds: '',
+        }),
+        b('products', {
+          headline: 'همه محصولات',
+          body: '',
+          limit: 200,
+          sort: 'newest',
         }),
         b('stats', {
           items: [
