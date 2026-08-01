@@ -51,7 +51,17 @@ export class FeedsController {
   ) {}
 
   private siteBase() {
-    return (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
+    // Prefer www so Torob product links match the canonical retail host.
+    const raw = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
+    if (raw === 'https://poshaktaranom.ir' || raw === 'http://poshaktaranom.ir') {
+      return 'https://www.poshaktaranom.ir';
+    }
+    return raw;
+  }
+
+  /** Site stores IRR; Torob product feed + UI show Toman. */
+  private toToman(irr: number) {
+    return Math.max(0, Math.round(Number(irr || 0) / 10));
   }
 
   private async brandName() {
@@ -142,7 +152,7 @@ export class FeedsController {
     <page_unique>${xmlEscape(p.sku || p.id)}</page_unique>
     <title>${xmlEscape(p.name)}</title>
     <description>${xmlEscape((p.description || p.name).slice(0, 2000))}</description>
-    <price>${p.retailPrice}</price>
+    <price>${this.toToman(p.retailPrice)}</price>
     <old_price></old_price>
     <availability>${p.availabilityBool ? 'true' : 'false'}</availability>
     <image_link>${xmlEscape(p.image)}</image_link>

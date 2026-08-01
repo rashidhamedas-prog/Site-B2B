@@ -1108,6 +1108,11 @@ export function AdminSettings() {
               <p className="text-emerald-800/80">
                 مسیر باید دقیقاً به <code dir="ltr">/torob/v1/orders</code> ختم شود و پاسخ JSON باشد. فید XML آنجا خطا می‌دهد.
               </p>
+              <p className="text-amber-900/90 bg-amber-50 border border-amber-100 rounded-lg p-2 leading-relaxed">
+                اگر در پنل ترب هنوز «فروشگاه‌ساز وبزی» دیده می‌شود، آن برچسب از ثبت قدیمی است — سایت الان اختصاصی (Next.js) است.
+                در تنظیمات همگام‌سازی محصولات، نوع را روی <strong>سایر / فید XML / API اختصاصی</strong> بگذارید و فید بالا را ثبت کنید.
+                در صورت قفل بودن فیلد، به پشتیبانی ترب پیام دهید: دامنه از وبزی به سایت اختصاصی منتقل شده و همگام‌سازی با فید XML + API سفارش است.
+              </p>
             </div>
             <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
               <input

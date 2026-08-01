@@ -9,7 +9,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       rules: [
         {
           userAgent: '*',
-          allow: '/',
+          allow: ['/', '/api/v1/feeds/'],
           disallow: [
             '/admin/',
             '/portal/',
@@ -33,7 +33,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        allow: ['/', '/api/v1/feeds/'],
         disallow: ['/admin/', '/portal/', '/api/', '/checkout', '/account', '/retail/'],
       },
     ],
