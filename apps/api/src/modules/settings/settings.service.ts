@@ -45,6 +45,23 @@ export class SettingsService {
 
   // ── Typed group getters (DB → env → default) ──────────────
 
+  private enamadSeal(raw: unknown) {
+    const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+    return {
+      enabled: s.enabled === true,
+      /** شناسه اینماد (پارامتر id در لینک trustseal) */
+      id: String(s.id ?? ''),
+      /** کد اینماد (پارامتر Code) */
+      code: String(s.code ?? ''),
+      /** لینک تأیید — اگر خالی باشد از id+code ساخته می‌شود */
+      linkUrl: String(s.linkUrl ?? ''),
+      /** تصویر لوگو — آپلود یا خالی برای لوگو رسمی اینماد */
+      imageUrl: String(s.imageUrl ?? ''),
+      /** HTML کامل از پنل اینماد (اولویت بالاتر از id/code) */
+      htmlSnippet: String(s.htmlSnippet ?? ''),
+    };
+  }
+
   async business() {
     const s = await this.get('business');
     return {
@@ -63,6 +80,10 @@ export class SettingsService {
       limitedStockMultiplier: Math.max(1, Number(s.limitedStockMultiplier) || 2),
       /** Auto «جدید» badge window in days (both channels) */
       newBadgeDays: Math.max(1, Number(s.newBadgeDays) || 7),
+      /** نماد اعتماد الکترونیکی — عمده (poshaktaranom.com) */
+      enamadWholesale: this.enamadSeal(s.enamadWholesale),
+      /** نماد اعتماد الکترونیکی — تکی (www.poshaktaranom.ir) */
+      enamadRetail: this.enamadSeal(s.enamadRetail),
     };
   }
 

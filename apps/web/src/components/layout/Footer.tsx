@@ -5,6 +5,7 @@ import { Phone, MapPin, Send, Instagram } from 'lucide-react';
 import { useMenus } from '@/lib/hooks/useMenus';
 import { DEFAULT_MENUS } from '@/lib/menus';
 import { chromeLines, chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
+import { EnamadSeal } from '@/components/shared/EnamadSeal';
 
 export function Footer() {
   const { menus } = useMenus();
@@ -162,19 +163,22 @@ export function Footer() {
       </div>
 
       <div className="relative border-t border-white/10">
-        <div className="container-site flex flex-col items-center justify-between gap-3 py-5 text-xs text-white/40 sm:flex-row">
+        <div className="container-site flex flex-col items-center justify-between gap-4 py-5 text-xs text-white/40 sm:flex-row">
           <p>{copyright}</p>
-          <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-            {madeInLabel ? <span>{madeInLabel}</span> : null}
-            {retailStoreLabel && retailStoreHref ? (
-              <a
-                href={retailStoreHref}
-                className="cursor-pointer text-secondary transition-colors hover:text-white"
-              >
-                {retailStoreLabel}
-              </a>
-            ) : null}
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <EnamadSeal channel="WHOLESALE" size={72} className="opacity-95" />
+            <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              {madeInLabel ? <span>{madeInLabel}</span> : null}
+              {retailStoreLabel && retailStoreHref ? (
+                <a
+                  href={retailStoreHref}
+                  className="cursor-pointer text-secondary transition-colors hover:text-white"
+                >
+                  {retailStoreLabel}
+                </a>
+              ) : null}
+            </p>
+          </div>
         </div>
       </div>
     </footer>

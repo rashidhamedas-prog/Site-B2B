@@ -58,6 +58,8 @@ export class SettingsController {
         minOrderToman: business.minOrderToman,
         limitedStockMultiplier: business.limitedStockMultiplier,
         newBadgeDays: business.newBadgeDays,
+        enamadWholesale: business.enamadWholesale,
+        enamadRetail: business.enamadRetail,
       },
       shipping: (() => {
         const ch = String(channel || '').toUpperCase();
@@ -166,6 +168,28 @@ export class SettingsController {
           value.basalamProductMap && typeof value.basalamProductMap === 'object'
             ? value.basalamProductMap
             : prev.basalamProductMap ?? {},
+      };
+    }
+    if (group === 'business') {
+      const prev = await this.svc.get('business');
+      const bodyBiz = body ?? {};
+      value = {
+        ...prev,
+        ...bodyBiz,
+        enamadWholesale: {
+          ...(prev.enamadWholesale && typeof prev.enamadWholesale === 'object'
+            ? prev.enamadWholesale
+            : {}),
+          ...(bodyBiz.enamadWholesale && typeof bodyBiz.enamadWholesale === 'object'
+            ? bodyBiz.enamadWholesale
+            : {}),
+        },
+        enamadRetail: {
+          ...(prev.enamadRetail && typeof prev.enamadRetail === 'object' ? prev.enamadRetail : {}),
+          ...(bodyBiz.enamadRetail && typeof bodyBiz.enamadRetail === 'object'
+            ? bodyBiz.enamadRetail
+            : {}),
+        },
       };
     }
     // Nested menus save: body may be { wholesale, retail } or flat (= wholesale)

@@ -4,11 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Save, Building2, Phone, Mail, Globe, Instagram, MessageCircle,
   Truck, MessageSquare, CreditCard, CheckCircle, AlertCircle, Loader2,
-  Eye, EyeOff, Plus, Trash2, Palette,
+  Eye, EyeOff, Plus, Trash2, Palette, ShieldCheck, Upload,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { DEFAULT_THEME, type ThemeSettings } from '@/components/wholesale/ThemeApply';
+import { useImageUpload } from '@/lib/hooks/useImageUpload';
+import { EMPTY_ENAMAD, applyEnamadHtmlPaste, enamadLogoUrl, resolveMediaUrl, type EnamadSealConfig } from '@/lib/enamad';
+import { EnamadSeal } from '@/components/shared/EnamadSeal';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -27,6 +30,8 @@ interface SettingsPayload {
     minOrderToman: number; defaultCreditDays: number;
     limitedStockMultiplier?: number;
     newBadgeDays?: number;
+    enamadWholesale: EnamadSealConfig;
+    enamadRetail: EnamadSealConfig;
   };
   shipping: {
     /** @deprecated Prefer retail.* — mirrored from retail for API compat */
@@ -188,6 +193,16 @@ export function AdminSettings() {
           ...res.business,
           limitedStockMultiplier: res.business?.limitedStockMultiplier ?? 2,
           newBadgeDays: res.business?.newBadgeDays ?? 7,
+          enamadWholesale: {
+            ...EMPTY_ENAMAD,
+            ...(res.business?.enamadWholesale ?? {}),
+            enabled: res.business?.enamadWholesale?.enabled === true,
+          },
+          enamadRetail: {
+            ...EMPTY_ENAMAD,
+            ...(res.business?.enamadRetail ?? {}),
+            enabled: res.business?.enamadRetail?.enabled === true,
+          },
         },
         shipping: (() => {
           const ship = res.shipping ?? ({} as SettingsPayload['shipping']);
@@ -465,6 +480,42 @@ export function AdminSettings() {
               value={data.business.newBadgeDays ?? 7}
               onChange={(v) => patch('business', (b) => ({ ...b, newBadgeDays: Math.max(1, v) }))}
               help="مدت نمایش خودکار نشان «جدید» پس از ایجاد محصول — برای هر دو سایت"
+            />
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 space-y-4">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                نماد اعتماد الکترونیکی (اینماد)
+              </h3>
+              <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+                برای هر دامنه یک اینماد جدا در{' '}
+                <a
+                  href="https://enamad.ir"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  enamad.ir
+                </a>{' '}
+                بگیرید. ساده‌ترین راه: کد HTML پنل را بچسبانید تا شناسه/Code خودکار پر شود.
+                می‌توانید تصویر نشان را هم آپلود کنید. نشان در فوتر همان سایت نمایش داده می‌شود.
+              </p>
+            </div>
+            <EnamadEditor
+              title="عمده — poshaktaranom.com"
+              value={data.business.enamadWholesale}
+              onChange={(next) =>
+                patch('business', (b) => ({ ...b, enamadWholesale: next }))
+              }
+            />
+            <EnamadEditor
+              title="تکی — www.poshaktaranom.ir"
+              value={data.business.enamadRetail}
+              onChange={(next) =>
+                patch('business', (b) => ({ ...b, enamadRetail: next }))
+              }
             />
           </div>
         </div>
@@ -1406,6 +1457,148 @@ export function AdminSettings() {
 }
 
 // ── Reusable field components ─────────────────────────────────
+
+function EnamadEditor({
+  title,
+  value,
+  onChange,
+}: {
+  title: string;
+  value: EnamadSealConfig;
+  onChange: (v: EnamadSealConfig) => void;
+}) {
+  const { upload, uploading } = useImageUpload();
+  const preview = resolveMediaUrl(value.imageUrl) || (value.id && value.code ? enamadLogoUrl(value.id, value.code) : '');
+
+  const set = (patch: Partial<EnamadSealConfig>) => onChange({ ...value, ...patch });
+
+  return (
+    <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-bold text-emerald-950">{title}</p>
+        <label className="flex items-center gap-2 text-xs font-medium text-emerald-900 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={value.enabled}
+            onChange={(e) => set({ enabled: e.target.checked })}
+            className="rounded border-emerald-300"
+          />
+          نمایش در فوتر
+        </label>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">
+          کد HTML از پنل اینماد (پیشنهادی)
+        </label>
+        <textarea
+          value={value.htmlSnippet}
+          onChange={(e) => onChange(applyEnamadHtmlPaste(value, e.target.value))}
+          rows={4}
+          dir="ltr"
+          placeholder={"<a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=…&Code=…'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=…&Code=…' …></a>"}
+          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
+        />
+        <p className="mt-1 text-[11px] text-gray-500">
+          با چسباندن کد، شناسه و Code به‌صورت خودکار پر می‌شوند و نمایش فوتر روشن می‌شود.
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TextField
+          label="شناسه اینماد (id)"
+          value={value.id}
+          onChange={(v) => set({ id: v.trim(), enabled: v.trim() || value.code ? true : value.enabled })}
+          dir="ltr"
+          placeholder="مثلاً 123456"
+          help="از لینک trustseal.enamad.ir/?id=…"
+        />
+        <TextField
+          label="کد اینماد (Code)"
+          value={value.code}
+          onChange={(v) => set({ code: v.trim(), enabled: value.id || v.trim() ? true : value.enabled })}
+          dir="ltr"
+          placeholder="مثلاً AbCdEf"
+          help="پارامتر Code در لینک تأیید اینماد"
+        />
+      </div>
+
+      <TextField
+        label="لینک تأیید (اختیاری)"
+        value={value.linkUrl}
+        onChange={(v) => set({ linkUrl: v.trim() })}
+        dir="ltr"
+        placeholder="https://trustseal.enamad.ir/?id=…&Code=…"
+        help="اگر خالی باشد از id و Code ساخته می‌شود"
+      />
+
+      <div>
+        <label className="mb-1 block text-xs font-medium text-gray-600">تصویر نشان (آپلود اختیاری)</label>
+        <div className="flex flex-wrap items-center gap-3">
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview}
+              alt="پیش‌نمایش اینماد"
+              className="h-16 w-16 rounded-lg border border-emerald-200 bg-white object-contain p-1"
+              referrerPolicy="origin"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-emerald-200 bg-white text-[10px] text-gray-400">
+              بدون تصویر
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-xs font-medium text-emerald-900 hover:bg-emerald-50">
+              {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {uploading ? 'در حال آپلود…' : 'آپلود تصویر نشان'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  const url = await upload(file);
+                  if (url) set({ imageUrl: url, enabled: true });
+                }}
+              />
+            </label>
+            {value.imageUrl ? (
+              <button
+                type="button"
+                className="text-[11px] text-red-600 hover:underline text-right"
+                onClick={() => set({ imageUrl: '' })}
+              >
+                حذف تصویر آپلودشده / سفارشی
+              </button>
+            ) : (
+              <p className="text-[11px] text-gray-400">اگر خالی باشد، لوگوی رسمی اینماد استفاده می‌شود</p>
+            )}
+          </div>
+        </div>
+        <input
+          className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-xs font-mono"
+          dir="ltr"
+          placeholder="/media/... یا URL تصویر"
+          value={value.imageUrl}
+          onChange={(e) => set({ imageUrl: e.target.value.trim() })}
+        />
+      </div>
+
+      <div className="rounded-lg border border-emerald-200/80 bg-white p-3">
+        <p className="mb-2 text-[11px] font-medium text-gray-500">پیش‌نمایش فوتر</p>
+        {value.enabled ? (
+          <EnamadSeal config={value} size={72} />
+        ) : (
+          <p className="text-xs text-gray-400">برای دیدن نشان، «نمایش در فوتر» را روشن کنید.</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function TextField({ label, value, onChange, icon, type = 'text', placeholder, dir = 'rtl', help }: {
   label: string; value: string; onChange: (v: string) => void;

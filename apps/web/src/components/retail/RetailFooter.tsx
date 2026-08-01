@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
+import { EnamadSeal } from '@/components/shared/EnamadSeal';
 
 const COLS = [
   {
@@ -70,8 +71,11 @@ export function RetailFooter() {
           </div>
         ))}
       </div>
-      <div className="border-t border-white/10 py-4 text-center text-xs text-white/45">
-        {copyright}
+      <div className="border-t border-white/10 py-4">
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-center gap-3 px-4 sm:flex-row sm:justify-between sm:px-6 lg:px-8">
+          <p className="text-center text-xs text-white/45">{copyright}</p>
+          <EnamadSeal channel="RETAIL" size={72} className="opacity-95" />
+        </div>
       </div>
     </footer>
   );
