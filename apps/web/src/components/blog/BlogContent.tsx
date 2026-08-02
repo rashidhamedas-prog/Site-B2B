@@ -1,10 +1,14 @@
-import DOMPurify from 'isomorphic-dompurify';
+/** Lightweight HTML guard for already API-sanitized blog content (no heavy DOMPurify on Node 20). */
+const DANGEROUS = /<\/?(?:script|iframe|object|embed|form|link|meta|base)[^>]*>/gi;
+const ON_ATTR = /\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;
+const JS_HREF = /\s(href|src)\s*=\s*(?:"\s*javascript:[^"]*"|'\s*javascript:[^']*'|javascript:[^\s>]+)/gi;
 
-const ALLOWED_TAGS = [
-  'p', 'br', 'strong', 'em', 'u', 's', 'h2', 'h3', 'h4', 'h5', 'h6',
-  'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'figure', 'figcaption',
-  'table', 'thead', 'tbody', 'tr', 'th', 'td', 'pre', 'code', 'hr', 'div', 'span',
-];
+export function lightSanitizeHtml(html: string): string {
+  return (html || '')
+    .replace(DANGEROUS, '')
+    .replace(ON_ATTR, '')
+    .replace(JS_HREF, '');
+}
 
 function renderMarkdown(md: string, tone: 'wholesale' | 'retail' = 'wholesale') {
   const heading = tone === 'retail' ? 'text-stone-900' : 'text-gray-900';
@@ -82,10 +86,7 @@ export function BlogContent({
   const raw = content || '';
   const isHtml = contentFormat === 'HTML' || raw.trim().startsWith('<');
   if (isHtml) {
-    const clean = DOMPurify.sanitize(raw, {
-      ALLOWED_TAGS,
-      ALLOWED_ATTR: ['href', 'name', 'target', 'rel', 'title', 'src', 'alt', 'width', 'height', 'loading', 'decoding', 'colspan', 'rowspan', 'class', 'id'],
-    });
+    const clean = lightSanitizeHtml(raw);
     return (
       <div
         className={
