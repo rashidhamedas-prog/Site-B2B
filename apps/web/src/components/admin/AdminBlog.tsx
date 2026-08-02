@@ -697,6 +697,27 @@ export function AdminBlog() {
                         <button type="button" onClick={() => runAction(p.id, 'duplicate')} className="text-gray-400 hover:text-sky-600" title="کپی">
                           <Copy className="h-4 w-4" />
                         </button>
+                        <button
+                          type="button"
+                          className="text-gray-400 hover:text-indigo-600"
+                          title="Export JSON"
+                          onClick={async () => {
+                            try {
+                              const data = await apiClient.get(`/blog/admin/posts/${p.id}/export`);
+                              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `${p.slug || p.id}.json`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            } catch (e: unknown) {
+                              alert(e instanceof Error ? e.message : 'Export ناموفق');
+                            }
+                          }}
+                        >
+                          <Upload className="h-4 w-4 rotate-180" />
+                        </button>
                         <button type="button" onClick={() => setDeleteId(p.id)} className="text-gray-400 hover:text-error" title="حذف">
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -1059,6 +1080,30 @@ export function AdminBlog() {
                       </button>
                     ))}
                   </div>
+                  {editId && (
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={async () => {
+                        try {
+                          const result = await apiClient.post<{ broken: Array<{ href: string; reason?: string }> }>(
+                            '/blog/admin/check-links',
+                            { channel, articleId: editId, content: form.content },
+                          );
+                          const broken = result?.broken || [];
+                          alert(
+                            broken.length
+                              ? `لینک‌های مشکل‌دار:\n${broken.map((b) => `${b.href} (${b.reason})`).join('\n')}`
+                              : 'لینک داخلی شکسته یافت نشد',
+                          );
+                        } catch {
+                          alert('بررسی لینک ناموفق بود');
+                        }
+                      }}
+                    >
+                      بررسی لینک‌های داخلی
+                    </button>
+                  )}
                   {editId && (
                     <button
                       type="button"

@@ -26,6 +26,10 @@
 
 تغییر slug مقالهٔ PUBLISHED ⇒ ریدایرکت ۳۰۱ در `seo_redirects`.
 
-## فاز ۲ (بعدی)
+## فاز ۲ (انجام‌شده)
 
-TipTap، Media Library پیشرفته، Version History، SEO Score Engine، Internal Links، Comments، GA4/GSC.
+TipTap، Media Library، Version History، SEO Score، Internal Links، Comments، Analytics hooks، HowTo، Authors.
+
+## فاز ۳ (انجام‌شده)
+
+Redirect Manager UI + اعمال ۳۰۱/۴۱۰ در صفحه مقاله، تنظیمات وبلاگ، Export، check-links، moderation نظرات، نویسندگان، دسته/جستجو عمومی، TOC، preview noindex، مستندات تکمیلی.

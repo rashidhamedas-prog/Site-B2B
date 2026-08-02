@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { asciiSlug } from '../../common/ascii-slug';
 import { BlogPostEntity } from './entities/blog-post.entity';
 import { BlogCategoryEntity } from './entities/blog-category.entity';
@@ -772,8 +773,15 @@ export class BlogService {
   async createRedirect(dto: CreateRedirectDto, actor?: Actor) {
     const channel = normalizeChannel(dto.channel);
     const sourcePath = dto.sourcePath.startsWith('/') ? dto.sourcePath : `/${dto.sourcePath}`;
+    const statusCode = dto.statusCode || 301;
+    const destinationUrl =
+      statusCode === 410 ? dto.destinationUrl || 'gone:410' : dto.destinationUrl || '';
+    if (statusCode !== 410 && !destinationUrl) {
+      throw new BadRequestException('مقصد ریدایرکت لازم است');
+    }
     const existing = await this.redirectRepo.find({ where: { channel, isActive: true } });
     if (
+      statusCode !== 410 &&
       wouldCreateRedirectLoop(
         existing.map((r) => ({
           sourcePath: r.sourcePath,
@@ -781,7 +789,7 @@ export class BlogService {
           isActive: r.isActive,
         })),
         sourcePath,
-        dto.destinationUrl,
+        destinationUrl,
         this.siteOrigin(channel),
       )
     ) {
@@ -791,9 +799,9 @@ export class BlogService {
       this.redirectRepo.create({
         channel,
         sourcePath,
-        destinationUrl: dto.destinationUrl,
-        statusCode: dto.statusCode || 301,
-        reason: dto.reason || 'MANUAL',
+        destinationUrl,
+        statusCode,
+        reason: dto.reason || (statusCode === 410 ? 'GONE' : 'MANUAL'),
         createdBy: actor?.id || null,
       }),
     );
@@ -821,9 +829,121 @@ export class BlogService {
 
   async matchRedirect(channel: string, path: string) {
     const sourcePath = path.startsWith('/') ? path : `/${path}`;
-    return this.redirectRepo.findOne({
+    const row = await this.redirectRepo.findOne({
       where: { channel: normalizeChannel(channel), sourcePath, isActive: true },
     });
+    if (!row) return null;
+    row.hitCount = (row.hitCount || 0) + 1;
+    row.lastHitAt = new Date();
+    await this.redirectRepo.save(row).catch(() => undefined);
+    return row;
+  }
+
+  async exportArticle(id: string) {
+    const post = await this.findOneAdmin(id);
+    return {
+      format: 'taranom-blog-export-v1',
+      exportedAt: new Date().toISOString(),
+      article: {
+        channel: post.channel,
+        title: post.title,
+        slug: post.slug,
+        excerpt: post.excerpt,
+        content: post.content,
+        contentFormat: post.contentFormat,
+        category: post.category,
+        categoryId: post.categoryId,
+        tags: post.tags,
+        coverImage: post.coverImage,
+        seoTitle: post.seoTitle,
+        seoDescription: post.seoDescription,
+        focusKeyword: post.focusKeyword,
+        secondaryKeywords: post.secondaryKeywords,
+        searchIntent: post.searchIntent,
+        faqItems: post.faqItems,
+        primaryCta: post.primaryCta,
+        relatedProductIds: post.relatedProductIds,
+        relatedArticleIds: post.relatedArticleIds,
+        howToData: post.howToData,
+        authorName: post.authorName,
+        status: 'DRAFT',
+      },
+    };
+  }
+
+  async getCategoryBySlug(slug: string, channel?: string) {
+    const where: any = { slug, isActive: true };
+    if (channel) where.channel = normalizeChannel(channel);
+    const cat = await this.catRepo.findOne({ where });
+    if (!cat) throw new NotFoundException('دسته یافت نشد');
+    return cat;
+  }
+
+  async getTagBySlug(slug: string, channel?: string) {
+    const where: any = { slug };
+    if (channel) where.channel = normalizeChannel(channel);
+    const tag = await this.tagRepo.findOne({ where });
+    if (!tag) throw new NotFoundException('برچسب یافت نشد');
+    return tag;
+  }
+
+  async upsertAuthor(
+    data: Partial<BlogAuthorEntity> & { displayName: string; userId?: string },
+    actor?: Actor,
+  ) {
+    const userId = data.userId || actor?.id || randomUUID();
+    let row = data.userId
+      ? await this.authorRepo.findOne({ where: { userId: data.userId } })
+      : null;
+    if (!row && data.slug) {
+      row = await this.authorRepo.findOne({ where: { slug: slugify(data.slug) } });
+    }
+    const slug = data.slug ? slugify(data.slug) : slugify(data.displayName);
+    if (row) {
+      Object.assign(row, data, { slug, userId: row.userId });
+    } else {
+      row = this.authorRepo.create({
+        ...data,
+        userId,
+        slug,
+        bio: data.bio || '',
+        authorPageEnabled: data.authorPageEnabled !== false,
+        robotsIndex: data.robotsIndex !== false,
+      });
+    }
+    const saved = await this.authorRepo.save(row);
+    await this.audit({
+      action: 'blog.author.upsert',
+      entityType: 'blog_author',
+      entityId: saved.id,
+      actorId: actor?.id,
+    });
+    return saved;
+  }
+
+  async removeAuthor(id: string) {
+    await this.authorRepo.softDelete(id);
+    return { deleted: true };
+  }
+
+  async updateAuthorById(
+    id: string,
+    data: Partial<BlogAuthorEntity> & { displayName?: string },
+    actor?: Actor,
+  ) {
+    const row = await this.authorRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('نویسنده یافت نشد');
+    if (data.slug) data.slug = slugify(data.slug);
+    else if (data.displayName) data.slug = slugify(data.displayName);
+    Object.assign(row, data);
+    const saved = await this.authorRepo.save(row);
+    await this.audit({
+      action: 'blog.author.update',
+      entityType: 'blog_author',
+      entityId: saved.id,
+      actorId: actor?.id,
+    });
+    return saved;
   }
 
   // ── Settings / seed ───────────────────────────────────────
@@ -881,27 +1001,6 @@ export class BlogService {
 
   async listAuthors() {
     return this.authorRepo.find({ order: { displayName: 'ASC' } });
-  }
-
-  async upsertAuthor(
-    data: Partial<BlogAuthorEntity> & { userId: string; displayName: string },
-    actor?: Actor,
-  ) {
-    let row = await this.authorRepo.findOne({ where: { userId: data.userId } });
-    const slug = data.slug ? slugify(data.slug) : slugify(data.displayName);
-    if (row) {
-      Object.assign(row, data, { slug });
-    } else {
-      row = this.authorRepo.create({ ...data, slug, bio: data.bio || '' });
-    }
-    const saved = await this.authorRepo.save(row);
-    await this.audit({
-      action: 'blog.author.upsert',
-      entityType: 'blog_author',
-      entityId: saved.id,
-      actorId: actor?.id,
-    });
-    return saved;
   }
 
   async publishDueScheduled() {

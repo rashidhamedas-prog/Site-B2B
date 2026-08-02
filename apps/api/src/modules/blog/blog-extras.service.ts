@@ -438,6 +438,63 @@ export class BlogExtrasService {
     return row;
   }
 
+  async listPendingComments(channel?: string, limit = 50) {
+    const qb = this.commentRepo
+      .createQueryBuilder('c')
+      .innerJoin(BlogPostEntity, 'p', 'p.id = c.articleId')
+      .where("c.status = 'PENDING'")
+      .orderBy('c.createdAt', 'DESC')
+      .take(Math.min(100, limit))
+      .select([
+        'c.id AS id',
+        'c.articleId AS "articleId"',
+        'c.name AS name',
+        'c.content AS content',
+        'c.createdAt AS "createdAt"',
+        'p.title AS "articleTitle"',
+        'p.slug AS "articleSlug"',
+        'p.channel AS channel',
+      ]);
+    if (channel) qb.andWhere('p.channel = :channel', { channel: channel.toUpperCase() });
+    return qb.getRawMany();
+  }
+
+  async checkLinks(opts: { channel: string; content?: string; articleId?: string }) {
+    const channel = opts.channel.toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    let html = opts.content || '';
+    if (opts.articleId) {
+      const post = await this.postRepo.findOne({ where: { id: opts.articleId } });
+      if (post) html = post.content || html;
+    }
+    const hrefs = Array.from(html.matchAll(/href=["']([^"']+)["']/gi)).map((m) => m[1]);
+    const internal = hrefs.filter((h) => h.startsWith('/blog/') || h.includes('/blog/'));
+    const results: Array<{ href: string; ok: boolean; reason?: string }> = [];
+    for (const href of internal.slice(0, 40)) {
+      try {
+        const path = href.replace(/^https?:\/\/[^/]+/i, '');
+        const slug = path.replace(/^\/blog\//, '').split(/[?#]/)[0];
+        if (!slug) {
+          results.push({ href, ok: true });
+          continue;
+        }
+        const found = await this.postRepo.findOne({
+          where: { slug: decodeURIComponent(slug), channel, status: 'PUBLISHED' },
+          select: ['id', 'robotsIndex'],
+        });
+        if (!found) results.push({ href, ok: false, reason: 'not_found' });
+        else if (found.robotsIndex === false) results.push({ href, ok: false, reason: 'noindex' });
+        else results.push({ href, ok: true });
+      } catch {
+        results.push({ href, ok: false, reason: 'error' });
+      }
+    }
+    return {
+      checked: results.length,
+      broken: results.filter((r) => !r.ok),
+      ok: results.filter((r) => r.ok),
+    };
+  }
+
   // ── Authors public ────────────────────────────────────────
 
   async getAuthorBySlug(slug: string) {

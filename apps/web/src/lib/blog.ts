@@ -69,6 +69,8 @@ export interface BlogPost {
   } | null;
   howToSchemaEnabled?: boolean;
   commentsEnabled?: boolean;
+  tableOfContentsEnabled?: boolean;
+  tableOfContentsDepth?: number;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
@@ -90,7 +92,7 @@ export function categoryColor(cat: string): string {
   return CATEGORY_COLORS[cat] ?? CATEGORY_COLORS['عمومی'];
 }
 
-export function formatJalali(post: BlogPost): string {
+export function formatJalali(post: Pick<BlogPost, 'date' | 'publishedAt'> | { date?: string; publishedAt?: string }): string {
   if (post.date) return post.date;
   if (post.publishedAt) return new Date(post.publishedAt).toLocaleDateString('fa-IR');
   return '';
@@ -196,5 +198,72 @@ export async function fetchSitemapPosts(channel: 'WHOLESALE' | 'RETAIL'): Promis
     return Array.isArray(json) ? json : [];
   } catch {
     return [];
+  }
+}
+
+export async function fetchBlogRedirect(
+  path: string,
+  channel: 'WHOLESALE' | 'RETAIL',
+): Promise<{ sourcePath: string; destinationUrl: string; statusCode: number } | null> {
+  try {
+    const res = await fetch(
+      `${API_URL}/blog/redirects/match?channel=${channel}&path=${encodeURIComponent(path)}`,
+      { next: { revalidate: 60 } },
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.sourcePath ? json : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchCategoryBundle(
+  slug: string,
+  channel: 'WHOLESALE' | 'RETAIL',
+) {
+  try {
+    const res = await fetch(
+      `${API_URL}/blog/categories/${encodeURIComponent(slug)}?channel=${channel}`,
+      { next: { revalidate: 300 } },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchTagBundle(slug: string, channel: 'WHOLESALE' | 'RETAIL') {
+  try {
+    const res = await fetch(
+      `${API_URL}/blog/tags/${encodeURIComponent(slug)}?channel=${channel}`,
+      { next: { revalidate: 300 } },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function searchBlogPosts(
+  q: string,
+  channel: 'WHOLESALE' | 'RETAIL',
+): Promise<{ posts: BlogPost[]; meta?: { total: number } }> {
+  if (!q.trim()) return { posts: [] };
+  try {
+    const res = await fetch(
+      `${API_URL}/blog/search?q=${encodeURIComponent(q)}&channel=${channel}&limit=24`,
+      { next: { revalidate: 60 } },
+    );
+    if (!res.ok) return { posts: [] };
+    const json = await res.json();
+    return {
+      posts: Array.isArray(json.items) ? json.items : [],
+      meta: json.meta,
+    };
+  } catch {
+    return { posts: [] };
   }
 }

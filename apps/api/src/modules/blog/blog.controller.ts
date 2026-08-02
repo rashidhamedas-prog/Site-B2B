@@ -18,6 +18,7 @@ import {
   CreateCategoryDto,
   CreateTagDto,
   CreateRedirectDto,
+  CreateAuthorDto,
   TransitionDto,
 } from './dto/blog.dto';
 import { BLOG_ROLES, isBlogRole, type BlogRole } from './blog-roles';
@@ -85,9 +86,48 @@ export class BlogController {
     return this.svc.categories();
   }
 
+  @Get('categories/:slug')
+  async categoryBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
+    const category = await this.svc.getCategoryBySlug(slug, channel);
+    const { items, meta } = await this.svc.findPublished({
+      channel,
+      categorySlug: slug,
+      limit: 12,
+      page: 1,
+    });
+    return { category, items, meta };
+  }
+
   @Get('tags')
   tags(@Query('channel') channel?: string) {
     return this.svc.listTags(channel);
+  }
+
+  @Get('tags/:slug')
+  async tagBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
+    const tag = await this.svc.getTagBySlug(slug, channel);
+    const { items, meta } = await this.svc.findPublished({
+      channel,
+      tag: tag.name || slug,
+      limit: 12,
+      page: 1,
+    });
+    return { tag, items, meta };
+  }
+
+  @Get('search')
+  searchPublic(
+    @Query('q') q = '',
+    @Query('channel') channel = 'WHOLESALE',
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.svc.findPublished({
+      channel,
+      search: q,
+      page,
+      limit: Math.min(24, Number(limit) || 12),
+    });
   }
 
   @Get('feed')
@@ -215,6 +255,24 @@ export class BlogController {
   @ApiOperation({ summary: 'ورود مقاله از JSON یا Markdown' })
   import(@Body() body: ImportBlogDto, @Req() req: AuthedRequest) {
     return this.svc.importArticle(body, this.actor(req));
+  }
+
+  @Get('admin/posts/:id/export')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:export', 'blog:read')
+  @ApiBearerAuth()
+  exportPost(@Param('id') id: string) {
+    return this.svc.exportArticle(id);
+  }
+
+  @Post('admin/check-links')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_seo', 'blog:read')
+  @ApiBearerAuth()
+  checkLinks(@Body() body: { channel: string; content?: string; articleId?: string }) {
+    return this.extras.checkLinks(body);
   }
 
   // ── Admin taxonomy ────────────────────────────────────────
@@ -410,6 +468,46 @@ export class BlogController {
   @ApiBearerAuth()
   listAuthors() {
     return this.svc.listAuthors();
+  }
+
+  @Post('admin/authors')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:edit_any', 'blog:manage_settings')
+  @ApiBearerAuth()
+  createAuthor(@Body() body: CreateAuthorDto, @Req() req: AuthedRequest) {
+    return this.svc.upsertAuthor(body as any, this.actor(req));
+  }
+
+  @Put('admin/authors/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:edit_any', 'blog:manage_settings')
+  @ApiBearerAuth()
+  updateAuthor(
+    @Param('id') id: string,
+    @Body() body: CreateAuthorDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.svc.updateAuthorById(id, body as any, this.actor(req));
+  }
+
+  @Delete('admin/authors/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:delete_soft')
+  @ApiBearerAuth()
+  removeAuthor(@Param('id') id: string) {
+    return this.svc.removeAuthor(id);
+  }
+
+  @Get('admin/comments/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:approve', 'blog:read')
+  @ApiBearerAuth()
+  pendingComments(@Query('channel') channel?: string) {
+    return this.extras.listPendingComments(channel);
   }
 
   // ── Phase 2: SEO analyze / revisions / media / links / comments / analytics ──

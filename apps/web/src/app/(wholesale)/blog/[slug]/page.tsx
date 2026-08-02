@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect, redirect } from 'next/navigation';
 import { Calendar, Clock, Tag, ArrowRight } from 'lucide-react';
 import {
   fetchPost,
   fetchPosts,
+  fetchBlogRedirect,
   categoryColor,
   formatJalali,
   readTime,
@@ -16,12 +17,30 @@ import { BlogHowTo, HowToJsonLd } from '@/components/blog/BlogHowTo';
 import { BlogRelatedProducts } from '@/components/blog/BlogRelatedProducts';
 import { BlogComments } from '@/components/blog/BlogComments';
 import { BlogAnalyticsTracker } from '@/components/blog/BlogAnalyticsTracker';
+import { BlogToc, extractToc, injectHeadingIds } from '@/components/blog/BlogToc';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
 
 export const revalidate = 300;
 
 interface Props {
   params: Promise<{ slug: string }>;
+}
+
+async function resolveOrRedirect(slug: string) {
+  const post = await fetchPost(slug, 'WHOLESALE');
+  if (post) return post;
+  const redir = await fetchBlogRedirect(`/blog/${slug}`, 'WHOLESALE');
+  if (!redir) return null;
+  if (redir.statusCode === 410 || redir.destinationUrl === 'gone:410') {
+    return 'GONE' as const;
+  }
+  const dest = redir.destinationUrl.startsWith('http')
+    ? redir.destinationUrl
+    : redir.destinationUrl.startsWith('/')
+      ? redir.destinationUrl
+      : `/${redir.destinationUrl}`;
+  if (redir.statusCode === 302) redirect(dest);
+  permanentRedirect(dest);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -65,8 +84,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = await fetchPost(decodeURIComponent(slug), 'WHOLESALE');
-  if (!post) notFound();
+  const resolved = await resolveOrRedirect(decodeURIComponent(slug));
+  if (resolved === 'GONE') {
+    return (
+      <div className="container-site max-w-xl py-24 text-center">
+        <h1 className="mb-3 text-2xl font-extrabold">مطلب حذف شده است</h1>
+        <p className="mb-6 text-sm text-gray-500">این صفحه دیگر در دسترس نیست (۴۱۰).</p>
+        <Link href="/blog" className="btn btn-primary btn-sm">
+          بازگشت به وبلاگ
+        </Link>
+      </div>
+    );
+  }
+  if (!resolved) notFound();
+  const post = resolved;
 
   const { posts } = await fetchPosts({ channel: 'WHOLESALE', limit: 12 });
   const related = posts
@@ -76,6 +107,14 @@ export default async function BlogPostPage({ params }: Props) {
   const faqVisible = (post.faqItems || []).filter(
     (f) => f.isVisible !== false && f.question && f.answer,
   );
+  const toc =
+    post.tableOfContentsEnabled !== false
+      ? extractToc(post.content || '', post.tableOfContentsDepth || 3)
+      : [];
+  const contentHtml =
+    (post.contentFormat === 'HTML' || (post.content || '').trim().startsWith('<')) && toc.length
+      ? injectHeadingIds(post.content || '', toc)
+      : post.content || '';
   const howToLd =
     post.howToSchemaEnabled !== false && post.howToData?.steps?.length
       ? {
@@ -149,10 +188,11 @@ export default async function BlogPostPage({ params }: Props) {
       </section>
 
       <div className="container-site max-w-3xl py-10">
+        <BlogToc items={toc} tone="wholesale" />
         <article className="card space-y-4 p-6 sm:p-10">
           <p className="text-sm font-medium leading-loose text-gray-700">{post.excerpt}</p>
           <hr className="border-gray-100" />
-          <BlogContent content={post.content ?? ''} contentFormat={post.contentFormat} tone="wholesale" />
+          <BlogContent content={contentHtml} contentFormat={post.contentFormat} tone="wholesale" />
         </article>
 
         <BlogHowTo howTo={post.howToData} tone="wholesale" />

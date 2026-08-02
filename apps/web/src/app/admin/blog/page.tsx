@@ -1,4 +1,8 @@
 import type { Metadata } from 'next';
-import { AdminBlog } from '@/components/admin/AdminBlog';
+import { AdminBlogHub } from '@/components/admin/AdminBlogHub';
+
 export const metadata: Metadata = { title: 'وبلاگ | پنل مدیریت ترنم' };
-export default function Page() { return <AdminBlog />; }
+
+export default function Page() {
+  return <AdminBlogHub />;
+}

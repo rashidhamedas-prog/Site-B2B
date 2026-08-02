@@ -2,6 +2,19 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-02 — فاز ۳ وبلاگ: Redirect، Settings، Export، Taxonomy عمومی، TOC
+
+### خلاصه
+
+- Admin hub: مقالات / ریدایرکت / تنظیمات / نظرات / نویسندگان
+- Export JSON + check-links
+- صفحات category و search (عمده و تک)
+- TOC + redirect 301/410 روی miss اسلاگ
+- Preview noindex
+- Docs: BLOG_MEDIA_GUIDE، BLOG_CHANGELOG، به‌روزرسانی معماری
+
+---
+
 ## 2026-08-02 — فاز ۲ وبلاگ: TipTap، SEO Score، Revisions، Cron، Media، Authors
 
 ### خلاصه

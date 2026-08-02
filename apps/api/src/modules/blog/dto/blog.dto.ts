@@ -249,9 +249,24 @@ export class CreateTagDto {
 export class CreateRedirectDto {
   @IsIn(['RETAIL', 'WHOLESALE']) channel!: 'RETAIL' | 'WHOLESALE';
   @IsString() sourcePath!: string;
-  @IsString() destinationUrl!: string;
-  @IsOptional() @IsIn([301, 302, 307, 308]) statusCode?: number;
-  @IsOptional() @IsIn(['SLUG_CHANGED', 'ARTICLE_DELETED', 'CONTENT_MERGED', 'MANUAL']) reason?: string;
+  @IsOptional() @IsString() destinationUrl?: string;
+  @IsOptional() @IsIn([301, 302, 307, 308, 410]) statusCode?: number;
+  @IsOptional() @IsIn(['SLUG_CHANGED', 'ARTICLE_DELETED', 'CONTENT_MERGED', 'MANUAL', 'GONE']) reason?: string;
+}
+
+export class CreateAuthorDto {
+  @IsOptional() @IsUUID() userId?: string;
+  @IsString() @MinLength(2) displayName!: string;
+  @IsOptional() @IsString() slug?: string;
+  @IsOptional() @IsString() bio?: string;
+  @IsOptional() @IsString() avatarUrl?: string;
+  @IsOptional() @IsString() jobTitle?: string;
+  @IsOptional() @IsArray() @IsString({ each: true }) expertise?: string[];
+  @IsOptional() @IsBoolean() authorPageEnabled?: boolean;
+  @IsOptional() @IsBoolean() robotsIndex?: boolean;
+  @IsOptional() @IsString() instagramUrl?: string;
+  @IsOptional() @IsString() linkedinUrl?: string;
+  @IsOptional() @IsString() websiteUrl?: string;
 }
 
 export class TransitionDto {
