@@ -22,6 +22,10 @@ import { BlogAuthorEntity } from '../modules/blog/entities/blog-author.entity';
 import { SeoRedirectEntity } from '../modules/blog/entities/seo-redirect.entity';
 import { BlogSettingsEntity } from '../modules/blog/entities/blog-settings.entity';
 import { SeoAuditLogEntity } from '../modules/blog/entities/seo-audit-log.entity';
+import { BlogMediaAssetEntity } from '../modules/blog/entities/blog-media-asset.entity';
+import { BlogArticleRevisionEntity } from '../modules/blog/entities/blog-article-revision.entity';
+import { BlogCommentEntity } from '../modules/blog/entities/blog-comment.entity';
+import { BlogAnalyticsEntity } from '../modules/blog/entities/blog-analytics.entity';
 import { CmsPageEntity } from '../modules/cms/entities/cms-page.entity';
 import { SiteContentEntity } from '../modules/cms/entities/site-content.entity';
 import { AppSettingEntity } from '../modules/settings/entities/app-setting.entity';
@@ -56,6 +60,10 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     SeoRedirectEntity,
     BlogSettingsEntity,
     SeoAuditLogEntity,
+    BlogMediaAssetEntity,
+    BlogArticleRevisionEntity,
+    BlogCommentEntity,
+    BlogAnalyticsEntity,
     CmsPageEntity,
     SiteContentEntity,
     AppSettingEntity,

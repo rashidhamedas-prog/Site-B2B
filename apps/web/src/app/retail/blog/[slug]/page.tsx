@@ -12,70 +12,17 @@ import {
   buildRobotsContent,
 } from '@/lib/blog';
 import { ArticleJsonLd, BreadcrumbJsonLd, FaqJsonLd } from '@/components/shared/JsonLd';
+import { BlogContent } from '@/components/blog/BlogContent';
+import { BlogHowTo, HowToJsonLd } from '@/components/blog/BlogHowTo';
+import { BlogRelatedProducts } from '@/components/blog/BlogRelatedProducts';
+import { BlogComments } from '@/components/blog/BlogComments';
+import { BlogAnalyticsTracker } from '@/components/blog/BlogAnalyticsTracker';
 import { RETAIL_ORIGIN } from '@/lib/seo';
 
 export const revalidate = 300;
 
 interface Props {
   params: Promise<{ slug: string }>;
-}
-
-function renderMarkdown(md: string) {
-  const blocks = md.split(/\n\n+/);
-  return blocks.map((block, i) => {
-    const trimmed = block.trim();
-    if (trimmed.startsWith('### ')) {
-      return (
-        <h3 key={i} id={`h-${i}`} className="mt-6 mb-2 text-base font-bold text-stone-900">
-          {trimmed.slice(4)}
-        </h3>
-      );
-    }
-    if (trimmed.startsWith('## ')) {
-      return (
-        <h2 key={i} id={`h-${i}`} className="mt-8 mb-3 text-lg font-bold text-stone-900">
-          {trimmed.slice(3)}
-        </h2>
-      );
-    }
-    if (trimmed.split('\n').every((l) => l.trim().startsWith('- '))) {
-      return (
-        <ul key={i} className="list-disc space-y-1.5 pr-5 text-sm leading-relaxed text-stone-600">
-          {trimmed.split('\n').map((l, j) => {
-            const item = l.trim().slice(2);
-            const parts = item.split(/\*\*(.+?)\*\*/g);
-            return (
-              <li key={j}>
-                {parts.map((p, k) =>
-                  k % 2 === 1 ? (
-                    <strong key={k} className="text-stone-800">
-                      {p}
-                    </strong>
-                  ) : (
-                    p
-                  ),
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      );
-    }
-    const parts = trimmed.split(/\*\*(.+?)\*\*/g);
-    return (
-      <p key={i} className="text-sm leading-loose text-stone-600">
-        {parts.map((p, k) =>
-          k % 2 === 1 ? (
-            <strong key={k} className="text-stone-800">
-              {p}
-            </strong>
-          ) : (
-            p
-          ),
-        )}
-      </p>
-    );
-  });
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -130,9 +77,26 @@ export default async function RetailBlogPostPage({ params }: Props) {
   const faqVisible = (post.faqItems || []).filter(
     (f) => f.isVisible !== false && f.question && f.answer,
   );
+  const howToLd =
+    post.howToSchemaEnabled !== false && post.howToData?.steps?.length
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'HowTo',
+          name: post.howToData.name,
+          description: post.howToData.description,
+          totalTime: post.howToData.totalTime,
+          step: post.howToData.steps.map((s, i) => ({
+            '@type': 'HowToStep',
+            position: i + 1,
+            name: s.title,
+            text: s.description,
+          })),
+        }
+      : null;
 
   return (
     <div className="min-h-screen bg-[#faf8f5]">
+      <BlogAnalyticsTracker articleId={String(post.id)} />
       {post.articleSchemaEnabled !== false && (
         <ArticleJsonLd
           title={post.seoTitle || post.title}
@@ -154,6 +118,7 @@ export default async function RetailBlogPostPage({ params }: Props) {
         />
       )}
       {post.faqSchemaEnabled && faqVisible.length > 0 && <FaqJsonLd items={faqVisible} />}
+      <HowToJsonLd howTo={howToLd} />
 
       <section className="bg-gradient-to-bl from-[#2c1810] via-[#4a2c1a] to-[#6b3f24] py-12 text-white">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
@@ -202,8 +167,10 @@ export default async function RetailBlogPostPage({ params }: Props) {
         <article className="space-y-4 rounded-2xl border border-stone-200 bg-white p-6 sm:p-10">
           <p className="text-sm font-medium leading-loose text-stone-700">{post.excerpt}</p>
           <hr className="border-stone-100" />
-          {renderMarkdown(post.content ?? '')}
+          <BlogContent content={post.content ?? ''} contentFormat={post.contentFormat} tone="retail" />
         </article>
+
+        <BlogHowTo howTo={post.howToData} tone="retail" />
 
         {faqVisible.length > 0 && (
           <section className="mt-10 rounded-2xl border border-stone-200 bg-white p-6 sm:p-8">
@@ -236,6 +203,13 @@ export default async function RetailBlogPostPage({ params }: Props) {
           </div>
         )}
 
+        <BlogRelatedProducts
+          articleId={String(post.id)}
+          channel="RETAIL"
+          tone="retail"
+          productBasePath="/products"
+        />
+
         {related.length > 0 && (
           <div className="mt-10">
             <h2 className="mb-4 text-base font-bold text-stone-900">مطالب مرتبط</h2>
@@ -257,6 +231,8 @@ export default async function RetailBlogPostPage({ params }: Props) {
             </div>
           </div>
         )}
+
+        <BlogComments articleId={String(post.id)} enabled={post.commentsEnabled !== false} tone="retail" />
       </div>
     </div>
   );

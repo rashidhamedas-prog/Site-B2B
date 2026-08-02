@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Plus, Edit2, Trash2, X, Save, Eye, FileText, ImagePlus, Loader2,
-  Upload, Send, CheckCircle, Ban, Copy,
+  Upload, Send, CheckCircle, Ban, Copy, Sparkles,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { cn } from '@/lib/cn';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
+import { BlogEditor } from './BlogEditor';
+import { AdminBlogTools } from './AdminBlogTools';
 
 type TabId =
   | 'content'
@@ -16,7 +18,9 @@ type TabId =
   | 'seo'
   | 'social'
   | 'schema'
+  | 'related'
   | 'publish'
+  | 'history'
   | 'preview';
 
 interface FaqItem {
@@ -125,6 +129,15 @@ type FormState = {
   isCornerstone: boolean;
   isEvergreen: boolean;
   tags: string;
+  relatedProductIds: string[];
+  relatedArticleIds: string[];
+  version: number;
+  howToName: string;
+  howToDescription: string;
+  howToTotalTime: string;
+  howToSteps: string;
+  howToSchemaEnabled: boolean;
+  commentsEnabled: boolean;
 };
 
 const emptyForm = (): FormState => ({
@@ -168,6 +181,15 @@ const emptyForm = (): FormState => ({
   isCornerstone: false,
   isEvergreen: false,
   tags: '',
+  relatedProductIds: [],
+  relatedArticleIds: [],
+  version: 1,
+  howToName: '',
+  howToDescription: '',
+  howToTotalTime: '',
+  howToSteps: '',
+  howToSchemaEnabled: true,
+  commentsEnabled: true,
 });
 
 const TABS: { id: TabId; label: string }[] = [
@@ -176,7 +198,9 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'seo', label: 'سئو' },
   { id: 'social', label: 'شبکه‌های اجتماعی' },
   { id: 'schema', label: 'اسکیما و FAQ' },
+  { id: 'related', label: 'مرتبط‌ها' },
   { id: 'publish', label: 'انتشار' },
+  { id: 'history', label: 'تاریخچه' },
   { id: 'preview', label: 'پیش‌نمایش' },
 ];
 
@@ -248,6 +272,19 @@ function postToForm(p: Post): FormState {
     isCornerstone: !!p.isCornerstone,
     isEvergreen: !!p.isEvergreen,
     tags: (p.tags || []).join(', '),
+    relatedProductIds: (p as any).relatedProductIds || [],
+    relatedArticleIds: (p as any).relatedArticleIds || [],
+    version: (p as any).version || 1,
+    howToName: (p as any).howToData?.name || '',
+    howToDescription: (p as any).howToData?.description || '',
+    howToTotalTime: (p as any).howToData?.totalTime || '',
+    howToSteps: Array.isArray((p as any).howToData?.steps)
+      ? (p as any).howToData.steps
+          .map((s: { title: string; description: string }) => `${s.title}|${s.description}`)
+          .join('\n')
+      : '',
+    howToSchemaEnabled: (p as any).howToSchemaEnabled !== false,
+    commentsEnabled: (p as any).commentsEnabled !== false,
   };
 }
 
@@ -300,6 +337,30 @@ function formToPayload(form: FormState, channel: AdminChannel) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
+    relatedProductIds: form.relatedProductIds,
+    relatedArticleIds: form.relatedArticleIds,
+    contentFormat: form.content.trim().startsWith('<') ? 'HTML' : 'MARKDOWN',
+    howToSchemaEnabled: form.howToSchemaEnabled,
+    commentsEnabled: form.commentsEnabled,
+    howToData: form.howToName.trim()
+      ? {
+          name: form.howToName.trim(),
+          description: form.howToDescription || undefined,
+          totalTime: form.howToTotalTime || undefined,
+          steps: form.howToSteps
+            .split('\n')
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line, i) => {
+              const [title, ...rest] = line.split('|');
+              return {
+                title: (title || `مرحله ${i + 1}`).trim(),
+                description: (rest.join('|') || title || '').trim(),
+                sortOrder: i + 1,
+              };
+            }),
+        }
+      : null,
   };
 }
 
@@ -318,8 +379,13 @@ export function AdminBlog() {
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importing, setImporting] = useState(false);
+  const [seoScore, setSeoScore] = useState<{ score: number; status: string; warnings: { label: string; detail?: string }[]; errors: { label: string; detail?: string }[] } | null>(null);
+  const [productQuery, setProductQuery] = useState('');
+  const [productHits, setProductHits] = useState<Array<{ id: string; name: string; sku: string }>>([]);
+  const [revisions, setRevisions] = useState<Array<{ id: string; versionNumber: number; changeSummary?: string; createdAt: string }>>([]);
   const { upload: uploadImage, uploading: uploadingCover } = useImageUpload();
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -343,6 +409,67 @@ export function AdminBlog() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!modal || !editId) return;
+    autosaveTimer.current = setInterval(async () => {
+      try {
+        const payload = formToPayload(form, channel);
+        const saved = await apiClient.post<{ version: number }>(`/blog/admin/posts/${editId}/autosave`, {
+          ...payload,
+          expectedVersion: form.version,
+        });
+        if (saved?.version) setForm((f) => ({ ...f, version: saved.version }));
+      } catch {
+        /* conflict or network — ignore silent autosave */
+      }
+    }, 30000);
+    return () => {
+      if (autosaveTimer.current) clearInterval(autosaveTimer.current);
+    };
+  }, [modal, editId, form, channel]);
+
+  const runSeoAnalyze = async () => {
+    try {
+      const result = await apiClient.post<{
+        score: number;
+        status: string;
+        warnings: { label: string; detail?: string }[];
+        errors: { label: string; detail?: string }[];
+      }>('/blog/admin/seo/analyze', formToPayload(form, channel));
+      setSeoScore(result);
+      setTab('seo');
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خطا در تحلیل سئو');
+    }
+  };
+
+  const searchProducts = async (q: string) => {
+    setProductQuery(q);
+    if (q.trim().length < 2) {
+      setProductHits([]);
+      return;
+    }
+    try {
+      const hits = await apiClient.get<Array<{ id: string; name: string; sku: string }>>(
+        `/blog/admin/products/search?q=${encodeURIComponent(q)}&channel=${channel}&limit=8`,
+      );
+      setProductHits(Array.isArray(hits) ? hits : []);
+    } catch {
+      setProductHits([]);
+    }
+  };
+
+  const loadRevisions = async (id: string) => {
+    try {
+      const list = await apiClient.get<Array<{ id: string; versionNumber: number; changeSummary?: string; createdAt: string }>>(
+        `/blog/admin/posts/${id}/revisions`,
+      );
+      setRevisions(Array.isArray(list) ? list : []);
+    } catch {
+      setRevisions([]);
+    }
+  };
+
   const openCreate = () => {
     setForm(emptyForm());
     setEditId(null);
@@ -354,7 +481,9 @@ export function AdminBlog() {
     setEditId(p.id);
     setForm(postToForm(p));
     setTab('content');
+    setSeoScore(null);
     setModal(true);
+    loadRevisions(p.id);
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -476,6 +605,8 @@ export function AdminBlog() {
           </button>
         </div>
       </div>
+
+      <AdminBlogTools channel={channel} />
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -630,15 +761,10 @@ export function AdminBlog() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">
-                      متن مطلب * <span className="font-normal text-gray-400">(Markdown)</span>
-                    </label>
-                    <textarea
+                    <label className="mb-1 block text-xs font-medium text-gray-600">متن مطلب *</label>
+                    <BlogEditor
                       value={form.content}
-                      onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                      rows={14}
-                      dir="rtl"
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      onChange={(html) => setForm((f) => ({ ...f, content: html }))}
                     />
                   </div>
                 </>
@@ -865,7 +991,135 @@ export function AdminBlog() {
                       {form.seoDescription || form.excerpt || 'توضیحات متا...'}
                     </p>
                   </div>
+                  <button type="button" onClick={runSeoAnalyze} className="btn btn-outline btn-sm flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    تحلیل سئو
+                  </button>
+                  {seoScore && (
+                    <div className="rounded-lg border border-gray-100 p-4 space-y-1">
+                      <p className="text-sm font-bold">
+                        امتیاز سئو: {seoScore.score.toLocaleString('fa-IR')} — {seoScore.status}
+                      </p>
+                      {seoScore.errors.map((e, i) => (
+                        <p key={`e-${i}`} className="text-xs text-red-600">خطا: {e.label}{e.detail ? ` — ${e.detail}` : ''}</p>
+                      ))}
+                      {seoScore.warnings.slice(0, 8).map((w, i) => (
+                        <p key={`w-${i}`} className="text-xs text-amber-600">هشدار: {w.label}{w.detail ? ` — ${w.detail}` : ''}</p>
+                      ))}
+                    </div>
+                  )}
                 </>
+              )}
+
+              {tab === 'related' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">جست‌وجوی محصول (نام یا SKU)</label>
+                    <input
+                      value={productQuery}
+                      onChange={(e) => searchProducts(e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      placeholder="جست‌وجو..."
+                    />
+                    <div className="mt-2 space-y-1">
+                      {productHits.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className="flex w-full items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-right text-xs hover:bg-gray-50"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              relatedProductIds: f.relatedProductIds.includes(p.id)
+                                ? f.relatedProductIds
+                                : [...f.relatedProductIds, p.id],
+                            }))
+                          }
+                        >
+                          <span>{p.name}</span>
+                          <span className="font-mono text-gray-400">{p.sku}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {form.relatedProductIds.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        className="rounded-full bg-gray-100 px-3 py-1 font-mono text-[11px] hover:bg-red-50 hover:text-red-600"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            relatedProductIds: f.relatedProductIds.filter((x) => x !== id),
+                          }))
+                        }
+                      >
+                        {id.slice(0, 8)} ×
+                      </button>
+                    ))}
+                  </div>
+                  {editId && (
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={async () => {
+                        try {
+                          const suggested = await apiClient.get<Array<{ id: string }>>(
+                            `/blog/admin/posts/${editId}/related-suggest`,
+                          );
+                          const ids = (Array.isArray(suggested) ? suggested : []).map((s) => s.id);
+                          setForm((f) => ({
+                            ...f,
+                            relatedArticleIds: Array.from(new Set([...f.relatedArticleIds, ...ids])),
+                          }));
+                        } catch {
+                          alert('پیشنهاد مقالات مرتبط ناموفق بود');
+                        }
+                      }}
+                    >
+                      پیشنهاد مقالات مرتبط
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {tab === 'history' && (
+                <div className="space-y-2">
+                  {!editId ? (
+                    <p className="text-sm text-gray-500">بعد از اولین ذخیره، تاریخچه نسخه در دسترس است.</p>
+                  ) : revisions.length === 0 ? (
+                    <p className="text-sm text-gray-500">نسخه‌ای ثبت نشده.</p>
+                  ) : (
+                    revisions.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-xs">
+                        <div>
+                          <p className="font-semibold">نسخه {r.versionNumber.toLocaleString('fa-IR')}</p>
+                          <p className="text-gray-400">
+                            {new Date(r.createdAt).toLocaleString('fa-IR')}
+                            {r.changeSummary ? ` — ${r.changeSummary}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-sm"
+                          onClick={async () => {
+                            try {
+                              await apiClient.post(`/blog/admin/posts/${editId}/revisions/${r.id}/restore`, {});
+                              await load();
+                              alert('نسخه بازگردانی شد');
+                              setModal(false);
+                            } catch (e: unknown) {
+                              alert(e instanceof Error ? e.message : 'خطا');
+                            }
+                          }}
+                        >
+                          بازگردانی
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
 
               {tab === 'social' && (
@@ -926,7 +1180,40 @@ export function AdminBlog() {
                         <input type="checkbox" checked={form.faqSchemaEnabled} onChange={(e) => setForm((f) => ({ ...f, faqSchemaEnabled: e.target.checked }))} />
                         FAQ Schema
                       </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={form.howToSchemaEnabled} onChange={(e) => setForm((f) => ({ ...f, howToSchemaEnabled: e.target.checked }))} />
+                        HowTo Schema
+                      </label>
                     </div>
+                  </div>
+                  <div className="rounded-lg border border-gray-100 p-3 space-y-2">
+                    <p className="text-xs font-semibold text-gray-600">بلوک HowTo (هر خط: عنوان|توضیح)</p>
+                    <input
+                      value={form.howToName}
+                      onChange={(e) => setForm((f) => ({ ...f, howToName: e.target.value }))}
+                      placeholder="عنوان راهنما"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={form.howToDescription}
+                      onChange={(e) => setForm((f) => ({ ...f, howToDescription: e.target.value }))}
+                      placeholder="توضیح کوتاه"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={form.howToTotalTime}
+                      onChange={(e) => setForm((f) => ({ ...f, howToTotalTime: e.target.value }))}
+                      placeholder="زمان تقریبی مثلاً PT30M"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      dir="ltr"
+                    />
+                    <textarea
+                      value={form.howToSteps}
+                      onChange={(e) => setForm((f) => ({ ...f, howToSteps: e.target.value }))}
+                      rows={4}
+                      placeholder={'انتخاب پارچه|جنس مناسب را انتخاب کنید\nاندازه‌گیری|دور سینه را اندازه بگیرید'}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -1009,6 +1296,16 @@ export function AdminBlog() {
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                     />
                   </div>
+                  <div className="flex flex-wrap items-end gap-4 pb-1 text-sm sm:col-span-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.commentsEnabled}
+                        onChange={(e) => setForm((f) => ({ ...f, commentsEnabled: e.target.checked }))}
+                      />
+                      نظرات عمومی فعال
+                    </label>
+                  </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">اولویت Sitemap (۰–۱)</label>
                     <input
@@ -1026,21 +1323,14 @@ export function AdminBlog() {
 
               {tab === 'preview' && (
                 <div className="prose prose-sm max-w-none rounded-xl border border-gray-100 bg-gray-50 p-5">
-                  <p className="text-xs text-gray-400">پیش‌نمایش ساده (Markdown خام)</p>
+                  <p className="text-xs text-gray-400">پیش‌نمایش</p>
                   <h1 className="text-xl font-bold text-gray-900">{form.title || '—'}</h1>
                   <p className="text-sm text-gray-600">{form.excerpt}</p>
                   <hr />
-                  <pre className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700">{form.content}</pre>
-                  {form.faqItems.length > 0 && (
-                    <div className="mt-4">
-                      <h2 className="text-base font-bold">FAQ</h2>
-                      {form.faqItems.map((f, i) => (
-                        <div key={i} className="mb-2">
-                          <p className="font-semibold">{f.question}</p>
-                          <p className="text-gray-600">{f.answer}</p>
-                        </div>
-                      ))}
-                    </div>
+                  {form.content.trim().startsWith('<') ? (
+                    <div dangerouslySetInnerHTML={{ __html: form.content }} />
+                  ) : (
+                    <pre className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700">{form.content}</pre>
                   )}
                 </div>
               )}

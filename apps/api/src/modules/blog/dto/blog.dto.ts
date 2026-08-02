@@ -146,6 +146,10 @@ export class CreateBlogPostDto {
   @IsOptional() @IsUUID() authorId?: string;
   @IsOptional() @IsUUID() reviewerId?: string;
   @IsOptional() @IsString() publishAt?: string;
+  @IsOptional() @IsObject() howToData?: Record<string, unknown>;
+  @IsOptional() @IsBoolean() howToSchemaEnabled?: boolean;
+  @IsOptional() @IsBoolean() commentsEnabled?: boolean;
+  @IsOptional() @IsIn(['MANUAL', 'AUTOMATIC', 'HYBRID']) relatedArticleMode?: string;
 }
 
 /** Partial update — all fields optional; validate only present ones */
@@ -203,6 +207,10 @@ export class UpdateBlogPostDto {
   @IsOptional() @IsUUID() authorId?: string;
   @IsOptional() @IsUUID() reviewerId?: string;
   @IsOptional() @IsString() publishAt?: string;
+  @IsOptional() @IsObject() howToData?: Record<string, unknown>;
+  @IsOptional() @IsBoolean() howToSchemaEnabled?: boolean;
+  @IsOptional() @IsBoolean() commentsEnabled?: boolean;
+  @IsOptional() @IsIn(['MANUAL', 'AUTOMATIC', 'HYBRID']) relatedArticleMode?: string;
 }
 
 export class DeleteBlogPostDto {

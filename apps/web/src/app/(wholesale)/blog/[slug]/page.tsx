@@ -11,6 +11,11 @@ import {
   buildRobotsContent,
 } from '@/lib/blog';
 import { ArticleJsonLd, BreadcrumbJsonLd, FaqJsonLd } from '@/components/shared/JsonLd';
+import { BlogContent } from '@/components/blog/BlogContent';
+import { BlogHowTo, HowToJsonLd } from '@/components/blog/BlogHowTo';
+import { BlogRelatedProducts } from '@/components/blog/BlogRelatedProducts';
+import { BlogComments } from '@/components/blog/BlogComments';
+import { BlogAnalyticsTracker } from '@/components/blog/BlogAnalyticsTracker';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
 
 export const revalidate = 300;
@@ -58,64 +63,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-function renderMarkdown(md: string) {
-  const blocks = md.split(/\n\n+/);
-  return blocks.map((block, i) => {
-    const trimmed = block.trim();
-    if (trimmed.startsWith('### ')) {
-      return (
-        <h3 key={i} className="mt-6 mb-2 text-base font-bold text-gray-900">
-          {trimmed.slice(4)}
-        </h3>
-      );
-    }
-    if (trimmed.startsWith('## ')) {
-      return (
-        <h2 key={i} className="mt-8 mb-3 text-lg font-bold text-gray-900">
-          {trimmed.slice(3)}
-        </h2>
-      );
-    }
-    if (trimmed.split('\n').every((l) => l.trim().startsWith('- '))) {
-      return (
-        <ul key={i} className="list-disc space-y-1.5 pr-5 text-sm leading-relaxed text-gray-600">
-          {trimmed.split('\n').map((l, j) => {
-            const item = l.trim().slice(2);
-            const parts = item.split(/\*\*(.+?)\*\*/g);
-            return (
-              <li key={j}>
-                {parts.map((p, k) =>
-                  k % 2 === 1 ? (
-                    <strong key={k} className="text-gray-800">
-                      {p}
-                    </strong>
-                  ) : (
-                    p
-                  ),
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      );
-    }
-    const parts = trimmed.split(/\*\*(.+?)\*\*/g);
-    return (
-      <p key={i} className="text-sm leading-loose text-gray-600">
-        {parts.map((p, k) =>
-          k % 2 === 1 ? (
-            <strong key={k} className="text-gray-800">
-              {p}
-            </strong>
-          ) : (
-            p
-          ),
-        )}
-      </p>
-    );
-  });
-}
-
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const post = await fetchPost(decodeURIComponent(slug), 'WHOLESALE');
@@ -129,9 +76,26 @@ export default async function BlogPostPage({ params }: Props) {
   const faqVisible = (post.faqItems || []).filter(
     (f) => f.isVisible !== false && f.question && f.answer,
   );
+  const howToLd =
+    post.howToSchemaEnabled !== false && post.howToData?.steps?.length
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'HowTo',
+          name: post.howToData.name,
+          description: post.howToData.description,
+          totalTime: post.howToData.totalTime,
+          step: post.howToData.steps.map((s, i) => ({
+            '@type': 'HowToStep',
+            position: i + 1,
+            name: s.title,
+            text: s.description,
+          })),
+        }
+      : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <BlogAnalyticsTracker articleId={String(post.id)} />
       {post.articleSchemaEnabled !== false && (
         <ArticleJsonLd
           title={post.seoTitle || post.title}
@@ -153,6 +117,7 @@ export default async function BlogPostPage({ params }: Props) {
         />
       )}
       {post.faqSchemaEnabled && faqVisible.length > 0 && <FaqJsonLd items={faqVisible} />}
+      <HowToJsonLd howTo={howToLd} />
       <section className="bg-gradient-to-bl from-primary-dark via-primary to-primary-light py-14 text-white">
         <div className="container-site max-w-3xl">
           <Link
@@ -170,6 +135,7 @@ export default async function BlogPostPage({ params }: Props) {
           </span>
           <h1 className="mb-4 text-2xl font-extrabold leading-snug sm:text-3xl">{post.title}</h1>
           <div className="flex items-center gap-4 text-xs text-white/60">
+            {post.authorName && <span>{post.authorName}</span>}
             <span className="flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
               {formatJalali(post)}
@@ -186,8 +152,10 @@ export default async function BlogPostPage({ params }: Props) {
         <article className="card space-y-4 p-6 sm:p-10">
           <p className="text-sm font-medium leading-loose text-gray-700">{post.excerpt}</p>
           <hr className="border-gray-100" />
-          {renderMarkdown(post.content ?? '')}
+          <BlogContent content={post.content ?? ''} contentFormat={post.contentFormat} tone="wholesale" />
         </article>
+
+        <BlogHowTo howTo={post.howToData} tone="wholesale" />
 
         {faqVisible.length > 0 && (
           <section className="card mt-10 p-6 sm:p-8">
@@ -202,6 +170,8 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           </section>
         )}
+
+        <BlogRelatedProducts articleId={String(post.id)} channel="WHOLESALE" tone="wholesale" />
 
         {related.length > 0 && (
           <div className="mt-10">
@@ -226,6 +196,8 @@ export default async function BlogPostPage({ params }: Props) {
             </div>
           </div>
         )}
+
+        <BlogComments articleId={String(post.id)} enabled={post.commentsEnabled !== false} tone="wholesale" />
 
         <div className="mt-10 rounded-2xl bg-primary p-8 text-center text-white">
           <h3 className="mb-2 text-lg font-bold">خرید عمده مانتو مستقیم از تولیدی</h3>

@@ -59,6 +59,16 @@ export interface BlogPost {
   updatedAt?: string;
   sitemapPriority?: number;
   sitemapChangeFrequency?: string;
+  relatedProductIds?: string[];
+  relatedArticleIds?: string[];
+  howToData?: {
+    name: string;
+    description?: string;
+    totalTime?: string;
+    steps?: Array<{ title: string; description: string; sortOrder?: number }>;
+  } | null;
+  howToSchemaEnabled?: boolean;
+  commentsEnabled?: boolean;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';

@@ -2,6 +2,22 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-02 — فاز ۲ وبلاگ: TipTap، SEO Score، Revisions، Cron، Media، Authors
+
+### خلاصه
+
+- TipTap RTL editor + sanitize-html
+- SEO Analysis Engine + UI تحلیل
+- Version history + autosave + optimistic lock
+- Media assets table + register API
+- Nest cron برای SCHEDULED
+- Related products/articles، orphan detection
+- Author pages + comments + analytics hooks
+- HowTo schema fields
+- Migration `20260802-002-blog-phase2-extensions`
+
+---
+
 ## 2026-08-02 — ماژول پیشرفته وبلاگ و SEO چندسایته (فاز ۱ MVP)
 
 ### خلاصه

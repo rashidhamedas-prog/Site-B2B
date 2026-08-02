@@ -237,6 +237,38 @@ export class BlogPostEntity {
   @Column({ type: 'uuid', nullable: true })
   updatedBy: string | null;
 
+  /** Optimistic lock / autosave version */
+  @Column({ type: 'int', default: 1 })
+  version: number;
+
+  @Column({ type: 'jsonb', nullable: true })
+  howToData: {
+    name: string;
+    description?: string;
+    totalTime?: string;
+    estimatedCost?: { currency: string; value: number };
+    supplies?: string[];
+    tools?: string[];
+    steps?: Array<{
+      id?: string;
+      title: string;
+      description: string;
+      imageId?: string;
+      urlAnchor?: string;
+      sortOrder?: number;
+    }>;
+  } | null;
+
+  @Column({ default: true })
+  howToSchemaEnabled: boolean;
+
+  @Column({ default: true })
+  commentsEnabled: boolean;
+
+  /** MANUAL | AUTOMATIC | HYBRID */
+  @Column({ default: 'HYBRID' })
+  relatedArticleMode: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

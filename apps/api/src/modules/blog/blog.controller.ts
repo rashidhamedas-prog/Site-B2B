@@ -4,6 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BlogService } from './blog.service';
+import { BlogExtrasService } from './blog-extras.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -32,6 +33,8 @@ type AuthedRequest = Request & {
     blogRole?: string | null;
     effectiveBlogRole?: BlogRole | null;
   };
+  headers?: Record<string, string | string[] | undefined>;
+  ip?: string;
 };
 
 @ApiTags('blog')
@@ -39,6 +42,7 @@ type AuthedRequest = Request & {
 export class BlogController {
   constructor(
     private readonly svc: BlogService,
+    private readonly extras: BlogExtrasService,
     @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
   ) {}
 
@@ -52,7 +56,12 @@ export class BlogController {
       };
     }
     const id = req.user?.id || req.user?.sub;
-    return { id, role: req.user?.role, blogRole: null as string | null, effectiveBlogRole: null as BlogRole | null };
+    return {
+      id,
+      role: req.user?.role,
+      blogRole: null as string | null,
+      effectiveBlogRole: null as BlogRole | null,
+    };
   }
 
   // ── Public ────────────────────────────────────────────────
@@ -401,5 +410,215 @@ export class BlogController {
   @ApiBearerAuth()
   listAuthors() {
     return this.svc.listAuthors();
+  }
+
+  // ── Phase 2: SEO analyze / revisions / media / links / comments / analytics ──
+
+  @Post('admin/seo/analyze')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read', 'blog:manage_seo')
+  @ApiBearerAuth()
+  analyzeBody(@Body() body: Record<string, unknown>) {
+    return this.extras.analyze(body as any);
+  }
+
+  @Post('admin/posts/:id/seo/analyze')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read', 'blog:manage_seo')
+  @ApiBearerAuth()
+  analyzePost(@Param('id') id: string) {
+    return this.extras.analyzePost(id);
+  }
+
+  @Get('admin/posts/:id/revisions')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  listRevisions(@Param('id') id: string) {
+    return this.extras.listRevisions(id);
+  }
+
+  @Post('admin/posts/:id/revisions/:revisionId/restore')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:edit_any')
+  @ApiBearerAuth()
+  restoreRevision(
+    @Param('id') id: string,
+    @Param('revisionId') revisionId: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.extras.restoreRevision(id, revisionId, this.actor(req));
+  }
+
+  @Post('admin/posts/:id/autosave')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:edit_any', 'blog:edit_own')
+  @ApiBearerAuth()
+  autosave(
+    @Param('id') id: string,
+    @Body() body: Record<string, unknown>,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.extras.autosave(id, body as any, this.actor(req));
+  }
+
+  @Get('admin/media')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  listMedia(
+    @Query('channel') channel?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.extras.listMedia({ channel, search, page, limit });
+  }
+
+  @Post('admin/media/register')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:create', 'blog:edit_any')
+  @ApiBearerAuth()
+  registerMedia(@Body() body: Record<string, unknown>, @Req() req: AuthedRequest) {
+    return this.extras.registerMedia({
+      ...(body as any),
+      createdBy: this.actor(req).id,
+    });
+  }
+
+  @Patch('admin/media/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:edit_any')
+  @ApiBearerAuth()
+  updateMedia(@Param('id') id: string, @Body() body: Record<string, unknown>) {
+    return this.extras.updateMedia(id, body as any);
+  }
+
+  @Delete('admin/media/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:delete_soft')
+  @ApiBearerAuth()
+  removeMedia(@Param('id') id: string) {
+    return this.extras.removeMedia(id);
+  }
+
+  @Post('admin/internal-links/suggest')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  suggestLinks(@Body() body: { channel: string; articleId?: string; q?: string; limit?: number }) {
+    return this.extras.suggestInternalLinks(body);
+  }
+
+  @Get('admin/posts/:id/related-suggest')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  suggestRelated(@Param('id') id: string) {
+    return this.extras.suggestRelatedArticles(id);
+  }
+
+  @Get('admin/orphans')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_seo', 'blog:read')
+  @ApiBearerAuth()
+  orphans(@Query('channel') channel = 'WHOLESALE') {
+    return this.extras.findOrphanArticles(channel);
+  }
+
+  @Get('admin/products/search')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  searchProducts(
+    @Query('q') q = '',
+    @Query('channel') channel?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.extras.searchProducts(q, channel, Number(limit) || 12);
+  }
+
+  @Get('admin/posts/:id/comments')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  adminComments(@Param('id') id: string, @Query('status') status?: string) {
+    return this.extras.listComments(id, status);
+  }
+
+  @Patch('admin/comments/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:approve', 'blog:edit_any')
+  @ApiBearerAuth()
+  moderateComment(
+    @Param('id') id: string,
+    @Body() body: { status: 'APPROVED' | 'REJECTED' | 'SPAM' },
+  ) {
+    return this.extras.moderateComment(id, body.status);
+  }
+
+  @Get('admin/posts/:id/analytics')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read', 'blog:audit')
+  @ApiBearerAuth()
+  analytics(@Param('id') id: string) {
+    return this.extras.getAnalytics(id);
+  }
+
+  @Get('authors/:slug')
+  getAuthor(@Param('slug') slug: string) {
+    return this.extras.getAuthorBySlug(slug);
+  }
+
+  @Get('article/:id/comments')
+  publicComments(@Param('id') id: string) {
+    return this.extras.listPublicComments(id);
+  }
+
+  @Post('article/:id/comments')
+  createComment(
+    @Param('id') id: string,
+    @Body() body: { name: string; email: string; content: string; parentId?: string; website?: string },
+    @Req() req: AuthedRequest,
+  ) {
+    const fwd = req.headers?.['x-forwarded-for'];
+    const ip = Array.isArray(fwd) ? fwd[0] : (fwd as string) || req.ip;
+    const ua = req.headers?.['user-agent'];
+    return this.extras.createComment(
+      id,
+      { ...body, honeypot: body.website },
+      { ip, userAgent: Array.isArray(ua) ? ua[0] : ua },
+    );
+  }
+
+  @Post('article/:id/analytics/:event')
+  track(
+    @Param('id') id: string,
+    @Param('event') event: 'view' | 'scroll25' | 'scroll50' | 'scroll75' | 'scroll90' | 'cta' | 'product' | 'internal',
+  ) {
+    return this.extras.trackEvent(id, event);
+  }
+
+  @Get('article/:id/related-products')
+  async relatedProducts(@Param('id') id: string, @Query('channel') channel?: string) {
+    const post = await this.svc.findOneAdmin(id).catch(() => null);
+    if (!post || post.status !== 'PUBLISHED') return [];
+    return this.extras.resolveRelatedProducts(post.relatedProductIds || [], channel || post.channel);
   }
 }

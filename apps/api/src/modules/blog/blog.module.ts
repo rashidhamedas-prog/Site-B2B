@@ -7,10 +7,18 @@ import { BlogAuthorEntity } from './entities/blog-author.entity';
 import { SeoRedirectEntity } from './entities/seo-redirect.entity';
 import { BlogSettingsEntity } from './entities/blog-settings.entity';
 import { SeoAuditLogEntity } from './entities/seo-audit-log.entity';
+import { BlogMediaAssetEntity } from './entities/blog-media-asset.entity';
+import { BlogArticleRevisionEntity } from './entities/blog-article-revision.entity';
+import { BlogCommentEntity } from './entities/blog-comment.entity';
+import { BlogAnalyticsEntity } from './entities/blog-analytics.entity';
 import { UserEntity } from '../auth/entities/user.entity';
+import { ProductEntity } from '../product/entities/product.entity';
 import { BlogService } from './blog.service';
+import { BlogExtrasService } from './blog-extras.service';
+import { BlogSchedulerService } from './blog-scheduler.service';
 import { BlogController } from './blog.controller';
 import { AuthModule } from '../auth/auth.module';
+import { UploadModule } from '../upload/upload.module';
 import { BlogPermissionsGuard } from '../auth/guards/blog-permissions.guard';
 
 @Module({
@@ -23,12 +31,18 @@ import { BlogPermissionsGuard } from '../auth/guards/blog-permissions.guard';
       SeoRedirectEntity,
       BlogSettingsEntity,
       SeoAuditLogEntity,
+      BlogMediaAssetEntity,
+      BlogArticleRevisionEntity,
+      BlogCommentEntity,
+      BlogAnalyticsEntity,
       UserEntity,
+      ProductEntity,
     ]),
     AuthModule,
+    UploadModule,
   ],
   controllers: [BlogController],
-  providers: [BlogService, BlogPermissionsGuard],
-  exports: [BlogService],
+  providers: [BlogService, BlogExtrasService, BlogSchedulerService, BlogPermissionsGuard],
+  exports: [BlogService, BlogExtrasService],
 })
 export class BlogModule {}

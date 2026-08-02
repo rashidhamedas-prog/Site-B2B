@@ -19,6 +19,7 @@ import {
   buildFaqJsonLd,
   buildBreadcrumbJsonLd,
 } from './blog-seo.util';
+import { sanitizeBlogHtml, buildHowToJsonLd } from './blog-sanitize';
 import { hasBlogPermission, type BlogRole } from './blog-roles';
 import type {
   CreateBlogPostDto,
@@ -119,6 +120,11 @@ export class BlogService {
   }
 
   private enrichStats(data: Partial<BlogPostEntity>): Partial<BlogPostEntity> {
+    let content = data.content;
+    if (content && (data.contentFormat === 'HTML' || String(content).trim().startsWith('<'))) {
+      content = sanitizeBlogHtml(content);
+      data = { ...data, content, contentFormat: data.contentFormat || 'HTML' };
+    }
     const wordCount = countWords(String(data.content ?? ''));
     return {
       ...data,
@@ -225,6 +231,18 @@ export class BlogService {
       post.faqSchemaEnabled && post.faqItems?.length
         ? buildFaqJsonLd(post.faqItems)
         : null;
+    const howToLd =
+      post.howToSchemaEnabled !== false && post.howToData
+        ? buildHowToJsonLd({
+            ...post.howToData,
+            steps: (post.howToData.steps || []).map((s) => ({
+              title: s.title,
+              description: s.description,
+              urlAnchor: s.urlAnchor,
+              sortOrder: s.sortOrder,
+            })),
+          })
+        : null;
     const breadcrumbLd =
       post.breadcrumbEnabled !== false
         ? buildBreadcrumbJsonLd([
@@ -233,7 +251,7 @@ export class BlogService {
             { name: post.title, url },
           ])
         : null;
-    return { post, url, canonical, robots, articleLd, faqLd, breadcrumbLd };
+    return { post, url, canonical, robots, articleLd, faqLd, howToLd, breadcrumbLd };
   }
 
   async feed(channel: string, limit = 20) {
@@ -359,6 +377,7 @@ export class BlogService {
     }
 
     next.updatedBy = actor?.id || null;
+    next.version = (post.version || 1) + 1;
     Object.assign(post, next);
     const saved = await this.repo.save(post);
     await this.audit({
