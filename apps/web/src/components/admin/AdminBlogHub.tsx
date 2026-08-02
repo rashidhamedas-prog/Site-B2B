@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AdminBlog } from './AdminBlog';
 import { AdminBlogRedirects, AdminBlogSettingsPanel } from './AdminBlogSeoPanels';
 import { AdminBlogCommentsPanel, AdminBlogAuthorsPanel } from './AdminBlogModeration';
+import { AdminBlogAnalyticsPanel } from './AdminBlogAnalytics';
 import { cn } from '@/lib/cn';
 
 const TABS = [
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'settings', label: 'تنظیمات' },
   { id: 'comments', label: 'نظرات' },
   { id: 'authors', label: 'نویسندگان' },
+  { id: 'analytics', label: 'آمار' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -41,6 +43,7 @@ export function AdminBlogHub() {
       {tab === 'settings' && <AdminBlogSettingsPanel />}
       {tab === 'comments' && <AdminBlogCommentsPanel />}
       {tab === 'authors' && <AdminBlogAuthorsPanel />}
+      {tab === 'analytics' && <AdminBlogAnalyticsPanel />}
     </div>
   );
 }

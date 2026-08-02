@@ -133,7 +133,7 @@ export default async function RetailBlogPostPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-[#faf8f5]">
-      <BlogAnalyticsTracker articleId={String(post.id)} />
+      <BlogAnalyticsTracker articleId={String(post.id)} title={post.title} />
       {post.articleSchemaEnabled !== false && (
         <ArticleJsonLd
           title={post.seoTitle || post.title}

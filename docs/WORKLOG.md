@@ -2,6 +2,17 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-02 — تکمیل باقی‌مانده وبلاگ: تگ، آمار، داک
+
+### خلاصه
+
+- صفحات عمومی `/blog/tag/{slug}` عمده و تک
+- تب آمار ادمین + `GET /blog/admin/analytics/summary`
+- ارسال رویداد به GA4 (gtag) از `BlogAnalyticsTracker`
+- Docs: API، Schema، Deploy، Test Report
+
+---
+
 ## 2026-08-02 — فاز ۳ وبلاگ: Redirect، Settings، Export، Taxonomy عمومی، TOC
 
 ### خلاصه

@@ -438,6 +438,70 @@ export class BlogExtrasService {
     return row;
   }
 
+  async analyticsSummary(channel?: string, limit = 30) {
+    const take = Math.min(50, Math.max(1, Number(limit) || 30));
+    const qb = this.analyticsRepo
+      .createQueryBuilder('a')
+      .innerJoin(BlogPostEntity, 'p', 'p.id = a.articleId')
+      .orderBy('a.pageViews', 'DESC')
+      .take(take)
+      .select([
+        'a.articleId AS "articleId"',
+        'a.pageViews AS "pageViews"',
+        'a.uniqueViews AS "uniqueViews"',
+        'a.scroll25 AS scroll25',
+        'a.scroll50 AS scroll50',
+        'a.scroll75 AS scroll75',
+        'a.scroll90 AS scroll90',
+        'a.ctaClicks AS "ctaClicks"',
+        'a.productClicks AS "productClicks"',
+        'a.internalLinkClicks AS "internalLinkClicks"',
+        'a.updatedAt AS "updatedAt"',
+        'p.title AS title',
+        'p.slug AS slug',
+        'p.channel AS channel',
+        'p.status AS status',
+        'p.views AS views',
+      ]);
+    if (channel) qb.andWhere('p.channel = :channel', { channel: channel.toUpperCase() });
+    const items = await qb.getRawMany();
+
+    const totals = items.reduce(
+      (acc, row) => {
+        acc.pageViews += Number(row.pageViews) || 0;
+        acc.uniqueViews += Number(row.uniqueViews) || 0;
+        acc.ctaClicks += Number(row.ctaClicks) || 0;
+        acc.productClicks += Number(row.productClicks) || 0;
+        acc.scroll90 += Number(row.scroll90) || 0;
+        return acc;
+      },
+      { pageViews: 0, uniqueViews: 0, ctaClicks: 0, productClicks: 0, scroll90: 0 },
+    );
+
+    return {
+      channel: channel?.toUpperCase() || 'ALL',
+      totals,
+      items,
+      integrations: {
+        ga4: {
+          note: 'رویدادهای view/scroll/cta از فرانت به API و در صورت فعال بودن Measurement ID به GA4 (gtag) هم ارسال می‌شوند.',
+          propertyHint:
+            channel?.toUpperCase() === 'RETAIL'
+              ? 'marketing.ga4RetailId / NEXT_PUBLIC_GA4_RETAIL_ID'
+              : 'marketing.ga4WholesaleId / NEXT_PUBLIC_GA4_WHOLESALE_ID',
+        },
+        gsc: {
+          note: 'برای Click/Impression/CTR/Position باید Search Console API متصل شود؛ فعلاً فقط verification token در تنظیمات ذخیره می‌شود.',
+          propertyHint:
+            channel?.toUpperCase() === 'RETAIL'
+              ? 'marketing.gscRetailVerification'
+              : 'marketing.gscWholesaleVerification',
+          metricsAvailable: false,
+        },
+      },
+    };
+  }
+
   async listPendingComments(channel?: string, limit = 50) {
     const qb = this.commentRepo
       .createQueryBuilder('c')

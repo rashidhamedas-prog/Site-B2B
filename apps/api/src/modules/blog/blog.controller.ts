@@ -679,6 +679,15 @@ export class BlogController {
     return this.extras.getAnalytics(id);
   }
 
+  @Get('admin/analytics/summary')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read', 'blog:audit')
+  @ApiBearerAuth()
+  analyticsSummary(@Query('channel') channel?: string, @Query('limit') limit?: number) {
+    return this.extras.analyticsSummary(channel, Number(limit) || 30);
+  }
+
   @Get('authors/:slug')
   getAuthor(@Param('slug') slug: string) {
     return this.extras.getAuthorBySlug(slug);

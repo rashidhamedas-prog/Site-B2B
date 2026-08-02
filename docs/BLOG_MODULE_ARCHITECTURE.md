@@ -33,3 +33,7 @@ TipTap، Media Library، Version History، SEO Score، Internal Links، Comments
 ## فاز ۳ (انجام‌شده)
 
 Redirect Manager UI + اعمال ۳۰۱/۴۱۰ در صفحه مقاله، تنظیمات وبلاگ، Export، check-links، moderation نظرات، نویسندگان، دسته/جستجو عمومی، TOC، preview noindex، مستندات تکمیلی.
+
+## تکمیل
+
+صفحات تگ، داشبورد آمار ادمین، hook رویداد GA4، مستندات API/Schema/Deploy/Test.

@@ -1,5 +1,11 @@
 # Changelog — ماژول وبلاگ و SEO
 
+## 2026-08-02 — تکمیل باقی‌مانده
+
+- Public tag pages
+- Admin analytics summary + GA4 event hooks
+- Docs: API / Schema / Deploy / Test Report
+
 ## 2026-08-02 — فاز ۳
 
 - Redirect Manager + hit count + ۴۱۰ Gone

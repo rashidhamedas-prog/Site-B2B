@@ -4,7 +4,38 @@ import { useEffect, useRef } from 'react';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
 
-export function BlogAnalyticsTracker({ articleId }: { articleId: string }) {
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+function emitGa4(event: string, articleId: string) {
+  if (typeof window === 'undefined' || !window.gtag) return;
+  const map: Record<string, string> = {
+    view: 'blog_article_view',
+    scroll25: 'blog_scroll_25',
+    scroll50: 'blog_scroll_50',
+    scroll75: 'blog_scroll_75',
+    scroll90: 'blog_scroll_90',
+    cta: 'blog_cta_click',
+    product: 'blog_product_click',
+    internal: 'blog_internal_click',
+  };
+  const name = map[event] || `blog_${event}`;
+  window.gtag('event', name, {
+    article_id: articleId,
+    event_category: 'blog',
+  });
+}
+
+export function BlogAnalyticsTracker({
+  articleId,
+  title,
+}: {
+  articleId: string;
+  title?: string;
+}) {
   const sent = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -16,9 +47,17 @@ export function BlogAnalyticsTracker({ articleId }: { articleId: string }) {
         method: 'POST',
         keepalive: true,
       }).catch(() => undefined);
+      emitGa4(event, articleId);
     };
 
     track('view');
+    if (title && window.gtag) {
+      window.gtag('event', 'view_item', {
+        item_name: title,
+        item_id: articleId,
+        item_category: 'blog',
+      });
+    }
 
     const onScroll = () => {
       const doc = document.documentElement;
@@ -34,7 +73,7 @@ export function BlogAnalyticsTracker({ articleId }: { articleId: string }) {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
-  }, [articleId]);
+  }, [articleId, title]);
 
   return null;
 }
