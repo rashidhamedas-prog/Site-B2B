@@ -25,29 +25,50 @@ export class UsersController {
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
   ) {
     const users = await this.userRepo.find({ where: { role: 'ADMIN' }, take: limit, order: { createdAt: 'DESC' } });
-    return { data: users.map((u) => ({ id: u.id, phone: u.phone, email: u.email, role: u.role, isActive: u.isActive, lastLoginAt: u.lastLoginAt, createdAt: u.createdAt })) };
+    return {
+      data: users.map((u) => ({
+        id: u.id,
+        phone: u.phone,
+        email: u.email,
+        role: u.role,
+        blogRole: u.blogRole,
+        isActive: u.isActive,
+        lastLoginAt: u.lastLoginAt,
+        createdAt: u.createdAt,
+      })),
+    };
   }
 
   @Post()
   @ApiOperation({ summary: 'افزودن ادمین جدید' })
-  async create(@Body() body: { phone: string; email?: string; password: string; role?: string }) {
+  async create(@Body() body: { phone: string; email?: string; password: string; role?: string; blogRole?: string | null }) {
     const passwordHash = await bcrypt.hash(body.password, 12);
     const user = this.userRepo.create({
       phone: body.phone,
       email: body.email,
       passwordHash,
       role: body.role ?? 'ADMIN',
+      blogRole: body.blogRole ?? null,
       isActive: true,
     });
     const saved = await this.userRepo.save(user);
-    return { id: saved.id, phone: saved.phone, role: saved.role };
+    return { id: saved.id, phone: saved.phone, role: saved.role, blogRole: saved.blogRole };
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'ویرایش کاربر' })
-  async update(@Param('id') id: string, @Body() body: { isActive?: boolean; role?: string }) {
+  async update(
+    @Param('id') id: string,
+    @Body() body: { isActive?: boolean; role?: string; blogRole?: string | null },
+  ) {
     await this.userRepo.update(id, body);
     const user = await this.userRepo.findOne({ where: { id } });
-    return { id: user?.id, phone: user?.phone, role: user?.role, isActive: user?.isActive };
+    return {
+      id: user?.id,
+      phone: user?.phone,
+      role: user?.role,
+      blogRole: user?.blogRole,
+      isActive: user?.isActive,
+    };
   }
 }

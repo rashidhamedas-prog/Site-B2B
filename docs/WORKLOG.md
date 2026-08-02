@@ -2,6 +2,20 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-02 — ماژول پیشرفته وبلاگ و SEO چندسایته (فاز ۱ MVP)
+
+### خلاصه
+
+- گسترش `BlogModule` (TypeORM): فیلدهای SEO کامل، workflow انتشار، FAQ، `(channel,slug)` unique
+- جداول: categories / tags / authors / settings / seo_redirects / seo_audit_logs
+- RBAC: `users.blogRole` + `BlogPermissionsGuard` (SUPER_ADMIN … VIEWER)
+- API: import JSON/MD، redirect روی تغییر slug، sitemap-posts، feed
+- فرانت: retail `/blog`، RSS، اصلاح sitemap/robots، AdminBlog تب‌دار
+- Docs: `BLOG_MODULE_ARCHITECTURE.md`, `BLOG_IMPORT_FORMAT.md`, `BLOG_ADMIN_GUIDE.md`
+- Migration: `20260802-001-advanced-blog-seo-module.ts`
+
+---
+
 ## 2026-08-01 — سرعت لندینگ تکی و عمده
 
 ### خلاصه

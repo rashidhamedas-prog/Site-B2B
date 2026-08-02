@@ -19,6 +19,13 @@ export class UserEntity {
   @Column({ default: 'CUSTOMER' })
   role: string;
 
+  /**
+   * Blog ACL when role=ADMIN (null ⇒ SUPER_ADMIN for backward compatibility).
+   * SUPER_ADMIN | SEO_MANAGER | CONTENT_MANAGER | EDITOR | AUTHOR | REVIEWER | VIEWER
+   */
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  blogRole: string | null;
+
   @Column({ nullable: true })
   customerId: string;
 

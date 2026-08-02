@@ -2,8 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Calendar, Clock, Tag, ArrowRight } from 'lucide-react';
-import { fetchPost, fetchPosts, categoryColor, formatJalali, readTime } from '@/lib/blog';
-import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
+import {
+  fetchPost,
+  fetchPosts,
+  categoryColor,
+  formatJalali,
+  readTime,
+  buildRobotsContent,
+} from '@/lib/blog';
+import { ArticleJsonLd, BreadcrumbJsonLd, FaqJsonLd } from '@/components/shared/JsonLd';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
 
 export const revalidate = 300;
@@ -14,29 +21,39 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = await fetchPost(decodeURIComponent(slug));
-  if (!post) return { title: 'مطلب یافت نشد' };
+  const post = await fetchPost(decodeURIComponent(slug), 'WHOLESALE');
+  if (!post) return { title: 'مطلب یافت نشد', robots: { index: false } };
   const title = post.seoTitle || post.title;
   const description = post.seoDescription || post.excerpt;
   const url = `${WHOLESALE_ORIGIN}/blog/${post.slug}`;
+  const ogImage = post.ogImage || post.coverImage;
   return {
     title,
     description,
-    alternates: { canonical: url },
+    robots: buildRobotsContent(post),
+    alternates: {
+      canonical:
+        post.canonicalType === 'CUSTOM' && post.canonicalUrl
+          ? post.canonicalUrl
+          : post.canonicalType === 'NONE'
+            ? undefined
+            : url,
+    },
     openGraph: {
-      title,
-      description,
+      title: post.ogTitle || title,
+      description: post.ogDescription || description,
       url,
       type: 'article',
       locale: 'fa_IR',
-      images: post.coverImage
-        ? [{ url: post.coverImage, alt: title }]
+      images: ogImage
+        ? [{ url: ogImage, alt: title }]
         : [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: title }],
     },
     twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
+      card: (post.twitterCard as 'summary_large_image') || 'summary_large_image',
+      title: post.twitterTitle || title,
+      description: post.twitterDescription || description,
+      images: post.twitterImage || ogImage || undefined,
     },
   };
 }
@@ -101,31 +118,41 @@ function renderMarkdown(md: string) {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = await fetchPost(decodeURIComponent(slug));
+  const post = await fetchPost(decodeURIComponent(slug), 'WHOLESALE');
   if (!post) notFound();
 
-  const { posts } = await fetchPosts();
+  const { posts } = await fetchPosts({ channel: 'WHOLESALE', limit: 12 });
   const related = posts
     .filter((p) => p.slug !== post.slug && p.category === post.category)
     .slice(0, 3);
   const url = `${WHOLESALE_ORIGIN}/blog/${post.slug}`;
+  const faqVisible = (post.faqItems || []).filter(
+    (f) => f.isVisible !== false && f.question && f.answer,
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <ArticleJsonLd
-        title={post.seoTitle || post.title}
-        description={post.seoDescription || post.excerpt}
-        url={url}
-        image={post.coverImage || undefined}
-        datePublished={post.publishedAt}
-      />
-      <BreadcrumbJsonLd
-        items={[
-          { name: 'خانه', url: `${WHOLESALE_ORIGIN}/` },
-          { name: 'وبلاگ', url: `${WHOLESALE_ORIGIN}/blog` },
-          { name: post.title, url },
-        ]}
-      />
+      {post.articleSchemaEnabled !== false && (
+        <ArticleJsonLd
+          title={post.seoTitle || post.title}
+          description={post.seoDescription || post.excerpt}
+          url={url}
+          image={post.coverImage || undefined}
+          datePublished={post.publishedAt}
+          dateModified={post.updatedAt}
+          authorName={post.authorName || 'پوشاک ترنم'}
+        />
+      )}
+      {post.breadcrumbEnabled !== false && (
+        <BreadcrumbJsonLd
+          items={[
+            { name: 'خانه', url: `${WHOLESALE_ORIGIN}/` },
+            { name: 'وبلاگ', url: `${WHOLESALE_ORIGIN}/blog` },
+            { name: post.title, url },
+          ]}
+        />
+      )}
+      {post.faqSchemaEnabled && faqVisible.length > 0 && <FaqJsonLd items={faqVisible} />}
       <section className="bg-gradient-to-bl from-primary-dark via-primary to-primary-light py-14 text-white">
         <div className="container-site max-w-3xl">
           <Link
@@ -161,6 +188,20 @@ export default async function BlogPostPage({ params }: Props) {
           <hr className="border-gray-100" />
           {renderMarkdown(post.content ?? '')}
         </article>
+
+        {faqVisible.length > 0 && (
+          <section className="card mt-10 p-6 sm:p-8">
+            <h2 className="mb-4 text-base font-bold text-gray-900">پرسش‌های متداول</h2>
+            <div className="space-y-4">
+              {faqVisible.map((f, i) => (
+                <div key={f.id || i} className="border-b border-gray-100 pb-4 last:border-0">
+                  <h3 className="mb-1.5 text-sm font-semibold text-gray-900">{f.question}</h3>
+                  <p className="text-sm leading-relaxed text-gray-600">{f.answer}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {related.length > 0 && (
           <div className="mt-10">

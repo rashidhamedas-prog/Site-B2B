@@ -1,6 +1,13 @@
-// Server-side blog data access with graceful fallback.
-// Fetches published posts from the API; if unavailable, falls back to the
-// built-in seed articles so the blog never renders empty.
+// Server-side blog data access. Production never uses FALLBACK_POSTS.
+
+export interface BlogFaqItem {
+  id?: string;
+  question: string;
+  answer: string;
+  sortOrder?: number;
+  isVisible?: boolean;
+  includeInSchema?: boolean;
+}
 
 export interface BlogPost {
   id: string | number;
@@ -8,16 +15,55 @@ export interface BlogPost {
   title: string;
   excerpt: string;
   content?: string;
+  contentFormat?: string;
   category: string;
+  categoryId?: string | null;
+  channel?: string;
   publishedAt?: string;
-  date?: string; // pre-formatted Jalali for fallback posts
+  date?: string;
   views?: number;
   coverImage?: string | null;
   seoTitle?: string;
   seoDescription?: string;
+  focusKeyword?: string;
+  robotsIndex?: boolean;
+  robotsFollow?: boolean;
+  robotsNoArchive?: boolean;
+  robotsNoSnippet?: boolean;
+  maxImagePreview?: string;
+  canonicalType?: string;
+  canonicalUrl?: string | null;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string | null;
+  twitterTitle?: string;
+  twitterDescription?: string;
+  twitterImage?: string | null;
+  twitterCard?: string;
+  schemaType?: string;
+  breadcrumbEnabled?: boolean;
+  articleSchemaEnabled?: boolean;
+  faqSchemaEnabled?: boolean;
+  faqItems?: BlogFaqItem[] | null;
+  primaryCta?: {
+    title: string;
+    description?: string;
+    buttonText: string;
+    buttonUrl: string;
+    openInNewTab?: boolean;
+  } | null;
+  readingTimeMinutes?: number;
+  wordCount?: number;
+  authorName?: string | null;
+  tags?: string[];
+  updatedAt?: string;
+  sitemapPriority?: number;
+  sitemapChangeFrequency?: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+const allowFallback =
+  process.env.NODE_ENV !== 'production' && process.env.BLOG_ALLOW_FALLBACK === '1';
 
 export const CATEGORY_COLORS: Record<string, string> = {
   'راهنمای پارچه': 'bg-emerald-50 text-emerald-700',
@@ -25,6 +71,9 @@ export const CATEGORY_COLORS: Record<string, string> = {
   'ترند فصلی': 'bg-pink-50 text-pink-700',
   'مدیریت بوتیک': 'bg-amber-50 text-amber-700',
   'عمومی': 'bg-gray-50 text-gray-600',
+  'راهنمای خرید مانتو': 'bg-violet-50 text-violet-700',
+  'استایل زنانه': 'bg-rose-50 text-rose-700',
+  'نگهداری لباس': 'bg-teal-50 text-teal-700',
 };
 
 export function categoryColor(cat: string): string {
@@ -38,217 +87,104 @@ export function formatJalali(post: BlogPost): string {
 }
 
 export function readTime(post: BlogPost): string {
-  const words = (post.content ?? post.excerpt ?? '').split(/\s+/).length;
+  if (post.readingTimeMinutes && post.readingTimeMinutes > 0) {
+    return `${post.readingTimeMinutes.toLocaleString('fa-IR')} دقیقه`;
+  }
+  const words = (post.content ?? post.excerpt ?? '').split(/\s+/).filter(Boolean).length;
   const mins = Math.max(2, Math.round(words / 180));
   return `${mins.toLocaleString('fa-IR')} دقیقه`;
 }
 
+export function buildRobotsContent(post: BlogPost): string {
+  const parts = [
+    post.robotsIndex === false ? 'noindex' : 'index',
+    post.robotsFollow === false ? 'nofollow' : 'follow',
+  ];
+  if (post.robotsNoArchive) parts.push('noarchive');
+  if (post.robotsNoSnippet) parts.push('nosnippet');
+  if (post.maxImagePreview) parts.push(`max-image-preview:${post.maxImagePreview}`);
+  return parts.join(',');
+}
+
+/** Dev-only seed; never used in production. */
 export const FALLBACK_POSTS: BlogPost[] = [
   {
     id: 1,
     slug: 'linen-vs-cotton',
     title: 'تفاوت لینن و کتان در مانتو زنانه — کدام را انتخاب کنیم؟',
-    excerpt: 'لینن و کتان هر دو پارچه‌های طبیعی هستند، اما تفاوت‌های مهمی در احساس پوشش، تنفس‌پذیری و نگهداری دارند. در این مقاله به بررسی کامل این دو پارچه می‌پردازیم.',
-    content: `پارچه لینن از الیاف گیاه کتان (Flax) تولید می‌شود و یکی از قدیمی‌ترین منسوجات دنیاست. کتان (Cotton) از الیاف پنبه ساخته می‌شود. با اینکه در بازار ایران گاهی این دو نام به جای هم استفاده می‌شوند، ویژگی‌هایشان متفاوت است.
-
-## تنفس‌پذیری
-
-لینن تنفس‌پذیرترین پارچه طبیعی است — تا ۲۰٪ رطوبت را جذب می‌کند بدون اینکه احساس خیسی بدهد. برای تابستان‌های گرم ایران انتخاب اول است. کتان نیز تنفس‌پذیر است اما رطوبت را بیشتر نگه می‌دارد.
-
-## دوام و ماندگاری
-
-الیاف لینن ۲ تا ۳ برابر قوی‌تر از پنبه هستند. مانتوی لینن با نگهداری درست سال‌ها ماندگار است و با هر شستشو نرم‌تر می‌شود.
-
-## چروک‌پذیری
-
-لینن سریع چروک می‌شود — این ذات پارچه است و بخشی از جذابیت استایل اسپرت آن. کتان کمتر چروک می‌خورد.
-
-## توصیه ترنم به بوتیک‌داران
-
-برای فصل بهار و تابستان، ترکیب ۷۰٪ لینن و ۳۰٪ شومیزی کتان بهترین چیدمان فروش است. مشتری‌ای که یک‌بار لینن باکیفیت بپوشد، مشتری ثابت شما می‌شود.`,
+    excerpt:
+      'لینن و کتان هر دو پارچه‌های طبیعی هستند، اما تفاوت‌های مهمی در احساس پوشش، تنفس‌پذیری و نگهداری دارند.',
+    content: '## تنفس‌پذیری\n\nلینن تنفس‌پذیرترین پارچه طبیعی است.',
     category: 'راهنمای پارچه',
     date: '۱۴۰۳/۰۴/۱۰',
   },
-  {
-    id: 2,
-    slug: 'wholesale-tips',
-    title: '۱۰ نکته طلایی برای خرید عمده مانتو زنانه',
-    excerpt: 'خرید عمده پوشاک زنانه نیازمند دانش و تجربه است. از انتخاب تولیدکننده معتبر تا مدیریت موجودی، این نکات به شما کمک می‌کنند سود بیشتری داشته باشید.',
-    content: `## ۱. مستقیم از تولیدی بخرید
-هر واسطه ۱۵ تا ۳۰٪ به قیمت اضافه می‌کند. خرید مستقیم از کارگاه تولید یعنی حاشیه سود بیشتر برای شما.
-
-## ۲. کیفیت دوخت را بررسی کنید
-درز‌ها، دکمه‌ها و لای دوخت را حتماً چک کنید. یک مرجوعی، سود چند فروش را از بین می‌برد.
-
-## ۳. رنگ‌بندی هوشمندانه انتخاب کنید
-قانون ۶۰-۳۰-۱۰: ۶۰٪ رنگ‌های خنثی (مشکی، کرم، بژ)، ۳۰٪ رنگ‌های فصل، ۱۰٪ رنگ‌های خاص.
-
-## ۴. سایزبندی کامل بگیرید
-پرفروش‌ترین سایزها ۴۰ و ۴۲ هستند اما نداشتن سایز ۴۶ یعنی از دست دادن مشتری وفادار.
-
-## ۵. حداقل سفارش را جدی بگیرید
-حداقل سفارش ۵ عدد از هر مدل، تعادل بین تنوع و سرمایه است.
-
-## ۶. از پیش‌فاکتور استفاده کنید
-همیشه قبل از واریز، پیش‌فاکتور رسمی با مشخصات کامل کالا دریافت کنید.
-
-## ۷. زمان‌بندی خرید فصلی
-خرید کلکسیون بهار را از اواخر بهمن شروع کنید — مدل‌های جدید زودتر تمام می‌شوند.
-
-## ۸. با تولیدی رابطه بلندمدت بسازید
-مشتری ثابت تولیدی، اولویت تحویل، شرایط پرداخت بهتر و خبر زودتر از مدل‌های جدید می‌گیرد.
-
-## ۹. موجودی را دیجیتال مدیریت کنید
-حتی یک اکسل ساده از ورود و خروج کالا، از خواب سرمایه جلوگیری می‌کند.
-
-## ۱۰. بازخورد مشتری را به تولیدی برسانید
-تولیدی خوب از بازخورد شما برای بهتر شدن محصول استفاده می‌کند — این یعنی فروش بیشتر برای هر دو طرف.`,
-    category: 'راهنمای کسب‌وکار',
-    date: '۱۴۰۳/۰۴/۰۱',
-  },
-  {
-    id: 3,
-    slug: 'spring-summer-trends',
-    title: 'ترندهای مانتو زنانه بهار–تابستان ۱۴۰۳',
-    excerpt: 'امسال رنگ‌های پاستل، برش‌های آزاد و جنس‌های سبک حرف اول را می‌زنند. ببینید کدام مدل‌ها در بوتیک شما بیشتر می‌فروشند.',
-    content: `## رنگ‌های سال
-
-پاستل‌ها امسال حرف اول را می‌زنند: پسته‌ای، لیلیال (بنفش روشن)، کرم نسکافه‌ای و آبی آسمانی. در کنارشان رنگ‌های زمینی مثل خاکی و کاراملی برای مشتری‌های کلاسیک.
-
-## برش‌ها و مدل‌ها
-
-- **اورسایز و فری‌سایز** — همچنان پرتقاضاترین برش بازار
-- **مانتو جلوباز کیمونو** — برای استایل لایه‌ای تابستان
-- **کراپ بلیزر لینن** — انتخاب مشتری‌های جوان‌تر
-- **مانتو پشت‌پیلی** — ترکیب راحتی و رسمیت
-
-## جنس‌ها
-
-لینن و کتان سبک بی‌رقیب هستند. شومیزی‌های وال و ابروبادی برای مرداد و شهریور.
-
-## توصیه چیدمان بوتیک
-
-ویترین را با ۳ رنگ پاستل + ۱ خنثی بچینید. مانکن اصلی: مانتو لینن اورسایز پسته‌ای — پرفروش پیش‌بینی‌شده تابستان ۱۴۰۳.`,
-    category: 'ترند فصلی',
-    date: '۱۴۰۳/۰۳/۱۵',
-  },
-  {
-    id: 4,
-    slug: 'boutique-display',
-    title: 'چیدمان ویترین بوتیک — اصول فروش بیشتر',
-    excerpt: 'ویترین اول چیزی است که مشتری می‌بیند. با رعایت چند اصل ساده در چیدمان، می‌توانید فروش روزانه را تا ۳۰٪ افزایش دهید.',
-    content: `## قانون ۳ ثانیه
-
-مشتری در ۳ ثانیه تصمیم می‌گیرد وارد مغازه شود یا رد شود. ویترین شما باید در این ۳ ثانیه یک «قصه» تعریف کند، نه فقط لباس نشان بدهد.
-
-## اصول طلایی چیدمان
-
-### ۱. نقطه کانونی بسازید
-یک مانکن با استایل کامل (مانتو + شال + کیف) در مرکز دید. بقیه چیدمان حول همین نقطه.
-
-### ۲. قانون فرد
-اجسام فرد (۳ یا ۵ مانکن) چشم‌نوازتر از زوج هستند.
-
-### ۳. هرم رنگی
-رنگ روشن بالا، تیره پایین — چشم به صورت طبیعی از بالا به پایین حرکت می‌کند.
-
-### ۴. نور از زاویه ۴۵ درجه
-نور مستقیم سایه‌های بد می‌سازد. نور از بالا-جلو با زاویه، پارچه را زنده نشان می‌دهد.
-
-### ۵. هر ۱۰ روز تعویض
-مشتری محله‌ای که هر روز رد می‌شود، باید هر هفته‌ونیم چیز جدیدی ببیند.
-
-## داخل مغازه
-
-پرفروش‌ها در ارتفاع چشم (۱۵۰ تا ۱۷۰ سانت)، سایزهای کامل جلو، رنگ‌بندی هر مدل کنار هم — مشتری باید بدون پرسیدن، تنوع را ببیند.`,
-    category: 'مدیریت بوتیک',
-    date: '۱۴۰۳/۰۳/۰۵',
-  },
-  {
-    id: 5,
-    slug: 'linen-care',
-    title: 'نگهداری از لباس‌های لینن — راهنمای کامل',
-    excerpt: 'لینن پارچه‌ای ظریف و طبیعی است که نیاز به مراقبت خاص دارد. شستشو، اتو کشیدن و نگهداری درست، عمر لباس لینن را چندین برابر می‌کند.',
-    content: `## شستشو
-
-- آب سرد یا ولرم (حداکثر ۳۰ درجه) — آب داغ الیاف را جمع می‌کند
-- برنامه ملایم ماشین یا شستشوی دستی
-- مایع لباسشویی ملایم، بدون سفیدکننده
-- لباس را از رو بشویید تا رنگ محفوظ بماند
-
-## خشک کردن
-
-هرگز از خشک‌کن استفاده نکنید. لینن را روی رخت‌آویز پهن کنید تا در سایه خشک شود — نور مستقیم آفتاب رنگ را می‌پراند.
-
-## اتو
-
-- وقتی هنوز کمی نم دارد اتو کنید — لینن خشک به‌سختی صاف می‌شود
-- دمای متوسط تا بالا با بخار
-- از روی پارچه نازک یا از پشت لباس
-
-## نگهداری
-
-- روی چوب‌لباسی پهن آویزان کنید، تا نکنید
-- در جای خشک و دور از رطوبت
-- برای نگهداری فصلی، در کاور پارچه‌ای (نه پلاستیک)
-
-## نکته برای بوتیک‌داران
-
-این راهنما را چاپ‌شده همراه لباس لینن به مشتری بدهید — تجربه بهتر مشتری یعنی مشتری برگشتی.`,
-    category: 'راهنمای پارچه',
-    date: '۱۴۰۳/۰۲/۲۰',
-  },
-  {
-    id: 6,
-    slug: 'min-order-strategy',
-    title: 'استراتژی حداقل سفارش — چطور موجودی را مدیریت کنیم؟',
-    excerpt: 'یکی از چالش‌های اصلی بوتیک‌داران مدیریت موجودی است. حداقل سفارش درست، نه کم باشد که کالا تمام بشود، نه زیاد که سرمایه درگیر بشود.',
-    content: `## چرا حداقل سفارش مهم است؟
-
-سرمایه شما محدود است. اگر همه را روی یک مدل بگذارید و نفروشد، فصل را باخته‌اید. اگر از هر مدل فقط ۲ عدد بگیرید، سایز و رنگ مشتری را ندارید.
-
-## فرمول پیشنهادی ترنم
-
-برای بوتیک متوسط (۲۰ تا ۴۰ متر):
-
-- **مدل‌های امتحان‌پس‌داده:** ۱۰ تا ۱۵ عدد (سایزبندی کامل + ۲ رنگ)
-- **مدل‌های جدید:** ۵ عدد (سایزهای پرفروش ۴۰-۴۲-۴۴، یک رنگ امن)
-- **مدل‌های خاص/جسورانه:** ۳ تا ۵ عدد فقط برای تست بازار
-
-## چرخه بازخرید
-
-مدلی که در ۱۰ روز اول بیش از نصفش فروخت، همان لحظه بازخرید کنید — صبر نکنید تمام شود. مدل پرفروش تولیدی هم زود تمام می‌شود.
-
-## نسبت طلایی ۷۰/۳۰
-
-۷۰٪ بودجه روی کالای مطمئن (مدل‌ها و رنگ‌های ثابت‌شده)، ۳۰٪ روی تست مدل‌های جدید. این نسبت هم نوآوری دارد هم امنیت.
-
-## خواب سرمایه را بشناسید
-
-کالایی که ۶۰ روز در قفسه مانده، دیگر نمی‌فروشد — تخفیف بزنید و سرمایه را آزاد کنید. ۲۰٪ ضرر روی یک مدل بهتر از ۱۰۰٪ خواب سرمایه است.`,
-    category: 'راهنمای کسب‌وکار',
-    date: '۱۴۰۳/۰۲/۱۰',
-  },
 ];
 
-export async function fetchPosts(): Promise<{ posts: BlogPost[]; fromApi: boolean }> {
-  try {
-    const res = await fetch(`${API_URL}/blog/posts?limit=24`, { next: { revalidate: 300 } });
-    if (!res.ok) throw new Error();
-    const json = await res.json();
-    if (Array.isArray(json.items) && json.items.length > 0) {
-      return { posts: json.items, fromApi: true };
-    }
-  } catch { /* fall through to seed content */ }
-  return { posts: FALLBACK_POSTS, fromApi: false };
-}
+export async function fetchPosts(opts?: {
+  channel?: 'WHOLESALE' | 'RETAIL';
+  limit?: number;
+  page?: number;
+  category?: string;
+  search?: string;
+}): Promise<{ posts: BlogPost[]; fromApi: boolean; meta?: { total: number; page: number; totalPages: number } }> {
+  const channel = opts?.channel ?? 'WHOLESALE';
+  const limit = opts?.limit ?? 12;
+  const page = opts?.page ?? 1;
+  const params = new URLSearchParams({
+    channel,
+    limit: String(limit),
+    page: String(page),
+  });
+  if (opts?.category) params.set('category', opts.category);
+  if (opts?.search) params.set('search', opts.search);
 
-export async function fetchPost(slug: string): Promise<BlogPost | null> {
   try {
-    const res = await fetch(`${API_URL}/blog/posts/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${API_URL}/blog/posts?${params}`, {
       next: { revalidate: 300 },
     });
+    if (!res.ok) throw new Error('blog fetch failed');
+    const json = await res.json();
+    const items = Array.isArray(json.items) ? json.items : Array.isArray(json.data) ? json.data : [];
+    if (items.length > 0 || !allowFallback) {
+      return {
+        posts: items,
+        fromApi: true,
+        meta: json.meta,
+      };
+    }
+  } catch {
+    /* fall through */
+  }
+  if (allowFallback) return { posts: FALLBACK_POSTS, fromApi: false };
+  return { posts: [], fromApi: false };
+}
+
+export async function fetchPost(
+  slug: string,
+  channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE',
+): Promise<BlogPost | null> {
+  try {
+    const res = await fetch(
+      `${API_URL}/blog/posts/${encodeURIComponent(slug)}?channel=${channel}`,
+      { next: { revalidate: 300 } },
+    );
     if (res.ok) return await res.json();
-  } catch { /* fall through */ }
-  return FALLBACK_POSTS.find((p) => p.slug === slug) ?? null;
+  } catch {
+    /* fall through */
+  }
+  if (allowFallback) return FALLBACK_POSTS.find((p) => p.slug === slug) ?? null;
+  return null;
+}
+
+export async function fetchSitemapPosts(channel: 'WHOLESALE' | 'RETAIL'): Promise<BlogPost[]> {
+  try {
+    const res = await fetch(`${API_URL}/blog/sitemap-posts?channel=${channel}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return Array.isArray(json) ? json : [];
+  } catch {
+    return [];
+  }
 }

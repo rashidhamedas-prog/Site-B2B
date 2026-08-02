@@ -16,6 +16,12 @@ import { TieredDiscountEntity } from '../modules/discount/entities/tiered-discou
 import { SideDiscountEntity } from '../modules/discount/entities/side-discount.entity';
 import { PaymentEntity } from '../modules/payment/entities/payment.entity';
 import { BlogPostEntity } from '../modules/blog/entities/blog-post.entity';
+import { BlogCategoryEntity } from '../modules/blog/entities/blog-category.entity';
+import { BlogTagEntity } from '../modules/blog/entities/blog-tag.entity';
+import { BlogAuthorEntity } from '../modules/blog/entities/blog-author.entity';
+import { SeoRedirectEntity } from '../modules/blog/entities/seo-redirect.entity';
+import { BlogSettingsEntity } from '../modules/blog/entities/blog-settings.entity';
+import { SeoAuditLogEntity } from '../modules/blog/entities/seo-audit-log.entity';
 import { CmsPageEntity } from '../modules/cms/entities/cms-page.entity';
 import { SiteContentEntity } from '../modules/cms/entities/site-content.entity';
 import { AppSettingEntity } from '../modules/settings/entities/app-setting.entity';
@@ -44,6 +50,12 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     DiscountCodeEntity, TieredDiscountEntity, SideDiscountEntity,
     PaymentEntity,
     BlogPostEntity,
+    BlogCategoryEntity,
+    BlogTagEntity,
+    BlogAuthorEntity,
+    SeoRedirectEntity,
+    BlogSettingsEntity,
+    SeoAuditLogEntity,
     CmsPageEntity,
     SiteContentEntity,
     AppSettingEntity,

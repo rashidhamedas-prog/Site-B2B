@@ -1,16 +1,59 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards,
+  Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Req,
+  UseGuards, Request,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BlogService } from './blog.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { BlogPermissionsGuard } from '../auth/guards/blog-permissions.guard';
+import { RequireBlogPermissions } from '../auth/decorators/blog-permissions.decorator';
+import {
+  CreateBlogPostDto,
+  UpdateBlogPostDto,
+  DeleteBlogPostDto,
+  ImportBlogDto,
+  CreateCategoryDto,
+  CreateTagDto,
+  CreateRedirectDto,
+  TransitionDto,
+} from './dto/blog.dto';
+import { BLOG_ROLES, isBlogRole, type BlogRole } from './blog-roles';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserEntity } from '../auth/entities/user.entity';
+
+type AuthedRequest = Request & {
+  user?: { id?: string; sub?: string; role?: string };
+  blogUser?: {
+    id?: string;
+    role?: string;
+    blogRole?: string | null;
+    effectiveBlogRole?: BlogRole | null;
+  };
+};
 
 @ApiTags('blog')
 @Controller('blog')
 export class BlogController {
-  constructor(private readonly svc: BlogService) {}
+  constructor(
+    private readonly svc: BlogService,
+    @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
+  ) {}
+
+  private actor(req: AuthedRequest) {
+    if (req.blogUser) {
+      return {
+        id: req.blogUser.id,
+        role: req.blogUser.role,
+        blogRole: req.blogUser.blogRole,
+        effectiveBlogRole: (req.blogUser.effectiveBlogRole as BlogRole | null) ?? null,
+      };
+    }
+    const id = req.user?.id || req.user?.sub;
+    return { id, role: req.user?.role, blogRole: null as string | null, effectiveBlogRole: null as BlogRole | null };
+  }
 
   // ── Public ────────────────────────────────────────────────
 
@@ -19,53 +62,344 @@ export class BlogController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('category') category?: string,
+    @Query('categorySlug') categorySlug?: string,
+    @Query('tag') tag?: string,
     @Query('search') search?: string,
     @Query('channel') channel?: string,
   ) {
-    return this.svc.findPublished({ page, limit, category, search, channel });
+    return this.svc.findPublished({ page, limit, category, categorySlug, tag, search, channel });
   }
 
   @Get('categories')
-  categories() {
+  categories(@Query('channel') channel?: string) {
+    if (channel) return this.svc.listCategories(channel);
     return this.svc.categories();
   }
 
-  @Get('posts/:slug')
-  findBySlug(@Param('slug') slug: string) {
-    return this.svc.findBySlug(slug);
+  @Get('tags')
+  tags(@Query('channel') channel?: string) {
+    return this.svc.listTags(channel);
   }
 
-  // ── Admin ─────────────────────────────────────────────────
+  @Get('feed')
+  async feed(@Query('channel') channel = 'WHOLESALE', @Query('limit') limit?: number) {
+    return this.svc.feed(channel, Number(limit) || 20);
+  }
+
+  @Get('sitemap-posts')
+  sitemapPosts(@Query('channel') channel = 'WHOLESALE') {
+    return this.svc.sitemapPosts(channel);
+  }
+
+  @Get('posts/:slug/seo')
+  postSeo(@Param('slug') slug: string, @Query('channel') channel = 'WHOLESALE') {
+    return this.svc.getPublicSeoBundle(slug, channel);
+  }
+
+  @Get('posts/:slug')
+  findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
+    return this.svc.findBySlug(slug, channel);
+  }
+
+  @Get('redirects/match')
+  matchRedirect(@Query('channel') channel: string, @Query('path') path: string) {
+    return this.svc.matchRedirect(channel, path);
+  }
+
+  // ── Admin posts ───────────────────────────────────────────
 
   @Get('admin/posts')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
   @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
   @ApiBearerAuth()
-  findAllAdmin(@Query('channel') channel?: string) {
-    return this.svc.findAllAdmin(channel);
+  findAllAdmin(
+    @Query('channel') channel?: string,
+    @Query('status') status?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('search') search?: string,
+    @Query('authorId') authorId?: string,
+  ) {
+    return this.svc.findAllAdmin({ channel, status, categoryId, search, authorId });
+  }
+
+  @Get('admin/posts/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  findOneAdmin(@Param('id') id: string) {
+    return this.svc.findOneAdmin(id);
   }
 
   @Post('admin/posts')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
   @Roles('ADMIN')
+  @RequireBlogPermissions('blog:create')
   @ApiBearerAuth()
-  create(@Body() body: any) {
-    return this.svc.create(body);
+  create(@Body() body: CreateBlogPostDto, @Req() req: AuthedRequest) {
+    return this.svc.create(body, this.actor(req));
   }
 
   @Put('admin/posts/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
   @Roles('ADMIN')
+  @RequireBlogPermissions('blog:edit_any', 'blog:edit_own')
   @ApiBearerAuth()
-  update(@Param('id') id: string, @Body() body: any) {
-    return this.svc.update(id, body);
+  update(@Param('id') id: string, @Body() body: UpdateBlogPostDto, @Req() req: AuthedRequest) {
+    return this.svc.update(id, body, this.actor(req));
+  }
+
+  @Patch('admin/posts/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:edit_any', 'blog:edit_own')
+  @ApiBearerAuth()
+  patch(@Param('id') id: string, @Body() body: UpdateBlogPostDto, @Req() req: AuthedRequest) {
+    return this.svc.update(id, body, this.actor(req));
+  }
+
+  @Post('admin/posts/:id/:action')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions(
+    'blog:publish',
+    'blog:approve',
+    'blog:reject',
+    'blog:submit_review',
+    'blog:schedule',
+    'blog:delete_soft',
+  )
+  @ApiBearerAuth()
+  async transition(
+    @Param('id') id: string,
+    @Param('action') action: string,
+    @Body() body: TransitionDto,
+    @Req() req: AuthedRequest,
+  ) {
+    if (action === 'duplicate') {
+      return this.svc.duplicate(id, this.actor(req));
+    }
+    if (action === 'restore') {
+      return this.svc.restore(id, this.actor(req));
+    }
+    if (action === 'schedule' && body.publishAt) {
+      await this.svc.update(id, { publishAt: body.publishAt, status: 'SCHEDULED' }, this.actor(req));
+    }
+    return this.svc.transition(id, action, this.actor(req), body?.note);
   }
 
   @Delete('admin/posts/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
   @Roles('ADMIN')
+  @RequireBlogPermissions('blog:delete_soft', 'blog:delete_hard')
   @ApiBearerAuth()
-  remove(@Param('id') id: string) {
-    return this.svc.remove(id);
+  remove(@Param('id') id: string, @Body() body: DeleteBlogPostDto, @Req() req: AuthedRequest) {
+    return this.svc.remove(id, body || {}, this.actor(req));
+  }
+
+  @Post('admin/import')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:import')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'ورود مقاله از JSON یا Markdown' })
+  import(@Body() body: ImportBlogDto, @Req() req: AuthedRequest) {
+    return this.svc.importArticle(body, this.actor(req));
+  }
+
+  // ── Admin taxonomy ────────────────────────────────────────
+
+  @Get('admin/categories')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  adminCategories(@Query('channel') channel?: string) {
+    return this.svc.listCategories(channel);
+  }
+
+  @Post('admin/categories')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_categories')
+  @ApiBearerAuth()
+  createCategory(@Body() body: CreateCategoryDto, @Req() req: AuthedRequest) {
+    return this.svc.createCategory(body, this.actor(req));
+  }
+
+  @Patch('admin/categories/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_categories')
+  @ApiBearerAuth()
+  updateCategory(@Param('id') id: string, @Body() body: Partial<CreateCategoryDto>, @Req() req: AuthedRequest) {
+    return this.svc.updateCategory(id, body, this.actor(req));
+  }
+
+  @Delete('admin/categories/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_categories')
+  @ApiBearerAuth()
+  removeCategory(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.svc.removeCategory(id, this.actor(req));
+  }
+
+  @Get('admin/tags')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  adminTags(@Query('channel') channel?: string) {
+    return this.svc.listTags(channel);
+  }
+
+  @Post('admin/tags')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_tags')
+  @ApiBearerAuth()
+  createTag(@Body() body: CreateTagDto, @Req() req: AuthedRequest) {
+    return this.svc.createTag(body, this.actor(req));
+  }
+
+  @Patch('admin/tags/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_tags')
+  @ApiBearerAuth()
+  updateTag(@Param('id') id: string, @Body() body: Partial<CreateTagDto>, @Req() req: AuthedRequest) {
+    return this.svc.updateTag(id, body, this.actor(req));
+  }
+
+  @Delete('admin/tags/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_tags')
+  @ApiBearerAuth()
+  removeTag(@Param('id') id: string) {
+    return this.svc.removeTag(id);
+  }
+
+  // ── Redirects / settings / roles ──────────────────────────
+
+  @Get('admin/redirects')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_redirects', 'blog:read')
+  @ApiBearerAuth()
+  listRedirects(@Query('channel') channel?: string) {
+    return this.svc.listRedirects(channel);
+  }
+
+  @Post('admin/redirects')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_redirects')
+  @ApiBearerAuth()
+  createRedirect(@Body() body: CreateRedirectDto, @Req() req: AuthedRequest) {
+    return this.svc.createRedirect(body, this.actor(req));
+  }
+
+  @Patch('admin/redirects/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_redirects')
+  @ApiBearerAuth()
+  updateRedirect(@Param('id') id: string, @Body() body: Partial<CreateRedirectDto> & { isActive?: boolean }) {
+    return this.svc.updateRedirect(id, body);
+  }
+
+  @Delete('admin/redirects/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_redirects')
+  @ApiBearerAuth()
+  removeRedirect(@Param('id') id: string) {
+    return this.svc.removeRedirect(id);
+  }
+
+  @Get('admin/settings')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  getSettings(@Query('channel') channel = 'WHOLESALE') {
+    return this.svc.getSettings(channel);
+  }
+
+  @Put('admin/settings')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_settings')
+  @ApiBearerAuth()
+  updateSettings(
+    @Query('channel') channel = 'WHOLESALE',
+    @Body() body: Record<string, unknown>,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.svc.updateSettings(channel, body as any, this.actor(req));
+  }
+
+  @Post('admin/seed-categories')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_categories')
+  @ApiBearerAuth()
+  seedCategories() {
+    return this.svc.ensureSeedCategories();
+  }
+
+  @Post('admin/publish-scheduled')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:schedule', 'blog:publish')
+  @ApiBearerAuth()
+  publishScheduled() {
+    return this.svc.publishDueScheduled();
+  }
+
+  @Get('admin/roles')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_roles')
+  @ApiBearerAuth()
+  listBlogRoles() {
+    return { roles: BLOG_ROLES };
+  }
+
+  @Patch('admin/users/:id/blog-role')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:manage_roles')
+  @ApiBearerAuth()
+  async setBlogRole(
+    @Param('id') id: string,
+    @Body() body: { blogRole: string | null },
+    @Req() req: AuthedRequest,
+  ) {
+    if (body.blogRole != null && !isBlogRole(body.blogRole)) {
+      return { error: 'نقش نامعتبر' };
+    }
+    await this.userRepo.update(id, { blogRole: body.blogRole });
+    const user = await this.userRepo.findOne({ where: { id } });
+    await this.svc.writeAudit({
+      action: 'blog.role.assign',
+      entityType: 'user',
+      entityId: id,
+      actorId: this.actor(req).id,
+      meta: { blogRole: body.blogRole },
+    });
+    return { id: user?.id, phone: user?.phone, role: user?.role, blogRole: user?.blogRole };
+  }
+
+  @Get('admin/authors')
+  @UseGuards(JwtAuthGuard, RolesGuard, BlogPermissionsGuard)
+  @Roles('ADMIN')
+  @RequireBlogPermissions('blog:read')
+  @ApiBearerAuth()
+  listAuthors() {
+    return this.svc.listAuthors();
   }
 }

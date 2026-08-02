@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function BlogPage() {
-  const { posts } = await fetchPosts();
+  const { posts } = await fetchPosts({ channel: 'WHOLESALE', limit: 12 });
   const categories = ['همه', ...Array.from(new Set(posts.map((p) => p.category)))];
   const [featured, ...rest] = posts;
 
