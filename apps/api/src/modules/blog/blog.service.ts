@@ -325,6 +325,9 @@ export class BlogService {
 
     const post = this.repo.create(enriched);
     const saved = await this.repo.save(post);
+    if (Array.isArray(data.tags) && data.tags.length) {
+      await this.syncTagsFromNames(saved.channel, data.tags, actor);
+    }
     await this.audit({
       action: 'blog.post.create',
       channel,
@@ -381,6 +384,9 @@ export class BlogService {
     next.version = (post.version || 1) + 1;
     Object.assign(post, next);
     const saved = await this.repo.save(post);
+    if (Array.isArray(data.tags)) {
+      await this.syncTagsFromNames(saved.channel, data.tags, actor);
+    }
     await this.audit({
       action: 'blog.post.update',
       channel: saved.channel,
@@ -724,6 +730,40 @@ export class BlogService {
     const where: any = {};
     if (channel) where.channel = normalizeChannel(channel);
     return this.tagRepo.find({ where, order: { name: 'ASC' } });
+  }
+
+  /** Ensure free-text post tags exist as blog_tags rows for public /blog/tag/{slug}. */
+  async syncTagsFromNames(channel: string, names: string[], actor?: Actor) {
+    const ch = normalizeChannel(channel);
+    const cleaned = (names || [])
+      .map((n) => String(n || '').trim())
+      .filter((n) => n.length >= 2);
+    const out = [];
+    for (const name of cleaned) {
+      const slug = slugify(name);
+      let tag = await this.tagRepo.findOne({ where: { channel: ch, slug } });
+      if (!tag) {
+        tag = await this.tagRepo.save(
+          this.tagRepo.create({
+            channel: ch,
+            name,
+            slug,
+            robotsIndex: true,
+            robotsFollow: true,
+          }),
+        );
+        await this.audit({
+          action: 'blog.tag.auto_create',
+          channel: ch,
+          entityType: 'blog_tag',
+          entityId: tag.id,
+          actorId: actor?.id,
+          meta: { name },
+        });
+      }
+      out.push(tag);
+    }
+    return out;
   }
 
   async createTag(dto: CreateTagDto, actor?: Actor) {

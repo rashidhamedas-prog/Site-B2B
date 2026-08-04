@@ -1,44 +1,34 @@
 import type { MetadataRoute } from 'next';
-import { getSeoChannel, RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo';
+import {
+  getSeoChannel,
+  RETAIL_ORIGIN,
+  WHOLESALE_ORIGIN,
+} from '@/lib/seo';
+
+const COMMON_DISALLOW = [
+  '/admin/',
+  '/portal/',
+  '/api/',
+  '/checkout',
+  '/account',
+  '/blog/search',
+  '/blog/preview',
+];
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const channel = await getSeoChannel();
 
-  if (channel === 'RETAIL') {
-    return {
-      rules: [
-        {
-          userAgent: '*',
-          allow: ['/', '/api/v1/feeds/'],
-          disallow: [
-            '/admin/',
-            '/portal/',
-            '/api/',
-            '/checkout',
-            '/account',
-            '/wholesale',
-            '/linen-collection',
-            '/workshop',
-            '/retail/',
-            '/blog/search',
-            '/blog/preview',
-          ],
-        },
-      ],
-      sitemap: `${RETAIL_ORIGIN}/sitemap.xml`,
-      host: RETAIL_ORIGIN,
-    };
-  }
+  const origin =
+    channel === 'RETAIL' ? RETAIL_ORIGIN : WHOLESALE_ORIGIN;
 
   return {
     rules: [
       {
         userAgent: '*',
         allow: ['/', '/api/v1/feeds/'],
-        disallow: ['/admin/', '/portal/', '/api/', '/checkout', '/account', '/retail/', '/blog/search', '/blog/preview'],
+        disallow: COMMON_DISALLOW,
       },
     ],
-    sitemap: `${WHOLESALE_ORIGIN}/sitemap.xml`,
-    host: WHOLESALE_ORIGIN,
+    sitemap: `${origin}/sitemap.xml`,
   };
 }

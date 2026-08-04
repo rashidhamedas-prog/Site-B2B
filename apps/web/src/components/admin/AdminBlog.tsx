@@ -138,6 +138,10 @@ type FormState = {
   howToSteps: string;
   howToSchemaEnabled: boolean;
   commentsEnabled: boolean;
+  ctaTitle: string;
+  ctaDescription: string;
+  ctaButtonText: string;
+  ctaButtonUrl: string;
 };
 
 const emptyForm = (): FormState => ({
@@ -190,6 +194,10 @@ const emptyForm = (): FormState => ({
   howToSteps: '',
   howToSchemaEnabled: true,
   commentsEnabled: true,
+  ctaTitle: '',
+  ctaDescription: '',
+  ctaButtonText: '',
+  ctaButtonUrl: '',
 });
 
 const TABS: { id: TabId; label: string }[] = [
@@ -285,6 +293,10 @@ function postToForm(p: Post): FormState {
       : '',
     howToSchemaEnabled: (p as any).howToSchemaEnabled !== false,
     commentsEnabled: (p as any).commentsEnabled !== false,
+    ctaTitle: (p as any).primaryCta?.title || '',
+    ctaDescription: (p as any).primaryCta?.description || '',
+    ctaButtonText: (p as any).primaryCta?.buttonText || '',
+    ctaButtonUrl: (p as any).primaryCta?.buttonUrl || '',
   };
 }
 
@@ -375,6 +387,8 @@ export function AdminBlog() {
   const [tab, setTab] = useState<TabId>('content');
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteStrategy, setDeleteStrategy] = useState('UNPUBLISH');
+  const [deleteRedirect, setDeleteRedirect] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState('');

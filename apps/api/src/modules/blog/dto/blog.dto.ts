@@ -243,6 +243,7 @@ export class CreateTagDto {
   @IsIn(['RETAIL', 'WHOLESALE']) channel!: 'RETAIL' | 'WHOLESALE';
   @IsString() @MinLength(2) @MaxLength(80) name!: string;
   @IsOptional() @IsString() slug?: string;
+  @IsOptional() @IsString() description?: string;
   @IsOptional() @IsBoolean() robotsIndex?: boolean;
 }
 

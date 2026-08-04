@@ -5,10 +5,12 @@ import { AdminBlog } from './AdminBlog';
 import { AdminBlogRedirects, AdminBlogSettingsPanel } from './AdminBlogSeoPanels';
 import { AdminBlogCommentsPanel, AdminBlogAuthorsPanel } from './AdminBlogModeration';
 import { AdminBlogAnalyticsPanel } from './AdminBlogAnalytics';
+import { AdminBlogTaxonomy } from './AdminBlogTaxonomy';
 import { cn } from '@/lib/cn';
 
 const TABS = [
   { id: 'posts', label: 'مقالات' },
+  { id: 'taxonomy', label: 'دسته/تگ' },
   { id: 'redirects', label: 'ریدایرکت' },
   { id: 'settings', label: 'تنظیمات' },
   { id: 'comments', label: 'نظرات' },
@@ -39,6 +41,7 @@ export function AdminBlogHub() {
         ))}
       </div>
       {tab === 'posts' && <AdminBlog />}
+      {tab === 'taxonomy' && <AdminBlogTaxonomy />}
       {tab === 'redirects' && <AdminBlogRedirects />}
       {tab === 'settings' && <AdminBlogSettingsPanel />}
       {tab === 'comments' && <AdminBlogCommentsPanel />}
