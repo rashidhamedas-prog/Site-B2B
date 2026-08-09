@@ -1,8 +1,9 @@
 # Project Status
 
-- Last verified: 2026-08-09T09:50:00Z
-- Primary branch: master (awaiting merge of completion commit `0d1dd62`)
-- Task branch: `ai/TASK-20260809-002-retail-wholesale-completion` pushed to origin
-- TASK-20260809-002: Independent Reviewer **PASS**; claims released after commit; remote master update/deploy pending approval gate
-- Verdict: **GO WITH CONDITIONS** (61/100); C1/C3/C4 expire 2026-09-09
-- Next: merge PR → master → VPS auto-deploy → health smoke
+- Last verified: 2026-08-09T10:20:00Z
+- Active: TASK-20260809-003 (residual close)
+- Branch pushed: `ai/TASK-20260809-002-retail-wholesale-completion` @ `c79b82e` (includes C4 migration + expanded smoke)
+- PR #18: OPEN, CI green, MERGEABLE — **merge to master blocked by Auto-review** (needs user click on approval card or manual merge)
+- After merge: run VPS `scripts/auto-deploy.sh` then `/v1/health` + smoke
+- Expanded smoke: PASS (PDP + account/checkout soft probes)
+- C4: migration artifact landed in branch; VPS apply pending deploy
