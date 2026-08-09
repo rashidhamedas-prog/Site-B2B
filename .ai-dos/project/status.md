@@ -1,9 +1,8 @@
 # Project Status
 
-- Last verified: 2026-08-09T09:05:00Z
-- Primary branch: master (base `e3f71d2`); task branch `ai/TASK-20260809-002-retail-wholesale-completion`
-- Active task: TASK-20260809-002 `in_progress` — readiness **GO WITH CONDITIONS** (61/100)
-- Authoritative worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Gates: lint 0, test 0, build 0, smoke readonly 0; purchase E2E NOT RUN; backup/restore UNKNOWN
-- Open conditions: C1 purchase E2E, C3 restore drill, C4 schema dual-path promotion
-- Next: independent review → commit/push → optional deploy; do not start website-builder
+- Last verified: 2026-08-09T09:50:00Z
+- Primary branch: master (awaiting merge of completion commit `0d1dd62`)
+- Task branch: `ai/TASK-20260809-002-retail-wholesale-completion` pushed to origin
+- TASK-20260809-002: Independent Reviewer **PASS**; claims released after commit; remote master update/deploy pending approval gate
+- Verdict: **GO WITH CONDITIONS** (61/100); C1/C3/C4 expire 2026-09-09
+- Next: merge PR → master → VPS auto-deploy → health smoke
