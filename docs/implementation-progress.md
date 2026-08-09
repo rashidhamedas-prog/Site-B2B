@@ -2,11 +2,11 @@
 
 Retail & wholesale completion per `Retail-Wholesale-Completion-Package/MASTER.md`.
 
-- Active task: `TASK-20260809-003`
-- Owner: `cursor:orchestrator-TASK-20260809-003`
-- Branch: `ai/TASK-20260809-003-residual-close`
+- Active task: `TASK-20260809-004` (progress coherence)
+- Owner: `cursor:orchestrator-TASK-20260809-004`
+- Branch: `ai/TASK-20260809-004-progress-coherence`
 - Authoritative worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Base: `origin/master` @ `3146aae` (PR #18 merged + deployed)
+- Base: `origin/master` @ `5fe8cb3` (PR #20 claim release; residual C4 shipped via PR #19)
 
 Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason.
 
@@ -14,14 +14,14 @@ Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer 
 
 ## 2026-08-09 15:45 — Milestone C4 VPS verify + safety-net narrow
 
-- Status: in progress (awaiting Reviewer + merge/deploy of residual PR)
+- Status: verified (shipped PR #19 `2233a0a` + PR #20 claim release)
 - Scope completed:
-  - VPS: `PromoteSqlOnlyEntityColumns1786276800001` present (migrations id=11); five columns + two indexes YES; HEAD `3146aae`; health ok
+  - VPS: `PromoteSqlOnlyEntityColumns1786276800001` present (migrations id=11); five columns + two indexes YES; health ok
   - Narrowed `scripts/apply-production-schema.sql` (removed promoted DDL; kept stock/hardening bridge)
   - Updated runbook §3.1 + PLATFORM-READINESS: **C4 Satisfied**; score **67/100**
-  - C3 inventory PARTIAL (broken daily cron; ad-hoc hardening dump); C1 still no local Docker
+  - C3 inventory PARTIAL (listable dump + `pg_restore -l` 0; cron still broken); C1 still no local Docker
 - Data/schema impact: docs + safety-net SQL only (no new DDL on prod this residual)
-- Next: Independent Review → commit/PR → merge → auto-deploy → health/smoke
+- Next: progress-coherence fix (this task) → C1/C3 before 2026-09-09
 
 ## 2026-08-09 12:40 — Milestone Reviewer-fail reconcile + P1 acceptances
 
@@ -37,14 +37,14 @@ Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer 
 
 ## 2026-08-09 06:10 — Milestone Phase-2/3: prod readonly smoke + tooling remap + readiness reassess
 
-- Status: verified (superseded notes: remapped lint/test later **PASS**; score updated to **61/100**)
+- Status: verified (superseded: score was **61/100** here; authoritative now **67/100** after C4 close)
 - Scope completed:
   - Phase-2 claim expansion; API/web lint remap; readonly prod smoke; readiness reassess.
 - Verification run and result:
   - Phase-1 lint/test FAIL; later Phase-2 remap **PASS** (see 12:40 milestone / handoff 02:48Z+)
   - Prod readonly smoke: **PASS**
   - Purchase E2E: **NOT RUN** → C1 accepted-with-expiry
-- Risks: historical note recorded score 55 at write time; authoritative score now **61/100** in PLATFORM-READINESS-REPORT.
+- Risks: historical note recorded score 55 at write time; then **61/100**; authoritative now **67/100** in PLATFORM-READINESS-REPORT.
 - Next bounded action: (completed by later milestones)
 
 ---
@@ -141,8 +141,8 @@ Derived from handoff + Phase-2/3 evidence (+ Phase-4 schema inventory note). Pri
 | Priority | Item | Evidence | Next step | Data impact |
 |----------|------|----------|-----------|-------------|
 | P1 **C1** | Retail/wholesale purchase E2E | purchase PASS 0; Docker unavailable | Accepted-with-expiry → 2026-09-09; run E2E before expiry | none if non-prod |
-| P1 **C3** | Backup/restore rehearsal | runbook UNKNOWN | Accepted-with-expiry → 2026-09-09; restore drill | restore on non-prod first |
-| P1 **C4** | Schema dual-path | audit R4 Documented | Accepted-with-expiry → 2026-09-09; promote SQL-only cols | none until migrate |
+| P1 **C3** | Backup/restore rehearsal | inventory PARTIAL; listable dump + `pg_restore -l` 0; restore drill open | Accepted-with-expiry → 2026-09-09; disposable restore + fix cron | restore on non-prod first |
+| — **C4** | Schema dual-path | VPS migration id=11 + safety-net narrowed (PR #19) | **Satisfied** 2026-08-09 | none |
 | P2 **C5** | Remapped lint/test + eslint | lint/test **PASS** exit 0; eslint deferred Low | **Mitigated**; optional eslint later | none |
 | — | Prod health (was C2) | authorized smoke PASS | Keep monitoring | none |
 | — | Build/typecheck | exit 0 | Keep green | none |
@@ -150,11 +150,11 @@ Derived from handoff + Phase-2/3 evidence (+ Phase-4 schema inventory note). Pri
 
 ---
 
-## Next bounded actions (post-reconcile)
+## Next bounded actions (post-C4 close)
 
-1. Fresh Independent Reviewer pass after evidence/progress coherence fix.
-2. Non-prod purchase E2E when Docker available (before 2026-09-09).
-3. Schema dual-path remediation (C4) + backup/restore drill (C3); then commit/push.
+1. Non-prod purchase E2E when Docker available (before 2026-09-09) — **C1**.
+2. Disposable restore drill + repair/retire broken daily backup cron — **C3**.
+3. Do **not** start website-builder while C1/C3 remain open.
 
 ---
 
@@ -162,5 +162,6 @@ Derived from handoff + Phase-2/3 evidence (+ Phase-4 schema inventory note). Pri
 
 - Orchestrator Phase-2 start: 2026-08-09T02:40:00Z
 - Reviewer-fail reconcile: 2026-08-09T09:25Z–09:40Z
-- Verdict: **GO WITH CONDITIONS** (**61/100**); C1/C3/C4 accepted-with-expiry; C2/C5 mitigated
-- Commit: **not created** (await re-review PASS)
+- C4 VPS verify + safety-net narrow: 2026-08-09 (PR #19 → `2233a0a`)
+- Verdict: **GO WITH CONDITIONS** (**67/100**); **C4 Satisfied**; C1/C3 accepted-with-expiry; C2/C5 mitigated
+- Shipped: PR #18–#20 on master; claims released after PR #20
