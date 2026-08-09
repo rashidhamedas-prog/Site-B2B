@@ -1,28 +1,32 @@
 schema_version: 1
 tasks:
   - id: TASK-20260809-003
-    title: "C4 promote SQL-only entity columns to TypeORM migration"
+    title: "Residual close: C4 VPS verify + safety-net narrow + ops evidence; ship to master"
     status: in_progress
-    owner: cursor:implementer-TASK-20260809-003
-    roles: [implementer]
-    branch: ai/TASK-20260809-002-retail-wholesale-completion
+    owner: cursor:orchestrator-TASK-20260809-003
+    roles: [orchestrator, implementer]
+    branch: ai/TASK-20260809-003-residual-close
     worktree: D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002
-    claimed_at: "2026-08-09T09:40:00Z"
+    claimed_at: "2026-08-09T11:45:00Z"
     risk: high
     acceptance_criteria:
-      - "One idempotent TypeORM migration promotes SQL-only entity columns (viewCount, bannerUrl, torobClid, wholesale color flags)"
-      - "docs/deployment-runbook.md §3.1 notes safety-net narrow-after-land (do not delete)"
-      - "docs/PLATFORM-READINESS-REPORT.md C4 notes migration artifact exists; still accepted-with-expiry until VPS verify"
-      - "No production migration / schema mutation executed in this task"
+      - "VPS verify: PromoteSqlOnlyEntityColumns1786276800001 recorded OR columns proven present after PR18 deploy"
+      - "scripts/apply-production-schema.sql narrowed (remove promoted dual-path sections; file kept)"
+      - "docs/deployment-runbook.md + PLATFORM-READINESS-REPORT updated for C4 post-verify"
+      - "C1 remains accepted-with-expiry (no local Docker); C3 inventory recorded from VPS readonly"
+      - "Commit + PR merge to master + VPS auto-deploy + health/smoke PASS"
     non_goals:
-      - "Do not run migration against production"
-      - "Do not delete or rewrite apply-production-schema.sql body yet"
-      - "Do not promote Path C channel-split / warehouse SQL in this change"
-      - "Do not commit unless explicitly asked"
+      - "Do not run e2e-purchase against production or create real paid orders"
+      - "Do not delete apply-production-schema.sql"
+      - "Do not promote Path C channel-split / warehouse SQL"
+      - "Do not start website-builder / multi-tenant work"
     file_claims:
-      - apps/api/src/database/migrations/20260809-001-promote-sql-only-entity-columns.ts
+      - scripts/apply-production-schema.sql
       - docs/deployment-runbook.md
       - docs/PLATFORM-READINESS-REPORT.md
+      - docs/implementation-progress.md
+      - docs/WORKLOG.md
       - .ai-dos/tasks/active.yaml
       - .ai-dos/tasks/handoff.md
-    notes: "Parent registered claim after TASK-20260809-002 release. Expand-only DDL; dual-path residual remains until VPS verify + safety-net narrow."
+      - .ai-dos/project/status.md
+    notes: "Reviewer PASS; gates PASS; C3 listable dump evidence. Shipping PR then release claims."

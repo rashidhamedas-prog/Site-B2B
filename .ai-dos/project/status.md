@@ -1,9 +1,9 @@
 # Project Status
 
-- Last verified: 2026-08-09T10:20:00Z
-- Active: TASK-20260809-003 (residual close)
-- Branch pushed: `ai/TASK-20260809-002-retail-wholesale-completion` @ `c79b82e` (includes C4 migration + expanded smoke)
-- PR #18: OPEN, CI green, MERGEABLE — **merge to master blocked by Auto-review** (needs user click on approval card or manual merge)
-- After merge: run VPS `scripts/auto-deploy.sh` then `/v1/health` + smoke
-- Expanded smoke: PASS (PDP + account/checkout soft probes)
-- C4: migration artifact landed in branch; VPS apply pending deploy
+- Last verified: 2026-08-09T12:15:00Z
+- Active: TASK-20260809-003 (residual close — C4 narrow + ship)
+- Branch: `ai/TASK-20260809-003-residual-close` (from `origin/master` @ `3146aae`)
+- Worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Prod HEAD: `3146aae` (PR #18 deployed); migration `PromoteSqlOnlyEntityColumns1786276800001` id=11 **YES**
+- Residual: safety-net narrowed locally (pending PR merge/deploy); C1/C3 still open (accepted-with-expiry → 2026-09-09)
+- Readiness: **GO WITH CONDITIONS** **67/100**; website-builder **blocked**

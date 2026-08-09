@@ -2,12 +2,27 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-09 — TASK-20260809-003 residual close: C4 verify + safety-net narrow
+
+### خلاصه
+- PR #18 روی master (`3146aae`) دیپلوی شد؛ migration `PromoteSqlOnlyEntityColumns1786276800001` در production ثبت شد (id=11)
+- ستون‌ها/ایندکس‌های viewCount، wholesale color، bannerUrl، torobClid روی VPS تأیید شدند
+- `scripts/apply-production-schema.sql` باریک شد (بخش‌های تکراری حذف؛ فایل حفظ شد)
+- C3 inventory: بکاپ خودکار روزانه شکسته؛ dump listable جدید در `/opt/taranom/backups/20260809-c3-evidence/` با `pg_restore -l` OK — restore کامل هنوز باز
+- C1 همچنان accepted-with-expiry (بدون Docker محلی)
+- Readiness: **GO WITH CONDITIONS** **67/100** (C4 Satisfied)
+
+### اعتبارسنجی
+- VPS health ok · migration row YES · columns/indexes YES · api/web lint+test 0 · smoke readonly 0 · C3 dump list 0
+
+---
+
 ## 2026-08-09 — TASK-20260809-003 residual: expanded smoke + C4 migration artifact
 
 ### خلاصه
 - Smoke فقط‌خواندنی گسترش یافت: PDP عمده/تکی، portal login، account، checkout (soft)
 - Migration TypeORM برای ستون‌های SQL-only: `20260809-001-promote-sql-only-entity-columns.ts`
-- Merge PR #18 به master / deploy VPS: منتظر تأیید محیط (Auto-review)
+- Merge PR #18 به master / deploy VPS: انجام شد (`3146aae`)
 
 ### اعتبارسنجی
 - `acceptance-smoke-readonly.sh` exit 0 (شامل PDP و صفحات soft)

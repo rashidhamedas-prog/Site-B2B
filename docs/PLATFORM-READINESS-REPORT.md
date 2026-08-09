@@ -4,7 +4,7 @@
 - Verdict: **GO WITH CONDITIONS**
 - Assessed date / commit / environments: 2026-08-09 / worktree `ai/TASK-20260809-002-retail-wholesale-completion` (base `e3f71d2` + phase-2+ tooling/auth util) / local gates + authorized production readonly smoke
 - Confidence: **medium-high** (gates + liveness + security remediations recorded; purchase E2E and restore still open)
-- Decision rationale: Build/typecheck/lint/test PASS; prod API/storefront readonly smoke PASS; SEC-001/002 remediated. Remaining owned conditions: purchase E2E (C1), backup/restore (C3), schema dual-path promotion (C4). Not unconditional GO.
+- Decision rationale: Build/typecheck/lint/test PASS; prod API/storefront readonly smoke PASS; SEC-001/002 remediated; **C4 VPS-verified + safety-net narrowed**. Remaining owned conditions: purchase E2E (C1), backup/restore drill (C3). Not unconditional GO.
 - Explicit statement: This report does not authorize or implement a website builder, SaaS, multi-tenancy, or page builder.
 
 ## Executive summary
@@ -17,9 +17,9 @@
   - Security: smoke hardened (argv + slug allowlist + `--max-redirs 3`); OTP helpers extracted to `phone.util.ts` (shared by service + spec)
 - What remains (owned conditions):
   - **C1** Non-prod purchase E2E (`e2e-purchase-test.sh`) — local Docker unavailable
-  - **C3** Backup/restore rehearsal UNKNOWN
-  - **C4** Promote SQL-only columns into TypeORM migrations; narrow safety-net — **migration artifact now exists** (`20260809-001-promote-sql-only-entity-columns.ts`); still accepted-with-expiry until VPS verify + safety-net narrow
-- Highest residual risks: C1 / C3 / C4 (P1); eventual dedicated ESLint (Low, accepted as tsc gate)
+  - **C3** Backup/restore rehearsal **PARTIAL** (listable dump + `pg_restore -l` 0; disposable restore + fixed cron still open)
+  - **C4** Promote SQL-only columns into TypeORM migrations; narrow safety-net — **SATISFIED** 2026-08-09: migration `PromoteSqlOnlyEntityColumns1786276800001` on prod (`migrations` id=11 @ `3146aae`); columns+indexes verified; `scripts/apply-production-schema.sql` narrowed (file retained)
+- Highest residual risks: C1 / C3 (P1); Path C dual-path residual (Low–Med); eventual dedicated ESLint (Low)
 
 ## Scope and evidence index
 | Area | Evidence/document/test | Result | Last verified |
@@ -28,7 +28,7 @@
 | Target architecture | `docs/02-target-architecture.md` | Present (ADRs 001–007) | 2026-08-09 |
 | Progress | `docs/implementation-progress.md` | Present + Phase-2/3 milestone | 2026-08-09 |
 | Acceptance matrix | `docs/test-and-acceptance-evidence.md` | Liveness PASS; purchase PASS 0 | 2026-08-09 |
-| Deploy runbook | `docs/deployment-runbook.md` | Present; restore UNKNOWN | 2026-08-09 |
+| Deploy runbook | `docs/deployment-runbook.md` | Present; C3 dump list PASS; restore drill open | 2026-08-09 |
 | Build | `npm run build` | PASS exit 0 | 2026-08-09T02:27:30Z |
 | Typecheck | web + api `tsc --noEmit` | PASS exit 0 | 2026-08-09 |
 | Lint / unit (Phase-1) | `npm run lint` / `npm run test` | FAIL exit 1 (eslint/jest missing) | 2026-08-09 |
@@ -73,7 +73,7 @@
 | Readonly prod smoke | PASS | hardened script + probe | Clears C2 health |
 | E2E purchase | NOT RUN | no local Docker | **C1** accepted-with-expiry |
 | security review (tooling/auth) | PASS w/ remediations | SEC-001/002 fixed; Reviewer | Residual Low eslint |
-| backup/restore | UNKNOWN | runbook | **C3** accepted-with-expiry |
+| backup/restore | PARTIAL | listable dump + `pg_restore -l` 0; restore drill NOT RUN | **C3** accepted-with-expiry |
 | deploy/rollback rehearsal | NOT RUN | requires ops window | Accepted under C3 family |
 | observability | PARTIAL | health verified live | Medium |
 | a11y/SEO/perf formal | NOT RUN / prior WORKLOG only | — | Medium |
@@ -82,23 +82,23 @@
 | Dimension | Weight | Rating 0–5 | Weighted score | Evidence/deduction |
 |---|---:|---:|---:|---|
 | Functional completeness | 20 | 3 | 12 | Live storefronts + API health; purchase journeys still unverified |
-| Data integrity & migration safety | 15 | 2 | 6 | Dual-path schema risk; no restore drill |
+| Data integrity & migration safety | 15 | 4 | 12 | C4 closed on prod (migration + narrow); Path C residual; restore drill still open |
 | Security & privacy | 15 | 3 | 9 | Tooling/smoke security review + SEC-001/002 fixed; full auth audit not exhaustive |
 | Testability & quality | 15 | 4 | 12 | Build/tsc/lint/test PASS; readonly smoke PASS; purchase E2E absent |
 | Architecture & reuse | 15 | 4 | 12 | Target arch ADRs; dual-channel documented |
-| Operations & recovery | 10 | 3 | 6 | Prod health verified; backup/restore still UNKNOWN |
+| Operations & recovery | 10 | 3 | 6 | Prod health verified; backup inventory PARTIAL + listable dump; restore drill still open |
 | SEO/analytics/performance/accessibility | 10 | 2 | 4 | Blog/SEO work present; formal pack NOT RUN |
-| **Total** | **100** | | **61/100** | Uplift from gates+security remediations; purchase E2E still withheld |
+| **Total** | **100** | | **67/100** | C4 closed (+6 data integrity); purchase E2E and restore still withheld |
 
-Phase-1 score was **46/100** (NO-GO); Phase-3 reassessment **55/100**; Phase-2+/security reconcile **61/100**.
+Phase-1 score was **46/100** (NO-GO); Phase-3 reassessment **55/100**; Phase-2+/security reconcile **61/100**; residual C4 close **67/100**.
 
 ## Risk and condition register
 | ID | Severity | Condition/risk | Impact | Mitigation | Owner | Due date | Acceptance/expiry |
 |---|---|---|---|---|---|---|---|
 | C1 | P1 | Purchase E2E / acceptance-core journeys NOT RUN | Cannot claim unconditional GO | Readonly smoke + run purchase E2E when Docker available | Human (full-authority grant 2026-08-09) + TASK-20260809-002 | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
 | C2 | P1→mitigated | Prod API/storefront health | Wrong uptime assumption | Authorized readonly smoke PASS | Human + task | 2026-08-09 | **Satisfied** |
-| C3 | P1 | Backup/restore unproven | Data loss risk on incident | Rehearse restore; record RPO/RTO before next schema-heavy release | Human (full-authority grant 2026-08-09) + Ops | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
-| C4 | P1 | Schema dual-path HIGH drift | Drift/prod surprise | Inventory done; TypeORM migration artifact `20260809-001-promote-sql-only-entity-columns.ts` promotes SQL-only entity cols (`viewCount`, `bannerUrl`, `torobClid`, wholesale color flags). VPS apply **NOT RUN**; safety-net still present (narrow after verify — do not delete yet) | Human (full-authority grant 2026-08-09) + TASK-20260809-003 | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
+| C3 | P1 | Backup/restore unproven | Data loss risk on incident | Inventory + **2026-08-09 listable dump** (`pg_restore -l` 0); automated cron still broken; disposable restore + RPO/RTO still open | Human + Ops + TASK-20260809-003 | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
+| C4 | P1→**mitigated** | Schema dual-path HIGH drift | Drift/prod surprise | Inventory + TypeORM `20260809-001`; **VPS verified** 2026-08-09 (migration id=11; five columns + two indexes); safety-net **narrowed** (file retained; Path C still out of scope) | TASK-20260809-003 | 2026-08-09 | **Satisfied** |
 | C5 | P2→mitigated | Remapped lint/test | CI confidence | root lint/test exit **0**; eslint deferred Low | TASK-20260809-002 | 2026-08-09 | **Mitigated** |
 
 ## P1 acceptances (authorized)
@@ -108,8 +108,8 @@ Human instruction 2026-08-09 granted full authority to complete this program wit
 | ID | Accepted residual | Owner | Accepted | Expires | Reassessment evidence required |
 |---|---|---|---|---|---|
 | C1 | Purchase E2E not run (no local Docker); liveness ≠ purchase proof | Human + TASK-20260809-002 | 2026-08-09 | **2026-09-09** | `e2e-purchase-test.sh` or staging purchase matrix PASS |
-| C3 | Backup/restore rehearsal UNKNOWN | Human + Ops | 2026-08-09 | **2026-09-09** | Documented restore drill with RPO/RTO |
-| C4 | Dual schema path HIGH drift (inventoried; migration artifact exists, VPS unverified) | Human + TASK-20260809-003 | 2026-08-09 | **2026-09-09** | VPS confirm migration head + columns; then narrow safety-net (do not delete yet) |
+| C3 | Backup/restore rehearsal incomplete | Human + Ops + TASK-20260809-003 | 2026-08-09 | **2026-09-09** | Working automated DB backup + `pg_restore -l` + disposable restore drill; RPO/RTO |
+| C4 | ~~Dual schema path~~ → **Satisfied** (VPS verify + safety-net narrow 2026-08-09) | TASK-20260809-003 | 2026-08-09 | — | — |
 
 After expiry without evidence, verdict must be reassessed to **NO-GO** until remediated.
 
@@ -128,14 +128,14 @@ After expiry without evidence, verdict must be reassessed to **NO-GO** until rem
 - Retail/wholesale behavior preserved or intentionally changed: preserved (tooling/scripts + docs; no commerce logic rewrite)
 
 ## Deployment and recovery evidence
-- Backup and restore rehearsal: **UNKNOWN** (**C3**)
-- Deployment and smoke test: readonly prod smoke **PASS**; mutating deploy rehearsal **NOT RUN**
+- Backup and restore rehearsal: **PARTIAL** (**C3**) — 2026-08-09 inventory: daily `/root/backup-wholesale.sh` cron broken/empty; ad-hoc hardening dump exists. **NEW:** listable evidence dump `/opt/taranom/backups/20260809-c3-evidence/postgres-20260809T125655Z.dump` (~297K) with `pg_restore -l` exit **0** (176 TOC). Disposable full restore drill + RPO/RTO still **NOT RUN**; automated cron still broken
+- Deployment and smoke test: PR #18 deployed to prod `3146aae`; health **PASS**; readonly smoke **PASS**
 - Rollback rehearsal and thresholds: documented in runbook; **NOT RUN**
 - Monitoring/alert coverage: live health check verified; deeper coverage UNKNOWN
 
 ## Conditions before separate website-builder discovery may start
-1. **C1**, **C3**, **C4** are accepted-with-expiry until **2026-09-09** — builder discovery still **blocked** until those are cleared with evidence (acceptance alone does not unlock builder start).
-2. Independent Reviewer pass on this completion pack.
+1. **C1** and **C3** must be cleared with evidence (or remain accepted only until **2026-09-09**). **C4 satisfied** 2026-08-09. Builder discovery still **blocked**.
+2. Independent Reviewer pass on residual close pack.
 3. Do **not** start website-builder discovery while purchase E2E and restore remain unproven.
 
 ## Definition-of-Done attestation
@@ -147,17 +147,17 @@ After expiry without evidence, verdict must be reassessed to **NO-GO** until rem
 | Wholesale critical journey verified | **NOT MET** (liveness only) | W-00 PASS; purchase **C1 accepted-with-expiry** |
 | Shared commerce rules tested | PARTIAL | unit specs PASS; purchase paths conditioned |
 | Security controls meet file 05 | PARTIAL | SEC-001/002 remediated; broader surface conditioned |
-| No open P0; no unaccepted P1 | **MET-via-acceptance** | C1/C3/C4 accepted 2026-08-09 expire 2026-09-09; C5 mitigated; no P0 |
+| No open P0; no unaccepted P1 | **MET-via-acceptance** | C1/C3 accepted expire 2026-09-09; **C4 satisfied**; C5 mitigated; no P0 |
 | Build/release reproducible | MET (tsc lint gate) | build/tsc/lint/test PASS; ESLint deferred Low |
-| Backup/deploy/rollback executable | PARTIAL | runbook yes; restore **C3 accepted-with-expiry** |
+| Backup/deploy/rollback executable | PARTIAL | runbook yes; C3 inventory PARTIAL; restore still open |
 | Architecture documented without future platform | MET | `02-target-architecture.md` |
 | Final report with one verdict | MET | **GO WITH CONDITIONS** |
 | Task claimed before edits; handoff maintained | MET | active.yaml / handoff |
-| Claims released | **NOT MET** | pending re-review + commit |
+| Claims released | PENDING | after Reviewer + merge/deploy |
 
 ## Final decision record
-- Verdict: **GO WITH CONDITIONS** (score **61/100**) for continued operation/stabilization of existing retail/wholesale; **do not** start website-builder discovery.
-- Hard gates: health/smoke **PASS**; build/typecheck/lint/test **PASS**; purchase E2E **NOT RUN** (C1 accepted-with-expiry); backup/restore **UNKNOWN** (C3 accepted-with-expiry); schema dual-path inventoried + TypeORM promotion migration artifact present, VPS apply unverified (C4 accepted-with-expiry).
-- Key condition IDs: **C1**, **C3**, **C4** (accepted-with-expiry); **C2**/**C5** mitigated.
-- Decision owner and date: Human full-authority grant 2026-08-09 + cursor:orchestrator-TASK-20260809-002; pending fresh Independent Reviewer pass after this reconcile.
-- Next allowed activity: Re-review → commit/push; schedule C1/C3/C4 evidence before 2026-09-09.
+- Verdict: **GO WITH CONDITIONS** (score **67/100** uplift: C4 closed) for continued operation/stabilization of existing retail/wholesale; **do not** start website-builder discovery.
+- Hard gates: health/smoke **PASS**; build/typecheck/lint/test **PASS**; purchase E2E **NOT RUN** (C1 accepted-with-expiry); backup inventory **PARTIAL** (C3 accepted-with-expiry); **C4 Satisfied** (VPS migration id=11 + safety-net narrow).
+- Key condition IDs: **C1**, **C3** (accepted-with-expiry); **C2**/**C4**/**C5** mitigated/satisfied.
+- Decision owner and date: Human full-authority grant 2026-08-09 + cursor:orchestrator-TASK-20260809-003.
+- Next allowed activity: Merge residual PR → deploy → Independent Review; schedule C1/C3 evidence before 2026-09-09.

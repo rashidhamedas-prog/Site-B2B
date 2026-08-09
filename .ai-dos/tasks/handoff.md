@@ -2,6 +2,37 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-09T12:15:00Z — TASK-20260809-003 residual: C4 VPS verify + safety-net narrow (pre-merge)
+
+- Time (UTC): 2026-08-09T12:15:00Z
+- Task / owner / role: TASK-20260809-003 / cursor:orchestrator-TASK-20260809-003 / orchestrator+implementer
+- Branch / worktree: `ai/TASK-20260809-003-residual-close` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Agents: explore [845ac6c7](845ac6c7-253c-4e1a-adc2-5e2ffde821b8); VPS verify [a7ad14fa](a7ad14fa-8742-4fff-b172-4b48e21f3012); C3 inventory [d3de6fbd](d3de6fbd-b200-41af-80cd-4824e002c46b)
+
+### VPS evidence (read-only)
+
+- HEAD: `3146aae`
+- Health: `{"status":"ok",...}`
+- Migration: **YES** `PromoteSqlOnlyEntityColumns1786276800001` (id=11)
+- Columns/indexes: all five + both indexes **YES**
+
+### C3 inventory (partial)
+
+- Daily root cron `/root/backup-wholesale.sh` fires but destinations empty / broken expansions
+- Ad-hoc `/opt/taranom/backups/20260801-hardening/` present (~2026-07-31)
+- Restore rehearsal: **NOT RUN**; C3 remains accepted-with-expiry
+
+### Changes (local, uncommitted at write)
+
+- Narrowed `scripts/apply-production-schema.sql`
+- Updated `docs/deployment-runbook.md` §3.1, `PLATFORM-READINESS-REPORT.md` (C4 Satisfied, **67/100**), progress, WORKLOG, status, active.yaml
+
+### Exact next action
+
+1. Gates + Independent Reviewer
+2. Commit/push → PR → merge master → VPS auto-deploy → health/smoke
+3. Release claims on success
+
 ## 2026-08-09T10:10:00Z — C4 schema dual-path: TypeORM migration artifact (no prod mutate)
 
 - Time (UTC): 2026-08-09T10:10:00Z
