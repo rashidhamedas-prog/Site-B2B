@@ -1,8 +1,13 @@
 -- ============================================================================
--- Taranom B2B — idempotent production schema safety-net
--- Mirrors migration 20260717-001-product-specs-discounts-shipping.
--- Safe to run repeatedly; used by the deploy workflow in case the TypeORM
--- migrations were skipped. Keep this in sync with the entities/migration.
+-- Taranom B2B — idempotent production schema safety-net (emergency bridge)
+-- Covers older migrations still useful if TypeORM migrationsRun is skipped:
+--   20260717-001 specs/discounts/shipping, product-level stock, hardening
+--   payment/order unique indexes (idempotencyKey + authority/refId).
+-- SQL-only entity columns (viewCount, wholesale color flags, bannerUrl,
+-- torobClid) were promoted to TypeORM 20260809-001
+-- (PromoteSqlOnlyEntityColumns1786276800001) and removed from this file
+-- after VPS verify 2026-08-09 (migration id=11 on production).
+-- Do NOT delete this file until Path C (database/sql/*) is promoted/frozen.
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -78,16 +83,8 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS "freeShipping" boolean NOT NULL DE
 -- products: product-level stock (independent of color variants)
 ALTER TABLE products ADD COLUMN IF NOT EXISTS "stock" integer NOT NULL DEFAULT 0;
 
--- products: wholesale color selection for pack-matrix orders
-ALTER TABLE products ADD COLUMN IF NOT EXISTS "allowWholesaleColorSelect" boolean NOT NULL DEFAULT false;
-ALTER TABLE products ADD COLUMN IF NOT EXISTS "minWholesaleColors" integer NOT NULL DEFAULT 1;
-
--- products: retail PDP view counter (most-viewed homepage sort)
-ALTER TABLE products ADD COLUMN IF NOT EXISTS "viewCount" integer NOT NULL DEFAULT 0;
-CREATE INDEX IF NOT EXISTS "IDX_products_viewCount" ON products ("viewCount");
-
--- categories: square 1:1 banner for retail homepage grid
-ALTER TABLE categories ADD COLUMN IF NOT EXISTS "bannerUrl" text;
+-- (narrowed 2026-08-09) viewCount / wholesale color / bannerUrl / torobClid
+-- → TypeORM PromoteSqlOnlyEntityColumns1786276800001 (20260809-001)
 
 -- Backfill product stock from legacy per-variant totals when still zero
 UPDATE products p
@@ -102,10 +99,8 @@ ALTER TABLE inventory_movements ALTER COLUMN "productVariantId" DROP NOT NULL;
 ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS "productId" uuid;
 
 -- Hardening 2026-07-31: order idempotency + payment unique authority/refId
+-- (torobClid + IDX_orders_torobClid promoted to 20260809-001; keep idempotency/payment indexes)
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS "idempotencyKey" varchar;
-ALTER TABLE orders ADD COLUMN IF NOT EXISTS "torobClid" varchar;
-CREATE INDEX IF NOT EXISTS "IDX_orders_torobClid"
-  ON orders ("torobClid") WHERE "torobClid" IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS "UQ_orders_idempotencyKey"
   ON orders ("idempotencyKey") WHERE "idempotencyKey" IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS "UQ_payments_authority"

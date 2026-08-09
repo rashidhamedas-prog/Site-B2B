@@ -176,14 +176,14 @@ If restore cannot guarantee order/inventory/payment correctness, **stop** and ex
 |---------|--------------------|-------------------------------|
 | Catalog | 10 `*.ts` under `apps/api/src/database/migrations/` (categories → blog phase-2) | Single SQL file; header says mirrors `20260717-001` only (`:1-5`) |
 | Overlap | Specs/discounts/shipping; product stock + inventory_movements; order idempotency + payment unique indexes | Same areas, mostly `IF NOT EXISTS` / idempotent |
-| Covered by SQL but **missing** TypeORM migration | — | Historically: `products.viewCount`, `categories.bannerUrl`, `orders.torobClid`, wholesale color columns — **promoted** in `20260809-001-promote-sql-only-entity-columns.ts` (artifact present; VPS apply **NOT RUN** this task) |
+| Covered by SQL but **missing** TypeORM migration | — | Historically: `products.viewCount`, `categories.bannerUrl`, `orders.torobClid`, wholesale color columns — **promoted** in `20260809-001` and **verified on VPS** 2026-08-09 (`migrations` id=11 `PromoteSqlOnlyEntityColumns1786276800001`; columns+indexes present). Those DDL blocks were **narrowed out** of the safety-net (file retained). |
 | Covered by migrations but **missing** from SQL | Categories create, variant library, hero content migrations, blog SEO phase 1–2 | If `migrationsRun` is skipped/fails, safety-net will **not** create these |
 | Data mutation | Stock backfill in `20260720-001` | Same style backfill (`:92-98`) on every deploy when `stock=0` |
 | Deploy failure policy | Migration failure can prevent healthy API start | `auto-deploy.sh` continues after SQL WARNING; CI deploy aborts |
 
 **After `20260809-001` lands (narrow safety-net — do not delete yet):**
 
-Once API deploy confirms `PromoteSqlOnlyEntityColumns1786276800001` in the production `migrations` table and the five columns/indexes exist, **narrow** `scripts/apply-production-schema.sql` by removing the now-redundant `viewCount` / wholesale-color / `bannerUrl` / `torobClid` sections (keep the file as an emergency bridge for overlapping older migrations). Do **not** delete the safety-net until Path C (`database/sql/*` channel-split etc.) is also promoted or explicitly frozen with ops evidence.
+**DONE 2026-08-09 (prod `3146aae`):** confirmed `PromoteSqlOnlyEntityColumns1786276800001` in production `migrations` (id=11) and columns/indexes `viewCount`, `allowWholesaleColorSelect`, `minWholesaleColors`, `bannerUrl`, `torobClid`, `IDX_products_viewCount`, `IDX_orders_torobClid`. Safety-net narrowed by removing those redundant sections; file kept as emergency bridge for overlapping older migrations. Do **not** delete the safety-net until Path C (`database/sql/*` channel-split etc.) is also promoted or explicitly frozen with ops evidence.
 
 **Recommended single-path sequence (ops):**
 

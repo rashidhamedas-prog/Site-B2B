@@ -1,26 +1,36 @@
-# Implementation Progress — TASK-20260809-002
+# Implementation Progress — TASK-20260809-003 (residual) + TASK-20260809-002
 
 Retail & wholesale completion per `Retail-Wholesale-Completion-Package/MASTER.md`.
 
-- Task: `TASK-20260809-002`
-- Owner: `cursor:orchestrator-TASK-20260809-002`
-- Branch: `ai/TASK-20260809-002-retail-wholesale-completion`
+- Active task: `TASK-20260809-003`
+- Owner: `cursor:orchestrator-TASK-20260809-003`
+- Branch: `ai/TASK-20260809-003-residual-close`
 - Authoritative worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Base commit (worktree HEAD at this write): `e3f71d2` (+ uncommitted Phase-2 tooling/docs)
-- Phase-2+ claims: docs + `apps/api/package.json` + `scripts/acceptance-smoke-readonly.sh` + schema SQL + WORKLOG (see `active.yaml`)
+- Base: `origin/master` @ `3146aae` (PR #18 merged + deployed)
 
-Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason. Remapped lint/test are **PASS** (not PENDING).
+Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason.
 
 ---
 
+## 2026-08-09 15:45 — Milestone C4 VPS verify + safety-net narrow
+
+- Status: in progress (awaiting Reviewer + merge/deploy of residual PR)
+- Scope completed:
+  - VPS: `PromoteSqlOnlyEntityColumns1786276800001` present (migrations id=11); five columns + two indexes YES; HEAD `3146aae`; health ok
+  - Narrowed `scripts/apply-production-schema.sql` (removed promoted DDL; kept stock/hardening bridge)
+  - Updated runbook §3.1 + PLATFORM-READINESS: **C4 Satisfied**; score **67/100**
+  - C3 inventory PARTIAL (broken daily cron; ad-hoc hardening dump); C1 still no local Docker
+- Data/schema impact: docs + safety-net SQL only (no new DDL on prod this residual)
+- Next: Independent Review → commit/PR → merge → auto-deploy → health/smoke
+
 ## 2026-08-09 12:40 — Milestone Reviewer-fail reconcile + P1 acceptances
 
-- Status: verified (docs reconcile; awaiting fresh Independent Review)
+- Status: verified (historical)
 - Scope completed:
   - Evidence/progress/readiness contradictions removed: remapped lint/test **PASS** exit 0 cited.
-  - Human full-authority grant recorded as P1 **accepted-with-expiry** for C1/C3/C4 until **2026-09-09**.
+  - Human full-authority grant recorded as P1 **accepted-with-expiry** for C1/C3/C4 until **2026-09-09** (C4 later Satisfied).
   - Smoke `PRODUCT_ID` charset allowlist added.
-  - Verdict remains **GO WITH CONDITIONS** (**61/100**); website-builder still blocked.
+  - Verdict then **GO WITH CONDITIONS** (**61/100**); website-builder still blocked.
 - Data/schema impact: none
 - Verification: api lint/test 0; smoke 0 (prior); Reviewer FAIL addressed via fix list items 1–4.
 - Next bounded action: Fresh Independent Reviewer pass → commit/push.
