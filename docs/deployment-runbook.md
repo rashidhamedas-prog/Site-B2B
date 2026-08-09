@@ -176,16 +176,20 @@ If restore cannot guarantee order/inventory/payment correctness, **stop** and ex
 |---------|--------------------|-------------------------------|
 | Catalog | 10 `*.ts` under `apps/api/src/database/migrations/` (categories → blog phase-2) | Single SQL file; header says mirrors `20260717-001` only (`:1-5`) |
 | Overlap | Specs/discounts/shipping; product stock + inventory_movements; order idempotency + payment unique indexes | Same areas, mostly `IF NOT EXISTS` / idempotent |
-| Covered by SQL but **missing** TypeORM migration | — | `products.viewCount`, `categories.bannerUrl`, `orders.torobClid`, wholesale color columns (`allowWholesaleColorSelect` / `minWholesaleColors`) — entities already use these |
+| Covered by SQL but **missing** TypeORM migration | — | Historically: `products.viewCount`, `categories.bannerUrl`, `orders.torobClid`, wholesale color columns — **promoted** in `20260809-001-promote-sql-only-entity-columns.ts` (artifact present; VPS apply **NOT RUN** this task) |
 | Covered by migrations but **missing** from SQL | Categories create, variant library, hero content migrations, blog SEO phase 1–2 | If `migrationsRun` is skipped/fails, safety-net will **not** create these |
 | Data mutation | Stock backfill in `20260720-001` | Same style backfill (`:92-98`) on every deploy when `stock=0` |
 | Deploy failure policy | Migration failure can prevent healthy API start | `auto-deploy.sh` continues after SQL WARNING; CI deploy aborts |
+
+**After `20260809-001` lands (narrow safety-net — do not delete yet):**
+
+Once API deploy confirms `PromoteSqlOnlyEntityColumns1786276800001` in the production `migrations` table and the five columns/indexes exist, **narrow** `scripts/apply-production-schema.sql` by removing the now-redundant `viewCount` / wholesale-color / `bannerUrl` / `torobClid` sections (keep the file as an emergency bridge for overlapping older migrations). Do **not** delete the safety-net until Path C (`database/sql/*` channel-split etc.) is also promoted or explicitly frozen with ops evidence.
 
 **Recommended single-path sequence (ops):**
 
 1. Confirm `DB_SYNC` is not `true` in production `.env`.
 2. Deploy/build → start API → let TypeORM apply pending migrations (`migrationsRun`).
-3. Run `scripts/apply-production-schema.sql` only as **safety-net / bridge** for known SQL-only columns until they are promoted into TypeORM migrations (requires authorized schema task).
+3. Run `scripts/apply-production-schema.sql` only as **safety-net / bridge** until promoted columns are verified on VPS and the file is narrowed (see note above). Keep it idempotent; do not treat the header “mirrors 20260717” as complete.
 4. CI path: restart API after safety-net, then health-check (`.github/workflows/ci.yml:87-99`). Prefer the same restart after manual `auto-deploy` if schema columns were just added.
 5. New schema work: **add a TypeORM migration first**; update safety-net only if a hotfix must land before the next API image that contains the migration.
 6. Do not add new one-off files under `database/sql/` without a migration twin and an ops record of apply.

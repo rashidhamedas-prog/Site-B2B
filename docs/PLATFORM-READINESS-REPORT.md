@@ -18,7 +18,7 @@
 - What remains (owned conditions):
   - **C1** Non-prod purchase E2E (`e2e-purchase-test.sh`) — local Docker unavailable
   - **C3** Backup/restore rehearsal UNKNOWN
-  - **C4** Promote SQL-only columns into TypeORM migrations; narrow safety-net
+  - **C4** Promote SQL-only columns into TypeORM migrations; narrow safety-net — **migration artifact now exists** (`20260809-001-promote-sql-only-entity-columns.ts`); still accepted-with-expiry until VPS verify + safety-net narrow
 - Highest residual risks: C1 / C3 / C4 (P1); eventual dedicated ESLint (Low, accepted as tsc gate)
 
 ## Scope and evidence index
@@ -98,7 +98,7 @@ Phase-1 score was **46/100** (NO-GO); Phase-3 reassessment **55/100**; Phase-2+/
 | C1 | P1 | Purchase E2E / acceptance-core journeys NOT RUN | Cannot claim unconditional GO | Readonly smoke + run purchase E2E when Docker available | Human (full-authority grant 2026-08-09) + TASK-20260809-002 | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
 | C2 | P1→mitigated | Prod API/storefront health | Wrong uptime assumption | Authorized readonly smoke PASS | Human + task | 2026-08-09 | **Satisfied** |
 | C3 | P1 | Backup/restore unproven | Data loss risk on incident | Rehearse restore; record RPO/RTO before next schema-heavy release | Human (full-authority grant 2026-08-09) + Ops | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
-| C4 | P1 | Schema dual-path HIGH drift | Drift/prod surprise | Inventory done; promote SQL-only cols to TypeORM; narrow safety-net | Human (full-authority grant 2026-08-09) + TASK-20260809-002 | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
+| C4 | P1 | Schema dual-path HIGH drift | Drift/prod surprise | Inventory done; TypeORM migration artifact `20260809-001-promote-sql-only-entity-columns.ts` promotes SQL-only entity cols (`viewCount`, `bannerUrl`, `torobClid`, wholesale color flags). VPS apply **NOT RUN**; safety-net still present (narrow after verify — do not delete yet) | Human (full-authority grant 2026-08-09) + TASK-20260809-003 | 2026-09-09 | **Accepted-with-expiry** 2026-08-09 → 2026-09-09 |
 | C5 | P2→mitigated | Remapped lint/test | CI confidence | root lint/test exit **0**; eslint deferred Low | TASK-20260809-002 | 2026-08-09 | **Mitigated** |
 
 ## P1 acceptances (authorized)
@@ -109,7 +109,7 @@ Human instruction 2026-08-09 granted full authority to complete this program wit
 |---|---|---|---|---|---|
 | C1 | Purchase E2E not run (no local Docker); liveness ≠ purchase proof | Human + TASK-20260809-002 | 2026-08-09 | **2026-09-09** | `e2e-purchase-test.sh` or staging purchase matrix PASS |
 | C3 | Backup/restore rehearsal UNKNOWN | Human + Ops | 2026-08-09 | **2026-09-09** | Documented restore drill with RPO/RTO |
-| C4 | Dual schema path HIGH drift (inventoried) | Human + TASK-20260809-002 | 2026-08-09 | **2026-09-09** | TypeORM SoT + narrowed safety-net or equivalent |
+| C4 | Dual schema path HIGH drift (inventoried; migration artifact exists, VPS unverified) | Human + TASK-20260809-003 | 2026-08-09 | **2026-09-09** | VPS confirm migration head + columns; then narrow safety-net (do not delete yet) |
 
 After expiry without evidence, verdict must be reassessed to **NO-GO** until remediated.
 
@@ -157,7 +157,7 @@ After expiry without evidence, verdict must be reassessed to **NO-GO** until rem
 
 ## Final decision record
 - Verdict: **GO WITH CONDITIONS** (score **61/100**) for continued operation/stabilization of existing retail/wholesale; **do not** start website-builder discovery.
-- Hard gates: health/smoke **PASS**; build/typecheck/lint/test **PASS**; purchase E2E **NOT RUN** (C1 accepted-with-expiry); backup/restore **UNKNOWN** (C3 accepted-with-expiry); schema dual-path inventoried (C4 accepted-with-expiry).
+- Hard gates: health/smoke **PASS**; build/typecheck/lint/test **PASS**; purchase E2E **NOT RUN** (C1 accepted-with-expiry); backup/restore **UNKNOWN** (C3 accepted-with-expiry); schema dual-path inventoried + TypeORM promotion migration artifact present, VPS apply unverified (C4 accepted-with-expiry).
 - Key condition IDs: **C1**, **C3**, **C4** (accepted-with-expiry); **C2**/**C5** mitigated.
 - Decision owner and date: Human full-authority grant 2026-08-09 + cursor:orchestrator-TASK-20260809-002; pending fresh Independent Reviewer pass after this reconcile.
 - Next allowed activity: Re-review → commit/push; schedule C1/C3/C4 evidence before 2026-09-09.

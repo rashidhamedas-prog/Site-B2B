@@ -36,11 +36,26 @@ echo "=== Storefront HTTP ==="
 curl -sf "${CURL_COMMON[@]}" -o /dev/null -w "wholesale_home %{http_code}\n" -L "$WHOLESALE/"
 curl -sf "${CURL_COMMON[@]}" -o /dev/null -w "retail_home %{http_code}\n" -L "$RETAIL/"
 curl -sf "${CURL_COMMON[@]}" -o /dev/null -w "wholesale_products %{http_code}\n" -L "$WHOLESALE/products"
+curl -sf "${CURL_COMMON[@]}" -o /dev/null -w "wholesale_pdp %{http_code}\n" -L "$WHOLESALE/products/$SLUG"
 code=$(curl -s -o /dev/null -w "%{http_code}" "${CURL_COMMON[@]}" -L "$RETAIL/retail/products" || true)
 if [ "$code" = "200" ] || [ "$code" = "301" ] || [ "$code" = "308" ]; then
   echo "retail_products $code"
 else
   curl -sf "${CURL_COMMON[@]}" -o /dev/null -w "retail_products_alt %{http_code}\n" -L "$RETAIL/products"
 fi
+curl -sf "${CURL_COMMON[@]}" -o /dev/null -w "retail_pdp %{http_code}\n" -L "$RETAIL/retail/products/$SLUG" || \
+  curl -sf "${CURL_COMMON[@]}" -o /dev/null -w "retail_pdp_alt %{http_code}\n" -L "$RETAIL/products/$SLUG"
+
+# Soft probes (page may be slow); do not fail smoke on non-2xx for account/checkout shells
+for label_url in \
+  "wholesale_portal_login|$WHOLESALE/portal/login" \
+  "retail_account|$RETAIL/retail/account" \
+  "retail_checkout_page|$RETAIL/retail/checkout"
+do
+  label="${label_url%%|*}"
+  url="${label_url#*|}"
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 --max-redirs 3 -L "$url" || echo "000")
+  echo "$label $code"
+done
 
 echo "=== ACCEPTANCE_SMOKE_READONLY PASS ==="

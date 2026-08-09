@@ -2,6 +2,18 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-09 — TASK-20260809-003 residual: expanded smoke + C4 migration artifact
+
+### خلاصه
+- Smoke فقط‌خواندنی گسترش یافت: PDP عمده/تکی، portal login، account، checkout (soft)
+- Migration TypeORM برای ستون‌های SQL-only: `20260809-001-promote-sql-only-entity-columns.ts`
+- Merge PR #18 به master / deploy VPS: منتظر تأیید محیط (Auto-review)
+
+### اعتبارسنجی
+- `acceptance-smoke-readonly.sh` exit 0 (شامل PDP و صفحات soft)
+
+---
+
 ## 2026-08-09 — TASK-20260809-002 Retail/Wholesale completion (MASTER phase 1–4)
 
 ### خلاصه

@@ -2,6 +2,43 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-09T10:10:00Z — C4 schema dual-path: TypeORM migration artifact (no prod mutate)
+
+- Time (UTC): 2026-08-09T10:10:00Z
+- Task / owner / role: TASK-20260809-003 / cursor:implementer-TASK-20260809-003 / implementer
+- Branch / worktree: `ai/TASK-20260809-002-retail-wholesale-completion` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Action: Promoted SQL-only entity columns into one idempotent TypeORM migration; documented safety-net narrow-after-land; updated C4 readiness note. **No production migration run. No commit.**
+
+### Inventory (SQL-only vs TypeORM before this change)
+
+| Column / index | Safety-net / Path C | Prior TypeORM migration | Entity |
+|---|---|---|---|
+| `products.viewCount` + `IDX_products_viewCount` | safety-net | **none** | `product.entity.ts` |
+| `products.allowWholesaleColorSelect` | safety-net + `sql/20260729-wholesale-color-select.sql` | **none** | `product.entity.ts` |
+| `products.minWholesaleColors` | safety-net + Path C | **none** | `product.entity.ts` |
+| `categories.bannerUrl` | safety-net | **none** | `category.entity.ts` |
+| `orders.torobClid` + `IDX_orders_torobClid` | safety-net | **none** (hardening has `idempotencyKey` only) | `order.entity.ts` |
+
+Path C channel-split / void / retail-b2c columns intentionally **out of scope** (larger surface; not in safety-net dual-path gap list for this promotion).
+
+### Deliverables
+
+- Migration: `apps/api/src/database/migrations/20260809-001-promote-sql-only-entity-columns.ts` (`PromoteSqlOnlyEntityColumns1786276800001`)
+- `docs/deployment-runbook.md` §3.1: after this migration lands + VPS verify → **narrow** safety-net; **do not delete** yet
+- `docs/PLATFORM-READINESS-REPORT.md` C4: artifact exists; still **accepted-with-expiry** until VPS verify
+- `active.yaml`: claimed TASK-20260809-003 (was empty after TASK-20260809-002 release)
+
+### Validation
+
+- Production mutation: **NOT RUN** (explicit non-goal)
+- Commit: **NOT RUN** (unless parent/human asks)
+
+### Exact next action
+
+1. Independent Reviewer on migration + docs
+2. On PASS → commit/push (human/orchestrator ask)
+3. After merge/deploy: confirm `migrations` row + columns on VPS → narrow `scripts/apply-production-schema.sql` (keep file)
+
 ## 2026-08-09T09:55:00Z — Reviewer PASS → commit + PR; claims released
 
 - Time (UTC): 2026-08-09T09:55:00Z
