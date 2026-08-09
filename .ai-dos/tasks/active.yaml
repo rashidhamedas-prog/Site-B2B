@@ -1,0 +1,64 @@
+schema_version: 1
+tasks:
+  - id: "TASK-20260809-002"
+    title: "Retail & wholesale completion per MASTER.md"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:orchestrator-TASK-20260809-002"
+    roles:
+      architect: "cursor:orchestrator-TASK-20260809-002"
+      implementer: "cursor:orchestrator-TASK-20260809-002"
+      reviewer: "required-independent-before-done"
+      security: "required-on-auth-payments-data-deploy"
+    branch: "ai/TASK-20260809-002-retail-wholesale-completion"
+    worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002"
+    claimed_at: "2026-08-09T01:52:20Z"
+    heartbeat_at: "2026-08-09T09:05:00Z"
+    depends_on: []
+    file_claims:
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+      - ".ai-dos/project/overview.md"
+      - ".ai-dos/project/architecture.md"
+      - ".ai-dos/ai-dos.yaml"
+      - "docs/01-current-system-audit.md"
+      - "docs/02-target-architecture.md"
+      - "docs/implementation-progress.md"
+      - "docs/test-and-acceptance-evidence.md"
+      - "docs/deployment-runbook.md"
+      - "docs/PLATFORM-READINESS-REPORT.md"
+      - "docs/WORKLOG.md"
+      - "apps/api/package.json"
+      - "apps/web/package.json"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
+      - "apps/api/src/modules/auth/phone.util.ts"
+      - "package-lock.json"
+      - "scripts/acceptance-smoke-readonly.sh"
+      - "scripts/apply-production-schema.sql"
+    acceptance_criteria:
+      - "Preflight documented; no claim conflicts; handoff restored from HEAD before claim"
+      - "docs/01-current-system-audit.md produced with evidence-backed findings"
+      - "docs/02-target-architecture.md documents smallest compatible evolution (no builder/SaaS)"
+      - "Retail and wholesale critical journeys verified end-to-end with recorded evidence"
+      - "No open P0 and no unaccepted P1; quality gates run with exact results"
+      - "docs/deployment-runbook.md executable for backup/deploy/health/rollback"
+      - "docs/PLATFORM-READINESS-REPORT.md ends with exactly one of GO | GO WITH CONDITIONS | NO-GO"
+      - "Production data, public URLs, integrations preserved; no website-builder/multi-tenant/page-builder work"
+    validation:
+      - "git -C worktree status and claim conflict check (tasks registry)"
+      - "npm run lint (record exact result)"
+      - "npm run test (record exact result)"
+      - "npm run build (record exact result)"
+      - "apps/web type-check: cd apps/web && npx tsc --noEmit"
+      - "apps/api type-check: cd apps/api && npx tsc --noEmit"
+      - "Manual/automated retail and wholesale acceptance evidence in docs/test-and-acceptance-evidence.md"
+      - "Production health authorized by human 2026-08-09 full authority grant"
+    notes: |
+      Human 2026-08-09: full authority to complete all phases without further approval asks.
+      AUTHORITATIVE worktree: D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002
+      Phase-2+: expanded claims for API tooling, readonly smoke script, schema SQL inventory, WORKLOG.
+      Non-goals unchanged: no website builder/SaaS/multi-tenant/page builder.
+      Prefer read-only prod smoke + local unit specs; avoid creating real paid orders on production.
+      Rollback: revert package.json script changes; discard worktree docs.

@@ -19,6 +19,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { NotificationService } from '../notification/notification.service';
 import { OtpService } from '../redis/redis.module';
+import { allowDevOtpExpose, normalizePhone } from './phone.util';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -41,16 +42,6 @@ function isDuplicatePhoneError(err: unknown): boolean {
   const code = e.code ?? e.driverError?.code;
   const detail = e.detail ?? e.driverError?.detail ?? '';
   return code === '23505' && /\(phone\)/i.test(detail);
-}
-
-function normalizePhone(raw: string): string {
-  const digits = String(raw || '')
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-    .replace(/\D/g, '');
-  if (digits.startsWith('98') && digits.length === 12) return `0${digits.slice(2)}`;
-  if (digits.length === 10 && digits.startsWith('9')) return `0${digits}`;
-  return digits;
 }
 
 @Injectable()
@@ -326,8 +317,10 @@ export class AuthService {
   }
 
   private allowDevOtpExpose(): boolean {
-    if (this.config.get('NODE_ENV') === 'production') return false;
-    return String(this.config.get('OTP_DEV_EXPOSE_CODE', 'false')).toLowerCase() === 'true';
+    return allowDevOtpExpose(
+      String(this.config.get('NODE_ENV') ?? ''),
+      String(this.config.get('OTP_DEV_EXPOSE_CODE', 'false')),
+    );
   }
 
   /** Retail (B2C) OTP — hashed store; production never returns the code. */

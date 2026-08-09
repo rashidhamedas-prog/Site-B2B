@@ -1,25 +1,9 @@
 /**
  * Pure unit checks for hardening helpers (no Nest bootstrap).
- * Run: node --import ts-node/register/esm  OR compile first
- * Prefer: npx ts-node --transpile-only apps/api/src/modules/auth/auth.otp.logic.spec.ts
- *
- * For CI without jest deps yet, this file documents expected OTP fail-closed rules.
+ * Imports production helpers from phone.util (SEC-002: no duplicated logic).
+ * Prefer: npx ts-node --transpile-only src/modules/auth/auth.otp.logic.spec.ts
  */
-
-function normalizePhone(raw: string): string {
-  const digits = String(raw || '')
-    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
-    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
-    .replace(/\D/g, '');
-  if (digits.startsWith('98') && digits.length === 12) return `0${digits.slice(2)}`;
-  if (digits.length === 10 && digits.startsWith('9')) return `0${digits}`;
-  return digits;
-}
-
-function allowDevOtpExpose(nodeEnv: string, flag: string): boolean {
-  if (nodeEnv === 'production') return false;
-  return String(flag).toLowerCase() === 'true';
-}
+import { allowDevOtpExpose, normalizePhone } from './phone.util';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
