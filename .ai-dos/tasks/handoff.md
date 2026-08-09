@@ -2,6 +2,20 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-09T13:10:00Z — TASK-20260809-003 shipped: PR #19 merged + VPS deploy + claims released
+
+- Time (UTC): 2026-08-09T13:10:00Z
+- Task / owner / role: TASK-20260809-003 / cursor:orchestrator-TASK-20260809-003 / orchestrator
+- Ship agent: [d6c97fc7](d6c97fc7-0165-4190-90d7-f64b131b22c2)
+- Reviewer: [PASS](376c6754-6321-457d-ba94-97f1f8d02daf)
+- Gates: api/web lint+test 0; readonly smoke 0 ([52d34b4b](52d34b4b-f6f9-404f-bd8f-618a979040de))
+- VPS verify: [a7ad14fa](a7ad14fa-8742-4fff-b172-4b48e21f3012); C3 dump: [acce543f](acce543f-2256-4e1b-b8db-8cb6ac655186)
+- Commit: `2eb4181` → PR https://github.com/rashidhamedas-prog/Site-BtoB/pull/19 → merge `2233a0a`
+- Deploy: `deploy complete at 2233a0a`; health API/wholesale/retail **200**
+- File claims: **released** (`active.yaml` → `tasks: []`)
+- Residual open: **C1** purchase E2E (no local Docker); **C3** disposable restore + fix broken daily cron (listable dump evidence exists)
+- Exact next action: Schedule C1/C3 before 2026-09-09; do not start website-builder
+
 ## 2026-08-09T12:15:00Z — TASK-20260809-003 residual: C4 VPS verify + safety-net narrow (pre-merge)
 
 - Time (UTC): 2026-08-09T12:15:00Z
