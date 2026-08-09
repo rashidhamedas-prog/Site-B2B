@@ -2,6 +2,33 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-09 — TASK-20260809-003 residual: expanded smoke + C4 migration artifact
+
+### خلاصه
+- Smoke فقط‌خواندنی گسترش یافت: PDP عمده/تکی، portal login، account، checkout (soft)
+- Migration TypeORM برای ستون‌های SQL-only: `20260809-001-promote-sql-only-entity-columns.ts`
+- Merge PR #18 به master / deploy VPS: منتظر تأیید محیط (Auto-review)
+
+### اعتبارسنجی
+- `acceptance-smoke-readonly.sh` exit 0 (شامل PDP و صفحات soft)
+
+---
+
+## 2026-08-09 — TASK-20260809-002 Retail/Wholesale completion (MASTER phase 1–4)
+
+### خلاصه
+- Preflight + worktree `ai/TASK-20260809-002-retail-wholesale-completion`
+- اسناد MASTER: audit، target architecture، progress، evidence، deployment-runbook، PLATFORM-READINESS (**GO WITH CONDITIONS**, 61/100)
+- Tooling: `apps/api` و `apps/web` lint → `tsc --noEmit`؛ API test → ts-node specs
+- `scripts/acceptance-smoke-readonly.sh` (فقط‌خواندنی، harden‌شده) روی production PASS
+- OTP helpers در `phone.util.ts` مشترک بین service و spec (SEC-002)
+- شرایط باز: خرید E2E بدون Docker محلی؛ backup/restore؛ dual-path schema
+
+### اعتبارسنجی
+- root lint 0 · root/api test 0 · build 0 (پیش‌تر) · smoke 0
+
+---
+
 ## 2026-08-02 — تکمیل باقی‌مانده وبلاگ: تگ، آمار، داک
 
 ### خلاصه

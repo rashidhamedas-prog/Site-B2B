@@ -1,0 +1,28 @@
+schema_version: 1
+tasks:
+  - id: TASK-20260809-003
+    title: "C4 promote SQL-only entity columns to TypeORM migration"
+    status: in_progress
+    owner: cursor:implementer-TASK-20260809-003
+    roles: [implementer]
+    branch: ai/TASK-20260809-002-retail-wholesale-completion
+    worktree: D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002
+    claimed_at: "2026-08-09T09:40:00Z"
+    risk: high
+    acceptance_criteria:
+      - "One idempotent TypeORM migration promotes SQL-only entity columns (viewCount, bannerUrl, torobClid, wholesale color flags)"
+      - "docs/deployment-runbook.md §3.1 notes safety-net narrow-after-land (do not delete)"
+      - "docs/PLATFORM-READINESS-REPORT.md C4 notes migration artifact exists; still accepted-with-expiry until VPS verify"
+      - "No production migration / schema mutation executed in this task"
+    non_goals:
+      - "Do not run migration against production"
+      - "Do not delete or rewrite apply-production-schema.sql body yet"
+      - "Do not promote Path C channel-split / warehouse SQL in this change"
+      - "Do not commit unless explicitly asked"
+    file_claims:
+      - apps/api/src/database/migrations/20260809-001-promote-sql-only-entity-columns.ts
+      - docs/deployment-runbook.md
+      - docs/PLATFORM-READINESS-REPORT.md
+      - .ai-dos/tasks/active.yaml
+      - .ai-dos/tasks/handoff.md
+    notes: "Parent registered claim after TASK-20260809-002 release. Expand-only DDL; dual-path residual remains until VPS verify + safety-net narrow."
