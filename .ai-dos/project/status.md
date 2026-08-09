@@ -1,9 +1,9 @@
 # Project Status
 
-- Last verified: 2026-08-09T12:15:00Z
-- Active: TASK-20260809-003 (residual close — C4 narrow + ship)
-- Branch: `ai/TASK-20260809-003-residual-close` (from `origin/master` @ `3146aae`)
-- Worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Prod HEAD: `3146aae` (PR #18 deployed); migration `PromoteSqlOnlyEntityColumns1786276800001` id=11 **YES**
-- Residual: safety-net narrowed locally (pending PR merge/deploy); C1/C3 still open (accepted-with-expiry → 2026-09-09)
-- Readiness: **GO WITH CONDITIONS** **67/100**; website-builder **blocked**
+- Last verified: 2026-08-09T13:10:00Z
+- Active tasks: none (claims released)
+- Master / prod: `2233a0a` (PR #19 merge — C4 safety-net narrow)
+- Prior: `3146aae` (PR #18 readiness pack)
+- Readiness: **GO WITH CONDITIONS** **67/100**; **C4 Satisfied**; C1/C3 accepted-with-expiry → 2026-09-09
+- Website-builder: **blocked**
+- Health after deploy: API + wholesale + retail www **200**
