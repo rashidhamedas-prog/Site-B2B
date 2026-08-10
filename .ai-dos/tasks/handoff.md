@@ -2,6 +2,106 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-10T12:49:21Z — Owner authorized ship: commit → PR → merge → VPS deploy
+
+- Owner request: apply all TASK-006 changes to live sites via parallel agents.
+- Constraints retained: no secrets; readiness stays 67/100; claims kept until post-deploy handoff update.
+- Exact next: commit claimed files only; push branch; PR+merge master; `auto-deploy.sh`; verify `/v1/health` + storefronts.
+
+## 2026-08-10T12:45:00Z — Independent reviews FAIL; High remediations applied (still NOT Done)
+
+- Independent Reviewer: **FAIL** — [2e470d23](2e470d23-d043-4558-b7c9-fdd24e26f7d5)
+- Security Review: **FAIL** — [6c5247cc](6c5247cc-1f0b-45b6-9624-b97db200dbed)
+- Post-review fixes applied (claims retained):
+  - Remaining retail blog mojibake line fixed (`بازگشت به وبلاگ`)
+  - E2E disposable sentinels hardcoded; `E2E_DISPOSABLE_*` override rejected; negative guard added
+  - Exact order total + paymentMethod asserts tightened
+  - RMA: reject create when prior APPROVED/COMPLETED on same orderItemId; unique partial index in migration
+  - Removed `forceReplace` query param from DELETE media
+  - Public analytics track returns `{ok:true}` (no full counters)
+  - Torob link path encoding aligned with public path helper
+- Still open (reviews + AC): reports `revenueSeries` sequential loops; wholesale/PDP compare-at display; shared API/web path module; durable staging E2E/restore/Playwright/Torob crawl; analytics shared-store RL; readiness stays **67/100**
+- Exact next: continue remediations → re-request Reviewer+Security; no Done/claim release/deploy
+
+## 2026-08-10T12:32:54Z — TASK-20260810-006 implementation checkpoint (NOT Done)
+
+- Time (UTC): 2026-08-10T12:32:54Z
+- Task / owner / role: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006 / implementer
+- Branch / worktree / commit: `ai/TASK-20260810-006-readiness-remediation` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002` / uncommitted
+- Status: **in_progress** — **NOT Done**; file_claims **retained**; no deploy; readiness remains **67/100**
+
+### Decisions
+- E2E: argv/`$PYTHON` parsing; exact host allowlists; removed `E2E_ALLOW_CUSTOM_HOST`; SQL mutation only with `E2E_TARGET=disposable` + exact DB/container sentinels + `current_database()` probe; deterministic `E2E_PRODUCT_ID|SKU` with stock≥MOQ; exact order assertions.
+- Blog: wholesale cover Image+fallback; retail Blog nav; B2C tokens + mojibake repair; atomic analytics UPSERT + rate limit + UV header; media DELETE UI + 409 usages; narrowed next image origins.
+- RMA: TypeORM migration `20260810-001`; transactional approve with pessimistic lock + processingMarker; EXCHANGE refuses silent complete.
+- Reports: canonical customer channel helper; topProducts prev-period batched (no N+1).
+- Pricing: `wholesaleCompareAtPrice` + `retailCompareAtPrice` migration/entity/DTO/service/admin/shared-types; final prices remain transaction amounts.
+- Torob/URL: `public-product-path.ts` invariant; PDP+sitemap+feed use resolvable slug; RETAIL_ORIGIN URL-normalized to www HTTPS.
+
+### Gates (exact exits)
+| Gate | Exit |
+|---|---:|
+| `bash -n scripts/e2e-purchase-test.sh` | **0** |
+| `bash -n scripts/restore-drill-disposable.sh` | **0** |
+| `scripts/_negative-e2e-guards.sh` (argv/bypass/prod/sql) | **0** |
+| `npm run lint` | **0** |
+| `npm run test` | **0** |
+| `npm run type-check -w @taranom/web` | **0** |
+| `cd apps/api && npx tsc --noEmit` | **0** |
+| `npm run build` | **0** (~4m37s) |
+| `git diff --check` | **0** |
+| secret_scan (`git grep` pattern) | ran; hits are env lookups / E2E var names — no hardcoded secrets added |
+
+### NOT RUN / OWNER ACTION (honest)
+- Sanitized staging wholesale E2E with real fixture: **NOT RUN** (no disposable staging env in this session)
+- Retail OTP→PDP→cart→checkout→ONLINE sandbox: **NOT MET / NOT RUN**
+- Disposable restore drill re-run + rollback rehearsal: **NOT RUN** (OWNER ACTION / staging infra)
+- Blog Playwright + parallel analytics integration: **NOT RUN**
+- RMA migration apply on production/staging DB: **NOT RUN** (no prod mutation; OWNER deploy migrate)
+- Authenticated live reproduce `/v1/rma` & `/v1/dashboard/reports` against production: **NOT RUN** (unauthorized)
+- Torob full-feed crawl contract + Torob panel refresh: **OWNER ACTION**
+- Readiness score change: **not changed** (still **67/100**)
+
+### Acceptance snapshot
+- Code remediation for Reviewer FAIL security/E2E + expanded blog/RMA/reports/pricing/Torob: largely implemented in tree
+- Durable staging/prod evidence criteria: still open → cannot claim Done
+
+### Exact next action
+1. Fresh Independent Reviewer + Security Review on final diff (requested)
+2. Owner: apply migrations on non-prod, run staging E2E + restore drill, Torob panel refresh
+3. Keep claims until reviews PASS and remaining MET evidence exists; then commit
+
+## 2026-08-10T10:24:22Z — TASK-20260810-006 claimed → in_progress
+
+- Time (UTC): 2026-08-10T10:24:22Z
+- Task / owner / role: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006 / orchestrator, architect, implementer
+- Branch / worktree / commit: `ai/TASK-20260810-006-readiness-remediation` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002` / base `a800b03`
+- Objective: Remediate Independent Reviewer FAIL + earn durable readiness evidence; complete blog/RMA/reports/pricing/Torob scope per `cursor_execution_directive`.
+- Verified context:
+  - Authoritative worktree matches task `worktree` path.
+  - Branch created from `ai/TASK-20260809-005-readiness-tail` @ `a800b03` (task branch was missing; now exists).
+  - Owner `cursor:orchestrator-TASK-20260810-006` matches this session.
+  - No other active task claims in registry (only TASK-006).
+  - Site B2B checkout is a dirty mirror of an older task — **do not implement there**.
+- Status transition: `planned` → `claimed` → `in_progress` (same timestamp); `claimed_at` / `heartbeat_at` set.
+- File claims: registered exact paths for governance, docs, E2E scripts, blog, RMA/reports, pricing, Torob (see `active.yaml`). Will expand before any unlisted edit (migrations, tests, admin forms).
+- Constraints: no production mutation, no deploy, no `DB_SYNC`/`synchronize`, readiness stays **67/100** until durable evidence.
+- Exact next action: read-only reproduce E2E injection/SQL, wholesale blog covers, analytics, RMA/reports, compare-at pricing, Torob canonical inconsistency; then implement smallest coherent fixes.
+
+## 2026-08-10 — Independent Reviewer FAIL; Cursor remediation task queued
+
+- Task: `TASK-20260810-006`; owner on claim: `cursor:orchestrator-TASK-20260810-006`.
+- Verdict: **FAIL**. Do not treat TASK-005 ship/release as final project completion.
+- Governance evidence: readiness still marks retail, wholesale current-close, and backup/deploy/rollback as `NOT MET`, while ship records say completed.
+- High security: Python source injection via interpolated URL/slug; DB mutation is not positively bound to an immutable disposable environment.
+- Medium: custom-host bypass; nondeterministic/below-MOQ fallback; no exact new-order assertion; contradictory task/readiness documents.
+- Cursor instruction: claim exact files, satisfy every criterion in `active.yaml`, run non-production evidence gates, then request fresh independent Reviewer and Security reviews.
+- Readiness stays **GO WITH CONDITIONS — 67/100** until durable evidence justifies a rubric change; do not edit the score merely to reach 100.
+- Production deploy, production DB mutation, secrets changes, and destructive operations are not authorized.
+- Scope expanded by owner request: finish and repair the August blog implementation; wholesale blog images; retail blog navigation/brand; blog analytics and safe media deletion; admin RMA 500; admin reports API failure; dual-channel compare-at/final pricing; and Torob crawlability/canonical consistency.
+- Read-only audit evidence: wholesale blog does not render cover images; analytics increments are non-atomic/uninitialized and UI masks errors as zero; media DELETE exists without safe UI/reference handling; RMA entity lacks a confirmed production migration and approval is replayable/non-transactional; reports have schema/classification/query risks; compare-at pricing is incomplete; current Torob sample has no loop but feed canonical can point to a noindex soft-404.
+- The complete English execution directive, acceptance criteria, negative/security tests, and closure rules are authoritative in `active.yaml` under `cursor_execution_directive`.
+
 ## 2026-08-10T09:40:00Z — TASK-20260809-005 ship: commit + merge + deploy
 
 - Time (UTC): 2026-08-10T09:40:00Z

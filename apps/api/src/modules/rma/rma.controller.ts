@@ -52,7 +52,7 @@ export class RmaController {
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
   @ApiOperation({ summary: 'تغییر وضعیت RMA' })
-  updateStatus(@Param('id') id: string, @Body() body: { status: string; adminNote?: string }) {
-    return this.rma.updateStatus(id, body.status, body.adminNote);
+  updateStatus(@Param('id') id: string, @Body() body: { status: string; adminNote?: string }, @Request() req: Express.Request & { user: JwtUser }) {
+    return this.rma.updateStatus(id, body.status, body.adminNote, req.user?.sub);
   }
 }

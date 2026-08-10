@@ -26,10 +26,10 @@ export default async function RetailBlogPage() {
   const [featured, ...rest] = posts;
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg, #faf8f5)]">
-      <section className="border-b border-black/5 bg-gradient-to-bl from-[#2c1810] via-[#4a2c1a] to-[#6b3f24] py-14 text-white">
+    <div className="min-h-screen bg-[var(--color-bg, #F6F1E8)]">
+      <section className="border-b border-black/5 bg-gradient-to-bl from-[#0F2F28] via-[#1B5C4A] to-[#1B5C4A] py-14 text-white">
         <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-          <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-amber-200/80">دانش خرید</p>
+          <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-[#C9A84C]">دانش خرید</p>
           <h1 className="mb-3 text-3xl font-extrabold tracking-tight sm:text-4xl">وبلاگ ترنم</h1>
           <p className="mx-auto max-w-xl text-sm text-white/70 sm:text-base">
             راهنمای انتخاب مانتو، پارچه، سایز و استایل برای خرید مطمئن
@@ -44,7 +44,7 @@ export default async function RetailBlogPage() {
               key={cat}
               className={`rounded-full px-3.5 py-1.5 text-xs font-medium ${
                 cat === 'همه'
-                  ? 'bg-[#4a2c1a] text-white'
+                  ? 'bg-[#1B5C4A] text-white'
                   : 'border border-black/10 bg-white text-stone-600'
               }`}
             >
@@ -75,8 +75,8 @@ export default async function RetailBlogPage() {
                   priority
                 />
               ) : (
-                <div className="flex h-full min-h-[200px] items-center justify-center bg-gradient-to-br from-[#4a2c1a] to-[#6b3f24] p-10 text-white">
-                  <Tag className="h-10 w-10 text-amber-200/80" />
+                <div className="flex h-full min-h-[200px] items-center justify-center bg-gradient-to-br from-[#1B5C4A] to-[#1B5C4A] p-10 text-white">
+                  <Tag className="h-10 w-10 text-[#C9A84C]" />
                 </div>
               )}
             </div>
@@ -135,11 +135,11 @@ export default async function RetailBlogPage() {
                 >
                   {post.category}
                 </span>
-                <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-stone-900 group-hover:text-[#4a2c1a]">
+                <h3 className="mb-2 line-clamp-2 text-sm font-bold leading-snug text-stone-900 group-hover:text-[#1B5C4A]">
                   {post.title}
                 </h3>
                 <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-stone-500">{post.excerpt}</p>
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-[#4a2c1a]">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-[#1B5C4A]">
                   ادامه مطلب
                   <ArrowLeft className="h-3 w-3" />
                 </span>

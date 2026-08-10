@@ -54,8 +54,8 @@ export default async function RetailAuthorPage({ params }: Props) {
   const { author, posts } = data;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
-      <section className="bg-gradient-to-bl from-[#2c1810] via-[#4a2c1a] to-[#6b3f24] py-12 text-white">
+    <div className="min-h-screen bg-[#F6F1E8]">
+      <section className="bg-gradient-to-bl from-[#0F2F28] via-[#1B5C4A] to-[#1B5C4A] py-12 text-white">
         <div className="mx-auto max-w-3xl px-4 text-center">
           {author.avatarUrl && (
             <div className="relative mx-auto mb-4 h-24 w-24 overflow-hidden rounded-full">
@@ -63,7 +63,7 @@ export default async function RetailAuthorPage({ params }: Props) {
             </div>
           )}
           <h1 className="mb-2 text-3xl font-extrabold">{author.displayName}</h1>
-          {author.jobTitle && <p className="mb-3 text-sm text-amber-200/80">{author.jobTitle}</p>}
+          {author.jobTitle && <p className="mb-3 text-sm text-[#C9A84C]">{author.jobTitle}</p>}
           <p className="text-sm text-white/75">{author.bio}</p>
         </div>
       </section>

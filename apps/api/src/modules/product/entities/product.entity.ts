@@ -67,6 +67,14 @@ export class ProductEntity {
   @Column({ type: 'bigint', nullable: true })
   retailPrice: number;
 
+  /** Before-discount (compare-at) wholesale price in IRR; nullable. Must be > wholesalePrice when set. */
+  @Column({ type: 'bigint', nullable: true })
+  wholesaleCompareAtPrice: number | null;
+
+  /** Before-discount (compare-at) retail price in IRR; nullable. Must be > retailPrice when set. */
+  @Column({ type: 'bigint', nullable: true })
+  retailCompareAtPrice: number | null;
+
   @Column({ default: 5 })
   minOrderQty: number;
 

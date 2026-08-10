@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, Loader2, Link2, Unlink } from 'lucide-react';
+import { ImagePlus, Loader2, Link2, Unlink, Trash2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import type { AdminChannel } from './AdminChannelTabs';
 
@@ -23,8 +23,12 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [orphans, setOrphans] = useState<Orphan[]>([]);
   const [linkQ, setLinkQ] = useState('');
-  const [linkHits, setLinkHits] = useState<Array<{ title: string; slug: string; url: string; suggestedAnchor: string }>>([]);
+  const [linkHits, setLinkHits] = useState<
+    Array<{ title: string; slug: string; url: string; suggestedAnchor: string }>
+  >([]);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [altText, setAltText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -33,10 +37,16 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
       const res = await apiClient.get<{ items?: MediaItem[] } | MediaItem[]>(
         `/blog/admin/media?channel=${channel}&limit=24`,
       );
-      const items = Array.isArray(res) ? res : Array.isArray((res as any)?.items) ? (res as any).items : [];
+      const items = Array.isArray(res)
+        ? res
+        : Array.isArray((res as { items?: MediaItem[] })?.items)
+          ? (res as { items: MediaItem[] }).items
+          : [];
       setMedia(items);
-    } catch {
+      setMediaError(null);
+    } catch (err: unknown) {
       setMedia([]);
+      setMediaError(err instanceof Error ? err.message : 'بارگذاری رسانه ناموفق بود');
     }
   }, [channel]);
 
@@ -50,8 +60,8 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
   }, [channel]);
 
   useEffect(() => {
-    loadMedia();
-    loadOrphans();
+    void loadMedia();
+    void loadOrphans();
   }, [loadMedia, loadOrphans]);
 
   const uploadMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,6 +90,25 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
     }
   };
 
+  const deleteMedia = async (item: MediaItem) => {
+    const ok = window.confirm(
+      `حذف رسانه «${item.altText || item.originalFileName}»؟ اگر ارجاع داشته باشد حذف رد می‌شود.`,
+    );
+    if (!ok) return;
+    setDeletingId(item.id);
+    setMediaError(null);
+    try {
+      await apiClient.delete(`/blog/admin/media/${item.id}`);
+      await loadMedia();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'حذف ناموفق';
+      setMediaError(msg);
+      alert(msg);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const searchLinks = async (q: string) => {
     setLinkQ(q);
     if (q.trim().length < 2) {
@@ -87,10 +116,9 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
       return;
     }
     try {
-      const hits = await apiClient.post<Array<{ title: string; slug: string; url: string; suggestedAnchor: string }>>(
-        '/blog/admin/internal-links/suggest',
-        { channel, q, limit: 8 },
-      );
+      const hits = await apiClient.post<
+        Array<{ title: string; slug: string; url: string; suggestedAnchor: string }>
+      >('/blog/admin/internal-links/suggest', { channel, q, limit: 8 });
       setLinkHits(Array.isArray(hits) ? hits : []);
     } catch {
       setLinkHits([]);
@@ -104,6 +132,11 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
           <ImagePlus className="h-4 w-4" />
           کتابخانه رسانه
         </h3>
+        {mediaError ? (
+          <p className="mb-2 rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-700" role="alert">
+            {mediaError}
+          </p>
+        ) : null}
         <input
           value={altText}
           onChange={(e) => setAltText(e.target.value)}
@@ -122,19 +155,33 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
         </button>
         <div className="grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
           {media.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              title={m.altText || m.originalFileName}
-              className="aspect-square overflow-hidden rounded-lg border border-gray-100"
-              onClick={() => {
-                void navigator.clipboard.writeText(m.publicUrl);
-                alert('آدرس تصویر کپی شد');
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={m.publicUrl} alt={m.altText || ''} className="h-full w-full object-cover" />
-            </button>
+            <div key={m.id} className="relative aspect-square overflow-hidden rounded-lg border border-gray-100">
+              <button
+                type="button"
+                title={m.altText || m.originalFileName}
+                className="h-full w-full"
+                onClick={() => {
+                  void navigator.clipboard.writeText(m.publicUrl);
+                  alert('آدرس تصویر کپی شد');
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={m.publicUrl} alt={m.altText || ''} className="h-full w-full object-cover" />
+              </button>
+              <button
+                type="button"
+                className="absolute left-1 top-1 inline-flex items-center justify-center rounded bg-black/70 p-1 text-white hover:bg-red-700"
+                aria-label={`حذف ${m.altText || m.originalFileName}`}
+                disabled={deletingId === m.id}
+                onClick={() => void deleteMedia(m)}
+              >
+                {deletingId === m.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                )}
+              </button>
+            </div>
           ))}
         </div>
       </div>
@@ -146,7 +193,7 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
         </h3>
         <input
           value={linkQ}
-          onChange={(e) => searchLinks(e.target.value)}
+          onChange={(e) => void searchLinks(e.target.value)}
           placeholder="جست‌وجوی مطلب برای لینک…"
           className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
         />
@@ -179,9 +226,9 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
           {orphans.length === 0 ? (
             <p className="text-xs text-gray-400">مقاله یتیمی یافت نشد.</p>
           ) : (
-            orphans.slice(0, 20).map((o) => (
-              <div key={o.id} className="rounded-lg border border-amber-50 bg-amber-50/40 px-2 py-1.5 text-xs">
-                <p className="font-medium text-gray-800">{o.title}</p>
+            orphans.map((o) => (
+              <div key={o.id} className="rounded-lg border border-gray-50 px-2 py-1.5 text-xs">
+                <p className="font-medium">{o.title}</p>
                 <p className="font-mono text-[10px] text-gray-400" dir="ltr">
                   /blog/{o.slug}
                 </p>

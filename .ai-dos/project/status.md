@@ -1,10 +1,12 @@
 # Project Status
 
-- Last verified: 2026-08-10T09:40:00Z
-- Active tasks: none (TASK-20260809-005 remediation shipped; claims released)
-- Readiness: **GO WITH CONDITIONS** **67/100** (authoritative)
-- Prior **81/100**: superseded / invalidated by Independent Reviewer FAIL then remediated
-- C4 **Satisfied**; C1/C3 **accepted-with-expiry → 2026-09-09**; C2 Satisfied; C5 Mitigated
-- Retail OTP→PDP/cart→checkout→ONLINE: **NOT MET**
+- Last verified: 2026-08-10T12:32:54Z
+- Active task: **TASK-20260810-006** (`in_progress`) — owner `cursor:orchestrator-TASK-20260810-006`
+- Authoritative worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Branch: `ai/TASK-20260810-006-readiness-remediation`
+- Readiness: **GO WITH CONDITIONS** **67/100** (unchanged; no score inflation without staging evidence)
+- Implementation checkpoint shipped in worktree (E2E hardening, blog, RMA migration, reports, compare-at prices, publicProductPath)
+- Local gates: lint/test/typecheck/build/`bash -n`/negative E2E guards = **0**
+- Still open: staging wholesale E2E, retail OTP journey, restore drill re-run, live RMA/reports migrate+verify, Torob full crawl + panel OWNER ACTION, independent Reviewer+Security
 - Website-builder: **blocked**
-- Residual: staging sanitized E2E re-run; fail-closed restore re-verify; SEC-007 helper quarantine; off-box backup; formal SEO/a11y
+- Do **not** mark Done / release claims until acceptance + reviews complete

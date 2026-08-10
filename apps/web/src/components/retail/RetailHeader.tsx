@@ -16,6 +16,7 @@ const STATIC_NAV = [
   { href: '/', label: 'صفحه اصلی' },
   { href: '/products', label: 'جدیدترین‌ها' },
   { href: '/collections', label: 'کلکسیون' },
+  { href: '/blog', label: 'وبلاگ' },
   { href: '/about', label: 'درباره ما' },
   { href: '/contact', label: 'تماس با ما' },
 ];
@@ -219,16 +220,24 @@ export function RetailHeader() {
               </button>
             </div>
             <nav className="flex flex-col gap-4">
-              {STATIC_NAV.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className="text-base font-semibold"
-                  onClick={() => setOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {STATIC_NAV.map((item) => {
+                const base = item.href.split('?')[0]!;
+                const active = pathname === base || (base !== '/' && pathname.startsWith(base));
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={cn(
+                      'text-base font-semibold',
+                      active ? 'text-[var(--retail-primary)]' : 'text-[var(--retail-ink)]',
+                    )}
+                    aria-current={active ? 'page' : undefined}
+                    onClick={() => setOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
               <p className="pt-2 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
               {categories.map((c) => (
                 <Link

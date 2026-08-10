@@ -1,2 +1,204 @@
 ﻿schema_version: 1
-tasks: []
+tasks:
+  - id: "TASK-20260810-006"
+    title: "Remediate independent review findings and earn readiness evidence"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:orchestrator-TASK-20260810-006"
+    roles:
+      architect: "cursor:orchestrator-TASK-20260810-006"
+      implementer: "cursor:orchestrator-TASK-20260810-006"
+      reviewer: "required-independent-before-done"
+      security: "required-independent-before-done"
+    branch: "ai/TASK-20260810-006-readiness-remediation"
+    worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002"
+    claimed_at: "2026-08-10T10:24:22Z"
+    heartbeat_at: "2026-08-10T12:32:54Z"
+    depends_on: []
+    file_claims:
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+      - "docs/PLATFORM-READINESS-REPORT.md"
+      - "docs/implementation-progress.md"
+      - "docs/test-and-acceptance-evidence.md"
+      - "docs/WORKLOG.md"
+      - "docs/BLOG_TEST_REPORT.md"
+      - "scripts/e2e-purchase-test.sh"
+      - "scripts/restore-drill-disposable.sh"
+      - "scripts/_negative-e2e-guards.sh"
+      - "apps/web/src/app/(wholesale)/blog/page.tsx"
+      - "apps/web/src/app/(wholesale)/blog/[slug]/page.tsx"
+      - "apps/web/src/components/retail/RetailHeader.tsx"
+      - "apps/web/src/app/retail/blog/page.tsx"
+      - "apps/web/src/app/retail/blog/[slug]/page.tsx"
+      - "apps/web/src/app/retail/blog/category/[slug]/page.tsx"
+      - "apps/web/src/app/retail/blog/tag/[slug]/page.tsx"
+      - "apps/web/src/app/retail/blog/search/page.tsx"
+      - "apps/web/src/app/retail/blog/author/[slug]/page.tsx"
+      - "apps/api/src/modules/blog/blog-extras.service.ts"
+      - "apps/api/src/modules/blog/blog.controller.ts"
+      - "apps/web/src/components/admin/AdminBlogTools.tsx"
+      - "apps/web/src/components/admin/AdminBlogAnalytics.tsx"
+      - "apps/web/src/components/blog/BlogAnalyticsTracker.tsx"
+      - "apps/web/next.config.ts"
+      - "apps/api/src/modules/rma/rma.service.ts"
+      - "apps/api/src/modules/rma/rma.controller.ts"
+      - "apps/api/src/modules/rma/rma.module.ts"
+      - "apps/api/src/modules/rma/entities/return-request.entity.ts"
+      - "apps/api/src/database/migrations/20260810-001-create-return-requests.ts"
+      - "apps/api/src/database/migrations/20260810-002-product-compare-at-prices.ts"
+      - "apps/api/src/modules/dashboard/dashboard.service.ts"
+      - "apps/api/src/modules/product/entities/product.entity.ts"
+      - "apps/api/src/modules/product/dto/create-product.dto.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "packages/shared-types/src/models.ts"
+      - "apps/api/src/modules/feeds/feeds.controller.ts"
+      - "apps/web/src/lib/public-product-path.ts"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - "apps/web/src/app/sitemap.ts"
+    acceptance_criteria:
+      - "Re-open governance coherently: active task, project status, readiness report, progress, and handoff agree; do not claim Done while any stated criterion is NOT MET"
+      - "Remove Python command-injection paths from e2e-purchase-test.sh by passing API_URL, WEB_URL, and API-derived slug through argv/stdin rather than interpolating into python -c source"
+      - "Remove general-purpose SQL password/status mutation from the E2E harness, or bind it to an immutable disposable environment using a positive non-production sentinel; labels, substring host checks, DB-name denylists, and override escape hatches are insufficient"
+      - "Use an exact positive allowlist for API and web targets; remove E2E_ALLOW_CUSTOM_HOST mutation bypass and validate resolved environment identity before creating an order"
+      - "Use a deterministic seeded wholesale fixture with stock >= MOQ; remove below-MOQ fallback and fail clearly when unavailable"
+      - "Assert the exact newly-created order number, status, payment method, items, quantity, and totals"
+      - "Run sanitized non-production wholesale E2E and retail OTP-to-PDP/cart/checkout/ONLINE sandbox E2E with durable redacted evidence"
+      - "Re-run the fail-closed disposable restore drill successfully and perform/document rollback rehearsal; no production mutation"
+      - "Resolve readiness/progress/status/handoff contradictions and trailing whitespace; change readiness only from durable rubric evidence"
+      - "All lint, tests, web/API typechecks, build, diff-check, shell syntax, and security gates pass with exact commands and exit codes"
+      - "Fresh independent Reviewer and Security reviews PASS after the final diff; only then mark Done, update status/handoff, commit, and release claims"
+      - "Complete an evidence-backed traceability audit of the August blog implementation against seo/weblog.md and BLOG_* documentation; implement every in-scope unfinished or broken behavior and label any intentionally deferred item explicitly"
+      - "Wholesale blog listing and article detail render channel-correct cover images with accessible alt text, responsive sizing, safe media origins, and a tested fallback"
+      - "Retail navigation exposes an active Blog item on desktop and mobile; every retail blog surface follows the locked forest/gold/cream B2C design tokens and contains no mojibake"
+      - "Blog analytics uses atomic race-safe counters, distinguishes real empty state from API failure, produces non-zero channel-correct results after visits, validates events/articles, and resists public metric abuse"
+      - "Blog media UI supports safe accessible deletion; referenced media returns 409 with usages, forbidden users receive 403, and storage/metadata remain consistent on partial failure"
+      - "Admin RMA endpoint no longer returns 500; production schema is migrated without DB synchronize, and approval/exchange side effects are transactional, idempotent, replay-safe, audited, and concurrency-tested"
+      - "Admin reports API returns correct results for all supported periods and both channels, including empty/legacy data, with canonical customer-channel classification and bounded query count"
+      - "Product create/edit supports nullable before-discount and required after-discount prices independently for wholesale and retail; persistence, validation, display, carts, orders, and feeds use one documented invariant"
+      - "Torob feed, retail sitemap, PDP resolution, and canonical tags share one valid public product URL invariant; every feed product is 200, indexable, self-canonical, and zero-redirect on the final www HTTPS URL"
+    validation:
+      - "bash -n scripts/e2e-purchase-test.sh scripts/restore-drill-disposable.sh"
+      - "negative guards: production host/alias/IP, production DB, missing sentinel, and override attempts fail before mutation"
+      - "adversarial slug/URL tests prove no shell or Python code execution"
+      - "sanitized staging wholesale E2E with exact-order assertions"
+      - "retail OTP -> PDP -> cart -> checkout -> ONLINE sandbox E2E"
+      - "disposable backup restore drill and rollback rehearsal"
+      - "npm run lint"
+      - "npm run test"
+      - "npm run type-check -w @taranom/web"
+      - "cd apps/api && npx tsc --noEmit"
+      - "npm run build"
+      - "git diff --check"
+      - "blog API integration: first event, invalid event/UUID/article, 50 parallel views exactly counted, both channels isolated, and public rate limit"
+      - "blog Playwright: channel post+cover on .com/.ir, nav desktop/mobile, branded responsive screenshots, analytics error/empty distinction, and media upload/delete/reference protection"
+      - "RMA migration clean up/down/up plus authenticated list and approval concurrency/replay/rollback tests"
+      - "reports integration for week/month/quarter/year x WHOLESALE/RETAIL, empty DB, legacy/null channel values, query-count bound, and EXPLAIN evidence"
+      - "product price API roundtrip and Playwright create/edit/card/PDP tests for both channels, null clearing, invalid price relation, currency conversion, and bigint-safe values"
+      - "Torob contract over every feed link: GET/HEAD 200, redirects=0, no noindex, self-canonical, sitemap/feed path equality, and old slug at most one 308 to a 200 target"
+    notes: |
+      Independent Reviewer verdict: FAIL. Do not inflate 67/100 by documentation edits.
+      Current readiness remains GO WITH CONDITIONS 67/100.
+      Cursor must claim exact files before editing and must not deploy or mutate production.
+      Full rubric deficits are functional -8, security -6, testability -6,
+      architecture -3, operations -4, and SEO/a11y/performance -6.
+      A score below 100 is correct unless durable evidence supports full credit.
+      Claimed 2026-08-10T10:24:22Z by cursor:orchestrator-TASK-20260810-006.
+      Branch created from ai/TASK-20260809-005-readiness-tail @ a800b03.
+      Expand file_claims before any unlisted edit (migrations, tests, DTOs, admin forms).
+    additional_scope:
+      - "Blog completion and regressions"
+      - "Admin RMA and reporting failures"
+      - "Dual-channel before/after discount pricing"
+      - "Torob crawlability, redirects, canonicals, sitemap, and feed"
+    cursor_execution_directive: |
+      Work as the implementer for TASK-20260810-006. Begin with read-only reproduction and
+      exact file claims; expand claims before every edit. Do not patch symptoms, enable
+      TypeORM synchronize, mutate production data, deploy, or change the readiness score
+      without durable evidence. Preserve public URLs and existing transaction prices.
+
+      BLOG — CONTINUE AND COMPLETE THE AUGUST IMPLEMENTATION
+      1. Build a requirement-to-evidence matrix for `seo/weblog.md`, the August blog commits
+         (`51a4ad7`, `c8028d6`, `fc0ec7e`), and all `docs/BLOG_*` documents. The current
+         BLOG_TEST_REPORT contains planned/manual expectations, not sufficient executed evidence.
+      2. Wholesale cover images: fix the listing and detail implementations under
+         `apps/web/src/app/(wholesale)/blog/` so `coverImage` is actually rendered, matching
+         the retail conditional Image/fallback pattern while retaining wholesale tokens.
+         Normalize public media URLs at the storage/API boundary; allow only required image
+         origins in Next config, never an arbitrary wildcard.
+      3. Retail navigation/design: add `/blog` / `وبلاگ` to the shared RetailHeader navigation
+         and active states for desktop/mobile. Replace the ad-hoc brown blog palette across
+         list/detail/category/tag/search/author pages with the locked tokens from
+         `design-system/b2c/MASTER.md` (#1B5C4A, #0F2F28, #C9A84C, #F6F1E8).
+         Repair all user-visible mojibake and add a source scan against common corrupt sequences.
+      4. Analytics root fix: replace read-modify-save counters in BlogExtrasService with one
+         atomic PostgreSQL UPSERT/increment per allowlisted event. Validate UUID/event and a
+         published article, initialize every counter, handle concurrent first events, define
+         honest unique-view semantics, and rate-limit/abuse-protect the public endpoint.
+         The tracker may fail silently for visitors but must emit observable diagnostics;
+         admin must show load error+retry separately from a legitimate zero/empty dataset.
+         Do not claim that a GSC verification token is GSC analytics integration.
+      5. Media deletion: wire the existing DELETE API into AdminBlogTools with confirmation,
+         loading/error states and accessible controls. Before physical deletion, detect every
+         cover/OG/Twitter/body reference and return 409 with usages unless a deliberate safe
+         replacement workflow is used. A storage deletion failure must not delete DB metadata;
+         missing-object retry must be idempotent. Enforce RBAC and audit destructive actions.
+
+      ADMIN RMA AND REPORTS
+      6. Reproduce `/v1/rma` and `/v1/dashboard/reports` with an authenticated admin request;
+         capture status, correlation ID, safe API log, executed migrations, and information_schema
+         evidence before changing code. Never guess the production error or enable DB_SYNC.
+      7. RMA: if confirmed missing, add an idempotent timestamped TypeORM migration for the full
+         `return_requests` schema, deliberate FKs/delete rules, and indexes on status+createdAt,
+         customerId and orderItemId. Ensure compiled migration JS is shipped. Refactor approval
+         into one transaction with row lock/CAS, strict state machine, one-time processing marker,
+         actor/audit record and affected-row validation. Prevent concurrent/replayed double wallet
+         credit and double stock restore. Implement exchange as an atomic source restore + target
+         decrement with availability validation, or expose it as a separate incomplete workflow;
+         never silently mark it complete.
+      8. Reports: reproduce and migrate confirmed missing columns/indexes through TypeORM. Define
+         one canonical wholesale/retail customer classification, backfill ambiguous/null legacy
+         records, and reuse it in registration, admin filters, and reports. Replace sequential
+         period loops and top-product N+1 queries with grouped/conditional aggregates; add indexes
+         only after query-plan evidence. Return safe actionable admin errors with HTTP status and
+         request ID, never SQL or secrets.
+
+      PRODUCT PRICING
+      9. Treat `wholesalePrice` and `retailPrice` as final/after-discount transaction prices.
+         Add nullable `wholesaleCompareAtPrice` and properly promote the existing incomplete
+         `retailCompareAtPrice` through TypeORM migration, entity, DTO validation, service
+         create/update, shared types, admin create/edit, API responses and both storefronts.
+         Label fields explicitly in Persian as before/after discount per channel. Convert blank
+         to null; accept finite non-negative integer IRR values; when compare-at is present it
+         must be greater than final. Compute strike-through and percentage from this invariant.
+         Cards/PDP show both prices consistently; carts, orders, invoices and Torob feeds use
+         final price only. Existing products with null compare-at remain backward compatible.
+         Verify Rial/Toman boundaries and avoid unsafe JavaScript Number precision.
+
+      TOROB / RETAIL PRODUCT URLS
+      10. The reported live redirect loop was not reproduced on the current sample, so do not
+          invent a redirect fix. The confirmed defect is feed/canonical inconsistency: a feed URL
+          using `product.slug` can be 200 while `seoMeta.retailCanonical` points to a soft-404,
+          noindex page. Create one `publicProductPath` invariant used by retail PDP canonical,
+          sitemap and Torob feed. Prefer the actual resolvable `product.slug`; accept a custom
+          canonical only when same-origin, `/products/<slug>`, and proven to resolve the same
+          product as 200/indexable/self-canonical. Otherwise fall back and emit structured warning.
+          If a prettier slug is required, transactionally migrate the product slug with uniqueness
+          validation and exactly one old-slug 308 to the final 200 target.
+      11. Normalize RETAIL_ORIGIN with a URL parser to HTTPS `www.poshaktaranom.ir` and remove
+          accidental path/query components. Torob feed must publish direct final URLs only.
+          Test all feed items, not a sample, with a TorobBot user agent: zero redirects, 200,
+          indexable and self-canonical. Test HTTP/www/apex/trailing-slash host matrix separately.
+          Record an Owner Action to refresh the Torob panel from the direct feed endpoint and
+          replace stale/apex product URLs; Cursor must not claim this external action completed
+          without owner evidence.
+
+      DOCUMENTATION AND CLOSURE
+      12. Update BLOG_TEST_REPORT, WORKLOG, readiness/progress/status and handoff with exact
+          commands, exits, fixtures, screenshots, correlation IDs and redacted evidence. Keep
+          unresolved items NOT MET. Run a fresh independent Security Review for analytics abuse,
+          media deletion, RMA financial integrity and migrations, then a fresh independent Reviewer.
+          Do not mark Done, release claims, deploy, or report 100/100 before both reviews PASS and
+          every acceptance criterion has durable evidence.

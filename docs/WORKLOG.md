@@ -2,6 +2,21 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-10 — TASK-20260810-006: remediation + ship to production (owner-authorized)
+
+### خلاصه
+- سخت‌سازی `e2e-purchase-test.sh` (argv-safe Python، allowlist دقیق، sentinel غیرقابل‌override، fixture MOQ، assert دقیق سفارش).
+- بلاگ: کاور عمده، ناوبری/توکن ریتیل، آنالیتیکس اتمی، حذف رسانه با 409، محدودسازی image origins.
+- RMA: migration TypeORM + approve تراکنشی + جلوگیری از double-credit؛ EXCHANGE silent نیست.
+- Reports: کانال مشتری canonical + حذف N+1 topProducts؛ compare-at دوکاناله؛ `publicProductPath` + Torob www.
+- Readiness: همچنان **۶۷/۱۰۰** (بدون inflate). Reviewer/Security اولیه FAIL بودند؛ Highهای بحرانی قبل از ship اصلاح شد.
+- Owner صریحاً اعمال روی سایت را درخواست کرد → commit/PR/merge/deploy.
+
+### اعتبارسنجی محلی
+- lint/test/tsc/build/`bash -n`/negative E2E guards → **0**
+- Staging E2E / retail OTP / restore drill / Torob full crawl → **NOT RUN** (OWNER follow-up)
+
+---
 ## 2026-08-10 — TASK-20260809-005: Independent Reviewer FAIL remediation
 
 ### خلاصه

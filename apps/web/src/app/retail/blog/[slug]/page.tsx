@@ -46,7 +46,7 @@ async function resolveOrRedirect(slug: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await fetchPost(decodeURIComponent(slug), 'RETAIL');
-  if (!post) return { title: 'Ù…Ø·Ù„Ø¨ ÛŒØ§ÙØª Ù†Ø´Ø¯', robots: { index: false } };
+  if (!post) return { title: 'مطلب یافت نشد', robots: { index: false } };
   const title = post.seoTitle || post.title;
   const description = post.seoDescription || post.excerpt;
   const url = `${RETAIL_ORIGIN}/blog/${post.slug}`;
@@ -125,7 +125,7 @@ export default async function RetailBlogPostPage({ params }: Props) {
       : null;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
+    <div className="min-h-screen bg-[#F6F1E8]">
       <BlogAnalyticsTracker articleId={String(post.id)} title={post.title} />
       {post.articleSchemaEnabled !== false && (
         <ArticleJsonLd
@@ -135,14 +135,14 @@ export default async function RetailBlogPostPage({ params }: Props) {
           image={post.coverImage || undefined}
           datePublished={post.publishedAt}
           dateModified={post.updatedAt}
-          authorName={post.authorName || 'Ù¾ÙˆØ´Ø§Ú© ØªØ±Ù†Ù…'}
+          authorName={post.authorName || 'پوشاک ترنم'}
         />
       )}
       {post.breadcrumbEnabled !== false && (
         <BreadcrumbJsonLd
           items={[
-            { name: 'Ø®Ø§Ù†Ù‡', url: `${RETAIL_ORIGIN}/` },
-            { name: 'ÙˆØ¨Ù„Ø§Ú¯', url: `${RETAIL_ORIGIN}/blog` },
+            { name: 'خانه', url: `${RETAIL_ORIGIN}/` },
+            { name: 'وبلاگ', url: `${RETAIL_ORIGIN}/blog` },
             { name: post.title, url },
           ]}
         />
@@ -150,11 +150,11 @@ export default async function RetailBlogPostPage({ params }: Props) {
       {post.faqSchemaEnabled && faqVisible.length > 0 && <FaqJsonLd items={faqVisible} />}
       <HowToJsonLd howTo={howToLd} />
 
-      <section className="bg-gradient-to-bl from-[#2c1810] via-[#4a2c1a] to-[#6b3f24] py-12 text-white">
+      <section className="bg-gradient-to-bl from-[#0F2F28] via-[#1B5C4A] to-[#1B5C4A] py-12 text-white">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <Link href="/blog" className="mb-5 inline-flex items-center gap-1.5 text-sm text-white/70 hover:text-white">
             <ArrowRight className="h-4 w-4" />
-            Ø¨Ø§Ø²Ú¯Ø´Øª Ø¨Ù‡ ÙˆØ¨Ù„Ø§Ú¯
+            بازگشت به وبلاگ
           </Link>
           <span className={`mb-4 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${categoryColor(post.category)}`}>
             <Tag className="h-3 w-3" />
@@ -190,7 +190,7 @@ export default async function RetailBlogPostPage({ params }: Props) {
         <BlogHowTo howTo={post.howToData} tone="retail" />
         {faqVisible.length > 0 && (
           <section className="mt-10 rounded-2xl border border-stone-200 bg-white p-6 sm:p-8">
-            <h2 className="mb-4 text-base font-bold text-stone-900">Ù¾Ø±Ø³Ø´â€ŒÙ‡Ø§ÛŒ Ù…ØªØ¯Ø§ÙˆÙ„</h2>
+            <h2 className="mb-4 text-base font-bold text-stone-900">پرسش‌های متداول</h2>
             <div className="space-y-4">
               {faqVisible.map((f, i) => (
                 <div key={f.id || i} className="border-b border-stone-100 pb-4 last:border-0">
@@ -208,7 +208,7 @@ export default async function RetailBlogPostPage({ params }: Props) {
         <BlogTagChips tags={post.tags} articleId={String(post.id)} tone="retail" />
         {related.length > 0 && (
           <div className="mt-10">
-            <h2 className="mb-4 text-base font-bold text-stone-900">Ù…Ø·Ø§Ù„Ø¨ Ù…Ø±ØªØ¨Ø·</h2>
+            <h2 className="mb-4 text-base font-bold text-stone-900">مطالب مرتبط</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               {related.map((r) => (
                 <Link key={r.slug} href={`/blog/${r.slug}`} className="rounded-xl border border-stone-200 bg-white p-4 transition hover:shadow-md">

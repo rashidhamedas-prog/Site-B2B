@@ -130,6 +130,10 @@ export interface Product {
   fabricFa?: string;
   wholesalePrice: number;
   retailPrice: number;
+  /** Before-discount (IRR); nullable. When set must be > wholesalePrice. */
+  wholesaleCompareAtPrice?: number | null;
+  /** Before-discount (IRR); nullable. When set must be > retailPrice. */
+  retailCompareAtPrice?: number | null;
   costPrice?: number;
   status: ProductStatus;
   isWashTreated: boolean;

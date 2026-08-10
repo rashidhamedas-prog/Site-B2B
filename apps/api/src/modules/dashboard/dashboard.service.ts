@@ -349,14 +349,27 @@ export class DashboardService {
     return qb.getCount();
   }
 
+  /** Canonical customer channel: RETAIL when businessType=RETAIL or type in (RETAIL,B2C); else WHOLESALE. */
+  private applyCustomerChannel(
+    qb: { andWhere: Function },
+    channel?: 'WHOLESALE' | 'RETAIL',
+  ) {
+    if (channel === 'RETAIL') {
+      qb.andWhere(
+        `(UPPER(COALESCE(c."businessType",'')) = 'RETAIL' OR UPPER(COALESCE(c.type,'')) IN ('RETAIL','B2C'))`,
+      );
+    } else if (channel === 'WHOLESALE') {
+      qb.andWhere(
+        `(UPPER(COALESCE(c."businessType",'')) <> 'RETAIL' AND UPPER(COALESCE(c.type,'')) NOT IN ('RETAIL','B2C'))`,
+      );
+    }
+    return qb;
+  }
+
   private async countNewCustomers(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
     const qb = this.customerRepo.createQueryBuilder('c')
       .where('c.createdAt >= :start AND c.createdAt <= :end', { start, end });
-    if (channel === 'RETAIL') {
-      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) = 'RETAIL' OR UPPER(COALESCE(c.type,'')) = 'RETAIL')`);
-    } else if (channel === 'WHOLESALE') {
-      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) <> 'RETAIL' AND UPPER(COALESCE(c.type,'')) <> 'RETAIL')`);
-    }
+    this.applyCustomerChannel(qb, channel);
     return qb.getCount();
   }
 
@@ -449,11 +462,7 @@ export class DashboardService {
     const qb = this.customerRepo.createQueryBuilder('c')
       .select("COALESCE(NULLIF(TRIM(c.segment), ''), 'C')", 'segment')
       .addSelect('COUNT(*)', 'count');
-    if (channel === 'RETAIL') {
-      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) = 'RETAIL' OR UPPER(COALESCE(c.type,'')) = 'RETAIL')`);
-    } else if (channel === 'WHOLESALE') {
-      qb.andWhere(`(UPPER(COALESCE(c.businessType,'')) <> 'RETAIL' AND UPPER(COALESCE(c.type,'')) <> 'RETAIL')`);
-    }
+    this.applyCustomerChannel(qb, channel);
     const rows = await qb
       .groupBy("COALESCE(NULLIF(TRIM(c.segment), ''), 'C')")
       .getRawMany();
@@ -542,32 +551,35 @@ export class DashboardService {
       .limit(10)
       .getRawMany();
 
-    const result = [];
-    for (let idx = 0; idx < rows.length; idx += 1) {
-      const r = rows[idx];
-      const prevQb = this.itemRepo.createQueryBuilder('i')
-        .innerJoin('i.order', 'o')
-        .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
-        .select('SUM(i.quantity)', 'sold')
-        .where('v.productId = :pid', { pid: r.productId })
-        .andWhere('o.createdAt >= :start AND o.createdAt <= :end', { start: prevStart, end: prevEnd })
-        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
-      this.applyOrderChannel(prevQb, channel);
-      const prevSoldRow = await prevQb.getRawOne();
+    if (rows.length === 0) return [];
+
+    const ids = rows.map((r) => r.productId as string);
+    const prevQb = this.itemRepo.createQueryBuilder('i')
+      .innerJoin('i.order', 'o')
+      .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
+      .select('v.productId', 'productId')
+      .addSelect('SUM(i.quantity)', 'sold')
+      .where('v.productId IN (:...ids)', { ids })
+      .andWhere('o.createdAt >= :start AND o.createdAt <= :end', { start: prevStart, end: prevEnd })
+      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
+      .groupBy('v.productId');
+    this.applyOrderChannel(prevQb, channel);
+    const prevRows = await prevQb.getRawMany();
+    const prevMap = new Map(prevRows.map((r) => [r.productId as string, Number(r.sold) || 0]));
+
+    return rows.map((r, idx) => {
       const sold = Number(r.sold) || 0;
-      const prevSold = Number(prevSoldRow?.sold) || 0;
-      const growth = this.pctChange(sold, prevSold);
-      result.push({
+      const prevSold = prevMap.get(r.productId as string) || 0;
+      return {
         rank: idx + 1,
         productId: r.productId as string,
         name: r.name as string,
         fabric: r.fabric as string,
         sold,
         revenue: Number(r.revenue) || 0,
-        growth,
-      });
-    }
-    return result;
+        growth: this.pctChange(sold, prevSold),
+      };
+    });
   }
 
   private async monthlyRevenueSeries(months: number) {

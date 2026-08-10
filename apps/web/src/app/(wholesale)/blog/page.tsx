@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Calendar, Clock, ArrowLeft, Tag } from 'lucide-react';
 import { fetchPosts, categoryColor, formatJalali, readTime } from '@/lib/blog';
 
@@ -53,11 +54,24 @@ export default async function BlogPage() {
 
         {featured && (
           <div className="mb-10 overflow-hidden border border-[color:var(--color-border)] bg-white lg:flex">
-            <div className="flex min-h-[200px] items-center justify-center bg-gradient-brand p-12 lg:w-2/5">
-              <div className="text-center text-white">
-                <Tag className="mx-auto mb-3 h-10 w-10 text-secondary" />
-                <p className="text-sm text-white/70">مقاله ویژه</p>
-              </div>
+            <div className="relative min-h-[200px] bg-surface-muted lg:w-2/5">
+              {featured.coverImage ? (
+                <Image
+                  src={featured.coverImage}
+                  alt={featured.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 40vw"
+                  priority
+                />
+              ) : (
+                <div className="flex h-full min-h-[200px] items-center justify-center bg-gradient-brand p-12 text-white">
+                  <div className="text-center">
+                    <Tag className="mx-auto mb-3 h-10 w-10 text-secondary" />
+                    <p className="text-sm text-white/70">مقاله ویژه</p>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex flex-1 flex-col justify-between p-8">
               <div>
@@ -84,8 +98,21 @@ export default async function BlogPage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {rest.map((post) => (
             <article key={post.slug} className="group overflow-hidden border border-[color:var(--color-border)] bg-white transition-shadow duration-250 hover:shadow-md">
-              <div className="flex h-36 items-center justify-center bg-surface-muted">
-                <Tag className="h-8 w-8 text-primary/30" />
+              <div className="relative h-36 bg-surface-muted">
+                {post.coverImage ? (
+                  <Image
+                    src={post.coverImage}
+                    alt={post.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <Tag className="h-8 w-8 text-primary/30" aria-hidden />
+                  </div>
+                )}
               </div>
               <div className="p-5">
                 <span className={`mb-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${categoryColor(post.category)}`}>
