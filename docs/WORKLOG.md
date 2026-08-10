@@ -2,6 +2,19 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-10 — TASK-20260809-005: بستن C1/C3 و افزایش readiness به ۸۱
+
+### خلاصه
+- چرا ۶۷≠۱۰۰: خرید E2E و بکاپ/ریستور و SEO/a11y رسمی باز بودند؛ ۱۰۰ بدون audit رسمی و retail ONLINE ممکن نیست.
+- **C1 PASS:** `e2e-purchase-test.sh` روی VPS → سفارش `ORD-2026-00008-9C0117` (CASH، بدون درگاه)؛ فیکس quoting bcrypt + تلفن `09159998877` + LF.
+- **C3 PASS:** restore یکبارمصرف (۳۶ جدول، RTO~۱۰ثانیه) + `backup-postgres.sh` + cron روزانه.
+- اسکریپت‌های جدید: `scripts/backup-postgres.sh`, `scripts/restore-drill-disposable.sh`
+- Readiness: **۸۱/۱۰۰** (GO WITH CONDITIONS)؛ website-builder همچنان مسدود.
+
+### اعتبارسنجی
+- E2E exit 0 · health ok · cron نصب شده
+
+---
 ## 2026-08-09 — TASK-20260809-003 residual close: C4 verify + safety-net narrow
 
 ### خلاصه
