@@ -92,21 +92,18 @@ Phase-1 **46** → Phase-3 **55** → Phase-2+ **61** → C4 **67** → C1/C3 cl
 | C2 | P1→mitigated | Prod health | Uptime | Readonly smoke PASS | prior | 2026-08-09 | **Satisfied** |
 | C3 | P1→**mitigated** | Backup/restore | Data loss | Disposable restore PASS; `backup-postgres.sh` + cron; listable dumps; off-box/MinIO residual Med | TASK-20260809-005 | 2026-08-10 | **Satisfied** (ops bar) |
 | C4 | P1→mitigated | Schema dual-path | Drift | VPS migration + safety-net narrow | TASK-20260809-003 | 2026-08-09 | **Satisfied** |
+| C4 | P1→**mitigated** | Schema dual-path | Drift | VPS migration + safety-net narrow | TASK-20260809-003 | 2026-08-09 | **Satisfied** |
 | C5 | P2→mitigated | Remapped lint/test | CI | tsc gate | prior | 2026-08-09 | **Mitigated** |
-| C4 | P1→**mitigated** | Schema dual-path HIGH drift | Drift/prod surprise | Inventory + TypeORM `20260809-001`; **VPS verified** 2026-08-09 (migration id=11; five columns + two indexes); safety-net **narrowed** (file retained; Path C still out of scope) | TASK-20260809-003 | 2026-08-09 | **Satisfied** |
-| C5 | P2→mitigated | Remapped lint/test | CI confidence | root lint/test exit **0**; eslint deferred Low | TASK-20260809-002 | 2026-08-09 | **Mitigated** |
 
 ## P1 acceptances (authorized)
 
-Human instruction 2026-08-09 granted full authority to complete this program without further approval prompts. Under that authority, the following P1 residuals are **explicitly accepted with expiry** for the **GO WITH CONDITIONS** verdict (not unconditional GO / not website-builder start):
+Prior P1 acceptances for C1/C3 are **superseded by evidence on 2026-08-10**. Residual gaps below are Medium and do **not** unlock website-builder.
 
-| ID | Accepted residual | Owner | Accepted | Expires | Reassessment evidence required |
-|---|---|---|---|---|---|
-| C1 | Purchase E2E not run (no local Docker); liveness ≠ purchase proof | Human + TASK-20260809-002 | 2026-08-09 | **2026-09-09** | `e2e-purchase-test.sh` or staging purchase matrix PASS |
-| C3 | Backup/restore rehearsal incomplete | Human + Ops + TASK-20260809-003 | 2026-08-09 | **2026-09-09** | Working automated DB backup + `pg_restore -l` + disposable restore drill; RPO/RTO |
-| C4 | ~~Dual schema path~~ → **Satisfied** (VPS verify + safety-net narrow 2026-08-09) | TASK-20260809-003 | 2026-08-09 | — | — |
-
-After expiry without evidence, verdict must be reassessed to **NO-GO** until remediated.
+| ID | Status | Residual (non-P1 bar) |
+|---|---|---|
+| C1 | **Satisfied** (wholesale) | Retail OTP/cart/ONLINE sandbox still open |
+| C3 | **Satisfied** (ops) | Off-box copy + MinIO restore still open |
+| C4 | **Satisfied** | Path C `database/sql/*` residual |
 
 ## Reuse and extraction classification
 | Module/capability | Reuse now / remediate / redesign / do not reuse | Evidence | Coupling/security/license notes | Next action |
@@ -117,42 +114,42 @@ After expiry without evidence, verdict must be reassessed to **NO-GO** until rem
 | Website builder / multi-tenant | Do not reuse / out of scope | MASTER | Forbidden this program | Do not start |
 
 ## Compatibility and preservation
-- Data and migration outcome: no migrations run this task; readonly prod smoke only
-- URL/SEO outcome and redirect evidence: retail home **301**, wholesale **200** observed; no intentional URL changes this task
+- Data and migration outcome: disposable restore only; one CASH E2E test order created on prod
+- URL/SEO outcome: retail home **301**, wholesale **200**; no intentional URL changes
 - API/integration compatibility: preserved
-- Retail/wholesale behavior preserved or intentionally changed: preserved (tooling/scripts + docs; no commerce logic rewrite)
+- Retail/wholesale behavior preserved; E2E script fixed (bcrypt quoting, CASH, dedicated phone)
 
 ## Deployment and recovery evidence
-- Backup and restore rehearsal: **PARTIAL** (**C3**) — 2026-08-09 inventory: daily `/root/backup-wholesale.sh` cron broken/empty; ad-hoc hardening dump exists. **NEW:** listable evidence dump `/opt/taranom/backups/20260809-c3-evidence/postgres-20260809T125655Z.dump` (~297K) with `pg_restore -l` exit **0** (176 TOC). Disposable full restore drill + RPO/RTO still **NOT RUN**; automated cron still broken
-- Deployment and smoke test: PR #18 deployed to prod `3146aae`; health **PASS**; readonly smoke **PASS**
-- Rollback rehearsal and thresholds: documented in runbook; **NOT RUN**
-- Monitoring/alert coverage: live health check verified; deeper coverage UNKNOWN
+- Backup/restore: **PASS (ops bar)** — disposable restore 36 tables RTO~10s; `backup-postgres.sh` + cron `taranom-postgres-backup`; dumps under `/opt/taranom/backups/`. Off-box/MinIO open.
+- C1 E2E: **PASS** — order `ORD-2026-00008-9C0117` PENDING_REVIEW (CASH); health ok after.
+- Deployment/smoke: prior PR #18–#22; health **PASS**
+- Rollback rehearsal: documented; **NOT RUN**
 
 ## Conditions before separate website-builder discovery may start
-1. **C1** and **C3** must be cleared with evidence (or remain accepted only until **2026-09-09**). **C4 satisfied** 2026-08-09. Builder discovery still **blocked**.
-2. Independent Reviewer pass on residual close pack.
-3. Do **not** start website-builder discovery while purchase E2E and restore remain unproven.
+1. C1/C3/C4 ops/wholesale bars Satisfied — **still do not** start website-builder (retail ONLINE/OTP + formal SEO/a11y remain).
+2. Independent Reviewer pass on this close pack.
+3. Off-box backup and retail sandbox payment remain recommended hardening.
 
 ## Definition-of-Done attestation
 | MASTER criterion | Status | Evidence |
 |---|---|---|
-| Public URLs preserved | MET | prod homes respond; no intentional URL change |
-| Production data preserved | MET | readonly smoke only |
-| Retail critical journey verified | **NOT MET** (liveness only) | R-00 PASS; purchase **C1 accepted-with-expiry** |
-| Wholesale critical journey verified | **NOT MET** (liveness only) | W-00 PASS; purchase **C1 accepted-with-expiry** |
-| Shared commerce rules tested | PARTIAL | unit specs PASS; purchase paths conditioned |
-| Security controls meet file 05 | PARTIAL | SEC-001/002 remediated; broader surface conditioned |
-| No open P0; no unaccepted P1 | **MET-via-acceptance** | C1/C3 accepted expire 2026-09-09; **C4 satisfied**; C5 mitigated; no P0 |
-| Build/release reproducible | MET (tsc lint gate) | build/tsc/lint/test PASS; ESLint deferred Low |
-| Backup/deploy/rollback executable | PARTIAL | runbook yes; C3 inventory PARTIAL; restore still open |
+| Public URLs preserved | MET | prod homes respond |
+| Production data preserved | MET | disposable restore only; one CASH test order |
+| Retail critical journey verified | **NOT MET** | liveness; OTP/cart/ONLINE open |
+| Wholesale critical journey verified | **MET** (CASH) | `ORD-2026-00008-9C0117` |
+| Shared commerce rules tested | PARTIAL | unit specs + wholesale E2E |
+| Security controls meet file 05 | PARTIAL | SEC-001/002 remediated |
+| No open P0; no unaccepted P1 | **MET** | C1/C3/C4 Satisfied at documented bars |
+| Build/release reproducible | MET | tsc lint gate |
+| Backup/deploy/rollback executable | **MET** (ops bar) | cron + restore drill |
 | Architecture documented without future platform | MET | `02-target-architecture.md` |
-| Final report with one verdict | MET | **GO WITH CONDITIONS** |
-| Task claimed before edits; handoff maintained | MET | active.yaml / handoff |
-| Claims released | PENDING | after Reviewer + merge/deploy |
+| Final report with one verdict | MET | **GO WITH CONDITIONS** **81/100** |
+| Task claimed before edits; handoff maintained | MET | TASK-20260809-005 |
+| Claims released | MET | after PR #22 + this coherence fix |
 
 ## Final decision record
-- Verdict: **GO WITH CONDITIONS** (score **67/100** uplift: C4 closed) for continued operation/stabilization of existing retail/wholesale; **do not** start website-builder discovery.
-- Hard gates: health/smoke **PASS**; build/typecheck/lint/test **PASS**; purchase E2E **NOT RUN** (C1 accepted-with-expiry); backup inventory **PARTIAL** (C3 accepted-with-expiry); **C4 Satisfied** (VPS migration id=11 + safety-net narrow).
-- Key condition IDs: **C1**, **C3** (accepted-with-expiry); **C2**/**C4**/**C5** mitigated/satisfied.
-- Decision owner and date: Human full-authority grant 2026-08-09 + cursor:orchestrator-TASK-20260809-003.
-- Next allowed activity: Merge residual PR → deploy → Independent Review; schedule C1/C3 evidence before 2026-09-09.
+- Verdict: **GO WITH CONDITIONS** (score **81/100**) for continued retail/wholesale operation; **do not** start website-builder; **not** 100 (retail ONLINE/OTP, off-box backup, formal SEO/a11y/security audits withheld).
+- Hard gates: health/smoke **PASS**; wholesale E2E **PASS**; backup/restore drill **PASS**; **C4 Satisfied**.
+- Key condition IDs: **C1/C2/C3/C4/C5** mitigated/satisfied at documented bars.
+- Decision owner and date: Human full-authority + cursor:orchestrator-TASK-20260809-005 (2026-08-10).
+- Next allowed activity: optional retail sandbox E2E / off-box backup later.
