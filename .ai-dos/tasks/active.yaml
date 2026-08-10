@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260810-006-readiness-remediation"
     worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002"
     claimed_at: "2026-08-10T10:24:22Z"
-    heartbeat_at: "2026-08-10T12:32:54Z"
+    heartbeat_at: "2026-08-10T14:26:00Z"
     depends_on: []
     file_claims:
       - ".ai-dos/tasks/active.yaml"
@@ -99,15 +99,14 @@ tasks:
       - "product price API roundtrip and Playwright create/edit/card/PDP tests for both channels, null clearing, invalid price relation, currency conversion, and bigint-safe values"
       - "Torob contract over every feed link: GET/HEAD 200, redirects=0, no noindex, self-canonical, sitemap/feed path equality, and old slug at most one 308 to a 200 target"
     notes: |
-      Independent Reviewer verdict: FAIL. Do not inflate 67/100 by documentation edits.
-      Current readiness remains GO WITH CONDITIONS 67/100.
-      Cursor must claim exact files before editing and must not deploy or mutate production.
-      Full rubric deficits are functional -8, security -6, testability -6,
-      architecture -3, operations -4, and SEO/a11y/performance -6.
-      A score below 100 is correct unless durable evidence supports full credit.
+      Evidence wave 2026-08-10T14:13:33Z: readiness raised 67→71/100 with durable
+      restore/Torob-sample/SEO-smoke evidence. Independent Reviewer rejected ~76
+      (justified Ops+2 SEO+2 only). C3 restore re-verify MET but not Satisfied
+      (rollback/off-box open). C1 still accepted-with-expiry. Security PASS WITH
+      CONDITIONS (c3b623c8). Do not inflate to 76/100 or 100 without new evidence.
+      Do not mark Done; claims retained. No website-builder.
       Claimed 2026-08-10T10:24:22Z by cursor:orchestrator-TASK-20260810-006.
-      Branch created from ai/TASK-20260809-005-readiness-tail @ a800b03.
-      Expand file_claims before any unlisted edit (migrations, tests, DTOs, admin forms).
+      Live HEAD 8e1f4a5 (PR #25). Docs-only evidence pack pending owner commit.
     additional_scope:
       - "Blog completion and regressions"
       - "Admin RMA and reporting failures"

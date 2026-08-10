@@ -6,7 +6,7 @@
 **Author role:** QA / characterization evidence (remediation after Independent Reviewer FAIL)  
 **Date (UTC):** 2026-08-10  
 **Sources of criteria:** `Retail-Wholesale-Completion-Package/MASTER.md` (required acceptance), `10_TESTING_QA_ACCEPTANCE.md`, `06_RETAIL_BUSINESS_RULES.md`, `07_WHOLESALE_BUSINESS_RULES.md`, plus channel notes in `docs/B2C.md`  
-**Verdict rule:** `PASS` requires command/result evidence from this task baseline or a linked re-run. Historical WORKLOG/report mentions are labeled **prior evidence (stale / superseded)** and do **not** upgrade a row to authoritative `PASS` for unconditional C1 close. Prior readiness **81/100** is **superseded / invalidated**; authoritative score is **67/100** (see PLATFORM-READINESS-REPORT).
+**Verdict rule:** `PASS` requires command/result evidence from this task baseline or a linked re-run. Historical WORKLOG/report mentions are labeled **prior evidence (stale / superseded)** and do **not** upgrade a row to authoritative `PASS` for unconditional C1 close. Prior readiness **81/100** is **superseded / invalidated**; authoritative score is **71/100** after evidence wave (Reviewer rejected ~76; see PLATFORM-READINESS-REPORT).
 
 ---
 
@@ -166,8 +166,8 @@ Closest automation: `scripts/e2e-purchase-test.sh` (CUSTOMER login, MOQ-aware qt
 | S-03 | Idempotency on mutations/webhooks | Contract tests | **NOT RUN** | — |
 | S-04 | AuthZ server-side for price/permission | Negative API tests | **NOT RUN** | File 07 mandate |
 | S-05 | Security (file 05): secrets, validation, common web threats | Security review + scans | **NOT RUN** this pack | High-risk gates still required before Done |
-| S-06 | SEO / a11y / performance of critical storefronts | Lighthouse/manual + perf budget | **NOT RUN** | Blog SEO scripts exist but are off critical purchase path |
-| S-07 | Backup / restore / deploy / rollback executable | Follow deployment runbook (sibling doc) | **NOT RUN** / partial | Cron/backup scripts exist (partial C3); prior disposable restore PASS **invalidated** until fail-closed re-run; rollback rehearsal **NOT RUN** |
+| S-06 | SEO / a11y / performance of critical storefronts | SEO/a11y smoke + optional Lighthouse | smoke **PASS**; Lighthouse **NOT RUN** | [SEO smoke](a4a7d4c3-d6f7-419d-aa13-ab4ce15a8662); Torob sample 15/15 PASS |
+| S-07 | Backup / restore / deploy / rollback executable | Follow deployment runbook (sibling doc) | restore re-verify **PASS**; rollback **NOT RUN** | Fail-closed disposable restore 2026-08-10 PASS (RTO 14s); off-box NOT RUN; **C3** still accepted-with-expiry |
 | S-08 | Public URL / redirect continuity | Crawl or checklist + prod home codes | **PARTIAL** | Retail **301** + wholesale **200** recorded; full redirect matrix not crawled |
 | S-09 | No open P0; no unaccepted P1 | Defect register + severity | **MET-via-acceptance** | No open P0; C1/C3 **accepted-with-expiry → 2026-09-09**; C4 **Satisfied** (not unconditional MET) |
 
@@ -284,9 +284,9 @@ PASS: S-00. PARTIAL: S-07 (backup partial / restore re-verify), S-08. MET-via-ac
 2. **Wholesale purchase not authoritative for current close** — historical VPS CASH `ORD-2026-00008-9C0117` superseded (unsafe method); staging sanitized re-run **NOT RUN** — same **C1** (do not claim Satisfied).
 3. **No domain unit/integration suite for commerce** — MOQ/credit/idempotency gaps remain.
 4. **Build/typecheck/lint/test PASS** after remap; eslint-as-style deferred (Low) — **C5 mitigated**.
-5. **Backup/restore drill needs re-verify** — prior disposable PASS invalidated until fail-closed script re-run; rollback rehearsal **NOT RUN** — **C3 accepted-with-expiry → 2026-09-09**.
+5. **Backup/restore** — fail-closed disposable restore **re-verified PASS** 2026-08-10; rollback + off-box **NOT RUN** — **C3 accepted-with-expiry → 2026-09-09** (not Satisfied).
 6. **Server-side price/credit/eligibility negatives unproven**.
-7. **P0 none; P1 C1/C3 accepted-with-expiry; C4 Satisfied** — readiness score **67/100** (prior **81/100 superseded**). See PLATFORM-READINESS-REPORT.
+7. **P0 none; P1 C1/C3 accepted-with-expiry; C4 Satisfied** — readiness score **71/100** (prior **81** superseded; ~76 rejected by Reviewer). See PLATFORM-READINESS-REPORT.
 8. **Sandbox payment / webhook contract harness missing**.
 
 ---
@@ -298,8 +298,8 @@ PASS: S-00. PARTIAL: S-07 (backup partial / restore re-verify), S-08. MET-via-ac
 | Are retail and wholesale critical journeys verified end-to-end? | **No** — retail NOT MET; wholesale purchase NOT VERIFIED for current close (historical CASH superseded); liveness smoke PASS |
 | Do quality gates pass? | **Yes (tsc gate)** — remapped lint/test exit **0**; Phase-1 eslint/jest FAIL historical; ESLint deferred Low |
 | Is production API/storefront healthy (readonly)? | **Yes** — authorized 2026-08-09 smoke PASS |
-| C1 / C3 / C4 status? | **C1** accepted-with-expiry → 2026-09-09; **C3** accepted-with-expiry → 2026-09-09; **C4 Satisfied** |
-| Authoritative readiness score? | **67/100** — prior **81/100 superseded / invalidated** by Independent Reviewer FAIL |
+| C1 / C3 / C4 status? | **C1** accepted-with-expiry → 2026-09-09; **C3** accepted-with-expiry → 2026-09-09 (restore re-verify MET; rollback/off-box open); **C4 Satisfied** |
+| Authoritative readiness score? | **71/100** — prior **81** superseded; unjustified ~76 rejected by Reviewer |
 | Is this document sufficient for PLATFORM GO (unconditional)? | **No** — **GO WITH CONDITIONS** only; C1/C3 accepted-with-expiry through 2026-09-09 |
 
-Next QA actions: (1) staging-only sanitized `e2e-purchase-test.sh` re-run; (2) restore drill re-verify with fail-closed script; (3) retail OTP→cart→checkout→ONLINE sandbox; (4) characterization tests before commerce rewrite. Do **not** mark Done; claims retained.
+Next QA actions: (1) staging-only sanitized `e2e-purchase-test.sh`; (2) retail OTP→ONLINE sandbox; (3) rollback rehearsal + off-box; (4) Torob panel OWNER ACTION. Do **not** mark Done; claims retained.

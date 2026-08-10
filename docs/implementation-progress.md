@@ -1,16 +1,30 @@
-# Implementation Progress — TASK-20260809-005 (Reviewer FAIL remediation)
+# Implementation Progress — TASK-20260810-006 (readiness remediation)
 
 Retail & wholesale completion per `Retail-Wholesale-Completion-Package/MASTER.md`.
 
-- Active task: `TASK-20260809-005` (Independent Reviewer FAIL remediation — C1/C3 script safety + evidence coherence)
-- Owner: `cursor:orchestrator-TASK-20260809-005`
-- Branch: `ai/TASK-20260809-005-readiness-tail`
+- Active task: `TASK-20260810-006` (remediate review findings + earn readiness evidence)
+- Owner: `cursor:orchestrator-TASK-20260810-006`
+- Branch: `ai/TASK-20260810-006-readiness-remediation`
 - Authoritative worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Base: residual C4 shipped; brief false close at **81/100** invalidated by Reviewer FAIL
+- Live HEAD: `8e1f4a5` (PR #25)
 
-Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason. Prior score **81/100** is **superseded / invalidated**; authoritative checkpoint is **67/100**.
+Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason. Prior score **81/100** is **superseded / invalidated**. Authoritative checkpoint after evidence wave: **71/100** (Reviewer rejected ~76).
 
 ---
+
+## 2026-08-10 17:30 — Milestone parallel evidence wave (score 71)
+
+- Status: in progress (task **not Done**; claims retained)
+- Scope completed:
+  - Disposable restore fail-closed re-run **PASS** (RTO 14s) — [restore](b57eea5d-1aac-41cc-9301-b3ac0bd5abf9)
+  - Torob sample 15/15 **PASS**; full 57 + panel OWNER ACTION — [Torob](4307f1bb-79b1-4109-9dc7-f3783e35cdea)
+  - SEO/a11y smoke **PASS** (not Lighthouse) — [SEO](a4a7d4c3-d6f7-419d-aa13-ab4ce15a8662)
+  - Gates + VPS RMA/compare-at present — [gates](dca2ce7c-61b4-43c1-a70c-d45beca7fbd9)
+  - Retail soft liveness PASS; OTP→ONLINE **NOT RUN** — [retail](419ef286-9530-452a-8af4-249f7452e46f)
+  - Evidence Reviewer: claims 1–5 MET; score raise capped **71** (Ops+2, SEO+2); C3 **not** Satisfied — [Reviewer](ddce485d-08bd-4c1e-b79f-83af3a7b6a1b)
+  - Independent Security: **PASS WITH CONDITIONS** — [Security](c3b623c8-474b-4a2d-9f59-25816536679d)
+- Score: **71/100** (was 67); C1/C3 still accepted-with-expiry; C4 Satisfied
+- Next: staging sanitized E2E + retail OTP; rollback/off-box; Torob panel; residual Med SEC-012/014; do **not** mark Done
 
 ## 2026-08-10 12:40 — Milestone Reviewer FAIL remediation (evidence coherence)
 
@@ -154,7 +168,7 @@ Derived from handoff + Phase-2/3 evidence (+ Reviewer FAIL 2026-08-10). Prioriti
 | Priority | Item | Evidence | Next step | Data impact |
 |----------|------|----------|-----------|-------------|
 | P1 **C1** | Purchase E2E (staging sanitized) | Historical CASH superseded; retail NOT MET; staging re-run NOT RUN | **accepted-with-expiry → 2026-09-09**; staging-only sanitized script | none if non-prod |
-| P1 **C3** | Backup/restore drill re-verify | Prior disposable PASS invalidated (false-green); cron/scripts partial; rollback NOT RUN | **accepted-with-expiry → 2026-09-09**; fail-closed restore re-run | restore on disposable only |
+| P1 **C3** | Backup/restore | Restore re-verify **MET** 2026-08-10; rollback + off-box still open | **accepted-with-expiry → 2026-09-09** (not Satisfied) | disposable only |
 | — **C4** | Schema dual-path | VPS migration id=11 + safety-net narrowed (PR #19) | **Satisfied** 2026-08-09 | none |
 | P2 **C5** | Remapped lint/test + eslint | lint/test **PASS** exit 0; eslint deferred Low | **Mitigated**; optional eslint later | none |
 | — | Prod health (was C2) | authorized smoke PASS | Keep monitoring | none |
@@ -163,20 +177,19 @@ Derived from handoff + Phase-2/3 evidence (+ Reviewer FAIL 2026-08-10). Prioriti
 
 ---
 
-## Next bounded actions (post-Reviewer FAIL)
+## Next bounded actions (post evidence wave)
 
-1. Staging-only sanitized purchase E2E re-run (before 2026-09-09) — **C1**; retail OTP→cart→checkout→ONLINE remains open.
-2. Disposable restore drill re-verify with fail-closed script — **C3**; rollback rehearsal still NOT RUN.
-3. Independent Reviewer re-pass; keep claims until PASS + commit; do **not** mark Done; do **not** start website-builder.
+1. Staging-only sanitized purchase E2E + retail OTP→ONLINE — **C1** (before 2026-09-09).
+2. Rollback rehearsal + off-box/MinIO — **C3** residual (restore re-verify already MET).
+3. Torob panel OWNER ACTION; harden analytics RL (SEC-012); do **not** mark Done; do **not** start website-builder.
 
 ---
 
 ## Checkpoint metadata
 
-- Orchestrator Phase-2 start: 2026-08-09T02:40:00Z
-- Reviewer-fail reconcile (tooling): 2026-08-09T09:25Z–09:40Z
-- C4 VPS verify + safety-net narrow: 2026-08-09 (PR #19 → `2233a0a`)
-- Brief false C1/C3 close at **81/100**: **superseded / invalidated** by Independent Reviewer FAIL 2026-08-10
-- Reviewer FAIL remediation (TASK-20260809-005): 2026-08-10 — evidence coherence in progress
-- Verdict: **GO WITH CONDITIONS** (**67/100**); **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**; C2/C5 mitigated
-- Claims: **retained** (task reopened; Claims released = NOT MET until Reviewer PASS + commit)
+- Live ship PR #25: `8e1f4a5`
+- Evidence wave: restore/Torob/SEO/gates agents 2026-08-10
+- Evidence Reviewer: **FAIL on ~76**; justified **71/100** — [ddce485d](ddce485d-08bd-4c1e-b79f-83af3a7b6a1b)
+- Independent Security: **PASS WITH CONDITIONS** — [c3b623c8](c3b623c8-474b-4a2d-9f59-25816536679d)
+- Verdict: **GO WITH CONDITIONS** (**71/100**); **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**
+- Claims: **retained** until formal Done

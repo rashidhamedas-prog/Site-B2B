@@ -2,6 +2,30 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-10 — TASK-20260810-006: ship evidence pack 71/100 (owner full-authority)
+
+### خلاصه
+- Owner: اعمال زنده + merge + deploy بدون تأیید مرحله‌ای.
+- فقط docs/AI-DOS (امتیاز ۷۱، شواهد restore/Torob/SEO، Security PASS WITH CONDITIONS).
+- Commit → PR → merge master → `auto-deploy.sh` → health.
+
+---
+## 2026-08-10 — TASK-20260810-006: parallel evidence wave → 71/100
+
+### خلاصه
+- Restore disposable fail-closed روی VPS دوباره **PASS** (RTO ۱۴ثانیه).
+- Torob sample ۱۵/۱۵ **PASS**؛ SEO/a11y smoke **PASS**؛ gates + schema VPS OK.
+- Retail OTP→ONLINE و staging E2E همچنان **NOT RUN**.
+- Reviewer مستقل ادعای ~۷۶ را رد کرد؛ سقف توجیه‌شده **۷۱/۱۰۰** (Ops+۲، SEO+۲). C3 Satisfied نشد (rollback/off-box باز).
+- Security مستقل: **PASS WITH CONDITIONS**.
+
+### امتیاز
+- قبل: ۶۷/۱۰۰ → بعد: **۷۱/۱۰۰** (نه ۷۶، نه ۱۰۰؛ ۸۱ همچنان superseded)
+
+### بعدی
+- Staging E2E + retail OTP؛ rollback/off-box؛ Torob panel؛ commit اسناد در صورت تأیید owner
+
+---
 ## 2026-08-10 — TASK-20260810-006: remediation + ship to production (owner-authorized)
 
 ### خلاصه
