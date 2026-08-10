@@ -6,9 +6,10 @@
 
 ### خلاصه
 - Owner: اعمال زنده + merge + deploy بدون تأیید مرحله‌ای.
-- فقط docs/AI-DOS (امتیاز ۷۱، شواهد restore/Torob/SEO، Security PASS WITH CONDITIONS).
-- Commit `04c8d88` → PR #26 → merge `197d54f` → `auto-deploy.sh` **complete at 197d54f**.
-- Health: API ok؛ wholesale/retail/blog **200**.
+- docs/AI-DOS: امتیاز ۷۱، شواهد restore/Torob/SEO؛ Security PASS WITH CONDITIONS.
+- PR #26 `197d54f` → #27/`0bb72c7` → #28/`67b55b8` → #29/`a3cb5e9`؛ همه deploy کامل.
+- Health: API ok؛ wholesale/retail **200**.
+- Task همچنان in_progress؛ claims retained.
 
 ---
 ## 2026-08-10 — TASK-20260810-006: parallel evidence wave → 71/100
