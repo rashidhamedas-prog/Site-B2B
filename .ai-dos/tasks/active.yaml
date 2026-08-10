@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260810-006-readiness-remediation"
     worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002"
     claimed_at: "2026-08-10T10:24:22Z"
-    heartbeat_at: "2026-08-10T14:38:00Z"
+    heartbeat_at: "2026-08-10T14:42:00Z"
     depends_on: []
     file_claims:
       - ".ai-dos/tasks/active.yaml"
@@ -99,14 +99,9 @@ tasks:
       - "product price API roundtrip and Playwright create/edit/card/PDP tests for both channels, null clearing, invalid price relation, currency conversion, and bigint-safe values"
       - "Torob contract over every feed link: GET/HEAD 200, redirects=0, no noindex, self-canonical, sitemap/feed path equality, and old slug at most one 308 to a 200 target"
     notes: |
-      Evidence wave 2026-08-10T14:13:33Z: readiness raised 67→71/100 with durable
-      restore/Torob-sample/SEO-smoke evidence. Independent Reviewer rejected ~76
-      (justified Ops+2 SEO+2 only). C3 restore re-verify MET but not Satisfied
-      (rollback/off-box open). C1 still accepted-with-expiry. Security PASS WITH
-      CONDITIONS (c3b623c8). Do not inflate to 76/100 or 100 without new evidence.
-      Do not mark Done; claims retained. No website-builder.
-      Claimed 2026-08-10T10:24:22Z by cursor:orchestrator-TASK-20260810-006.
-      Live HEAD 8e1f4a5 (PR #25). Docs-only evidence pack pending owner commit.
+      Evidence wave shipped: PR #26 ``197d54f``, AI-DOS sync PR #27/#28, VPS HEAD ``67b55b8``.
+      Readiness **71/100**. Task remains in_progress; claims retained.
+      Do not inflate to 76/100 or 100; no website-builder; no Done until C1 staging evidence.
     additional_scope:
       - "Blog completion and regressions"
       - "Admin RMA and reporting failures"
