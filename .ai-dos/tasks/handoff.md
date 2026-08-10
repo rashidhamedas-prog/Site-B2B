@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-10T14:42:00Z — PR #28 live; owner ship complete
+
+- PR https://github.com/rashidhamedas-prog/Site-BtoB/pull/28 → merge `67b55b8`
+- VPS deploy complete at `67b55b8` (exit 0)
+- Live: API ok; wholesale/retail 200
+- Readiness **71/100**; task **in_progress**; claims retained
+- Owner full-authority ship for evidence pack + AI-DOS sync finished
+
 ## 2026-08-10T14:38:00Z — PR #27 post-deploy AI-DOS live
 
 - PR https://github.com/rashidhamedas-prog/Site-BtoB/pull/27 → merge `0bb72c7`
