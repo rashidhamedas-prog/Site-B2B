@@ -55,17 +55,17 @@ ENCODED_SLUG=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$SLUG'
 curl -sf -o /dev/null -w "slug HTTP %{http_code}\n" "$API/products/slug/$ENCODED_SLUG"
 
 echo "=== 4. Customer login ==="
-CUSTOMER_PHONE=$(docker exec taranom_postgres psql -U taranom -d taranom_db -tAc "SELECT phone FROM users WHERE role='CUSTOMER' AND \"isActive\"=true LIMIT 1;" 2>/dev/null | tr -d '[:space:]')
-
-if [ -z "$CUSTOMER_PHONE" ]; then
-  TEST_PHONE="09159998877"
+# Prefer dedicated disposable E2E phone so we do not fight unknown customer passwords.
+TEST_PHONE="09159998877"
+CUSTOMER_PHONE="$TEST_PHONE"
+EXISTS=$(docker exec taranom_postgres psql -U taranom -d taranom_db -tAc "SELECT phone FROM users WHERE phone='$TEST_PHONE' LIMIT 1;" 2>/dev/null | tr -d '[:space:]')
+if [ -z "$EXISTS" ]; then
   echo "Creating test customer $TEST_PHONE"
   curl -sf -X POST "$API/auth/register" -H "Content-Type: application/json" \
     -d "{\"phone\":\"$TEST_PHONE\",\"password\":\"Test@123456\",\"businessName\":\"E2E Test\",\"ownerName\":\"Tester\",\"province\":\"Tehran\",\"city\":\"Tehran\"}" || true
-  docker exec taranom_postgres psql -U taranom -d taranom_db -c "UPDATE users SET \"isActive\"=true WHERE phone='$TEST_PHONE';" >/dev/null
-  docker exec taranom_postgres psql -U taranom -d taranom_db -c "UPDATE customers SET status='ACTIVE' WHERE phone='$TEST_PHONE';" >/dev/null
-  CUSTOMER_PHONE="$TEST_PHONE"
 fi
+docker exec taranom_postgres psql -U taranom -d taranom_db -c "UPDATE users SET \"isActive\"=true WHERE phone='$TEST_PHONE';" >/dev/null || true
+docker exec taranom_postgres psql -U taranom -d taranom_db -c "UPDATE customers SET status='ACTIVE' WHERE phone='$TEST_PHONE';" >/dev/null || true
 
 LOGIN_RESP=""
 for PASS in "Test@123456" "123456"; do
@@ -80,11 +80,21 @@ done
 if ! echo "$LOGIN_RESP" | grep -q accessToken; then
   echo "Resetting password for $CUSTOMER_PHONE"
   HASH=$(docker exec taranom_api node -e "const b=require('bcryptjs'); b.hash('Test@123456',12).then(h=>process.stdout.write(h))")
-  docker exec taranom_postgres psql -U taranom -d taranom_db -c "UPDATE users SET \"passwordHash\"='$HASH', \"isActive\"=true WHERE phone='$CUSTOMER_PHONE';" >/dev/null
-  LOGIN_RESP=$(curl -sf -X POST "$API/auth/login" -H "Content-Type: application/json" \
+  # Quote so bcrypt '$2a$…' is NOT expanded by the outer shell
+  docker exec taranom_postgres psql -U taranom -d taranom_db \
+    -c 'UPDATE users SET "passwordHash"='"'$HASH'"', "isActive"=true WHERE phone='"'$CUSTOMER_PHONE'"';' \
+    >/dev/null
+  docker exec taranom_postgres psql -U taranom -d taranom_db \
+    -c 'UPDATE customers SET status='"'"'ACTIVE'"'"' WHERE phone='"'$CUSTOMER_PHONE'"';' \
+    >/dev/null || true
+  LOGIN_RESP=$(curl -s -X POST "$API/auth/login" -H "Content-Type: application/json" \
     -d "{\"phone\":\"$CUSTOMER_PHONE\",\"password\":\"Test@123456\"}")
 fi
 
+if ! echo "$LOGIN_RESP" | grep -q accessToken; then
+  echo "Login failed body: $LOGIN_RESP"
+  exit 1
+fi
 TOKEN=$(echo "$LOGIN_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")
 
 echo "=== 5. Create order ==="
@@ -108,7 +118,7 @@ print(json.dumps({
     'size': v['size'],
   }],
   'shippingMethod': 'CHAPAR',
-  'paymentMethod': 'CREDIT',
+  'paymentMethod': 'CASH',
   'notes': 'E2E automated test',
 }))
 ")

@@ -44,7 +44,7 @@ Discovered from root/`apps/*/package.json`, `.github/workflows/ci.yml`, `.ai-dos
 | Build web (CI) | `npm run build` | `apps/web` | `NEXT_PUBLIC_API_URL` | No | **NOT RUN** | CI job `lint-and-build` |
 | Build API (CI) | `npm run build` | `apps/api` | nest build | No | **NOT RUN** | CI job `lint-and-build` |
 | Readonly acceptance smoke | `bash scripts/acceptance-smoke-readonly.sh` | repo root / network | authorized prod URLs; no mutations | Manual probe equivalent Yes | **PASS** (authorized 2026-08-09) | See §2.1 — script purpose + recorded probe |
-| E2E purchase script | `bash scripts/e2e-purchase-test.sh` | local API stack | Docker/local API + Postgres; no real money | No | **NOT RUN** | Local Docker **not available**; no local API — handoff Phase-2 |
+| E2E purchase script | `bash scripts/e2e-purchase-test.sh` | local/VPS API stack | Docker/API + Postgres; CASH wholesale order; no gateway money | No | **PASS** | VPS 2026-08-10; order `ORD-2026-00008-9C0117` PENDING_REVIEW |
 
 **Known baseline freeze (authoritative for this document):**
 

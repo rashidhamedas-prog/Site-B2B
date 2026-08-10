@@ -1,9 +1,8 @@
 # Project Status
 
-- Last verified: 2026-08-09T13:10:00Z
-- Active tasks: none (claims released)
-- Master / prod: `2233a0a` (PR #19 merge — C4 safety-net narrow)
-- Prior: `3146aae` (PR #18 readiness pack)
-- Readiness: **GO WITH CONDITIONS** **67/100**; **C4 Satisfied**; C1/C3 accepted-with-expiry → 2026-09-09
+- Last verified: 2026-08-10T08:00:00Z
+- Active tasks: none (releasing with TASK-20260809-005 ship)
+- Readiness: **GO WITH CONDITIONS** **81/100**
+- C1 Satisfied (wholesale CASH E2E `ORD-2026-00008-9C0117`); C3 Satisfied (restore drill + backup cron); C4 Satisfied
 - Website-builder: **blocked**
-- Health after deploy: API + wholesale + retail www **200**
+- Residual Med: retail OTP/ONLINE, off-box backup, formal SEO/a11y

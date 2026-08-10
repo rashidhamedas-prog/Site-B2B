@@ -106,11 +106,11 @@ sudo systemctl stop taranom-autodeploy.timer
 | Named Docker volumes (`postgres_data`, `redis_data`, `minio_data`, `meili_data`) | Evidenced | `docker-compose.yml` |
 | `.env` copy during redeploy | Evidenced | `scripts/redeploy-server.sh` → `/tmp/taranom.env.bak` |
 | Ad-hoc `pg_dump` / `pg_restore -l` verification | Historically practiced | `docs/reports/2026-07-11-server-redeploy.md`, `docs/reports/2026-08-01-production-hardening-history-rewrite.md` |
-| Checked-in automated backup cron / off-box sync | **UNKNOWN** | Not present in `scripts/` |
-| Documented restore procedure with RPO/RTO drill evidence | **UNKNOWN** | No restore script or drill record in repo |
+| Checked-in automated backup cron / off-box sync | **PARTIAL** | `scripts/backup-postgres.sh` + `/etc/cron.d/taranom-postgres-backup` (2026-08-10). Off-box sync still open |
+| Documented restore procedure with RPO/RTO drill evidence | **PASS** (disposable) | `scripts/restore-drill-disposable.sh`; VPS drill 2026-08-09/10: 36 tables, RTO ~10s into `taranom_restore_drill` (not live DB) |
 | MinIO object restore runbook | **UNKNOWN** | Volume + historical snapshot mention only |
 
-**Verdict for readiness reports:** backup/restore = **UNKNOWN** for automated, rehearsed recovery. Operators must create an explicit checkpoint before data-affecting production work and record metadata in `.ai-dos/tasks/handoff.md` (paths/checksums/owners only — no secrets, no overly broad backup location disclosure).
+**Verdict for readiness reports:** backup/restore = **PASS** for automated Postgres dump + disposable restore rehearsal. Off-box replication and MinIO restore remain open.
 
 ### 2.2 Recommended checkpoint (production) — ⛔ HUMAN AUTHORIZATION REQUIRED
 
