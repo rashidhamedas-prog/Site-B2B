@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-10T14:38:00Z — PR #27 post-deploy AI-DOS live
+
+- PR https://github.com/rashidhamedas-prog/Site-BtoB/pull/27 → merge `0bb72c7`
+- VPS `auto-deploy.sh` → deploy complete at `0bb72c7` (exit 0)
+- Live: API ok; wholesale/retail 200
+- Readiness **71/100**; task **in_progress**; claims retained
+
 ## 2026-08-10T14:33:00Z — Evidence pack shipped live (PR #26)
 
 - Owner full-authority grant honored: commit → PR → merge → VPS deploy without stepwise confirmation.
