@@ -4,6 +4,7 @@ import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
 import { RETAIL_ORIGIN } from '@/lib/seo';
 import { fetchProductBySlug } from '@/lib/server-api';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -16,11 +17,15 @@ function retailSeo(product: Record<string, unknown>) {
     seo.description ||
     (typeof product.description === 'string' ? product.description.slice(0, 160) : '') ||
     `خرید تکی «${product.name}» از فروشگاه ترنم — مستقیم از تولیدی مشهد.`;
-  const canonical =
-    seo.retailCanonical ||
-    seo.canonical ||
-    `${RETAIL_ORIGIN}/products/${product.slug ?? ''}`;
-  return { title, description, canonical, focusKeyword: seo.retailFocusKeyword || seo.focusKeyword };
+  const resolved = resolvePublicProductCanonical({
+    productSlug: String(product.slug || ''),
+    customCanonical: seo.retailCanonical || seo.canonical || null,
+    origin: RETAIL_ORIGIN,
+    onInvalid: (reason) => {
+      console.warn('[publicProductPath]', product.slug, reason);
+    },
+  });
+  return { title, description, canonical: resolved.url, focusKeyword: seo.retailFocusKeyword || seo.focusKeyword };
 }
 
 export async function generateMetadata({

@@ -29,8 +29,8 @@ export default async function RetailBlogCategoryPage({ params }: Props) {
   const { category, items } = data;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
-      <section className="bg-gradient-to-bl from-[#2c1810] via-[#4a2c1a] to-[#6b3f24] py-12 text-white">
+    <div className="min-h-screen bg-[#F6F1E8]">
+      <section className="bg-gradient-to-bl from-[#0F2F28] via-[#1B5C4A] to-[#1B5C4A] py-12 text-white">
         <div className="mx-auto max-w-4xl px-4">
           <Link href="/blog" className="mb-4 inline-block text-sm text-white/70">
             ← وبلاگ

@@ -227,12 +227,64 @@ export class BlogExtrasService {
     return this.mediaRepo.save(row);
   }
 
-  async removeMedia(id: string) {
+  async removeMedia(id: string, opts?: { forceReplace?: boolean }) {
     const row = await this.mediaRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundException('رسانه یافت نشد');
-    await this.storage.deleteByUrls([row.publicUrl]);
+
+    const url = row.publicUrl;
+    const usages = await this.findMediaUsages(url);
+    if (usages.length > 0 && !opts?.forceReplace) {
+      throw new ConflictException({
+        message: 'رسانه در مطالب ارجاع دارد',
+        usages,
+      });
+    }
+
+    // Delete storage first; keep DB row if storage fails so metadata stays consistent.
+    try {
+      await this.storage.deleteByUrls([url]);
+    } catch (err) {
+      // Missing object: treat as idempotent success for retry.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/NoSuchKey|not found|404|NotFound/i.test(msg)) {
+        throw err;
+      }
+    }
     await this.mediaRepo.delete(id);
     return { deleted: true };
+  }
+
+  /** Detect cover/OG/Twitter/body references to a media URL. */
+  async findMediaUsages(url: string) {
+    if (!url) return [];
+    const posts = await this.postRepo
+      .createQueryBuilder('p')
+      .where('p.deletedAt IS NULL')
+      .andWhere(
+        `(p.coverImage = :url OR p.ogImage = :url OR p.twitterImage = :url OR p.content ILIKE :like)`,
+        { url, like: `%${url}%` },
+      )
+      .select([
+        'p.id',
+        'p.title',
+        'p.slug',
+        'p.channel',
+        'p.coverImage',
+        'p.ogImage',
+        'p.twitterImage',
+        'p.content',
+      ])
+      .take(50)
+      .getMany();
+
+    return posts.map((p) => {
+      const refs: string[] = [];
+      if (p.coverImage === url) refs.push('coverImage');
+      if (p.ogImage === url) refs.push('ogImage');
+      if (p.twitterImage === url) refs.push('twitterImage');
+      if (p.content?.includes(url)) refs.push('body');
+      return { articleId: p.id, title: p.title, slug: p.slug, channel: p.channel, refs };
+    });
   }
 
   hashBuffer(buf: Buffer): string {
@@ -409,31 +461,129 @@ export class BlogExtrasService {
 
   // ── Analytics ─────────────────────────────────────────────
 
+  private static readonly ANALYTICS_EVENTS = new Set([
+    'view',
+    'scroll25',
+    'scroll50',
+    'scroll75',
+    'scroll90',
+    'cta',
+    'product',
+    'internal',
+  ]);
+
+  /** In-process abuse guard for public analytics (IP → timestamps). */
+  private static analyticsHits = new Map<string, number[]>();
+
+  private assertAnalyticsRateLimit(ip?: string) {
+    const key = ip ? createHash('sha256').update(ip).digest('hex').slice(0, 24) : 'anon';
+    const now = Date.now();
+    const windowMs = 60_000;
+    const max = 60;
+    const prev = (BlogExtrasService.analyticsHits.get(key) || []).filter((t) => now - t < windowMs);
+    if (prev.length >= max) {
+      throw new BadRequestException('تعداد درخواست‌های آمار زیاد است');
+    }
+    prev.push(now);
+    BlogExtrasService.analyticsHits.set(key, prev);
+  }
+
+  private isUuid(id: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+  }
+
+  /**
+   * Atomic UPSERT/increment. uniqueViews increments only when client marks a
+   * first-in-session unique view (x-blog-uv: 1) — honest client-assisted unique,
+   * not a second pageViews clone.
+   */
   async trackEvent(
     articleId: string,
-    event: 'view' | 'scroll25' | 'scroll50' | 'scroll75' | 'scroll90' | 'cta' | 'product' | 'internal',
+    event: string,
+    meta?: { ip?: string; uniqueView?: boolean },
   ) {
-    let row = await this.analyticsRepo.findOne({ where: { articleId } });
-    if (!row) {
-      row = this.analyticsRepo.create({ articleId });
+    if (!this.isUuid(articleId)) throw new BadRequestException('شناسه مطلب نامعتبر است');
+    if (!BlogExtrasService.ANALYTICS_EVENTS.has(event)) {
+      throw new BadRequestException('رویداد نامعتبر است');
     }
+    this.assertAnalyticsRateLimit(meta?.ip);
+
+    const published = await this.postRepo.findOne({
+      where: { id: articleId, status: 'PUBLISHED' },
+      select: ['id'],
+    });
+    if (!published) throw new NotFoundException('مطلب یافت نشد');
+
+    const colByEvent: Record<string, string> = {
+      view: 'pageViews',
+      scroll25: 'scroll25',
+      scroll50: 'scroll50',
+      scroll75: 'scroll75',
+      scroll90: 'scroll90',
+      cta: 'ctaClicks',
+      product: 'productClicks',
+      internal: 'internalLinkClicks',
+    };
+    const col = colByEvent[event];
+
+    // Ensure row exists with all counters initialized (race-safe).
+    await this.analyticsRepo.query(
+      `
+      INSERT INTO blog_analytics
+        ("id", "articleId", "pageViews", "uniqueViews", "avgEngagementTime",
+         "scroll25", "scroll50", "scroll75", "scroll90",
+         "ctaClicks", "productClicks", "internalLinkClicks", "updatedAt")
+      VALUES
+        (gen_random_uuid(), $1, 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, NOW())
+      ON CONFLICT ("articleId") DO NOTHING
+      `,
+      [articleId],
+    );
+
     if (event === 'view') {
-      row.pageViews += 1;
-      row.uniqueViews += 1;
-    } else if (event === 'scroll25') row.scroll25 += 1;
-    else if (event === 'scroll50') row.scroll50 += 1;
-    else if (event === 'scroll75') row.scroll75 += 1;
-    else if (event === 'scroll90') row.scroll90 += 1;
-    else if (event === 'cta') row.ctaClicks += 1;
-    else if (event === 'product') row.productClicks += 1;
-    else if (event === 'internal') row.internalLinkClicks += 1;
-    return this.analyticsRepo.save(row);
+      const uv = meta?.uniqueView ? 1 : 0;
+      await this.analyticsRepo.query(
+        `
+        UPDATE blog_analytics
+        SET "pageViews" = "pageViews" + 1,
+            "uniqueViews" = "uniqueViews" + $2,
+            "updatedAt" = NOW()
+        WHERE "articleId" = $1
+        `,
+        [articleId, uv],
+      );
+    } else {
+      await this.analyticsRepo.query(
+        `
+        UPDATE blog_analytics
+        SET "${col}" = "${col}" + 1,
+            "updatedAt" = NOW()
+        WHERE "articleId" = $1
+        `,
+        [articleId],
+      );
+    }
+
+    return this.analyticsRepo.findOne({ where: { articleId } });
   }
 
   async getAnalytics(articleId: string) {
+    if (!this.isUuid(articleId)) throw new BadRequestException('شناسه مطلب نامعتبر است');
     let row = await this.analyticsRepo.findOne({ where: { articleId } });
     if (!row) {
-      row = await this.analyticsRepo.save(this.analyticsRepo.create({ articleId }));
+      await this.analyticsRepo.query(
+        `
+        INSERT INTO blog_analytics
+          ("id", "articleId", "pageViews", "uniqueViews", "avgEngagementTime",
+           "scroll25", "scroll50", "scroll75", "scroll90",
+           "ctaClicks", "productClicks", "internalLinkClicks", "updatedAt")
+        VALUES
+          (gen_random_uuid(), $1, 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, NOW())
+        ON CONFLICT ("articleId") DO NOTHING
+        `,
+        [articleId],
+      );
+      row = await this.analyticsRepo.findOne({ where: { articleId } });
     }
     return row;
   }

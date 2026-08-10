@@ -28,6 +28,7 @@ type FeedRow = {
   description?: string | null;
   sku?: string | null;
   retailPrice: number;
+  retailCompareAtPrice: number | null;
   stock: number;
   availabilityBool: boolean;
   availabilityStock: 'in stock' | 'out of stock';
@@ -51,12 +52,17 @@ export class FeedsController {
   ) {}
 
   private siteBase() {
-    // Prefer www so Torob product links match the canonical retail host.
-    const raw = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
-    if (raw === 'https://poshaktaranom.ir' || raw === 'http://poshaktaranom.ir') {
+    const raw = process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir';
+    try {
+      const u = new URL(String(raw).trim());
+      const host = u.hostname.toLowerCase();
+      if (host === 'poshaktaranom.ir' || host === 'www.poshaktaranom.ir') {
+        return 'https://www.poshaktaranom.ir';
+      }
+      return `${u.protocol}//${u.host}`.replace(/\/$/, '');
+    } catch {
       return 'https://www.poshaktaranom.ir';
     }
-    return raw;
   }
 
   /** Site stores IRR; Torob product feed + UI show Toman. */
@@ -94,12 +100,13 @@ export class FeedsController {
           description: p.description,
           sku: p.sku,
           retailPrice: price,
+          retailCompareAtPrice: p.retailCompareAtPrice != null ? Number(p.retailCompareAtPrice) : null,
           stock,
           availabilityBool: stock > 0,
           availabilityStock: (stock > 0 ? 'in stock' : 'out of stock') as FeedRow['availabilityStock'],
           image: images[0] || '',
           images,
-          link: `${base}/products/${p.slug || p.id}`,
+          link: `${base}/products/${String(p.slug || p.id).replace(/^\/+|\/+$/g, '')}`,
           category: p.category?.name || p.fabric || 'مانتو',
           brand,
           sizes: sizes.join(','),
@@ -153,7 +160,11 @@ export class FeedsController {
     <title>${xmlEscape(p.name)}</title>
     <description>${xmlEscape((p.description || p.name).slice(0, 2000))}</description>
     <price>${this.toToman(p.retailPrice)}</price>
-    <old_price></old_price>
+    <old_price>${
+      p.retailCompareAtPrice && p.retailCompareAtPrice > p.retailPrice
+        ? this.toToman(p.retailCompareAtPrice)
+        : ''
+    }</old_price>
     <availability>${p.availabilityBool ? 'true' : 'false'}</availability>
     <image_link>${xmlEscape(p.image)}</image_link>
     ${p.images

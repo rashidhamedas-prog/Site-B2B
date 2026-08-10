@@ -81,6 +81,8 @@ const emptyForm = {
   retailCanonical: '',
   wholesalePrice: '',
   retailPrice: '',
+  wholesaleCompareAtPrice: '',
+  retailCompareAtPrice: '',
   minOrderQty: '1',
   status: 'ACTIVE',
   isDiscounted: false,
@@ -759,6 +761,12 @@ export function AdminProducts() {
       retailCanonical: seo.retailCanonical || '',
       wholesalePrice: String(Math.round(Number(p.wholesalePrice) / 10)),
       retailPrice: p.retailPrice ? String(Math.round(Number(p.retailPrice) / 10)) : '',
+      wholesaleCompareAtPrice: (p as { wholesaleCompareAtPrice?: number | null }).wholesaleCompareAtPrice
+        ? String(Math.round(Number((p as { wholesaleCompareAtPrice?: number }).wholesaleCompareAtPrice) / 10))
+        : '',
+      retailCompareAtPrice: (p as { retailCompareAtPrice?: number | null }).retailCompareAtPrice
+        ? String(Math.round(Number((p as { retailCompareAtPrice?: number }).retailCompareAtPrice) / 10))
+        : '',
       minOrderQty: String(p.minOrderQty),
       status: p.status,
       isDiscounted: !!p.isDiscounted,
@@ -918,6 +926,12 @@ export function AdminProducts() {
         sizeType: form.sizeType,
         wholesalePrice: Number(form.wholesalePrice) * 10,
         retailPrice: form.retailPrice ? Number(form.retailPrice) * 10 : null,
+        wholesaleCompareAtPrice: form.wholesaleCompareAtPrice
+          ? Number(form.wholesaleCompareAtPrice) * 10
+          : null,
+        retailCompareAtPrice: form.retailCompareAtPrice
+          ? Number(form.retailCompareAtPrice) * 10
+          : null,
         minOrderQty: Number(form.minOrderQty),
         status: form.status,
         isDiscounted: form.isDiscounted,
@@ -1007,7 +1021,19 @@ export function AdminProducts() {
     [refetch],
   );
 
-  const field = (key: 'sku' | 'name' | 'wholesalePrice' | 'retailPrice' | 'minOrderQty', label: string, type = 'text', placeholder = '') => (
+  const field = (
+    key:
+      | 'sku'
+      | 'name'
+      | 'wholesalePrice'
+      | 'retailPrice'
+      | 'wholesaleCompareAtPrice'
+      | 'retailCompareAtPrice'
+      | 'minOrderQty',
+    label: string,
+    type = 'text',
+    placeholder = '',
+  ) => (
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
       <input
@@ -1549,11 +1575,18 @@ export function AdminProducts() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {field('wholesalePrice', 'قیمت نهایی عمده (تومان)', 'number', '125000')}
+                {field('wholesaleCompareAtPrice', 'قبل از تخفیف عمده (تومان)', 'number', '150000')}
+                {field('retailPrice', 'قیمت نهایی تکی (تومان)', 'number', '180000')}
+                {field('retailCompareAtPrice', 'قبل از تخفیف تکی (تومان)', 'number', '220000')}
+              </div>
               <div className="grid grid-cols-3 gap-4">
-                {field('wholesalePrice', 'قیمت عمده (تومان)', 'number', '125000')}
-                {field('retailPrice', 'قیمت تکی (تومان)', 'number', '180000')}
                 {field('minOrderQty', 'حداقل تعداد پک', 'number', '1')}
               </div>
+              <p className="text-[11px] text-gray-500">
+                قیمت نهایی برای سبد/سفارش/فید استفاده می‌شود. قیمت قبل از تخفیف اختیاری است و باید از قیمت نهایی بیشتر باشد.
+              </p>
 
               <div className="rounded-xl border border-primary-100 bg-primary-50/40 p-4 space-y-3">
                 <p className="text-xs font-bold text-gray-800">سفارش عمده — پک و رنگ</p>

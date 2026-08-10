@@ -17,10 +17,63 @@ import { CreateVariantDto } from './dto/create-variant.dto';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
+function parseIrr(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'bigint') {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+      throw new BadRequestException('مبلغ ریالی نامعتبر است');
+    }
+    return n;
+  }
+  const n = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
+    throw new BadRequestException('مبلغ ریالی باید عدد صحیح غیرمنفی (ریال) باشد');
+  }
+  // Guard unsafe JS precision for money beyond Number.MAX_SAFE_INTEGER
+  if (n > Number.MAX_SAFE_INTEGER) {
+    throw new BadRequestException('مبلغ خارج از محدوده امن Number است');
+  }
+  return n;
+}
+
 @Injectable()
 export class ProductService {
   private badgeCache: { value: BadgeConfig; at: number } | null = null;
   private static readonly BADGE_TTL_MS = 30_000;
+
+  /**
+   * Invariant: wholesalePrice/retailPrice = final (after-discount).
+   * Compare-at nullable; when set must be strictly greater than final.
+   */
+  private normalizeChannelPrices(input: {
+    wholesalePrice?: unknown;
+    retailPrice?: unknown;
+    wholesaleCompareAtPrice?: unknown;
+    retailCompareAtPrice?: unknown;
+  }) {
+    const wholesalePrice = parseIrr(input.wholesalePrice);
+    if (wholesalePrice === null) throw new BadRequestException('قیمت نهایی عمده الزامی است');
+    const retailPrice = parseIrr(input.retailPrice);
+    const wholesaleCompareAtPrice = parseIrr(input.wholesaleCompareAtPrice);
+    const retailCompareAtPrice = parseIrr(input.retailCompareAtPrice);
+    if (wholesaleCompareAtPrice !== null && wholesaleCompareAtPrice <= wholesalePrice) {
+      throw new BadRequestException('قیمت قبل از تخفیف عمده باید از قیمت نهایی بیشتر باشد');
+    }
+    if (
+      retailCompareAtPrice !== null &&
+      retailPrice !== null &&
+      retailCompareAtPrice <= retailPrice
+    ) {
+      throw new BadRequestException('قیمت قبل از تخفیف تکی باید از قیمت نهایی بیشتر باشد');
+    }
+    return {
+      wholesalePrice,
+      retailPrice,
+      wholesaleCompareAtPrice,
+      retailCompareAtPrice,
+    };
+  }
 
   constructor(
     @InjectRepository(ProductEntity)
@@ -433,6 +486,7 @@ export class ProductService {
 
     const specs = (data.specs ?? {}) as ProductSpecs;
     const fabric = this.fabricFromSpecs(specs, data.fabric);
+    const prices = this.normalizeChannelPrices(data);
 
     const product = this.productRepo.create({
       name: data.name,
@@ -441,8 +495,10 @@ export class ProductService {
       description: data.description,
       specs,
       sizeType: (data.sizeType as ProductSizeType) || 'FREE',
-      wholesalePrice: data.wholesalePrice,
-      retailPrice: data.retailPrice,
+      wholesalePrice: prices.wholesalePrice,
+      retailPrice: prices.retailPrice,
+      wholesaleCompareAtPrice: prices.wholesaleCompareAtPrice,
+      retailCompareAtPrice: prices.retailCompareAtPrice,
       minOrderQty: data.minOrderQty,
       allowWholesaleColorSelect: !!data.allowWholesaleColorSelect,
       minWholesaleColors: Math.max(1, Number(data.minWholesaleColors) || 1),
@@ -528,6 +584,23 @@ export class ProductService {
     if (data.preOrderDate !== undefined) {
       patch.preOrderDate = data.preOrderDate ? new Date(data.preOrderDate) : null;
     }
+
+    const mergedPrices = this.normalizeChannelPrices({
+      wholesalePrice: data.wholesalePrice ?? existing.wholesalePrice,
+      retailPrice: data.retailPrice !== undefined ? data.retailPrice : existing.retailPrice,
+      wholesaleCompareAtPrice:
+        data.wholesaleCompareAtPrice !== undefined
+          ? data.wholesaleCompareAtPrice
+          : existing.wholesaleCompareAtPrice,
+      retailCompareAtPrice:
+        data.retailCompareAtPrice !== undefined
+          ? data.retailCompareAtPrice
+          : existing.retailCompareAtPrice,
+    });
+    patch.wholesalePrice = mergedPrices.wholesalePrice;
+    patch.retailPrice = mergedPrices.retailPrice;
+    patch.wholesaleCompareAtPrice = mergedPrices.wholesaleCompareAtPrice;
+    patch.retailCompareAtPrice = mergedPrices.retailCompareAtPrice;
     if (data.allowWholesaleColorSelect !== undefined) {
       patch.allowWholesaleColorSelect = !!data.allowWholesaleColorSelect;
     }

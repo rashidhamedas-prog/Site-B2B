@@ -6,6 +6,7 @@ import {
   WHOLESALE_ORIGIN,
 } from '@/lib/seo';
 import { fetchSitemapPosts } from '@/lib/blog';
+import { publicProductUrl } from '@/lib/public-product-path';
 
 interface ProductRow {
   slug: string;
@@ -54,7 +55,7 @@ function productEntries(
     .filter((product) => product?.slug)
     .map((product) => {
       const entry: MetadataRoute.Sitemap[number] = {
-        url: `${origin}/products/${product.slug}`,
+        url: publicProductUrl(product.slug, origin),
         changeFrequency: 'weekly',
         priority: 0.8,
       };

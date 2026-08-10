@@ -41,9 +41,11 @@ export function AdminBlogAnalyticsPanel() {
   const [ga4Id, setGa4Id] = useState('');
   const [gscToken, setGscToken] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [summary, settings] = await Promise.all([
         apiClient.get<SummaryResponse>(`/blog/admin/analytics/summary?channel=${channel}&limit=30`),
@@ -59,8 +61,9 @@ export function AdminBlogAnalyticsPanel() {
           channel === 'RETAIL' ? m.gscRetailVerification : m.gscWholesaleVerification,
         ),
       );
-    } catch {
+    } catch (err: unknown) {
       setData(null);
+      setLoadError(err instanceof Error ? err.message : 'بارگذاری آمار ناموفق بود');
     } finally {
       setLoading(false);
     }
@@ -71,16 +74,32 @@ export function AdminBlogAnalyticsPanel() {
   }, [load]);
 
   const t = data?.totals;
+  const isEmpty = !loading && !loadError && (!!data && (data.items?.length ?? 0) === 0);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">آمار وبلاگ — {channelLabel(channel)}</h2>
-          <p className="text-xs text-gray-500">view / scroll / CTA داخلی + وضعیت اتصال GA4 و GSC</p>
+          <p className="text-xs text-gray-500">view / scroll / CTA داخلی + وضعیت اتصال GA4 و توکن تأیید GSC (نه آنالیتیکس GSC)</p>
         </div>
         <AdminChannelTabs value={channel} onChange={setChannel} />
       </div>
+
+      {loadError ? (
+        <div className="card flex flex-wrap items-center justify-between gap-3 border-red-200 bg-red-50 p-4" role="alert">
+          <p className="text-sm text-red-800">خطا در بارگذاری آمار: {loadError}</p>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => void load()}>
+            تلاش مجدد
+          </button>
+        </div>
+      ) : null}
+
+      {isEmpty ? (
+        <p className="rounded-xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
+          هنوز رویدادی برای این کانال ثبت نشده است (حالت خالی معتبر).
+        </p>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -92,12 +111,14 @@ export function AdminBlogAnalyticsPanel() {
           <div key={String(label)} className="card p-4">
             <p className="text-[11px] text-gray-400">{label}</p>
             <p className="mt-1 text-xl font-extrabold text-gray-900">
-              {loading ? '…' : Number(value || 0).toLocaleString('fa-IR')}
+              {loading ? '…' : loadError ? '—' : Number(value || 0).toLocaleString('fa-IR')}
             </p>
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-gray-400">* uniqueViews فعلاً تقریبی است (بدون کوکی کاربر).</p>
+      <p className="text-[10px] text-gray-400">
+        * uniqueViews فقط وقتی کلاینت اولین بازدید نشست را با هدر x-blog-uv علامت بزند افزایش می‌یابد (نه کپی pageViews).
+      </p>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="card space-y-2 p-4 text-sm">

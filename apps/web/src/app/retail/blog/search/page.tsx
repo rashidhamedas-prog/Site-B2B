@@ -20,7 +20,7 @@ export default async function RetailBlogSearchPage({ searchParams }: Props) {
   const { posts, meta } = await searchBlogPosts(q, 'RETAIL');
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
+    <div className="min-h-screen bg-[#F6F1E8]">
       <div className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="mb-4 text-2xl font-extrabold text-stone-900">جست‌وجوی وبلاگ</h1>
         <form className="mb-8">

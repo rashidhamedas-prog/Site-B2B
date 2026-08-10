@@ -1,11 +1,21 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ReturnRequestEntity } from './entities/return-request.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
-import { CustomerEntity } from '../customer/entities/customer.entity';
-import { ProductService } from '../product/product.service';
+
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  PENDING: ['APPROVED', 'REJECTED'],
+  APPROVED: ['COMPLETED'],
+  REJECTED: [],
+  COMPLETED: [],
+};
 
 @Injectable()
 export class RmaService {
@@ -16,9 +26,7 @@ export class RmaService {
     private readonly orderRepo: Repository<OrderEntity>,
     @InjectRepository(OrderItemEntity)
     private readonly itemRepo: Repository<OrderItemEntity>,
-    @InjectRepository(CustomerEntity)
-    private readonly customerRepo: Repository<CustomerEntity>,
-    private readonly productService: ProductService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(dto: {
@@ -46,6 +54,15 @@ export class RmaService {
     });
     if (existing) throw new BadRequestException('درخواست باز برای این قلم وجود دارد');
 
+    const prior = await this.repo
+      .createQueryBuilder('r')
+      .where('r.orderItemId = :oid', { oid: dto.orderItemId })
+      .andWhere("r.status IN ('APPROVED','COMPLETED')")
+      .getOne();
+    if (prior) {
+      throw new BadRequestException('برای این قلم قبلاً مرجوعی تأیید/تکمیل شده است');
+    }
+
     const row = this.repo.create({
       orderId: order.id,
       orderItemId: item.id,
@@ -67,38 +84,105 @@ export class RmaService {
   }
 
   async findAll(status?: string) {
-    const where: any = {};
+    const where: { status?: string } = {};
     if (status) where.status = status;
     return this.repo.find({ where, order: { createdAt: 'DESC' }, take: 100 });
   }
 
-  async updateStatus(id: string, status: string, adminNote?: string) {
-    const row = await this.repo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException('درخواست یافت نشد');
+  /**
+   * Transactional approval with row lock + CAS via processingMarker.
+   * EXCHANGE is not silently completed — requires explicit incomplete workflow error
+   * until target variant/stock swap is implemented.
+   */
+  async updateStatus(
+    id: string,
+    status: string,
+    adminNote?: string,
+    actorUserId?: string,
+  ) {
     if (!['APPROVED', 'REJECTED', 'COMPLETED', 'PENDING'].includes(status)) {
       throw new BadRequestException('وضعیت نامعتبر');
     }
 
-    const prev = row.status;
-    row.status = status;
-    if (adminNote !== undefined) row.adminNote = adminNote;
+    return this.dataSource.transaction(async (manager) => {
+      const row = await manager
+        .getRepository(ReturnRequestEntity)
+        .createQueryBuilder('r')
+        .setLock('pessimistic_write')
+        .where('r.id = :id', { id })
+        .getOne();
+      if (!row) throw new NotFoundException('درخواست یافت نشد');
 
-    if (status === 'APPROVED' && prev !== 'APPROVED' && row.requestType === 'RETURN') {
-      const item = await this.itemRepo.findOne({ where: { id: row.orderItemId } });
-      if (item?.productVariantId) {
-        await this.productService.updateVariantStock(
-          item.productVariantId,
-          Number(item.quantity) || 0,
+      const allowed = ALLOWED_TRANSITIONS[row.status] || [];
+      if (!allowed.includes(status) && status !== row.status) {
+        throw new BadRequestException(
+          `انتقال وضعیت از ${row.status} به ${status} مجاز نیست`,
         );
       }
-      if (row.refundType === 'WALLET' && item) {
-        const bonusPercent = 5;
-        const credit = Math.round(Number(item.totalPrice) * (1 + bonusPercent / 100));
-        await this.customerRepo.increment({ id: row.customerId }, 'balance', credit);
-        row.adminNote = `${row.adminNote || ''}\nWALLET_CREDIT=${credit} (+${bonusPercent}%)`.trim();
+      if (status === row.status) {
+        return row; // idempotent no-op
       }
-    }
 
-    return this.repo.save(row);
+      if (adminNote !== undefined) {
+        row.adminNote = adminNote;
+      }
+
+      if (status === 'APPROVED') {
+        if (row.processingMarker) {
+          throw new BadRequestException('این درخواست قبلاً پردازش شده است');
+        }
+        if (row.requestType === 'EXCHANGE') {
+          throw new BadRequestException(
+            'تعویض هنوز به‌صورت اتمیک پیاده نشده؛ وضعیت را APPROVED نکنید. از گردش کار جداگانه استفاده کنید.',
+          );
+        }
+
+        const item = await manager.getRepository(OrderItemEntity).findOne({
+          where: { id: row.orderItemId },
+        });
+        if (!item) throw new NotFoundException('قلم سفارش یافت نشد');
+
+        const marker = `RMA_APPROVE:${row.id}`;
+        row.processingMarker = marker;
+        row.processedAt = new Date();
+        row.processedByUserId = actorUserId || null;
+        row.status = 'APPROVED';
+
+        if (item.productVariantId) {
+          const qty = Math.trunc(Number(item.quantity) || 0);
+          const restored = await manager.query(
+            `UPDATE product_variants SET stock = stock + $1 WHERE id = $2 RETURNING id`,
+            [qty, item.productVariantId],
+          );
+          if (!restored?.length) {
+            throw new BadRequestException('بازگردانی موجودی ناموفق بود');
+          }
+        }
+
+        if (row.refundType === 'WALLET') {
+          const bonusPercent = 5;
+          const credit = Math.round(Number(item.totalPrice) * (1 + bonusPercent / 100));
+          const cust = await manager.query(
+            `UPDATE customers SET balance = balance + $1 WHERE id = $2 RETURNING id`,
+            [credit, row.customerId],
+          );
+          if (!cust?.length) {
+            throw new BadRequestException('اعتبار کیف پول ثبت نشد');
+          }
+          row.walletCreditAmount = credit;
+          row.adminNote = `${row.adminNote || ''}\nWALLET_CREDIT=${credit} (+${bonusPercent}%) actor=${actorUserId || 'unknown'}`.trim();
+        }
+
+        const saved = await manager.getRepository(ReturnRequestEntity).save(row);
+        return saved;
+      }
+
+      row.status = status;
+      if (status === 'REJECTED' || status === 'COMPLETED') {
+        row.processedAt = row.processedAt || new Date();
+        row.processedByUserId = actorUserId || row.processedByUserId;
+      }
+      return manager.getRepository(ReturnRequestEntity).save(row);
+    });
   }
 }

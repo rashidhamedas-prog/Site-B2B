@@ -51,17 +51,23 @@ export class CreateProductDto {
   @Min(0)
   wholesalePrice: number;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'قیمت بعد از تخفیف تکی / نهایی (ریال)' })
   @IsOptional()
   @IsNumber()
   @Min(0)
   retailPrice?: number;
 
-  @ApiPropertyOptional({ description: 'قیمت قبل از تخفیف تکی (ریال)' })
+  @ApiPropertyOptional({ description: 'قیمت قبل از تخفیف تکی / compare-at (ریال)' })
   @IsOptional()
   @IsNumber()
   @Min(0)
   retailCompareAtPrice?: number | null;
+
+  @ApiPropertyOptional({ description: 'قیمت قبل از تخفیف عمده / compare-at (ریال)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  wholesaleCompareAtPrice?: number | null;
 
   @ApiPropertyOptional({ description: 'نمایش در عمده', default: true })
   @IsOptional()

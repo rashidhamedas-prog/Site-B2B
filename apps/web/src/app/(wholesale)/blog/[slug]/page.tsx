@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   notFound,
   permanentRedirect,
@@ -373,6 +374,24 @@ export default async function BlogPostPage({
       </section>
 
       <div className="container-site max-w-3xl py-10">
+        {post.coverImage ? (
+          <div className="relative mb-8 aspect-[3/2] overflow-hidden border border-[color:var(--color-border)] bg-surface-muted">
+            <Image
+              src={post.coverImage}
+              alt={post.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 768px"
+              priority
+            />
+          </div>
+        ) : (
+          <div className="mb-8 flex aspect-[3/2] items-center justify-center border border-[color:var(--color-border)] bg-surface-muted">
+            <Tag className="h-10 w-10 text-primary/30" aria-hidden />
+            <span className="sr-only">بدون تصویر کاور</span>
+          </div>
+        )}
+
         <BlogToc
           items={toc}
           tone="wholesale"

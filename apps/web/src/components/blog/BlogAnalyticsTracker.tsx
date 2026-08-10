@@ -29,6 +29,17 @@ function emitGa4(event: string, articleId: string) {
   });
 }
 
+function isFirstUniqueView(articleId: string): boolean {
+  try {
+    const key = `blog-uv:${articleId}`;
+    if (sessionStorage.getItem(key)) return false;
+    sessionStorage.setItem(key, '1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function BlogAnalyticsTracker({
   articleId,
   title,
@@ -40,17 +51,23 @@ export function BlogAnalyticsTracker({
 
   useEffect(() => {
     if (!articleId) return;
-    const track = (event: string) => {
+    const track = (event: string, uniqueView = false) => {
       if (sent.current.has(event)) return;
       sent.current.add(event);
+      const headers: Record<string, string> = {};
+      if (uniqueView) headers['x-blog-uv'] = '1';
       fetch(`${API_URL}/blog/article/${articleId}/analytics/${event}`, {
         method: 'POST',
         keepalive: true,
-      }).catch(() => undefined);
+        headers,
+      }).catch((err) => {
+        // Silent for visitors; observable in browser console / monitoring.
+        console.warn('[blog-analytics]', event, err);
+      });
       emitGa4(event, articleId);
     };
 
-    track('view');
+    track('view', isFirstUniqueView(articleId));
     if (title && window.gtag) {
       window.gtag('event', 'view_item', {
         item_name: title,

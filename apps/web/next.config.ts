@@ -29,22 +29,19 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.poshaktaranom.com',
+        hostname: 'api.poshaktaranom.com',
+        pathname: '/media/**',
       },
-      {
-        protocol: 'https',
-        hostname: '*.poshaktaranom.ir',
-      },
-      // MinIO / object storage
       {
         protocol: 'https',
         hostname: 'storage.poshaktaranom.com',
+        pathname: '/**',
       },
-      // Local development MinIO
       {
         protocol: 'http',
         hostname: 'localhost',
         port: '9000',
+        pathname: '/**',
       },
     ],
     deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920],

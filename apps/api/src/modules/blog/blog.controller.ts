@@ -606,7 +606,8 @@ export class BlogController {
   @RequireBlogPermissions('blog:delete_soft')
   @ApiBearerAuth()
   removeMedia(@Param('id') id: string) {
-    return this.extras.removeMedia(id);
+    // forceReplace deliberately not exposed: referenced media must return 409.
+    return this.extras.removeMedia(id, { forceReplace: false });
   }
 
   @Post('admin/internal-links/suggest')
@@ -715,11 +716,20 @@ export class BlogController {
   }
 
   @Post('article/:id/analytics/:event')
-  track(
+  async track(
     @Param('id') id: string,
-    @Param('event') event: 'view' | 'scroll25' | 'scroll50' | 'scroll75' | 'scroll90' | 'cta' | 'product' | 'internal',
+    @Param('event') event: string,
+    @Req() req: AuthedRequest,
   ) {
-    return this.extras.trackEvent(id, event);
+    const fwd = req.headers?.['x-forwarded-for'];
+    const ip = Array.isArray(fwd) ? fwd[0] : (fwd as string) || req.ip;
+    const uvRaw = req.headers?.['x-blog-uv'];
+    const uv = Array.isArray(uvRaw) ? uvRaw[0] : uvRaw;
+    await this.extras.trackEvent(id, event, {
+      ip,
+      uniqueView: uv === '1' || uv === 'true',
+    });
+    return { ok: true };
   }
 
   @Get('article/:id/related-products')
