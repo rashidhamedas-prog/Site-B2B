@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-10T14:33:00Z — Evidence pack shipped live (PR #26)
+
+- Owner full-authority grant honored: commit → PR → merge → VPS deploy without stepwise confirmation.
+- Commit: `04c8d88` on `ai/TASK-20260810-006-readiness-remediation`
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/26 → merge `197d54f` on master
+- VPS: `bash scripts/auto-deploy.sh` → **deploy complete at 197d54f** (exit 0)
+- Live verify: API ok; wholesale/retail/blog-w/blog-r **200**
+- Readiness authoritative: **71/100**; task remains **in_progress**; claims **retained** (C1 staging/retail OTP still NOT RUN)
+- Exact next: staging sanitized E2E + retail OTP + rollback/off-box + Torob panel; do not mark Done; no website-builder
+
 ## 2026-08-10T14:26:00Z — Owner full-authority: ship evidence pack 71/100
 
 - Owner grant: apply all changes live; merge+deploy; no per-step confirmation.
