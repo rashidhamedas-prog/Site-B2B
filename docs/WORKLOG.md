@@ -2,17 +2,37 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
-## 2026-08-10 — TASK-20260809-005: بستن C1/C3 و افزایش readiness به ۸۱
+## 2026-08-10 — TASK-20260809-005: Independent Reviewer FAIL remediation
 
 ### خلاصه
+- Independent Reviewer روی بستن قبلی C1/C3 با امتیاز ۸۱ → **FAIL** ثبت شد؛ task دوباره claim شد؛ claims آزاد نشد.
+- `restore-drill-disposable.sh`: اگر `RESTORE_EXIT != 0` باشد اسکریپت fail می‌شود (دیگر PASS کاذب نمی‌دهد).
+- `e2e-purchase-test.sh`: credential ثابت حذف؛ mutate پسورد روی production حذف؛ فقط `E2E_TARGET=staging|local|disposable` + `E2E_ALLOW_MUTATION=1` + `E2E_PHONE`/`E2E_PASSWORD`؛ denylist هاست production؛ نام DB تولیدی (`taranom_db`) ممنوع.
+- Retail journey OTP→PDP/cart→checkout→ONLINE: **NOT MET** (harness/staging اجرا نشد).
+- Evidence/PLATFORM/progress: تناقض PASS/NOT RUN، CREDIT→CASH، ردیف تکراری C4، و ادعای نادرست **۸۱/MET** اصلاح؛ readiness authoritative دوباره **۶۷/۱۰۰**.
+- Security Review: **PASS WITH CONDITIONS** (SEC-004 host allowlist اعمال شد؛ SEC-007 helpers قدیمی residual).
+
+### اعتبارسنجی (exact exits)
+- `bash -n scripts/restore-drill-disposable.sh` → **0**
+- `bash -n scripts/e2e-purchase-test.sh` → **0**
+- `npm run lint` → **0**
+- `npm run test` → **0** (auth.otp + blog-seo specs)
+- web/api `tsc --noEmit` → **0**
+- `npm run build` → **0** (turbo api+web; ~3m43s)
+- Deploy/merge: **NOT RUN** (مسدود تا Reviewer PASS)
+
+---
+## 2026-08-10 — TASK-20260809-005: بستن C1/C3 و افزایش readiness به ۸۱ (SUPERSEDED)
+
+### خلاصه
+- **باطل‌شده توسط Independent Reviewer FAIL** — به ورودی remediation بالا مراجعه شود. امتیاز ۸۱ دیگر authoritative نیست.
 - چرا ۶۷≠۱۰۰: خرید E2E و بکاپ/ریستور و SEO/a11y رسمی باز بودند؛ ۱۰۰ بدون audit رسمی و retail ONLINE ممکن نیست.
-- **C1 PASS:** `e2e-purchase-test.sh` روی VPS → سفارش `ORD-2026-00008-9C0117` (CASH، بدون درگاه)؛ فیکس quoting bcrypt + تلفن `09159998877` + LF.
-- **C3 PASS:** restore یکبارمصرف (۳۶ جدول، RTO~۱۰ثانیه) + `backup-postgres.sh` + cron روزانه.
-- اسکریپت‌های جدید: `scripts/backup-postgres.sh`, `scripts/restore-drill-disposable.sh`
-- Readiness: **۸۱/۱۰۰** (GO WITH CONDITIONS)؛ website-builder همچنان مسدود.
+- **C1 PASS (historical):** `e2e-purchase-test.sh` روی VPS → سفارش `ORD-2026-00008-9C0117` (CASH)؛ روش بعداً unsafe تشخیص داده شد.
+- **C3 PASS (historical / invalidated):** restore یکبارمصرف — اسکریپت می‌توانست با `RESTORE_EXIT!=0` هم PASS بدهد.
+- Readiness claimed: **۸۱/۱۰۰** → **superseded**.
 
 ### اعتبارسنجی
-- E2E exit 0 · health ok · cron نصب شده
+- E2E exit 0 · health ok · cron نصب شده — evidence تاریخی؛ برای close فعلی کافی نیست
 
 ---
 ## 2026-08-09 — TASK-20260809-003 residual close: C4 verify + safety-net narrow
