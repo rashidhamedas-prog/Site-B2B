@@ -2,6 +2,80 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-10T09:40:00Z — TASK-20260809-005 ship: commit + merge + deploy
+
+- Time (UTC): 2026-08-10T09:40:00Z
+- Task / owner / role: TASK-20260809-005 / cursor:orchestrator-TASK-20260809-005 / orchestrator
+- Branch / worktree: `ai/TASK-20260809-005-readiness-tail` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Reviewer: [PASS](f6941b58-5e19-4a95-81f9-95c359fe3d3f); Security: [PASS WITH CONDITIONS](0854addd-5c62-48a4-a5a4-1488239f797d)
+- Action: Human-authorized commit → PR → merge master → VPS auto-deploy
+- File claims: **released** (`active.yaml` → `tasks: []`) in ship commit
+- Readiness retained: **67/100**; C1/C3 accepted-with-expiry; C4 Satisfied
+- Exact next: Confirm health after deploy; schedule staging E2E + restore re-verify before 2026-09-09
+
+## 2026-08-10T09:25:00Z — Independent Reviewer PASS (remediation)
+
+- Time (UTC): 2026-08-10T09:25:00Z
+- Task / owner / role: TASK-20260809-005 / independent Reviewer (not implementer) / reviewer
+- Agent: [PASS](f6941b58-5e19-4a95-81f9-95c359fe3d3f)
+- Scope: Prior FAIL fix list 1–8 re-verified against worktree
+- Verdict: **PASS** — all prior FAIL items MET; readiness coherent at **67/100**; retail NOT MET; claims retained
+- Residuals (Medium, non-blocking for PASS): stale E2E invoke examples (fixed post-review by implementer); SEC-007 helpers; host-gate escape hatches
+- Explicit: Do **NOT** mark Done; do **NOT** release claims; do **NOT** commit on Reviewer authority
+- Exact next: Human/orchestrator may commit claimed remediation; keep claims until after commit; no deploy/merge until asked
+
+## 2026-08-10T09:20:00Z — TASK-20260809-005 Independent Reviewer FAIL remediation (claims retained)
+
+- Time (UTC): 2026-08-10T09:20:00Z
+- Task / owner / role: TASK-20260809-005 / cursor:orchestrator-TASK-20260809-005 / orchestrator+implementer
+- Branch / worktree: `ai/TASK-20260809-005-readiness-tail` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Status: **in_progress** — **NOT Done**; file_claims **retained**; no deploy/merge
+
+### Independent Reviewer FAIL (recorded)
+
+Prior close claiming **81/100** + C1/C3 Satisfied is **FAIL** / superseded due to:
+1. Task registry empty / claims released prematurely
+2. `restore-drill-disposable.sh` could PASS when `RESTORE_EXIT != 0`
+3. `e2e-purchase-test.sh` hardcoded credentials + direct password UPDATE on production DB
+4. Retail OTP→PDP/cart→checkout→ONLINE without durable evidence while readiness inflated
+5. Evidence contradictions (PASS vs NOT RUN, CREDIT vs CASH), duplicate C4, false MET/81
+
+### Remediation applied
+
+| Item | Result |
+|---|---|
+| Reopen TASK-005 + file_claims | Done (`active.yaml`) |
+| restore fail-closed on `RESTORE_EXIT` | Done |
+| e2e staging-only + no hardcoded creds + prod password mutate removed + host denylist/allowlist | Done |
+| Retail journey | **NOT MET** (no staging OTP/ONLINE harness run) |
+| Evidence/PLATFORM/progress/runbook | Coherent at **67/100**; C1/C3 accepted-with-expiry → 2026-09-09; C4 Satisfied; duplicate C4 removed; 81 superseded |
+| Security Review | [PASS WITH CONDITIONS](0854addd-5c62-48a4-a5a4-1488239f797d) — SEC-004 mitigated in script; SEC-007 residual helpers |
+
+### Gates (exact)
+
+| Gate | Exit |
+|---|---:|
+| `bash -n scripts/restore-drill-disposable.sh` | **0** |
+| `bash -n scripts/e2e-purchase-test.sh` | **0** |
+| `npm run lint` | **0** |
+| `npm run test` | **0** |
+| `npm run type-check -w @taranom/web` | **0** |
+| `cd apps/api && npx tsc --noEmit` | **0** |
+| `npm run build` | **0** (turbo api+web; ~3m43s) |
+
+### Readiness
+
+- Authoritative: **GO WITH CONDITIONS** **67/100**
+- Prior **81/100**: superseded/invalidated
+- Do not increase score without staging E2E + fail-closed restore re-run evidence
+
+### Exact next action
+
+1. Human/orchestrator may commit claimed remediation
+2. Keep claims until after commit
+3. Still **no deploy/merge** until explicitly asked
+4. Optional later: staging sanitized E2E; disposable restore re-run; quarantine `e2e-debug-*.sh` / `e2e-prep.sh` (SEC-007)
+
 ## 2026-08-09T13:45:00Z — TASK-20260809-004 done; claims released
 
 - Objective: Align `docs/implementation-progress.md` to authoritative **67/100** and **C4 Satisfied** after Reviewer FAIL leftover.

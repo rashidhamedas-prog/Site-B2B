@@ -1,12 +1,12 @@
 # Test and Acceptance Evidence
 
-**Task:** TASK-20260809-002  
+**Task:** TASK-20260809-005  
 **Worktree:** `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`  
-**Branch / commit (at write):** `ai/TASK-20260809-002-retail-wholesale-completion` / `e3f71d2` (+ uncommitted Phase-2 tooling/docs)  
-**Author role:** QA / characterization evidence (Phase-3 docs update)  
-**Date (UTC):** 2026-08-09  
+**Branch / commit (at write):** `ai/TASK-20260809-005-readiness-tail` (Reviewer FAIL remediation; evidence coherence)  
+**Author role:** QA / characterization evidence (remediation after Independent Reviewer FAIL)  
+**Date (UTC):** 2026-08-10  
 **Sources of criteria:** `Retail-Wholesale-Completion-Package/MASTER.md` (required acceptance), `10_TESTING_QA_ACCEPTANCE.md`, `06_RETAIL_BUSINESS_RULES.md`, `07_WHOLESALE_BUSINESS_RULES.md`, plus channel notes in `docs/B2C.md`  
-**Verdict rule:** `PASS` requires command/result evidence from this task baseline or a linked re-run. Historical WORKLOG/report mentions are labeled **prior evidence (stale)** and do **not** upgrade a row to `PASS`.
+**Verdict rule:** `PASS` requires command/result evidence from this task baseline or a linked re-run. Historical WORKLOG/report mentions are labeled **prior evidence (stale / superseded)** and do **not** upgrade a row to authoritative `PASS` for unconditional C1 close. Prior readiness **81/100** is **superseded / invalidated**; authoritative score is **67/100** (see PLATFORM-READINESS-REPORT).
 
 ---
 
@@ -15,11 +15,13 @@
 | Result | Meaning |
 |--------|---------|
 | **PASS** | Executed in this baseline (or cited re-run) with recorded exit/output proving the requirement. |
+| **PASS-historical** | Ran previously with a recorded artifact, but method is superseded / unsafe / not authoritative for current acceptance close. |
 | **FAIL** | Executed and failed (tool missing, assertion failure, non-zero exit). |
 | **NOT RUN** | Artifact or procedure exists (or is required) but was not executed for this evidence pack. |
 | **PENDING** | Historical vocabulary only — remapped gates are now recorded PASS; do not use for current remap status. |
 | **N/A** | Not applicable to current product shape, with owner/code evidence. |
 | **UNKNOWN** | Cannot determine applicability or outcome from repository evidence without further discovery/run. |
+| **MET-via-acceptance** | Criterion held only via explicit accepted-with-expiry (not unconditional MET). |
 
 ---
 
@@ -44,7 +46,7 @@ Discovered from root/`apps/*/package.json`, `.github/workflows/ci.yml`, `.ai-dos
 | Build web (CI) | `npm run build` | `apps/web` | `NEXT_PUBLIC_API_URL` | No | **NOT RUN** | CI job `lint-and-build` |
 | Build API (CI) | `npm run build` | `apps/api` | nest build | No | **NOT RUN** | CI job `lint-and-build` |
 | Readonly acceptance smoke | `bash scripts/acceptance-smoke-readonly.sh` | repo root / network | authorized prod URLs; no mutations | Manual probe equivalent Yes | **PASS** (authorized 2026-08-09) | See §2.1 — script purpose + recorded probe |
-| E2E purchase script | `bash scripts/e2e-purchase-test.sh` | local/VPS API stack | Docker/API + Postgres; CASH wholesale order; no gateway money | No | **PASS** | VPS 2026-08-10; order `ORD-2026-00008-9C0117` PENDING_REVIEW |
+| E2E purchase script | `bash scripts/e2e-purchase-test.sh` | staging/local only (sanitized) | Docker/API + Postgres; CASH wholesale order; no gateway money; no prod password mutate | Yes (historical VPS 2026-08-10) | **PASS-historical** (method superseded / not authoritative for current C1 close) | Order `ORD-2026-00008-9C0117` PENDING_REVIEW existed; staging sanitized re-run **NOT RUN** |
 
 **Known baseline freeze (authoritative for this document):**
 
@@ -54,7 +56,8 @@ Discovered from root/`apps/*/package.json`, `.github/workflows/ci.yml`, `.ai-dos
 - Phase-1 `npm run lint` / `npm run test` → exit **1** (missing eslint/jest)
 - Phase-2 script remap: API `lint`→`tsc --noEmit`, `test`→ts-node specs — **PASS** exit 0 (handoff 02:48Z / 09:05Z; Reviewer 09:15Z). Not ESLint.
 - Authorized prod readonly smoke 2026-08-09 → **PASS** (health, storefronts, products)
-- Full purchase E2E → **NOT RUN** (no local Docker/API) — **C1 accepted-with-expiry** (PLATFORM-READINESS-REPORT)
+- Historical VPS wholesale CASH order `ORD-2026-00008-9C0117` → **prior historical evidence (unsafe method; superseded)**
+- Current sanitized staging purchase E2E → **NOT RUN** — acceptance-core purchase remains **NOT VERIFIED**; **C1 accepted-with-expiry → 2026-09-09**
 
 **Tooling note (P2):** Phase-1 failed because `eslint`/`jest` were undeclared. Phase-2 remaps API scripts to typecheck + existing ts-node specs (CI-equivalent). Full eslint suite remains an eventual/optional hardening item, not claimed green until a recorded run.
 
@@ -89,7 +92,7 @@ This is **storefront/API liveness smoke**, not MASTER critical-journey purchase 
 | Blog SEO helpers / roles | `apps/api/src/modules/blog/blog-seo.util.spec.ts` | Unit (assert script) | Blog/SEO only | No | **PASS** (exit 0) | via remapped `npm run test` |
 | Blog SEO analysis | `apps/api/src/modules/blog/blog-seo-analysis.spec.ts` | Unit (assert script) | Blog/SEO only | No | **PASS** (exit 0) | via remapped `npm run test` |
 | Readonly smoke (API + storefronts) | `scripts/acceptance-smoke-readonly.sh` | Ops smoke (curl, non-mutating) | Health, products, wholesale/retail HTTP | No (manual/ops) | **PASS** (authorized probe 2026-08-09) |
-| Wholesale-oriented API purchase smoke | `scripts/e2e-purchase-test.sh` | E2E/smoke (curl) | Health → product → CUSTOMER login → `POST /orders` CREDIT + MOQ → order list | No (manual/ops) | **NOT RUN** (no local Docker/API) |
+| Wholesale-oriented API purchase smoke | `scripts/e2e-purchase-test.sh` | E2E/smoke (curl) | Health → product → CUSTOMER login → `POST /orders` CASH + MOQ → order list | Staging/local only (manual/ops) | **NOT RUN** (current sanitized staging re-run); historical VPS CASH = superseded |
 | E2E prep/debug helpers | `scripts/e2e-prep.sh`, `e2e-debug-*.sh` | Ops helpers | Support for purchase script / DB peek | No | **N/A** (not acceptance criteria) |
 | Playwright / Cypress suite | — | E2E | **None found** for commerce journeys | — | **N/A** (absent) |
 | Jest-based API unit suite | prior `"test": "jest"` | Unit | No commerce Jest specs; runner removed from scripts in Phase-2 | Declared via turbo historically | **N/A** (suite absent; scripts remapped) |
@@ -130,18 +133,18 @@ Implemented surface (docs/code evidence, not test evidence): `apps/web/src/app/r
 ## 5. Wholesale journey matrix
 
 Criteria: MASTER §Required acceptance (“eligibility/authentication → customer-specific catalog/pricing/MOQ → order capture → approval/credit/payment path → fulfillment/status”) and `07_WHOLESALE_BUSINESS_RULES.md`.  
-Closest automation: `scripts/e2e-purchase-test.sh` (password CUSTOMER login, MOQ-aware qty, `wholesalePrice`, `paymentMethod: CREDIT`, order list). **Not executed** — local Docker unavailable.
+Closest automation: `scripts/e2e-purchase-test.sh` (CUSTOMER login, MOQ-aware qty, `wholesalePrice`, `paymentMethod: CASH`, order list). **Coherent story:** historical VPS CASH order existed; script since sanitized for staging-only; current sanitized staging re-run **NOT RUN**; acceptance-core purchase remains **NOT VERIFIED** for unconditional C1 close.
 
 | ID | Requirement | Test / procedure | Environment | Result | Notes |
 |----|-------------|------------------|-------------|--------|-------|
 | W-00 | Storefront home + public catalog API reachable | Authorized prod probe / `acceptance-smoke-readonly.sh` | production (readonly) | **PASS** | Wholesale home HTTP **200**; `GET /v1/products?limit=1` → **200** |
-| W-01 | Auth: approved customer can login | `e2e-purchase-test.sh` steps 4–5; manual login | local Docker stack | **NOT RUN** | No local Docker/API; script may create/activate test customer via DB — ops-only; fake password shape `Test@123456` in script (not a secret dump of production) |
+| W-01 | Auth: approved customer can login | `e2e-purchase-test.sh` steps 4–5; manual login | staging/local | **NOT RUN** | Current sanitized staging re-run NOT RUN; historical prod method superseded |
 | W-02 | Eligibility: unapproved / suspended blocked | Negative API/UI cases | staging | **NOT RUN** | Required by file 07; no automated negative suite |
 | W-03 | Catalog visibility for wholesale customer | API product list/detail after auth | staging | **NOT RUN** | Unauthenticated product list PASS is not customer-scoped catalog |
 | W-04 | Customer-specific / contract pricing | Price list precedence tests | staging + unit | **NOT RUN** | Script posts client-supplied `unitPrice` from `wholesalePrice` — does not prove server-side price enforcement |
 | W-05 | MOQ and pack/case multiples | Boundary qty below/at/above MOQ; pack violations | staging + unit | **NOT RUN** | `assertMoq` exists in `order.service.ts`; script chooses compliant qty only — no violation case |
-| W-06 | Order capture | `POST /orders` success → `orderNumber` | local/staging | **NOT RUN** | Covered by script step 5 **if run** — **NOT RUN** this pack |
-| W-07 | Credit / approval / payment path | CREDIT / INSTALLMENT / ONLINE paths; credit limit exceeded | staging | **NOT RUN** | Script uses `CREDIT` happy path only; credit-exceeded **NOT RUN** |
+| W-06 | Order capture | `POST /orders` success → `orderNumber` | staging (current) / historical VPS | **PASS-historical** | Historical order `ORD-2026-00008-9C0117` (CASH); method superseded — **not** authoritative PASS for current C1; staging sanitized re-run **NOT RUN** |
+| W-07 | Credit / approval / payment path | CASH / CREDIT / INSTALLMENT / ONLINE paths; credit limit exceeded | staging | **NOT RUN** | Script happy path is **CASH** (not CREDIT); credit-exceeded **NOT RUN** |
 | W-08 | Order status / history isolation | `GET /orders`; cross-account isolation | staging | **NOT RUN** | Script step 6 lists own latest order only |
 | W-09 | Storefront pages load | HTTP smoke `/products`, `/checkout` | local web:3000 | **NOT RUN** for script step 7; prod home covered by W-00 | Full UI checkout still unverified |
 | W-10 | Inventory contention with retail | Concurrent last-unit retail+wholesale | staging | **NOT RUN** | Called out in file 07 / 08; no harness |
@@ -149,7 +152,7 @@ Closest automation: `scripts/e2e-purchase-test.sh` (password CUSTOMER login, MOQ
 | W-12 | Partial fulfillment / cancel / refund / invoice isolation | Manual + API | staging | **NOT RUN** | Gap |
 | W-13 | Multi-org / roles (if present) | Role matrix | — | **UNKNOWN** | Needs audit confirmation of org model vs single customer |
 
-**Wholesale critical-path status:** **PARTIALLY SMOKED** (home + public products). Auth→order purchase path **NOT VERIFIED** (`e2e-purchase-test.sh` **NOT RUN**).
+**Wholesale critical-path status:** **PARTIALLY SMOKED** (home + public products). Auth→order purchase path **NOT VERIFIED** for current close (historical CASH = superseded; staging sanitized re-run **NOT RUN**).
 
 ---
 
@@ -164,9 +167,9 @@ Closest automation: `scripts/e2e-purchase-test.sh` (password CUSTOMER login, MOQ
 | S-04 | AuthZ server-side for price/permission | Negative API tests | **NOT RUN** | File 07 mandate |
 | S-05 | Security (file 05): secrets, validation, common web threats | Security review + scans | **NOT RUN** this pack | High-risk gates still required before Done |
 | S-06 | SEO / a11y / performance of critical storefronts | Lighthouse/manual + perf budget | **NOT RUN** | Blog SEO scripts exist but are off critical purchase path |
-| S-07 | Backup / restore / deploy / rollback executable | Follow deployment runbook (sibling doc) | **NOT RUN** / **UNKNOWN** | Out of QA lane execution; production actions need human approval |
+| S-07 | Backup / restore / deploy / rollback executable | Follow deployment runbook (sibling doc) | **NOT RUN** / partial | Cron/backup scripts exist (partial C3); prior disposable restore PASS **invalidated** until fail-closed re-run; rollback rehearsal **NOT RUN** |
 | S-08 | Public URL / redirect continuity | Crawl or checklist + prod home codes | **PARTIAL** | Retail **301** + wholesale **200** recorded; full redirect matrix not crawled |
-| S-09 | No open P0; no unaccepted P1 | Defect register + severity | **UNKNOWN** | Audit/defect register not closed in this lane |
+| S-09 | No open P0; no unaccepted P1 | Defect register + severity | **MET-via-acceptance** | No open P0; C1/C3 **accepted-with-expiry → 2026-09-09**; C4 **Satisfied** (not unconditional MET) |
 
 ---
 
@@ -187,9 +190,9 @@ These gaps block proving rewrite/equivalence later. Prefer tests that pin **curr
 | G-09 | Retail cart merge/persistence pure functions | P1 |
 | G-10 | Record remapped `npm run test` (ts-node specs) exit; keep specs in CI | P1 tooling |
 | G-11 | Optional: restore eslint as separate gate (scripts currently use `tsc --noEmit` for lint) | P2 tooling |
-| G-12 | Dedicated retail E2E (discovery→PDP→cart→OTP→checkout) separate from wholesale CREDIT script | P0 acceptance |
+| G-12 | Dedicated retail E2E (discovery→PDP→cart→OTP→checkout→ONLINE) separate from wholesale CASH script | P0 acceptance |
 | G-13 | Browser E2E (Playwright) for mobile/desktop smoke | P2 |
-| G-14 | Run `e2e-purchase-test.sh` when local/staging Docker API exists | P0 acceptance |
+| G-14 | Re-run sanitized `e2e-purchase-test.sh` on staging/local only (not production) | P0 acceptance |
 
 ---
 
@@ -209,8 +212,14 @@ npm run test -w @taranom/api    # → ts-node assert specs
 # Read-only prod/staging smoke (no orders/payments):
 bash scripts/acceptance-smoke-readonly.sh
 
-# Local/staging only — never production money; requires local Docker/API:
-API_URL=http://localhost:4000/v1 bash scripts/e2e-purchase-test.sh
+# Staging/local/disposable only — never production; CASH wholesale order; env credentials required:
+E2E_TARGET=local \
+E2E_ALLOW_MUTATION=1 \
+E2E_PHONE='09xxxxxxxxx' \
+E2E_PASSWORD='use-staging-only-secret' \
+API_URL=http://localhost:4000/v1 \
+WEB_URL=http://localhost:3000 \
+bash scripts/e2e-purchase-test.sh
 ```
 
 Phase-1 expectation (historical): lint/test **FAIL** with missing eslint/jest. Phase-2 remapped scripts — **PASS** exit 0 (handoff 02:48Z+; Reviewer 09:15Z / 09:35Z). Not ESLint.
@@ -223,26 +232,19 @@ Each row below is one Result cell from §§2–6. Journey + shared rows are the 
 
 ### 9.1 Quality gates (§2) — 16 rows
 
-| PASS | FAIL | NOT RUN | N/A | UNKNOWN |
-|------|------|---------|-----|---------|
-| 9 | 2 | 5 | 0 | 0 |
+| PASS | FAIL | NOT RUN | N/A | UNKNOWN | PASS-historical |
+|------|------|---------|-----|---------|-----------------|
+| 8 | 2 | 5 | 0 | 0 | 1 |
 
-PASS: install, web tsc, API tsc, turbo build, remapped lint, remapped test (+ OTP/blog via test), readonly smoke. FAIL: Phase-1 lint, Phase-1 test (historical). NOT RUN: format, separate CI web/api builds, purchase E2E.
+PASS: install, web tsc, API tsc, turbo build, remapped lint, remapped test (+ OTP/blog via test), readonly smoke. FAIL: Phase-1 lint, Phase-1 test (historical). NOT RUN: format, separate CI web/api builds. PASS-historical: purchase E2E (VPS CASH; method superseded — not authoritative for current C1).
 
 ### 9.2 Automated assets (§3) — 11 rows
 
 | PASS | FAIL | NOT RUN | N/A | UNKNOWN |
 |------|------|---------|-----|---------|
-| 4 | 0 | 0 | 7 | 0 |
+| 4 | 0 | 1 | 6 | 0 |
 
-PASS: readonly smoke script; OTP + two blog specs via remapped `npm run test`. N/A: prep helpers, Playwright, Jest suite, retail E2E harness, commerce unit suite, webhook suite. Purchase E2E script exists but journey-counted as NOT RUN under C1.
-*(Purchase script counted under §2 E2E row and §5 journeys — assets table lists it as NOT RUN.)*
-
-Recount assets with purchase row as NOT RUN:
-
-| PASS | FAIL | NOT RUN | N/A | UNKNOWN |
-|------|------|---------|-----|---------|
-| 1 | 0 | 4 | 6 | 0 |
+PASS: readonly smoke script; OTP + two blog specs via remapped `npm run test`. NOT RUN: purchase E2E asset (current sanitized staging). N/A: prep helpers, Playwright, Jest suite, retail E2E harness, commerce unit suite, webhook suite.
 
 ### 9.3 Retail journey (§4) — 16 rows
 
@@ -252,35 +254,39 @@ Recount assets with purchase row as NOT RUN:
 
 ### 9.4 Wholesale journey (§5) — 14 rows
 
-| PASS | FAIL | NOT RUN | N/A | UNKNOWN |
-|------|------|---------|-----|---------|
-| 1 | 0 | 12 | 0 | 1 |
+| PASS | FAIL | NOT RUN | N/A | UNKNOWN | PASS-historical |
+|------|------|---------|-----|---------|-----------------|
+| 1 | 0 | 11 | 0 | 1 | 1 |
+
+PASS: W-00. PASS-historical: W-06 only (superseded; not acceptance-core PASS). Remaining purchase-path rows NOT RUN / UNKNOWN.
 
 ### 9.5 Shared / NFR (§6) — 10 rows
 
-| PASS | FAIL | NOT RUN | N/A | UNKNOWN | PARTIAL |
-|------|------|---------|-----|---------|---------|
-| 1 | 0 | 6 | 0 | 2 | 1 |
+| PASS | FAIL | NOT RUN | N/A | UNKNOWN | PARTIAL | MET-via-acceptance |
+|------|------|---------|-----|---------|---------|-------------------|
+| 1 | 0 | 5 | 0 | 0 | 2 | 1 |
+
+PASS: S-00. PARTIAL: S-07 (backup partial / restore re-verify), S-08. MET-via-acceptance: S-09 (C1/C3 accepted-with-expiry).
 
 ### 9.6 Grand total — approximate (PENDING column retired for remap)
 
-| PASS | FAIL | NOT RUN | N/A | UNKNOWN | PARTIAL |
-|------|------|---------|-----|---------|---------|
-| **12** | **2** | **39** | **7** | **4** | **1** |
+| PASS | FAIL | NOT RUN | N/A | UNKNOWN | PARTIAL | PASS-historical | MET-via-acceptance |
+|------|------|---------|-----|---------|---------|-----------------|-------------------|
+| **14** | **2** | **35** | **7** | **2** | **2** | **2** | **1** |
 
-**Acceptance-core only (retail + wholesale + shared):** PASS **3** (R-00, W-00, S-00 liveness), purchase journeys PASS **0**.
+**Acceptance-core only (retail + wholesale + shared):** authoritative PASS **3** (R-00, W-00, S-00 liveness). Purchase journeys authoritative PASS **0** (W-06 PASS-historical only; not unconditional C1 close).
 
 ---
 
 ## 10. Critical gaps (block unconditional GO; conditioned for GO WITH CONDITIONS)
 
-1. **No verified retail purchase E2E** — only home/API liveness smoke PASS — **C1 accepted-with-expiry → 2026-09-09**.
-2. **Wholesale purchase script not executed** — same **C1**.
+1. **No verified retail purchase E2E** (OTP→cart→checkout→ONLINE) — **NOT MET / NOT RUN** — **C1 accepted-with-expiry → 2026-09-09**.
+2. **Wholesale purchase not authoritative for current close** — historical VPS CASH `ORD-2026-00008-9C0117` superseded (unsafe method); staging sanitized re-run **NOT RUN** — same **C1** (do not claim Satisfied).
 3. **No domain unit/integration suite for commerce** — MOQ/credit/idempotency gaps remain.
 4. **Build/typecheck/lint/test PASS** after remap; eslint-as-style deferred (Low) — **C5 mitigated**.
-5. **Backup/restore rehearsal UNKNOWN** — **C3 accepted-with-expiry → 2026-09-09**.
+5. **Backup/restore drill needs re-verify** — prior disposable PASS invalidated until fail-closed script re-run; rollback rehearsal **NOT RUN** — **C3 accepted-with-expiry → 2026-09-09**.
 6. **Server-side price/credit/eligibility negatives unproven**.
-7. **P0 none; P1 C1/C3/C4 accepted-with-expiry** (see PLATFORM-READINESS-REPORT).
+7. **P0 none; P1 C1/C3 accepted-with-expiry; C4 Satisfied** — readiness score **67/100** (prior **81/100 superseded**). See PLATFORM-READINESS-REPORT.
 8. **Sandbox payment / webhook contract harness missing**.
 
 ---
@@ -289,9 +295,11 @@ Recount assets with purchase row as NOT RUN:
 
 | Question | Answer |
 |----------|--------|
-| Are retail and wholesale critical journeys verified end-to-end? | **No** — purchase paths NOT RUN; readonly liveness smoke PASS |
+| Are retail and wholesale critical journeys verified end-to-end? | **No** — retail NOT MET; wholesale purchase NOT VERIFIED for current close (historical CASH superseded); liveness smoke PASS |
 | Do quality gates pass? | **Yes (tsc gate)** — remapped lint/test exit **0**; Phase-1 eslint/jest FAIL historical; ESLint deferred Low |
 | Is production API/storefront healthy (readonly)? | **Yes** — authorized 2026-08-09 smoke PASS |
-| Is this document sufficient for PLATFORM GO (unconditional)? | **No** — **GO WITH CONDITIONS** only; C1/C3/C4 accepted-with-expiry through 2026-09-09 |
+| C1 / C3 / C4 status? | **C1** accepted-with-expiry → 2026-09-09; **C3** accepted-with-expiry → 2026-09-09; **C4 Satisfied** |
+| Authoritative readiness score? | **67/100** — prior **81/100 superseded / invalidated** by Independent Reviewer FAIL |
+| Is this document sufficient for PLATFORM GO (unconditional)? | **No** — **GO WITH CONDITIONS** only; C1/C3 accepted-with-expiry through 2026-09-09 |
 
-Next QA actions: (1) run `e2e-purchase-test.sh` when Docker API exists; (2) restore drill; (3) schema dual-path promotion; (4) characterization tests before commerce rewrite.
+Next QA actions: (1) staging-only sanitized `e2e-purchase-test.sh` re-run; (2) restore drill re-verify with fail-closed script; (3) retail OTP→cart→checkout→ONLINE sandbox; (4) characterization tests before commerce rewrite. Do **not** mark Done; claims retained.

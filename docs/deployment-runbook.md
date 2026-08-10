@@ -315,13 +315,20 @@ curl -sf "http://localhost:4000/v1/products?limit=1" | head -c 200; echo
 docker compose logs --tail 80 api
 ```
 
-### 5.6 Optional E2E purchase path (creates order — use carefully)
+### 5.6 Optional E2E purchase path (creates order — staging/local only)
 
-`scripts/e2e-purchase-test.sh` hits health → product → login → **creates a CREDIT order** → checks `/products` and `/checkout`.  
-**⛔ Prefer non-production or authorized test customer only.** Uses `API_URL` default `http://localhost:4000/v1`.
+`scripts/e2e-purchase-test.sh` hits health → product → login → **creates a CASH wholesale order** → checks `/products` and `/checkout`.  
+**⛔ Staging / local / disposable stacks only.** Do **not** run against production. Script must use env-provided credentials (no hardcoded secrets; no direct password `UPDATE` on prod). Historical VPS CASH order `ORD-2026-00008-9C0117` is prior evidence from an unsafe method and is **superseded** for C1 close — re-run on staging after sanitization. Uses `API_URL` default `http://localhost:4000/v1`.
 
 ```bash
-API_URL=http://localhost:4000/v1 bash scripts/e2e-purchase-test.sh
+# Staging/local/disposable only — never production
+E2E_TARGET=local \
+E2E_ALLOW_MUTATION=1 \
+E2E_PHONE='09xxxxxxxxx' \
+E2E_PASSWORD='use-staging-only-secret' \
+API_URL=http://localhost:4000/v1 \
+WEB_URL=http://localhost:3000 \
+bash scripts/e2e-purchase-test.sh
 ```
 
 ### 5.7 Observability smoke

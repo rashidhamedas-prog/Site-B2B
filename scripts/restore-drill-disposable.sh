@@ -56,6 +56,11 @@ echo "public_tables=$TABLES"
 echo "products=$PRODUCTS"
 echo "orders=$ORDERS"
 
+if [[ "$RESTORE_EXIT" -ne 0 ]]; then
+  echo "FAIL: pg_restore exited $RESTORE_EXIT (partial restore must not PASS)" >&2
+  exit "$RESTORE_EXIT"
+fi
+
 if [[ "${TABLES:-0}" -lt 10 ]]; then
   echo "FAIL: too few tables after restore" >&2
   exit 1

@@ -1,16 +1,29 @@
-# Implementation Progress — TASK-20260809-003 (residual) + TASK-20260809-002
+# Implementation Progress — TASK-20260809-005 (Reviewer FAIL remediation)
 
 Retail & wholesale completion per `Retail-Wholesale-Completion-Package/MASTER.md`.
 
-- Active task: `TASK-20260809-004` (progress coherence)
-- Owner: `cursor:orchestrator-TASK-20260809-004`
-- Branch: `ai/TASK-20260809-004-progress-coherence`
+- Active task: `TASK-20260809-005` (Independent Reviewer FAIL remediation — C1/C3 script safety + evidence coherence)
+- Owner: `cursor:orchestrator-TASK-20260809-005`
+- Branch: `ai/TASK-20260809-005-readiness-tail`
 - Authoritative worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Base: `origin/master` @ `5fe8cb3` (PR #20 claim release; residual C4 shipped via PR #19)
+- Base: residual C4 shipped; brief false close at **81/100** invalidated by Reviewer FAIL
 
-Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason.
+Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason. Prior score **81/100** is **superseded / invalidated**; authoritative checkpoint is **67/100**.
 
 ---
+
+## 2026-08-10 12:40 — Milestone Reviewer FAIL remediation (evidence coherence)
+
+- Status: in progress (docs lane; task **not Done**; claims retained)
+- Scope completed (this Implementer docs lane):
+  - Authoritative readiness restored to **67/100** (**C4 Satisfied** only)
+  - Prior **81/100** marked **superseded / invalidated** (unsafe prod E2E method + restore-drill false-green + evidence contradictions)
+  - **C1** → **accepted-with-expiry → 2026-09-09** (or remediation-required until staging sanitized re-run); historical CASH order `ORD-2026-00008-9C0117` noted as prior/superseded only; retail OTP→cart→checkout→ONLINE **NOT MET / NOT RUN**
+  - **C3** → **accepted-with-expiry → 2026-09-09** (prior disposable restore PASS invalidated until fail-closed re-run)
+  - Duplicate C4 risk-register row removed; DoD false MET claims corrected (claims released → NOT MET; P0/P1 → MET-via-acceptance)
+  - CREDIT→CASH + staging-only E2E notes aligned across evidence/runbook
+- Data/schema impact: docs only in this lane
+- Next: Independent Reviewer re-pass after script + governance lanes land; do **not** mark Done; do **not** release claims
 
 ## 2026-08-09 15:45 — Milestone C4 VPS verify + safety-net narrow
 
@@ -136,12 +149,12 @@ Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer 
 
 ## Prioritized remediation backlog
 
-Derived from handoff + Phase-2/3 evidence (+ Phase-4 schema inventory note). Priorities: P0 blocker → P1 acceptance risk → P2 tooling/docs debt.
+Derived from handoff + Phase-2/3 evidence (+ Reviewer FAIL 2026-08-10). Priorities: P0 blocker → P1 acceptance risk → P2 tooling/docs debt.
 
 | Priority | Item | Evidence | Next step | Data impact |
 |----------|------|----------|-----------|-------------|
-| P1 **C1** | Retail/wholesale purchase E2E | purchase PASS 0; Docker unavailable | Accepted-with-expiry → 2026-09-09; run E2E before expiry | none if non-prod |
-| P1 **C3** | Backup/restore rehearsal | inventory PARTIAL; listable dump + `pg_restore -l` 0; restore drill open | Accepted-with-expiry → 2026-09-09; disposable restore + fix cron | restore on non-prod first |
+| P1 **C1** | Purchase E2E (staging sanitized) | Historical CASH superseded; retail NOT MET; staging re-run NOT RUN | **accepted-with-expiry → 2026-09-09**; staging-only sanitized script | none if non-prod |
+| P1 **C3** | Backup/restore drill re-verify | Prior disposable PASS invalidated (false-green); cron/scripts partial; rollback NOT RUN | **accepted-with-expiry → 2026-09-09**; fail-closed restore re-run | restore on disposable only |
 | — **C4** | Schema dual-path | VPS migration id=11 + safety-net narrowed (PR #19) | **Satisfied** 2026-08-09 | none |
 | P2 **C5** | Remapped lint/test + eslint | lint/test **PASS** exit 0; eslint deferred Low | **Mitigated**; optional eslint later | none |
 | — | Prod health (was C2) | authorized smoke PASS | Keep monitoring | none |
@@ -150,18 +163,20 @@ Derived from handoff + Phase-2/3 evidence (+ Phase-4 schema inventory note). Pri
 
 ---
 
-## Next bounded actions (post-C4 close)
+## Next bounded actions (post-Reviewer FAIL)
 
-1. Non-prod purchase E2E when Docker available (before 2026-09-09) — **C1**.
-2. Disposable restore drill + repair/retire broken daily backup cron — **C3**.
-3. Do **not** start website-builder while C1/C3 remain open.
+1. Staging-only sanitized purchase E2E re-run (before 2026-09-09) — **C1**; retail OTP→cart→checkout→ONLINE remains open.
+2. Disposable restore drill re-verify with fail-closed script — **C3**; rollback rehearsal still NOT RUN.
+3. Independent Reviewer re-pass; keep claims until PASS + commit; do **not** mark Done; do **not** start website-builder.
 
 ---
 
 ## Checkpoint metadata
 
 - Orchestrator Phase-2 start: 2026-08-09T02:40:00Z
-- Reviewer-fail reconcile: 2026-08-09T09:25Z–09:40Z
+- Reviewer-fail reconcile (tooling): 2026-08-09T09:25Z–09:40Z
 - C4 VPS verify + safety-net narrow: 2026-08-09 (PR #19 → `2233a0a`)
-- Verdict: **GO WITH CONDITIONS** (**67/100**); **C4 Satisfied**; C1/C3 accepted-with-expiry; C2/C5 mitigated
-- Shipped: PR #18–#20 on master; claims released after PR #20
+- Brief false C1/C3 close at **81/100**: **superseded / invalidated** by Independent Reviewer FAIL 2026-08-10
+- Reviewer FAIL remediation (TASK-20260809-005): 2026-08-10 — evidence coherence in progress
+- Verdict: **GO WITH CONDITIONS** (**67/100**); **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**; C2/C5 mitigated
+- Claims: **retained** (task reopened; Claims released = NOT MET until Reviewer PASS + commit)
