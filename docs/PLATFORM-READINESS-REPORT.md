@@ -2,46 +2,46 @@
 
 ## Decision
 - Verdict: **GO WITH CONDITIONS**
-- Assessed date / commit / environments: 2026-08-10 / TASK-20260809-005 (`ai/TASK-20260809-005-readiness-tail`) / Reviewer FAIL remediation pack
-- Confidence: **medium** — C4 Satisfied with durable VPS evidence; C1/C3 held as **accepted-with-expiry** pending staging re-runs; retail journeys unproven
-- Decision rationale: Independent Reviewer **FAIL** invalidated prior **81/100** close (unsafe prod E2E method + restore-drill false-green + evidence contradictions). Authoritative score is again **67/100** with **C4 Satisfied** only. Historical wholesale CASH order `ORD-2026-00008-9C0117` is **prior historical evidence (unsafe method; superseded)** — not current C1 Satisfied. Remaining: sanitized staging purchase re-run, restore drill re-verify (fail-closed script), retail OTP→cart→checkout→ONLINE, off-box backup, formal SEO/a11y/perf, Path C SQL. Not unconditional GO / not 100.
+- Assessed date / commit / environments: 2026-08-10 / TASK-20260810-006 parallel evidence pack / VPS HEAD `8e1f4a5` (PR #25)
+- Confidence: **medium-high** for ops/schema/SEO-smoke; medium for purchase journeys
+- Decision rationale: **C4 Satisfied**. Fail-closed disposable restore **re-verified PASS** (clears prior false-green) but **C3 remains accepted-with-expiry** (rollback rehearsal + off-box still open). **C1** accepted-with-expiry (staging wholesale E2E + retail OTP→ONLINE **NOT RUN**). Torob sample 15/15 PASS; SEO/a11y smoke PASS (not Lighthouse). Score **71/100** (Independent Reviewer capped Ops+2 / SEO+2; rejected ~76). Not 100; prior unsafe **81** remains superseded.
 - Explicit statement: This report does not authorize or implement a website builder, SaaS, multi-tenancy, or page builder.
 
 ## Executive summary
-- What was completed:
-  - Prior MASTER pack + C4 VPS verify/narrow (PR #18–#21) — **C4 Satisfied**
-  - Historical (superseded) VPS CASH order `ORD-2026-00008-9C0117` — noted only; method unsafe for unconditional C1 close
-  - Backup cron / dump scripts exist as **partial** C3 evidence; prior disposable restore PASS claim **invalidated** until re-run with fail-closed script
-  - Local gates + readonly smoke previously PASS
-  - TASK-20260809-005: evidence/docs coherence after Reviewer FAIL (this pack)
-- What remains (blocking unconditional GO; conditioned via acceptances):
-  - **C1** accepted-with-expiry → **2026-09-09** — staging re-run of sanitized `e2e-purchase-test.sh`; retail OTP→cart→checkout→ONLINE **NOT MET / NOT RUN**
-  - **C3** accepted-with-expiry → **2026-09-09** — restore drill re-verify with script that fails on `RESTORE_EXIT!=0`; off-box/MinIO still open
-  - Formal SEO/a11y/perf; Path C `database/sql/*` residual (Low–Med)
-- Highest residual risks: purchase E2E method/staging gap (P1 accepted-with-expiry); restore false-green until re-verify (P1 accepted-with-expiry); retail payment/OTP unproven (Med)
+- What was completed (TASK-20260810-006 evidence wave):
+  - Disposable restore drill **re-verified PASS** (fail-closed; restore_exit=0; RTO 14s; 36 tables; live health ok) — [VPS restore drill](b57eea5d-1aac-41cc-9301-b3ac0bd5abf9)
+  - Torob feed sample **15/15 PASS**; sitemap/feed 57=57; full 57 + panel = OWNER ACTION — [Torob crawl](4307f1bb-79b1-4109-9dc7-f3783e35cdea)
+  - SEO/a11y **smoke PASS** (not Lighthouse) — [SEO smoke](a4a7d4c3-d6f7-419d-aa13-ab4ce15a8662)
+  - Gates lint/test PASS; RMA/compare-at on VPS — [Gates/schema](dca2ce7c-61b4-43c1-a70c-d45beca7fbd9)
+  - Retail soft liveness PASS; OTP→ONLINE **NOT RUN** — [Retail map](419ef286-9530-452a-8af4-249f7452e46f)
+  - Independent Reviewer on this pack: **FAIL on ~76**; accepted justified band **~71** — [Evidence Reviewer](ddce485d-08bd-4c1e-b79f-83af3a7b6a1b)
+- What remains:
+  - **C1** accepted-with-expiry → 2026-09-09 — sanitized staging E2E; retail OTP harness
+  - **C3** accepted-with-expiry → 2026-09-09 — off-box/MinIO + rollback rehearsal (restore re-verify itself **MET**)
+  - Torob panel OWNER ACTION; full Lighthouse/a11y; Independent Security re-PASS for Done
+- Highest residual risks: C1 staging gap (P1 accepted); retail ONLINE unproven (Med); off-box/rollback (Med)
 
 ## Scope and evidence index
 | Area | Evidence/document/test | Result | Last verified |
 |---|---|---|---|
 | Audit | `docs/01-current-system-audit.md` | Present | 2026-08-09 |
 | Target architecture | `docs/02-target-architecture.md` | Present (ADRs 001–007) | 2026-08-09 |
-| Progress | `docs/implementation-progress.md` | Present + Reviewer FAIL remediation milestone | 2026-08-10 |
-| Acceptance matrix | `docs/test-and-acceptance-evidence.md` | Liveness PASS; purchase **NOT VERIFIED** for current close (historical CASH superseded) | 2026-08-10 |
-| Deploy runbook | `docs/deployment-runbook.md` | Staging-only E2E note; CASH; restore re-verify open | 2026-08-10 |
-| Build | `npm run build` | PASS exit 0 | 2026-08-09T02:27:30Z |
-| Typecheck | web + api `tsc --noEmit` | PASS exit 0 | 2026-08-09 |
-| Lint / unit (Phase-1) | `npm run lint` / `npm run test` | FAIL exit 1 (eslint/jest missing) | 2026-08-09 |
-| Lint / unit (Phase-2 remap) | root lint+test after tsc/ts-node align | **PASS** exit 0 | 2026-08-09T02:48Z+ |
-| Readonly smoke | `acceptance-smoke-readonly.sh` (hardened) | **PASS** exit 0 | 2026-08-09 re-run |
-| E2E purchase script | `scripts/e2e-purchase-test.sh` | **PASS-historical** VPS CASH order (method superseded); staging sanitized re-run **NOT RUN** | 2026-08-10 |
-| Security tooling/smoke | SEC-001/002 remediated; SEC-003 Low accepted | PASS w/ conditions | 2026-08-09 |
+| Progress | `docs/implementation-progress.md` | Present + evidence-wave milestone | 2026-08-10 |
+| Acceptance matrix | `docs/test-and-acceptance-evidence.md` | Liveness PASS; purchase NOT VERIFIED; restore re-verify PASS | 2026-08-10 |
+| Deploy runbook | `docs/deployment-runbook.md` | Staging-only E2E; restore residual open | 2026-08-10 |
+| Build / lint / test | npm run build/lint/test | PASS exit 0 | 2026-08-10 |
+| Disposable restore | `restore-drill-disposable.sh` fail-closed | **PASS** restore_exit=0 RTO 14s | 2026-08-10 |
+| Torob sample | 15/15 product URLs | **PASS** sample; full 57 NOT RUN | 2026-08-10 |
+| SEO/a11y smoke | titles/H1/lang/robots/sitemap | **PASS** smoke; Lighthouse NOT RUN | 2026-08-10 |
+| E2E purchase script | `scripts/e2e-purchase-test.sh` | staging sanitized **NOT RUN** | 2026-08-10 |
+| Security review | Independent Security | **PASS WITH CONDITIONS** | 2026-08-10 |
 
 ## AI-DOS execution record
 - Applicable AGENTS.md files and resolved read order: root `AGENTS.md` → `.ai-dos/*` → `MASTER.md` → package `00`–`13` → `99`
-- Task ID / owner / role: `TASK-20260809-005` / `cursor:orchestrator-TASK-20260809-005` / orchestrator+implementer; Independent Reviewer FAIL recorded; claims retained until Reviewer PASS + commit
-- Branch and worktree: `ai/TASK-20260809-005-readiness-tail` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Claimed files: see `.ai-dos/tasks/active.yaml` TASK-20260809-005 `file_claims` (docs + scripts + governance; this Implementer lane edits readiness docs only)
-- Checkpoint/completion handoff: `.ai-dos/tasks/handoff.md` (Reviewer FAIL remediation in progress — **not Done**)
+- Task ID / owner / role: `TASK-20260810-006` / `cursor:orchestrator-TASK-20260810-006` / orchestrator+implementer; evidence Reviewer capped score at **71**; claims retained until Security + formal Done
+- Branch and worktree: `ai/TASK-20260810-006-readiness-remediation` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Claimed files: see `.ai-dos/tasks/active.yaml` TASK-20260810-006 `file_claims`
+- Checkpoint/completion handoff: `.ai-dos/tasks/handoff.md` (**not Done**)
 - Documentation verified, corrected, still stale, or missing: MASTER six outputs present; stub `docs/00`–`11` still stale
 
 ## Retail acceptance
@@ -69,40 +69,38 @@
 | Readonly prod smoke | PASS | hardened script | C2 |
 | E2E purchase (wholesale CASH) | **PASS-historical** / staging **NOT RUN** | Historical order only; method superseded | **C1** accepted-with-expiry |
 | security review (tooling/auth) | PASS w/ remediations | SEC-001/002 | Residual Low eslint |
-| backup/restore | **needs re-verify** | Prior disposable restore PASS invalidated (false-green); cron/backup scripts partial; rollback rehearsal **NOT RUN** | **C3** accepted-with-expiry |
-| a11y/SEO/perf formal | NOT RUN / prior WORKLOG only | — | Medium |
+| backup/restore | restore re-verify **PASS**; residual open | Fail-closed disposable restore 2026-08-10 PASS; cron present; rollback rehearsal **NOT RUN**; off-box **NOT RUN** | **C3** accepted-with-expiry |
+| a11y/SEO/perf formal | smoke **PASS** / Lighthouse **NOT RUN** | [SEO smoke](a4a7d4c3-d6f7-419d-aa13-ab4ce15a8662); Torob sample | Medium |
 
 ## Readiness score
 | Dimension | Weight | Rating 0–5 | Weighted score | Evidence/deduction |
 |---|---:|---:|---:|---|
-| Functional completeness | 20 | 3 | 12 | Retail OTP/cart/ONLINE NOT RUN; wholesale purchase not authoritative for current C1 close |
-| Data integrity & migration safety | 15 | 5 | 15 | **C4 Satisfied** (VPS migration + safety-net narrow) |
-| Security & privacy | 15 | 3 | 9 | SEC-001/002 fixed; full auth audit not exhaustive |
-| Testability & quality | 15 | 3 | 9 | Gates + smoke PASS; purchase journeys NOT VERIFIED for unconditional close |
-| Architecture & reuse | 15 | 4 | 12 | Target arch ADRs; dual-channel documented |
-| Operations & recovery | 10 | 3 | 6 | Backup cron/scripts partial; restore drill needs re-verify; rollback rehearsal NOT RUN |
-| SEO/analytics/performance/accessibility | 10 | 2 | 4 | Formal pack NOT RUN |
-| **Total** | **100** | | **67/100** | **C4 Satisfied**; C1/C3 accepted-with-expiry; prior **81/100 superseded / invalidated** by Reviewer FAIL |
+| Functional completeness | 20 | 3 | 12 | Unchanged — soft liveness already in 67; retail OTP/ONLINE + staging purchase still open |
+| Data integrity & migration safety | 15 | 5 | 15 | **C4 Satisfied**; RMA/compare-at present on VPS |
+| Security & privacy | 15 | 3 | 9 | Hardened E2E sentinels; full auth audit not exhaustive |
+| Testability & quality | 15 | 3 | 9 | Gates reconfirm only — no + for already-green lint/test |
+| Architecture & reuse | 15 | 4 | 12 | Dual-channel + publicProductPath shipped |
+| Operations & recovery | 10 | 4 | 8 | Restore re-verify clears false-green (**+2**); not Ops 5 (rollback/off-box open) |
+| SEO/analytics/performance/accessibility | 10 | 3 | 6 | Smoke + Torob sample (**+2**); not 4 (no Lighthouse; full Torob 57 NOT RUN) |
+| **Total** | **100** | | **71/100** | Reviewer-justified deltas only; C1/C3 accepted-with-expiry; C4 Satisfied |
 
-Score history: Phase-1 **46** → Phase-3 **55** → Phase-2+ **61** → C4 **67/100** (authoritative) → brief C1/C3 close claim **81/100** → **invalidated 2026-08-10** (Reviewer FAIL) → current **67/100**.
+Score history: … → C4 **67** → brief **81** (invalidated) → **67** → evidence wave **71/100** (2026-08-10; ~76 rejected by Reviewer).
 
 ## Risk and condition register
 | ID | Severity | Condition/risk | Impact | Mitigation | Owner | Due date | Acceptance/expiry |
 |---|---|---|---|---|---|---|---|
-| C1 | P1 | Purchase E2E | Wrong readiness | Historical prod CASH order `ORD-2026-00008-9C0117` = prior evidence (unsafe method; superseded). Staging re-run with sanitized script required. Retail OTP→cart→checkout→ONLINE **NOT MET / NOT RUN**. Do not claim Satisfied for score inflation. | TASK-20260809-005 | 2026-09-09 | **accepted-with-expiry → 2026-09-09** (or remediation-required until staging re-run) |
-| C2 | P1→mitigated | Prod health | Uptime | Readonly smoke PASS | prior | 2026-08-09 | **Satisfied** |
-| C3 | P1 | Backup/restore | Data loss | Cron/backup scripts + listable dumps = partial evidence. Prior disposable restore PASS **invalidated** until re-run with script that fails on `RESTORE_EXIT!=0`. Rollback rehearsal **NOT RUN**. Off-box/MinIO open. | TASK-20260809-005 | 2026-09-09 | **accepted-with-expiry → 2026-09-09** |
+| C1 | P1 | Purchase E2E | Wrong readiness | Staging sanitized wholesale E2E **NOT RUN**; retail OTP→ONLINE **NOT RUN**. Historical prod CASH superseded. | TASK-20260810-006 | 2026-09-09 | **accepted-with-expiry → 2026-09-09** |
+| C2 | P1→mitigated | Prod health | Uptime | Readonly smoke + post-deploy health | prior | 2026-08-09 | **Satisfied** |
+| C3 | P1 | Backup/restore | Data loss | Fail-closed restore **re-verified PASS** 2026-08-10. Cron present. Rollback rehearsal + off-box/MinIO still open — **do not** mark Satisfied. | TASK-20260810-006 | 2026-09-09 | **accepted-with-expiry → 2026-09-09** |
 | C4 | P1→mitigated | Schema dual-path | Drift | VPS migration + safety-net narrow | TASK-20260809-003 | 2026-08-09 | **Satisfied** |
 | C5 | P2→mitigated | Remapped lint/test | CI | tsc gate | prior | 2026-08-09 | **Mitigated** |
 
 ## P1 acceptances (authorized)
 
-Prior claim that C1/C3 were **Satisfied** on 2026-08-10 is **superseded / invalidated** by Independent Reviewer FAIL. Current statuses:
-
 | ID | Status | Residual |
 |---|---|---|
-| C1 | **accepted-with-expiry → 2026-09-09** | Staging sanitized purchase re-run; retail OTP/cart/ONLINE NOT MET |
-| C3 | **accepted-with-expiry → 2026-09-09** | Restore drill re-verify (fail-closed); off-box/MinIO open; rollback rehearsal NOT RUN |
+| C1 | **accepted-with-expiry → 2026-09-09** | Staging sanitized purchase; retail OTP/ONLINE NOT MET |
+| C3 | **accepted-with-expiry → 2026-09-09** | Restore re-verify **MET**; off-box/MinIO + rollback rehearsal still open |
 | C4 | **Satisfied** | Path C `database/sql/*` residual |
 
 ## Reuse and extraction classification
@@ -114,42 +112,42 @@ Prior claim that C1/C3 were **Satisfied** on 2026-08-10 is **superseded / invali
 | Website builder / multi-tenant | Do not reuse / out of scope | MASTER | Forbidden this program | Do not start |
 
 ## Compatibility and preservation
-- Data and migration outcome: C4 dual-path promotion verified on VPS; disposable restore re-verify still open; historical CASH test order exists on prod from superseded E2E method
-- URL/SEO outcome: retail home **301**, wholesale **200**; no intentional URL changes
+- Data and migration outcome: C4 dual-path promotion verified on VPS; fail-closed disposable restore **re-verified PASS** 2026-08-10; historical CASH test order exists on prod from superseded E2E method
+- URL/SEO outcome: retail home / wholesale homes respond; Torob sample 15/15; no intentional URL breakage
 - API/integration compatibility: preserved
-- Retail/wholesale behavior: E2E script sanitized for staging-only; do not re-run unsafe prod method
+- Retail/wholesale behavior: E2E script sanitized for staging/disposable only; do not re-run unsafe prod method
 
 ## Deployment and recovery evidence
-- Backup/restore: **needs re-verify** — cron `taranom-postgres-backup` + `backup-postgres.sh` + listable dumps = partial. Prior disposable restore PASS claim **invalidated** until fail-closed re-run. Rollback rehearsal: **NOT RUN** — do not overclaim MET.
-- C1 E2E: historical **PASS-historical** order `ORD-2026-00008-9C0117` (CASH; unsafe method superseded). Current sanitized staging re-run: **NOT RUN**.
-- Deployment/smoke: prior PR #18–#22; health **PASS**
-- Rollback rehearsal: documented; **NOT RUN**
+- Backup/restore: fail-closed disposable restore **PASS** 2026-08-10 — dump `/opt/taranom/backups/postgres/20260809T143532Z/postgres.dump`; restore_exit=0; RTO 14s; 36 tables / 67 products / 7 orders; container removed; live health ok. Cron `/etc/cron.d/taranom-postgres-backup` present. Rollback rehearsal **NOT RUN**. Off-box/MinIO **NOT RUN**. **C3** remains accepted-with-expiry.
+- Torob: sample 15/15 PASS; Owner must refresh Torob panel from `https://api.poshaktaranom.com/v1/feeds/torob.xml`.
+- C1 E2E: staging sanitized **NOT RUN**; retail OTP **NOT RUN**.
+- Deployment: PR #25 @ `8e1f4a5`; health **PASS**.
 
 ## Conditions before separate website-builder discovery may start
 1. C1 and C3 must close with durable staging/ops evidence (or remain accepted-with-expiry without starting builder). **C4 Satisfied** alone does **not** unlock website-builder.
-2. Independent Reviewer PASS on this remediation pack (task remains open; claims retained).
+2. Independent Reviewer + Security PASS on residual Highs; task remains open; claims retained.
 3. Retail sandbox payment + off-box backup remain recommended hardening.
 
 ## Definition-of-Done attestation
 | MASTER criterion | Status | Evidence |
 |---|---|---|
 | Public URLs preserved | MET | prod homes respond |
-| Production data preserved | MET | no intentional destructive mutate in this pack |
+| Production data preserved | MET | restore drill disposable-only; no intentional destructive mutate in this pack |
 | Retail critical journey verified | **NOT MET** | OTP→cart→checkout→ONLINE NOT RUN |
-| Wholesale critical journey verified | **NOT MET** for current close | Historical CASH order superseded; staging re-run NOT RUN |
+| Wholesale critical journey verified | **NOT MET** for current close | Historical CASH superseded; staging re-run NOT RUN |
 | Shared commerce rules tested | PARTIAL | unit specs; purchase journeys not authoritative |
-| Security controls meet file 05 | PARTIAL | SEC-001/002 remediated |
+| Security controls meet file 05 | PARTIAL | SEC remediations; Independent Security re-PASS still required for Done |
 | No open P0; no unaccepted P1 | **MET-via-acceptance** | No open P0; C1/C3 **accepted-with-expiry → 2026-09-09**; C4 Satisfied |
 | Build/release reproducible | MET | tsc lint gate |
-| Backup/deploy/rollback executable | **NOT MET** / partial | Restore drill needs re-verify; rollback rehearsal **NOT RUN**; cron/scripts partial |
+| Backup/deploy/rollback executable | **PARTIAL** | Restore re-verify **MET**; rollback rehearsal **NOT RUN**; off-box open |
 | Architecture documented without future platform | MET | `02-target-architecture.md` |
-| Final report with one verdict | MET | **GO WITH CONDITIONS** **67/100** (prior **81/100 superseded**) |
-| Task claimed before edits; handoff maintained | MET | TASK-20260809-005 active; claims retained |
-| Claims released | **MET** | released in ship commit after Reviewer PASS |
+| Final report with one verdict | MET | **GO WITH CONDITIONS** **71/100** |
+| Task claimed before edits; handoff maintained | MET | TASK-20260810-006 active; claims retained |
+| Claims released | **NOT MET** | retained until formal Done after Security + remaining AC |
 
 ## Final decision record
-- Verdict: **GO WITH CONDITIONS** (score **67/100**) for continued retail/wholesale operation; **do not** start website-builder; **not** 100. Prior **81/100** is **superseded / invalidated** by Independent Reviewer FAIL.
-- Hard gates: health/smoke **PASS**; **C4 Satisfied**; C1/C3 **accepted-with-expiry → 2026-09-09** (not Satisfied).
-- Key condition IDs: **C1** accepted-with-expiry; **C2** Satisfied; **C3** accepted-with-expiry; **C4** Satisfied; **C5** Mitigated.
-- Decision owner and date: Human full-authority + cursor:orchestrator-TASK-20260809-005 (2026-08-10).
-- Next allowed activity: staging sanitized purchase re-run + restore-drill re-verify before 2026-09-09; Independent Reviewer re-pass; **do not** mark Done until then.
+- Verdict: **GO WITH CONDITIONS** (score **71/100**) for continued retail/wholesale operation; **do not** start website-builder; **not** 100. Prior **81/100** superseded; unjustified **~76** rejected by Reviewer.
+- Hard gates: health/smoke **PASS**; **C4 Satisfied**; C1/C3 **accepted-with-expiry → 2026-09-09**; restore re-verify **MET**.
+- Key condition IDs: **C1** accepted-with-expiry; **C2** Satisfied; **C3** accepted-with-expiry (restore MET, residuals open); **C4** Satisfied; **C5** Mitigated.
+- Decision owner and date: Human full-authority + cursor:orchestrator-TASK-20260810-006 (2026-08-10).
+- Next allowed activity: staging sanitized purchase + retail OTP before 2026-09-09; rollback/off-box; Torob panel OWNER ACTION; Independent Security re-PASS; **do not** mark Done until then.

@@ -2,6 +2,53 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-10T14:26:00Z — Owner full-authority: ship evidence pack 71/100
+
+- Owner grant: apply all changes live; merge+deploy; no per-step confirmation.
+- Scope: docs + AI-DOS evidence wave only (no app code delta vs `8e1f4a5`).
+- Exact next in this session: commit claimed files → push branch → PR+merge master → VPS `auto-deploy.sh` → health verify → update status/handoff.
+
+## 2026-08-10T14:13:33Z — Parallel evidence wave → readiness 71/100
+
+- Task / owner: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006
+- Status: **in_progress** — **NOT Done**; claims **retained**
+- Live HEAD unchanged: `8e1f4a5` (docs/governance only this wave)
+
+### Parallel agent evidence
+| Lane | Result | Agent |
+|---|---|---|
+| Disposable restore (fail-closed) | **PASS** restore_exit=0 RTO 14s 36 tables; live health ok | [b57eea5d](b57eea5d-1aac-41cc-9301-b3ac0bd5abf9) |
+| Torob sample crawl | **PASS** 15/15; sitemap=feed 57; full 57 + panel OWNER ACTION | [4307f1bb](4307f1bb-79b1-4109-9dc7-f3783e35cdea) |
+| Retail OTP map | Soft liveness **PASS**; OTP→ONLINE **NOT RUN** | [419ef286](419ef286-9530-452a-8af4-249f7452e46f) |
+| Gates/schema | lint/test **PASS**; return_requests + compare-at on VPS | [dca2ce7c](dca2ce7c-61b4-43c1-a70c-d45beca7fbd9) |
+| SEO/a11y smoke | **PASS** (not Lighthouse) | [a4a7d4c3](a4a7d4c3-d6f7-419d-aa13-ab4ce15a8662) |
+| Evidence Reviewer | Claims 1–5 MET; **FAIL on ~76**; justified **71** (Ops+2 SEO+2); C3 not Satisfied | [ddce485d](ddce485d-08bd-4c1e-b79f-83af3a7b6a1b) |
+| Independent Security | **PASS WITH CONDITIONS** (Highs from 6c5247cc fixed; Med SEC-012/014 open) | [c3b623c8](c3b623c8-474b-4a2d-9f59-25816536679d) |
+
+### Score / conditions
+- Readiness **71/100** (was 67). Do **not** claim 76 or 100.
+- **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**
+- C3: restore re-verify **MET**; rollback rehearsal + off-box still open → not Satisfied
+
+### Docs updated
+- `docs/PLATFORM-READINESS-REPORT.md`, `implementation-progress.md`, `test-and-acceptance-evidence.md`, `WORKLOG.md`
+- `.ai-dos/project/status.md`, `tasks/active.yaml` heartbeat, this handoff
+
+### Exact next
+1. Owner: staging sanitized wholesale E2E + retail OTP harness before 2026-09-09
+2. Rollback rehearsal + off-box/MinIO; Torob panel refresh OWNER ACTION
+3. Optional: harden analytics RL (SEC-012); commit evidence docs when owner asks
+4. Keep claims; do not mark Done; do not start website-builder
+
+## 2026-08-10T13:10:00Z — Owner-authorized ship complete (live)
+
+- Commit: `a56172f` on `ai/TASK-20260810-006-readiness-remediation`
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/25 → merge `8e1f4a5` on master
+- VPS deploy: `bash scripts/auto-deploy.sh` → HEAD `8e1f4a5`; api/web Up
+- Health: API `{"status":"ok"}`; wholesale/retail/blog **200**
+- Agents: [Commit/push](ac9b9292-838a-480f-8b50-cf726995f4e4), [PR/merge](d75c049b-77b3-4b98-b20e-bc4e9dfef0f0), [Deploy](7ebfb4a6-dd69-4c90-a6c5-653e2a2d1cef), [Public health](d2928a03-3222-4f49-a65c-96ebe7203aac)
+- Task status remains **in_progress** (reviews were FAIL; staging evidence still NOT RUN). Claims retained. Readiness **67/100**.
+
 ## 2026-08-10T12:49:21Z — Owner authorized ship: commit → PR → merge → VPS deploy
 
 - Owner request: apply all TASK-006 changes to live sites via parallel agents.
