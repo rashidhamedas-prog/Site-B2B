@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Star, ChevronRight, ChevronLeft, Quote } from 'lucide-react';
+import { toPersianDigits } from '@taranom/persian-utils';
+import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
 
 export interface TestimonialItem {
   id?: number | string;
@@ -53,10 +55,10 @@ export function Testimonials({
     footerStats?.length
       ? footerStats
       : [
-          { label: 'مشتری فعال', value: '+۲۰۰' },
+          { label: 'مشتری فعال', value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}` },
           { label: 'شهر در ایران', value: '+۳۰' },
-          { label: 'سال تجربه', value: '۱۰+' },
-          { label: 'مدل در کاتالوگ', value: '+۵۰' },
+          { label: 'سال تجربه', value: yearsOfOperationFa() },
+          { label: 'مدل در کاتالوگ', value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}` },
         ];
 
   const [current, setCurrent] = useState(0);

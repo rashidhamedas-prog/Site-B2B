@@ -1,5 +1,6 @@
 import type { SalesChannel } from '@/lib/channel';
 import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo-origins';
+import { BUSINESS_FACTS } from '@/lib/business-facts';
 
 const SAME_AS = [
   'https://www.instagram.com/tolidi.taranom',
@@ -69,7 +70,7 @@ export function OrganizationJsonLd({
         image: `${WHOLESALE_ORIGIN}/og-wholesale.jpg`,
         description:
           'تولیدی مانتو شومیزی زنانه لینن و کتان در مشهد. از دوخت تا ارسال را خودمان انجام می‌دهیم و عمده می‌فروشیم به بوتیک‌ها در سراسر ایران.',
-        foundingDate: '2011',
+        foundingDate: String(BUSINESS_FACTS.foundedGregorianYear),
         telephone: '+98-915-242-4624',
         email: 'rashidhamedas@gmail.com',
         address: ADDRESS,
@@ -112,6 +113,9 @@ export function WebSiteJsonLd({ channel = 'WHOLESALE' }: { channel?: SalesChanne
     );
   }
 
+  // NOTE: no SearchAction here — Google crawled the literal
+  // `?q={search_term_string}` placeholder as a URL (GSC noise), and the
+  // sitelinks-searchbox feature it powered is deprecated.
   return (
     <JsonLdScript
       data={{
@@ -120,14 +124,6 @@ export function WebSiteJsonLd({ channel = 'WHOLESALE' }: { channel?: SalesChanne
         name: 'پوشاک ترنم',
         url: WHOLESALE_ORIGIN,
         inLanguage: 'fa-IR',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: {
-            '@type': 'EntryPoint',
-            urlTemplate: `${WHOLESALE_ORIGIN}/products?q={search_term_string}`,
-          },
-          'query-input': 'required name=search_term_string',
-        },
       }}
     />
   );

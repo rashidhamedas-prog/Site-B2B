@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image, { getImageProps } from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
 import { ArrowLeft } from 'lucide-react';
@@ -11,12 +11,14 @@ import {
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
+import { toPersianDigits } from '@taranom/persian-utils';
+import { yearsOfOperation } from '@/lib/business-facts';
 
 const WHOLESALE_FALLBACK: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',
   headline: 'مانتو زنانه\nمستقیم از تولیدی\nبه بوتیک شما',
   headlineAccent: 'به بوتیک شما',
-  body: 'تولیدکننده مانتو شومیزی لینن و کتان در مشهد — بیش از ده سال تجربه، فروش عمده به سراسر ایران.',
+  body: `تولیدکننده مانتو شومیزی لینن و کتان در مشهد — بیش از ${toPersianDigits(yearsOfOperation())} سال تجربه، فروش عمده به سراسر ایران.`,
   imageUrl: '',
   ctaLabel: 'مشاهده محصولات',
   ctaHref: '/products',
@@ -112,7 +114,20 @@ export function HeroSection(props: HeroSectionProps) {
           >
             <picture>
               {s.mobileImageUrl ? (
-                <source media="(max-width: 767px)" srcSet={s.mobileImageUrl} />
+                <source
+                  media="(max-width: 767px)"
+                  // Route the mobile art through the Next optimizer (WebP/AVIF +
+                  // responsive widths) instead of shipping the raw upload.
+                  srcSet={
+                    getImageProps({
+                      src: s.mobileImageUrl,
+                      alt: '',
+                      fill: true,
+                      sizes: '100vw',
+                      quality: 70,
+                    }).props.srcSet
+                  }
+                />
               ) : null}
               <Image
                 src={s.imageUrl}

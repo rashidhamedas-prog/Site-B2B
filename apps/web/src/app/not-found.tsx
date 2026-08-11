@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: 'صفحه یافت نشد | پوشاک ترنم' };
+export const metadata: Metadata = {
+  title: 'صفحه یافت نشد | پوشاک ترنم',
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (

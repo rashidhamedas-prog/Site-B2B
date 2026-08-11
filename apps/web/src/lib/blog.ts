@@ -73,7 +73,12 @@ export interface BlogPost {
   tableOfContentsDepth?: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+// Server-only fetches (RSC): prefer docker-internal API so SSR/sitemap don't
+// depend on public DNS from inside the container.
+const API_URL =
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:4000/v1';
 const allowFallback =
   process.env.NODE_ENV !== 'production' && process.env.BLOG_ALLOW_FALLBACK === '1';
 

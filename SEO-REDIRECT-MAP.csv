@@ -1,0 +1,25 @@
+old_url,target_url,status,reason
+/shop,/products,301,legacy WP shop root
+/shop/*,/products,301,legacy WP category/product paths (params stripped)
+/search?q=<q>,/products?q=<q>,301,legacy search endpoint → listing search (noindex-follow state)
+/retail,https://www.poshaktaranom.ir/,301,internal rewrite tree must not be a public URL (cross-host duplicate)
+/retail/*,https://www.poshaktaranom.ir/*,301,internal rewrite tree must not be a public URL (cross-host duplicate)
+/product/*,,410,old WP /product/<id>/<slug>/ — no deterministic mapping to current slugs
+/wp-content/*,,410,retired WordPress assets
+/wp-admin/*,,410,retired WordPress admin
+/wp-includes/*,,410,retired WordPress internals
+/wp-json/*,,410,retired WordPress REST API
+/uploads/*,,410,retired WordPress media
+/feed,,410,retired WP feed (current feed is /blog/feed.xml)
+/comments/feed,,410,retired WP comments feed
+/*/feed,,410,retired WP per-resource feeds
+/sitemap_index.xml,/sitemap.xml,301,legacy Yoast sitemap (next.config.ts — pre-existing)
+/product-sitemap.xml,/sitemap.xml,301,legacy Yoast sitemap (pre-existing)
+/page-sitemap.xml,/sitemap.xml,301,legacy Yoast sitemap (pre-existing)
+/post-sitemap.xml,/sitemap.xml,301,legacy Yoast sitemap (pre-existing)
+/category-sitemap.xml,/sitemap.xml,301,legacy Yoast sitemap (pre-existing)
+/local-sitemap.xml,/sitemap.xml,301,legacy Yoast sitemap (pre-existing)
+http://poshaktaranom.com/*,https://poshaktaranom.com/*,301,nginx HTTPS canonicalization (pre-existing)
+https://www.poshaktaranom.com/*,https://poshaktaranom.com/*,301,nginx www→apex .com (pre-existing)
+https://poshaktaranom.ir/*,https://www.poshaktaranom.ir/*,301,nginx apex→www .ir (pre-existing)
+/products/<stale-slug>,/products/<current-slug>,308,PDP permanentRedirect when incoming slug ≠ resolvable slug (both channels)

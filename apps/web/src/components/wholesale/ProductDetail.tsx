@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler } from 'lucide-react';
 import { Button, Badge, Alert } from '@/components/ui';
 import { ProductImage } from '@/components/ui/ProductImage';
-import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
@@ -37,7 +36,7 @@ interface ProductSpecs {
   customFields?: Array<{ key?: string; label: string; value: string }>;
 }
 
-interface Product {
+export interface WholesaleProduct {
   id: string;
   name: string;
   slug: string;
@@ -106,7 +105,7 @@ function buildSpecRows(specs?: ProductSpecs): Array<{ label: string; value: stri
   return rows;
 }
 
-function resolveSizeGuide(product: Product): string[] {
+function resolveSizeGuide(product: WholesaleProduct): string[] {
   if (Array.isArray(product.sizeGuide) && product.sizeGuide.length > 0) {
     return product.sizeGuide.filter((line) => String(line).trim());
   }
@@ -114,43 +113,54 @@ function resolveSizeGuide(product: Product): string[] {
   return SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE;
 }
 
-async function fetchProduct(slugOrId: string): Promise<Product> {
+async function fetchProduct(slugOrId: string): Promise<WholesaleProduct> {
   if (UUID_RE.test(slugOrId)) {
-    return apiClient.get<Product>(`/products/${slugOrId}?channel=WHOLESALE`);
+    return apiClient.get<WholesaleProduct>(`/products/${slugOrId}?channel=WHOLESALE`);
   }
-  return apiClient.get<Product>(`/products/slug/${slugOrId}?channel=WHOLESALE`);
+  return apiClient.get<WholesaleProduct>(`/products/slug/${slugOrId}?channel=WHOLESALE`);
 }
 
-export function ProductDetail({ slug }: { slug: string }) {
+function defaultColors(p: WholesaleProduct): string[] {
+  if (p.allowWholesaleColorSelect) return [];
+  return Array.from(new Set(p.variants.filter((v) => v.color).map((v) => v.color)));
+}
+
+export function ProductDetail({
+  slug,
+  initialProduct,
+}: {
+  slug: string;
+  initialProduct?: WholesaleProduct;
+}) {
   const router = useRouter();
   const { addItem, count } = useCart();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [quantity, setQuantity] = useState(1);
+  const [product, setProduct] = useState<WholesaleProduct | null>(initialProduct ?? null);
+  const [loading, setLoading] = useState(!initialProduct);
+  const [quantity, setQuantity] = useState(() =>
+    initialProduct ? Math.max(1, initialProduct.minOrderQty || 1) : 1,
+  );
   const [activeImage, setActiveImage] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(true);
   const [addedToCart, setAddedToCart] = useState(false);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedColors, setSelectedColors] = useState<string[]>(() =>
+    initialProduct ? defaultColors(initialProduct) : [],
+  );
   const [colorError, setColorError] = useState('');
 
   useEffect(() => {
+    // Product is server-rendered when initialProduct is provided; no client refetch.
+    if (initialProduct && initialProduct.slug === slug) return;
+    setLoading(true);
     fetchProduct(slug)
       .then((p) => {
         setProduct(p);
         // quantity = pack count; minOrderQty = min packs
         setQuantity(Math.max(1, p.minOrderQty || 1));
-        if (p.allowWholesaleColorSelect) {
-          setSelectedColors([]);
-        } else {
-          const colors = Array.from(
-            new Set(p.variants.filter((v) => v.color).map((v) => v.color)),
-          );
-          setSelectedColors(colors);
-        }
+        setSelectedColors(defaultColors(p));
       })
       .catch(() => router.push('/products'))
       .finally(() => setLoading(false));
-  }, [slug, router]);
+  }, [slug, router, initialProduct]);
 
   const minOrder = product?.minOrderQty ?? 1;
   const qtyStep = Math.max(minOrder, 1);
@@ -304,25 +314,6 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   return (
     <div className="min-h-screen bg-atmosphere">
-      <ProductJsonLd
-        name={product.name}
-        description={product.description || fabricLabel}
-        image={product.images?.[0]}
-        sku={product.sku}
-        price={Number(product.wholesalePrice)}
-        availability={totalStock > 0 ? 'InStock' : isComingSoon ? 'PreOrder' : 'OutOfStock'}
-        fabric={fabricLabel}
-        color={availableColors[0]?.name}
-        moq={product.minOrderQty}
-        url={`https://poshaktaranom.com/products/${product.slug}`}
-      />
-      <BreadcrumbJsonLd
-        items={[
-          { name: 'خانه', url: 'https://poshaktaranom.com/' },
-          { name: 'محصولات', url: 'https://poshaktaranom.com/products' },
-          { name: product.name, url: `https://poshaktaranom.com/products/${product.slug}` },
-        ]}
-      />
       <div className="border-b border-[color:var(--color-border)] bg-white">
         <div className="container-site py-3">
           <nav className="flex items-center gap-2 text-sm text-gray-500">

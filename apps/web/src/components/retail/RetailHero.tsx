@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image, { getImageProps } from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
@@ -121,7 +121,20 @@ export function RetailHero(props: RetailHeroProps) {
           >
             <picture>
               {s.mobileImageUrl ? (
-                <source media="(max-width: 767px)" srcSet={s.mobileImageUrl} />
+                <source
+                  media="(max-width: 767px)"
+                  // Route the mobile art through the Next optimizer (WebP/AVIF +
+                  // responsive widths) instead of shipping the raw upload.
+                  srcSet={
+                    getImageProps({
+                      src: s.mobileImageUrl,
+                      alt: '',
+                      fill: true,
+                      sizes: '100vw',
+                      quality: 70,
+                    }).props.srcSet
+                  }
+                />
               ) : null}
               <Image
                 src={src}

@@ -11,6 +11,7 @@ const COMMON_DISALLOW = [
   '/api/',
   '/checkout',
   '/account',
+  '/payment/',
   '/blog/search',
   '/blog/preview',
 ];

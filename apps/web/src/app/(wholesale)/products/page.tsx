@@ -17,12 +17,21 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const params = await searchParams;
   const bits = [params.fabric, params.color, params.size].filter(Boolean);
+  // Search/filter/pagination states: keep them out of the index (canonical stays
+  // on the clean listing URL); crawlers may still follow product links.
+  const isListingVariant = Boolean(
+    params.q || params.sort || params.page || bits.length,
+  );
+  const robots = isListingVariant
+    ? ({ index: false, follow: true } as const)
+    : undefined;
   if (bits.length) {
     const label = bits.join(' · ');
     return {
       title: `عمده ${label}`,
       description: `مدل‌های ${label} را برای بوتیک‌تان فیلتر کنید و مستقیم از کارگاه ترنم سفارش دهید.`,
       alternates: { canonical: 'https://poshaktaranom.com/products' },
+      ...(robots ? { robots } : {}),
     };
   }
   return {
@@ -30,6 +39,7 @@ export async function generateMetadata({
     description:
       'همه مدل‌های جاری ترنم را ببینید، با پارچه و رنگ فیلتر کنید و برای بوتیک‌تان عمده سفارش دهید.',
     alternates: { canonical: 'https://poshaktaranom.com/products' },
+    ...(robots ? { robots } : {}),
   };
 }
 

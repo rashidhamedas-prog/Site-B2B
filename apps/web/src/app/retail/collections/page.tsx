@@ -1,9 +1,24 @@
-'use client';
-
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { apiClient } from '@/lib/api';
+import { RETAIL_ORIGIN } from '@/lib/seo';
+import { getServerApiBase } from '@/lib/server-api';
+
+export const revalidate = 300;
+
+export const metadata: Metadata = {
+  title: 'کلکسیون‌ها',
+  description:
+    'کلکسیون‌های فصلی مانتو و شومیز زنانه ترنم — انتخاب سریع‌تر بر اساس فصل و استایل، مستقیم از تولیدی مشهد.',
+  alternates: { canonical: `${RETAIL_ORIGIN}/collections` },
+  openGraph: {
+    title: 'کلکسیون‌های پوشاک ترنم',
+    description: 'کلکسیون‌های فصلی مانتو و شومیز زنانه — مستقیم از تولیدی ترنم.',
+    url: `${RETAIL_ORIGIN}/collections`,
+    type: 'website',
+    locale: 'fa_IR',
+  },
+};
 
 type Collection = {
   id: string;
@@ -20,17 +35,21 @@ function mediaUrl(url?: string) {
   return `/media/${url}`;
 }
 
-export default function RetailCollectionsPage() {
-  const [rows, setRows] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(true);
+async function fetchCollections(): Promise<Collection[]> {
+  try {
+    const res = await fetch(`${getServerApiBase()}/collections?active=1`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
 
-  useEffect(() => {
-    apiClient
-      .get<Collection[]>('/collections?active=1')
-      .then((data) => setRows(Array.isArray(data) ? data : []))
-      .catch(() => setRows([]))
-      .finally(() => setLoading(false));
-  }, []);
+export default async function RetailCollectionsPage() {
+  const rows = await fetchCollections();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -39,13 +58,7 @@ export default function RetailCollectionsPage() {
         انتخاب سریع‌تر بر اساس فصل و استایل — مستقیم از تولیدی ترنم.
       </p>
 
-      {loading ? (
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl bg-[var(--retail-bg)]" />
-          ))}
-        </div>
-      ) : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="mt-10">
           <p className="text-sm text-[var(--retail-muted)]">هنوز کالکشنی منتشر نشده است.</p>
           <Link

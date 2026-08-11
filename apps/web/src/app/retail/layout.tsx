@@ -18,9 +18,8 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description:
       'مانتو و شومیز را تکی، مستقیم از تولیدی ترنم در مشهد بخرید. ارسال سریع، پرداخت امن و امکان تعویض سایز.',
-    alternates: {
-      canonical: 'https://www.poshaktaranom.ir',
-    },
+    // NOTE: no layout-level canonical — a default here would make every page
+    // without its own canonical claim the homepage URL (soft-duplicate signal).
     openGraph: {
       type: 'website',
       locale: 'fa_IR',

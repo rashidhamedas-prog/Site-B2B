@@ -7,6 +7,8 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
+import { toPersianDigits } from '@taranom/persian-utils';
+import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Package,
@@ -52,9 +54,8 @@ export function WhyTaranom({
           },
           {
             icon: 'Zap',
-            title: '۱۴ سال تجربه تولیدی',
-            description:
-              'از ۱۳۹۴ تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.',
+            title: `${yearsOfOperationFa()} سال تجربه تولیدی`,
+            description: `از ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.`,
           },
           {
             icon: 'Truck',

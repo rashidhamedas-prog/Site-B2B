@@ -1,3 +1,5 @@
+import { toPersianDigits } from '@taranom/persian-utils';
+import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
 import { newBlockId, type ContentBlock, type BlockType } from './types';
 
 function b(type: BlockType, props: Record<string, unknown>): ContentBlock {
@@ -22,8 +24,7 @@ export function defaultWholesaleChrome(): ContentBlock[] {
       registerLabel: 'ثبت‌نام عمده‌فروش',
       registerHref: '/portal/register',
       portalHref: '/portal',
-      blurb:
-        'از سال ۱۳۹۴ تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد. فروش عمده به بوتیک‌ها و فروشندگان در سراسر ایران.',
+      blurb: `از سال ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد. فروش عمده به بوتیک‌ها و فروشندگان در سراسر ایران.`,
       footerQuickTitle: 'دسترسی سریع',
       footerLegalTitle: 'اطلاعات حقوقی',
       footerContactTitle: 'اطلاعات تماس',
@@ -91,10 +92,22 @@ export function defaultWholesaleHome(): ContentBlock[] {
     }),
     b('stats', {
       items: [
-        { value: '+۵۰۰', label: 'مشتری عمده‌فروش', sublabel: 'در سراسر ایران' },
-        { value: '۱۰+', label: 'سال تجربه', sublabel: 'در بازار پوشاک' },
-        { value: '+۵۰', label: 'مدل فعال', sublabel: 'بهار و تابستان' },
-        { value: '۱۵', label: 'نفر پرسنل', sublabel: 'در خط تولید' },
+        {
+          value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}`,
+          label: 'مشتری عمده‌فروش',
+          sublabel: 'در سراسر ایران',
+        },
+        { value: yearsOfOperationFa(), label: 'سال تجربه', sublabel: 'در بازار پوشاک' },
+        {
+          value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}`,
+          label: 'مدل فعال',
+          sublabel: 'بهار و تابستان',
+        },
+        {
+          value: toPersianDigits(BUSINESS_FACTS.teamSize),
+          label: 'نفر پرسنل',
+          sublabel: 'در خط تولید',
+        },
       ],
     }),
     b('features', {
@@ -116,9 +129,8 @@ export function defaultWholesaleHome(): ContentBlock[] {
         },
         {
           icon: 'Zap',
-          title: '۱۴ سال تجربه تولیدی',
-          description:
-            'از ۱۳۹۴ تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.',
+          title: `${yearsOfOperationFa()} سال تجربه تولیدی`,
+          description: `از ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.`,
         },
         {
           icon: 'Truck',
@@ -230,10 +242,10 @@ export function defaultWholesaleHome(): ContentBlock[] {
         },
       ],
       footerStats: [
-        { value: '+۲۰۰', label: 'مشتری فعال' },
+        { value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}`, label: 'مشتری فعال' },
         { value: '+۳۰', label: 'شهر در ایران' },
-        { value: '۱۰+', label: 'سال تجربه' },
-        { value: '+۵۰', label: 'مدل در کاتالوگ' },
+        { value: yearsOfOperationFa(), label: 'سال تجربه' },
+        { value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}`, label: 'مدل در کاتالوگ' },
       ],
     }),
     b('faq', {
@@ -281,7 +293,7 @@ export function defaultWholesaleAbout(): ContentBlock[] {
     b('hero', {
       brandEyebrow: 'هویت برند',
       headline: 'درباره پوشاک ترنم',
-      body: 'از سال ۱۳۹۴، تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد',
+      body: `از سال ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)}، تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد`,
       ctaLabel: '',
       ctaHref: '',
       ctaSecondaryLabel: '',
@@ -290,14 +302,14 @@ export function defaultWholesaleAbout(): ContentBlock[] {
     }),
     b('text', {
       headline: 'داستان ما',
-      body: 'پوشاک ترنم در سال ۱۳۹۴ توسط حامد رشید از صفر پایه‌گذاری شد. با بیش از ۱۰ سال تجربه در بازاریابی و مدیریت فروش پوشاک، حامد تصمیم گرفت تولیدی خودش را راه‌اندازی کند که بر کیفیت پارچه و طراحی مدرن تمرکز داشته باشد.\n\nتخصص ما مانتو شومیزی زنانه اسپرت از جنس لینن و کتان است — پارچه‌هایی که تهویه مناسب داشته، سبک بوده و برای آب‌وهوای ایران مناسب هستند. امروز با تیمی ۱۵ نفره، هر فصل مدل‌های جدید را به بازار عرضه می‌کنیم.',
+      body: `پوشاک ترنم در سال ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} توسط حامد رشید از صفر پایه‌گذاری شد. با سال‌ها تجربه در بازاریابی و مدیریت فروش پوشاک، حامد تصمیم گرفت تولیدی خودش را راه‌اندازی کند که بر کیفیت پارچه و طراحی مدرن تمرکز داشته باشد.\n\nتخصص ما مانتو شومیزی زنانه اسپرت از جنس لینن و کتان است — پارچه‌هایی که تهویه مناسب داشته، سبک بوده و برای آب‌وهوای ایران مناسب هستند. امروز با تیمی ${toPersianDigits(BUSINESS_FACTS.teamSize)} نفره، هر فصل مدل‌های جدید را به بازار عرضه می‌کنیم.`,
     }),
     b('stats', {
       items: [
-        { value: '۱۳۹۴', label: 'سال تأسیس', sublabel: '' },
-        { value: '۱۵ نفر', label: 'تیم تولید', sublabel: '' },
-        { value: '+۵۰۰', label: 'مشتری فعال', sublabel: '' },
-        { value: '+۵۰ مدل', label: 'در هر فصل', sublabel: '' },
+        { value: toPersianDigits(BUSINESS_FACTS.foundedSolarYear), label: 'سال تأسیس', sublabel: '' },
+        { value: `${toPersianDigits(BUSINESS_FACTS.teamSize)} نفر`, label: 'تیم تولید', sublabel: '' },
+        { value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}`, label: 'مشتری فعال', sublabel: '' },
+        { value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)} مدل`, label: 'در هر فصل', sublabel: '' },
       ],
     }),
     b('contact', {

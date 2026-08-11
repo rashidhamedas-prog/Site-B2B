@@ -2,8 +2,82 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
 
+const RETAIL_ORIGIN = 'https://www.poshaktaranom.ir';
+
+/** Legacy WordPress-era paths that are permanently gone (no replacement). */
+const GONE_PREFIXES = [
+  '/product/', // old WP /product/<id>/<persian-slug>/
+  '/wp-content/',
+  '/wp-admin/',
+  '/wp-includes/',
+  '/wp-json/',
+  '/uploads/',
+];
+
+function isLegacyFeedPath(pathname: string): boolean {
+  // Old WP feeds: /feed, /comments/feed, /blog/feed, /<anything>/feed
+  // Current valid feed is /blog/feed.xml (does not match these).
+  return pathname === '/feed' || pathname.endsWith('/feed');
+}
+
+function goneResponse(): NextResponse {
+  return new NextResponse(
+    '<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>410</title></head><body><h1>410 Gone</h1><p>این آدرس برای همیشه حذف شده است.</p></body></html>',
+    {
+      status: 410,
+      headers: {
+        'content-type': 'text/html; charset=utf-8',
+        'x-robots-tag': 'noindex',
+      },
+    },
+  );
+}
+
+/** Handle retired/legacy URLs before any channel rewrite. Returns null when not legacy. */
+function handleLegacyPaths(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl;
+
+  // Old WP shop URLs (incl. /shop/?filter_color=..., /shop/<cat>/<item>.html)
+  if (pathname === '/shop' || pathname.startsWith('/shop/')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/products';
+    url.search = '';
+    return NextResponse.redirect(url, 301);
+  }
+
+  // Old /search?q=... → current listing search (noindex,follow state)
+  if (pathname === '/search') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/products';
+    const q = request.nextUrl.searchParams.get('q');
+    url.search = q ? `?q=${encodeURIComponent(q)}` : '';
+    return NextResponse.redirect(url, 301);
+  }
+
+  if (
+    GONE_PREFIXES.some((p) => pathname === p.slice(0, -1) || pathname.startsWith(p)) ||
+    isLegacyFeedPath(pathname)
+  ) {
+    return goneResponse();
+  }
+
+  return null;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  const legacy = handleLegacyPaths(request);
+  if (legacy) return legacy;
+
+  // /retail/* must never be a public URL: the retail tree is reached via the
+  // host-based rewrite below. Direct hits (either host) 301 to the clean
+  // canonical URL on the retail origin to avoid cross-host duplicates.
+  if (pathname === '/retail' || pathname.startsWith('/retail/')) {
+    const clean = pathname === '/retail' ? '/' : pathname.slice('/retail'.length);
+    return NextResponse.redirect(`${RETAIL_ORIGIN}${clean}${request.nextUrl.search}`, 301);
+  }
+
   const host = request.headers.get('host');
   const forceRetail =
     process.env.NEXT_PUBLIC_FORCE_RETAIL === '1' ||

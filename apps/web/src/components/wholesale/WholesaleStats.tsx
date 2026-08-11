@@ -1,3 +1,6 @@
+import { toPersianDigits } from '@taranom/persian-utils';
+import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+
 export interface StatItem {
   value: string;
   label: string;
@@ -6,10 +9,18 @@ export interface StatItem {
 
 export function WholesaleStats({
   items = [
-    { value: '+۵۰۰', label: 'مشتری عمده‌فروش', sublabel: 'در سراسر ایران' },
-    { value: '۱۰+', label: 'سال تجربه', sublabel: 'در بازار پوشاک' },
-    { value: '+۵۰', label: 'مدل فعال', sublabel: 'بهار و تابستان' },
-    { value: '۱۵', label: 'نفر پرسنل', sublabel: 'در خط تولید' },
+    {
+      value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}`,
+      label: 'مشتری عمده‌فروش',
+      sublabel: 'در سراسر ایران',
+    },
+    { value: yearsOfOperationFa(), label: 'سال تجربه', sublabel: 'در بازار پوشاک' },
+    {
+      value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}`,
+      label: 'مدل فعال',
+      sublabel: 'بهار و تابستان',
+    },
+    { value: toPersianDigits(BUSINESS_FACTS.teamSize), label: 'نفر پرسنل', sublabel: 'در خط تولید' },
   ],
 }: {
   items?: StatItem[];

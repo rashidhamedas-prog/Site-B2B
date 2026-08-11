@@ -2,6 +2,20 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-11 — SEO master fix (هر دو دامنه)
+
+### خلاصه
+- اجرای کامل `TARANOM-SEO-CURSOR-MASTER-FIX.md`: ممیزی پایه با ۴ ایجنت موازی + پیاده‌سازی همه P0/P1.
+- P0: soft-404 محصولات عمده رفع شد (notFound + SSR + JSON-LD سروری)، ۵۷ عدم‌تطابق canonical محصولات عمده با canonical-guard رفع شد، canonical پیش‌فرض هوم از layout ریتیل حذف شد، placeholder جستجوی JSON-LD حذف شد، URLهای قدیمی وردپرس → 301/410 در middleware.
+- P1: noindex,follow برای حالت‌های جستجو/فیلتر هر دو کانال؛ `/retail/*` عمومی → 301؛ آمار تجاری متمرکز در `lib/business-facts.ts`؛ GA4 page_view دوباره‌شمار رفع؛ hero موبایل از بهینه‌ساز تصویر عبور داده شد؛ OG از ~۲.۲/۳ MB به ~۷۱/۷۶ KB.
+- گزارش‌ها: `SEO-BASELINE-AUDIT.md`، `SEO-IMPLEMENTATION-REPORT.md`، `SEO-REDIRECT-MAP.csv`، `SEO-URL-INVENTORY.csv`، `SEO-REMAINING-MANUAL-ACTIONS.md`. اسکریپت‌ها: `npm run seo:audit` / `seo:check`.
+- Build: exit 0 (typecheck + 65 صفحه).
+
+### بعدی
+- بعد از دیپلوی: `npm run seo:audit` + `seo:check` → `SEO-POSTFIX-URL-AUDIT.csv`؛ اقدامات GSC طبق `SEO-REMAINING-MANUAL-ACTIONS.md`.
+
+---
+
 ## 2026-08-11 — TASK-20260810-006: PR #31 live on VPS (ship evidence; still in_progress)
 
 ### خلاصه

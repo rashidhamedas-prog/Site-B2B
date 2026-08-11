@@ -1,12 +1,12 @@
 import type { MetadataRoute } from 'next';
 import {
-  API_URL,
   getSeoChannel,
   RETAIL_ORIGIN,
   WHOLESALE_ORIGIN,
 } from '@/lib/seo';
 import { fetchSitemapPosts } from '@/lib/blog';
 import { publicProductUrl } from '@/lib/public-product-path';
+import { getServerApiBase } from '@/lib/server-api';
 
 interface ProductRow {
   slug: string;
@@ -26,7 +26,7 @@ async function getProducts(
 ): Promise<ProductRow[]> {
   try {
     const response = await fetch(
-      `${API_URL}/products?limit=500&channel=${channel}`,
+      `${getServerApiBase()}/products?limit=500&channel=${channel}`,
       {
         next: {
           revalidate: 3600,

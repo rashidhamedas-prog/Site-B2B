@@ -71,6 +71,20 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const readyId = useRef<string>('');
+  // Dedupe: both effects below can fire for the same path on initial mount,
+  // which double-counted page_view in GA4.
+  const lastSent = useRef<string>('');
+
+  const sendPageView = (id: string, path: string) => {
+    const key = `${id}|${path}`;
+    if (lastSent.current === key) return;
+    lastSent.current = key;
+    window.gtag?.('event', 'page_view', {
+      page_path: path,
+      page_title: typeof document !== 'undefined' ? document.title : path,
+      send_to: id,
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -98,12 +112,7 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
       if (ga4) {
         loadGtag(ga4);
         readyId.current = ga4;
-        const path = pagePath(pathname || '/', searchParams?.toString() || '');
-        window.gtag?.('event', 'page_view', {
-          page_path: path,
-          page_title: document.title,
-          send_to: ga4,
-        });
+        sendPageView(ga4, pagePath(pathname || '/', searchParams?.toString() || ''));
       }
     })();
     return () => {
@@ -116,12 +125,8 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
   useEffect(() => {
     const id = readyId.current || ga4EnvFor(channel);
     if (!id || !window.gtag) return;
-    const path = pagePath(pathname || '/', searchParams?.toString() || '');
-    window.gtag('event', 'page_view', {
-      page_path: path,
-      page_title: typeof document !== 'undefined' ? document.title : path,
-      send_to: id,
-    });
+    sendPageView(id, pagePath(pathname || '/', searchParams?.toString() || ''));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams, channel]);
 
   return null;
