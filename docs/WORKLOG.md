@@ -2,6 +2,24 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-11 — TASK-20260810-006: PR #31 live on VPS (ship evidence; still in_progress)
+
+### خلاصه
+- PR #31 merged: https://github.com/rashidhamedas-prog/Site-BtoB/pull/31
+- Merge on master: `ee9c044` (`ee9c044e9e72f76e11e53e53534a360f6efc6d1a`); remediation `46821e8`
+- VPS `/opt/taranom` HEAD = `ee9c044`; auto-deploy exit **0** ~2026-08-11T13:29Z
+- Health: API `/v1/health` **200** ok; wholesale `.com` **200**; retail `.ir` **200**
+- Containers: api/web Up ~2 min; nginx ~1 min; postgres/redis/meili/minio healthy
+- Readiness **71/100** (بدون افزایش از روی deploy/health)؛ Task **in_progress**؛ claims retained؛ website-builder blocked
+- جزئیات: `docs/reports/2026-08-11-pr31-ship-evidence.md`
+
+### هنوز NOT RUN (مانع Done)
+- staging sanitized E2E؛ retail OTP→ONLINE؛ rollback/off-box/MinIO؛ full Torob
+
+### بعدی
+- تکمیل ACهای باز + Reviewer/Security تازه روی SHA نهایی؛ **بدون Done / بدون release claims / بدون bump readiness**
+
+---
 ## 2026-08-11 — TASK-20260810-006: reviews + Bugbot fixes + gates (in_progress)
 
 ### خلاصه
