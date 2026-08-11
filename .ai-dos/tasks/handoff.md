@@ -2,6 +2,30 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-11T13:29:07Z — PR #31 ship evidence verified (still in_progress)
+
+- Task / owner: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006
+- Status: **in_progress** — **NOT Done**; claims **retained**; readiness **71/100** (not raised); website-builder **blocked**
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/31 → **MERGED**
+- Merge commit on master: `ee9c044` (`ee9c044e9e72f76e11e53e53534a360f6efc6d1a`)
+- Remediation commit: `46821e8`
+- VPS `/opt/taranom` HEAD = `ee9c044`; `auto-deploy.sh` exit **0** ~2026-08-11T13:29Z
+- Live verify:
+  - API `https://api.poshaktaranom.com/v1/health` → **200** `{"status":"ok","service":"taranom-api","version":"1.0"}`
+  - Wholesale `https://www.poshaktaranom.com/` → **200**
+  - Retail `https://www.poshaktaranom.ir/` → **200**
+  - Containers: api/web Up ~2 min; nginx ~1 min; postgres/redis/meili/minio healthy
+- Still **NOT RUN** (blocks Done): staging sanitized E2E; retail OTP→ONLINE; rollback/off-box/MinIO; full Torob
+- Exact next: keep AC NOT RUN explicit; do **not** Done; do **not** release claims; do **not** bump readiness from deploy/health alone
+
+## 2026-08-11T13:17:00Z — PR #31 merge shipping (deploy in flight)
+
+- Commit: `46821e8` on `ai/TASK-20260810-006-readiness-remediation`
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/31 → **MERGED** `ee9c044` on `master`
+- Status: **in_progress** (AC evidence still open); claims **retained**; readiness **71/100**
+- Deploy: VPS `auto-deploy.sh` started after merge (verify health next)
+- Exact next: confirm VPS HEAD=`ee9c044` (or descendant), `/v1/health` ok, storefronts 200; do **not** Done
+
 ## 2026-08-11T12:50:00Z — Post-review Bugbot fixes + gate evidence (still in_progress)
 
 - Task / owner: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006
