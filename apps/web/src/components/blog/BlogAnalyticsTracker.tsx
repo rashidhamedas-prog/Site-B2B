@@ -29,37 +29,18 @@ function emitGa4(event: string, articleId: string) {
   });
 }
 
-function isFirstUniqueView(articleId: string): boolean {
-  try {
-    const key = `blog-uv:${articleId}`;
-    if (sessionStorage.getItem(key)) return false;
-    sessionStorage.setItem(key, '1');
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-export function BlogAnalyticsTracker({
-  articleId,
-  title,
-}: {
-  articleId: string;
-  title?: string;
-}) {
+export function BlogAnalyticsTracker({ articleId, title }: { articleId: string; title?: string }) {
   const sent = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (!articleId) return;
-    const track = (event: string, uniqueView = false) => {
+    // Unique views are server-derived (IP hash + Redis NX). Do not send x-blog-uv.
+    const track = (event: string) => {
       if (sent.current.has(event)) return;
       sent.current.add(event);
-      const headers: Record<string, string> = {};
-      if (uniqueView) headers['x-blog-uv'] = '1';
       fetch(`${API_URL}/blog/article/${articleId}/analytics/${event}`, {
         method: 'POST',
         keepalive: true,
-        headers,
       }).catch((err) => {
         // Silent for visitors; observable in browser console / monitoring.
         console.warn('[blog-analytics]', event, err);
@@ -67,7 +48,7 @@ export function BlogAnalyticsTracker({
       emitGa4(event, articleId);
     };
 
-    track('view', isFirstUniqueView(articleId));
+    track('view');
     if (title && window.gtag) {
       window.gtag('event', 'view_item', {
         item_name: title,

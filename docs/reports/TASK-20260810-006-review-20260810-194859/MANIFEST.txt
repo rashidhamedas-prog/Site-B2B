@@ -1,0 +1,9 @@
+﻿TASK-20260810-006 review package
+Generated: 20260810-194859
+Worktree: D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002
+Branch: ai/TASK-20260810-006-readiness-remediation
+HEAD: 015b5ec22c6dd4192162cddb1f0a12432cef22b1
+origin/master: ab4ffab84e2b0fc140ddc5f2362e8876898bda84
+Base reviewed earlier: 55e58ad
+Scope: uncommitted remediation vs HEAD 015b5ec (not committed; no deploy)
+Exclude: .ai-dos/backups/**, install-manifest, prompts (unrelated noise)

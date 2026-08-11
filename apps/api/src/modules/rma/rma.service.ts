@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ReturnRequestEntity } from './entities/return-request.entity';
+import { ReturnRequestAuditEntity } from './entities/return-request-audit.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
 
@@ -26,7 +27,7 @@ export class RmaService {
     private readonly orderRepo: Repository<OrderEntity>,
     @InjectRepository(OrderItemEntity)
     private readonly itemRepo: Repository<OrderItemEntity>,
-    private readonly dataSource: DataSource,
+    private readonly dataSource: DataSource
   ) {}
 
   async create(dto: {
@@ -91,14 +92,15 @@ export class RmaService {
 
   /**
    * Transactional approval with row lock + CAS via processingMarker.
-   * EXCHANGE is not silently completed — requires explicit incomplete workflow error
-   * until target variant/stock swap is implemented.
+   * Append-only audit row is written in the same transaction (not adminNote).
+   * EXCHANGE is not silently completed.
    */
   async updateStatus(
     id: string,
     status: string,
     adminNote?: string,
     actorUserId?: string,
+    correlationId?: string
   ) {
     if (!['APPROVED', 'REJECTED', 'COMPLETED', 'PENDING'].includes(status)) {
       throw new BadRequestException('وضعیت نامعتبر');
@@ -113,14 +115,13 @@ export class RmaService {
         .getOne();
       if (!row) throw new NotFoundException('درخواست یافت نشد');
 
+      const fromStatus = row.status;
       const allowed = ALLOWED_TRANSITIONS[row.status] || [];
       if (!allowed.includes(status) && status !== row.status) {
-        throw new BadRequestException(
-          `انتقال وضعیت از ${row.status} به ${status} مجاز نیست`,
-        );
+        throw new BadRequestException(`انتقال وضعیت از ${row.status} به ${status} مجاز نیست`);
       }
       if (status === row.status) {
-        return row; // idempotent no-op
+        return row; // idempotent no-op — no second wallet/stock/audit
       }
 
       if (adminNote !== undefined) {
@@ -131,9 +132,12 @@ export class RmaService {
         if (row.processingMarker) {
           throw new BadRequestException('این درخواست قبلاً پردازش شده است');
         }
-        if (row.requestType === 'EXCHANGE') {
+        if (row.requestType !== 'RETURN') {
+          // Only RETURN may restore stock / credit wallet. EXCHANGE and unknown types fail closed.
           throw new BadRequestException(
-            'تعویض هنوز به‌صورت اتمیک پیاده نشده؛ وضعیت را APPROVED نکنید. از گردش کار جداگانه استفاده کنید.',
+            row.requestType === 'EXCHANGE'
+              ? 'تعویض هنوز به‌صورت اتمیک پیاده نشده؛ وضعیت را APPROVED نکنید. از گردش کار جداگانه استفاده کنید.'
+              : `تأیید مالی فقط برای RETURN مجاز است (requestType=${row.requestType})`,
           );
         }
 
@@ -148,30 +152,60 @@ export class RmaService {
         row.processedByUserId = actorUserId || null;
         row.status = 'APPROVED';
 
+        let stockBefore: number | null = null;
+        let stockAfter: number | null = null;
+        let variantId: string | null = item.productVariantId || null;
+
         if (item.productVariantId) {
           const qty = Math.trunc(Number(item.quantity) || 0);
+          const beforeRows = await manager.query(
+            `SELECT stock FROM product_variants WHERE id = $1 FOR UPDATE`,
+            [item.productVariantId]
+          );
+          if (!beforeRows?.length) {
+            throw new BadRequestException('بازگردانی موجودی ناموفق بود');
+          }
+          stockBefore = Number(beforeRows[0].stock) || 0;
           const restored = await manager.query(
-            `UPDATE product_variants SET stock = stock + $1 WHERE id = $2 RETURNING id`,
-            [qty, item.productVariantId],
+            `UPDATE product_variants SET stock = stock + $1 WHERE id = $2 RETURNING id, stock`,
+            [qty, item.productVariantId]
           );
           if (!restored?.length) {
             throw new BadRequestException('بازگردانی موجودی ناموفق بود');
           }
+          stockAfter = Number(restored[0].stock) || 0;
         }
 
+        let credit: number | null = null;
         if (row.refundType === 'WALLET') {
           const bonusPercent = 5;
-          const credit = Math.round(Number(item.totalPrice) * (1 + bonusPercent / 100));
+          credit = Math.round(Number(item.totalPrice) * (1 + bonusPercent / 100));
           const cust = await manager.query(
             `UPDATE customers SET balance = balance + $1 WHERE id = $2 RETURNING id`,
-            [credit, row.customerId],
+            [credit, row.customerId]
           );
           if (!cust?.length) {
             throw new BadRequestException('اعتبار کیف پول ثبت نشد');
           }
           row.walletCreditAmount = credit;
-          row.adminNote = `${row.adminNote || ''}\nWALLET_CREDIT=${credit} (+${bonusPercent}%) actor=${actorUserId || 'unknown'}`.trim();
+          // adminNote is mutable operator text — NOT the audit record.
         }
+
+        await manager.getRepository(ReturnRequestAuditEntity).insert({
+          returnRequestId: row.id,
+          actorUserId: actorUserId || null,
+          fromStatus,
+          toStatus: 'APPROVED',
+          processingMarker: marker,
+          requestType: row.requestType,
+          refundType: row.refundType,
+          walletCreditAmount: credit,
+          variantId,
+          stockBefore,
+          stockAfter,
+          correlationId: correlationId || null,
+          meta: { qty: item.quantity, orderItemId: item.id },
+        });
 
         const saved = await manager.getRepository(ReturnRequestEntity).save(row);
         return saved;
@@ -182,6 +216,23 @@ export class RmaService {
         row.processedAt = row.processedAt || new Date();
         row.processedByUserId = actorUserId || row.processedByUserId;
       }
+
+      await manager.getRepository(ReturnRequestAuditEntity).insert({
+        returnRequestId: row.id,
+        actorUserId: actorUserId || null,
+        fromStatus,
+        toStatus: status,
+        processingMarker: null,
+        requestType: row.requestType,
+        refundType: row.refundType,
+        walletCreditAmount: null,
+        variantId: null,
+        stockBefore: null,
+        stockAfter: null,
+        correlationId: correlationId || null,
+        meta: null,
+      });
+
       return manager.getRepository(ReturnRequestEntity).save(row);
     });
   }

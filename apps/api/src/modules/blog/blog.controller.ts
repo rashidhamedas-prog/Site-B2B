@@ -1,6 +1,16 @@
 import {
-  Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, Req,
-  UseGuards, Request,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { BlogService } from './blog.service';
@@ -25,6 +35,7 @@ import { BLOG_ROLES, isBlogRole, type BlogRole } from './blog-roles';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../auth/entities/user.entity';
+import { extractClientIp } from '../../common/client-ip';
 
 type AuthedRequest = Request & {
   user?: { id?: string; sub?: string; role?: string };
@@ -44,7 +55,7 @@ export class BlogController {
   constructor(
     private readonly svc: BlogService,
     private readonly extras: BlogExtrasService,
-    @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>,
+    @InjectRepository(UserEntity) private readonly userRepo: Repository<UserEntity>
   ) {}
 
   private actor(req: AuthedRequest) {
@@ -75,7 +86,7 @@ export class BlogController {
     @Query('categorySlug') categorySlug?: string,
     @Query('tag') tag?: string,
     @Query('search') search?: string,
-    @Query('channel') channel?: string,
+    @Query('channel') channel?: string
   ) {
     return this.svc.findPublished({ page, limit, category, categorySlug, tag, search, channel });
   }
@@ -120,7 +131,7 @@ export class BlogController {
     @Query('q') q = '',
     @Query('channel') channel = 'WHOLESALE',
     @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ) {
     return this.svc.findPublished({
       channel,
@@ -167,7 +178,7 @@ export class BlogController {
     @Query('status') status?: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
-    @Query('authorId') authorId?: string,
+    @Query('authorId') authorId?: string
   ) {
     return this.svc.findAllAdmin({ channel, status, categoryId, search, authorId });
   }
@@ -217,14 +228,14 @@ export class BlogController {
     'blog:reject',
     'blog:submit_review',
     'blog:schedule',
-    'blog:delete_soft',
+    'blog:delete_soft'
   )
   @ApiBearerAuth()
   async transition(
     @Param('id') id: string,
     @Param('action') action: string,
     @Body() body: TransitionDto,
-    @Req() req: AuthedRequest,
+    @Req() req: AuthedRequest
   ) {
     if (action === 'duplicate') {
       return this.svc.duplicate(id, this.actor(req));
@@ -233,7 +244,11 @@ export class BlogController {
       return this.svc.restore(id, this.actor(req));
     }
     if (action === 'schedule' && body.publishAt) {
-      await this.svc.update(id, { publishAt: body.publishAt, status: 'SCHEDULED' }, this.actor(req));
+      await this.svc.update(
+        id,
+        { publishAt: body.publishAt, status: 'SCHEDULED' },
+        this.actor(req)
+      );
     }
     return this.svc.transition(id, action, this.actor(req), body?.note);
   }
@@ -300,7 +315,11 @@ export class BlogController {
   @Roles('ADMIN')
   @RequireBlogPermissions('blog:manage_categories')
   @ApiBearerAuth()
-  updateCategory(@Param('id') id: string, @Body() body: Partial<CreateCategoryDto>, @Req() req: AuthedRequest) {
+  updateCategory(
+    @Param('id') id: string,
+    @Body() body: Partial<CreateCategoryDto>,
+    @Req() req: AuthedRequest
+  ) {
     return this.svc.updateCategory(id, body, this.actor(req));
   }
 
@@ -336,7 +355,11 @@ export class BlogController {
   @Roles('ADMIN')
   @RequireBlogPermissions('blog:manage_tags')
   @ApiBearerAuth()
-  updateTag(@Param('id') id: string, @Body() body: Partial<CreateTagDto>, @Req() req: AuthedRequest) {
+  updateTag(
+    @Param('id') id: string,
+    @Body() body: Partial<CreateTagDto>,
+    @Req() req: AuthedRequest
+  ) {
     return this.svc.updateTag(id, body, this.actor(req));
   }
 
@@ -374,7 +397,10 @@ export class BlogController {
   @Roles('ADMIN')
   @RequireBlogPermissions('blog:manage_redirects')
   @ApiBearerAuth()
-  updateRedirect(@Param('id') id: string, @Body() body: Partial<CreateRedirectDto> & { isActive?: boolean }) {
+  updateRedirect(
+    @Param('id') id: string,
+    @Body() body: Partial<CreateRedirectDto> & { isActive?: boolean }
+  ) {
     return this.svc.updateRedirect(id, body);
   }
 
@@ -404,7 +430,7 @@ export class BlogController {
   updateSettings(
     @Query('channel') channel = 'WHOLESALE',
     @Body() body: Record<string, unknown>,
-    @Req() req: AuthedRequest,
+    @Req() req: AuthedRequest
   ) {
     return this.svc.updateSettings(channel, body as any, this.actor(req));
   }
@@ -444,7 +470,7 @@ export class BlogController {
   async setBlogRole(
     @Param('id') id: string,
     @Body() body: { blogRole: string | null },
-    @Req() req: AuthedRequest,
+    @Req() req: AuthedRequest
   ) {
     if (body.blogRole != null && !isBlogRole(body.blogRole)) {
       return { error: 'نقش نامعتبر' };
@@ -484,11 +510,7 @@ export class BlogController {
   @Roles('ADMIN')
   @RequireBlogPermissions('blog:edit_any', 'blog:manage_settings')
   @ApiBearerAuth()
-  updateAuthor(
-    @Param('id') id: string,
-    @Body() body: CreateAuthorDto,
-    @Req() req: AuthedRequest,
-  ) {
+  updateAuthor(@Param('id') id: string, @Body() body: CreateAuthorDto, @Req() req: AuthedRequest) {
     return this.svc.updateAuthorById(id, body as any, this.actor(req));
   }
 
@@ -547,7 +569,7 @@ export class BlogController {
   restoreRevision(
     @Param('id') id: string,
     @Param('revisionId') revisionId: string,
-    @Req() req: AuthedRequest,
+    @Req() req: AuthedRequest
   ) {
     return this.extras.restoreRevision(id, revisionId, this.actor(req));
   }
@@ -560,7 +582,7 @@ export class BlogController {
   autosave(
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
-    @Req() req: AuthedRequest,
+    @Req() req: AuthedRequest
   ) {
     return this.extras.autosave(id, body as any, this.actor(req));
   }
@@ -574,7 +596,7 @@ export class BlogController {
     @Query('channel') channel?: string,
     @Query('search') search?: string,
     @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ) {
     return this.extras.listMedia({ channel, search, page, limit });
   }
@@ -645,7 +667,7 @@ export class BlogController {
   searchProducts(
     @Query('q') q = '',
     @Query('channel') channel?: string,
-    @Query('limit') limit?: number,
+    @Query('limit') limit?: number
   ) {
     return this.extras.searchProducts(q, channel, Number(limit) || 12);
   }
@@ -666,7 +688,7 @@ export class BlogController {
   @ApiBearerAuth()
   moderateComment(
     @Param('id') id: string,
-    @Body() body: { status: 'APPROVED' | 'REJECTED' | 'SPAM' },
+    @Body() body: { status: 'APPROVED' | 'REJECTED' | 'SPAM' }
   ) {
     return this.extras.moderateComment(id, body.status);
   }
@@ -702,33 +724,24 @@ export class BlogController {
   @Post('article/:id/comments')
   createComment(
     @Param('id') id: string,
-    @Body() body: { name: string; email: string; content: string; parentId?: string; website?: string },
-    @Req() req: AuthedRequest,
+    @Body()
+    body: { name: string; email: string; content: string; parentId?: string; website?: string },
+    @Req() req: AuthedRequest
   ) {
-    const fwd = req.headers?.['x-forwarded-for'];
-    const ip = Array.isArray(fwd) ? fwd[0] : (fwd as string) || req.ip;
+    const ip = extractClientIp(req);
     const ua = req.headers?.['user-agent'];
     return this.extras.createComment(
       id,
       { ...body, honeypot: body.website },
-      { ip, userAgent: Array.isArray(ua) ? ua[0] : ua },
+      { ip, userAgent: Array.isArray(ua) ? ua[0] : ua }
     );
   }
 
   @Post('article/:id/analytics/:event')
-  async track(
-    @Param('id') id: string,
-    @Param('event') event: string,
-    @Req() req: AuthedRequest,
-  ) {
-    const fwd = req.headers?.['x-forwarded-for'];
-    const ip = Array.isArray(fwd) ? fwd[0] : (fwd as string) || req.ip;
-    const uvRaw = req.headers?.['x-blog-uv'];
-    const uv = Array.isArray(uvRaw) ? uvRaw[0] : uvRaw;
-    await this.extras.trackEvent(id, event, {
-      ip,
-      uniqueView: uv === '1' || uv === 'true',
-    });
+  async track(@Param('id') id: string, @Param('event') event: string, @Req() req: AuthedRequest) {
+    // Trust only Fastify req.ip (trustProxy=1). Never raw X-Forwarded-For or x-blog-uv.
+    const ip = extractClientIp(req);
+    await this.extras.trackEvent(id, event, { ip });
     return { ok: true };
   }
 
@@ -736,6 +749,9 @@ export class BlogController {
   async relatedProducts(@Param('id') id: string, @Query('channel') channel?: string) {
     const post = await this.svc.findOneAdmin(id).catch(() => null);
     if (!post || post.status !== 'PUBLISHED') return [];
-    return this.extras.resolveRelatedProducts(post.relatedProductIds || [], channel || post.channel);
+    return this.extras.resolveRelatedProducts(
+      post.relatedProductIds || [],
+      channel || post.channel
+    );
   }
 }

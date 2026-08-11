@@ -2,19 +2,19 @@
 
 Executable ops guide for this repository. Derived from evidenced scripts and configs only. **Never paste secret values into tickets, chat, or this file.**
 
-| Field | Value |
-|-------|--------|
-| App dir (VPS) | `/opt/taranom` |
-| Primary branch | `master` (also accepts `main` in some scripts) |
-| Compose file | `docker-compose.yml` |
-| Auto-deploy | `scripts/auto-deploy.sh` + `deploy/systemd/taranom-autodeploy.{service,timer}` |
-| Manual bootstrap | `deploy.sh`, `scripts/redeploy-server.sh` |
-| CI | `.github/workflows/ci.yml` (`lint-and-build`; `deploy` only on `workflow_dispatch` + `production` environment) |
-| Public wholesale | `https://poshaktaranom.com` |
-| Public retail | `https://www.poshaktaranom.ir` (apex redirects to www) |
-| Public API | `https://api.poshaktaranom.com` |
-| Admin UI | `/admin` on the web app (via storefront host) |
-| Health (authoritative) | `GET /v1/health` on API (container port `4000`) |
+| Field                  | Value                                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| App dir (VPS)          | `/opt/taranom`                                                                                                 |
+| Primary branch         | `master` (also accepts `main` in some scripts)                                                                 |
+| Compose file           | `docker-compose.yml`                                                                                           |
+| Auto-deploy            | `scripts/auto-deploy.sh` + `deploy/systemd/taranom-autodeploy.{service,timer}`                                 |
+| Manual bootstrap       | `deploy.sh`, `scripts/redeploy-server.sh`                                                                      |
+| CI                     | `.github/workflows/ci.yml` (`lint-and-build`; `deploy` only on `workflow_dispatch` + `production` environment) |
+| Public wholesale       | `https://poshaktaranom.com`                                                                                    |
+| Public retail          | `https://www.poshaktaranom.ir` (apex redirects to www)                                                         |
+| Public API             | `https://api.poshaktaranom.com`                                                                                |
+| Admin UI               | `/admin` on the web app (via storefront host)                                                                  |
+| Health (authoritative) | `GET /v1/health` on API (container port `4000`)                                                                |
 
 **Production actions below marked ⛔ HUMAN AUTHORIZATION REQUIRED must not be executed by an agent without explicit human approval for that change window.**
 
@@ -101,14 +101,14 @@ sudo systemctl stop taranom-autodeploy.timer
 
 ### 2.1 Evidence status
 
-| Capability | Status | Evidence |
-|------------|--------|----------|
-| Named Docker volumes (`postgres_data`, `redis_data`, `minio_data`, `meili_data`) | Evidenced | `docker-compose.yml` |
-| `.env` copy during redeploy | Evidenced | `scripts/redeploy-server.sh` → `/tmp/taranom.env.bak` |
-| Ad-hoc `pg_dump` / `pg_restore -l` verification | Historically practiced | `docs/reports/2026-07-11-server-redeploy.md`, `docs/reports/2026-08-01-production-hardening-history-rewrite.md` |
-| Checked-in automated backup cron / off-box sync | **PARTIAL** | `scripts/backup-postgres.sh` + `/etc/cron.d/taranom-postgres-backup` (2026-08-10). Off-box sync still open |
-| Documented restore procedure with RPO/RTO drill evidence | **PASS** (disposable) | `scripts/restore-drill-disposable.sh`; VPS drill 2026-08-09/10: 36 tables, RTO ~10s into `taranom_restore_drill` (not live DB) |
-| MinIO object restore runbook | **UNKNOWN** | Volume + historical snapshot mention only |
+| Capability                                                                       | Status                 | Evidence                                                                                                                       |
+| -------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Named Docker volumes (`postgres_data`, `redis_data`, `minio_data`, `meili_data`) | Evidenced              | `docker-compose.yml`                                                                                                           |
+| `.env` copy during redeploy                                                      | Evidenced              | `scripts/redeploy-server.sh` → `/tmp/taranom.env.bak`                                                                          |
+| Ad-hoc `pg_dump` / `pg_restore -l` verification                                  | Historically practiced | `docs/reports/2026-07-11-server-redeploy.md`, `docs/reports/2026-08-01-production-hardening-history-rewrite.md`                |
+| Checked-in automated backup cron / off-box sync                                  | **PARTIAL**            | `scripts/backup-postgres.sh` + `/etc/cron.d/taranom-postgres-backup` (2026-08-10). Off-box sync still open                     |
+| Documented restore procedure with RPO/RTO drill evidence                         | **PASS** (disposable)  | `scripts/restore-drill-disposable.sh`; VPS drill 2026-08-09/10: 36 tables, RTO ~10s into `taranom_restore_drill` (not live DB) |
+| MinIO object restore runbook                                                     | **UNKNOWN**            | Volume + historical snapshot mention only                                                                                      |
 
 **Verdict for readiness reports:** backup/restore = **PASS** for automated Postgres dump + disposable restore rehearsal. Off-box replication and MinIO restore remain open.
 
@@ -156,13 +156,13 @@ If restore cannot guarantee order/inventory/payment correctness, **stop** and ex
 
 ## 3. Migration notes
 
-| Mechanism | When | Notes |
-|-----------|------|--------|
-| TypeORM migrations | API startup in production | `migrationsRun: true` when `NODE_ENV=production` and `DB_SYNC` ≠ `true` (`apps/api/src/config/database.config.ts`). Prefer expand-then-contract. **Source of truth** for schema changes. |
+| Mechanism                             | When                                                 | Notes                                                                                                                                                                                                                                     |
+| ------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeORM migrations                    | API startup in production                            | `migrationsRun: true` when `NODE_ENV=production` and `DB_SYNC` ≠ `true` (`apps/api/src/config/database.config.ts`). Prefer expand-then-contract. **Source of truth** for schema changes.                                                  |
 | `scripts/apply-production-schema.sql` | After container up in `auto-deploy.sh` and CI deploy | Idempotent safety-net; **not** a full migration mirror (see §3.1). Failures log WARNING and continue in `auto-deploy.sh`. CI (`set -euo pipefail`) fails the job; CI also restarts API after applying (`.github/workflows/ci.yml:79-88`). |
-| `apps/api/src/database/sql/*` | Manual / historical | Ad-hoc scripts (channel-split, retail-b2c, warehouse, wholesale-color-select, …). **Not** run by CI deploy. Prod apply status: UNKNOWN. |
-| `DB_SYNC=true` | Bootstrap only | Forbidden as steady-state production setting (see historical redeploy report). |
-| Local generate/run | Dev | `cd apps/api && npm run migration:generate` / `npm run migration:run` (README). |
+| `apps/api/src/database/sql/*`         | Manual / historical                                  | Ad-hoc scripts (channel-split, retail-b2c, warehouse, wholesale-color-select, …). **Not** run by CI deploy. Prod apply status: UNKNOWN.                                                                                                   |
+| `DB_SYNC=true`                        | Bootstrap only                                       | Forbidden as steady-state production setting (see historical redeploy report).                                                                                                                                                            |
+| Local generate/run                    | Dev                                                  | `cd apps/api && npm run migration:generate` / `npm run migration:run` (README).                                                                                                                                                           |
 
 **Compatibility rule:** application rollback must remain compatible with schema already applied (expand-only). Destructive down-migrations are not evidenced as safe on production.
 
@@ -172,14 +172,14 @@ If restore cannot guarantee order/inventory/payment correctness, **stop** and ex
 
 **Do not treat the safety-net as equivalent to “all migrations ran.”**
 
-| Concern | TypeORM migrations | `apply-production-schema.sql` |
-|---------|--------------------|-------------------------------|
-| Catalog | 10 `*.ts` under `apps/api/src/database/migrations/` (categories → blog phase-2) | Single SQL file; header says mirrors `20260717-001` only (`:1-5`) |
-| Overlap | Specs/discounts/shipping; product stock + inventory_movements; order idempotency + payment unique indexes | Same areas, mostly `IF NOT EXISTS` / idempotent |
-| Covered by SQL but **missing** TypeORM migration | — | Historically: `products.viewCount`, `categories.bannerUrl`, `orders.torobClid`, wholesale color columns — **promoted** in `20260809-001` and **verified on VPS** 2026-08-09 (`migrations` id=11 `PromoteSqlOnlyEntityColumns1786276800001`; columns+indexes present). Those DDL blocks were **narrowed out** of the safety-net (file retained). |
-| Covered by migrations but **missing** from SQL | Categories create, variant library, hero content migrations, blog SEO phase 1–2 | If `migrationsRun` is skipped/fails, safety-net will **not** create these |
-| Data mutation | Stock backfill in `20260720-001` | Same style backfill (`:92-98`) on every deploy when `stock=0` |
-| Deploy failure policy | Migration failure can prevent healthy API start | `auto-deploy.sh` continues after SQL WARNING; CI deploy aborts |
+| Concern                                          | TypeORM migrations                                                                                        | `apply-production-schema.sql`                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Catalog                                          | 10 `*.ts` under `apps/api/src/database/migrations/` (categories → blog phase-2)                           | Single SQL file; header says mirrors `20260717-001` only (`:1-5`)                                                                                                                                                                                                                                                                               |
+| Overlap                                          | Specs/discounts/shipping; product stock + inventory_movements; order idempotency + payment unique indexes | Same areas, mostly `IF NOT EXISTS` / idempotent                                                                                                                                                                                                                                                                                                 |
+| Covered by SQL but **missing** TypeORM migration | —                                                                                                         | Historically: `products.viewCount`, `categories.bannerUrl`, `orders.torobClid`, wholesale color columns — **promoted** in `20260809-001` and **verified on VPS** 2026-08-09 (`migrations` id=11 `PromoteSqlOnlyEntityColumns1786276800001`; columns+indexes present). Those DDL blocks were **narrowed out** of the safety-net (file retained). |
+| Covered by migrations but **missing** from SQL   | Categories create, variant library, hero content migrations, blog SEO phase 1–2                           | If `migrationsRun` is skipped/fails, safety-net will **not** create these                                                                                                                                                                                                                                                                       |
+| Data mutation                                    | Stock backfill in `20260720-001`                                                                          | Same style backfill (`:92-98`) on every deploy when `stock=0`                                                                                                                                                                                                                                                                                   |
+| Deploy failure policy                            | Migration failure can prevent healthy API start                                                           | `auto-deploy.sh` continues after SQL WARNING; CI deploy aborts                                                                                                                                                                                                                                                                                  |
 
 **After `20260809-001` lands (narrow safety-net — do not delete yet):**
 
@@ -317,8 +317,23 @@ docker compose logs --tail 80 api
 
 ### 5.6 Optional E2E purchase path (creates order — staging/local only)
 
-`scripts/e2e-purchase-test.sh` hits health → product → login → **creates a CASH wholesale order** → checks `/products` and `/checkout`.  
-**⛔ Staging / local / disposable stacks only.** Do **not** run against production. Script must use env-provided credentials (no hardcoded secrets; no direct password `UPDATE` on prod). Historical VPS CASH order `ORD-2026-00008-9C0117` is prior evidence from an unsafe method and is **superseded** for C1 close — re-run on staging after sanitization. Uses `API_URL` default `http://localhost:4000/v1`.
+`scripts/e2e-purchase-test.sh` verifies environment identity → health → product → login → **creates a CASH wholesale order** → exact status/totals asserts → checks `/products` and `/checkout`.
+**⛔ Staging / local / disposable stacks only.** Do **not** run against production. No SQL activate/password `UPDATE`. Host allowlists are immutable (`E2E_ALLOWED_*` overrides fail closed). Historical VPS CASH order `ORD-2026-00008-9C0117` is **superseded**.
+
+#### 5.6.1 Provision E2E identity (required before first run)
+
+```bash
+# Generates a random deployment UUID and writes scripts/fixtures/e2e-expected-identity.json
+bash scripts/provision-e2e-identity.sh disposable   # or: local | staging
+
+# Put the printed values on the API compose/.env (never on production):
+#   DEPLOYMENT_IDENTITY=<uuid>
+#   APP_ENV=disposable
+# Restart API so GET /v1/env-identity returns { deploymentId, environment, nonProduction: true }.
+# Optional VPS copy: sudo cp scripts/fixtures/e2e-expected-identity.json /etc/taranom/
+```
+
+The harness compares fixture `expectedDeploymentId` to `GET /v1/env-identity` (`curl --max-redirs 0`) **before** login or order create. Mismatch/absent → exit.
 
 ```bash
 # Staging/local/disposable only — never production
@@ -326,10 +341,13 @@ E2E_TARGET=local \
 E2E_ALLOW_MUTATION=1 \
 E2E_PHONE='09xxxxxxxxx' \
 E2E_PASSWORD='use-staging-only-secret' \
-API_URL=http://localhost:4000/v1 \
-WEB_URL=http://localhost:3000 \
+E2E_PRODUCT_ID='<seeded-product-uuid>' \
+API_URL=http://127.0.0.1:4000/v1 \
+WEB_URL=http://127.0.0.1:3000 \
 bash scripts/e2e-purchase-test.sh
 ```
+
+Negative guards (no mutation): `bash scripts/_negative-e2e-guards.sh`
 
 ### 5.7 Observability smoke
 
@@ -351,15 +369,15 @@ Observe for an agreed window (suggest **15–30 minutes** after smoke) using §7
 
 Roll back or stop traffic and escalate if any of:
 
-| Trigger | Signal |
-|---------|--------|
-| Error rate | Sustained 5xx on nginx/API or `/v1/health` failing after retries |
-| Latency | Home/API markedly worse than preflight baseline (operator judgment; no SLO file evidenced) |
+| Trigger                              | Signal                                                                                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Error rate                           | Sustained 5xx on nginx/API or `/v1/health` failing after retries                            |
+| Latency                              | Home/API markedly worse than preflight baseline (operator judgment; no SLO file evidenced)  |
 | Payment / order / inventory mismatch | Orders succeeding without stock decrement, double charge reports, gateway callback failures |
-| Authorization failure | Mass 401/403 on previously working admin/customer sessions; OTP/login outage |
-| Job backlog | Growing failed retries / stuck workers in API logs (if applicable to release) |
-| SEO / routing | Wrong host canonical redirects, retail↔wholesale mixup, `/_next/static` 404 storm |
-| Data reconciliation | Counts/totals diverge from pre-deploy checkpoint expectations |
+| Authorization failure                | Mass 401/403 on previously working admin/customer sessions; OTP/login outage                |
+| Job backlog                          | Growing failed retries / stuck workers in API logs (if applicable to release)               |
+| SEO / routing                        | Wrong host canonical redirects, retail↔wholesale mixup, `/_next/static` 404 storm           |
+| Data reconciliation                  | Counts/totals diverge from pre-deploy checkpoint expectations                               |
 
 ### 6.2 Application rollback (schema-compatible) — ⛔ HUMAN AUTHORIZATION REQUIRED
 
@@ -386,14 +404,14 @@ If application rollback cannot restore correctness → execute approved restore 
 
 ## 7. Monitoring
 
-| Source | How |
-|--------|-----|
-| API health | `curl -sf http://localhost:4000/v1/health` |
-| Compose status | `docker compose ps` |
-| Container logs | `docker compose logs -f api` / `web` / `nginx` |
-| Auto-deploy | `systemctl status taranom-autodeploy.timer`; `journalctl -u taranom-autodeploy.service` |
-| Edge | Nginx access/error logs inside `taranom_nginx`; rate-limit zones `api` / `auth` in `nginx/nginx.conf` |
-| Dependency healthchecks | Postgres `pg_isready`, Redis ping, Meili `/health`, MinIO `/minio/health/live` (compose) |
+| Source                  | How                                                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| API health              | `curl -sf http://localhost:4000/v1/health`                                                            |
+| Compose status          | `docker compose ps`                                                                                   |
+| Container logs          | `docker compose logs -f api` / `web` / `nginx`                                                        |
+| Auto-deploy             | `systemctl status taranom-autodeploy.timer`; `journalctl -u taranom-autodeploy.service`               |
+| Edge                    | Nginx access/error logs inside `taranom_nginx`; rate-limit zones `api` / `auth` in `nginx/nginx.conf` |
+| Dependency healthchecks | Postgres `pg_isready`, Redis ping, Meili `/health`, MinIO `/minio/health/live` (compose)              |
 
 No dedicated APM/Sentry runbook is evidenced as required for go-live in these scripts; treat container health + HTTPS smoke + logs as the minimum.
 

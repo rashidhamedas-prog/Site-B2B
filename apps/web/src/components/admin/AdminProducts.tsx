@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Search, Plus, Edit2, Trash2, X, Save, Layers, ImagePlus, Loader2, Package } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  Save,
+  Layers,
+  ImagePlus,
+  Loader2,
+  Package,
+} from 'lucide-react';
 import { Input, Badge, Pagination } from '@/components/ui';
 import { useProducts, Product, ProductSpecs, ProductCustomField } from '@/lib/hooks/useProducts';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
@@ -179,16 +190,16 @@ function MemoryChips({
 }) {
   if (!values?.length) return null;
   return (
-    <div className="flex flex-wrap gap-1 mt-1.5">
+    <div className="mt-1.5 flex flex-wrap gap-1">
       {values.slice(0, 12).map((v) => (
         <span
           key={v}
-          className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 text-gray-600 pl-1 pr-2 py-0.5"
+          className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 py-0.5 pl-1 pr-2 text-gray-600"
         >
           <button
             type="button"
             onClick={() => onPick(v)}
-            className="cursor-pointer text-[10px] hover:text-primary transition-colors"
+            className="hover:text-primary cursor-pointer text-[10px] transition-colors"
           >
             {v}
           </button>
@@ -200,7 +211,7 @@ function MemoryChips({
                 e.stopPropagation();
                 onDelete(v);
               }}
-              className="cursor-pointer text-gray-300 hover:text-error p-0.5"
+              className="hover:text-error cursor-pointer p-0.5 text-gray-300"
             >
               <X className="h-2.5 w-2.5" />
             </button>
@@ -244,7 +255,9 @@ function VariantsModal({
     }
   }, []);
 
-  useEffect(() => { loadSavedColors(); }, [loadSavedColors]);
+  useEffect(() => {
+    loadSavedColors();
+  }, [loadSavedColors]);
 
   const refresh = useCallback(async () => {
     const res = await apiClient.get<{ variants: Variant[] }>(`/products/${product.id}`);
@@ -339,7 +352,9 @@ function VariantsModal({
           hex: form.colorHex,
         });
         await loadSavedColors();
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       setEditColor(null);
       setForm({ ...emptyVariantForm });
       await refresh();
@@ -352,7 +367,7 @@ function VariantsModal({
 
   const handleDeleteColor = async (color: string) => {
     await apiClient.delete(
-      `/products/${product.id}/variants/by-color?color=${encodeURIComponent(color)}`,
+      `/products/${product.id}/variants/by-color?color=${encodeURIComponent(color)}`
     );
     setDeletingColor(null);
     await refresh();
@@ -360,39 +375,48 @@ function VariantsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col relative">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="relative flex max-h-[92vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
           <div>
             <h3 className="text-base font-bold text-gray-900">واریانت‌ها (رنگ / موجودی)</h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="mt-0.5 text-xs text-gray-400">
               {product.name} — {product.sku} — {sizeTypeLabel}
             </p>
-            <p className="text-[11px] text-primary mt-1">
-              موجودی هر رنگ یک‌بار ثبت می‌شود و روی همه سایزها ({sizeOpts.join('، ')}) اعمال می‌گردد — بدون تکرار در آمار
+            <p className="text-primary mt-1 text-[11px]">
+              موجودی هر رنگ یک‌بار ثبت می‌شود و روی همه سایزها ({sizeOpts.join('، ')}) اعمال می‌گردد
+              — بدون تکرار در آمار
             </p>
           </div>
-          <button type="button" onClick={onClose} className="cursor-pointer text-gray-400 hover:text-gray-600">
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer text-gray-400 hover:text-gray-600"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 space-y-3 overflow-y-auto max-h-[48vh]">
-          <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-2">
-            <p className="text-xs font-semibold text-gray-600">لیست رنگ‌های ذخیره‌شده (انتخاب سریع)</p>
-            <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+        <div className="max-h-[48vh] space-y-3 overflow-y-auto border-b border-gray-100 bg-gray-50 px-6 py-4">
+          <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-3">
+            <p className="text-xs font-semibold text-gray-600">
+              لیست رنگ‌های ذخیره‌شده (انتخاب سریع)
+            </p>
+            <div className="flex min-h-[28px] flex-wrap gap-1.5">
               {savedColors.length === 0 ? (
-                <p className="text-[11px] text-gray-400">هنوز رنگی ذخیره نشده — از فرم زیر اضافه کنید</p>
+                <p className="text-[11px] text-gray-400">
+                  هنوز رنگی ذخیره نشده — از فرم زیر اضافه کنید
+                </p>
               ) : (
                 savedColors.map((c) => (
                   <span
                     key={c.id}
-                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 pl-1 pr-2 py-0.5"
+                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 py-0.5 pl-1 pr-2"
                   >
                     <button
                       type="button"
                       title={`انتخاب ${c.name}`}
                       onClick={() => pickColor(c.name, c.hex || '#000000')}
-                      className="cursor-pointer flex items-center gap-1.5 text-[11px] text-gray-700 hover:text-primary"
+                      className="hover:text-primary flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-700"
                     >
                       <span
                         className="h-3.5 w-3.5 rounded-full border border-gray-300"
@@ -405,7 +429,7 @@ function VariantsModal({
                       title="حذف از لیست"
                       disabled={colorBusy}
                       onClick={() => removeSavedColor(c.id)}
-                      className="cursor-pointer text-gray-300 hover:text-error p-0.5"
+                      className="hover:text-error cursor-pointer p-0.5 text-gray-300"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -414,22 +438,24 @@ function VariantsModal({
               )}
             </div>
             <div className="flex flex-wrap items-end gap-2">
-              <div className="flex-1 min-w-[120px]">
-                <label className="block text-[10px] font-medium text-gray-500 mb-1">نام رنگ جدید</label>
+              <div className="min-w-[120px] flex-1">
+                <label className="mb-1 block text-[10px] font-medium text-gray-500">
+                  نام رنگ جدید
+                </label>
                 <input
                   value={newColorName}
                   onChange={(e) => setNewColorName(e.target.value)}
                   placeholder="مثلاً نسکافه‌ای"
-                  className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium text-gray-500 mb-1">کد</label>
+                <label className="mb-1 block text-[10px] font-medium text-gray-500">کد</label>
                 <input
                   type="color"
                   value={newColorHex}
                   onChange={(e) => setNewColorHex(e.target.value)}
-                  className="h-[34px] w-14 rounded-lg border border-gray-200 cursor-pointer"
+                  className="h-[34px] w-14 cursor-pointer rounded-lg border border-gray-200"
                 />
               </div>
               <button
@@ -443,7 +469,7 @@ function VariantsModal({
               </button>
             </div>
             <div>
-              <p className="text-[10px] text-gray-400 mb-1">پالت پیشنهادی</p>
+              <p className="mb-1 text-[10px] text-gray-400">پالت پیشنهادی</p>
               <div className="flex flex-wrap gap-1.5">
                 {COMMON_COLORS.map((c) => (
                   <button
@@ -456,8 +482,9 @@ function VariantsModal({
                       pickColor(c.name, c.hex);
                     }}
                     className={cn(
-                      'h-6 w-6 rounded-full border border-gray-200 hover:scale-110 transition-transform cursor-pointer',
-                      form.colorHex?.toLowerCase() === c.hex.toLowerCase() && 'ring-2 ring-primary ring-offset-1',
+                      'h-6 w-6 cursor-pointer rounded-full border border-gray-200 transition-transform hover:scale-110',
+                      form.colorHex?.toLowerCase() === c.hex.toLowerCase() &&
+                        'ring-primary ring-2 ring-offset-1'
                     )}
                     style={{ backgroundColor: c.hex }}
                   />
@@ -469,107 +496,120 @@ function VariantsModal({
           <p className="text-xs font-semibold text-gray-500">
             {editColor ? `ویرایش موجودی رنگ «${editColor}»` : 'افزودن رنگ + موجودی (همه سایزها)'}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 items-end">
+          <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-3">
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">نام رنگ</label>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">نام رنگ</label>
               <input
                 value={form.color}
                 onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
                 placeholder="سفید"
                 disabled={!!editColor}
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:bg-gray-100"
+                className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 disabled:bg-gray-100"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">کد رنگ</label>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">کد رنگ</label>
               <input
                 type="color"
                 value={form.colorHex}
                 onChange={(e) => setForm((p) => ({ ...p, colorHex: e.target.value }))}
-                className="w-full h-[34px] rounded-lg border border-gray-200 cursor-pointer"
+                className="h-[34px] w-full cursor-pointer rounded-lg border border-gray-200"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">سایزها</label>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">سایزها</label>
               <div className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm text-gray-600">
                 {sizeOpts.join(' · ')}
               </div>
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">موجودی عمده</label>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">
+                موجودی عمده
+              </label>
               <input
                 type="number"
                 min={0}
                 value={form.wholesaleStock}
                 onChange={(e) => setForm((p) => ({ ...p, wholesaleStock: e.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">موجودی تکی</label>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">موجودی تکی</label>
               <input
                 type="number"
                 min={0}
                 value={form.retailStock}
                 onChange={(e) => setForm((p) => ({ ...p, retailStock: e.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">بارکد</label>
+              <label className="mb-1 block text-[10px] font-medium text-gray-500">بارکد</label>
               <input
                 value={form.barcode}
                 onChange={(e) => setForm((p) => ({ ...p, barcode: e.target.value }))}
                 placeholder="اختیاری"
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1"
               />
             </div>
           </div>
 
-          <div className="rounded-lg border border-primary/20 bg-primary-50/50 px-3 py-2 flex flex-wrap gap-4 text-sm">
+          <div className="border-primary/20 bg-primary-50/50 flex flex-wrap gap-4 rounded-lg border px-3 py-2 text-sm">
             <span>
               جمع عمده:{' '}
-              <strong className="text-primary text-base font-extrabold tabular-nums">{totalWholesale}</strong>
+              <strong className="text-primary text-base font-extrabold tabular-nums">
+                {totalWholesale}
+              </strong>
             </span>
             <span>
               جمع تکی:{' '}
-              <strong className="text-amber-700 text-base font-extrabold tabular-nums">{totalRetail}</strong>
+              <strong className="text-base font-extrabold tabular-nums text-amber-700">
+                {totalRetail}
+              </strong>
             </span>
-            <span className="text-[11px] text-gray-500 self-center">
+            <span className="self-center text-[11px] text-gray-500">
               ({colorGroups.length} رنگ — موجودی هر رنگ یک‌بار در جمع حساب می‌شود)
             </span>
           </div>
-          {saveError && <p className="text-xs text-error">{saveError}</p>}
+          {saveError && <p className="text-error text-xs">{saveError}</p>}
 
           <div className="flex gap-2">
             <button
               type="button"
               onClick={handleSave}
               disabled={saving || !form.color.trim()}
-              className="btn btn-primary btn-sm flex items-center gap-1.5 cursor-pointer"
+              className="btn btn-primary btn-sm flex cursor-pointer items-center gap-1.5"
             >
               <Save className="h-3.5 w-3.5" />
               {saving ? 'ذخیره...' : editColor ? 'بروزرسانی موجودی رنگ' : 'افزودن رنگ'}
             </button>
             {editColor && (
-              <button type="button" onClick={cancelEdit} className="btn btn-outline btn-sm cursor-pointer">
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="btn btn-outline btn-sm cursor-pointer"
+              >
                 انصراف
               </button>
             )}
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1">
+        <div className="flex-1 overflow-y-auto">
           {colorGroups.length === 0 ? (
-            <p className="text-center text-gray-400 py-8 text-sm">
+            <p className="py-8 text-center text-sm text-gray-400">
               رنگی تعریف نشده — از فرم بالا اضافه کنید
             </p>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 sticky top-0">
+              <thead className="sticky top-0 bg-gray-50">
                 <tr>
                   {['رنگ', 'سایزها', 'موجودی عمده', 'موجودی تکی', 'بارکد', ''].map((h) => (
-                    <th key={h || 'actions'} className="px-3 py-2 text-right text-xs font-semibold text-gray-400">
+                    <th
+                      key={h || 'actions'}
+                      className="px-3 py-2 text-right text-xs font-semibold text-gray-400"
+                    >
                       {h}
                     </th>
                   ))}
@@ -579,31 +619,46 @@ function VariantsModal({
                 {colorGroups.map((g) => (
                   <tr
                     key={g.color}
-                    className={cn('hover:bg-gray-50 transition-colors', editColor === g.color && 'bg-primary-50')}
+                    className={cn(
+                      'transition-colors hover:bg-gray-50',
+                      editColor === g.color && 'bg-primary-50'
+                    )}
                   >
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
                         <span
-                          className="h-4 w-4 rounded-full border border-gray-200 flex-shrink-0"
+                          className="h-4 w-4 flex-shrink-0 rounded-full border border-gray-200"
                           style={{ backgroundColor: g.colorHex }}
                         />
                         <span>{g.color}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-600">{g.sizes.join(' · ') || '—'}</td>
-                    <td className="px-3 py-2.5 font-mono text-sm font-semibold text-primary">
+                    <td className="px-3 py-2.5 text-xs text-gray-600">
+                      {g.sizes.join(' · ') || '—'}
+                    </td>
+                    <td className="text-primary px-3 py-2.5 font-mono text-sm font-semibold">
                       {g.wholesaleStock}
                     </td>
                     <td className="px-3 py-2.5 font-mono text-sm font-semibold text-amber-700">
                       {g.retailStock}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-gray-400 font-mono">{g.barcode || '—'}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs text-gray-400">
+                      {g.barcode || '—'}
+                    </td>
                     <td className="px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => startEdit(g)} className="cursor-pointer text-gray-400 hover:text-primary">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(g)}
+                          className="hover:text-primary cursor-pointer text-gray-400"
+                        >
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
-                        <button type="button" onClick={() => setDeletingColor(g.color)} className="cursor-pointer text-gray-400 hover:text-error">
+                        <button
+                          type="button"
+                          onClick={() => setDeletingColor(g.color)}
+                          className="hover:text-error cursor-pointer text-gray-400"
+                        >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -615,12 +670,12 @@ function VariantsModal({
           )}
         </div>
 
-        <div className="px-6 py-3 border-t border-gray-100 flex justify-between items-center gap-3 flex-wrap bg-gray-50">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-3">
           <p className="text-sm font-semibold text-gray-800">
             {colorGroups.length} رنگ · جمع عمده{' '}
             <span className="text-primary tabular-nums">{totalWholesale}</span>
             {' · '}
-            جمع تکی <span className="text-amber-700 tabular-nums">{totalRetail}</span>
+            جمع تکی <span className="tabular-nums text-amber-700">{totalRetail}</span>
           </p>
           <button type="button" onClick={onClose} className="btn btn-outline btn-sm cursor-pointer">
             بستن
@@ -628,19 +683,23 @@ function VariantsModal({
         </div>
 
         {deletingColor && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-2xl">
-            <div className="bg-white rounded-xl p-6 shadow-xl text-center">
-              <p className="text-sm font-semibold text-gray-900 mb-4">
+          <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/30">
+            <div className="rounded-xl bg-white p-6 text-center shadow-xl">
+              <p className="mb-4 text-sm font-semibold text-gray-900">
                 حذف رنگ «{deletingColor}» و همه سایزهایش؟
               </p>
-              <div className="flex gap-3 justify-center">
-                <button type="button" onClick={() => setDeletingColor(null)} className="btn btn-outline btn-sm cursor-pointer">
+              <div className="flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeletingColor(null)}
+                  className="btn btn-outline btn-sm cursor-pointer"
+                >
                   انصراف
                 </button>
                 <button
                   type="button"
                   onClick={() => handleDeleteColor(deletingColor)}
-                  className="btn btn-sm bg-error text-white hover:bg-red-700 cursor-pointer"
+                  className="btn btn-sm bg-error cursor-pointer text-white hover:bg-red-700"
                 >
                   حذف
                 </button>
@@ -666,10 +725,15 @@ export function AdminProducts() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; skuPrefix: string }>>([]);
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string; skuPrefix: string }>
+  >([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   const [specMemory, setSpecMemory] = useState<SpecMemory>({});
-  const [badgeSettings, setBadgeSettings] = useState({ limitedStockMultiplier: 2, newBadgeDays: 7 });
+  const [badgeSettings, setBadgeSettings] = useState({
+    limitedStockMultiplier: 2,
+    newBadgeDays: 7,
+  });
 
   const refreshSpecMemory = useCallback(() => {
     apiClient
@@ -682,14 +746,14 @@ export function AdminProducts() {
     async (fieldKey: string, value: string) => {
       try {
         await apiClient.delete(
-          `/products/meta/spec-memory?fieldKey=${encodeURIComponent(fieldKey)}&value=${encodeURIComponent(value)}`,
+          `/products/meta/spec-memory?fieldKey=${encodeURIComponent(fieldKey)}&value=${encodeURIComponent(value)}`
         );
         refreshSpecMemory();
       } catch (e: unknown) {
         alert(e instanceof Error ? e.message : 'خطا در حذف');
       }
     },
-    [refreshSpecMemory],
+    [refreshSpecMemory]
   );
 
   const { products, meta, loading, refetch } = useProducts({
@@ -716,7 +780,9 @@ export function AdminProducts() {
 
   useEffect(() => {
     apiClient
-      .get<{ business?: { limitedStockMultiplier?: number; newBadgeDays?: number } }>('/settings/admin')
+      .get<{ business?: { limitedStockMultiplier?: number; newBadgeDays?: number } }>(
+        '/settings/admin'
+      )
       .then((s) => {
         setBadgeSettings({
           limitedStockMultiplier: Math.max(1, Number(s?.business?.limitedStockMultiplier) || 2),
@@ -761,11 +827,18 @@ export function AdminProducts() {
       retailCanonical: seo.retailCanonical || '',
       wholesalePrice: String(Math.round(Number(p.wholesalePrice) / 10)),
       retailPrice: p.retailPrice ? String(Math.round(Number(p.retailPrice) / 10)) : '',
-      wholesaleCompareAtPrice: (p as { wholesaleCompareAtPrice?: number | null }).wholesaleCompareAtPrice
-        ? String(Math.round(Number((p as { wholesaleCompareAtPrice?: number }).wholesaleCompareAtPrice) / 10))
+      wholesaleCompareAtPrice: (p as { wholesaleCompareAtPrice?: number | null })
+        .wholesaleCompareAtPrice
+        ? String(
+            Math.round(
+              Number((p as { wholesaleCompareAtPrice?: number }).wholesaleCompareAtPrice) / 10
+            )
+          )
         : '',
       retailCompareAtPrice: (p as { retailCompareAtPrice?: number | null }).retailCompareAtPrice
-        ? String(Math.round(Number((p as { retailCompareAtPrice?: number }).retailCompareAtPrice) / 10))
+        ? String(
+            Math.round(Number((p as { retailCompareAtPrice?: number }).retailCompareAtPrice) / 10)
+          )
         : '',
       minOrderQty: String(p.minOrderQty),
       status: p.status,
@@ -825,7 +898,7 @@ export function AdminProducts() {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     },
-    [uploadImage],
+    [uploadImage]
   );
 
   const setSpec = (key: keyof ProductSpecs, value: string) => {
@@ -965,25 +1038,15 @@ export function AdminProducts() {
             imageUrl: d.imageUrl || null,
             sizes: sizeLabels.map((size) => ({
               size,
-              wholesaleStock: Math.max(
-                0,
-                Math.floor(Number(d.sizeStocks[size]?.wholesale) || 0),
-              ),
-              retailStock: Math.max(
-                0,
-                Math.floor(Number(d.sizeStocks[size]?.retail) || 0),
-              ),
-              stock: Math.max(
-                0,
-                Math.floor(Number(d.sizeStocks[size]?.wholesale) || 0),
-              ),
+              wholesaleStock: Math.max(0, Math.floor(Number(d.sizeStocks[size]?.wholesale) || 0)),
+              retailStock: Math.max(0, Math.floor(Number(d.sizeStocks[size]?.retail) || 0)),
+              stock: Math.max(0, Math.floor(Number(d.sizeStocks[size]?.wholesale) || 0)),
             })),
           };
-          const wasExisting =
-            !!d.originalColor && initialColorNames.includes(d.originalColor);
+          const wasExisting = !!d.originalColor && initialColorNames.includes(d.originalColor);
           if (wasExisting && d.originalColor !== d.color.trim()) {
             await apiClient.delete(
-              `/products/${productId}/variants/by-color?color=${encodeURIComponent(d.originalColor!)}`,
+              `/products/${productId}/variants/by-color?color=${encodeURIComponent(d.originalColor!)}`
             );
           }
           await apiClient.put(`/products/${productId}/variants/color-stock`, body);
@@ -992,7 +1055,7 @@ export function AdminProducts() {
         for (const oldName of initialColorNames) {
           if (oldName && !keepNames.has(oldName)) {
             await apiClient.delete(
-              `/products/${productId}/variants/by-color?color=${encodeURIComponent(oldName)}`,
+              `/products/${productId}/variants/by-color?color=${encodeURIComponent(oldName)}`
             );
           }
         }
@@ -1006,7 +1069,16 @@ export function AdminProducts() {
     } finally {
       setSaving(false);
     }
-  }, [form, modal, editProduct, refetch, images, colorDrafts, initialColorNames, refreshSpecMemory]);
+  }, [
+    form,
+    modal,
+    editProduct,
+    refetch,
+    images,
+    colorDrafts,
+    initialColorNames,
+    refreshSpecMemory,
+  ]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -1018,7 +1090,7 @@ export function AdminProducts() {
         /* ignore */
       }
     },
-    [refetch],
+    [refetch]
   );
 
   const field = (
@@ -1032,16 +1104,16 @@ export function AdminProducts() {
       | 'minOrderQty',
     label: string,
     type = 'text',
-    placeholder = '',
+    placeholder = ''
   ) => (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
       <input
         type={type}
         value={form[key]}
         onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
       />
     </div>
   );
@@ -1049,16 +1121,16 @@ export function AdminProducts() {
   const specField = (
     key: keyof Omit<ProductSpecs, 'customFields'>,
     label: string,
-    placeholder = '',
+    placeholder = ''
   ) => (
     <div>
-      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
       <input
         type="text"
         value={(form.specs[key] as string) ?? ''}
         onChange={(e) => setSpec(key, e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
       />
       <MemoryChips
         values={specMemory[key]}
@@ -1072,10 +1144,10 @@ export function AdminProducts() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900">محصولات</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{meta.total} مدل در کاتالوگ</p>
+          <p className="mt-0.5 text-sm text-gray-500">{meta.total} مدل در کاتالوگ</p>
         </div>
         <button onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
           <Plus className="h-4 w-4" />
@@ -1099,17 +1171,24 @@ export function AdminProducts() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px]">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                {['SKU', 'نام محصول', 'جنس پارچه', 'واریانت‌ها', 'موجودی', 'قیمت عمده (ت)', 'وضعیت', ''].map(
-                  (h) => (
-                    <th
-                      key={h || 'actions'}
-                      className="px-4 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap"
-                    >
-                      {h}
-                    </th>
-                  ),
-                )}
+              <tr className="border-b border-gray-100 bg-gray-50">
+                {[
+                  'SKU',
+                  'نام محصول',
+                  'جنس پارچه',
+                  'واریانت‌ها',
+                  'موجودی',
+                  'قیمت عمده (ت)',
+                  'وضعیت',
+                  '',
+                ].map((h) => (
+                  <th
+                    key={h || 'actions'}
+                    className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold text-gray-500"
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -1118,7 +1197,7 @@ export function AdminProducts() {
                   <tr key={i}>
                     {Array.from({ length: 8 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
-                        <div className="skeleton h-4 rounded w-20" />
+                        <div className="skeleton h-4 w-20 rounded" />
                       </td>
                     ))}
                   </tr>
@@ -1126,7 +1205,7 @@ export function AdminProducts() {
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
-                    <p className="text-gray-400 mb-3">محصولی یافت نشد</p>
+                    <p className="mb-3 text-gray-400">محصولی یافت نشد</p>
                     <button onClick={openCreate} className="btn btn-primary btn-sm">
                       افزودن اولین محصول
                     </button>
@@ -1136,8 +1215,12 @@ export function AdminProducts() {
                 products.map((p) => {
                   const wholesaleSum =
                     p.variants?.reduce(
-                      (s, v) => s + (Number((v as { wholesaleStock?: number }).wholesaleStock) || Number(v.stock) || 0),
-                      0,
+                      (s, v) =>
+                        s +
+                        (Number((v as { wholesaleStock?: number }).wholesaleStock) ||
+                          Number(v.stock) ||
+                          0),
+                      0
                     ) ?? 0;
                   const totalStock =
                     typeof p.wholesaleStock === 'number'
@@ -1147,30 +1230,31 @@ export function AdminProducts() {
                         : typeof p.totalStock === 'number'
                           ? p.totalStock
                           : wholesaleSum;
-                  const varCount = new Set((p.variants ?? []).map((v) => v.color).filter(Boolean)).size;
+                  const varCount = new Set((p.variants ?? []).map((v) => v.color).filter(Boolean))
+                    .size;
                   return (
-                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-xs font-mono text-gray-400">{p.sku}</td>
+                    <tr key={p.id} className="transition-colors hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-xs text-gray-400">{p.sku}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <span className="text-sm font-semibold text-gray-900">{p.name}</span>
                           {p.isNew && (
-                            <Badge variant="primary" className="text-[10px] px-1.5 py-0">
+                            <Badge variant="primary" className="px-1.5 py-0 text-[10px]">
                               جدید
                             </Badge>
                           )}
                           {p.isDiscounted && (
-                            <Badge variant="gold" className="text-[10px] px-1.5 py-0">
+                            <Badge variant="gold" className="px-1.5 py-0 text-[10px]">
                               تخفیف‌دار
                             </Badge>
                           )}
                           {p.isLimitedStock && (
-                            <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                            <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
                               موجودی محدود
                             </Badge>
                           )}
                           {p.status === 'COMING_SOON' && (
-                            <Badge variant="info" className="text-[10px] px-1.5 py-0">
+                            <Badge variant="info" className="px-1.5 py-0 text-[10px]">
                               به زودی
                             </Badge>
                           )}
@@ -1180,7 +1264,7 @@ export function AdminProducts() {
                       <td className="px-4 py-3">
                         <button
                           onClick={() => openEdit(p)}
-                          className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                          className="text-primary flex items-center gap-1 text-xs font-medium hover:underline"
                         >
                           <Layers className="h-3.5 w-3.5" />
                           {varCount} رنگ
@@ -1194,7 +1278,7 @@ export function AdminProducts() {
                               ? 'text-amber-600'
                               : totalStock === 0
                                 ? 'text-error'
-                                : 'text-gray-700',
+                                : 'text-gray-700'
                           )}
                           title="جمع موجودی عمده از واریانت‌ها (فقط خواندنی)"
                         >
@@ -1202,7 +1286,7 @@ export function AdminProducts() {
                           {totalStock} عدد
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-gray-900 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-4 py-3 text-sm font-bold text-gray-900">
                         {(Number(p.wholesalePrice) / 10).toLocaleString('fa-IR')}
                       </td>
                       <td className="px-4 py-3">
@@ -1215,7 +1299,7 @@ export function AdminProducts() {
                                 ? 'bg-blue-100 text-blue-700'
                                 : p.status === 'OUT_OF_STOCK'
                                   ? 'bg-red-100 text-red-700'
-                                  : 'bg-gray-100 text-gray-500',
+                                  : 'bg-gray-100 text-gray-500'
                           )}
                         >
                           {STATUS_LABELS[p.status] ?? p.status}
@@ -1225,14 +1309,14 @@ export function AdminProducts() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => openEdit(p)}
-                            className="text-gray-400 hover:text-primary transition-colors"
+                            className="hover:text-primary text-gray-400 transition-colors"
                             title="ویرایش"
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => setDeleteId(p.id)}
-                            className="text-gray-400 hover:text-error transition-colors"
+                            className="hover:text-error text-gray-400 transition-colors"
                             title="حذف"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1246,15 +1330,15 @@ export function AdminProducts() {
             </tbody>
           </table>
         </div>
-        <div className="px-4 border-t border-gray-100">
+        <div className="border-t border-gray-100 px-4">
           <Pagination page={page} totalPages={meta.totalPages} onPageChange={setPage} />
         </div>
       </div>
 
       {modal && (
         <div className="fixed inset-0 z-50 bg-black/50">
-          <div className="bg-white w-full h-full max-h-[100dvh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0 bg-white z-10">
+          <div className="flex h-full max-h-[100dvh] w-full flex-col bg-white shadow-2xl">
+            <div className="z-10 flex shrink-0 items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
               <h3 className="text-lg font-bold text-gray-900">
                 {modal === 'create' ? 'افزودن محصول جدید' : 'ویرایش محصول'}
               </h3>
@@ -1262,14 +1346,14 @@ export function AdminProducts() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4 max-w-5xl w-full mx-auto flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-5xl flex-1 space-y-4 overflow-y-auto p-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">دسته‌بندی</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">دسته‌بندی</label>
                   <select
                     value={form.categoryId}
                     onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   >
                     <option value="">بدون دسته‌بندی</option>
                     {categories.map((c) => (
@@ -1278,7 +1362,7 @@ export function AdminProducts() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[11px] text-gray-400 mt-1">
+                  <p className="mt-1 text-[11px] text-gray-400">
                     اگر SKU خالی باشد، از روی این دسته‌بندی تولید می‌شود.
                   </p>
                 </div>
@@ -1287,20 +1371,22 @@ export function AdminProducts() {
 
               {field('name', 'نام محصول', 'text', 'مانتو بهار')}
 
-              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 space-y-3">
+              <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
                   {specField('packQty', 'تعداد در پک (= رنگ × سایز)', '۶')}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">جزئیات طراحی</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">
+                    جزئیات طراحی
+                  </label>
                   <textarea
                     value={form.specs.designDetails ?? ''}
                     onChange={(e) => setSpec('designDetails', e.target.value)}
                     rows={2}
                     placeholder="یقه، دکمه، برش، جزئیات دوخت…"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                    className="focus:ring-primary/30 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1310,7 +1396,7 @@ export function AdminProducts() {
                 <div className="grid grid-cols-2 gap-3">
                   {specField('length', 'قد ۱ (سانتی‌متر)', '۱۱۰')}
                   <div>
-                    <label className="flex items-center gap-2 cursor-pointer mb-2">
+                    <label className="mb-2 flex cursor-pointer items-center gap-2">
                       <input
                         type="checkbox"
                         checked={form.hasLength2}
@@ -1332,7 +1418,7 @@ export function AdminProducts() {
                           value={form.specs.length2 ?? ''}
                           onChange={(e) => setSpec('length2', e.target.value)}
                           placeholder="قد ۲"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                         />
                         <MemoryChips
                           values={specMemory.length2}
@@ -1344,7 +1430,7 @@ export function AdminProducts() {
                   </div>
                 </div>
                 <div>
-                  <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <label className="mb-2 flex cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
                       checked={form.hasLength3}
@@ -1365,7 +1451,7 @@ export function AdminProducts() {
                       value={form.specs.length3 ?? ''}
                       onChange={(e) => setSpec('length3', e.target.value)}
                       placeholder="قد ۳"
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                     />
                   )}
                 </div>
@@ -1381,20 +1467,24 @@ export function AdminProducts() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-medium text-gray-600">فیلدهای سفارشی</p>
-                    <button type="button" onClick={addCustomField} className="btn btn-outline btn-sm text-xs">
+                    <button
+                      type="button"
+                      onClick={addCustomField}
+                      className="btn btn-outline btn-sm text-xs"
+                    >
                       <Plus className="h-3 w-3" />
                       افزودن فیلد
                     </button>
                   </div>
                   {(form.specs.customFields ?? []).map((cf, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
+                    <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-start gap-2">
                       <div>
                         <input
                           type="text"
                           value={cf.label}
                           onChange={(e) => updateCustomField(i, { label: e.target.value })}
                           placeholder="عنوان"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                         />
                         <MemoryChips
                           values={specMemory.customLabel}
@@ -1408,7 +1498,7 @@ export function AdminProducts() {
                           value={cf.value}
                           onChange={(e) => updateCustomField(i, { value: e.target.value })}
                           placeholder="مقدار"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                         />
                         {cf.label.trim() && (
                           <MemoryChips
@@ -1421,7 +1511,7 @@ export function AdminProducts() {
                       <button
                         type="button"
                         onClick={() => removeCustomField(i)}
-                        className="text-gray-400 hover:text-error mt-2"
+                        className="hover:text-error mt-2 text-gray-400"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -1430,21 +1520,27 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="rounded-xl border border-primary/15 bg-primary-50/40 p-4 space-y-3">
-                  <p className="text-sm font-semibold text-primary-dark">سئو سایت عمده (.com)</p>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <div className="border-primary/15 bg-primary-50/40 space-y-3 rounded-xl border p-4">
+                  <p className="text-primary-dark text-sm font-semibold">سئو سایت عمده (.com)</p>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Title</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Meta Title
+                    </label>
                     <input
                       type="text"
                       value={form.wholesaleSeoTitle}
-                      onChange={(e) => setForm((f) => ({ ...f, wholesaleSeoTitle: e.target.value }))}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, wholesaleSeoTitle: e.target.value }))
+                      }
+                      className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                       maxLength={70}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Description</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Meta Description
+                    </label>
                     <textarea
                       value={form.wholesaleSeoDescription}
                       onChange={(e) =>
@@ -1452,12 +1548,14 @@ export function AdminProducts() {
                       }
                       rows={2}
                       maxLength={160}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                      className="focus:ring-primary/30 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Focus Keyword</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Focus Keyword
+                      </label>
                       <input
                         type="text"
                         value={form.wholesaleFocusKeyword}
@@ -1468,7 +1566,9 @@ export function AdminProducts() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Canonical URL
+                      </label>
                       <input
                         type="text"
                         dir="ltr"
@@ -1477,7 +1577,7 @@ export function AdminProducts() {
                           setForm((f) => ({ ...f, wholesaleCanonical: e.target.value }))
                         }
                         placeholder="https://poshaktaranom.com/..."
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm"
                       />
                     </div>
                   </div>
@@ -1497,10 +1597,12 @@ export function AdminProducts() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
+                <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4">
                   <p className="text-sm font-semibold text-amber-900">سئو سایت تکی (.ir)</p>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Title</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Meta Title
+                    </label>
                     <input
                       type="text"
                       value={form.retailSeoTitle}
@@ -1510,7 +1612,9 @@ export function AdminProducts() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Meta Description</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      Meta Description
+                    </label>
                     <textarea
                       value={form.retailSeoDescription}
                       onChange={(e) =>
@@ -1518,12 +1622,14 @@ export function AdminProducts() {
                       }
                       rows={2}
                       maxLength={160}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/30 resize-none"
+                      className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400/30"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Focus Keyword</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Focus Keyword
+                      </label>
                       <input
                         type="text"
                         value={form.retailFocusKeyword}
@@ -1534,7 +1640,9 @@ export function AdminProducts() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Canonical URL</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        Canonical URL
+                      </label>
                       <input
                         type="text"
                         dir="ltr"
@@ -1543,7 +1651,7 @@ export function AdminProducts() {
                           setForm((f) => ({ ...f, retailCanonical: e.target.value }))
                         }
                         placeholder="https://poshaktaranom.ir/..."
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm"
                       />
                     </div>
                   </div>
@@ -1565,37 +1673,55 @@ export function AdminProducts() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">توضیحات کامل و مراقبت (SEO Description)</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  توضیحات کامل و مراقبت (SEO Description)
+                </label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   rows={4}
                   placeholder="متن غنی برای پایین صفحه محصول — مراقبت از پارچه، کاربرد عمده و…"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="focus:ring-primary/30 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {field('wholesalePrice', 'قیمت نهایی عمده (تومان)', 'number', '125000')}
+                {field(
+                  'wholesalePrice',
+                  'قیمت نهایی عمده — بعد از تخفیف (تومان)',
+                  'number',
+                  '125000'
+                )}
                 {field('wholesaleCompareAtPrice', 'قبل از تخفیف عمده (تومان)', 'number', '150000')}
-                {field('retailPrice', 'قیمت نهایی تکی (تومان)', 'number', '180000')}
+                {field(
+                  'retailPrice',
+                  form.showOnRetail
+                    ? 'قیمت نهایی تکی — بعد از تخفیف (تومان) *'
+                    : 'قیمت نهایی تکی — بعد از تخفیف (تومان)',
+                  'number',
+                  '180000'
+                )}
                 {field('retailCompareAtPrice', 'قبل از تخفیف تکی (تومان)', 'number', '220000')}
               </div>
               <div className="grid grid-cols-3 gap-4">
                 {field('minOrderQty', 'حداقل تعداد پک', 'number', '1')}
               </div>
               <p className="text-[11px] text-gray-500">
-                قیمت نهایی برای سبد/سفارش/فید استفاده می‌شود. قیمت قبل از تخفیف اختیاری است و باید از قیمت نهایی بیشتر باشد.
+                قیمت نهایی (بعد از تخفیف) برای سبد/سفارش/فید است و باید مثبت باشد. عمده همیشه الزامی
+                است؛ تکی وقتی نمایش در تکی فعال است الزامی است. قیمت قبل از تخفیف اختیاری است و باید
+                اکیداً از قیمت نهایی بیشتر باشد.
               </p>
 
-              <div className="rounded-xl border border-primary-100 bg-primary-50/40 p-4 space-y-3">
+              <div className="border-primary-100 bg-primary-50/40 space-y-3 rounded-xl border p-4">
                 <p className="text-xs font-bold text-gray-800">سفارش عمده — پک و رنگ</p>
-                <p className="text-[11px] text-gray-500 leading-relaxed">
-                  فرمول پک عمده: <span className="font-semibold text-gray-800">تعداد رنگ × تعداد سایز</span>
-                  {' '}(از هر ترکیب رنگ/سایز یک عدد در هر پک). اگر انتخاب رنگ فعال باشد، فقط رنگ‌های انتخابی مشتری در محاسبه می‌آید.
+                <p className="text-[11px] leading-relaxed text-gray-500">
+                  فرمول پک عمده:{' '}
+                  <span className="font-semibold text-gray-800">تعداد رنگ × تعداد سایز</span> (از هر
+                  ترکیب رنگ/سایز یک عدد در هر پک). اگر انتخاب رنگ فعال باشد، فقط رنگ‌های انتخابی
+                  مشتری در محاسبه می‌آید.
                 </p>
                 <div className="flex flex-wrap items-end gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
                       checked={form.allowWholesaleColorSelect}
@@ -1608,7 +1734,7 @@ export function AdminProducts() {
                   </label>
                   {form.allowWholesaleColorSelect && (
                     <div className="w-40">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
                         حداقل تعداد رنگ
                       </label>
                       <input
@@ -1618,7 +1744,7 @@ export function AdminProducts() {
                         onChange={(e) =>
                           setForm((f) => ({ ...f, minWholesaleColors: e.target.value }))
                         }
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                       />
                     </div>
                   )}
@@ -1627,11 +1753,11 @@ export function AdminProducts() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">وضعیت</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">وضعیت</label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   >
                     <option value="ACTIVE">فعال</option>
                     <option value="ARCHIVED">بایگانی</option>
@@ -1640,7 +1766,7 @@ export function AdminProducts() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">نوع سایز</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">نوع سایز</label>
                   <select
                     value={form.sizeType}
                     onChange={(e) =>
@@ -1649,7 +1775,7 @@ export function AdminProducts() {
                         sizeType: e.target.value as FormData['sizeType'],
                       }))
                     }
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   >
                     <option value="TWO">محصول ۲ سایزی</option>
                     <option value="THREE">محصول ۳ سایزی</option>
@@ -1659,7 +1785,7 @@ export function AdminProducts() {
               </div>
 
               <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     checked={form.isDiscounted}
@@ -1668,7 +1794,7 @@ export function AdminProducts() {
                   />
                   <span className="text-sm text-gray-700">محصول تخفیف‌دار</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     checked={form.showOnWholesale}
@@ -1677,7 +1803,7 @@ export function AdminProducts() {
                   />
                   <span className="text-sm text-gray-700">نمایش در سایت عمده</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     checked={form.showOnRetail}
@@ -1688,11 +1814,11 @@ export function AdminProducts() {
                 </label>
               </div>
 
-              <div className="rounded-xl border border-dashed border-primary/30 bg-primary-50/40 p-4 space-y-3">
-                <p className="text-xs font-bold text-primary">فروشگاه تکی</p>
+              <div className="border-primary/30 bg-primary-50/40 space-y-3 rounded-xl border border-dashed p-4">
+                <p className="text-primary text-xs font-bold">فروشگاه تکی</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">کالکشن</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">کالکشن</label>
                     <select
                       value={form.collectionId}
                       onChange={(e) => setForm((f) => ({ ...f, collectionId: e.target.value }))}
@@ -1700,12 +1826,16 @@ export function AdminProducts() {
                     >
                       <option value="">بدون کالکشن</option>
                       {collections.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">لینک ویدیو</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      لینک ویدیو
+                    </label>
                     <input
                       type="url"
                       value={form.videoUrl}
@@ -1717,16 +1847,18 @@ export function AdminProducts() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">اطلاعات مدل / تنخور</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">
+                    اطلاعات مدل / تنخور
+                  </label>
                   <textarea
                     value={form.modelInfo}
                     onChange={(e) => setForm((f) => ({ ...f, modelInfo: e.target.value }))}
                     rows={2}
                     placeholder="قد مدل ۱۷۵ — سایز پوشیده M"
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none"
+                    className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm"
                   />
                 </div>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     checked={form.isPreOrder}
@@ -1737,7 +1869,9 @@ export function AdminProducts() {
                 </label>
                 {form.isPreOrder ? (
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">تاریخ عرضه</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      تاریخ عرضه
+                    </label>
                     <input
                       type="date"
                       value={form.preOrderDate}
@@ -1748,10 +1882,10 @@ export function AdminProducts() {
                 ) : null}
               </div>
 
-              <p className="text-[11px] text-gray-400 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
-                نشان «موجودی محدود» وقتی موجودی ≤ {badgeSettings.limitedStockMultiplier}× حداقل سفارش فعال می‌شود.
-                نشان «جدید» برای {badgeSettings.newBadgeDays} روز پس از ایجاد محصول نمایش داده می‌شود.
-                (قابل تنظیم از تنظیمات ← کسب‌وکار)
+              <p className="rounded-lg bg-gray-50 px-3 py-2 text-[11px] leading-relaxed text-gray-400">
+                نشان «موجودی محدود» وقتی موجودی ≤ {badgeSettings.limitedStockMultiplier}× حداقل
+                سفارش فعال می‌شود. نشان «جدید» برای {badgeSettings.newBadgeDays} روز پس از ایجاد
+                محصول نمایش داده می‌شود. (قابل تنظیم از تنظیمات ← کسب‌وکار)
               </p>
 
               <div>
@@ -1763,17 +1897,20 @@ export function AdminProducts() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">
+                <label className="mb-2 block text-xs font-medium text-gray-600">
                   گالری عمومی (اختیاری — علاوه بر عکس رنگ‌ها)
                 </label>
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="mb-2 flex flex-wrap gap-2">
                   {images.map((url, i) => (
-                    <div key={url + i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
-                      <img src={url} alt="" className="w-full h-full object-cover" />
+                    <div
+                      key={url + i}
+                      className="relative h-16 w-16 overflow-hidden rounded-lg border border-gray-200"
+                    >
+                      <img src={url} alt="" className="h-full w-full object-cover" />
                       <button
                         type="button"
                         onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute top-0.5 right-0.5 bg-black/60 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] hover:bg-red-600"
+                        className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[10px] text-white hover:bg-red-600"
                       >
                         ×
                       </button>
@@ -1783,14 +1920,14 @@ export function AdminProducts() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingImg}
-                    className="w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 hover:border-primary hover:text-primary transition-colors"
+                    className="hover:border-primary hover:text-primary flex h-16 w-16 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 text-gray-400 transition-colors"
                   >
                     {uploadingImg ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <ImagePlus className="h-4 w-4" />
                     )}
-                    <span className="text-[10px] mt-1">{uploadingImg ? '' : 'آپلود'}</span>
+                    <span className="mt-1 text-[10px]">{uploadingImg ? '' : 'آپلود'}</span>
                   </button>
                   <input
                     ref={fileInputRef}
@@ -1801,11 +1938,12 @@ export function AdminProducts() {
                   />
                 </div>
                 <p className="text-[11px] text-gray-400">
-                  عکس اصلی هر رنگ را در بخش رنگ‌بندی آپلود کنید. این گالری فقط برای تصاویر عمومی/اضافی است.
+                  عکس اصلی هر رنگ را در بخش رنگ‌بندی آپلود کنید. این گالری فقط برای تصاویر
+                  عمومی/اضافی است.
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 shrink-0 bg-white">
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
               <button onClick={closeModal} className="btn btn-outline btn-md">
                 انصراف
               </button>
@@ -1829,19 +1967,21 @@ export function AdminProducts() {
 
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="h-6 w-6 text-error" />
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="text-error h-6 w-6" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">حذف محصول</h3>
-            <p className="text-sm text-gray-500 mb-6">آیا مطمئن هستید؟ این عملیات قابل بازگشت نیست.</p>
+            <h3 className="mb-2 text-lg font-bold text-gray-900">حذف محصول</h3>
+            <p className="mb-6 text-sm text-gray-500">
+              آیا مطمئن هستید؟ این عملیات قابل بازگشت نیست.
+            </p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 btn btn-outline btn-md">
+              <button onClick={() => setDeleteId(null)} className="btn btn-outline btn-md flex-1">
                 انصراف
               </button>
               <button
                 onClick={() => handleDelete(deleteId)}
-                className="flex-1 btn btn-md bg-error text-white hover:bg-red-700"
+                className="btn btn-md bg-error flex-1 text-white hover:bg-red-700"
               >
                 حذف
               </button>

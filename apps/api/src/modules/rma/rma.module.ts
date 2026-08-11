@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ReturnRequestEntity } from './entities/return-request.entity';
+import { ReturnRequestAuditEntity } from './entities/return-request-audit.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
@@ -12,6 +13,7 @@ import { RmaController } from './rma.controller';
   imports: [
     TypeOrmModule.forFeature([
       ReturnRequestEntity,
+      ReturnRequestAuditEntity,
       OrderEntity,
       OrderItemEntity,
       CustomerEntity,

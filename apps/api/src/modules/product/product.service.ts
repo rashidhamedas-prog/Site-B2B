@@ -7,7 +7,12 @@ import { CategoryEntity } from '../category/entities/category.entity';
 import { VariantColorEntity } from './entities/variant-color.entity';
 import { VariantSizeEntity } from './entities/variant-size.entity';
 import { ProductSpecMemoryEntity } from './entities/product-spec-memory.entity';
-import { ProductSizeType, ProductSpecs, SIZE_GUIDE, SPEC_FIELD_KEYS } from './entities/product-specs';
+import {
+  ProductSizeType,
+  ProductSpecs,
+  SIZE_GUIDE,
+  SPEC_FIELD_KEYS,
+} from './entities/product-specs';
 import { StorageService } from '../upload/storage.service';
 import { SearchService } from '../search/search.service';
 import { SettingsService } from '../settings/settings.service';
@@ -17,12 +22,40 @@ import { CreateVariantDto } from './dto/create-variant.dto';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
+export type ProductChannelPriceInput = {
+  wholesalePrice?: unknown;
+  retailPrice?: unknown;
+  wholesaleCompareAtPrice?: unknown;
+  retailCompareAtPrice?: unknown;
+  /** Defaults true (create). When false, retailPrice may be null. */
+  showOnRetail?: boolean;
+  /**
+   * Defaults true. Display gating only — DB column wholesalePrice is NOT NULL,
+   * so a positive wholesale final is always required regardless of this flag.
+   */
+  showOnWholesale?: boolean;
+};
+
+export type ProductChannelPrices = {
+  wholesalePrice: number;
+  retailPrice: number | null;
+  wholesaleCompareAtPrice: number | null;
+  retailCompareAtPrice: number | null;
+};
+
+/**
+ * Parse IRR money: null/'' → null; reject NaN/negative/non-integer/unsafe-huge.
+ * Zero is syntactically parseable; channel finals still require > 0 below.
+ */
 function parseIrr(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   if (typeof value === 'bigint') {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
       throw new BadRequestException('مبلغ ریالی نامعتبر است');
+    }
+    if (n > Number.MAX_SAFE_INTEGER) {
+      throw new BadRequestException('مبلغ خارج از محدوده امن Number است');
     }
     return n;
   }
@@ -37,43 +70,64 @@ function parseIrr(value: unknown): number | null {
   return n;
 }
 
+/**
+ * HIGH-5 channel pricing invariant (create + update):
+ * - wholesalePrice / retailPrice = FINAL transaction prices (after discount)
+ * - compare-at optional; when set must be STRICTLY greater than that channel's final
+ * - showOnRetail true (default): retailPrice required, positive (> 0)
+ * - showOnRetail false: retailPrice may be null (clearing final only allowed off-channel)
+ * - wholesalePrice always required positive (> 0) — DB column is NOT NULL;
+ *   showOnWholesale only gates storefront display, not column nullability
+ * - zero / negative / NaN / > MAX_SAFE_INTEGER rejected
+ */
+export function normalizeProductChannelPrices(
+  input: ProductChannelPriceInput
+): ProductChannelPrices {
+  const showOnRetail = input.showOnRetail !== false;
+
+  const wholesalePrice = parseIrr(input.wholesalePrice);
+  if (wholesalePrice === null || wholesalePrice <= 0) {
+    throw new BadRequestException('قیمت نهایی عمده الزامی است و باید مثبت باشد');
+  }
+
+  const retailPrice = parseIrr(input.retailPrice);
+  if (showOnRetail) {
+    if (retailPrice === null || retailPrice <= 0) {
+      throw new BadRequestException(
+        'قیمت نهایی تکی برای نمایش در فروشگاه تکی الزامی است و باید مثبت باشد'
+      );
+    }
+  } else if (retailPrice !== null && retailPrice <= 0) {
+    throw new BadRequestException('قیمت نهایی تکی در صورت ارسال باید مثبت باشد');
+  }
+
+  const wholesaleCompareAtPrice = parseIrr(input.wholesaleCompareAtPrice);
+  const retailCompareAtPrice = parseIrr(input.retailCompareAtPrice);
+
+  if (wholesaleCompareAtPrice !== null && wholesaleCompareAtPrice <= wholesalePrice) {
+    throw new BadRequestException('قیمت قبل از تخفیف عمده باید از قیمت نهایی بیشتر باشد');
+  }
+  if (retailCompareAtPrice !== null) {
+    if (retailPrice === null) {
+      throw new BadRequestException('قیمت قبل از تخفیف تکی بدون قیمت نهایی معتبر نیست');
+    }
+    if (retailCompareAtPrice <= retailPrice) {
+      throw new BadRequestException('قیمت قبل از تخفیف تکی باید از قیمت نهایی بیشتر باشد');
+    }
+  }
+
+  return {
+    wholesalePrice,
+    retailPrice,
+    wholesaleCompareAtPrice,
+    retailCompareAtPrice,
+  };
+}
+
 @Injectable()
 export class ProductService {
   private badgeCache: { value: BadgeConfig; at: number } | null = null;
   private static readonly BADGE_TTL_MS = 30_000;
-
-  /**
-   * Invariant: wholesalePrice/retailPrice = final (after-discount).
-   * Compare-at nullable; when set must be strictly greater than final.
-   */
-  private normalizeChannelPrices(input: {
-    wholesalePrice?: unknown;
-    retailPrice?: unknown;
-    wholesaleCompareAtPrice?: unknown;
-    retailCompareAtPrice?: unknown;
-  }) {
-    const wholesalePrice = parseIrr(input.wholesalePrice);
-    if (wholesalePrice === null) throw new BadRequestException('قیمت نهایی عمده الزامی است');
-    const retailPrice = parseIrr(input.retailPrice);
-    const wholesaleCompareAtPrice = parseIrr(input.wholesaleCompareAtPrice);
-    const retailCompareAtPrice = parseIrr(input.retailCompareAtPrice);
-    if (wholesaleCompareAtPrice !== null && wholesaleCompareAtPrice <= wholesalePrice) {
-      throw new BadRequestException('قیمت قبل از تخفیف عمده باید از قیمت نهایی بیشتر باشد');
-    }
-    if (
-      retailCompareAtPrice !== null &&
-      retailPrice !== null &&
-      retailCompareAtPrice <= retailPrice
-    ) {
-      throw new BadRequestException('قیمت قبل از تخفیف تکی باید از قیمت نهایی بیشتر باشد');
-    }
-    return {
-      wholesalePrice,
-      retailPrice,
-      wholesaleCompareAtPrice,
-      retailCompareAtPrice,
-    };
-  }
 
   constructor(
     @InjectRepository(ProductEntity)
@@ -90,7 +144,7 @@ export class ProductService {
     private readonly specMemoryRepo: Repository<ProductSpecMemoryEntity>,
     private readonly storage: StorageService,
     private readonly search: SearchService,
-    private readonly settings: SettingsService,
+    private readonly settings: SettingsService
   ) {}
 
   private fabricFromSpecs(specs?: ProductSpecs | null, fallback?: string): string {
@@ -170,7 +224,9 @@ export class ProductService {
     }
     for (const e of entries) {
       try {
-        const existing = await this.specMemoryRepo.findOne({ where: { fieldKey: e.fieldKey, value: e.value } });
+        const existing = await this.specMemoryRepo.findOne({
+          where: { fieldKey: e.fieldKey, value: e.value },
+        });
         if (!existing) {
           await this.specMemoryRepo.save(this.specMemoryRepo.create(e));
         }
@@ -217,12 +273,11 @@ export class ProductService {
       sort?: string;
       /** When false (default for storefront), skip loading variants to cut payload/TTFB */
       includeVariants?: boolean;
-    },
+    }
   ) {
     const statusFilter = status ?? 'ACTIVE';
-    const sizeType = (size && ['FREE', 'TWO', 'THREE'].includes(size)
-      ? size
-      : undefined) as ProductSizeType | undefined;
+    const sizeType = (size && ['FREE', 'TWO', 'THREE'].includes(size) ? size : undefined) as
+      ProductSizeType | undefined;
     const garmentSize = opts?.garmentSize || (size && !sizeType ? size : undefined);
 
     let related: ProductEntity | null = null;
@@ -235,9 +290,7 @@ export class ProductService {
     // Admin list (status=ALL) needs variants for stock/color counts; storefront cards do not.
     const wantVariants = opts?.includeVariants === true || status === 'ALL';
 
-    const qb = this.productRepo
-      .createQueryBuilder('p')
-      .where('p.deletedAt IS NULL');
+    const qb = this.productRepo.createQueryBuilder('p').where('p.deletedAt IS NULL');
     if (wantVariants) {
       qb.leftJoinAndSelect('p.variants', 'v');
     }
@@ -259,7 +312,7 @@ export class ProductService {
       qb.andWhere('p.collectionId = :collectionId', { collectionId: opts.collectionId });
     }
     if (fabric) {
-      qb.andWhere('(p.fabric ILIKE :fabric OR p.specs->>\'fabricType\' ILIKE :fabric)', {
+      qb.andWhere("(p.fabric ILIKE :fabric OR p.specs->>'fabricType' ILIKE :fabric)", {
         fabric: `%${fabric}%`,
       });
     }
@@ -284,7 +337,7 @@ export class ProductService {
     if (related) {
       qb.andWhere('p.id != :rid', { rid: related.id });
       if (related.fabric) {
-        qb.andWhere('(p.fabric ILIKE :rf OR p.specs->>\'fabricType\' ILIKE :rf)', {
+        qb.andWhere("(p.fabric ILIKE :rf OR p.specs->>'fabricType' ILIKE :rf)", {
           rf: `%${related.fabric}%`,
         });
       }
@@ -300,7 +353,7 @@ export class ProductService {
         {
           ...(color ? { vcolor: `%${color}%` } : {}),
           ...(garmentSize ? { vsize: `%${garmentSize}%` } : {}),
-        },
+        }
       );
     }
 
@@ -314,7 +367,10 @@ export class ProductService {
       qb.orderBy('p.isDiscounted', 'DESC').addOrderBy('p.createdAt', 'DESC');
     }
     const total = await qb.getCount();
-    const data = await qb.skip((page - 1) * limit).take(limit).getMany();
+    const data = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getMany();
     const cfg = await this.badgeConfig();
     return {
       data: data.map((p) => this.withBadges(p, channel || undefined, cfg)),
@@ -486,7 +542,13 @@ export class ProductService {
 
     const specs = (data.specs ?? {}) as ProductSpecs;
     const fabric = this.fabricFromSpecs(specs, data.fabric);
-    const prices = this.normalizeChannelPrices(data);
+    const showOnWholesale = data.showOnWholesale !== false;
+    const showOnRetail = data.showOnRetail !== false;
+    const prices = normalizeProductChannelPrices({
+      ...data,
+      showOnWholesale,
+      showOnRetail,
+    });
 
     const product = this.productRepo.create({
       name: data.name,
@@ -515,17 +577,20 @@ export class ProductService {
       preOrderDate: data.preOrderDate ? new Date(data.preOrderDate) : null,
       modelInfo: data.modelInfo ?? null,
       videoUrl: data.videoUrl ?? null,
-      showOnWholesale: data.showOnWholesale !== false,
-      showOnRetail: data.showOnRetail !== false,
+      showOnWholesale,
+      showOnRetail,
     });
     const saved = await this.productRepo.save(product);
     await this.rememberSpecs(specs);
     await this.syncSearch(saved);
     const cfg = await this.badgeConfig();
     return this.withBadges(
-      await this.productRepo.findOne({ where: { id: saved.id }, relations: ['variants'] }) as ProductEntity,
+      (await this.productRepo.findOne({
+        where: { id: saved.id },
+        relations: ['variants'],
+      })) as ProductEntity,
       undefined,
-      cfg,
+      cfg
     );
   }
 
@@ -542,7 +607,8 @@ export class ProductService {
 
       if (!category) throw new BadRequestException('دسته‌بندی یافت نشد');
       const prefix = (category.skuPrefix ?? '').trim();
-      if (!prefix) throw new BadRequestException('فرمول/پیشوند SKU برای این دسته‌بندی تنظیم نشده است');
+      if (!prefix)
+        throw new BadRequestException('فرمول/پیشوند SKU برای این دسته‌بندی تنظیم نشده است');
 
       let seq = Math.max(1, Number(category.nextSequence) || 1);
       for (let attempt = 0; attempt < 25; attempt += 1) {
@@ -569,7 +635,10 @@ export class ProductService {
     const patch: Partial<ProductEntity> = { ...data } as any;
     if (data.specs) {
       patch.specs = data.specs as ProductSpecs;
-      patch.fabric = this.fabricFromSpecs(data.specs as ProductSpecs, data.fabric ?? existing.fabric);
+      patch.fabric = this.fabricFromSpecs(
+        data.specs as ProductSpecs,
+        data.fabric ?? existing.fabric
+      );
       await this.rememberSpecs(data.specs as ProductSpecs);
     } else if (data.fabric !== undefined) {
       patch.fabric = data.fabric;
@@ -585,22 +654,54 @@ export class ProductService {
       patch.preOrderDate = data.preOrderDate ? new Date(data.preOrderDate) : null;
     }
 
-    const mergedPrices = this.normalizeChannelPrices({
-      wholesalePrice: data.wholesalePrice ?? existing.wholesalePrice,
-      retailPrice: data.retailPrice !== undefined ? data.retailPrice : existing.retailPrice,
-      wholesaleCompareAtPrice:
-        data.wholesaleCompareAtPrice !== undefined
-          ? data.wholesaleCompareAtPrice
-          : existing.wholesaleCompareAtPrice,
-      retailCompareAtPrice:
-        data.retailCompareAtPrice !== undefined
-          ? data.retailCompareAtPrice
-          : existing.retailCompareAtPrice,
-    });
-    patch.wholesalePrice = mergedPrices.wholesalePrice;
-    patch.retailPrice = mergedPrices.retailPrice;
-    patch.wholesaleCompareAtPrice = mergedPrices.wholesaleCompareAtPrice;
-    patch.retailCompareAtPrice = mergedPrices.retailCompareAtPrice;
+    const showOnWholesale =
+      data.showOnWholesale !== undefined
+        ? data.showOnWholesale !== false
+        : existing.showOnWholesale !== false;
+    const showOnRetail =
+      data.showOnRetail !== undefined
+        ? data.showOnRetail !== false
+        : existing.showOnRetail !== false;
+
+    const priceOrChannelTouch =
+      data.wholesalePrice !== undefined ||
+      data.retailPrice !== undefined ||
+      data.wholesaleCompareAtPrice !== undefined ||
+      data.retailCompareAtPrice !== undefined ||
+      data.showOnWholesale !== undefined ||
+      data.showOnRetail !== undefined;
+
+    // Clearing retail final to null is only allowed when retail channel is off.
+    if (data.retailPrice === null && showOnRetail) {
+      throw new BadRequestException(
+        'پاک کردن قیمت نهایی تکی فقط وقتی نمایش در تکی غیرفعال است مجاز است',
+      );
+    }
+
+    // Legacy products may have null retailPrice while showOnRetail=true.
+    // Do not block unrelated PATCH (description/images/stock) until prices/channels are touched.
+    if (priceOrChannelTouch) {
+      const mergedPrices = normalizeProductChannelPrices({
+        wholesalePrice: data.wholesalePrice ?? existing.wholesalePrice,
+        retailPrice: data.retailPrice !== undefined ? data.retailPrice : existing.retailPrice,
+        wholesaleCompareAtPrice:
+          data.wholesaleCompareAtPrice !== undefined
+            ? data.wholesaleCompareAtPrice
+            : existing.wholesaleCompareAtPrice,
+        retailCompareAtPrice:
+          data.retailCompareAtPrice !== undefined
+            ? data.retailCompareAtPrice
+            : existing.retailCompareAtPrice,
+        showOnWholesale,
+        showOnRetail,
+      });
+      patch.wholesalePrice = mergedPrices.wholesalePrice;
+      patch.retailPrice = mergedPrices.retailPrice;
+      patch.wholesaleCompareAtPrice = mergedPrices.wholesaleCompareAtPrice;
+      patch.retailCompareAtPrice = mergedPrices.retailCompareAtPrice;
+    }
+    if (data.showOnWholesale !== undefined) patch.showOnWholesale = showOnWholesale;
+    if (data.showOnRetail !== undefined) patch.showOnRetail = showOnRetail;
     if (data.allowWholesaleColorSelect !== undefined) {
       patch.allowWholesaleColorSelect = !!data.allowWholesaleColorSelect;
     }
@@ -643,7 +744,7 @@ export class ProductService {
     variantId: string,
     delta: number,
     channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
-    manager?: EntityManager,
+    manager?: EntityManager
   ) {
     const variantRepo = manager?.getRepository(ProductVariantEntity) ?? this.variantRepo;
     const field = this.stockField(channel);
@@ -661,9 +762,7 @@ export class ProductService {
         .update()
         .set({
           [field]: () => `"${field}" + (${qty})`,
-          ...(field === 'wholesaleStock'
-            ? { stock: () => `"wholesaleStock" + (${qty})` }
-            : {}),
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
         } as any)
         .where('id = :id', { id: variantId })
         .andWhere(`"${field}" >= :need`, { need: Math.abs(qty) })
@@ -672,7 +771,7 @@ export class ProductService {
         const variant = await variantRepo.findOne({ where: { id: variantId } });
         if (!variant) throw new NotFoundException('واریانت یافت نشد');
         throw new BadRequestException(
-          `موجودی کافی نیست (واریانت ${variant.color}/${variant.size})`,
+          `موجودی کافی نیست (واریانت ${variant.color}/${variant.size})`
         );
       }
     } else {
@@ -681,9 +780,7 @@ export class ProductService {
         .update()
         .set({
           [field]: () => `"${field}" + (${qty})`,
-          ...(field === 'wholesaleStock'
-            ? { stock: () => `"wholesaleStock" + (${qty})` }
-            : {}),
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
         } as any)
         .where('id = :id', { id: variantId })
         .execute();
@@ -697,7 +794,10 @@ export class ProductService {
   /** Sum variant channel stocks onto product wholesale/retail/legacy stock. */
   async syncProductStockFromVariants(productId: string) {
     const variants = await this.variantRepo.find({ where: { productId } });
-    const wholesaleSum = variants.reduce((s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0), 0);
+    const wholesaleSum = variants.reduce(
+      (s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0),
+      0
+    );
     const retailSum = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
     await this.productRepo.update(productId, {
       wholesaleStock: wholesaleSum,
@@ -711,7 +811,7 @@ export class ProductService {
   async updateProductStock(
     productId: string,
     delta: number,
-    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
   ) {
     const field = this.stockField(channel);
     const qty = Number(delta) || 0;
@@ -756,7 +856,7 @@ export class ProductService {
   async setProductStock(
     productId: string,
     stock: number,
-    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
   ) {
     const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('محصول یافت نشد');
@@ -779,7 +879,7 @@ export class ProductService {
   async setProductStockBySku(
     sku: string,
     stock: number,
-    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
   ) {
     const product = await this.productRepo.findOne({ where: { sku: String(sku).trim() } });
     if (!product) throw new NotFoundException(`محصول با SKU «${sku}» یافت نشد`);
@@ -845,13 +945,9 @@ export class ProductService {
     }
 
     const explicitSize = String(data.size ?? '').trim();
-    const sizes = explicitSize
-      ? [explicitSize]
-      : this.sizesForProduct(product.sizeType);
+    const sizes = explicitSize ? [explicitSize] : this.sizesForProduct(product.sizeType);
     const imageUrl =
-      data.imageUrl !== undefined
-        ? String(data.imageUrl || '').trim() || null
-        : undefined;
+      data.imageUrl !== undefined ? String(data.imageUrl || '').trim() || null : undefined;
 
     const existing = product.variants ?? [];
     const created: ProductVariantEntity[] = [];
@@ -930,7 +1026,7 @@ export class ProductService {
         retailStock?: number;
         stock?: number;
       }>;
-    },
+    }
   ) {
     const product = await this.productRepo.findOne({
       where: { id: productId },
@@ -943,15 +1039,10 @@ export class ProductService {
     const colorHex = String(data.colorHex ?? '').trim();
     const color = await this.upsertColor(colorName, colorHex || undefined);
     const imageUrl =
-      data.imageUrl !== undefined
-        ? String(data.imageUrl || '').trim() || null
-        : undefined;
+      data.imageUrl !== undefined ? String(data.imageUrl || '').trim() || null : undefined;
 
     const productSizes = this.sizesForProduct(product.sizeType);
-    const perSize = new Map<
-      string,
-      { wholesale?: number; retail?: number }
-    >();
+    const perSize = new Map<string, { wholesale?: number; retail?: number }>();
 
     if (Array.isArray(data.sizes) && data.sizes.length > 0) {
       for (const row of data.sizes) {
@@ -1000,9 +1091,7 @@ export class ProductService {
       }
     }
 
-    const sizes = Array.from(
-      new Set([...productSizes, ...Array.from(perSize.keys())]),
-    );
+    const sizes = Array.from(new Set([...productSizes, ...Array.from(perSize.keys())]));
     const existing = product.variants ?? [];
     const updated: ProductVariantEntity[] = [];
 
@@ -1057,9 +1146,7 @@ export class ProductService {
     if (!product) return;
     const colorImages = [
       ...new Set(
-        (product.variants ?? [])
-          .map((v) => String(v.imageUrl || '').trim())
-          .filter(Boolean),
+        (product.variants ?? []).map((v) => String(v.imageUrl || '').trim()).filter(Boolean)
       ),
     ];
     if (!colorImages.length) return;
@@ -1087,11 +1174,14 @@ export class ProductService {
     return { message: `رنگ «${name}» و ${rows.length} سایز حذف شد`, deleted: rows.length };
   }
 
-  async updateVariant(variantId: string, data: Partial<ProductVariantEntity> & {
-    wholesaleStock?: number;
-    retailStock?: number;
-    stock?: number;
-  }) {
+  async updateVariant(
+    variantId: string,
+    data: Partial<ProductVariantEntity> & {
+      wholesaleStock?: number;
+      retailStock?: number;
+      stock?: number;
+    }
+  ) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant) throw new NotFoundException('واریانت یافت نشد');
 
@@ -1120,10 +1210,7 @@ export class ProductService {
     const hasLegacyStock = data.stock !== undefined && data.stock !== null;
 
     if (hasWholesale || hasLegacyStock) {
-      const next = Math.max(
-        0,
-        Math.floor(Number(hasWholesale ? data.wholesaleStock : data.stock)),
-      );
+      const next = Math.max(0, Math.floor(Number(hasWholesale ? data.wholesaleStock : data.stock)));
       if (!Number.isFinite(next)) throw new BadRequestException('موجودی عمده نامعتبر است');
       variant.wholesaleStock = next;
       variant.stock = next;
@@ -1173,7 +1260,8 @@ export class ProductService {
   }
 
   async findAllWithVariants(search?: string, channel?: string) {
-    const qb = this.productRepo.createQueryBuilder('p')
+    const qb = this.productRepo
+      .createQueryBuilder('p')
       .leftJoinAndSelect('p.variants', 'v')
       .where('p.deletedAt IS NULL')
       .orderBy('p.name', 'ASC');

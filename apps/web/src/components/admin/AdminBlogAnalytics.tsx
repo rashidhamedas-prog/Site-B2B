@@ -53,13 +53,11 @@ export function AdminBlogAnalyticsPanel() {
       ]);
       setData(summary);
       const m = settings?.marketing || {};
-      setGa4Id(
-        sanitizeGa4Id(channel === 'RETAIL' ? m.ga4RetailId : m.ga4WholesaleId),
-      );
+      setGa4Id(sanitizeGa4Id(channel === 'RETAIL' ? m.ga4RetailId : m.ga4WholesaleId));
       setGscToken(
         sanitizeGscToken(
-          channel === 'RETAIL' ? m.gscRetailVerification : m.gscWholesaleVerification,
-        ),
+          channel === 'RETAIL' ? m.gscRetailVerification : m.gscWholesaleVerification
+        )
       );
     } catch (err: unknown) {
       setData(null);
@@ -74,20 +72,25 @@ export function AdminBlogAnalyticsPanel() {
   }, [load]);
 
   const t = data?.totals;
-  const isEmpty = !loading && !loadError && (!!data && (data.items?.length ?? 0) === 0);
+  const isEmpty = !loading && !loadError && !!data && (data.items?.length ?? 0) === 0;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold">آمار وبلاگ — {channelLabel(channel)}</h2>
-          <p className="text-xs text-gray-500">view / scroll / CTA داخلی + وضعیت اتصال GA4 و توکن تأیید GSC (نه آنالیتیکس GSC)</p>
+          <p className="text-xs text-gray-500">
+            view / scroll / CTA داخلی + وضعیت اتصال GA4 و توکن تأیید GSC (نه آنالیتیکس GSC)
+          </p>
         </div>
         <AdminChannelTabs value={channel} onChange={setChannel} />
       </div>
 
       {loadError ? (
-        <div className="card flex flex-wrap items-center justify-between gap-3 border-red-200 bg-red-50 p-4" role="alert">
+        <div
+          className="card flex flex-wrap items-center justify-between gap-3 border-red-200 bg-red-50 p-4"
+          role="alert"
+        >
           <p className="text-sm text-red-800">خطا در بارگذاری آمار: {loadError}</p>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => void load()}>
             تلاش مجدد
@@ -117,7 +120,8 @@ export function AdminBlogAnalyticsPanel() {
         ))}
       </div>
       <p className="text-[10px] text-gray-400">
-        * uniqueViews فقط وقتی کلاینت اولین بازدید نشست را با هدر x-blog-uv علامت بزند افزایش می‌یابد (نه کپی pageViews).
+        * uniqueViews سروری است: اولین بازدید هر IP برای مطلب در پنجره ۲۴ساعته (Redis SET NX).
+        هدر کلاینت x-blog-uv دیگر معتبر نیست.
       </p>
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -127,16 +131,14 @@ export function AdminBlogAnalyticsPanel() {
             {ga4Id ? `فعال — ${ga4Id}` : 'تنظیم نشده — از تنظیمات → Google مقدار G-… را وارد کنید'}
           </p>
           <p className="text-xs text-gray-500">{data?.integrations?.ga4.note}</p>
-          <Link href="/admin/settings" className="text-xs text-primary hover:underline">
+          <Link href="/admin/settings" className="text-primary text-xs hover:underline">
             رفتن به تنظیمات Google
           </Link>
         </div>
         <div className="card space-y-2 p-4 text-sm">
           <p className="font-bold">Search Console</p>
           <p className={gscToken ? 'text-green-700' : 'text-amber-700'}>
-            {gscToken
-              ? 'توکن تأیید ذخیره شده است'
-              : 'توکن تأیید تنظیم نشده — از تنظیمات → Google'}
+            {gscToken ? 'توکن تأیید ذخیره شده است' : 'توکن تأیید تنظیم نشده — از تنظیمات → Google'}
           </p>
           <p className="text-xs text-gray-500">{data?.integrations?.gsc.note}</p>
           <p className="text-[11px] text-gray-400">
@@ -178,11 +180,19 @@ export function AdminBlogAnalyticsPanel() {
                       /blog/{row.slug}
                     </p>
                   </td>
-                  <td className="px-3 py-2">{Number(row.pageViews || 0).toLocaleString('fa-IR')}</td>
-                  <td className="px-3 py-2">{Number(row.uniqueViews || 0).toLocaleString('fa-IR')}</td>
+                  <td className="px-3 py-2">
+                    {Number(row.pageViews || 0).toLocaleString('fa-IR')}
+                  </td>
+                  <td className="px-3 py-2">
+                    {Number(row.uniqueViews || 0).toLocaleString('fa-IR')}
+                  </td>
                   <td className="px-3 py-2">{Number(row.scroll90 || 0).toLocaleString('fa-IR')}</td>
-                  <td className="px-3 py-2">{Number(row.ctaClicks || 0).toLocaleString('fa-IR')}</td>
-                  <td className="px-3 py-2">{Number(row.productClicks || 0).toLocaleString('fa-IR')}</td>
+                  <td className="px-3 py-2">
+                    {Number(row.ctaClicks || 0).toLocaleString('fa-IR')}
+                  </td>
+                  <td className="px-3 py-2">
+                    {Number(row.productClicks || 0).toLocaleString('fa-IR')}
+                  </td>
                   <td className="px-3 py-2">
                     {Number(row.internalLinkClicks || 0).toLocaleString('fa-IR')}
                   </td>
