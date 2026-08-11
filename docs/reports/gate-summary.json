@@ -1,0 +1,39 @@
+﻿{
+  "generatedAt": "2026-08-11T12:50:00Z",
+  "task": "TASK-20260810-006",
+  "branch": "ai/TASK-20260810-006-readiness-remediation",
+  "head": "015b5ec22c6dd4192162cddb1f0a12432cef22b1",
+  "originMaster": "ab4ffab84e2b0fc140ddc5f2362e8876898bda84",
+  "readiness": "71/100",
+  "taskStatus": "in_progress",
+  "commitDeploy": "NOT_DONE",
+  "reviews": {
+    "security": "PASS WITH CONDITIONS",
+    "reviewer": "PASS WITH CONDITIONS",
+    "bugbot": "findings fixed in working tree; re-review on commit SHA still required"
+  },
+  "gates": [
+    { "name": "format", "exit": 0, "ms": 437317, "log": "docs/reports/gate-format.log" },
+    { "name": "lint", "exit": 0, "ms": 168750, "log": "docs/reports/gate-lint.log" },
+    { "name": "test", "exit": 0, "ms": 29316, "log": "docs/reports/gate-test.log" },
+    { "name": "typecheck-web", "exit": 0, "ms": 22778, "log": "docs/reports/gate-typecheck-web.log" },
+    { "name": "typecheck-api", "exit": 0, "ms": 146592, "command": "cd apps/api && npx tsc --noEmit", "at": "2026-08-11T12:46:09Z" },
+    { "name": "build", "exit": 0, "ms": 906006, "log": "docs/reports/gate-build.log" },
+    { "name": "build-web", "exit": 0, "log": "docs/reports/gate-build-web.log" },
+    { "name": "build-api", "exit": 0, "ms": 143576, "log": "docs/reports/gate-build-api.log" },
+    { "name": "diff-check-scoped-remediation", "exit": 0, "note": "full-tree dirty unrelated files still fail; remediation paths clean after ws fix" },
+    { "name": "bash-n", "exit": 0 },
+    { "name": "negative-guards", "exit": 0, "result": "ALL_NEGATIVE_GUARDS_PASSED" },
+    { "name": "blog-analytics-rate-limit.spec", "exit": 0 },
+    { "name": "product-pricing.invariant.spec", "exit": 0 },
+    { "name": "20260810-001-create-return-requests.spec", "exit": 0 }
+  ],
+  "stillNotRun": [
+    "staging sanitized wholesale E2E",
+    "retail OTP→ONLINE sandbox",
+    "rollback/off-box/MinIO",
+    "full Torob contract",
+    "fresh Security+Reviewer on committed SHA after Bugbot fixes"
+  ],
+  "reviewPackage": "docs/reports/TASK-20260810-006-review-20260810-194859/"
+}

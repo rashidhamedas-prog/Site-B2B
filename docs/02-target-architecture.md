@@ -11,17 +11,17 @@ Evidence basis (code/docs inspected for this revision): `docs/B2C.md`, `README.m
 
 ## 1. AI-DOS / decision-record reconciliation
 
-| Record | Status | Notes |
-|--------|--------|-------|
-| `.ai-dos/project/architecture.md` — dual-channel single core, Next/Nest/PG, nginx edge | **Verified** | Matches middleware host rewrite, Nest module list, compose services. |
-| `.ai-dos/project/architecture.md` — “Smallest compatible evolution”; no builder/SaaS | **Verified / binding** | This document implements that decision. |
-| `.ai-dos/project/architecture.md` — Phase-1 claims = governance + required docs | **Verified** | No `apps/*` changes implied by this ADR set. |
-| `.ai-dos/project/overview.md` — stack, URLs, explicit non-goal builder | **Verified** | Aligns with README + compose. |
-| `docs/B2C.md` — locked “one core + two storefronts” | **Verified** | Retail paths + CMS home blocks documented. |
-| `docs/02-architecture.md` (if present in other checkouts) | **Stale / placeholder** | TODO stub; **superseded for this program by this file** (`docs/02-target-architecture.md`). |
-| Formal `docs/adr/*` tree | **Missing** | ADRs live inline in §12 of this document until a dedicated ADR folder is claimed. |
-| `docs/01-current-system-audit.md` | **Missing at write time** | Target assumes evidence from code paths above; audit may refine risks without changing stack choice. |
-| Any website-builder / multi-tenant platform proposal | **Rejected / out of scope** | See §13. |
+| Record                                                                                 | Status                      | Notes                                                                                                |
+| -------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `.ai-dos/project/architecture.md` — dual-channel single core, Next/Nest/PG, nginx edge | **Verified**                | Matches middleware host rewrite, Nest module list, compose services.                                 |
+| `.ai-dos/project/architecture.md` — “Smallest compatible evolution”; no builder/SaaS   | **Verified / binding**      | This document implements that decision.                                                              |
+| `.ai-dos/project/architecture.md` — Phase-1 claims = governance + required docs        | **Verified**                | No `apps/*` changes implied by this ADR set.                                                         |
+| `.ai-dos/project/overview.md` — stack, URLs, explicit non-goal builder                 | **Verified**                | Aligns with README + compose.                                                                        |
+| `docs/B2C.md` — locked “one core + two storefronts”                                    | **Verified**                | Retail paths + CMS home blocks documented.                                                           |
+| `docs/02-architecture.md` (if present in other checkouts)                              | **Stale / placeholder**     | TODO stub; **superseded for this program by this file** (`docs/02-target-architecture.md`).          |
+| Formal `docs/adr/*` tree                                                               | **Missing**                 | ADRs live inline in §12 of this document until a dedicated ADR folder is claimed.                    |
+| `docs/01-current-system-audit.md`                                                      | **Missing at write time**   | Target assumes evidence from code paths above; audit may refine risks without changing stack choice. |
+| Any website-builder / multi-tenant platform proposal                                   | **Rejected / out of scope** | See §13.                                                                                             |
 
 ---
 
@@ -102,16 +102,16 @@ flowchart LR
 
 ### 3.2 Channel differentiation (current)
 
-| Concern | Wholesale (`.com`) | Retail (`.ir`) |
-|---------|--------------------|----------------|
-| UI tree | `app/(wholesale)/`, portal | `app/retail/` (host rewrite to `/retail/*`) |
-| Channel signal | default / header `x-taranom-channel: WHOLESALE` | host set + rewrite; header `RETAIL` |
-| Auth | portal register/login (B2B approval) | OTP `POST /auth/retail/otp/*` |
-| Price fields | `wholesalePrice` | `retailPrice` |
-| Stock fields | `wholesaleStock` / legacy `stock` | `retailStock` |
-| Order type | `WHOLESALE` (+ pack/MOQ paths) | `RETAIL_WEBSITE` |
-| Payment defaults | CASH / INSTALLMENT / ONLINE | ONLINE (also CASH) |
-| Content | channel settings `WHOLESALE` | channel settings `RETAIL`; home CMS blocks |
+| Concern          | Wholesale (`.com`)                              | Retail (`.ir`)                              |
+| ---------------- | ----------------------------------------------- | ------------------------------------------- |
+| UI tree          | `app/(wholesale)/`, portal                      | `app/retail/` (host rewrite to `/retail/*`) |
+| Channel signal   | default / header `x-taranom-channel: WHOLESALE` | host set + rewrite; header `RETAIL`         |
+| Auth             | portal register/login (B2B approval)            | OTP `POST /auth/retail/otp/*`               |
+| Price fields     | `wholesalePrice`                                | `retailPrice`                               |
+| Stock fields     | `wholesaleStock` / legacy `stock`               | `retailStock`                               |
+| Order type       | `WHOLESALE` (+ pack/MOQ paths)                  | `RETAIL_WEBSITE`                            |
+| Payment defaults | CASH / INSTALLMENT / ONLINE                     | ONLINE (also CASH)                          |
+| Content          | channel settings `WHOLESALE`                    | channel settings `RETAIL`; home CMS blocks  |
 
 ### 3.3 Nest modules (current inventory)
 
@@ -190,23 +190,23 @@ flowchart TB
 
 ### 4.2 Bounded modules (logical → Nest home)
 
-| Bounded module | Owns | Nest home (current → target) | Channel variance |
-|----------------|------|------------------------------|------------------|
-| Identity & Access | JWT/session, roles, retail OTP, admin/portal gates | `auth` (+ web middleware cookie check as UX only) | OTP retail vs portal B2B |
-| Customer / Account | customer profile, approval, wallet balance reads | `customer`, `crm` | Wholesale approval; retail account lighter |
-| Catalog | products, variants, SKUs, categories, collections, publication | `product`, `category`, `collection` | Visibility/publication flags per channel if present |
-| Pricing | unit price selection, discount application rules, money rounding IRR | **extract helpers inside** `product`/`order`/`discount` → later `pricing` folder **without new deployable** | `retailPrice` vs `wholesalePrice` |
-| Inventory | on-hand / channel stock, movements, allocation during checkout | `inventory` (+ order txn participation) | `retailStock` vs `wholesaleStock` |
-| Cart / Quote | client cart OK; server quote validation at checkout | web cart libs + order create DTO validation | Pack/MOQ wholesale; simpler retail lines |
-| Checkout | orchestration: validate → price → allocate → persist order → payment intent | `order` create path (keep transactional) | Defaults for ship/pay methods |
-| Order | order aggregate, type, status transitions, snapshots | `order`, `invoice` | `RETAIL_WEBSITE` vs `WHOLESALE` |
-| Payment | attempts, verify, capture/fail, refunds linkage | `payment` | Retail ONLINE-heavy |
-| Fulfillment | shipping method selection, handoff to ops | `shipping` + order status | Different default carriers |
-| Returns | RMA flows | `rma` | Policy may differ by channel |
-| Content / SEO | CMS blocks, blog, settings menus, sitemaps | `cms`, `blog`, `settings` | `WHOLESALE\|RETAIL` keys |
-| Notifications | SMS/email intents after domain events | `notification` | Template per channel |
-| Reporting | admin dashboards, feeds | `dashboard`, `feeds`, marketplace modules | Read models; no dual write of commerce truth |
-| Search / Media | index sync, uploads | `search`, `upload` | Shared assets |
+| Bounded module     | Owns                                                                        | Nest home (current → target)                                                                                | Channel variance                                    |
+| ------------------ | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Identity & Access  | JWT/session, roles, retail OTP, admin/portal gates                          | `auth` (+ web middleware cookie check as UX only)                                                           | OTP retail vs portal B2B                            |
+| Customer / Account | customer profile, approval, wallet balance reads                            | `customer`, `crm`                                                                                           | Wholesale approval; retail account lighter          |
+| Catalog            | products, variants, SKUs, categories, collections, publication              | `product`, `category`, `collection`                                                                         | Visibility/publication flags per channel if present |
+| Pricing            | unit price selection, discount application rules, money rounding IRR        | **extract helpers inside** `product`/`order`/`discount` → later `pricing` folder **without new deployable** | `retailPrice` vs `wholesalePrice`                   |
+| Inventory          | on-hand / channel stock, movements, allocation during checkout              | `inventory` (+ order txn participation)                                                                     | `retailStock` vs `wholesaleStock`                   |
+| Cart / Quote       | client cart OK; server quote validation at checkout                         | web cart libs + order create DTO validation                                                                 | Pack/MOQ wholesale; simpler retail lines            |
+| Checkout           | orchestration: validate → price → allocate → persist order → payment intent | `order` create path (keep transactional)                                                                    | Defaults for ship/pay methods                       |
+| Order              | order aggregate, type, status transitions, snapshots                        | `order`, `invoice`                                                                                          | `RETAIL_WEBSITE` vs `WHOLESALE`                     |
+| Payment            | attempts, verify, capture/fail, refunds linkage                             | `payment`                                                                                                   | Retail ONLINE-heavy                                 |
+| Fulfillment        | shipping method selection, handoff to ops                                   | `shipping` + order status                                                                                   | Different default carriers                          |
+| Returns            | RMA flows                                                                   | `rma`                                                                                                       | Policy may differ by channel                        |
+| Content / SEO      | CMS blocks, blog, settings menus, sitemaps                                  | `cms`, `blog`, `settings`                                                                                   | `WHOLESALE\|RETAIL` keys                            |
+| Notifications      | SMS/email intents after domain events                                       | `notification`                                                                                              | Template per channel                                |
+| Reporting          | admin dashboards, feeds                                                     | `dashboard`, `feeds`, marketplace modules                                                                   | Read models; no dual write of commerce truth        |
+| Search / Media     | index sync, uploads                                                         | `search`, `upload`                                                                                          | Shared assets                                       |
 
 “Shared” means **one tested domain capability** used by both channels—not a junk drawer module.
 
@@ -229,15 +229,15 @@ Forbidden:
 
 ### 4.4 Contract changes (compatibility-first)
 
-| Contract | Current | Target |
-|----------|---------|--------|
-| Public retail URLs on `.ir` | Middleware rewrite to `/retail/*`; bar stays clean | **Preserve**; any path move needs redirect + SEO review |
-| Wholesale public + portal | Existing routes | **Preserve** |
-| API prefix | `/v1` | Keep; additive fields preferred over breaking renames |
-| Order create | `type` / `channel`, `idempotencyKey`, server price | Keep; document channel enum normalization (`RETAIL` / `RETAIL_WEBSITE` → retail policy) |
-| Payment verify | Idempotent finalize | Keep; treat duplicate verify as success-no-op |
-| Channel header | `x-taranom-channel` | Informational for web; **API authorizes from auth + explicit order channel fields**, not spoofable header alone |
-| Search index | Meilisearch product docs | Eventually-consistent; checkout/stock always from PG |
+| Contract                    | Current                                            | Target                                                                                                          |
+| --------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Public retail URLs on `.ir` | Middleware rewrite to `/retail/*`; bar stays clean | **Preserve**; any path move needs redirect + SEO review                                                         |
+| Wholesale public + portal   | Existing routes                                    | **Preserve**                                                                                                    |
+| API prefix                  | `/v1`                                              | Keep; additive fields preferred over breaking renames                                                           |
+| Order create                | `type` / `channel`, `idempotencyKey`, server price | Keep; document channel enum normalization (`RETAIL` / `RETAIL_WEBSITE` → retail policy)                         |
+| Payment verify              | Idempotent finalize                                | Keep; treat duplicate verify as success-no-op                                                                   |
+| Channel header              | `x-taranom-channel`                                | Informational for web; **API authorizes from auth + explicit order channel fields**, not spoofable header alone |
+| Search index                | Meilisearch product docs                           | Eventually-consistent; checkout/stock always from PG                                                            |
 
 No API version bump required for completion unless a breaking fix is unavoidable; then dual-read or transitional DTO fields for one release.
 
@@ -245,19 +245,19 @@ No API version bump required for completion unless a breaking fix is unavoidable
 
 ## 5. Data ownership
 
-| Data | System of record | Writers | Readers | Notes |
-|------|------------------|---------|---------|-------|
-| Product/variant/SKU, prices | PostgreSQL | Admin/API product module | Web, search indexer, feeds | Price change does not rewrite historical order lines |
-| Channel stock | PostgreSQL | Inventory + checkout transaction | Catalog APIs | Channel fields co-owned with inventory policy |
-| Inventory movements | PostgreSQL | Inventory service | Admin | History is append; delete must not silently reverse stock |
-| Cart (retail/wholesale UI) | Browser (local) | Client | Client | Non-authoritative |
-| Orders + line snapshots | PostgreSQL | Order module (txn) | Portal, admin, invoices | Snapshot unit price/qty at accept |
-| Payments | PostgreSQL | Payment module | Order status sync | Payment state ≠ order state |
-| Customers / OTP challenges | PostgreSQL + Redis (OTP/rate) | Auth/customer | Admin CRM | OTP codes never logged in prod |
-| CMS / settings | PostgreSQL | Admin CMS/settings | Storefronts | Keyed by channel |
-| Search documents | Meilisearch | Search sync jobs | Storefront search | Rebuildable from PG |
-| Media blobs | MinIO | Upload module | CDN/nginx `/media` | Public product bucket |
-| Sessions/tokens | HTTP-only cookies + JWT validation in API | Auth | Middleware (presence/role UX) | Server enforces authorization |
+| Data                        | System of record                          | Writers                          | Readers                       | Notes                                                     |
+| --------------------------- | ----------------------------------------- | -------------------------------- | ----------------------------- | --------------------------------------------------------- |
+| Product/variant/SKU, prices | PostgreSQL                                | Admin/API product module         | Web, search indexer, feeds    | Price change does not rewrite historical order lines      |
+| Channel stock               | PostgreSQL                                | Inventory + checkout transaction | Catalog APIs                  | Channel fields co-owned with inventory policy             |
+| Inventory movements         | PostgreSQL                                | Inventory service                | Admin                         | History is append; delete must not silently reverse stock |
+| Cart (retail/wholesale UI)  | Browser (local)                           | Client                           | Client                        | Non-authoritative                                         |
+| Orders + line snapshots     | PostgreSQL                                | Order module (txn)               | Portal, admin, invoices       | Snapshot unit price/qty at accept                         |
+| Payments                    | PostgreSQL                                | Payment module                   | Order status sync             | Payment state ≠ order state                               |
+| Customers / OTP challenges  | PostgreSQL + Redis (OTP/rate)             | Auth/customer                    | Admin CRM                     | OTP codes never logged in prod                            |
+| CMS / settings              | PostgreSQL                                | Admin CMS/settings               | Storefronts                   | Keyed by channel                                          |
+| Search documents            | Meilisearch                               | Search sync jobs                 | Storefront search             | Rebuildable from PG                                       |
+| Media blobs                 | MinIO                                     | Upload module                    | CDN/nginx `/media`            | Public product bucket                                     |
+| Sessions/tokens             | HTTP-only cookies + JWT validation in API | Auth                             | Middleware (presence/role UX) | Server enforces authorization                             |
 
 **Write ownership rule:** only the owning module’s service performs mutations on its tables; other modules call that service (or join the same DB transaction via injected `EntityManager` as already started for checkout).
 
@@ -267,13 +267,13 @@ No API version bump required for completion unless a breaking fix is unavoidable
 
 ### 6.1 Critical write behaviors (target)
 
-| Operation | Transaction | Idempotency | Concurrency | Compensation |
-|-----------|-------------|-------------|-------------|--------------|
-| Create order | Single DB txn: order rows + stock allocation + discount/wallet side effects | Client `idempotencyKey` → return existing order | Row-level locks / conditional stock updates on variants | Rollback txn; no post-commit best-effort stock fix |
-| Payment verify | Persist terminal payment status once | Re-verify returns prior success | Unique gateway authority / payment id | Order paid transition only after durable payment success |
-| Inventory adjust (admin) | Per-adjust txn + movement row | Optional request id for bulk | Serialize per variant/product | Explicit reverse adjust, not history delete |
-| OTP request | Rate-limit in Redis | Same phone cooldown | N/A | Fail closed; no code in API response in prod |
-| Search reindex | Async / job | Upsert by product id | Stale index allowed briefly | Source of truth remains PG at checkout |
+| Operation                | Transaction                                                                 | Idempotency                                     | Concurrency                                             | Compensation                                             |
+| ------------------------ | --------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
+| Create order             | Single DB txn: order rows + stock allocation + discount/wallet side effects | Client `idempotencyKey` → return existing order | Row-level locks / conditional stock updates on variants | Rollback txn; no post-commit best-effort stock fix       |
+| Payment verify           | Persist terminal payment status once                                        | Re-verify returns prior success                 | Unique gateway authority / payment id                   | Order paid transition only after durable payment success |
+| Inventory adjust (admin) | Per-adjust txn + movement row                                               | Optional request id for bulk                    | Serialize per variant/product                           | Explicit reverse adjust, not history delete              |
+| OTP request              | Rate-limit in Redis                                                         | Same phone cooldown                             | N/A                                                     | Fail closed; no code in API response in prod             |
+| Search reindex           | Async / job                                                                 | Upsert by product id                            | Stale index allowed briefly                             | Source of truth remains PG at checkout                   |
 
 ### 6.2 Failure modes to design for (tests later)
 
@@ -318,16 +318,16 @@ flowchart LR
   AdminUI --> API
 ```
 
-| Boundary | Control |
-|----------|---------|
-| Edge | TLS at nginx; bind app ports to localhost in compose; secrets in `.env` not images |
-| Channel hosts | Host-based retail rewrite; admin/portal exempt; do not trust `x-taranom-channel` for money |
-| AuthN | JWT; retail OTP hashed; portal/admin role cookies mirrored for UX |
-| AuthZ | Enforced in Nest guards/services for admin, customer-owned orders, webhooks |
-| Webhooks / verify | Signature/authority validation per PSP; idempotent finalize |
-| Uploads | Validated content-type/size; no path traversal into host FS |
-| SSRF / SSR | Server-side fetch only to configured PSP/SMS endpoints |
-| Tenancy | **Two sales channels, one merchant**—not tenant isolation |
+| Boundary          | Control                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| Edge              | TLS at nginx; bind app ports to localhost in compose; secrets in `.env` not images         |
+| Channel hosts     | Host-based retail rewrite; admin/portal exempt; do not trust `x-taranom-channel` for money |
+| AuthN             | JWT; retail OTP hashed; portal/admin role cookies mirrored for UX                          |
+| AuthZ             | Enforced in Nest guards/services for admin, customer-owned orders, webhooks                |
+| Webhooks / verify | Signature/authority validation per PSP; idempotent finalize                                |
+| Uploads           | Validated content-type/size; no path traversal into host FS                                |
+| SSRF / SSR        | Server-side fetch only to configured PSP/SMS endpoints                                     |
+| Tenancy           | **Two sales channels, one merchant**—not tenant isolation                                  |
 
 ---
 
@@ -378,12 +378,12 @@ Optional later (only if audit proves pain): physical Nest `PricingModule` folder
 
 ## 11. Acceptance mapping (architecture)
 
-| Criterion (package file 02) | How target meets it |
-|-----------------------------|---------------------|
-| Retail/wholesale differences locatable | Channel policy helpers + table in §3.2/§4.2; UI trees already split |
-| Domain not tied to UI/vendor | Nest domain + payment/SMS adapters; web is presentation |
-| Critical writes define txn/retry/idempotency | §6 |
-| No multi-tenant/page-builder in runtime | Explicit non-goal; CMS blocks ≠ builder |
+| Criterion (package file 02)                  | How target meets it                                                 |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| Retail/wholesale differences locatable       | Channel policy helpers + table in §3.2/§4.2; UI trees already split |
+| Domain not tied to UI/vendor                 | Nest domain + payment/SMS adapters; web is presentation             |
+| Critical writes define txn/retry/idempotency | §6                                                                  |
+| No multi-tenant/page-builder in runtime      | Explicit non-goal; CMS blocks ≠ builder                             |
 
 ---
 
@@ -391,67 +391,81 @@ Optional later (only if audit proves pain): physical Nest `PricingModule` folder
 
 ### ADR-001 — Retain modular monolith (Next + Nest + PG)
 
-- **Status:** Accepted  
-- **Context:** Dual-channel commerce already runs in one monorepo on one VPS.  
-- **Decision:** Keep a single API process and single Next app with route-group/channel split.  
+- **Status:** Accepted
+- **Context:** Dual-channel commerce already runs in one monorepo on one VPS.
+- **Decision:** Keep a single API process and single Next app with route-group/channel split.
 - **Consequences:** Simpler txns and deploy; must enforce module boundaries by convention and review.
 
 ### ADR-002 — Dual sales channel, single merchant (not multi-tenant)
 
-- **Status:** Accepted  
-- **Context:** `.com` wholesale and `.ir` retail share inventory/admin.  
-- **Decision:** Channel is a first-class sales dimension (prices, stock, order type, content keys)—not tenant_id isolation.  
+- **Status:** Accepted
+- **Context:** `.com` wholesale and `.ir` retail share inventory/admin.
+- **Decision:** Channel is a first-class sales dimension (prices, stock, order type, content keys)—not tenant_id isolation.
 - **Consequences:** Shared DB; explicit channel fields; no tenant provisioning work in this program.
 
 ### ADR-003 — Host rewrite for retail public URLs
 
-- **Status:** Accepted (current behavior ratified)  
-- **Context:** Clean URLs on `.ir` while code lives under `app/retail`.  
-- **Decision:** Keep middleware rewrite; exempt admin/portal/api/media/payment.  
+- **Status:** Accepted (current behavior ratified)
+- **Context:** Clean URLs on `.ir` while code lives under `app/retail`.
+- **Decision:** Keep middleware rewrite; exempt admin/portal/api/media/payment.
 - **Consequences:** SEO-stable public paths; local preview via `/retail` or force cookie/env.
 
 ### ADR-004 — Server-authoritative checkout transaction
 
-- **Status:** Accepted (ratifies 2026-07-31 hardening)  
-- **Context:** Split stock/wallet/discount updates risk partial commits.  
-- **Decision:** Order accept + inventory + related side effects in one DB transaction; idempotency key on create.  
+- **Status:** Accepted (ratifies 2026-07-31 hardening)
+- **Context:** Split stock/wallet/discount updates risk partial commits.
+- **Decision:** Order accept + inventory + related side effects in one DB transaction; idempotency key on create.
 - **Consequences:** Requires passing `EntityManager` into collaborators; concurrency tests still required.
 
 ### ADR-005 — Payment state machine separate from order status
 
-- **Status:** Accepted  
-- **Context:** PSP retries and lost redirects.  
-- **Decision:** Payment module owns attempt/verify/refund durability; order moves to paid only after durable success; verify is idempotent.  
+- **Status:** Accepted
+- **Context:** PSP retries and lost redirects.
+- **Decision:** Payment module owns attempt/verify/refund durability; order moves to paid only after durable success; verify is idempotent.
 - **Consequences:** Clearer recovery; UI must poll/reconcile rather than trust query-string alone.
 
 ### ADR-006 — Client cart, server quote
 
-- **Status:** Accepted  
-- **Context:** Retail cart already client-side; wholesale similarly UX-driven.  
-- **Decision:** Keep client cart for UX/perf; every checkout recomputes price/stock/shipping server-side.  
+- **Status:** Accepted
+- **Context:** Retail cart already client-side; wholesale similarly UX-driven.
+- **Decision:** Keep client cart for UX/perf; every checkout recomputes price/stock/shipping server-side.
 - **Consequences:** Slight UX mismatch possible on stale carts—prefer explicit error over silent trust.
 
 ### ADR-007 — CMS/settings configurability without a page builder
 
-- **Status:** Accepted  
-- **Context:** Home blocks and channel settings are admin-editable today.  
-- **Decision:** Continue structured CMS/settings entities; forbid drag-and-drop/schema builder runtimes.  
+- **Status:** Accepted
+- **Context:** Home blocks and channel settings are admin-editable today.
+- **Decision:** Continue structured CMS/settings entities; forbid drag-and-drop/schema builder runtimes.
 - **Consequences:** Marketing can edit within schemas; engineering owns new block types.
+
+### ADR-008 — Ownership-aware RMA migration (no destructive adoption rollback)
+
+- **Status:** Accepted (TASK-20260810-006 remediation)
+- **Context:** `return_requests` may already exist (sync-era). `CREATE TABLE IF NOT EXISTS` + unconditional `DROP TABLE` in `down()` would destroy pre-existing RMA rows.
+- **Decision:** `up()` records ownership in `schema_migration_ownership` only when it creates the table; adoption path is expand-only. `down()` drops FKs/indexes always, but `DROP TABLE` only when ownership exists. Production must not use `down()` for disaster recovery — restore from backup.
+- **Consequences:** Safe re-run/up on empty and adopted DBs; adopted data survives rollback of this migration version; financial RMA history is preserved.
+
+### ADR-009 — Non-production E2E environment identity
+
+- **Status:** Accepted (TASK-20260810-006 remediation)
+- **Context:** Env-overridable host allowlists and localhost tunnels can reach production.
+- **Decision:** Immutable in-script allowlists; `GET /v1/env-identity` returns provisioned `DEPLOYMENT_IDENTITY` only for `APP_ENV` in `{staging,local,disposable}`; E2E compares against fixture written by `scripts/provision-e2e-identity.sh` (not casual test env). No SQL user/password mutation in the purchase harness.
+- **Consequences:** Operators must provision identity + fixture users before E2E; misconfigured allowlists fail closed before login/orders.
 
 ---
 
 ## 13. Rejected alternatives
 
-| Alternative | Why rejected |
-|-------------|--------------|
-| Greenfield rewrite (new stack or “clean” monorepo) | Destroys production URLs, data, and delivery timeline; no blocking constraint on Next/Nest/PG. |
-| Microservices split (order/payment/inventory processes) | Adds network failure modes and distributed txns; current VPS/modular monolith fits scale. |
-| Website-builder / page-builder / template marketplace | Explicit program non-goal (MASTER); contaminates completion scope. |
-| SaaS multi-tenant runtime / tenant billing | Wrong problem; one merchant, two channels. |
-| Separate retail codebase or second API | Duplicates inventory/pricing bugs; contradicts “one core.” |
-| Event-sourced commerce or heavy CQRS bus | Over-engineering for current volume; PG transactional model sufficient. |
-| Moving cart persistence to Redis as source of truth | Adds consistency bugs; client cart + server quote is enough. |
-| Trusting `x-taranom-channel` or client prices for charging | Security/integrity failure mode. |
+| Alternative                                                | Why rejected                                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Greenfield rewrite (new stack or “clean” monorepo)         | Destroys production URLs, data, and delivery timeline; no blocking constraint on Next/Nest/PG. |
+| Microservices split (order/payment/inventory processes)    | Adds network failure modes and distributed txns; current VPS/modular monolith fits scale.      |
+| Website-builder / page-builder / template marketplace      | Explicit program non-goal (MASTER); contaminates completion scope.                             |
+| SaaS multi-tenant runtime / tenant billing                 | Wrong problem; one merchant, two channels.                                                     |
+| Separate retail codebase or second API                     | Duplicates inventory/pricing bugs; contradicts “one core.”                                     |
+| Event-sourced commerce or heavy CQRS bus                   | Over-engineering for current volume; PG transactional model sufficient.                        |
+| Moving cart persistence to Redis as source of truth        | Adds consistency bugs; client cart + server quote is enough.                                   |
+| Trusting `x-taranom-channel` or client prices for charging | Security/integrity failure mode.                                                               |
 
 ---
 

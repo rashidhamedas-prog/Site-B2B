@@ -99,6 +99,23 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * INCR + set TTL on first hit (shared rate-limit windows across instances).
+   * Returns null when Redis is unavailable.
+   */
+  async incrWithTtl(key: string, ttlSeconds: number): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      const count = await this.client.incr(key);
+      if (count === 1) {
+        await this.client.expire(key, ttlSeconds);
+      }
+      return count;
+    } catch {
+      return null;
+    }
+  }
+
   /** SET key NX EX ttl — returns true if set (first writer wins). */
   async setNxEx(key: string, ttlSeconds: number, value = '1'): Promise<boolean> {
     if (!this.client) return false;
@@ -113,12 +130,15 @@ export class RedisService implements OnModuleDestroy {
 
 @Injectable()
 export class OtpService {
-  private readonly memory = new Map<string, { hash: string; expiresAt: number; attempts: number; name?: string }>();
+  private readonly memory = new Map<
+    string,
+    { hash: string; expiresAt: number; attempts: number; name?: string }
+  >();
   private readonly logger = new Logger(OtpService.name);
 
   constructor(
     private readonly redis: RedisService,
-    private readonly config: ConfigService,
+    private readonly config: ConfigService
   ) {}
 
   private ttl(): number {
@@ -232,8 +252,7 @@ export class OtpService {
 
     const expected = Buffer.from(record.hash, 'hex');
     const actual = Buffer.from(this.hashCode(phone, String(code).trim()), 'hex');
-    const match =
-      expected.length === actual.length && timingSafeEqual(expected, actual);
+    const match = expected.length === actual.length && timingSafeEqual(expected, actual);
 
     if (!match) {
       // persist attempts

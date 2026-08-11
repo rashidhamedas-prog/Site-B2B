@@ -1,5 +1,10 @@
 import {
-  Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  Index,
 } from 'typeorm';
 
 @Entity('blog_media_assets')
@@ -73,6 +78,16 @@ export class BlogMediaAssetEntity {
 
   @Column({ type: 'uuid', nullable: true })
   createdBy: string | null;
+
+  /** ACTIVE | TOMBSTONED | PURGED — tombstone before storage delete; purge after success. */
+  @Column({ type: 'varchar', default: 'ACTIVE' })
+  purgeStatus: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  tombstonedAt: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  tombstonedByUserId: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -17,25 +17,14 @@ export class ProductCompareAtPrices1754816400001 implements MigrationInterface {
       ADD COLUMN IF NOT EXISTS "wholesaleCompareAtPrice" bigint
     `);
 
-    // Canonical customer channel backfill:
-    // retail OTP accounts use type=B2C + businessType=RETAIL;
-    // conflicting defaults (type=B2B + businessType=RETAIL) → WHOLESALE via businessType=WHOLESALE when type is B2B.
-    await queryRunner.query(`
-      UPDATE customers
-      SET "businessType" = 'WHOLESALE'
-      WHERE UPPER(COALESCE(type, '')) = 'B2B'
-        AND UPPER(COALESCE("businessType", '')) = 'RETAIL'
-    `);
-    await queryRunner.query(`
-      UPDATE customers
-      SET "businessType" = 'RETAIL', type = 'B2C'
-      WHERE UPPER(COALESCE(type, '')) IN ('RETAIL', 'B2C')
-        AND ( "businessType" IS NULL OR TRIM("businessType") = '' )
-    `);
+    // Customer channel reclassification intentionally removed from this DDL migration.
+    // See CustomerChannelClassification1754827200001 (20260810-005) for snapshot-backed DML.
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "products" DROP COLUMN IF EXISTS "wholesaleCompareAtPrice"`);
+    await queryRunner.query(
+      `ALTER TABLE "products" DROP COLUMN IF EXISTS "wholesaleCompareAtPrice"`
+    );
     await queryRunner.query(`ALTER TABLE "products" DROP COLUMN IF EXISTS "retailCompareAtPrice"`);
   }
 }

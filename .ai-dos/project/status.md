@@ -1,12 +1,13 @@
 # Project Status
 
-- Last verified: 2026-08-10T14:42:00Z (PR #28 deploy)
+- Last verified: 2026-08-10T15:45:00Z (docs SHA sync + HIGH remediation in progress)
 - Active task: **TASK-20260810-006** (`in_progress`) — owner `cursor:orchestrator-TASK-20260810-006`
-- Shipped to production: VPS HEAD `67b55b8` (PR #28); prior `0bb72c7` (PR #27), `197d54f` (PR #26 evidence), `8e1f4a5` (PR #25 code)
-- Readiness: **GO WITH CONDITIONS** **71/100** (Reviewer-capped; rejected ~76)
-- Conditions: **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09** (restore re-verify MET; rollback/off-box + staging purchase open)
-- Reviews: Evidence Reviewer capped **71**; Independent Security **PASS WITH CONDITIONS**
-- Live verify: API `{"status":"ok"}`; wholesale/retail **200**
-- Residual: staging sanitized E2E; retail OTP→ONLINE; rollback/off-box; Torob panel OWNER ACTION; SEC-012/014 Med
+- Branch / worktree: `ai/TASK-20260810-006-readiness-remediation` @ `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Code SHA (origin/master baseline for this remediation): `ab4ffab` (PR #30)
+- Evidence SHA (last scored evidence pack): still tied to wave ending PR #28 / `67b55b8` docs — **do not conflate**
+- Deploy / VPS SHA: verify on server separately (`git rev-parse HEAD` on VPS); last recorded ship before this remediation wave was `67b55b8` (PR #28). This remediation branch is **not** marked Done/deployed yet.
+- Readiness: **GO WITH CONDITIONS** **71/100** (unchanged; do not inflate without durable rubric evidence)
+- Conditions: **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**
 - Website-builder: **blocked**
-- Claims: retained until formal Done (AC still open for purchase journeys)
+- Claims: **retained**; task remains **in_progress** while acceptance evidence NOT RUN / High remediation under review
+- Residual open: staging sanitized E2E; retail OTP→ONLINE; rollback/off-box/MinIO; full Torob contract; fresh independent Reviewer+Security PASS after final diff

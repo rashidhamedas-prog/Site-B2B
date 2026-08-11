@@ -2,9 +2,54 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-11 — TASK-20260810-006: reviews + Bugbot fixes + gates (in_progress)
+
+### خلاصه
+- Independent Security: **PASS WITH CONDITIONS**؛ Reviewer: **PASS WITH CONDITIONS**؛ Bugbot سه یافته → اصلاح شد.
+- Gateهای format/lint/test/typecheck/build و negative guards/specs با exit 0 ثبت شدند (`docs/reports/gate-summary.json`).
+- Readiness **71**؛ Task **in_progress**؛ claims retained؛ **بدون commit/deploy/Done**.
+
+### Bugbot fixes
+- RMA فقط `RETURN` تأیید مالی می‌شود
+- update محصول legacy بدون retailPrice برای فیلدهای غیرقیمتی بلاک نمی‌شود
+- DNS unresolved برای host غیرloopback fail-closed
+- متن UV در AdminBlogAnalytics سروری شد
+
+### بعدی
+- در صورت تأیید owner: commit نهایی + Security/Reviewer روی SHA کامیت‌شده؛ Done فقط پس از ACهای باز
+
+---
+## 2026-08-10 — TASK-20260810-006: Reviewer/Security HIGH remediation (in progress)
+
+### خلاصه
+
+- Reproduce یافته‌های Reviewer/Security روی worktree `ai/TASK-20260810-006-readiness-remediation` در برابر `origin/master@ab4ffab`.
+- HIGH: migration ownership-aware؛ E2E identity + حذف SQL mutation؛ Redis RL وبلاگ؛ invariant قیمت نهایی کانال.
+- MEDIUM: assert دقیق سفارش؛ جداسازی reclass مشتری؛ tombstone رسانه؛ audit RMA؛ همگام‌سازی SHA اسناد.
+- Readiness **71/100** (بدون افزایش). Task **in_progress**. Claims retained. Website-builder blocked. بدون mutate production.
+
+### Validation اجراشده
+
+- `blog-analytics-rate-limit.spec.ts` exit 0
+- `product-pricing.invariant.spec.ts` exit 0
+- `20260810-001-create-return-requests.spec.ts` exit 0
+- `bash -n` scripts exit 0
+- `_negative-e2e-guards.sh` ALL_NEGATIVE_GUARDS_PASSED exit 0
+
+### هنوز NOT RUN
+
+- staging wholesale E2E؛ retail OTP→ONLINE؛ rollback/off-box/MinIO؛ full Torob؛ npm lint/test/build کامل با artifact؛ Reviewer/Security تازه پس از final diff
+
+### بعدی
+
+- تکمیل quality gates؛ سپس Security → Reviewer مستقل؛ Done فقط پس از MET بودن همه AC
+
+---
+
 ## 2026-08-10 — TASK-20260810-006: ship evidence pack 71/100 (owner full-authority)
 
 ### خلاصه
+
 - Owner: اعمال زنده + merge + deploy بدون تأیید مرحله‌ای.
 - docs/AI-DOS: امتیاز ۷۱، شواهد restore/Torob/SEO؛ Security PASS WITH CONDITIONS.
 - PR #26 `197d54f` → #27/`0bb72c7` → #28/`67b55b8` → #29/`a3cb5e9`؛ همه deploy کامل.
@@ -12,9 +57,11 @@
 - Task همچنان in_progress؛ claims retained.
 
 ---
+
 ## 2026-08-10 — TASK-20260810-006: parallel evidence wave → 71/100
 
 ### خلاصه
+
 - Restore disposable fail-closed روی VPS دوباره **PASS** (RTO ۱۴ثانیه).
 - Torob sample ۱۵/۱۵ **PASS**؛ SEO/a11y smoke **PASS**؛ gates + schema VPS OK.
 - Retail OTP→ONLINE و staging E2E همچنان **NOT RUN**.
@@ -22,15 +69,19 @@
 - Security مستقل: **PASS WITH CONDITIONS**.
 
 ### امتیاز
+
 - قبل: ۶۷/۱۰۰ → بعد: **۷۱/۱۰۰** (نه ۷۶، نه ۱۰۰؛ ۸۱ همچنان superseded)
 
 ### بعدی
+
 - Staging E2E + retail OTP؛ rollback/off-box؛ Torob panel؛ commit اسناد در صورت تأیید owner
 
 ---
+
 ## 2026-08-10 — TASK-20260810-006: remediation + ship to production (owner-authorized)
 
 ### خلاصه
+
 - سخت‌سازی `e2e-purchase-test.sh` (argv-safe Python، allowlist دقیق، sentinel غیرقابل‌override، fixture MOQ، assert دقیق سفارش).
 - بلاگ: کاور عمده، ناوبری/توکن ریتیل، آنالیتیکس اتمی، حذف رسانه با 409، محدودسازی image origins.
 - RMA: migration TypeORM + approve تراکنشی + جلوگیری از double-credit؛ EXCHANGE silent نیست.
@@ -39,13 +90,16 @@
 - Owner صریحاً اعمال روی سایت را درخواست کرد → commit/PR/merge/deploy.
 
 ### اعتبارسنجی محلی
+
 - lint/test/tsc/build/`bash -n`/negative E2E guards → **0**
 - Staging E2E / retail OTP / restore drill / Torob full crawl → **NOT RUN** (OWNER follow-up)
 
 ---
+
 ## 2026-08-10 — TASK-20260809-005: Independent Reviewer FAIL remediation
 
 ### خلاصه
+
 - Independent Reviewer روی بستن قبلی C1/C3 با امتیاز ۸۱ → **FAIL** ثبت شد؛ task دوباره claim شد؛ claims آزاد نشد.
 - `restore-drill-disposable.sh`: اگر `RESTORE_EXIT != 0` باشد اسکریپت fail می‌شود (دیگر PASS کاذب نمی‌دهد).
 - `e2e-purchase-test.sh`: credential ثابت حذف؛ mutate پسورد روی production حذف؛ فقط `E2E_TARGET=staging|local|disposable` + `E2E_ALLOW_MUTATION=1` + `E2E_PHONE`/`E2E_PASSWORD`؛ denylist هاست production؛ نام DB تولیدی (`taranom_db`) ممنوع.
@@ -54,6 +108,7 @@
 - Security Review: **PASS WITH CONDITIONS** (SEC-004 host allowlist اعمال شد؛ SEC-007 helpers قدیمی residual).
 
 ### اعتبارسنجی (exact exits)
+
 - `bash -n scripts/restore-drill-disposable.sh` → **0**
 - `bash -n scripts/e2e-purchase-test.sh` → **0**
 - `npm run lint` → **0**
@@ -63,9 +118,11 @@
 - Deploy/merge: **NOT RUN** (مسدود تا Reviewer PASS)
 
 ---
+
 ## 2026-08-10 — TASK-20260809-005: بستن C1/C3 و افزایش readiness به ۸۱ (SUPERSEDED)
 
 ### خلاصه
+
 - **باطل‌شده توسط Independent Reviewer FAIL** — به ورودی remediation بالا مراجعه شود. امتیاز ۸۱ دیگر authoritative نیست.
 - چرا ۶۷≠۱۰۰: خرید E2E و بکاپ/ریستور و SEO/a11y رسمی باز بودند؛ ۱۰۰ بدون audit رسمی و retail ONLINE ممکن نیست.
 - **C1 PASS (historical):** `e2e-purchase-test.sh` روی VPS → سفارش `ORD-2026-00008-9C0117` (CASH)؛ روش بعداً unsafe تشخیص داده شد.
@@ -73,12 +130,15 @@
 - Readiness claimed: **۸۱/۱۰۰** → **superseded**.
 
 ### اعتبارسنجی
+
 - E2E exit 0 · health ok · cron نصب شده — evidence تاریخی؛ برای close فعلی کافی نیست
 
 ---
+
 ## 2026-08-09 — TASK-20260809-003 residual close: C4 verify + safety-net narrow
 
 ### خلاصه
+
 - PR #18 روی master (`3146aae`) دیپلوی شد؛ migration `PromoteSqlOnlyEntityColumns1786276800001` در production ثبت شد (id=11)
 - ستون‌ها/ایندکس‌های viewCount، wholesale color، bannerUrl، torobClid روی VPS تأیید شدند
 - `scripts/apply-production-schema.sql` باریک شد (بخش‌های تکراری حذف؛ فایل حفظ شد)
@@ -87,6 +147,7 @@
 - Readiness: **GO WITH CONDITIONS** **67/100** (C4 Satisfied)
 
 ### اعتبارسنجی
+
 - VPS health ok · migration row YES · columns/indexes YES · api/web lint+test 0 · smoke readonly 0 · C3 dump list 0
 
 ---
@@ -94,11 +155,13 @@
 ## 2026-08-09 — TASK-20260809-003 residual: expanded smoke + C4 migration artifact
 
 ### خلاصه
+
 - Smoke فقط‌خواندنی گسترش یافت: PDP عمده/تکی، portal login، account، checkout (soft)
 - Migration TypeORM برای ستون‌های SQL-only: `20260809-001-promote-sql-only-entity-columns.ts`
 - Merge PR #18 به master / deploy VPS: انجام شد (`3146aae`)
 
 ### اعتبارسنجی
+
 - `acceptance-smoke-readonly.sh` exit 0 (شامل PDP و صفحات soft)
 
 ---
@@ -106,6 +169,7 @@
 ## 2026-08-09 — TASK-20260809-002 Retail/Wholesale completion (MASTER phase 1–4)
 
 ### خلاصه
+
 - Preflight + worktree `ai/TASK-20260809-002-retail-wholesale-completion`
 - اسناد MASTER: audit، target architecture، progress، evidence، deployment-runbook، PLATFORM-READINESS (**GO WITH CONDITIONS**, 61/100)
 - Tooling: `apps/api` و `apps/web` lint → `tsc --noEmit`؛ API test → ts-node specs
@@ -114,6 +178,7 @@
 - شرایط باز: خرید E2E بدون Docker محلی؛ backup/restore؛ dual-path schema
 
 ### اعتبارسنجی
+
 - root lint 0 · root/api test 0 · build 0 (پیش‌تر) · smoke 0
 
 ---

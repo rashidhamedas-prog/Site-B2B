@@ -1,11 +1,22 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsString, IsNotEmpty, IsOptional, IsNumber, Min, IsBoolean,
-  IsArray, IsIn, IsObject,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  Min,
+  IsBoolean,
+  IsArray,
+  IsIn,
+  IsObject,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateProductDto {
-  @ApiPropertyOptional({ example: 'LINEN-00001', description: 'اگر ارسال نشود، از روی دسته‌بندی تولید می‌شود' })
+  @ApiPropertyOptional({
+    example: 'LINEN-00001',
+    description: 'اگر ارسال نشود، از روی دسته‌بندی تولید می‌شود',
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -46,24 +57,36 @@ export class CreateProductDto {
   @IsIn(['TWO', 'THREE', 'FREE'])
   sizeType?: string;
 
-  @ApiProperty({ description: 'قیمت عمده به ریال' })
+  @ApiProperty({
+    description:
+      'قیمت نهایی عمده (بعد از تخفیف، ریال). ستون DB غیرقابل‌null است؛ همیشه مثبت الزامی است.',
+  })
   @IsNumber()
-  @Min(0)
+  @Min(1)
   wholesalePrice: number;
 
-  @ApiPropertyOptional({ description: 'قیمت بعد از تخفیف تکی / نهایی (ریال)' })
-  @IsOptional()
+  @ApiPropertyOptional({
+    description:
+      'قیمت نهایی تکی (بعد از تخفیف، ریال). وقتی showOnRetail !== false الزامی و مثبت است؛ وقتی کانال تکی خاموش است می‌تواند null باشد.',
+  })
+  @ValidateIf((o: CreateProductDto) => o.showOnRetail !== false)
   @IsNumber()
-  @Min(0)
-  retailPrice?: number;
+  @Min(1)
+  retailPrice?: number | null;
 
-  @ApiPropertyOptional({ description: 'قیمت قبل از تخفیف تکی / compare-at (ریال)' })
+  @ApiPropertyOptional({
+    description:
+      'قیمت قبل از تخفیف تکی / compare-at (ریال); اختیاری و باید اکیداً > retailPrice باشد',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   retailCompareAtPrice?: number | null;
 
-  @ApiPropertyOptional({ description: 'قیمت قبل از تخفیف عمده / compare-at (ریال)' })
+  @ApiPropertyOptional({
+    description:
+      'قیمت قبل از تخفیف عمده / compare-at (ریال); اختیاری و باید اکیداً > wholesalePrice باشد',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)

@@ -2,6 +2,98 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-11T12:50:00Z — Post-review Bugbot fixes + gate evidence (still in_progress)
+
+- Task / owner: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006
+- Status: **in_progress** — **NOT Done**; claims **retained**; readiness **71/100**; no commit/deploy
+- Branch/worktree: `ai/TASK-20260810-006-readiness-remediation` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- HEAD tip: `015b5ec`; `origin/master`: `ab4ffab`
+
+### Independent reviews (uncommitted remediation)
+| Review | Verdict | Agent |
+|---|---|---|
+| Security | **PASS WITH CONDITIONS** (no open HIGH if prod ops follow ADR-008/009) | [Security Review](b5c72ca3-4e17-4b37-b8bf-92fbdf312823) |
+| Reviewer | **PASS WITH CONDITIONS** (Highs FIXED; AC evidence still blocks Done) | [Independent code reviewer](06a9c40e-ced8-4917-8e87-8cec9fc4898f) |
+| Bugbot | 3 findings → fixed in tree | [Bugbot](d1d0fbca-09c9-4851-8278-26cb54eb9a38) |
+
+### Bugbot dispositions applied
+1. RMA APPROVED side-effects: allowlist `requestType === 'RETURN'` only (fail closed for EXCHANGE/unknown)
+2. Product update: price/channel normalize only when those fields touched (legacy null retailPrice no longer blocks unrelated PATCH)
+3. E2E DNS: unresolved non-loopback host fail-closed before mutation
+4. AdminBlogAnalytics UV help text updated to server/Redis semantics
+
+### Gate evidence (durable under `docs/reports/`)
+| Gate | Exit | Artifact |
+|---|---|---|
+| format | 0 | `gate-format.log` |
+| lint | 0 | `gate-lint.log` |
+| test | 0 | `gate-test.log` |
+| type-check web | 0 | `gate-typecheck-web.log` |
+| typecheck api (`npx tsc --noEmit` in apps/api) | 0 | re-run 2026-08-11 (~146s) |
+| build / build-web / build-api | 0 | `gate-build*.log` |
+| `git diff --check` **scoped remediation files** | 0 | trailing ws fixed in runbook/.env.example |
+| `git diff --check` full dirty tree | FAIL (unrelated local noise) | not remediation-scoped |
+| bash -n + negative guards | 0 | ALL_NEGATIVE_GUARDS_PASSED |
+| blog-rl / pricing / mig001 specs | 0 | OK |
+| Summary JSON | | `docs/reports/gate-summary.json` |
+| Review package | | `docs/reports/TASK-20260810-006-review-20260810-194859/` |
+
+### Still NOT RUN / blocks Done
+- Staging sanitized wholesale E2E
+- Retail OTP→ONLINE sandbox
+- Rollback / off-box / MinIO
+- Full Torob contract
+- Fresh Security+Reviewer on **final committed** SHA after these Bugbot fixes
+- Do not raise readiness; do not release claims; do not Done
+
+### Exact next
+1. Optional: re-export scoped remediation diff after Bugbot fixes for second-pass Security/Reviewer
+2. Owner may authorize commit when ready — **not Done** until AC evidence + dual PASS on committed SHA
+3. No production mutation / no deploy until that gate
+
+## 2026-08-10T15:45:00Z — Reviewer/Security HIGH remediation (in progress)
+
+- Task / owner / role: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006 / implementer
+- Branch / worktree: `ai/TASK-20260810-006-readiness-remediation` / `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
+- Baseline reviewed: `55e58ad`; live tree reference: `origin/master@ab4ffab` (PR #30)
+- Status: **in_progress** — **NOT Done**; claims **retained**; readiness **71/100** (not raised); website-builder **blocked**
+- Objective: Remediate independent Reviewer/Security HIGH+MEDIUM findings; reproduce first; smallest architectural fixes
+
+### HIGH dispositions (code in worktree; gates pending full suite)
+
+| #   | Finding                               | Fix                                                                                             |
+| --- | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | RMA migration destructive `down()`    | Ownership ledger `schema_migration_ownership`; DROP TABLE only if owned; ADR-008                |
+| 2   | E2E forgeable allowlist / no identity | Immutable hosts; fixture + `GET /v1/env-identity`; DNS prod reject; ADR-009                     |
+| 3   | SQL disposable name-only              | SQL activate/password paths **removed** from harness                                            |
+| 4   | Blog RL XFF + unbounded Map           | `trustProxy:1` + `extractClientIp`; Redis INCR+TTL; bounded memory; server UV via Redis NX; 429 |
+| 5   | retailPrice optional on retail        | `normalizeProductChannelPrices` + DTO ValidateIf; positive finals                               |
+
+### MEDIUM dispositions
+
+| #   | Fix                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------------- |
+| 6   | Exact `PENDING_REVIEW` + unitPrice/totals asserts in E2E                                             |
+| 7   | Customer reclass moved to `20260810-005` with snapshot/reversible down; removed from product DDL 002 |
+| 8   | Media tombstone → storage → purge + append-only `blog_media_delete_audits`                           |
+| 9   | Append-only `return_request_audits` in same txn as wallet/stock                                      |
+| 10  | Docs SHA sync: code=`ab4ffab`/PR30; evidence/deploy recorded separately; readiness stays 71          |
+
+### Validation so far
+
+- `blog-analytics-rate-limit.spec.ts`: OK (agent)
+- `product-pricing.invariant.spec.ts`: OK (agent)
+- `scripts/_negative-e2e-guards.sh`: ALL_NEGATIVE_GUARDS_PASSED (agent)
+- Full `npm run lint/test/build` and staging E2E: **NOT RUN** yet this checkpoint
+- Fresh independent Reviewer/Security after final diff: **NOT RUN**
+
+### Exact next
+
+1. Run configured quality gates; record exit codes
+2. Migration clean up/down/up where disposable DB available
+3. Keep AC NOT RUN items explicit; do not mark Done; do not raise readiness; do not release claims
+4. After final diff: independent Security then Reviewer
+
 ## 2026-08-10T14:42:00Z — PR #28 live; owner ship complete
 
 - PR https://github.com/rashidhamedas-prog/Site-BtoB/pull/28 → merge `67b55b8`
@@ -40,26 +132,30 @@ Append newest entries at the top. Never erase another agent's record.
 - Live HEAD unchanged: `8e1f4a5` (docs/governance only this wave)
 
 ### Parallel agent evidence
-| Lane | Result | Agent |
-|---|---|---|
-| Disposable restore (fail-closed) | **PASS** restore_exit=0 RTO 14s 36 tables; live health ok | [b57eea5d](b57eea5d-1aac-41cc-9301-b3ac0bd5abf9) |
-| Torob sample crawl | **PASS** 15/15; sitemap=feed 57; full 57 + panel OWNER ACTION | [4307f1bb](4307f1bb-79b1-4109-9dc7-f3783e35cdea) |
-| Retail OTP map | Soft liveness **PASS**; OTP→ONLINE **NOT RUN** | [419ef286](419ef286-9530-452a-8af4-249f7452e46f) |
-| Gates/schema | lint/test **PASS**; return_requests + compare-at on VPS | [dca2ce7c](dca2ce7c-61b4-43c1-a70c-d45beca7fbd9) |
-| SEO/a11y smoke | **PASS** (not Lighthouse) | [a4a7d4c3](a4a7d4c3-d6f7-419d-aa13-ab4ce15a8662) |
-| Evidence Reviewer | Claims 1–5 MET; **FAIL on ~76**; justified **71** (Ops+2 SEO+2); C3 not Satisfied | [ddce485d](ddce485d-08bd-4c1e-b79f-83af3a7b6a1b) |
-| Independent Security | **PASS WITH CONDITIONS** (Highs from 6c5247cc fixed; Med SEC-012/014 open) | [c3b623c8](c3b623c8-474b-4a2d-9f59-25816536679d) |
+
+| Lane                             | Result                                                                            | Agent                                            |
+| -------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Disposable restore (fail-closed) | **PASS** restore_exit=0 RTO 14s 36 tables; live health ok                         | [b57eea5d](b57eea5d-1aac-41cc-9301-b3ac0bd5abf9) |
+| Torob sample crawl               | **PASS** 15/15; sitemap=feed 57; full 57 + panel OWNER ACTION                     | [4307f1bb](4307f1bb-79b1-4109-9dc7-f3783e35cdea) |
+| Retail OTP map                   | Soft liveness **PASS**; OTP→ONLINE **NOT RUN**                                    | [419ef286](419ef286-9530-452a-8af4-249f7452e46f) |
+| Gates/schema                     | lint/test **PASS**; return_requests + compare-at on VPS                           | [dca2ce7c](dca2ce7c-61b4-43c1-a70c-d45beca7fbd9) |
+| SEO/a11y smoke                   | **PASS** (not Lighthouse)                                                         | [a4a7d4c3](a4a7d4c3-d6f7-419d-aa13-ab4ce15a8662) |
+| Evidence Reviewer                | Claims 1–5 MET; **FAIL on ~76**; justified **71** (Ops+2 SEO+2); C3 not Satisfied | [ddce485d](ddce485d-08bd-4c1e-b79f-83af3a7b6a1b) |
+| Independent Security             | **PASS WITH CONDITIONS** (Highs from 6c5247cc fixed; Med SEC-012/014 open)        | [c3b623c8](c3b623c8-474b-4a2d-9f59-25816536679d) |
 
 ### Score / conditions
+
 - Readiness **71/100** (was 67). Do **not** claim 76 or 100.
 - **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**
 - C3: restore re-verify **MET**; rollback rehearsal + off-box still open → not Satisfied
 
 ### Docs updated
+
 - `docs/PLATFORM-READINESS-REPORT.md`, `implementation-progress.md`, `test-and-acceptance-evidence.md`, `WORKLOG.md`
 - `.ai-dos/project/status.md`, `tasks/active.yaml` heartbeat, this handoff
 
 ### Exact next
+
 1. Owner: staging sanitized wholesale E2E + retail OTP harness before 2026-09-09
 2. Rollback rehearsal + off-box/MinIO; Torob panel refresh OWNER ACTION
 3. Optional: harden analytics RL (SEC-012); commit evidence docs when owner asks
@@ -103,6 +199,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Status: **in_progress** — **NOT Done**; file_claims **retained**; no deploy; readiness remains **67/100**
 
 ### Decisions
+
 - E2E: argv/`$PYTHON` parsing; exact host allowlists; removed `E2E_ALLOW_CUSTOM_HOST`; SQL mutation only with `E2E_TARGET=disposable` + exact DB/container sentinels + `current_database()` probe; deterministic `E2E_PRODUCT_ID|SKU` with stock≥MOQ; exact order assertions.
 - Blog: wholesale cover Image+fallback; retail Blog nav; B2C tokens + mojibake repair; atomic analytics UPSERT + rate limit + UV header; media DELETE UI + 409 usages; narrowed next image origins.
 - RMA: TypeORM migration `20260810-001`; transactional approve with pessimistic lock + processingMarker; EXCHANGE refuses silent complete.
@@ -111,20 +208,22 @@ Append newest entries at the top. Never erase another agent's record.
 - Torob/URL: `public-product-path.ts` invariant; PDP+sitemap+feed use resolvable slug; RETAIL_ORIGIN URL-normalized to www HTTPS.
 
 ### Gates (exact exits)
-| Gate | Exit |
-|---|---:|
-| `bash -n scripts/e2e-purchase-test.sh` | **0** |
-| `bash -n scripts/restore-drill-disposable.sh` | **0** |
-| `scripts/_negative-e2e-guards.sh` (argv/bypass/prod/sql) | **0** |
-| `npm run lint` | **0** |
-| `npm run test` | **0** |
-| `npm run type-check -w @taranom/web` | **0** |
-| `cd apps/api && npx tsc --noEmit` | **0** |
-| `npm run build` | **0** (~4m37s) |
-| `git diff --check` | **0** |
-| secret_scan (`git grep` pattern) | ran; hits are env lookups / E2E var names — no hardcoded secrets added |
+
+| Gate                                                     |                                                                   Exit |
+| -------------------------------------------------------- | ---------------------------------------------------------------------: |
+| `bash -n scripts/e2e-purchase-test.sh`                   |                                                                  **0** |
+| `bash -n scripts/restore-drill-disposable.sh`            |                                                                  **0** |
+| `scripts/_negative-e2e-guards.sh` (argv/bypass/prod/sql) |                                                                  **0** |
+| `npm run lint`                                           |                                                                  **0** |
+| `npm run test`                                           |                                                                  **0** |
+| `npm run type-check -w @taranom/web`                     |                                                                  **0** |
+| `cd apps/api && npx tsc --noEmit`                        |                                                                  **0** |
+| `npm run build`                                          |                                                         **0** (~4m37s) |
+| `git diff --check`                                       |                                                                  **0** |
+| secret_scan (`git grep` pattern)                         | ran; hits are env lookups / E2E var names — no hardcoded secrets added |
 
 ### NOT RUN / OWNER ACTION (honest)
+
 - Sanitized staging wholesale E2E with real fixture: **NOT RUN** (no disposable staging env in this session)
 - Retail OTP→PDP→cart→checkout→ONLINE sandbox: **NOT MET / NOT RUN**
 - Disposable restore drill re-run + rollback rehearsal: **NOT RUN** (OWNER ACTION / staging infra)
@@ -135,10 +234,12 @@ Append newest entries at the top. Never erase another agent's record.
 - Readiness score change: **not changed** (still **67/100**)
 
 ### Acceptance snapshot
+
 - Code remediation for Reviewer FAIL security/E2E + expanded blog/RMA/reports/pricing/Torob: largely implemented in tree
 - Durable staging/prod evidence criteria: still open → cannot claim Done
 
 ### Exact next action
+
 1. Fresh Independent Reviewer + Security Review on final diff (requested)
 2. Owner: apply migrations on non-prod, run staging E2E + restore drill, Torob panel refresh
 3. Keep claims until reviews PASS and remaining MET evidence exists; then commit
@@ -206,6 +307,7 @@ Append newest entries at the top. Never erase another agent's record.
 ### Independent Reviewer FAIL (recorded)
 
 Prior close claiming **81/100** + C1/C3 Satisfied is **FAIL** / superseded due to:
+
 1. Task registry empty / claims released prematurely
 2. `restore-drill-disposable.sh` could PASS when `RESTORE_EXIT != 0`
 3. `e2e-purchase-test.sh` hardcoded credentials + direct password UPDATE on production DB
@@ -214,26 +316,26 @@ Prior close claiming **81/100** + C1/C3 Satisfied is **FAIL** / superseded due t
 
 ### Remediation applied
 
-| Item | Result |
-|---|---|
-| Reopen TASK-005 + file_claims | Done (`active.yaml`) |
-| restore fail-closed on `RESTORE_EXIT` | Done |
-| e2e staging-only + no hardcoded creds + prod password mutate removed + host denylist/allowlist | Done |
-| Retail journey | **NOT MET** (no staging OTP/ONLINE harness run) |
-| Evidence/PLATFORM/progress/runbook | Coherent at **67/100**; C1/C3 accepted-with-expiry → 2026-09-09; C4 Satisfied; duplicate C4 removed; 81 superseded |
-| Security Review | [PASS WITH CONDITIONS](0854addd-5c62-48a4-a5a4-1488239f797d) — SEC-004 mitigated in script; SEC-007 residual helpers |
+| Item                                                                                           | Result                                                                                                               |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Reopen TASK-005 + file_claims                                                                  | Done (`active.yaml`)                                                                                                 |
+| restore fail-closed on `RESTORE_EXIT`                                                          | Done                                                                                                                 |
+| e2e staging-only + no hardcoded creds + prod password mutate removed + host denylist/allowlist | Done                                                                                                                 |
+| Retail journey                                                                                 | **NOT MET** (no staging OTP/ONLINE harness run)                                                                      |
+| Evidence/PLATFORM/progress/runbook                                                             | Coherent at **67/100**; C1/C3 accepted-with-expiry → 2026-09-09; C4 Satisfied; duplicate C4 removed; 81 superseded   |
+| Security Review                                                                                | [PASS WITH CONDITIONS](0854addd-5c62-48a4-a5a4-1488239f797d) — SEC-004 mitigated in script; SEC-007 residual helpers |
 
 ### Gates (exact)
 
-| Gate | Exit |
-|---|---:|
-| `bash -n scripts/restore-drill-disposable.sh` | **0** |
-| `bash -n scripts/e2e-purchase-test.sh` | **0** |
-| `npm run lint` | **0** |
-| `npm run test` | **0** |
-| `npm run type-check -w @taranom/web` | **0** |
-| `cd apps/api && npx tsc --noEmit` | **0** |
-| `npm run build` | **0** (turbo api+web; ~3m43s) |
+| Gate                                          |                          Exit |
+| --------------------------------------------- | ----------------------------: |
+| `bash -n scripts/restore-drill-disposable.sh` |                         **0** |
+| `bash -n scripts/e2e-purchase-test.sh`        |                         **0** |
+| `npm run lint`                                |                         **0** |
+| `npm run test`                                |                         **0** |
+| `npm run type-check -w @taranom/web`          |                         **0** |
+| `cd apps/api && npx tsc --noEmit`             |                         **0** |
+| `npm run build`                               | **0** (turbo api+web; ~3m43s) |
 
 ### Readiness
 
@@ -254,6 +356,7 @@ Prior close claiming **81/100** + C1/C3 Satisfied is **FAIL** / superseded due t
 - Acceptance: checkpoint 67/100; C4 Satisfied (not P1 accepted-with-expiry); open backlog C1/C3 only; historical 61 superseded.
 - File claims: **released** (`active.yaml` → `tasks: []`) in same commit as progress fix.
 - Exact next: PR → merge master; docs-only (deploy optional).
+
 ## 2026-08-09T13:40:00Z â€” TASK-20260809-004 progress coherence (Reviewer FAIL leftover)
 
 - Response to [Independent review residual C4](9daa6ff8-4ff2-437b-8ea6-7b8b4b5291ea) FAIL: `docs/implementation-progress.md` checkpoint/backlog/next-actions now **67/100**, **C4 Satisfied**, open **C1/C3** only; historical 61 marked superseded.
@@ -314,13 +417,13 @@ Prior close claiming **81/100** + C1/C3 Satisfied is **FAIL** / superseded due t
 
 ### Inventory (SQL-only vs TypeORM before this change)
 
-| Column / index | Safety-net / Path C | Prior TypeORM migration | Entity |
-|---|---|---|---|
-| `products.viewCount` + `IDX_products_viewCount` | safety-net | **none** | `product.entity.ts` |
-| `products.allowWholesaleColorSelect` | safety-net + `sql/20260729-wholesale-color-select.sql` | **none** | `product.entity.ts` |
-| `products.minWholesaleColors` | safety-net + Path C | **none** | `product.entity.ts` |
-| `categories.bannerUrl` | safety-net | **none** | `category.entity.ts` |
-| `orders.torobClid` + `IDX_orders_torobClid` | safety-net | **none** (hardening has `idempotencyKey` only) | `order.entity.ts` |
+| Column / index                                  | Safety-net / Path C                                    | Prior TypeORM migration                        | Entity               |
+| ----------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------- | -------------------- |
+| `products.viewCount` + `IDX_products_viewCount` | safety-net                                             | **none**                                       | `product.entity.ts`  |
+| `products.allowWholesaleColorSelect`            | safety-net + `sql/20260729-wholesale-color-select.sql` | **none**                                       | `product.entity.ts`  |
+| `products.minWholesaleColors`                   | safety-net + Path C                                    | **none**                                       | `product.entity.ts`  |
+| `categories.bannerUrl`                          | safety-net                                             | **none**                                       | `category.entity.ts` |
+| `orders.torobClid` + `IDX_orders_torobClid`     | safety-net                                             | **none** (hardening has `idempotencyKey` only) | `order.entity.ts`    |
 
 Path C channel-split / void / retail-b2c columns intentionally **out of scope** (larger surface; not in safety-net dual-path gap list for this promotion).
 
@@ -371,12 +474,12 @@ Path C channel-split / void / retail-b2c columns intentionally **out of scope** 
 
 ### Claim verification
 
-| Claim | Verdict | Evidence |
-|---|---|---|
+| Claim                                                                     | Verdict  | Evidence                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Evidence pack: no current remapped lint/test marked **PENDING** as status | **PASS** | `docs/test-and-acceptance-evidence.md`: sole `PENDING` hit is Â§1 vocab row (historical definition only). Â§2/Â§3 remapped lint/test + OTP/blog assets **PASS**; Â§8 Phase-2 remap **PASS**; Â§9.1 remapped gates in PASS count; Â§10#4 C5 mitigated; Â§11 quality-gates answer remapped exit **0** |
-| Progress: checkpoint **61/100**; C5 mitigated; no â€œre-run PENDINGâ€ | **PASS** | `docs/implementation-progress.md` checkpoint + backlog: **61/100**; C5 **Mitigated**; no â€œre-run PENDINGâ€ / â€œcurrently PENDINGâ€; 55/100 only as historical note |
-| Readiness: **GO WITH CONDITIONS** 61; C1/C3/C4 accepted-with-expiry | **PASS** | `docs/PLATFORM-READINESS-REPORT.md` Final decision **GO WITH CONDITIONS** (**61/100**); condition register + P1 acceptance table expire **2026-09-09**; C5 mitigated |
-| Smoke `PRODUCT_ID` allowlist | **PASS** | `scripts/acceptance-smoke-readonly.sh` L23: `/^[A-Za-z0-9-]+$/` before URL use |
+| Progress: checkpoint **61/100**; C5 mitigated; no â€œre-run PENDINGâ€     | **PASS** | `docs/implementation-progress.md` checkpoint + backlog: **61/100**; C5 **Mitigated**; no â€œre-run PENDINGâ€ / â€œcurrently PENDINGâ€; 55/100 only as historical note                                                                                                                               |
+| Readiness: **GO WITH CONDITIONS** 61; C1/C3/C4 accepted-with-expiry       | **PASS** | `docs/PLATFORM-READINESS-REPORT.md` Final decision **GO WITH CONDITIONS** (**61/100**); condition register + P1 acceptance table expire **2026-09-09**; C5 mitigated                                                                                                                                |
+| Smoke `PRODUCT_ID` allowlist                                              | **PASS** | `scripts/acceptance-smoke-readonly.sh` L23: `/^[A-Za-z0-9-]+$/` before URL use                                                                                                                                                                                                                      |
 
 ### Reviewer verdict: **PASS**
 
@@ -401,14 +504,14 @@ Path C channel-split / void / retail-b2c columns intentionally **out of scope** 
 
 ### Claim verification
 
-| Claim | Verdict | Evidence |
-|---|---|---|
-| Docs reconciled (lint/test PASS, score 61 consistent) | **FAIL (partial)** | `PLATFORM-READINESS-REPORT.md` gates + score **61** OK; `test-and-acceptance-evidence.md` still has remapped lint/test **PENDING** in Â§3 assets, Â§8 note, Â§9.1 counts, Â§10#4, Â§11. `implementation-progress.md` top milestone 61 OK, but backlog C5 still â€œre-run PENDINGâ€ and checkpoint still **55/100** + open C5 |
-| C1/C3/C4 accepted-with-expiry 2026-08-09 â†’ 2026-09-09 under human full-authority | **PASS** | Readiness Â§P1 acceptances + condition register |
-| PRODUCT_ID allowlist in smoke script | **PASS** | `scripts/acceptance-smoke-readonly.sh` L23: `/^[A-Za-z0-9-]+$/` before URL use |
-| DoD unaccepted-P1 â†’ MET-via-acceptance; journeys still NOT MET as purchase-verified | **PASS** | Readiness DoD rows; journeys **NOT MET** (liveness only) |
-| Website-builder still blocked | **PASS** | Final decision + next-allowed activity |
-| No PENDING remap in evidence pack | **FAIL** | Explicit prior fix #1 / verify criterion unmet (see above) |
+| Claim                                                                                 | Verdict            | Evidence                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Docs reconciled (lint/test PASS, score 61 consistent)                                 | **FAIL (partial)** | `PLATFORM-READINESS-REPORT.md` gates + score **61** OK; `test-and-acceptance-evidence.md` still has remapped lint/test **PENDING** in Â§3 assets, Â§8 note, Â§9.1 counts, Â§10#4, Â§11. `implementation-progress.md` top milestone 61 OK, but backlog C5 still â€œre-run PENDINGâ€ and checkpoint still **55/100** + open C5 |
+| C1/C3/C4 accepted-with-expiry 2026-08-09 â†’ 2026-09-09 under human full-authority    | **PASS**           | Readiness Â§P1 acceptances + condition register                                                                                                                                                                                                                                                                              |
+| PRODUCT_ID allowlist in smoke script                                                  | **PASS**           | `scripts/acceptance-smoke-readonly.sh` L23: `/^[A-Za-z0-9-]+$/` before URL use                                                                                                                                                                                                                                               |
+| DoD unaccepted-P1 â†’ MET-via-acceptance; journeys still NOT MET as purchase-verified | **PASS**           | Readiness DoD rows; journeys **NOT MET** (liveness only)                                                                                                                                                                                                                                                                     |
+| Website-builder still blocked                                                         | **PASS**           | Final decision + next-allowed activity                                                                                                                                                                                                                                                                                       |
+| No PENDING remap in evidence pack                                                     | **FAIL**           | Explicit prior fix #1 / verify criterion unmet (see above)                                                                                                                                                                                                                                                                   |
 
 ### Spot-check (reviewer, non-destructive)
 
@@ -463,16 +566,16 @@ Path C channel-split / void / retail-b2c columns intentionally **out of scope** 
 
 ### Acceptance criteria (one-by-one)
 
-| # | Criterion | Verdict | Notes |
-|---|---|---|---|
-| 1 | Preflight documented; no claim conflicts; handoff restored from HEAD before claim | **MET** | Handoff 2026-08-09T01:52:20Z / 02:20:00Z; single active task |
-| 2 | `docs/01-current-system-audit.md` evidence-backed | **PARTIAL** | Solid audit body; baseline table still Phase-1 lint/test FAIL + â€œprod HTTP NOT RUNâ€ â€” stale vs later smoke/gates |
-| 3 | `docs/02-target-architecture.md` smallest compatible evolution (no builder/SaaS) | **MET** | ADRs 001â€“007; hard non-goals honored |
-| 4 | Retail + wholesale critical journeys verified E2E with recorded evidence | **NOT MET** | Liveness only (R-00/W-00); purchase/OTP/credit paths NOT RUN â€” MASTER DoD + task AC |
-| 5 | No open P0; no unaccepted P1; quality gates with exact results | **NOT MET** | C1/C3/C4 open P1; report DoD row explicitly **NOT MET**; no acceptance+expiry record. Gate *commands* exist; evidence pack still says remapped lint/test **PENDING** while handoff claims 0 |
-| 6 | `docs/deployment-runbook.md` executable backup/deploy/health/rollback | **PARTIAL** | Executable structure present; backup/restore rehearsal **UNKNOWN** (C3) |
-| 7 | `PLATFORM-READINESS-REPORT.md` ends with exactly one of GO \| GO WITH CONDITIONS \| NO-GO | **MET (form)** | Verdict **GO WITH CONDITIONS** â€” but internal sections contradict (see findings) |
-| 8 | Production data/URLs/integrations preserved; no website-builder/multi-tenant/page-builder | **MET** | Readonly smoke + docs/tooling/auth util extract; no builder scope |
+| #   | Criterion                                                                                 | Verdict        | Notes                                                                                                                                                                                       |
+| --- | ----------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Preflight documented; no claim conflicts; handoff restored from HEAD before claim         | **MET**        | Handoff 2026-08-09T01:52:20Z / 02:20:00Z; single active task                                                                                                                                |
+| 2   | `docs/01-current-system-audit.md` evidence-backed                                         | **PARTIAL**    | Solid audit body; baseline table still Phase-1 lint/test FAIL + â€œprod HTTP NOT RUNâ€ â€” stale vs later smoke/gates                                                                       |
+| 3   | `docs/02-target-architecture.md` smallest compatible evolution (no builder/SaaS)          | **MET**        | ADRs 001â€“007; hard non-goals honored                                                                                                                                                      |
+| 4   | Retail + wholesale critical journeys verified E2E with recorded evidence                  | **NOT MET**    | Liveness only (R-00/W-00); purchase/OTP/credit paths NOT RUN â€” MASTER DoD + task AC                                                                                                       |
+| 5   | No open P0; no unaccepted P1; quality gates with exact results                            | **NOT MET**    | C1/C3/C4 open P1; report DoD row explicitly **NOT MET**; no acceptance+expiry record. Gate _commands_ exist; evidence pack still says remapped lint/test **PENDING** while handoff claims 0 |
+| 6   | `docs/deployment-runbook.md` executable backup/deploy/health/rollback                     | **PARTIAL**    | Executable structure present; backup/restore rehearsal **UNKNOWN** (C3)                                                                                                                     |
+| 7   | `PLATFORM-READINESS-REPORT.md` ends with exactly one of GO \| GO WITH CONDITIONS \| NO-GO | **MET (form)** | Verdict **GO WITH CONDITIONS** â€” but internal sections contradict (see findings)                                                                                                          |
+| 8   | Production data/URLs/integrations preserved; no website-builder/multi-tenant/page-builder | **MET**        | Readonly smoke + docs/tooling/auth util extract; no builder scope                                                                                                                           |
 
 ### Architecture / code quality / security
 
@@ -484,7 +587,7 @@ Path C channel-split / void / retail-b2c columns intentionally **out of scope** 
 
 ### Findings (severity)
 
-1. **High â€” AC / MASTER DoD unmet for Done:** Critical retail/wholesale journeys not E2E-verified; C1/C3/C4 remain open P1 without explicit authorized acceptance **with expiry** (report itself marks â€œNo open P0; no unaccepted P1â€ **NOT MET**). `GO WITH CONDITIONS` is a valid *report verdict*, not automatic task Done under MASTER Â§DoD / task AC #4â€“#5.
+1. **High â€” AC / MASTER DoD unmet for Done:** Critical retail/wholesale journeys not E2E-verified; C1/C3/C4 remain open P1 without explicit authorized acceptance **with expiry** (report itself marks â€œNo open P0; no unaccepted P1â€ **NOT MET**). `GO WITH CONDITIONS` is a valid _report verdict_, not automatic task Done under MASTER Â§DoD / task AC #4â€“#5.
 2. **High â€” Evidence pack drift / contradictory readiness surface:** `docs/test-and-acceptance-evidence.md` and `docs/implementation-progress.md` still mark remapped lint/test **PENDING**, progress score **55/100**, while handoff + readiness executive claim **PASS exit 0** and **61/100**. `PLATFORM-READINESS-REPORT.md` quality-gates table + Final decision still list remapped lint/test **PENDING** and **C5** open, while C5 register row says mitigated and evidence index says PASS. Do not finalize until one coherent evidence story.
 3. **Medium â€” Audit staleness:** `docs/01-current-system-audit.md` executive baseline still asserts lint/test FAIL and live prod verification NOT RUN; conflicts with authorized smoke + remapped gates.
 4. **Medium/Low â€” Smoke `PRODUCT_ID` URL hygiene:** validate id charset (e.g. UUID/cuid allowlist) before interpolating into `curl` URL, same class as slug hardening.

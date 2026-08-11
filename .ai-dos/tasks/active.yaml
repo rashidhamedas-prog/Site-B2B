@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260810-006-readiness-remediation"
     worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002"
     claimed_at: "2026-08-10T10:24:22Z"
-    heartbeat_at: "2026-08-10T14:42:00Z"
+    heartbeat_at: "2026-08-11T12:50:00Z"
     depends_on: []
     file_claims:
       - ".ai-dos/tasks/active.yaml"
@@ -24,9 +24,13 @@ tasks:
       - "docs/test-and-acceptance-evidence.md"
       - "docs/WORKLOG.md"
       - "docs/BLOG_TEST_REPORT.md"
+      - "docs/deployment-runbook.md"
+      - "docs/02-target-architecture.md"
+      - "docs/reports/"
       - "scripts/e2e-purchase-test.sh"
       - "scripts/restore-drill-disposable.sh"
       - "scripts/_negative-e2e-guards.sh"
+      - "scripts/provision-e2e-identity.sh"
       - "apps/web/src/app/(wholesale)/blog/page.tsx"
       - "apps/web/src/app/(wholesale)/blog/[slug]/page.tsx"
       - "apps/web/src/components/retail/RetailHeader.tsx"
@@ -38,26 +42,39 @@ tasks:
       - "apps/web/src/app/retail/blog/author/[slug]/page.tsx"
       - "apps/api/src/modules/blog/blog-extras.service.ts"
       - "apps/api/src/modules/blog/blog.controller.ts"
+      - "apps/api/src/modules/blog/blog.module.ts"
+      - "apps/api/src/modules/blog/entities/blog-media-asset.entity.ts"
+      - "apps/api/src/modules/blog/blog-analytics-rate-limit.spec.ts"
+      - "apps/api/src/database/migrations/20260810-005-customer-channel-classification.ts"
       - "apps/web/src/components/admin/AdminBlogTools.tsx"
       - "apps/web/src/components/admin/AdminBlogAnalytics.tsx"
       - "apps/web/src/components/blog/BlogAnalyticsTracker.tsx"
       - "apps/web/next.config.ts"
+      - "apps/api/src/main.ts"
+      - "apps/api/src/common/client-ip.ts"
+      - "apps/api/src/modules/redis/redis.module.ts"
       - "apps/api/src/modules/rma/rma.service.ts"
       - "apps/api/src/modules/rma/rma.controller.ts"
       - "apps/api/src/modules/rma/rma.module.ts"
       - "apps/api/src/modules/rma/entities/return-request.entity.ts"
+      - "apps/api/src/modules/rma/entities/return-request-audit.entity.ts"
       - "apps/api/src/database/migrations/20260810-001-create-return-requests.ts"
       - "apps/api/src/database/migrations/20260810-002-product-compare-at-prices.ts"
+      - "apps/api/src/database/migrations/20260810-003-return-request-audit.ts"
+      - "apps/api/src/database/migrations/20260810-004-blog-media-tombstone.ts"
+      - "apps/api/src/database/migrations/20260810-001-create-return-requests.spec.ts"
       - "apps/api/src/modules/dashboard/dashboard.service.ts"
       - "apps/api/src/modules/product/entities/product.entity.ts"
       - "apps/api/src/modules/product/dto/create-product.dto.ts"
       - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/product/product-pricing.invariant.spec.ts"
       - "apps/web/src/components/admin/AdminProducts.tsx"
       - "packages/shared-types/src/models.ts"
       - "apps/api/src/modules/feeds/feeds.controller.ts"
       - "apps/web/src/lib/public-product-path.ts"
       - "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "apps/web/src/app/sitemap.ts"
+      - ".env.example"
     acceptance_criteria:
       - "Re-open governance coherently: active task, project status, readiness report, progress, and handoff agree; do not claim Done while any stated criterion is NOT MET"
       - "Remove Python command-injection paths from e2e-purchase-test.sh by passing API_URL, WEB_URL, and API-derived slug through argv/stdin rather than interpolating into python -c source"
@@ -99,9 +116,11 @@ tasks:
       - "product price API roundtrip and Playwright create/edit/card/PDP tests for both channels, null clearing, invalid price relation, currency conversion, and bigint-safe values"
       - "Torob contract over every feed link: GET/HEAD 200, redirects=0, no noindex, self-canonical, sitemap/feed path equality, and old slug at most one 308 to a 200 target"
     notes: |
-      Evidence wave shipped: PR #26 ``197d54f``, AI-DOS sync PR #27/#28, VPS HEAD ``67b55b8``.
-      Readiness **71/100**. Task remains in_progress; claims retained.
-      Do not inflate to 76/100 or 100; no website-builder; no Done until C1 staging evidence.
+      Remediation wave (Reviewer/Security HIGH): in worktree vs baseline origin/master@ab4ffab (PR #30).
+      Prior evidence ship: PR #26 ``197d54f``, AI-DOS sync PR #27/#28, last VPS ``67b55b8``.
+      Readiness **71/100** — do not inflate. Task in_progress; claims retained; website-builder blocked.
+      Do not Done until all AC MET + fresh independent Reviewer+Security PASS.
+      Code SHA / evidence SHA / deploy SHA recorded separately in status.md.
     additional_scope:
       - "Blog completion and regressions"
       - "Admin RMA and reporting failures"

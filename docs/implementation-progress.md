@@ -6,11 +6,25 @@ Retail & wholesale completion per `Retail-Wholesale-Completion-Package/MASTER.md
 - Owner: `cursor:orchestrator-TASK-20260810-006`
 - Branch: `ai/TASK-20260810-006-readiness-remediation`
 - Authoritative worktree: `D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002`
-- Live HEAD: `8e1f4a5` (PR #25)
+- Live / code baseline: `origin/master@ab4ffab` (PR #30); remediation branch worktree (not Done)
+- Evidence SHA (scored 71 wave): PR #28 `67b55b8` docs pack — keep distinct from code/deploy SHA
+- Deploy SHA: last recorded VPS ship before this remediation: `67b55b8`; this remediation **not deployed** yet
 
-Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason. Prior score **81/100** is **superseded / invalidated**. Authoritative checkpoint after evidence wave: **71/100** (Reviewer rejected ~76).
+Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer spot-checks. Unavailable checks are `NOT RUN` with reason. Prior score **81/100** is **superseded / invalidated**. Authoritative checkpoint: **71/100** (Reviewer rejected ~76). Do not raise readiness without durable rubric evidence.
 
 ---
+
+## 2026-08-10 19:15 — Reviewer/Security HIGH remediation (code)
+
+- Status: **in_progress** (task **not Done**; claims retained; readiness **71/100**)
+- Scope completed (code/docs in worktree):
+  - RMA migration ownership-aware down (ADR-008) + audit table migration
+  - E2E immutable hosts + env-identity + SQL mutation removed + exact PENDING_REVIEW asserts
+  - Blog Redis rate limit + trusted IP + server unique views + media tombstone
+  - Product channel final-price invariants + customer reclass split to 005
+  - Docs SHA sync to `ab4ffab`/PR30 with separate evidence/deploy fields
+- Still **NOT RUN**: staging wholesale E2E; retail OTP→ONLINE; rollback/off-box; full Torob; fresh Reviewer/Security PASS; full gate matrix with timestamps
+- Next: run quality gates; keep claims; no Done; no readiness inflate; no website-builder
 
 ## 2026-08-10 17:30 — Milestone parallel evidence wave (score 71)
 
@@ -165,15 +179,15 @@ Honesty rule: verification entries cite `.ai-dos/tasks/handoff.md` and Reviewer 
 
 Derived from handoff + Phase-2/3 evidence (+ Reviewer FAIL 2026-08-10). Priorities: P0 blocker → P1 acceptance risk → P2 tooling/docs debt.
 
-| Priority | Item | Evidence | Next step | Data impact |
-|----------|------|----------|-----------|-------------|
-| P1 **C1** | Purchase E2E (staging sanitized) | Historical CASH superseded; retail NOT MET; staging re-run NOT RUN | **accepted-with-expiry → 2026-09-09**; staging-only sanitized script | none if non-prod |
-| P1 **C3** | Backup/restore | Restore re-verify **MET** 2026-08-10; rollback + off-box still open | **accepted-with-expiry → 2026-09-09** (not Satisfied) | disposable only |
-| — **C4** | Schema dual-path | VPS migration id=11 + safety-net narrowed (PR #19) | **Satisfied** 2026-08-09 | none |
-| P2 **C5** | Remapped lint/test + eslint | lint/test **PASS** exit 0; eslint deferred Low | **Mitigated**; optional eslint later | none |
-| — | Prod health (was C2) | authorized smoke PASS | Keep monitoring | none |
-| — | Build/typecheck | exit 0 | Keep green | none |
-| P2 | Stub AI-DOS docs 00–11 | TODO stubs | Separate task | none |
+| Priority  | Item                             | Evidence                                                            | Next step                                                            | Data impact      |
+| --------- | -------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------- |
+| P1 **C1** | Purchase E2E (staging sanitized) | Historical CASH superseded; retail NOT MET; staging re-run NOT RUN  | **accepted-with-expiry → 2026-09-09**; staging-only sanitized script | none if non-prod |
+| P1 **C3** | Backup/restore                   | Restore re-verify **MET** 2026-08-10; rollback + off-box still open | **accepted-with-expiry → 2026-09-09** (not Satisfied)                | disposable only  |
+| — **C4**  | Schema dual-path                 | VPS migration id=11 + safety-net narrowed (PR #19)                  | **Satisfied** 2026-08-09                                             | none             |
+| P2 **C5** | Remapped lint/test + eslint      | lint/test **PASS** exit 0; eslint deferred Low                      | **Mitigated**; optional eslint later                                 | none             |
+| —         | Prod health (was C2)             | authorized smoke PASS                                               | Keep monitoring                                                      | none             |
+| —         | Build/typecheck                  | exit 0                                                              | Keep green                                                           | none             |
+| P2        | Stub AI-DOS docs 00–11           | TODO stubs                                                          | Separate task                                                        | none             |
 
 ---
 

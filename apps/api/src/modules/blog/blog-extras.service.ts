@@ -1,6 +1,14 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { DataSource, Repository, ILike } from 'typeorm';
 import { createHash } from 'crypto';
 import { BlogPostEntity } from './entities/blog-post.entity';
 import { BlogArticleRevisionEntity } from './entities/blog-article-revision.entity';
@@ -12,6 +20,7 @@ import { analyzeSeo, type SEOAnalysisInput } from './blog-seo-analysis';
 import { sanitizeBlogHtml } from './blog-sanitize';
 import { StorageService } from '../upload/storage.service';
 import { ProductEntity } from '../product/entities/product.entity';
+import { RedisService } from '../redis/redis.module';
 
 type Actor = { id?: string; role?: string; blogRole?: string | null };
 
@@ -19,13 +28,19 @@ type Actor = { id?: string; role?: string; blogRole?: string | null };
 export class BlogExtrasService {
   constructor(
     @InjectRepository(BlogPostEntity) private readonly postRepo: Repository<BlogPostEntity>,
-    @InjectRepository(BlogArticleRevisionEntity) private readonly revRepo: Repository<BlogArticleRevisionEntity>,
-    @InjectRepository(BlogMediaAssetEntity) private readonly mediaRepo: Repository<BlogMediaAssetEntity>,
-    @InjectRepository(BlogCommentEntity) private readonly commentRepo: Repository<BlogCommentEntity>,
-    @InjectRepository(BlogAnalyticsEntity) private readonly analyticsRepo: Repository<BlogAnalyticsEntity>,
+    @InjectRepository(BlogArticleRevisionEntity)
+    private readonly revRepo: Repository<BlogArticleRevisionEntity>,
+    @InjectRepository(BlogMediaAssetEntity)
+    private readonly mediaRepo: Repository<BlogMediaAssetEntity>,
+    @InjectRepository(BlogCommentEntity)
+    private readonly commentRepo: Repository<BlogCommentEntity>,
+    @InjectRepository(BlogAnalyticsEntity)
+    private readonly analyticsRepo: Repository<BlogAnalyticsEntity>,
     @InjectRepository(BlogAuthorEntity) private readonly authorRepo: Repository<BlogAuthorEntity>,
     @InjectRepository(ProductEntity) private readonly productRepo: Repository<ProductEntity>,
     private readonly storage: StorageService,
+    private readonly dataSource: DataSource,
+    private readonly redis: RedisService
   ) {}
 
   // ── SEO analysis ──────────────────────────────────────────
@@ -82,7 +97,7 @@ export class BlogExtrasService {
         snapshot,
         changeSummary: changeSummary || null,
         createdBy: actor?.id || null,
-      }),
+      })
     );
 
     const all = await this.revRepo.find({
@@ -122,7 +137,7 @@ export class BlogExtrasService {
   async autosave(
     id: string,
     data: Partial<BlogPostEntity> & { expectedVersion?: number },
-    actor?: Actor,
+    actor?: Actor
   ) {
     const post = await this.postRepo.findOne({ where: { id } });
     if (!post) throw new NotFoundException('مطلب یافت نشد');
@@ -215,7 +230,7 @@ export class BlogExtrasService {
         caption: opts.caption || null,
         contentHash: opts.contentHash || null,
         createdBy: opts.createdBy || null,
-      }),
+      })
     );
     return { ...saved, duplicate: false };
   }
@@ -227,30 +242,71 @@ export class BlogExtrasService {
     return this.mediaRepo.save(row);
   }
 
-  async removeMedia(id: string, opts?: { forceReplace?: boolean }) {
-    const row = await this.mediaRepo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException('رسانه یافت نشد');
+  /**
+   * Tombstone → storage delete → metadata purge (retryable).
+   * Storage failure leaves TOMBSTONED metadata (never orphans a deleted object without DB state).
+   * Missing object on retry is idempotent success.
+   */
+  async removeMedia(id: string, opts?: { forceReplace?: boolean; actorUserId?: string }) {
+    const url = await this.dataSource.transaction(async (manager) => {
+      const row = await manager
+        .getRepository(BlogMediaAssetEntity)
+        .createQueryBuilder('m')
+        .setLock('pessimistic_write')
+        .where('m.id = :id', { id })
+        .getOne();
+      if (!row) throw new NotFoundException('رسانه یافت نشد');
 
-    const url = row.publicUrl;
-    const usages = await this.findMediaUsages(url);
-    if (usages.length > 0 && !opts?.forceReplace) {
-      throw new ConflictException({
-        message: 'رسانه در مطالب ارجاع دارد',
-        usages,
-      });
+      if (row.purgeStatus === 'PURGED') {
+        return null; // already gone — idempotent
+      }
+
+      const usages = await this.findMediaUsages(row.publicUrl);
+      if (usages.length > 0 && !opts?.forceReplace) {
+        throw new ConflictException({
+          message: 'رسانه در مطالب ارجاع دارد',
+          usages,
+        });
+      }
+
+      row.purgeStatus = 'TOMBSTONED';
+      row.tombstonedAt = new Date();
+      row.tombstonedByUserId = opts?.actorUserId || null;
+      await manager.getRepository(BlogMediaAssetEntity).save(row);
+      await manager.query(
+        `INSERT INTO blog_media_delete_audits ("id","mediaId","publicUrl","actorUserId","action","detail","createdAt")
+         VALUES (gen_random_uuid(), $1, $2, $3, 'TOMBSTONE', $4, NOW())`,
+        [row.id, row.publicUrl, opts?.actorUserId || null, 'reference-checked tombstone']
+      );
+      return row.publicUrl;
+    });
+
+    if (url === null) {
+      return { deleted: true, idempotent: true };
     }
 
-    // Delete storage first; keep DB row if storage fails so metadata stays consistent.
     try {
       await this.storage.deleteByUrls([url]);
     } catch (err) {
-      // Missing object: treat as idempotent success for retry.
       const msg = err instanceof Error ? err.message : String(err);
       if (!/NoSuchKey|not found|404|NotFound/i.test(msg)) {
+        // Metadata remains TOMBSTONED for retry — do not delete DB row.
+        await this.mediaRepo.query(
+          `INSERT INTO blog_media_delete_audits ("id","mediaId","publicUrl","actorUserId","action","detail","createdAt")
+           VALUES (gen_random_uuid(), $1, $2, $3, 'STORAGE_FAIL', $4, NOW())`,
+          [id, url, opts?.actorUserId || null, msg.slice(0, 500)]
+        );
         throw err;
       }
+      // missing object → continue to purge metadata
     }
+
     await this.mediaRepo.delete(id);
+    await this.mediaRepo.query(
+      `INSERT INTO blog_media_delete_audits ("id","mediaId","publicUrl","actorUserId","action","detail","createdAt")
+       VALUES (gen_random_uuid(), $1, $2, $3, 'PURGED', 'storage deleted; metadata removed', NOW())`,
+      [id, url, opts?.actorUserId || null]
+    );
     return { deleted: true };
   }
 
@@ -262,7 +318,7 @@ export class BlogExtrasService {
       .where('p.deletedAt IS NULL')
       .andWhere(
         `(p.coverImage = :url OR p.ogImage = :url OR p.twitterImage = :url OR p.content ILIKE :like)`,
-        { url, like: `%${url}%` },
+        { url, like: `%${url}%` }
       )
       .select([
         'p.id',
@@ -413,14 +469,16 @@ export class BlogExtrasService {
   async createComment(
     articleId: string,
     data: { name: string; email: string; content: string; parentId?: string; honeypot?: string },
-    meta?: { ip?: string; userAgent?: string },
+    meta?: { ip?: string; userAgent?: string }
   ) {
     if (data.honeypot) return { ok: true }; // silently drop bots
     const post = await this.postRepo.findOne({ where: { id: articleId, status: 'PUBLISHED' } });
     if (!post) throw new NotFoundException('مطلب یافت نشد');
     if (post.commentsEnabled === false) throw new ForbiddenException('نظرات این مطلب غیرفعال است');
 
-    const content = sanitizeBlogHtml(data.content).replace(/<[^>]+>/g, '').trim();
+    const content = sanitizeBlogHtml(data.content)
+      .replace(/<[^>]+>/g, '')
+      .trim();
     if (content.length < 3 || content.length > 2000) {
       throw new BadRequestException('طول نظر نامعتبر است');
     }
@@ -448,7 +506,7 @@ export class BlogExtrasService {
         parentId: data.parentId || null,
         ipHash,
         userAgent: meta?.userAgent?.slice(0, 300) || null,
-      }),
+      })
     );
   }
 
@@ -472,20 +530,68 @@ export class BlogExtrasService {
     'internal',
   ]);
 
-  /** In-process abuse guard for public analytics (IP → timestamps). */
+  private static readonly RL_WINDOW_SEC = 60;
+  private static readonly RL_MAX = 60;
+  private static readonly RL_MEMORY_MAX_KEYS = 10_000;
+  private static readonly UV_TTL_SEC = 86_400;
+  /** Bounded in-memory fallback when Redis is down (never unbounded). */
   private static analyticsHits = new Map<string, number[]>();
 
-  private assertAnalyticsRateLimit(ip?: string) {
-    const key = ip ? createHash('sha256').update(ip).digest('hex').slice(0, 24) : 'anon';
+  private ipHash(ip?: string): string {
+    return ip ? createHash('sha256').update(ip).digest('hex').slice(0, 24) : 'anon';
+  }
+
+  private assertMemoryRateLimit(key: string) {
     const now = Date.now();
-    const windowMs = 60_000;
-    const max = 60;
+    const windowMs = BlogExtrasService.RL_WINDOW_SEC * 1000;
     const prev = (BlogExtrasService.analyticsHits.get(key) || []).filter((t) => now - t < windowMs);
-    if (prev.length >= max) {
-      throw new BadRequestException('تعداد درخواست‌های آمار زیاد است');
+    if (prev.length >= BlogExtrasService.RL_MAX) {
+      throw new HttpException('تعداد درخواست‌های آمار زیاد است', HttpStatus.TOO_MANY_REQUESTS);
     }
     prev.push(now);
     BlogExtrasService.analyticsHits.set(key, prev);
+    if (BlogExtrasService.analyticsHits.size > BlogExtrasService.RL_MEMORY_MAX_KEYS) {
+      // Evict expired / oldest keys to keep memory bounded under spoof floods.
+      for (const [k, times] of BlogExtrasService.analyticsHits) {
+        const kept = times.filter((t) => now - t < windowMs);
+        if (kept.length === 0) BlogExtrasService.analyticsHits.delete(k);
+        else BlogExtrasService.analyticsHits.set(k, kept);
+        if (BlogExtrasService.analyticsHits.size <= BlogExtrasService.RL_MEMORY_MAX_KEYS) break;
+      }
+      while (BlogExtrasService.analyticsHits.size > BlogExtrasService.RL_MEMORY_MAX_KEYS) {
+        const first = BlogExtrasService.analyticsHits.keys().next().value;
+        if (first === undefined) break;
+        BlogExtrasService.analyticsHits.delete(first);
+      }
+    }
+  }
+
+  /** Redis-backed shared rate limit; bounded memory fallback. Throws 429 when exceeded. */
+  async assertAnalyticsRateLimit(ip?: string) {
+    const hash = this.ipHash(ip);
+    const key = `blog:analytics:rl:${hash}`;
+    if (this.redis.isReady) {
+      const count = await this.redis.incrWithTtl(key, BlogExtrasService.RL_WINDOW_SEC);
+      if (count !== null) {
+        if (count > BlogExtrasService.RL_MAX) {
+          throw new HttpException('تعداد درخواست‌های آمار زیاد است', HttpStatus.TOO_MANY_REQUESTS);
+        }
+        return;
+      }
+    }
+    this.assertMemoryRateLimit(hash);
+  }
+
+  /**
+   * Unique view = first view from this IP hash for this article within UV_TTL_SEC.
+   * Server-derived via Redis SET NX; client headers are never trusted.
+   * When Redis is unavailable, uniqueViews is not incremented (honest degrade).
+   */
+  private async claimUniqueView(articleId: string, ip?: string): Promise<boolean> {
+    if (!this.redis.isReady) return false;
+    const hash = this.ipHash(ip);
+    const key = `blog:analytics:uv:${articleId}:${hash}`;
+    return this.redis.setNxEx(key, BlogExtrasService.UV_TTL_SEC, '1');
   }
 
   private isUuid(id: string): boolean {
@@ -493,20 +599,15 @@ export class BlogExtrasService {
   }
 
   /**
-   * Atomic UPSERT/increment. uniqueViews increments only when client marks a
-   * first-in-session unique view (x-blog-uv: 1) — honest client-assisted unique,
-   * not a second pageViews clone.
+   * Atomic UPSERT/increment.
+   * uniqueViews: server-derived (Redis NX per article+IP hash, 24h). Not client x-blog-uv.
    */
-  async trackEvent(
-    articleId: string,
-    event: string,
-    meta?: { ip?: string; uniqueView?: boolean },
-  ) {
+  async trackEvent(articleId: string, event: string, meta?: { ip?: string }) {
     if (!this.isUuid(articleId)) throw new BadRequestException('شناسه مطلب نامعتبر است');
     if (!BlogExtrasService.ANALYTICS_EVENTS.has(event)) {
       throw new BadRequestException('رویداد نامعتبر است');
     }
-    this.assertAnalyticsRateLimit(meta?.ip);
+    await this.assertAnalyticsRateLimit(meta?.ip);
 
     const published = await this.postRepo.findOne({
       where: { id: articleId, status: 'PUBLISHED' },
@@ -537,11 +638,11 @@ export class BlogExtrasService {
         (gen_random_uuid(), $1, 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, NOW())
       ON CONFLICT ("articleId") DO NOTHING
       `,
-      [articleId],
+      [articleId]
     );
 
     if (event === 'view') {
-      const uv = meta?.uniqueView ? 1 : 0;
+      const uv = (await this.claimUniqueView(articleId, meta?.ip)) ? 1 : 0;
       await this.analyticsRepo.query(
         `
         UPDATE blog_analytics
@@ -550,7 +651,7 @@ export class BlogExtrasService {
             "updatedAt" = NOW()
         WHERE "articleId" = $1
         `,
-        [articleId, uv],
+        [articleId, uv]
       );
     } else {
       await this.analyticsRepo.query(
@@ -560,7 +661,7 @@ export class BlogExtrasService {
             "updatedAt" = NOW()
         WHERE "articleId" = $1
         `,
-        [articleId],
+        [articleId]
       );
     }
 
@@ -581,7 +682,7 @@ export class BlogExtrasService {
           (gen_random_uuid(), $1, 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, NOW())
         ON CONFLICT ("articleId") DO NOTHING
         `,
-        [articleId],
+        [articleId]
       );
       row = await this.analyticsRepo.findOne({ where: { articleId } });
     }
@@ -625,7 +726,7 @@ export class BlogExtrasService {
         acc.scroll90 += Number(row.scroll90) || 0;
         return acc;
       },
-      { pageViews: 0, uniqueViews: 0, ctaClicks: 0, productClicks: 0, scroll90: 0 },
+      { pageViews: 0, uniqueViews: 0, ctaClicks: 0, productClicks: 0, scroll90: 0 }
     );
 
     return {
