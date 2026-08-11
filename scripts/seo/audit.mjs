@@ -20,12 +20,14 @@ const BASE_IR = flag('--base-ir', 'https://www.poshaktaranom.ir');
 const isLocal = BASE_COM.includes('localhost') || BASE_IR.includes('localhost');
 
 const UA = 'TaranomSeoAudit/1.0 (+https://poshaktaranom.com)';
+// Crawler UA: pages render blocking (htmlLimitedBots) so 404 statuses are real.
+const BOT_UA = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 
-async function probe(base, path, hostHeader) {
+async function probe(base, path, hostHeader, { asBot = false } = {}) {
   const res = await fetch(`${base}${path}`, {
     redirect: 'manual',
     headers: {
-      'user-agent': UA,
+      'user-agent': asBot ? BOT_UA : UA,
       ...(isLocal && hostHeader ? { host: hostHeader } : {}),
     },
   });
@@ -61,8 +63,8 @@ const IR_HOST = 'www.poshaktaranom.ir';
   const search = await probe(BASE_COM, '/products?q=test', COM_HOST);
   check('com /products?q= noindex', metaRobots(search.text).includes('noindex'), metaRobots(search.text));
 
-  const missing = await probe(BASE_COM, '/products/definitely-missing-slug-404', COM_HOST);
-  check('com missing product is 404', missing.status === 404, `status=${missing.status}`);
+  const missing = await probe(BASE_COM, '/products/definitely-missing-slug-404', COM_HOST, { asBot: true });
+  check('com missing product is 404 (bot)', missing.status === 404, `status=${missing.status}`);
 
   const shop = await probe(BASE_COM, '/shop/some-old-category', COM_HOST);
   check('com /shop/* → 301 /products', shop.status === 301 && /\/products$/.test(shop.location), `status=${shop.status} loc=${shop.location}`);
@@ -102,8 +104,8 @@ const IR_HOST = 'www.poshaktaranom.ir';
   const search = await probe(BASE_IR, '/products?q=test', IR_HOST);
   check('ir /products?q= noindex', metaRobots(search.text).includes('noindex'), metaRobots(search.text));
 
-  const missing = await probe(BASE_IR, '/products/definitely-missing-slug-404', IR_HOST);
-  check('ir missing product is 404', missing.status === 404, `status=${missing.status}`);
+  const missing = await probe(BASE_IR, '/products/definitely-missing-slug-404', IR_HOST, { asBot: true });
+  check('ir missing product is 404 (bot)', missing.status === 404, `status=${missing.status}`);
 
   const notFound = await probe(BASE_IR, '/some-definitely-missing-page', IR_HOST);
   check('ir 404 page is noindex', notFound.status === 404, `status=${notFound.status}`);

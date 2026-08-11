@@ -51,6 +51,13 @@ const nextConfig: NextConfig = {
   // Transpile workspace packages
   transpilePackages: ['@taranom/shared-types', '@taranom/persian-utils'],
 
+  // Serve search/preview bots blocking (non-streamed) HTML so notFound() in
+  // generateMetadata yields a real 404 status (streamed shells always flush
+  // 200 first). Regular browsers keep fast streaming. Extends the Next
+  // default HTML-limited bot list with the major search crawlers.
+  htmlLimitedBots:
+    /Googlebot|Google-InspectionTool|AdsBot-Google|Storebot-Google|Bingbot|BingPreview|Slurp|DuckDuckBot|baiduspider|yandex|sogou|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Applebot|ia_archiver|Mediapartners-Google/i,
+
   // Security headers
   async headers() {
     return [
