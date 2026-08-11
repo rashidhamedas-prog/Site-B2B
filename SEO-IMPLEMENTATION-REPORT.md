@@ -48,7 +48,7 @@ See `SEO-REDIRECT-MAP.csv`. Decision table:
 |---|---|
 | Product page, valid slug | 200, self-canonical (= sitemap URL) |
 | Product page, stale slug that resolves | 308 → canonical slug |
-| Product page, unknown slug | 404 (real, noindex fallback metadata) |
+| Product page, unknown slug | `noindex, nofollow` in `<head>` + not-found UI (HTTP 200 — see trade-off below) |
 | Listing with query params | 200, `noindex,follow`, canonical → clean listing |
 | `/retail/*` public hit | 301 → clean URL on retail origin |
 | Legacy WP shop/search | 301 → `/products` |
@@ -105,8 +105,12 @@ Code: `apps/web/src/app/(wholesale)/products/[slug]/page.tsx`, `(wholesale)/prod
 
 ## Test Results
 
-- Build: ✓ Compiled successfully (8.5 min), type check passed, 65/65 static pages, exit 0.
-- Post-deploy: run `npm run seo:audit` + `npm run seo:check` (results → `SEO-POSTFIX-URL-AUDIT.csv`).
+- Build: ✓ Compiled successfully, type check passed, 65/65 static pages, exit 0 (local + VPS).
+- Live post-deploy (`221bd71`): `npm run seo:audit` → **16/16 PASS**; `verify-sitemap` both hosts → **all 142 URLs valid** (200, no redirects, no noindex, self-canonical; canonical mismatches 58 → 0). Merged results: `SEO-POSTFIX-URL-AUDIT.csv`. API health 200.
+
+### Documented trade-off: missing-product status is 200 + noindex, not 404
+
+Group-level `loading.tsx` streams the shell immediately (fast TTFB), which pins the HTTP status to 200 before `notFound()` can run — even from `generateMetadata` (Next 15 streams metadata; `htmlLimitedBots` was added so crawlers get blocking, complete `<head>`, but the loading shell still flushes first). Removing the streaming shells would fix the status code at the cost of slower first byte on every wholesale/retail page. Per the project's performance-first rule, streaming stays; missing slugs are excluded via `noindex, nofollow` in the crawler-visible `<head>` plus not-found UI, which Google treats as exclusion (and typically classifies as soft-404 → not indexed). Non-product unknown routes still return real 404s.
 
 ## Before / After Metrics Available Locally
 

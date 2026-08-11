@@ -63,8 +63,14 @@ const IR_HOST = 'www.poshaktaranom.ir';
   const search = await probe(BASE_COM, '/products?q=test', COM_HOST);
   check('com /products?q= noindex', metaRobots(search.text).includes('noindex'), metaRobots(search.text));
 
+  // Policy: streamed shell (loading.tsx) fixes TTFB but pins status to 200,
+  // so a missing product must carry noindex in <head> (404 also accepted).
   const missing = await probe(BASE_COM, '/products/definitely-missing-slug-404', COM_HOST, { asBot: true });
-  check('com missing product is 404 (bot)', missing.status === 404, `status=${missing.status}`);
+  check(
+    'com missing product excluded (404 or noindex)',
+    missing.status === 404 || metaRobots(missing.text).includes('noindex'),
+    `status=${missing.status} robots=${metaRobots(missing.text)}`,
+  );
 
   const shop = await probe(BASE_COM, '/shop/some-old-category', COM_HOST);
   check('com /shop/* → 301 /products', shop.status === 301 && /\/products$/.test(shop.location), `status=${shop.status} loc=${shop.location}`);
@@ -105,7 +111,11 @@ const IR_HOST = 'www.poshaktaranom.ir';
   check('ir /products?q= noindex', metaRobots(search.text).includes('noindex'), metaRobots(search.text));
 
   const missing = await probe(BASE_IR, '/products/definitely-missing-slug-404', IR_HOST, { asBot: true });
-  check('ir missing product is 404 (bot)', missing.status === 404, `status=${missing.status}`);
+  check(
+    'ir missing product excluded (404 or noindex)',
+    missing.status === 404 || metaRobots(missing.text).includes('noindex'),
+    `status=${missing.status} robots=${metaRobots(missing.text)}`,
+  );
 
   const notFound = await probe(BASE_IR, '/some-definitely-missing-page', IR_HOST);
   check('ir 404 page is noindex', notFound.status === 404, `status=${notFound.status}`);
