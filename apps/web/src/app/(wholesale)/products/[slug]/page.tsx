@@ -35,12 +35,9 @@ function wholesaleSeo(product: Record<string, unknown>) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await fetchProductBySlug(slug, 'WHOLESALE');
-  if (!product) {
-    return {
-      title: 'محصول یافت نشد',
-      robots: { index: false, follow: false },
-    };
-  }
+  // notFound() here (not only in the page) so the response is a real 404:
+  // metadata resolves before the streaming shell (loading.tsx) flushes 200.
+  if (!product) notFound();
   const { title, description, canonical } = wholesaleSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
 

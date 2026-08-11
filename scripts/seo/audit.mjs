@@ -67,7 +67,9 @@ const IR_HOST = 'www.poshaktaranom.ir';
   const shop = await probe(BASE_COM, '/shop/some-old-category', COM_HOST);
   check('com /shop/* → 301 /products', shop.status === 301 && /\/products$/.test(shop.location), `status=${shop.status} loc=${shop.location}`);
 
-  const wp = await probe(BASE_COM, '/wp-content/uploads/x.jpg', COM_HOST);
+  // NOTE: asset extensions (.jpg etc.) bypass the middleware matcher and 404
+  // naturally — probe an extension-less legacy path for the 410.
+  const wp = await probe(BASE_COM, '/wp-content/themes/legacy', COM_HOST);
   check('com /wp-content/* is 410', wp.status === 410, `status=${wp.status}`);
 
   const feed = await probe(BASE_COM, '/comments/feed', COM_HOST);

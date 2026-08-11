@@ -35,7 +35,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const product = await fetchProductBySlug(slug, 'RETAIL');
-  if (!product) return { title: 'محصول' };
+  // notFound() here (not only in the page) so the response is a real 404:
+  // metadata resolves before the streaming shell (loading.tsx) flushes 200.
+  if (!product) notFound();
 
   const { title, description, canonical } = retailSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
