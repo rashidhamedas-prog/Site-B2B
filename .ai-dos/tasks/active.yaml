@@ -13,20 +13,20 @@ tasks:
     branch: "ai/TASK-20260810-006-readiness-remediation"
     worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002"
     claimed_at: "2026-08-10T10:24:22Z"
-    heartbeat_at: "2026-08-11T13:29:07Z"
+    heartbeat_at: "2026-08-12T16:55:00Z"
     depends_on: []
     file_claims:
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+      # transferred to TASK-20260812-001 Phase 0: ".ai-dos/tasks/active.yaml"
+      # transferred to TASK-20260812-001 Phase 0: ".ai-dos/tasks/handoff.md"
+      # transferred to TASK-20260812-001 Phase 0: ".ai-dos/project/status.md"
       - "docs/PLATFORM-READINESS-REPORT.md"
       - "docs/implementation-progress.md"
       - "docs/test-and-acceptance-evidence.md"
-      - "docs/WORKLOG.md"
+      # transferred to TASK-20260812-001 Phase 0: "docs/WORKLOG.md"
       - "docs/BLOG_TEST_REPORT.md"
       - "docs/deployment-runbook.md"
       - "docs/02-target-architecture.md"
-      - "docs/reports/"
+      # docs/reports/ directory claim RELEASED 2026-08-12 to TASK-20260812-001 (payment preflight); claim reports per-file going forward
       - "scripts/e2e-purchase-test.sh"
       - "scripts/restore-drill-disposable.sh"
       - "scripts/_negative-e2e-guards.sh"
@@ -216,3 +216,41 @@ tasks:
           media deletion, RMA financial integrity and migrations, then a fresh independent Reviewer.
           Do not mark Done, release claims, deploy, or report 100/100 before both reviews PASS and
           every acceptance criterion has durable evidence.
+
+  - id: "TASK-20260812-001"
+    title: "Payment and Sales Integrations - Phase 0 preflight and program architecture"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:orchestrator-TASK-20260812-001"
+    roles:
+      architect: "cursor:orchestrator-TASK-20260812-001"
+      implementer: "cursor:orchestrator-TASK-20260812-001"
+      reviewer: "required-independent-before-phase-1-done"
+      security: "required-independent-before-phase-1-done"
+    branch: "ai/TASK-20260812-001-payment-integrations"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-12T16:55:00Z"
+    heartbeat_at: "2026-08-12T16:55:00Z"
+    depends_on: []
+    file_claims:
+      - "docs/reports/2026-08-12-payment-integrations-preflight.md"
+      - "docs/reports/_preflight-20260812/"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Phase 0 preflight report written with git/HEAD/claims, preserved dirty tree, env/lock/docker/CI, gate exits, read-only live health"
+      - "No runtime code change and no production deploy in Phase 0"
+      - "Formal handoff from TASK-20260810-006 for docs/reports directory claim without overlapping apps claims"
+      - "BNPL providers remain blocked pending official contract documentation; no guessed endpoints"
+      - "Phase 1 must expand exact payment file_claims before any apps/* edit; independent Reviewer+Security required"
+    validation:
+      - "docs/reports/2026-08-12-payment-integrations-preflight.md exists"
+      - "gate artifacts under docs/reports/_preflight-20260812/"
+      - "git status shows user dirty files preserved"
+    notes: |
+      Phase 0 ONLY. Payment Orchestrator architecture frozen in preflight report.
+      Do not implement adapters or migrate production. SnappPay Phase 4 BLOCKED on contracts.
+      TASK-20260810-006 retains apps/* readiness claims; released docs/reports/ glob only.
+    phase: 0

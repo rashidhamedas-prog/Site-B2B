@@ -2,6 +2,21 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-12 — Payment & Sales Integrations Phase 0 (preflight)
+
+### خلاصه
+- نقش Orchestrator+Architect؛ مخزن صحیح `Site B2B`؛ بدون mutate/deploy production.
+- Task جدید `TASK-20260812-001`؛ handoff رسمی از TASK-006 فقط برای `docs/reports/` و فایل‌های حاکمیتی Phase 0.
+- Baseline gates ثبت شد؛ live health عمده/تکی/API فقط خواندنی **200**.
+- شکاف‌های P0 پرداخت (race-safe verify، idempotency، recovery، DTO، refund، registry) مستند شد.
+- BNPLها تا قرارداد و مستند رسمی **BLOCKED**؛ هیچ endpoint جعلی ساخته نشد.
+- گزارش: `docs/reports/2026-08-12-payment-integrations-preflight.md`
+
+### بعدی
+- Phase 1 با file_claim دقیق روی هسته پرداخت + Reviewer/Security مستقل؛ بدون شروع تا claim گسترش یابد.
+
+---
+
 ## 2026-08-12 — SEO P3 backlog (موازی با چند ایجنت)
 
 ### خلاصه
