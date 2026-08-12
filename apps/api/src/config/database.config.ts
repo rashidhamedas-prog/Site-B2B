@@ -15,6 +15,14 @@ import { DiscountCodeEntity } from '../modules/discount/entities/discount-code.e
 import { TieredDiscountEntity } from '../modules/discount/entities/tiered-discount.entity';
 import { SideDiscountEntity } from '../modules/discount/entities/side-discount.entity';
 import { PaymentEntity } from '../modules/payment/entities/payment.entity';
+import { PaymentAttemptEntity } from '../modules/payment/entities/payment-attempt.entity';
+import { PaymentLedgerEntryEntity } from '../modules/payment/entities/payment-ledger-entry.entity';
+import { RefundEntity } from '../modules/payment/entities/refund.entity';
+import { PaymentProviderEntity } from '../modules/payment/entities/payment-provider.entity';
+import {
+  InstallmentContractEntity,
+  InstallmentScheduleEntity,
+} from '../modules/payment/entities/installment-contract.entity';
 import { BlogPostEntity } from '../modules/blog/entities/blog-post.entity';
 import { BlogCategoryEntity } from '../modules/blog/entities/blog-category.entity';
 import { BlogTagEntity } from '../modules/blog/entities/blog-tag.entity';
@@ -53,6 +61,12 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     WarehouseEntity,
     DiscountCodeEntity, TieredDiscountEntity, SideDiscountEntity,
     PaymentEntity,
+    PaymentAttemptEntity,
+    PaymentLedgerEntryEntity,
+    RefundEntity,
+    PaymentProviderEntity,
+    InstallmentContractEntity,
+    InstallmentScheduleEntity,
     BlogPostEntity,
     BlogCategoryEntity,
     BlogTagEntity,

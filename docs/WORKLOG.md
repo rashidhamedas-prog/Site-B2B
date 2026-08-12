@@ -2,6 +2,19 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-12 — Payment Phases 1–3 (+6 schema) implementation
+
+### خلاصه
+- Phase 1: verify اتمی، adapter زرین‌پال با timeout، DTO عمومی، attempts، refund/ledger، idempotency سفارش، manual امن.
+- Phase 2–3: جدول `payment_providers` + API ادمین/eligible؛ BNPLها DISABLED/NOT_STARTED.
+- Phase 6 schema: قرارداد/برنامه اقساط داخلی.
+- گزارش: `docs/reports/2026-08-12-payment-phases-1-3-impl.md`
+
+### بعدی
+- merge/deploy + migration روی VPS؛ تکمیل منطق اقساط و observability؛ BNPL تا قرارداد رسمی BLOCKED.
+
+---
+
 ## 2026-08-12 — Payment Phase 0 CLOSED + Phase 1 scope freeze
 
 ### خلاصه

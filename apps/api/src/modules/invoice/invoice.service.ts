@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InvoiceEntity } from './entities/invoice.entity';
 import { CustomerService } from '../customer/customer.service';
 
@@ -10,6 +10,7 @@ export class InvoiceService {
     @InjectRepository(InvoiceEntity)
     private readonly repo: Repository<InvoiceEntity>,
     private readonly customerService: CustomerService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private async generateNumber(type: string): Promise<string> {
@@ -64,15 +65,34 @@ export class InvoiceService {
   }
 
   async recordPayment(id: string, amount: number) {
-    const inv = await this.findOne(id);
-    inv.paidAmount = Number(inv.paidAmount) + amount;
-    if (inv.paidAmount >= inv.total) {
-      inv.status = 'PAID';
-      await this.customerService.updateBalance(inv.customerId, amount);
-    } else {
-      inv.status = 'PARTIALLY_PAID';
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('مبلغ پرداخت نامعتبر است');
     }
-    return this.repo.save(inv);
+
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(InvoiceEntity);
+      const inv = await repo
+        .createQueryBuilder('inv')
+        .setLock('pessimistic_write')
+        .where('inv.id = :id', { id })
+        .getOne();
+      if (!inv) throw new NotFoundException('فاکتور یافت نشد');
+
+      const paid = Number(inv.paidAmount) || 0;
+      const total = Number(inv.total) || 0;
+      if (paid + amount > total) {
+        throw new BadRequestException('مبلغ پرداخت از مانده فاکتور بیشتر است');
+      }
+
+      inv.paidAmount = paid + amount;
+      if (inv.paidAmount >= total) {
+        inv.status = 'PAID';
+        await this.customerService.updateBalance(inv.customerId, amount, manager);
+      } else {
+        inv.status = 'PARTIALLY_PAID';
+      }
+      return repo.save(inv);
+    });
   }
 
   async send(id: string) {

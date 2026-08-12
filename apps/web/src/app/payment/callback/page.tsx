@@ -29,9 +29,9 @@ function CallbackContent() {
       .then((res) => {
         if (res.ok) {
           setState('success');
-          setRefId(res.refId ?? res.payment?.refId ?? '');
-          setAmount(Number(res.payment?.amount ?? 0));
-          setOrderId(res.payment?.orderId ?? '');
+          setRefId(res.refId ?? '');
+          setAmount(Number(res.amount ?? 0));
+          setOrderId(res.orderId ?? '');
         } else if (res.cancelled) {
           setState('cancelled');
         } else {

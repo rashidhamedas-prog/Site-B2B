@@ -1,7 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException, Optional, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Optional,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Not, Repository } from 'typeorm';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
@@ -145,6 +152,75 @@ export class OrderService {
     const raw = (dto.type || dto.channel || 'WHOLESALE').toUpperCase();
     if (raw === 'RETAIL' || raw === 'RETAIL_WEBSITE') return 'RETAIL';
     return 'WHOLESALE';
+  }
+
+  private resolveCreatePaymentMethod(
+    dto: CreateOrderDto,
+    channel: 'WHOLESALE' | 'RETAIL',
+  ): string {
+    return (dto.paymentMethod ?? (channel === 'RETAIL' ? 'ONLINE' : 'CASH')).toUpperCase();
+  }
+
+  private resolveCreateShippingMethod(
+    dto: CreateOrderDto,
+    channel: 'WHOLESALE' | 'RETAIL',
+  ): string {
+    return dto.shippingMethod ?? (channel === 'RETAIL' ? 'PISHTAZ' : 'CHAPAR');
+  }
+
+  private createOrderIdempotencyScope(customerId: string, channel: 'WHOLESALE' | 'RETAIL'): string {
+    return `${customerId}:${channel}:create-order`;
+  }
+
+  /** Stable SHA-256 over fields that define a duplicate create-order intent. */
+  private hashCreateOrderPayload(
+    dto: CreateOrderDto,
+    channel: 'WHOLESALE' | 'RETAIL',
+    paymentMethod: string,
+  ): string {
+    const items = (dto.items ?? [])
+      .map((i) => ({
+        productVariantId: String(i.productVariantId || ''),
+        quantity: Number(i.quantity) || 0,
+      }))
+      .sort((a, b) => {
+        const byId = a.productVariantId.localeCompare(b.productVariantId);
+        return byId !== 0 ? byId : a.quantity - b.quantity;
+      });
+    const installment = dto.installment
+      ? {
+          downPaymentAmount: Number(dto.installment.downPaymentAmount) || 0,
+          months: Number(dto.installment.months) || 0,
+        }
+      : null;
+    const stable = {
+      items,
+      paymentMethod,
+      shippingMethod: this.resolveCreateShippingMethod(dto, channel),
+      useWallet: !!dto.useWallet,
+      installment,
+    };
+    return createHash('sha256').update(JSON.stringify(stable)).digest('hex');
+  }
+
+  private assertIdempotentCreateMatch(
+    existing: OrderEntity,
+    customerId: string,
+    scope: string,
+    payloadHash: string,
+  ): OrderEntity {
+    if (existing.customerId !== customerId) {
+      throw new ForbiddenException('کلید یکتایی سفارش متعلق به مشتری دیگری است');
+    }
+    const storedHash = existing.idempotencyPayloadHash;
+    const storedScope = existing.idempotencyScope;
+    if (storedHash != null && storedHash !== payloadHash) {
+      throw new ConflictException('کلید یکتایی با درخواست متفاوت قبلاً استفاده شده است');
+    }
+    if (storedScope != null && storedScope !== scope) {
+      throw new ConflictException('کلید یکتایی با درخواست متفاوت قبلاً استفاده شده است');
+    }
+    return existing;
   }
 
   private unitPriceForChannel(
@@ -416,18 +492,28 @@ export class OrderService {
       );
     }
 
+    if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
+    const channel = this.resolveOrderChannel(dto);
+    const orderType = channel === 'RETAIL' ? 'RETAIL_WEBSITE' : (dto.type || 'WHOLESALE');
+    const paymentMethod = this.resolveCreatePaymentMethod(dto, channel);
+    const idempotencyScope = this.createOrderIdempotencyScope(dto.customerId, channel);
+    const idempotencyPayloadHash = this.hashCreateOrderPayload(dto, channel, paymentMethod);
+
     if (dto.idempotencyKey) {
       const existing = await this.orderRepo.findOne({
         where: { idempotencyKey: dto.idempotencyKey } as any,
         relations: ['items'],
       });
-      if (existing) return existing;
+      if (existing) {
+        return this.assertIdempotentCreateMatch(
+          existing,
+          dto.customerId,
+          idempotencyScope,
+          idempotencyPayloadHash,
+        );
+      }
     }
 
-    if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
-    const channel = this.resolveOrderChannel(dto);
-    const orderType = channel === 'RETAIL' ? 'RETAIL_WEBSITE' : (dto.type || 'WHOLESALE');
-    const paymentMethod = (dto.paymentMethod ?? (channel === 'RETAIL' ? 'ONLINE' : 'CASH')).toUpperCase();
     const allowedPay =
       channel === 'RETAIL' ? ['CASH', 'ONLINE'] : ['CASH', 'INSTALLMENT', 'ONLINE'];
     if (!allowedPay.includes(paymentMethod)) {
@@ -564,7 +650,7 @@ export class OrderService {
     }
 
     // Shipping is ALWAYS computed server-side — ignore client freeShipping / fees.
-    const shippingMethod = dto.shippingMethod ?? (channel === 'RETAIL' ? 'PISHTAZ' : 'CHAPAR');
+    const shippingMethod = this.resolveCreateShippingMethod(dto, channel);
     let computedShipping = 0;
     let freeShipping = false;
     let intraCityFee = 0;
@@ -646,83 +732,105 @@ export class OrderService {
 
     // Persist the order and all financial/inventory effects on one DB connection.
     // Any failed conditional update rolls the entire checkout back.
-    const saved = await this.dataSource.transaction(async (manager) => {
-      const orderRepo = manager.getRepository(OrderEntity);
-      const itemRepo = manager.getRepository(OrderItemEntity);
+    let saved: OrderEntity;
+    try {
+      saved = await this.dataSource.transaction(async (manager) => {
+        const orderRepo = manager.getRepository(OrderEntity);
+        const itemRepo = manager.getRepository(OrderItemEntity);
 
-      let orderRow: OrderEntity | null = null;
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const orderNumber = await this.generateOrderNumber();
-        try {
-          orderRow = (await orderRepo.save(
-            orderRepo.create({
-              orderNumber,
-              customerId: dto.customerId,
-              type: orderType,
-              subtotal,
-              discount: discountAmount + walletApplied,
-              shippingFee: computedShipping,
-              total: orderTotal,
-              shippingMethod,
-              shippingAddress,
-              paymentMethod,
-              notes,
-              status: 'PENDING_REVIEW',
-              intraCityFee,
-              perKgFee,
-              freeShipping,
-              affiliateId: dto.affiliateId?.trim() || undefined,
-              torobClid:
-                dto.torobClid?.trim() ||
-                (dto.affiliateId?.trim()?.startsWith('torob|')
-                  ? dto.affiliateId.trim().slice('torob|'.length)
-                  : undefined),
-              walletApplied,
-              discountCodeId: usedDiscountCodeId,
-              idempotencyKey: dto.idempotencyKey || undefined,
-            }),
-          )) as OrderEntity;
-          break;
-        } catch (err: any) {
-          if (err?.code === '23505' && attempt < 4) continue;
-          throw err;
+        let orderRow: OrderEntity | null = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const orderNumber = await this.generateOrderNumber();
+          try {
+            orderRow = (await orderRepo.save(
+              orderRepo.create({
+                orderNumber,
+                customerId: dto.customerId,
+                type: orderType,
+                subtotal,
+                discount: discountAmount + walletApplied,
+                shippingFee: computedShipping,
+                total: orderTotal,
+                shippingMethod,
+                shippingAddress,
+                paymentMethod,
+                notes,
+                status: 'PENDING_REVIEW',
+                intraCityFee,
+                perKgFee,
+                freeShipping,
+                affiliateId: dto.affiliateId?.trim() || undefined,
+                torobClid:
+                  dto.torobClid?.trim() ||
+                  (dto.affiliateId?.trim()?.startsWith('torob|')
+                    ? dto.affiliateId.trim().slice('torob|'.length)
+                    : undefined),
+                walletApplied,
+                discountCodeId: usedDiscountCodeId,
+                idempotencyKey: dto.idempotencyKey || undefined,
+                idempotencyPayloadHash: dto.idempotencyKey ? idempotencyPayloadHash : undefined,
+                idempotencyScope: dto.idempotencyKey ? idempotencyScope : undefined,
+              }),
+            )) as OrderEntity;
+            break;
+          } catch (err: any) {
+            if (err?.code === '23505' && attempt < 4) continue;
+            throw err;
+          }
+        }
+        if (!orderRow) throw new BadRequestException('امکان ایجاد شماره سفارش نبود');
+
+        const items = expandedItems.map((i) =>
+          itemRepo.create({
+            productVariantId: i.productVariantId,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            productName: i.productName,
+            sku: i.sku,
+            color: i.color,
+            size: i.size,
+            imageUrl: i.imageUrl || null,
+            orderId: orderRow!.id,
+            totalPrice: i.unitPrice * i.quantity,
+          }),
+        );
+        await itemRepo.save(items);
+
+        for (const item of expandedItems) {
+          await this.productService.updateVariantStock(
+            item.productVariantId,
+            -item.quantity,
+            channel,
+            manager,
+          );
+        }
+        if (walletApplied > 0) {
+          await this.customerService.updateBalance(dto.customerId, -walletApplied, manager);
+        }
+        if (usedDiscountCodeId) {
+          await this.discounts.recordUse(usedDiscountCodeId, manager);
+        }
+
+        return orderRow;
+      });
+    } catch (err: any) {
+      // Concurrent create with the same idempotency key: return the winner after ownership/hash checks.
+      if (err?.code === '23505' && dto.idempotencyKey) {
+        const existing = await this.orderRepo.findOne({
+          where: { idempotencyKey: dto.idempotencyKey } as any,
+          relations: ['items'],
+        });
+        if (existing) {
+          return this.assertIdempotentCreateMatch(
+            existing,
+            dto.customerId,
+            idempotencyScope,
+            idempotencyPayloadHash,
+          );
         }
       }
-      if (!orderRow) throw new BadRequestException('امکان ایجاد شماره سفارش نبود');
-
-      const items = expandedItems.map((i) =>
-        itemRepo.create({
-          productVariantId: i.productVariantId,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          productName: i.productName,
-          sku: i.sku,
-          color: i.color,
-          size: i.size,
-          imageUrl: i.imageUrl || null,
-          orderId: orderRow!.id,
-          totalPrice: i.unitPrice * i.quantity,
-        }),
-      );
-      await itemRepo.save(items);
-
-      for (const item of expandedItems) {
-        await this.productService.updateVariantStock(
-          item.productVariantId,
-          -item.quantity,
-          channel,
-          manager,
-        );
-      }
-      if (walletApplied > 0) {
-        await this.customerService.updateBalance(dto.customerId, -walletApplied, manager);
-      }
-      if (usedDiscountCodeId) {
-        await this.discounts.recordUse(usedDiscountCodeId, manager);
-      }
-
-      return orderRow;
-    });
+      throw err;
+    }
 
     if (this.notifications) {
       this.notify((p) => this.notifications!.orderRegistered(p, saved.orderNumber), dto.customerId);
@@ -749,8 +857,13 @@ export class OrderService {
           channel: 'RETAIL',
         });
         return { ...full, paymentUrl: pay.redirectUrl, paymentId: pay.paymentId };
-      } catch (err) {
-        throw err;
+      } catch (err: any) {
+        // Order is already committed and remains payable; surface start failure without rolling back.
+        const paymentStartError =
+          (typeof err?.message === 'string' && err.message) ||
+          (typeof err?.response?.message === 'string' && err.response.message) ||
+          'payment_start_failed';
+        return { ...full, paymentStartError };
       }
     }
 

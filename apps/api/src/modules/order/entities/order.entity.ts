@@ -91,6 +91,14 @@ export class OrderEntity {
   @Column({ nullable: true, unique: true })
   idempotencyKey: string;
 
+  /** Idempotency namespace, e.g. `${customerId}:${channel}:create-order` */
+  @Column({ nullable: true })
+  idempotencyScope: string;
+
+  /** SHA-256 of stable create-order payload (scoped by idempotencyScope) */
+  @Column({ nullable: true })
+  idempotencyPayloadHash: string;
+
   /** Soft-void: row stays in admin list/details, excluded from customer flows */
   @Column({ nullable: true })
   voidedAt: Date;

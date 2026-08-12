@@ -54,6 +54,13 @@ export class PaymentEntity {
   @Column({ nullable: true })
   paidAt: Date;
 
+  /** Set once when affiliate/S2S postback for this payment has been fired */
+  @Column({ nullable: true })
+  postbackFiredAt: Date;
+
+  @Column({ type: 'int', default: 0 })
+  attemptCount: number;
+
   @CreateDateColumn()
   createdAt: Date;
 
