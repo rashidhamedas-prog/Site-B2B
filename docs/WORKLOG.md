@@ -2,6 +2,18 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-12 — Payment Phase 6 LIVE (PR #36 @ 16f2594)
+
+### خلاصه
+- Merge + VPS deploy `16f2594`؛ migration اقساط/اعتبار اعمال شد.
+- Live: API/عمده/تکی **200**؛ eligible فقط ZARINPAL+MANUAL.
+- Security + Reviewer: **PASS WITH CONDITIONS** (staging E2E / concurrency DB / CI SAST / BNPL باقی).
+
+### بعدی
+- residualهای شواهدی؛ BNPL تا قرارداد رسمی BLOCKED؛ task را Done نکن.
+
+---
+
 ## 2026-08-12 — Payment Phase 6 logic + security follow-up
 
 ### خلاصه
