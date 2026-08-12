@@ -2,6 +2,35 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-12 — Payment Phase 0 CLOSED + Phase 1 scope freeze
+
+### خلاصه
+- Phase 0 پرداخت رسماً **بسته** شد (گزارش + gates + live read-only + بدون runtime/deploy).
+- قدم بعدی انجام شد: `file_claims` دقیق Phase 1 و سند scope ثبت شد.
+- گزارش scope: `docs/reports/2026-08-12-payment-phase1-scope.md`
+- پیاده‌سازی کد Phase 1 هنوز شروع نشده؛ BNPL همچنان BLOCKED.
+- تداخل claim با TASK-006 وجود ندارد.
+
+### بعدی
+- شروع پیاده‌سازی Phase 1 از race-safe verify + تست ۲۰ callback همزمان.
+
+---
+
+## 2026-08-12 — Payment & Sales Integrations Phase 0 (preflight)
+
+### خلاصه
+- نقش Orchestrator+Architect؛ مخزن صحیح `Site B2B`؛ بدون mutate/deploy production.
+- Task جدید `TASK-20260812-001`؛ handoff رسمی از TASK-006 فقط برای `docs/reports/` و فایل‌های حاکمیتی Phase 0.
+- Baseline gates ثبت شد؛ live health عمده/تکی/API فقط خواندنی **200**.
+- شکاف‌های P0 پرداخت (race-safe verify، idempotency، recovery، DTO، refund، registry) مستند شد.
+- BNPLها تا قرارداد و مستند رسمی **BLOCKED**؛ هیچ endpoint جعلی ساخته نشد.
+- گزارش: `docs/reports/2026-08-12-payment-integrations-preflight.md`
+
+### بعدی
+- Phase 1 با file_claim دقیق روی هسته پرداخت + Reviewer/Security مستقل؛ بدون شروع تا claim گسترش یابد.
+
+---
+
 ## 2026-08-12 — SEO P3 backlog (موازی با چند ایجنت)
 
 ### خلاصه

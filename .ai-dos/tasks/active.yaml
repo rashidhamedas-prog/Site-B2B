@@ -13,20 +13,20 @@ tasks:
     branch: "ai/TASK-20260810-006-readiness-remediation"
     worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260809-002"
     claimed_at: "2026-08-10T10:24:22Z"
-    heartbeat_at: "2026-08-11T13:29:07Z"
+    heartbeat_at: "2026-08-12T16:55:00Z"
     depends_on: []
     file_claims:
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+      # transferred to TASK-20260812-001 Phase 0: ".ai-dos/tasks/active.yaml"
+      # transferred to TASK-20260812-001 Phase 0: ".ai-dos/tasks/handoff.md"
+      # transferred to TASK-20260812-001 Phase 0: ".ai-dos/project/status.md"
       - "docs/PLATFORM-READINESS-REPORT.md"
       - "docs/implementation-progress.md"
       - "docs/test-and-acceptance-evidence.md"
-      - "docs/WORKLOG.md"
+      # transferred to TASK-20260812-001 Phase 0: "docs/WORKLOG.md"
       - "docs/BLOG_TEST_REPORT.md"
       - "docs/deployment-runbook.md"
       - "docs/02-target-architecture.md"
-      - "docs/reports/"
+      # docs/reports/ directory claim RELEASED 2026-08-12 to TASK-20260812-001 (payment preflight); claim reports per-file going forward
       - "scripts/e2e-purchase-test.sh"
       - "scripts/restore-drill-disposable.sh"
       - "scripts/_negative-e2e-guards.sh"
@@ -216,3 +216,70 @@ tasks:
           media deletion, RMA financial integrity and migrations, then a fresh independent Reviewer.
           Do not mark Done, release claims, deploy, or report 100/100 before both reviews PASS and
           every acceptance criterion has durable evidence.
+
+  - id: "TASK-20260812-001"
+    title: "Payment and Sales Integrations - Phase 0 complete; Phase 1 P0 payment core"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:orchestrator-TASK-20260812-001"
+    roles:
+      architect: "cursor:orchestrator-TASK-20260812-001"
+      implementer: "cursor:orchestrator-TASK-20260812-001"
+      reviewer: "required-independent-before-phase-1-done"
+      security: "required-independent-before-phase-1-done"
+    branch: "ai/TASK-20260812-001-payment-integrations"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-12T16:55:00Z"
+    heartbeat_at: "2026-08-12T19:05:00Z"
+    depends_on: []
+    file_claims:
+      - "docs/reports/2026-08-12-payment-integrations-preflight.md"
+      - "docs/reports/2026-08-12-payment-phase1-scope.md"
+      - "docs/reports/_preflight-20260812/"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/api/src/modules/payment/payment.controller.ts"
+      - "apps/api/src/modules/payment/payment.module.ts"
+      - "apps/api/src/modules/payment/entities/payment.entity.ts"
+      - "apps/api/src/modules/payment/dto/payment-public.dto.ts"
+      - "apps/api/src/modules/payment/entities/payment-attempt.entity.ts"
+      - "apps/api/src/modules/payment/entities/refund.entity.ts"
+      - "apps/api/src/modules/payment/entities/payment-ledger-entry.entity.ts"
+      - "apps/api/src/modules/payment/payment-orchestrator.service.ts"
+      - "apps/api/src/modules/payment/adapters/payment-provider.adapter.ts"
+      - "apps/api/src/modules/payment/adapters/zarinpal.adapter.ts"
+      - "apps/api/src/modules/payment/adapters/disabled.adapter.ts"
+      - "apps/api/src/database/migrations/20260812-001-payment-core-hardening.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/entities/order.entity.ts"
+      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      - "apps/api/src/modules/invoice/invoice.service.ts"
+      - "apps/api/src/modules/invoice/entities/invoice.entity.ts"
+      - "apps/api/src/modules/affiliate/affiliate-postback.service.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/web/src/app/payment/callback/page.tsx"
+    acceptance_criteria:
+      - "Phase 0 COMPLETE: preflight report, gates, live read-only health, formal TASK-006 handoff, no runtime/deploy"
+      - "Phase 1 scope freeze documented with non-goals, rollback, and exact file_claims before first apps/* edit"
+      - "Race-safe verify in one DB transaction with lock/CAS; duplicate callback has no repeated paidAmount/postback"
+      - "Idempotency scoped by customerId+channel+operation with ownership check and payload-hash 409"
+      - "Failed start recoverable via payment attempts; provider timeout/retry normalized"
+      - "Allowlisted payment DTO; manual invoice payment finite/positive/no-overpay/ledger/audit/txn"
+      - "RefundEntity lifecycle idempotent; wallet vs provider paths separated"
+      - "Required concurrency/idempotency/refund/manual tests pass; disposable migration up/down/up"
+      - "Independent Reviewer and Security PASS; staging before production; BNPL remain DISABLED/BLOCKED"
+    validation:
+      - "docs/reports/2026-08-12-payment-integrations-preflight.md Phase 0 closure section"
+      - "docs/reports/2026-08-12-payment-phase1-scope.md"
+      - "npm run lint; typecheck web+api; npm run test; npm run build; git diff --check"
+      - "20 parallel callback concurrency suite; idempotency and refund duplicate cases"
+    notes: |
+      Phase 0 CLOSED 2026-08-12. Phase 1 claims expanded; implementation not started in closure wave.
+      Do not edit TASK-006 claimed files. JWT/CSP hardening is a coordinated separate wave.
+      SnappPay/BNPL Phase 4+ BLOCKED on official contracts. No guessed endpoints.
+    phase: 1
+    phase_0_status: "complete"
+    phase_1_status: "claims_frozen_implementation_pending"

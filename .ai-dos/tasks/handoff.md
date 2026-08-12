@@ -2,6 +2,38 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-12T19:05:00Z — Phase 0 CLOSED + Phase 1 claims freeze (TASK-20260812-001)
+
+- Task / owner / role: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001 / orchestrator+architect
+- Branch / worktree: `ai/TASK-20260812-001-payment-integrations` / `D:/soft/Claud/porje/Site B2B`
+- Commits: `e786e39` (closure+claims); prior `06bf085`/`80c3f41`
+- Phase 0: **COMPLETE** — preflight AC MET; no apps/* runtime edits; no VPS deploy from Phase 0
+- Phase 1: **claims frozen** in `active.yaml` + `docs/reports/2026-08-12-payment-phase1-scope.md`; implementation **NOT started** this wave
+- Claims expanded (non-overlapping with TASK-006): payment module, order/invoice/affiliate-postback payment paths, new adapter/attempt/refund/ledger/migration/DTO paths, payment callback page
+- Explicit non-claims: RMA/blog/RetailHeader/compare-at (TASK-006); JWT/CSP auth hardening (separate wave); BNPL live adapters
+- Live re-verify (read-only): API **200** ok; wholesale **200**; retail **200**
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/33
+- Exact next: begin Phase 1 implementation with race-safe verify + concurrency tests; then Reviewer/Security; staging before production
+- Production: **do not deploy** until Phase 1 code PASS + staging evidence
+
+## 2026-08-12T16:55:00Z — Payment Phase 0 preflight (TASK-20260812-001)
+
+- Task / owner / role: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001 / orchestrator+architect
+- Branch / worktree / HEAD: `ai/TASK-20260812-001-payment-integrations` / `D:/soft/Claud/porje/Site B2B` / `27456b3` base → commit `06bf085`
+- Objective: Phase 0 Payment and Sales Integrations preflight only — no runtime edits, no deploy, no BNPL guessing
+- Formal handoff from TASK-20260810-006:
+  - Released directory claim `docs/reports/`
+  - Transferred Phase 0 writes for `docs/WORKLOG.md`, `.ai-dos/tasks/active.yaml`, `.ai-dos/tasks/handoff.md`, `.ai-dos/project/status.md`
+  - TASK-006 remains `in_progress` with apps/* + script claims retained; readiness still 71/100; not Done
+- User dirty tree in Site B2B: preserved (SEO/untracked stubs untouched; no `git add .`)
+- Gates (exact exits): format-check **1** (561 prettier warnings; mutating format skipped); lint **0**; typecheck-web **0**; typecheck-api **0** (valid rerun); test **0**; build **0** (~15m27s); `git diff --check` **0**; npm ci **NOT RUN** (dirty tree preserve)
+- Live read-only (before + after docs commit): API health **200** ok; wholesale **200**; retail **200**
+- Deliverable: `docs/reports/2026-08-12-payment-integrations-preflight.md` + exit artifacts under `docs/reports/_preflight-20260812/` (`.log` gitignored)
+- Ship: commit `06bf085` pushed to `origin/ai/TASK-20260812-001-payment-integrations`; **no VPS deploy** (docs-only Phase 0)
+- Architecture freeze: PaymentProviderAdapter + orchestrator; provider registry required; INSTALLMENT notes are not contracts; SnappPay Phase 4 BLOCKED on official docs/credentials
+- File claims: retained for Phase 0 docs set; **no** `apps/*` payment claims yet
+- Exact next: expand Phase 1 file_claims before any payment code; independent Reviewer+Security before Phase 1 Done; staging before any production payment change
+
 ## 2026-08-11T13:29:07Z — PR #31 ship evidence verified (still in_progress)
 
 - Task / owner: TASK-20260810-006 / cursor:orchestrator-TASK-20260810-006
