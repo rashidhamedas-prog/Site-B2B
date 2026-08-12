@@ -5,7 +5,7 @@ Append newest entries at the top. Never erase another agent's record.
 ## 2026-08-12T16:55:00Z — Payment Phase 0 preflight (TASK-20260812-001)
 
 - Task / owner / role: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001 / orchestrator+architect
-- Branch / worktree / HEAD: `ai/TASK-20260812-001-payment-integrations` / `D:/soft/Claud/porje/Site B2B` / `27456b3`
+- Branch / worktree / HEAD: `ai/TASK-20260812-001-payment-integrations` / `D:/soft/Claud/porje/Site B2B` / `27456b3` base → commit `06bf085`
 - Objective: Phase 0 Payment and Sales Integrations preflight only — no runtime edits, no deploy, no BNPL guessing
 - Formal handoff from TASK-20260810-006:
   - Released directory claim `docs/reports/`
@@ -13,11 +13,12 @@ Append newest entries at the top. Never erase another agent's record.
   - TASK-006 remains `in_progress` with apps/* + script claims retained; readiness still 71/100; not Done
 - User dirty tree in Site B2B: preserved (SEO/untracked stubs untouched; no `git add .`)
 - Gates (exact exits): format-check **1** (561 prettier warnings; mutating format skipped); lint **0**; typecheck-web **0**; typecheck-api **0** (valid rerun); test **0**; build **0** (~15m27s); `git diff --check` **0**; npm ci **NOT RUN** (dirty tree preserve)
-- Live read-only: API health **200** ok; wholesale **200**; retail **200**
-- Deliverable: `docs/reports/2026-08-12-payment-integrations-preflight.md` + artifacts under `docs/reports/_preflight-20260812/`
+- Live read-only (before + after docs commit): API health **200** ok; wholesale **200**; retail **200**
+- Deliverable: `docs/reports/2026-08-12-payment-integrations-preflight.md` + exit artifacts under `docs/reports/_preflight-20260812/` (`.log` gitignored)
+- Ship: commit `06bf085` pushed to `origin/ai/TASK-20260812-001-payment-integrations`; **no VPS deploy** (docs-only Phase 0)
 - Architecture freeze: PaymentProviderAdapter + orchestrator; provider registry required; INSTALLMENT notes are not contracts; SnappPay Phase 4 BLOCKED on official docs/credentials
 - File claims: retained for Phase 0 docs set; **no** `apps/*` payment claims yet
-- Exact next: commit/push claimed docs only; expand Phase 1 file_claims before any payment code; independent Reviewer+Security before Phase 1 Done; no production deploy from Phase 0
+- Exact next: expand Phase 1 file_claims before any payment code; independent Reviewer+Security before Phase 1 Done; staging before any production payment change
 
 ## 2026-08-11T13:29:07Z — PR #31 ship evidence verified (still in_progress)
 
