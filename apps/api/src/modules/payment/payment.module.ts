@@ -4,6 +4,7 @@ import { PaymentEntity } from './entities/payment.entity';
 import { PaymentAttemptEntity } from './entities/payment-attempt.entity';
 import { PaymentLedgerEntryEntity } from './entities/payment-ledger-entry.entity';
 import { RefundEntity } from './entities/refund.entity';
+import { PaymentEventEntity } from './entities/payment-event.entity';
 import { PaymentProviderEntity } from './entities/payment-provider.entity';
 import {
   InstallmentContractEntity,
@@ -31,6 +32,7 @@ import { PaymentProviderRegistryService } from './payment-provider-registry.serv
       PaymentAttemptEntity,
       PaymentLedgerEntryEntity,
       RefundEntity,
+      PaymentEventEntity,
       PaymentProviderEntity,
       InstallmentContractEntity,
       InstallmentScheduleEntity,

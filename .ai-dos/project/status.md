@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-08-12T20:40:00Z (Payment Phase 6 + security follow-up **LIVE** at `16f2594`)
+- Last verified: 2026-08-13T00:15:00Z (residuals closure in tree; prior live `16f2594` / docs `8eb7200`)
 - Active tasks:
   - **TASK-20260812-001** (`in_progress`) — Payment program largely shipped; residuals remain — owner `cursor:orchestrator-TASK-20260812-001`
   - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006`
