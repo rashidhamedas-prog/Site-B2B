@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-13T00:45:00Z — Residuals LIVE (PR #38 → acd0191)
+
+- Task: TASK-20260812-001
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/38 → MERGED `acd0191`
+- Commit: `c8b063b` payment_events + concurrency suite + runbooks + CI
+- Gates: api tsc 0; npm test 0 (20-parallel CAS OK)
+- VPS: deploy complete at `acd0191`
+- Live: API/wholesale/retail 200; eligible ZARINPAL+MANUAL only
+- Still BLOCKED/residual: BNPL live adapters; staging E2E; full SAST/container; disposable migration matrix
+- Do not mark TASK Done while BNPL/staging evidence open; claims retained
+
 ## 2026-08-13T00:15:00Z — Payment residuals closure wave (pre-ship)
 
 - Task: TASK-20260812-001

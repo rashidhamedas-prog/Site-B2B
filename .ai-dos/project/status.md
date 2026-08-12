@@ -1,24 +1,15 @@
 # Project Status
 
-- Last verified: 2026-08-13T00:15:00Z (residuals closure in tree; prior live `16f2594` / docs `8eb7200`)
+- Last verified: 2026-08-13T00:45:00Z (Payment residuals **LIVE** at `acd0191`)
 - Active tasks:
-  - **TASK-20260812-001** (`in_progress`) — Payment program largely shipped; residuals remain — owner `cursor:orchestrator-TASK-20260812-001`
+  - **TASK-20260812-001** (`in_progress`) — payment program shipped; BNPL/staging residuals — owner `cursor:orchestrator-TASK-20260812-001`
   - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006`
-- Payment branch / worktree: `ai/TASK-20260812-001-payment-integrations` @ `D:/soft/Claud/porje/Site B2B`
-- Code SHA (origin/master): `16f2594` (PR #36)
+- Code SHA (origin/master): `acd0191` (PR #38)
 - Live health:
-  - API `https://api.poshaktaranom.com/v1/health` → **200** ok
-  - Wholesale `https://poshaktaranom.com/` → **200**
-  - Retail `https://www.poshaktaranom.ir/` → **200**
-  - Eligible → ZARINPAL + MANUAL only (public DTO)
-- Readiness: **71/100** unchanged (payment work does not inflate readiness)
+  - API → **200** ok
+  - Wholesale / retail → **200**
+  - Eligible → ZARINPAL + MANUAL only
+- Readiness: **71/100** unchanged
 - Website-builder: **blocked**
-- Payment program phase board:
-  - 0 preflight: **COMPLETE**
-  - 1–3 core/registry: **SHIPPED** (PR #34)
-  - 4–5 BNPL: **BLOCKED** (disabled skeletons)
-  - 6 installments: **SHIPPED LIVE** (PR #36)
-  - 7–8 health/metrics: **SHIPPED** (PR #35); deep Torob/Basalam + full CI scans residual
-- Reviews on `16f2594`: Security **PASS WITH CONDITIONS**; Reviewer **PASS WITH CONDITIONS**
-- Residual DoD: staging E2E; disposable 20-callback suite; CI SAST/secret/container; BNPL contracts
-- Evidence: `docs/reports/2026-08-12-payment-*.md`
+- Payment phase board: 0–3/6/7–8 + residuals events/concurrency/runbooks **SHIPPED LIVE**; BNPL **BLOCKED**
+- Residual DoD: BNPL contracts; staging E2E; disposable migration up/down/up; full container/SAST
