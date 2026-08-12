@@ -1,18 +1,18 @@
 # Project Status
 
-- Last verified: 2026-08-12T16:55:00Z (Payment Phase 0 preflight; live health re-check)
+- Last verified: 2026-08-12T19:05:00Z (Payment Phase 0 closed; Phase 1 claims frozen)
 - Active tasks:
-  - **TASK-20260812-001** (`in_progress`) — Payment and Sales Integrations Phase 0 — owner `cursor:orchestrator-TASK-20260812-001`
-  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (apps/* claims retained; governance/report glob handed off for payment Phase 0)
+  - **TASK-20260812-001** (`in_progress`) — Payment integrations: **Phase 0 COMPLETE**; Phase 1 claims frozen / implementation pending — owner `cursor:orchestrator-TASK-20260812-001`
+  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (apps/* claims retained; no overlap with payment Phase 1 claims)
 - Payment branch / worktree: `ai/TASK-20260812-001-payment-integrations` @ `D:/soft/Claud/porje/Site B2B`
-- Code SHA (origin/master at preflight): `27456b3` / `27456b3c5ca2f665be1fa062a047f644a607802c`
-- Prior readiness ship SHA (historical): `ee9c044` (PR #31) — superseded on master by later SEO commits including `27456b3`
-- Live health (Phase 0 read-only, 2026-08-12):
-  - API `https://api.poshaktaranom.com/v1/health` → **200** `{"status":"ok","service":"taranom-api","version":"1.0"}`
-  - Wholesale `https://poshaktaranom.com/` → **200** (www → apex redirect then 200)
-  - Retail `https://www.poshaktaranom.ir/` → **200**
-- Readiness: **GO WITH CONDITIONS** **71/100** (unchanged; payment preflight does not raise score)
+- Code SHA (origin/master): `27456b3` (docs PR may land payment Phase 0/1-scope commits)
+- Live health (Phase 0 closure re-check planned same session):
+  - API / wholesale / retail — see handoff for exact probes
+- Readiness: **GO WITH CONDITIONS** **71/100** (unchanged)
 - Conditions: **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**
 - Website-builder: **blocked**
-- Payment program: Phase 0 preflight **complete** (docs only). Phase 1 **not started**. BNPL adapters **BLOCKED** pending official contracts. No production deploy from Phase 0.
-- Evidence: `docs/reports/2026-08-12-payment-integrations-preflight.md` + `docs/reports/_preflight-20260812/`
+- Payment program:
+  - Phase 0: **COMPLETE** (docs only; no runtime deploy)
+  - Phase 1: **claims_frozen_implementation_pending** — scope `docs/reports/2026-08-12-payment-phase1-scope.md`
+  - BNPL: **BLOCKED** pending official contracts
+- Evidence: `docs/reports/2026-08-12-payment-integrations-preflight.md`, `docs/reports/2026-08-12-payment-phase1-scope.md`

@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-12T19:05:00Z — Phase 0 CLOSED + Phase 1 claims freeze (TASK-20260812-001)
+
+- Task / owner / role: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001 / orchestrator+architect
+- Branch / worktree: `ai/TASK-20260812-001-payment-integrations` / `D:/soft/Claud/porje/Site B2B`
+- Phase 0: **COMPLETE** — preflight AC MET; no apps/* runtime edits; no VPS deploy from Phase 0
+- Phase 1: **claims frozen** in `active.yaml` + `docs/reports/2026-08-12-payment-phase1-scope.md`; implementation **NOT started** this wave
+- Claims expanded (non-overlapping with TASK-006): payment module, order/invoice/affiliate-postback payment paths, new adapter/attempt/refund/ledger/migration/DTO paths, payment callback page
+- Explicit non-claims: RMA/blog/RetailHeader/compare-at (TASK-006); JWT/CSP auth hardening (separate wave); BNPL live adapters
+- Exact next: begin Phase 1 implementation with race-safe verify + concurrency tests; then Reviewer/Security; staging before production
+- Production: **do not deploy** until Phase 1 code PASS + staging evidence
+
 ## 2026-08-12T16:55:00Z — Payment Phase 0 preflight (TASK-20260812-001)
 
 - Task / owner / role: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001 / orchestrator+architect

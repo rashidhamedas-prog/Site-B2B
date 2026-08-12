@@ -225,7 +225,17 @@ Each phase exit: validate → independent Reviewer+Security → commit claimed o
 
 ## 11. Evidence index
 
-- Gate logs: `docs/reports/_preflight-20260812/*.log` + `*.exit.txt`
+- Gate logs: `docs/reports/_preflight-20260812/*.log` (local; `*.log` gitignored) + committed `*.exit.txt`
 - Handoff: `.ai-dos/tasks/handoff.md` (entry 2026-08-12 payment Phase 0)
 - Status: `.ai-dos/project/status.md`
 - Active registry: `.ai-dos/tasks/active.yaml`
+
+---
+
+## 12. Phase 0 closure (final)
+
+**Closed:** 2026-08-12 (follow-up session)  
+**Commits:** `06bf085`, `80c3f41` on `ai/TASK-20260812-001-payment-integrations`  
+**Phase 1 scope freeze:** `docs/reports/2026-08-12-payment-phase1-scope.md`  
+**Runtime/deploy from Phase 0:** none  
+**Verdict:** Phase 0 **COMPLETE**. Program continues at Phase 1 (claims expanded; code not started in the closure wave).

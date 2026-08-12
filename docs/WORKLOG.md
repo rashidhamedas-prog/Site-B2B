@@ -2,6 +2,20 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-12 — Payment Phase 0 CLOSED + Phase 1 scope freeze
+
+### خلاصه
+- Phase 0 پرداخت رسماً **بسته** شد (گزارش + gates + live read-only + بدون runtime/deploy).
+- قدم بعدی انجام شد: `file_claims` دقیق Phase 1 و سند scope ثبت شد.
+- گزارش scope: `docs/reports/2026-08-12-payment-phase1-scope.md`
+- پیاده‌سازی کد Phase 1 هنوز شروع نشده؛ BNPL همچنان BLOCKED.
+- تداخل claim با TASK-006 وجود ندارد.
+
+### بعدی
+- شروع پیاده‌سازی Phase 1 از race-safe verify + تست ۲۰ callback همزمان.
+
+---
+
 ## 2026-08-12 — Payment & Sales Integrations Phase 0 (preflight)
 
 ### خلاصه
