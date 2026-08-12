@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentService } from './payment.service';
+import { PaymentProviderRegistryService } from './payment-provider-registry.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -24,10 +25,43 @@ type JwtUser = { sub: string; id: string; role: string; phone: string; customerI
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentController {
-  constructor(private readonly svc: PaymentService) {}
+  constructor(
+    private readonly svc: PaymentService,
+    private readonly providers: PaymentProviderRegistryService,
+  ) {}
 
   private isStaff(role: string) {
     return role === 'ADMIN' || role === 'STAFF' || role === 'SUPER_ADMIN';
+  }
+
+  @Get('providers/eligible')
+  eligible(@Request() req: Express.Request & { user?: JwtUser }) {
+    // Public-ish: channel from query via body not available on GET — default BOTH filtered client-side safe
+    const channel =
+      (req as any).headers?.['x-taranom-channel'] === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    return this.providers.listEligible(channel);
+  }
+
+  @Get('providers')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  listProviders() {
+    return this.providers.listAll().then((rows) =>
+      rows.map((p) => ({
+        ...p,
+        // never expose secrets — configReference is a name only
+        hasConfigReference: !!p.configReference,
+      })),
+    );
+  }
+
+  @Post('providers/:code')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  updateProvider(@Param('code') code: string, @Body() body: Record<string, unknown>) {
+    return this.providers.adminUpdate(code, body as any);
   }
 
   @Get()
@@ -51,7 +85,7 @@ export class PaymentController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   findOne(@Param('id') id: string) {
-    return this.svc.findOne(id);
+    return this.svc.findOnePublic(id);
   }
 
   @Post('start')
@@ -75,7 +109,6 @@ export class PaymentController {
       mobile: body.mobile || req.user.phone,
       email: body.email,
       channel: body.channel,
-      // amount from body is ignored — resolved server-side from order/invoice
     });
   }
 
@@ -88,7 +121,10 @@ export class PaymentController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth()
-  manual(@Body() body: ManualPaymentDto) {
+  manual(
+    @Request() req: Express.Request & { user: JwtUser },
+    @Body() body: ManualPaymentDto,
+  ) {
     return this.svc.recordManual({
       amount: Number(body.amount),
       customerId: body.customerId,
@@ -96,6 +132,33 @@ export class PaymentController {
       invoiceId: body.invoiceId,
       refId: body.refId,
       description: body.description,
+      actorId: req.user.id || req.user.sub,
+      reason: body.description,
+    });
+  }
+
+  @Post('refund')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  refund(
+    @Request() req: Express.Request & { user: JwtUser },
+    @Body()
+    body: {
+      paymentId: string;
+      amount: number;
+      reason?: string;
+      idempotencyKey: string;
+      channel?: 'WALLET' | 'PROVIDER' | 'MANUAL';
+    },
+  ) {
+    return this.svc.requestRefund({
+      paymentId: body.paymentId,
+      amount: Number(body.amount),
+      reason: body.reason,
+      idempotencyKey: body.idempotencyKey,
+      requestedBy: req.user.id || req.user.sub,
+      channel: body.channel,
     });
   }
 }

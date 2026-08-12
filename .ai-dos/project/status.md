@@ -5,9 +5,11 @@
   - **TASK-20260812-001** (`in_progress`) — Payment integrations: **Phase 0 COMPLETE**; Phase 1 claims frozen / implementation pending — owner `cursor:orchestrator-TASK-20260812-001`
   - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (apps/* claims retained; no overlap with payment Phase 1 claims)
 - Payment branch / worktree: `ai/TASK-20260812-001-payment-integrations` @ `D:/soft/Claud/porje/Site B2B`
-- Code SHA (origin/master): `27456b3` (docs PR may land payment Phase 0/1-scope commits)
-- Live health (Phase 0 closure re-check planned same session):
-  - API / wholesale / retail — see handoff for exact probes
+- Code SHA (origin/master): `12f5af2` (PR #33 merge — payment Phase 0 + Phase 1 scope docs)
+- Live health (Phase 0 closure re-check):
+  - API `https://api.poshaktaranom.com/v1/health` → **200** ok
+  - Wholesale `https://poshaktaranom.com/` → **200**
+  - Retail `https://www.poshaktaranom.ir/` → **200**
 - Readiness: **GO WITH CONDITIONS** **71/100** (unchanged)
 - Conditions: **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**
 - Website-builder: **blocked**

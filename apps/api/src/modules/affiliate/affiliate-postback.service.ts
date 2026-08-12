@@ -45,6 +45,33 @@ export class AffiliatePostbackService {
   async fireForOrder(orderId: string, status: ConversionPayload['status'] = 'paid') {
     const order = await this.orders.findOne({ where: { id: orderId } });
     if (!order) return { skipped: true, reason: 'order_not_found' };
+
+    // Once-guard for paid conversions: PaymentEntity.postbackFiredAt is preferred when
+    // available, but AffiliateModule only registers OrderEntity and PaymentEntity has no
+    // such column yet — use an atomic notes tag to avoid duplicate network postbacks.
+    if (status === 'paid') {
+      const tagPrefix = 'AFFILIATE_POSTBACK_PAID_AT=';
+      if (String(order.notes || '').includes(tagPrefix)) {
+        return { skipped: true, reason: 'already_fired' };
+      }
+      const tag = `${tagPrefix}${new Date().toISOString()}`;
+      const claimed: Array<{ id: string }> = await this.orders.query(
+        `UPDATE orders
+         SET notes = CASE
+           WHEN notes IS NULL OR notes = '' THEN $2
+           ELSE notes || E'\\n' || $2
+         END,
+         "updatedAt" = NOW()
+         WHERE id = $1::uuid
+           AND (notes IS NULL OR position($3 in notes) = 0)
+         RETURNING id`,
+        [orderId, tag, tagPrefix],
+      );
+      if (!claimed?.length) {
+        return { skipped: true, reason: 'already_fired' };
+      }
+    }
+
     return this.fire({
       orderId: order.id,
       orderNumber: order.orderNumber,
