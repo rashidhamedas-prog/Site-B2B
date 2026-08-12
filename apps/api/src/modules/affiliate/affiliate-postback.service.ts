@@ -78,39 +78,94 @@ export class AffiliatePostbackService {
     const order = await this.orders.findOne({ where: { id: orderId } });
     if (!order) return { skipped: true, reason: 'order_not_found' };
 
-    // Once-guard for paid/cancelled conversions: atomic notes tag avoids duplicate network postbacks.
+    // Once-guard for paid/cancelled: claim PENDING tag before HTTP; promote to final on success;
+    // release PENDING on failure so retries can reclaim (avoids permanent drop after claim).
     const tagPrefix = this.tagPrefixFor(status);
+    const pendingPrefix =
+      status === 'paid'
+        ? 'AFFILIATE_POSTBACK_PENDING_PAID='
+        : status === 'cancelled'
+          ? 'AFFILIATE_POSTBACK_PENDING_CANCELLED='
+          : null;
+
     if (tagPrefix) {
       if (String(order.notes || '').includes(tagPrefix)) {
         this.tracker.recordSuccess({ op: 'fireForOrder', skipped: 'already_fired', status });
         return { skipped: true, reason: 'already_fired' };
       }
-      const tag = `${tagPrefix}${new Date().toISOString()}`;
-      const claimed: Array<{ id: string }> = await this.orders.query(
-        `UPDATE orders
-         SET notes = CASE
-           WHEN notes IS NULL OR notes = '' THEN $2
-           ELSE notes || E'\\n' || $2
-         END,
-         "updatedAt" = NOW()
-         WHERE id = $1::uuid
-           AND (notes IS NULL OR position($3 in notes) = 0)
-         RETURNING id`,
-        [orderId, tag, tagPrefix],
-      );
-      if (!claimed?.length) {
-        this.tracker.recordSuccess({ op: 'fireForOrder', skipped: 'already_fired', status });
-        return { skipped: true, reason: 'already_fired' };
+      if (pendingPrefix) {
+        const pendingTag = `${pendingPrefix}${new Date().toISOString()}`;
+        const claimed: Array<{ id: string }> = await this.orders.query(
+          `UPDATE orders
+           SET notes = CASE
+             WHEN notes IS NULL OR notes = '' THEN $2
+             ELSE notes || E'\\n' || $2
+           END,
+           "updatedAt" = NOW()
+           WHERE id = $1::uuid
+             AND (notes IS NULL OR position($3 in notes) = 0)
+             AND (notes IS NULL OR position($4 in notes) = 0)
+           RETURNING id`,
+          [orderId, pendingTag, tagPrefix, pendingPrefix],
+        );
+        if (!claimed?.length) {
+          this.tracker.recordSuccess({ op: 'fireForOrder', skipped: 'already_fired', status });
+          return { skipped: true, reason: 'already_fired' };
+        }
       }
     }
 
-    return this.fire({
+    const result = await this.fire({
       orderId: order.id,
       orderNumber: order.orderNumber,
       amount: Number(order.total) || 0,
       affiliateId: order.affiliateId,
       status,
     });
+
+    if (tagPrefix && pendingPrefix) {
+      const failures =
+        result && result.skipped === false && Array.isArray((result as any).results)
+          ? (result as any).results.filter((r: any) => !r.ok)
+          : [];
+      const hardSkip =
+        result?.skipped === true &&
+        ['no_postback_targets', 'order_not_found'].includes(String(result.reason));
+
+      if (failures.length) {
+        // Release pending claim so a later retry can fire.
+        await this.orders.query(
+          `UPDATE orders
+           SET notes = trim(both E'\\n' from regexp_replace(COALESCE(notes,''), $2 || '[^\\n]*(\\n|$)', '', 'g')),
+               "updatedAt" = NOW()
+           WHERE id = $1::uuid`,
+          [orderId, pendingPrefix],
+        );
+      } else if (!result?.skipped || hardSkip || result?.reason === 'no_postback_targets') {
+        // Promote pending → final success (or no-target skip still marks done to avoid loops)
+        const finalTag = `${tagPrefix}${new Date().toISOString()}`;
+        await this.orders.query(
+          `UPDATE orders
+           SET notes = trim(both E'\\n' from regexp_replace(COALESCE(notes,''), $2 || '[^\\n]*(\\n|$)', '', 'g')),
+               "updatedAt" = NOW()
+           WHERE id = $1::uuid`,
+          [orderId, pendingPrefix],
+        );
+        await this.orders.query(
+          `UPDATE orders
+           SET notes = CASE
+             WHEN notes IS NULL OR notes = '' THEN $2
+             ELSE notes || E'\\n' || $2
+           END,
+           "updatedAt" = NOW()
+           WHERE id = $1::uuid
+             AND (notes IS NULL OR position($3 in notes) = 0)`,
+          [orderId, finalTag, tagPrefix],
+        );
+      }
+    }
+
+    return result;
   }
 
   async fire(payload: ConversionPayload) {

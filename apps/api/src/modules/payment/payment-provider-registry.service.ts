@@ -15,17 +15,29 @@ export class PaymentProviderRegistryService {
     return this.repo.find({ order: { sortOrder: 'ASC', code: 'ASC' } });
   }
 
-  /** Server-authoritative checkout eligibility — never trust client. */
-  async listEligible(channel: 'WHOLESALE' | 'RETAIL'): Promise<PaymentProviderEntity[]> {
+  /** Server-authoritative checkout eligibility — never trust client. Public DTO (no secrets). */
+  async listEligible(channel: 'WHOLESALE' | 'RETAIL') {
     const all = await this.listAll();
-    return all.filter((p) => {
-      if (!p.enabled || p.maintenanceMode) return false;
-      if (p.contractStatus !== 'APPROVED') return false;
-      if (p.healthStatus === 'DOWN') return false;
-      if (p.channel !== 'BOTH' && p.channel !== channel) return false;
-      if (!(p.capabilities?.pay || p.capabilities?.bnpl)) return false;
-      return true;
-    });
+    return all
+      .filter((p) => {
+        if (!p.enabled || p.maintenanceMode) return false;
+        if (p.contractStatus !== 'APPROVED') return false;
+        if (p.healthStatus === 'DOWN') return false;
+        if (p.channel !== 'BOTH' && p.channel !== channel) return false;
+        if (!(p.capabilities?.pay || p.capabilities?.bnpl)) return false;
+        return true;
+      })
+      .map((p) => ({
+        code: p.code,
+        displayName: p.displayName,
+        type: p.type,
+        channel: p.channel,
+        capabilities: p.capabilities,
+        minAmountIrr: p.minAmountIrr,
+        maxAmountIrr: p.maxAmountIrr,
+        sortOrder: p.sortOrder,
+        logoUrl: p.logoUrl,
+      }));
   }
 
   async getByCode(code: string): Promise<PaymentProviderEntity> {

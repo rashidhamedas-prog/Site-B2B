@@ -185,13 +185,41 @@ export class PaymentService {
       );
     }
 
-    // Reuse existing PENDING payment with authority for same order when still valid.
+    // Serialize starts per order: reuse PENDING+authority or create one new PENDING row.
     if (input.orderId) {
-      const existing = await this.repo.findOne({
-        where: { orderId: input.orderId, status: 'PENDING' as any },
-        order: { createdAt: 'DESC' },
+      const reused = await this.dataSource.transaction(async (manager) => {
+        const payRepo = manager.getRepository(PaymentEntity);
+        await manager.query(`SELECT pg_advisory_xact_lock(hashtext($1::text))`, [
+          `payment-start:${input.orderId}`,
+        ]);
+        const existing = await payRepo.findOne({
+          where: { orderId: input.orderId, status: 'PENDING' as any },
+          order: { createdAt: 'DESC' },
+        });
+        if (existing?.authority) {
+          return { kind: 'reuse' as const, payment: existing };
+        }
+        if (existing) {
+          // PENDING without authority — finish gateway create on same row
+          return { kind: 'created' as const, payment: existing };
+        }
+        const payment = await payRepo.save(
+          payRepo.create({
+            amount,
+            gateway: 'ZARINPAL',
+            status: 'PENDING',
+            orderId: input.orderId,
+            invoiceId: input.invoiceId,
+            customerId,
+            description: input.description ?? 'پرداخت سفارش پوشاک ترنم',
+            meta: { channel },
+            attemptCount: 0,
+          }),
+        );
+        return { kind: 'created' as const, payment };
       });
-      if (existing?.authority) {
+
+      if (reused.kind === 'reuse') {
         const caps = this.zarinpal.getCapabilities();
         if (caps.pay) {
           const sandbox = gw.sandbox;
@@ -202,7 +230,7 @@ export class PaymentService {
           this.logger.log(
             this.paymentLogCtx({
               event: 'payment.start.reuse',
-              paymentId: existing.id,
+              paymentId: reused.payment.id,
               orderId: input.orderId,
               providerCode: 'ZARINPAL',
               mobile: input.mobile,
@@ -210,13 +238,102 @@ export class PaymentService {
             }),
           );
           return {
-            paymentId: existing.id,
-            authority: existing.authority,
-            redirectUrl: `${startPayBase}/${existing.authority}`,
+            paymentId: reused.payment.id,
+            authority: reused.payment.authority!,
+            redirectUrl: `${startPayBase}/${reused.payment.authority}`,
             gateway: 'ZARINPAL',
             sandbox,
           };
         }
+      }
+
+      let payment = reused.payment;
+      // If PENDING without authority (in-flight race loser), continue gateway create below.
+      if (reused.kind === 'reuse' && !reused.payment.authority) {
+        // fall through
+      }
+
+      const callbackUrl = `${gw.callbackBase}${gw.callbackBase.includes('?') ? '&' : '?'}paymentId=${payment.id}`;
+      payment.callbackUrl = callbackUrl;
+
+      const attemptNo = (payment.attemptCount || 0) + 1;
+      const attempt = this.attemptRepo.create({
+        paymentId: payment.id,
+        providerCode: 'ZARINPAL',
+        attemptNo,
+        amount,
+        currency: 'IRR',
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        sanitizedRequest: { channel, orderId: input.orderId, invoiceId: input.invoiceId },
+      });
+      await this.attemptRepo.save(attempt);
+
+      try {
+        const created = await this.zarinpal.createPayment({
+          amountIrr: amount,
+          callbackUrl,
+          description: payment.description || 'پرداخت سفارش پوشاک ترنم',
+          merchantId: gw.merchantId,
+          sandbox: gw.sandbox,
+          mobile: input.mobile,
+          email: input.email,
+          orderId: input.orderId,
+        });
+
+        payment.authority = created.providerToken;
+        payment.attemptCount = attemptNo;
+        payment.meta = { ...(payment.meta ?? {}), channel, request: created.rawSanitized };
+        await this.repo.save(payment);
+
+        attempt.status = 'REDIRECTED';
+        attempt.providerToken = created.providerToken;
+        attempt.sanitizedResponse = created.rawSanitized;
+        await this.attemptRepo.save(attempt);
+
+        this.metrics.incr('payment_start_total');
+        this.logger.log(
+          this.paymentLogCtx({
+            event: 'payment.start.ok',
+            paymentId: payment.id,
+            orderId: input.orderId,
+            providerCode: 'ZARINPAL',
+            mobile: input.mobile,
+            extra: { sandbox: gw.sandbox, channel, attemptNo },
+          }),
+        );
+
+        return {
+          paymentId: payment.id,
+          authority: created.providerToken,
+          redirectUrl: created.redirectUrl,
+          gateway: 'ZARINPAL',
+          sandbox: gw.sandbox,
+        };
+      } catch (err: any) {
+        const norm = this.zarinpal.normalizeProviderError(err);
+        payment.status = 'FAILED';
+        payment.meta = {
+          ...(payment.meta ?? {}),
+          startError: norm.message,
+          startCode: norm.code,
+        };
+        await this.repo.save(payment);
+        attempt.status = 'FAILED';
+        attempt.sanitizedResponse = { error: norm.message, code: norm.code };
+        await this.attemptRepo.save(attempt);
+        this.metrics.incr('payment_failure_total');
+        this.logger.error(
+          this.paymentLogCtx({
+            event: 'payment.start.failed',
+            paymentId: payment.id,
+            orderId: input.orderId,
+            providerCode: 'ZARINPAL',
+            mobile: input.mobile,
+            extra: { code: norm.code, message: norm.message, attemptNo },
+          }),
+        );
+        throw new BadRequestException(norm.message || 'شروع پرداخت ناموفق بود');
       }
     }
 
@@ -349,16 +466,25 @@ export class PaymentService {
       return toPublicPaymentDto(preview, { ok: true, alreadyVerified: true });
     }
     if (preview.status === 'CANCELLED' || preview.status === 'REFUNDED') {
-      this.logger.log(
-        this.paymentLogCtx({
-          event: 'payment.verify.terminal',
-          paymentId,
-          orderId: preview.orderId,
-          providerCode,
-          extra: { paymentStatus: preview.status },
-        }),
-      );
-      return toPublicPaymentDto(preview, { ok: false, cancelled: true });
+      // Soft-cancelled locally must not permanently block a successful PSP verify.
+      // Fall through to gateway verify when Status=OK (or missing) so paid-at-gateway
+      // orders can still confirm. Terminal REFUNDED stays blocked.
+      if (preview.status === 'REFUNDED') {
+        this.logger.log(
+          this.paymentLogCtx({
+            event: 'payment.verify.terminal',
+            paymentId,
+            orderId: preview.orderId,
+            providerCode,
+            extra: { paymentStatus: preview.status },
+          }),
+        );
+        return toPublicPaymentDto(preview, { ok: false, cancelled: true });
+      }
+      if (status && status !== 'OK') {
+        return toPublicPaymentDto(preview, { ok: false, cancelled: true });
+      }
+      // CANCELLED + OK → continue to PSP verify + CAS from CANCELLED→PAID below
     }
 
     if (authority && preview.authority && authority !== preview.authority) {
@@ -366,10 +492,24 @@ export class PaymentService {
     }
 
     if (status && status !== 'OK') {
-      await this.repo.update(paymentId, {
-        status: 'CANCELLED',
-        meta: { ...(preview.meta ?? {}), callbackStatus: status },
-      } as any);
+      // Require authority match whenever the payment already has one (blocks paymentId-only griefing)
+      if (preview.authority) {
+        if (!authority || authority !== preview.authority) {
+          throw new BadRequestException('شناسه تراکنش نامعتبر است');
+        }
+      }
+      await this.dataSource.transaction(async (manager) => {
+        const payRepo = manager.getRepository(PaymentEntity);
+        const locked = await payRepo.findOne({
+          where: { id: paymentId },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!locked) return;
+        if (locked.status !== 'PENDING' && locked.status !== 'FAILED') return;
+        locked.status = 'CANCELLED';
+        locked.meta = { ...(locked.meta ?? {}), callbackStatus: status };
+        await payRepo.save(locked);
+      });
       const cancelled = await this.findOne(paymentId);
       this.metrics.incr('payment_failure_total');
       this.logger.log(
@@ -441,11 +581,11 @@ export class PaymentService {
       if (locked.status === 'PAID') {
         return { already: true as const, payment: locked };
       }
-      if (locked.status === 'CANCELLED' || locked.status === 'REFUNDED') {
+      if (locked.status === 'REFUNDED') {
         return { already: false as const, cancelled: true as const, payment: locked };
       }
 
-      // CAS: only PENDING/FAILED (retry after soft fail) → PAID
+      // CAS: PENDING/FAILED/CANCELLED (soft cancel recovery) → PAID
       const cas = await manager
         .createQueryBuilder()
         .update(PaymentEntity)
@@ -457,7 +597,7 @@ export class PaymentService {
         } as any)
         .where('id = :id AND status IN (:...statuses)', {
           id: paymentId,
-          statuses: ['PENDING', 'FAILED'],
+          statuses: ['PENDING', 'FAILED', 'CANCELLED'],
         })
         .execute();
 
@@ -496,11 +636,14 @@ export class PaymentService {
           lock: { mode: 'pessimistic_write' },
         });
         if (inv) {
-          const nextPaid = Number(inv.paidAmount || 0) + Number(payment.amount);
+          const paid = Number(inv.paidAmount || 0);
           const total = Number(inv.total) || 0;
-          if (nextPaid - Number(payment.amount) >= total) {
-            // already fully paid before this — still record but clamp
+          const incoming = Number(payment.amount) || 0;
+          const room = Math.max(0, total - paid);
+          if (incoming > room) {
+            throw new BadRequestException('مبلغ پرداخت از مانده فاکتور بیشتر است');
           }
+          const nextPaid = paid + incoming;
           await invRepo.update(inv.id, {
             paidAmount: nextPaid,
             status: nextPaid >= total ? 'PAID' : 'PARTIALLY_PAID',
@@ -508,15 +651,10 @@ export class PaymentService {
         }
       }
 
-      // Mark postback slot inside txn (CAS) so only one winner fires outside
+      // Flag postback candidate; exclusive claim happens after commit via CAS
       if (payment.orderId && !payment.postbackFiredAt) {
-        const pb = await manager
-          .createQueryBuilder()
-          .update(PaymentEntity)
-          .set({ postbackFiredAt: new Date() })
-          .where('id = :id AND "postbackFiredAt" IS NULL', { id: payment.id })
-          .execute();
-        shouldFirePostback = (pb.affected || 0) > 0;
+        shouldFirePostback = true;
+        orderIdForPostback = payment.orderId;
       }
 
       return { already: false as const, payment };
@@ -559,17 +697,48 @@ export class PaymentService {
     );
 
     if (shouldFirePostback && orderIdForPostback) {
-      this.affiliatePostback.fireForOrder(orderIdForPostback, 'paid').catch((err) => {
-        this.logger.warn(
-          this.paymentLogCtx({
-            event: 'payment.postback.failed',
-            paymentId,
-            orderId: orderIdForPostback,
-            providerCode,
-            extra: { message: err?.message || String(err) },
-          }),
-        );
-      });
+      // Exclusive claim so concurrent verifies don't double-fire; release on HTTP failure.
+      const claimed = await this.repo
+        .createQueryBuilder()
+        .update(PaymentEntity)
+        .set({ postbackFiredAt: new Date() })
+        .where('id = :id AND "postbackFiredAt" IS NULL', { id: paymentId })
+        .execute();
+      if ((claimed.affected || 0) > 0) {
+        this.affiliatePostback
+          .fireForOrder(orderIdForPostback, 'paid')
+          .then(async (result: any) => {
+            const failed =
+              result?.skipped === false &&
+              Array.isArray(result?.results) &&
+              result.results.some((r: any) => !r.ok);
+            if (failed) {
+              await this.repo
+                .createQueryBuilder()
+                .update(PaymentEntity)
+                .set({ postbackFiredAt: null })
+                .where('id = :id', { id: paymentId })
+                .execute();
+            }
+          })
+          .catch(async (err) => {
+            await this.repo
+              .createQueryBuilder()
+              .update(PaymentEntity)
+              .set({ postbackFiredAt: null })
+              .where('id = :id', { id: paymentId })
+              .execute();
+            this.logger.warn(
+              this.paymentLogCtx({
+                event: 'payment.postback.failed',
+                paymentId,
+                orderId: orderIdForPostback,
+                providerCode,
+                extra: { message: err?.message || String(err) },
+              }),
+            );
+          });
+      }
     }
 
     return toPublicPaymentDto(applied.payment, {
@@ -692,6 +861,19 @@ export class PaymentService {
       }
       if (amount > Number(payment.amount)) {
         throw new BadRequestException('مبلغ استرداد بیشتر از پرداخت است');
+      }
+
+      const prior = await refundRepo
+        .createQueryBuilder('r')
+        .select('COALESCE(SUM(r.amount),0)', 'sum')
+        .where('r.paymentId = :pid', { pid: payment.id })
+        .andWhere('r.status = :st', { st: 'SUCCEEDED' })
+        .getRawOne();
+      const alreadyRefunded = Number(prior?.sum) || 0;
+      if (alreadyRefunded + amount > Number(payment.amount)) {
+        throw new BadRequestException(
+          `جمع استردادها از مبلغ پرداخت بیشتر می‌شود (قبلاً ${alreadyRefunded})`,
+        );
       }
 
       const channel = input.channel || 'WALLET';

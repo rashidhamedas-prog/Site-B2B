@@ -11,7 +11,7 @@ export class InstallmentContractEntity {
   @Index()
   customerId: string;
 
-  @Column()
+  @Column({ unique: true })
   @Index()
   orderId: string;
 
@@ -30,6 +30,19 @@ export class InstallmentContractEntity {
 
   @Column({ type: 'bigint' })
   effectiveAmountIrr: number;
+
+  /** Outstanding credit reserved by this ACTIVE contract (IRR). */
+  @Column({ type: 'bigint', default: 0 })
+  creditConsumedIrr: number;
+
+  @Column({ nullable: true })
+  approvedBy: string;
+
+  @Column({ nullable: true, type: 'timestamptz' })
+  approvedAt: Date;
+
+  @Column({ nullable: true })
+  ruleId: string;
 
   /** DRAFT | ACTIVE | COMPLETED | DEFAULTED | CANCELLED */
   @Column({ default: 'DRAFT' })

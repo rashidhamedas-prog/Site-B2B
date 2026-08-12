@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingCart, FileText, CreditCard,
-  User, Bell, LogOut, ChevronLeft,
+  User, Bell, LogOut, ChevronLeft, CalendarClock,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -14,6 +14,7 @@ const navItems = [
   { href: '/portal/dashboard/orders', icon: ShoppingCart, label: 'سفارش‌های من' },
   { href: '/portal/dashboard/invoices', icon: FileText, label: 'فاکتورها' },
   { href: '/portal/dashboard/payments', icon: CreditCard, label: 'پرداخت‌ها' },
+  { href: '/portal/dashboard/installments', icon: CalendarClock, label: 'اقساط' },
   { href: '/portal/dashboard/profile', icon: User, label: 'پروفایل' },
   { href: '/portal/dashboard/notifications', icon: Bell, label: 'اعلان‌ها' },
 ];
