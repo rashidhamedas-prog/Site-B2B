@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { IntegrationHealthTracker } from '../../common/integration-health';
 import { OrderEntity } from '../order/entities/order.entity';
 import { SettingsService } from '../settings/settings.service';
 
@@ -16,16 +17,41 @@ export type ConversionPayload = {
  * Server-to-server conversion postbacks for Iranian affiliate networks.
  * Admin configures URL templates with placeholders:
  *   {click_id} {order_id} {order_number} {amount} {amount_toman} {status}
+ *
+ * Idempotent retry (paid/cancelled):
+ * - Atomic notes tag claim BEFORE network GET prevents double-fire under concurrent callbacks.
+ * - Re-entry after claim returns `{ skipped: true, reason: 'already_fired' }` — networks are not
+ *   re-hit. If HTTP failed after claim, lastError is recorded; manual reclaim requires clearing
+ *   the notes tag (ops) — prefer claim-before-send over double-credit risk.
  */
 @Injectable()
 export class AffiliatePostbackService {
   private readonly logger = new Logger(AffiliatePostbackService.name);
+  private readonly tracker = new IntegrationHealthTracker();
 
   constructor(
     @InjectRepository(OrderEntity)
     private readonly orders: Repository<OrderEntity>,
     private readonly settings: SettingsService,
   ) {}
+
+  health() {
+    const snap = this.tracker.snapshot();
+    const ok =
+      snap.errorCount === 0 ||
+      (snap.lastSuccessAt != null &&
+        (snap.lastErrorAt == null || snap.lastSuccessAt >= snap.lastErrorAt));
+    return {
+      integration: 'affiliate' as const,
+      ok,
+      ...snap,
+      retry: {
+        idempotent: true,
+        notes:
+          'Paid/cancelled postbacks claim an atomic notes tag before HTTP GET. Duplicate retries skip (already_fired). Safe against double conversion; failed-after-claim needs ops reclaim, not blind re-fire.',
+      },
+    };
+  }
 
   /** Detect network from encoded click id (`network|id`) or free-form id. */
   parseAffiliate(raw?: string | null): { network: string; clickId: string } | null {
@@ -42,16 +68,21 @@ export class AffiliatePostbackService {
     return template.replace(/\{(\w+)\}/g, (_, k: string) => encodeURIComponent(vars[k] ?? ''));
   }
 
+  private tagPrefixFor(status: ConversionPayload['status']) {
+    if (status === 'cancelled') return 'AFFILIATE_POSTBACK_CANCELLED_AT=';
+    if (status === 'paid') return 'AFFILIATE_POSTBACK_PAID_AT=';
+    return null;
+  }
+
   async fireForOrder(orderId: string, status: ConversionPayload['status'] = 'paid') {
     const order = await this.orders.findOne({ where: { id: orderId } });
     if (!order) return { skipped: true, reason: 'order_not_found' };
 
-    // Once-guard for paid conversions: PaymentEntity.postbackFiredAt is preferred when
-    // available, but AffiliateModule only registers OrderEntity and PaymentEntity has no
-    // such column yet — use an atomic notes tag to avoid duplicate network postbacks.
-    if (status === 'paid') {
-      const tagPrefix = 'AFFILIATE_POSTBACK_PAID_AT=';
+    // Once-guard for paid/cancelled conversions: atomic notes tag avoids duplicate network postbacks.
+    const tagPrefix = this.tagPrefixFor(status);
+    if (tagPrefix) {
       if (String(order.notes || '').includes(tagPrefix)) {
+        this.tracker.recordSuccess({ op: 'fireForOrder', skipped: 'already_fired', status });
         return { skipped: true, reason: 'already_fired' };
       }
       const tag = `${tagPrefix}${new Date().toISOString()}`;
@@ -68,6 +99,7 @@ export class AffiliatePostbackService {
         [orderId, tag, tagPrefix],
       );
       if (!claimed?.length) {
+        this.tracker.recordSuccess({ op: 'fireForOrder', skipped: 'already_fired', status });
         return { skipped: true, reason: 'already_fired' };
       }
     }
@@ -120,6 +152,11 @@ export class AffiliatePostbackService {
     // Affiliate networks usually need a click id; skip empty click unless broadcast.
     const toSend = urls.filter((u) => vars.click_id || marketing.broadcastPostbacks);
     if (!toSend.length) {
+      this.tracker.recordSuccess({
+        op: 'fire',
+        skipped: 'no_postback_targets',
+        status: payload.status,
+      });
       return { skipped: true, reason: 'no_postback_targets', clickId: vars.click_id };
     }
 
@@ -138,6 +175,21 @@ export class AffiliatePostbackService {
         this.logger.warn(`Postback ${t.network} failed: ${err?.message}`);
       }
     }
+
+    const failures = results.filter((r) => !r.ok);
+    if (failures.length) {
+      this.tracker.recordError(
+        failures.map((f) => `${f.network}:${f.status ?? f.error}`).join('; '),
+        { op: 'fire', orderId: payload.orderId, status: payload.status },
+      );
+    } else {
+      this.tracker.recordSuccess({
+        op: 'fire',
+        networks: results.map((r) => r.network),
+        status: payload.status,
+      });
+    }
+
     return { skipped: false, results };
   }
 }

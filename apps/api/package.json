@@ -8,7 +8,7 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
     "lint": "tsc --noEmit",
-    "test": "npx ts-node --transpile-only src/modules/auth/auth.otp.logic.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo.util.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo-analysis.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-core.hardening.spec.ts",
+    "test": "npx ts-node --transpile-only src/modules/auth/auth.otp.logic.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo.util.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo-analysis.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-core.hardening.spec.ts && npx ts-node --transpile-only src/common/integration-health.spec.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate src/database/migrations/Migration -d src/database/data-source.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
     "seed": "ts-node -r tsconfig-paths/register src/seed.ts"

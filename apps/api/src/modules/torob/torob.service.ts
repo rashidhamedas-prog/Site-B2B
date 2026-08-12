@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, MoreThan, Not, Repository } from 'typeorm';
+import { IntegrationHealthTracker } from '../../common/integration-health';
 import { OrderEntity } from '../order/entities/order.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
@@ -23,9 +24,17 @@ type TorobOrder = {
   products?: TorobProduct[];
 };
 
+/**
+ * Torob order-tracking sync (official Torob-Sync contract only).
+ * Do not invent private Torob write/catalog APIs — catalog is feeds/torob.xml.
+ *
+ * Retry: listOrders is a read-only GET; responses are deterministic for a given
+ * purchase_timestamp_gt window — safe and idempotent to retry.
+ */
 @Injectable()
 export class TorobService {
   private readonly logger = new Logger(TorobService.name);
+  private readonly tracker = new IntegrationHealthTracker();
 
   constructor(
     @InjectRepository(OrderEntity)
@@ -58,6 +67,24 @@ export class TorobService {
     return null;
   }
 
+  health() {
+    const snap = this.tracker.snapshot();
+    const ok =
+      snap.errorCount === 0 ||
+      (snap.lastSuccessAt != null &&
+        (snap.lastErrorAt == null || snap.lastSuccessAt >= snap.lastErrorAt));
+    return {
+      integration: 'torob' as const,
+      ok,
+      ...snap,
+      retry: {
+        idempotent: true,
+        notes:
+          'GET /torob/v1/orders is read-only order export per Torob-Sync; safe to retry. Catalog crawl uses public feeds/torob.xml — no private Torob product write API invented here.',
+      },
+    };
+  }
+
   async assertEnabled() {
     const m = await this.settings.marketing();
     if (m.torobOrderSyncEnabled !== true) {
@@ -66,15 +93,22 @@ export class TorobService {
   }
 
   async listOrders(purchaseTimestampGt: string | undefined, limitRaw: number | undefined) {
-    await this.assertEnabled();
+    try {
+      await this.assertEnabled();
+    } catch (err) {
+      this.tracker.recordError(err instanceof Error ? err.message : String(err), { op: 'assertEnabled' });
+      throw err;
+    }
 
     // Panel health-check may omit params — respond 200 empty JSON rather than 400/500.
     if (!purchaseTimestampGt?.trim()) {
+      this.tracker.recordSuccess({ op: 'listOrders', emptyProbe: true, count: 0 });
       return { success: true as const, data: [] as TorobOrder[] };
     }
 
     const gt = new Date(purchaseTimestampGt);
     if (Number.isNaN(gt.getTime())) {
+      this.tracker.recordSuccess({ op: 'listOrders', invalidTs: true, count: 0 });
       return { success: true as const, data: [] as TorobOrder[] };
     }
 
@@ -93,6 +127,7 @@ export class TorobService {
       });
     } catch (err) {
       this.logger.error(`Torob listOrders query failed: ${err instanceof Error ? err.message : err}`);
+      this.tracker.recordError(err instanceof Error ? err.message : String(err), { op: 'listOrders.query' });
       // Never 500 the Torob panel — empty list is safer than breaking validation.
       return { success: true as const, data: [] as TorobOrder[] };
     }
@@ -152,6 +187,7 @@ export class TorobService {
       data.push(row);
     }
 
+    this.tracker.recordSuccess({ op: 'listOrders', count: data.length });
     return { success: true as const, data };
   }
 }
