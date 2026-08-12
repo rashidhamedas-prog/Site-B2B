@@ -75,6 +75,14 @@ const IR_HOST = 'www.poshaktaranom.ir';
   const shop = await probe(BASE_COM, '/shop/some-old-category', COM_HOST);
   check('com /shop/* → 301 /products', shop.status === 301 && /\/products$/.test(shop.location), `status=${shop.status} loc=${shop.location}`);
 
+  // Static inventory map: old descriptive slug → current code slug (middleware 301).
+  const oldSlug = await probe(BASE_COM, '/products/linen-sport-jacket-erika', COM_HOST);
+  check(
+    'com old descriptive product slug → 301 code slug',
+    oldSlug.status === 301 && /\/products\/coats00015\/?$/.test(oldSlug.location),
+    `status=${oldSlug.status} loc=${oldSlug.location}`,
+  );
+
   // NOTE: asset extensions (.jpg etc.) bypass the middleware matcher and 404
   // naturally — probe an extension-less legacy path for the 410.
   const wp = await probe(BASE_COM, '/wp-content/themes/legacy', COM_HOST);

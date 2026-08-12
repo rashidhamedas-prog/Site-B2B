@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
+import { lookupProductSlugRedirect } from '@/lib/product-slug-redirects';
 
 const RETAIL_ORIGIN = 'https://www.poshaktaranom.ir';
+
+/** `/products/<slug>` only (not fabric subpaths). Decode for Persian/URL-encoded segments. */
+function productSlugFromPathname(pathname: string): string | null {
+  const m = pathname.match(/^\/products\/([^/]+)\/?$/);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return m[1];
+  }
+}
 
 /** Legacy WordPress-era paths that are permanently gone (no replacement). */
 const GONE_PREFIXES = [
@@ -69,6 +81,17 @@ export function middleware(request: NextRequest) {
 
   const legacy = handleLegacyPaths(request);
   if (legacy) return legacy;
+
+  // Old descriptive wholesale product slugs → current code slugs (both hosts).
+  const productSlug = productSlugFromPathname(pathname);
+  if (productSlug) {
+    const target = lookupProductSlugRedirect(productSlug);
+    if (target) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/products/${target}`;
+      return NextResponse.redirect(url, 301);
+    }
+  }
 
   // /retail/* must never be a public URL: the retail tree is reached via the
   // host-based rewrite below. Direct hits (either host) 301 to the clean

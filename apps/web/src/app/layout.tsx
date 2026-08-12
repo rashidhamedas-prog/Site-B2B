@@ -3,7 +3,6 @@ import localFont from 'next/font/local';
 import { headers } from 'next/headers';
 import { CartProvider } from '@/lib/cart';
 import { ToastProvider } from '@/components/shared/Toast';
-import { FloatingContact } from '@/components/shared/FloatingContact';
 import { DeferredGtm } from '@/components/shared/DeferredGtm';
 import {
   GtmBodyNoscript,
@@ -119,7 +118,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ToastProvider>
           <CartProvider>
             {children}
-            <FloatingContact />
           </CartProvider>
         </ToastProvider>
       </body>

@@ -2,6 +2,21 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-12 — SEO P3 backlog (موازی با چند ایجنت)
+
+### خلاصه
+- SSR صفحهٔ اول `/products` عمده + ریتیل (`fetchProductList`، revalidate 300) تا لینک محصولات در HTML اولیه باشد.
+- ۵۶ ریدایرکت ۳۰۱ اسلاگ توصیفی قدیمی → کد اسلاگ در middleware (`product-slug-redirects.ts`).
+- Chrome SSR: wholesale layout + RetailChromeProvider (بدون دست‌زدن به RetailHeader claim‌شده) — کاهش fetchهای تکراری settings/chrome.
+- RUM: `WebVitalsReporter` (LCP/CLS/INP) بعد از idle به GA4.
+- حذف deps بلااستفاده از `apps/web/package.json`: swiper, next-seo, chart.js, react-chartjs-2.
+- گزارش دستی به‌روز: `SEO-REMAINING-MANUAL-ACTIONS.md`.
+
+### بعدی
+- اقدامات GSC + تأیید اعداد تجاری توسط مالک؛ `npm install` برای تازه‌سازی lockfile؛ پاک‌کردن leftover chart.js از next.config وقتی claim آزاد شد.
+
+---
+
 ## 2026-08-11 — SEO master fix (هر دو دامنه)
 
 ### خلاصه

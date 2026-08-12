@@ -3,12 +3,33 @@
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MessageCircle, Phone, X, Send } from 'lucide-react';
-import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
+import { chromeStr, useSiteChrome, type SiteChromeData } from '@/lib/cms/useSiteChrome';
+import { hostLooksRetail, isRetailPath } from '@/lib/channel';
+import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
 
-export function FloatingContact() {
+function isRetailSurface(pathname: string): boolean {
+  if (isRetailPath(pathname) || pathname.startsWith('/retail')) return true;
+  if (typeof window !== 'undefined' && hostLooksRetail(window.location.host)) return true;
+  return false;
+}
+
+export function FloatingContact({
+  chrome: chromeProp,
+}: {
+  /** When provided (SSR/provider), skip chrome network fetch. */
+  chrome?: SiteChromeData | null;
+} = {}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { chrome } = useSiteChrome('WHOLESALE');
+  const bag = useWholesaleChrome();
+  const retail = isRetailSurface(pathname);
+  const initialChrome = chromeProp ?? bag?.chrome ?? null;
+
+  // Skip network when SSR/provider data exists, or on retail (do not hit wholesale chrome).
+  const { chrome } = useSiteChrome(
+    'WHOLESALE',
+    retail || initialChrome ? (initialChrome ?? {}) : null,
+  );
 
   const phone = chromeStr(chrome, 'floatPhone', '09152424624');
   const whatsapp = chromeStr(chrome, 'floatWhatsapp', '989152424624');
@@ -19,7 +40,7 @@ export function FloatingContact() {
     'سلام، میخوام اطلاعات عمده‌فروشی ترنم رو بدونم',
   );
 
-  if (pathname.startsWith('/admin')) return null;
+  if (pathname.startsWith('/admin') || retail) return null;
 
   return (
     <div className="fixed bottom-6 left-6 z-50 flex flex-col-reverse items-start gap-3">

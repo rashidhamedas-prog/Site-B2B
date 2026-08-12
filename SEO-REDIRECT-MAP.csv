@@ -23,3 +23,4 @@ http://poshaktaranom.com/*,https://poshaktaranom.com/*,301,nginx HTTPS canonical
 https://www.poshaktaranom.com/*,https://poshaktaranom.com/*,301,nginx www→apex .com (pre-existing)
 https://poshaktaranom.ir/*,https://www.poshaktaranom.ir/*,301,nginx apex→www .ir (pre-existing)
 /products/<stale-slug>,/products/<current-slug>,308,PDP permanentRedirect when incoming slug ≠ resolvable slug (both channels)
+/products/<old-descriptive-slug>,/products/<code-slug>,301,static map apps/web/src/lib/product-slug-redirects.ts (56 entries from SEO-URL-INVENTORY.csv CANONICAL_MISMATCH 2026-08-11; middleware; e.g. /products/linen-sport-jacket-erika → /products/coats00015)

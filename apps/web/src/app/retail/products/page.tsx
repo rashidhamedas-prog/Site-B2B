@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { RetailProductsCatalog } from '@/components/retail/RetailProductsCatalog';
+import { fetchProductList } from '@/lib/server-api';
 
 interface SearchParams {
   q?: string;
@@ -44,6 +45,43 @@ export async function generateMetadata({
   return isListingVariant ? { robots: { index: false, follow: true } } : {};
 }
 
-export default function RetailProductsPage() {
-  return <RetailProductsCatalog />;
+export default async function RetailProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const isListingVariant = Boolean(
+    params.q ||
+      params.search ||
+      params.fabric ||
+      params.color ||
+      params.size ||
+      params.collar ||
+      params.collectionId ||
+      params.category ||
+      params.categoryId ||
+      params.minPrice ||
+      params.maxPrice ||
+      params.page ||
+      params.sort,
+  );
+
+  const initial = isListingVariant
+    ? null
+    : await fetchProductList({
+        channel: 'RETAIL',
+        limit: 24,
+        status: 'ACTIVE',
+        sort: 'newest',
+      });
+
+  return (
+    <RetailProductsCatalog
+      searchParams={params}
+      initialProducts={initial?.data}
+      initialTotalPages={initial?.meta.totalPages}
+      seedDefaultListing={!isListingVariant}
+    />
+  );
 }

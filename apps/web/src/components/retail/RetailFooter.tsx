@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 import { EnamadSeal } from '@/components/shared/EnamadSeal';
+import { useRetailChrome } from '@/components/retail/RetailChromeProvider';
 
 const COLS = [
   {
@@ -32,7 +33,8 @@ const COLS = [
 ];
 
 export function RetailFooter() {
-  const { chrome } = useSiteChrome('RETAIL');
+  const bag = useRetailChrome();
+  const { chrome } = useSiteChrome('RETAIL', bag?.chrome ?? null);
   const brandName = chromeStr(chrome, 'brandName', 'POSHAK TARANOM');
   const blurb = chromeStr(
     chrome,
@@ -72,9 +74,14 @@ export function RetailFooter() {
         ))}
       </div>
       <div className="border-t border-white/10 py-4">
-        <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-center gap-3 px-4 sm:flex-row sm:justify-between sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-center gap-3 px-4 sm:px-6 sm:flex-row sm:justify-between lg:px-8">
           <p className="text-center text-xs text-white/45">{copyright}</p>
-          <EnamadSeal channel="RETAIL" size={72} className="opacity-95" />
+          <EnamadSeal
+            channel="RETAIL"
+            size={72}
+            className="opacity-95"
+            config={bag ? bag.enamad : undefined}
+          />
         </div>
       </div>
     </footer>

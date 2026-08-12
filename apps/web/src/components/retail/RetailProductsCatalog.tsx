@@ -2,8 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/retail-cart';
 
@@ -21,33 +20,90 @@ type Product = {
 
 type Collection = { id: string; name: string; slug: string };
 
+export type RetailCatalogSearchParams = {
+  q?: string;
+  search?: string;
+  fabric?: string;
+  color?: string;
+  size?: string;
+  collar?: string;
+  collectionId?: string;
+  category?: string;
+  categoryId?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  page?: string;
+  sort?: string;
+};
+
 function mediaUrl(url?: string) {
   if (!url) return undefined;
   if (url.startsWith('http') || url.startsWith('/')) return url;
   return `/media/${url}`;
 }
 
+function normalizeRetailProduct(raw: Record<string, unknown> | Product): Product {
+  return {
+    id: String(raw.id ?? ''),
+    name: String(raw.name ?? ''),
+    slug: String(raw.slug ?? ''),
+    fabric: typeof raw.fabric === 'string' ? raw.fabric : undefined,
+    retailPrice:
+      raw.retailPrice == null || raw.retailPrice === ''
+        ? null
+        : Number(raw.retailPrice),
+    retailCompareAtPrice:
+      raw.retailCompareAtPrice == null || raw.retailCompareAtPrice === ''
+        ? null
+        : Number(raw.retailCompareAtPrice),
+    images: Array.isArray(raw.images) ? (raw.images as string[]) : [],
+    variants: Array.isArray(raw.variants)
+      ? (raw.variants as Array<{ color: string; size: string }>)
+      : [],
+    specs:
+      raw.specs && typeof raw.specs === 'object'
+        ? (raw.specs as Product['specs'])
+        : undefined,
+  };
+}
+
 const PAGE_SIZE = 24;
 
-function RetailProductsInner() {
-  const searchParams = useSearchParams();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+export function RetailProductsCatalog({
+  initialProducts,
+  initialTotalPages,
+  seedDefaultListing = false,
+  searchParams = {},
+}: {
+  initialProducts?: Array<Record<string, unknown> | Product>;
+  initialTotalPages?: number;
+  seedDefaultListing?: boolean;
+  searchParams?: RetailCatalogSearchParams;
+} = {}) {
+  const seeded =
+    seedDefaultListing && Array.isArray(initialProducts)
+      ? initialProducts.map(normalizeRetailProduct)
+      : null;
+  const [products, setProducts] = useState<Product[]>(() => seeded ?? []);
+  const [loading, setLoading] = useState(() => !seeded);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [fabric, setFabric] = useState(searchParams.get('fabric') || '');
-  const [color, setColor] = useState(searchParams.get('color') || '');
-  const [size, setSize] = useState(searchParams.get('size') || '');
-  const [collar, setCollar] = useState(searchParams.get('collar') || '');
-  const [collectionId, setCollectionId] = useState(searchParams.get('collectionId') || '');
-  const [categoryId, setCategoryId] = useState(
-    searchParams.get('category') || searchParams.get('categoryId') || '',
+  const [totalPages, setTotalPages] = useState(() =>
+    typeof initialTotalPages === 'number' && seeded ? initialTotalPages : 1,
   );
-  const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
-  const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
-  const [q, setQ] = useState(searchParams.get('q') || searchParams.get('search') || '');
+  const [fabric, setFabric] = useState(searchParams.fabric || '');
+  const [color, setColor] = useState(searchParams.color || '');
+  const [size, setSize] = useState(searchParams.size || '');
+  const [collar, setCollar] = useState(searchParams.collar || '');
+  const [collectionId, setCollectionId] = useState(searchParams.collectionId || '');
+  const [categoryId, setCategoryId] = useState(
+    searchParams.category || searchParams.categoryId || '',
+  );
+  const [minPrice, setMinPrice] = useState(searchParams.minPrice || '');
+  const [maxPrice, setMaxPrice] = useState(searchParams.maxPrice || '');
+  const [q, setQ] = useState(searchParams.q || searchParams.search || '');
   const [collections, setCollections] = useState<Collection[]>([]);
+  const skipNextFetch = useRef(Boolean(seeded));
 
   useEffect(() => {
     apiClient
@@ -79,6 +135,10 @@ function RetailProductsInner() {
   );
 
   useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -291,13 +351,5 @@ function RetailProductsInner() {
         )}
       </div>
     </div>
-  );
-}
-
-export function RetailProductsCatalog() {
-  return (
-    <Suspense fallback={<div className="py-20 text-center text-sm">در حال بارگذاری…</div>}>
-      <RetailProductsInner />
-    </Suspense>
   );
 }

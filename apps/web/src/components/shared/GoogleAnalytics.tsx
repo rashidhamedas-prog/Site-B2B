@@ -10,6 +10,7 @@ import {
   sanitizeGtmId,
   type GoogleChannel,
 } from '@/lib/google';
+import { setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
 
 type MarketingPublic = {
   ga4WholesaleId?: string;
@@ -112,6 +113,7 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
       if (ga4) {
         loadGtag(ga4);
         readyId.current = ga4;
+        setGa4RumiMeasurementId(ga4);
         sendPageView(ga4, pagePath(pathname || '/', searchParams?.toString() || ''));
       }
     })();

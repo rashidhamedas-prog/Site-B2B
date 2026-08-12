@@ -2,88 +2,90 @@
 
 import { useEffect, useState } from 'react';
 import type { ContentBlock } from '@/lib/cms/types';
-import { getDefaultBlocks } from '@/lib/cms/defaults';
-import { arr, findBlock, str, bool } from '@/lib/cms/fetch';
+import {
+  type SiteChromeData,
+  defaultSiteChrome,
+  parseChromeBlocks,
+} from '@/lib/cms/chrome';
+
+export type { SiteChromeData };
+export { chromeStr, chromeLines, parseChromeBlocks, defaultSiteChrome } from '@/lib/cms/chrome';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
+const TTL_MS = 60_000;
 
-export interface SiteChromeData {
-  announcement?: {
-    enabled: boolean;
-    text: string;
-    phoneLabel: string;
-    phoneHref: string;
-    telegramLabel: string;
-    telegramHref: string;
-  };
-  chrome?: Record<string, unknown>;
+type CacheEntry = { at: number; data: SiteChromeData };
+const cacheByChannel: Partial<Record<'WHOLESALE' | 'RETAIL', CacheEntry>> = {};
+const inflightByChannel: Partial<
+  Record<'WHOLESALE' | 'RETAIL', Promise<SiteChromeData> | null>
+> = {};
+
+/** Seed module cache from SSR so sibling hooks skip network. */
+export function seedSiteChromeCache(
+  channel: 'WHOLESALE' | 'RETAIL',
+  data: SiteChromeData,
+): void {
+  cacheByChannel[channel] = { at: Date.now(), data };
 }
 
-function parseChrome(blocks: ContentBlock[]): SiteChromeData {
-  const ann = findBlock(blocks, 'announcement');
-  const chrome = findBlock(blocks, 'chrome');
-  return {
-    announcement: ann
-      ? {
-          enabled: bool(ann.props, 'enabled', true),
-          text: str(ann.props, 'text'),
-          phoneLabel: str(ann.props, 'phoneLabel'),
-          phoneHref: str(ann.props, 'phoneHref'),
-          telegramLabel: str(ann.props, 'telegramLabel'),
-          telegramHref: str(ann.props, 'telegramHref'),
-        }
-      : undefined,
-    chrome: chrome?.props,
-  };
+async function loadChrome(channel: 'WHOLESALE' | 'RETAIL'): Promise<SiteChromeData> {
+  const defaults = defaultSiteChrome(channel);
+  const hit = cacheByChannel[channel];
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
+
+  const existing = inflightByChannel[channel];
+  if (existing) return existing;
+
+  const promise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/cms/site-content/${channel}/chrome`, {
+        credentials: 'omit',
+      });
+      if (!res.ok) return defaults;
+      const json = await res.json();
+      const blocks = Array.isArray(json?.blocks) ? (json.blocks as ContentBlock[]) : [];
+      const parsed = blocks.length ? parseChromeBlocks(blocks) : defaults;
+      cacheByChannel[channel] = { at: Date.now(), data: parsed };
+      return parsed;
+    } catch {
+      return defaults;
+    } finally {
+      inflightByChannel[channel] = null;
+    }
+  })();
+
+  inflightByChannel[channel] = promise;
+  return promise;
 }
 
-let cache: { at: number; data: SiteChromeData } | null = null;
-
-export function useSiteChrome(channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE'): SiteChromeData {
-  const defaults = parseChrome(getDefaultBlocks(channel, 'chrome'));
-  const [data, setData] = useState<SiteChromeData>(cache?.data ?? defaults);
+/**
+ * CMS chrome for header/footer/float.
+ * Pass `initial` (e.g. from WholesaleChromeProvider) to skip the network fetch.
+ */
+export function useSiteChrome(
+  channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE',
+  initial?: SiteChromeData | null,
+): SiteChromeData {
+  const defaults = defaultSiteChrome(channel);
+  const cached = cacheByChannel[channel];
+  const [data, setData] = useState<SiteChromeData>(
+    initial ?? cached?.data ?? defaults,
+  );
 
   useEffect(() => {
+    if (initial) {
+      seedSiteChromeCache(channel, initial);
+      setData(initial);
+      return;
+    }
     let cancelled = false;
-    const load = async () => {
-      if (cache && Date.now() - cache.at < 60_000) {
-        setData(cache.data);
-        return;
-      }
-      try {
-        const res = await fetch(`${API_BASE}/cms/site-content/${channel}/chrome`, {
-          credentials: 'omit',
-        });
-        if (!res.ok) {
-          setData(defaults);
-          return;
-        }
-        const json = await res.json();
-        const blocks = Array.isArray(json?.blocks) ? (json.blocks as ContentBlock[]) : [];
-        const parsed = blocks.length ? parseChrome(blocks) : defaults;
-        cache = { at: Date.now(), data: parsed };
-        if (!cancelled) setData(parsed);
-      } catch {
-        if (!cancelled) setData(defaults);
-      }
-    };
-    void load();
+    void loadChrome(channel).then((parsed) => {
+      if (!cancelled) setData(parsed);
+    });
     return () => {
       cancelled = true;
     };
-  }, [channel]);
+  }, [channel, initial]);
 
   return data;
-}
-
-export function chromeStr(chrome: Record<string, unknown> | undefined, key: string, fallback = '') {
-  if (!chrome) return fallback;
-  return str(chrome, key, fallback);
-}
-
-export function chromeLines(chrome: Record<string, unknown> | undefined): string[] {
-  if (!chrome) return [];
-  const lines = arr<string>(chrome, 'addressLines');
-  if (lines.length) return lines.filter(Boolean);
-  return [];
 }

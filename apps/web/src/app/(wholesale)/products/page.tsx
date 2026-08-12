@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ProductCatalog } from '@/components/wholesale/ProductCatalog';
+import { fetchProductList } from '@/lib/server-api';
 
 interface SearchParams {
   fabric?: string;
@@ -43,7 +44,37 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const params = await searchParams;
-  return <ProductCatalog searchParams={params} />;
+  const isListingVariant = Boolean(
+    params.q ||
+      params.sort ||
+      params.page ||
+      params.fabric ||
+      params.color ||
+      params.size,
+  );
+
+  // Clean /products: SSR first page so crawlers see product links in HTML.
+  // Filtered/query variants stay client-driven (and noindex,follow via metadata).
+  const initial = isListingVariant
+    ? null
+    : await fetchProductList({
+        channel: 'WHOLESALE',
+        limit: 24,
+        status: 'ACTIVE',
+        sort: 'newest',
+      });
+
+  return (
+    <ProductCatalog
+      searchParams={params}
+      initialProducts={initial?.data}
+      initialTotal={initial?.meta.total}
+    />
+  );
 }

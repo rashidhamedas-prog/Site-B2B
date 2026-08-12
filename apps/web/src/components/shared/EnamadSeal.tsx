@@ -30,10 +30,10 @@ export function EnamadSeal({
   config?: EnamadSealConfig | null;
 }) {
   const [fetched, setFetched] = useState<EnamadSealConfig>(EMPTY_ENAMAD);
-  const cfg = config ? normalizeEnamad(config) : fetched;
+  const cfg = config !== undefined ? normalizeEnamad(config) : fetched;
 
   useEffect(() => {
-    if (config || !channel) return;
+    if (config !== undefined || !channel) return;
     let cancelled = false;
     apiClient
       .get<{

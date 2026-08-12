@@ -3,10 +3,42 @@ import { RetailHeader } from '@/components/retail/RetailHeader';
 import { RetailFooter } from '@/components/retail/RetailFooter';
 import { RetailPixels } from '@/components/retail/RetailPixels';
 import { RetailAffiliateCapture } from '@/components/retail/RetailAffiliateCapture';
+import {
+  RetailChromeProvider,
+  type RetailChromeBag,
+  type RetailMarketingPublic,
+} from '@/components/retail/RetailChromeProvider';
 import { GoogleAnalyticsProvider } from '@/components/shared/GoogleAnalyticsProvider';
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/shared/JsonLd';
+import { fetchSiteContent } from '@/lib/cms/fetch';
+import { defaultSiteChrome, parseChromeBlocks } from '@/lib/cms/chrome';
+import { getServerApiBase } from '@/lib/server-api';
+import { normalizeEnamad, type EnamadSealConfig } from '@/lib/enamad';
 import { resolveGscVerification } from '@/lib/google-seo';
 import './retail.css';
+
+const REVALIDATE = 120;
+
+type PublicSettingsPayload = {
+  business?: {
+    enamadWholesale?: Partial<EnamadSealConfig>;
+    enamadRetail?: Partial<EnamadSealConfig>;
+  };
+  marketing?: RetailMarketingPublic;
+};
+
+async function fetchRetailPublicSettings(): Promise<PublicSettingsPayload | null> {
+  try {
+    const base = getServerApiBase();
+    const res = await fetch(`${base}/settings/public?channel=RETAIL`, {
+      next: { revalidate: REVALIDATE },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as PublicSettingsPayload;
+  } catch {
+    return null;
+  }
+}
 
 export async function generateMetadata(): Promise<Metadata> {
   const google = await resolveGscVerification('RETAIL');
@@ -40,17 +72,36 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RetailLayout({ children }: { children: React.ReactNode }) {
+export default async function RetailLayout({ children }: { children: React.ReactNode }) {
+  const [settings, chromeDoc] = await Promise.all([
+    fetchRetailPublicSettings(),
+    fetchSiteContent('RETAIL', 'chrome', { revalidate: REVALIDATE }),
+  ]);
+
+  const chrome = chromeDoc?.blocks?.length
+    ? parseChromeBlocks(chromeDoc.blocks)
+    : defaultSiteChrome('RETAIL');
+
+  const bag: RetailChromeBag = {
+    chrome,
+    enamad: settings?.business?.enamadRetail
+      ? normalizeEnamad(settings.business.enamadRetail)
+      : null,
+    marketing: settings?.marketing ?? null,
+  };
+
   return (
-    <div className="retail-root flex min-h-screen flex-col bg-[var(--retail-bg)] text-[var(--retail-ink)]">
-      <OrganizationJsonLd channel="RETAIL" />
-      <WebSiteJsonLd channel="RETAIL" />
-      <GoogleAnalyticsProvider channel="RETAIL" />
-      <RetailPixels />
-      <RetailAffiliateCapture />
-      <RetailHeader />
-      <main className="flex-1">{children}</main>
-      <RetailFooter />
-    </div>
+    <RetailChromeProvider value={bag}>
+      <div className="retail-root flex min-h-screen flex-col bg-[var(--retail-bg)] text-[var(--retail-ink)]">
+        <OrganizationJsonLd channel="RETAIL" />
+        <WebSiteJsonLd channel="RETAIL" />
+        <GoogleAnalyticsProvider channel="RETAIL" />
+        <RetailPixels marketing={bag.marketing} />
+        <RetailAffiliateCapture />
+        <RetailHeader />
+        <main className="flex-1">{children}</main>
+        <RetailFooter />
+      </div>
+    </RetailChromeProvider>
   );
 }

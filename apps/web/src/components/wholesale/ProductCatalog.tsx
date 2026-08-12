@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -31,6 +31,32 @@ interface Product {
   images: string[];
   sizeType?: string;
   variants: { id: string; color: string; colorHex?: string; stock: number }[];
+}
+
+function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Product {
+  const variants = Array.isArray(raw.variants) ? raw.variants : [];
+  return {
+    id: String(raw.id ?? ''),
+    slug: String(raw.slug ?? ''),
+    sku: String(raw.sku ?? ''),
+    name: String(raw.name ?? ''),
+    fabric: String(raw.fabric ?? ''),
+    wholesalePrice: Number(raw.wholesalePrice ?? 0),
+    status: String(raw.status ?? 'ACTIVE'),
+    stock: typeof raw.stock === 'number' ? raw.stock : undefined,
+    totalStock: typeof raw.totalStock === 'number' ? raw.totalStock : undefined,
+    images: Array.isArray(raw.images) ? (raw.images as string[]) : [],
+    sizeType: typeof raw.sizeType === 'string' ? raw.sizeType : undefined,
+    variants: variants.map((v) => {
+      const row = v as { id?: string; color?: string; colorHex?: string; stock?: number };
+      return {
+        id: String(row.id ?? ''),
+        color: String(row.color ?? ''),
+        colorHex: row.colorHex,
+        stock: Number(row.stock ?? 0),
+      };
+    }),
+  };
 }
 
 const FABRICS = ['همه', 'لینن', 'کتان', 'مازاراتی', 'شال', 'مموری', 'پشمی', 'فوتر', 'لینن‌کتان', 'ویسکوز'];
@@ -206,20 +232,29 @@ export function ProductCatalog({
   searchParams,
   embedded = false,
   hideHeader = false,
+  initialProducts,
+  initialTotal,
 }: {
   searchParams: CatalogSearchParams;
   embedded?: boolean;
   hideHeader?: boolean;
+  /** SSR first page for clean listing — crawlers see product links in HTML */
+  initialProducts?: Array<Record<string, unknown> | Product>;
+  initialTotal?: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const seeded = Array.isArray(initialProducts) ? initialProducts.map(normalizeCatalogProduct) : null;
   const [filters, setFilters] = useState<CatalogSearchParams>(searchParams ?? {});
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [sort, setSort] = useState(searchParams.sort ?? 'newest');
   const [search, setSearch] = useState(searchParams.q ?? '');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(() => seeded ?? []);
+  const [total, setTotal] = useState(() =>
+    typeof initialTotal === 'number' ? initialTotal : seeded?.length ?? 0,
+  );
+  const [loading, setLoading] = useState(() => !seeded);
+  const skipNextFetch = useRef(Boolean(seeded));
 
   const syncUrl = useCallback(
     (next: CatalogSearchParams, nextSort: string, nextQ: string) => {
@@ -249,6 +284,10 @@ export function ProductCatalog({
   }, [filters, sort, search]);
 
   useEffect(() => {
+    if (skipNextFetch.current) {
+      skipNextFetch.current = false;
+      return;
+    }
     const timer = setTimeout(async () => {
       setLoading(true);
       try {

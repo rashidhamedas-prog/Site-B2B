@@ -6,12 +6,16 @@ import { useMenus } from '@/lib/hooks/useMenus';
 import { DEFAULT_MENUS } from '@/lib/menus';
 import { chromeLines, chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 import { EnamadSeal } from '@/components/shared/EnamadSeal';
+import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
 
 export function Footer() {
-  const { menus } = useMenus();
+  const bag = useWholesaleChrome();
+  const { menus } = useMenus(
+    bag ? { initial: bag.menus, skipNetwork: true } : undefined,
+  );
   const quickLinks = menus.footer?.length ? menus.footer : DEFAULT_MENUS.footer;
   const legalLinks = menus.legal?.length ? menus.legal : DEFAULT_MENUS.legal;
-  const { chrome } = useSiteChrome('WHOLESALE');
+  const { chrome } = useSiteChrome('WHOLESALE', bag?.chrome ?? null);
 
   const brandName = chromeStr(chrome, 'brandName', 'پوشاک ترنم');
   const brandTagline = chromeStr(chrome, 'brandTagline', 'تولیدی مانتو زنانه مشهد');
@@ -166,7 +170,12 @@ export function Footer() {
         <div className="container-site flex flex-col items-center justify-between gap-4 py-5 text-xs text-white/40 sm:flex-row">
           <p>{copyright}</p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            <EnamadSeal channel="WHOLESALE" size={72} className="opacity-95" />
+            <EnamadSeal
+              channel="WHOLESALE"
+              size={72}
+              className="opacity-95"
+              config={bag ? bag.enamad : undefined}
+            />
             <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
               {madeInLabel ? <span>{madeInLabel}</span> : null}
               {retailStoreLabel && retailStoreHref ? (

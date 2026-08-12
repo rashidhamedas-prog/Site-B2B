@@ -9,11 +9,15 @@ import { MegaNav } from './MegaNav';
 import { useMenus } from '@/lib/hooks/useMenus';
 import { DEFAULT_MENUS } from '@/lib/menus';
 import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
+import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
 
 export function Header() {
-  const { menus } = useMenus();
+  const bag = useWholesaleChrome();
+  const { menus } = useMenus(
+    bag ? { initial: bag.menus, skipNetwork: true } : undefined,
+  );
   const main = menus.main?.length ? menus.main : DEFAULT_MENUS.main;
-  const { announcement, chrome } = useSiteChrome('WHOLESALE');
+  const { announcement, chrome } = useSiteChrome('WHOLESALE', bag?.chrome ?? null);
 
   const brandName = chromeStr(chrome, 'brandName', 'پوشاک ترنم');
   const brandTagline = chromeStr(chrome, 'brandTagline', 'تولیدی مانتو زنانه مشهد');

@@ -20,20 +20,21 @@
 
 1. وارد `/admin/site-content` شوید و بخش‌های آمار (Stats)، «چرا ترنم»، Testimonials و Hero را بررسی کنید.
 2. هر جا «۱۴ سال تجربه» یا «+۵۰۰ مشتری» ذخیره شده، با اعداد جدول بالا جایگزین کنید.
-3. اگر برای محصولات canonical سفارشی در seoMeta ثبت شده که به slug قدیمی اشاره می‌کند، دیگر منتشر نمی‌شود (کد آن را رد می‌کند و به slug اصلی برمی‌گردد) — می‌توانید در ادمین پاک‌شان کنید تا لاگ warning تمیز شود.
+3. اگر برای محصولات canonical سفارشی در seoMeta ثبت شده که به slug قدیمی اشاره می‌کند، دیگر منتشر نمی‌شود (کد آن را رد می‌کند و به slug اصلی برمی‌گردد) — می‌توانید در ادمین پاک‌شان کنید تا لاگ warning تمیز شود. ریدایرکت ۳۰۱ برای ۵۶ اسلاگ توصیفی قدیمی در middleware اضافه شده است.
 
 ## 3. Google Search Console (بعد از دیپلوی)
 
-1. **URL Inspection + Test Live URL** برای: هوم هر دو دامنه، `/products` هر دو، ۳ صفحه محصول عمده (مثل `products/coats00015`)، `/collections` ریتیل، یک مقاله بلاگ.
+1. **URL Inspection + Test Live URL** برای: هوم هر دو دامنه، `/products` هر دو، ۳ صفحه محصول عمده (مثل `products/coats00015`)، یک اسلاگ توصیفی قدیمی (مثل `products/linen-sport-jacket-erika` → باید ۳۰۱ شود)، `/collections` ریتیل، یک مقاله بلاگ.
 2. **Request Indexing** فقط برای صفحات اصلاح‌شدهٔ مهم (هوم، لیست محصولات، چند PDP).
 3. سایت‌مپ هر دو دامنه را **Resubmit** کنید (`/sitemap.xml`).
 4. برای گزارش‌های «Page with redirect»، «Crawled – currently not indexed» و «Not found (404)» دکمه **Validate Fix** را بزنید (اعتبارسنجی 404 که از قبل شروع شده را دست نزنید — خودش کامل می‌شود).
-5. دو تا چهار هفته گزارش Page indexing، Core Web Vitals و Merchant listings را پایش کنید.
+5. دو تا چهار هفته گزارش Page indexing، Core Web Vitals و Merchant listings را پایش کنید. رویدادهای RUM (`LCP`/`CLS`/`INP`) در GA4 DebugView هم قابل مشاهده‌اند.
 
-## 4. بک‌لاگ فنی (P3 — تصمیم جداگانه)
+## 4. بک‌لاگ فنی باقی‌مانده (اختیاری)
 
-- SSR اولین صفحهٔ گرید `/products` (هر دو کانال) — الان کلاینت‌فچ است؛ کشف محصولات از سایت‌مپ/هوم/PDP پوشش داده می‌شود.
-- یکپارچه‌کردن fetchهای تکراری هدر/فوتر/تنظیمات در یک context سروری.
-- حذف وابستگی‌های بلااستفاده `swiper`, `next-seo`, `chart.js`, `react-chartjs-2` از `apps/web` (فقط وزن install؛ روی باندل اثری ندارد).
-- اگر ترافیک/بک‌لینک به slugهای توصیفی قدیمی محصولات عمده مهم بود: endpoint جستجوی legacy-slug در API + ریدایرکت 301 per-product.
-- RUM (web-vitals → GA4) در صورت نیاز به دادهٔ میدانی CWV.
+- ~~SSR اولین صفحهٔ گرید `/products`~~ — انجام شد (هر دو کانال).
+- ~~یکپارچه‌کردن fetchهای تکراری هدر/فوتر/تنظیمات~~ — فاز عمده + فاز ریتیل (footer/pixels) انجام شد؛ `RetailHeader` هنوز categories/collections را کلاینت می‌گیرد (فایل claim‌شدهٔ task دیگر).
+- ~~حذف وابستگی‌های بلااستفاده~~ — از `apps/web/package.json` حذف شد؛ `package-lock.json` با نصب بعدی تازه می‌شود؛ `optimizePackageImports` برای `chart.js` در `next.config.ts` هنوز مانده (فایل claim‌شده).
+- ~~ریدایرکت اسلاگ‌های توصیفی قدیمی~~ — ۵۶ ردیف استاتیک در middleware.
+- ~~RUM web-vitals → GA4~~ — بدون پکیج اضافه، بعد از idle.
+- اختیاری بعدی: seed کردن GA از SSR settings (الان هنوز یک fetch کلاینت دارد)، انتقال نقشهٔ اسلاگ به `seo_redirects` ادمین، پاک‌کردن `chart.js` از `next.config.ts` وقتی claim آزاد شد.
