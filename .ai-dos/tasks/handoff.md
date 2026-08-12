@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-12T20:40:00Z — Phase 6 + security follow-up LIVE (PR #36)
+
+- Task: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/36 → MERGED `16f2594`
+- Commits: `ad5d408` Phase 6+security; `56823b7` cancel-by-order + authority NOK
+- VPS: `auto-deploy.sh` **deploy complete at 16f2594** (~2026-08-12T20:35:51Z)
+- Live verify: API health **200** ok; eligible **ZARINPAL+MANUAL** only (no configReference); wholesale **200**; retail **200**
+- Independent Security: **PASS WITH CONDITIONS** ([Security Review](bc44836a-3a00-4f85-825e-3fe626fbcdb8))
+- Independent Reviewer: **PASS WITH CONDITIONS** ([Independent reviewer](0ada22d0-0062-46cf-8bc6-591f14b8d443))
+- Conditions/residuals (do **not** mark program Done): BNPL BLOCKED; staging E2E NOT RUN; 20-parallel DB suite NOT RUN; full CI SAST NOT RUN; JWT/CSP separate wave
+- Exact next: optional disposable concurrency suite + staging smoke without real money; keep BNPL disabled until contracts
+
 ## 2026-08-12T20:45:00Z — Phase 6 installment logic + payment security follow-up
 
 - Task: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001

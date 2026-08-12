@@ -1,23 +1,24 @@
 # Project Status
 
-- Last verified: 2026-08-12T20:05:00Z (Payment Phases 1–3/7–8 live at `ca28aaf`; Phase 6 + security follow-up in tree)
+- Last verified: 2026-08-12T20:40:00Z (Payment Phase 6 + security follow-up **LIVE** at `16f2594`)
 - Active tasks:
-  - **TASK-20260812-001** (`in_progress`) — Payment integrations Phase 6 logic + security follow-up shipping — owner `cursor:orchestrator-TASK-20260812-001`
-  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (no claim overlap)
+  - **TASK-20260812-001** (`in_progress`) — Payment program largely shipped; residuals remain — owner `cursor:orchestrator-TASK-20260812-001`
+  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006`
 - Payment branch / worktree: `ai/TASK-20260812-001-payment-integrations` @ `D:/soft/Claud/porje/Site B2B`
-- Code SHA (origin/master): `ca28aaf` (PR #35 merge — Phase 7 health + Phase 8 metrics)
-- Live health (post PR #35 deploy):
+- Code SHA (origin/master): `16f2594` (PR #36)
+- Live health:
   - API `https://api.poshaktaranom.com/v1/health` → **200** ok
   - Wholesale `https://poshaktaranom.com/` → **200**
   - Retail `https://www.poshaktaranom.ir/` → **200**
-  - Eligible providers → **200** (ZARINPAL + MANUAL only)
-- Readiness: **GO WITH CONDITIONS** **71/100** (unchanged — payment program does not inflate readiness)
+  - Eligible → ZARINPAL + MANUAL only (public DTO)
+- Readiness: **71/100** unchanged (payment work does not inflate readiness)
 - Website-builder: **blocked**
-- Payment program:
-  - Phase 0: **COMPLETE**
-  - Phases 1–3: **SHIPPED** (PR #34)
-  - Phases 4–5 BNPL: **BLOCKED** (disabled skeletons only)
-  - Phase 6: **logic in tree** (contracts/schedules/credit/portal) — deploy pending this wave
-  - Phase 7–8: **SHIPPED** health/metrics (PR #35); full Torob crawl + CI SAST residual
-- Residual DoD: disposable concurrency suite; staging E2E; independent Reviewer+Security on final SHA; BNPL contracts
+- Payment program phase board:
+  - 0 preflight: **COMPLETE**
+  - 1–3 core/registry: **SHIPPED** (PR #34)
+  - 4–5 BNPL: **BLOCKED** (disabled skeletons)
+  - 6 installments: **SHIPPED LIVE** (PR #36)
+  - 7–8 health/metrics: **SHIPPED** (PR #35); deep Torob/Basalam + full CI scans residual
+- Reviews on `16f2594`: Security **PASS WITH CONDITIONS**; Reviewer **PASS WITH CONDITIONS**
+- Residual DoD: staging E2E; disposable 20-callback suite; CI SAST/secret/container; BNPL contracts
 - Evidence: `docs/reports/2026-08-12-payment-*.md`
