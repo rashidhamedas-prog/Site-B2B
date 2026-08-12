@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-13T00:15:00Z — Payment residuals closure wave (pre-ship)
+
+- Task: TASK-20260812-001
+- Added: payment_events migration/entity + verify recording; 20-parallel concurrency suite; Phase 8 runbooks; CI npm test + audit
+- BNPL still BLOCKED; staging E2E / disposable migration matrix / full SAST still residual (documented)
+- Exact next: gates → commit claimed → PR → merge → VPS auto-deploy → live verify
+
 ## 2026-08-12T20:40:00Z — Phase 6 + security follow-up LIVE (PR #36)
 
 - Task: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001

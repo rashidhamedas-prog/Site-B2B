@@ -230,7 +230,7 @@ tasks:
     branch: "ai/TASK-20260812-001-payment-integrations"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-12T16:55:00Z"
-    heartbeat_at: "2026-08-12T20:40:00Z"
+    heartbeat_at: "2026-08-13T00:15:00Z"
     depends_on: []
     file_claims:
       - "docs/reports/2026-08-12-payment-integrations-preflight.md"
@@ -297,6 +297,15 @@ tasks:
       - "apps/web/src/app/portal/dashboard/installments/page.tsx"
       - "docs/reports/2026-08-12-payment-phase6-installments.md"
       - "docs/reports/2026-08-12-payment-security-followup.md"
+      - "apps/api/src/modules/payment/entities/payment-event.entity.ts"
+      - "apps/api/src/database/migrations/20260812-005-payment-events.ts"
+      - "apps/api/src/modules/payment/payment-concurrency.hardening.spec.ts"
+      - "docs/runbooks/payment-incident.md"
+      - "docs/runbooks/payment-provider-outage.md"
+      - "docs/runbooks/payment-refund.md"
+      - "docs/runbooks/payment-settlement.md"
+      - "docs/reports/2026-08-13-payment-residuals-closure.md"
+      - ".github/workflows/ci.yml"
     acceptance_criteria:
       - "Phase 0 COMPLETE: preflight report, gates, live read-only health, formal TASK-006 handoff, no runtime/deploy"
       - "Phase 1 scope freeze documented with non-goals, rollback, and exact file_claims before first apps/* edit"

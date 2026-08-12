@@ -9,10 +9,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
+import { createHash } from 'crypto';
 import { PaymentEntity } from './entities/payment.entity';
 import { PaymentAttemptEntity } from './entities/payment-attempt.entity';
 import { PaymentLedgerEntryEntity } from './entities/payment-ledger-entry.entity';
 import { RefundEntity } from './entities/refund.entity';
+import { PaymentEventEntity } from './entities/payment-event.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { SettingsService } from '../settings/settings.service';
@@ -53,6 +55,8 @@ export class PaymentService {
     private readonly ledgerRepo: Repository<PaymentLedgerEntryEntity>,
     @InjectRepository(RefundEntity)
     private readonly refundRepo: Repository<RefundEntity>,
+    @InjectRepository(PaymentEventEntity)
+    private readonly eventRepo: Repository<PaymentEventEntity>,
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
     @InjectRepository(InvoiceEntity)
@@ -440,6 +444,48 @@ export class PaymentService {
    * Race-safe verify: lock payment row, CAS PENDING→PAID, invoice+ledger+order in one txn.
    * Duplicate callbacks return alreadyVerified without side effects.
    */
+  /** Idempotent inbound callback/event row (unique providerCode+externalEventId). */
+  private async recordPaymentEvent(input: {
+    providerCode: string;
+    externalEventId: string;
+    eventType: string;
+    paymentId: string;
+    signatureValid?: boolean;
+    payload?: Record<string, unknown>;
+  }): Promise<'created' | 'duplicate'> {
+    const payloadHash = input.payload
+      ? createHash('sha256').update(JSON.stringify(input.payload)).digest('hex')
+      : undefined;
+    try {
+      await this.eventRepo.save(
+        this.eventRepo.create({
+          providerCode: input.providerCode,
+          externalEventId: input.externalEventId,
+          eventType: input.eventType,
+          payloadHash,
+          signatureValid: !!input.signatureValid,
+          paymentId: input.paymentId,
+          processingStatus: 'RECEIVED',
+          receivedAt: new Date(),
+        }),
+      );
+      return 'created';
+    } catch (err: any) {
+      if (String(err?.code) === '23505' || /unique/i.test(String(err?.message || ''))) {
+        return 'duplicate';
+      }
+      this.logger.warn(
+        this.paymentLogCtx({
+          event: 'payment.event.record_failed',
+          paymentId: input.paymentId,
+          providerCode: input.providerCode,
+          extra: { message: err?.message || String(err) },
+        }),
+      );
+      return 'created';
+    }
+  }
+
   async verify(paymentId: string, authority: string, status: string): Promise<PaymentPublicDto> {
     // Fast path outside txn for terminal states
     const preview = await this.findOne(paymentId);
@@ -453,6 +499,16 @@ export class PaymentService {
         extra: { statusHint: status || undefined },
       }),
     );
+
+    const externalEventId = `${authority || preview.authority || paymentId}:${status || 'OK'}`;
+    await this.recordPaymentEvent({
+      providerCode,
+      externalEventId,
+      eventType: 'verify_callback',
+      paymentId,
+      signatureValid: !!(authority && preview.authority && authority === preview.authority),
+      payload: { status: status || 'OK', hasAuthority: !!authority },
+    });
     if (preview.status === 'PAID') {
       this.metrics.incr('callback_duplicate_total');
       this.logger.log(

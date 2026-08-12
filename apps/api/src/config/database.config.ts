@@ -18,6 +18,7 @@ import { PaymentEntity } from '../modules/payment/entities/payment.entity';
 import { PaymentAttemptEntity } from '../modules/payment/entities/payment-attempt.entity';
 import { PaymentLedgerEntryEntity } from '../modules/payment/entities/payment-ledger-entry.entity';
 import { RefundEntity } from '../modules/payment/entities/refund.entity';
+import { PaymentEventEntity } from '../modules/payment/entities/payment-event.entity';
 import { PaymentProviderEntity } from '../modules/payment/entities/payment-provider.entity';
 import {
   InstallmentContractEntity,
@@ -64,6 +65,7 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     PaymentAttemptEntity,
     PaymentLedgerEntryEntity,
     RefundEntity,
+    PaymentEventEntity,
     PaymentProviderEntity,
     InstallmentContractEntity,
     InstallmentScheduleEntity,

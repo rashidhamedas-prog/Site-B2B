@@ -2,6 +2,17 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-13 — Payment residuals closure (events + concurrency + runbooks)
+
+### خلاصه
+- `payment_events` + migration 005؛ سوییت ۲۰-parallel CAS؛ runbookهای عملیات؛ CI با `npm test` API + audit.
+- BNPL همچنان BLOCKED؛ staging E2E / full SAST residual صریح.
+
+### بعدی
+- commit/PR/merge/deploy؛ live health.
+
+---
+
 ## 2026-08-12 — Payment Phase 6 LIVE (PR #36 @ 16f2594)
 
 ### خلاصه
