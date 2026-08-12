@@ -11,6 +11,7 @@ import {
 } from './entities/installment-contract.entity';
 import { PaymentService } from './payment.service';
 import { PaymentController } from './payment.controller';
+import { PaymentMetrics } from './payment-metrics';
 import { AuthModule } from '../auth/auth.module';
 import { AffiliateModule } from '../affiliate/affiliate.module';
 import { OrderEntity } from '../order/entities/order.entity';
@@ -38,6 +39,7 @@ import { PaymentProviderRegistryService } from './payment-provider-registry.serv
   controllers: [PaymentController],
   providers: [
     PaymentService,
+    PaymentMetrics,
     PaymentProviderRegistryService,
     ZarinPalAdapter,
     { provide: DisabledPaymentAdapter, useFactory: () => new DisabledPaymentAdapter('DISABLED') },

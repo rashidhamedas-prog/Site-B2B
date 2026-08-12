@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-12T19:27:00Z — Payment Phases 1–3 shipped (PR #34)
+
+- Task: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/34 → MERGED `b1c2014`
+- Commit: `f06e5b7` feat(payments) Phase 1-3 + installment schema
+- Gates: api tsc 0; api test 0 (incl. payment-core.hardening.spec)
+- BNPL: DISABLED / NOT_STARTED only — no live adapters
+- Deploy: VPS auto-deploy started for `b1c2014` (verify health after complete)
+- Residual: Phase 6 business logic beyond schema; Phase 7/8 hardening; concurrency DB suite; independent Security review in flight
+- Exact next: confirm deploy+migrations+health; continue Phase 6 logic + observability
+
 ## 2026-08-12T19:05:00Z — Phase 0 CLOSED + Phase 1 claims freeze (TASK-20260812-001)
 
 - Task / owner / role: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001 / orchestrator+architect

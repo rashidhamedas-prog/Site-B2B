@@ -80,6 +80,15 @@ export class PaymentController {
     return this.svc.summary();
   }
 
+  /** Phase 8 — in-process counters; ADMIN only. Declared before :id. */
+  @Get('metrics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  metrics() {
+    return this.svc.metricsSnapshot();
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

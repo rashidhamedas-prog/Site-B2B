@@ -19,6 +19,19 @@ export class BasalamController {
     return this.svc.status();
   }
 
+  @Get('health')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'سلامت همگام‌سازی باسلام (lastSuccess/lastError)',
+    description:
+      'Process-local counters. Sync PATCH is idempotent by Basalam product id — safe to retry after failure.',
+  })
+  health() {
+    return this.svc.health();
+  }
+
   @Post('sync-inventory')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')

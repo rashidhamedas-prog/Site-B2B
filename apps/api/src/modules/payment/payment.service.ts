@@ -19,6 +19,7 @@ import { SettingsService } from '../settings/settings.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { assertPositiveFiniteIrr, toPublicPaymentDto, PaymentPublicDto } from './dto/payment-public.dto';
+import { PaymentMetrics, maskMobile } from './payment-metrics';
 
 interface CreatePaymentInput {
   amount?: number;
@@ -61,7 +62,31 @@ export class PaymentService {
     private readonly settings: SettingsService,
     private readonly affiliatePostback: AffiliatePostbackService,
     private readonly zarinpal: ZarinPalAdapter,
+    private readonly metrics: PaymentMetrics,
   ) {}
+
+  /** Safe structured fields for start/verify logs (no raw mobile/email). */
+  private paymentLogCtx(fields: {
+    event: string;
+    paymentId?: string | null;
+    orderId?: string | null;
+    providerCode?: string;
+    mobile?: string | null;
+    extra?: Record<string, unknown>;
+  }): string {
+    return JSON.stringify({
+      event: fields.event,
+      paymentId: fields.paymentId ?? undefined,
+      orderId: fields.orderId ?? undefined,
+      providerCode: fields.providerCode ?? 'ZARINPAL',
+      mobileMasked: maskMobile(fields.mobile),
+      ...(fields.extra ?? {}),
+    });
+  }
+
+  metricsSnapshot() {
+    return this.metrics.snapshot();
+  }
 
   private async resolveGateway(channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE') {
     const cfg = await this.settings.payment();
@@ -145,6 +170,7 @@ export class PaymentService {
 
     const gw = await this.resolveGateway(channel);
     if (!gw.enabled) {
+      this.metrics.incr('payment_failure_total');
       throw new BadRequestException(
         channel === 'RETAIL'
           ? 'پرداخت آنلاین فروشگاه تکی غیرفعال است یا مرچنت کد تکی تنظیم نشده'
@@ -172,6 +198,17 @@ export class PaymentService {
           const startPayBase = sandbox
             ? 'https://sandbox.zarinpal.com/pg/StartPay'
             : 'https://payment.zarinpal.com/pg/StartPay';
+          this.metrics.incr('payment_start_total');
+          this.logger.log(
+            this.paymentLogCtx({
+              event: 'payment.start.reuse',
+              paymentId: existing.id,
+              orderId: input.orderId,
+              providerCode: 'ZARINPAL',
+              mobile: input.mobile,
+              extra: { sandbox, channel },
+            }),
+          );
           return {
             paymentId: existing.id,
             authority: existing.authority,
@@ -234,6 +271,18 @@ export class PaymentService {
       attempt.sanitizedResponse = created.rawSanitized;
       await this.attemptRepo.save(attempt);
 
+      this.metrics.incr('payment_start_total');
+      this.logger.log(
+        this.paymentLogCtx({
+          event: 'payment.start.ok',
+          paymentId: payment.id,
+          orderId: input.orderId,
+          providerCode: 'ZARINPAL',
+          mobile: input.mobile,
+          extra: { sandbox: gw.sandbox, channel, attemptNo },
+        }),
+      );
+
       return {
         paymentId: payment.id,
         authority: created.providerToken,
@@ -243,7 +292,17 @@ export class PaymentService {
       };
     } catch (err: any) {
       const norm = this.zarinpal.normalizeProviderError(err);
-      this.logger.error(`ZarinPal request failed: ${norm.message}`);
+      this.metrics.incr('payment_failure_total');
+      this.logger.error(
+        this.paymentLogCtx({
+          event: 'payment.start.failed',
+          paymentId: payment.id,
+          orderId: input.orderId,
+          providerCode: 'ZARINPAL',
+          mobile: input.mobile,
+          extra: { code: norm.code, message: norm.message, attemptNo },
+        }),
+      );
       payment.status = 'FAILED';
       payment.attemptCount = attemptNo;
       payment.meta = { ...(payment.meta ?? {}), requestException: norm };
@@ -267,10 +326,38 @@ export class PaymentService {
   async verify(paymentId: string, authority: string, status: string): Promise<PaymentPublicDto> {
     // Fast path outside txn for terminal states
     const preview = await this.findOne(paymentId);
+    const providerCode = String(preview.gateway || 'ZARINPAL');
+    this.logger.log(
+      this.paymentLogCtx({
+        event: 'payment.verify.begin',
+        paymentId,
+        orderId: preview.orderId,
+        providerCode,
+        extra: { statusHint: status || undefined },
+      }),
+    );
     if (preview.status === 'PAID') {
+      this.metrics.incr('callback_duplicate_total');
+      this.logger.log(
+        this.paymentLogCtx({
+          event: 'payment.verify.duplicate',
+          paymentId,
+          orderId: preview.orderId,
+          providerCode,
+        }),
+      );
       return toPublicPaymentDto(preview, { ok: true, alreadyVerified: true });
     }
     if (preview.status === 'CANCELLED' || preview.status === 'REFUNDED') {
+      this.logger.log(
+        this.paymentLogCtx({
+          event: 'payment.verify.terminal',
+          paymentId,
+          orderId: preview.orderId,
+          providerCode,
+          extra: { paymentStatus: preview.status },
+        }),
+      );
       return toPublicPaymentDto(preview, { ok: false, cancelled: true });
     }
 
@@ -284,6 +371,16 @@ export class PaymentService {
         meta: { ...(preview.meta ?? {}), callbackStatus: status },
       } as any);
       const cancelled = await this.findOne(paymentId);
+      this.metrics.incr('payment_failure_total');
+      this.logger.log(
+        this.paymentLogCtx({
+          event: 'payment.verify.cancelled',
+          paymentId,
+          orderId: preview.orderId,
+          providerCode,
+          extra: { callbackStatus: status },
+        }),
+      );
       return toPublicPaymentDto(cancelled, { ok: false, cancelled: true });
     }
 
@@ -310,6 +407,16 @@ export class PaymentService {
         meta: { ...(preview.meta ?? {}), verify: verifyResult.rawSanitized, verifyError: verifyResult.errorMessage },
       } as any);
       const failed = await this.findOne(paymentId);
+      this.metrics.incr('payment_failure_total');
+      this.logger.warn(
+        this.paymentLogCtx({
+          event: 'payment.verify.failed',
+          paymentId,
+          orderId: preview.orderId,
+          providerCode,
+          extra: { error: verifyResult.errorMessage },
+        }),
+      );
       return toPublicPaymentDto(failed, {
         ok: false,
         error: verifyResult.errorMessage ?? 'تایید پرداخت ناموفق بود',
@@ -416,15 +523,52 @@ export class PaymentService {
     });
 
     if ((applied as any).cancelled) {
+      this.logger.log(
+        this.paymentLogCtx({
+          event: 'payment.verify.terminal',
+          paymentId,
+          orderId: applied.payment.orderId,
+          providerCode,
+          extra: { paymentStatus: applied.payment.status },
+        }),
+      );
       return toPublicPaymentDto(applied.payment, { ok: false, cancelled: true });
     }
     if (applied.already) {
+      this.metrics.incr('callback_duplicate_total');
+      this.logger.log(
+        this.paymentLogCtx({
+          event: 'payment.verify.duplicate',
+          paymentId,
+          orderId: applied.payment.orderId,
+          providerCode,
+        }),
+      );
       return toPublicPaymentDto(applied.payment, { ok: true, alreadyVerified: true });
     }
 
+    this.metrics.incr('payment_success_total');
+    this.logger.log(
+      this.paymentLogCtx({
+        event: 'payment.verify.ok',
+        paymentId,
+        orderId: applied.payment.orderId,
+        providerCode,
+        extra: { refId: applied.payment.refId || undefined },
+      }),
+    );
+
     if (shouldFirePostback && orderIdForPostback) {
       this.affiliatePostback.fireForOrder(orderIdForPostback, 'paid').catch((err) => {
-        this.logger.warn(`Affiliate postback failed: ${err?.message || err}`);
+        this.logger.warn(
+          this.paymentLogCtx({
+            event: 'payment.postback.failed',
+            paymentId,
+            orderId: orderIdForPostback,
+            providerCode,
+            extra: { message: err?.message || String(err) },
+          }),
+        );
       });
     }
 
