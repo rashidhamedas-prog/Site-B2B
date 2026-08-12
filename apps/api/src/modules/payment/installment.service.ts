@@ -436,6 +436,20 @@ export class InstallmentService {
     });
   }
 
+  /** Cancel ACTIVE/DRAFT contract linked to an order (order reverseEffects). Idempotent. */
+  async cancelByOrderId(orderId: string, actorId: string, reason: string) {
+    const existing = await this.contractRepo.findOne({ where: { orderId } });
+    if (!existing) return { skipped: true as const, reason: 'no_contract' };
+    if (existing.status === 'CANCELLED') {
+      return { skipped: true as const, reason: 'already_cancelled', contractId: existing.id };
+    }
+    if (existing.status === 'COMPLETED') {
+      return { skipped: true as const, reason: 'completed', contractId: existing.id };
+    }
+    const result = await this.cancelContract(existing.id, actorId, reason);
+    return { skipped: false as const, ...result };
+  }
+
   async agingReport(now = new Date()): Promise<AgingBucket[]> {
     const overdue = await this.scheduleRepo.find({ where: { status: 'OVERDUE' } });
     const buckets: Record<AgingBucket['key'], AgingBucket> = {

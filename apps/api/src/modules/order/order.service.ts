@@ -1003,6 +1003,14 @@ export class OrderService {
 
     await this.paymentService.cancelPendingForOrder(full.id);
 
+    if (String(full.paymentMethod || '').toUpperCase() === 'INSTALLMENT') {
+      await this.installmentService.cancelByOrderId(
+        full.id,
+        'system:order-reverse',
+        'order_cancelled_or_voided',
+      );
+    }
+
     if (full.affiliateId) {
       this.affiliatePostback.fireForOrder(full.id, 'cancelled').catch(() => undefined);
     }

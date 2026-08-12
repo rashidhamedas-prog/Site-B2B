@@ -492,9 +492,11 @@ export class PaymentService {
     }
 
     if (status && status !== 'OK') {
-      // CAS cancel only from PENDING/FAILED — never overwrite PAID
-      if (preview.authority && authority && authority !== preview.authority) {
-        throw new BadRequestException('شناسه تراکنش نامعتبر است');
+      // Require authority match whenever the payment already has one (blocks paymentId-only griefing)
+      if (preview.authority) {
+        if (!authority || authority !== preview.authority) {
+          throw new BadRequestException('شناسه تراکنش نامعتبر است');
+        }
       }
       await this.dataSource.transaction(async (manager) => {
         const payRepo = manager.getRepository(PaymentEntity);
