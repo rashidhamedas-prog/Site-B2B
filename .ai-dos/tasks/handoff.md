@@ -2,6 +2,19 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-12T20:45:00Z — Phase 6 installment logic + payment security follow-up
+
+- Task: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001
+- Live baseline before this wave: VPS `ca28aaf` (PR #35); API/wholesale/retail/eligible **200**
+- Implemented:
+  - InstallmentService/Controller/overdue job + migration `20260812-004` + portal `/portal/dashboard/installments`
+  - Order create wires `createFromOrder` inside order txn (contracts SoT; notes legacy tag retained)
+  - Security: soft-cancel recovery, invoice overpay guard, refund cumulative cap, postback reclaim, eligible DTO, start advisory lock, wallet ONLINE affiliate fix
+- Gates: `apps/api` tsc **0**; installment + payment-core + followup specs **0**
+- BNPL: still DISABLED / NOT_STARTED only
+- Exact next: commit claimed → PR → merge → VPS auto-deploy → verify health + eligible + migration; then independent Security+Reviewer on merge SHA
+- Residual: 20-parallel DB concurrency suite; staging E2E without real money; full CI scans
+
 ## 2026-08-12T19:27:00Z — Payment Phases 1–3 shipped (PR #34)
 
 - Task: TASK-20260812-001 / cursor:orchestrator-TASK-20260812-001

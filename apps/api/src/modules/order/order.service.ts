@@ -18,6 +18,7 @@ import { NotificationService } from '../notification/notification.service';
 import { SettingsService } from '../settings/settings.service';
 import { DiscountService } from '../discount/discount.service';
 import { PaymentService } from '../payment/payment.service';
+import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -48,6 +49,7 @@ export class OrderService {
     private readonly settings: SettingsService,
     private readonly discounts: DiscountService,
     private readonly paymentService: PaymentService,
+    private readonly installmentService: InstallmentService,
     private readonly shippingService: ShippingService,
     private readonly affiliatePostback: AffiliatePostbackService,
     private readonly dataSource: DataSource,
@@ -687,6 +689,9 @@ export class OrderService {
       }
     }
 
+    let installmentDown = 0;
+    let installmentMonths = 0;
+    let installmentRuleId: string | null = null;
     if (paymentMethod === 'INSTALLMENT') {
       if (channel === 'RETAIL') {
         throw new BadRequestException('پرداخت اقساطی فقط برای سفارش عمده است');
@@ -718,6 +723,9 @@ export class OrderService {
       if (down < minDown) {
         throw new BadRequestException(`حداقل پیش‌پرداخت: ${minDown}`);
       }
+      installmentDown = down;
+      installmentMonths = months;
+      installmentRuleId = matched.id ? String(matched.id) : null;
       const tag = `INSTALLMENT downPayment=${down} months=${months} rule=${matched.id}`;
       notes = notes ? `${notes}\n${tag}` : tag;
     }
@@ -811,6 +819,21 @@ export class OrderService {
           await this.discounts.recordUse(usedDiscountCodeId, manager);
         }
 
+        if (paymentMethod === 'INSTALLMENT') {
+          await this.installmentService.createFromOrder(
+            {
+              orderId: orderRow.id,
+              customerId: dto.customerId,
+              principalIrr: orderTotal,
+              downPaymentIrr: installmentDown,
+              termCount: installmentMonths,
+              ruleId: installmentRuleId,
+              actorId: 'system:checkout',
+            },
+            manager,
+          );
+        }
+
         return orderRow;
       });
     } catch (err: any) {
@@ -867,9 +890,19 @@ export class OrderService {
       }
     }
 
+    // Affiliate: CASH → pending; wallet-settled ONLINE (zero remainder) → paid after confirm;
+    // ONLINE with gateway path waits for payment.verify (never fire paid here).
     if (channel === 'RETAIL' && dto.affiliateId) {
-      const status = paymentMethod === 'CASH' ? 'pending' : 'paid';
-      this.affiliatePostback.fireForOrder(saved.id, status).catch(() => undefined);
+      if (paymentMethod === 'CASH') {
+        this.affiliatePostback.fireForOrder(saved.id, 'pending').catch(() => undefined);
+      } else if (paymentMethod === 'ONLINE' && orderTotal === 0) {
+        await this.orderRepo.update(saved.id, {
+          status: 'CONFIRMED',
+          confirmedAt: new Date(),
+        } as any);
+        this.affiliatePostback.fireForOrder(saved.id, 'paid').catch(() => undefined);
+        return this.findOne(saved.id);
+      }
     }
 
     return full;

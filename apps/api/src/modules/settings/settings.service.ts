@@ -200,7 +200,7 @@ export class SettingsService {
       minDownPaymentPercent: rules[0]?.minDownPaymentPercent ?? legacy.minDownPaymentPercent,
       maxMonths: Math.max(...rules.map((r) => r.maxMonths), legacy.maxMonths),
       rules,
-      minActiveInvoices: 2,
+      minActiveInvoices: Number(s.minActiveInvoices) || 2,
     };
   }
 

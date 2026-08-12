@@ -2,6 +2,20 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-12 — Payment Phase 6 logic + security follow-up
+
+### خلاصه
+- Phase 6: قرارداد/برنامه اقساط واقعی (credit consume اتمیک، schedule، aging، overdue job، portal اقساط، API ادمین).
+- Security follow-up روی verify cancel/recovery، overpay فاکتور، سقف refund، postback recoverable، eligible DTO عمومی، start قفل‌شده per-order.
+- گزارش‌ها: `docs/reports/2026-08-12-payment-phase6-installments.md`، `docs/reports/2026-08-12-payment-security-followup.md`
+- Gates محلی: `apps/api` tsc **0**؛ installment/core/followup specs **0**
+- BNPL همچنان BLOCKED.
+
+### بعدی
+- commit/PR/merge → VPS auto-deploy + migration 004؛ live health؛ Reviewer/Security روی SHA نهایی.
+
+---
+
 ## 2026-08-12 — Payment Phases 1–3 (+6 schema) implementation
 
 ### خلاصه

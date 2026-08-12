@@ -1,20 +1,23 @@
 # Project Status
 
-- Last verified: 2026-08-12T19:05:00Z (Payment Phase 0 closed; Phase 1 claims frozen)
+- Last verified: 2026-08-12T20:05:00Z (Payment Phases 1–3/7–8 live at `ca28aaf`; Phase 6 + security follow-up in tree)
 - Active tasks:
-  - **TASK-20260812-001** (`in_progress`) — Payment integrations: **Phase 0 COMPLETE**; Phase 1 claims frozen / implementation pending — owner `cursor:orchestrator-TASK-20260812-001`
-  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (apps/* claims retained; no overlap with payment Phase 1 claims)
+  - **TASK-20260812-001** (`in_progress`) — Payment integrations Phase 6 logic + security follow-up shipping — owner `cursor:orchestrator-TASK-20260812-001`
+  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (no claim overlap)
 - Payment branch / worktree: `ai/TASK-20260812-001-payment-integrations` @ `D:/soft/Claud/porje/Site B2B`
-- Code SHA (origin/master): `12f5af2` (PR #33 merge — payment Phase 0 + Phase 1 scope docs)
-- Live health (Phase 0 closure re-check):
+- Code SHA (origin/master): `ca28aaf` (PR #35 merge — Phase 7 health + Phase 8 metrics)
+- Live health (post PR #35 deploy):
   - API `https://api.poshaktaranom.com/v1/health` → **200** ok
   - Wholesale `https://poshaktaranom.com/` → **200**
   - Retail `https://www.poshaktaranom.ir/` → **200**
-- Readiness: **GO WITH CONDITIONS** **71/100** (unchanged)
-- Conditions: **C4 Satisfied**; **C1/C3 accepted-with-expiry → 2026-09-09**
+  - Eligible providers → **200** (ZARINPAL + MANUAL only)
+- Readiness: **GO WITH CONDITIONS** **71/100** (unchanged — payment program does not inflate readiness)
 - Website-builder: **blocked**
 - Payment program:
-  - Phase 0: **COMPLETE** (docs only; no runtime deploy)
-  - Phase 1: **claims_frozen_implementation_pending** — scope `docs/reports/2026-08-12-payment-phase1-scope.md`
-  - BNPL: **BLOCKED** pending official contracts
-- Evidence: `docs/reports/2026-08-12-payment-integrations-preflight.md`, `docs/reports/2026-08-12-payment-phase1-scope.md`
+  - Phase 0: **COMPLETE**
+  - Phases 1–3: **SHIPPED** (PR #34)
+  - Phases 4–5 BNPL: **BLOCKED** (disabled skeletons only)
+  - Phase 6: **logic in tree** (contracts/schedules/credit/portal) — deploy pending this wave
+  - Phase 7–8: **SHIPPED** health/metrics (PR #35); full Torob crawl + CI SAST residual
+- Residual DoD: disposable concurrency suite; staging E2E; independent Reviewer+Security on final SHA; BNPL contracts
+- Evidence: `docs/reports/2026-08-12-payment-*.md`
