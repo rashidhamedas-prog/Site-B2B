@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-14T00:30:00Z — Disposable mig up/down/up PASS + CodeQL workflow
+
+- Task: TASK-20260812-001
+- Evidence: `PAYMENT_MIGRATIONS_DISPOSABLE_UPDOWN_UP_OK` via `scripts/payment-migrations-disposable-updown.sh` on VPS disposable DB (prod `taranom_db` untouched)
+- Added: `.github/workflows/codeql.yml`
+- Report: `docs/reports/2026-08-14-payment-mig-codeql-wave.md`
+- Still open: BNPL BLOCKED; staging E2E NOT RUN
+- Exact next: commit/PR/merge; docs+CI deploy (runtime unchanged beyond prior `acd0191`)
+
 ## 2026-08-13T00:45:00Z — Residuals LIVE (PR #38 → acd0191)
 
 - Task: TASK-20260812-001

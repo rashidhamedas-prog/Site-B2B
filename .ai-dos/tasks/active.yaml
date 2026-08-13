@@ -230,7 +230,7 @@ tasks:
     branch: "ai/TASK-20260812-001-payment-integrations"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-12T16:55:00Z"
-    heartbeat_at: "2026-08-13T00:15:00Z"
+    heartbeat_at: "2026-08-14T00:30:00Z"
     depends_on: []
     file_claims:
       - "docs/reports/2026-08-12-payment-integrations-preflight.md"
@@ -306,6 +306,9 @@ tasks:
       - "docs/runbooks/payment-settlement.md"
       - "docs/reports/2026-08-13-payment-residuals-closure.md"
       - ".github/workflows/ci.yml"
+      - ".github/workflows/codeql.yml"
+      - "scripts/payment-migrations-disposable-updown.sh"
+      - "docs/reports/2026-08-14-payment-mig-codeql-wave.md"
     acceptance_criteria:
       - "Phase 0 COMPLETE: preflight report, gates, live read-only health, formal TASK-006 handoff, no runtime/deploy"
       - "Phase 1 scope freeze documented with non-goals, rollback, and exact file_claims before first apps/* edit"
