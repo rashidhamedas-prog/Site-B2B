@@ -2,6 +2,18 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-14 — Payment disposable mig drill + CodeQL
+
+### خلاصه
+- up/down/up اقساط/پرداخت روی DB disposable VPS → **OK**
+- workflow CodeQL اضافه شد
+- BNPL و staging E2E همچنان BLOCKED/NOT RUN
+
+### بعدی
+- commit/PR/merge/deploy شواهد
+
+---
+
 ## 2026-08-13 — Payment residuals closure (events + concurrency + runbooks)
 
 ### خلاصه
