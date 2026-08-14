@@ -1,14 +1,14 @@
 .retail-root {
-  --retail-primary: #1b5c4a;
-  --retail-primary-dark: #0f2f28;
-  --retail-gold: #c9a84c;
+  --retail-primary: var(--brand-green, #1b5c4a);
+  --retail-primary-dark: var(--brand-green-dark, #0f2f28);
+  --retail-gold: var(--brand-gold, #c9a84c);
   --retail-gold-light: #e5c97c;
-  --retail-ink: #1a1a1a;
-  --retail-bg: #f6f1e8;
+  --retail-ink: var(--brand-ink, #1a1a1a);
+  --retail-bg: var(--brand-ivory, #f6f1e8);
   --retail-surface: #fffcf7;
-  --retail-muted: #6b7280;
-  --retail-border: #e8e0d4;
-  --retail-card: #f3eee6;
+  --retail-muted: var(--brand-muted, #6b7280);
+  --retail-border: var(--brand-border, #e8e0d4);
+  --retail-card: var(--brand-card, #f3eee6);
 }
 
 .retail-root a {

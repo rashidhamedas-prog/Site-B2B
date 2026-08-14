@@ -1,5 +1,35 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-15 — تجربه محصول Stitch روی ویترین واقعی تکی و عمده
+
+### خلاصه
+- توکن‌های برند ترنم (`#1B5C4A` / `#C9A84C` / `#F6F1E8`) به CSS سراسری وصل شد؛ رنگ‌های جعلی استیچ وارد پروداکشن نشد.
+- کارت و PDP تکی با گالری، wishlist، compare-at، نوار چسبان موبایل و آکاردئون واقعی به‌روز شد.
+- کارت عمده با پنهان‌سازی قیمت مهمان، MOQ/موجودی واقعی و کشوی سفارش سریع روی سبد پک فعلی یکپارچه شد.
+- ماتریس رنگ/سایز فقط نمایش موجودی است؛ فرمول پک و حداقل سفارش تغییر نکرد.
+- داده جعلی استیچ (امتیاز، پلکان قیمت، تصویر ریموت) وارد نشد.
+
+### اعتبارسنجی
+- `npx tsx apps/web/src/lib/product-display.spec.ts` — OK
+- `npx tsx apps/web/src/lib/wholesale-order.spec.ts` — OK
+- `npm run type-check -w @taranom/web` — exit 0
+- `npm run build -w @taranom/web` — exit 0؛ ۶۶ صفحه
+
+## 2026-08-14 — کارت محصول مستقل عمده و تک + پرامپت Stitch
+
+### خلاصه
+- ایجاد `WholesaleProductCard` با تمرکز بر SKU، پارچه، رنگ، سایزبندی، MOQ، موجودی، قیمت همکاری و CTA سفارش.
+- ایجاد `RetailProductCard` با تمرکز بر تصویر ادیتوریال، تخفیف، wishlist واقعی، swatch رنگ، موجودی محدود و CTA انتخاب سایز.
+- یکپارچه‌سازی کارت B2B در کاتالوگ و محصولات برتر؛ یکپارچه‌سازی کارت B2C در خانه، PLP و پیشنهادهای مرتبط PDP.
+- اصلاح ساختار تعاملی wishlist: دکمه مستقل، `aria-pressed`، target لمسی 44px و focus-visible.
+- رعایت reduced motion و حذف نیاز به dependency انیمیشن جدید.
+- افزودن پرامپت حرفه‌ای Stitch در `docs/prompts/stitch-product-cards-fa.md`.
+- ساخت نمودار تصمیم دو کانال در FigJam و چهار concept candidate در Canva.
+
+### اعتبارسنجی
+- `npm.cmd run type-check --workspace=@taranom/web` — موفق.
+- `npm.cmd run build --workspace=@taranom/web` — موفق؛ ۶۶ صفحه تولید شد.
+
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
 ## 2026-08-14 — Live apply re-verified (b7bd11a)

@@ -1,29 +1,10 @@
-import Image from 'next/image';
 import Link from 'next/link';
-import { Heart } from 'lucide-react';
 import { getServerApiBase } from '@/lib/server-api';
+import { RetailProductCard, type RetailCardProduct } from './RetailProductCard';
 
-type Product = {
-  id: string;
-  name: string;
-  slug: string;
-  retailPrice?: number | null;
-  images?: string[];
-};
+const FALLBACK: RetailCardProduct[] = [];
 
-function mediaUrl(url?: string) {
-  if (!url) return undefined;
-  if (url.startsWith('http') || url.startsWith('/')) return url;
-  return `/media/${url}`;
-}
-
-function toman(irr: number) {
-  return Math.round(irr / 10).toLocaleString('fa-IR');
-}
-
-const FALLBACK: Product[] = [];
-
-async function fetchRetailProducts(limit: number, sort: string): Promise<{ products: Product[]; error: boolean }> {
+async function fetchRetailProducts(limit: number, sort: string): Promise<{ products: RetailCardProduct[]; error: boolean }> {
   try {
     const base = getServerApiBase();
     const sortQ = sort ? `&sort=${encodeURIComponent(sort)}` : '';
@@ -34,7 +15,7 @@ async function fetchRetailProducts(limit: number, sort: string): Promise<{ produ
     if (!res.ok) return { products: [], error: true };
     const data = await res.json();
     const list = Array.isArray(data) ? data : data?.data ?? [];
-    return { products: list as Product[], error: false };
+    return { products: list as RetailCardProduct[], error: false };
   } catch {
     return { products: [], error: true };
   }
@@ -92,47 +73,7 @@ export async function RetailProductGrid({
           </div>
         ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-          {products.map((p) => {
-            const img = mediaUrl(p.images?.[0]);
-            const price = Number(p.retailPrice ?? 0);
-            const href = p.slug === '#' ? '/products' : `/products/${p.slug}`;
-            return (
-              <Link
-                key={p.id}
-                href={href}
-                className="group relative block border border-[var(--retail-border)] bg-[var(--retail-card)] transition hover:border-[var(--retail-gold)]/50"
-              >
-                <span
-                  className="absolute left-3 top-3 z-10 rounded-full bg-white/80 p-1.5 text-[var(--retail-ink)]/50 opacity-80"
-                  aria-hidden
-                >
-                  <Heart className="h-4 w-4" strokeWidth={1.4} />
-                </span>
-                <div className="relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)]">
-                  {img ? (
-                    <Image
-                      src={img}
-                      alt={p.name}
-                      fill
-                      loading="lazy"
-                      className="object-cover object-center transition duration-500 group-hover:scale-[1.03]"
-                      sizes="(max-width:768px) 50vw, 25vw"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-[var(--retail-muted)]">
-                      تصویر به‌زودی
-                    </div>
-                  )}
-                </div>
-                <div className="bg-[var(--retail-surface)] px-3 py-4 text-center">
-                  <h3 className="line-clamp-2 text-[13px] font-semibold text-[var(--retail-ink)]">{p.name}</h3>
-                  <p className="mt-2 text-sm font-bold text-[var(--retail-ink)]">
-                    {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
+          {products.map((p) => <RetailProductCard key={p.id} product={p} />)}
         </div>
         )}
 

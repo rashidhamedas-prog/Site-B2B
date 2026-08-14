@@ -30,6 +30,7 @@ secrets/
 
 # Local scratch / debug scripts (do not commit)
 scripts/tmp-*
+.tmp-stitch/
 
 # Logs
 npm-debug.log*

@@ -4,10 +4,22 @@
 
 /* ── CSS Variables ───────────────────────────────────────────────────────────── */
 :root {
-  --color-primary:        #1B5C4A;
+  /* Brand primitives — only these three hues are brand colors */
+  --brand-green: #1B5C4A;
+  --brand-green-dark: #0F2F28;
+  --brand-gold: #C9A84C;
+  --brand-ivory: #F6F1E8;
+  --brand-ink: #1A1A1A;
+  --brand-surface: #FFFFFF;
+  --brand-card: #F3EEE6;
+  --brand-muted: #6B7280;
+  --brand-border: #E8E0D4;
+  --brand-error: #DC2626;
+
+  --color-primary:        var(--brand-green);
   --color-primary-light:  #2D7A5F;
-  --color-primary-dark:   #124035;
-  --color-secondary:      #C9A84C;
+  --color-primary-dark:   var(--brand-green-dark);
+  --color-secondary:      var(--brand-gold);
   --color-secondary-light:#E5C97C;
   --color-secondary-dark: #A88530;
 
