@@ -2,6 +2,14 @@
 
 > **قانون پروژه:** بعد از هر تغییر معنادار (با Cursor یا Claude Code)، یک ورودی در این فایل و در صورت نیاز یک گزارش جلسه در `docs/reports/` اضافه شود. سپس commit در git.
 
+## 2026-08-14 — Live apply re-verified (b7bd11a)
+
+### خلاصه
+- master و VPS هر دو `b7bd11a`؛ سایت‌ها 200؛ جداول پرداخت/اقساط روی prod موجود.
+- فاصلهٔ deploy باقی نمانده؛ فقط BNPL/staging به‌عنوان residual باز است.
+
+---
+
 ## 2026-08-14 — Payment disposable mig drill + CodeQL
 
 ### خلاصه
