@@ -15,6 +15,12 @@
 - `npm run type-check -w @taranom/web` — exit 0
 - `npm run build -w @taranom/web` — exit 0؛ ۶۶ صفحه
 
+### انتشار
+- commit `332afd4` → PR [#42](https://github.com/rashidhamedas-prog/Site-BtoB/pull/42) merge `5880f95` روی `origin/master`
+- VPS `/opt/taranom` HEAD = `5880f95`؛ `taranom_web` / `taranom_api` / nginx بعد از merge بالا آمدند
+- live health: API `{"status":"ok"}`؛ عمده `.com` 200؛ تکی `.ir` 200
+- نشانهٔ UI زنده: کارت عمده «پس از ورود» + توکن `#1B5C4A`؛ PDP عمده «انتخاب تعداد و سایزبندی»؛ PDP تکی `aria-pressed` wishlist
+
 ## 2026-08-14 — کارت محصول مستقل عمده و تک + پرامپت Stitch
 
 ### خلاصه
