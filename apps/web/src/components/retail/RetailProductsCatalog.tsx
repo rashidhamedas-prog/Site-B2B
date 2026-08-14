@@ -1,10 +1,8 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api';
-import { toman } from '@/lib/retail-cart';
+import { RetailProductCard } from './RetailProductCard';
 
 type Product = {
   id: string;
@@ -14,7 +12,11 @@ type Product = {
   retailPrice?: number | null;
   retailCompareAtPrice?: number | null;
   images?: string[];
-  variants?: Array<{ color: string; size: string }>;
+  stock?: number;
+  totalStock?: number;
+  isNew?: boolean;
+  isPreOrder?: boolean;
+  variants?: Array<{ color: string; colorHex?: string; size: string; stock?: number }>;
   specs?: { collarModel?: string; fabricType?: string };
 };
 
@@ -57,8 +59,12 @@ function normalizeRetailProduct(raw: Record<string, unknown> | Product): Product
         ? null
         : Number(raw.retailCompareAtPrice),
     images: Array.isArray(raw.images) ? (raw.images as string[]) : [],
+    stock: typeof raw.stock === 'number' ? raw.stock : undefined,
+    totalStock: typeof raw.totalStock === 'number' ? raw.totalStock : undefined,
+    isNew: Boolean(raw.isNew),
+    isPreOrder: Boolean(raw.isPreOrder),
     variants: Array.isArray(raw.variants)
-      ? (raw.variants as Array<{ color: string; size: string }>)
+      ? (raw.variants as Array<{ color: string; colorHex?: string; size: string; stock?: number }>)
       : [],
     specs:
       raw.specs && typeof raw.specs === 'object'
@@ -296,44 +302,7 @@ export function RetailProductsCatalog({
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-              {products.map((p) => {
-                const img = mediaUrl(p.images?.[0]);
-                const price = Number(p.retailPrice ?? 0);
-                const compareAt = Number(p.retailCompareAtPrice ?? 0);
-                const showCompare = compareAt > price && price > 0;
-                return (
-                  <Link
-                    key={p.id}
-                    href={`/products/${p.slug}`}
-                    className="group overflow-hidden rounded-xl bg-white ring-1 ring-[var(--retail-border)] transition hover:ring-[var(--retail-primary)]/40"
-                  >
-                    <div className="relative aspect-[3/4] bg-[var(--retail-bg)]">
-                      {img ? (
-                        <Image
-                          src={img}
-                          alt={p.name}
-                          fill
-                          className="object-cover transition duration-500 group-hover:scale-105"
-                          sizes="(max-width:768px) 50vw, 25vw"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="p-3 sm:p-4">
-                      <h2 className="line-clamp-2 text-sm font-semibold">{p.name}</h2>
-                      <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
-                        <p className="text-sm font-extrabold text-[var(--retail-primary)]">
-                          {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
-                        </p>
-                        {showCompare ? (
-                          <p className="text-xs text-[var(--retail-muted)] line-through">
-                            {toman(compareAt)}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+              {products.map((p) => <RetailProductCard key={p.id} product={p} />)}
             </div>
             {page < totalPages ? (
               <div className="mt-10 flex justify-center">

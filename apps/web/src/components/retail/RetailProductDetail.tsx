@@ -1,12 +1,13 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
 import { useMemo, useState, useEffect } from 'react';
-import { Check, Heart, ShoppingBag, X, ZoomIn } from 'lucide-react';
+import { Check, Heart, ShoppingBag, Truck, X, ZoomIn } from 'lucide-react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
+import { discountPercent, mediaUrl as toMediaUrl } from '@/lib/product-display';
+import { RetailProductCard } from './RetailProductCard';
 
 type Variant = {
   id: string;
@@ -25,6 +26,7 @@ type Product = {
   description?: string;
   sku?: string;
   retailPrice?: number | null;
+  retailCompareAtPrice?: number | null;
   stock?: number;
   retailStock?: number;
   sizeGuide?: string | string[] | null;
@@ -47,9 +49,7 @@ type Related = {
 };
 
 function mediaUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (url.startsWith('http') || url.startsWith('/')) return url;
-  return `/media/${url}`;
+  return toMediaUrl(url);
 }
 
 function parseSizeGuide(raw?: string | string[] | null): string[][] {
@@ -170,6 +170,8 @@ export function RetailProductDetail({ product }: { product: Product }) {
   const sizeTable = useMemo(() => parseSizeGuide(product.sizeGuide), [product.sizeGuide]);
   const selectedVariant = (product.variants ?? []).find((v) => v.color === color && v.size === size);
   const price = Number(product.retailPrice ?? 0);
+  const compareAt = Number(product.retailCompareAtPrice ?? 0);
+  const discount = discountPercent(price, compareAt);
   const productRetailStock = Number(product.retailStock ?? product.stock ?? 0);
   const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
   const stock = product.variants?.length ? variantStock : productRetailStock;
@@ -225,13 +227,25 @@ export function RetailProductDetail({ product }: { product: Product }) {
     setWish(next);
   };
 
+  const addButton = (
+    <button
+      type="button"
+      disabled={!canBuy || price <= 0}
+      onClick={onAdd}
+      className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg bg-[var(--retail-primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--retail-primary-dark)] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {added ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
+      {added ? 'به سبد اضافه شد' : product.isPreOrder ? 'پیش‌خرید' : 'افزودن به سبد'}
+    </button>
+  );
+
   return (
-    <div>
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-14">
-        <div>
+    <div className="bg-[var(--retail-bg)] pb-24 lg:pb-0">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-12 lg:px-8 lg:py-14">
+        <div className="lg:col-span-7">
           <button
             type="button"
-            className="relative aspect-[4/5] w-full cursor-zoom-in overflow-hidden rounded-2xl bg-[var(--retail-bg)]"
+            className="relative aspect-[4/5] w-full cursor-zoom-in overflow-hidden rounded-lg bg-[var(--retail-card)]"
             onClick={() => setZoomOpen(true)}
           >
             {main ? (
@@ -293,21 +307,35 @@ export function RetailProductDetail({ product }: { product: Product }) {
           ) : null}
         </div>
 
-        <div>
+        <div className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{product.name}</h1>
             <button
               type="button"
               onClick={onWish}
-              className="rounded-full border border-[var(--retail-border)] p-2"
-              aria-label="علاقه‌مندی"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--retail-border)] bg-white"
+              aria-label={wish ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
+              aria-pressed={wish}
             >
-              <Heart className={`h-5 w-5 ${wish ? 'fill-red-500 text-red-500' : ''}`} />
+              <Heart className={`h-5 w-5 ${wish ? 'fill-[var(--retail-primary)] text-[var(--retail-primary)]' : ''}`} />
             </button>
           </div>
-          <p className="mt-3 text-2xl font-extrabold text-[var(--retail-primary)]">
-            {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
-          </p>
+          {product.sku ? (
+            <p className="mt-1 text-xs text-[var(--retail-muted)]">کد: {product.sku}</p>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-end gap-3 border-y border-[var(--retail-border)] py-4">
+            <p className="text-2xl font-extrabold text-[var(--retail-primary)]">
+              {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
+            </p>
+            {discount ? (
+              <>
+                <p className="text-sm text-[var(--retail-muted)] line-through">{toman(compareAt)}</p>
+                <span className="rounded-full bg-[var(--retail-gold)] px-2 py-0.5 text-[11px] font-bold text-[var(--retail-primary-dark)]">
+                  ٪{discount.toLocaleString('fa-IR')} تخفیف
+                </span>
+              </>
+            ) : null}
+          </div>
           {product.isPreOrder && product.preOrderDate ? (
             <PreOrderCountdown date={product.preOrderDate} />
           ) : (
@@ -387,8 +415,8 @@ export function RetailProductDetail({ product }: { product: Product }) {
             </div>
           )}
 
-          <div className="mt-8 flex items-center gap-3">
-            <div className="flex items-center rounded-full border border-[var(--retail-border)]">
+          <div className="mt-8 hidden items-center gap-3 lg:flex">
+            <div className="flex items-center rounded-lg border border-[var(--retail-border)] bg-white">
               <button type="button" className="cursor-pointer px-3 py-2" onClick={() => setQty((q) => Math.max(1, q - 1))}>
                 −
               </button>
@@ -397,29 +425,58 @@ export function RetailProductDetail({ product }: { product: Product }) {
                 +
               </button>
             </div>
-            <button
-              type="button"
-              disabled={!canBuy || price <= 0}
-              onClick={onAdd}
-              className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-full bg-[var(--retail-gold)] py-3.5 text-sm font-extrabold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {added ? <Check className="h-4 w-4" /> : <ShoppingBag className="h-4 w-4" />}
-              {added ? 'به سبد اضافه شد' : product.isPreOrder ? 'پیش‌خرید' : 'افزودن به سبد'}
-            </button>
+            {addButton}
           </div>
 
-          {product.modelInfo ? (
-            <p className="mt-6 rounded-xl bg-[var(--retail-bg)] px-4 py-3 text-sm text-[var(--retail-muted)]">
-              {product.modelInfo}
-            </p>
-          ) : null}
+          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-[var(--retail-border)] pt-4 text-xs text-[var(--retail-muted)]">
+            <span className="inline-flex items-center gap-2">
+              <Truck className="h-4 w-4 text-[var(--retail-gold)]" aria-hidden />
+              ارسال چاپار
+            </span>
+            <span>مرجوعی ۷ روزه</span>
+          </div>
 
-          {product.description ? (
-            <div className="prose prose-sm mt-8 max-w-none text-[var(--retail-muted)]">
-              <h2 className="text-base font-bold text-[var(--retail-ink)]">توضیحات</h2>
-              <p className="leading-8">{product.description}</p>
-            </div>
-          ) : null}
+          <div className="mt-6 divide-y divide-[var(--retail-border)] border-y border-[var(--retail-border)]">
+            {product.description ? (
+              <details className="group py-4" open>
+                <summary className="cursor-pointer list-none text-sm font-bold text-[var(--retail-ink)]">
+                  مشخصات و توضیحات
+                </summary>
+                <p className="mt-3 text-sm leading-8 text-[var(--retail-muted)]">{product.description}</p>
+              </details>
+            ) : null}
+            {product.modelInfo ? (
+              <details className="group py-4">
+                <summary className="cursor-pointer list-none text-sm font-bold text-[var(--retail-ink)]">
+                  اطلاعات مدل و فیت
+                </summary>
+                <p className="mt-3 text-sm text-[var(--retail-muted)]">{product.modelInfo}</p>
+              </details>
+            ) : null}
+            <details className="group py-4">
+              <summary className="cursor-pointer list-none text-sm font-bold text-[var(--retail-ink)]">
+                ارسال و بازگشت کالا
+              </summary>
+              <p className="mt-3 text-sm text-[var(--retail-muted)]">
+                ارسال با چاپار. امکان بازگشت تا ۷ روز در صورت عدم استفاده.
+              </p>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--retail-border)] bg-[var(--retail-bg)]/95 p-3 lg:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-3">
+          <div className="flex items-center rounded-lg border border-[var(--retail-border)] bg-white">
+            <button type="button" className="cursor-pointer px-3 py-2" onClick={() => setQty((q) => Math.max(1, q - 1))}>
+              −
+            </button>
+            <span className="w-8 text-center text-sm font-bold">{qty.toLocaleString('fa-IR')}</span>
+            <button type="button" className="cursor-pointer px-3 py-2" onClick={() => setQty((q) => q + 1)}>
+              +
+            </button>
+          </div>
+          {addButton}
         </div>
       </div>
 
@@ -427,23 +484,7 @@ export function RetailProductDetail({ product }: { product: Product }) {
         <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
           <h2 className="text-xl font-extrabold">پیشنهادهای مشابه</h2>
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-            {related.map((r) => {
-              const img = mediaUrl(r.images?.[0]);
-              const rp = Number(r.retailPrice ?? 0);
-              return (
-                <Link key={r.id} href={`/products/${r.slug}`} className="overflow-hidden rounded-xl bg-white ring-1 ring-[var(--retail-border)]">
-                  <div className="relative aspect-[3/4] bg-[var(--retail-bg)]">
-                    {img ? <Image src={img} alt={r.name} fill className="object-cover" sizes="25vw" /> : null}
-                  </div>
-                  <div className="p-3">
-                    <p className="line-clamp-2 text-sm font-semibold">{r.name}</p>
-                    {rp > 0 ? (
-                      <p className="mt-1 text-sm font-bold text-[var(--retail-primary)]">{toman(rp)} ت</p>
-                    ) : null}
-                  </div>
-                </Link>
-              );
-            })}
+            {related.map((r) => <RetailProductCard key={r.id} product={r} compact />)}
           </div>
         </section>
       ) : null}

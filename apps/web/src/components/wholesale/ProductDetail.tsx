@@ -9,6 +9,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
+import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 
 interface Variant {
   id: string;
@@ -146,6 +147,7 @@ export function ProductDetail({
     initialProduct ? defaultColors(initialProduct) : [],
   );
   const [colorError, setColorError] = useState('');
+  const [quickOpen, setQuickOpen] = useState(false);
 
   useEffect(() => {
     // Product is server-rendered when initialProduct is provided; no client refetch.
@@ -291,7 +293,7 @@ export function ProductDetail({
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-atmosphere">
+    <div className="min-h-screen bg-[var(--brand-ivory,#F6F1E8)]">
       <div className="container-site py-8">
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="skeleton aspect-[3/4] rounded-2xl" />
@@ -313,7 +315,7 @@ export function ProductDetail({
   const fabricLabel = product.specs?.fabricType || product.fabric;
 
   return (
-    <div className="min-h-screen bg-atmosphere">
+    <div className="min-h-screen bg-[var(--brand-ivory,#F6F1E8)] pb-24 lg:pb-0">
       <div className="border-b border-[color:var(--color-border)] bg-white">
         <div className="container-site py-3">
           <nav className="flex items-center gap-2 text-sm text-gray-500">
@@ -598,7 +600,7 @@ export function ProductDetail({
               </Alert>
             )}
 
-            <div className="flex gap-3 flex-wrap">
+            <div className="hidden gap-3 flex-wrap lg:flex">
               <Button size="lg" variant="primary" fullWidth disabled={!canOrder} onClick={handleAddToCart}
                 rightIcon={<ShoppingCart className="h-5 w-5" />}>
                 {isComingSoon ? 'پیش‌خرید — افزودن به سبد' : 'افزودن به سبد خرید'}
@@ -651,6 +653,17 @@ export function ProductDetail({
           </div>
         )}
       </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] p-3 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setQuickOpen(true)}
+          className="flex h-12 w-full items-center justify-center rounded-lg bg-[var(--brand-green,#1B5C4A)] text-sm font-bold text-white"
+        >
+          انتخاب تعداد و سایزبندی
+        </button>
+      </div>
+      <WholesaleQuickOrder product={product} open={quickOpen} onClose={() => setQuickOpen(false)} />
     </div>
   );
 }

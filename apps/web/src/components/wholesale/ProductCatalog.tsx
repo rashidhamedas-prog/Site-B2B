@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ProductImage } from '@/components/ui/ProductImage';
 import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
-import { Input, Button, Badge } from '@/components/ui';
+import { Input, Button } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { WholesaleProductCard } from './WholesaleProductCard';
 
 export interface CatalogSearchParams {
   fabric?: string;
@@ -30,7 +30,8 @@ interface Product {
   totalStock?: number;
   images: string[];
   sizeType?: string;
-  variants: { id: string; color: string; colorHex?: string; stock: number }[];
+  minOrderQty?: number;
+  variants: { id: string; color: string; colorHex?: string; stock: number; size?: string }[];
 }
 
 function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Product {
@@ -47,13 +48,15 @@ function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Produc
     totalStock: typeof raw.totalStock === 'number' ? raw.totalStock : undefined,
     images: Array.isArray(raw.images) ? (raw.images as string[]) : [],
     sizeType: typeof raw.sizeType === 'string' ? raw.sizeType : undefined,
+    minOrderQty: typeof raw.minOrderQty === 'number' ? raw.minOrderQty : undefined,
     variants: variants.map((v) => {
-      const row = v as { id?: string; color?: string; colorHex?: string; stock?: number };
+      const row = v as { id?: string; color?: string; colorHex?: string; stock?: number; size?: string };
       return {
         id: String(row.id ?? ''),
         color: String(row.color ?? ''),
         colorHex: row.colorHex,
         stock: Number(row.stock ?? 0),
+        size: row.size,
       };
     }),
   };
@@ -171,47 +174,6 @@ function FilterPanel({
         پاک کردن فیلترها
       </Button>
     </div>
-  );
-}
-
-function ProductCard({ product }: { product: Product }) {
-  const colorCount = [...new Set(product.variants.map((v) => v.color))].length;
-  const stock =
-    typeof product.stock === 'number'
-      ? product.stock
-      : typeof product.totalStock === 'number'
-        ? product.totalStock
-        : product.variants.reduce((s, v) => s + (Number(v.stock) || 0), 0);
-  const inStock = stock > 0 || product.status === 'COMING_SOON';
-  return (
-    <Link href={`/products/${product.slug}`} className="product-tile group">
-      <div className="product-tile-media">
-        <ProductImage
-          src={product.images?.[0]}
-          alt={product.name}
-          sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
-        />
-        {!inStock && (
-          <div className="absolute top-3 right-3">
-            <span className="rounded bg-gray-600 px-2 py-0.5 text-[10px] font-bold text-white">ناموجود</span>
-          </div>
-        )}
-        <div className="absolute inset-0 bg-primary/0 transition-colors duration-250 group-hover:bg-primary/5" />
-      </div>
-      <div className="flex flex-1 flex-col gap-2 pt-3">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-gray-800">{product.name}</h3>
-        <div className="flex items-center gap-2">
-          {product.fabric && <Badge variant="neutral">{product.fabric}</Badge>}
-          {colorCount > 0 && <span className="text-xs text-gray-400">{colorCount} رنگ</span>}
-        </div>
-        <div className="mt-auto flex items-end justify-between pt-1">
-          <span className="text-xs text-gray-400">قیمت عمده</span>
-          <p className="text-base font-bold text-primary">
-            {Math.round(Number(product.wholesalePrice) / 10).toLocaleString('fa-IR')} تومان
-          </p>
-        </div>
-      </div>
-    </Link>
   );
 }
 
@@ -429,7 +391,7 @@ export function ProductCatalog({
                 ? Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)
                 : products.length === 0
                   ? <div className="col-span-full py-16 text-center text-gray-400">محصولی یافت نشد</div>
-                  : products.map((p) => <ProductCard key={p.id} product={p} />)}
+                  : products.map((p) => <WholesaleProductCard key={p.id} product={p} />)}
             </div>
           </div>
         </div>
