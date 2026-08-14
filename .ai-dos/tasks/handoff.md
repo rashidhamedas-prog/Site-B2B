@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-14T09:20:00Z — Full live apply confirmed (no gap)
+
+- Task: TASK-20260812-001
+- origin/master = VPS HEAD = **`b7bd11a`**
+- Live: API health **200**; wholesale **200**; retail **200**; eligible ZARINPAL+MANUAL only
+- Prod schema present: `payments`, `payment_attempts`, `payment_ledger_entries`, `payment_events`, `payment_providers`, `installment_contracts`, `installment_schedules`
+- Providers: ZARINPAL/MANUAL enabled+APPROVED; SNAPPAY/DIGIPAY/TARA/AZKIVAM disabled+NOT_STARTED
+- No uncommitted payment runtime diffs; branch synced to remote
+- Verdict: **all payment program changes already applied on both storefronts** — no missing deploy
+
 ## 2026-08-14T00:30:00Z — Disposable mig up/down/up PASS + CodeQL workflow
 
 - Task: TASK-20260812-001
