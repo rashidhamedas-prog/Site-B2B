@@ -18,7 +18,26 @@ export class CategoryController {
       'Cache-Control',
       'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
     );
-    return this.svc.findAll();
+    return this.svc.findAll({ includeHidden: false });
+  }
+
+  @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'لیست کامل دسته‌بندی‌ها (ادمین، شامل مخفی)' })
+  findAllAdmin() {
+    return this.svc.findAll({ includeHidden: true });
+  }
+
+  @Get('slug/:slug')
+  @ApiOperation({ summary: 'جزئیات دسته‌بندی با slug' })
+  findBySlug(@Param('slug') slug: string, @Res({ passthrough: true }) res?: FastifyReply) {
+    res?.header(
+      'Cache-Control',
+      'public, max-age=60, s-maxage=120, stale-while-revalidate=300',
+    );
+    return this.svc.findBySlug(slug);
   }
 
   @Post()
@@ -26,8 +45,8 @@ export class CategoryController {
   @Roles('ADMIN')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'ایجاد دسته‌بندی (ادمین)' })
-  create(@Body() body: { name: string; skuPrefix?: string; bannerUrl?: string | null }) {
-    return this.svc.create(body);
+  create(@Body() body: Record<string, unknown>) {
+    return this.svc.create(body as { name: string });
   }
 
   @Patch(':id')
@@ -37,7 +56,7 @@ export class CategoryController {
   @ApiOperation({ summary: 'ویرایش دسته‌بندی (ادمین)' })
   update(
     @Param('id') id: string,
-    @Body() body: { name?: string; skuPrefix?: string; nextSequence?: number; bannerUrl?: string | null },
+    @Body() body: Record<string, unknown>,
   ) {
     return this.svc.update(id, body);
   }

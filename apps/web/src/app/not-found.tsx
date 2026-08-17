@@ -1,29 +1,78 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { getSeoChannel } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'صفحه یافت نشد | پوشاک ترنم',
   robots: { index: false, follow: false },
 };
 
-export default function NotFound() {
+export default async function NotFound() {
+  const channel = await getSeoChannel();
+  const retail = channel === 'RETAIL';
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="text-center max-w-md">
-        <div className="text-8xl font-black text-primary-100 mb-4">۴۰۴</div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-3">صفحه یافت نشد</h1>
-        <p className="text-gray-500 mb-8">
-          صفحه‌ای که دنبالش می‌گردید وجود ندارد یا جابه‌جا شده است.
+    <div
+      className={
+        retail
+          ? 'flex min-h-screen items-center justify-center bg-[var(--retail-bg,#F6F1E8)] px-4 py-16'
+          : 'flex min-h-screen items-center justify-center bg-[#F6F1E8] px-4 py-16'
+      }
+    >
+      <div className="max-w-lg text-center">
+        <p className="text-sm font-semibold tracking-[0.2em] text-[#C9A84C]">۴۰۴</p>
+        <h1 className="mt-4 text-3xl font-extrabold text-[#0F2F28]">
+          {retail ? 'این صفحه پیدا نشد' : 'این صفحه در کاتالوگ پیدا نشد'}
+        </h1>
+        <p className="mt-4 text-sm leading-7 text-[#6B7280]">
+          {retail
+            ? 'آدرس عوض شده یا دیگر در فروشگاه وجود ندارد. از مسیرهای زیر ادامه دهید.'
+            : 'این آدرس در کاتالوگ عمده موجود نیست. از کاتالوگ، لینن یا تماس ادامه دهید.'}
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/"
-            className="inline-flex items-center justify-center h-11 px-8 rounded-xl bg-primary text-white font-bold hover:bg-primary-dark transition-colors">
-            بازگشت به خانه
-          </Link>
-          <Link href="/products"
-            className="inline-flex items-center justify-center h-11 px-8 rounded-xl border border-gray-200 text-gray-700 font-medium hover:border-primary hover:text-primary transition-colors">
-            مشاهده محصولات
-          </Link>
+        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          {retail ? (
+            <>
+              <Link
+                href="/"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-[#1B5C4A] px-6 text-sm font-bold text-white"
+              >
+                فروشگاه
+              </Link>
+              <Link
+                href="/products"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#E8E0D4] px-6 text-sm font-bold text-[#0F2F28]"
+              >
+                محصولات
+              </Link>
+              <Link
+                href="/collections"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#E8E0D4] px-6 text-sm font-bold text-[#0F2F28]"
+              >
+                دسته‌بندی‌ها
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/products"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-[#1B5C4A] px-6 text-sm font-bold text-white"
+              >
+                کاتالوگ
+              </Link>
+              <Link
+                href="/linen-collection"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#E8E0D4] px-6 text-sm font-bold text-[#0F2F28]"
+              >
+                لینن
+              </Link>
+              <Link
+                href="/contact"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-[#E8E0D4] px-6 text-sm font-bold text-[#0F2F28]"
+              >
+                تماس
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

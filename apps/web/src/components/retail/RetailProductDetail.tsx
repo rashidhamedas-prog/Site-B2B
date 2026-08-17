@@ -9,6 +9,20 @@ import { apiClient } from '@/lib/api';
 import { discountPercent, mediaUrl as toMediaUrl } from '@/lib/product-display';
 import { RetailProductCard } from './RetailProductCard';
 
+type Related = {
+  id: string;
+  name: string;
+  slug: string;
+  retailPrice?: number | null;
+  images?: string[];
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
+};
+
 type Variant = {
   id: string;
   color: string;
@@ -27,6 +41,14 @@ type Product = {
   sku?: string;
   retailPrice?: number | null;
   retailCompareAtPrice?: number | null;
+  fullContent?: string | null;
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
+  relatedProducts?: Related[];
   stock?: number;
   retailStock?: number;
   sizeGuide?: string | string[] | null;
@@ -38,14 +60,6 @@ type Product = {
   variants?: Variant[];
   categoryId?: string;
   fabric?: string;
-};
-
-type Related = {
-  id: string;
-  name: string;
-  slug: string;
-  retailPrice?: number | null;
-  images?: string[];
 };
 
 function mediaUrl(url?: string | null) {
@@ -140,11 +154,16 @@ export function RetailProductDetail({ product }: { product: Product }) {
   }, [product.id]);
 
   useEffect(() => {
+    const curated = (product.relatedProducts ?? []).filter((p) => p?.id && p?.slug);
+    if (curated.length) {
+      setRelated(curated.slice(0, 12));
+      return;
+    }
     apiClient
       .get<{ data: Related[] }>(`/products?relatedTo=${encodeURIComponent(product.id)}&limit=4&channel=RETAIL`)
       .then((r) => setRelated(r.data ?? []))
       .catch(() => setRelated([]));
-  }, [product.id]);
+  }, [product.id, product.relatedProducts]);
 
   // Sync gallery when color changes
   useEffect(() => {
@@ -169,9 +188,19 @@ export function RetailProductDetail({ product }: { product: Product }) {
 
   const sizeTable = useMemo(() => parseSizeGuide(product.sizeGuide), [product.sizeGuide]);
   const selectedVariant = (product.variants ?? []).find((v) => v.color === color && v.size === size);
-  const price = Number(product.retailPrice ?? 0);
-  const compareAt = Number(product.retailCompareAtPrice ?? 0);
-  const discount = discountPercent(price, compareAt);
+  const sale = product.sale;
+  const price = Number(sale?.payable ?? product.retailPrice ?? 0);
+  const compareAt = sale?.active
+    ? Number(sale.original ?? 0)
+    : sale
+      ? 0
+      : Number(product.retailCompareAtPrice ?? 0);
+  const discount = sale
+    ? sale.active
+      ? Number(sale.badgePercent || 0)
+      : 0
+    : discountPercent(price, compareAt);
+  const body = product.fullContent || product.description;
   const productRetailStock = Number(product.retailStock ?? product.stock ?? 0);
   const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
   const stock = product.variants?.length ? variantStock : productRetailStock;
@@ -437,12 +466,12 @@ export function RetailProductDetail({ product }: { product: Product }) {
           </div>
 
           <div className="mt-6 divide-y divide-[var(--retail-border)] border-y border-[var(--retail-border)]">
-            {product.description ? (
+            {body ? (
               <details className="group py-4" open>
                 <summary className="cursor-pointer list-none text-sm font-bold text-[var(--retail-ink)]">
                   مشخصات و توضیحات
                 </summary>
-                <p className="mt-3 text-sm leading-8 text-[var(--retail-muted)]">{product.description}</p>
+                <p className="mt-3 whitespace-pre-line text-sm leading-8 text-[var(--retail-muted)]">{body}</p>
               </details>
             ) : null}
             {product.modelInfo ? (
@@ -482,9 +511,12 @@ export function RetailProductDetail({ product }: { product: Product }) {
 
       {related.length > 0 ? (
         <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-          <h2 className="text-xl font-extrabold">پیشنهادهای مشابه</h2>
+          <h2 className="text-xl font-extrabold">محصولات مرتبط</h2>
+          <p className="mt-1 text-sm text-[var(--retail-muted)]">مدل‌هایی که ممکن است دوست داشته باشید</p>
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-            {related.map((r) => <RetailProductCard key={r.id} product={r} compact />)}
+            {related.map((r) => (
+              <RetailProductCard key={r.id} product={r} compact />
+            ))}
           </div>
         </section>
       ) : null}

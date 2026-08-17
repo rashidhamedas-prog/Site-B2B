@@ -22,6 +22,7 @@ import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { resolveChannelSale } from '../product/product-sale';
 
 /** Allowed Order status transitions (admin). */
 const ORDER_TRANSITIONS: Record<string, string[]> = {
@@ -227,12 +228,39 @@ export class OrderService {
 
   private unitPriceForChannel(
     channel: 'WHOLESALE' | 'RETAIL',
-    product: { wholesalePrice?: number | string | null; retailPrice?: number | string | null },
+    product: {
+      wholesalePrice?: number | string | null;
+      retailPrice?: number | string | null;
+      wholesaleCompareAtPrice?: number | string | null;
+      retailCompareAtPrice?: number | string | null;
+      isDiscounted?: boolean | null;
+      discountType?: string | null;
+      discountPercent?: number | null;
+      discountAmount?: number | null;
+      discountStartsAt?: Date | string | null;
+      discountEndsAt?: Date | string | null;
+    },
     fallback?: number,
   ) {
+    const sale = resolveChannelSale(
+      {
+        isDiscounted: product.isDiscounted,
+        discountType: product.discountType,
+        discountPercent: product.discountPercent,
+        discountAmount: product.discountAmount != null ? Number(product.discountAmount) : null,
+        discountStartsAt: product.discountStartsAt,
+        discountEndsAt: product.discountEndsAt,
+        wholesalePrice: Number(product.wholesalePrice ?? 0),
+        retailPrice: product.retailPrice != null ? Number(product.retailPrice) : null,
+        wholesaleCompareAtPrice:
+          product.wholesaleCompareAtPrice != null ? Number(product.wholesaleCompareAtPrice) : null,
+        retailCompareAtPrice:
+          product.retailCompareAtPrice != null ? Number(product.retailCompareAtPrice) : null,
+      },
+      channel,
+    );
+    if (sale.payable > 0) return sale.payable;
     if (channel === 'RETAIL') {
-      const retail = Number(product.retailPrice ?? 0);
-      if (retail > 0) return retail;
       throw new BadRequestException('قیمت خرده‌فروشی برای این محصول تعریف نشده است');
     }
     return Number(product.wholesalePrice ?? fallback ?? 0);

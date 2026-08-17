@@ -28,7 +28,7 @@ export default function LinenCollectionPage() {
           <p className="mb-8 max-w-2xl text-base leading-relaxed text-white/75 sm:text-lg">
             اگر به‌دنبال <strong className="font-semibold text-white">عمده مانتو و شومیزی لینن</strong> از
             تولیدی هستید، کلکسیون لینن ترنم برای بوتیک‌داران طراحی شده است: پارچه لینن با دوخت تقویت‌شده،
-            حداقل سفارش عمده، و ارسال به سراسر ایران.
+            حداقل سفارش در محصول از ۶ عدد به بالا می‌باشد، و ارسال به سراسر ایران.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link href="/portal/register" className="cursor-pointer">

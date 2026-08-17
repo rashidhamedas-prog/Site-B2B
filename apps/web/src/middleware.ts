@@ -16,6 +16,24 @@ function productSlugFromPathname(pathname: string): string | null {
   }
 }
 
+/** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
+const WHOLESALE_CATEGORY_ALIASES: Record<string, string> = {
+  '/wholesale/manto': '/category/women-manto',
+  '/wholesale/shomiz': '/category/shomiz',
+  '/wholesale/coats': '/category/women-coats',
+  '/wholesale/pants': '/category/women-pants',
+  '/wholesale/winter-wear': '/category/winter-wear',
+  '/wholesale/linen': '/category/linen-collection',
+  '/wholesale/cotton': '/category/cotton-collection',
+};
+
+function normalizePathname(pathname: string): string {
+  if (pathname.length > 1 && pathname.endsWith('/')) {
+    return pathname.replace(/\/+$/, '');
+  }
+  return pathname;
+}
+
 /** Legacy WordPress-era paths that are permanently gone (no replacement). */
 const GONE_PREFIXES = [
   '/product/', // old WP /product/<id>/<persian-slug>/
@@ -82,6 +100,14 @@ export function middleware(request: NextRequest) {
   const legacy = handleLegacyPaths(request);
   if (legacy) return legacy;
 
+  const aliasTarget = WHOLESALE_CATEGORY_ALIASES[normalizePathname(pathname)];
+  if (aliasTarget) {
+    const url = request.nextUrl.clone();
+    url.pathname = aliasTarget;
+    url.search = '';
+    return NextResponse.redirect(url, 301);
+  }
+
   // Old descriptive wholesale product slugs → current code slugs (both hosts).
   const productSlug = productSlugFromPathname(pathname);
   if (productSlug) {
@@ -107,7 +133,8 @@ export function middleware(request: NextRequest) {
     request.cookies.get('taranom_channel')?.value === 'retail';
   const retailHost = hostLooksRetail(host) || forceRetail;
 
-  // On retail host, rewrite public URLs into /retail/* (URL bar stays clean)
+  // On retail host, rewrite public URLs into /retail/* (URL bar stays clean).
+  // Child sitemaps and merchant feeds stay on shared routes (not /retail/...).
   if (retailHost && !isChannelExemptPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = pathname === '/' ? '/retail' : `/retail${pathname}`;

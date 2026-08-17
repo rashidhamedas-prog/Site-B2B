@@ -24,6 +24,18 @@ function JsonLdScript({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+export function organizationId(channel: SalesChannel = 'WHOLESALE'): string {
+  return channel === 'RETAIL'
+    ? `${RETAIL_ORIGIN}/#organization`
+    : `${WHOLESALE_ORIGIN}/#organization`;
+}
+
+export function websiteId(channel: SalesChannel = 'WHOLESALE'): string {
+  return channel === 'RETAIL'
+    ? `${RETAIL_ORIGIN}/#website`
+    : `${WHOLESALE_ORIGIN}/#website`;
+}
+
 export function OrganizationJsonLd({
   channel = 'WHOLESALE',
 }: {
@@ -35,6 +47,7 @@ export function OrganizationJsonLd({
         data={{
           '@context': 'https://schema.org',
           '@type': 'OnlineStore',
+          '@id': organizationId('RETAIL'),
           name: 'فروشگاه پوشاک ترنم',
           alternateName: 'Taranom Shop',
           url: RETAIL_ORIGIN,
@@ -49,6 +62,7 @@ export function OrganizationJsonLd({
           currenciesAccepted: 'IRR',
           paymentAccepted: 'Credit Card, Cash on Delivery',
           parentOrganization: {
+            '@id': organizationId('WHOLESALE'),
             '@type': 'Organization',
             name: 'پوشاک ترنم',
             url: WHOLESALE_ORIGIN,
@@ -63,6 +77,7 @@ export function OrganizationJsonLd({
       data={{
         '@context': 'https://schema.org',
         '@type': 'ClothingStore',
+        '@id': organizationId('WHOLESALE'),
         name: 'پوشاک ترنم',
         alternateName: 'Taranom Clothing',
         url: WHOLESALE_ORIGIN,
@@ -104,10 +119,11 @@ export function WebSiteJsonLd({ channel = 'WHOLESALE' }: { channel?: SalesChanne
         data={{
           '@context': 'https://schema.org',
           '@type': 'WebSite',
+          '@id': websiteId('RETAIL'),
           name: 'فروشگاه پوشاک ترنم',
           url: RETAIL_ORIGIN,
           inLanguage: 'fa-IR',
-          publisher: { '@type': 'Organization', name: 'پوشاک ترنم' },
+          publisher: { '@id': organizationId('RETAIL') },
         }}
       />
     );
@@ -121,12 +137,54 @@ export function WebSiteJsonLd({ channel = 'WHOLESALE' }: { channel?: SalesChanne
       data={{
         '@context': 'https://schema.org',
         '@type': 'WebSite',
+        '@id': websiteId('WHOLESALE'),
         name: 'پوشاک ترنم',
         url: WHOLESALE_ORIGIN,
         inLanguage: 'fa-IR',
+        publisher: { '@id': organizationId('WHOLESALE') },
       }}
     />
   );
+}
+
+function productOffer({
+  url,
+  currency,
+  price,
+  includePrice,
+  availability,
+  moq,
+  channel,
+}: {
+  url?: string;
+  currency: string;
+  price?: number;
+  includePrice: boolean;
+  availability: 'InStock' | 'OutOfStock' | 'PreOrder';
+  moq?: number;
+  channel: SalesChannel;
+}) {
+  const offerUrl =
+    url ?? (channel === 'RETAIL' ? `${RETAIL_ORIGIN}/products` : `${WHOLESALE_ORIGIN}/products`);
+  const priced = includePrice && typeof price === 'number' && price > 0;
+  return {
+    '@type': 'Offer',
+    url: offerUrl,
+    priceCurrency: currency,
+    ...(priced ? { price } : {}),
+    availability: `https://schema.org/${availability}`,
+    itemCondition: 'https://schema.org/NewCondition',
+    ...(moq && channel === 'WHOLESALE'
+      ? {
+          eligibleQuantity: {
+            '@type': 'QuantitativeValue',
+            minValue: moq,
+            unitCode: 'C62',
+          },
+        }
+      : {}),
+    seller: { '@id': organizationId(channel) },
+  };
 }
 
 export function ProductJsonLd({
@@ -135,6 +193,7 @@ export function ProductJsonLd({
   image,
   sku,
   price,
+  includePrice,
   currency = 'IRR',
   availability = 'InStock',
   fabric,
@@ -147,7 +206,9 @@ export function ProductJsonLd({
   description?: string;
   image?: string;
   sku?: string;
-  price: number;
+  price?: number;
+  /** Wholesale: omit unless the visitor can see the price. Default false on wholesale. */
+  includePrice?: boolean;
   currency?: string;
   availability?: 'InStock' | 'OutOfStock' | 'PreOrder';
   fabric?: string;
@@ -158,6 +219,7 @@ export function ProductJsonLd({
 }) {
   const fallbackImage =
     channel === 'RETAIL' ? `${RETAIL_ORIGIN}/og-retail.jpg` : `${WHOLESALE_ORIGIN}/og-wholesale.jpg`;
+  const emitPrice = includePrice ?? channel !== 'WHOLESALE';
 
   const additionalProperty = [
     fabric ? { '@type': 'PropertyValue', name: 'جنس پارچه', value: fabric } : null,
@@ -172,34 +234,127 @@ export function ProductJsonLd({
       data={{
         '@context': 'https://schema.org',
         '@type': 'Product',
+        ...(url ? { '@id': `${url}#product` } : {}),
         name,
         description,
         image: image ?? fallbackImage,
         sku,
         brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
+        itemCondition: 'https://schema.org/NewCondition',
         ...(additionalProperty.length ? { additionalProperty } : {}),
         ...(fabric || color ? { material: fabric, color } : {}),
-        offers: {
-          '@type': 'Offer',
-          url:
-            url ??
-            (channel === 'RETAIL' ? `${RETAIL_ORIGIN}/products` : `${WHOLESALE_ORIGIN}/products`),
-          priceCurrency: currency,
+        offers: productOffer({
+          url,
+          currency,
           price,
-          availability: `https://schema.org/${availability}`,
-          ...(moq && channel === 'WHOLESALE'
-            ? {
-                eligibleQuantity: {
-                  '@type': 'QuantitativeValue',
-                  minValue: moq,
-                  unitCode: 'C62',
-                },
-              }
-            : {}),
-          seller: {
-            '@type': 'Organization',
-            name: channel === 'RETAIL' ? 'فروشگاه پوشاک ترنم' : 'پوشاک ترنم',
-          },
+          includePrice: emitPrice,
+          availability,
+          moq,
+          channel,
+        }),
+      }}
+    />
+  );
+}
+
+export function ProductGroupJsonLd({
+  name,
+  description,
+  image,
+  url,
+  sku,
+  price,
+  includePrice = true,
+  currency = 'IRR',
+  availability = 'InStock',
+  variants,
+  channel = 'RETAIL',
+}: {
+  name: string;
+  description?: string;
+  image?: string;
+  url: string;
+  sku?: string;
+  price?: number;
+  includePrice?: boolean;
+  currency?: string;
+  availability?: 'InStock' | 'OutOfStock' | 'PreOrder';
+  variants: Array<{ color?: string; size?: string; sku?: string }>;
+  channel?: SalesChannel;
+}) {
+  const colors = [...new Set(variants.map((v) => v.color).filter(Boolean))];
+  const sizes = [...new Set(variants.map((v) => v.size).filter(Boolean))];
+  const variesBy = [
+    colors.length > 1 ? 'https://schema.org/color' : null,
+    sizes.length > 1 ? 'https://schema.org/size' : null,
+  ].filter(Boolean);
+  if (!variesBy.length) return null;
+
+  const offer = productOffer({
+    url,
+    currency,
+    price,
+    includePrice,
+    availability,
+    channel,
+  });
+
+  return (
+    <JsonLdScript
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'ProductGroup',
+        '@id': `${url}#productgroup`,
+        name,
+        description,
+        image,
+        url,
+        sku,
+        brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
+        variesBy,
+        hasVariant: variants.map((v) => ({
+          '@type': 'Product',
+          name: [name, v.color, v.size].filter(Boolean).join(' — '),
+          ...(v.sku ? { sku: v.sku } : {}),
+          ...(v.color ? { color: v.color } : {}),
+          ...(v.size ? { size: v.size } : {}),
+          brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
+          offers: offer,
+        })),
+      }}
+    />
+  );
+}
+
+export function CollectionPageJsonLd({
+  name,
+  description,
+  url,
+  items,
+}: {
+  name: string;
+  description?: string;
+  url: string;
+  items: { name: string; url: string }[];
+}) {
+  return (
+    <JsonLdScript
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        '@id': `${url}#collection`,
+        url,
+        name,
+        description,
+        mainEntity: {
+          '@type': 'ItemList',
+          numberOfItems: items.length,
+          itemListElement: items.map((item, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            url: item.url,
+            name: item.name,
+          })),
         },
       }}
     />

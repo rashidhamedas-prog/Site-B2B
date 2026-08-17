@@ -4,6 +4,7 @@ import {
 } from 'typeorm';
 import { asciiSlug, hasNonAsciiSlug } from '../../../common/ascii-slug';
 import { ProductVariantEntity } from './product-variant.entity';
+import { ProductRelatedEntity } from './product-related.entity';
 import { CategoryEntity } from '../../category/entities/category.entity';
 import { ProductSizeType, ProductSpecs } from './product-specs';
 
@@ -56,6 +57,43 @@ export class ProductEntity {
   @Column({ default: false })
   isDiscounted: boolean;
 
+  /** PERCENT | FIXED — only used when isDiscounted */
+  @Column({ type: 'varchar', nullable: true })
+  discountType: 'PERCENT' | 'FIXED' | null;
+
+  @Column({ type: 'int', nullable: true })
+  discountPercent: number | null;
+
+  /** Fixed discount in IRR */
+  @Column({ type: 'bigint', nullable: true })
+  discountAmount: number | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  discountStartsAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  discountEndsAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  retailFullContent: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  wholesaleFullContent: string | null;
+
+  /** Pre-split shared body kept for admin review */
+  @Column({ type: 'text', nullable: true })
+  legacyContent: string | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  careInstructions: Record<string, unknown> | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  faqItems: Array<{ question: string; answer: string }> | null;
+
+  /** Explicit admin exception to the global min-order floor of 6 */
+  @Column({ default: false })
+  allowBelowMoq: boolean;
+
   /** Retail PDP view counter — used for homepage “most viewed” sort */
   @Index()
   @Column({ type: 'int', default: 0 })
@@ -75,7 +113,7 @@ export class ProductEntity {
   @Column({ type: 'bigint', nullable: true })
   retailCompareAtPrice: number | null;
 
-  @Column({ default: 5 })
+  @Column({ default: 6 })
   minOrderQty: number;
 
   /**
@@ -143,6 +181,9 @@ export class ProductEntity {
 
   @OneToMany(() => ProductVariantEntity, (v) => v.product, { cascade: true })
   variants: ProductVariantEntity[];
+
+  @OneToMany(() => ProductRelatedEntity, (r) => r.product)
+  relatedLinks: ProductRelatedEntity[];
 
   @BeforeInsert()
   @BeforeUpdate()

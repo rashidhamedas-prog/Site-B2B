@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
 import { discountPercent, mediaUrl, toman, uniqueByColor, uniqueSizes } from '@/lib/product-display';
+import { getProductCanonicalPath } from '@/lib/canonical-urls';
 
 export type RetailCardProduct = {
   id: string;
@@ -20,6 +21,12 @@ export type RetailCardProduct = {
   totalStock?: number;
   isNew?: boolean;
   isPreOrder?: boolean;
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
   variants?: Array<{
     id?: string;
     color?: string;
@@ -40,12 +47,21 @@ export function RetailProductCard({
   const addItem = useRetailCart((s) => s.addItem);
   const [wishlisted, setWishlisted] = useState(false);
   const [added, setAdded] = useState(false);
-  const price = Number(product.retailPrice || 0);
-  const compareAt = Number(product.retailCompareAtPrice || 0);
-  const discount = discountPercent(price, compareAt);
+  const sale = product.sale;
+  const price = Number(sale?.payable ?? product.retailPrice ?? 0);
+  const compareAt = sale?.active
+    ? Number(sale.original ?? 0)
+    : sale
+      ? 0
+      : Number(product.retailCompareAtPrice || 0);
+  const discount = sale
+    ? sale.active
+      ? Number(sale.badgePercent || 0)
+      : 0
+    : discountPercent(price, compareAt);
   const image = mediaUrl(product.images?.[0]);
   const secondImage = mediaUrl(product.images?.[1]);
-  const href = `/products/${product.slug}`;
+  const href = getProductCanonicalPath(product.slug);
   const colors = useMemo(() => uniqueByColor(product.variants ?? []), [product.variants]);
   const sizes = useMemo(() => uniqueSizes(product.variants ?? []), [product.variants]);
   const [color, setColor] = useState(colors[0]?.color ?? '');

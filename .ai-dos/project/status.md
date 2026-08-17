@@ -1,10 +1,12 @@
 # Project Status
 
-- Last verified: 2026-08-14T09:20:00Z — **full live apply confirmed**
+- Last verified: 2026-08-17T10:35:00Z — **SEO/Admin upgrade ready to merge/deploy (not live yet)**
 - Active tasks:
-  - **TASK-20260812-001** (`in_progress`) — payment code **LIVE** at `b7bd11a`; BNPL/staging residuals only — owner `cursor:orchestrator-TASK-20260812-001`
-  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006`
-- Code SHA (origin/master): **`b7bd11a`**
+  - **TASK-20260817-001** (`in_progress`) — Retail+Wholesale SEO & Admin upgrade — owner `cursor:orchestrator-TASK-20260817-001`
+  - **TASK-20260812-001** (`in_progress`) — payment code **LIVE**; BNPL/staging residuals — owner `cursor:orchestrator-TASK-20260812-001`
+  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (product/SEO file claims reclaimed 2026-08-17 as stale)
+- Open residuals before live: merge to master, VPS deploy, TypeORM migration `SeoAdminUpgrade1755410400001`, health check
+- Code SHA (origin/master): **`5880f95`** until this wave merges
 - VPS `/opt/taranom` HEAD: **`b7bd11a`** (matches master)
 - Live health:
   - API → **200** ok

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { permanentRedirect } from 'next/navigation';
 import { RetailProductsCatalog } from '@/components/retail/RetailProductsCatalog';
+import { fetchPublicCategories } from '@/components/category/CategoryLanding';
 import { fetchProductList } from '@/lib/server-api';
 
 interface SearchParams {
@@ -45,12 +47,31 @@ export async function generateMetadata({
   return isListingVariant ? { robots: { index: false, follow: true } } : {};
 }
 
+function remainingProductQuery(params: SearchParams): string {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === 'categoryId' || value == null || value === '') continue;
+    qs.set(key, value);
+  }
+  const raw = qs.toString();
+  return raw ? `?${raw}` : '';
+}
+
 export default async function RetailProductsPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+
+  if (params.categoryId) {
+    const categories = await fetchPublicCategories();
+    const match = categories.find((row) => row.id === params.categoryId && row.slug);
+    if (match?.slug) {
+      permanentRedirect(`/category/${match.slug}${remainingProductQuery(params)}`);
+    }
+  }
+
   const isListingVariant = Boolean(
     params.q ||
       params.search ||

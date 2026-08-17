@@ -16,6 +16,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/categories': 'دسته‌بندی‌ها',
   '/admin/inventory': 'انبار',
   '/admin/blog': 'وبلاگ',
+  '/admin/seo': 'سئو و ریدایرکت',
   '/admin/reports': 'گزارش‌ها',
   '/admin/marketing': 'بازاریابی',
   '/admin/analytics': 'آنالیتیکس',
@@ -32,6 +33,7 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/admin/products': 'کاتالوگ محصولات',
   '/admin/inventory': 'مدیریت موجودی انبار',
   '/admin/reports': 'گزارش‌های فروش و مالی',
+  '/admin/seo': 'ریدایرکت‌های ۳۰۱/۳۰۲/۴۱۰ و مدیریت مسیرها',
 };
 
 function getJalaliDate() {

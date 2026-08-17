@@ -26,6 +26,7 @@ export class ProductController {
     @Query('size') size?: string,
     @Query('status') status?: string,
     @Query('categoryId') categoryId?: string,
+    @Query('categorySlug') categorySlug?: string,
     @Query('collectionId') collectionId?: string,
     @Query('minPrice') minPrice?: string,
     @Query('maxPrice') maxPrice?: string,
@@ -51,6 +52,7 @@ export class ProductController {
       String(status || '').toUpperCase() === 'ALL';
     return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
       categoryId,
+      categorySlug,
       collectionId,
       minPrice: minPrice != null ? Number(minPrice) : undefined,
       maxPrice: maxPrice != null ? Number(maxPrice) : undefined,

@@ -107,11 +107,74 @@ export class CreateProductDto {
   @IsBoolean()
   retailFeatured?: boolean;
 
-  @ApiPropertyOptional({ default: 5 })
+  @ApiPropertyOptional({ default: 6 })
   @IsOptional()
   @IsNumber()
   @Min(1)
   minOrderQty?: number;
+
+  @ApiPropertyOptional({ description: 'اجازه حداقل سفارش کمتر از ۶' })
+  @IsOptional()
+  @IsBoolean()
+  allowBelowMoq?: boolean;
+
+  @ApiPropertyOptional({ enum: ['PERCENT', 'FIXED'] })
+  @IsOptional()
+  @IsIn(['PERCENT', 'FIXED'])
+  discountType?: 'PERCENT' | 'FIXED' | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  discountPercent?: number | null;
+
+  @ApiPropertyOptional({ description: 'مبلغ تخفیف ثابت (ریال)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discountAmount?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  discountStartsAt?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  discountEndsAt?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  retailFullContent?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  wholesaleFullContent?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  slug?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  relatedProductIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  careInstructions?: Record<string, unknown> | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  faqItems?: Array<{ question: string; answer: string }> | null;
 
   @ApiPropertyOptional({
     description: 'اجازه انتخاب رنگ به مشتری عمده',

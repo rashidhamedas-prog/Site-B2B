@@ -36,6 +36,8 @@ export function isChannelExemptPath(pathname: string): boolean {
     pathname === '/manifest.json' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
+    pathname.startsWith('/sitemaps') ||
+    pathname.startsWith('/feeds') ||
     pathname.startsWith('/payment')
   );
 }

@@ -147,6 +147,26 @@ export interface Product {
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
+  isDiscounted?: boolean;
+  discountType?: 'PERCENT' | 'FIXED' | null;
+  discountPercent?: number | null;
+  discountAmount?: number | null;
+  discountStartsAt?: string | null;
+  discountEndsAt?: string | null;
+  retailFullContent?: string | null;
+  wholesaleFullContent?: string | null;
+  legacyContent?: string | null;
+  relatedProductIds?: string[];
+  allowBelowMoq?: boolean;
+  minOrderQty?: number;
+  careInstructions?: Record<string, unknown> | null;
+  faqItems?: Array<{ question: string; answer: string }> | null;
+  sale?: {
+    active: boolean;
+    payable: number;
+    original: number | null;
+    badgePercent: number;
+  };
 }
 
 // ─── Order ─────────────────────────────────────────────────────────────────────

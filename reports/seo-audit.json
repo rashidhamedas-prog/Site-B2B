@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-08-17T09:36:47.759Z",
+  "liveSkipped": true,
+  "apiUrl": "https://api.poshaktaranom.com/v1",
+  "counts": {
+    "SKIPPED": 1,
+    "PASS": 2,
+    "FAIL": 1
+  },
+  "crawled": [],
+  "findings": [
+    {
+      "check": "live-crawl",
+      "status": "SKIPPED",
+      "detail": "Invoked with --skip-live; no storefront HTML fetched."
+    },
+    {
+      "check": "sitemap/https://www.poshaktaranom.ir/query-urls",
+      "status": "PASS",
+      "detail": "no query-string loc URLs",
+      "sample": []
+    },
+    {
+      "check": "sitemap/https://poshaktaranom.com/query-urls",
+      "status": "PASS",
+      "detail": "no query-string loc URLs",
+      "sample": []
+    },
+    {
+      "check": "google-merchant-feed",
+      "status": "FAIL",
+      "detail": "API_URL=https://api.poshaktaranom.com/v1 status=404 bytes=91"
+    }
+  ]
+}

@@ -32,7 +32,8 @@ export function Header() {
   const telegramLabel = announcement?.telegramLabel || '@toliditaranom کانال تلگرام';
   const telegramHref =
     announcement?.telegramHref || chromeStr(chrome, 'telegramHref', 'https://t.me/toliditaranom');
-  const annText = announcement?.text || 'ارسال به سراسر ایران — حداقل سفارش ۵ عدد';
+  const annText =
+    announcement?.text || 'ارسال به سراسر ایران — حداقل سفارش در محصول از 6 عدد به بالا می باشد.';
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--color-border)] bg-white/90 backdrop-blur-xl">
