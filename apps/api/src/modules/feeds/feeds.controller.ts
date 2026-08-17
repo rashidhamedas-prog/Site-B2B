@@ -164,7 +164,8 @@ export class FeedsController {
   @Get('google-merchant.xml')
   @ApiOperation({ summary: 'فید Google Merchant (خرده‌فروشی)' })
   @Header('Content-Type', 'application/xml; charset=utf-8')
-  async googleMerchant(@Res() res: Response) {
+  @Header('Cache-Control', 'public, max-age=600')
+  async googleMerchant() {
     const items = (await this.loadRows()).filter((p) => p.image && p.link);
     const base = this.siteBase();
     const body = items
@@ -188,8 +189,7 @@ export class FeedsController {
       })
       .join('');
 
-    res.setHeader('Cache-Control', 'public, max-age=600');
-    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+    return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
     <title>پوشاک ترنم</title>
@@ -197,7 +197,7 @@ export class FeedsController {
     <description>فید محصولات فروشگاه تکی پوشاک ترنم</description>
     ${body}
   </channel>
-</rss>`);
+</rss>`;
   }
 
   @Get('torob.xml')
