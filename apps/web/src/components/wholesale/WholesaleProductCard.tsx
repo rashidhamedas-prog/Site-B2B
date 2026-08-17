@@ -2,11 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Boxes, PackageCheck } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { getToken } from '@/lib/auth';
 import { sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
-import { wholesaleMoq } from '@/lib/wholesale-order';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 
 export type WholesaleCardProduct = {
@@ -40,7 +39,6 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
   const isComingSoon = product.status === 'COMING_SOON';
   const isAvailable = stock > 0 && !isComingSoon;
   const colors = uniqueByColor(variants);
-  const moq = wholesaleMoq(product);
   const price = Number(product.wholesalePrice || 0);
   const showPrice = signedIn && price > 0;
 
@@ -102,21 +100,9 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
           </div>
           <span className="text-[11px] font-medium text-[var(--brand-muted,#6B7280)]">
             {colors.length ? `${colors.length.toLocaleString('fa-IR')} رنگ` : 'رنگ‌بندی در جزئیات'}
+            {' · '}
+            {sizeTypeLabel(product.sizeType)}
           </span>
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-          <div className="rounded-lg bg-white px-2.5 py-2 text-[var(--brand-muted,#6B7280)]">
-            <Boxes className="mb-1 h-4 w-4 text-[var(--brand-green,#1B5C4A)]" aria-hidden />
-            حداقل سفارش <strong className="block text-[var(--brand-ink,#1A1A1A)]">{moq.toLocaleString('fa-IR')} عدد</strong>
-          </div>
-          <div className="rounded-lg bg-white px-2.5 py-2 text-[var(--brand-muted,#6B7280)]">
-            <PackageCheck className="mb-1 h-4 w-4 text-[var(--brand-green,#1B5C4A)]" aria-hidden />
-            موجودی{' '}
-            <strong className="block text-[var(--brand-ink,#1A1A1A)]">
-              {isAvailable ? `${stock.toLocaleString('fa-IR')} عدد` : 'در دسترس نیست'}
-            </strong>
-          </div>
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-3 pt-4">

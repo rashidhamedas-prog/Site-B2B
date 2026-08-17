@@ -36,6 +36,32 @@ export interface Product {
   wholesalePrice: number;
   retailPrice: number;
   retailCompareAtPrice?: number | null;
+  wholesaleCompareAtPrice?: number | null;
+  slug?: string;
+  discountType?: 'PERCENT' | 'FIXED' | null;
+  discountPercent?: number | null;
+  discountAmount?: number | null;
+  discountStartsAt?: string | null;
+  discountEndsAt?: string | null;
+  retailFullContent?: string | null;
+  wholesaleFullContent?: string | null;
+  legacyContent?: string | null;
+  relatedProductIds?: string[];
+  relatedProducts?: Array<{
+    id: string;
+    name: string;
+    sku?: string;
+    images?: string[];
+  }>;
+  allowBelowMoq?: boolean;
+  careInstructions?: Record<string, unknown> | null;
+  faqItems?: Array<{ question: string; answer: string }> | null;
+  sale?: {
+    active: boolean;
+    payable: number;
+    original: number | null;
+    badgePercent: number;
+  };
   showOnWholesale?: boolean;
   showOnRetail?: boolean;
   retailFeatured?: boolean;
@@ -91,6 +117,15 @@ export interface Product {
 interface ProductsResult {
   data: Product[];
   meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
+export async function searchAdminProducts(search: string): Promise<Product[]> {
+  const query = new URLSearchParams();
+  query.set('status', 'ALL');
+  query.set('limit', '20');
+  if (search.trim()) query.set('search', search.trim());
+  const res = await apiClient.get<ProductsResult>(`/products?${query}`);
+  return Array.isArray(res?.data) ? res.data : [];
 }
 
 export function useProducts(params?: { page?: number; limit?: number; search?: string; fabric?: string; status?: string }) {

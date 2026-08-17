@@ -13,7 +13,7 @@
     "test": "turbo test",
     "clean": "turbo clean && rm -rf node_modules",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "seo:audit": "node scripts/seo/audit.mjs",
+    "seo:audit": "node scripts/seo-audit.mjs",
     "seo:check": "node scripts/seo/verify-sitemap.mjs https://poshaktaranom.com/sitemap.xml --out SEO-SITEMAP-VALIDATION-COM.csv && node scripts/seo/verify-sitemap.mjs https://www.poshaktaranom.ir/sitemap.xml --out SEO-SITEMAP-VALIDATION-IR.csv"
   },
   "devDependencies": {

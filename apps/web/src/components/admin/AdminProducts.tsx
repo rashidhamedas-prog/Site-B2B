@@ -23,6 +23,14 @@ import {
   ColorDraft,
   draftsFromVariants,
 } from '@/components/admin/ColorVariantsEditor';
+import {
+  applySaleToChannelToman,
+  ProductDiscountSettings,
+} from '@/components/admin/ProductDiscountSettings';
+import {
+  ProductRelatedPicker,
+  type RelatedProductPick,
+} from '@/components/admin/ProductRelatedPicker';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'فعال',
@@ -90,13 +98,23 @@ const emptyForm = {
   retailSeoDescription: '',
   retailFocusKeyword: '',
   retailCanonical: '',
+  slug: '',
   wholesalePrice: '',
   retailPrice: '',
   wholesaleCompareAtPrice: '',
   retailCompareAtPrice: '',
-  minOrderQty: '1',
+  minOrderQty: '6',
+  allowBelowMoq: false,
   status: 'ACTIVE',
   isDiscounted: false,
+  discountType: 'PERCENT' as 'PERCENT' | 'FIXED',
+  discountPercent: '',
+  discountAmount: '',
+  discountStartsAt: '',
+  discountEndsAt: '',
+  retailFullContent: '',
+  wholesaleFullContent: '',
+  legacyContent: '',
   sizeType: 'FREE' as 'TWO' | 'THREE' | 'FREE',
   specs: emptySpecs,
   hasLength2: false,
@@ -122,6 +140,29 @@ const emptyVariantForm = {
 
 type FormData = typeof emptyForm;
 type VariantForm = typeof emptyVariantForm;
+
+function toDatetimeLocal(iso?: string | Date | null): string {
+  if (!iso) return '';
+  const d = iso instanceof Date ? iso : new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function relatedPicksFromProduct(p: Product): RelatedProductPick[] {
+  const related = p.relatedProducts ?? [];
+  if (related.length) {
+    return related.map((item) => ({
+      id: item.id,
+      name: item.name,
+      sku: item.sku,
+      images: Array.isArray(item.images)
+        ? item.images.filter((u): u is string => typeof u === 'string' && !!u)
+        : [],
+    }));
+  }
+  return (p.relatedProductIds ?? []).map((id) => ({ id, name: id, sku: '', images: [] }));
+}
 
 interface Variant {
   id: string;
@@ -723,6 +764,9 @@ export function AdminProducts() {
   const [initialColorNames, setInitialColorNames] = useState<string[]>([]);
   const { upload: uploadImage, uploading: uploadingImg } = useImageUpload();
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [slugError, setSlugError] = useState<string | null>(null);
+  const [relatedPicks, setRelatedPicks] = useState<RelatedProductPick[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<
@@ -797,26 +841,50 @@ export function AdminProducts() {
     setImages([]);
     setColorDrafts([]);
     setInitialColorNames([]);
+    setRelatedPicks([]);
+    setSaveError(null);
+    setSlugError(null);
     setEditProduct(null);
     setModal('create');
   };
 
-  const openEdit = (p: Product) => {
-    setEditProduct(p);
-    const sizeLabels = sizeOptionsForType(p.sizeType);
-    const drafts = draftsFromVariants(p.variants ?? [], sizeLabels);
+  const openEdit = async (p: Product) => {
+    let src = p;
+    try {
+      src = await apiClient.get<Product>(`/products/${p.id}`);
+    } catch {
+      src = p;
+    }
+    setEditProduct(src);
+    const sizeLabels = sizeOptionsForType(src.sizeType);
+    const drafts = draftsFromVariants(src.variants ?? [], sizeLabels);
     setColorDrafts(drafts);
     setInitialColorNames(drafts.map((d) => d.originalColor || d.color).filter(Boolean));
     const colorImgs = drafts.map((d) => d.imageUrl).filter(Boolean);
-    const mergedImages = [...new Set([...(p.images ?? []), ...colorImgs])];
+    const mergedImages = [...new Set([...(src.images ?? []), ...colorImgs])];
     setImages(mergedImages);
-    const specs = p.specs ?? {};
-    const seo = (p.seoMeta ?? {}) as Record<string, string | undefined>;
+    setRelatedPicks(relatedPicksFromProduct(src));
+    setSaveError(null);
+    setSlugError(null);
+    const specs = src.specs ?? {};
+    const seo = (src.seoMeta ?? {}) as Record<string, string | undefined>;
     setForm({
-      sku: p.sku,
-      categoryId: p.categoryId ?? '',
-      name: p.name,
-      description: p.description ?? '',
+      sku: src.sku,
+      categoryId: src.categoryId ?? '',
+      name: src.name,
+      slug: src.slug ?? '',
+      description: src.description ?? '',
+      retailFullContent: src.retailFullContent ?? src.description ?? '',
+      wholesaleFullContent: src.wholesaleFullContent ?? src.description ?? '',
+      legacyContent: src.legacyContent ?? '',
+      allowBelowMoq: !!src.allowBelowMoq,
+      discountType: src.discountType === 'FIXED' ? 'FIXED' : 'PERCENT',
+      discountPercent: src.discountPercent != null ? String(src.discountPercent) : '',
+      discountAmount: src.discountAmount
+        ? String(Math.round(Number(src.discountAmount) / 10))
+        : '',
+      discountStartsAt: toDatetimeLocal(src.discountStartsAt),
+      discountEndsAt: toDatetimeLocal(src.discountEndsAt),
       wholesaleSeoTitle: seo.wholesaleTitle || seo.title || '',
       wholesaleSeoDescription: seo.wholesaleDescription || seo.description || '',
       wholesaleFocusKeyword: seo.wholesaleFocusKeyword || seo.focusKeyword || '',
@@ -825,36 +893,29 @@ export function AdminProducts() {
       retailSeoDescription: seo.retailDescription || '',
       retailFocusKeyword: seo.retailFocusKeyword || '',
       retailCanonical: seo.retailCanonical || '',
-      wholesalePrice: String(Math.round(Number(p.wholesalePrice) / 10)),
-      retailPrice: p.retailPrice ? String(Math.round(Number(p.retailPrice) / 10)) : '',
-      wholesaleCompareAtPrice: (p as { wholesaleCompareAtPrice?: number | null })
-        .wholesaleCompareAtPrice
-        ? String(
-            Math.round(
-              Number((p as { wholesaleCompareAtPrice?: number }).wholesaleCompareAtPrice) / 10
-            )
-          )
+      wholesalePrice: String(Math.round(Number(src.wholesalePrice) / 10)),
+      retailPrice: src.retailPrice ? String(Math.round(Number(src.retailPrice) / 10)) : '',
+      wholesaleCompareAtPrice: src.wholesaleCompareAtPrice
+        ? String(Math.round(Number(src.wholesaleCompareAtPrice) / 10))
         : '',
-      retailCompareAtPrice: (p as { retailCompareAtPrice?: number | null }).retailCompareAtPrice
-        ? String(
-            Math.round(Number((p as { retailCompareAtPrice?: number }).retailCompareAtPrice) / 10)
-          )
+      retailCompareAtPrice: src.retailCompareAtPrice
+        ? String(Math.round(Number(src.retailCompareAtPrice) / 10))
         : '',
-      minOrderQty: String(p.minOrderQty),
-      status: p.status,
-      isDiscounted: !!p.isDiscounted,
-      sizeType: (p.sizeType as FormData['sizeType']) || 'FREE',
+      minOrderQty: String(src.minOrderQty ?? 6),
+      status: src.status,
+      isDiscounted: !!src.isDiscounted,
+      sizeType: (src.sizeType as FormData['sizeType']) || 'FREE',
       hasLength2: !!specs.length2,
       hasLength3: !!specs.length3,
-      collectionId: p.collectionId ?? '',
-      isPreOrder: !!p.isPreOrder,
-      preOrderDate: p.preOrderDate ? String(p.preOrderDate).slice(0, 10) : '',
-      modelInfo: p.modelInfo ?? '',
-      videoUrl: p.videoUrl ?? '',
-      showOnWholesale: p.showOnWholesale !== false,
-      showOnRetail: p.showOnRetail !== false,
-      allowWholesaleColorSelect: !!p.allowWholesaleColorSelect,
-      minWholesaleColors: String(Math.max(1, Number(p.minWholesaleColors) || 1)),
+      collectionId: src.collectionId ?? '',
+      isPreOrder: !!src.isPreOrder,
+      preOrderDate: src.preOrderDate ? String(src.preOrderDate).slice(0, 10) : '',
+      modelInfo: src.modelInfo ?? '',
+      videoUrl: src.videoUrl ?? '',
+      showOnWholesale: src.showOnWholesale !== false,
+      showOnRetail: src.showOnRetail !== false,
+      allowWholesaleColorSelect: !!src.allowWholesaleColorSelect,
+      minWholesaleColors: String(Math.max(1, Number(src.minWholesaleColors) || 1)),
       specs: {
         fabricType: specs.fabricType ?? '',
         designDetails: specs.designDetails ?? '',
@@ -883,6 +944,9 @@ export function AdminProducts() {
     setImages([]);
     setColorDrafts([]);
     setInitialColorNames([]);
+    setRelatedPicks([]);
+    setSaveError(null);
+    setSlugError(null);
   };
 
   const handleImageUpload = useCallback(
@@ -936,6 +1000,35 @@ export function AdminProducts() {
   const handleSave = useCallback(async () => {
     if (!form.name || !form.wholesalePrice) return;
     if (!form.sku && !form.categoryId && modal === 'create') return;
+    setSaveError(null);
+    setSlugError(null);
+
+    const minQty = Number(form.minOrderQty);
+    if (!form.allowBelowMoq && (!(minQty >= 6) || !Number.isFinite(minQty))) {
+      setSaveError('حداقل سفارش در محصول از 6 عدد به بالا می باشد.');
+      return;
+    }
+
+    const wholesaleBaseToman =
+      Number(form.wholesaleCompareAtPrice) || Number(form.wholesalePrice) || 0;
+    const retailBaseToman = Number(form.retailCompareAtPrice) || Number(form.retailPrice) || 0;
+    if (form.isDiscounted && form.discountType === 'PERCENT') {
+      const pct = Number(form.discountPercent);
+      if (!(pct >= 1 && pct <= 99)) {
+        setSaveError('درصد تخفیف باید بین ۱ تا ۹۹ باشد');
+        return;
+      }
+    }
+    if (form.isDiscounted && form.discountType === 'FIXED') {
+      const amt = Number(form.discountAmount);
+      const bases = [wholesaleBaseToman, retailBaseToman].filter((n) => n > 0);
+      const minBase = bases.length ? Math.min(...bases) : 0;
+      if (!(amt > 0) || (minBase > 0 && amt >= minBase)) {
+        setSaveError('مبلغ تخفیف ثابت باید از قیمت پایه کمتر باشد');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const customFields = (form.specs.customFields ?? [])
@@ -989,22 +1082,65 @@ export function AdminProducts() {
       const colorImageUrls = colorDrafts.map((d) => d.imageUrl).filter(Boolean);
       const galleryImages = [...new Set([...images, ...colorImageUrls])];
 
+      const salePct = Number(form.discountPercent);
+      const saleAmt = Number(form.discountAmount);
+      const wholesaleSale = form.isDiscounted
+        ? applySaleToChannelToman(
+            Number(form.wholesalePrice) || 0,
+            Number(form.wholesaleCompareAtPrice) || 0,
+            form.discountType,
+            salePct,
+            saleAmt
+          )
+        : {
+            final: Number(form.wholesalePrice) || 0,
+            compare: form.wholesaleCompareAtPrice
+              ? Number(form.wholesaleCompareAtPrice)
+              : null,
+          };
+      const retailSale = form.isDiscounted
+        ? applySaleToChannelToman(
+            Number(form.retailPrice) || 0,
+            Number(form.retailCompareAtPrice) || 0,
+            form.discountType,
+            salePct,
+            saleAmt
+          )
+        : {
+            final: form.retailPrice ? Number(form.retailPrice) : 0,
+            compare: form.retailCompareAtPrice ? Number(form.retailCompareAtPrice) : null,
+          };
+
       const payload = {
         sku: form.sku || undefined,
         categoryId: form.categoryId || undefined,
         name: form.name,
-        description: form.description || undefined,
+        slug: form.slug.trim() || undefined,
+        description: form.description || form.wholesaleFullContent || undefined,
+        retailFullContent: form.retailFullContent.trim() || null,
+        wholesaleFullContent: form.wholesaleFullContent.trim() || null,
+        relatedProductIds: relatedPicks.map((item) => item.id).slice(0, 12),
+        allowBelowMoq: !!form.allowBelowMoq,
+        discountType: form.isDiscounted ? form.discountType : form.discountType || null,
+        discountPercent:
+          form.discountType === 'PERCENT' && form.discountPercent
+            ? Number(form.discountPercent)
+            : null,
+        discountAmount:
+          form.discountType === 'FIXED' && form.discountAmount
+            ? Number(form.discountAmount) * 10
+            : null,
+        discountStartsAt: form.discountStartsAt
+          ? new Date(form.discountStartsAt).toISOString()
+          : null,
+        discountEndsAt: form.discountEndsAt ? new Date(form.discountEndsAt).toISOString() : null,
         seoMeta,
         specs,
         sizeType: form.sizeType,
-        wholesalePrice: Number(form.wholesalePrice) * 10,
-        retailPrice: form.retailPrice ? Number(form.retailPrice) * 10 : null,
-        wholesaleCompareAtPrice: form.wholesaleCompareAtPrice
-          ? Number(form.wholesaleCompareAtPrice) * 10
-          : null,
-        retailCompareAtPrice: form.retailCompareAtPrice
-          ? Number(form.retailCompareAtPrice) * 10
-          : null,
+        wholesalePrice: wholesaleSale.final * 10,
+        retailPrice: form.retailPrice ? retailSale.final * 10 : null,
+        wholesaleCompareAtPrice: wholesaleSale.compare ? wholesaleSale.compare * 10 : null,
+        retailCompareAtPrice: retailSale.compare ? retailSale.compare * 10 : null,
         minOrderQty: Number(form.minOrderQty),
         status: form.status,
         isDiscounted: form.isDiscounted,
@@ -1065,7 +1201,13 @@ export function AdminProducts() {
       refetch();
       refreshSpecMemory();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'خطا در ذخیره محصول');
+      const msg = e instanceof Error ? e.message : 'خطا در ذخیره محصول';
+      setSaveError(msg);
+      if (/slug|مسیر رزرو/i.test(msg)) {
+        setSlugError(msg);
+      } else {
+        alert(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -1077,6 +1219,7 @@ export function AdminProducts() {
     images,
     colorDrafts,
     initialColorNames,
+    relatedPicks,
     refreshSpecMemory,
   ]);
 
@@ -1347,7 +1490,12 @@ export function AdminProducts() {
               </button>
             </div>
             <div className="mx-auto w-full max-w-5xl flex-1 space-y-4 overflow-y-auto p-6">
-              <div className="grid grid-cols-2 gap-4">
+              {saveError ? (
+                <p className="text-error rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
+                  {saveError}
+                </p>
+              ) : null}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">دسته‌بندی</label>
                   <select
@@ -1370,6 +1518,35 @@ export function AdminProducts() {
               </div>
 
               {field('name', 'نام محصول', 'text', 'مانتو بهار')}
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  اسلاگ آدرس (slug)
+                </label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={form.slug}
+                  onChange={(e) => {
+                    setSlugError(null);
+                    setForm((f) => ({ ...f, slug: e.target.value.toLowerCase() }));
+                  }}
+                  placeholder="manto-bahar"
+                  className={cn(
+                    'w-full rounded-lg border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2',
+                    slugError
+                      ? 'border-red-400 focus:ring-red-200'
+                      : 'focus:ring-primary/30 border-gray-200'
+                  )}
+                />
+                {slugError ? (
+                  <p className="text-error mt-1 text-xs">{slugError}</p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    حروف کوچک انگلیسی، یکتا. اگر خالی بماند از SKU ساخته می‌شود.
+                  </p>
+                )}
+              </div>
 
               <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
@@ -1672,17 +1849,53 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  توضیحات کامل و مراقبت (SEO Description)
-                </label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  rows={4}
-                  placeholder="متن غنی برای پایین صفحه محصول — مراقبت از پارچه، کاربرد عمده و…"
-                  className="focus:ring-primary/30 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
-                />
+              <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                <p className="text-sm font-semibold text-gray-800">توضیحات کامل و مراقبت</p>
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      متن کامل تک‌فروشی
+                    </label>
+                    <textarea
+                      dir="rtl"
+                      value={form.retailFullContent}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, retailFullContent: e.target.value }))
+                      }
+                      rows={6}
+                      placeholder="توضیح مصرف‌کننده نهایی — بدون زبان عمده‌فروشی"
+                      className="focus:ring-primary/30 w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      متن کامل عمده
+                    </label>
+                    <textarea
+                      dir="rtl"
+                      value={form.wholesaleFullContent}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, wholesaleFullContent: e.target.value }))
+                      }
+                      rows={6}
+                      placeholder="توضیح خرید عمده، پک و همکاری فروشگاهی"
+                      className="focus:ring-primary/30 w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    />
+                  </div>
+                </div>
+                {form.legacyContent.trim() ? (
+                  <div className="rounded-lg border border-gray-200 bg-white p-3">
+                    <p className="mb-1 text-xs font-medium text-gray-600">
+                      متن قدیمی (فقط برای بازبینی)
+                    </p>
+                    <div
+                      dir="rtl"
+                      className="max-h-40 overflow-y-auto whitespace-pre-wrap text-sm text-gray-500"
+                    >
+                      {form.legacyContent}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -1703,8 +1916,32 @@ export function AdminProducts() {
                 )}
                 {field('retailCompareAtPrice', 'قبل از تخفیف تکی (تومان)', 'number', '220000')}
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                {field('minOrderQty', 'حداقل تعداد پک', 'number', '1')}
+              <div className="space-y-2">
+                <div className="max-w-xs">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">
+                    حداقل سفارش (عدد)
+                  </label>
+                  <input
+                    type="number"
+                    min={form.allowBelowMoq ? 1 : 6}
+                    value={form.minOrderQty}
+                    onChange={(e) => setForm((f) => ({ ...f, minOrderQty: e.target.value }))}
+                    placeholder="6"
+                    className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500">
+                  حداقل سفارش در محصول از 6 عدد به بالا می باشد.
+                </p>
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.allowBelowMoq}
+                    onChange={(e) => setForm((f) => ({ ...f, allowBelowMoq: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">اجازه حداقل سفارش کمتر از ۶</span>
+                </label>
               </div>
               <p className="text-[11px] text-gray-500">
                 قیمت نهایی (بعد از تخفیف) برای سبد/سفارش/فید است و باید مثبت باشد. عمده همیشه الزامی
@@ -1814,6 +2051,25 @@ export function AdminProducts() {
                 </label>
               </div>
 
+              {form.isDiscounted ? (
+                <ProductDiscountSettings
+                  value={{
+                    discountType: form.discountType,
+                    discountPercent: form.discountPercent,
+                    discountAmount: form.discountAmount,
+                    discountStartsAt: form.discountStartsAt,
+                    discountEndsAt: form.discountEndsAt,
+                  }}
+                  onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                  wholesaleBaseToman={
+                    Number(form.wholesaleCompareAtPrice) || Number(form.wholesalePrice) || 0
+                  }
+                  retailBaseToman={
+                    Number(form.retailCompareAtPrice) || Number(form.retailPrice) || 0
+                  }
+                />
+              ) : null}
+
               <div className="border-primary/30 bg-primary-50/40 space-y-3 rounded-xl border border-dashed p-4">
                 <p className="text-primary text-xs font-bold">فروشگاه تکی</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -1887,6 +2143,12 @@ export function AdminProducts() {
                 سفارش فعال می‌شود. نشان «جدید» برای {badgeSettings.newBadgeDays} روز پس از ایجاد
                 محصول نمایش داده می‌شود. (قابل تنظیم از تنظیمات ← کسب‌وکار)
               </p>
+
+              <ProductRelatedPicker
+                value={relatedPicks}
+                onChange={setRelatedPicks}
+                excludeId={editProduct?.id}
+              />
 
               <div>
                 <ColorVariantsEditor

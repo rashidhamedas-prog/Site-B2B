@@ -1,5 +1,25 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-17 — SEO storefront lane (TASK-20260817-001)
+
+### Follow-up (orchestrator)
+- ریویو مستقل Bugbot + Security: نشت عمده در related، دسته مخفی در API عمومی، و قیمت تسویه بدون پنجره تخفیف بسته شد.
+- ریدایرکت اسلاگ دسته/محصول از `seo_redirects` روی ویترین اعمال می‌شود.
+- Safety-net SQL ستون‌های 20260817 را هم پوشش می‌دهد.
+- `npx tsc --noEmit` وب و API هر دو exit 0؛ `product-sale.spec.ts` OK.
+- Deploy: بعد از merge به master با `auto-deploy.sh`؛ migration با `migrationsRun` روی API پروداکشن.
+
+### خلاصه
+- کارت عمده: جعبه‌های «حداقل سفارش» و «موجودی» حذف شد؛ رنگ و سایزبندی باقی ماند.
+- کپی عمومی حداقل سفارش ۵ در FAQ/هدر به «از 6 عدد به بالا» عوض شد (توضیحات محصول دست نخورده).
+- اسکیمای PDP تکی با `sale.payable` و ProductGroup؛ عمده بدون قیمت Offer تا قبل از ورود.
+- محصولات مرتبط روی PDP؛ فید Google Merchant؛ اسکریپت `seo:audit`.
+
+### Rollback
+- مهاجرت: `SeoAdminUpgrade1755410400001`
+
+---
+
 ## 2026-08-15 — تجربه محصول Stitch روی ویترین واقعی تکی و عمده
 
 ### خلاصه

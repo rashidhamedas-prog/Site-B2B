@@ -19,6 +19,16 @@ import { SettingsService } from '../settings/settings.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
+import { ProductRelatedEntity } from './entities/product-related.entity';
+import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
+import { sanitizeBlogHtml } from '../blog/blog-sanitize';
+import { normalizePublicSlug } from '../../common/public-slug';
+import {
+  GLOBAL_MIN_ORDER_QTY,
+  normalizeMinOrderQty,
+  resolveChannelSale,
+  type DiscountType,
+} from './product-sale';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -142,6 +152,10 @@ export class ProductService {
     private readonly sizeRepo: Repository<VariantSizeEntity>,
     @InjectRepository(ProductSpecMemoryEntity)
     private readonly specMemoryRepo: Repository<ProductSpecMemoryEntity>,
+    @InjectRepository(ProductRelatedEntity)
+    private readonly relatedRepo: Repository<ProductRelatedEntity>,
+    @InjectRepository(SeoRedirectEntity)
+    private readonly redirectRepo: Repository<SeoRedirectEntity>,
     private readonly storage: StorageService,
     private readonly search: SearchService,
     private readonly settings: SettingsService
@@ -176,6 +190,10 @@ export class ProductService {
     const createdAt = product.createdAt ? new Date(product.createdAt).getTime() : 0;
     const isNewAuto = createdAt > 0 && Date.now() - createdAt < newBadgeMs;
     const isLimitedStock = stock > 0 && stock <= minOrder * multiplier;
+    const sale = resolveChannelSale(product, isRetail ? 'RETAIL' : 'WHOLESALE');
+    const fullContent = isRetail
+      ? product.retailFullContent || product.description
+      : product.wholesaleFullContent || product.description;
     const sizeType = (product.sizeType || 'FREE') as ProductSizeType;
     const variants = (product.variants ?? []).map((v) => {
       const vWholesale = Number(v.wholesaleStock) || Number(v.stock) || 0;
@@ -198,7 +216,10 @@ export class ProductService {
       fabric: this.fabricFromSpecs(product.specs, product.fabric),
       isNew: isNewAuto,
       isFeatured: !!product.isDiscounted,
-      isDiscounted: !!product.isDiscounted,
+      isDiscounted: sale.active,
+      sale,
+      fullContent,
+      minOrderQty: minOrder,
       isLimitedStock,
       totalStock: stock,
       sizeGuide: SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE,
@@ -268,6 +289,7 @@ export class ProductService {
       maxPrice?: number;
       collar?: string;
       relatedTo?: string;
+      categorySlug?: string;
       garmentSize?: string;
       channel?: string;
       sort?: string;
@@ -281,10 +303,27 @@ export class ProductService {
     const garmentSize = opts?.garmentSize || (size && !sizeType ? size : undefined);
 
     let related: ProductEntity | null = null;
+    let relatedIds: string[] | null = null;
     if (opts?.relatedTo) {
       related =
         (await this.productRepo.findOne({ where: { id: opts.relatedTo } })) ||
         (await this.productRepo.findOne({ where: { slug: opts.relatedTo } }));
+      if (related) {
+        const links = await this.relatedRepo.find({
+          where: { productId: related.id },
+          order: { sortOrder: 'ASC' },
+          take: 12,
+        });
+        if (links.length) relatedIds = links.map((l) => l.relatedProductId);
+      }
+    }
+
+    let categoryId = opts?.categoryId || (!relatedIds ? related?.categoryId : undefined);
+    if (opts?.categorySlug) {
+      const cat = await this.categoryRepo.findOne({
+        where: { slug: String(opts.categorySlug).trim().toLowerCase() },
+      });
+      if (cat) categoryId = cat.id;
     }
 
     // Admin list (status=ALL) needs variants for stock/color counts; storefront cards do not.
@@ -303,10 +342,10 @@ export class ProductService {
       qb.andWhere('p.showOnWholesale = true');
     }
     if (sizeType) qb.andWhere('p.sizeType = :sizeType', { sizeType });
-    if (opts?.categoryId || related?.categoryId) {
-      qb.andWhere('p.categoryId = :categoryId', {
-        categoryId: opts?.categoryId || related?.categoryId,
-      });
+    if (relatedIds?.length) {
+      qb.andWhere('p.id IN (:...relatedIds)', { relatedIds });
+    } else if (categoryId) {
+      qb.andWhere('p.categoryId = :categoryId', { categoryId });
     }
     if (opts?.collectionId) {
       qb.andWhere('p.collectionId = :collectionId', { collectionId: opts.collectionId });
@@ -334,7 +373,7 @@ export class ProductService {
         q: `%${search.trim()}%`,
       });
     }
-    if (related) {
+    if (related && !relatedIds?.length) {
       qb.andWhere('p.id != :rid', { rid: related.id });
       if (related.fabric) {
         qb.andWhere("(p.fabric ILIKE :rf OR p.specs->>'fabricType' ILIKE :rf)", {
@@ -479,6 +518,99 @@ export class ProductService {
     return { deleted: true };
   }
 
+  private async attachRelated<T>(
+    product: ProductEntity,
+    payload: T,
+    channel?: string,
+    cfg?: BadgeConfig,
+  ) {
+    const links = await this.relatedRepo.find({
+      where: { productId: product.id },
+      order: { sortOrder: 'ASC' },
+      take: 12,
+    });
+    if (!links.length) return { ...payload, relatedProducts: [] };
+    const ids = links.map((l) => l.relatedProductId);
+    const related = await this.productRepo.find({
+      where: { id: In(ids) },
+      relations: ['variants'],
+    });
+    const order = new Map(ids.map((id, i) => [id, i]));
+    related.sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
+    const ch = String(channel || '').toUpperCase();
+    const visible = related.filter((item) => {
+      if (item.status && item.status !== 'ACTIVE') return ch !== 'RETAIL' && ch !== 'WHOLESALE';
+      if (ch === 'RETAIL') return item.showOnRetail !== false;
+      if (ch === 'WHOLESALE') return item.showOnWholesale !== false;
+      return true;
+    });
+    return {
+      ...payload,
+      relatedProducts: visible.map((item) => this.withBadges(item, channel, cfg)),
+    };
+  }
+
+  async replaceRelated(productId: string, ids: string[] | undefined) {
+    if (!ids) return;
+    const unique = [...new Set(ids.map(String).filter((id) => id && id !== productId))].slice(0, 12);
+    if (unique.length) {
+      const found = await this.productRepo.count({ where: { id: In(unique) } });
+      if (found !== unique.length) {
+        throw new BadRequestException('یکی از محصولات مرتبط نامعتبر است');
+      }
+    }
+    await this.relatedRepo.delete({ productId });
+    if (!unique.length) return [];
+    return this.relatedRepo.save(
+      unique.map((relatedProductId, sortOrder) =>
+        this.relatedRepo.create({ productId, relatedProductId, sortOrder }),
+      ),
+    );
+  }
+
+  private async recordSlugRedirect(oldSlug: string, newSlug: string) {
+    const from = String(oldSlug || '').trim();
+    const to = String(newSlug || '').trim();
+    if (!from || !to || from === to) return;
+    const sourcePath = `/products/${from}`;
+    const destinationUrl = `/products/${to}`;
+    for (const channel of ['RETAIL', 'WHOLESALE'] as const) {
+      await this.redirectRepo
+        .createQueryBuilder()
+        .update(SeoRedirectEntity)
+        .set({ destinationUrl })
+        .where(`"channel" = :channel AND ("destinationUrl" = :src OR "destinationUrl" LIKE :srcSuffix)`, {
+          channel,
+          src: sourcePath,
+          srcSuffix: `%/products/${from}`,
+        })
+        .execute()
+        .catch(() => undefined);
+      const existing = await this.redirectRepo.findOne({ where: { channel, sourcePath } });
+      if (existing?.destinationUrl === sourcePath) continue; // loop
+      if (existing) {
+        existing.destinationUrl = destinationUrl;
+        existing.statusCode = 301;
+        existing.reason = 'SLUG_CHANGED';
+        existing.autoGenerated = true;
+        existing.isActive = true;
+        await this.redirectRepo.save(existing);
+      } else {
+        await this.redirectRepo.save(
+          this.redirectRepo.create({
+            channel,
+            sourcePath,
+            destinationUrl,
+            statusCode: 301,
+            reason: 'SLUG_CHANGED',
+            autoGenerated: true,
+            isActive: true,
+          }),
+        );
+      }
+    }
+  }
+
   async findOne(id: string, channel?: string) {
     const product = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!product) throw new NotFoundException('محصول یافت نشد');
@@ -490,7 +622,7 @@ export class ProductService {
       throw new NotFoundException('محصول یافت نشد');
     }
     const cfg = await this.badgeConfig();
-    return this.withBadges(product, channel, cfg);
+    return this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg);
   }
 
   async findBySlug(slug: string, channel?: string) {
@@ -528,7 +660,7 @@ export class ProductService {
       throw new NotFoundException('محصول یافت نشد');
     }
     const cfg = await this.badgeConfig();
-    return this.withBadges(product, channel, cfg);
+    return this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg);
   }
 
   async create(data: CreateProductDto) {
@@ -549,28 +681,62 @@ export class ProductService {
       showOnWholesale,
       showOnRetail,
     });
+    let minOrderQty: number;
+    try {
+      minOrderQty = normalizeMinOrderQty(
+        data.minOrderQty ?? GLOBAL_MIN_ORDER_QTY,
+        !!data.allowBelowMoq,
+      );
+    } catch (e) {
+      throw new BadRequestException((e as Error).message);
+    }
+
+    const retailFullContent = data.retailFullContent
+      ? sanitizeBlogHtml(data.retailFullContent)
+      : data.description || null;
+    const wholesaleFullContent = data.wholesaleFullContent
+      ? sanitizeBlogHtml(data.wholesaleFullContent)
+      : data.description || null;
+
+    if (data.slug) {
+      const slug = normalizePublicSlug(data.slug);
+      const clash = await this.productRepo.findOne({ where: { slug } });
+      if (clash) throw new BadRequestException('این slug قبلاً استفاده شده است');
+    }
 
     const product = this.productRepo.create({
       name: data.name,
       fabric,
       fabricComposition: data.fabricComposition,
       description: data.description,
+      retailFullContent,
+      wholesaleFullContent,
+      legacyContent: data.description || null,
+      careInstructions: data.careInstructions ?? null,
+      faqItems: data.faqItems ?? null,
       specs,
       sizeType: (data.sizeType as ProductSizeType) || 'FREE',
       wholesalePrice: prices.wholesalePrice,
       retailPrice: prices.retailPrice,
       wholesaleCompareAtPrice: prices.wholesaleCompareAtPrice,
       retailCompareAtPrice: prices.retailCompareAtPrice,
-      minOrderQty: data.minOrderQty,
+      minOrderQty,
+      allowBelowMoq: !!data.allowBelowMoq,
       allowWholesaleColorSelect: !!data.allowWholesaleColorSelect,
       minWholesaleColors: Math.max(1, Number(data.minWholesaleColors) || 1),
       status: data.status,
       isDiscounted: !!data.isDiscounted,
       isFeatured: !!data.isDiscounted,
+      discountType: (data.discountType as DiscountType) || null,
+      discountPercent: data.discountPercent ?? null,
+      discountAmount: data.discountAmount ?? null,
+      discountStartsAt: data.discountStartsAt ? new Date(data.discountStartsAt) : null,
+      discountEndsAt: data.discountEndsAt ? new Date(data.discountEndsAt) : null,
       isNew: false,
       images: data.images,
       seoMeta: data.seoMeta,
       sku: data.sku!,
+      slug: data.slug ? normalizePublicSlug(data.slug) : undefined,
       categoryId: data.categoryId,
       collectionId: data.collectionId,
       isPreOrder: !!data.isPreOrder,
@@ -581,6 +747,7 @@ export class ProductService {
       showOnRetail,
     });
     const saved = await this.productRepo.save(product);
+    await this.replaceRelated(saved.id, data.relatedProductIds);
     await this.rememberSpecs(specs);
     await this.syncSearch(saved);
     const cfg = await this.badgeConfig();
@@ -633,6 +800,10 @@ export class ProductService {
     const oldImages = existing.images ?? [];
 
     const patch: Partial<ProductEntity> = { ...data } as any;
+    delete (patch as any).relatedProductIds;
+    delete (patch as any).slug;
+    delete (patch as any).minOrderQty;
+    delete (patch as any).allowBelowMoq;
     if (data.specs) {
       patch.specs = data.specs as ProductSpecs;
       patch.fabric = this.fabricFromSpecs(
@@ -708,10 +879,55 @@ export class ProductService {
     if (data.minWholesaleColors !== undefined) {
       patch.minWholesaleColors = Math.max(1, Number(data.minWholesaleColors) || 1);
     }
+    if (data.minOrderQty !== undefined || data.allowBelowMoq !== undefined) {
+      try {
+        patch.minOrderQty = normalizeMinOrderQty(
+          data.minOrderQty ?? existing.minOrderQty,
+          data.allowBelowMoq !== undefined ? !!data.allowBelowMoq : !!existing.allowBelowMoq,
+        );
+      } catch (e) {
+        throw new BadRequestException((e as Error).message);
+      }
+    }
+    if (data.allowBelowMoq !== undefined) patch.allowBelowMoq = !!data.allowBelowMoq;
+    if (data.discountType !== undefined) patch.discountType = data.discountType || null;
+    if (data.discountPercent !== undefined) patch.discountPercent = data.discountPercent;
+    if (data.discountAmount !== undefined) patch.discountAmount = data.discountAmount;
+    if (data.discountStartsAt !== undefined) {
+      patch.discountStartsAt = data.discountStartsAt ? new Date(data.discountStartsAt) : null;
+    }
+    if (data.discountEndsAt !== undefined) {
+      patch.discountEndsAt = data.discountEndsAt ? new Date(data.discountEndsAt) : null;
+    }
+    if (data.retailFullContent !== undefined) {
+      patch.retailFullContent = data.retailFullContent
+        ? sanitizeBlogHtml(data.retailFullContent)
+        : null;
+    }
+    if (data.wholesaleFullContent !== undefined) {
+      patch.wholesaleFullContent = data.wholesaleFullContent
+        ? sanitizeBlogHtml(data.wholesaleFullContent)
+        : null;
+    }
+    if (data.careInstructions !== undefined) patch.careInstructions = data.careInstructions;
+    if (data.faqItems !== undefined) patch.faqItems = data.faqItems;
+    if (data.slug !== undefined && data.slug !== existing.slug) {
+      const nextSlug = normalizePublicSlug(data.slug);
+      const clash = await this.productRepo.findOne({ where: { slug: nextSlug } });
+      if (clash && clash.id !== id) throw new BadRequestException('این slug قبلاً استفاده شده است');
+      patch.slug = nextSlug;
+    }
 
     await this.productRepo.update(id, patch as any);
     const updated = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!updated) throw new NotFoundException('محصول یافت نشد');
+
+    if (data.slug !== undefined && existing.slug && updated.slug && existing.slug !== updated.slug) {
+      await this.recordSlugRedirect(existing.slug, updated.slug);
+    }
+    if (data.relatedProductIds) {
+      await this.replaceRelated(id, data.relatedProductIds);
+    }
 
     if (data.images) {
       const removed = oldImages.filter((url) => !data.images!.includes(url));

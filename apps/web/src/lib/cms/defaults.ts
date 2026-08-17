@@ -15,7 +15,7 @@ export function defaultWholesaleChrome(): ContentBlock[] {
       phoneHref: 'tel:09152424624',
       telegramLabel: '@toliditaranom کانال تلگرام',
       telegramHref: 'https://t.me/toliditaranom',
-      text: 'ارسال به سراسر ایران — حداقل سفارش ۵ عدد',
+      text: 'ارسال به سراسر ایران — حداقل سفارش در محصول از ۶ عدد به بالا می‌باشد.',
     }),
     b('chrome', {
       brandName: 'پوشاک ترنم',
@@ -255,7 +255,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
         {
           question: 'حداقل سفارش عمده چقدر است؟',
           answer:
-            'برای بیشتر مدل‌ها حداقل سفارش حدود ۵ عدد است. عدد دقیق هر محصول روی صفحه همان مدل نوشته شده.',
+            'حداقل سفارش در محصول از ۶ عدد به بالا می‌باشد. عدد دقیق هر مدل روی صفحه همان محصول نوشته شده.',
         },
         {
           question: 'ارسال عمده به شهرستان دارید؟',

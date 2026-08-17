@@ -1,22 +1,20 @@
 import type { Metadata } from 'next';
-import { CmsPage } from '@/components/cms/CmsPage';
+import { WholesaleAboutView } from '@/components/wholesale/WholesaleAboutView';
+import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 
 export const metadata: Metadata = {
-  title: 'درباره ما',
+  title: 'درباره تولیدی پوشاک ترنم',
   description:
-    'ترنم از مشهد شروع شد؛ هنوز هم دوخت، کنترل کیفیت و پخش عمده را خودمان انجام می‌دهیم. اینجا داستان کارگاه و تیم‌مان را می‌خوانید.',
-  alternates: { canonical: 'https://poshaktaranom.com/about' },
+    'تولید مانتو و پوشاک زنانه اسپرت در مشهد؛ از انتخاب پارچه و برش تا دوخت، کنترل کیفیت و فروش مستقیم.',
+  alternates: { canonical: `${WHOLESALE_ORIGIN}/about` },
   openGraph: {
-    title: 'درباره پوشاک ترنم',
-    description: 'تولیدی مانتو زنانه در مشهد — از الگو تا ارسال عمده.',
-    url: 'https://poshaktaranom.com/about',
+    title: 'درباره تولیدی پوشاک ترنم',
+    description:
+      'تولید مانتو و پوشاک زنانه اسپرت در مشهد؛ از انتخاب پارچه و برش تا دوخت، کنترل کیفیت و فروش مستقیم.',
+    url: `${WHOLESALE_ORIGIN}/about`,
   },
 };
 
 export default function AboutPage() {
-  return (
-    <div className="min-h-screen bg-atmosphere">
-      <CmsPage channel="WHOLESALE" pageKey="about" />
-    </div>
-  );
+  return <WholesaleAboutView />;
 }

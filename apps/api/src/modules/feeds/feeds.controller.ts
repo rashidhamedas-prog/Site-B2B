@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import type { Response } from 'express';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
+import { resolveChannelSale } from '../product/product-sale';
 
 function xmlEscape(s: string) {
   return String(s || '')
@@ -40,6 +41,8 @@ type FeedRow = {
   sizes: string;
   colors: string;
   guarantee: string;
+  listPriceIrr: number;
+  salePriceIrr: number | null;
 };
 
 @ApiTags('feeds')
@@ -85,12 +88,16 @@ export class FeedsController {
     const brand = await this.brandName();
 
     return rows
-      .filter((p) => p.showOnRetail !== false && Number(p.retailPrice) > 0)
+      .filter((p) => p.showOnRetail !== false && p.status === 'ACTIVE' && Number(p.retailPrice) > 0)
       .map((p) => {
-        const price = Number(p.retailPrice);
+        const sale = resolveChannelSale(p, 'RETAIL');
+        const payable = sale.payable;
+        const listPrice = sale.active && sale.original ? sale.original : payable;
         const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.stock) || 0), 0);
         const stock = variantStock > 0 ? variantStock : Number(p.stock) || 0;
-        const images = (p.images || []).map((u) => absMedia(u, base)).filter(Boolean);
+        const images = (p.images || [])
+          .map((u) => absMedia(u, base).replace(/^http:\/\//i, 'https://'))
+          .filter(Boolean);
         const sizes = [...new Set((p.variants || []).map((v) => v.size).filter(Boolean))];
         const colors = [...new Set((p.variants || []).map((v) => v.color).filter(Boolean))];
         return {
@@ -99,8 +106,10 @@ export class FeedsController {
           slug: p.slug,
           description: p.description,
           sku: p.sku,
-          retailPrice: price,
+          retailPrice: payable,
           retailCompareAtPrice: p.retailCompareAtPrice != null ? Number(p.retailCompareAtPrice) : null,
+          listPriceIrr: listPrice,
+          salePriceIrr: sale.active ? payable : null,
           stock,
           availabilityBool: stock > 0,
           availabilityStock: (stock > 0 ? 'in stock' : 'out of stock') as FeedRow['availabilityStock'],
@@ -142,8 +151,53 @@ export class FeedsController {
         format: 'CSV یا XML',
         notes: 'ثبت فید در پنل کسب‌وکار بام',
       },
-      requirements: ['retailPrice > 0', 'ACTIVE', 'link + image_link + availability'],
+      googleMerchant: {
+        feed: `${api}/feeds/google-merchant.xml`,
+        feedRetail: 'https://www.poshaktaranom.ir/feeds/google-merchant.xml',
+        format: 'RSS 2.0 + Google Merchant g: namespace',
+        notes: 'فقط کانال تکی؛ محصولات پیش‌نویس/مخفی حذف می‌شوند؛ sale_price فقط وقتی تخفیف فعال است',
+      },
+      requirements: ['retailPrice > 0', 'ACTIVE', 'showOnRetail', 'link + image_link + availability'],
     };
+  }
+
+  @Get('google-merchant.xml')
+  @ApiOperation({ summary: 'فید Google Merchant (خرده‌فروشی)' })
+  @Header('Content-Type', 'application/xml; charset=utf-8')
+  async googleMerchant(@Res() res: Response) {
+    const items = (await this.loadRows()).filter((p) => p.image && p.link);
+    const base = this.siteBase();
+    const body = items
+      .map((p) => {
+        const sale =
+          p.salePriceIrr != null && p.salePriceIrr > 0 && p.salePriceIrr < p.listPriceIrr
+            ? `\n      <g:sale_price>${p.salePriceIrr} IRR</g:sale_price>`
+            : '';
+        return `
+    <item>
+      <g:id>${xmlEscape(p.sku || p.id)}</g:id>
+      <title>${xmlEscape(p.name)}</title>
+      <description>${xmlEscape((p.description || p.name).slice(0, 5000))}</description>
+      <link>${xmlEscape(p.link)}</link>
+      <g:image_link>${xmlEscape(p.image)}</g:image_link>
+      <g:availability>${p.availabilityBool ? 'in_stock' : 'out_of_stock'}</g:availability>
+      <g:price>${p.listPriceIrr} IRR</g:price>${sale}
+      <g:brand>${xmlEscape(p.brand)}</g:brand>
+      <g:condition>new</g:condition>
+    </item>`;
+      })
+      .join('');
+
+    res.setHeader('Cache-Control', 'public, max-age=600');
+    res.send(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>پوشاک ترنم</title>
+    <link>${xmlEscape(base)}</link>
+    <description>فید محصولات فروشگاه تکی پوشاک ترنم</description>
+    ${body}
+  </channel>
+</rss>`);
   }
 
   @Get('torob.xml')

@@ -2,6 +2,40 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-17T10:35:00Z — TASK-20260817-001 remaining review findings closed; ready to merge/deploy
+
+- Independent reviews: Bugbot (7ca4b8a6) + Security (48ad6fbb)
+- Fixed: relatedProducts now `withBadges` + channel filter; public GET /categories hides HIDDEN; admin uses GET /categories/admin; category slug change writes 301 to seo_redirects; storefront follows those redirects; checkout `unitPriceForChannel` uses `resolveChannelSale`
+- Safety-net SQL updated for 20260817-001 columns; production API `migrationsRun` applies TypeORM migration on boot
+- Gates: web tsc **0**; api tsc **0**; product-sale.spec **OK**
+- Not in this commit: AVIF pipeline, blog internal-link picker, Next 308 vs 301 (aliases in middleware remain 301)
+- Rollback: revert `SeoAdminUpgrade1755410400001` + code revert
+- Exact next: commit → merge master → push → VPS auto-deploy → health
+
+## 2026-08-17T09:45:00Z — TASK-20260817-001 UI waves landed; product-form follow-up; gates re-run
+
+- Task / owner: TASK-20260817-001 / cursor:orchestrator-TASK-20260817-001
+- Branch: `ai/TASK-20260817-001-seo-admin-upgrade` (uncommitted; not deployed)
+- Product-form follow-up: `isDiscounted` no longer auto-checks from leftover fields; save applies PERCENT/FIXED onto compare-at + final (toman×10 IRR)
+- Sitemap helpers moved to `apps/web/src/lib/sitemap-xml.ts` so route.ts does not export extra symbols; `/sitemaps` and `/feeds` are channel-exempt
+- Wholesale `/products?categoryId=` now 308s to `/category/{slug}` like retail
+- CMS default announcement/FAQ min-order copy 5 → 6
+- `attachRelated` typing fixed; API tsc now 0
+- Gates: `npx tsc --noEmit -p apps/web/tsconfig.json` **0**; `cd apps/api && npx tsc --noEmit` **0**; `product-sale.spec.ts` **OK**
+- Still open: independent Reviewer+Security; live sitemap crawl; production migration/deploy; blog internal-link picker; AVIF pipeline; CMS DB row may still say ۵ until re-seeded
+- Exact next: independent review, then migrate+deploy only after review
+- Rollback: revert `SeoAdminUpgrade1755410400001`
+
+## 2026-08-17T08:45:00Z — TASK-20260817-001 SEO/Admin upgrade claimed; Wave 1 API landed; UI agents in flight
+
+- Task / owner: TASK-20260817-001 / cursor:orchestrator-TASK-20260817-001
+- Branch: `ai/TASK-20260817-001-seo-admin-upgrade` in `D:/soft/Claud/porje/Site B2B`
+- Stale reclaim: product/SEO files from TASK-20260810-006 (heartbeat 2026-08-12) and governance heartbeat from TASK-20260812-001. Payment/RMA/blog-analytics claims untouched.
+- Wave 1 (API): discount window fields, dual content, `product_related`, category SEO+slug seed, minOrderQty floor 6, `product-sale.ts`, canonical URL helper, migration `SeoAdminUpgrade1755410400001`
+- Parallel implementers in flight: Admin product form; Admin category+redirects; storefront category/sitemap/About/local/404; cards+schema+merchant+reports
+- Exact next: collect agent diffs → run sale spec + typecheck → reports → independent Reviewer/Security before Done
+- Production deploy: not yet (migration required; wait for UI wave + gates)
+
 ## 2026-08-14T09:20:00Z — Full live apply confirmed (no gap)
 
 - Task: TASK-20260812-001

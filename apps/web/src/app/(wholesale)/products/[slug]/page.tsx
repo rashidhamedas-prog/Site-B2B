@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import { ProductDetail, type WholesaleProduct } from '@/components/wholesale/ProductDetail';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
-import { fetchProductBySlug } from '@/lib/server-api';
+import { fetchProductBySlug, getServerApiBase } from '@/lib/server-api';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
+import { getProductCanonicalPath } from '@/lib/canonical-urls';
+import { redirectIfMatched } from '@/lib/seo-redirect';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -37,7 +39,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await fetchProductBySlug(slug, 'WHOLESALE');
   // notFound() here (not only in the page) so the response is a real 404:
   // metadata resolves before the streaming shell (loading.tsx) flushes 200.
-  if (!product) notFound();
+  if (!product) {
+    await redirectIfMatched('WHOLESALE', `/products/${slug}`);
+    notFound();
+  }
   const { title, description, canonical } = wholesaleSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
 
@@ -67,7 +72,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
   const product = await fetchProductBySlug(slug, 'WHOLESALE');
-  if (!product) notFound();
+  if (!product) {
+    await redirectIfMatched('WHOLESALE', `/products/${slug}`);
+    notFound();
+  }
 
   const canonicalSlug = String(product.slug || '');
   let incoming = slug;
@@ -80,7 +88,7 @@ export default async function ProductPage({ params }: Props) {
     permanentRedirect(`/products/${canonicalSlug}`);
   }
 
-  const url = `${WHOLESALE_ORIGIN}/products/${canonicalSlug}`;
+  const url = `${WHOLESALE_ORIGIN}${getProductCanonicalPath(canonicalSlug)}`;
   const variants =
     (product.variants as Array<{ color?: string; stock?: number; wholesaleStock?: number }>) ?? [];
   const totalStock =
@@ -98,16 +106,21 @@ export default async function ProductPage({ params }: Props) {
   const fabricLabel =
     (product.fabric as string | undefined) ||
     ((product.specs as { fabricType?: string } | undefined)?.fabricType);
+  const related = await loadWholesaleRelated(product);
 
   return (
     <>
       <ProductJsonLd
         channel="WHOLESALE"
         name={String(product.name ?? '')}
-        description={(product.description as string | undefined) || fabricLabel}
+        description={
+          (product.fullContent as string | undefined) ||
+          (product.description as string | undefined) ||
+          fabricLabel
+        }
         image={(product.images as string[] | undefined)?.[0]}
         sku={product.sku as string | undefined}
-        price={Number(product.wholesalePrice ?? 0)}
+        includePrice={false}
         availability={totalStock > 0 ? 'InStock' : isComingSoon ? 'PreOrder' : 'OutOfStock'}
         fabric={fabricLabel}
         color={variants.find((v) => v.color)?.color}
@@ -125,6 +138,44 @@ export default async function ProductPage({ params }: Props) {
         slug={canonicalSlug || slug}
         initialProduct={product as unknown as WholesaleProduct}
       />
+      {related.length > 0 ? (
+        <section className="container-site pb-16">
+          <h2 className="text-xl font-extrabold text-gray-900">محصولات مرتبط</h2>
+          <p className="mt-1 text-sm text-gray-500">مدل‌های پیشنهادی برای تکمیل خرید عمده</p>
+          <ul className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+            {related.map((item) => {
+              const href = getProductCanonicalPath(String(item.slug || item.id));
+              return (
+                <li key={item.id}>
+                  <a href={href} className="block rounded-lg border border-[color:var(--color-border)] p-3 hover:border-[var(--brand-gold,#C9A84C)]">
+                    <span className="line-clamp-2 text-sm font-bold text-gray-900">{item.name}</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
     </>
   );
+}
+
+type RelatedItem = { id: string; name: string; slug?: string };
+
+async function loadWholesaleRelated(product: Record<string, unknown>): Promise<RelatedItem[]> {
+  const curated = Array.isArray(product.relatedProducts)
+    ? (product.relatedProducts as RelatedItem[]).filter((p) => p?.id && p?.name)
+    : [];
+  if (curated.length) return curated.slice(0, 12);
+  try {
+    const res = await fetch(
+      `${getServerApiBase()}/products?relatedTo=${encodeURIComponent(String(product.id))}&limit=4&channel=WHOLESALE`,
+      { next: { revalidate: 300 } },
+    );
+    if (!res.ok) return [];
+    const json = (await res.json()) as { data?: RelatedItem[] } | RelatedItem[];
+    return (Array.isArray(json) ? json : json.data ?? []).filter((p) => p?.id && p?.name);
+  } catch {
+    return [];
+  }
 }

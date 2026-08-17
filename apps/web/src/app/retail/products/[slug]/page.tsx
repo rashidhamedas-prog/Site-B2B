@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
-import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
+import { ProductJsonLd, ProductGroupJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
 import { RETAIL_ORIGIN } from '@/lib/seo';
 import { fetchProductBySlug } from '@/lib/server-api';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
+import { getProductCanonicalPath } from '@/lib/canonical-urls';
+import { redirectIfMatched } from '@/lib/seo-redirect';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -37,7 +39,10 @@ export async function generateMetadata({
   const product = await fetchProductBySlug(slug, 'RETAIL');
   // notFound() here (not only in the page) so the response is a real 404:
   // metadata resolves before the streaming shell (loading.tsx) flushes 200.
-  if (!product) notFound();
+  if (!product) {
+    await redirectIfMatched('RETAIL', `/products/${slug}`);
+    notFound();
+  }
 
   const { title, description, canonical } = retailSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
@@ -72,7 +77,10 @@ export default async function RetailProductPage({
 }) {
   const { slug } = await params;
   const product = await fetchProductBySlug(slug, 'RETAIL');
-  if (!product) notFound();
+  if (!product) {
+    await redirectIfMatched('RETAIL', `/products/${slug}`);
+    notFound();
+  }
 
   const canonicalSlug = String(product.slug || '');
   let incoming = slug;
@@ -85,35 +93,55 @@ export default async function RetailProductPage({
     permanentRedirect(`/products/${canonicalSlug}`);
   }
 
-  const url = `${RETAIL_ORIGIN}/products/${canonicalSlug}`;
-  const price = Number(product.retailPrice ?? 0);
+  const url = `${RETAIL_ORIGIN}${getProductCanonicalPath(canonicalSlug)}`;
+  const sale = product.sale as { active?: boolean; payable?: number } | undefined;
+  // Expired sale: API payable is the list price, never the lapsed discount.
+  const price = Number(sale?.payable ?? product.retailPrice ?? 0);
+  const variants =
+    (product.variants as Array<{ color?: string; size?: string; sku?: string; retailStock?: number; stock?: number }>) ??
+    [];
   const inStock =
     Number(product.totalStock ?? product.retailStock ?? product.stock ?? 0) > 0 ||
-    ((product.variants as Array<{ retailStock?: number; stock?: number }>) ?? []).some(
-      (v) => Number(v.retailStock ?? v.stock ?? 0) > 0,
-    );
+    variants.some((v) => Number(v.retailStock ?? v.stock ?? 0) > 0);
+  const availability = inStock ? 'InStock' : 'OutOfStock';
+  const name = String(product.name ?? '');
+  const description = (product.fullContent as string | undefined) || (product.description as string | undefined);
+  const image = (product.images as string[] | undefined)?.[0];
+  const fabric =
+    (product.fabric as string | undefined) ||
+    ((product.specs as { fabricType?: string } | undefined)?.fabricType);
 
   return (
     <>
       <ProductJsonLd
         channel="RETAIL"
-        name={String(product.name ?? '')}
-        description={product.description as string | undefined}
-        image={(product.images as string[] | undefined)?.[0]}
+        name={name}
+        description={description}
+        image={image}
         sku={product.sku as string | undefined}
         price={price}
-        availability={inStock ? 'InStock' : 'OutOfStock'}
-        fabric={
-          (product.fabric as string | undefined) ||
-          ((product.specs as { fabricType?: string } | undefined)?.fabricType)
-        }
+        includePrice
+        availability={availability}
+        fabric={fabric}
         url={url}
+      />
+      <ProductGroupJsonLd
+        channel="RETAIL"
+        name={name}
+        description={description}
+        image={image}
+        url={url}
+        sku={product.sku as string | undefined}
+        price={price}
+        includePrice
+        availability={availability}
+        variants={variants}
       />
       <BreadcrumbJsonLd
         items={[
           { name: 'خانه', url: `${RETAIL_ORIGIN}/` },
           { name: 'محصولات', url: `${RETAIL_ORIGIN}/products` },
-          { name: String(product.name ?? ''), url },
+          { name, url },
         ]}
       />
       <RetailProductDetail product={product as any} />
