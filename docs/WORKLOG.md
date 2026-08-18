@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-18 — صفحه About عمده با روایت اسکرول سه‌بعدی CSS
+
+- `/about` عمده از صفحه متنی به تجربهٔ روایت‌محور تبدیل شد: پارچه خام در طول اسکرول به مانتوی آمادهٔ ویترین می‌رسد.
+- معماری: `page.tsx` همچنان Server Component است؛ فقط صحنه و اسکرول در Client Component جداست. WebGL / Three.js اضافه نشد.
+- آمار فقط از `BUSINESS_FACTS` تأییدشده (سال ۱۳۹۴، تیم ۱۵ نفره، سال فعالیت محاسبه‌شده). عدد مشتری/مدل تأییدنشده نمایش داده نشد.
+- موبایل خطی و سبک است؛ `prefers-reduced-motion` انیمیشن بزرگ را قطع می‌کند. وابستگی npm جدید نصب نشد.
+- اعتبارسنجی: `npm run lint -w @taranom/web` 0؛ `npm run type-check -w @taranom/web` 0؛ `npm run build -w @taranom/web` 0 (صفحه `/about` حدود 4.94kB). Commit و deploy انجام نشد.
+
 ## 2026-08-18 — Hotfix: middleware اسلاگ canonical را وارونه می‌کرد
 
 - نقشهٔ استاتیک WP در middleware (`bezayagh-jacket-rose` → `coats00014`) بعد از تغییر slug ادمین، URL جدید را به SKU قدیمی ۳۰۱ می‌کرد و URL قدیمی ۲۰۰ می‌ماند.
