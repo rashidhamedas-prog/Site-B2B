@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-18T12:45:00Z — TASK-20260818-002 wholesale About CSS-3D scroll (uncommitted)
+
+- Task / owner: TASK-20260818-002 / cursor:implementer-TASK-20260818-002
+- Branch: `ai/TASK-20260818-002-wholesale-about-3d` (created from prior HEAD; no commit)
+- Decision: CSS 3D + SVG + sticky scroll; no Three.js / R3F / GSAP / Framer Motion (none existed; WebGL not justified vs bundle/mobile cost)
+- Files: wholesale `/about` page, `WholesaleAboutView`, `components/wholesale/about/*`, WORKLOG, this handoff, active.yaml
+- WORKLOG overlap: appended one dated entry only; did not rewrite TASK-001/012 records
+- Gates: web lint 0; web type-check 0; `npm run build -w @taranom/web` 0; `/about` 4.94 kB route JS
+- Non-goals honored: no deploy, no migration, no commit, no new dependencies
+- Exact next: human review of `/about` locally (`cd apps/web && npm run dev`); commit/deploy only if owner asks
+- Rollback: revert the listed about files
+
 ## 2026-08-18T10:55:00Z — TASK-20260818-001 LIVE at 55f1743; middleware slug inversion hotfix pending deploy
 
 - VPS HEAD **`55f1743`**; migration id **23** `ProductChannelSalePack1755510000001` applied

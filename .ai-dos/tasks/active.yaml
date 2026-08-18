@@ -1,5 +1,44 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260818-002"
+    title: "Wholesale About page 3D scroll experience"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260818-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260818-002"
+      implementer: "cursor:implementer-TASK-20260818-002"
+      reviewer: "not-required-ui-only-no-auth-payments"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260818-002-wholesale-about-3d"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-18T12:20:00Z"
+    heartbeat_at: "2026-08-18T12:45:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/app/(wholesale)/about/page.tsx"
+      - "apps/web/src/components/wholesale/WholesaleAboutView.tsx"
+      - "apps/web/src/components/wholesale/about/AboutExperience.tsx"
+      - "apps/web/src/components/wholesale/about/AboutScene.tsx"
+      - "apps/web/src/components/wholesale/about/AboutStory.tsx"
+      - "apps/web/src/components/wholesale/about/about.module.css"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Human-authorized wholesale About 3D/scroll redesign. No deploy, no commit, no migration.
+      Append-only WORKLOG note: TASK-20260818-001 and TASK-20260812-001 also list docs/WORKLOG.md;
+      this task appends one dated entry without rewriting prior records.
+      About page files were unclaimed. Governance files expanded to register this task.
+    acceptance_criteria:
+      - "/about renders with current wholesale header/footer and one H1"
+      - "Desktop sticky CSS-3D scene morphs raw linen to finished garment via scroll"
+      - "Mobile is linear, light, and readable without WebGL"
+      - "prefers-reduced-motion disables large motion; content readable without JS"
+      - "No invented customer/capacity numbers; only BUSINESS_FACTS verified fields"
+      - "No new npm dependencies; page.tsx stays a Server Component"
+      - "Web lint/typecheck/build pass for this change"
   - id: "TASK-20260818-001"
     title: "Atomic product slug redirects, independent channel discounts, pack MOQ, dual content, related fill-to-5"
     status: "in_progress"
