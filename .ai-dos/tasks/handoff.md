@@ -2,6 +2,28 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-18T10:30:00Z — TASK-20260818-001 code complete locally; prod data jobs not applied
+
+- Task / owner: TASK-20260818-001 / cursor:orchestrator-TASK-20260818-001
+- Branch: `ai/TASK-20260818-001-product-slug-pricing-pack`
+- Stale reclaim of overlapping product/admin/order files from TASK-20260817-001 (live residuals unrelated) and TASK-20260810-006
+- Implemented: atomic slug+redirect; no-store redirect lookup; per-channel discounts; pack MOQ; deterministic content generator; related fill-to-5; dry-run CLIs
+- Gates: api `npm test` **0**; api tsc **0**; web tsc **0**
+- Production: migration is schema-only (nullable columns + minOrderQty default). No discount/minOrderQty row UPDATE. Bulk jobs default dry-run.
+- Owner action required before `--apply` content/related or discount backfill SQL: backup + explicit confirm
+- Exact next: commit claimed files → push branch → merge/deploy → health + read-only slug smoke
+- Rollback: revert code + `ProductChannelSalePack1755510000001` down()
+
+## 2026-08-17T11:36:00Z — TASK-20260817-001 LIVE on VPS at 305969e
+
+
+- origin/master = VPS HEAD = **`305969e`**
+- Merge commit `d00dd99` then hotfix `305969e` (Fastify Merchant XML)
+- Migration id **22** `SeoAdminUpgrade1755410400001` applied
+- Live: API 200; .com 200; .ir 200; sitemap 200; `/category/shomiz` 200; merchant feed 200 (211KB)
+- Residual: AVIF pipeline, blog internal-link picker, live CMS announcement row may still say ۵
+- Rollback: revert merge + `SeoAdminUpgrade1755410400001` down()
+
 ## 2026-08-17T10:35:00Z — TASK-20260817-001 remaining review findings closed; ready to merge/deploy
 
 - Independent reviews: Bugbot (7ca4b8a6) + Security (48ad6fbb)

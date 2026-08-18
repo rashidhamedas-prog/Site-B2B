@@ -1,6 +1,16 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-18 — Slug اتمیک، تخفیف مستقل کانال، پک، متن و مرتبط
+
+- تغییر slug محصول در یک transaction با ریدایرکت ۳۰۱ هر دو کانال و collapse زنجیره؛ lookup ویترین `no-store`.
+- فرم ادمین فقط دو قیمت پایه؛ تخفیف تک/عمده مستقل؛ حداقل سفارش = تعداد پک (پیش‌فرض جدید ۱).
+- مولد متن deterministic + CLI dry-run؛ تکمیل مرتبط تا ۵ بدون overwrite دستی.
+- مهاجرت `ProductChannelSalePack1755510000001` فقط additive/nullable — بدون UPDATE دیتای تخفیف یا minOrderQty.
+- گزارش: `docs/reports/2026-08-18-product-slug-pricing-pack.md`
+- `apps/api` `npm test` و tsc وب/API: exit 0.
+
 ## 2026-08-17 — SEO storefront lane (TASK-20260817-001)
+
 
 ### Follow-up (orchestrator)
 - ریویو مستقل Bugbot + Security: نشت عمده در related، دسته مخفی در API عمومی، و قیمت تسویه بدون پنجره تخفیف بسته شد.
