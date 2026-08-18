@@ -221,12 +221,12 @@ export function WholesaleQuickOrder({
                 <button
                   type="button"
                   className="h-10 w-10"
-                  onClick={() => setQuantity((q) => Math.max(summary.minOrder, q - summary.minOrder))}
+                  onClick={() => setQuantity((q) => Math.max(summary.minOrder, q - 1))}
                 >
                   −
                 </button>
                 <span className="w-10 text-center font-bold">{quantity.toLocaleString('fa-IR')}</span>
-                <button type="button" className="h-10 w-10" onClick={() => setQuantity((q) => q + summary.minOrder)}>
+                <button type="button" className="h-10 w-10" onClick={() => setQuantity((q) => q + 1)}>
                   +
                 </button>
               </div>
@@ -236,6 +236,11 @@ export function WholesaleQuickOrder({
               <p className="text-lg font-black text-[var(--brand-green)]">
                 {priceHidden ? 'پس از ورود' : `${toman(summary.unitPrice * summary.totalPieces)} تومان`}
               </p>
+              {!priceHidden && summary.saleActive && summary.compareAt > summary.unitPrice ? (
+                <p className="text-[11px] text-[var(--brand-muted)] line-through">
+                  {toman(summary.compareAt * summary.totalPieces)}
+                </p>
+              ) : null}
               {summary.packMode ? (
                 <p className="text-[11px] text-[var(--brand-muted)]">
                   {summary.totalPieces.toLocaleString('fa-IR')} عدد

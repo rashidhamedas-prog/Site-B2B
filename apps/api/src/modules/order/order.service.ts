@@ -23,6 +23,7 @@ import { ShippingService } from '../shipping/shipping.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { resolveChannelSale } from '../product/product-sale';
+import { sizesForSizeType } from '../product/product-pack';
 
 /** Allowed Order status transitions (admin). */
 const ORDER_TRANSITIONS: Record<string, string[]> = {
@@ -144,10 +145,7 @@ export class OrderService {
   private assertMoq(quantity: number, minOrderQty: number, label: string) {
     const moq = Math.max(1, Number(minOrderQty) || 1);
     if (quantity < moq) {
-      throw new BadRequestException(`حداقل سفارش برای ${label} برابر ${moq} عدد است`);
-    }
-    if (quantity % moq !== 0) {
-      throw new BadRequestException(`تعداد سفارش برای ${label} باید مضربی از ${moq} باشد`);
+      throw new BadRequestException(`حداقل سفارش برای ${label} برابر ${moq} پک است`);
     }
   }
 
@@ -250,6 +248,24 @@ export class OrderService {
         discountAmount: product.discountAmount != null ? Number(product.discountAmount) : null,
         discountStartsAt: product.discountStartsAt,
         discountEndsAt: product.discountEndsAt,
+        wholesaleIsDiscounted: (product as { wholesaleIsDiscounted?: boolean }).wholesaleIsDiscounted,
+        retailIsDiscounted: (product as { retailIsDiscounted?: boolean }).retailIsDiscounted,
+        wholesaleDiscountType: (product as { wholesaleDiscountType?: string | null }).wholesaleDiscountType,
+        retailDiscountType: (product as { retailDiscountType?: string | null }).retailDiscountType,
+        wholesaleDiscountPercent: (product as { wholesaleDiscountPercent?: number | null }).wholesaleDiscountPercent,
+        retailDiscountPercent: (product as { retailDiscountPercent?: number | null }).retailDiscountPercent,
+        wholesaleDiscountAmount:
+          (product as { wholesaleDiscountAmount?: number | string | null }).wholesaleDiscountAmount != null
+            ? Number((product as { wholesaleDiscountAmount?: number | string | null }).wholesaleDiscountAmount)
+            : null,
+        retailDiscountAmount:
+          (product as { retailDiscountAmount?: number | string | null }).retailDiscountAmount != null
+            ? Number((product as { retailDiscountAmount?: number | string | null }).retailDiscountAmount)
+            : null,
+        wholesaleDiscountStartsAt: (product as { wholesaleDiscountStartsAt?: Date | string | null }).wholesaleDiscountStartsAt,
+        retailDiscountStartsAt: (product as { retailDiscountStartsAt?: Date | string | null }).retailDiscountStartsAt,
+        wholesaleDiscountEndsAt: (product as { wholesaleDiscountEndsAt?: Date | string | null }).wholesaleDiscountEndsAt,
+        retailDiscountEndsAt: (product as { retailDiscountEndsAt?: Date | string | null }).retailDiscountEndsAt,
         wholesalePrice: Number(product.wholesalePrice ?? 0),
         retailPrice: product.retailPrice != null ? Number(product.retailPrice) : null,
         wholesaleCompareAtPrice:
@@ -389,6 +405,7 @@ export class OrderService {
       retailPrice?: number | string | null;
       allowWholesaleColorSelect?: boolean;
       minWholesaleColors?: number;
+      sizeType?: string;
       specs?: { packQty?: string | number } | null;
       variants?: Array<{
         id: string;
@@ -421,9 +438,6 @@ export class OrderService {
     if (sets < moqSets) {
       throw new BadRequestException(`حداقل تعداد پک برای ${product.name} برابر ${moqSets} است`);
     }
-    if (sets % moqSets !== 0) {
-      throw new BadRequestException(`تعداد پک برای ${product.name} باید مضربی از ${moqSets} باشد`);
-    }
 
     const variants = product.variants ?? [];
     if (!variants.length) {
@@ -433,9 +447,7 @@ export class OrderService {
     const allColors = Array.from(
       new Set(variants.map((v) => String(v.color || '').trim()).filter(Boolean)),
     );
-    const allSizes = Array.from(
-      new Set(variants.map((v) => String(v.size || '').trim()).filter(Boolean)),
-    );
+    const allSizes = sizesForSizeType(product.sizeType);
     if (!allColors.length || !allSizes.length) {
       throw new BadRequestException(`رنگ/سایز برای ${product.name} ناقص است`);
     }
@@ -571,9 +583,6 @@ export class OrderService {
         const variant = await this.productService.getVariant(item.productVariantId);
         const product = variant.product;
         if (!product) throw new BadRequestException('محصول واریانت یافت نشد');
-        if (channel === 'WHOLESALE') {
-          this.assertMoq(qty, product.minOrderQty ?? 1, product.name);
-        }
         const variantStock = this.channelVariantStock(variant, channel);
         if (variantStock < qty) {
           throw new BadRequestException(

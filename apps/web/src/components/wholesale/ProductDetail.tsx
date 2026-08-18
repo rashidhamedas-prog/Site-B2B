@@ -9,6 +9,8 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
+import { channelSaleDisplay, piecesPerPackCount, sizeCountForType, toman } from '@/lib/product-display';
+import { wholesaleMoq } from '@/lib/wholesale-order';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 
 interface Variant {
@@ -43,7 +45,15 @@ export interface WholesaleProduct {
   slug: string;
   fabric?: string;
   description?: string;
+  fullContent?: string | null;
+  wholesaleFullContent?: string | null;
   wholesalePrice: number;
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
   minOrderQty: number;
   allowWholesaleColorSelect?: boolean;
   minWholesaleColors?: number;
@@ -59,7 +69,7 @@ export interface WholesaleProduct {
   isLimitedStock?: boolean;
   isNew?: boolean;
   status?: string;
-  sizeGuide?: string[];
+  sizeGuide?: string | string[];
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -107,8 +117,16 @@ function buildSpecRows(specs?: ProductSpecs): Array<{ label: string; value: stri
 }
 
 function resolveSizeGuide(product: WholesaleProduct): string[] {
-  if (Array.isArray(product.sizeGuide) && product.sizeGuide.length > 0) {
-    return product.sizeGuide.filter((line) => String(line).trim());
+  const raw = product.sizeGuide;
+  if (Array.isArray(raw) && raw.length > 0) {
+    return raw.map((line) => String(line).trim()).filter(Boolean);
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    return raw
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
   }
   const sizeType = product.sizeType ?? 'FREE';
   return SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE;
@@ -138,7 +156,7 @@ export function ProductDetail({
   const [product, setProduct] = useState<WholesaleProduct | null>(initialProduct ?? null);
   const [loading, setLoading] = useState(!initialProduct);
   const [quantity, setQuantity] = useState(() =>
-    initialProduct ? Math.max(1, initialProduct.minOrderQty || 1) : 1,
+    initialProduct ? wholesaleMoq(initialProduct) : 1,
   );
   const [activeImage, setActiveImage] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(true);
@@ -157,15 +175,14 @@ export function ProductDetail({
       .then((p) => {
         setProduct(p);
         // quantity = pack count; minOrderQty = min packs
-        setQuantity(Math.max(1, p.minOrderQty || 1));
+        setQuantity(wholesaleMoq(p));
         setSelectedColors(defaultColors(p));
       })
       .catch(() => router.push('/products'))
       .finally(() => setLoading(false));
   }, [slug, router, initialProduct]);
 
-  const minOrder = product?.minOrderQty ?? 1;
-  const qtyStep = Math.max(minOrder, 1);
+  const minOrder = product ? wholesaleMoq(product) : 1;
   const allowColorSelect = !!product?.allowWholesaleColorSelect;
   const minColors = Math.max(1, Number(product?.minWholesaleColors) || 1);
 
@@ -203,15 +220,20 @@ export function ProductDetail({
     ? selectedColors
     : availableColors.map((c) => c.name);
   const colorCount = Math.max(0, colorsForOrder.length);
-  const sizeCount = Math.max(0, availableSizes.length);
-  // Pack formula: colors × sizes (1 piece per color×size cell)
-  const packMode = availableColors.length > 0 && availableSizes.length > 0;
-  const piecesPerPack = Math.max(1, colorCount * sizeCount);
+  const sizeCount = sizeCountForType(product?.sizeType) ?? Math.max(0, availableSizes.length);
+  const packMode = availableColors.length > 0 && sizeCount > 0;
+  const piecesPerPack = packMode
+    ? piecesPerPackCount(colorsForOrder, product?.sizeType, availableSizes)
+    : 1;
   const totalPieces = packMode ? quantity * piecesPerPack : quantity;
+  const { price: unitPrice, compareAt, discount, active: saleActive } = channelSaleDisplay(
+    product?.sale,
+    product?.wholesalePrice,
+  );
 
   // Stock gate: each selected color×size needs ≥ pack count pieces
   const packStockOk = (() => {
-    if (!product || !packMode) return totalStock >= qtyStep;
+    if (!product || !packMode) return totalStock >= minOrder;
     if (allowColorSelect && selectedColors.length < minColors) return false;
     const colors = colorsForOrder;
     if (!colors.length || !availableSizes.length) return false;
@@ -231,12 +253,12 @@ export function ProductDetail({
   const canOrder =
     !!product &&
     colorsReady &&
-    (isComingSoon || (packMode ? packStockOk : effectiveStock >= qtyStep));
+    (isComingSoon || (packMode ? packStockOk : effectiveStock >= minOrder));
   const maxQty = isComingSoon
-    ? Math.max(qtyStep * 20, qtyStep)
+    ? Math.max(minOrder * 20, minOrder)
     : packMode
-      ? Math.max(qtyStep, 50)
-      : Math.max(effectiveStock, qtyStep);
+      ? Math.max(minOrder, 50)
+      : Math.max(effectiveStock, minOrder);
 
   const sizeGuideLines = product ? resolveSizeGuide(product) : [];
   const specRows = buildSpecRows(product?.specs).map((row) =>
@@ -258,18 +280,15 @@ export function ProductDetail({
       setColorError(`حداقل ${minColors} رنگ انتخاب کنید`);
       return;
     }
-    const normalizedQty = Math.max(
-      qtyStep,
-      Math.min(maxQty, Math.floor(quantity / qtyStep) * qtyStep || qtyStep),
-    );
+    const normalizedQty = Math.max(minOrder, Math.min(maxQty, Math.floor(quantity) || minOrder));
 
     if (packMode) {
       addItem({
         productId: product.id,
         productName: product.name,
         sku: product.sku ?? '',
-        unitPrice: Number(product.wholesalePrice),
-        minOrderQty: qtyStep,
+        unitPrice,
+        minOrderQty: minOrder,
         quantity: normalizedQty,
         imageUrl: product.images?.[0],
         packMode: true,
@@ -282,8 +301,8 @@ export function ProductDetail({
         productId: product.id,
         productName: product.name,
         sku: product.sku ?? '',
-        unitPrice: Number(product.wholesalePrice),
-        minOrderQty: qtyStep,
+        unitPrice,
+        minOrderQty: minOrder,
         quantity: normalizedQty,
         imageUrl: product.images?.[0],
       });
@@ -310,9 +329,13 @@ export function ProductDetail({
 
   if (!product) return null;
 
-  const totalPrice = Math.round(Number(product.wholesalePrice) / 10 * totalPieces);
+  const totalPrice = Math.round(unitPrice / 10 * totalPieces);
   const mainImage = product.images?.[activeImage];
   const fabricLabel = product.specs?.fabricType || product.fabric;
+  const body =
+    [product.fullContent, product.wholesaleFullContent, product.description]
+      .map((value) => String(value || '').trim())
+      .find(Boolean) || '';
 
   return (
     <div className="min-h-screen bg-[var(--brand-ivory,#F6F1E8)] pb-24 lg:pb-0">
@@ -346,8 +369,10 @@ export function ProductDetail({
                 {product.isNew && (
                   <span className="rounded bg-secondary px-2.5 py-0.5 text-xs font-bold text-white">جدید</span>
                 )}
-                {product.isDiscounted && (
-                  <span className="rounded bg-primary px-2.5 py-0.5 text-xs font-bold text-white">تخفیف‌دار</span>
+                {saleActive && (
+                  <span className="rounded bg-primary px-2.5 py-0.5 text-xs font-bold text-white">
+                    {discount ? `٪${discount.toLocaleString('fa-IR')} تخفیف` : 'تخفیف‌دار'}
+                  </span>
                 )}
                 {product.isLimitedStock && !isComingSoon && (
                   <span className="rounded bg-amber-600 px-2.5 py-0.5 text-xs font-bold text-white">موجودی محدود</span>
@@ -382,7 +407,7 @@ export function ProductDetail({
               <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">{product.name}</h1>
               <div className="flex items-center gap-2 flex-wrap">
                 {product.isNew && <Badge variant="gold">جدید</Badge>}
-                {product.isDiscounted && <Badge variant="primary">تخفیف‌دار</Badge>}
+                {saleActive && <Badge variant="primary">{discount ? `٪${discount.toLocaleString('fa-IR')} تخفیف` : 'تخفیف‌دار'}</Badge>}
                 {product.isLimitedStock && !isComingSoon && <Badge variant="warning">موجودی محدود</Badge>}
                 {isComingSoon && <Badge variant="neutral">به زودی</Badge>}
                 {fabricLabel && <Badge variant="neutral">{fabricLabel}</Badge>}
@@ -412,9 +437,12 @@ export function ProductDetail({
                 <div>
                   <p className="text-xs text-gray-500 mb-1">قیمت عمده (هر عدد)</p>
                   <p className="text-3xl font-extrabold text-primary">
-                    {Math.round(Number(product.wholesalePrice) / 10).toLocaleString('fa-IR')}
+                    {toman(unitPrice)}
                     <span className="text-base font-medium mr-1">تومان</span>
                   </p>
+                  {saleActive && compareAt > unitPrice ? (
+                    <p className="mt-1 text-sm text-gray-400 line-through">{toman(compareAt)} تومان</p>
+                  ) : null}
                 </div>
                 <div className="text-left">
                   <p className="text-xs text-gray-500 mb-1">
@@ -571,11 +599,11 @@ export function ProductDetail({
               </h3>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
-                  <button type="button" onClick={() => setQuantity(Math.max(qtyStep, quantity - qtyStep))}
-                    disabled={quantity <= qtyStep}
+                  <button type="button" onClick={() => setQuantity(Math.max(minOrder, quantity - 1))}
+                    disabled={quantity <= minOrder}
                     className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium disabled:opacity-40">−</button>
                   <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
-                  <button type="button" onClick={() => setQuantity(Math.min(maxQty, quantity + qtyStep))}
+                  <button type="button" onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
                     disabled={quantity >= maxQty}
                     className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium disabled:opacity-40">+</button>
                 </div>
@@ -588,7 +616,7 @@ export function ProductDetail({
                     {' '}({quantity.toLocaleString('fa-IR')} پک × {Math.max(colorCount, 1).toLocaleString('fa-IR')} رنگ × {Math.max(sizeCount, 1).toLocaleString('fa-IR')} سایز)
                   </span>
                 ) : (
-                  <span className="text-xs text-gray-400">گام سفارش: {qtyStep} عدد</span>
+                  <span className="text-xs text-gray-400">حداقل سفارش: {minOrder.toLocaleString('fa-IR')} عدد</span>
                 )}
               </div>
             </div>
@@ -646,12 +674,12 @@ export function ProductDetail({
           </div>
         )}
 
-        {product.description && (
+        {body ? (
           <div className={cn('card p-6', specRows.length > 0 ? 'mt-4' : 'mt-10')}>
             <h2 className="text-lg font-bold text-gray-900 mb-4">توضیحات کامل و دستور مراقبت</h2>
-            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description}</p>
+            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{body}</p>
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] p-3 lg:hidden">

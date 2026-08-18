@@ -54,25 +54,62 @@ export class ProductEntity {
   @Column({ default: false })
   isNew: boolean;
 
+  /** Derived OR of channel flags; not the source of truth. */
   @Column({ default: false })
   isDiscounted: boolean;
 
-  /** PERCENT | FIXED — only used when isDiscounted */
+  @Column({ type: 'boolean', nullable: true })
+  wholesaleIsDiscounted: boolean | null;
+
+  @Column({ type: 'boolean', nullable: true })
+  retailIsDiscounted: boolean | null;
+
+  /** PERCENT | FIXED — legacy shared; prefer channel columns */
   @Column({ type: 'varchar', nullable: true })
   discountType: 'PERCENT' | 'FIXED' | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  wholesaleDiscountType: 'PERCENT' | 'FIXED' | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  retailDiscountType: 'PERCENT' | 'FIXED' | null;
 
   @Column({ type: 'int', nullable: true })
   discountPercent: number | null;
 
+  @Column({ type: 'int', nullable: true })
+  wholesaleDiscountPercent: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  retailDiscountPercent: number | null;
+
   /** Fixed discount in IRR */
   @Column({ type: 'bigint', nullable: true })
   discountAmount: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  wholesaleDiscountAmount: number | null;
+
+  @Column({ type: 'bigint', nullable: true })
+  retailDiscountAmount: number | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   discountStartsAt: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   discountEndsAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  wholesaleDiscountStartsAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  retailDiscountStartsAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  wholesaleDiscountEndsAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  retailDiscountEndsAt: Date | null;
 
   @Column({ type: 'text', nullable: true })
   retailFullContent: string | null;
@@ -90,7 +127,7 @@ export class ProductEntity {
   @Column({ type: 'jsonb', nullable: true })
   faqItems: Array<{ question: string; answer: string }> | null;
 
-  /** Explicit admin exception to the global min-order floor of 6 */
+  /** @deprecated unused; column retained so synchronize does not drop production data */
   @Column({ default: false })
   allowBelowMoq: boolean;
 
@@ -113,7 +150,8 @@ export class ProductEntity {
   @Column({ type: 'bigint', nullable: true })
   retailCompareAtPrice: number | null;
 
-  @Column({ default: 6 })
+  /** Minimum wholesale order in packs (not pieces). */
+  @Column({ default: 1 })
   minOrderQty: number;
 
   /**

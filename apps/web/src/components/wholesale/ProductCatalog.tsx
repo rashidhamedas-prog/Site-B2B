@@ -25,6 +25,12 @@ interface Product {
   name: string;
   fabric: string;
   wholesalePrice: number;
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
   status: string;
   stock?: number;
   totalStock?: number;
@@ -43,6 +49,7 @@ function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Produc
     name: String(raw.name ?? ''),
     fabric: String(raw.fabric ?? ''),
     wholesalePrice: Number(raw.wholesalePrice ?? 0),
+    sale: raw.sale && typeof raw.sale === 'object' ? (raw.sale as Product['sale']) : undefined,
     status: String(raw.status ?? 'ACTIVE'),
     stock: typeof raw.stock === 'number' ? raw.stock : undefined,
     totalStock: typeof raw.totalStock === 'number' ? raw.totalStock : undefined,

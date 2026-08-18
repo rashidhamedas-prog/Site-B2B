@@ -24,8 +24,8 @@ import {
   draftsFromVariants,
 } from '@/components/admin/ColorVariantsEditor';
 import {
-  applySaleToChannelToman,
   ProductDiscountSettings,
+  validateChannelDiscount,
 } from '@/components/admin/ProductDiscountSettings';
 import {
   ProductRelatedPicker,
@@ -101,17 +101,20 @@ const emptyForm = {
   slug: '',
   wholesalePrice: '',
   retailPrice: '',
-  wholesaleCompareAtPrice: '',
-  retailCompareAtPrice: '',
-  minOrderQty: '6',
-  allowBelowMoq: false,
+  minOrderQty: '1',
   status: 'ACTIVE',
-  isDiscounted: false,
-  discountType: 'PERCENT' as 'PERCENT' | 'FIXED',
-  discountPercent: '',
-  discountAmount: '',
-  discountStartsAt: '',
-  discountEndsAt: '',
+  wholesaleIsDiscounted: false,
+  wholesaleDiscountType: 'PERCENT' as 'PERCENT' | 'FIXED',
+  wholesaleDiscountPercent: '',
+  wholesaleDiscountAmount: '',
+  wholesaleDiscountStartsAt: '',
+  wholesaleDiscountEndsAt: '',
+  retailIsDiscounted: false,
+  retailDiscountType: 'PERCENT' as 'PERCENT' | 'FIXED',
+  retailDiscountPercent: '',
+  retailDiscountAmount: '',
+  retailDiscountStartsAt: '',
+  retailDiscountEndsAt: '',
   retailFullContent: '',
   wholesaleFullContent: '',
   legacyContent: '',
@@ -152,16 +155,58 @@ function toDatetimeLocal(iso?: string | Date | null): string {
 function relatedPicksFromProduct(p: Product): RelatedProductPick[] {
   const related = p.relatedProducts ?? [];
   if (related.length) {
-    return related.map((item) => ({
-      id: item.id,
-      name: item.name,
-      sku: item.sku,
-      images: Array.isArray(item.images)
-        ? item.images.filter((u): u is string => typeof u === 'string' && !!u)
-        : [],
-    }));
+    return related
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        images: Array.isArray(item.images)
+          ? item.images.filter((u): u is string => typeof u === 'string' && !!u)
+          : [],
+      }))
+      .slice(0, 5);
   }
-  return (p.relatedProductIds ?? []).map((id) => ({ id, name: id, sku: '', images: [] }));
+  return (p.relatedProductIds ?? [])
+    .slice(0, 5)
+    .map((id) => ({ id, name: id, sku: '', images: [] }));
+}
+
+function irrToTomanStr(irr: number | null | undefined): string {
+  if (irr == null || !(Number(irr) > 0)) return '';
+  return String(Math.round(Number(irr) / 10));
+}
+
+function asDiscountType(value: unknown): 'PERCENT' | 'FIXED' {
+  return value === 'FIXED' ? 'FIXED' : 'PERCENT';
+}
+
+function channelDiscountOn(
+  flag: boolean | null | undefined,
+  compareAt: number | null | undefined,
+  final: number | null | undefined
+): boolean {
+  if (flag != null) return !!flag;
+  return Number(compareAt) > Number(final);
+}
+
+/** When the channel is discounted, show compare-at as BASE so the form does not drift. */
+function loadChannelBaseToman(
+  finalIrr: number | null | undefined,
+  compareIrr: number | null | undefined,
+  isDiscounted: boolean
+): string {
+  const final = Number(finalIrr) > 0 ? Math.round(Number(finalIrr) / 10) : 0;
+  const compare = Number(compareIrr) > 0 ? Math.round(Number(compareIrr) / 10) : 0;
+  if (isDiscounted && compare > final) return String(compare);
+  return final > 0 ? String(final) : '';
+}
+
+function computedPackQtyFromDrafts(
+  drafts: Array<{ color: string }>,
+  sizeType: string
+): number {
+  const names = new Set(drafts.map((d) => d.color.trim()).filter(Boolean));
+  return names.size * sizeOptionsForType(sizeType).length;
 }
 
 interface Variant {
@@ -767,6 +812,7 @@ export function AdminProducts() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
   const [relatedPicks, setRelatedPicks] = useState<RelatedProductPick[]>([]);
+  const [contentBusy, setContentBusy] = useState<'RETAIL' | 'WHOLESALE' | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<
@@ -868,6 +914,16 @@ export function AdminProducts() {
     setSlugError(null);
     const specs = src.specs ?? {};
     const seo = (src.seoMeta ?? {}) as Record<string, string | undefined>;
+    const wholesaleOn = channelDiscountOn(
+      src.wholesaleIsDiscounted,
+      src.wholesaleCompareAtPrice,
+      src.wholesalePrice
+    );
+    const retailOn = channelDiscountOn(
+      src.retailIsDiscounted,
+      src.retailCompareAtPrice,
+      src.retailPrice
+    );
     setForm({
       sku: src.sku,
       categoryId: src.categoryId ?? '',
@@ -877,14 +933,30 @@ export function AdminProducts() {
       retailFullContent: src.retailFullContent ?? src.description ?? '',
       wholesaleFullContent: src.wholesaleFullContent ?? src.description ?? '',
       legacyContent: src.legacyContent ?? '',
-      allowBelowMoq: !!src.allowBelowMoq,
-      discountType: src.discountType === 'FIXED' ? 'FIXED' : 'PERCENT',
-      discountPercent: src.discountPercent != null ? String(src.discountPercent) : '',
-      discountAmount: src.discountAmount
-        ? String(Math.round(Number(src.discountAmount) / 10))
-        : '',
-      discountStartsAt: toDatetimeLocal(src.discountStartsAt),
-      discountEndsAt: toDatetimeLocal(src.discountEndsAt),
+      wholesaleIsDiscounted: wholesaleOn,
+      wholesaleDiscountType: asDiscountType(src.wholesaleDiscountType ?? src.discountType),
+      wholesaleDiscountPercent:
+        src.wholesaleDiscountPercent != null
+          ? String(src.wholesaleDiscountPercent)
+          : src.discountPercent != null
+            ? String(src.discountPercent)
+            : '',
+      wholesaleDiscountAmount: irrToTomanStr(src.wholesaleDiscountAmount ?? src.discountAmount),
+      wholesaleDiscountStartsAt: toDatetimeLocal(
+        src.wholesaleDiscountStartsAt ?? src.discountStartsAt
+      ),
+      wholesaleDiscountEndsAt: toDatetimeLocal(src.wholesaleDiscountEndsAt ?? src.discountEndsAt),
+      retailIsDiscounted: retailOn,
+      retailDiscountType: asDiscountType(src.retailDiscountType ?? src.discountType),
+      retailDiscountPercent:
+        src.retailDiscountPercent != null
+          ? String(src.retailDiscountPercent)
+          : src.discountPercent != null
+            ? String(src.discountPercent)
+            : '',
+      retailDiscountAmount: irrToTomanStr(src.retailDiscountAmount ?? src.discountAmount),
+      retailDiscountStartsAt: toDatetimeLocal(src.retailDiscountStartsAt ?? src.discountStartsAt),
+      retailDiscountEndsAt: toDatetimeLocal(src.retailDiscountEndsAt ?? src.discountEndsAt),
       wholesaleSeoTitle: seo.wholesaleTitle || seo.title || '',
       wholesaleSeoDescription: seo.wholesaleDescription || seo.description || '',
       wholesaleFocusKeyword: seo.wholesaleFocusKeyword || seo.focusKeyword || '',
@@ -893,17 +965,16 @@ export function AdminProducts() {
       retailSeoDescription: seo.retailDescription || '',
       retailFocusKeyword: seo.retailFocusKeyword || '',
       retailCanonical: seo.retailCanonical || '',
-      wholesalePrice: String(Math.round(Number(src.wholesalePrice) / 10)),
-      retailPrice: src.retailPrice ? String(Math.round(Number(src.retailPrice) / 10)) : '',
-      wholesaleCompareAtPrice: src.wholesaleCompareAtPrice
-        ? String(Math.round(Number(src.wholesaleCompareAtPrice) / 10))
+      wholesalePrice: loadChannelBaseToman(
+        src.wholesalePrice,
+        src.wholesaleCompareAtPrice,
+        wholesaleOn
+      ),
+      retailPrice: src.retailPrice
+        ? loadChannelBaseToman(src.retailPrice, src.retailCompareAtPrice, retailOn)
         : '',
-      retailCompareAtPrice: src.retailCompareAtPrice
-        ? String(Math.round(Number(src.retailCompareAtPrice) / 10))
-        : '',
-      minOrderQty: String(src.minOrderQty ?? 6),
+      minOrderQty: String(src.minOrderQty ?? 1),
       status: src.status,
-      isDiscounted: !!src.isDiscounted,
       sizeType: (src.sizeType as FormData['sizeType']) || 'FREE',
       hasLength2: !!specs.length2,
       hasLength3: !!specs.length3,
@@ -1004,29 +1075,36 @@ export function AdminProducts() {
     setSlugError(null);
 
     const minQty = Number(form.minOrderQty);
-    if (!form.allowBelowMoq && (!(minQty >= 6) || !Number.isFinite(minQty))) {
-      setSaveError('حداقل سفارش در محصول از 6 عدد به بالا می باشد.');
+    if (!Number.isFinite(minQty) || minQty < 1) {
+      setSaveError('حداقل سفارش باید حداقل ۱ پک باشد');
       return;
     }
 
-    const wholesaleBaseToman =
-      Number(form.wholesaleCompareAtPrice) || Number(form.wholesalePrice) || 0;
-    const retailBaseToman = Number(form.retailCompareAtPrice) || Number(form.retailPrice) || 0;
-    if (form.isDiscounted && form.discountType === 'PERCENT') {
-      const pct = Number(form.discountPercent);
-      if (!(pct >= 1 && pct <= 99)) {
-        setSaveError('درصد تخفیف باید بین ۱ تا ۹۹ باشد');
-        return;
-      }
+    const wholesaleBaseToman = Number(form.wholesalePrice) || 0;
+    const retailBaseToman = Number(form.retailPrice) || 0;
+    const wholesaleDiscountError = validateChannelDiscount({
+      enabled: form.wholesaleIsDiscounted,
+      type: form.wholesaleDiscountType,
+      percent: form.wholesaleDiscountPercent,
+      amountToman: form.wholesaleDiscountAmount,
+      baseToman: wholesaleBaseToman,
+      label: 'عمده',
+    });
+    if (wholesaleDiscountError) {
+      setSaveError(wholesaleDiscountError);
+      return;
     }
-    if (form.isDiscounted && form.discountType === 'FIXED') {
-      const amt = Number(form.discountAmount);
-      const bases = [wholesaleBaseToman, retailBaseToman].filter((n) => n > 0);
-      const minBase = bases.length ? Math.min(...bases) : 0;
-      if (!(amt > 0) || (minBase > 0 && amt >= minBase)) {
-        setSaveError('مبلغ تخفیف ثابت باید از قیمت پایه کمتر باشد');
-        return;
-      }
+    const retailDiscountError = validateChannelDiscount({
+      enabled: form.retailIsDiscounted,
+      type: form.retailDiscountType,
+      percent: form.retailDiscountPercent,
+      amountToman: form.retailDiscountAmount,
+      baseToman: retailBaseToman,
+      label: 'تکی',
+    });
+    if (retailDiscountError) {
+      setSaveError(retailDiscountError);
+      return;
     }
 
     setSaving(true);
@@ -1036,18 +1114,14 @@ export function AdminProducts() {
         .map((cf) => ({ label: cf.label.trim(), value: cf.value.trim() }));
 
       const sizeLabels = sizeOptionsForType(form.sizeType);
-      const colorCountForPack = Math.max(colorDrafts.length, initialColorNames.length);
-      const computedPackQty =
-        colorCountForPack > 0 && sizeLabels.length > 0
-          ? String(colorCountForPack * sizeLabels.length)
-          : form.specs.packQty?.trim() || undefined;
+      const computedPackQty = computedPackQtyFromDrafts(colorDrafts, form.sizeType);
 
       const specs: ProductSpecs = {
         fabricType: form.specs.fabricType?.trim() || undefined,
         designDetails: form.specs.designDetails?.trim() || undefined,
         packageSpecs: form.specs.packageSpecs?.trim() || undefined,
         manufacturingBadge: form.specs.manufacturingBadge?.trim() || undefined,
-        packQty: form.specs.packQty?.trim() || computedPackQty,
+        packQty: String(computedPackQty),
         length: form.specs.length?.trim() || undefined,
         chestWidth: form.specs.chestWidth?.trim() || undefined,
         sleeveModel: form.specs.sleeveModel?.trim() || undefined,
@@ -1082,34 +1156,8 @@ export function AdminProducts() {
       const colorImageUrls = colorDrafts.map((d) => d.imageUrl).filter(Boolean);
       const galleryImages = [...new Set([...images, ...colorImageUrls])];
 
-      const salePct = Number(form.discountPercent);
-      const saleAmt = Number(form.discountAmount);
-      const wholesaleSale = form.isDiscounted
-        ? applySaleToChannelToman(
-            Number(form.wholesalePrice) || 0,
-            Number(form.wholesaleCompareAtPrice) || 0,
-            form.discountType,
-            salePct,
-            saleAmt
-          )
-        : {
-            final: Number(form.wholesalePrice) || 0,
-            compare: form.wholesaleCompareAtPrice
-              ? Number(form.wholesaleCompareAtPrice)
-              : null,
-          };
-      const retailSale = form.isDiscounted
-        ? applySaleToChannelToman(
-            Number(form.retailPrice) || 0,
-            Number(form.retailCompareAtPrice) || 0,
-            form.discountType,
-            salePct,
-            saleAmt
-          )
-        : {
-            final: form.retailPrice ? Number(form.retailPrice) : 0,
-            compare: form.retailCompareAtPrice ? Number(form.retailCompareAtPrice) : null,
-          };
+      const wholesaleIsDiscounted = !!form.wholesaleIsDiscounted;
+      const retailIsDiscounted = !!form.retailIsDiscounted;
 
       const payload = {
         sku: form.sku || undefined,
@@ -1119,31 +1167,47 @@ export function AdminProducts() {
         description: form.description || form.wholesaleFullContent || undefined,
         retailFullContent: form.retailFullContent.trim() || null,
         wholesaleFullContent: form.wholesaleFullContent.trim() || null,
-        relatedProductIds: relatedPicks.map((item) => item.id).slice(0, 12),
-        allowBelowMoq: !!form.allowBelowMoq,
-        discountType: form.isDiscounted ? form.discountType : form.discountType || null,
-        discountPercent:
-          form.discountType === 'PERCENT' && form.discountPercent
-            ? Number(form.discountPercent)
+        relatedProductIds: relatedPicks.map((item) => item.id).slice(0, 5),
+        wholesaleIsDiscounted,
+        retailIsDiscounted,
+        wholesaleDiscountType: form.wholesaleDiscountType,
+        wholesaleDiscountPercent:
+          form.wholesaleDiscountType === 'PERCENT' && form.wholesaleDiscountPercent
+            ? Number(form.wholesaleDiscountPercent)
             : null,
-        discountAmount:
-          form.discountType === 'FIXED' && form.discountAmount
-            ? Number(form.discountAmount) * 10
+        wholesaleDiscountAmount:
+          form.wholesaleDiscountType === 'FIXED' && form.wholesaleDiscountAmount
+            ? Number(form.wholesaleDiscountAmount) * 10
             : null,
-        discountStartsAt: form.discountStartsAt
-          ? new Date(form.discountStartsAt).toISOString()
+        wholesaleDiscountStartsAt: form.wholesaleDiscountStartsAt
+          ? new Date(form.wholesaleDiscountStartsAt).toISOString()
           : null,
-        discountEndsAt: form.discountEndsAt ? new Date(form.discountEndsAt).toISOString() : null,
+        wholesaleDiscountEndsAt: form.wholesaleDiscountEndsAt
+          ? new Date(form.wholesaleDiscountEndsAt).toISOString()
+          : null,
+        retailDiscountType: form.retailDiscountType,
+        retailDiscountPercent:
+          form.retailDiscountType === 'PERCENT' && form.retailDiscountPercent
+            ? Number(form.retailDiscountPercent)
+            : null,
+        retailDiscountAmount:
+          form.retailDiscountType === 'FIXED' && form.retailDiscountAmount
+            ? Number(form.retailDiscountAmount) * 10
+            : null,
+        retailDiscountStartsAt: form.retailDiscountStartsAt
+          ? new Date(form.retailDiscountStartsAt).toISOString()
+          : null,
+        retailDiscountEndsAt: form.retailDiscountEndsAt
+          ? new Date(form.retailDiscountEndsAt).toISOString()
+          : null,
         seoMeta,
         specs,
         sizeType: form.sizeType,
-        wholesalePrice: wholesaleSale.final * 10,
-        retailPrice: form.retailPrice ? retailSale.final * 10 : null,
-        wholesaleCompareAtPrice: wholesaleSale.compare ? wholesaleSale.compare * 10 : null,
-        retailCompareAtPrice: retailSale.compare ? retailSale.compare * 10 : null,
+        wholesalePrice: wholesaleBaseToman * 10,
+        retailPrice: form.retailPrice ? retailBaseToman * 10 : null,
         minOrderQty: Number(form.minOrderQty),
         status: form.status,
-        isDiscounted: form.isDiscounted,
+        isDiscounted: wholesaleIsDiscounted || retailIsDiscounted,
         images: galleryImages,
         collectionId: form.collectionId || null,
         isPreOrder: form.isPreOrder,
@@ -1223,6 +1287,36 @@ export function AdminProducts() {
     refreshSpecMemory,
   ]);
 
+  const generateContent = useCallback(
+    async (channel: 'RETAIL' | 'WHOLESALE') => {
+      setContentBusy(channel);
+      try {
+        const res = await apiClient.post<{ text: string }>('/products/content-preview', {
+          channel,
+          productId: editProduct?.id,
+          name: form.name,
+          specs: form.specs,
+          sizeType: form.sizeType,
+          colors: colorDrafts.map((d) => d.color.trim()).filter(Boolean),
+          minOrderQty: Number(form.minOrderQty) || 1,
+          description: form.description,
+          careInstructions: editProduct?.careInstructions ?? null,
+        });
+        const text = typeof res?.text === 'string' ? res.text : '';
+        if (channel === 'RETAIL') {
+          setForm((f) => ({ ...f, retailFullContent: text }));
+        } else {
+          setForm((f) => ({ ...f, wholesaleFullContent: text }));
+        }
+      } catch (e: unknown) {
+        alert(e instanceof Error ? e.message : 'خطا در ساخت متن');
+      } finally {
+        setContentBusy(null);
+      }
+    },
+    [editProduct, form.name, form.specs, form.sizeType, form.minOrderQty, form.description, colorDrafts]
+  );
+
   const handleDelete = useCallback(
     async (id: string) => {
       try {
@@ -1237,14 +1331,7 @@ export function AdminProducts() {
   );
 
   const field = (
-    key:
-      | 'sku'
-      | 'name'
-      | 'wholesalePrice'
-      | 'retailPrice'
-      | 'wholesaleCompareAtPrice'
-      | 'retailCompareAtPrice'
-      | 'minOrderQty',
+    key: 'sku' | 'name' | 'wholesalePrice' | 'retailPrice',
     label: string,
     type = 'text',
     placeholder = ''
@@ -1284,6 +1371,9 @@ export function AdminProducts() {
   );
 
   const fabricLabel = (p: Product) => p.specs?.fabricType || p.fabric || '—';
+  const computedPackQty = computedPackQtyFromDrafts(colorDrafts, form.sizeType);
+  const minPackQty = Math.max(1, Math.floor(Number(form.minOrderQty) || 1));
+  const packSummary = `حداقل ${minPackQty.toLocaleString('fa-IR')} پک — هر پک ${computedPackQty.toLocaleString('fa-IR')} عدد — مجموع حداقل سفارش ${(minPackQty * computedPackQty).toLocaleString('fa-IR')} عدد`;
 
   return (
     <div className="space-y-5">
@@ -1552,7 +1642,14 @@ export function AdminProducts() {
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
-                  {specField('packQty', 'تعداد در پک (= رنگ × سایز)', '۶')}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      تعداد در هر پک
+                    </label>
+                    <p className="rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm text-gray-700">
+                      {computedPackQty.toLocaleString('fa-IR')} عدد (رنگ‌های متمایز × سایز)
+                    </p>
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">
@@ -1851,11 +1948,24 @@ export function AdminProducts() {
 
               <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                 <p className="text-sm font-semibold text-gray-800">توضیحات کامل و مراقبت</p>
+                <p className="text-[11px] text-gray-400">
+                  پیش‌نمایش ساخته‌شده فقط داخل همین فرم می‌آید؛ برای اعمال روی محصول باید ذخیره کنید.
+                </p>
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">
-                      متن کامل تک‌فروشی
-                    </label>
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-gray-600">
+                        متن کامل تک‌فروشی
+                      </label>
+                      <button
+                        type="button"
+                        disabled={contentBusy != null}
+                        onClick={() => void generateContent('RETAIL')}
+                        className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {contentBusy === 'RETAIL' ? 'در حال ساخت…' : 'ساخت متن تک‌فروشی'}
+                      </button>
+                    </div>
                     <textarea
                       dir="rtl"
                       value={form.retailFullContent}
@@ -1868,9 +1978,17 @@ export function AdminProducts() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">
-                      متن کامل عمده
-                    </label>
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <label className="text-xs font-medium text-gray-600">متن کامل عمده</label>
+                      <button
+                        type="button"
+                        disabled={contentBusy != null}
+                        onClick={() => void generateContent('WHOLESALE')}
+                        className="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {contentBusy === 'WHOLESALE' ? 'در حال ساخت…' : 'ساخت متن عمده‌فروشی'}
+                      </button>
+                    </div>
                     <textarea
                       dir="rtl"
                       value={form.wholesaleFullContent}
@@ -1898,55 +2016,34 @@ export function AdminProducts() {
                 ) : null}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {field(
-                  'wholesalePrice',
-                  'قیمت نهایی عمده — بعد از تخفیف (تومان)',
-                  'number',
-                  '125000'
-                )}
-                {field('wholesaleCompareAtPrice', 'قبل از تخفیف عمده (تومان)', 'number', '150000')}
+              <div className="grid grid-cols-2 gap-4">
+                {field('wholesalePrice', 'قیمت اصلی عمده‌فروشی', 'number', '125000')}
                 {field(
                   'retailPrice',
-                  form.showOnRetail
-                    ? 'قیمت نهایی تکی — بعد از تخفیف (تومان) *'
-                    : 'قیمت نهایی تکی — بعد از تخفیف (تومان)',
+                  form.showOnRetail ? 'قیمت اصلی تک‌فروشی *' : 'قیمت اصلی تک‌فروشی',
                   'number',
                   '180000'
                 )}
-                {field('retailCompareAtPrice', 'قبل از تخفیف تکی (تومان)', 'number', '220000')}
               </div>
               <div className="space-y-2">
                 <div className="max-w-xs">
                   <label className="mb-1 block text-xs font-medium text-gray-600">
-                    حداقل سفارش (عدد)
+                    حداقل سفارش (تعداد پک)
                   </label>
                   <input
                     type="number"
-                    min={form.allowBelowMoq ? 1 : 6}
+                    min={1}
                     value={form.minOrderQty}
                     onChange={(e) => setForm((f) => ({ ...f, minOrderQty: e.target.value }))}
-                    placeholder="6"
+                    placeholder="1"
                     className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   />
                 </div>
-                <p className="text-[11px] text-gray-500">
-                  حداقل سفارش در محصول از 6 عدد به بالا می باشد.
-                </p>
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.allowBelowMoq}
-                    onChange={(e) => setForm((f) => ({ ...f, allowBelowMoq: e.target.checked }))}
-                    className="rounded"
-                  />
-                  <span className="text-sm text-gray-700">اجازه حداقل سفارش کمتر از ۶</span>
-                </label>
+                <p className="text-[11px] text-gray-600">{packSummary}</p>
               </div>
               <p className="text-[11px] text-gray-500">
-                قیمت نهایی (بعد از تخفیف) برای سبد/سفارش/فید است و باید مثبت باشد. عمده همیشه الزامی
-                است؛ تکی وقتی نمایش در تکی فعال است الزامی است. قیمت قبل از تخفیف اختیاری است و باید
-                اکیداً از قیمت نهایی بیشتر باشد.
+                قیمت اصلی پایه تخفیف است (تومان). سرور قیمت نهایی هر کانال را از تخفیف همان کانال حساب
+                می‌کند. عمده همیشه الزامی است؛ تکی وقتی نمایش در تکی فعال است الزامی است.
               </p>
 
               <div className="border-primary-100 bg-primary-50/40 space-y-3 rounded-xl border p-4">
@@ -2025,15 +2122,6 @@ export function AdminProducts() {
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={form.isDiscounted}
-                    onChange={(e) => setForm((f) => ({ ...f, isDiscounted: e.target.checked }))}
-                    className="rounded"
-                  />
-                  <span className="text-sm text-gray-700">محصول تخفیف‌دار</span>
-                </label>
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
                     checked={form.showOnWholesale}
                     onChange={(e) => setForm((f) => ({ ...f, showOnWholesale: e.target.checked }))}
                     className="rounded"
@@ -2051,24 +2139,25 @@ export function AdminProducts() {
                 </label>
               </div>
 
-              {form.isDiscounted ? (
-                <ProductDiscountSettings
-                  value={{
-                    discountType: form.discountType,
-                    discountPercent: form.discountPercent,
-                    discountAmount: form.discountAmount,
-                    discountStartsAt: form.discountStartsAt,
-                    discountEndsAt: form.discountEndsAt,
-                  }}
-                  onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
-                  wholesaleBaseToman={
-                    Number(form.wholesaleCompareAtPrice) || Number(form.wholesalePrice) || 0
-                  }
-                  retailBaseToman={
-                    Number(form.retailCompareAtPrice) || Number(form.retailPrice) || 0
-                  }
-                />
-              ) : null}
+              <ProductDiscountSettings
+                value={{
+                  wholesaleIsDiscounted: form.wholesaleIsDiscounted,
+                  wholesaleDiscountType: form.wholesaleDiscountType,
+                  wholesaleDiscountPercent: form.wholesaleDiscountPercent,
+                  wholesaleDiscountAmount: form.wholesaleDiscountAmount,
+                  wholesaleDiscountStartsAt: form.wholesaleDiscountStartsAt,
+                  wholesaleDiscountEndsAt: form.wholesaleDiscountEndsAt,
+                  retailIsDiscounted: form.retailIsDiscounted,
+                  retailDiscountType: form.retailDiscountType,
+                  retailDiscountPercent: form.retailDiscountPercent,
+                  retailDiscountAmount: form.retailDiscountAmount,
+                  retailDiscountStartsAt: form.retailDiscountStartsAt,
+                  retailDiscountEndsAt: form.retailDiscountEndsAt,
+                }}
+                onChange={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                wholesaleBaseToman={Number(form.wholesalePrice) || 0}
+                retailBaseToman={Number(form.retailPrice) || 0}
+              />
 
               <div className="border-primary/30 bg-primary-50/40 space-y-3 rounded-xl border border-dashed p-4">
                 <p className="text-primary text-xs font-bold">فروشگاه تکی</p>

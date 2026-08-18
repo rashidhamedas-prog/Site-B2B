@@ -1,12 +1,30 @@
 # Project Status
 
-- Last verified: 2026-08-17T10:35:00Z — **SEO/Admin upgrade ready to merge/deploy (not live yet)**
+- Last verified: 2026-08-18 — **TASK-20260818-001 in progress (code complete locally; prod data jobs dry-run only)**
+- Code SHA (local branch): `ai/TASK-20260818-001-product-slug-pricing-pack`
+- Previous live: origin/master **`305969e`**
 - Active tasks:
-  - **TASK-20260817-001** (`in_progress`) — Retail+Wholesale SEO & Admin upgrade — owner `cursor:orchestrator-TASK-20260817-001`
-  - **TASK-20260812-001** (`in_progress`) — payment code **LIVE**; BNPL/staging residuals — owner `cursor:orchestrator-TASK-20260812-001`
-  - **TASK-20260810-006** (`in_progress`) — readiness remediation — owner `cursor:orchestrator-TASK-20260810-006` (product/SEO file claims reclaimed 2026-08-17 as stale)
-- Open residuals before live: merge to master, VPS deploy, TypeORM migration `SeoAdminUpgrade1755410400001`, health check
-- Code SHA (origin/master): **`5880f95`** until this wave merges
+  - **TASK-20260818-001** (`in_progress`) — atomic slug, channel discounts, pack MOQ, content/related jobs
+  - **TASK-20260817-001** (`in_progress`) — landed live; residuals: AVIF, blog picker
+  - **TASK-20260812-001** (`in_progress`) — payment LIVE; BNPL residuals
+  - **TASK-20260810-006** (`in_progress`) — readiness remediation
+- Readiness: **71/100** unchanged
+- Website-builder: **blocked**
+
+- Migration: **`SeoAdminUpgrade1755410400001`** id=22 on production
+- Live health:
+  - API `/v1/health` → **200** ok
+  - Wholesale `.com` → **200**
+  - Retail `.ir` → **200**
+  - `/sitemap.xml` → **200**
+  - `/category/shomiz` → **200**
+  - `/feeds/google-merchant.xml` → **200**
+- Active tasks:
+  - **TASK-20260817-001** (`in_progress`) — landed live; residuals: AVIF pipeline, blog internal-link picker, CMS DB announcement may still say ۵
+  - **TASK-20260812-001** (`in_progress`) — payment code **LIVE**; BNPL/staging residuals
+  - **TASK-20260810-006** (`in_progress`) — readiness remediation
+- Readiness: **71/100** unchanged
+- Website-builder: **blocked**
 - VPS `/opt/taranom` HEAD: **`b7bd11a`** (matches master)
 - Live health:
   - API → **200** ok
