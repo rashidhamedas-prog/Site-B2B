@@ -1,15 +1,20 @@
 # Project Status
 
-- Last verified: 2026-08-18 — **TASK-20260818-001 in progress (code complete locally; prod data jobs dry-run only)**
-- Code SHA (local branch): `ai/TASK-20260818-001-product-slug-pricing-pack`
-- Previous live: origin/master **`305969e`**
+- Last verified: 2026-08-18 — **TASK-20260818-001 LIVE at `55f1743`**; middleware slug-inversion hotfix in progress
+- Code SHA (VPS): **`55f1743`**
+- Migration: **`ProductChannelSalePack1755510000001`** id=23 on production
+- Live health:
+  - API `/v1/health` → **200** ok
+  - Wholesale `.com` → **200**
+  - Retail `.ir` → **200**
 - Active tasks:
-  - **TASK-20260818-001** (`in_progress`) — atomic slug, channel discounts, pack MOQ, content/related jobs
+  - **TASK-20260818-001** (`in_progress`) — deployed; hotfix for static WP slug map vs live canonical
   - **TASK-20260817-001** (`in_progress`) — landed live; residuals: AVIF, blog picker
   - **TASK-20260812-001** (`in_progress`) — payment LIVE; BNPL residuals
   - **TASK-20260810-006** (`in_progress`) — readiness remediation
 - Readiness: **71/100** unchanged
 - Website-builder: **blocked**
+
 
 - Migration: **`SeoAdminUpgrade1755410400001`** id=22 on production
 - Live health:

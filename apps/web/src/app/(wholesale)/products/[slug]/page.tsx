@@ -2,11 +2,10 @@ import type { Metadata } from 'next';
 import { ProductDetail, type WholesaleProduct } from '@/components/wholesale/ProductDetail';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
-import { fetchProductBySlug, getServerApiBase } from '@/lib/server-api';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { getServerApiBase } from '@/lib/server-api';
+import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
-import { redirectIfMatched } from '@/lib/seo-redirect';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -36,13 +35,7 @@ function wholesaleSeo(product: Record<string, unknown>) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await fetchProductBySlug(slug, 'WHOLESALE');
-  // notFound() here (not only in the page) so the response is a real 404:
-  // metadata resolves before the streaming shell (loading.tsx) flushes 200.
-  if (!product) {
-    await redirectIfMatched('WHOLESALE', `/products/${slug}`);
-    notFound();
-  }
+  const product = await loadCanonicalStorefrontProduct(slug, 'WHOLESALE');
   const { title, description, canonical } = wholesaleSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
 
@@ -71,22 +64,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
-  const product = await fetchProductBySlug(slug, 'WHOLESALE');
-  if (!product) {
-    await redirectIfMatched('WHOLESALE', `/products/${slug}`);
-    notFound();
-  }
-
+  const product = await loadCanonicalStorefrontProduct(slug, 'WHOLESALE');
   const canonicalSlug = String(product.slug || '');
-  let incoming = slug;
-  try {
-    incoming = decodeURIComponent(slug);
-  } catch {
-    /* keep */
-  }
-  if (canonicalSlug && incoming !== canonicalSlug) {
-    permanentRedirect(`/products/${canonicalSlug}`);
-  }
 
   const url = `${WHOLESALE_ORIGIN}${getProductCanonicalPath(canonicalSlug)}`;
   const variants =

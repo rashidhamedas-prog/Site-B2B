@@ -10,7 +10,8 @@
       "Integration, concurrency and end-to-end coverage is incomplete",
       "Local node_modules is not a trustworthy clean-install baseline",
       "Existing minOrderQty values still mean pack counts after the 2026-08-18 semantics change and must not be bulk-rewritten without a dry-run report and owner confirm",
-      "Channel discount columns are nullable until an owner-approved backfill; legacy isDiscounted remains the fallback"
+      "Channel discount columns are nullable until an owner-approved backfill; legacy isDiscounted remains the fallback",
+      "Static PRODUCT_SLUG_REDIRECTS in middleware inverted live canonical slugs; lookup moved to PDP so admin slug changes win"
     ]
   },
   "security": {

@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-18T10:55:00Z — TASK-20260818-001 LIVE at 55f1743; middleware slug inversion hotfix pending deploy
+
+- VPS HEAD **`55f1743`**; migration id **23** `ProductChannelSalePack1755510000001` applied
+- Health 200; .com 200 ttfb~1.5s; .ir 200; apex .ir 301 → www
+- minOrderQty histogram: 1×1, 1×2, **54×6**, 1×10 — values NOT rewritten (6 now means 6 packs)
+- Channel discount flags: all NULL; legacy `isDiscounted` count 0 — backfill SQL is a no-op today
+- Live gap: static middleware map inverted `bezayagh-jacket-rose` → `coats00014` (200 on SKU, 301 away from canonical)
+- Hotfix in working tree: remove middleware product-slug map; PDP canonicalizes via product.slug + static fallback + seo_redirects
+- Exact next: commit hotfix → merge/deploy → re-smoke bezayagh 200 and coats00014 redirect
+- Owner still blocked: content/related `--apply`, minpack rewrite, discount backfill (none needed currently)
+
 ## 2026-08-18T10:30:00Z — TASK-20260818-001 code complete locally; prod data jobs not applied
 
 - Task / owner: TASK-20260818-001 / cursor:orchestrator-TASK-20260818-001

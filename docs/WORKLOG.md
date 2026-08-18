@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-18 — Hotfix: middleware اسلاگ canonical را وارونه می‌کرد
+
+- نقشهٔ استاتیک WP در middleware (`bezayagh-jacket-rose` → `coats00014`) بعد از تغییر slug ادمین، URL جدید را به SKU قدیمی ۳۰۱ می‌کرد و URL قدیمی ۲۰۰ می‌ماند.
+- lookup اسلاگ محصول از middleware برداشته شد؛ PDP از slug فعلی محصول، fallback نقشهٔ استاتیک، سپس `seo_redirects` استفاده می‌کند و هرگز canonical زنده را به SKU برنمی‌گرداند.
+- Live قبل از hotfix: `GET /products/bezayagh-jacket-rose` → 301 به `coats00014`؛ بعد از deploy باید canonical ۲۰۰ و SKU ریدایرکت شود.
+
 ## 2026-08-18 — Slug اتمیک، تخفیف مستقل کانال، پک، متن و مرتبط
 
 - تغییر slug محصول در یک transaction با ریدایرکت ۳۰۱ هر دو کانال و collapse زنجیره؛ lookup ویترین `no-store`.
