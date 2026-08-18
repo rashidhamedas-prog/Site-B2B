@@ -2,11 +2,9 @@ import type { Metadata } from 'next';
 import { ProductJsonLd, ProductGroupJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
 import { RETAIL_ORIGIN } from '@/lib/seo';
-import { fetchProductBySlug } from '@/lib/server-api';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
-import { redirectIfMatched } from '@/lib/seo-redirect';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -36,13 +34,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await fetchProductBySlug(slug, 'RETAIL');
-  // notFound() here (not only in the page) so the response is a real 404:
-  // metadata resolves before the streaming shell (loading.tsx) flushes 200.
-  if (!product) {
-    await redirectIfMatched('RETAIL', `/products/${slug}`);
-    notFound();
-  }
+  const product = await loadCanonicalStorefrontProduct(slug, 'RETAIL');
 
   const { title, description, canonical } = retailSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
@@ -76,22 +68,8 @@ export default async function RetailProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = await fetchProductBySlug(slug, 'RETAIL');
-  if (!product) {
-    await redirectIfMatched('RETAIL', `/products/${slug}`);
-    notFound();
-  }
-
+  const product = await loadCanonicalStorefrontProduct(slug, 'RETAIL');
   const canonicalSlug = String(product.slug || '');
-  let incoming = slug;
-  try {
-    incoming = decodeURIComponent(slug);
-  } catch {
-    /* keep */
-  }
-  if (canonicalSlug && incoming !== canonicalSlug) {
-    permanentRedirect(`/products/${canonicalSlug}`);
-  }
 
   const url = `${RETAIL_ORIGIN}${getProductCanonicalPath(canonicalSlug)}`;
   const sale = product.sale as { active?: boolean; payable?: number } | undefined;

@@ -38,6 +38,13 @@ tasks:
       - "apps/api/package.json"
       - "apps/api/src/modules/order/order.service.ts"
       - "apps/web/src/lib/seo-redirect.ts"
+      - "apps/web/src/lib/product-slug-canonical.ts"
+      - "apps/web/src/lib/product-slug-canonical.spec.ts"
+      - "apps/web/src/lib/load-canonical-storefront-product.ts"
+      - "apps/web/src/lib/product-slug-redirects.ts"
+      - "apps/web/src/middleware.ts"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
       - "apps/web/src/components/admin/AdminProducts.tsx"
       - "apps/web/src/components/admin/ProductDiscountSettings.tsx"
       - "apps/web/src/components/admin/ProductRelatedPicker.tsx"
@@ -53,9 +60,12 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
+      - ".Codex/memory.json"
     notes: |
       Stale reclaim 2026-08-18 from TASK-20260817-001 (landed live; residuals AVIF/blog picker)
       and TASK-20260810-006 (heartbeat 2026-08-12) for overlapping product/admin/order/SEO files.
+      2026-08-18T10:50Z: reclaimed middleware.ts + PDP [slug] pages — static WP slug map
+      inverted live canonical bezayagh-jacket-rose back to coats00014.
       Do not run production content/related --apply or discount backfill SQL without owner backup+confirm.
     acceptance_criteria:
       - "Slug change is transactional with both-channel 301s, chain collapse, no swallowed errors"
@@ -107,7 +117,6 @@ tasks:
       - "apps/web/src/lib/seo-redirect.ts"
       - "apps/web/src/components/admin/AdminCategories.tsx"
       - "apps/web/src/app/sitemap.xml/route.ts"
-      - "apps/web/src/middleware.ts"
       - "apps/web/src/app/(wholesale)/products/page.tsx"
       - "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/category/category.module.ts"

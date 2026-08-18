@@ -69,7 +69,11 @@ WHERE COALESCE("isDiscounted", false) = true
 | `apps/api` `npm test` | exit 0 |
 | `apps/api` `npx tsc --noEmit` | exit 0 |
 | `apps/web` `npx tsc --noEmit` | exit 0 |
-| production smoke / deploy | پس از merge |
+| production smoke / deploy | **LIVE** `55f1743`؛ health 200؛ `.com` 200؛ `.ir` 200 |
+
+### شکاف کشف‌شده روی لایو (hotfix جدا)
+
+`GET https://poshaktaranom.com/products/bezayagh-jacket-rose` → **301 به `/products/coats00014`**. علت: `PRODUCT_SLUG_REDIRECTS` در middleware جهت قدیمی WP را اعمال می‌کرد و بر `seo_redirects` و slug فعلی محصول می‌چربید. SKU قدیمی ۲۰۰ می‌داد.
 
 Build کامل turbo در این جلسه جداگانه زمان‌بر است؛ typecheck وب+API سبز بود.
 
