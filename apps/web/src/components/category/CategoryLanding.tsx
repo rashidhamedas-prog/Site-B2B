@@ -9,7 +9,7 @@ import {
   FaqJsonLd,
 } from '@/components/shared/JsonLd';
 import { getCategoryCanonicalUrl, siteOrigin, type PublicSite } from '@/lib/canonical-urls';
-import { mediaUrl, toman, uniqueByColor, uniqueSizes } from '@/lib/product-display';
+import { channelSaleDisplay, mediaUrl, toman, uniqueByColor, uniqueSizes } from '@/lib/product-display';
 import { getServerApiBase } from '@/lib/server-api';
 import { redirectIfMatched } from '@/lib/seo-redirect';
 
@@ -57,6 +57,13 @@ type CategoryProduct = {
   slug?: string;
   fabric?: string;
   retailPrice?: number | null;
+  wholesalePrice?: number | null;
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
   images?: string[];
   variants?: Array<{ color?: string; colorHex?: string; size?: string }>;
 };
@@ -282,8 +289,11 @@ function CategoryProductCard({
   const variants = product.variants ?? [];
   const colors = uniqueByColor(variants);
   const sizes = uniqueSizes(variants);
-  const price = Number(product.retailPrice || 0);
   const retail = channel === 'RETAIL';
+  const { price, compareAt, active: saleActive } = channelSaleDisplay(
+    product.sale,
+    retail ? product.retailPrice : product.wholesalePrice,
+  );
 
   return (
     <article
@@ -316,9 +326,14 @@ function CategoryProductCard({
           <p className="mt-1 text-xs text-[var(--brand-muted,#6B7280)]">{product.fabric}</p>
         ) : null}
         {retail && price > 0 ? (
-          <p className="mt-2 text-sm font-extrabold text-[var(--retail-primary,#1B5C4A)]">
-            {toman(price)} تومان
-          </p>
+          <div className="mt-2">
+            <p className="text-sm font-extrabold text-[var(--retail-primary,#1B5C4A)]">
+              {toman(price)} تومان
+            </p>
+            {saleActive && compareAt > price ? (
+              <p className="text-[11px] text-[var(--retail-muted,#6B7280)] line-through">{toman(compareAt)}</p>
+            ) : null}
+          </div>
         ) : null}
         {!retail && (colors.length || sizes.length) ? (
           <div className="mt-2 space-y-1.5 text-xs text-[var(--brand-muted,#6B7280)]">

@@ -12,7 +12,7 @@ export interface RelatedProductPick {
   images?: string[];
 }
 
-const MAX_RELATED = 12;
+const MAX_RELATED = 5;
 
 function thumbOf(item: RelatedProductPick): string | null {
   const first = item.images?.[0];
@@ -107,7 +107,7 @@ export function ProductRelatedPicker({
         </p>
       </div>
       <p className="text-[11px] text-gray-500">
-        حداکثر ۱۲ محصول. ترتیب همین‌جا ذخیره می‌شود.
+        حداکثر ۵ محصول. ترتیب همین‌جا ذخیره می‌شود.
       </p>
 
       <div className="relative">
@@ -154,7 +154,7 @@ export function ProductRelatedPicker({
         </ul>
       ) : null}
       {atLimit ? (
-        <p className="text-[11px] text-amber-700">به سقف ۱۲ محصول مرتبط رسیده‌اید.</p>
+        <p className="text-[11px] text-amber-700">به سقف ۵ محصول مرتبط رسیده‌اید.</p>
       ) : null}
 
       {value.length === 0 ? (

@@ -120,6 +120,18 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS "legacyContent" text;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS "careInstructions" jsonb;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS "faqItems" jsonb;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS "allowBelowMoq" boolean NOT NULL DEFAULT false;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "wholesaleIsDiscounted" boolean;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "retailIsDiscounted" boolean;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "wholesaleDiscountType" varchar;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "retailDiscountType" varchar;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "wholesaleDiscountPercent" integer;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "retailDiscountPercent" integer;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "wholesaleDiscountAmount" bigint;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "retailDiscountAmount" bigint;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "wholesaleDiscountStartsAt" TIMESTAMPTZ;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "retailDiscountStartsAt" TIMESTAMPTZ;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "wholesaleDiscountEndsAt" TIMESTAMPTZ;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS "retailDiscountEndsAt" TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS product_related (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),

@@ -115,6 +115,7 @@ export default async function ProductPage({ params }: Props) {
         name={String(product.name ?? '')}
         description={
           (product.fullContent as string | undefined) ||
+          (product.wholesaleFullContent as string | undefined) ||
           (product.description as string | undefined) ||
           fabricLabel
         }

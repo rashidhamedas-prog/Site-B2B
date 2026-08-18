@@ -8,10 +8,13 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
     "lint": "tsc --noEmit",
-    "test": "npx ts-node --transpile-only src/modules/auth/auth.otp.logic.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo.util.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo-analysis.spec.ts && npx ts-node --transpile-only src/modules/product/product-sale.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-core.hardening.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-hardening.followup.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-concurrency.hardening.spec.ts && npx ts-node --transpile-only src/modules/payment/installment.hardening.spec.ts && npx ts-node --transpile-only src/common/integration-health.spec.ts",
+    "test": "npx ts-node --transpile-only src/modules/auth/auth.otp.logic.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo.util.spec.ts && npx ts-node --transpile-only src/modules/blog/blog-seo-analysis.spec.ts && npx ts-node --transpile-only src/modules/product/product-sale.spec.ts && npx ts-node --transpile-only src/modules/product/product-slug-redirect.spec.ts && npx ts-node --transpile-only src/modules/product/product-pack.spec.ts && npx ts-node --transpile-only src/modules/product/product-content.spec.ts && npx ts-node --transpile-only src/modules/product/product-related-fill.spec.ts && npx ts-node --transpile-only src/common/public-slug.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-core.hardening.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-hardening.followup.spec.ts && npx ts-node --transpile-only src/modules/payment/payment-concurrency.hardening.spec.ts && npx ts-node --transpile-only src/modules/payment/installment.hardening.spec.ts && npx ts-node --transpile-only src/common/integration-health.spec.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate src/database/migrations/Migration -d src/database/data-source.ts",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
-    "seed": "ts-node -r tsconfig-paths/register src/seed.ts"
+    "seed": "ts-node -r tsconfig-paths/register src/seed.ts",
+    "job:content": "ts-node -r tsconfig-paths/register src/jobs/backfill-product-content.ts",
+    "job:related": "ts-node -r tsconfig-paths/register src/jobs/backfill-related-products.ts",
+    "job:minpack-report": "ts-node -r tsconfig-paths/register src/jobs/report-min-pack-qty.ts"
   },
   "dependencies": {
     "@fastify/multipart": "^8.3.1",

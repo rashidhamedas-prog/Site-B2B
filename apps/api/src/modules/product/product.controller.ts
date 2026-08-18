@@ -64,13 +64,28 @@ export class ProductController {
     });
   }
 
-  @Get('coming-soon')
-  @ApiOperation({ summary: 'محصولات به‌زودی (پیش‌خرید)' })
-  comingSoon(
-    @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
-    @Query('channel') channel?: string,
+  @Post('content-preview')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'پیش‌نمایش متن تخصصی تک/عمده بدون ذخیره' })
+  previewContent(
+    @Body()
+    body: {
+      channel: 'RETAIL' | 'WHOLESALE';
+      productId?: string;
+      name?: string;
+      description?: string | null;
+      fabric?: string | null;
+      specs?: Record<string, unknown> | null;
+      sizeType?: string | null;
+      colors?: string[];
+      minOrderQty?: number;
+      careInstructions?: Record<string, unknown> | null;
+      categoryName?: string | null;
+    },
   ) {
-    return this.productService.findComingSoon(limit, channel);
+    return this.productService.previewGeneratedContent(body);
   }
 
   @Get('meta/spec-memory')
@@ -171,7 +186,7 @@ export class ProductController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'تنظیم موجودی محصول (جدا از رنگ‌ها — مضرب حداقل سفارش)' })
+  @ApiOperation({ summary: 'تنظیم موجودی محصول (جدا از رنگ‌ها)' })
   setStock(@Param('id') id: string, @Body() body: { stock: number }) {
     return this.productService.setProductStock(id, body.stock);
   }

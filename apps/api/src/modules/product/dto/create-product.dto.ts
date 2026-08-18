@@ -59,7 +59,7 @@ export class CreateProductDto {
 
   @ApiProperty({
     description:
-      'قیمت نهایی عمده (بعد از تخفیف، ریال). ستون DB غیرقابل‌null است؛ همیشه مثبت الزامی است.',
+      'قیمت اصلی عمده (ریال). اگر تخفیف عمده فعال باشد این مقدار پایه است و سرور قیمت نهایی و compare-at را محاسبه می‌کند.',
   })
   @IsNumber()
   @Min(1)
@@ -107,16 +107,11 @@ export class CreateProductDto {
   @IsBoolean()
   retailFeatured?: boolean;
 
-  @ApiPropertyOptional({ default: 6 })
+  @ApiPropertyOptional({ default: 1, description: 'حداقل سفارش به تعداد پک' })
   @IsOptional()
   @IsNumber()
   @Min(1)
   minOrderQty?: number;
-
-  @ApiPropertyOptional({ description: 'اجازه حداقل سفارش کمتر از ۶' })
-  @IsOptional()
-  @IsBoolean()
-  allowBelowMoq?: boolean;
 
   @ApiPropertyOptional({ enum: ['PERCENT', 'FIXED'] })
   @IsOptional()
@@ -144,6 +139,76 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   discountEndsAt?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  wholesaleIsDiscounted?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  retailIsDiscounted?: boolean;
+
+  @ApiPropertyOptional({ enum: ['PERCENT', 'FIXED'] })
+  @IsOptional()
+  @IsIn(['PERCENT', 'FIXED'])
+  wholesaleDiscountType?: 'PERCENT' | 'FIXED' | null;
+
+  @ApiPropertyOptional({ enum: ['PERCENT', 'FIXED'] })
+  @IsOptional()
+  @IsIn(['PERCENT', 'FIXED'])
+  retailDiscountType?: 'PERCENT' | 'FIXED' | null;
+
+  @ApiPropertyOptional()
+  @ValidateIf(
+    (o: CreateProductDto) =>
+      o.wholesaleIsDiscounted === true && (o.wholesaleDiscountType ?? o.discountType) !== 'FIXED',
+  )
+  @IsNumber()
+  @Min(1)
+  wholesaleDiscountPercent?: number | null;
+
+  @ApiPropertyOptional()
+  @ValidateIf(
+    (o: CreateProductDto) =>
+      o.retailIsDiscounted === true && (o.retailDiscountType ?? o.discountType) !== 'FIXED',
+  )
+  @IsNumber()
+  @Min(1)
+  retailDiscountPercent?: number | null;
+
+  @ApiPropertyOptional({ description: 'مبلغ تخفیف ثابت عمده (ریال)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  wholesaleDiscountAmount?: number | null;
+
+  @ApiPropertyOptional({ description: 'مبلغ تخفیف ثابت تکی (ریال)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  retailDiscountAmount?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  wholesaleDiscountStartsAt?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  retailDiscountStartsAt?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  wholesaleDiscountEndsAt?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  retailDiscountEndsAt?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -22,12 +22,23 @@ export async function matchPublicRedirect(
   channel: 'RETAIL' | 'WHOLESALE',
   path: string,
 ): Promise<string | null> {
+  const candidates = [path];
   try {
-    const url = `${getServerApiBase()}/blog/redirects/match?channel=${encodeURIComponent(channel)}&path=${encodeURIComponent(path)}`;
-    const res = await fetch(url, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { destinationUrl?: string } | null;
-    return safeInternalPath(String(json?.destinationUrl || ''));
+    const decoded = decodeURIComponent(path);
+    if (decoded !== path) candidates.push(decoded);
+  } catch {
+    /* keep raw */
+  }
+  try {
+    for (const candidate of candidates) {
+      const url = `${getServerApiBase()}/blog/redirects/match?channel=${encodeURIComponent(channel)}&path=${encodeURIComponent(candidate)}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const json = (await res.json()) as { destinationUrl?: string } | null;
+      const dest = safeInternalPath(String(json?.destinationUrl || ''));
+      if (dest) return dest;
+    }
+    return null;
   } catch {
     return null;
   }

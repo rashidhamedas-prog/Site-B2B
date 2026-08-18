@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { getToken } from '@/lib/auth';
-import { sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
+import { channelSaleDisplay, sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 
 export type WholesaleCardProduct = {
@@ -15,6 +15,12 @@ export type WholesaleCardProduct = {
   name: string;
   fabric?: string;
   wholesalePrice?: number | null;
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
   status?: string;
   stock?: number;
   totalStock?: number;
@@ -39,7 +45,10 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
   const isComingSoon = product.status === 'COMING_SOON';
   const isAvailable = stock > 0 && !isComingSoon;
   const colors = uniqueByColor(variants);
-  const price = Number(product.wholesalePrice || 0);
+  const { price, compareAt, discount, active: saleActive } = channelSaleDisplay(
+    product.sale,
+    product.wholesalePrice,
+  );
   const showPrice = signedIn && price > 0;
 
   useEffect(() => {
@@ -66,6 +75,11 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
           >
             {isAvailable ? 'آماده سفارش' : isComingSoon ? 'به‌زودی' : 'ناموجود'}
           </span>
+          {saleActive && discount ? (
+            <span className="rounded-sm bg-[var(--brand-gold,#C9A84C)] px-2.5 py-1 text-[10px] font-bold text-[var(--brand-green-dark,#0F2F28)]">
+              ٪{discount.toLocaleString('fa-IR')} تخفیف
+            </span>
+          ) : null}
           {product.fabric ? (
             <span className="rounded-sm bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[var(--brand-green-dark,#0F2F28)]">
               {product.fabric}
@@ -111,6 +125,9 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
             <p className="mt-0.5 text-base font-black text-[var(--brand-green,#1B5C4A)]">
               {showPrice ? `${toman(price)} تومان` : 'پس از ورود'}
             </p>
+            {showPrice && saleActive && compareAt > price ? (
+              <p className="text-[11px] text-[var(--brand-muted,#6B7280)] line-through">{toman(compareAt)}</p>
+            ) : null}
           </div>
           <button
             type="button"

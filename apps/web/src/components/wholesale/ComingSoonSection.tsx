@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { channelSaleDisplay, toman } from '@/lib/product-display';
 
 interface Product {
   id: string;
@@ -9,6 +10,12 @@ interface Product {
   name: string;
   fabric?: string;
   wholesalePrice: number;
+  sale?: {
+    active?: boolean;
+    payable?: number;
+    original?: number | null;
+    badgePercent?: number;
+  };
   status: string;
   isDiscounted?: boolean;
   isNew?: boolean;
@@ -93,7 +100,10 @@ export async function ComingSoonSection({
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-5">
           {products.slice(0, 8).map((product) => {
-            const priceInTomans = Math.round(Number(product.wholesalePrice) / 10).toLocaleString('fa-IR');
+            const { price, compareAt, discount, active: saleActive } = channelSaleDisplay(
+              product.sale,
+              product.wholesalePrice,
+            );
             const imageUrl = product.images?.[0];
             return (
               <Link
@@ -116,10 +126,10 @@ export async function ComingSoonSection({
                       به زودی
                     </span>
                   </div>
-                  {product.isDiscounted && (
+                  {saleActive && (
                     <div className="absolute top-3 left-3">
                       <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-bold text-white">
-                        تخفیف‌دار
+                        {discount ? `٪${discount.toLocaleString('fa-IR')} تخفیف` : 'تخفیف‌دار'}
                       </span>
                     </div>
                   )}
@@ -133,7 +143,12 @@ export async function ComingSoonSection({
                   {product.fabric && <p className="text-xs text-gray-400">{product.fabric}</p>}
                   <div className="mt-auto flex items-center justify-between pt-1">
                     <p className="text-[11px] font-medium text-secondary-dark">پیش‌خرید</p>
-                    <p className="text-sm font-bold text-primary">{priceInTomans} ت</p>
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-primary">{price > 0 ? `${toman(price)} ت` : '—'}</p>
+                      {saleActive && compareAt > price ? (
+                        <p className="text-[11px] text-gray-400 line-through">{toman(compareAt)}</p>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </Link>

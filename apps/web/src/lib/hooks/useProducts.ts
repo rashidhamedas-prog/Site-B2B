@@ -38,11 +38,24 @@ export interface Product {
   retailCompareAtPrice?: number | null;
   wholesaleCompareAtPrice?: number | null;
   slug?: string;
+  wholesaleIsDiscounted?: boolean;
+  retailIsDiscounted?: boolean;
   discountType?: 'PERCENT' | 'FIXED' | null;
   discountPercent?: number | null;
   discountAmount?: number | null;
   discountStartsAt?: string | null;
   discountEndsAt?: string | null;
+  wholesaleDiscountType?: 'PERCENT' | 'FIXED' | null;
+  retailDiscountType?: 'PERCENT' | 'FIXED' | null;
+  wholesaleDiscountPercent?: number | null;
+  retailDiscountPercent?: number | null;
+  wholesaleDiscountAmount?: number | null;
+  retailDiscountAmount?: number | null;
+  wholesaleDiscountStartsAt?: string | null;
+  retailDiscountStartsAt?: string | null;
+  wholesaleDiscountEndsAt?: string | null;
+  retailDiscountEndsAt?: string | null;
+  packQty?: number;
   retailFullContent?: string | null;
   wholesaleFullContent?: string | null;
   legacyContent?: string | null;
@@ -53,7 +66,6 @@ export interface Product {
     sku?: string;
     images?: string[];
   }>;
-  allowBelowMoq?: boolean;
   careInstructions?: Record<string, unknown> | null;
   faqItems?: Array<{ question: string; answer: string }> | null;
   sale?: {

@@ -1,4 +1,9 @@
-import { packPieces } from './product-display';
+import {
+  channelSaleDisplay,
+  piecesPerPackCount,
+  sizeCountForType,
+  type ChannelSale,
+} from './product-display';
 
 export type WholesaleOrderVariant = {
   id?: string;
@@ -16,6 +21,7 @@ export type WholesaleOrderProduct = {
   sku?: string;
   fabric?: string;
   wholesalePrice?: number | null;
+  sale?: ChannelSale | null;
   minOrderQty?: number;
   minimumOrderQuantity?: number;
   allowWholesaleColorSelect?: boolean;
@@ -28,6 +34,8 @@ export type WholesaleOrderProduct = {
   sizeType?: string;
   status?: string;
   specs?: { fabricType?: string; packQty?: string };
+  fullContent?: string | null;
+  wholesaleFullContent?: string | null;
 };
 
 export function variantWholesale(v: WholesaleOrderVariant): number {
@@ -35,7 +43,9 @@ export function variantWholesale(v: WholesaleOrderVariant): number {
 }
 
 export function wholesaleMoq(product: WholesaleOrderProduct): number {
-  return Math.max(1, Number(product.minOrderQty || product.minimumOrderQuantity || 6));
+  const raw = product.minOrderQty ?? product.minimumOrderQuantity ?? 1;
+  const n = Math.floor(Number(raw));
+  return Number.isFinite(n) && n >= 1 ? n : 1;
 }
 
 export function defaultWholesaleColors(product: WholesaleOrderProduct): string[] {
@@ -60,11 +70,18 @@ export function wholesaleOrderSummary(
   const allowColorSelect = !!product.allowWholesaleColorSelect;
   const minColors = Math.max(1, Number(product.minWholesaleColors) || 1);
   const colorsForOrder = allowColorSelect ? selectedColors : availableColors.map((c) => c.name);
-  const colorCount = Math.max(0, colorsForOrder.length);
-  const sizeCount = Math.max(0, availableSizes.length);
-  const packMode = availableColors.length > 0 && availableSizes.length > 0;
-  const pieces = packMode ? packCount * packPieces(colorCount, sizeCount) : packCount;
+  const typedSizeCount = sizeCountForType(product.sizeType);
+  const sizeCount = typedSizeCount ?? Math.max(0, availableSizes.length);
+  const packMode = availableColors.length > 0 && sizeCount > 0;
+  const piecesPerPack = packMode
+    ? piecesPerPackCount(colorsForOrder, product.sizeType, availableSizes)
+    : 1;
+  const pieces = packMode ? packCount * piecesPerPack : packCount;
   const minOrder = wholesaleMoq(product);
+  const { price: unitPrice, compareAt, discount, active: saleActive } = channelSaleDisplay(
+    product.sale,
+    product.wholesalePrice,
+  );
   const colorsReady = !allowColorSelect || selectedColors.length >= minColors;
   const isComingSoon = product.status === 'COMING_SOON';
   const totalStock =
@@ -96,13 +113,17 @@ export function wholesaleOrderSummary(
     minColors,
     colorsForOrder,
     packMode,
-    piecesPerPack: packMode ? packPieces(Math.max(colorCount, 1), Math.max(sizeCount, 1)) : 1,
+    piecesPerPack,
+    sizeCount,
     totalPieces: pieces,
     minOrder,
     colorsReady,
     isComingSoon,
     totalStock,
     canOrder: colorsReady && (isComingSoon || (packMode ? packStockOk : totalStock >= minOrder)),
-    unitPrice: Number(product.wholesalePrice || 0),
+    unitPrice,
+    compareAt,
+    discount,
+    saleActive,
   };
 }
