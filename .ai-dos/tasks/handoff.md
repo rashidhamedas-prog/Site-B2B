@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-19T00:20:00Z — TASK-20260818-002 About scene visibility hotfix
+
+- Task / owner: TASK-20260818-002 / cursor:implementer-TASK-20260818-002
+- Evidence: live+local scroll p=0→1 worked; end-state thread 0.85 / spool 1 / garment fill #164a3b on #0f2f28
+- After fix: p=1 thread 0, spool 0, garment 1, hanger 1; linen weave #ead9bc
+- Debug ingest removed after verification
+- Exact next: commit claimed about CSS/scene + WORKLOG/handoff → merge/deploy so live `/about` matches local
+- Rollback: revert about.module.css + AboutScene.tsx weave/opacity rules
+
 ## 2026-08-18T12:45:00Z — TASK-20260818-002 wholesale About CSS-3D scroll (uncommitted)
 
 - Task / owner: TASK-20260818-002 / cursor:implementer-TASK-20260818-002

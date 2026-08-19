@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260818-002-wholesale-about-3d"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-18T12:20:00Z"
-    heartbeat_at: "2026-08-18T12:45:00Z"
+    heartbeat_at: "2026-08-19T00:20:00Z"
     depends_on: []
     file_claims:
       - "apps/web/src/app/(wholesale)/about/page.tsx"

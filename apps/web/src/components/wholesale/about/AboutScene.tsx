@@ -69,8 +69,9 @@ export function AboutScene() {
             <svg className={styles.garment} viewBox="0 0 240 268" role="presentation">
               <defs>
                 <pattern id={weave} width="8" height="8" patternUnits="userSpaceOnUse">
-                  <rect width="8" height="8" fill="#164a3b" />
-                  <path d="M0 8 L8 0" stroke="#1b5c4a" strokeWidth="0.6" />
+                  <rect width="8" height="8" fill="#ead9bc" />
+                  <path d="M0 8 L8 0" stroke="#1b5c4a" strokeWidth="0.55" />
+                  <path d="M0 0 L8 8" stroke="#c9a84c" strokeWidth="0.35" opacity="0.5" />
                 </pattern>
                 <linearGradient id={gold} x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0%" stopColor="#e5c97c" />

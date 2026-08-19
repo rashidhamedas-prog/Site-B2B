@@ -106,7 +106,7 @@
   aspect-ratio: 5 / 4;
   overflow: hidden;
   background: #0f2f28;
-  contain: layout paint;
+  contain: layout;
 }
 
 @media (min-width: 1024px) {
@@ -185,7 +185,7 @@
   box-shadow:
     inset 10px 0 14px rgba(0, 0, 0, 0.28),
     inset -8px 0 10px rgba(255, 255, 255, 0.22);
-  opacity: calc(1 - var(--unroll) * 0.92);
+  opacity: calc((1 - var(--unroll)) * (1 - var(--sew)));
   transform:
     rotateZ(-12deg)
     rotateY(calc(var(--unroll) * 42deg))
@@ -210,11 +210,11 @@
   background:
     repeating-linear-gradient(90deg, #cbb79a 0 1px, #e2d3b8 1px 5px),
     repeating-linear-gradient(0deg, rgba(90, 70, 48, 0.18) 0 1px, transparent 1px 7px);
-  opacity: calc(0.15 + var(--unroll) * 0.75 - var(--sew) * 0.85);
+  opacity: calc(0.28 + var(--unroll) * 0.7 - var(--sew) * 0.95);
   transform:
     rotateX(58deg)
     translateZ(12px)
-    scaleX(calc(0.18 + var(--unroll) * 0.82));
+    scaleX(calc(0.38 + var(--unroll) * 0.62));
   transform-origin: 100% 50%;
 }
 
@@ -272,11 +272,11 @@
   transform:
     translateZ(calc(48px + var(--ready) * 56px))
     translateY(calc(var(--ready) * -12px))
-    scale(calc(0.9 + var(--ready) * 0.12));
+    scale(calc(0.94 + var(--ready) * 0.14));
 }
 
 .garment {
-  width: min(72%, 17rem);
+  width: min(84%, 19.5rem);
   height: auto;
   overflow: visible;
   filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.28));
@@ -299,7 +299,7 @@
   height: 3.4rem;
   border-radius: 0.35rem;
   background: linear-gradient(90deg, #8a6b24, #e5c97c 45%, #c9a84c 55%, #8a6b24);
-  opacity: calc(0.55 + var(--cut) * 0.45);
+  opacity: calc((0.55 + var(--cut) * 0.45) * (1 - var(--ready)));
   transform: rotateZ(-8deg) translateZ(30px) scale(calc(1 - var(--ready) * 0.15));
 }
 
@@ -315,7 +315,7 @@
 .thread {
   position: absolute;
   inset: 18% 10% 20%;
-  opacity: calc(var(--cut) * 0.85);
+  opacity: calc(var(--cut) * 0.85 * (1 - var(--ready)));
   transform: translateZ(26px);
 }
 
