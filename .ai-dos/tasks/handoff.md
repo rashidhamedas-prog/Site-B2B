@@ -2,6 +2,35 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-22T14:30:00Z — TASK-20260822-005 PHASE-01 GA4 measurement claimed
+
+- Task / owner: TASK-20260822-005 / cursor:implementer-TASK-20260822-005
+- Branch: `ai/TASK-20260822-005-ga4-measurement` (from HEAD `bbd8181`)
+- Git checkpoint: dirty tree preserved (unrelated untracked SEO/ai-dos backups)
+- Stale reclaim: `apps/web/src/app/retail/products/[slug]/page.tsx` from TASK-018-001 / TASK-006 for a view_item mount only
+- Non-claims: RetailProductDetail (TASK-004), middleware (TASK-001), payment callback (TASK-012), RetailHeader (TASK-006)
+- Exact next: central helper → admin/dev gates → ecommerce events → reports + gates
+- Rollback: revert claimed analytics files; no schema/migration
+
+## 2026-08-22T14:55:00Z — TASK-20260822-004 retail PDP implemented
+
+- Task / owner: TASK-20260822-004 / cursor:implementer-TASK-20260822-004
+- Branch: `ai/TASK-20260822-004-retail-pdp`
+- Gallery 3:4, 64px thumbs, lightbox Escape/prev/next; size/color ≥44px; sticky bar price+size; add gated on size
+- Non-claims: `[slug]/page.tsx` (TASK-018), RetailHeader (TASK-006), retail.css unchanged
+- Exact next: commit claimed files → PR/merge → VPS auto-deploy → smoke a live PDP
+- Gates: web `tsc --noEmit` **0**
+- Rollback: revert RetailProductDetail.tsx + product.md
+
+## 2026-08-22T14:20:00Z — TASK-20260822-004 retail PDP gallery + size UX
+
+- Task / owner: TASK-20260822-004 / cursor:implementer-TASK-20260822-004
+- Branch: `ai/TASK-20260822-004-retail-pdp`
+- Continues TASK-003 editorial pattern onto gallery and size/color pickers
+- Non-claims: `[slug]/page.tsx` (TASK-018), RetailHeader (TASK-006)
+- Exact next: implement RetailProductDetail → web tsc → PR/merge/deploy
+- Rollback: revert claimed PDP files
+
 ## 2026-08-22T10:30:00Z — TASK-20260822-003 retail home + product-card UI/UX
 
 - Task / owner: TASK-20260822-003 / cursor:implementer-TASK-20260822-003
@@ -9,9 +38,10 @@ Append newest entries at the top. Never erase another agent's record.
 - Benchmark: Digistyle / Banimode / Modiseh card+home patterns; Vercel Commerce + vercel-labs/agent-skills web-design-guidelines — no new deps
 - Scope: editorial product cards, home trust strip, CTA render, FAQ accordion, category tiles hover-not-required
 - Non-claims: RetailHeader (TASK-006), defaults.ts (TASK-017), middleware.ts (TASK-001)
-- Exact next: commit claimed files → merge/deploy → smoke `.ir` home + product cards
+- Exact next: live at merge `37878a0`; VPS HEAD **37878a0**; API health 200; `.ir` 200 with trust strip + compact cards (`faq-plus`, `تعهدهای فروشگاه`, no home add-to-cart)
 - Gates: web `tsc --noEmit` **0**; web lint **0**
-- Rollback: revert claimed web/design-system files
+- PR: https://github.com/rashidhamedas-prog/Site-BtoB/pull/50 merged
+- Rollback: revert merge `37878a0`
 
 ## 2026-08-22T13:40:00Z — TASK-20260822-001 /retail 301 + rewrite ping-pong
 
