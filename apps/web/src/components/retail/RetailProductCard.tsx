@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Heart, ShieldCheck, Truck } from 'lucide-react';
+import { ArrowLeft, Heart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
@@ -14,6 +14,7 @@ export type RetailCardProduct = {
   name: string;
   slug: string;
   sku?: string;
+  fabric?: string | null;
   retailPrice?: number | null;
   retailCompareAtPrice?: number | null;
   images?: string[];
@@ -70,13 +71,16 @@ export function RetailProductCard({
     product.stock ??
     product.totalStock ??
     (product.variants ?? []).reduce((sum, v) => sum + Number(v.retailStock ?? v.stock ?? 0), 0);
+  const soldOut = !product.isPreOrder && stock <= 0;
 
   useEffect(() => setWishlisted(isInWishlist(product.id)), [product.id]);
 
   const selectedVariant = (product.variants ?? []).find(
     (v) => (!color || v.color === color) && (!size || v.size === size),
   );
-  const canQuickAdd = price > 0 && (product.isPreOrder || stock > 0) && (!sizes.length || !!size);
+  const needsSize = sizes.length > 1;
+  const canQuickAdd =
+    !soldOut && price > 0 && (product.isPreOrder || stock > 0) && (!sizes.length || !!size);
 
   const onWishlist = () => {
     setWishlisted(
@@ -108,25 +112,25 @@ export function RetailProductCard({
   };
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-[var(--retail-border)] bg-[var(--retail-bg)] transition duration-300 hover:border-[var(--retail-gold)] focus-within:ring-2 focus-within:ring-[var(--retail-gold)] focus-within:ring-offset-2 motion-reduce:transition-none">
+    <article className="group relative flex h-full flex-col bg-transparent transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,47,40,0.08)] focus-within:shadow-[0_16px_40px_rgba(15,47,40,0.08)] motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <div className="relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)]">
-        <Link href={href} className="absolute inset-0 z-[1] focus:outline-none" aria-label={`مشاهده ${product.name}`}>
+        <Link href={href} className="absolute inset-0 z-[1] cursor-pointer focus:outline-none" aria-label={`مشاهده ${product.name}`}>
           {image ? (
             <>
               <Image
                 src={image}
                 alt={product.name}
                 fill
-                className="object-cover transition duration-300 group-hover:scale-[1.025] motion-reduce:transition-none"
+                className={`object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none ${soldOut ? 'opacity-60 grayscale' : ''}`}
                 sizes="(max-width:768px) 50vw, 25vw"
               />
-              {secondImage ? (
+              {secondImage && !soldOut ? (
                 <Image
                   src={secondImage}
                   alt=""
                   aria-hidden
                   fill
-                  className="hidden object-cover opacity-0 transition duration-300 group-hover:opacity-100 md:block motion-reduce:hidden"
+                  className="hidden object-cover opacity-0 transition duration-500 group-hover:opacity-100 md:block motion-reduce:hidden"
                   sizes="25vw"
                 />
               ) : null}
@@ -137,7 +141,8 @@ export function RetailProductCard({
             </span>
           )}
         </Link>
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between p-3">
+
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between p-2.5 sm:p-3">
           <div className="flex flex-col items-start gap-1.5">
             {discount ? (
               <span className="rounded-full bg-[var(--retail-gold)] px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
@@ -154,51 +159,55 @@ export function RetailProductCard({
                 پیش‌فروش
               </span>
             ) : null}
+            {soldOut ? (
+              <span className="rounded-full bg-[var(--retail-ink)] px-2.5 py-1 text-[10px] font-bold text-white">
+                ناموجود
+              </span>
+            ) : null}
           </div>
         </div>
+
         <button
           type="button"
           onClick={onWishlist}
           aria-label={wishlisted ? `حذف ${product.name} از علاقه‌مندی‌ها` : `افزودن ${product.name} به علاقه‌مندی‌ها`}
           aria-pressed={wishlisted}
-          className="absolute left-3 top-3 z-10 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-[var(--retail-border)] bg-[var(--retail-bg)]/90 text-[var(--retail-primary)] transition hover:text-[var(--retail-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
+          className="absolute left-2 top-2 z-10 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-white/90 text-[var(--retail-primary)] shadow-sm transition hover:text-[var(--retail-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] sm:left-3 sm:top-3"
         >
           <Heart className="h-5 w-5" fill={wishlisted ? 'currentColor' : 'none'} aria-hidden />
         </button>
+
         {stock > 0 && stock <= 4 ? (
           <span className="absolute bottom-3 right-3 z-[2] rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
             فقط {stock.toLocaleString('fa-IR')} عدد
           </span>
         ) : null}
-        {(product.images?.length ?? 0) > 1 ? (
-          <span className="absolute bottom-3 left-3 z-[2] rounded-full bg-white/90 px-2.5 py-1 text-[10px] text-[var(--retail-ink)]">
-            ۱/{(product.images?.length ?? 1).toLocaleString('fa-IR')}
-          </span>
-        ) : null}
+
+        <Link
+          href={href}
+          tabIndex={-1}
+          aria-hidden
+          className="pointer-events-none absolute inset-x-3 bottom-3 z-[2] hidden min-h-11 items-center justify-center rounded-md bg-[var(--retail-primary)]/95 text-xs font-bold text-white opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 md:flex motion-reduce:hidden"
+        >
+          {soldOut ? 'مشاهده جزئیات' : 'انتخاب سایز'}
+        </Link>
       </div>
 
-      <div className={`flex flex-1 flex-col ${compact ? 'gap-2 p-3' : 'gap-3 p-4'}`}>
-        <div className="flex items-start justify-between gap-3">
-          <Link href={href} className="rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]">
-            <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-[var(--retail-ink)] sm:text-base">
-              {product.name}
-            </h3>
-          </Link>
-          <div className="shrink-0 text-left">
-            <p className="text-sm font-bold text-[var(--retail-primary)]">
-              {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
-            </p>
-            {discount ? (
-              <p className="text-[11px] text-[var(--retail-muted)] line-through">{toman(compareAt)}</p>
-            ) : null}
-          </div>
-        </div>
-
-        {!compact && colors.length > 0 ? (
-          <div className="flex items-center gap-2 border-t border-[var(--retail-border)] pt-3">
-            <span className="w-10 text-[11px] text-[var(--retail-muted)]">رنگ:</span>
-            <div className="flex flex-wrap gap-1.5" aria-label={`${colors.length.toLocaleString('fa-IR')} رنگ`}>
-              {colors.slice(0, 4).map((variant) => (
+      <div className={`flex flex-1 flex-col text-center ${compact ? 'gap-1.5 px-1.5 py-3' : 'gap-2.5 px-2 py-4'}`}>
+        {colors.length > 0 ? (
+          <div
+            className={`flex flex-wrap items-center justify-center gap-0.5 ${compact ? '' : 'pt-0.5'}`}
+            aria-label={`${colors.length.toLocaleString('fa-IR')} رنگ`}
+          >
+            {colors.slice(0, compact ? 5 : 6).map((variant) =>
+              compact ? (
+                <span
+                  key={variant.color}
+                  title={variant.color}
+                  className="h-3.5 w-3.5 rounded-full border border-black/10"
+                  style={{ backgroundColor: variant.colorHex || '#d6d3d1' }}
+                />
+              ) : (
                 <button
                   key={variant.color}
                   type="button"
@@ -206,76 +215,102 @@ export function RetailProductCard({
                   aria-label={variant.color}
                   aria-pressed={color === variant.color}
                   onClick={() => setColor(variant.color ?? '')}
-                  className={`h-6 w-6 rounded-full border ${
-                    color === variant.color
-                      ? 'border-[var(--retail-primary)] ring-2 ring-[var(--retail-primary)]/20'
-                      : 'border-[var(--retail-border)]'
-                  }`}
-                  style={{ backgroundColor: variant.colorHex || '#d6d3d1' }}
-                />
-              ))}
-            </div>
-            {colors.length > 4 ? (
+                  className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
+                >
+                  <span
+                    className={`block h-5 w-5 rounded-full border ${
+                      color === variant.color
+                        ? 'border-[var(--retail-primary)] ring-2 ring-[var(--retail-primary)]/25'
+                        : 'border-[var(--retail-border)]'
+                    }`}
+                    style={{ backgroundColor: variant.colorHex || '#d6d3d1' }}
+                  />
+                </button>
+              ),
+            )}
+            {colors.length > (compact ? 5 : 6) ? (
               <span className="text-[10px] text-[var(--retail-muted)]">
-                +{(colors.length - 4).toLocaleString('fa-IR')} رنگ
+                +{(colors.length - (compact ? 5 : 6)).toLocaleString('fa-IR')}
               </span>
             ) : null}
           </div>
         ) : null}
 
+        <Link
+          href={href}
+          className="mx-auto rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
+        >
+          <h3 className="line-clamp-2 min-h-10 text-[13px] font-bold leading-5 text-[var(--retail-ink)] sm:text-sm">
+            {product.name}
+          </h3>
+        </Link>
+        {product.fabric ? (
+          <p className="text-[11px] text-[var(--retail-muted)]">{product.fabric}</p>
+        ) : null}
+
+        <div>
+          <p className="text-sm font-extrabold text-[var(--retail-primary)]">
+            {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
+          </p>
+          {discount ? (
+            <p className="text-[11px] text-[var(--retail-muted)] line-through">{toman(compareAt)}</p>
+          ) : null}
+        </div>
+
         {!compact && sizes.length > 0 ? (
-          <div className="flex items-center gap-2">
-            <span className="w-10 text-[11px] text-[var(--retail-muted)]">سایز:</span>
-            <div className="flex flex-wrap gap-1.5">
-              {sizes.slice(0, 5).map((row) => (
-                <button
-                  key={row}
-                  type="button"
-                  onClick={() => setSize(row)}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] ${
-                    size === row
-                      ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)]/5 text-[var(--retail-primary)]'
-                      : 'border-[var(--retail-border)] text-[var(--retail-ink)]'
-                  }`}
-                >
-                  {row}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-wrap items-center justify-center gap-1.5" aria-label="سایز">
+            {sizes.slice(0, 6).map((row) => (
+              <button
+                key={row}
+                type="button"
+                onClick={() => setSize(row)}
+                className={`min-h-9 min-w-9 cursor-pointer rounded-full border px-2.5 text-[11px] ${
+                  size === row
+                    ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)]/5 font-bold text-[var(--retail-primary)]'
+                    : 'border-[var(--retail-border)] text-[var(--retail-ink)]'
+                }`}
+              >
+                {row}
+              </button>
+            ))}
           </div>
         ) : null}
 
         {compact ? (
           <Link
             href={href}
-            className="mt-auto inline-flex min-h-11 items-center justify-center rounded-lg border border-[var(--retail-primary)] px-3 text-xs font-bold text-[var(--retail-primary)] transition hover:bg-[var(--retail-primary)] hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
+            className="mt-auto inline-flex min-h-11 items-center justify-center text-xs font-bold text-[var(--retail-primary)] underline-offset-4 transition hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] md:sr-only"
           >
-            مشاهده و انتخاب سایز
-            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            انتخاب سایز
+            <ArrowLeft className="mr-1 h-3.5 w-3.5" aria-hidden />
+          </Link>
+        ) : soldOut ? (
+          <Link
+            href={href}
+            className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-[var(--retail-border)] px-3 text-sm font-bold text-[var(--retail-ink)] transition hover:border-[var(--retail-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
+          >
+            مشاهده جزئیات
+          </Link>
+        ) : needsSize && !size ? (
+          <Link
+            href={href}
+            className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md bg-[var(--retail-primary)] px-3 text-sm font-bold text-white transition hover:bg-[var(--retail-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
+          >
+            انتخاب سایز
           </Link>
         ) : (
           <button
             type="button"
             disabled={!canQuickAdd}
             onClick={onAdd}
-            className="mt-auto inline-flex min-h-12 items-center justify-center rounded-lg bg-[var(--retail-primary)] px-3 text-sm font-bold text-white transition hover:bg-[var(--retail-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md bg-[var(--retail-primary)] px-3 text-sm font-bold text-white transition hover:bg-[var(--retail-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {added ? 'به سبد اضافه شد' : 'افزودن به سبد'}
           </button>
         )}
-
-        {!compact ? (
-          <div className="flex items-center justify-center gap-4 border-t border-[var(--retail-border)] pt-2 text-[10px] text-[var(--retail-muted)]">
-            <span className="inline-flex items-center gap-1">
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-              تضمین اصالت
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Truck className="h-3.5 w-3.5" aria-hidden />
-              ارسال سریع
-            </span>
-          </div>
-        ) : null}
+        <span className="sr-only" aria-live="polite">
+          {added ? `${product.name} به سبد اضافه شد` : ''}
+        </span>
       </div>
     </article>
   );

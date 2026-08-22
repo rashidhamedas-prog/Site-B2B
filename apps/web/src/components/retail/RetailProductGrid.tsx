@@ -21,7 +21,7 @@ async function fetchRetailProducts(limit: number, sort: string): Promise<{ produ
   }
 }
 
-/** SSR product grid for retail home — no client waterfall. Never shows fake products. */
+/** SSR product grid for retail home — compact editorial cards, no client waterfall. */
 export async function RetailProductGrid({
   title = 'جدیدترین‌ها',
   limit = 12,
@@ -36,7 +36,7 @@ export async function RetailProductGrid({
   const products = fetched.length > 0 ? fetched : FALLBACK;
 
   return (
-    <section className="relative overflow-hidden bg-[var(--retail-bg)] py-16 sm:py-20">
+    <section className="relative overflow-hidden bg-[var(--retail-bg)] py-14 sm:py-20">
       <svg
         className="pointer-events-none absolute -left-6 top-10 hidden h-64 w-40 text-[var(--retail-gold)] opacity-40 lg:block"
         viewBox="0 0 120 220"
@@ -54,9 +54,17 @@ export async function RetailProductGrid({
       </svg>
 
       <div className="relative mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mb-10 text-center">
-          <p className="text-xs font-semibold tracking-[0.2em] text-[var(--retail-gold)]">COLLECTION</p>
-          <h2 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{title}</h2>
+        <div className="mb-8 flex flex-col items-center gap-4 text-center sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:text-right">
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.2em] text-[var(--retail-gold)]">COLLECTION</p>
+            <h2 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{title}</h2>
+          </div>
+          <Link
+            href="/products"
+            className="inline-flex min-h-11 cursor-pointer items-center border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
+          >
+            مشاهده همه محصولات
+          </Link>
         </div>
 
         {products.length === 0 ? (
@@ -72,19 +80,12 @@ export async function RetailProductGrid({
             </Link>
           </div>
         ) : (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-          {products.map((p) => <RetailProductCard key={p.id} product={p} />)}
-        </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-4 md:gap-6">
+            {products.map((p) => (
+              <RetailProductCard key={p.id} product={p} compact />
+            ))}
+          </div>
         )}
-
-        <div className="mt-10 text-center">
-          <Link
-            href="/products"
-            className="inline-flex cursor-pointer border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
-          >
-            مشاهده همه محصولات
-          </Link>
-        </div>
       </div>
     </section>
   );

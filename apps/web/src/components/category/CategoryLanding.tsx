@@ -9,7 +9,8 @@ import {
   FaqJsonLd,
 } from '@/components/shared/JsonLd';
 import { getCategoryCanonicalUrl, siteOrigin, type PublicSite } from '@/lib/canonical-urls';
-import { channelSaleDisplay, mediaUrl, toman, uniqueByColor, uniqueSizes } from '@/lib/product-display';
+import { mediaUrl, uniqueByColor, uniqueSizes } from '@/lib/product-display';
+import { RetailProductCard } from '@/components/retail/RetailProductCard';
 import { getServerApiBase } from '@/lib/server-api';
 import { redirectIfMatched } from '@/lib/seo-redirect';
 
@@ -290,19 +291,27 @@ function CategoryProductCard({
   const colors = uniqueByColor(variants);
   const sizes = uniqueSizes(variants);
   const retail = channel === 'RETAIL';
-  const { price, compareAt, active: saleActive } = channelSaleDisplay(
-    product.sale,
-    retail ? product.retailPrice : product.wholesalePrice,
-  );
+
+  if (retail && product.id && product.slug) {
+    return (
+      <RetailProductCard
+        compact
+        product={{
+          id: product.id,
+          name: product.name || '',
+          slug: product.slug,
+          fabric: product.fabric,
+          retailPrice: product.retailPrice,
+          images: product.images,
+          sale: product.sale,
+          variants: product.variants,
+        }}
+      />
+    );
+  }
 
   return (
-    <article
-      className={
-        retail
-          ? 'group overflow-hidden rounded-2xl bg-white ring-1 ring-[var(--retail-border,#E8E0D4)]'
-          : 'group overflow-hidden rounded-lg border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)]'
-      }
-    >
+    <article className="group overflow-hidden rounded-lg border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)]">
       <Link href={href} className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)]">
         {image ? (
           <Image
@@ -325,17 +334,7 @@ function CategoryProductCard({
         {product.fabric ? (
           <p className="mt-1 text-xs text-[var(--brand-muted,#6B7280)]">{product.fabric}</p>
         ) : null}
-        {retail && price > 0 ? (
-          <div className="mt-2">
-            <p className="text-sm font-extrabold text-[var(--retail-primary,#1B5C4A)]">
-              {toman(price)} تومان
-            </p>
-            {saleActive && compareAt > price ? (
-              <p className="text-[11px] text-[var(--retail-muted,#6B7280)] line-through">{toman(compareAt)}</p>
-            ) : null}
-          </div>
-        ) : null}
-        {!retail && (colors.length || sizes.length) ? (
+        {(colors.length || sizes.length) ? (
           <div className="mt-2 space-y-1.5 text-xs text-[var(--brand-muted,#6B7280)]">
             {colors.length ? (
               <p>

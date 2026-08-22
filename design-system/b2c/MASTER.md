@@ -26,6 +26,10 @@
 
 ## Product strip
 
-- Cream section, 4 editorial product tiles
-- Heart wishlist icon, centered name + price
-- Optional gold floral line-art accent
+- Cream section, max 12 editorial tiles (2× / 4× grid)
+- Borderless card, 3:4 image, second photo on desktop hover
+- Heart wishlist (44px hit), discount/new/sold-out badges
+- Color dots + centered name + fabric + price (Toman)
+- Home/category: compact — CTA is «انتخاب سایز» (PDP); no per-card trust icons
+- Catalog: size chips + add-to-cart
+- Trust strip lives once under the hero, not on every card

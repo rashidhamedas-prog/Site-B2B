@@ -139,7 +139,7 @@ export async function RetailCategoryBannerGrid({
               <Link
                 key={c.id}
                 href={`/products?categoryId=${encodeURIComponent(c.id)}`}
-                className="group relative block aspect-[4/5] overflow-hidden bg-[var(--retail-primary-dark)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
+                className="group relative block aspect-[4/5] cursor-pointer overflow-hidden bg-[var(--retail-primary-dark)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
               >
                 {img ? (
                   <Image
@@ -162,7 +162,7 @@ export async function RetailCategoryBannerGrid({
                   <span className="block text-center text-sm font-extrabold text-white sm:text-[15px]">
                     {label}
                   </span>
-                  <span className="mt-1.5 block text-center text-[10px] font-medium tracking-[0.14em] text-[var(--retail-gold-light)] opacity-0 transition duration-500 group-hover:opacity-100">
+                  <span className="mt-1.5 block text-center text-[10px] font-medium tracking-[0.14em] text-[var(--retail-gold-light)] opacity-90 transition duration-500 md:opacity-0 md:group-hover:opacity-100">
                     مشاهده مجموعه
                   </span>
                 </div>

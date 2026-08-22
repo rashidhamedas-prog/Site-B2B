@@ -6,6 +6,8 @@ import { RetailHero } from '@/components/retail/RetailHero';
 import { RetailFaq } from '@/components/retail/RetailFaq';
 import { RetailProductGrid } from '@/components/retail/RetailProductGrid';
 import { RetailCategoryBannerGrid } from '@/components/retail/RetailCategoryBannerGrid';
+import { RetailCtaBanner } from '@/components/retail/RetailCtaBanner';
+import { RetailTrustStrip, RETAIL_TRUST_FALLBACK, type TrustItem } from '@/components/retail/RetailTrustStrip';
 import {
   filterChromeBlocks,
   heroPropsFromBlock,
@@ -22,6 +24,12 @@ function SectionSkeleton({ className = 'h-64' }: { className?: string }) {
   );
 }
 
+function statsItems(p: Record<string, unknown>): TrustItem[] {
+  return arr<{ value: string; label: string; sublabel?: string }>(p, 'items').filter(
+    (item) => item.value || item.label,
+  );
+}
+
 /** Retail-only CMS blocks — keeps wholesale client chunks out of .ir bundle. */
 export async function RetailBlocksRenderer({
   blocks,
@@ -31,31 +39,33 @@ export async function RetailBlocksRenderer({
   skipChrome?: boolean;
 }) {
   const list = filterChromeBlocks(blocks, skipChrome);
+  const looksLikeHome =
+    list.some((block) => block.type === 'hero') &&
+    list.some((block) => block.type === 'products' || block.type === 'categoryBanners');
+  const statsBlock = list.find((block) => block.type === 'stats');
+  const hoistTrust = looksLikeHome;
   const nodes: ReactNode[] = [];
+  let trustRendered = false;
 
   for (const block of list) {
     const p = block.props;
+    if (hoistTrust && block.type === 'stats') {
+      continue;
+    }
     switch (block.type) {
       case 'hero':
         nodes.push(<RetailHero key={block.id} {...heroPropsFromBlock(p)} />);
+        if (hoistTrust && !trustRendered) {
+          const items = statsBlock ? statsItems(statsBlock.props) : RETAIL_TRUST_FALLBACK;
+          nodes.push(
+            <RetailTrustStrip key={statsBlock?.id ?? 'retail-trust-fallback'} items={items} />,
+          );
+          trustRendered = true;
+        }
         break;
       case 'stats': {
-        const items = arr<{ value: string; label: string; sublabel?: string }>(p, 'items');
-        nodes.push(
-          <section
-            key={block.id}
-            className="border-y border-[var(--retail-border)] bg-[var(--retail-surface)]"
-          >
-            <div className="mx-auto grid max-w-[1200px] gap-8 px-4 py-14 sm:px-6 md:grid-cols-3 lg:px-8">
-              {items.map((item) => (
-                <div key={`${item.value}-${item.label}`} className="text-center md:text-right">
-                  <h2 className="text-lg font-extrabold text-[var(--retail-primary)]">{item.value}</h2>
-                  <p className="mt-2 text-sm leading-7 text-[var(--retail-muted)]">{item.label}</p>
-                </div>
-              ))}
-            </div>
-          </section>,
-        );
+        const items = statsItems(p);
+        nodes.push(<RetailTrustStrip key={block.id} items={items} />);
         break;
       }
       case 'products': {
@@ -95,16 +105,53 @@ export async function RetailBlocksRenderer({
           />,
         );
         break;
+      case 'cta':
+        nodes.push(
+          <RetailCtaBanner
+            key={block.id}
+            eyebrow={str(p, 'eyebrow') || undefined}
+            headline={str(p, 'headline') || undefined}
+            body={str(p, 'body') || undefined}
+            ctaLabel={str(p, 'ctaLabel') || undefined}
+            ctaHref={str(p, 'ctaHref') || undefined}
+            ctaSecondaryLabel={str(p, 'ctaSecondaryLabel') || undefined}
+            ctaSecondaryHref={str(p, 'ctaSecondaryHref') || undefined}
+          />,
+        );
+        break;
       case 'features':
       case 'comingSoon':
       case 'process':
       case 'testimonials':
-      case 'cta':
         break;
       default:
         pushCommonBlocks(block, p, nodes);
         break;
     }
+  }
+
+  if (looksLikeHome && !trustRendered) {
+    nodes.splice(
+      Math.min(1, nodes.length),
+      0,
+      <RetailTrustStrip key="retail-trust-fallback" items={RETAIL_TRUST_FALLBACK} />,
+    );
+  }
+
+  if (looksLikeHome && !list.some((block) => block.type === 'faq')) {
+    nodes.push(<RetailFaq key="retail-faq-fallback" />);
+  }
+
+  if (looksLikeHome && !list.some((block) => block.type === 'cta')) {
+    nodes.push(
+      <RetailCtaBanner
+        key="retail-cta-fallback"
+        headline="عمده‌فروش هستید؟"
+        body="برای خرید عمده با حداقل سفارش و قیمت ویژه به سایت عمده سر بزنید."
+        ctaLabel="ورود به سایت عمده"
+        ctaHref="https://poshaktaranom.com"
+      />,
+    );
   }
 
   return <>{nodes}</>;
