@@ -1,5 +1,48 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260822-003"
+    title: "Retail home + product-card UI/UX gaps vs Iranian fashion storefronts"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260822-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260822-003"
+      implementer: "cursor:implementer-TASK-20260822-003"
+      reviewer: "not-required-ui-only-no-auth-payments"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260822-003-retail-home-cards"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-22T10:30:00Z"
+    heartbeat_at: "2026-08-22T10:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      - "apps/web/src/components/retail/RetailProductGrid.tsx"
+      - "apps/web/src/components/retail/RetailTrustStrip.tsx"
+      - "apps/web/src/components/retail/RetailCtaBanner.tsx"
+      - "apps/web/src/components/retail/RetailFaq.tsx"
+      - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
+      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      - "apps/web/src/components/category/CategoryLanding.tsx"
+      - "apps/web/src/app/retail/retail.css"
+      - "design-system/b2c/MASTER.md"
+      - "design-system/default/pages/home.md"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-08-22-retail-home-cards-ui.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Append/register only on shared governance files. Do not stage middleware.ts
+      or TASK-022 Excel/Torob/About work. RetailHeader remains TASK-006.
+      defaults.ts remains TASK-017 — home trust/CTA fallbacks live in the renderer.
+    acceptance_criteria:
+      - "Retail product cards are editorial: image-first, centered name/price, no per-card trust row"
+      - "Home uses compact cards (max 12); catalog keeps size/quick-add"
+      - "Home shows a trust strip after hero (CMS stats or fallback) and renders CTA blocks"
+      - "Category landing retail tiles reuse RetailProductCard"
+      - "No new npm dependencies; reduced-motion respected; hover not required for primary actions"
+      - "Web typecheck/lint pass for claimed files"
   - id: "TASK-20260822-002"
     title: "Admin Excel export for products and categories (wholesale + retail)"
     status: "in_progress"
@@ -59,14 +102,15 @@ tasks:
       implementer: "cursor:implementer-TASK-20260822-001"
       reviewer: "not-required-public-feed-and-rate-limit-exemption"
       security: "self-review-network-allowlist-public-crawler-cidrs"
-    branch: "ai/TASK-20260822-001-torob-crawler"
+    branch: "ai/TASK-20260822-001-retail-rewrite-loop"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-22T09:30:00Z"
-    heartbeat_at: "2026-08-22T09:30:00Z"
+    heartbeat_at: "2026-08-22T13:40:00Z"
     depends_on: []
     file_claims:
       - "nginx/nginx.conf"
       - "apps/web/next.config.ts"
+      - "apps/web/src/middleware.ts"
       - "apps/api/src/main.ts"
       - "apps/api/package.json"
       - "apps/api/src/modules/torob/torob-crawler-ips.spec.ts"
@@ -80,12 +124,15 @@ tasks:
       (heartbeat 2026-08-12); apps/api/package.json from TASK-20260812-001 /
       TASK-20260818-001 (stale >24h); WORKLOG/status/handoff/active.yaml from
       overlapping stale tasks. nginx.conf was unclaimed.
-      Do not stage unrelated dirty About/slug work.
+      2026-08-22T13:40Z: reclaimed apps/web/src/middleware.ts from TASK-20260818-001
+      (heartbeat 2026-08-18, stale >24h) for /retail 301 + x-middleware-rewrite loop.
+      Do not stage unrelated dirty About/slug/Excel work.
     acceptance_criteria:
       - "VPS curl https://extractor.torob.com/health_check/ returns HTTP 200 OK body"
       - "Torob CIDRs from ticket + crawler.torob.com/ips-v4.json skip API rate limit"
       - "Feed URLs on .ir return 200 with zero redirects (api + /feeds/torob.xml aliases)"
       - "Sample product URLs from the live feed stay 200 with zero redirects"
+      - "Following x-middleware-rewrite on a live feed PDP does not 301 back to the public URL (no ping-pong)"
       - "TorobBot is in Next htmlLimitedBots so extractor gets complete HTML"
       - "API trailing slash does not 404 (Fastify ignoreTrailingSlash)"
   - id: "TASK-20260818-002"
@@ -169,7 +216,7 @@ tasks:
       - "apps/web/src/lib/product-slug-canonical.spec.ts"
       - "apps/web/src/lib/load-canonical-storefront-product.ts"
       - "apps/web/src/lib/product-slug-redirects.ts"
-      - "apps/web/src/middleware.ts"
+      # transferred 2026-08-22 to TASK-20260822-001 (stale heartbeat; /retail rewrite loop): "apps/web/src/middleware.ts"
       - "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
       - "apps/web/src/components/admin/AdminProducts.tsx"

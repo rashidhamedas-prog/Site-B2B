@@ -31,6 +31,22 @@ No HTTP Location loop was reproduced on current feed URLs. Hardening targets the
 - Next `htmlLimitedBots` includes `TorobBot|Torob-Bot`
 - Fastify `ignoreTrailingSlash: true`
 
+## Follow-up (H5 rewrite ping-pong)
+
+Support still reported TooManyRedirects after the feed/IP pass. Live hop tracer **without** following HTTP redirects (debug session `9a3858`):
+
+```
+GET /products/linen-shirt-manteau-yaghoot  → 200  x-middleware-rewrite: /retail/products/...
+GET /retail/products/linen-shirt-manteau-yaghoot → 301 Location: https://www.poshaktaranom.ir/products/...
+→ REDIRECT_LOOP if the extractor follows x-middleware-rewrite
+```
+
+Standard `requests` (Location only) stays 200 / 0 hops — that is why the first sample looked clean.
+
+Fix: middleware no longer 301s `/retail` or `/retail/*` to the public URL. Those paths return 200 + `x-robots-tag: noindex, nofollow`. Public `/products/{slug}` is still the canonical.
+
+Owner: paste feed `https://www.poshaktaranom.ir/api/v1/feeds/torob.xml` and a **current** sample such as `https://www.poshaktaranom.ir/products/linen-shirt-manteau-yaghoot`. Re-sync the panel; ~1003 Webzi-era rows (e.g. شومیز سارا) are not in the live 57-item feed.
+
 ## Owner follow-up
 
 در پنل ترب فید را روی یکی از این URLها (ترجیحاً اولی) ذخیره کنید، سپس همگام‌سازی را از نو بزنید:

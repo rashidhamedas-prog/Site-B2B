@@ -2,6 +2,30 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-22T10:30:00Z — TASK-20260822-003 retail home + product-card UI/UX
+
+- Task / owner: TASK-20260822-003 / cursor:implementer-TASK-20260822-003
+- Branch: `ai/TASK-20260822-003-retail-home-cards`
+- Benchmark: Digistyle / Banimode / Modiseh card+home patterns; Vercel Commerce + vercel-labs/agent-skills web-design-guidelines — no new deps
+- Scope: editorial product cards, home trust strip, CTA render, FAQ accordion, category tiles hover-not-required
+- Non-claims: RetailHeader (TASK-006), defaults.ts (TASK-017), middleware.ts (TASK-001)
+- Exact next: implement claimed retail UI files → web tsc/lint → WORKLOG/report
+- Rollback: revert claimed web/design-system files
+
+## 2026-08-22T13:40:00Z — TASK-20260822-001 /retail 301 + rewrite ping-pong
+
+- Task / owner: TASK-20260822-001 / cursor:implementer-TASK-20260822-001
+- Stale reclaim: `apps/web/src/middleware.ts` from TASK-20260818-001 (heartbeat 2026-08-18)
+- Live evidence (no-follow hop tracer, session 9a3858):
+  - `GET /products/linen-shirt-manteau-yaghoot` → 200 + `x-middleware-rewrite: /retail/products/...`
+  - `GET /retail/products/...` → **301** back to public URL → `REDIRECT_LOOP` if rewrite is followed
+  - Location-only (browser) → 200, 0 hops — why first Torob pass looked clean
+  - Feed still 57 items; شومیز سارا is not in catalog
+- Change: `/retail` and `/retail/*` serve 200 + `x-robots-tag: noindex` instead of 301
+- Exact next: commit claimed files → merge master → VPS auto-deploy web → re-run hop tracer (must NOT REDIRECT_LOOP)
+- Rollback: restore `/retail` 301 to RETAIL_ORIGIN
+- Debug ingest in middleware stays until post-deploy verify; do not ship Excel/About files
+
 ## 2026-08-22T10:20:00Z — TASK-20260822-002 admin Excel catalog export
 
 - Task / owner: TASK-20260822-002 / cursor:implementer-TASK-20260822-002

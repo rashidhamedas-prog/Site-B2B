@@ -1,7 +1,9 @@
 # Project Status
 
-- Last verified: 2026-08-22 — **TASK-20260822-002** admin Excel export for products/categories (local, pending deploy)
-- Last verified: 2026-08-22 — **TASK-20260822-001** Torob crawler allowlist + feed aliases in progress (not yet deployed)
+- Last verified: 2026-08-22 — **TASK-20260822-003** retail home + product-card UI/UX in progress (local)
+- Last verified: 2026-08-22 — **TASK-20260822-001** Torob `/retail` 301 + `x-middleware-rewrite` ping-pong confirmed live; middleware passthrough pending deploy
+- Last verified: 2026-08-22 — **TASK-20260822-002** admin Excel export for products/categories (merged #48)
+- Last verified: 2026-08-22 — **TASK-20260822-001** Torob crawler allowlist + feed aliases merged (#47 `b167689`)
 - Last verified: 2026-08-18 — **TASK-20260818-002** About CSS-3D implemented locally (uncommitted, not deployed); **TASK-20260818-001** still LIVE at `55f1743`
 - Code SHA (VPS): **`55f1743`**
 - Migration: **`ProductChannelSalePack1755510000001`** id=23 on production
