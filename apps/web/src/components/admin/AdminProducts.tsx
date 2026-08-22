@@ -31,6 +31,7 @@ import {
   ProductRelatedPicker,
   type RelatedProductPick,
 } from '@/components/admin/ProductRelatedPicker';
+import { AdminExcelExportButtons } from '@/components/admin/AdminExcelExportButtons';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'فعال',
@@ -1382,10 +1383,13 @@ export function AdminProducts() {
           <h2 className="text-xl font-bold text-gray-900">محصولات</h2>
           <p className="mt-0.5 text-sm text-gray-500">{meta.total} مدل در کاتالوگ</p>
         </div>
-        <button onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          افزودن محصول
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <AdminExcelExportButtons kind="products" />
+          <button onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            افزودن محصول
+          </button>
+        </div>
       </div>
 
       <div className="w-72">

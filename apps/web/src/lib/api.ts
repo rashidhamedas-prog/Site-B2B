@@ -115,6 +115,50 @@ class ApiClient {
     }
     return data;
   }
+
+  async download(path: string, fallbackName: string): Promise<void> {
+    const token = getToken();
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: 'GET',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (res.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/login')) {
+      const { clearToken } = await import('./auth');
+      clearToken();
+      const pathName = window.location.pathname;
+      if (pathName.startsWith('/admin')) window.location.href = '/admin/login';
+      throw new Error('نشست شما منقضی شده است');
+    }
+
+    if (!res.ok) {
+      let message = 'دانلود ناموفق بود';
+      try {
+        const data = await res.json();
+        message = data?.message ?? data?.errors?.[0]?.message ?? message;
+        if (Array.isArray(message)) message = message[0];
+      } catch {
+        /* ignore non-json */
+      }
+      throw new Error(message);
+    }
+
+    const blob = await res.blob();
+    const cd = res.headers.get('content-disposition') || '';
+    const star = cd.match(/filename\*=UTF-8''([^;]+)/i);
+    const quoted = cd.match(/filename="([^"]+)"/i);
+    const filename = star
+      ? decodeURIComponent(star[1]!)
+      : quoted?.[1] || fallbackName;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 }
 
 export const apiClient = new ApiClient();

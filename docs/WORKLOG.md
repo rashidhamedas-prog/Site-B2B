@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-22 — خروجی اکسل محصولات و دسته‌بندی‌ها (ادمین)
+
+- در `/admin/products` و `/admin/categories` دکمهٔ خروجی اکسل عمده / تکی / کامل اضافه شد.
+- فایل واقعی `.xlsx` است: قیمت‌ها به تومان، موجودی و واریانت جدا، لینک هر دو ویترین، سئوی کانال.
+- API فقط با JWT ادمین: `GET /v1/products/admin/export.xlsx` و `GET /v1/categories/admin/export.xlsx`.
+- وابستگی npm جدید اضافه نشد. گزارش: `docs/reports/2026-08-22-catalog-excel-export.md`
+
 ## 2026-08-22 — اتصال ترب: TooManyRedirects، health_check، سفید کردن آی‌پی
 
 - از VPS: `GET https://extractor.torob.com/health_check/` → HTTP 200 و `{"status":"ok"}`.

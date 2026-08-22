@@ -2,10 +2,16 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CategoryEntity } from './entities/category.entity';
+import { ProductEntity } from '../product/entities/product.entity';
 import { matchCategorySeed } from './category-seo-seed';
 import { asciiSlug } from '../../common/ascii-slug';
 import { normalizePublicSlug } from '../../common/public-slug';
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
+import {
+  buildCategoryWorkbook,
+  parseExportChannel,
+  type ExportCategory,
+} from '../product/catalog-excel';
 
 export type CategoryUpsert = {
   name?: string;
@@ -41,6 +47,8 @@ export class CategoryService {
     private readonly repo: Repository<CategoryEntity>,
     @InjectRepository(SeoRedirectEntity)
     private readonly redirectRepo: Repository<SeoRedirectEntity>,
+    @InjectRepository(ProductEntity)
+    private readonly productRepo: Repository<ProductEntity>,
   ) {}
 
   findAll(opts?: { includeHidden?: boolean }) {
@@ -215,5 +223,34 @@ export class CategoryService {
     const c = await this.findOne(id);
     await this.repo.softDelete(c.id);
     return { message: 'دسته‌بندی حذف شد' };
+  }
+
+  async exportExcel(channelRaw?: string) {
+    let channel;
+    try {
+      channel = parseExportChannel(channelRaw);
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : 'کانال خروجی نامعتبر است');
+    }
+    const categories = await this.findAll({ includeHidden: true });
+    const countQb = this.productRepo
+      .createQueryBuilder('p')
+      .select('p.categoryId', 'categoryId')
+      .addSelect('COUNT(*)', 'count')
+      .where('p.deletedAt IS NULL')
+      .groupBy('p.categoryId');
+    if (channel === 'WHOLESALE') countQb.andWhere('p.showOnWholesale = true');
+    if (channel === 'RETAIL') countQb.andWhere('p.showOnRetail = true');
+    const counts = await countQb.getRawMany<{ categoryId: string | null; count: string }>();
+    const countById = new Map(
+      counts
+        .filter((row) => row.categoryId)
+        .map((row) => [row.categoryId as string, Number(row.count) || 0]),
+    );
+    const payload: ExportCategory[] = categories.map((c) => ({
+      ...c,
+      productCount: countById.get(c.id) || 0,
+    }));
+    return buildCategoryWorkbook({ categories: payload, channel });
   }
 }

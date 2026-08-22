@@ -1,10 +1,11 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards, Res } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, Res } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CategoryService } from './category.service';
+import { contentDispositionUtf8 } from '../../common/xlsx-builder';
 
 @ApiTags('categories')
 @Controller({ path: 'categories', version: '1' })
@@ -28,6 +29,19 @@ export class CategoryController {
   @ApiOperation({ summary: 'لیست کامل دسته‌بندی‌ها (ادمین، شامل مخفی)' })
   findAllAdmin() {
     return this.svc.findAll({ includeHidden: true });
+  }
+
+  @Get('admin/export.xlsx')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'خروجی اکسل دسته‌بندی‌های عمده/تکی (ادمین)' })
+  async exportExcel(@Query('channel') channel: string | undefined, @Res() res: FastifyReply) {
+    const { buffer, filename } = await this.svc.exportExcel(channel);
+    res.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.header('Content-Disposition', contentDispositionUtf8(filename));
+    res.header('Cache-Control', 'private, no-store');
+    return res.send(buffer);
   }
 
   @Get('slug/:slug')

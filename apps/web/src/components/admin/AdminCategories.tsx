@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { AdminChannelTabs, type AdminChannel } from './AdminChannelTabs';
+import { AdminExcelExportButtons } from './AdminExcelExportButtons';
 
 type FaqItem = { question: string; answer: string };
 
@@ -210,11 +211,14 @@ export function AdminCategories() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">دسته‌بندی‌ها</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          مدیریت دسته‌بندی‌ها، سئوی تکی/عمده، فرمول SKU، و بنر مربعی ۱:۱ برای صفحه اصلی تکی
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">دسته‌بندی‌ها</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            مدیریت دسته‌بندی‌ها، سئوی تکی/عمده، فرمول SKU، و بنر مربعی ۱:۱ برای صفحه اصلی تکی
+          </p>
+        </div>
+        <AdminExcelExportButtons kind="categories" />
       </div>
 
       {error ? (
