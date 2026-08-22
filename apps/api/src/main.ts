@@ -9,7 +9,7 @@ async function bootstrap() {
   // Do not parse raw x-forwarded-for in application code — use extractClientIp(req).
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ trustProxy: 1 })
+    new FastifyAdapter({ trustProxy: 1, ignoreTrailingSlash: true })
   );
 
   const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? 'http://localhost:3000').split(',');

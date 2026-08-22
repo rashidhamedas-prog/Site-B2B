@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-22T09:35:00Z — TASK-20260822-001 Torob crawler TooManyRedirects
+
+- Task / owner: TASK-20260822-001 / cursor:implementer-TASK-20260822-001
+- Stale reclaim: next.config.ts + main.ts (TASK-006); api package.json (TASK-012/018); governance/WORKLOG from overlapping stale tasks; nginx.conf unclaimed
+- Evidence: VPS extractor health 200 `{"status":"ok"}`; 57/57 feed product URLs 200 hops=0; UFW 80/443 open; fail2ban sshd-only
+- Changes: Torob CIDR geo skip API rate-limit; feed path aliases; htmlLimitedBots TorobBot; Fastify ignoreTrailingSlash
+- Exact next: unit spec → commit claimed files only → push → VPS auto-deploy → re-verify health + feed 200 + sample PDP
+- Rollback: revert nginx.conf + next.config.ts htmlLimitedBots + main.ts FastifyAdapter option
+- Do not stage unrelated About/slug dirty files
+
 ## 2026-08-19T00:20:00Z — TASK-20260818-002 About scene visibility hotfix
 
 - Task / owner: TASK-20260818-002 / cursor:implementer-TASK-20260818-002

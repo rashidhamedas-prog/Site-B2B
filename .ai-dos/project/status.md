@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-08-22 — **TASK-20260822-001** Torob crawler allowlist + feed aliases in progress (not yet deployed)
 - Last verified: 2026-08-18 — **TASK-20260818-002** About CSS-3D implemented locally (uncommitted, not deployed); **TASK-20260818-001** still LIVE at `55f1743`
 - Code SHA (VPS): **`55f1743`**
 - Migration: **`ProductChannelSalePack1755510000001`** id=23 on production
