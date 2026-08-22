@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
 
-const RETAIL_ORIGIN = 'https://www.poshaktaranom.ir';
-
 /** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
 const WHOLESALE_CATEGORY_ALIASES: Record<string, string> = {
   '/wholesale/manto': '/category/women-manto',
@@ -82,29 +80,71 @@ function handleLegacyPaths(request: NextRequest): NextResponse | null {
   return null;
 }
 
+function debugRedirect(from: string, res: NextResponse, ua: string, hypothesisId: string) {
+  // #region agent log
+  const loc = res.headers.get('location') || '';
+  fetch('http://127.0.0.1:7893/ingest/d7d4281b-e81e-4af6-8abc-7129feb96c73', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '9a3858' },
+    body: JSON.stringify({
+      sessionId: '9a3858',
+      hypothesisId,
+      location: 'middleware.ts:debugRedirect',
+      message: 'storefront redirect',
+      data: { from, location: loc, status: res.status, ua: ua.slice(0, 120) },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {});
+  // #endregion
+  return res;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const ua = request.headers.get('user-agent') || '';
 
   const legacy = handleLegacyPaths(request);
-  if (legacy) return legacy;
+  if (legacy) {
+    const loc = legacy.headers.get('location');
+    if (loc) return debugRedirect(pathname, legacy, ua, 'H2');
+    return legacy;
+  }
 
   const aliasTarget = WHOLESALE_CATEGORY_ALIASES[normalizePathname(pathname)];
   if (aliasTarget) {
     const url = request.nextUrl.clone();
     url.pathname = aliasTarget;
     url.search = '';
-    return NextResponse.redirect(url, 301);
+    return debugRedirect(pathname, NextResponse.redirect(url, 301), ua, 'H2');
   }
 
   // Product slug aliases are resolved in the PDP (SKU/legacy map + seo_redirects)
   // so middleware cannot invert a later admin slug change back to an old SKU.
 
-  // /retail/* must never be a public URL: the retail tree is reached via the
-  // host-based rewrite below. Direct hits (either host) 301 to the clean
-  // canonical URL on the retail origin to avoid cross-host duplicates.
+  // /retail/* is the internal App Router tree. A 301 back to the public
+  // /products/... URL ping-pongs with `x-middleware-rewrite` and causes
+  // TooManyRedirects for extractors that follow that header (Torob).
+  // Serve 200 + noindex; PDP canonical still points at the public URL.
   if (pathname === '/retail' || pathname.startsWith('/retail/')) {
-    const clean = pathname === '/retail' ? '/' : pathname.slice('/retail'.length);
-    return NextResponse.redirect(`${RETAIL_ORIGIN}${clean}${request.nextUrl.search}`, 301);
+    const res = NextResponse.next();
+    res.headers.set('x-robots-tag', 'noindex, nofollow');
+    res.headers.set('x-taranom-channel', 'RETAIL');
+    // #region agent log
+    fetch('http://127.0.0.1:7893/ingest/d7d4281b-e81e-4af6-8abc-7129feb96c73', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '9a3858' },
+      body: JSON.stringify({
+        sessionId: '9a3858',
+        hypothesisId: 'H5',
+        runId: 'post-fix',
+        location: 'middleware.ts:retail-passthrough',
+        message: 'retail path 200 no redirect',
+        data: { pathname, ua: ua.slice(0, 80) },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    return res;
   }
 
   const host = request.headers.get('host');
@@ -120,6 +160,20 @@ export function middleware(request: NextRequest) {
     url.pathname = pathname === '/' ? '/retail' : `/retail${pathname}`;
     const res = NextResponse.rewrite(url);
     res.headers.set('x-taranom-channel', 'RETAIL');
+    // #region agent log
+    fetch('http://127.0.0.1:7893/ingest/d7d4281b-e81e-4af6-8abc-7129feb96c73', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '9a3858' },
+      body: JSON.stringify({
+        sessionId: '9a3858',
+        hypothesisId: 'H5',
+        location: 'middleware.ts:rewrite',
+        message: 'retail rewrite',
+        data: { from: pathname, rewrite: url.pathname, proto: request.nextUrl.protocol, host },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     return res;
   }
 

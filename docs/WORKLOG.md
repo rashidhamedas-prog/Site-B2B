@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-22 — حلقه ریدایرکت ترب: 301 روی `/retail` + `x-middleware-rewrite`
+
+- پروب زنده بدون follow: `GET /products/{slug}` → ۲۰۰ و هدر `x-middleware-rewrite: /retail/products/{slug}`؛ سپس `GET /retail/products/{slug}` → ۳۰۱ به URL عمومی → حلقه برای کراولری که آن هدر را دنبال کند (ترب).
+- مرورگر معمولی هدر rewrite را دنبال نمی‌کند، بنابراین لینک فید با `requests` معمولی ۲۰۰ و صفر Location hop بود.
+- اصلاح: `/retail/*` دیگر ۳۰۱ نمی‌شود؛ ۲۰۰ + `noindex` تا extractor به صفحه نهایی برسد. canonical PDP همان URL عمومی است.
+- فید زنده هنوز ۵۷ محصول است؛ «شومیز سارا» در کاتالوگ فعلی نیست — پنل ترب ~۱۰۰۳ SKU قدیمی را باید از نو همگام کند.
+- گزارش: `docs/reports/2026-08-22-torob-too-many-redirects.md`
+
 ## 2026-08-22 — خروجی اکسل محصولات و دسته‌بندی‌ها (ادمین)
 
 - در `/admin/products` و `/admin/categories` دکمهٔ خروجی اکسل عمده / تکی / کامل اضافه شد.
