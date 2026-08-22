@@ -23,6 +23,7 @@ import { ProductRelatedEntity } from './entities/product-related.entity';
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
 import { sanitizeBlogHtml } from '../blog/blog-sanitize';
 import { normalizePublicSlug } from '../../common/public-slug';
+import { buildProductWorkbook, parseExportChannel, type ExportProduct } from './catalog-excel';
 import { changeProductSlug, type SalesChannel as SlugChannel } from './product-slug-redirect';
 import { computePackQty, sizesForSizeType } from './product-pack';
 import {
@@ -1815,5 +1816,47 @@ export class ProductService {
     const filled = fillRelatedIds(product.id, existing, ranked);
     await this.replaceRelated(productId, filled.next);
     return filled;
+  }
+
+  async exportExcel(channelRaw?: string) {
+    let channel;
+    try {
+      channel = parseExportChannel(channelRaw);
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : 'کانال خروجی نامعتبر است');
+    }
+    const qb = this.productRepo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.variants', 'v')
+      .leftJoinAndSelect('p.category', 'c')
+      .where('p.deletedAt IS NULL')
+      .orderBy('p.sku', 'ASC')
+      .addOrderBy('v.color', 'ASC')
+      .addOrderBy('v.size', 'ASC');
+    if (channel === 'WHOLESALE') qb.andWhere('p.showOnWholesale = true');
+    if (channel === 'RETAIL') qb.andWhere('p.showOnRetail = true');
+    const products = await qb.getMany();
+    const ids = products.map((p) => p.id);
+    const relatedSkusByProduct = new Map<string, string[]>();
+    if (ids.length) {
+      const links = await this.relatedRepo.find({ where: { productId: In(ids) } });
+      const relatedIds = [...new Set(links.map((l) => l.relatedProductId))];
+      const related = relatedIds.length
+        ? await this.productRepo.find({ where: { id: In(relatedIds) }, select: ['id', 'sku'] })
+        : [];
+      const skuById = new Map(related.map((r) => [r.id, r.sku]));
+      for (const link of links) {
+        const sku = skuById.get(link.relatedProductId);
+        if (!sku) continue;
+        const list = relatedSkusByProduct.get(link.productId) ?? [];
+        if (!list.includes(sku)) list.push(sku);
+        relatedSkusByProduct.set(link.productId, list);
+      }
+    }
+    const payload: ExportProduct[] = products.map((p) => ({
+      ...p,
+      relatedSkus: relatedSkusByProduct.get(p.id) ?? [],
+    }));
+    return buildProductWorkbook({ products: payload, channel });
   }
 }

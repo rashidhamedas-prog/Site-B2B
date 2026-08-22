@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-22T10:20:00Z — TASK-20260822-002 admin Excel catalog export
+
+- Task / owner: TASK-20260822-002 / cursor:implementer-TASK-20260822-002
+- Stale reclaim: AdminProducts/product.service/controller from TASK-018/017/006; AdminCategories + category service/controller from TASK-017; api package.json append spec only from TASK-022-001
+- Implemented: admin `.xlsx` download for products (with variants sheet) and categories; channel filter WHOLESALE/RETAIL/ALL; Toman prices; dual storefront URLs
+- Gates: `xlsx-builder.spec.ts` OK; `catalog-excel.spec.ts` OK; api `tsc --noEmit` 0; web `tsc --noEmit` 0
+- Exact next: commit claimed files only on `ai/TASK-20260822-002-catalog-excel` → push → merge/deploy → smoke admin download
+- Rollback: revert export endpoints + admin buttons; no migration
+- Do not stage unrelated dirty About/slug/Torob files
+
 ## 2026-08-22T09:35:00Z — TASK-20260822-001 Torob crawler TooManyRedirects
 
 - Task / owner: TASK-20260822-001 / cursor:implementer-TASK-20260822-001

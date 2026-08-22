@@ -5,6 +5,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ProductService } from './product.service';
+import { contentDispositionUtf8 } from '../../common/xlsx-builder';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
@@ -144,6 +145,19 @@ export class ProductController {
   @ApiOperation({ summary: 'حذف رنگ از لیست ذخیره‌شده' })
   deleteColor(@Param('id') id: string) {
     return this.productService.deleteColor(id);
+  }
+
+  @Get('admin/export.xlsx')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'خروجی اکسل محصولات عمده/تکی (ادمین)' })
+  async exportExcel(@Query('channel') channel: string | undefined, @Res() res: FastifyReply) {
+    const { buffer, filename } = await this.productService.exportExcel(channel);
+    res.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.header('Content-Disposition', contentDispositionUtf8(filename));
+    res.header('Cache-Control', 'private, no-store');
+    return res.send(buffer);
   }
 
   @Get('slug/:slug')

@@ -1,5 +1,54 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260822-002"
+    title: "Admin Excel export for products and categories (wholesale + retail)"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260822-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260822-002"
+      implementer: "cursor:implementer-TASK-20260822-002"
+      reviewer: "not-required-admin-read-only-catalog-export"
+      security: "self-review-admin-jwt-attachment-download"
+    branch: "ai/TASK-20260822-002-catalog-excel"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-22T10:00:00Z"
+    heartbeat_at: "2026-08-22T10:00:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/common/xlsx-builder.ts"
+      - "apps/api/src/common/xlsx-builder.spec.ts"
+      - "apps/api/src/modules/product/catalog-excel.ts"
+      - "apps/api/src/modules/product/catalog-excel.spec.ts"
+      - "apps/api/src/modules/product/product.controller.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/category/category.controller.ts"
+      - "apps/api/src/modules/category/category.service.ts"
+      - "apps/api/src/modules/category/category.module.ts"
+      - "apps/api/package.json"
+      - "apps/web/src/lib/api.ts"
+      - "apps/web/src/components/admin/AdminExcelExportButtons.tsx"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/web/src/components/admin/AdminCategories.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-08-22-catalog-excel-export.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Stale reclaim 2026-08-22: AdminProducts/product.service/controller from
+      TASK-20260818-001 / TASK-20260817-001 / TASK-20260810-006 (heartbeats
+      2026-08-12..18). AdminCategories + category.service/controller from
+      TASK-20260817-001. apps/api/package.json from TASK-20260822-001 (append
+      test spec only). WORKLOG/status/handoff/active.yaml append/register only.
+      Do not stage unrelated dirty About/slug/Torob work.
+    acceptance_criteria:
+      - "Admin JWT can download .xlsx for products and categories"
+      - "Wholesale and retail channel filters export the matching catalog rows"
+      - "Product workbook includes identity, prices in Toman, stock, variants, SEO, URLs"
+      - "Category workbook includes dual-channel SEO fields and public URLs"
+      - "Unauthenticated export is rejected; no new npm dependency"
+      - "catalog-excel + xlsx-builder specs pass"
   - id: "TASK-20260822-001"
     title: "Fix Torob TooManyRedirects, health_check path, and crawler IP allowlist"
     status: "in_progress"
