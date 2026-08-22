@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-22 — اتصال ترب: TooManyRedirects، health_check، سفید کردن آی‌پی
+
+- از VPS: `GET https://extractor.torob.com/health_check/` → HTTP 200 و `{"status":"ok"}`.
+- فایروال UFW برای ۸۰/۴۴۳ از همه باز است؛ fail2ban فقط jail sshd دارد. رنج‌های ترب در nginx از rate-limit API معاف شدند.
+- Alias فید بدون ریدایرکت: `/feeds/torob.xml` و `/v1/feeds/torob.xml` روی تکی و عمده و ساب‌دامین API.
+- `TorobBot` به `htmlLimitedBots` اضافه شد تا HTML کامل (canonical در head) برسد؛ Fastify `ignoreTrailingSlash` تا اسلش انتهایی API حلقه/۴۰۴ نسازد.
+- گزارش: `docs/reports/2026-08-22-torob-too-many-redirects.md`
+
 ## 2026-08-19 — About عمده: مانتوی نهایی دیده می‌شود و نخ/قرقره محو می‌شوند
 
 - باگ زنده: اسکرول درست بود، ولی بافت مانتو سبز تیره روی پس‌زمینه جنگلی ناپدید می‌شد و در پایان نخ (opacity 0.85) و قرقره (1) روی صحنه می‌ماندند.

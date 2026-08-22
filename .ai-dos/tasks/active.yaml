@@ -1,5 +1,44 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260822-001"
+    title: "Fix Torob TooManyRedirects, health_check path, and crawler IP allowlist"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260822-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260822-001"
+      implementer: "cursor:implementer-TASK-20260822-001"
+      reviewer: "not-required-public-feed-and-rate-limit-exemption"
+      security: "self-review-network-allowlist-public-crawler-cidrs"
+    branch: "ai/TASK-20260822-001-torob-crawler"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-22T09:30:00Z"
+    heartbeat_at: "2026-08-22T09:30:00Z"
+    depends_on: []
+    file_claims:
+      - "nginx/nginx.conf"
+      - "apps/web/next.config.ts"
+      - "apps/api/src/main.ts"
+      - "apps/api/package.json"
+      - "apps/api/src/modules/torob/torob-crawler-ips.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-08-22-torob-too-many-redirects.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Stale reclaim 2026-08-22: next.config.ts + main.ts from TASK-20260810-006
+      (heartbeat 2026-08-12); apps/api/package.json from TASK-20260812-001 /
+      TASK-20260818-001 (stale >24h); WORKLOG/status/handoff/active.yaml from
+      overlapping stale tasks. nginx.conf was unclaimed.
+      Do not stage unrelated dirty About/slug work.
+    acceptance_criteria:
+      - "VPS curl https://extractor.torob.com/health_check/ returns HTTP 200 OK body"
+      - "Torob CIDRs from ticket + crawler.torob.com/ips-v4.json skip API rate limit"
+      - "Feed URLs on .ir return 200 with zero redirects (api + /feeds/torob.xml aliases)"
+      - "Sample product URLs from the live feed stay 200 with zero redirects"
+      - "TorobBot is in Next htmlLimitedBots so extractor gets complete HTML"
+      - "API trailing slash does not 404 (Fastify ignoreTrailingSlash)"
   - id: "TASK-20260818-002"
     title: "Wholesale About page 3D scroll experience"
     status: "in_progress"

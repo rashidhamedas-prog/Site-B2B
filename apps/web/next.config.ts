@@ -56,7 +56,7 @@ const nextConfig: NextConfig = {
   // 200 first). Regular browsers keep fast streaming. Extends the Next
   // default HTML-limited bot list with the major search crawlers.
   htmlLimitedBots:
-    /Googlebot|Google-InspectionTool|AdsBot-Google|Storebot-Google|Bingbot|BingPreview|Slurp|DuckDuckBot|baiduspider|yandex|sogou|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Applebot|ia_archiver|Mediapartners-Google/i,
+    /Googlebot|Google-InspectionTool|AdsBot-Google|Storebot-Google|Bingbot|BingPreview|Slurp|DuckDuckBot|baiduspider|yandex|sogou|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Applebot|ia_archiver|Mediapartners-Google|TorobBot|Torob-Bot/i,
 
   // Security headers
   async headers() {
