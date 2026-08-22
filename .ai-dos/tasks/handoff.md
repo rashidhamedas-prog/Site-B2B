@@ -9,7 +9,8 @@ Append newest entries at the top. Never erase another agent's record.
 - Benchmark: Digistyle / Banimode / Modiseh card+home patterns; Vercel Commerce + vercel-labs/agent-skills web-design-guidelines — no new deps
 - Scope: editorial product cards, home trust strip, CTA render, FAQ accordion, category tiles hover-not-required
 - Non-claims: RetailHeader (TASK-006), defaults.ts (TASK-017), middleware.ts (TASK-001)
-- Exact next: implement claimed retail UI files → web tsc/lint → WORKLOG/report
+- Exact next: commit claimed files → merge/deploy → smoke `.ir` home + product cards
+- Gates: web `tsc --noEmit` **0**; web lint **0**
 - Rollback: revert claimed web/design-system files
 
 ## 2026-08-22T13:40:00Z — TASK-20260822-001 /retail 301 + rewrite ping-pong
