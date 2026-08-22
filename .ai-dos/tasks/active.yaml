@@ -1,8 +1,93 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260822-005"
+    title: "PHASE-01 GA4 measurement integrity + retail ecommerce tracking"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260822-005"
+    roles:
+      architect: "cursor:implementer-TASK-20260822-005"
+      implementer: "cursor:implementer-TASK-20260822-005"
+      reviewer: "self-review-analytics-no-auth-change"
+      security: "self-review-no-pii-in-ga4"
+    branch: "ai/TASK-20260822-005-ga4-measurement"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-22T14:30:00Z"
+    heartbeat_at: "2026-08-22T14:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/retail-analytics.ts"
+      - "apps/web/src/lib/retail-analytics.spec.ts"
+      - "apps/web/src/lib/google.ts"
+      - "apps/web/src/lib/retail-cart.ts"
+      - "apps/web/src/components/shared/GoogleAnalytics.tsx"
+      - "apps/web/src/components/shared/DeferredGtm.tsx"
+      - "apps/web/src/components/shared/GoogleTagManager.tsx"
+      - "apps/web/src/app/layout.tsx"
+      - "apps/web/src/components/retail/RetailCartDrawer.tsx"
+      - "apps/web/src/components/retail/RetailConversion.tsx"
+      - "apps/web/src/components/retail/RetailPdpAnalytics.tsx"
+      - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-TRACKING-AUDIT.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-GA4-MANUAL-ACTIONS.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-CHANGES.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-TEST-RESULTS.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      PHASE-01 GA4 from Downloads spec. Stale reclaim of
+      apps/web/src/app/retail/products/[slug]/page.tsx from TASK-018-001 /
+      TASK-006 (heartbeats 2026-08-18 / 2026-08-12) to mount view_item only.
+      Do not edit RetailProductDetail.tsx (TASK-004), middleware.ts (TASK-001),
+      payment/callback/page.tsx (TASK-012), or RetailHeader (TASK-006).
+      Append-only on shared governance/WORKLOG.
+    acceptance_criteria:
+      - "/admin/* and local/dev hosts do not initialize retail GA4/GTM"
+      - "GA4 page_path uses public URLs not /retail/* rewrite paths"
+      - "Central helper sends view_item add_to_cart remove_from_cart view_cart begin_checkout purchase"
+      - "purchase uses IRR, stable transaction_id, and client dedup"
+      - "No PII in GA4 payloads; web tsc and helper spec pass"
+  - id: "TASK-20260822-004"
+    title: "Retail PDP gallery and size-selection UI aligned with storefront cards"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260822-004"
+    roles:
+      architect: "cursor:implementer-TASK-20260822-004"
+      implementer: "cursor:implementer-TASK-20260822-004"
+      reviewer: "not-required-ui-only-no-auth-payments"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260822-004-retail-pdp"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-22T14:20:00Z"
+    heartbeat_at: "2026-08-22T14:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/retail/RetailProductDetail.tsx"
+      - "apps/web/src/app/retail/retail.css"
+      - "design-system/default/pages/product.md"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-08-22-retail-pdp-gallery-size.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Continues TASK-003 editorial retail UX onto the product page.
+      Do not edit products/[slug]/page.tsx (TASK-018). RetailHeader remains TASK-006.
+      Append-only on shared governance/WORKLOG.
+    acceptance_criteria:
+      - "PDP gallery is 3:4, thumbs tappable (not hover-only), 44px min, lightbox prev/next + Escape"
+      - "Color and size hits are >=44px; unavailable sizes disabled; selected size/stock copy is explicit"
+      - "Mobile sticky bar shows price + size; add-to-cart disabled without a size when sizes exist"
+      - "No new npm dependencies; reduced-motion respected"
+      - "Web tsc/lint pass"
   - id: "TASK-20260822-003"
     title: "Retail home + product-card UI/UX gaps vs Iranian fashion storefronts"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260822-003"
     roles:

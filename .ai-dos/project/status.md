@@ -1,6 +1,8 @@
 # Project Status
 
-- Last verified: 2026-08-22 — **TASK-20260822-003** retail home + product-card UI/UX in progress (local)
+- Last verified: 2026-08-22 — **TASK-20260822-005** PHASE-01 GA4 retail measurement in progress (local)
+- Last verified: 2026-08-22 — **TASK-20260822-004** retail PDP gallery + size UX (implementing; not deployed)
+- Last verified: 2026-08-22 — **TASK-20260822-003** retail home + product-card UI/UX merged (#50 `37878a0`)
 - Last verified: 2026-08-22 — **TASK-20260822-001** Torob `/retail` 301 + `x-middleware-rewrite` ping-pong confirmed live; middleware passthrough pending deploy
 - Last verified: 2026-08-22 — **TASK-20260822-002** admin Excel export for products/categories (merged #48)
 - Last verified: 2026-08-22 — **TASK-20260822-001** Torob crawler allowlist + feed aliases merged (#47 `b167689`)
