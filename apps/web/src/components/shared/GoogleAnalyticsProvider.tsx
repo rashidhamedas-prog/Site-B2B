@@ -5,7 +5,7 @@ import { GoogleAnalytics } from '@/components/shared/GoogleAnalytics';
 import { WebVitalsReporter } from '@/components/shared/WebVitalsReporter';
 import type { GoogleChannel } from '@/lib/google';
 
-/** Suspense wrapper — required because GoogleAnalytics uses useSearchParams. */
+/** Channel GA4 + RUM. Page views use the browser URL (no useSearchParams — that dynamizes the layout). */
 export function GoogleAnalyticsProvider({ channel }: { channel: GoogleChannel }) {
   return (
     <Suspense fallback={null}>

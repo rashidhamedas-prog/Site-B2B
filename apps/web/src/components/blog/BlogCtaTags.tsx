@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { asciiSlug } from '@taranom/persian-utils';
+import { ensureGtagStub } from '@/lib/google';
 
 declare global {
   interface Window {
@@ -17,6 +18,7 @@ function track(articleId: string | undefined, event: 'cta' | 'product' | 'intern
     method: 'POST',
     keepalive: true,
   }).catch(() => undefined);
+  ensureGtagStub();
   window.gtag?.('event', `blog_${event}_click`, {
     article_id: articleId,
     event_category: 'blog',

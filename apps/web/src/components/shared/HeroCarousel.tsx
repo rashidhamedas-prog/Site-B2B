@@ -4,12 +4,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { DEFAULT_AUTOPLAY_MS, type HeroSlide } from '@/lib/cms/hero-slides';
 
-export function useHeroCarousel(slides: HeroSlide[], autoplayMs = DEFAULT_AUTOPLAY_MS) {
+export function useHeroCarousel(
+  slides: HeroSlide[],
+  autoplayMs = DEFAULT_AUTOPLAY_MS,
+  options?: { waitForIdle?: boolean },
+) {
   const count = slides.length;
+  const waitForIdle = Boolean(options?.waitForIdle);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [manualPaused, setManualPaused] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [autoplayReady, setAutoplayReady] = useState(!waitForIdle);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -23,6 +29,21 @@ export function useHeroCarousel(slides: HeroSlide[], autoplayMs = DEFAULT_AUTOPL
     setIndex((i) => (count === 0 ? 0 : Math.min(i, count - 1)));
   }, [count]);
 
+  useEffect(() => {
+    if (!waitForIdle) return;
+    const arm = () => setAutoplayReady(true);
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(arm, { timeout: 4000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(arm, 2500);
+    return () => window.clearTimeout(t);
+  }, [waitForIdle]);
+
   const goTo = useCallback(
     (next: number) => {
       if (count === 0) return;
@@ -35,12 +56,12 @@ export function useHeroCarousel(slides: HeroSlide[], autoplayMs = DEFAULT_AUTOPL
   const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
 
   useEffect(() => {
-    if (count < 2 || paused || manualPaused || reducedMotion || autoplayMs <= 0) return;
+    if (!autoplayReady || count < 2 || paused || manualPaused || reducedMotion || autoplayMs <= 0) return;
     const id = window.setInterval(() => {
       setIndex((i) => (i + 1) % count);
     }, autoplayMs);
     return () => window.clearInterval(id);
-  }, [autoplayMs, count, manualPaused, paused, reducedMotion]);
+  }, [autoplayReady, autoplayMs, count, manualPaused, paused, reducedMotion]);
 
   return {
     index,

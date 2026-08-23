@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { ga4EnvFor, type GoogleChannel } from '@/lib/google';
+import { ga4EnvFor, ensureGtagStub, type GoogleChannel } from '@/lib/google';
 
 type MetricName = 'LCP' | 'CLS' | 'INP' | 'FID';
 
@@ -22,8 +22,10 @@ function roundForGa4(name: MetricName, value: number): number {
 }
 
 function reportMetric(name: MetricName, value: number, measurementId: string) {
-  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+  if (typeof window === 'undefined') return;
   if (!Number.isFinite(value) || value < 0) return;
+  ensureGtagStub();
+  if (typeof window.gtag !== 'function') return;
 
   const payload: Record<string, unknown> = {
     event_category: 'Web Vitals',

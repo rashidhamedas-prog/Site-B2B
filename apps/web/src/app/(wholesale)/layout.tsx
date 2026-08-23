@@ -15,8 +15,15 @@ import { DEFAULT_MENUS, type MenusSettings } from '@/lib/menus';
 import { getServerApiBase } from '@/lib/server-api';
 import { normalizeEnamad, type EnamadSealConfig } from '@/lib/enamad';
 import { mergePublicTheme, type ThemeSettings } from '@/lib/theme-settings';
+import { resolveGscVerification } from '@/lib/google-seo';
+import type { Metadata } from 'next';
 
 const REVALIDATE = 120;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const google = await resolveGscVerification('WHOLESALE');
+  return google ? { verification: { google } } : {};
+}
 
 type PublicSettingsPayload = {
   theme?: ThemeSettings;

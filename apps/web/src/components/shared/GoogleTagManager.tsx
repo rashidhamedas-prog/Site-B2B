@@ -8,13 +8,14 @@
  * Override via NEXT_PUBLIC_GTM_WHOLESALE_ID / NEXT_PUBLIC_GTM_RETAIL_ID.
  */
 
-import { sanitizeGtmId } from '@/lib/google';
+import { isNonProductionAnalyticsHost, sanitizeGtmId } from '@/lib/google';
 import { hostLooksRetail } from '@/lib/channel';
 
 const DEFAULT_WHOLESALE_GTM = 'GTM-M3LQFGZV';
 const DEFAULT_RETAIL_GTM = 'GTM-NKBCGQJV';
 
 export function resolveGtmIdForHost(host: string | null): string {
+  if (isNonProductionAnalyticsHost(host)) return '';
   if (hostLooksRetail(host)) {
     return (
       sanitizeGtmId(process.env.NEXT_PUBLIC_GTM_RETAIL_ID) ||

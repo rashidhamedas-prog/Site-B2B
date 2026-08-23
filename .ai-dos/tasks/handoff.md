@@ -2,6 +2,27 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-23T14:20:00Z — TASK-20260823-001 PHASE-02B production deploy started
+
+- Task / owner: TASK-20260823-001 / cursor:implementer-TASK-20260823-001
+- Branch: `ai/TASK-20260823-001-phase-02b-prod` from `origin/master` `6796362`
+- Rollback target: **`6796362`** (PR #52 live on VPS)
+- Prisma: **NOT RUN** (no schema; TypeORM stack; PHASE-02B forbids migrations)
+- Internal API from `taranom_web`: health/settings/CMS/products **HTTP 200**, non-empty RETAIL payloads
+- Exact next: isolated commit → merge/push master → `scripts/auto-deploy.sh` → smoke; rollback if Home/catalog empty
+- Reports: `SEO-IMPLEMENTATION-REPORTS/PHASE-02B-DEPLOY-PREFLIGHT.md`
+
+## 2026-08-22T15:20:00Z — TASK-20260822-005 PHASE-01 GA4 code complete (not deployed)
+
+- Task / owner: TASK-20260822-005 / cursor:implementer-TASK-20260822-005
+- Branch: `ai/TASK-20260822-005-ga4-measurement`
+- Gates: web `tsc --noEmit` **0**; `retail-analytics.spec.ts` **ok**; `next build` **0** (73/73)
+- Deploy: **not run** (phase: stop at verified local patch)
+- Reports: `SEO-IMPLEMENTATION-REPORTS/PHASE-01-*.md`
+- Residual: GTM Google Tag All Pages can still duplicate the first page_view until owner sets send_page_view false
+- Exact next: human review → commit claimed files only → then deploy if authorized
+- Rollback: revert claimed analytics files; no migration
+
 ## 2026-08-22T14:30:00Z — TASK-20260822-005 PHASE-01 GA4 measurement claimed
 
 - Task / owner: TASK-20260822-005 / cursor:implementer-TASK-20260822-005

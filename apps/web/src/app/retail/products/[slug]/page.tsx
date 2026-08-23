@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { ProductJsonLd, ProductGroupJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
+import { RetailPdpAnalytics } from '@/components/retail/RetailPdpAnalytics';
 import { RETAIL_ORIGIN } from '@/lib/seo';
 import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
@@ -122,6 +123,7 @@ export default async function RetailProductPage({
           { name, url },
         ]}
       />
+      <RetailPdpAnalytics product={product as { id?: string; sku?: string; name?: string; retailPrice?: number | null; retailCompareAtPrice?: number | null; sale?: { payable?: number; original?: number | null }; fabric?: string | null }} />
       <RetailProductDetail product={product as any} />
     </>
   );

@@ -1,15 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
-import { headers } from 'next/headers';
 import { CartProvider } from '@/lib/cart';
 import { ToastProvider } from '@/components/shared/Toast';
 import { DeferredGtm } from '@/components/shared/DeferredGtm';
-import {
-  GtmBodyNoscript,
-  resolveGtmIdForHost,
-} from '@/components/shared/GoogleTagManager';
-import { resolveGscVerification } from '@/lib/google-seo';
+import { resolveGscTokensForRootHead } from '@/lib/google-seo';
 import './globals.css';
+
+/** Public HTML can be ISR. User-specific routes (cart/checkout/account) stay dynamic via their own trees. */
+export const revalidate = 60;
 
 // All weights available; preload disabled so Next doesn't preload every file.
 // Critical Regular + Bold are preloaded manually in <head>.
@@ -29,7 +27,6 @@ const vazirmatn = localFont({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const google = await resolveGscVerification();
   return {
     metadataBase: new URL('https://poshaktaranom.com'),
     title: {
@@ -69,7 +66,6 @@ export async function generateMetadata(): Promise<Metadata> {
       description: 'فروش عمده مانتو و شومیز از کارگاه مشهد',
       images: ['/og-wholesale.jpg'],
     },
-    ...(google ? { verification: { google } } : {}),
   };
 }
 
@@ -81,12 +77,10 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const hdrs = await headers();
-  const host = hdrs.get('x-forwarded-host') || hdrs.get('host');
-  const gtmId = resolveGtmIdForHost(host);
-  // Explicit <head> meta — Next metadata `verification` can be dropped when a
-  // custom <head> is present; GSC needs this tag in the initial HTML head.
-  const gsc = await resolveGscVerification();
+  // Do not call headers()/cookies() here — that forces every HTML route to
+  // `Cache-Control: no-store` and blocks Home ISR. GTM resolves the host in
+  // the browser; GSC tokens are emitted for both channels (dual-host app).
+  const gscTokens = await resolveGscTokensForRootHead();
 
   return (
     <html lang="fa" dir="rtl" className={vazirmatn.variable}>
@@ -105,16 +99,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           type="font/woff2"
           crossOrigin="anonymous"
         />
-        <DeferredGtm gtmId={gtmId} />
-        {gsc ? (
-          <meta name="google-site-verification" content={gsc} />
-        ) : null}
+        <DeferredGtm />
+        {gscTokens.map((token) => (
+          <meta key={token} name="google-site-verification" content={token} />
+        ))}
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.svg" sizes="any" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-sans antialiased">
-        <GtmBodyNoscript gtmId={gtmId} />
         <ToastProvider>
           <CartProvider>
             {children}

@@ -46,6 +46,10 @@ const nextConfig: NextConfig = {
     ],
     deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // Product uploads use timestamp+random keys, so a 1-day optimizer cache
+    // cannot serve a replaced file at the same URL. In-place static banners
+    // (hero) are served directly and do not depend on this TTL.
+    minimumCacheTTL: 86400,
   },
 
   // Transpile workspace packages

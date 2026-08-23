@@ -5,34 +5,20 @@ import {
   sanitizeGscToken,
   type GoogleChannel,
 } from '@/lib/google';
-import { API_URL } from '@/lib/seo-origins';
+import { fetchPublicSettings } from '@/lib/server-api';
 
 type MarketingPublic = {
   gscWholesaleVerification?: string;
   gscRetailVerification?: string;
 };
 
-async function fetchMarketing(): Promise<MarketingPublic> {
-  const candidates = [
-    API_URL,
-    process.env.INTERNAL_API_URL,
-    'http://api:4000/v1',
-    'http://127.0.0.1:4000/v1',
-  ].filter(Boolean) as string[];
+type SettingsWithMarketing = {
+  marketing?: MarketingPublic;
+};
 
-  for (const base of candidates) {
-    try {
-      const res = await fetch(`${base.replace(/\/$/, '')}/settings/public`, {
-        next: { revalidate: 3600 },
-      });
-      if (!res.ok) continue;
-      const json = await res.json();
-      return (json?.marketing ?? {}) as MarketingPublic;
-    } catch {
-      /* try next */
-    }
-  }
-  return {};
+async function marketingFor(channel: GoogleChannel): Promise<MarketingPublic> {
+  const settings = await fetchPublicSettings<SettingsWithMarketing>(channel);
+  return settings?.marketing ?? {};
 }
 
 export async function resolveGoogleChannel(): Promise<GoogleChannel> {
@@ -45,17 +31,44 @@ export async function resolveGoogleChannel(): Promise<GoogleChannel> {
   return force ? 'RETAIL' : 'WHOLESALE';
 }
 
-/** Prefer env, then admin settings. */
+/** Prefer env, then admin settings. Pass `channel` to avoid `headers()` (keeps ISR possible). */
 export async function resolveGscVerification(
   channel?: GoogleChannel,
 ): Promise<string | undefined> {
   const ch = channel ?? (await resolveGoogleChannel());
   const fromEnv = gscEnvFor(ch);
   if (fromEnv) return fromEnv;
-  const m = await fetchMarketing();
+  const m = await marketingFor(ch);
   const fromDb =
     ch === 'RETAIL'
       ? sanitizeGscToken(m.gscRetailVerification)
       : sanitizeGscToken(m.gscWholesaleVerification);
   return fromDb || undefined;
+}
+
+/**
+ * GSC HTML-tag tokens for the shared root `<head>` without reading `headers()`.
+ * Dual-host app: both tokens may appear; Search Console matches per property.
+ */
+export async function resolveGscTokensForRootHead(): Promise<string[]> {
+  const seen = new Set<string>();
+  const push = (value?: string) => {
+    const token = sanitizeGscToken(value);
+    if (token) seen.add(token);
+  };
+  const envRetail = gscEnvFor('RETAIL');
+  const envWholesale = gscEnvFor('WHOLESALE');
+  push(envRetail);
+  push(envWholesale);
+  const needRetail = !envRetail;
+  const needWholesale = !envWholesale;
+  if (needRetail || needWholesale) {
+    const [retail, wholesale] = await Promise.all([
+      needRetail ? marketingFor('RETAIL') : Promise.resolve(null),
+      needWholesale ? marketingFor('WHOLESALE') : Promise.resolve(null),
+    ]);
+    push(retail?.gscRetailVerification);
+    push(wholesale?.gscWholesaleVerification);
+  }
+  return [...seen];
 }

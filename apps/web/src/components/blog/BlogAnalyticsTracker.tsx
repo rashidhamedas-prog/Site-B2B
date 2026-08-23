@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { ensureGtagStub } from '@/lib/google';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
 
@@ -11,7 +12,9 @@ declare global {
 }
 
 function emitGa4(event: string, articleId: string) {
-  if (typeof window === 'undefined' || !window.gtag) return;
+  if (typeof window === 'undefined') return;
+  ensureGtagStub();
+  if (!window.gtag) return;
   const map: Record<string, string> = {
     view: 'blog_article_view',
     scroll25: 'blog_scroll_25',
@@ -49,8 +52,9 @@ export function BlogAnalyticsTracker({ articleId, title }: { articleId: string; 
     };
 
     track('view');
-    if (title && window.gtag) {
-      window.gtag('event', 'view_item', {
+    if (title) {
+      ensureGtagStub();
+      window.gtag?.('event', 'view_item', {
         item_name: title,
         item_id: articleId,
         item_category: 'blog',

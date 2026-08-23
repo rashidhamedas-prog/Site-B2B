@@ -1,14 +1,61 @@
-/**
- * Server-only API base for RSC / route handlers.
- * Prefer docker-internal URL so SSR does not depend on public DNS/loopback.
- */
-export function getServerApiBase(): string {
-  const raw =
-    process.env.API_INTERNAL_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    'http://localhost:4000/v1';
-  const base = String(raw).replace(/\/$/, '');
-  return base.endsWith('/v1') ? base : `${base}/v1`;
+import { cache } from 'react';
+import { getServerApiBase } from '@/lib/server-api-base';
+
+export { getServerApiBase } from '@/lib/server-api-base';
+
+/** Public settings (no user/session). Deduped per request via React cache() + Next fetch memo. */
+export const fetchPublicSettings = cache(async function fetchPublicSettings<T = Record<string, unknown>>(
+  channel: 'RETAIL' | 'WHOLESALE',
+): Promise<T | null> {
+  try {
+    const base = getServerApiBase();
+    const res = await fetch(`${base}/settings/public?channel=${channel}`, {
+      next: { revalidate: 120 },
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as T;
+  } catch {
+    return null;
+  }
+});
+
+/** Strip catalog SSR payload to card fields so RSC HTML stays small. */
+export function slimRetailCatalogProduct(raw: Record<string, unknown>): Record<string, unknown> {
+  const images = Array.isArray(raw.images) ? (raw.images as unknown[]).filter((u) => typeof u === 'string').slice(0, 2) : [];
+  const variants = Array.isArray(raw.variants)
+    ? (raw.variants as Array<Record<string, unknown>>).map((v) => ({
+        id: v.id,
+        color: v.color,
+        colorHex: v.colorHex,
+        size: v.size,
+        stock: v.stock ?? v.retailStock,
+        retailStock: v.retailStock ?? v.stock,
+      }))
+    : [];
+  const specs =
+    raw.specs && typeof raw.specs === 'object'
+      ? {
+          collarModel: (raw.specs as Record<string, unknown>).collarModel,
+          fabricType: (raw.specs as Record<string, unknown>).fabricType,
+        }
+      : undefined;
+  return {
+    id: raw.id,
+    name: raw.name,
+    slug: raw.slug,
+    sku: raw.sku,
+    fabric: raw.fabric,
+    retailPrice: raw.retailPrice,
+    retailCompareAtPrice: raw.retailCompareAtPrice,
+    images,
+    stock: raw.stock,
+    totalStock: raw.totalStock,
+    isNew: raw.isNew,
+    isPreOrder: raw.isPreOrder,
+    sale: raw.sale,
+    variants,
+    specs,
+  };
 }
 
 export type ProductListMeta = {

@@ -1,12 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { apiClient } from '@/lib/api';
 import { clearToken, getToken } from '@/lib/auth';
 import { getRetailAddresses, saveRetailAddress, type RetailAddress } from '@/lib/retail-addresses';
 import { RetailConversion } from '@/components/retail/RetailConversion';
+import {
+  stashPendingRetailPurchase,
+  toGa4Item,
+  trackAddPaymentInfo,
+  trackAddShippingInfo,
+  trackBeginCheckout,
+  type RetailAnalyticsItemInput,
+} from '@/lib/retail-analytics';
 
 const PROVINCES = [
   'تهران', 'خراسان رضوی', 'اصفهان', 'فارس', 'آذربایجان شرقی', 'آذربایجان غربی',
@@ -59,7 +67,12 @@ export default function RetailCheckoutPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState<string | null>(null);
-  const [doneMeta, setDoneMeta] = useState<{ amount: number; skus: string[] }>({ amount: 0, skus: [] });
+  const [doneMeta, setDoneMeta] = useState<{
+    amount: number;
+    skus: string[];
+    items: RetailAnalyticsItemInput[];
+    shipping: number;
+  }>({ amount: 0, skus: [], items: [], shipping: 0 });
   const [shipFee, setShipFee] = useState(0);
   const [shipMeta, setShipMeta] = useState<{ freeShipping?: boolean; estimatedDays?: string }>({});
   const [useWallet, setUseWallet] = useState(false);
@@ -73,6 +86,24 @@ export default function RetailCheckoutPage() {
     recipient: '',
     mobile: '',
   });
+  const beganCheckout = useRef(false);
+
+  useEffect(() => {
+    if (beganCheckout.current || items.length === 0) return;
+    beganCheckout.current = true;
+    trackBeginCheckout(
+      items.map((i) => ({
+        productId: i.productId,
+        sku: i.sku,
+        name: i.productName,
+        color: i.color,
+        size: i.size,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+      })),
+      subtotal,
+    );
+  }, [items, subtotal]);
 
   useEffect(() => {
     const saved = getRetailAddresses();
@@ -195,12 +226,29 @@ export default function RetailCheckoutPage() {
       saveRetailAddress(address);
       const conversionSkus = items.map((i) => i.sku).filter(Boolean);
       const conversionAmount = payable;
+      const conversionItems = items.map((i) => ({
+        productId: i.productId,
+        sku: i.sku,
+        name: i.productName,
+        color: i.color,
+        size: i.size,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+      }));
+      stashPendingRetailPurchase({
+        transactionIds: [order.orderNumber, order.id].filter((id): id is string => Boolean(id)),
+        value: conversionAmount,
+        shipping: shipFee,
+        items: conversionItems
+          .map((it) => toGa4Item(it))
+          .filter((it): it is NonNullable<ReturnType<typeof toGa4Item>> => Boolean(it)),
+      });
       clear();
       if (order?.paymentUrl) {
         window.location.href = order.paymentUrl;
         return;
       }
-      setDoneMeta({ amount: conversionAmount, skus: conversionSkus });
+      setDoneMeta({ amount: conversionAmount, skus: conversionSkus, items: conversionItems, shipping: shipFee });
       setDone(order.orderNumber ?? order.id ?? 'ثبت شد');
     } catch (e: any) {
       const msg = String(e?.message || '');
@@ -222,7 +270,13 @@ export default function RetailCheckoutPage() {
   if (done) {
     return (
       <div className="mx-auto max-w-lg px-4 py-20 text-center">
-        <RetailConversion orderNumber={done} amountIrr={doneMeta.amount} skus={doneMeta.skus} />
+        <RetailConversion
+          orderNumber={done}
+          amountIrr={doneMeta.amount}
+          skus={doneMeta.skus}
+          items={doneMeta.items}
+          shippingIrr={doneMeta.shipping}
+        />
         <h1 className="text-2xl font-extrabold text-[var(--retail-primary)]">سفارش ثبت شد</h1>
         <p className="mt-3 text-[var(--retail-muted)]">شماره سفارش: {done}</p>
         <Link href="/account" className="mt-8 inline-block font-bold text-[var(--retail-primary)]">
@@ -318,7 +372,23 @@ export default function RetailCheckoutPage() {
           <select
             className="w-full rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
             value={shippingMethod}
-            onChange={(e) => setShippingMethod(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              setShippingMethod(next);
+              trackAddShippingInfo(
+                items.map((i) => ({
+                  productId: i.productId,
+                  sku: i.sku,
+                  name: i.productName,
+                  color: i.color,
+                  size: i.size,
+                  unitPrice: i.unitPrice,
+                  quantity: i.quantity,
+                })),
+                subtotal + shipFee,
+                next,
+              );
+            }}
           >
             {SHIP_METHODS.map((m) => (
               <option key={m.id} value={m.id}>{m.label}</option>
@@ -337,7 +407,22 @@ export default function RetailCheckoutPage() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => setPaymentMethod(m.id)}
+                onClick={() => {
+                  setPaymentMethod(m.id);
+                  trackAddPaymentInfo(
+                    items.map((i) => ({
+                      productId: i.productId,
+                      sku: i.sku,
+                      name: i.productName,
+                      color: i.color,
+                      size: i.size,
+                      unitPrice: i.unitPrice,
+                      quantity: i.quantity,
+                    })),
+                    payable,
+                    m.id,
+                  );
+                }}
                 className={`cursor-pointer rounded-full border px-4 py-2 text-sm ${
                   paymentMethod === m.id
                     ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)] text-white'

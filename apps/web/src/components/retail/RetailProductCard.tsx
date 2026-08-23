@@ -121,15 +121,17 @@ export function RetailProductCard({
                 src={image}
                 alt={product.name}
                 fill
+                loading="lazy"
                 className={`object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none ${soldOut ? 'opacity-60 grayscale' : ''}`}
-                sizes="(max-width:768px) 50vw, 25vw"
+                sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, 25vw"
               />
-              {secondImage && !soldOut ? (
+              {!compact && secondImage && !soldOut ? (
                 <Image
                   src={secondImage}
                   alt=""
                   aria-hidden
                   fill
+                  loading="lazy"
                   className="hidden object-cover opacity-0 transition duration-500 group-hover:opacity-100 md:block motion-reduce:hidden"
                   sizes="25vw"
                 />

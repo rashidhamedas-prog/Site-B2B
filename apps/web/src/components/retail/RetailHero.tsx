@@ -25,6 +25,82 @@ const RETAIL_FALLBACK: HeroSlide = {
 
 export type RetailHeroProps = HeroFlatProps;
 
+function isLocalStaticAsset(src: string): boolean {
+  return src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/_next/');
+}
+
+function RetailHeroMedia({
+  src,
+  mobileSrc,
+  alt,
+  className,
+  priority,
+}: {
+  src: string;
+  mobileSrc?: string;
+  alt: string;
+  className: string;
+  priority: boolean;
+}) {
+  if (priority && isLocalStaticAsset(src)) {
+    const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
+    return (
+      <>
+        {mobile ? (
+          <>
+            <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
+            <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
+          </>
+        ) : (
+          <link rel="preload" as="image" href={src} fetchPriority="high" />
+        )}
+        <picture>
+          {mobile ? <source media="(max-width: 767px)" srcSet={mobile} /> : null}
+          {/* Local static WebP — skip Next optimizer (no JPEG transcode, no empty preload). */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={alt}
+            fetchPriority="high"
+            decoding="async"
+            className={`absolute inset-0 h-full w-full ${className}`}
+          />
+        </picture>
+      </>
+    );
+  }
+
+  return (
+    <picture>
+      {mobileSrc ? (
+        <source
+          media="(max-width: 767px)"
+          srcSet={
+            getImageProps({
+              src: mobileSrc,
+              alt: '',
+              fill: true,
+              sizes: '100vw',
+              quality: 70,
+            }).props.srcSet
+          }
+        />
+      ) : null}
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        priority={priority}
+        fetchPriority={priority ? 'high' : 'auto'}
+        loading={priority ? 'eager' : 'lazy'}
+        quality={75}
+        sizes="100vw"
+        className={className}
+      />
+    </picture>
+  );
+}
+
 function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork?: boolean }) {
   const renderHeadline = () => {
     if (slide.headlineAccent && slide.headline.includes(slide.headlineAccent)) {
@@ -92,7 +168,7 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
 export function RetailHero(props: RetailHeroProps) {
   const slides = normalizeHeroSlides(props, RETAIL_FALLBACK);
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
-  const carousel = useHeroCarousel(slides, autoplayMs);
+  const carousel = useHeroCarousel(slides, autoplayMs, { waitForIdle: true });
 
   const slide = carousel.slide ?? RETAIL_FALLBACK;
   const isArtwork = slide.presentation === 'artwork';
@@ -108,49 +184,31 @@ export function RetailHero(props: RetailHeroProps) {
       onBlurCapture={carousel.resume}
     >
       <h1 className="sr-only">خرید آنلاین مانتو، شومیز و پوشاک زنانه ترنم</h1>
-      {/* Full-bleed slide media — only active + neighbors for LCP */}
+      {/* Slide 0 stays mounted (LCP). Other slides mount only while active. */}
       {slides.map((s, i) => {
         const src = s.imageUrl || '/retail/hero-model.webp';
-        // Only the active slide — neighbors load after navigation (LCP first).
-        if (i !== carousel.index) return null;
+        const isActive = i === carousel.index;
+        if (!isActive && i !== 0) return null;
+        const isLcp = i === 0;
         return (
           <div
             key={`${src}-${i}`}
-            className="absolute inset-0 opacity-100 transition-opacity duration-700 ease-out"
-            aria-hidden={false}
+            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+              isActive ? 'opacity-100' : 'pointer-events-none opacity-0'
+            }`}
+            aria-hidden={!isActive}
           >
-            <picture>
-              {s.mobileImageUrl ? (
-                <source
-                  media="(max-width: 767px)"
-                  // Route the mobile art through the Next optimizer (WebP/AVIF +
-                  // responsive widths) instead of shipping the raw upload.
-                  srcSet={
-                    getImageProps({
-                      src: s.mobileImageUrl,
-                      alt: '',
-                      fill: true,
-                      sizes: '100vw',
-                      quality: 70,
-                    }).props.srcSet
-                  }
-                />
-              ) : null}
-              <Image
-                src={src}
-                alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
-                fill
-                priority={i === 0}
-                fetchPriority={i === 0 ? 'high' : 'auto'}
-                quality={75}
-                sizes="100vw"
-                className={
-                  s.presentation === 'artwork'
-                    ? 'object-cover md:object-fill'
-                    : 'object-cover object-[20%_center] sm:object-center'
-                }
-              />
-            </picture>
+            <RetailHeroMedia
+              src={src}
+              mobileSrc={s.mobileImageUrl}
+              alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
+              priority={isLcp}
+              className={
+                s.presentation === 'artwork'
+                  ? 'object-cover md:object-fill'
+                  : 'object-cover object-[20%_center] sm:object-center'
+              }
+            />
           </div>
         );
       })}

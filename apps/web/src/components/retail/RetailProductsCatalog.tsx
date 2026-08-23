@@ -1,8 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { RetailProductCard } from './RetailProductCard';
+import { trackViewItemList } from '@/lib/retail-analytics';
 
 type Product = {
   id: string;
@@ -78,11 +80,13 @@ const PAGE_SIZE = 24;
 export function RetailProductsCatalog({
   initialProducts,
   initialTotalPages,
+  initialPage = 1,
   seedDefaultListing = false,
   searchParams = {},
 }: {
   initialProducts?: Array<Record<string, unknown> | Product>;
   initialTotalPages?: number;
+  initialPage?: number;
   seedDefaultListing?: boolean;
   searchParams?: RetailCatalogSearchParams;
 } = {}) {
@@ -93,7 +97,7 @@ export function RetailProductsCatalog({
   const [products, setProducts] = useState<Product[]>(() => seeded ?? []);
   const [loading, setLoading] = useState(() => !seeded);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(() => (seeded ? Math.max(1, initialPage) : 1));
   const [totalPages, setTotalPages] = useState(() =>
     typeof initialTotalPages === 'number' && seeded ? initialTotalPages : 1,
   );
@@ -170,6 +174,23 @@ export function RetailProductsCatalog({
       cancelled = true;
     };
   }, [buildParams]);
+
+  useEffect(() => {
+    if (loading || page !== 1 || products.length === 0) return;
+    trackViewItemList(
+      products.map((p) => ({
+        productId: p.id,
+        sku: p.id,
+        name: p.name,
+        unitPrice: Number(p.retailPrice ?? 0),
+        quantity: 1,
+        itemListId: 'retail_catalog',
+        itemListName: 'Retail Catalog',
+      })),
+      'Retail Catalog',
+      'retail_catalog',
+    );
+  }, [loading, page, products]);
 
   const loadMore = async () => {
     if (loadingMore || page >= totalPages) return;
@@ -304,17 +325,38 @@ export function RetailProductsCatalog({
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
               {products.map((p) => <RetailProductCard key={p.id} product={p} />)}
             </div>
-            {page < totalPages ? (
-              <div className="mt-10 flex justify-center">
-                <button
-                  type="button"
-                  disabled={loadingMore}
-                  onClick={loadMore}
-                  className="cursor-pointer rounded-full border border-[var(--retail-primary)] px-8 py-3 text-sm font-bold text-[var(--retail-primary)] disabled:opacity-50"
-                >
-                  {loadingMore ? 'در حال بارگذاری…' : 'بارگذاری بیشتر'}
-                </button>
-              </div>
+            {totalPages > 1 ? (
+              <nav
+                aria-label="صفحه‌بندی محصولات"
+                className="mt-10 flex flex-wrap items-center justify-center gap-3"
+              >
+                {page > 1 ? (
+                  <Link
+                    href={page === 2 ? '/products' : `/products?page=${page - 1}`}
+                    className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--retail-primary)] px-5 text-sm font-bold text-[var(--retail-primary)]"
+                  >
+                    صفحه قبل
+                  </Link>
+                ) : null}
+                {page < totalPages ? (
+                  <>
+                    <Link
+                      href={`/products?page=${page + 1}`}
+                      className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--retail-primary)] px-5 text-sm font-bold text-[var(--retail-primary)]"
+                    >
+                      صفحه بعد
+                    </Link>
+                    <button
+                      type="button"
+                      disabled={loadingMore}
+                      onClick={loadMore}
+                      className="cursor-pointer rounded-full px-4 py-3 text-sm font-bold text-[var(--retail-muted)] disabled:opacity-50"
+                    >
+                      {loadingMore ? 'در حال بارگذاری…' : 'بارگذاری بیشتر در همین صفحه'}
+                    </button>
+                  </>
+                ) : null}
+              </nav>
             ) : null}
           </>
         )}

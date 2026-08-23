@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { apiClient } from '@/lib/api';
+import { trackViewCart } from '@/lib/retail-analytics';
 
 function mediaUrl(url?: string) {
   if (!url) return undefined;
@@ -23,6 +24,24 @@ export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: ()
   const [related, setRelated] = useState<Related[]>([]);
   const seed = items[0]?.productId ?? '';
   const cartIds = items.map((i) => i.productId).join(',');
+
+  useEffect(() => {
+    if (!open) return;
+    trackViewCart(
+      items.map((i) => ({
+        productId: i.productId,
+        sku: i.sku,
+        name: i.productName,
+        color: i.color,
+        size: i.size,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+      })),
+      total,
+    );
+    // Intentionally only when the drawer opens, not on every cart mutation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

@@ -1,13 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import {
+  readPendingRetailPurchase,
+  trackPurchase,
+  type RetailAnalyticsItemInput,
+} from '@/lib/retail-analytics';
 
 type Props = {
   orderId?: string;
   orderNumber?: string;
   amountIrr?: number;
+  shippingIrr?: number;
   /** product sku/ids for yektanet product API */
   skus?: string[];
+  items?: RetailAnalyticsItemInput[];
 };
 
 function readAff(): { raw?: string; network?: string; clickId?: string } {
@@ -25,15 +32,31 @@ function readAff(): { raw?: string; network?: string; clickId?: string } {
 }
 
 /**
- * Client-side purchase / conversion events for Yektanet product API, Meta, and network pixels.
- * Mount on thank-you / payment-success screens. S2S postbacks are handled by the API.
+ * Client-side purchase / conversion events for Yektanet, Meta, and network pixels.
+ * GA4 purchase is fired only after authoritative success, with IRR values and dedup.
  */
-export function RetailConversion({ orderId, orderNumber, amountIrr = 0, skus = [] }: Props) {
+export function RetailConversion({
+  orderId,
+  orderNumber,
+  amountIrr = 0,
+  shippingIrr,
+  skus = [],
+  items,
+}: Props) {
+  const fired = useRef(false);
+
   useEffect(() => {
+    if (fired.current) return;
     if (!orderId && !orderNumber) return;
+    fired.current = true;
+
     const aff = readAff();
     const amountToman = Math.round(amountIrr / 10);
-    const w = window as any;
+    const w = window as Window & {
+      yektanet?: (...args: unknown[]) => void;
+      fbq?: (...args: unknown[]) => void;
+      dataLayer?: unknown[];
+    };
 
     try {
       if (typeof w.yektanet === 'function') {
@@ -64,16 +87,14 @@ export function RetailConversion({ orderId, orderNumber, amountIrr = 0, skus = [
       /* ignore */
     }
 
-    // Generic dataLayer + custom event for Affer / Afsona / Takhfifan tag managers
     try {
       w.dataLayer = w.dataLayer || [];
       w.dataLayer.push({
-        event: 'purchase',
+        event: 'taranom_affiliate_purchase',
         order_id: orderNumber || orderId,
         value: amountToman,
         currency: 'IRR',
         affiliate_network: aff.network,
-        click_id: aff.clickId,
       });
       w.dispatchEvent?.(
         new CustomEvent('taranom:purchase', {
@@ -82,7 +103,7 @@ export function RetailConversion({ orderId, orderNumber, amountIrr = 0, skus = [
             orderNumber,
             amountIrr,
             amountToman,
-            affiliate: aff,
+            affiliate: { network: aff.network },
             skus,
           },
         }),
@@ -91,23 +112,26 @@ export function RetailConversion({ orderId, orderNumber, amountIrr = 0, skus = [
       /* ignore */
     }
 
-    // Google Analytics 4 purchase (if gtag loaded by GoogleAnalyticsProvider)
-    try {
-      if (typeof w.gtag === 'function') {
-        w.gtag('event', 'purchase', {
-          transaction_id: orderNumber || orderId,
-          value: amountToman,
-          currency: 'IRR',
-          items: (skus.length ? skus : ['order']).map((sku) => ({
-            item_id: sku,
-            quantity: 1,
-          })),
-        });
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [orderId, orderNumber, amountIrr, skus]);
+    const pending = readPendingRetailPurchase();
+    const transactionId = String(orderNumber || orderId || pending?.transactionIds[0] || '').trim();
+    const analyticsItems: RetailAnalyticsItemInput[] =
+      items && items.length
+        ? items
+        : pending?.items?.length
+          ? pending.items
+          : (skus.length ? skus : []).map((sku) => ({ sku, name: sku, quantity: 1 }));
+    const valueIrr = amountIrr > 0 ? amountIrr : pending?.value ?? 0;
+
+    trackPurchase({
+      transactionId,
+      valueIrr,
+      items: analyticsItems,
+      shippingIrr: shippingIrr ?? pending?.shipping,
+      extraTransactionIds: [orderId, orderNumber, ...(pending?.transactionIds ?? [])].filter(
+        (id): id is string => Boolean(id),
+      ),
+    });
+  }, [orderId, orderNumber, amountIrr, shippingIrr, skus, items]);
 
   return null;
 }

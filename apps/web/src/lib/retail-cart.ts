@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { trackAddToCart, trackRemoveFromCart } from '@/lib/retail-analytics';
 
 export interface RetailCartItem {
   productId: string;
@@ -13,6 +14,18 @@ export interface RetailCartItem {
   color?: string;
   size?: string;
   variantId?: string;
+}
+
+function asAnalyticsItem(item: RetailCartItem, quantity: number) {
+  return {
+    productId: item.productId,
+    sku: item.sku,
+    name: item.productName,
+    color: item.color,
+    size: item.size,
+    unitPrice: item.unitPrice,
+    quantity,
+  };
 }
 
 interface RetailCartState {
@@ -40,9 +53,13 @@ export const useRetailCart = create<RetailCartState>()(
           }
           return { items: [...state.items, { ...item, quantity: qty }] };
         });
+        trackAddToCart(asAnalyticsItem({ ...item, quantity: qty }, qty));
       },
       updateQty: (productId, quantity, variantId) => {
         const q = Math.max(0, Number(quantity) || 0);
+        const prev = get().items.find(
+          (i) => i.productId === productId && (variantId === undefined || i.variantId === variantId),
+        );
         const match = (i: RetailCartItem) =>
           i.productId === productId && (variantId === undefined || i.variantId === variantId);
         set((state) => ({
@@ -51,14 +68,24 @@ export const useRetailCart = create<RetailCartState>()(
               ? state.items.filter((i) => !match(i))
               : state.items.map((i) => (match(i) ? { ...i, quantity: q } : i)),
         }));
+        if (prev) {
+          const delta = q - prev.quantity;
+          if (delta > 0) trackAddToCart(asAnalyticsItem(prev, delta));
+          else if (delta < 0) trackRemoveFromCart(asAnalyticsItem(prev, Math.abs(delta)));
+        }
       },
-      removeItem: (productId, variantId) =>
+      removeItem: (productId, variantId) => {
+        const prev = get().items.find(
+          (i) => i.productId === productId && (variantId === undefined || i.variantId === variantId),
+        );
         set((state) => ({
           items: state.items.filter(
             (i) =>
               !(i.productId === productId && (variantId === undefined || i.variantId === variantId)),
           ),
-        })),
+        }));
+        if (prev) trackRemoveFromCart(asAnalyticsItem(prev, prev.quantity));
+      },
       clear: () => set({ items: [] }),
       count: () => get().items.reduce((n, i) => n + i.quantity, 0),
       total: () => get().items.reduce((n, i) => n + i.unitPrice * i.quantity, 0),

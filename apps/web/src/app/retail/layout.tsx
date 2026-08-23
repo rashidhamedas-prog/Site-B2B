@@ -12,7 +12,7 @@ import { GoogleAnalyticsProvider } from '@/components/shared/GoogleAnalyticsProv
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/shared/JsonLd';
 import { fetchSiteContent } from '@/lib/cms/fetch';
 import { defaultSiteChrome, parseChromeBlocks } from '@/lib/cms/chrome';
-import { getServerApiBase } from '@/lib/server-api';
+import { fetchPublicSettings } from '@/lib/server-api';
 import { normalizeEnamad, type EnamadSealConfig } from '@/lib/enamad';
 import { resolveGscVerification } from '@/lib/google-seo';
 import './retail.css';
@@ -26,19 +26,6 @@ type PublicSettingsPayload = {
   };
   marketing?: RetailMarketingPublic;
 };
-
-async function fetchRetailPublicSettings(): Promise<PublicSettingsPayload | null> {
-  try {
-    const base = getServerApiBase();
-    const res = await fetch(`${base}/settings/public?channel=RETAIL`, {
-      next: { revalidate: REVALIDATE },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as PublicSettingsPayload;
-  } catch {
-    return null;
-  }
-}
 
 export async function generateMetadata(): Promise<Metadata> {
   const google = await resolveGscVerification('RETAIL');
@@ -74,7 +61,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RetailLayout({ children }: { children: React.ReactNode }) {
   const [settings, chromeDoc] = await Promise.all([
-    fetchRetailPublicSettings(),
+    fetchPublicSettings<PublicSettingsPayload>('RETAIL'),
     fetchSiteContent('RETAIL', 'chrome', { revalidate: REVALIDATE }),
   ]);
 

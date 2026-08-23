@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { apiClient } from '@/lib/api';
+import { hostLooksRetail } from '@/lib/channel';
 import {
   ga4EnvFor,
-  gtmEnvFor,
+  ensureGtagStub,
+  isAdminAnalyticsPath,
+  isNonProductionAnalyticsHost,
+  publicAnalyticsPagePath,
   sanitizeGa4Id,
-  sanitizeGtmId,
   type GoogleChannel,
 } from '@/lib/google';
 import { setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
@@ -15,8 +18,6 @@ import { setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
 type MarketingPublic = {
   ga4WholesaleId?: string;
   ga4RetailId?: string;
-  gtmWholesaleId?: string;
-  gtmRetailId?: string;
 };
 
 declare global {
@@ -26,72 +27,64 @@ declare global {
   }
 }
 
-function loadGtag(measurementId: string) {
+function bindGa4(measurementId: string) {
   if (typeof window === 'undefined' || !measurementId) return;
-  if (document.getElementById('ga4-gtag-src')) {
-    window.gtag?.('config', measurementId, { send_page_view: false });
-    return;
+  ensureGtagStub();
+}
+
+function currentPublicPath(pathname: string, search: string) {
+  if (typeof window !== 'undefined') {
+    return publicAnalyticsPagePath(window.location.pathname, window.location.search);
   }
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function gtag(...args: unknown[]) {
-    window.dataLayer?.push(args);
-  };
-  window.gtag('js', new Date());
-  window.gtag('config', measurementId, { send_page_view: false });
-
-  const s = document.createElement('script');
-  s.id = 'ga4-gtag-src';
-  s.async = true;
-  s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
-  document.head.appendChild(s);
+  return publicAnalyticsPagePath(pathname, search);
 }
 
-function loadGtm(containerId: string) {
-  if (typeof window === 'undefined' || !containerId) return;
-  // Already injected via server layout <head> snippet
-  if (document.getElementById('gtm-head') || document.getElementById('gtm-script')) return;
-  if (document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${containerId}"]`)) return;
-  window.dataLayer = window.dataLayer || [];
-  window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
-  const s = document.createElement('script');
-  s.id = 'gtm-script';
-  s.async = true;
-  s.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(containerId)}`;
-  document.head.appendChild(s);
-}
-
-function pagePath(pathname: string, search: string) {
-  return `${pathname}${search ? `?${search}` : ''}`;
+function channelAllowedOnHost(channel: GoogleChannel, host: string | null): boolean {
+  const retail = hostLooksRetail(host);
+  if (channel === 'RETAIL') return retail;
+  return !retail;
 }
 
 /**
- * Loads GA4 (and optional GTM) for the given storefront channel.
- * IDs: env NEXT_PUBLIC_GA4_* / NEXT_PUBLIC_GTM_* OR admin Settings → Google.
+ * Sends SPA page_view through the GTM dataLayer / gtag stub.
+ * Does not load gtag.js — GTM-NKBCGQJV is the single GA4 source of truth.
  */
 export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const readyId = useRef<string>('');
-  // Dedupe: both effects below can fire for the same path on initial mount,
-  // which double-counted page_view in GA4.
   const lastSent = useRef<string>('');
 
   const sendPageView = (id: string, path: string) => {
     const key = `${id}|${path}`;
     if (lastSent.current === key) return;
     lastSent.current = key;
+    ensureGtagStub();
+    const pageLocation =
+      typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
+    const pageTitle = typeof document !== 'undefined' ? document.title : path;
+    window.dataLayer?.push({
+      event: 'page_view',
+      page_path: path,
+      page_location: pageLocation,
+      page_title: pageTitle,
+    });
     window.gtag?.('event', 'page_view', {
       page_path: path,
-      page_title: typeof document !== 'undefined' ? document.title : path,
+      page_location: pageLocation,
+      page_title: pageTitle,
       send_to: id,
     });
   };
 
   useEffect(() => {
+    if (isAdminAnalyticsPath(pathname)) return;
+    const host = typeof window !== 'undefined' ? window.location.hostname : null;
+    if (isNonProductionAnalyticsHost(host)) return;
+    if (!channelAllowedOnHost(channel, host)) return;
+
     let cancelled = false;
     (async () => {
       let ga4 = ga4EnvFor(channel);
-      let gtm = gtmEnvFor(channel);
       try {
         const s = await apiClient.get<{ marketing?: MarketingPublic }>('/settings/public');
         const m = s.marketing ?? {};
@@ -100,21 +93,15 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
             channel === 'RETAIL' ? m.ga4RetailId : m.ga4WholesaleId,
           );
         }
-        if (!gtm) {
-          gtm = sanitizeGtmId(
-            channel === 'RETAIL' ? m.gtmRetailId : m.gtmWholesaleId,
-          );
-        }
       } catch {
         /* env-only fallback already applied */
       }
       if (cancelled) return;
-      if (gtm) loadGtm(gtm);
       if (ga4) {
-        loadGtag(ga4);
+        bindGa4(ga4);
         readyId.current = ga4;
         setGa4RumiMeasurementId(ga4);
-        sendPageView(ga4, pagePath(pathname || '/', searchParams?.toString() || ''));
+        sendPageView(ga4, currentPublicPath(pathname || '/', ''));
       }
     })();
     return () => {
@@ -125,11 +112,16 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
   }, [channel]);
 
   useEffect(() => {
+    if (isAdminAnalyticsPath(pathname)) return;
+    const host = typeof window !== 'undefined' ? window.location.hostname : null;
+    if (isNonProductionAnalyticsHost(host)) return;
+    if (!channelAllowedOnHost(channel, host)) return;
     const id = readyId.current || ga4EnvFor(channel);
-    if (!id || !window.gtag) return;
-    sendPageView(id, pagePath(pathname || '/', searchParams?.toString() || ''));
+    if (!id) return;
+    ensureGtagStub();
+    sendPageView(id, currentPublicPath(pathname || '/', ''));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, searchParams, channel]);
+  }, [pathname, channel]);
 
   return null;
 }

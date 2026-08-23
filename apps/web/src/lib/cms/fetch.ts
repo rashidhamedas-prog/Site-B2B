@@ -1,15 +1,18 @@
+import { getServerApiBase } from '@/lib/server-api-base';
 import type { ContentBlock, SiteContentDoc } from './types';
 import { getDefaultBlocks } from './defaults';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1';
-
+/**
+ * SSR CMS fetches must use the docker-internal API base.
+ * Client chrome (`useSiteChrome`) keeps its own public/same-origin URL.
+ */
 export async function fetchSiteContent(
   channel: 'WHOLESALE' | 'RETAIL',
   pageKey: string,
   opts?: { revalidate?: number | false },
 ): Promise<SiteContentDoc | null> {
   try {
-    const res = await fetch(`${API_BASE}/cms/site-content/${channel}/${pageKey}`, {
+    const res = await fetch(`${getServerApiBase()}/cms/site-content/${channel}/${pageKey}`, {
       next:
         opts?.revalidate === false
           ? { revalidate: 0 }

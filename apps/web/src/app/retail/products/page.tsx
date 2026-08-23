@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
 import { RetailProductsCatalog } from '@/components/retail/RetailProductsCatalog';
 import { fetchPublicCategories } from '@/components/category/CategoryLanding';
-import { fetchProductList } from '@/lib/server-api';
+import { fetchProductList, slimRetailCatalogProduct } from '@/lib/server-api';
 
 interface SearchParams {
   q?: string;
@@ -19,6 +19,9 @@ interface SearchParams {
   page?: string;
   sort?: string;
 }
+
+/** Default listing is public; filtered views stay dynamic via searchParams. */
+export const revalidate = 120;
 
 export async function generateMetadata({
   searchParams,
@@ -47,6 +50,23 @@ export async function generateMetadata({
   return isListingVariant ? { robots: { index: false, follow: true } } : {};
 }
 
+function hasCatalogFilters(params: SearchParams): boolean {
+  return Boolean(
+    params.q ||
+      params.search ||
+      params.fabric ||
+      params.color ||
+      params.size ||
+      params.collar ||
+      params.collectionId ||
+      params.category ||
+      params.categoryId ||
+      params.minPrice ||
+      params.maxPrice ||
+      params.sort,
+  );
+}
+
 function remainingProductQuery(params: SearchParams): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -72,27 +92,15 @@ export default async function RetailProductsPage({
     }
   }
 
-  const isListingVariant = Boolean(
-    params.q ||
-      params.search ||
-      params.fabric ||
-      params.color ||
-      params.size ||
-      params.collar ||
-      params.collectionId ||
-      params.category ||
-      params.categoryId ||
-      params.minPrice ||
-      params.maxPrice ||
-      params.page ||
-      params.sort,
-  );
+  const filtered = hasCatalogFilters(params);
+  const pageNum = Math.max(1, Math.floor(Number(params.page) || 1));
 
-  const initial = isListingVariant
+  const initial = filtered
     ? null
     : await fetchProductList({
         channel: 'RETAIL',
         limit: 24,
+        page: pageNum,
         status: 'ACTIVE',
         sort: 'newest',
       });
@@ -100,9 +108,10 @@ export default async function RetailProductsPage({
   return (
     <RetailProductsCatalog
       searchParams={params}
-      initialProducts={initial?.data}
+      initialProducts={initial?.data.map((row) => slimRetailCatalogProduct(row as Record<string, unknown>))}
       initialTotalPages={initial?.meta.totalPages}
-      seedDefaultListing={!isListingVariant}
+      initialPage={pageNum}
+      seedDefaultListing={!filtered}
     />
   );
 }
