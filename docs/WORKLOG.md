@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-23 — PHASE-02B دیپلوی کنترل‌شده تولید (موفق)
+
+- انتشار `13bf657` روی master با `scripts/auto-deploy.sh`. Rollback لازم نشد؛ هدف برگشت `6796362`.
+- Prisma اجرا نشد. هوم ISR (`s-maxage=60`, HIT)، کاتالوگ ۲۴ لینک محصول، PDP گلرخ HTML واقعی.
+- TTFB هوم گرم حدود ۶۷۷ms (قبل ۱۰۰۹ms). گزارش: `SEO-IMPLEMENTATION-REPORTS/PHASE-02B-PRODUCTION-*.md`.
+
 ## 2026-08-23 — PHASE-02B دیپلوی کنترل‌شده تولید (شروع)
 
 - هدف: انتشار PHASE-01 (GA4) + PHASE-02B (ISR/LCP/کتالوگ) بدون مهاجرت دیتابیس.

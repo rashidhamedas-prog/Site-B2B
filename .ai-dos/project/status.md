@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-08-23 — **TASK-20260823-001** PHASE-02B production deploy in progress (preflight API PASS; not switched yet)
+- Last verified: 2026-08-23 — **TASK-20260823-001** PHASE-02B production deploy **SUCCESS** at `13bf657` (home ISR HIT; catalog 24 product links; no Prisma)
 - Last verified: 2026-08-22 — **TASK-20260822-005** PHASE-01 GA4 retail measurement coded locally (tsc/build 0; not deployed)
 - Last verified: 2026-08-22 — **TASK-20260822-004** retail PDP gallery + size UX (implementing; not deployed)
 - Last verified: 2026-08-22 — **TASK-20260822-003** retail home + product-card UI/UX merged (#50 `37878a0`)
