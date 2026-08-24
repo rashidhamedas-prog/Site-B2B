@@ -83,6 +83,7 @@ export enum PaymentGateway {
   BANK_TRANSFER = 'BANK_TRANSFER',
   COD = 'COD',
   SNAPPAY = 'SNAPPAY',
+  DIGIPAY = 'DIGIPAY',
 }
 
 export enum PaymentMethod {

@@ -37,6 +37,7 @@ export type VerifyReturnRequest = {
   providerToken: string;
   merchantId: string;
   sandbox: boolean;
+  extra?: Record<string, string | undefined>;
 };
 
 export type VerifyReturnResult = {

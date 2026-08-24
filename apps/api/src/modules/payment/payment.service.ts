@@ -20,6 +20,8 @@ import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { SettingsService } from '../settings/settings.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
+import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.adapter';
+import type { PaymentProviderAdapter } from './adapters/payment-provider.adapter';
 import { assertPositiveFiniteIrr, toPublicPaymentDto, PaymentPublicDto } from './dto/payment-public.dto';
 import { PaymentMetrics, maskMobile } from './payment-metrics';
 
@@ -66,6 +68,7 @@ export class PaymentService {
     private readonly settings: SettingsService,
     private readonly affiliatePostback: AffiliatePostbackService,
     private readonly zarinpal: ZarinPalAdapter,
+    private readonly digipay: DigiPayAdapter,
     private readonly metrics: PaymentMetrics,
   ) {}
 
@@ -95,19 +98,53 @@ export class PaymentService {
   private async resolveGateway(channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE') {
     const cfg = await this.settings.payment();
     const isRetail = channel === 'RETAIL';
+    const useDigipay =
+      isRetail &&
+      this.digipay.isConfigured() &&
+      String(cfg.retailGateway || 'DIGIPAY').toUpperCase() !== 'ZARINPAL';
     const merchantId = (isRetail ? cfg.retailMerchantId : cfg.merchantId) || '';
-    const sandbox = isRetail
-      ? cfg.retailSandbox || !merchantId
-      : cfg.sandbox || !merchantId;
+    const sandbox = useDigipay
+      ? this.digipay.isSandbox()
+      : isRetail
+        ? cfg.retailSandbox || !merchantId
+        : cfg.sandbox || !merchantId;
     const enabled = isRetail
-      ? !!cfg.retailEnabled && !!cfg.enabled
+      ? !!cfg.retailEnabled && !!cfg.enabled && (useDigipay || !!merchantId || sandbox)
       : !!cfg.wholesaleEnabled && !!cfg.enabled;
     const mid = merchantId || '00000000-0000-0000-0000-000000000000';
+    const defaultRetailCallback = `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`;
     const callbackBase = isRetail
-      ? (cfg.retailCallbackUrl ||
-          `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`)
+      ? useDigipay
+        ? `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/digipay/callback`
+        : (cfg.retailCallbackUrl || defaultRetailCallback)
       : (cfg.callbackUrl || this.callbackBase);
-    return { sandbox, merchantId: mid, enabled, callbackBase, channel };
+    return {
+      sandbox,
+      merchantId: mid,
+      enabled,
+      callbackBase,
+      channel,
+      providerCode: useDigipay ? 'DIGIPAY' : 'ZARINPAL',
+      adapter: (useDigipay ? this.digipay : this.zarinpal) as PaymentProviderAdapter,
+    };
+  }
+
+  private reuseRedirectUrl(
+    payment: PaymentEntity,
+    gw: { sandbox: boolean; providerCode: string },
+  ): string | null {
+    const stored = payment.meta?.redirectUrl;
+    if (typeof stored === 'string' && stored.startsWith('https://')) return stored;
+    if ((payment.gateway || gw.providerCode) === 'DIGIPAY' && payment.authority) {
+      return this.digipay.payRedirectUrl(payment.authority, gw.sandbox);
+    }
+    if (payment.authority) {
+      const startPayBase = gw.sandbox
+        ? 'https://sandbox.zarinpal.com/pg/StartPay'
+        : 'https://payment.zarinpal.com/pg/StartPay';
+      return `${startPayBase}/${payment.authority}`;
+    }
+    return null;
   }
 
   get callbackBase(): string {
@@ -181,7 +218,11 @@ export class PaymentService {
           : 'پرداخت آنلاین عمده غیرفعال است یا مرچنت کد عمده تنظیم نشده',
       );
     }
-    if ((!gw.merchantId || gw.merchantId.startsWith('00000000')) && !gw.sandbox) {
+    if (
+      gw.providerCode !== 'DIGIPAY' &&
+      (!gw.merchantId || gw.merchantId.startsWith('00000000')) &&
+      !gw.sandbox
+    ) {
       throw new BadRequestException(
         channel === 'RETAIL'
           ? 'مرچنت کد زرین‌پال فروشگاه تکی را در تنظیمات پرداخت وارد کنید'
@@ -210,7 +251,7 @@ export class PaymentService {
         const payment = await payRepo.save(
           payRepo.create({
             amount,
-            gateway: 'ZARINPAL',
+            gateway: gw.providerCode,
             status: 'PENDING',
             orderId: input.orderId,
             invoiceId: input.invoiceId,
@@ -224,29 +265,25 @@ export class PaymentService {
       });
 
       if (reused.kind === 'reuse') {
-        const caps = this.zarinpal.getCapabilities();
-        if (caps.pay) {
-          const sandbox = gw.sandbox;
-          const startPayBase = sandbox
-            ? 'https://sandbox.zarinpal.com/pg/StartPay'
-            : 'https://payment.zarinpal.com/pg/StartPay';
+        const redirectUrl = this.reuseRedirectUrl(reused.payment, gw);
+        if (redirectUrl && gw.adapter.getCapabilities().pay) {
           this.metrics.incr('payment_start_total');
           this.logger.log(
             this.paymentLogCtx({
               event: 'payment.start.reuse',
               paymentId: reused.payment.id,
               orderId: input.orderId,
-              providerCode: 'ZARINPAL',
+              providerCode: reused.payment.gateway || gw.providerCode,
               mobile: input.mobile,
-              extra: { sandbox, channel },
+              extra: { sandbox: gw.sandbox, channel },
             }),
           );
           return {
             paymentId: reused.payment.id,
             authority: reused.payment.authority!,
-            redirectUrl: `${startPayBase}/${reused.payment.authority}`,
-            gateway: 'ZARINPAL',
-            sandbox,
+            redirectUrl,
+            gateway: reused.payment.gateway || gw.providerCode,
+            sandbox: gw.sandbox,
           };
         }
       }
@@ -259,11 +296,12 @@ export class PaymentService {
 
       const callbackUrl = `${gw.callbackBase}${gw.callbackBase.includes('?') ? '&' : '?'}paymentId=${payment.id}`;
       payment.callbackUrl = callbackUrl;
+      payment.gateway = gw.providerCode;
 
       const attemptNo = (payment.attemptCount || 0) + 1;
       const attempt = this.attemptRepo.create({
         paymentId: payment.id,
-        providerCode: 'ZARINPAL',
+        providerCode: gw.providerCode,
         attemptNo,
         amount,
         currency: 'IRR',
@@ -274,7 +312,7 @@ export class PaymentService {
       await this.attemptRepo.save(attempt);
 
       try {
-        const created = await this.zarinpal.createPayment({
+        const created = await gw.adapter.createPayment({
           amountIrr: amount,
           callbackUrl,
           description: payment.description || 'پرداخت سفارش پوشاک ترنم',
@@ -283,11 +321,18 @@ export class PaymentService {
           mobile: input.mobile,
           email: input.email,
           orderId: input.orderId,
+          metadata: { providerId: payment.id },
         });
 
         payment.authority = created.providerToken;
         payment.attemptCount = attemptNo;
-        payment.meta = { ...(payment.meta ?? {}), channel, request: created.rawSanitized };
+        payment.meta = {
+          ...(payment.meta ?? {}),
+          channel,
+          request: created.rawSanitized,
+          redirectUrl: created.redirectUrl,
+          providerId: payment.id,
+        };
         await this.repo.save(payment);
 
         attempt.status = 'REDIRECTED';
@@ -301,7 +346,7 @@ export class PaymentService {
             event: 'payment.start.ok',
             paymentId: payment.id,
             orderId: input.orderId,
-            providerCode: 'ZARINPAL',
+            providerCode: gw.providerCode,
             mobile: input.mobile,
             extra: { sandbox: gw.sandbox, channel, attemptNo },
           }),
@@ -311,11 +356,11 @@ export class PaymentService {
           paymentId: payment.id,
           authority: created.providerToken,
           redirectUrl: created.redirectUrl,
-          gateway: 'ZARINPAL',
+          gateway: gw.providerCode,
           sandbox: gw.sandbox,
         };
       } catch (err: any) {
-        const norm = this.zarinpal.normalizeProviderError(err);
+        const norm = gw.adapter.normalizeProviderError(err);
         payment.status = 'FAILED';
         payment.meta = {
           ...(payment.meta ?? {}),
@@ -332,7 +377,7 @@ export class PaymentService {
             event: 'payment.start.failed',
             paymentId: payment.id,
             orderId: input.orderId,
-            providerCode: 'ZARINPAL',
+            providerCode: gw.providerCode,
             mobile: input.mobile,
             extra: { code: norm.code, message: norm.message, attemptNo },
           }),
@@ -343,7 +388,7 @@ export class PaymentService {
 
     const payment = this.repo.create({
       amount,
-      gateway: 'ZARINPAL',
+      gateway: gw.providerCode,
       status: 'PENDING',
       orderId: input.orderId,
       invoiceId: input.invoiceId,
@@ -360,7 +405,7 @@ export class PaymentService {
     const attemptNo = (payment.attemptCount || 0) + 1;
     const attempt = this.attemptRepo.create({
       paymentId: payment.id,
-      providerCode: 'ZARINPAL',
+      providerCode: gw.providerCode,
       attemptNo,
       amount,
       currency: 'IRR',
@@ -371,7 +416,7 @@ export class PaymentService {
     await this.attemptRepo.save(attempt);
 
     try {
-      const created = await this.zarinpal.createPayment({
+      const created = await gw.adapter.createPayment({
         amountIrr: amount,
         callbackUrl,
         description: payment.description || 'پرداخت سفارش پوشاک ترنم',
@@ -380,11 +425,18 @@ export class PaymentService {
         mobile: input.mobile,
         email: input.email,
         orderId: input.orderId,
+        metadata: { providerId: payment.id },
       });
 
       payment.authority = created.providerToken;
       payment.attemptCount = attemptNo;
-      payment.meta = { ...(payment.meta ?? {}), channel, request: created.rawSanitized };
+      payment.meta = {
+        ...(payment.meta ?? {}),
+        channel,
+        request: created.rawSanitized,
+        redirectUrl: created.redirectUrl,
+        providerId: payment.id,
+      };
       await this.repo.save(payment);
 
       attempt.status = 'REDIRECTED';
@@ -398,7 +450,7 @@ export class PaymentService {
           event: 'payment.start.ok',
           paymentId: payment.id,
           orderId: input.orderId,
-          providerCode: 'ZARINPAL',
+          providerCode: gw.providerCode,
           mobile: input.mobile,
           extra: { sandbox: gw.sandbox, channel, attemptNo },
         }),
@@ -408,18 +460,18 @@ export class PaymentService {
         paymentId: payment.id,
         authority: created.providerToken,
         redirectUrl: created.redirectUrl,
-        gateway: 'ZARINPAL',
+        gateway: gw.providerCode,
         sandbox: gw.sandbox,
       };
     } catch (err: any) {
-      const norm = this.zarinpal.normalizeProviderError(err);
+      const norm = gw.adapter.normalizeProviderError(err);
       this.metrics.incr('payment_failure_total');
       this.logger.error(
         this.paymentLogCtx({
           event: 'payment.start.failed',
           paymentId: payment.id,
           orderId: input.orderId,
-          providerCode: 'ZARINPAL',
+          providerCode: gw.providerCode,
           mobile: input.mobile,
           extra: { code: norm.code, message: norm.message, attemptNo },
         }),
@@ -486,28 +538,63 @@ export class PaymentService {
     }
   }
 
-  async verify(paymentId: string, authority: string, status: string): Promise<PaymentPublicDto> {
+  async verify(
+    paymentId: string,
+    authority: string,
+    status: string,
+    extra?: {
+      trackingCode?: string;
+      providerId?: string;
+      result?: string;
+      type?: string;
+    },
+  ): Promise<PaymentPublicDto> {
     // Fast path outside txn for terminal states
     const preview = await this.findOne(paymentId);
     const providerCode = String(preview.gateway || 'ZARINPAL');
+    const isDigipay = providerCode === 'DIGIPAY';
+    if (
+      extra?.providerId &&
+      extra.providerId !== paymentId &&
+      extra.providerId !== String(preview.meta?.providerId || '')
+    ) {
+      throw new BadRequestException('شناسه تراکنش نامعتبر است');
+    }
+    const statusNorm = isDigipay
+      ? digipayCallbackIsSuccess({
+          result: extra?.result,
+          status,
+          trackingCode: extra?.trackingCode,
+        })
+        ? 'OK'
+        : 'NOK'
+      : status || 'OK';
     this.logger.log(
       this.paymentLogCtx({
         event: 'payment.verify.begin',
         paymentId,
         orderId: preview.orderId,
         providerCode,
-        extra: { statusHint: status || undefined },
+        extra: { statusHint: statusNorm },
       }),
     );
 
-    const externalEventId = `${authority || preview.authority || paymentId}:${status || 'OK'}`;
+    const externalEventId = `${
+      extra?.trackingCode || authority || preview.authority || paymentId
+    }:${statusNorm}`;
     await this.recordPaymentEvent({
       providerCode,
       externalEventId,
       eventType: 'verify_callback',
       paymentId,
-      signatureValid: !!(authority && preview.authority && authority === preview.authority),
-      payload: { status: status || 'OK', hasAuthority: !!authority },
+      signatureValid: isDigipay
+        ? !!(extra?.trackingCode && extra?.providerId === paymentId)
+        : !!(authority && preview.authority && authority === preview.authority),
+      payload: {
+        status: statusNorm,
+        hasAuthority: !!authority,
+        hasTracking: !!extra?.trackingCode,
+      },
     });
     if (preview.status === 'PAID') {
       this.metrics.incr('callback_duplicate_total');
@@ -537,19 +624,19 @@ export class PaymentService {
         );
         return toPublicPaymentDto(preview, { ok: false, cancelled: true });
       }
-      if (status && status !== 'OK') {
+      if (statusNorm && statusNorm !== 'OK') {
         return toPublicPaymentDto(preview, { ok: false, cancelled: true });
       }
       // CANCELLED + OK → continue to PSP verify + CAS from CANCELLED→PAID below
     }
 
-    if (authority && preview.authority && authority !== preview.authority) {
+    if (!isDigipay && authority && preview.authority && authority !== preview.authority) {
       throw new BadRequestException('شناسه تراکنش نامعتبر است');
     }
 
-    if (status && status !== 'OK') {
+    if (statusNorm && statusNorm !== 'OK') {
       // Require authority match whenever the payment already has one (blocks paymentId-only griefing)
-      if (preview.authority) {
+      if (!isDigipay && preview.authority) {
         if (!authority || authority !== preview.authority) {
           throw new BadRequestException('شناسه تراکنش نامعتبر است');
         }
@@ -563,7 +650,7 @@ export class PaymentService {
         if (!locked) return;
         if (locked.status !== 'PENDING' && locked.status !== 'FAILED') return;
         locked.status = 'CANCELLED';
-        locked.meta = { ...(locked.meta ?? {}), callbackStatus: status };
+        locked.meta = { ...(locked.meta ?? {}), callbackStatus: statusNorm };
         await payRepo.save(locked);
       });
       const cancelled = await this.findOne(paymentId);
@@ -574,7 +661,7 @@ export class PaymentService {
           paymentId,
           orderId: preview.orderId,
           providerCode,
-          extra: { callbackStatus: status },
+          extra: { callbackStatus: statusNorm },
         }),
       );
       return toPublicPaymentDto(cancelled, { ok: false, cancelled: true });
@@ -589,12 +676,20 @@ export class PaymentService {
         ? 'RETAIL'
         : 'WHOLESALE';
     const gw = await this.resolveGateway(channel);
+    const adapter = isDigipay ? this.digipay : this.zarinpal;
 
-    const verifyResult = await this.zarinpal.verifyReturn({
+    const verifyResult = await adapter.verifyReturn({
       amountIrr: Number(preview.amount),
       providerToken: authToUse,
       merchantId: gw.merchantId,
-      sandbox: gw.sandbox,
+      sandbox: isDigipay ? this.digipay.isSandbox() : gw.sandbox,
+      extra: isDigipay
+        ? {
+            trackingCode: extra?.trackingCode,
+            providerId: extra?.providerId || paymentId,
+            type: extra?.type || '11',
+          }
+        : undefined,
     });
 
     if (!verifyResult.success) {

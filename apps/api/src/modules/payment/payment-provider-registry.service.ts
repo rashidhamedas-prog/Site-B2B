@@ -55,7 +55,7 @@ export class PaymentProviderRegistryService {
     ) {
       return new DisabledPaymentAdapter(provider.code);
     }
-    return null; // caller uses ZarinPalAdapter for ZARINPAL
+    return null; // ZARINPAL / DIGIPAY resolved by PaymentService
   }
 
   async adminUpdate(

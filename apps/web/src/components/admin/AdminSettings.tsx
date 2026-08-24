@@ -67,6 +67,9 @@ interface SettingsPayload {
     callbackUrl: string;
     retailEnabled: boolean; retailMerchantId: string; retailSandbox: boolean;
     retailCallbackUrl: string;
+    retailGateway: 'DIGIPAY' | 'ZARINPAL';
+    digipayConfigured: boolean;
+    digipaySandbox: boolean;
     manualCardNumber: string; manualCardOwner: string;
   };
   installments: {
@@ -291,6 +294,9 @@ export function AdminSettings() {
           retailCallbackUrl:
             res.payment?.retailCallbackUrl ??
             'https://www.poshaktaranom.ir/payment/callback',
+          retailGateway: res.payment?.retailGateway === 'ZARINPAL' ? 'ZARINPAL' : 'DIGIPAY',
+          digipayConfigured: !!res.payment?.digipayConfigured,
+          digipaySandbox: !!res.payment?.digipaySandbox,
           manualCardNumber: res.payment?.manualCardNumber ?? '',
           manualCardOwner: res.payment?.manualCardOwner ?? '',
         },
@@ -936,9 +942,42 @@ export function AdminSettings() {
           </div>
 
           <div className="border-t border-emerald-100 pt-5">
+            <h3 className="font-bold text-emerald-900 mb-1 text-sm">دیجی‌پی فروشگاه تکی (.ir)</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              درگاه یکپارچه (کارت، کیف‌پول و اعتبار دیجی‌پی) برای www.poshaktaranom.ir.
+              شناسه و رمز کلاینت فقط روی سرور در فایل محیطی ذخیره می‌شود، نه در این فرم.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">درگاه پرداخت تکی</label>
+                <select
+                  className="input w-full"
+                  value={data.payment.retailGateway}
+                  onChange={(e) =>
+                    patch('payment', (p) => ({
+                      ...p,
+                      retailGateway: e.target.value === 'ZARINPAL' ? 'ZARINPAL' : 'DIGIPAY',
+                    }))
+                  }
+                >
+                  <option value="DIGIPAY">دیجی‌پی (پیشنهادی برای تکی)</option>
+                  <option value="ZARINPAL">زرین‌پال</option>
+                </select>
+              </div>
+              <p className="text-xs text-gray-600">
+                اعتبارنامه سرور:{' '}
+                <span className={data.payment.digipayConfigured ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                  {data.payment.digipayConfigured ? 'تنظیم شده' : 'تنظیم نشده'}
+                </span>
+                {data.payment.digipaySandbox ? ' — حالت آزمایشی (UAT)' : ' — محیط عملیاتی'}
+              </p>
+            </div>
+          </div>
+
+          <div className="border-t border-emerald-100 pt-5">
             <h3 className="font-bold text-emerald-900 mb-1 text-sm">زرین‌پال فروشگاه تکی (.ir)</h3>
             <p className="text-xs text-gray-500 mb-3">
-              مرچنت جدا برای دامنه www.poshaktaranom.ir — در پنل زرین‌پال درگاه را برای دامنه تکی فعال کنید
+              مرچنت جدا برای دامنه www.poshaktaranom.ir — اگر درگاه تکی روی دیجی‌پی باشد، این بخش فقط به‌عنوان جایگزین استفاده می‌شود
             </p>
             <div className="space-y-4">
               <ToggleRow

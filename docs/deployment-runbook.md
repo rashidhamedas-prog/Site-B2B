@@ -33,7 +33,7 @@ Complete before any production deploy:
    - `MEILI_MASTER_KEY`
    - `MINIO_USER`, `MINIO_PASS`, `MINIO_BUCKET`
    - `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_RETAIL_URL`
-   - Payment/SMS/Telegram/CRM keys as required by the release (`ZARINPAL_*`, `IDPAY_*`, `SMS_*`, `TELEGRAM_*`, `CRM_API_KEY`)
+   - Payment/SMS/Telegram/CRM keys as required by the release (`ZARINPAL_*`, `DIGIPAY_*`, `IDPAY_*`, `SMS_*`, `TELEGRAM_*`, `CRM_API_KEY`)
    - `DB_SYNC` must be `false` in production (TypeORM `migrationsRun` when `NODE_ENV=production` and `DB_SYNC` ≠ `true`)
 4. **Environment parity** — production `.env` lives only on the VPS (`/opt/taranom/.env`, mode `600`). Do not commit it.
 5. **Migrations / backfills** — list pending TypeORM migrations under `apps/api`; note whether release needs expand-only schema. Idempotent safety-net: `scripts/apply-production-schema.sql`.

@@ -401,7 +401,7 @@ export default function RetailCheckoutPage() {
           <label className="block text-sm font-bold">روش پرداخت</label>
           <div className="flex flex-wrap gap-2">
             {[
-              { id: 'ONLINE' as const, label: 'پرداخت آنلاین (زرین‌پال)' },
+              { id: 'ONLINE' as const, label: 'پرداخت آنلاین (دیجی‌پی)' },
               { id: 'CASH' as const, label: 'پرداخت در محل' },
             ].map((m) => (
               <button

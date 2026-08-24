@@ -269,6 +269,17 @@ export class SettingsService {
           'PAYMENT_RETAIL_CALLBACK_URL',
           `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`,
         ),
+      /** Retail PSP: DIGIPAY (UPG) when credentials exist; ZARINPAL stays wholesale + fallback */
+      retailGateway:
+        String(s.retailGateway || '').toUpperCase() === 'ZARINPAL' ? 'ZARINPAL' : 'DIGIPAY',
+      digipayConfigured:
+        !!String(this.config.get('DIGIPAY_CLIENT_ID', '') || '').trim() &&
+        String(this.config.get('DIGIPAY_CLIENT_ID', '') || '').trim() !== 'CHANGE_ME' &&
+        !!String(this.config.get('DIGIPAY_CLIENT_SECRET', '') || '').trim() &&
+        String(this.config.get('DIGIPAY_CLIENT_SECRET', '') || '').trim() !== 'CHANGE_ME',
+      digipaySandbox:
+        this.config.get('DIGIPAY_SANDBOX', this.config.get('NODE_ENV', 'development') === 'production' ? 'false' : 'true') ===
+        'true',
       manualCardNumber: s.manualCardNumber ?? '',
       manualCardOwner: s.manualCardOwner ?? '',
     };

@@ -123,7 +123,12 @@ export class PaymentController {
 
   @Post('verify')
   verify(@Body() body: VerifyPaymentDto) {
-    return this.svc.verify(body.paymentId, body.authority ?? '', body.status ?? 'OK');
+    return this.svc.verify(body.paymentId, body.authority ?? '', body.status ?? '', {
+      trackingCode: body.trackingCode,
+      providerId: body.providerId,
+      result: body.result,
+      type: body.type,
+    });
   }
 
   @Post('manual')

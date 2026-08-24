@@ -15,7 +15,7 @@ export class PaymentEntity {
   currency: string;
 
   @Column({ default: 'ZARINPAL' })
-  gateway: string; // ZARINPAL | MANUAL | CARD_TO_CARD
+  gateway: string; // ZARINPAL | DIGIPAY | MANUAL | CARD_TO_CARD
 
   // PENDING | PAID | FAILED | CANCELLED | REFUNDED
   @Column({ default: 'PENDING' })

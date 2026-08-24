@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-24 — درگاه یکپارچه دیجی‌پی برای فروشگاه تکی
+
+- آداپتر UPG (`tickets/business?type=11` + `purchases/verify`) برای چک‌اوت `.ir`. عمده همچنان زرین‌پال است.
+- رازها فقط در env سرور؛ `.env.example` فقط placeholder. کال‌بک GET/POST از `/payment/digipay/callback`.
+- گزارش: `docs/reports/2026-08-24-digipay-upg-retail.md`.
+
 ## 2026-08-24 — PHASE-03 دیپلوی کنترل‌شده تولید (موفق)
 
 - انتشار `70638db` روی master با `scripts/auto-deploy.sh`. Rollback لازم نشد؛ هدف برگشت `7fea689`.

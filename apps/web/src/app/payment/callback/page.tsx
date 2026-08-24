@@ -18,14 +18,26 @@ function CallbackContent() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const paymentId = params.get('paymentId');
-    const authority = params.get('Authority') ?? '';
-    const status = params.get('Status') ?? 'NOK';
+    const paymentId = params.get('paymentId') ?? params.get('providerId') ?? '';
+    const authority = params.get('Authority') ?? params.get('authority') ?? '';
+    const trackingCode = params.get('trackingCode') ?? params.get('tracking_code') ?? '';
+    const providerId = params.get('providerId') ?? params.get('provider_id') ?? '';
+    const result = params.get('result') ?? '';
+    const type = params.get('type') ?? '';
+    const status = params.get('Status') ?? params.get('status') ?? '';
 
     if (!paymentId) { setState('failed'); setError('شناسه پرداخت یافت نشد'); return; }
 
     apiClient
-      .post<any>('/payments/verify', { paymentId, authority, status })
+      .post<any>('/payments/verify', {
+        paymentId,
+        authority,
+        status: status || (trackingCode || result === '0' ? 'OK' : ''),
+        trackingCode: trackingCode || undefined,
+        providerId: providerId || undefined,
+        result: result || undefined,
+        type: type || undefined,
+      })
       .then((res) => {
         if (res.ok) {
           setState('success');

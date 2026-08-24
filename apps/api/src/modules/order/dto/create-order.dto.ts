@@ -260,7 +260,7 @@ export class VerifyPaymentDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @MaxLength(64)
+  @MaxLength(128)
   authority?: string;
 
   @ApiPropertyOptional()
@@ -268,6 +268,30 @@ export class VerifyPaymentDto {
   @IsString()
   @MaxLength(16)
   status?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  trackingCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  providerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  result?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  type?: string;
 }
 
 export class ManualPaymentDto {

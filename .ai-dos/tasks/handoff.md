@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-24T16:20:00Z — TASK-20260824-003 DigiPay UPG retail implementing
+
+- Task / owner: TASK-20260824-003 / cursor:implementer-TASK-20260824-003
+- Scope: retail ONLINE → DigiPay UPG; wholesale ZarinPal unchanged; secrets env-only
+- Reclaim: payment core from TASK-20260812-001 (stale >24h); retail checkout label from TASK-20260822-005
+- Exact next: unit spec + api/web tsc; put DIGIPAY_* on VPS .env; migrate; deploy; OAuth smoke (no live charge)
+- Risk: DigiPay OAuth also needs username/password; client_id/secret fallback may 401 until panel values are set
+- Reports: `docs/reports/2026-08-24-digipay-upg-retail.md`
+
 ## 2026-08-24T15:49:45Z — TASK-20260824-002 PHASE-03 production deploy SUCCESS
 
 - Task / owner: TASK-20260824-002 / cursor:implementer-TASK-20260824-002

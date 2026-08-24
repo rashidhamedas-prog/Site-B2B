@@ -22,6 +22,7 @@ import { OrderEntity } from '../order/entities/order.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
+import { DigiPayAdapter } from './adapters/digipay.adapter';
 import { DisabledPaymentAdapter } from './adapters/disabled.adapter';
 import { PaymentProviderRegistryService } from './payment-provider-registry.service';
 
@@ -51,12 +52,14 @@ import { PaymentProviderRegistryService } from './payment-provider-registry.serv
     PaymentMetrics,
     PaymentProviderRegistryService,
     ZarinPalAdapter,
+    DigiPayAdapter,
     { provide: DisabledPaymentAdapter, useFactory: () => new DisabledPaymentAdapter('DISABLED') },
   ],
   exports: [
     PaymentService,
     InstallmentService,
     ZarinPalAdapter,
+    DigiPayAdapter,
     PaymentProviderRegistryService,
   ],
 })
