@@ -31,7 +31,23 @@ export class SettingsService {
   }
 
   async set(key: string, value: Record<string, any>): Promise<AppSettingEntity> {
-    const saved = await this.repo.save(this.repo.create({ key, value }));
+    let next = value;
+    if (key === 'payment' && value && typeof value === 'object') {
+      const prev = await this.get('payment');
+      next = { ...value };
+      delete next.digipayConfigured;
+      for (const secretKey of [
+        'digipayClientId',
+        'digipayClientSecret',
+        'digipayUsername',
+        'digipayPassword',
+      ]) {
+        if (!String(next[secretKey] ?? '').trim()) {
+          next[secretKey] = String(prev[secretKey] || '');
+        }
+      }
+    }
+    const saved = await this.repo.save(this.repo.create({ key, value: next }));
     this.cache.set(key, { value: saved.value, at: Date.now() });
     return saved;
   }
@@ -235,7 +251,7 @@ export class SettingsService {
 
   async payment() {
     const s = await this.get('payment');
-    return {
+    const out = {
       enabled: s.enabled ?? true,
       /** Wholesale (.com) Zarinpal merchant */
       wholesaleEnabled: s.wholesaleEnabled ?? true,
@@ -269,20 +285,35 @@ export class SettingsService {
           'PAYMENT_RETAIL_CALLBACK_URL',
           `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`,
         ),
-      /** Retail PSP: DIGIPAY (UPG) when credentials exist; ZARINPAL stays wholesale + fallback */
-      retailGateway:
-        String(s.retailGateway || '').toUpperCase() === 'ZARINPAL' ? 'ZARINPAL' : 'DIGIPAY',
-      digipayConfigured:
-        !!String(this.config.get('DIGIPAY_CLIENT_ID', '') || '').trim() &&
-        String(this.config.get('DIGIPAY_CLIENT_ID', '') || '').trim() !== 'CHANGE_ME' &&
-        !!String(this.config.get('DIGIPAY_CLIENT_SECRET', '') || '').trim() &&
-        String(this.config.get('DIGIPAY_CLIENT_SECRET', '') || '').trim() !== 'CHANGE_ME',
+      /** Customer chooses ZarinPal or DigiPay at retail checkout; this is not an exclusive admin lock. */
+      digipayEnabled: s.digipayEnabled !== false,
+      digipayClientId: this.pickSecret(s.digipayClientId, 'DIGIPAY_CLIENT_ID'),
+      digipayClientSecret: this.pickSecret(s.digipayClientSecret, 'DIGIPAY_CLIENT_SECRET'),
+      digipayUsername: this.pickSecret(s.digipayUsername, 'DIGIPAY_USERNAME'),
+      digipayPassword: this.pickSecret(s.digipayPassword, 'DIGIPAY_PASSWORD'),
       digipaySandbox:
-        this.config.get('DIGIPAY_SANDBOX', this.config.get('NODE_ENV', 'development') === 'production' ? 'false' : 'true') ===
-        'true',
+        typeof s.digipaySandbox === 'boolean'
+          ? s.digipaySandbox
+          : this.config.get(
+              'DIGIPAY_SANDBOX',
+              this.config.get('NODE_ENV', 'development') === 'production' ? 'false' : 'true',
+            ) === 'true',
+      digipayConfigured: false,
       manualCardNumber: s.manualCardNumber ?? '',
       manualCardOwner: s.manualCardOwner ?? '',
     };
+    out.digipayConfigured =
+      !!out.digipayClientId &&
+      out.digipayClientId !== 'CHANGE_ME' &&
+      !!out.digipayClientSecret &&
+      out.digipayClientSecret !== 'CHANGE_ME';
+    return out;
+  }
+
+  private pickSecret(stored: unknown, envKey: string): string {
+    const fromDb = String(stored || '').trim();
+    if (fromDb && fromDb !== 'CHANGE_ME') return fromDb;
+    return String(this.config.get(envKey, '') || '').trim();
   }
 
   async theme() {

@@ -197,6 +197,7 @@ export class OrderService {
     const stable = {
       items,
       paymentMethod,
+      paymentGateway: dto.paymentGateway === 'DIGIPAY' ? 'DIGIPAY' : 'ZARINPAL',
       shippingMethod: this.resolveCreateShippingMethod(dto, channel),
       useWallet: !!dto.useWallet,
       installment,
@@ -915,6 +916,7 @@ export class OrderService {
           description: `پرداخت سفارش ${saved.orderNumber}`,
           mobile: (customer as any).phone,
           channel: 'RETAIL',
+          providerCode: dto.paymentGateway === 'DIGIPAY' ? 'DIGIPAY' : 'ZARINPAL',
         });
         return { ...full, paymentUrl: pay.redirectUrl, paymentId: pay.paymentId };
       } catch (err: any) {

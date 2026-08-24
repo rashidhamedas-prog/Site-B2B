@@ -56,11 +56,19 @@ export function digipayBasicAuthHeader(clientId: string, clientSecret: string): 
   return `Basic ${Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')}`;
 }
 
+export type DigipayRuntimeCreds = {
+  clientId?: string;
+  clientSecret?: string;
+  username?: string;
+  password?: string;
+  sandbox?: boolean;
+};
+
 @Injectable()
 export class DigiPayAdapter implements PaymentProviderAdapter {
   readonly code = 'DIGIPAY';
   private readonly logger = new Logger(DigiPayAdapter.name);
-  private token: TokenCache | null = null;
+  private readonly tokens = new Map<string, TokenCache>();
 
   constructor(private readonly config: ConfigService) {}
 
@@ -74,48 +82,52 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
     };
   }
 
-  isConfigured(): boolean {
-    const id = this.clientId();
-    const secret = this.clientSecret();
+  isConfigured(over?: DigipayRuntimeCreds): boolean {
+    const c = this.creds(over);
     return (
-      id.length > 0 &&
-      secret.length > 0 &&
-      id !== 'CHANGE_ME' &&
-      secret !== 'CHANGE_ME'
+      c.clientId.length > 0 &&
+      c.clientSecret.length > 0 &&
+      c.clientId !== 'CHANGE_ME' &&
+      c.clientSecret !== 'CHANGE_ME'
     );
   }
 
-  isSandbox(): boolean {
+  isSandbox(over?: DigipayRuntimeCreds): boolean {
+    if (typeof over?.sandbox === 'boolean') return over.sandbox;
     const raw = this.config.get<string>('DIGIPAY_SANDBOX');
     if (raw === 'true') return true;
     if (raw === 'false') return false;
     return this.config.get('NODE_ENV', 'development') !== 'production';
   }
 
-  payRedirectUrl(ticket: string, sandbox = this.isSandbox()): string {
-    const webBase = sandbox
+  payRedirectUrl(ticket: string, sandbox?: boolean): string {
+    const webBase = (sandbox ?? this.isSandbox())
       ? 'https://uatweb.mydigipay.info'
       : 'https://www.mydigipay.com';
     return `${webBase}/web-pay/tgs/${ticket}`;
   }
 
-  private clientId(): string {
-    return String(this.config.get('DIGIPAY_CLIENT_ID', '') || '').trim();
+  private pick(over: string | undefined, envKey: string): string {
+    const a = String(over || '').trim();
+    if (a && a !== 'CHANGE_ME') return a;
+    return String(this.config.get(envKey, '') || '').trim();
   }
 
-  private clientSecret(): string {
-    return String(this.config.get('DIGIPAY_CLIENT_SECRET', '') || '').trim();
+  private creds(over?: DigipayRuntimeCreds) {
+    const clientId = this.pick(over?.clientId, 'DIGIPAY_CLIENT_ID');
+    const clientSecret = this.pick(over?.clientSecret, 'DIGIPAY_CLIENT_SECRET');
+    const username = this.pick(over?.username, 'DIGIPAY_USERNAME') || clientId;
+    const password = this.pick(over?.password, 'DIGIPAY_PASSWORD') || clientSecret;
+    return {
+      clientId,
+      clientSecret,
+      username,
+      password,
+      sandbox: this.isSandbox(over),
+    };
   }
 
-  private username(): string {
-    return String(this.config.get('DIGIPAY_USERNAME', '') || '').trim() || this.clientId();
-  }
-
-  private password(): string {
-    return String(this.config.get('DIGIPAY_PASSWORD', '') || '').trim() || this.clientSecret();
-  }
-
-  private apiBase(sandbox = this.isSandbox()): string {
+  private apiBase(sandbox: boolean): string {
     return sandbox
       ? 'https://uat.mydigipay.info/digipay/api'
       : 'https://api.mydigipay.com/digipay/api';
@@ -198,30 +210,32 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
     return String(result?.message || json.error_description || json.error || fallback);
   }
 
-  async getAccessToken(force = false): Promise<string> {
-    if (!this.isConfigured()) {
-      throw new Error('اعتبارنامه دیجی‌پی روی سرور تنظیم نشده است');
+  async getAccessToken(force = false, over?: DigipayRuntimeCreds): Promise<string> {
+    const c = this.creds(over);
+    if (!this.isConfigured(over)) {
+      throw new Error('اعتبارنامه دیجی‌پی در تنظیمات ادمین یا فایل محیطی سرور کامل نیست');
     }
+    const cached = this.tokens.get(c.clientId);
     if (
       !force &&
-      this.token &&
-      this.token.accessToken &&
-      this.token.expiresAt > Date.now() + TOKEN_EXPIRY_SKEW_MS
+      cached &&
+      cached.accessToken &&
+      cached.expiresAt > Date.now() + TOKEN_EXPIRY_SKEW_MS
     ) {
-      return this.token.accessToken;
+      return cached.accessToken;
     }
 
     const form = new FormData();
-    form.append('username', this.username());
-    form.append('password', this.password());
+    form.append('username', c.username);
+    form.append('password', c.password);
     form.append('grant_type', 'password');
 
     const { ok, status, json } = await this.fetchRaw(
-      `${this.apiBase()}/oauth/token`,
+      `${this.apiBase(c.sandbox)}/oauth/token`,
       {
         method: 'POST',
         headers: {
-          Authorization: digipayBasicAuthHeader(this.clientId(), this.clientSecret()),
+          Authorization: digipayBasicAuthHeader(c.clientId, c.clientSecret),
         },
         body: form,
       },
@@ -231,26 +245,29 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
       this.logger.warn(`DigiPay oauth failed http=${status}`);
       throw new Error(
         status === 401
-          ? 'ورود به دیجی‌پی ناموفق بود؛ شناسه/رمز کلاینت یا نام کاربری را در سرور بررسی کنید'
+          ? 'ورود به دیجی‌پی ناموفق بود؛ شناسه کلاینت، رمز، نام کاربری و رمز پنل را در تنظیمات پرداخت بررسی کنید'
           : this.resultMessage(json, 'ورود به درگاه دیجی‌پی ناموفق بود'),
       );
     }
     const expiresIn = Number(json.expires_in || 3300);
-    this.token = {
+    const next: TokenCache = {
       accessToken: String(accessToken),
       refreshToken: json.refresh_token ? String(json.refresh_token) : undefined,
       expiresAt: Date.now() + Math.max(60, expiresIn) * 1000,
     };
-    return this.token.accessToken;
+    this.tokens.set(c.clientId, next);
+    return next.accessToken;
   }
 
   private async authorizedJson(
     pathAndQuery: string,
     body: Record<string, unknown>,
     extraHeaders: Record<string, string> = {},
+    over?: DigipayRuntimeCreds,
   ): Promise<{ ok: boolean; status: number; json: Record<string, unknown> }> {
-    const token = await this.getAccessToken();
-    const first = await this.fetchRaw(`${this.apiBase()}${pathAndQuery}`, {
+    const c = this.creds(over);
+    const token = await this.getAccessToken(false, over);
+    const first = await this.fetchRaw(`${this.apiBase(c.sandbox)}${pathAndQuery}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -261,8 +278,8 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
       body: JSON.stringify(body),
     });
     if (first.status === 401) {
-      const retryToken = await this.getAccessToken(true);
-      return this.fetchRaw(`${this.apiBase()}${pathAndQuery}`, {
+      const retryToken = await this.getAccessToken(true, over);
+      return this.fetchRaw(`${this.apiBase(c.sandbox)}${pathAndQuery}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${retryToken}`,
@@ -277,6 +294,7 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
   }
 
   async createPayment(req: CreatePaymentRequest): Promise<CreatePaymentResult> {
+    const over = req.digipayCreds;
     const cellNumber = normalizeDigipayMobile(req.mobile);
     const providerId = String(
       req.metadata?.providerId || req.orderId || '',
@@ -296,6 +314,7 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
         Agent: 'WEB',
         'Digipay-Version': DIGIPAY_VERSION,
       },
+      over,
     );
     const ticket = json.ticket ? String(json.ticket) : '';
     const redirectUrl = json.redirectUrl ? String(json.redirectUrl) : '';
@@ -316,6 +335,7 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
   }
 
   async verifyReturn(req: VerifyReturnRequest): Promise<VerifyReturnResult> {
+    const over = req.digipayCreds;
     const trackingCode = String(req.extra?.trackingCode || '').trim();
     const providerId = String(req.extra?.providerId || req.providerToken || '').trim();
     const type = Number(req.extra?.type || UPG_TICKET_TYPE) || UPG_TICKET_TYPE;
@@ -326,10 +346,15 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
       };
     }
     try {
-      const { ok, json } = await this.authorizedJson(`/purchases/verify?type=${type}`, {
-        trackingCode,
-        providerId,
-      });
+      const { ok, json } = await this.authorizedJson(
+        `/purchases/verify?type=${type}`,
+        {
+          trackingCode,
+          providerId,
+        },
+        {},
+        over,
+      );
       const resultStatus = this.resultStatus(json);
       const amount = Number(json.amount);
       if (!ok || resultStatus !== 0) {

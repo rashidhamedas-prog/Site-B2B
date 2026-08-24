@@ -121,6 +121,11 @@ export class CreateOrderDto {
   @MaxLength(40)
   paymentMethod?: string;
 
+  @ApiPropertyOptional({ enum: ['ZARINPAL', 'DIGIPAY'] })
+  @IsOptional()
+  @IsIn(['ZARINPAL', 'DIGIPAY'])
+  paymentGateway?: 'ZARINPAL' | 'DIGIPAY';
+
   @ApiPropertyOptional()
   @IsOptional()
   installment?: { downPaymentAmount: number; months: number };
@@ -250,6 +255,11 @@ export class StartPaymentDto {
   @IsOptional()
   @IsIn(['WHOLESALE', 'RETAIL'])
   channel?: 'WHOLESALE' | 'RETAIL';
+
+  @ApiPropertyOptional({ enum: ['ZARINPAL', 'DIGIPAY'] })
+  @IsOptional()
+  @IsIn(['ZARINPAL', 'DIGIPAY'])
+  providerCode?: 'ZARINPAL' | 'DIGIPAY';
 }
 
 export class VerifyPaymentDto {

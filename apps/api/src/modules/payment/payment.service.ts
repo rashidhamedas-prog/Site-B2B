@@ -34,6 +34,8 @@ interface CreatePaymentInput {
   mobile?: string;
   email?: string;
   channel?: 'WHOLESALE' | 'RETAIL';
+  /** Retail checkout choice. Ignored on wholesale (always ZarinPal). */
+  providerCode?: 'ZARINPAL' | 'DIGIPAY';
 }
 
 export interface StartResult {
@@ -95,16 +97,30 @@ export class PaymentService {
     return this.metrics.snapshot();
   }
 
-  private async resolveGateway(channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE') {
+  private async resolveGateway(
+    channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE',
+    requested?: 'ZARINPAL' | 'DIGIPAY' | string,
+  ) {
     const cfg = await this.settings.payment();
     const isRetail = channel === 'RETAIL';
-    const useDigipay =
-      isRetail &&
-      this.digipay.isConfigured() &&
-      String(cfg.retailGateway || 'DIGIPAY').toUpperCase() !== 'ZARINPAL';
+    const digipayCreds = {
+      clientId: cfg.digipayClientId,
+      clientSecret: cfg.digipayClientSecret,
+      username: cfg.digipayUsername,
+      password: cfg.digipayPassword,
+      sandbox: cfg.digipaySandbox,
+    };
+    const wantDigipay = isRetail && String(requested || '').toUpperCase() === 'DIGIPAY';
+    const digipayReady = cfg.digipayEnabled && this.digipay.isConfigured(digipayCreds);
+    if (wantDigipay && !digipayReady) {
+      throw new BadRequestException(
+        'درگاه دیجی‌پی آماده نیست. شناسه کلاینت، رمز، نام کاربری و رمز پنل را در تنظیمات پرداخت وارد کنید.',
+      );
+    }
+    const useDigipay = wantDigipay && digipayReady;
     const merchantId = (isRetail ? cfg.retailMerchantId : cfg.merchantId) || '';
     const sandbox = useDigipay
-      ? this.digipay.isSandbox()
+      ? this.digipay.isSandbox(digipayCreds)
       : isRetail
         ? cfg.retailSandbox || !merchantId
         : cfg.sandbox || !merchantId;
@@ -126,6 +142,7 @@ export class PaymentService {
       channel,
       providerCode: useDigipay ? 'DIGIPAY' : 'ZARINPAL',
       adapter: (useDigipay ? this.digipay : this.zarinpal) as PaymentProviderAdapter,
+      digipayCreds,
     };
   }
 
@@ -209,7 +226,7 @@ export class PaymentService {
       throw new BadRequestException('مبلغ پرداخت نامعتبر است (حداقل ۱۰۰۰ تومان)');
     }
 
-    const gw = await this.resolveGateway(channel);
+    const gw = await this.resolveGateway(channel, input.providerCode);
     if (!gw.enabled) {
       this.metrics.incr('payment_failure_total');
       throw new BadRequestException(
@@ -241,10 +258,17 @@ export class PaymentService {
           where: { orderId: input.orderId, status: 'PENDING' as any },
           order: { createdAt: 'DESC' },
         });
-        if (existing?.authority) {
+        if (existing && (existing.gateway || 'ZARINPAL') !== gw.providerCode) {
+          existing.status = 'CANCELLED' as any;
+          existing.meta = {
+            ...(existing.meta ?? {}),
+            cancelledReason: 'gateway_switch',
+            previousGateway: existing.gateway,
+          };
+          await payRepo.save(existing);
+        } else if (existing?.authority) {
           return { kind: 'reuse' as const, payment: existing };
-        }
-        if (existing) {
+        } else if (existing) {
           // PENDING without authority — finish gateway create on same row
           return { kind: 'created' as const, payment: existing };
         }
@@ -322,6 +346,7 @@ export class PaymentService {
           email: input.email,
           orderId: input.orderId,
           metadata: { providerId: payment.id },
+          digipayCreds: gw.providerCode === 'DIGIPAY' ? gw.digipayCreds : undefined,
         });
 
         payment.authority = created.providerToken;
@@ -426,6 +451,7 @@ export class PaymentService {
         email: input.email,
         orderId: input.orderId,
         metadata: { providerId: payment.id },
+        digipayCreds: gw.providerCode === 'DIGIPAY' ? gw.digipayCreds : undefined,
       });
 
       payment.authority = created.providerToken;
@@ -675,14 +701,14 @@ export class PaymentService {
       (preview.callbackUrl || '').includes('poshaktaranom.ir')
         ? 'RETAIL'
         : 'WHOLESALE';
-    const gw = await this.resolveGateway(channel);
+    const gw = await this.resolveGateway(channel, isDigipay ? 'DIGIPAY' : 'ZARINPAL');
     const adapter = isDigipay ? this.digipay : this.zarinpal;
 
     const verifyResult = await adapter.verifyReturn({
       amountIrr: Number(preview.amount),
       providerToken: authToUse,
       merchantId: gw.merchantId,
-      sandbox: isDigipay ? this.digipay.isSandbox() : gw.sandbox,
+      sandbox: isDigipay ? this.digipay.isSandbox(gw.digipayCreds) : gw.sandbox,
       extra: isDigipay
         ? {
             trackingCode: extra?.trackingCode,
@@ -690,6 +716,7 @@ export class PaymentService {
             type: extra?.type || '11',
           }
         : undefined,
+      digipayCreds: isDigipay ? gw.digipayCreds : undefined,
     });
 
     if (!verifyResult.success) {

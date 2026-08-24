@@ -62,6 +62,9 @@ export default function RetailCheckoutPage() {
   const pieces = useMemo(() => items.reduce((n, i) => n + i.quantity, 0), [items]);
 
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE');
+  const [paymentGateway, setPaymentGateway] = useState<'ZARINPAL' | 'DIGIPAY'>('ZARINPAL');
+  const [digipayAvailable, setDigipayAvailable] = useState(false);
+  const [pendingPayOrderId, setPendingPayOrderId] = useState<string | null>(null);
   const [shippingMethod, setShippingMethod] = useState('PISHTAZ');
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
@@ -116,6 +119,18 @@ export default function RetailCheckoutPage() {
         mobile: a.mobile || saved[0]!.mobile,
       }));
     }
+  }, []);
+
+  useEffect(() => {
+    apiClient
+      .get<{ code: string }[]>('/payments/providers/eligible', {
+        headers: { 'x-taranom-channel': 'RETAIL' },
+      })
+      .then((rows) => {
+        const codes = new Set((rows || []).map((r) => String(r.code || '').toUpperCase()));
+        setDigipayAvailable(codes.has('DIGIPAY'));
+      })
+      .catch(() => setDigipayAvailable(false));
   }, []);
 
   useEffect(() => {
@@ -185,6 +200,42 @@ export default function RetailCheckoutPage() {
     }
   };
 
+  const finishOnlineRedirect = (redirectUrl: string, orderIds: Array<string | undefined>) => {
+    const conversionAmount = payable;
+    const conversionItems = items.map((i) => ({
+      productId: i.productId,
+      sku: i.sku,
+      name: i.productName,
+      color: i.color,
+      size: i.size,
+      unitPrice: i.unitPrice,
+      quantity: i.quantity,
+    }));
+    stashPendingRetailPurchase({
+      transactionIds: orderIds.filter((id): id is string => Boolean(id)),
+      value: conversionAmount,
+      shipping: shipFee,
+      items: conversionItems
+        .map((it) => toGa4Item(it))
+        .filter((it): it is NonNullable<ReturnType<typeof toGa4Item>> => Boolean(it)),
+    });
+    clear();
+    window.location.href = redirectUrl;
+  };
+
+  const retryExistingOrderPay = async (orderId: string) => {
+    const pay = await apiClient.post<{ redirectUrl?: string }>('/payments/start', {
+      orderId,
+      channel: 'RETAIL',
+      providerCode: paymentGateway,
+    });
+    if (!pay?.redirectUrl) {
+      setError('آدرس درگاه دریافت نشد؛ دوباره تلاش کنید');
+      return;
+    }
+    finishOnlineRedirect(pay.redirectUrl, [orderId]);
+  };
+
   const submit = async () => {
     setError('');
     if (!items.length) {
@@ -198,14 +249,20 @@ export default function RetailCheckoutPage() {
     setBusy(true);
     try {
       if (!(await ensureRetailAccount())) return;
+      if (pendingPayOrderId && paymentMethod === 'ONLINE') {
+        await retryExistingOrderPay(pendingPayOrderId);
+        return;
+      }
       const order = await apiClient.post<{
         orderNumber?: string;
         id?: string;
         paymentUrl?: string;
+        paymentStartError?: string;
       }>('/orders', {
         type: 'RETAIL_WEBSITE',
         channel: 'RETAIL',
         paymentMethod,
+        paymentGateway: paymentMethod === 'ONLINE' ? paymentGateway : undefined,
         shippingMethod,
         useWallet: useWallet && walletBalance > 0,
         affiliateId: readAff(),
@@ -224,6 +281,15 @@ export default function RetailCheckoutPage() {
         })),
       });
       saveRetailAddress(address);
+      if (order?.paymentStartError) {
+        if (order.id) setPendingPayOrderId(order.id);
+        setError(order.paymentStartError);
+        return;
+      }
+      if (order?.paymentUrl) {
+        finishOnlineRedirect(order.paymentUrl, [order.orderNumber, order.id]);
+        return;
+      }
       const conversionSkus = items.map((i) => i.sku).filter(Boolean);
       const conversionAmount = payable;
       const conversionItems = items.map((i) => ({
@@ -244,10 +310,6 @@ export default function RetailCheckoutPage() {
           .filter((it): it is NonNullable<ReturnType<typeof toGa4Item>> => Boolean(it)),
       });
       clear();
-      if (order?.paymentUrl) {
-        window.location.href = order.paymentUrl;
-        return;
-      }
       setDoneMeta({ amount: conversionAmount, skus: conversionSkus, items: conversionItems, shipping: shipFee });
       setDone(order.orderNumber ?? order.id ?? 'ثبت شد');
     } catch (e: any) {
@@ -400,15 +462,25 @@ export default function RetailCheckoutPage() {
 
           <label className="block text-sm font-bold">روش پرداخت</label>
           <div className="flex flex-wrap gap-2">
-            {[
-              { id: 'ONLINE' as const, label: 'پرداخت آنلاین (دیجی‌پی)' },
-              { id: 'CASH' as const, label: 'پرداخت در محل' },
-            ].map((m) => (
+            {([
+              { id: 'ZARINPAL' as const, method: 'ONLINE' as const, label: 'زرین‌پال' },
+              ...(digipayAvailable
+                ? [{ id: 'DIGIPAY' as const, method: 'ONLINE' as const, label: 'دیجی‌پی' }]
+                : []),
+              { id: 'CASH' as const, method: 'CASH' as const, label: 'پرداخت در محل' },
+            ]).map((m) => {
+              const selected =
+                m.method === 'CASH'
+                  ? paymentMethod === 'CASH'
+                  : paymentMethod === 'ONLINE' && paymentGateway === m.id;
+              return (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => {
-                  setPaymentMethod(m.id);
+                  setPaymentMethod(m.method);
+                  if (m.id === 'ZARINPAL' || m.id === 'DIGIPAY') setPaymentGateway(m.id);
+                  setPendingPayOrderId(null);
                   trackAddPaymentInfo(
                     items.map((i) => ({
                       productId: i.productId,
@@ -420,18 +492,19 @@ export default function RetailCheckoutPage() {
                       quantity: i.quantity,
                     })),
                     payable,
-                    m.id,
+                    m.method === 'CASH' ? 'CASH' : m.id,
                   );
                 }}
                 className={`cursor-pointer rounded-full border px-4 py-2 text-sm ${
-                  paymentMethod === m.id
+                  selected
                     ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)] text-white'
                     : 'border-[var(--retail-border)]'
                 }`}
               >
                 {m.label}
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {walletBalance > 0 ? (
@@ -456,6 +529,11 @@ export default function RetailCheckoutPage() {
           />
 
           {error ? <p className="text-sm font-semibold text-red-600">{error}</p> : null}
+          {pendingPayOrderId ? (
+            <p className="text-xs text-[var(--retail-muted)]">
+              سفارش ثبت شده؛ درگاه را عوض کنید یا دوباره پرداخت را بزنید. سبد خالی نشده است.
+            </p>
+          ) : null}
 
           <button
             type="button"

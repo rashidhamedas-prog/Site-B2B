@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-08-24 — **TASK-20260824-003** DigiPay UPG retail **implementing** (secrets env-only; not live until VPS env + migrate + deploy)
+- Last verified: 2026-08-25 — **TASK-20260824-003** DigiPay UPG retail **customer choice + admin secrets** (implementing; default ZarinPal so retail ONLINE is not blocked by DigiPay 401)
 - Last verified: 2026-08-24 — **TASK-20260824-002** PHASE-03 production deploy **SUCCESS** at `70638db` (product/category 301s live; HTTP apex one-hop; sitemap 77/77; no Prisma)
 - Last verified: 2026-08-24 — **TASK-20260824-001** PHASE-03B GSC exact-URL cleanup **code+reports complete, NOT DEPLOYED**. 45 URLs classified; 1 product 301 + 1 category 301 in repo; footer key discovery source fixed; `tsc`/`build`/`seo:check` 0.
 - Last verified: 2026-08-23 — **TASK-20260823-002** PHASE-03A GSC triage **code+reports complete, NOT DEPLOYED**. Sitemap 77/77 live OK; `tsc`/`build`/`seo:check` 0. Nginx one-hop only in repo.

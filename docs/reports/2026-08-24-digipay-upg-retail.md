@@ -1,42 +1,33 @@
 # DigiPay UPG — فروشگاه تکی
 
-تاریخ: 2026-08-24  
+تاریخ: 2026-08-24 (به‌روز 2026-08-25)  
 تسک: TASK-20260824-003
 
 ## هدف
 
-وصل کردن درگاه یکپارچه دیجی‌پی (UPG، type=11) به چک‌اوت فروشگاه تکی. عمده روی زرین‌پال می‌ماند.
+وصل کردن درگاه یکپارچه دیجی‌پی (UPG، type=11) به چک‌اوت فروشگاه تکی، **بدون قطع زرین‌پال**. مشتری بین زرین‌پال و دیجی‌پی انتخاب می‌کند. عمده روی زرین‌پال می‌ماند.
 
-## جریان
+## علت خرابی قبلی
+
+چک‌اوت تکی اگر `DIGIPAY_*` روی سرور بود **همیشه** به دیجی‌پی می‌رفت. OAuth زنده HTTP 401 برمی‌گرداند و سبد هم با وجود خطا خالی می‌شد.
+
+## رفتار فعلی
+
+- پیش‌فرض آنلاین تکی: **زرین‌پال** مگر مشتری دیجی‌پی را بزند
+- ادمین: فیلدهای جدا برای شناسه/رمز کلاینت و نام کاربری/رمز پنل + کلید نمایش دیجی‌پی + UAT
+- رازها در تنظیمات DB ذخیره می‌شوند؛ env فقط fallback است
+- `GET /payments/providers/eligible` دیجی‌پی را بدون اعتبارنامه نشان نمی‌دهد
+- اگر شروع درگاه شکست بخورد سبد خالی نمی‌شود
+
+## جریان دیجی‌پی
 
 1. OAuth `POST /oauth/token` با Basic(client_id:client_secret) و form `username/password/grant_type=password`
-2. تیکت `POST /tickets/business?type=11` با مبلغ ریال، موبایل، `providerId=payment.id`، callback
-3. هدایت مشتری به `redirectUrl`
-4. بازگشت GET یا POST به `/payment/digipay/callback` → ریدایرکت ۳۰۳ به `/payment/callback`
-5. تایید `POST /purchases/verify?type=11` با `trackingCode` + `providerId`؛ مبلغ باید با سفارش یکی باشد
-
-## تنظیم سرور (بدون commit)
-
-```
-DIGIPAY_CLIENT_ID=
-DIGIPAY_CLIENT_SECRET=
-DIGIPAY_USERNAME=
-DIGIPAY_PASSWORD=
-DIGIPAY_SANDBOX=false
-```
-
-اگر username/password خالی باشد، همان client_id/secret برای grant password فرستاده می‌شود. پنل دیجی‌پی معمولاً هر چهار مقدار را جدا می‌دهد.
-
-## ادمین
-
-`/admin/settings` → درگاه پرداخت → انتخاب «دیجی‌پی» یا «زرین‌پال» برای تکی. رازها در فرم ذخیره نمی‌شوند.
-
-## مهاجرت
-
-`20260824-001-digipay-upg-retail.ts` ردیف `DIGIPAY` را از BNPL غیرفعال به PSP تکی APPROVED تبدیل می‌کند.
+2. تیکت `POST /tickets/business?type=11`
+3. بازگشت GET یا POST به `/payment/digipay/callback` → ۳۰۳ به `/payment/callback`
+4. تایید `POST /purchases/verify?type=11` با `trackingCode` + `providerId`
 
 ## غیرهدف
 
 - عمده
-- قرارداد BNPL داخلی (اسنپ‌پی/تارا)
+- قرارداد BNPL داخلی
 - تست پرداخت واقعی با پول

@@ -84,6 +84,19 @@ async function main() {
   );
   assert(placeholder.isConfigured() === false, 'placeholder not configured');
 
+  const envEmpty = new DigiPayAdapter(
+    new ConfigService({ DIGIPAY_CLIENT_ID: '', DIGIPAY_CLIENT_SECRET: '' }),
+  );
+  assert(envEmpty.isConfigured() === false, 'env empty not configured');
+  assert(
+    envEmpty.isConfigured({ clientId: 'admin-id', clientSecret: 'admin-secret' }) === true,
+    'admin override configures adapter',
+  );
+  assert(
+    envEmpty.isSandbox({ sandbox: false }) === false,
+    'admin override sandbox false',
+  );
+
   const gw = adapter();
   assert(gw.code === 'DIGIPAY', 'code');
   assert(gw.getCapabilities().pay === true, 'pay cap');

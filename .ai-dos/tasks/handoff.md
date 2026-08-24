@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-24T21:50:00Z — TASK-20260824-003 customer gateway choice + admin DigiPay secrets
+
+- Task / owner: TASK-20260824-003 / cursor:implementer-TASK-20260824-003
+- Scope: retail checkout ZarinPal OR DigiPay; DigiPay creds in admin settings; default ZarinPal
+- Reclaim: order.service.ts from TASK-20260818-001 and TASK-20260817-001 (stale)
+- Exact next: adapter spec + api/web tsc; commit feature branch; ff-only to master; auto-deploy
+- Risk: live DigiPay OAuth still needs real panel username/password; until then DigiPay start fails clearly and ZarinPal works
+- Reports: `docs/reports/2026-08-24-digipay-upg-retail.md`
+
 ## 2026-08-24T16:20:00Z — TASK-20260824-003 DigiPay UPG retail implementing
 
 - Task / owner: TASK-20260824-003 / cursor:implementer-TASK-20260824-003

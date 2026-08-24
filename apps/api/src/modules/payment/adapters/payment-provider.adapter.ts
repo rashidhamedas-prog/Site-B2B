@@ -24,6 +24,14 @@ export type CreatePaymentRequest = {
   email?: string;
   orderId?: string;
   metadata?: Record<string, string | undefined>;
+  /** DigiPay only — never log. Admin/env credentials for this request. */
+  digipayCreds?: {
+    clientId?: string;
+    clientSecret?: string;
+    username?: string;
+    password?: string;
+    sandbox?: boolean;
+  };
 };
 
 export type CreatePaymentResult = {
@@ -38,6 +46,13 @@ export type VerifyReturnRequest = {
   merchantId: string;
   sandbox: boolean;
   extra?: Record<string, string | undefined>;
+  digipayCreds?: {
+    clientId?: string;
+    clientSecret?: string;
+    username?: string;
+    password?: string;
+    sandbox?: boolean;
+  };
 };
 
 export type VerifyReturnResult = {

@@ -67,9 +67,13 @@ interface SettingsPayload {
     callbackUrl: string;
     retailEnabled: boolean; retailMerchantId: string; retailSandbox: boolean;
     retailCallbackUrl: string;
-    retailGateway: 'DIGIPAY' | 'ZARINPAL';
-    digipayConfigured: boolean;
+    digipayEnabled: boolean;
+    digipayClientId: string;
+    digipayClientSecret: string;
+    digipayUsername: string;
+    digipayPassword: string;
     digipaySandbox: boolean;
+    digipayConfigured: boolean;
     manualCardNumber: string; manualCardOwner: string;
   };
   installments: {
@@ -294,9 +298,13 @@ export function AdminSettings() {
           retailCallbackUrl:
             res.payment?.retailCallbackUrl ??
             'https://www.poshaktaranom.ir/payment/callback',
-          retailGateway: res.payment?.retailGateway === 'ZARINPAL' ? 'ZARINPAL' : 'DIGIPAY',
-          digipayConfigured: !!res.payment?.digipayConfigured,
+          digipayEnabled: res.payment?.digipayEnabled !== false,
+          digipayClientId: res.payment?.digipayClientId ?? '',
+          digipayClientSecret: res.payment?.digipayClientSecret ?? '',
+          digipayUsername: res.payment?.digipayUsername ?? '',
+          digipayPassword: res.payment?.digipayPassword ?? '',
           digipaySandbox: !!res.payment?.digipaySandbox,
+          digipayConfigured: !!res.payment?.digipayConfigured,
           manualCardNumber: res.payment?.manualCardNumber ?? '',
           manualCardOwner: res.payment?.manualCardOwner ?? '',
         },
@@ -944,32 +952,57 @@ export function AdminSettings() {
           <div className="border-t border-emerald-100 pt-5">
             <h3 className="font-bold text-emerald-900 mb-1 text-sm">دیجی‌پی فروشگاه تکی (.ir)</h3>
             <p className="text-xs text-gray-500 mb-3">
-              درگاه یکپارچه (کارت، کیف‌پول و اعتبار دیجی‌پی) برای www.poshaktaranom.ir.
-              شناسه و رمز کلاینت فقط روی سرور در فایل محیطی ذخیره می‌شود، نه در این فرم.
+              مشتری در چک‌اوت بین زرین‌پال و دیجی‌پی انتخاب می‌کند. این بخش فقط اعتبارنامه و فعال بودن
+              دیجی‌پی را مشخص می‌کند؛ زرین‌پال تکی را قطع نمی‌کند.
             </p>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">درگاه پرداخت تکی</label>
-                <select
-                  className="input w-full"
-                  value={data.payment.retailGateway}
-                  onChange={(e) =>
-                    patch('payment', (p) => ({
-                      ...p,
-                      retailGateway: e.target.value === 'ZARINPAL' ? 'ZARINPAL' : 'DIGIPAY',
-                    }))
-                  }
-                >
-                  <option value="DIGIPAY">دیجی‌پی (پیشنهادی برای تکی)</option>
-                  <option value="ZARINPAL">زرین‌پال</option>
-                </select>
-              </div>
+              <ToggleRow
+                label="نمایش دیجی‌پی در چک‌اوت تکی"
+                hint="اگر خاموش باشد مشتری فقط زرین‌پال و پرداخت در محل را می‌بیند"
+                value={data.payment.digipayEnabled !== false}
+                onChange={(v) => patch('payment', (p) => ({ ...p, digipayEnabled: v }))}
+              />
+              <SecretField
+                label="شناسه کلاینت (client_id)"
+                value={data.payment.digipayClientId ?? ''}
+                shown={!!showSecret.digipayClientId}
+                onToggle={() => setShowSecret((p) => ({ ...p, digipayClientId: !p.digipayClientId }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, digipayClientId: v }))}
+                help="از پنل توسعه‌دهندگان دیجی‌پی"
+              />
+              <SecretField
+                label="رمز کلاینت (client_secret)"
+                value={data.payment.digipayClientSecret ?? ''}
+                shown={!!showSecret.digipayClientSecret}
+                onToggle={() => setShowSecret((p) => ({ ...p, digipayClientSecret: !p.digipayClientSecret }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, digipayClientSecret: v }))}
+              />
+              <SecretField
+                label="نام کاربری پنل"
+                value={data.payment.digipayUsername ?? ''}
+                shown={!!showSecret.digipayUsername}
+                onToggle={() => setShowSecret((p) => ({ ...p, digipayUsername: !p.digipayUsername }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, digipayUsername: v }))}
+                help="برای ورود OAuth لازم است؛ با client_id یکی نیست"
+              />
+              <SecretField
+                label="رمز پنل"
+                value={data.payment.digipayPassword ?? ''}
+                shown={!!showSecret.digipayPassword}
+                onToggle={() => setShowSecret((p) => ({ ...p, digipayPassword: !p.digipayPassword }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, digipayPassword: v }))}
+              />
+              <ToggleRow
+                label="حالت آزمایشی دیجی‌پی (UAT)"
+                hint="روشن = سرور آزمایشی؛ خاموش = محیط عملیاتی"
+                value={!!data.payment.digipaySandbox}
+                onChange={(v) => patch('payment', (p) => ({ ...p, digipaySandbox: v }))}
+              />
               <p className="text-xs text-gray-600">
-                اعتبارنامه سرور:{' '}
+                وضعیت اعتبارنامه:{' '}
                 <span className={data.payment.digipayConfigured ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
-                  {data.payment.digipayConfigured ? 'تنظیم شده' : 'تنظیم نشده'}
+                  {data.payment.digipayConfigured ? 'شناسه و رمز کلاینت ذخیره شده' : 'ناقص — مشتری دیجی‌پی را نمی‌بیند'}
                 </span>
-                {data.payment.digipaySandbox ? ' — حالت آزمایشی (UAT)' : ' — محیط عملیاتی'}
               </p>
             </div>
           </div>
@@ -977,7 +1010,7 @@ export function AdminSettings() {
           <div className="border-t border-emerald-100 pt-5">
             <h3 className="font-bold text-emerald-900 mb-1 text-sm">زرین‌پال فروشگاه تکی (.ir)</h3>
             <p className="text-xs text-gray-500 mb-3">
-              مرچنت جدا برای دامنه www.poshaktaranom.ir — اگر درگاه تکی روی دیجی‌پی باشد، این بخش فقط به‌عنوان جایگزین استفاده می‌شود
+              مرچنت جدا برای دامنه www.poshaktaranom.ir — پیش‌فرض چک‌اوت تکی همین درگاه است
             </p>
             <div className="space-y-4">
               <ToggleRow

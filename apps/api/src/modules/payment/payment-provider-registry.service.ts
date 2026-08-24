@@ -3,12 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PaymentProviderEntity } from './entities/payment-provider.entity';
 import { DisabledPaymentAdapter } from './adapters/disabled.adapter';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class PaymentProviderRegistryService {
   constructor(
     @InjectRepository(PaymentProviderEntity)
     private readonly repo: Repository<PaymentProviderEntity>,
+    private readonly settings: SettingsService,
   ) {}
 
   async listAll(): Promise<PaymentProviderEntity[]> {
@@ -18,6 +20,7 @@ export class PaymentProviderRegistryService {
   /** Server-authoritative checkout eligibility — never trust client. Public DTO (no secrets). */
   async listEligible(channel: 'WHOLESALE' | 'RETAIL') {
     const all = await this.listAll();
+    const pay = channel === 'RETAIL' ? await this.settings.payment() : null;
     return all
       .filter((p) => {
         if (!p.enabled || p.maintenanceMode) return false;
@@ -25,6 +28,10 @@ export class PaymentProviderRegistryService {
         if (p.healthStatus === 'DOWN') return false;
         if (p.channel !== 'BOTH' && p.channel !== channel) return false;
         if (!(p.capabilities?.pay || p.capabilities?.bnpl)) return false;
+        if (p.code === 'DIGIPAY') {
+          if (channel !== 'RETAIL') return false;
+          if (!pay?.digipayEnabled || !pay.digipayConfigured) return false;
+        }
         return true;
       })
       .map((p) => ({

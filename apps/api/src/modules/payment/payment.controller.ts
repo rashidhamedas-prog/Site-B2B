@@ -118,6 +118,7 @@ export class PaymentController {
       mobile: body.mobile || req.user.phone,
       email: body.email,
       channel: body.channel,
+      providerCode: body.providerCode,
     });
   }
 

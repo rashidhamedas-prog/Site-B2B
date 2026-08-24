@@ -9,11 +9,11 @@ tasks:
       architect: "cursor:implementer-TASK-20260824-003"
       implementer: "cursor:implementer-TASK-20260824-003"
       reviewer: "self-review-payments-no-hardcoded-secrets"
-      security: "self-review-oauth-env-only-no-secret-in-git"
+      security: "self-review-oauth-admin-settings-no-secret-in-git"
     branch: "ai/TASK-20260824-003-digipay-upg-retail"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-24T16:20:00Z"
-    heartbeat_at: "2026-08-24T16:20:00Z"
+    heartbeat_at: "2026-08-24T21:50:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/payment/adapters/digipay.adapter.ts"
@@ -26,6 +26,7 @@ tasks:
       - "apps/api/src/modules/payment/entities/payment.entity.ts"
       - "apps/api/src/database/migrations/20260824-001-digipay-upg-retail.ts"
       - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      - "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/settings/settings.service.ts"
       - "apps/api/package.json"
       - "apps/web/src/app/payment/callback/page.tsx"
@@ -42,17 +43,18 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Human-authorized DigiPay UPG for retail first. Reclaimed stale payment
-      files from TASK-20260812-001 (heartbeat 2026-08-14, >24h) and retail
-      checkout label from TASK-20260822-005 (heartbeat 2026-08-22, >24h).
-      Secrets only in server env, never in git. Wholesale stays ZarinPal.
-      DigiPay OAuth needs username/password in addition to client_id/secret;
-      env falls back to client pair if username/password empty.
+      Human-authorized DigiPay UPG for retail. Customer chooses ZarinPal or
+      DigiPay; DigiPay secrets live in admin settings (DB) with env fallback.
+      Reclaimed order.service.ts from TASK-20260818-001 / TASK-20260817-001
+      (heartbeats 2026-08-18 / 2026-08-17, stale >24h). Default retail gateway
+      is ZARINPAL so a broken DigiPay OAuth does not block checkout.
+      Never commit secrets.
     acceptance_criteria:
-      - "Retail ONLINE start uses DigiPay ticket type 11 when DIGIPAY_* is configured"
+      - "Retail checkout offers ZarinPal and DigiPay independently; default ONLINE is ZarinPal"
+      - "DigiPay client_id/secret/username/password/sandbox editable in /admin/settings"
+      - "DIGIPAY hidden from eligible unless enabled+configured; start only uses DigiPay when requested"
       - "Callback GET/POST lands on /payment/callback and verify uses trackingCode+providerId"
-      - "No client_id/secret/password committed; .env.example has placeholders only"
-      - "Wholesale ZarinPal path unchanged"
+      - "No secrets committed; wholesale ZarinPal path unchanged"
       - "Adapter unit spec passes; api tsc and web tsc pass"
   - id: "TASK-20260824-002"
     title: "PHASE-03 controlled production deploy (03A + 03B only)"
@@ -575,7 +577,7 @@ tasks:
       - "apps/api/src/jobs/backfill-related-products.ts"
       - "apps/api/src/jobs/report-min-pack-qty.ts"
       - "apps/api/package.json"
-      - "apps/api/src/modules/order/order.service.ts"
+      # transferred 2026-08-24 to TASK-20260824-003 (stale heartbeat; DigiPay checkout choice): "apps/api/src/modules/order/order.service.ts"
       - "apps/web/src/lib/seo-redirect.ts"
       - "apps/web/src/lib/product-slug-canonical.ts"
       - "apps/web/src/lib/product-slug-canonical.spec.ts"
@@ -657,7 +659,7 @@ tasks:
       - "apps/web/src/components/admin/AdminCategories.tsx"
       - "apps/web/src/app/sitemap.xml/route.ts"
       - "apps/web/src/app/(wholesale)/products/page.tsx"
-      - "apps/api/src/modules/order/order.service.ts"
+      # transferred 2026-08-24 to TASK-20260824-003 (stale heartbeat; DigiPay checkout choice): "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/category/category.module.ts"
       - "scripts/apply-production-schema.sql"
       - "TARANOM-SEO-ADMIN-UPGRADE-REPORT.md"

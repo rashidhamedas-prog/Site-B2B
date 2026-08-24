@@ -8,7 +8,7 @@
 ## Mitigate
 1. Enable `maintenanceMode` or disable ZARINPAL / DIGIPAY in `payment_providers` (ADMIN)
 2. Keep MANUAL / CASH / INSTALLMENT paths available for wholesale as business allows
-3. Retail ONLINE: if DigiPay is down, switch `payment.retailGateway` to `ZARINPAL` in `/admin/settings` only when that merchant is ready — do not invent a third PSP
+3. Retail ONLINE: customer chooses ZarinPal or DigiPay. If DigiPay is down, turn off «نمایش دیجی‌پی» in `/admin/settings` (payment) so checkout only offers ZarinPal + cash — do not invent a third PSP
 4. Show clear «درگاه موقتاً در دسترس نیست» — do not guess alternate PSP credentials
 
 ## Recover
