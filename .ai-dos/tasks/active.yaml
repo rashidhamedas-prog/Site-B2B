@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260824-002-phase-03-prod"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-24T11:50:00Z"
-    heartbeat_at: "2026-08-24T11:50:00Z"
+    heartbeat_at: "2026-08-24T15:50:00Z"
     depends_on:
       - "TASK-20260823-002"
       - "TASK-20260824-001"

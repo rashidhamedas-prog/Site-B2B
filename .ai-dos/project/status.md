@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-08-24 — **TASK-20260824-002** PHASE-03 production deploy **SUCCESS** at `70638db` (product/category 301s live; HTTP apex one-hop; sitemap 77/77; no Prisma)
 - Last verified: 2026-08-24 — **TASK-20260824-001** PHASE-03B GSC exact-URL cleanup **code+reports complete, NOT DEPLOYED**. 45 URLs classified; 1 product 301 + 1 category 301 in repo; footer key discovery source fixed; `tsc`/`build`/`seo:check` 0.
 - Last verified: 2026-08-23 — **TASK-20260823-002** PHASE-03A GSC triage **code+reports complete, NOT DEPLOYED**. Sitemap 77/77 live OK; `tsc`/`build`/`seo:check` 0. Nginx one-hop only in repo.
 - Last verified: 2026-08-23 — **TASK-20260823-001** PHASE-02B production deploy **SUCCESS** at `13bf657` (home ISR HIT; catalog 24 product links; no Prisma)
@@ -10,7 +11,7 @@
 - Last verified: 2026-08-22 — **TASK-20260822-002** admin Excel export for products/categories (merged #48)
 - Last verified: 2026-08-22 — **TASK-20260822-001** Torob crawler allowlist + feed aliases merged (#47 `b167689`)
 - Last verified: 2026-08-18 — **TASK-20260818-002** About CSS-3D implemented locally (uncommitted, not deployed); **TASK-20260818-001** still LIVE at `55f1743`
-- Code SHA (VPS): **`55f1743`**
+- Code SHA (VPS): **`70638db`**
 - Migration: **`ProductChannelSalePack1755510000001`** id=23 on production
 - Live health:
   - API `/v1/health` → **200** ok

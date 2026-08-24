@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-24 — PHASE-03 دیپلوی کنترل‌شده تولید (موفق)
+
+- انتشار `70638db` روی master با `scripts/auto-deploy.sh`. Rollback لازم نشد؛ هدف برگشت `7fea689`.
+- Prisma اجرا نشد. محصول ماهین و دسته ۲۰ یک ۳۰۱ به canonical فعلی؛ apex HTTP یک hop؛ سایت‌مپ ۷۷/۷۷؛ لینک داخلی شکسته ۰.
+- گزارش: `SEO-IMPLEMENTATION-REPORTS/PHASE-03-PRODUCTION-DEPLOY.md`.
+
 ## 2026-08-24 — PHASE-03B پاکسازی URLهای دقیق Search Console (بدون دیپلوی)
 
 - صادرات GSC مورخ ۲۰۲۶-۰۸-۲۴: ۴۵ URL کامل + ۱ ردیف ناقص `tag` که ساخته نشد. اختلاف نمونه: ۳۳→۳۱ برای ۴۰۴ و ۱۳→۱۲ برای crawled-not-indexed.
