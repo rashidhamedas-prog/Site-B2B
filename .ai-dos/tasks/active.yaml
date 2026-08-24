@@ -1,5 +1,157 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260824-002"
+    title: "PHASE-03 controlled production deploy (03A + 03B only)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260824-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260824-002"
+      implementer: "cursor:implementer-TASK-20260824-002"
+      reviewer: "self-review-deploy-no-schema-no-guessed-redirects"
+      security: "self-review-no-secrets-no-migration-uploads-closed"
+    branch: "ai/TASK-20260824-002-phase-03-prod"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-24T11:50:00Z"
+    heartbeat_at: "2026-08-24T11:50:00Z"
+    depends_on:
+      - "TASK-20260823-002"
+      - "TASK-20260824-001"
+    file_claims:
+      - "nginx/nginx.conf"
+      - "apps/web/src/lib/sitemap-xml.ts"
+      - "apps/web/src/components/retail/RetailOtpLogin.tsx"
+      - "apps/web/src/lib/gsc-legacy-redirects.ts"
+      - "apps/web/src/lib/gsc-legacy-redirects.spec.ts"
+      - "apps/web/src/middleware.ts"
+      - "apps/web/src/components/retail/RetailFooter.tsx"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03-PRODUCTION-DEPLOY.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03-GSC-MANUAL-ACTIONS.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      User-authorized PHASE-03 production deploy of 03A+03B only.
+      Reclaimed nginx.conf, sitemap-xml.ts, RetailOtpLogin.tsx from
+      TASK-20260823-002 (heartbeat 2026-08-23T16:10Z, stale >24h).
+      Reclaimed gsc-legacy-redirects*, middleware.ts, RetailFooter.tsx from
+      TASK-20260824-001 (not stale; owner completed code with Deployment NOT
+      RUN; this task is the authorized ship). Do not mass-redirect 404s, do
+      not make /account indexable, do not open /uploads, no Prisma/TypeORM
+      migrate. Do not stage unrelated dirty backups/audit packages.
+      Do not edit TASK-20260823-001 next.config.ts / RetailHero.tsx.
+      Rollback target: origin/master at PHASE-02B 13bf657.
+    acceptance_criteria:
+      - "Isolated commit of PHASE-03A+03B only; unrelated dirty files stay unstaged"
+      - "Malformed concatenated URLs absent from source href/canonical/JSON-LD"
+      - "No DB migration run; Prisma not applicable"
+      - "Live product 301 /product/161/شلوار-ماهین → /products/maserati-pants-mahin one hop"
+      - "Live category 301 /category/20 and /category/20/شلوار → /category/women-pants"
+      - "Storefront smoke + sitemap + intentional 404/410 + account exclusion + uploads closed"
+  - id: "TASK-20260824-001"
+    title: "PHASE-03B GSC exact URL cleanup (no deploy)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260824-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260824-001"
+      implementer: "cursor:implementer-TASK-20260824-001"
+      reviewer: "self-review-no-mass-404-noindex-redirect"
+      security: "security-auditor-robots-middleware-redirects"
+    branch: "ai/TASK-20260824-001-phase-03b-gsc-url-cleanup"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-24T08:30:00Z"
+    heartbeat_at: "2026-08-24T09:20:00Z"
+    depends_on:
+      - "TASK-20260823-002"
+    file_claims:
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-SUMMARY.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-EXACT-URL-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-404-DECISIONS.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-CRAWLED-NOT-INDEXED-DECISIONS.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-LEGACY-REDIRECTS.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-DISCOVERY-SOURCES.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-CHANGES.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-TEST-RESULTS.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03B-ROLLBACK.md"
+      - "scripts/seo/phase-03b-probe.mjs"
+      # transferred 2026-08-24 to TASK-20260824-002 (authorized PHASE-03 prod ship): "apps/web/src/lib/gsc-legacy-redirects.ts"
+      # transferred 2026-08-24 to TASK-20260824-002: "apps/web/src/lib/gsc-legacy-redirects.spec.ts"
+      # transferred 2026-08-24 to TASK-20260824-002: "apps/web/src/middleware.ts"
+      # transferred 2026-08-24 to TASK-20260824-002: "apps/web/src/components/retail/RetailFooter.tsx"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      PHASE-03B exact-URL classification from GSC exports 2026-08-24. No deploy.
+      Reclaimed apps/web/src/middleware.ts from TASK-20260822-001 (heartbeat
+      2026-08-22T13:40Z, stale >24h) for proven legacy 301 exceptions only.
+      RetailFooter.tsx was unclaimed. Do not mass-redirect 404s, do not make
+      /account indexable, do not enable /uploads listing, do not force assets
+      into Google index. Append-only on shared governance. Do not edit
+      TASK-20260823-001 next.config.ts / RetailHero.tsx.
+    acceptance_criteria:
+      - "Every exact GSC sample URL classified; no invented missing export rows"
+      - "Malformed footer href+label discovery source fixed if still in source"
+      - "301 only for proven same-product or same-category replacements"
+      - "web tsc and build pass; SEO regression pass; Deployment NOT RUN"
+  - id: "TASK-20260823-002"
+    title: "PHASE-03A Search Console indexing triage + safe technical cleanup"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260823-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260823-002"
+      implementer: "cursor:implementer-TASK-20260823-002"
+      reviewer: "self-review-no-mass-404-noindex-redirect"
+      security: "security-auditor-robots-middleware-nginx-redirects"
+    branch: "ai/TASK-20260823-002-phase-03a-gsc-triage"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-23T15:12:00Z"
+    heartbeat_at: "2026-08-23T15:12:00Z"
+    depends_on: []
+    file_claims:
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-SUMMARY.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-URL-INVENTORY.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-INTERNAL-LINK-CRAWL.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-SITEMAP-AUDIT.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-REDIRECT-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-NOINDEX-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-404-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-INDEXABILITY-CANDIDATES.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-CANONICAL-AUDIT.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-ROBOTS-AUDIT.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-BROKEN-INTERNAL-LINKS.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-GSC-URLS-NEEDED.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-SUMMARY.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-CHANGES.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-TEST-RESULTS.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-03A-ROLLBACK.md"
+      - "scripts/seo/phase-03a-census.mjs"
+      - "scripts/seo/phase-03a-analyze.mjs"
+      # transferred 2026-08-24 to TASK-20260824-002 (stale heartbeat; PHASE-03 prod ship): "nginx/nginx.conf"
+      # transferred 2026-08-24 to TASK-20260824-002: "apps/web/src/lib/sitemap-xml.ts"
+      # transferred 2026-08-24 to TASK-20260824-002: "apps/web/src/components/retail/RetailOtpLogin.tsx"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      PHASE-03A inventory/classify/safe-fix. No deploy. Do not invent GSC sample URLs.
+      Do not mass-change 404/noindex/redirects. Append-only on shared governance.
+      Do not edit TASK-20260823-001 PHASE-02B reports or next.config.ts.
+      Live census 2026-08-23: sitemap 77/77 HTTP 200 self-canonical indexable;
+      http://poshaktaranom.ir is a 2-hop chain. Reclaimed stale nginx.conf
+      (TASK-20260822-001 heartbeat 2026-08-22T13:40Z) and sitemap-xml.ts
+      (TASK-20260817-001 heartbeat 2026-08-17). RetailOtpLogin.tsx was unclaimed.
+      Do not edit TASK-20260823-001 next.config.ts / RetailHero.tsx.
+    acceptance_criteria:
+      - "All current retail sitemap URLs audited for 200/indexable/self-canonical/www HTTPS"
+      - "Redirects/noindex/404 classified; no mass homepage redirects"
+      - "Missing GSC sample URLs listed in PHASE-03A-GSC-URLS-NEEDED.md not guessed"
+      - "web tsc and build pass; SEO regression pass; Deployment NOT RUN"
   - id: "TASK-20260823-001"
     title: "PHASE-02B controlled production deploy of PHASE-01 + PHASE-02B"
     status: "in_progress"
@@ -267,9 +419,9 @@ tasks:
     heartbeat_at: "2026-08-22T13:40:00Z"
     depends_on: []
     file_claims:
-      - "nginx/nginx.conf"
+      # transferred 2026-08-23 to TASK-20260823-002 (stale heartbeat; HTTP apex one-hop): "nginx/nginx.conf"
       - "apps/web/next.config.ts"
-      - "apps/web/src/middleware.ts"
+      # transferred 2026-08-24 to TASK-20260824-001 (stale >24h; GSC exact 301 exceptions): "apps/web/src/middleware.ts"
       - "apps/api/src/main.ts"
       - "apps/api/package.json"
       - "apps/api/src/modules/torob/torob-crawler-ips.spec.ts"
@@ -441,7 +593,7 @@ tasks:
       - "apps/api/src/config/database.config.ts"
       - "apps/api/src/modules/blog/entities/seo-redirect.entity.ts"
       - "apps/web/src/lib/canonical-urls.ts"
-      - "apps/web/src/lib/sitemap-xml.ts"
+      # transferred 2026-08-23 to TASK-20260823-002 (stale >24h; BLOCKED_PATH /retail): "apps/web/src/lib/sitemap-xml.ts"
       - "apps/web/src/lib/channel.ts"
       - "apps/web/src/lib/cms/defaults.ts"
       - "apps/web/src/components/admin/AdminProducts.tsx"

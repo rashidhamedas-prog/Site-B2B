@@ -1,0 +1,6 @@
+source_url,status,target_url,final_url,hops,target_status,target_canonical,internal_links_to_source,in_sitemap,classification,action
+http://poshaktaranom.ir/,301,https://poshaktaranom.ir/,https://www.poshaktaranom.ir/,2,301,https://www.poshaktaranom.ir,0,no,REDIRECT_CHAIN,COLLAPSE_TO_ONE_HOP_NGINX_REPO_ONLY_NOT_DEPLOYED
+http://www.poshaktaranom.ir/,301,https://www.poshaktaranom.ir/,https://www.poshaktaranom.ir/,1,200,https://www.poshaktaranom.ir,0,no,EXPECTED_REDIRECT,KEEP
+https://poshaktaranom.ir/,301,https://www.poshaktaranom.ir/,https://www.poshaktaranom.ir/,1,200,https://www.poshaktaranom.ir,0,no,EXPECTED_REDIRECT,KEEP
+https://www.poshaktaranom.ir/search,301,https://www.poshaktaranom.ir/products,https://www.poshaktaranom.ir/products,1,200,https://www.poshaktaranom.ir/products,0,no,EXPECTED_REDIRECT,KEEP
+https://www.poshaktaranom.ir/shop,301,https://www.poshaktaranom.ir/products,https://www.poshaktaranom.ir/products,1,200,https://www.poshaktaranom.ir/products,0,no,EXPECTED_REDIRECT,KEEP

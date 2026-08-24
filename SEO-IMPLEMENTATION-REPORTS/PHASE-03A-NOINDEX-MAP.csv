@@ -1,0 +1,7 @@
+url_pattern,actual_sample,reason,should_index,current_signal,robots_allowed,in_sitemap,internally_linked,action
+/account*,https://www.poshaktaranom.ir/account,private customer account,NO,"meta noindex,nofollow + robots.txt Disallow",NO,no,yes,KEEP_NOINDEX
+/checkout*,https://www.poshaktaranom.ir/checkout,private checkout,NO,layout robots index:false + robots.txt Disallow,NO,no,yes,KEEP_NOINDEX
+/admin/*,https://www.poshaktaranom.ir/admin,admin,NO,robots.txt Disallow /admin/,NO,no,no,KEEP_NOINDEX
+/products?*,https://www.poshaktaranom.ir/products?page=2,filtered/paginated listing; canonical is /products,NO,"meta noindex,follow; canonical /products",YES,no,yes,KEEP_NOINDEX
+/retail/*,https://www.poshaktaranom.ir/retail/products,internal App Router tree; Torob rewrite ping-pong if 301,NO,"middleware X-Robots-Tag noindex,nofollow; HTTP 200",YES,no,no_public_nav,KEEP_200_NOINDEX_DO_NOT_301
+/blog/search,https://www.poshaktaranom.ir/blog/search,utility search,NO,robots.txt Disallow,NO,no,unknown,KEEP_NOINDEX

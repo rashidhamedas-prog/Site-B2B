@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-08-24 — **TASK-20260824-001** PHASE-03B GSC exact-URL cleanup **code+reports complete, NOT DEPLOYED**. 45 URLs classified; 1 product 301 + 1 category 301 in repo; footer key discovery source fixed; `tsc`/`build`/`seo:check` 0.
+- Last verified: 2026-08-23 — **TASK-20260823-002** PHASE-03A GSC triage **code+reports complete, NOT DEPLOYED**. Sitemap 77/77 live OK; `tsc`/`build`/`seo:check` 0. Nginx one-hop only in repo.
 - Last verified: 2026-08-23 — **TASK-20260823-001** PHASE-02B production deploy **SUCCESS** at `13bf657` (home ISR HIT; catalog 24 product links; no Prisma)
 - Last verified: 2026-08-22 — **TASK-20260822-005** PHASE-01 GA4 retail measurement coded locally (tsc/build 0; not deployed)
 - Last verified: 2026-08-22 — **TASK-20260822-004** retail PDP gallery + size UX (implementing; not deployed)

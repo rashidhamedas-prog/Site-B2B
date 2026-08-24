@@ -1,0 +1,31 @@
+gsc_reason,url,live_status,decision,target,reason,confidence
+Not found (404),/_next/static/media/c098cac0448557e8.p.woff2,404,KEEP_404,,historic hashed next/font; no live HTML/CSS reference,high
+Not found (404),/_next/static/media/831abf37d56e5f7d.p.woff2,404,KEEP_404,,historic hashed next/font,high
+Not found (404),/_next/static/media/6041bf25671dbd43.p.woff2,404,KEEP_404,,historic hashed next/font,high
+Not found (404),/_next/static/media/f94d05c93b9a3732.p.woff2,404,KEEP_404,,historic hashed next/font,high
+Not found (404),/productsجدیدترین‌ها,404,KEEP_404,,accidental href+label React key; live href is /products; generator fixed,high
+Not found (404),/contactتماس,404,KEEP_404,,accidental React key; live href /contact,high
+Not found (404),/shippingارسال,404,KEEP_404,,accidental React key; live href /shipping,high
+Not found (404),/&,404,KEEP_404,,no current href; accidental garbage,medium
+Not found (404),/collectionsکلکسیون‌ها,404,KEEP_404,,accidental React key; live href /collections,high
+Not found (404),/productsمانتو,404,KEEP_404,,accidental React key; footer href is /products not a manto category,high
+Not found (404),/$,404,KEEP_404,,no current href; accidental garbage,medium
+Not found (404),/tag/2%20%D8%B3%D8%A7%DB%8C%D8%B2/,404,KEEP_404,,legacy WP tag; no proven current /blog/tag slug,high
+Not found (404),/category/17/کت-کتان/,404,KEEP_404,,WP id 17 ambiguous (women-coats vs cotton-collection),high
+Not found (404),encoded /tag/...,n/a,UNKNOWN_REQUIRES_REVIEW,,incomplete GSC paste; not invented,high
+Not found (404),/product/152/مانتو-شومیزی-ترگل/?vid=1234,410,KEEP_410,,ترگل not in current catalog,high
+Not found (404),/page/3/تماس-با-ما/,404,KEEP_404,,WP paginated page; not proven equal to /contact,medium
+Not found (404),/product/151/مانتو-شومیزی-ساغر/?vid=1221,410,KEEP_410,,ساغر not in current catalog,high
+Not found (404),/category/20/,200-soft/Google-404,301,/category/women-pants,same identity as /category/20/شلوار,high
+Not found (404),/category/10,200-soft/Google-404,KEEP_404,,numeric id only; no name,high
+Not found (404),/product/160/مانتو-شومیزی-سهند/?vid=1291,410,KEEP_410,,سهند not in current catalog,high
+Not found (404),/product/161/شلوار-ماهین/?vid=1299,410,301,/products/maserati-pants-mahin,unique current product ماهین / PANTS00004,high
+Not found (404),/category/20,200-soft/Google-404,301,/category/women-pants,WP 20 = شلوار,high
+Not found (404),/cert-logo/1/,404,KEEP_404,,legacy cert asset,high
+Not found (404),/category/20/شلوار/,404,301,/category/women-pants,path slug شلوار = women-pants,high
+Not found (404),/blog/معرفی/P52-اپل-واچ-3-معرفی-شد.html,404,KEEP_404,,irrelevant historic WP article,high
+Not found (404),/a-b-c-d/,404,KEEP_404,,test/junk,high
+Not found (404),/static/bEHf0138/2.0.0/,404,KEEP_404,,old static artifact,high
+Not found (404),/static/bEHf0137/2.0.0/,404,KEEP_404,,old static artifact,high
+Not found (404),/static/bEHf0136/2.0.0/,404,KEEP_404,,old static artifact,high
+Not found (404),/product/59,410,KEEP_410,,WP id only; no current product,high

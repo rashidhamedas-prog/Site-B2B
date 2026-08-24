@@ -1,5 +1,20 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-24 — PHASE-03B پاکسازی URLهای دقیق Search Console (بدون دیپلوی)
+
+- صادرات GSC مورخ ۲۰۲۶-۰۸-۲۴: ۴۵ URL کامل + ۱ ردیف ناقص `tag` که ساخته نشد. اختلاف نمونه: ۳۳→۳۱ برای ۴۰۴ و ۱۳→۱۲ برای crawled-not-indexed.
+- منبع کشف URLهای چسبیدهٔ فارسی: `key={href+label}` در فوتر تکی؛ href زنده درست بود. کلید React عوض شد.
+- ۳۰۱ فقط برای هویت اثبات‌شده: `/product/161/شلوار-ماهین` → ماهین؛ `/category/20` و `/category/20/شلوار` → `/category/women-pants`. بقیه ۴۰۴/۴۱۰ ماند.
+- `tsc` و `next build` و `seo:check` سبز. دیپلوی اجرا نشد.
+- گزارش‌ها: `SEO-IMPLEMENTATION-REPORTS/PHASE-03B-*`.
+
+## 2026-08-23 — PHASE-03A تریاژ ایندکس Search Console (بدون دیپلوی)
+
+- سرشماری زنده: ۷۷ URL سایت‌مپ، همگی ۲۰۰ / self-canonical / indexable / www HTTPS. کراول داخلی ۱۰۲۷ لینک؛ لینک شکستهٔ عمومی ۰.
+- اصلاح امن در ریپو: یک hop برای `http://poshaktaranom.ir` در nginx (هنوز روی پروداکشن نیست)؛ `BLOCKED_PATH` برای `/retail`؛ لینک‌های `/retail` در `RetailOtpLogin`.
+- `tsc` و `next build` و `seo:check` سبز. دیپلوی اجرا نشد.
+- گزارش‌ها: `SEO-IMPLEMENTATION-REPORTS/PHASE-03A-*.md|csv`. URLهای نمونهٔ GSC در ریپو نیست.
+
 ## 2026-08-23 — PHASE-02B دیپلوی کنترل‌شده تولید (موفق)
 
 - انتشار `13bf657` روی master با `scripts/auto-deploy.sh`. Rollback لازم نشد؛ هدف برگشت `6796362`.

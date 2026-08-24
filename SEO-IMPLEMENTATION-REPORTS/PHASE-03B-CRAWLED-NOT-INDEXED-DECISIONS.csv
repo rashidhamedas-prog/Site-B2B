@@ -1,0 +1,13 @@
+gsc_reason,url,live_status,content_type,classification,recommended_action,confidence
+Crawled - currently not indexed,https://www.poshaktaranom.ir/fonts/Vazirmatn-Bold.woff2,200,font/woff2,KEEP_AS_IS_RESOURCE,do not sitemap or request indexing; discovered from layout preload,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/_next/image?url=https://poshaktaranom.com/media/products/1785660477650-5136facc592ea.jpg&w=1920&q=75,200,image/jpeg,KEEP_AS_IS_RESOURCE,.com is shared media origin (next.config remotePatterns); PHASE-02B only changed Hero to direct files,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/_next/image?url=https://poshaktaranom.com/media/products/1785661993661-df011b0d16fd5.jpg&w=1920&q=75,200,image/jpeg,KEEP_AS_IS_RESOURCE,shared media origin intentional,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/_next/image?url=https://poshaktaranom.com/media/products/1785661680882-0f1c5cc19bd52.jpg&w=1920&q=75,200,image/jpeg,KEEP_AS_IS_RESOURCE,shared media origin intentional,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/manifest.json,200,application/json,KEEP_AS_IS_RESOURCE,PWA manifest linked from layout; not a landing page,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/_next/image?url=https://poshaktaranom.com/media/products/1785326795221-b16555e02a001.jpg&w=1920&q=75,200,image/jpeg,KEEP_AS_IS_RESOURCE,shared media origin intentional,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/fonts/Vazirmatn-Regular.woff2,200,font/woff2,KEEP_AS_IS_RESOURCE,layout preload,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/_next/image?url=https://poshaktaranom.com/media/products/1785661253126-5646a837787c1.jpg&w=1920&q=75,200,image/jpeg,KEEP_AS_IS_RESOURCE,shared media origin intentional,high
+Crawled - currently not indexed,https://www.poshaktaranom.ir/_next/image?url=https://poshaktaranom.com/media/products/1785659290880-f5a7185ba2c45.jpg&w=1920&q=75,200,image/jpeg,KEEP_AS_IS_RESOURCE,shared media origin intentional,high
+Crawled - currently not indexed,https://poshaktaranom.ir/api/shop/product/catalog/,404 JSON + noindex,application/json,KEEP_AS_IS,legacy Woo REST; robots Disallow /api/; no HTML links found; do not 301 to pages,high
+Crawled - currently not indexed,https://poshaktaranom.ir/api/,404 JSON + noindex,application/json,KEEP_AS_IS,API root; same,high
+Crawled - currently not indexed,https://poshaktaranom.ir/blog/feed/,410,text/html,410_GONE,obsolete WP feed; current RSS is /blog/feed.xml 200; keep 410 (not an HTML SEO page),high

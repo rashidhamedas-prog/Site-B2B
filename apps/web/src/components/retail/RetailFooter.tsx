@@ -62,8 +62,8 @@ export function RetailFooter() {
           <div key={col.title}>
             <p className="mb-4 text-sm font-bold text-[var(--retail-gold)]">{col.title}</p>
             <ul className="space-y-2">
-              {col.links.map((l) => (
-                <li key={l.href + l.label}>
+              {col.links.map((l, i) => (
+                <li key={`${col.title}-${i}`}>
                   <Link href={l.href} className="text-sm text-white/75 transition hover:text-white">
                     {l.label}
                   </Link>

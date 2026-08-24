@@ -27,7 +27,7 @@ export interface SitemapUrl {
 }
 
 const BLOCKED_PATH =
-  /\/(cart|checkout|login|admin|portal|search|account|payment)(\/|$)/i;
+  /\/(cart|checkout|login|admin|portal|search|account|payment|retail)(\/|$)/i;
 
 export function sitemapOrigin(channel: SitemapChannel): string {
   return channel === 'RETAIL' ? RETAIL_ORIGIN : WHOLESALE_ORIGIN;

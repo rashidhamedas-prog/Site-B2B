@@ -2,6 +2,53 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-24T11:50:00Z — TASK-20260824-002 PHASE-03 production deploy started
+
+- Task / owner: TASK-20260824-002 / cursor:implementer-TASK-20260824-002
+- Branch: `ai/TASK-20260824-002-phase-03-prod` (to be cut from current HEAD after git preflight)
+- Scope: ship PHASE-03A (2 internal `/retail` hrefs + nginx HTTP apex one-hop + sitemap `/retail` block) and PHASE-03B (footer React keys + 2 proven 301s) only
+- Rollback target: production PHASE-02B `13bf657` on origin/master
+- Prisma: NOT RUN (TypeORM; no new migration)
+- Reclaim: nginx/sitemap-xml/RetailOtpLogin from TASK-20260823-002 (stale); gsc-legacy-redirects/middleware/RetailFooter from TASK-20260824-001 (authorized ship of completed no-deploy work)
+- Exact next: malformed-URL source proof → isolate commit → typecheck/build/seo:check → push master → same auto-deploy path as PHASE-02B → live verify
+- Reports: `SEO-IMPLEMENTATION-REPORTS/PHASE-03-PRODUCTION-DEPLOY.md` (pending)
+
+## 2026-08-24T09:20:00Z — TASK-20260824-001 PHASE-03B exact URL cleanup complete, no deploy
+
+- Task / owner: TASK-20260824-001 / cursor:implementer-TASK-20260824-001
+- Branch: `ai/TASK-20260824-001-phase-03b-gsc-url-cleanup`
+- GSC 2026-08-24: 45 exact URLs classified; 1 incomplete `/tag/` paste not invented; empty Discovered table = NO_ACTION
+- Repo: RetailFooter keys; middleware 301 for ماهین + category 20/شلوار only
+- Gates: web `tsc --noEmit` 0; `next build` 0; `gsc-legacy-redirects.spec.ts` 0; `npm run seo:check` 0
+- Deploy: NOT RUN (new 301s not live)
+- Account robots EXPECTED; `/uploads/` live 410 EXPECTED; duplicate feed 410 RESOLVED
+- Reports: `SEO-IMPLEMENTATION-REPORTS/PHASE-03B-*`
+- Exact next: human review → optional web deploy of 301s + footer key; do not mass-redirect remaining 404s
+- Rollback: revert footer keys + remove `gsc-legacy-redirects` + middleware lookup; production unchanged
+
+## 2026-08-23T16:10:00Z — TASK-20260823-002 PHASE-03A reports complete, no deploy
+
+- Task / owner: TASK-20260823-002 / cursor:implementer-TASK-20260823-002
+- Live: sitemap 77/77 200 indexable; 0 public broken internals; HTTP apex still 2 hops on VPS
+- Repo: nginx one-hop apex; sitemap BLOCKED_PATH `/retail`; RetailOtpLogin public hrefs
+- Gates: web `tsc --noEmit` 0; `next build` 0; `npm run seo:check` 0
+- Deploy: NOT RUN
+- GSC URL exports still required (13/33/1/1/1/1 buckets)
+- Reports: `SEO-IMPLEMENTATION-REPORTS/PHASE-03A-*`
+- Exact next: human review → optional deploy nginx hop → import GSC URL lists for 03B
+- Rollback: revert three code files; production unchanged
+
+## 2026-08-23T15:12:00Z — TASK-20260823-002 PHASE-03A indexing triage started
+
+- Task / owner: TASK-20260823-002 / cursor:implementer-TASK-20260823-002
+- Branch: `ai/TASK-20260823-002-phase-03a-gsc-triage`
+- Scope: live URL census, classify GSC reasons, safe systemic SEO fixes only
+- Non-goals: deploy, invent GSC sample URLs, mass 404/noindex/redirect changes, content rewrites
+- Shared governance: append/register only; do not rewrite PHASE-02B reports
+- Code claims: reports + census script first; middleware/nginx/sitemap/robots only after evidence
+- Exact next: fetch live sitemap/robots/host hops; crawl internal links; classify; apply only evidenced fixes
+- Rollback: revert PHASE-03A reports/script; no production change (deploy not run)
+
 ## 2026-08-23T14:40:00Z — TASK-20260823-001 PHASE-02B production deploy SUCCESS
 
 - Task / owner: TASK-20260823-001 / cursor:implementer-TASK-20260823-001

@@ -1,0 +1,6 @@
+old_url,target_url,status,hops_expected,reason,live_before,repo_status
+/category/20,/category/women-pants,301,1,WP category 20 = شلوار; current /category/women-pants 200 self-canonical,soft-404/Google 404,added TASK-20260824-001 not deployed
+/category/20/,/category/women-pants,301,1,trailing-slash variant of the same,slash-strip then soft-404,added not deployed
+/category/20/شلوار,/category/women-pants,301,1,path contains شلوار,404,added not deployed
+/product/161/شلوار-ماهین,/products/maserati-pants-mahin,301,1,unique current product ماهین PANTS00004; query vid stripped,410,added not deployed
+/product/161/شلوار-ماهین?vid=1299,/products/maserati-pants-mahin,301,1,GSC exact including vid,410,same mapping

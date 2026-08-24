@@ -9,7 +9,7 @@ import { clearToken, getToken, setToken } from '@/lib/auth';
 export function RetailOtpLogin() {
   const router = useRouter();
   const search = useSearchParams();
-  const redirect = search.get('redirect') || '/retail/checkout';
+  const redirect = search.get('redirect') || '/checkout';
 
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = useState('');
@@ -69,12 +69,12 @@ export function RetailOtpLogin() {
         <p className="mt-3 text-sm text-[var(--retail-muted)]">می‌توانید سفارش تکی ثبت کنید یا از حساب خارج شوید.</p>
         <div className="mt-8 flex flex-col gap-3">
           <Link
-            href="/retail/checkout"
+            href="/checkout"
             className="rounded-full bg-[var(--retail-gold)] py-3 text-sm font-extrabold text-white"
           >
             رفتن به تسویه حساب
           </Link>
-          <Link href="/retail/products" className="text-sm font-bold text-[var(--retail-primary)]">
+          <Link href="/products" className="text-sm font-bold text-[var(--retail-primary)]">
             ادامه خرید
           </Link>
           <button

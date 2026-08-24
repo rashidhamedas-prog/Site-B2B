@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
+import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
 
 /** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
 const WHOLESALE_CATEGORY_ALIASES: Record<string, string> = {
@@ -49,9 +50,21 @@ function goneResponse(): NextResponse {
   );
 }
 
+function redirectPublic(request: NextRequest, pathname: string): NextResponse {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = '';
+  return NextResponse.redirect(url, 301);
+}
+
 /** Handle retired/legacy URLs before any channel rewrite. Returns null when not legacy. */
 function handleLegacyPaths(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl;
+
+  const gscTarget = lookupGscLegacyRedirect(pathname);
+  if (gscTarget) {
+    return redirectPublic(request, gscTarget);
+  }
 
   // Old WP shop URLs (incl. /shop/?filter_color=..., /shop/<cat>/<item>.html)
   if (pathname === '/shop' || pathname.startsWith('/shop/')) {
