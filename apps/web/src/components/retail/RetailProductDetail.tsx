@@ -8,6 +8,7 @@ import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
 import { discountPercent, mediaUrl as toMediaUrl } from '@/lib/product-display';
 import { RetailProductCard } from './RetailProductCard';
+import { selectDefaultRetailVariant } from '@taranom/shared-types';
 
 type Related = {
   id: string;
@@ -32,6 +33,7 @@ type Variant = {
   retailStock?: number;
   wholesaleStock?: number;
   imageUrl?: string | null;
+  createdAt?: string | Date | null;
 };
 type Product = {
   id: string;
@@ -60,6 +62,7 @@ type Product = {
   variants?: Variant[];
   categoryId?: string;
   fabric?: string;
+  defaultRetailVariantId?: string | null;
 };
 
 function mediaUrl(url?: string | null) {
@@ -99,10 +102,20 @@ function PreOrderCountdown({ date }: { date: string }) {
   return <p className="mt-2 text-sm font-bold text-[var(--retail-gold)]">{label}</p>;
 }
 
-export function RetailProductDetail({ product }: { product: Product }) {
+export function RetailProductDetail({
+  product,
+  initialVariantId,
+}: {
+  product: Product;
+  initialVariantId?: string;
+}) {
   const addItem = useRetailCart((s) => s.addItem);
-  const [color, setColor] = useState(product.variants?.[0]?.color ?? '');
-  const [size, setSize] = useState(product.variants?.[0]?.size ?? '');
+  const initial =
+    product.variants?.find((variant) => variant.id === initialVariantId) ??
+    selectDefaultRetailVariant(product.variants, product.defaultRetailVariantId) ??
+    undefined;
+  const [color, setColor] = useState(initial?.color ?? '');
+  const [size, setSize] = useState(initial?.size ?? '');
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [wish, setWish] = useState(false);
@@ -173,7 +186,7 @@ export function RetailProductDetail({ product }: { product: Product }) {
     if (idx >= 0) setActiveImg(idx);
   }, [color, colorMeta, gallery]);
 
-  const variantUnits = (v: Variant) => Number(v.retailStock ?? v.stock ?? 0);
+  const variantUnits = (v: Variant) => Math.max(0, Number(v.retailStock) || 0);
 
   const sizeRows = useMemo(() => {
     const map = new Map<string, { size: string; stock: number }>();
@@ -201,7 +214,7 @@ export function RetailProductDetail({ product }: { product: Product }) {
       : 0
     : discountPercent(price, compareAt);
   const body = product.fullContent || product.description;
-  const productRetailStock = Number(product.retailStock ?? product.stock ?? 0);
+  const productRetailStock = Math.max(0, Number(product.retailStock) || 0);
   const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
   const stock = product.variants?.length ? variantStock : productRetailStock;
   const colorImage = mediaUrl(colorMeta.get(color)?.imageUrl);

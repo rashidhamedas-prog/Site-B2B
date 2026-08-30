@@ -1,5 +1,15 @@
 # Project Status
 
+- Last verified: 2026-08-29 — **TASK-20260829-001** Torob Product API v3 **code complete + reviewed**; blocked on owner migrate/deploy. Reviewer remediations applied. Security no medium+ finding. TASK-20260826-001 still parked. Production Torob migrate/deploy **NOT RUN**
+- Last verified: 2026-08-29 — **TASK-20260826-001** blog/CMS projection + storefront channel stock; worker leases content events; Admin publication badges. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off
+- Last verified: 2026-08-29 — **TASK-20260826-001** worker syncs local publications from catalog outbox (no deliveries); inventory/order wholesale reads `wholesaleStock` only; CI empty-DB migrate job added. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off
+- Last verified: 2026-08-29 — **TASK-20260826-001** media registry wired (upload upsert + Admin alt); `product.stock_changed` leased by worker; MinIO images pinned. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off
+- Last verified: 2026-08-29 — **TASK-20260826-001** `apps/api` `npm test` exit 0 after SEC-006/007; Feed/Basalam isolation source spec green; Docker missing locally so empty-DB migrate still NOT RUN; connectors off
+- Last verified: 2026-08-29 — **TASK-20260826-001** Omnichannel Phase 7 Admin UI expanded (connections/destinations/templates/deliveries/outbox/audit) + Phase 8 systemd units in repo; migrate/deploy/soak/canary still **NOT RUN**
+- Last verified: 2026-08-29 — **TASK-20260826-001** Omnichannel Phases 4–8 **code complete, not production-activated** (preview/canary/checkout channel/Telegram gate/admin/DB_SYNC fail-closed; migrate/deploy NOT RUN)
+- Last verified: 2026-08-29 — **TASK-20260826-001** Omnichannel Phase 0 **closed** (RMA channel stock + acceptance specs; api tsc 0)
+- Last verified: 2026-08-26 — **TASK-20260826-001** Omnichannel Phases 2–3 **implementing** (outbox producers + independent worker; no production migrate/deploy)
+- Last verified: 2026-08-26 — **TASK-20260826-001** Omnichannel Phase 1 schema **implementing** on `ai/TASK-20260826-001-omnichannel-phase-0` (no production migrate/deploy)
 - Last verified: 2026-08-25 — **TASK-20260824-003** DigiPay UPG retail **customer choice + admin secrets** (implementing; default ZarinPal so retail ONLINE is not blocked by DigiPay 401)
 - Last verified: 2026-08-24 — **TASK-20260824-002** PHASE-03 production deploy **SUCCESS** at `70638db` (product/category 301s live; HTTP apex one-hop; sitemap 77/77; no Prisma)
 - Last verified: 2026-08-24 — **TASK-20260824-001** PHASE-03B GSC exact-URL cleanup **code+reports complete, NOT DEPLOYED**. 45 URLs classified; 1 product 301 + 1 category 301 in repo; footer key discovery source fixed; `tsc`/`build`/`seo:check` 0.

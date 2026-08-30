@@ -303,4 +303,14 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   videoUrl?: string;
+
+  @ApiPropertyOptional({ description: 'گارانتی محصول برای ترب و متاتگ (حداکثر ۲۰۰ کاراکتر)' })
+  @IsOptional()
+  @IsString()
+  guarantee?: string | null;
+
+  @ApiPropertyOptional({ description: 'شناسه واریانت پیش‌فرض کانال تکی' })
+  @IsOptional()
+  @IsString()
+  defaultRetailVariantId?: string | null;
 }

@@ -167,6 +167,8 @@ export interface Product {
   retailDiscountEndsAt?: string | null;
   retailFullContent?: string | null;
   wholesaleFullContent?: string | null;
+  guarantee?: string | null;
+  defaultRetailVariantId?: string | null;
   legacyContent?: string | null;
   relatedProductIds?: string[];
   minOrderQty?: number;

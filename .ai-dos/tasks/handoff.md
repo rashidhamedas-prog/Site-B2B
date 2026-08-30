@@ -2,6 +2,185 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-29T16:45:00Z — TASK-20260829-001 reviews closed; awaiting owner migrate
+
+- Task / owner: TASK-20260829-001 / cursor:implementer-TASK-20260829-001
+- Independent Reviewer [بررسی فاز](413a7266-6219-4b92-8a94-3ae5c4033df9): PASS WITH CONDITIONS. Must-fix applied: PDP meta uses `retailUnitStock(selected ?? product)` (no-variant stock matches API); `updateProductStock` touches `updatedAt` on retail only. JWT HS256/none + Host-cannot-change-aud specs added.
+- Independent Security [بررسی امنیت](52a5c58d-87b2-4a5d-89bf-daca39492c0a): PASS WITH CONDITIONS. Medium+ unresolved: none. Conditions are ops (exact audience, NODE_ENV=production, no TOROB_JWT_PUBLIC_KEY on VPS, owner migrate).
+- Gates: Torob specs exit 0; API/web `tsc --noEmit` 0; `git diff --check` 0
+- Production migrate/deploy/push NOT RUN
+- Claims released. Exact next: owner approval for `TorobProductFields1756473600003` then deploy; panel URL `https://api.poshaktaranom.com/v1/torob_api/v3/products` with `aud=api.poshaktaranom.com`
+
+## 2026-08-29T16:25:00Z — TASK-20260829-001 implementation gates
+
+- Task / owner: TASK-20260829-001 / cursor:implementer-TASK-20260829-001
+- Gates: API `tsc --noEmit` 0; web `tsc --noEmit` 0
+- Specs ok: request, image, projection, jwt (test Ed25519), pagination, default variant, migration SQL
+- Skill installed to ~/.cursor/skills/torob-integration (no prior copy; canonical in repo)
+- Production migrate/deploy NOT RUN
+- Independent Reviewer: [بررسی فاز](413a7266-6219-4b92-8a94-3ae5c4033df9); Security: [بررسی امنیت](4dda907b-5f78-424b-9a69-1f524bbbefe6)
+
+## 2026-08-29T16:10:00Z — TASK-20260829-001 started; Omnichannel parked
+
+- Task / owner: TASK-20260829-001 / cursor:implementer-TASK-20260829-001
+- Roles: Implementer this session; Reviewer `cursor:reviewer-TASK-20260829-001`; Security `cursor:security-TASK-20260829-001` (independent, after diff)
+- Scope: Torob Product API v3 on `https://api.poshaktaranom.com/v1/torob_api/v3/products`, shared retail projection, PDP meta, paginated feed/sitemap, reusable skill
+- TASK-20260826-001: code complete, **blocked** on owner migrate/deploy. Overlapping claims transferred (feeds, product.service/module, inventory.service, AdminProducts, retail PDP). Uncommitted omnichannel work not discarded.
+- Official docs: GitHub `torob/Torob-Sync` (panel captcha-blocked)
+- Exact next: implement projection + JWT + endpoint; no production migrate/deploy
+- Reclaim: stale product.entity/dto/sitemap-xml/nginx/.env.example/models/torob.module from heartbeats 2026-08-12..24
+
+## 2026-08-29T15:40:00Z — Outbox jitter + durable queue metrics
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: Retry `nextAvailableAt` adds up to 25% jitter. `GET /omnichannel/status` returns durable outbox counts/lag/staleLocks from DB (empty if table missing). Admin cards show lag. Dashboard low-stock and color editors use channel columns only.
+- Exact next: production migrate/deploy/soak/canary still NOT RUN. Do **not** Done.
+
+## 2026-08-29T15:25:00Z — API dual-write of legacy stock removed
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: `ProductService` no longer mirrors wholesale onto `product.stock` / `variant.stock`. Color-stock ignores legacy `stock`. CRM/excel/PDP JSON-LD use channel columns. Isolation spec pins the write-path.
+- Gates: `color-stock-plan.spec.ts` + `channel-stock-isolation.spec.ts` + API `tsc --noEmit` exit 0
+- Exact next: production migrate/deploy/soak/canary still NOT RUN. Do **not** Done.
+
+## 2026-08-29T15:10:00Z — Blog/CMS projection + storefront channel stock
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: Worker leases `blog.published` / `cms.published` and upserts local DRAFT/WITHDRAWN (no deliveries). Preview/publish accept BLOG_POST and CMS_PAGE. Reclaimed stale AdminProducts + retail/wholesale stock surfaces: UI reads `retailStock` / `wholesaleStock` only; Admin shows `channel:status` publication badges. Color-stock save no longer sends legacy `stock`.
+- Reclaim: AdminProducts, RetailProductCard/Catalog/Detail, wholesale-order from tasks with heartbeat 2026-08-17..23 (stale).
+- Gates: content-projection / lease / acceptance + API `tsc --noEmit` exit 0
+- Exact next: production migrate/deploy/soak/canary still NOT RUN. Do **not** Done.
+- Reports: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`
+
+## 2026-08-29T14:45:00Z — Catalog events sync publications; wholesale reads channel column
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: Worker leases Phase 4 catalog events (`product.created` / content / price / visibility / media / withdrawn) even with connectors off and upserts/withdraws **local DRAFT publications only** — no deliveries. `product.stock_changed` also syncs then reindexes. Inventory/order wholesale stock reads use `channelUnitStock` (no `variant.stock` fallback). Disposable migrate script includes media table; CI job `omnichannel-migrate` runs empty-DB up/down/up.
+- Gates: publication-sync / lease / isolation / acceptance specs ok; `tsc --noEmit` 0
+- Exact next: still no production migrate/deploy/soak/canary. Dual-write of legacy `product.stock` remains for claimed storefront/admin readers. Blog/CMS events stay unleased until their projection exists. Do **not** Done.
+- Reports: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`
+
+## 2026-08-29T14:20:00Z — Reviewer PASS WITH CONDITIONS; registry delete follow-up
+
+- Independent Reviewer: [بررسی فاز](b20aa0cc-ab7c-41c5-8929-cc6e1f769567) **PASS WITH CONDITIONS**
+- Hard fail gates hold (Retail isolation, one-txn stock+movement, no hard-delete movements, public ALL, CMS sanitize, connectors do not write stock, secretRef, Bale/Rubika gated).
+- Residuals (do not Done): wholesale dual-write of legacy `product.stock`; inventory wholesale `variant.stock` fallback; VPS MinIO may still be `:latest` until deploy.
+- Follow-up coded: `deleteByUrls` now removes matching `omnichannel_media_assets` rows after object delete (42P01 swallowed; other registry errors fail closed).
+- Security of this wave already: [بررسی امنیت](687b8053-468d-49d8-ae62-3144f9bc5d5c) PASS WITH CONDITIONS. Keep connectors/auto-publish off.
+
+## 2026-08-29T13:55:00Z — Security PASS WITH CONDITIONS (media + stock_changed)
+
+- Independent Security: [بررسی امنیت](687b8053-468d-49d8-ae62-3144f9bc5d5c) **PASS WITH CONDITIONS**
+- SEC-001..007 hold after media registry + worker stock_changed + MinIO pin. Media list/patch ADMIN + OmnichannelAdminGuard. No medium+ exploit in this wave.
+- Conditions: keep connectors/auto-publish off; disposable migrate before production; do **not** Done. Phase reviewer still running: [بررسی فاز](b20aa0cc-ab7c-41c5-8929-cc6e1f769567)
+
+## 2026-08-29T13:40:00Z — Media registry wired + stock_changed consumed
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: `omnichannel_media_assets` register on upload (42P01 swallowed), Admin GET/PATCH alt, list returns [] if table missing. Worker now leases `product.stock_changed` and reindexes search (no stock write). Order qty-edit also enqueues search. MinIO/mc compose images pinned (last Hub RELEASE tags).
+- Gates: media-registry + media migration specs ok; tsc 0 after wiring; lease/acceptance rerun this wave
+- Exact next: independent Reviewer + Security on this wave. Do **not** production-migrate (schema + audit + media), deploy, enable connectors/auto-publish, or mark Done. Soak/canary/restore-drill still NOT RUN. `AdminProducts` badges and retail card `.stock` fallback still claimed elsewhere.
+- Reports: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`
+
+## 2026-08-29T14:15:00Z — Phase 0–8 source acceptance spec
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: `omnichannel-phase-acceptance.spec.ts` pins CMS channel+sanitize, RMA audit entity, public ALL, SALE movement, secretRef schema, SKIP LOCKED, worker entry, Bale/Rubika gate, official Telegram, DB_SYNC, wholesale checkout channel
+- Gates: spec exit 0
+- Still NOT RUN: empty-DB migrate, two-worker Postgres, restore drill, staging soak, live canary
+
+## 2026-08-29T14:10:00Z — Feed/Basalam isolation source gate
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: `channel-stock-isolation.spec.ts` asserts Feed/Basalam call `channelAvailability(..., 'RETAIL')` and never read `variant.stock`
+- Gates: spec exit 0. Docker not installed on this Windows host — empty-DB migration up/down still NOT RUN
+- Exact next: owner must authorize staging migrate or provide a disposable Postgres. Do not production-migrate.
+
+## 2026-08-29T14:05:00Z — apps/api npm test after SEC-007
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Gates: `apps/api` `npm test` **exit 0** (full chain including color-stock-plan + omnichannel specs)
+- Exact next: still no production migrate/deploy/connectors. Two-worker Postgres SKIP LOCKED not run on a live DB.
+
+## 2026-08-29T14:00:00Z — SEC-006/007 stock path + public ACTIVE gate
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: variant PATCH, color-stock PUT, and createVariant no longer write stock; InventoryService ADJUST in one txn. Public GET id/slug hides non-ACTIVE unless JWT ADMIN (AdminProducts keeps drafts).
+- Reclaim: product.module.ts from TASK-20260817-001 (heartbeat 2026-08-17, stale)
+- Exact next: run color-stock-plan spec + api tsc. Still no migrate/deploy/connectors. Do not Done.
+- Reports: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`
+
+## 2026-08-29T13:50:00Z — Security PASS WITH CONDITIONS; SEC-001..004 fixed
+
+- Independent Security: [بررسی امنیت](f3b677bf-61d6-48c8-9edb-0a02cc8168e3) **PASS WITH CONDITIONS**
+- Implemented: secretRef allowlist TELEGRAM_/BALE_/RUBIKA_ only; Telegram throws classified codes (no raw description); worker/admin redact `/bot…` and token shape; destination `settings` omitted from GET; storage keys deny `..` and allow only `products|blog`; restore-drill also refuses `DB_NAME=taranom_db`; storefront findOne/slug with channel hides non-ACTIVE
+- Not done: SEC-007 variant/color-stock still bypass inventory movements; UUID findOne without channel still returns drafts (admin uses that path)
+- Gates: `omnichannel-secrets.spec.ts` / `telegram.adapter.spec.ts` / `storage-delete.spec.ts` / `public-product-status.spec.ts` ok; `apps/api` `tsc --noEmit` exit 0
+- Exact next: Do **not** enable connectors/auto-publish. Do **not** mark Done. Second Reviewer+Security pass still required after this fix wave.
+- Reports: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`
+
+## 2026-08-29T13:20:00Z — TASK-20260826-001 Phase 7 Admin complete + Phase 8 timers
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: Admin UI now covers connections, destinations, templates, preview, publications, deliveries+retry, outbox, audits. GET outbox/audits omit payloads. systemd alert/backup units added under `deploy/systemd/`. Disposable migration script added.
+- Reclaim: none. New files: `deploy/systemd/omnichannel-ops-*.{service,timer}`, `scripts/omnichannel-migrations-disposable-updown.sh`
+- Exact next: independent Security review still running; do **not** production-migrate, deploy, enable connectors/auto-publish, or mark Done. Product Admin publication badges blocked (`AdminProducts` claimed). Soak/canary/restore-drill remain NOT RUN.
+- Risk: omnichannel tables still absent on production until migrate. Admin list endpoints 500 until then.
+- Reports: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`
+
+## 2026-08-29T16:35:00Z — Reviewer PASS WITH CONDITIONS; must-fix in progress
+
+- Independent review: [بررسی فاز](68850465-14d1-465b-a16b-46efc6a41d4d) PASS WITH CONDITIONS
+- Fixes: PATCH /products/:id/stock → Inventory movement; media ref check on StorageService.deleteByUrls; publication deliver not leased (and deferred, not DONE) when connectors off; publication+outbox same txn
+- Phase 8 ops (encrypted backup, soak, live canary) remain NOT RUN — do not Done
+- Gates: `db-sync.spec.ts` ok (prod+staging fail-closed); `apps/api` `tsc --noEmit` exit 0 after Phase 8 encrypt/staging/worker-health changes
+
+## 2026-08-29T16:20:00Z — TASK-20260826-001 Phases 4–8 coded, not activated
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: Retail/Wholesale projection + Admin preview; wholesale checkout channel; Telegram official API behind flag; Bale/Rubika disabled; Admin/audit/reconcile; DB_SYNC fail-closed; shared deploy lock
+- Reclaim: `.github/workflows/ci.yml` from TASK-20260812-001 (heartbeat 2026-08-14, stale) so GH uses `scripts/auto-deploy.sh` flock
+- Gates: `apps/api` `npm test` exit 0 (full suite including Phase 0–8 omnichannel specs); `tsc --noEmit` exit 0 earlier this session
+- Exact next: wait for independent Reviewer ([phase review](68850465-14d1-465b-a16b-46efc6a41d4d)); do **not** production-migrate, deploy, or enable `OMNICHANNEL_AUTO_PUBLISH` / `OMNICHANNEL_CONNECTORS_ENABLED` unless asked
+- Risk: publication tables exist only after Phase 1 migration is applied; audit table needs `20260829-001`; worker still does not send Telegram
+- Reports: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`
+
+## 2026-08-29T12:30:00Z — TASK-20260826-001 Phase 0 residuals closed
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: RMA channel stock (not legacy `stock`) + RETURN movement; Phase 0 acceptance specs
+- Reclaim: rma.service.ts / rma.module.ts from TASK-20260810-006 (heartbeat 2026-08-12, stale)
+- Exact next: Phase 0 tests green then continue Phase 4 Retail projection (1–3 already coded). No production migrate/deploy unless asked.
+- Reports: `docs/reports/2026-08-26-omnichannel-phase-0.md`
+
+## 2026-08-26T13:50:00Z — TASK-20260826-001 Phase 2+3 outbox + worker
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: transactional outbox producers; independent worker; SMS/affiliate/search off request path
+- Gates: `apps/api` `tsc --noEmit` exit 0 after spec type fixes; `outbox.service.spec.ts` / `outbox-lease.spec.ts` / `product-outbox.spec.ts` ok
+- Reclaim: payment.service.ts from TASK-20260824-003; affiliate-postback.service.ts from TASK-20260812-001 (stale heartbeats)
+- Exact next: Phase 4 Retail projection (Admin preview, dry-run, canary). Do not invent Bale/Rubika APIs. Do not production-migrate/deploy unless asked.
+- Risk: until worker is live, queued SMS/affiliate/search stay PENDING. Connectors still off.
+- Reports: `docs/reports/2026-08-26-omnichannel-phase-2.md`, `docs/reports/2026-08-26-omnichannel-phase-3.md`
+
+## 2026-08-26T13:05:00Z — TASK-20260826-001 Phase 1 schema implementing
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Scope: additive omnichannel tables + ADMIN module; connectors/auto-publish off
+- Exact next: migration/secret specs + api tsc; Phase 2 outbox producers only after Phase 1 tests green
+- Risk: schema additive; do not run production migrate in this turn
+- Reports: `docs/reports/2026-08-26-omnichannel-phase-1.md`
+
+## 2026-08-26T12:45:00Z — TASK-20260826-001 Omnichannel Phase 0 started
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-omnichannel-phase-0`
+- Scope: Phase 0 correctness gate only (shared channel stock resolver, inventory txn+ledger, public ALL, CMS sanitize, media delete, RMA audit entity)
+- Reclaim: stale product/order/feeds/basalam/database.config/useProducts claims recorded in active.yaml
+- Exact next: run new unit specs + api/web tsc; independent Reviewer+Security before Phase 1
+- Risk: high — inventory/order/public catalog. No deploy. No Phase 1 schema yet.
+- Reports: `docs/reports/2026-08-26-omnichannel-phase-0.md`
+
 ## 2026-08-24T21:50:00Z — TASK-20260824-003 customer gateway choice + admin DigiPay secrets
 
 - Task / owner: TASK-20260824-003 / cursor:implementer-TASK-20260824-003
