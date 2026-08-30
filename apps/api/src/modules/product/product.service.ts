@@ -14,9 +14,8 @@ import {
   SPEC_FIELD_KEYS,
 } from './entities/product-specs';
 import { StorageService } from '../upload/storage.service';
+import { SearchService } from '../search/search.service';
 import { SettingsService } from '../settings/settings.service';
-import { OutboxService } from '../omnichannel/services/outbox.service';
-import { productOutboxIntents } from './product-outbox';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
@@ -41,9 +40,6 @@ import {
   resolveChannelSale,
   type DiscountType,
 } from './product-sale';
-import { channelAvailability } from './channel-product-projection';
-import { isPublicProductRow } from './public-product-status';
-import { parseColorStockPlan, type ColorStockPlan } from './color-stock-plan';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -172,8 +168,8 @@ export class ProductService {
     @InjectRepository(SeoRedirectEntity)
     private readonly redirectRepo: Repository<SeoRedirectEntity>,
     private readonly storage: StorageService,
-    private readonly settings: SettingsService,
-    private readonly outbox: OutboxService,
+    private readonly search: SearchService,
+    private readonly settings: SettingsService
   ) {}
 
   private fabricFromSpecs(specs?: ProductSpecs | null, fallback?: string): string {
@@ -195,11 +191,9 @@ export class ProductService {
 
   private withBadges<T extends ProductEntity>(product: T, channel?: string, cfg?: BadgeConfig) {
     const isRetail = String(channel || '').toUpperCase() === 'RETAIL';
-    const salesChannel = isRetail ? 'RETAIL' : 'WHOLESALE';
-    const availability = channelAvailability(product, salesChannel);
-    const wholesaleStock = Number(product.wholesaleStock) || 0;
+    const wholesaleStock = Number(product.wholesaleStock) || Number(product.stock) || 0;
     const retailStock = Number(product.retailStock) || 0;
-    const stock = availability.stock;
+    const stock = isRetail ? retailStock : wholesaleStock;
     const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
     const multiplier = Math.max(1, cfg?.limitedStockMultiplier ?? 2);
     const newBadgeDays = Math.max(1, cfg?.newBadgeDays ?? 7);
@@ -217,7 +211,7 @@ export class ProductService {
       ? product.retailFullContent || product.description
       : product.wholesaleFullContent || product.description;
     const variants = (product.variants ?? []).map((v) => {
-      const vWholesale = Number(v.wholesaleStock) || 0;
+      const vWholesale = Number(v.wholesaleStock) || Number(v.stock) || 0;
       const vRetail = Number(v.retailStock) || 0;
       return {
         ...v,
@@ -281,13 +275,21 @@ export class ProductService {
     }
   }
 
-  private async enqueueProductOutbox(
-    before: ProductEntity | null,
-    after: ProductEntity,
-    operationId: string,
-    manager?: EntityManager,
-  ) {
-    await this.outbox.enqueueMany(productOutboxIntents(before, after, operationId), manager);
+  private async syncSearch(product: ProductEntity) {
+    const cfg = await this.badgeConfig();
+    const newBadgeMs = cfg.newBadgeDays * 24 * 60 * 60 * 1000;
+    await this.search.indexProduct({
+      id: product.id,
+      sku: product.sku,
+      name: product.name,
+      fabric: this.fabricFromSpecs(product.specs, product.fabric),
+      description: product.description,
+      status: product.status,
+      isFeatured: !!product.isDiscounted,
+      isNew: product.createdAt
+        ? Date.now() - new Date(product.createdAt).getTime() < newBadgeMs
+        : false,
+    });
   }
 
   async findAll(
@@ -779,12 +781,9 @@ export class ProductService {
     };
   }
 
-  async findOne(id: string, channel?: string, opts?: { allowNonActive?: boolean }) {
+  async findOne(id: string, channel?: string) {
     const product = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!product) throw new NotFoundException('محصول یافت نشد');
-    if (!opts?.allowNonActive && !isPublicProductRow(product.status)) {
-      throw new NotFoundException('محصول یافت نشد');
-    }
     const ch = String(channel || '').toUpperCase();
     if (ch === 'RETAIL' && product.showOnRetail === false) {
       throw new NotFoundException('محصول یافت نشد');
@@ -796,7 +795,7 @@ export class ProductService {
     return this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg);
   }
 
-  async findBySlug(slug: string, channel?: string, opts?: { allowNonActive?: boolean }) {
+  async findBySlug(slug: string, channel?: string) {
     let decoded = String(slug || '').trim();
     try {
       decoded = decodeURIComponent(decoded);
@@ -823,9 +822,6 @@ export class ProductService {
     }
 
     if (!product) throw new NotFoundException('محصول یافت نشد');
-    if (!opts?.allowNonActive && !isPublicProductRow(product.status)) {
-      throw new NotFoundException('محصول یافت نشد');
-    }
     const ch = String(channel || '').toUpperCase();
     if (ch === 'RETAIL' && product.showOnRetail === false) {
       throw new NotFoundException('محصول یافت نشد');
@@ -919,15 +915,10 @@ export class ProductService {
       showOnRetail,
       guarantee: sanitizeGuarantee(data.guarantee) ?? null,
     });
-
-    const saved = await this.productRepo.manager.transaction(async (manager) => {
-      const repo = manager.getRepository(ProductEntity);
-      const row = await repo.save(product);
-      await this.enqueueProductOutbox(null, row, `${row.id}:create`, manager);
-      return row;
-    });
+    const saved = await this.productRepo.save(product);
     await this.replaceRelated(saved.id, data.relatedProductIds);
     await this.rememberSpecs(specs);
+    await this.syncSearch(saved);
     const cfg = await this.badgeConfig();
     return this.withBadges(
       (await this.productRepo.findOne({
@@ -1133,30 +1124,22 @@ export class ProductService {
       }
     }
 
-    if (data.images) {
-      const removed = oldImages.filter((url) => !data.images!.includes(url));
-      if (removed.length) await this.storage.deleteByUrls(removed, { excludeProductId: id });
-    }
-
-    const updated = await this.productRepo.manager.transaction(async (manager) => {
-      await manager.getRepository(ProductEntity).update(id, patch as any);
-      const row = await manager.getRepository(ProductEntity).findOne({ where: { id }, relations: ['variants'] });
-      if (!row) throw new NotFoundException('محصول یافت نشد');
-      await this.enqueueProductOutbox(
-        existing,
-        row,
-        `${id}:update:${new Date(existing.updatedAt).getTime()}`,
-        manager,
-      );
-      return row;
-    });
+    await this.productRepo.update(id, patch as any);
     if (data.slug !== undefined && data.slug !== existing.slug) {
       await this.changeSlugInTransaction(id, data.slug);
     }
+    const updated = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
+    if (!updated) throw new NotFoundException('محصول یافت نشد');
     if (data.relatedProductIds) {
       await this.replaceRelated(id, data.relatedProductIds);
     }
 
+    if (data.images) {
+      const removed = oldImages.filter((url) => !data.images!.includes(url));
+      if (removed.length) await this.storage.deleteByUrls(removed);
+    }
+
+    await this.syncSearch(updated);
     const cfg = await this.badgeConfig();
     return this.withBadges(updated, undefined, cfg);
   }
@@ -1165,22 +1148,13 @@ export class ProductService {
     const product = await this.productRepo.findOne({ where: { id } });
     if (!product) throw new NotFoundException('محصول یافت نشد');
     if (product.images?.length) {
-      await this.storage.deleteByUrls(product.images, { excludeProductId: id });
+      await this.storage.deleteByUrls(product.images);
     }
-    await this.productRepo.manager.transaction(async (manager) => {
-      await manager.getRepository(ProductEntity).softDelete(id);
-      const withdrawn = {
-        ...product,
-        status: 'DELETED',
-        showOnRetail: false,
-        showOnWholesale: false,
-      } as ProductEntity;
-      await this.enqueueProductOutbox(product, withdrawn, `${id}:remove`, manager);
-    });
+    await this.productRepo.softDelete(id);
+    await this.search.removeProduct(id);
     return { message: 'محصول با موفقیت حذف شد' };
   }
 
-  /** Resolve channel stock column on product/variant. */
   private async assertDefaultRetailVariant(productId: string, variantId: string) {
     const variant = await this.variantRepo.findOne({ where: { id: variantId } });
     if (!variant || variant.productId !== productId) {
@@ -1188,6 +1162,7 @@ export class ProductService {
     }
   }
 
+  /** Resolve channel stock column on product/variant. */
   stockField(channel?: string): 'wholesaleStock' | 'retailStock' {
     const c = String(channel || 'WHOLESALE').toUpperCase();
     return c === 'RETAIL' ? 'retailStock' : 'wholesaleStock';
@@ -1208,18 +1183,16 @@ export class ProductService {
       return variant;
     }
 
-    const touchRetail = field === 'retailStock';
-    const stockPatch = {
-      [field]: () => `"${field}" + (${qty})`,
-      ...(touchRetail ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
-    } as any;
-
     if (qty < 0) {
       // Atomic deduct: refuse if insufficient stock (no Math.max clamp).
       const result = await variantRepo
         .createQueryBuilder()
         .update()
-        .set(stockPatch)
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
+          ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
+        } as any)
         .where('id = :id', { id: variantId })
         .andWhere(`"${field}" >= :need`, { need: Math.abs(qty) })
         .execute();
@@ -1234,58 +1207,61 @@ export class ProductService {
       await variantRepo
         .createQueryBuilder()
         .update()
-        .set(stockPatch)
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
+          ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
+        } as any)
         .where('id = :id', { id: variantId })
         .execute();
     }
 
-    const variant = await variantRepo.findOneOrFail({ where: { id: variantId } });
-    await this.syncProductStockFromVariants(variant.productId, manager);
+    const variant = await this.variantRepo.findOneOrFail({ where: { id: variantId } });
+    await this.syncProductStockFromVariants(variant.productId);
     return variant;
   }
 
   /** Sum variant channel stocks onto product wholesale/retail/legacy stock. */
-  async syncProductStockFromVariants(productId: string, manager?: EntityManager) {
-    const variantRepo = manager?.getRepository(ProductVariantEntity) ?? this.variantRepo;
-    const productRepo = manager?.getRepository(ProductEntity) ?? this.productRepo;
-    const variants = await variantRepo.find({ where: { productId } });
-    const existing = await productRepo.findOne({ where: { id: productId } });
-    const wholesaleSum = variants.reduce((s, v) => s + (Number(v.wholesaleStock) || 0), 0);
+  async syncProductStockFromVariants(productId: string) {
+    const variants = await this.variantRepo.find({ where: { productId } });
+    const wholesaleSum = variants.reduce(
+      (s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0),
+      0
+    );
     const retailSum = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
+    const existing = await this.productRepo.findOne({ where: { id: productId } });
     const retailChanged = !existing || Number(existing.retailStock) !== retailSum;
-    await productRepo.update(productId, {
+    await this.productRepo.update(productId, {
       wholesaleStock: wholesaleSum,
       retailStock: retailSum,
+      stock: wholesaleSum,
       ...(retailChanged ? { updatedAt: new Date() } : {}),
     });
-    return { wholesaleStock: wholesaleSum, retailStock: retailSum };
+    return { wholesaleStock: wholesaleSum, retailStock: retailSum, stock: wholesaleSum };
   }
 
   /** Adjust product-level stock by delta (orders deduct with negative delta). */
   async updateProductStock(
     productId: string,
     delta: number,
-    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
-    manager?: EntityManager,
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
   ) {
-    const productRepo = manager?.getRepository(ProductEntity) ?? this.productRepo;
     const field = this.stockField(channel);
     const qty = Number(delta) || 0;
     if (qty === 0) {
-      const product = await productRepo.findOne({ where: { id: productId } });
+      const product = await this.productRepo.findOne({ where: { id: productId } });
       if (!product) throw new NotFoundException('محصول یافت نشد');
       return product;
     }
-    const touchRetail = field === 'retailStock';
-    const stockPatch = {
-      [field]: () => `"${field}" + (${qty})`,
-      ...(touchRetail ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
-    } as any;
     if (qty < 0) {
-      const result = await productRepo
+      const result = await this.productRepo
         .createQueryBuilder()
         .update()
-        .set(stockPatch)
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
+          ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
+        } as any)
         .where('id = :id', { id: productId })
         .andWhere(`"${field}" >= :need`, { need: Math.abs(qty) })
         .execute();
@@ -1293,14 +1269,18 @@ export class ProductService {
         throw new BadRequestException('موجودی کافی نیست');
       }
     } else {
-      await productRepo
+      await this.productRepo
         .createQueryBuilder()
         .update()
-        .set(stockPatch)
+        .set({
+          [field]: () => `"${field}" + (${qty})`,
+          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
+          ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
+        } as any)
         .where('id = :id', { id: productId })
         .execute();
     }
-    return productRepo.findOneOrFail({ where: { id: productId } });
+    return this.productRepo.findOneOrFail({ where: { id: productId } });
   }
 
   /**
@@ -1310,11 +1290,9 @@ export class ProductService {
   async setProductStock(
     productId: string,
     stock: number,
-    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
-    manager?: EntityManager,
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
   ) {
-    const productRepo = manager?.getRepository(ProductEntity) ?? this.productRepo;
-    const product = await productRepo.findOne({ where: { id: productId } });
+    const product = await this.productRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('محصول یافت نشد');
     const next = Math.floor(Number(stock));
     if (!Number.isFinite(next) || next < 0) {
@@ -1322,7 +1300,10 @@ export class ProductService {
     }
     const field = this.stockField(channel);
     product[field] = next;
-    return productRepo.save(product);
+    if (field === 'wholesaleStock') {
+      product.stock = next;
+    }
+    return this.productRepo.save(product);
   }
 
   async setProductStockBySku(
@@ -1375,6 +1356,21 @@ export class ProductService {
     const colorHex = String((data as any).colorHex ?? '').trim();
     const color = await this.upsertColor(colorName, colorHex || undefined);
 
+    const wholesale =
+      data.wholesaleStock !== undefined && data.wholesaleStock !== null
+        ? Math.max(0, Math.floor(Number(data.wholesaleStock)))
+        : data.stock !== undefined && data.stock !== null
+          ? Math.max(0, Math.floor(Number(data.stock)))
+          : 0;
+    const retail =
+      data.retailStock !== undefined && data.retailStock !== null
+        ? Math.max(0, Math.floor(Number(data.retailStock)))
+        : 0;
+
+    if (!Number.isFinite(wholesale) || !Number.isFinite(retail)) {
+      throw new BadRequestException('موجودی نامعتبر است');
+    }
+
     const explicitSize = String(data.size ?? '').trim();
     const sizes = explicitSize ? [explicitSize] : this.sizesForProduct(product.sizeType);
     const imageUrl =
@@ -1383,24 +1379,41 @@ export class ProductService {
     const existing = product.variants ?? [];
     const created: ProductVariantEntity[] = [];
 
-    for (const sizeLabel of sizes) {
+    for (let i = 0; i < sizes.length; i++) {
+      const sizeLabel = sizes[i];
       const found = existing.find((v) => v.color === color.name && v.size === sizeLabel);
       if (found) {
-        found.colorHex = color.hex ?? (colorHex || found.colorHex);
-        if (data.barcode !== undefined) found.barcode = data.barcode || null;
-        if (imageUrl !== undefined) found.imageUrl = imageUrl;
-        const savedFound = await this.variantRepo.save(found);
-        created.push(Array.isArray(savedFound) ? savedFound[0] : savedFound);
+        // Color-level create (no explicit size): refresh stock pool onto first size only
+        if (!explicitSize) {
+          found.wholesaleStock = i === 0 ? wholesale : 0;
+          found.stock = i === 0 ? wholesale : 0;
+          found.retailStock = i === 0 ? retail : 0;
+          found.colorHex = color.hex ?? (colorHex || found.colorHex);
+          if (data.barcode !== undefined) found.barcode = data.barcode || null;
+          if (imageUrl !== undefined) found.imageUrl = imageUrl;
+          const savedFound = await this.variantRepo.save(found);
+          created.push(Array.isArray(savedFound) ? savedFound[0] : savedFound);
+        } else {
+          if (imageUrl !== undefined) {
+            found.imageUrl = imageUrl;
+            const savedFound = await this.variantRepo.save(found);
+            created.push(Array.isArray(savedFound) ? savedFound[0] : savedFound);
+          } else {
+            created.push(found);
+          }
+        }
         continue;
       }
 
       const size = await this.upsertSize(sizeLabel);
+      const rowWholesale = explicitSize ? wholesale : i === 0 ? wholesale : 0;
+      const rowRetail = explicitSize ? retail : i === 0 ? retail : 0;
       const variant = this.variantRepo.create({
         productId,
         barcode: data.barcode,
-        stock: 0,
-        wholesaleStock: 0,
-        retailStock: 0,
+        stock: rowWholesale,
+        wholesaleStock: rowWholesale,
+        retailStock: rowRetail,
         color: color.name,
         colorHex: color.hex ?? colorHex ?? '',
         size: size.label,
@@ -1456,18 +1469,61 @@ export class ProductService {
       data.imageUrl !== undefined ? String(data.imageUrl || '').trim() || null : undefined;
 
     const productSizes = this.sizesForProduct(product.sizeType);
-    let perSize: ColorStockPlan;
-    try {
-      perSize = parseColorStockPlan(data, productSizes);
-    } catch {
-      throw new BadRequestException('موجودی نامعتبر است');
+    const perSize = new Map<string, { wholesale?: number; retail?: number }>();
+
+    if (Array.isArray(data.sizes) && data.sizes.length > 0) {
+      for (const row of data.sizes) {
+        const label = String(row.size ?? '').trim();
+        if (!label) continue;
+        const wholesale =
+          row.wholesaleStock !== undefined && row.wholesaleStock !== null
+            ? Math.max(0, Math.floor(Number(row.wholesaleStock)))
+            : row.stock !== undefined && row.stock !== null
+              ? Math.max(0, Math.floor(Number(row.stock)))
+              : undefined;
+        const retail =
+          row.retailStock !== undefined && row.retailStock !== null
+            ? Math.max(0, Math.floor(Number(row.retailStock)))
+            : undefined;
+        if (wholesale !== undefined && !Number.isFinite(wholesale)) {
+          throw new BadRequestException(`موجودی عمده سایز «${label}» نامعتبر است`);
+        }
+        if (retail !== undefined && !Number.isFinite(retail)) {
+          throw new BadRequestException(`موجودی تکی سایز «${label}» نامعتبر است`);
+        }
+        perSize.set(label, { wholesale, retail });
+      }
+    } else {
+      const wholesale =
+        data.wholesaleStock !== undefined && data.wholesaleStock !== null
+          ? Math.max(0, Math.floor(Number(data.wholesaleStock)))
+          : data.stock !== undefined && data.stock !== null
+            ? Math.max(0, Math.floor(Number(data.stock)))
+            : undefined;
+      const retail =
+        data.retailStock !== undefined && data.retailStock !== null
+          ? Math.max(0, Math.floor(Number(data.retailStock)))
+          : undefined;
+      if (wholesale !== undefined && !Number.isFinite(wholesale)) {
+        throw new BadRequestException('موجودی عمده نامعتبر است');
+      }
+      if (retail !== undefined && !Number.isFinite(retail)) {
+        throw new BadRequestException('موجودی تکی نامعتبر است');
+      }
+      for (let i = 0; i < productSizes.length; i++) {
+        perSize.set(productSizes[i], {
+          wholesale: wholesale === undefined ? undefined : i === 0 ? wholesale : 0,
+          retail: retail === undefined ? undefined : i === 0 ? retail : 0,
+        });
+      }
     }
 
-    const sizes = Array.from(new Set<string>([...productSizes, ...Array.from(perSize.keys())]));
+    const sizes = Array.from(new Set([...productSizes, ...Array.from(perSize.keys())]));
     const existing = product.variants ?? [];
     const updated: ProductVariantEntity[] = [];
 
     for (const sizeLabel of sizes) {
+      const stockRow = perSize.get(sizeLabel);
       let row = existing.find((v) => v.color === color.name && v.size === sizeLabel);
       if (!row) {
         const size = await this.upsertSize(sizeLabel);
@@ -1492,6 +1548,13 @@ export class ProductService {
         if (imageUrl !== undefined) row.imageUrl = imageUrl;
       }
 
+      if (stockRow?.wholesale !== undefined) {
+        row.wholesaleStock = stockRow.wholesale;
+        row.stock = stockRow.wholesale;
+      }
+      if (stockRow?.retail !== undefined) {
+        row.retailStock = stockRow.retail;
+      }
       const saved = await this.variantRepo.save(row);
       updated.push(Array.isArray(saved) ? saved[0] : saved);
     }
@@ -1569,7 +1632,26 @@ export class ProductService {
       variant.barcode = (data as any).barcode || null;
     }
 
+    const hasWholesale = data.wholesaleStock !== undefined && data.wholesaleStock !== null;
+    const hasRetail = data.retailStock !== undefined && data.retailStock !== null;
+    const hasLegacyStock = data.stock !== undefined && data.stock !== null;
+
+    if (hasWholesale || hasLegacyStock) {
+      const next = Math.max(0, Math.floor(Number(hasWholesale ? data.wholesaleStock : data.stock)));
+      if (!Number.isFinite(next)) throw new BadRequestException('موجودی عمده نامعتبر است');
+      variant.wholesaleStock = next;
+      variant.stock = next;
+    }
+    if (hasRetail) {
+      const next = Math.max(0, Math.floor(Number(data.retailStock)));
+      if (!Number.isFinite(next)) throw new BadRequestException('موجودی تکی نامعتبر است');
+      variant.retailStock = next;
+    }
+
     const saved = await this.variantRepo.save(variant);
+    if (hasWholesale || hasRetail || hasLegacyStock) {
+      await this.syncProductStockFromVariants(variant.productId);
+    }
     return saved;
   }
 
@@ -1618,7 +1700,7 @@ export class ProductService {
     const products = await qb.getMany();
     const field = this.stockField(channel);
     return products.map((p) => {
-      const wholesaleStock = Number(p.wholesaleStock) || 0;
+      const wholesaleStock = Number(p.wholesaleStock) || Number(p.stock) || 0;
       const retailStock = Number(p.retailStock) || 0;
       const totalStock = field === 'retailStock' ? retailStock : wholesaleStock;
       return {
@@ -1635,7 +1717,7 @@ export class ProductService {
         totalStock,
         channel: field === 'retailStock' ? 'RETAIL' : 'WHOLESALE',
         variants: (p.variants ?? []).map((v) => {
-          const vWholesale = Number(v.wholesaleStock) || 0;
+          const vWholesale = Number(v.wholesaleStock) || Number(v.stock) || 0;
           const vRetail = Number(v.retailStock) || 0;
           return {
             id: v.id,
