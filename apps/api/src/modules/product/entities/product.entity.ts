@@ -189,6 +189,14 @@ export class ProductEntity {
   @Column({ default: true })
   showOnRetail: boolean;
 
+  /** Optional retail guarantee/warranty text for Torob and PDP meta (max 200). */
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  guarantee: string | null;
+
+  /** Preferred retail option; must belong to this product when set. */
+  @Column({ type: 'uuid', nullable: true })
+  defaultRetailVariantId: string | null;
+
   @Column({ nullable: true })
   categoryId: string;
 

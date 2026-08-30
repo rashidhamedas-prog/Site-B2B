@@ -4,47 +4,45 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { importSPKI, jwtVerify } from 'jose';
+import { resolveTorobAudience, resolveTorobOrderAudience, verifyTorobJwt } from './torob-jwt';
+import { extractClientIp } from '../../common/client-ip';
 
-/** Official Torob Ed25519 public key (Torob-Sync order_tracking_api.md). */
-const TOROB_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAt6Mu4T0pBORY11W+QeM35UsmLO3vsf+6yKpFDEImFk0=
------END PUBLIC KEY-----`;
+async function assertTorobToken(
+  req: { headers: Record<string, unknown> },
+  audience: string,
+): Promise<void> {
+  const token = String(req.headers['x-torob-token'] || '').trim();
+  const version = String(req.headers['x-torob-token-version'] || '').trim();
+  try {
+    await verifyTorobJwt({ token, version, audience });
+  } catch {
+    throw new UnauthorizedException('توکن ترب نامعتبر است');
+  }
+  if (String(process.env.TOROB_IP_ALLOWLIST || '').trim() === '1') {
+    const allow = String(process.env.TOROB_ALLOWED_IPS || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (allow.length && !allow.includes(extractClientIp(req as { ip?: string }))) {
+      throw new UnauthorizedException('توکن ترب نامعتبر است');
+    }
+  }
+}
 
-const ALLOWED_AUDIENCES = [
-  'www.poshaktaranom.ir',
-  'poshaktaranom.ir',
-  'api.poshaktaranom.com',
-  'poshaktaranom.com',
-  'www.poshaktaranom.com',
-];
-
+/** Order-tracking endpoint: exact order audience, never the full shop-domain list. */
 @Injectable()
 export class TorobAuthGuard implements CanActivate {
-  private keyPromise = importSPKI(TOROB_PUBLIC_KEY_PEM, 'EdDSA');
-
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-    const token = String(req.headers['x-torob-token'] || '').trim();
-    if (!token) {
-      throw new UnauthorizedException('missing X-Torob-Token');
-    }
+    await assertTorobToken(context.switchToHttp().getRequest(), resolveTorobOrderAudience());
+    return true;
+  }
+}
 
-    const hostRaw = String(req.headers.host || '').trim().toLowerCase();
-    const host = hostRaw.split(':')[0];
-    const audiences = Array.from(
-      new Set([host, hostRaw, ...ALLOWED_AUDIENCES].filter(Boolean)),
-    );
-
-    try {
-      const key = await this.keyPromise;
-      await jwtVerify(token, key, {
-        algorithms: ['EdDSA'],
-        audience: audiences,
-      });
-      return true;
-    } catch {
-      throw new UnauthorizedException('invalid Torob token');
-    }
+/** Product API v3: exact TOROB_API_AUDIENCE (www.poshaktaranom.ir). Host cannot change it. */
+@Injectable()
+export class TorobProductAuthGuard implements CanActivate {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    await assertTorobToken(context.switchToHttp().getRequest(), resolveTorobAudience());
+    return true;
   }
 }

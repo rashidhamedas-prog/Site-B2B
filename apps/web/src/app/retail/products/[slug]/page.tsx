@@ -6,6 +6,7 @@ import { RETAIL_ORIGIN } from '@/lib/seo';
 import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
+import { resolveRetailPdpOption, torobHeadMeta } from '@/lib/torob-pdp-meta';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -29,21 +30,33 @@ function retailSeo(product: Record<string, unknown>) {
   return { title, description, canonical: resolved.url, focusKeyword: seo.retailFocusKeyword || seo.focusKeyword };
 }
 
+function absUrl(url?: string | null) {
+  if (!url) return undefined;
+  if (/^https?:\/\//i.test(url)) return url.replace(/^http:\/\//i, 'https://');
+  if (url.startsWith('/')) return `${RETAIL_ORIGIN}${url}`;
+  return url;
+}
+
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ variant?: string | string[] }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const query = searchParams ? await searchParams : {};
+  const requested = Array.isArray(query.variant) ? query.variant[0] : query.variant;
   const product = await loadCanonicalStorefrontProduct(slug, 'RETAIL');
-
+  const option = resolveRetailPdpOption(product as any, requested);
   const { title, description, canonical } = retailSeo(product);
-  const image = (product.images as string[] | undefined)?.[0];
+  const image = absUrl(option.image || (product.images as string[] | undefined)?.[0]);
 
   return {
     title,
     description,
     alternates: { canonical },
+    other: torobHeadMeta(option),
     openGraph: {
       title,
       description,
@@ -65,23 +78,25 @@ export async function generateMetadata({
 
 export default async function RetailProductPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ variant?: string | string[] }>;
 }) {
   const { slug } = await params;
+  const query = searchParams ? await searchParams : {};
+  const requested = Array.isArray(query.variant) ? query.variant[0] : query.variant;
   const product = await loadCanonicalStorefrontProduct(slug, 'RETAIL');
+  const option = resolveRetailPdpOption(product as any, requested);
   const canonicalSlug = String(product.slug || '');
 
   const url = `${RETAIL_ORIGIN}${getProductCanonicalPath(canonicalSlug)}`;
   const sale = product.sale as { active?: boolean; payable?: number } | undefined;
-  // Expired sale: API payable is the list price, never the lapsed discount.
   const price = Number(sale?.payable ?? product.retailPrice ?? 0);
   const variants =
-    (product.variants as Array<{ color?: string; size?: string; sku?: string; retailStock?: number; stock?: number }>) ??
+    (product.variants as Array<{ id?: string; color?: string; size?: string; sku?: string; retailStock?: number; stock?: number }>) ??
     [];
-  const inStock =
-    Number(product.totalStock ?? product.retailStock ?? product.stock ?? 0) > 0 ||
-    variants.some((v) => Number(v.retailStock ?? v.stock ?? 0) > 0);
+  const inStock = option.availability === 'instock';
   const availability = inStock ? 'InStock' : 'OutOfStock';
   const name = String(product.name ?? '');
   const description = (product.fullContent as string | undefined) || (product.description as string | undefined);
@@ -123,8 +138,17 @@ export default async function RetailProductPage({
           { name, url },
         ]}
       />
+      <section className="sr-only" aria-label="مشخصات محصول برای خزش">
+        <h1>{name}</h1>
+        <p>قیمت: {option.productPriceToman} تومان</p>
+        <p>موجودی: {option.availability === 'instock' ? 'موجود' : 'ناموجود'}</p>
+        {option.optionLabel ? <p>گزینه: {option.optionLabel}</p> : null}
+      </section>
       <RetailPdpAnalytics product={product as { id?: string; sku?: string; name?: string; retailPrice?: number | null; retailCompareAtPrice?: number | null; sale?: { payable?: number; original?: number | null }; fabric?: string | null }} />
-      <RetailProductDetail product={product as any} />
+      <RetailProductDetail
+        product={product as any}
+        initialVariantId={option.selected?.id}
+      />
     </>
   );
 }

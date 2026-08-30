@@ -38,3 +38,5 @@ Channel differentiation: pricing (`retailPrice` / `wholesalePrice`), stock field
 | 2026-08-09 | Smallest compatible evolution of existing stack | Retain Next/Nest/PG; no greenfield rewrite (MASTER + file 02) |
 | 2026-08-09 | Phase-1 claims = governance + required docs only | Expand `file_claims` before any `apps/*` edit |
 | preexisting | Dual-channel single core | Documented in `docs/B2C.md`; verify gaps in audit |
+| 2026-08-26 | Omnichannel on shared core only | Phase 0+ stay on one API/DB; no second bot backend; projections never read legacy `stock`; Bale/Rubika gated |
+| 2026-08-29 | Torob Product API-first | PostgreSQL is SoT; one pure retail projection for API/XML/PDP meta; JWT aud is `TOROB_API_AUDIENCE` only; outbox is audit/invalidation not a product copy |

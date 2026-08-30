@@ -6,6 +6,12 @@ import type { Response } from 'express';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
 import { resolveChannelSale } from '../product/product-sale';
+import { channelAvailability, isChannelVisible } from '../product/channel-product-projection';
+import {
+  enumeratePublishableOptions,
+  RETAIL_CANONICAL_ORIGIN,
+  sanitizeGuarantee,
+} from '../torob/torob-product-projection';
 
 function xmlEscape(s: string) {
   return String(s || '')
@@ -78,23 +84,35 @@ export class FeedsController {
     return m.feedBrandName || 'پوشاک ترنم';
   }
 
+  private async loadAllActive() {
+    const out: ProductEntity[] = [];
+    const pageSize = 200;
+    for (let page = 0; ; page += 1) {
+      const rows = await this.products.find({
+        where: { status: 'ACTIVE' },
+        relations: ['variants', 'category'],
+        order: { createdAt: 'DESC', id: 'ASC' },
+        skip: page * pageSize,
+        take: pageSize,
+      });
+      out.push(...rows);
+      if (rows.length < pageSize) break;
+    }
+    return out;
+  }
+
   private async loadRows(): Promise<FeedRow[]> {
-    const rows = await this.products.find({
-      where: { status: 'ACTIVE' },
-      relations: ['variants', 'category'],
-      take: 2000,
-    });
+    const rows = await this.loadAllActive();
     const base = this.siteBase();
     const brand = await this.brandName();
 
     return rows
-      .filter((p) => p.showOnRetail !== false && p.status === 'ACTIVE' && Number(p.retailPrice) > 0)
+      .filter((p) => isChannelVisible(p, 'RETAIL'))
       .map((p) => {
         const sale = resolveChannelSale(p, 'RETAIL');
         const payable = sale.payable;
         const listPrice = sale.active && sale.original ? sale.original : payable;
-        const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.stock) || 0), 0);
-        const stock = variantStock > 0 ? variantStock : Number(p.stock) || 0;
+        const { stock } = channelAvailability(p, 'RETAIL');
         const images = (p.images || [])
           .map((u) => absMedia(u, base).replace(/^http:\/\//i, 'https://'))
           .filter(Boolean);
@@ -120,7 +138,7 @@ export class FeedsController {
           brand,
           sizes: sizes.join(','),
           colors: colors.join(','),
-          guarantee: '۷ روز ضمانت بازگشت',
+          guarantee: sanitizeGuarantee(p.guarantee) || '',
         };
       });
   }
@@ -139,9 +157,10 @@ export class FeedsController {
         feed: `${api}/feeds/torob.xml`,
         feedRetail: 'https://www.poshaktaranom.ir/api/v1/feeds/torob.xml',
         ordersApi: 'https://www.poshaktaranom.ir/api/torob/v1/orders',
-        format: 'XML (محصولات) + JSON (سفارش‌ها)',
+        productApi: 'https://www.poshaktaranom.ir/v1/torob_api/v3/products',
+        format: 'XML (fallback) + JSON Product API v3 + JSON (سفارش‌ها)',
         notes:
-          'فید XML فقط برای کاتالوگ محصولات است. صفحه «همگام‌سازی سفارش» باید URL مسیر /torob/v1/orders را بگیرد (JSON + JWT). مستند: github.com/Torob/Torob-Sync',
+          'روش پیشنهادی: Product API v3 روی www.poshaktaranom.ir. فید XML fallback است و از همان projection استفاده می‌کند. سفارش‌ها: /torob/v1/orders. مستند: github.com/torob/Torob-Sync',
       },
       bam: {
         panel: 'https://business.bam.ir',
@@ -204,35 +223,37 @@ export class FeedsController {
   @ApiOperation({ summary: 'فید XML تورب (Torob)' })
   @Header('Content-Type', 'application/xml; charset=utf-8')
   async torob(@Res() res: Response) {
-    const items = await this.loadRows();
+    const rows = await this.loadAllActive();
+    const brand = await this.brandName();
+    const mediaOrigin = this.siteBase();
+    const items = rows.flatMap((product) =>
+      enumeratePublishableOptions(product as any, mediaOrigin, RETAIL_CANONICAL_ORIGIN)
+        .filter((row) => row.publishable && row.payload)
+        .map((row) => row.payload!),
+    );
     const body = items
-      .map(
-        (p) => `
+      .map((p) => {
+        const guarantee = p.guarantee
+          ? `\n    <guarantee>${xmlEscape(p.guarantee)}</guarantee>`
+          : '';
+        const oldPrice =
+          p.old_price != null ? `\n    <old_price>${p.old_price}</old_price>` : '\n    <old_price></old_price>';
+        return `
   <product>
-    <product_id>${xmlEscape(p.id)}</product_id>
-    <page_unique>${xmlEscape(p.sku || p.id)}</page_unique>
-    <title>${xmlEscape(p.name)}</title>
-    <description>${xmlEscape((p.description || p.name).slice(0, 2000))}</description>
-    <price>${this.toToman(p.retailPrice)}</price>
-    <old_price>${
-      p.retailCompareAtPrice && p.retailCompareAtPrice > p.retailPrice
-        ? this.toToman(p.retailCompareAtPrice)
-        : ''
-    }</old_price>
-    <availability>${p.availabilityBool ? 'true' : 'false'}</availability>
-    <image_link>${xmlEscape(p.image)}</image_link>
-    ${p.images
-      .slice(1, 5)
-      .map((img) => `<image_link>${xmlEscape(img)}</image_link>`)
-      .join('\n    ')}
-    <link>${xmlEscape(p.link)}</link>
-    <category>${xmlEscape(p.category)}</category>
-    <brand>${xmlEscape(p.brand)}</brand>
-    <guarantee>${xmlEscape(p.guarantee)}</guarantee>
-    <sizes>${xmlEscape(p.sizes)}</sizes>
-    <colors>${xmlEscape(p.colors)}</colors>
-  </product>`,
-      )
+    <product_id>${xmlEscape(p.product_group_id)}</product_id>
+    <page_unique>${xmlEscape(p.page_unique)}</page_unique>
+    <title>${xmlEscape(p.title)}</title>
+    <description>${xmlEscape((p.short_desc || p.title).slice(0, 2000))}</description>
+    <price>${p.current_price}</price>${oldPrice}
+    <availability>${p.availability ? 'true' : 'false'}</availability>
+    ${p.image_links.map((img) => `<image_link>${xmlEscape(img)}</image_link>`).join('\n    ')}
+    <link>${xmlEscape(p.page_url)}</link>
+    <category>${xmlEscape(p.spec.category || '')}</category>
+    <brand>${xmlEscape(brand)}</brand>${guarantee}
+    <sizes>${xmlEscape(p.spec.size || '')}</sizes>
+    <colors>${xmlEscape(p.spec.color || '')}</colors>
+  </product>`;
+      })
       .join('');
 
     res.send(`<?xml version="1.0" encoding="UTF-8"?>\n<products>${body}\n</products>`);

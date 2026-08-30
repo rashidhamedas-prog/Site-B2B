@@ -38,6 +38,8 @@ export function isChannelExemptPath(pathname: string): boolean {
     pathname === '/sitemap.xml' ||
     pathname.startsWith('/sitemaps') ||
     pathname.startsWith('/feeds') ||
-    pathname.startsWith('/payment')
+    pathname.startsWith('/payment') ||
+    pathname.startsWith('/v1/torob_api') ||
+    pathname.startsWith('/torob_api')
   );
 }

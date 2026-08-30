@@ -2,6 +2,7 @@ import { fetchSitemapPosts } from '@/lib/blog';
 import { publicProductUrl } from '@/lib/public-product-path';
 import { getServerApiBase } from '@/lib/server-api';
 import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo';
+import { lastGoodSitemapProducts, rememberSitemapProducts } from '@/lib/sitemap-last-good';
 
 export type SitemapChannel = 'WHOLESALE' | 'RETAIL';
 
@@ -92,17 +93,37 @@ export function sitemapXmlResponse(xml: string): Response {
 export async function getSitemapProducts(
   channel: SitemapChannel,
 ): Promise<SitemapProductRow[]> {
+  const pageSize = 100;
+  const collected: SitemapProductRow[] = [];
   try {
-    const response = await fetch(
-      `${getServerApiBase()}/products?limit=500&channel=${channel}&status=ACTIVE`,
-      { next: { revalidate: 3600 } },
-    );
-    if (!response.ok) return [];
-    const json = await response.json();
-    const data = json.data ?? json ?? [];
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
+    for (let page = 1; page <= 1000; page += 1) {
+      const response = await fetch(
+        `${getServerApiBase()}/products?limit=${pageSize}&page=${page}&channel=${channel}&status=ACTIVE`,
+        { cache: 'no-store' },
+      );
+      if (!response.ok) {
+        throw new Error(`sitemap products HTTP ${response.status}`);
+      }
+      const json = await response.json();
+      const data = json.data ?? json ?? [];
+      if (!Array.isArray(data)) throw new Error('sitemap products payload is not an array');
+      collected.push(...data);
+      if (data.length < pageSize) break;
+      const totalPages = Number(json.meta?.totalPages);
+      if (Number.isFinite(totalPages) && page >= totalPages) break;
+    }
+    rememberSitemapProducts(channel, collected);
+    return collected;
+  } catch (error) {
+    const cached = lastGoodSitemapProducts(channel);
+    console.error('[sitemap] product enumeration failed', {
+      channel,
+      error: error instanceof Error ? error.message : String(error),
+      usedLastGood: Boolean(cached?.length),
+      count: cached?.length ?? 0,
+    });
+    if (cached?.length) return cached;
+    throw error;
   }
 }
 

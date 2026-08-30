@@ -1,5 +1,90 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-29 — Torob Product API v3 و fallback خزش
+
+- endpoint زنده `POST https://www.poshaktaranom.ir/v1/torob_api/v3/products` از دیتابیس می‌خواند؛ JWT فقط audience دقیق `www.poshaktaranom.ir` را می‌پذیرد.
+- پنل ترب روی این آدرس GET می‌زند و 404 HTML ویترین می‌گرفت؛ GET الان ۲۰۰ JSON خالی برمی‌گرداند و مسیر از rewrite خرده‌فروشی خارج شد. تا deploy زنده همان 404 می‌ماند.
+- قیمت، موجودی تکی، تصویر و گارانتی از یک projection مشترک به API، فید XML و متاتگ PDP می‌روند.
+- Reviewer: متاتگ PDP برای محصول بدون واریانت از `retailStock` محصول می‌خواند؛ `updateProductStock` تکی `updatedAt` را در همان نوشتن لمس می‌کند.
+- سقف ۵۰۰/۲۰۰۰ حذف شد. migrate/deploy تولید اجرا نشده و نیاز به تأیید مالک دارد.
+
+## 2026-08-29 — Omnichannel بلاگ/CMS و موجودی ویترین
+
+- ورکر `blog.published` و `cms.published` را به ردیف انتشار محلی تبدیل می‌کند؛ ارسال زنده ندارد.
+- کارت و سفارش عمده/خرده‌فروشی فقط ستون کانال را می‌خوانند. ادمین بج وضعیت انتشار نشان می‌دهد.
+
+## 2026-08-29 — Omnichannel همگام‌سازی انتشار از outbox
+
+- ورکر رویدادهای کاتالوگ را به ردیف DRAFT/WITHDRAWN محلی تبدیل می‌کند؛ delivery ساخته نمی‌شود.
+- موجودی عمده در inventory/order فقط از `wholesaleStock` خوانده می‌شود.
+- اسکریپت و جاب CI مهاجرت خالی شامل جدول رسانه است. migrate پروداکشن اجرا نشده.
+
+## 2026-08-29 — Omnichannel رجیستری رسانه + مصرف stock_changed
+
+- آپلود ردیف `omnichannel_media_assets` می‌سازد؛ ادمین alt را PATCH می‌کند. جدول غایب خطای آپلود نمی‌دهد.
+- ورکر `product.stock_changed` را lease می‌کند و فقط سرچ را بازفهرست می‌کند؛ موجودی را کم نمی‌کند.
+- ایمیج MinIO/mc در compose پین شد. migrate/deploy/soak هنوز اجرا نشده.
+
+## 2026-08-29 — Omnichannel بستن شرایط امنیت (SEC-001 تا ۴)
+
+- `secretRef` فقط `TELEGRAM_*` / `BALE_*` / `RUBIKA_*`؛ `DATABASE_URL` دیگر به تلگرام نمی‌رود.
+- خطای تلگرام قبل از log/DB کد طبقه‌بندی‌شده است؛ مسیر `/bot…` و شکل توکن رد می‌شود.
+- GET مقصد `settings` ندارد؛ کلید حذف MinIO فقط `products/` یا `blog/` و بدون `..`.
+- کانکتور و auto-publish همچنان خاموش‌اند.
+
+## 2026-08-29 — Omnichannel فاز ۷ ادمین کامل + تایمر ops
+
+- `/admin/omnichannel` اتصال، مقصد، قالب، پیش‌نمایش، انتشار، تحویل/retry، outbox و audit را نشان می‌دهد.
+- `GET /omnichannel/outbox` و `GET /omnichannel/audits` payload/secret برنمی‌گردانند.
+- یونیت‌های systemd برای alert ۱۵دقیقه‌ای و بکاپ روزانه اضافه شد؛ روی VPS نصب نشده‌اند.
+- اسکریپت disposable برای up/down مهاجرت omnichannel نوشته شد؛ روی پروداکشن اجرا نمی‌شود.
+
+## 2026-08-29 — Omnichannel فاز ۸: بکاپ رمزشده و sync استیجینگ
+
+- `DB_SYNC=true` در production و staging fail-closed است.
+- `omnichannel-ops.sh` بکاپ را AES-256 می‌کند و restore drill را روی پروداکشن رد می‌کند.
+- ورکر heartbeat برای healthcheck می‌نویسد. soak/canary زنده هنوز اجرا نشده.
+
+## 2026-08-29 — Omnichannel مسیر تحویل تلگرام + تست قرارداد
+
+- ورکر `publication.deliver.requested` را فقط اگر کانکتور روشن باشد می‌فرستد؛ وگرنه skip.
+- گارد ادمین نقش را از جدول `users` چک می‌کند، نه فقط JWT.
+- migrate/deploy پروداکشن و auto-publish همچنان خاموش است.
+
+## 2026-08-29 — Omnichannel فازهای ۴ تا ۸ (کد؛ بدون migrate/deploy پروداکشن)
+
+- پیش‌نمایش و پیش‌نویس Retail/Wholesale، سقف canary ۱۰، چک‌اوت عمده با `channel=WHOLESALE`.
+- تلگرام فقط Bot API رسمی و پشت پرچم؛ بله/روبیکا همچنان DISABLED.
+- ادمین `/admin/omnichannel`، audit، reconcile بدون delivery تکراری، منع حذف مدیای دارای ارجاع.
+- `DB_SYNC=true` در production fail-closed؛ deploy گیت‌هاب و تایمر قفل مشترک `auto-deploy.sh`.
+- گزارش: `docs/reports/2026-08-29-omnichannel-phases-4-8.md`.
+
+## 2026-08-29 — Omnichannel فاز ۰ بسته شد (مرجوعی کانال + تست پذیرش)
+
+- تأیید RMA دیگر `stock` قدیمی را عوض نمی‌کند؛ موجودی کانال + حرکت RETURN در همان تراکنش است.
+- تست oversell، audit runtime، و منع reverse سفارش/RMA از UI انبار اضافه شد.
+- گزارش: `docs/reports/2026-08-26-omnichannel-phase-0.md`.
+
+## 2026-08-26 — Omnichannel فاز ۲ و ۳ (outbox + ورکر مستقل)
+
+- رویدادها در همان تراکنش کسب‌وکار نوشته می‌شوند؛ SMS/افیلیت/سرچ از مسیر درخواست خارج شد.
+- ورکر جدا با `FOR UPDATE SKIP LOCKED`، backoff و سرویس Compose `worker`.
+- گزارش: `docs/reports/2026-08-26-omnichannel-phase-2.md` و `docs/reports/2026-08-26-omnichannel-phase-3.md`.
+
+## 2026-08-26 — Omnichannel فاز ۱ (اسکیمای افزایشی، کانکتور خاموش)
+
+- شش جدول additive با unique/FK؛ فقط `secretRef`؛ migration قابل revert.
+- `OmnichannelModule` ثبت شد. انتشار و کانکتور تا فازهای بعدی ۴۰۹ می‌دهند.
+- گزارش: `docs/reports/2026-08-26-omnichannel-phase-1.md`.
+
+## 2026-08-26 — Omnichannel فاز ۰ (درستی موجودی، فید، API عمومی)
+
+- Resolver مشترک کانال: Feed و Basalam فقط `retailStock` می‌خوانند؛ `stock` قدیمی ممنوع است.
+- موجودی و حرکت انبار یک تراکنش؛ فروش چک‌اوت ردیف SALE می‌نویسد؛ حذف تاریخچه به REVERSAL تبدیل شد.
+- `status=ALL` از GET عمومی رد می‌شود؛ لیست ادمین `/products/admin` است.
+- HTML سی‌ام‌اس sanitize می‌شود و fallback بدون کانال حذف شد. حذف MinIO شکست واقعی را برمی‌گرداند.
+- گزارش: `docs/reports/2026-08-26-omnichannel-phase-0.md`.
+
 ## 2026-08-25 — انتخاب زرین‌پال/دیجی‌پی در چک‌اوت تکی + راز در تنظیمات
 
 - پیش‌فرض آنلاین تکی دوباره زرین‌پال است؛ دیجی‌پی فقط اگر مشتری انتخاب کند و اعتبارنامه در ادمین/env کامل باشد.

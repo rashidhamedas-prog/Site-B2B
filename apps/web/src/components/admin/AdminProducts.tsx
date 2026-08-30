@@ -130,6 +130,8 @@ const emptyForm = {
   videoUrl: '',
   showOnWholesale: true,
   showOnRetail: true,
+  guarantee: '',
+  defaultRetailVariantId: '',
   allowWholesaleColorSelect: false,
   minWholesaleColors: '1',
 };
@@ -236,7 +238,7 @@ function groupVariantsByColor(variants: Variant[]): ColorGroup[] {
   for (const v of variants) {
     const key = v.color || '—';
     const existing = map.get(key);
-    const w = Number(v.wholesaleStock) || Number(v.stock) || 0;
+    const w = Number(v.wholesaleStock) || 0;
     const r = Number(v.retailStock) || 0;
     if (!existing) {
       map.set(key, {
@@ -425,7 +427,6 @@ function VariantsModal({
         barcode: form.barcode || undefined,
         wholesaleStock,
         retailStock,
-        stock: wholesaleStock,
       };
       // Omit size → API creates all product sizes; stock once on first size (no duplicate totals)
       if (editColor) {
@@ -825,6 +826,7 @@ export function AdminProducts() {
     limitedStockMultiplier: 2,
     newBadgeDays: 7,
   });
+  const [publicationBadges, setPublicationBadges] = useState<Record<string, string[]>>({});
 
   const refreshSpecMemory = useCallback(() => {
     apiClient
@@ -862,6 +864,17 @@ export function AdminProducts() {
     apiClient
       .get<Array<{ id: string; name: string }>>('/collections')
       .then((res) => setCollections(Array.isArray(res) ? res : []))
+      .catch(() => undefined);
+    apiClient
+      .get<Array<{ sourceId: string; sourceType: string; channel: string; status: string }>>('/omnichannel/publications')
+      .then((rows) => {
+        const map: Record<string, string[]> = {};
+        for (const row of rows ?? []) {
+          if (row.sourceType !== 'PRODUCT') continue;
+          (map[row.sourceId] ||= []).push(`${row.channel}:${row.status}`);
+        }
+        setPublicationBadges(map);
+      })
       .catch(() => undefined);
   }, []);
 
@@ -986,6 +999,8 @@ export function AdminProducts() {
       videoUrl: src.videoUrl ?? '',
       showOnWholesale: src.showOnWholesale !== false,
       showOnRetail: src.showOnRetail !== false,
+      guarantee: (src as { guarantee?: string | null }).guarantee ?? '',
+      defaultRetailVariantId: (src as { defaultRetailVariantId?: string | null }).defaultRetailVariantId ?? '',
       allowWholesaleColorSelect: !!src.allowWholesaleColorSelect,
       minWholesaleColors: String(Math.max(1, Number(src.minWholesaleColors) || 1)),
       specs: {
@@ -1217,6 +1232,8 @@ export function AdminProducts() {
         videoUrl: form.videoUrl.trim() || null,
         showOnWholesale: form.showOnWholesale,
         showOnRetail: form.showOnRetail,
+        guarantee: form.guarantee.trim() || null,
+        defaultRetailVariantId: form.defaultRetailVariantId || null,
         allowWholesaleColorSelect: !!form.allowWholesaleColorSelect,
         minWholesaleColors: Math.max(1, Number(form.minWholesaleColors) || 1),
       };
@@ -1452,21 +1469,12 @@ export function AdminProducts() {
                 products.map((p) => {
                   const wholesaleSum =
                     p.variants?.reduce(
-                      (s, v) =>
-                        s +
-                        (Number((v as { wholesaleStock?: number }).wholesaleStock) ||
-                          Number(v.stock) ||
-                          0),
+                      (s, v) => s + (Number((v as { wholesaleStock?: number }).wholesaleStock) || 0),
                       0
                     ) ?? 0;
                   const totalStock =
-                    typeof p.wholesaleStock === 'number'
-                      ? p.wholesaleStock
-                      : typeof p.stock === 'number'
-                        ? p.stock
-                        : typeof p.totalStock === 'number'
-                          ? p.totalStock
-                          : wholesaleSum;
+                    typeof p.wholesaleStock === 'number' ? p.wholesaleStock : wholesaleSum;
+                  const pubs = publicationBadges[p.id] || [];
                   const varCount = new Set((p.variants ?? []).map((v) => v.color).filter(Boolean))
                     .size;
                   return (
@@ -1495,6 +1503,11 @@ export function AdminProducts() {
                               به زودی
                             </Badge>
                           )}
+                          {pubs.map((label) => (
+                            <Badge key={label} variant="info" className="px-1.5 py-0 text-[10px]">
+                              {label}
+                            </Badge>
+                          ))}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{fabricLabel(p)}</td>
@@ -2140,6 +2153,34 @@ export function AdminProducts() {
                     className="rounded"
                   />
                   <span className="text-sm text-gray-700">نمایش در سایت تکی</span>
+                </label>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm text-gray-700">
+                  گارانتی ترب (اختیاری، حداکثر ۲۰۰ کاراکتر)
+                  <textarea
+                    value={form.guarantee}
+                    maxLength={200}
+                    onChange={(e) => setForm((f) => ({ ...f, guarantee: e.target.value }))}
+                    className="focus:ring-primary/30 mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    rows={2}
+                  />
+                </label>
+                <label className="block text-sm text-gray-700">
+                  واریانت پیش‌فرض فروش تکی
+                  <select
+                    value={form.defaultRetailVariantId}
+                    onChange={(e) => setForm((f) => ({ ...f, defaultRetailVariantId: e.target.value }))}
+                    className="focus:ring-primary/30 mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                  >
+                    <option value="">انتخاب خودکار (موجودی تکی، سپس ترتیب ثابت)</option>
+                    {(editProduct?.variants ?? []).map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.color} / {variant.size} — تکی {Number(variant.retailStock) || 0}
+                      </option>
+                    ))}
+                  </select>
                 </label>
               </div>
 
