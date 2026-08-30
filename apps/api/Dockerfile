@@ -27,7 +27,9 @@ RUN npm run build \
      fi \
   && if [ -f dist/apps/api/src/worker.main.js ]; then \
        printf '%s\n' "require('./apps/api/src/worker.main');" > dist/worker.main.js; \
-     fi
+     fi \
+  && mkdir -p dist/database/migrations \
+  && cp dist/apps/api/src/database/migrations/20260829-003-torob-product-fields.js dist/database/migrations/
 
 # Production runner
 FROM base AS runner
