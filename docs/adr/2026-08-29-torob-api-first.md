@@ -6,7 +6,7 @@
 
 ## Decision
 
-Retail catalog exposure to Torob is API-first. PostgreSQL is the only source of truth. A single pure projection builds Product API v3, Torob XML, and PDP fallback metatags. JWT audience is the exact public API host from `TOROB_API_AUDIENCE`. Outbox is not a second catalog.
+Retail catalog exposure to Torob is API-first. PostgreSQL is the only source of truth. A single pure projection builds Product API v3, Torob XML, and PDP fallback metatags. The public Product API host is `www.poshaktaranom.ir`. JWT audience is that exact host from `TOROB_API_AUDIENCE`. Outbox is not a second catalog.
 
 ## Why
 

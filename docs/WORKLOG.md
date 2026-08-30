@@ -2,7 +2,8 @@
 
 ## 2026-08-29 — Torob Product API v3 و fallback خزش
 
-- endpoint زنده `POST /v1/torob_api/v3/products` از دیتابیس می‌خواند؛ JWT فقط audience دقیق `TOROB_API_AUDIENCE` را می‌پذیرد.
+- endpoint زنده `POST https://www.poshaktaranom.ir/v1/torob_api/v3/products` از دیتابیس می‌خواند؛ JWT فقط audience دقیق `www.poshaktaranom.ir` را می‌پذیرد.
+- پنل ترب روی این آدرس GET می‌زند و 404 HTML ویترین می‌گرفت؛ GET الان ۲۰۰ JSON خالی برمی‌گرداند و مسیر از rewrite خرده‌فروشی خارج شد. تا deploy زنده همان 404 می‌ماند.
 - قیمت، موجودی تکی، تصویر و گارانتی از یک projection مشترک به API، فید XML و متاتگ PDP می‌روند.
 - Reviewer: متاتگ PDP برای محصول بدون واریانت از `retailStock` محصول می‌خواند؛ `updateProductStock` تکی `updatedAt` را در همان نوشتن لمس می‌کند.
 - سقف ۵۰۰/۲۰۰۰ حذف شد. migrate/deploy تولید اجرا نشده و نیاز به تأیید مالک دارد.

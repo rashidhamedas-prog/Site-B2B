@@ -12,7 +12,7 @@
       "Existing minOrderQty values still mean pack counts after the 2026-08-18 semantics change and must not be bulk-rewritten without a dry-run report and owner confirm",
       "Channel discount columns are nullable until an owner-approved backfill; legacy isDiscounted remains the fallback",
       "Static PRODUCT_SLUG_REDIRECTS in middleware inverted live canonical slugs; lookup moved to PDP so admin slug changes win",
-      "Torob Product API v3 is live-DB/API-first; TOROB_API_AUDIENCE must stay the exact public API host; retailStock only; no production migrate without owner"
+      "Torob Product API v3 is live-DB/API-first on www.poshaktaranom.ir; TOROB_API_AUDIENCE must stay that exact host; retailStock only; no production migrate without owner"
     ]
   },
   "security": {

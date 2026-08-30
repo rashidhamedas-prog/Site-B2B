@@ -5,11 +5,11 @@ function assert(cond: boolean, msg: string) {
 }
 
 const previous = process.env.TOROB_API_AUDIENCE;
-process.env.TOROB_API_AUDIENCE = 'api.poshaktaranom.com';
+process.env.TOROB_API_AUDIENCE = 'www.poshaktaranom.ir';
 process.env.HOST = 'evil.example';
-process.env.HTTP_HOST = 'spoofed.poshaktaranom.ir';
+process.env.HTTP_HOST = 'api.poshaktaranom.com';
 
-assert(resolveTorobAudience() === 'api.poshaktaranom.com', 'audience from config only');
+assert(resolveTorobAudience() === 'www.poshaktaranom.ir', 'audience from config only');
 assert(resolveTorobAudience() !== process.env.HOST, 'Host cannot change audience');
 
 if (previous == null) delete process.env.TOROB_API_AUDIENCE;

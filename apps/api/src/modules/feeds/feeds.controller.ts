@@ -157,10 +157,10 @@ export class FeedsController {
         feed: `${api}/feeds/torob.xml`,
         feedRetail: 'https://www.poshaktaranom.ir/api/v1/feeds/torob.xml',
         ordersApi: 'https://www.poshaktaranom.ir/api/torob/v1/orders',
-        productApi: 'https://api.poshaktaranom.com/v1/torob_api/v3/products',
+        productApi: 'https://www.poshaktaranom.ir/v1/torob_api/v3/products',
         format: 'XML (fallback) + JSON Product API v3 + JSON (سفارش‌ها)',
         notes:
-          'روش پیشنهادی: Product API v3 روی api.poshaktaranom.com. فید XML fallback است و از همان projection استفاده می‌کند. سفارش‌ها: /torob/v1/orders. مستند: github.com/torob/Torob-Sync',
+          'روش پیشنهادی: Product API v3 روی www.poshaktaranom.ir. فید XML fallback است و از همان projection استفاده می‌کند. سفارش‌ها: /torob/v1/orders. مستند: github.com/torob/Torob-Sync',
       },
       bam: {
         panel: 'https://business.bam.ir',

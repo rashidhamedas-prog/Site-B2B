@@ -2,6 +2,35 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-30T10:50:00Z — Owner authorized Torob merge + deploy
+
+- Task / owner: TASK-20260829-001
+- Remaining retail-host + GET-200 + nginx/channel fixes will be committed, merged to master, and deployed. Omnichannel dirty files stay unstaged.
+- Panel mistake recorded: Orders page must use `/api/torob/v1/orders`, not Product API.
+
+## 2026-08-30T10:45:00Z — VPS TTFB diagnostic started
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Scope: read-only VPS/TTFB/CWV diagnostic for `.ir` + `.com` from Desktop spec. No migration.
+- TASK-20260830-001 already owns PHASE-04 keyword map; this is a separate diagnostic task.
+- Claims: diagnostic report + WORKLOG/status/handoff append. Do not edit `nginx.conf`.
+- Exact next: finish disk/nginx/runtime + 10x TTFB + API/DB/cache/LCP, then write report
+
+## 2026-08-30T10:42:00Z — Live 404 on retail /v1/torob_api
+
+- Task / owner: TASK-20260829-001
+- Live GET/POST `https://www.poshaktaranom.ir/v1/torob_api/v3/products` is Next HTML 404 (`x-middleware-rewrite: /retail/v1/...`). Panel expects 200.
+- POST already exists on API; GET was Nest 404. Added GET 200 empty v3 envelope (no JWT). Exempted `/v1/torob_api` in `isChannelExemptPath`. Next route + nginx exact location as fallbacks.
+- Reclaimed stale `apps/web/src/lib/channel.ts` from TASK-20260817-001 (heartbeat 2026-08-17).
+- Production deploy still required for the panel URL to stop 404ing.
+
+## 2026-08-30T10:35:00Z — Product API public host is retail www
+
+- Task / owner: TASK-20260829-001 / cursor:implementer-TASK-20260829-001
+- Owner correction: public URL is `https://www.poshaktaranom.ir/v1/torob_api/v3/products` (not api.poshaktaranom.com). JWT default/example `TOROB_API_AUDIENCE=www.poshaktaranom.ir`. nginx exact locations on retail www; apex `.ir` still 301s and must not be used in the panel.
+- Production migrate/deploy/push NOT RUN
+- Exact next: owner sets panel URL + token aud to `www.poshaktaranom.ir`, then approves migrate/deploy
+
 ## 2026-08-29T16:45:00Z — TASK-20260829-001 reviews closed; awaiting owner migrate
 
 - Task / owner: TASK-20260829-001 / cursor:implementer-TASK-20260829-001

@@ -1,5 +1,91 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260830-002"
+    title: "VPS TTFB infrastructure diagnostic (no migration)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260830-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260830-002"
+      implementer: "cursor:implementer-TASK-20260830-002"
+      reviewer: "self-review-read-only-diagnostic"
+      security: "self-review-no-secrets-no-prod-mutate"
+    branch: "ai/TASK-20260830-002-vps-ttfb-diag"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-30T10:45:00Z"
+    heartbeat_at: "2026-08-30T10:45:00Z"
+    depends_on: []
+    file_claims:
+      - "SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md"
+      - "docs/reports/2026-08-30-vps-ttfb-diagnostic.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Human-authorized VPS/TTFB diagnostic from Desktop CURSOR-VPS-TTFB-DIAGNOSTIC.md.
+      Diagnosis only. No VPS migration, DNS change, or production architecture rewrite.
+      Do not edit nginx.conf (TASK-20260829-001). Temporary live timing only if missing.
+    acceptance_criteria:
+      - "Both .ir and .com measured; TTFB n>=10 on primary routes"
+      - "Nginx upstream timing classified; SSR/API/DB/cache/CDN/LCP recorded"
+      - "VPS vs shared-hosting decision is numeric; report written"
+      - "No migration and no long-lived HTML cache on sensitive pages"
+  - id: "TASK-20260830-001"
+    title: "PHASE-04 retail content and keyword map (no deploy)"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260830-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260830-001"
+      implementer: "cursor:implementer-TASK-20260830-001"
+      reviewer: "self-review-strategy-no-live-content-write"
+      security: "not-required-reports-only-no-auth-payments"
+    branch: "ai/TASK-20260830-001-phase-04-keyword-map"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-30T10:40:00Z"
+    heartbeat_at: "2026-08-30T10:40:00Z"
+    depends_on:
+      - "TASK-20260824-002"
+    file_claims:
+      - "scripts/seo/phase-04-census.mjs"
+      - "scripts/seo/phase-04-write-reports.mjs"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-URL-CONTENT-INVENTORY.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-WHOLESALE-CONTAMINATION.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-EXISTING-KEYWORD-SIGNALS.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-GSC-QUERY-PAGE-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-GA4-LANDING-PRIORITY.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-KEYWORD-UNIVERSE.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-KEYWORD-CLUSTERS.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-KEYWORD-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-HOMEPAGE-KEYWORD-PLAN.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-CATEGORY-KEYWORD-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-PRODUCT-KEYWORD-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-IMAGE-ALT-PLAN.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-CANNIBALIZATION.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-CONTENT-GAPS.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-BLOG-PLAN.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-INTERNAL-LINK-MAP.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-RELATED-PRODUCTS-PLAN.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-PDP-CONTENT-TEMPLATE.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-CATEGORY-CONTENT-TEMPLATE.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-DAILY-SEO-WORKFLOW.md"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-IMPLEMENTATION-QUEUE.csv"
+      - "SEO-IMPLEMENTATION-REPORTS/PHASE-04-SUMMARY.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      PHASE-04 strategy/mapping from desktop spec. Retail .ir only.
+      No live content rewrite, no DB write, no article publish, no deploy.
+      GSC query/page and GA4 landing exports: mark DATA_NOT_AVAILABLE if absent.
+      Do not invent search volume or rankings. Append-only on shared governance.
+      Do not edit PHASE-03 redirect/code files unless a live regression is proven.
+    acceptance_criteria:
+      - "All active retail products and categories mapped with unique primary keywords"
+      - "Homepage, blogs, wholesale contamination, clusters, ALT, internal links, related, gaps, queue"
+      - "No bulk live content change; Deployment NOT RUN"
   - id: "TASK-20260829-001"
     title: "Torob Product API v3 + crawler fallback + reusable skill"
     status: "blocked"
@@ -13,9 +99,27 @@ tasks:
     branch: "ai/TASK-20260829-001-torob-api-v3"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-29T16:10:00Z"
-    heartbeat_at: "2026-08-29T16:45:00Z"
+    heartbeat_at: "2026-08-30T10:35:00Z"
     depends_on: []
-    file_claims: []
+    file_claims:
+      - "nginx/nginx.conf"
+      - "apps/web/src/lib/channel.ts"
+      - "apps/web/src/app/v1/torob_api/v3/products/route.ts"
+      - "apps/api/src/modules/torob/torob-product-api.controller.ts"
+      - "apps/api/src/modules/torob/torob-product-api.spec.ts"
+      - "apps/api/src/modules/torob/torob-jwt.ts"
+      - "apps/api/src/modules/torob/torob-jwt.spec.ts"
+      - "apps/api/src/modules/torob/torob-auth.guard.ts"
+      - "apps/api/src/modules/torob/torob-auth.guard.spec.ts"
+      - "apps/api/src/modules/feeds/feeds.controller.ts"
+      - ".env.example"
+      - "docs/reports/2026-08-26-torob-api-v3.md"
+      - "docs/WORKLOG.md"
+      - "docs/adr/2026-08-29-torob-api-first.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+      - ".Codex/memory.json"
     notes: |
       Code complete and independently reviewed. Blocked on owner migrate/deploy.
       Reviewer PASS WITH CONDITIONS remediations applied (shared retailUnitStock;

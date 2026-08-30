@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Header,
   Post,
   Req,
@@ -13,15 +14,32 @@ import { TorobProductAuthGuard } from './torob-auth.guard';
 import { TorobApiExceptionFilter } from './torob-exception.filter';
 import { TorobProductApiService } from './torob-product-api.service';
 import { torobProductMetrics } from './torob-metrics';
+import { TOROB_API_VERSION } from './torob-product-projection';
+
+export const TOROB_REACHABILITY_BODY = {
+  api_version: TOROB_API_VERSION,
+  current_page: 1,
+  total: 0,
+  max_pages: 1,
+  products: [] as const,
+};
 
 @ApiExcludeController()
 @Controller({ path: 'torob_api/v3/products', version: '1' })
-@UseGuards(TorobProductAuthGuard)
 @UseFilters(TorobApiExceptionFilter)
 export class TorobProductApiController {
   constructor(private readonly products: TorobProductApiService) {}
 
+  /** Panel reachability check is GET and expects 200, not catalog data. */
+  @Get()
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate')
+  @Header('Content-Type', 'application/json; charset=utf-8')
+  reachability() {
+    return TOROB_REACHABILITY_BODY;
+  }
+
   @Post()
+  @UseGuards(TorobProductAuthGuard)
   @Header('Cache-Control', 'no-store, no-cache, must-revalidate')
   @Header('Content-Type', 'application/json; charset=utf-8')
   async productsEndpoint(@Body() body: unknown, @Req() req: { headers?: Record<string, unknown> }) {

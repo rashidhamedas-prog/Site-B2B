@@ -6,7 +6,7 @@ MCowBQYDK2VwAyEAt6Mu4T0pBORY11W+QeM35UsmLO3vsf+6yKpFDEImFk0=
 -----END PUBLIC KEY-----`;
 
 export const TOROB_TOKEN_VERSION = '1';
-export const DEFAULT_TOROB_API_AUDIENCE = 'api.poshaktaranom.com';
+export const DEFAULT_TOROB_API_AUDIENCE = 'www.poshaktaranom.ir';
 
 export function resolveTorobAudience(): string {
   const configured = String(process.env.TOROB_API_AUDIENCE || DEFAULT_TOROB_API_AUDIENCE)

@@ -10,7 +10,7 @@ async function main() {
   const pem = await exportSPKI(publicKey);
   process.env.APP_ENV = 'test';
   process.env.TOROB_JWT_PUBLIC_KEY = pem;
-  process.env.TOROB_API_AUDIENCE = 'api.poshaktaranom.com';
+  process.env.TOROB_API_AUDIENCE = 'www.poshaktaranom.ir';
 
   const now = Math.floor(Date.now() / 1000);
 
@@ -18,7 +18,7 @@ async function main() {
     return new SignJWT(claims).setProtectedHeader({ alg: 'EdDSA', typ: 'JWT', v: 1 }).sign(privateKey);
   }
 
-  const valid = await token({ aud: 'api.poshaktaranom.com', exp: now + 120, nbf: now - 10 });
+  const valid = await token({ aud: 'www.poshaktaranom.ir', exp: now + 120, nbf: now - 10 });
   await verifyTorobJwt({ token: valid, version: '1' });
 
   let missing = false;
@@ -40,7 +40,7 @@ async function main() {
   let expired = false;
   try {
     await verifyTorobJwt({
-      token: await token({ aud: 'api.poshaktaranom.com', exp: now - 30, nbf: now - 60 }),
+      token: await token({ aud: 'www.poshaktaranom.ir', exp: now - 30, nbf: now - 60 }),
       version: '1',
     });
   } catch {
@@ -51,7 +51,7 @@ async function main() {
   let nbf = false;
   try {
     await verifyTorobJwt({
-      token: await token({ aud: 'api.poshaktaranom.com', exp: now + 120, nbf: now + 60 }),
+      token: await token({ aud: 'www.poshaktaranom.ir', exp: now + 120, nbf: now + 60 }),
       version: '1',
     });
   } catch {
@@ -62,7 +62,7 @@ async function main() {
   let aud = false;
   try {
     await verifyTorobJwt({
-      token: await token({ aud: 'www.poshaktaranom.ir', exp: now + 120, nbf: now - 10 }),
+      token: await token({ aud: 'api.poshaktaranom.com', exp: now + 120, nbf: now - 10 }),
       version: '1',
     });
   } catch {
@@ -73,7 +73,7 @@ async function main() {
   let hs256 = false;
   try {
     const badAlg = await new SignJWT({
-      aud: 'api.poshaktaranom.com',
+      aud: 'www.poshaktaranom.ir',
       exp: now + 120,
       nbf: now - 10,
     })
@@ -89,7 +89,7 @@ async function main() {
   try {
     const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
     const payload = Buffer.from(
-      JSON.stringify({ aud: 'api.poshaktaranom.com', exp: now + 120, nbf: now - 10 }),
+      JSON.stringify({ aud: 'www.poshaktaranom.ir', exp: now + 120, nbf: now - 10 }),
     ).toString('base64url');
     await verifyTorobJwt({ token: `${header}.${payload}.`, version: '1' });
   } catch {

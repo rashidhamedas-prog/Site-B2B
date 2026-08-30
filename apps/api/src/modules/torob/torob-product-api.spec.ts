@@ -1,5 +1,6 @@
 import { TOROB_PAGE_SIZE } from './torob-product-projection';
 import { torobMaxPages } from './torob-product-request';
+import { TOROB_REACHABILITY_BODY } from './torob-product-api.controller';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -42,5 +43,10 @@ for (const total of [0, 1, 99, 100, 101, 201]) {
   const uniques = page.products.map((item) => item.page_unique);
   assert(uniques.join() === [...uniques].sort().join(), 'stable unique order');
 }
+
+assert(TOROB_REACHABILITY_BODY.api_version === 'torob_api_v3', 'reachability version');
+assert(TOROB_REACHABILITY_BODY.total === 0, 'reachability empty');
+assert(TOROB_REACHABILITY_BODY.max_pages === 1, 'reachability max_pages');
+assert(Array.isArray(TOROB_REACHABILITY_BODY.products), 'reachability products');
 
 console.log('torob-product-api.spec ok');

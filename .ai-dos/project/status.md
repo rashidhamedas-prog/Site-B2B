@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-08-29 — **TASK-20260829-001** Torob Product API v3 **code complete + reviewed**; blocked on owner migrate/deploy. Reviewer remediations applied. Security no medium+ finding. TASK-20260826-001 still parked. Production Torob migrate/deploy **NOT RUN**
+- Last verified: 2026-08-30 — **TASK-20260829-001** public Product API host moved to `www.poshaktaranom.ir` (`aud` exact). Still blocked on owner migrate/deploy. TASK-20260826-001 parked. Production Torob migrate/deploy **NOT RUN**
 - Last verified: 2026-08-29 — **TASK-20260826-001** blog/CMS projection + storefront channel stock; worker leases content events; Admin publication badges. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off
 - Last verified: 2026-08-29 — **TASK-20260826-001** worker syncs local publications from catalog outbox (no deliveries); inventory/order wholesale reads `wholesaleStock` only; CI empty-DB migrate job added. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off
 - Last verified: 2026-08-29 — **TASK-20260826-001** media registry wired (upload upsert + Admin alt); `product.stock_changed` leased by worker; MinIO images pinned. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off

@@ -38,7 +38,7 @@ export class TorobAuthGuard implements CanActivate {
   }
 }
 
-/** Product API v3: exact TOROB_API_AUDIENCE (api.poshaktaranom.com). Host cannot change it. */
+/** Product API v3: exact TOROB_API_AUDIENCE (www.poshaktaranom.ir). Host cannot change it. */
 @Injectable()
 export class TorobProductAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
