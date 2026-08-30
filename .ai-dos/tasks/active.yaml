@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260830-002-vps-ttfb-diag"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-30T10:45:00Z"
-    heartbeat_at: "2026-08-30T10:45:00Z"
+    heartbeat_at: "2026-08-30T15:25:00Z"
     depends_on: []
     file_claims:
       - "SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md"
@@ -22,10 +22,12 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
+      - "apps/web/src/app/(wholesale)/page.tsx"
     notes: |
-      Human-authorized VPS/TTFB diagnostic from Desktop CURSOR-VPS-TTFB-DIAGNOSTIC.md.
-      Diagnosis only. No VPS migration, DNS change, or production architecture rewrite.
-      Do not edit nginx.conf (TASK-20260829-001). Temporary live timing only if missing.
+      Cloudflare Full (strict) + Cache Rule applied on both zones.
+      .ir apex/www still DNS only so IR rule is idle. Wholesale home
+      ISR local only. Do not edit nginx.conf. No HTML cache on
+      checkout/account/admin/API. No long cache of price/stock.
     acceptance_criteria:
       - "Both .ir and .com measured; TTFB n>=10 on primary routes"
       - "Nginx upstream timing classified; SSR/API/DB/cache/CDN/LCP recorded"
@@ -44,7 +46,7 @@ tasks:
     branch: "ai/TASK-20260830-001-phase-04-keyword-map"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-30T10:40:00Z"
-    heartbeat_at: "2026-08-30T10:40:00Z"
+    heartbeat_at: "2026-08-30T11:05:00Z"
     depends_on:
       - "TASK-20260824-002"
     file_claims:

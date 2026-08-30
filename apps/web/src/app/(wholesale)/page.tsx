@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { CmsPage } from '@/components/cms/CmsPage';
 
+/** Anonymous home HTML is public; 60s ISR. Cart/account/checkout stay dynamic via their own trees. */
+export const revalidate = 60;
+export const dynamic = 'force-static';
+
 export const metadata: Metadata = {
   title: 'فروش عمده مانتو زنانه از تولیدی مشهد',
   description:

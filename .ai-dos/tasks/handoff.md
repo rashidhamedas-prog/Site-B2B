@@ -2,6 +2,42 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-30T15:35:00Z — Owner authorized commit/deploy + .ir proxy
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Shipping isolated wholesale home ISR + docs. Unrelated omnichannel/Torob dirty files stay unstaged.
+- Will push to origin/master (live auto-deploy base) then VPS `scripts/auto-deploy.sh`.
+- Will Proxied `.ir` apex+www so Cache Rule + Full (strict) apply. MX/TXT stay DNS only.
+- Exact next: verify `s-maxage` on wholesale home and `cf-cache-status` HIT/MISS; `.ir` resolves to CF anycast.
+
+## 2026-08-30T15:25:00Z — Cloudflare Full (strict) + Cache Rules applied
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- SSL: both zones `Current encryption mode: Full (strict)` (dashboard).
+- Cache Rules: `Cache public storefront HTML` **1 active** on poshaktaranom.ir and poshaktaranom.com.
+- Expression: GET only; exclude `/account` `/checkout` `/admin` `/portal` `/cart` `/api` `/v1` `/login`. Then Eligible for cache; Edge TTL respect origin; Browser TTL respect origin. No Cache Everything override.
+- Live VPS curl: `.com` apex HTTP 200 `Server: cloudflare` `cf-cache-status: DYNAMIC` because origin `private, no-store`. checkout/account/portal also DYNAMIC. `www.com` 301 → apex.
+- Live DNS 1.1.1.1: `.com` CF anycast. `.ir` still `5.75.200.102` — dashboard A apex/www are **DNS only**. Cache rule on `.ir` is idle until orange-cloud.
+- Wholesale home ISR still local only; live wholesale remains no-store. Commit/push/deploy NOT RUN.
+- Exact next: owner decides whether to Proxied `.ir` apex+www (Iran HTTPS timeout risk). Then deploy wholesale ISR if they want HIT on home. Do not migrate VPS.
+
+## 2026-08-30T11:10:00Z — VPS TTFB diagnostic complete
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Evidence: Iran n=10 curl + VPS localhost/nginx loopback + headers + docker stats + iostat
+- Decision: OPTIMIZE_CURRENT_VPS_FIRST. Shared hosting NO. No DNS/nginx.conf/prod mutate.
+- PSI lab 429 this session — Lighthouse NOT_RUN. Field CWV NOT_AVAILABLE.
+- Report: SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md
+- Exact next: owner may enable Cloudflare orange-cloud + wholesale home ISR. Do not migrate.
+
+## 2026-08-30T11:05:00Z — PHASE-04 content/keyword map complete, no deploy
+
+- Task / owner: TASK-20260830-001 / cursor:implementer-TASK-20260830-001
+- Live census 2026-08-30T10:41Z on https://www.poshaktaranom.ir: sitemap 80 URLs; 60 active retail products; 10 active categories; 4 published blogs (2 missing from blog.xml)
+- Reports written under `SEO-IMPLEMENTATION-REPORTS/PHASE-04-*`. No live content rewrite, no DB write, no deploy.
+- GSC query/page and GA4 landing exports: DATA_NOT_AVAILABLE. No invented volume/rankings. EXTERNAL_KEYWORD_DATA_REQUIRED
+- Exact next: PHASE 05 content implementation after human approval of P0 copy and مانتو-hub decision. Do not deploy from this task.
+
 ## 2026-08-30T10:50:00Z — Owner authorized Torob merge + deploy
 
 - Task / owner: TASK-20260829-001

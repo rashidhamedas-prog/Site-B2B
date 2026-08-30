@@ -1,5 +1,23 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-30 — ISR هوم عمده + پروکسی Cloudflare برای سرعت
+
+- هوم عمده `revalidate=60` و `force-static` شد تا مثل تکی `s-maxage=60` بدهد و لبه بتواند HIT کند.
+- Cache Rule و Full (strict) از قبل روی هر دو زون بودند؛ اپکس/www دامنه `.ir` باید Proxied شود تا ترافیک ایران از anycast بگذرد.
+- مسیرهای حساب/تسویه/ادمین/API کش HTML نمی‌شوند. commit و دیپلوی همین نشست.
+
+## 2026-08-30 — تشخیص TTFB و زیرساخت VPS (بدون مهاجرت)
+
+- هوم تکی روی خود VPS حدود ۱۴ms؛ از ایران میانه ۱۳۱۷ms. هلث API از ایران ۱۵۵۳ms و روی سرور ۲ms.
+- CPU steal صفر، دیسک SSD و بدون فشار RAM. گلوگاه اصلی مسیر ایران به نورنبرگ است؛ Cloudflare فقط DNS.
+- تصمیم: بهینه‌سازی همین VPS اول. هاست اشتراکی نه. گزارش: `SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md`
+
+## 2026-08-30 — PHASE-04 نقشه کلیدواژه و محتوا (بدون دیپلوی)
+
+- سرشماری زنده خرده‌فروشی `.ir`: ۶۰ محصول فعال، ۱۰ دسته، ۴ مقاله منتشرشده، ۸۲ URL در موجودی.
+- گزارش‌ها در `SEO-IMPLEMENTATION-REPORTS/PHASE-04-*`. محتوای زنده، متادیتای پروداکشن و دیپلوی تغییر نکرد.
+- دو مقاله PUBLISHED در سایت‌مپ نیستند. حجم جستجوی خارجی و خروجی GSC/GA4 موجود نبود و ساخته نشد.
+
 ## 2026-08-29 — Torob Product API v3 و fallback خزش
 
 - endpoint زنده `POST https://www.poshaktaranom.ir/v1/torob_api/v3/products` از دیتابیس می‌خواند؛ JWT فقط audience دقیق `www.poshaktaranom.ir` را می‌پذیرد.

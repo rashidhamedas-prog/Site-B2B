@@ -1,5 +1,8 @@
 # Project Status
 
+- Last verified: 2026-08-30 — **TASK-20260830-002** shipping wholesale home ISR (`s-maxage=60`) + Cloudflare proxy for `.ir` storefront. Cache Rule + Full (strict) already on both zones. No VPS migration. No HTML cache on checkout/account/admin/API.
+- Last verified: 2026-08-30 — **TASK-20260830-002** VPS/TTFB diagnostic complete. Decision `OPTIMIZE_CURRENT_VPS_FIRST`; shared hosting NO. No migration. Report `SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md`
+- Last verified: 2026-08-30 — **TASK-20260830-001** PHASE-04 retail keyword/content map written (60 products, 10 categories, 4 blogs). Deployment **NOT RUN**
 - Last verified: 2026-08-30 — **TASK-20260829-001** public Product API host moved to `www.poshaktaranom.ir` (`aud` exact). Still blocked on owner migrate/deploy. TASK-20260826-001 parked. Production Torob migrate/deploy **NOT RUN**
 - Last verified: 2026-08-29 — **TASK-20260826-001** blog/CMS projection + storefront channel stock; worker leases content events; Admin publication badges. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off
 - Last verified: 2026-08-29 — **TASK-20260826-001** worker syncs local publications from catalog outbox (no deliveries); inventory/order wholesale reads `wholesaleStock` only; CI empty-DB migrate job added. Production migrate/deploy/soak/canary still **NOT RUN**; connectors off
