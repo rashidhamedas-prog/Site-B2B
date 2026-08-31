@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T12:45:00Z — Public channel stock leak residual
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Public `withBadges` no longer falls back to legacy `product.stock` / `variant.stock`. Retail JSON omits wholesale stock/price; wholesale JSON omits retail stock/price. Admin (`channel` unset) still returns both columns. Inventory `findAllWithVariants` keeps both columns and sets `stock` to the requested channel.
+- Gates: `channel-stock-isolation.spec.ts` ok; `apps/api` `tsc --noEmit` 0.
+- Do not enable connectors. Do not Done: 24h soak, destination canary, §9 decisions, independent Reviewer/Security still required.
+- Exact next: isolated commit/PR from `origin/master`, merge, deploy API, confirm live retail JSON has no `wholesaleStock`.
+
 ## 2026-08-31T12:30:00Z — Soak start + dual worker
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
