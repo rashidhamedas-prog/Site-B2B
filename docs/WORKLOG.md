@@ -1,5 +1,9 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-31 — کپی همه مایگریشن‌ها در ایمیج API
+
+- Dockerfile فقط مایگریشن ترب را به `dist/database/migrations` می‌برد؛ جدول‌های omnichannel ساخته نمی‌شدند. الان همهٔ `*.js` کپی می‌شوند.
+
 ## 2026-08-31 — هات‌فیکس بوت worker
 
 - Worker جدا از API است و `RedisModule` لازم دارد تا `OtpService` برای Auth حل شود. بدون این، کانتینر در Restarting می‌ماند.

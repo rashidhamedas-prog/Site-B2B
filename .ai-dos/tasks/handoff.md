@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T11:55:00Z — Omnichannel migrations missing in image
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Worker healthy on `1152f97`. Lease warns `omnichannel_outbox_events` missing.
+- Cause: Dockerfile copied only Torob migration into `dist/database/migrations`.
+- Exact next: copy all `*.js` migrations, PR, merge, rebuild API so TypeORM runs 20260826-001 / 20260829-001 / 20260829-002.
+
 ## 2026-08-31T11:50:00Z — Worker RedisModule hotfix
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
