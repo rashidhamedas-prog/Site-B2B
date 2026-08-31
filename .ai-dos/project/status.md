@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-08-31 — **TASK-20260831-003** GSC dual-site audit recorded; GA4 linked on both domain properties; retail HTML slim + /products ISR + blog sitemap merge + JSON-LD absolute images coded locally. **Deploy NOT RUN**. Wholesale mobile LCP>4s (11 URLs) untouched (files claimed elsewhere).
 - Last verified: 2026-08-31 — **TASK-20260831-001** admin login normalize + staff `/admin` gate, storefront search overlay, retail category `retailStock`, staff users CRUD/RBAC. Deploy pending this session. Independent Reviewer/Security still required.
 - Last verified: 2026-08-31 — **TASK-20260826-001** public catalog requires `channel` (except admin JWT) and strips opposite-channel price/stock/content/discount. Live `e70e5b6` workers healthy, dead=0. Connectors off. Soak/canary/§9 still **NOT DONE**.
 - Last verified: 2026-08-31 — **TASK-20260826-001** public product JSON no longer leaks opposite-channel stock/price or legacy `stock`. Connectors off. 24h soak / destination canary still **NOT DONE**; do not mark Done.

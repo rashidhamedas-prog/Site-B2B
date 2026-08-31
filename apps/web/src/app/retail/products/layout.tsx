@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'مانتو و شومیز زنانه',
+  title: 'همه محصولات فروشگاه ترنم',
   description:
     'جدیدترین مانتو و شومیزهای ترنم را تکی ببینید و سفارش دهید — همان دوخت کارگاهی، برای خودتان.',
   alternates: { canonical: 'https://www.poshaktaranom.ir/products' },

@@ -27,7 +27,7 @@ const COLS = [
     links: [
       { href: '/about', label: 'درباره ما' },
       { href: '/contact', label: 'تماس' },
-      { href: 'https://poshaktaranom.com', label: 'خرید عمده' },
+      { href: 'https://poshaktaranom.com', label: 'سایت بوتیک‌داران' },
     ],
   },
 ];

@@ -1,6 +1,9 @@
 import type { SalesChannel } from '@/lib/channel';
 import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { BUSINESS_FACTS } from '@/lib/business-facts';
+import { absoluteJsonLdUrl } from '@/lib/jsonld-url';
+
+export { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 
 const SAME_AS = [
   'https://www.instagram.com/tolidi.taranom',
@@ -220,6 +223,7 @@ export function ProductJsonLd({
   const fallbackImage =
     channel === 'RETAIL' ? `${RETAIL_ORIGIN}/og-retail.jpg` : `${WHOLESALE_ORIGIN}/og-wholesale.jpg`;
   const emitPrice = includePrice ?? channel !== 'WHOLESALE';
+  const productImage = absoluteJsonLdUrl(channel, image) ?? fallbackImage;
 
   const additionalProperty = [
     fabric ? { '@type': 'PropertyValue', name: 'جنس پارچه', value: fabric } : null,
@@ -237,7 +241,7 @@ export function ProductJsonLd({
         ...(url ? { '@id': `${url}#product` } : {}),
         name,
         description,
-        image: image ?? fallbackImage,
+        image: productImage,
         sku,
         brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
         itemCondition: 'https://schema.org/NewCondition',
@@ -298,6 +302,8 @@ export function ProductGroupJsonLd({
     availability,
     channel,
   });
+  const groupImage = absoluteJsonLdUrl(channel, image);
+  const groupId = sku || url;
 
   return (
     <JsonLdScript
@@ -305,9 +311,10 @@ export function ProductGroupJsonLd({
         '@context': 'https://schema.org',
         '@type': 'ProductGroup',
         '@id': `${url}#productgroup`,
+        productGroupID: groupId,
         name,
         description,
-        image,
+        ...(groupImage ? { image: groupImage } : {}),
         url,
         sku,
         brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
@@ -318,6 +325,9 @@ export function ProductGroupJsonLd({
           ...(v.sku ? { sku: v.sku } : {}),
           ...(v.color ? { color: v.color } : {}),
           ...(v.size ? { size: v.size } : {}),
+          ...(description ? { description } : {}),
+          ...(groupImage ? { image: groupImage } : {}),
+          productGroupID: groupId,
           brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
           offers: offer,
         })),
@@ -399,6 +409,12 @@ export function ArticleJsonLd({
   dateModified?: string;
   authorName?: string;
 }) {
+  const articleChannel: SalesChannel = url.includes('poshaktaranom.ir') ? 'RETAIL' : 'WHOLESALE';
+  const fallbackImage =
+    articleChannel === 'RETAIL' ? `${RETAIL_ORIGIN}/og-retail.jpg` : `${WHOLESALE_ORIGIN}/og-wholesale.jpg`;
+  const articleImage = absoluteJsonLdUrl(articleChannel, image) ?? fallbackImage;
+  const publisherLogo =
+    articleChannel === 'RETAIL' ? `${RETAIL_ORIGIN}/logo-128.png` : `${WHOLESALE_ORIGIN}/logo-128.png`;
   return (
     <JsonLdScript
       data={{
@@ -407,7 +423,7 @@ export function ArticleJsonLd({
         headline: title,
         description,
         url,
-        image: image ?? `${WHOLESALE_ORIGIN}/og-wholesale.jpg`,
+        image: articleImage,
         datePublished,
         dateModified: dateModified ?? datePublished,
         author: { '@type': 'Organization', name: authorName },
@@ -416,7 +432,7 @@ export function ArticleJsonLd({
           name: 'پوشاک ترنم',
           logo: {
             '@type': 'ImageObject',
-            url: `${WHOLESALE_ORIGIN}/logo-128.png`,
+            url: publisherLogo,
           },
         },
         mainEntityOfPage: { '@type': 'WebPage', '@id': url },

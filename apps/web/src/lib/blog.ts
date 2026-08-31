@@ -1,5 +1,9 @@
 // Server-side blog data access. Production never uses FALLBACK_POSTS.
 
+import { mergeSitemapPosts } from './blog-sitemap';
+
+export { mergeSitemapPosts } from './blog-sitemap';
+
 export interface BlogFaqItem {
   id?: string;
   question: string;
@@ -195,12 +199,18 @@ export async function fetchPost(
 
 export async function fetchSitemapPosts(channel: 'WHOLESALE' | 'RETAIL'): Promise<BlogPost[]> {
   try {
-    const res = await fetch(`${API_URL}/blog/sitemap-posts?channel=${channel}`, {
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return Array.isArray(json) ? json : [];
+    const [sitemapRes, published] = await Promise.all([
+      fetch(`${API_URL}/blog/sitemap-posts?channel=${channel}`, {
+        next: { revalidate: 3600 },
+      }),
+      fetchPosts({ channel, limit: 50, page: 1 }),
+    ]);
+    const sitemapRows = sitemapRes.ok ? ((await sitemapRes.json()) as BlogPost[]) : [];
+    const merged = mergeSitemapPosts(
+      Array.isArray(sitemapRows) ? sitemapRows : [],
+      published.posts,
+    );
+    return merged as BlogPost[];
   } catch {
     return [];
   }

@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T16:20:00Z — GSC dual-site audit + retail HTML/ISR/JSON-LD
+
+- Task / owner: TASK-20260831-003 / cursor:implementer-TASK-20260831-003
+- GSC measured (rashidhamedas@gmail.com): `.ir` 109 clicks / 4.4K impr / 171 indexed / 168 not; `.com` 56 / 1.29K / 49 / 116. Wholesale mobile CWV: 11 poor LCP>4s. Retail merchant: 27 missing image.
+- GSC settings applied: GA4 associate both properties; www retail sitemap submitted (first read Couldn't fetch; apex Success kept). No Validate Fix on noindex/redirect/404. No index request for /account or 301 sources.
+- Code: slimRetailCatalogProduct on home grid; /products force-static; blog sitemap merge; footer/FAQ/defaults; absoluteJsonLdUrl + variant productGroupID.
+- Gates: `apps/web` `npx tsc --noEmit` 0; jsonld-url and blog-sitemap node asserts ok.
+- Not edited: middleware.ts, next.config.ts, product.service / PDP (other same-day claims).
+- Exact next: owner commit/deploy this branch; `/admin/site-content` retail CTA; after live, inspect 200 canonicals and Validate Fix missing image only.
+
 ## 2026-08-31T15:25:00Z — Admin login, search, category stock, staff users
 
 - Task / owner: TASK-20260831-001 / cursor:implementer-TASK-20260831-001
