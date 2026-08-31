@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { CategoryProductCard } from './CategoryProductCard';
 import {
   categoryPageQuery,
@@ -43,23 +42,23 @@ export function CategoryProductListing({
       {totalPages > 1 ? (
         <nav className="mt-10 flex items-center justify-center gap-3 text-sm" aria-label="صفحه‌بندی">
           {page > 1 ? (
-            <Link
+            <a
               href={`/category/${slug}${categoryPageQuery(searchParams, page - 1)}`}
               className="rounded-full border border-[var(--brand-border,#E8E0D4)] px-4 py-2"
             >
               قبلی
-            </Link>
+            </a>
           ) : null}
           <span>
             صفحه {page} از {totalPages}
           </span>
           {page < totalPages ? (
-            <Link
+            <a
               href={`/category/${slug}${categoryPageQuery(searchParams, page + 1)}`}
               className="rounded-full border border-[var(--brand-border,#E8E0D4)] px-4 py-2"
             >
               بعدی
-            </Link>
+            </a>
           ) : null}
         </nav>
       ) : null}

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import {
   buildCategoryProductsQuery,
@@ -26,11 +25,16 @@ export function CategoryQueryOverlay({
   channel: CategoryChannel;
   slug: string;
 }) {
-  const searchParams = useSearchParams();
-  const queryKey = searchParams.toString();
+  const [queryKey, setQueryKey] = useState('');
+  useEffect(() => {
+    const sync = () => setQueryKey(window.location.search.replace(/^\?/, ''));
+    sync();
+    window.addEventListener('popstate', sync);
+    return () => window.removeEventListener('popstate', sync);
+  }, []);
   const params = useMemo(
-    () => categorySearchParamsFromURL(searchParams),
-    [queryKey, searchParams],
+    () => categorySearchParamsFromURL(new URLSearchParams(queryKey)),
+    [queryKey],
   );
   const filtered = hasCategoryFilters(params);
   const [target, setTarget] = useState<HTMLElement | null>(null);
