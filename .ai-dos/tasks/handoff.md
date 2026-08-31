@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T13:00:00Z — Require public channel + strip opposite metadata
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Live `e70e5b6` confirmed: retail JSON has no wholesaleStock/wholesalePrice; wholesale JSON has no retailStock/retailPrice; health 200; workers healthy; dead=0 lag=0; no OMNICHANNEL_ in env.
+- Residual from Reviewer/Security: omitted `channel` still returned both sides; discount/content still leaked. Public GET now requires RETAIL|WHOLESALE unless admin JWT. Opposite-channel content/discount/MOQ-select fields are stripped. Price filter uses the requested channel column.
+- Reclaimed stale `product.controller.ts` from TASK-20260822-002 / TASK-20260818-001 (heartbeats 2026-08-22 / 2026-08-18) — already on this task's claims.
+- Do not enable connectors. Do not Done (24h soak, destination canary, §9).
+
 ## 2026-08-31T12:45:00Z — Public channel stock leak residual
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

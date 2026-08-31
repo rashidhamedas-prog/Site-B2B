@@ -41,6 +41,7 @@ import {
   type DiscountType,
 } from './product-sale';
 import { isPublicProductRow } from './public-product-status';
+import { stripOppositeChannelFields } from './public-product-channel';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -222,8 +223,8 @@ export class ProductService {
         wholesaleStock: vWholesale,
         retailStock: vRetail,
       };
-      if (isRetail) delete (row as { wholesaleStock?: number }).wholesaleStock;
-      if (isWholesale) delete (row as { retailStock?: number }).retailStock;
+      if (isRetail) stripOppositeChannelFields(row, 'RETAIL');
+      if (isWholesale) stripOppositeChannelFields(row, 'WHOLESALE');
       return row;
     });
     const out = {
@@ -250,18 +251,8 @@ export class ProductService {
       channel: isRetail ? 'RETAIL' : 'WHOLESALE',
       badgeSettings: { limitedStockMultiplier: multiplier, newBadgeDays },
     };
-    if (isRetail) {
-      delete (out as { wholesaleStock?: number }).wholesaleStock;
-      delete (out as { wholesalePrice?: unknown }).wholesalePrice;
-      delete (out as { wholesaleCompareAtPrice?: unknown }).wholesaleCompareAtPrice;
-      delete (out as { wholesaleSalePrice?: unknown }).wholesaleSalePrice;
-    }
-    if (isWholesale) {
-      delete (out as { retailStock?: number }).retailStock;
-      delete (out as { retailPrice?: unknown }).retailPrice;
-      delete (out as { retailCompareAtPrice?: unknown }).retailCompareAtPrice;
-      delete (out as { retailSalePrice?: unknown }).retailSalePrice;
-    }
+    if (isRetail) stripOppositeChannelFields(out, 'RETAIL');
+    if (isWholesale) stripOppositeChannelFields(out, 'WHOLESALE');
     return out;
   }
 
@@ -395,13 +386,20 @@ export class ProductService {
     if (opts?.collar) {
       qb.andWhere("p.specs->>'collarModel' ILIKE :collar", { collar: `%${opts.collar}%` });
     }
+    const priceChannel = String(opts?.channel || '').toUpperCase();
+    const priceCol =
+      priceChannel === 'RETAIL'
+        ? 'p.retailPrice'
+        : priceChannel === 'WHOLESALE'
+          ? 'p.wholesalePrice'
+          : 'COALESCE(p.retailPrice, p.wholesalePrice)';
     if (opts?.minPrice != null && Number.isFinite(opts.minPrice)) {
-      qb.andWhere('COALESCE(p.retailPrice, p.wholesalePrice) >= :minPrice', {
+      qb.andWhere(`${priceCol} >= :minPrice`, {
         minPrice: opts.minPrice,
       });
     }
     if (opts?.maxPrice != null && Number.isFinite(opts.maxPrice)) {
-      qb.andWhere('COALESCE(p.retailPrice, p.wholesalePrice) <= :maxPrice', {
+      qb.andWhere(`${priceCol} <= :maxPrice`, {
         maxPrice: opts.maxPrice,
       });
     }

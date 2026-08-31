@@ -11,6 +11,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { resolvePublicProductStatus } from './public-product-status';
+import { resolvePublicProductChannel } from './public-product-channel';
 import { parseColorStockPlan, pickVariantStocks } from './color-stock-plan';
 import { OptionalJwtAuthGuard, isAdminActor } from './optional-jwt.guard';
 
@@ -26,6 +27,7 @@ export class ProductController {
   ) {}
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'کاتالوگ محصولات (عمومی)' })
   async findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -47,16 +49,26 @@ export class ProductController {
     @Query('sort') sort?: string,
     @Query('includeVariants') includeVariants?: string,
     @Res({ passthrough: true }) res?: FastifyReply,
+    @Req() req?: AuthedReq,
   ) {
     let publicStatus: 'ACTIVE';
+    let publicChannel: string | undefined;
+    const admin = isAdminActor(req?.user);
     try {
       publicStatus = resolvePublicProductStatus(status);
     } catch {
       throw new BadRequestException('وضعیت نامعتبر است');
     }
+    try {
+      publicChannel = resolvePublicProductChannel(channel, admin);
+    } catch {
+      throw new BadRequestException('کانال نامعتبر است');
+    }
     res?.header(
       'Cache-Control',
-      'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+      admin
+        ? 'private, no-store'
+        : 'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
     );
     const wantVariants = includeVariants === '1' || includeVariants === 'true';
     return this.productService.findAll(page, limit, search || q, fabric, publicStatus, color, size, {
@@ -67,7 +79,7 @@ export class ProductController {
       maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
       collar,
       relatedTo,
-      channel,
+      channel: publicChannel,
       sort,
       includeVariants: wantVariants,
     });
@@ -217,7 +229,14 @@ export class ProductController {
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'جزئیات محصول با slug' })
   findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string, @Req() req?: AuthedReq) {
-    return this.productService.findBySlug(slug, channel, { allowNonActive: isAdminActor(req?.user) });
+    const admin = isAdminActor(req?.user);
+    let publicChannel: string | undefined;
+    try {
+      publicChannel = resolvePublicProductChannel(channel, admin);
+    } catch {
+      throw new BadRequestException('کانال نامعتبر است');
+    }
+    return this.productService.findBySlug(slug, publicChannel, { allowNonActive: admin });
   }
 
   @Post(':id/view')
@@ -230,7 +249,14 @@ export class ProductController {
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'جزئیات محصول' })
   findOne(@Param('id') id: string, @Query('channel') channel?: string, @Req() req?: AuthedReq) {
-    return this.productService.findOne(id, channel, { allowNonActive: isAdminActor(req?.user) });
+    const admin = isAdminActor(req?.user);
+    let publicChannel: string | undefined;
+    try {
+      publicChannel = resolvePublicProductChannel(channel, admin);
+    } catch {
+      throw new BadRequestException('کانال نامعتبر است');
+    }
+    return this.productService.findOne(id, publicChannel, { allowNonActive: admin });
   }
 
   @Post()
