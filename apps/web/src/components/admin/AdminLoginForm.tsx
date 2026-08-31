@@ -57,9 +57,7 @@ export function AdminLoginForm() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-gray-300">رمز عبور</label>
-            <button type="button" className="text-xs text-primary hover:text-primary-light transition-colors">
-              فراموشی رمز؟
-            </button>
+            <span className="text-xs text-gray-500">بازیابی رمز از «کاربران ادمین»</span>
           </div>
           <div className="relative">
             <input

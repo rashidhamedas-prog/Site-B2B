@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ChevronDown, Menu, Search, ShoppingBag, User, X } from 'lucide-react';
+import { ChevronDown, Menu, ShoppingBag, User, X } from 'lucide-react';
+import { StorefrontSearch } from '@/components/shared/StorefrontSearch';
 import { useRetailCart } from '@/lib/retail-cart';
 import { RetailCartDrawer } from './RetailCartDrawer';
 import { cn } from '@/lib/cn';
@@ -186,9 +187,10 @@ export function RetailHeader() {
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            <Link href="/products" className="cursor-pointer p-2 text-[var(--retail-ink)]" aria-label="جستجو">
-              <Search className="h-5 w-5" strokeWidth={1.4} />
-            </Link>
+            <StorefrontSearch
+              channel="RETAIL"
+              className="cursor-pointer p-2 text-[var(--retail-ink)]"
+            />
             <Link href="/account" className="cursor-pointer p-2 text-[var(--retail-ink)]" aria-label="حساب">
               <User className="h-5 w-5" strokeWidth={1.4} />
             </Link>

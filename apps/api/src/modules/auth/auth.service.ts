@@ -205,7 +205,8 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.userRepo.findOne({ where: { phone: dto.phone } });
+    const phone = normalizePhone(dto.phone);
+    const user = await this.userRepo.findOne({ where: { phone } });
     if (!user) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
@@ -278,7 +279,13 @@ export class AuthService {
         };
       }
     }
-    return { userId: u.id, phone: u.phone, role: u.role, lastLoginAt: u.lastLoginAt };
+    return {
+      userId: u.id,
+      phone: u.phone,
+      email: u.email,
+      role: u.role,
+      lastLoginAt: u.lastLoginAt,
+    };
   }
 
   async updateMyProfile(userId: string, data: { ownerName?: string; email?: string }) {

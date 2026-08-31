@@ -1,5 +1,74 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260831-001"
+    title: "Admin login, storefront search, retail category stock, staff users"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260831-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260831-001"
+      implementer: "cursor:implementer-TASK-20260831-001"
+      reviewer: "required-independent-before-done"
+      security: "required-independent-before-done"
+    branch: "ai/TASK-20260831-001-admin-search-users"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-31T15:20:00Z"
+    heartbeat_at: "2026-08-31T15:20:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/auth/dto/login.dto.ts"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
+      - "apps/api/src/modules/auth/users.controller.ts"
+      - "apps/api/src/modules/auth/users.service.ts"
+      - "apps/api/src/modules/auth/users.policy.ts"
+      - "apps/api/src/modules/auth/users.policy.spec.ts"
+      - "apps/api/src/modules/auth/staff-access.ts"
+      - "apps/api/src/modules/auth/staff-access.spec.ts"
+      - "apps/api/src/modules/auth/dto/create-staff-user.dto.ts"
+      - "apps/api/src/modules/auth/dto/update-staff-user.dto.ts"
+      - "apps/api/src/modules/auth/dto/reset-staff-password.dto.ts"
+      - "apps/api/src/modules/auth/decorators/admin-only.decorator.ts"
+      - "apps/api/src/modules/auth/guards/roles.guard.ts"
+      - "apps/api/src/modules/auth/auth.module.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/web/src/lib/auth.ts"
+      - "apps/web/src/lib/hooks/useAuth.ts"
+      - "apps/web/src/lib/staff-access.ts"
+      - "apps/web/src/lib/phone.ts"
+      - "apps/web/src/middleware.ts"
+      - "apps/web/src/components/admin/AdminLoginForm.tsx"
+      - "apps/web/src/components/admin/AdminUsers.tsx"
+      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      - "apps/web/src/components/shared/StorefrontSearch.tsx"
+      - "apps/web/src/components/layout/Header.tsx"
+      - "apps/web/src/components/layout/MobileMenu.tsx"
+      - "apps/web/src/components/retail/RetailHeader.tsx"
+      - "apps/web/src/components/category/CategoryProductCard.tsx"
+      - "apps/web/src/components/category/category-search-params.ts"
+      - "apps/web/src/components/category/category-search-params.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-08-31-admin-login-search-users.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner-authorized production bugs: admin login, homepage search,
+      retail category sold-out, incomplete /admin/users.
+      Reclaimed 2026-08-31 from TASK-20260830-002 (category ISR already
+      shipped): CategoryProductCard, category-search-params*, middleware.ts.
+      Reclaimed AdminSidebar from TASK-20260826-001 (omnichannel item stays;
+      only staff ACL + live profile). Reclaimed RetailHeader from
+      TASK-20260810-006 (stale >24h) for search overlay.
+      Do not invent STAFF/SUPER_ADMIN as users.role. Do not stuff users
+      into AdminSettings. No new DB table.
+    acceptance_criteria:
+      - "Admin login accepts Persian/Arabic digits and +98 phones; staff roles can open /admin"
+      - "Wholesale and retail homepage search opens an overlay and queries GET /products?search="
+      - "Retail category cards use product.retailStock so in-stock items are not ناموجود"
+      - "Staff CRUD: create/list/edit/toggle/reset-password; last-admin and self-lockout guarded"
+      - "Roles are UserRole only; sidebar + RolesGuard honor staff modules; users/settings ADMIN-only"
+      - "api+web typecheck and new unit specs pass; live health after deploy"
   - id: "TASK-20260830-002"
     title: "VPS TTFB infrastructure diagnostic (no migration)"
     status: "in_progress"
@@ -26,12 +95,13 @@ tasks:
       - "apps/web/src/app/(wholesale)/category/[slug]/page.tsx"
       - "apps/web/src/app/retail/category/[slug]/page.tsx"
       - "apps/web/src/components/category/CategoryLanding.tsx"
-      - "apps/web/src/components/category/CategoryProductCard.tsx"
+      # transferred 2026-08-31 to TASK-20260831-001 (retail category stock + admin gate):
+      # "apps/web/src/components/category/CategoryProductCard.tsx"
       - "apps/web/src/components/category/CategoryProductListing.tsx"
       - "apps/web/src/components/category/CategoryQueryOverlay.tsx"
-      - "apps/web/src/components/category/category-search-params.ts"
-      - "apps/web/src/components/category/category-search-params.spec.ts"
-      - "apps/web/src/middleware.ts"
+      # transferred 2026-08-31 to TASK-20260831-001: "apps/web/src/components/category/category-search-params.ts"
+      # transferred 2026-08-31 to TASK-20260831-001: "apps/web/src/components/category/category-search-params.spec.ts"
+      # transferred 2026-08-31 to TASK-20260831-001: "apps/web/src/middleware.ts"
       - "apps/web/next.config.ts"
     notes: |
       Cloudflare Full (strict) + Cache Rule on both zones. .ir apex/www
@@ -297,7 +367,8 @@ tasks:
       - ".dockerignore"
       - ".github/workflows/ci.yml"
       - "apps/web/src/app/checkout/page.tsx"
-      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      # transferred 2026-08-31 to TASK-20260831-001 (staff ACL; omnichannel nav stays):
+      # "apps/web/src/components/admin/AdminSidebar.tsx"
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"
       - "apps/api/src/modules/omnichannel/content-projection.ts"
       - "apps/api/src/modules/omnichannel/content-projection.spec.ts"
@@ -1066,7 +1137,8 @@ tasks:
       - "scripts/provision-e2e-identity.sh"
       - "apps/web/src/app/(wholesale)/blog/page.tsx"
       - "apps/web/src/app/(wholesale)/blog/[slug]/page.tsx"
-      - "apps/web/src/components/retail/RetailHeader.tsx"
+      # transferred 2026-08-31 to TASK-20260831-001 (stale >24h; homepage search):
+      # "apps/web/src/components/retail/RetailHeader.tsx"
       - "apps/web/src/app/retail/blog/page.tsx"
       - "apps/web/src/app/retail/blog/[slug]/page.tsx"
       - "apps/web/src/app/retail/blog/category/[slug]/page.tsx"

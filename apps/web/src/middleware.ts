@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
+import { isStaffRole } from '@/lib/staff-access';
 
 /** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
 const WHOLESALE_CATEGORY_ALIASES: Record<string, string> = {
@@ -149,7 +150,9 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  const isAdminRoute = pathname.startsWith('/admin') && pathname !== '/admin/login';
+  const adminPath = normalizePathname(pathname);
+  const isAdminLogin = adminPath === '/admin/login';
+  const isAdminRoute = adminPath.startsWith('/admin') && !isAdminLogin;
   const isPortalRoute = pathname.startsWith('/portal/dashboard');
 
   if (!isAdminRoute && !isPortalRoute) {
@@ -172,7 +175,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && role !== 'ADMIN') {
+  if (isAdminRoute && !isStaffRole(role)) {
     return NextResponse.redirect(new URL('/portal/dashboard', request.url));
   }
 

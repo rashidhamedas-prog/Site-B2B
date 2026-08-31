@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-08-31 — **TASK-20260831-001** admin login normalize + staff `/admin` gate, storefront search overlay, retail category `retailStock`, staff users CRUD/RBAC. Deploy pending this session. Independent Reviewer/Security still required.
 - Last verified: 2026-08-31 — **TASK-20260826-001** public catalog requires `channel` (except admin JWT) and strips opposite-channel price/stock/content/discount. Live `e70e5b6` workers healthy, dead=0. Connectors off. Soak/canary/§9 still **NOT DONE**.
 - Last verified: 2026-08-31 — **TASK-20260826-001** public product JSON no longer leaks opposite-channel stock/price or legacy `stock`. Connectors off. 24h soak / destination canary still **NOT DONE**; do not mark Done.
 - Last verified: 2026-08-31 — **TASK-20260826-001** shipping Omnichannel phases 0–8 code (outbox worker, channel stock, admin, migrations). Connectors off. Soak/canary/restore-drill still **NOT RUN**; do not mark Done.

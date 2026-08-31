@@ -1,3 +1,5 @@
+import { isStaffRole } from './staff-access';
+
 const TOKEN_KEY = 'taranom_token';
 const ROLE_KEY = 'taranom_role';
 
@@ -28,5 +30,5 @@ export function getRole(): string | null {
 }
 
 export function isAdmin(): boolean {
-  return getRole() === 'ADMIN';
+  return isStaffRole(getRole());
 }

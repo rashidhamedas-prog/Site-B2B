@@ -6,6 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { UsersController } from './users.controller';
 import { AuthService } from './auth.service';
+import { UsersService } from './users.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { UserEntity } from './entities/user.entity';
@@ -36,7 +37,7 @@ import { OrderEntity } from '../order/entities/order.entity';
     // NotificationModule is @Global in AppModule, so NotificationService injects fine.
   ],
   controllers: [AuthController, UsersController],
-  providers: [AuthService, JwtStrategy, RolesGuard],
-  exports: [AuthService, JwtModule, RolesGuard],
+  providers: [AuthService, UsersService, JwtStrategy, RolesGuard],
+  exports: [AuthService, UsersService, JwtModule, RolesGuard],
 })
 export class AuthModule {}

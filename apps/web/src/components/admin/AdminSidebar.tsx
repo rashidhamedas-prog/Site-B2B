@@ -10,9 +10,16 @@ import {
   TrendingUp, Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { clearToken } from '@/lib/auth';
+import { clearToken, getRole } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { apiClient } from '@/lib/api';
+import {
+  STAFF_ROLE_LABELS,
+  canAccessStaffModule,
+  type StaffModule,
+  type StaffRole,
+} from '@/lib/staff-access';
 
 interface NavItem {
   href: string;
@@ -21,54 +28,55 @@ interface NavItem {
   exact?: boolean;
   badge?: number;
   badgeColor?: string;
+  module: StaffModule;
 }
 
 const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'نمای کلی',
     items: [
-      { href: '/admin', icon: LayoutDashboard, label: 'داشبورد', exact: true },
-      { href: '/admin/reports', icon: BarChart3, label: 'گزارش‌ها و آمار' },
+      { href: '/admin', icon: LayoutDashboard, label: 'داشبورد', exact: true, module: 'dashboard' },
+      { href: '/admin/reports', icon: BarChart3, label: 'گزارش‌ها و آمار', module: 'reports' },
     ],
   },
   {
     label: 'فروش',
     items: [
-      { href: '/admin/customers', icon: Users, label: 'مشتریان (CRM)', badge: 0, badgeColor: 'bg-amber-500' },
-      { href: '/admin/orders', icon: ShoppingCart, label: 'سفارش‌ها', badge: 0, badgeColor: 'bg-blue-500' },
-      { href: '/admin/rma', icon: Package, label: 'مرجوعی (RMA)' },
-      { href: '/admin/invoices', icon: FileText, label: 'فاکتورها' },
-      { href: '/admin/payments', icon: CreditCard, label: 'پرداخت‌ها' },
+      { href: '/admin/customers', icon: Users, label: 'مشتریان (CRM)', badge: 0, badgeColor: 'bg-amber-500', module: 'crm' },
+      { href: '/admin/orders', icon: ShoppingCart, label: 'سفارش‌ها', badge: 0, badgeColor: 'bg-blue-500', module: 'orders' },
+      { href: '/admin/rma', icon: Package, label: 'مرجوعی (RMA)', module: 'rma' },
+      { href: '/admin/invoices', icon: FileText, label: 'فاکتورها', module: 'invoices' },
+      { href: '/admin/payments', icon: CreditCard, label: 'پرداخت‌ها', module: 'payments' },
     ],
   },
   {
     label: 'کالا',
     items: [
-      { href: '/admin/products', icon: Package, label: 'محصولات' },
-      { href: '/admin/categories', icon: Layers, label: 'دسته‌بندی‌ها' },
-      { href: '/admin/collections', icon: Layers, label: 'کالکشن‌ها' },
-      { href: '/admin/inventory', icon: Warehouse, label: 'انبار' },
-      { href: '/admin/discounts', icon: Tag, label: 'تخفیف‌ها' },
+      { href: '/admin/products', icon: Package, label: 'محصولات', module: 'catalog' },
+      { href: '/admin/categories', icon: Layers, label: 'دسته‌بندی‌ها', module: 'catalog' },
+      { href: '/admin/collections', icon: Layers, label: 'کالکشن‌ها', module: 'catalog' },
+      { href: '/admin/inventory', icon: Warehouse, label: 'انبار', module: 'inventory' },
+      { href: '/admin/discounts', icon: Tag, label: 'تخفیف‌ها', module: 'discounts' },
     ],
   },
   {
     label: 'رشد',
     items: [
-      { href: '/admin/blog', icon: PenSquare, label: 'وبلاگ' },
-      { href: '/admin/seo', icon: Link2, label: 'سئو و ریدایرکت' },
-      { href: '/admin/pages', icon: FileStack, label: 'صفحات سایت' },
-      { href: '/admin/site-content', icon: PanelsTopLeft, label: 'تنظیمات محتوای سایت' },
-      { href: '/admin/menus', icon: Menu, label: 'منوهای سایت' },
-      { href: '/admin/analytics', icon: TrendingUp, label: 'آنالیتیکس' },
-      { href: '/admin/notifications', icon: Bell, label: 'اعلان‌ها' },
+      { href: '/admin/blog', icon: PenSquare, label: 'وبلاگ', module: 'content' },
+      { href: '/admin/seo', icon: Link2, label: 'سئو و ریدایرکت', module: 'content' },
+      { href: '/admin/pages', icon: FileStack, label: 'صفحات سایت', module: 'content' },
+      { href: '/admin/site-content', icon: PanelsTopLeft, label: 'تنظیمات محتوای سایت', module: 'content' },
+      { href: '/admin/menus', icon: Menu, label: 'منوهای سایت', module: 'content' },
+      { href: '/admin/analytics', icon: TrendingUp, label: 'آنالیتیکس', module: 'content' },
+      { href: '/admin/notifications', icon: Bell, label: 'اعلان‌ها', module: 'content' },
     ],
   },
   {
     label: 'سیستم',
     items: [
-      { href: '/admin/users', icon: UserCog, label: 'کاربران ادمین' },
-      { href: '/admin/omnichannel', icon: Link2, label: 'کانال‌های انتشار' },
-      { href: '/admin/settings', icon: Settings, label: 'تنظیمات' },
+      { href: '/admin/users', icon: UserCog, label: 'کاربران ادمین', module: 'users' },
+      { href: '/admin/omnichannel', icon: Link2, label: 'کانال‌های انتشار', module: 'omnichannel' },
+      { href: '/admin/settings', icon: Settings, label: 'تنظیمات', module: 'settings' },
     ],
   },
 ];
@@ -82,6 +90,26 @@ export function AdminSidebar({ mobileOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [role, setRole] = useState<string | null>(() =>
+    typeof window === 'undefined' ? 'ADMIN' : getRole(),
+  );
+  const [profile, setProfile] = useState<{ phone?: string; role?: string } | null>(null);
+
+  useEffect(() => {
+    const next = getRole();
+    if (next) setRole(next);
+    apiClient
+      .get<{ phone?: string; role?: string }>('/auth/me/profile')
+      .then(setProfile)
+      .catch(() => undefined);
+  }, []);
+
+  const visibleGroups = navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => canAccessStaffModule(role, item.module)),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const logout = () => { clearToken(); router.push('/admin/login'); };
 
@@ -124,7 +152,7 @@ export function AdminSidebar({ mobileOpen, onClose }: AdminSidebarProps) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-          {navGroups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.label}>
               <button
                 onClick={() => toggleGroup(group.label)}
@@ -193,12 +221,18 @@ export function AdminSidebar({ mobileOpen, onClose }: AdminSidebarProps) {
         <div className="p-3 border-t border-white/5">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors group">
             <div className="relative flex-shrink-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-white font-bold text-sm">ح</div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-white font-bold text-sm">
+                {(profile?.phone || 'اد').slice(-2)}
+              </div>
               <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-[#0f172a] bg-success" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">حامد رشید</p>
-              <p className="text-[10px] text-gray-400">مدیر کل سیستم</p>
+              <p className="text-sm font-semibold text-white truncate" dir="ltr">
+                {profile?.phone || 'کاربر سیستم'}
+              </p>
+              <p className="text-[10px] text-gray-400">
+                {STAFF_ROLE_LABELS[(profile?.role || role || '') as StaffRole] || 'دسترسی سیستم'}
+              </p>
             </div>
             <button
               onClick={logout}

@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T15:25:00Z — Admin login, search, category stock, staff users
+
+- Task / owner: TASK-20260831-001 / cursor:implementer-TASK-20260831-001
+- Fixes: login phone normalize + staff gate; homepage search overlay; retail category `retailStock`; complete `/admin/users` + RBAC matrix.
+- Reclaimed CategoryProductCard/category-search-params/middleware from TASK-20260830-002 (ISR already shipped). Reclaimed AdminSidebar from TASK-20260826-001 (omnichannel nav stays). Reclaimed RetailHeader from TASK-20260810-006 (stale).
+- Gates: api tsc 0; web tsc 0; staff-access/users.policy/otp/category-search-params specs OK.
+- Security trigger (authz): RolesGuard now treats staff as admin-capable except `@AdminOnly` users+settings. Independent Reviewer/Security still required before Done.
+- Next: commit/push/deploy; verify live admin login + category stock + header search.
+
 ## 2026-08-31T13:00:00Z — Require public channel + strip opposite metadata
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

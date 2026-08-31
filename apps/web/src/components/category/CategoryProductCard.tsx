@@ -28,9 +28,16 @@ export function CategoryProductCard({
           slug: product.slug,
           fabric: product.fabric,
           retailPrice: product.retailPrice,
+          retailStock: typeof product.retailStock === 'number' ? product.retailStock : undefined,
+          isPreOrder: product.isPreOrder,
           images: product.images,
           sale: product.sale,
-          variants: product.variants,
+          variants: product.variants?.map((v) => ({
+            color: v.color,
+            colorHex: v.colorHex,
+            size: v.size,
+            retailStock: typeof v.retailStock === 'number' ? v.retailStock : undefined,
+          })),
         }}
       />
     );

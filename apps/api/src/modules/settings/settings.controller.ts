@@ -5,6 +5,7 @@ import { SettingsService } from './settings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { AdminOnly } from '../auth/decorators/admin-only.decorator';
 
 const GROUPS = [
   'business',
@@ -131,6 +132,7 @@ export class SettingsController {
   @Get('admin')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @AdminOnly()
   @ApiBearerAuth()
   @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   async adminSettings(@Query('channel') channel?: string) {
@@ -153,6 +155,7 @@ export class SettingsController {
   @Put('admin/:group')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @AdminOnly()
   @ApiBearerAuth()
   async save(@Param('group') group: string, @Body() body: Record<string, any>) {
     if (!GROUPS.includes(group as any)) {

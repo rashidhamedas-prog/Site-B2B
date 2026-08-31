@@ -12,6 +12,8 @@ function assert(cond: boolean, msg: string) {
 assert(normalizePhone('09121234567') === '09121234567', 'local phone');
 assert(normalizePhone('+989121234567') === '09121234567', 'intl phone');
 assert(normalizePhone('9121234567') === '09121234567', 'missing zero');
+assert(normalizePhone('۰۹۱۲۱۲۳۴۵۶۷') === '09121234567', 'persian digits');
+assert(normalizePhone('٠٩١٢١٢٣٤٥٦٧') === '09121234567', 'arabic digits');
 assert(allowDevOtpExpose('production', 'true') === false, 'prod never exposes');
 assert(allowDevOtpExpose('development', 'false') === false, 'dev flag off');
 assert(allowDevOtpExpose('development', 'true') === true, 'dev flag on');

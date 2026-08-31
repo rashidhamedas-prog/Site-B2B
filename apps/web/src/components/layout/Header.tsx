@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { User, Phone, Search } from 'lucide-react';
+import { User, Phone } from 'lucide-react';
+import { StorefrontSearch } from '@/components/shared/StorefrontSearch';
 import { Button } from '@/components/ui';
 import { MobileMenuButton } from './MobileMenu';
 import { CartBadge } from './CartBadge';
@@ -89,12 +90,10 @@ export function Header() {
           <MegaNav items={main} megaEnabled={menus.megaEnabled !== false} />
 
           <div className="flex items-center gap-1.5">
-            <button
-              className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-surface-muted hover:text-primary sm:flex"
-              aria-label="جستجو"
-            >
-              <Search className="h-5 w-5" />
-            </button>
+            <StorefrontSearch
+              channel="WHOLESALE"
+              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg text-gray-500 transition-colors duration-200 hover:bg-surface-muted hover:text-primary"
+            />
 
             <Link
               href={portalHref}

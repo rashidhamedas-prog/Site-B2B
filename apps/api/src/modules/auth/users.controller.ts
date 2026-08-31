@@ -1,74 +1,69 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
-import { UserEntity } from './entities/user.entity';
+import { AdminOnly } from './decorators/admin-only.decorator';
+import { UsersService } from './users.service';
+import { CreateStaffUserDto } from './dto/create-staff-user.dto';
+import { UpdateStaffUserDto } from './dto/update-staff-user.dto';
+import { ResetStaffPasswordDto } from './dto/reset-staff-password.dto';
+
+type Authed = Express.Request & { user: { sub: string; role: string } };
 
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles('ADMIN')
+@AdminOnly()
 @Controller({ path: 'users', version: '1' })
 export class UsersController {
-  constructor(
-    @InjectRepository(UserEntity)
-    private readonly userRepo: Repository<UserEntity>,
-  ) {}
+  constructor(private readonly users: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'لیست کاربران ادمین' })
-  async findAll(
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+  @ApiOperation({ summary: 'لیست کاربران سیستم (نه مشتریان)' })
+  findAll(
+    @Query('q') q?: string,
+    @Query('isActive') isActive?: string,
   ) {
-    const users = await this.userRepo.find({ where: { role: 'ADMIN' }, take: limit, order: { createdAt: 'DESC' } });
-    return {
-      data: users.map((u) => ({
-        id: u.id,
-        phone: u.phone,
-        email: u.email,
-        role: u.role,
-        blogRole: u.blogRole,
-        isActive: u.isActive,
-        lastLoginAt: u.lastLoginAt,
-        createdAt: u.createdAt,
-      })),
-    };
+    const active =
+      isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    return this.users.findAll(q, active);
   }
 
   @Post()
-  @ApiOperation({ summary: 'افزودن ادمین جدید' })
-  async create(@Body() body: { phone: string; email?: string; password: string; role?: string; blogRole?: string | null }) {
-    const passwordHash = await bcrypt.hash(body.password, 12);
-    const user = this.userRepo.create({
-      phone: body.phone,
-      email: body.email,
-      passwordHash,
-      role: body.role ?? 'ADMIN',
-      blogRole: body.blogRole ?? null,
-      isActive: true,
-    });
-    const saved = await this.userRepo.save(user);
-    return { id: saved.id, phone: saved.phone, role: saved.role, blogRole: saved.blogRole };
+  @ApiOperation({ summary: 'افزودن کاربر سیستم' })
+  create(@Body() dto: CreateStaffUserDto, @Request() req: Authed) {
+    return this.users.create(dto, req.user);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'ویرایش کاربر' })
-  async update(
+  @ApiOperation({ summary: 'ویرایش نقش / وضعیت کاربر سیستم' })
+  update(
     @Param('id') id: string,
-    @Body() body: { isActive?: boolean; role?: string; blogRole?: string | null },
+    @Body() dto: UpdateStaffUserDto,
+    @Request() req: Authed,
   ) {
-    await this.userRepo.update(id, body);
-    const user = await this.userRepo.findOne({ where: { id } });
-    return {
-      id: user?.id,
-      phone: user?.phone,
-      role: user?.role,
-      blogRole: user?.blogRole,
-      isActive: user?.isActive,
-    };
+    return this.users.update(id, dto, req.user);
+  }
+
+  @Post(':id/reset-password')
+  @ApiOperation({ summary: 'بازنشانی رمز عبور توسط مدیر کل' })
+  resetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetStaffPasswordDto,
+    @Request() req: Authed,
+  ) {
+    return this.users.resetPassword(id, dto.password, req.user);
   }
 }

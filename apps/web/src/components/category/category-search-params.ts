@@ -95,7 +95,16 @@ export type CategoryProduct = {
     badgePercent?: number;
   };
   images?: string[];
-  variants?: Array<{ color?: string; colorHex?: string; size?: string }>;
+  retailStock?: number | null;
+  wholesaleStock?: number | null;
+  isPreOrder?: boolean;
+  variants?: Array<{
+    color?: string;
+    colorHex?: string;
+    size?: string;
+    retailStock?: number | null;
+    wholesaleStock?: number | null;
+  }>;
 };
 
 export type CategoryProductListResult = {
