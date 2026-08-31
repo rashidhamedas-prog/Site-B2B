@@ -1,4 +1,8 @@
-import { resolveTorobAudience } from './torob-jwt';
+import {
+  extractTorobToken,
+  resolveTorobAudience,
+  resolveTorobOrderAudiences,
+} from './torob-jwt';
 import { isTorobOrderPanelProbe, TOROB_ORDERS_REACHABILITY } from './torob.controller';
 
 function assert(cond: boolean, msg: string) {
@@ -21,5 +25,8 @@ assert(isTorobOrderPanelProbe({ 'x-torob-token': '' }) === true, 'blank token is
 assert(isTorobOrderPanelProbe({ 'x-torob-token': 'jwt' }) === false, 'token is not probe');
 assert(TOROB_ORDERS_REACHABILITY.success === true, 'orders reachability success');
 assert(TOROB_ORDERS_REACHABILITY.data.length === 0, 'orders reachability empty');
+assert(extractTorobToken({ authorization: 'Bearer abc.def.ghi' }) === 'abc.def.ghi', 'bearer token');
+assert(resolveTorobOrderAudiences().includes('www.poshaktaranom.ir'), 'www aud');
+assert(resolveTorobOrderAudiences().includes('poshaktaranom.ir'), 'apex aud');
 
 console.log('torob-auth.guard.spec ok');

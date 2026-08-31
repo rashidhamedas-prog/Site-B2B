@@ -20,6 +20,12 @@ async function main() {
 
   const valid = await token({ aud: 'www.poshaktaranom.ir', exp: now + 120, nbf: now - 10 });
   await verifyTorobJwt({ token: valid, version: '1' });
+  await verifyTorobJwt({ token: valid, version: '' });
+  await verifyTorobJwt({
+    token: await token({ aud: 'poshaktaranom.ir', exp: now + 120, nbf: now - 10 }),
+    version: '1',
+    audience: ['www.poshaktaranom.ir', 'poshaktaranom.ir'],
+  });
 
   let missing = false;
   try {
