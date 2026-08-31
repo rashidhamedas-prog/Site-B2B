@@ -29,7 +29,8 @@ RUN npm run build \
        printf '%s\n' "require('./apps/api/src/worker.main');" > dist/worker.main.js; \
      fi \
   && mkdir -p dist/database/migrations \
-  && cp dist/apps/api/src/database/migrations/*.js dist/database/migrations/
+  && cp dist/apps/api/src/database/migrations/*.js dist/database/migrations/ \
+  && rm -f dist/database/migrations/*.spec.js
 
 # Production runner
 FROM base AS runner
