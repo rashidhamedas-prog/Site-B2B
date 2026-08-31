@@ -29,13 +29,8 @@ assert(!productSvc.includes('product.stock = next'), 'setProductStock does not m
 assert(!/wholesaleStock \? \{ stock:/.test(productSvc), 'variant/product deduct does not dual-write stock');
 assert(!productSvc.includes('Number(product.stock)'), 'withBadges does not fall back to legacy product.stock');
 assert(!productSvc.includes('Number(v.stock)'), 'withBadges does not fall back to legacy variant.stock');
-assert(
-  productSvc.includes('delete (out as { wholesaleStock?: number }).wholesaleStock'),
-  'retail public response drops wholesale stock',
-);
-assert(
-  productSvc.includes('delete (out as { retailStock?: number }).retailStock'),
-  'wholesale public response drops retail stock',
-);
+assert(productSvc.includes('stripOppositeChannelFields'), 'public badges strip opposite-channel fields');
+const controller = readFileSync(resolve(root, 'modules/product/product.controller.ts'), 'utf8');
+assert(controller.includes('resolvePublicProductChannel'), 'public product routes require a channel');
 
 console.log('channel-stock-isolation.spec.ts: ok');

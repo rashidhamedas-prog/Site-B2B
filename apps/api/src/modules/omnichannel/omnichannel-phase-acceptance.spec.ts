@@ -40,6 +40,7 @@ assert(cms.includes('sanitizeCmsHtml'), 'CMS sanitizes HTML');
 assert(db.includes('ReturnRequestAuditEntity'), 'RMA audit on runtime TypeORM');
 assert(publicStatus.includes("PUBLIC_STATUS_FORBIDDEN"), 'public ALL rejected');
 assert(productCtl.includes('resolvePublicProductStatus'), 'public list uses ACTIVE gate');
+assert(productCtl.includes('resolvePublicProductChannel'), 'public catalog requires RETAIL|WHOLESALE');
 assert(productCtl.includes('inventoryService.setProductStock'), 'PATCH stock goes through inventory');
 assert(order.includes("type: 'SALE'"), 'checkout writes SALE movement');
 assert(storage.includes('sanitizeObjectKey'), 'media delete sanitizes keys');
