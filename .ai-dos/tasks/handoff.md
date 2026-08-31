@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T12:30:00Z — Soak start + dual worker
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Live `6e4167e`: API/worker healthy, 8 omnichannel tables, deliveries=0, connectors unset.
+- Restore-drill 2026-08-31T12:25:24Z: encrypted dump → disposable `taranom_restore_drill` → destroyed. Not `taranom_db`.
+- Dry-run canary: 10 ACTIVE retail then 10 wholesale products; channel stocks differ (e.g. shomiz-linen-sara 23/6). No READY publications, no destinations.
+- Next: ship `worker-b`, install alerts.timer, start 24h soak clock. Do not enable connectors. Do not Done until soak + destination canary + independent Reviewer/Security.
+
 ## 2026-08-31T11:55:00Z — Omnichannel migrations missing in image
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

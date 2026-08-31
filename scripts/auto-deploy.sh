@@ -49,10 +49,10 @@ if [ -f "$APP_DIR/.env" ]; then
   set +a
 fi
 echo "$(date -Is) building images..."
-docker compose build api web worker
+docker compose build api web worker worker-b
 
 echo "$(date -Is) starting containers..."
-docker compose up -d api web worker
+docker compose up -d api web worker worker-b
 docker compose restart nginx
 
 echo "$(date -Is) schema is TypeORM migrations only (no safety-net SQL)"
