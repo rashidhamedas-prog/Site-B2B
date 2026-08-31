@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { databaseConfig } from '../../config/database.config';
+import { RedisModule } from '../redis/redis.module';
 import { SearchModule } from '../search/search.module';
 import { SettingsModule } from '../settings/settings.module';
 import { NotificationModule } from '../notification/notification.module';
@@ -22,6 +23,7 @@ import { OutboxWorkerService } from './services/outbox-worker.service';
       inject: [ConfigService],
       useFactory: databaseConfig,
     }),
+    RedisModule,
     TypeOrmModule.forFeature([
       ProductEntity,
       OrderEntity,

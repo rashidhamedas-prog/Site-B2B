@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T11:50:00Z — Worker RedisModule hotfix
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Live master `6e63ca2` deployed; API healthy. Worker crash-looped: AuthService missing OtpService.
+- Fix: import RedisModule in WorkerModule. Connectors still off.
+- Exact next: commit, PR, merge, redeploy, confirm `taranom_worker` Up (healthy).
+
 ## 2026-08-31T11:20:00Z — Omnichannel code ship (commit/merge/deploy)
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
