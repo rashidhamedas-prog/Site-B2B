@@ -126,6 +126,18 @@ export function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_FORCE_RETAIL === '1' ||
     request.cookies.get('taranom_channel')?.value === 'retail';
   const retailHost = hostLooksRetail(host) || forceRetail;
+  const isPublicCategoryPath =
+    pathname === '/category' || pathname.startsWith('/category/');
+
+  // Middleware rewrite of /category/{slug} → /retail/category/{slug} makes
+  // Next skip ISR (public .ir stays no-store). Host rewrite in next.config
+  // keeps the public URL static. Cookie/env force-retail on a non-retail
+  // host still uses the middleware rewrite below.
+  if (retailHost && hostLooksRetail(host) && isPublicCategoryPath) {
+    const res = NextResponse.next();
+    res.headers.set('x-taranom-channel', 'RETAIL');
+    return res;
+  }
 
   // On retail host, rewrite public URLs into /retail/* (URL bar stays clean).
   // Child sitemaps and merchant feeds stay on shared routes (not /retail/...).

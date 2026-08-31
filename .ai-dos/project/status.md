@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-08-31 — **TASK-20260830-002** shipping retail public category ISR: middleware skips `/category/*` on `.ir`; next.config host-rewrites to `/retail/category/:slug`. Wholesale unchanged. No VPS migration. No HTML cache on checkout/account/admin/API.
 - Last verified: 2026-08-31 — **TASK-20260830-002** APP-02 live at `c8b5999`: wholesale `/category/{slug}` is `s-maxage=60`. Retail public `/category/{slug}` still `no-store` (middleware rewrite); `/retail/category/{slug}` ISR. No VPS migration. No HTML cache on checkout/account/admin/API.
 - Last verified: 2026-08-30 — **TASK-20260830-002** shipping wholesale home ISR (`s-maxage=60`) + Cloudflare proxy for `.ir` storefront. Cache Rule + Full (strict) already on both zones. No VPS migration. No HTML cache on checkout/account/admin/API.
 - Last verified: 2026-08-30 — **TASK-20260830-002** VPS/TTFB diagnostic complete. Decision `OPTIMIZE_CURRENT_VPS_FIRST`; shared hosting NO. No migration. Report `SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md`

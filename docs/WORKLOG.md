@@ -1,5 +1,10 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-31 — ISR دسته تکی روی URL عمومی
+
+- میدلور دیگر `/category/{slug}` را روی هاست `.ir` بازنویسی نمی‌کند؛ `next.config` با `beforeFiles` به `/retail/category/:slug` می‌برد تا `s-maxage=60` بماند.
+- عمده `.com` همان مسیر قبلی است. تسویه/حساب/ادمین کش HTML نمی‌شوند.
+
 ## 2026-08-31 — ISR دسته بدون فیلتر (APP-02)
 
 - `/category/{slug}` دیگر `searchParams` سرور را await نمی‌کند؛ `force-static` و `revalidate=60` مثل هوم.

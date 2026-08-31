@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260830-002-vps-ttfb-diag"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-30T10:45:00Z"
-    heartbeat_at: "2026-08-31T07:51:00Z"
+    heartbeat_at: "2026-08-31T10:10:00Z"
     depends_on: []
     file_claims:
       - "SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md"
@@ -31,13 +31,18 @@ tasks:
       - "apps/web/src/components/category/CategoryQueryOverlay.tsx"
       - "apps/web/src/components/category/category-search-params.ts"
       - "apps/web/src/components/category/category-search-params.spec.ts"
+      - "apps/web/src/middleware.ts"
+      - "apps/web/next.config.ts"
     notes: |
       Cloudflare Full (strict) + Cache Rule on both zones. .ir apex/www
       DNS only after Iran timeout. Wholesale home ISR shipped e3d02bb.
       Next: APP-02 category ISR for unfiltered /category/{slug}.
       Reclaimed CategoryLanding from TASK-20260822-003 (status done,
-      heartbeat 2026-08-22). Do not edit nginx.conf. No HTML cache on
-      checkout/account/admin/API. No long cache of price/stock.
+      heartbeat 2026-08-22). Reclaimed middleware.ts from TASK-20260824-002
+      (heartbeat 2026-08-24) and next.config.ts from TASK-20260823-001 /
+      TASK-20260822-001 / TASK-20260810-006 (all stale >24h) so retail
+      public /category/{slug} can ISR via host rewrite. Do not edit
+      nginx.conf. No HTML cache on checkout/account/admin/API.
     acceptance_criteria:
       - "Both .ir and .com measured; TTFB n>=10 on primary routes"
       - "Nginx upstream timing classified; SSR/API/DB/cache/CDN/LCP recorded"
@@ -421,7 +426,7 @@ tasks:
       - "apps/web/src/components/retail/RetailOtpLogin.tsx"
       - "apps/web/src/lib/gsc-legacy-redirects.ts"
       - "apps/web/src/lib/gsc-legacy-redirects.spec.ts"
-      - "apps/web/src/middleware.ts"
+      # transferred 2026-08-31 to TASK-20260830-002 (stale >24h; retail category ISR): "apps/web/src/middleware.ts"
       - "apps/web/src/components/retail/RetailFooter.tsx"
       - "SEO-IMPLEMENTATION-REPORTS/PHASE-03-PRODUCTION-DEPLOY.md"
       - "SEO-IMPLEMENTATION-REPORTS/PHASE-03-GSC-MANUAL-ACTIONS.md"
@@ -595,7 +600,7 @@ tasks:
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/components/retail/RetailProductCard.tsx"
       - "apps/web/src/components/blog/BlogAnalyticsTracker.tsx"
       - "apps/web/src/components/blog/BlogCtaTags.tsx"
-      - "apps/web/next.config.ts"
+      # transferred 2026-08-31 to TASK-20260830-002 (stale heartbeat; retail category ISR): "apps/web/next.config.ts"
       - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-TRACKING-AUDIT.md"
       - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-GA4-MANUAL-ACTIONS.md"
       - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-CHANGES.md"
@@ -818,7 +823,7 @@ tasks:
     depends_on: []
     file_claims:
       # transferred 2026-08-23 to TASK-20260823-002 (stale heartbeat; HTTP apex one-hop): "nginx/nginx.conf"
-      - "apps/web/next.config.ts"
+      # transferred 2026-08-31 to TASK-20260830-002 (stale heartbeat; retail category ISR): "apps/web/next.config.ts"
       # transferred 2026-08-24 to TASK-20260824-001 (stale >24h; GSC exact 301 exceptions): "apps/web/src/middleware.ts"
       - "apps/api/src/main.ts"
       - "apps/api/package.json"
@@ -1069,7 +1074,7 @@ tasks:
       - "apps/web/src/components/admin/AdminBlogTools.tsx"
       - "apps/web/src/components/admin/AdminBlogAnalytics.tsx"
       - "apps/web/src/components/blog/BlogAnalyticsTracker.tsx"
-      - "apps/web/next.config.ts"
+      # transferred 2026-08-31 to TASK-20260830-002 (stale heartbeat; retail category ISR): "apps/web/next.config.ts"
       - "apps/api/src/main.ts"
       - "apps/api/src/common/client-ip.ts"
       - "apps/api/src/modules/redis/redis.module.ts"

@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T10:10:00Z — Retail public category ISR via config rewrite
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Reclaimed stale `middleware.ts` (TASK-20260824-002) and `next.config.ts` (TASK-20260823-001 / 022-001 / 010-006).
+- Plan: skip middleware rewrite for `/category/*` on retail hosts; `beforeFiles` host rewrite to `/retail/category/:slug` so Next can keep `s-maxage=60`.
+- Wholesale `.com` unchanged. Do not edit nginx.conf. No HTML cache on checkout/account/admin/API.
+- Exact next: implement, typecheck, isolated commit, push master, deploy, verify `.ir` `/category/shomiz` is retail + `s-maxage`.
+
 ## 2026-08-31T10:00:00Z — APP-02 shipped; retail public rewrite still no-store
 
 - Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002

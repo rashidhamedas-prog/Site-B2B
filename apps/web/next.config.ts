@@ -78,6 +78,23 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // Retail public /category/{slug} must not go through middleware rewrite
+  // (that path stays no-store). Host rewrite keeps ISR on the public URL.
+  async rewrites() {
+    const retailCategoryHosts = [
+      'www.poshaktaranom.ir',
+      'poshaktaranom.ir',
+      'localhost.ir',
+    ];
+    return {
+      beforeFiles: retailCategoryHosts.map((host) => ({
+        source: '/category/:slug',
+        has: [{ type: 'host' as const, value: host }],
+        destination: '/retail/category/:slug',
+      })),
+    };
+  },
+
   // Legacy WordPress / Yoast sitemap paths → current Next.js sitemap
   async redirects() {
     return [
