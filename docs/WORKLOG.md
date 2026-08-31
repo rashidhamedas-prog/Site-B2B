@@ -1,5 +1,10 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-31 — پاسخ عمومی محصول بدون موجودی کانال مقابل
+
+- `GET /products?channel=RETAIL` دیگر `wholesaleStock`/`wholesalePrice` برنمی‌گرداند و به `stock` قدیمی برنمی‌گردد.
+- عمده هم ستون تکی را در JSON عمومی نمی‌بیند. ادمین هر دو ستون را نگه می‌دارد.
+
 ## 2026-08-31 — شروع soak با دو worker
 
 - `worker-b` همان ایمیج را با SKIP LOCKED جدا lease می‌کند. کانکتور و auto-publish خاموش می‌مانند.

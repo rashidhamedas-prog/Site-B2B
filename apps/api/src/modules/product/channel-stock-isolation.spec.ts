@@ -27,5 +27,15 @@ assert(inventory.includes('return channelUnitStock(variant, channel)'), 'invento
 assert(order.includes('return channelUnitStock(variant, channel)'), 'order wholesale uses channel column');
 assert(!productSvc.includes('product.stock = next'), 'setProductStock does not mirror wholesale onto stock');
 assert(!/wholesaleStock \? \{ stock:/.test(productSvc), 'variant/product deduct does not dual-write stock');
+assert(!productSvc.includes('Number(product.stock)'), 'withBadges does not fall back to legacy product.stock');
+assert(!productSvc.includes('Number(v.stock)'), 'withBadges does not fall back to legacy variant.stock');
+assert(
+  productSvc.includes('delete (out as { wholesaleStock?: number }).wholesaleStock'),
+  'retail public response drops wholesale stock',
+);
+assert(
+  productSvc.includes('delete (out as { retailStock?: number }).retailStock'),
+  'wholesale public response drops retail stock',
+);
 
 console.log('channel-stock-isolation.spec.ts: ok');

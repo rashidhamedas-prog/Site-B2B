@@ -191,8 +191,10 @@ export class ProductService {
   }
 
   private withBadges<T extends ProductEntity>(product: T, channel?: string, cfg?: BadgeConfig) {
-    const isRetail = String(channel || '').toUpperCase() === 'RETAIL';
-    const wholesaleStock = Number(product.wholesaleStock) || Number(product.stock) || 0;
+    const ch = String(channel || '').toUpperCase();
+    const isRetail = ch === 'RETAIL';
+    const isWholesale = ch === 'WHOLESALE';
+    const wholesaleStock = Number(product.wholesaleStock) || 0;
     const retailStock = Number(product.retailStock) || 0;
     const stock = isRetail ? retailStock : wholesaleStock;
     const minOrder = Math.max(1, Number(product.minOrderQty) || 1);
@@ -212,16 +214,19 @@ export class ProductService {
       ? product.retailFullContent || product.description
       : product.wholesaleFullContent || product.description;
     const variants = (product.variants ?? []).map((v) => {
-      const vWholesale = Number(v.wholesaleStock) || Number(v.stock) || 0;
+      const vWholesale = Number(v.wholesaleStock) || 0;
       const vRetail = Number(v.retailStock) || 0;
-      return {
+      const row = {
         ...v,
         stock: isRetail ? vRetail : vWholesale,
         wholesaleStock: vWholesale,
         retailStock: vRetail,
       };
+      if (isRetail) delete (row as { wholesaleStock?: number }).wholesaleStock;
+      if (isWholesale) delete (row as { retailStock?: number }).retailStock;
+      return row;
     });
-    return {
+    const out = {
       ...product,
       stock,
       wholesaleStock,
@@ -245,6 +250,19 @@ export class ProductService {
       channel: isRetail ? 'RETAIL' : 'WHOLESALE',
       badgeSettings: { limitedStockMultiplier: multiplier, newBadgeDays },
     };
+    if (isRetail) {
+      delete (out as { wholesaleStock?: number }).wholesaleStock;
+      delete (out as { wholesalePrice?: unknown }).wholesalePrice;
+      delete (out as { wholesaleCompareAtPrice?: unknown }).wholesaleCompareAtPrice;
+      delete (out as { wholesaleSalePrice?: unknown }).wholesaleSalePrice;
+    }
+    if (isWholesale) {
+      delete (out as { retailStock?: number }).retailStock;
+      delete (out as { retailPrice?: unknown }).retailPrice;
+      delete (out as { retailCompareAtPrice?: unknown }).retailCompareAtPrice;
+      delete (out as { retailSalePrice?: unknown }).retailSalePrice;
+    }
+    return out;
   }
 
   private async rememberSpecs(specs?: ProductSpecs | null) {
@@ -1702,7 +1720,7 @@ export class ProductService {
     const products = await qb.getMany();
     const field = this.stockField(channel);
     return products.map((p) => {
-      const wholesaleStock = Number(p.wholesaleStock) || Number(p.stock) || 0;
+      const wholesaleStock = Number(p.wholesaleStock) || 0;
       const retailStock = Number(p.retailStock) || 0;
       const totalStock = field === 'retailStock' ? retailStock : wholesaleStock;
       return {
@@ -1713,13 +1731,13 @@ export class ProductService {
         status: p.status,
         wholesalePrice: p.wholesalePrice,
         minOrderQty: p.minOrderQty,
-        stock: wholesaleStock,
+        stock: totalStock,
         wholesaleStock,
         retailStock,
         totalStock,
         channel: field === 'retailStock' ? 'RETAIL' : 'WHOLESALE',
         variants: (p.variants ?? []).map((v) => {
-          const vWholesale = Number(v.wholesaleStock) || Number(v.stock) || 0;
+          const vWholesale = Number(v.wholesaleStock) || 0;
           const vRetail = Number(v.retailStock) || 0;
           return {
             id: v.id,
