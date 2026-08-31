@@ -2,6 +2,22 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T09:40:00Z — APP-02 category ISR implemented
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Unfiltered `/category/{slug}` no longer awaits `searchParams`; `force-static` + `revalidate=60` on retail and wholesale category pages.
+- Filtered/paginated query uses `CategoryQueryOverlay` (noindex). CategoryLanding chrome stays SSR.
+- Gates: `apps/web` `tsc --noEmit` exit 0; `npx tsx apps/web/src/components/category/category-search-params.spec.ts` exit 0.
+- Exact next: isolated commit + push master + VPS deploy; verify live `s-maxage` on `/category/shomiz`. Do not edit nginx.conf.
+
+## 2026-08-31T07:51:00Z — APP-02 category ISR (unfiltered)
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Next recommended fix after wholesale home ISR: unfiltered `/category/{slug}` must stop awaiting `searchParams` so Next can emit `s-maxage` like home.
+- Reclaimed `CategoryLanding.tsx` from TASK-20260822-003 (status `done`, heartbeat 2026-08-22).
+- Filtered/paginated query stays a client overlay (noindex). Do not edit nginx.conf. Do not steal PHASE-04 or PDP/blog claims.
+- Exact next: ship isolated category ISR, typecheck, then commit/push/deploy like wholesale home.
+
 ## 2026-08-30T15:35:00Z — Owner authorized commit/deploy + .ir proxy
 
 - Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002

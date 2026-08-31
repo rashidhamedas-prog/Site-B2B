@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-31 — ISR دسته بدون فیلتر (APP-02)
+
+- `/category/{slug}` دیگر `searchParams` سرور را await نمی‌کند؛ `force-static` و `revalidate=60` مثل هوم.
+- فیلتر و `?page=` با overlay کلاینت می‌ماند و noindex است. قیمت/موجودی HTML طولانی کش نمی‌شود.
+- تسویه/حساب/ادمین دست نخورده. nginx.conf دست نخورده.
+
 ## 2026-08-30 — ISR هوم عمده + پروکسی Cloudflare برای سرعت
 
 - هوم عمده `revalidate=60` و `force-static` شد تا مثل تکی `s-maxage=60` بدهد و لبه بتواند HIT کند.

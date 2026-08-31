@@ -9,26 +9,22 @@ import {
   FaqJsonLd,
 } from '@/components/shared/JsonLd';
 import { getCategoryCanonicalUrl, siteOrigin, type PublicSite } from '@/lib/canonical-urls';
-import { mediaUrl, uniqueByColor, uniqueSizes } from '@/lib/product-display';
-import { RetailProductCard } from '@/components/retail/RetailProductCard';
+import { mediaUrl } from '@/lib/product-display';
 import { getServerApiBase } from '@/lib/server-api';
 import { redirectIfMatched } from '@/lib/seo-redirect';
+import { CategoryProductListing } from './CategoryProductListing';
+import {
+  buildCategoryProductsQuery,
+  hasCategoryFilters,
+  normalizeCategoryProducts,
+  type CategoryChannel,
+  type CategoryProduct,
+  type CategoryProductListResult,
+  type CategorySearchParams,
+} from './category-search-params';
 
-export type CategoryChannel = 'RETAIL' | 'WHOLESALE';
-
-export type CategorySearchParams = {
-  q?: string;
-  search?: string;
-  fabric?: string;
-  color?: string;
-  size?: string;
-  collar?: string;
-  collectionId?: string;
-  minPrice?: string;
-  maxPrice?: string;
-  page?: string;
-  sort?: string;
-};
+export type { CategoryChannel, CategorySearchParams };
+export { hasCategoryFilters };
 
 export type CategoryRecord = {
   id: string;
@@ -52,42 +48,6 @@ export type CategoryRecord = {
   wholesaleBottomContent?: string | null;
 };
 
-type CategoryProduct = {
-  id?: string;
-  name?: string;
-  slug?: string;
-  fabric?: string;
-  retailPrice?: number | null;
-  wholesalePrice?: number | null;
-  sale?: {
-    active?: boolean;
-    payable?: number;
-    original?: number | null;
-    badgePercent?: number;
-  };
-  images?: string[];
-  variants?: Array<{ color?: string; colorHex?: string; size?: string }>;
-};
-
-type ProductListResult = {
-  data: CategoryProduct[];
-  meta: { page: number; limit: number; total: number; totalPages: number };
-};
-
-const FILTER_KEYS: Array<keyof CategorySearchParams> = [
-  'q',
-  'search',
-  'fabric',
-  'color',
-  'size',
-  'collar',
-  'collectionId',
-  'minPrice',
-  'maxPrice',
-  'page',
-  'sort',
-];
-
 function siteOf(channel: CategoryChannel): PublicSite {
   return channel === 'RETAIL' ? 'retail' : 'wholesale';
 }
@@ -101,10 +61,6 @@ function safeHtml(html: string): string {
 
 function looksLikeHtml(value: string): boolean {
   return /<[a-z][\s\S]*>/i.test(value);
-}
-
-export function hasCategoryFilters(params: CategorySearchParams): boolean {
-  return FILTER_KEYS.some((key) => Boolean(params[key]));
 }
 
 export const fetchCategoryBySlug = cache(async (slug: string): Promise<CategoryRecord | null> => {
@@ -138,47 +94,22 @@ async function fetchCategoryProducts(
   channel: CategoryChannel,
   slug: string,
   params: CategorySearchParams,
-): Promise<ProductListResult> {
+): Promise<CategoryProductListResult> {
   const page = Math.max(1, Number(params.page) || 1);
-  const limit = 24;
-  const empty: ProductListResult = { data: [], meta: { page, limit, total: 0, totalPages: 1 } };
+  const empty: CategoryProductListResult = {
+    data: [],
+    meta: { page, limit: 24, total: 0, totalPages: 1 },
+  };
   try {
-    const qs = new URLSearchParams({
-      channel,
-      categorySlug: slug,
-      limit: String(limit),
-      page: String(page),
-      status: 'ACTIVE',
-    });
-    if (params.q || params.search) qs.set('q', String(params.q || params.search));
-    if (params.fabric) qs.set('fabric', params.fabric);
-    if (params.color) qs.set('color', params.color);
-    if (params.size) qs.set('size', params.size);
-    if (params.collar) qs.set('collar', params.collar);
-    if (params.collectionId) qs.set('collectionId', params.collectionId);
-    if (params.minPrice) qs.set('minPrice', params.minPrice);
-    if (params.maxPrice) qs.set('maxPrice', params.maxPrice);
-    if (params.sort) qs.set('sort', params.sort);
-    if (channel === 'WHOLESALE') qs.set('includeVariants', '1');
-
-    const res = await fetch(`${getServerApiBase()}/products?${qs}`, {
-      next: { revalidate: 300 },
-    });
+    const res = await fetch(
+      `${getServerApiBase()}/products?${buildCategoryProductsQuery(channel, slug, params)}`,
+      { next: { revalidate: 300 } },
+    );
     if (!res.ok) return empty;
-    const json = (await res.json()) as { data?: CategoryProduct[]; meta?: ProductListResult['meta'] } | CategoryProduct[];
-    if (Array.isArray(json)) {
-      return { data: json, meta: { page, limit, total: json.length, totalPages: 1 } };
-    }
-    const data = Array.isArray(json.data) ? json.data : [];
-    return {
-      data,
-      meta: {
-        page: json.meta?.page ?? page,
-        limit: json.meta?.limit ?? limit,
-        total: json.meta?.total ?? data.length,
-        totalPages: json.meta?.totalPages ?? 1,
-      },
-    };
+    const json = (await res.json()) as
+      | { data?: CategoryProduct[]; meta?: CategoryProductListResult['meta'] }
+      | CategoryProduct[];
+    return normalizeCategoryProducts(json, params);
   } catch {
     return empty;
   }
@@ -266,94 +197,6 @@ function RichText({
   );
 }
 
-function queryString(params: CategorySearchParams, page?: number): string {
-  const qs = new URLSearchParams();
-  for (const key of FILTER_KEYS) {
-    if (key === 'page') continue;
-    const value = params[key];
-    if (value) qs.set(key, value);
-  }
-  if (page && page > 1) qs.set('page', String(page));
-  const raw = qs.toString();
-  return raw ? `?${raw}` : '';
-}
-
-function CategoryProductCard({
-  product,
-  channel,
-}: {
-  product: CategoryProduct;
-  channel: CategoryChannel;
-}) {
-  const href = `/products/${product.slug}`;
-  const image = mediaUrl(product.images?.[0]);
-  const variants = product.variants ?? [];
-  const colors = uniqueByColor(variants);
-  const sizes = uniqueSizes(variants);
-  const retail = channel === 'RETAIL';
-
-  if (retail && product.id && product.slug) {
-    return (
-      <RetailProductCard
-        compact
-        product={{
-          id: product.id,
-          name: product.name || '',
-          slug: product.slug,
-          fabric: product.fabric,
-          retailPrice: product.retailPrice,
-          images: product.images,
-          sale: product.sale,
-          variants: product.variants,
-        }}
-      />
-    );
-  }
-
-  return (
-    <article className="group overflow-hidden rounded-lg border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)]">
-      <Link href={href} className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)]">
-        {image ? (
-          <Image
-            src={image}
-            alt={product.name || 'محصول'}
-            fill
-            sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
-            className="object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-[var(--brand-muted,#6B7280)]">
-            بدون تصویر
-          </div>
-        )}
-      </Link>
-      <div className="p-3.5 sm:p-4">
-        <Link href={href} className="block text-sm font-bold leading-6 text-[var(--brand-ink,#1A1A1A)]">
-          {product.name}
-        </Link>
-        {product.fabric ? (
-          <p className="mt-1 text-xs text-[var(--brand-muted,#6B7280)]">{product.fabric}</p>
-        ) : null}
-        {(colors.length || sizes.length) ? (
-          <div className="mt-2 space-y-1.5 text-xs text-[var(--brand-muted,#6B7280)]">
-            {colors.length ? (
-              <p>
-                رنگ‌ها:{' '}
-                {colors
-                  .map((c) => c.color)
-                  .filter(Boolean)
-                  .slice(0, 6)
-                  .join('، ')}
-              </p>
-            ) : null}
-            {sizes.length ? <p>سایزها: {sizes.slice(0, 8).join('، ')}</p> : null}
-          </div>
-        ) : null}
-      </div>
-    </article>
-  );
-}
-
 export async function CategoryLanding({
   channel,
   slug,
@@ -389,8 +232,6 @@ export async function CategoryLanding({
         String(row.status || 'ACTIVE').toUpperCase() !== 'HIDDEN',
     )
     .slice(0, 12);
-  const page = listing.meta.page || 1;
-  const totalPages = listing.meta.totalPages || 1;
   const retail = channel === 'RETAIL';
 
   return (
@@ -458,45 +299,17 @@ export async function CategoryLanding({
             ) : null}
           </header>
 
-          {products.length ? (
-            <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
-              {products.map((product) => (
-                <CategoryProductCard
-                  key={product.slug}
-                  product={product}
-                  channel={channel}
-                />
-              ))}
+          <div id="category-listing">
+            <div id="category-listing-static">
+              <CategoryProductListing
+                channel={channel}
+                slug={category.slug}
+                listing={listing}
+                searchParams={searchParams}
+              />
             </div>
-          ) : (
-            <p className="mt-10 text-sm text-[var(--brand-muted,#6B7280)]">
-              محصولی در این دسته منتشر نشده است.
-            </p>
-          )}
-
-          {totalPages > 1 ? (
-            <nav className="mt-10 flex items-center justify-center gap-3 text-sm" aria-label="صفحه‌بندی">
-              {page > 1 ? (
-                <Link
-                  href={`/category/${category.slug}${queryString(searchParams, page - 1)}`}
-                  className="rounded-full border border-[var(--brand-border,#E8E0D4)] px-4 py-2"
-                >
-                  قبلی
-                </Link>
-              ) : null}
-              <span>
-                صفحه {page} از {totalPages}
-              </span>
-              {page < totalPages ? (
-                <Link
-                  href={`/category/${category.slug}${queryString(searchParams, page + 1)}`}
-                  className="rounded-full border border-[var(--brand-border,#E8E0D4)] px-4 py-2"
-                >
-                  بعدی
-                </Link>
-              ) : null}
-            </nav>
-          ) : null}
+            <div id="category-listing-query" />
+          </div>
 
           {copy.bottom ? (
             <RichText

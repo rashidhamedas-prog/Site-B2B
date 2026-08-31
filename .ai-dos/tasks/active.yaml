@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260830-002-vps-ttfb-diag"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-30T10:45:00Z"
-    heartbeat_at: "2026-08-30T15:25:00Z"
+    heartbeat_at: "2026-08-31T07:51:00Z"
     depends_on: []
     file_claims:
       - "SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md"
@@ -23,10 +23,20 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
       - "apps/web/src/app/(wholesale)/page.tsx"
+      - "apps/web/src/app/(wholesale)/category/[slug]/page.tsx"
+      - "apps/web/src/app/retail/category/[slug]/page.tsx"
+      - "apps/web/src/components/category/CategoryLanding.tsx"
+      - "apps/web/src/components/category/CategoryProductCard.tsx"
+      - "apps/web/src/components/category/CategoryProductListing.tsx"
+      - "apps/web/src/components/category/CategoryQueryOverlay.tsx"
+      - "apps/web/src/components/category/category-search-params.ts"
+      - "apps/web/src/components/category/category-search-params.spec.ts"
     notes: |
-      Cloudflare Full (strict) + Cache Rule applied on both zones.
-      .ir apex/www still DNS only so IR rule is idle. Wholesale home
-      ISR local only. Do not edit nginx.conf. No HTML cache on
+      Cloudflare Full (strict) + Cache Rule on both zones. .ir apex/www
+      DNS only after Iran timeout. Wholesale home ISR shipped e3d02bb.
+      Next: APP-02 category ISR for unfiltered /category/{slug}.
+      Reclaimed CategoryLanding from TASK-20260822-003 (status done,
+      heartbeat 2026-08-22). Do not edit nginx.conf. No HTML cache on
       checkout/account/admin/API. No long cache of price/stock.
     acceptance_criteria:
       - "Both .ir and .com measured; TTFB n>=10 on primary routes"
@@ -101,12 +111,13 @@ tasks:
     branch: "ai/TASK-20260829-001-torob-api-v3"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-29T16:10:00Z"
-    heartbeat_at: "2026-08-30T10:35:00Z"
+    heartbeat_at: "2026-08-30T16:05:00Z"
     depends_on: []
     file_claims:
       - "nginx/nginx.conf"
       - "apps/web/src/lib/channel.ts"
       - "apps/web/src/app/v1/torob_api/v3/products/route.ts"
+      - "apps/api/src/modules/torob/torob.controller.ts"
       - "apps/api/src/modules/torob/torob-product-api.controller.ts"
       - "apps/api/src/modules/torob/torob-product-api.spec.ts"
       - "apps/api/src/modules/torob/torob-jwt.ts"
@@ -721,7 +732,7 @@ tasks:
       - "apps/web/src/components/retail/RetailFaq.tsx"
       - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
       - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
-      - "apps/web/src/components/category/CategoryLanding.tsx"
+      # transferred 2026-08-31 to TASK-20260830-002 (done task; category ISR): "apps/web/src/components/category/CategoryLanding.tsx"
       - "apps/web/src/app/retail/retail.css"
       - "design-system/b2c/MASTER.md"
       - "design-system/default/pages/home.md"

@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-08-31 — **TASK-20260830-002** APP-02 category ISR: unfiltered `/category/{slug}` is `force-static` + `revalidate=60`. Filtered query stays client overlay. No VPS migration. No HTML cache on checkout/account/admin/API.
 - Last verified: 2026-08-30 — **TASK-20260830-002** shipping wholesale home ISR (`s-maxage=60`) + Cloudflare proxy for `.ir` storefront. Cache Rule + Full (strict) already on both zones. No VPS migration. No HTML cache on checkout/account/admin/API.
 - Last verified: 2026-08-30 — **TASK-20260830-002** VPS/TTFB diagnostic complete. Decision `OPTIMIZE_CURRENT_VPS_FIRST`; shared hosting NO. No migration. Report `SEO-IMPLEMENTATION-REPORTS/VPS-TTFB-INFRASTRUCTURE-DIAGNOSTIC.md`
 - Last verified: 2026-08-30 — **TASK-20260830-001** PHASE-04 retail keyword/content map written (60 products, 10 categories, 4 blogs). Deployment **NOT RUN**

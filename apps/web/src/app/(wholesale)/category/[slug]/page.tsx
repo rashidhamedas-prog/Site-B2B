@@ -1,36 +1,36 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import {
   CategoryLanding,
   categoryLandingMetadata,
-  type CategorySearchParams,
 } from '@/components/category/CategoryLanding';
+import { CategoryQueryOverlay } from '@/components/category/CategoryQueryOverlay';
 
-export const revalidate = 300;
+/** Unfiltered /category/{slug} is public HTML; query filters stay a client overlay. */
+export const revalidate = 60;
+export const dynamic = 'force-static';
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<CategorySearchParams>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  return categoryLandingMetadata('WHOLESALE', slug, await searchParams);
+  return categoryLandingMetadata('WHOLESALE', slug, {});
 }
 
 export default async function WholesaleCategoryPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<CategorySearchParams>;
 }) {
   const { slug } = await params;
   return (
-    <CategoryLanding
-      channel="WHOLESALE"
-      slug={slug}
-      searchParams={await searchParams}
-    />
+    <>
+      <CategoryLanding channel="WHOLESALE" slug={slug} searchParams={{}} />
+      <Suspense fallback={null}>
+        <CategoryQueryOverlay channel="WHOLESALE" slug={slug} />
+      </Suspense>
+    </>
   );
 }
