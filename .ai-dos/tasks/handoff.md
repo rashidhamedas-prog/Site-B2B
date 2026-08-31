@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T10:00:00Z — APP-02 shipped; retail public rewrite still no-store
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Live master `c8b5999`. VPS HEAD same. Health 200.
+- Wholesale `/category/shomiz`: `s-maxage=60` `x-nextjs-prerender: 1` (MISS then HIT).
+- Retail `http://127.0.0.1:3000/retail/category/shomiz`: `s-maxage=60` prerender 1.
+- Retail public `https://www.poshaktaranom.ir/category/shomiz` stays `no-store` because middleware rewrite `/retail/category/:slug` skips the ISR cache. Home rewrite `/retail` does not. next.config.ts + middleware.ts are claimed (TASK-20260823-001 / TASK-20260824-002); not edited.
+- Gates: web `tsc --noEmit` 0; category-search-params spec 0.
+- Exact next: reclaim stale middleware or next.config to host-rewrite `/category/:slug` without middleware rewrite. Do not orange-cloud .ir. Do not edit nginx.conf.
+
 ## 2026-08-31T09:40:00Z — APP-02 category ISR implemented
 
 - Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002

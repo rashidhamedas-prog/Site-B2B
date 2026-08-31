@@ -4,6 +4,7 @@
 
 - `/category/{slug}` دیگر `searchParams` سرور را await نمی‌کند؛ `force-static` و `revalidate=60` مثل هوم.
 - فیلتر و `?page=` با overlay کلاینت می‌ماند و noindex است. قیمت/موجودی HTML طولانی کش نمی‌شود.
+- زنده: عمده `s-maxage=60`. تکی روی مسیر داخلی `/retail/category/{slug}` هم ISR است؛ URL عمومی `.ir` به‌خاطر rewrite میدلور هنوز `no-store` است.
 - تسویه/حساب/ادمین دست نخورده. nginx.conf دست نخورده.
 
 ## 2026-08-30 — ISR هوم عمده + پروکسی Cloudflare برای سرعت
