@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getServerApiBase } from '@/lib/server-api';
+import { getServerApiBase, slimRetailCatalogProduct } from '@/lib/server-api';
 import { RetailProductCard, type RetailCardProduct } from './RetailProductCard';
 
 const FALLBACK: RetailCardProduct[] = [];
@@ -15,7 +15,12 @@ async function fetchRetailProducts(limit: number, sort: string): Promise<{ produ
     if (!res.ok) return { products: [], error: true };
     const data = await res.json();
     const list = Array.isArray(data) ? data : data?.data ?? [];
-    return { products: list as RetailCardProduct[], error: false };
+    return {
+      products: (list as Record<string, unknown>[]).map((row) =>
+        slimRetailCatalogProduct(row),
+      ) as RetailCardProduct[],
+      error: false,
+    };
   } catch {
     return { products: [], error: true };
   }

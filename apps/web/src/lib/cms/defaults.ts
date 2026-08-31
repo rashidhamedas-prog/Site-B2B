@@ -736,15 +736,15 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
             {
               question: 'این همان تولیدی عمده است؟',
               answer:
-                'بله. همان کارگاه ترنم؛ اینجا خرید تکی است و سایت poshaktaranom.com برای سفارش عمده است.',
+                'بله. همان کارگاه ترنم است؛ این سایت برای خرید تکی است و بوتیک‌داران از poshaktaranom.com سفارش می‌دهند.',
             },
           ],
         }),
         b('cta', {
           eyebrow: '',
-          headline: 'عمده‌فروش هستید؟',
-          body: 'برای خرید عمده با حداقل سفارش و قیمت ویژه به سایت عمده سر بزنید.',
-          ctaLabel: 'ورود به سایت عمده',
+          headline: 'بوتیک دارید؟',
+          body: 'اگر برای فروشگاه سفارش می‌دهید، از سایت بوتیک‌داران ترنم قیمت و موجودی عمده را ببینید.',
+          ctaLabel: 'ورود به سایت بوتیک‌داران',
           ctaHref: 'https://poshaktaranom.com',
           ctaSecondaryLabel: '',
           ctaSecondaryHref: '',
