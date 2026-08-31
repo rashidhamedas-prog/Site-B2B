@@ -4,18 +4,35 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { resolveTorobAudience, resolveTorobOrderAudience, verifyTorobJwt } from './torob-jwt';
+import {
+  extractTorobToken,
+  peekTorobJwtAud,
+  resolveTorobAudience,
+  resolveTorobOrderAudiences,
+  verifyTorobJwt,
+} from './torob-jwt';
 import { extractClientIp } from '../../common/client-ip';
 
 async function assertTorobToken(
   req: { headers: Record<string, unknown> },
-  audience: string,
+  audience: string | string[],
 ): Promise<void> {
-  const token = String(req.headers['x-torob-token'] || '').trim();
+  const token = extractTorobToken(req.headers);
   const version = String(req.headers['x-torob-token-version'] || '').trim();
   try {
     await verifyTorobJwt({ token, version, audience });
-  } catch {
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : 'verify_failed';
+    console.warn(
+      JSON.stringify({
+        msg: 'torob_jwt_fail',
+        reason,
+        hasToken: Boolean(token),
+        hasVersion: Boolean(version),
+        audClaim: peekTorobJwtAud(token) || null,
+        expectedAud: audience,
+      }),
+    );
     throw new UnauthorizedException('توکن ترب نامعتبر است');
   }
   if (String(process.env.TOROB_IP_ALLOWLIST || '').trim() === '1') {
@@ -37,11 +54,11 @@ export class TorobAuthGuard implements CanActivate {
       headers: Record<string, unknown>;
       torobOrderProbe?: boolean;
     }>();
-    if (!String(req.headers['x-torob-token'] || '').trim()) {
+    if (!extractTorobToken(req.headers)) {
       req.torobOrderProbe = true;
       return true;
     }
-    await assertTorobToken(req, resolveTorobOrderAudience());
+    await assertTorobToken(req, resolveTorobOrderAudiences());
     return true;
   }
 }
