@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T10:22:00Z — Retail public category ISR live
+
+- Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
+- Live master/VPS `03c70fb` (ISR) then `20e6637` (PR #58 Torob JWT). Category ISR already on master.
+- `https://www.poshaktaranom.ir/category/shomiz`: `x-taranom-channel: RETAIL`, `s-maxage=60`, MISS then HIT, no middleware rewrite. HTML is retail (H1 خرید شومیز زنانه، قیمت تومان).
+- `.com` category still WHOLESALE `s-maxage=60`. `/checkout` still `no-store`.
+- Exact next: optional APP-03/04 (PDP short revalidate, blog no-store). Do not orange-cloud .ir. Do not edit nginx.conf.
+
 ## 2026-08-31T10:10:00Z — Retail public category ISR via config rewrite
 
 - Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002
