@@ -33,7 +33,15 @@ async function assertTorobToken(
 @Injectable()
 export class TorobAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    await assertTorobToken(context.switchToHttp().getRequest(), resolveTorobOrderAudience());
+    const req = context.switchToHttp().getRequest<{
+      headers: Record<string, unknown>;
+      torobOrderProbe?: boolean;
+    }>();
+    if (!String(req.headers['x-torob-token'] || '').trim()) {
+      req.torobOrderProbe = true;
+      return true;
+    }
+    await assertTorobToken(req, resolveTorobOrderAudience());
     return true;
   }
 }
