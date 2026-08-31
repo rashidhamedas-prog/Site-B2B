@@ -122,10 +122,51 @@ services:
         max-file: '3'
 
   worker:
+    image: taranom-worker
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     container_name: taranom_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      OMNICHANNEL_WORKER: 'true'
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      MINIO_ENDPOINT: minio
+      MEILI_HOST: http://meilisearch:7700
+    command: ['node', 'dist/worker.main']
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'test -n "$(find /tmp/omnichannel-worker.heartbeat -mmin -2 2>/dev/null)"',
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    mem_limit: 768m
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+
+  worker-b:
+    image: taranom-worker
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: taranom_worker_b
     restart: unless-stopped
     env_file: .env
     environment:

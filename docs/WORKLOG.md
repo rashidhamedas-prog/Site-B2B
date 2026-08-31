@@ -1,5 +1,10 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-31 — شروع soak با دو worker
+
+- `worker-b` همان ایمیج را با SKIP LOCKED جدا lease می‌کند. کانکتور و auto-publish خاموش می‌مانند.
+- Restore-drill دورریختنی روی VPS موفق بود. تایمر هشدار outbox نصب می‌شود.
+
 ## 2026-08-31 — کپی همه مایگریشن‌ها در ایمیج API
 
 - Dockerfile فقط مایگریشن ترب را به `dist/database/migrations` می‌برد؛ جدول‌های omnichannel ساخته نمی‌شدند. الان همهٔ `*.js` کپی می‌شوند.

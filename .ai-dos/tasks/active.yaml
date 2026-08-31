@@ -176,7 +176,7 @@ tasks:
     branch: "ai/TASK-20260826-001-omnichannel-phase-0"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-08-31T11:20:00Z"
+    heartbeat_at: "2026-08-31T12:30:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/channel-product-projection.ts"
@@ -320,6 +320,7 @@ tasks:
       - "deploy/systemd/omnichannel-ops-backup.service"
       - "deploy/systemd/omnichannel-ops-backup.timer"
       - "docs/reports/2026-08-29-omnichannel-phases-4-8.md"
+      - "docs/reports/2026-08-31-omnichannel-soak-start.md"
       - "scripts/omnichannel-ops.sh"
       - "scripts/omnichannel-migrations-disposable-updown.sh"
       - "apps/api/src/database/migrations/20260829-001-omnichannel-audit.spec.ts"
