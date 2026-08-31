@@ -1,5 +1,49 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260901-001"
+    title: "Owner follow-through: retail CTA, Erika 301, wholesale products ISR"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260901-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260901-001"
+      implementer: "cursor:implementer-TASK-20260901-001"
+      reviewer: "self-review-seo-no-mass-redirect"
+      security: "self-review-no-auth-no-secrets"
+    branch: "ai/TASK-20260901-001-followthrough"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-08-31T20:50:00Z"
+    heartbeat_at: "2026-08-31T20:50:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/app/(wholesale)/products/page.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductsCatalogWithUrl.tsx"
+      - "apps/web/src/lib/slim-wholesale-catalog.ts"
+      - "apps/web/src/lib/slim-wholesale-catalog.spec.ts"
+      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      - "apps/web/src/lib/product-slug-redirects.ts"
+      - "apps/web/src/lib/product-slug-canonical.spec.ts"
+      - "scripts/seed-retail-home-boutique-cta.sql"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-01-owner-followthrough.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to execute leftover SEO actions. Reclaimed stale
+      wholesale products page from TASK-20260817-001 (heartbeat 2026-08-17).
+      Reclaimed product-slug-redirects* from TASK-20260818-001 (heartbeat
+      2026-08-18). Reclaimed RetailBlocksRenderer from TASK-20260822-003
+      (status done). Do not edit ProductCatalog.tsx or server-api.ts
+      (TASK-20260826-001 same-day). Do not edit Header/middleware
+      (TASK-20260831-001 same-day). Erika 301 only for proven same
+      product linen-shirt-manteau-erika → linen-sport-jacket-erika.
+    acceptance_criteria:
+      - "Retail home CTA fallback no longer says عمده‌فروش هستید or ورود به سایت عمده"
+      - "Unfiltered wholesale /products is force-static ISR; filters noindex via client"
+      - "linen-shirt-manteau-erika 301s to linen-sport-jacket-erika"
+      - "Do not edit ProductCatalog or claimed PDP/API files"
+      - "web tsc and slug spec pass"
   - id: "TASK-20260831-001"
     title: "Admin login, storefront search, retail category stock, staff users"
     status: "in_progress"
@@ -871,7 +915,7 @@ tasks:
       - "apps/web/src/components/retail/RetailCtaBanner.tsx"
       # transferred 2026-08-31 to TASK-20260831-003 (done task; FAQ wholesale wording): "apps/web/src/components/retail/RetailFaq.tsx"
       - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
-      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      # transferred 2026-09-01 to TASK-20260901-001 (done task; retail CTA fallback): "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
       # transferred 2026-08-31 to TASK-20260830-002 (done task; category ISR): "apps/web/src/components/category/CategoryLanding.tsx"
       - "apps/web/src/app/retail/retail.css"
       - "design-system/b2c/MASTER.md"
@@ -1062,9 +1106,9 @@ tasks:
       # transferred 2026-08-24 to TASK-20260824-003 (stale heartbeat; DigiPay checkout choice): "apps/api/src/modules/order/order.service.ts"
       - "apps/web/src/lib/seo-redirect.ts"
       - "apps/web/src/lib/product-slug-canonical.ts"
-      - "apps/web/src/lib/product-slug-canonical.spec.ts"
+      # transferred 2026-09-01 to TASK-20260901-001 (stale >24h; Erika slug assert): "apps/web/src/lib/product-slug-canonical.spec.ts"
       - "apps/web/src/lib/load-canonical-storefront-product.ts"
-      - "apps/web/src/lib/product-slug-redirects.ts"
+      # transferred 2026-09-01 to TASK-20260901-001 (stale >24h; Erika 301): "apps/web/src/lib/product-slug-redirects.ts"
       # transferred 2026-08-22 to TASK-20260822-001 (stale heartbeat; /retail rewrite loop): "apps/web/src/middleware.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/app/retail/products/[slug]/page.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; wholesaleStock only): "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
@@ -1140,7 +1184,7 @@ tasks:
       - "apps/web/src/lib/seo-redirect.ts"
       - "apps/web/src/components/admin/AdminCategories.tsx"
       - "apps/web/src/app/sitemap.xml/route.ts"
-      - "apps/web/src/app/(wholesale)/products/page.tsx"
+      # transferred 2026-09-01 to TASK-20260901-001 (stale >24h; wholesale /products ISR): "apps/web/src/app/(wholesale)/products/page.tsx"
       # transferred 2026-08-24 to TASK-20260824-003 (stale heartbeat; DigiPay checkout choice): "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/category/category.module.ts"
       - "scripts/apply-production-schema.sql"

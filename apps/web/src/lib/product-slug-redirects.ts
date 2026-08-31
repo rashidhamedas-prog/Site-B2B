@@ -5,6 +5,7 @@
 /** old path segment → new path segment */
 export const PRODUCT_SLUG_REDIRECTS: Readonly<Record<string, string>> = {
   'linen-sport-jacket-erika': 'coats00015',
+  'linen-shirt-manteau-erika': 'linen-sport-jacket-erika',
   'bezayagh-jacket-rose': 'coats00014',
   'cotton-vest-pants-set-nazi': 'vests-pants00001',
   'jacquard-jacket-pardis': 'coats00013',

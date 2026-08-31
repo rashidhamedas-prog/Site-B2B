@@ -1,6 +1,7 @@
 # Project Status
 
-- Last verified: 2026-08-31 — **TASK-20260831-003** GSC dual-site audit recorded; GA4 linked on both domain properties; retail HTML slim + /products ISR + blog sitemap merge + JSON-LD absolute images coded locally. **Deploy NOT RUN**. Wholesale mobile LCP>4s (11 URLs) untouched (files claimed elsewhere).
+- Last verified: 2026-09-01 — **TASK-20260901-001** implementing on `ai/TASK-20260901-001-followthrough`: retail CTA fallback boutique, Erika 301 map, wholesale `/products` ISR+slim. Not live until merge/deploy. GSC image Validate Fix not started (Sara inspect unknown). GA4 stream rename blocked (no Analytics Admin).
+- Last verified: 2026-08-31 — **TASK-20260831-003** live `e0d20a8`: retail slim+ISR, blog.xml 4 posts, absolute JSON-LD, Enamad lazy, wholesale hero LCP keep-slide-0. Lab home LCP good (<2.5s). Wholesale `/products` still ~12s LCP (other claim). Field GSC 11 poor not yet refreshed.
 - Last verified: 2026-08-31 — **TASK-20260831-001** settings 403 traced to OTP demotion; staff phone isolated from shopper flows; `/admin/account` added. Independent Reviewer/Security still required.
 - Last verified: 2026-08-31 — **TASK-20260826-001** public catalog requires `channel` (except admin JWT) and strips opposite-channel price/stock/content/discount. Live `e70e5b6` workers healthy, dead=0. Connectors off. Soak/canary/§9 still **NOT DONE**.
 - Last verified: 2026-08-31 — **TASK-20260826-001** public product JSON no longer leaks opposite-channel stock/price or legacy `stock`. Connectors off. 24h soak / destination canary still **NOT DONE**; do not mark Done.

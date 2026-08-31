@@ -23,6 +23,19 @@ assert.equal(
   'static inventory still maps the old descriptive slug to the former SKU',
 );
 assert.equal(
+  lookupProductSlugRedirect('linen-shirt-manteau-erika'),
+  'linen-sport-jacket-erika',
+  'wrong shirt-manteau slug for Erika lands on the live jacket slug',
+);
+assert.equal(
+  legacyMapRedirectPath(
+    'linen-shirt-manteau-erika',
+    'linen-sport-jacket-erika',
+    'linen-sport-jacket-erika',
+  ),
+  '/products/linen-sport-jacket-erika',
+);
+assert.equal(
   legacyMapRedirectPath('bezayagh-jacket-rose', 'coats00014', 'bezayagh-jacket-rose'),
   null,
   'must not bounce the live canonical slug back to the SKU',

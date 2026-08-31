@@ -2,6 +2,28 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T21:10:00Z — TASK-20260901-001 owner follow-through
+
+- Task / owner: TASK-20260901-001 / cursor:implementer-TASK-20260901-001
+- Branch: `ai/TASK-20260901-001-followthrough` from `origin/master` (`e0d20a8`).
+- Reclaimed stale: wholesale `/products` page from TASK-20260817-001 (hb 2026-08-17); `product-slug-redirects.ts` + spec from TASK-20260818-001 (hb 2026-08-18); `RetailBlocksRenderer.tsx` from TASK-20260822-003 (done).
+- Not edited: `ProductCatalog.tsx`, `server-api.ts` (TASK-20260826-001 same-day); Header/middleware (TASK-20260831-001 same-day).
+- Code: retail CTA fallback boutique copy; Erika `linen-shirt-manteau-erika` → `linen-sport-jacket-erika`; wholesale `/products` force-static ISR + slim helper + URL wrapper; SQL seed FAQ/CTA without rewriting hero.
+- Gates: `apps/web` `npx tsc --noEmit` 0; `product-slug-canonical.spec.ts` ok; `slim-wholesale-catalog.spec.ts` ok.
+- GSC: Sara `shomiz-linen-sara` URL Inspection = unknown / Last crawl N/A. Merchant missing image still 27 / Not Started (last update 8/30). Did not Validate Fix account/301/WP/HTTP/return/shipping. Did not Validate Fix CWV.
+- GA4 `547352333`: this Google login has no Analytics Admin (Missing permissions). Stream rename Retail→Wholesale not possible from here.
+- Exact next: commit/PR/merge/deploy; run SQL seed on VPS; re-probe CTA + Erika 301 + wholesale `/products` `s-maxage=60`; Validate Fix image only after Sara (or a money PDP in the 27) recrawl.
+
+## 2026-08-31T20:45:00Z — Live e0d20a8 + lab CWV after LCP ship
+
+- Task / owner: TASK-20260831-003 / cursor:implementer-TASK-20260831-003
+- origin/master `e0d20a8` deployed (VPS HEAD same; API `/api/v1/health` 200).
+- Live HTML: retail home 182KB seoMeta=0 ISR; /products ISR title «همه محصولات فروشگاه ترنم»; blog.xml 4 posts; footer «سایت بوتیک‌داران»; Enamad lazy (not preloaded); wholesale hero preloads raw `/banners/.../wholesale-01.webp` not `/_next/image`.
+- Sara PDP JSON-LD: absolute image + ProductGroup `productGroupID=BLOUSES00017`. Erika PDP is live 404/noindex (catalog), not this deploy.
+- Lab CWV (Cursor browser, 2026-08-31T20:40Z): wholesale home mobile LCP 1.20s / desktop 2.28s CLS 0; retail home mobile 1.96s / desktop 1.09s CLS 0; retail /products desktop LCP 1.99s; wholesale /products desktop LCP 12.0s FCP 8.9s (ProductCatalog claimed by TASK-20260826-001 — not edited).
+- Field GSC `.com` still 11 poor LCP>4s (last update 8/30/26). `.ir` no CrUX. Do not Validate Fix noindex/404. After 28d, Validate Fix Merchant missing image only.
+- Exact next: ISR/slim wholesale `/products` when 26-001 releases claim; Header logo-128 preload is TASK-20260831-001; CMS CTA still says عمده.
+
 ## 2026-08-31T20:30:00Z — Settings 403 + staff demotion + account page
 
 - Task / owner: TASK-20260831-001 / cursor:implementer-TASK-20260831-001
