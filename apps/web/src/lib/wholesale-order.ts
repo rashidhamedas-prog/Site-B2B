@@ -39,7 +39,7 @@ export type WholesaleOrderProduct = {
 };
 
 export function variantWholesale(v: WholesaleOrderVariant): number {
-  return Number(v.wholesaleStock) || Number(v.stock) || 0;
+  return Math.max(0, Number(v.wholesaleStock) || 0);
 }
 
 export function wholesaleMoq(product: WholesaleOrderProduct): number {
@@ -86,12 +86,8 @@ export function wholesaleOrderSummary(
   const isComingSoon = product.status === 'COMING_SOON';
   const totalStock =
     typeof product.wholesaleStock === 'number'
-      ? product.wholesaleStock
-      : typeof product.totalStock === 'number'
-        ? product.totalStock
-        : typeof product.stock === 'number'
-          ? product.stock
-          : variants.reduce((sum, v) => sum + variantWholesale(v), 0);
+      ? Math.max(0, product.wholesaleStock)
+      : variants.reduce((sum, v) => sum + variantWholesale(v), 0);
 
   const packStockOk = (() => {
     if (!packMode) return totalStock >= minOrder;

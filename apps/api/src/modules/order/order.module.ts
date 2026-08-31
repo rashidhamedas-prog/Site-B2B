@@ -13,6 +13,7 @@ import { DiscountModule } from '../discount/discount.module';
 import { PaymentModule } from '../payment/payment.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { AffiliateModule } from '../affiliate/affiliate.module';
+import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AffiliateModule } from '../affiliate/affiliate.module';
     PaymentModule,
     ShippingModule,
     AffiliateModule,
+    InventoryModule,
   ],
   controllers: [OrderController],
   providers: [OrderService],

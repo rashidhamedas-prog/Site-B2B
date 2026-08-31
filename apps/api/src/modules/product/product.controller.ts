@@ -1,19 +1,29 @@
-import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe, Res } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards, ParseIntPipe, DefaultValuePipe, Res, BadRequestException, Inject, forwardRef, Req } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ProductService } from './product.service';
+import { InventoryService } from '../inventory/inventory.service';
 import { contentDispositionUtf8 } from '../../common/xlsx-builder';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
+import { resolvePublicProductStatus } from './public-product-status';
+import { parseColorStockPlan, pickVariantStocks } from './color-stock-plan';
+import { OptionalJwtAuthGuard, isAdminActor } from './optional-jwt.guard';
+
+type AuthedReq = { user?: { id?: string; role?: string } };
 
 @ApiTags('products')
 @Controller({ path: 'products', version: '1' })
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService,
+    @Inject(forwardRef(() => InventoryService))
+    private readonly inventoryService: InventoryService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'کاتالوگ محصولات (عمومی)' })
@@ -38,20 +48,18 @@ export class ProductController {
     @Query('includeVariants') includeVariants?: string,
     @Res({ passthrough: true }) res?: FastifyReply,
   ) {
-    // Public ACTIVE listings are cacheable; admin ALL is not (Fastify: .header)
-    if (String(status || 'ACTIVE').toUpperCase() !== 'ALL') {
-      res?.header(
-        'Cache-Control',
-        'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
-      );
-    } else {
-      res?.header('Cache-Control', 'private, no-store');
+    let publicStatus: 'ACTIVE';
+    try {
+      publicStatus = resolvePublicProductStatus(status);
+    } catch {
+      throw new BadRequestException('وضعیت نامعتبر است');
     }
-    const wantVariants =
-      includeVariants === '1' ||
-      includeVariants === 'true' ||
-      String(status || '').toUpperCase() === 'ALL';
-    return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
+    res?.header(
+      'Cache-Control',
+      'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
+    );
+    const wantVariants = includeVariants === '1' || includeVariants === 'true';
+    return this.productService.findAll(page, limit, search || q, fabric, publicStatus, color, size, {
       categoryId,
       categorySlug,
       collectionId,
@@ -147,6 +155,51 @@ export class ProductController {
     return this.productService.deleteColor(id);
   }
 
+  @Get('admin')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'کاتالوگ محصولات (ادمین، شامل ALL)' })
+  async findAllAdmin(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
+    @Query('q') q?: string,
+    @Query('fabric') fabric?: string,
+    @Query('color') color?: string,
+    @Query('size') size?: string,
+    @Query('status') status?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('categorySlug') categorySlug?: string,
+    @Query('collectionId') collectionId?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+    @Query('collar') collar?: string,
+    @Query('relatedTo') relatedTo?: string,
+    @Query('channel') channel?: string,
+    @Query('sort') sort?: string,
+    @Query('includeVariants') includeVariants?: string,
+    @Res({ passthrough: true }) res?: FastifyReply,
+  ) {
+    res?.header('Cache-Control', 'private, no-store');
+    const wantVariants =
+      includeVariants === '1' ||
+      includeVariants === 'true' ||
+      String(status || '').toUpperCase() === 'ALL';
+    return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
+      categoryId,
+      categorySlug,
+      collectionId,
+      minPrice: minPrice != null ? Number(minPrice) : undefined,
+      maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+      collar,
+      relatedTo,
+      channel,
+      sort,
+      includeVariants: wantVariants,
+    });
+  }
+
   @Get('admin/export.xlsx')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -161,9 +214,10 @@ export class ProductController {
   }
 
   @Get('slug/:slug')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'جزئیات محصول با slug' })
-  findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
-    return this.productService.findBySlug(slug, channel);
+  findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string, @Req() req?: AuthedReq) {
+    return this.productService.findBySlug(slug, channel, { allowNonActive: isAdminActor(req?.user) });
   }
 
   @Post(':id/view')
@@ -173,9 +227,10 @@ export class ProductController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'جزئیات محصول' })
-  findOne(@Param('id') id: string, @Query('channel') channel?: string) {
-    return this.productService.findOne(id, channel);
+  findOne(@Param('id') id: string, @Query('channel') channel?: string, @Req() req?: AuthedReq) {
+    return this.productService.findOne(id, channel, { allowNonActive: isAdminActor(req?.user) });
   }
 
   @Post()
@@ -200,9 +255,15 @@ export class ProductController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
-  @ApiOperation({ summary: 'تنظیم موجودی محصول (جدا از رنگ‌ها)' })
-  setStock(@Param('id') id: string, @Body() body: { stock: number }) {
-    return this.productService.setProductStock(id, body.stock);
+  @ApiOperation({ summary: 'تنظیم موجودی محصول از مسیر انبار (با حرکت)' })
+  setStock(@Param('id') id: string, @Body() body: { stock: number; channel?: string }) {
+    return this.inventoryService.setProductStock(
+      id,
+      body.stock,
+      'تنظیم موجودی از محصول',
+      'admin',
+      body.channel || 'WHOLESALE',
+    );
   }
 
   @Delete(':id')
@@ -220,8 +281,23 @@ export class ProductController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
   @ApiOperation({ summary: 'افزودن رنگ (بدون سایز = همه سایزها با موجودی یک‌بار)' })
-  createVariant(@Param('id') id: string, @Body() body: CreateVariantDto) {
-    return this.productService.createVariant(id, body);
+  async createVariant(@Param('id') id: string, @Body() body: CreateVariantDto, @Req() req: AuthedReq) {
+    const created = await this.productService.createVariant(id, body);
+    const stocks = pickVariantStocks(body);
+    const explicit = String(body.size || '').trim();
+    const plan = new Map<string, { wholesale?: number; retail?: number }>();
+    if (explicit && created[0]) {
+      plan.set(String(created[0].size || explicit), stocks);
+    } else {
+      created.forEach((row, i) => {
+        plan.set(String(row.size || ''), {
+          wholesale: stocks.wholesale === undefined ? undefined : i === 0 ? stocks.wholesale : 0,
+          retail: stocks.retail === undefined ? undefined : i === 0 ? stocks.retail : 0,
+        });
+      });
+    }
+    await this.inventoryService.applyPlanToVariants(created, plan, 'ایجاد رنگ', req.user?.id);
+    return Promise.all(created.map((row) => this.productService.getVariant(row.id)));
   }
 
   @Put(':id/variants/color-stock')
@@ -229,8 +305,9 @@ export class ProductController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
   @ApiOperation({ summary: 'تنظیم موجودی یک رنگ به‌ازای هر سایز (یا یک‌بار روی سایز اول — legacy)' })
-  setColorStock(
+  async setColorStock(
     @Param('id') id: string,
+    @Req() req: AuthedReq,
     @Body()
     body: {
       color: string;
@@ -248,7 +325,11 @@ export class ProductController {
       }>;
     },
   ) {
-    return this.productService.setColorStock(id, body);
+    const product = await this.productService.findOne(id, undefined, { allowNonActive: true });
+    const plan = parseColorStockPlan(body, this.productService.sizesForProduct(product.sizeType));
+    const updated = await this.productService.setColorStock(id, body);
+    await this.inventoryService.applyPlanToVariants(updated, plan, 'تنظیم موجودی رنگ', req.user?.id);
+    return Promise.all(updated.map((row) => this.productService.getVariant(row.id)));
   }
 
   @Delete(':id/variants/by-color')
@@ -265,8 +346,16 @@ export class ProductController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
   @ApiOperation({ summary: 'ویرایش واریانت' })
-  updateVariant(@Param('id') _id: string, @Param('variantId') variantId: string, @Body() body: any) {
-    return this.productService.updateVariant(variantId, body);
+  async updateVariant(
+    @Param('id') _id: string,
+    @Param('variantId') variantId: string,
+    @Body() body: { wholesaleStock?: number; retailStock?: number; stock?: number },
+    @Req() req: AuthedReq,
+  ) {
+    await this.productService.updateVariant(variantId, body);
+    const stocks = pickVariantStocks(body);
+    await this.inventoryService.applyVariantStocks(variantId, stocks, 'ویرایش واریانت', req.user?.id);
+    return this.productService.getVariant(variantId);
   }
 
   @Delete(':id/variants/:variantId')

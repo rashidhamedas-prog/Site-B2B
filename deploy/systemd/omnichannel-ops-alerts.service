@@ -1,0 +1,11 @@
+[Unit]
+Description=Taranom omnichannel outbox lag/DEAD alert
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=wholesale-admin
+WorkingDirectory=/opt/taranom
+EnvironmentFile=-/opt/taranom/.env
+ExecStart=/bin/bash /opt/taranom/scripts/omnichannel-ops.sh alerts

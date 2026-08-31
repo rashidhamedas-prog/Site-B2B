@@ -33,11 +33,12 @@ interface Product {
   };
   status: string;
   stock?: number;
+  wholesaleStock?: number;
   totalStock?: number;
   images: string[];
   sizeType?: string;
   minOrderQty?: number;
-  variants: { id: string; color: string; colorHex?: string; stock: number; size?: string }[];
+  variants: { id: string; color: string; colorHex?: string; stock: number; wholesaleStock?: number; size?: string }[];
 }
 
 function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Product {
@@ -51,18 +52,21 @@ function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Produc
     wholesalePrice: Number(raw.wholesalePrice ?? 0),
     sale: raw.sale && typeof raw.sale === 'object' ? (raw.sale as Product['sale']) : undefined,
     status: String(raw.status ?? 'ACTIVE'),
-    stock: typeof raw.stock === 'number' ? raw.stock : undefined,
-    totalStock: typeof raw.totalStock === 'number' ? raw.totalStock : undefined,
+    wholesaleStock: typeof raw.wholesaleStock === 'number' ? raw.wholesaleStock : undefined,
+    stock: typeof raw.wholesaleStock === 'number' ? raw.wholesaleStock : undefined,
+    totalStock: typeof raw.wholesaleStock === 'number' ? raw.wholesaleStock : undefined,
     images: Array.isArray(raw.images) ? (raw.images as string[]) : [],
     sizeType: typeof raw.sizeType === 'string' ? raw.sizeType : undefined,
     minOrderQty: typeof raw.minOrderQty === 'number' ? raw.minOrderQty : undefined,
     variants: variants.map((v) => {
-      const row = v as { id?: string; color?: string; colorHex?: string; stock?: number; size?: string };
+      const row = v as { id?: string; color?: string; colorHex?: string; stock?: number; wholesaleStock?: number; size?: string };
+      const wholesale = Number(row.wholesaleStock ?? 0);
       return {
         id: String(row.id ?? ''),
         color: String(row.color ?? ''),
         colorHex: row.colorHex,
-        stock: Number(row.stock ?? 0),
+        wholesaleStock: wholesale,
+        stock: wholesale,
         size: row.size,
       };
     }),

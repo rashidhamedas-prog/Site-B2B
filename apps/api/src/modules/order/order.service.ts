@@ -20,10 +20,13 @@ import { DiscountService } from '../discount/discount.service';
 import { PaymentService } from '../payment/payment.service';
 import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
-import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { resolveChannelSale } from '../product/product-sale';
 import { sizesForSizeType } from '../product/product-pack';
+import { channelUnitStock } from '../product/channel-product-projection';
+import { InventoryService } from '../inventory/inventory.service';
+import { OutboxService } from '../omnichannel/services/outbox.service';
+import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 
 /** Allowed Order status transitions (admin). */
 const ORDER_TRANSITIONS: Record<string, string[]> = {
@@ -53,8 +56,9 @@ export class OrderService {
     private readonly paymentService: PaymentService,
     private readonly installmentService: InstallmentService,
     private readonly shippingService: ShippingService,
-    private readonly affiliatePostback: AffiliatePostbackService,
     private readonly dataSource: DataSource,
+    private readonly inventoryService: InventoryService,
+    private readonly outbox: OutboxService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
 
@@ -287,9 +291,7 @@ export class OrderService {
     variant: { wholesaleStock?: number | string | null; retailStock?: number | string | null; stock?: number | string | null },
     channel: 'WHOLESALE' | 'RETAIL',
   ): number {
-    return channel === 'RETAIL'
-      ? Number(variant.retailStock) || 0
-      : Number(variant.wholesaleStock) || Number(variant.stock) || 0;
+    return channelUnitStock(variant, channel);
   }
 
   /**
@@ -843,10 +845,24 @@ export class OrderService {
         await itemRepo.save(items);
 
         for (const item of expandedItems) {
-          await this.productService.updateVariantStock(
+          const updated = await this.productService.updateVariantStock(
             item.productVariantId,
             -item.quantity,
             channel,
+            manager,
+          );
+          await this.inventoryService.recordMovement(
+            {
+              productVariantId: item.productVariantId,
+              productId: item.productId,
+              type: 'SALE',
+              quantity: item.quantity,
+              balanceAfter: channelUnitStock(updated, channel),
+              referenceId: orderRow!.id,
+              referenceType: 'ORDER',
+              channel,
+              notes: `فروش سفارش ${orderRow!.orderNumber}`,
+            },
             manager,
           );
         }
@@ -872,6 +888,65 @@ export class OrderService {
           );
         }
 
+        await this.outbox.enqueue(
+          {
+            operationId: `${orderRow.id}:created`,
+            eventType: OUTBOX_EVENT_TYPES.ORDER_CREATED_NOTIFICATION,
+            aggregateType: 'ORDER',
+            aggregateId: orderRow.id,
+            channel,
+            payload: { orderId: orderRow.id, orderNumber: orderRow.orderNumber, customerId: dto.customerId },
+          },
+          manager,
+        );
+
+        for (const item of expandedItems) {
+          await this.outbox.enqueue(
+            {
+              operationId: `${orderRow.id}:stock:${item.productVariantId}`,
+              eventType: OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED,
+              aggregateType: 'PRODUCT',
+              aggregateId: item.productId,
+              channel,
+              payload: {
+                productId: item.productId,
+                productVariantId: item.productVariantId,
+                orderId: orderRow.id,
+                channel,
+              },
+            },
+            manager,
+          );
+          await this.outbox.enqueue(
+            {
+              operationId: `${orderRow.id}:search:${item.productId}`,
+              eventType: OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED,
+              aggregateType: 'PRODUCT',
+              aggregateId: item.productId,
+              payload: { productId: item.productId },
+            },
+            manager,
+          );
+        }
+
+        if (channel === 'RETAIL' && dto.affiliateId) {
+          const affiliateStatus =
+            paymentMethod === 'CASH' ? 'pending' : paymentMethod === 'ONLINE' && orderTotal === 0 ? 'paid' : null;
+          if (affiliateStatus) {
+            await this.outbox.enqueue(
+              {
+                operationId: `${orderRow.id}:affiliate:${affiliateStatus}`,
+                eventType: OUTBOX_EVENT_TYPES.AFFILIATE_POSTBACK_REQUESTED,
+                aggregateType: 'ORDER',
+                aggregateId: orderRow.id,
+                channel,
+                payload: { orderId: orderRow.id, status: affiliateStatus },
+              },
+              manager,
+            );
+          }
+        }
+
         return orderRow;
       });
     } catch (err: any) {
@@ -891,18 +966,6 @@ export class OrderService {
         }
       }
       throw err;
-    }
-
-    if (this.notifications) {
-      this.notify((p) => this.notifications!.orderRegistered(p, saved.orderNumber), dto.customerId);
-      const customerLabel =
-        (customer as any)?.businessName ||
-        (customer as any)?.ownerName ||
-        (customer as any)?.phone ||
-        undefined;
-      this.notifications
-        .orderRegisteredAdmin(channel, saved.orderNumber, customerLabel)
-        .catch(() => undefined);
     }
 
     const full = await this.findOne(saved.id);
@@ -929,19 +992,26 @@ export class OrderService {
       }
     }
 
-    // Affiliate: CASH → pending; wallet-settled ONLINE (zero remainder) → paid after confirm;
-    // ONLINE with gateway path waits for payment.verify (never fire paid here).
-    if (channel === 'RETAIL' && dto.affiliateId) {
-      if (paymentMethod === 'CASH') {
-        this.affiliatePostback.fireForOrder(saved.id, 'pending').catch(() => undefined);
-      } else if (paymentMethod === 'ONLINE' && orderTotal === 0) {
-        await this.orderRepo.update(saved.id, {
+    // Affiliate pending/paid intents are in the checkout outbox. Zero-total ONLINE still confirms here.
+    if (channel === 'RETAIL' && dto.affiliateId && paymentMethod === 'ONLINE' && orderTotal === 0) {
+      await this.dataSource.transaction(async (manager) => {
+        await manager.getRepository(OrderEntity).update(saved.id, {
           status: 'CONFIRMED',
           confirmedAt: new Date(),
         } as any);
-        this.affiliatePostback.fireForOrder(saved.id, 'paid').catch(() => undefined);
-        return this.findOne(saved.id);
-      }
+        await this.outbox.enqueue(
+          {
+            operationId: `${saved.id}:status:CONFIRMED`,
+            eventType: OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION,
+            aggregateType: 'ORDER',
+            aggregateId: saved.id,
+            channel,
+            payload: { orderId: saved.id, status: 'CONFIRMED' },
+          },
+          manager,
+        );
+      });
+      return this.findOne(saved.id);
     }
 
     return full;
@@ -1020,15 +1090,62 @@ export class OrderService {
     const full = await this.findOne(order.id);
     const channel = this.orderStockChannel(full);
 
-    for (const item of full.items ?? []) {
-      if (item.productVariantId) {
-        await this.productService.updateVariantStock(
+    await this.dataSource.transaction(async (manager) => {
+      for (const item of full.items ?? []) {
+        if (!item.productVariantId) continue;
+        const qty = Number(item.quantity) || 0;
+        if (qty <= 0) continue;
+        const updated = await this.productService.updateVariantStock(
           item.productVariantId,
-          Number(item.quantity) || 0,
+          qty,
           channel,
+          manager,
+        );
+        await this.inventoryService.recordMovement(
+          {
+            productVariantId: item.productVariantId,
+            productId: updated.productId,
+            type: 'RETURN',
+            quantity: qty,
+            balanceAfter: channelUnitStock(updated, channel),
+            referenceId: full.id,
+            referenceType: 'ORDER',
+            channel,
+            notes: `برگشت سفارش ${full.orderNumber}`,
+          },
+          manager,
+        );
+        await this.outbox.enqueue(
+          {
+            operationId: `${full.id}:return:${item.productVariantId}`,
+            eventType: OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED,
+            aggregateType: 'PRODUCT',
+            aggregateId: updated.productId,
+            channel,
+            payload: {
+              productId: updated.productId,
+              productVariantId: item.productVariantId,
+              orderId: full.id,
+              channel,
+            },
+          },
+          manager,
         );
       }
-    }
+      if (full.affiliateId) {
+        await this.outbox.enqueue(
+          {
+            operationId: `${full.id}:affiliate:cancelled`,
+            eventType: OUTBOX_EVENT_TYPES.AFFILIATE_POSTBACK_REQUESTED,
+            aggregateType: 'ORDER',
+            aggregateId: full.id,
+            channel,
+            payload: { orderId: full.id, status: 'cancelled' },
+          },
+          manager,
+        );
+      }
+    });
 
     const wallet = this.resolveWalletApplied(full);
     if (wallet > 0 && full.customerId) {
@@ -1048,10 +1165,6 @@ export class OrderService {
         'system:order-reverse',
         'order_cancelled_or_voided',
       );
-    }
-
-    if (full.affiliateId) {
-      this.affiliatePostback.fireForOrder(full.id, 'cancelled').catch(() => undefined);
     }
 
     const at = new Date();
@@ -1075,23 +1188,26 @@ export class OrderService {
     if (status === 'CONFIRMED') patch.confirmedAt = new Date();
     if (status === 'SHIPPED') patch.shippedAt = new Date();
     if (status === 'DELIVERED') patch.deliveredAt = new Date();
-    await this.orderRepo.update(id, patch);
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(OrderEntity).update(id, patch);
+      await this.outbox.enqueue(
+        {
+          operationId: `${id}:status:${status}`,
+          eventType: OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION,
+          aggregateType: 'ORDER',
+          aggregateId: id,
+          channel: this.orderStockChannel(order),
+          payload: { orderId: id, status, previousStatus: prev },
+        },
+        manager,
+      );
+    });
 
     // Full reversal when cancelling (stock + wallet + discount + pending pay)
     if (status === 'CANCELLED' && prev !== 'CANCELLED' && prev !== 'DELETED') {
       await this.reverseEffects(order);
     }
 
-    if (this.notifications) {
-      if (status === 'CONFIRMED') {
-        this.notify((p) => this.notifications!.orderConfirmed(p, order.orderNumber), order.customerId);
-      } else if (status === 'SHIPPED') {
-        this.notify(
-          (p) => this.notifications!.orderShipped(p, order.orderNumber, order.trackingCode),
-          order.customerId,
-        );
-      }
-    }
     return this.findOne(id);
   }
 
@@ -1111,7 +1227,20 @@ export class OrderService {
       voidReason: reason?.trim() || 'حذف توسط ادمین',
     };
     if (processedBy) patch.processedBy = processedBy;
-    await this.orderRepo.update(id, patch);
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(OrderEntity).update(id, patch);
+      await this.outbox.enqueue(
+        {
+          operationId: `${id}:status:DELETED`,
+          eventType: OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION,
+          aggregateType: 'ORDER',
+          aggregateId: id,
+          channel: this.orderStockChannel(order),
+          payload: { orderId: id, status: 'DELETED' },
+        },
+        manager,
+      );
+    });
     return this.findOne(id);
   }
 
@@ -1151,7 +1280,9 @@ export class OrderService {
     if (dto.items?.length && !order.effectsReversedAt) {
       const channel = this.orderStockChannel(order);
       let subtotal = 0;
-      for (const patch of dto.items) {
+      await this.dataSource.transaction(async (manager) => {
+      const itemRepo = manager.getRepository(OrderItemEntity);
+      for (const patch of dto.items!) {
         const item = (order.items ?? []).find((i) => i.id === patch.id);
         if (!item) continue;
         const nextQty = Math.max(0, Math.floor(Number(patch.quantity) || 0));
@@ -1159,15 +1290,57 @@ export class OrderService {
         const delta = nextQty - prevQty;
         if (delta !== 0 && item.productVariantId) {
           // Same convention as create: negative delta reduces warehouse stock
-          await this.productService.updateVariantStock(item.productVariantId, -delta, channel);
+          const updated = await this.productService.updateVariantStock(
+            item.productVariantId,
+            -delta,
+            channel,
+            manager,
+          );
+          await this.inventoryService.recordMovement({
+            productVariantId: item.productVariantId,
+            productId: updated.productId,
+            type: delta > 0 ? 'SALE' : 'RETURN',
+            quantity: Math.abs(delta),
+            balanceAfter: channelUnitStock(updated, channel),
+            referenceId: order.id,
+            referenceType: 'ORDER',
+            channel,
+            notes: `ویرایش تعداد سفارش ${order.orderNumber}`,
+          }, manager);
+          await this.outbox.enqueue(
+            {
+              operationId: `${order.id}:edit:${item.productVariantId}:${prevQty}:${nextQty}`,
+              eventType: OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED,
+              aggregateType: 'PRODUCT',
+              aggregateId: updated.productId,
+              channel,
+              payload: {
+                productId: updated.productId,
+                productVariantId: item.productVariantId,
+                orderId: order.id,
+                channel,
+              },
+            },
+            manager,
+          );
+          await this.outbox.enqueue(
+            {
+              operationId: `${order.id}:edit:${item.productVariantId}:${prevQty}:${nextQty}:search`,
+              eventType: OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED,
+              aggregateType: 'PRODUCT',
+              aggregateId: updated.productId,
+              payload: { productId: updated.productId },
+            },
+            manager,
+          );
         }
         item.quantity = nextQty;
         item.totalPrice = Number(item.unitPrice) * nextQty;
-        await this.itemRepo.save(item);
+        await itemRepo.save(item);
       }
       const remaining = (order.items ?? []).filter((i) => (Number(i.quantity) || 0) > 0);
       for (const i of order.items ?? []) {
-        if ((Number(i.quantity) || 0) <= 0) await this.itemRepo.remove(i);
+        if ((Number(i.quantity) || 0) <= 0) await itemRepo.remove(i);
       }
       for (const i of remaining) subtotal += Number(i.unitPrice) * Number(i.quantity);
       const wallet = this.resolveWalletApplied(order);
@@ -1176,6 +1349,8 @@ export class OrderService {
       order.discount = promoDiscount + wallet;
       order.total = Math.max(0, subtotal - promoDiscount + (Number(order.shippingFee) || 0) - wallet);
       order.items = remaining;
+      await manager.getRepository(OrderEntity).save(order);
+      });
     }
 
     await this.orderRepo.save(order);
@@ -1192,14 +1367,21 @@ export class OrderService {
     if (shippingMethod) patch.shippingMethod = shippingMethod;
     if (extra?.freightCost !== undefined) patch.freightCost = Number(extra.freightCost) || 0;
     if (extra?.freightReceiptUrl !== undefined) patch.freightReceiptUrl = extra.freightReceiptUrl || undefined;
-    await this.orderRepo.update(id, patch as any);
     const order = await this.findOne(id);
-    if (this.notifications) {
-      this.notify(
-        (p) => this.notifications!.orderShipped(p, order.orderNumber, trackingCode),
-        order.customerId,
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(OrderEntity).update(id, patch as any);
+      await this.outbox.enqueue(
+        {
+          operationId: `${id}:status:SHIPPED`,
+          eventType: OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION,
+          aggregateType: 'ORDER',
+          aggregateId: id,
+          channel: this.orderStockChannel(order),
+          payload: { orderId: id, status: 'SHIPPED' },
+        },
+        manager,
       );
-    }
-    return order;
+    });
+    return this.findOne(id);
   }
 }

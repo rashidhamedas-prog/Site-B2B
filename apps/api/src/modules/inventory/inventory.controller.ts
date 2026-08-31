@@ -53,9 +53,9 @@ export class InventoryController {
   }
 
   @Delete('movements/:id')
-  @ApiOperation({ summary: 'حذف ردیف تاریخچه تحرک (بدون برگشت موجودی)' })
+  @ApiOperation({ summary: 'برگشت حرکت انبار با ردیف REVERSAL (تاریخچه حذف نمی‌شود)' })
   deleteMovement(@Param('id') id: string) {
-    return this.inventoryService.deleteMovement(id);
+    return this.inventoryService.reverseMovement(id);
   }
 
   @Get('movements/:variantId')

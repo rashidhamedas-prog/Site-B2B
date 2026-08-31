@@ -18,6 +18,7 @@ export type RetailCardProduct = {
   retailPrice?: number | null;
   retailCompareAtPrice?: number | null;
   images?: string[];
+  retailStock?: number;
   stock?: number;
   totalStock?: number;
   isNew?: boolean;
@@ -68,9 +69,9 @@ export function RetailProductCard({
   const [color, setColor] = useState(colors[0]?.color ?? '');
   const [size, setSize] = useState(sizes[0] ?? '');
   const stock =
-    product.stock ??
-    product.totalStock ??
-    (product.variants ?? []).reduce((sum, v) => sum + Number(v.retailStock ?? v.stock ?? 0), 0);
+    typeof product.retailStock === 'number'
+      ? product.retailStock
+      : (product.variants ?? []).reduce((sum, v) => sum + Math.max(0, Number(v.retailStock) || 0), 0);
   const soldOut = !product.isPreOrder && stock <= 0;
 
   useEffect(() => setWishlisted(isInWishlist(product.id)), [product.id]);

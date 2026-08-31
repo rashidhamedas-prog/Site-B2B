@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { IntegrationHealthTracker } from '../../common/integration-health';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
+import { channelAvailability, isChannelVisible } from '../product/channel-product-projection';
 
 /**
  * Lightweight Basalam Core API client (https://developers.basalam.com / https://doc.basalam.com).
@@ -160,14 +161,13 @@ export class BasalamService {
     const unmapped: string[] = [];
 
     for (const p of rows) {
-      if (!(Number(p.retailPrice) > 0)) continue;
+      if (!isChannelVisible(p, 'RETAIL')) continue;
       const basalamId = map[p.id];
       if (!basalamId) {
         unmapped.push(p.sku || p.id);
         continue;
       }
-      const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.stock) || 0), 0);
-      const stock = variantStock > 0 ? variantStock : Number(p.stock) || 0;
+      const { stock } = channelAvailability(p, 'RETAIL');
       // Basalam prices are typically in Toman for vendor panel; API often expects Rial — send IRR as stored.
       updates.push({
         id: Number(basalamId),
@@ -254,10 +254,9 @@ export class BasalamService {
       take: limit,
     });
     return rows
-      .filter((p) => Number(p.retailPrice) > 0)
+      .filter((p) => isChannelVisible(p, 'RETAIL'))
       .map((p) => {
-        const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.stock) || 0), 0);
-        const stock = variantStock > 0 ? variantStock : Number(p.stock) || 0;
+        const { stock } = channelAvailability(p, 'RETAIL');
         return {
           localId: p.id,
           sku: p.sku,

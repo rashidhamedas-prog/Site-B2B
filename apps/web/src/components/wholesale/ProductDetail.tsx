@@ -205,16 +205,12 @@ export function ProductDetail({
     availableSizes.every((s) => s === availableSizes[0] || s.includes('سایزی') || s.includes('فری'));
 
   const variantWholesale = (v: { wholesaleStock?: number; stock?: number }) =>
-    Number(v.wholesaleStock) || Number(v.stock) || 0;
+    Math.max(0, Number(v.wholesaleStock) || 0);
 
   const totalStock =
     typeof product?.wholesaleStock === 'number'
       ? product.wholesaleStock
-      : typeof product?.totalStock === 'number'
-        ? product.totalStock
-        : typeof product?.stock === 'number'
-          ? product.stock
-          : product?.variants?.reduce((s, v) => s + variantWholesale(v), 0) ?? 0;
+      : product?.variants?.reduce((s, v) => s + variantWholesale(v), 0) ?? 0;
 
   const colorsForOrder = allowColorSelect
     ? selectedColors

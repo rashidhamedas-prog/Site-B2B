@@ -37,7 +37,7 @@ export class CrmController {
       productId: product.id,
       sku: product.sku,
       name: product.name,
-      stock: product.stock ?? product.totalStock ?? 0,
+      stock: Number(product.wholesaleStock) || 0,
       minOrderQty: product.minOrderQty,
       status: product.status,
       syncedAt: new Date().toISOString(),

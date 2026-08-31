@@ -1,0 +1,548 @@
+import {
+  BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
+import { ChannelProjectionService } from './channel-projection.service';
+import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
+import { normalizeSalesChannel } from '../../product/channel-product-projection';
+import { ProductEntity } from '../../product/entities/product.entity';
+import { PreviewDto, CreatePublicationDto } from '../dto/omnichannel.dto';
+import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
+import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
+import { ChannelTemplateEntity } from '../entities/channel-template.entity';
+import { OutboxEventEntity } from '../entities/outbox-event.entity';
+import { PublicationEntity } from '../entities/publication.entity';
+import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
+import { OmnichannelAuditEntity } from '../entities/omnichannel-audit.entity';
+import { OmnichannelMediaAssetEntity } from '../entities/omnichannel-media-asset.entity';
+import { TelegramAdapter } from '../adapters/telegram.adapter';
+import { BaleAdapter } from '../adapters/bale.adapter';
+import { RubikaAdapter } from '../adapters/rubika.adapter';
+import { ConnectorDisabledError } from '../adapters/channel-adapter';
+import {
+  areOmnichannelConnectorsEnabled,
+  isOmnichannelAutoPublishEnabled,
+  OUTBOX_EVENT_TYPES,
+} from '../omnichannel.constants';
+import { OutboxService } from './outbox.service';
+import { applyReconcileIntents, reconcilePublicationIntents } from './reconcile';
+import { nextPublicationAction, syncChannelsForEvent } from './publication-sync';
+import { summarizeOutbox } from './outbox-metrics';
+import { canDeleteMediaAsset, countMediaReferences } from '../media-references';
+import { CmsPageEntity } from '../../cms/entities/cms-page.entity';
+import {
+  CreateConnectionDto,
+  CreateDestinationDto,
+  CreateTemplateDto,
+  PatchConnectionDto,
+  PatchTemplateDto,
+} from '../dto/omnichannel.dto';
+import { assertNoPlaintextSecrets, toPublicConnection, toPublicDestination } from '../omnichannel-secrets';
+import { redactProviderError } from '../adapters/telegram-errors';
+import { isMissingRelationError } from '../media-registry';
+
+type Actor = { id: string };
+
+@Injectable()
+export class OmnichannelService {
+  constructor(
+    @InjectRepository(ChannelConnectionEntity)
+    private readonly connections: Repository<ChannelConnectionEntity>,
+    @InjectRepository(ChannelDestinationEntity)
+    private readonly destinations: Repository<ChannelDestinationEntity>,
+    @InjectRepository(ChannelTemplateEntity)
+    private readonly templates: Repository<ChannelTemplateEntity>,
+    @InjectRepository(OutboxEventEntity)
+    private readonly events: Repository<OutboxEventEntity>,
+    @InjectRepository(PublicationEntity)
+    private readonly publications: Repository<PublicationEntity>,
+    @InjectRepository(PublicationDeliveryEntity)
+    private readonly deliveries: Repository<PublicationDeliveryEntity>,
+    @InjectRepository(OmnichannelAuditEntity)
+    private readonly audits: Repository<OmnichannelAuditEntity>,
+    @InjectRepository(ProductEntity)
+    private readonly products: Repository<ProductEntity>,
+    @InjectRepository(CmsPageEntity)
+    private readonly cmsPages: Repository<CmsPageEntity>,
+    @InjectRepository(OmnichannelMediaAssetEntity)
+    private readonly mediaAssets: Repository<OmnichannelMediaAssetEntity>,
+    private readonly projection: ChannelProjectionService,
+    private readonly telegram: TelegramAdapter,
+    private readonly bale: BaleAdapter,
+    private readonly rubika: RubikaAdapter,
+    private readonly outbox: OutboxService,
+  ) {}
+
+  private requireActor(actor?: Actor) {
+    if (!actor?.id) throw new ForbiddenException('دسترسی غیرمجاز');
+    return actor;
+  }
+
+  private async audit(actor: Actor, action: string, entityType: string, entityId: string, channel: string | null, reason?: string | null, payload: Record<string, unknown> = {}) {
+    await this.audits.save(
+      this.audits.create({
+        actorId: actor.id,
+        action,
+        entityType,
+        entityId,
+        channel,
+        reason: reason || null,
+        payload,
+      }),
+    );
+  }
+
+  async listConnections() {
+    const rows = await this.connections.find({ order: { createdAt: 'DESC' } });
+    return rows.map((row) => toPublicConnection(row));
+  }
+
+  async createConnection(dto: CreateConnectionDto) {
+    assertNoPlaintextSecrets(dto);
+    const exists = await this.connections.findOne({
+      where: { provider: dto.provider, channel: dto.channel, name: dto.name },
+    });
+    if (exists) throw new ConflictException('اتصال تکراری است');
+    const saved = await this.connections.save(
+      this.connections.create({
+        ...dto,
+        status: 'DISABLED',
+      }),
+    );
+    return toPublicConnection(saved);
+  }
+
+  async patchConnection(id: string, dto: PatchConnectionDto) {
+    assertNoPlaintextSecrets(dto);
+    const row = await this.connections.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('اتصال یافت نشد');
+    if (dto.name !== undefined) row.name = dto.name;
+    if (dto.secretRef !== undefined) row.secretRef = dto.secretRef;
+    if (dto.status !== undefined) row.status = dto.status;
+    return toPublicConnection(await this.connections.save(row));
+  }
+
+  async listDestinations() {
+    const rows = await this.destinations.find({ order: { createdAt: 'DESC' } });
+    return rows.map((row) => toPublicDestination(row));
+  }
+
+  async createDestination(dto: CreateDestinationDto) {
+    assertNoPlaintextSecrets(dto);
+    const connection = await this.connections.findOne({ where: { id: dto.connectionId } });
+    if (!connection) throw new NotFoundException('اتصال یافت نشد');
+    const exists = await this.destinations.findOne({
+      where: { connectionId: dto.connectionId, destinationKey: dto.destinationKey },
+    });
+    if (exists) throw new ConflictException('مقصد تکراری است');
+    const saved = await this.destinations.save(
+      this.destinations.create({
+        connectionId: dto.connectionId,
+        destinationKey: dto.destinationKey,
+        displayName: dto.displayName,
+        enabled: dto.enabled ?? true,
+        settings: dto.settings ?? {},
+      }),
+    );
+    return toPublicDestination(saved);
+  }
+
+  async listTemplates() {
+    return this.templates.find({ order: { createdAt: 'DESC' } });
+  }
+
+  async createTemplate(dto: CreateTemplateDto) {
+    assertNoPlaintextSecrets(dto);
+    const version = dto.version ?? 1;
+    const exists = await this.templates.findOne({
+      where: {
+        provider: dto.provider,
+        channel: dto.channel,
+        eventType: dto.eventType,
+        version,
+      },
+    });
+    if (exists) throw new ConflictException('قالب تکراری است');
+    return this.templates.save(
+      this.templates.create({
+        provider: dto.provider,
+        channel: dto.channel,
+        eventType: dto.eventType,
+        locale: dto.locale ?? 'fa',
+        body: dto.body,
+        version,
+        enabled: dto.enabled ?? true,
+      }),
+    );
+  }
+
+  async patchTemplate(id: string, dto: PatchTemplateDto) {
+    assertNoPlaintextSecrets(dto);
+    const row = await this.templates.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('قالب یافت نشد');
+    if (dto.body !== undefined) row.body = dto.body;
+    if (dto.enabled !== undefined) row.enabled = dto.enabled;
+    return this.templates.save(row);
+  }
+
+  async listPublications() {
+    return this.publications.find({ order: { createdAt: 'DESC' }, take: 100 });
+  }
+
+  async listDeliveries() {
+    const rows = await this.deliveries.find({ order: { createdAt: 'DESC' }, take: 100 });
+    return rows.map((row) => ({
+      ...row,
+      lastError: row.lastError ? redactProviderError(row.lastError) : row.lastError,
+    }));
+  }
+
+  async outboxMetrics() {
+    try {
+      const rows = await this.events.find({
+        select: ['status', 'availableAt', 'lockedAt'],
+        take: 2000,
+      });
+      return summarizeOutbox(rows);
+    } catch (err) {
+      if (isMissingRelationError(err)) {
+        return summarizeOutbox([]);
+      }
+      throw err;
+    }
+  }
+
+  async listOutbox() {
+    const rows = await this.events.find({ order: { createdAt: 'DESC' }, take: 100 });
+    return rows.map((row) => ({
+      id: row.id,
+      eventType: row.eventType,
+      aggregateId: row.aggregateId,
+      channel: row.channel,
+      status: row.status,
+      attempts: row.attempts,
+      availableAt: row.availableAt,
+        lastError: row.lastError ? redactProviderError(row.lastError) : row.lastError,
+      createdAt: row.createdAt,
+    }));
+  }
+
+  async listAudits() {
+    return this.audits.find({
+      order: { createdAt: 'DESC' },
+      take: 100,
+      select: ['id', 'actorId', 'action', 'entityType', 'entityId', 'channel', 'reason', 'createdAt'],
+    });
+  }
+
+  async preview(dto: PreviewDto) {
+    const kind = String(dto.sourceType || 'PRODUCT').toUpperCase();
+    if (kind !== 'PRODUCT' && kind !== 'BLOG_POST' && kind !== 'CMS_PAGE') {
+      throw new BadRequestException('sourceType باید PRODUCT یا BLOG_POST یا CMS_PAGE باشد');
+    }
+    const channel = normalizeSalesChannel(dto.channel);
+    const projection = await this.projection.previewSource(kind, dto.sourceId, channel);
+    return { dryRun: true, projection };
+  }
+
+  async createPublication(dto: CreatePublicationDto, actor?: Actor) {
+    const who = this.requireActor(actor);
+    const dryRun = dto.dryRun !== false;
+    const { projection } = await this.preview(dto.preview);
+    if (!projection.publishable) {
+      throw new BadRequestException(projection.rejectReason || 'این منبع برای این کانال قابل انتشار نیست');
+    }
+    if (!dryRun && projection.sourceType === 'PRODUCT') {
+      const live = await this.publications.count({
+        where: { channel: projection.channel, sourceType: 'PRODUCT', status: In(['READY', 'PUBLISHED', 'PARTIAL']) },
+      });
+      const limit = canaryLimitFor(projection.channel);
+      if (canaryExceeded(live, limit)) {
+        throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است`);
+      }
+    }
+    const saved = await this.publications.manager.transaction(async (manager) => {
+      const row = await manager.getRepository(PublicationEntity).save(
+        manager.getRepository(PublicationEntity).create({
+          sourceType: projection.sourceType,
+          sourceId: dto.preview.sourceId,
+          channel: projection.channel,
+          sourceUpdatedAt: new Date(),
+          projection,
+          status: dryRun ? 'DRAFT' : 'READY',
+        }),
+      );
+      if (!dryRun && isOmnichannelAutoPublishEnabled() && areOmnichannelConnectorsEnabled()) {
+        await this.enqueueTelegramDeliveries(
+          row.id,
+          projection.channel,
+          String(projection.name || ('sku' in projection ? projection.sku : '') || row.sourceId),
+          manager,
+        );
+      }
+      await manager.getRepository(OmnichannelAuditEntity).save(
+        manager.getRepository(OmnichannelAuditEntity).create({
+          actorId: who.id,
+          action: dryRun ? 'preview_publish' : 'publish',
+          entityType: 'PUBLICATION',
+          entityId: row.id,
+          channel: projection.channel,
+          reason: dto.reason || null,
+          payload: { dryRun, sourceId: dto.preview.sourceId },
+        }),
+      );
+      return row;
+    });
+    return { dryRun, publication: saved };
+  }
+
+  async withdraw(id: string, actor?: Actor, reason?: string) {
+    const who = this.requireActor(actor);
+    const row = await this.publications.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('انتشار یافت نشد');
+    row.status = 'WITHDRAWN';
+    const saved = await this.publications.save(row);
+    await this.audit(who, 'withdraw', 'PUBLICATION', saved.id, row.channel, reason);
+    return saved;
+  }
+
+  async testConnection(id: string, actor?: Actor) {
+    const who = this.requireActor(actor);
+    const row = await this.connections.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('اتصال یافت نشد');
+    if (row.provider === 'BALE') await this.bale.validateConnection();
+    if (row.provider === 'RUBIKA') await this.rubika.validateConnection();
+    if (!areOmnichannelConnectorsEnabled() || row.provider !== 'TELEGRAM') {
+      throw new ConnectorDisabledError(row.provider);
+    }
+    const result = await this.telegram.validateConnection(row.secretRef);
+    await this.audit(who, 'test_connection', 'CONNECTION', row.id, row.channel, null, { ok: result.ok, error: result.error || null });
+    return result;
+  }
+
+  async retryDelivery(id: string, actor?: Actor, reason?: string) {
+    const who = this.requireActor(actor);
+    if (!reason) throw new BadRequestException('reason الزامی است');
+    const row = await this.deliveries.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('تحویل یافت نشد');
+    if (row.status === 'SUCCEEDED') return { retried: false, delivery: row };
+    row.status = 'PENDING';
+    row.nextAttemptAt = new Date();
+    row.lastError = null;
+    const saved = await this.deliveries.save(row);
+    await this.audit(who, 'retry', 'DELIVERY', saved.id, null, reason, { publicationId: saved.publicationId });
+    return { retried: true, delivery: saved };
+  }
+
+  async reconcile(actor?: Actor, reason?: string) {
+    const who = this.requireActor(actor);
+    const products = await this.products.find({
+      select: ['id', 'status', 'showOnRetail', 'showOnWholesale', 'updatedAt'],
+    });
+    const visible = products.flatMap((product) => {
+      const rows: Array<{ id: string; channel: 'RETAIL' | 'WHOLESALE'; updatedAt: Date }> = [];
+      if (String(product.status || '').toUpperCase() === 'ACTIVE' && product.showOnRetail !== false) {
+        rows.push({ id: product.id, channel: 'RETAIL', updatedAt: product.updatedAt });
+      }
+      if (String(product.status || '').toUpperCase() === 'ACTIVE' && product.showOnWholesale !== false) {
+        rows.push({ id: product.id, channel: 'WHOLESALE', updatedAt: product.updatedAt });
+      }
+      return rows;
+    });
+    const existing = await this.publications.find({
+      select: ['sourceId', 'channel', 'status', 'sourceUpdatedAt'],
+    });
+    const intents = reconcilePublicationIntents(visible, existing);
+    const next = applyReconcileIntents(visible, existing);
+    for (const intent of intents) {
+      if (intent.action === 'withdraw') {
+        await this.publications.update(
+          { sourceId: intent.sourceId, channel: intent.channel },
+          { status: 'WITHDRAWN' },
+        );
+      } else {
+        const already = existing.find((row) => row.sourceId === intent.sourceId && row.channel === intent.channel && row.status === 'DRAFT');
+        if (already) continue;
+        const { projection } = await this.preview({
+          channel: intent.channel as 'RETAIL' | 'WHOLESALE',
+          sourceType: 'PRODUCT',
+          sourceId: intent.sourceId,
+        });
+        if (!projection.publishable) continue;
+        await this.publications.save(
+          this.publications.create({
+            sourceType: 'PRODUCT',
+            sourceId: intent.sourceId,
+            channel: intent.channel,
+            sourceUpdatedAt: new Date(),
+            projection,
+            status: 'DRAFT',
+          }),
+        );
+      }
+    }
+    await this.audit(who, 'reconcile', 'PUBLICATION', 'batch', null, reason || 'reconcile', {
+      intentCount: intents.length,
+      replayEmpty: reconcilePublicationIntents(visible, next).length === 0,
+    });
+    return { intents, deliveriesCreated: 0 };
+  }
+
+  /**
+   * Worker/catalog sync: upsert or withdraw local publication rows.
+   * Never enqueues deliveries. Missing schema is skipped (pre-migrate).
+   */
+  async syncProductPublications(productId: string, channel?: string | null) {
+    return this.syncSourcePublications('PRODUCT', productId, channel);
+  }
+
+  async syncBlogPublications(postId: string, channel?: string | null) {
+    return this.syncSourcePublications('BLOG_POST', postId, channel);
+  }
+
+  async syncCmsPublications(pageId: string, channel?: string | null) {
+    return this.syncSourcePublications('CMS_PAGE', pageId, channel);
+  }
+
+  private async syncSourcePublications(
+    sourceType: 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE',
+    sourceId: string,
+    channel?: string | null,
+  ) {
+    const id = String(sourceId || '').trim();
+    if (!id) return [];
+    const results: Array<{ channel: string; action: string }> = [];
+    try {
+      for (const ch of syncChannelsForEvent(channel)) {
+        results.push(await this.syncOneSource(sourceType, id, ch));
+      }
+    } catch (err) {
+      if (isMissingRelationError(err)) return [{ channel: String(channel || ''), action: 'skip' }];
+      throw err;
+    }
+    return results;
+  }
+
+  private async syncOneSource(
+    sourceType: 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE',
+    sourceId: string,
+    channel: 'RETAIL' | 'WHOLESALE',
+  ) {
+    let projection: Awaited<ReturnType<ChannelProjectionService['previewSource']>>;
+    try {
+      projection = await this.projection.previewSource(sourceType, sourceId, channel);
+    } catch (err) {
+      if (err instanceof NotFoundException) {
+        await this.publications.update(
+          { sourceType, sourceId, channel },
+          { status: 'WITHDRAWN' },
+        );
+        return { channel, action: 'withdraw' };
+      }
+      throw err;
+    }
+    const existing = await this.publications.findOne({
+      where: { sourceType, sourceId, channel },
+      order: { createdAt: 'DESC' },
+    });
+    const action = nextPublicationAction(existing, projection.publishable);
+    if (action === 'skip') return { channel, action };
+    if (action === 'withdraw' && existing) {
+      existing.status = 'WITHDRAWN';
+      await this.publications.save(existing);
+      return { channel, action };
+    }
+    if (action === 'create') {
+      await this.publications.save(
+        this.publications.create({
+          sourceType,
+          sourceId,
+          channel,
+          sourceUpdatedAt: new Date(),
+          projection,
+          status: 'DRAFT',
+        }),
+      );
+      return { channel, action };
+    }
+    if (!existing) return { channel, action: 'skip' };
+    existing.projection = projection;
+    existing.sourceUpdatedAt = new Date();
+    if (action === 'reopen') existing.status = 'DRAFT';
+    await this.publications.save(existing);
+    return { channel, action };
+  }
+
+  async assertMediaDeletable(url: string) {
+    const products = await this.products.find({ select: ['id', 'images', 'videoUrl'] });
+    const pages = await this.cmsPages.find({ select: ['id', 'content', 'blocks'] });
+    const count = countMediaReferences(url, [
+      ...products.map((p) => ({ images: p.images, videoUrl: p.videoUrl })),
+      ...pages.map((page) => ({ html: `${page.content}\n${JSON.stringify(page.blocks || [])}` })),
+    ]);
+    if (!canDeleteMediaAsset(count)) {
+      throw new ConflictException('این فایل هنوز در محصول یا CMS استفاده می‌شود');
+    }
+    return { deletable: true, references: count };
+  }
+
+  async listMedia() {
+    try {
+      return await this.mediaAssets.find({
+        order: { createdAt: 'DESC' },
+        take: 100,
+        select: ['id', 'publicUrl', 'storageKey', 'altText', 'ownerType', 'ownerId', 'createdAt'],
+      });
+    } catch (err) {
+      if (isMissingRelationError(err)) return [];
+      throw err;
+    }
+  }
+
+  async patchMediaAlt(id: string, altText: string) {
+    const row = await this.mediaAssets.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('فایل یافت نشد');
+    row.altText = String(altText || '').trim().slice(0, 200);
+    return this.mediaAssets.save(row);
+  }
+
+  private async enqueueTelegramDeliveries(
+    publicationId: string,
+    channel: string,
+    text: string,
+    manager: EntityManager,
+  ) {
+    const dests = await manager.getRepository(ChannelDestinationEntity).find({ where: { enabled: true } });
+    const conns = await manager.getRepository(ChannelConnectionEntity).find();
+    const byId = new Map(conns.map((row) => [row.id, row]));
+    const deliveryRepo = manager.getRepository(PublicationDeliveryEntity);
+    for (const dest of dests) {
+      const conn = byId.get(dest.connectionId);
+      if (!conn || conn.provider !== 'TELEGRAM' || conn.channel !== channel || conn.status !== 'ACTIVE') continue;
+      const queued = await this.outbox.enqueue({
+        operationId: `pub:${publicationId}:${dest.id}:CREATE`,
+        eventType: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED,
+        aggregateType: 'PUBLICATION',
+        aggregateId: publicationId,
+        channel,
+        payload: {
+          publicationId,
+          destinationId: dest.id,
+          action: 'CREATE',
+          text,
+        },
+      }, manager);
+      if (!queued.id) continue;
+      await deliveryRepo.save(
+        deliveryRepo.create({
+          publicationId,
+          destinationId: dest.id,
+          eventId: queued.id,
+          action: 'CREATE',
+          status: 'PENDING',
+        }),
+      );
+    }
+  }
+}

@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CmsPageEntity } from './entities/cms-page.entity';
 import { SiteContentEntity } from './entities/site-content.entity';
+import { sanitizeCmsBlocks, sanitizeCmsHtml, sanitizeCmsValue } from './cms-sanitize';
+import { OutboxService } from '../omnichannel/services/outbox.service';
+import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 
 @Injectable()
 export class CmsService {
@@ -11,34 +14,57 @@ export class CmsService {
     private readonly repo: Repository<CmsPageEntity>,
     @InjectRepository(SiteContentEntity)
     private readonly siteContentRepo: Repository<SiteContentEntity>,
+    private readonly outbox: OutboxService,
   ) {}
+
+  private async enqueueCmsPublished(
+    page: { id: string; status?: string; channel?: string; isPublished?: boolean },
+    operationId: string,
+    manager?: EntityManager,
+  ) {
+    const published = page.status === 'PUBLISHED' || page.isPublished === true;
+    if (!published) return;
+    await this.outbox.enqueue(
+      {
+        operationId,
+        eventType: OUTBOX_EVENT_TYPES.CMS_PUBLISHED,
+        aggregateType: 'CMS_PAGE',
+        aggregateId: page.id,
+        channel: page.channel ?? null,
+        payload: { pageId: page.id, channel: page.channel ?? null },
+      },
+      manager,
+    );
+  }
 
   private normalizeChannel(channel?: string): string {
     const c = String(channel || 'WHOLESALE').toUpperCase();
     return c === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
   }
 
-  // Public: published page by slug (+ optional channel).
-  async findBySlug(slug: string, channel?: string): Promise<CmsPageEntity> {
-    const where: any = { slug, status: 'PUBLISHED' };
-    if (channel) where.channel = this.normalizeChannel(channel);
-    let page = await this.repo.findOne({ where });
-    // Fallback: if channel filter miss, try without channel for legacy rows
-    if (!page && channel) {
-      page = await this.repo.findOne({ where: { slug, status: 'PUBLISHED' } });
-    }
-    if (!page) throw new NotFoundException('صفحه یافت نشد');
+  private sanitizePage(page: CmsPageEntity): CmsPageEntity {
+    page.content = sanitizeCmsHtml(page.content || '');
+    page.blocks = sanitizeCmsBlocks(page.blocks);
+    if (page.meta) page.meta = sanitizeCmsValue(page.meta, 'meta') as Record<string, any>;
     return page;
+  }
+
+  // Public: published page by slug. Channel is always applied — no cross-channel fallback.
+  async findBySlug(slug: string, channel?: string): Promise<CmsPageEntity> {
+    const ch = this.normalizeChannel(channel);
+    const page = await this.repo.findOne({ where: { slug, status: 'PUBLISHED', channel: ch } });
+    if (!page) throw new NotFoundException('صفحه یافت نشد');
+    return this.sanitizePage(page);
   }
 
   // Public: published banners/FAQ collections.
   async findByKind(kind: string, channel?: string): Promise<CmsPageEntity[]> {
-    const where: any = { kind: kind.toUpperCase(), status: 'PUBLISHED' };
-    if (channel) where.channel = this.normalizeChannel(channel);
-    return this.repo.find({
+    const where: any = { kind: kind.toUpperCase(), status: 'PUBLISHED', channel: this.normalizeChannel(channel) };
+    const rows = await this.repo.find({
       where,
       order: { updatedAt: 'DESC' },
     });
+    return rows.map((row) => this.sanitizePage(row));
   }
 
   // Admin
@@ -58,24 +84,35 @@ export class CmsService {
       });
       if (exists) throw new ConflictException('اسلاگ تکراری است');
     }
-    return this.repo.save(
-      this.repo.create({
-        ...data,
-        channel,
-        blocks: Array.isArray(data.blocks) ? data.blocks : [],
-      }),
-    );
+    return this.repo.manager.transaction(async (manager) => {
+      const saved = await manager.getRepository(CmsPageEntity).save(
+        manager.getRepository(CmsPageEntity).create({
+          ...data,
+          channel,
+          content: typeof data.content === 'string' ? sanitizeCmsHtml(data.content) : data.content,
+          blocks: sanitizeCmsBlocks(data.blocks),
+          meta: data.meta ? (sanitizeCmsValue(data.meta, 'meta') as Record<string, any>) : data.meta,
+        }),
+      );
+      await this.enqueueCmsPublished(saved, `${saved.id}:create`, manager);
+      return saved;
+    });
   }
 
   async update(id: string, data: Partial<CmsPageEntity>): Promise<CmsPageEntity> {
     const page = await this.repo.findOne({ where: { id } });
     if (!page) throw new NotFoundException('صفحه یافت نشد');
     if (data.channel !== undefined) data.channel = this.normalizeChannel(data.channel);
-    if (data.blocks !== undefined && !Array.isArray(data.blocks)) {
-      data.blocks = [];
-    }
+    if (data.content !== undefined) data.content = sanitizeCmsHtml(String(data.content || ''));
+    if (data.blocks !== undefined) data.blocks = sanitizeCmsBlocks(data.blocks);
+    if (data.meta !== undefined) data.meta = sanitizeCmsValue(data.meta, 'meta') as Record<string, any>;
+    const prevUpdatedAt = page.updatedAt ? new Date(page.updatedAt).getTime() : 0;
     Object.assign(page, data);
-    return this.repo.save(page);
+    return this.repo.manager.transaction(async (manager) => {
+      const saved = await manager.getRepository(CmsPageEntity).save(page);
+      await this.enqueueCmsPublished(saved, `${saved.id}:update:${prevUpdatedAt}`, manager);
+      return saved;
+    });
   }
 
   async remove(id: string) {
@@ -117,7 +154,10 @@ export class CmsService {
         isPublished: false,
       };
     }
-    return row;
+    return {
+      ...row,
+      blocks: sanitizeCmsBlocks(row.blocks),
+    };
   }
 
   async upsertSiteContent(data: {
@@ -137,17 +177,26 @@ export class CmsService {
         channel,
         pageKey,
         title: data.title ?? pageKey,
-        blocks: Array.isArray(data.blocks) ? data.blocks : [],
+        blocks: sanitizeCmsBlocks(data.blocks),
         seo: data.seo ?? null,
         isPublished: data.isPublished ?? true,
       });
     } else {
       if (data.title !== undefined) row.title = data.title;
-      if (data.blocks !== undefined) row.blocks = Array.isArray(data.blocks) ? data.blocks : [];
+      if (data.blocks !== undefined) row.blocks = sanitizeCmsBlocks(data.blocks);
       if (data.seo !== undefined) row.seo = data.seo;
       if (data.isPublished !== undefined) row.isPublished = !!data.isPublished;
     }
-    return this.siteContentRepo.save(row);
+    const prevUpdatedAt = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
+    return this.siteContentRepo.manager.transaction(async (manager) => {
+      const saved = await manager.getRepository(SiteContentEntity).save(row);
+      await this.enqueueCmsPublished(
+        { id: saved.id, isPublished: saved.isPublished, channel: saved.channel },
+        `${saved.id}:site:${prevUpdatedAt}`,
+        manager,
+      );
+      return saved;
+    });
   }
 
   async deleteSiteContent(id: string) {

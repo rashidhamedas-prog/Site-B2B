@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { IntegrationHealthTracker } from '../../common/integration-health';
 import { OrderEntity } from '../order/entities/order.entity';
 import { SettingsService } from '../settings/settings.service';
+import { OutboxService } from '../omnichannel/services/outbox.service';
+import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 
 export type ConversionPayload = {
   orderId: string;
@@ -33,6 +35,7 @@ export class AffiliatePostbackService {
     @InjectRepository(OrderEntity)
     private readonly orders: Repository<OrderEntity>,
     private readonly settings: SettingsService,
+    private readonly outbox: OutboxService,
   ) {}
 
   health() {
@@ -74,7 +77,29 @@ export class AffiliatePostbackService {
     return null;
   }
 
-  async fireForOrder(orderId: string, status: ConversionPayload['status'] = 'paid') {
+  /**
+   * Enqueue affiliate intent. HTTP delivery is the Phase 3 worker (`deliverForOrder`).
+   */
+  async fireForOrder(
+    orderId: string,
+    status: ConversionPayload['status'] = 'paid',
+    manager?: EntityManager,
+  ) {
+    return this.outbox.enqueue(
+      {
+        operationId: `${orderId}:affiliate:${status}`,
+        eventType: OUTBOX_EVENT_TYPES.AFFILIATE_POSTBACK_REQUESTED,
+        aggregateType: 'ORDER',
+        aggregateId: orderId,
+        channel: 'RETAIL',
+        payload: { orderId, status },
+      },
+      manager,
+    );
+  }
+
+  /** Worker-facing HTTP delivery. Do not call from the request path. */
+  async deliverForOrder(orderId: string, status: ConversionPayload['status'] = 'paid') {
     const order = await this.orders.findOne({ where: { id: orderId } });
     if (!order) return { skipped: true, reason: 'order_not_found' };
 

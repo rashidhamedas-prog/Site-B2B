@@ -23,6 +23,7 @@ export type WholesaleCardProduct = {
   };
   status?: string;
   stock?: number;
+  wholesaleStock?: number;
   totalStock?: number;
   images?: string[];
   sizeType?: string;
@@ -39,9 +40,9 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
   const href = `/products/${product.slug || product.id}`;
   const variants = product.variants ?? [];
   const stock =
-    product.stock ??
-    product.totalStock ??
-    variants.reduce((sum, variant) => sum + Number(variant.wholesaleStock ?? variant.stock ?? 0), 0);
+    typeof product.wholesaleStock === 'number'
+      ? product.wholesaleStock
+      : variants.reduce((sum, variant) => sum + Math.max(0, Number(variant.wholesaleStock) || 0), 0);
   const isComingSoon = product.status === 'COMING_SOON';
   const isAvailable = stock > 0 && !isComingSoon;
   const colors = uniqueByColor(variants);

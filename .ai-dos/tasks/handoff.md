@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T11:20:00Z — Omnichannel code ship (commit/merge/deploy)
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Owner authorized commit + merge to master + VPS deploy. Branch `ai/TASK-20260826-001-omnichannel-phase-0` from `e675671`.
+- Scope: phases 0–8 code (channel stock isolation, outbox+worker, local publication sync, Telegram gate, admin, TypeORM migrations, CI empty-DB migrate, worker container).
+- Connectors stay off (`OMNICHANNEL_CONNECTORS_ENABLED` / `OMNICHANNEL_AUTO_PUBLISH` not enabled). Worker must not enqueue deliveries.
+- Stale TASK-20260824-003 claim on `order.service.ts` recorded; heartbeat 2026-08-24, already reclaimed by this task.
+- Reclaimed `product.service.ts` from TASK-20260822-002 / 018-001 / 017-001 / 010-006 (stale >24h) to cut legacy `stock` dual-write. `feeds.controller.ts` stays with TASK-20260829-001; feed already uses `retailStock` only.
+- Do not mark Done: soak 24h, live canary, restore-drill, independent Reviewer+Security after this wave still required.
+- Exact next: tests → commit claimed files only → PR → merge → `auto-deploy.sh` → health.
+
 ## 2026-08-31T10:22:00Z — Retail public category ISR live
 
 - Task / owner: TASK-20260830-002 / cursor:implementer-TASK-20260830-002

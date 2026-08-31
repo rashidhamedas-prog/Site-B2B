@@ -282,13 +282,13 @@ function productRow(p: ExportProduct): ExcelCell[] {
   const seo = p.seoMeta || {};
   const spec = specsText(p.specs);
   const variantWholesale = variants.reduce(
-    (s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0),
+    (s, v) => s + (Number(v.wholesaleStock) || 0),
     0,
   );
   const variantRetail = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
   const wholesaleStock = variants.length
     ? variantWholesale
-    : Number(p.wholesaleStock) || Number(p.stock) || 0;
+    : Number(p.wholesaleStock) || 0;
   const retailStock = variants.length ? variantRetail : Number(p.retailStock) || 0;
 
   return [
@@ -379,7 +379,7 @@ function variantRows(products: ExportProduct[]): ExcelCell[][] {
         v.color || '',
         v.colorHex || '',
         v.size || '',
-        Number(v.wholesaleStock) || Number(v.stock) || 0,
+        Number(v.wholesaleStock) || 0,
         Number(v.retailStock) || 0,
         v.barcode || '',
         v.imageUrl || '',

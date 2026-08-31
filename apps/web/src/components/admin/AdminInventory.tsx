@@ -228,6 +228,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   RETURN: { label: 'مرجوعی',  color: 'bg-amber-100 text-amber-700' },
   DAMAGE: { label: 'ضایعات',  color: 'bg-gray-100 text-gray-600' },
   SALE:   { label: 'فروش',    color: 'bg-purple-100 text-purple-700' },
+  REVERSAL: { label: 'برگشت', color: 'bg-orange-100 text-orange-700' },
 };
 
 function HistoryModal({ channel, onClose }: { channel: AdminChannel; onClose: () => void }) {
@@ -243,11 +244,11 @@ function HistoryModal({ channel, onClose }: { channel: AdminChannel; onClose: ()
   }, [channel]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('این تحرک از تاریخچه حذف شود؟')) return;
+    if (!confirm('این حرکت برگشت داده شود؟ ردیف تاریخچه حذف نمی‌شود.')) return;
     setDeletingId(id);
     try {
-      await apiClient.delete(`/inventory/movements/${id}`);
-      setMovements((prev) => prev.filter((m) => m.id !== id));
+      const reversal = await apiClient.delete<Movement>(`/inventory/movements/${id}`);
+      setMovements((prev) => [reversal, ...prev.filter((m) => m.id !== reversal.id)]);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'خطا در حذف');
     } finally {
@@ -296,15 +297,17 @@ function HistoryModal({ channel, onClose }: { channel: AdminChannel; onClose: ()
                         {new Date(m.createdAt).toLocaleDateString('fa-IR')}
                       </td>
                       <td className="px-4 py-3">
+                        {m.type !== 'REVERSAL' ? (
                         <button
                           type="button"
                           disabled={deletingId === m.id}
                           onClick={() => handleDelete(m.id)}
                           className="cursor-pointer text-gray-400 hover:text-error disabled:opacity-40"
-                          title="حذف از تاریخچه"
+                          title="برگشت موجودی (بدون حذف تاریخچه)"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                        ) : null}
                       </td>
                     </tr>
                   );

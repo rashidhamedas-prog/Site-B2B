@@ -67,6 +67,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'سیستم',
     items: [
       { href: '/admin/users', icon: UserCog, label: 'کاربران ادمین' },
+      { href: '/admin/omnichannel', icon: Link2, label: 'کانال‌های انتشار' },
       { href: '/admin/settings', icon: Settings, label: 'تنظیمات' },
     ],
   },

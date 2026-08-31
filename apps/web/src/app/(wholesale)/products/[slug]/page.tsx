@@ -73,14 +73,7 @@ export default async function ProductPage({ params }: Props) {
   const totalStock =
     typeof product.wholesaleStock === 'number'
       ? Number(product.wholesaleStock)
-      : typeof product.totalStock === 'number'
-        ? Number(product.totalStock)
-        : typeof product.stock === 'number'
-          ? Number(product.stock)
-          : variants.reduce(
-              (sum, v) => sum + (Number(v.wholesaleStock) || Number(v.stock) || 0),
-              0,
-            );
+      : variants.reduce((sum, v) => sum + (Number(v.wholesaleStock) || 0), 0);
   const isComingSoon = product.status === 'COMING_SOON';
   const fabricLabel =
     (product.fabric as string | undefined) ||

@@ -81,7 +81,7 @@ export function draftsFromVariants(
   for (const v of variants) {
     const name = v.color || '—';
     const size = (v.size || '').trim() || 'فری';
-    const w = Number(v.wholesaleStock) || Number(v.stock) || 0;
+    const w = Number(v.wholesaleStock) || 0;
     const r = Number(v.retailStock) || 0;
     const existing = map.get(name);
     if (!existing) {

@@ -1,0 +1,36 @@
+---
+description: Omnichannel invariants for the shared retail/wholesale monolith
+globs: apps/api/src/modules/{product,inventory,order,feeds,basalam,cms,omnichannel}/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Omnichannel (shared core)
+
+This is one Modular Monolith. Do not add a second API, database, inventory source, or bot backend.
+
+## Stock and price
+
+- Retail projection uses only `retailStock` / `retailPrice` / `retailSalePrice` and `showOnRetail`.
+- Wholesale projection uses only `wholesaleStock` / `wholesalePrice` / `wholesaleSalePrice` and `showOnWholesale`.
+- Never read legacy `stock` in Feed, Basalam, storefront availability, or omnichannel projection.
+- Only Inventory/Order services may change stock. Connectors never decrement or overwrite stock.
+
+## Transactions
+
+- Variant reload and `syncProductStockFromVariants` must use the same `EntityManager` as the stock UPDATE.
+- Stock change and `inventory_movements` insert are one transaction. Checkout SALE must write a movement.
+- Movements are immutable; reverse with a `REVERSAL` row, never hard-delete.
+
+## Side effects
+
+- External delivery (SMS, affiliate, search, Telegram/Bale/Rubika) goes through transactional outbox + worker after Phase 2/3.
+- Secrets stay as `secretRef` only. Never persist or return provider tokens.
+
+```ts
+// ❌ BAD — Feed availability from legacy/wholesale stock
+const stock = Number(variant.stock) || Number(product.stock) || 0;
+
+// ✅ GOOD
+import { channelAvailability } from './channel-product-projection';
+const { stock } = channelAvailability(product, 'RETAIL');
+```

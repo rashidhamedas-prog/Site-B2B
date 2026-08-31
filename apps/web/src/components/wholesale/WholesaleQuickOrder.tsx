@@ -198,7 +198,7 @@ export function WholesaleQuickOrder({
                       </td>
                       {summary.availableSizes.map((s) => {
                         const v = (product.variants ?? []).find((x) => x.color === c.name && x.size === s);
-                        const stock = v ? Number(v.wholesaleStock ?? v.stock ?? 0) : 0;
+                        const stock = v ? Math.max(0, Number(v.wholesaleStock) || 0) : 0;
                         return (
                           <td key={s} className="p-2 text-[var(--brand-muted)]">
                             {stock > 0 ? stock.toLocaleString('fa-IR') : 'ناموجود'}
