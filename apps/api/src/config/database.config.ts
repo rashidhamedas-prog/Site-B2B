@@ -42,16 +42,19 @@ import { CategoryEntity } from '../modules/category/entities/category.entity';
 import { ProductSpecMemoryEntity } from '../modules/product/entities/product-spec-memory.entity';
 import { ProductRelatedEntity } from '../modules/product/entities/product-related.entity';
 import { ReturnRequestEntity } from '../modules/rma/entities/return-request.entity';
+import { ReturnRequestAuditEntity } from '../modules/rma/entities/return-request-audit.entity';
+import { ChannelConnectionEntity } from '../modules/omnichannel/entities/channel-connection.entity';
+import { ChannelDestinationEntity } from '../modules/omnichannel/entities/channel-destination.entity';
+import { ChannelTemplateEntity } from '../modules/omnichannel/entities/channel-template.entity';
+import { OutboxEventEntity } from '../modules/omnichannel/entities/outbox-event.entity';
+import { PublicationEntity } from '../modules/omnichannel/entities/publication.entity';
+import { PublicationDeliveryEntity } from '../modules/omnichannel/entities/publication-delivery.entity';
 import { CollectionEntity } from '../modules/collection/entities/collection.entity';
+import { OmnichannelAuditEntity } from '../modules/omnichannel/entities/omnichannel-audit.entity';
+import { OmnichannelMediaAssetEntity } from '../modules/omnichannel/entities/omnichannel-media-asset.entity';
+import { assertProductionDbSyncSafe, typeormSynchronizeEnabled } from './db-sync';
 
-export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => ({
-  type: 'postgres',
-  host: config.get('DB_HOST', 'localhost'),
-  port: config.get<number>('DB_PORT', 5432),
-  username: config.get('DB_USER', 'taranom'),
-  password: config.get('DB_PASS', 'taranom_pass'),
-  database: config.get('DB_NAME', 'taranom_db'),
-  entities: [
+export const RUNTIME_TYPEORM_ENTITIES = [
     UserEntity, CustomerEntity,
     CategoryEntity,
     CollectionEntity,
@@ -86,10 +89,34 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => (
     SiteContentEntity,
     AppSettingEntity,
     ReturnRequestEntity,
-  ],
-  migrations: ['dist/database/migrations/*.js'],
-  migrationsRun: config.get('NODE_ENV') === 'production' && config.get('DB_SYNC') !== 'true',
-  synchronize: config.get('DB_SYNC') === 'true' || config.get('NODE_ENV') !== 'production',
-  logging: config.get('NODE_ENV') === 'development',
-  ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
-});
+    ReturnRequestAuditEntity,
+    ChannelConnectionEntity,
+    ChannelDestinationEntity,
+    ChannelTemplateEntity,
+    OutboxEventEntity,
+    PublicationEntity,
+    PublicationDeliveryEntity,
+    OmnichannelAuditEntity,
+    OmnichannelMediaAssetEntity,
+];
+
+export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => {
+  const NODE_ENV = config.get('NODE_ENV');
+  const APP_ENV = config.get('APP_ENV');
+  const DB_SYNC = config.get('DB_SYNC');
+  assertProductionDbSyncSafe({ NODE_ENV, APP_ENV, DB_SYNC });
+  return {
+    type: 'postgres',
+    host: config.get('DB_HOST', 'localhost'),
+    port: config.get<number>('DB_PORT', 5432),
+    username: config.get('DB_USER', 'taranom'),
+    password: config.get('DB_PASS', 'taranom_pass'),
+    database: config.get('DB_NAME', 'taranom_db'),
+    entities: RUNTIME_TYPEORM_ENTITIES,
+    migrations: ['dist/database/migrations/*.js'],
+    migrationsRun: NODE_ENV === 'production' || String(APP_ENV || '').toLowerCase() === 'staging',
+    synchronize: typeormSynchronizeEnabled({ NODE_ENV, APP_ENV, DB_SYNC }),
+    logging: NODE_ENV === 'development',
+    ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
+  };
+};

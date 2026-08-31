@@ -136,7 +136,7 @@ export async function searchAdminProducts(search: string): Promise<Product[]> {
   query.set('status', 'ALL');
   query.set('limit', '20');
   if (search.trim()) query.set('search', search.trim());
-  const res = await apiClient.get<ProductsResult>(`/products?${query}`);
+  const res = await apiClient.get<ProductsResult>(`/products/admin?${query}`);
   return Array.isArray(res?.data) ? res.data : [];
 }
 
@@ -156,7 +156,8 @@ export function useProducts(params?: { page?: number; limit?: number; search?: s
       if (params?.search) query.set('search', params.search);
       if (params?.fabric) query.set('fabric', params.fabric);
       if (params?.status) query.set('status', params.status);
-      const res = await apiClient.get<ProductsResult>(`/products?${query}`);
+      const path = String(params?.status || '').toUpperCase() === 'ALL' ? '/products/admin' : '/products';
+      const res = await apiClient.get<ProductsResult>(`${path}?${query}`);
       setProducts(res.data);
       setMeta(res.meta);
     } catch (e: unknown) {

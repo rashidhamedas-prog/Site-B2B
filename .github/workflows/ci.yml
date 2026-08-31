@@ -48,8 +48,15 @@ jobs:
         run: npm run build
         working-directory: apps/api
 
+  omnichannel-migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Empty-DB omnichannel migrations up/down/up
+        run: bash scripts/omnichannel-migrations-disposable-updown.sh
+
   deploy:
-    needs: lint-and-build
+    needs: [lint-and-build, omnichannel-migrate]
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
     environment: production
@@ -69,37 +76,5 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/taranom
-
-            echo "=== Pull latest code ==="
-            git fetch origin
-            git reset --hard origin/master
-            git log -1 --oneline
-
-            echo "=== Rebuild & restart services ==="
-            docker compose build api web
-            docker compose up -d api web
-            docker compose restart nginx
-
-            # Schema for new product/discount/order/invoice columns is applied
-            # automatically by the TypeORM migrations that run on API startup
-            # (migrationsRun=true in production). We additionally run an
-            # idempotent safety-net script in case migrations are skipped.
-            echo "=== Apply idempotent schema safety-net ==="
-            docker exec -i taranom_postgres psql -U taranom -d taranom_db \
-              < scripts/apply-production-schema.sql
-
-            echo "=== Restart API to pick up schema ==="
-            docker compose restart api
-
-            echo "=== Health checks ==="
-            ok=0
-            for i in $(seq 1 12); do
-              if curl -sf http://localhost:4000/v1/health >/dev/null; then ok=1; break; fi
-              echo "waiting for API... ($i)"; sleep 5
-            done
-            if [ "$ok" != "1" ]; then
-              echo "API health check failed"; docker compose logs --tail 50 api; exit 1
-            fi
-            curl -sf http://localhost:4000/v1/health; echo
-            curl -sf -o /dev/null -w "web %{http_code}\n" http://localhost:3000
-            echo "=== DEPLOY COMPLETE ==="
+            export TARANOM_DEPLOY_FORCE=1
+            bash scripts/auto-deploy.sh

@@ -318,6 +318,8 @@ export default function CheckoutPage() {
       }));
       const res = await apiClient.post<{ orderNumber: string; id: string; total: number }>('/orders', {
         customerId,
+        type: 'WHOLESALE',
+        channel: 'WHOLESALE',
         items: orderItems,
         shippingMethod,
         paymentMethod,

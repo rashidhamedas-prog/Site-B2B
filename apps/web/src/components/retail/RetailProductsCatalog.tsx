@@ -14,11 +14,12 @@ type Product = {
   retailPrice?: number | null;
   retailCompareAtPrice?: number | null;
   images?: string[];
+  retailStock?: number;
   stock?: number;
   totalStock?: number;
   isNew?: boolean;
   isPreOrder?: boolean;
-  variants?: Array<{ color: string; colorHex?: string; size: string; stock?: number }>;
+  variants?: Array<{ color: string; colorHex?: string; size: string; stock?: number; retailStock?: number }>;
   specs?: { collarModel?: string; fabricType?: string };
 };
 
@@ -61,12 +62,11 @@ function normalizeRetailProduct(raw: Record<string, unknown> | Product): Product
         ? null
         : Number(raw.retailCompareAtPrice),
     images: Array.isArray(raw.images) ? (raw.images as string[]) : [],
-    stock: typeof raw.stock === 'number' ? raw.stock : undefined,
-    totalStock: typeof raw.totalStock === 'number' ? raw.totalStock : undefined,
+    retailStock: typeof raw.retailStock === 'number' ? raw.retailStock : undefined,
     isNew: Boolean(raw.isNew),
     isPreOrder: Boolean(raw.isPreOrder),
     variants: Array.isArray(raw.variants)
-      ? (raw.variants as Array<{ color: string; colorHex?: string; size: string; stock?: number }>)
+      ? (raw.variants as Array<{ color: string; colorHex?: string; size: string; stock?: number; retailStock?: number }>)
       : [],
     specs:
       raw.specs && typeof raw.specs === 'object'

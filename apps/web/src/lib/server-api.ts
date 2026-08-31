@@ -28,8 +28,7 @@ export function slimRetailCatalogProduct(raw: Record<string, unknown>): Record<s
         color: v.color,
         colorHex: v.colorHex,
         size: v.size,
-        stock: v.stock ?? v.retailStock,
-        retailStock: v.retailStock ?? v.stock,
+        retailStock: v.retailStock,
       }))
     : [];
   const specs =
@@ -48,8 +47,7 @@ export function slimRetailCatalogProduct(raw: Record<string, unknown>): Record<s
     retailPrice: raw.retailPrice,
     retailCompareAtPrice: raw.retailCompareAtPrice,
     images,
-    stock: raw.stock,
-    totalStock: raw.totalStock,
+    retailStock: raw.retailStock,
     isNew: raw.isNew,
     isPreOrder: raw.isPreOrder,
     sale: raw.sale,

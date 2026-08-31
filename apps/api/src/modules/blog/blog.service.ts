@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, EntityManager } from 'typeorm';
+import { OutboxService } from '../omnichannel/services/outbox.service';
+import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { randomUUID } from 'crypto';
 import { asciiSlug } from '../../common/ascii-slug';
 import { BlogPostEntity } from './entities/blog-post.entity';
@@ -83,7 +85,23 @@ export class BlogService {
     @InjectRepository(SeoRedirectEntity) private readonly redirectRepo: Repository<SeoRedirectEntity>,
     @InjectRepository(BlogSettingsEntity) private readonly settingsRepo: Repository<BlogSettingsEntity>,
     @InjectRepository(SeoAuditLogEntity) private readonly auditRepo: Repository<SeoAuditLogEntity>,
+    private readonly outbox: OutboxService,
   ) {}
+
+  private async enqueueBlogPublished(post: BlogPostEntity, operationId: string, manager?: EntityManager) {
+    if (post.status !== 'PUBLISHED') return;
+    await this.outbox.enqueue(
+      {
+        operationId,
+        eventType: OUTBOX_EVENT_TYPES.BLOG_PUBLISHED,
+        aggregateType: 'BLOG_POST',
+        aggregateId: post.id,
+        channel: post.channel,
+        payload: { postId: post.id, channel: post.channel },
+      },
+      manager,
+    );
+  }
 
   async writeAudit(opts: {
     action: string;
@@ -324,7 +342,11 @@ export class BlogService {
     }
 
     const post = this.repo.create(enriched);
-    const saved = await this.repo.save(post);
+    const saved = await this.repo.manager.transaction(async (manager) => {
+      const row = await manager.getRepository(BlogPostEntity).save(post);
+      await this.enqueueBlogPublished(row, `${row.id}:create`, manager);
+      return row;
+    });
     if (Array.isArray(data.tags) && data.tags.length) {
       await this.syncTagsFromNames(saved.channel, data.tags, actor);
     }
@@ -383,7 +405,13 @@ export class BlogService {
     next.updatedBy = actor?.id || null;
     next.version = (post.version || 1) + 1;
     Object.assign(post, next);
-    const saved = await this.repo.save(post);
+    const saved = await this.repo.manager.transaction(async (manager) => {
+      const row = await manager.getRepository(BlogPostEntity).save(post);
+      if (data.status === 'PUBLISHED') {
+        await this.enqueueBlogPublished(row, `${row.id}:update:${row.version}`, manager);
+      }
+      return row;
+    });
     if (Array.isArray(data.tags)) {
       await this.syncTagsFromNames(saved.channel, data.tags, actor);
     }
@@ -419,7 +447,13 @@ export class BlogService {
     if (step.status === 'APPROVED' || step.status === 'NEEDS_REVISION') {
       post.reviewerId = actor?.id || post.reviewerId;
     }
-    const saved = await this.repo.save(post);
+    const saved = await this.repo.manager.transaction(async (manager) => {
+      const row = await manager.getRepository(BlogPostEntity).save(post);
+      if (action === 'publish') {
+        await this.enqueueBlogPublished(row, `${row.id}:publish`, manager);
+      }
+      return row;
+    });
     await this.audit({
       action: `blog.post.${action}`,
       channel: saved.channel,
@@ -1052,7 +1086,10 @@ export class BlogService {
     for (const p of toPublish) {
       p.status = 'PUBLISHED';
       p.publishedAt = p.publishedAt || now;
-      await this.repo.save(p);
+      await this.repo.manager.transaction(async (manager) => {
+        await manager.getRepository(BlogPostEntity).save(p);
+        await this.enqueueBlogPublished(p, `${p.id}:auto_publish`, manager);
+      });
       await this.audit({
         action: 'blog.post.auto_publish',
         channel: p.channel,

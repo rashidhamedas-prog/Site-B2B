@@ -60,8 +60,8 @@ export class DashboardService {
         .take(8)
         .getMany(),
       this.variantRepo.createQueryBuilder('v')
-        .where('(COALESCE(v.wholesaleStock, v.stock, 0) < 10 OR COALESCE(v.retailStock, 0) < 10)')
-        .orderBy('COALESCE(v.wholesaleStock, v.stock, 0)', 'ASC')
+        .where('(COALESCE(v.wholesaleStock, 0) < 10 OR COALESCE(v.retailStock, 0) < 10)')
+        .orderBy('COALESCE(v.wholesaleStock, 0)', 'ASC')
         .take(5)
         .getMany(),
       this.orderRepo.createQueryBuilder('o')
@@ -149,7 +149,9 @@ export class DashboardService {
         id: v.id,
         color: v.color,
         size: v.size,
-        stock: v.stock,
+        stock: Number(v.wholesaleStock) || 0,
+        wholesaleStock: Number(v.wholesaleStock) || 0,
+        retailStock: Number(v.retailStock) || 0,
         productId: v.productId,
       })),
       topCustomers,

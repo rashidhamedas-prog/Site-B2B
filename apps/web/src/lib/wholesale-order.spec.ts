@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { defaultWholesaleColors, wholesaleMoq, wholesaleOrderSummary } from './wholesale-order';
+import { defaultWholesaleColors, variantWholesale, wholesaleMoq, wholesaleOrderSummary } from './wholesale-order';
 
 assert.equal(wholesaleMoq({ id: 'p0', name: 'بدون حداقل' }), 1);
 assert.equal(wholesaleMoq({ id: 'p0', name: 'بدون حداقل', minOrderQty: undefined }), 1);
@@ -117,5 +117,18 @@ const expiredSale = wholesaleOrderSummary(
 assert.equal(expiredSale.unitPrice, 1_000_000);
 assert.equal(expiredSale.saleActive, false);
 assert.equal(expiredSale.compareAt, 0);
+
+assert.equal(variantWholesale({ wholesaleStock: 0, stock: 80 }), 0, 'sold-out wholesale ignores legacy stock');
+assert.equal(
+  wholesaleOrderSummary({
+    id: 'p-soldout',
+    name: 'تمام',
+    wholesalePrice: 1000,
+    wholesaleStock: 0,
+    stock: 80,
+    variants: [{ color: 'کرم', size: '۱', wholesaleStock: 0, stock: 80 }],
+  }, [], 1).totalStock,
+  0,
+);
 
 console.log('wholesale-order.spec.ts OK');

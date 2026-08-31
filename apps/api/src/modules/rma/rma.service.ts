@@ -10,6 +10,10 @@ import { ReturnRequestEntity } from './entities/return-request.entity';
 import { ReturnRequestAuditEntity } from './entities/return-request-audit.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
+import { ProductService } from '../product/product.service';
+import { channelUnitStock } from '../product/channel-product-projection';
+import { InventoryService } from '../inventory/inventory.service';
+import { rmaStockChannel } from './rma-channel';
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   PENDING: ['APPROVED', 'REJECTED'],
@@ -27,7 +31,9 @@ export class RmaService {
     private readonly orderRepo: Repository<OrderEntity>,
     @InjectRepository(OrderItemEntity)
     private readonly itemRepo: Repository<OrderItemEntity>,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly productService: ProductService,
+    private readonly inventoryService: InventoryService,
   ) {}
 
   async create(dto: {
@@ -158,22 +164,34 @@ export class RmaService {
 
         if (item.productVariantId) {
           const qty = Math.trunc(Number(item.quantity) || 0);
-          const beforeRows = await manager.query(
-            `SELECT stock FROM product_variants WHERE id = $1 FOR UPDATE`,
-            [item.productVariantId]
+          const order = await manager.getRepository(OrderEntity).findOne({
+            where: { id: row.orderId },
+          });
+          if (!order) throw new NotFoundException('سفارش یافت نشد');
+          const channel = rmaStockChannel(order.type);
+          const before = await this.productService.getVariant(item.productVariantId);
+          stockBefore = channelUnitStock(before, channel);
+          const updated = await this.productService.updateVariantStock(
+            item.productVariantId,
+            qty,
+            channel,
+            manager,
           );
-          if (!beforeRows?.length) {
-            throw new BadRequestException('بازگردانی موجودی ناموفق بود');
-          }
-          stockBefore = Number(beforeRows[0].stock) || 0;
-          const restored = await manager.query(
-            `UPDATE product_variants SET stock = stock + $1 WHERE id = $2 RETURNING id, stock`,
-            [qty, item.productVariantId]
+          stockAfter = channelUnitStock(updated, channel);
+          await this.inventoryService.recordMovement(
+            {
+              productVariantId: item.productVariantId,
+              productId: updated.productId,
+              type: 'RETURN',
+              quantity: qty,
+              balanceAfter: stockAfter,
+              referenceId: row.id,
+              referenceType: 'RMA',
+              channel,
+              notes: `مرجوعی تأییدشده ${row.id}`,
+            },
+            manager,
           );
-          if (!restored?.length) {
-            throw new BadRequestException('بازگردانی موجودی ناموفق بود');
-          }
-          stockAfter = Number(restored[0].stock) || 0;
         }
 
         let credit: number | null = null;

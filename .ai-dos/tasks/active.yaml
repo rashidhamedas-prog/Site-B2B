@@ -165,7 +165,7 @@ tasks:
       - "Independent Reviewer + Security PASS; no production migrate/deploy without owner"
   - id: "TASK-20260826-001"
     title: "Omnichannel Phases 0-8 (correctness, outbox, worker, projections)"
-    status: "blocked"
+    status: "in_progress"
     risk: "high"
     owner: "cursor:implementer-TASK-20260826-001"
     roles:
@@ -176,7 +176,7 @@ tasks:
     branch: "ai/TASK-20260826-001-omnichannel-phase-0"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-08-29T16:10:00Z"
+    heartbeat_at: "2026-08-31T11:20:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/channel-product-projection.ts"
@@ -187,14 +187,17 @@ tasks:
       - "apps/api/src/modules/product/color-stock-plan.ts"
       - "apps/api/src/modules/product/color-stock-plan.spec.ts"
       - "apps/api/src/modules/product/optional-jwt.guard.ts"
-      # transferred 2026-08-29 to TASK-20260829-001: "apps/api/src/modules/product/product.module.ts"
-      # transferred 2026-08-29 to TASK-20260829-001 (Torob live DB + date_updated): "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/product/product.module.ts"
+      # reclaimed 2026-08-31 from TASK-20260829-001 (claims released after Torob commit)
+      - "apps/api/src/modules/product/product.service.ts"
+      # reclaimed 2026-08-31 from TASK-20260822-002 / 018-001 / 017-001 / 010-006 (stale >24h; cut dual-write)
       - "apps/api/src/modules/product/product-outbox.ts"
       - "apps/api/src/modules/product/product-outbox.spec.ts"
       - "apps/api/src/modules/product/product.controller.ts"
       # transferred 2026-08-29 to TASK-20260829-001: "apps/api/src/modules/feeds/feeds.controller.ts"
       - "apps/api/src/modules/basalam/basalam.service.ts"
-      # transferred 2026-08-29 to TASK-20260829-001: "apps/api/src/modules/inventory/inventory.service.ts"
+      - "apps/api/src/modules/inventory/inventory.service.ts"
+      # reclaimed 2026-08-31 from TASK-20260829-001 (claims released after Torob commit)
       - "apps/api/src/modules/inventory/inventory.controller.ts"
       - "apps/api/src/modules/inventory/inventory-movement.policy.ts"
       - "apps/api/src/modules/inventory/inventory-movement.policy.spec.ts"
@@ -326,9 +329,9 @@ tasks:
       - "apps/api/src/modules/inventory/inventory.module.ts"
       - "apps/api/src/modules/upload/upload.module.ts"
     notes: |
-      PARKED 2026-08-29: phases 0-8 code complete; production migrate/deploy/soak
-      still NOT authorized. Claims overlapping Torob transferred to TASK-20260829-001.
-      Uncommitted omnichannel work preserved. Do not Done. Do not reset.
+      SHIP 2026-08-31: owner authorized commit/merge/deploy. Connectors stay
+      off. Soak/canary/restore-drill still NOT done — do not mark Done.
+      Reclaimed product.module + inventory.service after Torob claims released.
       Human-authorized Omnichannel program from desktop audit.
       Phases 0-8. Reclaimed stale .github/workflows/ci.yml from
       TASK-20260812-001 (heartbeat 2026-08-14, stale >24h) so GitHub
@@ -778,7 +781,7 @@ tasks:
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; channel stock columns): "apps/api/src/modules/product/catalog-excel.ts"
       - "apps/api/src/modules/product/catalog-excel.spec.ts"
       - "apps/api/src/modules/product/product.controller.ts"
-      - "apps/api/src/modules/product/product.service.ts"
+      # transferred 2026-08-31 to TASK-20260826-001 (stale >24h; cut stock dual-write): "apps/api/src/modules/product/product.service.ts"
       - "apps/api/src/modules/category/category.controller.ts"
       - "apps/api/src/modules/category/category.service.ts"
       - "apps/api/src/modules/category/category.module.ts"
@@ -914,7 +917,7 @@ tasks:
       - "apps/api/src/modules/product/product-related-fill.spec.ts"
       - "apps/api/src/modules/product/product-sale.ts"
       - "apps/api/src/modules/product/product-sale.spec.ts"
-      - "apps/api/src/modules/product/product.service.ts"
+      # transferred 2026-08-31 to TASK-20260826-001 (stale >24h; cut stock dual-write): "apps/api/src/modules/product/product.service.ts"
       - "apps/api/src/modules/product/product.controller.ts"
       - "apps/api/src/modules/product/entities/product.entity.ts"
       - "apps/api/src/modules/product/dto/create-product.dto.ts"
@@ -985,7 +988,7 @@ tasks:
       - "apps/api/src/modules/product/entities/product-related.entity.ts"
       - "apps/api/src/modules/product/entities/product.entity.ts"
       - "apps/api/src/modules/product/dto/create-product.dto.ts"
-      - "apps/api/src/modules/product/product.service.ts"
+      # transferred 2026-08-31 to TASK-20260826-001 (stale >24h; cut stock dual-write): "apps/api/src/modules/product/product.service.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; optional JWT + inventory stock): "apps/api/src/modules/product/product.module.ts"
       - "apps/api/src/modules/product/product.controller.ts"
       - "apps/api/src/modules/category/entities/category.entity.ts"
@@ -1090,7 +1093,7 @@ tasks:
       - "apps/api/src/database/migrations/20260810-001-create-return-requests.spec.ts"
       - "apps/api/src/modules/product/entities/product.entity.ts"
       - "apps/api/src/modules/product/dto/create-product.dto.ts"
-      - "apps/api/src/modules/product/product.service.ts"
+      # transferred 2026-08-31 to TASK-20260826-001 (stale >24h; cut stock dual-write): "apps/api/src/modules/product/product.service.ts"
       - "apps/api/src/modules/product/product-pricing.invariant.spec.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; channel stock columns): "apps/api/src/modules/dashboard/dashboard.service.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; omnichannel badges): "apps/web/src/components/admin/AdminProducts.tsx"

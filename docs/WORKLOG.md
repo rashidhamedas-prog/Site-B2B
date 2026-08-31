@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-08-31 — استقرار کد Omnichannel فاز ۰ تا ۸
+
+- موجودی تکی/عمده از ستون‌های کانال خوانده می‌شود؛ worker و outbox جدا از API است؛ کانکتورها خاموش می‌مانند.
+- مایگریشن TypeORM جداول omnichannel را می‌سازد. انتشار خودکار و canary زنده هنوز اجرا نشده.
+- تسویه عمده `channel: WHOLESALE` می‌فرستد. ادمین `/admin/omnichannel` برای پیش‌نویس و reconcile است.
+
 ## 2026-08-31 — ISR دسته تکی روی URL عمومی
 
 - میدلور دیگر `/category/{slug}` را روی هاست `.ir` بازنویسی نمی‌کند؛ `next.config` با `beforeFiles` به `/retail/category/:slug` می‌برد تا `s-maxage=60` بماند.

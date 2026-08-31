@@ -19,6 +19,8 @@ import { OrderEntity } from '../order/entities/order.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { SettingsService } from '../settings/settings.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
+import { OutboxService } from '../omnichannel/services/outbox.service';
+import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.adapter';
 import type { PaymentProviderAdapter } from './adapters/payment-provider.adapter';
@@ -69,6 +71,7 @@ export class PaymentService {
     private readonly config: ConfigService,
     private readonly settings: SettingsService,
     private readonly affiliatePostback: AffiliatePostbackService,
+    private readonly outbox: OutboxService,
     private readonly zarinpal: ZarinPalAdapter,
     private readonly digipay: DigiPayAdapter,
     private readonly metrics: PaymentMetrics,
@@ -741,9 +744,6 @@ export class PaymentService {
       });
     }
 
-    let shouldFirePostback = false;
-    let orderIdForPostback: string | null = null;
-
     const applied = await this.dataSource.transaction(async (manager) => {
       const payRepo = manager.getRepository(PaymentEntity);
       const invRepo = manager.getRepository(InvoiceEntity);
@@ -805,7 +805,17 @@ export class PaymentService {
           status: 'CONFIRMED',
           confirmedAt: new Date(),
         } as any);
-        orderIdForPostback = payment.orderId;
+        await this.outbox.enqueue(
+          {
+            operationId: `${payment.orderId}:status:CONFIRMED`,
+            eventType: OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION,
+            aggregateType: 'ORDER',
+            aggregateId: payment.orderId,
+            channel: 'RETAIL',
+            payload: { orderId: payment.orderId, status: 'CONFIRMED' },
+          },
+          manager,
+        );
       }
 
       if (payment.invoiceId) {
@@ -829,10 +839,9 @@ export class PaymentService {
         }
       }
 
-      // Flag postback candidate; exclusive claim happens after commit via CAS
       if (payment.orderId && !payment.postbackFiredAt) {
-        shouldFirePostback = true;
-        orderIdForPostback = payment.orderId;
+        await this.affiliatePostback.fireForOrder(payment.orderId, 'paid', manager);
+        await payRepo.update(payment.id, { postbackFiredAt: new Date() } as any);
       }
 
       return { already: false as const, payment };
@@ -873,51 +882,6 @@ export class PaymentService {
         extra: { refId: applied.payment.refId || undefined },
       }),
     );
-
-    if (shouldFirePostback && orderIdForPostback) {
-      // Exclusive claim so concurrent verifies don't double-fire; release on HTTP failure.
-      const claimed = await this.repo
-        .createQueryBuilder()
-        .update(PaymentEntity)
-        .set({ postbackFiredAt: new Date() })
-        .where('id = :id AND "postbackFiredAt" IS NULL', { id: paymentId })
-        .execute();
-      if ((claimed.affected || 0) > 0) {
-        this.affiliatePostback
-          .fireForOrder(orderIdForPostback, 'paid')
-          .then(async (result: any) => {
-            const failed =
-              result?.skipped === false &&
-              Array.isArray(result?.results) &&
-              result.results.some((r: any) => !r.ok);
-            if (failed) {
-              await this.repo
-                .createQueryBuilder()
-                .update(PaymentEntity)
-                .set({ postbackFiredAt: null })
-                .where('id = :id', { id: paymentId })
-                .execute();
-            }
-          })
-          .catch(async (err) => {
-            await this.repo
-              .createQueryBuilder()
-              .update(PaymentEntity)
-              .set({ postbackFiredAt: null })
-              .where('id = :id', { id: paymentId })
-              .execute();
-            this.logger.warn(
-              this.paymentLogCtx({
-                event: 'payment.postback.failed',
-                paymentId,
-                orderId: orderIdForPostback,
-                providerCode,
-                extra: { message: err?.message || String(err) },
-              }),
-            );
-          });
-      }
-    }
 
     return toPublicPaymentDto(applied.payment, {
       ok: true,

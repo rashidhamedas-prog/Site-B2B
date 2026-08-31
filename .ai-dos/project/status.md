@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-08-31 — **TASK-20260826-001** shipping Omnichannel phases 0–8 code (outbox worker, channel stock, admin, migrations). Connectors off. Soak/canary/restore-drill still **NOT RUN**; do not mark Done.
 - Last verified: 2026-08-31 — **TASK-20260830-002** live `03c70fb` / master `20e6637`: retail public `/category/shomiz` is `s-maxage=60` HIT (RETAIL HTML). Wholesale category still ISR. Checkout still `no-store`. No VPS migration.
 - Last verified: 2026-08-31 — **TASK-20260830-002** APP-02 live at `c8b5999`: wholesale `/category/{slug}` is `s-maxage=60`. Retail public `/category/{slug}` still `no-store` (middleware rewrite); `/retail/category/{slug}` ISR. No VPS migration. No HTML cache on checkout/account/admin/API.
 - Last verified: 2026-08-30 — **TASK-20260830-002** shipping wholesale home ISR (`s-maxage=60`) + Cloudflare proxy for `.ir` storefront. Cache Rule + Full (strict) already on both zones. No VPS migration. No HTML cache on checkout/account/admin/API.

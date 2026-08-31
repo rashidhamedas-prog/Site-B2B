@@ -7,7 +7,8 @@
 # the build fails.
 #
 # After git reset, the script re-execs itself so newly pulled deploy steps
-# (schema safety-net, etc.) actually run — bash does not re-read a script mid-run.
+# actually run — bash does not re-read a script mid-run.
+# GitHub Actions must call this same script (shared flock). No safety-net SQL.
 # ============================================================================
 set -euo pipefail
 
@@ -29,7 +30,7 @@ if [ "${TARANOM_DEPLOY_BUILD:-}" != "1" ]; then
   LOCAL="$(git rev-parse HEAD)"
   REMOTE="$(git rev-parse origin/master)"
 
-  if [ "$LOCAL" = "$REMOTE" ]; then
+  if [ "$LOCAL" = "$REMOTE" ] && [ "${TARANOM_DEPLOY_FORCE:-}" != "1" ]; then
     echo "$(date -Is) already up to date (${LOCAL:0:7})"
     exit 0
   fi
@@ -47,21 +48,14 @@ if [ -f "$APP_DIR/.env" ]; then
   source "$APP_DIR/.env"
   set +a
 fi
-DB_USER="${DB_USER:-taranom}"
-DB_NAME="${DB_NAME:-taranom_db}"
-
 echo "$(date -Is) building images..."
-docker compose build api web
+docker compose build api web worker
 
 echo "$(date -Is) starting containers..."
-docker compose up -d api web
+docker compose up -d api web worker
 docker compose restart nginx
 
-echo "$(date -Is) applying production schema safety-net..."
-if ! docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" \
-  < "$APP_DIR/scripts/apply-production-schema.sql"; then
-  echo "$(date -Is) WARNING: schema safety-net failed (continuing)"
-fi
+echo "$(date -Is) schema is TypeORM migrations only (no safety-net SQL)"
 
 echo "$(date -Is) waiting for API health..."
 ok=0

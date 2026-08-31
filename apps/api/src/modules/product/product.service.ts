@@ -40,6 +40,7 @@ import {
   resolveChannelSale,
   type DiscountType,
 } from './product-sale';
+import { isPublicProductRow } from './public-product-status';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -781,9 +782,12 @@ export class ProductService {
     };
   }
 
-  async findOne(id: string, channel?: string) {
+  async findOne(id: string, channel?: string, opts?: { allowNonActive?: boolean }) {
     const product = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!product) throw new NotFoundException('محصول یافت نشد');
+    if (!opts?.allowNonActive && !isPublicProductRow(product.status)) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
     const ch = String(channel || '').toUpperCase();
     if (ch === 'RETAIL' && product.showOnRetail === false) {
       throw new NotFoundException('محصول یافت نشد');
@@ -795,7 +799,7 @@ export class ProductService {
     return this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg);
   }
 
-  async findBySlug(slug: string, channel?: string) {
+  async findBySlug(slug: string, channel?: string, opts?: { allowNonActive?: boolean }) {
     let decoded = String(slug || '').trim();
     try {
       decoded = decodeURIComponent(decoded);
@@ -822,6 +826,9 @@ export class ProductService {
     }
 
     if (!product) throw new NotFoundException('محصول یافت نشد');
+    if (!opts?.allowNonActive && !isPublicProductRow(product.status)) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
     const ch = String(channel || '').toUpperCase();
     if (ch === 'RETAIL' && product.showOnRetail === false) {
       throw new NotFoundException('محصول یافت نشد');
@@ -1190,7 +1197,6 @@ export class ProductService {
         .update()
         .set({
           [field]: () => `"${field}" + (${qty})`,
-          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
           ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
         } as any)
         .where('id = :id', { id: variantId })
@@ -1209,57 +1215,55 @@ export class ProductService {
         .update()
         .set({
           [field]: () => `"${field}" + (${qty})`,
-          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
           ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
         } as any)
         .where('id = :id', { id: variantId })
         .execute();
     }
 
-    const variant = await this.variantRepo.findOneOrFail({ where: { id: variantId } });
-    await this.syncProductStockFromVariants(variant.productId);
+    const variant = await variantRepo.findOneOrFail({ where: { id: variantId } });
+    await this.syncProductStockFromVariants(variant.productId, manager);
     return variant;
   }
 
-  /** Sum variant channel stocks onto product wholesale/retail/legacy stock. */
-  async syncProductStockFromVariants(productId: string) {
-    const variants = await this.variantRepo.find({ where: { productId } });
-    const wholesaleSum = variants.reduce(
-      (s, v) => s + (Number(v.wholesaleStock) || Number(v.stock) || 0),
-      0
-    );
+  /** Sum variant channel stocks onto product wholesale/retail columns only. */
+  async syncProductStockFromVariants(productId: string, manager?: EntityManager) {
+    const variantRepo = manager?.getRepository(ProductVariantEntity) ?? this.variantRepo;
+    const productRepo = manager?.getRepository(ProductEntity) ?? this.productRepo;
+    const variants = await variantRepo.find({ where: { productId } });
+    const wholesaleSum = variants.reduce((s, v) => s + (Number(v.wholesaleStock) || 0), 0);
     const retailSum = variants.reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
-    const existing = await this.productRepo.findOne({ where: { id: productId } });
+    const existing = await productRepo.findOne({ where: { id: productId } });
     const retailChanged = !existing || Number(existing.retailStock) !== retailSum;
-    await this.productRepo.update(productId, {
+    await productRepo.update(productId, {
       wholesaleStock: wholesaleSum,
       retailStock: retailSum,
-      stock: wholesaleSum,
       ...(retailChanged ? { updatedAt: new Date() } : {}),
     });
-    return { wholesaleStock: wholesaleSum, retailStock: retailSum, stock: wholesaleSum };
+    return { wholesaleStock: wholesaleSum, retailStock: retailSum };
   }
 
   /** Adjust product-level stock by delta (orders deduct with negative delta). */
   async updateProductStock(
     productId: string,
     delta: number,
-    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+    manager?: EntityManager,
   ) {
+    const productRepo = manager?.getRepository(ProductEntity) ?? this.productRepo;
     const field = this.stockField(channel);
     const qty = Number(delta) || 0;
     if (qty === 0) {
-      const product = await this.productRepo.findOne({ where: { id: productId } });
+      const product = await productRepo.findOne({ where: { id: productId } });
       if (!product) throw new NotFoundException('محصول یافت نشد');
       return product;
     }
     if (qty < 0) {
-      const result = await this.productRepo
+      const result = await productRepo
         .createQueryBuilder()
         .update()
         .set({
           [field]: () => `"${field}" + (${qty})`,
-          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
           ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
         } as any)
         .where('id = :id', { id: productId })
@@ -1269,18 +1273,17 @@ export class ProductService {
         throw new BadRequestException('موجودی کافی نیست');
       }
     } else {
-      await this.productRepo
+      await productRepo
         .createQueryBuilder()
         .update()
         .set({
           [field]: () => `"${field}" + (${qty})`,
-          ...(field === 'wholesaleStock' ? { stock: () => `"wholesaleStock" + (${qty})` } : {}),
           ...(field === 'retailStock' ? { updatedAt: () => 'CURRENT_TIMESTAMP' } : {}),
         } as any)
         .where('id = :id', { id: productId })
         .execute();
     }
-    return this.productRepo.findOneOrFail({ where: { id: productId } });
+    return productRepo.findOneOrFail({ where: { id: productId } });
   }
 
   /**
@@ -1290,9 +1293,11 @@ export class ProductService {
   async setProductStock(
     productId: string,
     stock: number,
-    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
+    channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE',
+    manager?: EntityManager,
   ) {
-    const product = await this.productRepo.findOne({ where: { id: productId } });
+    const productRepo = manager?.getRepository(ProductEntity) ?? this.productRepo;
+    const product = await productRepo.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('محصول یافت نشد');
     const next = Math.floor(Number(stock));
     if (!Number.isFinite(next) || next < 0) {
@@ -1300,10 +1305,7 @@ export class ProductService {
     }
     const field = this.stockField(channel);
     product[field] = next;
-    if (field === 'wholesaleStock') {
-      product.stock = next;
-    }
-    return this.productRepo.save(product);
+    return productRepo.save(product);
   }
 
   async setProductStockBySku(
