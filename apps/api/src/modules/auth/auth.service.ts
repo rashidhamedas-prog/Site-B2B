@@ -20,6 +20,7 @@ import { RegisterDto } from './dto/register.dto';
 import { NotificationService } from '../notification/notification.service';
 import { OtpService } from '../redis/redis.module';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
+import { isStaffRole, roleAfterCustomerLink, staffPhoneConflictMessage } from './staff-access';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -75,6 +76,9 @@ export class AuthService {
     }
 
     if (existingUser && !existingUser.deletedAt) {
+      if (isStaffRole(existingUser.role)) {
+        throw new ConflictException('این شماره متعلق به کاربر سیستم است و برای ثبت‌نام عمده قابل استفاده نیست');
+      }
       const linkedCustomer = existingUser.customerId
         ? await this.customerRepo.findOne({
             where: { id: existingUser.customerId },
@@ -125,7 +129,7 @@ export class AuthService {
             passwordHash,
             customerId: savedCustomer.id,
             isActive: false,
-            role: 'CUSTOMER',
+            role: roleAfterCustomerLink(existingUser.role),
           });
         } else {
           const user = userRepo.create({
@@ -266,6 +270,7 @@ export class AuthService {
         return {
           userId: u.id,
           phone: u.phone,
+          email: u.email,
           role: u.role,
           businessName: customer.businessName,
           ownerName: customer.ownerName,
@@ -339,6 +344,12 @@ export class AuthService {
 
     const isProd = this.config.get('NODE_ENV') === 'production';
 
+    const existing = await this.userRepo.findOne({ where: { phone } });
+    const staffBlock = staffPhoneConflictMessage(existing?.role);
+    if (staffBlock) {
+      throw new BadRequestException(staffBlock);
+    }
+
     let code: string;
     try {
       ({ code } = await this.otpService.issue(phone, name));
@@ -391,6 +402,10 @@ export class AuthService {
     const displayName = (name?.trim() || otpName || 'خریدار ترنم').slice(0, 80);
 
     let user = await this.userRepo.findOne({ where: { phone }, withDeleted: true });
+    const staffBlock = staffPhoneConflictMessage(user && !user.deletedAt ? user.role : null);
+    if (staffBlock) {
+      throw new BadRequestException(staffBlock);
+    }
     let customer: CustomerEntity | null = null;
 
     if (user?.customerId) {
@@ -452,7 +467,7 @@ export class AuthService {
         await userRepo.update(user.id, {
           customerId: customer!.id,
           isActive: allowLogin,
-          role: 'CUSTOMER',
+          role: roleAfterCustomerLink(user.role),
           lastLoginAt: allowLogin ? new Date() : user.lastLoginAt,
         });
         user = await userRepo.findOneOrFail({ where: { id: user.id } });

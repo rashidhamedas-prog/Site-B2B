@@ -178,9 +178,11 @@ export function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<TabId | null>(null);
   const [showSecret, setShowSecret] = useState<Record<string, boolean>>({});
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [res, cats] = await Promise.all([
         apiClient.get<SettingsPayload>('/settings/admin'),
@@ -349,8 +351,10 @@ export function AdminSettings() {
         },
       });
       setCategories(cats ?? []);
-    } catch { /* keep null → show error banner */ }
-    finally { setLoading(false); }
+    } catch (e: unknown) {
+      setData(null);
+      setLoadError(e instanceof Error ? e.message : 'اتصال به سرور تنظیمات برقرار نشد');
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -405,11 +409,28 @@ export function AdminSettings() {
   }
 
   if (!data) {
+    const forbidden = loadError.includes('فقط مدیر کل');
     return (
-      <div className="card p-8 text-center">
-        <AlertCircle className="h-10 w-10 text-error mx-auto mb-3" />
-        <p className="text-gray-700 font-medium">اتصال به سرور تنظیمات برقرار نشد</p>
-        <button onClick={load} className="btn btn-primary btn-sm mt-4">تلاش مجدد</button>
+      <div className="card mx-auto max-w-lg p-8 text-center">
+        <AlertCircle className="mx-auto mb-3 h-10 w-10 text-error" />
+        <p className="font-medium text-gray-800">
+          {forbidden ? 'فقط مدیر کل به تنظیمات سیستم دسترسی دارد' : 'تنظیمات بارگذاری نشد'}
+        </p>
+        <p className="mx-auto mt-2 max-w-md text-sm text-gray-500" role="alert">
+          {loadError || 'اتصال به سرور تنظیمات برقرار نشد'}
+        </p>
+        {forbidden ? (
+          <p className="mt-3 text-sm text-gray-600">
+            ایمیل و رمز ورود خودتان را از{' '}
+            <a href="/admin/account" className="font-semibold text-primary hover:underline">
+              حساب من
+            </a>{' '}
+            عوض کنید. نام برند و شماره فروشگاه در همین صفحه، تب کسب‌وکار است.
+          </p>
+        ) : null}
+        <button type="button" onClick={load} className="btn btn-primary btn-sm mt-4 min-h-11">
+          تلاش مجدد
+        </button>
       </div>
     );
   }
@@ -418,8 +439,12 @@ export function AdminSettings() {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-gray-900">تنظیمات سیستم</h2>
-        <p className="text-sm text-gray-500 mt-0.5">
-          همه تنظیمات کسب‌وکار و یکپارچه‌سازی‌ها را از اینجا کنترل کنید — تغییرات به‌صورت زنده روی سایت اعمال می‌شوند
+        <p className="mt-0.5 text-sm text-gray-500">
+          کسب‌وکار، پرداخت و پیامک فروشگاه — نه حساب ورود شما. ایمیل و رمز پنل در{' '}
+          <a href="/admin/account" className="font-medium text-primary hover:underline">
+            حساب من
+          </a>{' '}
+          است.
         </p>
         <a
           href="/admin/site-content"
@@ -457,7 +482,7 @@ export function AdminSettings() {
           <div className="grid grid-cols-2 gap-4">
             <TextField label="نام برند" value={data.business.businessName}
               onChange={(v) => patch('business', (b) => ({ ...b, businessName: v }))} icon={<Building2 className="h-4 w-4" />} />
-            <TextField label="نام مدیر" value={data.business.ownerName}
+            <TextField label="نام مدیر (نمایش عمومی فروشگاه)" value={data.business.ownerName}
               onChange={(v) => patch('business', (b) => ({ ...b, ownerName: v }))} icon={<Building2 className="h-4 w-4" />} />
           </div>
           <div className="grid grid-cols-2 gap-4">

@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260831-001-admin-search-users"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-08-31T15:20:00Z"
-    heartbeat_at: "2026-08-31T15:20:00Z"
+    heartbeat_at: "2026-08-31T20:30:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/auth/dto/login.dto.ts"
@@ -39,6 +39,10 @@ tasks:
       - "apps/web/src/middleware.ts"
       - "apps/web/src/components/admin/AdminLoginForm.tsx"
       - "apps/web/src/components/admin/AdminUsers.tsx"
+      - "apps/web/src/components/admin/AdminAccount.tsx"
+      - "apps/web/src/app/admin/account/page.tsx"
+      - "apps/web/src/components/admin/AdminHeader.tsx"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/web/src/components/admin/AdminSidebar.tsx"
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
       - "apps/web/src/components/layout/Header.tsx"
@@ -60,14 +64,18 @@ tasks:
       Reclaimed AdminSidebar from TASK-20260826-001 (omnichannel item stays;
       only staff ACL + live profile). Reclaimed RetailHeader from
       TASK-20260810-006 (stale >24h) for search overlay.
-      Do not invent STAFF/SUPER_ADMIN as users.role. Do not stuff users
-      into AdminSettings. No new DB table.
+      Reclaimed AdminSettings.tsx from TASK-20260824-003 (heartbeat
+      2026-08-24, stale >24h) for load-error UX only; DigiPay payment
+      fields stay untouched. Do not invent STAFF/SUPER_ADMIN as
+      users.role. Do not stuff users into AdminSettings. No new DB table.
     acceptance_criteria:
       - "Admin login accepts Persian/Arabic digits and +98 phones; staff roles can open /admin"
       - "Wholesale and retail homepage search opens an overlay and queries GET /products?search="
       - "Retail category cards use product.retailStock so in-stock items are not ناموجود"
       - "Staff CRUD: create/list/edit/toggle/reset-password; last-admin and self-lockout guarded"
       - "Roles are UserRole only; sidebar + RolesGuard honor staff modules; users/settings ADMIN-only"
+      - "Retail OTP / wholesale register never demote a staff row to CUSTOMER"
+      - "/admin/account edits this operator login; settings business.ownerName is store display name"
       - "api+web typecheck and new unit specs pass; live health after deploy"
   - id: "TASK-20260831-003"
     title: "GSC dual-site audit + retail HTML slim + products ISR + blog sitemap"
@@ -506,7 +514,7 @@ tasks:
       - "apps/web/src/app/payment/callback/page.tsx"
       - "apps/web/src/app/payment/digipay/callback/route.ts"
       - "apps/web/src/app/retail/checkout/page.tsx"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
+      # transferred 2026-08-31 to TASK-20260831-001 (stale heartbeat; settings load-error UX): "apps/web/src/components/admin/AdminSettings.tsx"
       - ".env.example"
       - "packages/shared-types/src/enums.ts"
       - "docs/deployment-runbook.md"

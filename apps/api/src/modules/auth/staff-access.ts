@@ -26,6 +26,7 @@ export const STAFF_MODULES = [
   'omnichannel',
   'settings',
   'users',
+  'account',
 ] as const;
 
 export type StaffModule = (typeof STAFF_MODULES)[number];
@@ -34,11 +35,11 @@ const ALL_MODULES: readonly StaffModule[] = STAFF_MODULES;
 
 export const STAFF_ROLE_MODULES: Record<StaffRole, readonly StaffModule[]> = {
   ADMIN: ALL_MODULES,
-  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content'],
-  SALES_REP: ['dashboard', 'crm', 'orders', 'catalog'],
-  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments'],
-  WAREHOUSE_MANAGER: ['dashboard', 'orders', 'catalog', 'inventory'],
-  CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'content'],
+  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'account'],
+  SALES_REP: ['dashboard', 'crm', 'orders', 'catalog', 'account'],
+  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'account'],
+  WAREHOUSE_MANAGER: ['dashboard', 'orders', 'catalog', 'inventory', 'account'],
+  CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'content', 'account'],
 };
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
@@ -60,4 +61,15 @@ export function canAccessStaffModule(
 ): boolean {
   if (!isStaffRole(role)) return false;
   return STAFF_ROLE_MODULES[role].includes(module);
+}
+
+/** Retail OTP / wholesale register must never demote a staff row to CUSTOMER. */
+export function roleAfterCustomerLink(currentRole: string | null | undefined): string {
+  return isStaffRole(currentRole) ? currentRole : 'CUSTOMER';
+}
+
+/** Retail OTP / wholesale register must not use a staff phone as a shopper identity. */
+export function staffPhoneConflictMessage(role: string | null | undefined): string | null {
+  if (!isStaffRole(role)) return null;
+  return 'این شماره متعلق به حساب مدیریت است. برای ورود به پنل از صفحه ورود ادمین استفاده کنید.';
 }

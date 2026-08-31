@@ -77,6 +77,9 @@ export function EnamadSeal({
           alt="نماد اعتماد الکترونیکی"
           width={size}
           height={size}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
           referrerPolicy="origin"
           style={{ cursor: 'pointer', width: size, height: 'auto', maxWidth: '100%' }}
           id={cfg.code || undefined}

@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-08-31T20:30:00Z — Settings 403 + staff demotion + account page
+
+- Task / owner: TASK-20260831-001 / cursor:implementer-TASK-20260831-001
+- Live cause: retail OTP set `09152424624` to CUSTOMER. Cookie still ADMIN; JWT strategy reloaded CUSTOMER → settings/users `@AdminOnly` 403. UI said «اتصال برقرار نشد». Production SQL already restored ADMIN.
+- Code: `roleAfterCustomerLink` + `staffPhoneConflictMessage`; OTP request/verify and wholesale register refuse staff phones; `/admin/account`; settings shows real error; users form autocomplete hardened.
+- Reclaimed AdminSettings.tsx from TASK-20260824-003 (heartbeat 2026-08-24, stale). DigiPay fields not touched.
+- Gates: staff-access / otp / users.policy specs OK; api+web `tsc --noEmit` 0.
+- Exact next: commit/push/deploy; owner should refresh `/admin/settings` (JWT reloads role from DB).
+
 ## 2026-08-31T16:20:00Z — GSC dual-site audit + retail HTML/ISR/JSON-LD
 
 - Task / owner: TASK-20260831-003 / cursor:implementer-TASK-20260831-003

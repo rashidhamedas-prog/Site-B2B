@@ -23,6 +23,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/discounts': 'تخفیف‌ها',
   '/admin/notifications': 'اعلان‌ها',
   '/admin/users': 'کاربران ادمین',
+  '/admin/account': 'حساب من',
   '/admin/settings': 'تنظیمات',
 };
 
@@ -34,6 +35,9 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/admin/inventory': 'مدیریت موجودی انبار',
   '/admin/reports': 'گزارش‌های فروش و مالی',
   '/admin/seo': 'ریدایرکت‌های ۳۰۱/۳۰۲/۴۱۰ و مدیریت مسیرها',
+  '/admin/users': 'نقش‌های داخلی سیستم — نه حساب ورود شخصی',
+  '/admin/account': 'ایمیل و رمز ورود همین کاربر',
+  '/admin/settings': 'کسب‌وکار، پرداخت، پیامک و یکپارچه‌سازی‌ها',
 };
 
 function getJalaliDate() {

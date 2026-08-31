@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell,
-  Warehouse, UserCog, LogOut, X, ChevronDown,
+  Warehouse, UserCog, LogOut, X, ChevronDown, CircleUser,
   TrendingUp, Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -74,6 +74,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'سیستم',
     items: [
+      { href: '/admin/account', icon: CircleUser, label: 'حساب من', module: 'account' },
       { href: '/admin/users', icon: UserCog, label: 'کاربران ادمین', module: 'users' },
       { href: '/admin/omnichannel', icon: Link2, label: 'کانال‌های انتشار', module: 'omnichannel' },
       { href: '/admin/settings', icon: Settings, label: 'تنظیمات', module: 'settings' },
@@ -220,23 +221,26 @@ export function AdminSidebar({ mobileOpen, onClose }: AdminSidebarProps) {
         {/* User */}
         <div className="p-3 border-t border-white/5">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-colors group">
-            <div className="relative flex-shrink-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-white font-bold text-sm">
-                {(profile?.phone || 'اد').slice(-2)}
+            <Link href="/admin/account" onClick={onClose} className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="relative flex-shrink-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white">
+                  {(profile?.phone || 'اد').slice(-2)}
+                </div>
+                <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-[#0f172a] bg-success" />
               </div>
-              <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-[#0f172a] bg-success" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate" dir="ltr">
-                {profile?.phone || 'کاربر سیستم'}
-              </p>
-              <p className="text-[10px] text-gray-400">
-                {STAFF_ROLE_LABELS[(profile?.role || role || '') as StaffRole] || 'دسترسی سیستم'}
-              </p>
-            </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white" dir="ltr">
+                  {profile?.phone || 'کاربر سیستم'}
+                </p>
+                <p className="text-[10px] text-gray-400">
+                  {STAFF_ROLE_LABELS[(profile?.role || role || '') as StaffRole] || 'دسترسی سیستم'}
+                </p>
+              </div>
+            </Link>
             <button
+              type="button"
               onClick={logout}
-              className="text-gray-500 hover:text-red-400 transition-colors p-1 rounded-lg hover:bg-red-400/10"
+              className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-400/10 hover:text-red-400"
               title="خروج از سیستم"
             >
               <LogOut className="h-4 w-4" />

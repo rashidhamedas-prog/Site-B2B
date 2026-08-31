@@ -143,13 +143,18 @@ export function AdminUsers() {
         <div>
           <h2 className="text-xl font-bold text-gray-900">کاربران سیستم</h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            ادمین و نقش‌های داخلی — مشتریان در بخش CRM هستند
+            نقش‌های داخلی سیستم — مشتریان در CRM هستند. حساب ورود خودتان در{' '}
+            <a href="/admin/account" className="font-medium text-primary hover:underline">
+              حساب من
+            </a>{' '}
+            است.
           </p>
         </div>
         <button
           type="button"
           onClick={() => {
             setError('');
+            setForm({ ...emptyForm });
             setShowCreate(true);
           }}
           className="btn btn-primary btn-md flex items-center gap-2"
@@ -174,7 +179,16 @@ export function AdminUsers() {
         </button>
       </div>
 
-      {listError ? <p className="text-sm text-error">{listError}</p> : null}
+      {listError ? (
+        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <p>{listError}</p>
+          {listError.includes('فقط مدیر کل') ? (
+            <p className="mt-1 text-red-700">
+              نقش «مدیر کل» از همین صفحه روی کاربر سیستم ست می‌شود. اگر تنظیمات هم باز نمی‌شود، یک‌بار از پنل خارج شوید و دوباره وارد شوید.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -286,9 +300,22 @@ export function AdminUsers() {
 
       {showCreate ? (
         <Modal title="افزودن کاربر سیستم" onClose={() => setShowCreate(false)}>
+          <form
+            autoComplete="off"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleCreate();
+            }}
+            className="space-y-4"
+          >
+          <p className="text-xs text-gray-500">
+            فیلدها باید خالی باشند. اگر مرورگر شماره ورود را در ایمیل گذاشت، پاک کنید — آن مقدار مال فرم ورود است نه کاربر جدید.
+          </p>
           <Field label="شماره موبایل">
             <input
               type="tel"
+              name="taranom-staff-phone"
+              autoComplete="off"
               dir="ltr"
               value={form.phone}
               onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
@@ -298,6 +325,8 @@ export function AdminUsers() {
           <Field label="ایمیل (اختیاری)">
             <input
               type="email"
+              name="taranom-staff-email"
+              autoComplete="off"
               value={form.email}
               onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
               className={fieldClass}
@@ -306,6 +335,8 @@ export function AdminUsers() {
           <Field label="رمز عبور (حداقل ۸ کاراکتر)">
             <input
               type="password"
+              name="taranom-staff-new-password"
+              autoComplete="new-password"
               value={form.password}
               onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
               className={fieldClass}
@@ -320,6 +351,7 @@ export function AdminUsers() {
             onSave={handleCreate}
             saveLabel="افزودن"
           />
+          </form>
         </Modal>
       ) : null}
 
