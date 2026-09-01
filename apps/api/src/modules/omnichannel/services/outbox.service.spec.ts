@@ -2,6 +2,8 @@
  * npx ts-node --transpile-only src/modules/omnichannel/services/outbox.service.spec.ts
  */
 import {
+  MARK_DONE_SQL,
+  MARK_FAILURE_SQL,
   buildDedupeKey,
   sanitizeOutboxPayload,
   type OutboxEnqueueInput,
@@ -70,6 +72,11 @@ async function main() {
     /* expected */
   }
   assert(!state.committed && state.events.length === 0, 'fault injection rolls back data+event');
+
+  assert(MARK_DONE_SQL.includes("status = 'DONE'"), 'done SQL sets DONE');
+  assert(MARK_DONE_SQL.includes('"lockedAt" = NULL'), 'done SQL clears the lease');
+  assert(MARK_FAILURE_SQL.includes('status = $2'), 'failure SQL sets PENDING or DEAD');
+  assert(MARK_FAILURE_SQL.includes('"lockedAt" = NULL'), 'failure SQL clears the lease');
 
   console.log('outbox.service.spec.ts: ok');
 }

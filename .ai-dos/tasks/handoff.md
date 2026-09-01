@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T11:35:00Z — TASK-20260826-001 Phase 3 outbox persist
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-phase3-outbox-persist` worktree `Site-B2B-wt-TASK-20260826-001-p3` from `origin/master` `079193a`.
+- Live: API + both workers healthy on `079193a`; connectors unset; alerts timer on; backup timer off.
+- 18 rows stay PROCESSING: same `lockedAt` every ~5 min, `lastError` empty, `updatedAt` stale. Lease raw SQL works; `repo.update` for markDone/markFailure does not persist.
+- Fix: raw SQL markDone/markFailure; handle timeout 25s. After deploy, reset those 18 to PENDING with attempts=0 (no DELETE).
+- Do not enable connectors. Do not Done.
+- Exact next: specs + PR/merge/deploy; SELECT counts; if DONE/DEAD with lastError, restart 24h soak. Phases 4–8 stay gated on owner flags/§9.
+
 ## 2026-09-01T11:10:00Z — TASK-20260901-002 production API down after merge
 
 - Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002

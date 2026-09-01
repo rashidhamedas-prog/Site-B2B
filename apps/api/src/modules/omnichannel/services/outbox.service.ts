@@ -37,6 +37,30 @@ export function sanitizeOutboxPayload(payload?: Record<string, unknown>): Record
   return out;
 }
 
+/** Same write path as lease — do not switch these back to repository.update. */
+export const MARK_DONE_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = 'DONE',
+    "completedAt" = NOW(),
+    "lastError" = NULL,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE id = $1
+`;
+
+export const MARK_FAILURE_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = $2,
+    "lastError" = $3,
+    "availableAt" = $4,
+    "completedAt" = $5,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE id = $1
+`;
+
 @Injectable()
 export class OutboxService {
   constructor(
@@ -101,24 +125,20 @@ export class OutboxService {
   }
 
   async markDone(id: string): Promise<void> {
-    await this.repo.update(id, {
-      status: 'DONE',
-      completedAt: new Date(),
-      lastError: null,
-      lockedAt: null,
-      lockedBy: null,
-    });
+    // Raw SQL: TypeORM repo.update left live rows PROCESSING (updatedAt unchanged).
+    await this.dataSource.query(MARK_DONE_SQL, [id]);
   }
 
   async markFailure(row: OutboxEventEntity, error: string): Promise<void> {
     const dead = shouldDeadLetter(row.attempts, row.maxAttempts);
-    await this.repo.update(row.id, {
-      status: dead ? 'DEAD' : 'PENDING',
-      lastError: error.slice(0, 2000),
-      availableAt: dead ? row.availableAt : nextAvailableAt(row.attempts, new Date(), Math.random()),
-      completedAt: dead ? new Date() : null,
-      lockedAt: null,
-      lockedBy: null,
-    });
+    const availableAt = dead ? row.availableAt : nextAvailableAt(row.attempts, new Date(), Math.random());
+    await this.dataSource.query(MARK_FAILURE_SQL, [
+      row.id,
+      dead ? 'DEAD' : 'PENDING',
+      error.slice(0, 2000),
+      availableAt,
+      dead ? new Date() : null,
+    ]);
   }
 }
+

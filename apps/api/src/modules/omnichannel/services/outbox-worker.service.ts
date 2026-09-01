@@ -25,7 +25,7 @@ export function isOmnichannelWorkerProcess(): boolean {
   return process.env.OMNICHANNEL_WORKER === 'true';
 }
 
-const HANDLE_TIMEOUT_MS = 15_000;
+const HANDLE_TIMEOUT_MS = 25_000;
 
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
