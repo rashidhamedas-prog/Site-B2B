@@ -14,7 +14,6 @@ import {
   SPEC_FIELD_KEYS,
 } from './entities/product-specs';
 import { StorageService } from '../upload/storage.service';
-import { SearchService } from '../search/search.service';
 import { SettingsService } from '../settings/settings.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -42,6 +41,8 @@ import {
 } from './product-sale';
 import { isPublicProductRow } from './public-product-status';
 import { stripOppositeChannelFields } from './public-product-channel';
+import { productOutboxIntents } from './product-outbox';
+import { OutboxService } from '../omnichannel/services/outbox.service';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -170,8 +171,8 @@ export class ProductService {
     @InjectRepository(SeoRedirectEntity)
     private readonly redirectRepo: Repository<SeoRedirectEntity>,
     private readonly storage: StorageService,
-    private readonly search: SearchService,
-    private readonly settings: SettingsService
+    private readonly settings: SettingsService,
+    private readonly outbox: OutboxService,
   ) {}
 
   private fabricFromSpecs(specs?: ProductSpecs | null, fallback?: string): string {
@@ -285,21 +286,13 @@ export class ProductService {
     }
   }
 
-  private async syncSearch(product: ProductEntity) {
-    const cfg = await this.badgeConfig();
-    const newBadgeMs = cfg.newBadgeDays * 24 * 60 * 60 * 1000;
-    await this.search.indexProduct({
-      id: product.id,
-      sku: product.sku,
-      name: product.name,
-      fabric: this.fabricFromSpecs(product.specs, product.fabric),
-      description: product.description,
-      status: product.status,
-      isFeatured: !!product.isDiscounted,
-      isNew: product.createdAt
-        ? Date.now() - new Date(product.createdAt).getTime() < newBadgeMs
-        : false,
-    });
+  private async enqueueProductOutbox(
+    before: Parameters<typeof productOutboxIntents>[0],
+    after: ProductEntity,
+    operationId: string,
+    manager?: EntityManager,
+  ) {
+    await this.outbox.enqueueMany(productOutboxIntents(before, after, operationId), manager);
   }
 
   async findAll(
@@ -938,10 +931,13 @@ export class ProductService {
       showOnRetail,
       guarantee: sanitizeGuarantee(data.guarantee) ?? null,
     });
-    const saved = await this.productRepo.save(product);
+    const saved = await this.productRepo.manager.transaction(async (em) => {
+      const row = await em.getRepository(ProductEntity).save(product);
+      await this.enqueueProductOutbox(null, row, `product:create:${row.id}`, em);
+      return row;
+    });
     await this.replaceRelated(saved.id, data.relatedProductIds);
     await this.rememberSpecs(specs);
-    await this.syncSearch(saved);
     const cfg = await this.badgeConfig();
     return this.withBadges(
       (await this.productRepo.findOne({
@@ -1147,12 +1143,19 @@ export class ProductService {
       }
     }
 
-    await this.productRepo.update(id, patch as any);
+    const updated = await this.productRepo.manager.transaction(async (em) => {
+      await em.getRepository(ProductEntity).update(id, patch as any);
+      const row = await em.getRepository(ProductEntity).findOne({
+        where: { id },
+        relations: ['variants'],
+      });
+      if (!row) throw new NotFoundException('محصول یافت نشد');
+      await this.enqueueProductOutbox(existing, row, `product:update:${id}`, em);
+      return row;
+    });
     if (data.slug !== undefined && data.slug !== existing.slug) {
       await this.changeSlugInTransaction(id, data.slug);
     }
-    const updated = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
-    if (!updated) throw new NotFoundException('محصول یافت نشد');
     if (data.relatedProductIds) {
       await this.replaceRelated(id, data.relatedProductIds);
     }
@@ -1161,8 +1164,6 @@ export class ProductService {
       const removed = oldImages.filter((url) => !data.images!.includes(url));
       if (removed.length) await this.storage.deleteByUrls(removed);
     }
-
-    await this.syncSearch(updated);
     const cfg = await this.badgeConfig();
     return this.withBadges(updated, undefined, cfg);
   }
@@ -1173,8 +1174,16 @@ export class ProductService {
     if (product.images?.length) {
       await this.storage.deleteByUrls(product.images);
     }
-    await this.productRepo.softDelete(id);
-    await this.search.removeProduct(id);
+    const withdrawn = {
+      ...product,
+      status: 'HIDDEN',
+      showOnRetail: false,
+      showOnWholesale: false,
+    } as ProductEntity;
+    await this.productRepo.manager.transaction(async (em) => {
+      await em.getRepository(ProductEntity).softDelete(id);
+      await this.enqueueProductOutbox(product, withdrawn, `product:remove:${id}`, em);
+    });
     return { message: 'محصول با موفقیت حذف شد' };
   }
 
@@ -1595,7 +1604,8 @@ export class ProductService {
       ),
     ];
     if (!colorImages.length) return;
-    const current = Array.isArray(product.images) ? [...product.images] : [];
+    const beforeImages = Array.isArray(product.images) ? [...product.images] : [];
+    const current = [...beforeImages];
     let changed = false;
     for (const url of colorImages) {
       if (!current.includes(url)) {
@@ -1603,10 +1613,13 @@ export class ProductService {
         changed = true;
       }
     }
-    if (changed) {
-      product.images = current;
-      await this.productRepo.save(product);
-    }
+    if (!changed) return;
+    const before = { ...product, images: beforeImages };
+    product.images = current;
+    await this.productRepo.manager.transaction(async (em) => {
+      await em.getRepository(ProductEntity).save(product);
+      await this.enqueueProductOutbox(before, product, `product:media:${productId}`, em);
+    });
   }
 
   async removeColorVariants(productId: string, colorName: string) {

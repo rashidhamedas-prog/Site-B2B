@@ -2,6 +2,19 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T10:15:00Z — TASK-20260826-001 Phase 2 catalog outbox
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch target: `ai/TASK-20260826-001-product-outbox` from `origin/master` (not followthrough).
+- Gap closed: `ProductService` now calls `productOutboxIntents` + `enqueueMany` in the same txn as create/update/softDelete. `SearchService` removed from the request path.
+- Phase 3 residual: lease reclaim for `PROCESSING AND lockedAt IS NULL`; worker handle timeout 90s.
+- Gates: `product-outbox.spec.ts` ok; `outbox-lease.spec.ts` ok; `omnichannel-phase-acceptance.spec.ts` ok; `apps/api` `tsc --noEmit` 0.
+- Architect (`f1f8fcba-fe39-40de-826e-a463ff557db2`) Phase 2 **PASS WITH CONDITIONS**. Phase 3 still GAP until both workers deploy and the 9 PROCESSING rows are inspected/reset (no DELETE).
+- Follow-up applied: worklog lease wording corrected (null lock = next tick); `mergeColorImagesIntoProduct` now enqueues media in the same txn.
+- Phase-reviewer (`a161b6bb-dfa5-4a3f-8006-51aab9169328`) Phase 2 **PASS WITH CONDITIONS**, Phase 3 residual **PASS**, must-fix none. Distinct from implementer.
+- Security still required before Done. Do not enable connectors. Do not Done.
+- Exact next: isolated commit/PR, deploy API+both workers, SELECT the 9 PROCESSING rows, reclaim Phase 3/4 only, restart soak.
+
 ## 2026-08-31T21:10:00Z — TASK-20260901-001 owner follow-through
 
 - Task / owner: TASK-20260901-001 / cursor:implementer-TASK-20260901-001

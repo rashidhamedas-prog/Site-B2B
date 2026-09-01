@@ -40,7 +40,13 @@ WITH cte AS (
     AND "availableAt" <= NOW()
     AND (
       status = 'PENDING'
-      OR (status = 'PROCESSING' AND "lockedAt" IS NOT NULL AND "lockedAt" < NOW() - INTERVAL '5 minutes')
+      OR (
+        status = 'PROCESSING'
+        AND (
+          "lockedAt" IS NULL
+          OR "lockedAt" < NOW() - INTERVAL '5 minutes'
+        )
+      )
     )
   ORDER BY "availableAt" ASC
   LIMIT $1
