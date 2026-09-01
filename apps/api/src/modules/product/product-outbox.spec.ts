@@ -1,6 +1,8 @@
 /**
  * npx ts-node --transpile-only src/modules/product/product-outbox.spec.ts
  */
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { productOutboxIntents } from './product-outbox';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 
@@ -69,6 +71,14 @@ const base = {
   const a = productOutboxIntents(base, { ...base, name: 'x' }, 'op-1');
   const b = productOutboxIntents(base, { ...base, name: 'x' }, 'op-1');
   assert(a[0].operationId === b[0].operationId, 'same op id is stable');
+}
+
+{
+  const service = readFileSync(resolve(__dirname, 'product.service.ts'), 'utf8');
+  assert(service.includes('productOutboxIntents'), 'ProductService calls productOutboxIntents');
+  assert(service.includes('enqueueMany'), 'ProductService enqueues via OutboxService');
+  assert(!service.includes('this.search.'), 'ProductService has no request-path SearchService calls');
+  assert(!service.includes('indexProduct'), 'ProductService does not index Meilisearch on the request');
 }
 
 console.log('product-outbox.spec.ts: ok');

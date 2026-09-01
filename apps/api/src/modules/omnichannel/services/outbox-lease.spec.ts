@@ -27,6 +27,7 @@ assert(shouldDeadLetter(7, 8) === false, 'below max retries');
 assert(PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED), 'search handled');
 assert(PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED), 'stock_changed is consumed');
 assert(LEASE_SQL.includes('FOR UPDATE SKIP LOCKED'), 'lease skips locked rows');
+assert(LEASE_SQL.includes('"lockedAt" IS NULL'), 'PROCESSING with a null lock is reclaimable');
 assert(
   !(PHASE3_EVENT_TYPES as readonly string[]).includes(OUTBOX_EVENT_TYPES.PRODUCT_CREATED),
   'product.created is not a Phase 3 side-effect',

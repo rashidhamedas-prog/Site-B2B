@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-01 — فاز ۲: outbox کاتالوگ روی create/update/remove
+
+- `ProductService` دیگر Meilisearch را روی درخواست API صدا نمی‌زند؛ رویدادهای `product.*` و `search.reindex.requested` داخل همان تراکنش ذخیره می‌شوند.
+- Lease ردیف `PROCESSING` بدون `lockedAt` را در تیک بعدی پس می‌گیرد؛ قفل کهنه‌تر از پنج دقیقه هم reclaim می‌شود. handler بعد از ۹۰ ثانیه timeout می‌شود و SMS اصلی را کنسل نمی‌کند.
+- کانکتورها خاموش ماندند. تست‌های `product-outbox` / `outbox-lease` / `omnichannel-phase-acceptance` و `tsc` API با exit 0.
+
 ## 2026-09-01 — فالوآپ مالک: CTA تکی، اریکا، ISR کاتالوگ عمده
 
 - متن زندهٔ بنر هوم تکی از فال‌بک رندرر می‌آمد، نه از ردیف CMS. فال‌بک الان «بوتیک دارید؟ / ورود به سایت بوتیک‌داران» است؛ SQL فقط FAQ+CTA را به DB اضافه می‌کند.

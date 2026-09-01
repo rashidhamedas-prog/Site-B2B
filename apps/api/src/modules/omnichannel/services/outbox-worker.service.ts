@@ -25,6 +25,8 @@ export function isOmnichannelWorkerProcess(): boolean {
   return process.env.OMNICHANNEL_WORKER === 'true';
 }
 
+const HANDLE_TIMEOUT_MS = 90_000;
+
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OutboxWorkerService.name);
@@ -74,7 +76,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       const batch = await this.outbox.leaseBatch(this.workerId, 20);
       for (const row of batch) {
         try {
-          await this.handle(row);
+          await this.withTimeout(
+            this.handle(row),
+            HANDLE_TIMEOUT_MS,
+            `outbox ${row.eventType} ${row.id}`,
+          );
           await this.outbox.markDone(row.id);
         } catch (err: unknown) {
           if (err instanceof DeliveryDeferredError) {
@@ -98,6 +104,20 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       } catch {
         /* heartbeat is best-effort */
       }
+    }
+  }
+
+  private async withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        work,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   }
 
