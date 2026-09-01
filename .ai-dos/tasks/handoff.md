@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T11:10:00Z — TASK-20260901-002 production API down after merge
+
+- Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002
+- Live HEAD `d4e20a5` (PR #69 + #70). API crash-loop: TypeORM required `dist/database/migrations/*.spec.js` which `readFileSync` the missing `.ts`.
+- Cause: Dockerfile `cp *.js` after widening the migration allowlist.
+- Fix: copy/load only non-spec compiled migrations. Reclaimed `database.config.ts` from 26-001 / 17-001 / 12-001.
+- Exact next: commit hotfix, rebase onto `origin/master`, merge, rebuild API, verify `/v1/health` + `stockCommittedAt` / `savedAddresses`.
+
 ## 2026-09-01T10:50:00Z — TASK-20260826-001 Phase 3 SMS/search hang
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

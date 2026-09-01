@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { compiledMigrationFiles } from './typeorm-migration-files';
 import { CustomerEntity } from '../modules/customer/entities/customer.entity';
 import { UserEntity } from '../modules/auth/entities/user.entity';
 import { ProductEntity } from '../modules/product/entities/product.entity';
@@ -113,7 +114,7 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => {
     password: config.get('DB_PASS', 'taranom_pass'),
     database: config.get('DB_NAME', 'taranom_db'),
     entities: RUNTIME_TYPEORM_ENTITIES,
-    migrations: ['dist/database/migrations/*.js'],
+    migrations: compiledMigrationFiles(),
     migrationsRun: NODE_ENV === 'production' || String(APP_ENV || '').toLowerCase() === 'staging',
     synchronize: typeormSynchronizeEnabled({ NODE_ENV, APP_ENV, DB_SYNC }),
     logging: NODE_ENV === 'development',

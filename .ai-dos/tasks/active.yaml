@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260901-002-admin-stock-profile"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-09-01T10:20:00Z"
-    heartbeat_at: "2026-09-01T10:20:00Z"
+    heartbeat_at: "2026-09-01T11:10:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/auth/dto/login.dto.ts"
@@ -32,6 +32,9 @@ tasks:
       - "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/database/migrations/20260901-001-stock-commit-and-addresses.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/api/src/config/typeorm-migration-files.ts"
+      - "apps/api/src/config/typeorm-migration-files.spec.ts"
       - "apps/api/Dockerfile"
       - "apps/web/src/lib/auth.ts"
       - "apps/web/src/lib/hooks/useAuth.ts"
@@ -455,7 +458,8 @@ tasks:
       - "apps/api/src/modules/upload/storage.service.ts"
       - "apps/api/src/modules/upload/storage-delete.ts"
       - "apps/api/src/modules/upload/storage-delete.spec.ts"
-      - "apps/api/src/config/database.config.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (TypeORM must not load *.spec.js):
+      # "apps/api/src/config/database.config.ts"
       - "apps/api/package.json"
       - "apps/web/src/lib/hooks/useProducts.ts"
       - "apps/web/src/components/admin/AdminInventory.tsx"
@@ -1245,7 +1249,8 @@ tasks:
       - "apps/api/src/modules/category/category.controller.ts"
       - "apps/api/src/modules/category/category-seo-seed.ts"
       - "apps/api/src/common/public-slug.ts"
-      - "apps/api/src/config/database.config.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (stale hb; TypeORM spec glob):
+      # "apps/api/src/config/database.config.ts"
       - "apps/api/src/modules/blog/entities/seo-redirect.entity.ts"
       - "apps/web/src/lib/canonical-urls.ts"
       # transferred 2026-08-23 to TASK-20260823-002 (stale >24h; BLOCKED_PATH /retail): "apps/web/src/lib/sitemap-xml.ts"
@@ -1539,7 +1544,8 @@ tasks:
       - "apps/api/src/modules/invoice/invoice.service.ts"
       - "apps/api/src/modules/invoice/entities/invoice.entity.ts"
       # transferred 2026-08-26 to TASK-20260826-001 (stale heartbeat; outbox producer): "apps/api/src/modules/affiliate/affiliate-postback.service.ts"
-      - "apps/api/src/config/database.config.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (stale hb; TypeORM spec glob):
+      # "apps/api/src/config/database.config.ts"
       - "apps/web/src/app/payment/callback/page.tsx"
       - "apps/api/package.json"
       - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
