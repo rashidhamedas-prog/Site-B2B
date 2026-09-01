@@ -17,6 +17,8 @@ export class NotificationService {
 
   constructor(private readonly settings: SettingsService) {}
 
+  static readonly FETCH_TIMEOUT_MS = 8_000;
+
   private async post(apiKey: string, path: string, body: Record<string, any>): Promise<boolean> {
     try {
       const res = await fetch(`${NotificationService.BASE}${path}`, {
@@ -27,6 +29,7 @@ export class NotificationService {
           'x-api-key': apiKey,
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(NotificationService.FETCH_TIMEOUT_MS),
       });
       const json: any = await res.json();
       // sms.ir returns { status: 1, message: "موفق", data: {...} } on success.

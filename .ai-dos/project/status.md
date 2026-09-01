@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3: SMS/Meili timeouts + per-row worker heartbeat on `ai/TASK-20260826-001-phase3-sms`. Live `6254120` still has 18 PROCESSING. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 2 catalog outbox: Architect + independent Reviewer **PASS WITH CONDITIONS**. Shipping `ai/TASK-20260826-001-product-outbox`. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260901-001** implementing on `ai/TASK-20260901-001-followthrough`: retail CTA fallback boutique, Erika 301 map, wholesale `/products` ISR+slim. Not live until merge/deploy. GSC image Validate Fix not started (Sara inspect unknown). GA4 stream rename blocked (no Analytics Admin).
 - Last verified: 2026-08-31 — **TASK-20260831-003** live `e0d20a8`: retail slim+ISR, blog.xml 4 posts, absolute JSON-LD, Enamad lazy, wholesale hero LCP keep-slide-0. Lab home LCP good (<2.5s). Wholesale `/products` still ~12s LCP (other claim). Field GSC 11 poor not yet refreshed.

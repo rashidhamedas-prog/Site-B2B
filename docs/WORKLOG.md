@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-01 — فاز ۳: timeout برای SMS و heartbeat وسط بچ
+
+- بعد از دیپلوی outbox کاتالوگ، ۱۸ ردیف `PROCESSING` ماند. SMS به sms.ir بدون مهلت بود و heartbeat ورکر فقط آخر بچ نوشته می‌شد.
+- fetch پیامک ۸ ثانیه abort می‌شود؛ Meilisearch هم ۸ ثانیه؛ ورکر بعد از هر رویداد heartbeat می‌زند.
+- کانکتورها خاموش ماندند. ردیف outbox حذف نمی‌شود.
+
 ## 2026-09-01 — فاز ۲: outbox کاتالوگ روی create/update/remove
 
 - `ProductService` دیگر Meilisearch را روی درخواست API صدا نمی‌زند؛ رویدادهای `product.*` و `search.reindex.requested` داخل همان تراکنش ذخیره می‌شوند.
