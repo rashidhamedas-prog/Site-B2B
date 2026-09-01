@@ -9,6 +9,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Cause: Dockerfile `cp *.js` after widening the migration allowlist.
 - Fix: copy/load only non-spec compiled migrations. Reclaimed `database.config.ts` from 26-001 / 17-001 / 12-001.
 - Exact next: commit hotfix, rebase onto `origin/master`, merge, rebuild API, verify `/v1/health` + `stockCommittedAt` / `savedAddresses`.
+- 2026-09-01T11:20Z: PR #71 live `af358ef` still DOWN. Flattened migrations broke `20260817-001-seo-admin-upgrade` relative import. Follow-up: load from `dist/apps/api/src/database/migrations`.
 
 ## 2026-09-01T10:50:00Z — TASK-20260826-001 Phase 3 SMS/search hang
 
