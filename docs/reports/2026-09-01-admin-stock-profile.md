@@ -15,6 +15,10 @@
 
 `PATCH /auth/me/profile` نام، ایمیل، استان، شهر، کدپستی و آدرس را می‌نویسد. دفترچه آدرس روی `customers.savedAddresses` است (`POST/PATCH/DELETE /auth/me/addresses`). حساب تکی (`/account` مشخصات/آدرس‌ها) و پورتال عمده (`/portal/dashboard/profile`) هر دو افزودن/ویرایش/حذف دارند.
 
+## ۴. هات‌فیکس دپلوی
+
+کپی همهٔ `*.js` مایگریشن، `*.spec.js` را هم وارد ایمیج کرد و TypeORM همان‌ها را لود کرد. ایمیج spec را کپی نمی‌کند و `compiledMigrationFiles()` فقط مایگریشن واقعی را به TypeORM می‌دهد.
+
 ## غیرهدف
 
 صفحه چک‌اوت تکی ویرایش نشد (ادعای تسک دیگر). `DB_SYNC` روشن نشد.
