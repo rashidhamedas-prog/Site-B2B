@@ -1,6 +1,6 @@
-import { IsString, Matches, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { normalizePhone } from '../phone.util';
 
 export class LoginDto {
@@ -13,4 +13,11 @@ export class LoginDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  /** admin = staff-only; portal/omitted = any active account */
+  @ApiPropertyOptional({ enum: ['admin', 'portal'] })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase() : value))
+  @IsIn(['admin', 'portal'])
+  purpose?: 'admin' | 'portal';
 }

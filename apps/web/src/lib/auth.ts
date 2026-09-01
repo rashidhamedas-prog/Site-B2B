@@ -13,8 +13,8 @@ export function setToken(token: string, role: string) {
   localStorage.setItem(ROLE_KEY, role);
   const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
   const maxAge = 7 * 24 * 60 * 60;
-  document.cookie = `${TOKEN_KEY}=${token}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
-  document.cookie = `${ROLE_KEY}=${role}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+  document.cookie = `${TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+  document.cookie = `${ROLE_KEY}=${encodeURIComponent(role)}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
 }
 
 export function clearToken() {

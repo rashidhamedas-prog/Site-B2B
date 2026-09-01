@@ -21,6 +21,12 @@ import { NotificationService } from '../notification/notification.service';
 import { OtpService } from '../redis/redis.module';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
 import { isStaffRole, roleAfterCustomerLink, staffPhoneConflictMessage } from './staff-access';
+import {
+  normalizeAddressList,
+  removeAddress,
+  upsertAddress,
+  type SavedAddress,
+} from './customer-addresses';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -216,6 +222,12 @@ export class AuthService {
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
 
+    if (dto.purpose === 'admin' && !isStaffRole(user.role)) {
+      throw new UnauthorizedException(
+        'این حساب به پنل مدیریت دسترسی ندارد. اگر قبلاً با همین شماره در فروشگاه وارد شده‌اید، نقش مدیریت را از «کاربران سیستم» برگردانید.',
+      );
+    }
+
     if (user.role === 'CUSTOMER') {
       const customer = user.customerId
         ? await this.customerRepo.findOne({ where: { id: user.customerId } })
@@ -270,10 +282,15 @@ export class AuthService {
         return {
           userId: u.id,
           phone: u.phone,
-          email: u.email,
+          email: u.email || customer.email,
           role: u.role,
           businessName: customer.businessName,
           ownerName: customer.ownerName,
+          province: customer.province,
+          city: customer.city,
+          address: customer.address,
+          postalCode: customer.postalCode,
+          addresses: normalizeAddressList(customer.savedAddresses),
           segment: customer.segment,
           customerCode: customer.code,
           creditLimit: customer.creditLimit ?? 0,
@@ -290,17 +307,66 @@ export class AuthService {
       email: u.email,
       role: u.role,
       lastLoginAt: u.lastLoginAt,
+      addresses: [],
     };
   }
 
-  async updateMyProfile(userId: string, data: { ownerName?: string; email?: string }) {
+  async updateMyProfile(
+    userId: string,
+    data: {
+      ownerName?: string;
+      email?: string;
+      businessName?: string;
+      province?: string;
+      city?: string;
+      postalCode?: string;
+      address?: string;
+    },
+  ) {
     const u = await this.userRepo.findOne({ where: { id: userId } });
     if (!u) throw new UnauthorizedException();
-    if (data.email) await this.userRepo.update(userId, { email: data.email });
-    if (u.customerId && data.ownerName) {
-      await this.customerRepo.update(u.customerId, { ownerName: data.ownerName });
+    if (data.email !== undefined) {
+      const email = data.email.trim();
+      await this.userRepo.update(userId, { email: email || (null as unknown as string) });
+    }
+    if (u.customerId) {
+      const patch: Partial<CustomerEntity> = {};
+      if (data.ownerName !== undefined) patch.ownerName = data.ownerName.trim().slice(0, 120);
+      if (data.businessName !== undefined) patch.businessName = data.businessName.trim().slice(0, 160);
+      if (data.province !== undefined) patch.province = data.province.trim().slice(0, 80);
+      if (data.city !== undefined) patch.city = data.city.trim().slice(0, 80);
+      if (data.postalCode !== undefined) patch.postalCode = data.postalCode.trim().slice(0, 20) || (null as unknown as string);
+      if (data.address !== undefined) patch.address = data.address.trim().slice(0, 500) || (null as unknown as string);
+      if (data.email !== undefined) patch.email = data.email.trim() || (null as unknown as string);
+      if (Object.keys(patch).length) await this.customerRepo.update(u.customerId, patch);
     }
     return { message: 'پروفایل بروزرسانی شد' };
+  }
+
+  async saveMyAddress(userId: string, body: Partial<SavedAddress>) {
+    const customer = await this.requireCustomer(userId);
+    try {
+      const next = upsertAddress(normalizeAddressList(customer.savedAddresses), body);
+      await this.customerRepo.update(customer.id, { savedAddresses: next });
+      return { addresses: next };
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : 'آدرس نامعتبر است');
+    }
+  }
+
+  async removeMyAddress(userId: string, addressId: string) {
+    const customer = await this.requireCustomer(userId);
+    const next = removeAddress(normalizeAddressList(customer.savedAddresses), addressId);
+    await this.customerRepo.update(customer.id, { savedAddresses: next });
+    return { addresses: next };
+  }
+
+  private async requireCustomer(userId: string): Promise<CustomerEntity> {
+    const u = await this.userRepo.findOne({ where: { id: userId } });
+    if (!u?.customerId) throw new BadRequestException('حساب مشتری برای این کاربر وجود ندارد');
+    const customer = await this.customerRepo.findOne({ where: { id: u.customerId } });
+    if (!customer) throw new BadRequestException('حساب مشتری یافت نشد');
+    return customer;
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {

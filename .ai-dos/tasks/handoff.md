@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T10:45:00Z — TASK-20260901-002 admin login / stock settle / profile
+
+- Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002
+- Branch: `ai/TASK-20260901-002-admin-stock-profile` from `origin/master`.
+- Reclaimed login files from TASK-20260831-001 (owner: login still broken). Reclaimed order/payment stock path from TASK-20260826-001 (owner inventory rule). Reclaimed order.entity + payment.module from TASK-20260812-001 (stale). Reclaimed Dockerfile to copy all TypeORM migrations.
+- Code: admin login `purpose=admin`; `commitStockForOrder` on CONFIRMED/PAID; customer `savedAddresses` + profile edit UI.
+- Checkout page not edited. Independent Reviewer+Security still required (auth + payments + migration).
+- Gates: `order-stock-settlement.spec.ts` ok; `customer-addresses.spec.ts` ok; `omnichannel-phase-acceptance.spec.ts` ok; `apps/api` `tsc --noEmit` 0; `apps/web` `tsc --noEmit` 0.
+- Exact next: owner authorized merge+deploy+migration. Commit claimed files, PR merge to master, VPS auto-deploy, verify columns + health.
+
 ## 2026-09-01T10:15:00Z — TASK-20260826-001 Phase 2 catalog outbox
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
@@ -13,7 +23,8 @@ Append newest entries at the top. Never erase another agent's record.
 - Follow-up applied: worklog lease wording corrected (null lock = next tick); `mergeColorImagesIntoProduct` now enqueues media in the same txn.
 - Phase-reviewer (`a161b6bb-dfa5-4a3f-8006-51aab9169328`) Phase 2 **PASS WITH CONDITIONS**, Phase 3 residual **PASS**, must-fix none. Distinct from implementer.
 - Security still required before Done. Do not enable connectors. Do not Done.
-- Exact next: isolated commit/PR, deploy API+both workers, SELECT the 9 PROCESSING rows, reclaim Phase 3/4 only, restart soak.
+- Live 2026-09-01T10:24Z: PR #68 merged `6254120`; API health 200; both workers healthy; no connector flags. 18 PROCESSING rows (was 9) — order/stock/search, lastError empty, attempts up to 261. Timeout code is in the worker image; no timeout log yet (SMS handle likely hung). Do not DELETE. Do not enable connectors.
+- Exact next: diagnose hung `order.created.notification` / SMS; after 5-minute stale lock, re-count PROCESSING; reset Phase 3/4 to PENDING only if still stuck; restart soak. Do not Done.
 
 ## 2026-08-31T21:10:00Z — TASK-20260901-001 owner follow-through
 

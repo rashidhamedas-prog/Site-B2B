@@ -38,3 +38,8 @@ export function saveRetailAddress(addr: RetailAddress) {
   );
   localStorage.setItem(KEY, JSON.stringify([next, ...prev].slice(0, MAX)));
 }
+
+export function replaceRetailAddresses(list: RetailAddress[]) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
+}

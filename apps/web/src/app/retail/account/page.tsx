@@ -7,8 +7,9 @@ import Image from 'next/image';
 import { apiClient } from '@/lib/api';
 import { clearToken, getToken, setToken } from '@/lib/auth';
 import { getWishlist, type WishlistItem } from '@/lib/retail-wishlist';
-import { getRetailAddresses, type RetailAddress } from '@/lib/retail-addresses';
+import { getRetailAddresses, replaceRetailAddresses, type RetailAddress } from '@/lib/retail-addresses';
 import { InvoicesPage } from '@/components/portal/InvoicesPage';
+import { RetailAccountDetails, type AccountProfile } from '@/components/retail/RetailAccountDetails';
 
 type OrderRow = {
   id: string;
@@ -74,6 +75,7 @@ function RetailAccountInner() {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [walletBalance, setWalletBalance] = useState(0);
   const [profileName, setProfileName] = useState('');
+  const [profile, setProfile] = useState<AccountProfile>({});
   const [addresses, setAddresses] = useState<RetailAddress[]>([]);
 
   useEffect(() => {
@@ -86,15 +88,53 @@ function RetailAccountInner() {
     setAddresses(getRetailAddresses());
     (async () => {
       try {
-        const [res, profile] = await Promise.all([
+        const [res, me] = await Promise.all([
           apiClient.get<{ data: OrderRow[] }>('/orders?limit=20'),
-          apiClient.get<{ balance?: number; ownerName?: string; businessName?: string; phone?: string }>(
+          apiClient.get<AccountProfile & { balance?: number }>(
             '/auth/me/profile',
           ),
         ]);
         setOrders(Array.isArray(res.data) ? res.data : []);
-        setWalletBalance(Number(profile?.balance) || 0);
-        setProfileName(profile?.ownerName || profile?.businessName || profile?.phone || '');
+        setWalletBalance(Number(me?.balance) || 0);
+        setProfileName(me?.ownerName || me?.businessName || me?.phone || '');
+        setProfile(me || {});
+        if (Array.isArray(me?.addresses) && me.addresses.length) {
+          const mapped = me.addresses.map((a) => ({
+            recipient: a.recipient,
+            mobile: a.mobile,
+            province: a.province,
+            city: a.city,
+            street: a.street,
+            postalCode: a.postalCode || '',
+          }));
+          setAddresses(mapped);
+          replaceRetailAddresses(mapped);
+        } else {
+          const local = getRetailAddresses();
+          if (local.length) {
+            for (const row of local) {
+              try {
+                await apiClient.post('/auth/me/addresses', row);
+              } catch {
+                /* keep local if API rejects a stale row */
+              }
+            }
+            const refreshed = await apiClient.get<AccountProfile>('/auth/me/profile');
+            setProfile(refreshed || me || {});
+            if (refreshed?.addresses?.length) {
+              setAddresses(
+                refreshed.addresses.map((a) => ({
+                  recipient: a.recipient,
+                  mobile: a.mobile,
+                  province: a.province,
+                  city: a.city,
+                  street: a.street,
+                  postalCode: a.postalCode || '',
+                })),
+              );
+            }
+          }
+        }
       } catch {
         setOrders([]);
       }
@@ -224,6 +264,7 @@ function RetailAccountInner() {
       <div className="mt-6 flex flex-wrap gap-2">
         {[
           { id: 'home', label: 'سفارش‌ها' },
+          { id: 'profile', label: 'مشخصات' },
           { id: 'addresses', label: 'آدرس‌ها' },
           { id: 'wishlist', label: 'علاقه‌مندی' },
           { id: 'invoices', label: 'فاکتورها' },
@@ -247,28 +288,26 @@ function RetailAccountInner() {
         </div>
       ) : null}
 
-      {tab === 'addresses' ? (
-        <div className="mt-8 space-y-3">
-          {addresses.length === 0 ? (
-            <p className="text-sm text-[var(--retail-muted)]">
-              هنوز آدرسی ذخیره نشده. بعد از اولین چک‌اوت اینجا نمایش داده می‌شود.
-            </p>
-          ) : (
-            addresses.map((a, i) => (
-              <div key={i} className="rounded-2xl border border-[var(--retail-border)] bg-white p-4 text-sm">
-                <p className="font-bold">{a.recipient} — {a.mobile}</p>
-                <p className="mt-1 text-[var(--retail-muted)]">
-                  {a.province}، {a.city}
-                  {a.postalCode ? `، کدپستی ${a.postalCode}` : ''}
-                </p>
-                <p className="mt-1">{a.street}</p>
-                <Link href="/checkout" className="mt-3 inline-block text-xs font-bold text-[var(--retail-primary)]">
-                  استفاده در چک‌اوت
-                </Link>
-              </div>
-            ))
-          )}
-        </div>
+      {tab === 'profile' || tab === 'addresses' ? (
+        <RetailAccountDetails
+          profile={{ ...profile, addresses: profile.addresses?.length ? profile.addresses : addresses }}
+          onProfileChange={(next) => {
+            setProfile(next);
+            setProfileName(next.ownerName || next.businessName || next.phone || '');
+            if (next.addresses) {
+              setAddresses(
+                next.addresses.map((a) => ({
+                  recipient: a.recipient,
+                  mobile: a.mobile,
+                  province: a.province,
+                  city: a.city,
+                  street: a.street,
+                  postalCode: a.postalCode || '',
+                })),
+              );
+            }
+          }}
+        />
       ) : null}
 
       {tab === 'wishlist' ? (
