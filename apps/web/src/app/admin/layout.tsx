@@ -9,7 +9,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (pathname === '/admin/login') {
+  if (pathname.replace(/\/+$/, '') === '/admin/login') {
     return <>{children}</>;
   }
 

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
@@ -22,7 +22,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     ProductModule,
     AuthModule,
     DiscountModule,
-    PaymentModule,
+    forwardRef(() => PaymentModule),
     ShippingModule,
     AffiliateModule,
     InventoryModule,

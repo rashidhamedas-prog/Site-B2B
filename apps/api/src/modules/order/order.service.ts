@@ -5,9 +5,11 @@ import {
   Optional,
   ForbiddenException,
   ConflictException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
@@ -27,6 +29,10 @@ import { channelUnitStock } from '../product/channel-product-projection';
 import { InventoryService } from '../inventory/inventory.service';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
+import {
+  shouldCommitStockOnConfirm,
+  shouldReverseCommittedStock,
+} from './order-stock-settlement';
 
 /** Allowed Order status transitions (admin). */
 const ORDER_TRANSITIONS: Record<string, string[]> = {
@@ -53,6 +59,7 @@ export class OrderService {
     private readonly productService: ProductService,
     private readonly settings: SettingsService,
     private readonly discounts: DiscountService,
+    @Inject(forwardRef(() => PaymentService))
     private readonly paymentService: PaymentService,
     private readonly installmentService: InstallmentService,
     private readonly shippingService: ShippingService,
@@ -844,28 +851,7 @@ export class OrderService {
         );
         await itemRepo.save(items);
 
-        for (const item of expandedItems) {
-          const updated = await this.productService.updateVariantStock(
-            item.productVariantId,
-            -item.quantity,
-            channel,
-            manager,
-          );
-          await this.inventoryService.recordMovement(
-            {
-              productVariantId: item.productVariantId,
-              productId: item.productId,
-              type: 'SALE',
-              quantity: item.quantity,
-              balanceAfter: channelUnitStock(updated, channel),
-              referenceId: orderRow!.id,
-              referenceType: 'ORDER',
-              channel,
-              notes: `فروش سفارش ${orderRow!.orderNumber}`,
-            },
-            manager,
-          );
-        }
+        // Stock stays until settlement (CONFIRMED / paid). Availability was checked above.
         if (walletApplied > 0) {
           await this.customerService.updateBalance(dto.customerId, -walletApplied, manager);
         }
@@ -899,35 +885,6 @@ export class OrderService {
           },
           manager,
         );
-
-        for (const item of expandedItems) {
-          await this.outbox.enqueue(
-            {
-              operationId: `${orderRow.id}:stock:${item.productVariantId}`,
-              eventType: OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED,
-              aggregateType: 'PRODUCT',
-              aggregateId: item.productId,
-              channel,
-              payload: {
-                productId: item.productId,
-                productVariantId: item.productVariantId,
-                orderId: orderRow.id,
-                channel,
-              },
-            },
-            manager,
-          );
-          await this.outbox.enqueue(
-            {
-              operationId: `${orderRow.id}:search:${item.productId}`,
-              eventType: OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED,
-              aggregateType: 'PRODUCT',
-              aggregateId: item.productId,
-              payload: { productId: item.productId },
-            },
-            manager,
-          );
-        }
 
         if (channel === 'RETAIL' && dto.affiliateId) {
           const affiliateStatus =
@@ -1010,6 +967,7 @@ export class OrderService {
           },
           manager,
         );
+        await this.commitStockForOrder(saved.id, manager);
       });
       return this.findOne(saved.id);
     }
@@ -1080,6 +1038,80 @@ export class OrderService {
   }
 
   /**
+   * Deduct channel stock once, when the order is financially settled / confirmed.
+   * Idempotent via stockCommittedAt. Safe to call from payment verify in the same txn.
+   */
+  async commitStockForOrder(orderId: string, manager?: EntityManager): Promise<void> {
+    const run = async (txn: EntityManager) => {
+      const orderRepo = txn.getRepository(OrderEntity);
+      const locked = await orderRepo.findOne({
+        where: { id: orderId },
+        lock: { mode: 'pessimistic_write' },
+        relations: ['items'],
+      });
+      if (!locked || locked.stockCommittedAt || locked.effectsReversedAt) return;
+      const channel = this.orderStockChannel(locked);
+      for (const item of locked.items ?? []) {
+        if (!item.productVariantId) continue;
+        const qty = Number(item.quantity) || 0;
+        if (qty <= 0) continue;
+        const updated = await this.productService.updateVariantStock(
+          item.productVariantId,
+          -qty,
+          channel,
+          txn,
+        );
+        await this.inventoryService.recordMovement(
+          {
+            productVariantId: item.productVariantId,
+            productId: updated.productId,
+            type: 'SALE',
+            quantity: qty,
+            balanceAfter: channelUnitStock(updated, channel),
+            referenceId: locked.id,
+            referenceType: 'ORDER',
+            channel,
+            notes: `فروش سفارش ${locked.orderNumber}`,
+          },
+          txn,
+        );
+        await this.outbox.enqueue(
+          {
+            operationId: `${locked.id}:stock:${item.productVariantId}`,
+            eventType: OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED,
+            aggregateType: 'PRODUCT',
+            aggregateId: updated.productId,
+            channel,
+            payload: {
+              productId: updated.productId,
+              productVariantId: item.productVariantId,
+              orderId: locked.id,
+              channel,
+            },
+          },
+          txn,
+        );
+        await this.outbox.enqueue(
+          {
+            operationId: `${locked.id}:search:${updated.productId}`,
+            eventType: OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED,
+            aggregateType: 'PRODUCT',
+            aggregateId: updated.productId,
+            payload: { productId: updated.productId },
+          },
+          txn,
+        );
+      }
+      await orderRepo.update(locked.id, { stockCommittedAt: new Date() });
+    };
+    if (manager) {
+      await run(manager);
+      return;
+    }
+    await this.dataSource.transaction((txn) => run(txn));
+  }
+
+  /**
    * Reverse all side-effects of an order (stock, wallet, discount use, pending payments, affiliate).
    * Idempotent via effectsReversedAt.
    * Uses UPDATE (not save) so TypeORM does not null customerId when the customer relation is missing/soft-deleted.
@@ -1091,6 +1123,7 @@ export class OrderService {
     const channel = this.orderStockChannel(full);
 
     await this.dataSource.transaction(async (manager) => {
+      if (shouldReverseCommittedStock(full)) {
       for (const item of full.items ?? []) {
         if (!item.productVariantId) continue;
         const qty = Number(item.quantity) || 0;
@@ -1131,6 +1164,7 @@ export class OrderService {
           },
           manager,
         );
+      }
       }
       if (full.affiliateId) {
         await this.outbox.enqueue(
@@ -1190,6 +1224,9 @@ export class OrderService {
     if (status === 'DELIVERED') patch.deliveredAt = new Date();
     await this.dataSource.transaction(async (manager) => {
       await manager.getRepository(OrderEntity).update(id, patch);
+      if (shouldCommitStockOnConfirm(prev, status)) {
+        await this.commitStockForOrder(id, manager);
+      }
       await this.outbox.enqueue(
         {
           operationId: `${id}:status:${status}`,
@@ -1288,7 +1325,7 @@ export class OrderService {
         const nextQty = Math.max(0, Math.floor(Number(patch.quantity) || 0));
         const prevQty = Number(item.quantity) || 0;
         const delta = nextQty - prevQty;
-        if (delta !== 0 && item.productVariantId) {
+        if (delta !== 0 && item.productVariantId && order.stockCommittedAt) {
           // Same convention as create: negative delta reduces warehouse stock
           const updated = await this.productService.updateVariantStock(
             item.productVariantId,

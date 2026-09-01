@@ -4,13 +4,31 @@ import { useState, useEffect } from 'react';
 import { User, Building, Phone, Mail, MapPin, Save, Lock } from 'lucide-react';
 import { Button, Input, Alert } from '@/components/ui';
 import { apiClient } from '@/lib/api';
+import { IRAN_PROVINCES } from '@/lib/iran-provinces';
+
+interface SavedAddress {
+  id?: string;
+  recipient: string;
+  mobile: string;
+  province: string;
+  city: string;
+  street: string;
+  postalCode?: string;
+  isDefault?: boolean;
+}
 
 interface Profile {
   userId: string;
   phone: string;
   role: string;
+  email?: string;
   businessName?: string;
   ownerName?: string;
+  province?: string;
+  city?: string;
+  address?: string;
+  postalCode?: string;
+  addresses?: SavedAddress[];
   segment?: string;
   customerCode?: string;
   creditLimit?: number;
@@ -24,14 +42,41 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState({ ownerName: '', email: '' });
+  const [form, setForm] = useState({
+    ownerName: '',
+    email: '',
+    businessName: '',
+    province: 'خراسان رضوی',
+    city: '',
+    postalCode: '',
+    address: '',
+  });
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [addrDraft, setAddrDraft] = useState<SavedAddress>({
+    recipient: '',
+    mobile: '',
+    province: 'خراسان رضوی',
+    city: '',
+    street: '',
+    postalCode: '',
+    isDefault: false,
+  });
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
 
   useEffect(() => {
     apiClient.get<Profile>('/auth/me/profile')
       .then((data) => {
         setProfile(data);
-        setForm({ ownerName: data.ownerName ?? '', email: '' });
+        setForm({
+          ownerName: data.ownerName ?? '',
+          email: data.email ?? '',
+          businessName: data.businessName ?? '',
+          province: data.province ?? 'خراسان رضوی',
+          city: data.city ?? '',
+          postalCode: data.postalCode ?? '',
+          address: data.address ?? '',
+        });
+        setAddresses(data.addresses ?? []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -117,13 +162,118 @@ export default function ProfilePage() {
         <Input label="نام صاحب کسب‌وکار" value={form.ownerName}
           onChange={(e) => setForm((p) => ({ ...p, ownerName: e.target.value }))}
           rightIcon={<User className="h-4 w-4" />} />
+        <Input label="نام فروشگاه / کسب‌وکار" value={form.businessName}
+          onChange={(e) => setForm((p) => ({ ...p, businessName: e.target.value }))}
+          rightIcon={<Building className="h-4 w-4" />} />
         <Input label="ایمیل (اختیاری)" type="email" value={form.email}
           onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
           placeholder="info@example.com"
           rightIcon={<Mail className="h-4 w-4" />} />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">استان</label>
+          <select
+            className="block w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            value={form.province}
+            onChange={(e) => setForm((p) => ({ ...p, province: e.target.value }))}
+          >
+            {IRAN_PROVINCES.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+        <Input label="شهر" value={form.city}
+          onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+          rightIcon={<MapPin className="h-4 w-4" />} />
+        <Input label="کدپستی" value={form.postalCode}
+          onChange={(e) => setForm((p) => ({ ...p, postalCode: e.target.value }))} />
+        <Input label="آدرس" value={form.address}
+          onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
+          rightIcon={<MapPin className="h-4 w-4" />} />
         <Button variant="primary" onClick={saveProfile} loading={saving}
           rightIcon={<Save className="h-4 w-4" />}>
           ذخیره تغییرات
+        </Button>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <h2 className="font-bold text-gray-900 flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-primary" />
+          آدرس‌های ارسال
+        </h2>
+        {addresses.map((a) => (
+          <div key={a.id || a.street} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
+            <p className="font-bold">{a.recipient} — {a.mobile}{a.isDefault ? ' (پیش‌فرض)' : ''}</p>
+            <p className="mt-1 text-gray-600">{a.province}، {a.city} — {a.street}</p>
+            <div className="mt-2 flex gap-3">
+              <button type="button" className="text-xs font-bold text-primary" onClick={() => setAddrDraft(a)}>ویرایش</button>
+              {a.id ? (
+                <button
+                  type="button"
+                  className="text-xs font-bold text-red-600"
+                  onClick={async () => {
+                    try {
+                      const res = await apiClient.delete<{ addresses: SavedAddress[] }>(`/auth/me/addresses/${a.id}`);
+                      setAddresses(res.addresses || []);
+                    } catch (e: unknown) {
+                      setError(e instanceof Error ? e.message : 'حذف ناموفق');
+                    }
+                  }}
+                >
+                  حذف
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ))}
+        <Input label="گیرنده" value={addrDraft.recipient}
+          onChange={(e) => setAddrDraft((p) => ({ ...p, recipient: e.target.value }))} />
+        <Input label="موبایل گیرنده" value={addrDraft.mobile}
+          onChange={(e) => setAddrDraft((p) => ({ ...p, mobile: e.target.value }))} />
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-gray-700">استان</label>
+          <select
+            className="block w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            value={addrDraft.province}
+            onChange={(e) => setAddrDraft((p) => ({ ...p, province: e.target.value }))}
+          >
+            {IRAN_PROVINCES.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+        <Input label="شهر" value={addrDraft.city}
+          onChange={(e) => setAddrDraft((p) => ({ ...p, city: e.target.value }))} />
+        <Input label="کدپستی" value={addrDraft.postalCode || ''}
+          onChange={(e) => setAddrDraft((p) => ({ ...p, postalCode: e.target.value }))} />
+        <Input label="نشانی" value={addrDraft.street}
+          onChange={(e) => setAddrDraft((p) => ({ ...p, street: e.target.value }))} />
+        <Button
+          variant="outline"
+          onClick={async () => {
+            setSaving(true);
+            setError(null);
+            try {
+              const res = await apiClient.post<{ addresses: SavedAddress[] }>('/auth/me/addresses', addrDraft);
+              setAddresses(res.addresses || []);
+              setSuccess(true);
+              setAddrDraft({
+                recipient: '',
+                mobile: '',
+                province: form.province || 'خراسان رضوی',
+                city: form.city,
+                street: '',
+                postalCode: '',
+                isDefault: false,
+              });
+            } catch (e: unknown) {
+              setError(e instanceof Error ? e.message : 'ذخیره آدرس ناموفق بود');
+            } finally {
+              setSaving(false);
+            }
+          }}
+          loading={saving}
+        >
+          {addrDraft.id ? 'ذخیره آدرس' : 'افزودن آدرس'}
         </Button>
       </div>
 

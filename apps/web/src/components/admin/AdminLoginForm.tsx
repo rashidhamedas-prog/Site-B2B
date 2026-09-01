@@ -13,7 +13,7 @@ export function AdminLoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    login({ phone, password });
+    void login({ phone, password, purpose: 'admin' });
   };
 
   return (

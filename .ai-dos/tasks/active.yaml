@@ -1,5 +1,68 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260901-002"
+    title: "Admin login, stock on settle, customer profile addresses"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260901-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260901-002"
+      implementer: "cursor:implementer-TASK-20260901-002"
+      reviewer: "required-independent-before-done"
+      security: "required-independent-before-done"
+    branch: "ai/TASK-20260901-002-admin-stock-profile"
+    worktree: "D:/soft/Claud/porje/Site B2B"
+    claimed_at: "2026-09-01T10:20:00Z"
+    heartbeat_at: "2026-09-01T10:20:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/auth/dto/login.dto.ts"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/modules/auth/auth.controller.ts"
+      - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      - "apps/api/src/modules/auth/customer-addresses.ts"
+      - "apps/api/src/modules/auth/customer-addresses.spec.ts"
+      - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
+      - "apps/api/src/modules/customer/entities/customer.entity.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/order.module.ts"
+      - "apps/api/src/modules/order/entities/order.entity.ts"
+      - "apps/api/src/modules/order/order-stock-settlement.ts"
+      - "apps/api/src/modules/order/order-stock-settlement.spec.ts"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/api/src/modules/payment/payment.module.ts"
+      - "apps/api/src/database/migrations/20260901-001-stock-commit-and-addresses.ts"
+      - "apps/api/Dockerfile"
+      - "apps/web/src/lib/auth.ts"
+      - "apps/web/src/lib/hooks/useAuth.ts"
+      - "apps/web/src/lib/iran-provinces.ts"
+      - "apps/web/src/lib/retail-addresses.ts"
+      - "apps/web/src/components/admin/AdminLoginForm.tsx"
+      - "apps/web/src/app/admin/layout.tsx"
+      - "apps/web/src/app/retail/account/page.tsx"
+      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-01-admin-stock-profile.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner-authorized production bugs 2026-09-01: admin login still failing,
+      stock deducted before settlement, profile cannot edit/add addresses.
+      Reclaimed from TASK-20260831-001 (login files; same worktree; owner
+      says login still broken after e0d20a8). Reclaimed order.service /
+      order.module / payment.service from TASK-20260826-001 (same-day
+      heartbeat; owner inventory rule). Reclaimed order.entity +
+      payment.module from TASK-20260812-001 (stale hb 2026-08-14).
+      Do not edit checkout page (TASK-20260824-003 / 023-001).
+      Do not enable DB_SYNC. Independent Reviewer+Security required.
+    acceptance_criteria:
+      - "Admin /auth/login with purpose=admin rejects CUSTOMER and issues JWT only for staff"
+      - "Create-order does not deduct channel stock; SALE movement happens on CONFIRMED/paid"
+      - "Cancel of an uncommitted order does not increment stock"
+      - "Retail account and wholesale portal can edit name/address and add/edit/remove addresses"
+      - "api+web typecheck and new unit specs pass"
   - id: "TASK-20260901-001"
     title: "Owner follow-through: retail CTA, Erika 301, wholesale products ISR"
     status: "in_progress"
@@ -60,9 +123,10 @@ tasks:
     heartbeat_at: "2026-08-31T20:30:00Z"
     depends_on: []
     file_claims:
-      - "apps/api/src/modules/auth/dto/login.dto.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
-      - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (owner login still broken):
+      # "apps/api/src/modules/auth/dto/login.dto.ts"
+      # "apps/api/src/modules/auth/auth.service.ts"
+      # "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
       - "apps/api/src/modules/auth/users.controller.ts"
       - "apps/api/src/modules/auth/users.service.ts"
       - "apps/api/src/modules/auth/users.policy.ts"
@@ -76,12 +140,14 @@ tasks:
       - "apps/api/src/modules/auth/guards/roles.guard.ts"
       - "apps/api/src/modules/auth/auth.module.ts"
       - "apps/api/src/modules/settings/settings.controller.ts"
-      - "apps/web/src/lib/auth.ts"
-      - "apps/web/src/lib/hooks/useAuth.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (owner login still broken):
+      # "apps/web/src/lib/auth.ts"
+      # "apps/web/src/lib/hooks/useAuth.ts"
       - "apps/web/src/lib/staff-access.ts"
       - "apps/web/src/lib/phone.ts"
       - "apps/web/src/middleware.ts"
-      - "apps/web/src/components/admin/AdminLoginForm.tsx"
+      # transferred 2026-09-01 to TASK-20260901-002:
+      # "apps/web/src/components/admin/AdminLoginForm.tsx"
       - "apps/web/src/components/admin/AdminUsers.tsx"
       - "apps/web/src/components/admin/AdminAccount.tsx"
       - "apps/web/src/app/admin/account/page.tsx"
@@ -373,8 +439,9 @@ tasks:
       - "apps/api/src/modules/inventory/inventory.controller.ts"
       - "apps/api/src/modules/inventory/inventory-movement.policy.ts"
       - "apps/api/src/modules/inventory/inventory-movement.policy.spec.ts"
-      - "apps/api/src/modules/order/order.service.ts"
-      - "apps/api/src/modules/order/order.module.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (stock only after settle):
+      # "apps/api/src/modules/order/order.service.ts"
+      # "apps/api/src/modules/order/order.module.ts"
       - "apps/api/src/modules/rma/rma.service.ts"
       - "apps/api/src/modules/rma/rma.module.ts"
       - "apps/api/src/modules/rma/rma-channel.ts"
@@ -413,7 +480,8 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/outbox.service.spec.ts"
       - "apps/api/src/modules/blog/blog.service.ts"
       - "apps/api/src/modules/affiliate/affiliate-postback.service.ts"
-      - "apps/api/src/modules/payment/payment.service.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (commit stock on PAID):
+      # "apps/api/src/modules/payment/payment.service.ts"
       - "docs/reports/2026-08-26-omnichannel-phase-2.md"
       - "docs/reports/2026-08-26-omnichannel-phase-3.md"
       - "apps/api/src/modules/omnichannel/services/publication-sync.ts"
@@ -465,7 +533,8 @@ tasks:
       - "apps/api/src/database/migrations/20260829-001-omnichannel-audit.ts"
       - "apps/api/src/config/db-sync.ts"
       - "apps/api/src/config/db-sync.spec.ts"
-      - "apps/api/Dockerfile"
+      # transferred 2026-09-01 to TASK-20260901-002 (copy all TypeORM migrations):
+      # "apps/api/Dockerfile"
       - ".dockerignore"
       - ".github/workflows/ci.yml"
       - "apps/web/src/app/checkout/page.tsx"
@@ -549,12 +618,14 @@ tasks:
       - "apps/api/src/modules/payment/adapters/payment-provider.adapter.ts"
       # transferred 2026-08-26 to TASK-20260826-001 (stale heartbeat; outbox producer): "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.controller.ts"
-      - "apps/api/src/modules/payment/payment.module.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (OrderModule forwardRef):
+      # "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
       - "apps/api/src/modules/payment/entities/payment.entity.ts"
       - "apps/api/src/database/migrations/20260824-001-digipay-upg-retail.ts"
       - "apps/api/src/modules/order/dto/create-order.dto.ts"
-      - "apps/api/src/modules/order/order.service.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (already stale vs 26-001):
+      # "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/settings/settings.service.ts"
       - "apps/api/package.json"
       - "apps/web/src/app/payment/callback/page.tsx"
@@ -1449,7 +1520,8 @@ tasks:
       - ".ai-dos/project/status.md"
       # transferred 2026-08-26 to TASK-20260826-001 (stale heartbeat; outbox producer): "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.controller.ts"
-      - "apps/api/src/modules/payment/payment.module.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (stale hb; OrderModule forwardRef):
+      # "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/modules/payment/entities/payment.entity.ts"
       - "apps/api/src/modules/payment/dto/payment-public.dto.ts"
       - "apps/api/src/modules/payment/entities/payment-attempt.entity.ts"
@@ -1461,7 +1533,8 @@ tasks:
       - "apps/api/src/modules/payment/adapters/disabled.adapter.ts"
       - "apps/api/src/database/migrations/20260812-001-payment-core-hardening.ts"
       # transferred to TASK-20260817-001 2026-08-17 (stale heartbeat; sale-window checkout): "apps/api/src/modules/order/order.service.ts"
-      - "apps/api/src/modules/order/entities/order.entity.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (stale hb; stockCommittedAt):
+      # "apps/api/src/modules/order/entities/order.entity.ts"
       - "apps/api/src/modules/order/dto/create-order.dto.ts"
       - "apps/api/src/modules/invoice/invoice.service.ts"
       - "apps/api/src/modules/invoice/entities/invoice.entity.ts"

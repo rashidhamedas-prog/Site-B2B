@@ -43,6 +43,19 @@ export class CustomerEntity {
   @Column({ nullable: true, type: 'text' })
   address: string;
 
+  /** Saved shipping addresses (retail/wholesale profile). */
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  savedAddresses: Array<{
+    id: string;
+    recipient: string;
+    mobile: string;
+    province: string;
+    city: string;
+    street: string;
+    postalCode?: string;
+    isDefault?: boolean;
+  }>;
+
   @Column({ nullable: true })
   postalCode: string;
 
