@@ -6,6 +6,7 @@ import type { Response } from 'express';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
 import { resolveChannelSale } from '../product/product-sale';
+import { channelAvailability } from '../product/channel-product-projection';
 import {
   enumeratePublishableOptions,
   RETAIL_CANONICAL_ORIGIN,
@@ -111,8 +112,7 @@ export class FeedsController {
         const sale = resolveChannelSale(p, 'RETAIL');
         const payable = sale.payable;
         const listPrice = sale.active && sale.original ? sale.original : payable;
-        const variantStock = (p.variants || []).reduce((s, v) => s + (Number(v.retailStock) || 0), 0);
-        const stock = variantStock > 0 ? variantStock : Number(p.retailStock) || 0;
+        const { stock } = channelAvailability(p, 'RETAIL');
         const images = (p.images || [])
           .map((u) => absMedia(u, base).replace(/^http:\/\//i, 'https://'))
           .filter(Boolean);

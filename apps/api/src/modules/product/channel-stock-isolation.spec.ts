@@ -18,7 +18,7 @@ const productSvc = readFileSync(resolve(root, 'modules/product/product.service.t
 
 assert(resolver.includes('item.retailStock'), 'retail column only');
 assert(!/channel === 'RETAIL'[\s\S]{0,80}item\.stock/.test(resolver), 'retail never reads legacy stock');
-assert(feed.includes('Number(v.retailStock)') && feed.includes('Number(p.retailStock)'), 'feed uses retail columns');
+assert(feed.includes("channelAvailability(p, 'RETAIL')"), 'feed uses shared retail resolver');
 assert(!/wholesaleStock/.test(feed), 'feed never reads wholesaleStock');
 assert(basalam.includes("channelAvailability(p, 'RETAIL')"), 'basalam uses retail resolver');
 assert(!/variant\.stock/.test(feed), 'feed does not read variant.stock');

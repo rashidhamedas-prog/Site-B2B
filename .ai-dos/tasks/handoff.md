@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T12:30:00Z — TASK-20260826-001 Phase 4 Feed shares availability
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Live Phase 3 drain on `3353266`: 18/18 DONE, 3 local publications, 0 deliveries. Soak started 2026-09-01T12:22Z.
+- Architect `bdef42fa-b3a5-4ec3-b321-4611e884c9fb`: Phase 4 CODE PASS WITH CONDITIONS; ACTIVATION FAIL. Next code: Feed → `channelAvailability`.
+- Reclaimed `feeds.controller.ts` from TASK-20260829-001 (hb 2026-08-30, stale) and stale TASK-20260810-006/017 claim.
+- Do not enable connectors. Do not Done.
+- Exact next: spec + PR/merge/deploy; then Phase 4 CODE is complete. Canary/§9 still owner-gated.
+
 ## 2026-09-01T12:10:00Z — TASK-20260826-001 Phase 3 lease RETURNING tuple
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
