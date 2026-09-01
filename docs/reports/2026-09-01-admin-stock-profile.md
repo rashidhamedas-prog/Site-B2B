@@ -23,6 +23,10 @@
 
 کپی همهٔ `*.js` مایگریشن، `*.spec.js` را هم وارد ایمیج کرد و TypeORM همان‌ها را لود کرد. بعد از حذف spec، flatten کردن مایگریشن‌ها import نسبی `ascii-slug` را شکست. TypeORM از مسیر emit تی‌اس‌سی می‌خواند و spec را نادیده می‌گیرد.
 
+## ۶. تأیید زنده `0d39830`
+
+VPS و `origin/master` هر دو `0d39830` (شامل PR #74). API `/v1/health` ۲۰۰. مالک `09152424624` نقش ADMIN و فعال است. `POST /v1/auth/login` با `purpose=admin` نقش ADMIN می‌دهد؛ با `purpose=portal` نقش عملی CUSTOMER و `purpose=storefront` است و نقش دیتابیس عوض نمی‌شود. رمز در گیت نوشته نشد.
+
 ## غیرهدف
 
 صفحه چک‌اوت تکی ویرایش نشد (ادعای تسک دیگر). `DB_SYNC` روشن نشد.
