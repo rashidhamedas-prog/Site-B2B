@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -9,6 +9,7 @@ import {
   VerifyRetailOtpDto,
   UpdateProfileDto,
   ChangePasswordDto,
+  SavedAddressDto,
 } from './dto/otp.dto';
 
 @ApiTags('auth')
@@ -60,6 +61,40 @@ export class AuthController {
     @Body() body: UpdateProfileDto,
   ) {
     return this.authService.updateMyProfile(req.user.sub, body);
+  }
+
+  @Post('me/addresses')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'افزودن یا ویرایش آدرس ذخیره‌شده' })
+  saveAddress(
+    @Request() req: Express.Request & { user: { sub: string } },
+    @Body() body: SavedAddressDto,
+  ) {
+    return this.authService.saveMyAddress(req.user.sub, body);
+  }
+
+  @Patch('me/addresses/:id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'ویرایش آدرس ذخیره‌شده' })
+  updateAddress(
+    @Request() req: Express.Request & { user: { sub: string } },
+    @Param('id') id: string,
+    @Body() body: SavedAddressDto,
+  ) {
+    return this.authService.saveMyAddress(req.user.sub, { ...body, id });
+  }
+
+  @Delete('me/addresses/:id')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({ summary: 'حذف آدرس ذخیره‌شده' })
+  removeAddress(
+    @Request() req: Express.Request & { user: { sub: string } },
+    @Param('id') id: string,
+  ) {
+    return this.authService.removeMyAddress(req.user.sub, id);
   }
 
   @Patch('me/password')

@@ -110,6 +110,10 @@ export class OrderEntity {
   @Column({ nullable: true })
   effectsReversedAt: Date;
 
+  /** Channel stock deducted (settlement). Null = unpaid/pending hold, no warehouse move. */
+  @Column({ nullable: true })
+  stockCommittedAt: Date;
+
   @Column({ nullable: true })
   confirmedAt: Date;
 

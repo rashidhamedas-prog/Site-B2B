@@ -5,6 +5,8 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -26,6 +28,7 @@ import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.ada
 import type { PaymentProviderAdapter } from './adapters/payment-provider.adapter';
 import { assertPositiveFiniteIrr, toPublicPaymentDto, PaymentPublicDto } from './dto/payment-public.dto';
 import { PaymentMetrics, maskMobile } from './payment-metrics';
+import { OrderService } from '../order/order.service';
 
 interface CreatePaymentInput {
   amount?: number;
@@ -75,6 +78,8 @@ export class PaymentService {
     private readonly zarinpal: ZarinPalAdapter,
     private readonly digipay: DigiPayAdapter,
     private readonly metrics: PaymentMetrics,
+    @Inject(forwardRef(() => OrderService))
+    private readonly orders: OrderService,
   ) {}
 
   /** Safe structured fields for start/verify logs (no raw mobile/email). */
@@ -805,6 +810,7 @@ export class PaymentService {
           status: 'CONFIRMED',
           confirmedAt: new Date(),
         } as any);
+        await this.orders.commitStockForOrder(payment.orderId, manager);
         await this.outbox.enqueue(
           {
             operationId: `${payment.orderId}:status:CONFIRMED`,
@@ -962,6 +968,15 @@ export class PaymentService {
           meta: { note: input.reason || input.description || 'manual' },
         }),
       );
+
+      if (input.orderId) {
+        const orderRepo = manager.getRepository(OrderEntity);
+        await orderRepo.update(input.orderId, {
+          status: 'CONFIRMED',
+          confirmedAt: new Date(),
+        } as any);
+        await this.orders.commitStockForOrder(input.orderId, manager);
+      }
 
       return toPublicPaymentDto(payment, { ok: true });
     });

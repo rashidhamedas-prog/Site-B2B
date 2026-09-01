@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PaymentEntity } from './entities/payment.entity';
 import { PaymentAttemptEntity } from './entities/payment-attempt.entity';
@@ -25,6 +25,7 @@ import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { DigiPayAdapter } from './adapters/digipay.adapter';
 import { DisabledPaymentAdapter } from './adapters/disabled.adapter';
 import { PaymentProviderRegistryService } from './payment-provider-registry.service';
+import { OrderModule } from '../order/order.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { PaymentProviderRegistryService } from './payment-provider-registry.serv
     ]),
     AuthModule,
     AffiliateModule,
+    forwardRef(() => OrderModule),
   ],
   controllers: [PaymentController, InstallmentController],
   providers: [

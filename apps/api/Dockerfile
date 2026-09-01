@@ -29,12 +29,7 @@ RUN npm run build \
        printf '%s\n' "require('./apps/api/src/worker.main');" > dist/worker.main.js; \
      fi \
   && mkdir -p dist/database/migrations \
-  && cp \
-       dist/apps/api/src/database/migrations/20260826-001-omnichannel-schema.js \
-       dist/apps/api/src/database/migrations/20260829-001-omnichannel-audit.js \
-       dist/apps/api/src/database/migrations/20260829-002-omnichannel-media.js \
-       dist/apps/api/src/database/migrations/20260829-003-torob-product-fields.js \
-       dist/database/migrations/
+  && cp dist/apps/api/src/database/migrations/*.js dist/database/migrations/
 
 # Production runner
 FROM base AS runner

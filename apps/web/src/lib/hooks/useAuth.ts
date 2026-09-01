@@ -7,7 +7,7 @@ import { setToken, clearToken, getToken, getRole } from '../auth';
 import { isStaffRole } from '../staff-access';
 import { normalizePhone } from '../phone';
 
-interface LoginPayload { phone: string; password: string }
+interface LoginPayload { phone: string; password: string; purpose?: 'admin' | 'portal' }
 interface RegisterPayload { phone: string; password: string; ownerName: string; businessName: string; province: string; city: string; businessType?: string; notes?: string }
 
 export function useAuth() {
@@ -32,7 +32,12 @@ export function useAuth() {
       const res = await apiClient.post<{ accessToken: string; role: string }>('/auth/login', {
         phone: normalizePhone(payload.phone),
         password: payload.password,
+        ...(payload.purpose ? { purpose: payload.purpose } : {}),
       });
+      if (payload.purpose === 'admin' && !isStaffRole(res.role)) {
+        clearToken();
+        throw new Error('این حساب به پنل مدیریت دسترسی ندارد');
+      }
       setToken(res.accessToken, res.role);
       setIsLoggedIn(true);
       setRole(res.role);
