@@ -10,10 +10,10 @@ tasks:
       implementer: "cursor:implementer-TASK-20260901-002"
       reviewer: "required-independent-before-done"
       security: "required-independent-before-done"
-    branch: "ai/TASK-20260901-002-admin-stock-profile"
+    branch: "ai/TASK-20260901-002-ship-verify"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-09-01T10:20:00Z"
-    heartbeat_at: "2026-09-01T11:50:00Z"
+    heartbeat_at: "2026-09-01T13:35:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/auth/dto/login.dto.ts"

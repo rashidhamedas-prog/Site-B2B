@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-01 — **TASK-20260901-002** live `0d39830`: owner `09152424624` ADMIN/active; `POST /v1/auth/login` purpose=admin → ADMIN; purpose=portal → CUSTOMER/storefront; DB role stays ADMIN. Reviewer+Security still required.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3 live `3353266`: 18/18 DONE, 3 publications, 0 deliveries. Soak 12:22Z. Phase 4 Feed now shares `channelAvailability`. Connectors off. Canary/§9/Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260901-002** staff+shopper split: owner `09152424624` restored ADMIN/active; shopper JWT purpose=storefront; admin cookies separate. Shipping.
 - Last verified: 2026-09-01 — **TASK-20260901-002** API still **DOWN** after `af358ef`: flattened migrations broke relative `ascii-slug` import. Follow-up loads tsc emit path.

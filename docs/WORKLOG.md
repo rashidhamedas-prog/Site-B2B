@@ -16,6 +16,7 @@
 
 - نقش staff دیگر با OTP/ثبت‌نام فروشگاه عوض یا حذف نمی‌شود.
 - نشست پنل و فروشگاه کوکی جدا دارند؛ خرید با توکن `storefront` است.
+- Live `0d39830`: ورود `purpose=admin` نقش ADMIN می‌دهد؛ `purpose=portal` نقش عملی CUSTOMER است و نقش دیتابیس ADMIN می‌ماند.
 
 ## 2026-09-01 — فاز ۳: persist وضعیت outbox با SQL خام
 
