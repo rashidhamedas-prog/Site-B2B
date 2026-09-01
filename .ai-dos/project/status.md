@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-01 — **TASK-20260901-002** merged to master (`d4e20a5`) but API **DOWN**: TypeORM loaded `*.spec.js` from Docker migrations. Hotfix in progress (exclude specs + filter TypeORM glob).
+- Last verified: 2026-09-01 — **TASK-20260901-002** API still **DOWN** after `af358ef`: flattened migrations broke relative `ascii-slug` import. Follow-up loads tsc emit path.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3: SMS/Meili timeouts + per-row worker heartbeat on `ai/TASK-20260826-001-phase3-sms`. Live `6254120` still has 18 PROCESSING. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260901-002** live `fcbc1a7`: admin login rejects CUSTOMER; stock commits on CONFIRMED/paid; profile address book.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 2 catalog outbox: Architect + independent Reviewer **PASS WITH CONDITIONS**. Shipping `ai/TASK-20260826-001-product-outbox`. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
