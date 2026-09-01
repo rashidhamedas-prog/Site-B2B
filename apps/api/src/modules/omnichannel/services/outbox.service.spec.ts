@@ -5,6 +5,7 @@ import {
   MARK_DONE_SQL,
   MARK_FAILURE_SQL,
   buildDedupeKey,
+  leaseRowsFromQueryResult,
   sanitizeOutboxPayload,
   type OutboxEnqueueInput,
 } from './outbox.service';
@@ -77,6 +78,11 @@ async function main() {
   assert(MARK_DONE_SQL.includes('"lockedAt" = NULL'), 'done SQL clears the lease');
   assert(MARK_FAILURE_SQL.includes('status = $2'), 'failure SQL sets PENDING or DEAD');
   assert(MARK_FAILURE_SQL.includes('"lockedAt" = NULL'), 'failure SQL clears the lease');
+
+  const leased = leaseRowsFromQueryResult([[{ id: 'a' }, { id: 'b' }], 2]);
+  assert(leased.map((r) => r.id).join(',') === 'a,b', 'UPDATE RETURNING tuple unwraps rows');
+  assert(leaseRowsFromQueryResult([{ id: 'c' }]).map((r) => r.id).join(',') === 'c', 'plain row array still works');
+  assert(leaseRowsFromQueryResult(null).length === 0, 'null is empty');
 
   console.log('outbox.service.spec.ts: ok');
 }

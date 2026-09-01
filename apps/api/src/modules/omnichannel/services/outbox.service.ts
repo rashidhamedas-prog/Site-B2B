@@ -23,6 +23,17 @@ export function buildDedupeKey(input: OutboxEnqueueInput): string {
   return [input.operationId, input.eventType, input.aggregateId, input.channel || ''].join(':');
 }
 
+/** TypeORM pg returns [rows, rowCount] for UPDATE…RETURNING — not the rows array. */
+export function leaseRowsFromQueryResult(raw: unknown): Array<{ id: string }> {
+  const records = Array.isArray(raw) && raw.length === 2 && Array.isArray(raw[0]) && typeof raw[1] === 'number'
+    ? raw[0]
+    : raw;
+  if (!Array.isArray(records)) return [];
+  return records.filter((row): row is { id: string } => {
+    return !!row && typeof row === 'object' && typeof (row as { id?: unknown }).id === 'string';
+  });
+}
+
 export function sanitizeOutboxPayload(payload?: Record<string, unknown>): Record<string, unknown> {
   if (!payload || typeof payload !== 'object') return {};
   const out: Record<string, unknown> = {};
@@ -106,11 +117,11 @@ export class OutboxService {
   }
 
   async leaseBatch(workerId: string, limit = 20): Promise<OutboxEventEntity[]> {
-    const rows: Array<{ id: string }> = await this.dataSource.query(buildLeaseSql(), [
+    const raw = await this.dataSource.query(buildLeaseSql(), [
       Math.max(1, Math.min(limit, 100)),
       workerId.slice(0, 80),
     ]);
-    const ids = (rows ?? []).map((r) => r.id).filter(Boolean);
+    const ids = leaseRowsFromQueryResult(raw).map((r) => r.id);
     if (!ids.length) return [];
     return this.repo.find({ where: { id: In(ids) } });
   }
