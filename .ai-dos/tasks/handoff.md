@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T13:35:00Z — TASK-20260901-002 live login verified on 0d39830
+
+- Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002
+- Branch: `ai/TASK-20260901-002-ship-verify` from `origin/master` `0d39830` (includes PR #74).
+- VPS HEAD already `0d39830`; API health 200; deploy idle.
+- Owner user ADMIN/active; customer ACTIVE. First hash write lost leading `$` (len 59) so login 401; rewritten to 60-char `$2a$12$`. Do not write the password into git.
+- Live `POST /v1/auth/login`: purpose=admin → role ADMIN / purpose admin; purpose=portal → role CUSTOMER / purpose storefront; DB role still ADMIN.
+- Do not mark Done (independent Reviewer + Security still required).
+- Exact next: owner commit/push/merge/deploy this docs verify; keep using `/admin/login` and retail OTP separately.
+
 ## 2026-09-01T13:30:00Z — TASK-20260826-001 Admin OOS + canary settings
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
