@@ -22,6 +22,10 @@ export class RolesGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
     if (!user?.role) throw new ForbiddenException('دسترسی غیرمجاز');
+    const allowsCustomer = requiredRoles.includes('CUSTOMER');
+    if (!allowsCustomer && user.purpose === 'storefront') {
+      throw new ForbiddenException('دسترسی غیرمجاز');
+    }
 
     if (adminOnly) {
       if (user.role !== 'ADMIN') throw new ForbiddenException('فقط مدیر کل دسترسی دارد');

@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T11:50:00Z — TASK-20260901-002 staff + shopper identity split
+
+- Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002
+- Owner phone was ADMIN but `isActive=false` and soft-deleted (customer delete cascaded to staff). Customer row also soft-deleted.
+- Code: shopper JWT `purpose=storefront` acts as CUSTOMER; admin cookie/JWT stay separate; staff never deactivated by customer delete.
+- Production user+customer restored active. Do not write owner password into git.
+- Exact next: merge/deploy, verify `/admin/login` and retail OTP.
+
 ## 2026-09-01T11:35:00Z — TASK-20260826-001 Phase 3 outbox persist
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
@@ -20,6 +28,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Fix: copy/load only non-spec compiled migrations. Reclaimed `database.config.ts` from 26-001 / 17-001 / 12-001.
 - Exact next: commit hotfix, rebase onto `origin/master`, merge, rebuild API, verify `/v1/health` + `stockCommittedAt` / `savedAddresses`.
 - 2026-09-01T11:20Z: PR #71 live `af358ef` still DOWN. Flattened migrations broke `20260817-001-seo-admin-upgrade` relative import. Follow-up: load from `dist/apps/api/src/database/migrations`.
+- 2026-09-01T11:26Z: PR #72 merged `079193a`. VPS auto-deploy complete. Local+public health 200. Workers healthy. Migration id=29 applied. Do not mark Done (Reviewer+Security still required).
 
 ## 2026-09-01T10:50:00Z — TASK-20260826-001 Phase 3 SMS/search hang
 

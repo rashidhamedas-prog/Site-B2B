@@ -164,8 +164,12 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
-  const token = request.cookies.get('taranom_token')?.value;
-  const role = request.cookies.get('taranom_role')?.value;
+  const token = isAdminRoute
+    ? request.cookies.get('taranom_admin_token')?.value || request.cookies.get('taranom_token')?.value
+    : request.cookies.get('taranom_token')?.value;
+  const role = isAdminRoute
+    ? request.cookies.get('taranom_admin_role')?.value || request.cookies.get('taranom_role')?.value
+    : request.cookies.get('taranom_role')?.value;
 
   if (!token) {
     const loginUrl = isAdminRoute
@@ -176,7 +180,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (isAdminRoute && !isStaffRole(role)) {
-    return NextResponse.redirect(new URL('/portal/dashboard', request.url));
+    return NextResponse.redirect(new URL('/admin/login', request.url));
   }
 
   return NextResponse.next();

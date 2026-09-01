@@ -15,6 +15,10 @@
 
 `PATCH /auth/me/profile` نام، ایمیل، استان، شهر، کدپستی و آدرس را می‌نویسد. دفترچه آدرس روی `customers.savedAddresses` است (`POST/PATCH/DELETE /auth/me/addresses`). حساب تکی (`/account` مشخصات/آدرس‌ها) و پورتال عمده (`/portal/dashboard/profile`) هر دو افزودن/ویرایش/حذف دارند.
 
+## ۵. ادمین و مشتری جدا
+
+یک شماره می‌تواند نقش staff در `users.role` بماند و همزمان مشتری فروشگاه باشد. نشست پنل کوکی جدا است؛ OTP/پورتال توکن `storefront` با نقش عملی `CUSTOMER` می‌دهد و staff را حذف نمی‌کند.
+
 ## ۴. هات‌فیکس دپلوی
 
 کپی همهٔ `*.js` مایگریشن، `*.spec.js` را هم وارد ایمیج کرد و TypeORM همان‌ها را لود کرد. بعد از حذف spec، flatten کردن مایگریشن‌ها import نسبی `ascii-slug` را شکست. TypeORM از مسیر emit تی‌اس‌سی می‌خواند و spec را نادیده می‌گیرد.

@@ -38,14 +38,15 @@ export function useAuth() {
         clearToken();
         throw new Error('این حساب به پنل مدیریت دسترسی ندارد');
       }
-      setToken(res.accessToken, res.role);
+      const scope = payload.purpose === 'admin' ? 'admin' : 'storefront';
+      setToken(res.accessToken, res.role, scope);
       setIsLoggedIn(true);
       setRole(res.role);
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get('redirect');
       const target =
         redirect ??
-        (isStaffRole(res.role) ? '/admin' : '/portal/dashboard');
+        (scope === 'admin' ? '/admin' : '/portal/dashboard');
       // Hard navigation ensures middleware sees auth cookies (router.push can race)
       window.location.href = target;
     } catch (e: unknown) {

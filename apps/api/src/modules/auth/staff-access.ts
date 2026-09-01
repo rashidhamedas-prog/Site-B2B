@@ -68,8 +68,18 @@ export function roleAfterCustomerLink(currentRole: string | null | undefined): s
   return isStaffRole(currentRole) ? currentRole : 'CUSTOMER';
 }
 
-/** Retail OTP / wholesale register must not use a staff phone as a shopper identity. */
-export function staffPhoneConflictMessage(role: string | null | undefined): string | null {
-  if (!isStaffRole(role)) return null;
-  return 'این شماره متعلق به حساب مدیریت است. برای ورود به پنل از صفحه ورود ادمین استفاده کنید.';
+export type AuthSessionPurpose = 'admin' | 'storefront';
+
+export function resolveAuthPurpose(requested?: 'admin' | 'portal' | string | null): AuthSessionPurpose {
+  return requested === 'admin' ? 'admin' : 'storefront';
+}
+
+/** Shopper session always acts as CUSTOMER so staff can buy without admin API access. */
+export function actingRoleForPurpose(purpose: AuthSessionPurpose, dbRole: string): string {
+  return purpose === 'admin' ? dbRole : 'CUSTOMER';
+}
+
+/** Staff may also shop. Keep for older call sites — no longer blocks. */
+export function staffPhoneConflictMessage(_role: string | null | undefined): string | null {
+  return null;
 }
