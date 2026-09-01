@@ -55,6 +55,15 @@ assert(lease.includes('"lockedAt" IS NULL'), 'PROCESSING without lockedAt is rec
 assert(workerSrc.includes('timed out after'), 'hung outbox handler unsticks the worker loop');
 assert(workerSrc.includes('this.beat()'), 'worker heartbeat advances during a batch');
 assert(
+  src('modules/omnichannel/services/outbox.service.ts').includes('MARK_DONE_SQL') &&
+    src('modules/omnichannel/services/outbox.service.ts').includes('this.dataSource.query(MARK_DONE_SQL'),
+  'markDone persists with raw SQL like lease',
+);
+assert(
+  src('modules/omnichannel/services/outbox.service.ts').includes('this.dataSource.query(MARK_FAILURE_SQL'),
+  'markFailure persists with raw SQL like lease',
+);
+assert(
   src('modules/notification/notification.service.ts').includes('AbortSignal.timeout'),
   'SMS fetch has a hard timeout',
 );
