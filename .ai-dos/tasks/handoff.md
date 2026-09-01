@@ -12,6 +12,17 @@ Append newest entries at the top. Never erase another agent's record.
 - Do not mark Done (independent Reviewer + Security still required).
 - Exact next: owner commit/push/merge/deploy this docs verify; keep using `/admin/login` and retail OTP separately.
 
+## 2026-09-01T13:30:00Z — TASK-20260826-001 Admin OOS + canary settings
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-admin-channel-settings` on worktree `Site-B2B-wt-TASK-20260826-001-p3`
+- Architect `3bafa9db-ce45-43a5-8755-0f061fc0ef8d`: store OOS in `app_settings.omnichannel`, canary on destination `isCanary`, `secretRef` on connection. No new table. Flags stay off.
+- Admin `/admin/omnichannel` now has OOS radios and a canary picker. Enqueue is canary-only (zero if unset).
+- Bot is not required to ship this slice. Bot + VPS `TELEGRAM_*` + secretRef + canary chat id are required before first live send.
+- Do not enable connectors. Do not Done. Soak/canary/§9/Security still open.
+- Reviewer `a11b31cc-a17f-4131-9edd-2ed29b21235e`: PASS WITH CONDITIONS. Must-fix duplicate AppSettingEntity import — fixed. Display default UPDATE when unchosen — fixed.
+- Exact next: PR/merge/deploy. Owner can save OOS now and leave canary empty. Bot not required until first live send.
+
 ## 2026-09-01T12:30:00Z — TASK-20260826-001 Phase 4 Feed shares availability
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

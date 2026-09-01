@@ -3,12 +3,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/lib/api';
 
+type OosPolicy = 'UPDATE' | 'HIDE' | 'DELETE';
+
 type Status = {
   autoPublish: boolean;
   connectors: boolean;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;
+  retailOosPolicy?: OosPolicy;
+  wholesaleOosPolicy?: OosPolicy;
+  retailOosChosen?: boolean;
+  wholesaleOosChosen?: boolean;
+  retailCanaryDestinationId?: string | null;
+  wholesaleCanaryDestinationId?: string | null;
   outbox?: {
     pending: number;
     processing: number;
@@ -33,6 +41,7 @@ type Destination = {
   destinationKey: string;
   displayName: string;
   enabled: boolean;
+  isCanary?: boolean;
 };
 
 type Template = {
@@ -105,6 +114,8 @@ export function AdminOmnichannel() {
   const [reason, setReason] = useState('بازبینی ادمین');
   const [connName, setConnName] = useState('');
   const [secretRef, setSecretRef] = useState('TELEGRAM_BOT_TOKEN');
+  const [retailOos, setRetailOos] = useState<OosPolicy>('UPDATE');
+  const [wholesaleOos, setWholesaleOos] = useState<OosPolicy>('UPDATE');
   const [destKey, setDestKey] = useState('');
   const [destName, setDestName] = useState('');
   const [connectionId, setConnectionId] = useState('');
@@ -126,6 +137,8 @@ export function AdminOmnichannel() {
         apiClient.get<MediaRow[]>('/omnichannel/media').catch(() => []),
       ]);
       setStatus(st);
+      if (st.retailOosPolicy) setRetailOos(st.retailOosPolicy);
+      if (st.wholesaleOosPolicy) setWholesaleOos(st.wholesaleOosPolicy);
       setConnections(conns);
       setDestinations(dests);
       setTemplates(tpls);
@@ -170,7 +183,8 @@ export function AdminOmnichannel() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">کانال‌های انتشار</h1>
         <p className="text-sm text-gray-500 mt-1">
-          فقط secretRef (نام env). مقدار توکن را اینجا ننویسید. انتشار زنده پشت پرچم سرور است.
+          فقط secretRef (نام env روی سرور، مثلاً TELEGRAM_BOT_TOKEN). مقدار توکن را اینجا ننویسید.
+          تا مقصد canary انتخاب نشود چیزی به تلگرام نمی‌رود. پرچم سرور خاموش می‌ماند.
         </p>
       </div>
 
@@ -189,6 +203,54 @@ export function AdminOmnichannel() {
         </div>
       )}
 
+      <section className="rounded-xl border bg-white p-4 space-y-4">
+        <div>
+          <h2 className="font-semibold">سیاست کالای ناموجود</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            تا ذخیره نشود فقط نمایش پیش‌فرض «به‌روزرسانی» است و ارسالی انجام نمی‌شود.
+            مخفی‌کردن در تلگرام یعنی ویرایش متن به ناموجود، نه حذف.
+          </p>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {([
+            ['RETAIL', 'تکی', retailOos, setRetailOos, status?.retailOosChosen] as const,
+            ['WHOLESALE', 'عمده', wholesaleOos, setWholesaleOos, status?.wholesaleOosChosen] as const,
+          ]).map(([key, label, value, setValue, chosen]) => (
+            <fieldset key={key} className="space-y-2">
+              <legend className="text-sm font-medium">{label} {chosen ? '(ذخیره شده)' : '(هنوز انتخاب نشده)'}</legend>
+              {([
+                ['UPDATE', 'به‌روزرسانی پست'],
+                ['HIDE', 'مخفی‌کردن (متن ناموجود)'],
+                ['DELETE', 'حذف پست'],
+              ] as const).map(([policy, title]) => (
+                <label key={policy} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name={`oos-${key}`}
+                    checked={value === policy}
+                    onChange={() => setValue(policy)}
+                  />
+                  {title}
+                </label>
+              ))}
+            </fieldset>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => run(async () => {
+            await apiClient.patch('/omnichannel/settings', {
+              retailOosPolicy: retailOos,
+              wholesaleOosPolicy: wholesaleOos,
+              reason,
+            });
+          }, 'خطا در ذخیره سیاست')}
+        >
+          ذخیره سیاست ناموجود
+        </button>
+      </section>
+
       <div className="flex flex-wrap gap-2">
         {['ALL', 'RETAIL', 'WHOLESALE', 'PENDING', 'DEAD', 'DRAFT', 'TELEGRAM'].map((key) => (
           <button
@@ -206,9 +268,12 @@ export function AdminOmnichannel() {
 
       <section className="rounded-xl border bg-white p-4 space-y-3">
         <h2 className="font-semibold">اتصال‌ها</h2>
+        <p className="text-xs text-gray-500">
+          secretRef فقط نام متغیر روی VPS است. ربات را برای ارسال زنده بعداً بسازید؛ ذخیره نام env توکن نمی‌خواهد.
+        </p>
         <div className="flex flex-wrap gap-2">
           <input className="border rounded-lg px-3 py-2 text-sm" placeholder="نام" value={connName} onChange={(e) => setConnName(e.target.value)} />
-          <input className="border rounded-lg px-3 py-2 text-sm font-mono" placeholder="SECRET_REF" value={secretRef} onChange={(e) => setSecretRef(e.target.value.toUpperCase())} />
+          <input className="border rounded-lg px-3 py-2 text-sm font-mono" placeholder="TELEGRAM_BOT_TOKEN" value={secretRef} onChange={(e) => setSecretRef(e.target.value.toUpperCase())} />
           <select className="border rounded-lg px-3 py-2 text-sm" value={channel} onChange={(e) => setChannel(e.target.value as 'RETAIL' | 'WHOLESALE')}>
             <option value="RETAIL">تکی</option>
             <option value="WHOLESALE">عمده</option>
@@ -266,6 +331,11 @@ export function AdminOmnichannel() {
 
       <section className="rounded-xl border bg-white p-4 space-y-3">
         <h2 className="font-semibold">مقصدها</h2>
+        <p className="text-xs text-gray-500">
+          chat id کانال آزمایشی را بگذارید و همان را canary کنید. بدون canary صف ارسال خالی می‌ماند.
+          {status?.retailCanaryDestinationId ? ' canary تکی انتخاب شده.' : ' canary تکی خالی است.'}
+          {status?.wholesaleCanaryDestinationId ? ' canary عمده انتخاب شده.' : ' canary عمده خالی است.'}
+        </p>
         <div className="flex flex-wrap gap-2">
           <select className="border rounded-lg px-3 py-2 text-sm" value={connectionId} onChange={(e) => setConnectionId(e.target.value)}>
             {connections.map((row) => (
@@ -298,6 +368,20 @@ export function AdminOmnichannel() {
                 <td className="p-2">{row.displayName}</td>
                 <td className="p-2 font-mono text-xs">{row.destinationKey}</td>
                 <td className="p-2">{row.enabled ? 'فعال' : 'خاموش'}</td>
+                <td className="p-2">{row.isCanary ? 'canary' : '—'}</td>
+                <td className="p-2 text-left">
+                  <button
+                    type="button"
+                    className="text-xs text-primary"
+                    onClick={() => run(async () => {
+                      await apiClient.patch(`/omnichannel/destinations/${row.id}`, {
+                        isCanary: !row.isCanary,
+                      });
+                    }, 'تغییر canary ناموفق')}
+                  >
+                    {row.isCanary ? 'برداشتن canary' : 'انتخاب canary'}
+                  </button>
+                </td>
               </tr>
             ))}
             {destinations.length === 0 && <tr><td className="p-3 text-gray-400">مقصدی ثبت نشده</td></tr>}

@@ -14,7 +14,9 @@ import {
   CreatePublicationDto,
   CreateTemplateDto,
   PatchConnectionDto,
+  PatchDestinationDto,
   PatchMediaAltDto,
+  PatchOmnichannelSettingsDto,
   PatchTemplateDto,
   PreviewDto,
 } from '../dto/omnichannel.dto';
@@ -37,6 +39,7 @@ export class OmnichannelAdminController {
   @Get('status')
   @ApiOperation({ summary: 'وضعیت پرچم Omnichannel' })
   async status() {
+    const settings = await this.svc.getSettings();
     return {
       autoPublish: isOmnichannelAutoPublishEnabled(),
       connectors: areOmnichannelConnectorsEnabled(),
@@ -44,7 +47,20 @@ export class OmnichannelAdminController {
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox: await this.svc.outboxMetrics(),
+      ...settings,
     };
+  }
+
+  @Get('settings')
+  @ApiOperation({ summary: 'سیاست ناموجود و مقصد canary' })
+  getSettings() {
+    return this.svc.getSettings();
+  }
+
+  @Patch('settings')
+  @ApiOperation({ summary: 'ذخیره سیاست کالای ناموجود' })
+  patchSettings(@Body() body: PatchOmnichannelSettingsDto, @Req() req: Authed) {
+    return this.svc.patchSettings(body, req.omnichannelActor);
   }
 
   @Get('connections')
@@ -76,6 +92,11 @@ export class OmnichannelAdminController {
   @Post('destinations')
   createDestination(@Body() body: CreateDestinationDto) {
     return this.svc.createDestination(body);
+  }
+
+  @Patch('destinations/:id')
+  patchDestination(@Param('id') id: string, @Body() body: PatchDestinationDto) {
+    return this.svc.patchDestination(id, body);
   }
 
   @Get('templates')

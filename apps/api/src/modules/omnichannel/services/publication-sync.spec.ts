@@ -1,7 +1,7 @@
 /**
  * npx ts-node --transpile-only src/modules/omnichannel/services/publication-sync.spec.ts
  */
-import { nextPublicationAction, syncChannelsForEvent } from './publication-sync';
+import { applyOosLocalAction, nextPublicationAction, syncChannelsForEvent } from './publication-sync';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -18,5 +18,9 @@ assert(nextPublicationAction({ status: 'FAILED' }, true) === 'refresh', 'failed 
 assert(syncChannelsForEvent('RETAIL').join(',') === 'RETAIL', 'channel scoped');
 assert(syncChannelsForEvent(null).join(',') === 'RETAIL,WHOLESALE', 'both when unscoped');
 assert(nextPublicationAction({ status: 'PUBLISHED' }, false) !== 'create', 'withdraw never creates delivery');
+assert(applyOosLocalAction('create', 'skip_create') === 'skip', 'HIDE OOS skips new draft');
+assert(applyOosLocalAction('refresh', 'withdraw_local') === 'withdraw', 'HIDE/DELETE live withdraws locally');
+assert(applyOosLocalAction('create', 'refresh') === 'create', 'UPDATE OOS still drafts locally');
+assert(applyOosLocalAction('withdraw', 'refresh') === 'withdraw', 'visibility withdraw wins');
 
 console.log('publication-sync.spec.ts: ok');

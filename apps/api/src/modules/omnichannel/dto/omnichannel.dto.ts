@@ -16,6 +16,7 @@ import {
   OMNICHANNEL_CHANNELS,
   OMNICHANNEL_PROVIDERS,
   CONNECTION_STATUSES,
+  OOS_POLICIES,
 } from '../omnichannel.constants';
 
 /** Env name only — never a token. Only provider-prefixed refs may be resolved. */
@@ -51,6 +52,36 @@ export class PatchConnectionDto {
   @IsOptional()
   @IsIn(CONNECTION_STATUSES)
   status?: (typeof CONNECTION_STATUSES)[number];
+}
+
+export class PatchOmnichannelSettingsDto {
+  @IsOptional()
+  @IsIn(OOS_POLICIES)
+  retailOosPolicy?: (typeof OOS_POLICIES)[number];
+
+  @IsOptional()
+  @IsIn(OOS_POLICIES)
+  wholesaleOosPolicy?: (typeof OOS_POLICIES)[number];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  reason?: string;
+}
+
+export class PatchDestinationDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  displayName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isCanary?: boolean;
 }
 
 export class CreateDestinationDto {

@@ -21,6 +21,7 @@ import { UserEntity } from '../auth/entities/user.entity';
 import { OmnichannelAuditEntity } from './entities/omnichannel-audit.entity';
 import { OmnichannelMediaAssetEntity } from './entities/omnichannel-media-asset.entity';
 import { OmnichannelAdminGuard } from './guards/omnichannel-admin.guard';
+import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 
 @Global()
 @Module({
@@ -39,6 +40,7 @@ import { OmnichannelAdminGuard } from './guards/omnichannel-admin.guard';
       CmsPageEntity,
       BlogPostEntity,
       UserEntity,
+      AppSettingEntity,
     ]),
   ],
   controllers: [OmnichannelAdminController],

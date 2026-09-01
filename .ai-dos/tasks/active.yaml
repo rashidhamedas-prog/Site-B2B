@@ -421,10 +421,10 @@ tasks:
       implementer: "cursor:implementer-TASK-20260826-001"
       reviewer: "required-independent-before-done"
       security: "required-independent-before-done"
-    branch: "ai/TASK-20260826-001-phase4-feed-availability"
+    branch: "ai/TASK-20260826-001-admin-channel-settings"
     worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260826-001-p3"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-09-01T12:30:00Z"
+    heartbeat_at: "2026-09-01T13:30:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/channel-product-projection.ts"
@@ -501,6 +501,9 @@ tasks:
       - "docs/reports/2026-09-01-omnichannel-phase-3-outbox-persist.md"
       - "docs/reports/2026-09-01-omnichannel-phase-3-lease-rows.md"
       - "docs/reports/2026-09-01-omnichannel-phase-4-feed-availability.md"
+      - "docs/reports/2026-09-01-omnichannel-admin-channel-settings.md"
+      - "apps/api/src/modules/omnichannel/oos-policy.ts"
+      - "apps/api/src/modules/omnichannel/oos-policy.spec.ts"
       - "apps/api/src/modules/omnichannel/services/publication-sync.ts"
       - "apps/api/src/modules/omnichannel/services/publication-sync.spec.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-metrics.ts"

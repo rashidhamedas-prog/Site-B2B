@@ -64,6 +64,8 @@ const publicDest = toPublicDestination({
   settings: { note: 'hidden' },
 });
 assert(!('settings' in publicDest), 'settings stripped from public destination');
+assert(publicDest.isCanary === false, 'raw settings do not leak as canary');
+assert(toPublicDestination({ id: 'd2', settings: { isCanary: true } }).isCanary === true, 'isCanary exposed');
 
 const publicRow = toPublicConnection({
   id: '1',

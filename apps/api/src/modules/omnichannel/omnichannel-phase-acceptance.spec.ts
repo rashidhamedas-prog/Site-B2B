@@ -28,6 +28,13 @@ const bale = src('modules/omnichannel/adapters/bale.adapter.ts');
 const rubika = src('modules/omnichannel/adapters/rubika.adapter.ts');
 const telegram = src('modules/omnichannel/adapters/telegram.adapter.ts');
 const secrets = src('modules/omnichannel/omnichannel-secrets.ts');
+const oosPolicy = src('modules/omnichannel/oos-policy.ts');
+const omniSvc = src('modules/omnichannel/services/omnichannel.service.ts');
+const omniAdmin = src('modules/omnichannel/controllers/omnichannel-admin.controller.ts');
+const adminOmni = readFileSync(
+  resolve(__dirname, '../../../../web/src/components/admin/AdminOmnichannel.tsx'),
+  'utf8',
+);
 const dbSync = src('config/db-sync.ts');
 const storageSvc = src('modules/upload/storage.service.ts');
 const mediaEntity = src('modules/omnichannel/entities/omnichannel-media-asset.entity.ts');
@@ -76,6 +83,11 @@ assert(worker.includes('OMNICHANNEL_WORKER'), 'independent worker entry');
 assert(bale.includes('ConnectorDisabledError') && rubika.includes('ConnectorDisabledError'), 'Bale/Rubika gated');
 assert(telegram.includes('api.telegram.org'), 'Telegram official API');
 assert(secrets.includes('TELEGRAM|BALE|RUBIKA'), 'secretRef allowlist');
+assert(secrets.includes('isCanary'), 'public destination exposes isCanary only');
+assert(oosPolicy.includes('resolveOosDecision') && oosPolicy.includes('selectCanaryTelegramDestinations'), 'oos helper');
+assert(omniSvc.includes('selectCanaryTelegramDestinations'), 'enqueue targets canary only');
+assert(omniAdmin.includes('getSettings') && omniAdmin.includes('patchSettings'), 'admin settings endpoints');
+assert(adminOmni.includes('retailOosPolicy') && adminOmni.includes('isCanary'), 'admin OOS radios and canary picker');
 assert(dbSync.includes('forbidden in production/staging'), 'DB_SYNC fail-closed');
 assert(checkout.includes("channel: 'WHOLESALE'"), 'wholesale checkout sends channel');
 assert(lease.includes("PRODUCT_STOCK_CHANGED"), 'worker leases product.stock_changed');
