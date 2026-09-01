@@ -13,13 +13,17 @@ tasks:
     branch: "ai/TASK-20260901-002-admin-stock-profile"
     worktree: "D:/soft/Claud/porje/Site B2B"
     claimed_at: "2026-09-01T10:20:00Z"
-    heartbeat_at: "2026-09-01T11:10:00Z"
+    heartbeat_at: "2026-09-01T11:50:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/auth/dto/login.dto.ts"
       - "apps/api/src/modules/auth/auth.service.ts"
       - "apps/api/src/modules/auth/auth.controller.ts"
       - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      - "apps/api/src/modules/auth/staff-access.ts"
+      - "apps/api/src/modules/auth/staff-access.spec.ts"
+      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
+      - "apps/api/src/modules/auth/guards/roles.guard.ts"
       - "apps/api/src/modules/auth/customer-addresses.ts"
       - "apps/api/src/modules/auth/customer-addresses.spec.ts"
       - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
@@ -38,6 +42,7 @@ tasks:
       - "apps/api/Dockerfile"
       - "apps/web/src/lib/auth.ts"
       - "apps/web/src/lib/hooks/useAuth.ts"
+      - "apps/web/src/middleware.ts"
       - "apps/web/src/lib/iran-provinces.ts"
       - "apps/web/src/lib/retail-addresses.ts"
       - "apps/web/src/components/admin/AdminLoginForm.tsx"
@@ -134,13 +139,15 @@ tasks:
       - "apps/api/src/modules/auth/users.service.ts"
       - "apps/api/src/modules/auth/users.policy.ts"
       - "apps/api/src/modules/auth/users.policy.spec.ts"
-      - "apps/api/src/modules/auth/staff-access.ts"
-      - "apps/api/src/modules/auth/staff-access.spec.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (staff can also shop):
+      # "apps/api/src/modules/auth/staff-access.ts"
+      # "apps/api/src/modules/auth/staff-access.spec.ts"
       - "apps/api/src/modules/auth/dto/create-staff-user.dto.ts"
       - "apps/api/src/modules/auth/dto/update-staff-user.dto.ts"
       - "apps/api/src/modules/auth/dto/reset-staff-password.dto.ts"
       - "apps/api/src/modules/auth/decorators/admin-only.decorator.ts"
-      - "apps/api/src/modules/auth/guards/roles.guard.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (session purpose):
+      # "apps/api/src/modules/auth/guards/roles.guard.ts"
       - "apps/api/src/modules/auth/auth.module.ts"
       - "apps/api/src/modules/settings/settings.controller.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (owner login still broken):
@@ -148,7 +155,8 @@ tasks:
       # "apps/web/src/lib/hooks/useAuth.ts"
       - "apps/web/src/lib/staff-access.ts"
       - "apps/web/src/lib/phone.ts"
-      - "apps/web/src/middleware.ts"
+      # transferred 2026-09-01 to TASK-20260901-002 (admin vs shopper cookies):
+      # "apps/web/src/middleware.ts"
       # transferred 2026-09-01 to TASK-20260901-002:
       # "apps/web/src/components/admin/AdminLoginForm.tsx"
       - "apps/web/src/components/admin/AdminUsers.tsx"

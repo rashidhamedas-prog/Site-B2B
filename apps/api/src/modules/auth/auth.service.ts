@@ -20,7 +20,12 @@ import { RegisterDto } from './dto/register.dto';
 import { NotificationService } from '../notification/notification.service';
 import { OtpService } from '../redis/redis.module';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
-import { isStaffRole, roleAfterCustomerLink, staffPhoneConflictMessage } from './staff-access';
+import {
+  actingRoleForPurpose,
+  isStaffRole,
+  resolveAuthPurpose,
+  roleAfterCustomerLink,
+} from './staff-access';
 import {
   normalizeAddressList,
   removeAddress,
@@ -82,9 +87,6 @@ export class AuthService {
     }
 
     if (existingUser && !existingUser.deletedAt) {
-      if (isStaffRole(existingUser.role)) {
-        throw new ConflictException('این شماره متعلق به کاربر سیستم است و برای ثبت‌نام عمده قابل استفاده نیست');
-      }
       const linkedCustomer = existingUser.customerId
         ? await this.customerRepo.findOne({
             where: { id: existingUser.customerId },
@@ -130,11 +132,12 @@ export class AuthService {
           if (existingUser.deletedAt) {
             await userRepo.restore(existingUser.id);
           }
+          const keepStaffActive = isStaffRole(existingUser.role);
           await userRepo.update(existingUser.id, {
             email: dto.email,
-            passwordHash,
+            passwordHash: keepStaffActive ? existingUser.passwordHash : passwordHash,
             customerId: savedCustomer.id,
-            isActive: false,
+            isActive: keepStaffActive ? true : false,
             role: roleAfterCustomerLink(existingUser.role),
           });
         } else {
@@ -216,32 +219,38 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const phone = normalizePhone(dto.phone);
-    const user = await this.userRepo.findOne({ where: { phone } });
+    let user = await this.userRepo.findOne({ where: { phone } });
     if (!user) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
 
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
     if (!valid) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
 
-    if (dto.purpose === 'admin' && !isStaffRole(user.role)) {
+    const purpose = resolveAuthPurpose(dto.purpose);
+    if (purpose === 'admin' && !isStaffRole(user.role)) {
       throw new UnauthorizedException(
         'این حساب به پنل مدیریت دسترسی ندارد. اگر قبلاً با همین شماره در فروشگاه وارد شده‌اید، نقش مدیریت را از «کاربران سیستم» برگردانید.',
       );
     }
 
-    if (user.role === 'CUSTOMER') {
-      const customer = user.customerId
-        ? await this.customerRepo.findOne({ where: { id: user.customerId } })
-        : null;
+    if (purpose === 'storefront') {
+      if (isStaffRole(user.role)) {
+        await this.ensureShopperCustomer(user);
+        user = await this.userRepo.findOneOrFail({ where: { id: user.id } });
+      } else {
+        const customer = user.customerId
+          ? await this.customerRepo.findOne({ where: { id: user.customerId } })
+          : null;
 
-      if (!user.isActive || !customer || customer.status !== 'ACTIVE') {
-        if (customer?.status === 'PENDING') {
+        if (!user.isActive || !customer || customer.status !== 'ACTIVE') {
+          if (customer?.status === 'PENDING') {
+            throw new UnauthorizedException(
+              'حساب شما هنوز تأیید نشده است. منتظر تأیید ادمین باشید.',
+            );
+          }
           throw new UnauthorizedException(
-            'حساب شما هنوز تأیید نشده است. منتظر تأیید ادمین باشید.',
+            'حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.',
           );
         }
-        throw new UnauthorizedException(
-          'حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.',
-        );
       }
     } else if (!user.isActive) {
       throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
@@ -250,16 +259,19 @@ export class AuthService {
     user.lastLoginAt = new Date();
     await this.userRepo.save(user);
 
+    const actingRole = actingRoleForPurpose(purpose, user.role);
     const token = this.jwtService.sign({
       sub: user.id,
       phone: user.phone,
-      role: user.role,
+      role: actingRole,
       customerId: user.customerId ?? undefined,
+      purpose,
     });
     return {
       accessToken: token,
-      role: user.role,
+      role: actingRole,
       customerId: user.customerId ?? undefined,
+      purpose,
     };
   }
 
@@ -379,17 +391,17 @@ export class AuthService {
     return { message: 'رمز عبور با موفقیت تغییر یافت' };
   }
 
-  /** Sync user.isActive when admin changes customer status. */
+  /** Sync user.isActive when admin changes customer status. Never disable staff. */
   async syncUserActiveByCustomerId(customerId: string, status: string) {
     const user = await this.userRepo.findOne({ where: { customerId } });
-    if (!user) return;
+    if (!user || isStaffRole(user.role)) return;
     await this.userRepo.update(user.id, { isActive: status === 'ACTIVE' });
   }
 
-  /** Soft-delete user account when customer is removed. */
+  /** Soft-delete shopper login when customer is removed. Never delete staff. */
   async deactivateUserByCustomerId(customerId: string) {
     const user = await this.userRepo.findOne({ where: { customerId } });
-    if (!user) return;
+    if (!user || isStaffRole(user.role)) return;
     await this.userRepo.update(user.id, { isActive: false });
     await this.userRepo.softDelete(user.id);
   }
@@ -409,12 +421,6 @@ export class AuthService {
     }
 
     const isProd = this.config.get('NODE_ENV') === 'production';
-
-    const existing = await this.userRepo.findOne({ where: { phone } });
-    const staffBlock = staffPhoneConflictMessage(existing?.role);
-    if (staffBlock) {
-      throw new BadRequestException(staffBlock);
-    }
 
     let code: string;
     try {
@@ -468,10 +474,6 @@ export class AuthService {
     const displayName = (name?.trim() || otpName || 'خریدار ترنم').slice(0, 80);
 
     let user = await this.userRepo.findOne({ where: { phone }, withDeleted: true });
-    const staffBlock = staffPhoneConflictMessage(user && !user.deletedAt ? user.role : null);
-    if (staffBlock) {
-      throw new BadRequestException(staffBlock);
-    }
     let customer: CustomerEntity | null = null;
 
     if (user?.customerId) {
@@ -532,9 +534,9 @@ export class AuthService {
         if (user.deletedAt) await userRepo.restore(user.id);
         await userRepo.update(user.id, {
           customerId: customer!.id,
-          isActive: allowLogin,
+          isActive: isStaffRole(user.role) ? true : allowLogin,
           role: roleAfterCustomerLink(user.role),
-          lastLoginAt: allowLogin ? new Date() : user.lastLoginAt,
+          lastLoginAt: allowLogin || isStaffRole(user.role) ? new Date() : user.lastLoginAt,
         });
         user = await userRepo.findOneOrFail({ where: { id: user.id } });
       } else {
@@ -557,7 +559,11 @@ export class AuthService {
     }
 
     const customerFinal = await this.customerRepo.findOne({ where: { id: user.customerId } });
-    if (!customerFinal || customerFinal.status !== 'ACTIVE' || !user.isActive) {
+    if (isStaffRole(user.role)) {
+      if (!customerFinal || customerFinal.status === 'BLOCKED' || customerFinal.status === 'SUSPENDED') {
+        throw new UnauthorizedException('حساب مشتری شما مسدود است. با پشتیبانی تماس بگیرید.');
+      }
+    } else if (!customerFinal || customerFinal.status !== 'ACTIVE' || !user.isActive) {
       throw new UnauthorizedException(
         customerFinal?.status === 'PENDING'
           ? 'حساب شما هنوز تأیید نشده است. منتظر تأیید ادمین باشید.'
@@ -568,14 +574,50 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       phone: user.phone,
-      role: user.role,
+      role: 'CUSTOMER',
       customerId: user.customerId,
+      purpose: 'storefront',
     });
     return {
       accessToken: token,
-      role: user.role,
+      role: 'CUSTOMER',
       customerId: user.customerId,
       channel: 'RETAIL',
+      purpose: 'storefront',
     };
+  }
+
+  /** Link or create an ACTIVE shopper row without changing staff role. */
+  private async ensureShopperCustomer(user: UserEntity): Promise<void> {
+    let customer = user.customerId
+      ? await this.customerRepo.findOne({ where: { id: user.customerId }, withDeleted: true })
+      : null;
+    if (!customer) {
+      customer = await this.customerRepo.findOne({ where: { phone: user.phone }, withDeleted: true });
+    }
+    if (customer?.deletedAt) {
+      await this.customerRepo.restore(customer.id);
+      customer = await this.customerRepo.findOneOrFail({ where: { id: customer.id } });
+    }
+    if (!customer) {
+      customer = await this.createCustomerWithUniqueCode({
+        businessName: user.phone,
+        ownerName: user.email || 'خریدار ترنم',
+        phone: user.phone,
+        province: 'تهران',
+        city: 'تهران',
+        type: 'B2C',
+        businessType: 'RETAIL',
+        status: 'ACTIVE',
+        segment: 'C',
+        isActive: true,
+        notes: 'حساب مشتری جدا از نقش مدیریت',
+      });
+    } else if (customer.status === 'BLOCKED' || customer.status === 'SUSPENDED') {
+      throw new UnauthorizedException('حساب مشتری شما مسدود است. با پشتیبانی تماس بگیرید.');
+    }
+    if (user.customerId !== customer.id) {
+      await this.userRepo.update(user.id, { customerId: customer.id });
+    }
   }
 }

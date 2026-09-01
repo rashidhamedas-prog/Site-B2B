@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-01 — **TASK-20260901-002** staff+shopper split: owner `09152424624` restored ADMIN/active; shopper JWT purpose=storefront; admin cookies separate. Shipping.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3 persist: live `079193a` workers healthy but 18 rows never leave PROCESSING because `repo.update` does not persist. Shipping raw SQL markDone/markFailure. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260901-002** API still **DOWN** after `af358ef`: flattened migrations broke relative `ascii-slug` import. Follow-up loads tsc emit path.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3: SMS/Meili timeouts + per-row worker heartbeat on `ai/TASK-20260826-001-phase3-sms`. Live `6254120` still has 18 PROCESSING. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
