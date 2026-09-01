@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T12:10:00Z — TASK-20260826-001 Phase 3 lease RETURNING tuple
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Live `88841aa`: persist SQL is in the image; workers idle-lease every 2s; 18 PROCESSING; handle never runs.
+- Cause: TypeORM pg `query()` for UPDATE returns `[rows, rowCount]`. `leaseBatch` mapped that to zero ids.
+- Fix: `leaseRowsFromQueryResult`. After deploy, reset PROCESSING → PENDING attempts=0 (no DELETE).
+- Architect `d1749138-9c04-4a79-828d-a2e62f189d62` and reviewer `0b018c93-1d88-4872-b429-03cf7598f306` PASS WITH CONDITIONS on persist PR; this is the remaining must-fix.
+- Do not enable connectors. Do not Done.
+- Exact next: PR/merge/deploy; recount; restart soak. Phases 4–8 stay owner-gated.
+
 ## 2026-09-01T11:50:00Z — TASK-20260901-002 staff + shopper identity split
 
 - Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002

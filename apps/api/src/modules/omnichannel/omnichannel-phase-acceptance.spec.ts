@@ -64,6 +64,10 @@ assert(
   'markFailure persists with raw SQL like lease',
 );
 assert(
+  src('modules/omnichannel/services/outbox.service.ts').includes('leaseRowsFromQueryResult'),
+  'leaseBatch unwraps TypeORM UPDATE RETURNING tuple',
+);
+assert(
   src('modules/notification/notification.service.ts').includes('AbortSignal.timeout'),
   'SMS fetch has a hard timeout',
 );
