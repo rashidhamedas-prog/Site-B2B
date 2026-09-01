@@ -52,7 +52,9 @@ export function toPublicConnection<T extends { secretRef?: string | null }>(row:
   return { ...row, secretRef: row.secretRef ? String(row.secretRef) : null };
 }
 
-export function toPublicDestination<T extends { settings?: Record<string, unknown> }>(row: T): Omit<T, 'settings'> {
-  const { settings: _settings, ...rest } = row;
-  return rest;
+export function toPublicDestination<T extends { settings?: Record<string, unknown> }>(
+  row: T,
+): Omit<T, 'settings'> & { isCanary: boolean } {
+  const { settings, ...rest } = row;
+  return { ...rest, isCanary: settings?.isCanary === true };
 }

@@ -7,7 +7,7 @@ import { ChannelProjectionService } from './channel-projection.service';
 import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
 import { normalizeSalesChannel } from '../../product/channel-product-projection';
 import { ProductEntity } from '../../product/entities/product.entity';
-import { PreviewDto, CreatePublicationDto } from '../dto/omnichannel.dto';
+import { PreviewDto, CreatePublicationDto, PatchDestinationDto, PatchOmnichannelSettingsDto } from '../dto/omnichannel.dto';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelTemplateEntity } from '../entities/channel-template.entity';
@@ -27,7 +27,23 @@ import {
 } from '../omnichannel.constants';
 import { OutboxService } from './outbox.service';
 import { applyReconcileIntents, reconcilePublicationIntents } from './reconcile';
-import { nextPublicationAction, syncChannelsForEvent } from './publication-sync';
+import { applyOosLocalAction, nextPublicationAction, syncChannelsForEvent } from './publication-sync';
+import { AppSettingEntity } from '../../settings/entities/app-setting.entity';
+import {
+  annotatePreviewOos,
+  assertOmnichannelSettingsInput,
+  destinationSettingsForCanary,
+  findCanaryDestinationId,
+  liveOosRejectReason,
+  mergeOmnichannelSettingsPatch,
+  OMNICHANNEL_SETTINGS_KEY,
+  parseStoredOmnichannelSettings,
+  publicOmnichannelSettings,
+  readChannelOos,
+  resolveOosDecision,
+  sanitizeDestinationSettings,
+  selectCanaryTelegramDestinations,
+} from '../oos-policy';
 import { summarizeOutbox } from './outbox-metrics';
 import { canDeleteMediaAsset, countMediaReferences } from '../media-references';
 import { CmsPageEntity } from '../../cms/entities/cms-page.entity';
@@ -67,6 +83,8 @@ export class OmnichannelService {
     private readonly cmsPages: Repository<CmsPageEntity>,
     @InjectRepository(OmnichannelMediaAssetEntity)
     private readonly mediaAssets: Repository<OmnichannelMediaAssetEntity>,
+    @InjectRepository(AppSettingEntity)
+    private readonly appSettings: Repository<AppSettingEntity>,
     private readonly projection: ChannelProjectionService,
     private readonly telegram: TelegramAdapter,
     private readonly bale: BaleAdapter,
@@ -136,16 +154,65 @@ export class OmnichannelService {
       where: { connectionId: dto.connectionId, destinationKey: dto.destinationKey },
     });
     if (exists) throw new ConflictException('مقصد تکراری است');
+    const settings = sanitizeDestinationSettings(dto.settings);
+    if (settings.isCanary === true) {
+      await this.assertUniqueTelegramCanary(connection.provider, connection.channel);
+    }
     const saved = await this.destinations.save(
       this.destinations.create({
         connectionId: dto.connectionId,
         destinationKey: dto.destinationKey,
         displayName: dto.displayName,
         enabled: dto.enabled ?? true,
-        settings: dto.settings ?? {},
+        settings,
       }),
     );
     return toPublicDestination(saved);
+  }
+
+  async patchDestination(id: string, dto: PatchDestinationDto) {
+    assertNoPlaintextSecrets(dto);
+    const row = await this.destinations.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('مقصد یافت نشد');
+    const connection = await this.connections.findOne({ where: { id: row.connectionId } });
+    if (!connection) throw new NotFoundException('اتصال یافت نشد');
+    if (dto.displayName !== undefined) row.displayName = dto.displayName;
+    if (dto.enabled !== undefined) row.enabled = dto.enabled;
+    if (dto.isCanary !== undefined) {
+      if (dto.isCanary === true) {
+        if (connection.provider !== 'TELEGRAM') {
+          throw new BadRequestException('canary فقط برای تلگرام است');
+        }
+        await this.assertUniqueTelegramCanary(connection.provider, connection.channel, row.id);
+      }
+      row.settings = destinationSettingsForCanary(dto.isCanary);
+    }
+    return toPublicDestination(await this.destinations.save(row));
+  }
+
+  async getSettings() {
+    const stored = await this.loadStoredSettings();
+    return publicOmnichannelSettings(stored, await this.canaryDestinationIds());
+  }
+
+  async patchSettings(dto: PatchOmnichannelSettingsDto, actor?: Actor) {
+    const who = this.requireActor(actor);
+    assertOmnichannelSettingsInput(dto);
+    if (!dto.retailOosPolicy && !dto.wholesaleOosPolicy) {
+      throw new BadRequestException('حداقل یک سیاست ناموجود لازم است');
+    }
+    const previous = await this.loadStoredSettings();
+    const next = mergeOmnichannelSettingsPatch(previous, dto);
+    const saved = await this.appSettings.save(
+      this.appSettings.create({ key: OMNICHANNEL_SETTINGS_KEY, value: next }),
+    );
+    await this.audit(who, 'settings_patch', 'SETTINGS', OMNICHANNEL_SETTINGS_KEY, null, dto.reason || null, {
+      retailOosPolicy: next.retailOosPolicy || null,
+      wholesaleOosPolicy: next.wholesaleOosPolicy || null,
+      retailOosChosen: next.retailOosChosen === true,
+      wholesaleOosChosen: next.wholesaleOosChosen === true,
+    });
+    return publicOmnichannelSettings(parseStoredOmnichannelSettings(saved.value), await this.canaryDestinationIds());
   }
 
   async listTemplates() {
@@ -243,7 +310,18 @@ export class OmnichannelService {
     }
     const channel = normalizeSalesChannel(dto.channel);
     const projection = await this.projection.previewSource(kind, dto.sourceId, channel);
-    return { dryRun: true, projection };
+    const available = 'available' in projection ? projection.available === true : true;
+    const oos = await this.oosDecisionFor(channel, available, kind, dto.sourceId);
+    return {
+      dryRun: true,
+      projection: {
+        ...projection,
+        ...annotatePreviewOos(
+          { available, stock: 'stock' in projection ? projection.stock : undefined },
+          oos,
+        ),
+      },
+    };
   }
 
   async createPublication(dto: CreatePublicationDto, actor?: Actor) {
@@ -260,6 +338,14 @@ export class OmnichannelService {
       const limit = canaryLimitFor(projection.channel);
       if (canaryExceeded(live, limit)) {
         throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است`);
+      }
+      const available = 'available' in projection ? projection.available === true : true;
+      const oos = await this.oosDecisionFor(projection.channel, available, 'PRODUCT', dto.preview.sourceId);
+      const reject = liveOosRejectReason(oos, available);
+      if (reject) {
+        throw new BadRequestException(
+          `کالای ناموجود با سیاست ${oos.policy} در این کانال منتشر نمی‌شود`,
+        );
       }
     }
     const saved = await this.publications.manager.transaction(async (manager) => {
@@ -446,7 +532,12 @@ export class OmnichannelService {
       where: { sourceType, sourceId, channel },
       order: { createdAt: 'DESC' },
     });
-    const action = nextPublicationAction(existing, projection.publishable);
+    let action = nextPublicationAction(existing, projection.publishable);
+    if (sourceType === 'PRODUCT' && projection.publishable) {
+      const available = 'available' in projection ? projection.available === true : true;
+      const oos = await this.oosDecisionFor(channel, available, sourceType, sourceId);
+      action = applyOosLocalAction(action, oos.local);
+    }
     if (action === 'skip') return { channel, action };
     if (action === 'withdraw' && existing) {
       existing.status = 'WITHDRAWN';
@@ -515,11 +606,9 @@ export class OmnichannelService {
   ) {
     const dests = await manager.getRepository(ChannelDestinationEntity).find({ where: { enabled: true } });
     const conns = await manager.getRepository(ChannelConnectionEntity).find();
-    const byId = new Map(conns.map((row) => [row.id, row]));
+    const canaries = selectCanaryTelegramDestinations(dests, conns, channel);
     const deliveryRepo = manager.getRepository(PublicationDeliveryEntity);
-    for (const dest of dests) {
-      const conn = byId.get(dest.connectionId);
-      if (!conn || conn.provider !== 'TELEGRAM' || conn.channel !== channel || conn.status !== 'ACTIVE') continue;
+    for (const dest of canaries) {
       const queued = await this.outbox.enqueue({
         operationId: `pub:${publicationId}:${dest.id}:CREATE`,
         eventType: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED,
@@ -544,5 +633,73 @@ export class OmnichannelService {
         }),
       );
     }
+  }
+
+  private async loadStoredSettings() {
+    try {
+      const row = await this.appSettings.findOne({ where: { key: OMNICHANNEL_SETTINGS_KEY } });
+      return parseStoredOmnichannelSettings(row?.value);
+    } catch (err) {
+      if (isMissingRelationError(err)) return {};
+      throw err;
+    }
+  }
+
+  private async canaryDestinationIds() {
+    try {
+      const dests = await this.destinations.find();
+      const conns = await this.connections.find();
+      return {
+        retail: findCanaryDestinationId(dests, conns, 'RETAIL'),
+        wholesale: findCanaryDestinationId(dests, conns, 'WHOLESALE'),
+      };
+    } catch (err) {
+      if (isMissingRelationError(err)) return { retail: null, wholesale: null };
+      throw err;
+    }
+  }
+
+  private async assertUniqueTelegramCanary(provider: string, channel: string, exceptId?: string) {
+    if (provider !== 'TELEGRAM') {
+      throw new BadRequestException('canary فقط برای تلگرام است');
+    }
+    const dests = await this.destinations.find();
+    const conns = await this.connections.find();
+    const current = findCanaryDestinationId(dests, conns, channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+    if (current && current !== exceptId) {
+      throw new ConflictException('برای این کانال تلگرام قبلاً مقصد canary ثبت شده');
+    }
+  }
+
+  private async sourceHasRemoteMessage(sourceType: string, sourceId: string, channel: string) {
+    const pub = await this.publications.findOne({
+      where: { sourceType, sourceId, channel },
+      order: { createdAt: 'DESC' },
+    });
+    if (!pub) return false;
+    const row = await this.deliveries.findOne({
+      where: { publicationId: pub.id, status: 'SUCCEEDED' },
+    });
+    return Boolean(row?.providerMessageId);
+  }
+
+  private async oosDecisionFor(
+    channel: 'RETAIL' | 'WHOLESALE',
+    available: boolean,
+    sourceType: string,
+    sourceId: string,
+  ) {
+    const stored = await this.loadStoredSettings();
+    const { policy, chosen } = readChannelOos(stored, channel);
+    const hasRemoteMessage = sourceType === 'PRODUCT'
+      ? await this.sourceHasRemoteMessage(sourceType, sourceId, channel)
+      : false;
+    return resolveOosDecision({
+      channel,
+      available: sourceType === 'PRODUCT' ? available : true,
+      hasRemoteMessage,
+      policy,
+      chosen,
+    });
   }
 }

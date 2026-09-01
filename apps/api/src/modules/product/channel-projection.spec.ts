@@ -75,6 +75,7 @@ const fixture = {
     'RETAIL',
   );
   assert(leaked.stock === 0, 'wholesale stock does not leak');
+  assert(leaked.available === false && leaked.publishable === true, 'oos stays publishable');
 }
 
 {

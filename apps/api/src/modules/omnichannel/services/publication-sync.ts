@@ -1,4 +1,18 @@
 export type PublicationSyncAction = 'create' | 'update' | 'refresh' | 'reopen' | 'withdraw' | 'skip';
+export type OosLocalAction = 'refresh' | 'skip_create' | 'withdraw_local';
+
+/** Visibility first; stock-only OOS never creates a delivery. */
+export function applyOosLocalAction(
+  visibilityAction: PublicationSyncAction,
+  local: OosLocalAction,
+): PublicationSyncAction {
+  if (visibilityAction === 'withdraw' || visibilityAction === 'skip') return visibilityAction;
+  if (local === 'skip_create') {
+    return visibilityAction === 'create' || visibilityAction === 'reopen' ? 'skip' : visibilityAction;
+  }
+  if (local === 'withdraw_local') return 'withdraw';
+  return visibilityAction;
+}
 
 /** Decide local publication row mutation. Never implies a remote delivery. */
 export function nextPublicationAction(
