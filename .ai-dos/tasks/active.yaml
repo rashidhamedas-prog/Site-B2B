@@ -376,7 +376,8 @@ tasks:
       - "apps/api/src/modules/torob/torob-jwt.spec.ts"
       - "apps/api/src/modules/torob/torob-auth.guard.ts"
       - "apps/api/src/modules/torob/torob-auth.guard.spec.ts"
-      - "apps/api/src/modules/feeds/feeds.controller.ts"
+      # reclaimed 2026-09-01 by TASK-20260826-001 (stale hb 2026-08-30; Phase 4 shared availability)
+      # "apps/api/src/modules/feeds/feeds.controller.ts"
       - ".env.example"
       - "docs/reports/2026-08-26-torob-api-v3.md"
       - "docs/WORKLOG.md"
@@ -420,10 +421,10 @@ tasks:
       implementer: "cursor:implementer-TASK-20260826-001"
       reviewer: "required-independent-before-done"
       security: "required-independent-before-done"
-    branch: "ai/TASK-20260826-001-phase3-lease-rows"
+    branch: "ai/TASK-20260826-001-phase4-feed-availability"
     worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260826-001-p3"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-09-01T12:10:00Z"
+    heartbeat_at: "2026-09-01T12:30:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/channel-product-projection.ts"
@@ -443,7 +444,8 @@ tasks:
       - "apps/api/src/modules/product/product-outbox.ts"
       - "apps/api/src/modules/product/product-outbox.spec.ts"
       - "apps/api/src/modules/product/product.controller.ts"
-      # transferred 2026-08-29 to TASK-20260829-001: "apps/api/src/modules/feeds/feeds.controller.ts"
+      # reclaimed 2026-09-01 from TASK-20260829-001 (stale hb 2026-08-30; Phase 4 shared availability)
+      - "apps/api/src/modules/feeds/feeds.controller.ts"
       - "apps/api/src/modules/basalam/basalam.service.ts"
       - "apps/api/src/modules/inventory/inventory.service.ts"
       # reclaimed 2026-08-31 from TASK-20260829-001 (claims released after Torob commit)
@@ -498,6 +500,7 @@ tasks:
       - "docs/reports/2026-08-26-omnichannel-phase-3.md"
       - "docs/reports/2026-09-01-omnichannel-phase-3-outbox-persist.md"
       - "docs/reports/2026-09-01-omnichannel-phase-3-lease-rows.md"
+      - "docs/reports/2026-09-01-omnichannel-phase-4-feed-availability.md"
       - "apps/api/src/modules/omnichannel/services/publication-sync.ts"
       - "apps/api/src/modules/omnichannel/services/publication-sync.spec.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-metrics.ts"
@@ -1363,7 +1366,8 @@ tasks:
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; channel stock columns): "apps/api/src/modules/dashboard/dashboard.service.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; omnichannel badges): "apps/web/src/components/admin/AdminProducts.tsx"
       - "packages/shared-types/src/models.ts"
-      - "apps/api/src/modules/feeds/feeds.controller.ts"
+      # reclaimed 2026-09-01 by TASK-20260826-001 (stale; Phase 4 shared availability)
+      # "apps/api/src/modules/feeds/feeds.controller.ts"
       - "apps/web/src/lib/public-product-path.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "apps/web/src/app/sitemap.ts"

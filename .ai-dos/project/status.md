@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3: live `88841aa` persist SQL is deployed but leaseBatch dropped UPDATE RETURNING rows (`[rows, rowCount]`). Shipping unwrap. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
+- Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3 live `3353266`: 18/18 DONE, 3 publications, 0 deliveries. Soak 12:22Z. Phase 4 Feed now shares `channelAvailability`. Connectors off. Canary/§9/Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260901-002** staff+shopper split: owner `09152424624` restored ADMIN/active; shopper JWT purpose=storefront; admin cookies separate. Shipping.
 - Last verified: 2026-09-01 — **TASK-20260901-002** API still **DOWN** after `af358ef`: flattened migrations broke relative `ascii-slug` import. Follow-up loads tsc emit path.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3: SMS/Meili timeouts + per-row worker heartbeat on `ai/TASK-20260826-001-phase3-sms`. Live `6254120` still has 18 PROCESSING. Connectors off. Soak/canary/§9/Security still **NOT DONE**.
