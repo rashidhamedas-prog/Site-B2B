@@ -409,10 +409,10 @@ tasks:
       implementer: "cursor:implementer-TASK-20260826-001"
       reviewer: "required-independent-before-done"
       security: "required-independent-before-done"
-    branch: "ai/TASK-20260826-001-product-outbox"
-    worktree: "D:/soft/Claud/porje/Site B2B"
+    branch: "ai/TASK-20260826-001-phase3-sms"
+    worktree: "D:/soft/Claud/porje/Site-B2B-wt-TASK-20260826-001-p3"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-09-01T10:15:00Z"
+    heartbeat_at: "2026-09-01T10:50:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/channel-product-projection.ts"
@@ -493,6 +493,8 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
+      - "apps/api/src/modules/notification/notification.service.ts"
+      - "apps/api/src/modules/search/search.service.ts"
       - "apps/api/src/modules/omnichannel/worker.module.ts"
       - "apps/api/src/worker.main.ts"
       - "docker-compose.yml"

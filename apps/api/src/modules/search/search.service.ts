@@ -17,6 +17,7 @@ export class SearchService implements OnModuleInit {
       this.client = new MeiliSearch({
         host,
         apiKey: config.get('MEILI_MASTER_KEY', ''),
+        timeout: 8_000,
       });
       this.ready = true;
     } catch {

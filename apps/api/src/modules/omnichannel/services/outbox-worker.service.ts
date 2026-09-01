@@ -25,7 +25,7 @@ export function isOmnichannelWorkerProcess(): boolean {
   return process.env.OMNICHANNEL_WORKER === 'true';
 }
 
-const HANDLE_TIMEOUT_MS = 90_000;
+const HANDLE_TIMEOUT_MS = 15_000;
 
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -58,6 +58,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     if (!isOmnichannelWorkerProcess()) return;
     this.logger.log(`outbox worker started id=${this.workerId}`);
+    this.beat();
     this.timer = setInterval(() => {
       void this.tick();
     }, 2000);
@@ -69,9 +70,21 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     this.timer = null;
   }
 
+  private beat() {
+    try {
+      writeFileSync(
+        process.env.OMNICHANNEL_WORKER_HEARTBEAT || '/tmp/omnichannel-worker.heartbeat',
+        String(Date.now()),
+      );
+    } catch {
+      /* heartbeat is best-effort */
+    }
+  }
+
   async tick() {
     if (this.running) return;
     this.running = true;
+    this.beat();
     try {
       const batch = await this.outbox.leaseBatch(this.workerId, 20);
       for (const row of batch) {
@@ -85,25 +98,19 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         } catch (err: unknown) {
           if (err instanceof DeliveryDeferredError) {
             await this.outbox.releaseDeferred(row.id);
-            continue;
+          } else {
+            const message = safeWorkerError(err);
+            this.logger.warn(`outbox ${row.eventType} ${row.id} failed: ${message}`);
+            await this.outbox.markFailure(row, message);
           }
-          const message = safeWorkerError(err);
-          this.logger.warn(`outbox ${row.eventType} ${row.id} failed: ${message}`);
-          await this.outbox.markFailure(row, message);
         }
+        this.beat();
       }
     } catch (err: unknown) {
       this.logger.warn(`outbox lease failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       this.running = false;
-      try {
-        writeFileSync(
-          process.env.OMNICHANNEL_WORKER_HEARTBEAT || '/tmp/omnichannel-worker.heartbeat',
-          String(Date.now()),
-        );
-      } catch {
-        /* heartbeat is best-effort */
-      }
+      this.beat();
     }
   }
 

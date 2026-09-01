@@ -53,6 +53,11 @@ assert(schema.includes('secretRef') && !/"secret"\s/.test(schema), 'schema store
 assert(lease.includes('FOR UPDATE SKIP LOCKED'), 'worker lease skips locked rows');
 assert(lease.includes('"lockedAt" IS NULL'), 'PROCESSING without lockedAt is reclaimable');
 assert(workerSrc.includes('timed out after'), 'hung outbox handler unsticks the worker loop');
+assert(workerSrc.includes('this.beat()'), 'worker heartbeat advances during a batch');
+assert(
+  src('modules/notification/notification.service.ts').includes('AbortSignal.timeout'),
+  'SMS fetch has a hard timeout',
+);
 assert(lease.includes('jitterRatio') && lease.includes('0.25'), 'retry backoff includes jitter');
 assert(worker.includes('OMNICHANNEL_WORKER'), 'independent worker entry');
 assert(bale.includes('ConnectorDisabledError') && rubika.includes('ConnectorDisabledError'), 'Bale/Rubika gated');

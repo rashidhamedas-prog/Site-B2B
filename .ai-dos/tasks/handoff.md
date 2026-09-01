@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-01T10:50:00Z — TASK-20260826-001 Phase 3 SMS/search hang
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-phase3-sms` worktree `Site-B2B-wt-TASK-20260826-001-p3` from `origin/master` `6254120`.
+- Live after PR #68: 18 PROCESSING rows (order SMS + stock + search). Handle timeout existed but heartbeat only ran at end of the 20-row batch, so a hung sms.ir fetch pinned the worker.
+- Fix: SMS `AbortSignal.timeout(8s)`; Meilisearch client timeout 8s; worker heartbeat at start + after each row; handle timeout 15s.
+- Claimed unclaimed `notification.service.ts` + `search.service.ts`. Do not edit TASK-20260901-002 files in the main worktree.
+- Do not enable connectors. Do not DELETE outbox rows. After deploy, reset Phase 3/4 PROCESSING → PENDING if still stuck.
+- Exact next: specs + commit/PR/deploy workers; SELECT counts; restart soak. Do not Done.
+
 ## 2026-09-01T10:45:00Z — TASK-20260901-002 admin login / stock settle / profile
 
 - Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002
