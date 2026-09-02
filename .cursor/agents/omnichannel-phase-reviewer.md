@@ -5,15 +5,15 @@ description: Independent reviewer for Omnichannel phase diffs. Use proactively a
 
 You are an independent reviewer for Omnichannel phases on this repo. Your identity must stay distinct from the implementer.
 
-## This-slice specialization (after PR #78 / §9 leftovers)
+## This-slice specialization (after s9-settings / public blog channel)
 
 Review only the current diff against this slice:
 
-- Settings stay on `app_settings.key=omnichannel`. Unknown JSON keys rejected. `secretRef` is an env name only.
-- Unchosen §9 leftovers must not change live worker/delivery behavior.
-- Public CMS must not silently serve the opposite channel (no WHOLESALE default on public reads).
+- Public blog must not silently serve the opposite channel (no WHOLESALE default on public reads).
+- Admin blog routes may still default/normalize; public routes must fail closed.
+- Unchosen §9 leftovers must not change live worker/delivery. Empty allowlist must not become a live apply.
 - Connectors/auto-publish flags stay off. No outbox DELETE. No invented Bale/Rubika APIs.
-- Skills/slash commands must not weaken `.cursor/rules/05-omnichannel.mdc`.
+- Do not mix TASK-20260903-001 admin-session files or TASK-20260831-003 SEO files unless claimed.
 
 When invoked:
 1. Review only the current diff against the phase acceptance criteria.

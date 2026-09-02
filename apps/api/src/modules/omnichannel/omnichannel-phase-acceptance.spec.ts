@@ -15,6 +15,8 @@ function src(...parts: string[]) {
 
 const cms = src('modules/cms/cms.service.ts');
 const cmsCtl = src('modules/cms/cms.controller.ts');
+const blog = src('modules/blog/blog.service.ts');
+const blogCtl = src('modules/blog/blog.controller.ts');
 const db = src('config/database.config.ts');
 const publicStatus = src('modules/product/public-product-status.ts');
 const productSvc = src('modules/product/product.service.ts');
@@ -47,6 +49,12 @@ const checkout = readFileSync(
 assert(cms.includes("channel: ch") && cms.includes('requirePublicCmsChannel'), 'CMS public lookup requires RETAIL|WHOLESALE');
 assert(cms.includes('sanitizeCmsHtml'), 'CMS sanitizes HTML');
 assert(cmsCtl.includes('کانال نامعتبر است'), 'public CMS missing channel is 400');
+assert(blog.includes('requirePublicBlogChannel'), 'blog public lookup requires RETAIL|WHOLESALE');
+assert(blogCtl.includes('requirePublicBlogChannel') && blogCtl.includes('کانال نامعتبر است'), 'public blog missing channel is 400');
+assert(blogCtl.includes("searchPublic(") && !blogCtl.includes("@Query('channel') channel = 'WHOLESALE',\n    @Query('page')"), 'public blog search does not default WHOLESALE');
+assert(blogCtl.includes("async feed(@Query('channel') channel?: string"), 'public blog feed does not default WHOLESALE');
+assert(blogCtl.includes("sitemapPosts(@Query('channel') channel?: string)"), 'public blog sitemap does not default WHOLESALE');
+assert(blogCtl.includes("postSeo(@Param('slug') slug: string, @Query('channel') channel?: string)"), 'public blog seo does not default WHOLESALE');
 assert(oosPolicy.includes('autoPublishEventTypesChosen') && oosPolicy.includes('effectiveWorkerRetentionDays'), '§9 leftovers stored with chosen flags');
 assert(!workerSrc.includes('effectiveWorkerRetrySlaSeconds') && !workerSrc.includes('effectiveWorkerRetentionDays'), 'worker is not wired to leftover settings');
 assert(adminOmni.includes('autoPublishEventTypes') && adminOmni.includes('outboxRetentionDays'), 'admin leftover settings');

@@ -2,6 +2,20 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T00:15:00Z — TASK-20260826-001 public blog requires channel
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-blog-channel` from `ai/TASK-20260826-001-s9-settings` `b259733` in `D:/proje/Site B2B`.
+- Architect [معمار omnichannel](e459337f-2fc1-4a7a-8191-ce40e63d155f): public blog must require RETAIL|WHOLESALE; reclaim stale `blog.controller.ts`.
+- Security [امنیت omnichannel](e3cfb596-f410-4656-ba9d-8f334a03e532): PASS WITH CONDITIONS — missing channel skipped the filter (both channels).
+- Reclaimed `apps/api/src/modules/blog/blog.controller.ts` from TASK-20260810-006 (heartbeat 2026-08-12T16:55:00Z, stale).
+- Code: `requirePublicBlogChannel` on public blog list/slug/taxonomy/feed/sitemap/seo/redirect-match. Admin `normalizeChannel` unchanged. Worker not wired. Connectors off.
+- Did not edit `apps/web/src/lib/blog.ts` (TASK-20260831-003). Storefront already sends channel.
+- Gates (observed exit 0): `blog-public-channel.spec.ts`, `omnichannel-phase-acceptance.spec.ts`, `cms-public-channel.spec.ts`, `apps/api` `tsc --noEmit`.
+- Reviewer [بررسی فاز](086098da-1f98-497f-a2ef-0ba14d1594bd): PASS WITH CONDITIONS. Must-fix none.
+- Security [بررسی امنیت](c3f4c2dc-9a5a-4445-9ece-fb4d11791e49): PASS WITH CONDITIONS. Must-fix none.
+- Exact next: owner commit/PR of this slice only. Later CODE: collections public channel, discount validate by channel, blog related `p.stock`. Canary send / §9 live apply still owner-gated. Do not Done.
+
 ## 2026-09-02T22:00:00Z — TASK-20260903-001 admin empty session ready to ship
 
 - Task / owner: TASK-20260903-001 / cursor:implementer-TASK-20260903-001
@@ -9,7 +23,9 @@ Append newest entries at the top. Never erase another agent's record.
 - Root: shopper JWT `purpose=storefront` on `/admin` → 403; dashboard/products hid it as empty. Catalog live 58/60.
 - Repeat closed: `setToken` no longer infers admin from role; middleware + `getToken` require admin cookie and JWT purpose=admin; `AdminSessionGate`; OTP/account force storefront scope.
 - Gates: `apps/web` `tsc --noEmit` 0. Do not mix omnichannel §9 files into this commit.
-- Exact next: commit this slice, merge master, deploy. Owner re-login at `/admin/login`.
+- Shipped: commit `a63ade9` pushed and fast-forwarded `origin/master` (`e91678e..a63ade9`).
+- Deploy: no SSH key on this machine (`~/.ssh` missing). Relies on VPS `taranom-autodeploy.timer` (every 3 min). API health 200 after wait; VPS HEAD not confirmed.
+- Exact next: owner re-login at `/admin/login`. Confirm VPS HEAD is `a63ade9` when SSH is back.
 
 ## 2026-09-03T00:20:00Z — TASK-20260826-001 §9 leftovers store + CMS channel
 

@@ -5,16 +5,18 @@ description: Omnichannel architect for this retail/wholesale monolith. Use proac
 
 You are the architect for Omnichannel on the existing NestJS/Next.js modular monolith.
 
-## This-slice specialization (TASK-20260826-001 after PR #78)
+## This-slice specialization (TASK-20260826-001 after s9-settings `b259733`)
 
-Last merged code: admin OOS + Telegram canary in `app_settings.omnichannel` (`e91678e`). Connectors and auto-publish stay off.
+Last omnichannel CODE on `ai/TASK-20260826-001-s9-settings`: public CMS requires `channel`; leftover settings stored with `*Chosen` and stay inert. Connectors and auto-publish stay off. Worker is not wired to leftover settings.
 
 Specialize on the next **unblocked CODE** only:
 
-1. Remaining §9 leftovers that can be **stored** like OOS (display default; apply only after Admin `*Chosen`). Do not invent live business values.
-2. CMS public routes still default missing `channel` to WHOLESALE — decide whether they must require `RETAIL|WHOLESALE` like public products.
-3. Retry SLA / retention / which catalog edits may later auto-publish: store in the same settings blob, no new table, no worker delete of in-flight outbox.
-4. Reject any design that enables `OMNICHANNEL_CONNECTORS_ENABLED` or `OMNICHANNEL_AUTO_PUBLISH`, sends Telegram, or DELETEs outbox rows.
+1. Public blog still defaults missing `channel` to WHOLESALE (`blog.controller` search/feed/sitemap/seo; `blog.service` `normalizeChannel` / optional filter). Decide whether public blog must require `RETAIL|WHOLESALE` like products and CMS.
+2. Decide whether client defaults (`useSiteChrome`, `fetchPosts`, JsonLd) must drop the WHOLESALE default or only the public API must fail closed.
+3. Empty `autoPublishEventTypes: []` currently can set `*Chosen=true` while worker stays unwired — decide if that is a must-fix this slice (store-only, still inert).
+4. Reject any design that enables `OMNICHANNEL_CONNECTORS_ENABLED` or `OMNICHANNEL_AUTO_PUBLISH`, sends Telegram, wires leftover settings into the worker, or DELETEs outbox rows.
+
+Claim note: `blog.service.ts` is already owned by TASK-20260826-001. `blog.controller.ts` is still listed under stale TASK-20260810-006 (heartbeat 2026-08-12). Reclaim it in the plan if public blog is CODE.
 
 When invoked:
 1. Treat this repo as the only source of truth. Prefer `origin/master` evidence over stale worktrees.

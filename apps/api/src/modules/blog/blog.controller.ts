@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -12,7 +13,8 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { requirePublicBlogChannel } from './blog-public-channel';
 import { BlogService } from './blog.service';
 import { BlogExtrasService } from './blog-extras.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -36,6 +38,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../auth/entities/user.entity';
 import { extractClientIp } from '../../common/client-ip';
+
+function mapPublicBlogChannelError(err: unknown): never {
+  if (err instanceof Error && err.message === 'PUBLIC_CHANNEL_REQUIRED') {
+    throw new BadRequestException('کانال نامعتبر است');
+  }
+  throw err;
+}
 
 type AuthedRequest = Request & {
   user?: { id?: string; sub?: string; role?: string };
@@ -79,6 +88,7 @@ export class BlogController {
   // ── Public ────────────────────────────────────────────────
 
   @Get('posts')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   findPublished(
     @Query('page') page?: number,
     @Query('limit') limit?: number,
@@ -88,82 +98,111 @@ export class BlogController {
     @Query('search') search?: string,
     @Query('channel') channel?: string
   ) {
-    return this.svc.findPublished({ page, limit, category, categorySlug, tag, search, channel });
+    return this.svc
+      .findPublished({ page, limit, category, categorySlug, tag, search, channel })
+      .catch(mapPublicBlogChannelError);
   }
 
   @Get('categories')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   categories(@Query('channel') channel?: string) {
-    if (channel) return this.svc.listCategories(channel);
-    return this.svc.categories();
+    try {
+      return this.svc.listCategories(requirePublicBlogChannel(channel));
+    } catch (err) {
+      mapPublicBlogChannelError(err);
+    }
   }
 
   @Get('categories/:slug')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   async categoryBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
-    const category = await this.svc.getCategoryBySlug(slug, channel);
-    const { items, meta } = await this.svc.findPublished({
-      channel,
-      categorySlug: slug,
-      limit: 12,
-      page: 1,
-    });
-    return { category, items, meta };
+    try {
+      const category = await this.svc.getCategoryBySlug(slug, channel);
+      const { items, meta } = await this.svc.findPublished({
+        channel,
+        categorySlug: slug,
+        limit: 12,
+        page: 1,
+      });
+      return { category, items, meta };
+    } catch (err) {
+      mapPublicBlogChannelError(err);
+    }
   }
 
   @Get('tags')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   tags(@Query('channel') channel?: string) {
-    return this.svc.listTags(channel);
+    try {
+      return this.svc.listTags(requirePublicBlogChannel(channel));
+    } catch (err) {
+      mapPublicBlogChannelError(err);
+    }
   }
 
   @Get('tags/:slug')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   async tagBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
-    const tag = await this.svc.getTagBySlug(slug, channel);
-    const { items, meta } = await this.svc.findPublished({
-      channel,
-      tag: tag.name || slug,
-      limit: 12,
-      page: 1,
-    });
-    return { tag, items, meta };
+    try {
+      const tag = await this.svc.getTagBySlug(slug, channel);
+      const { items, meta } = await this.svc.findPublished({
+        channel,
+        tag: tag.name || slug,
+        limit: 12,
+        page: 1,
+      });
+      return { tag, items, meta };
+    } catch (err) {
+      mapPublicBlogChannelError(err);
+    }
   }
 
   @Get('search')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   searchPublic(
     @Query('q') q = '',
-    @Query('channel') channel = 'WHOLESALE',
+    @Query('channel') channel?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number
   ) {
-    return this.svc.findPublished({
-      channel,
-      search: q,
-      page,
-      limit: Math.min(24, Number(limit) || 12),
-    });
+    return this.svc
+      .findPublished({
+        channel,
+        search: q,
+        page,
+        limit: Math.min(24, Number(limit) || 12),
+      })
+      .catch(mapPublicBlogChannelError);
   }
 
   @Get('feed')
-  async feed(@Query('channel') channel = 'WHOLESALE', @Query('limit') limit?: number) {
-    return this.svc.feed(channel, Number(limit) || 20);
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
+  async feed(@Query('channel') channel?: string, @Query('limit') limit?: number) {
+    return this.svc.feed(channel as string, Number(limit) || 20).catch(mapPublicBlogChannelError);
   }
 
   @Get('sitemap-posts')
-  sitemapPosts(@Query('channel') channel = 'WHOLESALE') {
-    return this.svc.sitemapPosts(channel);
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
+  sitemapPosts(@Query('channel') channel?: string) {
+    return this.svc.sitemapPosts(channel as string).catch(mapPublicBlogChannelError);
   }
 
   @Get('posts/:slug/seo')
-  postSeo(@Param('slug') slug: string, @Query('channel') channel = 'WHOLESALE') {
-    return this.svc.getPublicSeoBundle(slug, channel);
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
+  postSeo(@Param('slug') slug: string, @Query('channel') channel?: string) {
+    return this.svc.getPublicSeoBundle(slug, channel as string).catch(mapPublicBlogChannelError);
   }
 
   @Get('posts/:slug')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
-    return this.svc.findBySlug(slug, channel);
+    return this.svc.findBySlug(slug, channel).catch(mapPublicBlogChannelError);
   }
 
   @Get('redirects/match')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   matchRedirect(@Query('channel') channel: string, @Query('path') path: string) {
-    return this.svc.matchRedirect(channel, path);
+    return this.svc.matchRedirect(channel, path).catch(mapPublicBlogChannelError);
   }
 
   // ── Admin posts ───────────────────────────────────────────

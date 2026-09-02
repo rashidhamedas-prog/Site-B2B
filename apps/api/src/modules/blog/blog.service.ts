@@ -24,6 +24,7 @@ import {
 } from './blog-seo.util';
 import { sanitizeBlogHtml, buildHowToJsonLd } from './blog-sanitize';
 import { hasBlogPermission, type BlogRole } from './blog-roles';
+import { requirePublicBlogChannel } from './blog-public-channel';
 import type {
   CreateBlogPostDto,
   UpdateBlogPostDto,
@@ -172,20 +173,19 @@ export class BlogService {
   }) {
     const page = Math.max(1, Number(opts.page) || 1);
     const limit = Math.min(50, Number(opts.limit) || 12);
+    const ch = requirePublicBlogChannel(opts.channel);
     const qb = this.repo
       .createQueryBuilder('p')
       .where('p.status = :status', { status: 'PUBLISHED' })
-      .andWhere('p.deletedAt IS NULL');
+      .andWhere('p.deletedAt IS NULL')
+      .andWhere('p.channel = :channel', { channel: ch });
 
-    if (opts.channel) {
-      qb.andWhere('p.channel = :channel', { channel: normalizeChannel(opts.channel) });
-    }
     if (opts.category) qb.andWhere('p.category = :category', { category: opts.category });
     if (opts.categorySlug) {
       const cat = await this.catRepo.findOne({
         where: {
           slug: opts.categorySlug,
-          channel: opts.channel ? normalizeChannel(opts.channel) : undefined,
+          channel: ch,
           isActive: true,
         } as any,
       });
@@ -210,8 +210,7 @@ export class BlogService {
   }
 
   async findBySlug(slug: string, channel?: string): Promise<BlogPostEntity> {
-    const where: any = { slug, status: 'PUBLISHED' };
-    if (channel) where.channel = normalizeChannel(channel);
+    const where: any = { slug, status: 'PUBLISHED', channel: requirePublicBlogChannel(channel) };
     const post = await this.repo.findOne({ where });
     if (!post) throw new NotFoundException('مطلب یافت نشد');
     this.repo.increment({ id: post.id }, 'views', 1).catch(() => undefined);
@@ -274,7 +273,7 @@ export class BlogService {
   }
 
   async feed(channel: string, limit = 20) {
-    const ch = normalizeChannel(channel);
+    const ch = requirePublicBlogChannel(channel);
     const { items } = await this.findPublished({ channel: ch, limit, page: 1 });
     return items.filter((p) => p.rssEnabled !== false);
   }
@@ -904,7 +903,7 @@ export class BlogService {
   async matchRedirect(channel: string, path: string) {
     const sourcePath = path.startsWith('/') ? path : `/${path}`;
     const row = await this.redirectRepo.findOne({
-      where: { channel: normalizeChannel(channel), sourcePath, isActive: true },
+      where: { channel: requirePublicBlogChannel(channel), sourcePath, isActive: true },
     });
     if (!row) return null;
     row.hitCount = (row.hitCount || 0) + 1;
@@ -946,16 +945,14 @@ export class BlogService {
   }
 
   async getCategoryBySlug(slug: string, channel?: string) {
-    const where: any = { slug, isActive: true };
-    if (channel) where.channel = normalizeChannel(channel);
+    const where: any = { slug, isActive: true, channel: requirePublicBlogChannel(channel) };
     const cat = await this.catRepo.findOne({ where });
     if (!cat) throw new NotFoundException('دسته یافت نشد');
     return cat;
   }
 
   async getTagBySlug(slug: string, channel?: string) {
-    const where: any = { slug };
-    if (channel) where.channel = normalizeChannel(channel);
+    const where: any = { slug, channel: requirePublicBlogChannel(channel) };
     const tag = await this.tagRepo.findOne({ where });
     if (!tag) throw new NotFoundException('برچسب یافت نشد');
     return tag;
@@ -1101,7 +1098,7 @@ export class BlogService {
   }
 
   async sitemapPosts(channel: string) {
-    const ch = normalizeChannel(channel);
+    const ch = requirePublicBlogChannel(channel);
     return this.repo.find({
       where: {
         channel: ch,

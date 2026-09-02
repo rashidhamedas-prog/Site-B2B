@@ -14,4 +14,4 @@ Task: `TASK-20260826-001`. Branch pattern: `ai/TASK-20260826-001-<slug>`.
 | 7 Admin | CODE present | OOS + canary stored (PR #78); no live send |
 | 8 hardening | CODE present | DB_SYNC fail-closed; ops scripts; timers in repo |
 
-Owner-gated (not CODE): destination canary send, connector enable, auto-publish enable, independent Security on the live SHA, remaining §9 decisions that change live behavior.
+Owner-gated (not CODE): destination canary send, connector enable, auto-publish enable, independent Security on the live SHA, remaining §9 decisions that change live behavior. Public blog channel is CODE after `b259733`.
