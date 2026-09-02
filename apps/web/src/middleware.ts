@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { canEnterAdmin, readAdminGateCookies } from '@/lib/admin-session';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
-import { isStaffRole } from '@/lib/staff-access';
 
 /** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
 const WHOLESALE_CATEGORY_ALIASES: Record<string, string> = {
@@ -164,11 +164,12 @@ export function middleware(request: NextRequest) {
     return res;
   }
 
+  const adminSession = isAdminRoute ? readAdminGateCookies(request.cookies) : null;
   const token = isAdminRoute
-    ? request.cookies.get('taranom_admin_token')?.value || request.cookies.get('taranom_token')?.value
+    ? adminSession?.token
     : request.cookies.get('taranom_token')?.value;
   const role = isAdminRoute
-    ? request.cookies.get('taranom_admin_role')?.value || request.cookies.get('taranom_role')?.value
+    ? adminSession?.role
     : request.cookies.get('taranom_role')?.value;
 
   if (!token) {
@@ -179,7 +180,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAdminRoute && !isStaffRole(role)) {
+  if (isAdminRoute && !canEnterAdmin(token, role)) {
     return NextResponse.redirect(new URL('/admin/login', request.url));
   }
 

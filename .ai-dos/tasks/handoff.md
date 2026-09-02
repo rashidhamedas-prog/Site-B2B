@@ -2,6 +2,28 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-02T22:00:00Z — TASK-20260903-001 admin empty session ready to ship
+
+- Task / owner: TASK-20260903-001 / cursor:implementer-TASK-20260903-001
+- Branch: `ai/TASK-20260903-001-admin-empty-session` in `D:/proje/Site B2B`.
+- Root: shopper JWT `purpose=storefront` on `/admin` → 403; dashboard/products hid it as empty. Catalog live 58/60.
+- Repeat closed: `setToken` no longer infers admin from role; middleware + `getToken` require admin cookie and JWT purpose=admin; `AdminSessionGate`; OTP/account force storefront scope.
+- Gates: `apps/web` `tsc --noEmit` 0. Do not mix omnichannel §9 files into this commit.
+- Exact next: commit this slice, merge master, deploy. Owner re-login at `/admin/login`.
+
+## 2026-09-03T00:20:00Z — TASK-20260826-001 §9 leftovers store + CMS channel
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-s9-settings` from `origin/master` in `D:/proje/Site B2B`.
+- Architect [معمار omnichannel](470d8572-5705-4d11-8d30-67e124f4006a): store leftovers with `*Chosen`; public CMS must require channel.
+- Security [امنیت omnichannel](0ee84d2a-eb35-4e6a-b64f-0f006b493771): PASS WITH CONDITIONS — CMS WHOLESALE default was the must-fix.
+- Code: `requirePublicCmsChannel` on public CMS; settings blob + Admin UI for auto-publish allowlist / retry SLA / retention. Worker not wired. Connectors off.
+- Also added `.cursor/skills/omnichannel*` and `/omnichannel*` slashes; specialized agents before launch.
+- Reviewer [بررسی فاز](5b0e0b2b-44d0-415e-a3fa-c1630fac6b5c): PASS WITH CONDITIONS (commit on this branch; do not mix admin-session files).
+- Security [بررسی امنیت](984773fc-9f1d-4926-9ac9-aeb061706f1a): PASS WITH CONDITIONS (include untracked cms-public-channel files).
+- Do not enable connectors. Do not DELETE outbox. Do not Done.
+- Exact next: owner commit/PR of this slice only (no TASK-20260903-001 files); then merge/deploy. Canary send / §9 live apply still owner-gated.
+
 ## 2026-09-01T13:35:00Z — TASK-20260901-002 live login verified on 0d39830
 
 - Task / owner: TASK-20260901-002 / cursor:implementer-TASK-20260901-002

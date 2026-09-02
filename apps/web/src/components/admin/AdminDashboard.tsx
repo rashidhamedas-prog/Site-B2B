@@ -161,6 +161,7 @@ export function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [usingFallback, setUsingFallback] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -168,10 +169,12 @@ export function AdminDashboard() {
       const data = await apiClient.get<DashboardStats>('/dashboard');
       setStats(data);
       setUsingFallback(false);
-    } catch {
+      setLoadError('');
+    } catch (e: unknown) {
       if (!silent) {
         setStats(EMPTY);
         setUsingFallback(true);
+        setLoadError(e instanceof Error ? e.message : 'اتصال به سرور داشبورد برقرار نشد');
       }
     } finally {
       if (!silent) setLoading(false);
@@ -256,7 +259,13 @@ export function AdminDashboard() {
         <div>
           <p className="text-sm text-gray-500">
             {usingFallback ? (
-              <span className="text-amber-500">⚠ اتصال به API برقرار نشد — آمار خالی نمایش داده می‌شود</span>
+              <span className="text-amber-700">
+                آمار بارگذاری نشد{loadError ? ` — ${loadError}` : ''}. اگر از فروشگاه وارد شده‌اید، از{' '}
+                <Link href="/admin/login" className="font-semibold text-primary hover:underline">
+                  ورود مدیریت
+                </Link>{' '}
+                دوباره وارد شوید.
+              </span>
             ) : (
               updatedLabel
             )}

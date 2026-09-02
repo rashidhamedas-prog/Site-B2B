@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-02 — **TASK-20260903-001** shipping admin session isolation on `ai/TASK-20260903-001-admin-empty-session`. Empty admin was shopper JWT 403, not missing data. Reviewer+Security still required.
+- Last verified: 2026-09-03 — **TASK-20260826-001** §9 leftovers + CMS channel on `ai/TASK-20260826-001-s9-settings`: public CMS requires RETAIL|WHOLESALE; leftover settings stored with `*Chosen` and stay inert. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Admin channel settings implementing on `ai/TASK-20260826-001-admin-channel-settings`: OOS radios + Telegram canary + secretRef. Connectors off. Soak/canary live send/§9/Security still **NOT DONE**.
 - Last verified: 2026-09-01 — **TASK-20260901-002** live `0d39830`: owner `09152424624` ADMIN/active; `POST /v1/auth/login` purpose=admin → ADMIN; purpose=portal → CUSTOMER/storefront; DB role stays ADMIN. Reviewer+Security still required.
 - Last verified: 2026-09-01 — **TASK-20260826-001** Phase 3 live `3353266`: 18/18 DONE, 3 publications, 0 deliveries. Soak 12:22Z. Phase 4 Feed now shares `channelAvailability`. Connectors off. Canary/§9/Security still **NOT DONE**.

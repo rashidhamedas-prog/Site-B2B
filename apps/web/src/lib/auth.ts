@@ -1,9 +1,11 @@
+import {
+  ADMIN_ROLE_KEY,
+  ADMIN_TOKEN_KEY,
+  STOREFRONT_ROLE_KEY,
+  STOREFRONT_TOKEN_KEY,
+  isAdminPurposeToken,
+} from './admin-session';
 import { isStaffRole } from './staff-access';
-
-const TOKEN_KEY = 'taranom_token';
-const ROLE_KEY = 'taranom_role';
-const ADMIN_TOKEN_KEY = 'taranom_admin_token';
-const ADMIN_ROLE_KEY = 'taranom_admin_role';
 
 export type AuthCookieScope = 'admin' | 'storefront';
 
@@ -23,13 +25,16 @@ function clearCookie(name: string) {
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   if (isBrowserAdminPath()) {
-    return localStorage.getItem(ADMIN_TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+    const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+    return isAdminPurposeToken(token) ? token : null;
   }
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(STOREFRONT_TOKEN_KEY);
 }
 
 export function setToken(token: string, role: string, scope?: AuthCookieScope) {
-  const resolved: AuthCookieScope = scope ?? (isStaffRole(role) ? 'admin' : 'storefront');
+  // Never infer admin from role. A shopper JWT can still say ADMIN in old
+  // clients or if OTP regresses; that must stay in storefront keys.
+  const resolved: AuthCookieScope = scope === 'admin' ? 'admin' : 'storefront';
   const maxAge = 7 * 24 * 60 * 60;
   if (resolved === 'admin') {
     localStorage.setItem(ADMIN_TOKEN_KEY, token);
@@ -38,10 +43,10 @@ export function setToken(token: string, role: string, scope?: AuthCookieScope) {
     writeCookie(ADMIN_ROLE_KEY, role, maxAge);
     return;
   }
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(ROLE_KEY, role);
-  writeCookie(TOKEN_KEY, token, maxAge);
-  writeCookie(ROLE_KEY, role, maxAge);
+  localStorage.setItem(STOREFRONT_TOKEN_KEY, token);
+  localStorage.setItem(STOREFRONT_ROLE_KEY, role);
+  writeCookie(STOREFRONT_TOKEN_KEY, token, maxAge);
+  writeCookie(STOREFRONT_ROLE_KEY, role, maxAge);
 }
 
 export function clearToken() {
@@ -52,18 +57,18 @@ export function clearToken() {
     clearCookie(ADMIN_ROLE_KEY);
     return;
   }
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(ROLE_KEY);
-  clearCookie(TOKEN_KEY);
-  clearCookie(ROLE_KEY);
+  localStorage.removeItem(STOREFRONT_TOKEN_KEY);
+  localStorage.removeItem(STOREFRONT_ROLE_KEY);
+  clearCookie(STOREFRONT_TOKEN_KEY);
+  clearCookie(STOREFRONT_ROLE_KEY);
 }
 
 export function getRole(): string | null {
   if (typeof window === 'undefined') return null;
   if (isBrowserAdminPath()) {
-    return localStorage.getItem(ADMIN_ROLE_KEY) || localStorage.getItem(ROLE_KEY);
+    return localStorage.getItem(ADMIN_ROLE_KEY);
   }
-  return localStorage.getItem(ROLE_KEY);
+  return localStorage.getItem(STOREFRONT_ROLE_KEY);
 }
 
 export function isAdmin(): boolean {

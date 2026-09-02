@@ -849,7 +849,7 @@ export function AdminProducts() {
     [refreshSpecMemory]
   );
 
-  const { products, meta, loading, refetch } = useProducts({
+  const { products, meta, loading, error, refetch } = useProducts({
     page,
     search: search || undefined,
     limit: 20,
@@ -1456,6 +1456,21 @@ export function AdminProducts() {
                     ))}
                   </tr>
                 ))
+              ) : error ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-12 text-center">
+                    <p className="mb-2 font-medium text-gray-800">محصولات بارگذاری نشد</p>
+                    <p className="mb-3 text-sm text-gray-500" role="alert">{error}</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <button type="button" onClick={() => refetch()} className="btn btn-primary btn-sm">
+                        تلاش مجدد
+                      </button>
+                      <a href="/admin/login" className="btn btn-outline btn-sm">
+                        ورود مجدد مدیریت
+                      </a>
+                    </div>
+                  </td>
+                </tr>
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">

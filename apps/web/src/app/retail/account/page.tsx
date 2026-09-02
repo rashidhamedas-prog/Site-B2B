@@ -169,7 +169,7 @@ function RetailAccountInner() {
         '/auth/retail/otp/verify',
         { phone, code, name },
       );
-      setToken(res.accessToken, res.role);
+      setToken(res.accessToken, res.role, 'storefront');
       setLoggedIn(true);
       if (redirect && redirect !== '/account') router.push(redirect);
     } catch (err: any) {

@@ -6,6 +6,7 @@ import {
   Truck, MessageSquare, CreditCard, CheckCircle, AlertCircle, Loader2,
   Eye, EyeOff, Plus, Trash2, Palette, ShieldCheck, Upload,
 } from 'lucide-react';
+import { isAdminAuthFailureMessage } from '@/lib/admin-session';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { DEFAULT_THEME, type ThemeSettings } from '@/components/wholesale/ThemeApply';
@@ -409,23 +410,32 @@ export function AdminSettings() {
   }
 
   if (!data) {
-    const forbidden = loadError.includes('فقط مدیر کل');
+    const staffOnly = loadError.includes('فقط مدیر کل');
+    const sessionForbidden = isAdminAuthFailureMessage(loadError);
     return (
       <div className="card mx-auto max-w-lg p-8 text-center">
         <AlertCircle className="mx-auto mb-3 h-10 w-10 text-error" />
         <p className="font-medium text-gray-800">
-          {forbidden ? 'فقط مدیر کل به تنظیمات سیستم دسترسی دارد' : 'تنظیمات بارگذاری نشد'}
+          {staffOnly ? 'فقط مدیر کل به تنظیمات سیستم دسترسی دارد' : 'تنظیمات بارگذاری نشد'}
         </p>
         <p className="mx-auto mt-2 max-w-md text-sm text-gray-500" role="alert">
           {loadError || 'اتصال به سرور تنظیمات برقرار نشد'}
         </p>
-        {forbidden ? (
+        {staffOnly ? (
           <p className="mt-3 text-sm text-gray-600">
             ایمیل و رمز ورود خودتان را از{' '}
             <a href="/admin/account" className="font-semibold text-primary hover:underline">
               حساب من
             </a>{' '}
             عوض کنید. نام برند و شماره فروشگاه در همین صفحه، تب کسب‌وکار است.
+          </p>
+        ) : sessionForbidden ? (
+          <p className="mt-3 text-sm text-gray-600">
+            نشست فروشگاه برای پنل مدیریت کافی نیست. از{' '}
+            <a href="/admin/login" className="font-semibold text-primary hover:underline">
+              ورود مدیریت
+            </a>{' '}
+            دوباره وارد شوید.
           </p>
         ) : null}
         <button type="button" onClick={load} className="btn btn-primary btn-sm mt-4 min-h-11">

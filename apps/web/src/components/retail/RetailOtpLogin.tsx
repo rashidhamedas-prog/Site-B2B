@@ -52,7 +52,7 @@ export function RetailOtpLogin() {
         '/auth/retail/otp/verify',
         { phone, code, name },
       );
-      setToken(res.accessToken, res.role);
+      setToken(res.accessToken, res.role, 'storefront');
       setLoggedIn(true);
       router.push(redirect);
     } catch (err: any) {
