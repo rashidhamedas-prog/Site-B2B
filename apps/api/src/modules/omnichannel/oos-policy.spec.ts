@@ -5,9 +5,13 @@ import { isAllowedSecretRef } from './omnichannel-secrets';
 import {
   annotatePreviewOos,
   assertOmnichannelSettingsInput,
+  effectiveWorkerRetentionDays,
+  effectiveWorkerRetrySlaSeconds,
   findCanaryDestinationId,
   liveOosRejectReason,
+  mergeOmnichannelSettingsPatch,
   parseStoredOmnichannelSettings,
+  readAutoPublishEventTypes,
   readChannelOos,
   resolveOosDecision,
   sanitizeDestinationSettings,
@@ -194,6 +198,42 @@ assert(isAllowedSecretRef('DATABASE_URL') === false, 'DATABASE_URL rejected');
     chosen: true,
   }), false);
   assert(reject === 'oos_hide_skip', 'live HIDE OOS rejected');
+}
+
+{
+  const unread = readAutoPublishEventTypes({});
+  assert(unread.chosen === false && unread.events.includes('product.created'), 'unchosen shows catalog events');
+  assert(effectiveWorkerRetrySlaSeconds({}) === 3600, 'unchosen retry stays current cap');
+  assert(effectiveWorkerRetentionDays({}) === null, 'unchosen retention starts no job');
+
+  const saved = mergeOmnichannelSettingsPatch({}, {
+    autoPublishEventTypes: ['product.created', 'cms.published'],
+    retrySlaSeconds: 120,
+    outboxRetentionDays: 30,
+  });
+  assert(saved.autoPublishEventTypesChosen === true, 'save chooses auto-publish list');
+  assert(saved.retrySlaChosen === true && saved.retrySlaSeconds === 120, 'save chooses retry SLA');
+  assert(saved.outboxRetentionChosen === true && saved.outboxRetentionDays === 30, 'save chooses retention');
+  assert(effectiveWorkerRetrySlaSeconds(saved) === 120, 'chosen retry is stored value');
+  assert(effectiveWorkerRetentionDays(saved) === 30, 'chosen retention is stored value');
+}
+
+{
+  let threw = false;
+  try {
+    assertOmnichannelSettingsInput({ autoPublishEventTypes: ['order.created.notification'] });
+  } catch {
+    threw = true;
+  }
+  assert(threw, 'phase-3 events cannot be auto-publish allowlisted');
+
+  threw = false;
+  try {
+    assertOmnichannelSettingsInput({ retrySlaSeconds: 10 });
+  } catch {
+    threw = true;
+  }
+  assert(threw, 'retry SLA below 60 rejected');
 }
 
 console.log('oos-policy.spec.ts: ok');

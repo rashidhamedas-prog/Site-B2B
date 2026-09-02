@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayUnique,
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -8,15 +10,21 @@ import {
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import {
+  AUTO_PUBLISH_CANDIDATE_EVENTS,
+  CONNECTION_STATUSES,
   OMNICHANNEL_CHANNELS,
   OMNICHANNEL_PROVIDERS,
-  CONNECTION_STATUSES,
   OOS_POLICIES,
+  OUTBOX_RETENTION_MAX_DAYS,
+  OUTBOX_RETENTION_MIN_DAYS,
+  RETRY_SLA_MAX_SECONDS,
+  RETRY_SLA_MIN_SECONDS,
 } from '../omnichannel.constants';
 
 /** Env name only — never a token. Only provider-prefixed refs may be resolved. */
@@ -62,6 +70,26 @@ export class PatchOmnichannelSettingsDto {
   @IsOptional()
   @IsIn(OOS_POLICIES)
   wholesaleOosPolicy?: (typeof OOS_POLICIES)[number];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(AUTO_PUBLISH_CANDIDATE_EVENTS, { each: true })
+  autoPublishEventTypes?: (typeof AUTO_PUBLISH_CANDIDATE_EVENTS)[number][];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(RETRY_SLA_MIN_SECONDS)
+  @Max(RETRY_SLA_MAX_SECONDS)
+  retrySlaSeconds?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(OUTBOX_RETENTION_MIN_DAYS)
+  @Max(OUTBOX_RETENTION_MAX_DAYS)
+  outboxRetentionDays?: number;
 
   @IsOptional()
   @IsString()

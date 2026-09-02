@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -6,6 +7,13 @@ import { CmsService } from './cms.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+
+function mapPublicCmsChannelError(err: unknown): never {
+  if (err instanceof Error && err.message === 'PUBLIC_CHANNEL_REQUIRED') {
+    throw new BadRequestException('کانال نامعتبر است');
+  }
+  throw err;
+}
 
 @ApiTags('cms')
 @Controller('cms')
@@ -15,15 +23,15 @@ export class CmsController {
   // ── Public ────────────────────────────────────────────────
 
   @Get('pages/:slug')
-  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   findBySlug(@Param('slug') slug: string, @Query('channel') channel?: string) {
-    return this.svc.findBySlug(slug, channel);
+    return this.svc.findBySlug(slug, channel).catch(mapPublicCmsChannelError);
   }
 
   @Get('kind/:kind')
-  @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   findByKind(@Param('kind') kind: string, @Query('channel') channel?: string) {
-    return this.svc.findByKind(kind, channel);
+    return this.svc.findByKind(kind, channel).catch(mapPublicCmsChannelError);
   }
 
   @Get('site-content/:channel/:pageKey')
@@ -31,7 +39,7 @@ export class CmsController {
     @Param('channel') channel: string,
     @Param('pageKey') pageKey: string,
   ) {
-    return this.svc.getPublicSiteContent(channel, pageKey);
+    return this.svc.getPublicSiteContent(channel, pageKey).catch(mapPublicCmsChannelError);
   }
 
   // ── Admin ─────────────────────────────────────────────────

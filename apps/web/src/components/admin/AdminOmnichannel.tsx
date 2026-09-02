@@ -17,6 +17,12 @@ type Status = {
   wholesaleOosChosen?: boolean;
   retailCanaryDestinationId?: string | null;
   wholesaleCanaryDestinationId?: string | null;
+  autoPublishEventTypes?: string[];
+  autoPublishEventTypesChosen?: boolean;
+  retrySlaSeconds?: number;
+  retrySlaChosen?: boolean;
+  outboxRetentionDays?: number;
+  outboxRetentionChosen?: boolean;
   outbox?: {
     pending: number;
     processing: number;
@@ -116,6 +122,18 @@ export function AdminOmnichannel() {
   const [secretRef, setSecretRef] = useState('TELEGRAM_BOT_TOKEN');
   const [retailOos, setRetailOos] = useState<OosPolicy>('UPDATE');
   const [wholesaleOos, setWholesaleOos] = useState<OosPolicy>('UPDATE');
+  const [autoPublishEvents, setAutoPublishEvents] = useState<string[]>([
+    'product.created',
+    'product.content_changed',
+    'product.price_changed',
+    'product.visibility_changed',
+    'product.media_changed',
+    'product.withdrawn',
+    'blog.published',
+    'cms.published',
+  ]);
+  const [retrySlaSeconds, setRetrySlaSeconds] = useState(3600);
+  const [outboxRetentionDays, setOutboxRetentionDays] = useState(90);
   const [destKey, setDestKey] = useState('');
   const [destName, setDestName] = useState('');
   const [connectionId, setConnectionId] = useState('');
@@ -139,6 +157,9 @@ export function AdminOmnichannel() {
       setStatus(st);
       if (st.retailOosPolicy) setRetailOos(st.retailOosPolicy);
       if (st.wholesaleOosPolicy) setWholesaleOos(st.wholesaleOosPolicy);
+      if (st.autoPublishEventTypes?.length) setAutoPublishEvents(st.autoPublishEventTypes);
+      if (typeof st.retrySlaSeconds === 'number') setRetrySlaSeconds(st.retrySlaSeconds);
+      if (typeof st.outboxRetentionDays === 'number') setOutboxRetentionDays(st.outboxRetentionDays);
       setConnections(conns);
       setDestinations(dests);
       setTemplates(tpls);
@@ -248,6 +269,89 @@ export function AdminOmnichannel() {
           }, 'خطا در ذخیره سیاست')}
         >
           ذخیره سیاست ناموجود
+        </button>
+      </section>
+
+      <section className="rounded-xl border bg-white p-4 space-y-4">
+        <div>
+          <h2 className="font-semibold">باقی‌مانده تصمیم‌های انتشار</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            تا ذخیره نشود فقط نمایش است و ورکر همان رفتار فعلی را نگه می‌دارد.
+            انتشار خودکار زنده و حذف ردیف صف با این ذخیره روشن نمی‌شود.
+          </p>
+        </div>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium">
+            رویدادهایی که بعداً می‌توانند auto-publish شوند
+            {status?.autoPublishEventTypesChosen ? ' (ذخیره شده)' : ' (هنوز انتخاب نشده)'}
+          </legend>
+          {[
+            ['product.created', 'ایجاد کالا'],
+            ['product.content_changed', 'تغییر محتوا'],
+            ['product.price_changed', 'تغییر قیمت'],
+            ['product.visibility_changed', 'تغییر نمایش'],
+            ['product.media_changed', 'تغییر رسانه'],
+            ['product.withdrawn', 'خروج از انتشار'],
+            ['blog.published', 'انتشار بلاگ'],
+            ['cms.published', 'انتشار CMS'],
+          ].map(([event, label]) => (
+            <label key={event} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={autoPublishEvents.includes(event)}
+                onChange={() => setAutoPublishEvents((current) => (
+                  current.includes(event)
+                    ? current.filter((item) => item !== event)
+                    : [...current, event]
+                ))}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
+        <div className="grid md:grid-cols-2 gap-4">
+          <label className="text-sm space-y-1">
+            <span>
+              مهلت تلاش مجدد (ثانیه)
+              {status?.retrySlaChosen ? ' (ذخیره شده)' : ' (نمایش ۳۶۰۰ تا ذخیره)'}
+            </span>
+            <input
+              type="number"
+              min={60}
+              max={86400}
+              className="border rounded-lg px-3 py-2 text-sm w-full"
+              value={retrySlaSeconds}
+              onChange={(e) => setRetrySlaSeconds(Number(e.target.value))}
+            />
+          </label>
+          <label className="text-sm space-y-1">
+            <span>
+              نگهداری صف انجام‌شده (روز)
+              {status?.outboxRetentionChosen ? ' (ذخیره شده)' : ' (نمایش ۹۰ تا ذخیره)'}
+            </span>
+            <input
+              type="number"
+              min={7}
+              max={365}
+              className="border rounded-lg px-3 py-2 text-sm w-full"
+              value={outboxRetentionDays}
+              onChange={(e) => setOutboxRetentionDays(Number(e.target.value))}
+            />
+          </label>
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={() => run(async () => {
+            await apiClient.patch('/omnichannel/settings', {
+              autoPublishEventTypes: autoPublishEvents,
+              retrySlaSeconds,
+              outboxRetentionDays,
+              reason,
+            });
+          }, 'خطا در ذخیره تصمیم‌های انتشار')}
+        >
+          ذخیره تصمیم‌های انتشار
         </button>
       </section>
 

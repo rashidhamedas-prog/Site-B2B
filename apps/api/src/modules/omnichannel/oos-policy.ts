@@ -1,5 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
-import { OOS_POLICIES, type OosPolicy } from './omnichannel.constants';
+import {
+  AUTO_PUBLISH_CANDIDATE_EVENTS,
+  DEFAULT_OUTBOX_RETENTION_DAYS,
+  DEFAULT_RETRY_SLA_SECONDS,
+  OOS_POLICIES,
+  OUTBOX_RETENTION_MAX_DAYS,
+  OUTBOX_RETENTION_MIN_DAYS,
+  RETRY_SLA_MAX_SECONDS,
+  RETRY_SLA_MIN_SECONDS,
+  type AutoPublishEventType,
+  type OosPolicy,
+} from './omnichannel.constants';
 import { assertNoPlaintextSecrets, isAllowedSecretRef } from './omnichannel-secrets';
 
 export { OOS_POLICIES, type OosPolicy };
@@ -12,6 +23,12 @@ export type StoredOmnichannelSettings = {
   wholesaleOosPolicy?: OosPolicy;
   retailOosChosen?: boolean;
   wholesaleOosChosen?: boolean;
+  autoPublishEventTypes?: AutoPublishEventType[];
+  autoPublishEventTypesChosen?: boolean;
+  retrySlaSeconds?: number;
+  retrySlaChosen?: boolean;
+  outboxRetentionDays?: number;
+  outboxRetentionChosen?: boolean;
 };
 
 export type OosDecision = {
@@ -29,7 +46,16 @@ export type PreviewOosAnnotation = {
   stock: number | null;
 };
 
-const SETTINGS_INPUT_KEYS = new Set(['retailOosPolicy', 'wholesaleOosPolicy', 'reason']);
+const SETTINGS_INPUT_KEYS = new Set([
+  'retailOosPolicy',
+  'wholesaleOosPolicy',
+  'autoPublishEventTypes',
+  'retrySlaSeconds',
+  'outboxRetentionDays',
+  'reason',
+]);
+
+const AUTO_PUBLISH_EVENT_SET = new Set<string>(AUTO_PUBLISH_CANDIDATE_EVENTS);
 
 export function isOosPolicy(value: unknown): value is OosPolicy {
   return value === 'UPDATE' || value === 'HIDE' || value === 'DELETE';
@@ -37,6 +63,57 @@ export function isOosPolicy(value: unknown): value is OosPolicy {
 
 export function parseOosPolicy(value: unknown): OosPolicy | null {
   return isOosPolicy(value) ? value : null;
+}
+
+export function parseAutoPublishEventTypes(value: unknown): AutoPublishEventType[] | null {
+  if (!Array.isArray(value)) return null;
+  const unique: AutoPublishEventType[] = [];
+  for (const item of value) {
+    if (typeof item !== 'string' || !AUTO_PUBLISH_EVENT_SET.has(item)) return null;
+    if (!unique.includes(item as AutoPublishEventType)) unique.push(item as AutoPublishEventType);
+  }
+  return unique;
+}
+
+export function parseBoundedInt(value: unknown, min: number, max: number): number | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  if (!Number.isInteger(n) || n < min || n > max) return null;
+  return n;
+}
+
+export function readAutoPublishEventTypes(
+  stored: StoredOmnichannelSettings,
+): { events: AutoPublishEventType[]; chosen: boolean } {
+  if (stored.autoPublishEventTypesChosen === true && stored.autoPublishEventTypes) {
+    return { events: stored.autoPublishEventTypes, chosen: true };
+  }
+  return { events: [...AUTO_PUBLISH_CANDIDATE_EVENTS], chosen: false };
+}
+
+export function readRetrySlaSeconds(stored: StoredOmnichannelSettings): { seconds: number; chosen: boolean } {
+  if (stored.retrySlaChosen === true && stored.retrySlaSeconds != null) {
+    return { seconds: stored.retrySlaSeconds, chosen: true };
+  }
+  return { seconds: DEFAULT_RETRY_SLA_SECONDS, chosen: false };
+}
+
+export function readOutboxRetentionDays(stored: StoredOmnichannelSettings): { days: number; chosen: boolean } {
+  if (stored.outboxRetentionChosen === true && stored.outboxRetentionDays != null) {
+    return { days: stored.outboxRetentionDays, chosen: true };
+  }
+  return { days: DEFAULT_OUTBOX_RETENTION_DAYS, chosen: false };
+}
+
+/** Unchosen keeps the current hardcoded 3600s cap. Not wired into the worker in this slice. */
+export function effectiveWorkerRetrySlaSeconds(stored: StoredOmnichannelSettings): number {
+  const read = readRetrySlaSeconds(stored);
+  return read.chosen ? read.seconds : DEFAULT_RETRY_SLA_SECONDS;
+}
+
+/** Unchosen means no retention job. Never delete PENDING/PROCESSING. */
+export function effectiveWorkerRetentionDays(stored: StoredOmnichannelSettings): number | null {
+  const read = readOutboxRetentionDays(stored);
+  return read.chosen ? read.days : null;
 }
 
 export function readChannelOos(
@@ -114,6 +191,21 @@ export function parseStoredOmnichannelSettings(value: unknown): StoredOmnichanne
   if (wholesale) out.wholesaleOosPolicy = wholesale;
   if (raw.retailOosChosen === true && retail) out.retailOosChosen = true;
   if (raw.wholesaleOosChosen === true && wholesale) out.wholesaleOosChosen = true;
+  const events = parseAutoPublishEventTypes(raw.autoPublishEventTypes);
+  if (events && raw.autoPublishEventTypesChosen === true) {
+    out.autoPublishEventTypes = events;
+    out.autoPublishEventTypesChosen = true;
+  }
+  const retry = parseBoundedInt(raw.retrySlaSeconds, RETRY_SLA_MIN_SECONDS, RETRY_SLA_MAX_SECONDS);
+  if (retry != null && raw.retrySlaChosen === true) {
+    out.retrySlaSeconds = retry;
+    out.retrySlaChosen = true;
+  }
+  const retention = parseBoundedInt(raw.outboxRetentionDays, OUTBOX_RETENTION_MIN_DAYS, OUTBOX_RETENTION_MAX_DAYS);
+  if (retention != null && raw.outboxRetentionChosen === true) {
+    out.outboxRetentionDays = retention;
+    out.outboxRetentionChosen = true;
+  }
   return out;
 }
 
@@ -134,11 +226,26 @@ export function assertOmnichannelSettingsInput(input: unknown): void {
   if (raw.wholesaleOosPolicy !== undefined && !isOosPolicy(raw.wholesaleOosPolicy)) {
     throw new BadRequestException('سیاست ناموجود عمده باید UPDATE یا HIDE یا DELETE باشد');
   }
+  if (raw.autoPublishEventTypes !== undefined && !parseAutoPublishEventTypes(raw.autoPublishEventTypes)) {
+    throw new BadRequestException('رویداد انتشار خودکار نامعتبر است');
+  }
+  if (raw.retrySlaSeconds !== undefined && parseBoundedInt(raw.retrySlaSeconds, RETRY_SLA_MIN_SECONDS, RETRY_SLA_MAX_SECONDS) == null) {
+    throw new BadRequestException('مهلت تلاش مجدد باید بین ۶۰ و ۸۶۴۰۰ ثانیه باشد');
+  }
+  if (raw.outboxRetentionDays !== undefined && parseBoundedInt(raw.outboxRetentionDays, OUTBOX_RETENTION_MIN_DAYS, OUTBOX_RETENTION_MAX_DAYS) == null) {
+    throw new BadRequestException('نگهداری صف باید بین ۷ و ۳۶۵ روز باشد');
+  }
 }
 
 export function mergeOmnichannelSettingsPatch(
   previous: StoredOmnichannelSettings,
-  patch: { retailOosPolicy?: OosPolicy; wholesaleOosPolicy?: OosPolicy },
+  patch: {
+    retailOosPolicy?: OosPolicy;
+    wholesaleOosPolicy?: OosPolicy;
+    autoPublishEventTypes?: string[];
+    retrySlaSeconds?: number;
+    outboxRetentionDays?: number;
+  },
 ): StoredOmnichannelSettings {
   const next: StoredOmnichannelSettings = { ...previous };
   if (patch.retailOosPolicy) {
@@ -149,6 +256,21 @@ export function mergeOmnichannelSettingsPatch(
     next.wholesaleOosPolicy = patch.wholesaleOosPolicy;
     next.wholesaleOosChosen = true;
   }
+  const events = parseAutoPublishEventTypes(patch.autoPublishEventTypes);
+  if (events) {
+    next.autoPublishEventTypes = events;
+    next.autoPublishEventTypesChosen = true;
+  }
+  const retry = parseBoundedInt(patch.retrySlaSeconds, RETRY_SLA_MIN_SECONDS, RETRY_SLA_MAX_SECONDS);
+  if (retry != null) {
+    next.retrySlaSeconds = retry;
+    next.retrySlaChosen = true;
+  }
+  const retention = parseBoundedInt(patch.outboxRetentionDays, OUTBOX_RETENTION_MIN_DAYS, OUTBOX_RETENTION_MAX_DAYS);
+  if (retention != null) {
+    next.outboxRetentionDays = retention;
+    next.outboxRetentionChosen = true;
+  }
   return parseStoredOmnichannelSettings(next);
 }
 
@@ -158,6 +280,9 @@ export function publicOmnichannelSettings(
 ) {
   const retail = readChannelOos(stored, 'RETAIL');
   const wholesale = readChannelOos(stored, 'WHOLESALE');
+  const events = readAutoPublishEventTypes(stored);
+  const retry = readRetrySlaSeconds(stored);
+  const retention = readOutboxRetentionDays(stored);
   return {
     retailOosPolicy: retail.policy,
     wholesaleOosPolicy: wholesale.policy,
@@ -165,6 +290,12 @@ export function publicOmnichannelSettings(
     wholesaleOosChosen: wholesale.chosen,
     retailCanaryDestinationId: canaries.retail,
     wholesaleCanaryDestinationId: canaries.wholesale,
+    autoPublishEventTypes: events.events,
+    autoPublishEventTypesChosen: events.chosen,
+    retrySlaSeconds: retry.seconds,
+    retrySlaChosen: retry.chosen,
+    outboxRetentionDays: retention.days,
+    outboxRetentionChosen: retention.chosen,
   };
 }
 

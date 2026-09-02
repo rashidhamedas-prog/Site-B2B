@@ -14,6 +14,7 @@ function src(...parts: string[]) {
 }
 
 const cms = src('modules/cms/cms.service.ts');
+const cmsCtl = src('modules/cms/cms.controller.ts');
 const db = src('config/database.config.ts');
 const publicStatus = src('modules/product/public-product-status.ts');
 const productSvc = src('modules/product/product.service.ts');
@@ -43,8 +44,12 @@ const checkout = readFileSync(
   'utf8',
 );
 
-assert(cms.includes("channel: ch") && cms.includes('no cross-channel fallback'), 'CMS public lookup is channel-scoped');
+assert(cms.includes("channel: ch") && cms.includes('requirePublicCmsChannel'), 'CMS public lookup requires RETAIL|WHOLESALE');
 assert(cms.includes('sanitizeCmsHtml'), 'CMS sanitizes HTML');
+assert(cmsCtl.includes('کانال نامعتبر است'), 'public CMS missing channel is 400');
+assert(oosPolicy.includes('autoPublishEventTypesChosen') && oosPolicy.includes('effectiveWorkerRetentionDays'), '§9 leftovers stored with chosen flags');
+assert(!workerSrc.includes('effectiveWorkerRetrySlaSeconds') && !workerSrc.includes('effectiveWorkerRetentionDays'), 'worker is not wired to leftover settings');
+assert(adminOmni.includes('autoPublishEventTypes') && adminOmni.includes('outboxRetentionDays'), 'admin leftover settings');
 assert(db.includes('ReturnRequestAuditEntity'), 'RMA audit on runtime TypeORM');
 assert(publicStatus.includes("PUBLIC_STATUS_FORBIDDEN"), 'public ALL rejected');
 assert(productCtl.includes('resolvePublicProductStatus'), 'public list uses ACTIVE gate');

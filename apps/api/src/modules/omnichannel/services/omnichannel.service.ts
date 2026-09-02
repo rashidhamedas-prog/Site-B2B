@@ -198,8 +198,14 @@ export class OmnichannelService {
   async patchSettings(dto: PatchOmnichannelSettingsDto, actor?: Actor) {
     const who = this.requireActor(actor);
     assertOmnichannelSettingsInput(dto);
-    if (!dto.retailOosPolicy && !dto.wholesaleOosPolicy) {
-      throw new BadRequestException('حداقل یک سیاست ناموجود لازم است');
+    const hasOos = !!(dto.retailOosPolicy || dto.wholesaleOosPolicy);
+    const hasLeftovers = !!(
+      dto.autoPublishEventTypes
+      || dto.retrySlaSeconds != null
+      || dto.outboxRetentionDays != null
+    );
+    if (!hasOos && !hasLeftovers) {
+      throw new BadRequestException('حداقل یک تنظیم کانال لازم است');
     }
     const previous = await this.loadStoredSettings();
     const next = mergeOmnichannelSettingsPatch(previous, dto);
@@ -211,6 +217,9 @@ export class OmnichannelService {
       wholesaleOosPolicy: next.wholesaleOosPolicy || null,
       retailOosChosen: next.retailOosChosen === true,
       wholesaleOosChosen: next.wholesaleOosChosen === true,
+      autoPublishEventTypesChosen: next.autoPublishEventTypesChosen === true,
+      retrySlaChosen: next.retrySlaChosen === true,
+      outboxRetentionChosen: next.outboxRetentionChosen === true,
     });
     return publicOmnichannelSettings(parseStoredOmnichannelSettings(saved.value), await this.canaryDestinationIds());
   }

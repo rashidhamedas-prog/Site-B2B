@@ -6,6 +6,7 @@ import { SiteContentEntity } from './entities/site-content.entity';
 import { sanitizeCmsBlocks, sanitizeCmsHtml, sanitizeCmsValue } from './cms-sanitize';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
+import { requirePublicCmsChannel } from './cms-public-channel';
 
 @Injectable()
 export class CmsService {
@@ -49,9 +50,9 @@ export class CmsService {
     return page;
   }
 
-  // Public: published page by slug. Channel is always applied — no cross-channel fallback.
+  // Public: published page by slug. Channel is required — no WHOLESALE default.
   async findBySlug(slug: string, channel?: string): Promise<CmsPageEntity> {
-    const ch = this.normalizeChannel(channel);
+    const ch = requirePublicCmsChannel(channel);
     const page = await this.repo.findOne({ where: { slug, status: 'PUBLISHED', channel: ch } });
     if (!page) throw new NotFoundException('صفحه یافت نشد');
     return this.sanitizePage(page);
@@ -59,7 +60,7 @@ export class CmsService {
 
   // Public: published banners/FAQ collections.
   async findByKind(kind: string, channel?: string): Promise<CmsPageEntity[]> {
-    const where: any = { kind: kind.toUpperCase(), status: 'PUBLISHED', channel: this.normalizeChannel(channel) };
+    const where: any = { kind: kind.toUpperCase(), status: 'PUBLISHED', channel: requirePublicCmsChannel(channel) };
     const rows = await this.repo.find({
       where,
       order: { updatedAt: 'DESC' },
@@ -140,7 +141,7 @@ export class CmsService {
 
   /** Public: only published content — empty shell when missing (storefront falls back to defaults) */
   async getPublicSiteContent(channel: string, pageKey: string) {
-    const ch = this.normalizeChannel(channel);
+    const ch = requirePublicCmsChannel(channel);
     const row = await this.siteContentRepo.findOne({
       where: { channel: ch, pageKey, isPublished: true },
     });
