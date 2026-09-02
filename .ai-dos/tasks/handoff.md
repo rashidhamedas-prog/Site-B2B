@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T00:20:00Z — TASK-20260903-002 compress Taranom logos
+
+- Task / owner: TASK-20260903-002 / cursor:implementer-TASK-20260903-002
+- Branch: `ai/TASK-20260903-002-logo-compress` from `origin/master` `a63ade9` in `D:/proje/Site-B2B-logo-compress`.
+- Live wholesale header/footer + JSON-LD use `/logo-128.png` (was 20368 B). Retail header is SVG BrandMark, not this PNG; schema still references logo-128.
+- CODE: recompressed `logo-128.png` to 6824 B (128×128). Replaced public `logo-512.png` with 192px palette PNG 13916 B (login shows 80px). Brand `logo-512` stays 512px at 59376 B. Portal login now uses `/logo-128.png`.
+- Did not edit claimed Header/Footer/AdminLoginForm/AdminSidebar/PortalSidebar/JsonLd. Admin login still `/logo-512.png` and gets the smaller file.
+- Exact next: commit, merge/push master, deploy static assets, verify Content-Length on both hosts.
+
 ## 2026-09-02T22:00:00Z — TASK-20260903-001 admin empty session ready to ship
 
 - Task / owner: TASK-20260903-001 / cursor:implementer-TASK-20260903-001

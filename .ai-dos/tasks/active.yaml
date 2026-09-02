@@ -1,5 +1,43 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260903-002"
+    title: "Compress Taranom logo assets on wholesale and retail"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260903-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260903-002"
+      implementer: "cursor:implementer-TASK-20260903-002"
+      reviewer: "same-agent-low-risk-asset-compress"
+      security: "not-required-static-png-only"
+    branch: "ai/TASK-20260903-002-logo-compress"
+    worktree: "D:/proje/Site-B2B-logo-compress"
+    claimed_at: "2026-09-03T00:15:00Z"
+    heartbeat_at: "2026-09-03T00:20:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/public/logo-128.png"
+      - "apps/web/public/logo-512.png"
+      - "assets/brand/logo-128.png"
+      - "assets/brand/logo-512.png"
+      - "apps/web/src/app/portal/login/page.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-03-logo-compress.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner: shrink Taranom logo bytes on wholesale + retail.
+      Live chrome uses /logo-128.png (20KB, shown 48px). Login used
+      /logo-512.png (253KB, shown 80px). Did not edit claimed Header,
+      Footer, AdminLoginForm, AdminSidebar, PortalSidebar, JsonLd.
+      Same URLs; PNGs overwritten. Admin login still points at logo-512
+      and picks up the smaller file.
+    acceptance_criteria:
+      - "public/logo-128.png is under 8KB and still 128x128 PNG"
+      - "public/logo-512.png is under 16KB"
+      - "portal login loads /logo-128.png"
+      - "no claimed TSX besides portal/login was edited"
   - id: "TASK-20260903-001"
     title: "Admin empty because shopper JWT used on /admin"
     status: "in_progress"
