@@ -12,6 +12,7 @@ import {
   ParseIntPipe,
   DefaultValuePipe,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
@@ -121,7 +122,13 @@ export class OrderController {
       Number(body.subtotal) || 0,
       body.discountCode,
       body.categoryIds ?? [],
-    );
+      body.channel,
+    ).catch((err: unknown) => {
+      if (err instanceof Error && err.message === 'PUBLIC_CHANNEL_REQUIRED') {
+        throw new BadRequestException('کانال نامعتبر است');
+      }
+      throw err;
+    });
   }
 
   @Get(':id')

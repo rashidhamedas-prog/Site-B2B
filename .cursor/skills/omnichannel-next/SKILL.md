@@ -10,4 +10,4 @@ description: Continue the next unblocked Omnichannel CODE slice. Use when the us
 3. Specialize `.cursor/agents/omnichannel-phase-reviewer.md` and `.cursor/agents/omnichannel-security.md`, then review. Identities stay distinct.
 4. Follow `.cursor/skills/omnichannel/SKILL.md`. Do not enable connectors. Do not mark TASK-20260826-001 Done.
 
-Current unblocked CODE after the blog-channel slice: public collections still omit `channel`; discount validate ignores code channel; blog related-products still reads legacy `p.stock`. Optional: author pages, empty auto-publish allowlist `*Chosen`. Owner-gated: live Telegram, soak, Security on live SHA, wiring leftovers into the worker.
+Current unblocked CODE after the channel-isolation slice: `GET /blog/authors/:slug` still mixes channels; empty `autoPublishEventTypes: []` can set `*Chosen=true` (inert until worker wired). Optional: `useSiteChrome` / JsonLd WHOLESALE defaults. Owner-gated: live Telegram, soak, Security on live SHA, wiring leftovers into the worker.

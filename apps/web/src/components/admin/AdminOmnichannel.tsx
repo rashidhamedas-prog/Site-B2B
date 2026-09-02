@@ -360,7 +360,7 @@ export function AdminOmnichannel() {
           <button
             key={key}
             type="button"
-            className={`px-3 py-1 rounded-full text-xs border ${filter === key ? 'bg-gray-900 text-white' : 'bg-white'}`}
+            className={`px-3 py-1 rounded-full text-xs border cursor-pointer ${filter === key ? 'bg-gray-900 text-white' : 'bg-white'}`}
             onClick={() => setFilter(key)}
           >
             {key}
@@ -400,6 +400,15 @@ export function AdminOmnichannel() {
           </button>
         </div>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-2 text-right font-medium">نام</th>
+              <th className="p-2 text-right font-medium">ارائه‌دهنده / کانال</th>
+              <th className="p-2 text-right font-medium">secretRef</th>
+              <th className="p-2 text-right font-medium">وضعیت</th>
+              <th className="p-2 text-left font-medium">عملیات</th>
+            </tr>
+          </thead>
           <tbody>
             {connections.filter(matchFilter).map((row) => (
               <tr key={row.id} className="border-t">
@@ -410,14 +419,14 @@ export function AdminOmnichannel() {
                 <td className="p-2 text-left space-x-3 space-x-reverse">
                   <button
                     type="button"
-                    className="text-xs text-primary"
+                    className="text-xs text-primary cursor-pointer"
                     onClick={() => run(async () => { await apiClient.post(`/omnichannel/connections/${row.id}/test`, {}); }, 'تست اتصال ناموفق')}
                   >
                     تست
                   </button>
                   <button
                     type="button"
-                    className="text-xs"
+                    className="text-xs cursor-pointer"
                     onClick={() => run(async () => {
                       await apiClient.patch(`/omnichannel/connections/${row.id}`, {
                         status: row.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
@@ -429,6 +438,9 @@ export function AdminOmnichannel() {
                 </td>
               </tr>
             ))}
+            {connections.length === 0 && (
+              <tr><td className="p-3 text-gray-400" colSpan={5}>اتصالی ثبت نشده — فقط نام env را ذخیره کنید، توکن را اینجا ننویسید.</td></tr>
+            )}
           </tbody>
         </table>
       </section>
@@ -466,6 +478,15 @@ export function AdminOmnichannel() {
           </button>
         </div>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-2 text-right font-medium">مقصد</th>
+              <th className="p-2 text-right font-medium">شناسه</th>
+              <th className="p-2 text-right font-medium">وضعیت</th>
+              <th className="p-2 text-right font-medium">canary</th>
+              <th className="p-2 text-left font-medium">عملیات</th>
+            </tr>
+          </thead>
           <tbody>
             {destinations.map((row) => (
               <tr key={row.id} className="border-t">
@@ -476,7 +497,7 @@ export function AdminOmnichannel() {
                 <td className="p-2 text-left">
                   <button
                     type="button"
-                    className="text-xs text-primary"
+                    className="text-xs text-primary cursor-pointer"
                     onClick={() => run(async () => {
                       await apiClient.patch(`/omnichannel/destinations/${row.id}`, {
                         isCanary: !row.isCanary,
@@ -488,7 +509,7 @@ export function AdminOmnichannel() {
                 </td>
               </tr>
             ))}
-            {destinations.length === 0 && <tr><td className="p-3 text-gray-400">مقصدی ثبت نشده</td></tr>}
+            {destinations.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={5}>مقصدی ثبت نشده</td></tr>}
           </tbody>
         </table>
       </section>
@@ -515,6 +536,14 @@ export function AdminOmnichannel() {
           </button>
         </div>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-2 text-right font-medium">ارائه‌دهنده / کانال</th>
+              <th className="p-2 text-right font-medium">رویداد</th>
+              <th className="p-2 text-right font-medium">نسخه</th>
+              <th className="p-2 text-right font-medium">وضعیت</th>
+            </tr>
+          </thead>
           <tbody>
             {templates.filter(matchFilter).map((row) => (
               <tr key={row.id} className="border-t">
@@ -524,7 +553,7 @@ export function AdminOmnichannel() {
                 <td className="p-2">{row.enabled === false ? 'خاموش' : 'فعال'}</td>
               </tr>
             ))}
-            {templates.length === 0 && <tr><td className="p-3 text-gray-400">قالبی ثبت نشده</td></tr>}
+            {templates.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={4}>قالبی ثبت نشده</td></tr>}
           </tbody>
         </table>
       </section>
@@ -562,6 +591,14 @@ export function AdminOmnichannel() {
       <section className="rounded-xl border bg-white overflow-hidden">
         <h2 className="font-semibold p-4">انتشارها</h2>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-3 text-right font-medium">منبع</th>
+              <th className="p-3 text-right font-medium">کانال</th>
+              <th className="p-3 text-right font-medium">وضعیت</th>
+              <th className="p-3 text-left font-medium">عملیات</th>
+            </tr>
+          </thead>
           <tbody>
             {publications.filter(matchFilter).map((row) => (
               <tr key={row.id} className="border-t">
@@ -570,14 +607,14 @@ export function AdminOmnichannel() {
                 <td className="p-3">{row.status}</td>
                 <td className="p-3 text-left">
                   {row.status !== 'WITHDRAWN' && (
-                    <button type="button" className="text-red-600 text-xs" onClick={() => run(async () => {
+                    <button type="button" className="text-red-600 text-xs cursor-pointer" onClick={() => run(async () => {
                       await apiClient.post(`/omnichannel/publications/${row.id}/withdraw`, { reason });
                     }, 'خطا در برداشت')}>برداشت</button>
                   )}
                 </td>
               </tr>
             ))}
-            {publications.length === 0 && <tr><td className="p-4 text-gray-400">هنوز انتشاری ثبت نشده</td></tr>}
+            {publications.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={4}>هنوز انتشاری ثبت نشده</td></tr>}
           </tbody>
         </table>
       </section>
@@ -585,6 +622,15 @@ export function AdminOmnichannel() {
       <section className="rounded-xl border bg-white overflow-hidden">
         <h2 className="font-semibold p-4">تاریخچه تحویل</h2>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-3 text-right font-medium">شناسه</th>
+              <th className="p-3 text-right font-medium">عمل</th>
+              <th className="p-3 text-right font-medium">وضعیت</th>
+              <th className="p-3 text-right font-medium">خطا</th>
+              <th className="p-3 text-left font-medium">عملیات</th>
+            </tr>
+          </thead>
           <tbody>
             {deliveries.filter(matchFilter).map((row) => (
               <tr key={row.id} className="border-t">
@@ -594,14 +640,14 @@ export function AdminOmnichannel() {
                 <td className="p-3 text-xs text-gray-500">{row.lastError || '—'}</td>
                 <td className="p-3 text-left">
                   {row.status !== 'SUCCEEDED' && (
-                    <button type="button" className="text-xs text-primary" onClick={() => run(async () => {
+                    <button type="button" className="text-xs text-primary cursor-pointer" onClick={() => run(async () => {
                       await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason });
                     }, 'خطا در retry')}>تلاش دوباره</button>
                   )}
                 </td>
               </tr>
             ))}
-            {deliveries.length === 0 && <tr><td className="p-4 text-gray-400">تحویلی ثبت نشده</td></tr>}
+            {deliveries.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={5}>تحویلی ثبت نشده</td></tr>}
           </tbody>
         </table>
       </section>
@@ -609,6 +655,15 @@ export function AdminOmnichannel() {
       <section className="rounded-xl border bg-white overflow-hidden">
         <h2 className="font-semibold p-4">صف outbox</h2>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-3 text-right font-medium">رویداد</th>
+              <th className="p-3 text-right font-medium">کانال</th>
+              <th className="p-3 text-right font-medium">وضعیت</th>
+              <th className="p-3 text-right font-medium">تلاش</th>
+              <th className="p-3 text-right font-medium">خطا</th>
+            </tr>
+          </thead>
           <tbody>
             {outbox.filter(matchFilter).map((row) => (
               <tr key={row.id} className="border-t">
@@ -619,7 +674,7 @@ export function AdminOmnichannel() {
                 <td className="p-3 text-xs text-gray-500">{row.lastError || '—'}</td>
               </tr>
             ))}
-            {outbox.length === 0 && <tr><td className="p-4 text-gray-400">رویدادی در صف نیست</td></tr>}
+            {outbox.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={5}>رویدادی در صف نیست</td></tr>}
           </tbody>
         </table>
       </section>
@@ -627,6 +682,13 @@ export function AdminOmnichannel() {
       <section className="rounded-xl border bg-white overflow-hidden">
         <h2 className="font-semibold p-4">رسانه (alt)</h2>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-3 text-right font-medium">آدرس</th>
+              <th className="p-3 text-right font-medium">مالک</th>
+              <th className="p-3 text-right font-medium">متن جایگزین</th>
+            </tr>
+          </thead>
           <tbody>
             {media.map((row) => (
               <tr key={row.id} className="border-t">
@@ -647,7 +709,7 @@ export function AdminOmnichannel() {
                 </td>
               </tr>
             ))}
-            {media.length === 0 && <tr><td className="p-4 text-gray-400">رجیستری خالی است یا جدول هنوز migrate نشده</td></tr>}
+            {media.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={3}>رجیستری خالی است یا جدول هنوز migrate نشده</td></tr>}
           </tbody>
         </table>
       </section>
@@ -655,6 +717,14 @@ export function AdminOmnichannel() {
       <section className="rounded-xl border bg-white overflow-hidden">
         <h2 className="font-semibold p-4">حسابرسی</h2>
         <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-gray-500">
+              <th className="p-3 text-right font-medium">عمل</th>
+              <th className="p-3 text-right font-medium">عامل</th>
+              <th className="p-3 text-right font-medium">کانال</th>
+              <th className="p-3 text-right font-medium">دلیل</th>
+            </tr>
+          </thead>
           <tbody>
             {audits.filter(matchFilter).map((row) => (
               <tr key={row.id} className="border-t">
@@ -664,7 +734,7 @@ export function AdminOmnichannel() {
                 <td className="p-3 text-xs text-gray-500">{row.reason || '—'}</td>
               </tr>
             ))}
-            {audits.length === 0 && <tr><td className="p-4 text-gray-400">رکورد حسابرسی نیست</td></tr>}
+            {audits.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={4}>رکورد حسابرسی نیست</td></tr>}
           </tbody>
         </table>
       </section>

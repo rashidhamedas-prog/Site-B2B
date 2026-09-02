@@ -61,7 +61,7 @@ export function RetailHeader() {
   useEffect(() => {
     Promise.all([
       apiClient.get<Cat[] | { data: Cat[] }>('/categories').catch(() => []),
-      apiClient.get<Collection[]>('/collections?active=1').catch(() => []),
+      apiClient.get<Collection[]>('/collections?active=1&channel=RETAIL').catch(() => []),
     ]).then(([cats, cols]) => {
       const list = Array.isArray(cats) ? cats : (cats as any)?.data ?? [];
       setCategories(list.slice(0, 16));

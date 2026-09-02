@@ -117,7 +117,7 @@ export function RetailProductsCatalog({
 
   useEffect(() => {
     apiClient
-      .get<Collection[]>('/collections?active=1')
+      .get<Collection[]>('/collections?active=1&channel=RETAIL')
       .then((rows) => setCollections(Array.isArray(rows) ? rows : []))
       .catch(() => setCollections([]));
   }, []);

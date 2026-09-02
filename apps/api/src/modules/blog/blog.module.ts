@@ -13,6 +13,7 @@ import { BlogCommentEntity } from './entities/blog-comment.entity';
 import { BlogAnalyticsEntity } from './entities/blog-analytics.entity';
 import { UserEntity } from '../auth/entities/user.entity';
 import { ProductEntity } from '../product/entities/product.entity';
+import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { BlogService } from './blog.service';
 import { BlogExtrasService } from './blog-extras.service';
 import { BlogSchedulerService } from './blog-scheduler.service';
@@ -37,6 +38,7 @@ import { BlogPermissionsGuard } from '../auth/guards/blog-permissions.guard';
       BlogAnalyticsEntity,
       UserEntity,
       ProductEntity,
+      ProductVariantEntity,
     ]),
     AuthModule,
     UploadModule,

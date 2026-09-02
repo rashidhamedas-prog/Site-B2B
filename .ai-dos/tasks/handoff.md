@@ -2,6 +2,19 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T00:40:00Z — TASK-20260826-001 channel isolation implementing
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-channel-isolation` from `259a532` in `D:/proje/Site B2B`.
+- CODE: public collections require RETAIL|WHOLESALE (admin JWT may omit); discount validate + quote-discounts honor code channel; blog related-products use `channelAvailability` not `p.stock`; AdminOmnichannel thead/empty/cursor only.
+- Reclaimed stale: `blog.module.ts` from TASK-20260810-006; `order.service.ts` from TASK-20260901-002; `create-order.dto.ts` from TASK-20260824-003; `RetailHeader.tsx` from TASK-20260831-001.
+- Worker not wired. Connectors off. No live Telegram. No Instagram.
+- Gates (observed exit 0): `collection-public-channel.spec.ts`, `discount-channel.spec.ts`, `omnichannel-phase-acceptance.spec.ts`, `blog-public-channel.spec.ts`, `cms-public-channel.spec.ts`, `apps/api` `tsc --noEmit`, `apps/web` `tsc --noEmit`.
+- Reviewer [بررسی فاز](b5721ce2-e2b5-476f-8ab2-d612c685ad45): PASS WITH CONDITIONS. Must-fix none.
+- Security [بررسی امنیت](2a2dcf97-aaf0-4d7c-aef3-94bb9d62288a): PASS WITH CONDITIONS. Quote leaked wholesale automatics on RETAIL — fixed: quote skips tiered/side unless WHOLESALE. Create-order still trusts client channel (later CODE; not this slice).
+- Gates after quote fix (observed exit 0): `omnichannel-phase-acceptance.spec.ts`, `discount-channel.spec.ts`.
+- Exact next: owner commit/PR of this slice only. Later CODE: `GET /blog/authors/:slug`; bind create-order channel to session/customer type. Owner-gated: live Telegram / canary send / flags / soak. Do not Done.
+
 ## 2026-09-03T00:15:00Z — TASK-20260826-001 public blog requires channel
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

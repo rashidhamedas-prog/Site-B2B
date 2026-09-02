@@ -4,6 +4,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { DiscountCodeEntity } from './entities/discount-code.entity';
 import { TieredDiscountEntity, TierLevel } from './entities/tiered-discount.entity';
 import { SideDiscountEntity, SideDiscountType } from './entities/side-discount.entity';
+import { discountAppliesToChannel, requireDiscountChannel } from './discount-channel';
 
 @Injectable()
 export class DiscountService {
@@ -53,9 +54,13 @@ export class DiscountService {
     return { message: 'کد تخفیف حذف شد' };
   }
 
-  async validate(code: string, orderTotal: number) {
+  async validate(code: string, orderTotal: number, channel?: string) {
+    const ch = requireDiscountChannel(channel);
     const dc = await this.repo.findOne({ where: { code: code.toUpperCase(), isActive: true } });
     if (!dc) throw new NotFoundException('کد تخفیف معتبر نیست');
+    if (!discountAppliesToChannel(dc.channel, ch)) {
+      throw new BadRequestException('این کد برای این کانال معتبر نیست');
+    }
     const now = new Date();
     if (dc.startsAt && dc.startsAt > now) throw new BadRequestException('کد تخفیف هنوز فعال نشده');
     if (dc.expiresAt && dc.expiresAt < now) throw new BadRequestException('کد تخفیف منقضی شده');

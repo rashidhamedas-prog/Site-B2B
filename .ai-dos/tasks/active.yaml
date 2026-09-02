@@ -70,7 +70,8 @@ tasks:
       - "apps/api/src/modules/auth/customer-addresses.spec.ts"
       - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
       - "apps/api/src/modules/customer/entities/customer.entity.ts"
-      - "apps/api/src/modules/order/order.service.ts"
+      # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-09-01; discount channel):
+      # "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/order/order.module.ts"
       - "apps/api/src/modules/order/entities/order.entity.ts"
       - "apps/api/src/modules/order/order-stock-settlement.ts"
@@ -211,7 +212,8 @@ tasks:
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
       - "apps/web/src/components/layout/Header.tsx"
       - "apps/web/src/components/layout/MobileMenu.tsx"
-      - "apps/web/src/components/retail/RetailHeader.tsx"
+      # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-31; collections channel):
+      # "apps/web/src/components/retail/RetailHeader.tsx"
       - "apps/web/src/components/category/CategoryProductCard.tsx"
       - "apps/web/src/components/category/category-search-params.ts"
       - "apps/web/src/components/category/category-search-params.spec.ts"
@@ -464,10 +466,10 @@ tasks:
       implementer: "cursor:implementer-TASK-20260826-001"
       reviewer: "required-independent-before-done"
       security: "required-independent-before-done"
-    branch: "ai/TASK-20260826-001-blog-channel"
+    branch: "ai/TASK-20260826-001-channel-isolation"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-09-02T22:15:00Z"
+    heartbeat_at: "2026-09-02T23:40:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/channel-product-projection.ts"
@@ -514,6 +516,27 @@ tasks:
       - "apps/api/src/modules/blog/blog-public-channel.ts"
       - "apps/api/src/modules/blog/blog-public-channel.spec.ts"
       - "docs/reports/2026-09-03-omnichannel-blog-public-channel.md"
+      - "apps/api/src/modules/collection/collection.controller.ts"
+      - "apps/api/src/modules/collection/collection.service.ts"
+      - "apps/api/src/modules/collection/collection.module.ts"
+      - "apps/api/src/modules/collection/collection-public-channel.ts"
+      - "apps/api/src/modules/collection/collection-public-channel.spec.ts"
+      - "apps/api/src/modules/discount/discount.controller.ts"
+      - "apps/api/src/modules/discount/discount.service.ts"
+      - "apps/api/src/modules/discount/discount-channel.ts"
+      - "apps/api/src/modules/discount/discount-channel.spec.ts"
+      # reclaimed 2026-09-03 from TASK-20260901-002 (stale hb 2026-09-01; discount channel)
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/order.controller.ts"
+      # reclaimed 2026-09-03 from TASK-20260824-003 / TASK-20260812-001 (stale; quote channel)
+      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      # reclaimed 2026-09-03 from TASK-20260810-006 (stale hb 2026-08-12; related stock)
+      - "apps/api/src/modules/blog/blog-extras.service.ts"
+      - "apps/api/src/modules/blog/blog.module.ts"
+      - "apps/web/src/app/retail/collections/page.tsx"
+      # reclaimed 2026-09-03 from TASK-20260831-001 (stale hb 2026-08-31; collections channel)
+      - "apps/web/src/components/retail/RetailHeader.tsx"
+      - "docs/reports/2026-09-03-omnichannel-channel-isolation.md"
       - "apps/api/src/modules/cms/cms-sanitize.ts"
       - "apps/api/src/modules/cms/cms-sanitize.spec.ts"
       - "apps/web/src/components/cms/CmsPage.tsx"
@@ -706,7 +729,8 @@ tasks:
       - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
       - "apps/api/src/modules/payment/entities/payment.entity.ts"
       - "apps/api/src/database/migrations/20260824-001-digipay-upg-retail.ts"
-      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      # transferred 2026-09-03 to TASK-20260826-001 (stale; quote channel):
+      # "apps/api/src/modules/order/dto/create-order.dto.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (already stale vs 26-001):
       # "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/settings/settings.service.ts"
@@ -1402,10 +1426,12 @@ tasks:
       - "apps/web/src/app/retail/blog/tag/[slug]/page.tsx"
       - "apps/web/src/app/retail/blog/search/page.tsx"
       - "apps/web/src/app/retail/blog/author/[slug]/page.tsx"
-      - "apps/api/src/modules/blog/blog-extras.service.ts"
+      # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-12; related stock):
+      # "apps/api/src/modules/blog/blog-extras.service.ts"
       # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-12; public blog channel):
       # "apps/api/src/modules/blog/blog.controller.ts"
-      - "apps/api/src/modules/blog/blog.module.ts"
+      # transferred 2026-09-03 to TASK-20260826-001 (stale; related variants join):
+      # "apps/api/src/modules/blog/blog.module.ts"
       - "apps/api/src/modules/blog/entities/blog-media-asset.entity.ts"
       - "apps/api/src/modules/blog/blog-analytics-rate-limit.spec.ts"
       - "apps/api/src/database/migrations/20260810-005-customer-channel-classification.ts"
@@ -1621,7 +1647,8 @@ tasks:
       # transferred to TASK-20260817-001 2026-08-17 (stale heartbeat; sale-window checkout): "apps/api/src/modules/order/order.service.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (stale hb; stockCommittedAt):
       # "apps/api/src/modules/order/entities/order.entity.ts"
-      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      # transferred 2026-09-03 to TASK-20260826-001 (stale; quote channel):
+      # "apps/api/src/modules/order/dto/create-order.dto.ts"
       - "apps/api/src/modules/invoice/invoice.service.ts"
       - "apps/api/src/modules/invoice/entities/invoice.entity.ts"
       # transferred 2026-08-26 to TASK-20260826-001 (stale heartbeat; outbox producer): "apps/api/src/modules/affiliate/affiliate-postback.service.ts"

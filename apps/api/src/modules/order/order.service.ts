@@ -19,6 +19,7 @@ import { ProductService } from '../product/product.service';
 import { NotificationService } from '../notification/notification.service';
 import { SettingsService } from '../settings/settings.service';
 import { DiscountService } from '../discount/discount.service';
+import { requireDiscountChannel } from '../discount/discount-channel';
 import { PaymentService } from '../payment/payment.service';
 import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
@@ -94,13 +95,23 @@ export class OrderService {
     };
   }
 
-  async quoteDiscounts(customerId: string, subtotal: number, discountCode?: string, categoryIds: string[] = []) {
+  async quoteDiscounts(
+    customerId: string,
+    subtotal: number,
+    discountCode?: string,
+    categoryIds: string[] = [],
+    channel?: string,
+  ) {
+    const ch = requireDiscountChannel(channel);
     const stats = await this.customerPurchaseStats(customerId);
-    const tiered = await this.discounts.applyTiered(subtotal);
-    const side = await this.discounts.applySide(subtotal, { ...stats, categoryIds });
+    const emptyAuto = { percent: 0, discount: 0 };
+    const tiered = ch === 'WHOLESALE' ? await this.discounts.applyTiered(subtotal) : emptyAuto;
+    const side = ch === 'WHOLESALE'
+      ? await this.discounts.applySide(subtotal, { ...stats, categoryIds })
+      : emptyAuto;
     let code: { id?: string; code?: string; discount: number; percent?: number } | null = null;
     if (discountCode?.trim()) {
-      const validated = await this.discounts.validate(discountCode.trim(), subtotal);
+      const validated = await this.discounts.validate(discountCode.trim(), subtotal, ch);
       code = { id: validated.id, code: validated.code, discount: validated.discount };
     }
     // Stack: take best of (tiered+side) vs code alone? Spec says tiered is automatic without code,
@@ -677,7 +688,7 @@ export class OrderService {
     let usedDiscountCodeId: string | undefined;
     let notes = dto.notes;
     if (channel === 'WHOLESALE') {
-      const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
+      const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds, channel);
       discountAmount = quote.discount;
       usedDiscountCodeId = quote.code?.id;
       const discountNotes: string[] = [];
@@ -689,7 +700,7 @@ export class OrderService {
         notes = notes ? `${notes}\n${tag}` : tag;
       }
     } else if (dto.discountCode) {
-      const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds);
+      const quote = await this.quoteDiscounts(dto.customerId, subtotal, dto.discountCode, categoryIds, channel);
       discountAmount = quote.code?.discount ?? 0;
       usedDiscountCodeId = quote.code?.id;
       if (discountAmount > 0 && quote.code) {

@@ -243,6 +243,7 @@ export default function CheckoutPage() {
           customerId,
           subtotal: total,
           discountCode: appliedCode || undefined,
+          channel: 'WHOLESALE',
         })
         .then(setQuote)
         .catch(() => setQuote(null));

@@ -785,12 +785,15 @@ export class BlogController {
   }
 
   @Get('article/:id/related-products')
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
   async relatedProducts(@Param('id') id: string, @Query('channel') channel?: string) {
-    const post = await this.svc.findOneAdmin(id).catch(() => null);
-    if (!post || post.status !== 'PUBLISHED') return [];
-    return this.extras.resolveRelatedProducts(
-      post.relatedProductIds || [],
-      channel || post.channel
-    );
+    try {
+      const ch = requirePublicBlogChannel(channel);
+      const post = await this.svc.findOneAdmin(id).catch(() => null);
+      if (!post || post.status !== 'PUBLISHED') return [];
+      return await this.extras.resolveRelatedProducts(post.relatedProductIds || [], ch);
+    } catch (err) {
+      mapPublicBlogChannelError(err);
+    }
   }
 }

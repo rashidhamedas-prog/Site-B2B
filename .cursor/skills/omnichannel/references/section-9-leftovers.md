@@ -11,6 +11,9 @@ Source residual after PR #78 (`docs/reports/2026-09-01-omnichannel-admin-channel
 | Retry SLA | seconds in same blob + `*Chosen` | Unchosen keeps current backoff |
 | CMS public routes | require `channel` like products | Code isolation, not a numeric guess |
 | Blog public routes | require `channel` like products/CMS | Code isolation, not a numeric guess |
+| Public collections | require `channel` like products | Code isolation |
+| Discount validate | honor code `RETAIL\|WHOLESALE\|BOTH` | Code isolation |
+| Blog related products | `channelAvailability`, never `p.stock` | Code isolation |
 | Retention | days in same blob + `*Chosen` | Never delete PENDING/PROCESSING |
 
 Default display values are allowed. Changing worker/delivery without `*Chosen` is a defect.

@@ -37,7 +37,7 @@ function mediaUrl(url?: string) {
 
 async function fetchCollections(): Promise<Collection[]> {
   try {
-    const res = await fetch(`${getServerApiBase()}/collections?active=1`, {
+    const res = await fetch(`${getServerApiBase()}/collections?active=1&channel=RETAIL`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];

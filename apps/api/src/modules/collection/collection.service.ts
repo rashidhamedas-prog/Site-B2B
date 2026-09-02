@@ -10,27 +10,28 @@ export class CollectionService {
     private readonly repo: Repository<CollectionEntity>,
   ) {}
 
-  findAll(activeOnly = false, channel?: string) {
+  findAll(activeOnly = false, channel?: 'RETAIL' | 'WHOLESALE') {
     const where: any = activeOnly ? { isActive: true } : {};
-    if (channel) {
-      const c = String(channel).toUpperCase();
-      where.channel = c === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
-    }
+    if (channel) where.channel = channel;
     return this.repo.find({
       where,
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, channel?: 'RETAIL' | 'WHOLESALE') {
     const row = await this.repo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException('کالکشن یافت نشد');
+    if (!row || (channel && row.channel !== channel)) {
+      throw new NotFoundException('کالکشن یافت نشد');
+    }
     return row;
   }
 
-  async findBySlug(slug: string) {
+  async findBySlug(slug: string, channel?: 'RETAIL' | 'WHOLESALE') {
     const row = await this.repo.findOne({ where: { slug } });
-    if (!row) throw new NotFoundException('کالکشن یافت نشد');
+    if (!row || (channel && row.channel !== channel)) {
+      throw new NotFoundException('کالکشن یافت نشد');
+    }
     return row;
   }
 

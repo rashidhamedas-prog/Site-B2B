@@ -21,6 +21,8 @@ import { sanitizeBlogHtml } from './blog-sanitize';
 import { StorageService } from '../upload/storage.service';
 import { ProductEntity } from '../product/entities/product.entity';
 import { RedisService } from '../redis/redis.module';
+import { requirePublicBlogChannel } from './blog-public-channel';
+import { channelAvailability, isChannelVisible } from '../product/channel-product-projection';
 
 type Actor = { id?: string; role?: string; blogRole?: string | null };
 
@@ -413,30 +415,28 @@ export class BlogExtrasService {
 
   async resolveRelatedProducts(ids: string[], channel?: string) {
     if (!ids?.length) return [];
-    const where: any = { id: ids as any };
-    // TypeORM In
+    const ch = requirePublicBlogChannel(channel);
     const products = await this.productRepo
       .createQueryBuilder('p')
+      .leftJoinAndSelect('p.variants', 'v')
       .where('p.id IN (:...ids)', { ids })
       .andWhere('p.deletedAt IS NULL')
       .getMany();
     return products
-      .filter((p) => {
-        if (!channel) return true;
-        const ch = channel.toUpperCase();
-        if (ch === 'RETAIL') return p.showOnRetail !== false;
-        return p.showOnWholesale !== false;
-      })
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        sku: p.sku,
-        slug: p.slug,
-        price: channel === 'RETAIL' ? p.retailPrice : p.wholesalePrice,
-        image: Array.isArray(p.images) && p.images[0] ? p.images[0] : null,
-        stock: p.stock,
-        status: p.status,
-      }));
+      .filter((p) => isChannelVisible(p, ch))
+      .map((p) => {
+        const availability = channelAvailability(p, ch);
+        return {
+          id: p.id,
+          name: p.name,
+          sku: p.sku,
+          slug: p.slug,
+          price: ch === 'RETAIL' ? p.retailPrice : p.wholesalePrice,
+          image: Array.isArray(p.images) && p.images[0] ? p.images[0] : null,
+          stock: availability.stock,
+          status: p.status,
+        };
+      });
   }
 
   async searchProducts(q: string, channel?: string, limit = 12) {

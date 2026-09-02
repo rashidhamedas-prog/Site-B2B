@@ -210,6 +210,10 @@ export class QuoteDiscountsDto {
   @ArrayMaxSize(100)
   @IsUUID('4', { each: true })
   categoryIds?: string[];
+
+  @ApiProperty({ enum: ['WHOLESALE', 'RETAIL'] })
+  @IsIn(['WHOLESALE', 'RETAIL'])
+  channel: 'WHOLESALE' | 'RETAIL';
 }
 
 export class StartPaymentDto {

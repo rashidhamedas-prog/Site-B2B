@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { DiscountService } from './discount.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -57,8 +57,13 @@ export class DiscountController {
   }
 
   @Post('validate')
-  validate(@Body() body: { code: string; orderTotal: number }) {
-    return this.svc.validate(body.code, body.orderTotal);
+  validate(@Body() body: { code: string; orderTotal: number; channel?: string }) {
+    return this.svc.validate(body.code, body.orderTotal, body.channel).catch((err: unknown) => {
+      if (err instanceof Error && err.message === 'PUBLIC_CHANNEL_REQUIRED') {
+        throw new BadRequestException('کانال نامعتبر است');
+      }
+      throw err;
+    });
   }
 
   // ── Tiered ─────────────────────────────────────────────────
