@@ -466,10 +466,10 @@ tasks:
       implementer: "cursor:implementer-TASK-20260826-001"
       reviewer: "required-independent-before-done"
       security: "required-independent-before-done"
-    branch: "ai/TASK-20260826-001-channel-isolation"
+    branch: "ai/TASK-20260826-001-blog-authors"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-09-02T23:40:00Z"
+    heartbeat_at: "2026-09-02T23:55:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/channel-product-projection.ts"
@@ -537,6 +537,10 @@ tasks:
       # reclaimed 2026-09-03 from TASK-20260831-001 (stale hb 2026-08-31; collections channel)
       - "apps/web/src/components/retail/RetailHeader.tsx"
       - "docs/reports/2026-09-03-omnichannel-channel-isolation.md"
+      - "docs/reports/2026-09-03-omnichannel-blog-authors-channel.md"
+      # reclaimed 2026-09-03 from TASK-20260810-006 (stale hb 2026-08-12; author channel)
+      - "apps/web/src/app/retail/blog/author/[slug]/page.tsx"
+      - "apps/web/src/app/(wholesale)/blog/author/[slug]/page.tsx"
       - "apps/api/src/modules/cms/cms-sanitize.ts"
       - "apps/api/src/modules/cms/cms-sanitize.spec.ts"
       - "apps/web/src/components/cms/CmsPage.tsx"
@@ -1425,7 +1429,8 @@ tasks:
       - "apps/web/src/app/retail/blog/category/[slug]/page.tsx"
       - "apps/web/src/app/retail/blog/tag/[slug]/page.tsx"
       - "apps/web/src/app/retail/blog/search/page.tsx"
-      - "apps/web/src/app/retail/blog/author/[slug]/page.tsx"
+      # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-12; author channel):
+      # "apps/web/src/app/retail/blog/author/[slug]/page.tsx"
       # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-12; related stock):
       # "apps/api/src/modules/blog/blog-extras.service.ts"
       # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-12; public blog channel):

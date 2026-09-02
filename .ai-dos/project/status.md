@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-03 — **TASK-20260826-001** blog authors channel on `ai/TASK-20260826-001-blog-authors`: public author page requires RETAIL|WHOLESALE. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** channel isolation on `ai/TASK-20260826-001-channel-isolation`: public collections + discount validate + blog related stock. Admin tables have headers. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** public blog channel on `ai/TASK-20260826-001-blog-channel`: public blog requires RETAIL|WHOLESALE; missing/invalid is 400. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
 - Last verified: 2026-09-02 — **TASK-20260903-001** shipping admin session isolation on `ai/TASK-20260903-001-admin-empty-session`. Empty admin was shopper JWT 403, not missing data. Reviewer+Security still required.

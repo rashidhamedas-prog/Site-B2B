@@ -2,6 +2,19 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T00:55:00Z — TASK-20260826-001 public blog authors require channel
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Branch: `ai/TASK-20260826-001-blog-authors` from `edd42b4` in `D:/proje/Site B2B`.
+- CODE: `GET /blog/authors/:slug` requires RETAIL|WHOLESALE; posts filtered to that channel. Storefront pages send channel.
+- Reclaimed `apps/web/src/app/retail/blog/author/[slug]/page.tsx` from TASK-20260810-006 (stale hb 2026-08-12). Did not edit `lib/blog.ts`.
+- Also typed quote-discounts empty side so `apps/api` `tsc --noEmit` stays 0 (missed after isolation quote fix).
+- Gates (observed exit 0): `omnichannel-phase-acceptance.spec.ts`, `blog-public-channel.spec.ts`, `apps/web` `tsc --noEmit`. API tsc re-run after type fix.
+- Worker not wired. Connectors off.
+- Reviewer [بررسی فاز](7365e95b-e140-49d2-b546-7169f3da2bb8): PASS WITH CONDITIONS. Must-fix was a stale acceptance string after quote reformat — fixed; spec exit 0.
+- Security [بررسی امنیت](4ccfec49-43bf-4ca1-9ff5-e4d98bd582bf): PASS WITH CONDITIONS. Must-fix none. Optional: strip author.userId / full post rows from public payload (later).
+- Exact next: owner commit/PR of this slice only. Later CODE: empty auto-publish `*Chosen`; create-order session-channel bind. Owner-gated: live Telegram / canary / flags / soak. Do not Done.
+
 ## 2026-09-03T00:40:00Z — TASK-20260826-001 channel isolation implementing
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

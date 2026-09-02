@@ -14,7 +14,7 @@ interface Props {
 
 async function fetchAuthor(slug: string) {
   try {
-    const res = await fetch(`${API_URL}/blog/authors/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${API_URL}/blog/authors/${encodeURIComponent(slug)}?channel=RETAIL`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;

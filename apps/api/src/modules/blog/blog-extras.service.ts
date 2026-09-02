@@ -812,11 +812,12 @@ export class BlogExtrasService {
 
   // ── Authors public ────────────────────────────────────────
 
-  async getAuthorBySlug(slug: string) {
+  async getAuthorBySlug(slug: string, channel?: string) {
+    const ch = requirePublicBlogChannel(channel);
     const author = await this.authorRepo.findOne({ where: { slug, authorPageEnabled: true } });
     if (!author) throw new NotFoundException('نویسنده یافت نشد');
     const posts = await this.postRepo.find({
-      where: { authorId: author.id, status: 'PUBLISHED' },
+      where: { authorId: author.id, status: 'PUBLISHED', channel: ch },
       order: { publishedAt: 'DESC' },
       take: 24,
     });

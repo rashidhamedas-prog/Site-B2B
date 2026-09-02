@@ -14,6 +14,7 @@ Source residual after PR #78 (`docs/reports/2026-09-01-omnichannel-admin-channel
 | Public collections | require `channel` like products | Code isolation |
 | Discount validate | honor code `RETAIL\|WHOLESALE\|BOTH` | Code isolation |
 | Blog related products | `channelAvailability`, never `p.stock` | Code isolation |
+| Public blog authors | require `channel`; posts filtered | Code isolation |
 | Retention | days in same blob + `*Chosen` | Never delete PENDING/PROCESSING |
 
 Default display values are allowed. Changing worker/delivery without `*Chosen` is a defect.

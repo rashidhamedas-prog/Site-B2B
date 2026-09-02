@@ -63,10 +63,12 @@ assert(blogCtl.includes("postSeo(@Param('slug') slug: string, @Query('channel') 
 assert(collectionCtl.includes('resolvePublicProductChannel') && collectionCtl.includes('کانال نامعتبر است'), 'public collections require channel');
 assert(collectionSvc.includes('channel && row.channel !== channel'), 'collection slug/id match requested channel');
 assert(discountSvc.includes('requireDiscountChannel') && discountSvc.includes('discountAppliesToChannel'), 'discount validate is channel-scoped');
-assert(order.includes('requireDiscountChannel') && order.includes("ch === 'WHOLESALE' ? await this.discounts.applyTiered"), 'quote discounts skip wholesale automatics on retail');
+assert(order.includes('requireDiscountChannel') && order.includes('ch === \'WHOLESALE\'') && order.includes('applyTiered') && order.includes('applySide'), 'quote discounts skip wholesale automatics on retail');
 assert(discountCtl.includes('body.channel'), 'public discount validate accepts channel');
 assert(blogExtras.includes('channelAvailability') && !/stock:\s*p\.stock/.test(blogExtras), 'blog related products use channel stock');
 assert(blogCtl.includes('requirePublicBlogChannel(channel)') && blogCtl.includes('relatedProducts'), 'blog related products require channel');
+assert(blogCtl.includes('getAuthor(') && blogCtl.includes("authors/:slug") && blogCtl.includes('getAuthorBySlug(slug, channel)'), 'public author page requires channel');
+assert(blogExtras.includes('status: \'PUBLISHED\', channel: ch'), 'author posts are channel-scoped');
 assert(oosPolicy.includes('autoPublishEventTypesChosen') && oosPolicy.includes('effectiveWorkerRetentionDays'), '§9 leftovers stored with chosen flags');
 assert(!workerSrc.includes('effectiveWorkerRetrySlaSeconds') && !workerSrc.includes('effectiveWorkerRetentionDays'), 'worker is not wired to leftover settings');
 assert(adminOmni.includes('autoPublishEventTypes') && adminOmni.includes('outboxRetentionDays'), 'admin leftover settings');

@@ -104,11 +104,12 @@ export class OrderService {
   ) {
     const ch = requireDiscountChannel(channel);
     const stats = await this.customerPurchaseStats(customerId);
-    const emptyAuto = { percent: 0, discount: 0 };
-    const tiered = ch === 'WHOLESALE' ? await this.discounts.applyTiered(subtotal) : emptyAuto;
+    const tiered = ch === 'WHOLESALE'
+      ? await this.discounts.applyTiered(subtotal)
+      : { percent: 0, discount: 0 };
     const side = ch === 'WHOLESALE'
       ? await this.discounts.applySide(subtotal, { ...stats, categoryIds })
-      : emptyAuto;
+      : { percent: 0, discount: 0, type: undefined as string | undefined };
     let code: { id?: string; code?: string; discount: number; percent?: number } | null = null;
     if (discountCode?.trim()) {
       const validated = await this.discounts.validate(discountCode.trim(), subtotal, ch);

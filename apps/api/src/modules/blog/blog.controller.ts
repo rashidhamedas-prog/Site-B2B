@@ -751,8 +751,9 @@ export class BlogController {
   }
 
   @Get('authors/:slug')
-  getAuthor(@Param('slug') slug: string) {
-    return this.extras.getAuthorBySlug(slug);
+  @ApiQuery({ name: 'channel', required: true, enum: ['WHOLESALE', 'RETAIL'] })
+  getAuthor(@Param('slug') slug: string, @Query('channel') channel?: string) {
+    return this.extras.getAuthorBySlug(slug, channel).catch(mapPublicBlogChannelError);
   }
 
   @Get('article/:id/comments')
