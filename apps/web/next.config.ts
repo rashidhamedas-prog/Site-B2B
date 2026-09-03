@@ -64,6 +64,12 @@ const nextConfig: NextConfig = {
 
   // Security headers
   async headers() {
+    const longCache = [
+      { key: 'Cache-Control', value: 'public, max-age=2592000' },
+    ];
+    const immutableYear = [
+      { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+    ];
     return [
       {
         source: '/(.*)',
@@ -74,6 +80,17 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
+      },
+      { source: '/banners/:path*', headers: longCache },
+      { source: '/fonts/:path*', headers: immutableYear },
+      { source: '/logo-128.png', headers: longCache },
+      { source: '/logo-512.png', headers: longCache },
+      { source: '/og-retail.jpg', headers: longCache },
+      { source: '/og-wholesale.jpg', headers: longCache },
+      { source: '/favicon.svg', headers: immutableYear },
+      {
+        source: '/robots.txt',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=3600' }],
       },
     ];
   },

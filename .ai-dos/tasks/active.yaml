@@ -1,5 +1,50 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260903-004"
+    title: "GSC dual-site SEO settings + mobile LCP for retail and wholesale"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260903-004"
+    roles:
+      architect: "cursor:implementer-TASK-20260903-004"
+      implementer: "cursor:implementer-TASK-20260903-004"
+      reviewer: "self-review-seo-no-mass-redirect"
+      security: "self-review-no-auth-no-secrets"
+    branch: "ai/TASK-20260903-004-gsc-mobile-speed"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-03T12:50:00Z"
+    heartbeat_at: "2026-09-03T14:45:00Z"
+    depends_on: []
+    file_claims:
+      - "nginx/nginx.conf"
+      - "apps/web/next.config.ts"
+      - "apps/web/src/components/layout/Header.tsx"
+      - "apps/web/src/lib/jsonld-url.ts"
+      - "apps/web/src/lib/jsonld-url.spec.ts"
+      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01.webp"
+      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01-mobile.webp"
+      - "SEO-IMPLEMENTATION-REPORTS/2026-09-03-GSC-DUAL-SITE-AUDIT.md"
+      - "docs/reports/2026-09-03-gsc-dual-site-audit.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner logged into GSC for a full dual-site SEO + mobile speed pass.
+      Reclaimed nginx.conf from TASK-20260824-002 and TASK-20260829-001
+      (heartbeats 2026-08-24 / 2026-08-30, stale >24h). Reclaimed
+      next.config.ts from TASK-20260830-002 (hb 2026-08-31). Reclaimed
+      Header.tsx from TASK-20260831-001 (hb 2026-08-31). Reclaimed
+      jsonld-url* from TASK-20260831-003 (hb 2026-08-31). Do not edit
+      logo-128.png (TASK-20260903-002 same-day). Do not Validate Fix
+      GSC redirect/noindex/404 buckets. Do not invent return/shipping
+      schema. Do not mass-redirect leftover WordPress URLs.
+    acceptance_criteria:
+      - "Static banners/fonts/logo responses no longer advertise Cache-Control max-age=0"
+      - "Wholesale header logo does not preload ahead of the LCP hero"
+      - "Retail JSON-LD product image URLs use www.poshaktaranom.ir when the file is on a Taranom host"
+      - "Wholesale mobile LCP hero webp is materially smaller than the live 86KB file"
+      - "No Validate Fix on correct noindex/redirect/404 groups"
   - id: "TASK-20260903-005"
     title: "Customer account panels + password set/forgot for retail and wholesale"
     status: "in_progress"
@@ -369,7 +414,8 @@ tasks:
       # "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/web/src/components/admin/AdminSidebar.tsx"
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
-      - "apps/web/src/components/layout/Header.tsx"
+      # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-31; logo LCP preload):
+      # "apps/web/src/components/layout/Header.tsx"
       - "apps/web/src/components/layout/MobileMenu.tsx"
       # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-31; collections channel):
       # "apps/web/src/components/retail/RetailHeader.tsx"
@@ -429,8 +475,9 @@ tasks:
       - "apps/web/src/lib/blog-sitemap.spec.ts"
       - "apps/web/src/lib/cms/defaults.ts"
       - "apps/web/src/components/shared/JsonLd.tsx"
-      - "apps/web/src/lib/jsonld-url.ts"
-      - "apps/web/src/lib/jsonld-url.spec.ts"
+      # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-31; retail media host):
+      # "apps/web/src/lib/jsonld-url.ts"
+      # "apps/web/src/lib/jsonld-url.spec.ts"
       - "SEO-IMPLEMENTATION-REPORTS/2026-08-31-GSC-DUAL-SITE-AUDIT.md"
       - "docs/reports/2026-08-31-gsc-dual-site-audit.md"
       - "docs/WORKLOG.md"
@@ -483,7 +530,8 @@ tasks:
       # transferred 2026-08-31 to TASK-20260831-001: "apps/web/src/components/category/category-search-params.ts"
       # transferred 2026-08-31 to TASK-20260831-001: "apps/web/src/components/category/category-search-params.spec.ts"
       # transferred 2026-08-31 to TASK-20260831-001: "apps/web/src/middleware.ts"
-      - "apps/web/next.config.ts"
+      # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-31; static Cache-Control):
+      # "apps/web/next.config.ts"
     notes: |
       Cloudflare Full (strict) + Cache Rule on both zones. .ir apex/www
       DNS only after Iran timeout. Wholesale home ISR shipped e3d02bb.
@@ -570,7 +618,8 @@ tasks:
     heartbeat_at: "2026-08-30T16:05:00Z"
     depends_on: []
     file_claims:
-      - "nginx/nginx.conf"
+      # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-30; static cache + LCP):
+      # "nginx/nginx.conf"
       - "apps/web/src/lib/channel.ts"
       - "apps/web/src/app/v1/torob_api/v3/products/route.ts"
       - "apps/api/src/modules/torob/torob.controller.ts"
@@ -947,7 +996,8 @@ tasks:
       - "TASK-20260823-002"
       - "TASK-20260824-001"
     file_claims:
-      - "nginx/nginx.conf"
+      # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-24; static cache + LCP):
+      # "nginx/nginx.conf"
       - "apps/web/src/lib/sitemap-xml.ts"
       # transferred 2026-09-03 to TASK-20260903-005 (stale hb 2026-08-24; unused OTP clone):
       # "apps/web/src/components/retail/RetailOtpLogin.tsx"

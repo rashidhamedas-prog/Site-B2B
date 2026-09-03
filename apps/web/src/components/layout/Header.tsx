@@ -77,6 +77,10 @@ export function Header() {
             <img
               src={logoUrl}
               alt={`لوگوی ${brandName}`}
+              width={48}
+              height={48}
+              decoding="async"
+              fetchPriority="low"
               className="h-12 w-12 object-contain transition-transform duration-250 group-hover:scale-[1.03]"
             />
             <div className="leading-tight">

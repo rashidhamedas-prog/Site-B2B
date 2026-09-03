@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T13:00:00Z — TASK-20260903-004 GSC audit + mobile LCP
+
+- Task / owner: TASK-20260903-004 / cursor:implementer-TASK-20260903-004
+- Branch: `ai/TASK-20260903-004-gsc-mobile-speed` in `D:/proje/Site B2B`.
+- Objective: dual-site SEO review + mobile LCP for `.ir` and `.com`.
+- Decisions: do not Validate Fix redirect/noindex/404; do not invent return/shipping schema; reclaim stale nginx/next.config/Header/jsonld-url. GSC UI clicks NOT RUN (Cursor browser MCP did not attach). Logo PNGs not edited (TASK-20260903-002).
+- Changed: nginx static Cache-Control hide; next.config asset headers; wholesale header fetchPriority=low; jsonld host rebase + spec; wholesale-01(-mobile).webp shrink 86KB→38KB / 97KB→60KB; reports.
+- Tests: `npx tsx apps/web/src/lib/jsonld-url.spec.ts` → ok. Live Node probes of both homes/sitemaps/robots/Sara media. nginx -t after deploy.
+- Risks: Windows Schannel still fails www.ir TLS (Node/VPS OK). Sara original still 3.7MB JPEG. CF managed robots prepend on .com. Field CWV 28d lag.
+- Exact next: push/merge/deploy; owner rechecks www sitemap + one index request for 200 homes; Merchant Validate Fix image after recrawl.
+
 ## 2026-09-03T13:50:00Z — TASK-20260903-005 customer account + password
 
 - Task / owner: TASK-20260903-005 / cursor:implementer-TASK-20260903-005
