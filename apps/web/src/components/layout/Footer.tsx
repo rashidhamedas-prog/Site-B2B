@@ -20,6 +20,10 @@ export function Footer() {
   const brandName = chromeStr(chrome, 'brandName', 'پوشاک ترنم');
   const brandTagline = chromeStr(chrome, 'brandTagline', 'تولیدی مانتو زنانه مشهد');
   const logoUrl = chromeStr(chrome, 'logoUrl', '/logo-128.png');
+  const logoHref =
+    logoUrl.startsWith('/') && !logoUrl.startsWith('//') && !/[\s"'()\\]/.test(logoUrl)
+      ? logoUrl
+      : '/logo-128.png';
   const blurb = chromeStr(
     chrome,
     'blurb',
@@ -57,8 +61,12 @@ export function Footer() {
           <div className="lg:col-span-1">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/95 p-1">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={logoUrl} alt={`لوگوی ${brandName}`} className="h-full w-full object-contain" />
+                <span
+                  role="img"
+                  aria-label={`لوگوی ${brandName}`}
+                  className="h-full w-full bg-contain bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url("${logoHref}")` }}
+                />
               </div>
               <div>
                 <div className="text-base font-bold text-white">{brandName}</div>

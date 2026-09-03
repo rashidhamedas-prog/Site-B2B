@@ -82,6 +82,7 @@ tasks:
       - "nginx/nginx.conf"
       - "apps/web/next.config.ts"
       - "apps/web/src/components/layout/Header.tsx"
+      - "apps/web/src/components/layout/Footer.tsx"
       - "apps/web/src/lib/jsonld-url.ts"
       - "apps/web/src/lib/jsonld-url.spec.ts"
       - "apps/web/public/banners/hero-product-2026-v2/wholesale-01.webp"
