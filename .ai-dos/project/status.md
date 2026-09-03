@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-03 — **TASK-20260826-001** live VPS `0970811`: channel isolation + blog authors + logo hotfix. Public collections/authors without channel → 400. Connectors unset. Canary send / soak / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** blog authors channel on `ai/TASK-20260826-001-blog-authors`: public author page requires RETAIL|WHOLESALE. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** channel isolation on `ai/TASK-20260826-001-channel-isolation`: public collections + discount validate + blog related stock. Admin tables have headers. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** public blog channel on `ai/TASK-20260826-001-blog-channel`: public blog requires RETAIL|WHOLESALE; missing/invalid is 400. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.

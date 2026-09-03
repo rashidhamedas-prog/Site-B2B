@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T00:40:00Z — TASK-20260826-001 live deploy 0970811
+
+- Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
+- Merged `ai/TASK-20260826-001-blog-authors` + logo hotfix onto `origin/master` at `0970811` (no force-push).
+- VPS git fetch was broken (HTTPS, no creds). Added read-only deploy key `taranom-vps-deploy-ro` on `Site-B2B`; origin is `git@github.com:rashidhamedas-prog/Site-B2B.git`. Fetch OK.
+- Deploy: `TARANOM_DEPLOY_BUILD=1` `scripts/auto-deploy.sh` completed `0970811`. API `/v1/health` 200. `GET /collections` and `GET /blog/authors/:slug` without channel → 400. `GET /collections?channel=RETAIL` → 200.
+- `OMNICHANNEL_CONNECTORS_ENABLED` / `OMNICHANNEL_AUTO_PUBLISH` unset. Do not Done.
+- Exact next: later CODE empty auto-publish `*Chosen`; create-order session-channel bind. Owner-gated: live Telegram / canary / flags / soak.
+
 ## 2026-09-03T00:55:00Z — TASK-20260826-001 public blog authors require channel
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001
