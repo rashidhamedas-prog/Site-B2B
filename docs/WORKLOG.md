@@ -9,7 +9,8 @@
 ## 2026-09-03 — کنسول جستجو و LCP موبایل
 
 - هیرو/فونت دیگر `max-age=0` نمی‌گیرند (nginx `proxy_hide_header` + کش بنر/فونت).
-- لوگوی هدر عمده `fetchPriority=low` است تا با LCP هیرو رقابت نکند.
+- کانتینر nginx باید recreate شود تا `^~ /fonts/` روی فایل جدید bind شود؛ وگرنه regex `woff2` هدر ۳۰روزه اضافه می‌کند.
+- لوگوی هدر عمده `loading=lazy` + `fetchPriority=low` است تا React آن را جلوتر از هیرو preload نکند.
 - JSON-LD تصویر محصول تکی روی `www.poshaktaranom.ir` می‌ماند نه `.com`.
 - اسلاید اول عمده موبایل ۸۶→۳۸ کیلوبایت. روی کنسول امروز کلیک Validate Fix زده نشد.
 

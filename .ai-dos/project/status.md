@@ -1,7 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-03 — **TASK-20260903-004** follow-up: Header `loading=lazy`; nginx must `--force-recreate` so `^~ /fonts/` bind inode applies. Live `73f31eb` hero 38KB; GSC UI clicks NOT RUN.
 - Last verified: 2026-09-03 — **TASK-20260903-006** live `5a23424`: JWT revoke + portal redirect + Persian OTP + register hint ۸. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.
-- Last verified: 2026-09-03 — **TASK-20260903-004** shipping on `ai/TASK-20260903-004-gsc-mobile-speed`: static max-age=0 hide + wholesale logo fetchPriority low + JSON-LD host rebase + hero 86KB→38KB. GSC UI clicks NOT RUN (browser MCP down).
 - Last verified: 2026-09-03 — **TASK-20260903-005** live `6dde78f`: customer panels + password recovery. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.
 - Last verified: 2026-09-03 — **TASK-20260903-003** live `007eee9`: DigiPay admin connection probe + UPG 4-field gate. Owner must replace DigiPay-rejected client credentials.
 - Last verified: 2026-09-03 — **TASK-20260826-001** live VPS `0970811`: channel isolation + blog authors + logo hotfix. Public collections/authors without channel → 400. Connectors unset. Canary send / soak / Security still **NOT DONE**.

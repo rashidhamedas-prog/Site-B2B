@@ -80,6 +80,7 @@ export function Header() {
               width={48}
               height={48}
               decoding="async"
+              loading="lazy"
               fetchPriority="low"
               className="h-12 w-12 object-contain transition-transform duration-250 group-hover:scale-[1.03]"
             />

@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T16:00:00Z — TASK-20260903-004 live ship + leftover LCP
+
+- Task / owner: TASK-20260903-004 / cursor:implementer-TASK-20260903-004
+- GitHub: `https://github.com/rashidhamedas-prog/Site-B2B` — LCP commit `73f31eb` is on `master` under later `5a23424`.
+- Live: wholesale mobile hero 37674B; banner Cache-Control 30d without max-age=0; web image built at 73f31eb. Logo still preloaded first (React img preload). Running nginx still had Sep 1 inode (`location /fonts/` not `^~`), so woff2 hit regex and got a second max-age=2592000.
+- Follow-up CODE: Header `loading=lazy`; recreate nginx so host `nginx.conf` inode is picked up.
+- GSC UI clicks still NOT RUN.
+- Exact next: push this follow-up, deploy with `TARANOM_DEPLOY_BUILD=1`, `docker compose up -d --force-recreate --no-deps nginx`.
+
 ## 2026-09-03T19:50:00Z — TASK-20260903-006 reviews complete
 
 - Task / owner: TASK-20260903-006 / cursor:implementer-TASK-20260903-006
