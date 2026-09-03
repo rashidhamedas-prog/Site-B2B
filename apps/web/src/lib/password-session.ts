@@ -1,3 +1,4 @@
+import { cookieScopeFromPurpose } from './admin-session';
 import { setToken } from './auth';
 
 type PasswordSession = {
@@ -9,6 +10,6 @@ type PasswordSession = {
 /** Keep the current tab signed in after password change/set/reset. */
 export function applyPasswordSession(res: PasswordSession) {
   if (!res.accessToken) return;
-  const scope = res.purpose === 'admin' ? 'admin' : 'storefront';
+  const scope = cookieScopeFromPurpose(res.purpose);
   setToken(res.accessToken, res.role || 'CUSTOMER', scope);
 }

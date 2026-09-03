@@ -1,10 +1,11 @@
-import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { isWholesalePurpose } from '../auth/staff-access';
 import { DashboardService, ReportPeriod } from './dashboard.service';
 import { UserEntity } from '../auth/entities/user.entity';
 
@@ -28,7 +29,10 @@ export class DashboardController {
   @Get('mine')
   @Roles('CUSTOMER')
   @ApiOperation({ summary: 'آمار زنده داشبورد مشتری' })
-  async getMine(@Request() req: Express.Request & { user: { sub: string } }) {
+  async getMine(@Request() req: Express.Request & { user: { sub: string; purpose?: string } }) {
+    if (!isWholesalePurpose(req.user.purpose)) {
+      throw new ForbiddenException('داشبورد عمده فقط با ورود پنل مشتری در دسترس است');
+    }
     const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
     if (!user?.customerId) {
       return {

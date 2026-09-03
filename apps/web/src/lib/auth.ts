@@ -1,13 +1,20 @@
 import {
   ADMIN_ROLE_KEY,
   ADMIN_TOKEN_KEY,
+  RETAIL_ROLE_KEY,
+  RETAIL_TOKEN_KEY,
   STOREFRONT_ROLE_KEY,
   STOREFRONT_TOKEN_KEY,
+  WHOLESALE_ROLE_KEY,
+  WHOLESALE_TOKEN_KEY,
+  cookieScopeFromPurpose,
   isAdminPurposeToken,
+  shopperScopeFromLocation,
+  type AuthCookieScope,
 } from './admin-session';
 import { isStaffRole } from './staff-access';
 
-export type AuthCookieScope = 'admin' | 'storefront';
+export type { AuthCookieScope };
 
 function isBrowserAdminPath(): boolean {
   return typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
@@ -22,19 +29,32 @@ function clearCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0`;
 }
 
+function currentShopperScope(): Exclude<AuthCookieScope, 'admin'> {
+  if (typeof window === 'undefined') return 'wholesale';
+  return shopperScopeFromLocation(window.location.pathname, window.location.hostname);
+}
+
+function shopperKeys(scope: Exclude<AuthCookieScope, 'admin'>) {
+  if (scope === 'retail') {
+    return { token: RETAIL_TOKEN_KEY, role: RETAIL_ROLE_KEY };
+  }
+  return { token: WHOLESALE_TOKEN_KEY, role: WHOLESALE_ROLE_KEY };
+}
+
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   if (isBrowserAdminPath()) {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     return isAdminPurposeToken(token) ? token : null;
   }
-  return localStorage.getItem(STOREFRONT_TOKEN_KEY);
+  const keys = shopperKeys(currentShopperScope());
+  return localStorage.getItem(keys.token) || localStorage.getItem(STOREFRONT_TOKEN_KEY);
 }
 
-export function setToken(token: string, role: string, scope?: AuthCookieScope) {
-  // Never infer admin from role. A shopper JWT can still say ADMIN in old
-  // clients or if OTP regresses; that must stay in storefront keys.
-  const resolved: AuthCookieScope = scope === 'admin' ? 'admin' : 'storefront';
+export function setToken(token: string, role: string, scope?: AuthCookieScope | 'storefront') {
+  const resolved: AuthCookieScope = scope === 'admin' || scope === 'retail' || scope === 'wholesale'
+    ? scope
+    : cookieScopeFromPurpose(scope);
   const maxAge = 7 * 24 * 60 * 60;
   if (resolved === 'admin') {
     localStorage.setItem(ADMIN_TOKEN_KEY, token);
@@ -43,10 +63,11 @@ export function setToken(token: string, role: string, scope?: AuthCookieScope) {
     writeCookie(ADMIN_ROLE_KEY, role, maxAge);
     return;
   }
-  localStorage.setItem(STOREFRONT_TOKEN_KEY, token);
-  localStorage.setItem(STOREFRONT_ROLE_KEY, role);
-  writeCookie(STOREFRONT_TOKEN_KEY, token, maxAge);
-  writeCookie(STOREFRONT_ROLE_KEY, role, maxAge);
+  const keys = shopperKeys(resolved);
+  localStorage.setItem(keys.token, token);
+  localStorage.setItem(keys.role, role);
+  writeCookie(keys.token, token, maxAge);
+  writeCookie(keys.role, role, maxAge);
 }
 
 export function clearToken() {
@@ -57,6 +78,11 @@ export function clearToken() {
     clearCookie(ADMIN_ROLE_KEY);
     return;
   }
+  const keys = shopperKeys(currentShopperScope());
+  localStorage.removeItem(keys.token);
+  localStorage.removeItem(keys.role);
+  clearCookie(keys.token);
+  clearCookie(keys.role);
   localStorage.removeItem(STOREFRONT_TOKEN_KEY);
   localStorage.removeItem(STOREFRONT_ROLE_KEY);
   clearCookie(STOREFRONT_TOKEN_KEY);
@@ -68,7 +94,8 @@ export function getRole(): string | null {
   if (isBrowserAdminPath()) {
     return localStorage.getItem(ADMIN_ROLE_KEY);
   }
-  return localStorage.getItem(STOREFRONT_ROLE_KEY);
+  const keys = shopperKeys(currentShopperScope());
+  return localStorage.getItem(keys.role) || localStorage.getItem(STOREFRONT_ROLE_KEY);
 }
 
 export function isAdmin(): boolean {

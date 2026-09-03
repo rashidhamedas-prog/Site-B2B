@@ -91,6 +91,15 @@ assert(
 assert(
   canSetPasswordWithoutCurrent({
     dbRole: 'CUSTOMER',
+    purpose: 'retail',
+    hasOtpSession: true,
+    isStaffRole: isStaff,
+  }) === true,
+  'retail otp shopper can set',
+);
+assert(
+  canSetPasswordWithoutCurrent({
+    dbRole: 'CUSTOMER',
     purpose: 'storefront',
     hasOtpSession: false,
     isStaffRole: isStaff,

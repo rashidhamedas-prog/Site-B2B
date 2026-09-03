@@ -56,7 +56,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'تأیید کد و تعیین رمز جدید مشتری' })
   resetPassword(@Body() body: ResetPasswordDto) {
-    return this.authService.resetPassword(body.phone, body.code, body.password);
+    return this.authService.resetPassword(body.phone, body.code, body.password, body.purpose);
   }
 
   @Get('me/profile')

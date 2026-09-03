@@ -14,10 +14,10 @@ export class LoginDto {
   @MinLength(6)
   password: string;
 
-  /** admin = staff-only; portal/omitted = any active account */
-  @ApiPropertyOptional({ enum: ['admin', 'portal'] })
+  /** admin = staff-only; retail = .ir account; wholesale/portal/omitted = .com portal */
+  @ApiPropertyOptional({ enum: ['admin', 'portal', 'retail', 'wholesale'] })
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase() : value))
-  @IsIn(['admin', 'portal'])
-  purpose?: 'admin' | 'portal';
+  @IsIn(['admin', 'portal', 'retail', 'wholesale'])
+  purpose?: 'admin' | 'portal' | 'retail' | 'wholesale';
 }

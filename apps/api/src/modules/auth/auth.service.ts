@@ -32,6 +32,7 @@ import {
   resolveAuthPurpose,
   roleAfterCustomerLink,
 } from './staff-access';
+import { canEnterRetailShopper, wholesalePortalDenial } from './shopper-channel';
 import {
   normalizeAddressList,
   removeAddress,
@@ -240,7 +241,7 @@ export class AuthService {
       );
     }
 
-    if (purpose === 'storefront') {
+    if (purpose === 'wholesale' || purpose === 'retail') {
       if (isStaffRole(user.role)) {
         await this.ensureShopperCustomer(user);
         user = await this.userRepo.findOneOrFail({ where: { id: user.id } });
@@ -249,12 +250,13 @@ export class AuthService {
           ? await this.customerRepo.findOne({ where: { id: user.customerId } })
           : null;
 
-        if (!user.isActive || !customer || customer.status !== 'ACTIVE') {
-          if (customer?.status === 'PENDING') {
-            throw new UnauthorizedException(
-              'حساب شما هنوز تأیید نشده است. منتظر تأیید ادمین باشید.',
-            );
+        if (purpose === 'wholesale') {
+          const denial = wholesalePortalDenial(customer);
+          if (denial) throw new UnauthorizedException(denial);
+          if (!user.isActive) {
+            throw new UnauthorizedException('حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.');
           }
+        } else if (!canEnterRetailShopper(customer)) {
           throw new UnauthorizedException(
             'حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.',
           );
@@ -262,6 +264,10 @@ export class AuthService {
       }
     } else if (!user.isActive) {
       throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    }
+
+    if (purpose === 'retail' && !isStaffRole(user.role) && !user.isActive) {
+      user.isActive = true;
     }
 
     user.lastLoginAt = new Date();
@@ -457,7 +463,7 @@ export class AuthService {
     return res;
   }
 
-  async resetPassword(rawPhone: string, code: string, newPassword: string) {
+  async resetPassword(rawPhone: string, code: string, newPassword: string, requestedPurpose?: string) {
     const phone = normalizePhone(rawPhone);
     const policyError = validateNewPassword(newPassword, phone);
     if (policyError) throw new BadRequestException(policyError);
@@ -497,7 +503,7 @@ export class AuthService {
     return {
       message: 'رمز عبور با موفقیت تغییر یافت',
       canLogin: true,
-      ...this.issueSession(user, 'storefront'),
+      ...this.issueSession(user, requestedPurpose || 'wholesale'),
     };
   }
 
@@ -654,16 +660,12 @@ export class AuthService {
           ownerName: customer.ownerName || displayName,
         });
         customer.status = 'ACTIVE';
-      } else if (customer.status !== 'ACTIVE') {
-        throw new UnauthorizedException(
-          customer.status === 'PENDING'
-            ? 'حساب عمده شما هنوز تأیید نشده است. منتظر تأیید ادمین باشید.'
-            : 'حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.',
-        );
+      } else if (customer.status === 'BLOCKED' || customer.status === 'SUSPENDED') {
+        throw new UnauthorizedException('حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.');
       }
 
       const otpPasswordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 10);
-      const allowLogin = customer!.status === 'ACTIVE';
+      const allowLogin = canEnterRetailShopper(customer) || isStaffRole(user?.role);
 
       if (user) {
         if (user.deletedAt) await userRepo.restore(user.id);
@@ -698,28 +700,14 @@ export class AuthService {
       if (!customerFinal || customerFinal.status === 'BLOCKED' || customerFinal.status === 'SUSPENDED') {
         throw new UnauthorizedException('حساب مشتری شما مسدود است. با پشتیبانی تماس بگیرید.');
       }
-    } else if (!customerFinal || customerFinal.status !== 'ACTIVE' || !user.isActive) {
-      throw new UnauthorizedException(
-        customerFinal?.status === 'PENDING'
-          ? 'حساب شما هنوز تأیید نشده است. منتظر تأیید ادمین باشید.'
-          : 'حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.',
-      );
+    } else if (!canEnterRetailShopper(customerFinal)) {
+      throw new UnauthorizedException('حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.');
     }
 
-    const token = this.jwtService.sign({
-      sub: user.id,
-      phone: user.phone,
-      role: 'CUSTOMER',
-      customerId: user.customerId,
-      purpose: 'storefront',
-    });
     await this.otpService.markVerifiedSession(user.id);
     return {
-      accessToken: token,
-      role: 'CUSTOMER',
-      customerId: user.customerId,
+      ...this.issueSession(user, 'retail'),
       channel: 'RETAIL',
-      purpose: 'storefront',
     };
   }
 

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { canEnterAdmin, readAdminGateCookies } from '@/lib/admin-session';
+import { canEnterAdmin, readAdminGateCookies, readPortalGateCookies } from '@/lib/admin-session';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
+import { panelHostLockRedirect } from '@/lib/panel-host-lock';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
 
 /** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
@@ -108,6 +109,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 301);
   }
 
+  const hostLock = panelHostLockRedirect({
+    host: request.headers.get('host'),
+    pathname,
+    search: request.nextUrl.search,
+  });
+  if (hostLock) {
+    return NextResponse.redirect(new URL(`${hostLock.pathname}${hostLock.search}`, hostLock.origin));
+  }
+
   // Product slug aliases are resolved in the PDP (SKU/legacy map + seo_redirects)
   // so middleware cannot invert a later admin slug change back to an old SKU.
 
@@ -167,10 +177,10 @@ export function middleware(request: NextRequest) {
   const adminSession = isAdminRoute ? readAdminGateCookies(request.cookies) : null;
   const token = isAdminRoute
     ? adminSession?.token
-    : request.cookies.get('taranom_token')?.value;
+    : readPortalGateCookies(request.cookies).token;
   const role = isAdminRoute
     ? adminSession?.role
-    : request.cookies.get('taranom_role')?.value;
+    : readPortalGateCookies(request.cookies).role;
 
   if (!token) {
     const loginUrl = isAdminRoute

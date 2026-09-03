@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Menu, X, ShoppingCart } from 'lucide-react';
 import {
-  LayoutDashboard, FileText, CreditCard, User, CalendarClock, Lock, Bell,
+  LayoutDashboard, FileText, CreditCard, User, CalendarClock, Lock,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
@@ -17,7 +17,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/dashboard/installments': 'اقساط',
   '/portal/dashboard/profile': 'پروفایل',
   '/portal/dashboard/security': 'امنیت و رمز',
-  '/portal/dashboard/notifications': 'اعلان‌ها',
 };
 
 const mobileNav = [
@@ -28,7 +27,6 @@ const mobileNav = [
   { href: '/portal/dashboard/installments', icon: CalendarClock, label: 'اقساط' },
   { href: '/portal/dashboard/profile', icon: User, label: 'پروفایل' },
   { href: '/portal/dashboard/security', icon: Lock, label: 'امنیت' },
-  { href: '/portal/dashboard/notifications', icon: Bell, label: 'اعلان‌ها' },
 ];
 
 export function PortalHeader() {

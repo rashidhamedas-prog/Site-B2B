@@ -4,11 +4,15 @@ import {
   ADMIN_TOKEN_KEY,
   STOREFRONT_ROLE_KEY,
   STOREFRONT_TOKEN_KEY,
+  WHOLESALE_TOKEN_KEY,
   canEnterAdmin,
+  cookieScopeFromPurpose,
   isAdminAuthFailureMessage,
   isAdminPurposeToken,
   readAdminGateCookies,
   readJwtPurpose,
+  readPortalGateCookies,
+  shopperScopeFromLocation,
 } from './admin-session';
 
 function cookieBag(map: Record<string, string>) {
@@ -66,5 +70,30 @@ assert.equal(canEnterAdmin(adminJwt, null), true, 'JWT role is enough');
 assert.equal(canEnterAdmin(shopperJwt, 'ADMIN'), false, 'cookie ADMIN cannot launder shopper JWT');
 assert.equal(canEnterAdmin(legacyAdminJwt, 'ADMIN'), false);
 assert.equal(canEnterAdmin(adminJwt, 'CUSTOMER'), true, 'admin JWT wins over stale cookie role');
+
+assert.equal(cookieScopeFromPurpose('admin'), 'admin');
+assert.equal(cookieScopeFromPurpose('retail'), 'retail');
+assert.equal(cookieScopeFromPurpose('portal'), 'wholesale');
+assert.equal(cookieScopeFromPurpose('storefront'), 'wholesale');
+assert.equal(shopperScopeFromLocation('/portal/dashboard', 'localhost'), 'wholesale');
+assert.equal(shopperScopeFromLocation('/account', 'localhost'), 'retail');
+assert.equal(shopperScopeFromLocation('/retail/checkout', 'localhost'), 'retail');
+assert.equal(shopperScopeFromLocation('/checkout', 'www.poshaktaranom.ir'), 'retail');
+assert.equal(shopperScopeFromLocation('/checkout', 'poshaktaranom.com'), 'wholesale');
+
+const portalCookies = readPortalGateCookies(
+  cookieBag({
+    [WHOLESALE_TOKEN_KEY]: 'wholesale-jwt',
+    [STOREFRONT_TOKEN_KEY]: 'legacy-jwt',
+  }),
+);
+assert.equal(portalCookies.token, 'wholesale-jwt', 'dedicated wholesale cookie wins');
+
+const legacyPortal = readPortalGateCookies(
+  cookieBag({
+    [STOREFRONT_TOKEN_KEY]: 'legacy-jwt',
+  }),
+);
+assert.equal(legacyPortal.token, 'legacy-jwt', 'legacy shopper cookie still opens portal');
 
 console.log('admin-session.spec.ts ok');

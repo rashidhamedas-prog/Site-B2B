@@ -68,10 +68,30 @@ export function roleAfterCustomerLink(currentRole: string | null | undefined): s
   return isStaffRole(currentRole) ? currentRole : 'CUSTOMER';
 }
 
-export type AuthSessionPurpose = 'admin' | 'storefront';
+export type AuthSessionPurpose = 'admin' | 'retail' | 'wholesale';
 
-export function resolveAuthPurpose(requested?: 'admin' | 'portal' | string | null): AuthSessionPurpose {
-  return requested === 'admin' ? 'admin' : 'storefront';
+export function isShopperPurpose(purpose?: string | null): boolean {
+  return purpose === 'retail' || purpose === 'wholesale' || purpose === 'storefront';
+}
+
+export function isWholesalePurpose(purpose?: string | null): boolean {
+  return purpose === 'wholesale' || purpose === 'portal' || purpose === 'storefront';
+}
+
+export function isRetailPurpose(purpose?: string | null): boolean {
+  return purpose === 'retail';
+}
+
+/**
+ * Login omitted purpose = wholesale (portal form).
+ * Legacy JWT `storefront` validates as wholesale so existing portal sessions keep working.
+ * Retail OTP/login must send `retail` explicitly.
+ */
+export function resolveAuthPurpose(requested?: 'admin' | 'portal' | 'retail' | 'wholesale' | string | null): AuthSessionPurpose {
+  const p = String(requested || '').toLowerCase();
+  if (p === 'admin') return 'admin';
+  if (p === 'retail') return 'retail';
+  return 'wholesale';
 }
 
 /** Shopper session always acts as CUSTOMER so staff can buy without admin API access. */

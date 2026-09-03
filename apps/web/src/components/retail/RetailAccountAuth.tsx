@@ -19,7 +19,7 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
   const [error, setError] = useState('');
 
   const finish = (token: string, role: string) => {
-    setToken(token, role, 'storefront');
+    setToken(token, role, 'retail');
     window.location.href = safeAccountRedirect(redirect);
   };
 
@@ -67,7 +67,7 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
       const res = await apiClient.post<{ accessToken: string; role: string }>('/auth/login', {
         phone,
         password,
-        purpose: 'portal',
+        purpose: 'retail',
       });
       finish(res.accessToken, res.role);
     } catch (err: unknown) {

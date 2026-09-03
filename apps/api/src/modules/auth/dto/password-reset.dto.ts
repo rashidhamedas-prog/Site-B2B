@@ -1,4 +1,4 @@
-import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { normalizeOtpCode, normalizePhone } from '../phone.util';
@@ -28,6 +28,12 @@ export class ResetPasswordDto {
   @MinLength(PASSWORD_MIN_LENGTH, { message: 'رمز عبور حداقل ۸ کاراکتر باشد' })
   @MaxLength(PASSWORD_MAX_LENGTH)
   password: string;
+
+  @ApiProperty({ required: false, enum: ['retail', 'wholesale', 'portal'] })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase() : value))
+  @IsIn(['retail', 'wholesale', 'portal'])
+  purpose?: 'retail' | 'wholesale' | 'portal';
 }
 
 export class SetPasswordDto {

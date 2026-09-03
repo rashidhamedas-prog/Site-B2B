@@ -1,5 +1,71 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260904-001"
+    title: "Split retail vs wholesale customer sessions (host lock + JWT purpose)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260904-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260904-001"
+      implementer: "cursor:implementer-TASK-20260904-001"
+      reviewer: "required-independent-before-done"
+      security: "required-independent-before-done"
+    branch: "ai/TASK-20260904-001-channel-panels"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-03T21:40:00Z"
+    heartbeat_at: "2026-09-03T21:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/auth/staff-access.ts"
+      - "apps/api/src/modules/auth/staff-access.spec.ts"
+      - "apps/api/src/modules/auth/shopper-channel.ts"
+      - "apps/api/src/modules/auth/shopper-channel.spec.ts"
+      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
+      - "apps/api/src/modules/auth/dto/login.dto.ts"
+      - "apps/api/src/modules/auth/dto/password-reset.dto.ts"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/modules/auth/auth.controller.ts"
+      - "apps/api/src/modules/auth/guards/roles.guard.ts"
+      - "apps/api/src/modules/auth/password-policy.spec.ts"
+      - "apps/api/src/modules/dashboard/dashboard.controller.ts"
+      - "apps/web/src/lib/auth.ts"
+      - "apps/web/src/lib/admin-session.ts"
+      - "apps/web/src/lib/admin-session.spec.ts"
+      - "apps/web/src/lib/hooks/useAuth.ts"
+      - "apps/web/src/lib/password-session.ts"
+      - "apps/web/src/lib/panel-host-lock.ts"
+      - "apps/web/src/lib/panel-host-lock.spec.ts"
+      - "apps/web/src/middleware.ts"
+      - "apps/web/src/components/retail/RetailAccountAuth.tsx"
+      - "apps/web/src/components/account/ForgotPasswordFlow.tsx"
+      - "apps/web/src/components/portal/LoginForm.tsx"
+      - "apps/web/src/components/portal/PortalSidebar.tsx"
+      - "apps/web/src/components/portal/PortalHeader.tsx"
+      - "docs/reports/2026-09-04-channel-customer-sessions.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner confirmed D1 (one phone both channels), no non-phone username,
+      wallet on retail AND wholesale, hide wholesale returns/notifications
+      until those APIs exist. Phase 0+1: host lock + JWT purpose
+      retail|wholesale|admin. Reclaimed middleware/auth/admin-session from
+      TASK-20260903-001 (session AC shipped). Reclaimed staff-access/login.dto/
+      roles.guard from TASK-20260901-002 (stale hb 2026-09-01). Reclaimed
+      jwt.strategy/auth.service/controller/useAuth/password-reset from
+      TASK-20260903-006 (done). Reclaimed portal chrome + RetailAccountAuth
+      from TASK-20260903-005 (done). Did not edit order.controller (TASK-20260826-001).
+      Shared governance files: append-only coordination with TASK-20260903-004.
+    acceptance_criteria:
+      - "JWT purpose is retail|wholesale|admin; strategy does not flatten shopper tokens to storefront"
+      - "Retail OTP issues purpose=retail; portal login issues purpose=wholesale"
+      - "Pending B2B phone can complete retail OTP without activating wholesale"
+      - "B2C password cannot open wholesale portal; pending B2B password cannot open portal"
+      - "Production .ir /portal 302 to poshaktaranom.com; production .com /account 302 to www.poshaktaranom.ir; localhost unchanged"
+      - "Retail and wholesale cookies are separate; admin cookies unchanged"
+      - "Wholesale nav has no notifications item"
+      - "api+web tsc and new staff-access / shopper-channel / panel-host-lock / admin-session specs pass"
   - id: "TASK-20260903-006"
     title: "Account leftovers: JWT revoke, portal redirect, Persian OTP, register hint"
     status: "done"
@@ -21,19 +87,21 @@ tasks:
       - "apps/api/src/modules/auth/jwt-invalidation.spec.ts"
       - "apps/api/src/modules/auth/phone.util.ts"
       - "apps/api/src/modules/auth/phone.util.spec.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
-      - "apps/api/src/modules/auth/auth.controller.ts"
+      # transferred 2026-09-04 to TASK-20260904-001 (done task; channel JWT):
+      # "apps/api/src/modules/auth/auth.service.ts"
+      # "apps/api/src/modules/auth/auth.controller.ts"
       - "apps/api/src/modules/auth/dto/otp.dto.ts"
-      - "apps/api/src/modules/auth/dto/password-reset.dto.ts"
-      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
+      # "apps/api/src/modules/auth/dto/password-reset.dto.ts"
+      # "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
       - "apps/api/src/modules/auth/users.service.ts"
       - "apps/api/src/modules/redis/redis.module.ts"
       - "apps/api/src/database/migrations/20260903-006-password-changed-at.ts"
       - "apps/web/src/lib/safe-redirect.ts"
       - "apps/web/src/lib/safe-redirect.spec.ts"
-      - "apps/web/src/lib/password-session.ts"
-      - "apps/web/src/lib/hooks/useAuth.ts"
-      - "apps/web/src/components/account/ForgotPasswordFlow.tsx"
+      # transferred 2026-09-04 to TASK-20260904-001:
+      # "apps/web/src/lib/password-session.ts"
+      # "apps/web/src/lib/hooks/useAuth.ts"
+      # "apps/web/src/components/account/ForgotPasswordFlow.tsx"
       - "apps/web/src/components/portal/RegisterForm.tsx"
       - "apps/web/src/app/retail/account/security/page.tsx"
       - "apps/web/src/app/portal/dashboard/security/page.tsx"
@@ -142,7 +210,8 @@ tasks:
       # "apps/web/src/lib/safe-redirect.spec.ts"
       # "apps/web/src/components/account/ForgotPasswordFlow.tsx"
       - "apps/web/src/components/account/PasswordField.tsx"
-      - "apps/web/src/components/retail/RetailAccountAuth.tsx"
+      # transferred 2026-09-04 to TASK-20260904-001 (done; purpose=retail login):
+      # "apps/web/src/components/retail/RetailAccountAuth.tsx"
       - "apps/web/src/components/retail/RetailAccountShell.tsx"
       - "apps/web/src/components/retail/RetailAccountDetails.tsx"
       - "apps/web/src/components/retail/RetailOtpLogin.tsx"
@@ -162,11 +231,10 @@ tasks:
       # "apps/web/src/app/portal/dashboard/security/page.tsx"
       - "apps/web/src/app/portal/dashboard/profile/page.tsx"
       - "apps/web/src/app/portal/dashboard/notifications/page.tsx"
-      - "apps/web/src/components/portal/LoginForm.tsx"
-      # transferred 2026-09-03 to TASK-20260903-006:
-      # "apps/web/src/components/portal/RegisterForm.tsx"
-      - "apps/web/src/components/portal/PortalSidebar.tsx"
-      - "apps/web/src/components/portal/PortalHeader.tsx"
+      # transferred 2026-09-04 to TASK-20260904-001 (purpose wholesale + hide notifications):
+      # "apps/web/src/components/portal/LoginForm.tsx"
+      # "apps/web/src/components/portal/PortalSidebar.tsx"
+      # "apps/web/src/components/portal/PortalHeader.tsx"
       - "apps/web/src/components/portal/InvoicesPage.tsx"
       - "docs/reports/2026-09-03-customer-account-panel.md"
       - "docs/WORKLOG.md"
@@ -285,10 +353,11 @@ tasks:
     heartbeat_at: "2026-09-02T22:00:00Z"
     depends_on: []
     file_claims:
-      - "apps/web/src/lib/admin-session.ts"
-      - "apps/web/src/lib/admin-session.spec.ts"
-      - "apps/web/src/lib/auth.ts"
-      - "apps/web/src/middleware.ts"
+      # transferred 2026-09-04 to TASK-20260904-001 (session AC shipped; channel JWT/host lock):
+      # "apps/web/src/lib/admin-session.ts"
+      # "apps/web/src/lib/admin-session.spec.ts"
+      # "apps/web/src/lib/auth.ts"
+      # "apps/web/src/middleware.ts"
       - "apps/web/src/components/admin/AdminSessionGate.tsx"
       - "apps/web/src/app/admin/layout.tsx"
       - "apps/web/src/components/admin/AdminDashboard.tsx"
@@ -329,16 +398,19 @@ tasks:
     heartbeat_at: "2026-09-01T13:35:00Z"
     depends_on: []
     file_claims:
-      - "apps/api/src/modules/auth/dto/login.dto.ts"
+      # transferred 2026-09-04 to TASK-20260904-001 (stale hb 2026-09-01; channel JWT):
+      # "apps/api/src/modules/auth/dto/login.dto.ts"
       # transferred 2026-09-03 to TASK-20260903-005 (stale hb 2026-09-01; password reset):
       # "apps/api/src/modules/auth/auth.service.ts"
       # "apps/api/src/modules/auth/auth.controller.ts"
       # "apps/api/src/modules/auth/dto/otp.dto.ts"
-      - "apps/api/src/modules/auth/staff-access.ts"
-      - "apps/api/src/modules/auth/staff-access.spec.ts"
+      # transferred 2026-09-04 to TASK-20260904-001 (stale hb 2026-09-01; purpose split):
+      # "apps/api/src/modules/auth/staff-access.ts"
+      # "apps/api/src/modules/auth/staff-access.spec.ts"
       # transferred 2026-09-03 to TASK-20260903-006 (stale hb 2026-09-01; JWT revoke):
       # "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
-      - "apps/api/src/modules/auth/guards/roles.guard.ts"
+      # transferred 2026-09-04 to TASK-20260904-001 (stale; shopper purpose guard):
+      # "apps/api/src/modules/auth/guards/roles.guard.ts"
       - "apps/api/src/modules/auth/customer-addresses.ts"
       - "apps/api/src/modules/auth/customer-addresses.spec.ts"
       - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"

@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T21:55:00Z — TASK-20260904-001 channel sessions implementing
+
+- Task / owner: TASK-20260904-001 / cursor:implementer-TASK-20260904-001
+- Branch: `ai/TASK-20260904-001-channel-panels` in `D:/proje/Site B2B`.
+- Objective: host lock + JWT retail|wholesale after owner confirmed D1/wallet/no-username/hide notifications.
+- Root cause: jwt.strategy flattened every shopper token to storefront via `resolveAuthPurpose('portal')`.
+- Reclaimed middleware/auth cookies from TASK-20260903-001 (session AC shipped); staff-access/login.dto/roles.guard from TASK-20260901-002 (stale); jwt/auth from TASK-20260903-006 (done); portal chrome from TASK-20260903-005 (done). Did not edit order.controller (TASK-20260826-001).
+- CODE: purpose split, separate cookies, pending B2B retail OTP, B2C cannot open portal, production host 302, notifications removed from wholesale nav, `/dashboard/mine` wholesale-only.
+- Tests (observed): staff-access/shopper-channel/password-policy/panel-host-lock/admin-session specs OK; api+web tsc 0.
+- Risks: one Customer row per phone remains; order list type still client-supplied; legacy storefront JWT acts as wholesale.
+- Exact next: independent Reviewer + Security. Then push/deploy. Do not Done.
+
 ## 2026-09-03T16:00:00Z — TASK-20260903-004 live ship + leftover LCP
 
 - Task / owner: TASK-20260903-004 / cursor:implementer-TASK-20260903-004

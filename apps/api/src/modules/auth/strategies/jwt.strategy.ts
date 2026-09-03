@@ -34,7 +34,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (isJwtInvalidatedByPasswordChange(payload.iat, user.passwordChangedAt)) {
       throw new UnauthorizedException();
     }
-    const purpose = resolveAuthPurpose(payload.purpose === 'admin' ? 'admin' : 'portal');
+    const purpose = resolveAuthPurpose(payload.purpose);
     if (purpose === 'admin' && !isStaffRole(user.role)) {
       throw new UnauthorizedException();
     }

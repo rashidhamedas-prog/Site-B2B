@@ -7,6 +7,9 @@ import {
   resolveAuthPurpose,
   actingRoleForPurpose,
   staffPhoneConflictMessage,
+  isShopperPurpose,
+  isRetailPurpose,
+  isWholesalePurpose,
 } from './staff-access';
 
 function assert(cond: boolean, msg: string) {
@@ -33,8 +36,16 @@ assert(roleAfterCustomerLink(undefined) === 'CUSTOMER', 'missing role is custome
 assert(staffPhoneConflictMessage('ADMIN') === null, 'staff may also shop');
 assert(staffPhoneConflictMessage('CUSTOMER') === null, 'customer phone allowed');
 assert(resolveAuthPurpose('admin') === 'admin', 'admin purpose');
-assert(resolveAuthPurpose('portal') === 'storefront', 'portal is storefront');
+assert(resolveAuthPurpose('portal') === 'wholesale', 'portal is wholesale');
+assert(resolveAuthPurpose('retail') === 'retail', 'retail purpose');
+assert(resolveAuthPurpose(undefined) === 'wholesale', 'omitted login is wholesale');
+assert(resolveAuthPurpose('storefront') === 'wholesale', 'legacy storefront JWT is wholesale');
 assert(actingRoleForPurpose('admin', 'ADMIN') === 'ADMIN', 'admin acts as db role');
-assert(actingRoleForPurpose('storefront', 'ADMIN') === 'CUSTOMER', 'staff shops as customer');
+assert(actingRoleForPurpose('wholesale', 'ADMIN') === 'CUSTOMER', 'staff shops as customer');
+assert(actingRoleForPurpose('retail', 'ADMIN') === 'CUSTOMER', 'staff retail shops as customer');
+assert(isShopperPurpose('retail') === true, 'retail is shopper');
+assert(isShopperPurpose('admin') === false, 'admin is not shopper');
+assert(isRetailPurpose('retail') === true, 'retail purpose flag');
+assert(isWholesalePurpose('storefront') === true, 'legacy storefront is wholesale-compatible');
 
 console.log('staff-access.spec.ts: OK');

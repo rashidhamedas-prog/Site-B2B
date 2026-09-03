@@ -4,6 +4,7 @@ import { FormEvent, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
+import { cookieScopeFromPurpose } from '@/lib/admin-session';
 import { validateNewPassword } from '@/lib/password-policy';
 import { PasswordField } from './PasswordField';
 
@@ -76,9 +77,10 @@ export function ForgotPasswordFlow({
         phone,
         code,
         password,
+        purpose: variant,
       });
       if (res.accessToken && res.canLogin) {
-        setToken(res.accessToken, res.role || 'CUSTOMER', 'storefront');
+        setToken(res.accessToken, res.role || 'CUSTOMER', cookieScopeFromPurpose(variant));
         window.location.href = successHref;
         return;
       }

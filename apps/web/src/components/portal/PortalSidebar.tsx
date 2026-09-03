@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingCart, FileText, CreditCard,
-  User, Bell, LogOut, ChevronLeft, CalendarClock, Lock,
+  User, LogOut, ChevronLeft, CalendarClock, Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -19,7 +19,6 @@ const navItems = [
   { href: '/portal/dashboard/installments', icon: CalendarClock, label: 'اقساط' },
   { href: '/portal/dashboard/profile', icon: User, label: 'پروفایل' },
   { href: '/portal/dashboard/security', icon: Lock, label: 'امنیت و رمز' },
-  { href: '/portal/dashboard/notifications', icon: Bell, label: 'اعلان‌ها' },
 ];
 
 export function PortalSidebar() {

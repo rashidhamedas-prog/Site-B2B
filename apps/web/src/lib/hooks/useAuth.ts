@@ -4,11 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '../api';
 import { setToken, clearToken, getToken, getRole } from '../auth';
+import { cookieScopeFromPurpose } from '../admin-session';
 import { isStaffRole } from '../staff-access';
 import { normalizePhone } from '../phone';
 import { safeScopedRedirect } from '../safe-redirect';
 
-interface LoginPayload { phone: string; password: string; purpose?: 'admin' | 'portal' }
+interface LoginPayload { phone: string; password: string; purpose?: 'admin' | 'portal' | 'retail' | 'wholesale' }
 interface RegisterPayload { phone: string; password: string; ownerName: string; businessName: string; province: string; city: string; businessType?: string; notes?: string }
 
 export function useAuth() {
@@ -39,7 +40,7 @@ export function useAuth() {
         clearToken();
         throw new Error('این حساب به پنل مدیریت دسترسی ندارد');
       }
-      const scope = payload.purpose === 'admin' ? 'admin' : 'storefront';
+      const scope = cookieScopeFromPurpose(payload.purpose);
       setToken(res.accessToken, res.role, scope);
       setIsLoggedIn(true);
       setRole(res.role);

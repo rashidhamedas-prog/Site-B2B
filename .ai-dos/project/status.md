@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-03 — **TASK-20260904-001** implementing on `ai/TASK-20260904-001-channel-panels`: JWT purpose retail|wholesale, host lock, pending B2B may OTP retail. Not live until merge/deploy. Reviewer + Security required. order.controller untouched.
 - Last verified: 2026-09-03 — **TASK-20260903-004** follow-up: Header `loading=lazy`; nginx must `--force-recreate` so `^~ /fonts/` bind inode applies. Live `73f31eb` hero 38KB; GSC UI clicks NOT RUN.
 - Last verified: 2026-09-03 — **TASK-20260903-006** live `5a23424`: JWT revoke + portal redirect + Persian OTP + register hint ۸. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.
 - Last verified: 2026-09-03 — **TASK-20260903-005** live `6dde78f`: customer panels + password recovery. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.

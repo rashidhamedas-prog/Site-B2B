@@ -21,7 +21,7 @@ export function LoginForm() {
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
 
-  const onSubmit = (data: FormData) => login(data);
+  const onSubmit = (data: FormData) => login({ ...data, purpose: 'wholesale' });
 
   return (
     <div className="card p-8">
