@@ -1,5 +1,51 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260904-003"
+    title: "Push retail catalog into Basalam stall from admin settings"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260904-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260904-003"
+      implementer: "cursor:implementer-TASK-20260904-003"
+      reviewer: "self-review-official-basalam-openapi-only"
+      security: "self-review-admin-only-no-token-echo"
+    branch: "ai/TASK-20260904-003-basalam-catalog"
+    worktree: "D:/proje/Site-B2B-basalam-catalog"
+    claimed_at: "2026-09-03T22:10:00Z"
+    heartbeat_at: "2026-09-03T22:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/basalam/basalam.service.ts"
+      - "apps/api/src/modules/basalam/basalam.controller.ts"
+      - "apps/api/src/modules/basalam/basalam-catalog.ts"
+      - "apps/api/src/modules/basalam/basalam-catalog.spec.ts"
+      - "apps/web/src/components/admin/AdminBasalamCatalog.tsx"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/api/package.json"
+      - "docs/USER-ACTIONS-B2C.md"
+      - "docs/reports/2026-09-04-basalam-catalog-push.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked for an admin settings button that creates retail
+      products on the Basalam stall. Official OpenAPI only
+      (POST /v1/vendors/{id}/products + POST /v1/files). Retail
+      channel only; unpublished status 3790; no connector enablement.
+      Reclaimed basalam.service.ts from TASK-20260826-001 (isolation
+      already live; hb 2026-09-02T23:55Z) and basalam controller/module
+      files from TASK-20260812-001 (stale hb 2026-08-14). Reclaimed
+      AdminSettings.tsx from TASK-20260903-003 (DigiPay probe live
+      007eee9; DigiPay fields untouched). Shared governance append-only
+      with TASK-20260904-002. Did not edit settings.service.ts.
+    acceptance_criteria:
+      - "Admin settings marketing tab has a button that POSTs /v1/basalam/push-catalog"
+      - "Push creates only unmapped ACTIVE retail products via official OpenAPI"
+      - "Existing stall products are mapped by SKU/style-code/title instead of duplicated"
+      - "Created products are unpublished (3790); is_wholesale false; retail price/stock only"
+      - "basalam-catalog spec and api+web tsc pass; token never echoed"
   - id: "TASK-20260904-002"
     title: "Delete shipping addresses in retail and wholesale customer panels"
     status: "in_progress"
@@ -321,7 +367,8 @@ tasks:
       - "apps/api/src/modules/payment/adapters/digipay.adapter.spec.ts"
       - "apps/api/src/modules/payment/payment.controller.ts"
       - "apps/api/src/modules/settings/settings.service.ts"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
+      # transferred 2026-09-04 to TASK-20260904-003 (DigiPay probe live 007eee9; Basalam catalog button):
+      # "apps/web/src/components/admin/AdminSettings.tsx"
       - "docs/reports/2026-09-03-digipay-connection-test.md"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
@@ -890,7 +937,8 @@ tasks:
       - "apps/api/src/modules/product/product.controller.ts"
       # reclaimed 2026-09-01 from TASK-20260829-001 (stale hb 2026-08-30; Phase 4 shared availability)
       - "apps/api/src/modules/feeds/feeds.controller.ts"
-      - "apps/api/src/modules/basalam/basalam.service.ts"
+      # transferred 2026-09-04 to TASK-20260904-003 (retail catalog push; isolation already live):
+      # "apps/api/src/modules/basalam/basalam.service.ts"
       - "apps/api/src/modules/inventory/inventory.service.ts"
       # reclaimed 2026-08-31 from TASK-20260829-001 (claims released after Torob commit)
       - "apps/api/src/modules/inventory/inventory.controller.ts"
@@ -2083,8 +2131,9 @@ tasks:
       - "apps/api/src/modules/feeds/feeds-health.service.ts"
       - "apps/api/src/modules/feeds/feeds-health.hook.ts"
       - "apps/api/src/modules/feeds/feeds-health.controller.ts"
-      - "apps/api/src/modules/basalam/basalam.service.ts"
-      - "apps/api/src/modules/basalam/basalam.controller.ts"
+      # transferred 2026-09-04 to TASK-20260904-003 (stale hb 2026-08-14; catalog push):
+      # "apps/api/src/modules/basalam/basalam.service.ts"
+      # "apps/api/src/modules/basalam/basalam.controller.ts"
       - "apps/api/src/modules/basalam/basalam.module.ts"
       - "apps/api/src/modules/torob/torob.service.ts"
       - "apps/api/src/modules/torob/torob.module.ts"

@@ -87,8 +87,9 @@
 ### باسلام — https://basalam.com | مستندات: https://doc.basalam.com
 - [ ] در https://developers.basalam.com کلاینت بسازید و Access Token بگیرید  
 - [ ] Vendor ID + Token را در تنظیمات مارکتینگ ذخیره و «فعال‌سازی همگام‌سازی» را روشن کنید  
-- [ ] محصولات را در غرفه بسازید؛ نگاشت `localId → basalamId` را در `basalamProductMap` (API) بگذارید  
-- [ ] همگام موجودی/قیمت: `POST /v1/basalam/sync-inventory` (ادمین)  
+- [ ] دکمه «ارسال محصولات تکی به غرفه» را بزنید (`POST /v1/basalam/push-catalog`) — محصول جدید پیش‌نویس می‌ماند  
+- [ ] بعد از بررسی عکس در پنل باسلام، محصول را منتشر کنید  
+- [ ] همگام موجودی/قیمت: دکمه «به‌روزرسانی موجودی و قیمت» یا `POST /v1/basalam/sync-inventory`  
 - [ ] خروجی کمکی کاتالوگ: `GET /v1/basalam/catalog-export`
 
 ### تخفیفان — https://takhfifan.com | بازرگانی: https://business.takhfifan.com

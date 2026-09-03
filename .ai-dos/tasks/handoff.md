@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T22:15:00Z — TASK-20260904-003 Basalam retail catalog push
+
+- Task / owner: TASK-20260904-003 / cursor:implementer-TASK-20260904-003
+- Branch: `ai/TASK-20260904-003-basalam-catalog` in `D:/proje/Site-B2B-basalam-catalog`.
+- Objective: admin settings button creates/maps retail products on the Basalam stall via official OpenAPI.
+- Reclaim: `basalam.service.ts` from TASK-20260826-001 (isolation live; hb 2026-09-02T23:55Z); controller from TASK-20260812-001 (stale 2026-08-14); AdminSettings from TASK-20260903-003 (DigiPay live 007eee9; DigiPay fields untouched). Shared yaml/handoff/WORKLOG append-only with TASK-20260904-002.
+- CODE: `POST /v1/basalam/push-catalog` ADMIN+AdminOnly; unpublished 3790; retail stock/price; map persist per product; UI buttons in marketing tab.
+- Non-goals: auto-publish, wholesale, omnichannel connectors.
+- Tests (observed): `basalam-catalog.spec.ts: ok`; `channel-stock-isolation.spec.ts: ok`; api+web `tsc --noEmit` exit 0.
+- Risks: Basalam photo hijab review still blocks live stall; category inferred from existing stall products.
+- Exact next: commit/push/deploy. Do not Done until live admin button is used.
+
 ## 2026-09-03T22:20:00Z — TASK-20260904-002 address delete implementing
 
 - Task / owner: TASK-20260904-002 / cursor:implementer-TASK-20260904-002

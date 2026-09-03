@@ -13,6 +13,7 @@ import { DEFAULT_THEME, type ThemeSettings } from '@/components/wholesale/ThemeA
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { EMPTY_ENAMAD, applyEnamadHtmlPaste, enamadLogoUrl, resolveMediaUrl, type EnamadSealConfig } from '@/lib/enamad';
 import { EnamadSeal } from '@/components/shared/EnamadSeal';
+import { AdminBasalamCatalog } from '@/components/admin/AdminBasalamCatalog';
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -1419,7 +1420,7 @@ export function AdminSettings() {
             مستندات: <a className="text-primary underline" href="https://doc.basalam.com" target="_blank" rel="noreferrer">doc.basalam.com</a>
             {' · '}
             <a className="text-primary underline" href="https://developers.basalam.com" target="_blank" rel="noreferrer">developers.basalam.com</a>
-            — پس از ذخیره، از API ادمین <code dir="ltr">POST /v1/basalam/sync-inventory</code> استفاده کنید.
+            — توکن را ذخیره کنید، بعد محصولات تکی را با دکمه زیر به غرفه بفرستید.
           </p>
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
@@ -1459,6 +1460,7 @@ export function AdminSettings() {
               />
             </div>
           </div>
+          <AdminBasalamCatalog />
         </div>
       )}
 

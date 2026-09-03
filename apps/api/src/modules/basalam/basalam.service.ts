@@ -1,17 +1,32 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { irrToTomanOnce } from '@taranom/shared-types';
 import { IntegrationHealthTracker } from '../../common/integration-health';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
 import { channelAvailability, isChannelVisible } from '../product/channel-product-projection';
+import { RETAIL_CANONICAL_ORIGIN } from '../torob/torob-product-projection';
+import {
+  BASALAM_OPENAPI_BASE,
+  absMediaUrl,
+  buildCreatePayload,
+  createdProductId,
+  flattenCategories,
+  matchStallProduct,
+  parseStallList,
+  pickCategoryId,
+  pickClothingCategoryId,
+  pickPhotoUrls,
+  type StallProduct,
+} from './basalam-catalog';
 
 /**
- * Lightweight Basalam Core API client (https://developers.basalam.com / https://doc.basalam.com).
+ * Lightweight Basalam Core/OpenAPI client (https://developers.basalam.com / https://doc.basalam.com).
  * Admin stores Personal Access Token + vendorId; sync pushes ACTIVE retail products.
  *
- * Only uses endpoints already wired here — do not invent private Basalam APIs.
- * Retry: syncInventory PATCH by basalam product id is idempotent (same price/stock → same state).
+ * Only uses documented endpoints — do not invent private Basalam APIs.
+ * Retry: create persists basalamProductMap per product; PATCH by id is idempotent.
  */
 @Injectable()
 export class BasalamService {
@@ -26,7 +41,7 @@ export class BasalamService {
     private readonly settings: SettingsService,
   ) {}
 
-  private async authHeaders() {
+  private async bearerHeaders() {
     const m = await this.settings.marketing();
     if (!m.basalamAccessToken?.trim()) {
       throw new BadRequestException('توکن باسلام در تنظیمات مارکتینگ تنظیم نشده است');
@@ -34,6 +49,12 @@ export class BasalamService {
     return {
       Authorization: `Bearer ${m.basalamAccessToken.trim()}`,
       Accept: 'application/json',
+    };
+  }
+
+  private async jsonHeaders() {
+    return {
+      ...(await this.bearerHeaders()),
       'Content-Type': 'application/json',
     };
   }
@@ -52,7 +73,7 @@ export class BasalamService {
       retry: {
         idempotent: true,
         notes:
-          'PATCH vendors/{vendorId}/products/bulk and PATCH products/{id} upsert price/stock by Basalam product id; safe to retry. Concurrent syncs are serialized in-process.',
+          'POST vendors/{vendorId}/products is mapped after each create; PATCH products/{id} upserts price/stock. Concurrent runs are serialized in-process.',
       },
       docs: 'https://doc.basalam.com',
       developers: 'https://developers.basalam.com',
@@ -60,7 +81,7 @@ export class BasalamService {
   }
 
   async me() {
-    const headers = await this.authHeaders();
+    const headers = await this.jsonHeaders();
     const res = await fetch(`${this.coreBase}/users/me`, {
       headers,
       signal: AbortSignal.timeout(15_000),
@@ -76,10 +97,13 @@ export class BasalamService {
     const m = await this.settings.marketing();
     const configured = !!(m.basalamAccessToken && m.basalamVendorId);
     const health = this.health();
+    const map = (m.basalamProductMap || {}) as Record<string, number>;
+    const mappedCount = Object.keys(map).length;
     if (!configured) {
       return {
         configured: false,
         ok: false,
+        mappedCount,
         lastSuccessAt: health.lastSuccessAt,
         lastErrorAt: health.lastErrorAt,
         lastError: health.lastError,
@@ -99,6 +123,7 @@ export class BasalamService {
         vendorId: m.basalamVendorId,
         userId: me?.id,
         vendorTitle: me?.vendor?.title,
+        mappedCount,
         lastSuccessAt: snap.lastSuccessAt,
         lastErrorAt: snap.lastErrorAt,
         lastError: snap.lastError,
@@ -112,6 +137,7 @@ export class BasalamService {
       return {
         configured: true,
         ok: false,
+        mappedCount,
         error: msg,
         lastSuccessAt: snap.lastSuccessAt,
         lastErrorAt: snap.lastErrorAt,
@@ -150,7 +176,7 @@ export class BasalamService {
     if (!vendorId) throw new BadRequestException('basalamVendorId نامعتبر است');
 
     const map = (m.basalamProductMap || {}) as Record<string, number>;
-    const headers = await this.authHeaders();
+    const headers = await this.jsonHeaders();
     const rows = await this.products.find({
       where: { status: 'ACTIVE' },
       relations: ['variants'],
@@ -168,10 +194,9 @@ export class BasalamService {
         continue;
       }
       const { stock } = channelAvailability(p, 'RETAIL');
-      // Basalam prices are typically in Toman for vendor panel; API often expects Rial — send IRR as stored.
       updates.push({
         id: Number(basalamId),
-        price: Number(p.retailPrice),
+        price: irrToTomanOnce(Number(p.retailPrice)),
         stock,
       });
     }
@@ -183,7 +208,7 @@ export class BasalamService {
         updated: 0,
         unmappedCount: unmapped.length,
         unmappedSample: unmapped.slice(0, 20),
-        hint: 'برای هر محصول در ادمین، شناسه محصول باسلام را در basalamProductMap ثبت کنید یا ابتدا محصول را در غرفه بسازید.',
+        hint: 'ابتدا دکمه «ارسال محصولات تکی به غرفه» را بزنید تا نگاشت ساخته شود.',
         retry: { idempotent: true },
       };
     }
@@ -199,7 +224,6 @@ export class BasalamService {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       this.logger.warn(`Basalam bulk update failed: ${res.status} ${JSON.stringify(json)}`);
-      // Fallback: try per-product PATCH (existing path only)
       let ok = 0;
       const errors: string[] = [];
       for (const u of updates.slice(0, 20)) {
@@ -245,6 +269,220 @@ export class BasalamService {
     };
   }
 
+  /**
+   * Create missing retail products on the stall (unpublished) and map existing ones.
+   * Official OpenAPI: POST /v1/files then POST /v1/vendors/{id}/products.
+   */
+  async pushCatalog(limit = 8) {
+    if (this.syncInFlight) {
+      throw new BadRequestException(
+        'همگام‌سازی باسلام در حال اجراست — پس از اتمام دوباره تلاش کنید (idempotent retry).',
+      );
+    }
+    this.syncInFlight = true;
+    try {
+      return await this.pushCatalogInner(Math.min(20, Math.max(1, limit)));
+    } finally {
+      this.syncInFlight = false;
+    }
+  }
+
+  private async pushCatalogInner(limit: number) {
+    const m = await this.settings.marketing();
+    if (!m.basalamEnabled) {
+      throw new BadRequestException('همگام‌سازی باسلام غیرفعال است — ابتدا گزینه فعال‌سازی را روشن و ذخیره کنید.');
+    }
+    const vendorId = Number(m.basalamVendorId);
+    if (!vendorId) throw new BadRequestException('basalamVendorId نامعتبر است');
+
+    const map = { ...((m.basalamProductMap || {}) as Record<string, number>) };
+    const origin = (process.env.NEXT_PUBLIC_RETAIL_URL || RETAIL_CANONICAL_ORIGIN).replace(/\/$/, '');
+    const rows = await this.products.find({
+      where: { status: 'ACTIVE' },
+      relations: ['variants', 'category'],
+    });
+    const retail = rows.filter((p) => isChannelVisible(p, 'RETAIL'));
+    const pending = retail.filter((p) => !Number(map[p.id]));
+
+    const auth = await this.bearerHeaders();
+    const jsonHeaders = await this.jsonHeaders();
+    const stall = await this.listStallProducts(vendorId, auth);
+    let categoryId = pickCategoryId(stall);
+    if (!categoryId) categoryId = await this.lookupClothingCategory(auth);
+    if (!categoryId) {
+      throw new BadRequestException(
+        'دسته باسلام پیدا نشد. یک محصول در غرفه بسازید یا از دسته‌بندی پوشاک در پنل باسلام استفاده کنید.',
+      );
+    }
+
+    const created: string[] = [];
+    const mapped: string[] = [];
+    const failed: Array<{ sku: string; error: string }> = [];
+    const batch = pending.slice(0, limit);
+
+    for (const product of batch) {
+      try {
+        const stallId = matchStallProduct(
+          { id: product.id, sku: product.sku, name: product.name },
+          stall,
+          map,
+        );
+        if (stallId) {
+          map[product.id] = stallId;
+          await this.persistProductMap({ [product.id]: stallId });
+          mapped.push(product.sku || product.id);
+          continue;
+        }
+
+        const photoIds = await this.uploadProductPhotos(auth, pickPhotoUrls(product.images, origin));
+        if (!photoIds.length) {
+          failed.push({ sku: product.sku || product.id, error: 'تصویر محصول برای آپلود به باسلام موجود نیست' });
+          continue;
+        }
+
+        const { stock } = channelAvailability(product, 'RETAIL');
+        const body = buildCreatePayload({
+          name: product.name,
+          sku: product.sku,
+          description: product.retailFullContent || product.description,
+          priceIrr: Number(product.retailPrice),
+          stock,
+          photoIds,
+          categoryId,
+        });
+        const res = await fetch(`${BASALAM_OPENAPI_BASE}/vendors/${vendorId}/products`, {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const json = await res.json().catch(() => ({}));
+        const newId = createdProductId(json);
+        if (!res.ok || !newId) {
+          const message = String((json as any)?.message || (json as any)?.error || `create ${res.status}`);
+          failed.push({ sku: product.sku || product.id, error: message.slice(0, 240) });
+          continue;
+        }
+        map[product.id] = newId;
+        stall.push({ id: newId, title: product.name, sku: product.sku || null, categoryId });
+        await this.persistProductMap({ [product.id]: newId });
+        created.push(product.sku || product.id);
+        await new Promise((r) => setTimeout(r, 250));
+      } catch (e: any) {
+        failed.push({ sku: product.sku || product.id, error: String(e?.message || e).slice(0, 240) });
+      }
+    }
+
+    const remaining = pending.length - batch.length;
+    this.tracker.recordSuccess({
+      op: 'pushCatalog',
+      created: created.length,
+      mapped: mapped.length,
+      failed: failed.length,
+    });
+    return {
+      ok: failed.length === 0,
+      created: created.length,
+      mappedExisting: mapped.length,
+      failed: failed.length,
+      failedSample: failed.slice(0, 10),
+      remaining,
+      hasMore: remaining > 0,
+      hint:
+        created.length || mapped.length
+          ? 'محصول‌های جدید به‌صورت پیش‌نویس در غرفه هستند؛ بعد از بررسی عکس، از پنل باسلام منتشر کنید.'
+          : 'محصول جدیدی ساخته نشد.',
+      retry: { idempotent: true },
+    };
+  }
+
+  private async persistProductMap(extra: Record<string, number>) {
+    const prev = await this.settings.get('marketing');
+    const nextMap = { ...((prev.basalamProductMap || {}) as Record<string, number>), ...extra };
+    await this.settings.set('marketing', { ...prev, basalamProductMap: nextMap });
+  }
+
+  private async listStallProducts(
+    vendorId: number,
+    auth: { Authorization: string; Accept: string },
+  ): Promise<StallProduct[]> {
+    const out: StallProduct[] = [];
+    for (let page = 1; page <= 20; page += 1) {
+      const res = await fetch(
+        `${BASALAM_OPENAPI_BASE}/vendors/${vendorId}/products?page=${page}&per_page=50`,
+        { headers: auth, signal: AbortSignal.timeout(20_000) },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new BadRequestException(
+          String((json as any)?.message || `لیست غرفه باسلام ناموفق شد (${res.status})`),
+        );
+      }
+      const rows = parseStallList(json);
+      out.push(...rows);
+      const totalPage = Number((json as any)?.total_page || (json as any)?.totalPage || 1);
+      if (page >= totalPage || rows.length === 0) break;
+    }
+    return out;
+  }
+
+  private async lookupClothingCategory(auth: { Authorization: string; Accept: string }): Promise<number | null> {
+    const res = await fetch(`${BASALAM_OPENAPI_BASE}/categories`, {
+      headers: auth,
+      signal: AbortSignal.timeout(15_000),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return null;
+    return pickClothingCategoryId(flattenCategories(json));
+  }
+
+  private async uploadProductPhotos(
+    auth: { Authorization: string; Accept: string },
+    urls: string[],
+  ): Promise<number[]> {
+    const ids: number[] = [];
+    for (const url of urls.slice(0, 5)) {
+      const id = await this.uploadOnePhoto(auth, absMediaUrl(url, RETAIL_CANONICAL_ORIGIN) || url);
+      if (id) ids.push(id);
+    }
+    return ids;
+  }
+
+  private async uploadOnePhoto(
+    auth: { Authorization: string; Accept: string },
+    url: string,
+  ): Promise<number | null> {
+    const img = await fetch(url, {
+      signal: AbortSignal.timeout(20_000),
+      headers: { Accept: 'image/*' },
+    });
+    if (!img.ok) {
+      this.logger.warn(`Basalam photo download failed ${img.status} ${url.slice(0, 80)}`);
+      return null;
+    }
+    const mime = img.headers.get('content-type') || 'image/jpeg';
+    if (!mime.startsWith('image/')) return null;
+    const buf = Buffer.from(await img.arrayBuffer());
+    if (buf.length < 32) return null;
+    const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg';
+    const form = new FormData();
+    form.append('file', new Blob([new Uint8Array(buf)], { type: mime }), `product.${ext}`);
+    form.append('file_type', 'product.photo');
+    const res = await fetch(`${BASALAM_OPENAPI_BASE}/files`, {
+      method: 'POST',
+      headers: { Authorization: auth.Authorization },
+      body: form,
+      signal: AbortSignal.timeout(30_000),
+    });
+    const json = await res.json().catch(() => ({}));
+    const id = Number((json as any)?.id);
+    if (!res.ok || !(id > 0)) {
+      this.logger.warn(`Basalam file upload failed ${res.status}`);
+      return null;
+    }
+    return id;
+  }
+
   /** Catalog export helpers for manual import into Basalam panel when API map is empty. */
   async catalogExport(limit = 200) {
     const base = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
@@ -262,7 +500,7 @@ export class BasalamService {
           sku: p.sku,
           title: p.name,
           priceIrr: Number(p.retailPrice),
-          priceToman: Math.round(Number(p.retailPrice) / 10),
+          priceToman: irrToTomanOnce(Number(p.retailPrice)),
           stock,
           category: p.category?.name || p.fabric,
           link: `${base}/products/${p.slug || p.id}`,
