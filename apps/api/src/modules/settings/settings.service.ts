@@ -306,7 +306,9 @@ export class SettingsService {
       !!out.digipayClientId &&
       out.digipayClientId !== 'CHANGE_ME' &&
       !!out.digipayClientSecret &&
-      out.digipayClientSecret !== 'CHANGE_ME';
+      out.digipayClientSecret !== 'CHANGE_ME' &&
+      !!out.digipayUsername &&
+      !!out.digipayPassword;
     return out;
   }
 

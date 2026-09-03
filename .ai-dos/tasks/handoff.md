@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T12:05:00Z — TASK-20260903-003 DigiPay connection test
+
+- Task / owner: TASK-20260903-003 / cursor:implementer-TASK-20260903-003
+- Branch: `ai/TASK-20260903-003-digipay-connection-test` in `D:/proje/Site B2B`.
+- Root cause (prior debug): live DigiPay OAuth Spring 401 on client Basic Auth; not checkout UI.
+- CODE: `probeConnection` + `classifyDigipayOauthFailure`; admin `POST /payments/digipay/connection-test` (AdminOnly); configured requires 4 fields; AdminSettings UPG labels + test button; no username←clientId fallback.
+- Reclaimed DigiPay files from TASK-20260824-003 / TASK-20260812-001 (stale). AdminSettings from TASK-20260903-001 (session shipped; DigiPay out of scope) and TASK-20260831-001.
+- Exact next: run specs/tsc; commit/push/deploy; owner re-tests with DigiPay-issued UPG credentials in admin.
+
 ## 2026-09-03T00:40:00Z — TASK-20260826-001 live deploy 0970811
 
 - Task / owner: TASK-20260826-001 / cursor:implementer-TASK-20260826-001

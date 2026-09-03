@@ -5,6 +5,7 @@
 import { ConfigService } from '@nestjs/config';
 import {
   DigiPayAdapter,
+  classifyDigipayOauthFailure,
   digipayBasicAuthHeader,
   digipayCallbackIsSuccess,
   normalizeDigipayMobile,
@@ -80,6 +81,8 @@ async function main() {
     new ConfigService({
       DIGIPAY_CLIENT_ID: 'CHANGE_ME',
       DIGIPAY_CLIENT_SECRET: 'CHANGE_ME',
+      DIGIPAY_USERNAME: 'u',
+      DIGIPAY_PASSWORD: 'p',
     }),
   );
   assert(placeholder.isConfigured() === false, 'placeholder not configured');
@@ -89,13 +92,41 @@ async function main() {
   );
   assert(envEmpty.isConfigured() === false, 'env empty not configured');
   assert(
-    envEmpty.isConfigured({ clientId: 'admin-id', clientSecret: 'admin-secret' }) === true,
-    'admin override configures adapter',
+    envEmpty.isConfigured({
+      clientId: 'admin-id',
+      clientSecret: 'admin-secret',
+    }) === false,
+    'client-only override still incomplete',
+  );
+  assert(
+    envEmpty.isConfigured({
+      clientId: 'admin-id',
+      clientSecret: 'admin-secret',
+      username: 'upg-user',
+      password: 'upg-pass',
+    }) === true,
+    'admin override configures adapter with all four',
   );
   assert(
     envEmpty.isSandbox({ sandbox: false }) === false,
     'admin override sandbox false',
   );
+
+  const spring = classifyDigipayOauthFailure({
+    httpStatus: 401,
+    json: {
+      timestamp: '2026-09-03T00:00:00Z',
+      status: 401,
+      error: 'Unauthorized',
+      path: '/digipay/api/oauth/token',
+    },
+  });
+  assert(spring.failureClass === 'invalid_client', 'spring 401 is invalid_client');
+  const grant = classifyDigipayOauthFailure({
+    httpStatus: 401,
+    json: { error: 'invalid_grant', error_description: 'bad user' },
+  });
+  assert(grant.failureClass === 'invalid_grant', 'invalid_grant class');
 
   const gw = adapter();
   assert(gw.code === 'DIGIPAY', 'code');
@@ -205,6 +236,30 @@ async function main() {
     assert(missingTrk.success === false, 'missing tracking fails');
 
     assert(calls.some((c) => c.url.includes('/oauth/token')), 'oauth called');
+
+    const probeOk = await gw.probeConnection();
+    assert(probeOk.ok === true, 'probe ok');
+    assert(probeOk.stage === 'ready', 'probe ready');
+    assert(!('access_token' in (probeOk as object)), 'probe has no token field');
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        timestamp: 't',
+        status: 401,
+        error: 'Unauthorized',
+        path: '/digipay/api/oauth/token',
+      }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } },
+    )) as typeof fetch;
+  try {
+    const probeFail = await adapter().probeConnection();
+    assert(probeFail.ok === false, 'probe fail');
+    assert(probeFail.failureClass === 'invalid_client', 'probe classifies client');
+    assert(probeFail.meta.clientIdLen > 0, 'probe meta lengths only');
   } finally {
     globalThis.fetch = origFetch;
   }

@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-03 — تست اتصال دیجی‌پی در ادمین
+
+- دکمه «تست اتصال دیجی‌پی» در `/admin/settings` فقط OAuth را می‌سنجد و کلاس خطا (`invalid_client` / `invalid_grant`) می‌دهد.
+- `digipayConfigured` و `isConfigured` هر چهار فیلد UPG را لازم دارند؛ برچسب‌ها از «پنل» به UPG اصلاح شد.
+- مسیر: `POST /payments/digipay/connection-test` فقط ADMIN.
+
 ## 2026-09-03 — دیپلوی زنده 0970811
 
 - `master` روی VPS به `0970811` رسید (ایزوله کانال + نویسنده بلاگ + لوگوی فشرده).

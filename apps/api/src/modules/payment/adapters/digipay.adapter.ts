@@ -64,6 +64,76 @@ export type DigipayRuntimeCreds = {
   sandbox?: boolean;
 };
 
+export type DigipayProbeFailureClass =
+  | 'missing_config'
+  | 'invalid_client'
+  | 'invalid_grant'
+  | 'network'
+  | 'unknown';
+
+export type DigipayProbeStage = 'config' | 'oauth' | 'ready';
+
+/** Admin/diagnostics result — never includes secrets or tokens. */
+export type DigipayProbeResult = {
+  ok: boolean;
+  stage: DigipayProbeStage;
+  failureClass?: DigipayProbeFailureClass;
+  httpStatus?: number;
+  message: string;
+  sandbox: boolean;
+  meta: {
+    clientIdLen: number;
+    clientSecretLen: number;
+    usernameLen: number;
+    passwordLen: number;
+  };
+};
+
+/**
+ * Classify DigiPay OAuth failures without reading secrets.
+ * Spring-style 401 on /oauth/token almost always means Basic (client_id/secret) rejected.
+ */
+export function classifyDigipayOauthFailure(input: {
+  httpStatus: number;
+  json: Record<string, unknown>;
+}): { failureClass: DigipayProbeFailureClass; message: string } {
+  const httpStatus = input.httpStatus;
+  const json = input.json || {};
+  const err = String(json.error || '').trim();
+  const desc = String(json.error_description || '').trim();
+  const springStyle =
+    typeof json.timestamp !== 'undefined' &&
+    (typeof json.path === 'string' || err === 'Unauthorized');
+
+  if (
+    httpStatus === 401 &&
+    (springStyle || err === 'invalid_client' || err === 'Unauthorized')
+  ) {
+    return {
+      failureClass: 'invalid_client',
+      message:
+        'شناسه یا رمز کلاینت (Basic Auth) توسط دیجی‌پی رد شد. این مقادیر از دستورالعمل فنی UPG می‌آیند، نه لاگین پنل فروشنده.',
+    };
+  }
+  if (httpStatus === 401 || err === 'invalid_grant') {
+    return {
+      failureClass: 'invalid_grant',
+      message:
+        'نام کاربری یا رمز UPG رد شد. این‌ها در فعال‌سازی ابزار UPG تنظیم می‌شوند و با رمز ورود پنل کسب‌وکار یکی نیستند.',
+    };
+  }
+  if (httpStatus >= 500 || httpStatus === 0) {
+    return {
+      failureClass: 'network',
+      message: desc || err || 'سرویس دیجی‌پی در دسترس نیست؛ بعداً دوباره تست کنید.',
+    };
+  }
+  return {
+    failureClass: 'unknown',
+    message: desc || err || `ورود OAuth دیجی‌پی ناموفق بود (HTTP ${httpStatus || 'n/a'})`,
+  };
+}
+
 @Injectable()
 export class DigiPayAdapter implements PaymentProviderAdapter {
   readonly code = 'DIGIPAY';
@@ -87,6 +157,8 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
     return (
       c.clientId.length > 0 &&
       c.clientSecret.length > 0 &&
+      c.username.length > 0 &&
+      c.password.length > 0 &&
       c.clientId !== 'CHANGE_ME' &&
       c.clientSecret !== 'CHANGE_ME'
     );
@@ -116,14 +188,29 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
   private creds(over?: DigipayRuntimeCreds) {
     const clientId = this.pick(over?.clientId, 'DIGIPAY_CLIENT_ID');
     const clientSecret = this.pick(over?.clientSecret, 'DIGIPAY_CLIENT_SECRET');
-    const username = this.pick(over?.username, 'DIGIPAY_USERNAME') || clientId;
-    const password = this.pick(over?.password, 'DIGIPAY_PASSWORD') || clientSecret;
+    // Username/password are UPG tool credentials — never silently reuse client_id/secret.
+    const username = this.pick(over?.username, 'DIGIPAY_USERNAME');
+    const password = this.pick(over?.password, 'DIGIPAY_PASSWORD');
     return {
       clientId,
       clientSecret,
       username,
       password,
       sandbox: this.isSandbox(over),
+    };
+  }
+
+  private probeMeta(c: {
+    clientId: string;
+    clientSecret: string;
+    username: string;
+    password: string;
+  }): DigipayProbeResult['meta'] {
+    return {
+      clientIdLen: c.clientId.length,
+      clientSecretLen: c.clientSecret.length,
+      usernameLen: c.username.length,
+      passwordLen: c.password.length,
     };
   }
 
@@ -243,11 +330,8 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
     const accessToken = json.access_token;
     if (!ok || !accessToken) {
       this.logger.warn(`DigiPay oauth failed http=${status}`);
-      throw new Error(
-        status === 401
-          ? 'ورود به دیجی‌پی ناموفق بود؛ شناسه کلاینت، رمز، نام کاربری و رمز پنل را در تنظیمات پرداخت بررسی کنید'
-          : this.resultMessage(json, 'ورود به درگاه دیجی‌پی ناموفق بود'),
-      );
+      const classified = classifyDigipayOauthFailure({ httpStatus: status, json });
+      throw new Error(classified.message);
     }
     const expiresIn = Number(json.expires_in || 3300);
     const next: TokenCache = {
@@ -291,6 +375,82 @@ export class DigiPayAdapter implements PaymentProviderAdapter {
       });
     }
     return first;
+  }
+
+  /**
+   * Admin connection probe: OAuth only (no purchase ticket) so production stays side-effect free.
+   */
+  async probeConnection(over?: DigipayRuntimeCreds): Promise<DigipayProbeResult> {
+    const c = this.creds(over);
+    const meta = this.probeMeta(c);
+    const sandbox = c.sandbox;
+    if (!this.isConfigured(over)) {
+      return {
+        ok: false,
+        stage: 'config',
+        failureClass: 'missing_config',
+        message:
+          'هر چهار مقدار UPG لازم است: client_id، client_secret، نام کاربری UPG و رمز UPG.',
+        sandbox,
+        meta,
+      };
+    }
+
+    try {
+      const form = new FormData();
+      form.append('username', c.username);
+      form.append('password', c.password);
+      form.append('grant_type', 'password');
+
+      const { ok, status, json } = await this.fetchRaw(
+        `${this.apiBase(sandbox)}/oauth/token`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: digipayBasicAuthHeader(c.clientId, c.clientSecret),
+          },
+          body: form,
+        },
+      );
+      if (!ok || !json.access_token) {
+        const classified = classifyDigipayOauthFailure({ httpStatus: status, json });
+        this.logger.warn(
+          `DigiPay probe oauth failed http=${status} class=${classified.failureClass}`,
+        );
+        return {
+          ok: false,
+          stage: 'oauth',
+          failureClass: classified.failureClass,
+          httpStatus: status,
+          message: classified.message,
+          sandbox,
+          meta,
+        };
+      }
+      // Drop token immediately — never return or cache from probe beyond normal cache path.
+      this.tokens.delete(c.clientId);
+      return {
+        ok: true,
+        stage: 'ready',
+        message: sandbox
+          ? 'اتصال UAT موفق بود. هنوز پرداخت واقعی تست نشده است.'
+          : 'اتصال عملیاتی موفق بود. مشتری می‌تواند دیجی‌پی را در چک‌اوت ببیند (اگر نمایش فعال باشد).',
+        sandbox,
+        meta,
+      };
+    } catch (err) {
+      const norm = this.normalizeProviderError(err);
+      this.logger.warn(`DigiPay probe error: ${norm.code} ${norm.message}`);
+      return {
+        ok: false,
+        stage: 'oauth',
+        failureClass: norm.retryable ? 'network' : 'unknown',
+        httpStatus: norm.httpStatus,
+        message: norm.message,
+        sandbox,
+        meta,
+      };
+    }
   }
 
   async createPayment(req: CreatePaymentRequest): Promise<CreatePaymentResult> {

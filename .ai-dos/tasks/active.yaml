@@ -1,5 +1,46 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260903-003"
+    title: "DigiPay admin connection test + UPG credential gates"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260903-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260903-003"
+      implementer: "cursor:implementer-TASK-20260903-003"
+      reviewer: "self-review-payments-no-secrets-in-response"
+      security: "self-review-admin-only-oauth-probe-no-secret-echo"
+    branch: "ai/TASK-20260903-003-digipay-connection-test"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-03T11:55:00Z"
+    heartbeat_at: "2026-09-03T11:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/payment/adapters/digipay.adapter.ts"
+      - "apps/api/src/modules/payment/adapters/digipay.adapter.spec.ts"
+      - "apps/api/src/modules/payment/payment.controller.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "docs/reports/2026-09-03-digipay-connection-test.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Live DigiPay OAuth returns Spring 401 for stored client credentials.
+      Owner asked for full next step: admin connection probe, UPG labels,
+      configured=all-four-fields, classify invalid_client vs invalid_grant.
+      Reclaimed digipay adapter + payment.controller + settings.service from
+      TASK-20260824-003 / TASK-20260812-001 (heartbeats Aug 24 / Aug 14, stale).
+      Reclaimed AdminSettings from TASK-20260903-001 (shipped session fix;
+      DigiPay fields were explicitly out of that task's scope) and
+      TASK-20260831-001 (stale DigiPay-untouched claim).
+      Probe is OAuth-only on production (no ticket side-effect). Never echo secrets.
+    acceptance_criteria:
+      - "POST /payments/digipay/connection-test is ADMIN+AdminOnly; returns stage/failureClass without secrets"
+      - "digipayConfigured and adapter.isConfigured require client_id/secret/username/password"
+      - "Admin settings DigiPay labels say UPG; Test connection uses form overrides then saved"
+      - "Adapter unit spec covers classify + configured; api+web tsc pass"
   - id: "TASK-20260903-002"
     title: "Compress Taranom logo assets on wholesale and retail"
     status: "in_progress"
@@ -62,7 +103,8 @@ tasks:
       - "apps/web/src/app/admin/layout.tsx"
       - "apps/web/src/components/admin/AdminDashboard.tsx"
       - "apps/web/src/components/admin/AdminProducts.tsx"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
+      # transferred 2026-09-03 to TASK-20260903-003 (DigiPay probe; session task shipped):
+      # "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/web/src/components/retail/RetailOtpLogin.tsx"
       - "apps/web/src/app/retail/account/page.tsx"
       - "docs/WORKLOG.md"
@@ -245,7 +287,8 @@ tasks:
       - "apps/web/src/components/admin/AdminAccount.tsx"
       - "apps/web/src/app/admin/account/page.tsx"
       - "apps/web/src/components/admin/AdminHeader.tsx"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
+      # transferred 2026-09-03 to TASK-20260903-003 (DigiPay UPG UX; claim was load-error only):
+      # "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/web/src/components/admin/AdminSidebar.tsx"
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
       - "apps/web/src/components/layout/Header.tsx"
@@ -761,11 +804,13 @@ tasks:
     heartbeat_at: "2026-08-24T21:50:00Z"
     depends_on: []
     file_claims:
-      - "apps/api/src/modules/payment/adapters/digipay.adapter.ts"
-      - "apps/api/src/modules/payment/adapters/digipay.adapter.spec.ts"
+      # transferred 2026-09-03 to TASK-20260903-003 (connection probe):
+      # "apps/api/src/modules/payment/adapters/digipay.adapter.ts"
+      # "apps/api/src/modules/payment/adapters/digipay.adapter.spec.ts"
       - "apps/api/src/modules/payment/adapters/payment-provider.adapter.ts"
       # transferred 2026-08-26 to TASK-20260826-001 (stale heartbeat; outbox producer): "apps/api/src/modules/payment/payment.service.ts"
-      - "apps/api/src/modules/payment/payment.controller.ts"
+      # transferred 2026-09-03 to TASK-20260903-003 (connection probe):
+      # "apps/api/src/modules/payment/payment.controller.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (OrderModule forwardRef):
       # "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
@@ -775,12 +820,14 @@ tasks:
       # "apps/api/src/modules/order/dto/create-order.dto.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (already stale vs 26-001):
       # "apps/api/src/modules/order/order.service.ts"
-      - "apps/api/src/modules/settings/settings.service.ts"
+      # transferred 2026-09-03 to TASK-20260903-003 (configured=4 fields):
+      # "apps/api/src/modules/settings/settings.service.ts"
       - "apps/api/package.json"
       - "apps/web/src/app/payment/callback/page.tsx"
       - "apps/web/src/app/payment/digipay/callback/route.ts"
       - "apps/web/src/app/retail/checkout/page.tsx"
-      # transferred 2026-08-31 to TASK-20260831-001 (stale heartbeat; settings load-error UX): "apps/web/src/components/admin/AdminSettings.tsx"
+      # transferred 2026-08-31 to TASK-20260831-001 then 2026-09-03 to TASK-20260903-003:
+      # "apps/web/src/components/admin/AdminSettings.tsx"
       - ".env.example"
       - "packages/shared-types/src/enums.ts"
       - "docs/deployment-runbook.md"
@@ -1674,7 +1721,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
       # transferred 2026-08-26 to TASK-20260826-001 (stale heartbeat; outbox producer): "apps/api/src/modules/payment/payment.service.ts"
-      - "apps/api/src/modules/payment/payment.controller.ts"
+      # transferred 2026-09-03 to TASK-20260903-003 (DigiPay connection probe):
+      # "apps/api/src/modules/payment/payment.controller.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (stale hb; OrderModule forwardRef):
       # "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/modules/payment/entities/payment.entity.ts"
@@ -1729,7 +1777,8 @@ tasks:
       - "apps/api/src/modules/payment/installment.hardening.spec.ts"
       - "apps/api/src/modules/payment/payment-hardening.followup.spec.ts"
       - "apps/api/src/database/migrations/20260812-004-installment-credit-fields.ts"
-      - "apps/api/src/modules/settings/settings.service.ts"
+      # transferred 2026-09-03 to TASK-20260903-003 (DigiPay configured gate):
+      # "apps/api/src/modules/settings/settings.service.ts"
       - "apps/web/src/components/portal/PortalSidebar.tsx"
       - "apps/web/src/app/portal/dashboard/installments/page.tsx"
       - "docs/reports/2026-08-12-payment-phase6-installments.md"

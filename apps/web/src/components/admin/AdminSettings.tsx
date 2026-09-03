@@ -180,6 +180,11 @@ export function AdminSettings() {
   const [saved, setSaved] = useState<TabId | null>(null);
   const [showSecret, setShowSecret] = useState<Record<string, boolean>>({});
   const [loadError, setLoadError] = useState('');
+  const [digipayProbeBusy, setDigipayProbeBusy] = useState(false);
+  const [digipayProbeMsg, setDigipayProbeMsg] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -395,6 +400,42 @@ export function AdminSettings() {
     } catch (e: any) {
       alert(e?.message ?? 'خطا در ذخیره تنظیمات');
     } finally { setSaving(false); }
+  };
+
+  const testDigipayConnection = async () => {
+    if (!data) return;
+    setDigipayProbeBusy(true);
+    setDigipayProbeMsg(null);
+    try {
+      const res = await apiClient.post<{
+        ok: boolean;
+        stage: string;
+        failureClass?: string;
+        message: string;
+        sandbox: boolean;
+        meta?: { clientIdLen: number; usernameLen: number };
+      }>('/payments/digipay/connection-test', {
+        digipayClientId: data.payment.digipayClientId,
+        digipayClientSecret: data.payment.digipayClientSecret,
+        digipayUsername: data.payment.digipayUsername,
+        digipayPassword: data.payment.digipayPassword,
+        digipaySandbox: !!data.payment.digipaySandbox,
+      });
+      const envLabel = res.sandbox ? 'UAT' : 'عملیاتی';
+      setDigipayProbeMsg({
+        ok: !!res.ok,
+        text: `${res.ok ? 'موفق' : 'ناموفق'} (${envLabel} · ${res.stage}${
+          res.failureClass ? ` · ${res.failureClass}` : ''
+        }): ${res.message}`,
+      });
+    } catch (e: unknown) {
+      setDigipayProbeMsg({
+        ok: false,
+        text: e instanceof Error ? e.message : 'تست اتصال دیجی‌پی انجام نشد',
+      });
+    } finally {
+      setDigipayProbeBusy(false);
+    }
   };
 
   const patch = <K extends TabId>(group: K, updater: (g: SettingsPayload[K]) => SettingsPayload[K]) => {
@@ -985,10 +1026,10 @@ export function AdminSettings() {
           </div>
 
           <div className="border-t border-emerald-100 pt-5">
-            <h3 className="font-bold text-emerald-900 mb-1 text-sm">دیجی‌پی فروشگاه تکی (.ir)</h3>
+            <h3 className="font-bold text-emerald-900 mb-1 text-sm">دیجی‌پی UPG فروشگاه تکی (.ir)</h3>
             <p className="text-xs text-gray-500 mb-3">
-              مشتری در چک‌اوت بین زرین‌پال و دیجی‌پی انتخاب می‌کند. این بخش فقط اعتبارنامه و فعال بودن
-              دیجی‌پی را مشخص می‌کند؛ زرین‌پال تکی را قطع نمی‌کند.
+              مشتری در چک‌اوت بین زرین‌پال و دیجی‌پی انتخاب می‌کند. چهار مقدار زیر برای درگاه یکپارچه (UPG)
+              است؛ لاگین پنل کسب‌وکار دیجی‌پی را اینجا نگذارید. قبل از اتکا به چک‌اوت، «تست اتصال» بزنید.
             </p>
             <div className="space-y-4">
               <ToggleRow
@@ -998,47 +1039,78 @@ export function AdminSettings() {
                 onChange={(v) => patch('payment', (p) => ({ ...p, digipayEnabled: v }))}
               />
               <SecretField
-                label="شناسه کلاینت (client_id)"
+                label="شناسه کلاینت UPG (client_id)"
                 value={data.payment.digipayClientId ?? ''}
                 shown={!!showSecret.digipayClientId}
                 onToggle={() => setShowSecret((p) => ({ ...p, digipayClientId: !p.digipayClientId }))}
                 onChange={(v) => patch('payment', (p) => ({ ...p, digipayClientId: v }))}
-                help="از پنل توسعه‌دهندگان دیجی‌پی"
+                help="از دستورالعمل فنی / پشتیبانی دیجی‌پی پس از فعال‌سازی ابزار UPG"
               />
               <SecretField
-                label="رمز کلاینت (client_secret)"
+                label="رمز کلاینت UPG (client_secret)"
                 value={data.payment.digipayClientSecret ?? ''}
                 shown={!!showSecret.digipayClientSecret}
                 onToggle={() => setShowSecret((p) => ({ ...p, digipayClientSecret: !p.digipayClientSecret }))}
                 onChange={(v) => patch('payment', (p) => ({ ...p, digipayClientSecret: v }))}
+                help="همان بستهٔ فنی همراه client_id — با رمز ورود پنل یکی نیست"
               />
               <SecretField
-                label="نام کاربری پنل"
+                label="نام کاربری UPG"
                 value={data.payment.digipayUsername ?? ''}
                 shown={!!showSecret.digipayUsername}
                 onToggle={() => setShowSecret((p) => ({ ...p, digipayUsername: !p.digipayUsername }))}
                 onChange={(v) => patch('payment', (p) => ({ ...p, digipayUsername: v }))}
-                help="برای ورود OAuth لازم است؛ با client_id یکی نیست"
+                help="در مرحله فعال‌سازی ابزار UPG تعریف می‌شود؛ با client_id و لاگین پنل یکی نیست"
               />
               <SecretField
-                label="رمز پنل"
+                label="رمز عبور UPG"
                 value={data.payment.digipayPassword ?? ''}
                 shown={!!showSecret.digipayPassword}
                 onToggle={() => setShowSecret((p) => ({ ...p, digipayPassword: !p.digipayPassword }))}
                 onChange={(v) => patch('payment', (p) => ({ ...p, digipayPassword: v }))}
+                help="رمز ابزار UPG؛ اگر فراموش شد از پشتیبانی فنی دیجی‌پی بخواهید"
               />
               <ToggleRow
                 label="حالت آزمایشی دیجی‌پی (UAT)"
-                hint="روشن = سرور آزمایشی؛ خاموش = محیط عملیاتی"
+                hint="روشن = سرور آزمایشی؛ خاموش = محیط عملیاتی — با اعتبارنامهٔ همان محیط تست کنید"
                 value={!!data.payment.digipaySandbox}
                 onChange={(v) => patch('payment', (p) => ({ ...p, digipaySandbox: v }))}
               />
-              <p className="text-xs text-gray-600">
-                وضعیت اعتبارنامه:{' '}
-                <span className={data.payment.digipayConfigured ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
-                  {data.payment.digipayConfigured ? 'شناسه و رمز کلاینت ذخیره شده' : 'ناقص — مشتری دیجی‌پی را نمی‌بیند'}
-                </span>
-              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void testDigipayConnection()}
+                  disabled={digipayProbeBusy}
+                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+                >
+                  {digipayProbeBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                  )}
+                  {digipayProbeBusy ? 'در حال تست…' : 'تست اتصال دیجی‌پی'}
+                </button>
+                <p className="text-xs text-gray-600">
+                  وضعیت ذخیره‌شده:{' '}
+                  <span className={data.payment.digipayConfigured ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                    {data.payment.digipayConfigured
+                      ? 'هر چهار مقدار UPG پر است'
+                      : 'ناقص — مشتری دیجی‌پی را نمی‌بیند'}
+                  </span>
+                </p>
+              </div>
+              {digipayProbeMsg && (
+                <p
+                  className={cn(
+                    'text-xs rounded-lg px-3 py-2 border',
+                    digipayProbeMsg.ok
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-amber-50 border-amber-200 text-amber-950',
+                  )}
+                >
+                  {digipayProbeMsg.text}
+                </p>
+              )}
             </div>
           </div>
 
