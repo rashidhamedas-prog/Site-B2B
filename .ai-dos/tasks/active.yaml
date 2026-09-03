@@ -2,18 +2,18 @@
 tasks:
   - id: "TASK-20260903-006"
     title: "Account leftovers: JWT revoke, portal redirect, Persian OTP, register hint"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260903-006"
     roles:
       architect: "cursor:implementer-TASK-20260903-006"
       implementer: "cursor:implementer-TASK-20260903-006"
-      reviewer: "required-independent-before-done"
-      security: "required-independent-before-done"
+      reviewer: "cursor:reviewer-b3bd84b8-PASS-WITH-CONDITIONS"
+      security: "cursor:security-0b8ce4a2-PASS-WITH-CONDITIONS"
     branch: "ai/TASK-20260903-006-account-hardening"
     worktree: "D:/proje/Site-B2B-customer-account"
     claimed_at: "2026-09-03T19:30:00Z"
-    heartbeat_at: "2026-09-03T19:30:00Z"
+    heartbeat_at: "2026-09-03T19:50:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/auth/entities/user.entity.ts"

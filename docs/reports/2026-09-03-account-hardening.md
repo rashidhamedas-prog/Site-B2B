@@ -18,6 +18,12 @@ Date: 2026-09-03
 - Invoice IDOR.
 - JWT denylist of individual `jti`s.
 
+## Reviews
+
+- Reviewer [بازبین پنل](b3bd84b8-c22c-4185-a3bf-84a5c0817cac): **PASS WITH CONDITIONS**
+- Security [بازبین امنیت](0b8ce4a2-20a5-4bc1-87de-27c665c954f6): **PASS WITH CONDITIONS**
+- Live: `5a23424`. No must-fix.
+
 ## Rollback
 
 Revert this branch. Migration down drops `passwordChangedAt`. Existing tokens without a stamp stay valid.

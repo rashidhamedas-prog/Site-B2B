@@ -2,13 +2,23 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T19:50:00Z — TASK-20260903-006 reviews complete
+
+- Task / owner: TASK-20260903-006 / cursor:implementer-TASK-20260903-006
+- Live SHA `5a23424`. Column `users.passwordChangedAt` present. ACs met.
+- Reviewer [بازبین پنل](b3bd84b8-c22c-4185-a3bf-84a5c0817cac): **PASS WITH CONDITIONS** (reviewed `4a8933e`; same slice as rebased `5a23424`).
+- Security [بازبین امنیت](0b8ce4a2-20a5-4bc1-87de-27c665c954f6): **PASS WITH CONDITIONS**. No must-fix.
+- Residual (later): same-second JWT window; optional `..` normalize in `safeScopedRedirect`; OTP session not cleared on change-password; new specs not in CI `npm test`; invoice IDOR / retail middleware unchanged.
+- Task marked done.
+
 ## 2026-09-03T19:35:00Z — TASK-20260903-006 account leftovers implementing
 
 - Task / owner: TASK-20260903-006 / cursor:implementer-TASK-20260903-006
 - Branch: `ai/TASK-20260903-006-account-hardening` in `D:/proje/Site-B2B-customer-account`.
 - CODE: `passwordChangedAt` + JWT iat check; fresh token on change/set/reset; `safeScopedRedirect` in `useAuth`; Persian OTP Transform; register hint ۸; pending reset stays on page.
 - Reclaimed from TASK-20260903-005 (done), TASK-20260901-002 (stale jwt/useAuth), TASK-20260831-001 (stale users.service/AdminAccount). Did not edit middleware.ts / lib/auth.ts.
-- Exact next: tsc + specs, independent Reviewer+Security, then commit/push/deploy + migrate. Do not Done.
+- Live `5a23424` on VPS; `users.passwordChangedAt` column present; `/v1/health` 200.
+- Exact next: independent Reviewer [بازبین پنل](b3bd84b8-c22c-4185-a3bf-84a5c0817cac) + Security [بازبین امنیت](0b8ce4a2-20a5-4bc1-87de-27c665c954f6). Do not Done.
 
 ## 2026-09-03T15:40:00Z — TASK-20260903-005 reviews complete
 

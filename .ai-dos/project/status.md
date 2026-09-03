@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-03 — **TASK-20260903-006** implementing JWT revoke + portal redirect + Persian OTP + register hint on `ai/TASK-20260903-006-account-hardening`. Independent Reviewer+Security required. Not live until merge/deploy.
+- Last verified: 2026-09-03 — **TASK-20260903-006** live `5a23424`: JWT revoke + portal redirect + Persian OTP + register hint ۸. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.
 - Last verified: 2026-09-03 — **TASK-20260903-004** shipping on `ai/TASK-20260903-004-gsc-mobile-speed`: static max-age=0 hide + wholesale logo fetchPriority low + JSON-LD host rebase + hero 86KB→38KB. GSC UI clicks NOT RUN (browser MCP down).
 - Last verified: 2026-09-03 — **TASK-20260903-005** live `6dde78f`: customer panels + password recovery. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.
 - Last verified: 2026-09-03 — **TASK-20260903-003** live `007eee9`: DigiPay admin connection probe + UPG 4-field gate. Owner must replace DigiPay-rejected client credentials.
