@@ -9,7 +9,9 @@ Append newest entries at the top. Never erase another agent's record.
 - Live wholesale header/footer + JSON-LD use `/logo-128.png` (was 20368 B). Retail header is SVG BrandMark, not this PNG; schema still references logo-128.
 - CODE: recompressed `logo-128.png` to 6824 B (128×128). Replaced public `logo-512.png` with 192px palette PNG 13916 B (login shows 80px). Brand `logo-512` stays 512px at 59376 B. Portal login now uses `/logo-128.png`.
 - Did not edit claimed Header/Footer/AdminLoginForm/AdminSidebar/PortalSidebar/JsonLd. Admin login still `/logo-512.png` and gets the smaller file.
-- Exact next: commit, merge/push master, deploy static assets, verify Content-Length on both hosts.
+- Live: docker-cp’d both PNGs into `taranom_web` (`.com` and `.ir` Content-Length 6824 / 13916). Host `/opt/taranom` public copies updated. API `/v1/health` 200.
+- Full `auto-deploy.sh` rebuild NOT RUN: VPS `git fetch` asks GitHub HTTPS username (repo private; no deploy key). Image still SHA `a63ade9` plus overwritten public PNGs.
+- Exact next: when VPS git auth works, pull `566b051` so portal login src change and image bake persist across recreate.
 
 ## 2026-09-02T22:00:00Z — TASK-20260903-001 admin empty session ready to ship
 
