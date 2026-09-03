@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
 import {
+  isLightHeroOverlay,
   normalizeHeroSlides,
   resolveAutoplayMs,
   type HeroFlatProps,
@@ -101,14 +102,23 @@ function RetailHeroMedia({
   );
 }
 
-function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork?: boolean }) {
+function RetailSlideCopy({
+  slide,
+  artwork = false,
+  light = false,
+}: {
+  slide: HeroSlide;
+  artwork?: boolean;
+  light?: boolean;
+}) {
+  const accentClass = light ? 'text-[#E07A5F]' : 'text-[var(--retail-gold)]';
   const renderHeadline = () => {
     if (slide.headlineAccent && slide.headline.includes(slide.headlineAccent)) {
       const parts = slide.headline.split(slide.headlineAccent);
       return (
         <>
           {parts[0]}
-          <span className="text-[var(--retail-gold)]">{slide.headlineAccent}</span>
+          <span className={accentClass}>{slide.headlineAccent}</span>
           {parts.slice(1).join(slide.headlineAccent)}
         </>
       );
@@ -120,20 +130,34 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
     <div className="max-w-xl text-center lg:ms-auto lg:text-right">
       {slide.brandEyebrow ? (
         <div className="mb-5 flex items-center justify-center gap-3 lg:justify-end">
-          <span className="retail-gold-line" />
-          <span className="text-[13px] font-medium tracking-[0.12em] text-[var(--retail-gold)]">
+          <span className={light ? 'h-px w-8 bg-[#1A73E8]/45' : 'retail-gold-line'} />
+          <span
+            className={`text-[13px] font-medium tracking-[0.12em] ${
+              light ? 'text-[#1A73E8]' : 'text-[var(--retail-gold)]'
+            }`}
+          >
             {slide.brandEyebrow}
           </span>
-          <span className="retail-gold-line" />
+          <span className={light ? 'h-px w-8 bg-[#1A73E8]/45' : 'retail-gold-line'} />
         </div>
       ) : null}
 
-      <h2 className="text-[clamp(2rem,4.5vw,3.4rem)] font-bold leading-[1.35] tracking-tight !text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
+      <h2
+        className={`text-[clamp(2rem,4.5vw,3.4rem)] font-bold leading-[1.35] tracking-tight ${
+          light
+            ? 'text-[#123A6B]'
+            : '!text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]'
+        }`}
+      >
         {renderHeadline()}
       </h2>
 
       {slide.body ? (
-        <p className="mx-auto mt-5 max-w-md text-[15px] leading-8 text-white/80 lg:mx-0 lg:ms-auto">
+        <p
+          className={`mx-auto mt-5 max-w-md text-[15px] leading-8 lg:mx-0 lg:ms-auto ${
+            light ? 'text-[#2C4A6E]' : 'text-white/80'
+          }`}
+        >
           {slide.body}
         </p>
       ) : null}
@@ -144,7 +168,11 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
         {slide.ctaLabel && slide.ctaHref ? (
           <Link
             href={slide.ctaHref}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-7 py-3.5 text-sm font-extrabold text-[#1a1a1a] shadow-[0_10px_30px_rgba(201,168,76,0.28)] transition duration-200 hover:brightness-105"
+            className={
+              light
+                ? 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-[#1A73E8] px-7 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_28px_rgba(26,115,232,0.28)] transition duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8]'
+                : 'inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-7 py-3.5 text-sm font-extrabold text-[#1a1a1a] shadow-[0_10px_30px_rgba(201,168,76,0.28)] transition duration-200 hover:brightness-105'
+            }
           >
             {slide.ctaLabel}
             <ChevronLeft className="h-4 w-4" />
@@ -153,7 +181,11 @@ function RetailSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork
         {slide.ctaSecondaryLabel && slide.ctaSecondaryHref ? (
           <Link
             href={slide.ctaSecondaryHref}
-            className="border-[var(--retail-gold)]/60 inline-flex cursor-pointer items-center gap-2 rounded-md border bg-black/20 px-7 py-3.5 text-sm font-bold text-[var(--retail-gold)] backdrop-blur-sm transition duration-200 hover:bg-white/10"
+            className={
+              light
+                ? 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full border border-[#1A73E8]/70 px-7 py-3.5 text-sm font-bold text-[#1A73E8] transition duration-200 hover:bg-[#1A73E8]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8]'
+                : 'border-[var(--retail-gold)]/60 inline-flex cursor-pointer items-center gap-2 rounded-md border bg-black/20 px-7 py-3.5 text-sm font-bold text-[var(--retail-gold)] backdrop-blur-sm transition duration-200 hover:bg-white/10'
+            }
           >
             {slide.ctaSecondaryLabel}
             <ChevronLeft className="h-4 w-4" />
@@ -172,12 +204,13 @@ export function RetailHero(props: RetailHeroProps) {
 
   const slide = carousel.slide ?? RETAIL_FALLBACK;
   const isArtwork = slide.presentation === 'artwork';
+  const isLight = isLightHeroOverlay(slide);
 
   return (
     <section
-      className={`relative isolate min-h-[82vh] overflow-hidden bg-[var(--retail-primary-dark)] text-white ${
-        isArtwork ? 'md:aspect-[192/85] md:min-h-0' : 'md:min-h-[min(92vh,860px)]'
-      }`}
+      className={`relative isolate min-h-[82vh] overflow-hidden ${
+        isLight ? 'bg-[#EEF4FC] text-[#123A6B]' : 'bg-[var(--retail-primary-dark)] text-white'
+      } ${isArtwork ? 'md:aspect-[192/85] md:min-h-0' : 'md:min-h-[min(92vh,860px)]'}`}
       onMouseEnter={carousel.pause}
       onMouseLeave={carousel.resume}
       onFocusCapture={carousel.pause}
@@ -201,12 +234,14 @@ export function RetailHero(props: RetailHeroProps) {
             <RetailHeroMedia
               src={src}
               mobileSrc={s.mobileImageUrl}
-              alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
+              alt={s.imageAlt || ''}
               priority={isLcp}
               className={
                 s.presentation === 'artwork'
                   ? 'object-cover md:object-fill'
-                  : 'object-cover object-[20%_center] sm:object-center'
+                  : isLightHeroOverlay(s)
+                    ? 'object-cover object-[center_top] sm:object-left'
+                    : 'object-cover object-[20%_center] sm:object-center'
               }
             />
           </div>
@@ -215,17 +250,29 @@ export function RetailHero(props: RetailHeroProps) {
 
       {/* Brand wash + RTL readable scrim (copy sits on the right in RTL) */}
       <div
-        className={`absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`}
+        className={`absolute inset-0 ${isArtwork ? 'md:hidden' : ''} ${isLight ? 'md:hidden' : ''}`}
         style={{
-          background: `
+          background: isLight
+            ? 'linear-gradient(to top, rgba(238,244,252,0.97) 0%, rgba(238,244,252,0.88) 28%, rgba(238,244,252,0.2) 52%, transparent 72%)'
+            : `
             linear-gradient(100deg, rgba(12,39,30,0.15) 0%, rgba(12,39,30,0.35) 42%, rgba(12,39,30,0.82) 68%, rgba(8,28,22,0.94) 100%),
             radial-gradient(ellipse 45% 55% at 88% 40%, rgba(201,168,76,0.18), transparent 55%)
           `,
         }}
         aria-hidden
       />
+      {isLight && !isArtwork ? (
+        <div
+          className="pointer-events-none absolute inset-0 hidden md:block"
+          style={{
+            background:
+              'linear-gradient(100deg, rgba(238,244,252,0) 0%, rgba(238,244,252,0.12) 46%, rgba(238,244,252,0.78) 70%, rgba(238,244,252,0.94) 100%)',
+          }}
+          aria-hidden
+        />
+      ) : null}
       <div
-        className={`absolute inset-0 opacity-[0.05] ${isArtwork ? 'md:hidden' : ''}`}
+        className={`absolute inset-0 opacity-[0.05] ${isArtwork || isLight ? 'hidden' : ''}`}
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
@@ -237,7 +284,7 @@ export function RetailHero(props: RetailHeroProps) {
         className={`relative z-10 mx-auto flex min-h-[82vh] max-w-[1200px] items-end px-4 pb-24 pt-28 sm:px-6 md:min-h-0 lg:items-center lg:px-8 lg:pb-28 ${isArtwork ? 'md:sr-only md:pointer-events-none' : 'md:min-h-[min(92vh,860px)]'}`}
       >
         <div key={`copy-${carousel.index}`} className="animate-fade-in w-full lg:w-[48%]">
-          <RetailSlideCopy slide={slide} artwork={isArtwork} />
+          <RetailSlideCopy slide={slide} artwork={isArtwork} light={isLight} />
         </div>
       </div>
 
@@ -258,7 +305,7 @@ export function RetailHero(props: RetailHeroProps) {
           onNext={carousel.goNext}
           paused={carousel.isPaused}
           onTogglePaused={carousel.togglePaused}
-          tone="gold"
+          tone={isLight ? 'ink' : 'gold'}
         />
       ) : null}
     </section>

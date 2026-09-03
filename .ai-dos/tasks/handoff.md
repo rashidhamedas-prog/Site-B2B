@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T23:10:00Z — TASK-20260904-004 DigiPay retail hero implementing
+
+- Task / owner: TASK-20260904-004 / cursor:implementer-TASK-20260904-004
+- Branch / worktree: `ai/TASK-20260904-004-digipay-retail-banner` in `D:/proje/Site-B2B-digipay-banner` (rebased onto origin/master).
+- Objective: redesign the DigiPay partner banner for retail home with HTML copy, alt text, and CMS/admin editability.
+- Reclaimed `defaults.ts` from TASK-20260831-003 (stale) and `RetailHero.tsx` + `HeroCarousel.tsx` from TASK-20260823-001 (stale).
+- Did not edit payment adapters or checkout. DigiPay still only appears at checkout if UPG credentials work.
+- Tests (observed): `apps/web` tsc --noEmit exit 0; `apps/api` tsc --noEmit exit 0; `npx tsx src/lib/cms/hero-slides.spec.ts` → OK. Desktop WebP 46738B, mobile 37192B.
+- Exact next: push + deploy so migration prepends the live CMS slide.
+
 ## 2026-09-03T22:15:00Z — TASK-20260904-003 Basalam retail catalog push
 
 - Task / owner: TASK-20260904-003 / cursor:implementer-TASK-20260904-003

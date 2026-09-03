@@ -1,3 +1,5 @@
+export type HeroOverlayTone = 'dark' | 'light';
+
 export type HeroSlide = {
   brandEyebrow?: string;
   headline: string;
@@ -7,6 +9,7 @@ export type HeroSlide = {
   mobileImageUrl?: string;
   imageAlt?: string;
   presentation?: 'overlay' | 'artwork';
+  overlayTone?: HeroOverlayTone;
   ctaLabel?: string;
   ctaHref?: string;
   ctaSecondaryLabel?: string;
@@ -22,6 +25,7 @@ export type HeroFlatProps = {
   mobileImageUrl?: string;
   imageAlt?: string;
   presentation?: 'overlay' | 'artwork';
+  overlayTone?: HeroOverlayTone;
   ctaLabel?: string;
   ctaHref?: string;
   ctaSecondaryLabel?: string;
@@ -29,6 +33,29 @@ export type HeroFlatProps = {
   slides?: HeroSlide[] | unknown;
   autoplayMs?: number;
 };
+
+export const DIGIPAY_RETAIL_HERO_IMAGE = '/banners/digipay-installment-2026/retail-desktop.webp';
+export const DIGIPAY_RETAIL_HERO_IMAGE_MOBILE =
+  '/banners/digipay-installment-2026/retail-mobile.webp';
+
+export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
+  brandEyebrow: 'پرداخت با دیجی‌پی',
+  headline: 'خرید قسطی با دیجی‌پی در ترنم فعال شد',
+  headlineAccent: 'ترنم',
+  body: 'مدل دلخواهت را انتخاب کن و موقع پرداخت، دیجی‌پی را بزن — برای خریدی راحت‌تر و برنامه‌ریزی‌شده‌تر.',
+  imageUrl: DIGIPAY_RETAIL_HERO_IMAGE,
+  mobileImageUrl: DIGIPAY_RETAIL_HERO_IMAGE_MOBILE,
+  imageAlt:
+    'زن جوان با مانتو و کلاه کرمی در فروشگاه پوشاک، در حال نگاه به گوشی؛ کنار تصویر گوشی و کارت پرداخت سه‌بعدی بدون نوشته',
+  presentation: 'overlay',
+  overlayTone: 'light',
+  ctaLabel: 'مشاهده محصولات',
+  ctaHref: '/products',
+};
+
+function parseOverlayTone(value: unknown): HeroOverlayTone | undefined {
+  return value === 'light' ? 'light' : value === 'dark' ? 'dark' : undefined;
+}
 
 const DEFAULT_AUTOPLAY_MS = 5500;
 
@@ -52,6 +79,7 @@ function asSlide(raw: unknown): HeroSlide | null {
     mobileImageUrl: trimUrl(o.mobileImageUrl),
     imageAlt: typeof o.imageAlt === 'string' ? o.imageAlt : undefined,
     presentation: o.presentation === 'artwork' ? 'artwork' : 'overlay',
+    overlayTone: parseOverlayTone(o.overlayTone),
     ctaLabel: typeof o.ctaLabel === 'string' ? o.ctaLabel : undefined,
     ctaHref: typeof o.ctaHref === 'string' ? o.ctaHref : undefined,
     ctaSecondaryLabel: typeof o.ctaSecondaryLabel === 'string' ? o.ctaSecondaryLabel : undefined,
@@ -78,6 +106,7 @@ export function normalizeHeroSlides(props: HeroFlatProps, fallback?: HeroSlide):
         mobileImageUrl: trimUrl(props.mobileImageUrl),
         imageAlt: props.imageAlt,
         presentation: props.presentation === 'artwork' ? 'artwork' : 'overlay',
+        overlayTone: props.overlayTone,
         ctaLabel: props.ctaLabel,
         ctaHref: props.ctaHref,
         ctaSecondaryLabel: props.ctaSecondaryLabel,
@@ -87,6 +116,15 @@ export function normalizeHeroSlides(props: HeroFlatProps, fallback?: HeroSlide):
   }
 
   return fallback ? [fallback] : [];
+}
+
+export function prependUniqueHeroSlide(existing: HeroSlide[], slide: HeroSlide): HeroSlide[] {
+  if (existing.some((item) => item.imageUrl === slide.imageUrl)) return existing;
+  return [slide, ...existing];
+}
+
+export function isLightHeroOverlay(slide: HeroSlide): boolean {
+  return slide.presentation !== 'artwork' && slide.overlayTone === 'light';
 }
 
 export function resolveAutoplayMs(value: unknown): number {

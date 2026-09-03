@@ -95,12 +95,25 @@ export function HeroCarouselControls({
   onNext: () => void;
   paused?: boolean;
   onTogglePaused?: () => void;
-  tone?: 'gold' | 'secondary';
+  tone?: 'gold' | 'secondary' | 'ink';
 }) {
   if (count < 2) return null;
 
-  const active = tone === 'gold' ? 'bg-[var(--retail-gold,#C9A84C)]' : 'bg-secondary';
-  const idle = 'bg-white/35 hover:bg-white/55';
+  const active =
+    tone === 'gold'
+      ? 'bg-[var(--retail-gold,#C9A84C)]'
+      : tone === 'ink'
+        ? 'bg-[#123A6B]'
+        : 'bg-secondary';
+  const idle = tone === 'ink' ? 'bg-[#123A6B]/30 hover:bg-[#123A6B]/50' : 'bg-white/35 hover:bg-white/55';
+  const controlBtn =
+    tone === 'ink'
+      ? 'hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[#123A6B]/25 bg-white/80 text-[#123A6B] backdrop-blur-sm transition hover:bg-white md:inline-flex'
+      : 'hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 md:inline-flex';
+  const pauseBtn =
+    tone === 'ink'
+      ? 'inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[#123A6B]/25 bg-white/80 text-[#123A6B] backdrop-blur-sm transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#123A6B]'
+      : 'inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
   return (
     <div className="pointer-events-auto absolute inset-x-0 bottom-5 z-20 flex items-center justify-center gap-3 sm:bottom-7">
@@ -108,7 +121,7 @@ export function HeroCarouselControls({
         type="button"
         aria-label="اسلاید قبلی"
         onClick={onPrev}
-        className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 md:inline-flex"
+        className={controlBtn}
       >
         <ChevronRight className="h-4 w-4" />
       </button>
@@ -130,7 +143,7 @@ export function HeroCarouselControls({
         type="button"
         aria-label="اسلاید بعدی"
         onClick={onNext}
-        className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 md:inline-flex"
+        className={controlBtn}
       >
         <ChevronLeft className="h-4 w-4" />
       </button>
@@ -140,7 +153,7 @@ export function HeroCarouselControls({
           aria-label={paused ? 'ادامه پخش خودکار اسلایدها' : 'توقف پخش خودکار اسلایدها'}
           aria-pressed={paused}
           onClick={onTogglePaused}
-          className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className={pauseBtn}
         >
           {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
         </button>

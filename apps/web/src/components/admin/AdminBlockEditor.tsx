@@ -73,6 +73,7 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
             mobileImageUrl: '',
             imageAlt: '',
             presentation: 'overlay',
+            overlayTone: 'dark',
             ctaLabel: '',
             ctaHref: '',
             ctaSecondaryLabel: '',
@@ -948,6 +949,7 @@ function BlockFields({
       mobileImageUrl?: string;
       imageAlt?: string;
       presentation?: 'overlay' | 'artwork';
+      overlayTone?: 'dark' | 'light';
       ctaLabel?: string;
       ctaHref?: string;
       ctaSecondaryLabel?: string;
@@ -963,6 +965,7 @@ function BlockFields({
       mobileImageUrl: '',
       imageAlt: '',
       presentation: 'overlay',
+      overlayTone: 'dark',
       ctaLabel: '',
       ctaHref: '',
       ctaSecondaryLabel: '',
@@ -984,6 +987,7 @@ function BlockFields({
             mobileImageUrl: str(p, 'mobileImageUrl'),
             imageAlt: str(p, 'imageAlt'),
             presentation: str(p, 'presentation') === 'artwork' ? 'artwork' : 'overlay',
+            overlayTone: str(p, 'overlayTone') === 'light' ? 'light' : 'dark',
             ctaLabel: str(p, 'ctaLabel'),
             ctaHref: str(p, 'ctaHref'),
             ctaSecondaryLabel: str(p, 'ctaSecondaryLabel'),
@@ -1081,6 +1085,19 @@ function BlockFields({
                 >
                   <option value="overlay">متن HTML روی تصویر</option>
                   <option value="artwork">بنر کامل دارای متن داخلی</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-xs font-medium text-gray-600">
+                <span>تم متن روی تصویر</span>
+                <select
+                  value={item.overlayTone === 'light' ? 'light' : 'dark'}
+                  onChange={(e) =>
+                    update({ overlayTone: e.target.value as 'dark' | 'light' })
+                  }
+                  className="focus:border-primary w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none"
+                >
+                  <option value="dark">تیره (سفید روی سبز ترنم)</option>
+                  <option value="light">روشن (سرمه‌ای روی پس‌زمینه روشن)</option>
                 </select>
               </label>
               <Field

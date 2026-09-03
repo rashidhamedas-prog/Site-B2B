@@ -1,5 +1,50 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260904-004"
+    title: "Redesign DigiPay retail hero with HTML text + alt"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260904-004"
+    roles:
+      architect: "cursor:implementer-TASK-20260904-004"
+      implementer: "cursor:implementer-TASK-20260904-004"
+      reviewer: "self-review-cms-hero-no-payment-change"
+      security: "self-review-no-secrets-cms-content-only"
+    branch: "ai/TASK-20260904-004-digipay-retail-banner"
+    worktree: "D:/proje/Site-B2B-digipay-banner"
+    claimed_at: "2026-09-03T23:10:00Z"
+    heartbeat_at: "2026-09-03T23:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/public/banners/digipay-installment-2026/retail-desktop.webp"
+      - "apps/web/public/banners/digipay-installment-2026/retail-mobile.webp"
+      - "apps/web/public/banners/digipay-installment-2026/README.md"
+      - "apps/web/src/lib/cms/hero-slides.ts"
+      - "apps/web/src/lib/cms/hero-slides.spec.ts"
+      - "apps/web/src/lib/cms/defaults.ts"
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/web/src/components/shared/HeroCarousel.tsx"
+      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
+      - "apps/api/src/database/migrations/20260904-004-digipay-retail-hero.ts"
+      - "docs/reports/2026-09-04-digipay-retail-hero.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to redesign the DigiPay partner banner for retail,
+      keep Persian copy out of the bitmap, set image alt, and add it
+      to retail home banners. Reclaimed defaults.ts from TASK-20260831-003
+      (stale hb 2026-08-31) and RetailHero/HeroCarousel from
+      TASK-20260823-001 (stale hb 2026-08-23). Did not change DigiPay
+      payment adapter, checkout, or credentials.
+    acceptance_criteria:
+      - "Retail home hero includes a DigiPay slide whose headline/body/CTA are HTML, not baked into the image"
+      - "The photo has a descriptive Persian imageAlt"
+      - "Desktop and mobile WebP plates exist under /banners/digipay-installment-2026/"
+      - "Published RETAIL home CMS is prepended via migration without wiping other slides"
+      - "Admin can edit overlayTone and imageAlt"
+      - "hero-slides spec and web tsc pass"
   - id: "TASK-20260904-003"
     title: "Push retail catalog into Basalam stall from admin settings"
     status: "in_progress"
@@ -711,7 +756,8 @@ tasks:
       - "apps/web/src/lib/blog.ts"
       - "apps/web/src/lib/blog-sitemap.ts"
       - "apps/web/src/lib/blog-sitemap.spec.ts"
-      - "apps/web/src/lib/cms/defaults.ts"
+      # transferred 2026-09-04 to TASK-20260904-004 (stale hb 2026-08-31; DigiPay retail hero):
+      # "apps/web/src/lib/cms/defaults.ts"
       - "apps/web/src/components/shared/JsonLd.tsx"
       # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-31; retail media host):
       # "apps/web/src/lib/jsonld-url.ts"
@@ -1407,12 +1453,14 @@ tasks:
       - "apps/web/src/components/shared/GoogleAnalytics.tsx"
       - "apps/web/src/components/shared/GoogleAnalyticsProvider.tsx"
       - "apps/web/src/components/shared/WebVitalsReporter.tsx"
-      - "apps/web/src/components/shared/HeroCarousel.tsx"
+      # transferred 2026-09-04 to TASK-20260904-004 (stale hb 2026-08-23; DigiPay overlay/alt):
+      # "apps/web/src/components/shared/HeroCarousel.tsx"
       - "apps/web/src/components/retail/RetailCartDrawer.tsx"
       - "apps/web/src/components/retail/RetailConversion.tsx"
       - "apps/web/src/components/retail/RetailPdpAnalytics.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/components/retail/RetailProductsCatalog.tsx"
-      - "apps/web/src/components/retail/RetailHero.tsx"
+      # transferred 2026-09-04 to TASK-20260904-004 (stale hb 2026-08-23; DigiPay overlay/alt):
+      # "apps/web/src/components/retail/RetailHero.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/components/retail/RetailProductCard.tsx"
       - "apps/web/src/components/blog/BlogAnalyticsTracker.tsx"
       - "apps/web/src/components/blog/BlogCtaTags.tsx"

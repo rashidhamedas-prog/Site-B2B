@@ -1,5 +1,6 @@
 import { toPersianDigits } from '@taranom/persian-utils';
 import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+import { DIGIPAY_RETAIL_HERO_SLIDE } from '@/lib/cms/hero-slides';
 import { newBlockId, type ContentBlock, type BlockType } from './types';
 
 function b(type: BlockType, props: Record<string, unknown>): ContentBlock {
@@ -658,6 +659,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
         b('hero', {
           autoplayMs: 6500,
           slides: [
+            { ...DIGIPAY_RETAIL_HERO_SLIDE },
             {
               brandEyebrow: 'شومیز لینن گلرخ',
               headline: 'آبیِ آرام برای هر روز شما',

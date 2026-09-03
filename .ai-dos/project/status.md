@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-04 — **TASK-20260904-004** implementing on `ai/TASK-20260904-004-digipay-retail-banner`: DigiPay retail hero with HTML overlay + alt. Not live until merge/deploy. Payment adapter untouched.
 - Last verified: 2026-09-04 — **TASK-20260904-003** implementing on `ai/TASK-20260904-003-basalam-catalog`: admin button pushes retail catalog to Basalam stall (unpublished). Not live until merge/deploy. Connectors off.
 - Last verified: 2026-09-04 — **TASK-20260904-002** implementing on `ai/TASK-20260904-002-delete-addresses`: shipping-address delete in retail/wholesale panels. Not live until merge/deploy.
 - Last verified: 2026-09-03 — **TASK-20260904-001** implementing on `ai/TASK-20260904-001-channel-panels`: JWT purpose retail|wholesale, host lock, pending B2B may OTP retail. Live SHA `3984d3b` after push to master. Reviewer + Security required. order.controller untouched.
