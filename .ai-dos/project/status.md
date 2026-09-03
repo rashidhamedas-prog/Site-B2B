@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-03 — **TASK-20260903-003** DigiPay admin connection test on `ai/TASK-20260903-003-digipay-connection-test`: OAuth probe + UPG labels + 4-field configured. Live DigiPay credentials still rejected by DigiPay until owner replaces them.
+- Last verified: 2026-09-03 — **TASK-20260903-003** live `007eee9`: DigiPay admin connection probe + UPG 4-field gate. Owner must replace DigiPay-rejected client credentials.
 - Last verified: 2026-09-03 — **TASK-20260826-001** live VPS `0970811`: channel isolation + blog authors + logo hotfix. Public collections/authors without channel → 400. Connectors unset. Canary send / soak / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** blog authors channel on `ai/TASK-20260826-001-blog-authors`: public author page requires RETAIL|WHOLESALE. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** channel isolation on `ai/TASK-20260826-001-channel-isolation`: public collections + discount validate + blog related stock. Admin tables have headers. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.
