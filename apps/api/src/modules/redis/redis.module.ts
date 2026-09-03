@@ -9,6 +9,8 @@ export type OtpRecord = {
   name?: string;
 };
 
+export type OtpPurpose = 'retail' | 'password_reset';
+
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
@@ -158,17 +160,22 @@ export class OtpService {
     return createHash('sha256').update(`${pepper}:${phone}:${code}`).digest('hex');
   }
 
-  private otpKey(phone: string) {
-    return `otp:retail:${phone}`;
+  private otpKey(phone: string, purpose: OtpPurpose = 'retail') {
+    return `otp:${purpose}:${phone}`;
   }
 
-  private cooldownKey(phone: string) {
-    return `otp:cooldown:${phone}`;
+  private cooldownKey(phone: string, purpose: OtpPurpose = 'retail') {
+    return `otp:cooldown:${purpose}:${phone}`;
+  }
+
+  private memKey(phone: string, purpose: OtpPurpose = 'retail') {
+    return `${purpose}:${phone}`;
   }
 
   /** Generate + store hashed OTP. Enforces resend cooldown. */
-  async issue(phone: string, name?: string): Promise<{ code: string }> {
-    const cdKey = this.cooldownKey(phone);
+  async issue(phone: string, name?: string, purpose: OtpPurpose = 'retail'): Promise<{ code: string }> {
+    const cdKey = this.cooldownKey(phone, purpose);
+    const slot = this.memKey(phone, purpose);
     const redisOk = this.redis.isReady;
     if (redisOk) {
       const allowed = await this.redis.setNxEx(cdKey, this.cooldown(), '1');
@@ -176,7 +183,7 @@ export class OtpService {
         throw new Error('COOLDOWN');
       }
     } else {
-      const existing = this.memory.get(phone);
+      const existing = this.memory.get(slot);
       if (existing && existing.expiresAt - (this.ttl() - this.cooldown()) * 1000 > Date.now()) {
         // within cooldown window from last issue
         const issuedAt = existing.expiresAt - this.ttl() * 1000;
@@ -192,10 +199,10 @@ export class OtpService {
     const payload = JSON.stringify(record);
 
     if (redisOk) {
-      const ok = await this.redis.setex(this.otpKey(phone), this.ttl(), payload);
+      const ok = await this.redis.setex(this.otpKey(phone, purpose), this.ttl(), payload);
       if (!ok) {
         this.logger.warn('OTP Redis setex failed — falling back to memory');
-        this.memory.set(phone, {
+        this.memory.set(slot, {
           hash,
           expiresAt: Date.now() + this.ttl() * 1000,
           attempts: 0,
@@ -203,7 +210,7 @@ export class OtpService {
         });
       }
     } else {
-      this.memory.set(phone, {
+      this.memory.set(slot, {
         hash,
         expiresAt: Date.now() + this.ttl() * 1000,
         attempts: 0,
@@ -218,8 +225,9 @@ export class OtpService {
    * Verify OTP (constant-time hash compare). Single-use on success.
    * Returns stored name if any.
    */
-  async verify(phone: string, code: string): Promise<{ name?: string }> {
-    const key = this.otpKey(phone);
+  async verify(phone: string, code: string, purpose: OtpPurpose = 'retail'): Promise<{ name?: string }> {
+    const key = this.otpKey(phone, purpose);
+    const slot = this.memKey(phone, purpose);
     let record: OtpRecord | null = null;
     let fromRedis = false;
 
@@ -236,9 +244,9 @@ export class OtpService {
     }
 
     if (!record) {
-      const mem = this.memory.get(phone);
+      const mem = this.memory.get(slot);
       if (!mem || mem.expiresAt < Date.now()) {
-        this.memory.delete(phone);
+        this.memory.delete(slot);
         throw new Error('EXPIRED');
       }
       record = { hash: mem.hash, attempts: mem.attempts, name: mem.name };
@@ -246,7 +254,7 @@ export class OtpService {
 
     record.attempts += 1;
     if (record.attempts > this.maxAttempts()) {
-      await this.clear(phone);
+      await this.clear(phone, purpose);
       throw new Error('MAX_ATTEMPTS');
     }
 
@@ -260,19 +268,46 @@ export class OtpService {
         const ttl = this.ttl();
         await this.redis.setex(key, ttl, JSON.stringify(record));
       } else {
-        const mem = this.memory.get(phone);
+        const mem = this.memory.get(slot);
         if (mem) mem.attempts = record.attempts;
       }
       throw new Error('INVALID');
     }
 
-    await this.clear(phone);
+    await this.clear(phone, purpose);
     return { name: record.name };
   }
 
-  async clear(phone: string) {
-    this.memory.delete(phone);
-    await this.redis.del(this.otpKey(phone));
+  async clear(phone: string, purpose: OtpPurpose = 'retail') {
+    this.memory.delete(this.memKey(phone, purpose));
+    await this.redis.del(this.otpKey(phone, purpose));
+  }
+
+  private sessionKey(userId: string) {
+    return `otp:session:${userId}`;
+  }
+
+  /** Marks a recent retail OTP login so the user may set a first password. */
+  async markVerifiedSession(userId: string): Promise<void> {
+    const ttl = Math.max(this.ttl(), 1800);
+    const key = this.sessionKey(userId);
+    if (this.redis.isReady) {
+      await this.redis.setex(key, ttl, '1');
+    }
+    this.memory.set(`session:${userId}`, {
+      hash: '1',
+      expiresAt: Date.now() + ttl * 1000,
+      attempts: 0,
+    });
+  }
+
+  async hasVerifiedSession(userId: string): Promise<boolean> {
+    if (this.redis.isReady) {
+      const raw = await this.redis.get(this.sessionKey(userId));
+      if (raw) return true;
+    }
+    const mem = this.memory.get(`session:${userId}`);
+    return Boolean(mem && mem.expiresAt >= Date.now());
   }
 
   isRedisReady(): boolean {

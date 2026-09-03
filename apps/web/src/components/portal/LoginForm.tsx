@@ -61,11 +61,7 @@ export function LoginForm() {
           </button>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" className="rounded border-gray-300" />
-            <span className="text-gray-600">مرا به خاطر بسپار</span>
-          </label>
+        <div className="flex items-center justify-end text-sm">
           <a href="/portal/forgot-password" className="text-primary hover:underline">فراموشی رمز</a>
         </div>
 

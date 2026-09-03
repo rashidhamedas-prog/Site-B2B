@@ -11,6 +11,7 @@ import {
   ChangePasswordDto,
   SavedAddressDto,
 } from './dto/otp.dto';
+import { ForgotPasswordDto, ResetPasswordDto, SetPasswordDto } from './dto/password-reset.dto';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -42,6 +43,20 @@ export class AuthController {
   @ApiOperation({ summary: 'تأیید OTP و ورود فروشگاه تکی' })
   verifyRetailOtp(@Body() body: VerifyRetailOtpDto) {
     return this.authService.verifyRetailOtp(body.phone, body.code, body.name);
+  }
+
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'درخواست کد بازیابی رمز مشتری' })
+  forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.authService.requestPasswordReset(body.phone);
+  }
+
+  @Post('password/reset')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'تأیید کد و تعیین رمز جدید مشتری' })
+  resetPassword(@Body() body: ResetPasswordDto) {
+    return this.authService.resetPassword(body.phone, body.code, body.password);
   }
 
   @Get('me/profile')
@@ -100,11 +115,23 @@ export class AuthController {
   @Patch('me/password')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
-  @ApiOperation({ summary: 'تغییر رمز عبور' })
+  @ApiOperation({ summary: 'تغییر رمز عبور با رمز فعلی' })
   changePassword(
     @Request() req: Express.Request & { user: { sub: string; role: string; phone: string } },
     @Body() body: ChangePasswordDto,
   ) {
     return this.authService.changePassword(req.user.sub, body.current, body.password);
+  }
+
+  @Post('me/password/set')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'تعیین رمز برای کاربر واردشده (ورود پیامکی)' })
+  setPassword(
+    @Request() req: Express.Request & { user: { sub: string; purpose?: string } },
+    @Body() body: SetPasswordDto,
+  ) {
+    return this.authService.setPassword(req.user.sub, body.password, req.user.purpose);
   }
 }

@@ -121,15 +121,18 @@ export function InvoicesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <a
-                            href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'}/v1/invoices/${inv.id}/pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void apiClient
+                                .download(`/invoices/${inv.id}/pdf`, `invoice-${inv.invoiceNumber || inv.id}.pdf`)
+                                .catch(() => undefined);
+                            }}
                             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                           >
                             <Download className="h-3.5 w-3.5" />
                             PDF
-                          </a>
+                          </button>
                           {canCustomerDelete(inv.status, inv.paidAmount) ? (
                             <button
                               type="button"

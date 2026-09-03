@@ -21,6 +21,12 @@ import { NotificationService } from '../notification/notification.service';
 import { OtpService } from '../redis/redis.module';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
 import {
+  canIssuePasswordReset,
+  canSetPasswordWithoutCurrent,
+  GENERIC_PASSWORD_FORGOT_MESSAGE,
+  validateNewPassword,
+} from './password-policy';
+import {
   actingRoleForPurpose,
   isStaffRole,
   resolveAuthPurpose,
@@ -98,6 +104,8 @@ export class AuthService {
       }
     }
 
+    const registerPolicy = validateNewPassword(dto.password, dto.phone);
+    if (registerPolicy) throw new BadRequestException(registerPolicy);
     const passwordHash = await bcrypt.hash(dto.password, 12);
     const customerData: Partial<CustomerEntity> = {
       businessName: dto.businessName,
@@ -384,11 +392,131 @@ export class AuthService {
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const u = await this.userRepo.findOne({ where: { id: userId } });
     if (!u) throw new UnauthorizedException();
+    const policyError = validateNewPassword(newPassword, u.phone);
+    if (policyError) throw new BadRequestException(policyError);
     const valid = await bcrypt.compare(currentPassword, u.passwordHash);
     if (!valid) throw new BadRequestException('رمز عبور فعلی اشتباه است');
+    const same = await bcrypt.compare(newPassword, u.passwordHash);
+    if (same) throw new BadRequestException('رمز جدید باید با رمز فعلی متفاوت باشد');
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.userRepo.update(userId, { passwordHash });
     return { message: 'رمز عبور با موفقیت تغییر یافت' };
+  }
+
+  /**
+   * Unauthenticated reset request. Always returns the same message so phone
+   * existence is not leaked. Staff passwords are never reset on this path.
+   */
+  async requestPasswordReset(rawPhone: string) {
+    const phone = normalizePhone(rawPhone);
+    if (!/^09\d{9}$/.test(phone)) {
+      throw new BadRequestException('شماره موبایل معتبر نیست');
+    }
+    const generic = { message: GENERIC_PASSWORD_FORGOT_MESSAGE, phone };
+
+    const user = await this.userRepo.findOne({ where: { phone } });
+    const customer = user?.customerId
+      ? await this.customerRepo.findOne({ where: { id: user.customerId } })
+      : null;
+
+    if (!canIssuePasswordReset({ user, customer, isStaffRole })) {
+      return generic;
+    }
+
+    let code: string;
+    try {
+      ({ code } = await this.otpService.issue(phone, undefined, 'password_reset'));
+    } catch {
+      // Cooldown / store failure must not reveal that the phone is eligible.
+      return generic;
+    }
+
+    const isProd = this.config.get('NODE_ENV') === 'production';
+    const sent = this.notifications ? await this.notifications.sendOtp(phone, code) : false;
+    if (!sent && isProd) {
+      await this.otpService.clear(phone, 'password_reset');
+      return generic;
+    }
+
+    const res: { message: string; phone: string; devCode?: string } = { ...generic };
+    if (!sent && this.allowDevOtpExpose()) {
+      res.devCode = code;
+    }
+    return res;
+  }
+
+  async resetPassword(rawPhone: string, code: string, newPassword: string) {
+    const phone = normalizePhone(rawPhone);
+    const policyError = validateNewPassword(newPassword, phone);
+    if (policyError) throw new BadRequestException(policyError);
+
+    try {
+      await this.otpService.verify(phone, code, 'password_reset');
+    } catch (err: any) {
+      const msg = err?.message;
+      if (msg === 'MAX_ATTEMPTS') {
+        throw new BadRequestException('تعداد تلاش بیش از حد. دوباره کد بگیرید.');
+      }
+      throw new BadRequestException('کد تأیید نامعتبر یا منقضی است');
+    }
+
+    const user = await this.userRepo.findOne({ where: { phone } });
+    if (!user || isStaffRole(user.role)) {
+      throw new BadRequestException('کد تأیید نامعتبر یا منقضی است');
+    }
+    const customer = user.customerId
+      ? await this.customerRepo.findOne({ where: { id: user.customerId } })
+      : null;
+    if (customer && (customer.status === 'BLOCKED' || customer.status === 'SUSPENDED')) {
+      throw new BadRequestException('حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.userRepo.update(user.id, { passwordHash });
+
+    const canLogin = Boolean(user.isActive && customer?.status === 'ACTIVE');
+    if (!canLogin) {
+      return {
+        message: 'رمز عبور به‌روز شد. پس از تأیید حساب وارد شوید.',
+        canLogin: false,
+      };
+    }
+
+    const token = this.jwtService.sign({
+      sub: user.id,
+      phone: user.phone,
+      role: 'CUSTOMER',
+      customerId: user.customerId,
+      purpose: 'storefront',
+    });
+    return {
+      message: 'رمز عبور با موفقیت تغییر یافت',
+      canLogin: true,
+      accessToken: token,
+      role: 'CUSTOMER',
+      customerId: user.customerId,
+      purpose: 'storefront',
+    };
+  }
+
+  /** Logged-in set — only after a recent retail OTP login, never for staff. */
+  async setPassword(userId: string, newPassword: string, purpose?: string) {
+    const u = await this.userRepo.findOne({ where: { id: userId } });
+    if (!u) throw new UnauthorizedException();
+    const hasOtpSession = await this.otpService.hasVerifiedSession(userId);
+    if (!canSetPasswordWithoutCurrent({
+      dbRole: u.role,
+      purpose,
+      hasOtpSession,
+      isStaffRole,
+    })) {
+      throw new BadRequestException('برای تعیین رمز باید با پیامک وارد شده باشید یا از تغییر رمز با رمز فعلی استفاده کنید');
+    }
+    const policyError = validateNewPassword(newPassword, u.phone);
+    if (policyError) throw new BadRequestException(policyError);
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.userRepo.update(userId, { passwordHash });
+    return { message: 'رمز عبور ذخیره شد' };
   }
 
   /** Sync user.isActive when admin changes customer status. Never disable staff. */
@@ -578,6 +706,7 @@ export class AuthService {
       customerId: user.customerId,
       purpose: 'storefront',
     });
+    await this.otpService.markVerifiedSession(user.id);
     return {
       accessToken: token,
       role: 'CUSTOMER',

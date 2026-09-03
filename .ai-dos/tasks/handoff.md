@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T13:50:00Z — TASK-20260903-005 customer account + password
+
+- Task / owner: TASK-20260903-005 / cursor:implementer-TASK-20260903-005
+- Branch: `ai/TASK-20260903-005-customer-account` in `D:/proje/Site-B2B-customer-account`.
+- Objective: complete retail+wholesale customer panels; real password set/forgot.
+- Decisions: OTP purpose `password_reset` namespaced from retail login; public forgot is anti-enumeration; staff never reset here; no wishlist/notification APIs; no middleware.ts edit.
+- Reclaimed stale auth.service/controller/otp.dto (TASK-20260901-002), redis.module (TASK-20260810-006), PortalSidebar (TASK-20260812-001), retail account page (TASK-20260903-001 shipped session AC).
+- CODE: `POST /auth/password/forgot|reset`, `POST /auth/me/password/set`; retail `/account/*` shell; wholesale forgot + `/portal/dashboard/security`.
+- Tests (observed): api `password-policy.spec.ts` OK; `auth.otp.logic.spec.ts` OK; `apps/api` `tsc --noEmit` 0; `apps/web` `tsc --noEmit` 0. Reviewer+Security FAIL then patched: setPassword requires OTP session + not staff; forgot cooldown/SMS generic 200; retail redirect allowlisted.
+- Risks: OTP-session JWT can set password for ~30 min; independent Reviewer+Security should re-check the patch.
+- Exact next: re-review, then merge/deploy. Do not Done until re-review.
+
 ## 2026-09-03T12:13:00Z — TASK-20260903-003 DigiPay connection test
 
 - Task / owner: TASK-20260903-003 / cursor:implementer-TASK-20260903-003

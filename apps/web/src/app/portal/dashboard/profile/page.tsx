@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, Building, Phone, Mail, MapPin, Save, Lock } from 'lucide-react';
+import { User, Building, Phone, Mail, MapPin, Save } from 'lucide-react';
 import { Button, Input, Alert } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { IRAN_PROVINCES } from '@/lib/iran-provinces';
@@ -61,7 +61,7 @@ export default function ProfilePage() {
     postalCode: '',
     isDefault: false,
   });
-  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
 
   useEffect(() => {
     apiClient.get<Profile>('/auth/me/profile')
@@ -205,7 +205,16 @@ export default function ProfilePage() {
             <p className="font-bold">{a.recipient} — {a.mobile}{a.isDefault ? ' (پیش‌فرض)' : ''}</p>
             <p className="mt-1 text-gray-600">{a.province}، {a.city} — {a.street}</p>
             <div className="mt-2 flex gap-3">
-              <button type="button" className="text-xs font-bold text-primary" onClick={() => setAddrDraft(a)}>ویرایش</button>
+              <button
+                type="button"
+                className="text-xs font-bold text-primary"
+                onClick={() => {
+                  setAddrDraft(a);
+                  setEditingAddressId(a.id || null);
+                }}
+              >
+                ویرایش
+              </button>
               {a.id ? (
                 <button
                   type="button"
@@ -253,9 +262,12 @@ export default function ProfilePage() {
             setSaving(true);
             setError(null);
             try {
-              const res = await apiClient.post<{ addresses: SavedAddress[] }>('/auth/me/addresses', addrDraft);
+              const res = editingAddressId
+                ? await apiClient.patch<{ addresses: SavedAddress[] }>(`/auth/me/addresses/${editingAddressId}`, addrDraft)
+                : await apiClient.post<{ addresses: SavedAddress[] }>('/auth/me/addresses', addrDraft);
               setAddresses(res.addresses || []);
               setSuccess(true);
+              setEditingAddressId(null);
               setAddrDraft({
                 recipient: '',
                 mobile: '',
@@ -273,33 +285,7 @@ export default function ProfilePage() {
           }}
           loading={saving}
         >
-          {addrDraft.id ? 'ذخیره آدرس' : 'افزودن آدرس'}
-        </Button>
-      </div>
-
-      {/* Change password */}
-      <div className="card p-6 space-y-4">
-        <h2 className="font-bold text-gray-900 flex items-center gap-2">
-          <Lock className="h-4 w-4 text-primary" />
-          تغییر رمز عبور
-        </h2>
-        <Input label="رمز عبور فعلی" type="password" value={pwForm.current}
-          onChange={(e) => setPwForm((p) => ({ ...p, current: e.target.value }))} />
-        <Input label="رمز عبور جدید" type="password" value={pwForm.next}
-          onChange={(e) => setPwForm((p) => ({ ...p, next: e.target.value }))} />
-        <Input label="تکرار رمز عبور جدید" type="password" value={pwForm.confirm}
-          onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))} />
-        <Button variant="outline" onClick={async () => {
-          if (pwForm.next !== pwForm.confirm) { setError('رمزهای جدید مطابقت ندارند'); return; }
-          setSaving(true);
-          try {
-            await apiClient.patch('/auth/me/password', { current: pwForm.current, password: pwForm.next });
-            setSuccess(true);
-            setPwForm({ current: '', next: '', confirm: '' });
-          } catch (e: unknown) { setError(e instanceof Error ? e.message : 'خطا'); }
-          finally { setSaving(false); }
-        }} loading={saving}>
-          تغییر رمز عبور
+          {editingAddressId ? 'ذخیره آدرس' : 'افزودن آدرس'}
         </Button>
       </div>
     </div>

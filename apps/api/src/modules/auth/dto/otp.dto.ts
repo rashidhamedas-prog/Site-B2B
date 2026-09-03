@@ -128,7 +128,7 @@ export class ChangePasswordDto {
 
   @ApiProperty()
   @IsString()
-  @MinLength(8)
+  @MinLength(8, { message: 'رمز عبور حداقل ۸ کاراکتر باشد' })
   @MaxLength(128)
   password: string;
 }

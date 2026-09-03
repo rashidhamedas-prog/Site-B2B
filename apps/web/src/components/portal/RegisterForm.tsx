@@ -85,7 +85,7 @@ export function RegisterForm() {
     if (!phone) errors.phone = 'شماره موبایل الزامی است';
     else if (!/^09[0-9]{9}$/.test(phone)) errors.phone = 'شماره موبایل معتبر نیست (مثال: ۰۹۱۲۱۲۳۴۵۶۷)';
     if (!password) errors.password = 'رمز عبور الزامی است';
-    else if (password.length < 6) errors.password = 'رمز عبور حداقل ۶ کاراکتر';
+    else if (password.length < 8) errors.password = 'رمز عبور حداقل ۸ کاراکتر باشد';
     if (!confirmPassword) errors.confirmPassword = 'تکرار رمز عبور الزامی است';
     else if (password !== confirmPassword) errors.confirmPassword = 'رمز عبور با تکرار آن مطابقت ندارد';
 

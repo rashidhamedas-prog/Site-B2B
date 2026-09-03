@@ -35,9 +35,9 @@ export class RegisterDto {
   @Matches(/^09[0-9]{9}$/, { message: 'شماره موبایل معتبر نیست' })
   phone: string;
 
-  @ApiProperty({ minLength: 6 })
+  @ApiProperty({ minLength: 8 })
   @IsString()
-  @MinLength(6, { message: 'رمز عبور حداقل ۶ کاراکتر' })
+  @MinLength(8, { message: 'رمز عبور حداقل ۸ کاراکتر باشد' })
   password: string;
 
   @ApiProperty()

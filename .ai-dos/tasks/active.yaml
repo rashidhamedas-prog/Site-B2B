@@ -1,5 +1,80 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260903-005"
+    title: "Customer account panels + password set/forgot for retail and wholesale"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260903-005"
+    roles:
+      architect: "cursor:implementer-TASK-20260903-005"
+      implementer: "cursor:implementer-TASK-20260903-005"
+      reviewer: "required-independent-before-done"
+      security: "required-independent-before-done"
+    branch: "ai/TASK-20260903-005-customer-account"
+    worktree: "D:/proje/Site-B2B-customer-account"
+    claimed_at: "2026-09-03T13:40:00Z"
+    heartbeat_at: "2026-09-03T15:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/auth/password-policy.ts"
+      - "apps/api/src/modules/auth/password-policy.spec.ts"
+      - "apps/api/src/modules/auth/dto/password-reset.dto.ts"
+      - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      - "apps/api/src/modules/auth/dto/register.dto.ts"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/modules/auth/auth.controller.ts"
+      - "apps/api/src/modules/redis/redis.module.ts"
+      - "apps/web/src/lib/password-policy.ts"
+      - "apps/web/src/lib/password-policy.spec.ts"
+      - "apps/web/src/lib/safe-redirect.ts"
+      - "apps/web/src/lib/safe-redirect.spec.ts"
+      - "apps/web/src/components/account/ForgotPasswordFlow.tsx"
+      - "apps/web/src/components/account/PasswordField.tsx"
+      - "apps/web/src/components/retail/RetailAccountAuth.tsx"
+      - "apps/web/src/components/retail/RetailAccountShell.tsx"
+      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      - "apps/web/src/components/retail/RetailOtpLogin.tsx"
+      - "apps/web/src/app/retail/account/layout.tsx"
+      - "apps/web/src/app/retail/account/page.tsx"
+      - "apps/web/src/app/retail/account/orders/page.tsx"
+      - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
+      - "apps/web/src/app/retail/account/profile/page.tsx"
+      - "apps/web/src/app/retail/account/addresses/page.tsx"
+      - "apps/web/src/app/retail/account/security/page.tsx"
+      - "apps/web/src/app/retail/account/wishlist/page.tsx"
+      - "apps/web/src/app/retail/account/returns/page.tsx"
+      - "apps/web/src/app/retail/account/forgot-password/page.tsx"
+      - "apps/web/src/app/portal/forgot-password/page.tsx"
+      - "apps/web/src/app/portal/dashboard/security/page.tsx"
+      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      - "apps/web/src/app/portal/dashboard/notifications/page.tsx"
+      - "apps/web/src/components/portal/LoginForm.tsx"
+      - "apps/web/src/components/portal/RegisterForm.tsx"
+      - "apps/web/src/components/portal/PortalSidebar.tsx"
+      - "apps/web/src/components/portal/PortalHeader.tsx"
+      - "apps/web/src/components/portal/InvoicesPage.tsx"
+      - "docs/reports/2026-09-03-customer-account-panel.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to complete retail+wholesale customer panels and
+      password set/forgot. Reclaimed stale auth.service/controller/otp.dto
+      from TASK-20260901-002 (hb 2026-09-01). Reclaimed redis.module.ts
+      from TASK-20260810-006 (hb 2026-08-12). Reclaimed PortalSidebar
+      from TASK-20260812-001 (hb 2026-08-14). Reclaimed retail account
+      page + RetailAccountDetails + portal profile from TASK-20260901-002
+      / TASK-20260903-001 (session task shipped; owner new account work).
+      Did not edit middleware.ts or lib/auth.ts (session isolation).
+      No customer notification feed API this slice.
+    acceptance_criteria:
+      - "POST /auth/password/forgot is anti-enumeration and OTP-namespaced from retail login"
+      - "POST /auth/password/reset sets a new password after OTP; staff passwords cannot be reset here"
+      - "Logged-in customers can set password without current (OTP users) and change with current"
+      - "Retail /account is a professional shell with orders/detail/profile/addresses/security/wishlist/returns"
+      - "Wholesale /portal/forgot-password is a working OTP reset, not a support-only stub"
+      - "api+web typecheck and new password-policy specs pass"
   - id: "TASK-20260903-003"
     title: "DigiPay admin connection test + UPG credential gates"
     status: "in_progress"
@@ -105,8 +180,9 @@ tasks:
       - "apps/web/src/components/admin/AdminProducts.tsx"
       # transferred 2026-09-03 to TASK-20260903-003 (DigiPay probe; session task shipped):
       # "apps/web/src/components/admin/AdminSettings.tsx"
-      - "apps/web/src/components/retail/RetailOtpLogin.tsx"
-      - "apps/web/src/app/retail/account/page.tsx"
+      # transferred 2026-09-03 to TASK-20260903-005 (owner customer panel; session AC shipped):
+      # "apps/web/src/components/retail/RetailOtpLogin.tsx"
+      # "apps/web/src/app/retail/account/page.tsx"
       - "docs/WORKLOG.md"
       - "docs/reports/2026-09-03-admin-empty-session.md"
       - ".ai-dos/tasks/active.yaml"
@@ -139,9 +215,10 @@ tasks:
     depends_on: []
     file_claims:
       - "apps/api/src/modules/auth/dto/login.dto.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
-      - "apps/api/src/modules/auth/auth.controller.ts"
-      - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      # transferred 2026-09-03 to TASK-20260903-005 (stale hb 2026-09-01; password reset):
+      # "apps/api/src/modules/auth/auth.service.ts"
+      # "apps/api/src/modules/auth/auth.controller.ts"
+      # "apps/api/src/modules/auth/dto/otp.dto.ts"
       - "apps/api/src/modules/auth/staff-access.ts"
       - "apps/api/src/modules/auth/staff-access.spec.ts"
       - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
@@ -172,8 +249,9 @@ tasks:
       - "apps/web/src/components/admin/AdminLoginForm.tsx"
       # "apps/web/src/app/admin/layout.tsx"
       # "apps/web/src/app/retail/account/page.tsx"
-      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
-      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      # transferred 2026-09-03 to TASK-20260903-005 (stale hb; customer panel):
+      # "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      # "apps/web/src/app/portal/dashboard/profile/page.tsx"
       - "docs/WORKLOG.md"
       - "docs/reports/2026-09-01-admin-stock-profile.md"
       - ".ai-dos/tasks/active.yaml"
@@ -871,7 +949,8 @@ tasks:
     file_claims:
       - "nginx/nginx.conf"
       - "apps/web/src/lib/sitemap-xml.ts"
-      - "apps/web/src/components/retail/RetailOtpLogin.tsx"
+      # transferred 2026-09-03 to TASK-20260903-005 (stale hb 2026-08-24; unused OTP clone):
+      # "apps/web/src/components/retail/RetailOtpLogin.tsx"
       - "apps/web/src/lib/gsc-legacy-redirects.ts"
       - "apps/web/src/lib/gsc-legacy-redirects.spec.ts"
       # transferred 2026-08-31 to TASK-20260830-002 (stale >24h; retail category ISR): "apps/web/src/middleware.ts"
@@ -1531,7 +1610,8 @@ tasks:
       # transferred 2026-08-31 to TASK-20260830-002 (stale heartbeat; retail category ISR): "apps/web/next.config.ts"
       - "apps/api/src/main.ts"
       - "apps/api/src/common/client-ip.ts"
-      - "apps/api/src/modules/redis/redis.module.ts"
+      # transferred 2026-09-03 to TASK-20260903-005 (stale hb 2026-08-12; OTP purpose):
+      # "apps/api/src/modules/redis/redis.module.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; Phase 0 channel stock): "apps/api/src/modules/rma/rma.service.ts"
       - "apps/api/src/modules/rma/rma.controller.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; Phase 0 channel stock): "apps/api/src/modules/rma/rma.module.ts"
@@ -1779,7 +1859,8 @@ tasks:
       - "apps/api/src/database/migrations/20260812-004-installment-credit-fields.ts"
       # transferred 2026-09-03 to TASK-20260903-003 (DigiPay configured gate):
       # "apps/api/src/modules/settings/settings.service.ts"
-      - "apps/web/src/components/portal/PortalSidebar.tsx"
+      # transferred 2026-09-03 to TASK-20260903-005 (stale hb 2026-08-14; portal chrome):
+      # "apps/web/src/components/portal/PortalSidebar.tsx"
       - "apps/web/src/app/portal/dashboard/installments/page.tsx"
       - "docs/reports/2026-08-12-payment-phase6-installments.md"
       - "docs/reports/2026-08-12-payment-security-followup.md"

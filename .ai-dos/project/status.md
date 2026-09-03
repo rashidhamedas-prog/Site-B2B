@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-03 — **TASK-20260903-005** implementing on `ai/TASK-20260903-005-customer-account`: customer panels + password forgot/reset/set. Not live until merge/deploy. Independent Reviewer+Security required.
 - Last verified: 2026-09-03 — **TASK-20260903-003** live `007eee9`: DigiPay admin connection probe + UPG 4-field gate. Owner must replace DigiPay-rejected client credentials.
 - Last verified: 2026-09-03 — **TASK-20260826-001** live VPS `0970811`: channel isolation + blog authors + logo hotfix. Public collections/authors without channel → 400. Connectors unset. Canary send / soak / Security still **NOT DONE**.
 - Last verified: 2026-09-03 — **TASK-20260826-001** blog authors channel on `ai/TASK-20260826-001-blog-authors`: public author page requires RETAIL|WHOLESALE. Connectors off. Canary send / live §9 apply / Security still **NOT DONE**.

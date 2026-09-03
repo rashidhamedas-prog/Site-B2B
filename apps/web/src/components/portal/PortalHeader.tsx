@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { Menu, X, Bell, ShoppingCart } from 'lucide-react';
+import { Menu, X, ShoppingCart } from 'lucide-react';
 import {
-  LayoutDashboard, FileText, CreditCard, User,
+  LayoutDashboard, FileText, CreditCard, User, CalendarClock, Lock, Bell,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
@@ -14,7 +14,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/dashboard/orders': 'سفارش‌های من',
   '/portal/dashboard/invoices': 'فاکتورها',
   '/portal/dashboard/payments': 'پرداخت‌ها',
+  '/portal/dashboard/installments': 'اقساط',
   '/portal/dashboard/profile': 'پروفایل',
+  '/portal/dashboard/security': 'امنیت و رمز',
   '/portal/dashboard/notifications': 'اعلان‌ها',
 };
 
@@ -23,13 +25,16 @@ const mobileNav = [
   { href: '/portal/dashboard/orders', icon: ShoppingCart, label: 'سفارش‌ها' },
   { href: '/portal/dashboard/invoices', icon: FileText, label: 'فاکتورها' },
   { href: '/portal/dashboard/payments', icon: CreditCard, label: 'پرداخت' },
+  { href: '/portal/dashboard/installments', icon: CalendarClock, label: 'اقساط' },
   { href: '/portal/dashboard/profile', icon: User, label: 'پروفایل' },
+  { href: '/portal/dashboard/security', icon: Lock, label: 'امنیت' },
+  { href: '/portal/dashboard/notifications', icon: Bell, label: 'اعلان‌ها' },
 ];
 
 export function PortalHeader() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const title = PAGE_TITLES[pathname] ?? 'پنل مشتری';
+  const title = PAGE_TITLES[pathname] ?? (pathname.startsWith('/portal/dashboard/orders/') ? 'جزئیات سفارش' : 'پنل مشتری');
 
   return (
     <>
@@ -37,6 +42,7 @@ export function PortalHeader() {
         <button
           className="lg:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100"
           onClick={() => setMobileMenuOpen(true)}
+          aria-label="باز کردن منو"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -44,10 +50,6 @@ export function PortalHeader() {
         <h1 className="text-lg font-bold text-gray-900">{title}</h1>
 
         <div className="mr-auto flex items-center gap-2">
-          <button className="relative p-2 rounded-lg text-gray-500 hover:bg-gray-100">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-error" />
-          </button>
           <Link
             href="/products"
             className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary-light transition-colors"
@@ -58,14 +60,13 @@ export function PortalHeader() {
         </div>
       </header>
 
-      {/* Mobile menu */}
       {mobileMenuOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileMenuOpen(false)} />
           <div className="fixed inset-y-0 right-0 z-50 w-64 bg-white shadow-xl lg:hidden">
             <div className="flex items-center justify-between p-4 border-b">
               <p className="font-bold text-gray-900">منو</p>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-lg hover:bg-gray-100">
+              <button onClick={() => setMobileMenuOpen(false)} className="p-1 rounded-lg hover:bg-gray-100" aria-label="بستن منو">
                 <X className="h-5 w-5" />
               </button>
             </div>

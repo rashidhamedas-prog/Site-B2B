@@ -43,9 +43,11 @@ function toLocal(a: ProfileAddress): RetailAddress {
 export function RetailAccountDetails({
   profile,
   onProfileChange,
+  section = 'all',
 }: {
   profile: AccountProfile;
   onProfileChange: (next: AccountProfile) => void;
+  section?: 'profile' | 'addresses' | 'all';
 }) {
   const [form, setForm] = useState({
     ownerName: profile.ownerName || '',
@@ -102,8 +104,9 @@ export function RetailAccountDetails({
     setErr('');
     setMsg('');
     try {
-      const body = editingId ? { ...draft, id: editingId } : draft;
-      const res = await apiClient.post<{ addresses: ProfileAddress[] }>('/auth/me/addresses', body);
+      const res = editingId
+        ? await apiClient.patch<{ addresses: ProfileAddress[] }>(`/auth/me/addresses/${editingId}`, draft)
+        : await apiClient.post<{ addresses: ProfileAddress[] }>('/auth/me/addresses', draft);
       persistAddresses(res.addresses || []);
       saveRetailAddress(toLocal(draft));
       setDraft(emptyAddress());
@@ -132,7 +135,8 @@ export function RetailAccountDetails({
   };
 
   return (
-    <div className="mt-8 space-y-8">
+    <div className="space-y-8">
+      {section === 'profile' || section === 'all' ? (
       <form onSubmit={saveProfile} className="space-y-3 rounded-2xl border border-[var(--retail-border)] bg-white p-4">
         <h2 className="text-lg font-bold">مشخصات حساب</h2>
         {profile.phone ? (
@@ -189,7 +193,9 @@ export function RetailAccountDetails({
           ذخیره مشخصات
         </button>
       </form>
+      ) : null}
 
+      {section === 'addresses' || section === 'all' ? (
       <div className="space-y-3">
         <h2 className="text-lg font-bold">آدرس‌های ارسال</h2>
         {addresses.length === 0 ? (
@@ -307,6 +313,7 @@ export function RetailAccountDetails({
           </div>
         </form>
       </div>
+      ) : null}
 
       {msg ? <p className="text-sm text-green-700">{msg}</p> : null}
       {err ? <p className="text-sm text-red-600">{err}</p> : null}
