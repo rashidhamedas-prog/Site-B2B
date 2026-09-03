@@ -116,6 +116,7 @@ export class UsersService {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user || !isStaffRole(user.role)) throw new NotFoundException('کاربر یافت نشد');
     user.passwordHash = await bcrypt.hash(password, 12);
+    user.passwordChangedAt = new Date();
     await this.userRepo.save(user);
     return { id: user.id, reset: true };
   }

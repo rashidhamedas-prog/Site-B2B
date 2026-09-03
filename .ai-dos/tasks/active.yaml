@@ -1,5 +1,68 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260903-006"
+    title: "Account leftovers: JWT revoke, portal redirect, Persian OTP, register hint"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260903-006"
+    roles:
+      architect: "cursor:implementer-TASK-20260903-006"
+      implementer: "cursor:implementer-TASK-20260903-006"
+      reviewer: "required-independent-before-done"
+      security: "required-independent-before-done"
+    branch: "ai/TASK-20260903-006-account-hardening"
+    worktree: "D:/proje/Site-B2B-customer-account"
+    claimed_at: "2026-09-03T19:30:00Z"
+    heartbeat_at: "2026-09-03T19:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/auth/entities/user.entity.ts"
+      - "apps/api/src/modules/auth/jwt-invalidation.ts"
+      - "apps/api/src/modules/auth/jwt-invalidation.spec.ts"
+      - "apps/api/src/modules/auth/phone.util.ts"
+      - "apps/api/src/modules/auth/phone.util.spec.ts"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/modules/auth/auth.controller.ts"
+      - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      - "apps/api/src/modules/auth/dto/password-reset.dto.ts"
+      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
+      - "apps/api/src/modules/auth/users.service.ts"
+      - "apps/api/src/modules/redis/redis.module.ts"
+      - "apps/api/src/database/migrations/20260903-006-password-changed-at.ts"
+      - "apps/web/src/lib/safe-redirect.ts"
+      - "apps/web/src/lib/safe-redirect.spec.ts"
+      - "apps/web/src/lib/password-session.ts"
+      - "apps/web/src/lib/hooks/useAuth.ts"
+      - "apps/web/src/components/account/ForgotPasswordFlow.tsx"
+      - "apps/web/src/components/portal/RegisterForm.tsx"
+      - "apps/web/src/app/retail/account/security/page.tsx"
+      - "apps/web/src/app/portal/dashboard/security/page.tsx"
+      - "apps/web/src/components/admin/AdminAccount.tsx"
+      - "docs/reports/2026-09-03-account-hardening.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to ship residuals from TASK-20260903-005 reviews:
+      JWT revoke after password change, portal login open redirect,
+      Persian digits on retail OTP DTOs, register hint 6→8.
+      Also: pending wholesale reset stays on page; clear OTP session
+      after setPassword; issue fresh JWT so the current tab stays in.
+      Reclaimed auth.service/controller/otp/redis/security/register/forgot
+      from TASK-20260903-005 (done). Reclaimed jwt.strategy + useAuth
+      from TASK-20260901-002 (hb 2026-09-01, stale). Reclaimed
+      users.service + AdminAccount from TASK-20260831-001 (hb 2026-08-31).
+      Did not edit middleware.ts or lib/auth.ts (TASK-20260903-001).
+      No invoice IDOR in this slice.
+    acceptance_criteria:
+      - "Password change/set/reset and admin staff reset stamp passwordChangedAt; older JWTs fail validate"
+      - "change/set/reset return a fresh accessToken for the current purpose so the actor stays signed in"
+      - "useAuth portal/admin redirect is prefix-allowlisted"
+      - "Retail OTP phone/code DTOs accept Persian digits via Transform"
+      - "Wholesale register placeholder says حداقل ۸ کاراکتر"
+      - "Pending wholesale reset shows the post-approval message instead of navigating away"
+      - "api+web tsc and new jwt-invalidation / safe-redirect / phone specs pass"
   - id: "TASK-20260903-004"
     title: "GSC dual-site SEO settings + mobile LCP for retail and wholesale"
     status: "in_progress"
@@ -47,33 +110,36 @@ tasks:
       - "No Validate Fix on correct noindex/redirect/404 groups"
   - id: "TASK-20260903-005"
     title: "Customer account panels + password set/forgot for retail and wholesale"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260903-005"
     roles:
       architect: "cursor:implementer-TASK-20260903-005"
       implementer: "cursor:implementer-TASK-20260903-005"
-      reviewer: "required-independent-before-done"
-      security: "required-independent-before-done"
+      reviewer: "cursor:reviewer-40150946-PASS-WITH-CONDITIONS"
+      security: "cursor:security-f4d5d4ae-PASS-WITH-CONDITIONS"
     branch: "ai/TASK-20260903-005-customer-account"
     worktree: "D:/proje/Site-B2B-customer-account"
     claimed_at: "2026-09-03T13:40:00Z"
-    heartbeat_at: "2026-09-03T15:10:00Z"
+    heartbeat_at: "2026-09-03T15:40:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/auth/password-policy.ts"
       - "apps/api/src/modules/auth/password-policy.spec.ts"
-      - "apps/api/src/modules/auth/dto/password-reset.dto.ts"
-      - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      # transferred 2026-09-03 to TASK-20260903-006:
+      # "apps/api/src/modules/auth/dto/password-reset.dto.ts"
+      # transferred 2026-09-03 to TASK-20260903-006 (done task; leftovers):
+      # "apps/api/src/modules/auth/dto/otp.dto.ts"
       - "apps/api/src/modules/auth/dto/register.dto.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
-      - "apps/api/src/modules/auth/auth.controller.ts"
-      - "apps/api/src/modules/redis/redis.module.ts"
+      # "apps/api/src/modules/auth/auth.service.ts"
+      # "apps/api/src/modules/auth/auth.controller.ts"
+      # "apps/api/src/modules/redis/redis.module.ts"
       - "apps/web/src/lib/password-policy.ts"
       - "apps/web/src/lib/password-policy.spec.ts"
-      - "apps/web/src/lib/safe-redirect.ts"
-      - "apps/web/src/lib/safe-redirect.spec.ts"
-      - "apps/web/src/components/account/ForgotPasswordFlow.tsx"
+      # transferred 2026-09-03 to TASK-20260903-006:
+      # "apps/web/src/lib/safe-redirect.ts"
+      # "apps/web/src/lib/safe-redirect.spec.ts"
+      # "apps/web/src/components/account/ForgotPasswordFlow.tsx"
       - "apps/web/src/components/account/PasswordField.tsx"
       - "apps/web/src/components/retail/RetailAccountAuth.tsx"
       - "apps/web/src/components/retail/RetailAccountShell.tsx"
@@ -85,16 +151,19 @@ tasks:
       - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
       - "apps/web/src/app/retail/account/profile/page.tsx"
       - "apps/web/src/app/retail/account/addresses/page.tsx"
-      - "apps/web/src/app/retail/account/security/page.tsx"
+      # transferred 2026-09-03 to TASK-20260903-006:
+      # "apps/web/src/app/retail/account/security/page.tsx"
       - "apps/web/src/app/retail/account/wishlist/page.tsx"
       - "apps/web/src/app/retail/account/returns/page.tsx"
       - "apps/web/src/app/retail/account/forgot-password/page.tsx"
       - "apps/web/src/app/portal/forgot-password/page.tsx"
-      - "apps/web/src/app/portal/dashboard/security/page.tsx"
+      # transferred 2026-09-03 to TASK-20260903-006:
+      # "apps/web/src/app/portal/dashboard/security/page.tsx"
       - "apps/web/src/app/portal/dashboard/profile/page.tsx"
       - "apps/web/src/app/portal/dashboard/notifications/page.tsx"
       - "apps/web/src/components/portal/LoginForm.tsx"
-      - "apps/web/src/components/portal/RegisterForm.tsx"
+      # transferred 2026-09-03 to TASK-20260903-006:
+      # "apps/web/src/components/portal/RegisterForm.tsx"
       - "apps/web/src/components/portal/PortalSidebar.tsx"
       - "apps/web/src/components/portal/PortalHeader.tsx"
       - "apps/web/src/components/portal/InvoicesPage.tsx"
@@ -266,7 +335,8 @@ tasks:
       # "apps/api/src/modules/auth/dto/otp.dto.ts"
       - "apps/api/src/modules/auth/staff-access.ts"
       - "apps/api/src/modules/auth/staff-access.spec.ts"
-      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
+      # transferred 2026-09-03 to TASK-20260903-006 (stale hb 2026-09-01; JWT revoke):
+      # "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
       - "apps/api/src/modules/auth/guards/roles.guard.ts"
       - "apps/api/src/modules/auth/customer-addresses.ts"
       - "apps/api/src/modules/auth/customer-addresses.spec.ts"
@@ -287,7 +357,8 @@ tasks:
       - "apps/api/Dockerfile"
       # reclaimed 2026-09-02 by TASK-20260903-001 (admin session isolation):
       # "apps/web/src/lib/auth.ts"
-      - "apps/web/src/lib/hooks/useAuth.ts"
+      # transferred 2026-09-03 to TASK-20260903-006 (stale hb; portal redirect):
+      # "apps/web/src/lib/hooks/useAuth.ts"
       # "apps/web/src/middleware.ts"
       - "apps/web/src/lib/iran-provinces.ts"
       - "apps/web/src/lib/retail-addresses.ts"
@@ -383,7 +454,8 @@ tasks:
       # "apps/api/src/modules/auth/auth.service.ts"
       # "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
       - "apps/api/src/modules/auth/users.controller.ts"
-      - "apps/api/src/modules/auth/users.service.ts"
+      # transferred 2026-09-03 to TASK-20260903-006 (stale hb 2026-08-31; staff reset revoke):
+      # "apps/api/src/modules/auth/users.service.ts"
       - "apps/api/src/modules/auth/users.policy.ts"
       - "apps/api/src/modules/auth/users.policy.spec.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (staff can also shop):
@@ -407,7 +479,8 @@ tasks:
       # transferred 2026-09-01 to TASK-20260901-002:
       # "apps/web/src/components/admin/AdminLoginForm.tsx"
       - "apps/web/src/components/admin/AdminUsers.tsx"
-      - "apps/web/src/components/admin/AdminAccount.tsx"
+      # transferred 2026-09-03 to TASK-20260903-006 (stale hb; store new token after change):
+      # "apps/web/src/components/admin/AdminAccount.tsx"
       - "apps/web/src/app/admin/account/page.tsx"
       - "apps/web/src/components/admin/AdminHeader.tsx"
       # transferred 2026-09-03 to TASK-20260903-003 (DigiPay UPG UX; claim was load-error only):

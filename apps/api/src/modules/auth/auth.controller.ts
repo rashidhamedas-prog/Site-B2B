@@ -117,10 +117,10 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'تغییر رمز عبور با رمز فعلی' })
   changePassword(
-    @Request() req: Express.Request & { user: { sub: string; role: string; phone: string } },
+    @Request() req: Express.Request & { user: { sub: string; role: string; phone: string; purpose?: string } },
     @Body() body: ChangePasswordDto,
   ) {
-    return this.authService.changePassword(req.user.sub, body.current, body.password);
+    return this.authService.changePassword(req.user.sub, body.current, body.password, req.user.purpose);
   }
 
   @Post('me/password/set')

@@ -310,6 +310,11 @@ export class OtpService {
     return Boolean(mem && mem.expiresAt >= Date.now());
   }
 
+  async clearVerifiedSession(userId: string): Promise<void> {
+    this.memory.delete(`session:${userId}`);
+    await this.redis.del(this.sessionKey(userId));
+  }
+
   isRedisReady(): boolean {
     return this.redis.isReady;
   }

@@ -90,7 +90,7 @@ Wholesale: working `/portal/forgot-password`; `/portal/dashboard/security`; side
 - Stolen OTP-session JWT can still call `password/set` until the session flag expires (~30 min).
 - Forgot cooldown/SMS failure now return the same generic 200 (no phone oracle).
 - Retail post-login `redirect` is same-origin path only.
-- Independent Reviewer + Security still required before marking Done.
+- Security [بازبین امنیت](f4d5d4ae-39f5-4569-81ec-01b1aca87781) and Reviewer [بازبین پنل](40150946-2472-4a33-bb77-d5bef96f9c3f): both **PASS WITH CONDITIONS**; no must-fix. Task done.
 
 ## Rollback
 

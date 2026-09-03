@@ -267,20 +267,28 @@ export class AuthService {
     user.lastLoginAt = new Date();
     await this.userRepo.save(user);
 
+    return this.issueSession(user, purpose);
+  }
+
+  private issueSession(user: UserEntity, requestedPurpose?: string) {
+    const purpose = resolveAuthPurpose(requestedPurpose);
     const actingRole = actingRoleForPurpose(purpose, user.role);
-    const token = this.jwtService.sign({
-      sub: user.id,
-      phone: user.phone,
-      role: actingRole,
-      customerId: user.customerId ?? undefined,
-      purpose,
-    });
     return {
-      accessToken: token,
+      accessToken: this.jwtService.sign({
+        sub: user.id,
+        phone: user.phone,
+        role: actingRole,
+        customerId: user.customerId ?? undefined,
+        purpose,
+      }),
       role: actingRole,
       customerId: user.customerId ?? undefined,
       purpose,
     };
+  }
+
+  private async stampPasswordChange(userId: string, passwordHash: string) {
+    await this.userRepo.update(userId, { passwordHash, passwordChangedAt: new Date() });
   }
 
   async findById(id: string) {
@@ -389,7 +397,7 @@ export class AuthService {
     return customer;
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(userId: string, currentPassword: string, newPassword: string, purpose?: string) {
     const u = await this.userRepo.findOne({ where: { id: userId } });
     if (!u) throw new UnauthorizedException();
     const policyError = validateNewPassword(newPassword, u.phone);
@@ -399,8 +407,12 @@ export class AuthService {
     const same = await bcrypt.compare(newPassword, u.passwordHash);
     if (same) throw new BadRequestException('رمز جدید باید با رمز فعلی متفاوت باشد');
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    await this.userRepo.update(userId, { passwordHash });
-    return { message: 'رمز عبور با موفقیت تغییر یافت' };
+    await this.stampPasswordChange(userId, passwordHash);
+    const fresh = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    return {
+      message: 'رمز عبور با موفقیت تغییر یافت',
+      ...this.issueSession(fresh, purpose),
+    };
   }
 
   /**
@@ -472,7 +484,7 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    await this.userRepo.update(user.id, { passwordHash });
+    await this.stampPasswordChange(user.id, passwordHash);
 
     const canLogin = Boolean(user.isActive && customer?.status === 'ACTIVE');
     if (!canLogin) {
@@ -482,20 +494,10 @@ export class AuthService {
       };
     }
 
-    const token = this.jwtService.sign({
-      sub: user.id,
-      phone: user.phone,
-      role: 'CUSTOMER',
-      customerId: user.customerId,
-      purpose: 'storefront',
-    });
     return {
       message: 'رمز عبور با موفقیت تغییر یافت',
       canLogin: true,
-      accessToken: token,
-      role: 'CUSTOMER',
-      customerId: user.customerId,
-      purpose: 'storefront',
+      ...this.issueSession(user, 'storefront'),
     };
   }
 
@@ -515,8 +517,13 @@ export class AuthService {
     const policyError = validateNewPassword(newPassword, u.phone);
     if (policyError) throw new BadRequestException(policyError);
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    await this.userRepo.update(userId, { passwordHash });
-    return { message: 'رمز عبور ذخیره شد' };
+    await this.stampPasswordChange(userId, passwordHash);
+    await this.otpService.clearVerifiedSession(userId);
+    const fresh = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    return {
+      message: 'رمز عبور ذخیره شد',
+      ...this.issueSession(fresh, purpose),
+    };
   }
 
   /** Sync user.isActive when admin changes customer status. Never disable staff. */

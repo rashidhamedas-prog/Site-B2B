@@ -83,7 +83,6 @@ export function ForgotPasswordFlow({
         return;
       }
       setInfo(res.message || 'رمز ذخیره شد. حالا وارد شوید.');
-      window.location.href = loginHref;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'بازیابی رمز ناموفق بود');
     } finally {

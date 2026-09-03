@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { validateNewPassword } from '@/lib/password-policy';
+import { applyPasswordSession } from '@/lib/password-session';
 import { PasswordField } from '@/components/account/PasswordField';
 
 export default function RetailSecurityPage() {
@@ -45,7 +46,11 @@ export default function RetailSecurityPage() {
       return;
     }
     void run(async () => {
-      await apiClient.post('/auth/me/password/set', { password: setPw.next });
+      const res = await apiClient.post<{ accessToken?: string; role?: string; purpose?: string }>(
+        '/auth/me/password/set',
+        { password: setPw.next },
+      );
+      applyPasswordSession(res);
       setMsg('رمز ذخیره شد. از این به بعد می‌توانید با رمز هم وارد شوید.');
       setSetPw({ next: '', confirm: '' });
     });
@@ -63,7 +68,11 @@ export default function RetailSecurityPage() {
       return;
     }
     void run(async () => {
-      await apiClient.patch('/auth/me/password', { current: changePw.current, password: changePw.next });
+      const res = await apiClient.patch<{ accessToken?: string; role?: string; purpose?: string }>(
+        '/auth/me/password',
+        { current: changePw.current, password: changePw.next },
+      );
+      applyPasswordSession(res);
       setMsg('رمز عبور تغییر کرد.');
       setChangePw({ current: '', next: '', confirm: '' });
     });

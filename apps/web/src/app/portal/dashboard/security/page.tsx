@@ -6,6 +6,7 @@ import { Lock } from 'lucide-react';
 import { Alert, Button } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { validateNewPassword } from '@/lib/password-policy';
+import { applyPasswordSession } from '@/lib/password-session';
 import { PasswordField } from '@/components/account/PasswordField';
 
 export default function PortalSecurityPage() {
@@ -37,8 +38,12 @@ export default function PortalSecurityPage() {
     setError('');
     setSuccess('');
     apiClient
-      .patch('/auth/me/password', { current: changePw.current, password: changePw.next })
-      .then(() => {
+      .patch<{ accessToken?: string; role?: string; purpose?: string }>('/auth/me/password', {
+        current: changePw.current,
+        password: changePw.next,
+      })
+      .then((res) => {
+        applyPasswordSession(res);
         setSuccess('رمز عبور تغییر کرد.');
         setChangePw({ current: '', next: '', confirm: '' });
       })

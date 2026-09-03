@@ -2,6 +2,43 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T19:35:00Z — TASK-20260903-006 account leftovers implementing
+
+- Task / owner: TASK-20260903-006 / cursor:implementer-TASK-20260903-006
+- Branch: `ai/TASK-20260903-006-account-hardening` in `D:/proje/Site-B2B-customer-account`.
+- CODE: `passwordChangedAt` + JWT iat check; fresh token on change/set/reset; `safeScopedRedirect` in `useAuth`; Persian OTP Transform; register hint ۸; pending reset stays on page.
+- Reclaimed from TASK-20260903-005 (done), TASK-20260901-002 (stale jwt/useAuth), TASK-20260831-001 (stale users.service/AdminAccount). Did not edit middleware.ts / lib/auth.ts.
+- Exact next: tsc + specs, independent Reviewer+Security, then commit/push/deploy + migrate. Do not Done.
+
+## 2026-09-03T15:40:00Z — TASK-20260903-005 reviews complete
+
+- Task / owner: TASK-20260903-005 / cursor:implementer-TASK-20260903-005
+- Live SHA `6dde78f`. ACs met. No must-fix from either review.
+- Reviewer [بازبین پنل](40150946-2472-4a33-bb77-d5bef96f9c3f): **PASS WITH CONDITIONS**.
+- Security [بازبین امنیت](f4d5d4ae-39f5-4569-81ec-01b1aca87781): **PASS WITH CONDITIONS**.
+- Residual (later, not this slice): JWT revoke; 30min OTP set window; portal login `?redirect=` in unclaimed `useAuth.ts`; client-only retail gates; register hint still says ۶; retail OTP DTO no `normalizePhone`; pending wholesale reset message is skipped; invoice IDOR.
+- Claims stay until a docs commit. Task marked done.
+
+## 2026-09-03T15:30:00Z — TASK-20260903-005 security re-review
+
+- Task / owner: TASK-20260903-005 / cursor:implementer-TASK-20260903-005
+- Security [بازبین امنیت](f4d5d4ae-39f5-4569-81ec-01b1aca87781): **PASS WITH CONDITIONS**. Six post-FAIL patches verified; no must-fix.
+- Residual (accepted, not merge blockers): OTP-session JWT can set password ~30 min; no JWT revoke after password change; PENDING wholesale may set password without auto-login; portal `?redirect=` not allowlisted (out of retail patch scope); invoice IDOR unchanged.
+- Exact next: wait for independent Reviewer [بازبین پنل](40150946-2472-4a33-bb77-d5bef96f9c3f). Do not Done.
+
+## 2026-09-03T14:10:00Z — TASK-20260903-005 live browser verify
+
+- Task / owner: TASK-20260903-005 / cursor:implementer-TASK-20260903-005
+- Live SHA `6dde78f` on VPS. Browser (locked tab):
+  - `https://poshaktaranom.com/portal/forgot-password` — phone → generic «اگر این شماره در سیستم باشد…» + OTP/password step.
+  - `https://www.poshaktaranom.ir/account` — OTP + password tabs + فراموشی رمز.
+  - `https://www.poshaktaranom.ir/account/forgot-password` — same generic reset step after 09150000000.
+  - `/account/security` logged-out → `/account?redirect=%2Faccount%2Fsecurity` (safe relative).
+  - `/portal/dashboard` logged-out → `/portal/login?redirect=%2Fportal%2Fdashboard`.
+- Not verified: real OTP SMS delivery, logged-in retail shell, `/portal/dashboard/security` with a customer JWT.
+- Residual: OTP-session JWT can set password ~30 min; no JWT revoke after password change; invoice IDOR unchanged.
+- Exact next: independent Reviewer + Security re-check of post-FAIL patches. Do not Done.
+
 ## 2026-09-03T13:00:00Z — TASK-20260903-004 GSC audit + mobile LCP
 
 - Task / owner: TASK-20260903-004 / cursor:implementer-TASK-20260903-004

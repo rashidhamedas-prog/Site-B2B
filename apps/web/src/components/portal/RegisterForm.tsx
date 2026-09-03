@@ -205,7 +205,7 @@ export function RegisterForm() {
         </div>
         {inp('توضیحات (اختیاری)', 'notes', 'text', 'مثلاً: مجتمع تجاری پارسه، طبقه ۲')}
         <div className="grid grid-cols-2 gap-4">
-          {inp('رمز عبور', 'password', 'password', 'حداقل ۶ کاراکتر', true)}
+          {inp('رمز عبور', 'password', 'password', 'حداقل ۸ کاراکتر', true)}
           {inp('تکرار رمز عبور', 'confirmPassword', 'password', 'تکرار رمز عبور', true)}
         </div>
         <button type="submit" disabled={loading} className="btn btn-primary btn-lg w-full mt-2">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CircleUser, KeyRound, Mail, Phone, Save, Shield } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { applyPasswordSession } from '@/lib/password-session';
 import { STAFF_ROLE_LABELS, type StaffRole } from '@/lib/staff-access';
 
 const fieldClass =
@@ -74,7 +75,11 @@ export function AdminAccount() {
     }
     setPwSaving(true);
     try {
-      await apiClient.patch('/auth/me/password', { current: pw.current, password: pw.next });
+      const res = await apiClient.patch<{ accessToken?: string; role?: string; purpose?: string }>(
+        '/auth/me/password',
+        { current: pw.current, password: pw.next },
+      );
+      applyPasswordSession(res);
       setOk('رمز عبور تغییر کرد');
       setPw({ current: '', next: '', confirm: '' });
     } catch (e: unknown) {

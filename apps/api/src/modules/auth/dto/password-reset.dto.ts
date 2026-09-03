@@ -1,7 +1,7 @@
 import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { normalizePhone } from '../phone.util';
+import { normalizeOtpCode, normalizePhone } from '../phone.util';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '../password-policy';
 
 export class ForgotPasswordDto {
@@ -18,6 +18,7 @@ export class ResetPasswordDto {
   phone: string;
 
   @ApiProperty({ example: '123456' })
+  @Transform(({ value }) => normalizeOtpCode(String(value ?? '')))
   @IsString()
   @Matches(/^[0-9]{4,8}$/, { message: 'کد تایید نامعتبر است' })
   code: string;

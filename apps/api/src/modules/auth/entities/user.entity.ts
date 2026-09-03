@@ -35,6 +35,10 @@ export class UserEntity {
   @Column({ nullable: true })
   lastLoginAt: Date;
 
+  /** When set, JWTs with iat before this second are rejected. */
+  @Column({ type: 'timestamptz', nullable: true })
+  passwordChangedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
