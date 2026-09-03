@@ -3,7 +3,12 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { IRAN_PROVINCES } from '@/lib/iran-provinces';
-import { replaceRetailAddresses, saveRetailAddress, type RetailAddress } from '@/lib/retail-addresses';
+import {
+  replaceRetailAddresses,
+  saveRetailAddress,
+  sameRetailAddress,
+  type RetailAddress,
+} from '@/lib/retail-addresses';
 
 export type ProfileAddress = RetailAddress & { id?: string; isDefault?: boolean };
 
@@ -119,13 +124,22 @@ export function RetailAccountDetails({
     }
   };
 
-  const removeAddress = async (id?: string) => {
-    if (!id) return;
+  const removeAddress = async (addr: ProfileAddress) => {
+    if (typeof window !== 'undefined' && !window.confirm('این آدرس ارسال حذف شود؟')) return;
     setBusy(true);
     setErr('');
+    setMsg('');
     try {
-      const res = await apiClient.delete<{ addresses: ProfileAddress[] }>(`/auth/me/addresses/${id}`);
-      persistAddresses(res.addresses || []);
+      if (addr.id) {
+        const res = await apiClient.delete<{ addresses: ProfileAddress[] }>(`/auth/me/addresses/${addr.id}`);
+        persistAddresses(res.addresses || []);
+      } else {
+        persistAddresses(addresses.filter((a) => a !== addr));
+      }
+      if (editingId && (addr.id === editingId || sameRetailAddress(draft, addr))) {
+        setDraft(emptyAddress());
+        setEditingId(null);
+      }
       setMsg('آدرس حذف شد');
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : 'حذف آدرس ناموفق بود');
@@ -216,6 +230,7 @@ export function RetailAccountDetails({
                 <button
                   type="button"
                   className="text-xs font-bold text-[var(--retail-primary)]"
+                  disabled={busy}
                   onClick={() => {
                     setDraft(a);
                     setEditingId(a.id || null);
@@ -223,11 +238,14 @@ export function RetailAccountDetails({
                 >
                   ویرایش
                 </button>
-                {a.id ? (
-                  <button type="button" className="text-xs font-bold text-red-600" onClick={() => void removeAddress(a.id)}>
-                    حذف
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  className="rounded-full border border-red-200 px-3 py-1 text-xs font-bold text-red-600"
+                  disabled={busy}
+                  onClick={() => void removeAddress(a)}
+                >
+                  حذف آدرس
+                </button>
               </div>
             </div>
           ))

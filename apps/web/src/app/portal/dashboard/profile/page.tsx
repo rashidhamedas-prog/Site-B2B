@@ -200,14 +200,18 @@ export default function ProfilePage() {
           <MapPin className="h-4 w-4 text-primary" />
           آدرس‌های ارسال
         </h2>
-        {addresses.map((a) => (
-          <div key={a.id || a.street} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
+        {addresses.length === 0 ? (
+          <p className="text-sm text-gray-500">هنوز آدرس ارسالی ذخیره نشده. از فرم زیر اضافه کنید.</p>
+        ) : (
+          addresses.map((a) => (
+          <div key={a.id || `${a.street}-${a.mobile}`} className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
             <p className="font-bold">{a.recipient} — {a.mobile}{a.isDefault ? ' (پیش‌فرض)' : ''}</p>
             <p className="mt-1 text-gray-600">{a.province}، {a.city} — {a.street}</p>
             <div className="mt-2 flex gap-3">
               <button
                 type="button"
                 className="text-xs font-bold text-primary"
+                disabled={saving}
                 onClick={() => {
                   setAddrDraft(a);
                   setEditingAddressId(a.id || null);
@@ -215,25 +219,46 @@ export default function ProfilePage() {
               >
                 ویرایش
               </button>
-              {a.id ? (
-                <button
-                  type="button"
-                  className="text-xs font-bold text-red-600"
-                  onClick={async () => {
-                    try {
-                      const res = await apiClient.delete<{ addresses: SavedAddress[] }>(`/auth/me/addresses/${a.id}`);
+              <button
+                type="button"
+                className="rounded-full border border-red-200 px-3 py-1 text-xs font-bold text-red-600"
+                disabled={saving}
+                onClick={async () => {
+                  if (typeof window !== 'undefined' && !window.confirm('این آدرس ارسال حذف شود؟')) return;
+                  setSaving(true);
+                  setError(null);
+                  try {
+                    if (a.id) {
+                      const res = await apiClient.delete<{ addresses: SavedAddress[] }>(`/auth/me/addresses/${encodeURIComponent(a.id)}`);
                       setAddresses(res.addresses || []);
-                    } catch (e: unknown) {
-                      setError(e instanceof Error ? e.message : 'حذف ناموفق');
+                    } else {
+                      setAddresses((prev) => prev.filter((row) => row !== a));
                     }
-                  }}
-                >
-                  حذف
-                </button>
-              ) : null}
+                    if (editingAddressId && a.id === editingAddressId) {
+                      setEditingAddressId(null);
+                      setAddrDraft({
+                        recipient: '',
+                        mobile: '',
+                        province: form.province || 'خراسان رضوی',
+                        city: form.city,
+                        street: '',
+                        postalCode: '',
+                        isDefault: false,
+                      });
+                    }
+                  } catch (e: unknown) {
+                    setError(e instanceof Error ? e.message : 'حذف ناموفق');
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                حذف آدرس
+              </button>
             </div>
           </div>
-        ))}
+          ))
+        )}
         <Input label="گیرنده" value={addrDraft.recipient}
           onChange={(e) => setAddrDraft((p) => ({ ...p, recipient: e.target.value }))} />
         <Input label="موبایل گیرنده" value={addrDraft.mobile}

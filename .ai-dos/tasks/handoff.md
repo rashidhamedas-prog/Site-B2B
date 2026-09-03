@@ -2,6 +2,30 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-03T22:20:00Z — TASK-20260904-002 address delete implementing
+
+- Task / owner: TASK-20260904-002 / cursor:implementer-TASK-20260904-002
+- Branch: `ai/TASK-20260904-002-delete-addresses` in `D:/proje/Site B2B`.
+- Objective: shipping-address delete in retail and wholesale customer panels.
+- Root cause: delete UI hidden without `id`; `sanitizeSavedAddress` minted a new UUID on every GET so DELETE missed legacy JSON rows.
+- Reclaimed address files from TASK-20260903-005 (done) and TASK-20260901-002 (stale hb 2026-09-01). Did not edit `auth.service.ts` (TASK-20260904-001).
+- CODE: stable fallback ids; always-visible «حذف آدرس» + confirm; local-only retail remove.
+- Tests (observed): `npx ts-node --transpile-only src/modules/auth/customer-addresses.spec.ts` → ok; `npx tsc --noEmit` in apps/api and apps/web → 0.
+- Risks: old open tab still holding a pre-deploy random id may 200-no-op until refresh; profile single-line `address` is not a shipping card.
+- Exact next: push + VPS deploy. Live logged-in delete still to verify. Do not Done.
+
+## 2026-09-04T01:30:00Z — TASK-20260903-004 GSC leftover clicks
+
+- Task / owner: TASK-20260903-004 / cursor:implementer-TASK-20260903-004
+- Account: `rashidhamedas@gmail.com`. No code. Did not touch TASK-20260904-001 files.
+- Sitemaps: `www.poshaktaranom.ir/sitemap.xml` Success (last read Sep 3); apex `poshaktaranom.ir/sitemap.xml` Success kept; `.com/sitemap.xml` Success. None deleted.
+- Live-tested then Request indexing once: `https://www.poshaktaranom.ir/` and `https://poshaktaranom.com/` (both available / can be indexed). Confirmation: “Indexing requested”.
+- Merchant listings last update 9/2: Invalid 0; Valid 27; Missing field image **Passed / 0 items**. Did not Validate Fix (already passed). Did not start return/shipping appearance issues.
+- Product snippets: Invalid 0; Valid 14; remaining appearance = aggregateRating + review (did not invent).
+- CWV `.com` mobile last update 9/2: Poor **10** URLs, LCP >4s, Validation Not Started. Did not Validate Fix (need ~28d after 9/3 LCP deploy). Was 11 on 8/31.
+- Did not Validate Fix redirect / noindex / 404. Did not change Settings.
+- Exact next: wait for CWV field refresh; do not re-request those two homes.
+
 ## 2026-09-03T21:55:00Z — TASK-20260904-001 channel sessions implementing
 
 - Task / owner: TASK-20260904-001 / cursor:implementer-TASK-20260904-001

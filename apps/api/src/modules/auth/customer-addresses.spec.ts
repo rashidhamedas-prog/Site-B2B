@@ -42,6 +42,28 @@ assert(removed[0]!.isDefault === true, 'remaining becomes default');
 assert(normalizeAddressList(null).length === 0, 'null list');
 assert(normalizeAddressList([{ junk: true }]).length === 0, 'corrupt skipped');
 
+const legacyNoId = {
+  recipient: 'سارا',
+  mobile: '09151112233',
+  province: 'تهران',
+  city: 'تهران',
+  street: 'ولیعصر ۱۲',
+  postalCode: '1111111111',
+};
+const passA = normalizeAddressList([legacyNoId]);
+const passB = normalizeAddressList([legacyNoId]);
+assert(passA[0]!.id === passB[0]!.id, 'legacy rows get the same id on every normalize');
+assert(removeAddress(passA, passA[0]!.id).length === 0, 'stable id can delete a row that never stored uuid');
+
+const keptId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+const withUuid = normalizeAddressList([{ ...legacyNoId, id: keptId }]);
+assert(withUuid[0]!.id === keptId, 'persisted uuid is kept');
+
+const twins = normalizeAddressList([legacyNoId, legacyNoId]);
+assert(twins.length === 2, 'duplicate content kept');
+assert(twins[0]!.id !== twins[1]!.id, 'duplicate content gets distinct occurrence ids');
+assert(removeAddress(twins, twins[0]!.id).length === 1, 'delete first twin only');
+
 let overflow = first;
 for (let i = 0; i < 9; i++) {
   overflow = upsertAddress(overflow, {

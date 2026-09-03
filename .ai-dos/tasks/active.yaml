@@ -1,5 +1,45 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260904-002"
+    title: "Delete shipping addresses in retail and wholesale customer panels"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260904-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260904-002"
+      implementer: "cursor:implementer-TASK-20260904-002"
+      reviewer: "self-review-same-user-address-delete"
+      security: "self-review-same-user-address-delete"
+    branch: "ai/TASK-20260904-002-delete-addresses"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-03T22:05:00Z"
+    heartbeat_at: "2026-09-03T22:25:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/auth/customer-addresses.ts"
+      - "apps/api/src/modules/auth/customer-addresses.spec.ts"
+      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      - "apps/web/src/app/retail/account/addresses/page.tsx"
+      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      - "apps/web/src/lib/retail-addresses.ts"
+      - "docs/reports/2026-09-04-delete-shipping-addresses.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to delete shipping addresses in customer panels.
+      API DELETE already existed; UI hid the button when id was missing,
+      and sanitizeSavedAddress minted a new random UUID on every GET so
+      DELETE never matched legacy rows. Reclaimed address files from
+      TASK-20260903-005 (done) and TASK-20260901-002 (stale hb 2026-09-01).
+      Did not edit auth.service.ts (TASK-20260904-001). Same-user JWT only.
+    acceptance_criteria:
+      - "Retail /account/addresses always shows a delete control for each shipping address"
+      - "Wholesale profile shipping-address cards always show a delete control"
+      - "DELETE /auth/me/addresses/:id removes a legacy row even when it had no persisted UUID"
+      - "Local-only retail addresses without server id can still be removed"
+      - "customer-addresses spec covers stable ids across two normalize passes"
   - id: "TASK-20260904-001"
     title: "Split retail vs wholesale customer sessions (host lock + JWT purpose)"
     status: "in_progress"
@@ -144,7 +184,7 @@ tasks:
     branch: "ai/TASK-20260903-004-gsc-mobile-speed"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-03T12:50:00Z"
-    heartbeat_at: "2026-09-03T16:00:00Z"
+    heartbeat_at: "2026-09-04T01:30:00Z"
     depends_on: []
     file_claims:
       - "nginx/nginx.conf"
@@ -213,14 +253,16 @@ tasks:
       # transferred 2026-09-04 to TASK-20260904-001 (done; purpose=retail login):
       # "apps/web/src/components/retail/RetailAccountAuth.tsx"
       - "apps/web/src/components/retail/RetailAccountShell.tsx"
-      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      # transferred 2026-09-04 to TASK-20260904-002 (done task; address delete):
+      # "apps/web/src/components/retail/RetailAccountDetails.tsx"
       - "apps/web/src/components/retail/RetailOtpLogin.tsx"
       - "apps/web/src/app/retail/account/layout.tsx"
       - "apps/web/src/app/retail/account/page.tsx"
       - "apps/web/src/app/retail/account/orders/page.tsx"
       - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
       - "apps/web/src/app/retail/account/profile/page.tsx"
-      - "apps/web/src/app/retail/account/addresses/page.tsx"
+      # transferred 2026-09-04 to TASK-20260904-002 (done task; address delete):
+      # "apps/web/src/app/retail/account/addresses/page.tsx"
       # transferred 2026-09-03 to TASK-20260903-006:
       # "apps/web/src/app/retail/account/security/page.tsx"
       - "apps/web/src/app/retail/account/wishlist/page.tsx"
@@ -229,7 +271,8 @@ tasks:
       - "apps/web/src/app/portal/forgot-password/page.tsx"
       # transferred 2026-09-03 to TASK-20260903-006:
       # "apps/web/src/app/portal/dashboard/security/page.tsx"
-      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      # transferred 2026-09-04 to TASK-20260904-002 (done task; address delete):
+      # "apps/web/src/app/portal/dashboard/profile/page.tsx"
       - "apps/web/src/app/portal/dashboard/notifications/page.tsx"
       # transferred 2026-09-04 to TASK-20260904-001 (purpose wholesale + hide notifications):
       # "apps/web/src/components/portal/LoginForm.tsx"
@@ -411,8 +454,9 @@ tasks:
       # "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
       # transferred 2026-09-04 to TASK-20260904-001 (stale; shopper purpose guard):
       # "apps/api/src/modules/auth/guards/roles.guard.ts"
-      - "apps/api/src/modules/auth/customer-addresses.ts"
-      - "apps/api/src/modules/auth/customer-addresses.spec.ts"
+      # transferred 2026-09-04 to TASK-20260904-002 (stale hb 2026-09-01; address delete):
+      # "apps/api/src/modules/auth/customer-addresses.ts"
+      # "apps/api/src/modules/auth/customer-addresses.spec.ts"
       - "apps/api/src/modules/auth/auth.otp.logic.spec.ts"
       - "apps/api/src/modules/customer/entities/customer.entity.ts"
       # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-09-01; discount channel):
@@ -434,7 +478,8 @@ tasks:
       # "apps/web/src/lib/hooks/useAuth.ts"
       # "apps/web/src/middleware.ts"
       - "apps/web/src/lib/iran-provinces.ts"
-      - "apps/web/src/lib/retail-addresses.ts"
+      # transferred 2026-09-04 to TASK-20260904-002 (stale hb 2026-09-01; local address delete):
+      # "apps/web/src/lib/retail-addresses.ts"
       - "apps/web/src/components/admin/AdminLoginForm.tsx"
       # "apps/web/src/app/admin/layout.tsx"
       # "apps/web/src/app/retail/account/page.tsx"

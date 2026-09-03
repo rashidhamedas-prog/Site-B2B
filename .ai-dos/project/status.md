@@ -1,7 +1,8 @@
 # Project Status
 
-- Last verified: 2026-09-03 — **TASK-20260904-001** implementing on `ai/TASK-20260904-001-channel-panels`: JWT purpose retail|wholesale, host lock, pending B2B may OTP retail. Not live until merge/deploy. Reviewer + Security required. order.controller untouched.
-- Last verified: 2026-09-03 — **TASK-20260903-004** follow-up: Header `loading=lazy`; nginx must `--force-recreate` so `^~ /fonts/` bind inode applies. Live `73f31eb` hero 38KB; GSC UI clicks NOT RUN.
+- Last verified: 2026-09-04 — **TASK-20260904-002** implementing on `ai/TASK-20260904-002-delete-addresses`: shipping-address delete in retail/wholesale panels. Not live until merge/deploy.
+- Last verified: 2026-09-03 — **TASK-20260904-001** implementing on `ai/TASK-20260904-001-channel-panels`: JWT purpose retail|wholesale, host lock, pending B2B may OTP retail. Live SHA `3984d3b` after push to master. Reviewer + Security required. order.controller untouched.
+- Last verified: 2026-09-04 — **TASK-20260903-004** GSC leftover clicks done (`rashidhamedas@gmail.com`): both homes indexing requested; www+apex sitemaps Success kept; Merchant missing image Passed 0; CWV `.com` mobile still Poor 10 LCP>4s — no Validate Fix.
 - Last verified: 2026-09-03 — **TASK-20260903-006** live `5a23424`: JWT revoke + portal redirect + Persian OTP + register hint ۸. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.
 - Last verified: 2026-09-03 — **TASK-20260903-005** live `6dde78f`: customer panels + password recovery. Reviewer + Security **PASS WITH CONDITIONS** (no must-fix). Task done.
 - Last verified: 2026-09-03 — **TASK-20260903-003** live `007eee9`: DigiPay admin connection probe + UPG 4-field gate. Owner must replace DigiPay-rejected client credentials.

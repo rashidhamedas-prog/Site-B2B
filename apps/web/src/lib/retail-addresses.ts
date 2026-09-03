@@ -43,3 +43,14 @@ export function replaceRetailAddresses(list: RetailAddress[]) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(KEY, JSON.stringify(list.slice(0, MAX)));
 }
+
+export function sameRetailAddress(a: Partial<RetailAddress>, b: Partial<RetailAddress>): boolean {
+  return (
+    (a.recipient || '') === (b.recipient || '') &&
+    (a.mobile || '') === (b.mobile || '') &&
+    (a.province || '') === (b.province || '') &&
+    (a.city || '') === (b.city || '') &&
+    (a.street || '') === (b.street || '') &&
+    (a.postalCode || '') === (b.postalCode || '')
+  );
+}
