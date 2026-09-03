@@ -10,7 +10,7 @@
 
 - هیرو/فونت دیگر `max-age=0` نمی‌گیرند (nginx `proxy_hide_header` + کش بنر/فونت).
 - کانتینر nginx باید recreate شود تا `^~ /fonts/` روی فایل جدید bind شود؛ وگرنه regex `woff2` هدر ۳۰روزه اضافه می‌کند.
-- لوگوی هدر عمده `loading=lazy` + `fetchPriority=low` است تا React آن را جلوتر از هیرو preload نکند.
+- لوگوی هدر عمده دیگر `<img>` نیست (پس‌زمینه CSS) تا React آن را جلوتر از هیرو preload نکند.
 - JSON-LD تصویر محصول تکی روی `www.poshaktaranom.ir` می‌ماند نه `.com`.
 - اسلاید اول عمده موبایل ۸۶→۳۸ کیلوبایت. روی کنسول امروز کلیک Validate Fix زده نشد.
 

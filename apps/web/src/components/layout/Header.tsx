@@ -23,6 +23,12 @@ export function Header() {
   const brandName = chromeStr(chrome, 'brandName', 'پوشاک ترنم');
   const brandTagline = chromeStr(chrome, 'brandTagline', 'تولیدی مانتو زنانه مشهد');
   const logoUrl = chromeStr(chrome, 'logoUrl', '/logo-128.png');
+  // Relative CMS paths only — a header <img> is auto-preloaded by React 19
+  // ahead of the LCP hero even with loading=lazy / fetchPriority=low.
+  const logoHref =
+    logoUrl.startsWith('/') && !logoUrl.startsWith('//') && !/[\s"'()\\]/.test(logoUrl)
+      ? logoUrl
+      : '/logo-128.png';
   const registerLabel = chromeStr(chrome, 'registerLabel', 'ثبت‌نام عمده‌فروش');
   const registerHref = chromeStr(chrome, 'registerHref', '/portal/register');
   const portalHref = chromeStr(chrome, 'portalHref', '/portal');
@@ -73,16 +79,11 @@ export function Header() {
       <div className="container-site">
         <div className="flex h-[4.25rem] items-center justify-between">
           <Link href="/" className="group flex cursor-pointer items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={logoUrl}
-              alt={`لوگوی ${brandName}`}
-              width={48}
-              height={48}
-              decoding="async"
-              loading="lazy"
-              fetchPriority="low"
-              className="h-12 w-12 object-contain transition-transform duration-250 group-hover:scale-[1.03]"
+            <span
+              role="img"
+              aria-label={`لوگوی ${brandName}`}
+              className="h-12 w-12 shrink-0 bg-contain bg-center bg-no-repeat transition-transform duration-250 group-hover:scale-[1.03]"
+              style={{ backgroundImage: `url("${logoHref}")` }}
             />
             <div className="leading-tight">
               <div className="text-lg font-extrabold tracking-tight text-primary">{brandName}</div>
