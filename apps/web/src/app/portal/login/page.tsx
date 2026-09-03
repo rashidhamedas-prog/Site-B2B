@@ -10,7 +10,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-2xl bg-white/95 border border-white/20 p-2 mb-4 shadow-xl">
-            <img src="/logo-512.png" alt="لوگوی پوشاک ترنم" className="h-full w-full object-contain" />
+            <img src="/logo-128.png" alt="لوگوی پوشاک ترنم" width={80} height={80} className="h-full w-full object-contain" />
           </div>
           <h1 className="text-2xl font-extrabold text-white">پنل مشتری ترنم</h1>
           <p className="text-white/60 text-sm mt-1">برای ادامه وارد شوید</p>

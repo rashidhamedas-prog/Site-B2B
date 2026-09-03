@@ -42,6 +42,17 @@ Append newest entries at the top. Never erase another agent's record.
 - Security [بررسی امنیت](c3f4c2dc-9a5a-4445-9ece-fb4d11791e49): PASS WITH CONDITIONS. Must-fix none.
 - Exact next: owner commit/PR of this slice only. Later CODE: collections public channel, discount validate by channel, blog related `p.stock`. Canary send / §9 live apply still owner-gated. Do not Done.
 
+## 2026-09-03T00:20:00Z — TASK-20260903-002 compress Taranom logos
+
+- Task / owner: TASK-20260903-002 / cursor:implementer-TASK-20260903-002
+- Branch: `ai/TASK-20260903-002-logo-compress` from `origin/master` `a63ade9` in `D:/proje/Site-B2B-logo-compress`.
+- Live wholesale header/footer + JSON-LD use `/logo-128.png` (was 20368 B). Retail header is SVG BrandMark, not this PNG; schema still references logo-128.
+- CODE: recompressed `logo-128.png` to 6824 B (128×128). Replaced public `logo-512.png` with 192px palette PNG 13916 B (login shows 80px). Brand `logo-512` stays 512px at 59376 B. Portal login now uses `/logo-128.png`.
+- Did not edit claimed Header/Footer/AdminLoginForm/AdminSidebar/PortalSidebar/JsonLd. Admin login still `/logo-512.png` and gets the smaller file.
+- Live: docker-cp’d both PNGs into `taranom_web` (`.com` and `.ir` Content-Length 6824 / 13916). Host `/opt/taranom` public copies updated. API `/v1/health` 200.
+- Full `auto-deploy.sh` rebuild NOT RUN: VPS `git fetch` asks GitHub HTTPS username (repo private; no deploy key). Image still SHA `a63ade9` plus overwritten public PNGs.
+- Exact next: when VPS git auth works, pull `566b051` so portal login src change and image bake persist across recreate.
+
 ## 2026-09-02T22:00:00Z — TASK-20260903-001 admin empty session ready to ship
 
 - Task / owner: TASK-20260903-001 / cursor:implementer-TASK-20260903-001
