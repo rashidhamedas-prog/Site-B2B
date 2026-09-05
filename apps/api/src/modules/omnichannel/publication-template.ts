@@ -153,7 +153,66 @@ function asBlock(raw: unknown, index: number): TemplateBlock | null {
   return null;
 }
 
+const LEGACY_PRODUCT_TEMPLATE = '{name} — {price} تومان\n{url}';
+
+function compactTemplate(value: string): string {
+  return value.replace(/\s+/g, '');
+}
+
+export function isLegacyProductTemplate(body?: string | null): boolean {
+  const raw = String(body || '').trim();
+  if (!raw) return true;
+  if (compactTemplate(raw) === compactTemplate(LEGACY_PRODUCT_TEMPLATE)) return true;
+  if (raw.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(raw) as { v?: unknown; blocks?: Array<{ type?: unknown; text?: unknown }> };
+      if (parsed.v === 1 && Array.isArray(parsed.blocks) && parsed.blocks.length === 1 && parsed.blocks[0]?.type === 'text') {
+        return isLegacyProductTemplate(String(parsed.blocks[0].text || ''));
+      }
+      return false;
+    } catch {
+      return true;
+    }
+  }
+  return /\{name\}/.test(raw) && /\{price\}/.test(raw) && /\{url\}/.test(raw) && raw.length < 96;
+}
+
+export function extractProductLookupKey(raw: string): string {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (ALLOWED_PHOTO_HOSTS.has(host) || host.endsWith('poshaktaranom.ir') || host.endsWith('poshaktaranom.com')) {
+      const parts = url.pathname.split('/').filter(Boolean);
+      const idx = parts.lastIndexOf('products');
+      if (idx >= 0 && parts[idx + 1]) return decodeURIComponent(parts[idx + 1]).slice(0, 120);
+    }
+  } catch {
+    /* not a URL */
+  }
+  return value.replace(/^\/+|\/+$/g, '').slice(0, 120);
+}
+
+export function imageCandidates(images: unknown): string[] {
+  if (!Array.isArray(images)) return [];
+  const out: string[] = [];
+  for (const item of images) {
+    if (typeof item === 'string' && item.trim()) {
+      out.push(item.trim());
+      continue;
+    }
+    if (item && typeof item === 'object') {
+      const rec = item as Record<string, unknown>;
+      const href = rec.url || rec.src || rec.href;
+      if (typeof href === 'string' && href.trim()) out.push(href.trim());
+    }
+  }
+  return out;
+}
+
 export function parseTemplateLayout(body?: string | null, channel = 'RETAIL'): TemplateLayout {
+  if (isLegacyProductTemplate(body)) return defaultLayoutFor(channel);
   const raw = String(body || '').trim();
   if (raw.startsWith('{')) {
     try {

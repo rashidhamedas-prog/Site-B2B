@@ -125,6 +125,17 @@ function channelLabel(channel: string) {
   return channel === 'WHOLESALE' ? 'عمده' : channel === 'RETAIL' ? 'تکی' : channel;
 }
 
+function templateLooksReady(body?: string) {
+  const raw = String(body || '').trim();
+  if (!raw.startsWith('{')) return false;
+  try {
+    const parsed = JSON.parse(raw) as { v?: unknown; blocks?: Array<{ type?: string }> };
+    return parsed?.v === 1 && Array.isArray(parsed.blocks) && parsed.blocks.some((row) => row.type === 'photos');
+  } catch {
+    return false;
+  }
+}
+
 function Badge({
   tone,
   children,
@@ -183,7 +194,10 @@ export function AdminOmnichannel() {
   const [sourceType, setSourceType] = useState<'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE'>('PRODUCT');
   const [channel, setChannel] = useState<'RETAIL' | 'WHOLESALE'>('RETAIL');
   const [filter, setFilter] = useState('ALL');
-  const [preview, setPreview] = useState<Record<string, unknown> | null>(null);
+  const [preview, setPreview] = useState<{
+    projection: Record<string, unknown>;
+    rendered?: { text?: string; photoUrls?: string[] };
+  } | null>(null);
   const [reason, setReason] = useState('بازبینی ادمین');
   const [connName, setConnName] = useState('');
   const [secretRef, setSecretRef] = useState('TELEGRAM_BOT_TOKEN');
@@ -271,6 +285,9 @@ export function AdminOmnichannel() {
   const activeTelegram = connections.some((row) => row.provider === 'TELEGRAM' && row.status === 'ACTIVE');
   const retailCanary = destinations.find((row) => row.id === status?.retailCanaryDestinationId);
   const setupReady = Boolean(status?.connectors && activeTelegram && status.retailCanaryDestinationId);
+  const retailTpl = templates.find((row) => row.channel === 'RETAIL' && row.eventType === 'product.published');
+  const wholesaleTpl = templates.find((row) => row.channel === 'WHOLESALE' && row.eventType === 'product.published');
+  const templatesReady = templateLooksReady(retailTpl?.body) && templateLooksReady(wholesaleTpl?.body);
 
   if (loading && !status) {
     return <div className="p-6 text-sm text-gray-500">در حال بارگذاری کانال‌های انتشار…</div>;
@@ -692,7 +709,18 @@ export function AdminOmnichannel() {
       {tab === 'publish' && (
         <>
           <section className="rounded-xl border bg-white p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="font-semibold">قالب پیام تلگرام</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                قالب قدیمی فقط اسم و لینک می‌فرستاد. یک‌بار شکل کانال را برای تکی و عمده فعال کنید؛ بعد از آن هر ارسال زنده همان اسکلت را با داده همان محصول پر می‌کند.
+              </p>
+              <p className={`text-xs mt-2 ${templatesReady ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {templatesReady
+                  ? 'قالب تکی و عمده ذخیره شده‌اند. برای محصول بعدی لازم نیست دوباره تنظیم کنید.'
+                  : 'قالب کانال هنوز روی سرور ننشسته. یک‌بار فعال‌سازی را بزنید.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
               <label className="text-xs text-gray-500 space-y-1">
                 <span>کانال این قالب</span>
                 <select className="border rounded-lg px-3 py-2 text-sm block" value={channel} onChange={(e) => setChannel(e.target.value as 'RETAIL' | 'WHOLESALE')}>
@@ -700,6 +728,15 @@ export function AdminOmnichannel() {
                   <option value="WHOLESALE">عمده</option>
                 </select>
               </label>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => run(async () => {
+                  await apiClient.post('/omnichannel/templates/ensure', {});
+                }, 'خطا در فعال‌سازی قالب', 'قالب تکی و عمده آماده شد')}
+              >
+                فعال‌سازی یک‌باره تکی و عمده
+              </button>
             </div>
             <AdminTelegramTemplateBuilder
               channel={channel}
@@ -739,7 +776,7 @@ export function AdminOmnichannel() {
                     <td className="p-2">{row.provider} / {channelLabel(row.channel)}</td>
                     <td className="p-2 font-mono text-xs">{row.eventType}</td>
                     <td className="p-2">v{row.version}</td>
-                    <td className="p-2">{row.enabled === false ? 'خاموش' : 'فعال'}</td>
+                    <td className="p-2">{row.enabled === false ? 'خاموش' : templateLooksReady(row.body) ? 'قالب کانال' : 'قدیمی'}</td>
                   </tr>
                 ))}
                 {templates.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={4}>قالبی ثبت نشده</td></tr>}
@@ -761,13 +798,16 @@ export function AdminOmnichannel() {
                 <option value="BLOG_POST">بلاگ</option>
                 <option value="CMS_PAGE">CMS</option>
               </select>
-              <input className="border rounded-lg px-3 py-2 text-sm w-72" placeholder="شناسه منبع" value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
+              <input className="border rounded-lg px-3 py-2 text-sm w-80" placeholder="شناسه، کد، اسلاگ یا لینک محصول" value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
               <input className="border rounded-lg px-3 py-2 text-sm w-56" placeholder="دلیل" value={reason} onChange={(e) => setReason(e.target.value)} />
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => run(async () => {
-                const res = await apiClient.post<{ projection: Record<string, unknown> }>('/omnichannel/preview', {
+                const res = await apiClient.post<{
+                  projection: Record<string, unknown>;
+                  rendered?: { text?: string; photoUrls?: string[] };
+                }>('/omnichannel/preview', {
                   channel, sourceType, sourceId,
                 });
-                setPreview(res.projection);
+                setPreview({ projection: res.projection, rendered: res.rendered });
               }, 'خطا در پیش‌نمایش')}>پیش‌نمایش</button>
               <button type="button" className="btn btn-primary btn-sm" onClick={() => run(async () => {
                 await apiClient.post('/omnichannel/publications', {
@@ -790,7 +830,29 @@ export function AdminOmnichannel() {
                 await apiClient.post('/omnichannel/reconcile', { reason });
               }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق</button>
             </div>
-            {preview && <pre className="text-xs bg-gray-50 p-3 rounded-lg overflow-auto max-h-64">{JSON.stringify(preview, null, 2)}</pre>}
+            {preview?.rendered && (
+              <div className="rounded-3xl border bg-[#0e1621] text-white p-4">
+                <p className="text-[11px] text-white/60 mb-2">
+                  پیش‌نمایش همین محصول — {preview.rendered.photoUrls?.length || 0} عکس
+                </p>
+                {!!preview.rendered.photoUrls?.length && (
+                  <div className="grid grid-cols-6 gap-1 mb-3">
+                    {preview.rendered.photoUrls.slice(0, 5).map((href) => (
+                      <div key={href} className={`${preview.rendered?.photoUrls && preview.rendered.photoUrls.length > 2 && preview.rendered.photoUrls.indexOf(href) > 1 ? 'col-span-2 h-16' : 'col-span-3 h-24'} rounded-lg bg-white/10 overflow-hidden`}>
+                        <img src={href} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <pre className="whitespace-pre-wrap text-[13px] leading-6 font-sans text-white/95">{preview.rendered.text || 'متن خالی است'}</pre>
+              </div>
+            )}
+            {preview && (
+              <details className="text-xs text-gray-500">
+                <summary className="cursor-pointer">جزئیات فنی پیش‌نمایش</summary>
+                <pre className="mt-2 bg-gray-50 p-3 rounded-lg overflow-auto max-h-64 text-gray-700">{JSON.stringify(preview.projection, null, 2)}</pre>
+              </details>
+            )}
           </section>
 
           <section className="rounded-xl border bg-white overflow-hidden">

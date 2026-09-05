@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-05T12:45:00Z — TASK-20260905-003 legacy template no longer wins
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Owner sent three Prima tests; live text stayed `name — price + url` because DB body was the old default and parse treated non-JSON as one live text block (`photos=0`).
+- CODE: `isLegacyProductTemplate` upgrades that string and its 1-block JSON wrap; `ensureProductTemplates` on status/list/preview/send; product lookup by url/slug/sku; admin shows real rendered preview + photo count.
+- Exact next: commit/push/deploy; upsert live templates; preview `coats00011` must have structured caption and photos>0. No catalog blast. Do not Done TASK-20260826-001.
+
 ## 2026-09-05T11:25:00Z — TASK-20260905-003 channel-style Telegram templates
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

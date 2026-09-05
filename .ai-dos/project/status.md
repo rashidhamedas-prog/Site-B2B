@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-05 — **TASK-20260905-003** legacy `{name} — {price}` templates no longer override channel layout; Prima tests used leftover DB body. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-05 — **TASK-20260905-003** channel-style Telegram templates (album + structured caption) coded; first live canary was still plain text. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-05 — **TASK-20260905-003** one live RETAIL canary product (`shomiz-linen-sara`) SUCCEEDED to chat `1008770451` (`providerMessageId=4`). Catalog not blasted. TASK-20260826-001 still **NOT DONE** (soak / independent Security).
 - Last verified: 2026-09-05 — **TASK-20260905-003** admin console + server UTF-8 canary ping. ??? was SSH mojibake. TASK-20260826-001 still **NOT DONE**.

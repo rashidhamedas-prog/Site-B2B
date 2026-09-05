@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260905-003-omni-admin-console"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-05T10:15:00Z"
-    heartbeat_at: "2026-09-05T11:20:00Z"
+    heartbeat_at: "2026-09-05T12:45:00Z"
     depends_on: ["TASK-20260905-002"]
     file_claims:
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"
