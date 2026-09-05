@@ -1,5 +1,61 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260905-004"
+    title: "H2H keyword week: retail/wholesale home, category owners, bamber, register"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260905-004"
+    roles:
+      architect: "cursor:implementer-TASK-20260905-004"
+      implementer: "cursor:implementer-TASK-20260905-004"
+      reviewer: "self-review-copy-no-auth"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260905-004-keyword-h2h"
+    worktree: "D:/proje/Site-B2B-keyword-week"
+    claimed_at: "2026-09-05T11:35:00Z"
+    heartbeat_at: "2026-09-05T11:35:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/app/retail/page.tsx"
+      - "apps/web/src/app/retail/about/page.tsx"
+      - "apps/web/src/app/(wholesale)/page.tsx"
+      - "apps/web/src/app/(wholesale)/about/page.tsx"
+      - "apps/web/src/app/(wholesale)/wholesale-manto-mashhad/page.tsx"
+      - "apps/web/src/app/portal/register/page.tsx"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      - "apps/web/src/components/retail/RetailHomeCategoryLinks.tsx"
+      - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
+      - "apps/web/src/components/retail/RetailFooter.tsx"
+      - "apps/web/src/components/wholesale/HeroSection.tsx"
+      - "apps/web/src/components/wholesale/about/AboutExperience.tsx"
+      - "apps/web/src/components/wholesale/CtaBanner.tsx"
+      - "apps/web/src/lib/cms/defaults.ts"
+      - "apps/web/src/lib/retail-seo-copy.ts"
+      - "apps/web/src/lib/retail-seo-copy.spec.ts"
+      - "apps/api/src/modules/category/category-seo-seed.ts"
+      - "apps/api/src/database/migrations/20260905-004-keyword-week-copy.ts"
+      - "docs/reports/2026-09-05-keyword-week-h2h.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to ship this week's 8 keyword jobs with H2H copy.
+      Did not edit RetailHero / CategoryLanding / retail/layout
+      (TASK-20260905-001 heartbeat 2026-09-05T07:30, not stale).
+      Reclaimed defaults.ts from TASK-20260904-004 (hb 2026-09-03),
+      RetailFooter from TASK-20260831-003 (hb 2026-08-31),
+      category-seo-seed from TASK-20260817-001 (stale).
+      Live category H1/title via DB migration, not CategoryLanding.
+      Shared governance append-only with TASK-20260905-003.
+    acceptance_criteria:
+      - "Retail home title is brand + تک‌فروشی, not a مانتو category query"
+      - "Retail home has visible links to shomiz, women-coats, winter-wear, kaftan"
+      - "Category seed+DB copy owns خرید شومیز زنانه, خرید کت زنانه, کفتان زنانه"
+      - "Retail PDP meta strips خرید عمده; kapshan-bamber-65 title is کاپشن بامبری زنانه"
+      - "Wholesale home/about/register speak تولیدی مشهد + MOQ 6 + همکاری with تولیدی لباس"
+      - "retail-seo-copy spec and web+api tsc pass"
   - id: "TASK-20260905-003"
     title: "Omnichannel admin console + UTF-8 canary ping"
     status: "in_progress"
@@ -153,7 +209,8 @@ tasks:
       - "apps/web/public/banners/digipay-installment-2026/README.md"
       - "apps/web/src/lib/cms/hero-slides.ts"
       - "apps/web/src/lib/cms/hero-slides.spec.ts"
-      - "apps/web/src/lib/cms/defaults.ts"
+      # transferred 2026-09-05 to TASK-20260905-004 (stale hb 2026-09-03; keyword-week copy):
+      # "apps/web/src/lib/cms/defaults.ts"
       # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-09-03; mobile overflow on overlay):
       # "apps/web/src/components/retail/RetailHero.tsx"
       - "apps/web/src/components/shared/HeroCarousel.tsx"
@@ -881,7 +938,8 @@ tasks:
     depends_on: []
     file_claims:
       - "apps/web/src/components/retail/RetailProductGrid.tsx"
-      - "apps/web/src/components/retail/RetailFooter.tsx"
+      # transferred 2026-09-05 to TASK-20260905-004 (stale hb 2026-08-31; category footer links):
+      # "apps/web/src/components/retail/RetailFooter.tsx"
       - "apps/web/src/components/retail/RetailFaq.tsx"
       - "apps/web/src/components/retail/RetailProductsCatalogWithUrl.tsx"
       - "apps/web/src/app/retail/products/page.tsx"
@@ -1998,7 +2056,8 @@ tasks:
       - "apps/api/src/modules/category/entities/category.entity.ts"
       - "apps/api/src/modules/category/category.service.ts"
       - "apps/api/src/modules/category/category.controller.ts"
-      - "apps/api/src/modules/category/category-seo-seed.ts"
+      # transferred 2026-09-05 to TASK-20260905-004 (stale; keyword-week category owners):
+      # "apps/api/src/modules/category/category-seo-seed.ts"
       - "apps/api/src/common/public-slug.ts"
       # transferred 2026-09-01 to TASK-20260901-002 (stale hb; TypeORM spec glob):
       # "apps/api/src/config/database.config.ts"

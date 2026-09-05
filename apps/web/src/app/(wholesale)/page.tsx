@@ -6,18 +6,18 @@ export const revalidate = 60;
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'فروش عمده مانتو زنانه از تولیدی مشهد',
+  title: 'تولیدی مانتو مشهد | خرید عمده پوشاک ترنم',
   description:
-    'اگر بوتیک یا فروشگاه دارید، مانتو و شومیز لینن و کتان را مستقیم از کارگاه ترنم سفارش دهید. حداقل سفارش منطقی، ارسال به سراسر ایران.',
+    'اگر بوتیک دارید، مانتو و شومیز را مستقیم از کارگاه ترنم در مشهد سفارش دهید. حداقل سفارش هر مدل از ۶ عدد است؛ بعد از تأیید حساب، قیمت همکاری باز می‌شود.',
   alternates: { canonical: 'https://poshaktaranom.com' },
   openGraph: {
-    title: 'فروش عمده مانتو زنانه | پوشاک ترنم مشهد',
-    description: 'دوخت داخل کارگاه خودمان — عمده برای بوتیک‌ها، بدون واسطه.',
+    title: 'تولیدی مانتو مشهد | پوشاک ترنم',
+    description: 'خرید عمده از کارگاه مشهد — حداقل سفارش هر مدل از ۶ عدد.',
     url: 'https://poshaktaranom.com',
     siteName: 'پوشاک ترنم',
     locale: 'fa_IR',
     type: 'website',
-    images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'پوشاک ترنم' }],
+    images: [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: 'تولیدی مانتو مشهد — پوشاک ترنم' }],
   },
 };
 

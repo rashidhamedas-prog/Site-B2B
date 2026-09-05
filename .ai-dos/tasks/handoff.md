@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-05T11:40:00Z — TASK-20260905-004 keyword week H2H copy
+
+- Task / owner: TASK-20260905-004 / cursor:implementer-TASK-20260905-004
+- Branch: `ai/TASK-20260905-004-keyword-h2h` in `D:/proje/Site-B2B-keyword-week`.
+- Objective: ship the 8 weekly keyword jobs with H2H copy; do not invent volumes.
+- Did not edit RetailHero / CategoryLanding / retail/layout (TASK-20260905-001 hb 07:30 same day). Retail home H1 sr-only stays until that claim releases; title + visible category links shipped.
+- Reclaimed defaults.ts (004 stale), RetailFooter (031-003 stale), category-seo-seed (017 stale).
+- CODE: titles/H1s, category seed, retail SEO sanitizer + bamber override, CMS/DB migration, register/about/CTA.
+- Tests (observed): `npx tsx src/lib/retail-seo-copy.spec.ts` → ok; `apps/web` `tsc --noEmit` 0; `apps/api` `tsc --noEmit` 0.
+- Exact next: push + VPS deploy so migration updates live CMS/categories. RetailHero sr-only H1 still old until TASK-20260905-001 releases it. Do not Done until live titles verified.
+
 ## 2026-09-05T11:25:00Z — TASK-20260905-003 channel-style Telegram templates
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

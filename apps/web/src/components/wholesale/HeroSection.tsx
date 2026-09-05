@@ -178,7 +178,7 @@ export function HeroSection(props: HeroSectionProps) {
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
-      <h1 className="sr-only">فروش عمده مانتو و شومیز زنانه از تولیدی ترنم مشهد</h1>
+      <h1 className="sr-only">تولیدی مانتو مشهد؛ خرید عمده از کارگاه ترنم</h1>
       {/* Slide 0 stays mounted (LCP). Other slides mount only while active. */}
       {slides.map((s, i) => {
         if (!s.imageUrl) return null;

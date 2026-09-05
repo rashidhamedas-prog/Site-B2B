@@ -107,11 +107,12 @@ export function AboutExperience() {
     >
       <div className={styles.sticky}>
         <div className={styles.copy}>
-          <p className={styles.eyebrow}>تولیدی پوشاک زنانه · مشهد</p>
-          <h1 className={styles.heroTitle}>از دل پارچه، برای ویترین‌های ماندگار</h1>
+          <p className={styles.eyebrow}>پوشاک ترنم مشهد · تولیدی</p>
+          <h1 className={styles.heroTitle}>پوشاک ترنم مشهد؛ از کارگاه تا سفارش بوتیک</h1>
           <p className={styles.lede}>
-            ترنم همراه فروشندگان پوشاک است؛ از انتخاب پارچه در کارگاه مشهد تا رسیدن مدل به ویترین
-            بوتیک. تولید مانتو و پوشاک زنانه اسپرت را خودمان انجام می‌دهیم و عمده می‌فروشیم.
+            انتخاب پارچه، برش و دوخت در کارگاه مشهد انجام می‌شود و سفارش از دفتر پخش پاساژ کیمیا به
+            بوتیک می‌رسد. اگر می‌خواهید همکاری با تولیدی لباس را شروع کنید، حداقل سفارش هر مدل از ۶
+            عدد است.
           </p>
           <p className={styles.scrollHint}>با اسکرول، پارچه خام به محصول ویترین تبدیل می‌شود</p>
           <AboutStory
