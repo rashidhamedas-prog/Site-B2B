@@ -1,5 +1,74 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260905-003"
+    title: "Omnichannel admin console + UTF-8 canary ping"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260905-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260905-003"
+      implementer: "cursor:implementer-TASK-20260905-003"
+      reviewer: "required-after-admin-api-change"
+      security: "self-review-no-new-secrets-canary-only"
+    branch: "ai/TASK-20260905-003-omni-admin-console"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-05T10:15:00Z"
+    heartbeat_at: "2026-09-05T10:15:00Z"
+    depends_on: ["TASK-20260905-002"]
+    file_claims:
+      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
+      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      - "apps/api/src/modules/omnichannel/canary-ping.ts"
+      - "apps/api/src/modules/omnichannel/canary-ping.spec.ts"
+      - "docs/reports/2026-09-05-omnichannel-admin-console.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Reclaimed AdminOmnichannel + omni admin controller/service from
+      TASK-20260826-001 (stale hb 2026-09-02). Owner asked why canary
+      text became ??? and to professionalize the admin console.
+      ??? was Windows SSH mojibake, not Telegram. Server-side UTF-8
+      ping; light ERP theme; no product blast; do not Done 20260826-001.
+    acceptance_criteria:
+      - "Canary ping text is Persian in source and has no ASCII ? replacement"
+      - "POST /omnichannel/connections/:id/canary-ping sends only the canary dest via official API"
+      - "Admin console has readiness, tabs, table headers, empty states required by phase-acceptance"
+      - "No plaintext token in UI; publications stay dryRun; no Bale/Rubika/Instagram APIs"
+  - id: "TASK-20260905-002"
+    title: "Owner-ordered live omnichannel connector flags"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260905-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260905-002"
+      implementer: "cursor:implementer-TASK-20260905-002"
+      reviewer: "required-after-first-canary-send"
+      security: "required-live-sha-after-canary"
+    branch: "ai/TASK-20260905-001-retail-mobile-shell"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-05T08:31:00Z"
+    heartbeat_at: "2026-09-05T08:31:00Z"
+    depends_on: ["TASK-20260826-001"]
+    file_claims:
+      - "docs/reports/2026-09-05-omnichannel-live-flags.md"
+      # shared append-only with TASK-20260905-001:
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner explicitly ordered both live flags in chat 2026-09-05.
+      VPS /opt/taranom/.env only. No token written. No product blast.
+      Connection still DISABLED. Destination canary is @Taranomrashid.
+      TELEGRAM_BOT_TOKEN missing on VPS. Do not mark Omnichannel Done.
+    acceptance_criteria:
+      - "OMNICHANNEL_CONNECTORS_ENABLED=true and OMNICHANNEL_AUTO_PUBLISH=true in API+both workers"
+      - "API /v1/health 200; workers healthy; deliver_inflight 0"
+      - "No plaintext token in git, admin, or chat"
+      - "TASK-20260826-001 stays not Done until canary send + soak/security"
   - id: "TASK-20260905-001"
     title: "Retail mobile shell architecture + PDP description below product"
     status: "in_progress"
@@ -1121,8 +1190,9 @@ tasks:
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
       - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
-      - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
-      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; UTF-8 ping + admin console):
+      # "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
+      # "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
       - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
       - "apps/api/src/modules/omnichannel/services/outbox.service.spec.ts"
       - "apps/api/src/modules/blog/blog.service.ts"
@@ -1193,7 +1263,8 @@ tasks:
       - "apps/web/src/app/checkout/page.tsx"
       # transferred 2026-08-31 to TASK-20260831-001 (staff ACL; omnichannel nav stays):
       # "apps/web/src/components/admin/AdminSidebar.tsx"
-      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; admin console):
+      # "apps/web/src/components/admin/AdminOmnichannel.tsx"
       - "apps/api/src/modules/omnichannel/content-projection.ts"
       - "apps/api/src/modules/omnichannel/content-projection.spec.ts"
       # transferred 2026-08-29 to TASK-20260829-001: "apps/web/src/components/admin/AdminProducts.tsx"

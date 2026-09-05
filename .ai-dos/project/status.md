@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-05 — **TASK-20260905-003** admin console + server UTF-8 canary ping. ??? was SSH mojibake. TASK-20260826-001 still **NOT DONE**.
+- Last verified: 2026-09-05 — **TASK-20260905-002** token on VPS; `getMe` ok (`TaranomRetailBot`); one canary `sendMessage` ok to chat `1008770451`. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-05 — **TASK-20260905-001** implementing on `ai/TASK-20260905-001-retail-mobile-shell`: retail mobile overflow shell + PDP description below product. Not live until merge/deploy.
 - Last verified: 2026-09-04 — **TASK-20260904-004** implementing on `ai/TASK-20260904-004-digipay-retail-banner`: DigiPay retail hero with HTML overlay + alt. Not live until merge/deploy. Payment adapter untouched.
 - Last verified: 2026-09-04 — **TASK-20260904-003** implementing on `ai/TASK-20260904-003-basalam-catalog`: admin button pushes retail catalog to Basalam stall (unpublished). Not live until merge/deploy. Connectors off.

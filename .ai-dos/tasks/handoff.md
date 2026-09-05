@@ -2,6 +2,37 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-05T10:25:00Z — TASK-20260905-003 admin console + UTF-8 ping
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Branch: `ai/TASK-20260905-003-omni-admin-console` in `D:/proje/Site B2B`.
+- Root cause of ???: Windows SSH/PowerShell mojibake of Persian before Telegram. Adapter JSON UTF-8 was fine.
+- CODE: `CANARY_PING_TEXT` + `POST /omnichannel/connections/:id/canary-ping` (canary dest only). Admin console tabs/readiness/labels + «پیام فارسی».
+- Reclaimed AdminOmnichannel + omni admin controller/service from TASK-20260826-001 (stale hb 2026-09-02).
+- Tests (observed): `canary-ping.spec.ts` ok; `omnichannel-phase-acceptance.spec.ts` ok; api+web `tsc --noEmit` 0.
+- Corrected live ping already sent with Unicode escapes (`ok`, hasFa).
+- Exact next: deploy this branch to master. Do not mark TASK-20260826-001 Done.
+
+## 2026-09-05T09:58:00Z — TASK-20260905-002 token on VPS + canary ping
+
+- Task / owner: TASK-20260905-002 / cursor:implementer-TASK-20260905-002
+- `TELEGRAM_BOT_TOKEN` written only to `/opt/taranom/.env` (backup `.env.bak-tg-20260905T095607Z`). Not in git/admin/docs. Local temp file deleted.
+- Recreated api+workers. `getMe` ok: username `TaranomRetailBot`, first_name «پوشاک ترنم تکی».
+- Connection «ربات تک» set `ACTIVE`. Canary moved from `@Taranomrashid` (chat not found) to numeric destination `1008770451`.
+- Official `sendMessage` to that chat: ok. Deliver inflight still 0. Product publish still admin dry-run.
+- Owner pasted the token in chat; treat as leaked to this transcript — rotate later if the chat is shared.
+- Exact next: owner confirms the test message in Telegram. Do not mark TASK-20260826-001 Done (soak/security/product dryRun:false still open).
+
+## 2026-09-05T08:32:00Z — TASK-20260905-002 owner-ordered live flags
+
+- Task / owner: TASK-20260905-002 / cursor:implementer-TASK-20260905-002
+- VPS `/opt/taranom/.env`: `OMNICHANNEL_CONNECTORS_ENABLED=true`, `OMNICHANNEL_AUTO_PUBLISH=true`. Backup `.env.bak-omni-20260905T083043Z`.
+- Recreated `api` + `worker` + `worker-b` (no image rebuild). Container env both flags `true`.
+- Observed: API local+public `/v1/health` 200; workers healthy; `.com` 200 0.31s; `.ir` 200 0.13s; outbox DONE=30; `publication.deliver.requested` inflight=0.
+- Blocked live Telegram: `TELEGRAM_BOT_TOKEN` missing on VPS. Connection «ربات تک» still `DISABLED`. Canary destination «خودم» is `@Taranomrashid` (username, not numeric chat id).
+- Did not send `getMe`/`sendMessage`. Did not mark TASK-20260826-001 Done.
+- Exact next: owner creates BotFather bot, puts token only on VPS env, `/start`s the bot, replaces destination with numeric chat id, sets connection `ACTIVE`. Then admin «تست» (`getMe`). Product send still needs `dryRun: false` (admin button stays dry-run).
+
 ## 2026-09-05T07:40:00Z — TASK-20260905-001 retail mobile shell implementing
 
 - Task / owner: TASK-20260905-001 / cursor:implementer-TASK-20260905-001
@@ -12,7 +43,7 @@ Append newest entries at the top. Never erase another agent's record.
 - CODE: overflow-x clip on retail-root; compact header brand; full-width PDP copy; category hero 4:5 on retail phones.
 - Tests (observed): `npx tsc --noEmit` in apps/web → 0; `retail-pdp-copy.spec.ts` → ok (ts-node CJS from apps/api).
 - Risks: CMS HTML still uses a light sanitizer, not DOMPurify; empty description still hides the section.
-- Exact next: push + VPS deploy; verify 390px home / PDP / category on live .ir.
+- Exact next: live SHA `fa5c1a6`. Home HTML has `overflow-x-clip`; PDP has «توضیحات محصول» not the old accordion. API `/v1/health` 200.
 
 ## 2026-09-03T23:10:00Z — TASK-20260904-004 DigiPay retail hero implementing
 

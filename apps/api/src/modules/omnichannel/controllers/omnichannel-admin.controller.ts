@@ -84,6 +84,13 @@ export class OmnichannelAdminController {
     return this.svc.testConnection(id, req.omnichannelActor);
   }
 
+  @Post('connections/:id/canary-ping')
+  @ApiOperation({ summary: 'ارسال پیام آزمایشی UTF-8 فقط به مقصد canary' })
+  pingCanary(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets({ id, reason: body?.reason });
+    return this.svc.pingCanary(id, req.omnichannelActor, body?.reason);
+  }
+
   @Get('destinations')
   listDestinations() {
     return this.svc.listDestinations();

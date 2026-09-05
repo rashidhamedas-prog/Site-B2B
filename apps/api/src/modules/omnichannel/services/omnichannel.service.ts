@@ -44,6 +44,7 @@ import {
   sanitizeDestinationSettings,
   selectCanaryTelegramDestinations,
 } from '../oos-policy';
+import { CANARY_PING_TEXT } from '../canary-ping';
 import { summarizeOutbox } from './outbox-metrics';
 import { canDeleteMediaAsset, countMediaReferences } from '../media-references';
 import { CmsPageEntity } from '../../cms/entities/cms-page.entity';
@@ -414,6 +415,37 @@ export class OmnichannelService {
     const result = await this.telegram.validateConnection(row.secretRef);
     await this.audit(who, 'test_connection', 'CONNECTION', row.id, row.channel, null, { ok: result.ok, error: result.error || null });
     return result;
+  }
+
+  async pingCanary(id: string, actor?: Actor, reason?: string) {
+    const who = this.requireActor(actor);
+    const row = await this.connections.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('اتصال یافت نشد');
+    if (row.provider !== 'TELEGRAM') {
+      throw new BadRequestException('پیام آزمایشی فقط برای تلگرام است');
+    }
+    if (row.status !== 'ACTIVE') {
+      throw new BadRequestException('ابتدا اتصال را روشن کنید');
+    }
+    if (!areOmnichannelConnectorsEnabled()) {
+      throw new ConnectorDisabledError(row.provider);
+    }
+    const dests = await this.destinations.find({ where: { connectionId: row.id, enabled: true } });
+    const dest = selectCanaryTelegramDestinations(dests, [row], row.channel)[0];
+    if (!dest) {
+      throw new BadRequestException('برای این اتصال مقصد canary انتخاب نشده');
+    }
+    const sent = await this.telegram.create({
+      secretRef: row.secretRef,
+      destinationKey: dest.destinationKey,
+      chatId: dest.destinationKey,
+      text: CANARY_PING_TEXT,
+    });
+    await this.audit(who, 'canary_ping', 'CONNECTION', row.id, row.channel, reason || null, {
+      destinationId: dest.id,
+      providerMessageId: sent.providerMessageId,
+    });
+    return { ok: true, providerMessageId: sent.providerMessageId };
   }
 
   async retryDelivery(id: string, actor?: Actor, reason?: string) {
