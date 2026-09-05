@@ -79,14 +79,14 @@ export default async function RetailLayout({ children }: { children: React.React
 
   return (
     <RetailChromeProvider value={bag}>
-      <div className="retail-root flex min-h-screen flex-col bg-[var(--retail-bg)] text-[var(--retail-ink)]">
+      <div className="retail-root flex min-h-screen min-w-0 flex-col overflow-x-clip bg-[var(--retail-bg)] text-[var(--retail-ink)]">
         <OrganizationJsonLd channel="RETAIL" />
         <WebSiteJsonLd channel="RETAIL" />
         <GoogleAnalyticsProvider channel="RETAIL" />
         <RetailPixels marketing={bag.marketing} />
         <RetailAffiliateCapture />
         <RetailHeader />
-        <main className="flex-1">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-clip">{children}</main>
         <RetailFooter />
       </div>
     </RetailChromeProvider>

@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-05T07:40:00Z — TASK-20260905-001 retail mobile shell implementing
+
+- Task / owner: TASK-20260905-001 / cursor:implementer-TASK-20260905-001
+- Branch: `ai/TASK-20260905-001-retail-mobile-shell` in `D:/proje/Site B2B`.
+- Objective: root-fix retail mobile overflow; PDP description below product like wholesale.
+- Root cause: no shell containment + header wordmark wider than 360px; copy lived in buy-column `<details>`.
+- Reclaimed stale layout (TASK-20260823-001), retail.css/product.md (TASK-20260822-004), RetailHeader (TASK-20260826-001), CategoryLanding (TASK-20260830-002). RetailHero overflow layered on TASK-20260904-004 DigiPay overlay already on origin/master.
+- CODE: overflow-x clip on retail-root; compact header brand; full-width PDP copy; category hero 4:5 on retail phones.
+- Tests (observed): `npx tsc --noEmit` in apps/web → 0; `retail-pdp-copy.spec.ts` → ok (ts-node CJS from apps/api).
+- Risks: CMS HTML still uses a light sanitizer, not DOMPurify; empty description still hides the section.
+- Exact next: push + VPS deploy; verify 390px home / PDP / category on live .ir.
+
 ## 2026-09-03T23:10:00Z — TASK-20260904-004 DigiPay retail hero implementing
 
 - Task / owner: TASK-20260904-004 / cursor:implementer-TASK-20260904-004

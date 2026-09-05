@@ -9,6 +9,7 @@ import { apiClient } from '@/lib/api';
 import { discountPercent, mediaUrl as toMediaUrl } from '@/lib/product-display';
 import { RetailProductCard } from './RetailProductCard';
 import { selectDefaultRetailVariant } from '@taranom/shared-types';
+import { looksLikeHtml, selectRetailPdpBody, lightSanitizeHtml } from '@/lib/retail-pdp-copy';
 
 type Related = {
   id: string;
@@ -213,7 +214,7 @@ export function RetailProductDetail({
       ? Number(sale.badgePercent || 0)
       : 0
     : discountPercent(price, compareAt);
-  const body = product.fullContent || product.description;
+  const body = selectRetailPdpBody(product);
   const productRetailStock = Math.max(0, Number(product.retailStock) || 0);
   const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
   const stock = product.variants?.length ? variantStock : productRetailStock;
@@ -315,10 +316,12 @@ export function RetailProductDetail({
     </button>
   );
 
+  const bodyIsHtml = looksLikeHtml(body);
+
   return (
-    <div className="bg-[var(--retail-bg)] pb-24 lg:pb-0">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-12 lg:px-8 lg:py-14">
-        <div className="lg:col-span-7">
+    <div className="min-w-0 bg-[var(--retail-bg)] pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
+      <div className="mx-auto grid min-w-0 max-w-7xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 lg:grid-cols-12 lg:px-8 lg:py-14">
+        <div className="min-w-0 lg:col-span-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
             {gallery.length > 1 ? (
               <div
@@ -389,9 +392,9 @@ export function RetailProductDetail({
           ) : null}
         </div>
 
-        <div className="lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
+        <div className="min-w-0 lg:sticky lg:top-28 lg:col-span-5 lg:self-start">
           <div className="flex items-start justify-between gap-3">
-            <h1 className="text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{product.name}</h1>
+            <h1 className="min-w-0 break-words text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{product.name}</h1>
             <button
               type="button"
               onClick={onWish}
@@ -533,36 +536,36 @@ export function RetailProductDetail({
             <span>مرجوعی ۷ روزه</span>
           </div>
 
-          <div className="mt-6 divide-y divide-[var(--retail-border)] border-y border-[var(--retail-border)]">
-            {body ? (
-              <details className="group py-4" open>
-                <summary className="cursor-pointer list-none text-sm font-bold text-[var(--retail-ink)]">
-                  مشخصات و توضیحات
-                </summary>
-                <p className="mt-3 whitespace-pre-line text-sm leading-8 text-[var(--retail-muted)]">{body}</p>
-              </details>
-            ) : null}
-            {product.modelInfo ? (
-              <details className="group py-4">
-                <summary className="cursor-pointer list-none text-sm font-bold text-[var(--retail-ink)]">
-                  اطلاعات مدل و فیت
-                </summary>
-                <p className="mt-3 text-sm text-[var(--retail-muted)]">{product.modelInfo}</p>
-              </details>
-            ) : null}
-            <details className="group py-4">
-              <summary className="cursor-pointer list-none text-sm font-bold text-[var(--retail-ink)]">
-                ارسال و بازگشت کالا
-              </summary>
-              <p className="mt-3 text-sm text-[var(--retail-muted)]">
-                ارسال با چاپار. امکان بازگشت تا ۷ روز در صورت عدم استفاده.
-              </p>
-            </details>
-          </div>
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--retail-border)] bg-[var(--retail-bg)]/95 p-3 lg:hidden">
+      {body || product.modelInfo ? (
+        <section className="mx-auto min-w-0 max-w-7xl space-y-4 px-4 pb-10 sm:px-6 lg:px-8" aria-label="توضیحات محصول">
+          {body ? (
+            <div className="rounded-2xl border border-[var(--retail-border)] bg-white p-5 sm:p-6">
+              <h2 className="mb-4 text-lg font-bold text-[var(--retail-ink)]">توضیحات محصول</h2>
+              {bodyIsHtml ? (
+                <div
+                  className="retail-prose text-sm leading-8 text-[var(--retail-muted)] [&_a]:text-[var(--retail-primary)] [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-base [&_h2]:font-bold [&_h2]:text-[var(--retail-ink)] [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pr-5"
+                  dangerouslySetInnerHTML={{ __html: lightSanitizeHtml(body) }}
+                />
+              ) : (
+                <p className="retail-prose whitespace-pre-line text-sm leading-8 text-[var(--retail-muted)]">{body}</p>
+              )}
+            </div>
+          ) : null}
+          {product.modelInfo ? (
+            <div className="rounded-2xl border border-[var(--retail-border)] bg-white p-5 sm:p-6">
+              <h2 className="mb-4 text-lg font-bold text-[var(--retail-ink)]">اطلاعات مدل و فیت</h2>
+              <p className="retail-prose whitespace-pre-line text-sm leading-8 text-[var(--retail-muted)]">
+                {product.modelInfo}
+              </p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--retail-border)] bg-[var(--retail-bg)]/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:hidden">
         <div className="mx-auto flex max-w-7xl items-center gap-2 sm:gap-3">
           <div className="min-w-0 shrink">
             <p className="truncate text-sm font-extrabold text-[var(--retail-primary)]">
@@ -586,7 +589,7 @@ export function RetailProductDetail({
       </div>
 
       {related.length > 0 ? (
-        <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        <section className="mx-auto min-w-0 max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
           <h2 className="text-xl font-extrabold">محصولات مرتبط</h2>
           <p className="mt-1 text-sm text-[var(--retail-muted)]">مدل‌هایی که ممکن است دوست داشته باشید</p>
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">

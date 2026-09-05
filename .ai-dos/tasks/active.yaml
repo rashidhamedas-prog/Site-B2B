@@ -1,5 +1,53 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260905-001"
+    title: "Retail mobile shell architecture + PDP description below product"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260905-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260905-001"
+      implementer: "cursor:implementer-TASK-20260905-001"
+      reviewer: "not-required-ui-only-no-auth-payments"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260905-001-retail-mobile-shell"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-05T07:30:00Z"
+    heartbeat_at: "2026-09-05T07:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/app/retail/layout.tsx"
+      - "apps/web/src/app/retail/retail.css"
+      - "apps/web/src/components/retail/RetailHeader.tsx"
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/web/src/components/retail/RetailProductDetail.tsx"
+      - "apps/web/src/components/retail/RetailTrustStrip.tsx"
+      - "apps/web/src/components/category/CategoryLanding.tsx"
+      - "apps/web/src/lib/retail-pdp-copy.ts"
+      - "apps/web/src/lib/retail-pdp-copy.spec.ts"
+      - "design-system/default/pages/product.md"
+      - "docs/reports/2026-09-05-retail-mobile-shell.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked for a root mobile-architecture fix on retail plus PDP
+      description below the product like wholesale. Reclaimed stale shell
+      files: layout from TASK-20260823-001 (hb 2026-08-23),
+      retail.css/product.md from TASK-20260822-004 (hb 2026-08-22),
+      RetailHeader from TASK-20260826-001 (hb 2026-09-02, >24h),
+      CategoryLanding from TASK-20260830-002 (hb 2026-08-31).
+      RetailHero overflow layered on TASK-20260904-004 DigiPay overlay
+      already on origin/master (hb 2026-09-03, >24h). Did not edit
+      checkout, account, middleware, or API product projection.
+      Shared governance: append-only with TASK-20260904-004 / 003 / 002.
+    acceptance_criteria:
+      - "Retail shell clips horizontal overflow (retail-root + main min-w-0)"
+      - "Header brand does not force overflow on 320–390px; wordmark shortens on small screens"
+      - "Retail PDP description is a full-width block below gallery+buy on desktop and mobile, not an accordion in the buy column"
+      - "Category hero is not a 21:9 strip on retail phones"
+      - "web tsc and retail-pdp-copy spec pass; no new npm deps"
   - id: "TASK-20260904-004"
     title: "Redesign DigiPay retail hero with HTML text + alt"
     status: "in_progress"
@@ -22,7 +70,8 @@ tasks:
       - "apps/web/src/lib/cms/hero-slides.ts"
       - "apps/web/src/lib/cms/hero-slides.spec.ts"
       - "apps/web/src/lib/cms/defaults.ts"
-      - "apps/web/src/components/retail/RetailHero.tsx"
+      # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-09-03; mobile overflow on overlay):
+      # "apps/web/src/components/retail/RetailHero.tsx"
       - "apps/web/src/components/shared/HeroCarousel.tsx"
       - "apps/web/src/components/admin/AdminBlockEditor.tsx"
       - "apps/api/src/database/migrations/20260904-004-digipay-retail-hero.ts"
@@ -806,7 +855,8 @@ tasks:
       - "apps/web/src/app/(wholesale)/page.tsx"
       - "apps/web/src/app/(wholesale)/category/[slug]/page.tsx"
       - "apps/web/src/app/retail/category/[slug]/page.tsx"
-      - "apps/web/src/components/category/CategoryLanding.tsx"
+      # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-08-31; retail category hero):
+      # "apps/web/src/components/category/CategoryLanding.tsx"
       # transferred 2026-08-31 to TASK-20260831-001 (retail category stock + admin gate):
       # "apps/web/src/components/category/CategoryProductCard.tsx"
       - "apps/web/src/components/category/CategoryProductListing.tsx"
@@ -1027,8 +1077,8 @@ tasks:
       - "apps/api/src/modules/blog/blog-extras.service.ts"
       - "apps/api/src/modules/blog/blog.module.ts"
       - "apps/web/src/app/retail/collections/page.tsx"
-      # reclaimed 2026-09-03 from TASK-20260831-001 (stale hb 2026-08-31; collections channel)
-      - "apps/web/src/components/retail/RetailHeader.tsx"
+      # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-09-02; mobile shell):
+      # "apps/web/src/components/retail/RetailHeader.tsx"
       - "docs/reports/2026-09-03-omnichannel-channel-isolation.md"
       - "docs/reports/2026-09-03-omnichannel-blog-authors-channel.md"
       # reclaimed 2026-09-03 from TASK-20260810-006 (stale hb 2026-08-12; author channel)
@@ -1442,7 +1492,8 @@ tasks:
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/lib/server-api.ts"
       - "apps/web/src/lib/google-seo.ts"
       - "apps/web/src/app/layout.tsx"
-      - "apps/web/src/app/retail/layout.tsx"
+      # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-08-23; retail overflow shell):
+      # "apps/web/src/app/retail/layout.tsx"
       - "apps/web/src/app/retail/page.tsx"
       - "apps/web/src/app/(wholesale)/layout.tsx"
       - "apps/web/src/app/retail/checkout/page.tsx"
@@ -1459,7 +1510,7 @@ tasks:
       - "apps/web/src/components/retail/RetailConversion.tsx"
       - "apps/web/src/components/retail/RetailPdpAnalytics.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/components/retail/RetailProductsCatalog.tsx"
-      # transferred 2026-09-04 to TASK-20260904-004 (stale hb 2026-08-23; DigiPay overlay/alt):
+      # transferred 2026-09-05 to TASK-20260905-001 (mobile overflow on DigiPay overlay):
       # "apps/web/src/components/retail/RetailHero.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/components/retail/RetailProductCard.tsx"
       - "apps/web/src/components/blog/BlogAnalyticsTracker.tsx"
@@ -1561,8 +1612,9 @@ tasks:
     depends_on: []
     file_claims:
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/components/retail/RetailProductDetail.tsx"
-      - "apps/web/src/app/retail/retail.css"
-      - "design-system/default/pages/product.md"
+      # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-08-22; mobile shell + PDP copy):
+      # "apps/web/src/app/retail/retail.css"
+      # "design-system/default/pages/product.md"
       - "docs/WORKLOG.md"
       - "docs/reports/2026-08-22-retail-pdp-gallery-size.md"
       - ".ai-dos/tasks/active.yaml"
@@ -1596,13 +1648,15 @@ tasks:
     file_claims:
       # transferred 2026-08-29 to TASK-20260826-001 (task already done; retailStock): "apps/web/src/components/retail/RetailProductCard.tsx"
       # transferred 2026-08-31 to TASK-20260831-003 (done task; home payload slim): "apps/web/src/components/retail/RetailProductGrid.tsx"
-      - "apps/web/src/components/retail/RetailTrustStrip.tsx"
+      # transferred 2026-09-05 to TASK-20260905-001 (done task; mobile trust wrap):
+      # "apps/web/src/components/retail/RetailTrustStrip.tsx"
       - "apps/web/src/components/retail/RetailCtaBanner.tsx"
       # transferred 2026-08-31 to TASK-20260831-003 (done task; FAQ wholesale wording): "apps/web/src/components/retail/RetailFaq.tsx"
       - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
       # transferred 2026-09-01 to TASK-20260901-001 (done task; retail CTA fallback): "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
       # transferred 2026-08-31 to TASK-20260830-002 (done task; category ISR): "apps/web/src/components/category/CategoryLanding.tsx"
-      - "apps/web/src/app/retail/retail.css"
+      # transferred 2026-09-05 to TASK-20260905-001 (done task; retail overflow shell):
+      # "apps/web/src/app/retail/retail.css"
       - "design-system/b2c/MASTER.md"
       - "design-system/default/pages/home.md"
       - "docs/WORKLOG.md"

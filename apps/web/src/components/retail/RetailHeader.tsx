@@ -72,20 +72,21 @@ export function RetailHeader() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-[var(--retail-border)] bg-white">
-        <div className="mx-auto flex h-[4.25rem] max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-[4.25rem] min-w-0 max-w-[1200px] items-center gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <button
             type="button"
-            className="cursor-pointer p-2 text-[var(--retail-ink)] xl:hidden"
+            className="shrink-0 cursor-pointer p-2 text-[var(--retail-ink)] xl:hidden"
             aria-label="منو"
             onClick={() => setOpen(true)}
           >
             <Menu className="h-5 w-5" strokeWidth={1.5} />
           </button>
 
-          <Link href="/" className="flex items-center gap-2.5">
-            <BrandMark className="h-9 w-9" />
-            <span className="text-[13px] font-semibold tracking-[0.14em] text-[var(--retail-ink)]">
-              POSHAK TARANOM
+          <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+            <BrandMark className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
+            <span className="truncate text-[13px] font-semibold tracking-[0.08em] text-[var(--retail-ink)] sm:tracking-[0.14em]">
+              <span className="sm:hidden">ترنم</span>
+              <span className="hidden sm:inline">POSHAK TARANOM</span>
             </span>
           </Link>
 
@@ -186,7 +187,7 @@ export function RetailHeader() {
             })}
           </nav>
 
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-2">
             <StorefrontSearch
               channel="RETAIL"
               className="cursor-pointer p-2 text-[var(--retail-ink)]"

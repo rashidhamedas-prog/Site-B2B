@@ -9,7 +9,7 @@
 3. Color (≥44px chips) then size (≥44px chips) + size-guide
 4. Quantity + add to cart (desktop); sticky bar on mobile
 5. Shipping/returns facts
-6. Details accordion
+6. Full-width description below the gallery+buy grid (desktop and mobile), matching wholesale PDP
 7. Related products — compact editorial cards (max 12)
 
 ## Gallery

@@ -255,7 +255,7 @@ export async function CategoryLanding({
       {faq.length ? <FaqJsonLd items={faq} /> : null}
 
       <div className={retail ? 'bg-[var(--retail-bg,#F6F1E8)]' : 'bg-[var(--brand-ivory,#F6F1E8)]'}>
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto min-w-0 max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <nav className="mb-6 text-xs text-[var(--brand-muted,#6B7280)]" aria-label="مسیر صفحه">
             <ol className="flex flex-wrap items-center gap-1">
               <li>
@@ -275,7 +275,9 @@ export async function CategoryLanding({
           </nav>
 
           {hero ? (
-            <div className="relative mb-8 aspect-[21/9] overflow-hidden rounded-3xl bg-[var(--brand-card,#F3EEE6)]">
+            <div className={`relative mb-8 overflow-hidden rounded-3xl bg-[var(--brand-card,#F3EEE6)] ${
+              retail ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[21/9]'
+            }`}>
               <Image
                 src={hero}
                 alt={category.heroImageAlt || copy.h1}
@@ -294,7 +296,7 @@ export async function CategoryLanding({
             {copy.intro ? (
               <RichText
                 value={copy.intro}
-                className="mt-4 text-sm leading-8 text-[var(--brand-muted,#6B7280)] [&_a]:text-[var(--brand-green,#1B5C4A)] [&_p]:mb-3"
+                className="retail-prose mt-4 min-w-0 overflow-x-clip text-sm leading-8 text-[var(--brand-muted,#6B7280)] [&_a]:text-[var(--brand-green,#1B5C4A)] [&_img]:h-auto [&_img]:max-w-full [&_p]:mb-3 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto"
               />
             ) : null}
           </header>
@@ -314,7 +316,7 @@ export async function CategoryLanding({
           {copy.bottom ? (
             <RichText
               value={copy.bottom}
-              className="mx-auto mt-14 max-w-3xl text-sm leading-8 text-[var(--brand-muted,#6B7280)] [&_a]:text-[var(--brand-green,#1B5C4A)] [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-[var(--brand-green-dark,#0F2F28)] [&_p]:mb-3"
+              className="retail-prose mx-auto mt-14 min-w-0 max-w-3xl overflow-x-clip text-sm leading-8 text-[var(--brand-muted,#6B7280)] [&_a]:text-[var(--brand-green,#1B5C4A)] [&_h2]:mb-3 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-[var(--brand-green-dark,#0F2F28)] [&_img]:h-auto [&_img]:max-w-full [&_p]:mb-3 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto"
             />
           ) : null}
 

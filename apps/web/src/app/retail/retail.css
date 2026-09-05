@@ -9,6 +9,52 @@
   --retail-muted: var(--brand-muted, #6b7280);
   --retail-border: var(--brand-border, #e8e0d4);
   --retail-card: var(--brand-card, #f3eee6);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.retail-root main {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Contain CMS/blog/category HTML and wide media so pages cannot blow the viewport. */
+.retail-root img,
+.retail-root video,
+.retail-root iframe,
+.retail-root canvas {
+  max-width: 100%;
+}
+
+.retail-root .container-site {
+  min-width: 0;
+}
+
+.retail-prose,
+.retail-root .blog-prose {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.retail-prose img,
+.retail-prose video,
+.retail-prose iframe,
+.retail-root .blog-prose img,
+.retail-root .blog-prose video,
+.retail-root .blog-prose iframe {
+  height: auto;
+}
+
+.retail-prose table,
+.retail-root .blog-prose table {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .retail-root a {
@@ -19,6 +65,12 @@
   height: 1px;
   width: 2.5rem;
   background: linear-gradient(90deg, transparent, var(--retail-gold), transparent);
+}
+
+@media (max-width: 639px) {
+  .retail-gold-line {
+    width: 1.25rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

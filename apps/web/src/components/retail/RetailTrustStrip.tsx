@@ -46,7 +46,7 @@ export function RetailTrustStrip({ items }: { items?: TrustItem[] }) {
               <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--retail-gold)]/40 bg-white text-[var(--retail-primary)]">
                 <Icon className="h-5 w-5" aria-hidden />
               </span>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-extrabold text-[var(--retail-ink)]">{item.value}</p>
                 <p className="mt-1 text-xs leading-6 text-[var(--retail-muted)]">
                   {item.label}
