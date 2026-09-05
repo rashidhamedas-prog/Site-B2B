@@ -39,6 +39,7 @@ export class OmnichannelAdminController {
   @Get('status')
   @ApiOperation({ summary: 'وضعیت پرچم Omnichannel' })
   async status() {
+    await this.svc.ensureProductTemplates();
     const settings = await this.svc.getSettings();
     return {
       autoPublish: isOmnichannelAutoPublishEnabled(),
@@ -109,6 +110,11 @@ export class OmnichannelAdminController {
   @Get('templates')
   listTemplates() {
     return this.svc.listTemplates();
+  }
+
+  @Post('templates/ensure')
+  ensureTemplates() {
+    return this.svc.ensureProductTemplates();
   }
 
   @Post('templates')

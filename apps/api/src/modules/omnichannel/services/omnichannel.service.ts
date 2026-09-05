@@ -48,7 +48,10 @@ import { CANARY_PING_TEXT } from '../canary-ping';
 import {
   defaultLayoutFor,
   emptyPublicationVars,
+  extractProductLookupKey,
   formatChannelToman,
+  imageCandidates,
+  isLegacyProductTemplate,
   parseTemplateLayout,
   renderPublicationLayout,
   sizesLine,
@@ -238,7 +241,40 @@ export class OmnichannelService {
   }
 
   async listTemplates() {
+    await this.ensureProductTemplates();
     return this.templates.find({ order: { createdAt: 'DESC' } });
+  }
+
+  async ensureProductTemplates() {
+    const upgraded: string[] = [];
+    for (const channel of ['RETAIL', 'WHOLESALE'] as const) {
+      const rows = await this.templates.find({
+        where: { provider: 'TELEGRAM', channel, eventType: 'product.published' },
+        order: { version: 'DESC' },
+      });
+      const latest = rows[0];
+      const body = stringifyTemplateLayout(defaultLayoutFor(channel));
+      if (!latest) {
+        await this.templates.save(this.templates.create({
+          provider: 'TELEGRAM',
+          channel,
+          eventType: 'product.published',
+          locale: 'fa',
+          body,
+          version: 1,
+          enabled: true,
+        }));
+        upgraded.push(channel);
+        continue;
+      }
+      if (isLegacyProductTemplate(latest.body)) {
+        latest.body = body;
+        latest.enabled = true;
+        await this.templates.save(latest);
+        upgraded.push(channel);
+      }
+    }
+    return { ok: true, upgraded };
   }
 
   async createTemplate(dto: CreateTemplateDto) {
@@ -253,7 +289,11 @@ export class OmnichannelService {
       },
     });
     if (exists) throw new ConflictException('قالب تکراری است');
-    const body = String(dto.body || '').trim() || stringifyTemplateLayout(defaultLayoutFor(dto.channel));
+    const incoming = String(dto.body || '').trim();
+    const productEvent = dto.eventType === 'product.published';
+    const body = productEvent && isLegacyProductTemplate(incoming)
+      ? stringifyTemplateLayout(defaultLayoutFor(dto.channel))
+      : incoming || (productEvent ? stringifyTemplateLayout(defaultLayoutFor(dto.channel)) : incoming);
     return this.templates.save(
       this.templates.create({
         provider: dto.provider,
@@ -271,7 +311,11 @@ export class OmnichannelService {
     assertNoPlaintextSecrets(dto);
     const row = await this.templates.findOne({ where: { id } });
     if (!row) throw new NotFoundException('قالب یافت نشد');
-    if (dto.body !== undefined) row.body = dto.body;
+    if (dto.body !== undefined) {
+      row.body = row.eventType === 'product.published' && isLegacyProductTemplate(dto.body)
+        ? stringifyTemplateLayout(defaultLayoutFor(row.channel))
+        : dto.body;
+    }
     if (dto.enabled !== undefined) row.enabled = dto.enabled;
     return this.templates.save(row);
   }
@@ -332,9 +376,12 @@ export class OmnichannelService {
       throw new BadRequestException('sourceType باید PRODUCT یا BLOG_POST یا CMS_PAGE باشد');
     }
     const channel = normalizeSalesChannel(dto.channel);
-    const projection = await this.projection.previewSource(kind, dto.sourceId, channel);
+    const sourceId = kind === 'PRODUCT'
+      ? await this.resolveProductSourceId(dto.sourceId)
+      : String(dto.sourceId || '').trim();
+    const projection = await this.projection.previewSource(kind, sourceId, channel);
     const available = 'available' in projection ? projection.available === true : true;
-    const oos = await this.oosDecisionFor(channel, available, kind, dto.sourceId);
+    const oos = await this.oosDecisionFor(channel, available, kind, sourceId);
     const annotated = {
       ...projection,
       ...annotatePreviewOos(
@@ -365,7 +412,7 @@ export class OmnichannelService {
         throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است`);
       }
       const available = 'available' in projection ? projection.available === true : true;
-      const oos = await this.oosDecisionFor(projection.channel, available, 'PRODUCT', dto.preview.sourceId);
+      const oos = await this.oosDecisionFor(projection.channel, available, 'PRODUCT', String(projection.sourceId || dto.preview.sourceId));
       const reject = liveOosRejectReason(oos, available);
       if (reject) {
         throw new BadRequestException(
@@ -377,7 +424,7 @@ export class OmnichannelService {
       const row = await manager.getRepository(PublicationEntity).save(
         manager.getRepository(PublicationEntity).create({
           sourceType: projection.sourceType,
-          sourceId: dto.preview.sourceId,
+          sourceId: String(projection.sourceId || dto.preview.sourceId),
           channel: projection.channel,
           sourceUpdatedAt: new Date(),
           projection,
@@ -396,7 +443,7 @@ export class OmnichannelService {
           entityId: row.id,
           channel: projection.channel,
           reason: dto.reason || null,
-          payload: { dryRun, sourceId: dto.preview.sourceId },
+          payload: { dryRun, sourceId: String(projection.sourceId || dto.preview.sourceId) },
         }),
       );
       return row;
@@ -671,11 +718,13 @@ export class OmnichannelService {
         ? 'cms.published'
         : 'product.published';
     const channel = projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
-    const tpl = await this.templates.findOne({
+    if (eventType === 'product.published') await this.ensureProductTemplates();
+    const rows = await this.templates.find({
       where: { provider: 'TELEGRAM', channel, eventType, enabled: true },
       order: { version: 'DESC' },
+      take: 1,
     });
-    const layout = parseTemplateLayout(tpl?.body, channel);
+    const layout = parseTemplateLayout(rows[0]?.body, channel);
     return renderPublicationLayout(layout, await this.publicationVarsFor(projection), channel);
   }
 
@@ -702,8 +751,23 @@ export class OmnichannelService {
     const pack = Number(specs.packQty || product.minOrderQty || 0);
     vars.packQty = pack > 0 ? `${pack} عدد` : String(specs.packQty || '').trim();
     if (pack > 0 && payable > 0) vars.packPrice = formatChannelToman(payable * pack);
-    vars.images = Array.isArray(product.images) ? product.images.map(String) : [];
+    vars.images = imageCandidates(product.images);
     return vars;
+  }
+
+  private async resolveProductSourceId(raw: string): Promise<string> {
+    const key = extractProductLookupKey(raw);
+    if (!key) throw new BadRequestException('شناسه، کد یا لینک محصول را بگذارید');
+    const looksUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key);
+    if (looksUuid) {
+      const byId = await this.products.findOne({ where: { id: key }, select: ['id'] });
+      if (byId) return byId.id;
+    }
+    const bySlug = await this.products.findOne({ where: { slug: key }, select: ['id'] });
+    if (bySlug) return bySlug.id;
+    const bySku = await this.products.findOne({ where: { sku: key }, select: ['id'] });
+    if (bySku) return bySku.id;
+    throw new NotFoundException('محصول یافت نشد');
   }
 
   private async enqueueTelegramDeliveries(

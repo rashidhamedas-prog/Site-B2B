@@ -95,7 +95,30 @@ function retail(): Layout {
   };
 }
 
+function compact(value: string) {
+  return value.replace(/\s+/g, '');
+}
+
+function isLegacy(body?: string): boolean {
+  const raw = String(body || '').trim();
+  if (!raw) return true;
+  if (compact(raw) === compact('{name} — {price} تومان\n{url}')) return true;
+  if (raw.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(raw) as { v?: unknown; blocks?: Array<{ type?: unknown; text?: unknown }> };
+      if (parsed.v === 1 && Array.isArray(parsed.blocks) && parsed.blocks.length === 1 && parsed.blocks[0]?.type === 'text') {
+        return isLegacy(String(parsed.blocks[0].text || ''));
+      }
+      return false;
+    } catch {
+      return true;
+    }
+  }
+  return raw.includes('{name}') && raw.includes('{price}') && raw.includes('{url}') && raw.length < 96;
+}
+
 function parseBody(body: string | undefined, channel: Channel): Layout {
+  if (isLegacy(body)) return channel === 'WHOLESALE' ? wholesale() : retail();
   const raw = String(body || '').trim();
   if (raw.startsWith('{')) {
     try {
@@ -161,6 +184,7 @@ export function AdminTelegramTemplateBuilder({
   onSave: (body: string) => Promise<void>;
 }) {
   const saved = templates.find((row) => row.channel === channel && row.eventType === eventType);
+  const [advanced, setAdvanced] = useState(false);
   const [layout, setLayout] = useState<Layout>(() => parseBody(saved?.body, channel));
 
   useEffect(() => {
@@ -169,6 +193,8 @@ export function AdminTelegramTemplateBuilder({
 
   const preview = useMemo(() => renderText(layout, SAMPLE), [layout]);
   const photoBlock = layout.blocks.find((row) => row.type === 'photos' && row.enabled) as Extract<Block, { type: 'photos' }> | undefined;
+  const summary = layout.blocks.filter((row) => row.enabled).map((row) => blockLabel(row));
+  const ready = Boolean(photoBlock && layout.blocks.some((row) => row.type === 'title' && row.enabled));
 
   const update = (id: string, patch: Partial<Block>) => {
     setLayout((cur) => ({
@@ -205,25 +231,34 @@ export function AdminTelegramTemplateBuilder({
   return (
     <div className="space-y-3">
       <div>
-        <h2 className="font-semibold">قالب پیام تلگرام</h2>
+        <h2 className="font-semibold">شکل پیام</h2>
         <p className="text-xs text-gray-500 mt-1">
-          بلوک‌ها را روشن یا جابه‌جا کنید. عکس‌ها از گالری همان محصول می‌آیند؛ تلگرام آلبوم ۵تایی را مثل پست کانال می‌چیند.
-          ذخیره فقط قالب است و چیزی به کانال نمی‌فرستد.
+          این اسکلت یک‌بار ذخیره می‌شود. ارسال بعدی اسم، قیمت، مشخصات و عکس همان محصول را داخل همین قالب می‌گذارد.
         </p>
+        <p className={`text-xs mt-2 ${ready ? 'text-emerald-700' : 'text-amber-700'}`}>
+          {ready ? 'قالب کانال آماده است.' : 'عکس یا عنوان خاموش است؛ قالب آماده را برگردانید.'}
+        </p>
+        {!advanced && (
+          <ul className="mt-2 flex flex-wrap gap-1">
+            {summary.map((item, index) => (
+              <li key={`${item}-${index}`} className="rounded-full border bg-gray-50 px-2 py-0.5 text-[11px] text-gray-700">{item}</li>
+            ))}
+          </ul>
+        )}
       </div>
       <div className="flex flex-wrap gap-2">
-        <label className="text-sm space-y-1">
-          <span className="text-xs text-gray-500">رویداد</span>
-          <input className="border rounded-lg px-3 py-2 text-sm block" value={eventType} onChange={(e) => onEventType(e.target.value)} />
-        </label>
-        <button type="button" className="btn btn-secondary btn-sm self-end" onClick={() => setLayout(channel === 'WHOLESALE' ? wholesale() : retail())}>
-          قالب آماده {channel === 'WHOLESALE' ? 'عمده' : 'تکی'}
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setLayout(channel === 'WHOLESALE' ? wholesale() : retail())}>
+          برگرد به قالب آماده {channel === 'WHOLESALE' ? 'عمده' : 'تکی'}
         </button>
-        <button type="button" className="btn btn-primary btn-sm self-end" onClick={() => void onSave(JSON.stringify(layout))}>
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => void onSave(JSON.stringify(layout))}>
           افزودن قالب تلگرام
         </button>
+        <button type="button" className="text-xs text-gray-600 underline self-center" onClick={() => setAdvanced((v) => !v)}>
+          {advanced ? 'بستن تنظیم دقیق' : 'تنظیم دقیق بلوک‌ها'}
+        </button>
       </div>
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${advanced ? 'lg:grid-cols-2' : ''}`}>
+        {advanced && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-1">
             {(['photos', 'title', 'field', 'trust', 'text'] as const).map((type) => (
@@ -232,6 +267,10 @@ export function AdminTelegramTemplateBuilder({
               </button>
             ))}
           </div>
+          <label className="text-xs text-gray-500 space-y-1 block">
+            <span>رویداد</span>
+            <input className="border rounded-lg px-3 py-2 text-sm block w-full" value={eventType} onChange={(e) => onEventType(e.target.value)} />
+          </label>
           <ul className="space-y-2 max-h-[36rem] overflow-auto">
             {layout.blocks.map((block) => (
               <li key={block.id} className="rounded-xl border bg-gray-50 p-3 space-y-2">
@@ -288,6 +327,7 @@ export function AdminTelegramTemplateBuilder({
             ))}
           </ul>
         </div>
+        )}
         <div className="rounded-3xl border bg-[#0e1621] text-white p-4 min-h-[28rem]">
           <p className="text-[11px] text-white/60 mb-3">پیش‌نمایش شبیه تلگرام — با داده نمونه کیان</p>
           {photoBlock && (

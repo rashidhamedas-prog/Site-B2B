@@ -39,6 +39,9 @@ const admin = readFileSync(
 
 assert(svc.includes('CANARY_PING_TEXT'), 'service sends the server-owned ping text');
 assert(svc.includes('renderPublicationLayout'), 'live product text uses the structured template');
+assert(svc.includes('ensureProductTemplates'), 'legacy templates are upgraded automatically');
+assert(svc.includes('resolveProductSourceId'), 'preview accepts slug, sku, or product url');
+assert(svc.includes('imageCandidates'), 'product photos come from gallery candidates');
 assert(svc.includes('markPublicationDelivered'), 'successful canary delivery can mark PUBLISHED');
 assert(admin.includes('dryRun: true'), 'draft button stays dry-run');
 assert(admin.includes('dryRun: false'), 'admin can enqueue one live canary product');
