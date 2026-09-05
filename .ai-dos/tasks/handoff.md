@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-05T10:45:00Z — TASK-20260905-003 one live canary product
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- One RETAIL product via outbox, not a catalog blast. Canary dest `1008770451` only.
+- Observed: slug `shomiz-linen-sara`; delivery SUCCEEDED; outbox DONE; telegram `providerMessageId=4`; publication PUBLISHED. Worker flags both true. Live count was 0 before this send.
+- CODE (not yet on VPS image): template render in createPublication; admin «ارسال زنده به canary» (`dryRun: false` + confirm); worker calls `markPublicationDelivered`. Reclaimed `outbox-worker.service.ts` from TASK-20260826-001 (stale hb 2026-09-02).
+- Tests (observed): `canary-ping.spec.ts` ok; `omnichannel-phase-acceptance.spec.ts` ok; api+web `tsc --noEmit` 0.
+- Exact next: commit/push/deploy admin+worker changes. Owner checks Telegram for the product card. Do not mark TASK-20260826-001 Done (soak, independent Security, leftover worker wiring).
+
 ## 2026-09-05T10:25:00Z — TASK-20260905-003 admin console + UTF-8 ping
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

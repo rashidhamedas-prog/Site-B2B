@@ -738,7 +738,8 @@ export function AdminOmnichannel() {
             <div>
               <h2 className="font-semibold">پیش‌نمایش</h2>
               <p className="text-xs text-gray-500 mt-1">
-                ثبت پیش‌نویس همیشه dry-run است و به تلگرام نمی‌رود. محصول زنده سقف canary دارد و از این دکمه ارسال نمی‌شود.
+                ثبت پیش‌نویس همیشه dry-run است و به تلگرام نمی‌رود.
+                ارسال زنده فقط یک منبع را به مقصد canary می‌فرستد و سقف ۱۰ محصول زنده در هر کانال را رعایت می‌کند.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -762,6 +763,16 @@ export function AdminOmnichannel() {
                   reason,
                 });
               }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد')}>ثبت پیش‌نویس</button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => {
+                if (!window.confirm('فقط همین منبع به مقصد canary تلگرام می‌رود. کاتالوگ ارسال نمی‌شود. ادامه می‌دهید؟')) return;
+                void run(async () => {
+                  await apiClient.post('/omnichannel/publications', {
+                    preview: { channel, sourceType, sourceId },
+                    dryRun: false,
+                    reason,
+                  });
+                }, 'خطا در ارسال زنده', 'به صف canary رفت');
+              }}>ارسال زنده به canary</button>
               <button type="button" className="btn btn-secondary btn-sm" onClick={() => run(async () => {
                 await apiClient.post('/omnichannel/reconcile', { reason });
               }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق</button>

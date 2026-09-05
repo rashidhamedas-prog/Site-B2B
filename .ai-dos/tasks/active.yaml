@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260905-003-omni-admin-console"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-05T10:15:00Z"
-    heartbeat_at: "2026-09-05T10:15:00Z"
+    heartbeat_at: "2026-09-05T10:40:00Z"
     depends_on: ["TASK-20260905-002"]
     file_claims:
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"
@@ -21,6 +21,7 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
       - "apps/api/src/modules/omnichannel/canary-ping.ts"
       - "apps/api/src/modules/omnichannel/canary-ping.spec.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
       - "docs/reports/2026-09-05-omnichannel-admin-console.md"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
@@ -31,12 +32,14 @@ tasks:
       TASK-20260826-001 (stale hb 2026-09-02). Owner asked why canary
       text became ??? and to professionalize the admin console.
       ??? was Windows SSH mojibake, not Telegram. Server-side UTF-8
-      ping; light ERP theme; no product blast; do not Done 20260826-001.
+      ping; light ERP theme; one live canary product (not catalog);
+      do not Done 20260826-001.
     acceptance_criteria:
       - "Canary ping text is Persian in source and has no ASCII ? replacement"
       - "POST /omnichannel/connections/:id/canary-ping sends only the canary dest via official API"
       - "Admin console has readiness, tabs, table headers, empty states required by phase-acceptance"
-      - "No plaintext token in UI; publications stay dryRun; no Bale/Rubika/Instagram APIs"
+      - "Draft button stays dryRun true; live canary button is dryRun false + confirm"
+      - "No plaintext token in UI; no Bale/Rubika/Instagram APIs; no catalog blast"
   - id: "TASK-20260905-002"
     title: "Owner-ordered live omnichannel connector flags"
     status: "in_progress"
@@ -1215,7 +1218,8 @@ tasks:
       - "apps/api/src/modules/dashboard/dashboard.service.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
+      # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; mark PUBLISHED after canary deliver):
+      # "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
       - "apps/api/src/modules/notification/notification.service.ts"
       - "apps/api/src/modules/search/search.service.ts"
       - "apps/api/src/modules/omnichannel/worker.module.ts"

@@ -20,6 +20,23 @@
 
 `POST /v1/omnichannel/connections/:id/canary-ping` متن ثابت `CANARY_PING_TEXT` را می‌فرستد. توکن در بدنه نیست. محصول blast نمی‌شود. ثبت پیش‌نویس همچنان `dryRun: true` است.
 
+## ارسال زنده یک محصول (canary)
+
+مالک خواست قدم بعد یک محصول باشد، نه کاتالوگ.
+
+مسیر: publication READY → outbox `publication.deliver.requested` → worker → `api.telegram.org` فقط به مقصد canary.
+
+مشاهدهٔ زنده (VPS، بدون چاپ توکن/نام در لاگ ویندوز):
+
+- محصول: `81020817-49f3-45e4-b860-a1be921d3e96` / slug `shomiz-linen-sara` / موجودی تکی ۲۳
+- مقصد: `1008770451` (`isCanary`)
+- publication `3279bde0-c98e-43f8-9268-34cdfce7feac` → PUBLISHED
+- delivery `5c5c9abf-baac-48d4-88ed-bc3c44080dda` → SUCCEEDED
+- outbox DONE؛ `providerMessageId=4`
+- متن قالب روی سرور UTF-8 بود (`text_fa=true`، طول ۹۱)
+
+در ادمین دکمهٔ «ارسال زنده به canary» با `dryRun: false` و confirm اضافه شد. ورکر بعد از CREATE موفق می‌تواند وضعیت را PUBLISHED کند. سقف ۱۰ محصول زنده در هر کانال سر جایش است.
+
 ## UI
 
 تم روشن ERP. چهار زبانه: راه‌اندازی، سیاست، انتشار، عملیات. کارت آمادگی، برچسب وضعیت، فرم با label، دکمهٔ «پیام فارسی». تم تیره و فونت جدید اضافه نشد.

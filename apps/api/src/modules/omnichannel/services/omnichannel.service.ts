@@ -44,7 +44,12 @@ import {
   sanitizeDestinationSettings,
   selectCanaryTelegramDestinations,
 } from '../oos-policy';
-import { CANARY_PING_TEXT } from '../canary-ping';
+import {
+  CANARY_PING_TEXT,
+  DEFAULT_PRODUCT_TEMPLATE,
+  formatTomanFromRial,
+  renderPublicationText,
+} from '../canary-ping';
 import { summarizeOutbox } from './outbox-metrics';
 import { canDeleteMediaAsset, countMediaReferences } from '../media-references';
 import { CmsPageEntity } from '../../cms/entities/cms-page.entity';
@@ -373,7 +378,7 @@ export class OmnichannelService {
         await this.enqueueTelegramDeliveries(
           row.id,
           projection.channel,
-          String(projection.name || ('sku' in projection ? projection.sku : '') || row.sourceId),
+          await this.publicationTextFor(projection),
           manager,
         );
       }
@@ -391,6 +396,20 @@ export class OmnichannelService {
       return row;
     });
     return { dryRun, publication: saved };
+  }
+
+  async markPublicationDelivered(publicationId: string) {
+    const row = await this.publications.findOne({ where: { id: publicationId } });
+    if (!row || row.status === 'WITHDRAWN') return;
+    const pending = await this.deliveries.count({
+      where: { publicationId, status: In(['PENDING', 'PROCESSING', 'RETRY']) },
+    });
+    if (pending > 0) return;
+    const failed = await this.deliveries.count({
+      where: { publicationId, status: In(['DEAD', 'FAILED']) },
+    });
+    row.status = failed > 0 ? 'PARTIAL' : 'PUBLISHED';
+    await this.publications.save(row);
   }
 
   async withdraw(id: string, actor?: Actor, reason?: string) {
@@ -637,6 +656,28 @@ export class OmnichannelService {
     if (!row) throw new NotFoundException('فایل یافت نشد');
     row.altText = String(altText || '').trim().slice(0, 200);
     return this.mediaAssets.save(row);
+  }
+
+  private async publicationTextFor(projection: Record<string, unknown>): Promise<string> {
+    const eventType = projection.sourceType === 'BLOG_POST'
+      ? 'blog.published'
+      : projection.sourceType === 'CMS_PAGE'
+        ? 'cms.published'
+        : 'product.published';
+    const channel = String(projection.channel || 'RETAIL');
+    const tpl = await this.templates.findOne({
+      where: { provider: 'TELEGRAM', channel, eventType, enabled: true },
+      order: { version: 'DESC' },
+    });
+    const price = formatTomanFromRial(
+      projection.payable ?? projection.listPrice ?? projection.price,
+    );
+    return renderPublicationText(tpl?.body || DEFAULT_PRODUCT_TEMPLATE, {
+      name: projection.name || projection.title || projection.sku,
+      price,
+      url: projection.url,
+      sku: projection.sku,
+    });
   }
 
   private async enqueueTelegramDeliveries(

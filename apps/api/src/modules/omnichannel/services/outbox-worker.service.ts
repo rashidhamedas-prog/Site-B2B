@@ -257,5 +257,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     row.providerMessageId = providerMessageId || row.providerMessageId;
     row.lastError = null;
     await this.deliveries.save(row);
+    const publicationId = String(payload.publicationId || row.publicationId || '');
+    if (publicationId && action === 'CREATE') {
+      await this.omnichannel.markPublicationDelivered(publicationId);
+    }
   }
 }
