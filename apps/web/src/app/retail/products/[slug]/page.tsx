@@ -7,18 +7,18 @@ import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { resolveRetailPdpOption, torobHeadMeta } from '@/lib/torob-pdp-meta';
+import { resolveRetailProductSeo } from '@/lib/retail-seo-copy';
 
 type SeoBag = Record<string, string | undefined>;
 
 function retailSeo(product: Record<string, unknown>) {
   const seo = (product.seoMeta ?? {}) as SeoBag;
-  const title =
-    seo.retailTitle || seo.title || (product.name as string) || 'محصول';
-  const description =
-    seo.retailDescription ||
-    seo.description ||
-    (typeof product.description === 'string' ? product.description.slice(0, 160) : '') ||
-    `خرید تکی «${product.name}» از فروشگاه ترنم — مستقیم از تولیدی مشهد.`;
+  const copy = resolveRetailProductSeo({
+    slug: String(product.slug || ''),
+    name: String(product.name || ''),
+    seo,
+    description: typeof product.description === 'string' ? product.description : null,
+  });
   const resolved = resolvePublicProductCanonical({
     productSlug: String(product.slug || ''),
     customCanonical: seo.retailCanonical || seo.canonical || null,
@@ -27,7 +27,7 @@ function retailSeo(product: Record<string, unknown>) {
       console.warn('[publicProductPath]', product.slug, reason);
     },
   });
-  return { title, description, canonical: resolved.url, focusKeyword: seo.retailFocusKeyword || seo.focusKeyword };
+  return { title: copy.title, description: copy.description, canonical: resolved.url, focusKeyword: copy.focusKeyword };
 }
 
 function absUrl(url?: string | null) {

@@ -5,6 +5,7 @@ import { getServerApiBase } from '@/lib/server-api';
 type Category = {
   id: string;
   name: string;
+  slug?: string | null;
   bannerUrl?: string | null;
 };
 
@@ -87,8 +88,8 @@ async function fetchCategories(
 
 /** Luxury SSR category grid — full-bleed editorial tiles linking to each category. */
 export async function RetailCategoryBannerGrid({
-  title = 'دسته‌بندی‌ها',
-  body,
+  title = 'شومیز، کت، کاپشن و کفتان',
+  body = 'شومیز برای بالاتنه روزمره، کت برای روی لباس، کاپشن برای سرما، کفتان وقتی یک تکه می‌خواهید.',
   columns = 5,
   maxItems = 99,
   categoryIds,
@@ -138,7 +139,7 @@ export async function RetailCategoryBannerGrid({
             return (
               <Link
                 key={c.id}
-                href={`/products?categoryId=${encodeURIComponent(c.id)}`}
+                href={c.slug ? `/category/${encodeURIComponent(c.slug)}` : `/products?categoryId=${encodeURIComponent(c.id)}`}
                 className="group relative block aspect-[4/5] cursor-pointer overflow-hidden bg-[var(--retail-primary-dark)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
               >
                 {img ? (

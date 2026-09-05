@@ -9,9 +9,10 @@ const COLS = [
   {
     title: 'فروشگاه',
     links: [
-      { href: '/products', label: 'جدیدترین‌ها' },
-      { href: '/collections', label: 'کلکسیون‌ها' },
-      { href: '/products', label: 'مانتو' },
+      { href: '/category/shomiz', label: 'شومیز زنانه' },
+      { href: '/category/women-coats', label: 'کت زنانه' },
+      { href: '/category/winter-wear', label: 'کاپشن زنانه' },
+      { href: '/category/kaftan', label: 'کفتان زنانه' },
     ],
   },
   {
@@ -39,7 +40,7 @@ export function RetailFooter() {
   const blurb = chromeStr(
     chrome,
     'blurb',
-    'فروشگاه آنلاین پوشاک زنانه — مستقیم از تولیدی مشهد.',
+    'پوشاک ترنم در مشهد؛ خرید تکی از همان کارگاهی که برای بوتیک‌ها هم می‌دوزد.',
   );
   const copyright = chromeStr(
     chrome,

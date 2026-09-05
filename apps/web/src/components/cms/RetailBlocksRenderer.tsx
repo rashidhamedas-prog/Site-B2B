@@ -8,6 +8,7 @@ import { RetailProductGrid } from '@/components/retail/RetailProductGrid';
 import { RetailCategoryBannerGrid } from '@/components/retail/RetailCategoryBannerGrid';
 import { RetailCtaBanner } from '@/components/retail/RetailCtaBanner';
 import { RetailTrustStrip, RETAIL_TRUST_FALLBACK, type TrustItem } from '@/components/retail/RetailTrustStrip';
+import { RetailHomeCategoryLinks } from '@/components/retail/RetailHomeCategoryLinks';
 import {
   filterChromeBlocks,
   heroPropsFromBlock,
@@ -60,6 +61,7 @@ export async function RetailBlocksRenderer({
           nodes.push(
             <RetailTrustStrip key={statsBlock?.id ?? 'retail-trust-fallback'} items={items} />,
           );
+          nodes.push(<RetailHomeCategoryLinks key="retail-home-category-links" />);
           trustRendered = true;
         }
         break;
@@ -86,8 +88,8 @@ export async function RetailBlocksRenderer({
         nodes.push(
           <Suspense key={block.id} fallback={<SectionSkeleton className="h-80" />}>
             <RetailCategoryBannerGrid
-              title={str(p, 'headline') || 'دسته‌بندی‌ها'}
-              body={str(p, 'body') || undefined}
+              title={str(p, 'headline') || 'شومیز، کت، کاپشن و کفتان'}
+              body={str(p, 'body') || 'شومیز برای بالاتنه روزمره، کت برای روی لباس، کاپشن برای سرما، کفتان وقتی یک تکه می‌خواهید.'}
               columns={typeof p.columns === 'number' ? p.columns : 5}
               maxItems={Math.min(typeof p.maxItems === 'number' ? p.maxItems : 10, 10)}
               categoryIds={str(p, 'categoryIds') || undefined}
@@ -136,6 +138,7 @@ export async function RetailBlocksRenderer({
       0,
       <RetailTrustStrip key="retail-trust-fallback" items={RETAIL_TRUST_FALLBACK} />,
     );
+    nodes.splice(Math.min(2, nodes.length), 0, <RetailHomeCategoryLinks key="retail-home-category-links" />);
   }
 
   if (looksLikeHome && !list.some((block) => block.type === 'faq')) {

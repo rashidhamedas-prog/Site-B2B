@@ -157,20 +157,21 @@ export default function WholesaleMantoMashhadPage() {
 
           <section className="mt-14 rounded-3xl bg-[#0F2F28] px-6 py-8 text-[#F6F1E8]">
             <p className="text-sm leading-7 text-white/80">
-              برای هماهنگی بازدید یا ثبت سفارش عمده با دفتر پخش مشهد تماس بگیرید.
+              اگر بوتیک دارید و می‌خواهید همکاری با تولیدی لباس را شروع کنید، درخواست بدهید. حداقل
+              سفارش هر مدل از ۶ عدد است.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link
-                href="/contact"
+                href="/portal/register"
                 className="inline-flex rounded-full bg-[#C9A84C] px-5 py-2.5 text-sm font-bold text-[#0F2F28]"
               >
-                تماس با فروش
+                درخواست همکاری
               </Link>
               <Link
-                href="/category/women-manto"
+                href="/contact"
                 className="inline-flex rounded-full border border-white/30 px-5 py-2.5 text-sm font-bold"
               >
-                مانتو عمده
+                تماس با فروش
               </Link>
             </div>
           </section>

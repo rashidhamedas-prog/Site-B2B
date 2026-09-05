@@ -3,14 +3,14 @@ import { WholesaleAboutView } from '@/components/wholesale/WholesaleAboutView';
 import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 
 export const metadata: Metadata = {
-  title: 'درباره ما | تولیدی پوشاک ترنم',
+  title: 'پوشاک ترنم مشهد | تولیدی مانتو',
   description:
-    'ترنم همراه فروشندگان پوشاک در مشهد است؛ از انتخاب پارچه و برش تا دوخت، کنترل کیفیت و فروش عمده به بوتیک.',
+    'پوشاک ترنم در مشهد مانتو و شومیز را در کارگاه خودش می‌دوزد و به بوتیک‌ها عمده می‌فروشد؛ از انتخاب پارچه تا دفتر پخش پاساژ کیمیا.',
   alternates: { canonical: `${WHOLESALE_ORIGIN}/about` },
   openGraph: {
-    title: 'درباره ما | تولیدی پوشاک ترنم',
+    title: 'پوشاک ترنم مشهد | تولیدی مانتو',
     description:
-      'ترنم همراه فروشندگان پوشاک در مشهد است؛ از انتخاب پارچه و برش تا دوخت، کنترل کیفیت و فروش عمده به بوتیک.',
+      'کارگاه و دفتر پخش در مشهد؛ همکاری عمده با بوتیک‌ها، حداقل سفارش هر مدل از ۶ عدد.',
     url: `${WHOLESALE_ORIGIN}/about`,
   },
 };

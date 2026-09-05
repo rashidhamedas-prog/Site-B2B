@@ -3,10 +3,10 @@ import { Button } from '@/components/ui';
 import { Phone, Send } from 'lucide-react';
 
 export function CtaBanner({
-  eyebrow = 'شروع همکاری',
-  headline = 'آماده همکاری با ترنم هستید؟',
-  body = 'همین الان ثبت‌نام کنید و به جمع عمده‌فروشان ما در سراسر ایران بپیوندید، یا با تیم فروش تماس بگیرید.',
-  ctaLabel = 'ثبت‌نام رایگان',
+  eyebrow = 'همکاری با تولیدی لباس',
+  headline = 'بوتیک دارید؟ از کارگاه مشهد سفارش دهید',
+  body = 'درخواست همکاری را بفرستید تا حساب بررسی شود. حداقل سفارش هر مدل از ۶ عدد است؛ قیمت عمده بعد از تأیید دیده می‌شود.',
+  ctaLabel = 'درخواست همکاری',
   ctaHref = '/portal/register',
   ctaSecondaryLabel = 'تماس با فروش',
   ctaSecondaryHref = 'tel:09152424624',

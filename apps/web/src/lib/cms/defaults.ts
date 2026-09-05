@@ -22,7 +22,7 @@ export function defaultWholesaleChrome(): ContentBlock[] {
       brandName: 'پوشاک ترنم',
       brandTagline: 'تولیدی مانتو زنانه مشهد',
       logoUrl: '/logo-128.png',
-      registerLabel: 'ثبت‌نام عمده‌فروش',
+      registerLabel: 'درخواست همکاری',
       registerHref: '/portal/register',
       portalHref: '/portal',
       blurb: `از سال ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} تولیدکننده مانتو شومیزی زنانه لینن و کتان در مشهد. فروش عمده به بوتیک‌ها و فروشندگان در سراسر ایران.`,
@@ -264,9 +264,9 @@ export function defaultWholesaleHome(): ContentBlock[] {
             'بله. سفارش‌ها از دفتر پخش مشهد بسته‌بندی می‌شوند و به سراسر ایران ارسال می‌گردند.',
         },
         {
-          question: 'چطور عمده‌فروش شوم؟',
+          question: 'چطور با تولیدی لباس همکاری کنم؟',
           answer:
-            'از صفحه شرایط عمده یا ثبت‌نام پنل مشتری درخواست بدهید. بعد از تأیید، قیمت عمده و ثبت سفارش برایتان باز می‌شود.',
+            'از صفحه ثبت‌نام درخواست همکاری بدهید. بعد از تأیید، قیمت عمده و ثبت سفارش برایتان باز می‌شود. حداقل سفارش هر مدل از ۶ عدد است.',
         },
         {
           question: 'خرید تکی هم دارید؟',
@@ -276,10 +276,10 @@ export function defaultWholesaleHome(): ContentBlock[] {
       ],
     }),
     b('cta', {
-      eyebrow: 'شروع همکاری',
-      headline: 'آماده همکاری با ترنم هستید؟',
-      body: 'همین الان ثبت‌نام کنید و به جمع عمده‌فروشان ما در سراسر ایران بپیوندید، یا با تیم فروش تماس بگیرید.',
-      ctaLabel: 'ثبت‌نام رایگان',
+      eyebrow: 'همکاری با تولیدی لباس',
+      headline: 'بوتیک دارید؟ از کارگاه مشهد سفارش دهید',
+      body: 'درخواست همکاری را بفرستید تا حساب بررسی شود. حداقل سفارش هر مدل از ۶ عدد است؛ قیمت عمده بعد از تأیید دیده می‌شود.',
+      ctaLabel: 'درخواست همکاری',
       ctaHref: '/portal/register',
       ctaSecondaryLabel: 'تماس با فروش',
       ctaSecondaryHref: 'tel:09152424624',
@@ -643,7 +643,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           brandName: 'POSHAK TARANOM',
           brandTagline: 'فروشگاه تکی',
           logoUrl: '/logo-128.png',
-          blurb: 'فروشگاه آنلاین پوشاک زنانه — مستقیم از تولیدی مشهد.',
+          blurb: 'پوشاک ترنم در مشهد؛ خرید تکی از همان کارگاهی که برای بوتیک‌ها هم می‌دوزد.',
           phoneLabel: '۰۹۱۵-۲۴۲-۴۶۲۴',
           phoneHref: 'tel:09152424624',
           copyright: `© ${new Date().getFullYear()} پوشاک ترنم — www.poshaktaranom.ir`,
@@ -699,8 +699,8 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           ],
         }),
         b('categoryBanners', {
-          headline: 'دسته‌بندی‌ها',
-          body: 'هر دسته یک کالکشن کامل است — با یک لمس وارد شوید',
+          headline: 'شومیز، کت، کاپشن و کفتان',
+          body: 'شومیز برای بالاتنه روزمره، کت برای روی لباس، کاپشن برای سرما، کفتان وقتی یک تکه می‌خواهید.',
           columns: 5,
           maxItems: 10,
           categoryIds: '',
@@ -757,7 +757,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
     case 'about':
       return defaultTextPage(
         'درباره پوشاک ترنم',
-        'تولیدی پوشاک ترنم در مشهد؛ مانتوهای لینن و کتان را هم عمده و هم تکی عرضه می‌کند. این فروشگاه، کانال خرید مستقیم برای شماست — با همان کیفیت کارخانه.\n\nدفتر پخش: مشهد، میدان ۱۷ شهریور، پاساژ کیمیا، طبقه منفی یک، پلاک ۱۳۳. تماس: ۰۹۱۵۲۴۲۴۶۲۴'
+        'پوشاک ترنم در مشهد همان کارگاهی است که مانتو و شومیز را برای بوتیک‌ها هم می‌دوزد. این سایت فقط خرید تکی است.\n\nدفتر پخش: مشهد، میدان ۱۷ شهریور، پاساژ کیمیا، طبقه منفی یک، پلاک ۱۳۳. تماس: ۰۹۱۵۲۴۲۴۶۲۴'
       );
     case 'contact':
       return [
