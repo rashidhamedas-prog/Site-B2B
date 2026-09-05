@@ -235,7 +235,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       secretRef: conn.secretRef,
       destinationKey: dest.destinationKey,
       chatId: dest.destinationKey,
+      channel: String(payload.channel || conn.channel || 'RETAIL'),
       text: String(payload.text || ''),
+      photoUrls: payload.photoUrls,
       providerMessageId: String(payload.providerMessageId || ''),
     };
     let providerMessageId: string | undefined;

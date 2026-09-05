@@ -104,6 +104,22 @@ async function main() {
   assert(created.providerMessageId === '77', 'create id');
   assert(calls.some((u) => u.endsWith('/sendMessage')), 'sendMessage');
 
+  calls.length = 0;
+  adapter.http = async (url) => {
+    calls.push(String(url));
+    return jsonRes(200, { ok: true, result: { message_id: 88 } });
+  };
+  const photo = await adapter.create({
+    secretRef: 'TELEGRAM_TEST_TOKEN',
+    chatId: '-1001',
+    channel: 'RETAIL',
+    text: 'کپشن',
+    photoUrls: ['https://www.poshaktaranom.ir/uploads/kian.jpg', 'https://evil.example/x.jpg'],
+  });
+  assert(photo.providerMessageId === '88', 'photo id');
+  assert(calls.some((u) => u.endsWith('/sendPhoto')), 'sendPhoto for one allowlisted image');
+  assert(!calls.some((u) => u.endsWith('/sendMediaGroup')), 'foreign URL dropped so album is not used');
+
   adapter.http = async () => jsonRes(409, { ok: false, description: 'message is not modified' });
   let duplicate = false;
   try {

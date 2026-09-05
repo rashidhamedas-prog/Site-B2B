@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { apiClient } from '@/lib/api';
+import { AdminTelegramTemplateBuilder } from './AdminTelegramTemplateBuilder';
 
 type OosPolicy = 'UPDATE' | 'HIDE' | 'DELETE';
 type Tab = 'setup' | 'policy' | 'publish' | 'ops';
@@ -58,6 +59,7 @@ type Template = {
   eventType: string;
   version: number;
   enabled?: boolean;
+  body?: string;
 };
 
 type Publication = {
@@ -203,7 +205,6 @@ export function AdminOmnichannel() {
   const [destName, setDestName] = useState('');
   const [connectionId, setConnectionId] = useState('');
   const [tplEvent, setTplEvent] = useState('product.published');
-  const [tplBody, setTplBody] = useState('{name} — {price} تومان\n{url}');
 
   const load = useCallback(async () => {
     setError('');
@@ -691,26 +692,38 @@ export function AdminOmnichannel() {
       {tab === 'publish' && (
         <>
           <section className="rounded-xl border bg-white p-4 space-y-3">
-            <h2 className="font-semibold">قالب‌ها</h2>
-            <div className="flex flex-wrap gap-2">
-              <input className="border rounded-lg px-3 py-2 text-sm" placeholder="eventType" value={tplEvent} onChange={(e) => setTplEvent(e.target.value)} />
-              <textarea className="border rounded-lg px-3 py-2 text-sm w-full md:w-96" rows={3} value={tplBody} onChange={(e) => setTplBody(e.target.value)} />
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={!tplEvent.trim() || !tplBody.trim()}
-                onClick={() => run(async () => {
-                  await apiClient.post('/omnichannel/templates', {
-                    provider: 'TELEGRAM',
-                    channel,
-                    eventType: tplEvent,
-                    body: tplBody,
-                  });
-                }, 'خطا در قالب', 'قالب ذخیره شد')}
-              >
-                افزودن قالب تلگرام
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="text-xs text-gray-500 space-y-1">
+                <span>کانال این قالب</span>
+                <select className="border rounded-lg px-3 py-2 text-sm block" value={channel} onChange={(e) => setChannel(e.target.value as 'RETAIL' | 'WHOLESALE')}>
+                  <option value="RETAIL">تکی</option>
+                  <option value="WHOLESALE">عمده</option>
+                </select>
+              </label>
             </div>
+            <AdminTelegramTemplateBuilder
+              channel={channel}
+              eventType={tplEvent}
+              templates={templates}
+              onEventType={setTplEvent}
+              onSave={async (body) => {
+                await run(async () => {
+                  const existing = templates.find((row) => (
+                    row.channel === channel && row.eventType === tplEvent
+                  ));
+                  if (existing) {
+                    await apiClient.patch(`/omnichannel/templates/${existing.id}`, { body });
+                  } else {
+                    await apiClient.post('/omnichannel/templates', {
+                      provider: 'TELEGRAM',
+                      channel,
+                      eventType: tplEvent,
+                      body,
+                    });
+                  }
+                }, 'خطا در قالب', 'قالب ذخیره شد');
+              }}
+            />
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-500">

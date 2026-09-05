@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-05T11:25:00Z — TASK-20260905-003 channel-style Telegram templates
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Root cause of plain canary product: adapter `sendMessage` only; template `{name} — {price}\\n{url}`; projection had no fabric/sizes/photos.
+- Reference: public channel post `t.me/toliditaranom/4667` (Kian album + structured caption).
+- CODE: `publication-template.ts` layouts; official `sendPhoto`/`sendMediaGroup`; admin block composer. Reclaimed adapter+dto from TASK-20260826-001 (stale).
+- Tests (observed): publication-template, canary-ping, telegram.adapter, phase-acceptance ok; api+web tsc 0.
+- Exact next: deploy `e1b101b` follow-up SHA; owner saves تکی/عمده templates and canary-sends one product to compare. No catalog blast. Do not Done TASK-20260826-001.
+
 ## 2026-09-05T10:45:00Z — TASK-20260905-003 one live canary product
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
@@ -9,7 +18,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Observed: slug `shomiz-linen-sara`; delivery SUCCEEDED; outbox DONE; telegram `providerMessageId=4`; publication PUBLISHED. Worker flags both true. Live count was 0 before this send.
 - CODE (not yet on VPS image): template render in createPublication; admin «ارسال زنده به canary» (`dryRun: false` + confirm); worker calls `markPublicationDelivered`. Reclaimed `outbox-worker.service.ts` from TASK-20260826-001 (stale hb 2026-09-02).
 - Tests (observed): `canary-ping.spec.ts` ok; `omnichannel-phase-acceptance.spec.ts` ok; api+web `tsc --noEmit` 0.
-- Exact next: commit/push/deploy admin+worker changes. Owner checks Telegram for the product card. Do not mark TASK-20260826-001 Done (soak, independent Security, leftover worker wiring).
+- Exact next: owner checks Telegram for the product card. Live SHA `e1b101b` after rebuild (`health_ok=1`, flags still true). Do not mark TASK-20260826-001 Done (soak, independent Security, leftover worker wiring).
 
 ## 2026-09-05T10:25:00Z — TASK-20260905-003 admin console + UTF-8 ping
 

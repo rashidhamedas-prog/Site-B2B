@@ -44,12 +44,19 @@ import {
   sanitizeDestinationSettings,
   selectCanaryTelegramDestinations,
 } from '../oos-policy';
+import { CANARY_PING_TEXT } from '../canary-ping';
 import {
-  CANARY_PING_TEXT,
-  DEFAULT_PRODUCT_TEMPLATE,
-  formatTomanFromRial,
-  renderPublicationText,
-} from '../canary-ping';
+  defaultLayoutFor,
+  emptyPublicationVars,
+  formatChannelToman,
+  parseTemplateLayout,
+  renderPublicationLayout,
+  sizesLine,
+  stringifyTemplateLayout,
+  type PublicationVars,
+  type RenderedPublication,
+} from '../publication-template';
+import type { ProductSpecs } from '../../product/entities/product-specs';
 import { summarizeOutbox } from './outbox-metrics';
 import { canDeleteMediaAsset, countMediaReferences } from '../media-references';
 import { CmsPageEntity } from '../../cms/entities/cms-page.entity';
@@ -246,13 +253,14 @@ export class OmnichannelService {
       },
     });
     if (exists) throw new ConflictException('قالب تکراری است');
+    const body = String(dto.body || '').trim() || stringifyTemplateLayout(defaultLayoutFor(dto.channel));
     return this.templates.save(
       this.templates.create({
         provider: dto.provider,
         channel: dto.channel,
         eventType: dto.eventType,
         locale: dto.locale ?? 'fa',
-        body: dto.body,
+        body,
         version,
         enabled: dto.enabled ?? true,
       }),
@@ -327,15 +335,17 @@ export class OmnichannelService {
     const projection = await this.projection.previewSource(kind, dto.sourceId, channel);
     const available = 'available' in projection ? projection.available === true : true;
     const oos = await this.oosDecisionFor(channel, available, kind, dto.sourceId);
+    const annotated = {
+      ...projection,
+      ...annotatePreviewOos(
+        { available, stock: 'stock' in projection ? projection.stock : undefined },
+        oos,
+      ),
+    };
     return {
       dryRun: true,
-      projection: {
-        ...projection,
-        ...annotatePreviewOos(
-          { available, stock: 'stock' in projection ? projection.stock : undefined },
-          oos,
-        ),
-      },
+      projection: annotated,
+      rendered: await this.publicationPayloadFor(annotated),
     };
   }
 
@@ -375,12 +385,8 @@ export class OmnichannelService {
         }),
       );
       if (!dryRun && isOmnichannelAutoPublishEnabled() && areOmnichannelConnectorsEnabled()) {
-        await this.enqueueTelegramDeliveries(
-          row.id,
-          projection.channel,
-          await this.publicationTextFor(projection),
-          manager,
-        );
+        const rendered = await this.publicationPayloadFor(projection);
+        await this.enqueueTelegramDeliveries(row.id, projection.channel, rendered, manager);
       }
       await manager.getRepository(OmnichannelAuditEntity).save(
         manager.getRepository(OmnichannelAuditEntity).create({
@@ -658,32 +664,52 @@ export class OmnichannelService {
     return this.mediaAssets.save(row);
   }
 
-  private async publicationTextFor(projection: Record<string, unknown>): Promise<string> {
+  private async publicationPayloadFor(projection: Record<string, unknown>): Promise<RenderedPublication> {
     const eventType = projection.sourceType === 'BLOG_POST'
       ? 'blog.published'
       : projection.sourceType === 'CMS_PAGE'
         ? 'cms.published'
         : 'product.published';
-    const channel = String(projection.channel || 'RETAIL');
+    const channel = projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
     const tpl = await this.templates.findOne({
       where: { provider: 'TELEGRAM', channel, eventType, enabled: true },
       order: { version: 'DESC' },
     });
-    const price = formatTomanFromRial(
-      projection.payable ?? projection.listPrice ?? projection.price,
-    );
-    return renderPublicationText(tpl?.body || DEFAULT_PRODUCT_TEMPLATE, {
-      name: projection.name || projection.title || projection.sku,
-      price,
-      url: projection.url,
-      sku: projection.sku,
+    const layout = parseTemplateLayout(tpl?.body, channel);
+    return renderPublicationLayout(layout, await this.publicationVarsFor(projection), channel);
+  }
+
+  private async publicationVarsFor(projection: Record<string, unknown>): Promise<PublicationVars> {
+    const payable = Number(projection.payable ?? projection.listPrice ?? projection.price ?? 0);
+    const vars = emptyPublicationVars();
+    vars.name = String(projection.name || projection.title || '').trim();
+    vars.sku = String(projection.sku || '').trim();
+    vars.price = formatChannelToman(payable);
+    vars.url = String(projection.url || '').trim();
+    if (projection.sourceType !== 'PRODUCT' || !projection.sourceId) return vars;
+    const product = await this.products.findOne({
+      where: { id: String(projection.sourceId) },
+      relations: ['variants'],
     });
+    if (!product) return vars;
+    const specs = (product.specs || {}) as ProductSpecs;
+    vars.fabric = String(specs.fabricType || product.fabric || '').trim();
+    vars.length = String(specs.length || '').trim();
+    vars.sizes = sizesLine(product.sizeType);
+    const colors = [...new Set((product.variants || []).map((row) => String(row.color || '').trim()).filter(Boolean))];
+    vars.colors = colors.join('، ');
+    vars.colorCount = colors.length ? `${colors.length} رنگ` : '';
+    const pack = Number(specs.packQty || product.minOrderQty || 0);
+    vars.packQty = pack > 0 ? `${pack} عدد` : String(specs.packQty || '').trim();
+    if (pack > 0 && payable > 0) vars.packPrice = formatChannelToman(payable * pack);
+    vars.images = Array.isArray(product.images) ? product.images.map(String) : [];
+    return vars;
   }
 
   private async enqueueTelegramDeliveries(
     publicationId: string,
     channel: string,
-    text: string,
+    rendered: RenderedPublication,
     manager: EntityManager,
   ) {
     const dests = await manager.getRepository(ChannelDestinationEntity).find({ where: { enabled: true } });
@@ -701,7 +727,9 @@ export class OmnichannelService {
           publicationId,
           destinationId: dest.id,
           action: 'CREATE',
-          text,
+          channel,
+          text: rendered.text,
+          photoUrls: rendered.photoUrls,
         },
       }, manager);
       if (!queued.id) continue;

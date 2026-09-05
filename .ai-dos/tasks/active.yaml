@@ -13,15 +13,21 @@ tasks:
     branch: "ai/TASK-20260905-003-omni-admin-console"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-05T10:15:00Z"
-    heartbeat_at: "2026-09-05T10:40:00Z"
+    heartbeat_at: "2026-09-05T11:20:00Z"
     depends_on: ["TASK-20260905-002"]
     file_claims:
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      - "apps/web/src/components/admin/AdminTelegramTemplateBuilder.tsx"
       - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
       - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
       - "apps/api/src/modules/omnichannel/canary-ping.ts"
       - "apps/api/src/modules/omnichannel/canary-ping.spec.ts"
+      - "apps/api/src/modules/omnichannel/publication-template.ts"
+      - "apps/api/src/modules/omnichannel/publication-template.spec.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
+      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
+      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.spec.ts"
+      - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
       - "docs/reports/2026-09-05-omnichannel-admin-console.md"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
@@ -33,12 +39,18 @@ tasks:
       text became ??? and to professionalize the admin console.
       ??? was Windows SSH mojibake, not Telegram. Server-side UTF-8
       ping; light ERP theme; one live canary product (not catalog);
+      owner asked for channel-style posts (album + structured caption)
+      and a simple graphical template composer. Reclaimed Telegram
+      adapter + dto from TASK-20260826-001 (stale hb 2026-09-02).
       do not Done 20260826-001.
     acceptance_criteria:
       - "Canary ping text is Persian in source and has no ASCII ? replacement"
       - "POST /omnichannel/connections/:id/canary-ping sends only the canary dest via official API"
       - "Admin console has readiness, tabs, table headers, empty states required by phase-acceptance"
       - "Draft button stays dryRun true; live canary button is dryRun false + confirm"
+      - "Product template can render channel-style caption + up to 10 allowlisted photos"
+      - "Adapter uses official sendPhoto/sendMediaGroup/sendMessage only"
+      - "Admin template tab is a block composer with live preview, not a raw-only textarea"
       - "No plaintext token in UI; no Bale/Rubika/Instagram APIs; no catalog blast"
   - id: "TASK-20260905-002"
     title: "Owner-ordered live omnichannel connector flags"
@@ -1192,7 +1204,8 @@ tasks:
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
-      - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
+      # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; channel-style templates):
+      # "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; UTF-8 ping + admin console):
       # "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
       # "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
@@ -1233,7 +1246,8 @@ tasks:
       - "apps/api/src/modules/omnichannel/entities/publication.entity.ts"
       - "apps/api/src/modules/omnichannel/entities/publication-delivery.entity.ts"
       - "apps/api/src/modules/omnichannel/adapters/channel-adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
+      # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; sendPhoto/sendMediaGroup):
+      # "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
       - "apps/api/src/modules/omnichannel/adapters/bale.adapter.ts"
       - "apps/api/src/modules/omnichannel/adapters/rubika.adapter.ts"
       - "apps/api/src/database/migrations/20260826-001-omnichannel-schema.ts"

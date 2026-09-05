@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-05 — قالب کانالی تلگرام (عکس + کپشن)
+
+- علت پیام ساده: آداپتر فقط `sendMessage` می‌فرستاد و قالب فقط `{name} {price} {url}` بود.
+- پست مرجع کانال (`t.me/toliditaranom/4667`) آلبوم عکس + کپشن ساختاریافته است.
+- قالب بلوکی، پیش‌نمایش شبیه تلگرام، و ارسال رسمی `sendPhoto` / `sendMediaGroup` اضافه شد.
+- گزارش: `docs/reports/2026-09-05-omnichannel-admin-console.md`
+
 ## 2026-09-05 — یک محصول زنده به canary تلگرام
 
 - یک محصول تکی (`shomiz-linen-sara`) از صف outbox به مقصد canary `1008770451` رسید؛ delivery SUCCEEDED.
