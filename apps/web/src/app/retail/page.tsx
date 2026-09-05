@@ -6,7 +6,7 @@ export const revalidate = 60;
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'پوشاک ترنم | خرید تکی پوشاک زنانه مشهد',
+  title: 'خرید تکی پوشاک زنانه مشهد',
   description:
     'از کارگاه ترنم در مشهد می‌توانید شومیز، کت، کاپشن و کفتان را تکی بخرید. ارسال از همان تولیدی؛ تعویض سایز از حساب کاربری.',
   alternates: { canonical: 'https://www.poshaktaranom.ir' },

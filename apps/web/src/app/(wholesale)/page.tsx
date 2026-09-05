@@ -6,7 +6,7 @@ export const revalidate = 60;
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'تولیدی مانتو مشهد | خرید عمده پوشاک ترنم',
+  title: 'تولیدی مانتو مشهد | خرید عمده',
   description:
     'اگر بوتیک دارید، مانتو و شومیز را مستقیم از کارگاه ترنم در مشهد سفارش دهید. حداقل سفارش هر مدل از ۶ عدد است؛ بعد از تأیید حساب، قیمت همکاری باز می‌شود.',
   alternates: { canonical: 'https://poshaktaranom.com' },
