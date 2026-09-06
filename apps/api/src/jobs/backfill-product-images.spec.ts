@@ -51,6 +51,8 @@ function main() {
   const source = readFileSync(join(__dirname, 'backfill-product-images.ts'), 'utf8');
   assert.equal(source.includes('AppModule'), false);
   assert.equal(source.includes('createApplicationContext'), false);
+  assert.equal(source.includes("reason: 'source-missing'"), true);
+  assert.match(source, /isMissingObjectError\(error\)/);
 
   const bucket = 'taranom-products';
   const key = 'products/1787994011222-f508abcb99eb3.jpg';

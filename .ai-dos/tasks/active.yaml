@@ -668,7 +668,7 @@ tasks:
     branch: "ai/TASK-20260903-004-gsc-mobile-speed-v2"
     worktree: "D:/proje/Site-B2B-gsc-speed"
     claimed_at: "2026-09-03T12:50:00Z"
-    heartbeat_at: "2026-09-06T13:12:00Z"
+    heartbeat_at: "2026-09-06T13:35:00Z"
     depends_on: []
     file_claims:
       - "apps/api/Dockerfile"
