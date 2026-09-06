@@ -109,6 +109,30 @@ export class ProductController {
     return this.productService.previewGeneratedContent(body);
   }
 
+  @Post('admin/internal-links/suggest')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'پیشنهاد هدف لینک داخلی سئو (هم‌کانال)' })
+  suggestInternalLinks(
+    @Body()
+    body: { channel: string; productId?: string; q?: string; targetType?: string; limit?: number },
+  ) {
+    return this.productService.suggestInternalLinks(body);
+  }
+
+  @Post('admin/internal-links/validate')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'بررسی اعتبار لینک‌های داخلی سئو قبل از ذخیره' })
+  validateInternalLinks(
+    @Body()
+    body: { channel: string; productId?: string; links: Array<Record<string, unknown>> },
+  ) {
+    return this.productService.validateInternalLinks(body as any);
+  }
+
   @Get('meta/spec-memory')
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)

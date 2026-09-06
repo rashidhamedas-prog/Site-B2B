@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { ProductDetail, type WholesaleProduct } from '@/components/wholesale/ProductDetail';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
+import { ProductInternalLinks } from '@/components/shared/ProductInternalLinks';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
 import { getServerApiBase } from '@/lib/server-api';
 import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
@@ -129,6 +130,7 @@ export default async function ProductPage({ params }: Props) {
           </ul>
         </section>
       ) : null}
+      <ProductInternalLinks links={(product as { internalLinks?: never[] }).internalLinks} />
     </>
   );
 }

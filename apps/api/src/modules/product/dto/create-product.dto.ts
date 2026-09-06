@@ -11,6 +11,7 @@ import {
   IsObject,
   ValidateIf,
 } from 'class-validator';
+import { InternalLinkItemDto } from './internal-link.dto';
 
 export class CreateProductDto {
   @ApiPropertyOptional({
@@ -313,4 +314,20 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   defaultRetailVariantId?: string | null;
+
+  @ApiPropertyOptional({
+    type: [InternalLinkItemDto],
+    description: 'لینک‌های داخلی سئو کانال تکی (.ir) — کاملاً جدا از عمده',
+  })
+  @IsOptional()
+  @IsArray()
+  retailInternalLinks?: InternalLinkItemDto[];
+
+  @ApiPropertyOptional({
+    type: [InternalLinkItemDto],
+    description: 'لینک‌های داخلی سئو کانال عمده (.com) — کاملاً جدا از تکی',
+  })
+  @IsOptional()
+  @IsArray()
+  wholesaleInternalLinks?: InternalLinkItemDto[];
 }
