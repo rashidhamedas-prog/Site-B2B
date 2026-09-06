@@ -1,5 +1,24 @@
-﻿schema_version: 1
+schema_version: 1
 tasks:
+  - id: "TASK-20260906-004"
+    title: "Remove retired autonomous-seo, Peyvand-ERP and crm-v4 safely"
+    status: "done"
+    risk: "high"
+    owner: "codex:server-cleanup"
+    roles:
+      architect: "codex:server-cleanup"
+      implementer: "codex:server-cleanup"
+      reviewer: "root/cleanup_review"
+      security: "root/cleanup_review"
+    branch: "ai/TASK-20260906-004-retired-project-cleanup"
+    worktree: "D:/proje/Site-B2B-server-cleanup"
+    file_claims: []
+    acceptance_criteria:
+      - "Remove only proven-exclusive retired project resources on wholesale-vps"
+      - "Keep taranom, new seo-auto, lead, shared images/pnpm/unknown volumes and audit logs"
+      - "nginx config validates; retained endpoints/services healthy before and after; report final disk usage"
+    notes: "Explicit user deletion authorization 2026-09-06, repeated continue. Reclaimed nginx/nginx.conf from TASK-20260903-004 stale hb 2026-09-04T01:30; notifying in handoff. Deletes intentionally irreversible, no retained target backups; config rollback in memory until nginx test passes. Shared governance append authorized. Live scope is exact allowlists in script; no broad prune."
+
   - id: "TASK-20260906-001"
     title: "Retail boutique storefront skin (Banimode-inspired, admin-selectable)"
     status: "in_progress"
@@ -54,21 +73,17 @@ tasks:
       - "retail-storefront-skin spec and web+api tsc pass"
   - id: "TASK-20260906-002"
     title: "50-user load assessment and Cursor remediation instructions"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "codex:load-test"
     roles:
       architect: "codex:load-test"
       implementer: "codex:load-test"
-      reviewer: "independent-review-pending"
+      reviewer: "root/review_load PASS WITH LIMITS"
       security: "read-only-production-no-business-mutations"
     branch: "ai/TASK-20260906-002-load-test"
     worktree: "D:/proje/Site-B2B-load-test"
-    file_claims:
-      - "scripts/load-assessment.py"
-      - "docs/reports/2026-09-06-load-test-results.jsonl"
-      - "docs/reports/2026-09-06-load-test.md"
-      - "docs/reports/CURSOR-50-USERS-REMEDIATION.md"
+    file_claims: []
     acceptance_criteria:
       - "Bounded staged load up to 50 virtual users; record latency/errors and resource evidence"
       - "Separate public-edge and origin HTTP results from browser and authenticated purchase coverage"
@@ -660,7 +675,7 @@ tasks:
     heartbeat_at: "2026-09-04T01:30:00Z"
     depends_on: []
     file_claims:
-      - "nginx/nginx.conf"
+      # nginx/nginx.conf transferred to TASK-20260906-004 (stale claim)
       - "apps/web/next.config.ts"
       - "apps/web/src/components/layout/Header.tsx"
       - "apps/web/src/components/layout/Footer.tsx"

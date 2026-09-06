@@ -10,6 +10,19 @@
 - گزارش معماری: `docs/reports/2026-09-06-omnichannel-bale-rubika.md`. اسپک‌های جدید: `rich-text`، `bale.adapter`، `rubika.adapter`، `provider-capabilities`؛ ۲۰ اسپک omnichannel و `tsc` api/web سبز.
 - باقی برای مالک: ساخت ربات در بله/روبیکا و گذاشتن `BALE_BOT_TOKEN` / `RUBIKA_BOT_TOKEN` روی سرور؛ تا آن موقع کارت‌ها «راه‌اندازی نشده» نشان می‌دهند.
 
+## 2026-09-06 — لینک‌های داخلی سئو: اصلاح stale-closure + تأیید E2E کامل (هر دو کانال)
+
+- **هات‌فیکس (commit `29e07ac`):** `handleSave` در `AdminProducts.tsx` به دلیل نبود `retailLinkPicks`/`wholesaleLinkPicks` در deps آرایه `useCallback`، روی نسخه stale (خالی) closure می‌بست و هنگام ذخیره آرایه خالی می‌فرستاد → backend `replaceInternalLinks` کانال را پاک می‌کرد → 0 ردیف ذخیره نمی‌شد. اضافه شدن هر دو به deps آرایه. دیپلوی و تأیید شد.
+- **تأیید E2E زنده (ادمین → DB → PDP → JSON-LD) — همه تمیز:** محصول `cotton-crop-jacket-aramis`. برای هر کانال، یک لینک از هر نوع هدف (PRODUCT/CATEGORY/BLOG/CUSTOM) اضافه و یک‌بار ذخیره شد.
+  - DB: 8 ردیف (4 RETAIL + 4 WHOLESALE، sortOrder 0–3) تأیید شد.
+  - PDP عمده (`.com`): هر 4 لینک عمده رندر شد (انکرهای «خرید عمده …»).
+  - PDP تکی (`.ir`): هر 4 لینک تکی رندر شد (انکرهای تکی).
+  - JSON-LD `ItemList` (SSR هر دو PDP): `numberOfItems:4`، 4 `ListItem` با name/url هم‌کانال؛ کاراکترهای فارسی درست (اصلاح escape از Agent B زنده تأیید شد).
+  - جداسازی کانال در 3 سطح تأیید شد: DB، رندر PDP، JSON-LD (نشتی کانال مقابل = 0).
+  - دکمه «بررسی اعتبار لینک‌ها» در هر دو picker: «4 لینک بررسی شد — همه معتبرند» (بدون 500/رد).
+- **نتیجه:** باگ اصلی گزارش‌شده (ارور ذخیره لینک بلاگ در عمده/تکی) کاملاً برطرف شد. تمام بخش‌های هر دو سکشن لینک‌های داخلی تمیز کار می‌کنند.
+- جزئیات: `docs/reports/2026-09-06-product-internal-links.md` و `.ai-dos/tasks/handoff.md` (بخش E2E VERIFIED CLEAN).
+
 ## 2026-09-06 — کنسول انتشار v2: تنظیم یک‌باره، ارسال خودکار به کانال
 
 - کنسول ادمین به ۵ مرحلهٔ راهنما تبدیل شد (ربات → کانال‌ها → قالب پست → قواعد خودکار → تست و فعال‌سازی) + تب‌های انتشارها/عملیات؛ خودش روی اولین مرحلهٔ ناقص می‌ایستد.
