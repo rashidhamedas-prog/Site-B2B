@@ -269,6 +269,13 @@ export class ProductController {
     return this.productService.incrementView(id);
   }
 
+  @Get('coming-soon')
+  @ApiOperation({ summary: 'محصول‌های به‌زودی (pre-order / COMING_SOON) — عمومی' })
+  findComingSoon(@Query('limit') limit?: string, @Query('channel') channel?: string) {
+    const lim = limit ? Math.max(1, Math.min(48, Number(limit) || 12)) : 12;
+    return this.productService.findComingSoon(lim, channel);
+  }
+
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'جزئیات محصول' })

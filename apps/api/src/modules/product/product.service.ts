@@ -1136,6 +1136,11 @@ export class ProductService {
   }
 
   async findOne(id: string, channel?: string, opts?: { allowNonActive?: boolean }) {
+    // Guard: the `:id` route is for UUIDs; a non-uuid (e.g. a slug like "coming-soon")
+    // would otherwise make Postgres throw "invalid input syntax for type uuid" → 500.
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''))) {
+      throw new NotFoundException('محصول یافت نشد');
+    }
     const product = await this.productRepo.findOne({ where: { id }, relations: ['variants'] });
     if (!product) throw new NotFoundException('محصول یافت نشد');
     if (!opts?.allowNonActive && !isPublicProductRow(product.status)) {
