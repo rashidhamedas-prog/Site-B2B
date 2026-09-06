@@ -210,7 +210,7 @@ tasks:
     # moved 2026-09-06 10:05Z: main worktree was taken by TASK-20260906-001 (wip stashed as stash@{0}, re-applied here)
     worktree: "D:/proje/Site-B2B-omni-console"
     claimed_at: "2026-09-05T10:15:00Z"
-    heartbeat_at: "2026-09-06T13:10:00Z"
+    heartbeat_at: "2026-09-06T13:40:00Z"
     depends_on: ["TASK-20260905-002"]
     file_claims:
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"

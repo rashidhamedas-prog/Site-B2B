@@ -406,7 +406,7 @@ export function AdminOmnichannel() {
         onSave={(provider) => {
           const token = tokenDrafts[provider];
           void run(`secret-save-${provider}`, async () => {
-            await apiClient.put('/omnichannel/secrets', { secretRef: defaultSecretRef(provider), token, reason });
+            await apiClient.put('/omnichannel/secrets', { secretRef: defaultSecretRef(provider), token });
             setTokenDrafts((current) => ({ ...current, [provider]: '' }));
             setTokenReveals((current) => ({ ...current, [provider]: false }));
           }, 'ذخیره توکن ناموفق', `توکن ${providerLabel(provider)} ذخیره شد و دیگر دیده نمی‌شود`);
@@ -462,7 +462,7 @@ export function AdminOmnichannel() {
         })}
       </div>
       {!selectedProviderInfo.enabled && (
-        <Callout tone="warn">{selectedProviderInfo.label} روی سرور خاموش است (OMNICHANNEL_DISABLED_PROVIDERS یا پرچم کانکتور). می‌توانید توکن را ذخیره و ربات را ثبت کنید ولی تا روشن‌شدن، تست زنده و ارسال کار نمی‌کند.</Callout>
+        <Callout tone="warn">{selectedProviderInfo.label} روی سرور خاموش است (OMNICHANNEL_DISABLED_PROVIDERS یا پرچم کانکتور). ذخیره توکن همچنان getMe می‌زند؛ ارسال تا روشن‌شدن کار نمی‌کند.</Callout>
       )}
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
         <div>
@@ -535,7 +535,7 @@ export function AdminOmnichannel() {
                   onClick={() => {
                     const token = customToken;
                     void run('secret-save-custom', async () => {
-                      await apiClient.put('/omnichannel/secrets', { secretRef, token, reason });
+                      await apiClient.put('/omnichannel/secrets', { secretRef, token });
                       setCustomToken('');
                       setCustomReveal(false);
                     }, 'ذخیره توکن ناموفق', `توکن ${secretRef} ذخیره شد و دیگر دیده نمی‌شود`);

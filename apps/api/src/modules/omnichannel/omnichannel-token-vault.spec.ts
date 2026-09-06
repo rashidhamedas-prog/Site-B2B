@@ -8,6 +8,7 @@ import {
   decryptToken,
   deriveVaultKey,
   encryptToken,
+  isProductionLike,
   parseStoredVault,
   peekVaultToken,
   providerFromSecretRef,
@@ -23,14 +24,41 @@ function assert(cond: boolean, msg: string) {
 }
 
 const prevJwt = process.env.JWT_SECRET;
+const prevVaultKey = process.env.OMNICHANNEL_VAULT_KEY;
+const prevNode = process.env.NODE_ENV;
+const prevApp = process.env.APP_ENV;
+delete process.env.OMNICHANNEL_VAULT_KEY;
+delete process.env.APP_ENV;
+process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'vault-spec-jwt-secret-value';
+
+assert(isProductionLike({ NODE_ENV: 'production' }) === true, 'prod is production-like');
+assert(isProductionLike({ NODE_ENV: 'test' }) === false, 'test is not production-like');
+let prodMissing = false;
+try {
+  deriveVaultKey({ NODE_ENV: 'production', JWT_SECRET: 'vault-spec-jwt-secret-value-32ch' });
+} catch (err) {
+  prodMissing = err instanceof Error && err.message === 'vault_key_missing';
+}
+assert(prodMissing, 'production refuses JWT as vault KEK');
+const dedicated = deriveVaultKey({ NODE_ENV: 'production', OMNICHANNEL_VAULT_KEY: 'omnichannel-vault-key-32-chars-min' });
+assert(Buffer.isBuffer(dedicated) && dedicated.length === 32, 'production accepts dedicated key');
 
 const key = deriveVaultKey();
 const token = '123456:AA-test-token-not-real-XXXX';
-const cipher = encryptToken(token, key);
+const cipher = encryptToken(token, key, 'TELEGRAM_BOT_TOKEN');
 assert(cipher.alg === 'aes-256-gcm' && Boolean(cipher.iv && cipher.tag && cipher.ct), 'cipher fields');
 assert(!JSON.stringify(cipher).includes(token), 'ciphertext never contains plaintext');
-assert(decryptToken(cipher, key) === token, 'round-trip');
+assert(decryptToken(cipher, key, 'TELEGRAM_BOT_TOKEN') === token, 'round-trip with AAD');
+let swapped = false;
+try {
+  decryptToken(cipher, key, 'BALE_BOT_TOKEN');
+} catch {
+  swapped = true;
+}
+assert(swapped, 'AAD mismatch fails closed');
+const legacy = encryptToken(token, key);
+assert(decryptToken(legacy, key, 'TELEGRAM_BOT_TOKEN') === token, 'legacy ciphertext still opens');
 
 let bad = false;
 try {
@@ -102,10 +130,31 @@ try {
   leak = true;
 }
 assert(leak, 'ciphertext fields refused in public payload');
+let tokenKeyLeak = false;
+try {
+  assertNoVaultLeak({ token });
+} catch {
+  tokenKeyLeak = true;
+}
+assert(tokenKeyLeak, 'token field refused in public payload');
+setVaultOverlayEntry('TELEGRAM_BOT_TOKEN', token);
+let overlayLeak = false;
+try {
+  assertNoVaultLeak({ note: `saved ${token}` });
+} catch {
+  overlayLeak = true;
+}
+assert(overlayLeak, 'overlay plaintext refused in public payload');
 
 setVaultOverlayEntry('TELEGRAM_BOT_TOKEN', null);
 assert(peekVaultToken('TELEGRAM_BOT_TOKEN') === null, 'clear overlay');
 if (prevJwt === undefined) delete process.env.JWT_SECRET;
 else process.env.JWT_SECRET = prevJwt;
+if (prevVaultKey === undefined) delete process.env.OMNICHANNEL_VAULT_KEY;
+else process.env.OMNICHANNEL_VAULT_KEY = prevVaultKey;
+if (prevNode === undefined) delete process.env.NODE_ENV;
+else process.env.NODE_ENV = prevNode;
+if (prevApp === undefined) delete process.env.APP_ENV;
+else process.env.APP_ENV = prevApp;
 
 console.log('omnichannel-token-vault.spec.ts: ok');

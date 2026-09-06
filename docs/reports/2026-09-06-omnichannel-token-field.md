@@ -90,15 +90,23 @@ All three stay behind JWT + ADMIN + `OmnichannelAdminGuard`.
 
 Idempotency: replacing a token rotates the ciphertext. Rate limit: 8 writes / 10 minutes / actor.
 
-If the provider is enabled, `getMe` runs **before** persist. A rejected token is not stored.
+`probeCredential` (`getMe`) always runs **before** persist, including when the provider send-gate is off. A rejected token is not stored. Secret PUT does not send `reason` (audits stay null).
 
 ## Security
 
+Revision 2026-09-06 13:40Z — independent review PASS WITH CONDITIONS; Medium remediations:
+
+- Production/staging require `OMNICHANNEL_VAULT_KEY` (≥32). JWT is a local/dev wrap only; rotating JWT does not rotate the vault KEK.
+- Persist uses in-process serialize + `SELECT FOR UPDATE` on `omnichannel.secret.vault`.
+- Missing wrap key clears the overlay (worker cannot keep a deleted token forever).
+- GCM AAD binds `secretRef`. Legacy ciphertext still opens without AAD.
+- `assertNoVaultLeak` also rejects `"token"` keys, Telegram-shaped strings, and overlay values.
+- DELETE shares the 8/10 min write cap. Settings `getAll()` exclude left to TASK-20260906-001 (file still claimed).
+
 - General CRUD still runs `assertNoPlaintextSecrets` (field name `token` is forbidden there).
 - Dedicated endpoint accepts `token` only; sibling fields are still scanned.
-- AES-256-GCM; key = scrypt(`OMNICHANNEL_VAULT_KEY` or `JWT_SECRET`, salt `omnichannel-secret-vault-v1`).
-- Audit payload: `secretRef`, `fingerprint`, `rotated` — no ciphertext, no token.
-- `assertNoVaultLeak` refuses `ct` / `iv` / `tag` on public payloads.
+- AES-256-GCM; wrap key = scrypt(`OMNICHANNEL_VAULT_KEY`, salt `omnichannel-secret-vault-v1`).
+- Audit payload: `secretRef`, `fingerprint`, `rotated`, `liveCheck` — no ciphertext, no token, no reason.
 - Worker and API never copy vault tokens into `process.env`.
 - Settings `GROUPS` allowlist cannot read this key.
 

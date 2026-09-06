@@ -30,6 +30,8 @@ export type DiscoveredChat = {
 export interface ChannelAdapter {
   readonly provider: string;
   validateConnection(secretRef: string): Promise<{ ok: boolean; error?: string }>;
+  /** getMe only — used before vault persist. Does not honour the send gate. */
+  probeCredential(secretRef: string): Promise<{ ok: boolean; error?: string }>;
   inspectDestination(secretRef: string, chatId: string): Promise<DestinationInspection>;
   discoverChats(secretRef: string): Promise<{ ok: boolean; error?: string; chats: DiscoveredChat[] }>;
   preview(input: Record<string, unknown>): Promise<Record<string, unknown>>;

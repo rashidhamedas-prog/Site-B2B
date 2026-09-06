@@ -232,6 +232,10 @@ export class TelegramAdapter implements ChannelAdapter {
 
   async validateConnection(secretRef: string): Promise<{ ok: boolean; error?: string }> {
     this.assertEnabled();
+    return this.probeCredential(secretRef);
+  }
+
+  async probeCredential(secretRef: string): Promise<{ ok: boolean; error?: string }> {
     const token = resolveTelegramToken(secretRef);
     if (!token) return { ok: false, error: 'invalid_credential' };
     try {

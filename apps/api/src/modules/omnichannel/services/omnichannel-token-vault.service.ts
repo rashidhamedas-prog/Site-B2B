@@ -25,6 +25,7 @@ import {
 export class OmnichannelTokenVaultService implements OnModuleInit {
   private readonly logger = new Logger(OmnichannelTokenVaultService.name);
   private lastHydratedAt = 0;
+  private writeChain: Promise<unknown> = Promise.resolve();
 
   constructor(
     @InjectRepository(AppSettingEntity)
@@ -40,7 +41,9 @@ export class OmnichannelTokenVaultService implements OnModuleInit {
     try {
       key = deriveVaultKey();
     } catch {
-      this.logger.warn('omnichannel vault key missing; admin-saved tokens stay unread until JWT_SECRET or OMNICHANNEL_VAULT_KEY is set');
+      this.logger.warn('omnichannel vault key missing; overlay cleared until OMNICHANNEL_VAULT_KEY is set');
+      applyVaultOverlay({});
+      this.lastHydratedAt = 0;
       return;
     }
     const row = await this.appSettings.findOne({ where: { key: OMNICHANNEL_VAULT_SETTING_KEY } });
@@ -49,7 +52,7 @@ export class OmnichannelTokenVaultService implements OnModuleInit {
     const meta: Record<string, VaultEntryPublic> = {};
     for (const [name, entry] of Object.entries(stored.entries)) {
       try {
-        const token = decryptToken(entry, key);
+        const token = decryptToken(entry, key, name);
         plain[name] = token;
         meta[name] = { fingerprint: entry.fingerprint || tokenFingerprint(token), updatedAt: entry.updatedAt };
       } catch {
@@ -62,29 +65,29 @@ export class OmnichannelTokenVaultService implements OnModuleInit {
 
   /** Worker re-reads at most every 15s so a token saved in the API process reaches this process. */
   async refreshIfStale(maxAgeMs = 15_000): Promise<void> {
-    if (Date.now() - this.lastHydratedAt < maxAgeMs) return;
+    if (this.lastHydratedAt && Date.now() - this.lastHydratedAt < maxAgeMs) return;
     await this.hydrate();
   }
 
   async put(secretRef: string, token: string): Promise<SecretStatus> {
     const key = deriveVaultKey();
-    const stored = await this.loadStored();
     const updatedAt = new Date().toISOString();
     const entry: StoredVaultEntry = {
-      ...encryptToken(token, key),
+      ...encryptToken(token, key, secretRef),
       fingerprint: tokenFingerprint(token),
       updatedAt,
     };
-    stored.entries[secretRef] = entry;
-    await this.persist(stored);
+    await this.mutate((stored) => {
+      stored.entries[secretRef] = entry;
+    });
     setVaultOverlayEntry(secretRef, token, { fingerprint: entry.fingerprint, updatedAt });
     return publicSecretStatus(secretRef);
   }
 
   async clear(secretRef: string): Promise<SecretStatus> {
-    const stored = await this.loadStored();
-    delete stored.entries[secretRef];
-    await this.persist(stored);
+    await this.mutate((stored) => {
+      delete stored.entries[secretRef];
+    });
     setVaultOverlayEntry(secretRef, null);
     return publicSecretStatus(secretRef);
   }
@@ -102,14 +105,31 @@ export class OmnichannelTokenVaultService implements OnModuleInit {
       .map((secretRef) => publicSecretStatus(secretRef));
   }
 
-  private async loadStored(): Promise<StoredVault> {
-    const row = await this.appSettings.findOne({ where: { key: OMNICHANNEL_VAULT_SETTING_KEY } });
-    return parseStoredVault(row?.value);
+  private serialize<T>(fn: () => Promise<T>): Promise<T> {
+    const run = this.writeChain.then(fn, fn);
+    this.writeChain = run.then(() => undefined, () => undefined);
+    return run;
   }
 
-  private async persist(stored: StoredVault): Promise<void> {
-    await this.appSettings.save(
-      this.appSettings.create({ key: OMNICHANNEL_VAULT_SETTING_KEY, value: stored }),
+  /** One row, one writer: in-process queue + SELECT FOR UPDATE. */
+  private mutate(apply: (stored: StoredVault) => void): Promise<void> {
+    return this.serialize(() =>
+      this.appSettings.manager.transaction(async (em) => {
+        const repo = em.getRepository(AppSettingEntity);
+        const row = await repo
+          .createQueryBuilder('s')
+          .setLock('pessimistic_write')
+          .where('s.key = :key', { key: OMNICHANNEL_VAULT_SETTING_KEY })
+          .getOne();
+        const stored = parseStoredVault(row?.value);
+        apply(stored);
+        if (row) {
+          row.value = stored;
+          await repo.save(row);
+          return;
+        }
+        await repo.save(repo.create({ key: OMNICHANNEL_VAULT_SETTING_KEY, value: stored }));
+      }),
     );
   }
 }

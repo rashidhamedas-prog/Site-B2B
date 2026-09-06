@@ -127,7 +127,12 @@ assert(!rubika.includes('sendMediaGroup') && !rubika.includes('button_link'), 'R
 assert(secrets.includes('TELEGRAM|BALE|RUBIKA'), 'secretRef allowlist');
 {
   const vault = src('modules/omnichannel/omnichannel-token-vault.ts');
+  const vaultSvc = src('modules/omnichannel/services/omnichannel-token-vault.service.ts');
   assert(vault.includes('aes-256-gcm') && vault.includes('omnichannel.secret.vault'), 'tokens encrypted in dedicated vault key');
+  assert(vault.includes('isProductionLike') && vault.includes('vault_key_missing'), 'production requires OMNICHANNEL_VAULT_KEY');
+  assert(vault.includes('setAAD'), 'GCM binds secretRef as AAD');
+  assert(vaultSvc.includes('pessimistic_write') && vaultSvc.includes('applyVaultOverlay({})'), 'vault persist locks; missing key clears overlay');
+  assert(omniSvc.includes('probeCredential') && !omniSvc.includes('if (isOmnichannelProviderEnabled(provider))'), 'getMe before persist even when provider gated');
   assert(omniAdmin.includes("Put('secrets')") && omniAdmin.includes('putSecret'), 'write-only token endpoint');
   assert(omniSvc.includes('assertNoVaultLeak') && omniSvc.includes('secret_put'), 'save path audits without ciphertext');
   assert(adminOmni.includes('type={reveal ? \'text\' : \'password\'}') || adminOmni.includes('WriteOnlySecretField'), 'admin token field is write-only');

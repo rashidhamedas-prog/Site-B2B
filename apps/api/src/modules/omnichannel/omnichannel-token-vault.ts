@@ -41,22 +41,30 @@ export type SecretStatus = {
 const overlay = new Map<string, string>();
 const overlayMeta = new Map<string, VaultEntryPublic>();
 
+export function isProductionLike(env: NodeJS.ProcessEnv = process.env): boolean {
+  const node = String(env.NODE_ENV || '').toLowerCase();
+  const app = String(env.APP_ENV || '').toLowerCase();
+  return node === 'production' || app === 'production' || app === 'staging';
+}
+
+/** Production/staging require a dedicated KEK. JWT fallback is local/dev only. */
 export function deriveVaultKey(env: NodeJS.ProcessEnv = process.env): Buffer {
   const explicit = String(env.OMNICHANNEL_VAULT_KEY || '').trim();
-  const material = explicit.length >= 32 ? explicit : String(env.JWT_SECRET || '').trim();
-  if (material.length < 16) {
-    throw new Error('vault_key_missing');
-  }
-  return scryptSync(material, VAULT_SALT, 32);
+  if (explicit.length >= 32) return scryptSync(explicit, VAULT_SALT, 32);
+  if (isProductionLike(env)) throw new Error('vault_key_missing');
+  const jwt = String(env.JWT_SECRET || '').trim();
+  if (jwt.length < 16) throw new Error('vault_key_missing');
+  return scryptSync(jwt, VAULT_SALT, 32);
 }
 
 export function tokenFingerprint(token: string): string {
   return createHash('sha256').update(token, 'utf8').digest('hex').slice(0, 8);
 }
 
-export function encryptToken(plaintext: string, key: Buffer): VaultCipher {
+export function encryptToken(plaintext: string, key: Buffer, aad = ''): VaultCipher {
   const iv = randomBytes(12);
   const cipher = createCipheriv(VAULT_ALG, key, iv, { authTagLength: 16 });
+  if (aad) cipher.setAAD(Buffer.from(aad, 'utf8'));
   const ct = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   return {
     alg: VAULT_ALG,
@@ -66,18 +74,28 @@ export function encryptToken(plaintext: string, key: Buffer): VaultCipher {
   };
 }
 
-export function decryptToken(row: VaultCipher, key: Buffer): string {
+function openToken(row: VaultCipher, key: Buffer, aad: string): string {
+  const decipher = createDecipheriv(VAULT_ALG, key, Buffer.from(row.iv, 'base64'), { authTagLength: 16 });
+  if (aad) decipher.setAAD(Buffer.from(aad, 'utf8'));
+  decipher.setAuthTag(Buffer.from(row.tag, 'base64'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(row.ct, 'base64')),
+    decipher.final(),
+  ]).toString('utf8');
+}
+
+export function decryptToken(row: VaultCipher, key: Buffer, aad = ''): string {
   if (!row || row.alg !== VAULT_ALG || !row.iv || !row.tag || !row.ct) {
     throw new Error('vault_corrupt');
   }
   const tag = Buffer.from(row.tag, 'base64');
   if (tag.length !== 16) throw new Error('vault_corrupt');
-  const decipher = createDecipheriv(VAULT_ALG, key, Buffer.from(row.iv, 'base64'), { authTagLength: 16 });
-  decipher.setAuthTag(tag);
-  return Buffer.concat([
-    decipher.update(Buffer.from(row.ct, 'base64')),
-    decipher.final(),
-  ]).toString('utf8');
+  try {
+    return openToken(row, key, aad);
+  } catch {
+    if (!aad) throw new Error('vault_corrupt');
+    return openToken(row, key, '');
+  }
 }
 
 export function assertTokenShape(provider: string, token: string): void {
@@ -193,7 +211,10 @@ export function envProviderRefs(env: NodeJS.ProcessEnv = process.env): string[] 
 export function assertNoVaultLeak(payload: unknown): void {
   const text = JSON.stringify(payload);
   if (!text) return;
-  if (text.includes('"ct"') || text.includes('"iv"') || text.includes('"tag"')) {
+  if (/"ct"|"iv"|"tag"/.test(text) || /"token"\s*:/.test(text) || TELEGRAM_LIKE.test(text)) {
     throw new Error('vault_payload_leak');
+  }
+  for (const value of overlay.values()) {
+    if (value && text.includes(value)) throw new Error('vault_payload_leak');
   }
 }

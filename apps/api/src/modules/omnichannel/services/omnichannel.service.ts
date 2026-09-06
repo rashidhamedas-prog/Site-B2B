@@ -205,12 +205,15 @@ export class OmnichannelService {
 
   async putSecret(dto: PutSecretDto, actor?: Actor) {
     const who = this.requireActor(actor);
-    assertNoPlaintextSecrets({ secretRef: dto.secretRef, reason: dto.reason });
+    assertNoPlaintextSecrets({ secretRef: dto.secretRef });
     assertSecretWriteRate(who.id);
     const secretRef = String(dto.secretRef || '').trim();
     const provider = providerFromSecretRef(secretRef);
     if (!provider) throw new BadRequestException('secretRef باید نام env پیام‌رسان باشد');
     const token = String(dto.token || '');
+    if (dto.reason && (dto.reason === token || dto.reason.includes(token))) {
+      throw new BadRequestException('دلیل نباید شامل توکن باشد');
+    }
     try {
       assertTokenShape(provider, token);
     } catch (err) {
@@ -221,29 +224,29 @@ export class OmnichannelService {
     setVaultOverlayEntry(secretRef, token);
     let saved = false;
     try {
-      if (isOmnichannelProviderEnabled(provider)) {
-        const result = await this.adapters.for(provider).validateConnection(secretRef);
-        if (!result.ok) {
-          throw new BadRequestException(
-            result.error === 'invalid_credential'
-              ? 'پیام‌رسان این توکن را رد کرد'
-              : 'تست توکن ناموفق بود؛ ذخیره نشد',
-          );
-        }
+      const result = await this.adapters.for(provider).probeCredential(secretRef);
+      if (!result.ok) {
+        throw new BadRequestException(
+          result.error === 'invalid_credential'
+            ? 'پیام‌رسان این توکن را رد کرد'
+            : 'تست توکن ناموفق بود؛ ذخیره نشد',
+        );
       }
       const status = await this.tokenVault.put(secretRef, token);
       saved = true;
       assertNoVaultLeak(status);
-      await this.audit(who, 'secret_put', 'SECRET', secretRef, null, dto.reason || null, {
+      await this.audit(who, 'secret_put', 'SECRET', secretRef, null, null, {
         provider,
         secretRef,
         source: status.source,
         fingerprint: status.fingerprint,
         rotated: Boolean(previous),
+        liveCheck: 'getMe',
       });
       return status;
     } catch (err) {
       if (!saved) setVaultOverlayEntry(secretRef, previous, previousMeta);
+      if (err instanceof Error && err.message === 'vault_key_missing') tokenInputError('vault_key_missing');
       throw err;
     }
   }
@@ -252,6 +255,7 @@ export class OmnichannelService {
     const who = this.requireActor(actor);
     const name = String(secretRef || '').trim();
     assertNoPlaintextSecrets({ secretRef: name });
+    assertSecretWriteRate(who.id);
     if (!providerFromSecretRef(name)) throw new BadRequestException('secretRef نامعتبر است');
     const hadVault = Boolean(peekVaultToken(name));
     const status = await this.tokenVault.clear(name);

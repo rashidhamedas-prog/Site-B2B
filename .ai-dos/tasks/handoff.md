@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T13:40:00Z — TASK-20260905-003 vault security remediations
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Independent [Omnichannel token security](5048d1d3-4c9d-405f-b634-3a5f0dca0e64) **PASS WITH CONDITIONS**. Implementing the four Medium items (+ cheap Lows) in the same worktree.
+- CODE: prod `OMNICHANNEL_VAULT_KEY` required; persist `pessimistic_write`; `probeCredential` getMe always before save; hydrate clears overlay if key missing; GCM AAD=`secretRef`; leak detector covers token/overlay; DELETE rate-limited; secret PUT no longer sends `reason`.
+- Skipped: `settings.service.ts` getAll exclude — still claimed by TASK-20260906-001 (hb today). Process-local rate limit accepted until API is replicated.
+- Exact next: specs/tsc, commit, set `OMNICHANNEL_VAULT_KEY` on VPS without echoing, deploy. Do not Done TASK-20260826-001.
+
 ## 2026-09-06T13:35:00Z — TASK-20260905-003 three token cards LIVE
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

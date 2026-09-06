@@ -641,7 +641,7 @@ export function ProviderTokenVault({
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-gray-900">توکن هر پیام‌رسان</h3>
       <Callout tone="info">
-        برای هر پیام‌رسان یک کادر جدا هست. توکن را بچسبانید و ذخیره کنید؛ بعد از ذخیره کادر خالی می‌شود، مقدار روی سرور رمز می‌شود و هیچ‌وقت از API برنمی‌گردد. فقط اثر انگشت ۸ حرفی برای تشخیص ذخیره دیده می‌شود.
+        برای هر پیام‌رسان یک کادر جدا هست. قبل از ذخیره، سرور با getMe توکن را می‌آزماید. بعد از ذخیره کادر خالی می‌شود، مقدار رمز می‌شود و از API برنمی‌گردد. فقط اثر انگشت ۸ حرفی دیده می‌شود.
       </Callout>
       <div className="grid gap-3 md:grid-cols-3">
         {providers.map((info) => {
@@ -703,7 +703,7 @@ export function ProviderTokenVault({
                 )}
               </div>
               {!info.enabled && (
-                <p className="text-[11px] text-amber-800 leading-5">روی سرور خاموش است؛ ذخیره می‌شود ولی تست زنده تا روشن‌شدن کار نمی‌کند.</p>
+                <p className="text-[11px] text-amber-800 leading-5">روی سرور خاموش است؛ ذخیره فقط بعد از getMe موفق است و ارسال تا روشن‌شدن کار نمی‌کند.</p>
               )}
             </div>
           );
