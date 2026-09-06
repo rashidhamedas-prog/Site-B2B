@@ -4,7 +4,7 @@ import {
   applyWholesaleHeroAssetChanges,
   planWholesaleHeroAssetSwaps,
   swapWholesaleHeroAssetUrls,
-} from './20260906-004-wholesale-hero-cache-bust';
+} from '../wholesale-hero-cache-bust.util';
 
 const forward = {
   fromImageUrl: WHOLESALE_HERO_ASSET_URLS.oldImageUrl,

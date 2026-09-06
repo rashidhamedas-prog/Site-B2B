@@ -36,7 +36,8 @@ RUN printf '%s\n' '{"extends":"./tsconfig.json","exclude":["node_modules","dist"
  && find dist/apps/api/src/database/migrations dist/database/migrations -maxdepth 1 -type f -name '*.js' ! -name '*.spec.js' -exec cp {} dist/apps/api/src/database/migrations/ \; \
  && test -f dist/apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.js \
  && test -f dist/database/migrations/20260906-004-wholesale-hero-cache-bust.js \
- && { test -f dist/apps/api/src/jobs/backfill-product-images.js || test -f dist/jobs/backfill-product-images.js; }
+ && { test -f dist/apps/api/src/jobs/backfill-product-images.js || test -f dist/jobs/backfill-product-images.js; } \
+ && node -e "const m=require('./dist/apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.js'); const keys=Object.keys(m); if(keys.length!==1 || keys[0]!=='WholesaleHeroCacheBust1757151000004') { console.error(keys); process.exit(1); }"
 
 # Production runner
 FROM base AS runner
