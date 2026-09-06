@@ -666,16 +666,35 @@ async function runBackfill(
     async (group) => {
       try {
         const stat = await client.statObject(bucket, group.key);
-        return { group, size: Number(stat.size), error: null as string | null };
+        return {
+          group,
+          size: Number(stat.size),
+          error: null as string | null,
+          missing: false,
+        };
       } catch (error) {
-        return { group, size: 0, error: safeErrorMessage(error) };
+        if (isMissingObjectError(error)) {
+          return { group, size: 0, error: null as string | null, missing: true };
+        }
+        return {
+          group,
+          size: 0,
+          error: safeErrorMessage(error),
+          missing: false,
+        };
       }
     }
   );
 
   const eligible: Array<SourceGroup & { size: number }> = [];
   for (const row of inspected) {
-    if (row.error) {
+    if (row.missing) {
+      skipped.push({
+        url: row.group.url,
+        key: row.group.key,
+        reason: 'source-missing',
+      });
+    } else if (row.error) {
       errors.push({ url: row.group.url, message: row.error });
     } else if (row.size <= options.thresholdBytes) {
       skipped.push({
@@ -755,6 +774,15 @@ async function runBackfill(
         references: row.references,
       } satisfies BackfillReplacement;
     } catch (error) {
+      if (isMissingObjectError(error)) {
+        skipped.push({
+          url: row.url,
+          key: row.key,
+          size: row.size,
+          reason: 'source-missing',
+        });
+        return null;
+      }
       errors.push({ url: row.url, message: safeErrorMessage(error) });
       return null;
     }
