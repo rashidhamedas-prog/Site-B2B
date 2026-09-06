@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-06 — **TASK-20260903-004** mobile-speed root-fix **LIVE** `ca1bdd8`: sharp 0.33.5, hashed wholesale hero, `.ir` CF static-only, GSC INP/LCP Validation Started, backfill 169 images / 441 refs applied (1 unprocessable skipped). Lab medians recorded; no 28-day field CWV claim. Connectors off.
+- Last verified: 2026-09-06 — **TASK-20260903-004 CLOSED** on `origin/master` + VPS `15360d5` (runtime `ca1bdd8`). Claims released. Sharp 0.33.5; `.ir` CF static-only; GSC INP/LCP Validation Started; backfill 169 images / 441 refs. No 28-day field CWV claim. Connectors off.
 - Last verified: 2026-09-06 — **TASK-20260905-003** remediating vault Medium findings from independent security (dedicated KEK, row lock, getMe-always, overlay clear). Token cards already LIVE `a88672b`. TASK-20260826-001 still **NOT DONE**.
 - 2026-09-06 TASK-20260903-004: live API restored after `8cd0a63` crash-loop. `require('sharp')` now works (`0.33.5` / vips `8.15.3`). Hero migration JS is temporarily removed from the running image because TypeORM rejected extra helper exports. Class-only split is next to ship. Do not claim 28-day field CWV recovery.
 - Last verified: 2026-09-06 — **TASK-20260905-003** Bale + Rubika settings on `ai/TASK-20260905-003-omni-admin-console` (worktree `D:/proje/Site-B2B-omni-console`): official docs.bale.ai + rubika.ir/botapi read; adapters + admin cards + discover-chats + Rubika test-post. api+web tsc 0; 11 omnichannel specs ok. Not live until merge/deploy. Tokens still owner-only. TASK-20260826-001 still **NOT DONE**.

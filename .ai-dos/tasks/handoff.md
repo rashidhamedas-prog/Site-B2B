@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T21:45:00Z — TASK-20260903-004 CLOSED on master
+
+- Owner closed after owner request to commit/merge/push/close.
+- Git: `ai/TASK-20260903-004-gsc-mobile-speed-v2` == `origin/master` == VPS `/opt/taranom` at `15360d5`. Fast-forward only; no extra merge commit. Health 200.
+- Runtime already live from `ca1bdd8`; docs closeout is `15360d5`. File claims released. Task status `done`.
+- Do not claim 28-day field CWV recovery. Do not enable connectors.
+
 ## 2026-09-06T14:30:00Z — TASK-20260903-004 mobile-speed closeout LIVE `ca1bdd8`
 
 - Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` at `D:/proje/Site-B2B-gsc-speed`.
