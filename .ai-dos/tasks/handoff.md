@@ -19,7 +19,8 @@ Append newest entries at the top. Never erase another agent's record.
 - Dockerfile now uses `tsc` (not `nest build`), copies migration JS to both TypeORM candidate dirs, fails the image if the hero migration or backfill job is missing, sets `NODE_PATH`, copies `sharp`/`@img`, and fails the image unless `require('sharp')` loads with vips.
 - Stale review subagents that hit usage limits do not reopen the already-closed HIGH items from 17bf1d52; later reviewer/security were PASS WITH CONDITIONS. Image-pipeline specs printed `ok` (56949 wrapper exit was noisy); full API `npm test` (56950) succeeded.
 - Exact next: commit/push this Dockerfile, force VPS rebuild, confirm `require('sharp')`, confirm migration row `WholesaleHeroCacheBust1757151000004`, confirm hashed wholesale hero URLs, then staged backfill. Do not start Cloudflare/GSC until those pass.
-- 2026-09-06T12:55Z first rebuild of `a0bd856` failed: builder `tsc` could not resolve `typeof import('sharp')` because workspace `apps/api/node_modules` was not copied into the builder. Follow-up copies that tree before tsc. Live containers stayed on `9cadd9d`.
+- 2026-09-06T12:55Z first rebuild of `a0bd856` failed: builder `tsc` could not resolve `typeof import('sharp')` because workspace `apps/api/node_modules` was not copied into the builder. Follow-up copies that tree before tsc.
+- 2026-09-06T13:03Z `8cd0a63` brought API down: TypeORM loads every export in a migration file, and `20260906-004` exported helper functions/consts. Helpers moved to `apps/api/src/database/wholesale-hero-cache-bust.util.ts`. Emergency image `taranom-api:hotfix-no004` removes that JS until the class-only file ships. `require('sharp')` now resolves (`0.33.5` / vips `8.15.3`).
 
 ## 2026-09-06T12:45:00Z — TASK-20260903-004 review fixes before deploy
 

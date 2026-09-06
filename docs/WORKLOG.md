@@ -11,6 +11,7 @@
 ## 2026-09-06 — رفع ریشه‌ای سرعت موبایل تک و عمده
 
 - هات‌فیکس ایمیج API: `nest build` فایل migration هیرو را emit نکرد و `require('sharp')` از `/app` هنوز fail بود؛ بیلد حالا با tsc کامل و smokeی Sharp fail-closed است.
+- `8cd0a63` API را به خاطر exportهای کمکی داخل فایل TypeORM خواباند؛ helperها به فایل جدا منتقل شدند و سایت با ایمیج اضطراری بدون آن JS برگشت. Sharp در کانتینر زنده `0.33.5` است.
 - فونت مشترک به یک Vazirmatn variable (~48KB) رسید؛ GTM بعد از load/تعامل می‌آید؛ هیروی عمده URL هش‌دار گرفت.
 - کاتالوگ بدون فیلتر بعد از hydration دوباره mount نمی‌شود؛ فقط کارت اول priority دارد.
 - Backfill تصاویر dry-run/apply/rollback است، اصل فایل را پاک نمی‌کند و رویداد انتشار نمی‌سازد.

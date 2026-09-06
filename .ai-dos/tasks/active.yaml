@@ -668,7 +668,7 @@ tasks:
     branch: "ai/TASK-20260903-004-gsc-mobile-speed-v2"
     worktree: "D:/proje/Site-B2B-gsc-speed"
     claimed_at: "2026-09-03T12:50:00Z"
-    heartbeat_at: "2026-09-06T12:55:00Z"
+    heartbeat_at: "2026-09-06T13:12:00Z"
     depends_on: []
     file_claims:
       - "apps/api/Dockerfile"
@@ -678,6 +678,7 @@ tasks:
       - "apps/api/src/jobs/backfill-product-images.spec.ts"
       - "apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.ts"
       - "apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.spec.ts"
+      - "apps/api/src/database/wholesale-hero-cache-bust.util.ts"
       - "apps/web/src/lib/server-api.ts"
       - "apps/web/src/lib/catalog-performance.ts"
       - "apps/web/src/lib/catalog-performance.spec.ts"
