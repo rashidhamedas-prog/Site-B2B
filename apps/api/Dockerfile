@@ -19,18 +19,23 @@ COPY package.json turbo.json tsconfig.base.json ./
 WORKDIR /app/packages/shared-types
 RUN npx tsc -p tsconfig.json
 WORKDIR /app/apps/api
-# Clean tsc (no nest-cli) emits dist/apps/api/src/main.js. Keep dist/main
-# so compose/CMD and the worker entry stay stable.
-RUN npm run build \
-  && if [ -f dist/apps/api/src/main.js ]; then \
-       printf '%s\n' "require('./apps/api/src/main');" > dist/main.js; \
-     fi \
-  && if [ -f dist/apps/api/src/worker.main.js ]; then \
-       printf '%s\n' "require('./apps/api/src/worker.main');" > dist/worker.main.js; \
-     fi \
-  && mkdir -p dist/database/migrations \
-  && find dist/apps/api/src/database/migrations -maxdepth 1 -type f -name '*.js' ! -name '*.spec.js' -exec cp {} dist/database/migrations/ \; \
-  && find dist/database/migrations -maxdepth 1 -type f -name '*.spec.js' -delete
+# nest build can omit newly added jobs/migrations. tsc emits the full tree.
+# Keep dist/main so compose CMD ["node", "dist/main"] and the worker stay stable.
+RUN printf '%s\n' '{"extends":"./tsconfig.json","exclude":["node_modules","dist","**/*spec.ts"]}' > tsconfig.docker.json \
+ && npx tsc -p tsconfig.docker.json \
+ && if [ -f dist/apps/api/src/main.js ]; then \
+      printf '%s\n' "require('./apps/api/src/main');" > dist/main.js; \
+    fi \
+ && if [ -f dist/apps/api/src/worker.main.js ]; then \
+      printf '%s\n' "require('./apps/api/src/worker.main');" > dist/worker.main.js; \
+    fi \
+ && if [ ! -f dist/main.js ]; then echo 'tsc did not emit dist/main.js' >&2; exit 1; fi \
+ && mkdir -p dist/database/migrations dist/apps/api/src/database/migrations \
+ && find dist/apps/api/src/database/migrations dist/database/migrations -maxdepth 1 -type f -name '*.js' ! -name '*.spec.js' -exec cp {} dist/database/migrations/ \; \
+ && find dist/apps/api/src/database/migrations dist/database/migrations -maxdepth 1 -type f -name '*.js' ! -name '*.spec.js' -exec cp {} dist/apps/api/src/database/migrations/ \; \
+ && test -f dist/apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.js \
+ && test -f dist/database/migrations/20260906-004-wholesale-hero-cache-bust.js \
+ && { test -f dist/apps/api/src/jobs/backfill-product-images.js || test -f dist/jobs/backfill-product-images.js; }
 
 # Production runner
 FROM base AS runner
@@ -47,6 +52,18 @@ COPY --from=deps --chown=taranom:taranom /app/apps/api/node_modules/ ./node_modu
 COPY --from=deps --chown=taranom:taranom /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder --chown=taranom:taranom /app/packages/shared-types ./packages/shared-types
 COPY --chown=taranom:taranom apps/api/package.json ./
+# COPY merge can leave sharp as a dangling workspace symlink. Copy the
+# workspace-local native tree and fail the image if require('sharp') cannot load.
+ENV NODE_PATH=/app/apps/api/node_modules
+RUN mkdir -p /app/node_modules /app/node_modules/@img \
+ && if [ -e /app/apps/api/node_modules/sharp ]; then \
+      rm -rf /app/node_modules/sharp; \
+      cp -a /app/apps/api/node_modules/sharp /app/node_modules/sharp; \
+    fi \
+ && if [ -d /app/apps/api/node_modules/@img ]; then \
+      cp -a /app/apps/api/node_modules/@img/. /app/node_modules/@img/; \
+    fi \
+ && node -e "const s=require('sharp'); if(!s.versions.sharp || !s.versions.vips) process.exit(1); console.log('sharp-ok', require.resolve('sharp'), s.versions);"
 
 USER taranom
 EXPOSE 4000

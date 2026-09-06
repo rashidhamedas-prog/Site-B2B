@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T12:55:00Z — TASK-20260903-004 API image hotfix (sharp + hero migration emit)
+
+- Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` on `ai/TASK-20260903-004-gsc-mobile-speed-v2` at `D:/proje/Site-B2B-gsc-speed`.
+- Live `9cadd9d` health is 200, but two production gates failed: `docker exec taranom_api node -e "require('sharp')"` is MODULE_NOT_FOUND (`/app/node_modules/sharp` missing; workspace copy is only under `/app/apps/api/node_modules/sharp`), and `migrations` latest is still `ProductInternalLinks1757116800001` because `20260906-004-wholesale-hero-cache-bust.js` is absent from the image.
+- Dockerfile now uses `tsc` (not `nest build`), copies migration JS to both TypeORM candidate dirs, fails the image if the hero migration or backfill job is missing, sets `NODE_PATH`, copies `sharp`/`@img`, and fails the image unless `require('sharp')` loads with vips.
+- Stale review subagents that hit usage limits do not reopen the already-closed HIGH items from 17bf1d52; later reviewer/security were PASS WITH CONDITIONS. Image-pipeline specs printed `ok` (56949 wrapper exit was noisy); full API `npm test` (56950) succeeded.
+- Exact next: commit/push this Dockerfile, force VPS rebuild, confirm `require('sharp')`, confirm migration row `WholesaleHeroCacheBust1757151000004`, confirm hashed wholesale hero URLs, then staged backfill. Do not start Cloudflare/GSC until those pass.
+
 ## 2026-09-06T12:45:00Z — TASK-20260903-004 review fixes before deploy
 
 - Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` on `ai/TASK-20260903-004-gsc-mobile-speed-v2` at `D:/proje/Site-B2B-gsc-speed`.
