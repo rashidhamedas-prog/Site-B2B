@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T10:45:00Z — TASK-20260905-003 console v2 LIVE + VPS disk + stash incident
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Shipped: `4b77fc4` (feat + merge) pushed to branch and fast-forwarded to master; live is `c7ff21c` (other agents' commits on top, contains 4b77fc4). Observed: `/v1/health` 200; `POST /api/v1/omnichannel/destinations/:id/verify` → 401 unauth (route exists; bogus sub-route 404); `taranom_web` chunk `app/admin/omnichannel/page-*.js` contains `autoPublishMode`/`withdrawAction`; wholesale home TTFB from VPS 115–180 ms (unchanged); no worker errors in 10 min.
+- **VPS disk was 100% full** (`/dev/sda1` 38G) → first build died at "exporting to image: no space left on device"; script left old containers running (site stayed up). Freed: `docker builder prune -af` (155 MB), `taranom-api:broken-20260830` (957 MB), **`mcr.microsoft.com/playwright:v1.55.0-jammy` (3.46 GB, no container/timer/cron referenced it; re-pull if a load-test needs it)**. Now 83 % / 6.4 GB free. Not touched, but big and probably reclaimable by their owners: snapd desktop snaps 2.3 GB (chromium/gnome/mesa/cups on a server), `autonomous-seo-*` images ~4 GB + 5-week-old exited `seo_*`/`peyvand-*` containers, `deploy-migrate:latest` 2.1 GB, `~wholesale-admin/.cache+.local` ~2 GB, `journal` 480 MB. Recommend an ops task before the next big deploy.
+- Deploy script note: Phase A `git reset --hard` runs before build, so a failed build leaves HEAD == origin/master and the next timer tick says "already up to date". Re-run needs `TARANOM_DEPLOY_FORCE=1` (this time master moved again, so the timer rebuilt on its own).
+- **Stash incident**: `git stash -u` by the internal-links task (`ed92d26`, "stashed by internal-links task 20260906") also removed **609 untracked owner files** from `D:/proje/Site B2B` (`.seo-baseline/`, `SEO-AUDIT-PACKAGE-POSHAKTARANOM-IR/`, `.local-backup-20260811/`, `.tmp-gsc-audit-20260831/`, `prompts/`, `tasks/`, `docs/00–11-*.md`, `.cursor/rules/0x-*.mdc`, …). Restored all 609 into the main worktree with `git restore --source=ed92d26^3 --worktree` (nothing overwritten, index untouched). The stash is **kept** (tracked part is in 4b77fc4, untracked part restored); owner may `git stash drop ed92d26` later. Rule for everyone: never `stash -u` in the shared root; use `git stash` (tracked only) or a worktree.
+- Exact next (owner, in `/admin/omnichannel`): step 2 «بررسی دسترسی» on each channel → step 3 save template → step 4 keep «آزمایشی» → step 5 send one test to canary → switch to «زنده». TASK-20260826-001 still not Done.
+
 ## 2026-09-06T10:20:00Z — TASK-20260905-003 publishing console v2 (one-time setup, automatic posts)
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
