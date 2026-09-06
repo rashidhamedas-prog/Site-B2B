@@ -23,10 +23,14 @@ export function StorefrontSearch({
   channel,
   className,
   iconClassName,
+  variant = 'icon',
+  placeholder,
 }: {
   channel: Channel;
   className?: string;
   iconClassName?: string;
+  variant?: 'icon' | 'inline';
+  placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -81,6 +85,90 @@ export function StorefrontSearch({
   }, [q, open, channel]);
 
   const goCatalog = `/products${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ''}`;
+  const searchPlaceholder = placeholder || 'جستجوی محصول...';
+
+  if (variant === 'inline') {
+    return (
+      <form
+        action={goCatalog}
+        className={cn('relative min-w-0 flex-1', className)}
+        onSubmit={(e) => {
+          e.preventDefault();
+          window.location.href = goCatalog;
+        }}
+      >
+        <label htmlFor={titleId} className="sr-only">
+          جستجوی محصول
+        </label>
+        <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
+        <input
+          id={titleId}
+          ref={inputRef}
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder={searchPlaceholder}
+          className="h-11 w-full rounded-full bg-white pe-4 ps-10 text-sm text-neutral-900 outline-none placeholder:text-neutral-400"
+          autoComplete="off"
+        />
+        {open && q.trim().length >= 2 ? (
+          <div
+            role="listbox"
+            aria-label="نتایج جستجو"
+            className="absolute inset-x-0 top-[calc(100%+0.4rem)] z-[70] overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/10"
+          >
+            {loading ? (
+              <p className="px-4 py-5 text-center text-sm text-neutral-400">در حال جستجو...</p>
+            ) : hits.length === 0 ? (
+              <p className="px-4 py-5 text-center text-sm text-neutral-400">محصولی پیدا نشد</p>
+            ) : (
+              <ul>
+                {hits.map((p) => {
+                  const img = mediaUrl(p.images?.[0]);
+                  const price = Number(p.sale?.payable ?? (retail ? p.retailPrice : p.wholesalePrice) ?? 0);
+                  return (
+                    <li key={p.id}>
+                      <Link
+                        href={`/products/${p.slug}`}
+                        onClick={() => {
+                          setOpen(false);
+                          setQ('');
+                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 hover:bg-neutral-50"
+                      >
+                        <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+                          {img ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={img} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </span>
+                        <span className="min-w-0 flex-1 text-right">
+                          <span className="block truncate text-sm font-medium text-neutral-900">{p.name}</span>
+                          {price > 0 ? (
+                            <span className="text-xs text-neutral-500">{toman(price)} تومان</span>
+                          ) : null}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <Link
+              href={goCatalog}
+              onClick={() => setOpen(false)}
+              className="block border-t border-neutral-100 py-2 text-center text-xs font-medium text-neutral-700"
+            >
+              مشاهده همه نتایج
+            </Link>
+          </div>
+        ) : null}
+      </form>
+    );
+  }
 
   return (
     <>
@@ -130,7 +218,7 @@ export function StorefrontSearch({
                   ref={inputRef}
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="جستجوی محصول..."
+                  placeholder={searchPlaceholder}
                   className="h-10 w-full bg-transparent text-sm text-gray-900 outline-none placeholder:text-gray-400"
                   autoComplete="off"
                 />

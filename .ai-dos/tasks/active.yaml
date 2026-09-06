@@ -1,5 +1,57 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260906-001"
+    title: "Retail boutique storefront skin (Banimode-inspired, admin-selectable)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260906-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260906-001"
+      implementer: "cursor:implementer-TASK-20260906-001"
+      reviewer: "required-after-storefront-switch"
+      security: "self-review-allowlist-theme-enum"
+    branch: "ai/TASK-20260906-001-retail-boutique-theme"
+    worktree: "D:/proje/Site-B2B-retail-boutique"
+    claimed_at: "2026-09-06T09:40:00Z"
+    heartbeat_at: "2026-09-06T09:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/theme-settings.ts"
+      - "apps/web/src/lib/retail-storefront-skin.ts"
+      - "apps/web/src/lib/retail-storefront-skin.spec.ts"
+      - "apps/web/src/themes/retail-boutique/boutique.css"
+      - "apps/web/src/themes/retail-boutique/BoutiqueHeader.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueFooter.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueHero.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueCategoryRow.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueSaleRail.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueProductRail.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueBlocksRenderer.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueTrustStrip.tsx"
+      - "apps/web/src/app/retail/layout.tsx"
+      - "apps/web/src/components/cms/SiteBlocksRenderer.tsx"
+      - "apps/web/src/components/retail/RetailChromeProvider.tsx"
+      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      - "apps/web/src/components/shared/StorefrontSearch.tsx"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked for a second retail template inspired by banimode.ir,
+      selectable in admin, default stays classic. Isolated theme pack;
+      not a website-builder. Reclaimed stale AdminSettings (TASK-20260904-003
+      hb 2026-09-03) and retail layout (TASK-20260905-001 hb 2026-09-05T07:30).
+      Did not copy Banimode assets/logo/copy. No fake countdown.
+    acceptance_criteria:
+      - "Public theme.retailStorefrontSkin is classic|boutique allowlist; default classic"
+      - "Admin theme tab can switch retail skin without affecting wholesale ThemeRuntime"
+      - "Boutique home has dual hero (one LCP), category row, sale rail without fake timer, max 12 cards"
+      - "Classic retail remains unchanged when skin is classic"
+      - "retail-storefront-skin spec and web+api tsc pass"
   - id: "TASK-20260905-004"
     title: "H2H keyword week: retail/wholesale home, category owners, bamber, register"
     status: "done"

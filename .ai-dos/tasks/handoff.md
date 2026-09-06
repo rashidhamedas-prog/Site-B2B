@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T10:30:00Z — TASK-20260906-001 retail boutique skin (not live)
+
+- Task / owner: TASK-20260906-001 / cursor:implementer-TASK-20260906-001
+- Branch `ai/TASK-20260906-001-retail-boutique-theme` worktree `D:/proje/Site-B2B-retail-boutique`. Not merged. Default skin **classic**.
+- CODE: `theme.retailStorefrontSkin` allowlist classic|boutique; admin picker; boutique pack under `apps/web/src/themes/retail-boutique/`; layout + SiteBlocksRenderer switch; cards/PDP follow skin.
+- Independent review (same session): hooks split, home cap 6+6, dynamic boutique chrome, wishlist effect, RTL titles. Re-ran web+api tsc 0. Spec `npx tsx src/lib/retail-storefront-skin.spec.ts` ok.
+- Exact next: merge/deploy; owner selects «بوتیک» in admin theme tab; wait ~120s public settings cache. Do not change live default.
+
 ## 2026-09-06T09:10:00Z — TASK-20260905-004 live titles verified
 
 - Task / owner: TASK-20260905-004 / cursor:implementer-TASK-20260905-004

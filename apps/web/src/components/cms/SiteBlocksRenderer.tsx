@@ -1,4 +1,6 @@
 import type { ContentBlock } from '@/lib/cms/types';
+import { fetchPublicSettings } from '@/lib/server-api';
+import { parseRetailStorefrontSkin } from '@/lib/retail-storefront-skin';
 
 /**
  * Channel-aware CMS renderer.
@@ -15,6 +17,11 @@ export async function SiteBlocksRenderer({
   channel?: 'WHOLESALE' | 'RETAIL';
 }) {
   if (channel === 'RETAIL') {
+    const settings = await fetchPublicSettings<{ theme?: { retailStorefrontSkin?: string } }>('RETAIL');
+    if (parseRetailStorefrontSkin(settings?.theme?.retailStorefrontSkin) === 'boutique') {
+      const { BoutiqueBlocksRenderer } = await import('@/themes/retail-boutique/BoutiqueBlocksRenderer');
+      return <BoutiqueBlocksRenderer blocks={blocks} skipChrome={skipChrome} />;
+    }
     const { RetailBlocksRenderer } = await import('./RetailBlocksRenderer');
     return <RetailBlocksRenderer blocks={blocks} skipChrome={skipChrome} />;
   }

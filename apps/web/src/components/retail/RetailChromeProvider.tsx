@@ -20,6 +20,7 @@ export type RetailChromeBag = {
   chrome: SiteChromeData;
   enamad: EnamadSealConfig | null;
   marketing: RetailMarketingPublic | null;
+  skin: 'classic' | 'boutique';
 };
 
 const RetailChromeContext = createContext<RetailChromeBag | null>(null);
@@ -43,4 +44,8 @@ export function RetailChromeProvider({
 
 export function useRetailChrome(): RetailChromeBag | null {
   return useContext(RetailChromeContext);
+}
+
+export function useRetailSkin(): 'classic' | 'boutique' {
+  return useRetailChrome()?.skin ?? 'classic';
 }

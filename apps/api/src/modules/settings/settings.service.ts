@@ -354,6 +354,7 @@ export class SettingsService {
       displayMode: (s.displayMode ?? 'light') as 'light' | 'dark' | 'customImage',
       backgroundImageUrl: s.backgroundImageUrl ?? '',
       glassBlurPx: Number.isFinite(blur) && blur >= 0 && blur <= 40 ? blur : 12,
+      retailStorefrontSkin: s.retailStorefrontSkin === 'boutique' ? 'boutique' : 'classic',
       popups: { boutique, newsletter },
     };
   }

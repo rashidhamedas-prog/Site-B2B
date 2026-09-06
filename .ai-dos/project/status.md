@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-06 — **TASK-20260906-001** implementing on `ai/TASK-20260906-001-retail-boutique-theme`: second retail storefront skin (boutique). Default remains classic. Not live until merge/deploy + admin switch.
 - Last verified: 2026-09-06 — **TASK-20260905-004** live `2723d76`: weekly H2H keywords on retail/wholesale home, category owners, bamber, register. Titles no longer duplicate brand suffix. RetailHero sr-only H1 still owned by TASK-20260905-001.
 - Last verified: 2026-09-05 — **TASK-20260905-003** legacy `{name} — {price}` templates no longer override channel layout; Prima tests used leftover DB body. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-05 — **TASK-20260905-004** implementing on `ai/TASK-20260905-004-keyword-h2h`: H2H keyword-week copy for retail/wholesale home, category owners, bamber, register. Not live until merge/deploy. Did not touch RetailHero (TASK-20260905-001).
