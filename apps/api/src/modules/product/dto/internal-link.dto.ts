@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn, IsNumber } from 'class-validator';
 
 export const INTERNAL_LINK_TARGET_TYPES = ['PRODUCT', 'CATEGORY', 'BLOG', 'CUSTOM'] as const;
 export const INTERNAL_LINK_RELS = ['dofollow', 'nofollow', 'sponsored'] as const;
@@ -17,6 +17,7 @@ export class InternalLinkItemDto {
   @ApiPropertyOptional({ enum: INTERNAL_LINK_TARGET_TYPES })
   @IsString()
   @IsNotEmpty()
+  @IsIn(INTERNAL_LINK_TARGET_TYPES as unknown as string[])
   targetType: string;
 
   @ApiPropertyOptional({ description: 'شناسه هدف برای PRODUCT/CATEGORY/BLOG' })
@@ -46,8 +47,8 @@ export class InternalLinkItemDto {
 
   @ApiPropertyOptional({ default: 0 })
   @IsOptional()
-  @IsString()
-  sortOrder?: string | number;
+  @IsNumber()
+  sortOrder?: number;
 }
 
 /** Shape returned to clients (admin + storefront). */

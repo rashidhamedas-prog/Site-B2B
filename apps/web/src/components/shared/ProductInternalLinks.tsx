@@ -50,7 +50,12 @@ export function ProductInternalLinks({
       </ul>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemList) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(itemList)
+            .replace(/</g, '\\u003c')
+            .replace(/>/g, '\\u003e')
+            .replace(/&/g, '\\u0026'),
+        }}
       />
     </section>
   );

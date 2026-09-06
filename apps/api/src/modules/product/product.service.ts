@@ -48,6 +48,8 @@ import {
   MAX_INTERNAL_LINKS_PER_CHANNEL,
   buildInternalLinkUrl,
   isInternalUrl,
+  isUrlOnOppositeChannel,
+  dedupResolvedLinks,
   toRelativePath,
   validateInternalLinkList,
   type InternalLinkChannel,
@@ -644,23 +646,34 @@ export class ProductService {
       const msg = resolved.rejected.map((r) => `«${r.anchorText}» (${r.reason})`).join('؛ ');
       throw new BadRequestException(`لینک‌های داخلی نامعتبر — ${msg}`);
     }
-    await this.internalLinkRepo.delete({ productId, channel: ch });
-    if (!resolved.accepted.length) return [];
-    return this.internalLinkRepo.save(
-      resolved.accepted.map((link, sortOrder) =>
-        this.internalLinkRepo.create({
-          productId,
-          channel: ch,
-          targetType: link.targetType as ProductInternalLinkEntity['targetType'],
-          targetId: link.targetId,
-          targetUrl: link.targetUrl,
-          anchorText: link.anchorText,
-          title: link.title,
-          rel: link.rel as ProductInternalLinkEntity['rel'],
-          sortOrder,
-        }),
-      ),
-    );
+    // After URL re-resolution, two rows can collapse to the same final target
+    // (e.g. same targetId, different pre-resolution targetUrl). Dedup by the
+    // final state so the DB unique index can't throw a 500 — surface a 400.
+    const { ok: accepted, duplicates } = dedupResolvedLinks(resolved.accepted);
+    if (duplicates.length) {
+      throw new BadRequestException(
+        `لینک داخلی تکراری — «${duplicates[0].anchorText}» (بعد از تطبیق آدرس)`,
+      );
+    }
+    // Delete + save inside one transaction so a save failure can't leave the
+    // product with its entire channel link list silently wiped.
+    const rows = accepted.map((link, sortOrder) => ({
+      productId,
+      channel: ch,
+      targetType: link.targetType as ProductInternalLinkEntity['targetType'],
+      targetId: link.targetId,
+      targetUrl: link.targetUrl,
+      anchorText: link.anchorText,
+      title: link.title,
+      rel: link.rel as ProductInternalLinkEntity['rel'],
+      sortOrder,
+    }));
+    return this.internalLinkRepo.manager.transaction(async (em) => {
+      const repo = em.getRepository(ProductInternalLinkEntity);
+      await repo.delete({ productId, channel: ch });
+      if (!rows.length) return [];
+      return repo.save(rows.map((r) => repo.create(r)));
+    });
   }
 
   /**
@@ -687,7 +700,10 @@ export class ProductService {
     }
     const categoryMap = new Map<string, CategoryEntity>();
     if (categoryIds.length) {
-      (await this.categoryRepo.find({ where: { id: In(categoryIds) } })).forEach((c) => categoryMap.set(c.id, c));
+      // Categories are shared across channels (no channel column), but a
+      // HIDDEN category must not be linkable — match the suggest picker and
+      // the public category read path, both of which gate on status='ACTIVE'.
+      (await this.categoryRepo.find({ where: { id: In(categoryIds), status: 'ACTIVE' } })).forEach((c) => categoryMap.set(c.id, c));
     }
     const blogMap = new Map<string, { slug: string; robotsIndex: boolean }>();
     if (blogIds.length) {
@@ -704,6 +720,10 @@ export class ProductService {
       if (link.targetType === 'CUSTOM') {
         if (!isInternalUrl(link.targetUrl)) {
           rejected.push({ anchorText: link.anchorText, reason: 'external_url' });
+          continue;
+        }
+        if (isUrlOnOppositeChannel(link.targetUrl, channel)) {
+          rejected.push({ anchorText: link.anchorText, reason: 'cross_channel_url' });
           continue;
         }
         if (selfPath && toRelativePath(link.targetUrl) === selfPath) {
@@ -836,7 +856,11 @@ export class ProductService {
     targetType?: string;
     limit?: number;
   }) {
-    const channel: InternalLinkChannel = opts.channel.toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const chRaw = String(opts.channel || '').toUpperCase();
+    if (chRaw !== 'RETAIL' && chRaw !== 'WHOLESALE') {
+      throw new BadRequestException('کانال نامعتبر است (RETAIL یا WHOLESALE)');
+    }
+    const channel: InternalLinkChannel = chRaw === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
     const limit = Math.min(20, Number(opts.limit) || 8);
     const q = String(opts.q || '').trim();
     const targetType = String(opts.targetType || 'PRODUCT').toUpperCase();
@@ -911,7 +935,11 @@ export class ProductService {
     productId?: string;
     links: InternalLinkInput[];
   }) {
-    const channel: InternalLinkChannel = opts.channel.toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const chRaw = String(opts.channel || '').toUpperCase();
+    if (chRaw !== 'RETAIL' && chRaw !== 'WHOLESALE') {
+      throw new BadRequestException('کانال نامعتبر است (RETAIL یا WHOLESALE)');
+    }
+    const channel: InternalLinkChannel = chRaw === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
     const list = Array.isArray(opts.links) ? opts.links : [];
     const { ok, issues } = validateInternalLinkList(list, opts.productId || null);
     let product: ProductEntity | null = null;
@@ -924,12 +952,14 @@ export class ProductService {
       product?.slug ?? null,
       ok,
     );
+    const { ok: deduped, duplicates } = dedupResolvedLinks(resolved.accepted);
     const rejected = [
       ...issues.map((i) => ({ index: i.index, reason: i.reason, anchorText: i.anchorText, targetUrl: i.targetUrl })),
       ...resolved.rejected.map((r) => ({ index: -1, reason: r.reason, anchorText: r.anchorText, targetUrl: undefined })),
+      ...duplicates.map((d) => ({ index: -1, reason: 'duplicate', anchorText: d.anchorText, targetUrl: d.targetUrl })),
     ];
     return {
-      ok: resolved.accepted.map((l) => ({
+      ok: deduped.map((l) => ({
         targetType: l.targetType,
         targetId: l.targetId,
         targetUrl: l.targetUrl,
@@ -1348,6 +1378,8 @@ export class ProductService {
 
     const patch: Partial<ProductEntity> = { ...data } as any;
     delete (patch as any).relatedProductIds;
+    delete (patch as any).retailInternalLinks;
+    delete (patch as any).wholesaleInternalLinks;
     delete (patch as any).slug;
     delete (patch as any).minOrderQty;
     delete (patch as any).allowBelowMoq;

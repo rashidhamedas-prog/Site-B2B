@@ -32,6 +32,7 @@ const REJECT_LABELS: Record<string, string> = {
   custom_not_internal: 'آدرس دلخواه باید داخلی باشد',
   loop: 'ایجاد حلقه بازگردانی',
   external_url: 'آدرس خارجی مجاز نیست',
+  cross_channel_url: 'آدرس متعلق به کانال دیگر است',
   missing_target: 'هدف مشخص نشده',
   target_not_found: 'هدف یافت نشد',
   not_visible_in_channel: 'در این کانال نمایش داده نمی‌شود',

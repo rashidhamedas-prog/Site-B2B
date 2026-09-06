@@ -7,12 +7,15 @@
  * line to the test script when that claim is released.
  */
 
+
 import {
   MAX_INTERNAL_LINKS_PER_CHANNEL,
   ANCHOR_MAX,
   buildInternalLinkUrl,
   dedupKey,
   isInternalUrl,
+  isUrlOnOppositeChannel,
+  dedupResolvedLinks,
   normalizeInternalLinkInput,
   normalizeRel,
   toRelativePath,
@@ -141,3 +144,118 @@ assert(r7.ok.length === 0 && r7.issues.some((i) => i.reason === 'anchor_length')
 check('validate rejects bad anchor length');
 
 console.log(`\nAll internal-link-resolver checks passed (${passed}).`);
+
+// ── isUrlOnOppositeChannel (channel separation for CUSTOM) ───
+assert(isUrlOnOppositeChannel('https://poshaktaranom.com/products/x', 'RETAIL') === true, 'retail link to .com host = opposite');
+assert(isUrlOnOppositeChannel('https://www.poshaktaranom.com/products/x', 'RETAIL') === true, 'retail link to www .com host = opposite');
+assert(isUrlOnOppositeChannel('https://poshaktaranom.ir/products/x', 'WHOLESALE') === true, 'wholesale link to .ir host = opposite');
+assert(isUrlOnOppositeChannel('https://poshaktaranom.ir/products/x', 'RETAIL') === false, 'retail link to .ir host = same channel');
+assert(isUrlOnOppositeChannel('https://poshaktaranom.com/products/x', 'WHOLESALE') === false, 'wholesale link to .com host = same channel');
+assert(isUrlOnOppositeChannel('/products/x', 'RETAIL') === false, 'relative path = same channel');
+assert(isUrlOnOppositeChannel('/products/x', 'WHOLESALE') === false, 'relative path = same channel (wholesale)');
+assert(isUrlOnOppositeChannel('https://example.com/x', 'RETAIL') === false, 'external url = not opposite (handled by isInternalUrl)');
+check('isUrlOnOppositeChannel');
+
+// ── dedupResolvedLinks (post-resolution collapse → 400 not 500) ──
+const collapsed = [
+  { targetType: 'PRODUCT', targetId: 'same', targetUrl: '/products/same', anchorText: 'a', title: null, rel: 'dofollow', sortOrder: 0 },
+  { targetType: 'PRODUCT', targetId: 'same', targetUrl: '/products/old-slug', anchorText: 'b', title: null, rel: 'dofollow', sortOrder: 1 },
+].map((l) => normalizeInternalLinkInput(l)!);
+const d1 = dedupResolvedLinks(collapsed);
+assert(d1.ok.length === 1 && d1.duplicates.length === 1, 'post-resolution duplicate collapsed to one + one duplicate');
+check('dedupResolvedLinks collapses same targetId');
+
+const customDup = [
+  { targetType: 'CUSTOM', targetId: null, targetUrl: '/category/shomiz', anchorText: 'a', title: null, rel: 'dofollow', sortOrder: 0 },
+  { targetType: 'CUSTOM', targetId: null, targetUrl: '  /category/shomiz  ', anchorText: 'b', title: null, rel: 'dofollow', sortOrder: 1 },
+].map((l) => normalizeInternalLinkInput(l)!);
+const d2 = dedupResolvedLinks(customDup);
+assert(d2.ok.length === 1 && d2.duplicates.length === 1, 'custom duplicate by normalized url collapsed');
+check('dedupResolvedLinks collapses custom by normalized url');
+
+const distinct = [
+  { targetType: 'PRODUCT', targetId: 'a', targetUrl: '/products/a', anchorText: 'a', title: null, rel: 'dofollow', sortOrder: 0 },
+  { targetType: 'PRODUCT', targetId: 'b', targetUrl: '/products/b', anchorText: 'b', title: null, rel: 'dofollow', sortOrder: 1 },
+].map((l) => normalizeInternalLinkInput(l)!);
+const d3 = dedupResolvedLinks(distinct);
+assert(d3.ok.length === 2 && d3.duplicates.length === 0, 'distinct targets kept');
+check('dedupResolvedLinks keeps distinct targets');
+
+console.log(`\nAll internal-link-resolver checks passed (${passed}).`);
+
+// ── Regression: update() must NOT pass retailInternalLinks / ──────────
+// wholesaleInternalLinks / relatedProductIds to the repo update() call. ─
+// These keys live on the DTO, not on ProductEntity; spreading the DTO into
+// the patch and calling repo.update() used to throw
+// `EntityPropertyNotFoundError: Property "retailInternalLinks" was not found`.
+// We construct ProductService with stub repos, throw a sentinel from inside
+// the transaction's em.update to capture the patch and short-circuit the
+// post-transaction side-effects, then assert the forbidden keys are absent.
+(async () => {
+  const { ProductService } = await import('./product.service');
+  const SENTINEL = Symbol('patch-spread-sentinel');
+  let capturedPatch: Record<string, unknown> | null = null;
+
+  const existing = {
+    id: 'p1',
+    slug: 'old-slug',
+    status: 'ACTIVE',
+    showOnRetail: true,
+    showOnWholesale: true,
+    wholesalePrice: 1000,
+    retailPrice: 2000,
+    images: [],
+    variants: [],
+    createdAt: new Date().toISOString(),
+  } as any;
+
+  const productRepoForUpdate = {
+    update: (_id: string, patch: Record<string, unknown>) => {
+      capturedPatch = patch;
+      throw SENTINEL;
+    },
+  };
+  const em = {
+    getRepository: (Entity: { name: string }) =>
+      Entity.name === 'ProductEntity' ? productRepoForUpdate : {},
+  };
+  const productRepo = {
+    findOne: async () => existing,
+    manager: { transaction: async (cb: (em: unknown) => Promise<unknown>) => cb(em) },
+  };
+
+  const service = new ProductService(
+    productRepo as any,
+    {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
+    {} as any, {} as any, {} as any, {} as any,
+  );
+
+  let threwSentinel = false;
+  try {
+    await service.update('p1', {
+      name: 'new name',
+      retailInternalLinks: [
+        { targetType: 'CUSTOM', targetUrl: '/category/x', anchorText: 'x' },
+      ],
+      wholesaleInternalLinks: [
+        { targetType: 'CUSTOM', targetUrl: '/category/y', anchorText: 'y' },
+      ],
+      relatedProductIds: ['r1'],
+    } as any);
+  } catch (e) {
+    if (e !== SENTINEL) throw e;
+    threwSentinel = true;
+  }
+
+  assert(threwSentinel, 'update reached em.update (sentinel thrown)');
+  assert(capturedPatch !== null, 'patch was captured by em.update');
+  assert(!('retailInternalLinks' in (capturedPatch as object)), 'patch omits retailInternalLinks');
+  assert(!('wholesaleInternalLinks' in (capturedPatch as object)), 'patch omits wholesaleInternalLinks');
+  assert(!('relatedProductIds' in (capturedPatch as object)), 'patch omits relatedProductIds');
+  assert((capturedPatch as any).name === 'new name', 'patch keeps real entity fields');
+  console.log('  ok - update() patch strips retailInternalLinks/wholesaleInternalLinks/relatedProductIds');
+  console.log('\nRegression check passed (patch-spread).');
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

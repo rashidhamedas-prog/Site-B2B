@@ -174,6 +174,50 @@ export function isInternalUrl(url: string): boolean {
   return /^https:\/\/(www\.)?poshaktaranom\.(ir|com)\//i.test(u);
 }
 
+/**
+ * True if an absolute URL points to the OPPOSITE channel's storefront host
+ * (retail = .ir, wholesale = .com). Relative paths are same-channel and
+ * return false. Used to enforce channel separation for CUSTOM links.
+ */
+export function isUrlOnOppositeChannel(
+  url: string,
+  channel: InternalLinkChannel,
+): boolean {
+  const u = String(url || '').trim();
+  if (!u || u.startsWith('/')) return false;
+  const m = /^https:\/\/(?:www\.)?poshaktaranom\.(ir|com)\b/i.exec(u);
+  if (!m) return false;
+  const hostTld = m[1].toLowerCase();
+  const oppositeTld = channel === 'RETAIL' ? 'com' : 'ir';
+  return hostTld === oppositeTld;
+}
+
+/**
+ * Post-resolution dedup: after URLs are re-resolved, two rows that differed
+ * only by targetUrl can collapse to the same final target. Dedup by the
+ * FINAL state so the DB unique index can't throw a 500 — callers surface a 400.
+ */
+export function dedupResolvedLinks(
+  links: ResolvedLink[],
+): { ok: ResolvedLink[]; duplicates: ResolvedLink[] } {
+  const seen = new Set<string>();
+  const ok: ResolvedLink[] = [];
+  const duplicates: ResolvedLink[] = [];
+  for (const link of links) {
+    const key =
+      link.targetType === 'CUSTOM'
+        ? `CUSTOM|${link.targetUrl.trim().toLowerCase()}`
+        : `${link.targetType}|${link.targetId}`;
+    if (seen.has(key)) {
+      duplicates.push(link);
+      continue;
+    }
+    seen.add(key);
+    ok.push(link);
+  }
+  return { ok, duplicates };
+}
+
 /** Strip host + query/hash to get a relative path (for loop checks). */
 export function toRelativePath(url: string): string {
   const u = String(url || '').trim();
