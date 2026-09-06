@@ -107,6 +107,13 @@ export class OmnichannelAdminController {
     return this.svc.patchDestination(id, body);
   }
 
+  @Post('destinations/:id/verify')
+  @ApiOperation({ summary: 'بررسی دسترسی ربات در مقصد (getChat/getChatMember) و ذخیره نتیجه' })
+  verifyDestination(@Param('id') id: string, @Req() req: Authed) {
+    assertNoPlaintextSecrets({ id });
+    return this.svc.verifyDestination(id, req.omnichannelActor);
+  }
+
   @Get('templates')
   listTemplates() {
     return this.svc.listTemplates();

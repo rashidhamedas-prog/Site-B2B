@@ -1,179 +1,100 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { AdminTelegramTemplateBuilder } from './AdminTelegramTemplateBuilder';
+import {
+  Badge,
+  Callout,
+  EVENT_LABELS,
+  Metric,
+  RadioCards,
+  Section,
+  Stepper,
+  TelegramPreview,
+  Toggle,
+  actionLabel,
+  channelLabel,
+  chatTypeLabel,
+  deliveryStatus,
+  destinationReady,
+  errorLabel,
+  eventLabel,
+  faNumber,
+  hourLabel,
+  outboxStatus,
+  publicationStatus,
+  relativeTime,
+  templateLooksReady,
+  type AuditRow,
+  type AutoPublishMode,
+  type Channel,
+  type Connection,
+  type Delivery,
+  type Destination,
+  type MediaRow,
+  type OosPolicy,
+  type OutboxRow,
+  type Publication,
+  type Rendered,
+  type Status,
+  type StepState,
+  type Template,
+  type WithdrawAction,
+} from './admin-omnichannel-ui';
 
-type OosPolicy = 'UPDATE' | 'HIDE' | 'DELETE';
-type Tab = 'setup' | 'policy' | 'publish' | 'ops';
+type View = 'setup' | 'publish' | 'ops';
+type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
+type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE';
 
-type Status = {
-  autoPublish: boolean;
-  connectors: boolean;
-  phase: number;
-  retailCanaryLimit: number;
-  wholesaleCanaryLimit: number;
-  retailOosPolicy?: OosPolicy;
-  wholesaleOosPolicy?: OosPolicy;
-  retailOosChosen?: boolean;
-  wholesaleOosChosen?: boolean;
-  retailCanaryDestinationId?: string | null;
-  wholesaleCanaryDestinationId?: string | null;
-  autoPublishEventTypes?: string[];
-  autoPublishEventTypesChosen?: boolean;
-  retrySlaSeconds?: number;
-  retrySlaChosen?: boolean;
-  outboxRetentionDays?: number;
-  outboxRetentionChosen?: boolean;
-  outbox?: {
-    pending: number;
-    processing: number;
-    dead: number;
-    oldestPendingAgeSec: number;
-    staleLocks: number;
+type RulesDraft = {
+  autoPublishMode: AutoPublishMode;
+  autoPublishEventTypes: string[];
+  retailOosPolicy: OosPolicy;
+  wholesaleOosPolicy: OosPolicy;
+  withdrawAction: WithdrawAction;
+  autoDailyCap: number;
+  autoMinGapSeconds: number;
+  quietStartHour: number | null;
+  quietEndHour: number | null;
+  retrySlaSeconds: number;
+  outboxRetentionDays: number;
+};
+
+const DEFAULT_EVENTS = ['product.created', 'product.content_changed', 'product.price_changed', 'product.visibility_changed', 'product.media_changed', 'product.withdrawn'];
+const GAP_OPTIONS = [0, 60, 90, 300, 600, 900, 1800, 3600];
+const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+const PRODUCT_TEMPLATE_EVENT = 'product.published';
+
+function rulesFromStatus(st: Status | null): RulesDraft {
+  return {
+    autoPublishMode: st?.autoPublishMode || 'OFF',
+    autoPublishEventTypes: st?.autoPublishEventTypes?.length ? st.autoPublishEventTypes : DEFAULT_EVENTS,
+    retailOosPolicy: st?.retailOosPolicy || 'UPDATE',
+    wholesaleOosPolicy: st?.wholesaleOosPolicy || 'UPDATE',
+    withdrawAction: st?.withdrawAction || 'DELETE',
+    autoDailyCap: typeof st?.autoDailyCap === 'number' ? st.autoDailyCap : 20,
+    autoMinGapSeconds: typeof st?.autoMinGapSeconds === 'number' ? st.autoMinGapSeconds : 90,
+    quietStartHour: st?.quietStartHour ?? null,
+    quietEndHour: st?.quietEndHour ?? null,
+    retrySlaSeconds: typeof st?.retrySlaSeconds === 'number' ? st.retrySlaSeconds : 3600,
+    outboxRetentionDays: typeof st?.outboxRetentionDays === 'number' ? st.outboxRetentionDays : 90,
   };
-};
-
-type Connection = {
-  id: string;
-  provider: string;
-  channel: string;
-  name: string;
-  secretRef: string;
-  status: string;
-};
-
-type Destination = {
-  id: string;
-  connectionId: string;
-  destinationKey: string;
-  displayName: string;
-  enabled: boolean;
-  isCanary?: boolean;
-};
-
-type Template = {
-  id: string;
-  provider: string;
-  channel: string;
-  eventType: string;
-  version: number;
-  enabled?: boolean;
-  body?: string;
-};
-
-type Publication = {
-  id: string;
-  sourceId: string;
-  channel: string;
-  status: string;
-};
-
-type Delivery = {
-  id: string;
-  publicationId: string;
-  status: string;
-  action: string;
-  lastError?: string | null;
-};
-
-type OutboxRow = {
-  id: string;
-  eventType: string;
-  aggregateId: string;
-  channel: string | null;
-  status: string;
-  attempts: number;
-  lastError?: string | null;
-};
-
-type AuditRow = {
-  id: string;
-  actorId: string;
-  action: string;
-  entityType: string;
-  entityId: string;
-  channel: string | null;
-  reason: string | null;
-};
-
-type MediaRow = {
-  id: string;
-  publicUrl: string;
-  altText: string;
-  ownerType: string;
-};
-
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'setup', label: 'راه‌اندازی' },
-  { id: 'policy', label: 'سیاست' },
-  { id: 'publish', label: 'انتشار' },
-  { id: 'ops', label: 'عملیات' },
-];
-
-const FILTERS = [
-  { key: 'ALL', label: 'همه' },
-  { key: 'RETAIL', label: 'تکی' },
-  { key: 'WHOLESALE', label: 'عمده' },
-  { key: 'TELEGRAM', label: 'تلگرام' },
-  { key: 'PENDING', label: 'در صف' },
-  { key: 'DEAD', label: 'DEAD' },
-  { key: 'DRAFT', label: 'پیش‌نویس' },
-];
-
-function channelLabel(channel: string) {
-  return channel === 'WHOLESALE' ? 'عمده' : channel === 'RETAIL' ? 'تکی' : channel;
 }
 
-function templateLooksReady(body?: string) {
-  const raw = String(body || '').trim();
-  if (!raw.startsWith('{')) return false;
-  try {
-    const parsed = JSON.parse(raw) as { v?: unknown; blocks?: Array<{ type?: string }> };
-    return parsed?.v === 1 && Array.isArray(parsed.blocks) && parsed.blocks.some((row) => row.type === 'photos');
-  } catch {
-    return false;
-  }
+function gapLabel(seconds: number) {
+  if (seconds === 0) return 'بدون فاصله';
+  if (seconds < 60) return `${faNumber(seconds)} ثانیه`;
+  if (seconds < 3600) return `${faNumber(Math.round(seconds / 60))} دقیقه`;
+  return `${faNumber(Math.round(seconds / 3600))} ساعت`;
 }
 
-function Badge({
-  tone,
-  children,
-}: {
-  tone: 'ok' | 'warn' | 'off' | 'info';
-  children: ReactNode;
-}) {
-  const cls = {
-    ok: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    warn: 'bg-amber-50 text-amber-800 border-amber-200',
-    off: 'bg-gray-100 text-gray-600 border-gray-200',
-    info: 'bg-sky-50 text-sky-800 border-sky-200',
-  }[tone];
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
-      {children}
-    </span>
-  );
+function modeLabel(mode?: AutoPublishMode) {
+  return mode === 'LIVE' ? 'زنده' : mode === 'CANARY' ? 'آزمایشی' : 'خاموش';
 }
 
-function Metric({
-  label,
-  value,
-  hint,
-  tone = 'info',
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: 'ok' | 'warn' | 'off' | 'info';
-}) {
-  return (
-    <div className="rounded-xl border bg-white p-4">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-gray-900">{value}</p>
-      {hint && <p className="mt-1"><Badge tone={tone}>{hint}</Badge></p>}
-    </div>
-  );
+function isProductTemplate(row: Template, channel: Channel) {
+  return row.provider === 'TELEGRAM' && row.channel === channel && row.eventType === PRODUCT_TEMPLATE_EVENT && row.enabled !== false;
 }
 
 export function AdminOmnichannel() {
@@ -186,39 +107,32 @@ export function AdminOmnichannel() {
   const [outbox, setOutbox] = useState<OutboxRow[]>([]);
   const [audits, setAudits] = useState<AuditRow[]>([]);
   const [media, setMedia] = useState<MediaRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>('setup');
-  const [sourceId, setSourceId] = useState('');
-  const [sourceType, setSourceType] = useState<'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE'>('PRODUCT');
-  const [channel, setChannel] = useState<'RETAIL' | 'WHOLESALE'>('RETAIL');
-  const [filter, setFilter] = useState('ALL');
-  const [preview, setPreview] = useState<{
-    projection: Record<string, unknown>;
-    rendered?: { text?: string; photoUrls?: string[] };
-  } | null>(null);
-  const [reason, setReason] = useState('بازبینی ادمین');
+
+  const [view, setView] = useState<View>('setup');
+  const [step, setStep] = useState<Step | null>(null);
+
   const [connName, setConnName] = useState('');
+  const [connChannel, setConnChannel] = useState<Channel>('RETAIL');
   const [secretRef, setSecretRef] = useState('TELEGRAM_BOT_TOKEN');
-  const [retailOos, setRetailOos] = useState<OosPolicy>('UPDATE');
-  const [wholesaleOos, setWholesaleOos] = useState<OosPolicy>('UPDATE');
-  const [autoPublishEventTypes, setAutoPublishEventTypes] = useState<string[]>([
-    'product.created',
-    'product.content_changed',
-    'product.price_changed',
-    'product.visibility_changed',
-    'product.media_changed',
-    'product.withdrawn',
-    'blog.published',
-    'cms.published',
-  ]);
-  const [retrySlaSeconds, setRetrySlaSeconds] = useState(3600);
-  const [outboxRetentionDays, setOutboxRetentionDays] = useState(90);
+  const [destConnectionId, setDestConnectionId] = useState('');
   const [destKey, setDestKey] = useState('');
   const [destName, setDestName] = useState('');
-  const [connectionId, setConnectionId] = useState('');
-  const [tplEvent, setTplEvent] = useState('product.published');
+  const [tplChannel, setTplChannel] = useState<Channel>('RETAIL');
+
+  const [rules, setRules] = useState<RulesDraft>(() => rulesFromStatus(null));
+  const [savedRules, setSavedRules] = useState<RulesDraft>(() => rulesFromStatus(null));
+  const savedRulesRef = useRef<RulesDraft>(rulesFromStatus(null));
+
+  const [pubChannel, setPubChannel] = useState<Channel>('RETAIL');
+  const [sourceType, setSourceType] = useState<SourceType>('PRODUCT');
+  const [sourceId, setSourceId] = useState('');
+  const [targetId, setTargetId] = useState('');
+  const [reason, setReason] = useState('بازبینی ادمین');
+  const [preview, setPreview] = useState<{ projection: Record<string, unknown>; rendered?: Rendered } | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -232,14 +146,15 @@ export function AdminOmnichannel() {
         apiClient.get<Delivery[]>('/omnichannel/deliveries'),
         apiClient.get<OutboxRow[]>('/omnichannel/outbox'),
         apiClient.get<AuditRow[]>('/omnichannel/audits'),
-        apiClient.get<MediaRow[]>('/omnichannel/media').catch(() => []),
+        apiClient.get<MediaRow[]>('/omnichannel/media').catch(() => [] as MediaRow[]),
       ]);
       setStatus(st);
-      if (st.retailOosPolicy) setRetailOos(st.retailOosPolicy);
-      if (st.wholesaleOosPolicy) setWholesaleOos(st.wholesaleOosPolicy);
-      if (st.autoPublishEventTypes?.length) setAutoPublishEventTypes(st.autoPublishEventTypes);
-      if (typeof st.retrySlaSeconds === 'number') setRetrySlaSeconds(st.retrySlaSeconds);
-      if (typeof st.outboxRetentionDays === 'number') setOutboxRetentionDays(st.outboxRetentionDays);
+      const fromServer = rulesFromStatus(st);
+      const previous = JSON.stringify(savedRulesRef.current);
+      savedRulesRef.current = fromServer;
+      setSavedRules(fromServer);
+      // Adopt server values unless the admin has unsaved edits in the draft.
+      setRules((current) => (JSON.stringify(current) === previous ? fromServer : current));
       setConnections(conns);
       setDestinations(dests);
       setTemplates(tpls);
@@ -248,7 +163,7 @@ export function AdminOmnichannel() {
       setOutbox(box);
       setAudits(logs);
       setMedia(files);
-      setConnectionId((current) => current || conns[0]?.id || '');
+      setDestConnectionId((current) => current || conns[0]?.id || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در بارگذاری');
     } finally {
@@ -258,759 +173,782 @@ export function AdminOmnichannel() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const run = async (fn: () => Promise<void>, fallback: string, ok?: string) => {
+  const run = async (key: string, fn: () => Promise<void>, fallback: string, ok?: string) => {
     setError('');
     setNotice('');
+    setBusy(key);
     try {
       await fn();
       await load();
       if (ok) setNotice(ok);
     } catch (err) {
       setError(err instanceof Error ? err.message : fallback);
+    } finally {
+      setBusy('');
     }
   };
 
-  const matchFilter = (row: { channel?: string | null; status?: string; provider?: string }) => {
-    if (filter === 'ALL') return true;
-    if (filter === 'RETAIL' || filter === 'WHOLESALE') return row.channel === filter;
-    if (filter === 'TELEGRAM' || filter === 'BALE' || filter === 'RUBIKA') return row.provider === filter;
-    return row.status === filter;
-  };
+  /* ---------- derived readiness ---------- */
 
-  const pendingOutbox = useMemo(
-    () => outbox.filter((row) => row.status === 'PENDING' || row.status === 'PROCESSING').length,
-    [outbox],
-  );
-  const deadOutbox = useMemo(() => outbox.filter((row) => row.status === 'DEAD').length, [outbox]);
-  const activeTelegram = connections.some((row) => row.provider === 'TELEGRAM' && row.status === 'ACTIVE');
-  const retailCanary = destinations.find((row) => row.id === status?.retailCanaryDestinationId);
-  const setupReady = Boolean(status?.connectors && activeTelegram && status.retailCanaryDestinationId);
-  const retailTpl = templates.find((row) => row.channel === 'RETAIL' && row.eventType === 'product.published');
-  const wholesaleTpl = templates.find((row) => row.channel === 'WHOLESALE' && row.eventType === 'product.published');
+  const connById = useMemo(() => new Map(connections.map((row) => [row.id, row])), [connections]);
+  const destById = useMemo(() => new Map(destinations.map((row) => [row.id, row])), [destinations]);
+  const telegramConnections = connections.filter((row) => row.provider === 'TELEGRAM');
+  const activeConnections = telegramConnections.filter((row) => row.status === 'ACTIVE');
+  const channelOf = (dest: Destination): Channel => (connById.get(dest.connectionId)?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+  const readyDestinations = destinations.filter((dest) => dest.enabled && destinationReady(dest) && connById.get(dest.connectionId)?.status === 'ACTIVE');
+  const readyByChannel = (channel: Channel) => readyDestinations.filter((dest) => channelOf(dest) === channel);
+  const canaryByChannel = (channel: Channel) => destinations.find((dest) => dest.isCanary && channelOf(dest) === channel);
+  const unverified = destinations.filter((dest) => dest.enabled && !dest.isCanary && !dest.verified);
+  const retailTpl = templates.filter((row) => isProductTemplate(row, 'RETAIL')).sort((a, b) => b.version - a.version)[0];
+  const wholesaleTpl = templates.filter((row) => isProductTemplate(row, 'WHOLESALE')).sort((a, b) => b.version - a.version)[0];
   const templatesReady = templateLooksReady(retailTpl?.body) && templateLooksReady(wholesaleTpl?.body);
+  const flagsOn = Boolean(status?.connectors && status?.autoPublish);
+  const mode = status?.autoPublishMode || 'OFF';
+  const rulesDirty = JSON.stringify(rules) !== JSON.stringify(savedRules);
+  const deliveriesByPub = useMemo(() => {
+    const map = new Map<string, Delivery[]>();
+    for (const row of deliveries) {
+      const list = map.get(row.publicationId) || [];
+      list.push(row);
+      map.set(row.publicationId, list);
+    }
+    return map;
+  }, [deliveries]);
+  const sentToday = useMemo(() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return deliveries.filter((row) => row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.createdAt && new Date(row.createdAt) >= start).length;
+  }, [deliveries]);
+  const failing = deliveries.filter((row) => row.status === 'DEAD' || row.status === 'FAILED').length;
+
+  const steps: Array<{ id: Step; label: string; state: StepState; hint?: string }> = [
+    {
+      id: 'bot',
+      label: 'ربات',
+      state: activeConnections.length ? 'done' : 'todo',
+      hint: activeConnections.length ? activeConnections.map((row) => row.name).join('، ') : 'اتصال تلگرام ثبت نشده',
+    },
+    {
+      id: 'channels',
+      label: 'کانال‌ها',
+      state: readyDestinations.length ? (unverified.length ? 'warn' : 'done') : 'todo',
+      hint: readyDestinations.length ? `${faNumber(readyDestinations.length)} مقصد آماده${unverified.length ? ` · ${faNumber(unverified.length)} تأییدنشده` : ''}` : 'مقصد تأییدشده‌ای نیست',
+    },
+    {
+      id: 'template',
+      label: 'قالب پست',
+      state: templatesReady ? 'done' : templateLooksReady(retailTpl?.body) || templateLooksReady(wholesaleTpl?.body) ? 'warn' : 'todo',
+      hint: templatesReady ? 'تکی و عمده ذخیره شده' : 'قالب تکی یا عمده آماده نیست',
+    },
+    {
+      id: 'rules',
+      label: 'قواعد خودکار',
+      state: mode !== 'OFF' ? 'done' : status?.autoPublishEventTypesChosen ? 'warn' : 'todo',
+      hint: `${modeLabel(mode)} · روزانه تا ${faNumber(status?.autoDailyCap ?? 20)} پست`,
+    },
+    {
+      id: 'activate',
+      label: 'تست و فعال‌سازی',
+      state: mode === 'LIVE' && flagsOn ? 'done' : mode === 'CANARY' ? 'warn' : 'todo',
+      hint: mode === 'LIVE' ? (flagsOn ? 'انتشار خودکار زنده است' : 'پرچم سرور خاموش است') : mode === 'CANARY' ? 'فقط به مقصد تست می‌رود' : 'هنوز روشن نشده',
+    },
+  ];
+  const currentStep: Step = step || steps.find((row) => row.state !== 'done')?.id || 'activate';
+
+  // Default test target = canary of the chosen channel; re-evaluated only when the ready set changes.
+  const readyKey = readyByChannel(pubChannel).map((dest) => dest.id).join(',');
+  const canaryId = canaryByChannel(pubChannel)?.id || '';
+  useEffect(() => {
+    const ready = readyKey ? readyKey.split(',') : [];
+    setTargetId((current) => (current && ready.includes(current) ? current : canaryId || ready[0] || ''));
+  }, [pubChannel, readyKey, canaryId]);
+
+  /* ---------- actions ---------- */
+
+  const saveRules = () => run('rules', async () => {
+    await apiClient.patch('/omnichannel/settings', { ...rules, reason });
+  }, 'خطا در ذخیره قواعد', 'قواعد خودکار ذخیره شد');
+
+  const setMode = (next: AutoPublishMode) => run(`mode-${next}`, async () => {
+    await apiClient.patch('/omnichannel/settings', { autoPublishMode: next, reason });
+    setRules((current) => ({ ...current, autoPublishMode: next }));
+  }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی فعال شد؛ پست‌ها فقط به مقصد تست می‌روند' : 'انتشار خودکار زنده شد');
+
+  const doPreview = () => run('preview', async () => {
+    const res = await apiClient.post<{ projection: Record<string, unknown>; rendered?: Rendered }>('/omnichannel/preview', { channel: pubChannel, sourceType, sourceId });
+    setPreview({ projection: res.projection, rendered: res.rendered });
+  }, 'خطا در پیش‌نمایش');
+
+  const doSend = (destinationId?: string) => {
+    const target = destinationId ? destById.get(destinationId) : null;
+    const where = target ? `«${target.displayName}»` : mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'مقصد تست (canary)';
+    if (!window.confirm(`این منبع به ${where} ارسال می‌شود. ادامه می‌دهید؟`)) return;
+    void run('send', async () => {
+      await apiClient.post('/omnichannel/publications', {
+        preview: { channel: pubChannel, sourceType, sourceId },
+        dryRun: false,
+        ...(destinationId ? { destinationId } : {}),
+        reason,
+      });
+      setView('publish');
+    }, 'خطا در ارسال', 'به صف ارسال رفت؛ چند ثانیه بعد وضعیت را ببینید');
+  };
 
   if (loading && !status) {
     return <div className="p-6 text-sm text-gray-500">در حال بارگذاری کانال‌های انتشار…</div>;
   }
 
-  return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">کانال‌های انتشار</h1>
-          <p className="text-sm text-gray-500 mt-1 max-w-3xl">
-            تلگرام فقط کانال اطلاع است، نه انبار. secretRef نام متغیر روی سرور است؛ توکن را اینجا ننویسید.
-            ارسال زنده فقط به مقصد canary می‌رود. ثبت پیش‌نویس محصول را به تلگرام نمی‌فرستد.
-          </p>
-        </div>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>
-          تازه‌سازی
-        </button>
-      </div>
+  /* ---------- panels ---------- */
 
-      {status && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <Metric label="فاز هسته" value={`${status.phase}`} hint="یک API / یک دیتابیس" tone="info" />
-          <Metric
-            label="کانکتور / auto-publish"
-            value={`${status.connectors ? 'روشن' : 'خاموش'} / ${status.autoPublish ? 'روشن' : 'خاموش'}`}
-            hint={status.connectors ? 'تلگرام مجاز است' : 'پرچم سرور خاموش است'}
-            tone={status.connectors ? 'ok' : 'warn'}
-          />
-          <Metric
-            label="canary تکی"
-            value={retailCanary ? retailCanary.displayName : 'انتخاب نشده'}
-            hint={`سقف ${status.retailCanaryLimit} محصول`}
-            tone={retailCanary ? 'ok' : 'warn'}
-          />
-          <Metric
-            label="canary عمده"
-            value={status.wholesaleCanaryDestinationId ? 'انتخاب شده' : 'خالی'}
-            hint={`سقف ${status.wholesaleCanaryLimit} محصول`}
-            tone={status.wholesaleCanaryDestinationId ? 'ok' : 'off'}
-          />
-          <Metric
-            label="صف"
-            value={`${status.outbox?.pending ?? pendingOutbox} در انتظار`}
-            hint={`DEAD ${status.outbox?.dead ?? deadOutbox}${status.outbox ? ` / تأخیر ${status.outbox.oldestPendingAgeSec}ث` : ''}`}
-            tone={(status.outbox?.dead ?? deadOutbox) > 0 ? 'warn' : 'ok'}
-          />
-        </div>
-      )}
-
-      <div className={`rounded-xl border p-3 text-sm ${setupReady ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
-        {setupReady
-          ? 'راه‌اندازی تکی آماده است: اتصال فعال، canary و کانکتور روشن.'
-          : 'برای پیام واقعی: اتصال ACTIVE، مقصد عددی canary، و کانکتور روشن لازم است. شناسهٔ @username برای چت خصوصی معمولاً کار نمی‌کند.'}
-      </div>
-
-      {error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">
-          {notice}
-        </p>
-      )}
-
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="بخش‌های کانال انتشار">
-        {TABS.map((item) => (
+  const botPanel = (
+    <Section
+      title="۱. ربات تلگرام"
+      description={<>توکن ربات روی سرور به نام یک متغیر محیطی ذخیره است (مثلاً <code className="font-mono">TELEGRAM_BOT_TOKEN</code>). اینجا فقط نام همان متغیر را می‌دهید؛ توکن هیچ‌وقت وارد مرورگر نمی‌شود. یک ربات می‌تواند برای تکی و عمده جدا ثبت شود.</>}
+    >
+      <div className="grid md:grid-cols-4 gap-2">
+        <label className="text-xs text-gray-500 space-y-1">
+          <span>نام اتصال</span>
+          <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder="ربات ترنم" value={connName} onChange={(e) => setConnName(e.target.value)} />
+        </label>
+        <label className="text-xs text-gray-500 space-y-1">
+          <span>نام متغیر توکن (secretRef)</span>
+          <input className="border rounded-lg px-3 py-2 text-sm w-full font-mono" dir="ltr" placeholder="TELEGRAM_BOT_TOKEN" value={secretRef} onChange={(e) => setSecretRef(e.target.value.toUpperCase())} />
+        </label>
+        <label className="text-xs text-gray-500 space-y-1">
+          <span>برای کانال</span>
+          <select className="border rounded-lg px-3 py-2 text-sm w-full" value={connChannel} onChange={(e) => setConnChannel(e.target.value as Channel)}>
+            <option value="RETAIL">تکی</option>
+            <option value="WHOLESALE">عمده</option>
+          </select>
+        </label>
+        <div className="flex items-end">
           <button
-            key={item.id}
             type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            className={`px-3 py-1.5 rounded-full text-sm border cursor-pointer ${tab === item.id ? 'bg-gray-900 text-white' : 'bg-white'}`}
-            onClick={() => setTab(item.id)}
+            className="btn btn-primary btn-sm"
+            disabled={!connName.trim() || busy === 'conn-add'}
+            onClick={() => run('conn-add', async () => {
+              await apiClient.post('/omnichannel/connections', { provider: 'TELEGRAM', channel: connChannel, name: connName, secretRef });
+              setConnName('');
+            }, 'خطا در ثبت اتصال', 'اتصال ذخیره شد؛ حالا «تست» را بزنید')}
           >
-            {item.label}
+            افزودن ربات
           </button>
-        ))}
+        </div>
       </div>
-
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={`px-3 py-1 rounded-full text-xs border cursor-pointer ${filter === item.key ? 'bg-gray-900 text-white' : 'bg-white'}`}
-            onClick={() => setFilter(item.key)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'setup' && (
-        <>
-          <section className="rounded-xl border bg-white p-4 space-y-3">
-            <div>
-              <h2 className="font-semibold">اتصال‌ها</h2>
-              <p className="text-xs text-gray-500 mt-1">
-                secretRef فقط نام env است (مثلاً TELEGRAM_BOT_TOKEN). تست = getMe. پیام فارسی آزمایشی از سرور می‌رود تا «؟؟؟» نشود.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-4 gap-2">
-              <label className="text-xs text-gray-500 space-y-1">
-                <span>نام اتصال</span>
-                <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder="ربات تک" value={connName} onChange={(e) => setConnName(e.target.value)} />
-              </label>
-              <label className="text-xs text-gray-500 space-y-1">
-                <span>secretRef</span>
-                <input className="border rounded-lg px-3 py-2 text-sm w-full font-mono" placeholder="TELEGRAM_BOT_TOKEN" value={secretRef} onChange={(e) => setSecretRef(e.target.value.toUpperCase())} />
-              </label>
-              <label className="text-xs text-gray-500 space-y-1">
-                <span>کانال</span>
-                <select className="border rounded-lg px-3 py-2 text-sm w-full" value={channel} onChange={(e) => setChannel(e.target.value as 'RETAIL' | 'WHOLESALE')}>
-                  <option value="RETAIL">تکی</option>
-                  <option value="WHOLESALE">عمده</option>
-                </select>
-              </label>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  disabled={!connName.trim()}
-                  onClick={() => run(async () => {
-                    await apiClient.post('/omnichannel/connections', {
-                      provider: 'TELEGRAM',
-                      channel,
-                      name: connName,
-                      secretRef,
-                    });
-                    setConnName('');
-                  }, 'خطا در ثبت اتصال', 'اتصال ذخیره شد')}
-                >
-                  افزودن تلگرام
+      {telegramConnections.length === 0 ? (
+        <Callout tone="info">هنوز رباتی ثبت نشده. ربات را در @BotFather بسازید، توکن را روی سرور بگذارید و اینجا فقط نام متغیر را ثبت کنید.</Callout>
+      ) : (
+        <ul className="divide-y rounded-xl border">
+          {telegramConnections.map((row) => (
+            <li key={row.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
+              <div className="flex-1 min-w-[12rem]">
+                <p className="font-medium text-gray-900">{row.name}</p>
+                <p className="text-xs text-gray-500">کانال {channelLabel(row.channel)} · <span className="font-mono" dir="ltr">{row.secretRef}</span></p>
+              </div>
+              <Badge tone={row.status === 'ACTIVE' ? 'ok' : 'off'}>{row.status === 'ACTIVE' ? 'فعال' : 'خاموش'}</Badge>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `test-${row.id}`} onClick={() => run(`test-${row.id}`, async () => {
+                  const res = await apiClient.post<{ ok?: boolean; error?: string }>(`/omnichannel/connections/${row.id}/test`, {});
+                  if (res && res.ok === false) throw new Error(errorLabel(res.error) || 'تست اتصال ناموفق');
+                }, 'تست اتصال ناموفق', 'ربات پاسخ داد؛ توکن درست است')}>
+                  تست توکن
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `ping-${row.id}` || !canaryByChannel(row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL')} title="پیام کوتاه فارسی به مقصد تست" onClick={() => run(`ping-${row.id}`, async () => {
+                  await apiClient.post(`/omnichannel/connections/${row.id}/canary-ping`, { reason });
+                }, 'ارسال آزمایشی ناموفق', 'پیام آزمایشی به مقصد تست رفت')}>
+                  پیام آزمایشی
+                </button>
+                <button type="button" className="text-xs text-gray-600 underline cursor-pointer" onClick={() => run(`toggle-${row.id}`, async () => {
+                  await apiClient.patch(`/omnichannel/connections/${row.id}`, { status: row.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE' });
+                }, 'تغییر وضعیت ناموفق')}>
+                  {row.status === 'ACTIVE' ? 'خاموش کن' : 'روشن کن'}
                 </button>
               </div>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-2 text-right font-medium">نام</th>
-                  <th className="p-2 text-right font-medium">ارائه‌دهنده / کانال</th>
-                  <th className="p-2 text-right font-medium">secretRef</th>
-                  <th className="p-2 text-right font-medium">وضعیت</th>
-                  <th className="p-2 text-left font-medium">عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {connections.filter(matchFilter).map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-2">{row.name}</td>
-                    <td className="p-2">{row.provider} / {channelLabel(row.channel)}</td>
-                    <td className="p-2 font-mono text-xs">{row.secretRef}</td>
-                    <td className="p-2">
-                      <Badge tone={row.status === 'ACTIVE' ? 'ok' : 'off'}>{row.status}</Badge>
-                    </td>
-                    <td className="p-2 text-left space-x-3 space-x-reverse">
-                      <button
-                        type="button"
-                        className="text-xs text-primary cursor-pointer"
-                        onClick={() => run(async () => {
-                          const res = await apiClient.post<{ ok?: boolean; error?: string }>(`/omnichannel/connections/${row.id}/test`, {});
-                          if (res && res.ok === false) throw new Error(res.error || 'تست اتصال ناموفق');
-                        }, 'تست اتصال ناموفق', 'ربات پاسخ داد (getMe)')}
-                      >
-                        تست
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs text-primary cursor-pointer"
-                        onClick={() => run(async () => {
-                          await apiClient.post(`/omnichannel/connections/${row.id}/canary-ping`, { reason });
-                        }, 'ارسال آزمایشی ناموفق', 'پیام فارسی آزمایشی به canary ارسال شد')}
-                      >
-                        پیام فارسی
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs cursor-pointer"
-                        onClick={() => run(async () => {
-                          await apiClient.patch(`/omnichannel/connections/${row.id}`, {
-                            status: row.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE',
-                          });
-                        }, 'تغییر وضعیت ناموفق')}
-                      >
-                        {row.status === 'ACTIVE' ? 'خاموش' : 'روشن'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {connections.length === 0 && (
-                  <tr><td className="p-3 text-gray-400" colSpan={5}>اتصالی ثبت نشده — فقط نام env را ذخیره کنید، توکن را اینجا ننویسید.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="rounded-xl border bg-white p-4 space-y-3">
-            <div>
-              <h2 className="font-semibold">مقصدها</h2>
-              <p className="text-xs text-gray-500 mt-1">
-                chat id عددی بگذارید (بعد از Start ربات). بدون canary صف ارسال خالی می‌ماند.
-                {status?.retailCanaryDestinationId ? ' canary تکی انتخاب شده.' : ' canary تکی خالی است.'}
-                {status?.wholesaleCanaryDestinationId ? ' canary عمده انتخاب شده.' : ' canary عمده خالی است.'}
-              </p>
-            </div>
-            <div className="grid md:grid-cols-4 gap-2">
-              <label className="text-xs text-gray-500 space-y-1">
-                <span>اتصال</span>
-                <select className="border rounded-lg px-3 py-2 text-sm w-full" value={connectionId} onChange={(e) => setConnectionId(e.target.value)}>
-                  {connections.map((row) => (
-                    <option key={row.id} value={row.id}>{row.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="text-xs text-gray-500 space-y-1">
-                <span>شناسه (عدد)</span>
-                <input className="border rounded-lg px-3 py-2 text-sm w-full font-mono" placeholder="1008770451" value={destKey} onChange={(e) => setDestKey(e.target.value)} />
-              </label>
-              <label className="text-xs text-gray-500 space-y-1">
-                <span>نام نمایشی</span>
-                <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder="خودم" value={destName} onChange={(e) => setDestName(e.target.value)} />
-              </label>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  disabled={!connectionId || !destKey.trim() || !destName.trim()}
-                  onClick={() => run(async () => {
-                    await apiClient.post('/omnichannel/destinations', {
-                      connectionId,
-                      destinationKey: destKey,
-                      displayName: destName,
-                    });
-                    setDestKey('');
-                    setDestName('');
-                  }, 'خطا در مقصد', 'مقصد اضافه شد')}
-                >
-                  افزودن مقصد
-                </button>
-              </div>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-2 text-right font-medium">مقصد</th>
-                  <th className="p-2 text-right font-medium">شناسه</th>
-                  <th className="p-2 text-right font-medium">وضعیت</th>
-                  <th className="p-2 text-right font-medium">canary</th>
-                  <th className="p-2 text-left font-medium">عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {destinations.map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-2">{row.displayName}</td>
-                    <td className="p-2 font-mono text-xs">{row.destinationKey}</td>
-                    <td className="p-2">{row.enabled ? 'فعال' : 'خاموش'}</td>
-                    <td className="p-2">{row.isCanary ? <Badge tone="ok">canary</Badge> : '—'}</td>
-                    <td className="p-2 text-left">
-                      <button
-                        type="button"
-                        className="text-xs text-primary cursor-pointer"
-                        onClick={() => run(async () => {
-                          await apiClient.patch(`/omnichannel/destinations/${row.id}`, {
-                            isCanary: !row.isCanary,
-                          });
-                        }, 'تغییر canary ناموفق')}
-                      >
-                        {row.isCanary ? 'برداشتن canary' : 'انتخاب canary'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {destinations.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={5}>مقصدی ثبت نشده</td></tr>}
-              </tbody>
-            </table>
-          </section>
-        </>
+            </li>
+          ))}
+        </ul>
       )}
+    </Section>
+  );
 
-      {tab === 'policy' && (
-        <>
-          <section className="rounded-xl border bg-white p-4 space-y-4">
-            <div>
-              <h2 className="font-semibold">سیاست کالای ناموجود</h2>
-              <p className="text-xs text-gray-500 mt-1">
-                تا ذخیره نشود فقط نمایش پیش‌فرض «به‌روزرسانی» است و ارسالی انجام نمی‌شود.
-                مخفی‌کردن در تلگرام یعنی ویرایش متن به ناموجود، نه حذف.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {([
-                ['RETAIL', 'تکی', retailOos, setRetailOos, status?.retailOosChosen] as const,
-                ['WHOLESALE', 'عمده', wholesaleOos, setWholesaleOos, status?.wholesaleOosChosen] as const,
-              ]).map(([key, label, value, setValue, chosen]) => (
-                <fieldset key={key} className="space-y-2">
-                  <legend className="text-sm font-medium">{label} {chosen ? '(ذخیره شده)' : '(هنوز انتخاب نشده)'}</legend>
-                  {([
-                    ['UPDATE', 'به‌روزرسانی پست'],
-                    ['HIDE', 'مخفی‌کردن (متن ناموجود)'],
-                    ['DELETE', 'حذف پست'],
-                  ] as const).map(([policy, title]) => (
-                    <label key={policy} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name={`oos-${key}`}
-                        checked={value === policy}
-                        onChange={() => setValue(policy)}
-                      />
-                      {title}
-                    </label>
-                  ))}
-                </fieldset>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => run(async () => {
-                await apiClient.patch('/omnichannel/settings', {
-                  retailOosPolicy: retailOos,
-                  wholesaleOosPolicy: wholesaleOos,
-                  reason,
-                });
-              }, 'خطا در ذخیره سیاست', 'سیاست ناموجود ذخیره شد')}
-            >
-              ذخیره سیاست ناموجود
-            </button>
-          </section>
-
-          <section className="rounded-xl border bg-white p-4 space-y-4">
-            <div>
-              <h2 className="font-semibold">باقی‌مانده تصمیم‌های انتشار</h2>
-              <p className="text-xs text-gray-500 mt-1">
-                تا ذخیره نشود فقط نمایش است و ورکر همان رفتار فعلی را نگه می‌دارد.
-                انتشار خودکار زنده و حذف ردیف صف با این ذخیره روشن نمی‌شود.
-              </p>
-            </div>
-            <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">
-                رویدادهایی که بعداً می‌توانند auto-publish شوند
-                {status?.autoPublishEventTypesChosen ? ' (ذخیره شده)' : ' (هنوز انتخاب نشده)'}
-              </legend>
-              {[
-                ['product.created', 'ایجاد کالا'],
-                ['product.content_changed', 'تغییر محتوا'],
-                ['product.price_changed', 'تغییر قیمت'],
-                ['product.visibility_changed', 'تغییر نمایش'],
-                ['product.media_changed', 'تغییر رسانه'],
-                ['product.withdrawn', 'خروج از انتشار'],
-                ['blog.published', 'انتشار بلاگ'],
-                ['cms.published', 'انتشار CMS'],
-              ].map(([event, label]) => (
-                <label key={event} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={autoPublishEventTypes.includes(event)}
-                    onChange={() => setAutoPublishEventTypes((current) => (
-                      current.includes(event)
-                        ? current.filter((item) => item !== event)
-                        : [...current, event]
-                    ))}
-                  />
-                  {label}
-                </label>
-              ))}
-            </fieldset>
-            <div className="grid md:grid-cols-2 gap-4">
-              <label className="text-sm space-y-1">
-                <span>
-                  مهلت تلاش مجدد (ثانیه)
-                  {status?.retrySlaChosen ? ' (ذخیره شده)' : ' (نمایش ۳۶۰۰ تا ذخیره)'}
-                </span>
-                <input
-                  type="number"
-                  min={60}
-                  max={86400}
-                  className="border rounded-lg px-3 py-2 text-sm w-full"
-                  value={retrySlaSeconds}
-                  onChange={(e) => setRetrySlaSeconds(Number(e.target.value))}
-                />
-              </label>
-              <label className="text-sm space-y-1">
-                <span>
-                  نگهداری صف انجام‌شده (روز)
-                  {status?.outboxRetentionChosen ? ' (نمایش ذخیره شده)' : ' (نمایش ۹۰ تا ذخیره)'}
-                </span>
-                <input
-                  type="number"
-                  min={7}
-                  max={365}
-                  className="border rounded-lg px-3 py-2 text-sm w-full"
-                  value={outboxRetentionDays}
-                  onChange={(e) => setOutboxRetentionDays(Number(e.target.value))}
-                />
-              </label>
-            </div>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              onClick={() => run(async () => {
-                await apiClient.patch('/omnichannel/settings', {
-                  autoPublishEventTypes,
-                  retrySlaSeconds,
-                  outboxRetentionDays,
-                  reason,
-                });
-              }, 'خطا در ذخیره تصمیم‌های انتشار', 'تصمیم‌های انتشار ذخیره شد')}
-            >
-              ذخیره تصمیم‌های انتشار
-            </button>
-          </section>
-        </>
-      )}
-
-      {tab === 'publish' && (
-        <>
-          <section className="rounded-xl border bg-white p-4 space-y-3">
-            <div>
-              <h2 className="font-semibold">قالب پیام تلگرام</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                قالب قدیمی فقط اسم و لینک می‌فرستاد. یک‌بار شکل کانال را برای تکی و عمده فعال کنید؛ بعد از آن هر ارسال زنده همان اسکلت را با داده همان محصول پر می‌کند.
-              </p>
-              <p className={`text-xs mt-2 ${templatesReady ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {templatesReady
-                  ? 'قالب تکی و عمده ذخیره شده‌اند. برای محصول بعدی لازم نیست دوباره تنظیم کنید.'
-                  : 'قالب کانال هنوز روی سرور ننشسته. یک‌بار فعال‌سازی را بزنید.'}
-              </p>
-            </div>
-            <div className="flex flex-wrap items-end gap-2">
-              <label className="text-xs text-gray-500 space-y-1">
-                <span>کانال این قالب</span>
-                <select className="border rounded-lg px-3 py-2 text-sm block" value={channel} onChange={(e) => setChannel(e.target.value as 'RETAIL' | 'WHOLESALE')}>
-                  <option value="RETAIL">تکی</option>
-                  <option value="WHOLESALE">عمده</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                onClick={() => run(async () => {
-                  await apiClient.post('/omnichannel/templates/ensure', {});
-                }, 'خطا در فعال‌سازی قالب', 'قالب تکی و عمده آماده شد')}
-              >
-                فعال‌سازی یک‌باره تکی و عمده
-              </button>
-            </div>
-            <AdminTelegramTemplateBuilder
-              channel={channel}
-              eventType={tplEvent}
-              templates={templates}
-              onEventType={setTplEvent}
-              onSave={async (body) => {
-                await run(async () => {
-                  const existing = templates.find((row) => (
-                    row.channel === channel && row.eventType === tplEvent
-                  ));
-                  if (existing) {
-                    await apiClient.patch(`/omnichannel/templates/${existing.id}`, { body });
-                  } else {
-                    await apiClient.post('/omnichannel/templates', {
-                      provider: 'TELEGRAM',
-                      channel,
-                      eventType: tplEvent,
-                      body,
-                    });
-                  }
-                }, 'خطا در قالب', 'قالب ذخیره شد');
-              }}
-            />
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-2 text-right font-medium">ارائه‌دهنده / کانال</th>
-                  <th className="p-2 text-right font-medium">رویداد</th>
-                  <th className="p-2 text-right font-medium">نسخه</th>
-                  <th className="p-2 text-right font-medium">وضعیت</th>
-                </tr>
-              </thead>
-              <tbody>
-                {templates.filter(matchFilter).map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-2">{row.provider} / {channelLabel(row.channel)}</td>
-                    <td className="p-2 font-mono text-xs">{row.eventType}</td>
-                    <td className="p-2">v{row.version}</td>
-                    <td className="p-2">{row.enabled === false ? 'خاموش' : templateLooksReady(row.body) ? 'قالب کانال' : 'قدیمی'}</td>
-                  </tr>
-                ))}
-                {templates.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={4}>قالبی ثبت نشده</td></tr>}
-              </tbody>
-            </table>
-          </section>
-
-          <section className="rounded-xl border bg-white p-4 space-y-3">
-            <div>
-              <h2 className="font-semibold">پیش‌نمایش</h2>
-              <p className="text-xs text-gray-500 mt-1">
-                ثبت پیش‌نویس همیشه dry-run است و به تلگرام نمی‌رود.
-                ارسال زنده فقط یک منبع را به مقصد canary می‌فرستد و سقف ۱۰ محصول زنده در هر کانال را رعایت می‌کند.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <select className="border rounded-lg px-3 py-2 text-sm" value={sourceType} onChange={(e) => setSourceType(e.target.value as typeof sourceType)}>
-                <option value="PRODUCT">محصول</option>
-                <option value="BLOG_POST">بلاگ</option>
-                <option value="CMS_PAGE">CMS</option>
-              </select>
-              <input className="border rounded-lg px-3 py-2 text-sm w-80" placeholder="شناسه، کد، اسلاگ یا لینک محصول" value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
-              <input className="border rounded-lg px-3 py-2 text-sm w-56" placeholder="دلیل" value={reason} onChange={(e) => setReason(e.target.value)} />
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => run(async () => {
-                const res = await apiClient.post<{
-                  projection: Record<string, unknown>;
-                  rendered?: { text?: string; photoUrls?: string[] };
-                }>('/omnichannel/preview', {
-                  channel, sourceType, sourceId,
-                });
-                setPreview({ projection: res.projection, rendered: res.rendered });
-              }, 'خطا در پیش‌نمایش')}>پیش‌نمایش</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => run(async () => {
-                await apiClient.post('/omnichannel/publications', {
-                  preview: { channel, sourceType, sourceId },
-                  dryRun: true,
-                  reason,
-                });
-              }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد')}>ثبت پیش‌نویس</button>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => {
-                if (!window.confirm('فقط همین منبع به مقصد canary تلگرام می‌رود. کاتالوگ ارسال نمی‌شود. ادامه می‌دهید؟')) return;
-                void run(async () => {
-                  await apiClient.post('/omnichannel/publications', {
-                    preview: { channel, sourceType, sourceId },
-                    dryRun: false,
-                    reason,
-                  });
-                }, 'خطا در ارسال زنده', 'به صف canary رفت');
-              }}>ارسال زنده به canary</button>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => run(async () => {
-                await apiClient.post('/omnichannel/reconcile', { reason });
-              }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق</button>
-            </div>
-            {preview?.rendered && (
-              <div className="rounded-3xl border bg-[#0e1621] text-white p-4">
-                <p className="text-[11px] text-white/60 mb-2">
-                  پیش‌نمایش همین محصول — {preview.rendered.photoUrls?.length || 0} عکس
-                </p>
-                {!!preview.rendered.photoUrls?.length && (
-                  <div className="grid grid-cols-6 gap-1 mb-3">
-                    {preview.rendered.photoUrls.slice(0, 5).map((href) => (
-                      <div key={href} className={`${preview.rendered?.photoUrls && preview.rendered.photoUrls.length > 2 && preview.rendered.photoUrls.indexOf(href) > 1 ? 'col-span-2 h-16' : 'col-span-3 h-24'} rounded-lg bg-white/10 overflow-hidden`}>
-                        <img src={href} alt="" className="h-full w-full object-cover" />
-                      </div>
-                    ))}
+  const channelsPanel = (
+    <Section
+      title="۲. کانال‌ها و مقصدها"
+      description="ربات را در کانال ادمین کنید (با اجازه ارسال، ویرایش و حذف پیام)، بعد شناسه کانال را اینجا ثبت کنید و «بررسی دسترسی» را بزنید. برای کانال عمومی @username کافی است؛ برای کانال خصوصی شناسه عددی (مثل -1001234567890). یک مقصد را «تست» کنید تا پست‌های آزمایشی فقط همان‌جا برود."
+    >
+      <div className="grid md:grid-cols-4 gap-2">
+        <label className="text-xs text-gray-500 space-y-1">
+          <span>ربات</span>
+          <select className="border rounded-lg px-3 py-2 text-sm w-full" value={destConnectionId} onChange={(e) => setDestConnectionId(e.target.value)}>
+            {telegramConnections.map((row) => <option key={row.id} value={row.id}>{row.name} ({channelLabel(row.channel)})</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-gray-500 space-y-1">
+          <span>شناسه کانال</span>
+          <input className="border rounded-lg px-3 py-2 text-sm w-full font-mono" dir="ltr" placeholder="@toliditaranom یا -100…" value={destKey} onChange={(e) => setDestKey(e.target.value.trim())} />
+        </label>
+        <label className="text-xs text-gray-500 space-y-1">
+          <span>نام نمایشی</span>
+          <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder="کانال عمده ترنم" value={destName} onChange={(e) => setDestName(e.target.value)} />
+        </label>
+        <div className="flex items-end">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={!destConnectionId || !destKey || !destName.trim() || busy === 'dest-add'}
+            onClick={() => run('dest-add', async () => {
+              const created = await apiClient.post<Destination>('/omnichannel/destinations', { connectionId: destConnectionId, destinationKey: destKey, displayName: destName });
+              setDestKey('');
+              setDestName('');
+              if (created?.id && status?.connectors) {
+                await apiClient.post(`/omnichannel/destinations/${created.id}/verify`, {}).catch(() => null);
+              }
+            }, 'خطا در ثبت مقصد', 'مقصد ثبت شد و دسترسی ربات بررسی شد')}
+          >
+            افزودن کانال
+          </button>
+        </div>
+      </div>
+      {destinations.length === 0 ? (
+        <Callout tone="info">مقصدی ثبت نشده. اولین مقصد را «تست» کنید (مثلاً چت خودتان با ربات) تا پست‌های آزمایشی امن باشند.</Callout>
+      ) : (
+        <ul className="grid gap-2 md:grid-cols-2">
+          {destinations.map((dest) => {
+            const conn = connById.get(dest.connectionId);
+            const v = dest.verified;
+            const ready = destinationReady(dest) && dest.enabled;
+            return (
+              <li key={dest.id} className={`rounded-xl border p-3 text-sm space-y-2 ${dest.enabled ? 'bg-white' : 'bg-gray-50 opacity-70'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{dest.displayName}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      <span className="font-mono" dir="ltr">{dest.destinationKey}</span> · {conn ? `${conn.name} (${channelLabel(conn.channel)})` : 'اتصال حذف شده'}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {dest.isCanary && <Badge tone="info">مقصد تست</Badge>}
+                    {ready ? <Badge tone="ok">آماده ارسال</Badge> : v && !v.ok ? <Badge tone="danger">دسترسی ندارد</Badge> : v && v.ok ? <Badge tone="warn">اجازه ارسال ندارد</Badge> : <Badge tone="warn">تأییدنشده</Badge>}
+                  </div>
+                </div>
+                {v && (
+                  <div className="text-xs text-gray-600 leading-5">
+                    {v.ok ? (
+                      <>
+                        {chatTypeLabel(v.chatType)}{v.title ? ` «${v.title}»` : ''}{v.username ? ` @${v.username}` : ''}{typeof v.memberCount === 'number' ? ` · ${faNumber(v.memberCount)} عضو` : ''}
+                        {v.chatType !== 'private' && (
+                          <span className="block">
+                            ربات {v.botIsAdmin ? 'ادمین است' : 'ادمین نیست'} · ارسال {v.canPost ? '✓' : '✗'} · ویرایش {v.canEdit ? '✓' : '✗'} · حذف {v.canDelete ? '✓' : '✗'}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-red-700">{errorLabel(v.error) || 'بررسی ناموفق'}</span>
+                    )}
+                    <span className="block text-gray-400">بررسی: {relativeTime(v.checkedAt)}</span>
                   </div>
                 )}
-                <pre className="whitespace-pre-wrap text-[13px] leading-6 font-sans text-white/95">{preview.rendered.text || 'متن خالی است'}</pre>
-              </div>
-            )}
-            {preview && (
-              <details className="text-xs text-gray-500">
-                <summary className="cursor-pointer">جزئیات فنی پیش‌نمایش</summary>
-                <pre className="mt-2 bg-gray-50 p-3 rounded-lg overflow-auto max-h-64 text-gray-700">{JSON.stringify(preview.projection, null, 2)}</pre>
-              </details>
-            )}
-          </section>
-
-          <section className="rounded-xl border bg-white overflow-hidden">
-            <h2 className="font-semibold p-4">انتشارها</h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-3 text-right font-medium">منبع</th>
-                  <th className="p-3 text-right font-medium">کانال</th>
-                  <th className="p-3 text-right font-medium">وضعیت</th>
-                  <th className="p-3 text-left font-medium">عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {publications.filter(matchFilter).map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-3 font-mono text-xs">{row.sourceId}</td>
-                    <td className="p-3">{channelLabel(row.channel)}</td>
-                    <td className="p-3">{row.status}</td>
-                    <td className="p-3 text-left">
-                      {row.status !== 'WITHDRAWN' && (
-                        <button type="button" className="text-red-600 text-xs cursor-pointer" onClick={() => run(async () => {
-                          await apiClient.post(`/omnichannel/publications/${row.id}/withdraw`, { reason });
-                        }, 'خطا در برداشت')}>برداشت</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {publications.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={4}>هنوز انتشاری ثبت نشده</td></tr>}
-              </tbody>
-            </table>
-          </section>
-        </>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `verify-${dest.id}` || !status?.connectors} onClick={() => run(`verify-${dest.id}`, async () => {
+                    const res = await apiClient.post<Destination & { botUsername?: string | null }>(`/omnichannel/destinations/${dest.id}/verify`, {});
+                    if (res?.verified && !res.verified.ok) throw new Error(errorLabel(res.verified.error) || 'ربات به این مقصد دسترسی ندارد');
+                  }, 'بررسی دسترسی ناموفق', 'دسترسی ربات تأیید شد')}>
+                    بررسی دسترسی
+                  </button>
+                  <button type="button" className="text-xs text-gray-700 underline cursor-pointer" onClick={() => run(`canary-${dest.id}`, async () => {
+                    await apiClient.patch(`/omnichannel/destinations/${dest.id}`, { isCanary: !dest.isCanary });
+                  }, 'تغییر مقصد تست ناموفق')}>
+                    {dest.isCanary ? 'برداشتن از تست' : 'انتخاب به‌عنوان مقصد تست'}
+                  </button>
+                  <button type="button" className="text-xs text-gray-500 underline cursor-pointer" onClick={() => run(`enable-${dest.id}`, async () => {
+                    await apiClient.patch(`/omnichannel/destinations/${dest.id}`, { enabled: !dest.enabled });
+                  }, 'تغییر وضعیت ناموفق')}>
+                    {dest.enabled ? 'غیرفعال' : 'فعال'}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
+      {!status?.connectors && <Callout tone="warn">پرچم کانکتور روی سرور خاموش است؛ بررسی دسترسی و ارسال تا روشن‌شدن آن کار نمی‌کند.</Callout>}
+    </Section>
+  );
 
-      {tab === 'ops' && (
+  const templatePanel = (
+    <Section
+      title="۳. قالب پست"
+      description="یک‌بار شکل پست را برای تکی و عمده تنظیم کنید. از این به بعد هر پست خودکار (محصول جدید، تغییر قیمت، …) دقیقاً با همین چیدمان و با عکس و مشخصات همان محصول می‌رود."
+      actions={
+        <div className="flex gap-1 rounded-xl bg-gray-100 p-1" role="tablist">
+          {(['RETAIL', 'WHOLESALE'] as Channel[]).map((ch) => {
+            const ready = templateLooksReady((ch === 'RETAIL' ? retailTpl : wholesaleTpl)?.body);
+            return (
+              <button key={ch} type="button" role="tab" aria-selected={tplChannel === ch} className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 cursor-pointer ${tplChannel === ch ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setTplChannel(ch)}>
+                {channelLabel(ch)}
+                <span className={`h-2 w-2 rounded-full ${ready ? 'bg-emerald-500' : 'bg-amber-400'}`} aria-label={ready ? 'آماده' : 'ناقص'} />
+              </button>
+            );
+          })}
+        </div>
+      }
+    >
+      <AdminTelegramTemplateBuilder
+        channel={tplChannel}
+        template={tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl}
+        saving={busy === 'tpl-save'}
+        onSave={async (body) => {
+          await run('tpl-save', async () => {
+            const existing = tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl;
+            if (existing) await apiClient.patch(`/omnichannel/templates/${existing.id}`, { body });
+            else await apiClient.post('/omnichannel/templates', { provider: 'TELEGRAM', channel: tplChannel, eventType: PRODUCT_TEMPLATE_EVENT, body });
+          }, 'خطا در ذخیره قالب', `قالب ${channelLabel(tplChannel)} ذخیره شد؛ پست‌های بعدی با همین شکل می‌روند`);
+        }}
+      />
+    </Section>
+  );
+
+  const toggleEvent = (key: string) => setRules((current) => ({
+    ...current,
+    autoPublishEventTypes: current.autoPublishEventTypes.includes(key) ? current.autoPublishEventTypes.filter((row) => row !== key) : [...current.autoPublishEventTypes, key],
+  }));
+
+  const rulesPanel = (
+    <Section
+      title="۴. قواعد خودکار"
+      description="این‌ها یک‌بار تنظیم می‌شوند و بعد سیستم خودش تصمیم می‌گیرد چه چیزی، کجا و با چه ریتمی برود. تا «ذخیره» را نزنید هیچ تغییری اعمال نمی‌شود."
+      actions={
         <>
-          <section className="rounded-xl border bg-white overflow-hidden">
-            <h2 className="font-semibold p-4">تاریخچه تحویل</h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-3 text-right font-medium">شناسه</th>
-                  <th className="p-3 text-right font-medium">عمل</th>
-                  <th className="p-3 text-right font-medium">وضعیت</th>
-                  <th className="p-3 text-right font-medium">خطا</th>
-                  <th className="p-3 text-left font-medium">عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {deliveries.filter(matchFilter).map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-3 font-mono text-xs">{row.id}</td>
-                    <td className="p-3">{row.action}</td>
-                    <td className="p-3">{row.status}</td>
-                    <td className="p-3 text-xs text-gray-500">{row.lastError || '—'}</td>
-                    <td className="p-3 text-left">
-                      {row.status !== 'SUCCEEDED' && (
-                        <button type="button" className="text-xs text-primary cursor-pointer" onClick={() => run(async () => {
-                          await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason });
-                        }, 'خطا در retry')}>تلاش دوباره</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {deliveries.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={5}>تحویلی ثبت نشده</td></tr>}
-              </tbody>
-            </table>
-          </section>
+          {rulesDirty && <Badge tone="warn">ذخیره نشده</Badge>}
+          <button type="button" className="btn btn-secondary btn-sm" disabled={!rulesDirty} onClick={() => setRules(savedRules)}>انصراف</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!rulesDirty || busy === 'rules'} onClick={saveRules}>{busy === 'rules' ? 'در حال ذخیره…' : 'ذخیره قواعد'}</button>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-medium">حالت انتشار خودکار</p>
+          <RadioCards<AutoPublishMode>
+            name="auto-mode"
+            value={rules.autoPublishMode}
+            onChange={(autoPublishMode) => setRules((current) => ({ ...current, autoPublishMode }))}
+            options={[
+              { value: 'OFF', title: 'خاموش', hint: 'هیچ پستی خودکار نمی‌رود؛ فقط ارسال دستی از تب انتشارها.' },
+              { value: 'CANARY', title: 'آزمایشی', hint: 'همه قواعد اجرا می‌شوند اما پست فقط به «مقصد تست» می‌رود. برای اطمینان قبل از زنده‌شدن.', badge: 'امن', tone: 'info' },
+              { value: 'LIVE', title: 'زنده', hint: 'پست به همه کانال‌های تأییدشده می‌رود. مشتری‌ها می‌بینند.', badge: 'واقعی', tone: 'ok', disabled: readyDestinations.filter((dest) => !dest.isCanary).length === 0 },
+            ]}
+          />
+          {readyDestinations.filter((dest) => !dest.isCanary).length === 0 && <p className="text-xs text-amber-700">برای حالت زنده دست‌کم یک کانال تأییدشده (غیر از مقصد تست) لازم است.</p>}
+        </div>
 
-          <section className="rounded-xl border bg-white overflow-hidden">
-            <h2 className="font-semibold p-4">صف outbox</h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-3 text-right font-medium">رویداد</th>
-                  <th className="p-3 text-right font-medium">کانال</th>
-                  <th className="p-3 text-right font-medium">وضعیت</th>
-                  <th className="p-3 text-right font-medium">تلاش</th>
-                  <th className="p-3 text-right font-medium">خطا</th>
-                </tr>
-              </thead>
-              <tbody>
-                {outbox.filter(matchFilter).map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-3 font-mono text-xs">{row.eventType}</td>
-                    <td className="p-3">{row.channel ? channelLabel(row.channel) : '—'}</td>
-                    <td className="p-3">{row.status}</td>
-                    <td className="p-3">{row.attempts}</td>
-                    <td className="p-3 text-xs text-gray-500">{row.lastError || '—'}</td>
-                  </tr>
-                ))}
-                {outbox.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={5}>رویدادی در صف نیست</td></tr>}
-              </tbody>
-            </table>
-          </section>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">چه اتفاق‌هایی در سایت به کانال برسد؟</p>
+          <div className="grid gap-2 md:grid-cols-2">
+            {EVENT_LABELS.filter((row) => row.group !== 'manual').map((row) => (
+              <Toggle key={row.key} checked={rules.autoPublishEventTypes.includes(row.key)} onChange={() => toggleEvent(row.key)} label={row.label} hint={row.hint} />
+            ))}
+          </div>
+          <p className="text-xs text-gray-500">مقاله بلاگ و صفحه CMS فعلاً با ارسال دستی می‌روند. تغییر موجودی همیشه طبق «رفتار ناموجودی» پایین رسیدگی می‌شود.</p>
+        </div>
 
-          <section className="rounded-xl border bg-white overflow-hidden">
-            <h2 className="font-semibold p-4">رسانه (alt)</h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-3 text-right font-medium">آدرس</th>
-                  <th className="p-3 text-right font-medium">مالک</th>
-                  <th className="p-3 text-right font-medium">متن جایگزین</th>
-                </tr>
-              </thead>
-              <tbody>
-                {media.map((row) => (
-                  <tr key={row.id} className="border-t">
-                    <td className="p-3 font-mono text-xs break-all">{row.publicUrl}</td>
-                    <td className="p-3">{row.ownerType}</td>
-                    <td className="p-3">
-                      <input
-                        className="border rounded-lg px-2 py-1 text-sm w-full"
-                        defaultValue={row.altText}
-                        onBlur={(e) => {
-                          const altText = e.target.value.trim();
-                          if (altText === row.altText) return;
-                          void run(async () => {
-                            await apiClient.patch(`/omnichannel/media/${row.id}`, { altText });
-                          }, 'خطا در alt');
-                        }}
-                      />
-                    </td>
-                  </tr>
-                ))}
-                {media.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={3}>رجیستری خالی است یا جدول هنوز migrate نشده</td></tr>}
-              </tbody>
-            </table>
-          </section>
+        <div className="grid gap-4 md:grid-cols-2">
+          {([['RETAIL', 'retailOosPolicy'], ['WHOLESALE', 'wholesaleOosPolicy']] as Array<[Channel, 'retailOosPolicy' | 'wholesaleOosPolicy']>).map(([ch, key]) => (
+            <div key={ch} className="space-y-2">
+              <p className="text-sm font-medium">وقتی موجودی کانال {channelLabel(ch)} تمام شد</p>
+              <RadioCards<OosPolicy>
+                name={`oos-${ch}`}
+                value={rules[key]}
+                onChange={(value) => setRules((current) => ({ ...current, [key]: value }))}
+                columns={3}
+                options={[
+                  { value: 'UPDATE', title: 'پست بماند', hint: 'ویرایش‌های بعدی هم اعمال می‌شود.' },
+                  { value: 'HIDE', title: 'متن «ناموجود»', hint: 'پست به یک خط ناموجود تغییر می‌کند؛ با شارژ برمی‌گردد.' },
+                  { value: 'DELETE', title: 'حذف پست', hint: 'پست پاک می‌شود؛ با شارژ دوباره ارسال می‌شود.' },
+                ]}
+              />
+            </div>
+          ))}
+        </div>
 
-          <section className="rounded-xl border bg-white overflow-hidden">
-            <h2 className="font-semibold p-4">حسابرسی</h2>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-500">
-                  <th className="p-3 text-right font-medium">عمل</th>
-                  <th className="p-3 text-right font-medium">عامل</th>
-                  <th className="p-3 text-right font-medium">کانال</th>
-                  <th className="p-3 text-right font-medium">دلیل</th>
-                </tr>
-              </thead>
-              <tbody>
-                {audits.filter(matchFilter).map((row) => (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">وقتی محصول از سایت حذف یا مخفی شد</p>
+          <RadioCards<WithdrawAction>
+            name="withdraw"
+            value={rules.withdrawAction}
+            onChange={(withdrawAction) => setRules((current) => ({ ...current, withdrawAction }))}
+            columns={2}
+            options={[
+              { value: 'DELETE', title: 'پست از کانال حذف شود', hint: 'کانال همیشه با سایت یکی می‌ماند.', badge: 'پیشنهادی', tone: 'ok' },
+              { value: 'KEEP', title: 'پست بماند', hint: 'فقط دیگر ویرایش نمی‌شود.' },
+            ]}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">ریتم ارسال</p>
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="text-sm space-y-1 rounded-xl border p-3">
+              <span className="block font-medium">سقف پست جدید در روز</span>
+              <span className="block text-xs text-gray-500">پس از این تعداد، بقیه به فردا می‌ماند (ویرایش و حذف شمرده نمی‌شود).</span>
+              <input type="number" min={1} max={200} className="border rounded-lg px-3 py-2 text-sm w-full" value={rules.autoDailyCap} onChange={(e) => setRules((current) => ({ ...current, autoDailyCap: Math.max(1, Math.min(200, Number(e.target.value) || 1)) }))} />
+            </label>
+            <label className="text-sm space-y-1 rounded-xl border p-3">
+              <span className="block font-medium">فاصله بین دو پست</span>
+              <span className="block text-xs text-gray-500">جلوی رگبار پست هنگام ثبت گروهی محصول را می‌گیرد.</span>
+              <select className="border rounded-lg px-3 py-2 text-sm w-full" value={rules.autoMinGapSeconds} onChange={(e) => setRules((current) => ({ ...current, autoMinGapSeconds: Number(e.target.value) }))}>
+                {GAP_OPTIONS.map((seconds) => <option key={seconds} value={seconds}>{gapLabel(seconds)}</option>)}
+              </select>
+            </label>
+            <div className="text-sm space-y-1 rounded-xl border p-3">
+              <span className="block font-medium">ساعت سکوت (وقت تهران)</span>
+              <span className="block text-xs text-gray-500">در این بازه پستی نمی‌رود و به پایان سکوت موکول می‌شود.</span>
+              <label className="flex items-center gap-2 text-xs">
+                <input type="checkbox" checked={rules.quietStartHour != null} onChange={(e) => setRules((current) => ({ ...current, quietStartHour: e.target.checked ? 23 : null, quietEndHour: e.target.checked ? 9 : null }))} />
+                فعال
+              </label>
+              {rules.quietStartHour != null && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">از</span>
+                  <select className="border rounded-lg px-2 py-1 text-sm" value={rules.quietStartHour} onChange={(e) => setRules((current) => ({ ...current, quietStartHour: Number(e.target.value) }))}>
+                    {HOURS.map((hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
+                  </select>
+                  <span className="text-xs">تا</span>
+                  <select className="border rounded-lg px-2 py-1 text-sm" value={rules.quietEndHour ?? 9} onChange={(e) => setRules((current) => ({ ...current, quietEndHour: Number(e.target.value) }))}>
+                    {HOURS.map((hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <details className="rounded-xl border p-3">
+          <summary className="text-sm font-medium cursor-pointer">تنظیمات فنی (پیشرفته)</summary>
+          <div className="grid gap-3 md:grid-cols-2 mt-3">
+            <label className="text-sm space-y-1">
+              <span className="block">مهلت تلاش مجدد پس از خطا (ثانیه)</span>
+              <input type="number" min={60} max={86400} className="border rounded-lg px-3 py-2 text-sm w-full" value={rules.retrySlaSeconds} onChange={(e) => setRules((current) => ({ ...current, retrySlaSeconds: Number(e.target.value) }))} />
+            </label>
+            <label className="text-sm space-y-1">
+              <span className="block">نگهداری تاریخچه صف (روز)</span>
+              <input type="number" min={7} max={365} className="border rounded-lg px-3 py-2 text-sm w-full" value={rules.outboxRetentionDays} onChange={(e) => setRules((current) => ({ ...current, outboxRetentionDays: Number(e.target.value) }))} />
+            </label>
+          </div>
+        </details>
+      </div>
+    </Section>
+  );
+
+  const checklist: Array<{ label: string; ok: boolean; detail: string }> = [
+    { label: 'ربات فعال', ok: activeConnections.length > 0, detail: activeConnections.length ? `${faNumber(activeConnections.length)} اتصال فعال` : 'مرحله ۱ را کامل کنید' },
+    { label: 'مقصد تأییدشده', ok: readyDestinations.length > 0, detail: readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'مرحله ۲: دسترسی ربات را بررسی کنید' },
+    { label: 'مقصد تست (canary)', ok: Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE')), detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان تست انتخاب کنید' },
+    { label: 'قالب تکی و عمده', ok: templatesReady, detail: templatesReady ? 'ذخیره شده' : 'مرحله ۳ را برای هر دو کانال ذخیره کنید' },
+    { label: 'پرچم‌های سرور', ok: flagsOn, detail: flagsOn ? 'کانکتور و انتشار خودکار روشن' : `کانکتور ${status?.connectors ? 'روشن' : 'خاموش'} · انتشار خودکار ${status?.autoPublish ? 'روشن' : 'خاموش'} (تنظیم سرور)` },
+  ];
+  const canGoLive = checklist.every((row) => row.ok) && readyDestinations.some((dest) => !dest.isCanary);
+
+  const activatePanel = (
+    <Section title="۵. تست و فعال‌سازی" description="اول یک محصول واقعی را به مقصد تست بفرستید و شکل پست را در تلگرام ببینید؛ بعد حالت خودکار را روشن کنید.">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-3">
+          <ul className="rounded-xl border divide-y">
+            {checklist.map((row) => (
+              <li key={row.label} className="flex items-start gap-3 p-3 text-sm">
+                <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${row.ok ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-800'}`}>{row.ok ? '✓' : '!'}</span>
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900">{row.label}</p>
+                  <p className="text-xs text-gray-500 truncate">{row.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="rounded-xl border p-3 space-y-2">
+            <p className="text-sm font-medium">پست آزمایشی با محصول واقعی</p>
+            <div className="flex flex-wrap gap-2">
+              <select className="border rounded-lg px-3 py-2 text-sm" value={pubChannel} onChange={(e) => setPubChannel(e.target.value as Channel)}>
+                <option value="RETAIL">تکی</option>
+                <option value="WHOLESALE">عمده</option>
+              </select>
+              <input className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[12rem]" placeholder="کد، اسلاگ یا لینک محصول" value={sourceId} onChange={(e) => { setSourceId(e.target.value); setSourceType('PRODUCT'); }} />
+              <select className="border rounded-lg px-3 py-2 text-sm" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+                {readyByChannel(pubChannel).length === 0 && <option value="">مقصد آماده‌ای برای {channelLabel(pubChannel)} نیست</option>}
+                {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
+              </select>
+              <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'preview'} onClick={doPreview}>پیش‌نمایش</button>
+              <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !targetId || busy === 'send'} onClick={() => doSend(targetId)}>ارسال آزمایشی</button>
+            </div>
+          </div>
+          <div className="rounded-xl border p-3 space-y-2">
+            <p className="text-sm font-medium">حالت فعلی: <Badge tone={mode === 'LIVE' ? 'ok' : mode === 'CANARY' ? 'info' : 'off'}>{modeLabel(mode)}</Badge></p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn btn-secondary btn-sm" disabled={mode === 'CANARY' || busy.startsWith('mode-') || !Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE'))} onClick={() => setMode('CANARY')}>فعال‌سازی آزمایشی</button>
+              <button type="button" className="btn btn-primary btn-sm" disabled={mode === 'LIVE' || busy.startsWith('mode-') || !canGoLive} onClick={() => { if (window.confirm('از این لحظه هر محصول جدید یا تغییر قیمت طبق قواعد به کانال‌های واقعی می‌رود. ادامه می‌دهید؟')) void setMode('LIVE'); }}>فعال‌سازی زنده</button>
+              <button type="button" className="text-xs text-red-600 underline cursor-pointer" disabled={mode === 'OFF' || busy.startsWith('mode-')} onClick={() => setMode('OFF')}>خاموش‌کردن انتشار خودکار</button>
+            </div>
+            {!canGoLive && mode !== 'LIVE' && <p className="text-xs text-amber-700">برای زنده‌شدن همه موارد چک‌لیست و دست‌کم یک کانال تأییدشده غیر از مقصد تست لازم است.</p>}
+            {!flagsOn && <Callout tone="warn">پرچم‌های سرور (OMNICHANNEL_CONNECTORS_ENABLED / OMNICHANNEL_AUTO_PUBLISH) باید توسط مدیر سرور روشن باشند؛ بدون آن حتی حالت زنده پستی نمی‌فرستد.</Callout>}
+          </div>
+        </div>
+        <div className="space-y-2">
+          {preview?.rendered ? (
+            <>
+              <TelegramPreview rendered={preview.rendered} title={`پیش‌نمایش واقعی — ${String(preview.projection?.name || sourceId)}`} />
+              {preview.projection?.publishable === false && <Callout tone="danger">{String(preview.projection?.rejectReason || 'این محصول در این کانال قابل انتشار نیست')}</Callout>}
+              <details className="text-xs text-gray-500">
+                <summary className="cursor-pointer">جزئیات فنی</summary>
+                <pre className="mt-2 bg-gray-50 p-3 rounded-lg overflow-auto max-h-64 text-gray-700" dir="ltr">{JSON.stringify(preview.projection, null, 2)}</pre>
+              </details>
+            </>
+          ) : (
+            <div className="rounded-3xl border border-dashed p-8 text-center text-sm text-gray-400 min-h-[18rem] flex items-center justify-center">کد یک محصول را وارد کنید و «پیش‌نمایش» را بزنید تا پست واقعی را همین‌جا ببینید.</div>
+          )}
+        </div>
+      </div>
+    </Section>
+  );
+
+  const publishView = (
+    <>
+      <Section title="ارسال دستی" description="برای مواردی که نمی‌خواهید منتظر رویداد خودکار بمانید: یک محصول، مقاله یا صفحه را انتخاب کنید و به یک مقصد یا طبق قواعد خودکار بفرستید.">
+        <div className="flex flex-wrap gap-2">
+          <select className="border rounded-lg px-3 py-2 text-sm" value={pubChannel} onChange={(e) => setPubChannel(e.target.value as Channel)}>
+            <option value="RETAIL">تکی</option>
+            <option value="WHOLESALE">عمده</option>
+          </select>
+          <select className="border rounded-lg px-3 py-2 text-sm" value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)}>
+            <option value="PRODUCT">محصول</option>
+            <option value="BLOG_POST">مقاله بلاگ</option>
+            <option value="CMS_PAGE">صفحه CMS</option>
+          </select>
+          <input className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[14rem]" placeholder={sourceType === 'PRODUCT' ? 'کد، اسلاگ یا لینک محصول' : 'شناسه یا اسلاگ'} value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
+          <select className="border rounded-lg px-3 py-2 text-sm" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            <option value="">طبق قواعد خودکار ({mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'فقط مقصد تست'})</option>
+            {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
+          </select>
+          <input className="border rounded-lg px-3 py-2 text-sm w-44" placeholder="دلیل (برای حسابرسی)" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'preview'} onClick={doPreview}>پیش‌نمایش</button>
+          <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'draft'} onClick={() => run('draft', async () => {
+            await apiClient.post('/omnichannel/publications', { preview: { channel: pubChannel, sourceType, sourceId }, dryRun: true, reason });
+          }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد (به تلگرام نرفت)')}>ثبت پیش‌نویس</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || busy === 'send'} onClick={() => doSend(targetId || undefined)}>ارسال</button>
+        </div>
+        {preview?.rendered && (
+          <div className="grid gap-3 lg:grid-cols-[22rem_minmax(0,1fr)]">
+            <TelegramPreview rendered={preview.rendered} title={`پیش‌نمایش — ${String(preview.projection?.name || sourceId)}`} />
+            <div className="space-y-2 text-sm">
+              {preview.projection?.publishable === false && <Callout tone="danger">{String(preview.projection?.rejectReason || 'این منبع در این کانال قابل انتشار نیست')}</Callout>}
+              {preview.projection?.available === false && <Callout tone="warn">این محصول در این کانال ناموجود است؛ طبق «رفتار ناموجودی» ممکن است ارسال نشود.</Callout>}
+              <details className="text-xs text-gray-500">
+                <summary className="cursor-pointer">جزئیات فنی</summary>
+                <pre className="mt-2 bg-gray-50 p-3 rounded-lg overflow-auto max-h-64 text-gray-700" dir="ltr">{JSON.stringify(preview.projection, null, 2)}</pre>
+              </details>
+            </div>
+          </div>
+        )}
+      </Section>
+
+      <Section title="انتشارها" description="هر ردیف یک محصول در یک کانال است؛ زیر آن وضعیت ارسال به هر مقصد را می‌بینید." actions={<button type="button" className="btn btn-secondary btn-sm" disabled={busy === 'reconcile'} onClick={() => run('reconcile', async () => { await apiClient.post('/omnichannel/reconcile', { reason }); }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق با سایت</button>}>
+        {publications.length === 0 ? (
+          <Callout tone="info">هنوز انتشاری ثبت نشده. با فعال‌شدن حالت خودکار، محصول‌های جدید خودشان اینجا ظاهر می‌شوند.</Callout>
+        ) : (
+          <ul className="divide-y rounded-xl border">
+            {publications.map((pub) => {
+              const st = publicationStatus(pub.status);
+              const rows = deliveriesByPub.get(pub.id) || [];
+              const name = pub.projection?.name || pub.sourceId;
+              return (
+                <li key={pub.id} className="p-3 space-y-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-gray-900">{name}</span>
+                    {pub.projection?.sku && <span className="text-xs text-gray-500 font-mono">#{pub.projection.sku}</span>}
+                    <Badge tone="off">{channelLabel(pub.channel)}</Badge>
+                    <Badge tone={st.tone}>{st.label}</Badge>
+                    <span className="text-xs text-gray-400">{relativeTime(pub.createdAt)}</span>
+                    <span className="flex-1" />
+                    {pub.projection?.url && <a className="text-xs text-primary underline" href={pub.projection.url} target="_blank" rel="noreferrer">صفحه محصول</a>}
+                    {pub.status !== 'WITHDRAWN' && (
+                      <button type="button" className="text-xs text-red-600 underline cursor-pointer" onClick={() => { if (window.confirm('پست این محصول از کانال‌ها برداشته شود؟')) void run(`withdraw-${pub.id}`, async () => { await apiClient.post(`/omnichannel/publications/${pub.id}/withdraw`, { reason }); }, 'خطا در برداشت', 'برداشته شد'); }}>برداشتن از کانال</button>
+                    )}
+                  </div>
+                  {rows.length > 0 && (
+                    <ul className="grid gap-1 md:grid-cols-2">
+                      {rows.map((row) => {
+                        const ds = deliveryStatus(row.status);
+                        const dest = row.destinationId ? destById.get(row.destinationId) : undefined;
+                        return (
+                          <li key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-2 py-1.5 text-xs">
+                            <span className="font-medium">{dest?.displayName || 'مقصد حذف‌شده'}</span>
+                            <span className="text-gray-500">{actionLabel(row.action)}</span>
+                            <Badge tone={ds.tone}>{ds.label}</Badge>
+                            {row.lastError && <span className="text-red-700 truncate max-w-[16rem]" title={row.lastError}>{errorLabel(row.lastError)}</span>}
+                            {row.nextAttemptAt && (row.status === 'RETRY' || row.status === 'PENDING') && <span className="text-gray-400">تلاش بعدی {relativeTime(row.nextAttemptAt)}</span>}
+                            <span className="flex-1" />
+                            {(row.status === 'DEAD' || row.status === 'FAILED') && (
+                              <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Section>
+    </>
+  );
+
+  const opsView = (
+    <>
+      <Section title="صف رویدادها" description="هر تغییر سایت اول به این صف می‌آید و ورکر آن را به کانال می‌رساند. تأخیر «موکول‌شده» یعنی فاصله بین پست یا ساعت سکوت.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-gray-500">
+                <th className="p-2 text-right font-medium">رویداد</th>
+                <th className="p-2 text-right font-medium">کانال</th>
+                <th className="p-2 text-right font-medium">وضعیت</th>
+                <th className="p-2 text-right font-medium">تلاش</th>
+                <th className="p-2 text-right font-medium">زمان اجرا</th>
+                <th className="p-2 text-right font-medium">خطا</th>
+              </tr>
+            </thead>
+            <tbody>
+              {outbox.map((row) => {
+                const st = outboxStatus(row.status);
+                const deferred = row.status === 'PENDING' && row.availableAt && new Date(row.availableAt).getTime() > Date.now() + 5_000;
+                return (
                   <tr key={row.id} className="border-t">
-                    <td className="p-3">{row.action}</td>
-                    <td className="p-3 font-mono text-xs">{row.actorId}</td>
-                    <td className="p-3">{row.channel ? channelLabel(row.channel) : '—'}</td>
-                    <td className="p-3 text-xs text-gray-500">{row.reason || '—'}</td>
+                    <td className="p-2">{row.eventType === 'publication.deliver_requested' ? 'ارسال به کانال' : row.eventType === 'product.stock_changed' ? 'تغییر موجودی' : eventLabel(row.eventType)}</td>
+                    <td className="p-2">{channelLabel(row.channel)}</td>
+                    <td className="p-2"><Badge tone={st.tone}>{deferred ? 'موکول‌شده' : st.label}</Badge></td>
+                    <td className="p-2">{faNumber(row.attempts)}</td>
+                    <td className="p-2 text-xs text-gray-500">{deferred ? relativeTime(row.availableAt) : relativeTime(row.createdAt)}</td>
+                    <td className="p-2 text-xs text-red-700 max-w-[18rem] truncate" title={row.lastError || ''}>{row.lastError ? errorLabel(row.lastError) : '—'}</td>
                   </tr>
-                ))}
-                {audits.length === 0 && <tr><td className="p-4 text-gray-400" colSpan={4}>رکورد حسابرسی نیست</td></tr>}
-              </tbody>
-            </table>
-          </section>
+                );
+              })}
+              {outbox.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={6}>رویدادی در صف نیست</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section title="متن جایگزین عکس‌ها (alt)" description="برای دسترس‌پذیری و سئو؛ روی پست تلگرام اثری ندارد.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-gray-500">
+                <th className="p-2 text-right font-medium">آدرس</th>
+                <th className="p-2 text-right font-medium">مالک</th>
+                <th className="p-2 text-right font-medium">متن جایگزین</th>
+              </tr>
+            </thead>
+            <tbody>
+              {media.map((row) => (
+                <tr key={row.id} className="border-t">
+                  <td className="p-2 font-mono text-xs break-all" dir="ltr">{row.publicUrl}</td>
+                  <td className="p-2">{row.ownerType}</td>
+                  <td className="p-2">
+                    <input className="border rounded-lg px-2 py-1 text-sm w-full" defaultValue={row.altText} onBlur={(e) => {
+                      const altText = e.target.value.trim();
+                      if (altText === row.altText) return;
+                      void run(`alt-${row.id}`, async () => { await apiClient.patch(`/omnichannel/media/${row.id}`, { altText }); }, 'خطا در ذخیره alt');
+                    }} />
+                  </td>
+                </tr>
+              ))}
+              {media.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={3}>رجیستری رسانه خالی است</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <Section title="حسابرسی" description="هر تغییر تنظیمات یا ارسال با نام کاربر و دلیل ثبت می‌شود.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-gray-500">
+                <th className="p-2 text-right font-medium">عمل</th>
+                <th className="p-2 text-right font-medium">کاربر</th>
+                <th className="p-2 text-right font-medium">کانال</th>
+                <th className="p-2 text-right font-medium">دلیل</th>
+                <th className="p-2 text-right font-medium">زمان</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audits.map((row) => (
+                <tr key={row.id} className="border-t">
+                  <td className="p-2 font-mono text-xs">{row.action}</td>
+                  <td className="p-2 font-mono text-xs">{row.actorId}</td>
+                  <td className="p-2">{channelLabel(row.channel)}</td>
+                  <td className="p-2 text-xs text-gray-500">{row.reason || '—'}</td>
+                  <td className="p-2 text-xs text-gray-400">{relativeTime(row.createdAt)}</td>
+                </tr>
+              ))}
+              {audits.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={5}>رکورد حسابرسی نیست</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+    </>
+  );
+
+  /* ---------- page ---------- */
+
+  return (
+    <div className="space-y-5 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            کانال‌های انتشار
+            <Badge tone={mode === 'LIVE' ? 'ok' : mode === 'CANARY' ? 'info' : 'off'}>خودکار: {modeLabel(mode)}</Badge>
+          </h1>
+          <p className="text-sm text-gray-500 mt-1 max-w-3xl leading-6">
+            یک‌بار ربات، کانال، شکل پست و قواعد را تنظیم کنید؛ بعد از آن هر محصول جدید، تغییر قیمت یا ناموجودی خودش به کانال تلگرام می‌رسد. تلگرام فقط ویترین است؛ موجودی و قیمت از سایت می‌آید.
+          </p>
+        </div>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>تازه‌سازی</button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Metric label="ربات" value={activeConnections.length ? activeConnections.map((row) => row.name).join('، ') : 'ثبت نشده'} hint={status?.connectors ? 'کانکتور روشن' : 'کانکتور سرور خاموش'} tone={activeConnections.length && status?.connectors ? 'ok' : 'warn'} />
+        <Metric label="کانال‌های آماده" value={readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'هیچ'} hint={unverified.length ? `${faNumber(unverified.length)} مقصد تأییدنشده` : 'همه تأیید شده'} tone={readyDestinations.length ? (unverified.length ? 'warn' : 'ok') : 'warn'} />
+        <Metric label="پست‌های امروز" value={`${faNumber(sentToday)} از ${faNumber(status?.autoDailyCap ?? 20)}`} hint={failing ? `${faNumber(failing)} ارسال ناموفق` : 'بدون خطا'} tone={failing ? 'danger' : 'ok'} />
+        <Metric label="صف" value={`${faNumber(status?.outbox?.pending ?? 0)} در انتظار`} hint={status?.outbox?.dead ? `${faNumber(status.outbox.dead)} متوقف` : status?.outbox?.oldestPendingAgeSec ? `قدیمی‌ترین ${faNumber(status.outbox.oldestPendingAgeSec)} ثانیه` : 'روان'} tone={status?.outbox?.dead ? 'danger' : 'ok'} />
+      </div>
+
+      {error && <Callout tone="danger">{error}</Callout>}
+      {notice && <Callout tone="ok">{notice}</Callout>}
+
+      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit" role="tablist" aria-label="بخش‌ها">
+        {([['setup', 'راه‌اندازی'], ['publish', 'انتشارها'], ['ops', 'عملیات']] as Array<[View, string]>).map(([id, label]) => (
+          <button key={id} type="button" role="tab" aria-selected={view === id} className={`px-4 py-1.5 rounded-lg text-sm cursor-pointer ${view === id ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setView(id)}>
+            {label}
+            {id === 'publish' && failing > 0 && <span className="mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{faNumber(failing)}</span>}
+          </button>
+        ))}
+      </div>
+
+      {view === 'setup' && (
+        <>
+          <Stepper steps={steps} current={currentStep} onSelect={setStep} />
+          {currentStep === 'bot' && botPanel}
+          {currentStep === 'channels' && channelsPanel}
+          {currentStep === 'template' && templatePanel}
+          {currentStep === 'rules' && rulesPanel}
+          {currentStep === 'activate' && activatePanel}
+          <div className="flex justify-between">
+            <button type="button" className="btn btn-secondary btn-sm" disabled={currentStep === 'bot'} onClick={() => setStep(steps[Math.max(0, steps.findIndex((row) => row.id === currentStep) - 1)].id)}>مرحله قبل</button>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={currentStep === 'activate'} onClick={() => setStep(steps[Math.min(steps.length - 1, steps.findIndex((row) => row.id === currentStep) + 1)].id)}>مرحله بعد</button>
+          </div>
         </>
       )}
+      {view === 'publish' && publishView}
+      {view === 'ops' && opsView}
     </div>
   );
 }

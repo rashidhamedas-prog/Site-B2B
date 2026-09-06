@@ -16,7 +16,7 @@ import { OutboxService } from './outbox.service';
 import { TelegramAdapter } from '../adapters/telegram.adapter';
 import { safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
-import { PHASE4_EVENT_TYPES } from './outbox-lease';
+import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
@@ -135,7 +135,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         await this.handleSearch(String(payload.productId || row.aggregateId));
         return;
       case OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED:
-        await this.omnichannel.syncProductPublications(String(payload.productId || row.aggregateId), row.channel);
+        await this.omnichannel.syncProductPublications(String(payload.productId || row.aggregateId), row.channel, row.eventType);
         await this.handleSearch(String(payload.productId || row.aggregateId));
         return;
       case OUTBOX_EVENT_TYPES.ORDER_CREATED_NOTIFICATION:
@@ -152,7 +152,12 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         return;
       case OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED:
         if (shouldSkipPublicationDeliver()) throw new DeliveryDeferredError();
-        await this.handlePublicationDeliver(payload);
+        try {
+          await this.handlePublicationDeliver(payload, row.id);
+        } catch (err: unknown) {
+          await this.markDeliveryFailure(payload, row, err);
+          throw err;
+        }
         return;
       default:
         if (row.eventType === OUTBOX_EVENT_TYPES.BLOG_PUBLISHED) {
@@ -164,7 +169,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
           return;
         }
         if ((PHASE4_EVENT_TYPES as readonly string[]).includes(row.eventType)) {
-          await this.omnichannel.syncProductPublications(String(payload.productId || row.aggregateId), row.channel);
+          await this.omnichannel.syncProductPublications(String(payload.productId || row.aggregateId), row.channel, row.eventType);
           return;
         }
         throw new Error(`unhandled eventType ${row.eventType}`);
@@ -224,7 +229,37 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async handlePublicationDeliver(payload: Record<string, unknown>) {
+  private async findDelivery(payload: Record<string, unknown>, eventId: string) {
+    const deliveryId = String(payload.deliveryId || '');
+    if (deliveryId) return this.deliveries.findOne({ where: { id: deliveryId } });
+    const byEvent = eventId ? await this.deliveries.findOne({ where: { eventId } }) : null;
+    if (byEvent) return byEvent;
+    return this.deliveries.findOne({
+      where: {
+        destinationId: String(payload.destinationId || ''),
+        publicationId: String(payload.publicationId || ''),
+        action: String(payload.action || 'CREATE').toUpperCase(),
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  /** Mirror outbox failures onto the delivery row so the console shows why a post did not land. */
+  private async markDeliveryFailure(payload: Record<string, unknown>, event: OutboxEventEntity, err: unknown) {
+    try {
+      const row = await this.findDelivery(payload, event.id);
+      if (!row || row.status === 'SUCCEEDED') return;
+      const dead = shouldDeadLetter(event.attempts, event.maxAttempts);
+      row.status = dead ? 'DEAD' : 'RETRY';
+      row.attempts = Number(event.attempts || 0);
+      row.lastError = safeWorkerError(err);
+      await this.deliveries.save(row);
+    } catch {
+      /* delivery bookkeeping is best-effort; the outbox row still carries the error */
+    }
+  }
+
+  private async handlePublicationDeliver(payload: Record<string, unknown>, eventId = '') {
     const destinationId = String(payload.destinationId || '');
     const action = String(payload.action || 'CREATE').toUpperCase();
     const dest = await this.destinations.findOne({ where: { id: destinationId } });
@@ -239,21 +274,28 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       text: String(payload.text || ''),
       photoUrls: payload.photoUrls,
       providerMessageId: String(payload.providerMessageId || ''),
+      parseMode: payload.parseMode,
+      buttons: payload.buttons,
+      silent: payload.silent,
+      protectContent: payload.protectContent,
+      captionAbove: payload.captionAbove,
+      linkPreview: payload.linkPreview,
     };
     let providerMessageId: string | undefined;
     if (action === 'UPDATE') {
-      providerMessageId = (await this.telegram.update(input)).providerMessageId;
+      try {
+        providerMessageId = (await this.telegram.update(input)).providerMessageId;
+      } catch (err: unknown) {
+        // Telegram rejects identical edits with "message is not modified"; that is a successful no-op.
+        if (!(err instanceof Error && err.message === 'duplicate')) throw err;
+        providerMessageId = input.providerMessageId || undefined;
+      }
     } else if (action === 'DELETE') {
       await this.telegram.delete(input);
     } else {
       providerMessageId = (await this.telegram.create(input)).providerMessageId;
     }
-    const deliveryId = String(payload.deliveryId || '');
-    const row = deliveryId
-      ? await this.deliveries.findOne({ where: { id: deliveryId } })
-      : await this.deliveries.findOne({
-          where: { destinationId, publicationId: String(payload.publicationId || ''), action },
-        });
+    const row = await this.findDelivery(payload, eventId);
     if (!row) return;
     row.status = 'SUCCEEDED';
     row.providerMessageId = providerMessageId || row.providerMessageId;

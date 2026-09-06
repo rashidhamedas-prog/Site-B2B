@@ -163,6 +163,111 @@ async function main() {
   });
   assert(calls.some((u) => u.endsWith('/deleteMessage')), 'deleteMessage');
 
+  // --- post options: parse_mode, inline buttons, silent, protect, caption position ---
+  const bodies: Array<{ url: string; body: Record<string, unknown> }> = [];
+  adapter.http = async (url, init) => {
+    bodies.push({ url: String(url), body: JSON.parse(String(init?.body || '{}')) });
+    return jsonRes(200, { ok: true, result: [{ message_id: 1 }, { message_id: 2 }] });
+  };
+  const albumOpts = {
+    secretRef: 'TELEGRAM_TEST_TOKEN',
+    chatId: '-1001',
+    channel: 'RETAIL',
+    text: '<b>مانتو</b>',
+    parseMode: 'HTML',
+    silent: true,
+    protectContent: true,
+    captionAbove: true,
+    buttons: [
+      { label: 'خرید', url: 'https://www.poshaktaranom.ir/products/kian' },
+      { label: 'بد', url: 'https://evil.example/x' },
+    ],
+    photoUrls: ['https://www.poshaktaranom.ir/uploads/a.jpg', 'https://www.poshaktaranom.ir/uploads/b.jpg'],
+  };
+  const album = await adapter.create(albumOpts);
+  assert(album.providerMessageId === '1,2', 'album ids joined');
+  const mg = bodies.find((b) => b.url.endsWith('/sendMediaGroup'));
+  assert(!!mg, 'sendMediaGroup used for 2 photos');
+  assert(mg!.body.disable_notification === true && mg!.body.protect_content === true, 'silent/protect on album');
+  assert(!('reply_markup' in mg!.body), 'albums never carry reply_markup');
+  const media = mg!.body.media as Array<Record<string, unknown>>;
+  assert(media[0].parse_mode === 'HTML' && media[0].show_caption_above_media === true, 'caption parse_mode + above flag on first media');
+  assert(!('caption' in media[1]), 'caption only on first media');
+
+  bodies.length = 0;
+  adapter.http = async (url, init) => {
+    bodies.push({ url: String(url), body: JSON.parse(String(init?.body || '{}')) });
+    return jsonRes(200, { ok: true, result: { message_id: 9 } });
+  };
+  await adapter.create({ ...albumOpts, photoUrls: ['https://www.poshaktaranom.ir/uploads/a.jpg'] });
+  const sp = bodies.find((b) => b.url.endsWith('/sendPhoto'));
+  assert(!!sp, 'sendPhoto for single photo');
+  const kb = sp!.body.reply_markup as { inline_keyboard: Array<Array<{ text: string; url: string }>> };
+  assert(kb.inline_keyboard.length === 1 && kb.inline_keyboard[0][0].url.includes('poshaktaranom.ir'), 'only allowlisted button survives');
+  assert(sp!.body.parse_mode === 'HTML' && sp!.body.disable_notification === true, 'parse_mode + silent on photo');
+
+  bodies.length = 0;
+  await adapter.create({ ...albumOpts, photoUrls: [], parseMode: 'PLAIN', linkPreview: false });
+  const sm = bodies.find((b) => b.url.endsWith('/sendMessage'));
+  assert(!!sm && !('parse_mode' in sm!.body), 'PLAIN sends no parse_mode');
+  assert((sm!.body.link_preview_options as { is_disabled: boolean }).is_disabled === true, 'link preview disabled by default');
+  assert(!!sm!.body.reply_markup, 'text post carries the keyboard');
+
+  // update: identical content → Telegram 400 "not modified" → classified duplicate for the worker
+  adapter.http = async () => jsonRes(400, { ok: false, description: 'Bad Request: message is not modified' });
+  let notModified = '';
+  try {
+    await adapter.update({ secretRef: 'TELEGRAM_TEST_TOKEN', chatId: '-1001', providerMessageId: '77,78', text: 'x' });
+  } catch (err) {
+    notModified = err instanceof Error ? err.message : '';
+  }
+  assert(notModified === 'duplicate', 'not-modified edit classified duplicate');
+
+  bodies.length = 0;
+  adapter.http = async (url, init) => {
+    bodies.push({ url: String(url), body: JSON.parse(String(init?.body || '{}')) });
+    return jsonRes(200, { ok: true, result: { message_id: 77 } });
+  };
+  const albumEdit = await adapter.update({
+    secretRef: 'TELEGRAM_TEST_TOKEN', chatId: '-1001', providerMessageId: '77,78', text: 'کپشن جدید',
+    photoUrls: ['https://www.poshaktaranom.ir/uploads/a.jpg', 'https://www.poshaktaranom.ir/uploads/b.jpg'],
+    parseMode: 'HTML', buttons: [{ label: 'خرید', url: 'https://www.poshaktaranom.ir/p' }],
+  });
+  assert(albumEdit.providerMessageId === '77,78', 'album edit keeps all ids');
+  const ec = bodies.find((b) => b.url.endsWith('/editMessageCaption'));
+  assert(!!ec && ec!.body.message_id === 77 && !('reply_markup' in ec!.body), 'album caption edit without keyboard');
+
+  // delete: already-gone message is a no-op so withdraw retries stay idempotent
+  adapter.http = async () => jsonRes(400, { ok: false, description: 'Bad Request: message to delete not found' });
+  await adapter.delete({ secretRef: 'TELEGRAM_TEST_TOKEN', chatId: '-1001', providerMessageId: '77' });
+
+  // inspectDestination: channel where the bot is admin with post rights
+  const inspectCalls: string[] = [];
+  adapter.http = async (url) => {
+    const u = String(url);
+    inspectCalls.push(u);
+    if (u.endsWith('/getMe')) return jsonRes(200, { ok: true, result: { id: 42, username: 'taranom_bot' } });
+    if (u.endsWith('/getChat')) return jsonRes(200, { ok: true, result: { id: -1001, type: 'channel', title: 'ترنم', username: 'taranom' } });
+    if (u.endsWith('/getChatMember')) {
+      return jsonRes(200, { ok: true, result: { status: 'administrator', can_post_messages: true, can_edit_messages: true, can_delete_messages: false } });
+    }
+    if (u.endsWith('/getChatMemberCount')) return jsonRes(200, { ok: true, result: 1200 });
+    return jsonRes(404, { ok: false, description: 'nope' });
+  };
+  const inspected = await adapter.inspectDestination('TELEGRAM_TEST_TOKEN', '@taranom');
+  assert(inspected.ok && inspected.chatType === 'channel' && inspected.title === 'ترنم', 'inspect reads chat');
+  assert(inspected.botIsAdmin === true && inspected.canPost === true && inspected.canDelete === false, 'inspect maps admin rights');
+  assert(inspected.memberCount === 1200 && inspected.botUsername === 'taranom_bot', 'inspect member count + bot');
+  assert(inspectCalls.every((u) => !u.includes('sendMessage')), 'inspect never sends');
+
+  adapter.http = async (url) => {
+    const u = String(url);
+    if (u.endsWith('/getMe')) return jsonRes(200, { ok: true, result: { id: 42, username: 'taranom_bot' } });
+    return jsonRes(400, { ok: false, description: 'Bad Request: chat not found' });
+  };
+  const missingChat = await adapter.inspectDestination('TELEGRAM_TEST_TOKEN', '@nope');
+  assert(missingChat.ok === false && missingChat.error === 'chat_not_found', 'chat_not_found surfaced');
+
   if (prevFlag === undefined) delete process.env.OMNICHANNEL_CONNECTORS_ENABLED;
   else process.env.OMNICHANNEL_CONNECTORS_ENABLED = prevFlag;
   if (prevTok === undefined) delete process.env.TELEGRAM_TEST_TOKEN;

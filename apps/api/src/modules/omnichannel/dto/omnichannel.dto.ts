@@ -16,7 +16,12 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  AUTO_DAILY_CAP_MAX,
+  AUTO_DAILY_CAP_MIN,
+  AUTO_MIN_GAP_MAX_SECONDS,
+  AUTO_MIN_GAP_MIN_SECONDS,
   AUTO_PUBLISH_CANDIDATE_EVENTS,
+  AUTO_PUBLISH_MODES,
   CONNECTION_STATUSES,
   OMNICHANNEL_CHANNELS,
   OMNICHANNEL_PROVIDERS,
@@ -25,6 +30,7 @@ import {
   OUTBOX_RETENTION_MIN_DAYS,
   RETRY_SLA_MAX_SECONDS,
   RETRY_SLA_MIN_SECONDS,
+  WITHDRAW_ACTIONS,
 } from '../omnichannel.constants';
 
 /** Env name only — never a token. Only provider-prefixed refs may be resolved. */
@@ -90,6 +96,44 @@ export class PatchOmnichannelSettingsDto {
   @Min(OUTBOX_RETENTION_MIN_DAYS)
   @Max(OUTBOX_RETENTION_MAX_DAYS)
   outboxRetentionDays?: number;
+
+  /** Channel automation. OFF never enqueues from catalog events. */
+  @IsOptional()
+  @IsIn(AUTO_PUBLISH_MODES)
+  autoPublishMode?: (typeof AUTO_PUBLISH_MODES)[number];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(AUTO_DAILY_CAP_MIN)
+  @Max(AUTO_DAILY_CAP_MAX)
+  autoDailyCap?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(AUTO_MIN_GAP_MIN_SECONDS)
+  @Max(AUTO_MIN_GAP_MAX_SECONDS)
+  autoMinGapSeconds?: number;
+
+  /** Tehran hour 0..23; send null to clear the quiet window (IsOptional skips null). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  quietStartHour?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  quietEndHour?: number | null;
+
+  @IsOptional()
+  @IsIn(WITHDRAW_ACTIONS)
+  withdrawAction?: (typeof WITHDRAW_ACTIONS)[number];
 
   @IsOptional()
   @IsString()
@@ -201,6 +245,11 @@ export class CreatePublicationDto {
   @IsOptional()
   @IsBoolean()
   dryRun?: boolean;
+
+  /** Send to one destination only (test post). Must be the canary or a verified destination. */
+  @IsOptional()
+  @IsUUID()
+  destinationId?: string;
 
   @IsOptional()
   @IsString()

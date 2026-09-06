@@ -5,17 +5,25 @@ import { isAllowedSecretRef } from './omnichannel-secrets';
 import {
   annotatePreviewOos,
   assertOmnichannelSettingsInput,
+  destinationCanPost,
   effectiveWorkerRetentionDays,
   effectiveWorkerRetrySlaSeconds,
   findCanaryDestinationId,
+  hasAutomationPatch,
   liveOosRejectReason,
+  mergeDestinationSettings,
   mergeOmnichannelSettingsPatch,
   parseStoredOmnichannelSettings,
+  publicOmnichannelSettings,
+  readAutomationSettings,
   readAutoPublishEventTypes,
   readChannelOos,
+  readDestinationVerification,
   resolveOosDecision,
   sanitizeDestinationSettings,
+  sanitizeDestinationVerification,
   selectCanaryTelegramDestinations,
+  withDestinationVerification,
 } from './oos-policy';
 
 function assert(cond: boolean, msg: string) {
@@ -234,6 +242,82 @@ assert(isAllowedSecretRef('DATABASE_URL') === false, 'DATABASE_URL rejected');
     threw = true;
   }
   assert(threw, 'retry SLA below 60 rejected');
+}
+
+// --- channel automation settings ---
+{
+  const empty = readAutomationSettings(parseStoredOmnichannelSettings({}));
+  assert(empty.mode === 'OFF' && empty.dailyCap === 20 && empty.minGapSeconds === 90, 'automation defaults: OFF + guardrails');
+  assert(empty.quietStartHour === null && empty.quietEndHour === null && empty.withdrawAction === 'DELETE', 'no quiet window by default');
+
+  const on = mergeOmnichannelSettingsPatch({}, {
+    autoPublishMode: 'LIVE', autoDailyCap: 5, autoMinGapSeconds: 300, quietStartHour: 23, quietEndHour: 8, withdrawAction: 'KEEP',
+  });
+  const read = readAutomationSettings(on);
+  assert(read.mode === 'LIVE' && read.dailyCap === 5 && read.minGapSeconds === 300, 'automation patch merges');
+  assert(read.quietStartHour === 23 && read.quietEndHour === 8 && read.withdrawAction === 'KEEP', 'quiet window + withdraw action stored');
+  assert(hasAutomationPatch({ autoPublishMode: 'OFF' }) && !hasAutomationPatch({ retailOosPolicy: 'HIDE' }), 'automation patch detector');
+
+  const cleared = readAutomationSettings(mergeOmnichannelSettingsPatch(on, { quietStartHour: null }));
+  assert(cleared.quietStartHour === null && cleared.quietEndHour === null && cleared.mode === 'LIVE', 'null clears the whole quiet window, keeps the rest');
+
+  const halfWindow = readAutomationSettings(parseStoredOmnichannelSettings({ quietStartHour: 23 }));
+  assert(halfWindow.quietStartHour === null, 'a lone quiet hour is ignored');
+  const sameHour = readAutomationSettings(parseStoredOmnichannelSettings({ quietStartHour: 8, quietEndHour: 8 }));
+  assert(sameHour.quietStartHour === null, 'equal hours mean no window');
+
+  const pub = publicOmnichannelSettings(on, { retail: null, wholesale: null });
+  assert(pub.autoPublishMode === 'LIVE' && pub.autoDailyCap === 5 && pub.withdrawAction === 'KEEP', 'public settings expose automation');
+
+  for (const bad of [
+    { autoPublishMode: 'ALWAYS' },
+    { autoDailyCap: 0 },
+    { autoDailyCap: 999 },
+    { autoMinGapSeconds: -1 },
+    { quietStartHour: 24 },
+    { withdrawAction: 'ARCHIVE' },
+    { verified: { ok: true } },
+  ]) {
+    let rejected = false;
+    try {
+      assertOmnichannelSettingsInput(bad);
+    } catch {
+      rejected = true;
+    }
+    assert(rejected, `invalid automation input rejected: ${JSON.stringify(bad)}`);
+  }
+  assertOmnichannelSettingsInput({ quietStartHour: null, quietEndHour: null });
+}
+
+// --- destination verification snapshot (server-written only) ---
+{
+  let rejected = false;
+  try {
+    sanitizeDestinationSettings({ isCanary: true, verified: { ok: true } });
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, 'admins cannot write the verified snapshot through settings');
+
+  const snap = sanitizeDestinationVerification({
+    checkedAt: '2026-09-06T08:00:00.000Z', ok: true, chatType: 'channel', title: 'ترنم <b>x</b>', username: 'taranom',
+    memberCount: 1200.7, botIsAdmin: true, canPost: true, canEdit: true, canDelete: 'yes', botUsername: 'leak_me', extra: 1,
+  });
+  assert(!!snap && snap.ok && snap.chatType === 'channel' && snap.title === 'ترنم bx/b', 'snapshot sanitized (tags stripped)');
+  assert(snap!.memberCount === 1200 && snap!.canDelete === undefined && !('botUsername' in snap!) && !('extra' in snap!), 'unknown/invalid keys dropped');
+  assert(sanitizeDestinationVerification('nope') === null, 'non-object snapshot is null');
+
+  const withSnap = withDestinationVerification({ isCanary: true }, snap!);
+  assert(withSnap.isCanary === true && !!withSnap.verified, 'verification added next to canary flag');
+  assert(destinationCanPost(withSnap), 'verified channel with post rights can post');
+  assert(!destinationCanPost({}), 'unverified destination cannot post');
+  assert(!destinationCanPost(withDestinationVerification({}, { ...snap!, canPost: false })), 'admin without post right cannot post');
+  assert(!destinationCanPost(withDestinationVerification({}, { ...snap!, ok: false })), 'failed check cannot post');
+  assert(destinationCanPost(withDestinationVerification({}, { checkedAt: snap!.checkedAt, ok: true, chatType: 'private' })), 'private chat resolves → can post');
+
+  const toggled = mergeDestinationSettings(withSnap, false);
+  assert(toggled.isCanary === undefined && !!toggled.verified, 'canary toggle keeps the snapshot');
+  assert(readDestinationVerification(toggled)?.title === 'ترنم bx/b', 'snapshot readable after toggle');
 }
 
 console.log('oos-policy.spec.ts: ok');

@@ -52,9 +52,17 @@ export function toPublicConnection<T extends { secretRef?: string | null }>(row:
   return { ...row, secretRef: row.secretRef ? String(row.secretRef) : null };
 }
 
+/** Public shape: isCanary flag + server-written verification snapshot only; never raw settings. */
 export function toPublicDestination<T extends { settings?: Record<string, unknown> }>(
   row: T,
-): Omit<T, 'settings'> & { isCanary: boolean } {
+): Omit<T, 'settings'> & { isCanary: boolean; verified: Record<string, unknown> | null } {
   const { settings, ...rest } = row;
-  return { ...rest, isCanary: settings?.isCanary === true };
+  const verified = settings?.verified;
+  return {
+    ...rest,
+    isCanary: settings?.isCanary === true,
+    verified: verified && typeof verified === 'object' && !Array.isArray(verified)
+      ? (verified as Record<string, unknown>)
+      : null,
+  };
 }

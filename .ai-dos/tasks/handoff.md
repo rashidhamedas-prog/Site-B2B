@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T10:20:00Z — TASK-20260905-003 publishing console v2 (one-time setup, automatic posts)
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Worktree moved to `D:/proje/Site-B2B-omni-console` (branch `ai/TASK-20260905-003-omni-admin-console`): TASK-20260906-001 took `D:/proje/Site B2B` and stashed this task's wip as `stash@{0}` ("stashed by internal-links task"); re-applied here, all edits verified present. `stash@{0}` is now superseded by commits on this branch and may be dropped by whoever cleans up (do not pop it onto another branch). node_modules in this worktree are junctions to the main repo's.
+- Reclaims: `apps/api/package.json` (TASK-20260904-003 stale hb 09-03, append-only test line), `omnichannel-phase-acceptance.spec.ts` (TASK-20260826-001 stale hb 09-02; `<thead>` count ≥7 replaced by "every `<table>` has `<thead>`" + v2 markers).
+- CODE (api): automation settings (mode/dailyCap/minGap/quiet/withdrawAction) in oos-policy + DTO + constants; `publication-automation.ts` pure gate/intent/selection; `verifyDestination` (getChat/getChatMember snapshot in destination settings, preserved by canary toggle); template options (mediaMode/parseMode HTML escape+bold/buttons allowlist/silent/protect/captionAbove/linkPreview); adapter create/update/delete honor options, `inspectDestination`, "message is not modified" = duplicate; `autoSyncRemote` enqueues CREATE/UPDATE/DELETE with `availableAt`; `manualPublishTargets` + `destinationId`; canary 10-live cap only while mode != LIVE; outbox `requeue` on retry; worker mirrors failures onto delivery rows.
+- CODE (web): `AdminOmnichannel.tsx` rewritten as 5-step console + انتشارها/عملیات; `AdminTelegramTemplateBuilder.tsx` v2 (content/display panels, client mirror of server renderer, button URL validation, caption length meter); new `admin-omnichannel-ui.tsx` (types, Persian labels for statuses/errors/events, Badge/Metric/Section/Callout/Toggle/RadioCards/Stepper/TelegramPreview).
+- Tests (observed, in worktree): `apps/web` `tsc --noEmit` 0; `apps/api` `tsc --noEmit` 0; specs ok: publication-template, publication-automation, canary-ping, telegram.adapter, oos-policy, omnichannel-phase-acceptance, omnichannel-secrets, outbox.service, publication-sync, publication-deliver, reconcile, connector-gate. Full `npm test` chain in main repo passed after restoring the `@taranom/shared-types` junction (was an empty dir locally).
+- Exact next: merge origin/master, commit, push, VPS deploy, `/v1/health`, open `/admin/omnichannel`, verify existing destinations via «بررسی دسترسی», send one test post, then CANARY → LIVE by owner. Do not Done TASK-20260826-001.
+
 ## 2026-09-05T12:45:00Z — TASK-20260905-003 legacy template no longer wins
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

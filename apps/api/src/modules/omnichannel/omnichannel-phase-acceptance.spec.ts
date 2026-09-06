@@ -73,7 +73,12 @@ assert(oosPolicy.includes('autoPublishEventTypesChosen') && oosPolicy.includes('
 assert(!workerSrc.includes('effectiveWorkerRetrySlaSeconds') && !workerSrc.includes('effectiveWorkerRetentionDays'), 'worker is not wired to leftover settings');
 assert(adminOmni.includes('autoPublishEventTypes') && adminOmni.includes('outboxRetentionDays'), 'admin leftover settings');
 assert(adminOmni.includes('هنوز انتشاری ثبت نشده') && adminOmni.includes('رویدادی در صف نیست'), 'admin empty states');
-assert((adminOmni.match(/<thead>/g) || []).length >= 7, 'admin tables have headers');
+{
+  const tables = (adminOmni.match(/<table\b/g) || []).length;
+  const heads = (adminOmni.match(/<thead>/g) || []).length;
+  assert(tables >= 3 && heads === tables, 'admin tables have headers');
+}
+assert(adminOmni.includes('autoPublishMode') && adminOmni.includes('withdrawAction') && adminOmni.includes('/verify'), 'admin console v2: automation mode, withdraw action, destination verify');
 assert(db.includes('ReturnRequestAuditEntity'), 'RMA audit on runtime TypeORM');
 assert(publicStatus.includes("PUBLIC_STATUS_FORBIDDEN"), 'public ALL rejected');
 assert(productCtl.includes('resolvePublicProductStatus'), 'public list uses ACTIVE gate');

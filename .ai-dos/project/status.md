@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-06 — **TASK-20260905-003** publishing console v2 on `ai/TASK-20260905-003-omni-admin-console` (worktree `D:/proje/Site-B2B-omni-console`): 5-step setup, destination verify, template options (album/single/text, HTML bold, buttons), automation rules (OFF/CANARY/LIVE, caps, quiet hours, withdraw). api+web tsc + omnichannel specs green. Not live until merge/deploy. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-05 — **TASK-20260905-003** legacy `{name} — {price}` templates no longer override channel layout; Prima tests used leftover DB body. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-05 — **TASK-20260905-004** implementing on `ai/TASK-20260905-004-keyword-h2h`: H2H keyword-week copy for retail/wholesale home, category owners, bamber, register. Not live until merge/deploy. Did not touch RetailHero (TASK-20260905-001).
 - Last verified: 2026-09-05 — **TASK-20260905-003** channel-style Telegram templates (album + structured caption) coded; first live canary was still plain text. TASK-20260826-001 still **NOT DONE**.

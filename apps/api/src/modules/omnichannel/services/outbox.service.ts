@@ -15,6 +15,8 @@ export type OutboxEnqueueInput = {
   aggregateId: string;
   channel?: string | null;
   payload?: Record<string, unknown>;
+  /** Deferred delivery (automation min-gap / quiet hours). Defaults to now. */
+  availableAt?: Date;
 };
 
 const FORBIDDEN = new Set(OUTBOX_FORBIDDEN_PAYLOAD_KEYS.map((k) => k.toLowerCase()));
@@ -96,7 +98,7 @@ export class OutboxService {
       status: 'PENDING',
       attempts: 0,
       maxAttempts: 8,
-      availableAt: new Date(),
+      availableAt: input.availableAt && input.availableAt.getTime() > Date.now() ? input.availableAt : new Date(),
     });
     try {
       const saved = await repo.save(row);
@@ -131,6 +133,17 @@ export class OutboxService {
       `UPDATE omnichannel_outbox_events
        SET status = 'PENDING', "lockedAt" = NULL, "lockedBy" = NULL, attempts = GREATEST(attempts - 1, 0)
        WHERE id = $1`,
+      [id],
+    );
+  }
+
+  /** Admin retry: put a DEAD/failed event back in the queue with a fresh attempt budget. */
+  async requeue(id: string): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE omnichannel_outbox_events
+       SET status = 'PENDING', attempts = 0, "availableAt" = NOW(), "completedAt" = NULL,
+           "lockedAt" = NULL, "lockedBy" = NULL, "lastError" = NULL, "updatedAt" = NOW()
+       WHERE id = $1 AND status <> 'DONE'`,
       [id],
     );
   }

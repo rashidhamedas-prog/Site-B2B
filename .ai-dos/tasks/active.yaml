@@ -67,23 +67,38 @@ tasks:
       reviewer: "required-after-admin-api-change"
       security: "self-review-no-new-secrets-canary-only"
     branch: "ai/TASK-20260905-003-omni-admin-console"
-    worktree: "D:/proje/Site B2B"
+    # moved 2026-09-06 10:05Z: main worktree was taken by TASK-20260906-001 (wip stashed as stash@{0}, re-applied here)
+    worktree: "D:/proje/Site-B2B-omni-console"
     claimed_at: "2026-09-05T10:15:00Z"
-    heartbeat_at: "2026-09-05T12:45:00Z"
+    heartbeat_at: "2026-09-06T10:05:00Z"
     depends_on: ["TASK-20260905-002"]
     file_claims:
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"
       - "apps/web/src/components/admin/AdminTelegramTemplateBuilder.tsx"
+      - "apps/web/src/components/admin/admin-omnichannel-ui.tsx"
       - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
       - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
       - "apps/api/src/modules/omnichannel/canary-ping.ts"
       - "apps/api/src/modules/omnichannel/canary-ping.spec.ts"
       - "apps/api/src/modules/omnichannel/publication-template.ts"
       - "apps/api/src/modules/omnichannel/publication-template.spec.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
       - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
       - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.spec.ts"
       - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
+      # reclaimed 2026-09-06 from TASK-20260826-001 (stale hb 2026-09-02; automation settings + destination verify):
+      - "apps/api/src/modules/omnichannel/oos-policy.ts"
+      - "apps/api/src/modules/omnichannel/oos-policy.spec.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
+      # reclaimed 2026-09-06 from TASK-20260904-003 (stale hb 2026-09-03T22:10Z); append-only test script line:
+      - "apps/api/package.json"
+      # transferred 2026-09-06 from TASK-20260826-001 (stale hb 2026-09-02); table-header assertion now per-table:
+      - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
+      - "docs/reports/2026-09-06-omnichannel-publishing-console-v2.md"
       - "docs/reports/2026-09-05-omnichannel-admin-console.md"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
@@ -98,7 +113,14 @@ tasks:
       owner asked for channel-style posts (album + structured caption)
       and a simple graphical template composer. Reclaimed Telegram
       adapter + dto from TASK-20260826-001 (stale hb 2026-09-02).
-      do not Done 20260826-001.
+      2026-09-06: owner ordered a professional, fully configurable,
+      graphical channel-posting setup that runs automatically after a
+      one-time configuration ("نهایی کن"). Reclaimed oos-policy,
+      constants, secrets, outbox.service from TASK-20260826-001 (stale
+      hb 2026-09-02). Automation is an explicit admin mode
+      (OFF/CANARY/LIVE, default OFF) with daily cap, min gap, quiet
+      hours, verified-channel requirement. Nothing posts until the
+      owner flips the mode in admin. do not Done 20260826-001.
     acceptance_criteria:
       - "Canary ping text is Persian in source and has no ASCII ? replacement"
       - "POST /omnichannel/connections/:id/canary-ping sends only the canary dest via official API"
@@ -108,6 +130,10 @@ tasks:
       - "Adapter uses official sendPhoto/sendMediaGroup/sendMessage only"
       - "Admin template tab is a block composer with live preview, not a raw-only textarea"
       - "No plaintext token in UI; no Bale/Rubika/Instagram APIs; no catalog blast"
+      - "Destination verify uses official getChat/getChatMember and stores only a sanitized snapshot"
+      - "Template options (media mode, HTML bold, inline url buttons, silent, protect) render + send via official params"
+      - "autoPublishMode defaults OFF; CANARY/LIVE require chosen events, daily cap, min gap, quiet hours, verified live channel"
+      - "Catalog events auto-deliver only through evaluateAutomationGate; UPDATE 'message is not modified' is idempotent success"
   - id: "TASK-20260905-002"
     title: "Owner-ordered live omnichannel connector flags"
     status: "in_progress"
@@ -1261,7 +1287,8 @@ tasks:
       - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
+      # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; admin console v2 replaces fixed <thead> count):
+      # "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; channel-style templates):
       # "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; UTF-8 ping + admin console):

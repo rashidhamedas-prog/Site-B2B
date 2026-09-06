@@ -1,15 +1,27 @@
 import { BadRequestException } from '@nestjs/common';
 import {
+  AUTO_DAILY_CAP_MAX,
+  AUTO_DAILY_CAP_MIN,
+  AUTO_MIN_GAP_MAX_SECONDS,
+  AUTO_MIN_GAP_MIN_SECONDS,
   AUTO_PUBLISH_CANDIDATE_EVENTS,
+  AUTO_PUBLISH_MODES,
+  DEFAULT_AUTO_DAILY_CAP,
+  DEFAULT_AUTO_MIN_GAP_SECONDS,
+  DEFAULT_AUTO_PUBLISH_MODE,
   DEFAULT_OUTBOX_RETENTION_DAYS,
   DEFAULT_RETRY_SLA_SECONDS,
+  DEFAULT_WITHDRAW_ACTION,
   OOS_POLICIES,
   OUTBOX_RETENTION_MAX_DAYS,
   OUTBOX_RETENTION_MIN_DAYS,
   RETRY_SLA_MAX_SECONDS,
   RETRY_SLA_MIN_SECONDS,
+  WITHDRAW_ACTIONS,
   type AutoPublishEventType,
+  type AutoPublishMode,
   type OosPolicy,
+  type WithdrawAction,
 } from './omnichannel.constants';
 import { assertNoPlaintextSecrets, isAllowedSecretRef } from './omnichannel-secrets';
 
@@ -29,6 +41,29 @@ export type StoredOmnichannelSettings = {
   retrySlaChosen?: boolean;
   outboxRetentionDays?: number;
   outboxRetentionChosen?: boolean;
+  /** Channel automation (owner-flipped). Absent = OFF. */
+  autoPublishMode?: AutoPublishMode;
+  autoDailyCap?: number;
+  autoMinGapSeconds?: number;
+  /** Tehran hours 0..23; both present = quiet window, posts defer to the end hour. */
+  quietStartHour?: number;
+  quietEndHour?: number;
+  withdrawAction?: WithdrawAction;
+};
+
+/** Read-only snapshot written by the server after getChat/getChatMember. Never admin input. */
+export type DestinationVerification = {
+  checkedAt: string;
+  ok: boolean;
+  error?: string;
+  chatType?: string;
+  title?: string;
+  username?: string | null;
+  memberCount?: number | null;
+  botIsAdmin?: boolean;
+  canPost?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 };
 
 export type OosDecision = {
@@ -52,10 +87,54 @@ const SETTINGS_INPUT_KEYS = new Set([
   'autoPublishEventTypes',
   'retrySlaSeconds',
   'outboxRetentionDays',
+  'autoPublishMode',
+  'autoDailyCap',
+  'autoMinGapSeconds',
+  'quietStartHour',
+  'quietEndHour',
+  'withdrawAction',
   'reason',
 ]);
 
 const AUTO_PUBLISH_EVENT_SET = new Set<string>(AUTO_PUBLISH_CANDIDATE_EVENTS);
+
+export function isAutoPublishMode(value: unknown): value is AutoPublishMode {
+  return typeof value === 'string' && (AUTO_PUBLISH_MODES as readonly string[]).includes(value);
+}
+
+export function isWithdrawAction(value: unknown): value is WithdrawAction {
+  return typeof value === 'string' && (WITHDRAW_ACTIONS as readonly string[]).includes(value);
+}
+
+/** `null` clears a quiet hour; undefined leaves it; 0..23 sets it. */
+function parseHourOrNull(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  return parseBoundedInt(value, 0, 23) ?? undefined;
+}
+
+export type AutomationSettings = {
+  mode: AutoPublishMode;
+  dailyCap: number;
+  minGapSeconds: number;
+  quietStartHour: number | null;
+  quietEndHour: number | null;
+  withdrawAction: WithdrawAction;
+};
+
+export function readAutomationSettings(stored: StoredOmnichannelSettings): AutomationSettings {
+  const quietStart = typeof stored.quietStartHour === 'number' ? stored.quietStartHour : null;
+  const quietEnd = typeof stored.quietEndHour === 'number' ? stored.quietEndHour : null;
+  const both = quietStart != null && quietEnd != null && quietStart !== quietEnd;
+  return {
+    mode: isAutoPublishMode(stored.autoPublishMode) ? stored.autoPublishMode : DEFAULT_AUTO_PUBLISH_MODE,
+    dailyCap: typeof stored.autoDailyCap === 'number' ? stored.autoDailyCap : DEFAULT_AUTO_DAILY_CAP,
+    minGapSeconds: typeof stored.autoMinGapSeconds === 'number' ? stored.autoMinGapSeconds : DEFAULT_AUTO_MIN_GAP_SECONDS,
+    quietStartHour: both ? quietStart : null,
+    quietEndHour: both ? quietEnd : null,
+    withdrawAction: isWithdrawAction(stored.withdrawAction) ? stored.withdrawAction : DEFAULT_WITHDRAW_ACTION,
+  };
+}
 
 export function isOosPolicy(value: unknown): value is OosPolicy {
   return value === 'UPDATE' || value === 'HIDE' || value === 'DELETE';
@@ -206,6 +285,18 @@ export function parseStoredOmnichannelSettings(value: unknown): StoredOmnichanne
     out.outboxRetentionDays = retention;
     out.outboxRetentionChosen = true;
   }
+  if (isAutoPublishMode(raw.autoPublishMode)) out.autoPublishMode = raw.autoPublishMode;
+  const cap = parseBoundedInt(raw.autoDailyCap, AUTO_DAILY_CAP_MIN, AUTO_DAILY_CAP_MAX);
+  if (cap != null) out.autoDailyCap = cap;
+  const gap = parseBoundedInt(raw.autoMinGapSeconds, AUTO_MIN_GAP_MIN_SECONDS, AUTO_MIN_GAP_MAX_SECONDS);
+  if (gap != null) out.autoMinGapSeconds = gap;
+  const quietStart = parseBoundedInt(raw.quietStartHour, 0, 23);
+  const quietEnd = parseBoundedInt(raw.quietEndHour, 0, 23);
+  if (quietStart != null && quietEnd != null) {
+    out.quietStartHour = quietStart;
+    out.quietEndHour = quietEnd;
+  }
+  if (isWithdrawAction(raw.withdrawAction)) out.withdrawAction = raw.withdrawAction;
   return out;
 }
 
@@ -219,6 +310,24 @@ export function assertOmnichannelSettingsInput(input: unknown): void {
     if (!SETTINGS_INPUT_KEYS.has(key)) {
       throw new BadRequestException(`فیلد ${key} مجاز نیست`);
     }
+  }
+  if (raw.autoPublishMode !== undefined && !isAutoPublishMode(raw.autoPublishMode)) {
+    throw new BadRequestException('حالت انتشار خودکار باید OFF یا CANARY یا LIVE باشد');
+  }
+  if (raw.autoDailyCap !== undefined && parseBoundedInt(raw.autoDailyCap, AUTO_DAILY_CAP_MIN, AUTO_DAILY_CAP_MAX) == null) {
+    throw new BadRequestException(`سقف روزانه باید بین ${AUTO_DAILY_CAP_MIN} و ${AUTO_DAILY_CAP_MAX} پست باشد`);
+  }
+  if (raw.autoMinGapSeconds !== undefined && parseBoundedInt(raw.autoMinGapSeconds, AUTO_MIN_GAP_MIN_SECONDS, AUTO_MIN_GAP_MAX_SECONDS) == null) {
+    throw new BadRequestException('فاصله بین پست‌ها باید بین ۰ و ۳۶۰۰ ثانیه باشد');
+  }
+  if (raw.quietStartHour !== undefined && parseHourOrNull(raw.quietStartHour) === undefined) {
+    throw new BadRequestException('ساعت شروع سکوت باید بین ۰ و ۲۳ باشد');
+  }
+  if (raw.quietEndHour !== undefined && parseHourOrNull(raw.quietEndHour) === undefined) {
+    throw new BadRequestException('ساعت پایان سکوت باید بین ۰ و ۲۳ باشد');
+  }
+  if (raw.withdrawAction !== undefined && !isWithdrawAction(raw.withdrawAction)) {
+    throw new BadRequestException('رفتار حذف محصول باید DELETE یا KEEP باشد');
   }
   if (raw.retailOosPolicy !== undefined && !isOosPolicy(raw.retailOosPolicy)) {
     throw new BadRequestException('سیاست ناموجود تکی باید UPDATE یا HIDE یا DELETE باشد');
@@ -237,17 +346,49 @@ export function assertOmnichannelSettingsInput(input: unknown): void {
   }
 }
 
+export type OmnichannelSettingsPatch = {
+  retailOosPolicy?: OosPolicy;
+  wholesaleOosPolicy?: OosPolicy;
+  autoPublishEventTypes?: string[];
+  retrySlaSeconds?: number;
+  outboxRetentionDays?: number;
+  autoPublishMode?: string;
+  autoDailyCap?: number;
+  autoMinGapSeconds?: number;
+  quietStartHour?: number | null;
+  quietEndHour?: number | null;
+  withdrawAction?: string;
+};
+
+export function hasAutomationPatch(patch: OmnichannelSettingsPatch): boolean {
+  return patch.autoPublishMode !== undefined
+    || patch.autoDailyCap !== undefined
+    || patch.autoMinGapSeconds !== undefined
+    || patch.quietStartHour !== undefined
+    || patch.quietEndHour !== undefined
+    || patch.withdrawAction !== undefined;
+}
+
 export function mergeOmnichannelSettingsPatch(
   previous: StoredOmnichannelSettings,
-  patch: {
-    retailOosPolicy?: OosPolicy;
-    wholesaleOosPolicy?: OosPolicy;
-    autoPublishEventTypes?: string[];
-    retrySlaSeconds?: number;
-    outboxRetentionDays?: number;
-  },
+  patch: OmnichannelSettingsPatch,
 ): StoredOmnichannelSettings {
   const next: StoredOmnichannelSettings = { ...previous };
+  if (isAutoPublishMode(patch.autoPublishMode)) next.autoPublishMode = patch.autoPublishMode;
+  const cap = parseBoundedInt(patch.autoDailyCap, AUTO_DAILY_CAP_MIN, AUTO_DAILY_CAP_MAX);
+  if (cap != null) next.autoDailyCap = cap;
+  const gap = parseBoundedInt(patch.autoMinGapSeconds, AUTO_MIN_GAP_MIN_SECONDS, AUTO_MIN_GAP_MAX_SECONDS);
+  if (gap != null) next.autoMinGapSeconds = gap;
+  const quietStart = parseHourOrNull(patch.quietStartHour);
+  const quietEnd = parseHourOrNull(patch.quietEndHour);
+  if (quietStart === null || quietEnd === null) {
+    delete next.quietStartHour;
+    delete next.quietEndHour;
+  } else {
+    if (quietStart !== undefined) next.quietStartHour = quietStart;
+    if (quietEnd !== undefined) next.quietEndHour = quietEnd;
+  }
+  if (isWithdrawAction(patch.withdrawAction)) next.withdrawAction = patch.withdrawAction;
   if (patch.retailOosPolicy) {
     next.retailOosPolicy = patch.retailOosPolicy;
     next.retailOosChosen = true;
@@ -283,6 +424,7 @@ export function publicOmnichannelSettings(
   const events = readAutoPublishEventTypes(stored);
   const retry = readRetrySlaSeconds(stored);
   const retention = readOutboxRetentionDays(stored);
+  const automation = readAutomationSettings(stored);
   return {
     retailOosPolicy: retail.policy,
     wholesaleOosPolicy: wholesale.policy,
@@ -296,6 +438,12 @@ export function publicOmnichannelSettings(
     retrySlaChosen: retry.chosen,
     outboxRetentionDays: retention.days,
     outboxRetentionChosen: retention.chosen,
+    autoPublishMode: automation.mode,
+    autoDailyCap: automation.dailyCap,
+    autoMinGapSeconds: automation.minGapSeconds,
+    quietStartHour: automation.quietStartHour,
+    quietEndHour: automation.quietEndHour,
+    withdrawAction: automation.withdrawAction,
   };
 }
 
@@ -333,6 +481,73 @@ export function sanitizeDestinationSettings(input?: Record<string, unknown> | nu
 
 export function destinationSettingsForCanary(isCanary: boolean): Record<string, unknown> {
   return isCanary ? { isCanary: true } : {};
+}
+
+/** Canary toggle must not erase the server-written verification snapshot. */
+export function mergeDestinationSettings(
+  existing: Record<string, unknown> | null | undefined,
+  isCanary: boolean,
+): Record<string, unknown> {
+  const verified = readDestinationVerification(existing);
+  return { ...destinationSettingsForCanary(isCanary), ...(verified ? { verified } : {}) };
+}
+
+function cleanText(value: unknown, max: number): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = value.replace(/[\u0000-\u001F<>]/g, '').trim().slice(0, max);
+  return text || undefined;
+}
+
+export function sanitizeDestinationVerification(input: unknown): DestinationVerification | null {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const raw = input as Record<string, unknown>;
+  const checkedAt = typeof raw.checkedAt === 'string' && !Number.isNaN(Date.parse(raw.checkedAt))
+    ? new Date(raw.checkedAt).toISOString()
+    : new Date().toISOString();
+  const out: DestinationVerification = { checkedAt, ok: raw.ok === true };
+  const error = cleanText(raw.error, 60);
+  if (error) out.error = error;
+  const chatType = cleanText(raw.chatType, 20);
+  if (chatType && /^[a-z_]+$/.test(chatType)) out.chatType = chatType;
+  const title = cleanText(raw.title, 120);
+  if (title) out.title = title;
+  if (typeof raw.username === 'string' && /^[A-Za-z0-9_]{1,64}$/.test(raw.username)) {
+    out.username = raw.username;
+  } else if (raw.username === null) {
+    out.username = null;
+  }
+  if (typeof raw.memberCount === 'number' && Number.isFinite(raw.memberCount) && raw.memberCount >= 0) {
+    out.memberCount = Math.floor(raw.memberCount);
+  } else if (raw.memberCount === null) {
+    out.memberCount = null;
+  }
+  for (const key of ['botIsAdmin', 'canPost', 'canEdit', 'canDelete'] as const) {
+    if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
+  }
+  return out;
+}
+
+export function readDestinationVerification(
+  settings: Record<string, unknown> | null | undefined,
+): DestinationVerification | null {
+  return sanitizeDestinationVerification(settings?.verified);
+}
+
+export function withDestinationVerification(
+  settings: Record<string, unknown> | null | undefined,
+  verification: DestinationVerification,
+): Record<string, unknown> {
+  const base = settings?.isCanary === true ? { isCanary: true } : {};
+  const verified = sanitizeDestinationVerification(verification);
+  return verified ? { ...base, verified } : base;
+}
+
+/** Live (non-canary) channel posting needs a verified bot with post rights. Private canary chats pass. */
+export function destinationCanPost(settings: Record<string, unknown> | null | undefined): boolean {
+  const verified = readDestinationVerification(settings);
+  if (!verified || !verified.ok) return false;
+  if (verified.chatType === 'private') return true;
+  return verified.canPost === true;
 }
 
 export function selectCanaryTelegramDestinations<

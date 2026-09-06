@@ -27,11 +27,41 @@ export type TemplateBlock =
   | { id: string; type: 'trust'; enabled: boolean; emoji: string; text: string }
   | { id: string; type: 'text'; enabled: boolean; text: string };
 
-export type TemplateLayout = { v: 1; blocks: TemplateBlock[] };
+/**
+ * Post options. Telegram cannot attach inline buttons to an album (sendMediaGroup has no
+ * reply_markup), so `single` exists for owners who want a button under the photo.
+ */
+export type TemplateMediaMode = 'album' | 'single' | 'text';
+export type TemplateParseMode = 'HTML' | 'PLAIN';
+export type TemplateButton = { label: string; url: string };
+export type TemplateOptions = {
+  mediaMode: TemplateMediaMode;
+  parseMode: TemplateParseMode;
+  buttons: TemplateButton[];
+  silent: boolean;
+  protectContent: boolean;
+  captionAbove: boolean;
+  linkPreview: boolean;
+};
+
+export type TemplateLayout = { v: 1; blocks: TemplateBlock[]; options: TemplateOptions };
 
 export type PublicationVars = Record<TemplateToken, string> & { images: string[] };
 
-export type RenderedPublication = { text: string; photoUrls: string[] };
+export type RenderedPublication = {
+  text: string;
+  photoUrls: string[];
+  parseMode: TemplateParseMode;
+  buttons: TemplateButton[];
+  silent: boolean;
+  protectContent: boolean;
+  captionAbove: boolean;
+  linkPreview: boolean;
+  mediaMode: TemplateMediaMode;
+};
+
+export const TEMPLATE_BUTTON_LIMIT = 4;
+export const TEMPLATE_BUTTON_LABEL_LIMIT = 40;
 
 const ALLOWED_PHOTO_HOSTS = new Set([
   'poshaktaranom.com',
@@ -41,6 +71,63 @@ const ALLOWED_PHOTO_HOSTS = new Set([
   'api.poshaktaranom.com',
   'storage.poshaktaranom.com',
 ]);
+
+const ALLOWED_BUTTON_HOSTS = new Set([...ALLOWED_PHOTO_HOSTS, 't.me', 'telegram.me']);
+
+export function defaultTemplateOptions(): TemplateOptions {
+  return {
+    mediaMode: 'album',
+    parseMode: 'HTML',
+    buttons: [],
+    silent: false,
+    protectContent: false,
+    captionAbove: false,
+    linkPreview: false,
+  };
+}
+
+/** Button URL after token substitution must be https on a Taranom or t.me host. */
+export function publicButtonUrl(raw: string): string | null {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed || trimmed.length > 500 || /[\u0000-\u001F\s]/.test(trimmed)) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || url.username || url.password) return null;
+  if (!ALLOWED_BUTTON_HOSTS.has(url.hostname.toLowerCase())) return null;
+  return url.toString();
+}
+
+export function parseTemplateOptions(raw: unknown): TemplateOptions {
+  const out = defaultTemplateOptions();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  const row = raw as Record<string, unknown>;
+  if (row.mediaMode === 'single' || row.mediaMode === 'text' || row.mediaMode === 'album') out.mediaMode = row.mediaMode;
+  if (row.parseMode === 'PLAIN' || row.parseMode === 'HTML') out.parseMode = row.parseMode;
+  out.silent = row.silent === true;
+  out.protectContent = row.protectContent === true;
+  out.captionAbove = row.captionAbove === true;
+  out.linkPreview = row.linkPreview === true;
+  if (Array.isArray(row.buttons)) {
+    for (const item of row.buttons) {
+      if (!item || typeof item !== 'object') continue;
+      const button = item as Record<string, unknown>;
+      const label = String(button.label || '').replace(/[\u0000-\u001F]/g, '').trim().slice(0, TEMPLATE_BUTTON_LABEL_LIMIT);
+      const url = String(button.url || '').trim().slice(0, 500);
+      if (!label || !url) continue;
+      out.buttons.push({ label, url });
+      if (out.buttons.length >= TEMPLATE_BUTTON_LIMIT) break;
+    }
+  }
+  return out;
+}
+
+export function escapeTelegramHtml(value: string): string {
+  return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 export function formatChannelToman(rial: unknown): string {
   const n = Number(rial);
@@ -63,6 +150,7 @@ export function newBlockId(): string {
 export function defaultWholesaleLayout(): TemplateLayout {
   return {
     v: 1,
+    options: defaultTemplateOptions(),
     blocks: [
       { id: 'p1', type: 'photos', enabled: true, maxPhotos: 5 },
       { id: 't1', type: 'title', enabled: true, emoji: '🌿', token: 'name' },
@@ -93,6 +181,7 @@ export function defaultWholesaleLayout(): TemplateLayout {
 export function defaultRetailLayout(): TemplateLayout {
   return {
     v: 1,
+    options: defaultTemplateOptions(),
     blocks: [
       { id: 'p1', type: 'photos', enabled: true, maxPhotos: 5 },
       { id: 't1', type: 'title', enabled: true, emoji: '🌿', token: 'name' },
@@ -216,23 +305,27 @@ export function parseTemplateLayout(body?: string | null, channel = 'RETAIL'): T
   const raw = String(body || '').trim();
   if (raw.startsWith('{')) {
     try {
-      const parsed = JSON.parse(raw) as { v?: unknown; blocks?: unknown };
+      const parsed = JSON.parse(raw) as { v?: unknown; blocks?: unknown; options?: unknown };
       if (parsed.v === 1 && Array.isArray(parsed.blocks)) {
         const blocks = parsed.blocks.map(asBlock).filter((row): row is TemplateBlock => !!row);
-        if (blocks.length) return { v: 1, blocks };
+        if (blocks.length) return { v: 1, blocks, options: parseTemplateOptions(parsed.options) };
       }
     } catch {
       /* fall through to legacy */
     }
   }
   if (raw) {
-    return { v: 1, blocks: [{ id: 'legacy', type: 'text', enabled: true, text: raw }] };
+    return {
+      v: 1,
+      blocks: [{ id: 'legacy', type: 'text', enabled: true, text: raw }],
+      options: { ...defaultTemplateOptions(), parseMode: 'PLAIN' },
+    };
   }
   return defaultLayoutFor(channel);
 }
 
 export function stringifyTemplateLayout(layout: TemplateLayout): string {
-  return JSON.stringify({ v: 1, blocks: layout.blocks });
+  return JSON.stringify({ v: 1, blocks: layout.blocks, options: parseTemplateOptions(layout.options) });
 }
 
 export function publicProductPhotoUrl(channel: 'RETAIL' | 'WHOLESALE', raw: string): string | null {
@@ -278,17 +371,22 @@ function tokenValue(vars: PublicationVars, token: TemplateToken): string {
   return String(vars[token] || '').trim();
 }
 
-function applyInlineTokens(text: string, vars: PublicationVars): string {
+function applyInlineTokens(text: string, vars: PublicationVars, escape: (v: string) => string): string {
   return String(text || '').replace(/\{([a-zA-Z]+)\}/g, (_, key: string) => {
-    return isToken(key) ? tokenValue(vars, key) : '';
+    return isToken(key) ? escape(tokenValue(vars, key)) : '';
   }).trim();
 }
 
+/** Static template text is escaped too: admins author copy, never HTML. Bold comes from the block kind. */
 export function renderPublicationLayout(
   layout: TemplateLayout,
   vars: PublicationVars,
   channel: 'RETAIL' | 'WHOLESALE' = 'RETAIL',
 ): RenderedPublication {
+  const options = parseTemplateOptions(layout.options);
+  const html = options.parseMode === 'HTML';
+  const esc = html ? escapeTelegramHtml : (value: string) => value;
+  const bold = (value: string) => (html ? `<b>${value}</b>` : value);
   const lines: string[] = [];
   let maxPhotos = 0;
   for (const block of layout.blocks) {
@@ -300,29 +398,50 @@ export function renderPublicationLayout(
     if (block.type === 'title') {
       const value = tokenValue(vars, block.token);
       if (!value) continue;
-      lines.push(`${block.emoji ? `${block.emoji} ` : ''}${value}`.trim());
+      lines.push(`${block.emoji ? `${esc(block.emoji)} ` : ''}${bold(esc(value))}`.trim());
       continue;
     }
     if (block.type === 'field') {
       const value = tokenValue(vars, block.token);
       if (!value) continue;
-      const prefix = block.label ? `${block.emoji} ${block.label}: ` : `${block.emoji} `;
-      lines.push(`${prefix}${value}${block.suffix || ''}`.trim());
+      const prefix = block.label ? `${esc(block.emoji)} ${esc(block.label)}: ` : `${esc(block.emoji)} `;
+      const shown = block.token === 'price' || block.token === 'packPrice' ? bold(esc(value)) : esc(value);
+      lines.push(`${prefix}${shown}${esc(block.suffix || '')}`.trim());
       continue;
     }
     if (block.type === 'trust') {
-      const text = applyInlineTokens(block.text, vars);
+      const text = applyInlineTokens(esc(block.text), vars, esc);
       if (!text) continue;
-      lines.push(`${block.emoji ? `${block.emoji} ` : ''}${text}`.trim());
+      lines.push(`${block.emoji ? `${esc(block.emoji)} ` : ''}${text}`.trim());
       continue;
     }
-    const text = applyInlineTokens(block.text, vars);
+    const text = applyInlineTokens(esc(block.text), vars, esc);
     if (text) lines.push(text);
+  }
+  const photoCap = options.mediaMode === 'text' ? 0 : options.mediaMode === 'single' ? Math.min(1, maxPhotos) : maxPhotos;
+  const buttons: TemplateButton[] = [];
+  for (const button of options.buttons) {
+    const href = publicButtonUrl(applyInlineTokens(button.url, vars, (v) => v));
+    if (href) buttons.push({ label: button.label, url: href });
   }
   return {
     text: lines.join('\n').slice(0, TELEGRAM_TEXT_LIMIT),
-    photoUrls: sanitizePhotoUrls(channel, vars.images, maxPhotos || 0),
+    photoUrls: sanitizePhotoUrls(channel, vars.images, photoCap),
+    parseMode: options.parseMode,
+    buttons,
+    silent: options.silent,
+    protectContent: options.protectContent,
+    captionAbove: options.captionAbove,
+    linkPreview: options.linkPreview,
+    mediaMode: options.mediaMode,
   };
+}
+
+/** OOS policy HIDE: edit the live post to a short unavailable notice instead of deleting it. */
+export function renderUnavailableNotice(vars: PublicationVars, parseMode: TemplateParseMode = 'HTML'): string {
+  const name = String(vars.name || '').trim() || 'این مدل';
+  const shown = parseMode === 'HTML' ? `<b>${escapeTelegramHtml(name)}</b>` : name;
+  return `⛔️ ${shown} فعلاً ناموجود است.`;
 }
 
 export function emptyPublicationVars(): PublicationVars {

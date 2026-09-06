@@ -95,6 +95,28 @@ export const RETRY_SLA_MAX_SECONDS = 86_400;
 export const OUTBOX_RETENTION_MIN_DAYS = 7;
 export const OUTBOX_RETENTION_MAX_DAYS = 365;
 
+/**
+ * Channel automation. OFF = catalog events only refresh local drafts (today's behavior).
+ * CANARY = auto-deliver to the canary destination only. LIVE = every enabled, verified
+ * Telegram destination of that sales channel. Default stays OFF until the owner flips it.
+ */
+export const AUTO_PUBLISH_MODES = ['OFF', 'CANARY', 'LIVE'] as const;
+export type AutoPublishMode = (typeof AUTO_PUBLISH_MODES)[number];
+export const DEFAULT_AUTO_PUBLISH_MODE: AutoPublishMode = 'OFF';
+
+export const WITHDRAW_ACTIONS = ['DELETE', 'KEEP'] as const;
+export type WithdrawAction = (typeof WITHDRAW_ACTIONS)[number];
+export const DEFAULT_WITHDRAW_ACTION: WithdrawAction = 'DELETE';
+
+export const AUTO_DAILY_CAP_MIN = 1;
+export const AUTO_DAILY_CAP_MAX = 200;
+export const DEFAULT_AUTO_DAILY_CAP = 20;
+export const AUTO_MIN_GAP_MIN_SECONDS = 0;
+export const AUTO_MIN_GAP_MAX_SECONDS = 3600;
+export const DEFAULT_AUTO_MIN_GAP_SECONDS = 90;
+/** Quiet hours are Tehran wall-clock hours 0..23; null disables. */
+export const TEHRAN_UTC_OFFSET_MINUTES = 210;
+
 export const OUTBOX_FORBIDDEN_PAYLOAD_KEYS = [
   'jwt', 'token', 'password', 'secret', 'authorization', 'cookie',
   'phone', 'mobile', 'email', 'nationalId', 'cardNumber',

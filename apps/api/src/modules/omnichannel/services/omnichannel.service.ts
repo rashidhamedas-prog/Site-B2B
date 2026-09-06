@@ -32,18 +32,32 @@ import { AppSettingEntity } from '../../settings/entities/app-setting.entity';
 import {
   annotatePreviewOos,
   assertOmnichannelSettingsInput,
-  destinationSettingsForCanary,
+  destinationCanPost,
   findCanaryDestinationId,
+  hasAutomationPatch,
+  isCanarySettings,
   liveOosRejectReason,
+  mergeDestinationSettings,
   mergeOmnichannelSettingsPatch,
   OMNICHANNEL_SETTINGS_KEY,
   parseStoredOmnichannelSettings,
   publicOmnichannelSettings,
+  readAutomationSettings,
+  readAutoPublishEventTypes,
   readChannelOos,
   resolveOosDecision,
   sanitizeDestinationSettings,
+  sanitizeDestinationVerification,
   selectCanaryTelegramDestinations,
+  withDestinationVerification,
+  type DestinationVerification,
 } from '../oos-policy';
+import {
+  evaluateAutomationGate,
+  resolveRemoteIntent,
+  selectAutomationDestinations,
+  tehranDayStart,
+} from '../publication-automation';
 import { CANARY_PING_TEXT } from '../canary-ping';
 import {
   defaultLayoutFor,
@@ -54,6 +68,7 @@ import {
   isLegacyProductTemplate,
   parseTemplateLayout,
   renderPublicationLayout,
+  renderUnavailableNotice,
   sizesLine,
   stringifyTemplateLayout,
   type PublicationVars,
@@ -201,9 +216,40 @@ export class OmnichannelService {
         }
         await this.assertUniqueTelegramCanary(connection.provider, connection.channel, row.id);
       }
-      row.settings = destinationSettingsForCanary(dto.isCanary);
+      row.settings = mergeDestinationSettings(row.settings, dto.isCanary);
     }
     return toPublicDestination(await this.destinations.save(row));
+  }
+
+  /**
+   * Asks Telegram who the bot is inside this chat (getChat/getChatMember) and stores a sanitized
+   * snapshot on the destination. LIVE automation only targets destinations that passed this.
+   */
+  async verifyDestination(id: string, actor?: Actor) {
+    const who = this.requireActor(actor);
+    const row = await this.destinations.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('مقصد یافت نشد');
+    const connection = await this.connections.findOne({ where: { id: row.connectionId } });
+    if (!connection) throw new NotFoundException('اتصال یافت نشد');
+    if (connection.provider !== 'TELEGRAM') {
+      throw new BadRequestException('بررسی مقصد فقط برای تلگرام است');
+    }
+    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(connection.provider);
+    const inspection = await this.telegram.inspectDestination(connection.secretRef, row.destinationKey);
+    const verification = sanitizeDestinationVerification({
+      checkedAt: new Date().toISOString(),
+      ...inspection,
+    }) as DestinationVerification;
+    row.settings = withDestinationVerification(row.settings, verification);
+    const saved = await this.destinations.save(row);
+    await this.audit(who, 'verify_destination', 'DESTINATION', row.id, connection.channel, null, {
+      ok: verification.ok,
+      error: verification.error || null,
+      chatType: verification.chatType || null,
+      botIsAdmin: verification.botIsAdmin ?? null,
+      canPost: verification.canPost ?? null,
+    });
+    return { ...toPublicDestination(saved), botUsername: inspection.botUsername || null };
   }
 
   async getSettings() {
@@ -220,14 +266,18 @@ export class OmnichannelService {
       || dto.retrySlaSeconds != null
       || dto.outboxRetentionDays != null
     );
-    if (!hasOos && !hasLeftovers) {
+    if (!hasOos && !hasLeftovers && !hasAutomationPatch(dto)) {
       throw new BadRequestException('حداقل یک تنظیم کانال لازم است');
     }
     const previous = await this.loadStoredSettings();
     const next = mergeOmnichannelSettingsPatch(previous, dto);
+    if (next.autoPublishMode && next.autoPublishMode !== 'OFF' && previous.autoPublishMode !== next.autoPublishMode) {
+      await this.assertAutomationPrerequisites(next.autoPublishMode);
+    }
     const saved = await this.appSettings.save(
       this.appSettings.create({ key: OMNICHANNEL_SETTINGS_KEY, value: next }),
     );
+    const automation = readAutomationSettings(next);
     await this.audit(who, 'settings_patch', 'SETTINGS', OMNICHANNEL_SETTINGS_KEY, null, dto.reason || null, {
       retailOosPolicy: next.retailOosPolicy || null,
       wholesaleOosPolicy: next.wholesaleOosPolicy || null,
@@ -236,6 +286,12 @@ export class OmnichannelService {
       autoPublishEventTypesChosen: next.autoPublishEventTypesChosen === true,
       retrySlaChosen: next.retrySlaChosen === true,
       outboxRetentionChosen: next.outboxRetentionChosen === true,
+      autoPublishMode: automation.mode,
+      autoDailyCap: automation.dailyCap,
+      autoMinGapSeconds: automation.minGapSeconds,
+      quietStartHour: automation.quietStartHour,
+      quietEndHour: automation.quietEndHour,
+      withdrawAction: automation.withdrawAction,
     });
     return publicOmnichannelSettings(parseStoredOmnichannelSettings(saved.value), await this.canaryDestinationIds());
   }
@@ -404,12 +460,15 @@ export class OmnichannelService {
       throw new BadRequestException(projection.rejectReason || 'این منبع برای این کانال قابل انتشار نیست');
     }
     if (!dryRun && projection.sourceType === 'PRODUCT') {
-      const live = await this.publications.count({
+      // The 10-live-products canary cap protects the test phase; once automation is LIVE the
+      // daily cap and verified destinations govern volume instead.
+      const automation = readAutomationSettings(await this.loadStoredSettings());
+      const live = automation.mode === 'LIVE' ? 0 : await this.publications.count({
         where: { channel: projection.channel, sourceType: 'PRODUCT', status: In(['READY', 'PUBLISHED', 'PARTIAL']) },
       });
       const limit = canaryLimitFor(projection.channel);
-      if (canaryExceeded(live, limit)) {
-        throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است`);
+      if (automation.mode !== 'LIVE' && canaryExceeded(live, limit)) {
+        throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است؛ برای ارسال بیشتر حالت خودکار را «زنده» کنید`);
       }
       const available = 'available' in projection ? projection.available === true : true;
       const oos = await this.oosDecisionFor(projection.channel, available, 'PRODUCT', String(projection.sourceId || dto.preview.sourceId));
@@ -420,6 +479,7 @@ export class OmnichannelService {
         );
       }
     }
+    const targets = dryRun ? [] : await this.manualPublishTargets(projection.channel, dto.destinationId);
     const saved = await this.publications.manager.transaction(async (manager) => {
       const row = await manager.getRepository(PublicationEntity).save(
         manager.getRepository(PublicationEntity).create({
@@ -433,7 +493,14 @@ export class OmnichannelService {
       );
       if (!dryRun && isOmnichannelAutoPublishEnabled() && areOmnichannelConnectorsEnabled()) {
         const rendered = await this.publicationPayloadFor(projection);
-        await this.enqueueTelegramDeliveries(row.id, projection.channel, rendered, manager);
+        await this.enqueueDeliveries(manager, {
+          publicationId: row.id,
+          channel: projection.channel,
+          action: 'CREATE',
+          rendered,
+          targets: targets.map((dest) => ({ destinationId: dest.id })),
+          auto: false,
+        });
       }
       await manager.getRepository(OmnichannelAuditEntity).save(
         manager.getRepository(OmnichannelAuditEntity).create({
@@ -443,12 +510,40 @@ export class OmnichannelService {
           entityId: row.id,
           channel: projection.channel,
           reason: dto.reason || null,
-          payload: { dryRun, sourceId: String(projection.sourceId || dto.preview.sourceId) },
+          payload: {
+            dryRun,
+            sourceId: String(projection.sourceId || dto.preview.sourceId),
+            destinationIds: targets.map((dest) => dest.id),
+          },
         }),
       );
       return row;
     });
-    return { dryRun, publication: saved };
+    return { dryRun, publication: saved, destinationIds: targets.map((dest) => dest.id) };
+  }
+
+  /**
+   * Manual publish targets: an explicit destination (canary or verified), otherwise the same set
+   * automation would use — canary only unless automation is LIVE.
+   */
+  private async manualPublishTargets(channel: string, destinationId?: string) {
+    const dests = await this.destinations.find({ where: { enabled: true } });
+    const conns = await this.connections.find();
+    if (destinationId) {
+      const dest = dests.find((row) => row.id === destinationId);
+      if (!dest) throw new NotFoundException('مقصد یافت نشد یا غیرفعال است');
+      const conn = conns.find((row) => row.id === dest.connectionId);
+      if (!conn || conn.provider !== 'TELEGRAM' || conn.channel !== channel) {
+        throw new BadRequestException('این مقصد به کانال فروش انتخاب‌شده تعلق ندارد');
+      }
+      if (conn.status !== 'ACTIVE') throw new BadRequestException('ابتدا اتصال را روشن کنید');
+      if (!isCanarySettings(dest.settings) && !destinationCanPost(dest.settings)) {
+        throw new BadRequestException('این مقصد هنوز بررسی نشده؛ اول «بررسی دسترسی ربات» را بزنید');
+      }
+      return [dest];
+    }
+    const mode = readAutomationSettings(await this.loadStoredSettings()).mode;
+    return selectAutomationDestinations(dests, conns, channel, mode === 'LIVE' ? 'LIVE' : 'CANARY');
   }
 
   async markPublicationDelivered(publicationId: string) {
@@ -471,7 +566,22 @@ export class OmnichannelService {
     if (!row) throw new NotFoundException('انتشار یافت نشد');
     row.status = 'WITHDRAWN';
     const saved = await this.publications.save(row);
-    await this.audit(who, 'withdraw', 'PUBLICATION', saved.id, row.channel, reason);
+    let remoteDeletes = 0;
+    if (areOmnichannelConnectorsEnabled()) {
+      const live = (await this.liveRemoteMessages(row.sourceType, row.sourceId, row.channel))
+        .filter((msg) => msg.publicationId === row.id);
+      if (live.length) {
+        remoteDeletes = await this.enqueueDeliveries(this.publications.manager, {
+          publicationId: row.id,
+          channel: row.channel,
+          action: 'DELETE',
+          rendered: null,
+          targets: live.map((msg) => ({ destinationId: msg.destinationId, providerMessageId: msg.providerMessageId })),
+          auto: false,
+        });
+      }
+    }
+    await this.audit(who, 'withdraw', 'PUBLICATION', saved.id, row.channel, reason, { remoteDeletes });
     return saved;
   }
 
@@ -530,6 +640,7 @@ export class OmnichannelService {
     row.nextAttemptAt = new Date();
     row.lastError = null;
     const saved = await this.deliveries.save(row);
+    if (row.eventId) await this.outbox.requeue(row.eventId);
     await this.audit(who, 'retry', 'DELIVERY', saved.id, null, reason, { publicationId: saved.publicationId });
     return { retried: true, delivery: saved };
   }
@@ -589,32 +700,33 @@ export class OmnichannelService {
   }
 
   /**
-   * Worker/catalog sync: upsert or withdraw local publication rows.
-   * Never enqueues deliveries. Missing schema is skipped (pre-migrate).
+   * Worker/catalog sync: upsert or withdraw local publication rows, then let channel automation
+   * (owner opt-in, default OFF) mirror the change to Telegram. Missing schema is skipped (pre-migrate).
    */
-  async syncProductPublications(productId: string, channel?: string | null) {
-    return this.syncSourcePublications('PRODUCT', productId, channel);
+  async syncProductPublications(productId: string, channel?: string | null, eventType?: string | null) {
+    return this.syncSourcePublications('PRODUCT', productId, channel, eventType);
   }
 
   async syncBlogPublications(postId: string, channel?: string | null) {
-    return this.syncSourcePublications('BLOG_POST', postId, channel);
+    return this.syncSourcePublications('BLOG_POST', postId, channel, OUTBOX_EVENT_TYPES.BLOG_PUBLISHED);
   }
 
   async syncCmsPublications(pageId: string, channel?: string | null) {
-    return this.syncSourcePublications('CMS_PAGE', pageId, channel);
+    return this.syncSourcePublications('CMS_PAGE', pageId, channel, OUTBOX_EVENT_TYPES.CMS_PUBLISHED);
   }
 
   private async syncSourcePublications(
     sourceType: 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE',
     sourceId: string,
     channel?: string | null,
+    eventType?: string | null,
   ) {
     const id = String(sourceId || '').trim();
     if (!id) return [];
-    const results: Array<{ channel: string; action: string }> = [];
+    const results: Array<{ channel: string; action: string; remote?: string }> = [];
     try {
       for (const ch of syncChannelsForEvent(channel)) {
-        results.push(await this.syncOneSource(sourceType, id, ch));
+        results.push(await this.syncOneSource(sourceType, id, ch, String(eventType || '')));
       }
     } catch (err) {
       if (isMissingRelationError(err)) return [{ channel: String(channel || ''), action: 'skip' }];
@@ -627,7 +739,8 @@ export class OmnichannelService {
     sourceType: 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE',
     sourceId: string,
     channel: 'RETAIL' | 'WHOLESALE',
-  ) {
+    eventType: string,
+  ): Promise<{ channel: string; action: string; remote?: string }> {
     let projection: Awaited<ReturnType<ChannelProjectionService['previewSource']>>;
     try {
       projection = await this.projection.previewSource(sourceType, sourceId, channel);
@@ -637,7 +750,13 @@ export class OmnichannelService {
           { sourceType, sourceId, channel },
           { status: 'WITHDRAWN' },
         );
-        return { channel, action: 'withdraw' };
+        const remote = sourceType === 'PRODUCT'
+          ? await this.autoSyncRemote({
+            sourceId, channel, eventType, projection: null, publishable: false, available: false,
+            localAction: 'withdraw', previousStatus: null,
+          })
+          : 'none';
+        return { channel, action: 'withdraw', remote };
       }
       throw err;
     }
@@ -645,19 +764,17 @@ export class OmnichannelService {
       where: { sourceType, sourceId, channel },
       order: { createdAt: 'DESC' },
     });
+    const previousStatus = existing?.status ?? null;
+    const available = 'available' in projection ? projection.available === true : true;
     let action = nextPublicationAction(existing, projection.publishable);
     if (sourceType === 'PRODUCT' && projection.publishable) {
-      const available = 'available' in projection ? projection.available === true : true;
       const oos = await this.oosDecisionFor(channel, available, sourceType, sourceId);
       action = applyOosLocalAction(action, oos.local);
     }
-    if (action === 'skip') return { channel, action };
     if (action === 'withdraw' && existing) {
       existing.status = 'WITHDRAWN';
       await this.publications.save(existing);
-      return { channel, action };
-    }
-    if (action === 'create') {
+    } else if (action === 'create') {
       await this.publications.save(
         this.publications.create({
           sourceType,
@@ -668,14 +785,188 @@ export class OmnichannelService {
           status: 'DRAFT',
         }),
       );
-      return { channel, action };
+    } else if (action !== 'skip' && existing) {
+      existing.projection = projection;
+      existing.sourceUpdatedAt = new Date();
+      if (action === 'reopen') existing.status = 'DRAFT';
+      await this.publications.save(existing);
+    } else if (action !== 'skip') {
+      action = 'skip';
     }
-    if (!existing) return { channel, action: 'skip' };
-    existing.projection = projection;
-    existing.sourceUpdatedAt = new Date();
-    if (action === 'reopen') existing.status = 'DRAFT';
-    await this.publications.save(existing);
-    return { channel, action };
+    if (sourceType !== 'PRODUCT') return { channel, action };
+    const remote = await this.autoSyncRemote({
+      sourceId,
+      channel,
+      eventType,
+      projection: projection as unknown as Record<string, unknown>,
+      publishable: projection.publishable === true,
+      available,
+      localAction: action,
+      previousStatus,
+    });
+    return { channel, action, remote };
+  }
+
+  /**
+   * Channel automation for one product/channel. Reads the owner's mode, OOS policy, chosen events
+   * and guardrails; enqueues CREATE/UPDATE/DELETE deliveries through the outbox. Returns a short
+   * reason string for logs/tests. Never throws on "nothing to do".
+   */
+  private async autoSyncRemote(input: {
+    sourceId: string;
+    channel: 'RETAIL' | 'WHOLESALE';
+    eventType: string;
+    projection: Record<string, unknown> | null;
+    publishable: boolean;
+    available: boolean;
+    localAction: string;
+    previousStatus: string | null;
+  }): Promise<string> {
+    const stored = await this.loadStoredSettings();
+    const automation = readAutomationSettings(stored);
+    if (automation.mode === 'OFF') return 'mode_off';
+    if (!areOmnichannelConnectorsEnabled() || !isOmnichannelAutoPublishEnabled()) return 'flags_off';
+    const chosen = readAutoPublishEventTypes(stored).events;
+    const oos = readChannelOos(stored, input.channel);
+    const live = await this.liveRemoteMessages('PRODUCT', input.sourceId, input.channel);
+    const intent = resolveRemoteIntent({
+      eventType: input.eventType,
+      localAction: input.localAction,
+      previousStatus: input.previousStatus,
+      publishable: input.publishable,
+      available: input.available,
+      hasRemoteMessage: live.length > 0,
+      oosPolicy: oos.policy,
+      oosChosen: oos.chosen,
+      withdrawAction: automation.withdrawAction,
+      chosenEvents: chosen,
+    });
+    if (intent.action === 'none') return intent.reason;
+    const publication = await this.publications.findOne({
+      where: { sourceType: 'PRODUCT', sourceId: input.sourceId, channel: input.channel },
+      order: { createdAt: 'DESC' },
+    });
+    if (!publication) return 'no_publication';
+    if (intent.action === 'DELETE') {
+      const count = await this.enqueueDeliveries(this.publications.manager, {
+        publicationId: publication.id,
+        channel: input.channel,
+        action: 'DELETE',
+        rendered: null,
+        targets: live.map((msg) => ({ destinationId: msg.destinationId, providerMessageId: msg.providerMessageId, publicationId: msg.publicationId })),
+        auto: true,
+      });
+      return count ? 'delete' : 'delete_deduped';
+    }
+    if (!input.projection) return 'no_projection';
+    const rendered = await this.publicationPayloadFor(input.projection);
+    if (intent.action === 'UPDATE') {
+      const text = intent.notice
+        ? renderUnavailableNotice(await this.publicationVarsFor(input.projection), rendered.parseMode)
+        : rendered.text;
+      const count = await this.enqueueDeliveries(this.publications.manager, {
+        publicationId: publication.id,
+        channel: input.channel,
+        action: 'UPDATE',
+        rendered: { ...rendered, text },
+        targets: live.map((msg) => ({ destinationId: msg.destinationId, providerMessageId: msg.providerMessageId, publicationId: msg.publicationId })),
+        auto: true,
+      });
+      return count ? (intent.notice ? 'update_notice' : 'update') : 'update_deduped';
+    }
+    const [dests, conns, counters] = await Promise.all([
+      this.destinations.find({ where: { enabled: true } }),
+      this.connections.find(),
+      this.automationCounters(input.channel),
+    ]);
+    const gate = evaluateAutomationGate({
+      mode: automation.mode,
+      eventType: input.eventType,
+      chosenEvents: chosen,
+      connectorsEnabled: true,
+      autoPublishFlag: true,
+      sentToday: counters.sentToday,
+      dailyCap: automation.dailyCap,
+      lastScheduledAt: counters.lastScheduledAt,
+      minGapSeconds: automation.minGapSeconds,
+      quietStartHour: automation.quietStartHour,
+      quietEndHour: automation.quietEndHour,
+      now: new Date(),
+      createTrigger: true,
+    });
+    if (gate.allow === false) return gate.reason;
+    const withMessage = new Set(live.map((msg) => msg.destinationId));
+    const pending = await this.pendingCreateDestinations(publication.id);
+    const targets = selectAutomationDestinations(dests, conns, input.channel, automation.mode)
+      .filter((dest) => !withMessage.has(dest.id) && !pending.has(dest.id))
+      .map((dest) => ({ destinationId: dest.id }));
+    if (!targets.length) return 'no_destination';
+    const count = await this.enqueueDeliveries(this.publications.manager, {
+      publicationId: publication.id,
+      channel: input.channel,
+      action: 'CREATE',
+      rendered,
+      targets,
+      auto: true,
+      availableAt: gate.sendAt,
+    });
+    if (count && publication.status === 'DRAFT') {
+      publication.status = 'READY';
+      await this.publications.save(publication);
+    }
+    return count ? (gate.deferred ? 'create_deferred' : 'create') : 'create_deduped';
+  }
+
+  /** Destinations with a CREATE still in flight for this publication (avoid double posts). */
+  private async pendingCreateDestinations(publicationId: string): Promise<Set<string>> {
+    const rows = await this.deliveries.find({
+      where: { publicationId, action: 'CREATE', status: In(['PENDING', 'PROCESSING', 'RETRY']) },
+      select: ['destinationId'],
+    });
+    return new Set(rows.map((row) => row.destinationId));
+  }
+
+  /**
+   * Messages that currently exist in Telegram for this source/channel: a SUCCEEDED CREATE not
+   * followed by a DELETE that succeeded or is still queued. Spans every publication row.
+   */
+  private async liveRemoteMessages(sourceType: string, sourceId: string, channel: string) {
+    const pubs = await this.publications.find({ where: { sourceType, sourceId, channel }, select: ['id'] });
+    if (!pubs.length) return [] as Array<{ publicationId: string; destinationId: string; providerMessageId: string }>;
+    const rows = await this.deliveries.find({
+      where: { publicationId: In(pubs.map((row) => row.id)) },
+      order: { createdAt: 'ASC' },
+    });
+    const live = new Map<string, { publicationId: string; destinationId: string; providerMessageId: string }>();
+    for (const row of rows) {
+      const key = `${row.publicationId}:${row.destinationId}`;
+      if (row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.providerMessageId) {
+        live.set(key, { publicationId: row.publicationId, destinationId: row.destinationId, providerMessageId: row.providerMessageId });
+      } else if (row.action === 'DELETE' && ['SUCCEEDED', 'PENDING', 'PROCESSING', 'RETRY'].includes(row.status)) {
+        live.delete(key);
+      }
+    }
+    return [...live.values()];
+  }
+
+  /** Auto CREATE counters for the gate: distinct posts today (Tehran day) and the latest scheduled send. */
+  private async automationCounters(channel: string): Promise<{ sentToday: number; lastScheduledAt: Date | null }> {
+    const dayStart = tehranDayStart(new Date());
+    const base = () => this.events.createQueryBuilder('e')
+      .where('e.eventType = :type', { type: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED })
+      .andWhere('e.channel = :channel', { channel })
+      .andWhere("e.payload->>'action' = 'CREATE'")
+      .andWhere("e.payload->>'auto' = 'true'");
+    const [today, last] = await Promise.all([
+      base().andWhere('e.createdAt >= :dayStart', { dayStart }).select("COUNT(DISTINCT e.payload->>'publicationId')", 'n').getRawOne<{ n: string }>(),
+      base().select('MAX(e.availableAt)', 'last').getRawOne<{ last: Date | string | null }>(),
+    ]);
+    const lastRaw = last?.last ?? null;
+    const lastScheduledAt = lastRaw ? new Date(lastRaw) : null;
+    return {
+      sentToday: Number(today?.n || 0),
+      lastScheduledAt: lastScheduledAt && !Number.isNaN(lastScheduledAt.getTime()) ? lastScheduledAt : null,
+    };
   }
 
   async assertMediaDeletable(url: string) {
@@ -770,41 +1061,87 @@ export class OmnichannelService {
     throw new NotFoundException('محصول یافت نشد');
   }
 
-  private async enqueueTelegramDeliveries(
-    publicationId: string,
-    channel: string,
-    rendered: RenderedPublication,
+  /**
+   * One outbox event + one delivery row per target. Payload carries the rendered post and its
+   * Telegram options; the worker only maps them to Bot API parameters. Returns rows created.
+   */
+  private async enqueueDeliveries(
     manager: EntityManager,
-  ) {
-    const dests = await manager.getRepository(ChannelDestinationEntity).find({ where: { enabled: true } });
-    const conns = await manager.getRepository(ChannelConnectionEntity).find();
-    const canaries = selectCanaryTelegramDestinations(dests, conns, channel);
+    input: {
+      publicationId: string;
+      channel: string;
+      action: 'CREATE' | 'UPDATE' | 'DELETE';
+      rendered: RenderedPublication | null;
+      targets: Array<{ destinationId: string; providerMessageId?: string; publicationId?: string }>;
+      auto: boolean;
+      availableAt?: Date;
+    },
+  ): Promise<number> {
     const deliveryRepo = manager.getRepository(PublicationDeliveryEntity);
-    for (const dest of canaries) {
+    // Stamped so a post can be recreated after an OOS delete; in-flight/live checks stop double posts.
+    const stamp = Date.now();
+    let created = 0;
+    for (const target of input.targets) {
+      const publicationId = target.publicationId || input.publicationId;
       const queued = await this.outbox.enqueue({
-        operationId: `pub:${publicationId}:${dest.id}:CREATE`,
+        operationId: `pub:${publicationId}:${target.destinationId}:${input.action}:${stamp}`,
         eventType: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED,
         aggregateType: 'PUBLICATION',
         aggregateId: publicationId,
-        channel,
+        channel: input.channel,
+        availableAt: input.availableAt,
         payload: {
           publicationId,
-          destinationId: dest.id,
-          action: 'CREATE',
-          channel,
-          text: rendered.text,
-          photoUrls: rendered.photoUrls,
+          destinationId: target.destinationId,
+          action: input.action,
+          channel: input.channel,
+          auto: input.auto,
+          ...(target.providerMessageId ? { providerMessageId: target.providerMessageId } : {}),
+          ...(input.rendered ? this.deliveryPayload(input.rendered) : {}),
         },
       }, manager);
       if (!queued.id) continue;
       await deliveryRepo.save(
         deliveryRepo.create({
           publicationId,
-          destinationId: dest.id,
+          destinationId: target.destinationId,
           eventId: queued.id,
-          action: 'CREATE',
+          action: input.action,
           status: 'PENDING',
+          providerMessageId: target.providerMessageId || null,
+          nextAttemptAt: input.availableAt || null,
         }),
+      );
+      created += 1;
+    }
+    return created;
+  }
+
+  private deliveryPayload(rendered: RenderedPublication): Record<string, unknown> {
+    return {
+      text: rendered.text,
+      photoUrls: rendered.photoUrls,
+      parseMode: rendered.parseMode,
+      buttons: rendered.buttons,
+      silent: rendered.silent,
+      protectContent: rendered.protectContent,
+      captionAbove: rendered.captionAbove,
+      linkPreview: rendered.linkPreview,
+    };
+  }
+
+  /** Turning automation on needs somewhere to post; LIVE additionally needs a verified channel or canary. */
+  private async assertAutomationPrerequisites(mode: 'CANARY' | 'LIVE') {
+    const dests = await this.destinations.find({ where: { enabled: true } });
+    const conns = await this.connections.find();
+    const any = ['RETAIL', 'WHOLESALE'].some(
+      (channel) => selectAutomationDestinations(dests, conns, channel, mode).length > 0,
+    );
+    if (!any) {
+      throw new BadRequestException(
+        mode === 'CANARY'
+          ? 'برای حالت آزمایشی، یک مقصد canary روی اتصال فعال تلگرام لازم است'
+          : 'برای حالت زنده، دست‌کم یک مقصد فعال و بررسی‌شده (ربات ادمین با اجازه ارسال) لازم است',
       );
     }
   }
