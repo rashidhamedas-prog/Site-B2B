@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
+import { catalogHydrationKey } from '@/lib/catalog-performance';
 import { ProductCatalog, type CatalogSearchParams } from './ProductCatalog';
 
 function paramsFromSearch(search: string): CatalogSearchParams {
@@ -73,7 +74,7 @@ export function WholesaleProductsCatalogWithUrl({
     <>
       {hydrated && filtered ? <meta name="robots" content="noindex, follow" /> : null}
       <ProductCatalog
-        key={hydrated ? JSON.stringify(params) : 'ssr-default'}
+        key={catalogHydrationKey(filtered, JSON.stringify(params))}
         searchParams={params}
         initialProducts={filtered ? undefined : initialProducts}
         initialTotal={filtered ? undefined : initialTotal}

@@ -45,13 +45,15 @@ tasks:
       - "apps/web/src/themes/retail-boutique/BoutiqueCategoryRow.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueSaleRail.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueProductRail.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 after ba254e merged; performance-only props:
+      # "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueBlocksRenderer.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueTrustStrip.tsx"
       - "apps/web/src/app/retail/layout.tsx"
       - "apps/web/src/components/cms/SiteBlocksRenderer.tsx"
       - "apps/web/src/components/retail/RetailChromeProvider.tsx"
-      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 after ba254e merged; performance-only props:
+      # "apps/web/src/components/retail/RetailProductCard.tsx"
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
       - "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/api/src/modules/settings/settings.service.ts"
@@ -176,12 +178,14 @@ tasks:
       - "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
       - "apps/web/src/components/retail/RetailHomeCategoryLinks.tsx"
-      - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 after 2723d76 merged; image priority only:
+      # "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
       - "apps/web/src/components/retail/RetailFooter.tsx"
       - "apps/web/src/components/wholesale/HeroSection.tsx"
       - "apps/web/src/components/wholesale/about/AboutExperience.tsx"
       - "apps/web/src/components/wholesale/CtaBanner.tsx"
-      - "apps/web/src/lib/cms/defaults.ts"
+      # transferred 2026-09-06 to TASK-20260903-004 after 2723d76 merged; hero URL only:
+      # "apps/web/src/lib/cms/defaults.ts"
       - "apps/web/src/lib/retail-seo-copy.ts"
       - "apps/web/src/lib/retail-seo-copy.spec.ts"
       - "apps/api/src/modules/category/category-seo-seed.ts"
@@ -660,51 +664,87 @@ tasks:
       - "Pending wholesale reset shows the post-approval message instead of navigating away"
       - "api+web tsc and new jwt-invalidation / safe-redirect / phone specs pass"
   - id: "TASK-20260903-004"
-    title: "GSC dual-site SEO settings + mobile LCP for retail and wholesale"
+    title: "Root-fix dual-site mobile LCP/INP and retail edge"
     status: "in_progress"
-    risk: "medium"
-    owner: "cursor:implementer-TASK-20260903-004"
+    risk: "high"
+    owner: "cursor:gpt-5.6-sol-TASK-20260903-004"
     roles:
-      architect: "cursor:implementer-TASK-20260903-004"
-      implementer: "cursor:implementer-TASK-20260903-004"
-      reviewer: "self-review-seo-no-mass-redirect"
-      security: "self-review-no-auth-no-secrets"
-    branch: "ai/TASK-20260903-004-gsc-mobile-speed"
-    worktree: "D:/proje/Site B2B"
+      architect: "cursor:omnichannel-architect-6a40a4c9"
+      implementer: "cursor:gpt-5.6-sol-TASK-20260903-004"
+      reviewer: "cursor:omnichannel-phase-reviewer-d334e021-PASS-WITH-CONDITIONS"
+      security: "cursor:security-bab82642-PASS-WITH-CONDITIONS"
+    branch: "ai/TASK-20260903-004-gsc-mobile-speed-v2"
+    worktree: "D:/proje/Site-B2B-gsc-speed"
     claimed_at: "2026-09-03T12:50:00Z"
-    heartbeat_at: "2026-09-04T01:30:00Z"
+    heartbeat_at: "2026-09-06T12:45:00Z"
     depends_on: []
     file_claims:
-      # nginx/nginx.conf transferred to TASK-20260906-004 (stale claim)
-      - "apps/web/next.config.ts"
-      - "apps/web/src/components/layout/Header.tsx"
-      - "apps/web/src/components/layout/Footer.tsx"
-      - "apps/web/src/lib/jsonld-url.ts"
-      - "apps/web/src/lib/jsonld-url.spec.ts"
-      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01.webp"
-      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01-mobile.webp"
-      - "SEO-IMPLEMENTATION-REPORTS/2026-09-03-GSC-DUAL-SITE-AUDIT.md"
-      - "docs/reports/2026-09-03-gsc-dual-site-audit.md"
+      - "apps/api/Dockerfile"
+      - "apps/api/src/modules/upload/image-processor.ts"
+      - "apps/api/src/modules/upload/image-processor.spec.ts"
+      - "apps/api/src/jobs/backfill-product-images.ts"
+      - "apps/api/src/jobs/backfill-product-images.spec.ts"
+      - "apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.ts"
+      - "apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.spec.ts"
+      - "apps/web/src/lib/server-api.ts"
+      - "apps/web/src/lib/catalog-performance.ts"
+      - "apps/web/src/lib/catalog-performance.spec.ts"
+      - "apps/web/src/app/layout.tsx"
+      - "apps/web/public/fonts/Vazirmatn-NL-wght-v33.003.woff2"
+      - "apps/web/public/fonts/Vazirmatn-OFL-1.1.txt"
+      - "apps/web/src/components/shared/DeferredGtm.tsx"
+      - "apps/web/src/lib/cms/defaults.ts"
+      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01-73e2bdac6948.webp"
+      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01-mobile-8c90e6ac4182.webp"
+      - "apps/web/src/components/retail/RetailProductsCatalogWithUrl.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductsCatalogWithUrl.tsx"
+      - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
+      - "apps/web/src/components/wholesale/ProductCatalog.tsx"
+      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      - "apps/web/src/components/ui/ProductImage.tsx"
+      - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
+      - "docs/reports/2026-09-06-gsc-mobile-speed-root-fix.md"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Owner logged into GSC for a full dual-site SEO + mobile speed pass.
-      Reclaimed nginx.conf from TASK-20260824-002 and TASK-20260829-001
-      (heartbeats 2026-08-24 / 2026-08-30, stale >24h). Reclaimed
-      next.config.ts from TASK-20260830-002 (hb 2026-08-31). Reclaimed
-      Header.tsx from TASK-20260831-001 (hb 2026-08-31). Reclaimed
-      jsonld-url* from TASK-20260831-003 (hb 2026-08-31). Do not edit
-      logo-128.png (TASK-20260903-002 same-day). Do not Validate Fix
-      GSC redirect/noindex/404 buckets. Do not invent return/shipping
-      schema. Do not mass-redirect leftover WordPress URLs.
+      Owner approved the attached root-fix plan and staged Cloudflare
+      activation for .ir. Baseline 2026-09-06: .com GSC field group has
+      10 mobile URLs at LCP 3.7s / INP 212ms; cold lab .ir /products
+      reached LCP 12.232s after catalog hydration remount; Sara PDP LCP
+      5.508s with a 3.68MB JPEG; 42/59 active primary product images are
+      over 500KB. Scope is image processing/backfill, public PDP cache,
+      font/GTM critical path, catalog hydration/image priority, one
+      WHOLESALE hero URL migration, production verification, staged .ir
+      edge, and GSC validation only. No checkout/auth/business-rule
+      change, no source image deletion, no connector publication, no
+      HTML/API/account/admin/checkout edge caching, and no changes to
+      correct redirect/noindex/404 groups.
+      Reclaimed Dockerfile from TASK-20260901-002 (hb 2026-09-01);
+      server-api/catalog/card files from TASK-20260826-001 (hb
+      2026-09-02); wholesale URL wrapper from TASK-20260901-001 (hb
+      2026-08-31); retail URL wrapper from TASK-20260831-003 (hb
+      2026-08-31); root layout/DeferredGtm from TASK-20260823-001 and
+      TASK-20260822-005 (hb 2026-08-22/23). RetailCategoryBannerGrid and
+      defaults transferred after 2723d76 merged. RetailProductCard and
+      BoutiqueProductCard transferred after ba254e merged; only
+      performance props/links change and boutique behavior is preserved.
+      Rollback: revert release/migration, restore DB refs from backfill
+      manifest, keep originals, and return .ir DNS records to DNS-only.
     acceptance_criteria:
-      - "Static banners/fonts/logo responses no longer advertise Cache-Control max-age=0"
-      - "Wholesale header logo does not preload ahead of the LCP hero"
-      - "Retail JSON-LD product image URLs use www.poshaktaranom.ir when the file is on a Taranom host"
-      - "Wholesale mobile LCP hero webp is materially smaller than the live 86KB file"
-      - "No Validate Fix on correct noindex/redirect/404 groups"
+      - "Production require('sharp') resolves; uploads fail closed and produce WebP no larger than 1200x1600"
+      - "Backfill defaults dry-run, writes a rollback manifest, updates product/variant refs transactionally, keeps originals, and emits no omnichannel outbox events"
+      - "Public PDP fetch is channel-scoped and short-revalidated; checkout/order remain server-authoritative"
+      - "One 47,972-byte variable font is used with one Next preload and no manual duplicate preload"
+      - "GTM starts after load+paint or first interaction with a hard cap and page_view/dataLayer stay functional"
+      - "Wholesale hero uses new content-hashed URLs via a reversible URL-only migration"
+      - "Unfiltered catalog hydration keeps a stable key and does not refetch card images"
+      - "Only the first non-embedded catalog card is high priority; remaining cards/banners are low/lazy and card prefetch is off"
+      - "Required tests/typechecks/builds, independent review/security, deploy, health/storefront/auth/checkout/feed smoke, staged backfill and .ir Cloudflare checks are recorded"
+      - "Three-run median mobile profiles and GSC LCP/INP validation evidence are recorded without claiming immediate 28-day field recovery"
   - id: "TASK-20260903-005"
     title: "Customer account panels + password set/forgot for retail and wholesale"
     status: "done"
@@ -960,7 +1000,8 @@ tasks:
       - "apps/api/src/config/database.config.ts"
       - "apps/api/src/config/typeorm-migration-files.ts"
       - "apps/api/src/config/typeorm-migration-files.spec.ts"
-      - "apps/api/Dockerfile"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-09-01; sharp runtime):
+      # "apps/api/Dockerfile"
       # reclaimed 2026-09-02 by TASK-20260903-001 (admin session isolation):
       # "apps/web/src/lib/auth.ts"
       # transferred 2026-09-03 to TASK-20260903-006 (stale hb; portal redirect):
@@ -1013,7 +1054,8 @@ tasks:
     depends_on: []
     file_claims:
       - "apps/web/src/app/(wholesale)/products/page.tsx"
-      - "apps/web/src/components/wholesale/WholesaleProductsCatalogWithUrl.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-08-31; stable hydration key):
+      # "apps/web/src/components/wholesale/WholesaleProductsCatalogWithUrl.tsx"
       - "apps/web/src/lib/slim-wholesale-catalog.ts"
       - "apps/web/src/lib/slim-wholesale-catalog.spec.ts"
       - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
@@ -1148,7 +1190,8 @@ tasks:
       # transferred 2026-09-05 to TASK-20260905-004 (stale hb 2026-08-31; category footer links):
       # "apps/web/src/components/retail/RetailFooter.tsx"
       - "apps/web/src/components/retail/RetailFaq.tsx"
-      - "apps/web/src/components/retail/RetailProductsCatalogWithUrl.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-08-31; stable hydration key):
+      # "apps/web/src/components/retail/RetailProductsCatalogWithUrl.tsx"
       - "apps/web/src/app/retail/products/page.tsx"
       - "apps/web/src/app/retail/products/layout.tsx"
       - "apps/web/src/lib/blog.ts"
@@ -1559,14 +1602,17 @@ tasks:
       # transferred 2026-08-29 to TASK-20260829-001: "apps/web/src/components/admin/AdminProducts.tsx"
       - "apps/web/src/lib/wholesale-order.ts"
       - "apps/web/src/lib/wholesale-order.spec.ts"
-      - "apps/web/src/components/wholesale/ProductCatalog.tsx"
-      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-09-02; image priority):
+      # "apps/web/src/components/wholesale/ProductCatalog.tsx"
+      # "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
       - "apps/web/src/components/wholesale/WholesaleQuickOrder.tsx"
       - "apps/web/src/components/wholesale/ProductDetail.tsx"
-      - "apps/web/src/components/retail/RetailProductCard.tsx"
-      - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-09-02; image priority):
+      # "apps/web/src/components/retail/RetailProductCard.tsx"
+      # "apps/web/src/components/retail/RetailProductsCatalog.tsx"
       # transferred 2026-08-29 to TASK-20260829-001: "apps/web/src/components/retail/RetailProductDetail.tsx"
-      - "apps/web/src/lib/server-api.ts"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-09-02; PDP revalidate):
+      # "apps/web/src/lib/server-api.ts"
       # transferred 2026-08-29 to TASK-20260829-001: "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
       - "apps/api/src/modules/product/catalog-excel.ts"
@@ -1851,7 +1897,8 @@ tasks:
       - "apps/web/src/lib/server-api-base.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/lib/server-api.ts"
       - "apps/web/src/lib/google-seo.ts"
-      - "apps/web/src/app/layout.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-08-23; variable font):
+      # "apps/web/src/app/layout.tsx"
       # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-08-23; retail overflow shell):
       # "apps/web/src/app/retail/layout.tsx"
       - "apps/web/src/app/retail/page.tsx"
@@ -1860,7 +1907,8 @@ tasks:
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/app/retail/products/[slug]/page.tsx"
       # transferred 2026-08-31 to TASK-20260831-003 (stale; products ISR): "apps/web/src/app/retail/products/page.tsx"
       - "apps/web/src/components/shared/GoogleTagManager.tsx"
-      - "apps/web/src/components/shared/DeferredGtm.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-08-23; post-paint GTM):
+      # "apps/web/src/components/shared/DeferredGtm.tsx"
       - "apps/web/src/components/shared/GoogleAnalytics.tsx"
       - "apps/web/src/components/shared/GoogleAnalyticsProvider.tsx"
       - "apps/web/src/components/shared/WebVitalsReporter.tsx"
@@ -1925,9 +1973,11 @@ tasks:
       - "apps/web/src/lib/google.ts"
       - "apps/web/src/lib/retail-cart.ts"
       - "apps/web/src/components/shared/GoogleAnalytics.tsx"
-      - "apps/web/src/components/shared/DeferredGtm.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-08-22; post-paint GTM):
+      # "apps/web/src/components/shared/DeferredGtm.tsx"
       - "apps/web/src/components/shared/GoogleTagManager.tsx"
-      - "apps/web/src/app/layout.tsx"
+      # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-08-22; variable font):
+      # "apps/web/src/app/layout.tsx"
       - "apps/web/src/components/retail/RetailCartDrawer.tsx"
       - "apps/web/src/components/retail/RetailConversion.tsx"
       - "apps/web/src/components/retail/RetailPdpAnalytics.tsx"

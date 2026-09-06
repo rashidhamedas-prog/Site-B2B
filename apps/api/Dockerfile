@@ -40,6 +40,10 @@ RUN addgroup -S taranom && adduser -S taranom -G taranom
 
 COPY --from=builder --chown=taranom:taranom /app/apps/api/dist ./dist
 COPY --from=deps --chown=taranom:taranom /app/node_modules ./node_modules
+# npm can keep native workspace dependencies (notably sharp and @img/*)
+# under the workspace-local node_modules. Overlay them at /app/node_modules
+# because the compiled API runs from /app/dist and resolves modules upward.
+COPY --from=deps --chown=taranom:taranom /app/apps/api/node_modules/ ./node_modules/
 COPY --from=deps --chown=taranom:taranom /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder --chown=taranom:taranom /app/packages/shared-types ./packages/shared-types
 COPY --chown=taranom:taranom apps/api/package.json ./

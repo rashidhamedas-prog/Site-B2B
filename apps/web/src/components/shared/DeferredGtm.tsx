@@ -9,10 +9,13 @@ import {
 } from '@/lib/google';
 import { resolveGtmIdForHost } from '@/components/shared/GoogleTagManager';
 
+const GTM_HARD_CAP_MS = 8000;
+const FIRST_INTERACTION_EVENTS = ['pointerup', 'keydown'] as const;
+
 /**
- * Inject GTM after idle so it does not compete with LCP on landing pages.
- * Host is resolved in the browser so the root layout can stay static (no headers()).
- * Skips admin routes and non-production hosts.
+ * Inject GTM after load + a paint, or after the first completed interaction +
+ * a paint. The hard cap preserves analytics on pages that stay idle while
+ * keeping GTM execution out of the LCP and initial interaction tasks.
  */
 export function DeferredGtm({ gtmId }: { gtmId?: string } = {}) {
   const pathname = usePathname();
@@ -25,7 +28,22 @@ export function DeferredGtm({ gtmId }: { gtmId?: string } = {}) {
     if (!id) return;
     if (document.getElementById('gtm-deferred')) return;
 
+    let disposed = false;
+    let scheduled = false;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let paintFallback = 0;
+    let hardCap = 0;
+
+    const removeTriggers = () => {
+      window.removeEventListener('load', scheduleAfterPaint);
+      for (const event of FIRST_INTERACTION_EVENTS) {
+        window.removeEventListener(event, scheduleAfterPaint);
+      }
+    };
+
     const inject = () => {
+      if (disposed) return;
       if (document.getElementById('gtm-deferred')) return;
       if (isAdminAnalyticsPath(window.location.pathname)) return;
       if (isNonProductionAnalyticsHost(window.location.hostname)) return;
@@ -39,21 +57,43 @@ export function DeferredGtm({ gtmId }: { gtmId?: string } = {}) {
       j.id = 'gtm-deferred';
       j.async = true;
       j.src = `https://www.googletagmanager.com/gtm.js?id=${resolved}`;
-      f?.parentNode?.insertBefore(j, f);
+      if (f?.parentNode) {
+        f.parentNode.insertBefore(j, f);
+      } else {
+        document.head.appendChild(j);
+      }
     };
 
-    const ric = (
-      window as Window & {
-        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      }
-    ).requestIdleCallback;
+    function scheduleAfterPaint() {
+      if (scheduled || disposed) return;
+      scheduled = true;
+      removeTriggers();
+      window.clearTimeout(hardCap);
 
-    if (typeof ric === 'function') {
-      ric(inject, { timeout: 4000 });
-      return;
+      if (typeof window.requestAnimationFrame !== 'function') {
+        paintFallback = window.setTimeout(inject, 0);
+        return;
+      }
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(inject);
+      });
     }
-    const t = window.setTimeout(inject, 2800);
-    return () => window.clearTimeout(t);
+
+    window.addEventListener('load', scheduleAfterPaint, { once: true });
+    for (const event of FIRST_INTERACTION_EVENTS) {
+      window.addEventListener(event, scheduleAfterPaint, { once: true });
+    }
+    hardCap = window.setTimeout(scheduleAfterPaint, GTM_HARD_CAP_MS);
+    if (document.readyState === 'complete') scheduleAfterPaint();
+
+    return () => {
+      disposed = true;
+      removeTriggers();
+      window.clearTimeout(hardCap);
+      window.clearTimeout(paintFallback);
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+    };
   }, [gtmId, pathname]);
 
   return null;

@@ -152,6 +152,7 @@ export async function RetailCategoryBannerGrid({
                     // Below the hero — must not compete with the LCP slide for
                     // bandwidth (only one above-the-fold image gets priority).
                     loading="lazy"
+                    fetchPriority="low"
                   />
                 ) : null}
                 <div

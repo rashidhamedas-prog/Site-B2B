@@ -34,7 +34,13 @@ export type WholesaleCardProduct = {
   variants?: Array<{ color?: string; colorHex?: string; stock?: number; wholesaleStock?: number; size?: string }>;
 };
 
-export function WholesaleProductCard({ product }: { product: WholesaleCardProduct }) {
+export function WholesaleProductCard({
+  product,
+  imagePriority = false,
+}: {
+  product: WholesaleCardProduct;
+  imagePriority?: boolean;
+}) {
   const [orderOpen, setOrderOpen] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const href = `/products/${product.slug || product.id}`;
@@ -58,11 +64,16 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] transition duration-300 hover:border-[var(--brand-gold,#C9A84C)] focus-within:ring-2 focus-within:ring-[var(--brand-gold,#C9A84C)] focus-within:ring-offset-2 motion-reduce:transition-none">
-      <Link href={href} className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)] focus:outline-none">
+      <Link
+        href={href}
+        prefetch={false}
+        className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)] focus:outline-none"
+      >
         <ProductImage
           src={product.images?.[0]}
           alt={product.name}
-          sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
+          priority={imagePriority}
+          sizes="(max-width:639px) 46vw, (max-width:1279px) 30vw, 240px"
         />
         <div className="absolute right-3 top-3 flex flex-wrap gap-1.5">
           <span
@@ -96,7 +107,11 @@ export function WholesaleProductCard({ product }: { product: WholesaleCardProduc
           </span>
           <span>{sizeTypeLabel(product.sizeType)}</span>
         </div>
-        <Link href={href} className="rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]">
+        <Link
+          href={href}
+          prefetch={false}
+          className="rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
+        >
           <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-[var(--brand-ink,#1A1A1A)]">
             {product.name}
           </h3>

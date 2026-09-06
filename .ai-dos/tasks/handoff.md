@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T12:45:00Z — TASK-20260903-004 review fixes before deploy
+
+- Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` on `ai/TASK-20260903-004-gsc-mobile-speed-v2` at `D:/proje/Site-B2B-gsc-speed`.
+- Independent Reviewer: cursor:omnichannel-phase-reviewer-d334e021 **PASS WITH CONDITIONS**. Security: cursor:security-bab82642 **PASS WITH CONDITIONS**. First media-backfill review (17bf1d52) was FAIL; those HIGH items are closed.
+- Closed HIGH: no `AppModule`/schedulers; `--apply` needs durable `--manifest`; owned-host + protocol-relative URL reject; hero rollback is field-level; media insert `ON CONFLICT DO NOTHING`.
+- Observed tests: `image-processor.spec.ts` ok; `backfill-product-images.spec.ts` ok; `20260906-004-wholesale-hero-cache-bust.spec.ts` ok; `catalog-performance.spec.ts` ok; `apps/api` and `apps/web` `tsc --noEmit` 0. Local `next build` hit a concurrent `.next` race and is not treated as a code failure; Docker production build is the deploy gate.
+- Exact next: commit/push `origin/master`, `scripts/auto-deploy.sh`, smoke health/home/catalog/PDP/login/feeds, `require('sharp')` in `taranom_api`, dry-run then `--limit=1` backfill with host-copied manifest, then staged `.ir` proxy. Pause admin image edits during apply.
+- Rollback: revert release + hero migration; restore DB refs from backfill file or `product_image_backfill_manifests`; originals stay in MinIO; `.ir` DNS-only at TTL 300.
+
 ## 2026-09-06T12:40:00Z — TASK-20260905-003 Bale + Rubika implemented (ready to ship)
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
@@ -16,6 +25,13 @@ Append newest entries at the top. Never erase another agent's record.
 - Reclaimed from TASK-20260826-001 (stale hb 2026-09-02): `adapters/channel-adapter.ts`, `adapters/bale.adapter.ts`, `adapters/rubika.adapter.ts`, `adapters/connector-gate.spec.ts`, `omnichannel.module.ts`, `.cursor/skills/omnichannel/SKILL.md`, `.cursor/skills/omnichannel/references/phase-order.md`. New: `adapters/adapter-registry.ts`, `adapters/rich-text.ts(+spec)`, `adapters/bale.adapter.spec.ts`, `adapters/rubika.adapter.spec.ts`, `provider-capabilities.ts(+spec)`, `docs/reports/2026-09-06-omnichannel-bale-rubika.md`.
 - Design (ADR in the report): one master template per sales channel renders canonical HTML (`<b>` only, escaped); each adapter converts (Telegram parse_mode HTML, Bale ` *bold* ` Markdown, Rubika metadata for text posts / plain caption for photo posts). Rubika: first photo only (no album), buttons become `🔗 label: url` lines (Link button payload is not in the official Button model). Permission proof for Rubika = successful test post (`POST destinations/:id/test-post`) because getChatMember does not exist. `discover-chats` reads recent `getUpdates` so admins can find `c0…`/`-100…` ids. Gate stays `OMNICHANNEL_CONNECTORS_ENABLED` + provider-prefixed env token (`BALE_BOT_TOKEN`, `RUBIKA_BOT_TOKEN`), plus `OMNICHANNEL_DISABLED_PROVIDERS` kill switch.
 - Exact next: implement + specs + tsc, report, commit/push/deploy, verify `/admin/omnichannel` shows three platform cards. Owner must create bots at Bale @botfather and Rubika @BotFather and put tokens on the VPS env before «تست توکن» can pass.
+## 2026-09-06T12:05:00Z — TASK-20260903-004 mobile-speed root-fix reclaimed
+
+- Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` on `ai/TASK-20260903-004-gsc-mobile-speed-v2`, isolated at `D:/proje/Site-B2B-gsc-speed`, baseline `597dd45` (`origin/master`).
+- Owner approved the attached six-part implementation/deploy/Cloudflare/GSC plan. Scope and acceptance criteria are now recorded in `active.yaml`; no plan-file edit.
+- Baseline evidence: Search Console `.com` mobile group = 10 URLs, LCP 3.7s and INP 212ms; cold lab `.ir/products` LCP 12.232s with an unfiltered hydration remount; Sara PDP LCP 5.508s with a 3.68MB source JPEG; 42/59 active primary images exceed 500KB; root layout currently requests five static font faces plus two duplicate manual preloads.
+- Claim transfer notices: Dockerfile from TASK-20260901-002 (hb 2026-09-01); public product cache/card/catalog files from TASK-20260826-001 (hb 2026-09-02); wholesale/retail URL wrappers from TASK-20260901-001 and TASK-20260831-003 (hb 2026-08-31); layout/GTM from TASK-20260823-001 and TASK-20260822-005 (hb 2026-08-22/23). `RetailCategoryBannerGrid`/`defaults` transfer after `2723d76` merged. `RetailProductCard`/`BoutiqueProductCard` transfer after `ba254e` merged; boutique behavior remains, only performance props/links may change.
+- Risk/rollback: high because this includes file/network input, a DB migration, production backfill, DNS/edge changes, and deployment. Originals stay in object storage; backfill must write a manifest before DB mutation and rollback changes references only. Hero migration changes exact image URLs only. Edge rollback is `.ir` apex/`www` back to DNS-only at TTL 300. Independent Reviewer and Security are mandatory before deploy.
 
 ## 2026-09-06 — TASK-20260906-004 retired projects removed
 - Owner codex:server-cleanup; plan reviewed by root/cleanup_review PASS WITH CONDITIONS; checks fulfilled.

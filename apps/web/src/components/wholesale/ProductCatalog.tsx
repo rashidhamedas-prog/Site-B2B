@@ -7,6 +7,7 @@ import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { Input, Button } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { isLeadCatalogImage } from '@/lib/catalog-performance';
 import { WholesaleProductCard } from './WholesaleProductCard';
 
 export interface CatalogSearchParams {
@@ -402,7 +403,17 @@ export function ProductCatalog({
                 ? Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)
                 : products.length === 0
                   ? <div className="col-span-full py-16 text-center text-gray-400">محصولی یافت نشد</div>
-                  : products.map((p) => <WholesaleProductCard key={p.id} product={p} />)}
+                  : products.map((p, index) => (
+                      <WholesaleProductCard
+                        key={p.id}
+                        product={p}
+                        imagePriority={isLeadCatalogImage({
+                          index,
+                          embedded,
+                          page: Math.max(1, Number(filters.page) || 1),
+                        })}
+                      />
+                    ))}
             </div>
           </div>
         </div>

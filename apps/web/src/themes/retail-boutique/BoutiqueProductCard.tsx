@@ -13,9 +13,11 @@ import { cn } from '@/lib/cn';
 export function BoutiqueProductCard({
   product,
   className,
+  imagePriority = false,
 }: {
   product: RetailCardProduct;
   className?: string;
+  imagePriority?: boolean;
 }) {
   const sale = product.sale;
   const price = Number(sale?.payable ?? product.retailPrice ?? 0);
@@ -61,15 +63,22 @@ export function BoutiqueProductCard({
       )}
     >
       <div className="relative aspect-[3/4] overflow-hidden bg-[#f3eee6]">
-        <Link href={href} className="absolute inset-0" aria-label={`مشاهده ${product.name}`}>
+        <Link
+          href={href}
+          prefetch={false}
+          className="absolute inset-0"
+          aria-label={`مشاهده ${product.name}`}
+        >
           {image ? (
             <Image
               src={image}
               alt={product.name}
               fill
-              loading="lazy"
+              priority={imagePriority}
+              loading={imagePriority ? 'eager' : 'lazy'}
+              fetchPriority={imagePriority ? 'high' : 'low'}
               className={cn('object-cover', soldOut && 'opacity-60 grayscale')}
-              sizes="(max-width:640px) 46vw, 220px"
+              sizes="(max-width:767px) 46vw, (max-width:1280px) 24vw, 288px"
             />
           ) : (
             <span className="flex h-full items-center justify-center text-sm text-neutral-400">
@@ -108,7 +117,11 @@ export function BoutiqueProductCard({
         ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 px-3 py-3 text-right">
-        <Link href={href} className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-neutral-900">
+        <Link
+          href={href}
+          prefetch={false}
+          className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-neutral-900"
+        >
           {product.name}
         </Link>
         {colors.length > 1 ? (

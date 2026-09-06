@@ -9,10 +9,17 @@ export interface ProcessedImage {
   extension: string;
 }
 
-export async function processProductImage(input: Buffer, mimetype: string): Promise<ProcessedImage> {
+export class ProductImageProcessingError extends Error {
+  constructor(public readonly cause: unknown) {
+    super('Product image processing failed');
+    this.name = 'ProductImageProcessingError';
+  }
+}
+
+export async function processProductImage(input: Buffer, _mimetype: string): Promise<ProcessedImage> {
   try {
-    const sharp = require('sharp');
-    const buffer = await sharp(input)
+    const sharp = require('sharp') as typeof import('sharp');
+    const buffer = await sharp(input, { limitInputPixels: 40_000_000 })
       .rotate()
       .resize(PRODUCT_IMAGE_WIDTH, PRODUCT_IMAGE_HEIGHT, {
         fit: 'inside',
@@ -22,7 +29,9 @@ export async function processProductImage(input: Buffer, mimetype: string): Prom
       .toBuffer();
 
     return { buffer, mimetype: 'image/webp', extension: 'webp' };
-  } catch {
-    return { buffer: input, mimetype, extension: mimetype.includes('png') ? 'png' : 'jpg' };
+  } catch (error) {
+    // Never persist the original multi-megabyte upload when processing or
+    // the native sharp runtime is broken. The upload must fail explicitly.
+    throw new ProductImageProcessingError(error);
   }
 }
