@@ -2,6 +2,22 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T22:20:00Z — TASK-20260905-003 parked: delete buttons + close
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Owner asked for delete where needed, then commit/push/merge/deploy and park this task.
+- CODE: `DELETE /omnichannel/connections/:id` and `DELETE /omnichannel/destinations/:id` (admin JWT). Detaches delivery rows first (FK RESTRICT), then removes the row. Telegram/Bale/Rubika posts stay. Token vault untouched. Confirm in UI.
+- Observed locally: `omnichannel-phase-acceptance.spec.ts` ok; apps/api + apps/web `tsc --noEmit` 0.
+- Claims released. TASK-20260826-001 still **NOT DONE**.
+
+## 2026-09-06T14:05:00Z — TASK-20260905-003 vault key live on VPS
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Follow-up on [Omnichannel token security](5048d1d3-4c9d-405f-b634-3a5f0dca0e64) Medium #1: `/opt/taranom/.env` had no `OMNICHANNEL_VAULT_KEY` (previous append did not survive). Generated 64-hex key on the host (never printed), recreated `api` / `worker` / `worker-b`.
+- Observed: `printenv` length 65 in all three; `/v1/health` ok; `PUT /omnichannel/secrets` unauth 401; vault row count 0; no “vault key missing” logs; `.ir` and `.com` 200. Host git `ca1bdd8` (backfill); remediations still in the image (`isProductionLike` 3, `probeCredential` 1).
+- Telegram still env-only. Owner pastes Bale/Rubika in the three admin cards (not chat). Do not Done TASK-20260826-001.
+- Ask TASK-20260906-001: exclude `omnichannel.secret.vault` inside `SettingsService.getAll()` (their claim). Independent re-review of remediations not run.
+
 ## 2026-09-06T13:40:00Z — TASK-20260905-003 vault security remediations
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

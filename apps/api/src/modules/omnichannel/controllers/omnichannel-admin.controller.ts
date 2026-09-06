@@ -97,6 +97,13 @@ export class OmnichannelAdminController {
     return this.svc.patchConnection(id, body);
   }
 
+  @Delete('connections/:id')
+  @ApiOperation({ summary: 'حذف ربات از پنل؛ پست داخل پیام‌رسان سر جایش می‌ماند' })
+  deleteConnection(@Param('id') id: string, @Req() req: Authed) {
+    assertNoPlaintextSecrets({ id });
+    return this.svc.deleteConnection(id, req.omnichannelActor);
+  }
+
   @Post('connections/:id/test')
   testConnection(@Param('id') id: string, @Req() req: Authed) {
     assertNoPlaintextSecrets({ id });
@@ -130,6 +137,13 @@ export class OmnichannelAdminController {
   @Patch('destinations/:id')
   patchDestination(@Param('id') id: string, @Body() body: PatchDestinationDto) {
     return this.svc.patchDestination(id, body);
+  }
+
+  @Delete('destinations/:id')
+  @ApiOperation({ summary: 'حذف کانال از پنل؛ پست داخل پیام‌رسان سر جایش می‌ماند' })
+  deleteDestination(@Param('id') id: string, @Req() req: Authed) {
+    assertNoPlaintextSecrets({ id });
+    return this.svc.deleteDestination(id, req.omnichannelActor);
   }
 
   @Post('destinations/:id/verify')

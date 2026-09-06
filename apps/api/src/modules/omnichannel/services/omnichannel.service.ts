@@ -293,6 +293,28 @@ export class OmnichannelService {
     return toPublicConnection(await this.connections.save(row));
   }
 
+  async deleteConnection(id: string, actor?: Actor) {
+    const who = this.requireActor(actor);
+    assertNoPlaintextSecrets({ id });
+    const row = await this.connections.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('اتصال یافت نشد');
+    const dests = await this.destinations.find({ where: { connectionId: id } });
+    const destIds = dests.map((dest) => dest.id);
+    await this.connections.manager.transaction(async (em) => {
+      if (destIds.length) {
+        await em.delete(PublicationDeliveryEntity, { destinationId: In(destIds) });
+        await em.delete(ChannelDestinationEntity, { connectionId: id });
+      }
+      await em.delete(ChannelConnectionEntity, { id });
+    });
+    await this.audit(who, 'connection_delete', 'CONNECTION', id, row.channel, null, {
+      provider: row.provider,
+      name: row.name,
+      destinationsRemoved: destIds.length,
+    });
+    return { ok: true };
+  }
+
   async listDestinations() {
     const rows = await this.destinations.find({ order: { createdAt: 'DESC' } });
     return rows.map((row) => toPublicDestination(row));
@@ -337,6 +359,24 @@ export class OmnichannelService {
       row.settings = mergeDestinationSettings(row.settings, dto.isCanary);
     }
     return toPublicDestination(await this.destinations.save(row));
+  }
+
+  async deleteDestination(id: string, actor?: Actor) {
+    const who = this.requireActor(actor);
+    assertNoPlaintextSecrets({ id });
+    const row = await this.destinations.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('مقصد یافت نشد');
+    const deliveryCount = await this.deliveries.count({ where: { destinationId: id } });
+    await this.destinations.manager.transaction(async (em) => {
+      await em.delete(PublicationDeliveryEntity, { destinationId: id });
+      await em.delete(ChannelDestinationEntity, { id });
+    });
+    await this.audit(who, 'destination_delete', 'DESTINATION', id, null, null, {
+      destinationKey: row.destinationKey,
+      displayName: row.displayName,
+      hadDeliveries: deliveryCount > 0,
+    });
+    return { ok: true };
   }
 
   /**

@@ -1,8 +1,14 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-06 — حذف ربات و کانال از کنسول انتشار
+
+- در `/admin/omnichannel` روی هر ربات و هر کانال دکمه «حذف» اضافه شد. پست داخل پیام‌رسان پاک نمی‌شود؛ فقط ردیف پنل و تاریخچه همان مقصد برداشته می‌شود.
+- `DELETE /omnichannel/connections/:id` و `DELETE /omnichannel/destinations/:id` پشت JWT ادمین.
+
 ## 2026-09-06 — اصلاح خزانه توکن بعد از بازبینی امنیت
 
 - کلید پوشش در production فقط `OMNICHANNEL_VAULT_KEY` است (دیگر JWT نیست). ذخیره با قفل ردیف؛ getMe قبل از هر persist؛ overlay ورکر اگر کلید نباشد خالی می‌شود.
+- VPS: کلید ۶۴ hex در `.env` (مقدار چاپ نشد)؛ api/worker/worker-b بعد از recreate طول env=۶۵؛ health ok؛ secrets بدون JWT → 401؛ ردیف خزانه هنوز ۰.
 - گزارش: `docs/reports/2026-09-06-omnichannel-token-field.md`.
 
 ## 2026-09-06 — فیلد توکن امن در کانال انتشار

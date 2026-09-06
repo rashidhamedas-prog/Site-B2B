@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-06 — **TASK-20260905-003** DONE (parked by owner): delete buttons for bots and Telegram/Bale/Rubika channels in `/admin/omnichannel`. TASK-20260826-001 still **NOT DONE**.
+- Last verified: 2026-09-06 — **TASK-20260905-003** vault remediations live + `OMNICHANNEL_VAULT_KEY` loaded in api/worker/worker-b (env length 65, never printed). Health ok; secrets unauth 401; vault row 0. Host git `ca1bdd8`. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-06 — **TASK-20260905-003** remediating vault Medium findings from independent security (dedicated KEK, row lock, getMe-always, overlay clear). Token cards already LIVE `a88672b`. TASK-20260826-001 still **NOT DONE**.
 - 2026-09-06 TASK-20260903-004: live API restored after `8cd0a63` crash-loop. `require('sharp')` now works (`0.33.5` / vips `8.15.3`). Hero migration JS is temporarily removed from the running image because TypeORM rejected extra helper exports. Class-only split is next to ship. Do not claim 28-day field CWV recovery.
 - Last verified: 2026-09-06 — **TASK-20260905-003** Bale + Rubika settings on `ai/TASK-20260905-003-omni-admin-console` (worktree `D:/proje/Site-B2B-omni-console`): official docs.bale.ai + rubika.ir/botapi read; adapters + admin cards + discover-chats + Rubika test-post. api+web tsc 0; 11 omnichannel specs ok. Not live until merge/deploy. Tokens still owner-only. TASK-20260826-001 still **NOT DONE**.

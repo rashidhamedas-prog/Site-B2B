@@ -212,7 +212,7 @@ export function AdminOmnichannel() {
       setOutbox(box);
       setAudits(logs);
       setMedia(files);
-      setDestConnectionId((current) => current || conns[0]?.id || '');
+      setDestConnectionId((current) => (current && conns.some((row) => row.id === current) ? current : conns[0]?.id || ''));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در بارگذاری');
     } finally {
@@ -581,6 +581,14 @@ export function AdminOmnichannel() {
                 }, 'تغییر وضعیت ناموفق')}>
                   {row.status === 'ACTIVE' ? 'خاموش کن' : 'روشن کن'}
                 </button>
+                <button type="button" className="text-xs text-red-600 underline cursor-pointer" disabled={busy === `conn-del-${row.id}`} onClick={() => {
+                  if (!window.confirm(`ربات «${row.name}» از پنل حذف شود؟ کانال‌های همین ربات هم از پنل برداشته می‌شوند. پست داخل تلگرام/بله/روبیکا سر جایش می‌ماند.`)) return;
+                  void run(`conn-del-${row.id}`, async () => {
+                    await apiClient.delete(`/omnichannel/connections/${row.id}`);
+                  }, 'حذف ربات ناموفق', 'ربات از پنل حذف شد');
+                }}>
+                  حذف
+                </button>
               </div>
             </li>
           ))}
@@ -748,6 +756,14 @@ export function AdminOmnichannel() {
                     await apiClient.patch(`/omnichannel/destinations/${dest.id}`, { enabled: !dest.enabled });
                   }, 'تغییر وضعیت ناموفق')}>
                     {dest.enabled ? 'غیرفعال' : 'فعال'}
+                  </button>
+                  <button type="button" className="text-xs text-red-600 underline cursor-pointer" disabled={busy === `dest-del-${dest.id}`} onClick={() => {
+                    if (!window.confirm(`کانال «${dest.displayName}» از پنل حذف شود؟ پست داخل پیام‌رسان سر جایش می‌ماند.`)) return;
+                    void run(`dest-del-${dest.id}`, async () => {
+                      await apiClient.delete(`/omnichannel/destinations/${dest.id}`);
+                    }, 'حذف کانال ناموفق', 'کانال از پنل حذف شد');
+                  }}>
+                    حذف
                   </button>
                 </div>
               </li>

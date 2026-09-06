@@ -198,7 +198,7 @@ tasks:
       - "retail-seo-copy spec and web+api tsc pass"
   - id: "TASK-20260905-003"
     title: "Omnichannel admin console + UTF-8 canary ping"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260905-003"
     roles:
@@ -210,63 +210,12 @@ tasks:
     # moved 2026-09-06 10:05Z: main worktree was taken by TASK-20260906-001 (wip stashed as stash@{0}, re-applied here)
     worktree: "D:/proje/Site-B2B-omni-console"
     claimed_at: "2026-09-05T10:15:00Z"
-    heartbeat_at: "2026-09-06T13:40:00Z"
+    heartbeat_at: "2026-09-06T22:20:00Z"
     depends_on: ["TASK-20260905-002"]
-    file_claims:
-      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
-      - "apps/web/src/components/admin/AdminTelegramTemplateBuilder.tsx"
-      - "apps/web/src/components/admin/admin-omnichannel-ui.tsx"
-      - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
-      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
-      - "apps/api/src/modules/omnichannel/canary-ping.ts"
-      - "apps/api/src/modules/omnichannel/canary-ping.spec.ts"
-      - "apps/api/src/modules/omnichannel/publication-template.ts"
-      - "apps/api/src/modules/omnichannel/publication-template.spec.ts"
-      - "apps/api/src/modules/omnichannel/publication-automation.ts"
-      - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.spec.ts"
-      - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
-      # reclaimed 2026-09-06 from TASK-20260826-001 (stale hb 2026-09-02; automation settings + destination verify):
-      - "apps/api/src/modules/omnichannel/oos-policy.ts"
-      - "apps/api/src/modules/omnichannel/oos-policy.spec.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel-token-vault.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel-token-vault.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/omnichannel-token-vault.service.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
-      # reclaimed 2026-09-06 from TASK-20260904-003 (stale hb 2026-09-03T22:10Z); append-only test script line:
-      - "apps/api/package.json"
-      # transferred 2026-09-06 from TASK-20260826-001 (stale hb 2026-09-02); table-header assertion now per-table:
-      - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
-      # reclaimed 2026-09-06 11:20Z from TASK-20260826-001 (stale hb 2026-09-02): owner ordered Bale + Rubika
-      # connectors from official docs (docs.bale.ai, rubika.ir/botapi); "do not invent" no longer applies.
-      - "apps/api/src/modules/omnichannel/adapters/channel-adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/bale.adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/rubika.adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/connector-gate.spec.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel.module.ts"
-      - ".cursor/skills/omnichannel/SKILL.md"
-      - ".cursor/skills/omnichannel/references/phase-order.md"
-      # new 2026-09-06 (multi-provider):
-      - "apps/api/src/modules/omnichannel/adapters/adapter-registry.ts"
-      - "apps/api/src/modules/omnichannel/adapters/rich-text.ts"
-      - "apps/api/src/modules/omnichannel/adapters/rich-text.spec.ts"
-      - "apps/api/src/modules/omnichannel/adapters/bale.adapter.spec.ts"
-      - "apps/api/src/modules/omnichannel/adapters/rubika.adapter.spec.ts"
-      - "apps/api/src/modules/omnichannel/provider-capabilities.ts"
-      - "apps/api/src/modules/omnichannel/provider-capabilities.spec.ts"
-      - "docs/reports/2026-09-06-omnichannel-bale-rubika.md"
-      - "docs/reports/2026-09-06-omnichannel-token-field.md"
-      - "docs/reports/2026-09-06-omnichannel-publishing-console-v2.md"
-      - "docs/reports/2026-09-05-omnichannel-admin-console.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
+      2026-09-06 22:20Z: owner parked this task; claims released.
+      Delete buttons shipped for connections + destinations.
       Reclaimed AdminOmnichannel + omni admin controller/service from
       TASK-20260826-001 (stale hb 2026-09-02). Owner asked why canary
       text became ??? and to professionalize the admin console.

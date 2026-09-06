@@ -83,6 +83,9 @@ assert(adminOmni.includes('هنوز انتشاری ثبت نشده') && adminOmn
   assert(tables >= 3 && heads === tables, 'admin tables have headers');
 }
 assert(adminOmni.includes('autoPublishMode') && adminOmni.includes('withdrawAction') && adminOmni.includes('/verify'), 'admin console v2: automation mode, withdraw action, destination verify');
+assert(omniAdmin.includes("Delete('connections/:id')") && omniAdmin.includes("Delete('destinations/:id')"), 'admin can delete connections and destinations');
+assert(omniSvc.includes('deleteConnection') && omniSvc.includes('deleteDestination'), 'service deletes connection/destination after detaching deliveries');
+assert(adminOmni.includes('conn-del-') && adminOmni.includes('dest-del-') && adminOmni.includes('apiClient.delete(`/omnichannel/connections/${row.id}`)'), 'admin has delete buttons for bots and channels');
 assert(db.includes('ReturnRequestAuditEntity'), 'RMA audit on runtime TypeORM');
 assert(publicStatus.includes("PUBLIC_STATUS_FORBIDDEN"), 'public ALL rejected');
 assert(productCtl.includes('resolvePublicProductStatus'), 'public list uses ACTIVE gate');
