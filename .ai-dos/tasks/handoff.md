@@ -1,6 +1,16 @@
-﻿# Handoff Log
+# Handoff Log
 
 Append newest entries at the top. Never erase another agent's record.
+
+## 2026-09-06 — TASK-20260906-004 retired projects removed
+- Owner codex:server-cleanup; plan reviewed by root/cleanup_review PASS WITH CONDITIONS; checks fulfilled.
+- Deleted proven-exclusive old autonomous-seo, Peyvand-ERP, crm-v4: 8 stopped containers, 5 volumes, 3 images, 2 networks, roots, archives, PM2 dumps/logs and old nginx reconciler units.
+- Kept taranom, NEW seo-auto, Lead, shared images/pnpm/certs/firewall, audit/shared Git history and unknown anonymous volumes. All 5 retained HTTP probes 200; nginx -t PASS; protected container identities and restart counts unchanged during cleanup.
+- Persisted marker-only source removal via 4f63e5b on master; server source synchronized under deploy lock without rebuild. Later unrelated HEAD 29e07ac retained this ancestor.
+- Report/script committed 257c3b1 in D:/proje/Site-B2B-server-cleanup. Full report docs/reports/2026-09-06-server-cleanup.md.
+- Locked cleanup released 4,652,085,248 bytes. Later df snapshot used 28,144,201,728 / avail 10,131,251,200 / total 39,964,635,136 bytes (74%; other deployments active).
+- Assessment/cleanup task done; claims released after commit. No full forensic erasure of shared history/caches asserted. No action remaining for authorized exclusive resources.
+
 
 ## 2026-09-06T10:45:00Z — TASK-20260905-003 console v2 LIVE + VPS disk + stash incident
 
@@ -2168,3 +2178,34 @@ Path C channel-split / void / retail-b2c columns intentionally **out of scope** 
 1. Independent Reviewer (API change) — review the diff for channel leakage, validation, auth.
 2. Admin smoke: create/edit a product, add retail + wholesale internal links, save, verify PDP renders them.
 3. Release TASK-20260906-003 file claims after review.
+
+## 2026-09-06T18:50:00Z — TASK-20260906-003 product internal-link SEO — E2E VERIFIED CLEAN
+
+- Task / owner / role: TASK-20260906-003 / cursor:implementer-TASK-20260906-003 / architect+implementer+reviewer
+- Branch / worktree: `ai/TASK-20260906-001-product-internal-links` / `D:/proje/Site B2B`
+- Live SHA: `29e07ac` on master (stale-closure fix), deployed.
+
+### Hotfix landed after deploy (commit 29e07ac)
+- `fix(admin): include retailLinkPicks/wholesaleLinkPicks in handleSave deps` — the `handleSave` `useCallback` in `AdminProducts.tsx` was missing `retailLinkPicks`/`wholesaleLinkPicks` in its dependency array, so it closed over a stale (empty) version and sent `wholesaleInternalLinks: []` / `retailInternalLinks: []` on save → backend `replaceInternalLinks` cleared the channel → 0 rows persisted. Added both to the deps array. Deployed and verified.
+
+### E2E browser verification (admin → DB → PDP → JSON-LD) — ALL CLEAN
+Tested product `cotton-crop-jacket-aramis` on live admin (fresh JS bundle after reload). For EACH channel, added one link of every target type and saved once:
+
+| Channel  | BLOG | PRODUCT | CATEGORY | CUSTOM | Validate |
+|----------|------|---------|----------|--------|----------|
+| WHOLESALE| ✅ save+DB+PDP+JSON-LD | ✅ | ✅ | ✅ | ✅ 4 valid |
+| RETAIL   | ✅ save+DB+PDP+JSON-LD | ✅ | ✅ | ✅ | ✅ 4 valid |
+
+- DB rows (8 total): 4 RETAIL (BLOG/PRODUCT/CATEGORY/CUSTOM, sortOrder 0–3) + 4 WHOLESALE (same), confirmed via `product_internal_link` query.
+- Wholesale PDP (`poshaktaranom.com/products/cotton-crop-jacket-aramis`): renders all 4 wholesale links in «لینک‌های مرتبط» (anchors: خرید عمده مانتو پاییزه / خرید عمده کت اسپرت لینن / blouses شومیز / خرید عمده کت زنانه).
+- Retail PDP (`poshaktaranom.ir/products/cotton-crop-jacket-aramis`): renders all 4 retail links (anchors: مدل مانتو تابستانی ۱۴۰۵ / خرید کت اسپرت لینن زنانه / blouses شومیز / خرید کت زنانه).
+- JSON-LD `ItemList` (SSR HTML, both PDPs): `numberOfItems:4`, 4 `ListItem` entries with correct per-channel `name`+`url`. Persian chars render correctly (escaping fix from Agent B confirmed live).
+- Channel separation confirmed at 3 levels: DB (`channel` column), PDP render (no cross-channel anchors), JSON-LD (wholesale PDP has 0 retail anchors and vice-versa — `grep -c` = 0 for opposite-channel slugs).
+- Validate button («بررسی اعتبار لینک‌ها») on both pickers: returns «4 لینک بررسی شد — همه معتبرند.» (no 500, no rejections).
+
+### Conclusion
+The originally reported bug (blog-link save error on retail/wholesale) is fully resolved. All parts of both internal-links sections (PRODUCT/CATEGORY/BLOG/CUSTOM tabs × retail/wholesale pickers, save, validate, PDP render, JSON-LD, channel separation) work cleanly end-to-end on production.
+
+### Remaining follow-up (non-blocking)
+- Wire `internal-link-resolver.spec.ts` into `npm run test` once TASK-20260905-003 releases `apps/api/package.json`.
+- Release TASK-20260906-003 file claims (review complete via E2E + prior Agent A/B/C audits).
