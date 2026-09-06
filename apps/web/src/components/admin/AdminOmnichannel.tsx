@@ -8,6 +8,10 @@ import {
   Callout,
   EVENT_LABELS,
   Metric,
+  PROVIDERS,
+  PROVIDER_META,
+  ProviderChip,
+  ProviderTabs,
   RadioCards,
   Section,
   Stepper,
@@ -22,7 +26,10 @@ import {
   eventLabel,
   faNumber,
   hourLabel,
+  isProvider,
   outboxStatus,
+  platformRendered,
+  providerLabel,
   publicationStatus,
   relativeTime,
   templateLooksReady,
@@ -32,9 +39,12 @@ import {
   type Connection,
   type Delivery,
   type Destination,
+  type DiscoveredChat,
   type MediaRow,
   type OosPolicy,
   type OutboxRow,
+  type Provider,
+  type ProviderInfo,
   type Publication,
   type Rendered,
   type Status,
@@ -93,8 +103,31 @@ function modeLabel(mode?: AutoPublishMode) {
   return mode === 'LIVE' ? 'زنده' : mode === 'CANARY' ? 'آزمایشی' : 'خاموش';
 }
 
+/** One master template per sales channel, stored under Telegram; every adapter converts it to its own format. */
+const MASTER_TEMPLATE_PROVIDER: Provider = 'TELEGRAM';
+
 function isProductTemplate(row: Template, channel: Channel) {
-  return row.provider === 'TELEGRAM' && row.channel === channel && row.eventType === PRODUCT_TEMPLATE_EVENT && row.enabled !== false;
+  return row.provider === MASTER_TEMPLATE_PROVIDER && row.channel === channel && row.eventType === PRODUCT_TEMPLATE_EVENT && row.enabled !== false;
+}
+
+function defaultSecretRef(provider: Provider) {
+  return `${provider}_BOT_TOKEN`;
+}
+
+/** Fallback copy of the API matrix so the console still renders when `status.providers` is missing (old API). */
+function fallbackProviderInfo(provider: Provider): ProviderInfo {
+  const shared = {
+    boldOnCaption: true, album: true, albumLimit: 10, captionLimit: 1024, textLimit: 4096, buttons: 'inline' as const, buttonsOnAlbum: false as const,
+    silent: true, protectContent: true, captionAbove: true, linkPreviewToggle: true, editCaption: true, editText: true, deleteWindowHours: null,
+    permissionCheck: 'api' as const, discoverChats: true, chatIdExamples: [] as string[], enabled: false, tokenConfigured: false, defaultSecretRef: defaultSecretRef(provider),
+  };
+  if (provider === 'BALE') {
+    return { ...shared, provider, label: 'بله', botFactory: '@botfather در بله', apiBase: 'https://tapi.bale.ai', textFormat: 'MARKDOWN', silent: false, protectContent: false, captionAbove: false, linkPreviewToggle: false, deleteWindowHours: 48, chatIdHint: 'برای کانال عمومی @username، برای کانال خصوصی شناسه عددی' };
+  }
+  if (provider === 'RUBIKA') {
+    return { ...shared, provider, label: 'روبیکا', botFactory: '@BotFather در روبیکا', apiBase: 'https://botapi.rubika.ir/v3', textFormat: 'METADATA', boldOnCaption: false, album: false, albumLimit: 1, captionLimit: 4096, buttons: 'text-link', protectContent: false, captionAbove: false, linkPreviewToggle: false, editCaption: false, permissionCheck: 'test_post', chatIdHint: 'شناسه کانال روبیکا با c0 شروع می‌شود' };
+  }
+  return { ...shared, provider: 'TELEGRAM', label: 'تلگرام', botFactory: '@BotFather در تلگرام', apiBase: 'https://api.telegram.org', textFormat: 'HTML', chatIdHint: 'برای کانال عمومی @username، برای کانال خصوصی شناسه عددی مثل -1001234567890' };
 }
 
 export function AdminOmnichannel() {
@@ -115,13 +148,16 @@ export function AdminOmnichannel() {
   const [view, setView] = useState<View>('setup');
   const [step, setStep] = useState<Step | null>(null);
 
+  const [connProvider, setConnProvider] = useState<Provider>('TELEGRAM');
   const [connName, setConnName] = useState('');
   const [connChannel, setConnChannel] = useState<Channel>('RETAIL');
-  const [secretRef, setSecretRef] = useState('TELEGRAM_BOT_TOKEN');
+  const [secretRef, setSecretRef] = useState(defaultSecretRef('TELEGRAM'));
   const [destConnectionId, setDestConnectionId] = useState('');
   const [destKey, setDestKey] = useState('');
   const [destName, setDestName] = useState('');
+  const [discovered, setDiscovered] = useState<{ connectionId: string; chats: DiscoveredChat[]; error?: string | null } | null>(null);
   const [tplChannel, setTplChannel] = useState<Channel>('RETAIL');
+  const [previewProvider, setPreviewProvider] = useState<Provider>('TELEGRAM');
 
   const [rules, setRules] = useState<RulesDraft>(() => rulesFromStatus(null));
   const [savedRules, setSavedRules] = useState<RulesDraft>(() => rulesFromStatus(null));
@@ -192,9 +228,29 @@ export function AdminOmnichannel() {
 
   const connById = useMemo(() => new Map(connections.map((row) => [row.id, row])), [connections]);
   const destById = useMemo(() => new Map(destinations.map((row) => [row.id, row])), [destinations]);
-  const telegramConnections = connections.filter((row) => row.provider === 'TELEGRAM');
-  const activeConnections = telegramConnections.filter((row) => row.status === 'ACTIVE');
+  const providerInfos = useMemo<ProviderInfo[]>(
+    () => PROVIDERS.map((provider) => status?.providers?.find((row) => row.provider === provider) || fallbackProviderInfo(provider)),
+    [status?.providers],
+  );
+  const providerInfo = (provider: string | undefined): ProviderInfo => providerInfos.find((row) => row.provider === provider) || providerInfos[0];
+  const botConnections = connections.filter((row) => isProvider(row.provider));
+  const activeConnections = botConnections.filter((row) => row.status === 'ACTIVE');
+  const activeProviders = useMemo(() => PROVIDERS.filter((provider) => connections.some((row) => row.provider === provider)), [connections]);
+  const providerOf = (dest: Destination | undefined): Provider => {
+    const raw = dest ? connById.get(dest.connectionId)?.provider : undefined;
+    return isProvider(raw) ? raw : 'TELEGRAM';
+  };
   const channelOf = (dest: Destination): Channel => (connById.get(dest.connectionId)?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+  const connectionsByProvider = (provider: Provider) => botConnections.filter((row) => row.provider === provider);
+  const selectedProviderInfo = providerInfo(connProvider);
+  const secretRefMatchesProvider = secretRef.startsWith(`${connProvider}_`);
+  const destConnection = connById.get(destConnectionId);
+  const destProviderInfo = providerInfo(destConnection?.provider);
+  const summarizeBots = (rows: Connection[]) => PROVIDERS
+    .map((provider) => ({ provider, count: rows.filter((row) => row.provider === provider).length }))
+    .filter((row) => row.count > 0)
+    .map((row) => `${providerLabel(row.provider)}${row.count > 1 ? ` ×${faNumber(row.count)}` : ''}`)
+    .join('، ');
   const readyDestinations = destinations.filter((dest) => dest.enabled && destinationReady(dest) && connById.get(dest.connectionId)?.status === 'ACTIVE');
   const readyByChannel = (channel: Channel) => readyDestinations.filter((dest) => channelOf(dest) === channel);
   const canaryByChannel = (channel: Channel) => destinations.find((dest) => dest.isCanary && channelOf(dest) === channel);
@@ -226,7 +282,7 @@ export function AdminOmnichannel() {
       id: 'bot',
       label: 'ربات',
       state: activeConnections.length ? 'done' : 'todo',
-      hint: activeConnections.length ? activeConnections.map((row) => row.name).join('، ') : 'اتصال تلگرام ثبت نشده',
+      hint: activeConnections.length ? summarizeBots(activeConnections) : 'رباتی ثبت نشده (تلگرام، بله یا روبیکا)',
     },
     {
       id: 'channels',
@@ -262,6 +318,18 @@ export function AdminOmnichannel() {
     const ready = readyKey ? readyKey.split(',') : [];
     setTargetId((current) => (current && ready.includes(current) ? current : canaryId || ready[0] || ''));
   }, [pubChannel, readyKey, canaryId]);
+
+  // The preview follows the chosen destination's platform; with "auto rules" the admin picks the tab.
+  const targetProvider = targetId ? providerOf(destById.get(targetId)) : null;
+  useEffect(() => {
+    if (targetProvider) setPreviewProvider(targetProvider);
+  }, [targetProvider]);
+
+  // Selecting a platform card pre-fills the conventional env name unless the admin typed a custom one.
+  const pickProvider = (next: Provider) => {
+    setConnProvider(next);
+    setSecretRef((current) => (PROVIDERS.some((provider) => current === defaultSecretRef(provider)) || !current ? defaultSecretRef(next) : current));
+  };
 
   /* ---------- actions ---------- */
 
@@ -302,17 +370,75 @@ export function AdminOmnichannel() {
 
   const botPanel = (
     <Section
-      title="۱. ربات تلگرام"
-      description={<>توکن ربات روی سرور به نام یک متغیر محیطی ذخیره است (مثلاً <code className="font-mono">TELEGRAM_BOT_TOKEN</code>). اینجا فقط نام همان متغیر را می‌دهید؛ توکن هیچ‌وقت وارد مرورگر نمی‌شود. یک ربات می‌تواند برای تکی و عمده جدا ثبت شود.</>}
+      title="۱. ربات پیام‌رسان"
+      description="پیام‌رسان را انتخاب کنید، ربات را همان‌جا بسازید و توکنش را روی سرور به نام یک متغیر محیطی بگذارید. اینجا فقط نام همان متغیر ثبت می‌شود؛ توکن هیچ‌وقت وارد مرورگر نمی‌شود. برای هر پیام‌رسان می‌توانید ربات جدا برای تکی و عمده داشته باشید."
     >
+      <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="پیام‌رسان">
+        {providerInfos.map((info) => {
+          const meta = PROVIDER_META[info.provider];
+          const selected = connProvider === info.provider;
+          const bots = connectionsByProvider(info.provider);
+          const activeBots = bots.filter((row) => row.status === 'ACTIVE').length;
+          const state: { tone: 'ok' | 'warn' | 'off' | 'danger'; text: string } = !info.enabled
+            ? { tone: 'danger', text: 'روی سرور خاموش' }
+            : activeBots
+              ? { tone: 'ok', text: `${faNumber(activeBots)} ربات فعال` }
+              : bots.length
+                ? { tone: 'warn', text: 'ربات خاموش' }
+                : info.tokenConfigured
+                  ? { tone: 'warn', text: 'توکن هست؛ ربات ثبت نشده' }
+                  : { tone: 'off', text: 'راه‌اندازی نشده' };
+          return (
+            <button
+              key={info.provider}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => pickProvider(info.provider)}
+              className={`text-right rounded-2xl border p-3 transition cursor-pointer ${selected ? `${meta.ring} ring-2 bg-white shadow-sm` : 'border-gray-200 bg-gray-50 hover:bg-white'}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 font-medium text-gray-900">
+                  <span className={`h-2.5 w-2.5 rounded-full ${meta.accent}`} aria-hidden />
+                  {info.label}
+                </span>
+                <Badge tone={state.tone}>{state.text}</Badge>
+              </div>
+              <p className="mt-2 text-[11px] text-gray-500 leading-5">
+                ساخت ربات: {info.botFactory}
+                <span className="block" dir="ltr">{info.apiBase.replace(/^https?:\/\//, '')}</span>
+              </p>
+              <p className="mt-1 text-[11px] text-gray-500 leading-5">
+                {info.album ? `آلبوم تا ${faNumber(info.albumLimit)} عکس` : 'یک عکس در هر پست'} · {info.buttons === 'inline' ? 'دکمه زیر پست' : 'لینک در متن'} · {info.textFormat === 'HTML' ? 'HTML' : info.textFormat === 'MARKDOWN' ? 'Markdown' : 'متادیتا'}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+      {!selectedProviderInfo.enabled && (
+        <Callout tone="warn">{selectedProviderInfo.label} روی سرور خاموش است (OMNICHANNEL_DISABLED_PROVIDERS یا پرچم کانکتور). می‌توانید ربات را ثبت کنید ولی تا روشن‌شدن، تست و ارسال کار نمی‌کند.</Callout>
+      )}
       <div className="grid md:grid-cols-4 gap-2">
         <label className="text-xs text-gray-500 space-y-1">
           <span>نام اتصال</span>
-          <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder="ربات ترنم" value={connName} onChange={(e) => setConnName(e.target.value)} />
+          <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder={`ربات ${selectedProviderInfo.label} ترنم`} value={connName} onChange={(e) => setConnName(e.target.value)} />
         </label>
         <label className="text-xs text-gray-500 space-y-1">
           <span>نام متغیر توکن (secretRef)</span>
-          <input className="border rounded-lg px-3 py-2 text-sm w-full font-mono" dir="ltr" placeholder="TELEGRAM_BOT_TOKEN" value={secretRef} onChange={(e) => setSecretRef(e.target.value.toUpperCase())} />
+          <input
+            className={`border rounded-lg px-3 py-2 text-sm w-full font-mono ${secretRefMatchesProvider ? '' : 'border-red-300 bg-red-50'}`}
+            dir="ltr"
+            placeholder={selectedProviderInfo.defaultSecretRef}
+            value={secretRef}
+            aria-invalid={!secretRefMatchesProvider}
+            onChange={(e) => setSecretRef(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+          />
+          {!secretRefMatchesProvider && <span className="block text-[11px] text-red-600">باید با <span className="font-mono" dir="ltr">{connProvider}_</span> شروع شود تا توکن به پیام‌رسان درست برود.</span>}
+          {secretRefMatchesProvider && secretRef === selectedProviderInfo.defaultSecretRef && (
+            <span className={`block text-[11px] ${selectedProviderInfo.tokenConfigured ? 'text-emerald-700' : 'text-amber-700'}`}>
+              {selectedProviderInfo.tokenConfigured ? 'این متغیر روی سرور مقدار دارد.' : 'این متغیر هنوز روی سرور مقدار ندارد؛ بعد از ست‌کردن، «تست توکن» را بزنید.'}
+            </span>
+          )}
         </label>
         <label className="text-xs text-gray-500 space-y-1">
           <span>برای کانال</span>
@@ -325,27 +451,28 @@ export function AdminOmnichannel() {
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={!connName.trim() || busy === 'conn-add'}
+            disabled={!connName.trim() || !secretRefMatchesProvider || busy === 'conn-add'}
             onClick={() => run('conn-add', async () => {
-              await apiClient.post('/omnichannel/connections', { provider: 'TELEGRAM', channel: connChannel, name: connName, secretRef });
+              await apiClient.post('/omnichannel/connections', { provider: connProvider, channel: connChannel, name: connName, secretRef });
               setConnName('');
-            }, 'خطا در ثبت اتصال', 'اتصال ذخیره شد؛ حالا «تست» را بزنید')}
+            }, 'خطا در ثبت اتصال', `ربات ${selectedProviderInfo.label} ذخیره شد؛ حالا «تست توکن» را بزنید`)}
           >
-            افزودن ربات
+            افزودن ربات {selectedProviderInfo.label}
           </button>
         </div>
       </div>
-      {telegramConnections.length === 0 ? (
-        <Callout tone="info">هنوز رباتی ثبت نشده. ربات را در @BotFather بسازید، توکن را روی سرور بگذارید و اینجا فقط نام متغیر را ثبت کنید.</Callout>
+      {botConnections.length === 0 ? (
+        <Callout tone="info">هنوز رباتی ثبت نشده. ربات را در {selectedProviderInfo.botFactory} بسازید، توکن را روی سرور به نام <span className="font-mono" dir="ltr">{selectedProviderInfo.defaultSecretRef}</span> بگذارید و اینجا فقط نام متغیر را ثبت کنید.</Callout>
       ) : (
         <ul className="divide-y rounded-xl border">
-          {telegramConnections.map((row) => (
+          {botConnections.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center gap-3 p-3 text-sm">
               <div className="flex-1 min-w-[12rem]">
-                <p className="font-medium text-gray-900">{row.name}</p>
+                <p className="font-medium text-gray-900 flex items-center gap-2">{row.name} <ProviderChip provider={row.provider} /></p>
                 <p className="text-xs text-gray-500">کانال {channelLabel(row.channel)} · <span className="font-mono" dir="ltr">{row.secretRef}</span></p>
               </div>
               <Badge tone={row.status === 'ACTIVE' ? 'ok' : 'off'}>{row.status === 'ACTIVE' ? 'فعال' : 'خاموش'}</Badge>
+              {!providerInfo(row.provider).enabled && <Badge tone="danger">پیام‌رسان روی سرور خاموش</Badge>}
               <div className="flex flex-wrap gap-2">
                 <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `test-${row.id}`} onClick={() => run(`test-${row.id}`, async () => {
                   const res = await apiClient.post<{ ok?: boolean; error?: string }>(`/omnichannel/connections/${row.id}/test`, {});
@@ -371,27 +498,36 @@ export function AdminOmnichannel() {
     </Section>
   );
 
+  const discoverChats = (connectionId: string) => run(`discover-${connectionId}`, async () => {
+    const res = await apiClient.post<{ ok: boolean; error?: string | null; chats: DiscoveredChat[] }>(`/omnichannel/connections/${connectionId}/discover-chats`, {});
+    setDiscovered({ connectionId, chats: res?.chats || [], error: res?.ok ? null : res?.error || 'discover_failed' });
+    if (res && res.ok === false) throw new Error(errorLabel(res.error) || 'پیدا کردن شناسه ناموفق بود');
+  }, 'پیدا کردن شناسه ناموفق بود');
+
   const channelsPanel = (
     <Section
       title="۲. کانال‌ها و مقصدها"
-      description="ربات را در کانال ادمین کنید (با اجازه ارسال، ویرایش و حذف پیام)، بعد شناسه کانال را اینجا ثبت کنید و «بررسی دسترسی» را بزنید. برای کانال عمومی @username کافی است؛ برای کانال خصوصی شناسه عددی (مثل -1001234567890). یک مقصد را «تست» کنید تا پست‌های آزمایشی فقط همان‌جا برود."
+      description="ربات را در کانال ادمین کنید (با اجازه ارسال، ویرایش و حذف پیام)، بعد شناسه کانال را ثبت کنید و «بررسی دسترسی» را بزنید. اگر شناسه را نمی‌دانید، یک پیام از کانال را برای ربات فوروارد کنید و «پیدا کردن شناسه» را بزنید. یک مقصد را «تست» کنید تا پست‌های آزمایشی فقط همان‌جا برود."
     >
+      {botConnections.length === 0 && <Callout tone="warn">اول در مرحله ۱ یک ربات ثبت کنید؛ مقصد بدون ربات معنا ندارد.</Callout>}
       <div className="grid md:grid-cols-4 gap-2">
         <label className="text-xs text-gray-500 space-y-1">
           <span>ربات</span>
-          <select className="border rounded-lg px-3 py-2 text-sm w-full" value={destConnectionId} onChange={(e) => setDestConnectionId(e.target.value)}>
-            {telegramConnections.map((row) => <option key={row.id} value={row.id}>{row.name} ({channelLabel(row.channel)})</option>)}
+          <select className="border rounded-lg px-3 py-2 text-sm w-full" value={destConnectionId} onChange={(e) => { setDestConnectionId(e.target.value); setDiscovered(null); }}>
+            {botConnections.length === 0 && <option value="">رباتی ثبت نشده</option>}
+            {botConnections.map((row) => <option key={row.id} value={row.id}>{providerLabel(row.provider)} · {row.name} ({channelLabel(row.channel)})</option>)}
           </select>
         </label>
         <label className="text-xs text-gray-500 space-y-1">
-          <span>شناسه کانال</span>
-          <input className="border rounded-lg px-3 py-2 text-sm w-full font-mono" dir="ltr" placeholder="@toliditaranom یا -100…" value={destKey} onChange={(e) => setDestKey(e.target.value.trim())} />
+          <span>شناسه کانال {destConnection ? `در ${providerLabel(destConnection.provider)}` : ''}</span>
+          <input className="border rounded-lg px-3 py-2 text-sm w-full font-mono" dir="ltr" placeholder={destProviderInfo.chatIdExamples.join(' یا ') || '@channel'} value={destKey} onChange={(e) => setDestKey(e.target.value.trim())} />
+          <span className="block text-[11px] text-gray-400 leading-4">{destProviderInfo.chatIdHint}</span>
         </label>
         <label className="text-xs text-gray-500 space-y-1">
           <span>نام نمایشی</span>
-          <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder="کانال عمده ترنم" value={destName} onChange={(e) => setDestName(e.target.value)} />
+          <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder={`کانال عمده ترنم (${destProviderInfo.label})`} value={destName} onChange={(e) => setDestName(e.target.value)} />
         </label>
-        <div className="flex items-end">
+        <div className="flex items-end gap-2 flex-wrap">
           <button
             type="button"
             className="btn btn-primary btn-sm"
@@ -403,32 +539,72 @@ export function AdminOmnichannel() {
               if (created?.id && status?.connectors) {
                 await apiClient.post(`/omnichannel/destinations/${created.id}/verify`, {}).catch(() => null);
               }
-            }, 'خطا در ثبت مقصد', 'مقصد ثبت شد و دسترسی ربات بررسی شد')}
+            }, 'خطا در ثبت مقصد', destProviderInfo.permissionCheck === 'test_post' ? 'مقصد ثبت شد؛ برای اثبات اجازه ارسال «پست آزمایشی» را بزنید' : 'مقصد ثبت شد و دسترسی ربات بررسی شد')}
           >
             افزودن کانال
           </button>
+          {destProviderInfo.discoverChats && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              title="کانال‌هایی که ربات اخیراً دیده (پست کانال، فوروارد یا عضویت)"
+              disabled={!destConnectionId || !status?.connectors || busy === `discover-${destConnectionId}`}
+              onClick={() => discoverChats(destConnectionId)}
+            >
+              {busy === `discover-${destConnectionId}` ? 'در حال جست‌وجو…' : 'پیدا کردن شناسه'}
+            </button>
+          )}
         </div>
       </div>
+      {discovered && discovered.connectionId === destConnectionId && (
+        <div className="rounded-xl border border-dashed p-3 text-sm space-y-2 bg-gray-50">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-gray-600">
+              {discovered.error
+                ? <span className="text-red-700">{errorLabel(discovered.error) || 'جست‌وجو ناموفق بود'}</span>
+                : discovered.chats.length
+                  ? `${faNumber(discovered.chats.length)} چت پیدا شد — روی «استفاده» بزنید تا شناسه و نام پر شود`
+                  : 'چیزی پیدا نشد. ربات را در کانال ادمین کنید، یک پست در کانال بگذارید یا پیامی از کانال را برای ربات فوروارد کنید و دوباره بزنید.'}
+            </p>
+            <button type="button" className="text-xs text-gray-500 underline cursor-pointer" onClick={() => setDiscovered(null)}>بستن</button>
+          </div>
+          {discovered.chats.length > 0 && (
+            <ul className="divide-y rounded-lg border bg-white">
+              {discovered.chats.map((chat) => (
+                <li key={chat.chatId} className="flex flex-wrap items-center gap-2 p-2">
+                  <div className="flex-1 min-w-[10rem]">
+                    <p className="text-sm text-gray-900">{chat.title || chat.username || chat.chatId}</p>
+                    <p className="text-[11px] text-gray-500"><span className="font-mono" dir="ltr">{chat.chatId}</span> · {chatTypeLabel(chat.chatType)}{chat.username ? ` · @${chat.username}` : ''}</p>
+                  </div>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setDestKey(chat.chatId); if (!destName.trim()) setDestName(chat.title || chat.username || chat.chatId); }}>استفاده</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {destinations.length === 0 ? (
         <Callout tone="info">مقصدی ثبت نشده. اولین مقصد را «تست» کنید (مثلاً چت خودتان با ربات) تا پست‌های آزمایشی امن باشند.</Callout>
       ) : (
         <ul className="grid gap-2 md:grid-cols-2">
           {destinations.map((dest) => {
             const conn = connById.get(dest.connectionId);
+            const info = providerInfo(conn?.provider);
             const v = dest.verified;
             const ready = destinationReady(dest) && dest.enabled;
+            const needsTestPost = Boolean(v?.ok) && v?.chatType !== 'private' && v?.canPost !== true && (v?.permissionCheck === 'test_post' || v?.permissionCheck === 'unavailable' || info.permissionCheck === 'test_post');
             return (
               <li key={dest.id} className={`rounded-xl border p-3 text-sm space-y-2 ${dest.enabled ? 'bg-white' : 'bg-gray-50 opacity-70'}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{dest.displayName}</p>
+                    <p className="font-medium text-gray-900 truncate flex items-center gap-2">{dest.displayName} <ProviderChip provider={conn?.provider} /></p>
                     <p className="text-xs text-gray-500 truncate">
                       <span className="font-mono" dir="ltr">{dest.destinationKey}</span> · {conn ? `${conn.name} (${channelLabel(conn.channel)})` : 'اتصال حذف شده'}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1 justify-end">
                     {dest.isCanary && <Badge tone="info">مقصد تست</Badge>}
-                    {ready ? <Badge tone="ok">آماده ارسال</Badge> : v && !v.ok ? <Badge tone="danger">دسترسی ندارد</Badge> : v && v.ok ? <Badge tone="warn">اجازه ارسال ندارد</Badge> : <Badge tone="warn">تأییدنشده</Badge>}
+                    {ready ? <Badge tone="ok">آماده ارسال</Badge> : v && !v.ok ? <Badge tone="danger">دسترسی ندارد</Badge> : needsTestPost ? <Badge tone="warn">نیاز به پست آزمایشی</Badge> : v && v.ok ? <Badge tone="warn">اجازه ارسال ندارد</Badge> : <Badge tone="warn">تأییدنشده</Badge>}
                   </div>
                 </div>
                 {v && (
@@ -436,9 +612,16 @@ export function AdminOmnichannel() {
                     {v.ok ? (
                       <>
                         {chatTypeLabel(v.chatType)}{v.title ? ` «${v.title}»` : ''}{v.username ? ` @${v.username}` : ''}{typeof v.memberCount === 'number' ? ` · ${faNumber(v.memberCount)} عضو` : ''}
-                        {v.chatType !== 'private' && (
+                        {v.chatType !== 'private' && v.permissionCheck !== 'test_post' && v.permissionCheck !== 'unavailable' && (
                           <span className="block">
                             ربات {v.botIsAdmin ? 'ادمین است' : 'ادمین نیست'} · ارسال {v.canPost ? '✓' : '✗'} · ویرایش {v.canEdit ? '✓' : '✗'} · حذف {v.canDelete ? '✓' : '✗'}
+                          </span>
+                        )}
+                        {v.chatType !== 'private' && (v.permissionCheck === 'test_post' || v.permissionCheck === 'unavailable') && (
+                          <span className="block">
+                            {v.testPostAt
+                              ? <>اجازه ارسال با پست آزمایشی ثابت شد ({relativeTime(v.testPostAt)}) · ویرایش/حذف هنگام اولین به‌روزرسانی سنجیده می‌شود</>
+                              : <>{info.label} امکان بررسی مجوز از API را ندارد؛ با یک «پست آزمایشی» اجازه ارسال ثابت می‌شود.</>}
                           </span>
                         )}
                       </>
@@ -452,9 +635,19 @@ export function AdminOmnichannel() {
                   <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `verify-${dest.id}` || !status?.connectors} onClick={() => run(`verify-${dest.id}`, async () => {
                     const res = await apiClient.post<Destination & { botUsername?: string | null }>(`/omnichannel/destinations/${dest.id}/verify`, {});
                     if (res?.verified && !res.verified.ok) throw new Error(errorLabel(res.verified.error) || 'ربات به این مقصد دسترسی ندارد');
-                  }, 'بررسی دسترسی ناموفق', 'دسترسی ربات تأیید شد')}>
+                  }, 'بررسی دسترسی ناموفق', 'دسترسی ربات بررسی شد')}>
                     بررسی دسترسی
                   </button>
+                  {(needsTestPost || (v?.ok && v.permissionCheck === 'test_post')) && (
+                    <button type="button" className="btn btn-secondary btn-sm" title="یک پیام کوتاه فارسی به همین مقصد می‌فرستد و اجازه ارسال را ثبت می‌کند" disabled={busy === `testpost-${dest.id}` || !status?.connectors || conn?.status !== 'ACTIVE' || !dest.enabled} onClick={() => {
+                      if (!window.confirm(`یک پیام آزمایشی کوتاه به «${dest.displayName}» فرستاده می‌شود. ادامه می‌دهید؟`)) return;
+                      void run(`testpost-${dest.id}`, async () => {
+                        await apiClient.post(`/omnichannel/destinations/${dest.id}/test-post`, { reason });
+                      }, 'پست آزمایشی ناموفق', 'پست آزمایشی رفت؛ اجازه ارسال ثبت شد');
+                    }}>
+                      پست آزمایشی
+                    </button>
+                  )}
                   <button type="button" className="text-xs text-gray-700 underline cursor-pointer" onClick={() => run(`canary-${dest.id}`, async () => {
                     await apiClient.patch(`/omnichannel/destinations/${dest.id}`, { isCanary: !dest.isCanary });
                   }, 'تغییر مقصد تست ناموفق')}>
@@ -478,7 +671,7 @@ export function AdminOmnichannel() {
   const templatePanel = (
     <Section
       title="۳. قالب پست"
-      description="یک‌بار شکل پست را برای تکی و عمده تنظیم کنید. از این به بعد هر پست خودکار (محصول جدید، تغییر قیمت، …) دقیقاً با همین چیدمان و با عکس و مشخصات همان محصول می‌رود."
+      description="یک‌بار شکل پست را برای تکی و عمده تنظیم کنید؛ همین یک قالب برای تلگرام، بله و روبیکا استفاده می‌شود و هر پیام‌رسان خودش به فرمت خودش (HTML، Markdown، متادیتا) تبدیل می‌شود. از این به بعد هر پست خودکار دقیقاً با همین چیدمان و با عکس و مشخصات همان محصول می‌رود."
       actions={
         <div className="flex gap-1 rounded-xl bg-gray-100 p-1" role="tablist">
           {(['RETAIL', 'WHOLESALE'] as Channel[]).map((ch) => {
@@ -497,12 +690,14 @@ export function AdminOmnichannel() {
         channel={tplChannel}
         template={tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl}
         saving={busy === 'tpl-save'}
+        providers={providerInfos}
+        activeProviders={activeProviders.length ? activeProviders : ['TELEGRAM']}
         onSave={async (body) => {
           await run('tpl-save', async () => {
             const existing = tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl;
             if (existing) await apiClient.patch(`/omnichannel/templates/${existing.id}`, { body });
-            else await apiClient.post('/omnichannel/templates', { provider: 'TELEGRAM', channel: tplChannel, eventType: PRODUCT_TEMPLATE_EVENT, body });
-          }, 'خطا در ذخیره قالب', `قالب ${channelLabel(tplChannel)} ذخیره شد؛ پست‌های بعدی با همین شکل می‌روند`);
+            else await apiClient.post('/omnichannel/templates', { provider: MASTER_TEMPLATE_PROVIDER, channel: tplChannel, eventType: PRODUCT_TEMPLATE_EVENT, body });
+          }, 'خطا در ذخیره قالب', `قالب ${channelLabel(tplChannel)} ذخیره شد؛ پست‌های بعدی در همه پیام‌رسان‌ها با همین شکل می‌روند`);
         }}
       />
     </Section>
@@ -640,7 +835,7 @@ export function AdminOmnichannel() {
   );
 
   const checklist: Array<{ label: string; ok: boolean; detail: string }> = [
-    { label: 'ربات فعال', ok: activeConnections.length > 0, detail: activeConnections.length ? `${faNumber(activeConnections.length)} اتصال فعال` : 'مرحله ۱ را کامل کنید' },
+    { label: 'ربات فعال', ok: activeConnections.length > 0, detail: activeConnections.length ? summarizeBots(activeConnections) : 'مرحله ۱ را کامل کنید' },
     { label: 'مقصد تأییدشده', ok: readyDestinations.length > 0, detail: readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'مرحله ۲: دسترسی ربات را بررسی کنید' },
     { label: 'مقصد تست (canary)', ok: Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE')), detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان تست انتخاب کنید' },
     { label: 'قالب تکی و عمده', ok: templatesReady, detail: templatesReady ? 'ذخیره شده' : 'مرحله ۳ را برای هر دو کانال ذخیره کنید' },
@@ -648,8 +843,17 @@ export function AdminOmnichannel() {
   ];
   const canGoLive = checklist.every((row) => row.ok) && readyDestinations.some((dest) => !dest.isCanary);
 
+  const previewInfo = providerInfo(previewProvider);
+  const previewRendered = preview?.rendered ? platformRendered(preview.rendered, previewInfo) : null;
+  const previewSwitch = (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-gray-500">{targetProvider ? `مقصد انتخابی در ${providerLabel(targetProvider)} است` : 'پیش‌نمایش در'}</span>
+      <ProviderTabs value={previewProvider} onChange={setPreviewProvider} active={activeProviders.length ? activeProviders : ['TELEGRAM']} size="xs" />
+    </div>
+  );
+
   const activatePanel = (
-    <Section title="۵. تست و فعال‌سازی" description="اول یک محصول واقعی را به مقصد تست بفرستید و شکل پست را در تلگرام ببینید؛ بعد حالت خودکار را روشن کنید.">
+    <Section title="۵. تست و فعال‌سازی" description="اول یک محصول واقعی را به مقصد تست بفرستید و شکل پست را در همان پیام‌رسان ببینید؛ بعد حالت خودکار را روشن کنید.">
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-3">
           <ul className="rounded-xl border divide-y">
@@ -673,7 +877,7 @@ export function AdminOmnichannel() {
               <input className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[12rem]" placeholder="کد، اسلاگ یا لینک محصول" value={sourceId} onChange={(e) => { setSourceId(e.target.value); setSourceType('PRODUCT'); }} />
               <select className="border rounded-lg px-3 py-2 text-sm" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
                 {readyByChannel(pubChannel).length === 0 && <option value="">مقصد آماده‌ای برای {channelLabel(pubChannel)} نیست</option>}
-                {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
+                {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{providerLabel(providerOf(dest))} · {dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
               </select>
               <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'preview'} onClick={doPreview}>پیش‌نمایش</button>
               <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !targetId || busy === 'send'} onClick={() => doSend(targetId)}>ارسال آزمایشی</button>
@@ -693,7 +897,8 @@ export function AdminOmnichannel() {
         <div className="space-y-2">
           {preview?.rendered ? (
             <>
-              <TelegramPreview rendered={preview.rendered} title={`پیش‌نمایش واقعی — ${String(preview.projection?.name || sourceId)}`} />
+              {previewSwitch}
+              <TelegramPreview provider={previewProvider} rendered={previewRendered} title={`پیش‌نمایش ${providerLabel(previewProvider)} — ${String(preview.projection?.name || sourceId)}`} />
               {preview.projection?.publishable === false && <Callout tone="danger">{String(preview.projection?.rejectReason || 'این محصول در این کانال قابل انتشار نیست')}</Callout>}
               <details className="text-xs text-gray-500">
                 <summary className="cursor-pointer">جزئیات فنی</summary>
@@ -724,18 +929,21 @@ export function AdminOmnichannel() {
           <input className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[14rem]" placeholder={sourceType === 'PRODUCT' ? 'کد، اسلاگ یا لینک محصول' : 'شناسه یا اسلاگ'} value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
           <select className="border rounded-lg px-3 py-2 text-sm" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
             <option value="">طبق قواعد خودکار ({mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'فقط مقصد تست'})</option>
-            {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
+            {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{providerLabel(providerOf(dest))} · {dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
           </select>
           <input className="border rounded-lg px-3 py-2 text-sm w-44" placeholder="دلیل (برای حسابرسی)" value={reason} onChange={(e) => setReason(e.target.value)} />
           <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'preview'} onClick={doPreview}>پیش‌نمایش</button>
           <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'draft'} onClick={() => run('draft', async () => {
             await apiClient.post('/omnichannel/publications', { preview: { channel: pubChannel, sourceType, sourceId }, dryRun: true, reason });
-          }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد (به تلگرام نرفت)')}>ثبت پیش‌نویس</button>
+          }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد (به هیچ پیام‌رسانی نرفت)')}>ثبت پیش‌نویس</button>
           <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || busy === 'send'} onClick={() => doSend(targetId || undefined)}>ارسال</button>
         </div>
         {preview?.rendered && (
           <div className="grid gap-3 lg:grid-cols-[22rem_minmax(0,1fr)]">
-            <TelegramPreview rendered={preview.rendered} title={`پیش‌نمایش — ${String(preview.projection?.name || sourceId)}`} />
+            <div className="space-y-2">
+              {previewSwitch}
+              <TelegramPreview provider={previewProvider} rendered={previewRendered} title={`پیش‌نمایش ${providerLabel(previewProvider)} — ${String(preview.projection?.name || sourceId)}`} />
+            </div>
             <div className="space-y-2 text-sm">
               {preview.projection?.publishable === false && <Callout tone="danger">{String(preview.projection?.rejectReason || 'این منبع در این کانال قابل انتشار نیست')}</Callout>}
               {preview.projection?.available === false && <Callout tone="warn">این محصول در این کانال ناموجود است؛ طبق «رفتار ناموجودی» ممکن است ارسال نشود.</Callout>}
@@ -778,6 +986,7 @@ export function AdminOmnichannel() {
                         const dest = row.destinationId ? destById.get(row.destinationId) : undefined;
                         return (
                           <li key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-2 py-1.5 text-xs">
+                            {dest && <ProviderChip provider={providerOf(dest)} />}
                             <span className="font-medium">{dest?.displayName || 'مقصد حذف‌شده'}</span>
                             <span className="text-gray-500">{actionLabel(row.action)}</span>
                             <Badge tone={ds.tone}>{ds.label}</Badge>
@@ -837,7 +1046,7 @@ export function AdminOmnichannel() {
         </div>
       </Section>
 
-      <Section title="متن جایگزین عکس‌ها (alt)" description="برای دسترس‌پذیری و سئو؛ روی پست تلگرام اثری ندارد.">
+      <Section title="متن جایگزین عکس‌ها (alt)" description="برای دسترس‌پذیری و سئو؛ روی پست پیام‌رسان‌ها اثری ندارد.">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -908,14 +1117,14 @@ export function AdminOmnichannel() {
             <Badge tone={mode === 'LIVE' ? 'ok' : mode === 'CANARY' ? 'info' : 'off'}>خودکار: {modeLabel(mode)}</Badge>
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-3xl leading-6">
-            یک‌بار ربات، کانال، شکل پست و قواعد را تنظیم کنید؛ بعد از آن هر محصول جدید، تغییر قیمت یا ناموجودی خودش به کانال تلگرام می‌رسد. تلگرام فقط ویترین است؛ موجودی و قیمت از سایت می‌آید.
+            یک‌بار ربات، کانال، شکل پست و قواعد را تنظیم کنید؛ بعد از آن هر محصول جدید، تغییر قیمت یا ناموجودی خودش به کانال‌های تلگرام، بله و روبیکا می‌رسد. پیام‌رسان فقط ویترین است؛ موجودی و قیمت از سایت می‌آید.
           </p>
         </div>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>تازه‌سازی</button>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Metric label="ربات" value={activeConnections.length ? activeConnections.map((row) => row.name).join('، ') : 'ثبت نشده'} hint={status?.connectors ? 'کانکتور روشن' : 'کانکتور سرور خاموش'} tone={activeConnections.length && status?.connectors ? 'ok' : 'warn'} />
+        <Metric label="ربات" value={activeConnections.length ? summarizeBots(activeConnections) : 'ثبت نشده'} hint={status?.connectors ? (providerInfos.some((info) => !info.enabled) ? `کانکتور روشن · ${providerInfos.filter((info) => !info.enabled).map((info) => info.label).join('، ')} خاموش` : 'کانکتور روشن') : 'کانکتور سرور خاموش'} tone={activeConnections.length && status?.connectors ? 'ok' : 'warn'} />
         <Metric label="کانال‌های آماده" value={readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'هیچ'} hint={unverified.length ? `${faNumber(unverified.length)} مقصد تأییدنشده` : 'همه تأیید شده'} tone={readyDestinations.length ? (unverified.length ? 'warn' : 'ok') : 'warn'} />
         <Metric label="پست‌های امروز" value={`${faNumber(sentToday)} از ${faNumber(status?.autoDailyCap ?? 20)}`} hint={failing ? `${faNumber(failing)} ارسال ناموفق` : 'بدون خطا'} tone={failing ? 'danger' : 'ok'} />
         <Metric label="صف" value={`${faNumber(status?.outbox?.pending ?? 0)} در انتظار`} hint={status?.outbox?.dead ? `${faNumber(status.outbox.dead)} متوقف` : status?.outbox?.oldestPendingAgeSec ? `قدیمی‌ترین ${faNumber(status.outbox.oldestPendingAgeSec)} ثانیه` : 'روان'} tone={status?.outbox?.dead ? 'danger' : 'ok'} />

@@ -25,6 +25,7 @@ import {
   areOmnichannelConnectorsEnabled,
   isOmnichannelAutoPublishEnabled,
 } from '../omnichannel.constants';
+import { providerReadiness } from '../provider-capabilities';
 
 type Authed = { omnichannelActor?: { id: string } };
 
@@ -48,6 +49,8 @@ export class OmnichannelAdminController {
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox: await this.svc.outboxMetrics(),
+      /** Per-platform capability matrix + boolean readiness (enabled flag, token present). Never token values. */
+      providers: providerReadiness(),
       ...settings,
     };
   }
@@ -92,6 +95,13 @@ export class OmnichannelAdminController {
     return this.svc.pingCanary(id, req.omnichannelActor, body?.reason);
   }
 
+  @Post('connections/:id/discover-chats')
+  @ApiOperation({ summary: 'چت‌هایی که ربات اخیراً دیده (getUpdates بدون تأیید) برای پیدا کردن شناسه کانال' })
+  discoverChats(@Param('id') id: string, @Req() req: Authed) {
+    assertNoPlaintextSecrets({ id });
+    return this.svc.discoverChats(id, req.omnichannelActor);
+  }
+
   @Get('destinations')
   listDestinations() {
     return this.svc.listDestinations();
@@ -112,6 +122,13 @@ export class OmnichannelAdminController {
   verifyDestination(@Param('id') id: string, @Req() req: Authed) {
     assertNoPlaintextSecrets({ id });
     return this.svc.verifyDestination(id, req.omnichannelActor);
+  }
+
+  @Post('destinations/:id/test-post')
+  @ApiOperation({ summary: 'یک پیام آزمایشی به این مقصد؛ موفقیت به‌عنوان اثبات اجازه ارسال ذخیره می‌شود (روبیکا)' })
+  testPostDestination(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets({ id, reason: body?.reason });
+    return this.svc.testPostDestination(id, req.omnichannelActor, body?.reason);
   }
 
   @Get('templates')

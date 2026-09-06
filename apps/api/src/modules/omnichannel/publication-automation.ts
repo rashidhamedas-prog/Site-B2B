@@ -2,7 +2,12 @@
  * Channel automation decisions. Pure functions; the service supplies counts and rows.
  * Nothing here talks to Telegram or the database.
  */
-import { TEHRAN_UTC_OFFSET_MINUTES, type AutoPublishMode, type WithdrawAction } from './omnichannel.constants';
+import {
+  TEHRAN_UTC_OFFSET_MINUTES,
+  isOmnichannelProvider,
+  type AutoPublishMode,
+  type WithdrawAction,
+} from './omnichannel.constants';
 import { destinationCanPost, isCanarySettings, type OosPolicy } from './oos-policy';
 
 /** Stock changes never create posts by themselves; they only edit/delete/restore via OOS policy. */
@@ -78,8 +83,9 @@ export function evaluateAutomationGate(input: AutomationGateInput): AutomationGa
 }
 
 /**
- * CANARY → the canary destination only. LIVE → canary plus every enabled destination whose
- * server-side verification says the bot can post. Unverified channels never receive automation.
+ * CANARY → the canary destinations only. LIVE → canaries plus every enabled destination whose
+ * server-side verification (getChatMember, or a successful test post on Rubika) says the bot can
+ * post. Every official provider qualifies; unverified channels never receive automation.
  */
 export function selectAutomationDestinations<
   D extends { id: string; connectionId: string; enabled: boolean; settings?: Record<string, unknown> | null },
@@ -90,7 +96,7 @@ export function selectAutomationDestinations<
   return dests.filter((dest) => {
     if (!dest.enabled) return false;
     const conn = byId.get(dest.connectionId);
-    if (!conn || conn.provider !== 'TELEGRAM' || conn.channel !== channel || conn.status !== 'ACTIVE') return false;
+    if (!conn || !isOmnichannelProvider(conn.provider) || conn.channel !== channel || conn.status !== 'ACTIVE') return false;
     if (isCanarySettings(dest.settings)) return true;
     return mode === 'LIVE' && destinationCanPost(dest.settings);
   });

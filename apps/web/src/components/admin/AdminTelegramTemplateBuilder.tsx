@@ -4,13 +4,19 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Callout,
+  ProviderTabs,
   RadioCards,
   TelegramPreview,
   Toggle,
   faNumber,
+  platformRendered,
+  providerLabel,
+  providerLimits,
   type Channel,
   type MediaMode,
   type ParseMode,
+  type Provider,
+  type ProviderInfo,
   type Rendered,
   type Template,
   type TemplateButton,
@@ -294,15 +300,24 @@ export function AdminTelegramTemplateBuilder({
   template,
   saving,
   onSave,
+  providers = [],
+  activeProviders = ['TELEGRAM'],
 }: {
   channel: Channel;
   template: Template | undefined;
   saving: boolean;
   onSave: (body: string) => Promise<void>;
+  /** Capability matrix from `/omnichannel/status`; drives the per-platform preview. */
+  providers?: ProviderInfo[];
+  /** Platforms with at least one bot connected (others render dimmed in the switch). */
+  activeProviders?: Provider[];
 }) {
   const [layout, setLayout] = useState<Layout>(() => parseBody(template?.body, channel));
   const [savedJson, setSavedJson] = useState(() => JSON.stringify(parseBody(template?.body, channel)));
   const [panel, setPanel] = useState<'content' | 'display'>('content');
+  const [previewProvider, setPreviewProvider] = useState<Provider>(activeProviders[0] || 'TELEGRAM');
+  const previewInfo = providers.find((row) => row.provider === previewProvider);
+  const limits = providerLimits(previewInfo);
 
   useEffect(() => {
     const next = parseBody(template?.body, channel);
@@ -552,10 +567,25 @@ export function AdminTelegramTemplateBuilder({
         </div>
 
         <div className="lg:sticky lg:top-4 self-start space-y-2">
-          <TelegramPreview rendered={rendered} placeholders={rendered.photoCap} title={`پیش‌نمایش با نمونه (${channel === 'WHOLESALE' ? 'عمده' : 'تکی'})`} />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-gray-500">پیش‌نمایش در</span>
+            <ProviderTabs value={previewProvider} onChange={setPreviewProvider} active={activeProviders} size="xs" />
+          </div>
+          <TelegramPreview
+            provider={previewProvider}
+            rendered={platformRendered(rendered, previewInfo)}
+            placeholders={previewInfo && !previewInfo.album ? Math.min(rendered.photoCap, 1) : rendered.photoCap}
+            title={`پیش‌نمایش ${providerLabel(previewProvider)} با نمونه (${channel === 'WHOLESALE' ? 'عمده' : 'تکی'})`}
+          />
           <p className="text-[11px] text-gray-500 leading-5 text-center">
             داده نمونه است؛ در ارسال واقعی نام، قیمت، مشخصات و عکس‌های همان محصول جای آن می‌نشیند.
           </p>
+          {limits.length > 0 && (
+            <ul className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-900 leading-5 space-y-0.5">
+              <li className="font-medium">همین قالب در {providerLabel(previewProvider)} با این تفاوت‌ها می‌رود:</li>
+              {limits.map((line) => <li key={line}>• {line}</li>)}
+            </ul>
+          )}
         </div>
       </div>
     </div>

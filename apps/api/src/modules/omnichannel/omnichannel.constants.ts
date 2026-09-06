@@ -54,6 +54,28 @@ export function areOmnichannelConnectorsEnabled(): boolean {
   return process.env.OMNICHANNEL_CONNECTORS_ENABLED === 'true';
 }
 
+export function isOmnichannelProvider(value: unknown): value is OmnichannelProvider {
+  return typeof value === 'string' && (OMNICHANNEL_PROVIDERS as readonly string[]).includes(value);
+}
+
+/**
+ * Per-provider kill switch on top of the global connectors flag:
+ * `OMNICHANNEL_DISABLED_PROVIDERS=RUBIKA,BALE`. Default: every provider follows the global flag.
+ */
+export function isOmnichannelProviderEnabled(provider: string): boolean {
+  if (!areOmnichannelConnectorsEnabled() || !isOmnichannelProvider(provider)) return false;
+  const disabled = String(process.env.OMNICHANNEL_DISABLED_PROVIDERS || '')
+    .split(',')
+    .map((item) => item.trim().toUpperCase())
+    .filter(Boolean);
+  return !disabled.includes(provider);
+}
+
+/** Conventional env name for a provider's bot token; admins may register any `${PROVIDER}_…` name. */
+export function defaultSecretRefFor(provider: OmnichannelProvider): string {
+  return `${provider}_BOT_TOKEN`;
+}
+
 /** Producer default on; set OMNICHANNEL_OUTBOX_PRODUCER=false to stop new events. */
 export function isOmnichannelOutboxProducerEnabled(): boolean {
   return process.env.OMNICHANNEL_OUTBOX_PRODUCER !== 'false';
@@ -97,8 +119,8 @@ export const OUTBOX_RETENTION_MAX_DAYS = 365;
 
 /**
  * Channel automation. OFF = catalog events only refresh local drafts (today's behavior).
- * CANARY = auto-deliver to the canary destination only. LIVE = every enabled, verified
- * Telegram destination of that sales channel. Default stays OFF until the owner flips it.
+ * CANARY = auto-deliver to the canary destinations only. LIVE = every enabled, verified
+ * destination (any provider) of that sales channel. Default stays OFF until the owner flips it.
  */
 export const AUTO_PUBLISH_MODES = ['OFF', 'CANARY', 'LIVE'] as const;
 export type AutoPublishMode = (typeof AUTO_PUBLISH_MODES)[number];

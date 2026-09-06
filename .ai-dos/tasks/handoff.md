@@ -2,6 +2,21 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T12:40:00Z — TASK-20260905-003 Bale + Rubika implemented (ready to ship)
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Official docs re-read this session: docs.bale.ai (InlineKeyboardButton.url, sendMediaGroup no reply_markup, InputMediaPhoto caption 1024, deleteMessage <48h, getChatMembersCount) and rubika.ir/botapi/models (ButtonTypeEnum.Link exists; Button fields have no URL/`button_link` — text-link + metadata Link is the documented path).
+- Tests (observed): api tsc 0; web tsc 0; specs ok: rich-text, bale.adapter, rubika.adapter, provider-capabilities, connector-gate, telegram.adapter, canary-ping, phase-acceptance, publication-automation, publication-template, oos-policy.
+- Exact next: commit claimed files only, merge origin/master, push, VPS deploy, `/v1/health`, `/admin/omnichannel` shows three cards. Owner still must set `BALE_BOT_TOKEN` / `RUBIKA_BOT_TOKEN`. Do not Done TASK-20260826-001.
+
+## 2026-09-06T11:20:00Z — TASK-20260905-003 claim: Bale + Rubika connectors (owner order)
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003 (worktree `D:/proje/Site-B2B-omni-console`, branch fast-forwarded to `29e07ac`).
+- Owner order: «برای بله و روبیکا هم تنظیماتشو اضافه کن؛ قبلش سایت‌هاشون رو کامل بخون». This supersedes the "do not invent Bale/Rubika" gate: both APIs are now read from official docs, nothing is invented. Sources: `https://docs.bale.ai/` (tapi.bale.ai/bot{token}/{method}, Telegram-shaped; text is **Markdown only** with spaces around `*bold*`; caption 4096 on sendPhoto but 1024 in `InputMediaPhoto`; `sendMediaGroup` has no `reply_markup`; `deleteMessage` only < 48 h; `getChatMember`/`getChatMembersCount`; photo by URL ≤ 5 MB) and `https://rubika.ir/botapi/` (botapi.rubika.ir/v3/{token}/{method}, JSON `{status, data}`; `sendMessage` text + `metadata.meta_data_parts` UTF-16 Bold/Link ≤ 30; files via `requestSendFile{type:Image}` → multipart POST `file` to `upload_url` → `file_id` → `sendFile{chat_id,file_id,text,inline_keypad}` (no metadata on captions); no album; `editMessageText` text only; `deleteMessage`; `getChat` (chat_type User/Bot/Group/Channel) but **no getChatMember**; string `message_id`/`chat_id`; `getUpdates{limit}` with `forwarded_from.from_chat_id`).
+- Reclaimed from TASK-20260826-001 (stale hb 2026-09-02): `adapters/channel-adapter.ts`, `adapters/bale.adapter.ts`, `adapters/rubika.adapter.ts`, `adapters/connector-gate.spec.ts`, `omnichannel.module.ts`, `.cursor/skills/omnichannel/SKILL.md`, `.cursor/skills/omnichannel/references/phase-order.md`. New: `adapters/adapter-registry.ts`, `adapters/rich-text.ts(+spec)`, `adapters/bale.adapter.spec.ts`, `adapters/rubika.adapter.spec.ts`, `provider-capabilities.ts(+spec)`, `docs/reports/2026-09-06-omnichannel-bale-rubika.md`.
+- Design (ADR in the report): one master template per sales channel renders canonical HTML (`<b>` only, escaped); each adapter converts (Telegram parse_mode HTML, Bale ` *bold* ` Markdown, Rubika metadata for text posts / plain caption for photo posts). Rubika: first photo only (no album), buttons become `🔗 label: url` lines (Link button payload is not in the official Button model). Permission proof for Rubika = successful test post (`POST destinations/:id/test-post`) because getChatMember does not exist. `discover-chats` reads recent `getUpdates` so admins can find `c0…`/`-100…` ids. Gate stays `OMNICHANNEL_CONNECTORS_ENABLED` + provider-prefixed env token (`BALE_BOT_TOKEN`, `RUBIKA_BOT_TOKEN`), plus `OMNICHANNEL_DISABLED_PROVIDERS` kill switch.
+- Exact next: implement + specs + tsc, report, commit/push/deploy, verify `/admin/omnichannel` shows three platform cards. Owner must create bots at Bale @botfather and Rubika @BotFather and put tokens on the VPS env before «تست توکن» can pass.
+
 ## 2026-09-06T10:45:00Z — TASK-20260905-003 console v2 LIVE + VPS disk + stash incident
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

@@ -46,6 +46,50 @@ export type Verification = {
   canPost?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  /** 'api' = getChatMember-style check; 'test_post' = proven (or provable) by an admin test message. */
+  permissionCheck?: 'api' | 'test_post' | 'unavailable';
+  testPostAt?: string;
+};
+
+export type Provider = 'TELEGRAM' | 'BALE' | 'RUBIKA';
+export const PROVIDERS: Provider[] = ['TELEGRAM', 'BALE', 'RUBIKA'];
+
+/** Mirror of the API's provider capability matrix + boolean readiness (`GET /omnichannel/status`.providers). */
+export type ProviderInfo = {
+  provider: Provider;
+  label: string;
+  botFactory: string;
+  apiBase: string;
+  textFormat: 'HTML' | 'MARKDOWN' | 'METADATA';
+  boldOnCaption: boolean;
+  album: boolean;
+  albumLimit: number;
+  captionLimit: number;
+  textLimit: number;
+  buttons: 'inline' | 'text-link';
+  buttonsOnAlbum: false;
+  silent: boolean;
+  protectContent: boolean;
+  captionAbove: boolean;
+  linkPreviewToggle: boolean;
+  editCaption: boolean;
+  editText: boolean;
+  deleteWindowHours: number | null;
+  permissionCheck: 'api' | 'test_post';
+  discoverChats: boolean;
+  chatIdHint: string;
+  chatIdExamples: string[];
+  enabled: boolean;
+  tokenConfigured: boolean;
+  defaultSecretRef: string;
+};
+
+export type DiscoveredChat = {
+  chatId: string;
+  chatType: string;
+  title?: string;
+  username?: string | null;
+  via: 'channel_post' | 'forward' | 'member' | 'message';
 };
 
 export type Status = {
@@ -54,6 +98,8 @@ export type Status = {
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;
+  providers?: ProviderInfo[];
+  canaryDestinationIds?: Record<Channel, Partial<Record<Provider, string | null>>>;
   retailOosPolicy?: OosPolicy;
   wholesaleOosPolicy?: OosPolicy;
   retailOosChosen?: boolean;
@@ -208,16 +254,130 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 const ERROR_LABELS: Record<string, string> = {
-  invalid_credential: 'توکن ربات نامعتبر است یا ربات از کانال حذف شده',
-  rate_limited: 'تلگرام محدودیت نرخ داد؛ خودکار دوباره تلاش می‌شود',
-  provider_unavailable: 'تلگرام در دسترس نبود؛ دوباره تلاش می‌شود',
-  timeout: 'پاسخ تلگرام دیر شد؛ دوباره تلاش می‌شود',
+  invalid_credential: 'توکن ربات نامعتبر است، روی سرور تنظیم نشده یا ربات از کانال حذف شده',
+  rate_limited: 'پیام‌رسان محدودیت نرخ داد؛ خودکار دوباره تلاش می‌شود',
+  provider_unavailable: 'پیام‌رسان در دسترس نبود؛ دوباره تلاش می‌شود',
+  timeout: 'پاسخ پیام‌رسان دیر شد؛ دوباره تلاش می‌شود',
   duplicate: 'قبلاً همین محتوا ارسال/ویرایش شده بود',
-  validate_failed: 'تلگرام درخواست را رد کرد (شناسه یا محتوای پست را بررسی کنید)',
+  validate_failed: 'پیام‌رسان درخواست را رد کرد (شناسه یا محتوای پست را بررسی کنید)',
   chat_not_found: 'چت پیدا نشد؛ ربات را به کانال اضافه کنید یا شناسه را درست وارد کنید',
   destination_missing: 'شناسه مقصد خالی است',
-  provider_message_missing: 'شناسه پیام تلگرام ثبت نشده بود',
+  provider_message_missing: 'شناسه پیام روی پیام‌رسان ثبت نشده بود',
+  webhook_active: 'روی این ربات وب‌هوک فعال است؛ getUpdates کار نمی‌کند. وب‌هوک را بردارید یا شناسه را دستی وارد کنید',
+  delete_window_expired: 'بله فقط پیام‌های کمتر از ۴۸ ساعت را حذف می‌کند؛ این پیام قدیمی‌تر بود',
+  unknown_provider: 'پلتفرم این اتصال پشتیبانی نمی‌شود',
 };
+
+/* ---------- providers (labels/tones only; rules come from the API matrix) ---------- */
+
+export const PROVIDER_META: Record<Provider, { label: string; short: string; tone: Tone; accent: string; chip: string; ring: string }> = {
+  TELEGRAM: { label: 'تلگرام', short: 'TG', tone: 'info', accent: 'bg-sky-500', chip: 'bg-sky-50 text-sky-800 border-sky-200', ring: 'border-sky-400 ring-sky-200' },
+  BALE: { label: 'بله', short: 'BL', tone: 'ok', accent: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-800 border-emerald-200', ring: 'border-emerald-400 ring-emerald-200' },
+  RUBIKA: { label: 'روبیکا', short: 'RB', tone: 'warn', accent: 'bg-fuchsia-600', chip: 'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-200', ring: 'border-fuchsia-400 ring-fuchsia-200' },
+};
+
+export function isProvider(value: unknown): value is Provider {
+  return typeof value === 'string' && (PROVIDERS as string[]).includes(value);
+}
+
+export function providerLabel(provider?: string | null) {
+  return isProvider(provider) ? PROVIDER_META[provider].label : provider || '—';
+}
+
+export function providerMeta(provider?: string | null) {
+  return PROVIDER_META[isProvider(provider) ? provider : 'TELEGRAM'];
+}
+
+/** Small platform chip used next to connections/destinations/deliveries. */
+export function ProviderChip({ provider, className = '' }: { provider?: string | null; className?: string }) {
+  const meta = providerMeta(provider);
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium whitespace-nowrap ${meta.chip} ${className}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${meta.accent}`} aria-hidden />
+      {providerLabel(provider)}
+    </span>
+  );
+}
+
+/** Segmented control to switch a preview between platforms; dims platforms with no active bot. */
+export function ProviderTabs({
+  value,
+  onChange,
+  active = PROVIDERS,
+  size = 'sm',
+}: {
+  value: Provider;
+  onChange: (next: Provider) => void;
+  /** Providers that have at least one connection; others render dimmed but stay selectable. */
+  active?: Provider[];
+  size?: 'sm' | 'xs';
+}) {
+  return (
+    <div className="inline-flex gap-1 rounded-xl bg-gray-100 p-1" role="tablist" aria-label="پیش‌نمایش در پیام‌رسان">
+      {PROVIDERS.map((provider) => {
+        const meta = PROVIDER_META[provider];
+        const selected = value === provider;
+        const dim = !active.includes(provider);
+        return (
+          <button
+            key={provider}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            title={dim ? `${meta.label}: رباتی ثبت نشده` : meta.label}
+            className={`flex items-center gap-1.5 rounded-lg cursor-pointer ${size === 'xs' ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-sm'} ${selected ? 'bg-white shadow-sm font-medium text-gray-900' : dim ? 'text-gray-400' : 'text-gray-600'}`}
+            onClick={() => onChange(provider)}
+          >
+            <span className={`h-2 w-2 rounded-full ${meta.accent} ${dim ? 'opacity-40' : ''}`} aria-hidden />
+            {meta.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Plain-language list of what this platform will NOT do with the master template. */
+export function providerLimits(info: ProviderInfo | undefined): string[] {
+  if (!info) return [];
+  const out: string[] = [];
+  if (!info.album) out.push('آلبوم ندارد؛ فقط عکس اول پست می‌رود');
+  if (!info.boldOnCaption) out.push('روی زیرنویس عکس، متن پررنگ (bold) نمایش داده نمی‌شود');
+  if (info.buttons === 'text-link') out.push('دکمه زیر پست ندارد؛ لینک‌ها به‌صورت سطر «🔗 عنوان: لینک» می‌آیند');
+  if (!info.silent) out.push('گزینه «بی‌صدا» را پشتیبانی نمی‌کند');
+  if (!info.protectContent) out.push('«ضد فوروارد» را پشتیبانی نمی‌کند');
+  if (!info.editCaption) out.push('ویرایش زیرنویس عکس پس از ارسال محدود است');
+  if (info.deleteWindowHours) out.push(`حذف پست فقط تا ${faNumber(info.deleteWindowHours)} ساعت بعد از ارسال ممکن است`);
+  if (info.permissionCheck === 'test_post') out.push('اجازه ارسال با «ارسال آزمایشی» ثابت می‌شود (API عضویت ندارد)');
+  return out;
+}
+
+/**
+ * What the platform will actually show for the master rendering — mirrors the API adapters:
+ * Rubika keeps one photo, strips bold on captions, and turns buttons into link lines.
+ */
+export function platformRendered(rendered: Rendered | null | undefined, info: ProviderInfo | undefined): Rendered | null | undefined {
+  if (!rendered || !info) return rendered;
+  const photos = [...(rendered.photoUrls || [])];
+  const next: Rendered = { ...rendered, photoUrls: photos };
+  if (!info.album && photos.length > 1) {
+    next.photoUrls = photos.slice(0, 1);
+    next.mediaMode = 'single';
+  }
+  const hasPhoto = (next.photoUrls || []).length > 0;
+  if (hasPhoto && !info.boldOnCaption && next.parseMode === 'HTML' && next.text) {
+    next.text = next.text.replace(/<\/?b>/g, '');
+  }
+  if (info.buttons === 'text-link' && rendered.buttons?.length) {
+    const lines = rendered.buttons.map((button) => `🔗 ${button.label}: ${button.url}`).join('\n');
+    next.text = `${next.text || ''}${next.text ? '\n\n' : ''}${lines}`;
+    next.buttons = [];
+  }
+  if (!info.silent) next.silent = false;
+  if (!info.protectContent) next.protectContent = false;
+  if (!info.captionAbove) next.captionAbove = false;
+  return next;
+}
 
 export function channelLabel(channel?: string | null) {
   return channel === 'WHOLESALE' ? 'عمده' : channel === 'RETAIL' ? 'تکی' : channel || '—';
@@ -252,7 +412,9 @@ export function eventLabel(eventType: string) {
 export function chatTypeLabel(type?: string) {
   if (type === 'channel') return 'کانال';
   if (type === 'supergroup' || type === 'group') return 'گروه';
-  if (type === 'private') return 'چت خصوصی';
+  if (type === 'private' || type === 'user') return 'چت خصوصی';
+  if (type === 'bot') return 'ربات';
+  if (type === 'unknown') return 'نامشخص';
   return type || '—';
 }
 
@@ -463,17 +625,30 @@ export function renderTelegramText(text: string, parseMode: ParseMode = 'HTML'):
   });
 }
 
+const PREVIEW_THEME: Record<Provider, { shell: string; bubble: string; link: string; name: string }> = {
+  TELEGRAM: { shell: 'bg-[#0e1621]', bubble: 'bg-[#182533]', link: 'text-sky-300', name: 'تلگرام' },
+  BALE: { shell: 'bg-[#0f2a2a]', bubble: 'bg-[#163d3a]', link: 'text-emerald-200', name: 'بله' },
+  RUBIKA: { shell: 'bg-[#1b1030]', bubble: 'bg-[#2a1a4a]', link: 'text-fuchsia-200', name: 'روبیکا' },
+};
+
+/**
+ * Chat-style preview. `provider` only changes the chrome; pass the output of `platformRendered`
+ * as `rendered` so what is shown matches what the adapter will actually send.
+ */
 export function TelegramPreview({
   rendered,
   title,
   placeholders = 0,
   compact = false,
+  provider = 'TELEGRAM',
 }: {
   rendered: Rendered | null | undefined;
   title?: string;
   placeholders?: number;
   compact?: boolean;
+  provider?: Provider;
 }) {
+  const theme = PREVIEW_THEME[provider] || PREVIEW_THEME.TELEGRAM;
   const photos = rendered?.photoUrls || [];
   const mediaMode = rendered?.mediaMode || (photos.length > 1 ? 'album' : photos.length === 1 ? 'single' : 'text');
   const slots = photos.length ? photos : Array.from({ length: mediaMode === 'text' ? 0 : placeholders }).map(() => '');
@@ -481,16 +656,16 @@ export function TelegramPreview({
   const buttons = rendered?.buttons || [];
   const buttonsShown = buttons.length > 0 && mediaMode !== 'album';
   return (
-    <div className="rounded-3xl bg-[#0e1621] p-4 text-white" dir="rtl">
+    <div className={`rounded-3xl ${theme.shell} p-4 text-white`} dir="rtl">
       <div className="flex items-center justify-between text-[11px] text-white/60 mb-3">
-        <span>{title || 'پیش‌نمایش تلگرام'}</span>
+        <span>{title || `پیش‌نمایش ${theme.name}`}</span>
         <span className="flex gap-2">
           {rendered?.silent && <span title="بی‌صدا">🔕</span>}
           {rendered?.protectContent && <span title="ضد فوروارد">🔒</span>}
           {photos.length > 0 && <span>{faNumber(photos.length)} عکس</span>}
         </span>
       </div>
-      <div className={`mx-auto max-w-[22rem] rounded-2xl bg-[#182533] overflow-hidden shadow ${compact ? '' : 'min-h-[18rem]'}`}>
+      <div className={`mx-auto max-w-[22rem] rounded-2xl ${theme.bubble} overflow-hidden shadow ${compact ? '' : 'min-h-[18rem]'}`}>
         {rendered?.captionAbove && text && (
           <div className="px-3 pt-3 text-[13px] leading-6 whitespace-pre-wrap">{renderTelegramText(text, rendered.parseMode)}</div>
         )}
@@ -520,13 +695,13 @@ export function TelegramPreview({
         {buttonsShown && (
           <div className="flex flex-col gap-0.5 px-0.5 pb-0.5">
             {buttons.map((button) => (
-              <span key={`${button.label}-${button.url}`} className="block rounded-lg bg-white/10 py-2 text-center text-[13px] text-sky-300">{button.label}</span>
+              <span key={`${button.label}-${button.url}`} className={`block rounded-lg bg-white/10 py-2 text-center text-[13px] ${theme.link}`}>{button.label}</span>
             ))}
           </div>
         )}
       </div>
       {buttons.length > 0 && !buttonsShown && (
-        <p className="mt-2 text-center text-[11px] text-amber-300/90">تلگرام زیر آلبوم دکمه نمایش نمی‌دهد؛ برای دکمه، حالت «یک عکس» یا «فقط متن» را انتخاب کنید.</p>
+        <p className="mt-2 text-center text-[11px] text-amber-300/90">{theme.name} زیر آلبوم دکمه نمایش نمی‌دهد؛ برای دکمه، حالت «یک عکس» یا «فقط متن» را انتخاب کنید.</p>
       )}
     </div>
   );

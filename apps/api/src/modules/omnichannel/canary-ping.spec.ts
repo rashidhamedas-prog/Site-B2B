@@ -45,7 +45,9 @@ assert(svc.includes('imageCandidates'), 'product photos come from gallery candid
 assert(svc.includes('markPublicationDelivered'), 'successful canary delivery can mark PUBLISHED');
 assert(admin.includes('dryRun: true'), 'draft button stays dry-run');
 assert(admin.includes('dryRun: false'), 'admin can enqueue one live canary product');
-assert(svc.includes('selectCanaryTelegramDestinations'), 'ping still constrained by canary helper');
+assert(svc.includes('selectCanaryDestinations(dests, [row], row.channel, row.provider)'), 'ping still constrained by canary helper (per provider)');
+assert(svc.includes('testPostDestination') && ctl.includes('test-post'), 'destination test post exists (Rubika permission proof)');
+assert(svc.includes('discoverChats') && ctl.includes('discover-chats'), 'chat-id discovery route exists');
 assert(ctl.includes('canary-ping'), 'admin route exists');
 assert(admin.includes('canary-ping'), 'admin console exposes the ping');
 assert(admin.includes('هنوز انتشاری ثبت نشده') && admin.includes('رویدادی در صف نیست'), 'empty states kept');

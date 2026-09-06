@@ -16,15 +16,16 @@ import { PublicationEntity } from '../entities/publication.entity';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
 import { OmnichannelAuditEntity } from '../entities/omnichannel-audit.entity';
 import { OmnichannelMediaAssetEntity } from '../entities/omnichannel-media-asset.entity';
-import { TelegramAdapter } from '../adapters/telegram.adapter';
-import { BaleAdapter } from '../adapters/bale.adapter';
-import { RubikaAdapter } from '../adapters/rubika.adapter';
+import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { ConnectorDisabledError } from '../adapters/channel-adapter';
 import {
   areOmnichannelConnectorsEnabled,
   isOmnichannelAutoPublishEnabled,
+  isOmnichannelProvider,
+  isOmnichannelProviderEnabled,
   OUTBOX_EVENT_TYPES,
 } from '../omnichannel.constants';
+import { capabilitiesFor } from '../provider-capabilities';
 import { OutboxService } from './outbox.service';
 import { applyReconcileIntents, reconcilePublicationIntents } from './reconcile';
 import { applyOosLocalAction, nextPublicationAction, syncChannelsForEvent } from './publication-sync';
@@ -46,10 +47,12 @@ import {
   readAutoPublishEventTypes,
   readChannelOos,
   resolveOosDecision,
+  canaryDestinationIdsByProvider,
   sanitizeDestinationSettings,
   sanitizeDestinationVerification,
-  selectCanaryTelegramDestinations,
+  selectCanaryDestinations,
   withDestinationVerification,
+  withTestPostProof,
   type DestinationVerification,
 } from '../oos-policy';
 import {
@@ -91,6 +94,13 @@ import { isMissingRelationError } from '../media-registry';
 
 type Actor = { id: string };
 
+/**
+ * One master layout per sales channel feeds every platform; the adapters convert the canonical
+ * HTML to Bale Markdown / Rubika metadata. The row keeps `provider = TELEGRAM` as its storage key
+ * because that is where the layouts were born; per-provider overrides are a later phase.
+ */
+export const MASTER_TEMPLATE_PROVIDER = 'TELEGRAM';
+
 @Injectable()
 export class OmnichannelService {
   constructor(
@@ -117,15 +127,19 @@ export class OmnichannelService {
     @InjectRepository(AppSettingEntity)
     private readonly appSettings: Repository<AppSettingEntity>,
     private readonly projection: ChannelProjectionService,
-    private readonly telegram: TelegramAdapter,
-    private readonly bale: BaleAdapter,
-    private readonly rubika: RubikaAdapter,
+    private readonly adapters: ChannelAdapterRegistry,
     private readonly outbox: OutboxService,
   ) {}
 
   private requireActor(actor?: Actor) {
     if (!actor?.id) throw new ForbiddenException('دسترسی غیرمجاز');
     return actor;
+  }
+
+  /** Adapter for a stored connection, or ConnectorDisabledError when its provider is switched off. */
+  private liveAdapter(provider: string) {
+    if (!isOmnichannelProviderEnabled(provider)) throw new ConnectorDisabledError(provider);
+    return this.adapters.for(provider);
   }
 
   private async audit(actor: Actor, action: string, entityType: string, entityId: string, channel: string | null, reason?: string | null, payload: Record<string, unknown> = {}) {
@@ -187,7 +201,7 @@ export class OmnichannelService {
     if (exists) throw new ConflictException('مقصد تکراری است');
     const settings = sanitizeDestinationSettings(dto.settings);
     if (settings.isCanary === true) {
-      await this.assertUniqueTelegramCanary(connection.provider, connection.channel);
+      await this.assertUniqueCanary(connection.provider, connection.channel);
     }
     const saved = await this.destinations.save(
       this.destinations.create({
@@ -211,10 +225,7 @@ export class OmnichannelService {
     if (dto.enabled !== undefined) row.enabled = dto.enabled;
     if (dto.isCanary !== undefined) {
       if (dto.isCanary === true) {
-        if (connection.provider !== 'TELEGRAM') {
-          throw new BadRequestException('canary فقط برای تلگرام است');
-        }
-        await this.assertUniqueTelegramCanary(connection.provider, connection.channel, row.id);
+        await this.assertUniqueCanary(connection.provider, connection.channel, row.id);
       }
       row.settings = mergeDestinationSettings(row.settings, dto.isCanary);
     }
@@ -222,8 +233,9 @@ export class OmnichannelService {
   }
 
   /**
-   * Asks Telegram who the bot is inside this chat (getChat/getChatMember) and stores a sanitized
-   * snapshot on the destination. LIVE automation only targets destinations that passed this.
+   * Asks the provider who the bot is inside this chat (getChat + getChatMember where the API has
+   * it) and stores a sanitized snapshot on the destination. LIVE automation only targets
+   * destinations that passed this — or, for providers without a member API (Rubika), a test post.
    */
   async verifyDestination(id: string, actor?: Actor) {
     const who = this.requireActor(actor);
@@ -231,11 +243,8 @@ export class OmnichannelService {
     if (!row) throw new NotFoundException('مقصد یافت نشد');
     const connection = await this.connections.findOne({ where: { id: row.connectionId } });
     if (!connection) throw new NotFoundException('اتصال یافت نشد');
-    if (connection.provider !== 'TELEGRAM') {
-      throw new BadRequestException('بررسی مقصد فقط برای تلگرام است');
-    }
-    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(connection.provider);
-    const inspection = await this.telegram.inspectDestination(connection.secretRef, row.destinationKey);
+    const adapter = this.liveAdapter(connection.provider);
+    const inspection = await adapter.inspectDestination(connection.secretRef, row.destinationKey);
     const verification = sanitizeDestinationVerification({
       checkedAt: new Date().toISOString(),
       ...inspection,
@@ -243,13 +252,81 @@ export class OmnichannelService {
     row.settings = withDestinationVerification(row.settings, verification);
     const saved = await this.destinations.save(row);
     await this.audit(who, 'verify_destination', 'DESTINATION', row.id, connection.channel, null, {
+      provider: connection.provider,
       ok: verification.ok,
       error: verification.error || null,
       chatType: verification.chatType || null,
       botIsAdmin: verification.botIsAdmin ?? null,
       canPost: verification.canPost ?? null,
+      permissionCheck: verification.permissionCheck || null,
     });
-    return { ...toPublicDestination(saved), botUsername: inspection.botUsername || null };
+    return {
+      ...toPublicDestination(saved),
+      botUsername: inspection.botUsername || null,
+      needsTestPost: verification.ok && verification.canPost !== true && verification.permissionCheck === 'test_post',
+    };
+  }
+
+  /**
+   * Sends one Persian test line to this destination through the official API and, when it lands,
+   * records the proof on the destination (canPost=true, permissionCheck=test_post). This is the
+   * only way to prove posting rights on Rubika; on Telegram/Bale it is a visible sanity check.
+   */
+  async testPostDestination(id: string, actor?: Actor, reason?: string) {
+    const who = this.requireActor(actor);
+    const row = await this.destinations.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('مقصد یافت نشد');
+    const connection = await this.connections.findOne({ where: { id: row.connectionId } });
+    if (!connection) throw new NotFoundException('اتصال یافت نشد');
+    if (connection.status !== 'ACTIVE') throw new BadRequestException('ابتدا اتصال را روشن کنید');
+    if (!row.enabled) throw new BadRequestException('این مقصد غیرفعال است');
+    const adapter = this.liveAdapter(connection.provider);
+    const label = capabilitiesFor(connection.provider).label;
+    let sent: { providerMessageId: string };
+    try {
+      sent = await adapter.create({
+        secretRef: connection.secretRef,
+        destinationKey: row.destinationKey,
+        chatId: row.destinationKey,
+        channel: connection.channel,
+        text: `${CANARY_PING_TEXT}\n(${label} · ${row.displayName || row.destinationKey})`,
+      });
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'provider_unavailable';
+      await this.audit(who, 'test_post', 'DESTINATION', row.id, connection.channel, reason || null, {
+        provider: connection.provider,
+        ok: false,
+        error: redactProviderError(code).slice(0, 60),
+      });
+      throw new BadRequestException(`ارسال آزمایشی ناموفق بود: ${redactProviderError(code).slice(0, 80)}`);
+    }
+    row.settings = withTestPostProof(row.settings);
+    const saved = await this.destinations.save(row);
+    await this.audit(who, 'test_post', 'DESTINATION', row.id, connection.channel, reason || null, {
+      provider: connection.provider,
+      ok: true,
+      providerMessageId: sent.providerMessageId,
+    });
+    return { ok: true, providerMessageId: sent.providerMessageId, destination: toPublicDestination(saved) };
+  }
+
+  /**
+   * Lists chats the bot has recently seen (getUpdates, nothing acknowledged) so the admin can copy
+   * an opaque id — Rubika's `c0…` ids and private Telegram/Bale channel ids are otherwise hard to find.
+   */
+  async discoverChats(connectionId: string, actor?: Actor) {
+    const who = this.requireActor(actor);
+    const row = await this.connections.findOne({ where: { id: connectionId } });
+    if (!row) throw new NotFoundException('اتصال یافت نشد');
+    const adapter = this.liveAdapter(row.provider);
+    const result = await adapter.discoverChats(row.secretRef);
+    await this.audit(who, 'discover_chats', 'CONNECTION', row.id, row.channel, null, {
+      provider: row.provider,
+      ok: result.ok,
+      error: result.error || null,
+      count: result.chats.length,
+    });
+    return { ok: result.ok, error: result.error || null, provider: row.provider, chats: result.chats.slice(0, 50) };
   }
 
   async getSettings() {
@@ -305,14 +382,14 @@ export class OmnichannelService {
     const upgraded: string[] = [];
     for (const channel of ['RETAIL', 'WHOLESALE'] as const) {
       const rows = await this.templates.find({
-        where: { provider: 'TELEGRAM', channel, eventType: 'product.published' },
+        where: { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType: 'product.published' },
         order: { version: 'DESC' },
       });
       const latest = rows[0];
       const body = stringifyTemplateLayout(defaultLayoutFor(channel));
       if (!latest) {
         await this.templates.save(this.templates.create({
-          provider: 'TELEGRAM',
+          provider: MASTER_TEMPLATE_PROVIDER,
           channel,
           eventType: 'product.published',
           locale: 'fa',
@@ -533,7 +610,7 @@ export class OmnichannelService {
       const dest = dests.find((row) => row.id === destinationId);
       if (!dest) throw new NotFoundException('مقصد یافت نشد یا غیرفعال است');
       const conn = conns.find((row) => row.id === dest.connectionId);
-      if (!conn || conn.provider !== 'TELEGRAM' || conn.channel !== channel) {
+      if (!conn || !isOmnichannelProvider(conn.provider) || conn.channel !== channel) {
         throw new BadRequestException('این مقصد به کانال فروش انتخاب‌شده تعلق ندارد');
       }
       if (conn.status !== 'ACTIVE') throw new BadRequestException('ابتدا اتصال را روشن کنید');
@@ -589,41 +666,39 @@ export class OmnichannelService {
     const who = this.requireActor(actor);
     const row = await this.connections.findOne({ where: { id } });
     if (!row) throw new NotFoundException('اتصال یافت نشد');
-    if (row.provider === 'BALE') await this.bale.validateConnection();
-    if (row.provider === 'RUBIKA') await this.rubika.validateConnection();
-    if (!areOmnichannelConnectorsEnabled() || row.provider !== 'TELEGRAM') {
-      throw new ConnectorDisabledError(row.provider);
-    }
-    const result = await this.telegram.validateConnection(row.secretRef);
-    await this.audit(who, 'test_connection', 'CONNECTION', row.id, row.channel, null, { ok: result.ok, error: result.error || null });
+    const adapter = this.liveAdapter(row.provider);
+    const result = await adapter.validateConnection(row.secretRef);
+    await this.audit(who, 'test_connection', 'CONNECTION', row.id, row.channel, null, {
+      provider: row.provider,
+      ok: result.ok,
+      error: result.error || null,
+    });
     return result;
   }
 
+  /** Canary ping: one Persian line to this connection's canary destination via its official API. */
   async pingCanary(id: string, actor?: Actor, reason?: string) {
     const who = this.requireActor(actor);
     const row = await this.connections.findOne({ where: { id } });
     if (!row) throw new NotFoundException('اتصال یافت نشد');
-    if (row.provider !== 'TELEGRAM') {
-      throw new BadRequestException('پیام آزمایشی فقط برای تلگرام است');
-    }
     if (row.status !== 'ACTIVE') {
       throw new BadRequestException('ابتدا اتصال را روشن کنید');
     }
-    if (!areOmnichannelConnectorsEnabled()) {
-      throw new ConnectorDisabledError(row.provider);
-    }
+    const adapter = this.liveAdapter(row.provider);
     const dests = await this.destinations.find({ where: { connectionId: row.id, enabled: true } });
-    const dest = selectCanaryTelegramDestinations(dests, [row], row.channel)[0];
+    const dest = selectCanaryDestinations(dests, [row], row.channel, row.provider)[0];
     if (!dest) {
       throw new BadRequestException('برای این اتصال مقصد canary انتخاب نشده');
     }
-    const sent = await this.telegram.create({
+    const sent = await adapter.create({
       secretRef: row.secretRef,
       destinationKey: dest.destinationKey,
       chatId: dest.destinationKey,
+      channel: row.channel,
       text: CANARY_PING_TEXT,
     });
     await this.audit(who, 'canary_ping', 'CONNECTION', row.id, row.channel, reason || null, {
+      provider: row.provider,
       destinationId: dest.id,
       providerMessageId: sent.providerMessageId,
     });
@@ -1011,7 +1086,7 @@ export class OmnichannelService {
     const channel = projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
     if (eventType === 'product.published') await this.ensureProductTemplates();
     const rows = await this.templates.find({
-      where: { provider: 'TELEGRAM', channel, eventType, enabled: true },
+      where: { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType, enabled: true },
       order: { version: 'DESC' },
       take: 1,
     });
@@ -1140,8 +1215,8 @@ export class OmnichannelService {
     if (!any) {
       throw new BadRequestException(
         mode === 'CANARY'
-          ? 'برای حالت آزمایشی، یک مقصد canary روی اتصال فعال تلگرام لازم است'
-          : 'برای حالت زنده، دست‌کم یک مقصد فعال و بررسی‌شده (ربات ادمین با اجازه ارسال) لازم است',
+          ? 'برای حالت آزمایشی، یک مقصد canary روی یک اتصال فعال (تلگرام، بله یا روبیکا) لازم است'
+          : 'برای حالت زنده، دست‌کم یک مقصد فعال و بررسی‌شده (ربات ادمین با اجازه ارسال، یا ارسال آزمایشی موفق) لازم است',
       );
     }
   }
@@ -1156,6 +1231,7 @@ export class OmnichannelService {
     }
   }
 
+  /** Legacy `retail`/`wholesale` keep the Telegram canary; `byProvider` carries every platform. */
   private async canaryDestinationIds() {
     try {
       const dests = await this.destinations.find();
@@ -1163,6 +1239,10 @@ export class OmnichannelService {
       return {
         retail: findCanaryDestinationId(dests, conns, 'RETAIL'),
         wholesale: findCanaryDestinationId(dests, conns, 'WHOLESALE'),
+        byProvider: {
+          RETAIL: canaryDestinationIdsByProvider(dests, conns, 'RETAIL'),
+          WHOLESALE: canaryDestinationIdsByProvider(dests, conns, 'WHOLESALE'),
+        },
       };
     } catch (err) {
       if (isMissingRelationError(err)) return { retail: null, wholesale: null };
@@ -1170,15 +1250,16 @@ export class OmnichannelService {
     }
   }
 
-  private async assertUniqueTelegramCanary(provider: string, channel: string, exceptId?: string) {
-    if (provider !== 'TELEGRAM') {
-      throw new BadRequestException('canary فقط برای تلگرام است');
+  /** One canary per (provider, sales channel); a second one is a conflict, not a silent replace. */
+  private async assertUniqueCanary(provider: string, channel: string, exceptId?: string) {
+    if (!isOmnichannelProvider(provider)) {
+      throw new BadRequestException('پلتفرم این اتصال پشتیبانی نمی‌شود');
     }
     const dests = await this.destinations.find();
     const conns = await this.connections.find();
-    const current = findCanaryDestinationId(dests, conns, channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+    const current = findCanaryDestinationId(dests, conns, channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL', provider);
     if (current && current !== exceptId) {
-      throw new ConflictException('برای این کانال تلگرام قبلاً مقصد canary ثبت شده');
+      throw new ConflictException(`برای این کانال ${capabilitiesFor(provider).label} قبلاً مقصد canary ثبت شده`);
     }
   }
 

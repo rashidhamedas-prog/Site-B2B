@@ -12,14 +12,17 @@ import {
   DEFAULT_OUTBOX_RETENTION_DAYS,
   DEFAULT_RETRY_SLA_SECONDS,
   DEFAULT_WITHDRAW_ACTION,
+  OMNICHANNEL_PROVIDERS,
   OOS_POLICIES,
   OUTBOX_RETENTION_MAX_DAYS,
   OUTBOX_RETENTION_MIN_DAYS,
   RETRY_SLA_MAX_SECONDS,
   RETRY_SLA_MIN_SECONDS,
   WITHDRAW_ACTIONS,
+  isOmnichannelProvider,
   type AutoPublishEventType,
   type AutoPublishMode,
+  type OmnichannelProvider,
   type OosPolicy,
   type WithdrawAction,
 } from './omnichannel.constants';
@@ -64,6 +67,10 @@ export type DestinationVerification = {
   canPost?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  /** How posting rights were established: getChatMember-style API or a successful test post. */
+  permissionCheck?: 'api' | 'test_post' | 'unavailable';
+  /** ISO time of the last successful admin test post to this destination. */
+  testPostAt?: string;
 };
 
 export type OosDecision = {
@@ -415,9 +422,16 @@ export function mergeOmnichannelSettingsPatch(
   return parseStoredOmnichannelSettings(next);
 }
 
+export type CanaryIdsByChannel = Record<'RETAIL' | 'WHOLESALE', Record<OmnichannelProvider, string | null>>;
+
+export function emptyCanaryIdsByChannel(): CanaryIdsByChannel {
+  const empty = () => Object.fromEntries(OMNICHANNEL_PROVIDERS.map((p) => [p, null])) as Record<OmnichannelProvider, string | null>;
+  return { RETAIL: empty(), WHOLESALE: empty() };
+}
+
 export function publicOmnichannelSettings(
   stored: StoredOmnichannelSettings,
-  canaries: { retail: string | null; wholesale: string | null },
+  canaries: { retail: string | null; wholesale: string | null; byProvider?: CanaryIdsByChannel },
 ) {
   const retail = readChannelOos(stored, 'RETAIL');
   const wholesale = readChannelOos(stored, 'WHOLESALE');
@@ -432,6 +446,7 @@ export function publicOmnichannelSettings(
     wholesaleOosChosen: wholesale.chosen,
     retailCanaryDestinationId: canaries.retail,
     wholesaleCanaryDestinationId: canaries.wholesale,
+    canaryDestinationIds: canaries.byProvider || emptyCanaryIdsByChannel(),
     autoPublishEventTypes: events.events,
     autoPublishEventTypesChosen: events.chosen,
     retrySlaSeconds: retry.seconds,
@@ -524,7 +539,32 @@ export function sanitizeDestinationVerification(input: unknown): DestinationVeri
   for (const key of ['botIsAdmin', 'canPost', 'canEdit', 'canDelete'] as const) {
     if (typeof raw[key] === 'boolean') out[key] = raw[key] as boolean;
   }
+  if (raw.permissionCheck === 'api' || raw.permissionCheck === 'test_post' || raw.permissionCheck === 'unavailable') {
+    out.permissionCheck = raw.permissionCheck;
+  }
+  if (typeof raw.testPostAt === 'string' && !Number.isNaN(Date.parse(raw.testPostAt))) {
+    out.testPostAt = new Date(raw.testPostAt).toISOString();
+  }
   return out;
+}
+
+/**
+ * A successful admin test post proves the bot can publish where getChatMember does not exist
+ * (Rubika). Keeps the getChat snapshot and flips canPost; edit/delete stay unknown until tried.
+ */
+export function withTestPostProof(
+  settings: Record<string, unknown> | null | undefined,
+  at: Date = new Date(),
+): Record<string, unknown> {
+  const current = readDestinationVerification(settings) || { checkedAt: at.toISOString(), ok: true };
+  return withDestinationVerification(settings, {
+    ...current,
+    ok: true,
+    error: undefined,
+    canPost: true,
+    permissionCheck: current.permissionCheck === 'api' ? 'api' : 'test_post',
+    testPostAt: at.toISOString(),
+  });
 }
 
 export function readDestinationVerification(
@@ -550,32 +590,54 @@ export function destinationCanPost(settings: Record<string, unknown> | null | un
   return verified.canPost === true;
 }
 
-export function selectCanaryTelegramDestinations<
+/**
+ * Enabled canary destinations on ACTIVE connections for one sales channel. Any official provider
+ * qualifies (Telegram, Bale, Rubika); pass `provider` to restrict to one bot platform.
+ */
+export function selectCanaryDestinations<
   D extends { id: string; connectionId: string; enabled: boolean; settings?: Record<string, unknown> | null },
   C extends { id: string; provider: string; channel: string; status: string },
->(dests: D[], conns: C[], channel: string): D[] {
+>(dests: D[], conns: C[], channel: string, provider?: string): D[] {
   const byId = new Map(conns.map((row) => [row.id, row]));
   return dests.filter((dest) => {
     if (!dest.enabled || !isCanarySettings(dest.settings)) return false;
     const conn = byId.get(dest.connectionId);
     return !!conn
-      && conn.provider === 'TELEGRAM'
+      && isOmnichannelProvider(conn.provider)
+      && (!provider || conn.provider === provider)
       && conn.channel === channel
       && conn.status === 'ACTIVE';
   });
 }
 
+/** @deprecated name kept for phase specs; same as selectCanaryDestinations(…, 'TELEGRAM'). */
+export const selectCanaryTelegramDestinations = <
+  D extends { id: string; connectionId: string; enabled: boolean; settings?: Record<string, unknown> | null },
+  C extends { id: string; provider: string; channel: string; status: string },
+>(dests: D[], conns: C[], channel: string): D[] => selectCanaryDestinations(dests, conns, channel, 'TELEGRAM');
+
+/** One canary per (provider, sales channel). Default provider keeps the legacy Telegram lookup. */
 export function findCanaryDestinationId<
   D extends { id: string; connectionId: string; settings?: Record<string, unknown> | null },
   C extends { id: string; provider: string; channel: string },
->(dests: D[], conns: C[], channel: 'RETAIL' | 'WHOLESALE'): string | null {
+>(dests: D[], conns: C[], channel: 'RETAIL' | 'WHOLESALE', provider = 'TELEGRAM'): string | null {
   const byId = new Map(conns.map((row) => [row.id, row]));
   const match = dests.find((dest) => {
     if (!isCanarySettings(dest.settings)) return false;
     const conn = byId.get(dest.connectionId);
-    return !!conn && conn.provider === 'TELEGRAM' && conn.channel === channel;
+    return !!conn && conn.provider === provider && conn.channel === channel;
   });
   return match?.id ?? null;
+}
+
+/** Canary destination ids per provider for one sales channel: `{ TELEGRAM: id|null, BALE: …, RUBIKA: … }`. */
+export function canaryDestinationIdsByProvider<
+  D extends { id: string; connectionId: string; settings?: Record<string, unknown> | null },
+  C extends { id: string; provider: string; channel: string },
+>(dests: D[], conns: C[], channel: 'RETAIL' | 'WHOLESALE'): Record<OmnichannelProvider, string | null> {
+  const out = {} as Record<OmnichannelProvider, string | null>;
+  for (const provider of OMNICHANNEL_PROVIDERS) out[provider] = findCanaryDestinationId(dests, conns, channel, provider);
+  return out;
 }
 
 export function assertAllowedSecretRefName(name: string): void {

@@ -13,7 +13,7 @@ import { OutboxEventEntity } from '../entities/outbox-event.entity';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel.constants';
 import { DeliveryDeferredError, shouldSkipPublicationDeliver } from './publication-deliver';
 import { OutboxService } from './outbox.service';
-import { TelegramAdapter } from '../adapters/telegram.adapter';
+import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
@@ -51,7 +51,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly destinations: Repository<ChannelDestinationEntity>,
     @InjectRepository(ChannelConnectionEntity)
     private readonly connections: Repository<ChannelConnectionEntity>,
-    private readonly telegram: TelegramAdapter,
+    private readonly adapters: ChannelAdapterRegistry,
     private readonly omnichannel: OmnichannelService,
   ) {}
 
@@ -265,7 +265,8 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     const dest = await this.destinations.findOne({ where: { id: destinationId } });
     if (!dest) return;
     const conn = await this.connections.findOne({ where: { id: dest.connectionId } });
-    if (!conn || conn.provider !== 'TELEGRAM') return;
+    if (!conn || !this.adapters.has(conn.provider)) return;
+    const adapter = this.adapters.for(conn.provider);
     const input = {
       secretRef: conn.secretRef,
       destinationKey: dest.destinationKey,
@@ -284,16 +285,16 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     let providerMessageId: string | undefined;
     if (action === 'UPDATE') {
       try {
-        providerMessageId = (await this.telegram.update(input)).providerMessageId;
+        providerMessageId = (await adapter.update(input)).providerMessageId;
       } catch (err: unknown) {
-        // Telegram rejects identical edits with "message is not modified"; that is a successful no-op.
+        // Telegram/Bale reject identical edits with "message is not modified"; that is a successful no-op.
         if (!(err instanceof Error && err.message === 'duplicate')) throw err;
         providerMessageId = input.providerMessageId || undefined;
       }
     } else if (action === 'DELETE') {
-      await this.telegram.delete(input);
+      await adapter.delete(input);
     } else {
-      providerMessageId = (await this.telegram.create(input)).providerMessageId;
+      providerMessageId = (await adapter.create(input)).providerMessageId;
     }
     const row = await this.findDelivery(payload, eventId);
     if (!row) return;

@@ -1,5 +1,15 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-06 — بله و روبیکا در کنسول انتشار (سه پیام‌رسان، یک قالب)
+
+- مستندات رسمی خوانده شد: `docs.bale.ai` (Bot API بله؛ هم‌خانوادهٔ تلگرام ولی Markdown اجباری، بدون parse_mode، آلبوم بدون دکمه، حذف تا ۴۸ ساعت، `getChatMembersCount`) و `rubika.ir/botapi` (v3؛ متادیتا با آفست UTF-16، آپلود دومرحله‌ای `requestSendFile→sendFile`، بدون آلبوم، بدون `getChatMember`، شناسهٔ کانال `c0…`).
+- آداپترهای `BaleAdapter` و `RubikaAdapter` از stub به پیاده‌سازی کامل رسیدند؛ `ChannelAdapterRegistry` جای انتخاب دستی تلگرام را در سرویس و ورکر گرفت. `rich-text.ts` HTML محدود قالب را به Markdown بله / متادیتای روبیکا تبدیل می‌کند؛ قالب همان قالب اصلی (`provider=TELEGRAM`) می‌ماند.
+- ماتریس قابلیت هر پیام‌رسان (`provider-capabilities.ts`) از `GET /omnichannel/status`.`providers` به UI می‌رسد: enabled / tokenConfigured (بولی، بدون مقدار توکن) + محدودیت‌ها. کلید `OMNICHANNEL_DISABLED_PROVIDERS` هر پیام‌رسان را جدا خاموش می‌کند.
+- API جدید: `POST /connections/:id/discover-chats` (شناسه‌های اخیر از `getUpdates`، بدون ack) و `POST /destinations/:id/test-post` (اثبات اجازهٔ ارسال برای روبیکا؛ `permissionCheck=test_post`، `testPostAt`). canary به‌ازای هر پیام‌رسان.
+- کنسول ادمین: کارت انتخاب پیام‌رسان با وضعیت (فعال / خاموش / توکن هست / راه‌اندازی نشده)، اعتبارسنجی پیشوند `secretRef`، «پیدا کردن شناسه» با دکمهٔ «استفاده»، نشان «نیاز به پست آزمایشی» + دکمه، پیش‌نمایش با تم تلگرام/بله/روبیکا و فهرست تفاوت‌های همان قالب در هر پیام‌رسان، برچسب پیام‌رسان روی اتصال/مقصد/ارسال.
+- گزارش معماری: `docs/reports/2026-09-06-omnichannel-bale-rubika.md`. اسپک‌های جدید: `rich-text`، `bale.adapter`، `rubika.adapter`، `provider-capabilities`؛ ۲۰ اسپک omnichannel و `tsc` api/web سبز.
+- باقی برای مالک: ساخت ربات در بله/روبیکا و گذاشتن `BALE_BOT_TOKEN` / `RUBIKA_BOT_TOKEN` روی سرور؛ تا آن موقع کارت‌ها «راه‌اندازی نشده» نشان می‌دهند.
+
 ## 2026-09-06 — کنسول انتشار v2: تنظیم یک‌باره، ارسال خودکار به کانال
 
 - کنسول ادمین به ۵ مرحلهٔ راهنما تبدیل شد (ربات → کانال‌ها → قالب پست → قواعد خودکار → تست و فعال‌سازی) + تب‌های انتشارها/عملیات؛ خودش روی اولین مرحلهٔ ناقص می‌ایستد.

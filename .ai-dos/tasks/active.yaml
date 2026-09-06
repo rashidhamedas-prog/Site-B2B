@@ -206,7 +206,7 @@ tasks:
     # moved 2026-09-06 10:05Z: main worktree was taken by TASK-20260906-001 (wip stashed as stash@{0}, re-applied here)
     worktree: "D:/proje/Site-B2B-omni-console"
     claimed_at: "2026-09-05T10:15:00Z"
-    heartbeat_at: "2026-09-06T10:05:00Z"
+    heartbeat_at: "2026-09-06T12:35:00Z"
     depends_on: ["TASK-20260905-002"]
     file_claims:
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"
@@ -234,6 +234,24 @@ tasks:
       - "apps/api/package.json"
       # transferred 2026-09-06 from TASK-20260826-001 (stale hb 2026-09-02); table-header assertion now per-table:
       - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
+      # reclaimed 2026-09-06 11:20Z from TASK-20260826-001 (stale hb 2026-09-02): owner ordered Bale + Rubika
+      # connectors from official docs (docs.bale.ai, rubika.ir/botapi); "do not invent" no longer applies.
+      - "apps/api/src/modules/omnichannel/adapters/channel-adapter.ts"
+      - "apps/api/src/modules/omnichannel/adapters/bale.adapter.ts"
+      - "apps/api/src/modules/omnichannel/adapters/rubika.adapter.ts"
+      - "apps/api/src/modules/omnichannel/adapters/connector-gate.spec.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel.module.ts"
+      - ".cursor/skills/omnichannel/SKILL.md"
+      - ".cursor/skills/omnichannel/references/phase-order.md"
+      # new 2026-09-06 (multi-provider):
+      - "apps/api/src/modules/omnichannel/adapters/adapter-registry.ts"
+      - "apps/api/src/modules/omnichannel/adapters/rich-text.ts"
+      - "apps/api/src/modules/omnichannel/adapters/rich-text.spec.ts"
+      - "apps/api/src/modules/omnichannel/adapters/bale.adapter.spec.ts"
+      - "apps/api/src/modules/omnichannel/adapters/rubika.adapter.spec.ts"
+      - "apps/api/src/modules/omnichannel/provider-capabilities.ts"
+      - "apps/api/src/modules/omnichannel/provider-capabilities.spec.ts"
+      - "docs/reports/2026-09-06-omnichannel-bale-rubika.md"
       - "docs/reports/2026-09-06-omnichannel-publishing-console-v2.md"
       - "docs/reports/2026-09-05-omnichannel-admin-console.md"
       - "docs/WORKLOG.md"
@@ -257,6 +275,15 @@ tasks:
       (OFF/CANARY/LIVE, default OFF) with daily cap, min gap, quiet
       hours, verified-channel requirement. Nothing posts until the
       owner flips the mode in admin. do not Done 20260826-001.
+      2026-09-06 11:20Z: owner ordered Bale + Rubika settings after
+      reading their official docs. Sources read: docs.bale.ai (tapi.bale.ai,
+      Markdown-only text, sendMediaGroup, reply_markup, getChatMember,
+      48h deleteMessage) and rubika.ir/botapi (botapi.rubika.ir/v3,
+      metadata UTF-16 parts, requestSendFile+multipart, sendFile, no album,
+      no getChatMember, string ids). Adapters implement only documented
+      methods; text is canonical HTML from the template and each adapter
+      converts (Bale *bold*, Rubika metadata/plain). One master template per
+      sales channel; provider-specific overrides deferred.
     acceptance_criteria:
       - "Canary ping text is Persian in source and has no ASCII ? replacement"
       - "POST /omnichannel/connections/:id/canary-ping sends only the canary dest via official API"
@@ -265,9 +292,12 @@ tasks:
       - "Product template can render channel-style caption + up to 10 allowlisted photos"
       - "Adapter uses official sendPhoto/sendMediaGroup/sendMessage only"
       - "Admin template tab is a block composer with live preview, not a raw-only textarea"
-      - "No plaintext token in UI; no Bale/Rubika/Instagram APIs; no catalog blast"
-      - "Destination verify uses official getChat/getChatMember and stores only a sanitized snapshot"
-      - "Template options (media mode, HTML bold, inline url buttons, silent, protect) render + send via official params"
+      - "No plaintext token in UI; no Instagram APIs; no catalog blast"
+      - "Bale uses official tapi.bale.ai methods only (getMe/getChat/getChatMember/sendPhoto/sendMediaGroup/sendMessage/edit/delete); Markdown with required spaces; 48h delete window"
+      - "Rubika uses official botapi.rubika.ir/v3 methods only (getMe/getChat/sendMessage+metadata/requestSendFile/sendFile/editMessageText/deleteMessage); no invented button URL field; test-post proves channel rights"
+      - "Admin setup has separate Bale/Rubika cards, secretRef prefix check, discover-chats, verify, and Rubika test-post"
+      - "Destination verify uses official getChat/getChatMember (or Rubika getChat + test-post) and stores only a sanitized snapshot"
+      - "Template options (media mode, HTML bold, inline url buttons, silent, protect) render + send via official params of each provider"
       - "autoPublishMode defaults OFF; CANARY/LIVE require chosen events, daily cap, min gap, quiet hours, verified live channel"
       - "Catalog events auto-deliver only through evaluateAutomationGate; UPDATE 'message is not modified' is idempotent success"
   - id: "TASK-20260905-002"
@@ -1396,9 +1426,10 @@ tasks:
       - ".cursor/agents/omnichannel-implementer.md"
       - ".cursor/agents/omnichannel-security.md"
       - ".cursor/agents/omnichannel-ops.md"
-      - ".cursor/skills/omnichannel/SKILL.md"
+      # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; Bale/Rubika now official, not invented):
+      # ".cursor/skills/omnichannel/SKILL.md"
       - ".cursor/skills/omnichannel/references/section-9-leftovers.md"
-      - ".cursor/skills/omnichannel/references/phase-order.md"
+      # ".cursor/skills/omnichannel/references/phase-order.md"
       - ".cursor/skills/omnichannel-next/SKILL.md"
       - ".cursor/commands/omnichannel.md"
       - "docs/reports/2026-09-03-omnichannel-s9-leftovers-settings-cms.md"
@@ -1419,7 +1450,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
       - "apps/api/src/app.module.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel.module.ts"
+      # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; adapter registry export):
+      # "apps/api/src/modules/omnichannel/omnichannel.module.ts"
       - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
@@ -1466,11 +1498,12 @@ tasks:
       - "apps/api/src/modules/omnichannel/entities/outbox-event.entity.ts"
       - "apps/api/src/modules/omnichannel/entities/publication.entity.ts"
       - "apps/api/src/modules/omnichannel/entities/publication-delivery.entity.ts"
-      - "apps/api/src/modules/omnichannel/adapters/channel-adapter.ts"
+      # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; official Bale/Rubika adapters):
+      # "apps/api/src/modules/omnichannel/adapters/channel-adapter.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; sendPhoto/sendMediaGroup):
       # "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/bale.adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/rubika.adapter.ts"
+      # "apps/api/src/modules/omnichannel/adapters/bale.adapter.ts"
+      # "apps/api/src/modules/omnichannel/adapters/rubika.adapter.ts"
       - "apps/api/src/database/migrations/20260826-001-omnichannel-schema.ts"
       - "apps/api/src/database/migrations/20260826-001-omnichannel-schema.spec.ts"
       - "docs/reports/2026-08-26-omnichannel-phase-1.md"
@@ -1481,8 +1514,10 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/reconcile.ts"
       - "apps/api/src/modules/omnichannel/services/reconcile.spec.ts"
       - "apps/api/src/modules/omnichannel/adapters/telegram-errors.ts"
-      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.spec.ts"
-      - "apps/api/src/modules/omnichannel/adapters/connector-gate.spec.ts"
+      # transferred 2026-09-05 to TASK-20260905-003 (already claimed there; duplicate line retired 2026-09-06):
+      # "apps/api/src/modules/omnichannel/adapters/telegram.adapter.spec.ts"
+      # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; gate now = connectors flag + token):
+      # "apps/api/src/modules/omnichannel/adapters/connector-gate.spec.ts"
       - "apps/api/src/modules/omnichannel/guards/omnichannel-admin.guard.ts"
       - "apps/api/src/modules/omnichannel/entities/omnichannel-audit.entity.ts"
       - "apps/api/src/modules/omnichannel/media-references.ts"

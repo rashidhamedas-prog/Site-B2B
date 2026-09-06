@@ -52,6 +52,7 @@ async function main() {
   assert(disabled, 'telegram gated when flag off');
 
   process.env.OMNICHANNEL_CONNECTORS_ENABLED = 'true';
+  process.env.OMNICHANNEL_DISABLED_PROVIDERS = 'BALE,RUBIKA';
   let baleDisabled = false;
   let rubikaDisabled = false;
   try {
@@ -64,7 +65,8 @@ async function main() {
   } catch (err) {
     rubikaDisabled = err instanceof ConnectorDisabledError;
   }
-  assert(baleDisabled && rubikaDisabled, 'bale/rubika stay disabled even with connectors flag');
+  assert(baleDisabled && rubikaDisabled, 'bale/rubika honour the per-provider kill switch');
+  delete process.env.OMNICHANNEL_DISABLED_PROVIDERS;
 
   const adapter = new TelegramAdapter();
   const calls: string[] = [];

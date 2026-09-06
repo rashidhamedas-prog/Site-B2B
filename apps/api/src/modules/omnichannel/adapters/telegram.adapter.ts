@@ -1,5 +1,10 @@
-import { ChannelAdapter, ConnectorDisabledError } from './channel-adapter';
-import { areOmnichannelConnectorsEnabled } from '../omnichannel.constants';
+import {
+  ChannelAdapter,
+  ConnectorDisabledError,
+  type DestinationInspection,
+  type DiscoveredChat,
+} from './channel-adapter';
+import { isOmnichannelProviderEnabled } from '../omnichannel.constants';
 import { isAllowedSecretRef } from '../omnichannel-secrets';
 import { classifyTelegramHttpError, classifyTelegramThrow, redactProviderError } from './telegram-errors';
 import {
@@ -11,11 +16,49 @@ import {
 
 export const TELEGRAM_API = 'https://api.telegram.org';
 
-export function resolveTelegramToken(secretRef: string): string | null {
+/** Env-name indirection shared by every provider: `${PROVIDER}_…` names only, value read at call time. */
+export function resolveProviderToken(provider: string, secretRef: string): string | null {
   const name = String(secretRef || '').trim();
-  if (!isAllowedSecretRef(name) || !name.startsWith('TELEGRAM_')) return null;
+  if (!isAllowedSecretRef(name) || !name.startsWith(`${provider}_`)) return null;
   const value = process.env[name];
   return value && String(value).trim() ? String(value).trim() : null;
+}
+
+export function resolveTelegramToken(secretRef: string): string | null {
+  return resolveProviderToken('TELEGRAM', secretRef);
+}
+
+export type UpdateLike = {
+  message?: { chat?: TelegramChat; forward_from_chat?: TelegramChat; sender_chat?: TelegramChat };
+  channel_post?: { chat?: TelegramChat };
+  my_chat_member?: { chat?: TelegramChat };
+};
+
+/** Pure: chats worth showing an admin, newest first, de-duplicated by id. Private user chats are skipped. */
+export function chatsFromUpdates(updates: UpdateLike[]): DiscoveredChat[] {
+  const out = new Map<string, DiscoveredChat>();
+  const add = (chat: TelegramChat | undefined, via: DiscoveredChat['via']) => {
+    if (!chat || chat.id == null) return;
+    const chatType = String(chat.type || '').toLowerCase();
+    if (chatType === 'private') return;
+    const chatId = String(chat.id);
+    if (out.has(chatId)) return;
+    out.set(chatId, {
+      chatId,
+      chatType,
+      title: String(chat.title || '').slice(0, 120) || undefined,
+      username: chat.username ? String(chat.username).slice(0, 64) : null,
+      via,
+    });
+  };
+  for (const update of [...updates].reverse()) {
+    add(update.channel_post?.chat, 'channel_post');
+    add(update.message?.forward_from_chat, 'forward');
+    add(update.message?.sender_chat, 'channel_post');
+    add(update.my_chat_member?.chat, 'member');
+    add(update.message?.chat, 'message');
+  }
+  return [...out.values()];
 }
 
 export type TelegramSendOptions = {
@@ -55,21 +98,9 @@ export function inlineKeyboard(buttons: TemplateButton[]): { inline_keyboard: Ar
   return { inline_keyboard: buttons.map((button) => [{ text: button.label, url: button.url }]) };
 }
 
-export type TelegramDestinationInspection = {
-  ok: boolean;
-  error?: string;
-  chatType?: string;
-  title?: string;
-  username?: string | null;
-  memberCount?: number | null;
-  botUsername?: string;
-  botIsAdmin?: boolean;
-  canPost?: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
-};
+export type TelegramDestinationInspection = DestinationInspection;
 
-type TelegramChat = { id?: number; type?: string; title?: string; username?: string; first_name?: string };
+type TelegramChat = { id?: number | string; type?: string; title?: string; username?: string; first_name?: string };
 type TelegramChatMember = {
   status?: string;
   can_post_messages?: boolean;
@@ -81,6 +112,31 @@ type TelegramChatMember = {
 export class TelegramAdapter implements ChannelAdapter {
   readonly provider = 'TELEGRAM';
   http: typeof fetch = globalThis.fetch.bind(globalThis);
+
+  protected assertEnabled() {
+    if (!isOmnichannelProviderEnabled(this.provider)) throw new ConnectorDisabledError(this.provider);
+  }
+
+  /**
+   * Recent updates (no offset → nothing is acknowledged) so the admin can copy a channel id the
+   * bot has already seen. Fails with `webhook_active` when getUpdates is blocked by a webhook.
+   */
+  async discoverChats(secretRef: string): Promise<{ ok: boolean; error?: string; chats: DiscoveredChat[] }> {
+    this.assertEnabled();
+    const token = resolveTelegramToken(secretRef);
+    if (!token) return { ok: false, error: 'invalid_credential', chats: [] };
+    try {
+      const updates = await this.telegramCall<UpdateLike[]>(token, 'getUpdates', {
+        limit: 100,
+        allowed_updates: ['message', 'channel_post', 'my_chat_member'],
+      });
+      return { ok: true, chats: chatsFromUpdates(Array.isArray(updates) ? updates : []) };
+    } catch (err: unknown) {
+      const code = classifyTelegramThrow(err);
+      const description = err && typeof err === 'object' ? String((err as { description?: string }).description || '') : '';
+      return { ok: false, error: /webhook/i.test(description) ? 'webhook_active' : code, chats: [] };
+    }
+  }
 
   private async telegramCall<T>(
     token: string,
@@ -110,7 +166,7 @@ export class TelegramAdapter implements ChannelAdapter {
    * private canary chats have no admin concept, so canPost is true when the chat resolves.
    */
   async inspectDestination(secretRef: string, chatId: string): Promise<TelegramDestinationInspection> {
-    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(this.provider);
+    this.assertEnabled();
     const token = resolveTelegramToken(secretRef);
     const target = String(chatId || '').trim();
     if (!token) return { ok: false, error: 'invalid_credential' };
@@ -126,6 +182,7 @@ export class TelegramAdapter implements ChannelAdapter {
         username: chat.username ? String(chat.username).slice(0, 64) : null,
         botUsername: me.username ? String(me.username).slice(0, 64) : undefined,
         memberCount: null,
+        permissionCheck: 'api',
       };
       if (chatType === 'private') {
         out.botIsAdmin = false;
@@ -167,7 +224,7 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   async validateConnection(secretRef: string): Promise<{ ok: boolean; error?: string }> {
-    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(this.provider);
+    this.assertEnabled();
     const token = resolveTelegramToken(secretRef);
     if (!token) return { ok: false, error: 'invalid_credential' };
     try {
@@ -179,7 +236,7 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   async preview(input: Record<string, unknown>): Promise<Record<string, unknown>> {
-    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(this.provider);
+    this.assertEnabled();
     const text = String(input.text || input.body || '');
     const photos = this.photosFrom(input);
     const method = photos.length >= 2 ? 'sendMediaGroup' : photos.length === 1 ? 'sendPhoto' : 'sendMessage';
@@ -187,7 +244,7 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   async create(input: Record<string, unknown>): Promise<{ providerMessageId: string }> {
-    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(this.provider);
+    this.assertEnabled();
     const token = resolveTelegramToken(String(input.secretRef || ''));
     const chatId = String(input.chatId || input.destinationKey || '');
     if (!token) throw new Error('invalid_credential');
@@ -259,7 +316,7 @@ export class TelegramAdapter implements ChannelAdapter {
    * nothing changed; callers treat that `duplicate` code as success.
    */
   async update(input: Record<string, unknown>): Promise<{ providerMessageId: string }> {
-    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(this.provider);
+    this.assertEnabled();
     const token = resolveTelegramToken(String(input.secretRef || ''));
     const chatId = String(input.chatId || input.destinationKey || '');
     const allIds = String(input.providerMessageId || '').split(',').map((id) => id.trim()).filter(Boolean);
@@ -287,7 +344,7 @@ export class TelegramAdapter implements ChannelAdapter {
 
   /** Already-deleted messages are a no-op so withdraw stays idempotent across retries. */
   async delete(input: Record<string, unknown>): Promise<void> {
-    if (!areOmnichannelConnectorsEnabled()) throw new ConnectorDisabledError(this.provider);
+    this.assertEnabled();
     const token = resolveTelegramToken(String(input.secretRef || ''));
     const chatId = String(input.chatId || input.destinationKey || '');
     if (!token) throw new Error('invalid_credential');

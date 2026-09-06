@@ -14,6 +14,7 @@ import { ChannelProjectionService } from './services/channel-projection.service'
 import { TelegramAdapter } from './adapters/telegram.adapter';
 import { BaleAdapter } from './adapters/bale.adapter';
 import { RubikaAdapter } from './adapters/rubika.adapter';
+import { ChannelAdapterRegistry } from './adapters/adapter-registry';
 import { ProductEntity } from '../product/entities/product.entity';
 import { CmsPageEntity } from '../cms/entities/cms-page.entity';
 import { BlogPostEntity } from '../blog/entities/blog-post.entity';
@@ -51,8 +52,9 @@ import { AppSettingEntity } from '../settings/entities/app-setting.entity';
     TelegramAdapter,
     BaleAdapter,
     RubikaAdapter,
+    ChannelAdapterRegistry,
     OmnichannelAdminGuard,
   ],
-  exports: [OmnichannelService, OutboxService, ChannelProjectionService, TelegramAdapter],
+  exports: [OmnichannelService, OutboxService, ChannelProjectionService, TelegramAdapter, ChannelAdapterRegistry],
 })
 export class OmnichannelModule {}
