@@ -2132,3 +2132,30 @@ Path C channel-split / void / retail-b2c columns intentionally **out of scope** 
 4. Verify: `/v1/health`, retail PDP, wholesale PDP, admin picker save.
 5. Independent Reviewer (API change).
 6. Release claims on success.
+
+## 2026-09-06T19:25:00Z — TASK-20260906-003 product internal-link SEO — DEPLOY VERIFIED
+
+- Task / owner / role: TASK-20260906-003 (renamed from 001 after ID collision with retail boutique-theme task on master) / cursor:implementer-TASK-20260906-003 / architect+implementer
+- Branch / worktree: `ai/TASK-20260906-001-product-internal-links` / `D:/proje/Site B2B`
+- Live SHA: `07d25ff` on master (rebased onto `4b77fc4` omnichannel publishing-console-v2 + `ba254e9` retail boutique-theme).
+
+### What landed on master
+- `b2245e1` feat(product): per-channel internal-link SEO (admin picker + PDP render) — rebased onto `ba254e9` (boutique) and pushed to master.
+- `48c0817`→`07d25ff` chore(governance): preserve TASK-20260906-002 load-test entry on master (renamed my task 001→003 to resolve the ID collision).
+
+### VPS verification (read-only)
+- Deploy: `bash scripts/auto-deploy.sh` → "deploy complete at b2245e1"; all containers Running/Healthy.
+- Migration: `ProductInternalLinks1757116800001` (id=33) ran — confirmed in `migrations` table.
+- Table `product_internal_link`: 0 rows (expected — no links added yet); 5 indexes present (`PK_product_internal_link_id`, `IDX_product_internal_link_product_channel`, `IDX_product_internal_link_inbound`, `UQ_product_internal_link_named_target`, `UQ_product_internal_link_custom`).
+- Storefront smoke: retail `/products` 200, wholesale `/products` 200.
+
+### Governance notes
+- Task ID renamed 001 → 003 because TASK-20260906-001 was already taken on master by the retail boutique-theme task (`ba254e9`). Branch name kept `ai/TASK-20260906-001-product-internal-links`.
+- The codex:load-test agent (TASK-20260906-002) had appended its entry to the shared `active.yaml` in this worktree during my rebase; per its "preserve other owners" note, I preserved it on master (commit `07d25ff`). It now sits between 001 and 003 in `active.yaml`.
+- Stashes: `stash@{0}` = redundant load-test 002 preservation copy (002 now on master — safe to drop); `stash@{1}` = TASK-20260905-003 wip (stashed by me before branching; that owner should pop it on their branch).
+- `internal-link-resolver.spec.ts` still NOT wired into `npm run test` (apps/api/package.json claimed by TASK-20260905-003). Spec is runnable standalone and passed (12 checks). Follow-up: append when that claim is released.
+
+### Exact next action
+1. Independent Reviewer (API change) — review the diff for channel leakage, validation, auth.
+2. Admin smoke: create/edit a product, add retail + wholesale internal links, save, verify PDP renders them.
+3. Release TASK-20260906-003 file claims after review.
