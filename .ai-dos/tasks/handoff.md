@@ -9,6 +9,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Dockerfile now uses `tsc` (not `nest build`), copies migration JS to both TypeORM candidate dirs, fails the image if the hero migration or backfill job is missing, sets `NODE_PATH`, copies `sharp`/`@img`, and fails the image unless `require('sharp')` loads with vips.
 - Stale review subagents that hit usage limits do not reopen the already-closed HIGH items from 17bf1d52; later reviewer/security were PASS WITH CONDITIONS. Image-pipeline specs printed `ok` (56949 wrapper exit was noisy); full API `npm test` (56950) succeeded.
 - Exact next: commit/push this Dockerfile, force VPS rebuild, confirm `require('sharp')`, confirm migration row `WholesaleHeroCacheBust1757151000004`, confirm hashed wholesale hero URLs, then staged backfill. Do not start Cloudflare/GSC until those pass.
+- 2026-09-06T12:55Z first rebuild of `a0bd856` failed: builder `tsc` could not resolve `typeof import('sharp')` because workspace `apps/api/node_modules` was not copied into the builder. Follow-up copies that tree before tsc. Live containers stayed on `9cadd9d`.
 
 ## 2026-09-06T12:45:00Z — TASK-20260903-004 review fixes before deploy
 

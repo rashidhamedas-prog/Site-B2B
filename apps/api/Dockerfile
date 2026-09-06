@@ -13,6 +13,7 @@ RUN npm ci --workspace=apps/api --workspace=packages/shared-types --workspace=pa
 # Build shared packages then API
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 COPY package.json turbo.json tsconfig.base.json ./
