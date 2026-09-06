@@ -1,6 +1,11 @@
-# Handoff Log
+﻿# Handoff Log
 
 Append newest entries at the top. Never erase another agent's record.
+
+## 2026-09-06T13:36:00Z — TASK-20260903-004 skip missing MinIO objects
+
+- Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` at `D:/proje/Site-B2B-gsc-speed`.
+- Inspect/getObject `Not Found` is now `skipped` (`source-missing`), not a fatal error. Spec ok. Next: push, rebuild API/workers only, dry-run, host-copy manifest, `--limit=1` apply, then rest. `.ir` is still DNS-only to `5.75.200.102`; no CF token on the VPS.
 
 ## 2026-09-06T13:35:00Z — TASK-20260905-003 three token cards LIVE
 
@@ -15,6 +20,14 @@ Append newest entries at the top. Never erase another agent's record.
 - Vault/API already live (`b8eefe0` on master). This pass is UX: `ProviderTokenVault` shows Telegram / Bale / Rubika write-only fields at once (no shared draft; custom secretRef collapsed). Crypto and PUT/DELETE `/omnichannel/secrets` unchanged.
 - Concepts compared: (A) one field after selecting a platform — easy to miss, draft leaked across messengers; (B, chosen) three persistent cards — matches «هر پلتفرم», one-time setup. No extra JS/images (landing TTFB/LCP unchanged).
 - Exact next: gates, commit claimed UI/docs only, merge master, deploy, verify `/admin/omnichannel` has three password fields. Independent security still required. Do not Done TASK-20260826-001.
+
+## 2026-09-06T13:21:00Z — TASK-20260903-004 live `4f80d2f`
+
+- Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` on `ai/TASK-20260903-004-gsc-mobile-speed-v2` at `D:/proje/Site-B2B-gsc-speed`.
+- Observed: `/v1/health` 200; `require('sharp')` → `0.33.5` / vips `8.15.3`; compiled `20260906-004` exports only `WholesaleHeroCacheBust1757151000004`; `migrations` id=66; WHOLESALE home DB + live `.com/` HTML use hashed hero URLs; `.ir`/`.com` home, `/products`, Sara PDP 200; checkout `no-store`.
+- `8cd0a63` crash-looped API (TypeORM loaded helper exports). Emergency `taranom-api:hotfix-no004` restored service until `4f80d2f`.
+- Dry-run `--limit=1` selected 170 eligible / 1 object and stopped before DB writes: `products/1785333399595-a32f5ead3b0ff.jpg` is `Not Found` in MinIO. Next dry-run should skip missing objects or pick the next eligible URL; do not `--apply` yet.
+- Exact next: full/dry-run backfill with a host-copied manifest, `--limit=1` apply of a real object, then rest. Pause admin image edits during apply. Then staged `.ir` Cloudflare and lab/GSC validation. Do not claim 28-day field recovery.
 
 ## 2026-09-06T13:00:00Z — TASK-20260905-003 write-only token field
 
