@@ -137,7 +137,11 @@ export async function fetchProductBySlug(
       const qs = channel ? `?channel=${channel}` : '';
       const res = await fetch(
         `${base}/products/slug/${encodeURIComponent(candidate)}${qs}`,
-        { cache: 'no-store' },
+        {
+          // Public PDP data may be briefly stale; cart/order APIs still
+          // recalculate price and inventory server-side before acceptance.
+          next: { revalidate: 60 },
+        },
       );
       if (!res.ok) continue;
       return (await res.json()) as Record<string, unknown>;

@@ -8,6 +8,14 @@
 - `resolveProviderToken` اول overlay پنل را می‌خواند، بعد env. پاسخ وضعیت فقط `configured` / `source` / اثر انگشت ۸ hex است.
 - گزارش: `docs/reports/2026-09-06-omnichannel-token-field.md`.
 
+## 2026-09-06 — رفع ریشه‌ای سرعت موبایل تک و عمده
+
+- هات‌فیکس ایمیج API: `nest build` فایل migration هیرو را emit نکرد و `require('sharp')` از `/app` هنوز fail بود؛ بیلد حالا با tsc کامل و smokeی Sharp fail-closed است.
+- فونت مشترک به یک Vazirmatn variable (~48KB) رسید؛ GTM بعد از load/تعامل می‌آید؛ هیروی عمده URL هش‌دار گرفت.
+- کاتالوگ بدون فیلتر بعد از hydration دوباره mount نمی‌شود؛ فقط کارت اول priority دارد.
+- Backfill تصاویر dry-run/apply/rollback است، اصل فایل را پاک نمی‌کند و رویداد انتشار نمی‌سازد.
+- گزارش: `docs/reports/2026-09-06-gsc-mobile-speed-root-fix.md`
+
 ## 2026-09-06 — بله و روبیکا در کنسول انتشار (سه پیام‌رسان، یک قالب)
 
 - مستندات رسمی خوانده شد: `docs.bale.ai` (Bot API بله؛ هم‌خانوادهٔ تلگرام ولی Markdown اجباری، بدون parse_mode، آلبوم بدون دکمه، حذف تا ۴۸ ساعت، `getChatMembersCount`) و `rubika.ir/botapi` (v3؛ متادیتا با آفست UTF-16، آپلود دومرحله‌ای `requestSendFile→sendFile`، بدون آلبوم، بدون `getChatMember`، شناسهٔ کانال `c0…`).

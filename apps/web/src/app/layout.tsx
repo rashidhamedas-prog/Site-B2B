@@ -9,19 +9,19 @@ import './globals.css';
 /** Public HTML can be ISR. User-specific routes (cart/checkout/account) stay dynamic via their own trees. */
 export const revalidate = 60;
 
-// All weights available; preload disabled so Next doesn't preload every file.
-// Critical Regular + Bold are preloaded manually in <head>.
+// Official Vazirmatn v33.003 Non-Latin variable font (OFL-1.1).
+// One local file covers weights 100–900 and lets Next emit one hashed preload.
 const vazirmatn = localFont({
   src: [
-    { path: '../../public/fonts/Vazirmatn-Regular.woff2',   weight: '400', style: 'normal' },
-    { path: '../../public/fonts/Vazirmatn-Medium.woff2',    weight: '500', style: 'normal' },
-    { path: '../../public/fonts/Vazirmatn-SemiBold.woff2',  weight: '600', style: 'normal' },
-    { path: '../../public/fonts/Vazirmatn-Bold.woff2',      weight: '700', style: 'normal' },
-    { path: '../../public/fonts/Vazirmatn-ExtraBold.woff2', weight: '800', style: 'normal' },
+    {
+      path: '../../public/fonts/Vazirmatn-NL-wght-v33.003.woff2',
+      weight: '100 900',
+      style: 'normal',
+    },
   ],
   variable: '--font-vazirmatn',
   display: 'swap',
-  preload: false,
+  preload: true,
   adjustFontFallback: false,
   fallback: ['Tahoma', 'Arial', 'sans-serif'],
 });
@@ -85,20 +85,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="fa" dir="rtl" className={vazirmatn.variable}>
       <head>
-        <link
-          rel="preload"
-          href="/fonts/Vazirmatn-Regular.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href="/fonts/Vazirmatn-Bold.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
         <DeferredGtm />
         {gscTokens.map((token) => (
           <meta key={token} name="google-site-verification" content={token} />

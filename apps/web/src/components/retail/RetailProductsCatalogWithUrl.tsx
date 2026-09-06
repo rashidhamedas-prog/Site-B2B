@@ -7,6 +7,7 @@ import {
   RetailProductsCatalog,
   type RetailCatalogSearchParams,
 } from './RetailProductsCatalog';
+import { catalogHydrationKey } from '@/lib/catalog-performance';
 
 function paramsFromSearch(search: string): RetailCatalogSearchParams {
   const usp = new URLSearchParams(search.replace(/^\?/, ''));
@@ -97,7 +98,7 @@ export function RetailProductsCatalogWithUrl({
     <>
       {hydrated && filtered ? <meta name="robots" content="noindex, follow" /> : null}
       <RetailProductsCatalog
-        key={hydrated ? JSON.stringify(params) : 'ssr-default'}
+        key={catalogHydrationKey(filtered, JSON.stringify(params))}
         searchParams={params}
         initialProducts={initialProducts}
         initialTotalPages={initialTotalPages}

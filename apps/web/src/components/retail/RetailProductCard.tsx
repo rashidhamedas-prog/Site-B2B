@@ -48,23 +48,33 @@ export type RetailCardProduct = {
 export function RetailProductCard({
   product,
   compact = false,
+  imagePriority = false,
 }: {
   product: RetailCardProduct;
   compact?: boolean;
+  imagePriority?: boolean;
 }) {
   const boutique = useRetailSkin() === 'boutique';
   if (boutique) {
-    return <BoutiqueProductCard product={product} />;
+    return <BoutiqueProductCard product={product} imagePriority={imagePriority} />;
   }
-  return <ClassicRetailProductCard product={product} compact={compact} />;
+  return (
+    <ClassicRetailProductCard
+      product={product}
+      compact={compact}
+      imagePriority={imagePriority}
+    />
+  );
 }
 
 function ClassicRetailProductCard({
   product,
   compact = false,
+  imagePriority = false,
 }: {
   product: RetailCardProduct;
   compact?: boolean;
+  imagePriority?: boolean;
 }) {
   const addItem = useRetailCart((s) => s.addItem);
   const [wishlisted, setWishlisted] = useState(false);
@@ -135,16 +145,23 @@ function ClassicRetailProductCard({
   return (
     <article className="group relative flex h-full flex-col bg-transparent transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,47,40,0.08)] focus-within:shadow-[0_16px_40px_rgba(15,47,40,0.08)] motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <div className="relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)]">
-        <Link href={href} className="absolute inset-0 z-[1] cursor-pointer focus:outline-none" aria-label={`مشاهده ${product.name}`}>
+        <Link
+          href={href}
+          prefetch={false}
+          className="absolute inset-0 z-[1] cursor-pointer focus:outline-none"
+          aria-label={`مشاهده ${product.name}`}
+        >
           {image ? (
             <>
               <Image
                 src={image}
                 alt={product.name}
                 fill
-                loading="lazy"
+                priority={imagePriority}
+                loading={imagePriority ? 'eager' : 'lazy'}
+                fetchPriority={imagePriority ? 'high' : 'low'}
                 className={`object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none ${soldOut ? 'opacity-60 grayscale' : ''}`}
-                sizes="(max-width:768px) 50vw, (max-width:1024px) 33vw, 25vw"
+                sizes="(max-width:767px) 46vw, (max-width:1280px) 24vw, 288px"
               />
               {!compact && secondImage && !soldOut ? (
                 <Image
@@ -153,6 +170,7 @@ function ClassicRetailProductCard({
                   aria-hidden
                   fill
                   loading="lazy"
+                  fetchPriority="low"
                   className="hidden object-cover opacity-0 transition duration-500 group-hover:opacity-100 md:block motion-reduce:hidden"
                   sizes="25vw"
                 />
@@ -208,6 +226,7 @@ function ClassicRetailProductCard({
 
         <Link
           href={href}
+          prefetch={false}
           tabIndex={-1}
           aria-hidden
           className="pointer-events-none absolute inset-x-3 bottom-3 z-[2] hidden min-h-11 items-center justify-center rounded-md bg-[var(--retail-primary)]/95 text-xs font-bold text-white opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 md:flex motion-reduce:hidden"
@@ -261,6 +280,7 @@ function ClassicRetailProductCard({
 
         <Link
           href={href}
+          prefetch={false}
           className="mx-auto rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
         >
           <h3 className="line-clamp-2 min-h-10 text-[13px] font-bold leading-5 text-[var(--retail-ink)] sm:text-sm">
@@ -302,6 +322,7 @@ function ClassicRetailProductCard({
         {compact ? (
           <Link
             href={href}
+            prefetch={false}
             className="mt-auto inline-flex min-h-11 items-center justify-center text-xs font-bold text-[var(--retail-primary)] underline-offset-4 transition hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] md:sr-only"
           >
             انتخاب سایز
@@ -310,6 +331,7 @@ function ClassicRetailProductCard({
         ) : soldOut ? (
           <Link
             href={href}
+            prefetch={false}
             className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-[var(--retail-border)] px-3 text-sm font-bold text-[var(--retail-ink)] transition hover:border-[var(--retail-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
           >
             مشاهده جزئیات
@@ -317,6 +339,7 @@ function ClassicRetailProductCard({
         ) : needsSize && !size ? (
           <Link
             href={href}
+            prefetch={false}
             className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md bg-[var(--retail-primary)] px-3 text-sm font-bold text-white transition hover:bg-[var(--retail-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
           >
             انتخاب سایز

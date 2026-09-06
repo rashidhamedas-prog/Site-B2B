@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { RetailProductCard } from './RetailProductCard';
 import { trackViewItemList } from '@/lib/retail-analytics';
+import { isLeadCatalogImage } from '@/lib/catalog-performance';
 
 type Product = {
   id: string;
@@ -323,7 +324,13 @@ export function RetailProductsCatalog({
         ) : (
           <>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-              {products.map((p) => <RetailProductCard key={p.id} product={p} />)}
+              {products.map((p, index) => (
+                <RetailProductCard
+                  key={p.id}
+                  product={p}
+                  imagePriority={isLeadCatalogImage({ index, page })}
+                />
+              ))}
             </div>
             {totalPages > 1 ? (
               <nav

@@ -34,6 +34,8 @@ export function ProductImage({
       alt={alt}
       fill={fill}
       priority={priority}
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : 'low'}
       sizes={sizes}
       className={cn('object-cover object-center', className)}
     />
