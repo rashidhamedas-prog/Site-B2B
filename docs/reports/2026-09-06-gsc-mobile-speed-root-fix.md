@@ -21,6 +21,7 @@
 5. یک فونت variable رسمی + مجوز OFL؛ GTM بعد از load/paint یا تعامل با سقف ۸ ثانیه.
 6. هیروی عمده: فایل هش‌دار + migration فقط روی URL اسلایدهای منطبق؛ rollback فیلدبه‌فیلد.
 7. کلید hydration کاتالوگ پایدار؛ فقط تصویر کارت اول صفحهٔ کاتالوگ high/eager؛ prefetch کارت‌ها خاموش؛ بنر دسته `fetchPriority=low`.
+8. Backfill: `Not Found` در MinIO = `source-missing`؛ تصویر خراب/غیرقابل‌پردازش = `source-unprocessable`. آپلود جدید همچنان fail-closed است.
 
 ## بازبینی
 
@@ -43,17 +44,59 @@
 
 ## انتشار و سنجش زنده
 
-این بخش بعد از deploy تکمیل می‌شود. ادعای بهبود ۲۸روزهٔ میدانی CWV نمی‌شود.
+SHA زنده: `ca1bdd8`. ادعای بهبود ۲۸روزهٔ میدانی CWV نمی‌شود.
 
-### چک‌لیست ops
+### Ops مشاهده‌شده
 
-- Health `/v1/health`
-- هوم/کاتالوگ/PDP تک و عمده
-- login/checkout `no-store`
-- feedها
-- `require('sharp')` داخل `taranom_api`
-- dry-run backfill، سپس `--limit=1` با manifest کپی‌شده روی هاست
-- Cloudflare `.ir` فقط بعد از پایدار شدن origin؛ HTML/API/admin/account/checkout کش نمی‌شود
+| بررسی | نتیجه |
+|--------|--------|
+| `/v1/health` روی origin `:4000` | 200 `{"status":"ok"}` |
+| `require('sharp')` در `taranom_api` | `0.33.5` / vips `8.15.3` |
+| هوم `.ir` / `.com` | 200؛ TTFB origin حدود `0.31s` / `0.42s` |
+| `/account` تکی | 200 (مسیر `/account/login` روی `.ir` 404 است) |
+| `/checkout` تکی | 200، `private, no-cache, no-store`، `cf-cache-status: DYNAMIC` |
+| فید `/v1/feeds/torob.xml` تکی و عمده | 200 |
+| sitemap `.ir` و `.com` | 200 |
+| هیروی عمده | `/banners/hero-product-2026-v2/wholesale-01-mobile-8c90e6ac4182.webp` |
+
+### Backfill
+
+- Dry-run (`/home/wholesale-admin/product-image-backfill/dry-20260906.json`): ۶۰ محصول، ۵۵۴ ارجاع، ۲۲۸ URL یکتا، ۱۷۰ واجد شرایط. ۱۶۹ جایگزینی آماده (حدود ۵۵۷MB → ۱۵MB). ۵۸ skip: ۵۷ زیر آستانهٔ ۵۱۲KB، ۱ `source-missing`. ۱ خطا: `products/1785328613890-812046da22911.jpg` دقیقاً `5242880` بایت و `Product image processing failed` (JPEG ناقص؛ در `ca1bdd8` skip با `source-unprocessable`).
+- `--limit=1 --apply`: محصول `wool-coat-katayoun` تصویر اول `3,795,161` → `119,458` WebP (`products/optimized/12ce141b3f68d6574e3aba47.webp`). ۱ ارجاع عوض شد.
+- Apply باقی (`apply-rest-20260906.json`، کپی هاست `$HOME/product-image-backfill/`): `status=applied`، ۱۶۹ واجد شرایط، ۱۶۸ جایگزینی، ۰ خطا، ۶۰ skip (۵۸ آستانه، ۱ `source-missing`، ۱ `source-unprocessable` همان JPEG ۵MB). `changedReferences=440`. حدود ۵۵۴MB → ۱۵MB. اصل فایل‌ها در MinIO ماند؛ outbox نوشته نشد.
+- جمع دو apply: ۱۶۹ تصویر بهینه‌شده، ۴۴۱ ارجاع.
+
+### Cloudflare `.ir` (حساب `36a2cb50a339ec81a878dde07cdec1ea`)
+
+- SSL: Full (strict).
+- قانون «Cache public storefront HTML» خاموش شد.
+- قانون فعال «Cache static media and next image»: `/_next/static/*`، `/_next/image*`، `/banners/*`، `/fonts/*` و پسوندهای استاتیک. query string برای `/_next/image` حفظ می‌شود.
+- DNS نارنجی فقط A اپکس و www به `5.75.200.102`. MX/TXT/`_acme-challenge` خاکستری ماندند.
+- شواهد زنده از origin: HTML هوم/کاتالوگ/حساب `DYNAMIC`؛ فونت Vazirmatn بار دوم `HIT`.
+
+### پروفایل آزمایشگاهی موبایل
+
+شرایط: `390×844`، DPR 2، Slow 4G (`150ms` / `196608` down / `96000` up)، CPU×4، cache مرورگر disabled. LCP از `PerformanceObserver` با `buffered`. اجرای اول سردتر است؛ اجراهای بعدی لبهٔ CF گرم‌ترند. اجرای کاتالوگ تکی r2 هنگام ریستارت/بار backfill نویز داشت (`TTFB 7.5s`).
+
+| صفحه | TTFB (ms) | FCP (ms) | LCP (ms) | میانه LCP | منبع LCP |
+|------|-----------|----------|----------|-----------|----------|
+| هوم تکی `www.poshaktaranom.ir/` | 735 / 213 / 204 | 6328 / 1556 / 960 | 6960 / 1940 / 1044 | **1940** | `banners/digipay-installment-2026/retail-mobile.webp` |
+| هوم عمده `poshaktaranom.com/` | 764 / 271 / 296 | 2364 / 1456 / 1212 | 2680 / 1588 / 1296 | **1588** | `wholesale-01-mobile-8c90e6ac4182.webp` |
+| کاتالوگ تکی `/products` | 389 / 7515 / 251 | 2016 / 8868 / 1768 | 3348 / 9420 / 2268 | **3348** | کارت اول via `/_next/image` JPEG |
+| کاتالوگ عمده `/products` | 1444 / 391 / 374 | 2768 / 2068 / 1760 | 4452 / 3184 / 3140 | **3184** | کارت via `/_next/image` JPEG |
+| PDP سارا تکی | 542 / 513 / 420 | 2060 / 1616 / 1692 | 4760 / 1616 / 1860 | **1860** | `1787993393583-071436a8a7ffb.jpg` w=828 |
+| PDP سارا عمده | 278 / 448 / 382 | 1828 / 1876 / 1796 | 4528 / 3592 / 4512 | **4512** | `1787994011222-f508abcb99eb3.jpg` w=828 |
+
+مبنا: کاتالوگ سرد تکی `12.232s`؛ سارا `5.508s` با JPEG حدود `3.68MB`. هوم‌ها و سارا تکی زیر آستانهٔ آزمایشگاهی `2.5s` آمدند. کاتالوگ و سارا عمده در همین سه اجرا هنوز بالای `2.5s` بودند چون سنجش قبل از apply باقی‌مانده بود. بعد از apply، HTML هر دو PDP سارا و کتایون `products/optimized/*.webp` دارند و JPEG قدیمی در HTML نیست؛ اصل JPEG در MinIO هنوز 200 است.
+
+### Search Console
+
+حساب `rashidhamedas@gmail.com`، ملک `sc-domain:poshaktaranom.com`. گروه موبایل: ۱۰ URL، ۲ مسئله. آخرین به‌روزرسانی CrUX ۵ سپتامبر ۲۰۲۶.
+
+- INP > 200ms: Validation **Started** (`item_key=CAUQAhgC`).
+- LCP > 2.5s: Validation **Started** (`item_key=CAMQAhgC`).
+- LCP > 4s: ۰ URL — Validate نشد.
+- Validate Fix برای redirect/noindex/404 زده نشد.
 
 ## Rollback
 

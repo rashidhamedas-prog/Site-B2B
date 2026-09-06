@@ -657,7 +657,7 @@ tasks:
       - "api+web tsc and new jwt-invalidation / safe-redirect / phone specs pass"
   - id: "TASK-20260903-004"
     title: "Root-fix dual-site mobile LCP/INP and retail edge"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:gpt-5.6-sol-TASK-20260903-004"
     roles:
@@ -668,7 +668,7 @@ tasks:
     branch: "ai/TASK-20260903-004-gsc-mobile-speed-v2"
     worktree: "D:/proje/Site-B2B-gsc-speed"
     claimed_at: "2026-09-03T12:50:00Z"
-    heartbeat_at: "2026-09-06T13:35:00Z"
+    heartbeat_at: "2026-09-06T14:30:00Z"
     depends_on: []
     file_claims:
       - "apps/api/Dockerfile"
