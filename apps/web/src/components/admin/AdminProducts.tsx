@@ -1331,6 +1331,8 @@ export function AdminProducts() {
     colorDrafts,
     initialColorNames,
     relatedPicks,
+    retailLinkPicks,
+    wholesaleLinkPicks,
     refreshSpecMemory,
   ]);
 
