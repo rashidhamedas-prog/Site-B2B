@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T09:10:00Z — TASK-20260905-004 live titles verified
+
+- Task / owner: TASK-20260905-004 / cursor:implementer-TASK-20260905-004
+- Live SHA `2723d76`. Migration `KeywordWeekCopy1757055604005` present. Health ok.
+- Observed titles: retail home `خرید تکی پوشاک زنانه مشهد | پوشاک ترنم`; wholesale home `تولیدی مانتو مشهد | خرید عمده | پوشاک ترنم`; about `تولیدی مانتو در مشهد | پوشاک ترنم`; register `همکاری با تولیدی لباس | پنل مشتری ترنم`; shomiz/coats/kaftan owners; bamber `خرید کاپشن بامبری زنانه` (no عمده).
+- Browser: home chips shomiz/کت/کاپشن/کفتان; category H1s match; register H1 + MOQ 6. RetailHero sr-only H1 still old (TASK-20260905-001 claim).
+- Follow-up already on master: stop duplicating `| پوشاک ترنم` in page titles.
+- Exact next: none for this task. Do not edit RetailHero until 001 releases it.
+
 ## 2026-09-05T12:45:00Z — TASK-20260905-003 legacy template no longer wins
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

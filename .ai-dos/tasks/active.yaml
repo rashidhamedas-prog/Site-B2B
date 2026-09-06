@@ -2,7 +2,7 @@
 tasks:
   - id: "TASK-20260905-004"
     title: "H2H keyword week: retail/wholesale home, category owners, bamber, register"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260905-004"
     roles:
@@ -13,7 +13,7 @@ tasks:
     branch: "ai/TASK-20260905-004-keyword-h2h"
     worktree: "D:/proje/Site-B2B-keyword-week"
     claimed_at: "2026-09-05T11:35:00Z"
-    heartbeat_at: "2026-09-05T11:35:00Z"
+    heartbeat_at: "2026-09-06T09:10:00Z"
     depends_on: []
     file_claims:
       - "apps/web/src/app/retail/page.tsx"
