@@ -12,6 +12,7 @@ import {
   PROVIDER_META,
   ProviderChip,
   ProviderTabs,
+  ProviderTokenVault,
   RadioCards,
   Section,
   Stepper,
@@ -34,6 +35,7 @@ import {
   publicationStatus,
   relativeTime,
   templateLooksReady,
+  tokenDraftReady,
   tokenSourceLabel,
   type AuditRow,
   type AutoPublishMode,
@@ -117,6 +119,9 @@ function defaultSecretRef(provider: Provider) {
   return `${provider}_BOT_TOKEN`;
 }
 
+const EMPTY_TOKEN_DRAFTS: Record<Provider, string> = { TELEGRAM: '', BALE: '', RUBIKA: '' };
+const EMPTY_TOKEN_REVEALS: Record<Provider, boolean> = { TELEGRAM: false, BALE: false, RUBIKA: false };
+
 /** Fallback copy of the API matrix so the console still renders when `status.providers` is missing (old API). */
 function fallbackProviderInfo(provider: Provider): ProviderInfo {
   const shared = {
@@ -155,8 +160,11 @@ export function AdminOmnichannel() {
   const [connName, setConnName] = useState('');
   const [connChannel, setConnChannel] = useState<Channel>('RETAIL');
   const [secretRef, setSecretRef] = useState(defaultSecretRef('TELEGRAM'));
-  const [botToken, setBotToken] = useState('');
-  const [showToken, setShowToken] = useState(false);
+  const [tokenDrafts, setTokenDrafts] = useState<Record<Provider, string>>(EMPTY_TOKEN_DRAFTS);
+  const [tokenReveals, setTokenReveals] = useState<Record<Provider, boolean>>(EMPTY_TOKEN_REVEALS);
+  const [customToken, setCustomToken] = useState('');
+  const [customReveal, setCustomReveal] = useState(false);
+  const [showAdvancedRef, setShowAdvancedRef] = useState(false);
   const [destConnectionId, setDestConnectionId] = useState('');
   const [destKey, setDestKey] = useState('');
   const [destName, setDestName] = useState('');
@@ -256,7 +264,8 @@ export function AdminOmnichannel() {
     fingerprint: secretRef === selectedProviderInfo.defaultSecretRef ? selectedProviderInfo.tokenFingerprint || null : null,
     updatedAt: null,
   };
-  const tokenLooksReady = botToken.trim().length >= 20 && !/\s/.test(botToken);
+  const customTokenReady = tokenDraftReady(connProvider, customToken);
+  const usingCustomSecretRef = secretRef !== defaultSecretRef(connProvider);
   const destConnection = connById.get(destConnectionId);
   const destProviderInfo = providerInfo(destConnection?.provider);
   const summarizeBots = (rows: Connection[]) => PROVIDERS
@@ -342,8 +351,6 @@ export function AdminOmnichannel() {
   const pickProvider = (next: Provider) => {
     setConnProvider(next);
     setSecretRef((current) => (PROVIDERS.some((provider) => current === defaultSecretRef(provider)) || !current ? defaultSecretRef(next) : current));
-    setBotToken('');
-    setShowToken(false);
   };
 
   /* ---------- actions ---------- */
@@ -386,8 +393,32 @@ export function AdminOmnichannel() {
   const botPanel = (
     <Section
       title="۱. ربات پیام‌رسان"
-      description="پیام‌رسان را انتخاب کنید، ربات را در همان پیام‌رسان بسازید، توکن را یک‌بار در کادر زیر بچسبانید و ذخیره کنید. بعد از ذخیره کادر خالی می‌شود و توکن دیگر دیده نمی‌شود؛ روی سرور رمز می‌شود و در پاسخ API برنمی‌گردد. برای هر پیام‌رسان می‌توانید ربات جدا برای تکی و عمده داشته باشید."
+      description="توکن تلگرام، بله و روبیکا هر کدام کادر جدا دارند. ربات را در همان پیام‌رسان بسازید، توکن را یک‌بار بچسبانید و ذخیره کنید. بعد از ذخیره کادر خالی می‌شود و مقدار دیگر دیده نمی‌شود. سپس ربات را برای تکی یا عمده ثبت کنید."
     >
+      <ProviderTokenVault
+        providers={providerInfos}
+        secrets={status?.secrets}
+        drafts={tokenDrafts}
+        reveals={tokenReveals}
+        busyKey={busy}
+        onDraft={(provider, value) => setTokenDrafts((current) => ({ ...current, [provider]: value }))}
+        onReveal={(provider, next) => setTokenReveals((current) => ({ ...current, [provider]: next }))}
+        onSave={(provider) => {
+          const token = tokenDrafts[provider];
+          void run(`secret-save-${provider}`, async () => {
+            await apiClient.put('/omnichannel/secrets', { secretRef: defaultSecretRef(provider), token, reason });
+            setTokenDrafts((current) => ({ ...current, [provider]: '' }));
+            setTokenReveals((current) => ({ ...current, [provider]: false }));
+          }, 'ذخیره توکن ناموفق', `توکن ${providerLabel(provider)} ذخیره شد و دیگر دیده نمی‌شود`);
+        }}
+        onClear={(provider) => {
+          if (!window.confirm(`توکن ${providerLabel(provider)} که در پنل ذخیره شده پاک شود؟ اگر روی سرور env جدا باشد همان می‌ماند.`)) return;
+          void run(`secret-clear-${provider}`, async () => {
+            await apiClient.delete(`/omnichannel/secrets/${encodeURIComponent(defaultSecretRef(provider))}`);
+          }, 'حذف توکن ناموفق', `توکن پنل ${providerLabel(provider)} حذف شد`);
+        }}
+      />
+      <p className="text-sm font-semibold text-gray-900">کدام ربات را ثبت می‌کنید؟</p>
       <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="پیام‌رسان">
         {providerInfos.map((info) => {
           const meta = PROVIDER_META[info.provider];
@@ -434,101 +465,88 @@ export function AdminOmnichannel() {
         <Callout tone="warn">{selectedProviderInfo.label} روی سرور خاموش است (OMNICHANNEL_DISABLED_PROVIDERS یا پرچم کانکتور). می‌توانید توکن را ذخیره و ربات را ثبت کنید ولی تا روشن‌شدن، تست زنده و ارسال کار نمی‌کند.</Callout>
       )}
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">توکن ربات {selectedProviderInfo.label}</h3>
-            <p className="mt-1 text-[11px] text-gray-500 leading-5 max-w-2xl">
-              از {selectedProviderInfo.botFactory} توکن را کپی کنید و اینجا بچسبانید. این کادر فقط‌نوشتنی است: بعد از ذخیره خالی می‌شود، در تاریخچهٔ مرورگر نمی‌ماند، و سرور مقدار را هرگز برنمی‌گرداند.
-            </p>
-          </div>
-          <Badge tone={secretStatus.configured ? 'ok' : 'off'}>{tokenSourceLabel(secretStatus.source)}</Badge>
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">ثبت ربات {selectedProviderInfo.label}</h3>
+          <p className="mt-1 text-[11px] text-gray-500 leading-5">
+            توکن از <span className="font-mono" dir="ltr">{secretRef}</span>
+            {secretStatus.configured ? ` (${tokenSourceLabel(secretStatus.source)})` : ' هنوز ذخیره نشده'} خوانده می‌شود.
+          </p>
         </div>
-        <WriteOnlySecretField
-          id="omni-bot-token"
-          label={`توکن ${selectedProviderInfo.label}`}
-          value={botToken}
-          reveal={showToken}
-          onChange={setBotToken}
-          onReveal={setShowToken}
-          invalid={Boolean(botToken) && !tokenLooksReady}
-          hint={secretStatus.fingerprint
-            ? <>اثر انگشت ذخیره‌شده <span className="font-mono" dir="ltr">{secretStatus.fingerprint}</span>{secretStatus.updatedAt ? ` · ${relativeTime(secretStatus.updatedAt)}` : ''} — مقدار توکن دیده نمی‌شود.</>
-            : 'حداقل ۲۰ نویسه، بدون فاصله. تلگرام و بله شکل ۱۲۳:ABC دارند.'}
-        />
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            disabled={!secretRefMatchesProvider || !tokenLooksReady || busy === 'secret-save'}
-            onClick={() => run('secret-save', async () => {
-              await apiClient.put('/omnichannel/secrets', { secretRef, token: botToken, reason });
-              setBotToken('');
-              setShowToken(false);
-            }, 'ذخیره توکن ناموفق', `توکن ${selectedProviderInfo.label} ذخیره شد و دیگر دیده نمی‌شود`)}
-          >
-            ذخیره توکن {selectedProviderInfo.label}
-          </button>
-          {secretStatus.source !== 'none' && secretStatus.source !== 'env' && (
+        <div className="grid md:grid-cols-3 gap-2">
+          <label className="text-xs text-gray-500 space-y-1">
+            <span>نام اتصال</span>
+            <input className="border rounded-lg px-3 py-2 text-sm w-full bg-white" placeholder={`ربات ${selectedProviderInfo.label} ترنم`} value={connName} onChange={(e) => setConnName(e.target.value)} />
+          </label>
+          <label className="text-xs text-gray-500 space-y-1">
+            <span>برای کانال</span>
+            <select className="border rounded-lg px-3 py-2 text-sm w-full bg-white" value={connChannel} onChange={(e) => setConnChannel(e.target.value as Channel)}>
+              <option value="RETAIL">تکی</option>
+              <option value="WHOLESALE">عمده</option>
+            </select>
+          </label>
+          <div className="flex items-end">
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={busy === 'secret-clear'}
-              onClick={() => {
-                if (!window.confirm('توکن ذخیره‌شده در پنل پاک شود؟ اگر روی سرور env جدا باشد همان می‌ماند.')) return;
-                void run('secret-clear', async () => {
-                  await apiClient.delete(`/omnichannel/secrets/${encodeURIComponent(secretRef)}`);
-                }, 'حذف توکن ناموفق', 'توکن پنل حذف شد');
-              }}
+              className="btn btn-primary btn-sm"
+              disabled={!connName.trim() || !secretRefMatchesProvider || busy === 'conn-add'}
+              onClick={() => run('conn-add', async () => {
+                await apiClient.post('/omnichannel/connections', { provider: connProvider, channel: connChannel, name: connName, secretRef });
+                setConnName('');
+              }, 'خطا در ثبت اتصال', `ربات ${selectedProviderInfo.label} ذخیره شد؛ حالا «تست توکن» را بزنید`)}
             >
-              حذف توکن پنل
+              افزودن ربات {selectedProviderInfo.label}
             </button>
-          )}
+          </div>
         </div>
-      </div>
-      <div className="grid md:grid-cols-4 gap-2">
-        <label className="text-xs text-gray-500 space-y-1">
-          <span>نام اتصال</span>
-          <input className="border rounded-lg px-3 py-2 text-sm w-full" placeholder={`ربات ${selectedProviderInfo.label} ترنم`} value={connName} onChange={(e) => setConnName(e.target.value)} />
-        </label>
-        <label className="text-xs text-gray-500 space-y-1">
-          <span>نام متغیر توکن (secretRef)</span>
-          <input
-            className={`border rounded-lg px-3 py-2 text-sm w-full font-mono ${secretRefMatchesProvider ? '' : 'border-red-300 bg-red-50'}`}
-            dir="ltr"
-            placeholder={selectedProviderInfo.defaultSecretRef}
-            value={secretRef}
-            aria-invalid={!secretRefMatchesProvider}
-            onChange={(e) => setSecretRef(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
-          />
-          {!secretRefMatchesProvider && <span className="block text-[11px] text-red-600">باید با <span className="font-mono" dir="ltr">{connProvider}_</span> شروع شود تا توکن به پیام‌رسان درست برود.</span>}
-          {secretRefMatchesProvider && (
-            <span className={`block text-[11px] ${secretStatus.configured ? 'text-emerald-700' : 'text-amber-700'}`}>
-              {secretStatus.configured
-                ? `${tokenSourceLabel(secretStatus.source)}. بعد از ثبت ربات «تست توکن» را بزنید.`
-                : 'برای این نام هنوز توکنی ذخیره نشده؛ بالا توکن را بچسبانید و ذخیره کنید.'}
-            </span>
-          )}
-        </label>
-        <label className="text-xs text-gray-500 space-y-1">
-          <span>برای کانال</span>
-          <select className="border rounded-lg px-3 py-2 text-sm w-full" value={connChannel} onChange={(e) => setConnChannel(e.target.value as Channel)}>
-            <option value="RETAIL">تکی</option>
-            <option value="WHOLESALE">عمده</option>
-          </select>
-        </label>
-        <div className="flex items-end">
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            disabled={!connName.trim() || !secretRefMatchesProvider || busy === 'conn-add'}
-            onClick={() => run('conn-add', async () => {
-              await apiClient.post('/omnichannel/connections', { provider: connProvider, channel: connChannel, name: connName, secretRef });
-              setConnName('');
-            }, 'خطا در ثبت اتصال', `ربات ${selectedProviderInfo.label} ذخیره شد؛ حالا «تست توکن» را بزنید`)}
-          >
-            افزودن ربات {selectedProviderInfo.label}
-          </button>
-        </div>
+        <button type="button" className="text-[11px] text-gray-600 underline cursor-pointer" onClick={() => setShowAdvancedRef((open) => !open)}>
+          {showAdvancedRef ? 'بستن نام متغیر سفارشی' : 'نام متغیر سفارشی (معمولاً لازم نیست)'}
+        </button>
+        {showAdvancedRef && (
+          <div className="space-y-3 rounded-xl border border-gray-200 bg-white p-3">
+            <label className="text-xs text-gray-500 space-y-1 block">
+              <span>نام متغیر توکن (secretRef)</span>
+              <input
+                className={`border rounded-lg px-3 py-2 text-sm w-full font-mono ${secretRefMatchesProvider ? '' : 'border-red-300 bg-red-50'}`}
+                dir="ltr"
+                placeholder={selectedProviderInfo.defaultSecretRef}
+                value={secretRef}
+                aria-invalid={!secretRefMatchesProvider}
+                onChange={(e) => setSecretRef(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ''))}
+              />
+              {!secretRefMatchesProvider && <span className="block text-[11px] text-red-600">باید با <span className="font-mono" dir="ltr">{connProvider}_</span> شروع شود.</span>}
+            </label>
+            {usingCustomSecretRef && secretRefMatchesProvider && (
+              <div className="space-y-2">
+                <WriteOnlySecretField
+                  id="omni-bot-token-custom"
+                  name="omni-vault-custom"
+                  label={`توکن برای ${secretRef}`}
+                  value={customToken}
+                  reveal={customReveal}
+                  onChange={setCustomToken}
+                  onReveal={setCustomReveal}
+                  invalid={Boolean(customToken) && !customTokenReady}
+                  hint="فقط وقتی نام متغیر با پیش‌فرض فرق دارد. بعد از ذخیره خالی می‌شود."
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={!customTokenReady || busy === 'secret-save-custom'}
+                  onClick={() => {
+                    const token = customToken;
+                    void run('secret-save-custom', async () => {
+                      await apiClient.put('/omnichannel/secrets', { secretRef, token, reason });
+                      setCustomToken('');
+                      setCustomReveal(false);
+                    }, 'ذخیره توکن ناموفق', `توکن ${secretRef} ذخیره شد و دیگر دیده نمی‌شود`);
+                  }}
+                >
+                  ذخیره توکن این نام
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {botConnections.length === 0 ? (
         <Callout tone="info">هنوز رباتی ثبت نشده. ربات را در {selectedProviderInfo.botFactory} بسازید، توکن را در کادر بالا ذخیره کنید، بعد اینجا نام اتصال را بزنید. متغیر پیش‌فرض <span className="font-mono" dir="ltr">{selectedProviderInfo.defaultSecretRef}</span> است.</Callout>

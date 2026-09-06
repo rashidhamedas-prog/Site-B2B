@@ -528,6 +528,30 @@ export function Callout({ tone, children }: { tone: Tone; children: ReactNode })
   );
 }
 
+export function secretStatusFor(info: ProviderInfo, secrets?: SecretStatus[] | null): SecretStatus {
+  const found = secrets?.find((row) => row.secretRef === info.defaultSecretRef);
+  if (found) return found;
+  return {
+    secretRef: info.defaultSecretRef,
+    configured: Boolean(info.tokenConfigured),
+    source: info.tokenSource || 'none',
+    fingerprint: info.tokenFingerprint || null,
+    updatedAt: null,
+  };
+}
+
+/** Client-side shape hint; server `assertTokenShape` is authoritative. */
+export function tokenDraftReady(provider: Provider, token: string) {
+  const value = token.trim();
+  if (value.length < 20 || value.length > 256 || /\s/.test(value)) return false;
+  if (provider === 'TELEGRAM' || provider === 'BALE') return /^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(value);
+  return /^[A-Za-z0-9._-]{20,}$/.test(value);
+}
+
+function tokenPlaceholder(provider: Provider) {
+  return provider === 'RUBIKA' ? 'توکن @BotFather روبیکا' : '123456789:AAH…';
+}
+
 /** Write-only bot token field. The value is never prefilled and should be cleared after save. */
 export function WriteOnlySecretField({
   id,
@@ -538,6 +562,8 @@ export function WriteOnlySecretField({
   onReveal,
   hint,
   invalid,
+  placeholder,
+  name,
 }: {
   id: string;
   label: string;
@@ -547,6 +573,8 @@ export function WriteOnlySecretField({
   onReveal: (next: boolean) => void;
   hint?: ReactNode;
   invalid?: boolean;
+  placeholder?: string;
+  name?: string;
 }) {
   return (
     <div className="space-y-1">
@@ -554,30 +582,133 @@ export function WriteOnlySecretField({
       <div className="flex gap-2">
         <input
           id={id}
+          name={name || id}
           type={reveal ? 'text' : 'password'}
           dir="ltr"
-          autoComplete="off"
+          autoComplete="new-password"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}
           inputMode="text"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-form-type="other"
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/\s/g, ''))}
           aria-invalid={invalid || undefined}
           aria-describedby={hint ? `${id}-hint` : undefined}
           className={`border rounded-lg px-3 py-2 text-sm w-full font-mono tracking-wide ${invalid ? 'border-red-300 bg-red-50' : ''}`}
-          placeholder="توکن را اینجا بچسبانید"
+          placeholder={placeholder || 'توکن را اینجا بچسبانید'}
         />
         <button
           type="button"
-          className="btn btn-secondary btn-sm shrink-0"
+          className="btn btn-secondary btn-sm shrink-0 min-h-10"
           aria-pressed={reveal}
+          aria-label={reveal ? 'پنهان کردن توکن' : 'نمایش توکن'}
           onClick={() => onReveal(!reveal)}
         >
           {reveal ? 'پنهان' : 'نمایش'}
         </button>
       </div>
       {hint && <p id={`${id}-hint`} className="text-[11px] text-gray-500 leading-5">{hint}</p>}
+    </div>
+  );
+}
+
+/** Always-visible write-only token cards — one per messenger. */
+export function ProviderTokenVault({
+  providers,
+  secrets,
+  drafts,
+  reveals,
+  busyKey,
+  onDraft,
+  onReveal,
+  onSave,
+  onClear,
+}: {
+  providers: ProviderInfo[];
+  secrets?: SecretStatus[] | null;
+  drafts: Record<Provider, string>;
+  reveals: Record<Provider, boolean>;
+  busyKey: string;
+  onDraft: (provider: Provider, value: string) => void;
+  onReveal: (provider: Provider, next: boolean) => void;
+  onSave: (provider: Provider) => void;
+  onClear: (provider: Provider) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-gray-900">توکن هر پیام‌رسان</h3>
+      <Callout tone="info">
+        برای هر پیام‌رسان یک کادر جدا هست. توکن را بچسبانید و ذخیره کنید؛ بعد از ذخیره کادر خالی می‌شود، مقدار روی سرور رمز می‌شود و هیچ‌وقت از API برنمی‌گردد. فقط اثر انگشت ۸ حرفی برای تشخیص ذخیره دیده می‌شود.
+      </Callout>
+      <div className="grid gap-3 md:grid-cols-3">
+        {providers.map((info) => {
+          const status = secretStatusFor(info, secrets);
+          const draft = drafts[info.provider] || '';
+          const ready = tokenDraftReady(info.provider, draft);
+          const meta = PROVIDER_META[info.provider];
+          const saving = busyKey === `secret-save-${info.provider}`;
+          const clearing = busyKey === `secret-clear-${info.provider}`;
+          return (
+            <div
+              key={info.provider}
+              className={`rounded-2xl border bg-white p-3 space-y-3 ${status.configured ? 'border-gray-200' : 'border-dashed border-gray-300'}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${meta.accent}`} aria-hidden />
+                    توکن {info.label}
+                  </p>
+                  <p className="mt-1 text-[11px] text-gray-500 leading-5">از {info.botFactory}</p>
+                </div>
+                <Badge tone={status.configured ? 'ok' : 'off'}>{tokenSourceLabel(status.source)}</Badge>
+              </div>
+              <WriteOnlySecretField
+                id={`omni-bot-token-${info.provider}`}
+                name={`omni-vault-${info.provider}`}
+                label={`توکن ${info.label}`}
+                value={draft}
+                reveal={Boolean(reveals[info.provider])}
+                onChange={(next) => onDraft(info.provider, next)}
+                onReveal={(next) => onReveal(info.provider, next)}
+                invalid={Boolean(draft) && !ready}
+                placeholder={tokenPlaceholder(info.provider)}
+                hint={status.fingerprint
+                  ? <>اثر انگشت <span className="font-mono" dir="ltr">{status.fingerprint}</span>{status.updatedAt ? ` · ${relativeTime(status.updatedAt)}` : ''} — مقدار دیده نمی‌شود.</>
+                  : info.provider === 'RUBIKA'
+                    ? 'حداقل ۲۰ نویسه، بدون فاصله.'
+                    : 'شکل ۱۲۳۴۵۶:ABC بدون فاصله.'}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={!ready || saving}
+                  onClick={() => onSave(info.provider)}
+                >
+                  {saving ? 'در حال ذخیره…' : `ذخیره توکن ${info.label}`}
+                </button>
+                {status.source !== 'none' && status.source !== 'env' && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={clearing}
+                    onClick={() => onClear(info.provider)}
+                  >
+                    حذف توکن پنل
+                  </button>
+                )}
+              </div>
+              {!info.enabled && (
+                <p className="text-[11px] text-amber-800 leading-5">روی سرور خاموش است؛ ذخیره می‌شود ولی تست زنده تا روشن‌شدن کار نمی‌کند.</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -43,6 +43,10 @@ const adminOmni = readFileSync(
   resolve(__dirname, '../../../../web/src/components/admin/AdminOmnichannel.tsx'),
   'utf8',
 );
+const adminOmniUi = readFileSync(
+  resolve(__dirname, '../../../../web/src/components/admin/admin-omnichannel-ui.tsx'),
+  'utf8',
+);
 const dbSync = src('config/db-sync.ts');
 const storageSvc = src('modules/upload/storage.service.ts');
 const mediaEntity = src('modules/omnichannel/entities/omnichannel-media-asset.entity.ts');
@@ -127,6 +131,7 @@ assert(secrets.includes('TELEGRAM|BALE|RUBIKA'), 'secretRef allowlist');
   assert(omniAdmin.includes("Put('secrets')") && omniAdmin.includes('putSecret'), 'write-only token endpoint');
   assert(omniSvc.includes('assertNoVaultLeak') && omniSvc.includes('secret_put'), 'save path audits without ciphertext');
   assert(adminOmni.includes('type={reveal ? \'text\' : \'password\'}') || adminOmni.includes('WriteOnlySecretField'), 'admin token field is write-only');
+  assert(adminOmni.includes('ProviderTokenVault') && adminOmniUi.includes('omni-bot-token-${info.provider}'), 'one write-only token field per provider');
   assert(adminOmni.includes('/omnichannel/secrets'), 'admin posts token only to dedicated secrets route');
   assert(!adminOmni.includes('توکن هیچ‌وقت وارد مرورگر نمی‌شود'), 'copy no longer claims the token never enters the browser');
 }

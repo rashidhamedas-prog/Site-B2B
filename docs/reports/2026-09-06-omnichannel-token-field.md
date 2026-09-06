@@ -117,7 +117,9 @@ If the provider is enabled, `getMe` runs **before** persist. A rejected token is
 
 ## UI
 
-One token card per selected messenger, under the three platform cards:
+Revision 2026-09-06 13:10Z: three always-visible write-only cards (Telegram / Bale / Rubika) at the top of step 1, not one field behind a selected platform. Custom `secretRef` stays behind «نام متغیر سفارشی».
+
+One token card per messenger:
 
 - Persistent label, LTR password input, نمایش/پنهان, paste-friendly (`autocomplete=off`)
 - Status badge: ذخیره نشده / از این پنل / روی سرور / هر دو

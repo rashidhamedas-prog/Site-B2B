@@ -2,7 +2,7 @@
 
 ## 2026-09-06 — فیلد توکن امن در کانال انتشار
 
-- در `/admin/omnichannel` برای هر پیام‌رسان (تلگرام / بله / روبیکا) کادر فقط‌نوشتنی توکن اضافه شد: `type=password`، بعد از ذخیره خالی می‌شود، مقدار هرگز از API برنمی‌گردد.
+- در `/admin/omnichannel` سه کادر فقط‌نوشتنی جدا (تلگرام / بله / روبیکا) همیشه دیده می‌شود: `type=password`، بعد از ذخیره خالی می‌شود، مقدار هرگز از API برنمی‌گردد. نام متغیر سفارشی پشت «تنظیم پیشرفته» است.
 - مسیر جدا `PUT /omnichannel/secrets` و `DELETE /omnichannel/secrets/:secretRef`؛ CRUD اتصال همچنان `assertNoPlaintextSecrets` است و فیلد `token` را رد می‌کند.
 - ذخیره: AES-256-GCM در `app_settings` با کلید `omnichannel.secret.vault`؛ کلید پوشش از `OMNICHANNEL_VAULT_KEY` یا `JWT_SECRET`. ورکر هر ۱۵ ثانیه hydrate می‌کند. اگر کانکتور روشن باشد قبل از ذخیره `getMe` زده می‌شود.
 - `resolveProviderToken` اول overlay پنل را می‌خواند، بعد env. پاسخ وضعیت فقط `configured` / `source` / اثر انگشت ۸ hex است.

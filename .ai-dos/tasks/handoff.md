@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T13:10:00Z — TASK-20260905-003 three always-visible token cards
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Owner repeated: token field per platform in کانال انتشار, with security + /ultra-architecture /ui-ux-product-design /design.
+- Vault/API already live (`b8eefe0` on master). This pass is UX: `ProviderTokenVault` shows Telegram / Bale / Rubika write-only fields at once (no shared draft; custom secretRef collapsed). Crypto and PUT/DELETE `/omnichannel/secrets` unchanged.
+- Concepts compared: (A) one field after selecting a platform — easy to miss, draft leaked across messengers; (B, chosen) three persistent cards — matches «هر پلتفرم», one-time setup. No extra JS/images (landing TTFB/LCP unchanged).
+- Exact next: gates, commit claimed UI/docs only, merge master, deploy, verify `/admin/omnichannel` has three password fields. Independent security still required. Do not Done TASK-20260826-001.
+
 ## 2026-09-06T13:00:00Z — TASK-20260905-003 write-only token field
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
