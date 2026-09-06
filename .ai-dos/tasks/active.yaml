@@ -606,7 +606,7 @@ tasks:
       - "api+web tsc and new jwt-invalidation / safe-redirect / phone specs pass"
   - id: "TASK-20260903-004"
     title: "Root-fix dual-site mobile LCP/INP and retail edge"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:gpt-5.6-sol-TASK-20260903-004"
     roles:
@@ -617,42 +617,15 @@ tasks:
     branch: "ai/TASK-20260903-004-gsc-mobile-speed-v2"
     worktree: "D:/proje/Site-B2B-gsc-speed"
     claimed_at: "2026-09-03T12:50:00Z"
-    heartbeat_at: "2026-09-06T13:35:00Z"
+    heartbeat_at: "2026-09-06T21:45:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/Dockerfile"
-      - "apps/api/src/modules/upload/image-processor.ts"
-      - "apps/api/src/modules/upload/image-processor.spec.ts"
-      - "apps/api/src/jobs/backfill-product-images.ts"
-      - "apps/api/src/jobs/backfill-product-images.spec.ts"
-      - "apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.ts"
-      - "apps/api/src/database/migrations/20260906-004-wholesale-hero-cache-bust.spec.ts"
-      - "apps/api/src/database/wholesale-hero-cache-bust.util.ts"
-      - "apps/web/src/lib/server-api.ts"
-      - "apps/web/src/lib/catalog-performance.ts"
-      - "apps/web/src/lib/catalog-performance.spec.ts"
-      - "apps/web/src/app/layout.tsx"
-      - "apps/web/public/fonts/Vazirmatn-NL-wght-v33.003.woff2"
-      - "apps/web/public/fonts/Vazirmatn-OFL-1.1.txt"
-      - "apps/web/src/components/shared/DeferredGtm.tsx"
-      - "apps/web/src/lib/cms/defaults.ts"
-      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01-73e2bdac6948.webp"
-      - "apps/web/public/banners/hero-product-2026-v2/wholesale-01-mobile-8c90e6ac4182.webp"
-      - "apps/web/src/components/retail/RetailProductsCatalogWithUrl.tsx"
-      - "apps/web/src/components/wholesale/WholesaleProductsCatalogWithUrl.tsx"
-      - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
-      - "apps/web/src/components/wholesale/ProductCatalog.tsx"
-      - "apps/web/src/components/retail/RetailProductCard.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
-      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
-      - "apps/web/src/components/ui/ProductImage.tsx"
-      - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
-      - "docs/reports/2026-09-06-gsc-mobile-speed-root-fix.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
+      CLOSED 2026-09-06T21:45Z. Claims released after fast-forward
+      merge to origin/master (runtime `ca1bdd8`). Do not reopen
+      unless a new task is created. No 28-day field CWV claim.
+      ---
+
       Owner approved the attached root-fix plan and staged Cloudflare
       activation for .ir. Baseline 2026-09-06: .com GSC field group has
       10 mobile URLs at LCP 3.7s / INP 212ms; cold lab .ir /products

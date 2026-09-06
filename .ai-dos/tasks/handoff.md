@@ -10,6 +10,23 @@ Append newest entries at the top. Never erase another agent's record.
 - Observed locally: `omnichannel-phase-acceptance.spec.ts` ok; apps/api + apps/web `tsc --noEmit` 0.
 - Claims released. TASK-20260826-001 still **NOT DONE**.
 
+## 2026-09-06T21:45:00Z — TASK-20260903-004 CLOSED on master
+
+- Owner closed after owner request to commit/merge/push/close.
+- Git: `ai/TASK-20260903-004-gsc-mobile-speed-v2` == `origin/master` == VPS `/opt/taranom` at `15360d5`. Fast-forward only; no extra merge commit. Health 200.
+- Runtime already live from `ca1bdd8`; docs closeout is `15360d5`. File claims released. Task status `done`.
+- Do not claim 28-day field CWV recovery. Do not enable connectors.
+
+## 2026-09-06T14:30:00Z — TASK-20260903-004 mobile-speed closeout LIVE `ca1bdd8`
+
+- Owner/worktree: `cursor:gpt-5.6-sol-TASK-20260903-004` at `D:/proje/Site-B2B-gsc-speed`.
+- Live SHA `ca1bdd8`. Health 200; `require('sharp')` `0.33.5` / vips `8.15.3`. Checkout `.ir` `no-store` + CF `DYNAMIC`. Torob feed 200. Sara/Katayoun HTML now `products/optimized/*.webp`; original JPEGs still in MinIO.
+- Dry-run: 170 eligible / 169 ready / 1 unprocessable 5MB JPEG / 1 source-missing. `--limit=1` applied `wool-coat-katayoun` 3.8MB→119KB. Remaining apply: 168 replacements, 440 refs, 553MB→15MB, 0 errors; unprocessable skipped not fatal.
+- Cloudflare `.ir`: Full strict; HTML cache rule off; static/`_next/image` cached; only apex+www A proxied.
+- Lab Slow4G/CPU×4 medians (ms LCP): retail home 1940; wholesale home 1588; retail catalog 3348 (r2 noisy); wholesale catalog 3184; Sara retail 1860; Sara wholesale 4512 (before remaining apply).
+- GSC `.com` mobile: INP and LCP>2.5s Validation **Started**. Do not claim 28-day field recovery. Connectors stay off.
+- Report: `docs/reports/2026-09-06-gsc-mobile-speed-root-fix.md`. Task acceptance recorded; mark done after this docs commit.
+
 ## 2026-09-06T14:05:00Z — TASK-20260905-003 vault key live on VPS
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003

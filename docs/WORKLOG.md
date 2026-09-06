@@ -26,6 +26,8 @@
 - فونت مشترک به یک Vazirmatn variable (~48KB) رسید؛ GTM بعد از load/تعامل می‌آید؛ هیروی عمده URL هش‌دار گرفت.
 - کاتالوگ بدون فیلتر بعد از hydration دوباره mount نمی‌شود؛ فقط کارت اول priority دارد.
 - Backfill تصاویر dry-run/apply/rollback است، اصل فایل را پاک نمی‌کند و رویداد انتشار نمی‌سازد.
+- Closeout زنده `ca1bdd8`: Cloudflare `.ir` فقط استاتیک؛ Validation دو مسئلهٔ CWV شروع شد؛ dry-run ۱۶۹ آماده + ۱ JPEG خراب؛ `--limit=1` روی کتایون؛ apply باقی ۱۶۸ تصویر / ۴۴۰ ارجاع (۵۵۴MB→۱۵MB). تصویر غیرقابل‌پردازش skip می‌شود نه abort.
+- تسک بسته شد: `ai/TASK-20260903-004-gsc-mobile-speed-v2` fast-forward روی `origin/master` و VPS در `15360d5`؛ claimها آزاد شد.
 - گزارش: `docs/reports/2026-09-06-gsc-mobile-speed-root-fix.md`
 
 ## 2026-09-06 — بله و روبیکا در کنسول انتشار (سه پیام‌رسان، یک قالب)

@@ -4,7 +4,10 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { Readable } from 'node:stream';
 import { DataSource } from 'typeorm';
-import { processProductImage } from '../modules/upload/image-processor';
+import {
+  processProductImage,
+  ProductImageProcessingError,
+} from '../modules/upload/image-processor';
 import { isMissingObjectError, sanitizeObjectKey } from '../modules/upload/storage-delete';
 
 const OWNED_MEDIA_HOSTS = new Set([
@@ -780,6 +783,15 @@ async function runBackfill(
           key: row.key,
           size: row.size,
           reason: 'source-missing',
+        });
+        return null;
+      }
+      if (error instanceof ProductImageProcessingError) {
+        skipped.push({
+          url: row.url,
+          key: row.key,
+          size: row.size,
+          reason: 'source-unprocessable',
         });
         return null;
       }

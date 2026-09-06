@@ -52,7 +52,9 @@ function main() {
   assert.equal(source.includes('AppModule'), false);
   assert.equal(source.includes('createApplicationContext'), false);
   assert.equal(source.includes("reason: 'source-missing'"), true);
+  assert.equal(source.includes("reason: 'source-unprocessable'"), true);
   assert.match(source, /isMissingObjectError\(error\)/);
+  assert.match(source, /ProductImageProcessingError/);
 
   const bucket = 'taranom-products';
   const key = 'products/1787994011222-f508abcb99eb3.jpg';
