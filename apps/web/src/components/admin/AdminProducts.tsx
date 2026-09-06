@@ -31,6 +31,11 @@ import {
   ProductRelatedPicker,
   type RelatedProductPick,
 } from '@/components/admin/ProductRelatedPicker';
+import { ProductInternalLinkPicker } from '@/components/admin/ProductInternalLinkPicker';
+import type {
+  InternalLinkInput,
+  InternalLinkView,
+} from '@/lib/hooks/useProducts';
 import { AdminExcelExportButtons } from '@/components/admin/AdminExcelExportButtons';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -172,6 +177,20 @@ function relatedPicksFromProduct(p: Product): RelatedProductPick[] {
   return (p.relatedProductIds ?? [])
     .slice(0, 5)
     .map((id) => ({ id, name: id, sku: '', images: [] }));
+}
+
+function internalLinksFromProduct(links: InternalLinkView[] | undefined): InternalLinkInput[] {
+  if (!Array.isArray(links)) return [];
+  return links.map((l) => ({
+    id: l.id,
+    targetType: l.targetType,
+    targetId: l.targetId,
+    targetUrl: l.targetUrl,
+    anchorText: l.anchorText,
+    title: l.title,
+    rel: l.rel,
+    sortOrder: l.sortOrder,
+  }));
 }
 
 function irrToTomanStr(irr: number | null | undefined): string {
@@ -814,6 +833,8 @@ export function AdminProducts() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
   const [relatedPicks, setRelatedPicks] = useState<RelatedProductPick[]>([]);
+  const [retailLinkPicks, setRetailLinkPicks] = useState<InternalLinkInput[]>([]);
+  const [wholesaleLinkPicks, setWholesaleLinkPicks] = useState<InternalLinkInput[]>([]);
   const [contentBusy, setContentBusy] = useState<'RETAIL' | 'WHOLESALE' | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -902,6 +923,8 @@ export function AdminProducts() {
     setColorDrafts([]);
     setInitialColorNames([]);
     setRelatedPicks([]);
+    setRetailLinkPicks([]);
+    setWholesaleLinkPicks([]);
     setSaveError(null);
     setSlugError(null);
     setEditProduct(null);
@@ -924,6 +947,8 @@ export function AdminProducts() {
     const mergedImages = [...new Set([...(src.images ?? []), ...colorImgs])];
     setImages(mergedImages);
     setRelatedPicks(relatedPicksFromProduct(src));
+    setRetailLinkPicks(internalLinksFromProduct(src.retailInternalLinks));
+    setWholesaleLinkPicks(internalLinksFromProduct(src.wholesaleInternalLinks));
     setSaveError(null);
     setSlugError(null);
     const specs = src.specs ?? {};
@@ -1032,6 +1057,8 @@ export function AdminProducts() {
     setColorDrafts([]);
     setInitialColorNames([]);
     setRelatedPicks([]);
+    setRetailLinkPicks([]);
+    setWholesaleLinkPicks([]);
     setSaveError(null);
     setSlugError(null);
   };
@@ -1184,6 +1211,8 @@ export function AdminProducts() {
         retailFullContent: form.retailFullContent.trim() || null,
         wholesaleFullContent: form.wholesaleFullContent.trim() || null,
         relatedProductIds: relatedPicks.map((item) => item.id).slice(0, 5),
+        retailInternalLinks: retailLinkPicks,
+        wholesaleInternalLinks: wholesaleLinkPicks,
         wholesaleIsDiscounted,
         retailIsDiscounted,
         wholesaleDiscountType: form.wholesaleDiscountType,
@@ -2298,6 +2327,23 @@ export function AdminProducts() {
                 onChange={setRelatedPicks}
                 excludeId={editProduct?.id}
               />
+
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <ProductInternalLinkPicker
+                  channel="WHOLESALE"
+                  accent="wholesale"
+                  value={wholesaleLinkPicks}
+                  onChange={setWholesaleLinkPicks}
+                  productId={editProduct?.id}
+                />
+                <ProductInternalLinkPicker
+                  channel="RETAIL"
+                  accent="retail"
+                  value={retailLinkPicks}
+                  onChange={setRetailLinkPicks}
+                  productId={editProduct?.id}
+                />
+              </div>
 
               <div>
                 <ColorVariantsEditor

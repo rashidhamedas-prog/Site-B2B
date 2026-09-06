@@ -19,6 +19,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { ProductRelatedEntity } from './entities/product-related.entity';
+import { ProductInternalLinkEntity } from './entities/product-internal-link.entity';
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
 import { sanitizeBlogHtml } from '../blog/blog-sanitize';
 import { sanitizeGuarantee } from '../torob/torob-product-projection';
@@ -43,6 +44,17 @@ import { isPublicProductRow } from './public-product-status';
 import { stripOppositeChannelFields } from './public-product-channel';
 import { productOutboxIntents } from './product-outbox';
 import { OutboxService } from '../omnichannel/services/outbox.service';
+import {
+  MAX_INTERNAL_LINKS_PER_CHANNEL,
+  buildInternalLinkUrl,
+  isInternalUrl,
+  toRelativePath,
+  validateInternalLinkList,
+  type InternalLinkChannel,
+  type InternalLinkInput,
+  type ResolvedLink,
+} from './internal-link-resolver';
+import type { InternalLinkView } from './dto/internal-link.dto';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -168,6 +180,8 @@ export class ProductService {
     private readonly specMemoryRepo: Repository<ProductSpecMemoryEntity>,
     @InjectRepository(ProductRelatedEntity)
     private readonly relatedRepo: Repository<ProductRelatedEntity>,
+    @InjectRepository(ProductInternalLinkEntity)
+    private readonly internalLinkRepo: Repository<ProductInternalLinkEntity>,
     @InjectRepository(SeoRedirectEntity)
     private readonly redirectRepo: Repository<SeoRedirectEntity>,
     private readonly storage: StorageService,
@@ -599,6 +613,336 @@ export class ProductService {
     );
   }
 
+  // ── Internal links (per-channel SEO) ───────────────────────
+
+  /** Persist the full per-channel link list for a product (replace-all). */
+  async replaceInternalLinks(
+    productId: string,
+    channel: InternalLinkChannel,
+    rawLinks: InternalLinkInput[] | undefined,
+  ) {
+    // undefined = "do not touch" (partial PATCH); empty array = explicit clear.
+    if (rawLinks === undefined) return;
+    const ch: InternalLinkChannel = channel === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const list = Array.isArray(rawLinks) ? rawLinks : [];
+    if (list.length > MAX_INTERNAL_LINKS_PER_CHANNEL) {
+      throw new BadRequestException(
+        `حداکثر ${MAX_INTERNAL_LINKS_PER_CHANNEL} لینک داخلی برای هر کانال مجاز است`,
+      );
+    }
+    const { ok, issues } = validateInternalLinkList(list, productId);
+    if (issues.length) {
+      const first = issues[0];
+      throw new BadRequestException(
+        `لینک داخلی نامعتبر (ردیف ${first.index + 1}): ${first.reason}`,
+      );
+    }
+    const product = await this.productRepo.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('محصول یافت نشد');
+    const resolved = await this.resolveAndValidateLinks(productId, ch, product.slug, ok);
+    if (resolved.rejected.length) {
+      const msg = resolved.rejected.map((r) => `«${r.anchorText}» (${r.reason})`).join('؛ ');
+      throw new BadRequestException(`لینک‌های داخلی نامعتبر — ${msg}`);
+    }
+    await this.internalLinkRepo.delete({ productId, channel: ch });
+    if (!resolved.accepted.length) return [];
+    return this.internalLinkRepo.save(
+      resolved.accepted.map((link, sortOrder) =>
+        this.internalLinkRepo.create({
+          productId,
+          channel: ch,
+          targetType: link.targetType as ProductInternalLinkEntity['targetType'],
+          targetId: link.targetId,
+          targetUrl: link.targetUrl,
+          anchorText: link.anchorText,
+          title: link.title,
+          rel: link.rel as ProductInternalLinkEntity['rel'],
+          sortOrder,
+        }),
+      ),
+    );
+  }
+
+  /**
+   * DB-dependent validation + URL re-resolution. Enforces channel visibility
+   * (a retail link cannot target a wholesale-only product and vice versa).
+   */
+  private async resolveAndValidateLinks(
+    productId: string,
+    channel: InternalLinkChannel,
+    selfSlug: string | null,
+    links: ResolvedLink[],
+  ): Promise<{ accepted: ResolvedLink[]; rejected: Array<{ anchorText: string; reason: string }> }> {
+    const accepted: ResolvedLink[] = [];
+    const rejected: Array<{ anchorText: string; reason: string }> = [];
+    if (!links.length) return { accepted, rejected };
+
+    const productIds = [...new Set(links.filter((l) => l.targetType === 'PRODUCT' && l.targetId).map((l) => l.targetId as string))];
+    const categoryIds = [...new Set(links.filter((l) => l.targetType === 'CATEGORY' && l.targetId).map((l) => l.targetId as string))];
+    const blogIds = [...new Set(links.filter((l) => l.targetType === 'BLOG' && l.targetId).map((l) => l.targetId as string))];
+
+    const productMap = new Map<string, ProductEntity>();
+    if (productIds.length) {
+      (await this.productRepo.find({ where: { id: In(productIds) } })).forEach((p) => productMap.set(p.id, p));
+    }
+    const categoryMap = new Map<string, CategoryEntity>();
+    if (categoryIds.length) {
+      (await this.categoryRepo.find({ where: { id: In(categoryIds) } })).forEach((c) => categoryMap.set(c.id, c));
+    }
+    const blogMap = new Map<string, { slug: string; robotsIndex: boolean }>();
+    if (blogIds.length) {
+      const rows: Array<{ id: string; slug: string; robotsIndex: boolean }> = await this.productRepo.manager.query(
+        `SELECT id, slug, "robotsIndex" FROM blog_posts WHERE id = ANY($1) AND channel = $2 AND status = 'PUBLISHED' AND "deletedAt" IS NULL`,
+        [blogIds, channel],
+      );
+      rows.forEach((r) => blogMap.set(r.id, { slug: r.slug, robotsIndex: r.robotsIndex }));
+    }
+
+    const selfPath = selfSlug ? `/products/${selfSlug}` : null;
+
+    for (const link of links) {
+      if (link.targetType === 'CUSTOM') {
+        if (!isInternalUrl(link.targetUrl)) {
+          rejected.push({ anchorText: link.anchorText, reason: 'external_url' });
+          continue;
+        }
+        if (selfPath && toRelativePath(link.targetUrl) === selfPath) {
+          rejected.push({ anchorText: link.anchorText, reason: 'self_link' });
+          continue;
+        }
+        accepted.push(link);
+        continue;
+      }
+      if (!link.targetId) {
+        rejected.push({ anchorText: link.anchorText, reason: 'missing_target' });
+        continue;
+      }
+      if (link.targetType === 'PRODUCT') {
+        const target = productMap.get(link.targetId);
+        if (!target) { rejected.push({ anchorText: link.anchorText, reason: 'target_not_found' }); continue; }
+        const visible = channel === 'RETAIL' ? target.showOnRetail !== false : target.showOnWholesale !== false;
+        if (!visible || !isPublicProductRow(target.status)) { rejected.push({ anchorText: link.anchorText, reason: 'not_visible_in_channel' }); continue; }
+        accepted.push({ ...link, targetUrl: buildInternalLinkUrl('PRODUCT', target.slug) || link.targetUrl });
+        continue;
+      }
+      if (link.targetType === 'CATEGORY') {
+        const target = categoryMap.get(link.targetId);
+        if (!target || !target.slug) { rejected.push({ anchorText: link.anchorText, reason: 'target_not_found' }); continue; }
+        accepted.push({ ...link, targetUrl: buildInternalLinkUrl('CATEGORY', target.slug) || link.targetUrl });
+        continue;
+      }
+      if (link.targetType === 'BLOG') {
+        const target = blogMap.get(link.targetId);
+        if (!target) { rejected.push({ anchorText: link.anchorText, reason: 'target_not_found' }); continue; }
+        if (target.robotsIndex === false) { rejected.push({ anchorText: link.anchorText, reason: 'noindex' }); continue; }
+        accepted.push({ ...link, targetUrl: buildInternalLinkUrl('BLOG', target.slug) || link.targetUrl });
+        continue;
+      }
+      rejected.push({ anchorText: link.anchorText, reason: 'invalid_target_type' });
+    }
+    return { accepted, rejected };
+  }
+
+  /** Load link views for a product. Admin mode (no channel) returns both channels. */
+  private async loadInternalLinkViews(
+    productId: string,
+    channel: InternalLinkChannel | undefined,
+    keepAll: boolean,
+  ): Promise<{ internalLinks?: InternalLinkView[]; retailInternalLinks?: InternalLinkView[]; wholesaleInternalLinks?: InternalLinkView[] }> {
+    if (channel !== 'RETAIL' && channel !== 'WHOLESALE') {
+      const [retail, wholesale] = await Promise.all([
+        this.loadChannelViews(productId, 'RETAIL', true),
+        this.loadChannelViews(productId, 'WHOLESALE', true),
+      ]);
+      return { retailInternalLinks: retail, wholesaleInternalLinks: wholesale };
+    }
+    return { internalLinks: await this.loadChannelViews(productId, channel, keepAll) };
+  }
+
+  private async loadChannelViews(
+    productId: string,
+    channel: InternalLinkChannel,
+    keepAll: boolean,
+  ): Promise<InternalLinkView[]> {
+    const rows = await this.internalLinkRepo.find({
+      where: { productId, channel },
+      order: { sortOrder: 'ASC', createdAt: 'ASC' },
+    });
+    if (!rows.length) return [];
+    const productTargetIds = [...new Set(rows.filter((r) => r.targetType === 'PRODUCT' && r.targetId).map((r) => r.targetId as string))];
+    const productMap = new Map<string, ProductEntity>();
+    if (productTargetIds.length) {
+      (await this.productRepo.find({ where: { id: In(productTargetIds) } })).forEach((p) => productMap.set(p.id, p));
+    }
+    const views: InternalLinkView[] = [];
+    for (const row of rows) {
+      let targetUrl = row.targetUrl;
+      if (row.targetType === 'PRODUCT' && row.targetId) {
+        const target = productMap.get(row.targetId);
+        if (!target) {
+          if (keepAll) views.push(this.toView(row));
+          continue;
+        }
+        const visible = channel === 'RETAIL' ? target.showOnRetail !== false : target.showOnWholesale !== false;
+        if (!keepAll && (!visible || !isPublicProductRow(target.status))) continue;
+        targetUrl = buildInternalLinkUrl('PRODUCT', target.slug) || row.targetUrl;
+      }
+      views.push({
+        id: row.id,
+        targetType: row.targetType,
+        targetId: row.targetId,
+        targetUrl,
+        anchorText: row.anchorText,
+        title: row.title,
+        rel: row.rel,
+        sortOrder: row.sortOrder,
+      });
+    }
+    return views;
+  }
+
+  private toView(row: ProductInternalLinkEntity): InternalLinkView {
+    return {
+      id: row.id,
+      targetType: row.targetType,
+      targetId: row.targetId,
+      targetUrl: row.targetUrl,
+      anchorText: row.anchorText,
+      title: row.title,
+      rel: row.rel,
+      sortOrder: row.sortOrder,
+    };
+  }
+
+  /** Attach internal links to a product payload (read path). */
+  private async attachInternalLinks<T>(
+    product: ProductEntity,
+    payload: T,
+    channel?: string,
+  ): Promise<T & { internalLinks?: InternalLinkView[]; retailInternalLinks?: InternalLinkView[]; wholesaleInternalLinks?: InternalLinkView[] }> {
+    const ch = String(channel || '').toUpperCase();
+    const resolved =
+      ch === 'RETAIL' || ch === 'WHOLESALE'
+        ? await this.loadInternalLinkViews(product.id, ch as InternalLinkChannel, false)
+        : await this.loadInternalLinkViews(product.id, undefined, true);
+    return { ...payload, ...resolved };
+  }
+
+  /** Suggest channel-scoped internal link targets for the admin picker. */
+  async suggestInternalLinks(opts: {
+    channel: string;
+    productId?: string;
+    q?: string;
+    targetType?: string;
+    limit?: number;
+  }) {
+    const channel: InternalLinkChannel = opts.channel.toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const limit = Math.min(20, Number(opts.limit) || 8);
+    const q = String(opts.q || '').trim();
+    const targetType = String(opts.targetType || 'PRODUCT').toUpperCase();
+
+    if (targetType === 'PRODUCT') {
+      const qb = this.productRepo
+        .createQueryBuilder('p')
+        .where('p.deletedAt IS NULL')
+        .andWhere('p.status = :status', { status: 'ACTIVE' });
+      if (channel === 'RETAIL') qb.andWhere('p.showOnRetail != false');
+      else qb.andWhere('p.showOnWholesale != false');
+      if (opts.productId) qb.andWhere('p.id != :id', { id: opts.productId });
+      if (q) qb.andWhere('(p.name ILIKE :q OR p.sku ILIKE :q OR p.slug ILIKE :q)', { q: `%${q}%` });
+      const products = await qb.orderBy('p.viewCount', 'DESC').addOrderBy('p.createdAt', 'DESC').take(limit).getMany();
+      return products.map((p) => {
+        const seo = (p.seoMeta || {}) as Record<string, string>;
+        const focus = channel === 'RETAIL' ? seo.retailFocusKeyword || seo.focusKeyword : seo.wholesaleFocusKeyword || seo.focusKeyword;
+        return {
+          targetType: 'PRODUCT',
+          id: p.id,
+          title: p.name,
+          slug: p.slug,
+          url: buildInternalLinkUrl('PRODUCT', p.slug),
+          suggestedAnchor: focus || p.name,
+        };
+      });
+    }
+
+    if (targetType === 'CATEGORY') {
+      const qb = this.categoryRepo
+        .createQueryBuilder('c')
+        .where('c.deletedAt IS NULL')
+        .andWhere('c.status = :status', { status: 'ACTIVE' })
+        .andWhere('c.slug IS NOT NULL');
+      if (q) qb.andWhere('(c.name ILIKE :q OR c.slug ILIKE :q)', { q: `%${q}%` });
+      const cats = await qb.orderBy('c.sortOrder', 'ASC').take(limit).getMany();
+      return cats.map((c) => ({
+        targetType: 'CATEGORY',
+        id: c.id,
+        title: c.name,
+        slug: c.slug,
+        url: buildInternalLinkUrl('CATEGORY', c.slug),
+        suggestedAnchor: c.name,
+      }));
+    }
+
+    if (targetType === 'BLOG') {
+      const rows: Array<{ id: string; title: string; slug: string; focusKeyword: string | null }> =
+        await this.productRepo.manager.query(
+          `SELECT id, title, slug, "focusKeyword" FROM blog_posts
+           WHERE channel = $1 AND status = 'PUBLISHED' AND "deletedAt" IS NULL
+             AND ($2 = '' OR title ILIKE '%' || $2 || '%' OR slug ILIKE '%' || $2 || '%' OR "focusKeyword" ILIKE '%' || $2 || '%')
+           ORDER BY "publishedAt" DESC NULLS LAST LIMIT $3`,
+          [channel, q, limit],
+        );
+      return rows.map((r) => ({
+        targetType: 'BLOG',
+        id: r.id,
+        title: r.title,
+        slug: r.slug,
+        url: buildInternalLinkUrl('BLOG', r.slug),
+        suggestedAnchor: r.focusKeyword || r.title,
+      }));
+    }
+
+    return [];
+  }
+
+  /** Advisory validation of a link list without persisting (admin "بررسی" button). */
+  async validateInternalLinks(opts: {
+    channel: string;
+    productId?: string;
+    links: InternalLinkInput[];
+  }) {
+    const channel: InternalLinkChannel = opts.channel.toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const list = Array.isArray(opts.links) ? opts.links : [];
+    const { ok, issues } = validateInternalLinkList(list, opts.productId || null);
+    let product: ProductEntity | null = null;
+    if (opts.productId) {
+      product = await this.productRepo.findOne({ where: { id: opts.productId } });
+    }
+    const resolved = await this.resolveAndValidateLinks(
+      opts.productId || '00000000-0000-0000-0000-000000000000',
+      channel,
+      product?.slug ?? null,
+      ok,
+    );
+    const rejected = [
+      ...issues.map((i) => ({ index: i.index, reason: i.reason, anchorText: i.anchorText, targetUrl: i.targetUrl })),
+      ...resolved.rejected.map((r) => ({ index: -1, reason: r.reason, anchorText: r.anchorText, targetUrl: undefined })),
+    ];
+    return {
+      ok: resolved.accepted.map((l) => ({
+        targetType: l.targetType,
+        targetId: l.targetId,
+        targetUrl: l.targetUrl,
+        anchorText: l.anchorText,
+        title: l.title,
+        rel: l.rel,
+        sortOrder: l.sortOrder,
+      })),
+      rejected,
+      count: list.length,
+    };
+  }
+
   private async changeSlugInTransaction(productId: string, nextRaw: string) {
     await this.productRepo.manager.transaction(async (em) => {
       const productRepo = em.getRepository(ProductEntity);
@@ -805,7 +1149,11 @@ export class ProductService {
       throw new NotFoundException('محصول یافت نشد');
     }
     const cfg = await this.badgeConfig();
-    return this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg);
+    return this.attachInternalLinks(
+      product,
+      await this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg),
+      channel,
+    );
   }
 
   async findBySlug(slug: string, channel?: string, opts?: { allowNonActive?: boolean }) {
@@ -846,7 +1194,11 @@ export class ProductService {
       throw new NotFoundException('محصول یافت نشد');
     }
     const cfg = await this.badgeConfig();
-    return this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg);
+    return this.attachInternalLinks(
+      product,
+      await this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg),
+      channel,
+    );
   }
 
   async create(data: CreateProductDto) {
@@ -937,6 +1289,8 @@ export class ProductService {
       return row;
     });
     await this.replaceRelated(saved.id, data.relatedProductIds);
+    await this.replaceInternalLinks(saved.id, 'RETAIL', data.retailInternalLinks);
+    await this.replaceInternalLinks(saved.id, 'WHOLESALE', data.wholesaleInternalLinks);
     await this.rememberSpecs(specs);
     const cfg = await this.badgeConfig();
     return this.withBadges(
@@ -1158,6 +1512,12 @@ export class ProductService {
     }
     if (data.relatedProductIds) {
       await this.replaceRelated(id, data.relatedProductIds);
+    }
+    if (data.retailInternalLinks !== undefined) {
+      await this.replaceInternalLinks(id, 'RETAIL', data.retailInternalLinks);
+    }
+    if (data.wholesaleInternalLinks !== undefined) {
+      await this.replaceInternalLinks(id, 'WHOLESALE', data.wholesaleInternalLinks);
     }
 
     if (data.images) {

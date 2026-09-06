@@ -2053,3 +2053,64 @@ Path C channel-split / void / retail-b2c columns intentionally **out of scope** 
 - Known failures, risks, and assumptions:
 - File claims released or retained:
 - Exact next action:
+
+## 2026-09-06T18:30:00Z — TASK-20260906-001 product internal-link SEO (per-channel) — implementation complete, pre-commit
+
+- Task / owner / role: TASK-20260906-001 / cursor:implementer-TASK-20260906-001 / architect+implementer
+- Branch / worktree: `ai/TASK-20260906-001-product-internal-links` / `D:/proje/Site B2B`
+- Objective: admin "internal link" SEO option per product, fully separate per channel (retail .ir vs wholesale .com), rendered on each PDP with ItemList JSON-LD.
+
+### Decisions
+- Dedicated table `product_internal_link` with `channel` column (not JSONB) for queryability + per-channel isolation.
+- `targetId` is a soft reference (UUID, no FK) so it can point to product/category/blog or be NULL for CUSTOM — existence/visibility validated in service at save + render.
+- Channel leakage prevented 3-layer: store (channel col, cap 12), validate-on-save (showOnRetail/showOnWholesale + status ACTIVE/PUBLISHED + robotsIndex), filter-on-render (public read returns only requested channel as `internalLinks`; admin returns both).
+- Reuses blog suggest/checkLinks pattern + ProductRelatedPicker UI pattern.
+- Pure logic in `internal-link-resolver.ts`; DB-dependent checks in `product.service.ts`.
+
+### Files changed (and why)
+- `apps/api/src/database/migrations/20260906-001-product-internal-links.ts` (new) — table + 4 indexes (2 unique anti-dup).
+- `apps/api/src/modules/product/entities/product-internal-link.entity.ts` (new) — TypeORM entity.
+- `apps/api/src/modules/product/dto/internal-link.dto.ts` (new) — `InternalLinkItemDto` + `InternalLinkView`.
+- `apps/api/src/modules/product/dto/create-product.dto.ts` — `retailInternalLinks`/`wholesaleInternalLinks` fields.
+- `apps/api/src/modules/product/internal-link-resolver.ts` (new) — pure URL/validate logic.
+- `apps/api/src/modules/product/internal-link-resolver.spec.ts` (new) — 12 unit checks.
+- `apps/api/src/modules/product/product.service.ts` — replace/resolve/attach/suggest/validate + hooks in create/update/findOne/findBySlug.
+- `apps/api/src/modules/product/product.controller.ts` — `POST admin/internal-links/suggest` + `/validate` (JWT+ADMIN).
+- `apps/api/src/modules/product/product.module.ts` — register entity.
+- `apps/web/src/components/admin/ProductInternalLinkPicker.tsx` (new) — picker.
+- `apps/web/src/components/admin/ProductInternalLinkRow.tsx` (new) — row editor.
+- `apps/web/src/components/admin/AdminProducts.tsx` — state + hydration + save + dual panel.
+- `apps/web/src/lib/hooks/useProducts.ts` — types + Product fields.
+- `apps/web/src/components/shared/ProductInternalLinks.tsx` (new) — PDP render + ItemList JSON-LD (server component).
+- `apps/web/src/app/retail/products/[slug]/page.tsx` — render retail links.
+- `apps/web/src/app/(wholesale)/products/[slug]/page.tsx` — render wholesale links.
+- `docs/reports/2026-09-06-product-internal-links.md` (new), `docs/WORKLOG.md`, `.ai-dos/project/status.md`, `.ai-dos/tasks/active.yaml`, `.ai-dos/tasks/handoff.md`.
+
+### Tests/gates run with exact results
+- `apps/api` `npx tsc --noEmit` → exit 0 (PASS).
+- `apps/web` `npx tsc --noEmit` → exit 0 (PASS).
+- `internal-link-resolver.spec.ts` (12 checks) → "All internal-link-resolver checks passed (12)." exit 0.
+- `public-product-channel.spec.ts` → ok; `product-content.spec.ts` → OK; `product-related-fill.spec.ts` → OK (no regression).
+
+### Review/security findings and dispositions
+- Security: self-review — no new secrets, no new deps, both endpoints JWT+ADMIN guarded, no channel leakage (validate+filter), no self-link/loop/external-CUSTOM. Migration additive+idempotent+reversible. No high-risk triggers beyond "API change → reviewer required".
+- Reviewer: **required after API change** (not yet run) — marked in active.yaml roles.
+
+### Known failures, risks, and assumptions
+- `internal-link-resolver.spec.ts` NOT yet wired into `npm run test` because `apps/api/package.json` is claimed by TASK-20260905-003 (append-only test script). Follow-up: append this spec line when that claim is released. Spec is runnable standalone and was executed manually.
+- `apps/web/src/app/retail/products/[slug]/page.tsx` was previously claimed by TASK-20260905-004 (done); my edit is additive (import + one render line).
+- WIP for TASK-20260905-003 stashed at `stash@{0}` before branching from origin/master.
+- Assumption: `blog_posts.status = 'PUBLISHED'` and `categories.status = 'ACTIVE'` are the public-visible values (matches existing blog/category entities).
+- No runtime smoke yet (deploy pending).
+
+### File claims released or retained
+- Retained: all task file_claims (see active.yaml TASK-20260906-001). Will release after commit+push+deploy+review.
+- Removed stale claims: `public-product-channel.ts`, `RetailProductDetail.tsx`, `packages/shared-types/...` (not edited). Added: `ProductInternalLinkRow.tsx`, retail `page.tsx`.
+
+### Exact next action
+1. Commit (Conventional Commits) on `ai/TASK-20260906-001-product-internal-links`.
+2. `git push origin HEAD`.
+3. VPS deploy: `ssh -i ~/.ssh/wholesale_server -p 2222 wholesale-admin@5.75.200.102` → `cd /opt/taranom && bash scripts/auto-deploy.sh` (runs migration).
+4. Verify: `/v1/health`, retail PDP, wholesale PDP, admin picker save.
+5. Independent Reviewer (API change).
+6. Release claims on success.

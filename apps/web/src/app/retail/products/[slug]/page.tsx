@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ProductJsonLd, ProductGroupJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { RetailProductDetail } from '@/components/retail/RetailProductDetail';
 import { RetailPdpAnalytics } from '@/components/retail/RetailPdpAnalytics';
+import { ProductInternalLinks } from '@/components/shared/ProductInternalLinks';
 import { RETAIL_ORIGIN } from '@/lib/seo';
 import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
@@ -149,6 +150,7 @@ export default async function RetailProductPage({
         product={product as any}
         initialVariantId={option.selected?.id}
       />
+      <ProductInternalLinks links={(product as { internalLinks?: never[] }).internalLinks} />
     </>
   );
 }

@@ -9,6 +9,42 @@ export interface ProductCustomField {
   value: string;
 }
 
+export type InternalLinkTargetType = 'PRODUCT' | 'CATEGORY' | 'BLOG' | 'CUSTOM';
+export type InternalLinkRel = 'dofollow' | 'nofollow' | 'sponsored';
+
+/** Internal link as returned by the API (admin + storefront). */
+export interface InternalLinkView {
+  id: string;
+  targetType: InternalLinkTargetType;
+  targetId: string | null;
+  targetUrl: string;
+  anchorText: string;
+  title: string | null;
+  rel: InternalLinkRel;
+  sortOrder: number;
+}
+
+/** Internal link as edited in the admin form (client id for stable React keys). */
+export interface InternalLinkInput {
+  id: string;
+  targetType: InternalLinkTargetType;
+  targetId: string | null;
+  targetUrl: string;
+  anchorText: string;
+  title?: string | null;
+  rel: InternalLinkRel;
+  sortOrder?: number;
+}
+
+export interface InternalLinkSuggestion {
+  targetType: InternalLinkTargetType;
+  id: string;
+  title: string;
+  slug?: string | null;
+  url: string;
+  suggestedAnchor: string;
+}
+
 export interface ProductSpecs {
   fabricType?: string;
   designDetails?: string;
@@ -66,6 +102,9 @@ export interface Product {
     sku?: string;
     images?: string[];
   }>;
+  internalLinks?: InternalLinkView[];
+  retailInternalLinks?: InternalLinkView[];
+  wholesaleInternalLinks?: InternalLinkView[];
   careInstructions?: Record<string, unknown> | null;
   faqItems?: Array<{ question: string; answer: string }> | null;
   sale?: {

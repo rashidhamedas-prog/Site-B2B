@@ -1,5 +1,66 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20260906-001"
+    title: "Product internal-link SEO feature (per-channel retail/wholesale) with admin picker, suggest/validate, PDP render + JSON-LD"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260906-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260906-001"
+      implementer: "cursor:implementer-TASK-20260906-001"
+      reviewer: "required-after-api-change"
+      security: "self-review-no-new-secrets-migration-additive"
+    branch: "ai/TASK-20260906-001-product-internal-links"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-06T13:10:00Z"
+    heartbeat_at: "2026-09-06T18:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/database/migrations/20260906-001-product-internal-links.ts"
+      - "apps/api/src/modules/product/entities/product-internal-link.entity.ts"
+      - "apps/api/src/modules/product/dto/internal-link.dto.ts"
+      - "apps/api/src/modules/product/dto/create-product.dto.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/product/product.controller.ts"
+      - "apps/api/src/modules/product/product.module.ts"
+      - "apps/api/src/modules/product/public-product-channel.ts"
+      - "apps/api/src/modules/product/internal-link-resolver.ts"
+      - "apps/api/src/modules/product/internal-link-resolver.spec.ts"
+      - "apps/web/src/components/admin/ProductInternalLinkPicker.tsx"
+      - "apps/web/src/components/admin/ProductInternalLinkRow.tsx"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/web/src/lib/hooks/useProducts.ts"
+      - "apps/web/src/components/shared/ProductInternalLinks.tsx"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
+      - "docs/reports/2026-09-06-product-internal-links.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked for a professional "internal link" SEO option in admin
+      product create/edit, fully separate per channel (retail .ir vs
+      wholesale .com), rendered on each product PDP. Chose dedicated table
+      product_internal_link with a channel column (not jsonb) for queryability
+      and per-channel isolation. Stashed TASK-20260905-003 uncommitted wip
+      (stash@{0}) before branching from origin/master; that owner can pop it
+      back on their branch. Migration is additive (CREATE TABLE IF NOT EXISTS,
+      no data backfill). No new secrets. Channel leakage prevented by
+      validate-on-save + filter-on-render (showOnRetail/showOnWholesale +
+      status ACTIVE). Reuses blog suggest/checkLinks pattern and
+      ProductRelatedPicker UI pattern. Max 12 links/channel, anchor 1-60,
+      no self-link, no dup, no redirect loop (wouldCreateRedirectLoop).
+    acceptance_criteria:
+      - "Admin product create/edit has a per-channel internal-link panel (wholesale=primary, retail=amber) matching the SEO dual-panel pattern"
+      - "Each link stores targetType (PRODUCT/CATEGORY/BLOG/CUSTOM), targetId, targetUrl, anchorText, title, rel, sortOrder"
+      - "Retail and wholesale links are stored and returned completely separately; public read strips the opposite channel"
+      - "A retail link cannot point to a wholesale-only product and vice versa (validate-on-save + filter-on-render)"
+      - "Suggest endpoint returns channel-scoped candidates (products/categories/blog) with suggested anchor from focus keyword"
+      - "Validate endpoint flags broken/noindex/self-link/duplicate/loop/anchor-length"
+      - "Retail PDP renders retailInternalLinks as an anchor-text list section + ItemList JSON-LD; wholesale PDP renders wholesaleInternalLinks"
+      - "Links render below the fold, no extra DB join cost beyond one indexed query per PDP"
+      - "api tsc + web tsc + unit tests pass; migration is reversible"
   - id: "TASK-20260905-004"
     title: "H2H keyword week: retail/wholesale home, category owners, bamber, register"
     status: "done"
