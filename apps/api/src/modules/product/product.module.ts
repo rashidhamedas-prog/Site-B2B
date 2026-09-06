@@ -10,6 +10,7 @@ import { VariantColorEntity } from './entities/variant-color.entity';
 import { VariantSizeEntity } from './entities/variant-size.entity';
 import { ProductSpecMemoryEntity } from './entities/product-spec-memory.entity';
 import { ProductRelatedEntity } from './entities/product-related.entity';
+import { ProductInternalLinkEntity } from './entities/product-internal-link.entity';
 import { CategoryEntity } from '../category/entities/category.entity';
 import { AuthModule } from '../auth/auth.module';
 import { UploadModule } from '../upload/upload.module';
@@ -21,6 +22,7 @@ import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
     ProductEntity,
     ProductVariantEntity,
     ProductRelatedEntity,
+    ProductInternalLinkEntity,
     CategoryEntity,
     VariantColorEntity,
     VariantSizeEntity,

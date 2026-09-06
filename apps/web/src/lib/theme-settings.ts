@@ -1,4 +1,11 @@
+import {
+  DEFAULT_RETAIL_STOREFRONT_SKIN,
+  parseRetailStorefrontSkin,
+  type RetailStorefrontSkin,
+} from '@/lib/retail-storefront-skin';
+
 export type ThemeDisplayMode = 'light' | 'dark' | 'customImage';
+export type { RetailStorefrontSkin };
 
 export interface ThemePopupConfig {
   enabled: boolean;
@@ -16,6 +23,8 @@ export interface ThemeSettings {
   displayMode: ThemeDisplayMode;
   backgroundImageUrl: string;
   glassBlurPx: number;
+  /** Retail storefront only. Wholesale ThemeRuntime ignores this. */
+  retailStorefrontSkin: RetailStorefrontSkin;
   popups: {
     boutique: ThemePopupConfig;
     newsletter: ThemePopupConfig;
@@ -28,6 +37,7 @@ export const DEFAULT_THEME: ThemeSettings = {
   displayMode: 'light',
   backgroundImageUrl: '',
   glassBlurPx: 12,
+  retailStorefrontSkin: DEFAULT_RETAIL_STOREFRONT_SKIN,
   popups: {
     boutique: {
       enabled: true,
@@ -55,6 +65,7 @@ export function mergePublicTheme(raw?: ThemeSettings | null): ThemeSettings {
   return {
     ...DEFAULT_THEME,
     ...raw,
+    retailStorefrontSkin: parseRetailStorefrontSkin(raw.retailStorefrontSkin),
     popups: {
       boutique: { ...DEFAULT_THEME.popups.boutique, ...raw.popups?.boutique },
       newsletter: { ...DEFAULT_THEME.popups.newsletter, ...raw.popups?.newsletter },

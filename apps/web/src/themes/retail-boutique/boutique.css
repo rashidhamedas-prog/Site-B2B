@@ -1,0 +1,102 @@
+/* Boutique retail skin — scoped. Classic storefront never matches these selectors. */
+
+.retail-root[data-retail-skin='boutique'] {
+  --bq-canvas: #0b0f0e;
+  --bq-elevated: #121716;
+  --bq-surface: #ffffff;
+  --bq-ink: #171717;
+  --bq-muted: #6b7280;
+  --bq-accent: #1b5c4a;
+  --bq-accent-bright: #2f7d66;
+  --bq-gold: #c9a84c;
+  --bq-danger: #e11d48;
+  --bq-cream: #f3eee6;
+  --retail-bg: var(--bq-canvas);
+  --retail-ink: #f4f1ea;
+  --retail-muted: #a8b0ad;
+  --retail-border: #2a3230;
+  --retail-surface: var(--bq-elevated);
+  --retail-card: var(--bq-surface);
+  --retail-primary: var(--bq-accent-bright);
+  background: var(--bq-canvas);
+  color: var(--retail-ink);
+}
+
+.retail-root[data-retail-skin='boutique'] a:focus-visible,
+.retail-root[data-retail-skin='boutique'] button:focus-visible,
+.retail-root[data-retail-skin='boutique'] input:focus-visible {
+  outline: 2px solid var(--bq-gold);
+  outline-offset: 2px;
+}
+
+.retail-root[data-retail-skin='boutique'] main {
+  background: var(--bq-canvas);
+}
+
+.retail-root[data-retail-skin='boutique'] .bq-container {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1280px;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .retail-root[data-retail-skin='boutique'] .bq-container {
+    padding-inline: 1.5rem;
+  }
+}
+
+.retail-root[data-retail-skin='boutique'] .bq-rail {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.retail-root[data-retail-skin='boutique'] .bq-rail > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+
+.retail-root[data-retail-skin='boutique'] .bq-card-product {
+  width: 11.5rem;
+}
+
+@media (min-width: 640px) {
+  .retail-root[data-retail-skin='boutique'] .bq-card-product {
+    width: 13.5rem;
+  }
+}
+
+.retail-root[data-retail-skin='boutique'] .bq-light-panel {
+  --retail-ink: #171717;
+  --retail-muted: #6b7280;
+  --retail-border: #e8e0d4;
+  --retail-bg: #ffffff;
+  --retail-surface: #ffffff;
+  color: #171717;
+}
+
+/* Catalog / PDP / checkout / account: keep form controls readable */
+.retail-root[data-retail-skin='boutique'] main input,
+.retail-root[data-retail-skin='boutique'] main textarea,
+.retail-root[data-retail-skin='boutique'] main select {
+  color: #171717;
+  background: #fff;
+}
+
+.retail-root[data-retail-skin='boutique'] main .rounded-lg,
+.retail-root[data-retail-skin='boutique'] main .rounded-xl,
+.retail-root[data-retail-skin='boutique'] main .rounded-2xl {
+  --tw-shadow-color: rgb(0 0 0 / 0.25);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retail-root[data-retail-skin='boutique'] * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

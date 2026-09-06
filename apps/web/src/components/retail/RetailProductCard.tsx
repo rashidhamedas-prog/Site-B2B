@@ -8,6 +8,12 @@ import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
 import { discountPercent, mediaUrl, toman, uniqueByColor, uniqueSizes } from '@/lib/product-display';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
+import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
+import dynamic from 'next/dynamic';
+
+const BoutiqueProductCard = dynamic(() =>
+  import('@/themes/retail-boutique/BoutiqueProductCard').then((m) => ({ default: m.BoutiqueProductCard })),
+);
 
 export type RetailCardProduct = {
   id: string;
@@ -40,6 +46,20 @@ export type RetailCardProduct = {
 };
 
 export function RetailProductCard({
+  product,
+  compact = false,
+}: {
+  product: RetailCardProduct;
+  compact?: boolean;
+}) {
+  const boutique = useRetailSkin() === 'boutique';
+  if (boutique) {
+    return <BoutiqueProductCard product={product} />;
+  }
+  return <ClassicRetailProductCard product={product} compact={compact} />;
+}
+
+function ClassicRetailProductCard({
   product,
   compact = false,
 }: {

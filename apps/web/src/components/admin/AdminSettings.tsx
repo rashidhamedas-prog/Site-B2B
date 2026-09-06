@@ -325,6 +325,8 @@ export function AdminSettings() {
         theme: {
           ...DEFAULT_THEME,
           ...(res.theme ?? {}),
+          retailStorefrontSkin:
+            res.theme?.retailStorefrontSkin === 'boutique' ? 'boutique' : 'classic',
           popups: {
             boutique: { ...DEFAULT_THEME.popups.boutique, ...res.theme?.popups?.boutique },
             newsletter: { ...DEFAULT_THEME.popups.newsletter, ...res.theme?.popups?.newsletter },
@@ -1468,8 +1470,49 @@ export function AdminSettings() {
       {tab === 'theme' && (
         <div className="card p-6 space-y-6 max-w-3xl">
           <p className="text-sm text-primary-dark bg-primary-50 border border-primary-100 rounded-xl px-4 py-3">
-            تنظیمات ظاهر سایت عمومی (Soft UI + شیشه‌ای). رنگ‌های پیش‌فرض برند سبز و طلایی هستند.
+            رنگ‌های زیر روی سایت عمده اعمال می‌شوند. قالب ویترین تک‌فروشی جدا انتخاب می‌شود و روی سایت عمده اثر ندارد.
           </p>
+
+          <div>
+            <h3 className="font-bold text-gray-800 text-sm mb-2">قالب ویترین تک‌فروشی</h3>
+            <p className="mb-3 text-xs text-gray-500">
+              قالب فعلی تا وقتی «بوتیک» را ذخیره نکنید روی سایت زنده می‌ماند. تغییر تا حدود دو دقیقه روی هوم دیده می‌شود.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(
+                [
+                  {
+                    id: 'classic' as const,
+                    title: 'کلاسیک ترنم',
+                    body: 'همان ویترین روشن فعلی؛ طلایی و کارگاهی.',
+                  },
+                  {
+                    id: 'boutique' as const,
+                    title: 'بوتیک',
+                    body: 'هدر تیره، جستجوی میانی، دو بنر و ریل محصول — با رنگ سبز ترنم.',
+                  },
+                ] as const
+              ).map((opt) => {
+                const active = (data.theme.retailStorefrontSkin ?? 'classic') === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => patch('theme', (t) => ({ ...t, retailStorefrontSkin: opt.id }))}
+                    className={cn(
+                      'rounded-2xl border p-4 text-right transition-colors',
+                      active
+                        ? 'border-primary bg-primary-50'
+                        : 'border-gray-200 hover:border-primary/40',
+                    )}
+                  >
+                    <span className="block text-sm font-bold text-gray-900">{opt.title}</span>
+                    <span className="mt-1 block text-xs leading-6 text-gray-600">{opt.body}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div>
             <h3 className="font-bold text-gray-800 text-sm mb-3">رنگ‌ها</h3>

@@ -10,6 +10,7 @@ import { discountPercent, mediaUrl as toMediaUrl } from '@/lib/product-display';
 import { RetailProductCard } from './RetailProductCard';
 import { selectDefaultRetailVariant } from '@taranom/shared-types';
 import { looksLikeHtml, selectRetailPdpBody, lightSanitizeHtml } from '@/lib/retail-pdp-copy';
+import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
 
 type Related = {
   id: string;
@@ -110,6 +111,7 @@ export function RetailProductDetail({
   product: Product;
   initialVariantId?: string;
 }) {
+  const boutique = useRetailSkin() === 'boutique';
   const addItem = useRetailCart((s) => s.addItem);
   const initial =
     product.variants?.find((variant) => variant.id === initialVariantId) ??
@@ -319,7 +321,13 @@ export function RetailProductDetail({
   const bodyIsHtml = looksLikeHtml(body);
 
   return (
-    <div className="min-w-0 bg-[var(--retail-bg)] pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
+    <div
+      className={
+        boutique
+          ? 'bq-light-panel mx-3 my-4 min-w-0 overflow-hidden rounded-3xl bg-white text-neutral-900 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:mx-6 lg:pb-0'
+          : 'min-w-0 bg-[var(--retail-bg)] pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0'
+      }
+    >
       <div className="mx-auto grid min-w-0 max-w-7xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 lg:grid-cols-12 lg:px-8 lg:py-14">
         <div className="min-w-0 lg:col-span-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
