@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Param, Patch, Post, Req, UseGuards,
+  Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -19,6 +19,7 @@ import {
   PatchOmnichannelSettingsDto,
   PatchTemplateDto,
   PreviewDto,
+  PutSecretDto,
 } from '../dto/omnichannel.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
@@ -51,8 +52,22 @@ export class OmnichannelAdminController {
       outbox: await this.svc.outboxMetrics(),
       /** Per-platform capability matrix + boolean readiness (enabled flag, token present). Never token values. */
       providers: providerReadiness(),
+      /** Write-only token inventory: source + fingerprint, never the secret. */
+      secrets: await this.svc.listSecretStatuses(),
       ...settings,
     };
+  }
+
+  @Put('secrets')
+  @ApiOperation({ summary: 'ذخیره توکن ربات (فقط‌نوشتنی؛ مقدار برنمی‌گردد)' })
+  putSecret(@Body() body: PutSecretDto, @Req() req: Authed) {
+    return this.svc.putSecret(body, req.omnichannelActor);
+  }
+
+  @Delete('secrets/:secretRef')
+  @ApiOperation({ summary: 'حذف توکن ذخیره‌شده در پنل؛ توکن env سرور دست نمی‌خورد' })
+  clearSecret(@Param('secretRef') secretRef: string, @Req() req: Authed) {
+    return this.svc.clearSecret(secretRef, req.omnichannelActor);
   }
 
   @Get('settings')

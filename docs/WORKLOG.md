@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-06 — فیلد توکن امن در کانال انتشار
+
+- در `/admin/omnichannel` برای هر پیام‌رسان (تلگرام / بله / روبیکا) کادر فقط‌نوشتنی توکن اضافه شد: `type=password`، بعد از ذخیره خالی می‌شود، مقدار هرگز از API برنمی‌گردد.
+- مسیر جدا `PUT /omnichannel/secrets` و `DELETE /omnichannel/secrets/:secretRef`؛ CRUD اتصال همچنان `assertNoPlaintextSecrets` است و فیلد `token` را رد می‌کند.
+- ذخیره: AES-256-GCM در `app_settings` با کلید `omnichannel.secret.vault`؛ کلید پوشش از `OMNICHANNEL_VAULT_KEY` یا `JWT_SECRET`. ورکر هر ۱۵ ثانیه hydrate می‌کند. اگر کانکتور روشن باشد قبل از ذخیره `getMe` زده می‌شود.
+- `resolveProviderToken` اول overlay پنل را می‌خواند، بعد env. پاسخ وضعیت فقط `configured` / `source` / اثر انگشت ۸ hex است.
+- گزارش: `docs/reports/2026-09-06-omnichannel-token-field.md`.
+
 ## 2026-09-06 — بله و روبیکا در کنسول انتشار (سه پیام‌رسان، یک قالب)
 
 - مستندات رسمی خوانده شد: `docs.bale.ai` (Bot API بله؛ هم‌خانوادهٔ تلگرام ولی Markdown اجباری، بدون parse_mode، آلبوم بدون دکمه، حذف تا ۴۸ ساعت، `getChatMembersCount`) و `rubika.ir/botapi` (v3؛ متادیتا با آفست UTF-16، آپلود دومرحله‌ای `requestSendFile→sendFile`، بدون آلبوم، بدون `getChatMember`، شناسهٔ کانال `c0…`).

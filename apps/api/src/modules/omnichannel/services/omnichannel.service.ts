@@ -1,5 +1,5 @@
 import {
-  BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException,
+  BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
@@ -7,7 +7,7 @@ import { ChannelProjectionService } from './channel-projection.service';
 import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
 import { normalizeSalesChannel } from '../../product/channel-product-projection';
 import { ProductEntity } from '../../product/entities/product.entity';
-import { PreviewDto, CreatePublicationDto, PatchDestinationDto, PatchOmnichannelSettingsDto } from '../dto/omnichannel.dto';
+import { PreviewDto, CreatePublicationDto, PatchDestinationDto, PatchOmnichannelSettingsDto, PutSecretDto } from '../dto/omnichannel.dto';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelTemplateEntity } from '../entities/channel-template.entity';
@@ -89,10 +89,44 @@ import {
   PatchTemplateDto,
 } from '../dto/omnichannel.dto';
 import { assertNoPlaintextSecrets, toPublicConnection, toPublicDestination } from '../omnichannel-secrets';
+import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
+import {
+  assertNoVaultLeak,
+  assertTokenShape,
+  peekVaultMeta,
+  peekVaultToken,
+  providerFromSecretRef,
+  setVaultOverlayEntry,
+} from '../omnichannel-token-vault';
 import { redactProviderError } from '../adapters/telegram-errors';
 import { isMissingRelationError } from '../media-registry';
 
 type Actor = { id: string };
+
+const SECRET_WRITE_WINDOW_MS = 10 * 60 * 1000;
+const SECRET_WRITE_MAX = 8;
+const secretWriteHits = new Map<string, number[]>();
+
+function assertSecretWriteRate(actorId: string) {
+  const now = Date.now();
+  const recent = (secretWriteHits.get(actorId) || []).filter((at) => now - at < SECRET_WRITE_WINDOW_MS);
+  if (recent.length >= SECRET_WRITE_MAX) {
+    throw new HttpException('تعداد ذخیره توکن زیاد بود؛ چند دقیقه دیگر دوباره تلاش کنید', HttpStatus.TOO_MANY_REQUESTS);
+  }
+  recent.push(now);
+  secretWriteHits.set(actorId, recent);
+}
+
+function tokenInputError(code: string): never {
+  const messages: Record<string, string> = {
+    token_whitespace: 'توکن را بدون فاصله بچسبانید',
+    token_length: 'طول توکن نامعتبر است',
+    token_shape: 'شکل توکن این پیام‌رسان درست نیست',
+    token_provider: 'پلتفرم این متغیر پشتیبانی نمی‌شود',
+    vault_key_missing: 'کلید رمزنگاری سرور تنظیم نشده',
+  };
+  throw new BadRequestException(messages[code] || 'ذخیره توکن ناموفق بود');
+}
 
 /**
  * One master layout per sales channel feeds every platform; the adapters convert the canonical
@@ -129,6 +163,7 @@ export class OmnichannelService {
     private readonly projection: ChannelProjectionService,
     private readonly adapters: ChannelAdapterRegistry,
     private readonly outbox: OutboxService,
+    private readonly tokenVault: OmnichannelTokenVaultService,
   ) {}
 
   private requireActor(actor?: Actor) {
@@ -159,6 +194,74 @@ export class OmnichannelService {
   async listConnections() {
     const rows = await this.connections.find({ order: { createdAt: 'DESC' } });
     return rows.map((row) => toPublicConnection(row));
+  }
+
+  async listSecretStatuses() {
+    const rows = await this.connections.find({ select: ['secretRef'] });
+    const list = await this.tokenVault.statuses(rows.map((row) => row.secretRef));
+    list.forEach((row) => assertNoVaultLeak(row));
+    return list;
+  }
+
+  async putSecret(dto: PutSecretDto, actor?: Actor) {
+    const who = this.requireActor(actor);
+    assertNoPlaintextSecrets({ secretRef: dto.secretRef, reason: dto.reason });
+    assertSecretWriteRate(who.id);
+    const secretRef = String(dto.secretRef || '').trim();
+    const provider = providerFromSecretRef(secretRef);
+    if (!provider) throw new BadRequestException('secretRef باید نام env پیام‌رسان باشد');
+    const token = String(dto.token || '');
+    try {
+      assertTokenShape(provider, token);
+    } catch (err) {
+      tokenInputError(err instanceof Error ? err.message : 'token_shape');
+    }
+    const previous = peekVaultToken(secretRef);
+    const previousMeta = peekVaultMeta(secretRef);
+    setVaultOverlayEntry(secretRef, token);
+    let saved = false;
+    try {
+      if (isOmnichannelProviderEnabled(provider)) {
+        const result = await this.adapters.for(provider).validateConnection(secretRef);
+        if (!result.ok) {
+          throw new BadRequestException(
+            result.error === 'invalid_credential'
+              ? 'پیام‌رسان این توکن را رد کرد'
+              : 'تست توکن ناموفق بود؛ ذخیره نشد',
+          );
+        }
+      }
+      const status = await this.tokenVault.put(secretRef, token);
+      saved = true;
+      assertNoVaultLeak(status);
+      await this.audit(who, 'secret_put', 'SECRET', secretRef, null, dto.reason || null, {
+        provider,
+        secretRef,
+        source: status.source,
+        fingerprint: status.fingerprint,
+        rotated: Boolean(previous),
+      });
+      return status;
+    } catch (err) {
+      if (!saved) setVaultOverlayEntry(secretRef, previous, previousMeta);
+      throw err;
+    }
+  }
+
+  async clearSecret(secretRef: string, actor?: Actor) {
+    const who = this.requireActor(actor);
+    const name = String(secretRef || '').trim();
+    assertNoPlaintextSecrets({ secretRef: name });
+    if (!providerFromSecretRef(name)) throw new BadRequestException('secretRef نامعتبر است');
+    const hadVault = Boolean(peekVaultToken(name));
+    const status = await this.tokenVault.clear(name);
+    assertNoVaultLeak(status);
+    await this.audit(who, 'secret_clear', 'SECRET', name, null, null, {
+      secretRef: name,
+      hadVault,
+      stillConfigured: status.configured,
+    });
+    return status;
   }
 
   async createConnection(dto: CreateConnectionDto) {

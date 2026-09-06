@@ -4,6 +4,7 @@ import {
   isOmnichannelProviderEnabled,
   type OmnichannelProvider,
 } from './omnichannel.constants';
+import { peekVaultToken, publicSecretStatus, type TokenSource } from './omnichannel-token-vault';
 
 /**
  * What each official Bot API can do with a product post. Read from the vendors' docs on
@@ -131,24 +132,33 @@ export function capabilitiesFor(provider: string): ProviderCapabilities {
 export type ProviderReadiness = ProviderCapabilities & {
   /** Global connectors flag AND not in OMNICHANNEL_DISABLED_PROVIDERS. */
   enabled: boolean;
-  /** The conventional `${PROVIDER}_BOT_TOKEN` env has a non-empty value on this server. Never the value. */
+  /** Env or encrypted vault has a value for the conventional `${PROVIDER}_BOT_TOKEN`. Never the value. */
   tokenConfigured: boolean;
+  tokenSource: TokenSource;
+  tokenFingerprint: string | null;
   defaultSecretRef: string;
 };
 
-/** True when the named env var exists and is non-empty; the value itself never leaves the process. */
+/** True when env or the in-process vault overlay has a non-empty value. The value itself never leaves. */
 export function secretRefConfigured(secretRef: string, env: NodeJS.ProcessEnv = process.env): boolean {
   const name = String(secretRef || '').trim();
   if (!/^(TELEGRAM|BALE|RUBIKA)_[A-Z0-9_]{1,80}$/.test(name)) return false;
+  if (peekVaultToken(name)) return true;
   return String(env[name] || '').trim().length > 0;
 }
 
-/** Boolean-only readiness for the admin console. */
+/** Boolean + source metadata for the admin console. Never token values. */
 export function providerReadiness(env: NodeJS.ProcessEnv = process.env): ProviderReadiness[] {
-  return OMNICHANNEL_PROVIDERS.map((provider) => ({
-    ...PROVIDER_CAPABILITIES[provider],
-    enabled: isOmnichannelProviderEnabled(provider),
-    tokenConfigured: secretRefConfigured(defaultSecretRefFor(provider), env),
-    defaultSecretRef: defaultSecretRefFor(provider),
-  }));
+  return OMNICHANNEL_PROVIDERS.map((provider) => {
+    const defaultSecretRef = defaultSecretRefFor(provider);
+    const secret = publicSecretStatus(defaultSecretRef, env);
+    return {
+      ...PROVIDER_CAPABILITIES[provider],
+      enabled: isOmnichannelProviderEnabled(provider),
+      tokenConfigured: secret.configured,
+      tokenSource: secret.source,
+      tokenFingerprint: secret.fingerprint,
+      defaultSecretRef,
+    };
+  });
 }

@@ -1,6 +1,16 @@
-﻿# Handoff Log
+# Handoff Log
 
 Append newest entries at the top. Never erase another agent's record.
+
+## 2026-09-06T13:00:00Z — TASK-20260905-003 write-only token field
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Worktree `D:/proje/Site-B2B-omni-console`. Owner asked for a per-platform token input in کانال انتشار, with security.
+- CODE: `omnichannel-token-vault.ts` (AES-256-GCM + overlay), `OmnichannelTokenVaultService`, `PUT/DELETE /omnichannel/secrets`, `resolveProviderToken` vault-first, `WriteOnlySecretField` in admin. Connection rows still store only `secretRef`.
+- Security: CRUD still forbids `token`; dedicated route rate-limits 8/10min; `getMe` before persist when connectors are on; audit has fingerprint only; worker hydrates every 15s; wrapping key `OMNICHANNEL_VAULT_KEY` or `JWT_SECRET`.
+- Report: `docs/reports/2026-09-06-omnichannel-token-field.md`.
+- Tests (observed, worktree): `omnichannel-token-vault` ok; `omnichannel-secrets` ok; `provider-capabilities` ok; `omnichannel-phase-acceptance` ok; `telegram.adapter` ok; `connector-gate` ok; `apps/api` `tsc --noEmit` 0; `apps/web` `tsc --noEmit` 0.
+- Exact next: commit; merge master; deploy. Owner pastes Bale/Rubika tokens in the new field (Telegram env still works). Independent security review still required. Do not Done TASK-20260826-001.
 
 ## 2026-09-06T12:40:00Z — TASK-20260905-003 Bale + Rubika implemented (ready to ship)
 

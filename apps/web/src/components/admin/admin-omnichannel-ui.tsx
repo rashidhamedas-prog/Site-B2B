@@ -81,7 +81,17 @@ export type ProviderInfo = {
   chatIdExamples: string[];
   enabled: boolean;
   tokenConfigured: boolean;
+  tokenSource?: 'none' | 'env' | 'vault' | 'both';
+  tokenFingerprint?: string | null;
   defaultSecretRef: string;
+};
+
+export type SecretStatus = {
+  secretRef: string;
+  configured: boolean;
+  source: 'none' | 'env' | 'vault' | 'both';
+  fingerprint: string | null;
+  updatedAt: string | null;
 };
 
 export type DiscoveredChat = {
@@ -99,6 +109,7 @@ export type Status = {
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;
   providers?: ProviderInfo[];
+  secrets?: SecretStatus[];
   canaryDestinationIds?: Record<Channel, Partial<Record<Provider, string | null>>>;
   retailOosPolicy?: OosPolicy;
   wholesaleOosPolicy?: OosPolicy;
@@ -282,6 +293,13 @@ export function isProvider(value: unknown): value is Provider {
 
 export function providerLabel(provider?: string | null) {
   return isProvider(provider) ? PROVIDER_META[provider].label : provider || '—';
+}
+
+export function tokenSourceLabel(source?: SecretStatus['source'] | null) {
+  if (source === 'vault') return 'از این پنل ذخیره شده';
+  if (source === 'env') return 'روی سرور تنظیم شده';
+  if (source === 'both') return 'پنل و سرور هر دو دارند';
+  return 'توکن ذخیره نشده';
 }
 
 export function providerMeta(provider?: string | null) {
@@ -506,6 +524,60 @@ export function Callout({ tone, children }: { tone: Tone; children: ReactNode })
   return (
     <div className={`rounded-xl border p-3 text-sm leading-6 ${TONE_CLASS[tone]}`} role={tone === 'danger' ? 'alert' : 'status'}>
       {children}
+    </div>
+  );
+}
+
+/** Write-only bot token field. The value is never prefilled and should be cleared after save. */
+export function WriteOnlySecretField({
+  id,
+  label,
+  value,
+  reveal,
+  onChange,
+  onReveal,
+  hint,
+  invalid,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  reveal: boolean;
+  onChange: (next: string) => void;
+  onReveal: (next: boolean) => void;
+  hint?: ReactNode;
+  invalid?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <label htmlFor={id} className="block text-xs text-gray-500">{label}</label>
+      <div className="flex gap-2">
+        <input
+          id={id}
+          type={reveal ? 'text' : 'password'}
+          dir="ltr"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          inputMode="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value.replace(/\s/g, ''))}
+          aria-invalid={invalid || undefined}
+          aria-describedby={hint ? `${id}-hint` : undefined}
+          className={`border rounded-lg px-3 py-2 text-sm w-full font-mono tracking-wide ${invalid ? 'border-red-300 bg-red-50' : ''}`}
+          placeholder="توکن را اینجا بچسبانید"
+        />
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm shrink-0"
+          aria-pressed={reveal}
+          onClick={() => onReveal(!reveal)}
+        >
+          {reveal ? 'پنهان' : 'نمایش'}
+        </button>
+      </div>
+      {hint && <p id={`${id}-hint`} className="text-[11px] text-gray-500 leading-5">{hint}</p>}
     </div>
   );
 }

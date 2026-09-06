@@ -121,6 +121,15 @@ assert(bale.includes('https://tapi.bale.ai') && !bale.includes('parse_mode'), 'B
 assert(rubika.includes('https://botapi.rubika.ir/v3') && rubika.includes('meta_data_parts') && rubika.includes('requestSendFile'), 'Rubika official API v3 (metadata + upload flow)');
 assert(!rubika.includes('sendMediaGroup') && !rubika.includes('button_link'), 'Rubika: no invented album/button-url API');
 assert(secrets.includes('TELEGRAM|BALE|RUBIKA'), 'secretRef allowlist');
+{
+  const vault = src('modules/omnichannel/omnichannel-token-vault.ts');
+  assert(vault.includes('aes-256-gcm') && vault.includes('omnichannel.secret.vault'), 'tokens encrypted in dedicated vault key');
+  assert(omniAdmin.includes("Put('secrets')") && omniAdmin.includes('putSecret'), 'write-only token endpoint');
+  assert(omniSvc.includes('assertNoVaultLeak') && omniSvc.includes('secret_put'), 'save path audits without ciphertext');
+  assert(adminOmni.includes('type={reveal ? \'text\' : \'password\'}') || adminOmni.includes('WriteOnlySecretField'), 'admin token field is write-only');
+  assert(adminOmni.includes('/omnichannel/secrets'), 'admin posts token only to dedicated secrets route');
+  assert(!adminOmni.includes('توکن هیچ‌وقت وارد مرورگر نمی‌شود'), 'copy no longer claims the token never enters the browser');
+}
 assert(secrets.includes('isCanary'), 'public destination exposes isCanary only');
 assert(oosPolicy.includes('resolveOosDecision') && oosPolicy.includes('selectCanaryDestinations'), 'oos helper');
 assert(omniSvc.includes('selectCanaryDestinations'), 'enqueue targets canary only');

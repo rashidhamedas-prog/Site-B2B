@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-06 — **TASK-20260905-003** implementing write-only token field (not live until merge/deploy). `PUT /omnichannel/secrets` encrypts bot tokens (AES-256-GCM); admin password field never echoes. Telegram env token still works without paste.
+
 - Last verified: 2026-09-06 — **TASK-20260905-003** Bale + Rubika settings on `ai/TASK-20260905-003-omni-admin-console` (worktree `D:/proje/Site-B2B-omni-console`): official docs.bale.ai + rubika.ir/botapi read; adapters + admin cards + discover-chats + Rubika test-post. api+web tsc 0; 11 omnichannel specs ok. Not live until merge/deploy. Tokens still owner-only. TASK-20260826-001 still **NOT DONE**.
 - 2026-09-06 TASK-20260906-003 E2E VERIFIED CLEAN: per-channel internal-link SEO fully working end-to-end on production after stale-closure hotfix `29e07ac`. All 4 target types (PRODUCT/CATEGORY/BLOG/CUSTOM) × 2 channels (retail/wholesale): save→DB→PDP render→ItemList JSON-LD verified; channel separation confirmed at DB/PDP/JSON-LD (0 cross-channel leak); validate button returns "4 valid" on both pickers. See handoff (E2E VERIFIED CLEAN) + WORKLOG.
 - 2026-09-06 TASK-20260906-004 DONE: retired autonomous-seo/Peyvand-ERP/crm-v4 exclusive server resources removed. Retained 5 HTTP probes 200, nginx valid; source removal 4f63e5b on master; report 257c3b1 in D:/proje/Site-B2B-server-cleanup. Shared/unknown resources preserved.

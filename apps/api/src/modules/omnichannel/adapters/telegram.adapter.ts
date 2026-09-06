@@ -6,6 +6,7 @@ import {
 } from './channel-adapter';
 import { isOmnichannelProviderEnabled } from '../omnichannel.constants';
 import { isAllowedSecretRef } from '../omnichannel-secrets';
+import { peekVaultToken } from '../omnichannel-token-vault';
 import { classifyTelegramHttpError, classifyTelegramThrow, redactProviderError } from './telegram-errors';
 import {
   TELEGRAM_CAPTION_LIMIT,
@@ -16,10 +17,16 @@ import {
 
 export const TELEGRAM_API = 'https://api.telegram.org';
 
-/** Env-name indirection shared by every provider: `${PROVIDER}_…` names only, value read at call time. */
+/**
+ * Env-name indirection shared by every provider: `${PROVIDER}_…` names only.
+ * Admin-saved vault overlay wins (owner just pasted a token); env is the fallback.
+ * The plaintext never leaves this process.
+ */
 export function resolveProviderToken(provider: string, secretRef: string): string | null {
   const name = String(secretRef || '').trim();
   if (!isAllowedSecretRef(name) || !name.startsWith(`${provider}_`)) return null;
+  const fromVault = peekVaultToken(name);
+  if (fromVault) return fromVault;
   const value = process.env[name];
   return value && String(value).trim() ? String(value).trim() : null;
 }

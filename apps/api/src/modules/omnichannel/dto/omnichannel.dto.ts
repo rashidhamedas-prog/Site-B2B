@@ -13,6 +13,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import {
@@ -50,6 +51,24 @@ export class CreateConnectionDto {
   @IsString()
   @Matches(SECRET_REF, { message: 'secretRef باید نام env باشد نه مقدار secret' })
   secretRef: string;
+}
+
+/** Write-only. Never returned. Only accepted on PUT /omnichannel/secrets. */
+export class PutSecretDto {
+  @IsString()
+  @Matches(SECRET_REF, { message: 'secretRef باید نام env باشد نه مقدار secret' })
+  secretRef: string;
+
+  @IsString()
+  @MinLength(20, { message: 'توکن کوتاه‌تر از حد مجاز است' })
+  @MaxLength(256, { message: 'توکن بلندتر از حد مجاز است' })
+  @Matches(/^\S+$/, { message: 'توکن نباید فاصله داشته باشد' })
+  token: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  reason?: string;
 }
 
 export class PatchConnectionDto {

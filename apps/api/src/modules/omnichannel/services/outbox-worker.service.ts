@@ -16,6 +16,7 @@ import { OutboxService } from './outbox.service';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
+import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
@@ -53,6 +54,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly connections: Repository<ChannelConnectionEntity>,
     private readonly adapters: ChannelAdapterRegistry,
     private readonly omnichannel: OmnichannelService,
+    private readonly tokenVault: OmnichannelTokenVaultService,
   ) {}
 
   onModuleInit() {
@@ -86,6 +88,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     this.beat();
     try {
+      await this.tokenVault.refreshIfStale();
       const batch = await this.outbox.leaseBatch(this.workerId, 20);
       for (const row of batch) {
         try {
