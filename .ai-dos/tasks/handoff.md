@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-06T13:35:00Z — TASK-20260905-003 three token cards LIVE
+
+- Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
+- Live `a88672b`. `/v1/health` 200; `PUT /omnichannel/secrets` unauth 401. Browser on `/admin/omnichannel` step ۱: three password fields `omni-bot-token-TELEGRAM|BALE|RUBIKA`, empty values, autocomplete=new-password. Telegram status «روی سرور تنظیم شده»; Bale/Rubika empty. Home TTFB not re-measured this pass (admin-only JS).
+- Exact next: owner pastes Bale/Rubika tokens in those cards (do not paste in chat). Independent security still required. Do not Done TASK-20260826-001.
+
 ## 2026-09-06T13:10:00Z — TASK-20260905-003 three always-visible token cards
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
