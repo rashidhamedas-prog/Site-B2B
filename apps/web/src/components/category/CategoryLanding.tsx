@@ -275,9 +275,7 @@ export async function CategoryLanding({
           </nav>
 
           {hero ? (
-            <div className={`relative mb-8 overflow-hidden rounded-3xl bg-[var(--brand-card,#F3EEE6)] ${
-              retail ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[21/9]'
-            }`}>
+            <div className="storefront-hero-frame relative mb-8 overflow-hidden rounded-3xl bg-[var(--brand-card,#F3EEE6)]">
               <Image
                 src={hero}
                 alt={category.heroImageAlt || copy.h1}

@@ -11,6 +11,7 @@ import {
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
+import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
 
 function Banner({
   slide,
@@ -24,7 +25,7 @@ function Banner({
   const src = slide.imageUrl || '/retail/hero-model.webp';
   const alt = slide.imageAlt || slide.headline;
   return (
-    <div className={`relative overflow-hidden rounded-2xl ${compact ? 'aspect-square min-h-[16rem]' : 'aspect-[16/9] min-h-[16rem] sm:min-h-[20rem] lg:aspect-[2/1] lg:min-h-[22rem]'}`}>
+    <div className={`relative overflow-hidden rounded-2xl ${STOREFRONT_HERO_FRAME_CLASS} ${compact ? 'lg:max-h-[22rem]' : ''}`}>
       <Image
         src={src}
         alt={alt}

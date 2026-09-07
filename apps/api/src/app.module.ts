@@ -29,6 +29,7 @@ import { AffiliateModule } from './modules/affiliate/affiliate.module';
 import { BasalamModule } from './modules/basalam/basalam.module';
 import { TorobModule } from './modules/torob/torob.module';
 import { OmnichannelModule } from './modules/omnichannel/omnichannel.module';
+import { CartModule } from './modules/cart/cart.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { OmnichannelModule } from './modules/omnichannel/omnichannel.module';
     BasalamModule,
     TorobModule,
     OmnichannelModule,
+    CartModule,
   ],
 })
 export class AppModule {}

@@ -11,6 +11,7 @@ import {
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
+import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
 
 const RETAIL_FALLBACK: HeroSlide = {
   brandEyebrow: 'زیبایی در هارمونی با شما',
@@ -18,10 +19,10 @@ const RETAIL_FALLBACK: HeroSlide = {
   headlineAccent: 'ترنم',
   body: 'کالکشن جدید مانتو و شومیز زنانه — دوخت تولیدی، پارچه‌های لینن و کتان، ارسال سریع به سراسر ایران.',
   imageUrl: '/retail/hero-model.webp',
-  ctaLabel: 'مشاهده جدیدترین‌ها',
+  ctaLabel: 'دیدن کالکشن لینن و کتان',
   ctaHref: '/retail/products',
-  ctaSecondaryLabel: 'مشاهده مجموعه',
-  ctaSecondaryHref: '/retail/collections',
+  ctaSecondaryLabel: 'رفتن به شومیزها',
+  ctaSecondaryHref: '/retail/category/shomiz',
 };
 
 export type RetailHeroProps = HeroFlatProps;
@@ -143,7 +144,7 @@ function RetailSlideCopy({
       ) : null}
 
       <h2
-        className={`break-words text-[clamp(1.75rem,6vw,3.4rem)] font-bold leading-[1.35] tracking-tight ${
+        className={`break-words text-[clamp(1.35rem,4.4vw,2.35rem)] font-bold leading-[1.3] tracking-tight text-pretty ${
           light
             ? 'text-[#123A6B]'
             : '!text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]'
@@ -154,7 +155,7 @@ function RetailSlideCopy({
 
       {slide.body ? (
         <p
-          className={`mx-auto mt-5 max-w-md text-[15px] leading-8 lg:mx-0 lg:ms-auto ${
+          className={`mx-auto mt-3 line-clamp-2 max-w-md text-[13px] leading-7 lg:mx-0 lg:ms-auto sm:text-[15px] sm:leading-8 ${
             light ? 'text-[#2C4A6E]' : 'text-white/80'
           }`}
         >
@@ -163,15 +164,15 @@ function RetailSlideCopy({
       ) : null}
 
       <div
-        className={`mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-end ${artwork ? 'md:hidden' : ''}`}
+        className={`mt-5 flex flex-wrap items-center justify-center gap-3 lg:justify-end ${artwork ? 'md:hidden' : ''}`}
       >
         {slide.ctaLabel && slide.ctaHref ? (
           <Link
             href={slide.ctaHref}
             className={
               light
-                ? 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-[#1A73E8] px-5 py-3.5 text-sm font-extrabold text-white shadow-[0_10px_28px_rgba(26,115,232,0.28)] transition duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8] sm:px-7'
-                : 'inline-flex cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-5 py-3.5 text-sm font-extrabold text-[#1a1a1a] shadow-[0_10px_30px_rgba(201,168,76,0.28)] transition duration-200 hover:brightness-105 sm:px-7'
+                ? 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-[#1A73E8] px-6 py-3 text-sm font-extrabold text-white shadow-[0_10px_28px_rgba(26,115,232,0.28)] transition-colors duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8] sm:px-8'
+                : 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-6 py-3 text-sm font-extrabold text-[#1a1a1a] shadow-[0_10px_30px_rgba(201,168,76,0.28)] transition-[filter] duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)] sm:px-8'
             }
           >
             {slide.ctaLabel}
@@ -208,9 +209,9 @@ export function RetailHero(props: RetailHeroProps) {
 
   return (
     <section
-      className={`relative isolate min-h-[min(82vh,40rem)] overflow-hidden ${
+      className={`relative isolate overflow-hidden ${STOREFRONT_HERO_FRAME_CLASS} ${
         isLight ? 'bg-[#EEF4FC] text-[#123A6B]' : 'bg-[var(--retail-primary-dark)] text-white'
-      } ${isArtwork ? 'md:aspect-[192/85] md:min-h-0' : 'md:min-h-[min(92vh,860px)]'}`}
+      }`}
       onMouseEnter={carousel.pause}
       onMouseLeave={carousel.resume}
       onFocusCapture={carousel.pause}
@@ -281,7 +282,7 @@ export function RetailHero(props: RetailHeroProps) {
       />
 
       <div
-        className={`relative z-10 mx-auto flex min-h-[min(82vh,40rem)] max-w-[1200px] items-end px-4 pb-24 pt-24 sm:px-6 md:min-h-0 lg:items-center lg:px-8 lg:pb-28 ${isArtwork ? 'md:sr-only md:pointer-events-none' : 'md:min-h-[min(92vh,860px)]'}`}
+        className={`relative z-10 mx-auto flex h-full max-w-[1200px] items-end px-4 pb-14 pt-8 sm:px-6 lg:items-center lg:px-8 lg:pb-16 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
       >
         <div key={`copy-${carousel.index}`} className="animate-fade-in min-w-0 w-full lg:w-[48%]">
           <RetailSlideCopy slide={slide} artwork={isArtwork} light={isLight} />

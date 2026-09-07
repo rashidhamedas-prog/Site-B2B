@@ -13,6 +13,7 @@ import {
 } from '@/lib/cms/hero-slides';
 import { toPersianDigits } from '@taranom/persian-utils';
 import { yearsOfOperation } from '@/lib/business-facts';
+import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
 
 const WHOLESALE_FALLBACK: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',
@@ -20,9 +21,9 @@ const WHOLESALE_FALLBACK: HeroSlide = {
   headlineAccent: 'به بوتیک شما',
   body: `تولیدکننده مانتو شومیزی لینن و کتان در مشهد — بیش از ${toPersianDigits(yearsOfOperation())} سال تجربه، فروش عمده به سراسر ایران.`,
   imageUrl: '',
-  ctaLabel: 'مشاهده محصولات',
+  ctaLabel: 'دیدن مدل‌های عمده',
   ctaHref: '/products',
-  ctaSecondaryLabel: 'ثبت‌نام عمده‌فروش',
+  ctaSecondaryLabel: 'شروع همکاری از ۶ عدد',
   ctaSecondaryHref: '/portal/register',
 };
 
@@ -115,7 +116,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
         </p>
       ) : null}
 
-      <h2 className="mb-6 text-4xl font-bold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
+      <h2 className="mb-3 text-pretty text-2xl font-bold leading-[1.2] tracking-tight sm:mb-4 sm:text-4xl lg:text-5xl">
         {lines.map((line, i) => {
           const isAccent = slide.headlineAccent && line.includes(slide.headlineAccent);
           return (
@@ -128,7 +129,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
       </h2>
 
       {slide.body ? (
-        <p className="mb-10 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
+        <p className="mb-6 line-clamp-2 max-w-xl text-sm leading-relaxed text-white/75 sm:mb-8 sm:text-base">
           {slide.body}
         </p>
       ) : null}
@@ -170,9 +171,7 @@ export function HeroSection(props: HeroSectionProps) {
 
   return (
     <section
-      className={`bg-primary-dark relative flex min-h-[82vh] items-end overflow-hidden text-white ${
-        isArtwork ? 'md:aspect-[192/85] md:min-h-0 md:items-stretch' : 'lg:min-h-[92vh]'
-      }`}
+      className={`bg-primary-dark relative flex items-end overflow-hidden text-white ${STOREFRONT_HERO_FRAME_CLASS}`}
       onMouseEnter={carousel.pause}
       onMouseLeave={carousel.resume}
       onFocusCapture={carousel.pause}
@@ -226,7 +225,7 @@ export function HeroSection(props: HeroSectionProps) {
       />
 
       <div
-        className={`container-site relative z-10 pb-20 pt-28 sm:pb-24 lg:pb-28 lg:pt-32 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
+        className={`container-site relative z-10 pb-12 pt-8 sm:pb-16 lg:pb-16 lg:pt-10 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
       >
         <div key={`ws-copy-${carousel.index}`} className="animate-fade-in">
           <WholesaleSlideCopy slide={slide} artwork={isArtwork} />

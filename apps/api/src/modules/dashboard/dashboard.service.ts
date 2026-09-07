@@ -7,6 +7,7 @@ import { CustomerEntity } from '../customer/entities/customer.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { ProductEntity } from '../product/entities/product.entity';
+import { customerChannelSql, normalizeCustomerChannel } from '../customer/customer-channel';
 
 export type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
@@ -237,6 +238,35 @@ export class DashboardService {
     const bounds = this.periodBounds(period);
     const { start, end, prevStart, prevEnd } = bounds;
     const ch = this.normalizeChannel(channel);
+    try {
+      return await this.buildReports(period, bounds, ch);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown';
+      return {
+        period,
+        channel: ch ?? 'ALL',
+        error: message,
+        kpis: {
+          revenue: { value: 0, change: 0 },
+          orders: { value: 0, change: 0 },
+          avgOrder: { value: 0, change: 0 },
+          newCustomers: { value: 0, change: 0 },
+        },
+        series: [],
+        byCity: [],
+        bySegment: [],
+        byFabric: [],
+        topProducts: [],
+      };
+    }
+  }
+
+  private async buildReports(
+    period: ReportPeriod,
+    bounds: { start: Date; end: Date; prevStart: Date; prevEnd: Date },
+    ch?: 'WHOLESALE' | 'RETAIL',
+  ) {
+    const { start, end, prevStart, prevEnd } = bounds;
 
     const [revenueNow, revenuePrev, ordersNow, ordersPrev, customersNow, customersPrev] = await Promise.all([
       this.sumRevenue(start, end, ch),
@@ -276,10 +306,7 @@ export class DashboardService {
   }
 
   private normalizeChannel(channel?: string): 'WHOLESALE' | 'RETAIL' | undefined {
-    const c = String(channel || '').toUpperCase();
-    if (c === 'RETAIL') return 'RETAIL';
-    if (c === 'WHOLESALE') return 'WHOLESALE';
-    return undefined;
+    return normalizeCustomerChannel(channel);
   }
 
   /** Apply order-type filter for wholesale vs retail website. */
@@ -351,20 +378,12 @@ export class DashboardService {
     return qb.getCount();
   }
 
-  /** Canonical customer channel: RETAIL when businessType=RETAIL or type in (RETAIL,B2C); else WHOLESALE. */
+  /** Canonical customer channel: type B2C/RETAIL vs everyone else (B2B). */
   private applyCustomerChannel(
     qb: { andWhere: Function },
     channel?: 'WHOLESALE' | 'RETAIL',
   ) {
-    if (channel === 'RETAIL') {
-      qb.andWhere(
-        `(UPPER(COALESCE(c."businessType",'')) = 'RETAIL' OR UPPER(COALESCE(c.type,'')) IN ('RETAIL','B2C'))`,
-      );
-    } else if (channel === 'WHOLESALE') {
-      qb.andWhere(
-        `(UPPER(COALESCE(c."businessType",'')) <> 'RETAIL' AND UPPER(COALESCE(c.type,'')) NOT IN ('RETAIL','B2C'))`,
-      );
-    }
+    if (channel) qb.andWhere(customerChannelSql('c', channel));
     return qb;
   }
 
@@ -500,7 +519,7 @@ export class DashboardService {
       .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
       .innerJoin(ProductEntity, 'p', 'p.id = v.productId')
       .select(
-        "COALESCE(NULLIF(TRIM(p.specs->>'fabricType'), ''), NULLIF(TRIM(p.fabric), ''), 'نامشخص')",
+        "COALESCE(NULLIF(TRIM(CAST(p.specs->>'fabricType' AS text)), ''), NULLIF(TRIM(COALESCE(p.fabric, '')), ''), 'نامشخص')",
         'fabric',
       )
       .addSelect('SUM(i.quantity)', 'qty')
@@ -509,7 +528,7 @@ export class DashboardService {
       .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
     this.applyOrderChannel(qb, channel);
     const rows = await qb
-      .groupBy("COALESCE(NULLIF(TRIM(p.specs->>'fabricType'), ''), NULLIF(TRIM(p.fabric), ''), 'نامشخص')")
+      .groupBy("COALESCE(NULLIF(TRIM(CAST(p.specs->>'fabricType' AS text)), ''), NULLIF(TRIM(COALESCE(p.fabric, '')), ''), 'نامشخص')")
       .orderBy('SUM(i.totalPrice)', 'DESC')
       .limit(6)
       .getRawMany();
@@ -537,7 +556,7 @@ export class DashboardService {
       .select('p.id', 'productId')
       .addSelect('p.name', 'name')
       .addSelect(
-        "COALESCE(NULLIF(TRIM(p.specs->>'fabricType'), ''), NULLIF(TRIM(p.fabric), ''), '—')",
+        "COALESCE(NULLIF(TRIM(CAST(p.specs->>'fabricType' AS text)), ''), NULLIF(TRIM(COALESCE(p.fabric, '')), ''), '—')",
         'fabric',
       )
       .addSelect('SUM(i.quantity)', 'sold')
@@ -548,7 +567,7 @@ export class DashboardService {
     const rows = await qb
       .groupBy('p.id')
       .addGroupBy('p.name')
-      .addGroupBy("COALESCE(NULLIF(TRIM(p.specs->>'fabricType'), ''), NULLIF(TRIM(p.fabric), ''), '—')")
+      .addGroupBy("COALESCE(NULLIF(TRIM(CAST(p.specs->>'fabricType' AS text)), ''), NULLIF(TRIM(COALESCE(p.fabric, '')), ''), '—')")
       .orderBy('SUM(i.totalPrice)', 'DESC')
       .limit(10)
       .getRawMany();

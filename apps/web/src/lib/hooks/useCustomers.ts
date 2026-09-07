@@ -28,6 +28,7 @@ export function useCustomers(params?: {
   search?: string;
   segment?: string;
   businessType?: string;
+  status?: string;
 }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
@@ -43,27 +44,18 @@ export function useCustomers(params?: {
       if (params?.search) query.set('search', params.search);
       if (params?.segment) query.set('segment', params.segment);
       if (params?.businessType) {
-        query.set('businessType', params.businessType);
-        query.set('type', params.businessType);
+        query.set('channel', params.businessType);
       }
+      if (params?.status) query.set('status', params.status);
       const res = await apiClient.get<CustomersResult>(`/customers?${query}`);
-      let data = res.data;
-      // Client-side fallback if API ignores businessType
-      if (params?.businessType && data.some((c: any) => c.businessType || c.type)) {
-        data = data.filter((c: any) =>
-          (c.businessType ?? c.type) === params.businessType
-          || (params.businessType === 'WHOLESALE' && (c.type === 'B2B' || c.businessType === 'WHOLESALE'))
-          || (params.businessType === 'RETAIL' && (c.businessType === 'RETAIL' || c.type === 'RETAIL')),
-        );
-      }
-      setCustomers(data);
+      setCustomers(res.data);
       setMeta(res.meta);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'خطا');
     } finally {
       setLoading(false);
     }
-  }, [params?.page, params?.search, params?.segment, params?.businessType]);
+  }, [params?.page, params?.search, params?.segment, params?.businessType, params?.status]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

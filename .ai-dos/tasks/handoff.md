@@ -2,6 +2,56 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-07T22:45:00Z — TASK-20260908-001 CLOSED live `2cdb951`
+
+- Fast-forward only: `eefe91d..2cdb951` on `origin/master`. Feature branch `ai/TASK-20260908-001-admin-ops` pushed. No merge commit.
+- VPS already building that SHA; lock released; `taranom_api` started. Health `{"status":"ok"}`. Public API 200. `.com` 200 ~3.8s. `.ir` 200 ~3.7s.
+- DB: tables `cart_signals`, `sms_event_log`; migrations.name `CartSmsOps1757289600001`. Route `POST /v1/cart/heartbeat` live (empty cart → `{ok:true,cleared:true}`).
+- File claims released. Task status `done`.
+- Residual: guest abandoned-cart SMS needs a logged-in phone (JWT) or later checkout phone pulse. `order.service` quote still omits province (TorobPay claim). Postal online default OFF until admin enables it.
+- SMS events: enable in `/admin/settings` (new panel) + existing admin phones in SMS tab.
+
+## 2026-09-07T22:40:00Z — TASK-20260908-001 reclaim + ship prep
+
+- Reclaimed stale `apps/api/src/config/database.config.ts` from TASK-20260901-002 (hb 2026-09-01). Registered `CartSignalEntity` + `SmsEventLogEntity` so Nest/TypeORM can load them in production.
+- Empty cart now deletes the signal (no reminder after checkout/clear). Logged-in shopper phone is read from JWT for abandoned-cart SMS.
+- Owner asked to commit, merge to master, migrate, and deploy.
+
+## 2026-09-07T22:30:00Z — TASK-20260908-001 gates observed
+
+- Task / owner: TASK-20260908-001 / cursor:implementer-TASK-20260908-001
+- Worktree `D:/proje/Site-B2B-admin-ops` branch `ai/TASK-20260908-001-admin-ops`. Not merged, not deployed.
+- First spec run failed: worktree had no `node_modules`; `npx ts-node` from npm cache crashed (`ts.sys.fileExists` undefined on Node 24).
+- Follow-up: junctioned main-repo node_modules; specs use `import * as assert`. Observed OK:
+  - `customer-channel.spec.ts`
+  - `iran-post-quote.spec.ts`
+  - `sms-ops.spec.ts`
+  - `apps/api` `tsc --noEmit` exit 0
+  - `apps/web` `tsc --noEmit` exit 0
+- Did not edit AdminSettings / settings.service / payment / order (TASK-20260907-002).
+- Next: owner must ask commit + merge + VPS migrate `CartSmsOps1757289600001` + deploy. Abandoned-cart SMS needs a phone on the cart heartbeat.
+- Rollback: drop branch; unused tables are created only after migrate.
+
+## 2026-09-07T12:35:00Z — TASK-20260907-003 CLOSED live `eb4a433`
+
+- Task / owner: TASK-20260907-003 / cursor:implementer-TASK-20260907-003
+- Fast-forward only: `015a6e5..eb4a433` on `origin/master`. Feature branch `ai/TASK-20260907-003-slim-hero-cta` pushed. No merge commit.
+- VPS `auto-deploy.sh` exit 0: `deploy complete at eb4a433`.
+- Observed live: `https://api.poshaktaranom.com/v1/health` 200 `{"status":"ok"}`. `.com` 200 ~2.0s. `.ir` 200 ~3.0s.
+- Browser: both homes have `news-ticker` + `.storefront-hero-frame` 1914×558 (ratio 3.43 = 24:7). Pause sets `animationPlayState=paused`. Retail `/products` has no ticker.
+- File claims released. Task status `done`. CMS-saved CTA strings were not migrated.
+- Do not touch TASK-20260907-002 TorobPay or TASK-20260907-001 PDP files.
+
+## 2026-09-07T12:20:00Z — TASK-20260907-003 slim hero + ticker + CTA
+
+- Task / owner: TASK-20260907-003 / cursor:implementer-TASK-20260907-003
+- Branch `ai/TASK-20260907-003-slim-hero-cta` in `D:/proje/Site-B2B-slim-hero` from origin/master.
+- Installed anthropics/skills `frontend-design` and vercel-labs `web-design-guidelines` under `.cursor/skills/`.
+- Shared `.storefront-hero-frame` on wholesale/retail/boutique/category. TV ticker on home only. CTA labels action-named.
+- Reclaimed stale hero/header/CTA claims listed in the task notes.
+- Observed: `apps/web` `tsc --noEmit` exit 0. `news-ticker` spec OK (Node strip-types). No new npm deps.
+- Rollback: revert branch. No migration.
+
 ## 2026-09-07T11:10:00Z — TASK-20260907-002 TorobPay CPG implementing
 
 - Task / owner: TASK-20260907-002 / cursor:implementer-TASK-20260907-002
