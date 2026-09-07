@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-07T22:45:00Z — TASK-20260908-001 CLOSED live `2cdb951`
+
+- Fast-forward only: `eefe91d..2cdb951` on `origin/master`. Feature branch `ai/TASK-20260908-001-admin-ops` pushed. No merge commit.
+- VPS already building that SHA; lock released; `taranom_api` started. Health `{"status":"ok"}`. Public API 200. `.com` 200 ~3.8s. `.ir` 200 ~3.7s.
+- DB: tables `cart_signals`, `sms_event_log`; migrations.name `CartSmsOps1757289600001`. Route `POST /v1/cart/heartbeat` live (empty cart → `{ok:true,cleared:true}`).
+- File claims released. Task status `done`.
+- Residual: guest abandoned-cart SMS needs a logged-in phone (JWT) or later checkout phone pulse. `order.service` quote still omits province (TorobPay claim). Postal online default OFF until admin enables it.
+- SMS events: enable in `/admin/settings` (new panel) + existing admin phones in SMS tab.
+
 ## 2026-09-07T22:40:00Z — TASK-20260908-001 reclaim + ship prep
 
 - Reclaimed stale `apps/api/src/config/database.config.ts` from TASK-20260901-002 (hb 2026-09-01). Registered `CartSignalEntity` + `SmsEventLogEntity` so Nest/TypeORM can load them in production.

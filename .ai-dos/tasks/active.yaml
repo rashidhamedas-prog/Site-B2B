@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260908-001"
     title: "Admin reports/CRM/SMS/post-quote/ticker ops"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260908-001"
     roles:
@@ -13,9 +13,10 @@ tasks:
     branch: "ai/TASK-20260908-001-admin-ops"
     worktree: "D:/proje/Site-B2B-admin-ops"
     claimed_at: "2026-09-07T21:40:00Z"
-    heartbeat_at: "2026-09-07T22:40:00Z"
+    heartbeat_at: "2026-09-07T22:45:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/customer/customer-channel.ts"
       - "apps/api/src/modules/customer/customer-channel.spec.ts"
       - "apps/api/src/modules/customer/customer.service.ts"
@@ -55,13 +56,9 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Owner reported reports API error, duplicate analytics, broken CRM
-      wholesale/retail filter, SMS rules, postal quote, ticker admin.
-      Did not edit AdminSettings/settings.service/payment.service/order.service
-      (claimed by TASK-20260907-002, hb 2026-09-07T11:10, not stale).
-      Extra admin panels sit above existing settings. SMS admin alert moves
-      from order.created to paid-payment cron. Reclaimed stale dashboard +
-      notification.service from TASK-20260826-001 (hb 2026-09-02).
+      LIVE 2026-09-07: origin/master + VPS /opt/taranom = 2cdb951.
+      Migration CartSmsOps1757289600001 applied; cart_signals + sms_event_log exist.
+      Health 200. Claims released. Did not edit TorobPay settings/payment/order.
     acceptance_criteria:
       - "Reports page loads or shows a real API error; analytics nav removed as duplicate"
       - "CRM عمده/تکی filter uses customer type B2B vs B2C and returns matching rows"
