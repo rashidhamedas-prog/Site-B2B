@@ -11,6 +11,7 @@ type Period = 'week' | 'month' | 'quarter' | 'year';
 
 interface ReportsData {
   period: Period;
+  error?: string;
   kpis: {
     revenue: { value: number; change: number };
     orders: { value: number; change: number };
@@ -165,6 +166,7 @@ export function AdminReports() {
     try {
       const res = await apiClient.get<ReportsData>(`/dashboard/reports?period=${p}&channel=${ch}`);
       setData(res);
+      setError(Boolean(res?.error));
     } catch {
       setData(null);
       setError(true);
@@ -219,7 +221,7 @@ export function AdminReports() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-gray-500">
           {error
-            ? <span className="text-amber-600">⚠ دریافت گزارش از API ناموفق بود</span>
+            ? <span className="text-amber-600">⚠ {data?.error ? `گزارش ناقص: ${data.error}` : 'دریافت گزارش از API ناموفق بود'}</span>
             : 'گزارش‌های فروش، مشتریان و محصولات بر اساس داده واقعی'}
         </p>
         <div className="flex items-center gap-3 flex-wrap">

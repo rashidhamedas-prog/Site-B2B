@@ -1,5 +1,74 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260908-001"
+    title: "Admin reports/CRM/SMS/post-quote/ticker ops"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260908-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-001"
+      implementer: "cursor:implementer-TASK-20260908-001"
+      reviewer: "required-after-api-sms-shipping"
+      security: "self-review-sms-pii-no-new-secrets"
+    branch: "ai/TASK-20260908-001-admin-ops"
+    worktree: "D:/proje/Site-B2B-admin-ops"
+    claimed_at: "2026-09-07T21:40:00Z"
+    heartbeat_at: "2026-09-07T22:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/customer/customer-channel.ts"
+      - "apps/api/src/modules/customer/customer-channel.spec.ts"
+      - "apps/api/src/modules/customer/customer.service.ts"
+      - "apps/api/src/modules/customer/customer.controller.ts"
+      - "apps/api/src/modules/dashboard/dashboard.service.ts"
+      - "apps/api/src/modules/shipping/iran-post-quote.ts"
+      - "apps/api/src/modules/shipping/iran-post-quote.spec.ts"
+      - "apps/api/src/modules/shipping/shipping.service.ts"
+      - "apps/api/src/modules/shipping/shipping.controller.ts"
+      - "apps/api/src/modules/notification/notification.service.ts"
+      - "apps/api/src/modules/notification/sms-templates.defaults.ts"
+      - "apps/api/src/modules/notification/sms-ops.ts"
+      - "apps/api/src/modules/notification/sms-ops.spec.ts"
+      - "apps/api/src/modules/notification/notification.jobs.ts"
+      - "apps/api/src/modules/notification/notification.module.ts"
+      - "apps/api/src/modules/cart/cart-signal.entity.ts"
+      - "apps/api/src/modules/cart/sms-event-log.entity.ts"
+      - "apps/api/src/modules/cart/cart.service.ts"
+      - "apps/api/src/modules/cart/cart.controller.ts"
+      - "apps/api/src/modules/cart/cart.module.ts"
+      - "apps/api/src/database/migrations/20260908-001-cart-sms-ops.ts"
+      - "apps/api/src/app.module.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/web/src/components/admin/AdminReports.tsx"
+      - "apps/web/src/components/admin/AdminCustomers.tsx"
+      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      - "apps/web/src/components/admin/AdminOpsPanels.tsx"
+      - "apps/web/src/lib/hooks/useCustomers.ts"
+      - "apps/web/src/app/admin/analytics/page.tsx"
+      - "apps/web/src/app/admin/settings/page.tsx"
+      - "apps/web/src/lib/cart-heartbeat.ts"
+      - "apps/web/src/lib/retail-cart.ts"
+      - "apps/web/src/lib/cart.tsx"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner reported reports API error, duplicate analytics, broken CRM
+      wholesale/retail filter, SMS rules, postal quote, ticker admin.
+      Did not edit AdminSettings/settings.service/payment.service/order.service
+      (claimed by TASK-20260907-002, hb 2026-09-07T11:10, not stale).
+      Extra admin panels sit above existing settings. SMS admin alert moves
+      from order.created to paid-payment cron. Reclaimed stale dashboard +
+      notification.service from TASK-20260826-001 (hb 2026-09-02).
+    acceptance_criteria:
+      - "Reports page loads or shows a real API error; analytics nav removed as duplicate"
+      - "CRM عمده/تکی filter uses customer type B2B vs B2C and returns matching rows"
+      - "Postal quote toggleable; POST/PISHTAZ uses destination+weight when enabled"
+      - "Admin SMS on paid orders only; abandoned-cart 30m; stock-out to admin phones; events per channel"
+      - "Ticker lines editable from admin settings page without opening buried CMS chrome"
+      - "Relevant specs and api+web tsc pass"
   - id: "TASK-20260907-003"
     title: "Slim cinematic heroes + TV ticker + stronger storefront CTAs"
     status: "done"
@@ -1010,7 +1079,8 @@ tasks:
       - "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/database/migrations/20260901-001-stock-commit-and-addresses.ts"
-      - "apps/api/src/config/database.config.ts"
+      # reclaimed 2026-09-08 by TASK-20260908-001 (stale hb 2026-09-01; cart SMS entities):
+      # "apps/api/src/config/database.config.ts"
       - "apps/api/src/config/typeorm-migration-files.ts"
       - "apps/api/src/config/typeorm-migration-files.spec.ts"
       # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-09-01; sharp runtime):
@@ -1552,12 +1622,14 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/outbox-metrics.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-metrics.spec.ts"
       - "apps/web/src/components/admin/ColorVariantsEditor.tsx"
-      - "apps/api/src/modules/dashboard/dashboard.service.ts"
+      # transferred 2026-09-08 to TASK-20260908-001 (stale hb 2026-09-02; reports harden):
+      # "apps/api/src/modules/dashboard/dashboard.service.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; mark PUBLISHED after canary deliver):
       # "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/api/src/modules/notification/notification.service.ts"
+      # transferred 2026-09-08 to TASK-20260908-001 (stale hb 2026-09-02; SMS ops):
+      # "apps/api/src/modules/notification/notification.service.ts"
       - "apps/api/src/modules/search/search.service.ts"
       - "apps/api/src/modules/omnichannel/worker.module.ts"
       - "apps/api/src/worker.main.ts"

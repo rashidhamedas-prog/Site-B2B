@@ -19,6 +19,8 @@ const GROUPS = [
   'menus_retail',
   'marketing',
   'siteContent',
+  'smsOps',
+  'shippingPost',
 ] as const;
 
 @ApiTags('settings')
@@ -136,7 +138,7 @@ export class SettingsController {
   @ApiBearerAuth()
   @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   async adminSettings(@Query('channel') channel?: string) {
-    const [business, shipping, sms, payment, installments, theme, menus, marketing, siteContent] =
+    const [business, shipping, sms, payment, installments, theme, menus, marketing, siteContent, smsOps, shippingPost] =
       await Promise.all([
         this.svc.business(),
         this.svc.shipping(),
@@ -147,8 +149,10 @@ export class SettingsController {
         this.svc.menus(channel),
         this.svc.marketing(),
         this.svc.siteContent(),
+        this.svc.get('smsOps'),
+        this.svc.get('shippingPost'),
       ]);
-    return { business, shipping, sms, payment, installments, theme, menus, marketing, siteContent };
+    return { business, shipping, sms, payment, installments, theme, menus, marketing, siteContent, smsOps, shippingPost };
   }
 
   // Admin: save one settings group.

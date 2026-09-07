@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell,
   Warehouse, UserCog, LogOut, X, ChevronDown, CircleUser,
-  TrendingUp, Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2,
+  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { clearToken, getRole } from '@/lib/auth';
@@ -67,7 +67,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { href: '/admin/pages', icon: FileStack, label: 'صفحات سایت', module: 'content' },
       { href: '/admin/site-content', icon: PanelsTopLeft, label: 'تنظیمات محتوای سایت', module: 'content' },
       { href: '/admin/menus', icon: Menu, label: 'منوهای سایت', module: 'content' },
-      { href: '/admin/analytics', icon: TrendingUp, label: 'آنالیتیکس', module: 'content' },
       { href: '/admin/notifications', icon: Bell, label: 'اعلان‌ها', module: 'content' },
     ],
   },

@@ -2,6 +2,27 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-07T22:40:00Z — TASK-20260908-001 reclaim + ship prep
+
+- Reclaimed stale `apps/api/src/config/database.config.ts` from TASK-20260901-002 (hb 2026-09-01). Registered `CartSignalEntity` + `SmsEventLogEntity` so Nest/TypeORM can load them in production.
+- Empty cart now deletes the signal (no reminder after checkout/clear). Logged-in shopper phone is read from JWT for abandoned-cart SMS.
+- Owner asked to commit, merge to master, migrate, and deploy.
+
+## 2026-09-07T22:30:00Z — TASK-20260908-001 gates observed
+
+- Task / owner: TASK-20260908-001 / cursor:implementer-TASK-20260908-001
+- Worktree `D:/proje/Site-B2B-admin-ops` branch `ai/TASK-20260908-001-admin-ops`. Not merged, not deployed.
+- First spec run failed: worktree had no `node_modules`; `npx ts-node` from npm cache crashed (`ts.sys.fileExists` undefined on Node 24).
+- Follow-up: junctioned main-repo node_modules; specs use `import * as assert`. Observed OK:
+  - `customer-channel.spec.ts`
+  - `iran-post-quote.spec.ts`
+  - `sms-ops.spec.ts`
+  - `apps/api` `tsc --noEmit` exit 0
+  - `apps/web` `tsc --noEmit` exit 0
+- Did not edit AdminSettings / settings.service / payment / order (TASK-20260907-002).
+- Next: owner must ask commit + merge + VPS migrate `CartSmsOps1757289600001` + deploy. Abandoned-cart SMS needs a phone on the cart heartbeat.
+- Rollback: drop branch; unused tables are created only after migrate.
+
 ## 2026-09-07T12:35:00Z — TASK-20260907-003 CLOSED live `eb4a433`
 
 - Task / owner: TASK-20260907-003 / cursor:implementer-TASK-20260907-003

@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { pulseCartHeartbeat } from '@/lib/cart-heartbeat';
 
 const CART_STORAGE_KEY = 'taranom_cart';
 
@@ -135,6 +136,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
+    pulseCartHeartbeat({
+      channel: 'WHOLESALE',
+      items: state.items.map((i) => ({ productId: i.productId, name: i.productName, quantity: i.quantity })),
+    });
   }, [state.items]);
 
   const count = state.items.reduce((s, i) => s + cartItemPieces(i), 0);

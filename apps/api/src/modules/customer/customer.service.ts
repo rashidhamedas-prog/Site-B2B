@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException, Optional, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository, ILike } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CustomerEntity } from './entities/customer.entity';
 import { AuthService } from '../auth/auth.service';
 import { NotificationService } from '../notification/notification.service';
+import { customerChannelSql, isRetailCustomerType, normalizeCustomerChannel } from './customer-channel';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -31,42 +32,27 @@ export class CustomerService {
     limit = 20,
     search?: string,
     segment?: string,
-    opts?: { businessType?: string; channel?: string; type?: string },
+    opts?: { businessType?: string; channel?: string; type?: string; status?: string },
   ) {
-    const where: any[] = search
-      ? [
-          { businessName: ILike(`%${search}%`) },
-          { ownerName: ILike(`%${search}%`) },
-          { phone: ILike(`%${search}%`) },
-          { code: ILike(`%${search}%`) },
-        ]
-      : [{}];
-
-    if (segment) where.forEach((w) => (w.segment = segment));
-
-    // channel WHOLESALE|RETAIL → businessType / type filter
-    let businessType = opts?.businessType;
-    if (!businessType && opts?.channel) {
-      const ch = String(opts.channel).toUpperCase();
-      businessType = ch === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const qb = this.repo.createQueryBuilder('c');
+    if (search) {
+      qb.andWhere(
+        '(c.businessName ILIKE :q OR c.ownerName ILIKE :q OR c.phone ILIKE :q OR c.code ILIKE :q)',
+        { q: `%${search}%` },
+      );
     }
-    if (businessType) {
-      where.forEach((w) => {
-        w.businessType = businessType;
-      });
-    }
-    if (opts?.type) {
-      where.forEach((w) => {
-        w.type = opts.type;
-      });
+    if (segment) qb.andWhere('c.segment = :segment', { segment });
+    if (opts?.status) qb.andWhere('c.status = :status', { status: opts.status });
+
+    const channel = normalizeCustomerChannel(opts?.channel)
+      || (opts?.businessType && normalizeCustomerChannel(opts.businessType))
+      || (opts?.type && (isRetailCustomerType(opts.type) ? 'RETAIL' : normalizeCustomerChannel(opts.type)));
+    if (channel) {
+      qb.andWhere(customerChannelSql('c', channel));
     }
 
-    const [data, total] = await this.repo.findAndCount({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+    qb.orderBy('c.createdAt', 'DESC').skip((page - 1) * limit).take(limit);
+    const [data, total] = await qb.getManyAndCount();
 
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }

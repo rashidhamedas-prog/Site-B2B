@@ -13,7 +13,7 @@ const SEGMENTS = ['همه', 'VIP', 'A', 'B', 'C'];
 const emptyForm = {
   businessName: '', ownerName: '', phone: '', phone2: '', email: '',
   province: '', city: '', address: '', postalCode: '',
-  nationalId: '', businessType: 'RETAIL', segment: 'C',
+  nationalId: '', type: 'B2B', businessType: 'WHOLESALE', segment: 'C',
   status: 'PENDING', creditLimit: '', notes: '',
 };
 type FormData = typeof emptyForm;
@@ -31,6 +31,7 @@ export function AdminCustomers() {
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState('');
   const [channelFilter, setChannelFilter] = useState<AdminChannel | 'ALL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
@@ -43,7 +44,7 @@ export function AdminCustomers() {
 
   const { customers, meta, loading, refetch } = useCustomers({
     page, search: search || undefined, segment: segment || undefined,
-    businessType,
+    businessType, status: statusFilter || undefined,
   });
 
   const openCreate = () => { setForm(emptyForm); setEditCustomer(null); setModal('create'); };
@@ -53,7 +54,8 @@ export function AdminCustomers() {
       businessName: c.businessName, ownerName: c.ownerName, phone: c.phone,
       phone2: c.phone2 ?? '', email: c.email ?? '', province: c.province,
       city: c.city, address: c.address ?? '', postalCode: c.postalCode ?? '',
-      nationalId: c.nationalId ?? '', businessType: c.businessType,
+      nationalId: c.nationalId ?? '', type: c.type === 'B2C' || c.type === 'RETAIL' ? 'B2C' : 'B2B',
+      businessType: c.businessType,
       segment: c.segment, status: c.status,
       creditLimit: c.creditLimit ? String(Number(c.creditLimit) / 10) : '',
       notes: c.notes ?? '',
@@ -125,6 +127,15 @@ export function AdminCustomers() {
           onChange={(v) => { setChannelFilter(v); setPage(1); }}
         />
         <div className="flex items-center gap-1.5">
+          {[['','همه وضعیت‌ها'],['ACTIVE','فعال'],['PENDING','در انتظار'],['INACTIVE','غیرفعال']].map(([id, label]) => (
+            <button key={id || 'all-st'} type="button" onClick={() => { setStatusFilter(id); setPage(1); }}
+              className={cn('cursor-pointer rounded-full px-3 py-1 text-xs font-medium',
+                statusFilter === id ? 'bg-secondary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
           <Filter className="h-4 w-4 text-gray-400" />
           {SEGMENTS.map((s) => (
             <button key={s} type="button" onClick={() => { setSegment(s === 'همه' ? '' : s); setPage(1); }}
@@ -141,7 +152,7 @@ export function AdminCustomers() {
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['کد', 'نام فروشگاه', 'صاحب', 'شهر', 'سگمنت', 'وضعیت', 'مانده', ''].map((h) => (
+                {['کد', 'نام', 'کانال', 'موبایل', 'شهر', 'سگمنت', 'وضعیت', 'مانده', ''].map((h) => (
                   <th key={h} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -149,20 +160,29 @@ export function AdminCustomers() {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 8 }).map((_, j) => (
+                  <tr key={i}>{Array.from({ length: 9 }).map((_, j) => (
                     <td key={j} className="px-4 py-3"><div className="skeleton h-4 rounded w-20" /></td>
                   ))}</tr>
                 ))
-              ) : customers.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center">
+              ) : customers.filter((c) => !statusFilter || (c as Customer).status === statusFilter).length === 0 ? (
+                <tr><td colSpan={9} className="px-4 py-12 text-center">
                   <p className="text-gray-400 mb-3">مشتری‌ای یافت نشد</p>
                   <button onClick={openCreate} className="btn btn-primary btn-sm">ثبت اولین مشتری</button>
                 </td></tr>
-              ) : (customers as Customer[]).map((c) => (
+              ) : (customers as Customer[]).filter((c) => !statusFilter || c.status === statusFilter).map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-xs font-mono text-gray-400">{c.code}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-gray-900">{c.businessName}</td>
-                  <td className="px-4 py-3 text-sm text-gray-600">{c.ownerName}</td>
+                  <td className="px-4 py-3">
+                    <p className="text-sm font-semibold text-gray-900">{c.businessName}</p>
+                    <p className="text-xs text-gray-500">{c.ownerName}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-semibold',
+                      c.type === 'B2C' || c.type === 'RETAIL' ? 'bg-amber-100 text-amber-800' : 'bg-primary-50 text-primary')}>
+                      {c.type === 'B2C' || c.type === 'RETAIL' ? 'تکی' : 'عمده'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-mono text-gray-700 dir-ltr">{c.phone}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{c.city}</td>
                   <td className="px-4 py-3"><SegmentBadge segment={c.segment} /></td>
                   <td className="px-4 py-3">
@@ -230,8 +250,11 @@ export function AdminCustomers() {
                 {f('city', 'شهر *', 'text', 'تهران')}
               </div>
               <div>{f('address', 'آدرس', 'text', 'خیابان ولیعصر...')}</div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 {f('postalCode', 'کد پستی', 'text', '1234567890')}
+                {sel('type', 'کانال سایت', [
+                  { value: 'B2B', label: 'عمده (.com)' }, { value: 'B2C', label: 'تکی (.ir)' },
+                ])}
                 {sel('businessType', 'نوع کسب‌وکار', [
                   { value: 'RETAIL', label: 'خرده‌فروش' }, { value: 'WHOLESALE', label: 'عمده‌فروش' },
                   { value: 'ONLINE', label: 'آنلاین' }, { value: 'BOUTIQUE', label: 'بوتیک' },
