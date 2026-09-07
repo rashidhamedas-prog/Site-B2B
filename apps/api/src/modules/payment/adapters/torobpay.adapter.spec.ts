@@ -99,6 +99,7 @@ async function main() {
     }
     if (url.includes('/payment/v1/token')) {
       const body = JSON.parse(String(init?.body || '{}'));
+      (globalThis.fetch as { lastTokenBody?: string }).lastTokenBody = JSON.stringify(body);
       assert(body.paymentMethodTypeDto === 'ONLINE_CREDIT', 'method');
       assert(body.transactionId === 'pay-1', 'txn');
       assert(Array.isArray(body.cartList) && body.cartList.length === 1, 'one cart');
@@ -145,6 +146,7 @@ async function main() {
     });
     assert(created.providerToken === 'tok-1', 'token');
     assert(created.redirectUrl.includes('payment_token=tok-1'), 'page url');
+    assert(JSON.parse(String((globalThis.fetch as any).lastTokenBody || '{}')).cartList[0].cartItems[0].amount === 2500000, 'unit amount');
 
     const verified = await gw.verifyReturn({
       amountIrr: 2500000,
@@ -163,6 +165,41 @@ async function main() {
       extra: { amount: '1000' },
     });
     assert(mismatch.success === false, 'amount mismatch');
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/oauth/token')) {
+        return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
+      }
+      if (url.includes('/payment/v1/token')) {
+        return new Response(
+          JSON.stringify({
+            successful: false,
+            errorData: { errorCode: 1042, message: 'invalid cart amount' },
+          }),
+          { status: 400 },
+        );
+      }
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+    let tokenErr = '';
+    try {
+      await gw.createPayment({
+        amountIrr: 2500000,
+        callbackUrl: 'https://www.poshaktaranom.ir/payment/torobpay/callback?paymentId=pay-1',
+        description: 'تست',
+        merchantId: 'n/a',
+        sandbox: false,
+        mobile: '09123456789',
+        orderId: 'ord-1',
+        metadata: { providerId: 'pay-3' },
+        torobpayCheckout: checkout,
+      });
+    } catch (e) {
+      tokenErr = e instanceof Error ? e.message : String(e);
+    }
+    assert(tokenErr.includes('1042'), 'token error code surfaced');
+    assert(tokenErr.includes('invalid cart amount'), 'token error message surfaced');
   } finally {
     globalThis.fetch = originalFetch;
   }

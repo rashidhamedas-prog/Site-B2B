@@ -251,6 +251,11 @@ export default function RetailCheckoutPage() {
       setError('لطفاً آدرس کامل (استان، شهر، خیابان، گیرنده، موبایل) را پر کنید.');
       return;
     }
+    const postalDigits = String(address.postalCode || '').replace(/\D/g, '');
+    if (paymentGateway === 'TOROBPAY' && paymentMethod === 'ONLINE' && postalDigits.length !== 10) {
+      setError('برای پرداخت ترب‌پی کدپستی ۱۰ رقمی را وارد کنید.');
+      return;
+    }
     setBusy(true);
     try {
       if (!(await ensureRetailAccount())) return;

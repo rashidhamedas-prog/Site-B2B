@@ -155,12 +155,18 @@ export class PaymentService {
       discountAmount: Number(order.discount) || 0,
       cartItems:
         items.length > 0
-          ? items.map((it) => ({
-              id: String(it.sku || it.id),
-              name: String(it.productName || 'کالا'),
-              count: Number(it.quantity) || 1,
-              amount: Number(it.totalPrice) || Number(it.unitPrice) * (Number(it.quantity) || 1),
-            }))
+          ? items.map((it) => {
+              const count = Number(it.quantity) || 1;
+              const unit =
+                Number(it.unitPrice) ||
+                Math.floor((Number(it.totalPrice) || 0) / Math.max(1, count));
+              return {
+                id: String(it.sku || it.id),
+                name: String(it.productName || 'کالا'),
+                count,
+                amount: unit,
+              };
+            })
           : [{ id: order.id, name: `سفارش ${order.orderNumber}`, count: 1, amount: amountIrr }],
     };
   }

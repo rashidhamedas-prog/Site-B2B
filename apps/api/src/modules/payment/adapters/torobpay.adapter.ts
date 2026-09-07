@@ -160,9 +160,22 @@ function envelopeResponse(json: Record<string, unknown>): Record<string, unknown
 }
 
 function envelopeMessage(json: Record<string, unknown>, fallback: string): string {
-  return String(
-    json.user_message || json.message || json.error || envelopeResponse(json).message || fallback,
-  );
+  const errorData =
+    json.errorData && typeof json.errorData === 'object'
+      ? (json.errorData as Record<string, unknown>)
+      : {};
+  const code = errorData.errorCode ?? json.error_code ?? json.errorCode ?? json.code;
+  const msg = String(
+    json.user_message ||
+      json.message ||
+      errorData.userMessage ||
+      errorData.message ||
+      json.error ||
+      envelopeResponse(json).message ||
+      '',
+  ).trim();
+  if (msg && code != null && String(code)) return `${msg} (${code})`;
+  return msg || fallback;
 }
 
 @Injectable()
@@ -486,6 +499,10 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
 
     const shippingAmount = Math.max(0, Number(checkout.shippingAmount) || 0);
     const discountAmount = Math.max(0, Number(checkout.discountAmount) || 0);
+    const postalCode = checkout.postalCode.replace(/\D/g, '').slice(0, 10);
+    if (postalCode.length !== 10) {
+      throw new Error('کدپستی ۱۰ رقمی برای صدور توکن ترب‌پی الزامی است');
+    }
     const items = (checkout.cartItems || []).filter(
       (it) => it && Number(it.count) > 0 && Number(it.amount) > 0,
     );
@@ -495,6 +512,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
             id: String(it.id).slice(0, 64),
             name: String(it.name || 'کالا').slice(0, 120),
             count: Math.max(1, Math.floor(Number(it.count) || 1)),
+            // Official CPG: amount is the item unit in IRR; count is quantity.
             amount: Math.floor(Number(it.amount)),
             category: DEFAULT_CATEGORY,
             commissionType: 0,
@@ -504,7 +522,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
               id: transactionId,
               name: String(req.description || 'سفارش پوشاک ترنم').slice(0, 120),
               count: 1,
-              amount: req.amountIrr,
+              amount: Math.max(0, req.amountIrr - shippingAmount + discountAmount) || req.amountIrr,
               category: DEFAULT_CATEGORY,
               commissionType: 0,
             },
@@ -518,7 +536,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       transactionId,
       mobile: phone,
       address: checkout.address,
-      postalCode: checkout.postalCode.replace(/\D/g, '').slice(0, 10),
+      postalCode,
       customer_full_name: checkout.fullName,
       city: checkout.city,
       province: checkout.province,
@@ -546,8 +564,9 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
     const paymentToken = response.paymentToken ? String(response.paymentToken) : '';
     const paymentPageUrl = response.paymentPageUrl ? String(response.paymentPageUrl) : '';
     if (!ok || !envelopeOk(json) || !paymentToken || !paymentPageUrl) {
-      this.logger.warn(`TorobPay token failed http=${status}`);
-      throw new Error(envelopeMessage(json, 'خطا در ایجاد توکن پرداخت ترب‌پی'));
+      const detail = envelopeMessage(json, 'خطا در ایجاد توکن پرداخت ترب‌پی');
+      this.logger.warn(`TorobPay token failed http=${status} detail=${detail.slice(0, 160)}`);
+      throw new Error(detail);
     }
     return {
       providerToken: paymentToken,
