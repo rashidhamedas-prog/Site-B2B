@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-07T12:35:00Z — TASK-20260907-003 CLOSED live `eb4a433`
+
+- Task / owner: TASK-20260907-003 / cursor:implementer-TASK-20260907-003
+- Fast-forward only: `015a6e5..eb4a433` on `origin/master`. Feature branch `ai/TASK-20260907-003-slim-hero-cta` pushed. No merge commit.
+- VPS `auto-deploy.sh` exit 0: `deploy complete at eb4a433`.
+- Observed live: `https://api.poshaktaranom.com/v1/health` 200 `{"status":"ok"}`. `.com` 200 ~2.0s. `.ir` 200 ~3.0s.
+- Browser: both homes have `news-ticker` + `.storefront-hero-frame` 1914×558 (ratio 3.43 = 24:7). Pause sets `animationPlayState=paused`. Retail `/products` has no ticker.
+- File claims released. Task status `done`. CMS-saved CTA strings were not migrated.
+- Do not touch TASK-20260907-002 TorobPay or TASK-20260907-001 PDP files.
+
 ## 2026-09-07T12:20:00Z — TASK-20260907-003 slim hero + ticker + CTA
 
 - Task / owner: TASK-20260907-003 / cursor:implementer-TASK-20260907-003

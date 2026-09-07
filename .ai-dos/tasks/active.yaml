@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260907-003"
     title: "Slim cinematic heroes + TV ticker + stronger storefront CTAs"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260907-003"
     roles:
@@ -13,36 +13,9 @@ tasks:
     branch: "ai/TASK-20260907-003-slim-hero-cta"
     worktree: "D:/proje/Site-B2B-slim-hero"
     claimed_at: "2026-09-07T12:00:00Z"
-    heartbeat_at: "2026-09-07T12:20:00Z"
+    heartbeat_at: "2026-09-07T12:35:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/app/globals.css"
-      - "apps/web/src/app/(wholesale)/loading.tsx"
-      - "apps/web/src/components/shared/NewsTicker.tsx"
-      - "apps/web/src/lib/cms/news-ticker.ts"
-      - "apps/web/src/lib/cms/news-ticker.spec.ts"
-      - "apps/web/src/lib/cms/chrome.ts"
-      - "apps/web/src/lib/cms/defaults.ts"
-      - "apps/web/src/lib/cms/hero-slides.ts"
-      - "apps/web/src/components/retail/RetailHero.tsx"
-      - "apps/web/src/components/retail/RetailHeader.tsx"
-      - "apps/web/src/components/retail/RetailCtaBanner.tsx"
-      - "apps/web/src/components/wholesale/HeroSection.tsx"
-      - "apps/web/src/components/wholesale/CtaBanner.tsx"
-      - "apps/web/src/components/layout/Header.tsx"
-      - "apps/web/src/components/category/CategoryLanding.tsx"
-      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
-      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueHero.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueHeader.tsx"
-      - "design-system/b2c/MASTER.md"
-      - ".cursor/skills/frontend-design/SKILL.md"
-      - ".cursor/skills/web-design-guidelines/SKILL.md"
-      - "docs/reports/2026-09-07-slim-hero-ticker-cta.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
       Owner asked for slimmer banners to current site standards, a TV-style
       looping ticker on both homes, and stronger CTAs. Reclaimed stale
@@ -53,6 +26,7 @@ tasks:
       checkout/settings (TASK-20260907-002) or PDP guide (TASK-20260907-001).
       No image re-encode; CSS crop via shared .storefront-hero-frame.
       Shared governance append-only.
+      LIVE 2026-09-07: origin/master + VPS /opt/taranom = eb4a433. Claims released.
     acceptance_criteria:
       - "Retail and wholesale home heroes share a slim 2:1 / 24:7 frame, not 82–92vh"
       - "Category and boutique campaign banners use the same frame"

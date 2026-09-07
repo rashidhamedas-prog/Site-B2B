@@ -36,6 +36,14 @@ Make wholesale and retail campaign banners slimmer to current storefront practic
 - Reduced motion stops the ticker.
 - Retail ticker never mentions MOQ ۶ عدد.
 
+## Live
+
+- Git: `origin/master` fast-forward `015a6e5..eb4a433` (2026-09-07).
+- VPS: `/opt/taranom` `deploy complete at eb4a433`.
+- API `https://api.poshaktaranom.com/v1/health` → 200 `{"status":"ok","service":"taranom-api","version":"1.0"}`.
+- Wholesale `https://poshaktaranom.com/` → 200; hero 1914×558; ticker present.
+- Retail `https://www.poshaktaranom.ir/` → 200; hero 1914×558; ticker present; pause works; `/products` has no ticker.
+
 ## Rollback
 
-Revert the branch. CMS `tickerItems` is additive; missing field falls back to text/defaults.
+Revert `eb4a433`. CMS `tickerItems` is additive; missing field falls back to text/defaults.
