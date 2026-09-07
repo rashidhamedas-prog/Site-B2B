@@ -11,6 +11,8 @@ import { useRetailChrome } from '@/components/retail/RetailChromeProvider';
 import { RetailCartDrawer } from '@/components/retail/RetailCartDrawer';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { NewsTicker } from '@/components/shared/NewsTicker';
+import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
 
 type Cat = { id: string; name: string; slug?: string };
 
@@ -33,6 +35,8 @@ export function BoutiqueHeader() {
   const count = useRetailCart((s) => s.items.reduce((n, i) => n + i.quantity, 0));
   const brandName = chromeStr(chrome, 'brandName', 'پوشاک ترنم');
   const showAnn = announcement?.enabled !== false && Boolean(announcement?.text);
+  const tickerItems = resolveTickerItems(announcement, 'RETAIL');
+  const showHomeTicker = isStorefrontHomePath(pathname) && tickerItems.length > 0;
 
   useEffect(() => setMounted(true), []);
   useEffect(() => {
@@ -53,7 +57,8 @@ export function BoutiqueHeader() {
       >
         رفتن به محتوا
       </a>
-      {showAnn ? (
+      {showHomeTicker ? <NewsTicker items={tickerItems} tone="ink" /> : null}
+      {showAnn && !showHomeTicker ? (
         <div className="bg-gradient-to-l from-[#0b0f0e] to-[#1b5c4a] px-4 py-2 text-center text-xs text-white sm:text-sm">
           {announcement?.text}
         </div>

@@ -12,7 +12,7 @@ export { BLOCK_TYPE_LABELS, newBlockId };
 const BLOCK_TYPES = Object.keys(BLOCK_TYPE_LABELS) as BlockType[];
 
 const IMAGE_HINTS: Partial<Record<BlockType, string>> = {
-  hero: 'ابعاد پیشنهادی: ۱۹۲۰×۸۰۰ پیکسل',
+  hero: 'ابعاد پیشنهادی: ۱۹۲۰×۵۶۰ پیکسل (نوار سینمایی ۲۴:۷)',
   image: 'ابعاد پیشنهادی: ۱۲۰۰×۸۰۰ پیکسل',
   gallery: 'ابعاد پیشنهادی: ۱۰۰۰×۱۰۰۰ پیکسل',
   chrome: 'لوگو: مربع ۱۲۸×۱۲۸ یا بزرگ‌تر',
@@ -29,6 +29,7 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
         phoneHref: '',
         telegramLabel: '',
         telegramHref: '',
+        tickerItems: [],
       });
       break;
     case 'chrome':
@@ -396,6 +397,26 @@ function BlockFields({
         </div>
         <div className="sm:col-span-2">
           <Field label="متن اعلان (وسط)" value={str(p, 'text')} onChange={(v) => set('text', v)} />
+        </div>
+        <div className="sm:col-span-2">
+          <Field
+            label="نوار روان صفحه اصلی (هر خط یک خبر)"
+            multiline
+            value={
+              Array.isArray(p.tickerItems)
+                ? (p.tickerItems as unknown[]).filter((item) => typeof item === 'string').join('\n')
+                : ''
+            }
+            onChange={(v) =>
+              set(
+                'tickerItems',
+                v
+                  .split(/\r?\n/)
+                  .map((line) => line.trim())
+                  .filter(Boolean),
+              )
+            }
+          />
         </div>
         <Field
           label="برچسب تلفن"

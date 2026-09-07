@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-07T12:20:00Z — TASK-20260907-003 slim hero + ticker + CTA
+
+- Task / owner: TASK-20260907-003 / cursor:implementer-TASK-20260907-003
+- Branch `ai/TASK-20260907-003-slim-hero-cta` in `D:/proje/Site-B2B-slim-hero` from origin/master.
+- Installed anthropics/skills `frontend-design` and vercel-labs `web-design-guidelines` under `.cursor/skills/`.
+- Shared `.storefront-hero-frame` on wholesale/retail/boutique/category. TV ticker on home only. CTA labels action-named.
+- Reclaimed stale hero/header/CTA claims listed in the task notes.
+- Observed: `apps/web` `tsc --noEmit` exit 0. `news-ticker` spec OK (Node strip-types). No new npm deps.
+- Rollback: revert branch. No migration.
+
 ## 2026-09-07T11:10:00Z — TASK-20260907-002 TorobPay CPG implementing
 
 - Task / owner: TASK-20260907-002 / cursor:implementer-TASK-20260907-002

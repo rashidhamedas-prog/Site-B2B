@@ -70,7 +70,7 @@ export function CtaBanner({
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
             {ctaLabel && ctaHref ? (
               <Action href={ctaHref}>
-                <Button size="lg" variant="secondary" className="min-w-[180px]">
+                <Button size="lg" variant="secondary" className="min-h-12 min-w-[200px] px-8 text-base font-extrabold">
                   {ctaLabel}
                 </Button>
               </Action>

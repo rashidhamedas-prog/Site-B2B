@@ -149,9 +149,9 @@ export async function RetailBlocksRenderer({
     nodes.push(
       <RetailCtaBanner
         key="retail-cta-fallback"
-        headline="بوتیک دارید؟"
-        body="اگر برای فروشگاه سفارش می‌دهید، از سایت بوتیک‌داران ترنم قیمت و موجودی عمده را ببینید."
-        ctaLabel="ورود به سایت بوتیک‌داران"
+        headline="برای بوتیک سفارش می‌دهید؟"
+        body="قیمت همکاری و موجودی عمده روی سایت بوتیک‌داران است؛ این فروشگاه فقط خرید تکی است."
+        ctaLabel="رفتن به سفارش عمده"
         ctaHref="https://poshaktaranom.com"
       />,
     );

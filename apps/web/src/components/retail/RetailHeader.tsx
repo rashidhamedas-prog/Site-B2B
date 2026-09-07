@@ -9,6 +9,9 @@ import { useRetailCart } from '@/lib/retail-cart';
 import { RetailCartDrawer } from './RetailCartDrawer';
 import { cn } from '@/lib/cn';
 import { apiClient } from '@/lib/api';
+import { NewsTicker } from '@/components/shared/NewsTicker';
+import { useRetailChrome } from '@/components/retail/RetailChromeProvider';
+import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
 
 type Cat = { id: string; name: string; slug?: string };
 type Collection = { id: string; name: string; slug: string };
@@ -38,6 +41,9 @@ function BrandMark({ className }: { className?: string }) {
 
 export function RetailHeader() {
   const pathname = usePathname();
+  const bag = useRetailChrome();
+  const tickerItems = resolveTickerItems(bag?.chrome.announcement, 'RETAIL');
+  const showHomeTicker = isStorefrontHomePath(pathname) && tickerItems.length > 0;
   const [open, setOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -72,6 +78,7 @@ export function RetailHeader() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-[var(--retail-border)] bg-white">
+        {showHomeTicker ? <NewsTicker items={tickerItems} /> : null}
         <div className="mx-auto flex h-[4.25rem] min-w-0 max-w-[1200px] items-center gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <button
             type="button"

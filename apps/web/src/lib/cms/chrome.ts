@@ -10,6 +10,7 @@ export interface SiteChromeData {
     phoneHref: string;
     telegramLabel: string;
     telegramHref: string;
+    tickerItems?: string[];
   };
   chrome?: Record<string, unknown>;
 }
@@ -26,6 +27,9 @@ export function parseChromeBlocks(blocks: ContentBlock[]): SiteChromeData {
           phoneHref: str(ann.props, 'phoneHref'),
           telegramLabel: str(ann.props, 'telegramLabel'),
           telegramHref: str(ann.props, 'telegramHref'),
+          tickerItems: arr<string>(ann.props, 'tickerItems')
+            .map((item) => (typeof item === 'string' ? item.trim() : ''))
+            .filter(Boolean) || undefined,
         }
       : undefined,
     chrome: chrome?.props,

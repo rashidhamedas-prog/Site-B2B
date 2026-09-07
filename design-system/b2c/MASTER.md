@@ -17,11 +17,12 @@
 ## First viewport (hero)
 
 - White header + gold geometric mark + `POSHAK TARANOM`
-- Full-bleed dark green textured hero
-- Model photo left, copy right (RTL)
+- Home-only news ticker (TV crawl, CSS loop, pause control)
+- Slim cinematic hero — mobile `2:1` / desktop `24:7` (1920×560), shared `.storefront-hero-frame`
+- Model photo left, copy right (RTL); body clamped to two lines
 - Eyebrow gold: «زیبایی در هارمونی با شما»
-- H1: «استایل شما، امضای ترنم» (ترنم طلایی)
-- Two CTAs: gold primary + outlined gold secondary
+- Visible H1 remains sr-only SEO; slide title is H2
+- One primary CTA names the next action; secondary is quieter
 - No floating badges/cards on hero media
 
 ## Product strip
