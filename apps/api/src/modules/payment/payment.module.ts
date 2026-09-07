@@ -23,6 +23,7 @@ import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { DigiPayAdapter } from './adapters/digipay.adapter';
+import { TorobPayAdapter } from './adapters/torobpay.adapter';
 import { DisabledPaymentAdapter } from './adapters/disabled.adapter';
 import { PaymentProviderRegistryService } from './payment-provider-registry.service';
 import { OrderModule } from '../order/order.module';
@@ -55,6 +56,7 @@ import { OrderModule } from '../order/order.module';
     PaymentProviderRegistryService,
     ZarinPalAdapter,
     DigiPayAdapter,
+    TorobPayAdapter,
     { provide: DisabledPaymentAdapter, useFactory: () => new DisabledPaymentAdapter('DISABLED') },
   ],
   exports: [
@@ -62,6 +64,7 @@ import { OrderModule } from '../order/order.module';
     InstallmentService,
     ZarinPalAdapter,
     DigiPayAdapter,
+    TorobPayAdapter,
     PaymentProviderRegistryService,
   ],
 })

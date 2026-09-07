@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-07 — **TASK-20260907-002** implementing on `ai/TASK-20260907-002-torobpay-cpg`: TorobPay CPG retail like DigiPay (admin 4-field + probe + checkout + verify/settle). Secrets not in git. Not live until merge/deploy + owner save credentials.
 - Last verified: 2026-09-06 — **TASK-20260905-003** DONE (parked by owner): delete buttons for bots and Telegram/Bale/Rubika channels in `/admin/omnichannel`. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-06 — **TASK-20260905-003** vault remediations live + `OMNICHANNEL_VAULT_KEY` loaded in api/worker/worker-b (env length 65, never printed). Health ok; secrets unauth 401; vault row 0. Host git `ca1bdd8`. TASK-20260826-001 still **NOT DONE**.
 - Last verified: 2026-09-06 — **TASK-20260903-004 CLOSED** on `origin/master` + VPS `15360d5` (runtime `ca1bdd8`). Claims released. Sharp 0.33.5; `.ir` CF static-only; GSC INP/LCP Validation Started; backfill 169 images / 441 refs. No 28-day field CWV claim. Connectors off.

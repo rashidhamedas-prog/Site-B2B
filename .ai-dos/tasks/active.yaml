@@ -1,5 +1,60 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260907-002"
+    title: "TorobPay CPG retail checkout + admin panel (like DigiPay)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260907-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260907-002"
+      implementer: "cursor:implementer-TASK-20260907-002"
+      reviewer: "required-independent-payments"
+      security: "required-independent-secrets-and-psp"
+    branch: "ai/TASK-20260907-002-torobpay-cpg"
+    worktree: "D:/proje/Site-B2B-torobpay"
+    claimed_at: "2026-09-07T11:00:00Z"
+    heartbeat_at: "2026-09-07T11:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
+      - "apps/api/src/modules/payment/adapters/payment-provider.adapter.ts"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/api/src/modules/payment/payment.module.ts"
+      - "apps/api/src/modules/payment/payment.controller.ts"
+      - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
+      - "apps/api/src/modules/payment/entities/payment.entity.ts"
+      - "apps/api/src/database/migrations/20260907-002-torobpay-cpg-retail.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/payment/callback/page.tsx"
+      - "apps/web/src/app/payment/torobpay/callback/route.ts"
+      - "packages/shared-types/src/enums.ts"
+      - ".env.example"
+      - "docs/reports/2026-09-07-torobpay-cpg-retail.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to set up TorobPay CPG like DigiPay from official PDF +
+      activation-credentials screenshot. Secrets stay in admin settings / env,
+      never git. Reclaimed stale payment/settings/checkout files from
+      TASK-20260824-003 (hb 2026-08-24), TASK-20260903-003 (hb 2026-09-03),
+      TASK-20260901-002 (hb 2026-09-01), TASK-20260826-001 (stale), and
+      TASK-20260906-001 (theme-only; payment section unused; hb 2026-09-06T09:40).
+      Did not touch boutique theme fields. Official host cpg.torobpay.com.
+    acceptance_criteria:
+      - "Retail checkout can offer TorobPay when enabled+configured; default ONLINE stays ZarinPal"
+      - "Admin /settings has four TorobPay CPG fields + display toggle + connection probe"
+      - "POST /payments/torobpay/connection-test is ADMIN+AdminOnly and never echoes secrets"
+      - "Start uses official token API with cart+address; verify then settle same request"
+      - "Callback GET/POST /payment/torobpay/callback maps state/transactionId/amount"
+      - "No secrets committed; wholesale ZarinPal path unchanged"
+      - "Adapter unit spec and api+web tsc pass"
   - id: "TASK-20260906-001"
     title: "Retail boutique storefront skin (Banimode-inspired, admin-selectable)"
     status: "in_progress"
@@ -36,8 +91,9 @@ tasks:
       # transferred 2026-09-06 to TASK-20260903-004 after ba254e merged; performance-only props:
       # "apps/web/src/components/retail/RetailProductCard.tsx"
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
-      - "apps/api/src/modules/settings/settings.service.ts"
+      # transferred 2026-09-07 to TASK-20260907-002 (TorobPay CPG payment fields; theme AC unused):
+      # "apps/web/src/components/admin/AdminSettings.tsx"
+      # "apps/api/src/modules/settings/settings.service.ts"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"

@@ -62,8 +62,9 @@ export default function RetailCheckoutPage() {
   const pieces = useMemo(() => items.reduce((n, i) => n + i.quantity, 0), [items]);
 
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE');
-  const [paymentGateway, setPaymentGateway] = useState<'ZARINPAL' | 'DIGIPAY'>('ZARINPAL');
+  const [paymentGateway, setPaymentGateway] = useState<'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY'>('ZARINPAL');
   const [digipayAvailable, setDigipayAvailable] = useState(false);
+  const [torobpayAvailable, setTorobpayAvailable] = useState(false);
   const [pendingPayOrderId, setPendingPayOrderId] = useState<string | null>(null);
   const [shippingMethod, setShippingMethod] = useState('PISHTAZ');
   const [notes, setNotes] = useState('');
@@ -129,8 +130,12 @@ export default function RetailCheckoutPage() {
       .then((rows) => {
         const codes = new Set((rows || []).map((r) => String(r.code || '').toUpperCase()));
         setDigipayAvailable(codes.has('DIGIPAY'));
+        setTorobpayAvailable(codes.has('TOROBPAY'));
       })
-      .catch(() => setDigipayAvailable(false));
+      .catch(() => {
+        setDigipayAvailable(false);
+        setTorobpayAvailable(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -467,6 +472,9 @@ export default function RetailCheckoutPage() {
               ...(digipayAvailable
                 ? [{ id: 'DIGIPAY' as const, method: 'ONLINE' as const, label: 'دیجی‌پی' }]
                 : []),
+              ...(torobpayAvailable
+                ? [{ id: 'TOROBPAY' as const, method: 'ONLINE' as const, label: 'ترب‌پی (اقساطی)' }]
+                : []),
               { id: 'CASH' as const, method: 'CASH' as const, label: 'پرداخت در محل' },
             ]).map((m) => {
               const selected =
@@ -479,7 +487,9 @@ export default function RetailCheckoutPage() {
                 type="button"
                 onClick={() => {
                   setPaymentMethod(m.method);
-                  if (m.id === 'ZARINPAL' || m.id === 'DIGIPAY') setPaymentGateway(m.id);
+                  if (m.id === 'ZARINPAL' || m.id === 'DIGIPAY' || m.id === 'TOROBPAY') {
+                    setPaymentGateway(m.id);
+                  }
                   setPendingPayOrderId(null);
                   trackAddPaymentInfo(
                     items.map((i) => ({

@@ -32,6 +32,10 @@ export class PaymentProviderRegistryService {
           if (channel !== 'RETAIL') return false;
           if (!pay?.digipayEnabled || !pay.digipayConfigured) return false;
         }
+        if (p.code === 'TOROBPAY') {
+          if (channel !== 'RETAIL') return false;
+          if (!pay?.torobpayEnabled || !pay.torobpayConfigured) return false;
+        }
         return true;
       })
       .map((p) => ({

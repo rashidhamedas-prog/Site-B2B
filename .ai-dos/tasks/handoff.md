@@ -2,6 +2,19 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-07T11:10:00Z — TASK-20260907-002 TorobPay CPG implementing
+
+- Task / owner: TASK-20260907-002 / cursor:implementer-TASK-20260907-002
+- Branch `ai/TASK-20260907-002-torobpay-cpg` in `D:/proje/Site-B2B-torobpay` from origin/master.
+- Official CPG PDF: OAuth `/api/online/v1/oauth/token`, token `/api/online/payment/v1/token`, verify + same-day settle. Host `cpg.torobpay.com`.
+- Admin panel mirrors DigiPay (4 secrets + toggle + probe). Secrets not in git.
+- Reclaimed stale payment/settings/checkout claims; boutique theme files untouched.
+- Next: adapter spec + tsc, then owner pastes credentials in `/admin/settings` and tests connection.
+
+## 2026-09-07T11:40:00Z — TASK-20260907-002 commit/merge/deploy requested
+
+- Owner asked to commit, merge, deploy, and save TorobPay activation fields in admin (not git).
+
 ## 2026-09-06T22:20:00Z — TASK-20260905-003 parked: delete buttons + close
 
 - Task / owner: TASK-20260905-003 / cursor:implementer-TASK-20260905-003
