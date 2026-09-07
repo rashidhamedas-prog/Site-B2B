@@ -112,7 +112,7 @@ tasks:
     branch: "ai/TASK-20260907-002-torobpay-cpg"
     worktree: "D:/proje/Site-B2B-torobpay"
     claimed_at: "2026-09-07T11:00:00Z"
-    heartbeat_at: "2026-09-07T23:00:00Z"
+    heartbeat_at: "2026-09-08T03:20:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"

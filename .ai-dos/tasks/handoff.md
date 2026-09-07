@@ -52,6 +52,13 @@ Append newest entries at the top. Never erase another agent's record.
 - Observed: `apps/web` `tsc --noEmit` exit 0. `news-ticker` spec OK (Node strip-types). No new npm deps.
 - Rollback: revert branch. No migration.
 
+## 2026-09-08T03:20:00Z — TASK-20260907-002 token 1011
+
+- Task / owner: TASK-20260907-002 / cursor:implementer-TASK-20260907-002
+- Live `can't create order (1011)` on payment `a76bec09-…`. OAuth OK. Amounts balanced. Street JSON length 3.
+- Token body now one balanced cart line; no commission/discount/split shipping; category `general`; compact txn id; compose short address.
+- Next: adapter spec + tsc, commit, push master, VPS deploy, ask owner to retry ترب‌پی with a full street.
+
 ## 2026-09-07T11:10:00Z — TASK-20260907-002 TorobPay CPG implementing
 
 - Task / owner: TASK-20260907-002 / cursor:implementer-TASK-20260907-002

@@ -5,7 +5,10 @@
 import { ConfigService } from '@nestjs/config';
 import {
   TorobPayAdapter,
+  buildTorobpayBalancedCart,
   classifyTorobpayOauthFailure,
+  compactTorobpayTransactionId,
+  composeTorobpayAddress,
   normalizeTorobpayMobile,
   torobpayBasicAuthHeader,
   torobpayCallbackIsSuccess,
@@ -50,6 +53,26 @@ async function main() {
     threw = true;
   }
   assert(threw, 'reject short mobile');
+
+  assert(compactTorobpayTransactionId('a76bec09-11cb-4faa-be4f-c1a1f96affd2') === 'a76bec0911cb4faabe4fc1a1f96affd2', 'compact uuid');
+  assert(composeTorobpayAddress({ street: '۱۲۳', city: 'مشهد', province: 'خراسان رضوی' }).includes('مشهد'), 'compose short street');
+  let addrThrew = false;
+  try {
+    composeTorobpayAddress({ street: 'اب', city: '', province: '' });
+  } catch {
+    addrThrew = true;
+  }
+  assert(addrThrew, 'reject tiny address');
+  const cart = buildTorobpayBalancedCart({
+    amountIrr: 14300000,
+    transactionId: 'pay-1',
+    description: 'شومیز',
+  });
+  assert(cart.amount === 14300000, 'payable amount');
+  assert(cart.cartList[0].shippingAmount === 0, 'no split shipping');
+  assert(cart.cartList[0].cartItems[0].amount === 14300000, 'single line equals payable');
+  assert(cart.cartList[0].cartItems[0].category === 'general', 'latin category');
+  assert(!('commissionType' in cart.cartList[0].cartItems[0]), 'omit commission');
 
   assert(torobpayCallbackIsSuccess({ state: 'OK' }) === true, 'state OK');
   assert(torobpayCallbackIsSuccess({ status: 'FAILED' }) === false, 'FAILED');
@@ -146,7 +169,12 @@ async function main() {
     });
     assert(created.providerToken === 'tok-1', 'token');
     assert(created.redirectUrl.includes('payment_token=tok-1'), 'page url');
-    assert(JSON.parse(String((globalThis.fetch as any).lastTokenBody || '{}')).cartList[0].cartItems[0].amount === 2500000, 'unit amount');
+    const tokenBody = JSON.parse(String((globalThis.fetch as any).lastTokenBody || '{}'));
+    assert(tokenBody.cartList[0].cartItems[0].amount === 2500000, 'balanced amount');
+    assert(tokenBody.cartList[0].shippingAmount === 0, 'token shipping collapsed');
+    assert(tokenBody.cartList[0].cartItems[0].category === 'general', 'token category');
+    assert(tokenBody.discountAmount == null, 'no discount field');
+    assert(tokenBody.cartList[0].cartItems[0].commissionType == null, 'no commission on token');
 
     const verified = await gw.verifyReturn({
       amountIrr: 2500000,
@@ -175,7 +203,7 @@ async function main() {
         return new Response(
           JSON.stringify({
             successful: false,
-            errorData: { errorCode: 1042, message: 'invalid cart amount' },
+            errorData: { errorCode: 1011, message: "can't create order" },
           }),
           { status: 400 },
         );
@@ -193,6 +221,41 @@ async function main() {
         mobile: '09123456789',
         orderId: 'ord-1',
         metadata: { providerId: 'pay-3' },
+        torobpayCheckout: checkout,
+      });
+    } catch (e) {
+      tokenErr = e instanceof Error ? e.message : String(e);
+    }
+    assert(tokenErr.includes('ترب‌پی نتوانست سفارش را ثبت کند'), '1011 mapped for shopper');
+    assert(!tokenErr.includes('1042'), '1011 not confused with 1042');
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/oauth/token')) {
+        return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
+      }
+      if (url.includes('/payment/v1/token')) {
+        return new Response(
+          JSON.stringify({
+            successful: false,
+            errorData: { errorCode: 1042, message: 'invalid cart amount' },
+          }),
+          { status: 400 },
+        );
+      }
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+    tokenErr = '';
+    try {
+      await gw.createPayment({
+        amountIrr: 2500000,
+        callbackUrl: 'https://www.poshaktaranom.ir/payment/torobpay/callback?paymentId=pay-1',
+        description: 'تست',
+        merchantId: 'n/a',
+        sandbox: false,
+        mobile: '09123456789',
+        orderId: 'ord-1',
+        metadata: { providerId: 'pay-4' },
         torobpayCheckout: checkout,
       });
     } catch (e) {

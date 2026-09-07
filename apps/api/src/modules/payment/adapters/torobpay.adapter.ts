@@ -17,7 +17,9 @@ const TOKEN_EXPIRY_SKEW_MS = 60_000;
 const TOKEN_TTL_MS = 60 * 60 * 1000;
 const API_BASE = 'https://cpg.torobpay.com';
 const PAYMENT_METHOD = 'ONLINE_CREDIT';
-const DEFAULT_CATEGORY = 'پوشاک';
+/** totweb / shetabit shops use a Latin category; a Persian label can fail their order insert (1011). */
+const DEFAULT_CATEGORY = 'general';
+const MIN_ADDRESS_LEN = 8;
 
 type TokenCache = {
   accessToken: string;
@@ -51,6 +53,88 @@ export function torobpayCallbackIsSuccess(input: {
 
 export function torobpayBasicAuthHeader(clientId: string, clientSecret: string): string {
   return `Basic ${Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64')}`;
+}
+
+/** Compact UUID txn ids — hyphens can overflow a 32-char CPG column. Callback still uses paymentId. */
+export function compactTorobpayTransactionId(raw: string): string {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) {
+    throw new Error('شناسه یکتای خرید ترب‌پی (transactionId) الزامی است');
+  }
+  const hex = trimmed.replace(/-/g, '');
+  if (/^[0-9a-f]{32}$/i.test(hex)) return hex;
+  return trimmed.slice(0, 64);
+}
+
+export function composeTorobpayAddress(input: {
+  street?: string;
+  city?: string;
+  province?: string;
+}): string {
+  const street = String(input.street || '').trim();
+  const city = String(input.city || '').trim();
+  const province = String(input.province || '').trim();
+  const composed = [province, city, street].filter(Boolean).join('، ');
+  const chosen = (street.replace(/\s/g, '').length >= MIN_ADDRESS_LEN ? street : composed) || street;
+  if (chosen.replace(/\s/g, '').length < MIN_ADDRESS_LEN) {
+    throw new Error('برای ترب‌پی آدرس خیابان را کامل‌تر بنویسید (خیابان، پلاک، حداقل ۸ نویسه).');
+  }
+  return chosen.slice(0, 250);
+}
+
+/**
+ * One cart line equal to the payable amount.
+ * Line items + shipping + wallet-in-discount often fail CPG persist (1011) even when our math is fine.
+ */
+export function buildTorobpayBalancedCart(input: {
+  amountIrr: number;
+  transactionId: string;
+  description?: string;
+}): {
+  amount: number;
+  cartList: Array<{
+    cartId: string;
+    totalAmount: number;
+    taxAmount: number;
+    shippingAmount: number;
+    isTaxIncluded: boolean;
+    isShipmentIncluded: boolean;
+    cartItems: Array<{
+      id: string;
+      name: string;
+      count: number;
+      amount: number;
+      category: string;
+    }>;
+  }>;
+} {
+  const amount = Math.floor(Number(input.amountIrr) || 0);
+  if (!Number.isFinite(amount) || amount < 10_000) {
+    throw new Error('مبلغ پرداخت ترب‌پی نامعتبر است');
+  }
+  const transactionId = compactTorobpayTransactionId(input.transactionId);
+  return {
+    amount,
+    cartList: [
+      {
+        cartId: transactionId,
+        totalAmount: amount,
+        taxAmount: 0,
+        shippingAmount: 0,
+        isTaxIncluded: true,
+        isShipmentIncluded: false,
+        cartItems: [
+          {
+            id: transactionId,
+            name: String(input.description || 'سفارش پوشاک ترنم').slice(0, 120),
+            count: 1,
+            amount,
+            category: DEFAULT_CATEGORY,
+          },
+        ],
+      },
+    ],
+  };
 }
 
 export type TorobpayRuntimeCreds = {
@@ -481,10 +565,9 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
     const over = req.torobpayCreds;
     const checkout = req.torobpayCheckout;
     const phone = normalizeTorobpayMobile(checkout?.phone || req.mobile);
-    const transactionId = String(req.metadata?.providerId || req.orderId || '').trim();
-    if (!transactionId) {
-      throw new Error('شناسه یکتای خرید ترب‌پی (transactionId) الزامی است');
-    }
+    const transactionId = compactTorobpayTransactionId(
+      String(req.metadata?.providerId || req.orderId || ''),
+    );
     if (
       !checkout?.address ||
       !checkout.postalCode ||
@@ -497,61 +580,38 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       );
     }
 
-    const shippingAmount = Math.max(0, Number(checkout.shippingAmount) || 0);
-    const discountAmount = Math.max(0, Number(checkout.discountAmount) || 0);
     const postalCode = checkout.postalCode.replace(/\D/g, '').slice(0, 10);
     if (postalCode.length !== 10) {
       throw new Error('کدپستی ۱۰ رقمی برای صدور توکن ترب‌پی الزامی است');
     }
-    const items = (checkout.cartItems || []).filter(
-      (it) => it && Number(it.count) > 0 && Number(it.amount) > 0,
-    );
-    const cartItems =
-      items.length > 0
-        ? items.map((it) => ({
-            id: String(it.id).slice(0, 64),
-            name: String(it.name || 'کالا').slice(0, 120),
-            count: Math.max(1, Math.floor(Number(it.count) || 1)),
-            // Official CPG: amount is the item unit in IRR; count is quantity.
-            amount: Math.floor(Number(it.amount)),
-            category: DEFAULT_CATEGORY,
-            commissionType: 0,
-          }))
-        : [
-            {
-              id: transactionId,
-              name: String(req.description || 'سفارش پوشاک ترنم').slice(0, 120),
-              count: 1,
-              amount: Math.max(0, req.amountIrr - shippingAmount + discountAmount) || req.amountIrr,
-              category: DEFAULT_CATEGORY,
-              commissionType: 0,
-            },
-          ];
+    const address = composeTorobpayAddress({
+      street: checkout.address,
+      city: checkout.city,
+      province: checkout.province,
+    });
+    const fullName = String(checkout.fullName).trim().slice(0, 80);
+    if (fullName.length < 3) {
+      throw new Error('برای ترب‌پی نام و نام خانوادگی گیرنده را کامل وارد کنید.');
+    }
+    const cart = buildTorobpayBalancedCart({
+      amountIrr: req.amountIrr,
+      transactionId,
+      description: req.description,
+    });
 
     const body = {
-      amount: req.amountIrr,
-      discountAmount,
+      amount: cart.amount,
       paymentMethodTypeDto: PAYMENT_METHOD,
       returnURL: req.callbackUrl,
       transactionId,
       mobile: phone,
-      address: checkout.address,
+      address,
       postalCode,
-      customer_full_name: checkout.fullName,
+      customer_full_name: fullName,
       city: checkout.city,
       province: checkout.province,
       registration_phone_number: phone,
-      cartList: [
-        {
-          cartId: transactionId,
-          totalAmount: req.amountIrr,
-          taxAmount: 0,
-          shippingAmount,
-          isTaxIncluded: true,
-          isShipmentIncluded: shippingAmount > 0,
-          cartItems,
-        },
-      ],
+      cartList: cart.cartList,
     };
 
     const { ok, status, json } = await this.authorized(
@@ -565,7 +625,14 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
     const paymentPageUrl = response.paymentPageUrl ? String(response.paymentPageUrl) : '';
     if (!ok || !envelopeOk(json) || !paymentToken || !paymentPageUrl) {
       const detail = envelopeMessage(json, 'خطا در ایجاد توکن پرداخت ترب‌پی');
-      this.logger.warn(`TorobPay token failed http=${status} detail=${detail.slice(0, 160)}`);
+      this.logger.warn(
+        `TorobPay token failed http=${status} detail=${detail.slice(0, 160)} amount=${cart.amount} streetLen=${address.length}`,
+      );
+      if (/\b1011\b/.test(detail) || /can't create order/i.test(detail)) {
+        throw new Error(
+          'ترب‌پی نتوانست سفارش را ثبت کند. آدرس را کامل‌تر بنویسید (خیابان و پلاک) و دوباره ترب‌پی را بزنید.',
+        );
+      }
       throw new Error(detail);
     }
     return {

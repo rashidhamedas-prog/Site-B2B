@@ -252,9 +252,19 @@ export default function RetailCheckoutPage() {
       return;
     }
     const postalDigits = String(address.postalCode || '').replace(/\D/g, '');
-    if (paymentGateway === 'TOROBPAY' && paymentMethod === 'ONLINE' && postalDigits.length !== 10) {
-      setError('برای پرداخت ترب‌پی کدپستی ۱۰ رقمی را وارد کنید.');
-      return;
+    if (paymentGateway === 'TOROBPAY' && paymentMethod === 'ONLINE') {
+      if (postalDigits.length !== 10) {
+        setError('برای پرداخت ترب‌پی کدپستی ۱۰ رقمی را وارد کنید.');
+        return;
+      }
+      if (address.street.trim().replace(/\s/g, '').length < 8) {
+        setError('برای ترب‌پی آدرس را کامل‌تر بنویسید: خیابان، پلاک و واحد (حداقل ۸ نویسه).');
+        return;
+      }
+      if (address.recipient.trim().length < 3) {
+        setError('برای ترب‌پی نام و نام خانوادگی گیرنده را کامل وارد کنید.');
+        return;
+      }
     }
     setBusy(true);
     try {
@@ -437,6 +447,11 @@ export default function RetailCheckoutPage() {
                 value={address.street}
                 onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
               />
+              {paymentGateway === 'TOROBPAY' ? (
+                <span className="mt-1 block text-xs text-[var(--retail-muted)]">
+                  برای ترب‌پی خیابان و پلاک را کامل بنویسید.
+                </span>
+              ) : null}
             </label>
           </div>
 

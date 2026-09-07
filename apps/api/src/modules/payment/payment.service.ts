@@ -152,7 +152,8 @@ export class PaymentService {
       province: addr.province,
       phone,
       shippingAmount: Number(order.shippingFee) || 0,
-      discountAmount: Number(order.discount) || 0,
+      // order.discount includes wallet; CPG discount must be promo only.
+      discountAmount: Math.max(0, (Number(order.discount) || 0) - (Number(order.walletApplied) || 0)),
       cartItems:
         items.length > 0
           ? items.map((it) => {
