@@ -2,6 +2,24 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T00:45:00Z — TASK-20260908-002 review remediations
+
+- Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
+- Architect [معمار ماژول](72af18c4-23ce-4cda-beda-96575e0ee988): sidecar `customer-marketing`; no consent columns on `customers`; `/admin/marketing` and `/v1/crm` untouched.
+- Security remediations: deliver-time recheck, cancel queued on opt-out/delete, no TRANSACTIONAL marketing templates, campaign dispatch requires global LIVE, PREVIEW cannot arm `enabled`.
+- Observed: consent/send-gates/settings/stage/outbox-lease/publication-automation specs OK. `apps/api` tsc --noEmit 0. `apps/web` tsc --noEmit 0.
+- Next: independent Reviewer + Security, then merge to master and VPS deploy with LIVE OFF.
+- Rollback: drop branch; unused tables only after migrate.
+
+## 2026-09-08T00:40:00Z — TASK-20260908-002 customer-marketing implementing
+
+- Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
+- Worktree `D:/proje/Site-B2B-customer-marketing` branch `ai/TASK-20260908-002-customer-marketing`.
+- Reclaimed stale auth.service (TASK-20260904-001), omnichannel constants/lease/app.module/worker.module (TASK-20260826-001), AdminSidebar/Header (TASK-20260831-001), AdminDashboard href (TASK-20260903-001).
+- Did not touch checkout/PDP/order.service/settings.service.
+- Default `customerMarketing` OFF. LIVE requires AdminOnly. Reviewer + Security still required.
+- Next: unit specs + api/web tsc, then deploy without flipping LIVE.
+
 ## 2026-09-08T00:42:00Z — TASK-20260908-003 CLOSED live `3ad49d2`
 
 - Fast-forward: `fdd54c1..3ad49d2` on `origin/master`. Feature branch `ai/TASK-20260908-003-checkout-payment-ui` pushed.

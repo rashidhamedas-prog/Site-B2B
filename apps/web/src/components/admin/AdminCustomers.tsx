@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Search, Plus, Filter, Phone, Edit2, Trash2, X, Save, CheckCircle, XCircle } from 'lucide-react';
 import { Input, SegmentBadge, Pagination } from '@/components/ui';
 import { useCustomers } from '@/lib/hooks/useCustomers';
@@ -28,6 +30,7 @@ interface Customer {
 }
 
 export function AdminCustomers() {
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
   const [segment, setSegment] = useState('');
   const [channelFilter, setChannelFilter] = useState<AdminChannel | 'ALL'>('ALL');
@@ -38,6 +41,11 @@ export function AdminCustomers() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status) setStatusFilter(status);
+  }, [searchParams]);
 
   const businessType =
     channelFilter === 'ALL' ? undefined : channelFilter;
@@ -173,7 +181,9 @@ export function AdminCustomers() {
                 <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 text-xs font-mono text-gray-400">{c.code}</td>
                   <td className="px-4 py-3">
-                    <p className="text-sm font-semibold text-gray-900">{c.businessName}</p>
+                    <Link href={`/admin/customers/${c.id}`} className="text-sm font-semibold text-gray-900 hover:text-primary">
+                      {c.businessName}
+                    </Link>
                     <p className="text-xs text-gray-500">{c.ownerName}</p>
                   </td>
                   <td className="px-4 py-3">

@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { AdminOnly } from '../auth/decorators/admin-only.decorator';
 import { CustomerService } from './customer.service';
 
 @ApiTags('customers')
@@ -57,6 +58,7 @@ export class CustomerController {
   }
 
   @Delete(':id')
+  @AdminOnly()
   @ApiOperation({ summary: 'حذف مشتری' })
   remove(@Param('id') id: string) {
     return this.customerService.remove(id);

@@ -290,7 +290,7 @@ export function AdminDashboard() {
         <QuickAction href="/admin/inventory" icon={AlertTriangle} label="موجودی" color="bg-red-100 text-red-600" />
         <QuickAction href="/admin/payments" icon={Wallet} label="پرداخت‌ها" color="bg-teal-100 text-teal-600" />
         <QuickAction href="/admin/reports" icon={Activity} label="گزارش‌ها" color="bg-orange-100 text-orange-600" />
-        <QuickAction href="/admin/marketing" icon={Plus} label="بازاریابی" color="bg-pink-100 text-pink-600" />
+        <QuickAction href="/admin/customers/marketing" icon={Plus} label="بازاریابی" color="bg-emerald-100 text-[#1B5C4A]" />
       </div>
 
       {/* KPI cards */}

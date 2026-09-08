@@ -96,6 +96,10 @@ export const OUTBOX_EVENT_TYPES = {
   AFFILIATE_POSTBACK_REQUESTED: 'affiliate.postback.requested',
   SEARCH_REINDEX_REQUESTED: 'search.reindex.requested',
   PUBLICATION_DELIVER_REQUESTED: 'publication.deliver.requested',
+  CUSTOMER_REGISTERED_MARKETING: 'customer.registered.marketing',
+  CUSTOMER_APPROVED_MARKETING: 'customer.approved.marketing',
+  MARKETING_SEND_REQUESTED: 'marketing.send.requested',
+  MARKETING_CAMPAIGN_DISPATCH: 'marketing.campaign.dispatch',
 } as const;
 
 export const AUTO_PUBLISH_CANDIDATE_EVENTS = [

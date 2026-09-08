@@ -18,6 +18,7 @@ import { OrderEntity } from '../order/entities/order.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { NotificationService } from '../notification/notification.service';
+import { CustomerMarketingService } from '../customer-marketing/customer-marketing.service';
 import { OtpService } from '../redis/redis.module';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
 import {
@@ -77,6 +78,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly otpService: OtpService,
     @Optional() private readonly notifications?: NotificationService,
+    @Optional() private readonly marketing?: CustomerMarketingService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -174,6 +176,9 @@ export class AuthService {
         this.notifications
           .wholesaleRegistrationAdmin(label, result.customer.phone)
           .catch(() => undefined);
+      }
+      if (this.marketing && result.customer?.id) {
+        this.marketing.enroll(result.customer.id, { source: 'WHOLESALE_APPLICATION' }).catch(() => undefined);
       }
 
       return { message: result.message };
@@ -705,6 +710,9 @@ export class AuthService {
     }
 
     await this.otpService.markVerifiedSession(user.id);
+    if (this.marketing && customerFinal?.id && !isStaffRole(user.role)) {
+      this.marketing.enroll(customerFinal.id, { source: 'OTP_RETAIL' }).catch(() => undefined);
+    }
     return {
       ...this.issueSession(user, 'retail'),
       channel: 'RETAIL',

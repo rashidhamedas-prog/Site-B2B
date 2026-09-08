@@ -4,6 +4,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { CustomerEntity } from './entities/customer.entity';
 import { AuthService } from '../auth/auth.service';
 import { NotificationService } from '../notification/notification.service';
+import { CustomerMarketingService } from '../customer-marketing/customer-marketing.service';
 import { customerChannelSql, isRetailCustomerType, normalizeCustomerChannel } from './customer-channel';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
@@ -25,6 +26,7 @@ export class CustomerService {
     private readonly repo: Repository<CustomerEntity>,
     private readonly authService: AuthService,
     @Optional() private readonly notifications?: NotificationService,
+    @Optional() private readonly marketing?: CustomerMarketingService,
   ) {}
 
   async findAll(
@@ -71,7 +73,11 @@ export class CustomerService {
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = await this.nextCode();
       try {
-        return await this.repo.save(this.repo.create({ ...data, code, status: 'PENDING' }));
+        const saved = await this.repo.save(this.repo.create({ ...data, code, status: 'PENDING' }));
+        if (this.marketing) {
+          this.marketing.enroll(saved.id).catch(() => undefined);
+        }
+        return saved;
       } catch (err) {
         if (isDuplicateCodeError(err) && attempt < 4) continue;
         throw err;
@@ -114,6 +120,9 @@ export class CustomerService {
         const name = before.ownerName || before.businessName;
         this.notifications.wholesaleApproved(before.phone, name).catch(() => undefined);
       }
+      if (data.status === 'ACTIVE' && before.status !== 'ACTIVE' && this.marketing) {
+        this.marketing.onApproved(id).catch(() => undefined);
+      }
     }
     return this.findOne(id);
   }
@@ -124,8 +133,11 @@ export class CustomerService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const customer = await this.findOne(id);
     await this.authService.deactivateUserByCustomerId(id);
+    if (this.marketing) {
+      await this.marketing.suppressDeletedCustomer(customer).catch(() => undefined);
+    }
     await this.repo.softDelete(id);
     return { message: 'مشتری با موفقیت حذف شد' };
   }
