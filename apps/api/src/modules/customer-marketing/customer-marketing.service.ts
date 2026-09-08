@@ -678,32 +678,35 @@ export class CustomerMarketingService {
     if (!settings.enabled || settings.mode !== 'LIVE') return;
     const campaign = await this.campaigns.findOne({ where: { id: campaignId } });
     if (!campaign || campaign.mode !== 'LIVE') return;
-    if (campaign.messageClass === 'PROMO') {
-      const granted = await this.consents.find({ where: { channel: campaign.channel, status: 'GRANTED' } });
-      const ids = granted.map((g) => g.customerId);
-      if (!ids.length) return;
-      const customers = await this.customers.find({ where: { id: In(ids) } });
-      const tpl = campaign.templateId
-        ? await this.templates.findOne({ where: { id: campaign.templateId } })
-        : null;
-      if (!tpl) return;
-      let queued = 0;
-      for (const customer of customers.slice(0, SMS_IR_BULK_MAX)) {
-        const body = fillTemplate(tpl.body, this.templateVars(customer));
-        await this.queueSms({
-          customer,
-          channel: campaign.channel,
-          body,
-          messageClass: campaign.messageClass,
-          template: tpl,
-          mode: 'LIVE',
-          idempotencyKey: `campaign:${campaign.id}:${customer.id}`,
-          campaignId: campaign.id,
-        });
-        queued += 1;
-      }
-      return { queued };
+    const messageClass = campaign.messageClass === 'PROMO' ? 'PROMO' : 'NURTURE';
+    const consents = await this.consents.find({
+      where: messageClass === 'PROMO'
+        ? { channel: campaign.channel, status: 'GRANTED' }
+        : { channel: campaign.channel, status: In(['REGISTER_AUTO', 'GRANTED']) },
+    });
+    const ids = consents.map((g) => g.customerId);
+    if (!ids.length) return;
+    const customers = await this.customers.find({ where: { id: In(ids) } });
+    const tpl = campaign.templateId
+      ? await this.templates.findOne({ where: { id: campaign.templateId } })
+      : null;
+    if (!tpl) return;
+    let queued = 0;
+    for (const customer of customers.slice(0, SMS_IR_BULK_MAX)) {
+      const body = fillTemplate(tpl.body, this.templateVars(customer));
+      await this.queueSms({
+        customer,
+        channel: campaign.channel,
+        body,
+        messageClass,
+        template: tpl,
+        mode: 'LIVE',
+        idempotencyKey: `campaign:${campaign.id}:${customer.id}`,
+        campaignId: campaign.id,
+      });
+      queued += 1;
     }
+    return { queued };
   }
 
   async handleRegisteredEvent(customerId: string) {

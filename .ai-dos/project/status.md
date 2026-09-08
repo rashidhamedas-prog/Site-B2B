@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-08 — **TASK-20260908-002** remediating review gaps on `ai/TASK-20260908-002-customer-marketing`: deliver-time consent/kill-switch, no TRANSACTIONAL marketing class, campaign requires global LIVE. Specs + api/web tsc 0. LIVE stays OFF. Reviewer + Security still required. Checkout/PDP/TorobPay untouched.
+- Last verified: 2026-09-08 — **TASK-20260908-002** shipping `customer-marketing` on `ai/TASK-20260908-002-customer-marketing`. Phase review PASS WITH CONDITIONS. Security prior Highs fixed; deliver claim+recheck before SMS. Default OFF. Checkout/PDP/TorobPay untouched.
 - Last verified: 2026-09-08 — **TASK-20260908-003 CLOSED** on `origin/master` + VPS `3ad49d2`. Luxury checkout payment picker live; TorobPay card when eligible; 1011 address checks kept. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-001 CLOSED** on `origin/master` + VPS `2cdb951`. Reports harden, CRM B2B/B2C filter, SMS paid/abandoned/stock-out per channel, postal quote toggle, ticker admin. Migration `CartSmsOps1757289600001` applied. Health 200. Claims released. TorobPay files untouched.
 - Last verified: 2026-09-07 — **TASK-20260907-003 CLOSED** on `origin/master` + VPS `eb4a433`. Slim 24:7 heroes (live 1914×558), home ticker with pause, catalog `/products` has no ticker. Health 200. CMS CTA labels may still be admin-saved. Claims released. TASK-20260907-002 TorobPay untouched.

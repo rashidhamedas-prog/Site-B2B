@@ -26,10 +26,49 @@ export class MarketingSmsSender {
   ) {}
 
   async deliverById(sendId: string): Promise<void> {
-    const row = await this.sends.findOne({ where: { id: sendId } });
-    if (!row) return;
-    if (row.status !== 'QUEUED' && row.status !== 'SENDING') return;
+    const claimed = await this.sends
+      .createQueryBuilder()
+      .update()
+      .set({ status: 'SENDING' })
+      .where('id = :id', { id: sendId })
+      .andWhere('status IN (:...st)', { st: ['QUEUED', 'SENDING'] })
+      .execute();
+    if (!claimed.affected) return;
 
+    const row = await this.sends.findOne({ where: { id: sendId } });
+    if (!row || row.status !== 'SENDING') return;
+
+    const blocked = await this.evaluateLiveRow(row);
+    if (blocked) return;
+
+    const fresh = await this.sends.findOne({ where: { id: sendId } });
+    if (!fresh || fresh.status !== 'SENDING') return;
+    const blockedAgain = await this.evaluateLiveRow(fresh);
+    if (blockedAgain) return;
+
+    const stillSending = await this.sends.findOne({ where: { id: sendId } });
+    if (!stillSending || stillSending.status !== 'SENDING') return;
+
+    const receptor = stillSending.recipientActual || stillSending.phoneNormalized;
+    if (!receptor) {
+      stillSending.status = 'SKIPPED';
+      stillSending.skipReason = 'NO_PHONE';
+      await this.sends.save(stillSending);
+      return;
+    }
+
+    const ok = await this.notifications.sendSms(receptor, stillSending.bodySnapshot);
+    await this.sends
+      .createQueryBuilder()
+      .update()
+      .set({ status: ok ? 'SENT' : 'FAILED', skipReason: ok ? null : 'PROVIDER' })
+      .where('id = :id', { id: sendId })
+      .andWhere('status = :st', { st: 'SENDING' })
+      .execute();
+    if (!ok) throw new Error('sms.ir marketing send failed');
+  }
+
+  private async evaluateLiveRow(row: MarketingSendEntity): Promise<boolean> {
     const cfg = resolveMarketingSettings(await this.settings.get(SETTINGS_KEY));
     const suppressed = row.phoneNormalized
       ? !!(await this.suppressions.findOne({ where: { phoneNormalized: row.phoneNormalized } }))
@@ -48,26 +87,16 @@ export class MarketingSmsSender {
       treatRegisterAutoAsPromoConsent: cfg.treatRegisterAutoAsPromoConsent,
     });
     if (!check.allow && 'status' in check) {
-      row.status = check.status;
-      row.skipReason = check.reason;
-      await this.sends.save(row);
-      return;
+      await this.sends
+        .createQueryBuilder()
+        .update()
+        .set({ status: check.status, skipReason: check.reason })
+        .where('id = :id', { id: row.id })
+        .andWhere('status = :st', { st: 'SENDING' })
+        .execute();
+      return true;
     }
-
-    const receptor = row.recipientActual || row.phoneNormalized;
-    if (!receptor) {
-      row.status = 'SKIPPED';
-      row.skipReason = 'NO_PHONE';
-      await this.sends.save(row);
-      return;
-    }
-    row.status = 'SENDING';
-    await this.sends.save(row);
-    const ok = await this.notifications.sendSms(receptor, row.bodySnapshot);
-    row.status = ok ? 'SENT' : 'FAILED';
-    row.skipReason = ok ? null : 'PROVIDER';
-    await this.sends.save(row);
-    if (!ok) throw new Error('sms.ir marketing send failed');
+    return false;
   }
 
   async deliverCampaignChunk(phones: string[], body: string): Promise<boolean> {

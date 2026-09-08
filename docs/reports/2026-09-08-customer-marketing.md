@@ -28,4 +28,6 @@ Sidecar module `customer-marketing` under Admin CRM. No consent columns on `cust
 - Templates and campaigns accept only `NURTURE` | `PROMO`. Queue coerces anything else to NURTURE.
 - `dispatchCampaign` / `goLiveCampaign` require `customerMarketing.enabled && mode === LIVE`.
 - Settings resolver forces `enabled=false` unless mode is CANARY or LIVE. Hub radio matches.
-- Independent Reviewer + Security still required before marking the task done. Do not flip LIVE on deploy.
+- [مرور فاز](a7f5ad50-31e7-4bc5-9370-bb21a883d0e3): PASS WITH CONDITIONS.
+- [بازبینی امنیت](b8f07acc-6921-4738-98f8-913382f900bc): TRANSACTIONAL bypass and campaign LIVE gate fixed. Delivery now claims the row, rechecks twice, and will not overwrite a concurrent opt-out `SUPPRESSED` with `SENT`.
+- Do not flip LIVE on deploy.

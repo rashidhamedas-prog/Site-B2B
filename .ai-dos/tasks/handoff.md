@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T01:10:00Z — TASK-20260908-002 independent reviews
+
+- Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
+- [مرور فاز](a7f5ad50-31e7-4bc5-9370-bb21a883d0e3): PASS WITH CONDITIONS. No must-fix. LIVE/connectors not enabled.
+- [بازبینی امنیت](b8f07acc-6921-4738-98f8-913382f900bc): prior Highs (TRANSACTIONAL bypass, campaign global mode) fixed. Remaining High: deliver TOCTOU after recheck.
+- CODE: `deliverById` now claims `QUEUED|SENDING` atomically, rechecks twice, and writes SENT/FAILED only while still `SENDING` so opt-out cannot be overwritten. NURTURE campaigns queue via `queueSms`. Lease spec covers approved + campaign events.
+- Observed: send-gates + outbox-lease specs OK; api tsc 0.
+- Next: push + VPS deploy with `customerMarketing` OFF.
+
 ## 2026-09-08T00:45:00Z — TASK-20260908-002 review remediations
 
 - Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
