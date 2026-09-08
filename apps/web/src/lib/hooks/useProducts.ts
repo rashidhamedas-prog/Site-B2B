@@ -170,11 +170,16 @@ interface ProductsResult {
   meta: { page: number; limit: number; total: number; totalPages: number };
 }
 
-export async function searchAdminProducts(search: string): Promise<Product[]> {
+export async function searchAdminProducts(
+  search: string,
+  opts?: { channel?: string; ids?: string[]; limit?: number },
+): Promise<Product[]> {
   const query = new URLSearchParams();
   query.set('status', 'ALL');
-  query.set('limit', '20');
+  query.set('limit', String(opts?.limit ?? 20));
   if (search.trim()) query.set('search', search.trim());
+  if (opts?.channel) query.set('channel', opts.channel);
+  if (opts?.ids?.length) query.set('ids', opts.ids.join(','));
   const res = await apiClient.get<ProductsResult>(`/products/admin?${query}`);
   return Array.isArray(res?.data) ? res.data : [];
 }

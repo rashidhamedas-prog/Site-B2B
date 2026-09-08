@@ -61,6 +61,7 @@ export type ProductListMeta = {
   limit?: number;
   total?: number;
   totalPages?: number;
+  failed?: boolean;
 };
 
 export type ProductListResult<T = Record<string, unknown>> = {
@@ -75,13 +76,16 @@ export async function fetchProductList<T = Record<string, unknown>>(options: {
   page?: number;
   status?: string;
   sort?: string;
+  ids?: string[];
+  categoryId?: string;
+  inStockOnly?: boolean;
 }): Promise<ProductListResult<T>> {
   const limit = Math.min(Math.max(1, options.limit ?? 24), 48);
   const page = Math.max(1, options.page ?? 1);
-  const empty: ProductListResult<T> = {
+  const empty = (failed = false): ProductListResult<T> => ({
     data: [],
-    meta: { page, limit, total: 0, totalPages: 1 },
-  };
+    meta: { page, limit, total: 0, totalPages: 1, failed },
+  });
   try {
     const base = getServerApiBase();
     const params = new URLSearchParams({
@@ -91,10 +95,13 @@ export async function fetchProductList<T = Record<string, unknown>>(options: {
       status: options.status ?? 'ACTIVE',
     });
     if (options.sort) params.set('sort', options.sort);
+    if (options.ids?.length) params.set('ids', options.ids.join(','));
+    if (options.categoryId) params.set('categoryId', options.categoryId);
+    if (options.inStockOnly) params.set('inStock', '1');
     const res = await fetch(`${base}/products?${params}`, {
       next: { revalidate: 300 },
     });
-    if (!res.ok) return empty;
+    if (!res.ok) return empty(true);
     const json = (await res.json()) as { data?: T[]; meta?: ProductListMeta } | T[];
     if (Array.isArray(json)) {
       return { data: json, meta: { page, limit, total: json.length, totalPages: 1 } };
@@ -110,7 +117,7 @@ export async function fetchProductList<T = Record<string, unknown>>(options: {
       },
     };
   } catch {
-    return empty;
+    return empty(true);
   }
 }
 

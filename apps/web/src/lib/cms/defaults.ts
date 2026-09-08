@@ -159,13 +159,17 @@ export function defaultWholesaleHome(): ContentBlock[] {
       ],
     }),
     b('products', {
+      source: 'auto',
+      enabled: true,
       eyebrow: 'کاتالوگ فصل',
       headline: 'محصولات برتر',
       body: 'پرفروش‌ترین و جدیدترین مدل‌های فصل',
       ctaLabel: 'همه محصولات',
       ctaHref: '/products',
       limit: 6,
+      sort: 'discounted',
       viewAllLabel: 'مشاهده همه محصولات',
+      showPortalCta: true,
     }),
     b('comingSoon', {
       eyebrow: 'پیش‌خرید ویژه',
@@ -722,6 +726,8 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           categoryIds: '',
         }),
         b('products', {
+          source: 'auto',
+          enabled: true,
           headline: 'جدیدترین‌ها',
           body: '',
           limit: 12,

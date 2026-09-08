@@ -31,11 +31,19 @@ export function ProductRelatedPicker({
   onChange,
   excludeId,
   max = MAX_RELATED,
+  title = 'محصولات مرتبط',
+  hint = 'حداکثر ۵ محصول. ترتیب همین‌جا ذخیره می‌شود.',
+  channel,
+  emptyLabel = 'هنوز محصول مرتبطی انتخاب نشده است.',
 }: {
   value: RelatedProductPick[];
   onChange: (items: RelatedProductPick[]) => void;
   excludeId?: string;
   max?: number;
+  title?: string;
+  hint?: string;
+  channel?: 'RETAIL' | 'WHOLESALE';
+  emptyLabel?: string;
 }) {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<RelatedProductPick[]>([]);
@@ -53,7 +61,7 @@ export function ProductRelatedPicker({
       const skip = new Set(selectedKey ? selectedKey.split(',') : []);
       setSearching(true);
       try {
-        const rows = await searchAdminProducts(term);
+        const rows = await searchAdminProducts(term, channel ? { channel } : undefined);
         setHits(
           rows
             .filter((p) => p.id !== excludeId && !skip.has(p.id))
@@ -66,7 +74,7 @@ export function ProductRelatedPicker({
         setSearching(false);
       }
     },
-    [excludeId, selectedKey]
+    [excludeId, selectedKey, channel]
   );
 
   useEffect(() => {
@@ -101,14 +109,12 @@ export function ProductRelatedPicker({
   return (
     <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-gray-800">محصولات مرتبط</p>
+        <p className="text-sm font-semibold text-gray-800">{title}</p>
         <p className="text-[11px] text-gray-400">
           {value.length} از {max}
         </p>
       </div>
-      <p className="text-[11px] text-gray-500">
-        حداکثر ۵ محصول. ترتیب همین‌جا ذخیره می‌شود.
-      </p>
+      <p className="text-[11px] text-gray-500">{hint}</p>
 
       <div className="relative">
         <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -154,11 +160,11 @@ export function ProductRelatedPicker({
         </ul>
       ) : null}
       {atLimit ? (
-        <p className="text-[11px] text-amber-700">به سقف ۵ محصول مرتبط رسیده‌اید.</p>
+        <p className="text-[11px] text-amber-700">به سقف {max} محصول رسیده‌اید.</p>
       ) : null}
 
       {value.length === 0 ? (
-        <p className="text-xs text-gray-400">هنوز محصول مرتبطی انتخاب نشده است.</p>
+        <p className="text-xs text-gray-400">{emptyLabel}</p>
       ) : (
         <ul className="space-y-2">
           {value.map((item, index) => {

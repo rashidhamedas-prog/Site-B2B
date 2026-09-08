@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T14:55:00Z — TASK-20260908-005 featured products CMS
+
+- Task / owner: TASK-20260908-005 / cursor:implementer-TASK-20260908-005
+- Branch `ai/TASK-20260908-005-featured-products` worktree `D:/proje/Site-B2B-featured-products`.
+- Overlap with TASK-20260908-004: governance files only (`active.yaml`, handoff, status, WORKLOG). No checkout files.
+- CODE: CMS `products` block has auto/manual source, picker, category, in-stock, portal gate. Public `GET /products?ids=` preserves order (max 16 UUID). Wholesale/retail/boutique rails consume the same contract. Home cap 12.
+- Next: specs + tsc, then merge/deploy. Existing JSON without `source` stays valid (ids → manual).
+- Rollback: revert commit; no migration.
+
 ## 2026-09-08T14:50:00Z — TASK-20260908-004 checkout intent
 
 - Task / owner: TASK-20260908-004 / cursor:implementer-TASK-20260908-004

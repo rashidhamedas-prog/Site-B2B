@@ -271,6 +271,7 @@ export function AdminPages() {
               <AdminBlockEditor
                 blocks={form.blocks}
                 onChange={(blocks) => setForm((f) => ({ ...f, blocks }))}
+                channel={channel}
               />
             </div>
 

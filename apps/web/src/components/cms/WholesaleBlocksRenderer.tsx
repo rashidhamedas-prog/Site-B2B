@@ -64,15 +64,7 @@ export async function WholesaleBlocksRenderer({
       case 'products':
         nodes.push(
           <Suspense key={block.id} fallback={<SectionSkeleton className="h-80" />}>
-            <FeaturedProducts
-              eyebrow={str(p, 'eyebrow') || undefined}
-              headline={str(p, 'headline') || undefined}
-              body={str(p, 'body') || undefined}
-              ctaLabel={str(p, 'ctaLabel') || undefined}
-              ctaHref={str(p, 'ctaHref') || undefined}
-              viewAllLabel={str(p, 'viewAllLabel') || undefined}
-              limit={Math.min(typeof p.limit === 'number' ? p.limit : 6, 8)}
-            />
+            <FeaturedProducts props={p} />
           </Suspense>,
         );
         break;

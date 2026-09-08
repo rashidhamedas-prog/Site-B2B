@@ -204,7 +204,7 @@ export function AdminSiteContent() {
             />
           </div>
 
-          <AdminBlockEditor blocks={blocks} onChange={setBlocks} />
+          <AdminBlockEditor blocks={blocks} onChange={setBlocks} channel={channel} />
 
           <div className="sticky bottom-0 flex items-center gap-4 border-t border-gray-100 bg-white/95 py-3 backdrop-blur">
             <button

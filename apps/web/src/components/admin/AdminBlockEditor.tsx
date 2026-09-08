@@ -5,6 +5,7 @@ import { Plus, Trash2, ChevronUp, ChevronDown, ImagePlus, Loader2 } from 'lucide
 import { cn } from '@/lib/cn';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { BLOCK_TYPE_LABELS, newBlockId, type BlockType, type ContentBlock } from '@/lib/cms/types';
+import { AdminProductsBlockFields } from './AdminProductsBlockFields';
 
 export type { BlockType, ContentBlock };
 export { BLOCK_TYPE_LABELS, newBlockId };
@@ -132,12 +133,20 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
         eyebrow: '',
         headline: '',
         body: '',
-        ctaLabel: '',
+        ctaLabel: 'مشاهده همه محصولات',
         ctaHref: '/products',
-        viewAllLabel: '',
+        viewAllLabel: 'مشاهده همه محصولات',
+        source: 'auto',
         productIds: '',
         limit: 12,
-        sort: 'views',
+        sort: 'newest',
+        categoryId: '',
+        inStockOnly: false,
+        enabled: true,
+        showPortalCta: true,
+        portalBody: 'برای مشاهده قیمت‌های عمده و ثبت سفارش آنلاین، ابتدا وارد پنل مشتری شوید',
+        portalLoginLabel: 'ورود به پنل',
+        portalRegisterLabel: 'ثبت‌نام عمده‌فروش',
       });
       break;
     case 'categoryBanners':
@@ -378,12 +387,18 @@ function ItemListEditor<T extends Record<string, unknown>>({
 function BlockFields({
   block,
   onChange,
+  channel,
 }: {
   block: ContentBlock;
   onChange: (b: ContentBlock) => void;
+  channel?: 'RETAIL' | 'WHOLESALE';
 }) {
   const p = block.props;
   const set = (key: string, value: unknown) => onChange(setProp(block, key, value));
+
+  if (block.type === 'products') {
+    return <AdminProductsBlockFields block={block} onChange={onChange} channel={channel} />;
+  }
 
   if (block.type === 'announcement') {
     return (
@@ -1153,14 +1168,14 @@ function BlockFields({
   // text, image, cta, products, comingSoon, html
   return (
     <div className="grid gap-2 sm:grid-cols-2">
-      {['cta', 'products', 'comingSoon'].includes(block.type) && (
+      {['cta', 'comingSoon'].includes(block.type) && (
         <Field
           label="ابرو / برچسب بالا"
           value={str(p, 'eyebrow')}
           onChange={(v) => set('eyebrow', v)}
         />
       )}
-      {['text', 'cta', 'products', 'categoryBanners', 'comingSoon'].includes(block.type) && (
+      {['text', 'cta', 'categoryBanners', 'comingSoon'].includes(block.type) && (
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
       )}
       {block.type === 'image' && (
@@ -1173,7 +1188,7 @@ function BlockFields({
           />
         </div>
       )}
-      {['cta', 'products', 'comingSoon'].includes(block.type) && (
+      {['cta', 'comingSoon'].includes(block.type) && (
         <>
           <Field
             label="متن دکمه اصلی"
@@ -1214,39 +1229,6 @@ function BlockFields({
           />
         </>
       )}
-      {block.type === 'products' && (
-        <>
-          <Field
-            label="شناسه محصولات (اختیاری، با کاما)"
-            value={str(p, 'productIds')}
-            dir="ltr"
-            onChange={(v) => set('productIds', v)}
-          />
-          <Field
-            label="متن دکمه مشاهده همه"
-            value={str(p, 'viewAllLabel')}
-            onChange={(v) => set('viewAllLabel', v)}
-          />
-          <Field
-            label="تعداد نمایش"
-            value={String(typeof p.limit === 'number' ? p.limit : 12)}
-            dir="ltr"
-            onChange={(v) => set('limit', Math.max(1, Number(v) || 12))}
-          />
-          <div>
-            <label className="mb-1 block text-[11px] font-medium text-gray-500">مرتب‌سازی</label>
-            <select
-              value={str(p, 'sort') || 'views'}
-              onChange={(e) => set('sort', e.target.value)}
-              className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
-            >
-              <option value="views">پربازدیدترین</option>
-              <option value="newest">جدیدترین</option>
-              <option value="discounted">تخفیف‌دار + جدید</option>
-            </select>
-          </div>
-        </>
-      )}
       {block.type === 'categoryBanners' && (
         <>
           <Field
@@ -1277,7 +1259,6 @@ function BlockFields({
       {(block.type === 'html' ||
         block.type === 'text' ||
         block.type === 'cta' ||
-        block.type === 'products' ||
         block.type === 'categoryBanners' ||
         block.type === 'comingSoon' ||
         block.type === 'image') && (
@@ -1301,9 +1282,10 @@ interface AdminBlockEditorProps {
   blocks: ContentBlock[];
   onChange: (blocks: ContentBlock[]) => void;
   className?: string;
+  channel?: 'RETAIL' | 'WHOLESALE';
 }
 
-export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEditorProps) {
+export function AdminBlockEditor({ blocks, onChange, className, channel }: AdminBlockEditorProps) {
   const move = (from: number, to: number) => {
     if (to < 0 || to >= blocks.length) return;
     const next = [...blocks];
@@ -1377,7 +1359,7 @@ export function AdminBlockEditor({ blocks, onChange, className }: AdminBlockEdit
               </button>
             </div>
           </div>
-          <BlockFields block={block} onChange={(b) => updateAt(index, b)} />
+          <BlockFields block={block} onChange={(b) => updateAt(index, b)} channel={channel} />
         </div>
       ))}
     </div>

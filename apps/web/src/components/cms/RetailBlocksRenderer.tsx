@@ -15,8 +15,6 @@ import {
   pushCommonBlocks,
 } from './block-shared';
 
-const HOME_PRODUCT_CAP = 12;
-
 function SectionSkeleton({ className = 'h-64' }: { className?: string }) {
   return (
     <div className={`mx-auto max-w-[1200px] animate-pulse px-4 py-12 sm:px-6 lg:px-8`}>
@@ -71,15 +69,9 @@ export async function RetailBlocksRenderer({
         break;
       }
       case 'products': {
-        const rawLimit = typeof p.limit === 'number' ? p.limit : HOME_PRODUCT_CAP;
-        const limit = Math.min(Math.max(1, rawLimit), HOME_PRODUCT_CAP);
         nodes.push(
           <Suspense key={block.id} fallback={<SectionSkeleton className="h-96" />}>
-            <RetailProductGrid
-              title={str(p, 'headline') || 'جدیدترین‌ها'}
-              limit={limit}
-              sort={str(p, 'sort') || 'newest'}
-            />
+            <RetailProductGrid props={p} />
           </Suspense>,
         );
         break;
