@@ -28,7 +28,7 @@ import {
   retailTorobpayAddressError,
   type RetailPaymentGateway,
 } from '@/lib/checkout-payment-ui';
-import { FALLBACK_RETAIL_SHIPPING_METHODS, resolveShippingMethods } from '@/lib/shipping-methods';
+import { FALLBACK_RETAIL_SHIPPING_METHODS, isInPersonShipping, resolveShippingMethods, shippingChoiceDescription } from '@/lib/shipping-methods';
 import { pulseCheckoutIntent } from '@/lib/checkout-intent';
 
 const PROVINCES = [
@@ -198,8 +198,8 @@ export default function RetailCheckoutPage() {
         setShipMeta({ freeShipping: q.freeShipping, estimatedDays: q.estimatedDays });
       })
       .catch(() => {
-        setShipFee(650_000);
-        setShipMeta({});
+        setShipFee(isInPersonShipping(shippingMethod) ? 0 : 650_000);
+        setShipMeta(isInPersonShipping(shippingMethod) ? { estimatedDays: 'هماهنگی برای مراجعه' } : {});
       });
   }, [pieces, subtotal, shippingMethod, address.province, address.city]);
 
@@ -540,7 +540,7 @@ export default function RetailCheckoutPage() {
                 options={shipMethods.map((m) => ({
                   id: m.id,
                   title: m.label,
-                  description: shipMeta.freeShipping ? 'ارسال این سفارش رایگان است' : 'هزینه طبق مقصد و تعداد محاسبه می‌شود',
+                  description: shippingChoiceDescription(m.id, { freeShipping: shipMeta.freeShipping }),
                   icon: 'truck' as const,
                 }))}
               />
@@ -656,7 +656,13 @@ export default function RetailCheckoutPage() {
               </div>
               <div className="flex justify-between">
                 <span>ارسال</span>
-                <span>{shipMeta.freeShipping ? 'رایگان' : `${toman(shipFee)} تومان`}</span>
+                <span>
+                  {isInPersonShipping(shippingMethod)
+                    ? 'بدون هزینه'
+                    : shipMeta.freeShipping
+                      ? 'رایگان'
+                      : `${toman(shipFee)} تومان`}
+                </span>
               </div>
               {walletApplied > 0 ? (
                 <div className="flex justify-between text-emerald-700">

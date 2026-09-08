@@ -54,6 +54,7 @@ const SHIP_METHODS = [
   { id: 'FREIGHT', label: 'باربری (سفارش حجمی)' },
   { id: 'PISHTAZ', label: 'پست پیشتاز (تکی)' },
   { id: 'TEHRAN_BIKE', label: 'پیک تهران' },
+  { id: 'IN_PERSON', label: 'تحویل در محل' },
 ];
 
 function trackingLink(method: string, code: string): string {

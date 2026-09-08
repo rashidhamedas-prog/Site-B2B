@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T15:25:00Z — TASK-20260908-007 in-person shipping
+
+- Owner asked for «تحویل در محل» in shipping settings. It was not a live method (only CMS copy «تحویل حضوری»).
+- Claiming shipping settings/checkout files released by 005. Not touching 006 featured-products files (`product.service`, `useProducts`, cms block).
+- Shared governance overlap with 006: `active.yaml` / `handoff.md` / `status.md` / `WORKLOG.md`.
+- CODE: builtin `IN_PERSON`, fee 0, hydrate into saved company lists if missing.
+
 ## 2026-09-08T15:20:00Z — TASK-20260908-006 featured products CMS
 
 - ID collision: origin/master used TASK-20260908-005 for admin-settings-ia. This merchandising slice is **TASK-20260908-006** on branch `ai/TASK-20260908-005-featured-products`.

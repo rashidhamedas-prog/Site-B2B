@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-08 — **TASK-20260908-007** implementing in-person shipping (`IN_PERSON` / تحویل در محل) on `ai/TASK-20260908-007-in-person-shipping`. Fee 0. Did not touch 006 featured-products files.
 - Last verified: 2026-09-08 — **TASK-20260908-006** implementing featured-products CMS on `ai/TASK-20260908-005-featured-products`. Admin picker + `ids` query + storefront wiring. ID 005 taken by settings IA. Not live until merge/deploy.
 - Last verified: 2026-09-08 — **TASK-20260908-005 CLOSED** on `origin/master` + VPS `e284ae9`. Channel-split shipping live; ticker/SMS ops/Peystaz in system settings tabs. Health 200. Retail methods PISHTAZ/TIPAX/CHAPAR/TEHRAN_BIKE; wholesale returns saved freight companies. Claims released. Independent reviewer still required.
 - Last verified: 2026-09-08 — **TASK-20260908-004 CLOSED** on `origin/master` + VPS `10d5f5e`. Checkout intent + abandon policy live; SMS mode still OFF. Health 200. Claims released.

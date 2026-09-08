@@ -20,11 +20,39 @@ export interface ShippingPostChannel {
   vatPercent: number;
 }
 
+export const IN_PERSON_ID = 'IN_PERSON';
+export const IN_PERSON_LABEL = 'تحویل در محل';
+
+export const IN_PERSON_COMPANY: ShippingCompany = {
+  id: IN_PERSON_ID,
+  label: IN_PERSON_LABEL,
+  isActive: true,
+  sort: 90,
+};
+
+export function isInPersonMethod(method?: string): boolean {
+  return String(method || '').toUpperCase() === IN_PERSON_ID;
+}
+
+export function hasInPersonCompany(list: ShippingCompany[]): boolean {
+  return list.some((c) => {
+    if (String(c.id || '').toUpperCase() === IN_PERSON_ID) return true;
+    return /تحویل در محل|تحویل حضوری/.test(String(c.label || ''));
+  });
+}
+
+export function ensureInPersonCompany(list: ShippingCompany[]): ShippingCompany[] {
+  if (hasInPersonCompany(list)) return list;
+  const maxSort = list.reduce((m, c) => Math.max(m, Number(c.sort) || 0), 0);
+  return [...list, { ...IN_PERSON_COMPANY, sort: maxSort + 10 }];
+}
+
 export const DEFAULT_RETAIL_COMPANIES: ShippingCompany[] = [
   { id: 'PISHTAZ', label: 'پست پیشتاز', isActive: true, sort: 10 },
   { id: 'TIPAX', label: 'تیپاکس', isActive: true, sort: 20 },
   { id: 'CHAPAR', label: 'چاپار', isActive: true, sort: 30 },
   { id: 'TEHRAN_BIKE', label: 'پیک تهران', isActive: true, sort: 40 },
+  { ...IN_PERSON_COMPANY, sort: 50 },
 ];
 
 export const DEFAULT_WHOLESALE_COMPANIES: ShippingCompany[] = [
@@ -33,6 +61,7 @@ export const DEFAULT_WHOLESALE_COMPANIES: ShippingCompany[] = [
   { id: 'POST', label: 'پست پیشتاز', isActive: true, sort: 30 },
   { id: 'FREIGHT', label: 'باربری', isActive: true, sort: 40 },
   { id: 'OTHER', label: 'سایر', isActive: true, sort: 50 },
+  { ...IN_PERSON_COMPANY, sort: 60 },
 ];
 
 export const DEFAULT_SHIPPING_POST: ShippingPostChannel = {
@@ -69,15 +98,17 @@ export function resolveChannelCompanies(
   const s = shipping && typeof shipping === 'object' ? shipping : {};
   const nested = channel === 'RETAIL' ? s.retail?.companies : s.wholesale?.companies;
   if (Array.isArray(nested) && nested.length) {
-    return normalizeCompanies(
-      nested,
-      channel === 'RETAIL' ? DEFAULT_RETAIL_COMPANIES : DEFAULT_WHOLESALE_COMPANIES,
+    return ensureInPersonCompany(
+      normalizeCompanies(
+        nested,
+        channel === 'RETAIL' ? DEFAULT_RETAIL_COMPANIES : DEFAULT_WHOLESALE_COMPANIES,
+      ),
     );
   }
   if (channel === 'WHOLESALE') {
-    return normalizeCompanies(s.companies, DEFAULT_WHOLESALE_COMPANIES);
+    return ensureInPersonCompany(normalizeCompanies(s.companies, DEFAULT_WHOLESALE_COMPANIES));
   }
-  return normalizeCompanies(null, DEFAULT_RETAIL_COMPANIES);
+  return ensureInPersonCompany(normalizeCompanies(null, DEFAULT_RETAIL_COMPANIES));
 }
 
 function asPositiveInt(value: unknown, fallback: number): number {

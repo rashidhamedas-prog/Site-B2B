@@ -1,5 +1,40 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260908-007"
+    title: "In-person pickup shipping method for retail and wholesale"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260908-007"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-007"
+      implementer: "cursor:implementer-TASK-20260908-007"
+      reviewer: "self-review-shipping-fee-zero"
+      security: "self-review-no-auth-change"
+    branch: "ai/TASK-20260908-007-in-person-shipping"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-08T15:25:00Z"
+    heartbeat_at: "2026-09-08T15:25:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/settings/shipping-channel.ts"
+      - "apps/api/src/modules/settings/shipping-channel.spec.ts"
+      - "apps/api/src/modules/shipping/shipping.service.ts"
+      - "apps/web/src/lib/shipping-methods.ts"
+      - "apps/web/src/lib/shipping-methods.spec.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/web/src/components/admin/settings/ShippingTab.tsx"
+      - "apps/web/src/components/admin/AdminOrderDetail.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/checkout/page.tsx"
+      - "docs/WORKLOG.md"
+    notes: |
+      Builtin IN_PERSON (تحویل در محل) for both channels. Quote fee 0. Hydrate into saved company lists if missing.
+      Governance overlap with TASK-20260908-006: active.yaml/handoff/status only.
+    acceptance_criteria:
+      - "Admin shipping companies include تحویل در محل for retail and wholesale"
+      - "GET /shipping/methods?channel= includes IN_PERSON when not already present"
+      - "Quote for IN_PERSON is 0 and skips post/snapp fees"
+      - "shipping-channel spec and shipping-methods spec pass"
   - id: "TASK-20260908-006"
     title: "Featured products CMS block architecture + wiring"
     status: "in_progress"
