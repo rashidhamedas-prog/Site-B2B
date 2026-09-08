@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T14:57:00Z — TASK-20260908-004 CLOSED live `10d5f5e`
+
+- Task / owner: TASK-20260908-004 / cursor:implementer-TASK-20260908-004
+- Shipped checkout_intent + idle beacon + abandon policy. Deploy complete at `10d5f5e`.
+- Observed: health 200; `POST /v1/storefront/marketing/checkout-intent` → 401 without JWT; table `marketing_checkout_intents` + migration `MarketingCheckoutIntent1757332800004`; route mapped; LIVE OFF.
+- Claims released. Next optional: canary one `retail.checkout.abandoned` after owner enables CANARY.
+
 ## 2026-09-08T14:50:00Z — TASK-20260908-004 checkout intent
 
 - Task / owner: TASK-20260908-004 / cursor:implementer-TASK-20260908-004

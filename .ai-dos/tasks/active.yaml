@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260908-004"
     title: "Checkout intent for abandoned nurture SMS"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260908-004"
     roles:
@@ -13,25 +13,12 @@ tasks:
     branch: "ai/TASK-20260908-004-checkout-intent"
     worktree: "D:/proje/Site-B2B-customer-marketing"
     claimed_at: "2026-09-08T14:40:00Z"
-    heartbeat_at: "2026-09-08T14:40:00Z"
+    heartbeat_at: "2026-09-08T14:57:00Z"
+    closed_at: "2026-09-08T14:57:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/customer-marketing/"
-      - "apps/api/src/database/migrations/20260908-004-marketing-checkout-intent.ts"
-      - "apps/api/src/config/database.config.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/web/src/lib/checkout-intent.ts"
-      - "apps/web/src/app/retail/checkout/page.tsx"
-      - "apps/web/src/app/checkout/page.tsx"
-      - "docs/WORKLOG.md"
-      - "docs/reports/2026-09-08-checkout-intent.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Continues TASK-20260908-002 leftover: checkout_intent without full server cart.
-      Reclaimed retail/wholesale checkout pages after TASK-20260908-003 released them.
-      Default customerMarketing stays OFF. PDP browse / restock stay OFF.
+      LIVE on origin/master + VPS 10d5f5e. marketing_checkout_intents present. Default SMS OFF.
     acceptance_criteria:
       - "Logged-in retail checkout posts checkout-intent after idle"
       - "marketing_checkout_intents table expand-only"

@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-08 — **TASK-20260908-004 CLOSED** on `origin/master` + VPS `10d5f5e`. Checkout intent + abandon policy live; SMS mode still OFF. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-004** implementing checkout_intent on `ai/TASK-20260908-004-checkout-intent`. Specs+tsc 0. LIVE OFF. Continues marketing plan leftover.
 - Last verified: 2026-09-08 — **TASK-20260908-002 CLOSED** on `origin/master` + VPS `47b013e`. Customer-marketing sidecar live; 9 marketing_* tables; default SMS OFF. Health 200. Claims released. Checkout/PDP/TorobPay untouched.
 - Last verified: 2026-09-08 — **TASK-20260908-003 CLOSED** on `origin/master` + VPS `3ad49d2`. Luxury checkout payment picker live; TorobPay card when eligible; 1011 address checks kept. Health 200. Claims released.
