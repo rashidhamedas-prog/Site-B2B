@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T14:55:00Z — TASK-20260908-004 implementing admin settings IA
+
+- Objective: fully split retail/wholesale shipping settings; move ticker, SMS ops, Peystaz quote into system-settings tabs; redesign `/admin/settings`.
+- Decisions: nested `shipping.retail|wholesale.companies`; nested `shippingPost`; methods/public default WHOLESALE; ticker stays CMS chrome, edited from theme tab; one save per tab.
+- Tests: `shipping-channel.spec.ts` OK; `shipping-methods.spec.ts` OK via tsx; api tsc 0; web tsc 0.
+- Next: commit, merge master, deploy, verify `/admin/settings` + `/v1/health`.
+- Risks: first save of shippingPost writes nested JSON; legacy flat hydrates both until then. Independent reviewer still required for shipping API change.
+
 ## 2026-09-08T00:42:00Z — TASK-20260908-003 CLOSED live `3ad49d2`
 
 - Fast-forward: `fdd54c1..3ad49d2` on `origin/master`. Feature branch `ai/TASK-20260908-003-checkout-payment-ui` pushed.

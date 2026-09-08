@@ -8,6 +8,10 @@ import {
   tapinCheckPrice,
   type PostTariff,
 } from './iran-post-quote';
+import {
+  shippingPostForChannel,
+  type SaleChannel,
+} from '../settings/shipping-channel';
 
 // Shipping quotes + tracking links. Fees and per-method availability are
 // user-configurable from the admin settings panel (DB), with env fallback.
@@ -34,6 +38,10 @@ export class ShippingService {
     return m;
   }
 
+  private normalizeChannel(channel?: string): SaleChannel {
+    return String(channel || '').toUpperCase() === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+  }
+
   constructor(private readonly settings: SettingsService) {}
 
   async quote(input: {
@@ -42,14 +50,20 @@ export class ShippingService {
     method?: string;
     province?: string;
     city?: string;
+    channel?: string;
   }) {
+    const channel = this.normalizeChannel(input.channel);
     const cfg = await this.settings.shipping();
-    const postCfg = await this.settings.get('shippingPost');
+    const postCfg = shippingPostForChannel(await this.settings.get('shippingPost'), channel);
     const retail = cfg.retail ?? {
       baseFee: cfg.baseFee,
       perKgFee: cfg.perKgFee,
       freeThreshold: cfg.freeThreshold,
       kgPerPiece: cfg.kgPerPiece,
+    };
+    const wholesale = cfg.wholesale ?? {
+      baseFee: cfg.baseFee,
+      freeThreshold: cfg.freeThreshold,
     };
     const pieces = Math.max(1, Number(input.pieces) || 1);
     const kgPerPiece =
@@ -59,16 +73,21 @@ export class ShippingService {
     const weightKg = Math.ceil(pieces * kgPerPiece * 10) / 10;
     const method = this.normalizeMethod(input.method);
 
-    // Retail formula: fee = baseFee + ceil(weightKg) × perKgFee
-    let fee = retail.baseFee + Math.ceil(weightKg) * retail.perKgFee;
-    let formula = 'baseFee + ceil(weightKg) × perKgFee (weightKg from pieces × kgPerPiece)';
+    let fee =
+      channel === 'WHOLESALE'
+        ? Number(wholesale.baseFee) || 0
+        : retail.baseFee + Math.ceil(weightKg) * retail.perKgFee;
+    let formula =
+      channel === 'WHOLESALE'
+        ? 'wholesale.baseFee (flat)'
+        : 'baseFee + ceil(weightKg) × perKgFee (weightKg from pieces × kgPerPiece)';
     let postSource: 'tapin' | 'local' | null = null;
 
-    const postEnabled = postCfg?.enabled === true;
+    const postEnabled = postCfg.enabled === true;
     if (postEnabled && method === 'POST') {
       const originProvince = String(postCfg.originProvince || 'خراسان رضوی');
       const originCity = String(postCfg.originCity || 'مشهد');
-      const destProvince = input.province || String(postCfg.defaultDestProvince || '');
+      const destProvince = input.province || String(postCfg.originProvince || '');
       const destCity = input.city || '';
       const zone = resolvePostZone({
         originProvince,
@@ -107,12 +126,12 @@ export class ShippingService {
       }
     }
 
-    // Tehran bike / Snapp: flat intra-city style fee if configured lower
-    if (method === 'SNAPP') {
+    if (channel === 'RETAIL' && method === 'SNAPP') {
       fee = Math.min(fee, retail.baseFee || fee);
     }
-    const freeShipping =
-      !!input.orderTotal && Number(input.orderTotal) >= retail.freeThreshold;
+    const freeThreshold =
+      channel === 'WHOLESALE' ? Number(wholesale.freeThreshold) || 0 : retail.freeThreshold;
+    const freeShipping = !!input.orderTotal && Number(input.orderTotal) >= freeThreshold;
     if (freeShipping) fee = 0;
 
     const def =
@@ -121,14 +140,15 @@ export class ShippingService {
     return {
       method: input.method ?? method,
       normalizedMethod: method,
+      channel,
       pieces,
       weightKg,
       kgPerPiece,
-      baseFee: retail.baseFee,
-      perKgFee: retail.perKgFee,
+      baseFee: channel === 'WHOLESALE' ? Number(wholesale.baseFee) || 0 : retail.baseFee,
+      perKgFee: channel === 'WHOLESALE' ? 0 : retail.perKgFee,
       fee,
       freeShipping,
-      freeThreshold: retail.freeThreshold,
+      freeThreshold,
       estimatedDays: def?.estimatedDays ?? '۲ تا ۴ روز کاری',
       province: input.province || null,
       city: input.city || null,
@@ -148,15 +168,19 @@ export class ShippingService {
     return { trackingCode, method, url: urls[method] ?? urls.CHAPAR };
   }
 
-  // Only methods the admin has enabled in settings.
-  async methods() {
+  async methods(channel?: string) {
+    const ch: SaleChannel = String(channel || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
     const cfg = await this.settings.shipping();
-    // Prefer admin-managed companies list; fall back to METHOD_DEFS.
-    const fromSettings = Array.isArray((cfg as any).companies) ? (cfg as any).companies : null;
-    if (fromSettings?.length) {
+    const fromSettings = ch === 'RETAIL' ? cfg.retail?.companies : cfg.wholesale?.companies;
+    if (Array.isArray(fromSettings)) {
       return fromSettings
-        .filter((c: any) => c?.isActive !== false)
-        .map((c: any) => ({ id: String(c.id), label: String(c.label) }));
+        .filter((c: { isActive?: boolean }) => c?.isActive !== false)
+        .map((c: { id: string; label: string }) => ({ id: String(c.id), label: String(c.label) }));
+    }
+    if (ch === 'WHOLESALE' && Array.isArray((cfg as { companies?: unknown[] }).companies)) {
+      return ((cfg as { companies: Array<{ id: string; label: string; isActive?: boolean }> }).companies)
+        .filter((c) => c?.isActive !== false)
+        .map((c) => ({ id: String(c.id), label: String(c.label) }));
     }
     return ShippingService.METHOD_DEFS.filter((m) => cfg.methods[m.id] !== false);
   }

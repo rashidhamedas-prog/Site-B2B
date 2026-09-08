@@ -131,7 +131,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!getToken()) return;
-    apiClient.get<ShippingCompany[]>('/shipping/methods')
+    apiClient.get<ShippingCompany[]>('/shipping/methods?channel=WHOLESALE')
       .then((m) => {
         setShippingCompanies(m ?? []);
         if (!shippingMethod && m?.length) setShippingMethod(m[0].id);
