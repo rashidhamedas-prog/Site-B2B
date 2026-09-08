@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, Trash2, Truck } from 'lucide-react';
+import { MapPin, Plus, Trash2, Truck } from 'lucide-react';
 import { AdminChannelTabs } from '@/components/admin/AdminChannelTabs';
 import { NumberField, TextAreaField, TextField, ToggleRow } from './fields';
 import { LiveStat, SettingsSection } from './primitives';
@@ -194,7 +194,7 @@ export function ShippingTab({
             <div key={c.id} className="rounded-2xl border border-gray-100 bg-white p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gray-50 text-gray-500">
-                  <Truck className="h-4 w-4" />
+                  {c.id === 'IN_PERSON' ? <MapPin className="h-4 w-4" /> : <Truck className="h-4 w-4" />}
                 </span>
                 <button
                   type="button"
@@ -207,7 +207,12 @@ export function ShippingTab({
               <div className="space-y-3">
                 <TextField label="نام روش" value={c.label} onChange={(v) => setCompanies(companies.map((x) => x.id === c.id ? { ...x, label: v } : x))} />
                 <NumberField label="اولویت نمایش" value={c.sort} onChange={(v) => setCompanies(companies.map((x) => x.id === c.id ? { ...x, sort: v } : x))} />
-                <ToggleRow label="فعال در چک‌اوت" value={c.isActive !== false} onChange={(v) => setCompanies(companies.map((x) => x.id === c.id ? { ...x, isActive: v } : x))} />
+                <ToggleRow
+                  label="فعال در چک‌اوت"
+                  hint={c.id === 'IN_PERSON' ? 'هزینه ارسال صفر است؛ مشتری به محل مراجعه می‌کند' : undefined}
+                  value={c.isActive !== false}
+                  onChange={(v) => setCompanies(companies.map((x) => x.id === c.id ? { ...x, isActive: v } : x))}
+                />
               </div>
             </div>
           ))}

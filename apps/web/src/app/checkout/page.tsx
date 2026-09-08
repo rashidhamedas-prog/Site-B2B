@@ -18,6 +18,7 @@ import {
   wholesalePaymentOptions,
 } from '@/lib/checkout-payment-ui';
 import { pulseCheckoutIntent } from '@/lib/checkout-intent';
+import { isInPersonShipping, shippingChoiceDescription } from '@/lib/shipping-methods';
 
 function toman(n: number) { return Math.round(n / 10).toLocaleString('fa-IR'); }
 
@@ -267,7 +268,8 @@ export default function CheckoutPage() {
 
   const discountAmount = quote?.discount ?? 0;
   const afterDiscount = Math.max(0, total - discountAmount);
-  const shippingFee = afterDiscount >= freeThreshold ? 0 : shippingBaseFee;
+  const shippingFee =
+    isInPersonShipping(shippingMethod) || afterDiscount >= freeThreshold ? 0 : shippingBaseFee;
   const finalTotal = afterDiscount + shippingFee;
 
   // Cart items currently lack categoryId; match global (null) rule or legacy fields
@@ -497,7 +499,10 @@ export default function CheckoutPage() {
                   options={shippingCompanies.map((m) => ({
                     id: m.id,
                     title: m.label,
-                    description: shippingFee === 0 ? 'ارسال این سفارش رایگان است' : 'هزینه طبق آستانه سفارش محاسبه می‌شود',
+                    description: shippingChoiceDescription(m.id, {
+                      freeShipping: shippingFee === 0,
+                      wholesale: true,
+                    }),
                     icon: 'truck' as const,
                   }))}
                 />
@@ -640,10 +645,14 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-500">هزینه ارسال</span>
                   <span className={cn('font-medium', shippingFee === 0 && 'text-success')}>
-                    {shippingFee === 0 ? 'رایگان' : `${toman(shippingFee)} ت`}
+                    {isInPersonShipping(shippingMethod)
+                      ? 'بدون هزینه'
+                      : shippingFee === 0
+                        ? 'رایگان'
+                        : `${toman(shippingFee)} ت`}
                   </span>
                 </div>
-                {afterDiscount >= freeThreshold && freeThreshold > 0 && (
+                {afterDiscount >= freeThreshold && freeThreshold > 0 && !isInPersonShipping(shippingMethod) && (
                   <p className="text-xs text-success">
                     ✓ ارسال رایگان برای سفارش‌های بالای {toman(freeThreshold)} تومان
                   </p>

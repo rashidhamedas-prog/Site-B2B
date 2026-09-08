@@ -2,7 +2,10 @@ import * as assert from 'node:assert/strict';
 import {
   DEFAULT_RETAIL_COMPANIES,
   DEFAULT_WHOLESALE_COMPANIES,
+  IN_PERSON_ID,
   addressPlace,
+  ensureInPersonCompany,
+  isInPersonMethod,
   resolveChannelCompanies,
   resolveShippingPost,
   shippingPostForChannel,
@@ -14,13 +17,15 @@ const legacyCompanies = [
 ];
 
 const fromLegacy = resolveChannelCompanies({ companies: legacyCompanies }, 'WHOLESALE');
-assert.equal(fromLegacy.length, 2);
+assert.equal(fromLegacy.length, 3);
 assert.equal(fromLegacy[1].isActive, false);
+assert.equal(fromLegacy[2].id, IN_PERSON_ID);
 assert.equal(resolveChannelCompanies({ companies: legacyCompanies }, 'RETAIL')[0].id, 'PISHTAZ');
 assert.equal(
   resolveChannelCompanies({ companies: legacyCompanies }, 'RETAIL').length,
   DEFAULT_RETAIL_COMPANIES.length,
 );
+assert.ok(resolveChannelCompanies({ companies: legacyCompanies }, 'RETAIL').some((c) => c.id === IN_PERSON_ID));
 
 const split = resolveChannelCompanies(
   {
@@ -31,6 +36,7 @@ const split = resolveChannelCompanies(
   'RETAIL',
 );
 assert.equal(split[0].id, 'TIPAX');
+assert.equal(split.some((c) => c.id === IN_PERSON_ID), true);
 assert.equal(
   resolveChannelCompanies(
     {
@@ -41,6 +47,13 @@ assert.equal(
   )[0].id,
   'OTHER',
 );
+
+const alreadyNamed = ensureInPersonCompany([
+  { id: 'SHIP_1', label: 'تحویل حضوری مشهد', isActive: true, sort: 1 },
+]);
+assert.equal(alreadyNamed.length, 1);
+assert.equal(isInPersonMethod('in_person'), true);
+assert.equal(isInPersonMethod('PISHTAZ'), false);
 
 const empty = resolveChannelCompanies({}, 'WHOLESALE');
 assert.equal(empty[0].id, DEFAULT_WHOLESALE_COMPANIES[0].id);

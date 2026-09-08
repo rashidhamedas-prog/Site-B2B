@@ -9,6 +9,13 @@ Append newest entries at the top. Never erase another agent's record.
 - CODE: staff POST `/api/cms/revalidate` after site-content save; SKU allowlist on public `ids`.
 - Next: tests already green locally; commit, push, deploy, then save once more in admin (or hard-refresh after deploy).
 
+## 2026-09-08T15:25:00Z — TASK-20260908-007 in-person shipping
+
+- Owner asked for «تحویل در محل» in shipping settings. It was not a live method (only CMS copy «تحویل حضوری»).
+- Claiming shipping settings/checkout files released by 005. Not touching 006 featured-products files (`product.service`, `useProducts`, cms block).
+- Shared governance overlap with 006: `active.yaml` / `handoff.md` / `status.md` / `WORKLOG.md`.
+- CODE: builtin `IN_PERSON`, fee 0, hydrate into saved company lists if missing.
+
 ## 2026-09-08T15:25:00Z — TASK-20260908-006 CLOSED live `8e57985`
 
 - Task / owner: TASK-20260908-006 / cursor:implementer-TASK-20260908-006

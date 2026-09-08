@@ -10,6 +10,7 @@ import {
 } from './iran-post-quote';
 import {
   shippingPostForChannel,
+  isInPersonMethod,
   type SaleChannel,
 } from '../settings/shipping-channel';
 
@@ -29,6 +30,7 @@ export class ShippingService {
     { id: 'PISHTAZ', label: 'پست پیشتاز', estimatedDays: '۳ تا ۵ روز کاری' },
     { id: 'TEHRAN_BIKE', label: 'پیک تهران', estimatedDays: 'همان روز' },
     { id: 'FREIGHT', label: 'باربری (سفارش حجمی)', estimatedDays: 'هماهنگی تلفنی' },
+    { id: 'IN_PERSON', label: 'تحویل در محل', estimatedDays: 'هماهنگی برای مراجعه' },
   ];
 
   private normalizeMethod(method?: string) {
@@ -72,6 +74,31 @@ export class ShippingService {
         : ShippingService.KG_PER_PIECE_DEFAULT;
     const weightKg = Math.ceil(pieces * kgPerPiece * 10) / 10;
     const method = this.normalizeMethod(input.method);
+
+    if (isInPersonMethod(method) || isInPersonMethod(input.method)) {
+      const def =
+        ShippingService.METHOD_DEFS.find((m) => m.id === 'IN_PERSON');
+      return {
+        method: input.method ?? 'IN_PERSON',
+        normalizedMethod: 'IN_PERSON',
+        channel,
+        pieces,
+        weightKg,
+        kgPerPiece,
+        baseFee: 0,
+        perKgFee: 0,
+        fee: 0,
+        freeShipping: false,
+        freeThreshold:
+          channel === 'WHOLESALE' ? Number(wholesale.freeThreshold) || 0 : retail.freeThreshold,
+        estimatedDays: def?.estimatedDays ?? 'هماهنگی برای مراجعه',
+        province: input.province || null,
+        city: input.city || null,
+        postOnline: false,
+        postSource: null,
+        formula: 'in-person pickup (fee 0)',
+      };
+    }
 
     let fee =
       channel === 'WHOLESALE'

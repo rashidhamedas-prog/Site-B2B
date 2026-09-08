@@ -34,6 +34,7 @@ const DEFAULT_RETAIL_COMPANIES = [
   { id: 'TIPAX', label: 'تیپاکس', isActive: true, sort: 20 },
   { id: 'CHAPAR', label: 'چاپار', isActive: true, sort: 30 },
   { id: 'TEHRAN_BIKE', label: 'پیک تهران', isActive: true, sort: 40 },
+  { id: 'IN_PERSON', label: 'تحویل در محل', isActive: true, sort: 50 },
 ];
 
 const DEFAULT_WHOLESALE_COMPANIES = [
@@ -42,6 +43,7 @@ const DEFAULT_WHOLESALE_COMPANIES = [
   { id: 'POST', label: 'پست پیشتاز', isActive: true, sort: 30 },
   { id: 'FREIGHT', label: 'باربری', isActive: true, sort: 40 },
   { id: 'OTHER', label: 'سایر', isActive: true, sort: 50 },
+  { id: 'IN_PERSON', label: 'تحویل در محل', isActive: true, sort: 60 },
 ];
 
 const DEFAULT_POST = {
