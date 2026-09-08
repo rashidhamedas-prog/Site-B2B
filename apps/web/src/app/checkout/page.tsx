@@ -9,6 +9,14 @@ import { cartLineKey, cartItemPieces, useCart } from '@/lib/cart';
 import { apiClient } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { cn } from '@/lib/cn';
+import { CheckoutChoiceList } from '@/components/checkout/CheckoutChoiceList';
+import { CheckoutPanel, CheckoutStepRail } from '@/components/checkout/CheckoutPanel';
+import { CheckoutPlaceOrderBar } from '@/components/checkout/CheckoutPlaceOrderBar';
+import {
+  checkoutCtaHint,
+  checkoutCtaLabel,
+  wholesalePaymentOptions,
+} from '@/lib/checkout-payment-ui';
 
 function toman(n: number) { return Math.round(n / 10).toLocaleString('fa-IR'); }
 
@@ -272,6 +280,14 @@ export default function CheckoutPage() {
   const installmentBlocked =
     paymentMethod === 'INSTALLMENT'
     && (eligibilityLoading || !eligibility?.eligible);
+  const paymentOptions = wholesalePaymentOptions(onlinePaymentEnabled);
+  const ctaLabel = checkoutCtaLabel({
+    kind: paymentMethod,
+    channel: 'wholesale',
+    busy: loading,
+    payableRial: finalTotal,
+  });
+  const ctaHint = checkoutCtaHint(paymentMethod);
 
   if (!getToken()) return null;
 
@@ -379,132 +395,147 @@ export default function CheckoutPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100">
-        <div className="container-site py-3 flex items-center gap-3">
-          <Link href="/products" className="text-gray-400 hover:text-primary"><ArrowRight className="h-5 w-5" /></Link>
-          <h1 className="text-lg font-bold text-gray-900">تکمیل سفارش</h1>
+    <div className="relative isolate min-h-screen bg-[var(--brand-ivory,#F6F1E8)] pb-28 lg:pb-12">
+      <div className="pointer-events-none absolute inset-0 bg-atmosphere" aria-hidden />
+      <div className="relative border-b border-black/5 bg-white/80 backdrop-blur-sm">
+        <div className="container-site flex items-center gap-3 py-3">
+          <Link href="/products" className="text-gray-400 hover:text-primary" aria-label="بازگشت به محصولات">
+            <ArrowRight className="h-5 w-5" />
+          </Link>
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.22em] text-secondary">WHOLESALE</p>
+            <h1 className="text-lg font-extrabold text-gray-900">تسویه حساب عمده</h1>
+          </div>
         </div>
       </div>
 
-      <div className="container-site py-6">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Cart items */}
-          <div className="lg:col-span-2 space-y-4">
-            <h2 className="font-bold text-gray-900">اقلام سبد خرید</h2>
-            <div className="card divide-y divide-gray-50">
-              {items.map((item) => {
-                const lineKey = cartLineKey(item);
-                const pieces = cartItemPieces(item);
-                const meta = item.packMode
-                  ? [
-                      item.selectedColors?.length
-                        ? `${item.selectedColors.length} رنگ`
-                        : null,
-                      item.sizeCount ? `${item.sizeCount} سایز` : null,
-                      item.packQty ? `پک=${item.packQty}` : null,
-                    ].filter(Boolean).join(' · ')
-                  : [item.color, item.size].filter(Boolean).join(' / ');
-                return (
-                <div key={lineKey} className="flex items-start gap-4 p-4">
-                  <div className="relative h-16 w-12 flex-shrink-0 rounded-xl overflow-hidden bg-primary-50">
-                    <ProductImage src={item.imageUrl} alt={item.productName} sizes="48px" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 line-clamp-1">{item.productName}</p>
-                    <p className="text-xs text-gray-400 font-mono">{item.sku}</p>
-                    {meta && <p className="text-xs text-gray-500 mt-0.5">{meta}</p>}
-                    {item.packMode && item.selectedColors && item.selectedColors.length > 0 && (
-                      <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">
-                        {item.selectedColors.join('، ')}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-sm">
-                      <button onClick={() => updateQty(lineKey, item.quantity - Math.max(1, item.minOrderQty))}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">−</button>
-                      <span className="w-8 text-center font-bold" title={item.packMode ? 'تعداد پک' : 'تعداد'}>
-                        {item.quantity}
-                      </span>
-                      <button onClick={() => updateQty(lineKey, item.quantity + Math.max(1, item.minOrderQty))}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-gray-100">+</button>
+      <div className="container-site relative py-8">
+        <CheckoutStepRail
+          appearance="wholesale"
+          steps={[
+            { id: 'checkout-address', label: 'سبد' },
+            { id: 'checkout-shipping', label: 'ارسال' },
+            { id: 'checkout-payment', label: 'پرداخت' },
+          ]}
+        />
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          <div className="space-y-5 lg:col-span-2">
+            <CheckoutPanel appearance="wholesale" id="checkout-address" index="۰۱" title="اقلام سبد خرید">
+              <div className="-mx-1 divide-y divide-black/5">
+                {items.map((item) => {
+                  const lineKey = cartLineKey(item);
+                  const pieces = cartItemPieces(item);
+                  const meta = item.packMode
+                    ? [
+                        item.selectedColors?.length
+                          ? `${item.selectedColors.length} رنگ`
+                          : null,
+                        item.sizeCount ? `${item.sizeCount} سایز` : null,
+                        item.packQty ? `پک=${item.packQty}` : null,
+                      ].filter(Boolean).join(' · ')
+                    : [item.color, item.size].filter(Boolean).join(' / ');
+                  return (
+                    <div key={lineKey} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
+                      <div className="relative h-16 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-primary-50">
+                        <ProductImage src={item.imageUrl} alt={item.productName} sizes="48px" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-1 text-sm font-semibold text-gray-900">{item.productName}</p>
+                        <p className="font-mono text-xs text-gray-400">{item.sku}</p>
+                        {meta && <p className="mt-0.5 text-xs text-gray-500">{meta}</p>}
+                        {item.packMode && item.selectedColors && item.selectedColors.length > 0 && (
+                          <p className="mt-0.5 line-clamp-1 text-[11px] text-gray-400">
+                            {item.selectedColors.join('، ')}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-3">
+                        <div className="flex items-center overflow-hidden rounded-lg border border-gray-200 text-sm">
+                          <button type="button" onClick={() => updateQty(lineKey, item.quantity - Math.max(1, item.minOrderQty))}
+                            className="flex h-8 w-8 items-center justify-center hover:bg-gray-100">−</button>
+                          <span className="w-8 text-center font-bold" title={item.packMode ? 'تعداد پک' : 'تعداد'}>
+                            {item.quantity}
+                          </span>
+                          <button type="button" onClick={() => updateQty(lineKey, item.quantity + Math.max(1, item.minOrderQty))}
+                            className="flex h-8 w-8 items-center justify-center hover:bg-gray-100">+</button>
+                        </div>
+                        <div className="min-w-[80px] text-left">
+                          <p className="text-sm font-bold text-gray-900">{toman(item.unitPrice * pieces)} ت</p>
+                          <p className="text-[10px] text-gray-400">
+                            {item.packMode
+                              ? `${pieces.toLocaleString('fa-IR')} عدد`
+                              : `${toman(item.unitPrice)}/عدد`}
+                          </p>
+                        </div>
+                        <button type="button" onClick={() => removeItem(lineKey)} className="text-gray-300 hover:text-error" aria-label="حذف از سبد">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-left min-w-[80px]">
-                      <p className="text-sm font-bold text-gray-900">{toman(item.unitPrice * pieces)} ت</p>
-                      <p className="text-[10px] text-gray-400">
-                        {item.packMode
-                          ? `${pieces.toLocaleString('fa-IR')} عدد`
-                          : `${toman(item.unitPrice)}/عدد`}
-                      </p>
-                    </div>
-                    <button onClick={() => removeItem(lineKey)} className="text-gray-300 hover:text-error">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                );
-              })}
-            </div>
-
-            {/* Shipping & payment */}
-            <div className="card p-5 space-y-4">
-              <h3 className="font-bold text-gray-900">روش ارسال</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {shippingCompanies.map((m) => (
-                  <button key={m.id} onClick={() => setShippingMethod(m.id)}
-                    className={cn('px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all text-right',
-                      shippingMethod === m.id ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-700 hover:border-primary')}>
-                    {m.label}
-                  </button>
-                ))}
+                  );
+                })}
               </div>
+            </CheckoutPanel>
 
-              <h3 className="font-bold text-gray-900 pt-2">روش پرداخت</h3>
-              <div className={cn('grid gap-3', onlinePaymentEnabled ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2')}>
-                {[
-                  ...(onlinePaymentEnabled
-                    ? [{ value: 'ONLINE' as const, label: 'پرداخت آنلاین (زرین‌پال)' }]
-                    : []),
-                  { value: 'CASH' as const, label: 'پرداخت نقدی' },
-                  { value: 'INSTALLMENT' as const, label: 'پرداخت اقساطی' },
-                ].map((m) => (
-                  <button key={m.value} onClick={() => setPaymentMethod(m.value)}
-                    className={cn('px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all text-right',
-                      paymentMethod === m.value ? 'bg-primary text-white border-primary' : 'border-gray-200 text-gray-700 hover:border-primary')}>
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-
-              {paymentMethod === 'ONLINE' && (
-                <p className="text-xs text-gray-500 rounded-xl bg-primary/5 border border-primary/10 px-3 py-2.5">
-                  پس از ثبت سفارش به درگاه امن زرین‌پال هدایت می‌شوید و بعد از پرداخت موفق به سایت بازمی‌گردید.
-                </p>
+            <CheckoutPanel appearance="wholesale" id="checkout-shipping" index="۰۲" title="روش ارسال">
+              {shippingCompanies.length === 0 ? (
+                <p className="text-sm text-gray-500">روش ارسال در حال بارگذاری است…</p>
+              ) : (
+                <CheckoutChoiceList
+                  appearance="wholesale"
+                  legend="روش ارسال"
+                  name="wholesale-shipping"
+                  value={shippingMethod}
+                  onChange={setShippingMethod}
+                  options={shippingCompanies.map((m) => ({
+                    id: m.id,
+                    title: m.label,
+                    description: shippingFee === 0 ? 'ارسال این سفارش رایگان است' : 'هزینه طبق آستانه سفارش محاسبه می‌شود',
+                    icon: 'truck' as const,
+                  }))}
+                />
               )}
+            </CheckoutPanel>
+
+            <CheckoutPanel
+              appearance="wholesale"
+              id="checkout-payment"
+              index="۰۳"
+              title="روش پرداخت"
+              subtitle="مسیر تسویه را مشخص کنید؛ سفارش بدون ابهام ثبت می‌شود"
+            >
+              <CheckoutChoiceList
+                appearance="wholesale"
+                legend="روش پرداخت"
+                name="wholesale-payment"
+                value={paymentMethod}
+                onChange={(id) => setPaymentMethod(id as 'CASH' | 'INSTALLMENT' | 'ONLINE')}
+                options={paymentOptions}
+              />
 
               {paymentMethod === 'INSTALLMENT' && (
-                <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4 space-y-3">
+                <div className="mt-4 space-y-3 rounded-2xl border border-primary/10 bg-primary/5 p-4">
                   {eligibilityLoading && (
                     <p className="text-xs text-gray-500">در حال بررسی واجد شرایط بودن اقساط...</p>
                   )}
                   {!eligibilityLoading && eligibility && !eligibility.eligible && (
-                    <div className="flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5 text-sm text-amber-800">
-                      <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+                      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
                       <p>{eligibility.message || 'شما واجد شرایط پرداخت اقساطی نیستید'}</p>
                     </div>
                   )}
                   {!eligibilityLoading && eligibility?.eligible && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">پیش‌پرداخت (ریال)</label>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">پیش‌پرداخت (ریال)</label>
                         <input
                           type="number"
                           value={downPaymentAmount}
                           onChange={(e) => setDownPaymentAmount(Number(e.target.value) || 0)}
                           className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
-                        <p className="text-[11px] text-gray-500 mt-1">
+                        <p className="mt-1 text-[11px] text-gray-500">
                           حداقل: {toman(installmentMinDownPayment)} تومان
                           {activeRule.minDownPaymentPercent > 0 && (
                             <> ({activeRule.minDownPaymentPercent}٪)</>
@@ -512,7 +543,7 @@ export default function CheckoutPage() {
                         </p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">تعداد اقساط (ماه)</label>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">تعداد اقساط (ماه)</label>
                         <input
                           type="number"
                           value={installmentMonths}
@@ -521,7 +552,7 @@ export default function CheckoutPage() {
                           onChange={(e) => setInstallmentMonths(Number(e.target.value) || 1)}
                           className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
-                        <p className="text-[11px] text-gray-500 mt-1">
+                        <p className="mt-1 text-[11px] text-gray-500">
                           حداکثر: {activeRule.maxMonths} ماه
                         </p>
                       </div>
@@ -530,25 +561,44 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">یادداشت (اختیاری)</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+              <div className="mt-4">
+                <label className="mb-1 block text-sm font-medium text-gray-700">یادداشت (اختیاری)</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
                   placeholder="آدرس دقیق، نوع بسته‌بندی یا هر توضیح دیگری..."
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
-            </div>
+
+              {error ? <p className="mt-3 text-sm text-error" role="alert">{error}</p> : null}
+
+              <div className="mt-5 hidden lg:block">
+                <CheckoutPlaceOrderBar
+                  appearance="wholesale"
+                  label={ctaLabel}
+                  hint={ctaHint}
+                  busy={loading}
+                  disabled={installmentBlocked}
+                  onClick={handleSubmit}
+                />
+                <p className="mt-3 text-center text-xs text-gray-400">
+                  با ثبت سفارش، <Link href="/terms" className="text-primary hover:underline">شرایط و قوانین</Link> را می‌پذیرید
+                </p>
+              </div>
+            </CheckoutPanel>
           </div>
 
-          {/* Summary */}
           <div className="space-y-4">
-            <div className="card p-5 space-y-3 sticky top-24">
-              <h2 className="font-bold text-gray-900">خلاصه سفارش</h2>
+            <div className="sticky top-24 space-y-3 rounded-[1.6rem] bg-white p-5 shadow-[0_8px_28px_rgba(27,92,74,0.06)] ring-1 ring-black/5">
+              <h2 className="font-extrabold text-gray-900">خلاصه سفارش</h2>
               <div className="flex gap-2">
                 <input
                   value={discountCode}
                   onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
                   placeholder="کد تخفیف"
-                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <button
                   type="button"
@@ -593,27 +643,39 @@ export default function CheckoutPage() {
                   </p>
                 )}
               </div>
-              <div className="border-t border-gray-100 pt-3 flex justify-between font-bold text-base">
+              <div className="flex justify-between border-t border-gray-100 pt-3 text-base font-bold">
                 <span>مجموع</span>
                 <span className="text-primary">{toman(finalTotal)} تومان</span>
               </div>
               {error && <p className="text-xs text-error">{error}</p>}
-              <button
-                onClick={handleSubmit}
-                disabled={loading || installmentBlocked}
-                className="w-full btn btn-primary btn-lg mt-2 disabled:opacity-50"
-              >
-                {loading
-                  ? (paymentMethod === 'ONLINE' ? 'در حال اتصال به درگاه...' : 'در حال ثبت سفارش...')
-                  : (paymentMethod === 'ONLINE' ? 'پرداخت و ثبت سفارش' : 'ثبت نهایی سفارش')}
-              </button>
-              <p className="text-xs text-gray-400 text-center">
+              <div className="hidden lg:block">
+                <CheckoutPlaceOrderBar
+                  appearance="wholesale"
+                  label={ctaLabel}
+                  hint={ctaHint}
+                  busy={loading}
+                  disabled={installmentBlocked}
+                  onClick={handleSubmit}
+                />
+              </div>
+              <p className="text-center text-xs text-gray-400">
                 با ثبت سفارش، <Link href="/terms" className="text-primary hover:underline">شرایط و قوانین</Link> را می‌پذیرید
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      <CheckoutPlaceOrderBar
+        appearance="wholesale"
+        label={ctaLabel}
+        hint={ctaHint}
+        busy={loading}
+        disabled={installmentBlocked}
+        onClick={handleSubmit}
+        sticky
+        amountLabel={`${toman(finalTotal)} تومان`}
+      />
     </div>
   );
 }

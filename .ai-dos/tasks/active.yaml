@@ -1,5 +1,202 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260908-003"
+    title: "Luxury checkout payment picker for retail and wholesale"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260908-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-003"
+      implementer: "cursor:implementer-TASK-20260908-003"
+      reviewer: "self-review-ui-no-payment-payload-change"
+      security: "self-review-payments-ui-only-no-api"
+    branch: "ai/TASK-20260908-003-checkout-payment-ui"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-07T23:00:00Z"
+    heartbeat_at: "2026-09-08T00:05:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/checkout-payment-ui.ts"
+      - "apps/web/src/lib/checkout-payment-ui.spec.ts"
+      - "apps/web/src/components/checkout/CheckoutChoiceList.tsx"
+      - "apps/web/src/components/checkout/CheckoutPanel.tsx"
+      - "apps/web/src/components/checkout/CheckoutPlaceOrderBar.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/checkout/page.tsx"
+      - "apps/web/src/components/shared/FloatingContact.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-08-checkout-payment-ui.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Storefront-only luxury payment picker. Locally started as 001; that ID
+      is the closed admin-ops task on master, so this is 003. Reclaimed retail
+      checkout from TASK-20260907-002 for presentation only (owner asked to
+      ship this UI). Adapter/API/secrets stay with 002. Reclaimed wholesale
+      checkout from TASK-20260826-001 (stale). TorobPay stays eligible-gated
+      and keeps live 1011 address checks. PDP files stay with TASK-20260907-001.
+    acceptance_criteria:
+      - "Retail and wholesale checkout use shared radio-card payment picker"
+      - "Eligible methods unchanged: retail ZarinPal/DigiPay/TorobPay/CASH; wholesale ONLINE/CASH/INSTALLMENT"
+      - "CTA copy includes amount for online payable; sticky mobile CTA"
+      - "GA4 add_payment_info and order/payment start payloads unchanged"
+      - "checkout-payment-ui spec and web tsc pass"
+  - id: "TASK-20260908-001"
+    title: "Admin reports/CRM/SMS/post-quote/ticker ops"
+    status: "done"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260908-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-001"
+      implementer: "cursor:implementer-TASK-20260908-001"
+      reviewer: "required-after-api-sms-shipping"
+      security: "self-review-sms-pii-no-new-secrets"
+    branch: "ai/TASK-20260908-001-admin-ops"
+    worktree: "D:/proje/Site-B2B-admin-ops"
+    claimed_at: "2026-09-07T21:40:00Z"
+    heartbeat_at: "2026-09-07T22:45:00Z"
+    depends_on: []
+    file_claims: []
+    released_file_claims:
+      - "apps/api/src/modules/customer/customer-channel.ts"
+      - "apps/api/src/modules/customer/customer-channel.spec.ts"
+      - "apps/api/src/modules/customer/customer.service.ts"
+      - "apps/api/src/modules/customer/customer.controller.ts"
+      - "apps/api/src/modules/dashboard/dashboard.service.ts"
+      - "apps/api/src/modules/shipping/iran-post-quote.ts"
+      - "apps/api/src/modules/shipping/iran-post-quote.spec.ts"
+      - "apps/api/src/modules/shipping/shipping.service.ts"
+      - "apps/api/src/modules/shipping/shipping.controller.ts"
+      - "apps/api/src/modules/notification/notification.service.ts"
+      - "apps/api/src/modules/notification/sms-templates.defaults.ts"
+      - "apps/api/src/modules/notification/sms-ops.ts"
+      - "apps/api/src/modules/notification/sms-ops.spec.ts"
+      - "apps/api/src/modules/notification/notification.jobs.ts"
+      - "apps/api/src/modules/notification/notification.module.ts"
+      - "apps/api/src/modules/cart/cart-signal.entity.ts"
+      - "apps/api/src/modules/cart/sms-event-log.entity.ts"
+      - "apps/api/src/modules/cart/cart.service.ts"
+      - "apps/api/src/modules/cart/cart.controller.ts"
+      - "apps/api/src/modules/cart/cart.module.ts"
+      - "apps/api/src/database/migrations/20260908-001-cart-sms-ops.ts"
+      - "apps/api/src/app.module.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/web/src/components/admin/AdminReports.tsx"
+      - "apps/web/src/components/admin/AdminCustomers.tsx"
+      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      - "apps/web/src/components/admin/AdminOpsPanels.tsx"
+      - "apps/web/src/lib/hooks/useCustomers.ts"
+      - "apps/web/src/app/admin/analytics/page.tsx"
+      - "apps/web/src/app/admin/settings/page.tsx"
+      - "apps/web/src/lib/cart-heartbeat.ts"
+      - "apps/web/src/lib/retail-cart.ts"
+      - "apps/web/src/lib/cart.tsx"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      LIVE 2026-09-07: origin/master + VPS /opt/taranom = 2cdb951.
+      Migration CartSmsOps1757289600001 applied; cart_signals + sms_event_log exist.
+      Health 200. Claims released. Did not edit TorobPay settings/payment/order.
+    acceptance_criteria:
+      - "Reports page loads or shows a real API error; analytics nav removed as duplicate"
+      - "CRM عمده/تکی filter uses customer type B2B vs B2C and returns matching rows"
+      - "Postal quote toggleable; POST/PISHTAZ uses destination+weight when enabled"
+      - "Admin SMS on paid orders only; abandoned-cart 30m; stock-out to admin phones; events per channel"
+      - "Ticker lines editable from admin settings page without opening buried CMS chrome"
+      - "Relevant specs and api+web tsc pass"
+  - id: "TASK-20260907-003"
+    title: "Slim cinematic heroes + TV ticker + stronger storefront CTAs"
+    status: "done"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260907-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260907-003"
+      implementer: "cursor:implementer-TASK-20260907-003"
+      reviewer: "self-review-ui-no-auth"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260907-003-slim-hero-cta"
+    worktree: "D:/proje/Site-B2B-slim-hero"
+    claimed_at: "2026-09-07T12:00:00Z"
+    heartbeat_at: "2026-09-07T12:35:00Z"
+    depends_on: []
+    file_claims: []
+    notes: |
+      Owner asked for slimmer banners to current site standards, a TV-style
+      looping ticker on both homes, and stronger CTAs. Reclaimed stale
+      hero/header/CTA files: TASK-20260905-001 (hb 2026-09-05T07:30),
+      TASK-20260905-004 done, TASK-20260904-004 (hb 2026-09-03),
+      TASK-20260906-001 boutique hero/header (hb 2026-09-06T09:40, >24h),
+      TASK-20260822-003 done RetailCtaBanner. Did not touch TorobPay
+      checkout/settings (TASK-20260907-002) or PDP guide (TASK-20260907-001).
+      No image re-encode; CSS crop via shared .storefront-hero-frame.
+      Shared governance append-only.
+      LIVE 2026-09-07: origin/master + VPS /opt/taranom = eb4a433. Claims released.
+    acceptance_criteria:
+      - "Retail and wholesale home heroes share a slim 2:1 / 24:7 frame, not 82–92vh"
+      - "Category and boutique campaign banners use the same frame"
+      - "Homepage shows a looping CSS news ticker with pause and reduced-motion static"
+      - "Primary CTAs name the next action; no new JS deps; LCP stays slide 0"
+      - "news-ticker spec and web tsc pass"
+  - id: "TASK-20260907-002"
+    title: "TorobPay CPG retail checkout + admin panel (like DigiPay)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260907-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260907-002"
+      implementer: "cursor:implementer-TASK-20260907-002"
+      reviewer: "required-independent-payments"
+      security: "required-independent-secrets-and-psp"
+    branch: "ai/TASK-20260907-002-torobpay-cpg"
+    worktree: "D:/proje/Site-B2B-torobpay"
+    claimed_at: "2026-09-07T11:00:00Z"
+    heartbeat_at: "2026-09-08T03:20:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
+      - "apps/api/src/modules/payment/adapters/payment-provider.adapter.ts"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/api/src/modules/payment/payment.module.ts"
+      - "apps/api/src/modules/payment/payment.controller.ts"
+      - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
+      - "apps/api/src/modules/payment/entities/payment.entity.ts"
+      - "apps/api/src/database/migrations/20260907-002-torobpay-cpg-retail.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      # transferred 2026-09-08 to TASK-20260908-003 (luxury picker; CPG contract kept):
+      # "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/payment/callback/page.tsx"
+      - "apps/web/src/app/payment/torobpay/callback/route.ts"
+      - "packages/shared-types/src/enums.ts"
+      - ".env.example"
+      - "docs/reports/2026-09-07-torobpay-cpg-retail.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner asked to set up TorobPay CPG like DigiPay from official PDF +
+      activation-credentials screenshot. Secrets stay in admin settings / env,
+      never git. Reclaimed stale payment/settings/checkout files from
+      TASK-20260824-003 (hb 2026-08-24), TASK-20260903-003 (hb 2026-09-03),
+      TASK-20260901-002 (hb 2026-09-01), TASK-20260826-001 (stale), and
+      TASK-20260906-001 (theme-only; payment section unused; hb 2026-09-06T09:40).
+      Did not touch boutique theme fields. Official host cpg.torobpay.com.
+    acceptance_criteria:
+      - "Retail checkout can offer TorobPay when enabled+configured; default ONLINE stays ZarinPal"
+      - "Admin /settings has four TorobPay CPG fields + display toggle + connection probe"
+      - "POST /payments/torobpay/connection-test is ADMIN+AdminOnly and never echoes secrets"
+      - "Start uses official token API with cart+address; verify then settle same request"
+      - "Callback GET/POST /payment/torobpay/callback maps state/transactionId/amount"
+      - "No secrets committed; wholesale ZarinPal path unchanged"
+      - "Adapter unit spec and api+web tsc pass"
   - id: "TASK-20260906-001"
     title: "Retail boutique storefront skin (Banimode-inspired, admin-selectable)"
     status: "in_progress"
@@ -20,9 +217,11 @@ tasks:
       - "apps/web/src/lib/retail-storefront-skin.ts"
       - "apps/web/src/lib/retail-storefront-skin.spec.ts"
       - "apps/web/src/themes/retail-boutique/boutique.css"
-      - "apps/web/src/themes/retail-boutique/BoutiqueHeader.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003 (stale hb 2026-09-06T09:40; slim hero + ticker):
+      # "apps/web/src/themes/retail-boutique/BoutiqueHeader.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueFooter.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueHero.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003:
+      # "apps/web/src/themes/retail-boutique/BoutiqueHero.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueCategoryRow.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueSaleRail.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueProductRail.tsx"
@@ -36,8 +235,9 @@ tasks:
       # transferred 2026-09-06 to TASK-20260903-004 after ba254e merged; performance-only props:
       # "apps/web/src/components/retail/RetailProductCard.tsx"
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
-      - "apps/api/src/modules/settings/settings.service.ts"
+      # transferred 2026-09-07 to TASK-20260907-002 (TorobPay CPG payment fields; theme AC unused):
+      # "apps/web/src/components/admin/AdminSettings.tsx"
+      # "apps/api/src/modules/settings/settings.service.ts"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
@@ -161,14 +361,17 @@ tasks:
       - "apps/web/src/app/(wholesale)/wholesale-manto-mashhad/page.tsx"
       - "apps/web/src/app/portal/register/page.tsx"
       - "apps/web/src/app/retail/products/[slug]/page.tsx"
-      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003 (done task; CTA fallback copy):
+      # "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
       - "apps/web/src/components/retail/RetailHomeCategoryLinks.tsx"
       # transferred 2026-09-06 to TASK-20260903-004 after 2723d76 merged; image priority only:
       # "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
       - "apps/web/src/components/retail/RetailFooter.tsx"
-      - "apps/web/src/components/wholesale/HeroSection.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003 (done task; slim hero + CTA):
+      # "apps/web/src/components/wholesale/HeroSection.tsx"
       - "apps/web/src/components/wholesale/about/AboutExperience.tsx"
-      - "apps/web/src/components/wholesale/CtaBanner.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003:
+      # "apps/web/src/components/wholesale/CtaBanner.tsx"
       # transferred 2026-09-06 to TASK-20260903-004 after 2723d76 merged; hero URL only:
       # "apps/web/src/lib/cms/defaults.ts"
       - "apps/web/src/lib/retail-seo-copy.ts"
@@ -310,11 +513,13 @@ tasks:
     file_claims:
       - "apps/web/src/app/retail/layout.tsx"
       - "apps/web/src/app/retail/retail.css"
-      - "apps/web/src/components/retail/RetailHeader.tsx"
-      - "apps/web/src/components/retail/RetailHero.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003 (stale hb 2026-09-05T07:30; ticker + slim hero):
+      # "apps/web/src/components/retail/RetailHeader.tsx"
+      # "apps/web/src/components/retail/RetailHero.tsx"
       - "apps/web/src/components/retail/RetailProductDetail.tsx"
       - "apps/web/src/components/retail/RetailTrustStrip.tsx"
-      - "apps/web/src/components/category/CategoryLanding.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003:
+      # "apps/web/src/components/category/CategoryLanding.tsx"
       - "apps/web/src/lib/retail-pdp-copy.ts"
       - "apps/web/src/lib/retail-pdp-copy.spec.ts"
       - "design-system/default/pages/product.md"
@@ -359,14 +564,16 @@ tasks:
       - "apps/web/public/banners/digipay-installment-2026/retail-desktop.webp"
       - "apps/web/public/banners/digipay-installment-2026/retail-mobile.webp"
       - "apps/web/public/banners/digipay-installment-2026/README.md"
-      - "apps/web/src/lib/cms/hero-slides.ts"
+      # transferred 2026-09-07 to TASK-20260907-003 (stale hb 2026-09-03; DigiPay CTA label):
+      # "apps/web/src/lib/cms/hero-slides.ts"
       - "apps/web/src/lib/cms/hero-slides.spec.ts"
       # transferred 2026-09-05 to TASK-20260905-004 (stale hb 2026-09-03; keyword-week copy):
       # "apps/web/src/lib/cms/defaults.ts"
       # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-09-03; mobile overflow on overlay):
       # "apps/web/src/components/retail/RetailHero.tsx"
       - "apps/web/src/components/shared/HeroCarousel.tsx"
-      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003 (stale hb 2026-09-03; ticker admin field):
+      # "apps/web/src/components/admin/AdminBlockEditor.tsx"
       - "apps/api/src/database/migrations/20260904-004-digipay-retail-hero.ts"
       - "docs/reports/2026-09-04-digipay-retail-hero.md"
       - "docs/WORKLOG.md"
@@ -912,7 +1119,8 @@ tasks:
       - "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/database/migrations/20260901-001-stock-commit-and-addresses.ts"
-      - "apps/api/src/config/database.config.ts"
+      # reclaimed 2026-09-08 by TASK-20260908-001 (stale hb 2026-09-01; cart SMS entities):
+      # "apps/api/src/config/database.config.ts"
       - "apps/api/src/config/typeorm-migration-files.ts"
       - "apps/api/src/config/typeorm-migration-files.spec.ts"
       # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-09-01; sharp runtime):
@@ -1454,12 +1662,14 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/outbox-metrics.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-metrics.spec.ts"
       - "apps/web/src/components/admin/ColorVariantsEditor.tsx"
-      - "apps/api/src/modules/dashboard/dashboard.service.ts"
+      # transferred 2026-09-08 to TASK-20260908-001 (stale hb 2026-09-02; reports harden):
+      # "apps/api/src/modules/dashboard/dashboard.service.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
       - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; mark PUBLISHED after canary deliver):
       # "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/api/src/modules/notification/notification.service.ts"
+      # transferred 2026-09-08 to TASK-20260908-001 (stale hb 2026-09-02; SMS ops):
+      # "apps/api/src/modules/notification/notification.service.ts"
       - "apps/api/src/modules/search/search.service.ts"
       - "apps/api/src/modules/omnichannel/worker.module.ts"
       - "apps/api/src/worker.main.ts"
@@ -1507,7 +1717,8 @@ tasks:
       # "apps/api/Dockerfile"
       - ".dockerignore"
       - ".github/workflows/ci.yml"
-      - "apps/web/src/app/checkout/page.tsx"
+      # transferred 2026-09-08 to TASK-20260908-003 (stale hb; payment UI only):
+      # "apps/web/src/app/checkout/page.tsx"
       # transferred 2026-08-31 to TASK-20260831-001 (staff ACL; omnichannel nav stays):
       # "apps/web/src/components/admin/AdminSidebar.tsx"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; admin console):
@@ -1608,7 +1819,8 @@ tasks:
       - "apps/api/package.json"
       - "apps/web/src/app/payment/callback/page.tsx"
       - "apps/web/src/app/payment/digipay/callback/route.ts"
-      - "apps/web/src/app/retail/checkout/page.tsx"
+      # transferred 2026-09-08 to TASK-20260908-003 (stale leftover checkout claim):
+      # "apps/web/src/app/retail/checkout/page.tsx"
       # transferred 2026-08-31 to TASK-20260831-001 then 2026-09-03 to TASK-20260903-003:
       # "apps/web/src/components/admin/AdminSettings.tsx"
       - ".env.example"
@@ -1818,7 +2030,8 @@ tasks:
       # "apps/web/src/app/retail/layout.tsx"
       - "apps/web/src/app/retail/page.tsx"
       - "apps/web/src/app/(wholesale)/layout.tsx"
-      - "apps/web/src/app/retail/checkout/page.tsx"
+      # transferred 2026-09-08 to TASK-20260908-003 (stale leftover checkout claim):
+      # "apps/web/src/app/retail/checkout/page.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/app/retail/products/[slug]/page.tsx"
       # transferred 2026-08-31 to TASK-20260831-003 (stale; products ISR): "apps/web/src/app/retail/products/page.tsx"
       - "apps/web/src/components/shared/GoogleTagManager.tsx"
@@ -1897,7 +2110,8 @@ tasks:
       - "apps/web/src/components/retail/RetailConversion.tsx"
       - "apps/web/src/components/retail/RetailPdpAnalytics.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/components/retail/RetailProductsCatalog.tsx"
-      - "apps/web/src/app/retail/checkout/page.tsx"
+      # transferred 2026-09-08 to TASK-20260908-003 (stale leftover checkout claim):
+      # "apps/web/src/app/retail/checkout/page.tsx"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; retailStock only): "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-TRACKING-AUDIT.md"
       - "SEO-IMPLEMENTATION-REPORTS/PHASE-01-GA4-MANUAL-ACTIONS.md"
@@ -1975,7 +2189,8 @@ tasks:
       # transferred 2026-08-31 to TASK-20260831-003 (done task; home payload slim): "apps/web/src/components/retail/RetailProductGrid.tsx"
       # transferred 2026-09-05 to TASK-20260905-001 (done task; mobile trust wrap):
       # "apps/web/src/components/retail/RetailTrustStrip.tsx"
-      - "apps/web/src/components/retail/RetailCtaBanner.tsx"
+      # transferred 2026-09-07 to TASK-20260907-003 (done task; stronger CTA):
+      # "apps/web/src/components/retail/RetailCtaBanner.tsx"
       # transferred 2026-08-31 to TASK-20260831-003 (done task; FAQ wholesale wording): "apps/web/src/components/retail/RetailFaq.tsx"
       - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
       # transferred 2026-09-01 to TASK-20260901-001 (done task; retail CTA fallback): "apps/web/src/components/cms/RetailBlocksRenderer.tsx"

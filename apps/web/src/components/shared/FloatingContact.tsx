@@ -41,6 +41,7 @@ export function FloatingContact({
   );
 
   if (pathname.startsWith('/admin') || retail) return null;
+  if (pathname === '/checkout' || pathname.startsWith('/checkout/')) return null;
 
   return (
     <div className="fixed bottom-6 left-6 z-50 flex flex-col-reverse items-start gap-3">

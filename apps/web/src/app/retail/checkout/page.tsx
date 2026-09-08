@@ -32,6 +32,18 @@ const SHIP_METHODS = [
 ];
 
 import { readTorobClid } from '@/components/retail/RetailAffiliateCapture';
+import { CheckoutChoiceList } from '@/components/checkout/CheckoutChoiceList';
+import { CheckoutPanel, CheckoutStepRail } from '@/components/checkout/CheckoutPanel';
+import { CheckoutPlaceOrderBar } from '@/components/checkout/CheckoutPlaceOrderBar';
+import {
+  checkoutCtaHint,
+  checkoutCtaLabel,
+  parseRetailPaymentChoice,
+  retailPaymentOptions,
+  retailSelectedPaymentId,
+  retailTorobpayAddressError,
+  type RetailPaymentGateway,
+} from '@/lib/checkout-payment-ui';
 
 type AddressForm = RetailAddress;
 
@@ -62,8 +74,9 @@ export default function RetailCheckoutPage() {
   const pieces = useMemo(() => items.reduce((n, i) => n + i.quantity, 0), [items]);
 
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE');
-  const [paymentGateway, setPaymentGateway] = useState<'ZARINPAL' | 'DIGIPAY'>('ZARINPAL');
+  const [paymentGateway, setPaymentGateway] = useState<RetailPaymentGateway>('ZARINPAL');
   const [digipayAvailable, setDigipayAvailable] = useState(false);
+  const [torobpayAvailable, setTorobpayAvailable] = useState(false);
   const [pendingPayOrderId, setPendingPayOrderId] = useState<string | null>(null);
   const [shippingMethod, setShippingMethod] = useState('PISHTAZ');
   const [notes, setNotes] = useState('');
@@ -129,8 +142,12 @@ export default function RetailCheckoutPage() {
       .then((rows) => {
         const codes = new Set((rows || []).map((r) => String(r.code || '').toUpperCase()));
         setDigipayAvailable(codes.has('DIGIPAY'));
+        setTorobpayAvailable(codes.has('TOROBPAY'));
       })
-      .catch(() => setDigipayAvailable(false));
+      .catch(() => {
+        setDigipayAvailable(false);
+        setTorobpayAvailable(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -175,6 +192,35 @@ export default function RetailCheckoutPage() {
 
   const walletApplied = useWallet ? Math.min(walletBalance, Math.max(0, subtotal + shipFee)) : 0;
   const payable = Math.max(0, subtotal + shipFee - walletApplied);
+  const paymentOptions = retailPaymentOptions(digipayAvailable, torobpayAvailable);
+  const selectedPaymentId = retailSelectedPaymentId(paymentMethod, paymentGateway);
+  const ctaLabel = checkoutCtaLabel({
+    kind: paymentMethod,
+    channel: 'retail',
+    busy,
+    payableRial: payable,
+  });
+  const ctaHint = checkoutCtaHint(paymentMethod);
+
+  const choosePayment = (id: string) => {
+    const next = parseRetailPaymentChoice(id);
+    setPaymentMethod(next.method);
+    if (next.gateway) setPaymentGateway(next.gateway);
+    setPendingPayOrderId(null);
+    trackAddPaymentInfo(
+      items.map((i) => ({
+        productId: i.productId,
+        sku: i.sku,
+        name: i.productName,
+        color: i.color,
+        size: i.size,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+      })),
+      payable,
+      next.method === 'CASH' ? 'CASH' : next.gateway ?? 'ZARINPAL',
+    );
+  };
 
   /** No account / incomplete retail customer → open account page (silent). */
   const goOpenAccount = () => {
@@ -244,6 +290,11 @@ export default function RetailCheckoutPage() {
     }
     if (!address.province || !address.city || !address.street || !address.recipient || !address.mobile) {
       setError('لطفاً آدرس کامل (استان، شهر، خیابان، گیرنده، موبایل) را پر کنید.');
+      return;
+    }
+    const torobpayAddressError = retailTorobpayAddressError(paymentMethod, paymentGateway, address);
+    if (torobpayAddressError) {
+      setError(torobpayAddressError);
       return;
     }
     setBusy(true);
@@ -348,140 +399,118 @@ export default function RetailCheckoutPage() {
     );
   }
 
+  const fieldClass =
+    'w-full rounded-xl border border-[var(--retail-border)] bg-white px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]';
+
   return (
-    <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1.2fr_0.8fr] lg:px-8">
-      <div className="rounded-2xl bg-white p-6 ring-1 ring-[var(--retail-border)]">
-        <h1 className="text-xl font-extrabold">تسویه حساب</h1>
-        <p className="mt-2 text-sm text-[var(--retail-muted)]">خرید تکی — بدون حداقل سفارش عمده</p>
+    <div className="relative isolate min-h-[70vh] bg-[var(--retail-bg)] pb-28 lg:pb-12">
+      <div className="pointer-events-none absolute inset-0 bg-atmosphere" aria-hidden />
+      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="mb-8">
+          <p className="text-[11px] font-semibold tracking-[0.22em] text-[var(--retail-gold)]">CHECKOUT</p>
+          <h1 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)]">تسویه حساب</h1>
+          <p className="mt-1 text-sm text-[var(--retail-muted)]">خرید تکی — بدون حداقل سفارش عمده</p>
+          <CheckoutStepRail appearance="retail" />
+        </header>
 
-        <div className="mt-8 space-y-4">
-          <h2 className="text-sm font-extrabold">آدرس تحویل</h2>
-          {savedAddresses.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs text-[var(--retail-muted)]">آدرس‌های ذخیره‌شده</p>
-              <div className="flex flex-wrap gap-2">
-                {savedAddresses.map((a, i) => (
-                  <button
-                    key={`${a.city}-${a.street}-${i}`}
-                    type="button"
-                    onClick={() => setAddress({ ...a })}
-                    className="cursor-pointer rounded-full border border-[var(--retail-border)] px-3 py-1.5 text-xs hover:border-[var(--retail-primary)]"
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-start">
+          <div className="space-y-5">
+            <CheckoutPanel appearance="retail" id="checkout-address" index="۰۱" title="آدرس تحویل" subtitle="گیرنده و مقصد ارسال">
+              {savedAddresses.length > 0 ? (
+                <div className="mb-4 space-y-2">
+                  <p className="text-xs text-[var(--retail-muted)]">آدرس‌های ذخیره‌شده</p>
+                  <div className="flex flex-wrap gap-2">
+                    {savedAddresses.map((a, i) => (
+                      <button
+                        key={`${a.city}-${a.street}-${i}`}
+                        type="button"
+                        onClick={() => setAddress({ ...a })}
+                        className="cursor-pointer rounded-full border border-[var(--retail-border)] bg-white px-3 py-1.5 text-xs hover:border-[var(--retail-gold)]"
+                      >
+                        {a.city} — {a.street.slice(0, 28)}{a.street.length > 28 ? '…' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="mb-1 block font-bold">استان</span>
+                  <select
+                    className={fieldClass}
+                    value={address.province}
+                    onChange={(e) => setAddress((a) => ({ ...a, province: e.target.value }))}
                   >
-                    {a.city} — {a.street.slice(0, 28)}{a.street.length > 28 ? '…' : ''}
-                  </button>
-                ))}
+                    {PROVINCES.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-bold">شهر</span>
+                  <input
+                    className={fieldClass}
+                    value={address.city}
+                    onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-bold">کدپستی</span>
+                  <input
+                    className={fieldClass}
+                    value={address.postalCode}
+                    onChange={(e) => setAddress((a) => ({ ...a, postalCode: e.target.value }))}
+                    inputMode="numeric"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-bold">موبایل گیرنده</span>
+                  <input
+                    className={fieldClass}
+                    value={address.mobile}
+                    onChange={(e) => setAddress((a) => ({ ...a, mobile: e.target.value }))}
+                    inputMode="tel"
+                  />
+                </label>
+                <label className="block text-sm sm:col-span-2">
+                  <span className="mb-1 block font-bold">نام گیرنده</span>
+                  <input
+                    className={fieldClass}
+                    value={address.recipient}
+                    onChange={(e) => setAddress((a) => ({ ...a, recipient: e.target.value }))}
+                  />
+                </label>
+                <label className="block text-sm sm:col-span-2">
+                  <span className="mb-1 block font-bold">خیابان / پلاک / واحد</span>
+                  <textarea
+                    className={`${fieldClass} min-h-20`}
+                    value={address.street}
+                    onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
+                  />
+                  {paymentGateway === 'TOROBPAY' && paymentMethod === 'ONLINE' ? (
+                    <span className="mt-1 block text-xs text-[var(--retail-muted)]">
+                      برای ترب‌پی خیابان و پلاک را کامل بنویسید.
+                    </span>
+                  ) : null}
+                </label>
               </div>
-            </div>
-          ) : null}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-1 block font-bold">استان</span>
-              <select
-                className="w-full rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-                value={address.province}
-                onChange={(e) => setAddress((a) => ({ ...a, province: e.target.value }))}
-              >
-                {PROVINCES.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-bold">شهر</span>
-              <input
-                className="w-full rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-                value={address.city}
-                onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-bold">کدپستی</span>
-              <input
-                className="w-full rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-                value={address.postalCode}
-                onChange={(e) => setAddress((a) => ({ ...a, postalCode: e.target.value }))}
-                inputMode="numeric"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block font-bold">موبایل گیرنده</span>
-              <input
-                className="w-full rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-                value={address.mobile}
-                onChange={(e) => setAddress((a) => ({ ...a, mobile: e.target.value }))}
-                inputMode="tel"
-              />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="mb-1 block font-bold">نام گیرنده</span>
-              <input
-                className="w-full rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-                value={address.recipient}
-                onChange={(e) => setAddress((a) => ({ ...a, recipient: e.target.value }))}
-              />
-            </label>
-            <label className="block text-sm sm:col-span-2">
-              <span className="mb-1 block font-bold">خیابان / پلاک / واحد</span>
-              <textarea
-                className="min-h-20 w-full rounded-xl border border-[var(--retail-border)] px-3 py-2 text-sm"
-                value={address.street}
-                onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
-              />
-            </label>
-          </div>
+            </CheckoutPanel>
 
-          <label className="block text-sm font-bold">روش ارسال</label>
-          <select
-            className="w-full rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-            value={shippingMethod}
-            onChange={(e) => {
-              const next = e.target.value;
-              setShippingMethod(next);
-              trackAddShippingInfo(
-                items.map((i) => ({
-                  productId: i.productId,
-                  sku: i.sku,
-                  name: i.productName,
-                  color: i.color,
-                  size: i.size,
-                  unitPrice: i.unitPrice,
-                  quantity: i.quantity,
-                })),
-                subtotal + shipFee,
-                next,
-              );
-            }}
-          >
-            {SHIP_METHODS.map((m) => (
-              <option key={m.id} value={m.id}>{m.label}</option>
-            ))}
-          </select>
-          {shipMeta.estimatedDays ? (
-            <p className="text-xs text-[var(--retail-muted)]">زمان تقریبی: {shipMeta.estimatedDays}</p>
-          ) : null}
-
-          <label className="block text-sm font-bold">روش پرداخت</label>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { id: 'ZARINPAL' as const, method: 'ONLINE' as const, label: 'زرین‌پال' },
-              ...(digipayAvailable
-                ? [{ id: 'DIGIPAY' as const, method: 'ONLINE' as const, label: 'دیجی‌پی' }]
-                : []),
-              { id: 'CASH' as const, method: 'CASH' as const, label: 'پرداخت در محل' },
-            ]).map((m) => {
-              const selected =
-                m.method === 'CASH'
-                  ? paymentMethod === 'CASH'
-                  : paymentMethod === 'ONLINE' && paymentGateway === m.id;
-              return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => {
-                  setPaymentMethod(m.method);
-                  if (m.id === 'ZARINPAL' || m.id === 'DIGIPAY') setPaymentGateway(m.id);
-                  setPendingPayOrderId(null);
-                  trackAddPaymentInfo(
+            <CheckoutPanel
+              appearance="retail"
+              id="checkout-shipping"
+              index="۰۲"
+              title="روش ارسال"
+              subtitle={shipMeta.estimatedDays ? `زمان تقریبی: ${shipMeta.estimatedDays}` : 'انتخاب سرویس ارسال'}
+            >
+              <CheckoutChoiceList
+                appearance="retail"
+                legend="روش ارسال"
+                name="retail-shipping"
+                value={shippingMethod}
+                onChange={(next) => {
+                  setShippingMethod(next);
+                  trackAddShippingInfo(
                     items.map((i) => ({
                       productId: i.productId,
                       sku: i.sku,
@@ -491,127 +520,166 @@ export default function RetailCheckoutPage() {
                       unitPrice: i.unitPrice,
                       quantity: i.quantity,
                     })),
-                    payable,
-                    m.method === 'CASH' ? 'CASH' : m.id,
+                    subtotal + shipFee,
+                    next,
                   );
                 }}
-                className={`cursor-pointer rounded-full border px-4 py-2 text-sm ${
-                  selected
-                    ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)] text-white'
-                    : 'border-[var(--retail-border)]'
-                }`}
-              >
-                {m.label}
-              </button>
-              );
-            })}
+                options={SHIP_METHODS.map((m) => ({
+                  id: m.id,
+                  title: m.label,
+                  description: shipMeta.freeShipping ? 'ارسال این سفارش رایگان است' : 'هزینه طبق مقصد و تعداد محاسبه می‌شود',
+                  icon: 'truck' as const,
+                }))}
+              />
+            </CheckoutPanel>
+
+            <CheckoutPanel
+              appearance="retail"
+              id="checkout-payment"
+              index="۰۳"
+              title="روش پرداخت"
+              subtitle="یک مسیر را انتخاب کنید؛ مبلغ نهایی همین‌جا دیده می‌شود"
+            >
+              <CheckoutChoiceList
+                appearance="retail"
+                legend="روش پرداخت"
+                name="retail-payment"
+                value={selectedPaymentId}
+                onChange={choosePayment}
+                options={paymentOptions}
+              />
+
+              {walletBalance > 0 ? (
+                <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl border border-[var(--retail-border)] bg-white px-3.5 py-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={useWallet}
+                    onChange={(e) => setUseWallet(e.target.checked)}
+                    className="h-4 w-4 accent-[var(--retail-primary)]"
+                  />
+                  <span>
+                    استفاده از اعتبار کیف‌پول ({toman(walletBalance)} تومان)
+                  </span>
+                </label>
+              ) : null}
+
+              <label className="mt-4 block text-sm font-bold">توضیحات (اختیاری)</label>
+              <textarea
+                className={`${fieldClass} mt-1 min-h-16`}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="توضیح برای پیک یا پشتیبانی"
+              />
+
+              {error ? (
+                <p className="mt-3 text-sm font-semibold text-red-600" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              {pendingPayOrderId ? (
+                <p className="mt-2 text-xs text-[var(--retail-muted)]">
+                  سفارش ثبت شده؛ درگاه را عوض کنید یا دوباره پرداخت را بزنید. سبد خالی نشده است.
+                </p>
+              ) : null}
+
+              <div className="mt-5 hidden lg:block">
+                <CheckoutPlaceOrderBar
+                  appearance="retail"
+                  label={ctaLabel}
+                  hint={ctaHint}
+                  busy={busy}
+                  disabled={!items.length}
+                  onClick={submit}
+                />
+              </div>
+
+              {!getToken() ? (
+                <p className="mt-3 text-center text-sm text-[var(--retail-muted)]">
+                  با زدن دکمه پرداخت، اگر حساب نداشته باشید به صفحه باز کردن حساب می‌روید.
+                </p>
+              ) : null}
+            </CheckoutPanel>
           </div>
 
-          {walletBalance > 0 ? (
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={useWallet}
-                onChange={(e) => setUseWallet(e.target.checked)}
+          <aside className="h-fit rounded-[1.6rem] bg-[var(--retail-surface)] p-6 ring-1 ring-[var(--retail-border)] lg:sticky lg:top-24">
+            <h2 className="font-extrabold text-[var(--retail-ink)]">خلاصه سفارش</h2>
+            {items.length === 0 ? (
+              <p className="mt-4 text-sm text-[var(--retail-muted)]">سبد خالی است</p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {items.map((i) => (
+                  <li key={`${i.productId}-${i.variantId}-${i.color}`} className="flex items-center gap-3 text-sm">
+                    {i.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={i.imageUrl}
+                        alt={i.color || i.productName}
+                        className="h-12 w-10 shrink-0 rounded-md object-cover ring-1 ring-[var(--retail-border)]"
+                      />
+                    ) : (
+                      <span className="h-12 w-10 shrink-0 rounded-md bg-[var(--retail-bg)]" />
+                    )}
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-semibold">{i.productName}</span>
+                      {(i.color || i.size) ? (
+                        <span className="block text-xs text-[var(--retail-muted)]">
+                          {[i.color, i.size].filter(Boolean).join(' · ')} × {i.quantity.toLocaleString('fa-IR')}
+                        </span>
+                      ) : (
+                        <span className="block text-xs text-[var(--retail-muted)]">
+                          × {i.quantity.toLocaleString('fa-IR')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 font-bold">{toman(i.unitPrice * i.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-6 space-y-2 border-t border-[var(--retail-border)] pt-4 text-sm">
+              <div className="flex justify-between">
+                <span>جمع کالا</span>
+                <span>{toman(subtotal)} تومان</span>
+              </div>
+              <div className="flex justify-between">
+                <span>ارسال</span>
+                <span>{shipMeta.freeShipping ? 'رایگان' : `${toman(shipFee)} تومان`}</span>
+              </div>
+              {walletApplied > 0 ? (
+                <div className="flex justify-between text-emerald-700">
+                  <span>کیف‌پول</span>
+                  <span>−{toman(walletApplied)}</span>
+                </div>
+              ) : null}
+              <div className="flex justify-between pt-2 text-base">
+                <span>قابل پرداخت</span>
+                <span className="text-lg font-extrabold text-[var(--retail-primary)]">{toman(payable)} تومان</span>
+              </div>
+            </div>
+            <div className="mt-5 hidden lg:block">
+              <CheckoutPlaceOrderBar
+                appearance="retail"
+                label={ctaLabel}
+                hint={ctaHint}
+                busy={busy}
+                disabled={!items.length}
+                onClick={submit}
               />
-              <span>
-                استفاده از اعتبار کیف‌پول ({toman(walletBalance)} تومان)
-              </span>
-            </label>
-          ) : null}
-
-          <label className="block text-sm font-bold">توضیحات (اختیاری)</label>
-          <textarea
-            className="min-h-16 w-full rounded-xl border border-[var(--retail-border)] px-3 py-2 text-sm"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="توضیح برای پیک یا پشتیبانی"
-          />
-
-          {error ? <p className="text-sm font-semibold text-red-600">{error}</p> : null}
-          {pendingPayOrderId ? (
-            <p className="text-xs text-[var(--retail-muted)]">
-              سفارش ثبت شده؛ درگاه را عوض کنید یا دوباره پرداخت را بزنید. سبد خالی نشده است.
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={busy || !items.length}
-            onClick={submit}
-            className="w-full cursor-pointer rounded-full bg-[var(--retail-gold)] py-3.5 text-sm font-extrabold text-white disabled:opacity-50"
-          >
-            {busy
-              ? 'در حال ثبت…'
-              : paymentMethod === 'ONLINE' && payable > 0
-                ? `پرداخت ${toman(payable)} تومان`
-                : 'ثبت سفارش'}
-          </button>
-
-          {!getToken() ? (
-            <p className="text-center text-sm text-[var(--retail-muted)]">
-              با زدن دکمه پرداخت، اگر حساب نداشته باشید به صفحه باز کردن حساب می‌روید.
-            </p>
-          ) : null}
+            </div>
+          </aside>
         </div>
       </div>
 
-      <aside className="h-fit rounded-2xl bg-white p-6 ring-1 ring-[var(--retail-border)]">
-        <h2 className="font-bold">خلاصه سبد</h2>
-        {items.length === 0 ? (
-          <p className="mt-4 text-sm text-[var(--retail-muted)]">سبد خالی است</p>
-        ) : (
-          <ul className="mt-4 space-y-3">
-            {items.map((i) => (
-              <li key={`${i.productId}-${i.variantId}-${i.color}`} className="flex items-center gap-3 text-sm">
-                {i.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={i.imageUrl}
-                    alt={i.color || i.productName}
-                    className="h-12 w-10 shrink-0 rounded-md object-cover ring-1 ring-[var(--retail-border)]"
-                  />
-                ) : (
-                  <span className="h-12 w-10 shrink-0 rounded-md bg-[var(--retail-bg)]" />
-                )}
-                <span className="min-w-0 flex-1 truncate">
-                  <span className="font-semibold">{i.productName}</span>
-                  {(i.color || i.size) ? (
-                    <span className="block text-xs text-[var(--retail-muted)]">
-                      {[i.color, i.size].filter(Boolean).join(' · ')} × {i.quantity.toLocaleString('fa-IR')}
-                    </span>
-                  ) : (
-                    <span className="block text-xs text-[var(--retail-muted)]">
-                      × {i.quantity.toLocaleString('fa-IR')}
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 font-bold">{toman(i.unitPrice * i.quantity)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-6 space-y-2 border-t border-[var(--retail-border)] pt-4 text-sm">
-          <div className="flex justify-between">
-            <span>جمع کالا</span>
-            <span>{toman(subtotal)} تومان</span>
-          </div>
-          <div className="flex justify-between">
-            <span>ارسال</span>
-            <span>{shipMeta.freeShipping ? 'رایگان' : `${toman(shipFee)} تومان`}</span>
-          </div>
-          {walletApplied > 0 ? (
-            <div className="flex justify-between text-emerald-700">
-              <span>کیف‌پول</span>
-              <span>−{toman(walletApplied)}</span>
-            </div>
-          ) : null}
-          <div className="flex justify-between pt-2 text-base">
-            <span>قابل پرداخت</span>
-            <span className="text-lg font-extrabold">{toman(payable)} تومان</span>
-          </div>
-        </div>
-      </aside>
+      <CheckoutPlaceOrderBar
+        appearance="retail"
+        label={ctaLabel}
+        hint={ctaHint}
+        busy={busy}
+        disabled={!items.length}
+        onClick={submit}
+        sticky
+        amountLabel={`${toman(payable)} تومان`}
+      />
     </div>
   );
 }
