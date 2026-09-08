@@ -45,6 +45,10 @@ const params = productsBlockCatalogParams(
 );
 assert(params.ids?.join(',') === `${a},${b}`, 'manual uses ordered ids sliced to limit');
 assert(!params.categoryId, 'manual ignores category');
+const emptyManual = productsBlockCatalogParams(
+  normalizeProductsBlock({ source: 'manual', productIds: 'invalid' }, 'RETAIL'),
+);
+assert(Array.isArray(emptyManual.ids) && emptyManual.ids.length === 0, 'empty manual stays curated');
 
 const autoParams = productsBlockCatalogParams(
   normalizeProductsBlock({ source: 'auto', categoryId: a, sort: 'views', limit: 6 }, 'WHOLESALE'),

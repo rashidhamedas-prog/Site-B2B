@@ -52,14 +52,9 @@ export async function POST(req: Request) {
   for (const tag of cmsCacheTags(channel, pageKey)) {
     revalidateTag(tag);
   }
-  const paths = pageKey === '*'
-    ? channel === 'RETAIL'
-      ? ['/retail']
-      : ['/']
-    : storefrontPathsForCms(channel, pageKey);
+  const paths = storefrontPathsForCms(channel, pageKey);
   for (const path of paths) {
     revalidatePath(path);
-    revalidatePath(path, 'layout');
   }
 
   return NextResponse.json({ ok: true, paths });

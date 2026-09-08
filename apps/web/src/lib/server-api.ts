@@ -86,6 +86,7 @@ export async function fetchProductList<T = Record<string, unknown>>(options: {
     data: [],
     meta: { page, limit, total: 0, totalPages: 1, failed },
   });
+  if (Array.isArray(options.ids) && options.ids.length === 0) return empty();
   try {
     const base = getServerApiBase();
     const params = new URLSearchParams({

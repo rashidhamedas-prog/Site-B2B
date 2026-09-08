@@ -31,9 +31,18 @@ const WHOLESALE_PATHS: Record<string, string[]> = {
 
 export function storefrontPathsForCms(channel: CmsChannel, pageKey: string): string[] {
   const table = channel === 'RETAIL' ? RETAIL_PATHS : WHOLESALE_PATHS;
-  return table[pageKey] || (channel === 'RETAIL' ? ['/retail'] : ['/']);
+  if (pageKey === '*') return Array.from(new Set(Object.values(table).flat()));
+  return Object.prototype.hasOwnProperty.call(table, pageKey)
+    ? table[pageKey]
+    : (channel === 'RETAIL' ? ['/retail'] : ['/']);
 }
 
 export function cmsCacheTags(channel: CmsChannel, pageKey: string): string[] {
-  return ['cms', `cms:${channel}:${pageKey}`, 'catalog', `catalog:${channel}`];
+  const table = channel === 'RETAIL' ? RETAIL_PATHS : WHOLESALE_PATHS;
+  const pageKeys = pageKey === '*' ? Object.keys(table) : [pageKey];
+  const tags = pageKeys.map((key) => `cms:${channel}:${key}`);
+  if (pageKey === '*' || pageKey === 'home' || pageKey === 'products') {
+    tags.push(`catalog:${channel}`);
+  }
+  return Array.from(new Set(tags));
 }

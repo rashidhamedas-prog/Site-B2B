@@ -75,6 +75,7 @@ export class ProductController {
     );
     const wantVariants = includeVariants === '1' || includeVariants === 'true';
     const merchRefs = parseMerchandisingRefs(ids);
+    const merchandisingFilterRequested = typeof ids === 'string' && ids.trim().length > 0;
     return this.productService.findAll(page, limit, search || q, fabric, publicStatus, color, size, {
       categoryId,
       categorySlug,
@@ -85,7 +86,9 @@ export class ProductController {
       relatedTo,
       channel: publicChannel,
       sort,
-      ids: merchRefs.length ? merchRefs.map((ref) => ref.value) : undefined,
+      // Preserve an explicitly supplied-but-invalid filter as [] so the service
+      // returns no rows instead of silently falling back to the full catalog.
+      ids: merchandisingFilterRequested ? merchRefs.map((ref) => ref.value) : undefined,
       inStockOnly: inStock === '1' || inStock === 'true',
       includeVariants: wantVariants,
     });
@@ -231,6 +234,7 @@ export class ProductController {
       includeVariants === 'true' ||
       String(status || '').toUpperCase() === 'ALL';
     const merchRefs = parseMerchandisingRefs(ids);
+    const merchandisingFilterRequested = typeof ids === 'string' && ids.trim().length > 0;
     return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
       categoryId,
       categorySlug,
@@ -241,7 +245,7 @@ export class ProductController {
       relatedTo,
       channel,
       sort,
-      ids: merchRefs.length ? merchRefs.map((ref) => ref.value) : undefined,
+      ids: merchandisingFilterRequested ? merchRefs.map((ref) => ref.value) : undefined,
       inStockOnly: inStock === '1' || inStock === 'true',
       includeVariants: wantVariants,
     });

@@ -4,20 +4,21 @@ tasks:
     title: "CMS save applies immediately to storefront (ISR + SKU ids)"
     status: "in_progress"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20260908-008"
+    owner: "codex:implementer-TASK-20260908-008-hotfix"
     roles:
       architect: "cursor:implementer-TASK-20260908-008"
-      implementer: "cursor:implementer-TASK-20260908-008"
-      reviewer: "self-review-cms-revalidate-staff-only"
-      security: "self-review-public-sku-ids-allowlist"
-    branch: "ai/TASK-20260908-008-cms-revalidate"
-    worktree: "D:/proje/Site-B2B-featured-products"
+      implementer: "codex:implementer-TASK-20260908-008-hotfix"
+      reviewer: "codex-agent:cms_revalidate_review"
+      security: "codex-agent:cms_revalidate_review"
+    branch: "ai/TASK-20260908-008-cms-revalidate-hotfix"
+    worktree: "C:/Users/surface/.codex/visualizations/2026/09/08/01a081c3-2dfd-72e0-9f88-62a62b6adbdb/task008-fix"
     claimed_at: "2026-09-08T15:40:00Z"
-    heartbeat_at: "2026-09-08T15:40:00Z"
+    heartbeat_at: "2026-09-08T16:20:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/product/product-ids-query.ts"
       - "apps/api/src/modules/product/product-ids-query.spec.ts"
+      - "apps/api/src/modules/product/product.controller.ts"
       - "apps/api/src/modules/product/product.service.ts"
       - "apps/web/src/lib/cms/products-block.ts"
       - "apps/web/src/lib/cms/products-block.spec.ts"
@@ -29,12 +30,15 @@ tasks:
       - "apps/web/src/app/api/cms/revalidate/route.ts"
       - "apps/web/src/components/admin/AdminSiteContent.tsx"
       - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
+      - "nginx/nginx.conf"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
       Live CMS JSON updates but ISR/CDN HTML stays stale. Retail productIds are SKUs and were dropped.
+      Reclaimed at owner request after Cursor stopped. Initial SHA reached VPS git before its containers were rebuilt.
+      Independent review found CDN HTML caching and unmatched-SKU catalog fallback; hotfix owns both.
     acceptance_criteria:
       - "Saving site-content revalidates the matching storefront path so home copy/rails update without waiting a year of SWR"
       - "Manual productIds that are SKUs resolve in catalog order like UUIDs"

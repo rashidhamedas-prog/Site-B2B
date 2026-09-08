@@ -2,6 +2,24 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T21:38:00Z — TASK-20260908-008 final review
+
+- Independent reviewer/security `final_hotfix_review`: PASS, no must-fix.
+- Added exact nginx routing for `/api/cms/revalidate` on both storefronts: prior public POST was 404 because generic /api routed it to Nest.
+- Preserved server security headers in wholesale cache override. Empty manual blocks now stay empty end-to-end.
+- Validation: API/web tsc --noEmit --incremental false PASS; product-ids-query, products-block, revalidate-storefront specs PASS; candidate nginx -t on VPS PASS; git diff --check PASS.
+- Local web build could not run due incomplete Windows SWC and npm ECONNRESET; final Linux build remains required before container replacement. Broad Prettier failures predate hotfix; unrelated formatter churn reverted, keeping scoped changes. Production full suite will run using existing host dependencies.
+- VPS has an unrelated AutoSEO nginx append (already duplicated by conf.d). Preserve its exact diff through deploy; do not retire it in this task.
+- Runtime verification pending; claims retained. Rollback: revert hotfix commit and rebuild, no migrations introduced.
+
+## 2026-09-08T16:20:00Z — TASK-20260908-008 takeover + independent review remediation
+
+- Owner asked Codex to finish Cursor's incomplete deploy. Previous owner is unavailable; task ownership moved from `cursor:implementer-TASK-20260908-008` to `codex:implementer-TASK-20260908-008-hotfix` and this entry is the required takeover notice.
+- Production git was `2036e4b`, but API/Web containers predated commit `deeb5f2`; forced locked rebuild completed at `2036e4b`. Real SKU lookup then passed.
+- Independent Reviewer/Security verdict on `2036e4b`: FAIL. Must-fix: Cloudflare still cached wholesale HTML; unmatched/malformed ids fell through to full catalog. Medium: revalidation errors hidden and invalidation too broad.
+- Hotfix scope: preserve explicit empty `ids` filter and force zero rows; surface failed revalidation; scope tags/paths; send `Cloudflare-CDN-Cache-Control: no-store` for dynamic wholesale web responses while keeping static asset caching and Next ISR.
+- Expanded claims: `product.controller.ts` and `nginx/nginx.conf`. No schema/dependency changes. Next: build/typecheck, independent re-review, commit/push/deploy, health + live cache/SKU smoke.
+
 ## 2026-09-08T15:50:00Z — TASK-20260908-008 CMS save not showing on home
 
 - Observed live: WHOLESALE home CMS `updatedAt=2026-09-08T15:32:57Z` with category + inStock + limit 12. Cache-busted HTML already had those 11 coats. CF `s-maxage=60, stale-while-revalidate=31535940` (EXPIRED) kept serving old HTML on the bare URL.

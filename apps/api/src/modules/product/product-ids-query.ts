@@ -42,6 +42,13 @@ export function parseProductIdsQuery(raw?: string | string[] | null, max = PRODU
     .map((ref) => ref.value);
 }
 
+export function shouldForceEmptyMerchandisingResult(
+  requestedRefs: string[] | undefined,
+  resolvedIds: string[],
+): boolean {
+  return Array.isArray(requestedRefs) && resolvedIds.length === 0;
+}
+
 export function merchandisingOrderSql(alias: string, ids: string[]): { sql: string; params: Record<string, string> } {
   if (!ids.length) return { sql: `${alias}.createdAt`, params: {} };
   const params: Record<string, string> = {};

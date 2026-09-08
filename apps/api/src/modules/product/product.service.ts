@@ -42,7 +42,7 @@ import {
 } from './product-sale';
 import { isPublicProductRow } from './public-product-status';
 import { stripOppositeChannelFields } from './public-product-channel';
-import { merchandisingOrderSql, parseMerchandisingRefs, isProductUuid } from './product-ids-query';
+import { merchandisingOrderSql, parseMerchandisingRefs, isProductUuid, shouldForceEmptyMerchandisingResult } from './product-ids-query';
 import { productOutboxIntents } from './product-outbox';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import {
@@ -393,13 +393,15 @@ export class ProductService {
       if (cat) categoryId = cat.id;
     }
 
+    const curatedFilterRequested = Array.isArray(opts?.ids);
     const curatedIds = await this.resolveCuratedProductIds(opts?.ids);
+    const forceEmptyCuratedResult = shouldForceEmptyMerchandisingResult(opts?.ids, curatedIds);
 
     // Admin list (status=ALL) needs variants for stock/color counts; storefront cards do not.
     const wantVariants = opts?.includeVariants === true || status === 'ALL';
 
     const qb = this.productRepo.createQueryBuilder('p').where('p.deletedAt IS NULL');
-    if (wantVariants && !curatedIds.length) {
+    if (wantVariants && !curatedFilterRequested) {
       qb.leftJoinAndSelect('p.variants', 'v');
     }
 
@@ -413,6 +415,10 @@ export class ProductService {
     if (sizeType) qb.andWhere('p.sizeType = :sizeType', { sizeType });
     if (curatedIds.length) {
       qb.andWhere('p.id IN (:...curatedIds)', { curatedIds });
+    } else if (forceEmptyCuratedResult) {
+      // An explicit ids filter whose tokens are malformed, stale, or hidden
+      // must render an empty curated rail, never an arbitrary full catalog.
+      qb.andWhere('1 = 0');
     } else if (relatedIds?.length) {
       qb.andWhere('p.id IN (:...relatedIds)', { relatedIds });
     } else if (categoryId) {

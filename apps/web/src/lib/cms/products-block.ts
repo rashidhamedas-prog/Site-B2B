@@ -141,7 +141,7 @@ export function productsBlockCatalogParams(query: ProductsBlockQuery): {
   limit: number;
   inStockOnly: boolean;
 } {
-  if (query.source === 'manual' && query.productIds.length) {
+  if (query.source === 'manual') {
     return {
       ids: query.productIds.slice(0, query.limit),
       sort: query.sort,
