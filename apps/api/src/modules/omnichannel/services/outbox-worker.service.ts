@@ -226,6 +226,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       await this.notifications.orderRegistered(phone, order.orderNumber);
     }
     if (this.marketing && order.customerId) {
+      await this.marketing.completeCheckoutIntent(order.customerId, order.id).catch(() => undefined);
       await this.marketing.evaluateCustomer(order.customerId);
     }
     const ch = String(channel || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';

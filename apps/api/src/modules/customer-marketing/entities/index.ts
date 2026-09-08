@@ -7,3 +7,4 @@ export { MarketingTemplateEntity } from './marketing-template.entity';
 export { MarketingCampaignEntity } from './marketing-campaign.entity';
 export { MarketingSendEntity } from './marketing-send.entity';
 export { MarketingActivityEntity } from './marketing-activity.entity';
+export { MarketingCheckoutIntentEntity } from './marketing-checkout-intent.entity';

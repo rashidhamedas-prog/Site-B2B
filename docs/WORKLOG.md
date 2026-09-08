@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-08 — نیت چک‌اوت برای سبد مانده
+
+- جدول `marketing_checkout_intents` و `POST /v1/storefront/marketing/checkout-intent` برای کاربر لاگین.
+- بیکن idle روی چک‌اوت تکی/عمده؛ سناریوی `retail.checkout.abandoned` بعد از ۳۰ دقیقه، با رد بعد از پرداخت ناموفق یا سفارش قطعی.
+- ارسال همچنان خاموش است تا LIVE آگاهانه روشن شود.
+
 ## 2026-09-08 — بازاریابی پیامک و تماس زیر مشتریان
 
 - ماژول sidecar `customer-marketing`: قیف جدا تکی/عمده، رضایت و لغو جدا از جدول customers، ارسال فقط از outbox فعلی.

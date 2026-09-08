@@ -44,6 +44,7 @@ import {
   retailTorobpayAddressError,
   type RetailPaymentGateway,
 } from '@/lib/checkout-payment-ui';
+import { pulseCheckoutIntent } from '@/lib/checkout-intent';
 
 type AddressForm = RetailAddress;
 
@@ -120,6 +121,11 @@ export default function RetailCheckoutPage() {
       subtotal,
     );
   }, [items, subtotal]);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    pulseCheckoutIntent('RETAIL');
+  }, [items.length]);
 
   useEffect(() => {
     const saved = getRetailAddresses();

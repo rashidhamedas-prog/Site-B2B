@@ -6,6 +6,7 @@ import { UserEntity } from '../auth/entities/user.entity';
 import {
   MarketingActivityEntity,
   MarketingCampaignEntity,
+  MarketingCheckoutIntentEntity,
   MarketingConsentEntity,
   MarketingEnrollmentEntity,
   MarketingFunnelEntity,
@@ -14,12 +15,14 @@ import {
   MarketingSuppressionEntity,
   MarketingTemplateEntity,
 } from './entities';
+import { PaymentEntity } from '../payment/entities/payment.entity';
 import { CustomerMarketingService } from './customer-marketing.service';
 import { MarketingSmsSender } from './marketing-sms.sender';
 import { MarketingSeedService } from './marketing-seed.service';
 import { CustomerMarketingJobs } from './customer-marketing.jobs';
 import { MarketingController } from './marketing.controller';
 import { CustomerMarketingController } from './customer-marketing.controller';
+import { StorefrontMarketingController } from './storefront-marketing.controller';
 
 const ENTITIES = [
   MarketingConsentEntity,
@@ -31,15 +34,17 @@ const ENTITIES = [
   MarketingCampaignEntity,
   MarketingSendEntity,
   MarketingActivityEntity,
+  MarketingCheckoutIntentEntity,
   CustomerEntity,
   OrderEntity,
   UserEntity,
+  PaymentEntity,
 ];
 
 @Global()
 @Module({
   imports: [TypeOrmModule.forFeature(ENTITIES)],
-  controllers: [MarketingController, CustomerMarketingController],
+  controllers: [MarketingController, CustomerMarketingController, StorefrontMarketingController],
   providers: [
     CustomerMarketingService,
     MarketingSmsSender,

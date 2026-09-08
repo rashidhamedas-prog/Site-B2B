@@ -59,6 +59,7 @@ import { SmsEventLogEntity } from '../modules/cart/sms-event-log.entity';
 import {
   MarketingActivityEntity,
   MarketingCampaignEntity,
+  MarketingCheckoutIntentEntity,
   MarketingConsentEntity,
   MarketingEnrollmentEntity,
   MarketingFunnelEntity,
@@ -125,6 +126,7 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     MarketingCampaignEntity,
     MarketingSendEntity,
     MarketingActivityEntity,
+    MarketingCheckoutIntentEntity,
 ];
 
 export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => {

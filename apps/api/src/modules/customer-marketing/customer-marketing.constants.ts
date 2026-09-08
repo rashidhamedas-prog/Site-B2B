@@ -56,8 +56,8 @@ export const ALWAYS_OFF_SCENARIOS = [
   'wholesale.restock.ping',
 ] as const;
 
+/** Scenarios that must not double-send with transactional SMS the same day. Abandoned checkout is intentional marketing and stays gated by mode. */
 export const OVERLAP_SCENARIOS = [
-  'retail.checkout.abandoned',
   'wholesale.apply.approved_intro',
 ] as const;
 

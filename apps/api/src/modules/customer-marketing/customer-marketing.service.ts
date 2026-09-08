@@ -22,6 +22,7 @@ import {
   DEFAULT_MARKETING_SETTINGS,
   FUNNEL_CODES,
   SETTINGS_KEY,
+  SETTLED_ORDER_STATUSES,
   SMS_IR_BULK_MAX,
   effectiveMode,
   type CallResult,
@@ -30,13 +31,16 @@ import {
   type MarketingMode,
   type MessageClass,
 } from './customer-marketing.constants';
+import { PaymentEntity } from '../payment/entities/payment.entity';
 import { decideConsent } from './consent-policy';
 import { evaluateSendGate, fillTemplate } from './send-gates';
 import { resolveMarketingSettings } from './marketing-settings';
+import { shouldQueueAbandonedCheckout } from './checkout-intent-policy';
 import { daysBetween, isSettledOrderStatus, resolveStage } from './stage-machine';
 import {
   MarketingActivityEntity,
   MarketingCampaignEntity,
+  MarketingCheckoutIntentEntity,
   MarketingConsentEntity,
   MarketingEnrollmentEntity,
   MarketingFunnelEntity,
@@ -53,6 +57,7 @@ export class CustomerMarketingService {
     @InjectRepository(CustomerEntity) private readonly customers: Repository<CustomerEntity>,
     @InjectRepository(OrderEntity) private readonly orders: Repository<OrderEntity>,
     @InjectRepository(UserEntity) private readonly users: Repository<UserEntity>,
+    @InjectRepository(PaymentEntity) private readonly payments: Repository<PaymentEntity>,
     @InjectRepository(MarketingConsentEntity) private readonly consents: Repository<MarketingConsentEntity>,
     @InjectRepository(MarketingSuppressionEntity) private readonly suppressions: Repository<MarketingSuppressionEntity>,
     @InjectRepository(MarketingFunnelEntity) private readonly funnels: Repository<MarketingFunnelEntity>,
@@ -61,6 +66,7 @@ export class CustomerMarketingService {
     @InjectRepository(MarketingCampaignEntity) private readonly campaigns: Repository<MarketingCampaignEntity>,
     @InjectRepository(MarketingSendEntity) private readonly sends: Repository<MarketingSendEntity>,
     @InjectRepository(MarketingActivityEntity) private readonly activities: Repository<MarketingActivityEntity>,
+    @InjectRepository(MarketingCheckoutIntentEntity) private readonly checkoutIntents: Repository<MarketingCheckoutIntentEntity>,
     private readonly settings: SettingsService,
     private readonly outbox: OutboxService,
   ) {}
@@ -148,6 +154,46 @@ export class CustomerMarketingService {
     });
   }
 
+  async recordCheckoutIntent(customerId: string, channelHint?: string) {
+    const customer = await this.customers.findOne({ where: { id: customerId } });
+    if (!customer) return { ok: false, reason: 'NOT_FOUND' };
+    if (await this.shouldSkipEnroll(customer)) return { ok: false, reason: 'SKIPPED' };
+    const channel = channelHint === 'WHOLESALE' || channelHint === 'RETAIL'
+      ? channelHint
+      : this.channelOf(customer);
+    if (channel !== 'RETAIL') return { ok: false, reason: 'RETAIL_ONLY' };
+    let row = await this.checkoutIntents.findOne({ where: { customerId, channel } });
+    if (!row) {
+      row = this.checkoutIntents.create({
+        customerId,
+        channel,
+        startedAt: new Date(),
+        completedOrderId: null,
+        completedAt: null,
+      });
+    } else if (!row.completedAt) {
+      row.startedAt = new Date();
+    } else {
+      row.startedAt = new Date();
+      row.completedAt = null;
+      row.completedOrderId = null;
+    }
+    await this.checkoutIntents.save(row);
+    await this.enroll(customerId);
+    return { ok: true, startedAt: row.startedAt };
+  }
+
+  async completeCheckoutIntent(customerId: string, orderId?: string) {
+    const customer = await this.customers.findOne({ where: { id: customerId } });
+    if (!customer) return;
+    const channel = this.channelOf(customer);
+    const row = await this.checkoutIntents.findOne({ where: { customerId, channel } });
+    if (!row || row.completedAt) return;
+    row.completedAt = new Date();
+    row.completedOrderId = orderId || null;
+    await this.checkoutIntents.save(row);
+  }
+
   async evaluateCustomer(customerId: string): Promise<void> {
     const customer = await this.customers.findOne({ where: { id: customerId } });
     if (!customer) return;
@@ -179,7 +225,14 @@ export class CustomerMarketingService {
       await this.enrollments.save(enrollment);
     }
 
-    const scenario = this.pickScenario(channel, stage, {
+    if (settled.length > 0) {
+      await this.completeCheckoutIntent(customerId, settled[0]?.id);
+    }
+
+    const abandoned = channel === 'RETAIL'
+      ? await this.maybeAbandonedCheckout(customer, enrollment)
+      : null;
+    const scenario = abandoned || this.pickScenario(channel, stage, {
       orderCount: settled.length,
       daysSinceEnroll: daysBetween(enrollment.enrolledAt, new Date()),
       customerStatus: customer.status,
@@ -724,6 +777,57 @@ export class CustomerMarketingService {
       await this.enrollments.save(enrollment);
     }
     await this.activity(customerId, 'WHOLESALE', 'ENROLL', { stage: 'APPROVED', skipSms: 'wholesaleApproved' }, null);
+  }
+
+  private async maybeAbandonedCheckout(
+    customer: CustomerEntity,
+    enrollment: MarketingEnrollmentEntity,
+  ): Promise<{ code: string; medium: 'SMS' | 'CALL' } | null> {
+    const intent = await this.checkoutIntents.findOne({
+      where: { customerId: customer.id, channel: 'RETAIL' },
+    });
+    const open = !!intent && !intent.completedAt;
+    const ageMin = intent ? (Date.now() - intent.startedAt.getTime()) / 60_000 : 0;
+    const settledSince = intent
+      ? await this.orders
+        .createQueryBuilder('o')
+        .where('o.customerId = :cid', { cid: customer.id })
+        .andWhere('o.createdAt >= :since', { since: intent.startedAt })
+        .andWhere('o.status IN (:...st)', { st: [...SETTLED_ORDER_STATUSES] })
+        .getCount()
+      : 0;
+    const failedPay = intent
+      ? await this.payments
+        .createQueryBuilder('p')
+        .innerJoin(OrderEntity, 'o', 'o.id = p.orderId')
+        .where('o.customerId = :cid', { cid: customer.id })
+        .andWhere('p.status = :st', { st: 'FAILED' })
+        .andWhere('p.createdAt >= :since', { since: intent.startedAt })
+        .getCount()
+      : 0;
+    const already = await this.sends.findOne({
+      where: {
+        customerId: customer.id,
+        templateCode: 'retail.checkout.abandoned',
+        status: In(['QUEUED', 'SENDING', 'SENT', 'SKIPPED', 'SUPPRESSED']),
+      },
+      order: { createdAt: 'DESC' },
+    });
+    const recentAlready = already && intent
+      ? already.createdAt.getTime() >= intent.startedAt.getTime()
+      : !!already;
+    if (!shouldQueueAbandonedCheckout({
+      hasOpenIntent: open,
+      intentAgeMinutes: ageMin,
+      minAgeMinutes: 30,
+      hasSettledOrderSinceIntent: settledSince > 0,
+      recentPaymentFailed: failedPay > 0,
+      alreadyQueued: recentAlready,
+    })) {
+      return null;
+    }
+    void enrollment;
+    return { code: 'retail.checkout.abandoned', medium: 'SMS' };
   }
 
   private pickScenario(channel: MarketingChannel, stage: string, ctx: {
