@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260908-002"
     title: "Customer marketing sidecar (SMS + call funnel under CRM)"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260908-002"
     roles:
@@ -13,9 +13,10 @@ tasks:
     branch: "ai/TASK-20260908-002-customer-marketing"
     worktree: "D:/proje/Site-B2B-customer-marketing"
     claimed_at: "2026-09-08T00:00:00Z"
-    heartbeat_at: "2026-09-08T01:10:00Z"
+    heartbeat_at: "2026-09-08T01:35:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/lib/tehran-time.ts"
       - "apps/api/src/modules/customer-marketing/"
       - "apps/api/src/database/migrations/20260908-002-customer-marketing.ts"
@@ -47,6 +48,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
+      LIVE 2026-09-08: origin/master + VPS /opt/taranom = 47b013e. Health 200.
+      Marketing tables present. customerMarketing default OFF. Claims released.
       Reclaimed stale auth.service.ts from TASK-20260904-001 (hb 2026-09-03).
       Reclaimed app.module / omnichannel.constants / outbox-lease / worker.module
       from TASK-20260826-001 (hb 2026-09-02). Reclaimed AdminSidebar/Header from

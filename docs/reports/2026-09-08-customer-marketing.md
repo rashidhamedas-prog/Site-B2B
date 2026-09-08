@@ -30,4 +30,5 @@ Sidecar module `customer-marketing` under Admin CRM. No consent columns on `cust
 - Settings resolver forces `enabled=false` unless mode is CANARY or LIVE. Hub radio matches.
 - [مرور فاز](a7f5ad50-31e7-4bc5-9370-bb21a883d0e3): PASS WITH CONDITIONS.
 - [بازبینی امنیت](b8f07acc-6921-4738-98f8-913382f900bc): TRANSACTIONAL bypass and campaign LIVE gate fixed. Delivery now claims the row, rechecks twice, and will not overwrite a concurrent opt-out `SUPPRESSED` with `SENT`.
-- Do not flip LIVE on deploy.
+- Live SHA `47b013e`. Nine `marketing_*` tables. `/v1/marketing/settings` is 401 without JWT.
+- Do not flip LIVE.

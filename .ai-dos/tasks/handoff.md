@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T01:35:00Z — TASK-20260908-002 CLOSED live `47b013e`
+
+- Fast-forward: `fd763b6..47b013e` on `origin/master`. Feature branch `ai/TASK-20260908-002-customer-marketing` pushed.
+- VPS `/opt/taranom` = `47b013e`. API/worker recreated; web has `/admin/customers/marketing` and `/admin/customers/[id]`.
+- Observed: `/v1/health` 200 `{"status":"ok"}`. `/v1/marketing/settings` 401. Nine `marketing_*` tables exist. `.ir` and `.com` 200.
+- File claims released. Task status `done`. Do not flip LIVE.
+- [مرور فاز](a7f5ad50-31e7-4bc5-9370-bb21a883d0e3) PASS WITH CONDITIONS. [بازبینی امنیت](b8f07acc-6921-4738-98f8-913382f900bc) prior Highs fixed.
+
 ## 2026-09-08T01:10:00Z — TASK-20260908-002 independent reviews
 
 - Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
