@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T02:45:00Z — TASK-20260909-001 retail CMS cache root fix (shipping)
+
+- Root cause: retail public `/` is middleware-rewritten to `/retail`; year SWR kept HIT HTML on `.ir` even after path revalidate that only hit one shape; wholesale `/` matched App path so it looked fine.
+- CODE: `allRevalidatePathsForCms` (app+public), warm `/retail` via internal fetch after revalidate, middleware clamp SWR=60s on public storefront HTML, admin alerts if revalidate fails.
+- Gates: `npx tsc --noEmit` (web) ok; `npx tsx src/lib/cms/revalidate-storefront.spec.ts` ok.
+- Next: merge→master→VPS deploy; verify `.ir` Cache-Control SWR≤60 and post-save HTML updates.
+
 ## 2026-09-09T01:55:00Z — TASK-20260908-008 CLOSED live `49e21a0`
 
 - Audit of prior ChatGPT/deploy work: code was on VPS but `/api/cms/revalidate` → Nest 404. Fixed to `/admin/cms/revalidate` (Next). Unauth POST → 307 login (expected). Old `/api` path still Nest 404.

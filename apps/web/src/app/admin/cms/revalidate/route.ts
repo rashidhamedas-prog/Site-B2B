@@ -4,7 +4,12 @@ import { NextResponse } from 'next/server';
 import { ADMIN_ROLE_KEY, ADMIN_TOKEN_KEY, canEnterAdmin } from '@/lib/admin-session';
 import { canAccessStaffModule, isStaffRole } from '@/lib/staff-access';
 import { getServerApiBase } from '@/lib/server-api-base';
-import { cmsCacheTags, storefrontPathsForCms, type CmsChannel } from '@/lib/cms/revalidate-storefront';
+import {
+  allRevalidatePathsForCms,
+  cmsCacheTags,
+  warmPathsForCms,
+  type CmsChannel,
+} from '@/lib/cms/revalidate-storefront';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +42,33 @@ async function assertContentStaff(req: Request): Promise<boolean> {
   }
 }
 
+function webInternalBase(): string {
+  return (process.env.WEB_INTERNAL_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
+}
+
+async function warmStorefront(paths: string[]): Promise<string[]> {
+  const base = webInternalBase();
+  const warmed: string[] = [];
+  await Promise.all(
+    paths.map(async (path) => {
+      try {
+        const res = await fetch(`${base}${path}`, {
+          cache: 'no-store',
+          headers: {
+            'x-taranom-revalidate-warm': '1',
+            // Direct /retail/* skips host rewrite; still marks retail channel.
+            'x-taranom-channel': path.startsWith('/retail') ? 'RETAIL' : 'WHOLESALE',
+          },
+        });
+        if (res.ok || res.status === 307 || res.status === 308) warmed.push(path);
+      } catch {
+        /* warm is best-effort */
+      }
+    }),
+  );
+  return warmed;
+}
+
 export async function POST(req: Request) {
   if (!(await assertContentStaff(req))) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -56,16 +88,15 @@ export async function POST(req: Request) {
   for (const tag of cmsCacheTags(channel, pageKey)) {
     revalidateTag(tag);
   }
-  const paths =
-    pageKey === '*'
-      ? channel === 'RETAIL'
-        ? ['/retail']
-        : ['/']
-      : storefrontPathsForCms(channel, pageKey);
+
+  const paths = allRevalidatePathsForCms(channel, pageKey);
   for (const path of paths) {
     revalidatePath(path);
     revalidatePath(path, 'layout');
+    revalidatePath(path, 'page');
   }
 
-  return NextResponse.json({ ok: true, paths });
+  const warmed = await warmStorefront(warmPathsForCms(channel, pageKey));
+
+  return NextResponse.json({ ok: true, channel, pageKey, paths, warmed });
 }

@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260909-001** implementing on `ai/TASK-20260909-001-retail-cms-cache`: dual-path retail revalidate + warm + HTML SWR clamp 60s + admin revalidate failure alert. Not live until merge/deploy.
 - Last verified: 2026-09-09 — **TASK-20260908-008 CLOSED** on `origin/master` + VPS `49e21a0`. CMS revalidate at `/admin/cms/revalidate` (307→login unauth; Nest no longer steals it). SKU `ids=` 3/3 on API; retail home HTML includes all 3 curated names. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-007** implementing in-person shipping (`IN_PERSON` / تحویل در محل) on `ai/TASK-20260908-007-in-person-shipping`. Fee 0. Did not touch 006 featured-products files.
 - Last verified: 2026-09-08 — **TASK-20260908-006 CLOSED** on `origin/master` + VPS `8e57985`. Featured-products CMS: auto/manual source, picker, category, in-stock, portal gate; public `ids` order preserved. Health 200. `.ir`/`.com` homes 200. Claims released.

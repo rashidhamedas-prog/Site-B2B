@@ -23,6 +23,32 @@ function normalizePathname(pathname: string): string {
   return pathname;
 }
 
+/** Private trees must keep Next/no-store; do not clamp them to public ISR. */
+function isPrivateStorefrontPath(pathname: string): boolean {
+  const p = normalizePathname(pathname);
+  return (
+    p.startsWith('/admin') ||
+    p.startsWith('/portal') ||
+    p.startsWith('/api') ||
+    p.startsWith('/checkout') ||
+    p.startsWith('/account') ||
+    p.startsWith('/payment') ||
+    p.startsWith('/retail/checkout') ||
+    p.startsWith('/retail/account') ||
+    p.startsWith('/retail/payment')
+  );
+}
+
+/**
+ * Next ISR defaults to stale-while-revalidate ≈ 1 year. That lets .ir keep
+ * serving HIT HTML long after CMS save. Cap SWR to match page revalidate.
+ */
+function clampStorefrontHtmlCache(res: NextResponse, pathname: string): NextResponse {
+  if (isPrivateStorefrontPath(pathname)) return res;
+  res.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=60');
+  return res;
+}
+
 /** Legacy WordPress-era paths that are permanently gone (no replacement). */
 const GONE_PREFIXES = [
   '/product/', // old WP /product/<id>/<persian-slug>/
@@ -129,7 +155,7 @@ export function middleware(request: NextRequest) {
     const res = NextResponse.next();
     res.headers.set('x-robots-tag', 'noindex, nofollow');
     res.headers.set('x-taranom-channel', 'RETAIL');
-    return res;
+    return clampStorefrontHtmlCache(res, pathname);
   }
 
   const host = request.headers.get('host');
@@ -147,7 +173,7 @@ export function middleware(request: NextRequest) {
   if (retailHost && hostLooksRetail(host) && isPublicCategoryPath) {
     const res = NextResponse.next();
     res.headers.set('x-taranom-channel', 'RETAIL');
-    return res;
+    return clampStorefrontHtmlCache(res, pathname);
   }
 
   // On retail host, rewrite public URLs into /retail/* (URL bar stays clean).
@@ -157,7 +183,7 @@ export function middleware(request: NextRequest) {
     url.pathname = pathname === '/' ? '/retail' : `/retail${pathname}`;
     const res = NextResponse.rewrite(url);
     res.headers.set('x-taranom-channel', 'RETAIL');
-    return res;
+    return clampStorefrontHtmlCache(res, pathname);
   }
 
   const adminPath = normalizePathname(pathname);
@@ -171,7 +197,7 @@ export function middleware(request: NextRequest) {
       'x-taranom-channel',
       pathname.startsWith('/retail') || retailHost ? 'RETAIL' : 'WHOLESALE',
     );
-    return res;
+    return clampStorefrontHtmlCache(res, pathname);
   }
 
   const adminSession = isAdminRoute ? readAdminGateCookies(request.cookies) : null;

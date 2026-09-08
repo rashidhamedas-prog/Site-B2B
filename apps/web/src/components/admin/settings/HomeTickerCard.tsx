@@ -67,7 +67,14 @@ export function HomeTickerCard({
         blocks: next,
         isPublished: true,
       });
-      await revalidateStorefrontAfterSave(channel, 'chrome');
+      const bust = await revalidateStorefrontAfterSave(channel, 'chrome');
+      if (!bust.ok) {
+        throw new Error(
+          bust.error
+            ? `تازه‌سازی ویترین ناموفق: ${bust.error}`
+            : 'تازه‌سازی ویترین ناموفق بود',
+        );
+      }
     };
   }, [blocks, channel, enabled, saveRef, text, title]);
 

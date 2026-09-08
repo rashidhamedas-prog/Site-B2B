@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-09 — ریشهٔ عدم‌اعمال CMS روی تکی (.ir)
+
+- عمده آپدیت می‌شد؛ `.ir` روی `x-nextjs-cache: HIT` با `stale-while-revalidate≈1y` می‌ماند.
+- Fix: revalidate همزمان مسیر App (`/retail`) و URL عمومی (`/`)، warm داخلی بعد از ذخیره، و clamp هدر HTML ویترین به `s-maxage=60, stale-while-revalidate=60`.
+- ادمین اگر bust ناموفق باشد بعد از ذخیره موفق هشدار می‌دهد؛ یادآوری تب تکی/عمده جدا.
+
 ## 2026-09-09 — مسیر revalidate از زیر nginx API
 
 - مسیر `/api/cms/revalidate` در پروداکشن ۴۰۴ می‌داد چون nginx کل `/api/` را به Nest می‌فرستد.

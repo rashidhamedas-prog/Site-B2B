@@ -79,7 +79,14 @@ export function AdminSiteContent() {
         blocks,
         isPublished: true,
       });
-      await revalidateStorefrontAfterSave(channel, pageKey);
+      const bust = await revalidateStorefrontAfterSave(channel, pageKey);
+      if (!bust.ok) {
+        alert(
+          `محتوای ${channelLabel(channel)} ذخیره شد، ولی تازه‌سازی ویترین ناموفق بود` +
+            (bust.error ? ` (${bust.error})` : '') +
+            '. یک‌بار دیگر ذخیره کنید یا چند دقیقه صبر کنید.',
+        );
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: unknown) {
@@ -118,7 +125,14 @@ export function AdminSiteContent() {
         });
       }
       await load();
-      await revalidateStorefrontAfterSave(channel, '*');
+      const bust = await revalidateStorefrontAfterSave(channel, '*');
+      if (!bust.ok) {
+        alert(
+          `پیش‌فرض‌های ${channelLabel(channel)} ذخیره شد، ولی تازه‌سازی ویترین ناموفق بود` +
+            (bust.error ? ` (${bust.error})` : '') +
+            '.',
+        );
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: unknown) {
@@ -142,7 +156,8 @@ export function AdminSiteContent() {
 
       <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
         از تب «هدر / فوتر / شناور» نوار بالای سایت، لوگو، فوتر و دکمه شناور را ویرایش کنید. صفحه اصلی و
-        سایر صفحات را از تب‌های زیر انتخاب کنید. هر بلوک قابل جابجایی، ویرایش و حذف است.
+        سایر صفحات را از تب‌های زیر انتخاب کنید. هر بلوک قابل جابجایی، ویرایش و حذف است. محتوای{' '}
+        <strong>تکی</strong> و <strong>عمده</strong> جداست — برای سایت .ir حتماً تب تکی را انتخاب کنید.
       </div>
 
       <div className="flex flex-wrap gap-1.5">
