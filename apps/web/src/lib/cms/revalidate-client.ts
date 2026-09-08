@@ -5,7 +5,8 @@ import type { CmsChannel } from './revalidate-storefront';
 export async function revalidateStorefrontAfterSave(channel: CmsChannel, pageKey: string) {
   try {
     const token = getToken();
-    await fetch('/api/cms/revalidate', {
+    // Not under `/api/*` — nginx sends that prefix to Nest, not Next.
+    await fetch('/admin/cms/revalidate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,8 +1,6 @@
 # Project Status
 
-# Project Status
-
-- Last verified: 2026-09-08 — **TASK-20260908-008 implementing** on `ai/TASK-20260908-008-cms-revalidate`. CMS save did not appear on home because ISR/CDN HTML stayed stale; retail `productIds` were SKUs and were dropped. Not live until deploy.
+- Last verified: 2026-09-09 — **TASK-20260908-008 remediating**: code was on VPS `2036e4b` but `/api/cms/revalidate` returned **404** because nginx proxies `/api/` to Nest. Moving route to `/admin/cms/revalidate`. SKU `ids=` already live (3/3).
 - Last verified: 2026-09-08 — **TASK-20260908-007** implementing in-person shipping (`IN_PERSON` / تحویل در محل) on `ai/TASK-20260908-007-in-person-shipping`. Fee 0. Did not touch 006 featured-products files.
 - Last verified: 2026-09-08 — **TASK-20260908-006 CLOSED** on `origin/master` + VPS `8e57985`. Featured-products CMS: auto/manual source, picker, category, in-stock, portal gate; public `ids` order preserved. Health 200. `.ir`/`.com` homes 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-005 CLOSED** on `origin/master` + VPS `e284ae9`. Channel-split shipping live; ticker/SMS ops/Peystaz in system settings tabs. Health 200. Retail methods PISHTAZ/TIPAX/CHAPAR/TEHRAN_BIKE; wholesale returns saved freight companies. Claims released. Independent reviewer still required.

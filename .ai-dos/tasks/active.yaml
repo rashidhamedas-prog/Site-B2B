@@ -26,7 +26,7 @@ tasks:
       - "apps/web/src/lib/cms/revalidate-client.ts"
       - "apps/web/src/lib/cms/revalidate-storefront.spec.ts"
       - "apps/web/src/lib/server-api.ts"
-      - "apps/web/src/app/api/cms/revalidate/route.ts"
+      - "apps/web/src/app/admin/cms/revalidate/route.ts"
       - "apps/web/src/components/admin/AdminSiteContent.tsx"
       - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
       - "docs/WORKLOG.md"

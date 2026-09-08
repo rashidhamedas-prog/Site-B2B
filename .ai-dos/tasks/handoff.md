@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T01:50:00Z — TASK-20260908-008 audit: deploy yes, revalidate path broken
+
+- VPS HEAD `2036e4b`, containers up ~6h. Health 200. Public `ids=WINTER-WEAR00009,...` returns 3 products (SKU fix live).
+- Gap: browser POST `/api/cms/revalidate` → **404** (nginx `^~ /api/` → Nest). CMS save still cannot bust ISR.
+- Fix in progress: move handler to `/admin/cms/revalidate` (Next, not Nest).
+- Governance still `in_progress`; claims held.
+
 ## 2026-09-08T15:50:00Z — TASK-20260908-008 CMS save not showing on home
 
 - Observed live: WHOLESALE home CMS `updatedAt=2026-09-08T15:32:57Z` with category + inStock + limit 12. Cache-busted HTML already had those 11 coats. CF `s-maxage=60, stale-while-revalidate=31535940` (EXPIRED) kept serving old HTML on the bare URL.

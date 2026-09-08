@@ -8,6 +8,10 @@ import { cmsCacheTags, storefrontPathsForCms, type CmsChannel } from '@/lib/cms/
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Must NOT live under `/api/*` — nginx `location ^~ /api/` proxies that prefix
+ * to Nest (`api:4000`), so a Next route handler there is unreachable in prod.
+ */
 function asChannel(value: unknown): CmsChannel | null {
   return value === 'RETAIL' || value === 'WHOLESALE' ? value : null;
 }
@@ -52,11 +56,12 @@ export async function POST(req: Request) {
   for (const tag of cmsCacheTags(channel, pageKey)) {
     revalidateTag(tag);
   }
-  const paths = pageKey === '*'
-    ? channel === 'RETAIL'
-      ? ['/retail']
-      : ['/']
-    : storefrontPathsForCms(channel, pageKey);
+  const paths =
+    pageKey === '*'
+      ? channel === 'RETAIL'
+        ? ['/retail']
+        : ['/']
+      : storefrontPathsForCms(channel, pageKey);
   for (const path of paths) {
     revalidatePath(path);
     revalidatePath(path, 'layout');
