@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260908-005"
     title: "Channel-split shipping + professional system settings IA"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260908-005"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260908-004-admin-settings-ia"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-08T14:40:00Z"
-    heartbeat_at: "2026-09-08T15:10:00Z"
+    heartbeat_at: "2026-09-08T15:14:00Z"
+    closed_at: "2026-09-08T15:14:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/settings/shipping-channel.ts"
       - "apps/api/src/modules/settings/shipping-channel.spec.ts"
       - "apps/api/src/modules/settings/settings.service.ts"
@@ -44,8 +46,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      ID 004 was taken by checkout-intent on origin/master. This is TASK-20260908-005.
-      Nested shipping companies and shippingPost per channel. Ticker/SMS ops/Peystaz in tabs.
+      LIVE origin/master + VPS e284ae9. Independent reviewer still required for shipping API.
+      First Peystaz save writes nested JSON; until then legacy flat hydrates both channels.
     acceptance_criteria:
       - "Retail and wholesale shipping companies/fees/post-quote are independently stored and served"
       - "Ticker, SMS ops, and Peystaz quote live inside existing system-settings tabs"

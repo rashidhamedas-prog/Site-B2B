@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T15:14:00Z — TASK-20260908-005 CLOSED live `e284ae9`
+
+- Task / owner: TASK-20260908-005 / cursor:implementer-TASK-20260908-005
+- Pushed branch `ai/TASK-20260908-004-admin-settings-ia` and `HEAD:master`. VPS deploy complete at `e284ae9`.
+- Observed: `GET /v1/health` → `{"status":"ok"}`. `GET /shipping/methods?channel=RETAIL` → PISHTAZ/TIPAX/CHAPAR/TEHRAN_BIKE. `channel=WHOLESALE` → saved freight companies (تیپاکس، باربری وطن/ثابت/آهن/ترقی).
+- Claims released. Next: independent reviewer for shipping API; first Peystaz save writes nested JSON.
+- Admin `/admin/settings`: shipping tab channel switcher; SMS ops in SMS tab; ticker in theme tab. Did not login-verify admin UI from this session.
+
 ## 2026-09-08T14:55:00Z — TASK-20260908-005 implementing admin settings IA
 
 - ID collision: origin/master already used TASK-20260908-004 for checkout-intent. This settings IA is **TASK-20260908-005**.
