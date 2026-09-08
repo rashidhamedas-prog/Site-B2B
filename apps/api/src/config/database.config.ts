@@ -56,6 +56,18 @@ import { OmnichannelAuditEntity } from '../modules/omnichannel/entities/omnichan
 import { OmnichannelMediaAssetEntity } from '../modules/omnichannel/entities/omnichannel-media-asset.entity';
 import { CartSignalEntity } from '../modules/cart/cart-signal.entity';
 import { SmsEventLogEntity } from '../modules/cart/sms-event-log.entity';
+import {
+  MarketingActivityEntity,
+  MarketingCampaignEntity,
+  MarketingCheckoutIntentEntity,
+  MarketingConsentEntity,
+  MarketingEnrollmentEntity,
+  MarketingFunnelEntity,
+  MarketingFunnelStepEntity,
+  MarketingSendEntity,
+  MarketingSuppressionEntity,
+  MarketingTemplateEntity,
+} from '../modules/customer-marketing/entities';
 import { assertProductionDbSyncSafe, typeormSynchronizeEnabled } from './db-sync';
 
 export const RUNTIME_TYPEORM_ENTITIES = [
@@ -105,6 +117,16 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     OmnichannelMediaAssetEntity,
     CartSignalEntity,
     SmsEventLogEntity,
+    MarketingConsentEntity,
+    MarketingSuppressionEntity,
+    MarketingFunnelEntity,
+    MarketingFunnelStepEntity,
+    MarketingEnrollmentEntity,
+    MarketingTemplateEntity,
+    MarketingCampaignEntity,
+    MarketingSendEntity,
+    MarketingActivityEntity,
+    MarketingCheckoutIntentEntity,
 ];
 
 export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => {

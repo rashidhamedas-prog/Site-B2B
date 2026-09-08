@@ -79,6 +79,19 @@ export class NotificationService {
     });
   }
 
+  /** Marketing / blast path: never send more than 100 numbers per sms.ir request. */
+  async sendBulkChunked(receptors: string[], message: string, chunkSize = 100): Promise<boolean> {
+    const unique = [...new Set(receptors.map((r) => String(r || '').trim()).filter(Boolean))];
+    if (unique.length === 0) return false;
+    const size = Math.max(1, Math.min(chunkSize, 100));
+    let any = false;
+    for (let i = 0; i < unique.length; i += size) {
+      const ok = await this.sendBulk(unique.slice(i, i + size), message);
+      any = any || ok;
+    }
+    return any;
+  }
+
   // OTP via sms.ir fast-send template (template must define #CODE#).
   async sendOtp(receptor: string, token: string): Promise<boolean> {
     const cfg = await this.settings.sms();

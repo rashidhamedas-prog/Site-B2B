@@ -56,6 +56,22 @@ assert(
   leaseEventTypes(true).includes(OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED),
   'connectors on leases publication deliver',
 );
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.MARKETING_SEND_REQUESTED),
+  'marketing send is leased without connectors',
+);
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.CUSTOMER_REGISTERED_MARKETING),
+  'marketing enroll is leased without connectors',
+);
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.CUSTOMER_APPROVED_MARKETING),
+  'marketing approved is leased without connectors',
+);
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.MARKETING_CAMPAIGN_DISPATCH),
+  'marketing campaign is leased without connectors',
+);
 
 {
   type Row = { id: string; status: 'PENDING' | 'PROCESSING'; lockedBy: string | null };

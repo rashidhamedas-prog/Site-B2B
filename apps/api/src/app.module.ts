@@ -30,6 +30,7 @@ import { BasalamModule } from './modules/basalam/basalam.module';
 import { TorobModule } from './modules/torob/torob.module';
 import { OmnichannelModule } from './modules/omnichannel/omnichannel.module';
 import { CartModule } from './modules/cart/cart.module';
+import { CustomerMarketingModule } from './modules/customer-marketing/customer-marketing.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { CartModule } from './modules/cart/cart.module';
     TorobModule,
     OmnichannelModule,
     CartModule,
+    CustomerMarketingModule,
   ],
 })
 export class AppModule {}

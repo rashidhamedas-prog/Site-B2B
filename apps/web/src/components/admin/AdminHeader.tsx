@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api';
 const PAGE_TITLES: Record<string, string> = {
   '/admin': 'داشبورد',
   '/admin/customers': 'مشتریان',
+  '/admin/customers/marketing': 'بازاریابی مشتریان',
   '/admin/orders': 'سفارش‌ها',
   '/admin/rma': 'مرجوعی (RMA)',
   '/admin/invoices': 'فاکتورها',
@@ -30,6 +31,7 @@ const PAGE_TITLES: Record<string, string> = {
 const PAGE_SUBTITLES: Record<string, string> = {
   '/admin': 'نمای کلی وضعیت سیستم',
   '/admin/customers': 'مدیریت مشتریان و CRM',
+  '/admin/customers/marketing': 'اتاق پیگیری تماس و پیامک',
   '/admin/orders': 'پردازش و پیگیری سفارش‌ها',
   '/admin/products': 'کاتالوگ محصولات',
   '/admin/inventory': 'مدیریت موجودی انبار',

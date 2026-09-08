@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell,
   Warehouse, UserCog, LogOut, X, ChevronDown, CircleUser,
-  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2,
+  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2, Megaphone,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { clearToken, getRole } from '@/lib/auth';
@@ -42,7 +42,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'فروش',
     items: [
-      { href: '/admin/customers', icon: Users, label: 'مشتریان (CRM)', badge: 0, badgeColor: 'bg-amber-500', module: 'crm' },
+      { href: '/admin/customers', icon: Users, label: 'فهرست مشتریان', exact: true, badge: 0, badgeColor: 'bg-amber-500', module: 'crm' },
+      { href: '/admin/customers/marketing', icon: Megaphone, label: 'بازاریابی', module: 'crm' },
       { href: '/admin/orders', icon: ShoppingCart, label: 'سفارش‌ها', badge: 0, badgeColor: 'bg-blue-500', module: 'orders' },
       { href: '/admin/rma', icon: Package, label: 'مرجوعی (RMA)', module: 'rma' },
       { href: '/admin/invoices', icon: FileText, label: 'فاکتورها', module: 'invoices' },

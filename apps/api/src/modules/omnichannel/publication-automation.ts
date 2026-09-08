@@ -3,12 +3,18 @@
  * Nothing here talks to Telegram or the database.
  */
 import {
-  TEHRAN_UTC_OFFSET_MINUTES,
   isOmnichannelProvider,
   type AutoPublishMode,
   type WithdrawAction,
 } from './omnichannel.constants';
 import { destinationCanPost, isCanarySettings, type OosPolicy } from './oos-policy';
+export {
+  tehranHour,
+  tehranDayStart,
+  inQuietHours,
+  nextQuietEnd,
+} from '../../lib/tehran-time';
+import { inQuietHours, nextQuietEnd, tehranHour } from '../../lib/tehran-time';
 
 /** Stock changes never create posts by themselves; they only edit/delete/restore via OOS policy. */
 export const STOCK_EVENT = 'product.stock_changed';
@@ -38,31 +44,6 @@ export type AutomationGateInput = {
 export type AutomationGate =
   | { allow: true; sendAt: Date; deferred: boolean }
   | { allow: false; reason: 'mode_off' | 'flags_off' | 'event_not_chosen' | 'daily_cap' };
-
-export function tehranHour(now: Date, offsetMinutes = TEHRAN_UTC_OFFSET_MINUTES): number {
-  const shifted = new Date(now.getTime() + offsetMinutes * 60_000);
-  return shifted.getUTCHours();
-}
-
-export function tehranDayStart(now: Date, offsetMinutes = TEHRAN_UTC_OFFSET_MINUTES): Date {
-  const shifted = new Date(now.getTime() + offsetMinutes * 60_000);
-  const startShifted = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
-  return new Date(startShifted - offsetMinutes * 60_000);
-}
-
-/** Window may wrap midnight (e.g. 23 → 8). start === end means no window. */
-export function inQuietHours(hour: number, start: number | null, end: number | null): boolean {
-  if (start == null || end == null || start === end) return false;
-  if (start < end) return hour >= start && hour < end;
-  return hour >= start || hour < end;
-}
-
-export function nextQuietEnd(now: Date, endHour: number, offsetMinutes = TEHRAN_UTC_OFFSET_MINUTES): Date {
-  const shifted = new Date(now.getTime() + offsetMinutes * 60_000);
-  let end = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate(), endHour, 0, 0);
-  if (end <= shifted.getTime()) end += 24 * 60 * 60_000;
-  return new Date(end - offsetMinutes * 60_000);
-}
 
 export function evaluateAutomationGate(input: AutomationGateInput): AutomationGate {
   if (input.mode === 'OFF') return { allow: false, reason: 'mode_off' };

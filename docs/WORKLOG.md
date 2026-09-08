@@ -6,6 +6,19 @@
 - چک‌اوت تکی روش‌های ارسال را از API کانال می‌خواند؛ عمده صریحاً `channel=WHOLESALE` می‌فرستد.
 - گزارش: `docs/reports/2026-09-08-admin-settings-ia.md`. ADR: `docs/adr/2026-09-08-channel-settings-ia.md`.
 
+## 2026-09-08 — نیت چک‌اوت برای سبد مانده
+
+- جدول `marketing_checkout_intents` و `POST /v1/storefront/marketing/checkout-intent` برای کاربر لاگین.
+- بیکن idle روی چک‌اوت تکی/عمده؛ سناریوی `retail.checkout.abandoned` بعد از ۳۰ دقیقه، با رد بعد از پرداخت ناموفق یا سفارش قطعی.
+- ارسال همچنان خاموش است تا LIVE آگاهانه روشن شود.
+
+## 2026-09-08 — بازاریابی پیامک و تماس زیر مشتریان
+
+- ماژول sidecar `customer-marketing`: قیف جدا تکی/عمده، رضایت و لغو جدا از جدول customers، ارسال فقط از outbox فعلی.
+- ادمین: «فهرست مشتریان» و «بازاریابی» در سایدبار؛ اتاق پیگیری `/admin/customers/marketing`؛ پرونده ۳۶۰ در `/admin/customers/[id]`.
+- پیش‌فرض ارسال خاموش است. پیامک خدماتی OTP/سفارش/تأیید عمده تکرار نمی‌شود. مسیر `/admin/marketing` دست نخورده ماند.
+- بعد از ریویو: تحویل ورکر دوباره consent و kill-switch را چک می‌کند؛ قالب بازاریابی TRANSACTIONAL نمی‌پذیرد؛ کمپین فقط وقتی mode سراسری LIVE است می‌رود؛ حذف مشتری شماره را suppress می‌کند.
+- زنده روی `origin/master` + VPS `47b013e`؛ ۹ جدول `marketing_*`؛ health ۲۰۰؛ LIVE خاموش.
 
 ## 2026-09-08 — بازطراحی انتخاب پرداخت در چک‌اوت تک و عمده
 

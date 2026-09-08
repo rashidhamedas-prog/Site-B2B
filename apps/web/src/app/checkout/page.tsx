@@ -17,6 +17,7 @@ import {
   checkoutCtaLabel,
   wholesalePaymentOptions,
 } from '@/lib/checkout-payment-ui';
+import { pulseCheckoutIntent } from '@/lib/checkout-intent';
 
 function toman(n: number) { return Math.round(n / 10).toLocaleString('fa-IR'); }
 
@@ -128,6 +129,11 @@ export default function CheckoutPage() {
       router.replace('/portal/login?redirect=/checkout');
     }
   }, [router]);
+
+  useEffect(() => {
+    if (!getToken() || items.length === 0) return;
+    pulseCheckoutIntent('WHOLESALE');
+  }, [items.length]);
 
   useEffect(() => {
     if (!getToken()) return;

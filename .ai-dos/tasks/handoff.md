@@ -2,13 +2,64 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-09-08T14:55:00Z — TASK-20260908-004 implementing admin settings IA
+## 2026-09-08T14:55:00Z — TASK-20260908-005 implementing admin settings IA
 
+- ID collision: origin/master already used TASK-20260908-004 for checkout-intent. This settings IA is **TASK-20260908-005**.
 - Objective: fully split retail/wholesale shipping settings; move ticker, SMS ops, Peystaz quote into system-settings tabs; redesign `/admin/settings`.
 - Decisions: nested `shipping.retail|wholesale.companies`; nested `shippingPost`; methods/public default WHOLESALE; ticker stays CMS chrome, edited from theme tab; one save per tab.
 - Tests: `shipping-channel.spec.ts` OK; `shipping-methods.spec.ts` OK via tsx; api tsc 0; web tsc 0.
-- Next: commit, merge master, deploy, verify `/admin/settings` + `/v1/health`.
-- Risks: first save of shippingPost writes nested JSON; legacy flat hydrates both until then. Independent reviewer still required for shipping API change.
+- Next: commit merge with origin/master, deploy, verify `/admin/settings` + `/v1/health`.
+- Risks: first save of shippingPost writes nested JSON; legacy flat hydrates both until then. Independent reviewer still required for shipping API change. Checkout-intent beacon kept.
+
+## 2026-09-08T14:57:00Z — TASK-20260908-004 CLOSED live `10d5f5e`
+
+- Task / owner: TASK-20260908-004 / cursor:implementer-TASK-20260908-004
+- Shipped checkout_intent + idle beacon + abandon policy. Deploy complete at `10d5f5e`.
+- Observed: health 200; `POST /v1/storefront/marketing/checkout-intent` → 401 without JWT; table `marketing_checkout_intents` + migration `MarketingCheckoutIntent1757332800004`; route mapped; LIVE OFF.
+- Claims released. Next optional: canary one `retail.checkout.abandoned` after owner enables CANARY.
+
+## 2026-09-08T14:50:00Z — TASK-20260908-004 checkout intent
+
+- Task / owner: TASK-20260908-004 / cursor:implementer-TASK-20260908-004
+- Branch `ai/TASK-20260908-004-checkout-intent`. Continues plan leftover after 002 closed.
+- Reclaimed released checkout pages from TASK-20260908-003. Added `marketing_checkout_intents`, storefront JWT endpoint, idle beacon, abandon policy (30m / skip pay-fail).
+- Observed: checkout-intent-policy + related specs OK; api+web tsc 0. LIVE stays OFF.
+- Next: commit, push master, VPS migrate/deploy, verify health.
+
+## 2026-09-08T01:35:00Z — TASK-20260908-002 CLOSED live `47b013e`
+
+- Fast-forward: `fd763b6..47b013e` on `origin/master`. Feature branch `ai/TASK-20260908-002-customer-marketing` pushed.
+- VPS `/opt/taranom` = `47b013e`. API/worker recreated; web has `/admin/customers/marketing` and `/admin/customers/[id]`.
+- Observed: `/v1/health` 200 `{"status":"ok"}`. `/v1/marketing/settings` 401. Nine `marketing_*` tables exist. `.ir` and `.com` 200.
+- File claims released. Task status `done`. Do not flip LIVE.
+- [مرور فاز](a7f5ad50-31e7-4bc5-9370-bb21a883d0e3) PASS WITH CONDITIONS. [بازبینی امنیت](b8f07acc-6921-4738-98f8-913382f900bc) prior Highs fixed.
+
+## 2026-09-08T01:10:00Z — TASK-20260908-002 independent reviews
+
+- Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
+- [مرور فاز](a7f5ad50-31e7-4bc5-9370-bb21a883d0e3): PASS WITH CONDITIONS. No must-fix. LIVE/connectors not enabled.
+- [بازبینی امنیت](b8f07acc-6921-4738-98f8-913382f900bc): prior Highs (TRANSACTIONAL bypass, campaign global mode) fixed. Remaining High: deliver TOCTOU after recheck.
+- CODE: `deliverById` now claims `QUEUED|SENDING` atomically, rechecks twice, and writes SENT/FAILED only while still `SENDING` so opt-out cannot be overwritten. NURTURE campaigns queue via `queueSms`. Lease spec covers approved + campaign events.
+- Observed: send-gates + outbox-lease specs OK; api tsc 0.
+- Next: push + VPS deploy with `customerMarketing` OFF.
+
+## 2026-09-08T00:45:00Z — TASK-20260908-002 review remediations
+
+- Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
+- Architect [معمار ماژول](72af18c4-23ce-4cda-beda-96575e0ee988): sidecar `customer-marketing`; no consent columns on `customers`; `/admin/marketing` and `/v1/crm` untouched.
+- Security remediations: deliver-time recheck, cancel queued on opt-out/delete, no TRANSACTIONAL marketing templates, campaign dispatch requires global LIVE, PREVIEW cannot arm `enabled`.
+- Observed: consent/send-gates/settings/stage/outbox-lease/publication-automation specs OK. `apps/api` tsc --noEmit 0. `apps/web` tsc --noEmit 0.
+- Next: independent Reviewer + Security, then merge to master and VPS deploy with LIVE OFF.
+- Rollback: drop branch; unused tables only after migrate.
+
+## 2026-09-08T00:40:00Z — TASK-20260908-002 customer-marketing implementing
+
+- Task / owner: TASK-20260908-002 / cursor:implementer-TASK-20260908-002
+- Worktree `D:/proje/Site-B2B-customer-marketing` branch `ai/TASK-20260908-002-customer-marketing`.
+- Reclaimed stale auth.service (TASK-20260904-001), omnichannel constants/lease/app.module/worker.module (TASK-20260826-001), AdminSidebar/Header (TASK-20260831-001), AdminDashboard href (TASK-20260903-001).
+- Did not touch checkout/PDP/order.service/settings.service.
+- Default `customerMarketing` OFF. LIVE requires AdminOnly. Reviewer + Security still required.
+- Next: unit specs + api/web tsc, then deploy without flipping LIVE.
 
 ## 2026-09-08T00:42:00Z — TASK-20260908-003 CLOSED live `3ad49d2`
 

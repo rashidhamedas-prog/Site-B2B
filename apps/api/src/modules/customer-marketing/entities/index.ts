@@ -1,0 +1,10 @@
+export { MarketingConsentEntity } from './marketing-consent.entity';
+export { MarketingSuppressionEntity } from './marketing-suppression.entity';
+export { MarketingFunnelEntity } from './marketing-funnel.entity';
+export { MarketingFunnelStepEntity } from './marketing-funnel-step.entity';
+export { MarketingEnrollmentEntity } from './marketing-enrollment.entity';
+export { MarketingTemplateEntity } from './marketing-template.entity';
+export { MarketingCampaignEntity } from './marketing-campaign.entity';
+export { MarketingSendEntity } from './marketing-send.entity';
+export { MarketingActivityEntity } from './marketing-activity.entity';
+export { MarketingCheckoutIntentEntity } from './marketing-checkout-intent.entity';

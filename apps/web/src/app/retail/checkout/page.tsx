@@ -29,6 +29,7 @@ import {
   type RetailPaymentGateway,
 } from '@/lib/checkout-payment-ui';
 import { FALLBACK_RETAIL_SHIPPING_METHODS, resolveShippingMethods } from '@/lib/shipping-methods';
+import { pulseCheckoutIntent } from '@/lib/checkout-intent';
 
 const PROVINCES = [
   'تهران', 'خراسان رضوی', 'اصفهان', 'فارس', 'آذربایجان شرقی', 'آذربایجان غربی',
@@ -114,6 +115,11 @@ export default function RetailCheckoutPage() {
       subtotal,
     );
   }, [items, subtotal]);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    pulseCheckoutIntent('RETAIL');
+  }, [items.length]);
 
   useEffect(() => {
     const saved = getRetailAddresses();

@@ -15,6 +15,7 @@ import { ChannelDestinationEntity } from './entities/channel-destination.entity'
 import { ChannelConnectionEntity } from './entities/channel-connection.entity';
 import { OmnichannelModule } from './omnichannel.module';
 import { OutboxWorkerService } from './services/outbox-worker.service';
+import { CustomerMarketingModule } from '../customer-marketing/customer-marketing.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { OutboxWorkerService } from './services/outbox-worker.service';
     NotificationModule,
     AffiliateModule,
     OmnichannelModule,
+    CustomerMarketingModule,
   ],
   providers: [OutboxWorkerService],
 })

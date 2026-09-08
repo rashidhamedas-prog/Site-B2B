@@ -1,5 +1,5 @@
 import { writeFileSync } from 'fs';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hostname } from 'os';
 import { Repository } from 'typeorm';
@@ -18,6 +18,8 @@ import { safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
+import { CustomerMarketingService } from '../../customer-marketing/customer-marketing.service';
+import { MarketingSmsSender } from '../../customer-marketing/marketing-sms.sender';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
@@ -55,6 +57,8 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly adapters: ChannelAdapterRegistry,
     private readonly omnichannel: OmnichannelService,
     private readonly tokenVault: OmnichannelTokenVaultService,
+    @Optional() private readonly marketing?: CustomerMarketingService,
+    @Optional() private readonly marketingSms?: MarketingSmsSender,
   ) {}
 
   onModuleInit() {
@@ -147,6 +151,18 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       case OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION:
         await this.handleOrderStatus(String(payload.orderId || row.aggregateId), String(payload.status || ''));
         return;
+      case OUTBOX_EVENT_TYPES.CUSTOMER_REGISTERED_MARKETING:
+        if (this.marketing) await this.marketing.handleRegisteredEvent(String(payload.customerId || row.aggregateId));
+        return;
+      case OUTBOX_EVENT_TYPES.CUSTOMER_APPROVED_MARKETING:
+        if (this.marketing) await this.marketing.handleApprovedEvent(String(payload.customerId || row.aggregateId));
+        return;
+      case OUTBOX_EVENT_TYPES.MARKETING_SEND_REQUESTED:
+        if (this.marketingSms) await this.marketingSms.deliverById(String(payload.sendId || row.aggregateId));
+        return;
+      case OUTBOX_EVENT_TYPES.MARKETING_CAMPAIGN_DISPATCH:
+        if (this.marketing) await this.marketing.dispatchCampaign(String(payload.campaignId || row.aggregateId));
+        return;
       case OUTBOX_EVENT_TYPES.AFFILIATE_POSTBACK_REQUESTED:
         await this.affiliate.deliverForOrder(
           String(payload.orderId || row.aggregateId),
@@ -209,6 +225,10 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     if (phone) {
       await this.notifications.orderRegistered(phone, order.orderNumber);
     }
+    if (this.marketing && order.customerId) {
+      await this.marketing.completeCheckoutIntent(order.customerId, order.id).catch(() => undefined);
+      await this.marketing.evaluateCustomer(order.customerId);
+    }
     const ch = String(channel || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
     const label =
       (customer as { businessName?: string; ownerName?: string } | null)?.businessName ||
@@ -229,6 +249,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       await this.notifications.orderConfirmed(phone, order.orderNumber);
     } else if (status === 'SHIPPED') {
       await this.notifications.orderShipped(phone, order.orderNumber, order.trackingCode);
+    }
+    if (this.marketing && order.customerId) {
+      await this.marketing.evaluateCustomer(order.customerId);
     }
   }
 

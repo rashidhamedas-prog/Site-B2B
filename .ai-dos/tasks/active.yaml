@@ -1,19 +1,19 @@
 schema_version: 1
 tasks:
-  - id: "TASK-20260908-004"
+  - id: "TASK-20260908-005"
     title: "Channel-split shipping + professional system settings IA"
     status: "in_progress"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20260908-004"
+    owner: "cursor:implementer-TASK-20260908-005"
     roles:
-      architect: "cursor:implementer-TASK-20260908-004"
-      implementer: "cursor:implementer-TASK-20260908-004"
+      architect: "cursor:implementer-TASK-20260908-005"
+      implementer: "cursor:implementer-TASK-20260908-005"
       reviewer: "required-after-shipping-api-channel-split"
       security: "self-review-admin-settings-no-new-secrets"
     branch: "ai/TASK-20260908-004-admin-settings-ia"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-08T14:40:00Z"
-    heartbeat_at: "2026-09-08T14:40:00Z"
+    heartbeat_at: "2026-09-08T15:10:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/settings/shipping-channel.ts"
@@ -26,16 +26,11 @@ tasks:
       - "apps/api/package.json"
       - "apps/web/src/app/admin/settings/page.tsx"
       - "apps/web/src/components/admin/AdminSettings.tsx"
-      - "apps/web/src/components/admin/AdminOpsPanels.tsx"
       - "apps/web/src/components/admin/settings/types.ts"
       - "apps/web/src/components/admin/settings/fields.tsx"
       - "apps/web/src/components/admin/settings/primitives.tsx"
-      - "apps/web/src/components/admin/settings/BusinessTab.tsx"
       - "apps/web/src/components/admin/settings/ShippingTab.tsx"
       - "apps/web/src/components/admin/settings/SmsTab.tsx"
-      - "apps/web/src/components/admin/settings/PaymentTab.tsx"
-      - "apps/web/src/components/admin/settings/InstallmentsTab.tsx"
-      - "apps/web/src/components/admin/settings/MarketingTab.tsx"
       - "apps/web/src/components/admin/settings/ThemeTab.tsx"
       - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
       - "apps/web/src/app/retail/checkout/page.tsx"
@@ -49,15 +44,59 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Move ticker / SMS ops / Peystaz quote into system settings tabs.
-      Fully split retail vs wholesale shipping companies, fees, and post quote.
-      Redesign /admin/settings shell. No payment adapter changes. No new secrets.
+      ID 004 was taken by checkout-intent on origin/master. This is TASK-20260908-005.
+      Nested shipping companies and shippingPost per channel. Ticker/SMS ops/Peystaz in tabs.
     acceptance_criteria:
       - "Retail and wholesale shipping companies/fees/post-quote are independently stored and served"
       - "Ticker, SMS ops, and Peystaz quote live inside existing system-settings tabs"
       - "GET /shipping/methods?channel= filters companies; wholesale default remains WHOLESALE"
       - "Admin settings shell is channel-aware, RTL, and saves tab groups without extra top panels"
       - "shipping-channel spec and web/api tsc pass"
+  - id: "TASK-20260908-004"
+    title: "Checkout intent for abandoned nurture SMS"
+    status: "done"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260908-004"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-004"
+      implementer: "cursor:implementer-TASK-20260908-004"
+      reviewer: "self-review-after-intent"
+      security: "self-review-shopper-jwt-no-phone-in-payload"
+    branch: "ai/TASK-20260908-004-checkout-intent"
+    worktree: "D:/proje/Site-B2B-customer-marketing"
+    claimed_at: "2026-09-08T14:40:00Z"
+    heartbeat_at: "2026-09-08T14:57:00Z"
+    closed_at: "2026-09-08T14:57:00Z"
+    depends_on: []
+    file_claims: []
+    notes: |
+      LIVE on origin/master + VPS 10d5f5e. marketing_checkout_intents present. Default SMS OFF.
+    acceptance_criteria:
+      - "Logged-in retail checkout posts checkout-intent after idle"
+      - "marketing_checkout_intents table expand-only"
+      - "Abandoned nurture waits 30m, skips after pay fail or settled order"
+      - "No LIVE flip; api+web tsc and policy spec pass"
+  - id: "TASK-20260908-002"
+    title: "Customer marketing sidecar (SMS + call funnel under CRM)"
+    status: "done"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260908-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-002"
+      implementer: "cursor:implementer-TASK-20260908-002"
+      reviewer: "required-independent-sms-pii"
+      security: "required-independent-sms-consent"
+    branch: "ai/TASK-20260908-002-customer-marketing"
+    worktree: "D:/proje/Site-B2B-customer-marketing"
+    claimed_at: "2026-09-08T00:00:00Z"
+    heartbeat_at: "2026-09-08T01:35:00Z"
+    depends_on: []
+    file_claims: []
+    notes: |
+      LIVE 2026-09-08: origin/master + VPS 47b013e. Default SMS OFF. Claims released.
+    acceptance_criteria:
+      - "Sidecar tables exist; no new consent columns on customers"
+      - "LIVE send is AdminOnly and default mode is OFF"
   - id: "TASK-20260908-003"
     title: "Luxury checkout payment picker for retail and wholesale"
     status: "done"
@@ -85,9 +124,6 @@ tasks:
       - "apps/web/src/components/shared/FloatingContact.tsx"
       - "docs/WORKLOG.md"
       - "docs/reports/2026-09-08-checkout-payment-ui.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     notes: |
       LIVE 2026-09-08: origin/master + VPS /opt/taranom = 3ad49d2.
       Health 200. Retail checkout 200 with luxury picker labels. Eligible
@@ -759,7 +795,8 @@ tasks:
       - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
       - "apps/api/src/modules/auth/dto/login.dto.ts"
       - "apps/api/src/modules/auth/dto/password-reset.dto.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-09-03; enroll after OTP/register):
+      # "apps/api/src/modules/auth/auth.service.ts"
       - "apps/api/src/modules/auth/auth.controller.ts"
       - "apps/api/src/modules/auth/guards/roles.guard.ts"
       - "apps/api/src/modules/auth/password-policy.spec.ts"
@@ -1110,7 +1147,8 @@ tasks:
       # "apps/web/src/middleware.ts"
       - "apps/web/src/components/admin/AdminSessionGate.tsx"
       - "apps/web/src/app/admin/layout.tsx"
-      - "apps/web/src/components/admin/AdminDashboard.tsx"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-09-02; marketing quick action):
+      # "apps/web/src/components/admin/AdminDashboard.tsx"
       - "apps/web/src/components/admin/AdminProducts.tsx"
       # transferred 2026-09-03 to TASK-20260903-003 (DigiPay probe; session task shipped):
       # "apps/web/src/components/admin/AdminSettings.tsx"
@@ -1310,10 +1348,12 @@ tasks:
       # transferred 2026-09-03 to TASK-20260903-006 (stale hb; store new token after change):
       # "apps/web/src/components/admin/AdminAccount.tsx"
       - "apps/web/src/app/admin/account/page.tsx"
-      - "apps/web/src/components/admin/AdminHeader.tsx"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-08-31; marketing titles):
+      # "apps/web/src/components/admin/AdminHeader.tsx"
       # transferred 2026-09-03 to TASK-20260903-003 (DigiPay UPG UX; claim was load-error only):
       # "apps/web/src/components/admin/AdminSettings.tsx"
-      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-08-31; customers submenu):
+      # "apps/web/src/components/admin/AdminSidebar.tsx"
       - "apps/web/src/components/shared/StorefrontSearch.tsx"
       # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-31; logo LCP preload):
       # "apps/web/src/components/layout/Header.tsx"
@@ -1686,10 +1726,12 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
-      - "apps/api/src/app.module.ts"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-09-02; marketing module):
+      # "apps/api/src/app.module.ts"
       # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; adapter registry export):
       # "apps/api/src/modules/omnichannel/omnichannel.module.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-09-02; marketing outbox types):
+      # "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
       # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; admin console v2 replaces fixed <thead> count):
@@ -1720,14 +1762,16 @@ tasks:
       - "apps/web/src/components/admin/ColorVariantsEditor.tsx"
       # transferred 2026-09-08 to TASK-20260908-001 (stale hb 2026-09-02; reports harden):
       # "apps/api/src/modules/dashboard/dashboard.service.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-09-02; marketing always-lease):
+      # "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
+      # "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; mark PUBLISHED after canary deliver):
       # "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
       # transferred 2026-09-08 to TASK-20260908-001 (stale hb 2026-09-02; SMS ops):
       # "apps/api/src/modules/notification/notification.service.ts"
       - "apps/api/src/modules/search/search.service.ts"
-      - "apps/api/src/modules/omnichannel/worker.module.ts"
+      # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-09-02; marketing worker import):
+      # "apps/api/src/modules/omnichannel/worker.module.ts"
       - "apps/api/src/worker.main.ts"
       - "docker-compose.yml"
       - "scripts/auto-deploy.sh"
