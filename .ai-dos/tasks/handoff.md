@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T14:50:00Z — TASK-20260908-004 checkout intent
+
+- Task / owner: TASK-20260908-004 / cursor:implementer-TASK-20260908-004
+- Branch `ai/TASK-20260908-004-checkout-intent`. Continues plan leftover after 002 closed.
+- Reclaimed released checkout pages from TASK-20260908-003. Added `marketing_checkout_intents`, storefront JWT endpoint, idle beacon, abandon policy (30m / skip pay-fail).
+- Observed: checkout-intent-policy + related specs OK; api+web tsc 0. LIVE stays OFF.
+- Next: commit, push master, VPS migrate/deploy, verify health.
+
 ## 2026-09-08T01:35:00Z — TASK-20260908-002 CLOSED live `47b013e`
 
 - Fast-forward: `fd763b6..47b013e` on `origin/master`. Feature branch `ai/TASK-20260908-002-customer-marketing` pushed.
