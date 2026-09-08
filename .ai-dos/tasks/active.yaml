@@ -1,5 +1,45 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260908-008"
+    title: "CMS save applies immediately to storefront (ISR + SKU ids)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260908-008"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-008"
+      implementer: "cursor:implementer-TASK-20260908-008"
+      reviewer: "self-review-cms-revalidate-staff-only"
+      security: "self-review-public-sku-ids-allowlist"
+    branch: "ai/TASK-20260908-008-cms-revalidate"
+    worktree: "D:/proje/Site-B2B-featured-products"
+    claimed_at: "2026-09-08T15:40:00Z"
+    heartbeat_at: "2026-09-08T15:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/product/product-ids-query.ts"
+      - "apps/api/src/modules/product/product-ids-query.spec.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/web/src/lib/cms/products-block.ts"
+      - "apps/web/src/lib/cms/products-block.spec.ts"
+      - "apps/web/src/lib/cms/fetch.ts"
+      - "apps/web/src/lib/cms/revalidate-storefront.ts"
+      - "apps/web/src/lib/cms/revalidate-client.ts"
+      - "apps/web/src/lib/cms/revalidate-storefront.spec.ts"
+      - "apps/web/src/lib/server-api.ts"
+      - "apps/web/src/app/api/cms/revalidate/route.ts"
+      - "apps/web/src/components/admin/AdminSiteContent.tsx"
+      - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Live CMS JSON updates but ISR/CDN HTML stays stale. Retail productIds are SKUs and were dropped.
+    acceptance_criteria:
+      - "Saving site-content revalidates the matching storefront path so home copy/rails update without waiting a year of SWR"
+      - "Manual productIds that are SKUs resolve in catalog order like UUIDs"
+      - "Public ids query still reject SQL-like tokens; staff-only revalidate route"
+      - "products-block and product-ids-query specs plus web/api tsc pass"
   - id: "TASK-20260908-006"
     title: "Featured products CMS block architecture + wiring"
     status: "done"

@@ -2,6 +2,7 @@ export const PRODUCTS_BLOCK_HOME_CAP = 12;
 export const PRODUCTS_BLOCK_MAX_IDS = 16;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SKU_RE = /^[a-z0-9][a-z0-9_-]{0,46}\d[a-z0-9_-]{0,46}$/i;
 
 export type ProductsBlockSource = 'auto' | 'manual';
 export type ProductsBlockSort = 'newest' | 'views' | 'discounted';
@@ -44,9 +45,15 @@ export function parseProductIds(raw: unknown, max = PRODUCTS_BLOCK_MAX_IDS): str
   const seen = new Set<string>();
   const out: string[] = [];
   for (const part of parts) {
-    const id = part.trim().toLowerCase();
-    if (!UUID_RE.test(id) || seen.has(id)) continue;
-    seen.add(id);
+    const token = part.trim();
+    if (!token) continue;
+    const isUuid = UUID_RE.test(token);
+    const isSku = !isUuid && SKU_RE.test(token) && token.length <= 48;
+    if (!isUuid && !isSku) continue;
+    const id = isUuid ? token.toLowerCase() : token.toUpperCase();
+    const key = id.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(id);
     if (out.length >= max) break;
   }

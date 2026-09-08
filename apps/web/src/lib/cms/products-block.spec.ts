@@ -16,6 +16,7 @@ const c = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 assert(parseProductIds(`${a}, ${b} ${a}`).join(',') === `${a},${b}`, 'dedupe and split');
 assert(parseProductIds('not-a-uuid,coming-soon').length === 0, 'reject non-uuid');
+assert(parseProductIds('WINTER-WEAR00009,COATS00006').join(',') === 'WINTER-WEAR00009,COATS00006', 'keep sku');
 assert(parseProductIds([{ id: a }, { id: b }]).length === 2, 'object id list');
 assert(serializeProductIds([a, 'nope', b]) === `${a},${b}`, 'serialize strips junk');
 

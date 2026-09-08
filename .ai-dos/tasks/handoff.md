@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T15:50:00Z — TASK-20260908-008 CMS save not showing on home
+
+- Observed live: WHOLESALE home CMS `updatedAt=2026-09-08T15:32:57Z` with category + inStock + limit 12. Cache-busted HTML already had those 11 coats. CF `s-maxage=60, stale-while-revalidate=31535940` (EXPIRED) kept serving old HTML on the bare URL.
+- RETAIL `productIds=WINTER-WEAR00009,WINTER-WEAR00005,COATS00006` (SKUs). Parser dropped them so manual rail never ran.
+- CODE: staff POST `/api/cms/revalidate` after site-content save; SKU allowlist on public `ids`.
+- Next: tests already green locally; commit, push, deploy, then save once more in admin (or hard-refresh after deploy).
+
 ## 2026-09-08T15:25:00Z — TASK-20260908-006 CLOSED live `8e57985`
 
 - Task / owner: TASK-20260908-006 / cursor:implementer-TASK-20260908-006

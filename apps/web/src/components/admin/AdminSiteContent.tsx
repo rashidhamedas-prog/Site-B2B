@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 import { AdminBlockEditor, type ContentBlock } from './AdminBlockEditor';
 import { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY, getDefaultBlocks } from '@/lib/cms/defaults';
+import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { cn } from '@/lib/cn';
 
 interface SiteContent {
@@ -78,6 +79,7 @@ export function AdminSiteContent() {
         blocks,
         isPublished: true,
       });
+      await revalidateStorefrontAfterSave(channel, pageKey);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: unknown) {
@@ -116,6 +118,7 @@ export function AdminSiteContent() {
         });
       }
       await load();
+      await revalidateStorefrontAfterSave(channel, '*');
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: unknown) {

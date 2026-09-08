@@ -1,7 +1,7 @@
 /**
  * npx ts-node --transpile-only src/modules/product/product-ids-query.spec.ts
  */
-import { merchandisingOrderSql, parseProductIdsQuery, PRODUCT_IDS_QUERY_MAX } from './product-ids-query';
+import { merchandisingOrderSql, parseMerchandisingRefs, parseProductIdsQuery, PRODUCT_IDS_QUERY_MAX } from './product-ids-query';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -14,6 +14,12 @@ assert(parseProductIdsQuery(`${a},${b} ${a}`).join(',') === `${a},${b}`, 'dedupe
 assert(parseProductIdsQuery('coming-soon;drop table').length === 0, 'reject non-uuid');
 assert(parseProductIdsQuery([a, 'nope', b])[0] === a, 'array input');
 assert(parseProductIdsQuery(null).length === 0, 'null is empty');
+
+const refs = parseMerchandisingRefs('WINTER-WEAR00009,coming-soon,COATS00006');
+assert(refs.length === 2 && refs[0].kind === 'sku' && refs[0].value === 'WINTER-WEAR00009', 'keep sku');
+assert(refs[1].value === 'COATS00006', 'second sku');
+assert(parseMerchandisingRefs(`${a},WINTER-WEAR00009`).map((r) => r.kind).join(',') === 'id,sku', 'mixed');
+assert(parseMerchandisingRefs('1;drop table').length === 0, 'reject sql');
 
 const many = Array.from({ length: 20 }, (_, i) => `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa${String(i).padStart(2, '0')}`);
 assert(parseProductIdsQuery(many.join(',')).length === PRODUCT_IDS_QUERY_MAX, 'cap 16');

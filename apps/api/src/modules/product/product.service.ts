@@ -42,7 +42,7 @@ import {
 } from './product-sale';
 import { isPublicProductRow } from './public-product-status';
 import { stripOppositeChannelFields } from './public-product-channel';
-import { merchandisingOrderSql } from './product-ids-query';
+import { merchandisingOrderSql, parseMerchandisingRefs, isProductUuid } from './product-ids-query';
 import { productOutboxIntents } from './product-outbox';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import {
@@ -312,6 +312,32 @@ export class ProductService {
     await this.outbox.enqueueMany(productOutboxIntents(before, after, operationId), manager);
   }
 
+  private async resolveCuratedProductIds(raw?: string[]): Promise<string[]> {
+    const refs = parseMerchandisingRefs(raw);
+    if (!refs.length) return [];
+    const skus = refs.filter((ref) => ref.kind === 'sku').map((ref) => ref.value.toLowerCase());
+    const skuToId = new Map<string, string>();
+    if (skus.length) {
+      const rows = await this.productRepo
+        .createQueryBuilder('p')
+        .select(['p.id', 'p.sku'])
+        .where('LOWER(p.sku) IN (:...skus)', { skus })
+        .getMany();
+      for (const row of rows) {
+        if (row.id && row.sku) skuToId.set(String(row.sku).toLowerCase(), row.id);
+      }
+    }
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const ref of refs) {
+      const id = ref.kind === 'id' ? ref.value : skuToId.get(ref.value.toLowerCase());
+      if (!id || !isProductUuid(id) || seen.has(id)) continue;
+      seen.add(id);
+      out.push(id);
+    }
+    return out;
+  }
+
   async findAll(
     page = 1,
     limit = 20,
@@ -367,11 +393,13 @@ export class ProductService {
       if (cat) categoryId = cat.id;
     }
 
+    const curatedIds = await this.resolveCuratedProductIds(opts?.ids);
+
     // Admin list (status=ALL) needs variants for stock/color counts; storefront cards do not.
     const wantVariants = opts?.includeVariants === true || status === 'ALL';
 
     const qb = this.productRepo.createQueryBuilder('p').where('p.deletedAt IS NULL');
-    if (wantVariants && !(Array.isArray(opts?.ids) && opts.ids.length)) {
+    if (wantVariants && !curatedIds.length) {
       qb.leftJoinAndSelect('p.variants', 'v');
     }
 
@@ -383,7 +411,6 @@ export class ProductService {
       qb.andWhere('p.showOnWholesale = true');
     }
     if (sizeType) qb.andWhere('p.sizeType = :sizeType', { sizeType });
-    const curatedIds = Array.isArray(opts?.ids) ? opts.ids.filter((id) => typeof id === 'string') : [];
     if (curatedIds.length) {
       qb.andWhere('p.id IN (:...curatedIds)', { curatedIds });
     } else if (relatedIds?.length) {

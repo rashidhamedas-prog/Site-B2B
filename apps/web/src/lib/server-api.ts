@@ -99,7 +99,7 @@ export async function fetchProductList<T = Record<string, unknown>>(options: {
     if (options.categoryId) params.set('categoryId', options.categoryId);
     if (options.inStockOnly) params.set('inStock', '1');
     const res = await fetch(`${base}/products?${params}`, {
-      next: { revalidate: 300 },
+      next: { revalidate: 60, tags: ['catalog', `catalog:${options.channel}`] },
     });
     if (!res.ok) return empty(true);
     const json = (await res.json()) as { data?: T[]; meta?: ProductListMeta } | T[];

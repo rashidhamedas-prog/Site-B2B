@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type MutableRefObject } from 'react';
 import { apiClient } from '@/lib/api';
+import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { TextAreaField, ToggleRow } from './fields';
 import { SettingsSection } from './primitives';
 import type { SaleChannel } from './types';
@@ -66,6 +67,7 @@ export function HomeTickerCard({
         blocks: next,
         isPublished: true,
       });
+      await revalidateStorefrontAfterSave(channel, 'chrome');
     };
   }, [blocks, channel, enabled, saveRef, text, title]);
 

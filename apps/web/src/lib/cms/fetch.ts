@@ -16,7 +16,7 @@ export async function fetchSiteContent(
       next:
         opts?.revalidate === false
           ? { revalidate: 0 }
-          : { revalidate: opts?.revalidate ?? 60 },
+          : { revalidate: opts?.revalidate ?? 60, tags: ['cms', `cms:${channel}:${pageKey}`] },
     });
     if (!res.ok) return null;
     const data = (await res.json()) as SiteContentDoc;

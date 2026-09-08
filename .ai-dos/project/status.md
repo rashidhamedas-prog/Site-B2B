@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-08 — **TASK-20260908-006 CLOSED** on `origin/master` + VPS `8e57985`. Featured-products CMS: auto/manual source, picker, category, in-stock, portal gate; public `ids` order preserved. Health 200. `.ir`/`.com` homes 200. Claims released.
+- Last verified: 2026-09-08 — **TASK-20260908-008 implementing** on `ai/TASK-20260908-008-cms-revalidate`. CMS save did not appear on home because ISR/CDN HTML stayed stale; retail `productIds` were SKUs and were dropped. Not live until deploy.
 - Last verified: 2026-09-08 — **TASK-20260908-005 CLOSED** on `origin/master` + VPS `e284ae9`. Channel-split shipping live; ticker/SMS ops/Peystaz in system settings tabs. Health 200. Retail methods PISHTAZ/TIPAX/CHAPAR/TEHRAN_BIKE; wholesale returns saved freight companies. Claims released. Independent reviewer still required.
 - Last verified: 2026-09-08 — **TASK-20260908-004 CLOSED** on `origin/master` + VPS `10d5f5e`. Checkout intent + abandon policy live; SMS mode still OFF. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-002 CLOSED** on `origin/master` + VPS `47b013e`. Customer-marketing sidecar live; 9 marketing_* tables; default SMS OFF. Health 200. Claims released. Checkout/PDP/TorobPay untouched.
