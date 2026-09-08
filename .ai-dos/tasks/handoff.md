@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T15:25:00Z — TASK-20260908-006 CLOSED live `8e57985`
+
+- Task / owner: TASK-20260908-006 / cursor:implementer-TASK-20260908-006
+- Fast-forward already on origin/master. VPS `/opt/taranom` = `8e57985`. `deploy complete at 8e57985`.
+- Observed: `/v1/health` 200 `{"status":"ok"}`. `.ir` home 200 ~1.5s, 12 product cards under CMS heading «همه محصولات». `.com` home 200 ~4.2s, heading «محصولات برتر» with 6 cards + portal CTA.
+- Live `GET /v1/products?channel=RETAIL&ids=<uuid2>,<uuid0>` returned those two ids in that order. Invalid UUID / missing id → empty data. `inStock=1` returns items with retailStock.
+- Admin picker not click-tested (no staff session in this check). Claims released. No migration.
+- Next: operator can curate from `/admin/site-content` → بلوک محصولات برتر (جستجو/ترتیب یا حالت خودکار).
+
 ## 2026-09-08T15:20:00Z — TASK-20260908-006 featured products CMS
 
 - ID collision: origin/master used TASK-20260908-005 for admin-settings-ia. This merchandising slice is **TASK-20260908-006** on branch `ai/TASK-20260908-005-featured-products`.

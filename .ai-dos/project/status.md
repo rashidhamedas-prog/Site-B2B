@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-08 — **TASK-20260908-006** implementing featured-products CMS on `ai/TASK-20260908-005-featured-products`. Admin picker + `ids` query + storefront wiring. ID 005 taken by settings IA. Not live until merge/deploy.
+- Last verified: 2026-09-08 — **TASK-20260908-006 CLOSED** on `origin/master` + VPS `8e57985`. Featured-products CMS: auto/manual source, picker, category, in-stock, portal gate; public `ids` order preserved. Health 200. `.ir`/`.com` homes 200. Claims released. ID 005 remains admin-settings-ia.
 - Last verified: 2026-09-08 — **TASK-20260908-005 implementing** on `ai/TASK-20260908-004-admin-settings-ia`. Channel-split shipping; ticker/SMS ops/Peystaz in system settings tabs. ID 004 already used by checkout-intent. Not live until merge/deploy.
 - Last verified: 2026-09-08 — **TASK-20260908-004 CLOSED** on `origin/master` + VPS `10d5f5e`. Checkout intent + abandon policy live; SMS mode still OFF. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-002 CLOSED** on `origin/master` + VPS `47b013e`. Customer-marketing sidecar live; 9 marketing_* tables; default SMS OFF. Health 200. Claims released. Checkout/PDP/TorobPay untouched.

@@ -1,7 +1,7 @@
 # گزارش: بلوک محصولات برتر CMS
 
 تاریخ: ۲۰۲۶-۰۹-۰۸  
-کار: TASK-20260908-005
+کار: TASK-20260908-006
 
 ## مشکل
 
@@ -22,5 +22,11 @@
 - `products-block.spec.ts` ok
 - `apps/api` tsc --noEmit 0
 - `apps/web` tsc --noEmit 0
+- VPS `/opt/taranom` = `8e57985`; `deploy complete at 8e57985`
+- `/v1/health` 200
+- `.ir` home 200 ~1.5s — ۱۲ کارت در ریل CMS
+- `.com` home 200 ~4.2s — «محصولات برتر» با ۶ کارت + CTA پنل
+- Live `ids=` ترتیب چینش را حفظ کرد؛ UUID نامعتبر → `data: []`
+- Live `inStock=1` آیتم با `retailStock` برگرداند
 
-مایگریشن ندارد.
+مایگریشن ندارد. ادمین picker در این جلسه با نشست کارکنان باز نشد.
