@@ -17,7 +17,6 @@ Append newest entries at the top. Never erase another agent's record.
 - Live `GET /v1/products?channel=RETAIL&ids=<uuid2>,<uuid0>` returned those two ids in that order. Invalid UUID / missing id → empty data. `inStock=1` returns items with retailStock.
 - Admin picker not click-tested (no staff session in this check). Claims released. No migration.
 - Next: operator can curate from `/admin/site-content` → بلوک محصولات برتر (جستجو/ترتیب یا حالت خودکار).
->>>>>>> origin/master
 
 ## 2026-09-08T15:20:00Z — TASK-20260908-006 featured products CMS
 
