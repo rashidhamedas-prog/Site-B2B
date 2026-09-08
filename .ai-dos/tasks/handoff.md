@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T01:55:00Z — TASK-20260908-008 CLOSED live `49e21a0`
+
+- Audit of prior ChatGPT/deploy work: code was on VPS but `/api/cms/revalidate` → Nest 404. Fixed to `/admin/cms/revalidate` (Next). Unauth POST → 307 login (expected). Old `/api` path still Nest 404.
+- Observed: health 200; SKU ids return ordered products; `.ir` home HTML contains all 3 curated retail names. Claims released.
+- Operator: after CMS save, home should refresh without waiting for Cloudflare year-SWR; if edge still sticky, one hard refresh after save is enough now that Next ISR is busted.
+
 ## 2026-09-09T01:50:00Z — TASK-20260908-008 audit: deploy yes, revalidate path broken
 
 - VPS HEAD `2036e4b`, containers up ~6h. Health 200. Public `ids=WINTER-WEAR00009,...` returns 3 products (SKU fix live).

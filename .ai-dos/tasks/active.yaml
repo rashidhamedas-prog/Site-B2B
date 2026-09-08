@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260908-008"
     title: "CMS save applies immediately to storefront (ISR + SKU ids)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260908-008"
     roles:
@@ -13,28 +13,12 @@ tasks:
     branch: "ai/TASK-20260908-008-cms-revalidate"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-08T15:40:00Z"
-    heartbeat_at: "2026-09-08T15:40:00Z"
+    heartbeat_at: "2026-09-09T01:55:00Z"
+    closed_at: "2026-09-09T01:55:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/product/product-ids-query.ts"
-      - "apps/api/src/modules/product/product-ids-query.spec.ts"
-      - "apps/api/src/modules/product/product.service.ts"
-      - "apps/web/src/lib/cms/products-block.ts"
-      - "apps/web/src/lib/cms/products-block.spec.ts"
-      - "apps/web/src/lib/cms/fetch.ts"
-      - "apps/web/src/lib/cms/revalidate-storefront.ts"
-      - "apps/web/src/lib/cms/revalidate-client.ts"
-      - "apps/web/src/lib/cms/revalidate-storefront.spec.ts"
-      - "apps/web/src/lib/server-api.ts"
-      - "apps/web/src/app/admin/cms/revalidate/route.ts"
-      - "apps/web/src/components/admin/AdminSiteContent.tsx"
-      - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Live CMS JSON updates but ISR/CDN HTML stays stale. Retail productIds are SKUs and were dropped.
+      LIVE origin/master + VPS 49e21a0. Revalidate at /admin/cms/revalidate (not /api). SKU ids live. Claims released.
     acceptance_criteria:
       - "Saving site-content revalidates the matching storefront path so home copy/rails update without waiting a year of SWR"
       - "Manual productIds that are SKUs resolve in catalog order like UUIDs"
