@@ -121,10 +121,10 @@ export class CreateOrderDto {
   @MaxLength(40)
   paymentMethod?: string;
 
-  @ApiPropertyOptional({ enum: ['ZARINPAL', 'DIGIPAY'] })
+  @ApiPropertyOptional({ enum: ['ZARINPAL', 'DIGIPAY', 'TOROBPAY'] })
   @IsOptional()
-  @IsIn(['ZARINPAL', 'DIGIPAY'])
-  paymentGateway?: 'ZARINPAL' | 'DIGIPAY';
+  @IsIn(['ZARINPAL', 'DIGIPAY', 'TOROBPAY'])
+  paymentGateway?: 'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY';
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -260,10 +260,10 @@ export class StartPaymentDto {
   @IsIn(['WHOLESALE', 'RETAIL'])
   channel?: 'WHOLESALE' | 'RETAIL';
 
-  @ApiPropertyOptional({ enum: ['ZARINPAL', 'DIGIPAY'] })
+  @ApiPropertyOptional({ enum: ['ZARINPAL', 'DIGIPAY', 'TOROBPAY'] })
   @IsOptional()
-  @IsIn(['ZARINPAL', 'DIGIPAY'])
-  providerCode?: 'ZARINPAL' | 'DIGIPAY';
+  @IsIn(['ZARINPAL', 'DIGIPAY', 'TOROBPAY'])
+  providerCode?: 'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY';
 }
 
 export class VerifyPaymentDto {
@@ -306,6 +306,24 @@ export class VerifyPaymentDto {
   @IsString()
   @MaxLength(8)
   type?: string;
+
+  @ApiPropertyOptional({ description: 'TorobPay callback state (OK|FAILED)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  state?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  transactionId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  amount?: string;
 }
 
 export class ManualPaymentDto {

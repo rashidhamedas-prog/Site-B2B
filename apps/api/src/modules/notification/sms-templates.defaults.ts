@@ -13,6 +13,9 @@ export const SMS_TEMPLATE_DEFAULTS = {
   orderConfirmed: 'پوشاک ترنم\nسفارش {orderNumber} تایید شد و آماده‌سازی آن آغاز شده است.',
   orderShipped: 'پوشاک ترنم\nسفارش {orderNumber} ارسال شد.{trackingLine}',
   paymentReceived: 'پوشاک ترنم\nپرداخت {amountToman} تومان با موفقیت ثبت شد.\nکد پیگیری: {refId}',
+  orderPaidAdmin: 'پوشاک ترنم\nسفارش پرداخت‌شده {site}\nشماره: {orderNumber}{customerLine}',
+  abandonedCart: 'پوشاک ترنم\nسبد خرید {site} هنوز تمام نشده.\nادامه خرید: {cartUrl}',
+  stockOutAdmin: 'پوشاک ترنم\nاتمام موجودی {site}\n{productName}',
 } as const;
 
 export type SmsTemplateKey = keyof typeof SMS_TEMPLATE_DEFAULTS;

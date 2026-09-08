@@ -36,11 +36,16 @@ export class SettingsService {
       const prev = await this.get('payment');
       next = { ...value };
       delete next.digipayConfigured;
+      delete next.torobpayConfigured;
       for (const secretKey of [
         'digipayClientId',
         'digipayClientSecret',
         'digipayUsername',
         'digipayPassword',
+        'torobpayClientId',
+        'torobpayClientSecret',
+        'torobpayUsername',
+        'torobpayPassword',
       ]) {
         if (!String(next[secretKey] ?? '').trim()) {
           next[secretKey] = String(prev[secretKey] || '');
@@ -299,6 +304,19 @@ export class SettingsService {
               this.config.get('NODE_ENV', 'development') === 'production' ? 'false' : 'true',
             ) === 'true',
       digipayConfigured: false,
+      torobpayEnabled: s.torobpayEnabled !== false,
+      torobpayClientId: this.pickSecret(s.torobpayClientId, 'TOROBPAY_CLIENT_ID'),
+      torobpayClientSecret: this.pickSecret(s.torobpayClientSecret, 'TOROBPAY_CLIENT_SECRET'),
+      torobpayUsername: this.pickSecret(s.torobpayUsername, 'TOROBPAY_USERNAME'),
+      torobpayPassword: this.pickSecret(s.torobpayPassword, 'TOROBPAY_PASSWORD'),
+      torobpaySandbox:
+        typeof s.torobpaySandbox === 'boolean'
+          ? s.torobpaySandbox
+          : this.config.get(
+              'TOROBPAY_SANDBOX',
+              this.config.get('NODE_ENV', 'development') === 'production' ? 'false' : 'true',
+            ) === 'true',
+      torobpayConfigured: false,
       manualCardNumber: s.manualCardNumber ?? '',
       manualCardOwner: s.manualCardOwner ?? '',
     };
@@ -309,6 +327,13 @@ export class SettingsService {
       out.digipayClientSecret !== 'CHANGE_ME' &&
       !!out.digipayUsername &&
       !!out.digipayPassword;
+    out.torobpayConfigured =
+      !!out.torobpayClientId &&
+      out.torobpayClientId !== 'CHANGE_ME' &&
+      !!out.torobpayClientSecret &&
+      out.torobpayClientSecret !== 'CHANGE_ME' &&
+      !!out.torobpayUsername &&
+      !!out.torobpayPassword;
     return out;
   }
 

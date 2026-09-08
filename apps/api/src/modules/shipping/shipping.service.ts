@@ -1,5 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
+import {
+  DEFAULT_POST_TARIFF,
+  localPostFeeIrr,
+  provinceCode,
+  resolvePostZone,
+  tapinCheckPrice,
+  type PostTariff,
+} from './iran-post-quote';
 
 // Shipping quotes + tracking links. Fees and per-method availability are
 // user-configurable from the admin settings panel (DB), with env fallback.
@@ -33,8 +41,10 @@ export class ShippingService {
     orderTotal?: number;
     method?: string;
     province?: string;
+    city?: string;
   }) {
     const cfg = await this.settings.shipping();
+    const postCfg = await this.settings.get('shippingPost');
     const retail = cfg.retail ?? {
       baseFee: cfg.baseFee,
       perKgFee: cfg.perKgFee,
@@ -51,6 +61,52 @@ export class ShippingService {
 
     // Retail formula: fee = baseFee + ceil(weightKg) × perKgFee
     let fee = retail.baseFee + Math.ceil(weightKg) * retail.perKgFee;
+    let formula = 'baseFee + ceil(weightKg) × perKgFee (weightKg from pieces × kgPerPiece)';
+    let postSource: 'tapin' | 'local' | null = null;
+
+    const postEnabled = postCfg?.enabled === true;
+    if (postEnabled && method === 'POST') {
+      const originProvince = String(postCfg.originProvince || 'خراسان رضوی');
+      const originCity = String(postCfg.originCity || 'مشهد');
+      const destProvince = input.province || String(postCfg.defaultDestProvince || '');
+      const destCity = input.city || '';
+      const zone = resolvePostZone({
+        originProvince,
+        destProvince,
+        originCity,
+        destCity,
+      });
+      const tariff: PostTariff = {
+        sameCityBase: Number(postCfg.sameCityBase) || DEFAULT_POST_TARIFF.sameCityBase,
+        sameProvinceBase: Number(postCfg.sameProvinceBase) || DEFAULT_POST_TARIFF.sameProvinceBase,
+        otherBase: Number(postCfg.otherBase) || DEFAULT_POST_TARIFF.otherBase,
+        extraKgFee: Number(postCfg.extraKgFee) || DEFAULT_POST_TARIFF.extraKgFee,
+        vatPercent: Number(postCfg.vatPercent) || DEFAULT_POST_TARIFF.vatPercent,
+      };
+      let usedLocal = true;
+      const fromP = provinceCode(originProvince);
+      const toP = provinceCode(destProvince);
+      if (fromP && toP) {
+        const live = await tapinCheckPrice({
+          weightGrams: Math.round(weightKg * 1000),
+          goodsPriceIrr: Number(input.orderTotal) || 0,
+          fromProvince: fromP,
+          toProvince: toP,
+        });
+        if (live) {
+          fee = live.total;
+          usedLocal = false;
+          postSource = 'tapin';
+          formula = 'tapin public پیشتاز check-price';
+        }
+      }
+      if (usedLocal) {
+        fee = localPostFeeIrr(weightKg, zone, tariff);
+        postSource = 'local';
+        formula = `پیشتاز محلی (${zone})`;
+      }
+    }
+
     // Tehran bike / Snapp: flat intra-city style fee if configured lower
     if (method === 'SNAPP') {
       fee = Math.min(fee, retail.baseFee || fee);
@@ -75,7 +131,10 @@ export class ShippingService {
       freeThreshold: retail.freeThreshold,
       estimatedDays: def?.estimatedDays ?? '۲ تا ۴ روز کاری',
       province: input.province || null,
-      formula: 'baseFee + ceil(weightKg) × perKgFee (weightKg from pieces × kgPerPiece)',
+      city: input.city || null,
+      postOnline: postEnabled && method === 'POST',
+      postSource,
+      formula,
     };
   }
 

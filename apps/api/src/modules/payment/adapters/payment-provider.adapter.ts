@@ -32,6 +32,25 @@ export type CreatePaymentRequest = {
     password?: string;
     sandbox?: boolean;
   };
+  /** TorobPay CPG only — never log. */
+  torobpayCreds?: {
+    clientId?: string;
+    clientSecret?: string;
+    username?: string;
+    password?: string;
+    sandbox?: boolean;
+  };
+  torobpayCheckout?: {
+    address: string;
+    postalCode: string;
+    fullName: string;
+    city: string;
+    province: string;
+    phone: string;
+    shippingAmount?: number;
+    discountAmount?: number;
+    cartItems?: Array<{ id: string; name: string; count: number; amount: number }>;
+  };
 };
 
 export type CreatePaymentResult = {
@@ -47,6 +66,13 @@ export type VerifyReturnRequest = {
   sandbox: boolean;
   extra?: Record<string, string | undefined>;
   digipayCreds?: {
+    clientId?: string;
+    clientSecret?: string;
+    username?: string;
+    password?: string;
+    sandbox?: boolean;
+  };
+  torobpayCreds?: {
     clientId?: string;
     clientSecret?: string;
     username?: string;

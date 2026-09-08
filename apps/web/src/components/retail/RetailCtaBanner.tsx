@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { ChevronLeft } from 'lucide-react';
 
 function isExternal(href: string) {
   return href.startsWith('http') || href.startsWith('tel:') || href.startsWith('mailto:');
@@ -46,7 +47,7 @@ export function RetailCtaBanner({
   if (!headline && !ctaLabel) return null;
 
   return (
-    <section className="relative overflow-hidden bg-[var(--retail-primary-dark)] px-4 py-16 text-white sm:px-6 sm:py-20">
+    <section className="relative overflow-hidden bg-[var(--retail-primary-dark)] px-4 py-14 text-white sm:px-6 sm:py-16">
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.12]"
         style={{
@@ -62,7 +63,7 @@ export function RetailCtaBanner({
           </p>
         ) : null}
         {headline ? (
-          <h2 className="text-2xl font-extrabold leading-snug sm:text-3xl">{headline}</h2>
+          <h2 className="text-pretty text-2xl font-extrabold leading-snug sm:text-3xl">{headline}</h2>
         ) : null}
         {body ? (
           <p className="mx-auto mt-4 max-w-lg text-sm leading-8 text-white/75">{body}</p>
@@ -71,15 +72,16 @@ export function RetailCtaBanner({
           {ctaLabel && ctaHref ? (
             <Action
               href={ctaHref}
-              className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-7 text-sm font-extrabold text-[#1a1a1a] transition duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
+              className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-8 text-sm font-extrabold text-[#1a1a1a] transition-[filter] duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
             >
               {ctaLabel}
+              <ChevronLeft className="h-4 w-4" aria-hidden />
             </Action>
           ) : null}
           {ctaSecondaryLabel && ctaSecondaryHref ? (
             <Action
               href={ctaSecondaryHref}
-              className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-[var(--retail-gold)]/60 px-7 text-sm font-bold text-[var(--retail-gold)] transition duration-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
+              className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-[var(--retail-gold)]/60 px-7 text-sm font-bold text-[var(--retail-gold)] transition-colors duration-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
             >
               {ctaSecondaryLabel}
             </Action>

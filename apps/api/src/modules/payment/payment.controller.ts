@@ -12,6 +12,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PaymentService } from './payment.service';
 import { PaymentProviderRegistryService } from './payment-provider-registry.service';
 import { DigiPayAdapter, type DigipayRuntimeCreds } from './adapters/digipay.adapter';
+import { TorobPayAdapter, type TorobpayRuntimeCreds } from './adapters/torobpay.adapter';
 import { SettingsService } from '../settings/settings.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -33,6 +34,14 @@ type DigipayProbeBody = {
   digipaySandbox?: boolean;
 };
 
+type TorobpayProbeBody = {
+  torobpayClientId?: string;
+  torobpayClientSecret?: string;
+  torobpayUsername?: string;
+  torobpayPassword?: string;
+  torobpaySandbox?: boolean;
+};
+
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentController {
@@ -40,6 +49,7 @@ export class PaymentController {
     private readonly svc: PaymentService,
     private readonly providers: PaymentProviderRegistryService,
     private readonly digipay: DigiPayAdapter,
+    private readonly torobpay: TorobPayAdapter,
     private readonly settings: SettingsService,
   ) {}
 
@@ -80,6 +90,28 @@ export class PaymentController {
         typeof body.digipaySandbox === 'boolean' ? body.digipaySandbox : !!pay.digipaySandbox,
     };
     return this.digipay.probeConnection(over);
+  }
+
+  /**
+   * Admin TorobPay CPG OAuth probe. Optional body overrides let the operator test
+   * unsaved form values. Response never echoes secrets or tokens.
+   */
+  @Post('torobpay/connection-test')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @AdminOnly()
+  @ApiBearerAuth()
+  async torobpayConnectionTest(@Body() body: TorobpayProbeBody = {}) {
+    const pay = await this.settings.payment();
+    const over: TorobpayRuntimeCreds = {
+      clientId: this.pickOverride(body.torobpayClientId, pay.torobpayClientId),
+      clientSecret: this.pickOverride(body.torobpayClientSecret, pay.torobpayClientSecret),
+      username: this.pickOverride(body.torobpayUsername, pay.torobpayUsername),
+      password: this.pickOverride(body.torobpayPassword, pay.torobpayPassword),
+      sandbox:
+        typeof body.torobpaySandbox === 'boolean' ? body.torobpaySandbox : !!pay.torobpaySandbox,
+    };
+    return this.torobpay.probeConnection(over);
   }
 
   @Get('providers')
@@ -169,6 +201,9 @@ export class PaymentController {
       providerId: body.providerId,
       result: body.result,
       type: body.type,
+      state: body.state,
+      transactionId: body.transactionId,
+      amount: body.amount,
     });
   }
 

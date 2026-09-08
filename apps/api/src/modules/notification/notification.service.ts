@@ -5,6 +5,7 @@ import {
   fillSmsTemplate,
   type SmsTemplateKey,
 } from './sms-templates.defaults';
+import { resolveSmsOps, smsOpsEnabled, type SmsChannel } from './sms-ops';
 
 // SMS provider: sms.ir (REST API v1, auth via x-api-key header).
 // API key, line number, per-event toggles, message templates and the master
@@ -120,26 +121,60 @@ export class NotificationService {
     return this.sendSms(phone, message);
   }
 
-  /** Notify site admin(s) when a new order is placed (per-channel phones, up to 2). */
+  /**
+   * Legacy hook from order.created — admin is notified only after payment
+   * (`orderPaidAdmin`). Customer SMS still uses `orderRegistered`.
+   */
   async orderRegisteredAdmin(
+    _channel: 'WHOLESALE' | 'RETAIL',
+    _orderNumber: string,
+    _customerLabel?: string,
+  ) {
+    return false;
+  }
+
+  private async opsEnabled(channel: SmsChannel, event: 'orderPaidAdmin' | 'abandonedCart' | 'stockOutAdmin') {
+    const raw = await this.settings.get('smsOps');
+    return smsOpsEnabled(resolveSmsOps(raw), channel, event);
+  }
+
+  async orderPaidAdmin(
     channel: 'WHOLESALE' | 'RETAIL',
     orderNumber: string,
     customerLabel?: string,
   ) {
-    if (!(await this.eventEnabled('orderRegisteredAdmin'))) return false;
+    if (!(await this.opsEnabled(channel, 'orderPaidAdmin'))) return false;
     const phones = await this.adminPhonesFor(channel);
     if (phones.length === 0) {
-      this.logger.log(`[SMS] orderRegisteredAdmin skipped — no admin phone for ${channel}`);
+      this.logger.log(`[SMS] orderPaidAdmin skipped — no admin phone for ${channel}`);
       return false;
     }
     const site = channel === 'RETAIL' ? 'تک‌فروشی' : 'عمده';
     const customerLine = customerLabel ? `\nمشتری: ${customerLabel}` : '';
-    const message = await this.template('orderRegisteredAdmin', {
+    const message = await this.template('orderPaidAdmin', {
       site,
       orderNumber,
       customerLabel: customerLabel || '',
       customerLine,
     });
+    const results = await Promise.all(phones.map((p) => this.sendSms(p, message)));
+    return results.some(Boolean);
+  }
+
+  async abandonedCart(channel: SmsChannel, phone: string) {
+    if (!(await this.opsEnabled(channel, 'abandonedCart'))) return false;
+    const site = channel === 'RETAIL' ? 'تک‌فروشی' : 'عمده';
+    const cartUrl = channel === 'RETAIL' ? 'poshaktaranom.ir' : 'poshaktaranom.com/portal';
+    const message = await this.template('abandonedCart', { site, cartUrl });
+    return this.sendSms(phone, message);
+  }
+
+  async stockOutAdmin(channel: SmsChannel, productName: string) {
+    if (!(await this.opsEnabled(channel, 'stockOutAdmin'))) return false;
+    const phones = await this.adminPhonesFor(channel);
+    if (phones.length === 0) return false;
+    const site = channel === 'RETAIL' ? 'تک‌فروشی' : 'عمده';
+    const message = await this.template('stockOutAdmin', { site, productName });
     const results = await Promise.all(phones.map((p) => this.sendSms(p, message)));
     return results.some(Boolean);
   }

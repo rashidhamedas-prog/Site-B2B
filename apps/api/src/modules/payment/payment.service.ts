@@ -25,7 +25,9 @@ import { OutboxService } from '../omnichannel/services/outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.adapter';
-import type { PaymentProviderAdapter } from './adapters/payment-provider.adapter';
+import { TorobPayAdapter, torobpayCallbackIsSuccess } from './adapters/torobpay.adapter';
+import type { PaymentProviderAdapter, CreatePaymentRequest } from './adapters/payment-provider.adapter';
+import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { assertPositiveFiniteIrr, toPublicPaymentDto, PaymentPublicDto } from './dto/payment-public.dto';
 import { PaymentMetrics, maskMobile } from './payment-metrics';
 import { OrderService } from '../order/order.service';
@@ -40,7 +42,7 @@ interface CreatePaymentInput {
   email?: string;
   channel?: 'WHOLESALE' | 'RETAIL';
   /** Retail checkout choice. Ignored on wholesale (always ZarinPal). */
-  providerCode?: 'ZARINPAL' | 'DIGIPAY';
+  providerCode?: 'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY';
 }
 
 export interface StartResult {
@@ -77,6 +79,7 @@ export class PaymentService {
     private readonly outbox: OutboxService,
     private readonly zarinpal: ZarinPalAdapter,
     private readonly digipay: DigiPayAdapter,
+    private readonly torobpay: TorobPayAdapter,
     private readonly metrics: PaymentMetrics,
     @Inject(forwardRef(() => OrderService))
     private readonly orders: OrderService,
@@ -105,12 +108,81 @@ export class PaymentService {
     return this.metrics.snapshot();
   }
 
+  private parseShippingAddress(raw?: string | null): Record<string, string> {
+    if (!raw) return {};
+    try {
+      const obj = JSON.parse(raw) as Record<string, unknown>;
+      if (obj && typeof obj === 'object') {
+        return {
+          province: String(obj.province || ''),
+          city: String(obj.city || ''),
+          street: String(obj.street || obj.address || ''),
+          postalCode: String(obj.postalCode || obj.postal_code || ''),
+          recipient: String(obj.recipient || obj.fullName || obj.customer_full_name || ''),
+          mobile: String(obj.mobile || obj.phone || ''),
+        };
+      }
+    } catch {
+      /* plain-text address */
+    }
+    return { street: String(raw) };
+  }
+
+  private async buildTorobpayCheckout(
+    orderId: string | undefined,
+    mobile: string | undefined,
+    amountIrr: number,
+  ): Promise<CreatePaymentRequest['torobpayCheckout']> {
+    if (!orderId) {
+      throw new BadRequestException('پرداخت ترب‌پی فقط برای سفارش ثبت‌شده ممکن است');
+    }
+    const order = await this.orderRepo.findOne({
+      where: { id: orderId },
+      relations: ['items', 'customer'],
+    });
+    if (!order) throw new NotFoundException('سفارش یافت نشد');
+    const addr = this.parseShippingAddress(order.shippingAddress);
+    const phone = addr.mobile || mobile || String((order as { customer?: { phone?: string } }).customer?.phone || '');
+    const items = (order.items || []) as OrderItemEntity[];
+    return {
+      address: addr.street || String(order.shippingAddress || ''),
+      postalCode: addr.postalCode,
+      fullName: addr.recipient || 'خریدار فروشگاه ترنم',
+      city: addr.city,
+      province: addr.province,
+      phone,
+      shippingAmount: Number(order.shippingFee) || 0,
+      // order.discount includes wallet; CPG discount must be promo only.
+      discountAmount: Math.max(0, (Number(order.discount) || 0) - (Number(order.walletApplied) || 0)),
+      cartItems:
+        items.length > 0
+          ? items.map((it) => {
+              const count = Number(it.quantity) || 1;
+              const unit =
+                Number(it.unitPrice) ||
+                Math.floor((Number(it.totalPrice) || 0) / Math.max(1, count));
+              return {
+                id: String(it.sku || it.id),
+                name: String(it.productName || 'کالا'),
+                count,
+                amount: unit,
+              };
+            })
+          : [{ id: order.id, name: `سفارش ${order.orderNumber}`, count: 1, amount: amountIrr }],
+    };
+  }
+
   private async resolveGateway(
     channel: 'WHOLESALE' | 'RETAIL' = 'WHOLESALE',
-    requested?: 'ZARINPAL' | 'DIGIPAY' | string,
+    requested?: 'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY' | string,
   ) {
     const cfg = await this.settings.payment();
     const isRetail = channel === 'RETAIL';
+    const requestedCode = String(requested || '').toUpperCase();
+    const retailBase = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(
+      /\/$/,
+      '',
+    );
     const digipayCreds = {
       clientId: cfg.digipayClientId,
       clientSecret: cfg.digipayClientSecret,
@@ -118,39 +190,65 @@ export class PaymentService {
       password: cfg.digipayPassword,
       sandbox: cfg.digipaySandbox,
     };
-    const wantDigipay = isRetail && String(requested || '').toUpperCase() === 'DIGIPAY';
+    const torobpayCreds = {
+      clientId: cfg.torobpayClientId,
+      clientSecret: cfg.torobpayClientSecret,
+      username: cfg.torobpayUsername,
+      password: cfg.torobpayPassword,
+      sandbox: cfg.torobpaySandbox,
+    };
+    const wantDigipay = isRetail && requestedCode === 'DIGIPAY';
+    const wantTorobpay = isRetail && requestedCode === 'TOROBPAY';
     const digipayReady = cfg.digipayEnabled && this.digipay.isConfigured(digipayCreds);
+    const torobpayReady = cfg.torobpayEnabled && this.torobpay.isConfigured(torobpayCreds);
     if (wantDigipay && !digipayReady) {
       throw new BadRequestException(
         'درگاه دیجی‌پی آماده نیست. شناسه کلاینت، رمز، نام کاربری و رمز پنل را در تنظیمات پرداخت وارد کنید.',
       );
     }
+    if (wantTorobpay && !torobpayReady) {
+      throw new BadRequestException(
+        'درگاه ترب‌پی آماده نیست. کد پذیرنده، کلید، نام کاربری و رمز فعال‌سازی را در تنظیمات پرداخت وارد کنید.',
+      );
+    }
+    const useTorobpay = wantTorobpay && torobpayReady;
     const useDigipay = wantDigipay && digipayReady;
     const merchantId = (isRetail ? cfg.retailMerchantId : cfg.merchantId) || '';
-    const sandbox = useDigipay
-      ? this.digipay.isSandbox(digipayCreds)
-      : isRetail
-        ? cfg.retailSandbox || !merchantId
-        : cfg.sandbox || !merchantId;
+    const sandbox = useTorobpay
+      ? this.torobpay.isSandbox(torobpayCreds)
+      : useDigipay
+        ? this.digipay.isSandbox(digipayCreds)
+        : isRetail
+          ? cfg.retailSandbox || !merchantId
+          : cfg.sandbox || !merchantId;
     const enabled = isRetail
-      ? !!cfg.retailEnabled && !!cfg.enabled && (useDigipay || !!merchantId || sandbox)
+      ? !!cfg.retailEnabled &&
+        !!cfg.enabled &&
+        (useDigipay || useTorobpay || !!merchantId || sandbox)
       : !!cfg.wholesaleEnabled && !!cfg.enabled;
     const mid = merchantId || '00000000-0000-0000-0000-000000000000';
-    const defaultRetailCallback = `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/callback`;
+    const defaultRetailCallback = `${retailBase}/payment/callback`;
     const callbackBase = isRetail
-      ? useDigipay
-        ? `${(process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '')}/payment/digipay/callback`
-        : (cfg.retailCallbackUrl || defaultRetailCallback)
+      ? useTorobpay
+        ? `${retailBase}/payment/torobpay/callback`
+        : useDigipay
+          ? `${retailBase}/payment/digipay/callback`
+          : (cfg.retailCallbackUrl || defaultRetailCallback)
       : (cfg.callbackUrl || this.callbackBase);
+    const providerCode = useTorobpay ? 'TOROBPAY' : useDigipay ? 'DIGIPAY' : 'ZARINPAL';
+    const adapter = (
+      useTorobpay ? this.torobpay : useDigipay ? this.digipay : this.zarinpal
+    ) as PaymentProviderAdapter;
     return {
       sandbox,
       merchantId: mid,
       enabled,
       callbackBase,
       channel,
-      providerCode: useDigipay ? 'DIGIPAY' : 'ZARINPAL',
-      adapter: (useDigipay ? this.digipay : this.zarinpal) as PaymentProviderAdapter,
+      providerCode,
+      adapter,
       digipayCreds,
+      torobpayCreds,
     };
   }
 
@@ -245,6 +343,7 @@ export class PaymentService {
     }
     if (
       gw.providerCode !== 'DIGIPAY' &&
+      gw.providerCode !== 'TOROBPAY' &&
       (!gw.merchantId || gw.merchantId.startsWith('00000000')) &&
       !gw.sandbox
     ) {
@@ -355,6 +454,11 @@ export class PaymentService {
           orderId: input.orderId,
           metadata: { providerId: payment.id },
           digipayCreds: gw.providerCode === 'DIGIPAY' ? gw.digipayCreds : undefined,
+          torobpayCreds: gw.providerCode === 'TOROBPAY' ? gw.torobpayCreds : undefined,
+          torobpayCheckout:
+            gw.providerCode === 'TOROBPAY'
+              ? await this.buildTorobpayCheckout(input.orderId, input.mobile, amount)
+              : undefined,
         });
 
         payment.authority = created.providerToken;
@@ -460,6 +564,11 @@ export class PaymentService {
         orderId: input.orderId,
         metadata: { providerId: payment.id },
         digipayCreds: gw.providerCode === 'DIGIPAY' ? gw.digipayCreds : undefined,
+        torobpayCreds: gw.providerCode === 'TOROBPAY' ? gw.torobpayCreds : undefined,
+        torobpayCheckout:
+          gw.providerCode === 'TOROBPAY'
+            ? await this.buildTorobpayCheckout(input.orderId, input.mobile, amount)
+            : undefined,
       });
 
       payment.authority = created.providerToken;
@@ -581,12 +690,16 @@ export class PaymentService {
       providerId?: string;
       result?: string;
       type?: string;
+      state?: string;
+      transactionId?: string;
+      amount?: string;
     },
   ): Promise<PaymentPublicDto> {
     // Fast path outside txn for terminal states
     const preview = await this.findOne(paymentId);
     const providerCode = String(preview.gateway || 'ZARINPAL');
     const isDigipay = providerCode === 'DIGIPAY';
+    const isTorobpay = providerCode === 'TOROBPAY';
     if (
       extra?.providerId &&
       extra.providerId !== paymentId &&
@@ -594,15 +707,19 @@ export class PaymentService {
     ) {
       throw new BadRequestException('شناسه تراکنش نامعتبر است');
     }
-    const statusNorm = isDigipay
-      ? digipayCallbackIsSuccess({
-          result: extra?.result,
-          status,
-          trackingCode: extra?.trackingCode,
-        })
+    const statusNorm = isTorobpay
+      ? torobpayCallbackIsSuccess({ state: extra?.state, status })
         ? 'OK'
         : 'NOK'
-      : status || 'OK';
+      : isDigipay
+        ? digipayCallbackIsSuccess({
+            result: extra?.result,
+            status,
+            trackingCode: extra?.trackingCode,
+          })
+          ? 'OK'
+          : 'NOK'
+        : status || 'OK';
     this.logger.log(
       this.paymentLogCtx({
         event: 'payment.verify.begin',
@@ -621,9 +738,11 @@ export class PaymentService {
       externalEventId,
       eventType: 'verify_callback',
       paymentId,
-      signatureValid: isDigipay
-        ? !!(extra?.trackingCode && extra?.providerId === paymentId)
-        : !!(authority && preview.authority && authority === preview.authority),
+      signatureValid: isTorobpay
+        ? !!(preview.authority && (extra?.state || status))
+        : isDigipay
+          ? !!(extra?.trackingCode && extra?.providerId === paymentId)
+          : !!(authority && preview.authority && authority === preview.authority),
       payload: {
         status: statusNorm,
         hasAuthority: !!authority,
@@ -664,13 +783,19 @@ export class PaymentService {
       // CANCELLED + OK → continue to PSP verify + CAS from CANCELLED→PAID below
     }
 
-    if (!isDigipay && authority && preview.authority && authority !== preview.authority) {
+    if (
+      !isDigipay &&
+      !isTorobpay &&
+      authority &&
+      preview.authority &&
+      authority !== preview.authority
+    ) {
       throw new BadRequestException('شناسه تراکنش نامعتبر است');
     }
 
     if (statusNorm && statusNorm !== 'OK') {
       // Require authority match whenever the payment already has one (blocks paymentId-only griefing)
-      if (!isDigipay && preview.authority) {
+      if (!isDigipay && !isTorobpay && preview.authority) {
         if (!authority || authority !== preview.authority) {
           throw new BadRequestException('شناسه تراکنش نامعتبر است');
         }
@@ -709,22 +834,37 @@ export class PaymentService {
       (preview.callbackUrl || '').includes('poshaktaranom.ir')
         ? 'RETAIL'
         : 'WHOLESALE';
-    const gw = await this.resolveGateway(channel, isDigipay ? 'DIGIPAY' : 'ZARINPAL');
-    const adapter = isDigipay ? this.digipay : this.zarinpal;
+    const gw = await this.resolveGateway(
+      channel,
+      isTorobpay ? 'TOROBPAY' : isDigipay ? 'DIGIPAY' : 'ZARINPAL',
+    );
+    const adapter = isTorobpay ? this.torobpay : isDigipay ? this.digipay : this.zarinpal;
 
     const verifyResult = await adapter.verifyReturn({
       amountIrr: Number(preview.amount),
       providerToken: authToUse,
       merchantId: gw.merchantId,
-      sandbox: isDigipay ? this.digipay.isSandbox(gw.digipayCreds) : gw.sandbox,
-      extra: isDigipay
+      sandbox: isTorobpay
+        ? this.torobpay.isSandbox(gw.torobpayCreds)
+        : isDigipay
+          ? this.digipay.isSandbox(gw.digipayCreds)
+          : gw.sandbox,
+      extra: isTorobpay
         ? {
-            trackingCode: extra?.trackingCode,
-            providerId: extra?.providerId || paymentId,
-            type: extra?.type || '11',
+            paymentToken: authToUse,
+            transactionId: extra?.transactionId,
+            state: extra?.state || status,
+            amount: extra?.amount,
           }
-        : undefined,
+        : isDigipay
+          ? {
+              trackingCode: extra?.trackingCode,
+              providerId: extra?.providerId || paymentId,
+              type: extra?.type || '11',
+            }
+          : undefined,
       digipayCreds: isDigipay ? gw.digipayCreds : undefined,
+      torobpayCreds: isTorobpay ? gw.torobpayCreds : undefined,
     });
 
     if (!verifyResult.success) {

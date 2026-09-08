@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { User, Phone } from 'lucide-react';
+import { NewsTicker } from '@/components/shared/NewsTicker';
+import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
 import { StorefrontSearch } from '@/components/shared/StorefrontSearch';
 import { Button } from '@/components/ui';
 import { MobileMenuButton } from './MobileMenu';
@@ -13,6 +16,7 @@ import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
 
 export function Header() {
+  const pathname = usePathname();
   const bag = useWholesaleChrome();
   const { menus } = useMenus(
     bag ? { initial: bag.menus, skipNetwork: true } : undefined,
@@ -41,10 +45,13 @@ export function Header() {
     announcement?.telegramHref || chromeStr(chrome, 'telegramHref', 'https://t.me/toliditaranom');
   const annText =
     announcement?.text || 'ارسال به سراسر ایران — حداقل سفارش در محصول از 6 عدد به بالا می باشد.';
+  const tickerItems = resolveTickerItems(announcement, 'WHOLESALE');
+  const showHomeTicker = showAnn && isStorefrontHomePath(pathname) && tickerItems.length > 0;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--color-border)] bg-white/90 backdrop-blur-xl">
-      {showAnn ? (
+      {showHomeTicker ? <NewsTicker items={tickerItems} /> : null}
+      {showAnn && !showHomeTicker ? (
         <div className="bg-primary-dark text-white">
           <div className="container-site flex items-center justify-between py-1.5 text-xs">
             <div className="flex items-center gap-4">

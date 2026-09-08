@@ -17,6 +17,12 @@ export function defaultWholesaleChrome(): ContentBlock[] {
       telegramLabel: '@toliditaranom کانال تلگرام',
       telegramHref: 'https://t.me/toliditaranom',
       text: 'ارسال به سراسر ایران — حداقل سفارش در محصول از ۶ عدد به بالا می‌باشد.',
+      tickerItems: [
+        'ارسال به سراسر ایران از دفتر پخش مشهد',
+        'حداقل سفارش هر مدل از ۶ عدد',
+        `تولیدی لینن و کتان از سال ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)}`,
+        'تماس فروش: ۰۹۱۵-۲۴۲-۴۶۲۴',
+      ],
     }),
     b('chrome', {
       brandName: 'پوشاک ترنم',
@@ -62,7 +68,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
           mobileImageUrl: '/banners/hero-product-2026-v2/wholesale-01-mobile-8c90e6ac4182.webp',
           imageAlt: '',
           presentation: 'overlay',
-          ctaLabel: 'مشاهده محصولات عمده',
+          ctaLabel: 'دیدن مدل‌های عمده',
           ctaHref: '/products',
         },
         {
@@ -74,7 +80,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
           mobileImageUrl: '/banners/hero-product-2026-v2/wholesale-02-mobile.webp',
           imageAlt: '',
           presentation: 'overlay',
-          ctaLabel: 'دیدن کالکشن عمده',
+          ctaLabel: 'باز کردن کاتالوگ همکاری',
           ctaHref: '/products',
         },
         {
@@ -86,7 +92,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
           mobileImageUrl: '/banners/hero-product-2026-v2/wholesale-03-mobile.webp',
           imageAlt: '',
           presentation: 'overlay',
-          ctaLabel: 'درخواست همکاری عمده',
+          ctaLabel: 'شروع همکاری از ۶ عدد',
           ctaHref: '/portal/register',
         },
       ],
@@ -279,9 +285,9 @@ export function defaultWholesaleHome(): ContentBlock[] {
       eyebrow: 'همکاری با تولیدی لباس',
       headline: 'بوتیک دارید؟ از کارگاه مشهد سفارش دهید',
       body: 'درخواست همکاری را بفرستید تا حساب بررسی شود. حداقل سفارش هر مدل از ۶ عدد است؛ قیمت عمده بعد از تأیید دیده می‌شود.',
-      ctaLabel: 'درخواست همکاری',
+      ctaLabel: 'ارسال درخواست همکاری',
       ctaHref: '/portal/register',
-      ctaSecondaryLabel: 'تماس با فروش',
+      ctaSecondaryLabel: 'تماس مستقیم با فروش',
       ctaSecondaryHref: 'tel:09152424624',
       ctaTertiaryLabel: 'تلگرام',
       ctaTertiaryHref: 'https://t.me/toliditaranom',
@@ -639,6 +645,16 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
   switch (pageKey) {
     case 'chrome':
       return [
+        b('announcement', {
+          enabled: true,
+          text: 'خرید تکی از همان کارگاه مشهد — ارسال از تولیدی، تعویض سایز از حساب کاربری',
+          tickerItems: [
+            'خرید تکی از همان کارگاه مشهد',
+            'ارسال از تولیدی — تعویض سایز از حساب کاربری',
+            'شومیز، کت، کاپشن و کفتان',
+            'پرداخت امن زرین‌پال',
+          ],
+        }),
         b('chrome', {
           brandName: 'POSHAK TARANOM',
           brandTagline: 'فروشگاه تکی',
@@ -669,7 +685,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
               mobileImageUrl: '/banners/hero-product-2026-v2/retail-01-mobile.webp',
               imageAlt: '',
               presentation: 'overlay',
-              ctaLabel: 'مشاهده جدیدترین‌ها',
+              ctaLabel: 'دیدن کالکشن لینن و کتان',
               ctaHref: '/products',
             },
             {
@@ -681,7 +697,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
               mobileImageUrl: '/banners/hero-product-2026-v2/retail-02-behgol-mobile.webp',
               imageAlt: '',
               presentation: 'overlay',
-              ctaLabel: 'دیدن محصولات',
+              ctaLabel: 'انتخاب شومیز بهگل',
               ctaHref: '/products',
             },
             {
@@ -693,7 +709,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
               mobileImageUrl: '/banners/hero-product-2026-v2/retail-03-alice-mobile.webp',
               imageAlt: '',
               presentation: 'overlay',
-              ctaLabel: 'مشاهده کالکشن',
+              ctaLabel: 'دیدن کت آلیس',
               ctaHref: '/products',
             },
           ],
@@ -744,9 +760,9 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
         }),
         b('cta', {
           eyebrow: '',
-          headline: 'بوتیک دارید؟',
-          body: 'اگر برای فروشگاه سفارش می‌دهید، از سایت بوتیک‌داران ترنم قیمت و موجودی عمده را ببینید.',
-          ctaLabel: 'ورود به سایت بوتیک‌داران',
+          headline: 'برای بوتیک سفارش می‌دهید؟',
+          body: 'قیمت همکاری و موجودی عمده روی سایت بوتیک‌داران است؛ این فروشگاه فقط خرید تکی است.',
+          ctaLabel: 'رفتن به سفارش عمده',
           ctaHref: 'https://poshaktaranom.com',
           ctaSecondaryLabel: '',
           ctaSecondaryHref: '',

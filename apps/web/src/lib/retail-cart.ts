@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { trackAddToCart, trackRemoveFromCart } from '@/lib/retail-analytics';
+import { pulseCartHeartbeat } from '@/lib/cart-heartbeat';
 
 export interface RetailCartItem {
   productId: string;
@@ -54,6 +55,11 @@ export const useRetailCart = create<RetailCartState>()(
           return { items: [...state.items, { ...item, quantity: qty }] };
         });
         trackAddToCart(asAnalyticsItem({ ...item, quantity: qty }, qty));
+        const next = get().items;
+        pulseCartHeartbeat({
+          channel: 'RETAIL',
+          items: next.map((i) => ({ productId: i.productId, name: i.productName, quantity: i.quantity })),
+        });
       },
       updateQty: (productId, quantity, variantId) => {
         const q = Math.max(0, Number(quantity) || 0);
@@ -73,6 +79,10 @@ export const useRetailCart = create<RetailCartState>()(
           if (delta > 0) trackAddToCart(asAnalyticsItem(prev, delta));
           else if (delta < 0) trackRemoveFromCart(asAnalyticsItem(prev, Math.abs(delta)));
         }
+        pulseCartHeartbeat({
+          channel: 'RETAIL',
+          items: get().items.map((i) => ({ productId: i.productId, name: i.productName, quantity: i.quantity })),
+        });
       },
       removeItem: (productId, variantId) => {
         const prev = get().items.find(
@@ -85,14 +95,31 @@ export const useRetailCart = create<RetailCartState>()(
           ),
         }));
         if (prev) trackRemoveFromCart(asAnalyticsItem(prev, prev.quantity));
+        pulseCartHeartbeat({
+          channel: 'RETAIL',
+          items: get().items.map((i) => ({ productId: i.productId, name: i.productName, quantity: i.quantity })),
+        });
       },
-      clear: () => set({ items: [] }),
+      clear: () => {
+        set({ items: [] });
+        pulseCartHeartbeat({ channel: 'RETAIL', items: [] });
+      },
       count: () => get().items.reduce((n, i) => n + i.quantity, 0),
       total: () => get().items.reduce((n, i) => n + i.unitPrice * i.quantity, 0),
     }),
     { name: 'taranom_retail_cart' },
   ),
 );
+
+if (typeof window !== 'undefined') {
+  useRetailCart.persist.onFinishHydration((state) => {
+    if (!state.items.length) return;
+    pulseCartHeartbeat({
+      channel: 'RETAIL',
+      items: state.items.map((i) => ({ productId: i.productId, name: i.productName, quantity: i.quantity })),
+    });
+  });
+}
 
 export function toman(n: number) {
   return Math.round(Number(n) / 10).toLocaleString('fa-IR');

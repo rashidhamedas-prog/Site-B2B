@@ -76,6 +76,13 @@ interface SettingsPayload {
     digipayPassword: string;
     digipaySandbox: boolean;
     digipayConfigured: boolean;
+    torobpayEnabled: boolean;
+    torobpayClientId: string;
+    torobpayClientSecret: string;
+    torobpayUsername: string;
+    torobpayPassword: string;
+    torobpaySandbox: boolean;
+    torobpayConfigured: boolean;
     manualCardNumber: string; manualCardOwner: string;
   };
   installments: {
@@ -183,6 +190,11 @@ export function AdminSettings() {
   const [loadError, setLoadError] = useState('');
   const [digipayProbeBusy, setDigipayProbeBusy] = useState(false);
   const [digipayProbeMsg, setDigipayProbeMsg] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
+  const [torobpayProbeBusy, setTorobpayProbeBusy] = useState(false);
+  const [torobpayProbeMsg, setTorobpayProbeMsg] = useState<{
     ok: boolean;
     text: string;
   } | null>(null);
@@ -314,6 +326,13 @@ export function AdminSettings() {
           digipayPassword: res.payment?.digipayPassword ?? '',
           digipaySandbox: !!res.payment?.digipaySandbox,
           digipayConfigured: !!res.payment?.digipayConfigured,
+          torobpayEnabled: res.payment?.torobpayEnabled !== false,
+          torobpayClientId: res.payment?.torobpayClientId ?? '',
+          torobpayClientSecret: res.payment?.torobpayClientSecret ?? '',
+          torobpayUsername: res.payment?.torobpayUsername ?? '',
+          torobpayPassword: res.payment?.torobpayPassword ?? '',
+          torobpaySandbox: !!res.payment?.torobpaySandbox,
+          torobpayConfigured: !!res.payment?.torobpayConfigured,
           manualCardNumber: res.payment?.manualCardNumber ?? '',
           manualCardOwner: res.payment?.manualCardOwner ?? '',
         },
@@ -438,6 +457,41 @@ export function AdminSettings() {
       });
     } finally {
       setDigipayProbeBusy(false);
+    }
+  };
+
+  const testTorobpayConnection = async () => {
+    if (!data) return;
+    setTorobpayProbeBusy(true);
+    setTorobpayProbeMsg(null);
+    try {
+      const res = await apiClient.post<{
+        ok: boolean;
+        stage: string;
+        failureClass?: string;
+        message: string;
+        sandbox: boolean;
+        eligible?: boolean;
+      }>('/payments/torobpay/connection-test', {
+        torobpayClientId: data.payment.torobpayClientId,
+        torobpayClientSecret: data.payment.torobpayClientSecret,
+        torobpayUsername: data.payment.torobpayUsername,
+        torobpayPassword: data.payment.torobpayPassword,
+        torobpaySandbox: !!data.payment.torobpaySandbox,
+      });
+      setTorobpayProbeMsg({
+        ok: !!res.ok,
+        text: `${res.ok ? 'موفق' : 'ناموفق'} (${res.stage}${
+          res.failureClass ? ` · ${res.failureClass}` : ''
+        }${typeof res.eligible === 'boolean' ? ` · eligible=${res.eligible}` : ''}): ${res.message}`,
+      });
+    } catch (e: unknown) {
+      setTorobpayProbeMsg({
+        ok: false,
+        text: e instanceof Error ? e.message : 'تست اتصال ترب‌پی انجام نشد',
+      });
+    } finally {
+      setTorobpayProbeBusy(false);
     }
   };
 
@@ -1112,6 +1166,95 @@ export function AdminSettings() {
                   )}
                 >
                   {digipayProbeMsg.text}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-emerald-100 pt-5">
+            <h3 className="font-bold text-emerald-900 mb-1 text-sm">ترب‌پی CPG فروشگاه تکی (.ir)</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              خرید اعتباری / اقساطی ترب‌پی. چهار مقدار از صفحهٔ «اطلاعات فعال‌سازی درگاه» است
+              (کد پذیرنده، کلید، نام کاربری، رمز). قبل از اتکا به چک‌اوت، «تست اتصال» بزنید.
+            </p>
+            <div className="space-y-4">
+              <ToggleRow
+                label="نمایش ترب‌پی در چک‌اوت تکی"
+                hint="اگر خاموش باشد مشتری ترب‌پی را نمی‌بیند"
+                value={data.payment.torobpayEnabled !== false}
+                onChange={(v) => patch('payment', (p) => ({ ...p, torobpayEnabled: v }))}
+              />
+              <SecretField
+                label="کد پذیرنده (client_id)"
+                value={data.payment.torobpayClientId ?? ''}
+                shown={!!showSecret.torobpayClientId}
+                onToggle={() => setShowSecret((p) => ({ ...p, torobpayClientId: !p.torobpayClientId }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, torobpayClientId: v }))}
+                help="از پنل ترب → اطلاعات فعال‌سازی درگاه"
+              />
+              <SecretField
+                label="کلید (client_secret)"
+                value={data.payment.torobpayClientSecret ?? ''}
+                shown={!!showSecret.torobpayClientSecret}
+                onToggle={() => setShowSecret((p) => ({ ...p, torobpayClientSecret: !p.torobpayClientSecret }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, torobpayClientSecret: v }))}
+                help="کلید همراه کد پذیرنده — در گیت ذخیره نشود"
+              />
+              <SecretField
+                label="نام کاربری فعال‌سازی"
+                value={data.payment.torobpayUsername ?? ''}
+                shown={!!showSecret.torobpayUsername}
+                onToggle={() => setShowSecret((p) => ({ ...p, torobpayUsername: !p.torobpayUsername }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, torobpayUsername: v }))}
+                help="معمولاً دامنه فروشگاه، مثل poshaktaranom.ir"
+              />
+              <SecretField
+                label="رمز عبور فعال‌سازی"
+                value={data.payment.torobpayPassword ?? ''}
+                shown={!!showSecret.torobpayPassword}
+                onToggle={() => setShowSecret((p) => ({ ...p, torobpayPassword: !p.torobpayPassword }))}
+                onChange={(v) => patch('payment', (p) => ({ ...p, torobpayPassword: v }))}
+                help="رمز صفحهٔ فعال‌سازی درگاه؛ با لاگین پنل فروشگاه یکی نیست"
+              />
+              <ToggleRow
+                label="حالت آزمایشی ترب‌پی"
+                hint="مستند رسمی فقط میزبان عملیاتی cpg.torobpay.com دارد؛ این کلید را خاموش بگذارید مگر تست داخلی"
+                value={!!data.payment.torobpaySandbox}
+                onChange={(v) => patch('payment', (p) => ({ ...p, torobpaySandbox: v }))}
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void testTorobpayConnection()}
+                  disabled={torobpayProbeBusy}
+                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-60"
+                >
+                  {torobpayProbeBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                  )}
+                  {torobpayProbeBusy ? 'در حال تست…' : 'تست اتصال ترب‌پی'}
+                </button>
+                <p className="text-xs text-gray-600">
+                  وضعیت ذخیره‌شده:{' '}
+                  <span className={data.payment.torobpayConfigured ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+                    {data.payment.torobpayConfigured
+                      ? 'هر چهار مقدار پر است'
+                      : 'ناقص — مشتری ترب‌پی را نمی‌بیند'}
+                  </span>
+                </p>
+              </div>
+              {torobpayProbeMsg && (
+                <p
+                  className={cn(
+                    'text-xs rounded-lg px-3 py-2 border',
+                    torobpayProbeMsg.ok
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-amber-50 border-amber-200 text-amber-950',
+                  )}
+                >
+                  {torobpayProbeMsg.text}
                 </p>
               )}
             </div>

@@ -24,7 +24,10 @@ function CallbackContent() {
     const providerId = params.get('providerId') ?? params.get('provider_id') ?? '';
     const result = params.get('result') ?? '';
     const type = params.get('type') ?? '';
-    const status = params.get('Status') ?? params.get('status') ?? '';
+    const stateParam = params.get('state') ?? '';
+    const transactionId = params.get('transactionId') ?? params.get('transaction_id') ?? '';
+    const callbackAmount = params.get('amount') ?? '';
+    const status = params.get('Status') ?? params.get('status') ?? stateParam;
 
     if (!paymentId) { setState('failed'); setError('شناسه پرداخت یافت نشد'); return; }
 
@@ -32,11 +35,14 @@ function CallbackContent() {
       .post<any>('/payments/verify', {
         paymentId,
         authority,
-        status: status || (trackingCode || result === '0' ? 'OK' : ''),
+        status: status || (trackingCode || result === '0' || stateParam === 'OK' ? 'OK' : ''),
         trackingCode: trackingCode || undefined,
         providerId: providerId || undefined,
         result: result || undefined,
         type: type || undefined,
+        state: stateParam || undefined,
+        transactionId: transactionId || undefined,
+        amount: callbackAmount || undefined,
       })
       .then((res) => {
         if (res.ok) {

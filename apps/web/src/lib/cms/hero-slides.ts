@@ -49,7 +49,7 @@ export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
     'زن جوان با مانتو و کلاه کرمی در فروشگاه پوشاک، در حال نگاه به گوشی؛ کنار تصویر گوشی و کارت پرداخت سه‌بعدی بدون نوشته',
   presentation: 'overlay',
   overlayTone: 'light',
-  ctaLabel: 'مشاهده محصولات',
+  ctaLabel: 'انتخاب مدل و پرداخت قسطی',
   ctaHref: '/products',
 };
 
