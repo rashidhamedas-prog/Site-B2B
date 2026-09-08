@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260908-003"
     title: "Luxury checkout payment picker for retail and wholesale"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260908-003"
     roles:
@@ -13,9 +13,10 @@ tasks:
     branch: "ai/TASK-20260908-003-checkout-payment-ui"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-07T23:00:00Z"
-    heartbeat_at: "2026-09-08T00:05:00Z"
+    heartbeat_at: "2026-09-08T00:42:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/checkout-payment-ui.ts"
       - "apps/web/src/lib/checkout-payment-ui.spec.ts"
       - "apps/web/src/components/checkout/CheckoutChoiceList.tsx"
@@ -30,12 +31,9 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Storefront-only luxury payment picker. Locally started as 001; that ID
-      is the closed admin-ops task on master, so this is 003. Reclaimed retail
-      checkout from TASK-20260907-002 for presentation only (owner asked to
-      ship this UI). Adapter/API/secrets stay with 002. Reclaimed wholesale
-      checkout from TASK-20260826-001 (stale). TorobPay stays eligible-gated
-      and keeps live 1011 address checks. PDP files stay with TASK-20260907-001.
+      LIVE 2026-09-08: origin/master + VPS /opt/taranom = 3ad49d2.
+      Health 200. Retail checkout 200 with luxury picker labels. Eligible
+      DIGIPAY,TOROBPAY,ZARINPAL. Claims released. Adapter/API stay with 002.
     acceptance_criteria:
       - "Retail and wholesale checkout use shared radio-card payment picker"
       - "Eligible methods unchanged: retail ZarinPal/DigiPay/TorobPay/CASH; wholesale ONLINE/CASH/INSTALLMENT"

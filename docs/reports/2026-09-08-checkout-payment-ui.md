@@ -41,3 +41,8 @@ CheckoutPlaceOrderBar      CTA + اعتماد + حالت چسبان موبایل
 ## ریسک
 
 اگر نوار چسبان روی گوشی کوتاه با کیبورد تداخل کرد، padding پایین صفحه قابل تنظیم است.
+
+## استقرار
+
+- Git: `3ad49d2` روی `origin/master` و `/opt/taranom`
+- Health API ۲۰۰؛ چک‌اوت تکی ۲۰۰ با برچسب‌های پیکر؛ eligible شامل `TOROBPAY`

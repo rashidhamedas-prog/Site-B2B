@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T00:42:00Z — TASK-20260908-003 CLOSED live `3ad49d2`
+
+- Fast-forward: `fdd54c1..3ad49d2` on `origin/master`. Feature branch `ai/TASK-20260908-003-checkout-payment-ui` pushed.
+- VPS `/opt/taranom` = `3ad49d2`. First auto-deploy hung after api/worker images; Phase B rebuild finished `deploy complete at 3ad49d2`.
+- Observed: API `/v1/health` 200 `{"status":"ok"}`. Eligible RETAIL `DIGIPAY,TOROBPAY,ZARINPAL,MANUAL`. `https://www.poshaktaranom.ir/checkout` 200 with picker labels. `.ir` home 200 ~1.2s. `.com` home 200 ~3.4s.
+- File claims released. Task status `done`.
+- Residual: wholesale `/checkout` still needs portal JWT to click through. Did not stage PDP files from TASK-20260907-001.
+
 ## 2026-09-08T00:05:00Z — TASK-20260908-003 shipping luxury checkout payment UI
 
 - Owner asked to commit, merge to master, push, and deploy this task only.
