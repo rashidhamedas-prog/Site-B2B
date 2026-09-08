@@ -37,7 +37,7 @@ tasks:
       - "shipping-channel spec and shipping-methods spec pass"
   - id: "TASK-20260908-006"
     title: "Featured products CMS block architecture + wiring"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260908-006"
     roles:
@@ -48,41 +48,12 @@ tasks:
     branch: "ai/TASK-20260908-005-featured-products"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-08T14:50:00Z"
-    heartbeat_at: "2026-09-08T15:20:00Z"
+    heartbeat_at: "2026-09-08T15:25:00Z"
+    closed_at: "2026-09-08T15:25:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/lib/cms/products-block.ts"
-      - "apps/web/src/lib/cms/products-block.spec.ts"
-      - "apps/web/src/lib/cms/fetch-products-block.ts"
-      - "apps/web/src/lib/cms/defaults.ts"
-      - "apps/web/src/lib/server-api.ts"
-      - "apps/web/src/lib/hooks/useProducts.ts"
-      - "apps/web/src/components/admin/AdminProductsBlockFields.tsx"
-      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
-      - "apps/web/src/components/admin/AdminSiteContent.tsx"
-      - "apps/web/src/components/admin/AdminPages.tsx"
-      - "apps/web/src/components/admin/ProductRelatedPicker.tsx"
-      - "apps/web/src/components/cms/WholesaleBlocksRenderer.tsx"
-      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueBlocksRenderer.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueSaleRail.tsx"
-      - "apps/web/src/components/wholesale/FeaturedProducts.tsx"
-      - "apps/web/src/components/retail/RetailProductGrid.tsx"
-      - "apps/api/src/modules/product/product-ids-query.ts"
-      - "apps/api/src/modules/product/product-ids-query.spec.ts"
-      - "apps/api/src/modules/product/product.controller.ts"
-      - "apps/api/src/modules/product/product.service.ts"
-      - "apps/api/package.json"
-      - "docs/adr/2026-09-08-featured-products-block.md"
-      - "docs/reports/2026-09-08-featured-products-cms.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      ID 005 was taken by admin-settings-ia on origin/master. This featured-products slice is TASK-20260908-006.
-      Rebuild CMS products block: merchandising source, picker, category, copy, portal gate.
-      Public GET /products?ids= is channel-filtered; max 16 UUIDs; no opposite-channel leak.
+      LIVE origin/master + VPS 8e57985. ID 005 remains admin-settings-ia. Claims released.
     acceptance_criteria:
       - "Admin can curate products by search+reorder without pasting UUIDs"
       - "Manual ids and auto sort/category/limit actually drive wholesale, retail, and boutique home rails"
