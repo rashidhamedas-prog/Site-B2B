@@ -1,7 +1,8 @@
 # Project Status
 
-- Last verified: 2026-09-08 — **TASK-20260908-005** implementing featured-products CMS on `ai/TASK-20260908-005-featured-products`. Admin picker + `ids` query + storefront wiring. Not live until merge/deploy.
-- Last verified: 2026-09-08 — **TASK-20260908-004** implementing checkout_intent on `ai/TASK-20260908-004-checkout-intent`. Specs+tsc 0. LIVE OFF. Continues marketing plan leftover.
+- Last verified: 2026-09-08 — **TASK-20260908-006** implementing featured-products CMS on `ai/TASK-20260908-005-featured-products`. Admin picker + `ids` query + storefront wiring. ID 005 taken by settings IA. Not live until merge/deploy.
+- Last verified: 2026-09-08 — **TASK-20260908-005 implementing** on `ai/TASK-20260908-004-admin-settings-ia`. Channel-split shipping; ticker/SMS ops/Peystaz in system settings tabs. ID 004 already used by checkout-intent. Not live until merge/deploy.
+- Last verified: 2026-09-08 — **TASK-20260908-004 CLOSED** on `origin/master` + VPS `10d5f5e`. Checkout intent + abandon policy live; SMS mode still OFF. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-002 CLOSED** on `origin/master` + VPS `47b013e`. Customer-marketing sidecar live; 9 marketing_* tables; default SMS OFF. Health 200. Claims released. Checkout/PDP/TorobPay untouched.
 - Last verified: 2026-09-08 — **TASK-20260908-003 CLOSED** on `origin/master` + VPS `3ad49d2`. Luxury checkout payment picker live; TorobPay card when eligible; 1011 address checks kept. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-001 CLOSED** on `origin/master` + VPS `2cdb951`. Reports harden, CRM B2B/B2C filter, SMS paid/abandoned/stock-out per channel, postal quote toggle, ticker admin. Migration `CartSmsOps1757289600001` applied. Health 200. Claims released. TorobPay files untouched.

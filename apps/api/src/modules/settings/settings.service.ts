@@ -4,6 +4,10 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AppSettingEntity } from './entities/app-setting.entity';
 import { resolveSmsTemplates } from '../notification/sms-templates.defaults';
+import {
+  resolveChannelCompanies,
+  resolveShippingPost,
+} from './shipping-channel';
 
 // Central user-configurable settings, stored in DB and edited from the admin
 // panel. Consumers (shipping/sms/payment) read through the typed getters,
@@ -110,23 +114,10 @@ export class SettingsService {
 
   async shipping() {
     const s = await this.get('shipping');
-    const defaults = [
-      { id: 'CHAPAR', label: 'چاپار', isActive: true, sort: 10 },
-      { id: 'TIPAX', label: 'تیپاکس', isActive: true, sort: 20 },
-      { id: 'POST', label: 'پست پیشتاز', isActive: true, sort: 30 },
-      { id: 'FREIGHT', label: 'باربری', isActive: true, sort: 40 },
-      { id: 'OTHER', label: 'سایر', isActive: true, sort: 50 },
-    ];
-
-    const rawCompanies = Array.isArray(s.companies) ? s.companies : null;
-    const companies = (rawCompanies ?? defaults)
-      .map((c: any, i: number) => ({
-        id: String(c?.id ?? defaults[i]?.id ?? `SHIP_${i + 1}`),
-        label: String(c?.label ?? defaults[i]?.label ?? 'نامشخص'),
-        isActive: c?.isActive !== false,
-        sort: Number.isFinite(Number(c?.sort)) ? Number(c.sort) : (defaults[i]?.sort ?? (i + 1) * 10),
-      }))
-      .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+    const retailCompanies = resolveChannelCompanies(s, 'RETAIL');
+    const wholesaleCompanies = resolveChannelCompanies(s, 'WHOLESALE');
+    /** @deprecated Prefer wholesale.companies — wholesale checkout historically read this. */
+    const companies = wholesaleCompanies;
 
     const defaultBase = Number(this.config.get('SHIPPING_BASE_FEE', 1500000));
     const defaultPerKg = Number(this.config.get('SHIPPING_PER_KG_FEE', 250000));
@@ -159,6 +150,7 @@ export class SettingsService {
             'پیک تهران / اسنپ‌باکس: حداکثر برابر کارمزد پایه. اگر مبلغ فاکتور ≥ آستانه ارسال رایگان → هزینه صفر.',
           ].join('\n'),
       ),
+      companies: retailCompanies,
     };
 
     const wholesale = {
@@ -171,6 +163,7 @@ export class SettingsService {
             'شرکت‌های حمل فعال در checkout نمایش داده می‌شوند.',
           ].join('\n'),
       ),
+      companies: wholesaleCompanies,
     };
 
     return {
@@ -186,12 +179,16 @@ export class SettingsService {
       wholesale,
       // Editable shipping companies list (admin-managed). Kept alongside legacy `methods` for backward compat.
       companies,
-      // Legacy per-method enable flags; derived from companies (or fall back to stored methods).
+      // Legacy per-method enable flags; derived from wholesale companies (or fall back to stored methods).
       methods: companies.reduce((acc, c) => {
         acc[c.id] = c.isActive !== false;
         return acc;
       }, { ...(s.methods ?? {}) } as Record<string, boolean>),
     };
+  }
+
+  async shippingPost() {
+    return resolveShippingPost(await this.get('shippingPost'));
   }
 
   async installments() {

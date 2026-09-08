@@ -7,6 +7,12 @@
 - ویترین عمده، تکی و بوتیک از یک قرارداد می‌خوانند. سقف کارت هوم ۱۲. JSON قدیمی بدون `source` اگر شناسه داشته باشد دستی حساب می‌شود.
 - گزارش: `docs/reports/2026-09-08-featured-products-cms.md`. ADR: `docs/adr/2026-09-08-featured-products-block.md`.
 
+## 2026-09-08 — تنظیمات سیستم: تفکیک تکی/عمده
+
+- روش ارسال، پیشتاز، پیامک عملیاتی و نوار روان هوم داخل تب‌های تنظیمات سیستم آمدند؛ تکی و عمده جدا ذخیره می‌شوند.
+- چک‌اوت تکی روش‌های ارسال را از API کانال می‌خواند؛ عمده صریحاً `channel=WHOLESALE` می‌فرستد.
+- گزارش: `docs/reports/2026-09-08-admin-settings-ia.md`. ADR: `docs/adr/2026-09-08-channel-settings-ia.md`.
+
 ## 2026-09-08 — نیت چک‌اوت برای سبد مانده
 
 - جدول `marketing_checkout_intents` و `POST /v1/storefront/marketing/checkout-intent` برای کاربر لاگین.

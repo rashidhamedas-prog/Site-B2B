@@ -2,14 +2,30 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-09-08T14:55:00Z — TASK-20260908-005 featured products CMS
+## 2026-09-08T15:20:00Z — TASK-20260908-006 featured products CMS
 
-- Task / owner: TASK-20260908-005 / cursor:implementer-TASK-20260908-005
-- Branch `ai/TASK-20260908-005-featured-products` worktree `D:/proje/Site-B2B-featured-products`.
-- Overlap with TASK-20260908-004: governance files only (`active.yaml`, handoff, status, WORKLOG). No checkout files.
+- ID collision: origin/master used TASK-20260908-005 for admin-settings-ia. This merchandising slice is **TASK-20260908-006** on branch `ai/TASK-20260908-005-featured-products`.
 - CODE: CMS `products` block has auto/manual source, picker, category, in-stock, portal gate. Public `GET /products?ids=` preserves order (max 16 UUID). Wholesale/retail/boutique rails consume the same contract. Home cap 12.
-- Next: specs + tsc, then merge/deploy. Existing JSON without `source` stays valid (ids → manual).
+- Overlap with 005: governance files + `apps/api/package.json` test script only. No shipping/checkout files.
+- Observed: products-block spec ok; product-ids-query spec ok; api+web tsc 0.
+- Next: merge/deploy. Existing JSON without `source` stays valid (ids → manual).
 - Rollback: revert commit; no migration.
+
+## 2026-09-08T14:55:00Z — TASK-20260908-005 implementing admin settings IA
+
+- ID collision: origin/master already used TASK-20260908-004 for checkout-intent. This settings IA is **TASK-20260908-005**.
+- Objective: fully split retail/wholesale shipping settings; move ticker, SMS ops, Peystaz quote into system-settings tabs; redesign `/admin/settings`.
+- Decisions: nested `shipping.retail|wholesale.companies`; nested `shippingPost`; methods/public default WHOLESALE; ticker stays CMS chrome, edited from theme tab; one save per tab.
+- Tests: `shipping-channel.spec.ts` OK; `shipping-methods.spec.ts` OK via tsx; api tsc 0; web tsc 0.
+- Next: commit merge with origin/master, deploy, verify `/admin/settings` + `/v1/health`.
+- Risks: first save of shippingPost writes nested JSON; legacy flat hydrates both until then. Independent reviewer still required for shipping API change. Checkout-intent beacon kept.
+
+## 2026-09-08T14:57:00Z — TASK-20260908-004 CLOSED live `10d5f5e`
+
+- Task / owner: TASK-20260908-004 / cursor:implementer-TASK-20260908-004
+- Shipped checkout_intent + idle beacon + abandon policy. Deploy complete at `10d5f5e`.
+- Observed: health 200; `POST /v1/storefront/marketing/checkout-intent` → 401 without JWT; table `marketing_checkout_intents` + migration `MarketingCheckoutIntent1757332800004`; route mapped; LIVE OFF.
+- Claims released. Next optional: canary one `retail.checkout.abandoned` after owner enables CANARY.
 
 ## 2026-09-08T14:50:00Z — TASK-20260908-004 checkout intent
 

@@ -15,22 +15,6 @@ import {
   trackBeginCheckout,
   type RetailAnalyticsItemInput,
 } from '@/lib/retail-analytics';
-
-const PROVINCES = [
-  'تهران', 'خراسان رضوی', 'اصفهان', 'فارس', 'آذربایجان شرقی', 'آذربایجان غربی',
-  'خوزستان', 'مازندران', 'گیلان', 'کرمان', 'البرز', 'قم', 'یزد', 'همدان',
-  'کرمانشاه', 'گلستان', 'لرستان', 'مرکزی', 'قزوین', 'اردبیل', 'بوشهر',
-  'زنجان', 'سمنان', 'سیستان و بلوچستان', 'کردستان', 'کهگیلویه و بویراحمد',
-  'چهارمحال و بختیاری', 'ایلام', 'هرمزگان', 'خراسان شمالی', 'خراسان جنوبی',
-];
-
-const SHIP_METHODS = [
-  { id: 'PISHTAZ', label: 'پست پیشتاز' },
-  { id: 'TIPAX', label: 'تیپاکس' },
-  { id: 'CHAPAR', label: 'چاپار' },
-  { id: 'TEHRAN_BIKE', label: 'پیک تهران' },
-];
-
 import { readTorobClid } from '@/components/retail/RetailAffiliateCapture';
 import { CheckoutChoiceList } from '@/components/checkout/CheckoutChoiceList';
 import { CheckoutPanel, CheckoutStepRail } from '@/components/checkout/CheckoutPanel';
@@ -44,7 +28,16 @@ import {
   retailTorobpayAddressError,
   type RetailPaymentGateway,
 } from '@/lib/checkout-payment-ui';
+import { FALLBACK_RETAIL_SHIPPING_METHODS, resolveShippingMethods } from '@/lib/shipping-methods';
 import { pulseCheckoutIntent } from '@/lib/checkout-intent';
+
+const PROVINCES = [
+  'تهران', 'خراسان رضوی', 'اصفهان', 'فارس', 'آذربایجان شرقی', 'آذربایجان غربی',
+  'خوزستان', 'مازندران', 'گیلان', 'کرمان', 'البرز', 'قم', 'یزد', 'همدان',
+  'کرمانشاه', 'گلستان', 'لرستان', 'مرکزی', 'قزوین', 'اردبیل', 'بوشهر',
+  'زنجان', 'سمنان', 'سیستان و بلوچستان', 'کردستان', 'کهگیلویه و بویراحمد',
+  'چهارمحال و بختیاری', 'ایلام', 'هرمزگان', 'خراسان شمالی', 'خراسان جنوبی',
+];
 
 type AddressForm = RetailAddress;
 
@@ -80,6 +73,7 @@ export default function RetailCheckoutPage() {
   const [torobpayAvailable, setTorobpayAvailable] = useState(false);
   const [pendingPayOrderId, setPendingPayOrderId] = useState<string | null>(null);
   const [shippingMethod, setShippingMethod] = useState('PISHTAZ');
+  const [shipMethods, setShipMethods] = useState(FALLBACK_RETAIL_SHIPPING_METHODS);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -174,6 +168,17 @@ export default function RetailCheckoutPage() {
   }, []);
 
   useEffect(() => {
+    apiClient
+      .get<Array<{ id: string; label: string }>>('/shipping/methods?channel=RETAIL')
+      .then((m) => {
+        const next = resolveShippingMethods(m, FALLBACK_RETAIL_SHIPPING_METHODS);
+        setShipMethods(next);
+        setShippingMethod((prev) => (next.some((x) => x.id === prev) ? prev : next[0]?.id || prev));
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (!pieces) {
       setShipFee(0);
       return;
@@ -183,6 +188,8 @@ export default function RetailCheckoutPage() {
       orderTotal: String(subtotal),
       method: shippingMethod,
       province: address.province,
+      city: address.city,
+      channel: 'RETAIL',
     });
     apiClient
       .get<{ fee?: number; freeShipping?: boolean; estimatedDays?: string }>(`/shipping/quote?${params}`)
@@ -194,7 +201,7 @@ export default function RetailCheckoutPage() {
         setShipFee(650_000);
         setShipMeta({});
       });
-  }, [pieces, subtotal, shippingMethod, address.province]);
+  }, [pieces, subtotal, shippingMethod, address.province, address.city]);
 
   const walletApplied = useWallet ? Math.min(walletBalance, Math.max(0, subtotal + shipFee)) : 0;
   const payable = Math.max(0, subtotal + shipFee - walletApplied);
@@ -530,7 +537,7 @@ export default function RetailCheckoutPage() {
                     next,
                   );
                 }}
-                options={SHIP_METHODS.map((m) => ({
+                options={shipMethods.map((m) => ({
                   id: m.id,
                   title: m.label,
                   description: shipMeta.freeShipping ? 'ارسال این سفارش رایگان است' : 'هزینه طبق مقصد و تعداد محاسبه می‌شود',

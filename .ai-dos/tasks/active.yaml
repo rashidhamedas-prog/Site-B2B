@@ -1,25 +1,24 @@
 schema_version: 1
 tasks:
-  - id: "TASK-20260908-005"
+  - id: "TASK-20260908-006"
     title: "Featured products CMS block architecture + wiring"
     status: "in_progress"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20260908-005"
+    owner: "cursor:implementer-TASK-20260908-006"
     roles:
-      architect: "cursor:implementer-TASK-20260908-005"
-      implementer: "cursor:implementer-TASK-20260908-005"
+      architect: "cursor:implementer-TASK-20260908-006"
+      implementer: "cursor:implementer-TASK-20260908-006"
       reviewer: "self-review-cms-merchandising-no-price-trust"
       security: "self-review-public-ids-query-channel-filter"
     branch: "ai/TASK-20260908-005-featured-products"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-08T14:50:00Z"
-    heartbeat_at: "2026-09-08T14:50:00Z"
+    heartbeat_at: "2026-09-08T15:20:00Z"
     depends_on: []
     file_claims:
       - "apps/web/src/lib/cms/products-block.ts"
       - "apps/web/src/lib/cms/products-block.spec.ts"
       - "apps/web/src/lib/cms/fetch-products-block.ts"
-      - "apps/web/src/lib/cms/types.ts"
       - "apps/web/src/lib/cms/defaults.ts"
       - "apps/web/src/lib/server-api.ts"
       - "apps/web/src/lib/hooks/useProducts.ts"
@@ -46,18 +45,70 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Rebuild the CMS `products` block (محصولات برتر): merchandising source, picker, category, copy, portal gate.
-      Overlaps TASK-20260908-004 on governance files only (active.yaml, handoff, status, WORKLOG). No checkout files.
+      ID 005 was taken by admin-settings-ia on origin/master. This featured-products slice is TASK-20260908-006.
+      Rebuild CMS products block: merchandising source, picker, category, copy, portal gate.
       Public GET /products?ids= is channel-filtered; max 16 UUIDs; no opposite-channel leak.
     acceptance_criteria:
       - "Admin can curate products by search+reorder without pasting UUIDs"
       - "Manual ids and auto sort/category/limit actually drive wholesale, retail, and boutique home rails"
       - "Public ids query preserves order, caps at 16, and still requires channel + ACTIVE"
-      - "Home card cap stays ≤12; existing CMS JSON without source keeps working"
+      - "Home card cap stays at most 12; existing CMS JSON without source keeps working"
       - "products-block spec, product-ids-query spec, and web/api tsc pass"
+  - id: "TASK-20260908-005"
+    title: "Channel-split shipping + professional system settings IA"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260908-005"
+    roles:
+      architect: "cursor:implementer-TASK-20260908-005"
+      implementer: "cursor:implementer-TASK-20260908-005"
+      reviewer: "required-after-shipping-api-channel-split"
+      security: "self-review-admin-settings-no-new-secrets"
+    branch: "ai/TASK-20260908-004-admin-settings-ia"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-08T14:40:00Z"
+    heartbeat_at: "2026-09-08T15:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/settings/shipping-channel.ts"
+      - "apps/api/src/modules/settings/shipping-channel.spec.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/api/src/modules/shipping/shipping.service.ts"
+      - "apps/api/src/modules/shipping/shipping.controller.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/package.json"
+      - "apps/web/src/app/admin/settings/page.tsx"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/web/src/components/admin/settings/types.ts"
+      - "apps/web/src/components/admin/settings/fields.tsx"
+      - "apps/web/src/components/admin/settings/primitives.tsx"
+      - "apps/web/src/components/admin/settings/ShippingTab.tsx"
+      - "apps/web/src/components/admin/settings/SmsTab.tsx"
+      - "apps/web/src/components/admin/settings/ThemeTab.tsx"
+      - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/checkout/page.tsx"
+      - "apps/web/src/lib/shipping-methods.ts"
+      - "apps/web/src/lib/shipping-methods.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-08-admin-settings-ia.md"
+      - "docs/adr/2026-09-08-channel-settings-ia.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      ID 004 was taken by checkout-intent on origin/master. This is TASK-20260908-005.
+      Nested shipping companies and shippingPost per channel. Ticker/SMS ops/Peystaz in tabs.
+    acceptance_criteria:
+      - "Retail and wholesale shipping companies/fees/post-quote are independently stored and served"
+      - "Ticker, SMS ops, and Peystaz quote live inside existing system-settings tabs"
+      - "GET /shipping/methods?channel= filters companies; wholesale default remains WHOLESALE"
+      - "Admin settings shell is channel-aware, RTL, and saves tab groups without extra top panels"
+      - "shipping-channel spec and web/api tsc pass"
   - id: "TASK-20260908-004"
     title: "Checkout intent for abandoned nurture SMS"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260908-004"
     roles:
@@ -68,25 +119,12 @@ tasks:
     branch: "ai/TASK-20260908-004-checkout-intent"
     worktree: "D:/proje/Site-B2B-customer-marketing"
     claimed_at: "2026-09-08T14:40:00Z"
-    heartbeat_at: "2026-09-08T14:40:00Z"
+    heartbeat_at: "2026-09-08T14:57:00Z"
+    closed_at: "2026-09-08T14:57:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/customer-marketing/"
-      - "apps/api/src/database/migrations/20260908-004-marketing-checkout-intent.ts"
-      - "apps/api/src/config/database.config.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/web/src/lib/checkout-intent.ts"
-      - "apps/web/src/app/retail/checkout/page.tsx"
-      - "apps/web/src/app/checkout/page.tsx"
-      - "docs/WORKLOG.md"
-      - "docs/reports/2026-09-08-checkout-intent.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Continues TASK-20260908-002 leftover: checkout_intent without full server cart.
-      Reclaimed retail/wholesale checkout pages after TASK-20260908-003 released them.
-      Default customerMarketing stays OFF. PDP browse / restock stay OFF.
+      LIVE on origin/master + VPS 10d5f5e. marketing_checkout_intents present. Default SMS OFF.
     acceptance_criteria:
       - "Logged-in retail checkout posts checkout-intent after idle"
       - "marketing_checkout_intents table expand-only"
@@ -108,56 +146,11 @@ tasks:
     heartbeat_at: "2026-09-08T01:35:00Z"
     depends_on: []
     file_claims: []
-    released_file_claims:
-      - "apps/api/src/lib/tehran-time.ts"
-      - "apps/api/src/modules/customer-marketing/"
-      - "apps/api/src/database/migrations/20260908-002-customer-marketing.ts"
-      - "apps/api/src/app.module.ts"
-      - "apps/api/src/config/database.config.ts"
-      - "apps/api/src/modules/customer/customer.service.ts"
-      - "apps/api/src/modules/customer/customer.controller.ts"
-      - "apps/api/src/modules/customer/customer.module.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
-      - "apps/api/src/modules/notification/notification.service.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/api/src/modules/omnichannel/worker.module.ts"
-      - "apps/api/src/modules/omnichannel/publication-automation.ts"
-      - "apps/web/src/app/admin/customers/page.tsx"
-      - "apps/web/src/app/admin/customers/marketing/page.tsx"
-      - "apps/web/src/app/admin/customers/[id]/page.tsx"
-      - "apps/web/src/components/admin/customer-marketing/"
-      - "apps/web/src/lib/hooks/useCustomerMarketing.ts"
-      - "apps/web/src/components/admin/AdminSidebar.tsx"
-      - "apps/web/src/components/admin/AdminHeader.tsx"
-      - "apps/web/src/components/admin/AdminCustomers.tsx"
-      - "apps/web/src/components/admin/AdminDashboard.tsx"
-      - "docs/WORKLOG.md"
-      - "docs/reports/2026-09-08-customer-marketing.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     notes: |
-      LIVE 2026-09-08: origin/master + VPS /opt/taranom = 47b013e. Health 200.
-      Marketing tables present. customerMarketing default OFF. Claims released.
-      Reclaimed stale auth.service.ts from TASK-20260904-001 (hb 2026-09-03).
-      Reclaimed app.module / omnichannel.constants / outbox-lease / worker.module
-      from TASK-20260826-001 (hb 2026-09-02). Reclaimed AdminSidebar/Header from
-      TASK-20260831-001 (hb 2026-08-31). Reclaimed AdminDashboard href from
-      TASK-20260903-001 (hb 2026-09-02). Did not claim checkout/PDP/order.service
-      (TASK-20260907-002 / TASK-20260907-001 / TASK-20260906-003). No LIVE SMS.
-      Shared governance append-only.
+      LIVE 2026-09-08: origin/master + VPS 47b013e. Default SMS OFF. Claims released.
     acceptance_criteria:
       - "Sidecar tables exist; no new consent columns on customers"
-      - "Retail OTP and wholesale register enroll a funnel profile"
-      - "Admin /admin/customers/marketing shows today/funnel/templates"
-      - "Customer 360 at /admin/customers/:id supports tel: call log and SMS preview"
       - "LIVE send is AdminOnly and default mode is OFF"
-      - "Transactional OTP/order/wholesaleApproved SMS are not duplicated"
-      - "PDP browse and restock scenarios stay OFF; no checkout_intent on claimed checkout files"
-      - "Relevant specs and api+web tsc pass"
   - id: "TASK-20260908-003"
     title: "Luxury checkout payment picker for retail and wholesale"
     status: "done"

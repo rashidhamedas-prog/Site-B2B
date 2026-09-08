@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminOnly } from '../auth/decorators/admin-only.decorator';
+import { resolveSmsOps } from '../notification/sms-ops';
 
 const GROUPS = [
   'business',
@@ -65,26 +66,29 @@ export class SettingsController {
         enamadRetail: business.enamadRetail,
       },
       shipping: (() => {
-        const ch = String(channel || '').toUpperCase();
+        const ch = String(channel || 'WHOLESALE').toUpperCase();
         const retail = shipping.retail;
         const wholesale = shipping.wholesale;
         // Channel-aware flat fields for storefront checkout; nested for admin/tools
         const flat =
-          ch === 'WHOLESALE'
+          ch === 'RETAIL'
             ? {
-                freeThreshold: wholesale.freeThreshold,
-                baseFee: wholesale.baseFee,
-                perKgFee: 0,
-                kgPerPiece: retail.kgPerPiece,
-              }
-            : {
                 freeThreshold: retail.freeThreshold,
                 baseFee: retail.baseFee,
                 perKgFee: retail.perKgFee,
                 kgPerPiece: retail.kgPerPiece,
+              }
+            : {
+                freeThreshold: wholesale.freeThreshold,
+                baseFee: wholesale.baseFee,
+                perKgFee: 0,
+                kgPerPiece: retail.kgPerPiece,
               };
+        const channelCompanies = (ch === 'RETAIL' ? retail.companies : wholesale.companies) ?? [];
         return {
-          companies: shipping.companies,
+          companies: channelCompanies
+            .filter((c: { isActive?: boolean }) => c?.isActive !== false)
+            .map((c: { id: string; label: string }) => ({ id: c.id, label: c.label })),
           ...flat,
           retail: {
             freeThreshold: retail.freeThreshold,
@@ -150,9 +154,21 @@ export class SettingsController {
         this.svc.marketing(),
         this.svc.siteContent(),
         this.svc.get('smsOps'),
-        this.svc.get('shippingPost'),
+        this.svc.shippingPost(),
       ]);
-    return { business, shipping, sms, payment, installments, theme, menus, marketing, siteContent, smsOps, shippingPost };
+    return {
+      business,
+      shipping,
+      sms,
+      payment,
+      installments,
+      theme,
+      menus,
+      marketing,
+      siteContent,
+      smsOps: resolveSmsOps(smsOps),
+      shippingPost,
+    };
   }
 
   // Admin: save one settings group.
@@ -198,6 +214,46 @@ export class SettingsController {
             ? bodyBiz.enamadRetail
             : {}),
         },
+      };
+    }
+    if (group === 'shipping') {
+      const prev = await this.svc.get('shipping');
+      const bodyShip = body ?? {};
+      value = {
+        ...prev,
+        ...bodyShip,
+        retail: {
+          ...(prev.retail && typeof prev.retail === 'object' ? prev.retail : {}),
+          ...(bodyShip.retail && typeof bodyShip.retail === 'object' ? bodyShip.retail : {}),
+        },
+        wholesale: {
+          ...(prev.wholesale && typeof prev.wholesale === 'object' ? prev.wholesale : {}),
+          ...(bodyShip.wholesale && typeof bodyShip.wholesale === 'object' ? bodyShip.wholesale : {}),
+        },
+      };
+    }
+    if (group === 'shippingPost') {
+      const prev = await this.svc.shippingPost();
+      const bodyPost = body ?? {};
+      const legacyFlat = !bodyPost.retail && !bodyPost.wholesale && bodyPost.enabled !== undefined;
+      value = {
+        retail: {
+          ...prev.retail,
+          ...(legacyFlat ? bodyPost : {}),
+          ...(bodyPost.retail && typeof bodyPost.retail === 'object' ? bodyPost.retail : {}),
+        },
+        wholesale: {
+          ...prev.wholesale,
+          ...(bodyPost.wholesale && typeof bodyPost.wholesale === 'object' ? bodyPost.wholesale : {}),
+        },
+      };
+    }
+    if (group === 'smsOps') {
+      const prev = resolveSmsOps(await this.svc.get('smsOps'));
+      const bodyOps = body ?? {};
+      value = {
+        retail: { ...prev.retail, ...(bodyOps.retail && typeof bodyOps.retail === 'object' ? bodyOps.retail : {}) },
+        wholesale: { ...prev.wholesale, ...(bodyOps.wholesale && typeof bodyOps.wholesale === 'object' ? bodyOps.wholesale : {}) },
       };
     }
     // Nested menus save: body may be { wholesale, retail } or flat (= wholesale)

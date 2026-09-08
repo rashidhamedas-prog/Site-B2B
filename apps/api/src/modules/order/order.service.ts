@@ -23,6 +23,7 @@ import { requireDiscountChannel } from '../discount/discount-channel';
 import { PaymentService } from '../payment/payment.service';
 import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
+import { addressPlace } from '../settings/shipping-channel';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { resolveChannelSale } from '../product/product-sale';
 import { sizesForSizeType } from '../product/product-pack';
@@ -721,25 +722,25 @@ export class OrderService {
     let freeShipping = false;
     let intraCityFee = 0;
     let perKgFee = 0;
-
-    if (channel === 'RETAIL') {
-      const shipQuote = await this.shippingService.quote({
-        pieces,
-        orderTotal: Math.max(0, subtotal - discountAmount),
-        method: shippingMethod,
-      });
-      computedShipping = Number(shipQuote.fee) || 0;
-      freeShipping = !!shipQuote.freeShipping;
-    } else {
-      const shipCfg = await this.settings.shipping();
-      const wholesaleCfg = shipCfg.wholesale ?? shipCfg;
-      const wholesaleFreeFrom = Number(wholesaleCfg.freeThreshold) || 50_000_000;
-      const wholesaleDefaultShip = Number(wholesaleCfg.baseFee) || 1_500_000;
-      computedShipping =
-        (subtotal - discountAmount) >= wholesaleFreeFrom ? 0 : wholesaleDefaultShip;
-      freeShipping = computedShipping === 0;
-      intraCityFee = computedShipping;
-    }
+    const dest = addressPlace(
+      dto.shippingAddress && typeof dto.shippingAddress === 'object'
+        ? dto.shippingAddress
+        : typeof dto.shippingAddress === 'string'
+          ? dto.shippingAddress
+          : null,
+    );
+    const shipQuote = await this.shippingService.quote({
+      pieces,
+      orderTotal: Math.max(0, subtotal - discountAmount),
+      method: shippingMethod,
+      channel,
+      province: dest.province,
+      city: dest.city,
+    });
+    computedShipping = Number(shipQuote.fee) || 0;
+    freeShipping = !!shipQuote.freeShipping;
+    if (channel === 'WHOLESALE') intraCityFee = computedShipping;
+    else perKgFee = Number(shipQuote.perKgFee) || 0;
 
     let orderTotal = Math.max(0, subtotal - discountAmount + computedShipping);
     let walletApplied = 0;
