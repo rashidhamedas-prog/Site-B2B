@@ -15,8 +15,6 @@ import { BoutiqueCategoryRow } from './BoutiqueCategoryRow';
 import { BoutiqueSaleRail, BoutiqueProductRail } from './BoutiqueSaleRail';
 import { BoutiqueTrustStrip } from './BoutiqueTrustStrip';
 
-const HOME_PRODUCT_CAP = 12;
-
 function SectionSkeleton({ className = 'h-64' }: { className?: string }) {
   return (
     <div className={`bq-container animate-pulse py-8`}>
@@ -69,11 +67,9 @@ export async function BoutiqueBlocksRenderer({
         }
         break;
       case 'products': {
-        const rawLimit = typeof p.limit === 'number' ? p.limit : HOME_PRODUCT_CAP;
-        const limit = Math.min(Math.max(1, rawLimit), HOME_PRODUCT_CAP);
         nodes.push(
           <Suspense key={block.id} fallback={<SectionSkeleton className="h-96" />}>
-            <BoutiqueProductRail title={str(p, 'headline') || 'جدیدترین‌های ترنم'} limit={limit} />
+            <BoutiqueProductRail props={p} />
           </Suspense>,
         );
         break;

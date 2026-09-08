@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getServerApiBase, slimRetailCatalogProduct } from '@/lib/server-api';
+import { fetchProductsBlockCatalog } from '@/lib/cms/fetch-products-block';
 import { BoutiqueProductCard } from './BoutiqueProductCard';
 import type { RetailCardProduct } from '@/components/retail/RetailProductCard';
 
@@ -60,28 +61,33 @@ export async function BoutiqueSaleRail() {
 }
 
 export async function BoutiqueProductRail({
-  title = 'جدیدترین‌های ترنم',
-  limit = 12,
+  props = {},
 }: {
-  title?: string;
-  limit?: number;
+  props?: Record<string, unknown>;
 }) {
-  const products = (await fetchRetailProducts(Math.min(limit, HOME_PRODUCT_CAP - HOME_SALE_CAP))).slice(
-    0,
-    HOME_PRODUCT_CAP - HOME_SALE_CAP,
-  );
+  const { query, products: raw, error } = await fetchProductsBlockCatalog('RETAIL', props);
+  if (!query.enabled) return null;
+  const products = raw.map((row) => slimRetailCatalogProduct(row)) as RetailCardProduct[];
 
   return (
     <section className="bq-container py-6">
       <div className="overflow-hidden rounded-3xl bg-white p-4 sm:p-6">
         <div className="mb-5 flex items-end justify-between gap-3">
-          <h2 className="text-xl font-extrabold text-neutral-900">{title}</h2>
-          <Link href="/products" className="text-sm font-bold text-[#1b5c4a]">
-            مشاهده همه
-          </Link>
+          <div>
+            {query.eyebrow ? <p className="text-xs font-semibold text-[#1b5c4a]">{query.eyebrow}</p> : null}
+            <h2 className="text-xl font-extrabold text-neutral-900">{query.headline || 'جدیدترین‌های ترنم'}</h2>
+            {query.body ? <p className="mt-1 text-sm text-neutral-500">{query.body}</p> : null}
+          </div>
+          {query.ctaLabel && query.ctaHref ? (
+            <Link href={query.ctaHref} className="text-sm font-bold text-[#1b5c4a]">
+              {query.ctaLabel}
+            </Link>
+          ) : null}
         </div>
         {products.length === 0 ? (
-          <p className="py-10 text-center text-sm text-neutral-500">هنوز محصولی برای نمایش نیست.</p>
+          <p className="py-10 text-center text-sm text-neutral-500" role="status">
+            {error ? 'بارگذاری محصولات با خطا مواجه شد.' : 'هنوز محصولی برای نمایش نیست.'}
+          </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((p) => (

@@ -14,6 +14,7 @@ import { resolvePublicProductStatus } from './public-product-status';
 import { resolvePublicProductChannel } from './public-product-channel';
 import { parseColorStockPlan, pickVariantStocks } from './color-stock-plan';
 import { OptionalJwtAuthGuard, isAdminActor } from './optional-jwt.guard';
+import { parseProductIdsQuery } from './product-ids-query';
 
 type AuthedReq = { user?: { id?: string; role?: string } };
 
@@ -47,6 +48,8 @@ export class ProductController {
     @Query('relatedTo') relatedTo?: string,
     @Query('channel') channel?: string,
     @Query('sort') sort?: string,
+    @Query('ids') ids?: string,
+    @Query('inStock') inStock?: string,
     @Query('includeVariants') includeVariants?: string,
     @Res({ passthrough: true }) res?: FastifyReply,
     @Req() req?: AuthedReq,
@@ -71,6 +74,7 @@ export class ProductController {
         : 'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
     );
     const wantVariants = includeVariants === '1' || includeVariants === 'true';
+    const curatedIds = parseProductIdsQuery(ids);
     return this.productService.findAll(page, limit, search || q, fabric, publicStatus, color, size, {
       categoryId,
       categorySlug,
@@ -81,6 +85,8 @@ export class ProductController {
       relatedTo,
       channel: publicChannel,
       sort,
+      ids: curatedIds.length ? curatedIds : undefined,
+      inStockOnly: inStock === '1' || inStock === 'true',
       includeVariants: wantVariants,
     });
   }
@@ -214,6 +220,8 @@ export class ProductController {
     @Query('relatedTo') relatedTo?: string,
     @Query('channel') channel?: string,
     @Query('sort') sort?: string,
+    @Query('ids') ids?: string,
+    @Query('inStock') inStock?: string,
     @Query('includeVariants') includeVariants?: string,
     @Res({ passthrough: true }) res?: FastifyReply,
   ) {
@@ -222,6 +230,7 @@ export class ProductController {
       includeVariants === '1' ||
       includeVariants === 'true' ||
       String(status || '').toUpperCase() === 'ALL';
+    const curatedIds = parseProductIdsQuery(ids);
     return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
       categoryId,
       categorySlug,
@@ -232,6 +241,8 @@ export class ProductController {
       relatedTo,
       channel,
       sort,
+      ids: curatedIds.length ? curatedIds : undefined,
+      inStockOnly: inStock === '1' || inStock === 'true',
       includeVariants: wantVariants,
     });
   }

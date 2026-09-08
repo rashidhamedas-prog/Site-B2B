@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T15:20:00Z — TASK-20260908-006 featured products CMS
+
+- ID collision: origin/master used TASK-20260908-005 for admin-settings-ia. This merchandising slice is **TASK-20260908-006** on branch `ai/TASK-20260908-005-featured-products`.
+- CODE: CMS `products` block has auto/manual source, picker, category, in-stock, portal gate. Public `GET /products?ids=` preserves order (max 16 UUID). Wholesale/retail/boutique rails consume the same contract. Home cap 12.
+- Overlap with 005: governance files + `apps/api/package.json` test script only. No shipping/checkout files.
+- Observed: products-block spec ok; product-ids-query spec ok; api+web tsc 0.
+- Next: merge/deploy. Existing JSON without `source` stays valid (ids → manual).
+- Rollback: revert commit; no migration.
+
 ## 2026-09-08T15:14:00Z — TASK-20260908-005 CLOSED live `e284ae9`
 
 - Task / owner: TASK-20260908-005 / cursor:implementer-TASK-20260908-005

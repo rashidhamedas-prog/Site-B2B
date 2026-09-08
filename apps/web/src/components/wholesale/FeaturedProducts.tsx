@@ -1,105 +1,74 @@
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui';
-import { getServerApiBase } from '@/lib/server-api';
-import { WholesaleProductCard } from './WholesaleProductCard';
-
-interface Product {
-  id: string;
-  slug?: string;
-  sku?: string;
-  name: string;
-  fabric: string;
-  wholesalePrice: number;
-  status: string;
-  minOrderQty?: number;
-  isDiscounted?: boolean;
-  isNew?: boolean;
-  isLimitedStock?: boolean;
-  images?: string[];
-  variants?: Array<{ color?: string; colorHex?: string; stock?: number; size?: string }>;
-}
-
-async function fetchFeatured(limit = 6): Promise<Product[]> {
-  try {
-    const apiUrl = getServerApiBase();
-    const res = await fetch(
-      `${apiUrl}/products?limit=${limit}&status=ACTIVE&channel=WHOLESALE`,
-      { next: { revalidate: 300 } },
-    );
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.data ?? [];
-  } catch {
-    return [];
-  }
-}
+import { slimWholesaleCatalogProduct } from '@/lib/slim-wholesale-catalog';
+import { fetchProductsBlockCatalog } from '@/lib/cms/fetch-products-block';
+import { WholesaleProductCard, type WholesaleCardProduct } from './WholesaleProductCard';
 
 export async function FeaturedProducts({
-  eyebrow = 'کاتالوگ فصل',
-  headline = 'محصولات برتر',
-  body = 'پرفروش‌ترین و جدیدترین مدل‌های فصل',
-  ctaLabel = 'همه محصولات',
-  ctaHref = '/products',
-  viewAllLabel,
-  limit = 6,
+  props = {},
 }: {
-  eyebrow?: string;
-  headline?: string;
-  body?: string;
-  ctaLabel?: string;
-  ctaHref?: string;
-  viewAllLabel?: string;
-  limit?: number;
+  props?: Record<string, unknown>;
 } = {}) {
-  const products = await fetchFeatured(limit);
-  const items = products.length > 0 ? products : [];
-  if (items.length === 0) return null;
-  const linkLabel = viewAllLabel || ctaLabel;
+  const { query, products: raw, error } = await fetchProductsBlockCatalog('WHOLESALE', props);
+  if (!query.enabled) return null;
+  const items = raw.map((row) => slimWholesaleCatalogProduct(row) as WholesaleCardProduct);
+  if (!items.length) {
+    if (query.hideWhenEmpty && !error) return null;
+    return (
+      <section className="section bg-white">
+        <div className="container-site">
+          <p className="rounded-xl border border-[color:var(--color-border)] bg-surface-muted px-6 py-10 text-center text-sm text-gray-600" role="status">
+            {error ? 'بارگذاری محصولات با خطا مواجه شد. لطفاً بعداً دوباره تلاش کنید.' : 'هنوز محصولی برای نمایش نیست.'}
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="section bg-white">
       <div className="container-site">
         <div className="mb-10 flex items-end justify-between gap-4">
           <div>
-            {eyebrow ? (
-              <p className="mb-2 text-sm font-semibold tracking-wide text-secondary-dark">{eyebrow}</p>
+            {query.eyebrow ? (
+              <p className="mb-2 text-sm font-semibold tracking-wide text-secondary-dark">{query.eyebrow}</p>
             ) : null}
-            {headline ? <h2 className="section-title mb-2">{headline}</h2> : null}
-            {body ? <p className="section-subtitle mb-0">{body}</p> : null}
+            {query.headline ? <h2 className="section-title mb-2">{query.headline}</h2> : null}
+            {query.body ? <p className="section-subtitle mb-0">{query.body}</p> : null}
           </div>
-          {linkLabel && ctaHref ? (
-            <Link href={ctaHref} className="hidden flex-shrink-0 cursor-pointer sm:block">
+          {query.ctaLabel && query.ctaHref ? (
+            <Link href={query.ctaHref} className="hidden flex-shrink-0 cursor-pointer sm:block">
               <Button variant="outline" size="sm" leftIcon={<ArrowLeft className="h-4 w-4 rtl-flip" />}>
-                {linkLabel}
+                {query.ctaLabel}
               </Button>
             </Link>
           ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-5">
-          {items.slice(0, limit).map((product) => (
+          {items.map((product) => (
             <WholesaleProductCard key={product.id} product={product} />
           ))}
         </div>
 
-        <div className="mt-12 border border-[color:var(--color-border)] bg-surface-muted px-6 py-8 text-center sm:rounded-2xl">
-          <p className="mb-4 text-sm font-medium text-gray-700">
-            برای مشاهده قیمت‌های عمده و ثبت سفارش آنلاین، ابتدا وارد پنل مشتری شوید
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <Link href="/portal/login" className="cursor-pointer">
-              <Button variant="primary" size="sm">
-                ورود به پنل
-              </Button>
-            </Link>
-            <Link href="/portal/register" className="cursor-pointer">
-              <Button variant="outline" size="sm">
-                ثبت‌نام عمده‌فروش
-              </Button>
-            </Link>
+        {query.showPortalCta ? (
+          <div className="mt-12 border border-[color:var(--color-border)] bg-surface-muted px-6 py-8 text-center sm:rounded-2xl">
+            <p className="mb-4 text-sm font-medium text-gray-700">{query.portalBody}</p>
+            <div className="flex items-center justify-center gap-3">
+              <Link href={query.portalLoginHref} className="cursor-pointer">
+                <Button variant="primary" size="sm">
+                  {query.portalLoginLabel}
+                </Button>
+              </Link>
+              <Link href={query.portalRegisterHref} className="cursor-pointer">
+                <Button variant="outline" size="sm">
+                  {query.portalRegisterLabel}
+                </Button>
+              </Link>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     </section>
   );

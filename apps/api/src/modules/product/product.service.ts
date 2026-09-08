@@ -42,6 +42,7 @@ import {
 } from './product-sale';
 import { isPublicProductRow } from './public-product-status';
 import { stripOppositeChannelFields } from './public-product-channel';
+import { merchandisingOrderSql } from './product-ids-query';
 import { productOutboxIntents } from './product-outbox';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import {
@@ -330,6 +331,9 @@ export class ProductService {
       garmentSize?: string;
       channel?: string;
       sort?: string;
+      /** Ordered merchandising UUIDs (home rails). Max 16. */
+      ids?: string[];
+      inStockOnly?: boolean;
       /** When false (default for storefront), skip loading variants to cut payload/TTFB */
       includeVariants?: boolean;
     }
@@ -367,7 +371,7 @@ export class ProductService {
     const wantVariants = opts?.includeVariants === true || status === 'ALL';
 
     const qb = this.productRepo.createQueryBuilder('p').where('p.deletedAt IS NULL');
-    if (wantVariants) {
+    if (wantVariants && !(Array.isArray(opts?.ids) && opts.ids.length)) {
       qb.leftJoinAndSelect('p.variants', 'v');
     }
 
@@ -379,10 +383,17 @@ export class ProductService {
       qb.andWhere('p.showOnWholesale = true');
     }
     if (sizeType) qb.andWhere('p.sizeType = :sizeType', { sizeType });
-    if (relatedIds?.length) {
+    const curatedIds = Array.isArray(opts?.ids) ? opts.ids.filter((id) => typeof id === 'string') : [];
+    if (curatedIds.length) {
+      qb.andWhere('p.id IN (:...curatedIds)', { curatedIds });
+    } else if (relatedIds?.length) {
       qb.andWhere('p.id IN (:...relatedIds)', { relatedIds });
     } else if (categoryId) {
       qb.andWhere('p.categoryId = :categoryId', { categoryId });
+    }
+    if (opts?.inStockOnly) {
+      if (channel === 'RETAIL') qb.andWhere('p.retailStock > 0');
+      else if (channel === 'WHOLESALE') qb.andWhere('p.wholesaleStock > 0');
     }
     if (opts?.collectionId) {
       qb.andWhere('p.collectionId = :collectionId', { collectionId: opts.collectionId });
@@ -441,7 +452,14 @@ export class ProductService {
     }
 
     const sort = String(opts?.sort || '').toLowerCase();
-    if (sort === 'views') {
+    if (curatedIds.length) {
+      const ordered = merchandisingOrderSql('p', curatedIds);
+      qb.addSelect(ordered.sql, 'merch_ord');
+      qb.orderBy('merch_ord', 'ASC');
+      for (const [key, value] of Object.entries(ordered.params)) {
+        qb.setParameter(key, value);
+      }
+    } else if (sort === 'views') {
       qb.orderBy('p.viewCount', 'DESC').addOrderBy('p.createdAt', 'DESC');
     } else if (sort === 'newest') {
       qb.orderBy('p.createdAt', 'DESC');
@@ -450,8 +468,9 @@ export class ProductService {
       qb.orderBy('p.isDiscounted', 'DESC').addOrderBy('p.createdAt', 'DESC');
     }
     const total = await qb.getCount();
+    const skip = curatedIds.length ? 0 : (page - 1) * limit;
     const data = await qb
-      .skip((page - 1) * limit)
+      .skip(skip)
       .take(limit)
       .getMany();
     const cfg = await this.badgeConfig();
