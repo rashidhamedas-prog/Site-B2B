@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 import { AdminBlockEditor, type ContentBlock } from './AdminBlockEditor';
 import { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY, getDefaultBlocks } from '@/lib/cms/defaults';
+import { productsBlockPropsForSave } from '@/lib/cms/products-block';
 import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { cn } from '@/lib/cn';
 
@@ -17,6 +18,16 @@ interface SiteContent {
   blocks: ContentBlock[];
   seo?: Record<string, string> | null;
   isPublished?: boolean;
+}
+
+function prepareBlocksForSave(list: ContentBlock[], channel: AdminChannel): ContentBlock[] {
+  return list.map((block) => {
+    if (block.type !== 'products') return block;
+    return {
+      ...block,
+      props: productsBlockPropsForSave(block.props || {}, channel),
+    };
+  });
 }
 
 export function AdminSiteContent() {
@@ -72,11 +83,13 @@ export function AdminSiteContent() {
   const save = async () => {
     setSaving(true);
     try {
+      const prepared = prepareBlocksForSave(blocks, channel);
+      setBlocks(prepared);
       await apiClient.put('/cms/admin/site-content', {
         channel,
         pageKey,
         title,
-        blocks,
+        blocks: prepared,
         isPublished: true,
       });
       const bust = await revalidateStorefrontAfterSave(channel, pageKey);
@@ -120,7 +133,7 @@ export function AdminSiteContent() {
           channel,
           pageKey: p.key,
           title: p.label,
-          blocks: defaults,
+          blocks: prepareBlocksForSave(defaults as ContentBlock[], channel),
           isPublished: true,
         });
       }

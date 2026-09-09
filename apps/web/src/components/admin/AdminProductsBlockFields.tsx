@@ -6,6 +6,8 @@ import { searchAdminProducts } from '@/lib/hooks/useProducts';
 import {
   PRODUCTS_BLOCK_HOME_CAP,
   parseProductIds,
+  productsBlockPropsForSave,
+  resolveProductsBlockSource,
   serializeProductIds,
   type ProductsBlockSource,
 } from '@/lib/cms/products-block';
@@ -52,11 +54,30 @@ export function AdminProductsBlockFields({
   const set = (key: string, value: unknown) =>
     onChange({ ...block, props: { ...block.props, [key]: value } });
   const ids = parseProductIds(p.productIds);
-  const source: ProductsBlockSource = str(p, 'source') === 'manual' || (!str(p, 'source') && ids.length)
-    ? 'manual'
-    : 'auto';
+  const source = resolveProductsBlockSource(p, ids);
   const [picks, setPicks] = useState<RelatedProductPick[]>([]);
+  const [draftManualIds, setDraftManualIds] = useState<string[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+
+  const setSource = (next: ProductsBlockSource) => {
+    if (next === 'auto') {
+      if (ids.length) setDraftManualIds(ids);
+      onChange({
+        ...block,
+        props: productsBlockPropsForSave({ ...block.props, source: 'auto', productIds: '' }, channel),
+      });
+      setPicks([]);
+      return;
+    }
+    const restore = ids.length ? ids : draftManualIds;
+    onChange({
+      ...block,
+      props: productsBlockPropsForSave(
+        { ...block.props, source: 'manual', productIds: serializeProductIds(restore) },
+        channel,
+      ),
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -102,13 +123,17 @@ export function AdminProductsBlockFields({
 
   const onPicks = (items: RelatedProductPick[]) => {
     setPicks(items);
+    setDraftManualIds(items.map((item) => item.id));
     onChange({
       ...block,
-      props: {
-        ...block.props,
-        source: 'manual',
-        productIds: serializeProductIds(items.map((item) => item.id)),
-      },
+      props: productsBlockPropsForSave(
+        {
+          ...block.props,
+          source: 'manual',
+          productIds: serializeProductIds(items.map((item) => item.id)),
+        },
+        channel,
+      ),
     });
   };
 
@@ -194,7 +219,7 @@ export function AdminProductsBlockFields({
             <button
               key={opt.id}
               type="button"
-              onClick={() => set('source', opt.id)}
+              onClick={() => setSource(opt.id)}
               className={
                 source === opt.id
                   ? 'bg-primary cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold text-white'
@@ -205,6 +230,11 @@ export function AdminProductsBlockFields({
             </button>
           ))}
         </div>
+        {source === 'auto' ? (
+          <p className="mt-2 text-[11px] text-gray-500">
+            در حالت خودکار، چینش دستی ذخیره نمی‌شود و ویترین از کاتالوگ ساخته می‌شود.
+          </p>
+        ) : null}
       </div>
 
       {source === 'auto' ? (

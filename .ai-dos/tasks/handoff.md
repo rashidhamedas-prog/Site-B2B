@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T00:32:00Z — TASK-20260909-003 products auto source persist
+
+- Bug: retail admin «خودکار از کاتالوگ» did not stick after save because curated `productIds` stayed in the block JSON; UI/legacy inference showed manual again.
+- CODE: `productsBlockPropsForSave` clears ids when source=auto; AdminProductsBlockFields `setSource`; AdminSiteContent prepareBlocksForSave.
+- Gates: products-block.spec + web tsc ok. Shipping next.
+
 ## 2026-09-09T00:16:00Z — TASK-20260909-001 CLOSED live (fix at `226170e`, tip `a95de11`)
 
 - Root: retail public `/` rewrites to `/retail`; year SWR kept HIT HTML on `.ir` while wholesale `/` matched App path.
