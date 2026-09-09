@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T08:50:00Z — TASK-20260909-008 CLOSED (live `a8a3531`)
+
+- api rebuilt detached with outbox `ON CONFLICT DO NOTHING` + explicit site_contents UPDATE; web rebuilt with admin guards. Health 200.
+- Operator save at 08:44:18Z: `PUT` 200 (2072 B) and `GET …/RETAIL/home` 200 (2072 B, identical); DB `updatedAt` moved, `source=auto`, `sort=views`, category set; new `cms.published` outbox row DONE. `.ir` home no longer contains the curated SKUs; `Cache-Control` clamp intact.
+- Claims released. Follow-up (optional, low): audit other `manager`-scoped writes that swallow DB errors — same abort-on-COMMIT hazard.
+
 ## 2026-09-09T08:45:00Z — TASK-20260909-008 root cause corrected: outbox dedupe aborted the CMS transaction
 
 - nginx: `PUT /cms/admin/site-content?channel=RETAIL` 200 (2076 B new body) then `GET …/RETAIL/home` 200 always 1891 B (old). DB `updatedAt` frozen.

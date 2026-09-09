@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260909-008"
     title: "Force site_contents jsonb UPDATE so auto products save sticks"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260909-008"
     roles:
@@ -13,27 +13,16 @@ tasks:
     branch: "ai/TASK-20260909-008-cms-jsonb-update"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-09T07:20:00Z"
-    heartbeat_at: "2026-09-09T07:20:00Z"
+    heartbeat_at: "2026-09-09T08:50:00Z"
+    closed_at: "2026-09-09T08:50:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/cms/cms.service.ts"
-      - "apps/api/src/modules/cms/cms-write-channel.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox.service.spec.ts"
-      - "apps/web/src/components/admin/AdminSiteContent.tsx"
-      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
-      - "apps/web/src/components/admin/AdminProductsBlockFields.tsx"
-      - "apps/web/src/lib/api.ts"
-      - "apps/web/src/lib/cms/products-block.ts"
-      - "apps/web/src/lib/cms/products-block.spec.ts"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
       RETAIL/home updatedAt frozen since 2026-09-08; UI reverts auto to manual after save.
       Root (proven): outbox dedupe key reused prev updatedAt; swallowed 23505 aborted the shared
       Postgres tx so COMMIT rolled back site_contents while PUT echoed success.
+      LIVE on origin/master a8a3531 (fixes 19d2182 + 3dda54c). Operator save 08:44Z landed:
+      RETAIL/home source=auto, updatedAt moved, fresh outbox key, PUT==GET 2072 B.
     acceptance_criteria:
       - "OutboxService.enqueue never raises 23505 inside caller tx (ON CONFLICT DO NOTHING)"
       - "upsertSiteContent uses repository.update for existing rows"
