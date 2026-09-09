@@ -1,7 +1,7 @@
 # Project Status
 
 - Last verified: 2026-09-09 — **TASK-20260909-004** shipping vendor invite (phase 1) on `ai/TASK-20260909-001-vendor-invite`. Auth purpose `vendor`, invite-only. Needs merge/deploy + migration.
-- Last verified: 2026-09-09 — **TASK-20260909-003** implementing on `ai/TASK-20260909-003-products-auto-source`: clear curated productIds when saving products-block as auto so admin reload stays auto. Not live until merge/deploy.
+- Last verified: 2026-09-09 — **TASK-20260909-003 CLOSED** on `origin/master` + VPS `a658caa`. Products-block auto source clears curated ids on save. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-001 CLOSED** on `origin/master` (`226170e` fix; tip `a95de11`). Retail HTML SWR clamped to 60s; dual-path revalidate + warm. Live `www.poshaktaranom.ir` shows `stale-while-revalidate=60` + RETAIL rewrite. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260908-008 CLOSED** on `origin/master` + VPS `49e21a0`. CMS revalidate at `/admin/cms/revalidate` (307→login unauth; Nest no longer steals it). SKU `ids=` 3/3 on API; retail home HTML includes all 3 curated names. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-007** implementing in-person shipping (`IN_PERSON` / تحویل در محل) on `ai/TASK-20260908-007-in-person-shipping`. Fee 0. Did not touch 006 featured-products files.
