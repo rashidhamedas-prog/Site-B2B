@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T23:01:00Z — TASK-20260910-020 CLOSED live `2bd11bc`
+
+- Live `.ir` DigiPay plate `retail-desktop-182e2ad9311d.webp` (1920×560). Prima `retail-desktop-e6ae94c783d0.webp`.
+- Browser: slide 1 lifestyle + «انتخاب لباس»; slide 2 jackets + «دیدن کت‌ها» + `poshaktaranom.ir` (no عمده / `.com`).
+- Migration `RetailCampaignHeroesPro1757510000020`. Health 200. Claims released.
+
 ## 2026-09-09T22:10:00Z — TASK-20260910-001 PDP guide cards (implementing)
 
 - Owner asked: rename «لینک‌های مرتبط» → «راهنما», move above توضیحات محصول, full-row cards with excerpt + uploadable image; wholesale related products like retail cards.

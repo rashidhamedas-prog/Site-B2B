@@ -24,6 +24,10 @@ Copy: DigiPay unchanged in meaning. Prima headline «مدل بعدی ویتری�
 
 Migration: `RetailCampaignHeroesPro1757510000020`. Does not drop 013 backups. Payment adapters untouched.
 
+## Live
+
+Verified 2026-09-10 on `https://www.poshaktaranom.ir/`: slide 1 DigiPay artwork, slide 2 Prima/Negin artwork with retail CTA. Runtime commit `2bd11bc`.
+
 ## Out of scope
 
 Wholesale heroes, BoutiqueHero overlay template, DigiPay gateway.
