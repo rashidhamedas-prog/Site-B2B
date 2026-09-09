@@ -2,6 +2,22 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T11:45:00Z — TASK-20260909-012 wholesale promo banners
+
+- Owner asked to add the two supplied banners to **wholesale** home, not retail.
+- CODE: artwork slides under `/banners/wholesale-promo-2026/` (partnership LCP, then jackets). CTA `/portal/register` and `/category/women-coats`. HeroSection applies plates; migration prepends WHOLESALE/home. Did not edit 013 retail or 011 partner-ship files.
+- Gates (observed): `wholesale-promo-slides.spec.ts` OK; `wholesale-promo-hero.util.spec.ts` ok; web+api tsc 0. Runtime commit `8c0659b`.
+- Next: push/deploy and verify `.com` home slide 0/1.
+
+## 2026-09-09T11:40:00Z — TASK-20260909-013 retail DigiPay + Prima/Negin heroes
+
+- Task / owner: TASK-20260909-013 / cursor:implementer-TASK-20260909-013
+- Branch / worktree: `ai/TASK-20260909-006-retail-campaign-banners` in `D:/proje/Site B2B`
+- ID 013 because 011 on master is partner tracking. Reclaimed stale DigiPay plates + `hero-slides.spec.ts` from TASK-20260904-004. Did not take WORKLOG.
+- CODE: artwork slides with hashed WebP (DigiPay ~54/34KB, Prima/Negin ~52/28KB). HTML+alt for SEO. DigiPay CTA `/products`; Prima/Negin `/category/women-coats`.
+- Gates (observed): `npx tsx src/lib/cms/hero-slides.spec.ts` OK; `retail-campaign-hero.util.spec.ts` ok; web+api `tsc --noEmit` 0.
+- Next: commit/push/deploy; verify `.ir` home slide 0/1.
+
 ## 2026-09-09T11:30:00Z — TASK-20260909-011 partner ship/tracking (phase 5)
 
 - CODE: `trackingCode` on fulfillment_orders; PATCH ship; customer parcel tracking; shipped SMS outbox.

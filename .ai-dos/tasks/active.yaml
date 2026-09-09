@@ -1,5 +1,82 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-012"
+    title: "Add two artwork promo banners to wholesale home hero"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260909-012"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-012"
+      implementer: "cursor:implementer-TASK-20260909-012"
+      reviewer: "self-review-cms-hero-wholesale-only"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260909-006-retail-campaign-banners"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-09T11:20:00Z"
+    heartbeat_at: "2026-09-09T11:45:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/public/banners/wholesale-promo-2026/"
+      - "apps/web/src/lib/cms/wholesale-promo-slides.ts"
+      - "apps/web/src/lib/cms/wholesale-promo-slides.spec.ts"
+      - "apps/web/src/components/wholesale/HeroSection.tsx"
+      - "apps/api/src/database/wholesale-promo-hero.util.ts"
+      - "apps/api/src/database/wholesale-promo-hero.util.spec.ts"
+      - "apps/api/src/database/migrations/20260909-012-wholesale-promo-heroes.ts"
+      - "docs/reports/2026-09-09-wholesale-promo-banners.md"
+    notes: |
+      Owner asked to add the two supplied banners to wholesale (.com), not retail.
+      Did not take TASK-20260909-013 retail hero files or TASK-20260909-011 partner-ship files.
+      WORKLOG owned by 011. Governance overlap on registry files.
+    acceptance_criteria:
+      - "Wholesale home hero prepends partnership then jackets artwork slides"
+      - "CTA hrefs stay on-host: /portal/register and /category/women-coats"
+      - "Descriptive Persian alt; HTML copy matches the banner offer"
+      - "Desktop 24:7 and mobile 2:1 WebP exist; only slide 0 is LCP"
+      - "Migration prepends WHOLESALE home without wiping other slides or touching retail"
+      - "wholesale-promo specs and web/api tsc pass"
+  - id: "TASK-20260909-013"
+    title: "Add DigiPay + Prima/Negin artwork banners to retail home"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260909-013"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-013"
+      implementer: "cursor:implementer-TASK-20260909-013"
+      reviewer: "self-review-cms-hero-seo-no-payment-change"
+      security: "self-review-public-assets-cms-only"
+    branch: "ai/TASK-20260909-006-retail-campaign-banners"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-09T11:15:00Z"
+    heartbeat_at: "2026-09-09T11:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/public/banners/digipay-installment-2026/"
+      - "apps/web/public/banners/prima-negin-2026/"
+      - "apps/web/src/lib/cms/hero-slides.ts"
+      - "apps/web/src/lib/cms/hero-slides.spec.ts"
+      - "apps/web/src/lib/cms/defaults.ts"
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/api/src/database/retail-campaign-hero.util.ts"
+      - "apps/api/src/database/retail-campaign-hero.util.spec.ts"
+      - "apps/api/src/database/migrations/20260909-013-retail-campaign-heroes.ts"
+      - "docs/reports/2026-09-09-retail-campaign-heroes.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Owner supplied two complete artwork banners for retail home.
+      ID 013 because 011 on master is partner tracking. Reclaimed stale
+      DigiPay plates + hero-slides.spec from TASK-20260904-004 (hb 2026-09-03).
+      Did not take WORKLOG (010/011). Payment adapters untouched.
+      Prima/Negin CTA stays on retail /category/women-coats (no .com leak).
+    acceptance_criteria:
+      - "Retail home hero slide 0 is the DigiPay artwork plate (LCP only); slide 1 is Prima/Negin"
+      - "Each slide has descriptive Persian imageAlt and matching HTML headline/CTA"
+      - "DigiPay CTA is /products; Prima/Negin CTA is /category/women-coats"
+      - "WebP desktop ~24:7 and mobile left-crop exist; hashed filenames for cache bust"
+      - "Migration updates published RETAIL home without wiping other slides"
+      - "hero-slides spec, retail-campaign-hero util spec, and web tsc pass"
   - id: "TASK-20260909-011"
     title: "Partner ship + per-parcel tracking + customer SMS (phase 5)"
     status: "in_progress"
@@ -1067,12 +1144,14 @@ tasks:
     heartbeat_at: "2026-09-03T23:10:00Z"
     depends_on: []
     file_claims:
-      - "apps/web/public/banners/digipay-installment-2026/retail-desktop.webp"
-      - "apps/web/public/banners/digipay-installment-2026/retail-mobile.webp"
-      - "apps/web/public/banners/digipay-installment-2026/README.md"
+      # transferred 2026-09-09 to TASK-20260909-013 (stale hb 2026-09-03; new artwork banners):
+      # "apps/web/public/banners/digipay-installment-2026/retail-desktop.webp"
+      # "apps/web/public/banners/digipay-installment-2026/retail-mobile.webp"
+      # "apps/web/public/banners/digipay-installment-2026/README.md"
       # transferred 2026-09-07 to TASK-20260907-003 (stale hb 2026-09-03; DigiPay CTA label):
       # "apps/web/src/lib/cms/hero-slides.ts"
-      - "apps/web/src/lib/cms/hero-slides.spec.ts"
+      # transferred 2026-09-09 to TASK-20260909-013 (stale hb 2026-09-03):
+      # "apps/web/src/lib/cms/hero-slides.spec.ts"
       # transferred 2026-09-05 to TASK-20260905-004 (stale hb 2026-09-03; keyword-week copy):
       # "apps/web/src/lib/cms/defaults.ts"
       # transferred 2026-09-05 to TASK-20260905-001 (stale hb 2026-09-03; mobile overflow on overlay):
