@@ -34,24 +34,59 @@ export type HeroFlatProps = {
   autoplayMs?: number;
 };
 
-export const DIGIPAY_RETAIL_HERO_IMAGE = '/banners/digipay-installment-2026/retail-desktop.webp';
+export const DIGIPAY_RETAIL_HERO_IMAGE =
+  '/banners/digipay-installment-2026/retail-desktop-ece15c60d7c8.webp';
 export const DIGIPAY_RETAIL_HERO_IMAGE_MOBILE =
-  '/banners/digipay-installment-2026/retail-mobile.webp';
+  '/banners/digipay-installment-2026/retail-mobile-0fdb9791bdd5.webp';
 
 export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
-  brandEyebrow: 'پرداخت با دیجی‌پی',
-  headline: 'خرید قسطی با دیجی‌پی در ترنم فعال شد',
-  headlineAccent: 'ترنم',
-  body: 'مدل دلخواهت را انتخاب کن و موقع پرداخت، دیجی‌پی را بزن — برای خریدی راحت‌تر و برنامه‌ریزی‌شده‌تر.',
+  brandEyebrow: 'پوشاک ترنم',
+  headline: 'انتخاب با تو، پرداخت با دیجی‌پی',
+  headlineAccent: 'دیجی‌پی',
+  body: 'مدل دلخواهت را انتخاب کن؛ هنگام پرداخت، دیجی‌پی را بزن. طبق شرایط و اعتبار دیجی‌پی.',
   imageUrl: DIGIPAY_RETAIL_HERO_IMAGE,
   mobileImageUrl: DIGIPAY_RETAIL_HERO_IMAGE_MOBILE,
   imageAlt:
-    'زن جوان با مانتو و کلاه کرمی در فروشگاه پوشاک، در حال نگاه به گوشی؛ کنار تصویر گوشی و کارت پرداخت سه‌بعدی بدون نوشته',
-  presentation: 'overlay',
+    'خرید آنلاین پوشاک ترنم با دیجی‌پی: دست‌ها گوشی فروشگاه و کارت سپهر بانک صادرات را گرفته‌اند',
+  presentation: 'artwork',
   overlayTone: 'light',
-  ctaLabel: 'انتخاب مدل و پرداخت قسطی',
+  ctaLabel: 'انتخاب لباس',
   ctaHref: '/products',
 };
+
+export const PRIMA_NEGIN_RETAIL_HERO_IMAGE =
+  '/banners/prima-negin-2026/retail-desktop-9f8ee115cd93.webp';
+export const PRIMA_NEGIN_RETAIL_HERO_IMAGE_MOBILE =
+  '/banners/prima-negin-2026/retail-mobile-7e9068bd09ee.webp';
+
+export const PRIMA_NEGIN_RETAIL_HERO_SLIDE: HeroSlide = {
+  brandEyebrow: 'پوشاک ترنم',
+  headline: 'کت‌های پریما و نگین را با جزئیات ببین',
+  headlineAccent: 'پریما و نگین',
+  body: 'دو مدل کت چهارخانه زنانه برای استایل روزمره؛ از دسته کت انتخاب کن.',
+  imageUrl: PRIMA_NEGIN_RETAIL_HERO_IMAGE,
+  mobileImageUrl: PRIMA_NEGIN_RETAIL_HERO_IMAGE_MOBILE,
+  imageAlt:
+    'دو مدل با کت چهارخانه پریما و نگین در حیاط روشن؛ بنر پوشاک ترنم برای دیدن کت زنانه',
+  presentation: 'artwork',
+  overlayTone: 'dark',
+  ctaLabel: 'دیدن کت‌های پریما و نگین',
+  ctaHref: '/category/women-coats',
+};
+
+export function isRetailCampaignHeroAsset(imageUrl?: string): boolean {
+  const url = imageUrl || '';
+  return (
+    url.includes('/banners/digipay-installment-2026/') ||
+    url.includes('/banners/prima-negin-2026/')
+  );
+}
+
+/** Keep campaign plates first; drop older hashes of the same campaigns. */
+export function applyRetailCampaignHeroSlides(existing: HeroSlide[]): HeroSlide[] {
+  const rest = existing.filter((slide) => !isRetailCampaignHeroAsset(slide.imageUrl));
+  return [DIGIPAY_RETAIL_HERO_SLIDE, PRIMA_NEGIN_RETAIL_HERO_SLIDE, ...rest];
+}
 
 function parseOverlayTone(value: unknown): HeroOverlayTone | undefined {
   return value === 'light' ? 'light' : value === 'dark' ? 'dark' : undefined;
@@ -124,7 +159,7 @@ export function prependUniqueHeroSlide(existing: HeroSlide[], slide: HeroSlide):
 }
 
 export function isLightHeroOverlay(slide: HeroSlide): boolean {
-  return slide.presentation !== 'artwork' && slide.overlayTone === 'light';
+  return slide.overlayTone === 'light';
 }
 
 export function resolveAutoplayMs(value: unknown): number {
