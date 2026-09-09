@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T22:56:00Z — TASK-20260910-001 CLOSED live `45e32e4`
+
+- Git was already at `45e32e4` but web image stayed on 22:05; parallel compose OOM-stalled. Sequential `docker compose build web` + `up -d` at 22:55Z.
+- Live `.com` Aramis: heading «راهنما» above «توضیحات محصول»; full-row cards with image+excerpt; related products are `WholesaleProductCard` (image, badges, سفارش) not text pills. Retail `.ir` same guide placement.
+- `product_internal_link.imageUrl` + `excerpt` present (14 columns). API health 200. Web container started 2026-09-09T22:55:12Z.
+- Admin: product edit → per-channel «راهنمای صفحه محصول» → upload photo + excerpt (empty uses target page). Claims released.
+
 ## 2026-09-09T23:01:00Z — TASK-20260910-020 CLOSED live `2bd11bc`
 
 - Live `.ir` DigiPay plate `retail-desktop-182e2ad9311d.webp` (1920×560). Prima `retail-desktop-e6ae94c783d0.webp`.

@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260910-001"
     title: "PDP guide rows (image+excerpt) above description; wholesale related cards"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260910-001"
     roles:
@@ -13,32 +13,11 @@ tasks:
     branch: "ai/TASK-20260910-001-pdp-guide-cards"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-09T21:50:00Z"
-    heartbeat_at: "2026-09-09T22:10:00Z"
+    heartbeat_at: "2026-09-09T22:56:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/database/migrations/20260910-001-internal-link-guide-cards.ts"
-      - "apps/api/src/modules/product/entities/product-internal-link.entity.ts"
-      - "apps/api/src/modules/product/dto/internal-link.dto.ts"
-      - "apps/api/src/modules/product/internal-link-resolver.ts"
-      - "apps/api/src/modules/product/internal-link-resolver.spec.ts"
-      - "apps/api/src/modules/product/internal-link-card.ts"
-      - "apps/api/src/modules/product/internal-link-card.spec.ts"
-      - "apps/api/src/modules/product/product.service.ts"
-      - "apps/web/src/lib/hooks/useProducts.ts"
-      - "apps/web/src/components/admin/ProductInternalLinkPicker.tsx"
-      - "apps/web/src/components/admin/ProductInternalLinkRow.tsx"
-      - "apps/web/src/components/admin/AdminProducts.tsx"
-      - "apps/web/src/components/shared/ProductInternalLinks.tsx"
-      - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
-      - "apps/web/src/app/retail/products/[slug]/page.tsx"
-      - "apps/web/src/components/wholesale/ProductDetail.tsx"
-      - "apps/web/src/components/retail/RetailProductDetail.tsx"
-      - "docs/reports/2026-09-10-pdp-guide-cards.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
+      LIVE 45e32e4 2026-09-09T22:55Z. Claims released.
       Reclaimed stale 20260906-003 (hb 2026-09-06, feature already LIVE),
       20260905-001 RetailProductDetail (hb 2026-09-05), and 20260826-001
       ProductDetail + wholesale PDP page (omnichannel leftover). Owner asked
