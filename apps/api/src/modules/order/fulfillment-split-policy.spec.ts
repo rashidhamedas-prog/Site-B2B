@@ -7,6 +7,7 @@ import {
   FULFILLMENT_OWN_KEY,
   parcelLabelForIndex,
   partnerMayAccessFulfillment,
+  shouldEnqueuePartnerNotify,
   snapshotVendorFulfillment,
   splitLinesIntoParcels,
   stripOrderVendorSecrets,
@@ -70,6 +71,9 @@ assert(
 );
 assert(!partnerMayAccessFulfillment('v1', null), 'partner cannot read OWN parcel');
 assert(canPartnerAcceptStatus('PENDING_ACCEPT') && !canPartnerAcceptStatus('ACCEPTED'), 'accept gate');
+assert(shouldEnqueuePartnerNotify('v1', 'PENDING_ACCEPT'), 'vendor pending gets notify');
+assert(!shouldEnqueuePartnerNotify(null, 'ACCEPTED'), 'OWN never notified');
+assert(!shouldEnqueuePartnerNotify('v1', 'ACCEPTED'), 'accepted skips notify');
 
 const customer = toCustomerParcels([
   {

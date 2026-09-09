@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T11:10:00Z — TASK-20260909-010 partner SMS notify (phase 4)
+
+- CODE: `ensureSplit` enqueues `fulfillment.pending_accept.notification` for vendor PENDING_ACCEPT only; PHASE3 lease; worker loads `vendors.phone` (not in payload); admin SMS toggle/template.
+- Gates: fulfillment-split-policy + outbox-lease ok; api+web tsc 0.
+- Next: commit/push/deploy; verify worker health; SMS only if sms.ir + event enabled.
+
 ## 2026-09-09T10:50:00Z — TASK-20260909-009 CLOSED live `9e89e51`
 
 - VPS deploy complete; `fulfillment_orders` + `fulfillment_order_items` present; `order_items.vendorId/commissionPercent` present. Health 200. Claims released.

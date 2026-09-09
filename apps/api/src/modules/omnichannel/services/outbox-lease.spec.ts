@@ -26,6 +26,14 @@ assert(shouldDeadLetter(8, 8) === true, 'at max is dead');
 assert(shouldDeadLetter(7, 8) === false, 'below max retries');
 assert(PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED), 'search handled');
 assert(PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.PRODUCT_STOCK_CHANGED), 'stock_changed is consumed');
+assert(
+  PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.FULFILLMENT_PENDING_ACCEPT_NOTIFICATION),
+  'partner fulfillment SMS is always leased',
+);
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.FULFILLMENT_PENDING_ACCEPT_NOTIFICATION),
+  'partner notify leased without connectors',
+);
 assert(LEASE_SQL.includes('FOR UPDATE SKIP LOCKED'), 'lease skips locked rows');
 assert(LEASE_SQL.includes('"lockedAt" IS NULL'), 'PROCESSING with a null lock is reclaimable');
 assert(

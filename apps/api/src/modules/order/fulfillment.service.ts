@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, Repository } from 'typeorm';
+import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
+import { OutboxService } from '../omnichannel/services/outbox.service';
 import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { FulfillmentOrderItemEntity } from './entities/fulfillment-order-item.entity';
 import { FulfillmentOrderEntity } from './entities/fulfillment-order.entity';
@@ -15,6 +17,7 @@ import {
   canPartnerAcceptStatus,
   commissionAmountIrr,
   partnerMayAccessFulfillment,
+  shouldEnqueuePartnerNotify,
   splitLinesIntoParcels,
   toCustomerParcels,
   type SplitLine,
@@ -25,6 +28,7 @@ export class FulfillmentService {
   constructor(
     @InjectRepository(FulfillmentOrderEntity)
     private readonly fulfillmentRepo: Repository<FulfillmentOrderEntity>,
+    private readonly outbox: OutboxService,
   ) {}
 
   /** Idempotent: one parcel set per order after stock settle / paid confirm. */
@@ -57,6 +61,7 @@ export class FulfillmentService {
 
     const now = Date.now();
     const itemRepo = manager.getRepository(FulfillmentOrderItemEntity);
+    const channel = String(order.type || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
 
     try {
       for (const group of groups) {
@@ -97,6 +102,28 @@ export class FulfillmentService {
             }),
           ),
         );
+
+        if (shouldEnqueuePartnerNotify(row.vendorId, row.status)) {
+          await this.outbox.enqueue(
+            {
+              operationId: `${row.id}:notify:pending`,
+              eventType: OUTBOX_EVENT_TYPES.FULFILLMENT_PENDING_ACCEPT_NOTIFICATION,
+              aggregateType: 'FULFILLMENT_ORDER',
+              aggregateId: row.id,
+              channel,
+              payload: {
+                fulfillmentOrderId: row.id,
+                vendorId: row.vendorId,
+                orderId: order.id,
+                orderNumber: order.orderNumber,
+                parcelLabel: row.parcelLabel,
+                acceptBy: row.acceptBy ? row.acceptBy.toISOString() : null,
+                acceptSlaHours: slaHours,
+              },
+            },
+            manager,
+          );
+        }
       }
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;

@@ -10,6 +10,7 @@ import { AffiliateModule } from '../affiliate/affiliate.module';
 import { ProductEntity } from '../product/entities/product.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
+import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { PublicationDeliveryEntity } from './entities/publication-delivery.entity';
 import { ChannelDestinationEntity } from './entities/channel-destination.entity';
 import { ChannelConnectionEntity } from './entities/channel-connection.entity';
@@ -29,6 +30,7 @@ import { CustomerMarketingModule } from '../customer-marketing/customer-marketin
       ProductEntity,
       OrderEntity,
       CustomerEntity,
+      VendorEntity,
       PublicationDeliveryEntity,
       ChannelDestinationEntity,
       ChannelConnectionEntity,

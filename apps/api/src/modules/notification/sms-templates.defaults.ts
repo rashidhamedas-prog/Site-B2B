@@ -16,6 +16,8 @@ export const SMS_TEMPLATE_DEFAULTS = {
   orderPaidAdmin: 'پوشاک ترنم\nسفارش پرداخت‌شده {site}\nشماره: {orderNumber}{customerLine}',
   abandonedCart: 'پوشاک ترنم\nسبد خرید {site} هنوز تمام نشده.\nادامه خرید: {cartUrl}',
   stockOutAdmin: 'پوشاک ترنم\nاتمام موجودی {site}\n{productName}',
+  fulfillmentPendingAccept:
+    'پوشاک ترنم\nمرسوله جدید برای ارسال\nسفارش {orderNumber}\nمهلت قبول: {slaHours} ساعت\nورود همکاران: {partnersUrl}',
 } as const;
 
 export type SmsTemplateKey = keyof typeof SMS_TEMPLATE_DEFAULTS;

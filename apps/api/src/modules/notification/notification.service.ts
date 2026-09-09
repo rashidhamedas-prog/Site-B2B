@@ -242,6 +242,24 @@ export class NotificationService {
     return this.sendSms(phone, message);
   }
 
+  /** SMS to dropship partner when a vendor parcel awaits accept. */
+  async fulfillmentPendingAccept(
+    phone: string,
+    vars: { orderNumber: string; slaHours?: number | null; partnersUrl?: string },
+  ) {
+    if (!(await this.eventEnabled('fulfillmentPendingAccept'))) return false;
+    const sla =
+      vars.slaHours != null && Number.isFinite(Number(vars.slaHours))
+        ? String(Math.max(1, Math.floor(Number(vars.slaHours))))
+        : '۱۲';
+    const message = await this.template('fulfillmentPendingAccept', {
+      orderNumber: vars.orderNumber,
+      slaHours: sla,
+      partnersUrl: vars.partnersUrl || 'poshaktaranom.com/partners',
+    });
+    return this.sendSms(phone, message);
+  }
+
   async status() {
     const cfg = await this.settings.sms();
     return {

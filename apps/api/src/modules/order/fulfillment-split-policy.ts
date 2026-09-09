@@ -126,6 +126,14 @@ export function canPartnerAcceptStatus(status: string | null | undefined): boole
   return status === 'PENDING_ACCEPT';
 }
 
+/** Partner SMS/outbox only for vendor parcels awaiting accept — never OWN. */
+export function shouldEnqueuePartnerNotify(
+  vendorId: string | null | undefined,
+  status: string | null | undefined,
+): boolean {
+  return !!vendorId && status === 'PENDING_ACCEPT';
+}
+
 export type CustomerParcel = {
   parcelIndex: number;
   parcelLabel: string;

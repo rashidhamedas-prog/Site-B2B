@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { CustomerEntity } from '../../customer/entities/customer.entity';
 import { OrderEntity } from '../../order/entities/order.entity';
 import { ProductEntity } from '../../product/entities/product.entity';
+import { VendorEntity } from '../../vendor/entities/vendor.entity';
 import { SearchService } from '../../search/search.service';
 import { NotificationService } from '../../notification/notification.service';
 import { AffiliatePostbackService } from '../../affiliate/affiliate-postback.service';
@@ -48,6 +49,8 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     private readonly orders: Repository<OrderEntity>,
     @InjectRepository(CustomerEntity)
     private readonly customers: Repository<CustomerEntity>,
+    @InjectRepository(VendorEntity)
+    private readonly vendors: Repository<VendorEntity>,
     @InjectRepository(PublicationDeliveryEntity)
     private readonly deliveries: Repository<PublicationDeliveryEntity>,
     @InjectRepository(ChannelDestinationEntity)
@@ -151,6 +154,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       case OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION:
         await this.handleOrderStatus(String(payload.orderId || row.aggregateId), String(payload.status || ''));
         return;
+      case OUTBOX_EVENT_TYPES.FULFILLMENT_PENDING_ACCEPT_NOTIFICATION:
+        await this.handleFulfillmentPendingAccept(payload, row.aggregateId);
+        return;
       case OUTBOX_EVENT_TYPES.CUSTOMER_REGISTERED_MARKETING:
         if (this.marketing) await this.marketing.handleRegisteredEvent(String(payload.customerId || row.aggregateId));
         return;
@@ -253,6 +259,33 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     if (this.marketing && order.customerId) {
       await this.marketing.evaluateCustomer(order.customerId);
     }
+  }
+
+  private async handleFulfillmentPendingAccept(
+    payload: Record<string, unknown>,
+    aggregateId: string,
+  ) {
+    const vendorId = String(payload.vendorId || '');
+    if (!vendorId) return;
+    const vendor = await this.vendors.findOne({ where: { id: vendorId } });
+    const phone = vendor?.phone ? String(vendor.phone).trim() : '';
+    if (!phone) {
+      this.logger.warn(`fulfillment notify skipped — no phone vendorId=${vendorId}`);
+      return;
+    }
+    const orderNumber = String(payload.orderNumber || '');
+    if (!orderNumber) {
+      this.logger.warn(`fulfillment notify skipped — missing orderNumber aggregate=${aggregateId}`);
+      return;
+    }
+    const rawSla = payload.acceptSlaHours;
+    const slaHours =
+      rawSla != null && Number.isFinite(Number(rawSla)) ? Math.floor(Number(rawSla)) : null;
+    await this.notifications.fulfillmentPendingAccept(phone, {
+      orderNumber,
+      slaHours,
+      partnersUrl: 'poshaktaranom.com/partners',
+    });
   }
 
   private async findDelivery(payload: Record<string, unknown>, eventId: string) {
