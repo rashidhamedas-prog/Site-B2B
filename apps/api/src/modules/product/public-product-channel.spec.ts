@@ -4,6 +4,7 @@
 import {
   resolvePublicProductChannel,
   stripOppositeChannelFields,
+  stripVendorFulfillmentFields,
 } from './public-product-channel';
 
 function assert(cond: boolean, msg: string) {
@@ -50,5 +51,15 @@ const wholesale = stripOppositeChannelFields(
 assert(!('retailPrice' in wholesale), 'wholesale JSON drops retail price');
 assert(!('defaultRetailVariantId' in wholesale), 'wholesale JSON drops retail variant id');
 assert(wholesale.wholesalePrice === 2, 'wholesale keeps own price');
+
+const strippedVendor = stripVendorFulfillmentFields({
+  vendorId: '11111111-1111-4111-8111-111111111111',
+  commissionPercent: 10,
+  brandName: 'کیف',
+  retailPrice: 1,
+});
+assert(!('vendorId' in strippedVendor), 'public drops vendorId');
+assert(!('commissionPercent' in strippedVendor), 'public drops commission');
+assert(strippedVendor.brandName === 'کیف' && strippedVendor.retailPrice === 1, 'public keeps brand');
 
 console.log('public-product-channel.spec.ts: ok');

@@ -105,6 +105,8 @@ export default async function RetailProductPage({
   const fabric =
     (product.fabric as string | undefined) ||
     ((product.specs as { fabricType?: string } | undefined)?.fabricType);
+  const brandName = (product as { brandName?: string | null }).brandName;
+  const hideDefaultBrand = Boolean((product as { hideDefaultBrand?: boolean }).hideDefaultBrand);
 
   return (
     <>
@@ -119,6 +121,8 @@ export default async function RetailProductPage({
         availability={availability}
         fabric={fabric}
         url={url}
+        brandName={brandName}
+        hideDefaultBrand={hideDefaultBrand}
       />
       <ProductGroupJsonLd
         channel="RETAIL"
@@ -131,6 +135,8 @@ export default async function RetailProductPage({
         includePrice
         availability={availability}
         variants={variants}
+        brandName={brandName}
+        hideDefaultBrand={hideDefaultBrand}
       />
       <BreadcrumbJsonLd
         items={[

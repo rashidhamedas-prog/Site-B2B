@@ -2,6 +2,7 @@ import type { SalesChannel } from '@/lib/channel';
 import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { BUSINESS_FACTS } from '@/lib/business-facts';
 import { absoluteJsonLdUrl } from '@/lib/jsonld-url';
+import { jsonLdBrandNode } from '@/lib/product-jsonld-brand';
 
 export { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 
@@ -204,6 +205,8 @@ export function ProductJsonLd({
   moq,
   url,
   channel = 'WHOLESALE',
+  brandName,
+  hideDefaultBrand,
 }: {
   name: string;
   description?: string;
@@ -219,11 +222,14 @@ export function ProductJsonLd({
   moq?: number;
   url?: string;
   channel?: SalesChannel;
+  brandName?: string | null;
+  hideDefaultBrand?: boolean;
 }) {
   const fallbackImage =
     channel === 'RETAIL' ? `${RETAIL_ORIGIN}/og-retail.jpg` : `${WHOLESALE_ORIGIN}/og-wholesale.jpg`;
   const emitPrice = includePrice ?? channel !== 'WHOLESALE';
   const productImage = absoluteJsonLdUrl(channel, image) ?? fallbackImage;
+  const brand = jsonLdBrandNode({ brandName, hideDefaultBrand });
 
   const additionalProperty = [
     fabric ? { '@type': 'PropertyValue', name: 'جنس پارچه', value: fabric } : null,
@@ -243,7 +249,7 @@ export function ProductJsonLd({
         description,
         image: productImage,
         sku,
-        brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
+        ...(brand ? { brand } : {}),
         itemCondition: 'https://schema.org/NewCondition',
         ...(additionalProperty.length ? { additionalProperty } : {}),
         ...(fabric || color ? { material: fabric, color } : {}),
@@ -273,6 +279,8 @@ export function ProductGroupJsonLd({
   availability = 'InStock',
   variants,
   channel = 'RETAIL',
+  brandName,
+  hideDefaultBrand,
 }: {
   name: string;
   description?: string;
@@ -285,6 +293,8 @@ export function ProductGroupJsonLd({
   availability?: 'InStock' | 'OutOfStock' | 'PreOrder';
   variants: Array<{ color?: string; size?: string; sku?: string }>;
   channel?: SalesChannel;
+  brandName?: string | null;
+  hideDefaultBrand?: boolean;
 }) {
   const colors = [...new Set(variants.map((v) => v.color).filter(Boolean))];
   const sizes = [...new Set(variants.map((v) => v.size).filter(Boolean))];
@@ -304,6 +314,7 @@ export function ProductGroupJsonLd({
   });
   const groupImage = absoluteJsonLdUrl(channel, image);
   const groupId = sku || url;
+  const brand = jsonLdBrandNode({ brandName, hideDefaultBrand });
 
   return (
     <JsonLdScript
@@ -317,7 +328,7 @@ export function ProductGroupJsonLd({
         ...(groupImage ? { image: groupImage } : {}),
         url,
         sku,
-        brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
+        ...(brand ? { brand } : {}),
         variesBy,
         hasVariant: variants.map((v) => ({
           '@type': 'Product',
@@ -328,7 +339,7 @@ export function ProductGroupJsonLd({
           ...(description ? { description } : {}),
           ...(groupImage ? { image: groupImage } : {}),
           productGroupID: groupId,
-          brand: { '@type': 'Brand', name: 'پوشاک ترنم' },
+          ...(brand ? { brand } : {}),
           offers: offer,
         })),
       }}

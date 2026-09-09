@@ -1,5 +1,52 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-007"
+    title: "Dropship SKU vendorId + commission + public strip (phase 2)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260909-007"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-007"
+      implementer: "cursor:implementer-TASK-20260909-007"
+      reviewer: "self-review-no-public-vendor-leak"
+      security: "self-review-vendorid-stripped-public-api"
+    branch: "ai/TASK-20260909-001-vendor-invite"
+    worktree: "D:/proje/Site-B2B-vendor-invite"
+    claimed_at: "2026-09-09T00:40:00Z"
+    heartbeat_at: "2026-09-09T00:50:00Z"
+    depends_on:
+      - "TASK-20260909-004"
+    file_claims:
+      - "apps/api/src/modules/product/vendor-fulfillment-policy.ts"
+      - "apps/api/src/modules/product/vendor-fulfillment-policy.spec.ts"
+      - "apps/api/src/database/migrations/20260909-002-product-vendor-fulfillment.ts"
+      - "apps/api/src/modules/product/entities/product.entity.ts"
+      - "apps/api/src/modules/product/dto/create-product.dto.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/product/product.module.ts"
+      - "apps/api/src/modules/product/internal-link-resolver.spec.ts"
+      - "apps/api/src/modules/product/public-product-channel.ts"
+      - "apps/api/src/modules/product/public-product-channel.spec.ts"
+      - "apps/web/src/lib/hooks/useProducts.ts"
+      - "apps/web/src/lib/product-jsonld-brand.ts"
+      - "apps/web/src/lib/product-jsonld-brand.spec.ts"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/web/src/components/shared/JsonLd.tsx"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Phase 2 after live invite (004). ID 007 because 005=shipping-delete, 006=retail CMS save.
+      Reclaimed stale product files from TASK-20260906-003 (CLOSED live, hb 2026-09-06),
+      public-product-channel + product.service from TASK-20260826-001 (hb 2026-09-02),
+      JsonLd from TASK-20260831-003 (hb 2026-08-31). Did not touch 007 shipping or 006 CMS files.
+      WORKLOG overlap with 006 expected. Seller of record stays Taranom.
+    acceptance_criteria:
+      - "Admin can assign vendorId + integer commission 0-90; dropship forces retail-only"
+      - "Public catalog JSON has brandName optional but never vendorId or commissionPercent"
+      - "JSON-LD uses public brandName, omits brand when dropship has none; seller stays Taranom"
+      - "vendor-fulfillment-policy + public-product-channel + jsonld-brand specs and api/web tsc pass"
   - id: "TASK-20260909-006"
     title: "Retail CMS save must persist and verify (no silent WHOLESALE)"
     status: "in_progress"
@@ -70,7 +117,7 @@ tasks:
       - "shipping-channel spec and shipping-methods spec pass"
   - id: "TASK-20260909-004"
     title: "Vendor invite + partner JWT isolation (phase 1)"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260909-004"
     roles:
@@ -82,45 +129,12 @@ tasks:
     worktree: "D:/proje/Site-B2B-vendor-invite"
     claimed_at: "2026-09-09T03:30:00Z"
     heartbeat_at: "2026-09-09T03:55:00Z"
+    closed_at: "2026-09-09T04:00:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/vendor/"
-      - "apps/api/src/modules/auth/staff-access.ts"
-      - "apps/api/src/modules/auth/staff-access.spec.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
-      - "apps/api/src/modules/auth/auth.module.ts"
-      - "apps/api/src/modules/auth/dto/login.dto.ts"
-      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
-      - "apps/api/src/modules/auth/guards/roles.guard.ts"
-      - "apps/api/src/modules/auth/password-policy.ts"
-      - "apps/api/src/modules/auth/password-policy.spec.ts"
-      - "apps/api/src/app.module.ts"
-      - "apps/api/src/config/database.config.ts"
-      - "apps/api/src/database/migrations/20260909-001-vendors.ts"
-      - "apps/web/src/lib/admin-session.ts"
-      - "apps/web/src/lib/admin-session.spec.ts"
-      - "apps/web/src/lib/auth.ts"
-      - "apps/web/src/lib/hooks/useAuth.ts"
-      - "apps/web/src/lib/staff-access.ts"
-      - "apps/web/src/lib/channel.ts"
-      - "apps/web/src/lib/api.ts"
-      - "apps/web/src/lib/safe-redirect.ts"
-      - "apps/web/src/lib/safe-redirect.spec.ts"
-      - "apps/web/src/middleware.ts"
-      - "apps/web/src/app/robots.ts"
-      - "apps/web/src/app/admin/partners/"
-      - "apps/web/src/app/partners/"
-      - "apps/web/src/components/admin/AdminPartners.tsx"
-      - "apps/web/src/components/admin/AdminSidebar.tsx"
-      - "apps/web/src/components/admin/AdminHeader.tsx"
-      - "apps/web/src/components/partners/"
-      - "apps/api/package.json"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
+      LIVE origin/master + VPS ef516ca. Invite-only partner JWT. Claims released for phase 2 (007).
       Dropship invite-only. ID 004 because TASK-20260909-002 on master is payment-explain.
-      Do not touch TASK-20260908-007 shipping files.
     acceptance_criteria:
       - "Admin-only invite creates VENDOR user + vendors row; initialPassword returned once"
       - "purpose=vendor JWT required for /v1/partners/me; admin JWT cannot call it; vendor JWT cannot call /v1/vendors"
@@ -686,18 +700,23 @@ tasks:
       - "apps/api/src/database/migrations/20260906-001-product-internal-links.ts"
       - "apps/api/src/modules/product/entities/product-internal-link.entity.ts"
       - "apps/api/src/modules/product/dto/internal-link.dto.ts"
-      - "apps/api/src/modules/product/dto/create-product.dto.ts"
-      - "apps/api/src/modules/product/product.service.ts"
+      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; dropship SKU):
+      # "apps/api/src/modules/product/dto/create-product.dto.ts"
+      # "apps/api/src/modules/product/product.service.ts"
       - "apps/api/src/modules/product/product.controller.ts"
-      - "apps/api/src/modules/product/product.module.ts"
+      # transferred 2026-09-09 to TASK-20260909-007:
+      # "apps/api/src/modules/product/product.module.ts"
       - "apps/api/src/modules/product/internal-link-resolver.ts"
-      - "apps/api/src/modules/product/internal-link-resolver.spec.ts"
+      # transferred 2026-09-09 to TASK-20260909-007 (ProductService ctor arity):
+      # "apps/api/src/modules/product/internal-link-resolver.spec.ts"
       - "apps/web/src/components/admin/ProductInternalLinkPicker.tsx"
       - "apps/web/src/components/admin/ProductInternalLinkRow.tsx"
-      - "apps/web/src/components/admin/AdminProducts.tsx"
-      - "apps/web/src/lib/hooks/useProducts.ts"
+      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; dropship SKU):
+      # "apps/web/src/components/admin/AdminProducts.tsx"
+      # "apps/web/src/lib/hooks/useProducts.ts"
       - "apps/web/src/components/shared/ProductInternalLinks.tsx"
-      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      # transferred 2026-09-09 to TASK-20260909-007:
+      # "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
       - "docs/reports/2026-09-06-product-internal-links.md"
       - "docs/WORKLOG.md"
@@ -1715,9 +1734,12 @@ tasks:
       - "apps/web/src/lib/blog.ts"
       - "apps/web/src/lib/blog-sitemap.ts"
       - "apps/web/src/lib/blog-sitemap.spec.ts"
+      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; dropship JSON-LD brand):
+      # "apps/web/src/components/shared/JsonLd.tsx"
       # transferred 2026-09-04 to TASK-20260904-004 (stale hb 2026-08-31; DigiPay retail hero):
       # "apps/web/src/lib/cms/defaults.ts"
-      - "apps/web/src/components/shared/JsonLd.tsx"
+      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; dropship JSON-LD brand):
+      # "apps/web/src/components/shared/JsonLd.tsx"
       # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-31; retail media host):
       # "apps/web/src/lib/jsonld-url.ts"
       # "apps/web/src/lib/jsonld-url.spec.ts"
@@ -1929,14 +1951,17 @@ tasks:
       - "apps/api/src/modules/product/channel-stock-isolation.spec.ts"
       - "apps/api/src/modules/product/public-product-status.ts"
       - "apps/api/src/modules/product/public-product-status.spec.ts"
-      - "apps/api/src/modules/product/public-product-channel.ts"
-      - "apps/api/src/modules/product/public-product-channel.spec.ts"
+      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; strip vendor fields):
+      # "apps/api/src/modules/product/public-product-channel.ts"
+      # "apps/api/src/modules/product/public-product-channel.spec.ts"
       - "apps/api/src/modules/product/color-stock-plan.ts"
       - "apps/api/src/modules/product/color-stock-plan.spec.ts"
       - "apps/api/src/modules/product/optional-jwt.guard.ts"
-      - "apps/api/src/modules/product/product.module.ts"
+      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; dropship SKU):
+      # "apps/api/src/modules/product/product.module.ts"
       # reclaimed 2026-08-31 from TASK-20260829-001 (claims released after Torob commit)
-      - "apps/api/src/modules/product/product.service.ts"
+      # transferred 2026-09-09 to TASK-20260909-007:
+      # "apps/api/src/modules/product/product.service.ts"
       # reclaimed 2026-08-31 from TASK-20260822-002 / 018-001 / 017-001 / 010-006 (stale >24h; cut dual-write)
       - "apps/api/src/modules/product/product-outbox.ts"
       - "apps/api/src/modules/product/product-outbox.spec.ts"

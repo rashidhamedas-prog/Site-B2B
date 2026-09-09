@@ -50,3 +50,5 @@ export function stripOppositeChannelFields<T extends object>(
   }
   return row;
 }
+
+export { stripVendorFulfillmentFields } from './vendor-fulfillment-policy';

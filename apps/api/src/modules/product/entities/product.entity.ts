@@ -189,6 +189,19 @@ export class ProductEntity {
   @Column({ default: true })
   showOnRetail: boolean;
 
+  /** Partner fulfillment; null = Taranom OWN. Never expose on public catalog JSON. */
+  @Index()
+  @Column({ type: 'uuid', nullable: true })
+  vendorId: string | null;
+
+  /** Taranom commission % of line amount after line discount, before shipping. Snapshot later at payment. */
+  @Column({ type: 'int', nullable: true })
+  commissionPercent: number | null;
+
+  /** Public JSON-LD brand; optional. Never the partner's operating name. */
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  brandName: string | null;
+
   /** Optional retail guarantee/warranty text for Torob and PDP meta (max 200). */
   @Column({ type: 'varchar', length: 200, nullable: true })
   guarantee: string | null;

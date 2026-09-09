@@ -10,6 +10,8 @@ import {
   IsIn,
   IsObject,
   ValidateIf,
+  Max,
+  IsUUID,
 } from 'class-validator';
 import { InternalLinkItemDto } from './internal-link.dto';
 
@@ -314,6 +316,30 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   defaultRetailVariantId?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'همکار تأمین؛ خالی یعنی موجودی خود ترنم. کالای همکار فقط روی تکی است.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v != null && v !== '')
+  @IsUUID()
+  vendorId?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'درصد کمیسیون ترنم از مبلغ خط بعد از تخفیف خط (۰ تا ۹۰). فقط برای کالای همکار.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(90)
+  commissionPercent?: number | null;
+
+  @ApiPropertyOptional({
+    description: 'برند عمومی JSON-LD؛ نام همکار را ننویسید. مشتری مبدأ ارسال را نمی‌بیند.',
+  })
+  @IsOptional()
+  @IsString()
+  brandName?: string | null;
 
   @ApiPropertyOptional({
     type: [InternalLinkItemDto],

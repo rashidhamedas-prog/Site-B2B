@@ -16,6 +16,7 @@ import { AuthModule } from '../auth/auth.module';
 import { UploadModule } from '../upload/upload.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
+import { VendorEntity } from '../vendor/entities/vendor.entity';
 
 @Module({
   imports: [TypeOrmModule.forFeature([
@@ -28,6 +29,7 @@ import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
     VariantSizeEntity,
     ProductSpecMemoryEntity,
     SeoRedirectEntity,
+    VendorEntity,
   ]), AuthModule, UploadModule, forwardRef(() => InventoryModule)],
   controllers: [ProductController],
   providers: [ProductService, ProductSearchIndexer, OptionalJwtAuthGuard],

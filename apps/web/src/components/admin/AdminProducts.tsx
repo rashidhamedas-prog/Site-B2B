@@ -139,6 +139,9 @@ const emptyForm = {
   defaultRetailVariantId: '',
   allowWholesaleColorSelect: false,
   minWholesaleColors: '1',
+  vendorId: '',
+  commissionPercent: '',
+  brandName: '',
 };
 
 const emptyVariantForm = {
@@ -151,6 +154,8 @@ const emptyVariantForm = {
 
 type FormData = typeof emptyForm;
 type VariantForm = typeof emptyVariantForm;
+
+type PartnerOption = { id: string; name: string; status: string };
 
 function toDatetimeLocal(iso?: string | Date | null): string {
   if (!iso) return '';
@@ -848,6 +853,7 @@ export function AdminProducts() {
     newBadgeDays: 7,
   });
   const [publicationBadges, setPublicationBadges] = useState<Record<string, string[]>>({});
+  const [partners, setPartners] = useState<PartnerOption[]>([]);
 
   const refreshSpecMemory = useCallback(() => {
     apiClient
@@ -886,6 +892,10 @@ export function AdminProducts() {
       .get<Array<{ id: string; name: string }>>('/collections')
       .then((res) => setCollections(Array.isArray(res) ? res : []))
       .catch(() => undefined);
+    apiClient
+      .get<{ data: PartnerOption[] }>('/vendors')
+      .then((res) => setPartners(Array.isArray(res?.data) ? res.data : []))
+      .catch(() => setPartners([]));
     apiClient
       .get<Array<{ sourceId: string; sourceType: string; channel: string; status: string }>>('/omnichannel/publications')
       .then((rows) => {
@@ -1028,6 +1038,9 @@ export function AdminProducts() {
       defaultRetailVariantId: (src as { defaultRetailVariantId?: string | null }).defaultRetailVariantId ?? '',
       allowWholesaleColorSelect: !!src.allowWholesaleColorSelect,
       minWholesaleColors: String(Math.max(1, Number(src.minWholesaleColors) || 1)),
+      vendorId: src.vendorId ?? '',
+      commissionPercent: src.commissionPercent != null ? String(src.commissionPercent) : '',
+      brandName: src.brandName ?? '',
       specs: {
         fabricType: specs.fabricType ?? '',
         designDetails: specs.designDetails ?? '',
@@ -1121,6 +1134,17 @@ export function AdminProducts() {
     if (!Number.isFinite(minQty) || minQty < 1) {
       setSaveError('حداقل سفارش باید حداقل ۱ پک باشد');
       return;
+    }
+
+    const partnerId = form.vendorId.trim();
+    let commissionPercent: number | null = null;
+    if (partnerId) {
+      const pct = Number(form.commissionPercent);
+      if (!Number.isInteger(pct) || pct < 0 || pct > 90) {
+        setSaveError('برای کالای همکار، کمیسیون باید عدد صحیح ۰ تا ۹۰ باشد');
+        return;
+      }
+      commissionPercent = pct;
     }
 
     const wholesaleBaseToman = Number(form.wholesalePrice) || 0;
@@ -1259,8 +1283,11 @@ export function AdminProducts() {
         preOrderDate: form.isPreOrder && form.preOrderDate ? form.preOrderDate : null,
         modelInfo: form.modelInfo.trim() || null,
         videoUrl: form.videoUrl.trim() || null,
-        showOnWholesale: form.showOnWholesale,
-        showOnRetail: form.showOnRetail,
+        showOnWholesale: partnerId ? false : form.showOnWholesale,
+        showOnRetail: partnerId ? true : form.showOnRetail,
+        vendorId: partnerId || null,
+        commissionPercent,
+        brandName: form.brandName.trim() || null,
         guarantee: form.guarantee.trim() || null,
         defaultRetailVariantId: form.defaultRetailVariantId || null,
         allowWholesaleColorSelect: !!form.allowWholesaleColorSelect,
@@ -1544,6 +1571,11 @@ export function AdminProducts() {
                               موجودی محدود
                             </Badge>
                           )}
+                          {p.vendorId ? (
+                            <Badge variant="info" className="px-1.5 py-0 text-[10px]">
+                              {partners.find((v) => v.id === p.vendorId)?.name || 'همکار'}
+                            </Badge>
+                          ) : null}
                           {p.status === 'COMING_SOON' && (
                             <Badge variant="info" className="px-1.5 py-0 text-[10px]">
                               به زودی
@@ -2181,20 +2213,86 @@ export function AdminProducts() {
                 </div>
               </div>
 
+              <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-4 space-y-3">
+                <p className="text-sm font-medium text-gray-800">همکار فروش (دراپ‌شیپ)</p>
+                <p className="text-xs text-gray-600">
+                  فاکتور و فروشنده برای مشتری ترنم است. مشتری مبدأ ارسال را نمی‌بیند. هزینه واقعی پست
+                  با همکار است؛ کرایهٔ پرداخت‌شدهٔ مشتری پیش ترنم می‌ماند.
+                </p>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">همکار تأمین</label>
+                  <select
+                    value={form.vendorId}
+                    onChange={(e) => {
+                      const vendorId = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        vendorId,
+                        showOnWholesale: vendorId ? false : f.showOnWholesale,
+                        showOnRetail: vendorId ? true : f.showOnRetail,
+                      }));
+                    }}
+                    className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                  >
+                    <option value="">موجودی خود ترنم</option>
+                    {partners
+                      .filter((v) => v.status !== 'SUSPENDED' || v.id === form.vendorId)
+                      .map((v) => (
+                        <option key={v.id} value={v.id} disabled={v.status === 'SUSPENDED'}>
+                          {v.name}
+                          {v.status === 'SUSPENDED' ? ' (معلق)' : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                {form.vendorId ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        کمیسیون ترنم (درصد) *
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={90}
+                        step={1}
+                        value={form.commissionPercent}
+                        onChange={(e) => setForm((f) => ({ ...f, commissionPercent: e.target.value }))}
+                        className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                        برند عمومی (اختیاری)
+                      </label>
+                      <input
+                        value={form.brandName}
+                        onChange={(e) => setForm((f) => ({ ...f, brandName: e.target.value }))}
+                        maxLength={80}
+                        placeholder="مثلاً نام تجاری روی کالا — نه نام همکار"
+                        className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
               <div className="flex flex-wrap gap-4">
-                <label className="flex cursor-pointer items-center gap-2">
+                <label className={cn('flex items-center gap-2', form.vendorId ? 'cursor-not-allowed opacity-60' : 'cursor-pointer')}>
                   <input
                     type="checkbox"
-                    checked={form.showOnWholesale}
+                    checked={form.vendorId ? false : form.showOnWholesale}
+                    disabled={!!form.vendorId}
                     onChange={(e) => setForm((f) => ({ ...f, showOnWholesale: e.target.checked }))}
                     className="rounded"
                   />
                   <span className="text-sm text-gray-700">نمایش در سایت عمده</span>
                 </label>
-                <label className="flex cursor-pointer items-center gap-2">
+                <label className={cn('flex items-center gap-2', form.vendorId ? 'cursor-not-allowed opacity-60' : 'cursor-pointer')}>
                   <input
                     type="checkbox"
-                    checked={form.showOnRetail}
+                    checked={form.vendorId ? true : form.showOnRetail}
+                    disabled={!!form.vendorId}
                     onChange={(e) => setForm((f) => ({ ...f, showOnRetail: e.target.checked }))}
                     className="rounded"
                   />

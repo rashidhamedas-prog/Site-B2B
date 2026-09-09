@@ -227,7 +227,7 @@ console.log(`\nAll internal-link-resolver checks passed (${passed}).`);
   const service = new ProductService(
     productRepo as any,
     {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
-    {} as any, {} as any, {} as any, {} as any,
+    {} as any, {} as any, {} as any, {} as any, {} as any,
   );
 
   let threwSentinel = false;

@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T00:50:00Z — TASK-20260909-007 dropship SKU (phase 2)
+
+- Reclaimed stale product/JSON-LD files from TASK-20260906-003 (live, hb 2026-09-06), TASK-20260826-001 (hb 2026-09-02), TASK-20260831-003 (hb 2026-08-31). Did not touch shipping (005) or CMS (006) files.
+- CODE: `products.vendorId` + `commissionPercent` + public `brandName`; dropship forces retail-only; public catalog strips vendorId/commission; JSON-LD uses brandName or omits default Taranom brand for unlabeled dropship. Seller stays Taranom org.
+- Next: specs + tsc, then commit/push/deploy. Non-goals: order split, SMS/Telegram, ledger.
+
+## 2026-09-09T04:00:00Z — TASK-20260909-004 CLOSED live `ef516ca`
+
+- Invite-only partners, `vendors` table, purpose=vendor JWT, `/admin/partners` + `/partners`. Health 200. Claims released for phase 2.
+
 ## 2026-09-09T01:05:00Z — TASK-20260909-006 retail CMS save hardening
 
 - Evidence: `site_contents` RETAIL/home `updatedAt=2026-09-08T14:22:09Z` only; WHOLESALE/home newer. Products block has SKU ids and no `source`.

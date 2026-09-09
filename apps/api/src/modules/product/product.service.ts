@@ -42,6 +42,12 @@ import {
 } from './product-sale';
 import { isPublicProductRow } from './public-product-status';
 import { stripOppositeChannelFields } from './public-product-channel';
+import {
+  publicHideDefaultBrand,
+  resolveVendorFulfillment,
+  stripVendorFulfillmentFields,
+} from './vendor-fulfillment-policy';
+import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { merchandisingOrderSql, parseMerchandisingRefs, isProductUuid } from './product-ids-query';
 import { productOutboxIntents } from './product-outbox';
 import { OutboxService } from '../omnichannel/services/outbox.service';
@@ -187,6 +193,8 @@ export class ProductService {
     private readonly internalLinkRepo: Repository<ProductInternalLinkEntity>,
     @InjectRepository(SeoRedirectEntity)
     private readonly redirectRepo: Repository<SeoRedirectEntity>,
+    @InjectRepository(VendorEntity)
+    private readonly vendorRepo: Repository<VendorEntity>,
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly outbox: OutboxService,
@@ -207,6 +215,60 @@ export class ProductService {
     };
     this.badgeCache = { value, at: Date.now() };
     return value;
+  }
+
+  private fulfillmentMessage(err: unknown): string {
+    const code = err instanceof Error ? err.message : '';
+    switch (code) {
+      case 'COMMISSION_REQUIRED':
+        return 'برای کالای همکار، درصد کمیسیون (۰ تا ۹۰) الزامی است';
+      case 'COMMISSION_PERCENT_INVALID':
+        return 'درصد کمیسیون باید عدد صحیح بین ۰ تا ۹۰ باشد';
+      case 'BRAND_NAME_TOO_LONG':
+        return 'نام برند عمومی حداکثر ۸۰ کاراکتر است';
+      case 'INVALID_VENDOR_ID':
+        return 'شناسه همکار نامعتبر است';
+      default:
+        return 'تنظیم همکار نامعتبر است';
+    }
+  }
+
+  private async assertAssignableVendor(vendorId: string) {
+    const row = await this.vendorRepo.findOne({ where: { id: vendorId } });
+    if (!row) throw new BadRequestException('همکار پیدا نشد');
+    if (row.status === 'SUSPENDED') {
+      throw new BadRequestException('همکار معلق است؛ نمی‌توان کالا به او نسبت داد');
+    }
+  }
+
+  private resolveFulfillmentOrThrow(
+    data: {
+      vendorId?: string | null;
+      commissionPercent?: number | null;
+      brandName?: string | null;
+    },
+    existing: {
+      vendorId: string | null;
+      commissionPercent: number | null;
+      brandName: string | null;
+    },
+    showOnWholesale: boolean,
+    showOnRetail: boolean,
+  ) {
+    try {
+      return resolveVendorFulfillment({
+        vendorId: data.vendorId,
+        commissionPercent: data.commissionPercent,
+        brandName: data.brandName,
+        existingVendorId: existing.vendorId,
+        existingCommission: existing.commissionPercent,
+        existingBrand: existing.brandName,
+        showOnWholesale,
+        showOnRetail,
+      });
+    } catch (e) {
+      throw new BadRequestException(this.fulfillmentMessage(e));
+    }
   }
 
   private withBadges<T extends ProductEntity>(product: T, channel?: string, cfg?: BadgeConfig) {
@@ -271,6 +333,15 @@ export class ProductService {
     };
     if (isRetail) stripOppositeChannelFields(out, 'RETAIL');
     if (isWholesale) stripOppositeChannelFields(out, 'WHOLESALE');
+    if (isRetail || isWholesale) {
+      const vendorId = (out as { vendorId?: string | null }).vendorId;
+      const brandName = (out as { brandName?: string | null }).brandName;
+      stripVendorFulfillmentFields(out);
+      (out as { hideDefaultBrand?: boolean }).hideDefaultBrand = publicHideDefaultBrand(
+        vendorId,
+        brandName,
+      );
+    }
     return out;
   }
 
@@ -1293,8 +1364,14 @@ export class ProductService {
 
     const specs = (data.specs ?? {}) as ProductSpecs;
     const fabric = this.fabricFromSpecs(specs, data.fabric);
-    const showOnWholesale = data.showOnWholesale !== false;
-    const showOnRetail = data.showOnRetail !== false;
+    const fulfillment = this.resolveFulfillmentOrThrow(
+      data,
+      { vendorId: null, commissionPercent: null, brandName: null },
+      data.showOnWholesale !== false,
+      data.showOnRetail !== false,
+    );
+    const showOnWholesale = fulfillment.showOnWholesale;
+    const showOnRetail = fulfillment.showOnRetail;
     let minOrderQty: number;
     try {
       minOrderQty = normalizeMinOrderQty(data.minOrderQty ?? GLOBAL_MIN_ORDER_QTY);
@@ -1327,6 +1404,8 @@ export class ProductService {
       const clash = await this.productRepo.findOne({ where: { slug } });
       if (clash) throw new BadRequestException('این slug قبلاً استفاده شده است');
     }
+
+    if (fulfillment.vendorId) await this.assertAssignableVendor(fulfillment.vendorId);
 
     const product = this.productRepo.create({
       name: data.name,
@@ -1362,6 +1441,9 @@ export class ProductService {
       videoUrl: data.videoUrl ?? null,
       showOnWholesale,
       showOnRetail,
+      vendorId: fulfillment.vendorId,
+      commissionPercent: fulfillment.commissionPercent,
+      brandName: fulfillment.brandName,
       guarantee: sanitizeGuarantee(data.guarantee) ?? null,
     });
     const saved = await this.productRepo.manager.transaction(async (em) => {
@@ -1441,6 +1523,9 @@ export class ProductService {
     delete (patch as any).retailDiscountStartsAt;
     delete (patch as any).wholesaleDiscountEndsAt;
     delete (patch as any).retailDiscountEndsAt;
+    delete (patch as any).vendorId;
+    delete (patch as any).commissionPercent;
+    delete (patch as any).brandName;
     if (data.specs) {
       patch.specs = data.specs as ProductSpecs;
       patch.fabric = this.fabricFromSpecs(
@@ -1462,14 +1547,26 @@ export class ProductService {
       patch.preOrderDate = data.preOrderDate ? new Date(data.preOrderDate) : null;
     }
 
-    const showOnWholesale =
+    const showOnWholesaleInput =
       data.showOnWholesale !== undefined
         ? data.showOnWholesale !== false
         : existing.showOnWholesale !== false;
-    const showOnRetail =
+    const showOnRetailInput =
       data.showOnRetail !== undefined
         ? data.showOnRetail !== false
         : existing.showOnRetail !== false;
+    const fulfillment = this.resolveFulfillmentOrThrow(
+      data,
+      {
+        vendorId: existing.vendorId ?? null,
+        commissionPercent: existing.commissionPercent ?? null,
+        brandName: existing.brandName ?? null,
+      },
+      showOnWholesaleInput,
+      showOnRetailInput,
+    );
+    const showOnWholesale = fulfillment.showOnWholesale;
+    const showOnRetail = fulfillment.showOnRetail;
 
     const priceOrChannelTouch =
       data.wholesalePrice !== undefined ||
@@ -1478,6 +1575,7 @@ export class ProductService {
       data.retailCompareAtPrice !== undefined ||
       data.showOnWholesale !== undefined ||
       data.showOnRetail !== undefined ||
+      data.vendorId !== undefined ||
       data.wholesaleIsDiscounted !== undefined ||
       data.retailIsDiscounted !== undefined ||
       data.isDiscounted !== undefined;
@@ -1541,8 +1639,19 @@ export class ProductService {
         throw new BadRequestException((e as Error).message);
       }
     }
-    if (data.showOnWholesale !== undefined) patch.showOnWholesale = showOnWholesale;
-    if (data.showOnRetail !== undefined) patch.showOnRetail = showOnRetail;
+    if (fulfillment.vendorId) {
+      patch.showOnWholesale = false;
+      patch.showOnRetail = true;
+    } else {
+      if (data.showOnWholesale !== undefined) patch.showOnWholesale = showOnWholesale;
+      if (data.showOnRetail !== undefined) patch.showOnRetail = showOnRetail;
+    }
+    patch.vendorId = fulfillment.vendorId;
+    patch.commissionPercent = fulfillment.commissionPercent;
+    patch.brandName = fulfillment.brandName;
+    if (fulfillment.vendorId && fulfillment.vendorId !== existing.vendorId) {
+      await this.assertAssignableVendor(fulfillment.vendorId);
+    }
     if (data.allowWholesaleColorSelect !== undefined) {
       patch.allowWholesaleColorSelect = !!data.allowWholesaleColorSelect;
     }

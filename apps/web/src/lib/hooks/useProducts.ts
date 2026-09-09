@@ -115,6 +115,10 @@ export interface Product {
   };
   showOnWholesale?: boolean;
   showOnRetail?: boolean;
+  vendorId?: string | null;
+  commissionPercent?: number | null;
+  brandName?: string | null;
+  hideDefaultBrand?: boolean;
   retailFeatured?: boolean;
   minOrderQty: number;
   allowWholesaleColorSelect?: boolean;

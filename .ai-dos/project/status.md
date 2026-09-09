@@ -1,6 +1,7 @@
 # Project Status
 
-- Last verified: 2026-09-09 — **TASK-20260909-006** implementing retail CMS save verify (require write channel, admin DB confirm). Branch `ai/TASK-20260909-004-retail-cms-save`. Not live until merge/deploy.
+- Last verified: 2026-09-09 — **TASK-20260909-007** implementing dropship SKU (vendorId + commission, public strip) on `ai/TASK-20260909-001-vendor-invite`. Not live until merge/deploy + migration `20260909-002`.
+- Last verified: 2026-09-09 — **TASK-20260909-004 CLOSED** on `origin/master` + VPS `ef516ca`. Vendor invite + purpose=vendor JWT. `/partners/login` noindex. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-005** implementing honor deleted retail shipping methods on `ai/TASK-20260909-005-honor-shipping-delete`.
 - Last verified: 2026-09-09 — **TASK-20260909-004** shipping vendor invite (phase 1) on `ai/TASK-20260909-001-vendor-invite`. Auth purpose `vendor`, invite-only. Needs merge/deploy + migration.
 - Last verified: 2026-09-09 — **TASK-20260909-003 CLOSED** on `origin/master` + VPS `a658caa`. Products-block auto source clears curated ids on save. Health 200. Claims released.
