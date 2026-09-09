@@ -61,4 +61,10 @@ export class FulfillmentPartnerController {
   ) {
     return this.fulfillments.shipForVendor(id, this.vendorId(req), trackingCode);
   }
+
+  @Patch(':id/deliver')
+  @ApiOperation({ summary: 'ثبت تحویل مرسوله — شروع hold دفتر کمیسیون' })
+  deliver(@Request() req: Authed, @Param('id') id: string) {
+    return this.fulfillments.deliverForVendor(id, this.vendorId(req));
+  }
 }
