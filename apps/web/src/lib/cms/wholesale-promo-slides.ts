@@ -1,13 +1,13 @@
 import type { HeroSlide } from './hero-slides';
 
 export const WHOLESALE_PROMO_PARTNERSHIP_IMAGE =
-  '/banners/wholesale-promo-2026/partnership-9db3a172eb44.webp';
+  '/banners/wholesale-promo-2026/partnership-6da1640a8bb4.webp';
 export const WHOLESALE_PROMO_PARTNERSHIP_IMAGE_MOBILE =
-  '/banners/wholesale-promo-2026/partnership-mobile-f3511b998cff.webp';
+  '/banners/wholesale-promo-2026/partnership-mobile-7f95d9a6eb69.webp';
 export const WHOLESALE_PROMO_JACKETS_IMAGE =
-  '/banners/wholesale-promo-2026/jackets-f3f150339844.webp';
+  '/banners/wholesale-promo-2026/jackets-11c1cf1b38af.webp';
 export const WHOLESALE_PROMO_JACKETS_IMAGE_MOBILE =
-  '/banners/wholesale-promo-2026/jackets-mobile-f5ee9bad4a4f.webp';
+  '/banners/wholesale-promo-2026/jackets-mobile-dd1c2c3a9c16.webp';
 
 export const WHOLESALE_PROMO_PARTNERSHIP_SLIDE: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',

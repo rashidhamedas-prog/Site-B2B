@@ -47,8 +47,6 @@ function WholesaleHeroMedia({
   className: string;
   priority: boolean;
 }) {
-  // Local promo + product plates are native 1920×560 WebP. Optimizer q=75
-  // was recompressing every slide after the first and dropping sharpness.
   if (isLocalStaticAsset(src)) {
     const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
     return (
@@ -65,13 +63,14 @@ function WholesaleHeroMedia({
         ) : null}
         <picture>
           {mobile ? <source media="(max-width: 767px)" srcSet={mobile} /> : null}
+          {/* Local static WebP — skip Next optimizer so 24:7 plates are not re-encoded. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={alt}
             fetchPriority={priority ? 'high' : 'auto'}
-            loading={priority ? 'eager' : 'lazy'}
             decoding="async"
+            loading={priority ? 'eager' : 'lazy'}
             className={`absolute inset-0 h-full w-full ${className}`}
           />
         </picture>
@@ -203,7 +202,7 @@ export function HeroSection(props: HeroSectionProps) {
               alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
               priority={isLcp}
               className={
-                s.presentation === 'artwork' ? 'object-cover md:object-fill' : 'object-cover'
+                'object-cover'
               }
             />
           </div>

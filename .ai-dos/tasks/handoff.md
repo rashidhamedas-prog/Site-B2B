@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T12:40:00Z — TASK-20260909-016 wholesale promo 1920x560 contain
+
+- Owner asked for 1920×560 at 24:7 with no detail change and higher quality.
+- Previous live plates were cover-cropped q74; master `a858faa` stretched with fill. This task contains the original JPG onto 1920×560 (edge-extend) and 1200×600 mobile, WebP q92.
+- CODE: new hashes under `/banners/wholesale-promo-2026/`; HeroSection serves local WebP unoptimized and drops `object-fill`. Migration `WholesalePromoHeroesHq1757430000017`. Did not edit 013 retail or 015 ledger files.
+- Gates (observed): `wholesale-promo-slides.spec.ts` OK; `wholesale-promo-hero.util.spec.ts` ok; web `tsc --noEmit` 0. API tsc fails on pre-existing vendor-ledger import paths, not this diff.
+- Next: commit, push, deploy, verify `.com` HTML uses `partnership-6da1640a8bb4`.
+
 ## 2026-09-09T12:25:00Z — TASK-20260909-015 vendor ledger (phase 7)
 
 - CODE: vendor_ledger_entries; deliver accrues net; holdDays; partner /ledger; release cron.
