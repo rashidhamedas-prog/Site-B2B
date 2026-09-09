@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260909-010"
     title: "SMS notify partner on vendor fulfillment PENDING_ACCEPT (phase 4)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260909-010"
     roles:
@@ -13,26 +13,11 @@ tasks:
     branch: "ai/TASK-20260909-001-vendor-invite"
     worktree: "D:/proje/Site-B2B-vendor-invite"
     claimed_at: "2026-09-09T11:00:00Z"
-    heartbeat_at: "2026-09-09T11:05:00Z"
+    heartbeat_at: "2026-09-09T11:20:00Z"
+    closed_at: "2026-09-09T11:20:00Z"
     depends_on:
       - "TASK-20260909-009"
-    file_claims:
-      - "apps/api/src/modules/order/fulfillment.service.ts"
-      - "apps/api/src/modules/order/fulfillment-split-policy.ts"
-      - "apps/api/src/modules/order/fulfillment-split-policy.spec.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/api/src/modules/omnichannel/worker.module.ts"
-      - "apps/api/src/modules/notification/notification.service.ts"
-      - "apps/api/src/modules/notification/sms-templates.defaults.ts"
-      - "apps/api/src/modules/settings/settings.service.ts"
-      - "apps/web/src/components/admin/settings/SmsTab.tsx"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     acceptance_criteria:
       - "ensureSplit enqueues FULFILLMENT_PENDING_ACCEPT_NOTIFICATION only for vendor PENDING_ACCEPT parcels"
       - "Event is in PHASE3_EVENT_TYPES (leased even when connectors off)"
@@ -40,7 +25,8 @@ tasks:
       - "Admin sms events + template toggle for fulfillmentPendingAccept"
       - "fulfillment-split-policy + outbox-lease specs pass; api/web tsc clean"
     notes: |
-      SMS-first; Telegram partner bot deferred. Idempotent operationId `${foId}:notify:pending`.
+      LIVE origin/master + VPS `989abbf`. SMS-first; Telegram partner bot deferred.
+      Claims released. Next: tracking bot / SLA escalate / ledger.
   - id: "TASK-20260909-009"
     title: "Split paid orders into unlabeled vendor fulfillment parcels (phase 3)"
     status: "done"
