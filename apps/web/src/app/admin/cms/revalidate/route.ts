@@ -46,9 +46,11 @@ function webInternalBase(): string {
   return (process.env.WEB_INTERNAL_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
 }
 
-async function warmStorefront(paths: string[]): Promise<string[]> {
+async function warmStorefront(channel: CmsChannel, paths: string[]): Promise<string[]> {
   const base = webInternalBase();
   const warmed: string[] = [];
+  const host =
+    channel === 'RETAIL' ? 'www.poshaktaranom.ir' : 'poshaktaranom.com';
   await Promise.all(
     paths.map(async (path) => {
       try {
@@ -56,8 +58,9 @@ async function warmStorefront(paths: string[]): Promise<string[]> {
           cache: 'no-store',
           headers: {
             'x-taranom-revalidate-warm': '1',
-            // Direct /retail/* skips host rewrite; still marks retail channel.
-            'x-taranom-channel': path.startsWith('/retail') ? 'RETAIL' : 'WHOLESALE',
+            'x-taranom-channel': channel,
+            // Help middleware treat the warm as the public storefront host.
+            'x-forwarded-host': host,
           },
         });
         if (res.ok || res.status === 307 || res.status === 308) warmed.push(path);
@@ -96,7 +99,7 @@ export async function POST(req: Request) {
     revalidatePath(path, 'page');
   }
 
-  const warmed = await warmStorefront(warmPathsForCms(channel, pageKey));
+  const warmed = await warmStorefront(channel, warmPathsForCms(channel, pageKey));
 
   return NextResponse.json({ ok: true, channel, pageKey, paths, warmed });
 }

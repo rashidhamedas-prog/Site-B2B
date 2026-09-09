@@ -60,7 +60,7 @@ export function HomeTickerCard({
       };
       if (idx >= 0) next[idx] = { ...next[idx], props };
       else next = [{ id: `ann-${Date.now()}`, type: 'announcement', props }, ...next];
-      await apiClient.put('/cms/admin/site-content', {
+      await apiClient.put(`/cms/admin/site-content?channel=${encodeURIComponent(channel)}`, {
         channel,
         pageKey: 'chrome',
         title,

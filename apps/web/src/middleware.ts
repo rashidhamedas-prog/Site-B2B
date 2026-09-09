@@ -158,10 +158,11 @@ export function middleware(request: NextRequest) {
     return clampStorefrontHtmlCache(res, pathname);
   }
 
-  const host = request.headers.get('host');
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
   const forceRetail =
     process.env.NEXT_PUBLIC_FORCE_RETAIL === '1' ||
-    request.cookies.get('taranom_channel')?.value === 'retail';
+    request.cookies.get('taranom_channel')?.value === 'retail' ||
+    request.headers.get('x-taranom-channel') === 'RETAIL';
   const retailHost = hostLooksRetail(host) || forceRetail;
   const isPublicCategoryPath =
     pathname === '/category' || pathname.startsWith('/category/');

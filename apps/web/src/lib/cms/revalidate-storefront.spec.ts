@@ -11,7 +11,8 @@ assert(publicStorefrontPathsForCms('WHOLESALE', 'home').length === 0, 'wholesale
 assert(allRevalidatePathsForCms('RETAIL', 'home').includes('/retail'), 'retail all has app');
 assert(allRevalidatePathsForCms('RETAIL', 'home').includes('/'), 'retail all has public');
 assert(allRevalidatePathsForCms('RETAIL', 'products').includes('/products'), 'retail products public');
-assert(warmPathsForCms('RETAIL', 'home')[0] === '/retail', 'warm app path');
+assert(warmPathsForCms('RETAIL', 'home').includes('/retail'), 'warm app path');
+assert(warmPathsForCms('RETAIL', 'home').includes('/'), 'warm public path');
 assert(cmsCacheTags('RETAIL', 'home').includes('cms:RETAIL:home'), 'tag');
 assert(cmsCacheTags('WHOLESALE', 'chrome').includes('cms:WHOLESALE:home'), 'chrome tags home');
 

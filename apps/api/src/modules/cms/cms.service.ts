@@ -43,6 +43,13 @@ export class CmsService {
     return c === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
   }
 
+  /** Writes must name the channel — never silently fall back to WHOLESALE. */
+  private requireWriteChannel(channel?: string): 'RETAIL' | 'WHOLESALE' {
+    const c = String(channel || '').trim().toUpperCase();
+    if (c === 'RETAIL' || c === 'WHOLESALE') return c;
+    throw new BadRequestException('channel باید RETAIL یا WHOLESALE باشد');
+  }
+
   private sanitizePage(page: CmsPageEntity): CmsPageEntity {
     page.content = sanitizeCmsHtml(page.content || '');
     page.blocks = sanitizeCmsBlocks(page.blocks);
@@ -170,7 +177,7 @@ export class CmsService {
     isPublished?: boolean;
   }) {
     if (!data.pageKey?.trim()) throw new BadRequestException('کلید صفحه الزامی است');
-    const channel = this.normalizeChannel(data.channel);
+    const channel = this.requireWriteChannel(data.channel);
     const pageKey = data.pageKey.trim();
     let row = await this.siteContentRepo.findOne({ where: { channel, pageKey } });
     if (!row) {

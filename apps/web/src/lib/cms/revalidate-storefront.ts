@@ -59,10 +59,10 @@ export function allRevalidatePathsForCms(channel: CmsChannel, pageKey: string): 
 /** Paths to HTTP-warm after revalidate so the next visitor is not stuck on HIT. */
 export function warmPathsForCms(channel: CmsChannel, pageKey: string): string[] {
   if (pageKey === '*') {
-    return channel === 'RETAIL' ? ['/retail'] : ['/'];
+    return channel === 'RETAIL' ? ['/retail', '/'] : ['/'];
   }
-  // Warm the App Router destination (no Host rewrite needed).
-  return storefrontPathsForCms(channel, pageKey);
+  // Warm App Router destination + public alias (retail `/` needs Host/channel hint).
+  return allRevalidatePathsForCms(channel, pageKey);
 }
 
 export function cmsCacheTags(channel: CmsChannel, pageKey: string): string[] {

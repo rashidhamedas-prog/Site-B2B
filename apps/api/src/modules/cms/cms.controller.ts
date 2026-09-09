@@ -97,20 +97,32 @@ export class CmsController {
     return this.svc.getSiteContent(channel, pageKey);
   }
 
-  @Post('admin/site-content')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
-  upsertSiteContent(@Body() body: any) {
-    return this.svc.upsertSiteContent(body);
-  }
-
   @Put('admin/site-content')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @ApiBearerAuth()
-  upsertSiteContentPut(@Body() body: any) {
-    return this.svc.upsertSiteContent(body);
+  upsertSiteContentPut(
+    @Body() body: any,
+    @Query('channel') channelQuery?: string,
+  ) {
+    return this.svc.upsertSiteContent({
+      ...body,
+      channel: body?.channel ?? channelQuery,
+    });
+  }
+
+  @Post('admin/site-content')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  upsertSiteContent(
+    @Body() body: any,
+    @Query('channel') channelQuery?: string,
+  ) {
+    return this.svc.upsertSiteContent({
+      ...body,
+      channel: body?.channel ?? channelQuery,
+    });
   }
 
   @Delete('admin/site-content/:id')
