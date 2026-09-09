@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-08T23:55:00Z — TASK-20260909-002 payment picker plain copy + logos
+
+- Owner asked for checkout payment explanations as if the shopper is ~15 and knows nothing, plus each method's own logo.
+- Claiming released payment-UI files from TASK-20260908-003. Not editing checkout pages claimed by TASK-20260908-007 in the other worktree. Intro is inside CheckoutChoiceList when legend is «روش پرداخت».
+- Overlap with TASK-20260909-001: `active.yaml` / `handoff.md` registry only. Did not edit `docs/WORKLOG.md` (001 claim).
+- CODE: plain copy in `checkout-payment-ui.ts`; official ZarinPal SVG, DigiPay mark, Torob icon; cash/installment local marks; logo tile stays white (brand colors not inverted).
+- Observed: `npx tsx src/lib/checkout-payment-ui.spec.ts` ok; `tsc --noEmit` (web) 0.
+- Next: commit/push/deploy. Browser checkout still needs a cart; copy is shared so retail+wholesale both pick it up.
+
 ## 2026-09-09T02:45:00Z — TASK-20260909-001 retail CMS cache root fix (shipping)
 
 - Root cause: retail public `/` is middleware-rewritten to `/retail`; year SWR kept HIT HTML on `.ir` even after path revalidate that only hit one shape; wholesale `/` matched App path so it looked fine.

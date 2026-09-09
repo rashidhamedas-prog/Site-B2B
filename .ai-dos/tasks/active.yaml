@@ -1,5 +1,41 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-002"
+    title: "Plain-language checkout payment copy + official logos"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260909-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-002"
+      implementer: "cursor:implementer-TASK-20260909-002"
+      reviewer: "self-review-ui-no-payment-payload-change"
+      security: "self-review-payments-ui-only-no-api"
+    branch: "ai/TASK-20260909-002-payment-explain"
+    worktree: "D:/proje/Site-B2B-payment-explain"
+    claimed_at: "2026-09-08T23:55:00Z"
+    heartbeat_at: "2026-09-08T23:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/checkout-payment-ui.ts"
+      - "apps/web/src/lib/checkout-payment-ui.spec.ts"
+      - "apps/web/src/components/checkout/CheckoutChoiceList.tsx"
+      - "apps/web/src/components/checkout/PaymentBrandLogo.tsx"
+      - "apps/web/public/payments/zarinpal.svg"
+      - "apps/web/public/payments/digipay-mark.svg"
+      - "apps/web/public/payments/torobpay.png"
+      - "apps/web/public/payments/cash.svg"
+      - "apps/web/public/payments/installment.svg"
+      - "docs/reports/2026-09-09-payment-explain.md"
+    notes: |
+      UI-only: first-time-shopper copy under each method + official ZarinPal/DigiPay/Torob marks.
+      Did not touch order/payment adapters or checkout page files claimed by TASK-20260908-007.
+      Governance overlap with TASK-20260909-001: active.yaml / handoff.md only (registry).
+      WORKLOG.md claimed by 001 — recorded in report instead.
+    acceptance_criteria:
+      - "Each retail/wholesale payment option has a plain-language description and its own logo"
+      - "Official ZarinPal, DigiPay, Torob marks used; cash/installment have dedicated marks"
+      - "Eligible methods and order/payment payloads unchanged"
+      - "checkout-payment-ui spec and web tsc pass"
   - id: "TASK-20260909-001"
     title: "Root-fix retail CMS changes not appearing on .ir"
     status: "in_progress"
