@@ -25,6 +25,12 @@ export function buildDedupeKey(input: OutboxEnqueueInput): string {
   return [input.operationId, input.eventType, input.aggregateId, input.channel || ''].join(':');
 }
 
+/** INSERT … ON CONFLICT DO NOTHING RETURNING id → empty raw means deduped. */
+export function outboxInsertedId(raw: unknown): string | null {
+  const rows = leaseRowsFromQueryResult(raw);
+  return rows.length ? rows[0].id : null;
+}
+
 /** TypeORM pg returns [rows, rowCount] for UPDATE…RETURNING — not the rows array. */
 export function leaseRowsFromQueryResult(raw: unknown): Array<{ id: string }> {
   const records = Array.isArray(raw) && raw.length === 2 && Array.isArray(raw[0]) && typeof raw[1] === 'number'
@@ -82,34 +88,41 @@ export class OutboxService {
     private readonly dataSource: DataSource,
   ) {}
 
+  /**
+   * Idempotent insert. Must never raise inside a caller's transaction: a swallowed
+   * 23505 still aborts the Postgres transaction, so the caller's business row
+   * (e.g. site_contents) was silently rolled back on COMMIT while the API echoed
+   * success. ON CONFLICT DO NOTHING keeps the transaction healthy.
+   */
   async enqueue(input: OutboxEnqueueInput, manager?: EntityManager): Promise<{ id: string | null; deduped: boolean }> {
     if (!isOmnichannelOutboxProducerEnabled()) {
       return { id: null, deduped: true };
     }
     const repo = manager?.getRepository(OutboxEventEntity) ?? this.repo;
     const dedupeKey = buildDedupeKey(input);
-    const row = repo.create({
-      eventType: input.eventType,
-      aggregateType: input.aggregateType,
-      aggregateId: input.aggregateId,
-      channel: input.channel ?? null,
-      payload: sanitizeOutboxPayload(input.payload),
-      dedupeKey,
-      status: 'PENDING',
-      attempts: 0,
-      maxAttempts: 8,
-      availableAt: input.availableAt && input.availableAt.getTime() > Date.now() ? input.availableAt : new Date(),
-    });
-    try {
-      const saved = await repo.save(row);
-      return { id: saved.id, deduped: false };
-    } catch (err: unknown) {
-      const code = err && typeof err === 'object' && 'code' in err ? String((err as { code?: unknown }).code) : '';
-      if (code === '23505') {
-        return { id: null, deduped: true };
-      }
-      throw err;
-    }
+    const availableAt =
+      input.availableAt && input.availableAt.getTime() > Date.now() ? input.availableAt : new Date();
+    const result = await repo
+      .createQueryBuilder()
+      .insert()
+      .into(OutboxEventEntity)
+      .values({
+        eventType: input.eventType,
+        aggregateType: input.aggregateType,
+        aggregateId: input.aggregateId,
+        channel: input.channel ?? null,
+        payload: sanitizeOutboxPayload(input.payload),
+        dedupeKey,
+        status: 'PENDING',
+        attempts: 0,
+        maxAttempts: 8,
+        availableAt,
+      })
+      .orIgnore()
+      .returning('id')
+      .execute();
+    const id = outboxInsertedId(result.raw);
+    return { id, deduped: id === null };
   }
 
   async enqueueMany(inputs: OutboxEnqueueInput[], manager?: EntityManager): Promise<void> {

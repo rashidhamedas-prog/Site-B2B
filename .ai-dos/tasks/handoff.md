@@ -2,12 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-09-09T07:25:00Z — TASK-20260909-008 site_contents jsonb UPDATE
+## 2026-09-09T08:45:00Z — TASK-20260909-008 root cause corrected: outbox dedupe aborted the CMS transaction
+
+- nginx: `PUT /cms/admin/site-content?channel=RETAIL` 200 (2076 B new body) then `GET …/RETAIL/home` 200 always 1891 B (old). DB `updatedAt` frozen.
+- Proof: `omnichannel_outbox_events` has `668b9336…:site:1788877329333:cms.published:…:RETAIL` and RETAIL/home `updatedAt` epoch = `1788877329333`. Every save since re-created that key → 23505 caught in `OutboxService.enqueue` → Postgres tx already aborted → COMMIT silently rolled back → API echoed success.
+- CODE: `enqueue` = `INSERT … ON CONFLICT DO NOTHING RETURNING id` (`outboxInsertedId`); protects every transactional caller (orders, payments, inventory, blog). `upsertSiteContent` explicit `repository.update` + fresh dedupe key. Admin: keep `prepared` on regression, `cache: no-store`, `blocksRef`.
+- Ops note: first deploy attempt (SSH-bound auto-deploy) died at "Collecting build traces" and left api+web stopped ~15 min; brought back with `compose up -d`, then web built under `nohup setsid`. Use detached builds on this 3.8 GB box.
+- Next: rebuild api with outbox fix → operator saves once on RETAIL → DB `source=auto`, `updatedAt` moves, new outbox key.
+
+## 2026-09-09T07:25:00Z — TASK-20260909-008 site_contents jsonb UPDATE (superseded above)
 
 - Evidence: RETAIL/home (and WHOLESALE/home) `updatedAt` frozen since 2026-09-08; admin auto→manual UI snap after «ذخیره روی سایت تکی».
-- Root: TypeORM `save()` often no-ops jsonb; PUT echo shows new blocks, DB stays old, verify GET restores manual.
 - CODE: `upsertSiteContent` uses `repository.update` + bump `updatedAt`; admin keeps `prepared` on auto regression; `apiClient` `cache: no-store`; `AdminBlockEditor` blocksRef; drop legacy `products` on auto save.
-- Next: commit → master → rebuild api+web → operator save once on RETAIL; DB `source=auto` and `updatedAt` must move.
 
 ## 2026-09-09T01:20:00Z — TASK-20260909-006 CLOSED (fix live under tip `445f6e7`)
 

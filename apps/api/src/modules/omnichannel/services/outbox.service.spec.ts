@@ -6,6 +6,7 @@ import {
   MARK_FAILURE_SQL,
   buildDedupeKey,
   leaseRowsFromQueryResult,
+  outboxInsertedId,
   sanitizeOutboxPayload,
   type OutboxEnqueueInput,
 } from './outbox.service';
@@ -83,6 +84,12 @@ async function main() {
   assert(leased.map((r) => r.id).join(',') === 'a,b', 'UPDATE RETURNING tuple unwraps rows');
   assert(leaseRowsFromQueryResult([{ id: 'c' }]).map((r) => r.id).join(',') === 'c', 'plain row array still works');
   assert(leaseRowsFromQueryResult(null).length === 0, 'null is empty');
+
+  // ON CONFLICT DO NOTHING: duplicate dedupeKey returns no row → deduped, never a 23505
+  // that would abort the caller's transaction (site_contents save was rolled back on COMMIT).
+  assert(outboxInsertedId([{ id: 'evt-1' }]) === 'evt-1', 'inserted id returned');
+  assert(outboxInsertedId([]) === null, 'conflict yields null id');
+  assert(outboxInsertedId([[], 0]) === null, 'tuple form conflict yields null id');
 
   console.log('outbox.service.spec.ts: ok');
 }

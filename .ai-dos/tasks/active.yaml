@@ -18,6 +18,8 @@ tasks:
     file_claims:
       - "apps/api/src/modules/cms/cms.service.ts"
       - "apps/api/src/modules/cms/cms-write-channel.spec.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox.service.spec.ts"
       - "apps/web/src/components/admin/AdminSiteContent.tsx"
       - "apps/web/src/components/admin/AdminBlockEditor.tsx"
       - "apps/web/src/components/admin/AdminProductsBlockFields.tsx"
@@ -30,8 +32,10 @@ tasks:
       - ".ai-dos/project/status.md"
     notes: |
       RETAIL/home updatedAt frozen since 2026-09-08; UI reverts auto to manual after save.
-      Root: TypeORM save() skips jsonb UPDATE; PUT echo looks new, GET verify restores old.
+      Root (proven): outbox dedupe key reused prev updatedAt; swallowed 23505 aborted the shared
+      Postgres tx so COMMIT rolled back site_contents while PUT echoed success.
     acceptance_criteria:
+      - "OutboxService.enqueue never raises 23505 inside caller tx (ON CONFLICT DO NOTHING)"
       - "upsertSiteContent uses repository.update for existing rows"
       - "admin save does not snap UI back to manual when prepared was auto"
       - "apiClient GETs are cache no-store; products-block + cms-write-channel specs ok"

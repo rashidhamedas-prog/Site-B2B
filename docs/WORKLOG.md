@@ -1,9 +1,10 @@
 # Worklog — پلتفرم ترنم B2B
 
-## 2026-09-09 — برگشت UI محصولات برتر بعد از ذخیره تکی
+## 2026-09-09 — برگشت UI محصولات برتر بعد از ذخیره تکی (ریشه: outbox تراکنش را abort می‌کرد)
 
-- علت: `save()` روی `site_contents` اغلب UPDATE واقعی برای jsonb نمی‌زد؛ PUT در حافظه حالت جدید را برمی‌گرداند ولی DB همان دستی قدیمی می‌ماند و GET تأیید UI را برمی‌گرداند.
-- Fix: upsert با `repository.update` اجباری؛ ادمین بعد از ذخیره اگر auto→manual رجعت دید، `prepared` را نگه می‌دارد؛ `cache: no-store` روی apiClient؛ ویرایش بلوک با `blocksRef` تا source گم نشود.
+- شاهد nginx: هر `PUT site-content` با 200 و بدنهٔ جدید برمی‌گشت، ولی `GET` بعدی همیشه ۱۸۹۱ بایت قدیمی بود؛ `updatedAt` هر دو `home` از ۸ سپتامبر ثابت.
+- ریشه: کلید dedupe رویداد `cms.published` از `updatedAt` قبلی ساخته می‌شد. یک ذخیرهٔ بی‌تغییر (no-op) کلید را «مصرف» کرد؛ از آن به بعد هر ذخیره همان کلید را می‌ساخت → `23505` داخل تراکنش مشترک → خطا catch می‌شد اما Postgres تراکنش را abort کرده بود و `COMMIT` بی‌صدا ROLLBACK شد. در outbox رویداد `…:site:1788877329333` دقیقاً برابر `updatedAt` فعلی RETAIL/home است.
+- Fix: `OutboxService.enqueue` با `INSERT … ON CONFLICT DO NOTHING RETURNING id` (هیچ‌وقت تراکنش صدازننده را abort نمی‌کند — همهٔ سفارش/پرداخت/انبار/بلاگ هم پوشش می‌گیرند). `upsertSiteContent` با `repository.update` صریح و bump `updatedAt`. ادمین بعد از ذخیره اگر auto→manual رجعت دید `prepared` را نگه می‌دارد؛ `cache: no-store` روی apiClient؛ `blocksRef` در ادیتور.
 
 ## 2026-09-09 — کالای همکار (فاز ۲)
 
