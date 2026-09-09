@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T00:36:00Z — TASK-20260909-003 CLOSED live `a658caa`
+
+- Root: auto toggle set `source=auto` but left curated `productIds`; after reload UI looked manual again.
+- Live: VPS HEAD `a658caa`, health 200, web rebuilt. Operator: تب تکی → خودکار → ذخیره؛ لیست دستی باید خالی بماند و بعد از رفرش روی خودکار بماند.
+
 ## 2026-09-09T00:32:00Z — TASK-20260909-003 products auto source persist
 
 - Bug: retail admin «خودکار از کاتالوگ» did not stick after save because curated `productIds` stayed in the block JSON; UI/legacy inference showed manual again.

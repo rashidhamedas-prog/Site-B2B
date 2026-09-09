@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260909-003"
     title: "Persist products-block auto source (clear curated ids)"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260909-003"
     roles:
@@ -13,20 +13,12 @@ tasks:
     branch: "ai/TASK-20260909-003-products-auto-source"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-09T00:30:00Z"
-    heartbeat_at: "2026-09-09T00:30:00Z"
+    heartbeat_at: "2026-09-09T00:36:00Z"
+    closed_at: "2026-09-09T00:36:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/lib/cms/products-block.ts"
-      - "apps/web/src/lib/cms/products-block.spec.ts"
-      - "apps/web/src/components/admin/AdminProductsBlockFields.tsx"
-      - "apps/web/src/components/admin/AdminSiteContent.tsx"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Switching retail products block to auto left productIds in JSON; reload inferred/showed manual.
-      Fix: clear curated ids on auto save + setSource; prepareBlocksForSave on CMS put.
+      LIVE origin/master + VPS a658caa. Auto source clears productIds on save. Claims released.
     acceptance_criteria:
       - "Saving source=auto persists auto after reload (no leftover manual list)"
       - "Manual curated ids still save and drive catalog order"
