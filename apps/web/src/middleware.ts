@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { canEnterAdmin, readAdminGateCookies, readPortalGateCookies } from '@/lib/admin-session';
+import { canEnterAdmin, canEnterPartners, readAdminGateCookies, readPartnerGateCookies, readPortalGateCookies } from '@/lib/admin-session';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
 import { panelHostLockRedirect } from '@/lib/panel-host-lock';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
@@ -190,6 +190,25 @@ export function middleware(request: NextRequest) {
   const isAdminLogin = adminPath === '/admin/login';
   const isAdminRoute = adminPath.startsWith('/admin') && !isAdminLogin;
   const isPortalRoute = pathname.startsWith('/portal/dashboard');
+  const isPartnerLogin = adminPath === '/partners/login';
+  const isPartnerRoute = adminPath.startsWith('/partners') && !isPartnerLogin;
+
+  if (isPartnerLogin || isPartnerRoute) {
+    const withRobots = (res: NextResponse) => {
+      res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      return res;
+    };
+    if (isPartnerLogin) {
+      return withRobots(NextResponse.next());
+    }
+    const partnerSession = readPartnerGateCookies(request.cookies);
+    if (!partnerSession.token || !canEnterPartners(partnerSession.token)) {
+      const loginUrl = new URL('/partners/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return withRobots(NextResponse.redirect(loginUrl));
+    }
+    return withRobots(NextResponse.next());
+  }
 
   if (!isAdminRoute && !isPortalRoute) {
     const res = NextResponse.next();

@@ -12,10 +12,11 @@ import { RolesGuard } from './guards/roles.guard';
 import { UserEntity } from './entities/user.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
 import { OrderEntity } from '../order/entities/order.entity';
+import { VendorEntity } from '../vendor/entities/vendor.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity, CustomerEntity, OrderEntity]),
+    TypeOrmModule.forFeature([UserEntity, CustomerEntity, OrderEntity, VendorEntity]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],

@@ -9,7 +9,7 @@ import { isStaffRole } from '../staff-access';
 import { normalizePhone } from '../phone';
 import { safeScopedRedirect } from '../safe-redirect';
 
-interface LoginPayload { phone: string; password: string; purpose?: 'admin' | 'portal' | 'retail' | 'wholesale' }
+interface LoginPayload { phone: string; password: string; purpose?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor' }
 interface RegisterPayload { phone: string; password: string; ownerName: string; businessName: string; province: string; city: string; businessType?: string; notes?: string }
 
 export function useAuth() {
@@ -40,13 +40,21 @@ export function useAuth() {
         clearToken();
         throw new Error('این حساب به پنل مدیریت دسترسی ندارد');
       }
+      if (payload.purpose === 'vendor' && res.role !== 'VENDOR') {
+        clearToken();
+        throw new Error('این حساب همکار نیست');
+      }
       const scope = cookieScopeFromPurpose(payload.purpose);
       setToken(res.accessToken, res.role, scope);
       setIsLoggedIn(true);
       setRole(res.role);
       const params = new URLSearchParams(window.location.search);
-      const fallback = scope === 'admin' ? '/admin' : '/portal/dashboard';
-      const prefixes = scope === 'admin' ? (['/admin'] as const) : (['/portal'] as const);
+      const fallback = scope === 'admin' ? '/admin' : scope === 'vendor' ? '/partners' : '/portal/dashboard';
+      const prefixes = scope === 'admin'
+        ? (['/admin'] as const)
+        : scope === 'vendor'
+          ? (['/partners'] as const)
+          : (['/portal'] as const);
       const target = safeScopedRedirect(params.get('redirect'), fallback, prefixes);
       // Hard navigation ensures middleware sees auth cookies (router.push can race)
       window.location.href = target;

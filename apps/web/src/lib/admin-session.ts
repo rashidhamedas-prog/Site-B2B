@@ -11,8 +11,11 @@ export const RETAIL_TOKEN_KEY = 'taranom_retail_token';
 export const RETAIL_ROLE_KEY = 'taranom_retail_role';
 export const WHOLESALE_TOKEN_KEY = 'taranom_wholesale_token';
 export const WHOLESALE_ROLE_KEY = 'taranom_wholesale_role';
+export const VENDOR_TOKEN_KEY = 'taranom_vendor_token';
+export const VENDOR_ROLE_KEY = 'taranom_vendor_role';
 
-export type AuthCookieScope = 'admin' | 'retail' | 'wholesale';
+export type AuthCookieScope = 'admin' | 'retail' | 'wholesale' | 'vendor';
+export type ShopperCookieScope = 'retail' | 'wholesale';
 
 export type CookieGetter = {
   get(name: string): { value: string } | undefined;
@@ -35,13 +38,14 @@ export function readAdminGateCookies(cookies: CookieGetter): {
 export function cookieScopeFromPurpose(purpose?: string | null): AuthCookieScope {
   if (purpose === 'admin') return 'admin';
   if (purpose === 'retail') return 'retail';
+  if (purpose === 'vendor') return 'vendor';
   return 'wholesale';
 }
 
 export function shopperScopeFromLocation(
   pathname: string,
   hostname?: string | null,
-): Exclude<AuthCookieScope, 'admin'> {
+): ShopperCookieScope {
   if (pathname.startsWith('/portal')) return 'wholesale';
   if (
     pathname === '/account' ||
@@ -91,6 +95,22 @@ export function canEnterAdmin(
 
 export function isAdminAuthFailureMessage(message: string): boolean {
   return message.includes('فقط مدیر کل') || message.includes('دسترسی غیرمجاز');
+}
+
+export function canEnterPartners(token: string | null | undefined): boolean {
+  if (readJwtPurpose(token) !== 'vendor') return false;
+  const payloadRole = readJwtPayload(token)?.role;
+  return payloadRole === 'VENDOR';
+}
+
+export function readPartnerGateCookies(cookies: CookieGetter): {
+  token: string | undefined;
+  role: string | undefined;
+} {
+  return {
+    token: cookies.get(VENDOR_TOKEN_KEY)?.value,
+    role: cookies.get(VENDOR_ROLE_KEY)?.value,
+  };
 }
 
 export function readPortalGateCookies(cookies: CookieGetter): {

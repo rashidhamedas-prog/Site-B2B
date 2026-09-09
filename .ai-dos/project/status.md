@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260909-002** implementing vendor invite (phase 1) on `ai/TASK-20260909-001-vendor-invite` worktree `D:/proje/Site-B2B-vendor-invite`. Auth purpose `vendor`, invite-only, no storefront listing. Not live until merge/deploy + migration.
 - Last verified: 2026-09-09 — **TASK-20260909-001** implementing on `ai/TASK-20260909-001-retail-cms-cache`: dual-path retail revalidate + warm + HTML SWR clamp 60s + admin revalidate failure alert. Not live until merge/deploy.
 - Last verified: 2026-09-09 — **TASK-20260908-008 CLOSED** on `origin/master` + VPS `49e21a0`. CMS revalidate at `/admin/cms/revalidate` (307→login unauth; Nest no longer steals it). SKU `ids=` 3/3 on API; retail home HTML includes all 3 curated names. Health 200. Claims released.
 - Last verified: 2026-09-08 — **TASK-20260908-007** implementing in-person shipping (`IN_PERSON` / تحویل در محل) on `ai/TASK-20260908-007-in-person-shipping`. Fee 0. Did not touch 006 featured-products files.

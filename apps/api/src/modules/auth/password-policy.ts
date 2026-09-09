@@ -21,7 +21,8 @@ export function canSetPasswordWithoutCurrent(args: {
   isStaffRole: (role: string) => boolean;
 }): boolean {
   if (args.isStaffRole(args.dbRole)) return false;
-  if (args.purpose === 'admin') return false;
+  if (args.dbRole === 'VENDOR') return false;
+  if (args.purpose === 'admin' || args.purpose === 'vendor') return false;
   return args.hasOtpSession;
 }
 
@@ -31,7 +32,7 @@ export function canIssuePasswordReset(args: {
   isStaffRole: (role: string) => boolean;
 }): boolean {
   const { user, customer, isStaffRole } = args;
-  if (!user?.customerId || isStaffRole(user.role)) return false;
+  if (!user?.customerId || isStaffRole(user.role) || user.role === 'VENDOR') return false;
   if (!customer) return false;
   if (customer.status === 'BLOCKED' || customer.status === 'SUSPENDED') return false;
   return true;

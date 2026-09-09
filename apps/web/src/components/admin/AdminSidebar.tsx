@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell,
-  Warehouse, UserCog, LogOut, X, ChevronDown, CircleUser,
-  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2, Megaphone,
+  Warehouse,   UserCog, LogOut, X, ChevronDown, CircleUser,
+  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2, Megaphone, Handshake,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { clearToken, getRole } from '@/lib/auth';
@@ -76,6 +76,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/account', icon: CircleUser, label: 'حساب من', module: 'account' },
       { href: '/admin/users', icon: UserCog, label: 'کاربران ادمین', module: 'users' },
+      { href: '/admin/partners', icon: Handshake, label: 'همکاران فروش', module: 'partners' },
       { href: '/admin/omnichannel', icon: Link2, label: 'کانال‌های انتشار', module: 'omnichannel' },
       { href: '/admin/settings', icon: Settings, label: 'تنظیمات', module: 'settings' },
     ],

@@ -99,12 +99,20 @@ assert(
 );
 assert(
   canSetPasswordWithoutCurrent({
-    dbRole: 'CUSTOMER',
-    purpose: 'storefront',
-    hasOtpSession: false,
+    dbRole: 'VENDOR',
+    purpose: 'vendor',
+    hasOtpSession: true,
     isStaffRole: isStaff,
   }) === false,
-  'password login cannot skip current',
+  'vendor cannot set via otp path',
+);
+assert(
+  canIssuePasswordReset({
+    user: { role: 'VENDOR', customerId: 'c1' },
+    customer: { status: 'ACTIVE' },
+    isStaffRole: isStaff,
+  }) === false,
+  'vendor never via public reset',
 );
 
 console.log('password-policy.spec.ts: OK');

@@ -8,6 +8,7 @@ import {
 const COMMON_DISALLOW = [
   '/admin/',
   '/portal/',
+  '/partners/',
   '/api/',
   '/cart',
   '/checkout',

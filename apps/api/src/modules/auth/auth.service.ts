@@ -15,6 +15,7 @@ import { randomBytes } from 'crypto';
 import { UserEntity } from './entities/user.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
 import { OrderEntity } from '../order/entities/order.entity';
+import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { NotificationService } from '../notification/notification.service';
@@ -33,6 +34,7 @@ import {
   resolveAuthPurpose,
   roleAfterCustomerLink,
 } from './staff-access';
+import { canVendorLogin, isVendorRole } from '../vendor/vendor-policy';
 import { canEnterRetailShopper, wholesalePortalDenial } from './shopper-channel';
 import {
   normalizeAddressList,
@@ -73,6 +75,8 @@ export class AuthService {
     private readonly customerRepo: Repository<CustomerEntity>,
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
+    @InjectRepository(VendorEntity)
+    private readonly vendorRepo: Repository<VendorEntity>,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
@@ -92,6 +96,10 @@ export class AuthService {
     });
 
     if (existingCustomer && !existingCustomer.deletedAt) {
+      throw new ConflictException('این شماره قبلاً ثبت شده است');
+    }
+
+    if (existingUser && !existingUser.deletedAt && isVendorRole(existingUser.role)) {
       throw new ConflictException('این شماره قبلاً ثبت شده است');
     }
 
@@ -246,6 +254,27 @@ export class AuthService {
       );
     }
 
+    if (purpose === 'vendor') {
+      if (!isVendorRole(user.role)) {
+        throw new UnauthorizedException('این حساب همکار نیست');
+      }
+      const vendor = await this.vendorRepo.findOne({ where: { userId: user.id } });
+      if (!vendor || !canVendorLogin(vendor.status) || !user.isActive) {
+        throw new UnauthorizedException('حساب همکار غیرفعال است');
+      }
+      if (vendor.status === 'INVITED') {
+        vendor.status = 'ACTIVE';
+        await this.vendorRepo.save(vendor);
+      }
+      user.lastLoginAt = new Date();
+      await this.userRepo.save(user);
+      return this.issueSession(user, purpose, vendor.id);
+    }
+
+    if (isVendorRole(user.role)) {
+      throw new UnauthorizedException('برای ورود همکار از صفحه همکاران استفاده کنید');
+    }
+
     if (purpose === 'wholesale' || purpose === 'retail') {
       if (isStaffRole(user.role)) {
         await this.ensureShopperCustomer(user);
@@ -281,7 +310,13 @@ export class AuthService {
     return this.issueSession(user, purpose);
   }
 
-  private issueSession(user: UserEntity, requestedPurpose?: string) {
+  private async vendorIdForUser(userId: string, requestedPurpose?: string): Promise<string | undefined> {
+    if (resolveAuthPurpose(requestedPurpose) !== 'vendor') return undefined;
+    const vendor = await this.vendorRepo.findOne({ where: { userId } });
+    return vendor?.id;
+  }
+
+  private issueSession(user: UserEntity, requestedPurpose?: string, vendorId?: string) {
     const purpose = resolveAuthPurpose(requestedPurpose);
     const actingRole = actingRoleForPurpose(purpose, user.role);
     return {
@@ -291,10 +326,12 @@ export class AuthService {
         role: actingRole,
         customerId: user.customerId ?? undefined,
         purpose,
+        ...(purpose === 'vendor' && vendorId ? { vendorId } : {}),
       }),
       role: actingRole,
       customerId: user.customerId ?? undefined,
       purpose,
+      ...(purpose === 'vendor' && vendorId ? { vendorId } : {}),
     };
   }
 
@@ -420,9 +457,10 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.stampPasswordChange(userId, passwordHash);
     const fresh = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    const vendorId = await this.vendorIdForUser(fresh.id, purpose);
     return {
       message: 'رمز عبور با موفقیت تغییر یافت',
-      ...this.issueSession(fresh, purpose),
+      ...this.issueSession(fresh, purpose, vendorId),
     };
   }
 
@@ -531,9 +569,10 @@ export class AuthService {
     await this.stampPasswordChange(userId, passwordHash);
     await this.otpService.clearVerifiedSession(userId);
     const fresh = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    const vendorId = await this.vendorIdForUser(fresh.id, purpose);
     return {
       message: 'رمز عبور ذخیره شد',
-      ...this.issueSession(fresh, purpose),
+      ...this.issueSession(fresh, purpose, vendorId),
     };
   }
 
@@ -564,6 +603,10 @@ export class AuthService {
     const phone = normalizePhone(rawPhone);
     if (!/^09\d{9}$/.test(phone)) {
       throw new BadRequestException('شماره موبایل معتبر نیست');
+    }
+    const vendorUser = await this.userRepo.findOne({ where: { phone } });
+    if (vendorUser && isVendorRole(vendorUser.role)) {
+      throw new BadRequestException('از صفحه ورود همکاران استفاده کنید');
     }
 
     const isProd = this.config.get('NODE_ENV') === 'production';
@@ -601,6 +644,10 @@ export class AuthService {
   /** Retail (B2C) OTP — verify and issue JWT; never auto-approve inactive B2B. */
   async verifyRetailOtp(rawPhone: string, code: string, name?: string) {
     const phone = normalizePhone(rawPhone);
+    const existingVendor = await this.userRepo.findOne({ where: { phone } });
+    if (existingVendor && isVendorRole(existingVendor.role)) {
+      throw new UnauthorizedException('از صفحه ورود همکاران استفاده کنید');
+    }
 
     let otpName: string | undefined;
     try {

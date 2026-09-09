@@ -6,6 +6,7 @@ import {
   STOREFRONT_TOKEN_KEY,
   WHOLESALE_TOKEN_KEY,
   canEnterAdmin,
+  canEnterPartners,
   cookieScopeFromPurpose,
   isAdminAuthFailureMessage,
   isAdminPurposeToken,
@@ -71,6 +72,7 @@ assert.equal(canEnterAdmin(shopperJwt, 'ADMIN'), false, 'cookie ADMIN cannot lau
 assert.equal(canEnterAdmin(legacyAdminJwt, 'ADMIN'), false);
 assert.equal(canEnterAdmin(adminJwt, 'CUSTOMER'), true, 'admin JWT wins over stale cookie role');
 
+assert.equal(cookieScopeFromPurpose('vendor'), 'vendor');
 assert.equal(cookieScopeFromPurpose('admin'), 'admin');
 assert.equal(cookieScopeFromPurpose('retail'), 'retail');
 assert.equal(cookieScopeFromPurpose('portal'), 'wholesale');
@@ -95,5 +97,12 @@ const legacyPortal = readPortalGateCookies(
   }),
 );
 assert.equal(legacyPortal.token, 'legacy-jwt', 'legacy shopper cookie still opens portal');
+
+const vendorJwt = jwtWith({ purpose: 'vendor', role: 'VENDOR' });
+const vendorShopperJwt = jwtWith({ purpose: 'wholesale', role: 'VENDOR' });
+assert.equal(canEnterPartners(vendorJwt), true);
+assert.equal(canEnterPartners(adminJwt), false);
+assert.equal(canEnterPartners(vendorShopperJwt), false);
+assert.equal(canEnterPartners(shopperJwt), false);
 
 console.log('admin-session.spec.ts ok');

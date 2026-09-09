@@ -5,12 +5,16 @@ import {
   RETAIL_TOKEN_KEY,
   STOREFRONT_ROLE_KEY,
   STOREFRONT_TOKEN_KEY,
+  VENDOR_ROLE_KEY,
+  VENDOR_TOKEN_KEY,
   WHOLESALE_ROLE_KEY,
   WHOLESALE_TOKEN_KEY,
   cookieScopeFromPurpose,
   isAdminPurposeToken,
   shopperScopeFromLocation,
+  canEnterPartners,
   type AuthCookieScope,
+  type ShopperCookieScope,
 } from './admin-session';
 import { isStaffRole } from './staff-access';
 
@@ -18,6 +22,10 @@ export type { AuthCookieScope };
 
 function isBrowserAdminPath(): boolean {
   return typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
+}
+
+function isBrowserVendorPath(): boolean {
+  return typeof window !== 'undefined' && window.location.pathname.startsWith('/partners');
 }
 
 function writeCookie(name: string, value: string, maxAge: number) {
@@ -29,12 +37,12 @@ function clearCookie(name: string) {
   document.cookie = `${name}=; path=/; max-age=0`;
 }
 
-function currentShopperScope(): Exclude<AuthCookieScope, 'admin'> {
+function currentShopperScope(): ShopperCookieScope {
   if (typeof window === 'undefined') return 'wholesale';
   return shopperScopeFromLocation(window.location.pathname, window.location.hostname);
 }
 
-function shopperKeys(scope: Exclude<AuthCookieScope, 'admin'>) {
+function shopperKeys(scope: ShopperCookieScope) {
   if (scope === 'retail') {
     return { token: RETAIL_TOKEN_KEY, role: RETAIL_ROLE_KEY };
   }
@@ -47,12 +55,16 @@ export function getToken(): string | null {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     return isAdminPurposeToken(token) ? token : null;
   }
+  if (isBrowserVendorPath()) {
+    const token = localStorage.getItem(VENDOR_TOKEN_KEY);
+    return canEnterPartners(token) ? token : null;
+  }
   const keys = shopperKeys(currentShopperScope());
   return localStorage.getItem(keys.token) || localStorage.getItem(STOREFRONT_TOKEN_KEY);
 }
 
 export function setToken(token: string, role: string, scope?: AuthCookieScope | 'storefront') {
-  const resolved: AuthCookieScope = scope === 'admin' || scope === 'retail' || scope === 'wholesale'
+  const resolved: AuthCookieScope = scope === 'admin' || scope === 'retail' || scope === 'wholesale' || scope === 'vendor'
     ? scope
     : cookieScopeFromPurpose(scope);
   const maxAge = 7 * 24 * 60 * 60;
@@ -61,6 +73,13 @@ export function setToken(token: string, role: string, scope?: AuthCookieScope | 
     localStorage.setItem(ADMIN_ROLE_KEY, role);
     writeCookie(ADMIN_TOKEN_KEY, token, maxAge);
     writeCookie(ADMIN_ROLE_KEY, role, maxAge);
+    return;
+  }
+  if (resolved === 'vendor') {
+    localStorage.setItem(VENDOR_TOKEN_KEY, token);
+    localStorage.setItem(VENDOR_ROLE_KEY, role);
+    writeCookie(VENDOR_TOKEN_KEY, token, maxAge);
+    writeCookie(VENDOR_ROLE_KEY, role, maxAge);
     return;
   }
   const keys = shopperKeys(resolved);
@@ -78,6 +97,13 @@ export function clearToken() {
     clearCookie(ADMIN_ROLE_KEY);
     return;
   }
+  if (typeof window !== 'undefined' && isBrowserVendorPath()) {
+    localStorage.removeItem(VENDOR_TOKEN_KEY);
+    localStorage.removeItem(VENDOR_ROLE_KEY);
+    clearCookie(VENDOR_TOKEN_KEY);
+    clearCookie(VENDOR_ROLE_KEY);
+    return;
+  }
   const keys = shopperKeys(currentShopperScope());
   localStorage.removeItem(keys.token);
   localStorage.removeItem(keys.role);
@@ -93,6 +119,9 @@ export function getRole(): string | null {
   if (typeof window === 'undefined') return null;
   if (isBrowserAdminPath()) {
     return localStorage.getItem(ADMIN_ROLE_KEY);
+  }
+  if (isBrowserVendorPath()) {
+    return localStorage.getItem(VENDOR_ROLE_KEY);
   }
   const keys = shopperKeys(currentShopperScope());
   return localStorage.getItem(keys.role) || localStorage.getItem(STOREFRONT_ROLE_KEY);

@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { compiledMigrationFiles } from './typeorm-migration-files';
 import { CustomerEntity } from '../modules/customer/entities/customer.entity';
 import { UserEntity } from '../modules/auth/entities/user.entity';
+import { VendorEntity } from '../modules/vendor/entities/vendor.entity';
 import { ProductEntity } from '../modules/product/entities/product.entity';
 import { ProductVariantEntity } from '../modules/product/entities/product-variant.entity';
 import { VariantColorEntity } from '../modules/product/entities/variant-color.entity';
@@ -71,7 +72,7 @@ import {
 import { assertProductionDbSyncSafe, typeormSynchronizeEnabled } from './db-sync';
 
 export const RUNTIME_TYPEORM_ENTITIES = [
-    UserEntity, CustomerEntity,
+    UserEntity, VendorEntity, CustomerEntity,
     CategoryEntity,
     CollectionEntity,
     ProductEntity, ProductVariantEntity, VariantColorEntity, VariantSizeEntity,

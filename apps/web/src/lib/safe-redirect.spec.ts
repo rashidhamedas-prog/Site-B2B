@@ -15,6 +15,8 @@ assert(safeScopedRedirect('/portal/dashboard/orders', '/portal/dashboard', ['/po
 assert(safeScopedRedirect('/admin/settings', '/portal/dashboard', ['/portal']) === '/portal/dashboard', 'admin blocked on portal');
 assert(safeScopedRedirect('https://evil.com', '/portal/dashboard', ['/portal']) === '/portal/dashboard', 'absolute blocked');
 assert(safeScopedRedirect('/portal/login', '/portal/dashboard', ['/portal']) === '/portal/dashboard', 'login loop blocked');
-assert(safeScopedRedirect('/admin/users', '/admin', ['/admin']) === '/admin/users', 'admin ok');
+assert(safeScopedRedirect('/partners', '/partners', ['/partners']) === '/partners', 'partners ok');
+assert(safeScopedRedirect('/partners/login', '/partners', ['/partners']) === '/partners', 'partners login loop blocked');
+assert(safeScopedRedirect('/admin/users', '/partners', ['/partners']) === '/partners', 'admin blocked on partners');
 
 console.log('safe-redirect.spec.ts: OK');

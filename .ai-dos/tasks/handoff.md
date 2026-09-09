@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T03:40:00Z — TASK-20260909-002 vendor invite phase 1 (in progress)
+
+- Worktree `D:/proje/Site-B2B-vendor-invite`, branch `ai/TASK-20260909-001-vendor-invite` (tracks origin/master). Did not mix with 007 shipping.
+- CODE: `vendors` table + invite/patch/rotate; JWT `purpose=vendor` + `vendorId`; RolesGuard blocks vendor from staff APIs; `/admin/partners` invite UI; `/partners` shell + login. Postage copy: partner pays real postage; customer shipping fee stays with Taranom.
+- Gates (observed): `vendor-policy.spec.ts` OK; `staff-access.spec.ts` OK; `password-policy.spec.ts` OK; `admin-session.spec.ts` ok; `safe-redirect.spec.ts` OK; `apps/api` tsc --noEmit 0; `apps/web` tsc --noEmit 0. Not committed. Migration `Vendors1757385600001` not applied.
+- Non-goals this slice: product vendorId, commission, order split, Telegram bot, PDP vendor badge.
+- Next: owner review; then commit/push/deploy + run migration. Pilot invite is after that.
+
 ## 2026-09-09T02:45:00Z — TASK-20260909-001 retail CMS cache root fix (shipping)
 
 - Root cause: retail public `/` is middleware-rewritten to `/retail`; year SWR kept HIT HTML on `.ir` even after path revalidate that only hit one shape; wholesale `/` matched App path so it looked fine.

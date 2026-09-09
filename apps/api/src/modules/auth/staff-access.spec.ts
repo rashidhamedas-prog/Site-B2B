@@ -23,6 +23,8 @@ for (const role of STAFF_ROLES) {
 
 assert(canAccessStaffModule('ADMIN', 'settings'), 'admin settings');
 assert(canAccessStaffModule('ADMIN', 'users'), 'admin users');
+assert(canAccessStaffModule('ADMIN', 'partners'), 'admin partners');
+assert(!canAccessStaffModule('SALES_REP', 'partners'), 'sales no partners');
 assert(canAccessStaffModule('SALES_REP', 'account'), 'staff can open own account');
 assert(!canAccessStaffModule('SALES_MANAGER', 'settings'), 'sales no settings');
 assert(canAccessStaffModule('SALES_MANAGER', 'crm'), 'sales crm');
@@ -32,7 +34,12 @@ assert(!canAccessStaffModule('CUSTOMER_SERVICE', 'catalog'), 'cs no catalog');
 assert(roleAfterCustomerLink('ADMIN') === 'ADMIN', 'otp must not demote admin');
 assert(roleAfterCustomerLink('SALES_REP') === 'SALES_REP', 'otp must not demote staff');
 assert(roleAfterCustomerLink('CUSTOMER') === 'CUSTOMER', 'customer stays customer');
-assert(roleAfterCustomerLink(undefined) === 'CUSTOMER', 'missing role is customer');
+assert(roleAfterCustomerLink('VENDOR') === 'VENDOR', 'otp must not demote vendor');
+assert(resolveAuthPurpose('vendor') === 'vendor', 'vendor purpose');
+assert(actingRoleForPurpose('vendor', 'VENDOR') === 'VENDOR', 'vendor acts as vendor');
+assert(actingRoleForPurpose('vendor', 'CUSTOMER') === 'CUSTOMER', 'non-vendor vendor-purpose is not elevated');
+assert(actingRoleForPurpose('wholesale', 'VENDOR') === 'CUSTOMER', 'vendor must not shop as vendor');
+assert(isShopperPurpose('vendor') === false, 'vendor is not shopper');
 assert(staffPhoneConflictMessage('ADMIN') === null, 'staff may also shop');
 assert(staffPhoneConflictMessage('CUSTOMER') === null, 'customer phone allowed');
 assert(resolveAuthPurpose('admin') === 'admin', 'admin purpose');

@@ -31,6 +31,7 @@ import { TorobModule } from './modules/torob/torob.module';
 import { OmnichannelModule } from './modules/omnichannel/omnichannel.module';
 import { CartModule } from './modules/cart/cart.module';
 import { CustomerMarketingModule } from './modules/customer-marketing/customer-marketing.module';
+import { VendorModule } from './modules/vendor/vendor.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { CustomerMarketingModule } from './modules/customer-marketing/customer-m
       useFactory: databaseConfig,
     }),
     AuthModule,
+    VendorModule,
     SearchModule,
     CustomerModule,
     CategoryModule,

@@ -26,6 +26,7 @@ export function isChannelExemptPath(pathname: string): boolean {
   return (
     pathname.startsWith('/admin') ||
     pathname.startsWith('/portal') ||
+    pathname.startsWith('/partners') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/media') ||

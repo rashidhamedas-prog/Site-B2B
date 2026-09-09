@@ -26,6 +26,7 @@ export const STAFF_MODULES = [
   'omnichannel',
   'settings',
   'users',
+  'partners',
   'account',
 ] as const;
 
@@ -65,10 +66,12 @@ export function canAccessStaffModule(
 
 /** Retail OTP / wholesale register must never demote a staff row to CUSTOMER. */
 export function roleAfterCustomerLink(currentRole: string | null | undefined): string {
-  return isStaffRole(currentRole) ? currentRole : 'CUSTOMER';
+  if (isStaffRole(currentRole)) return currentRole;
+  if (currentRole === 'VENDOR') return 'VENDOR';
+  return 'CUSTOMER';
 }
 
-export type AuthSessionPurpose = 'admin' | 'retail' | 'wholesale';
+export type AuthSessionPurpose = 'admin' | 'retail' | 'wholesale' | 'vendor';
 
 export function isShopperPurpose(purpose?: string | null): boolean {
   return purpose === 'retail' || purpose === 'wholesale' || purpose === 'storefront';
@@ -82,21 +85,29 @@ export function isRetailPurpose(purpose?: string | null): boolean {
   return purpose === 'retail';
 }
 
+export function isVendorPurpose(purpose?: string | null): boolean {
+  return purpose === 'vendor';
+}
+
 /**
  * Login omitted purpose = wholesale (portal form).
  * Legacy JWT `storefront` validates as wholesale so existing portal sessions keep working.
  * Retail OTP/login must send `retail` explicitly.
+ * Partner login must send `vendor` explicitly.
  */
-export function resolveAuthPurpose(requested?: 'admin' | 'portal' | 'retail' | 'wholesale' | string | null): AuthSessionPurpose {
+export function resolveAuthPurpose(requested?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor' | string | null): AuthSessionPurpose {
   const p = String(requested || '').toLowerCase();
   if (p === 'admin') return 'admin';
   if (p === 'retail') return 'retail';
+  if (p === 'vendor') return 'vendor';
   return 'wholesale';
 }
 
 /** Shopper session always acts as CUSTOMER so staff can buy without admin API access. */
 export function actingRoleForPurpose(purpose: AuthSessionPurpose, dbRole: string): string {
-  return purpose === 'admin' ? dbRole : 'CUSTOMER';
+  if (purpose === 'admin') return dbRole;
+  if (purpose === 'vendor') return dbRole === 'VENDOR' ? 'VENDOR' : 'CUSTOMER';
+  return 'CUSTOMER';
 }
 
 /** Staff may also shop. Keep for older call sites — no longer blocks. */

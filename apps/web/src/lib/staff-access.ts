@@ -26,6 +26,7 @@ export const STAFF_MODULES = [
   'omnichannel',
   'settings',
   'users',
+  'partners',
   'account',
 ] as const;
 
@@ -66,6 +67,7 @@ export function canAccessStaffModule(
 const PATH_MODULE: Array<{ prefix: string; exact?: boolean; module: StaffModule }> = [
   { prefix: '/admin/account', module: 'account' },
   { prefix: '/admin/users', module: 'users' },
+  { prefix: '/admin/partners', module: 'partners' },
   { prefix: '/admin/settings', module: 'settings' },
   { prefix: '/admin/omnichannel', module: 'omnichannel' },
   { prefix: '/admin/reports', module: 'reports' },

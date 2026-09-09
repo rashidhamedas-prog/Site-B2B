@@ -21,6 +21,6 @@ export function safeScopedRedirect(
     return candidate.startsWith(`${prefix}/`) || candidate.startsWith(`${prefix}?`) || candidate.startsWith(`${prefix}#`);
   });
   if (!allowed) return fallback;
-  if (candidate.startsWith('/portal/login') || candidate.startsWith('/admin/login')) return fallback;
+  if (candidate.startsWith('/portal/login') || candidate.startsWith('/admin/login') || candidate.startsWith('/partners/login')) return fallback;
   return candidate;
 }
