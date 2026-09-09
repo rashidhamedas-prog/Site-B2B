@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T12:45:00Z — TASK-20260909-015 CLOSED live `715fce6`
+
+- Deploy complete; `vendor_ledger_entries` + `deliveredAt`. Health 200. Claims released.
+- Next optional: admin payout marking PAID; Telegram partner bot.
+
 ## 2026-09-09T12:40:00Z — TASK-20260909-016 wholesale promo 1920x560 contain
 
 - Owner asked for 1920×560 at 24:7 with no detail change and higher quality.
