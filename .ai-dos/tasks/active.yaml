@@ -17,7 +17,7 @@ tasks:
     depends_on:
       - "TASK-20260909-014"
     file_claims:
-      - "apps/api/src/database/migrations/20260909-015-vendor-ledger.ts"
+      - "apps/api/src/database/migrations/20260909-016-vendor-ledger.ts"
       - "apps/api/src/modules/vendor/entities/vendor-ledger-entry.entity.ts"
       - "apps/api/src/modules/vendor/vendor-ledger-policy.ts"
       - "apps/api/src/modules/vendor/vendor-ledger-policy.spec.ts"

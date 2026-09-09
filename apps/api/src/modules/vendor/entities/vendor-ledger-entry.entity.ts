@@ -9,8 +9,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { VendorEntity } from './vendor.entity';
-import { FulfillmentOrderEntity } from '../order/entities/fulfillment-order.entity';
-import { OrderEntity } from '../order/entities/order.entity';
+import { FulfillmentOrderEntity } from '../../order/entities/fulfillment-order.entity';
+import { OrderEntity } from '../../order/entities/order.entity';
 
 @Entity('vendor_ledger_entries')
 @Index(['vendorId'])
