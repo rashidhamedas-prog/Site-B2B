@@ -47,26 +47,30 @@ function WholesaleHeroMedia({
   className: string;
   priority: boolean;
 }) {
-  if (priority && isLocalStaticAsset(src)) {
+  // Local promo + product plates are native 1920×560 WebP. Optimizer q=75
+  // was recompressing every slide after the first and dropping sharpness.
+  if (isLocalStaticAsset(src)) {
     const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
     return (
       <>
-        {mobile ? (
-          <>
-            <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
-            <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
-          </>
-        ) : (
-          <link rel="preload" as="image" href={src} fetchPriority="high" />
-        )}
+        {priority ? (
+          mobile ? (
+            <>
+              <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
+              <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
+            </>
+          ) : (
+            <link rel="preload" as="image" href={src} fetchPriority="high" />
+          )
+        ) : null}
         <picture>
           {mobile ? <source media="(max-width: 767px)" srcSet={mobile} /> : null}
-          {/* Local static WebP — skip Next optimizer so LCP is not a JPEG transcode MISS. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={alt}
-            fetchPriority="high"
+            fetchPriority={priority ? 'high' : 'auto'}
+            loading={priority ? 'eager' : 'lazy'}
             decoding="async"
             className={`absolute inset-0 h-full w-full ${className}`}
           />

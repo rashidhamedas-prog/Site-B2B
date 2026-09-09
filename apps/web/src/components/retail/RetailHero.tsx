@@ -44,26 +44,30 @@ function RetailHeroMedia({
   className: string;
   priority: boolean;
 }) {
-  if (priority && isLocalStaticAsset(src)) {
+  // All local hero plates are already 1920×560 WebP. Next optimizer q=75
+  // re-encodes slides 1+ and is what made remaining banners look soft.
+  if (isLocalStaticAsset(src)) {
     const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
     return (
       <>
-        {mobile ? (
-          <>
-            <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
-            <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
-          </>
-        ) : (
-          <link rel="preload" as="image" href={src} fetchPriority="high" />
-        )}
+        {priority ? (
+          mobile ? (
+            <>
+              <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
+              <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
+            </>
+          ) : (
+            <link rel="preload" as="image" href={src} fetchPriority="high" />
+          )
+        ) : null}
         <picture>
           {mobile ? <source media="(max-width: 767px)" srcSet={mobile} /> : null}
-          {/* Local static WebP — skip Next optimizer (no JPEG transcode, no empty preload). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={alt}
-            fetchPriority="high"
+            fetchPriority={priority ? 'high' : 'auto'}
+            loading={priority ? 'eager' : 'lazy'}
             decoding="async"
             className={`absolute inset-0 h-full w-full ${className}`}
           />

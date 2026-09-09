@@ -53,7 +53,7 @@ GO for merge/deploy. Field CWV and GSC not re-measured.
 
 ## 2026-09-09 quality pass (1920×560)
 
-Owner asked for native `1920×560` (24:7) and higher quality, applied to both supplied retail plates and the remaining wholesale promo + product overlay heroes. Source chat JPEGs are 1024×409; export is Lanczos cover + WebP q92 (no artwork redraw). Migration `HeroArtwork1920Quality1757430000015` remaps CMS URLs.
+Owner asked for native `1920×560` (24:7) and higher quality, applied to both supplied retail plates and the remaining wholesale promo + product overlay heroes. Source chat JPEGs are 1024×409; export is Lanczos cover + WebP q92 (no artwork redraw). CMS URLs remapped live. Remaining slides were still going through Next optimizer `q=75`; local static heroes now skip it on every slide.
 
 ## Measurement and next review
 
