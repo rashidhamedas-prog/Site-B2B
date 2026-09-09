@@ -17,9 +17,9 @@ const legacyCompanies = [
 ];
 
 const fromLegacy = resolveChannelCompanies({ companies: legacyCompanies }, 'WHOLESALE');
-assert.equal(fromLegacy.length, 3);
+assert.equal(fromLegacy.length, 2);
 assert.equal(fromLegacy[1].isActive, false);
-assert.equal(fromLegacy[2].id, IN_PERSON_ID);
+assert.equal(fromLegacy.some((c) => c.id === IN_PERSON_ID), false);
 assert.equal(resolveChannelCompanies({ companies: legacyCompanies }, 'RETAIL')[0].id, 'PISHTAZ');
 assert.equal(
   resolveChannelCompanies({ companies: legacyCompanies }, 'RETAIL').length,
@@ -35,8 +35,26 @@ const split = resolveChannelCompanies(
   },
   'RETAIL',
 );
+assert.equal(split.length, 1);
 assert.equal(split[0].id, 'TIPAX');
-assert.equal(split.some((c) => c.id === IN_PERSON_ID), true);
+assert.equal(split.some((c) => c.id === IN_PERSON_ID), false);
+
+const retailWithoutPickup = resolveChannelCompanies(
+  {
+    retail: {
+      companies: [
+        { id: 'PISHTAZ', label: 'پست پیشتاز', isActive: true, sort: 10 },
+        { id: 'TIPAX', label: 'تیپاکس', isActive: true, sort: 20 },
+      ],
+    },
+  },
+  'RETAIL',
+);
+assert.equal(retailWithoutPickup.map((c) => c.id).join(','), 'PISHTAZ,TIPAX');
+
+const retailEmptySaved = resolveChannelCompanies({ retail: { companies: [] } }, 'RETAIL');
+assert.equal(retailEmptySaved.length, 0);
+
 assert.equal(
   resolveChannelCompanies(
     {
@@ -57,6 +75,7 @@ assert.equal(isInPersonMethod('PISHTAZ'), false);
 
 const empty = resolveChannelCompanies({}, 'WHOLESALE');
 assert.equal(empty[0].id, DEFAULT_WHOLESALE_COMPANIES[0].id);
+assert.ok(empty.some((c) => c.id === IN_PERSON_ID));
 
 const legacyPost = resolveShippingPost({
   enabled: true,

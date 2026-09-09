@@ -78,8 +78,10 @@ export const DEFAULT_SHIPPING_POST: ShippingPostChannel = {
 export function normalizeCompanies(
   raw: unknown,
   fallback: ShippingCompany[],
+  opts?: { allowEmpty?: boolean },
 ): ShippingCompany[] {
   const list = Array.isArray(raw) ? raw : null;
+  if (list && list.length === 0 && opts?.allowEmpty) return [];
   const source = list && list.length ? list : fallback;
   return source
     .map((c: any, i: number) => ({
@@ -91,24 +93,25 @@ export function normalizeCompanies(
     .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 }
 
+/**
+ * Saved company lists are authoritative. IN_PERSON is only in DEFAULT_* so a
+ * first-time / missing config still offers pickup — never re-inserted after the
+ * operator deletes it from a stored list.
+ */
 export function resolveChannelCompanies(
   shipping: Record<string, any> | undefined,
   channel: SaleChannel,
 ): ShippingCompany[] {
   const s = shipping && typeof shipping === 'object' ? shipping : {};
+  const fallback = channel === 'RETAIL' ? DEFAULT_RETAIL_COMPANIES : DEFAULT_WHOLESALE_COMPANIES;
   const nested = channel === 'RETAIL' ? s.retail?.companies : s.wholesale?.companies;
-  if (Array.isArray(nested) && nested.length) {
-    return ensureInPersonCompany(
-      normalizeCompanies(
-        nested,
-        channel === 'RETAIL' ? DEFAULT_RETAIL_COMPANIES : DEFAULT_WHOLESALE_COMPANIES,
-      ),
-    );
+  if (Array.isArray(nested)) {
+    return normalizeCompanies(nested, fallback, { allowEmpty: true });
   }
-  if (channel === 'WHOLESALE') {
-    return ensureInPersonCompany(normalizeCompanies(s.companies, DEFAULT_WHOLESALE_COMPANIES));
+  if (channel === 'WHOLESALE' && Array.isArray(s.companies)) {
+    return normalizeCompanies(s.companies, DEFAULT_WHOLESALE_COMPANIES, { allowEmpty: true });
   }
-  return ensureInPersonCompany(normalizeCompanies(null, DEFAULT_RETAIL_COMPANIES));
+  return normalizeCompanies(null, fallback);
 }
 
 function asPositiveInt(value: unknown, fallback: number): number {

@@ -1,5 +1,38 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-005"
+    title: "Honor deleted retail shipping methods (stop IN_PERSON rehydrate)"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260909-005"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-005"
+      implementer: "cursor:implementer-TASK-20260909-005"
+      reviewer: "self-review-saved-list-authoritative"
+      security: "self-review-admin-settings-no-auth-change"
+    branch: "ai/TASK-20260909-005-honor-shipping-delete"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-09T00:45:00Z"
+    heartbeat_at: "2026-09-09T00:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/settings/shipping-channel.ts"
+      - "apps/api/src/modules/settings/shipping-channel.spec.ts"
+      - "apps/web/src/lib/shipping-methods.ts"
+      - "apps/web/src/lib/shipping-methods.spec.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "docs/reports/2026-09-09-shipping-delete-honor.md"
+    notes: |
+      ID 005 because 004 on master is vendor-invite. Reclaimed shipping-channel + AdminSettings + shipping-methods from stale TASK-20260908-007.
+      007 force-hydrated IN_PERSON into every saved list, so delete+save on retail never stuck.
+      Checkout pages not claimed; they already consume GET /shipping/methods.
+      Governance overlap with TASK-20260909-004: active.yaml / handoff.md only.
+    acceptance_criteria:
+      - "Saved retail companies without IN_PERSON are returned without IN_PERSON"
+      - "Empty saved retail companies array stays empty (not replaced by defaults)"
+      - "Missing retail config still uses defaults including IN_PERSON"
+      - "Admin load does not replace a saved list with DEFAULT_RETAIL_COMPANIES"
+      - "shipping-channel spec and shipping-methods spec pass"
   - id: "TASK-20260909-004"
     title: "Vendor invite + partner JWT isolation (phase 1)"
     status: "in_progress"
@@ -183,7 +216,8 @@ tasks:
     claimed_at: "2026-09-08T15:25:00Z"
     heartbeat_at: "2026-09-08T15:25:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/settings/shipping-channel.ts"
       - "apps/api/src/modules/settings/shipping-channel.spec.ts"
       - "apps/api/src/modules/shipping/shipping.service.ts"
@@ -196,8 +230,8 @@ tasks:
       - "apps/web/src/app/checkout/page.tsx"
       - "docs/WORKLOG.md"
     notes: |
-      Builtin IN_PERSON (تحویل در محل) for both channels. Quote fee 0. Hydrate into saved company lists if missing.
-      Governance overlap with TASK-20260908-006: active.yaml/handoff/status only.
+      Builtin IN_PERSON shipped. Hydrate-if-missing blocked operator delete on retail.
+      Shipping claims released 2026-09-09 to TASK-20260909-005 (stale heartbeat; same worktree).
     acceptance_criteria:
       - "Admin shipping companies include تحویل در محل for retail and wholesale"
       - "GET /shipping/methods?channel= includes IN_PERSON when not already present"

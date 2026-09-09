@@ -29,8 +29,6 @@ export function resolveShippingMethods(
   loaded: ShippingMethodOption[] | null | undefined,
   fallback: ShippingMethodOption[],
 ): ShippingMethodOption[] {
-  const list = Array.isArray(loaded)
-    ? loaded.filter((m) => m && typeof m.id === 'string' && typeof m.label === 'string' && m.id.trim())
-    : [];
-  return list.length ? list : fallback;
+  if (!Array.isArray(loaded)) return fallback;
+  return loaded.filter((m) => m && typeof m.id === 'string' && typeof m.label === 'string' && m.id.trim());
 }

@@ -111,14 +111,14 @@ export function AdminSettings() {
       const retail = {
         ...retailDefaults,
         ...(ship.retail ?? {}),
-        companies: ship.retail?.companies?.length ? ship.retail.companies : DEFAULT_RETAIL_COMPANIES,
+        companies: Array.isArray(ship.retail?.companies) ? ship.retail.companies : DEFAULT_RETAIL_COMPANIES,
       };
       const wholesale = {
         ...wholesaleDefaults,
         ...(ship.wholesale ?? {}),
-        companies: ship.wholesale?.companies?.length
+        companies: Array.isArray(ship.wholesale?.companies)
           ? ship.wholesale.companies
-          : (ship.companies?.length ? ship.companies : DEFAULT_WHOLESALE_COMPANIES),
+          : (Array.isArray(ship.companies) ? ship.companies : DEFAULT_WHOLESALE_COMPANIES),
       };
       const post = res.shippingPost ?? { retail: DEFAULT_POST, wholesale: DEFAULT_POST };
       setData({
@@ -264,6 +264,7 @@ export function AdminSettings() {
           retail: data.shippingPost.retail,
           wholesale: data.shippingPost.wholesale,
         });
+        await load();
       } else if (tab === 'sms') {
         await apiClient.put('/settings/admin/sms', data.sms);
         await apiClient.put('/settings/admin/smsOps', data.smsOps);

@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T00:55:00Z — TASK-20260909-005 honor deleted retail shipping methods
+
+- Owner: deleting «تحویل در محل» on retail settings + save did not stick and still showed on .ir checkout.
+- Root cause: `resolveChannelCompanies` always `ensureInPersonCompany` (TASK-20260908-007). GET /settings and GET /shipping/methods re-inserted IN_PERSON. Admin client also replaced empty/missing lists via `.length` with DEFAULT_RETAIL_COMPANIES. Checkout `resolveShippingMethods([])` used the IN_PERSON fallback.
+- Reclaimed shipping-channel + AdminSettings + shipping-methods from stale 007. Did not edit checkout pages. ID 005 because 004 is vendor-invite. Governance overlap: active.yaml / handoff.md.
+- CODE: saved nested `retail.companies` / `wholesale.companies` are authoritative (empty allowed). Defaults (with IN_PERSON) only when the list was never saved.
+- Next: specs + deploy; verify GET /shipping/methods?channel=RETAIL after delete+save.
+
 ## 2026-09-09T03:40:00Z — TASK-20260909-004 vendor invite phase 1 (shipping)
 
 - Worktree `D:/proje/Site-B2B-vendor-invite`, branch `ai/TASK-20260909-001-vendor-invite`. Did not mix with 007 shipping. ID 004 because 002 on master is payment-explain.
