@@ -103,8 +103,9 @@ export function normalizeProductsBlock(
   props: Record<string, unknown>,
   channel: ProductsBlockChannel,
 ): ProductsBlockQuery {
-  const productIds = parseProductIds(props.productIds ?? props.products);
-  const source = resolveProductsBlockSource(props, productIds);
+  const productIdsRaw = parseProductIds(props.productIds ?? props.products);
+  const source = resolveProductsBlockSource(props, productIdsRaw);
+  const productIds = source === 'manual' ? productIdsRaw : [];
   const fallbackLimit = channel === 'WHOLESALE' ? 6 : 12;
   const ctaLabel =
     asString(props.viewAllLabel).trim() ||
@@ -154,5 +155,39 @@ export function productsBlockCatalogParams(query: ProductsBlockQuery): {
     categoryId: query.categoryId || undefined,
     limit: query.limit,
     inStockOnly: query.inStockOnly,
+  };
+}
+
+/**
+ * Persist-ready props: auto mode must not keep curated ids, otherwise a missing
+ * `source` (or admin inference) snaps the block back to manual after reload.
+ */
+export function productsBlockPropsForSave(
+  props: Record<string, unknown>,
+  channel: ProductsBlockChannel,
+): Record<string, unknown> {
+  const query = normalizeProductsBlock(props, channel);
+  return {
+    ...props,
+    enabled: query.enabled,
+    source: query.source,
+    productIds: query.source === 'manual' ? serializeProductIds(query.productIds) : '',
+    sort: query.sort,
+    categoryId: query.categoryId || '',
+    limit: query.limit,
+    inStockOnly: query.inStockOnly,
+    eyebrow: query.eyebrow,
+    headline: query.headline,
+    body: query.body,
+    ctaLabel: query.ctaLabel,
+    viewAllLabel: query.ctaLabel,
+    ctaHref: query.ctaHref,
+    showPortalCta: query.showPortalCta,
+    portalBody: query.portalBody,
+    portalLoginLabel: query.portalLoginLabel,
+    portalRegisterLabel: query.portalRegisterLabel,
+    portalLoginHref: query.portalLoginHref,
+    portalRegisterHref: query.portalRegisterHref,
+    hideWhenEmpty: query.hideWhenEmpty,
   };
 }

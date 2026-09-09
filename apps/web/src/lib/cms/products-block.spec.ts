@@ -3,6 +3,7 @@ import {
   normalizeProductsBlock,
   parseProductIds,
   productsBlockCatalogParams,
+  productsBlockPropsForSave,
   serializeProductIds,
 } from './products-block';
 
@@ -52,6 +53,28 @@ const autoParams = productsBlockCatalogParams(
 assert(!autoParams.ids, 'auto has no ids');
 assert(autoParams.categoryId === a, 'auto keeps category');
 assert(autoParams.sort === 'views', 'views sort');
+
+const autoWithLeftoverIds = productsBlockCatalogParams(
+  normalizeProductsBlock({ source: 'auto', productIds: `${a},${b}`, sort: 'newest', limit: 8 }, 'RETAIL'),
+);
+assert(autoWithLeftoverIds.ids === undefined, 'explicit auto ignores leftover curated ids');
+
+const savedAuto = productsBlockPropsForSave(
+  { source: 'auto', productIds: `${a},${b}`, headline: 'همه محصولات', limit: 12 },
+  'RETAIL',
+);
+assert(savedAuto.source === 'auto', 'save keeps auto');
+assert(savedAuto.productIds === '', 'save clears curated ids in auto');
+
+const savedManual = productsBlockPropsForSave(
+  { source: 'manual', productIds: `${a},${b}`, limit: 12 },
+  'RETAIL',
+);
+assert(savedManual.source === 'manual', 'save keeps manual');
+assert(savedManual.productIds === `${a},${b}`, 'save keeps curated ids in manual');
+
+const reloaded = normalizeProductsBlock(savedAuto, 'RETAIL');
+assert(reloaded.source === 'auto', 'reload after auto save stays auto');
 
 assert(capProductsBlockLimit(0) === 1, 'min 1');
 assert(capProductsBlockLimit(200) === 12, 'max 12');

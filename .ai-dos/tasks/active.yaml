@@ -1,19 +1,19 @@
 schema_version: 1
 tasks:
-  - id: "TASK-20260909-002"
+  - id: "TASK-20260909-004"
     title: "Vendor invite + partner JWT isolation (phase 1)"
     status: "in_progress"
     risk: "high"
-    owner: "cursor:implementer-TASK-20260909-002"
+    owner: "cursor:implementer-TASK-20260909-004"
     roles:
-      architect: "cursor:implementer-TASK-20260909-002"
-      implementer: "cursor:implementer-TASK-20260909-002"
+      architect: "cursor:implementer-TASK-20260909-004"
+      implementer: "cursor:implementer-TASK-20260909-004"
       reviewer: "self-review-vendor-jwt-isolation"
       security: "self-review-vendor-purpose-adminonly"
     branch: "ai/TASK-20260909-001-vendor-invite"
     worktree: "D:/proje/Site-B2B-vendor-invite"
     claimed_at: "2026-09-09T03:30:00Z"
-    heartbeat_at: "2026-09-09T03:30:00Z"
+    heartbeat_at: "2026-09-09T03:55:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/vendor/"
@@ -51,8 +51,7 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Dropship invite-only. Retail .ir seller of record stays Taranom. No product vendorId / order split in this slice.
-      Overlap: middleware.ts also claimed by TASK-20260909-001 on featured-products worktree (CMS cache, already on master).
+      Dropship invite-only. ID 004 because TASK-20260909-002 on master is payment-explain.
       Do not touch TASK-20260908-007 shipping files.
     acceptance_criteria:
       - "Admin-only invite creates VENDOR user + vendors row; initialPassword returned once"
@@ -60,9 +59,76 @@ tasks:
       - "Vendor phone cannot OTP retail or wholesale-register; suspended cannot login"
       - "/partners is noindex + auth-gated; /admin/partners is ADMIN-only"
       - "vendor-policy, staff-access, password-policy, admin-session, safe-redirect specs + api/web tsc pass"
+  - id: "TASK-20260909-003"
+    title: "Persist products-block auto source (clear curated ids)"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260909-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-003"
+      implementer: "cursor:implementer-TASK-20260909-003"
+      reviewer: "self-review-products-block-source"
+      security: "self-review-cms-admin-only"
+    branch: "ai/TASK-20260909-003-products-auto-source"
+    worktree: "D:/proje/Site-B2B-featured-products"
+    claimed_at: "2026-09-09T00:30:00Z"
+    heartbeat_at: "2026-09-09T00:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/cms/products-block.ts"
+      - "apps/web/src/lib/cms/products-block.spec.ts"
+      - "apps/web/src/components/admin/AdminProductsBlockFields.tsx"
+      - "apps/web/src/components/admin/AdminSiteContent.tsx"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Switching retail products block to auto left productIds in JSON; reload inferred/showed manual.
+      Fix: clear curated ids on auto save + setSource; prepareBlocksForSave on CMS put.
+    acceptance_criteria:
+      - "Saving source=auto persists auto after reload (no leftover manual list)"
+      - "Manual curated ids still save and drive catalog order"
+      - "products-block spec and web tsc pass"
+  - id: "TASK-20260909-002"
+    title: "Plain-language checkout payment copy + official logos"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260909-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-002"
+      implementer: "cursor:implementer-TASK-20260909-002"
+      reviewer: "self-review-ui-no-payment-payload-change"
+      security: "self-review-payments-ui-only-no-api"
+    branch: "ai/TASK-20260909-002-payment-explain"
+    worktree: "D:/proje/Site-B2B-payment-explain"
+    claimed_at: "2026-09-08T23:55:00Z"
+    heartbeat_at: "2026-09-08T23:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/checkout-payment-ui.ts"
+      - "apps/web/src/lib/checkout-payment-ui.spec.ts"
+      - "apps/web/src/components/checkout/CheckoutChoiceList.tsx"
+      - "apps/web/src/components/checkout/PaymentBrandLogo.tsx"
+      - "apps/web/public/payments/zarinpal.svg"
+      - "apps/web/public/payments/digipay-mark.svg"
+      - "apps/web/public/payments/torobpay.png"
+      - "apps/web/public/payments/cash.svg"
+      - "apps/web/public/payments/installment.svg"
+      - "docs/reports/2026-09-09-payment-explain.md"
+    notes: |
+      UI-only: first-time-shopper copy under each method + official ZarinPal/DigiPay/Torob marks.
+      Did not touch order/payment adapters or checkout page files claimed by TASK-20260908-007.
+      Governance overlap with TASK-20260909-001: active.yaml / handoff.md only (registry).
+      WORKLOG.md claimed by 001 — recorded in report instead.
+    acceptance_criteria:
+      - "Each retail/wholesale payment option has a plain-language description and its own logo"
+      - "Official ZarinPal, DigiPay, Torob marks used; cash/installment have dedicated marks"
+      - "Eligible methods and order/payment payloads unchanged"
+      - "checkout-payment-ui spec and web tsc pass"
   - id: "TASK-20260909-001"
     title: "Root-fix retail CMS changes not appearing on .ir"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260909-001"
     roles:
@@ -73,23 +139,14 @@ tasks:
     branch: "ai/TASK-20260909-001-retail-cms-cache"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-09T02:20:00Z"
-    heartbeat_at: "2026-09-09T02:20:00Z"
+    heartbeat_at: "2026-09-09T00:16:00Z"
+    closed_at: "2026-09-09T00:16:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/lib/cms/revalidate-storefront.ts"
-      - "apps/web/src/lib/cms/revalidate-storefront.spec.ts"
-      - "apps/web/src/lib/cms/revalidate-client.ts"
-      - "apps/web/src/app/admin/cms/revalidate/route.ts"
-      - "apps/web/src/middleware.ts"
-      - "apps/web/src/components/admin/AdminSiteContent.tsx"
-      - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Wholesale CMS save visible; retail .ir stays on x-nextjs-cache HIT with year SWR.
-      Fix: revalidate app+public paths, warm /retail, clamp HTML SWR to 60s, surface revalidate errors.
+      LIVE origin/master includes 226170e (web image rebuilt under a95de11 tip).
+      Verified www.poshaktaranom.ir Cache-Control s-maxage=60, stale-while-revalidate=60 + RETAIL rewrite.
+      Claims released.
     acceptance_criteria:
       - "Retail CMS save invalidates /retail and public / paths and warms the retail home"
       - "Storefront HTML Cache-Control SWR is capped (~60s), not ~1 year"

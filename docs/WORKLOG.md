@@ -7,11 +7,17 @@
 - پنل همکار `/partners` ایندکس نمی‌شود و فقط حساب خودش را می‌بیند.
 - هنوز کالا/کمیسیون/شکستن سفارش/ربات وصل نشده. فاکتور و فروشنده روی ویترین همچنان ترنم است.
 
+## 2026-09-09 — ذخیره «منبع خودکار» بلوک محصولات
+
+- با رفتن از دستی به خودکار، `productIds` در JSON می‌ماند و بعد از ریلود دوباره دستی دیده می‌شد.
+- Fix: روی auto شناسه‌های دستی پاک می‌شوند؛ قبل از PUT نرمال‌سازی `productsBlockPropsForSave`.
+
 ## 2026-09-09 — ریشهٔ عدم‌اعمال CMS روی تکی (.ir)
 
 - عمده آپدیت می‌شد؛ `.ir` روی `x-nextjs-cache: HIT` با `stale-while-revalidate≈1y` می‌ماند.
 - Fix: revalidate همزمان مسیر App (`/retail`) و URL عمومی (`/`)، warm داخلی بعد از ذخیره، و clamp هدر HTML ویترین به `s-maxage=60, stale-while-revalidate=60`.
 - ادمین اگر bust ناموفق باشد بعد از ذخیره موفق هشدار می‌دهد؛ یادآوری تب تکی/عمده جدا.
+- Live: `226170e` روی master؛ تأیید `www.poshaktaranom.ir` با `stale-while-revalidate=60` و کانال RETAIL. گزارش: `docs/reports/2026-09-09-retail-cms-cache.md`.
 
 ## 2026-09-09 — مسیر revalidate از زیر nginx API
 

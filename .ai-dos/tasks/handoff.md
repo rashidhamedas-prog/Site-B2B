@@ -2,13 +2,34 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-09-09T03:40:00Z — TASK-20260909-002 vendor invite phase 1 (in progress)
+## 2026-09-09T03:40:00Z — TASK-20260909-004 vendor invite phase 1 (shipping)
 
-- Worktree `D:/proje/Site-B2B-vendor-invite`, branch `ai/TASK-20260909-001-vendor-invite` (tracks origin/master). Did not mix with 007 shipping.
+- Worktree `D:/proje/Site-B2B-vendor-invite`, branch `ai/TASK-20260909-001-vendor-invite`. Did not mix with 007 shipping. ID 004 because 002 on master is payment-explain.
 - CODE: `vendors` table + invite/patch/rotate; JWT `purpose=vendor` + `vendorId`; RolesGuard blocks vendor from staff APIs; `/admin/partners` invite UI; `/partners` shell + login. Postage copy: partner pays real postage; customer shipping fee stays with Taranom.
-- Gates (observed): `vendor-policy.spec.ts` OK; `staff-access.spec.ts` OK; `password-policy.spec.ts` OK; `admin-session.spec.ts` ok; `safe-redirect.spec.ts` OK; `apps/api` tsc --noEmit 0; `apps/web` tsc --noEmit 0. Not committed. Migration `Vendors1757385600001` not applied.
+- Gates (observed): `vendor-policy.spec.ts` OK; `staff-access.spec.ts` OK; `password-policy.spec.ts` OK; `admin-session.spec.ts` ok; `safe-redirect.spec.ts` OK; `apps/api` tsc --noEmit 0; `apps/web` tsc --noEmit 0.
 - Non-goals this slice: product vendorId, commission, order split, Telegram bot, PDP vendor badge.
-- Next: owner review; then commit/push/deploy + run migration. Pilot invite is after that.
+
+## 2026-09-09T00:32:00Z — TASK-20260909-003 products auto source persist
+
+- Bug: retail admin «خودکار از کاتالوگ» did not stick after save because curated `productIds` stayed in the block JSON; UI/legacy inference showed manual again.
+- CODE: `productsBlockPropsForSave` clears ids when source=auto; AdminProductsBlockFields `setSource`; AdminSiteContent prepareBlocksForSave.
+- Gates: products-block.spec + web tsc ok. Shipping next.
+
+## 2026-09-09T00:16:00Z — TASK-20260909-001 CLOSED live (fix at `226170e`, tip `a95de11`)
+
+- Root: retail public `/` rewrites to `/retail`; year SWR kept HIT HTML on `.ir` while wholesale `/` matched App path.
+- Shipped: dual-path revalidate + warm `/retail`, middleware SWR clamp 60s, admin alert on bust failure.
+- Live check via VPS: `https://www.poshaktaranom.ir/` → `cache-control: public, s-maxage=60, stale-while-revalidate=60`, `x-taranom-channel: RETAIL`, `x-middleware-rewrite: /retail`. Health 200. Web image `2aba6eb34157`. Claims released.
+- Operator: save CMS under تب **تکی** (RETAIL). If edge was still on old year-SWR object, one hard refresh after this deploy clears it; new responses no longer advertise year SWR.
+
+## 2026-09-08T23:55:00Z — TASK-20260909-002 payment picker plain copy + logos
+
+- Owner asked for checkout payment explanations as if the shopper is ~15 and knows nothing, plus each method's own logo.
+- Claiming released payment-UI files from TASK-20260908-003. Not editing checkout pages claimed by TASK-20260908-007 in the other worktree. Intro is inside CheckoutChoiceList when legend is «روش پرداخت».
+- Overlap with TASK-20260909-001: `active.yaml` / `handoff.md` registry only. Did not edit `docs/WORKLOG.md` (001 claim).
+- CODE: plain copy in `checkout-payment-ui.ts`; official ZarinPal SVG, DigiPay mark, Torob icon; cash/installment local marks; logo tile stays white (brand colors not inverted).
+- Observed: `npx tsx src/lib/checkout-payment-ui.spec.ts` ok; `tsc --noEmit` (web) 0.
+- Next: commit/push/deploy. Browser checkout still needs a cart; copy is shared so retail+wholesale both pick it up.
 
 ## 2026-09-09T02:45:00Z — TASK-20260909-001 retail CMS cache root fix (shipping)
 
