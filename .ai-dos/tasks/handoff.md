@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T22:10:00Z — TASK-20260910-001 PDP guide cards (implementing)
+
+- Owner asked: rename «لینک‌های مرتبط» → «راهنما», move above توضیحات محصول, full-row cards with excerpt + uploadable image; wholesale related products like retail cards.
+- Reclaimed stale claims from TASK-20260906-003 (internal links LIVE, hb 2026-09-06), TASK-20260905-001 RetailProductDetail, TASK-20260826-001 ProductDetail + wholesale PDP page.
+- Architecture: additive `imageUrl` + `excerpt` on `product_internal_link`; read-path enrich from target product/category/blog; admin override wins. Storefront uses existing `WholesaleProductCard` (not retail prices).
+- Gates: internal-link-card 9 groups; resolver 16 checks; api tsc 0; web tsc 0.
+- Next: push master, migrate, deploy.
+
 ## 2026-09-09T22:05:00Z — TASK-20260910-020 retail professional heroes
 
 - Owner: two live `.ir` banners (DigiPay + Prima/Negin) are still soft; rebuild like wholesale.

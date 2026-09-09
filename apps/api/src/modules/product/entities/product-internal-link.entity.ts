@@ -54,6 +54,14 @@ export class ProductInternalLinkEntity {
   @Column({ type: 'text', nullable: true })
   title: string | null;
 
+  /** Optional admin override image for the PDP guide row. */
+  @Column({ type: 'text', nullable: true })
+  imageUrl: string | null;
+
+  /** Optional admin override short description for the PDP guide row. */
+  @Column({ type: 'text', nullable: true })
+  excerpt: string | null;
+
   @Column({ type: 'varchar', length: 12, default: 'dofollow' })
   rel: InternalLinkRel;
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler } from 'lucide-react';
@@ -147,9 +148,11 @@ function defaultColors(p: WholesaleProduct): string[] {
 export function ProductDetail({
   slug,
   initialProduct,
+  guide,
 }: {
   slug: string;
   initialProduct?: WholesaleProduct;
+  guide?: ReactNode;
 }) {
   const router = useRouter();
   const { addItem, count } = useCart();
@@ -655,6 +658,8 @@ export function ProductDetail({
             </div>
           </div>
         </div>
+
+        {guide ? <div className="mt-10">{guide}</div> : null}
 
         {specRows.length > 0 && (
           <div className="mt-10 card p-6">

@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-10 — **TASK-20260910-001 implementing** on `ai/TASK-20260910-001-pdp-guide-cards`. PDP guide rows + wholesale related cards. Not live until merge/deploy + migration `InternalLinkGuideCards1757462400001`.
 - Last verified: 2026-09-09 — **TASK-20260910-020 in progress** — retail DigiPay + Prima/Negin heroes recreated as 1920×560 professional artwork. Branch `ai/TASK-20260910-020-retail-pro-banners`. TASK-013 claims released (already live).
 - Last verified: 2026-09-09 — **TASK-20260909-019 CLOSED** on `origin/master` + VPS `9b99781`. Wholesale promo heroes recreated as 1920×560 professional artwork. Migration id=84. Live img `partnership-d8771aca17fe` 200 89936B. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-018 CLOSED** on `origin/master` + VPS `fe7ca05`. Admin mark AVAILABLE ledger as PAID. Health 200. Claims released. Next optional: Telegram partner bot.

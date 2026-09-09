@@ -1,10 +1,13 @@
 'use client';
 
-import { ChevronDown, ChevronUp, Link2, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ChevronDown, ChevronUp, ImagePlus, Link2, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import type { InternalLinkInput, InternalLinkRel } from '@/lib/hooks/useProducts';
 
 const ANCHOR_MAX = 60;
+const EXCERPT_MAX = 140;
 
 const REL_LABELS: Record<InternalLinkRel, string> = {
   dofollow: 'dofollow (عادی)',
@@ -33,6 +36,24 @@ export function ProductInternalLinkRow({
   onMove: (dir: -1 | 1) => void;
 }) {
   const ring = accent === 'retail' ? 'focus:ring-amber-400/30' : 'focus:ring-primary/30';
+  const { upload, uploading } = useImageUpload();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const preview = item.imageUrl || item.cardImageUrl || null;
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadError(null);
+    try {
+      const url = await upload(file);
+      onChange({ imageUrl: url });
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : 'خطا در آپلود تصویر');
+    }
+  };
+
   return (
     <li className="space-y-2 rounded-lg border border-gray-200 bg-white p-2.5">
       <div className="flex items-start gap-2">
@@ -66,6 +87,55 @@ export function ProductInternalLinkRow({
                 </option>
               ))}
             </select>
+          </div>
+          <textarea
+            value={item.excerpt || ''}
+            maxLength={EXCERPT_MAX}
+            rows={2}
+            onChange={(e) => onChange({ excerpt: e.target.value || null })}
+            placeholder="توضیح کوتاه راهنما (اگر خالی باشد از صفحه هدف برداشته می‌شود)"
+            className={cn(inputBase, ring, 'resize-none')}
+          />
+          <p className="text-[10px] text-gray-400">
+            {(item.excerpt || '').length.toLocaleString('fa-IR')} از {EXCERPT_MAX.toLocaleString('fa-IR')}
+          </p>
+          <div className="flex items-start gap-3">
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+              {preview ? (
+                <img src={preview} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-[10px] text-gray-400">
+                  بدون عکس
+                </span>
+              )}
+            </div>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onFile(e)} />
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                  آپلود عکس راهنما
+                </button>
+                {item.imageUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => onChange({ imageUrl: null })}
+                    className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] text-gray-500 hover:bg-red-50 hover:text-red-700"
+                  >
+                    حذف عکس سفارشی
+                  </button>
+                ) : null}
+              </div>
+              <p className="text-[10px] leading-relaxed text-gray-400">
+                اگر عکس نگذارید، تصویر محصول، دسته یا مقالهٔ هدف استفاده می‌شود.
+              </p>
+              {uploadError ? <p className="text-[11px] text-red-600">{uploadError}</p> : null}
+            </div>
           </div>
           <input
             type="text"

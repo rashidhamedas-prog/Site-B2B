@@ -64,6 +64,7 @@ import {
   type ResolvedLink,
 } from './internal-link-resolver';
 import type { InternalLinkView } from './dto/internal-link.dto';
+import { applyGuideOverrides, resolveInternalLinkCard } from './internal-link-card';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -782,6 +783,8 @@ export class ProductService {
       targetUrl: link.targetUrl,
       anchorText: link.anchorText,
       title: link.title,
+      imageUrl: link.imageUrl,
+      excerpt: link.excerpt,
       rel: link.rel as ProductInternalLinkEntity['rel'],
       sortOrder,
     }));
@@ -906,39 +909,106 @@ export class ProductService {
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
     if (!rows.length) return [];
-    const productTargetIds = [...new Set(rows.filter((r) => r.targetType === 'PRODUCT' && r.targetId).map((r) => r.targetId as string))];
+    const productTargetIds = [
+      ...new Set(rows.filter((r) => r.targetType === 'PRODUCT' && r.targetId).map((r) => r.targetId as string)),
+    ];
+    const categoryTargetIds = [
+      ...new Set(rows.filter((r) => r.targetType === 'CATEGORY' && r.targetId).map((r) => r.targetId as string)),
+    ];
+    const blogTargetIds = [
+      ...new Set(rows.filter((r) => r.targetType === 'BLOG' && r.targetId).map((r) => r.targetId as string)),
+    ];
+
     const productMap = new Map<string, ProductEntity>();
     if (productTargetIds.length) {
-      (await this.productRepo.find({ where: { id: In(productTargetIds) } })).forEach((p) => productMap.set(p.id, p));
+      (await this.productRepo.find({ where: { id: In(productTargetIds) } })).forEach((p) =>
+        productMap.set(p.id, p),
+      );
     }
+    const categoryMap = new Map<string, CategoryEntity>();
+    if (categoryTargetIds.length) {
+      (await this.categoryRepo.find({ where: { id: In(categoryTargetIds) } })).forEach((c) =>
+        categoryMap.set(c.id, c),
+      );
+    }
+    const blogMap = new Map<
+      string,
+      { slug: string; robotsIndex: boolean; coverImage: string | null; ogImage: string | null; excerpt: string | null }
+    >();
+    if (blogTargetIds.length) {
+      const blogRows: Array<{
+        id: string;
+        slug: string;
+        robotsIndex: boolean;
+        coverImage: string | null;
+        ogImage: string | null;
+        excerpt: string | null;
+      }> = await this.productRepo.manager.query(
+        `SELECT id, slug, "robotsIndex", "coverImage", "ogImage", excerpt FROM blog_posts WHERE id = ANY($1) AND channel = $2 AND status = 'PUBLISHED' AND "deletedAt" IS NULL`,
+        [blogTargetIds, channel],
+      );
+      blogRows.forEach((r) => blogMap.set(r.id, r));
+    }
+
     const views: InternalLinkView[] = [];
     for (const row of rows) {
       let targetUrl = row.targetUrl;
       if (row.targetType === 'PRODUCT' && row.targetId) {
         const target = productMap.get(row.targetId);
         if (!target) {
-          if (keepAll) views.push(this.toView(row));
+          if (keepAll) views.push(this.toView(row, channel));
           continue;
         }
         const visible = channel === 'RETAIL' ? target.showOnRetail !== false : target.showOnWholesale !== false;
         if (!keepAll && (!visible || !isPublicProductRow(target.status))) continue;
         targetUrl = buildInternalLinkUrl('PRODUCT', target.slug) || row.targetUrl;
       }
-      views.push({
-        id: row.id,
-        targetType: row.targetType,
-        targetId: row.targetId,
-        targetUrl,
-        anchorText: row.anchorText,
-        title: row.title,
-        rel: row.rel,
-        sortOrder: row.sortOrder,
-      });
+      views.push(this.toView({ ...row, targetUrl }, channel, productMap, categoryMap, blogMap));
     }
     return views;
   }
 
-  private toView(row: ProductInternalLinkEntity): InternalLinkView {
+  private toView(
+    row: ProductInternalLinkEntity,
+    channel: InternalLinkChannel,
+    productMap?: Map<string, ProductEntity>,
+    categoryMap?: Map<string, CategoryEntity>,
+    blogMap?: Map<
+      string,
+      { slug: string; robotsIndex: boolean; coverImage: string | null; ogImage: string | null; excerpt: string | null }
+    >,
+  ): InternalLinkView {
+    const fallbackTitle = row.anchorText || row.title;
+    let resolved = resolveInternalLinkCard({ channel, fallbackTitle });
+    if (row.targetType === 'PRODUCT' && row.targetId && productMap) {
+      const target = productMap.get(row.targetId);
+      if (target) {
+        resolved = resolveInternalLinkCard({
+          channel,
+          fallbackTitle,
+          product: { images: target.images, description: target.description, seoMeta: target.seoMeta },
+        });
+      }
+    } else if (row.targetType === 'CATEGORY' && row.targetId && categoryMap) {
+      const target = categoryMap.get(row.targetId);
+      if (target) {
+        resolved = resolveInternalLinkCard({
+          channel,
+          fallbackTitle,
+          category: target,
+        });
+      }
+    } else if (row.targetType === 'BLOG' && row.targetId && blogMap) {
+      const target = blogMap.get(row.targetId);
+      if (target) {
+        resolved = resolveInternalLinkCard({
+          channel,
+          fallbackTitle,
+          blog: target,
+        });
+      }
+    }
+    const card = applyGuideOverrides(resolved, { imageUrl: row.imageUrl, excerpt: row.excerpt });
     return {
       id: row.id,
       targetType: row.targetType,
@@ -946,6 +1016,10 @@ export class ProductService {
       targetUrl: row.targetUrl,
       anchorText: row.anchorText,
       title: row.title,
+      imageUrl: row.imageUrl,
+      excerpt: row.excerpt,
+      cardImageUrl: card.imageUrl,
+      cardExcerpt: card.excerpt,
       rel: row.rel,
       sortOrder: row.sortOrder,
     };

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsIn, IsNumber } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsIn, IsNumber, MaxLength } from 'class-validator';
 
 export const INTERNAL_LINK_TARGET_TYPES = ['PRODUCT', 'CATEGORY', 'BLOG', 'CUSTOM'] as const;
 export const INTERNAL_LINK_RELS = ['dofollow', 'nofollow', 'sponsored'] as const;
@@ -40,6 +40,18 @@ export class InternalLinkItemDto {
   @IsString()
   title?: string | null;
 
+  @ApiPropertyOptional({ description: 'تصویر راهنما (آپلود ادمین؛ اختیاری)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(700)
+  imageUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'توضیح کوتاه راهنما (اختیاری، حداکثر ۱۴۰ کاراکتر)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(180)
+  excerpt?: string | null;
+
   @ApiPropertyOptional({ enum: INTERNAL_LINK_RELS, default: 'dofollow' })
   @IsOptional()
   @IsIn(INTERNAL_LINK_RELS as unknown as string[])
@@ -59,6 +71,14 @@ export interface InternalLinkView {
   targetUrl: string;
   anchorText: string;
   title: string | null;
+  /** Admin override; empty means use the target page image. */
+  imageUrl: string | null;
+  /** Admin override; empty means use the target page excerpt. */
+  excerpt: string | null;
+  /** Merged display image (override or target). */
+  cardImageUrl: string | null;
+  /** Merged display excerpt (override or target). */
+  cardExcerpt: string | null;
   rel: string;
   sortOrder: number;
 }

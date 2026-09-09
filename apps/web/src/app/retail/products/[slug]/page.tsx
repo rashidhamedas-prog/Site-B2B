@@ -155,8 +155,14 @@ export default async function RetailProductPage({
       <RetailProductDetail
         product={product as any}
         initialVariantId={option.selected?.id}
+        guide={
+          <ProductInternalLinks
+            links={(product as { internalLinks?: never[] }).internalLinks}
+            tone="retail"
+            embedded
+          />
+        }
       />
-      <ProductInternalLinks links={(product as { internalLinks?: never[] }).internalLinks} />
     </>
   );
 }

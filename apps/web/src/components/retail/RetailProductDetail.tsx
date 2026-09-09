@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { Check, ChevronLeft, ChevronRight, Heart, ShoppingBag, Truck, X, ZoomIn } from 'lucide-react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
@@ -107,9 +107,11 @@ function PreOrderCountdown({ date }: { date: string }) {
 export function RetailProductDetail({
   product,
   initialVariantId,
+  guide,
 }: {
   product: Product;
   initialVariantId?: string;
+  guide?: ReactNode;
 }) {
   const boutique = useRetailSkin() === 'boutique';
   const addItem = useRetailCart((s) => s.addItem);
@@ -546,6 +548,10 @@ export function RetailProductDetail({
 
         </div>
       </div>
+
+      {guide ? (
+        <div className="mx-auto min-w-0 max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">{guide}</div>
+      ) : null}
 
       {body || product.modelInfo ? (
         <section className="mx-auto min-w-0 max-w-7xl space-y-4 px-4 pb-10 sm:px-6 lg:px-8" aria-label="توضیحات محصول">

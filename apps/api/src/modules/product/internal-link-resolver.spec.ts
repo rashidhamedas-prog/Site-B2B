@@ -61,6 +61,27 @@ assert(ok !== null, 'normalize ok');
 assert(ok?.targetType === 'PRODUCT', 'normalize targetType');
 assert(ok?.sortOrder === 2, 'normalize sortOrder');
 assert(ok?.rel === 'dofollow', 'normalize rel');
+assert(ok?.imageUrl === null, 'missing image stays null');
+assert(
+  normalizeInternalLinkInput({
+    targetType: 'PRODUCT',
+    targetUrl: '/p',
+    anchorText: 'x',
+    imageUrl: 'javascript:alert(1)',
+    excerpt: '<b>خلاصه راهنما</b>',
+  })?.imageUrl === null,
+  'javascript image dropped',
+);
+assert(
+  normalizeInternalLinkInput({
+    targetType: 'PRODUCT',
+    targetUrl: '/p',
+    anchorText: 'x',
+    imageUrl: '/uploads/guide.jpg',
+    excerpt: '<b>خلاصه راهنما</b>',
+  })?.excerpt === 'خلاصه راهنما',
+  'excerpt strips html',
+);
 assert(normalizeInternalLinkInput({ targetType: 'PRODUCT', targetUrl: '/p', anchorText: '' }) !== null, 'normalize accepts empty anchor (validate flags it)');
 assert(
   normalizeInternalLinkInput({ targetType: 'PRODUCT', targetUrl: '/p', anchorText: 'x'.repeat(ANCHOR_MAX + 1) }) !== null,

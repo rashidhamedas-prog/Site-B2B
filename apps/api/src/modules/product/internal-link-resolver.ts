@@ -2,6 +2,7 @@ import {
   INTERNAL_LINK_TARGET_TYPES,
   INTERNAL_LINK_RELS,
 } from './dto/internal-link.dto';
+import { LINK_EXCERPT_MAX, plainExcerpt, sanitizeGuideImageUrl } from './internal-link-card';
 
 export const MAX_INTERNAL_LINKS_PER_CHANNEL = 12;
 export const ANCHOR_MIN = 1;
@@ -14,6 +15,8 @@ export type InternalLinkInput = {
   targetUrl?: string;
   anchorText?: string;
   title?: string | null;
+  imageUrl?: string | null;
+  excerpt?: string | null;
   rel?: string;
   sortOrder?: number | string;
 };
@@ -24,6 +27,8 @@ export type ResolvedLink = {
   targetUrl: string;
   anchorText: string;
   title: string | null;
+  imageUrl: string | null;
+  excerpt: string | null;
   rel: string;
   sortOrder: number;
 };
@@ -81,6 +86,8 @@ export function normalizeInternalLinkInput(raw: InternalLinkInput): ResolvedLink
     targetUrl,
     anchorText: String(raw.anchorText || '').trim(),
     title: raw.title ? String(raw.title).trim().slice(0, 120) : null,
+    imageUrl: sanitizeGuideImageUrl(raw.imageUrl),
+    excerpt: plainExcerpt(raw.excerpt, LINK_EXCERPT_MAX),
     rel: normalizeRel(raw.rel),
     sortOrder: Number(raw.sortOrder ?? 0) || 0,
   };

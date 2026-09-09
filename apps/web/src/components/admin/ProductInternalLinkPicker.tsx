@@ -138,6 +138,8 @@ export function ProductInternalLinkPicker({
       targetUrl: s.url,
       anchorText: s.suggestedAnchor.slice(0, ANCHOR_MAX),
       title: null,
+      imageUrl: null,
+      excerpt: null,
       rel: 'dofollow',
       sortOrder: value.length,
     };
@@ -158,6 +160,8 @@ export function ProductInternalLinkPicker({
       targetUrl: url,
       anchorText: anchor.slice(0, ANCHOR_MAX),
       title: null,
+      imageUrl: null,
+      excerpt: null,
       rel: 'dofollow',
       sortOrder: value.length,
     };
@@ -205,12 +209,12 @@ export function ProductInternalLinkPicker({
     <div className={cn('space-y-3 rounded-xl border p-4', accentBorder, accentBg)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className={cn('text-sm font-semibold', accentText)}>
-          لینک‌های داخلی سئو — {channel === 'RETAIL' ? 'سایت تکی (.ir)' : 'سایت عمده (.com)'}
+          راهنمای صفحه محصول — {channel === 'RETAIL' ? 'سایت تکی (.ir)' : 'سایت عمده (.com)'}
         </p>
         <p className="text-[11px] text-gray-400">{value.length} از {MAX_LINKS}</p>
       </div>
       <p className="text-[11px] leading-relaxed text-gray-500">
-        فقط در همین کانال نمایش داده می‌شوند و به صفحات هم‌کانال اشاره می‌کنند. انکر را با کلمه کلیدی هدف بنویسید (۱ تا ۶۰ کاراکتر).
+        هر لینک بالای توضیحات محصول، در یک ردیف کامل با عکس و توضیح کوتاه دیده می‌شود. اگر عکس یا توضیح را خالی بگذارید، از صفحهٔ هدف برداشته می‌شود. انکر را با کلمه کلیدی هدف بنویسید (۱ تا ۶۰ کاراکتر).
       </p>
 
       <div className="flex flex-wrap gap-1.5">

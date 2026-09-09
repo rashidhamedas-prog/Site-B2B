@@ -20,6 +20,10 @@ export interface InternalLinkView {
   targetUrl: string;
   anchorText: string;
   title: string | null;
+  imageUrl?: string | null;
+  excerpt?: string | null;
+  cardImageUrl?: string | null;
+  cardExcerpt?: string | null;
   rel: InternalLinkRel;
   sortOrder: number;
 }
@@ -32,6 +36,10 @@ export interface InternalLinkInput {
   targetUrl: string;
   anchorText: string;
   title?: string | null;
+  imageUrl?: string | null;
+  excerpt?: string | null;
+  cardImageUrl?: string | null;
+  cardExcerpt?: string | null;
   rel: InternalLinkRel;
   sortOrder?: number;
 }

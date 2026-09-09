@@ -193,6 +193,10 @@ function internalLinksFromProduct(links: InternalLinkView[] | undefined): Intern
     targetUrl: l.targetUrl,
     anchorText: l.anchorText,
     title: l.title,
+    imageUrl: l.imageUrl ?? null,
+    excerpt: l.excerpt ?? null,
+    cardImageUrl: l.cardImageUrl ?? null,
+    cardExcerpt: l.cardExcerpt ?? null,
     rel: l.rel,
     sortOrder: l.sortOrder,
   }));

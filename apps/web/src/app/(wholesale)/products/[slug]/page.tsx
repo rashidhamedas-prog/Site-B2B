@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { ProductDetail, type WholesaleProduct } from '@/components/wholesale/ProductDetail';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { ProductInternalLinks } from '@/components/shared/ProductInternalLinks';
+import { WholesaleProductCard, type WholesaleCardProduct } from '@/components/wholesale/WholesaleProductCard';
 import { WHOLESALE_ORIGIN } from '@/lib/seo';
 import { getServerApiBase } from '@/lib/server-api';
 import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
@@ -111,31 +112,30 @@ export default async function ProductPage({ params }: Props) {
       <ProductDetail
         slug={canonicalSlug || slug}
         initialProduct={product as unknown as WholesaleProduct}
+        guide={
+          <ProductInternalLinks
+            links={(product as { internalLinks?: never[] }).internalLinks}
+            tone="wholesale"
+            embedded
+          />
+        }
       />
       {related.length > 0 ? (
         <section className="container-site pb-16">
           <h2 className="text-xl font-extrabold text-gray-900">محصولات مرتبط</h2>
           <p className="mt-1 text-sm text-gray-500">مدل‌های پیشنهادی برای تکمیل خرید عمده</p>
-          <ul className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-            {related.map((item) => {
-              const href = getProductCanonicalPath(String(item.slug || item.id));
-              return (
-                <li key={item.id}>
-                  <a href={href} className="block rounded-lg border border-[color:var(--color-border)] p-3 hover:border-[var(--brand-gold,#C9A84C)]">
-                    <span className="line-clamp-2 text-sm font-bold text-gray-900">{item.name}</span>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+            {related.map((item) => (
+              <WholesaleProductCard key={item.id} product={item} />
+            ))}
+          </div>
         </section>
       ) : null}
-      <ProductInternalLinks links={(product as { internalLinks?: never[] }).internalLinks} />
     </>
   );
 }
 
-type RelatedItem = { id: string; name: string; slug?: string };
+type RelatedItem = WholesaleCardProduct;
 
 async function loadWholesaleRelated(product: Record<string, unknown>): Promise<RelatedItem[]> {
   const curated = Array.isArray(product.relatedProducts)
