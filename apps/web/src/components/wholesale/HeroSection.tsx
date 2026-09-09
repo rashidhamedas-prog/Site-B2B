@@ -47,27 +47,30 @@ function WholesaleHeroMedia({
   className: string;
   priority: boolean;
 }) {
-  if (priority && isLocalStaticAsset(src)) {
+  if (isLocalStaticAsset(src)) {
     const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
     return (
       <>
-        {mobile ? (
-          <>
-            <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
-            <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
-          </>
-        ) : (
-          <link rel="preload" as="image" href={src} fetchPriority="high" />
-        )}
+        {priority ? (
+          mobile ? (
+            <>
+              <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
+              <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
+            </>
+          ) : (
+            <link rel="preload" as="image" href={src} fetchPriority="high" />
+          )
+        ) : null}
         <picture>
           {mobile ? <source media="(max-width: 767px)" srcSet={mobile} /> : null}
-          {/* Local static WebP — skip Next optimizer so LCP is not a JPEG transcode MISS. */}
+          {/* Local static WebP — skip Next optimizer so 24:7 plates are not re-encoded. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={src}
             alt={alt}
-            fetchPriority="high"
+            fetchPriority={priority ? 'high' : 'auto'}
             decoding="async"
+            loading={priority ? 'eager' : 'lazy'}
             className={`absolute inset-0 h-full w-full ${className}`}
           />
         </picture>
@@ -199,7 +202,7 @@ export function HeroSection(props: HeroSectionProps) {
               alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
               priority={isLcp}
               className={
-                s.presentation === 'artwork' ? 'object-cover md:object-fill' : 'object-cover'
+                'object-cover'
               }
             />
           </div>

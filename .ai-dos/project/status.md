@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260909-016** re-exporting wholesale promo heroes at native 1920×560 (contain, no stretch) on `ai/TASK-20260909-014-wholesale-promo-hq`. Not live until merge/deploy + migration.
 - Last verified: 2026-09-09 — **TASK-20260909-015** implementing commission ledger after DELIVERED.
 - Last verified: 2026-09-09 — **TASK-20260909-014** SLA expire→OWN shipped (`edb64d8`); deploy in flight.
 - Last verified: 2026-09-09 — **TASK-20260909-011 CLOSED** (`34c4e72` on master). Partner ship + `trackingCode` + customer SMS. VPS column present; health 200. Claims released. Next: SLA escalate / ledger.
