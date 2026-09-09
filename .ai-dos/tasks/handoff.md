@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T21:55:00Z — TASK-20260909-019 CLOSED live `9b99781`
+
+- Live `.com` LCP img is `partnership-d8771aca17fe.webp` (200, 89936 B). Jackets `jackets-19fc4bd8d65a.webp` 200. Migration id=84. Health 200. Claims released.
+- Both slides verified in browser: partnership (green panel) and jackets (cream). CTAs `/portal/register` and `/category/women-coats`.
+
 ## 2026-09-09T14:20:00Z — TASK-20260909-019 wholesale professional heroes
 
 - Owner asked to generate professional banners from the existing art direction because upscaled 1024px plates stayed soft.
