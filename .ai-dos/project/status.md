@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-09 — **TASK-20260909-018** admin payout UI coded (mark AVAILABLE ledger PAID). Deploy pending close note. Next optional: Telegram partner bot.
+- Last verified: 2026-09-09 — **TASK-20260909-018 CLOSED** on `origin/master` + VPS `fe7ca05`. Admin mark AVAILABLE ledger as PAID. Health 200. Claims released. Next optional: Telegram partner bot.
 - Last verified: 2026-09-09 — **TASK-20260909-016 CLOSED** on `origin/master` + VPS `703aaae`. Wholesale promo heroes 1920×560 contain (no stretch). Migration id=83. Live img `partnership-6da1640a8bb4` 200 97268B. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-015 CLOSED** live `715fce6`. Vendor ledger + deliver + hold. Health 200. Claims released. Next optional: admin payout UI / Telegram partner bot.
 - Last verified: 2026-09-09 — **TASK-20260909-014 CLOSED** SLA expire→OWN (`edb64d8`). Claims released.

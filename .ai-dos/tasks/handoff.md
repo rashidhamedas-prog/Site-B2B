@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T13:30:00Z — TASK-20260909-018 CLOSED live `fe7ca05`
+
+- VPS deploy complete at `fe7ca05`; API health 200. Admin `/admin/partners` → دفتر + ثبت پرداخت.
+- Claims released. Next optional: Telegram partner bot.
+
 ## 2026-09-09T13:25:00Z — TASK-20260909-018 admin ledger payout (phase 8)
 
 - CODE: `GET/POST /vendors/:id/ledger` + `/ledger/pay`; `canMarkLedgerPaid`; AdminPartners دفتر + ثبت پرداخت.
