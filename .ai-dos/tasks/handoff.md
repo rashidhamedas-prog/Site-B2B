@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T01:20:00Z — TASK-20260909-006 CLOSED (fix live under tip `445f6e7`)
+
+- Root evidence: RETAIL/home DB row frozen since 2026-09-08 while WHOLESALE moved — retail saves were not landing.
+- Shipped: `requireWriteChannel`, admin save verifies channel+DB reload, sticky `?channel=`, labeled retail save button.
+- Operator: hard-refresh `/admin/site-content?channel=RETAIL` → edit → «ذخیره روی سایت تکی» → must see «ذخیره و تأیید شد» and timestamp update.
+
 ## 2026-09-09T00:50:00Z — TASK-20260909-007 dropship SKU (phase 2)
 
 - Reclaimed stale product/JSON-LD files from TASK-20260906-003 (live, hb 2026-09-06), TASK-20260826-001 (hb 2026-09-02), TASK-20260831-003 (hb 2026-08-31). Did not touch shipping (005) or CMS (006) files.
