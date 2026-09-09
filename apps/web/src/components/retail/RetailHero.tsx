@@ -239,7 +239,7 @@ export function RetailHero(props: RetailHeroProps) {
               priority={isLcp}
               className={
                 s.presentation === 'artwork'
-                  ? 'object-cover object-left md:object-center'
+                  ? 'object-cover md:object-fill'
                   : isLightHeroOverlay(s)
                     ? 'object-cover object-[center_top] sm:object-left'
                     : 'object-cover object-[20%_center] sm:object-center'
