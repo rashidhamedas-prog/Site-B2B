@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260909-006** implementing retail CMS save verify (require write channel, admin DB confirm). Branch `ai/TASK-20260909-004-retail-cms-save`. Not live until merge/deploy.
+- Last verified: 2026-09-09 — **TASK-20260909-005** implementing honor deleted retail shipping methods on `ai/TASK-20260909-005-honor-shipping-delete`.
 - Last verified: 2026-09-09 — **TASK-20260909-004** shipping vendor invite (phase 1) on `ai/TASK-20260909-001-vendor-invite`. Auth purpose `vendor`, invite-only. Needs merge/deploy + migration.
 - Last verified: 2026-09-09 — **TASK-20260909-003 CLOSED** on `origin/master` + VPS `a658caa`. Products-block auto source clears curated ids on save. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-001 CLOSED** on `origin/master` (`226170e` fix; tip `a95de11`). Retail HTML SWR clamped to 60s; dual-path revalidate + warm. Live `www.poshaktaranom.ir` shows `stale-while-revalidate=60` + RETAIL rewrite. Health 200. Claims released.

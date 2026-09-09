@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T01:05:00Z — TASK-20260909-006 retail CMS save hardening
+
+- Evidence: `site_contents` RETAIL/home `updatedAt=2026-09-08T14:22:09Z` only; WHOLESALE/home newer. Products block has SKU ids and no `source`.
+- CODE: requireWriteChannel on upsert; admin verify-after-save + URL channel; warm `/`+`/retail` with forwarded host.
+- Task id **006** (004 vendor, 005 shipping-delete). Branch `ai/TASK-20260909-004-retail-cms-save`.
+- Next: push master, rebuild api+web, operator saves once on تب تکی and confirms DB `updatedAt` moves.
+
 ## 2026-09-09T00:55:00Z — TASK-20260909-005 honor deleted retail shipping methods
 
 - Owner: deleting «تحویل در محل» on retail settings + save did not stick and still showed on .ir checkout.
