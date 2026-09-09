@@ -1,12 +1,12 @@
 # Wholesale promo heroes — 2026-09
 
-دو بنر artwork برای هیروی عمده (`poshaktaranom.com`). منبع اصلی ۱۰۲۴×۴۰۹ است؛ روی بوم **۱۹۲۰×۵۶۰ (۲۴:۷)** با contain + امتداد لبه (بدون برش و بدون کشیدگی) گذاشته شده، WebP q92.
+دو بنر artwork برای هیروی عمده (`poshaktaranom.com`). نسخهٔ حرفه‌ای: عکس پرتره روی نیمهٔ چپ + تایپ Vazirmatn روی بوم ۱۹۲۰×۵۶۰ (۲۴:۷)، خروجی WebP q92.
 
 | فایل | نقش | قاب |
 | --- | --- | --- |
-| `partnership-6da1640a8bb4.webp` | درخواست همکاری بوتیک | دسکتاپ 1920×560 (24:7)، حدود ۹۷KB |
-| `partnership-mobile-7f95d9a6eb69.webp` | همان طرح کامل | موبایل 1200×600 (2:1) |
-| `jackets-11c1cf1b38af.webp` | دیدن کت‌ها | دسکتاپ 1920×560، حدود ۷۶KB |
-| `jackets-mobile-dd1c2c3a9c16.webp` | همان طرح کامل | موبایل 1200×600 |
+| `partnership-d8771aca17fe.webp` | درخواست همکاری بوتیک | دسکتاپ 1920×560، حدود ۹۰KB |
+| `partnership-mobile-ecf1c65e857b.webp` | همان طرح | موبایل 1200×600 |
+| `jackets-19fc4bd8d65a.webp` | دیدن کت‌ها | دسکتاپ 1920×560، حدود ۵۸KB |
+| `jackets-mobile-b38e5ccce891.webp` | همان طرح | موبایل 1200×600 |
 
-متن فارسی داخل بیت‌مپ است؛ اسلایدها `presentation: artwork` هستند تا روی دسکتاپ HTML تکراری روی تصویر ننشیند. لینک واقعی همان‌دامنه است: `/portal/register` و `/category/women-coats` — حتی اگر روی بنر کت آدرس `.ir` چاپ شده باشد.
+متن فارسی فونت سایت است، نه upscale از ۱۰۲۴px. لینک واقعی همان‌دامنه: `/portal/register` و `/category/women-coats`.

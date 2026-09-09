@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T14:20:00Z — TASK-20260909-019 wholesale professional heroes
+
+- Owner asked to generate professional banners from the existing art direction because upscaled 1024px plates stayed soft.
+- CODE: portrait plates + Vazirmatn HTML compose at 2×, downscale to 1920×560 / 1200×600. Hashes `partnership-d8771aca17fe` / `jackets-19fc4bd8d65a`. Migration `WholesalePromoHeroesPro1757430000019`. Adobe App Builder unused.
+- Gates: wholesale-promo-slides.spec OK; wholesale-promo-hero.util.spec ok; web+api tsc exit 0.
+- Next: commit, push master, VPS auto-deploy, verify `.com` uses `partnership-d8771aca17fe`.
+
 ## 2026-09-09T13:30:00Z — TASK-20260909-018 CLOSED live `fe7ca05`
 
 - VPS deploy complete at `fe7ca05`; API health 200. Admin `/admin/partners` → دفتر + ثبت پرداخت.

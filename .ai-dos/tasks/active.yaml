@@ -1,5 +1,39 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-019"
+    title: "Replace wholesale promo heroes with professional 1920x560 artwork"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260909-019"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-019"
+      implementer: "cursor:implementer-TASK-20260909-019"
+      reviewer: "self-review-cms-hero-wholesale-only"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260909-019-wholesale-pro-banners"
+    worktree: "D:/proje/Site-B2B-014-wholesale-promo-hq"
+    claimed_at: "2026-09-09T13:35:00Z"
+    heartbeat_at: "2026-09-09T13:35:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/public/banners/wholesale-promo-2026/"
+      - "apps/web/src/lib/cms/wholesale-promo-slides.ts"
+      - "apps/web/src/lib/cms/wholesale-promo-slides.spec.ts"
+      - "apps/api/src/database/wholesale-promo-hero.util.ts"
+      - "apps/api/src/database/wholesale-promo-hero.util.spec.ts"
+      - "apps/api/src/database/migrations/20260909-019-wholesale-promo-heroes-pro.ts"
+      - "docs/reports/2026-09-09-wholesale-promo-pro.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Recreate partnership + jackets plates from the original art direction
+      at native 1920x560 with sharp Vazirmatn type. Did not take 013 retail
+      or WORKLOG. Adobe App Builder skills out of scope.
+    acceptance_criteria:
+      - "Desktop plates are 1920x560 professional artwork matching the original layout"
+      - "Persian type is site font, not upscaled bitmap from 1024px"
+      - "CTA hrefs stay /portal/register and /category/women-coats"
+      - "Migration updates WHOLESALE home hashes only"
+      - "wholesale-promo specs pass"
   - id: "TASK-20260909-018"
     title: "Admin mark vendor ledger AVAILABLE entries as PAID (phase 8 payout)"
     status: "done"
