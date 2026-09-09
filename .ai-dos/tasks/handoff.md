@@ -2,7 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-<<<<<<< HEAD
+## 2026-09-09T12:45:00Z — TASK-20260909-015 CLOSED live `715fce6`
+
+- Deploy complete; `vendor_ledger_entries` + `deliveredAt`. Health 200. Claims released.
+- Next optional: admin payout marking PAID; Telegram partner bot.
+
 ## 2026-09-09T12:40:00Z — TASK-20260909-016 wholesale promo 1920x560 contain
 
 - Owner asked for 1920×560 at 24:7 with no detail change and higher quality.
@@ -10,12 +14,6 @@ Append newest entries at the top. Never erase another agent's record.
 - CODE: new hashes under `/banners/wholesale-promo-2026/`; HeroSection serves local WebP unoptimized and drops `object-fill`. Migration `WholesalePromoHeroesHq1757430000017`. Did not edit 013 retail or 015 ledger files.
 - Gates (observed): `wholesale-promo-slides.spec.ts` OK; `wholesale-promo-hero.util.spec.ts` ok; web `tsc --noEmit` 0. API tsc fails on pre-existing vendor-ledger import paths, not this diff.
 - Next: commit, push, deploy, verify `.com` HTML uses `partnership-6da1640a8bb4`.
-=======
-## 2026-09-09T12:45:00Z — TASK-20260909-015 CLOSED live `715fce6`
-
-- Deploy complete; `vendor_ledger_entries` + `deliveredAt`. Health 200. Claims released.
-- Next optional: admin payout marking PAID; Telegram partner bot.
->>>>>>> 4cc2a9c (docs: close TASK-20260909-015 vendor ledger live)
 
 ## 2026-09-09T12:25:00Z — TASK-20260909-015 vendor ledger (phase 7)
 
