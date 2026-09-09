@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260909-016"
     title: "Re-export wholesale promo banners at 1920x560 24:7 without stretch"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260909-016"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260909-014-wholesale-promo-hq"
     worktree: "D:/proje/Site-B2B-014-wholesale-promo-hq"
     claimed_at: "2026-09-09T12:40:00Z"
-    heartbeat_at: "2026-09-09T12:40:00Z"
+    heartbeat_at: "2026-09-09T12:55:00Z"
+    closed_at: "2026-09-09T12:55:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/public/banners/wholesale-promo-2026/"
       - "apps/web/src/lib/cms/wholesale-promo-slides.ts"
       - "apps/web/src/lib/cms/wholesale-promo-slides.spec.ts"
@@ -25,9 +27,8 @@ tasks:
       - "apps/api/src/database/migrations/20260909-017-wholesale-promo-heroes-hq.ts"
       - "docs/reports/2026-09-09-wholesale-promo-hq.md"
     notes: |
-      ID 016 because 014/015 are vendor SLA/ledger. Migration file is 017
-      because 016 is vendor-ledger. Registry overlap on .ai-dos/* is append-only.
-      Source JPGs 1024x409 contained onto 1920x560 (edge-extend, no fill/crop).
+      LIVE origin/master + VPS `703aaae`. Migration WholesalePromoHeroesHq1757430000017 id=83.
+      Home img src partnership-6da1640a8bb4.webp 200 97268B, 1920x560 contain. Health 200.
     acceptance_criteria:
       - "Desktop plates are exactly 1920x560 (24:7) from original artwork without stretch or crop"
       - "Mobile plates keep the full artwork on 2:1 without left-crop"
