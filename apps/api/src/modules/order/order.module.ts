@@ -1,11 +1,16 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderController } from './order.controller';
+import { FulfillmentPartnerController } from './fulfillment-partner.controller';
 import { OrderService } from './order.service';
+import { FulfillmentService } from './fulfillment.service';
 import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
+import { FulfillmentOrderEntity } from './entities/fulfillment-order.entity';
+import { FulfillmentOrderItemEntity } from './entities/fulfillment-order-item.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { UserEntity } from '../auth/entities/user.entity';
+import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { CustomerModule } from '../customer/customer.module';
 import { ProductModule } from '../product/product.module';
 import { AuthModule } from '../auth/auth.module';
@@ -17,7 +22,15 @@ import { InventoryModule } from '../inventory/inventory.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([OrderEntity, OrderItemEntity, InvoiceEntity, UserEntity]),
+    TypeOrmModule.forFeature([
+      OrderEntity,
+      OrderItemEntity,
+      FulfillmentOrderEntity,
+      FulfillmentOrderItemEntity,
+      InvoiceEntity,
+      UserEntity,
+      VendorEntity,
+    ]),
     CustomerModule,
     ProductModule,
     AuthModule,
@@ -27,8 +40,8 @@ import { InventoryModule } from '../inventory/inventory.module';
     AffiliateModule,
     InventoryModule,
   ],
-  controllers: [OrderController],
-  providers: [OrderService],
-  exports: [OrderService],
+  controllers: [OrderController, FulfillmentPartnerController],
+  providers: [OrderService, FulfillmentService],
+  exports: [OrderService, FulfillmentService],
 })
 export class OrderModule {}

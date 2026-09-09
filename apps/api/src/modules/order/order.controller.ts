@@ -79,10 +79,14 @@ export class OrderController {
   ) {
     if (!this.isStaff(req.user.role)) {
       const cid = await this.resolveOwnCustomerId(req.user);
-      return this.orderService.findAll(page, limit, cid ?? undefined, status, type, {
+      const result = await this.orderService.findAll(page, limit, cid ?? undefined, status, type, {
         includeDeleted: false,
         channel,
       });
+      return {
+        ...result,
+        data: result.data.map((order) => this.orderService.stripCustomerOrder(order)),
+      };
     }
     return this.orderService.findAll(page, limit, customerId, status, type, {
       includeDeleted: true,
@@ -144,6 +148,7 @@ export class OrderController {
       if (order.status === 'DELETED' || order.voidedAt) {
         throw new ForbiddenException('این سفارش حذف شده است');
       }
+      return this.orderService.findOneForCustomer(id);
     }
     return order;
   }

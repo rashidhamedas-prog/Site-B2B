@@ -10,6 +10,8 @@ import { VariantColorEntity } from '../modules/product/entities/variant-color.en
 import { VariantSizeEntity } from '../modules/product/entities/variant-size.entity';
 import { OrderEntity } from '../modules/order/entities/order.entity';
 import { OrderItemEntity } from '../modules/order/entities/order-item.entity';
+import { FulfillmentOrderEntity } from '../modules/order/entities/fulfillment-order.entity';
+import { FulfillmentOrderItemEntity } from '../modules/order/entities/fulfillment-order-item.entity';
 import { InvoiceEntity } from '../modules/invoice/entities/invoice.entity';
 import { InventoryMovementEntity } from '../modules/inventory/entities/inventory-movement.entity';
 import { WarehouseEntity } from '../modules/inventory/entities/warehouse.entity';
@@ -79,7 +81,7 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     ProductSpecMemoryEntity,
     ProductRelatedEntity,
     ProductInternalLinkEntity,
-    OrderEntity, OrderItemEntity,
+    OrderEntity, OrderItemEntity, FulfillmentOrderEntity, FulfillmentOrderItemEntity,
     InvoiceEntity,
     InventoryMovementEntity,
     WarehouseEntity,

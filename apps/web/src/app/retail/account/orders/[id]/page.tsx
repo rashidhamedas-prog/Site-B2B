@@ -14,6 +14,19 @@ type OrderItem = {
   totalPrice: number;
 };
 
+type Parcel = {
+  parcelIndex: number;
+  parcelLabel: string;
+  status: string;
+  items: Array<{
+    productName: string;
+    sku: string;
+    color: string;
+    size: string;
+    quantity: number;
+  }>;
+};
+
 type Order = {
   id: string;
   orderNumber: string;
@@ -24,6 +37,7 @@ type Order = {
   notes?: string;
   createdAt: string;
   items: OrderItem[];
+  parcels?: Parcel[];
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -35,6 +49,15 @@ const STATUS_LABEL: Record<string, string> = {
   COMPLETED: 'تکمیل',
   CANCELLED: 'لغو',
   REFUNDED: 'بازپرداخت',
+};
+
+const PARCEL_STATUS: Record<string, string> = {
+  PENDING_ACCEPT: 'در آماده‌سازی',
+  ACCEPTED: 'در آماده‌سازی',
+  SHIPPED: 'ارسال شده',
+  DELIVERED: 'تحویل',
+  CANCELLED: 'لغو',
+  REJECTED: 'در بررسی',
 };
 
 function toman(n: number) {
@@ -81,6 +104,40 @@ export default function RetailOrderDetailPage({ params }: { params: Promise<{ id
           کد پیگیری: <span className="font-mono font-bold">{order.trackingCode}</span>
         </p>
       ) : null}
+
+      {order.parcels && order.parcels.length > 1 ? (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-gray-900">مرسوله‌ها</h3>
+          <p className="text-xs text-[var(--retail-muted)]">
+            ممکن است اقلام این سفارش در چند مرسوله جدا ارسال شوند.
+          </p>
+          {order.parcels.map((p) => (
+            <div
+              key={p.parcelIndex}
+              className="rounded-2xl border border-[var(--retail-border)] bg-white px-4 py-3 text-sm"
+            >
+              <div className="flex justify-between gap-2 font-bold">
+                <span>{p.parcelLabel}</span>
+                <span className="text-xs font-medium text-gray-500">
+                  {PARCEL_STATUS[p.status] || p.status}
+                </span>
+              </div>
+              <ul className="mt-2 space-y-1 text-gray-700">
+                {p.items.map((it, i) => (
+                  <li key={`${p.parcelIndex}-${i}`}>
+                    {it.productName}
+                    {[it.color, it.size].filter(Boolean).length
+                      ? ` (${[it.color, it.size].filter(Boolean).join(' / ')})`
+                      : ''}{' '}
+                    × {it.quantity}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="overflow-x-auto rounded-2xl border border-[var(--retail-border)] bg-white">
         <table className="w-full min-w-[360px] text-sm">
           <thead className="bg-gray-50 text-xs text-gray-500">

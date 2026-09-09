@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T10:40:00Z — TASK-20260909-009 fulfillment split (phase 3)
+
+- ID **009** (008 on master is CMS jsonb). Split after `commitStockForOrder` into unlabeled `مرسوله N`.
+- Snapshot `vendorId`/`commissionPercent` on order_items at checkout; public customer JSON strips them; partner `/v1/partners/fulfillments` row-isolated.
+- Parcel `shippingFee` always 0; parent fee unchanged. Partner UI lists + accept.
+- Gates: fulfillment-split-policy ok; api+web tsc 0. Next: commit/push/deploy + migration.
+
 ## 2026-09-09T08:50:00Z — TASK-20260909-008 CLOSED (live `a8a3531`)
 
 - api rebuilt detached with outbox `ON CONFLICT DO NOTHING` + explicit site_contents UPDATE; web rebuilt with admin guards. Health 200.

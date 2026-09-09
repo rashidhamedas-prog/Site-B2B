@@ -43,6 +43,13 @@ export class OrderItemEntity {
   @Column({ type: 'bigint' })
   totalPrice: number;
 
+  /** Snapshot at checkout; null = Taranom OWN. Never expose on customer JSON. */
+  @Column({ type: 'uuid', nullable: true })
+  vendorId: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  commissionPercent: number | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

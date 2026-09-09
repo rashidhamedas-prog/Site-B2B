@@ -35,6 +35,8 @@ import {
   shouldCommitStockOnConfirm,
   shouldReverseCommittedStock,
 } from './order-stock-settlement';
+import { FulfillmentService } from './fulfillment.service';
+import { snapshotVendorFulfillment, stripOrderVendorSecrets } from './fulfillment-split-policy';
 
 /** Allowed Order status transitions (admin). */
 const ORDER_TRANSITIONS: Record<string, string[]> = {
@@ -68,6 +70,7 @@ export class OrderService {
     private readonly dataSource: DataSource,
     private readonly inventoryService: InventoryService,
     private readonly outbox: OutboxService,
+    private readonly fulfillment: FulfillmentService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
 
@@ -601,6 +604,8 @@ export class OrderService {
       size: string;
       productId: string;
       imageUrl?: string | null;
+      vendorId: string | null;
+      commissionPercent: number | null;
     }> = [];
 
     for (const item of dto.items) {
@@ -617,6 +622,7 @@ export class OrderService {
             `موجودی کافی نیست برای ${product.name} (${variant.color}/${variant.size}) — موجودی: ${variantStock}`,
           );
         }
+        const snap = snapshotVendorFulfillment(product);
         expandedItems.push({
           productVariantId: variant.id,
           quantity: qty,
@@ -627,6 +633,8 @@ export class OrderService {
           size: variant.size,
           productId: product.id,
           imageUrl: variant.imageUrl || item.imageUrl || null,
+          vendorId: snap.vendorId,
+          commissionPercent: snap.commissionPercent,
         });
         continue;
       }
@@ -644,6 +652,8 @@ export class OrderService {
         !item.productVariantId &&
         (item.packMode === true || hasVariantMatrix);
 
+      const snap = snapshotVendorFulfillment(product);
+
       if (usePackMatrix) {
         const allocated = this.expandByPackMatrix(product, qty, channel, {
           selectedColors: item.selectedColors,
@@ -655,6 +665,8 @@ export class OrderService {
           ...allocated.map((line) => ({
             ...line,
             imageUrl: line.imageUrl || item.imageUrl || null,
+            vendorId: snap.vendorId,
+            commissionPercent: snap.commissionPercent,
           })),
         );
         continue;
@@ -674,6 +686,8 @@ export class OrderService {
       expandedItems.push(
         ...allocated.map((line) => ({
           ...line,
+          vendorId: snap.vendorId,
+          commissionPercent: snap.commissionPercent,
           imageUrl: line.imageUrl || item.imageUrl || null,
         })),
       );
@@ -865,6 +879,8 @@ export class OrderService {
             imageUrl: i.imageUrl || null,
             orderId: orderRow!.id,
             totalPrice: i.unitPrice * i.quantity,
+            vendorId: i.vendorId,
+            commissionPercent: i.commissionPercent,
           }),
         );
         await itemRepo.save(items);
@@ -1042,6 +1058,28 @@ export class OrderService {
     return order;
   }
 
+  /** Customer-facing: unlabeled parcels, no vendorId/commission on lines. */
+  async findOneForCustomer(id: string) {
+    const order = await this.findOne(id);
+    return this.enrichCustomerOrder(order);
+  }
+
+  stripCustomerOrder(order: OrderEntity) {
+    const plain = {
+      ...order,
+      items: (order.items ?? []).map((it) => ({ ...it })),
+    };
+    stripOrderVendorSecrets(plain);
+    return plain;
+  }
+
+  private async enrichCustomerOrder(order: OrderEntity) {
+    const parcels = await this.fulfillment.parcelsForOrder(order.id);
+    const plain = this.stripCustomerOrder(order) as OrderEntity & { parcels?: unknown };
+    plain.parcels = this.fulfillment.customerParcels(parcels);
+    return plain;
+  }
+
   /** Parse wallet from column or legacy notes tag */
   private resolveWalletApplied(order: OrderEntity): number {
     const col = Number(order.walletApplied) || 0;
@@ -1126,6 +1164,7 @@ export class OrderService {
         );
       }
       await orderRepo.update(locked.id, { stockCommittedAt: new Date() });
+      await this.fulfillment.ensureSplit(locked, txn);
     };
     if (manager) {
       await run(manager);

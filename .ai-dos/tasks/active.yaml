@@ -1,5 +1,50 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-009"
+    title: "Split paid orders into unlabeled vendor fulfillment parcels (phase 3)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260909-009"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-009"
+      implementer: "cursor:implementer-TASK-20260909-009"
+      reviewer: "self-review-vendor-row-isolation"
+      security: "self-review-no-vendor-leak-on-customer-order"
+    branch: "ai/TASK-20260909-001-vendor-invite"
+    worktree: "D:/proje/Site-B2B-vendor-invite"
+    claimed_at: "2026-09-09T10:30:00Z"
+    heartbeat_at: "2026-09-09T10:40:00Z"
+    depends_on:
+      - "TASK-20260909-007"
+    file_claims:
+      - "apps/api/src/modules/order/fulfillment-split-policy.ts"
+      - "apps/api/src/modules/order/fulfillment-split-policy.spec.ts"
+      - "apps/api/src/modules/order/fulfillment.service.ts"
+      - "apps/api/src/modules/order/entities/fulfillment-order.entity.ts"
+      - "apps/api/src/modules/order/entities/fulfillment-order-item.entity.ts"
+      - "apps/api/src/modules/order/entities/order-item.entity.ts"
+      - "apps/api/src/database/migrations/20260909-003-fulfillment-orders.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/order.module.ts"
+      - "apps/api/src/modules/order/order.controller.ts"
+      - "apps/api/src/modules/order/fulfillment-partner.controller.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/web/src/components/partners/PartnerHome.tsx"
+      - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Phase 3. ID 009 because 008 on master is CMS jsonb fix. One customer order / one shippingFee.
+      Split after stock settle (paid confirm). Did not edit payment.service or checkout shipping files.
+      Partner pays real postage; no SHIP ledger line. SMS/Telegram not this slice.
+    acceptance_criteria:
+      - "Paid/confirmed order creates one fulfillment parcel per vendorId (null=OWN) idempotently"
+      - "Customer order JSON has unlabeled مرسوله N and never vendorId/commission"
+      - "Partner JWT lists/accepts only own parcels; cannot read OWN or other vendors"
+      - "Parent shippingFee unchanged; parcel shippingFee always 0"
+      - "fulfillment-split-policy spec + api/web tsc pass"
   - id: "TASK-20260909-008"
     title: "Force site_contents jsonb UPDATE so auto products save sticks"
     status: "done"
@@ -30,7 +75,7 @@ tasks:
       - "apiClient GETs are cache no-store; products-block + cms-write-channel specs ok"
   - id: "TASK-20260909-007"
     title: "Dropship SKU vendorId + commission + public strip (phase 2)"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260909-007"
     roles:
@@ -42,34 +87,12 @@ tasks:
     worktree: "D:/proje/Site-B2B-vendor-invite"
     claimed_at: "2026-09-09T00:40:00Z"
     heartbeat_at: "2026-09-09T00:50:00Z"
+    closed_at: "2026-09-09T07:30:00Z"
     depends_on:
       - "TASK-20260909-004"
-    file_claims:
-      - "apps/api/src/modules/product/vendor-fulfillment-policy.ts"
-      - "apps/api/src/modules/product/vendor-fulfillment-policy.spec.ts"
-      - "apps/api/src/database/migrations/20260909-002-product-vendor-fulfillment.ts"
-      - "apps/api/src/modules/product/entities/product.entity.ts"
-      - "apps/api/src/modules/product/dto/create-product.dto.ts"
-      - "apps/api/src/modules/product/product.service.ts"
-      - "apps/api/src/modules/product/product.module.ts"
-      - "apps/api/src/modules/product/internal-link-resolver.spec.ts"
-      - "apps/api/src/modules/product/public-product-channel.ts"
-      - "apps/api/src/modules/product/public-product-channel.spec.ts"
-      - "apps/web/src/lib/hooks/useProducts.ts"
-      - "apps/web/src/lib/product-jsonld-brand.ts"
-      - "apps/web/src/lib/product-jsonld-brand.spec.ts"
-      - "apps/web/src/components/admin/AdminProducts.tsx"
-      - "apps/web/src/components/shared/JsonLd.tsx"
-      - "apps/web/src/app/retail/products/[slug]/page.tsx"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Phase 2 after live invite (004). ID 007 because 005=shipping-delete, 006=retail CMS save.
-      Reclaimed stale product files from TASK-20260906-003 (CLOSED live, hb 2026-09-06),
-      public-product-channel + product.service from TASK-20260826-001 (hb 2026-09-02),
-      JsonLd from TASK-20260831-003 (hb 2026-08-31). Did not touch 007 shipping or 006 CMS files.
-      WORKLOG overlap with 006 expected. Seller of record stays Taranom.
+      LIVE origin/master `445f6e7` (tip later `cb29973`). Dropship SKU + public strip. Claims released for phase 3.
     acceptance_criteria:
       - "Admin can assign vendorId + integer commission 0-90; dropship forces retail-only"
       - "Public catalog JSON has brandName optional but never vendorId or commissionPercent"
@@ -590,8 +613,9 @@ tasks:
       - "apps/api/src/modules/payment/entities/payment.entity.ts"
       - "apps/api/src/database/migrations/20260907-002-torobpay-cpg-retail.ts"
       - "apps/api/src/modules/settings/settings.service.ts"
-      - "apps/api/src/modules/order/dto/create-order.dto.ts"
-      - "apps/api/src/modules/order/order.service.ts"
+      # transferred 2026-09-09 to TASK-20260909-008 (stale hb; fulfillment split on settle):
+      # "apps/api/src/modules/order/dto/create-order.dto.ts"
+      # "apps/api/src/modules/order/order.service.ts"
       - "apps/web/src/components/admin/AdminSettings.tsx"
       # transferred 2026-09-08 to TASK-20260908-003 (luxury picker; CPG contract kept):
       # "apps/web/src/app/retail/checkout/page.tsx"
@@ -1338,7 +1362,8 @@ tasks:
       - "apps/web/src/app/retail/account/layout.tsx"
       - "apps/web/src/app/retail/account/page.tsx"
       - "apps/web/src/app/retail/account/orders/page.tsx"
-      - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
+      # transferred 2026-09-09 to TASK-20260909-008 (stale hb; unlabeled parcels):
+      # "apps/web/src/app/retail/account/orders/[id]/page.tsx"
       - "apps/web/src/app/retail/account/profile/page.tsx"
       # transferred 2026-09-04 to TASK-20260904-002 (done task; address delete):
       # "apps/web/src/app/retail/account/addresses/page.tsx"
@@ -1542,7 +1567,8 @@ tasks:
       - "apps/api/src/modules/customer/entities/customer.entity.ts"
       # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-09-01; discount channel):
       # "apps/api/src/modules/order/order.service.ts"
-      - "apps/api/src/modules/order/order.module.ts"
+      # transferred 2026-09-09 to TASK-20260909-008 (stale hb; fulfillment split):
+      # "apps/api/src/modules/order/order.module.ts"
       - "apps/api/src/modules/order/entities/order.entity.ts"
       - "apps/api/src/modules/order/order-stock-settlement.ts"
       - "apps/api/src/modules/order/order-stock-settlement.spec.ts"
@@ -2022,8 +2048,9 @@ tasks:
       - "apps/api/src/modules/discount/discount-channel.ts"
       - "apps/api/src/modules/discount/discount-channel.spec.ts"
       # reclaimed 2026-09-03 from TASK-20260901-002 (stale hb 2026-09-01; discount channel)
-      - "apps/api/src/modules/order/order.service.ts"
-      - "apps/api/src/modules/order/order.controller.ts"
+      # transferred 2026-09-09 to TASK-20260909-008 (stale hb; fulfillment split):
+      # "apps/api/src/modules/order/order.service.ts"
+      # "apps/api/src/modules/order/order.controller.ts"
       # reclaimed 2026-09-03 from TASK-20260824-003 / TASK-20260812-001 (stale; quote channel)
       - "apps/api/src/modules/order/dto/create-order.dto.ts"
       # reclaimed 2026-09-03 from TASK-20260810-006 (stale hb 2026-08-12; related stock)
