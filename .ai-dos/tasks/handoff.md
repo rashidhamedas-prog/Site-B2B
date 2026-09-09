@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T11:20:00Z — TASK-20260909-010 CLOSED live `989abbf`
+
+- Deploy complete; API health 200; workers healthy; outbox worker started. Claims released.
+- Next vendor phases: tracking bot, SLA escalate/reassign, commission ledger/payout.
+
 ## 2026-09-09T11:10:00Z — TASK-20260909-010 partner SMS notify (phase 4)
 
 - CODE: `ensureSplit` enqueues `fulfillment.pending_accept.notification` for vendor PENDING_ACCEPT only; PHASE3 lease; worker loads `vendors.phone` (not in payload); admin SMS toggle/template.
