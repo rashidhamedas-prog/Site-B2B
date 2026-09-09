@@ -11,6 +11,7 @@ import {
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
+import { applyWholesalePromoHeroSlides } from '@/lib/cms/wholesale-promo-slides';
 import { toPersianDigits } from '@taranom/persian-utils';
 import { yearsOfOperation } from '@/lib/business-facts';
 import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
@@ -163,7 +164,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
 }
 
 export function HeroSection(props: HeroSectionProps) {
-  const slides = normalizeHeroSlides(props, WHOLESALE_FALLBACK);
+  const slides = applyWholesalePromoHeroSlides(normalizeHeroSlides(props, WHOLESALE_FALLBACK));
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
   const carousel = useHeroCarousel(slides, autoplayMs, { waitForIdle: true });
   const slide = carousel.slide ?? WHOLESALE_FALLBACK;
