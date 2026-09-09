@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260909-009"
     title: "Split paid orders into unlabeled vendor fulfillment parcels (phase 3)"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260909-009"
     roles:
@@ -13,32 +13,14 @@ tasks:
     branch: "ai/TASK-20260909-001-vendor-invite"
     worktree: "D:/proje/Site-B2B-vendor-invite"
     claimed_at: "2026-09-09T10:30:00Z"
-    heartbeat_at: "2026-09-09T10:40:00Z"
+    heartbeat_at: "2026-09-09T10:50:00Z"
+    closed_at: "2026-09-09T10:50:00Z"
     depends_on:
       - "TASK-20260909-007"
-    file_claims:
-      - "apps/api/src/modules/order/fulfillment-split-policy.ts"
-      - "apps/api/src/modules/order/fulfillment-split-policy.spec.ts"
-      - "apps/api/src/modules/order/fulfillment.service.ts"
-      - "apps/api/src/modules/order/entities/fulfillment-order.entity.ts"
-      - "apps/api/src/modules/order/entities/fulfillment-order-item.entity.ts"
-      - "apps/api/src/modules/order/entities/order-item.entity.ts"
-      - "apps/api/src/database/migrations/20260909-003-fulfillment-orders.ts"
-      - "apps/api/src/modules/order/order.service.ts"
-      - "apps/api/src/modules/order/order.module.ts"
-      - "apps/api/src/modules/order/order.controller.ts"
-      - "apps/api/src/modules/order/fulfillment-partner.controller.ts"
-      - "apps/api/src/config/database.config.ts"
-      - "apps/web/src/components/partners/PartnerHome.tsx"
-      - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
-      - "docs/WORKLOG.md"
+    file_claims: []
     notes: |
-      Phase 3. ID 009 because 008 on master is CMS jsonb fix. One customer order / one shippingFee.
-      Split after stock settle (paid confirm). Did not edit payment.service or checkout shipping files.
-      Partner pays real postage; no SHIP ledger line. SMS/Telegram not this slice.
+      LIVE origin/master + VPS `9e89e51` (docs tip `0770929`). Migration fulfillment_orders applied.
+      Claims released. Next phases: SMS/Telegram notify + tracking bot + ledger.
     acceptance_criteria:
       - "Paid/confirmed order creates one fulfillment parcel per vendorId (null=OWN) idempotently"
       - "Customer order JSON has unlabeled مرسوله N and never vendorId/commission"

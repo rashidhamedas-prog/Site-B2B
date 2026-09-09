@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T10:50:00Z — TASK-20260909-009 CLOSED live `9e89e51`
+
+- VPS deploy complete; `fulfillment_orders` + `fulfillment_order_items` present; `order_items.vendorId/commissionPercent` present. Health 200. Claims released.
+- Next: SMS/Telegram notify partners, tracking bot, ledger/payout.
+
 ## 2026-09-09T10:40:00Z — TASK-20260909-009 fulfillment split (phase 3)
 
 - ID **009** (008 on master is CMS jsonb). Split after `commitStockForOrder` into unlabeled `مرسوله N`.
