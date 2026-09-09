@@ -260,6 +260,21 @@ export class NotificationService {
     return this.sendSms(phone, message);
   }
 
+  async fulfillmentShipped(
+    phone: string,
+    vars: { orderNumber: string; parcelLabel: string; trackingCode: string },
+  ) {
+    if (!(await this.eventEnabled('fulfillmentShipped'))) return false;
+    const trackingLine = vars.trackingCode ? `\nکد رهگیری: ${vars.trackingCode}` : '';
+    const message = await this.template('fulfillmentShipped', {
+      orderNumber: vars.orderNumber,
+      parcelLabel: vars.parcelLabel || 'مرسوله',
+      trackingCode: vars.trackingCode || '',
+      trackingLine,
+    });
+    return this.sendSms(phone, message);
+  }
+
   async status() {
     const cfg = await this.settings.sms();
     return {

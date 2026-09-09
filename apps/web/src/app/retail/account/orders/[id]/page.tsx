@@ -18,6 +18,7 @@ type Parcel = {
   parcelIndex: number;
   parcelLabel: string;
   status: string;
+  trackingCode?: string | null;
   items: Array<{
     productName: string;
     sku: string;
@@ -105,7 +106,7 @@ export default function RetailOrderDetailPage({ params }: { params: Promise<{ id
         </p>
       ) : null}
 
-      {order.parcels && order.parcels.length > 1 ? (
+      {order.parcels && order.parcels.length > 0 ? (
         <div className="space-y-3">
           <h3 className="text-sm font-bold text-gray-900">مرسوله‌ها</h3>
           <p className="text-xs text-[var(--retail-muted)]">
@@ -122,6 +123,11 @@ export default function RetailOrderDetailPage({ params }: { params: Promise<{ id
                   {PARCEL_STATUS[p.status] || p.status}
                 </span>
               </div>
+              {p.trackingCode ? (
+                <p className="mt-1 text-xs text-gray-600">
+                  کد رهگیری: <span className="font-mono font-bold" dir="ltr">{p.trackingCode}</span>
+                </p>
+              ) : null}
               <ul className="mt-2 space-y-1 text-gray-700">
                 {p.items.map((it, i) => (
                   <li key={`${p.parcelIndex}-${i}`}>

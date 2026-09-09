@@ -15,7 +15,9 @@ import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
 import {
   canPartnerAcceptStatus,
+  canPartnerShipStatus,
   commissionAmountIrr,
+  normalizeTrackingCode,
   partnerMayAccessFulfillment,
   shouldEnqueuePartnerNotify,
   splitLinesIntoParcels,
@@ -172,6 +174,50 @@ export class FulfillmentService {
     return this.toPartnerView(row);
   }
 
+  async shipForVendor(
+    id: string,
+    vendorId: string | undefined,
+    trackingCodeRaw: unknown,
+  ) {
+    const trackingCode = normalizeTrackingCode(trackingCodeRaw);
+    if (!trackingCode) {
+      throw new BadRequestException('کد رهگیری معتبر وارد کنید');
+    }
+    const row = await this.fulfillmentRepo.findOne({
+      where: { id },
+      relations: ['items', 'order'],
+    });
+    if (!row) throw new NotFoundException('مرسوله پیدا نشد');
+    if (!partnerMayAccessFulfillment(vendorId, row.vendorId)) {
+      throw new ForbiddenException('دسترسی غیرمجاز');
+    }
+    if (!canPartnerShipStatus(row.status)) {
+      throw new BadRequestException('فقط مرسولهٔ قبول‌شده قابل ارسال است');
+    }
+    row.status = 'SHIPPED';
+    row.trackingCode = trackingCode;
+    await this.fulfillmentRepo.save(row);
+
+    const channel =
+      String(row.order?.type || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    await this.outbox.enqueue({
+      operationId: `${row.id}:notify:shipped`,
+      eventType: OUTBOX_EVENT_TYPES.FULFILLMENT_SHIPPED_NOTIFICATION,
+      aggregateType: 'FULFILLMENT_ORDER',
+      aggregateId: row.id,
+      channel,
+      payload: {
+        fulfillmentOrderId: row.id,
+        orderId: row.orderId,
+        orderNumber: row.order?.orderNumber ?? null,
+        parcelLabel: row.parcelLabel,
+        trackingCode,
+      },
+    });
+
+    return this.toPartnerView(row);
+  }
+
   private toPartnerView(row: FulfillmentOrderEntity) {
     const order = row.order;
     return {
@@ -180,6 +226,7 @@ export class FulfillmentService {
       parcelIndex: row.parcelIndex,
       status: row.status,
       acceptBy: row.acceptBy,
+      trackingCode: row.trackingCode ?? null,
       goodsTotal: row.goodsTotal,
       shippingFee: 0,
       commissionTotal: row.commissionTotal,

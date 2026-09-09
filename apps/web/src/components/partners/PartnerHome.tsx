@@ -19,6 +19,7 @@ type PartnerFulfillment = {
   parcelLabel: string;
   status: string;
   acceptBy: string | null;
+  trackingCode: string | null;
   goodsTotal: number;
   commissionTotal: number;
   orderNumber: string | null;
@@ -59,6 +60,7 @@ export function PartnerHome() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [trackingDraft, setTrackingDraft] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setError('');
@@ -87,6 +89,25 @@ export function PartnerHome() {
       await load();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'قبول مرسوله ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const ship = async (id: string) => {
+    setBusyId(id);
+    try {
+      await apiClient.patch(`/partners/fulfillments/${id}/ship`, {
+        trackingCode: trackingDraft[id] || '',
+      });
+      setTrackingDraft((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'ثبت ارسال ناموفق بود');
     } finally {
       setBusyId(null);
     }
@@ -180,6 +201,35 @@ export function PartnerHome() {
                   </button>
                 ) : null}
               </div>
+              {row.status === 'ACCEPTED' ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <label className="flex-1 text-xs text-gray-600">
+                    کد رهگیری پست
+                    <input
+                      dir="ltr"
+                      className="mt-1 w-full min-h-11 rounded-xl border border-gray-200 px-3 text-sm"
+                      value={trackingDraft[row.id] ?? ''}
+                      onChange={(e) =>
+                        setTrackingDraft((prev) => ({ ...prev, [row.id]: e.target.value }))
+                      }
+                      placeholder="مثلاً 1234567890"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={busyId === row.id}
+                    onClick={() => void ship(row.id)}
+                    className="min-h-11 rounded-xl bg-emerald-700 px-4 text-sm font-medium text-white disabled:opacity-60"
+                  >
+                    {busyId === row.id ? '…' : 'ثبت ارسال'}
+                  </button>
+                </div>
+              ) : null}
+              {row.trackingCode ? (
+                <p className="text-xs text-gray-600" dir="ltr">
+                  tracking: {row.trackingCode}
+                </p>
+              ) : null}
               <ul className="space-y-1 text-sm text-gray-700">
                 {row.items.map((it, i) => (
                   <li key={`${row.id}-${i}`}>

@@ -94,6 +94,7 @@ export const OUTBOX_EVENT_TYPES = {
   ORDER_CREATED_NOTIFICATION: 'order.created.notification',
   ORDER_STATUS_CHANGED_NOTIFICATION: 'order.status_changed.notification',
   FULFILLMENT_PENDING_ACCEPT_NOTIFICATION: 'fulfillment.pending_accept.notification',
+  FULFILLMENT_SHIPPED_NOTIFICATION: 'fulfillment.shipped.notification',
   AFFILIATE_POSTBACK_REQUESTED: 'affiliate.postback.requested',
   SEARCH_REINDEX_REQUESTED: 'search.reindex.requested',
   PUBLICATION_DELIVER_REQUESTED: 'publication.deliver.requested',

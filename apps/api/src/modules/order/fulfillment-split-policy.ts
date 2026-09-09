@@ -126,6 +126,16 @@ export function canPartnerAcceptStatus(status: string | null | undefined): boole
   return status === 'PENDING_ACCEPT';
 }
 
+export function canPartnerShipStatus(status: string | null | undefined): boolean {
+  return status === 'ACCEPTED';
+}
+
+export function normalizeTrackingCode(raw: unknown): string | null {
+  const code = String(raw ?? '').trim().replace(/\s+/g, '');
+  if (!code || code.length > 64) return null;
+  return code;
+}
+
 /** Partner SMS/outbox only for vendor parcels awaiting accept — never OWN. */
 export function shouldEnqueuePartnerNotify(
   vendorId: string | null | undefined,
@@ -138,6 +148,7 @@ export type CustomerParcel = {
   parcelIndex: number;
   parcelLabel: string;
   status: string;
+  trackingCode: string | null;
   items: Array<{
     productName: string;
     sku: string;
@@ -153,6 +164,7 @@ export function toCustomerParcels(
     parcelIndex: number;
     parcelLabel: string;
     status: string;
+    trackingCode?: string | null;
     items?: Array<{
       productName: string;
       sku: string;
@@ -167,6 +179,7 @@ export function toCustomerParcels(
     parcelIndex: p.parcelIndex,
     parcelLabel: p.parcelLabel,
     status: p.status,
+    trackingCode: p.trackingCode ? String(p.trackingCode) : null,
     items: (p.items ?? []).map((it) => ({
       productName: it.productName,
       sku: it.sku,

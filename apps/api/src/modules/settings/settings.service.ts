@@ -246,6 +246,7 @@ export class SettingsService {
         wholesaleRegistrationAdmin: s.events?.wholesaleRegistrationAdmin ?? true,
         wholesaleApproved: s.events?.wholesaleApproved ?? true,
         fulfillmentPendingAccept: s.events?.fulfillmentPendingAccept ?? true,
+        fulfillmentShipped: s.events?.fulfillmentShipped ?? true,
       } as Record<string, boolean>,
       /** Editable SMS bodies — empty/missing keys fall back to current production defaults */
       templates: resolveSmsTemplates(s.templates),

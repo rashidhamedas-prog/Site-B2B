@@ -157,6 +157,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       case OUTBOX_EVENT_TYPES.FULFILLMENT_PENDING_ACCEPT_NOTIFICATION:
         await this.handleFulfillmentPendingAccept(payload, row.aggregateId);
         return;
+      case OUTBOX_EVENT_TYPES.FULFILLMENT_SHIPPED_NOTIFICATION:
+        await this.handleFulfillmentShipped(payload, row.aggregateId);
+        return;
       case OUTBOX_EVENT_TYPES.CUSTOMER_REGISTERED_MARKETING:
         if (this.marketing) await this.marketing.handleRegisteredEvent(String(payload.customerId || row.aggregateId));
         return;
@@ -285,6 +288,33 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       orderNumber,
       slaHours,
       partnersUrl: 'poshaktaranom.com/partners',
+    });
+  }
+
+  private async handleFulfillmentShipped(
+    payload: Record<string, unknown>,
+    aggregateId: string,
+  ) {
+    const orderId = String(payload.orderId || '');
+    const orderNumber = String(payload.orderNumber || '');
+    const trackingCode = String(payload.trackingCode || '').trim();
+    const parcelLabel = String(payload.parcelLabel || 'مرسوله');
+    if (!orderId || !orderNumber || !trackingCode) {
+      this.logger.warn(`fulfillment shipped notify skipped aggregate=${aggregateId}`);
+      return;
+    }
+    const order = await this.orders.findOne({ where: { id: orderId } });
+    if (!order?.customerId) return;
+    const customer = await this.customers.findOne({ where: { id: order.customerId } });
+    const phone =
+      customer && typeof (customer as { phone?: string }).phone === 'string'
+        ? (customer as { phone: string }).phone
+        : '';
+    if (!phone) return;
+    await this.notifications.fulfillmentShipped(phone, {
+      orderNumber,
+      parcelLabel,
+      trackingCode,
     });
   }
 

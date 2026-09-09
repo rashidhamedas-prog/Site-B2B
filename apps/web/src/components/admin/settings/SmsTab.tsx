@@ -12,6 +12,7 @@ const SMS_CUSTOMER_EVENTS: Record<string, string> = {
   paymentReceived: 'دریافت پرداخت (به مشتری)',
   wholesaleApproved: 'تأیید حساب عمده (به مشتری)',
   fulfillmentPendingAccept: 'مرسوله جدید همکار — قبول ارسال (به همکار)',
+  fulfillmentShipped: 'ارسال مرسوله همکار + کد رهگیری (به مشتری)',
 };
 
 const SMS_ADMIN_EVENTS: Record<string, string> = {
@@ -31,6 +32,8 @@ export const SMS_TEMPLATE_DEFAULTS: Record<string, string> = {
   paymentReceived: 'پوشاک ترنم\nپرداخت {amountToman} تومان با موفقیت ثبت شد.\nکد پیگیری: {refId}',
   fulfillmentPendingAccept:
     'پوشاک ترنم\nمرسوله جدید برای ارسال\nسفارش {orderNumber}\nمهلت قبول: {slaHours} ساعت\nورود همکاران: {partnersUrl}',
+  fulfillmentShipped:
+    'پوشاک ترنم\n{parcelLabel} سفارش {orderNumber} ارسال شد.{trackingLine}',
 };
 
 const SMS_TEMPLATE_META: Array<{ key: string; label: string; placeholders: string }> = [
@@ -41,6 +44,7 @@ const SMS_TEMPLATE_META: Array<{ key: string; label: string; placeholders: strin
   { key: 'paymentReceived', label: SMS_CUSTOMER_EVENTS.paymentReceived, placeholders: '{amountToman} {refId}' },
   { key: 'wholesaleApproved', label: SMS_CUSTOMER_EVENTS.wholesaleApproved, placeholders: '{greet} {customerName}' },
   { key: 'fulfillmentPendingAccept', label: SMS_CUSTOMER_EVENTS.fulfillmentPendingAccept, placeholders: '{orderNumber} {slaHours} {partnersUrl}' },
+  { key: 'fulfillmentShipped', label: SMS_CUSTOMER_EVENTS.fulfillmentShipped, placeholders: '{parcelLabel} {orderNumber} {trackingLine} {trackingCode}' },
   { key: 'orderRegisteredAdmin', label: SMS_ADMIN_EVENTS.orderRegisteredAdmin, placeholders: '{site} {orderNumber} {customerLine}' },
   { key: 'wholesaleRegistrationAdmin', label: SMS_ADMIN_EVENTS.wholesaleRegistrationAdmin, placeholders: '{customerName} {phone}' },
 ];

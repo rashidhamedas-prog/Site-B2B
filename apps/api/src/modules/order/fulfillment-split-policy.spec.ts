@@ -3,8 +3,10 @@
  */
 import {
   canPartnerAcceptStatus,
+  canPartnerShipStatus,
   commissionAmountIrr,
   FULFILLMENT_OWN_KEY,
+  normalizeTrackingCode,
   parcelLabelForIndex,
   partnerMayAccessFulfillment,
   shouldEnqueuePartnerNotify,
@@ -74,15 +76,20 @@ assert(canPartnerAcceptStatus('PENDING_ACCEPT') && !canPartnerAcceptStatus('ACCE
 assert(shouldEnqueuePartnerNotify('v1', 'PENDING_ACCEPT'), 'vendor pending gets notify');
 assert(!shouldEnqueuePartnerNotify(null, 'ACCEPTED'), 'OWN never notified');
 assert(!shouldEnqueuePartnerNotify('v1', 'ACCEPTED'), 'accepted skips notify');
+assert(canPartnerShipStatus('ACCEPTED') && !canPartnerShipStatus('PENDING_ACCEPT'), 'ship gate');
+assert(normalizeTrackingCode('  AB 12  ') === 'AB12', 'tracking normalize');
+assert(normalizeTrackingCode('') === null, 'empty tracking rejected');
 
 const customer = toCustomerParcels([
   {
     parcelIndex: 1,
     parcelLabel: 'مرسوله ۱',
-    status: 'ACCEPTED',
+    status: 'SHIPPED',
+    trackingCode: 'TRK1',
     items: [{ productName: 'مانتو', sku: 'M', color: 'کرم', size: 'FREE', quantity: 1, imageUrl: null }],
   },
 ]);
 assert(customer[0].parcelLabel === 'مرسوله ۱' && !('vendorId' in customer[0]), 'customer parcels unlabeled');
+assert(customer[0].trackingCode === 'TRK1', 'customer sees tracking');
 
 console.log('fulfillment-split-policy.spec.ts: ok');

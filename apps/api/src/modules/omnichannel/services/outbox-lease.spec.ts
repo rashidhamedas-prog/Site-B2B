@@ -31,8 +31,16 @@ assert(
   'partner fulfillment SMS is always leased',
 );
 assert(
+  PHASE3_EVENT_TYPES.includes(OUTBOX_EVENT_TYPES.FULFILLMENT_SHIPPED_NOTIFICATION),
+  'customer parcel shipped SMS is always leased',
+);
+assert(
   leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.FULFILLMENT_PENDING_ACCEPT_NOTIFICATION),
   'partner notify leased without connectors',
+);
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.FULFILLMENT_SHIPPED_NOTIFICATION),
+  'shipped notify leased without connectors',
 );
 assert(LEASE_SQL.includes('FOR UPDATE SKIP LOCKED'), 'lease skips locked rows');
 assert(LEASE_SQL.includes('"lockedAt" IS NULL'), 'PROCESSING with a null lock is reclaimable');

@@ -44,6 +44,9 @@ export class FulfillmentOrderEntity {
   @Column({ type: 'timestamptz', nullable: true })
   acceptBy: Date | null;
 
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  trackingCode: string | null;
+
   @Column({ type: 'bigint', default: 0 })
   goodsTotal: number;
 
