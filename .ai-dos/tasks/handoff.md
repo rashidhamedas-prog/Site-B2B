@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T11:50:00Z — TASK-20260909-012 CLOSED live `8b201f2`
+
+- VPS git `8b201f2`; migration `WholesalePromoHeroes1757430000012` id=77; health 200.
+- Live `poshaktaranom.com` HTML includes `partnership-847acfae36e3` and «برای بوتیکت»; WebP 200 (43668 B). Jackets is carousel slide 2 (not in first paint). Claims released.
+
 ## 2026-09-09T11:45:00Z — TASK-20260909-012 wholesale promo banners
 
 - Owner asked to add the two supplied banners to **wholesale** home, not retail.

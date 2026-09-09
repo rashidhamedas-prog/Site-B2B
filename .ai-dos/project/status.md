@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-09 — **TASK-20260909-012** implementing two wholesale home artwork banners. Runtime in `8c0659b`. Not live until push/deploy + WHOLESALE CMS migration.
+- Last verified: 2026-09-09 — **TASK-20260909-012 CLOSED** on `origin/master` + VPS `8b201f2`. Wholesale home artwork banners (partnership LCP, jackets slide 2). Migration id=77. Health 200. `.com` HTML has partnership plate. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-013** implementing retail DigiPay + Prima/Negin artwork heroes on `ai/TASK-20260909-006-retail-campaign-banners`. Not live until merge/deploy + migration.
 - Last verified: 2026-09-09 — **TASK-20260909-011** implementing partner ship + tracking SMS on `ai/TASK-20260909-001-vendor-invite`. Not live until merge/deploy.
 - Last verified: 2026-09-09 — **TASK-20260909-010 CLOSED** on `origin/master` + VPS `989abbf`. Partner SMS on fulfillment `PENDING_ACCEPT` via outbox/worker. Health 200; workers healthy. Claims released. Next: tracking bot / SLA escalate / ledger.

@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260909-012"
     title: "Add two artwork promo banners to wholesale home hero"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260909-012"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260909-006-retail-campaign-banners"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-09T11:20:00Z"
-    heartbeat_at: "2026-09-09T11:45:00Z"
+    heartbeat_at: "2026-09-09T11:50:00Z"
+    closed_at: "2026-09-09T11:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/public/banners/wholesale-promo-2026/"
       - "apps/web/src/lib/cms/wholesale-promo-slides.ts"
       - "apps/web/src/lib/cms/wholesale-promo-slides.spec.ts"
@@ -25,9 +27,9 @@ tasks:
       - "apps/api/src/database/migrations/20260909-012-wholesale-promo-heroes.ts"
       - "docs/reports/2026-09-09-wholesale-promo-banners.md"
     notes: |
-      Owner asked to add the two supplied banners to wholesale (.com), not retail.
-      Did not take TASK-20260909-013 retail hero files or TASK-20260909-011 partner-ship files.
-      WORKLOG owned by 011. Governance overlap on registry files.
+      LIVE origin/master + VPS `8b201f2`. Migration WholesalePromoHeroes1757430000012 id=77.
+      Home HTML has partnership plate + «برای بوتیکت»; asset 200 43668B. Health 200.
+      WORKLOG owned by 011 — recorded in report.
     acceptance_criteria:
       - "Wholesale home hero prepends partnership then jackets artwork slides"
       - "CTA hrefs stay on-host: /portal/register and /category/women-coats"
