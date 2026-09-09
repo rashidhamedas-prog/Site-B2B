@@ -94,6 +94,18 @@ export function PartnerHome() {
     }
   };
 
+  const reject = async (id: string) => {
+    setBusyId(id);
+    try {
+      await apiClient.patch(`/partners/fulfillments/${id}/reject`, {});
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'رد مرسوله ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const ship = async (id: string) => {
     setBusyId(id);
     try {
@@ -191,14 +203,24 @@ export function PartnerHome() {
                   </p>
                 </div>
                 {row.status === 'PENDING_ACCEPT' ? (
-                  <button
-                    type="button"
-                    disabled={busyId === row.id}
-                    onClick={() => void accept(row.id)}
-                    className="min-h-11 rounded-xl bg-gray-900 px-4 text-sm font-medium text-white disabled:opacity-60"
-                  >
-                    {busyId === row.id ? '…' : 'قبول مرسوله'}
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={busyId === row.id}
+                      onClick={() => void accept(row.id)}
+                      className="min-h-11 rounded-xl bg-gray-900 px-4 text-sm font-medium text-white disabled:opacity-60"
+                    >
+                      {busyId === row.id ? '…' : 'قبول مرسوله'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === row.id}
+                      onClick={() => void reject(row.id)}
+                      className="min-h-11 rounded-xl border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 disabled:opacity-60"
+                    >
+                      رد
+                    </button>
+                  </div>
                 ) : null}
               </div>
               {row.status === 'ACCEPTED' ? (

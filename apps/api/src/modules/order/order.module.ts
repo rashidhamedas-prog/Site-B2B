@@ -4,6 +4,7 @@ import { OrderController } from './order.controller';
 import { FulfillmentPartnerController } from './fulfillment-partner.controller';
 import { OrderService } from './order.service';
 import { FulfillmentService } from './fulfillment.service';
+import { FulfillmentJobs } from './fulfillment.jobs';
 import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
 import { FulfillmentOrderEntity } from './entities/fulfillment-order.entity';
@@ -41,7 +42,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     InventoryModule,
   ],
   controllers: [OrderController, FulfillmentPartnerController],
-  providers: [OrderService, FulfillmentService],
+  providers: [OrderService, FulfillmentService, FulfillmentJobs],
   exports: [OrderService, FulfillmentService],
 })
 export class OrderModule {}

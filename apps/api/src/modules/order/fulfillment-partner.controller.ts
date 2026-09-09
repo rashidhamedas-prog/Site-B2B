@@ -46,6 +46,12 @@ export class FulfillmentPartnerController {
     return this.fulfillments.acceptForVendor(id, this.vendorId(req));
   }
 
+  @Patch(':id/reject')
+  @ApiOperation({ summary: 'رد مرسوله؛ ارسال به ترنم (OWN) برمی‌گردد' })
+  reject(@Request() req: Authed, @Param('id') id: string) {
+    return this.fulfillments.rejectForVendor(id, this.vendorId(req));
+  }
+
   @Patch(':id/ship')
   @ApiOperation({ summary: 'ثبت ارسال مرسوله + کد رهگیری توسط همکار مالک' })
   ship(

@@ -5,9 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, In, Repository } from 'typeorm';
+import { EntityManager, In, IsNull, LessThan, Repository } from 'typeorm';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { OutboxService } from '../omnichannel/services/outbox.service';
+import { NotificationService } from '../notification/notification.service';
 import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { FulfillmentOrderItemEntity } from './entities/fulfillment-order-item.entity';
 import { FulfillmentOrderEntity } from './entities/fulfillment-order.entity';
@@ -15,8 +16,10 @@ import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
 import {
   canPartnerAcceptStatus,
+  canPartnerRejectStatus,
   canPartnerShipStatus,
   commissionAmountIrr,
+  isAcceptSlaExpired,
   normalizeTrackingCode,
   partnerMayAccessFulfillment,
   shouldEnqueuePartnerNotify,
@@ -30,7 +33,10 @@ export class FulfillmentService {
   constructor(
     @InjectRepository(FulfillmentOrderEntity)
     private readonly fulfillmentRepo: Repository<FulfillmentOrderEntity>,
+    @InjectRepository(VendorEntity)
+    private readonly vendors: Repository<VendorEntity>,
     private readonly outbox: OutboxService,
+    private readonly notifications: NotificationService,
   ) {}
 
   /** Idempotent: one parcel set per order after stock settle / paid confirm. */
@@ -216,6 +222,98 @@ export class FulfillmentService {
     });
 
     return this.toPartnerView(row);
+  }
+
+  async rejectForVendor(id: string, vendorId: string | undefined) {
+    const row = await this.fulfillmentRepo.findOne({
+      where: { id },
+      relations: ['items', 'order'],
+    });
+    if (!row) throw new NotFoundException('مرسوله پیدا نشد');
+    if (!partnerMayAccessFulfillment(vendorId, row.vendorId)) {
+      throw new ForbiddenException('دسترسی غیرمجاز');
+    }
+    if (!canPartnerRejectStatus(row.status)) {
+      throw new BadRequestException('این مرسوله قابل رد نیست');
+    }
+    await this.reassignVendorParcelToOwn(row, 'reject');
+    return { ok: true };
+  }
+
+  /** Cron: overdue PENDING_ACCEPT → OWN + admin SMS. */
+  async expireOverdueAccepts(now = new Date(), limit = 20): Promise<number> {
+    const rows = await this.fulfillmentRepo.find({
+      where: {
+        status: 'PENDING_ACCEPT',
+        acceptBy: LessThan(now),
+      },
+      relations: ['items', 'order'],
+      take: Math.max(1, Math.min(limit, 50)),
+      order: { acceptBy: 'ASC' },
+    });
+    let n = 0;
+    for (const row of rows) {
+      if (!row.vendorId || !isAcceptSlaExpired(row.acceptBy, now)) continue;
+      await this.reassignVendorParcelToOwn(row, 'sla');
+      n += 1;
+    }
+    return n;
+  }
+
+  /**
+   * Move failed vendor parcel onto Taranom OWN (merge if OWN already exists).
+   * Commission cleared — Taranom fulfills at full goods value.
+   */
+  private async reassignVendorParcelToOwn(
+    row: FulfillmentOrderEntity,
+    reason: 'sla' | 'reject',
+  ): Promise<void> {
+    const vendorId = row.vendorId;
+    if (!vendorId) return;
+    const vendor = await this.vendors.findOne({ where: { id: vendorId } });
+    const vendorName = vendor?.name || 'همکار';
+    const orderNumber = row.order?.orderNumber || row.orderId;
+    const channel =
+      String(row.order?.type || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+
+    const own = await this.fulfillmentRepo.findOne({
+      where: { orderId: row.orderId, vendorId: IsNull() },
+      relations: ['items'],
+    });
+
+    if (own && own.id !== row.id) {
+      const itemRepo = this.fulfillmentRepo.manager.getRepository(FulfillmentOrderItemEntity);
+      for (const it of row.items ?? []) {
+        it.fulfillmentOrderId = own.id;
+        it.commissionPercent = null;
+        it.commissionAmount = 0;
+        await itemRepo.save(it);
+      }
+      own.goodsTotal = Math.floor(Number(own.goodsTotal) || 0) + Math.floor(Number(row.goodsTotal) || 0);
+      own.commissionTotal = 0;
+      if (own.status === 'PENDING_ACCEPT') own.status = 'ACCEPTED';
+      await this.fulfillmentRepo.save(own);
+      await this.fulfillmentRepo.remove(row);
+    } else {
+      row.vendorId = null;
+      row.status = 'ACCEPTED';
+      row.acceptBy = null;
+      row.commissionTotal = 0;
+      await this.fulfillmentRepo.save(row);
+      const itemRepo = this.fulfillmentRepo.manager.getRepository(FulfillmentOrderItemEntity);
+      for (const it of row.items ?? []) {
+        it.commissionPercent = null;
+        it.commissionAmount = 0;
+        await itemRepo.save(it);
+      }
+    }
+
+    await this.notifications.fulfillmentAcceptExpired(channel, {
+      orderNumber,
+      parcelLabel: row.parcelLabel,
+      vendorName,
+      reason,
+    });
   }
 
   private toPartnerView(row: FulfillmentOrderEntity) {

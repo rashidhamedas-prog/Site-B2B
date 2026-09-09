@@ -18,6 +18,7 @@ const SMS_CUSTOMER_EVENTS: Record<string, string> = {
 const SMS_ADMIN_EVENTS: Record<string, string> = {
   orderRegisteredAdmin: 'ثبت سفارش جدید (به ادمین)',
   wholesaleRegistrationAdmin: 'ثبت‌نام عمده جدید (به ادمین)',
+  fulfillmentAcceptExpired: 'انقضا/رد مرسوله همکار — برگشت به ترنم (به ادمین)',
 };
 
 export const SMS_TEMPLATE_DEFAULTS: Record<string, string> = {
@@ -34,6 +35,8 @@ export const SMS_TEMPLATE_DEFAULTS: Record<string, string> = {
     'پوشاک ترنم\nمرسوله جدید برای ارسال\nسفارش {orderNumber}\nمهلت قبول: {slaHours} ساعت\nورود همکاران: {partnersUrl}',
   fulfillmentShipped:
     'پوشاک ترنم\n{parcelLabel} سفارش {orderNumber} ارسال شد.{trackingLine}',
+  fulfillmentAcceptExpired:
+    'پوشاک ترنم\nمرسوله برگشت به ترنم ({reasonLabel})\nسفارش {orderNumber}\n{parcelLabel}\nهمکار: {vendorName}',
 };
 
 const SMS_TEMPLATE_META: Array<{ key: string; label: string; placeholders: string }> = [
@@ -47,6 +50,7 @@ const SMS_TEMPLATE_META: Array<{ key: string; label: string; placeholders: strin
   { key: 'fulfillmentShipped', label: SMS_CUSTOMER_EVENTS.fulfillmentShipped, placeholders: '{parcelLabel} {orderNumber} {trackingLine} {trackingCode}' },
   { key: 'orderRegisteredAdmin', label: SMS_ADMIN_EVENTS.orderRegisteredAdmin, placeholders: '{site} {orderNumber} {customerLine}' },
   { key: 'wholesaleRegistrationAdmin', label: SMS_ADMIN_EVENTS.wholesaleRegistrationAdmin, placeholders: '{customerName} {phone}' },
+  { key: 'fulfillmentAcceptExpired', label: SMS_ADMIN_EVENTS.fulfillmentAcceptExpired, placeholders: '{reasonLabel} {orderNumber} {parcelLabel} {vendorName}' },
 ];
 
 const OPS_LABELS: Record<keyof SmsOpsSide, string> = {

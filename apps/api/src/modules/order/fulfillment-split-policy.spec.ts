@@ -3,9 +3,11 @@
  */
 import {
   canPartnerAcceptStatus,
+  canPartnerRejectStatus,
   canPartnerShipStatus,
   commissionAmountIrr,
   FULFILLMENT_OWN_KEY,
+  isAcceptSlaExpired,
   normalizeTrackingCode,
   parcelLabelForIndex,
   partnerMayAccessFulfillment,
@@ -77,6 +79,9 @@ assert(shouldEnqueuePartnerNotify('v1', 'PENDING_ACCEPT'), 'vendor pending gets 
 assert(!shouldEnqueuePartnerNotify(null, 'ACCEPTED'), 'OWN never notified');
 assert(!shouldEnqueuePartnerNotify('v1', 'ACCEPTED'), 'accepted skips notify');
 assert(canPartnerShipStatus('ACCEPTED') && !canPartnerShipStatus('PENDING_ACCEPT'), 'ship gate');
+assert(canPartnerRejectStatus('PENDING_ACCEPT') && !canPartnerRejectStatus('ACCEPTED'), 'reject gate');
+assert(isAcceptSlaExpired(new Date('2020-01-01T00:00:00Z'), new Date('2020-01-02T00:00:00Z')), 'past SLA');
+assert(!isAcceptSlaExpired(new Date('2030-01-01T00:00:00Z'), new Date('2020-01-02T00:00:00Z')), 'future SLA');
 assert(normalizeTrackingCode('  AB 12  ') === 'AB12', 'tracking normalize');
 assert(normalizeTrackingCode('') === null, 'empty tracking rejected');
 

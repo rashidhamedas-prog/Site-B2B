@@ -275,6 +275,33 @@ export class NotificationService {
     return this.sendSms(phone, message);
   }
 
+  /** Admin alert when partner SLA expires or partner rejects — parcel back to OWN. */
+  async fulfillmentAcceptExpired(
+    channel: 'WHOLESALE' | 'RETAIL',
+    vars: {
+      orderNumber: string;
+      parcelLabel: string;
+      vendorName: string;
+      reason: 'sla' | 'reject';
+    },
+  ) {
+    if (!(await this.eventEnabled('fulfillmentAcceptExpired'))) return false;
+    const phones = await this.adminPhonesFor(channel);
+    if (phones.length === 0) {
+      this.logger.log(`[SMS] fulfillmentAcceptExpired skipped — no admin phone for ${channel}`);
+      return false;
+    }
+    const reasonLabel = vars.reason === 'reject' ? 'رد همکار' : 'انقضای مهلت قبول';
+    const message = await this.template('fulfillmentAcceptExpired', {
+      orderNumber: vars.orderNumber,
+      parcelLabel: vars.parcelLabel || 'مرسوله',
+      vendorName: vars.vendorName || 'همکار',
+      reasonLabel,
+    });
+    const results = await Promise.all(phones.map((p) => this.sendSms(p, message)));
+    return results.some(Boolean);
+  }
+
   async status() {
     const cfg = await this.settings.sms();
     return {

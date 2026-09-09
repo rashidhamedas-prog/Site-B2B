@@ -20,6 +20,8 @@ export const SMS_TEMPLATE_DEFAULTS = {
     'پوشاک ترنم\nمرسوله جدید برای ارسال\nسفارش {orderNumber}\nمهلت قبول: {slaHours} ساعت\nورود همکاران: {partnersUrl}',
   fulfillmentShipped:
     'پوشاک ترنم\n{parcelLabel} سفارش {orderNumber} ارسال شد.{trackingLine}',
+  fulfillmentAcceptExpired:
+    'پوشاک ترنم\nمرسوله برگشت به ترنم ({reasonLabel})\nسفارش {orderNumber}\n{parcelLabel}\nهمکار: {vendorName}',
 } as const;
 
 export type SmsTemplateKey = keyof typeof SMS_TEMPLATE_DEFAULTS;

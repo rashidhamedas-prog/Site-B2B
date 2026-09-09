@@ -130,6 +130,21 @@ export function canPartnerShipStatus(status: string | null | undefined): boolean
   return status === 'ACCEPTED';
 }
 
+export function canPartnerRejectStatus(status: string | null | undefined): boolean {
+  return status === 'PENDING_ACCEPT';
+}
+
+/** True when accept SLA window has ended (acceptBy in the past). */
+export function isAcceptSlaExpired(
+  acceptBy: Date | string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (!acceptBy) return false;
+  const t = acceptBy instanceof Date ? acceptBy.getTime() : new Date(acceptBy).getTime();
+  if (!Number.isFinite(t)) return false;
+  return t <= now.getTime();
+}
+
 export function normalizeTrackingCode(raw: unknown): string | null {
   const code = String(raw ?? '').trim().replace(/\s+/g, '');
   if (!code || code.length > 64) return null;
