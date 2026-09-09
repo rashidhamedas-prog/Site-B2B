@@ -29,3 +29,12 @@ export function resolveLedgerStatus(
 export function canPartnerDeliverStatus(status: string | null | undefined): boolean {
   return status === 'SHIPPED';
 }
+
+/** Admin may pay only rows that resolve to AVAILABLE (not HELD, not already PAID). */
+export function canMarkLedgerPaid(
+  status: string,
+  availableAt: Date | string,
+  now: Date = new Date(),
+): boolean {
+  return resolveLedgerStatus(status, availableAt, now) === 'AVAILABLE';
+}

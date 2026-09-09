@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Handshake, KeyRound, Pause, Play, Plus, Copy } from 'lucide-react';
+import { BookOpen, Handshake, KeyRound, Pause, Play, Plus, Copy, Wallet } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { normalizePhone } from '@/lib/phone';
@@ -17,6 +17,22 @@ interface PublicVendor {
   settlementHoldDays: number;
   notes: string | null;
   invitedAt: string | null;
+}
+
+interface LedgerSummary {
+  heldIrr: number;
+  availableIrr: number;
+  paidIrr: number;
+  data: Array<{
+    id: string;
+    entryType: string;
+    amountIrr: number;
+    availableAt: string;
+    status: string;
+    orderId: string | null;
+    fulfillmentOrderId: string | null;
+    createdAt: string;
+  }>;
 }
 
 const STATUS_LABEL: Record<VendorStatus, string> = {
@@ -36,6 +52,10 @@ const emptyForm = {
 const fieldClass =
   'w-full min-h-11 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30';
 
+function toman(n: number) {
+  return Math.round(Number(n) / 10).toLocaleString('fa-IR');
+}
+
 export function AdminPartners() {
   const [rows, setRows] = useState<PublicVendor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +65,10 @@ export function AdminPartners() {
   const [error, setError] = useState('');
   const [listError, setListError] = useState('');
   const [oneTimePassword, setOneTimePassword] = useState<{ name: string; password: string } | null>(null);
+  const [ledgerVendorId, setLedgerVendorId] = useState<string | null>(null);
+  const [ledger, setLedger] = useState<LedgerSummary | null>(null);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,6 +146,52 @@ export function AdminPartners() {
       /* ignore */
     }
   };
+
+  const openLedger = async (row: PublicVendor) => {
+    setLedgerVendorId(row.id);
+    setLedger(null);
+    setLedgerLoading(true);
+    setListError('');
+    try {
+      const res = await apiClient.get<LedgerSummary>(`/vendors/${row.id}/ledger`);
+      setLedger(res);
+    } catch (e: unknown) {
+      setListError(e instanceof Error ? e.message : 'بارگذاری دفتر ناموفق بود');
+      setLedgerVendorId(null);
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
+  const markPaid = async () => {
+    if (!ledgerVendorId || !ledger || ledger.availableIrr <= 0) return;
+    const name = rows.find((r) => r.id === ledgerVendorId)?.name ?? 'همکار';
+    if (
+      !window.confirm(
+        `پرداخت ${toman(ledger.availableIrr)} تومان قابل‌برداشت برای «${name}» ثبت شود؟`,
+      )
+    ) {
+      return;
+    }
+    setPaying(true);
+    setListError('');
+    try {
+      const res = await apiClient.post<{ paidCount: number; paidIrr: number; summary: LedgerSummary }>(
+        `/vendors/${ledgerVendorId}/ledger/pay`,
+        {},
+      );
+      setLedger(res.summary);
+      if (res.paidCount === 0) {
+        setListError('ردیفی برای پرداخت نبود (شاید قبلاً ثبت شده).');
+      }
+    } catch (e: unknown) {
+      setListError(e instanceof Error ? e.message : 'ثبت پرداخت ناموفق بود');
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const ledgerVendor = rows.find((r) => r.id === ledgerVendorId) ?? null;
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -318,6 +388,14 @@ export function AdminPartners() {
                         <KeyRound className="h-4 w-4" />
                         رمز جدید
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => void openLedger(row)}
+                        className="inline-flex min-h-11 items-center gap-1 rounded-lg border px-3"
+                      >
+                        <BookOpen className="h-4 w-4" />
+                        دفتر
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -326,6 +404,88 @@ export function AdminPartners() {
           </tbody>
         </table>
       </div>
+
+      {ledgerVendorId && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-semibold text-gray-900">
+              <Wallet className="h-4 w-4" />
+              دفتر کمیسیون {ledgerVendor ? `«${ledgerVendor.name}»` : ''}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setLedgerVendorId(null);
+                setLedger(null);
+              }}
+              className="min-h-11 px-3 text-sm text-gray-600"
+            >
+              بستن
+            </button>
+          </div>
+          {ledgerLoading || !ledger ? (
+            <p className="text-sm text-gray-500">در حال بارگذاری…</p>
+          ) : (
+            <>
+              <dl className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl bg-gray-50 px-3 py-2">
+                  <dt className="text-xs text-gray-500">در انتظار hold</dt>
+                  <dd className="mt-1 text-sm font-bold">{toman(ledger.heldIrr)} ت</dd>
+                </div>
+                <div className="rounded-xl bg-emerald-50 px-3 py-2">
+                  <dt className="text-xs text-emerald-800">قابل برداشت</dt>
+                  <dd className="mt-1 text-sm font-bold text-emerald-900">{toman(ledger.availableIrr)} ت</dd>
+                </div>
+                <div className="rounded-xl bg-gray-50 px-3 py-2">
+                  <dt className="text-xs text-gray-500">پرداخت‌شده</dt>
+                  <dd className="mt-1 text-sm font-bold">{toman(ledger.paidIrr)} ت</dd>
+                </div>
+              </dl>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  disabled={paying || ledger.availableIrr <= 0}
+                  onClick={() => void markPaid()}
+                  className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {paying ? 'در حال ثبت…' : 'ثبت پرداخت قابل‌برداشت'}
+                </button>
+                <p className="mt-2 text-xs text-gray-500">
+                  فقط ردیف‌های قابل‌برداشت به «پرداخت‌شده» تبدیل می‌شوند. این عمل از نظر حسابداری باید با واریز واقعی همراه باشد.
+                </p>
+              </div>
+              {ledger.data.length > 0 && (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full min-w-[520px] text-right text-xs">
+                    <thead className="text-gray-500">
+                      <tr>
+                        <th className="px-2 py-2 font-medium">مبلغ</th>
+                        <th className="px-2 py-2 font-medium">وضعیت</th>
+                        <th className="px-2 py-2 font-medium">آزادسازی</th>
+                        <th className="px-2 py-2 font-medium">سفارش</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ledger.data.slice(0, 20).map((entry) => (
+                        <tr key={entry.id} className="border-t border-gray-100">
+                          <td className="px-2 py-2">{toman(entry.amountIrr)} ت</td>
+                          <td className="px-2 py-2">{entry.status}</td>
+                          <td className="px-2 py-2" dir="ltr">
+                            {new Date(entry.availableAt).toLocaleDateString('fa-IR')}
+                          </td>
+                          <td className="px-2 py-2 font-mono" dir="ltr">
+                            {entry.orderId ? `${entry.orderId.slice(0, 8)}…` : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

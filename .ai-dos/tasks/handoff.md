@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T13:25:00Z — TASK-20260909-018 admin ledger payout (phase 8)
+
+- CODE: `GET/POST /vendors/:id/ledger` + `/ledger/pay`; `canMarkLedgerPaid`; AdminPartners دفتر + ثبت پرداخت.
+- Gates: policy spec ok; api/web tsc 0. Next: commit/push/deploy; optional Telegram partner bot.
+
 ## 2026-09-09T12:55:00Z — TASK-20260909-016 CLOSED live `703aaae`
 
 - VPS git `703aaae`; migration `WholesalePromoHeroesHq1757430000017` id=83; health 200.

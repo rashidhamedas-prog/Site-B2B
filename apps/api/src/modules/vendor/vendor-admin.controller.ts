@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { InviteVendorDto } from './dto/invite-vendor.dto';
 import { PatchVendorDto } from './dto/patch-vendor.dto';
 import { VendorService } from './vendor.service';
+import { VendorLedgerService } from './vendor-ledger.service';
 
 @ApiTags('vendors')
 @ApiBearerAuth()
@@ -15,12 +16,29 @@ import { VendorService } from './vendor.service';
 @AdminOnly()
 @Controller({ path: 'vendors', version: '1' })
 export class VendorAdminController {
-  constructor(private readonly vendors: VendorService) {}
+  constructor(
+    private readonly vendors: VendorService,
+    private readonly ledger: VendorLedgerService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'لیست همکاران (دعوت‌شده)' })
   list() {
     return this.vendors.list();
+  }
+
+  @Get(':id/ledger')
+  @ApiOperation({ summary: 'دفتر کمیسیون یک همکار — ادمین' })
+  async ledgerForVendor(@Param('id') id: string) {
+    await this.vendors.getByIdForAdmin(id);
+    return this.ledger.summaryForVendor(id);
+  }
+
+  @Post(':id/ledger/pay')
+  @ApiOperation({ summary: 'ثبت پرداخت ردیف‌های قابل برداشت — ادمین' })
+  async payLedger(@Param('id') id: string, @Body() body: { entryIds?: string[] }) {
+    await this.vendors.getByIdForAdmin(id);
+    return this.ledger.markPaidForVendor(id, body?.entryIds);
   }
 
   @Get(':id')

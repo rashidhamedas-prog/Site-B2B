@@ -1,5 +1,38 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-018"
+    title: "Admin mark vendor ledger AVAILABLE entries as PAID (phase 8 payout)"
+    status: "done"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260909-018"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-018"
+      implementer: "cursor:implementer-TASK-20260909-018"
+      reviewer: "self-review-admin-payout-idempotent"
+      security: "self-review-admin-only-ledger-pay"
+    branch: "ai/TASK-20260909-001-vendor-invite"
+    worktree: "D:/proje/Site-B2B-vendor-invite"
+    claimed_at: "2026-09-09T13:00:00Z"
+    heartbeat_at: "2026-09-09T13:25:00Z"
+    closed_at: "2026-09-09T13:25:00Z"
+    depends_on:
+      - "TASK-20260909-015"
+    file_claims: []
+    released_file_claims:
+      - "apps/api/src/modules/vendor/vendor-ledger-policy.ts"
+      - "apps/api/src/modules/vendor/vendor-ledger-policy.spec.ts"
+      - "apps/api/src/modules/vendor/vendor-ledger.service.ts"
+      - "apps/api/src/modules/vendor/vendor-admin.controller.ts"
+      - "apps/web/src/components/admin/AdminPartners.tsx"
+      - "docs/WORKLOG.md"
+    notes: |
+      Admin-only pay on /admin/partners. Telegram bot still deferred.
+      Gates: vendor-ledger-policy.spec ok; api+web tsc 0.
+    acceptance_criteria:
+      - "GET /vendors/:id/ledger returns held/available/paid for staff"
+      - "POST /vendors/:id/ledger/pay marks AVAILABLE (incl. time-released HELD) as PAID idempotently"
+      - "AdminPartners shows ledger + ثبت پرداخت for available balance"
+      - "policy spec + api/web tsc pass"
   - id: "TASK-20260909-016"
     title: "Re-export wholesale promo banners at 1920x560 24:7 without stretch"
     status: "done"

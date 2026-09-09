@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, Repository } from 'typeorm';
+import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { VendorLedgerEntryEntity } from './entities/vendor-ledger-entry.entity';
 import {
+  canMarkLedgerPaid,
   ledgerAvailableAt,
   resolveLedgerStatus,
   vendorNetPayableIrr,
@@ -95,6 +96,46 @@ export class VendorLedgerService {
       availableIrr: available,
       paidIrr: paid,
       data,
+    };
+  }
+
+  /**
+   * Admin payout: flip payable COMMISSION_ACCRUAL rows to PAID.
+   * Optional entryIds; empty/omit = all currently AVAILABLE for that vendor.
+   */
+  async markPaidForVendor(vendorId: string, entryIds?: string[] | null) {
+    if (!vendorId) throw new BadRequestException('vendorId لازم است');
+    const now = new Date();
+    let candidates: VendorLedgerEntryEntity[];
+    if (Array.isArray(entryIds) && entryIds.length > 0) {
+      const ids = [...new Set(entryIds.map((id) => String(id || '').trim()).filter(Boolean))];
+      candidates = await this.repo.find({
+        where: { vendorId, id: In(ids) },
+      });
+      if (candidates.length !== ids.length) {
+        throw new NotFoundException('برخی ردیف‌های دفتر پیدا نشد');
+      }
+    } else {
+      candidates = await this.repo.find({
+        where: { vendorId, entryType: 'COMMISSION_ACCRUAL' },
+        take: 200,
+      });
+    }
+
+    let paidCount = 0;
+    let paidIrr = 0;
+    for (const row of candidates) {
+      if (!canMarkLedgerPaid(row.status, row.availableAt, now)) continue;
+      row.status = 'PAID';
+      await this.repo.save(row);
+      paidCount += 1;
+      paidIrr += Math.floor(Number(row.amountIrr) || 0);
+    }
+
+    return {
+      paidCount,
+      paidIrr,
+      summary: await this.summaryForVendor(vendorId),
     };
   }
 }
