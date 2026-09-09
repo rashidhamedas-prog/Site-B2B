@@ -2,7 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-<<<<<<< Updated upstream
+## 2026-09-09T11:55:00Z — TASK-20260909-011 CLOSED live
+
+- `34c4e72` on master; VPS `fulfillment_orders.trackingCode` present; API health 200. Claims released.
+- Next vendor: SLA escalate/reassign, commission ledger, Telegram partner bot (deferred).
+
 ## 2026-09-09T11:50:00Z — TASK-20260909-012 CLOSED live `8b201f2`
 
 - VPS git `8b201f2`; migration `WholesalePromoHeroes1757430000012` id=77; health 200.
@@ -23,12 +27,6 @@ Append newest entries at the top. Never erase another agent's record.
 - CODE: artwork slides with hashed WebP (DigiPay ~54/34KB, Prima/Negin ~52/28KB). HTML+alt for SEO. DigiPay CTA `/products`; Prima/Negin `/category/women-coats`.
 - Gates (observed): `npx tsx src/lib/cms/hero-slides.spec.ts` OK; `retail-campaign-hero.util.spec.ts` ok; web+api `tsc --noEmit` 0.
 - Next: commit/push/deploy; verify `.ir` home slide 0/1.
-=======
-## 2026-09-09T11:55:00Z — TASK-20260909-011 CLOSED live
-
-- `34c4e72` on master; VPS `fulfillment_orders.trackingCode` present; API health 200. Claims released.
-- Next vendor: SLA escalate/reassign, commission ledger, Telegram partner bot (deferred).
->>>>>>> Stashed changes
 
 ## 2026-09-09T11:30:00Z — TASK-20260909-011 partner ship/tracking (phase 5)
 
