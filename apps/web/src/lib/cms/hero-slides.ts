@@ -35,9 +35,9 @@ export type HeroFlatProps = {
 };
 
 export const DIGIPAY_RETAIL_HERO_IMAGE =
-  '/banners/digipay-installment-2026/retail-desktop-ece15c60d7c8.webp';
+  '/banners/digipay-installment-2026/retail-desktop-edfd3ad7b9c6.webp';
 export const DIGIPAY_RETAIL_HERO_IMAGE_MOBILE =
-  '/banners/digipay-installment-2026/retail-mobile-0fdb9791bdd5.webp';
+  '/banners/digipay-installment-2026/retail-mobile-9c915b620822.webp';
 
 export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',
@@ -55,9 +55,9 @@ export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
 };
 
 export const PRIMA_NEGIN_RETAIL_HERO_IMAGE =
-  '/banners/prima-negin-2026/retail-desktop-9f8ee115cd93.webp';
+  '/banners/prima-negin-2026/retail-desktop-b764d766f7a3.webp';
 export const PRIMA_NEGIN_RETAIL_HERO_IMAGE_MOBILE =
-  '/banners/prima-negin-2026/retail-mobile-7e9068bd09ee.webp';
+  '/banners/prima-negin-2026/retail-mobile-9acfeaeecdcb.webp';
 
 export const PRIMA_NEGIN_RETAIL_HERO_SLIDE: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',

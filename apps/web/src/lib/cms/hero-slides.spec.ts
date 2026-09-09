@@ -21,7 +21,7 @@ assert(parsed[0]?.ctaHref === '/products', 'digipay stays on retail catalog');
 assert(!parsed[0]?.headline || parsed[0].imageUrl !== parsed[0].headline, 'text is not the image url');
 assert(isLightHeroOverlay(parsed[0]!), 'artwork light still uses light overlay on mobile');
 assert(
-  parsed[0]?.imageUrl === '/banners/digipay-installment-2026/retail-desktop-ece15c60d7c8.webp',
+  parsed[0]?.imageUrl === '/banners/digipay-installment-2026/retail-desktop-edfd3ad7b9c6.webp',
   'desktop plate path',
 );
 

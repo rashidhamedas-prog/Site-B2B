@@ -30,7 +30,7 @@ Task: TASK-20260909-013
 ## Architecture (implementation)
 
 - No new service. CMS hero block remains source of truth; admin can edit.
-- Assets: WebP 1600×467 (24:7) + mobile left-crop 900×450 (2:1). Hashed filenames for cache bust.
+- Assets: WebP 1920×560 (24:7) + mobile left-crop 1200×600 (2:1), WebP q92. Hashed filenames for cache bust.
 - Slide 0 DigiPay → `/products`. Slide 1 Prima/Negin → `/category/women-coats` (PDPs `coats00011` / `chenille-coat-negin` stay linked via that category).
 - Wholesale CTA in the Prima bitmap is not used as the HTML destination, to avoid mixing B2B intent on `.ir`.
 - Rollback: migration `down` restores backed-up hero props; old unhashed DigiPay files remain on disk.
@@ -50,6 +50,10 @@ Observed this session:
 - `apps/api` `tsc --noEmit` → 0
 
 GO for merge/deploy. Field CWV and GSC not re-measured.
+
+## 2026-09-09 quality pass (1920×560)
+
+Owner asked for native `1920×560` (24:7) and higher quality, applied to both supplied retail plates and the remaining wholesale promo + product overlay heroes. Source chat JPEGs are 1024×409; export is Lanczos cover + WebP q92 (no artwork redraw). Migration `HeroArtwork1920Quality1757430000015` remaps CMS URLs.
 
 ## Measurement and next review
 

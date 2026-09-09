@@ -6,5 +6,5 @@
 
 | فایل | نقش | اندازه |
 |------|------|--------|
-| `retail-desktop-9f8ee115cd93.webp` | دسکتاپ ۲۴:۷ | ۱۶۰۰×۴۶۷، حدود ۵۲KB |
-| `retail-mobile-7e9068bd09ee.webp` | موبایل ۲:۱ از سمت عکس | ۹۰۰×۴۵۰، حدود ۲۸KB |
+| `retail-desktop-b764d766f7a3.webp` | دسکتاپ ۲۴:۷ | ۱۹۲۰×۵۶۰، WebP q92 حدود ۱۳۹KB |
+| `retail-mobile-9acfeaeecdcb.webp` | موبایل ۲:۱ از سمت عکس | ۱۲۰۰×۶۰۰، حدود ۱۰۰KB |

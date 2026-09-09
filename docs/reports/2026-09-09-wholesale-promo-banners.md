@@ -38,8 +38,8 @@
 
 ## Performance
 
-- دسکتاپ: 44KB و 31KB WebP در قاب 24:7
-- موبایل: 31KB و 17KB؛ `priority` فقط اسلاید ۰
+- دسکتاپ: ۱۹۲۰×۵۶۰ WebP q92 (حدود ۱۱۶KB و ۸۷KB)
+- موبایل: ۱۲۰۰×۶۰۰؛ `priority` فقط اسلاید ۰
 - CLS: همان `.storefront-hero-frame`
 
 ## QA & release decision

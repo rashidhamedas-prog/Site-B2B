@@ -4,8 +4,8 @@ export const RETAIL_CAMPAIGN_HERO_SLIDES = [
     headline: 'انتخاب با تو، پرداخت با دیجی‌پی',
     headlineAccent: 'دیجی‌پی',
     body: 'مدل دلخواهت را انتخاب کن؛ هنگام پرداخت، دیجی‌پی را بزن. طبق شرایط و اعتبار دیجی‌پی.',
-    imageUrl: '/banners/digipay-installment-2026/retail-desktop-ece15c60d7c8.webp',
-    mobileImageUrl: '/banners/digipay-installment-2026/retail-mobile-0fdb9791bdd5.webp',
+    imageUrl: '/banners/digipay-installment-2026/retail-desktop-edfd3ad7b9c6.webp',
+    mobileImageUrl: '/banners/digipay-installment-2026/retail-mobile-9c915b620822.webp',
     imageAlt:
       'خرید آنلاین پوشاک ترنم با دیجی‌پی: دست‌ها گوشی فروشگاه و کارت سپهر بانک صادرات را گرفته‌اند',
     presentation: 'artwork',
@@ -18,8 +18,8 @@ export const RETAIL_CAMPAIGN_HERO_SLIDES = [
     headline: 'کت‌های پریما و نگین را با جزئیات ببین',
     headlineAccent: 'پریما و نگین',
     body: 'دو مدل کت چهارخانه زنانه برای استایل روزمره؛ از دسته کت انتخاب کن.',
-    imageUrl: '/banners/prima-negin-2026/retail-desktop-9f8ee115cd93.webp',
-    mobileImageUrl: '/banners/prima-negin-2026/retail-mobile-7e9068bd09ee.webp',
+    imageUrl: '/banners/prima-negin-2026/retail-desktop-b764d766f7a3.webp',
+    mobileImageUrl: '/banners/prima-negin-2026/retail-mobile-9acfeaeecdcb.webp',
     imageAlt:
       'دو مدل با کت چهارخانه پریما و نگین در حیاط روشن؛ بنر پوشاک ترنم برای دیدن کت زنانه',
     presentation: 'artwork',
