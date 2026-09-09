@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260909-006"
     title: "Retail CMS save must persist and verify (no silent WHOLESALE)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260909-006"
     roles:
@@ -13,23 +13,13 @@ tasks:
     branch: "ai/TASK-20260909-004-retail-cms-save"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-09T00:55:00Z"
-    heartbeat_at: "2026-09-09T01:05:00Z"
+    heartbeat_at: "2026-09-09T01:20:00Z"
+    closed_at: "2026-09-09T01:20:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/cms/cms.service.ts"
-      - "apps/api/src/modules/cms/cms.controller.ts"
-      - "apps/api/src/modules/cms/cms-write-channel.spec.ts"
-      - "apps/web/src/components/admin/AdminSiteContent.tsx"
-      - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
-      - "apps/web/src/app/admin/cms/revalidate/route.ts"
-      - "apps/web/src/lib/cms/revalidate-storefront.ts"
-      - "apps/web/src/lib/cms/revalidate-storefront.spec.ts"
-      - "apps/web/src/middleware.ts"
-      - "docs/WORKLOG.md"
+    file_claims: []
     notes: |
-      Live DB: RETAIL/home updatedAt stuck at 2026-09-08T14:22Z. Require write channel; admin verifies DB after save.
-      Task id 006 (004=vendor, 005=shipping-delete). Branch name leftover 004-retail-cms-save.
-      Shared governance files only with other tasks.
+      LIVE on origin/master under tip 445f6e7 (fix 9d28e49). VPS source has requireWriteChannel + admin verify save.
+      Operator must hard-refresh admin, open ?channel=RETAIL, save, confirm «ذخیره و تأیید شد» and DB updatedAt moves.
     acceptance_criteria:
       - "Upsert without channel is rejected (no silent WHOLESALE)"
       - "Admin save verifies returned channel and reloads from DB"

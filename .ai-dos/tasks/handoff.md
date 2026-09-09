@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T01:20:00Z — TASK-20260909-006 CLOSED (fix live under tip `445f6e7`)
+
+- Root evidence: RETAIL/home DB row frozen since 2026-09-08 while WHOLESALE moved — retail saves were not landing.
+- Shipped: `requireWriteChannel`, admin save verifies channel+DB reload, sticky `?channel=`, labeled retail save button.
+- Operator: hard-refresh `/admin/site-content?channel=RETAIL` → edit → «ذخیره روی سایت تکی» → must see «ذخیره و تأیید شد» and timestamp update.
+
 ## 2026-09-09T01:05:00Z — TASK-20260909-006 retail CMS save hardening
 
 - Evidence: `site_contents` RETAIL/home `updatedAt=2026-09-08T14:22:09Z` only; WHOLESALE/home newer. Products block has SKU ids and no `source`.
