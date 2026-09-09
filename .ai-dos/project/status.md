@@ -1,12 +1,8 @@
 # Project Status
 
-<<<<<<< Updated upstream
+- Last verified: 2026-09-09 — **TASK-20260909-011 CLOSED** (`34c4e72` on master). Partner ship + `trackingCode` + customer SMS. VPS column present; health 200. Claims released. Next: SLA escalate / ledger.
 - Last verified: 2026-09-09 — **TASK-20260909-012 CLOSED** on `origin/master` + VPS `8b201f2`. Wholesale home artwork banners (partnership LCP, jackets slide 2). Migration id=77. Health 200. `.com` HTML has partnership plate. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-013** implementing retail DigiPay + Prima/Negin artwork heroes on `ai/TASK-20260909-006-retail-campaign-banners`. Not live until merge/deploy + migration.
-- Last verified: 2026-09-09 — **TASK-20260909-011** implementing partner ship + tracking SMS on `ai/TASK-20260909-001-vendor-invite`. Not live until merge/deploy.
-=======
-- Last verified: 2026-09-09 — **TASK-20260909-011 CLOSED** (`34c4e72` on master). Partner ship + `trackingCode` + customer SMS. VPS column present; health 200. Claims released. Next: SLA escalate / ledger.
->>>>>>> Stashed changes
 - Last verified: 2026-09-09 — **TASK-20260909-010 CLOSED** on `origin/master` + VPS `989abbf`. Partner SMS on fulfillment `PENDING_ACCEPT` via outbox/worker. Health 200; workers healthy. Claims released. Next: tracking bot / SLA escalate / ledger.
 - Last verified: 2026-09-09 — **TASK-20260909-009 CLOSED** on `origin/master` + VPS `9e89e51`. Fulfillment parcel split after stock settle; unlabeled customer parcels; partner accept API. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-008 CLOSED** on `origin/master` `a8a3531` + VPS (api `3dda54c`, web `19d2182`). Root: outbox dedupe 23505 aborted the CMS tx → silent rollback. `OutboxService.enqueue` now `ON CONFLICT DO NOTHING`; explicit `site_contents` UPDATE. Operator save 08:44Z landed (RETAIL/home `source=auto`). Health 200. Claims released.
