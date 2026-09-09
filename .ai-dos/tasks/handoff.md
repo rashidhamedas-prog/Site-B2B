@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T00:16:00Z — TASK-20260909-001 CLOSED live (fix at `226170e`, tip `a95de11`)
+
+- Root: retail public `/` rewrites to `/retail`; year SWR kept HIT HTML on `.ir` while wholesale `/` matched App path.
+- Shipped: dual-path revalidate + warm `/retail`, middleware SWR clamp 60s, admin alert on bust failure.
+- Live check via VPS: `https://www.poshaktaranom.ir/` → `cache-control: public, s-maxage=60, stale-while-revalidate=60`, `x-taranom-channel: RETAIL`, `x-middleware-rewrite: /retail`. Health 200. Web image `2aba6eb34157`. Claims released.
+- Operator: save CMS under تب **تکی** (RETAIL). If edge was still on old year-SWR object, one hard refresh after this deploy clears it; new responses no longer advertise year SWR.
+
 ## 2026-09-08T23:55:00Z — TASK-20260909-002 payment picker plain copy + logos
 
 - Owner asked for checkout payment explanations as if the shopper is ~15 and knows nothing, plus each method's own logo.

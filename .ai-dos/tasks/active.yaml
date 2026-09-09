@@ -38,7 +38,7 @@ tasks:
       - "checkout-payment-ui spec and web tsc pass"
   - id: "TASK-20260909-001"
     title: "Root-fix retail CMS changes not appearing on .ir"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260909-001"
     roles:
@@ -49,23 +49,14 @@ tasks:
     branch: "ai/TASK-20260909-001-retail-cms-cache"
     worktree: "D:/proje/Site-B2B-featured-products"
     claimed_at: "2026-09-09T02:20:00Z"
-    heartbeat_at: "2026-09-09T02:20:00Z"
+    heartbeat_at: "2026-09-09T00:16:00Z"
+    closed_at: "2026-09-09T00:16:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/lib/cms/revalidate-storefront.ts"
-      - "apps/web/src/lib/cms/revalidate-storefront.spec.ts"
-      - "apps/web/src/lib/cms/revalidate-client.ts"
-      - "apps/web/src/app/admin/cms/revalidate/route.ts"
-      - "apps/web/src/middleware.ts"
-      - "apps/web/src/components/admin/AdminSiteContent.tsx"
-      - "apps/web/src/components/admin/settings/HomeTickerCard.tsx"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Wholesale CMS save visible; retail .ir stays on x-nextjs-cache HIT with year SWR.
-      Fix: revalidate app+public paths, warm /retail, clamp HTML SWR to 60s, surface revalidate errors.
+      LIVE origin/master includes 226170e (web image rebuilt under a95de11 tip).
+      Verified www.poshaktaranom.ir Cache-Control s-maxage=60, stale-while-revalidate=60 + RETAIL rewrite.
+      Claims released.
     acceptance_criteria:
       - "Retail CMS save invalidates /retail and public / paths and warms the retail home"
       - "Storefront HTML Cache-Control SWR is capped (~60s), not ~1 year"
