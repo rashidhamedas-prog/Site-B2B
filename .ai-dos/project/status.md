@@ -1,8 +1,8 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260909-015 CLOSED** live `715fce6`. Vendor ledger + deliver + hold. Health 200. Claims released. Next optional: admin payout UI / Telegram partner bot.
 - Last verified: 2026-09-09 — **TASK-20260909-016** re-exporting wholesale promo heroes at native 1920×560 (contain, no stretch) on `ai/TASK-20260909-014-wholesale-promo-hq`. Not live until merge/deploy + migration.
-- Last verified: 2026-09-09 — **TASK-20260909-015** implementing commission ledger after DELIVERED.
-- Last verified: 2026-09-09 — **TASK-20260909-014** SLA expire→OWN shipped (`edb64d8`); deploy in flight.
+- Last verified: 2026-09-09 — **TASK-20260909-014 CLOSED** SLA expire→OWN (`edb64d8`). Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-011 CLOSED** (`34c4e72` on master). Partner ship + `trackingCode` + customer SMS. VPS column present; health 200. Claims released. Next: SLA escalate / ledger.
 - Last verified: 2026-09-09 — **TASK-20260909-012 CLOSED** on `origin/master` + VPS `8b201f2`. Wholesale home artwork banners (partnership LCP, jackets slide 2). Migration id=77. Health 200. `.com` HTML has partnership plate. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-013** implementing retail DigiPay + Prima/Negin artwork heroes on `ai/TASK-20260909-006-retail-campaign-banners`. Not live until merge/deploy + migration.

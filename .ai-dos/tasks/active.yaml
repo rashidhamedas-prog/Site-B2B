@@ -37,7 +37,7 @@ tasks:
       - "wholesale-promo specs and web/api tsc pass"
   - id: "TASK-20260909-015"
     title: "Vendor commission ledger after DELIVERED + hold (phase 7)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260909-015"
     roles:
@@ -48,35 +48,18 @@ tasks:
     branch: "ai/TASK-20260909-001-vendor-invite"
     worktree: "D:/proje/Site-B2B-vendor-invite"
     claimed_at: "2026-09-09T12:15:00Z"
-    heartbeat_at: "2026-09-09T12:15:00Z"
+    heartbeat_at: "2026-09-09T12:45:00Z"
+    closed_at: "2026-09-09T12:45:00Z"
     depends_on:
       - "TASK-20260909-014"
-    file_claims:
-      - "apps/api/src/database/migrations/20260909-016-vendor-ledger.ts"
-      - "apps/api/src/modules/vendor/entities/vendor-ledger-entry.entity.ts"
-      - "apps/api/src/modules/vendor/vendor-ledger-policy.ts"
-      - "apps/api/src/modules/vendor/vendor-ledger-policy.spec.ts"
-      - "apps/api/src/modules/vendor/vendor-ledger.service.ts"
-      - "apps/api/src/modules/vendor/vendor-ledger.jobs.ts"
-      - "apps/api/src/modules/vendor/vendor.module.ts"
-      - "apps/api/src/modules/vendor/partner.controller.ts"
-      - "apps/api/src/modules/order/entities/fulfillment-order.entity.ts"
-      - "apps/api/src/modules/order/fulfillment.service.ts"
-      - "apps/api/src/modules/order/fulfillment-partner.controller.ts"
-      - "apps/api/src/modules/order/order.module.ts"
-      - "apps/api/src/config/database.config.ts"
-      - "apps/web/src/components/partners/PartnerHome.tsx"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     acceptance_criteria:
       - "DELIVERED accrues net payable (goods-commission) with holdDays; idempotent unique"
       - "Partner GET /partners/ledger shows held/available/paid"
       - "Cron releases HELD→AVAILABLE after availableAt"
       - "vendor-ledger-policy spec + api/web tsc pass"
     notes: |
-      Payout admin UI deferred. No shipping reimbursement rows.
+      LIVE `715fce6` (import fix + migration 016). Payout admin UI deferred. Claims released.
   - id: "TASK-20260909-014"
     title: "SLA expire reassigns vendor parcel to OWN + admin SMS (phase 6)"
     status: "done"
