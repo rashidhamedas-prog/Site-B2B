@@ -81,7 +81,7 @@ tasks:
       - "hero-slides spec, retail-campaign-hero util spec, and web tsc pass"
   - id: "TASK-20260909-011"
     title: "Partner ship + per-parcel tracking + customer SMS (phase 5)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260909-011"
     roles:
@@ -92,30 +92,11 @@ tasks:
     branch: "ai/TASK-20260909-001-vendor-invite"
     worktree: "D:/proje/Site-B2B-vendor-invite"
     claimed_at: "2026-09-09T11:25:00Z"
-    heartbeat_at: "2026-09-09T11:25:00Z"
+    heartbeat_at: "2026-09-09T11:55:00Z"
+    closed_at: "2026-09-09T11:55:00Z"
     depends_on:
       - "TASK-20260909-010"
-    file_claims:
-      - "apps/api/src/database/migrations/20260909-004-fulfillment-tracking.ts"
-      - "apps/api/src/modules/order/entities/fulfillment-order.entity.ts"
-      - "apps/api/src/modules/order/fulfillment-split-policy.ts"
-      - "apps/api/src/modules/order/fulfillment-split-policy.spec.ts"
-      - "apps/api/src/modules/order/fulfillment.service.ts"
-      - "apps/api/src/modules/order/fulfillment-partner.controller.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-lease.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/api/src/modules/notification/notification.service.ts"
-      - "apps/api/src/modules/notification/sms-templates.defaults.ts"
-      - "apps/api/src/modules/settings/settings.service.ts"
-      - "apps/web/src/components/admin/settings/SmsTab.tsx"
-      - "apps/web/src/components/partners/PartnerHome.tsx"
-      - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     acceptance_criteria:
       - "Partner can ship ACCEPTED parcel with trackingCode; row-isolated"
       - "Customer parcels expose trackingCode without vendorId"
@@ -123,7 +104,8 @@ tasks:
       - "Migration adds fulfillment_orders.trackingCode"
       - "specs + api/web tsc pass"
     notes: |
-      Telegram bot deferred. Parent order status bump deferred.
+      LIVE on origin/master (`34c4e72`); VPS has `trackingCode` column; tip moved by other tasks.
+      Claims released. Next: SLA escalate / ledger / Telegram partner bot.
   - id: "TASK-20260909-010"
     title: "SMS notify partner on vendor fulfillment PENDING_ACCEPT (phase 4)"
     status: "done"
