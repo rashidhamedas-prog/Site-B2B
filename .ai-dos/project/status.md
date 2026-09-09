@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260909-010** implementing partner SMS on `PENDING_ACCEPT` (outbox + worker). Not live until merge/deploy.
 - Last verified: 2026-09-09 — **TASK-20260909-009 CLOSED** on `origin/master` + VPS `9e89e51`. Fulfillment parcel split after stock settle; unlabeled customer parcels; partner accept API. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-008 CLOSED** on `origin/master` `a8a3531` + VPS (api `3dda54c`, web `19d2182`). Root: outbox dedupe 23505 aborted the CMS tx → silent rollback. `OutboxService.enqueue` now `ON CONFLICT DO NOTHING`; explicit `site_contents` UPDATE. Operator save 08:44Z landed (RETAIL/home `source=auto`). Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-007 CLOSED** on `origin/master` `445f6e7`. Dropship SKU + commission; public strip. Claims released.
