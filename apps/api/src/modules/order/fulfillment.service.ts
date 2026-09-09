@@ -9,6 +9,7 @@ import { EntityManager, In, IsNull, LessThan, Repository } from 'typeorm';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import { NotificationService } from '../notification/notification.service';
+import { VendorLedgerService } from '../vendor/vendor-ledger.service';
 import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { FulfillmentOrderItemEntity } from './entities/fulfillment-order-item.entity';
 import { FulfillmentOrderEntity } from './entities/fulfillment-order.entity';
@@ -27,6 +28,7 @@ import {
   toCustomerParcels,
   type SplitLine,
 } from './fulfillment-split-policy';
+import { canPartnerDeliverStatus } from '../vendor/vendor-ledger-policy';
 
 @Injectable()
 export class FulfillmentService {
@@ -37,6 +39,7 @@ export class FulfillmentService {
     private readonly vendors: Repository<VendorEntity>,
     private readonly outbox: OutboxService,
     private readonly notifications: NotificationService,
+    private readonly ledger: VendorLedgerService,
   ) {}
 
   /** Idempotent: one parcel set per order after stock settle / paid confirm. */
@@ -224,6 +227,28 @@ export class FulfillmentService {
     return this.toPartnerView(row);
   }
 
+  async deliverForVendor(id: string, vendorId: string | undefined) {
+    const row = await this.fulfillmentRepo.findOne({
+      where: { id },
+      relations: ['items', 'order'],
+    });
+    if (!row) throw new NotFoundException('مرسوله پیدا نشد');
+    if (!partnerMayAccessFulfillment(vendorId, row.vendorId)) {
+      throw new ForbiddenException('دسترسی غیرمجاز');
+    }
+    if (!canPartnerDeliverStatus(row.status)) {
+      throw new BadRequestException('فقط مرسولهٔ ارسال‌شده قابل تحویل است');
+    }
+    const vendor = await this.vendors.findOne({ where: { id: row.vendorId! } });
+    if (!vendor) throw new NotFoundException('همکار پیدا نشد');
+    const deliveredAt = new Date();
+    row.status = 'DELIVERED';
+    row.deliveredAt = deliveredAt;
+    await this.fulfillmentRepo.save(row);
+    await this.ledger.accrueOnDeliver(row, vendor, deliveredAt);
+    return this.toPartnerView(row);
+  }
+
   async rejectForVendor(id: string, vendorId: string | undefined) {
     const row = await this.fulfillmentRepo.findOne({
       where: { id },
@@ -325,6 +350,7 @@ export class FulfillmentService {
       status: row.status,
       acceptBy: row.acceptBy,
       trackingCode: row.trackingCode ?? null,
+      deliveredAt: row.deliveredAt ?? null,
       goodsTotal: row.goodsTotal,
       shippingFee: 0,
       commissionTotal: row.commissionTotal,

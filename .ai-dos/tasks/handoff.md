@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T12:25:00Z — TASK-20260909-015 vendor ledger (phase 7)
+
+- CODE: vendor_ledger_entries; deliver accrues net; holdDays; partner /ledger; release cron.
+- Gates: vendor-ledger-policy ok; tsc 0. Next: commit/push/deploy after 014 live.
+
 ## 2026-09-09T12:10:00Z — TASK-20260909-014 SLA expire → OWN
 
 - Cron + partner reject reassign vendor parcel to Taranom OWN; admin SMS.

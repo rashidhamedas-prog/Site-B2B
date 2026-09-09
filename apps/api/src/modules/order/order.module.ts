@@ -20,6 +20,7 @@ import { PaymentModule } from '../payment/payment.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import { AffiliateModule } from '../affiliate/affiliate.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { VendorModule } from '../vendor/vendor.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     ShippingModule,
     AffiliateModule,
     InventoryModule,
+    VendorModule,
   ],
   controllers: [OrderController, FulfillmentPartnerController],
   providers: [OrderService, FulfillmentService, FulfillmentJobs],

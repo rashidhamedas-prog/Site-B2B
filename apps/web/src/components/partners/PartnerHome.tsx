@@ -35,6 +35,12 @@ type PartnerFulfillment = {
   }>;
 };
 
+type LedgerSummary = {
+  heldIrr: number;
+  availableIrr: number;
+  paidIrr: number;
+};
+
 const STATUS_LABEL: Record<VendorStatus, string> = {
   INVITED: 'دعوت‌شده — با ورود فعال می‌شوید',
   ACTIVE: 'فعال',
@@ -57,6 +63,7 @@ function toman(n: number) {
 export function PartnerHome() {
   const [me, setMe] = useState<Me | null>(null);
   const [rows, setRows] = useState<PartnerFulfillment[]>([]);
+  const [ledger, setLedger] = useState<LedgerSummary | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -65,12 +72,14 @@ export function PartnerHome() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [profile, list] = await Promise.all([
+      const [profile, list, book] = await Promise.all([
         apiClient.get<Me>('/partners/me'),
         apiClient.get<{ data: PartnerFulfillment[] }>('/partners/fulfillments'),
+        apiClient.get<LedgerSummary>('/partners/ledger'),
       ]);
       setMe(profile);
       setRows(Array.isArray(list?.data) ? list.data : []);
+      setLedger(book);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'بارگذاری حساب ناموفق بود');
     } finally {
@@ -125,6 +134,18 @@ export function PartnerHome() {
     }
   };
 
+  const deliver = async (id: string) => {
+    setBusyId(id);
+    try {
+      await apiClient.patch(`/partners/fulfillments/${id}/deliver`, {});
+      await load();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'ثبت تحویل ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return <p className="text-sm text-gray-600">در حال بارگذاری حساب…</p>;
   }
@@ -167,6 +188,23 @@ export function PartnerHome() {
           <dd className="mt-1 text-sm font-medium">{me.settlementHoldDays} روز بعد از تحویل</dd>
         </div>
       </dl>
+
+      {ledger ? (
+        <dl className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <dt className="text-xs text-gray-500">در hold</dt>
+            <dd className="mt-1 text-sm font-bold">{toman(ledger.heldIrr)} ت</dd>
+          </div>
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+            <dt className="text-xs text-emerald-800">قابل برداشت</dt>
+            <dd className="mt-1 text-sm font-bold text-emerald-900">{toman(ledger.availableIrr)} ت</dd>
+          </div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-4">
+            <dt className="text-xs text-gray-500">پرداخت‌شده</dt>
+            <dd className="mt-1 text-sm font-bold">{toman(ledger.paidIrr)} ت</dd>
+          </div>
+        </dl>
+      ) : null}
 
       <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 text-sm leading-7 text-amber-950">
         هزینه پست واقعی را خودتان می‌پردازید. مبلغ ارسال که مشتری در سبد می‌بیند برای ترنم است و به
@@ -251,6 +289,16 @@ export function PartnerHome() {
                 <p className="text-xs text-gray-600" dir="ltr">
                   tracking: {row.trackingCode}
                 </p>
+              ) : null}
+              {row.status === 'SHIPPED' ? (
+                <button
+                  type="button"
+                  disabled={busyId === row.id}
+                  onClick={() => void deliver(row.id)}
+                  className="min-h-11 rounded-xl bg-emerald-800 px-4 text-sm font-medium text-white disabled:opacity-60"
+                >
+                  {busyId === row.id ? '…' : 'ثبت تحویل مشتری'}
+                </button>
               ) : null}
               <ul className="space-y-1 text-sm text-gray-700">
                 {row.items.map((it, i) => (
