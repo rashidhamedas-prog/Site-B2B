@@ -1,5 +1,43 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260910-020"
+    title: "Recreate retail DigiPay + Prima/Negin heroes as professional 1920x560 artwork"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260910-020"
+    roles:
+      architect: "cursor:implementer-TASK-20260910-020"
+      implementer: "cursor:implementer-TASK-20260910-020"
+      reviewer: "self-review-cms-hero-retail-only"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260910-020-retail-pro-banners"
+    worktree: "D:/proje/Site-B2B-014-wholesale-promo-hq"
+    claimed_at: "2026-09-09T22:05:00Z"
+    heartbeat_at: "2026-09-09T22:05:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/public/banners/digipay-installment-2026/"
+      - "apps/web/public/banners/prima-negin-2026/"
+      - "apps/web/src/lib/cms/hero-slides.ts"
+      - "apps/web/src/lib/cms/hero-slides.spec.ts"
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/api/src/database/retail-campaign-hero.util.ts"
+      - "apps/api/src/database/retail-campaign-hero.util.spec.ts"
+      - "apps/api/src/database/migrations/20260910-020-retail-campaign-heroes-pro.ts"
+      - "docs/reports/2026-09-10-retail-campaign-pro.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Owner asked to rebuild the two live retail banners the same way as
+      wholesale (sharp type + photo, not upscaled 1024px). Reclaimed stale
+      TASK-013 banner/hero claims (hb 2026-09-09T11:40Z; work already on master).
+      Retail copy stays on .ir: /products and /category/women-coats. No عمده
+      CTA and no .com URL in the Prima plate. Payment adapters untouched.
+    acceptance_criteria:
+      - "Desktop plates are 1920x560 professional artwork matching the supplied layouts"
+      - "Persian type is site font; Prima plate has no wholesale CTA or .com"
+      - "DigiPay CTA /products; Prima/Negin CTA /category/women-coats"
+      - "Migration updates RETAIL home hashes only"
+      - "hero-slides and retail-campaign-hero specs pass"
   - id: "TASK-20260909-019"
     title: "Replace wholesale promo heroes with professional 1920x560 artwork"
     status: "done"
@@ -194,7 +232,7 @@ tasks:
       - "wholesale-promo specs and web/api tsc pass"
   - id: "TASK-20260909-013"
     title: "Add DigiPay + Prima/Negin artwork banners to retail home"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260909-013"
     roles:
@@ -205,9 +243,11 @@ tasks:
     branch: "ai/TASK-20260909-006-retail-campaign-banners"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-09T11:15:00Z"
-    heartbeat_at: "2026-09-09T11:40:00Z"
+    heartbeat_at: "2026-09-09T22:05:00Z"
+    closed_at: "2026-09-09T22:05:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/public/banners/digipay-installment-2026/"
       - "apps/web/public/banners/prima-negin-2026/"
       - "apps/web/src/lib/cms/hero-slides.ts"
@@ -218,9 +258,6 @@ tasks:
       - "apps/api/src/database/retail-campaign-hero.util.spec.ts"
       - "apps/api/src/database/migrations/20260909-013-retail-campaign-heroes.ts"
       - "docs/reports/2026-09-09-retail-campaign-heroes.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     notes: |
       Owner supplied two complete artwork banners for retail home.
       ID 013 because 011 on master is partner tracking. Reclaimed stale

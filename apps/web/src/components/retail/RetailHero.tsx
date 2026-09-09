@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
 import {
+  applyRetailCampaignHeroSlides,
   isLightHeroOverlay,
   normalizeHeroSlides,
   resolveAutoplayMs,
@@ -203,7 +204,7 @@ function RetailSlideCopy({
 
 /** B2C editorial hero — full-bleed plates + RTL copy panel (distinct from wholesale). */
 export function RetailHero(props: RetailHeroProps) {
-  const slides = normalizeHeroSlides(props, RETAIL_FALLBACK);
+  const slides = applyRetailCampaignHeroSlides(normalizeHeroSlides(props, RETAIL_FALLBACK));
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
   const carousel = useHeroCarousel(slides, autoplayMs, { waitForIdle: true });
 

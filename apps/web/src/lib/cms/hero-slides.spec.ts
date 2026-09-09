@@ -1,4 +1,5 @@
 import {
+  DIGIPAY_RETAIL_HERO_IMAGE,
   DIGIPAY_RETAIL_HERO_SLIDE,
   PRIMA_NEGIN_RETAIL_HERO_SLIDE,
   applyRetailCampaignHeroSlides,
@@ -21,12 +22,14 @@ assert(parsed[0]?.ctaHref === '/products', 'digipay stays on retail catalog');
 assert(!parsed[0]?.headline || parsed[0].imageUrl !== parsed[0].headline, 'text is not the image url');
 assert(isLightHeroOverlay(parsed[0]!), 'artwork light still uses light overlay on mobile');
 assert(
-  parsed[0]?.imageUrl === '/banners/digipay-installment-2026/retail-desktop-edfd3ad7b9c6.webp',
+  parsed[0]?.imageUrl === DIGIPAY_RETAIL_HERO_IMAGE,
   'desktop plate path',
 );
 
 const coats = normalizeHeroSlides({ slides: [PRIMA_NEGIN_RETAIL_HERO_SLIDE] });
 assert(coats[0]?.ctaHref === '/category/women-coats', 'prima/negin stay on retail coats');
+assert(!(coats[0]?.ctaLabel || '').includes('عمده'), 'prima CTA is not wholesale');
+assert(!(coats[0]?.headline || '').includes('.com'), 'prima headline stays on retail');
 assert(coats[0]?.presentation === 'artwork', 'prima/negin artwork');
 assert((coats[0]?.imageAlt || '').includes('پریما'), 'alt names the models');
 assert(!isLightHeroOverlay(coats[0]!), 'dark artwork is not light');

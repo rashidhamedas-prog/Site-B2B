@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260910-020 in progress** — retail DigiPay + Prima/Negin heroes recreated as 1920×560 professional artwork. Branch `ai/TASK-20260910-020-retail-pro-banners`. TASK-013 claims released (already live).
 - Last verified: 2026-09-09 — **TASK-20260909-019 CLOSED** on `origin/master` + VPS `9b99781`. Wholesale promo heroes recreated as 1920×560 professional artwork. Migration id=84. Live img `partnership-d8771aca17fe` 200 89936B. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-018 CLOSED** on `origin/master` + VPS `fe7ca05`. Admin mark AVAILABLE ledger as PAID. Health 200. Claims released. Next optional: Telegram partner bot.
 - Last verified: 2026-09-09 — **TASK-20260909-016 CLOSED** on `origin/master` + VPS `703aaae`. Wholesale promo heroes 1920×560 contain (no stretch). Migration id=83. Live img `partnership-6da1640a8bb4` 200 97268B. Health 200. Claims released.

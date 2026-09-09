@@ -1,12 +1,10 @@
 # DigiPay installment campaign — retail hero 2026
 
-اسلاید اول هیرو تکی. نسخهٔ ۲۰۲۶-۰۹-۰۹ بنر کامل (متن داخل تصویر) است؛ روی دسکتاپ `presentation: artwork` و روی موبایل برش سمت چپ + HTML.
+اسلاید اول هیرو تکی (LCP). نسخهٔ حرفه‌ای: عکس lifestyle + تایپ Vazirmatn روی ۱۹۲۰×۵۶۰.
 
 | فایل | نقش | اندازه |
 |------|------|--------|
-| `retail-desktop-edfd3ad7b9c6.webp` | دسکتاپ ۲۴:۷ | ۱۹۲۰×۵۶۰، WebP q92 حدود ۱۳۹KB |
-| `retail-mobile-9c915b620822.webp` | موبایل ۲:۱ از سمت عکس | ۱۲۰۰×۶۰۰، حدود ۱۱۷KB |
+| `retail-desktop-182e2ad9311d.webp` | دسکتاپ ۲۴:۷ | ۱۹۲۰×۵۶۰، حدود ۱۰۵KB |
+| `retail-mobile-78fce6fbea4c.webp` | موبایل ۲:۱ | ۱۲۰۰×۶۰۰، حدود ۷۰KB |
 
-تیتر، CTA و alt در CMS/HTML هم تکرار می‌شوند تا خزش و دسترس‌پذیری به متن داخل بیت‌مپ وابسته نباشد.
-
-ویرایش: `/admin/site-content` → کانال تکی → صفحه اصلی → بلوک هیرو.
+تیتر، CTA و alt در HTML هم هستند. لینک: `/products` روی `.ir`.

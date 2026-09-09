@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T22:05:00Z — TASK-20260910-020 retail professional heroes
+
+- Owner: two live `.ir` banners (DigiPay + Prima/Negin) are still soft; rebuild like wholesale.
+- Reclaimed TASK-013 banner/hero files: 013 already shipped on master, heartbeat 11:40Z, claims were blocking the quality pass. 013 marked done.
+- Next: compose 1920×560 plates, migration 020, deploy `.ir`.
+
 ## 2026-09-09T21:55:00Z — TASK-20260909-019 CLOSED live `9b99781`
 
 - Live `.com` LCP img is `partnership-d8771aca17fe.webp` (200, 89936 B). Jackets `jackets-19fc4bd8d65a.webp` 200. Migration id=84. Health 200. Claims released.

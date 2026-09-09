@@ -35,9 +35,9 @@ export type HeroFlatProps = {
 };
 
 export const DIGIPAY_RETAIL_HERO_IMAGE =
-  '/banners/digipay-installment-2026/retail-desktop-edfd3ad7b9c6.webp';
+  '/banners/digipay-installment-2026/retail-desktop-182e2ad9311d.webp';
 export const DIGIPAY_RETAIL_HERO_IMAGE_MOBILE =
-  '/banners/digipay-installment-2026/retail-mobile-9c915b620822.webp';
+  '/banners/digipay-installment-2026/retail-mobile-78fce6fbea4c.webp';
 
 export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',
@@ -47,7 +47,7 @@ export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
   imageUrl: DIGIPAY_RETAIL_HERO_IMAGE,
   mobileImageUrl: DIGIPAY_RETAIL_HERO_IMAGE_MOBILE,
   imageAlt:
-    'خرید آنلاین پوشاک ترنم با دیجی‌پی: دست‌ها گوشی فروشگاه و کارت سپهر بانک صادرات را گرفته‌اند',
+    'خرید آنلاین پوشاک ترنم با دیجی‌پی: دست‌ها گوشی فروشگاه و کارت بانکی آبی را گرفته‌اند',
   presentation: 'artwork',
   overlayTone: 'light',
   ctaLabel: 'انتخاب لباس',
@@ -55,22 +55,22 @@ export const DIGIPAY_RETAIL_HERO_SLIDE: HeroSlide = {
 };
 
 export const PRIMA_NEGIN_RETAIL_HERO_IMAGE =
-  '/banners/prima-negin-2026/retail-desktop-b764d766f7a3.webp';
+  '/banners/prima-negin-2026/retail-desktop-e6ae94c783d0.webp';
 export const PRIMA_NEGIN_RETAIL_HERO_IMAGE_MOBILE =
-  '/banners/prima-negin-2026/retail-mobile-9acfeaeecdcb.webp';
+  '/banners/prima-negin-2026/retail-mobile-9c9af33ce4a9.webp';
 
 export const PRIMA_NEGIN_RETAIL_HERO_SLIDE: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',
-  headline: 'کت‌های پریما و نگین را با جزئیات ببین',
-  headlineAccent: 'پریما و نگین',
-  body: 'دو مدل کت چهارخانه زنانه برای استایل روزمره؛ از دسته کت انتخاب کن.',
+  headline: 'مدل بعدی ویترینت را انتخاب کن',
+  headlineAccent: 'ویترینت',
+  body: 'کت‌های پریما و نگین را با جزئیات ببین.',
   imageUrl: PRIMA_NEGIN_RETAIL_HERO_IMAGE,
   mobileImageUrl: PRIMA_NEGIN_RETAIL_HERO_IMAGE_MOBILE,
   imageAlt:
-    'دو مدل با کت چهارخانه پریما و نگین در حیاط روشن؛ بنر پوشاک ترنم برای دیدن کت زنانه',
+    'دو مدل با کت چهارخانه پریما و نگین در فضای روشن؛ بنر پوشاک ترنم برای دیدن کت زنانه',
   presentation: 'artwork',
   overlayTone: 'dark',
-  ctaLabel: 'دیدن کت‌های پریما و نگین',
+  ctaLabel: 'دیدن کت‌ها',
   ctaHref: '/category/women-coats',
 };
 
