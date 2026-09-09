@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T12:10:00Z — TASK-20260909-014 SLA expire → OWN
+
+- Cron + partner reject reassign vendor parcel to Taranom OWN; admin SMS.
+- Next after live: commission ledger (015).
+
 ## 2026-09-09T11:55:00Z — TASK-20260909-011 CLOSED live
 
 - `34c4e72` on master; VPS `fulfillment_orders.trackingCode` present; API health 200. Claims released.
