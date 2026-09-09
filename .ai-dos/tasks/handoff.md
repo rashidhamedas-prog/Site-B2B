@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T11:30:00Z — TASK-20260909-011 partner ship/tracking (phase 5)
+
+- CODE: `trackingCode` on fulfillment_orders; PATCH ship; customer parcel tracking; shipped SMS outbox.
+- Gates pending: commit/push/deploy + migration apply.
+
 ## 2026-09-09T11:20:00Z — TASK-20260909-010 CLOSED live `989abbf`
 
 - Deploy complete; API health 200; workers healthy; outbox worker started. Claims released.
