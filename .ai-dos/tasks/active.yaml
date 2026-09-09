@@ -1,5 +1,40 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260909-008"
+    title: "Force site_contents jsonb UPDATE so auto products save sticks"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260909-008"
+    roles:
+      architect: "cursor:implementer-TASK-20260909-008"
+      implementer: "cursor:implementer-TASK-20260909-008"
+      reviewer: "self-review-cms-jsonb-update"
+      security: "self-review-staff-cms-write"
+    branch: "ai/TASK-20260909-008-cms-jsonb-update"
+    worktree: "D:/proje/Site-B2B-featured-products"
+    claimed_at: "2026-09-09T07:20:00Z"
+    heartbeat_at: "2026-09-09T07:20:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/cms/cms.service.ts"
+      - "apps/api/src/modules/cms/cms-write-channel.spec.ts"
+      - "apps/web/src/components/admin/AdminSiteContent.tsx"
+      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
+      - "apps/web/src/components/admin/AdminProductsBlockFields.tsx"
+      - "apps/web/src/lib/api.ts"
+      - "apps/web/src/lib/cms/products-block.ts"
+      - "apps/web/src/lib/cms/products-block.spec.ts"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      RETAIL/home updatedAt frozen since 2026-09-08; UI reverts auto to manual after save.
+      Root: TypeORM save() skips jsonb UPDATE; PUT echo looks new, GET verify restores old.
+    acceptance_criteria:
+      - "upsertSiteContent uses repository.update for existing rows"
+      - "admin save does not snap UI back to manual when prepared was auto"
+      - "apiClient GETs are cache no-store; products-block + cms-write-channel specs ok"
   - id: "TASK-20260909-007"
     title: "Dropship SKU vendorId + commission + public strip (phase 2)"
     status: "in_progress"

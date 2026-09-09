@@ -14,6 +14,11 @@ function normalizeChannel(channel?: string): string {
   return c === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
 }
 
+/** Mirrors the upsert write strategy: existing rows must use UPDATE, not dirty-checked save. */
+function siteContentWriteMode(existing: boolean): 'insert' | 'update' {
+  return existing ? 'update' : 'insert';
+}
+
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
 }
@@ -36,5 +41,7 @@ try {
 // Reads may still default; writes must not.
 assert(normalizeChannel(undefined) === 'WHOLESALE', 'read default wholesale');
 assert(normalizeChannel('RETAIL') === 'RETAIL', 'read retail');
+assert(siteContentWriteMode(true) === 'update', 'existing row forces update');
+assert(siteContentWriteMode(false) === 'insert', 'missing row inserts');
 
 console.log('cms-write-channel.spec.ts: ok');

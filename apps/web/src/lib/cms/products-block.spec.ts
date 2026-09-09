@@ -4,6 +4,7 @@ import {
   parseProductIds,
   productsBlockCatalogParams,
   productsBlockPropsForSave,
+  productsBlockSaveRegressed,
   serializeProductIds,
 } from './products-block';
 
@@ -60,11 +61,12 @@ const autoWithLeftoverIds = productsBlockCatalogParams(
 assert(autoWithLeftoverIds.ids === undefined, 'explicit auto ignores leftover curated ids');
 
 const savedAuto = productsBlockPropsForSave(
-  { source: 'auto', productIds: `${a},${b}`, headline: 'همه محصولات', limit: 12 },
+  { source: 'auto', productIds: `${a},${b}`, products: [{ id: a }], headline: 'همه محصولات', limit: 12 },
   'RETAIL',
 );
 assert(savedAuto.source === 'auto', 'save keeps auto');
 assert(savedAuto.productIds === '', 'save clears curated ids in auto');
+assert(!('products' in savedAuto), 'save drops legacy products array');
 
 const savedManual = productsBlockPropsForSave(
   { source: 'manual', productIds: `${a},${b}`, limit: 12 },
@@ -75,6 +77,15 @@ assert(savedManual.productIds === `${a},${b}`, 'save keeps curated ids in manual
 
 const reloaded = normalizeProductsBlock(savedAuto, 'RETAIL');
 assert(reloaded.source === 'auto', 'reload after auto save stays auto');
+
+assert(
+  productsBlockSaveRegressed(savedAuto, { productIds: `${a},${b}` }, 'RETAIL') === true,
+  'detects auto→manual regression',
+);
+assert(
+  productsBlockSaveRegressed(savedAuto, savedAuto, 'RETAIL') === false,
+  'no regression when verify matches',
+);
 
 assert(capProductsBlockLimit(0) === 1, 'min 1');
 assert(capProductsBlockLimit(200) === 12, 'max 12');

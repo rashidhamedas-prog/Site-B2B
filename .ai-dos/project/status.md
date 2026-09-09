@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-09 — **TASK-20260909-008** implementing forced site_contents jsonb UPDATE (auto products save stick) on this worktree. Not live until merge/deploy.
 - Last verified: 2026-09-09 — **TASK-20260909-006 CLOSED** on `origin/master` (fix `9d28e49`, tip includes `445f6e7`). Retail CMS upsert requires channel; admin verifies DB after save. Health 200. Claims released.
 - Last verified: 2026-09-09 — **TASK-20260909-007** implementing dropship SKU (vendorId + commission, public strip) on `ai/TASK-20260909-001-vendor-invite`. Not live until merge/deploy + migration `20260909-002`.
 - Last verified: 2026-09-09 — **TASK-20260909-004 CLOSED** on `origin/master` + VPS `ef516ca`. Vendor invite + purpose=vendor JWT. `/partners/login` noindex. Claims released.

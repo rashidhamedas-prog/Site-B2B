@@ -179,31 +179,47 @@ export class CmsService {
     if (!data.pageKey?.trim()) throw new BadRequestException('کلید صفحه الزامی است');
     const channel = this.requireWriteChannel(data.channel);
     const pageKey = data.pageKey.trim();
-    let row = await this.siteContentRepo.findOne({ where: { channel, pageKey } });
-    if (!row) {
-      row = this.siteContentRepo.create({
-        channel,
-        pageKey,
-        title: data.title ?? pageKey,
-        blocks: sanitizeCmsBlocks(data.blocks),
-        seo: data.seo ?? null,
-        isPublished: data.isPublished ?? true,
-      });
-    } else {
-      if (data.title !== undefined) row.title = data.title;
-      if (data.blocks !== undefined) row.blocks = sanitizeCmsBlocks(data.blocks);
-      if (data.seo !== undefined) row.seo = data.seo;
-      if (data.isPublished !== undefined) row.isPublished = !!data.isPublished;
-    }
-    const prevUpdatedAt = row.updatedAt ? new Date(row.updatedAt).getTime() : 0;
+    const blocks =
+      data.blocks !== undefined ? sanitizeCmsBlocks(data.blocks) : undefined;
+
     return this.siteContentRepo.manager.transaction(async (manager) => {
-      const saved = await manager.getRepository(SiteContentEntity).save(row);
+      const repo = manager.getRepository(SiteContentEntity);
+      let row = await repo.findOne({ where: { channel, pageKey } });
+      const prevUpdatedAt = row?.updatedAt ? new Date(row.updatedAt).getTime() : 0;
+
+      if (!row) {
+        row = await repo.save(
+          repo.create({
+            channel,
+            pageKey,
+            title: data.title ?? pageKey,
+            blocks: blocks ?? [],
+            seo: data.seo ?? null,
+            isPublished: data.isPublished ?? true,
+          }),
+        );
+      } else {
+        // Explicit UPDATE: TypeORM save() often skips jsonb when it thinks nothing
+        // changed, which left RETAIL/home frozen while the PUT echo still looked new.
+        await repo.update(
+          { id: row.id },
+          {
+            ...(data.title !== undefined ? { title: data.title } : {}),
+            ...(blocks !== undefined ? { blocks } : {}),
+            ...(data.seo !== undefined ? { seo: data.seo } : {}),
+            ...(data.isPublished !== undefined ? { isPublished: !!data.isPublished } : {}),
+            updatedAt: new Date(),
+          },
+        );
+        row = await repo.findOneOrFail({ where: { id: row.id } });
+      }
+
       await this.enqueueCmsPublished(
-        { id: saved.id, isPublished: saved.isPublished, channel: saved.channel },
-        `${saved.id}:site:${prevUpdatedAt}`,
+        { id: row.id, isPublished: row.isPublished, channel: row.channel },
+        `${row.id}:site:${prevUpdatedAt}:${row.updatedAt ? new Date(row.updatedAt).getTime() : Date.now()}`,
         manager,
       );
-      return saved;
+      return row;
     });
   }
 

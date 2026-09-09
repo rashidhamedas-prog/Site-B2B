@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-09T07:25:00Z — TASK-20260909-008 site_contents jsonb UPDATE
+
+- Evidence: RETAIL/home (and WHOLESALE/home) `updatedAt` frozen since 2026-09-08; admin auto→manual UI snap after «ذخیره روی سایت تکی».
+- Root: TypeORM `save()` often no-ops jsonb; PUT echo shows new blocks, DB stays old, verify GET restores manual.
+- CODE: `upsertSiteContent` uses `repository.update` + bump `updatedAt`; admin keeps `prepared` on auto regression; `apiClient` `cache: no-store`; `AdminBlockEditor` blocksRef; drop legacy `products` on auto save.
+- Next: commit → master → rebuild api+web → operator save once on RETAIL; DB `source=auto` and `updatedAt` must move.
+
 ## 2026-09-09T01:20:00Z — TASK-20260909-006 CLOSED (fix live under tip `445f6e7`)
 
 - Root evidence: RETAIL/home DB row frozen since 2026-09-08 while WHOLESALE moved — retail saves were not landing.

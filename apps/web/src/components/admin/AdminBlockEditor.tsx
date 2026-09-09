@@ -1286,22 +1286,32 @@ interface AdminBlockEditorProps {
 }
 
 export function AdminBlockEditor({ blocks, onChange, className, channel }: AdminBlockEditorProps) {
+  // Keep latest blocks for in-editor patches so rapid field edits cannot clobber
+  // a prior source change via a stale render closure.
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
+
+  const commit = (next: ContentBlock[]) => {
+    blocksRef.current = next;
+    onChange(next);
+  };
+
   const move = (from: number, to: number) => {
-    if (to < 0 || to >= blocks.length) return;
-    const next = [...blocks];
+    if (to < 0 || to >= blocksRef.current.length) return;
+    const next = [...blocksRef.current];
     const [item] = next.splice(from, 1);
     next.splice(to, 0, item);
-    onChange(next);
+    commit(next);
   };
 
   const updateAt = (index: number, block: ContentBlock) => {
-    const next = [...blocks];
+    const next = [...blocksRef.current];
     next[index] = block;
-    onChange(next);
+    commit(next);
   };
 
   const removeAt = (index: number) => {
-    onChange(blocks.filter((_, i) => i !== index));
+    commit(blocksRef.current.filter((_, i) => i !== index));
   };
 
   return (
@@ -1313,7 +1323,7 @@ export function AdminBlockEditor({ blocks, onChange, className, channel }: Admin
             <button
               key={type}
               type="button"
-              onClick={() => onChange([...blocks, createEmptyBlock(type)])}
+              onClick={() => commit([...blocksRef.current, createEmptyBlock(type)])}
               className="hover:border-primary hover:text-primary cursor-pointer rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-600"
             >
               <Plus className="mr-0.5 inline h-3 w-3" />

@@ -6,7 +6,7 @@ import { apiClient } from '@/lib/api';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 import { AdminBlockEditor, type ContentBlock } from './AdminBlockEditor';
 import { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY, getDefaultBlocks } from '@/lib/cms/defaults';
-import { productsBlockPropsForSave } from '@/lib/cms/products-block';
+import { productsBlockPropsForSave, productsBlockSaveRegressed } from '@/lib/cms/products-block';
 import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { cn } from '@/lib/cn';
 
@@ -140,17 +140,42 @@ export function AdminSiteContent() {
         throw new Error(`ذخیره روی صفحه اشتباه برگشت (${savedRow.pageKey})`);
       }
 
-      // Prove persistence from DB, not just the PUT echo.
+      // Prefer what we wrote; only adopt GET if it does not regress auto→manual.
+      let nextBlocks = Array.isArray(savedRow.blocks) ? (savedRow.blocks as ContentBlock[]) : prepared;
+      let nextTitle = savedRow.title || title;
+      let nextSavedAt = savedRow.updatedAt || null;
+
       const verified = await apiClient.get<SiteContent>(
-        `/cms/admin/site-content/${channel}/${pageKey}`,
+        `/cms/admin/site-content/${channel}/${pageKey}?_=${Date.now()}`,
       );
       if (!verified || verified.channel !== channel) {
         throw new Error(`بعد از ذخیره، محتوای ${channelLabel(channel)} از سرور خوانده نشد`);
       }
 
-      setBlocks(Array.isArray(verified.blocks) ? (verified.blocks as ContentBlock[]) : prepared);
-      setTitle(verified.title || title);
-      setLastSavedAt(verified.updatedAt || savedRow.updatedAt || null);
+      const preparedProducts = prepared.find((b) => b.type === 'products');
+      const verifiedProducts = Array.isArray(verified.blocks)
+        ? verified.blocks.find((b) => (b as ContentBlock).type === 'products')
+        : undefined;
+      const regressed = productsBlockSaveRegressed(
+        preparedProducts?.props,
+        (verifiedProducts as ContentBlock | undefined)?.props,
+        channel,
+      );
+
+      if (!regressed && Array.isArray(verified.blocks)) {
+        nextBlocks = verified.blocks as ContentBlock[];
+        nextTitle = verified.title || nextTitle;
+        nextSavedAt = verified.updatedAt || nextSavedAt;
+      } else if (regressed) {
+        nextBlocks = prepared;
+        alert(
+          'ذخیره ارسال شد، ولی خواندن مجدد هنوز حالت قبلی را نشان داد. UI روی تنظیمات ذخیره‌شده نگه داشته شد؛ یک‌بار hard refresh کنید.',
+        );
+      }
+
+      setBlocks(nextBlocks);
+      setTitle(nextTitle);
+      setLastSavedAt(nextSavedAt);
 
       const bust = await revalidateStorefrontAfterSave(channel, pageKey);
       if (!bust.ok) {

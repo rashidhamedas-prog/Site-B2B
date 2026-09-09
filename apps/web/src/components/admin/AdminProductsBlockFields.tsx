@@ -52,7 +52,10 @@ export function AdminProductsBlockFields({
 }) {
   const p = block.props;
   const set = (key: string, value: unknown) =>
-    onChange({ ...block, props: { ...block.props, [key]: value } });
+    onChange({
+      ...block,
+      props: productsBlockPropsForSave({ ...block.props, [key]: value }, channel),
+    });
   const ids = parseProductIds(p.productIds);
   const source = resolveProductsBlockSource(p, ids);
   const [picks, setPicks] = useState<RelatedProductPick[]>([]);
@@ -187,11 +190,14 @@ export function AdminProductsBlockFields({
           onChange={(e) =>
             onChange({
               ...block,
-              props: {
-                ...block.props,
-                viewAllLabel: e.target.value,
-                ctaLabel: e.target.value,
-              },
+              props: productsBlockPropsForSave(
+                {
+                  ...block.props,
+                  viewAllLabel: e.target.value,
+                  ctaLabel: e.target.value,
+                },
+                channel,
+              ),
             })
           }
           className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"

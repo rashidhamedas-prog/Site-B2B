@@ -167,8 +167,10 @@ export function productsBlockPropsForSave(
   channel: ProductsBlockChannel,
 ): Record<string, unknown> {
   const query = normalizeProductsBlock(props, channel);
+  // Drop legacy `products` array so reload cannot re-infer manual from leftovers.
+  const { products: _legacyProducts, ...rest } = props;
   return {
-    ...props,
+    ...rest,
     enabled: query.enabled,
     source: query.source,
     productIds: query.source === 'manual' ? serializeProductIds(query.productIds) : '',
@@ -190,4 +192,17 @@ export function productsBlockPropsForSave(
     portalRegisterHref: query.portalRegisterHref,
     hideWhenEmpty: query.hideWhenEmpty,
   };
+}
+
+/** True when prepared auto mode would be shown as manual after a stale reload. */
+export function productsBlockSaveRegressed(
+  prepared: Record<string, unknown> | undefined,
+  verified: Record<string, unknown> | undefined,
+  channel: ProductsBlockChannel,
+): boolean {
+  if (!prepared || !verified) return false;
+  const want = normalizeProductsBlock(prepared, channel);
+  const got = normalizeProductsBlock(verified, channel);
+  if (want.source !== 'auto') return false;
+  return got.source !== 'auto' || got.productIds.length > 0;
 }
