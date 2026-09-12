@@ -6,7 +6,7 @@ import { Button, Input, Alert } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { IRAN_PROVINCES } from '@/lib/iran-provinces';
 import { ShippingAddressForm } from '@/components/checkout/ShippingAddressForm';
-import { emptyShippingAddress, finalizeShippingAddress } from '@/lib/shipping-address';
+import { emptyShippingAddress, toSavedAddressPayload } from '@/lib/shipping-address';
 
 interface SavedAddress {
   id?: string;
@@ -16,6 +16,9 @@ interface SavedAddress {
   city: string;
   street: string;
   postalCode?: string;
+  alley?: string;
+  plaque?: string;
+  unit?: string;
   isDefault?: boolean;
 }
 
@@ -270,6 +273,9 @@ export default function ProfilePage() {
             city: addrDraft.city,
             street: addrDraft.street,
             postalCode: addrDraft.postalCode || '',
+            alley: addrDraft.alley,
+            plaque: addrDraft.plaque,
+            unit: addrDraft.unit,
           }}
           onChange={(next) => setAddrDraft((p) => ({ ...p, ...next }))}
           mode="standard"
@@ -280,18 +286,20 @@ export default function ProfilePage() {
             setSaving(true);
             setError(null);
             try {
-              const payload = {
-                ...addrDraft,
-                ...finalizeShippingAddress({
+              const payload = toSavedAddressPayload(
+                {
                   recipient: addrDraft.recipient,
                   mobile: addrDraft.mobile,
                   province: addrDraft.province,
                   city: addrDraft.city,
                   street: addrDraft.street,
                   postalCode: addrDraft.postalCode || '',
-                }),
-                isDefault: addrDraft.isDefault,
-              };
+                  alley: addrDraft.alley,
+                  plaque: addrDraft.plaque,
+                  unit: addrDraft.unit,
+                },
+                { isDefault: addrDraft.isDefault },
+              );
               const res = editingAddressId
                 ? await apiClient.patch<{ addresses: SavedAddress[] }>(`/auth/me/addresses/${editingAddressId}`, payload)
                 : await apiClient.post<{ addresses: SavedAddress[] }>('/auth/me/addresses', payload);

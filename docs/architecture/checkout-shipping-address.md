@@ -60,8 +60,10 @@ Checkout pages stay client (already `no-store`). Geo list is a static TS module 
 Existing JSON on `orders.shippingAddress` and customer `addresses[]`:
 
 ```text
-{ recipient, mobile, province, city, street, postalCode, alley?, plaque?, unit? }
+{ recipient, mobile, province, city, street, postalCode }
 ```
+
+Form drafts may include `alley` / `plaque` / `unit`. Those are composed into `street` before POST. Saved-address DTO accepts them so a leftover client key does not 400 (`property plaque should not exist`); they are not stored as separate columns.
 
 Canonical storage: Latin digits for `mobile` and `postalCode`. `street` persisted as the composed line so old admin/fulfillment readers keep working.
 

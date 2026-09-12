@@ -121,6 +121,25 @@ export class SavedAddressDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  /** Form-only; composed into `street` on the client. Accepted so whitelist does not 400. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  alley?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  plaque?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  unit?: string;
 }
 
 export class ChangePasswordDto {

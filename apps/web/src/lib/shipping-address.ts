@@ -84,7 +84,17 @@ export function streetSignificantLen(addr: Pick<ShippingAddress, 'street' | 'all
   return composeStreetLine(addr).replace(/\s/g, '').length;
 }
 
-export function finalizeShippingAddress(addr: ShippingAddress): ShippingAddress {
+export type SavedAddressPayload = {
+  recipient: string;
+  mobile: string;
+  province: string;
+  city: string;
+  street: string;
+  postalCode: string;
+};
+
+/** Canonical line for checkout/API. Extra form keys (alley/plaque/unit) are not returned. */
+export function finalizeShippingAddress(addr: ShippingAddress): SavedAddressPayload {
   return {
     recipient: String(addr.recipient || '').trim().slice(0, 80),
     mobile: normalizeIranMobile(addr.mobile),
@@ -93,6 +103,17 @@ export function finalizeShippingAddress(addr: ShippingAddress): ShippingAddress 
     street: composeStreetLine(addr).slice(0, 500),
     postalCode: postalDigits(addr.postalCode),
   };
+}
+
+/** Body for POST/PATCH /auth/me/addresses — never include alley/plaque/unit. */
+export function toSavedAddressPayload(
+  addr: ShippingAddress,
+  extra?: { isDefault?: boolean; id?: string },
+): SavedAddressPayload & { isDefault?: boolean; id?: string } {
+  const finalized = finalizeShippingAddress(addr);
+  return extra?.id
+    ? { ...finalized, isDefault: Boolean(extra.isDefault), id: extra.id }
+    : { ...finalized, isDefault: Boolean(extra?.isDefault) };
 }
 
 export function validateShippingAddress(addr: ShippingAddress, mode: AddressMode): AddressErrors {

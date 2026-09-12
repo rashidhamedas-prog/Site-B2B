@@ -1,5 +1,41 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260912-006"
+    title: "Saved-address plaque whitelist 400"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260912-006"
+    roles:
+      architect: "cursor:implementer-TASK-20260912-006"
+      implementer: "cursor:implementer-TASK-20260912-006"
+      reviewer: "self-review-whitelist-dto-only"
+      security: "not-required-no-new-persistence"
+    branch: "ai/TASK-20260912-006-address-plaque-dto"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-12T13:35:00Z"
+    heartbeat_at: "2026-09-12T13:35:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/shipping-address.ts"
+      - "apps/web/src/lib/shipping-address.spec.mts"
+      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      - "apps/api/src/modules/auth/saved-address.dto.spec.ts"
+      - "docs/architecture/checkout-shipping-address.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Reclaimed shipping-address + account/portal address book from
+      TASK-20260912-004 (checkout shipped on master; plaque still 400).
+      Reclaimed otp.dto.ts from TASK-20260903-006 (status done, hb 2026-09-03).
+      alley/plaque/unit are form-only; street stays the stored line.
+    acceptance_criteria:
+      - "POST/PATCH /auth/me/addresses accepts alley/plaque/unit without 400"
+      - "Client payload omits alley/plaque/unit after finalize"
+      - "shipping-address spec asserts payload has no plaque key"
   - id: "TASK-20260912-005"
     title: "Category Persian save + home merchandising"
     status: "done"
@@ -72,21 +108,16 @@ tasks:
       - "apps/web/src/lib/iran-digits.ts"
       - "apps/web/src/lib/iran-geo.ts"
       - "apps/web/src/lib/iran-provinces.ts"
-      - "apps/web/src/lib/shipping-address.ts"
-      - "apps/web/src/lib/shipping-address.spec.mts"
       - "apps/web/src/lib/checkout-payment-ui.ts"
       - "apps/web/src/lib/checkout-payment-ui.spec.ts"
       - "apps/web/src/lib/retail-addresses.ts"
       - "apps/web/src/components/checkout/ShippingAddressForm.tsx"
       - "apps/web/src/app/retail/checkout/page.tsx"
       - "apps/web/src/app/checkout/page.tsx"
-      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
-      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
       - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
       - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
       - "apps/api/src/modules/auth/customer-addresses.ts"
       - "apps/api/src/modules/auth/customer-addresses.spec.ts"
-      - "docs/architecture/checkout-shipping-address.md"
       - "docs/reports/2026-09-12-checkout-shipping-address.md"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"
@@ -96,6 +127,8 @@ tasks:
       Reclaimed stale TorobPay adapter claims from TASK-20260907-002
       (heartbeat 2026-09-08T03:20Z, >24h). Checkout page already released
       by TASK-20260908-003. Did not touch catalog-filter or locale files.
+      2026-09-12: shipping-address + RetailAccountDetails + portal profile
+      reclaimed by TASK-20260912-006 (live plaque 400).
       Shared AI-DOS registry overlap with 002/003 is append-only.
     acceptance_criteria:
       - "Persian/Arabic postal digits convert to 10 Latin digits for TorobPay"
@@ -1857,7 +1890,8 @@ tasks:
       # transferred 2026-09-04 to TASK-20260904-001 (done task; channel JWT):
       # "apps/api/src/modules/auth/auth.service.ts"
       # "apps/api/src/modules/auth/auth.controller.ts"
-      - "apps/api/src/modules/auth/dto/otp.dto.ts"
+      # transferred 2026-09-12 to TASK-20260912-006 (plaque whitelist):
+      # "apps/api/src/modules/auth/dto/otp.dto.ts"
       # "apps/api/src/modules/auth/dto/password-reset.dto.ts"
       # "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
       - "apps/api/src/modules/auth/users.service.ts"

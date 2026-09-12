@@ -10,7 +10,7 @@ import {
   sameRetailAddress,
   type RetailAddress,
 } from '@/lib/retail-addresses';
-import { emptyShippingAddress, finalizeShippingAddress } from '@/lib/shipping-address';
+import { emptyShippingAddress, toSavedAddressPayload } from '@/lib/shipping-address';
 
 export type ProfileAddress = RetailAddress & { id?: string; isDefault?: boolean };
 
@@ -106,7 +106,7 @@ export function RetailAccountDetails({
     setErr('');
     setMsg('');
     try {
-      const payload = { ...draft, ...finalizeShippingAddress(draft), isDefault: draft.isDefault };
+      const payload = toSavedAddressPayload(draft, { isDefault: draft.isDefault });
       const res = editingId
         ? await apiClient.patch<{ addresses: ProfileAddress[] }>(`/auth/me/addresses/${editingId}`, payload)
         : await apiClient.post<{ addresses: ProfileAddress[] }>('/auth/me/addresses', payload);

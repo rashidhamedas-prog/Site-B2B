@@ -6,6 +6,7 @@ import {
   isValidIranPostal,
   postalDigits,
   streetSignificantLen,
+  toSavedAddressPayload,
   validateShippingAddress,
 } from './shipping-address';
 
@@ -52,6 +53,19 @@ assert.equal(finalized.mobile, '09151234567', 'finalize mobile');
 assert.equal(finalized.postalCode, '9173512345', 'finalize postal latin');
 assert.match(finalized.street, /کوچه/, 'alley composed');
 assert.match(finalized.street, /واحد/, 'unit composed');
+assert.equal('plaque' in finalized, false, 'finalize omits plaque');
+assert.equal('alley' in finalized, false, 'finalize omits alley');
+assert.equal('unit' in finalized, false, 'finalize omits unit');
+
+const saved = toSavedAddressPayload(
+  { ...short, alley: '۲۰', plaque: '۱۲', unit: '۳' },
+  { isDefault: true },
+);
+assert.equal(saved.isDefault, true, 'default flag kept');
+assert.equal('plaque' in saved, false, 'api payload omits plaque');
+assert.equal('alley' in saved, false, 'api payload omits alley');
+assert.equal('unit' in saved, false, 'api payload omits unit');
+assert.match(saved.street, /پلاک/, 'plaque composed into street');
 
 const cashShortPostal = { ...full, postalCode: '12' };
 assert.ok(validateShippingAddress(cashShortPostal, 'standard').postalCode, 'partial postal invalid in standard');

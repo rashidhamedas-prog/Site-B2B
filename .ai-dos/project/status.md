@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-12 — **TASK-20260912-006 implementing** on `ai/TASK-20260912-006-address-plaque-dto`. Customer panel address save 400 on `plaque`. Not live until merge/deploy.
 - Last verified: 2026-09-12 — **TASK-20260912-005 CLOSED** on `origin/master` + VPS `e6d8dd6`. Persian category save + home merch. پاییزی on `.ir` home pills+grid; `/category/autumn` 200. Health 200. Claims released. Independent Security residual (partial unique).
 - Last verified: 2026-09-12 — **TASK-20260912-002 CLOSED** on `origin/master` `4b78bcf`. Page-scoped heroes, locale digits, Persian category identity, product membership. Migration `ProductCategoryMembership1757670000002` applied (60 rows). Claims released.
 - Last verified: 2026-09-12 — **TASK-20260912-004 implementing** on `ai/TASK-20260912-004-checkout-address`. Code is on `origin/master` `ce24a1b`; VPS was still `fe179d8` until this close-out deploy. Did not touch 002 catalog-locale files.

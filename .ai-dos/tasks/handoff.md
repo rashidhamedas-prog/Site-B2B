@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T13:40:00Z — TASK-20260912-006 implementing address plaque 400
+
+- Owner: customer panel save address → `property plaque should not exist`.
+- Root: `{ ...draft, ...finalize() }` kept `plaque`/`alley`/`unit`; `SavedAddressDto` + `forbidNonWhitelisted` rejected them.
+- Fix: DTO optional form fields (not persisted); client `toSavedAddressPayload` omits them.
+- Reclaimed address book + shipping-address from 004; otp.dto from 006 (done).
+- Next: specs + tsc, merge master, auto-deploy, confirm save in `/account` and portal profile.
+
 ## 2026-09-12T12:30:00Z — TASK-20260912-005 CLOSED live `e6d8dd6`
 
 - Retail home shows **Autumn پاییزی** in pills + luxury grid (11 ACTIVE). `/category/autumn` 200.
