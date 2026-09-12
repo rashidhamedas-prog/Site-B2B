@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T11:40:00Z — TASK-20260912-003 catalog filter rail (polish)
+
+- Extra catalog fabrics (بزایاق، ژاکارد، نام‌های بلند صفحه) moved under collapsed «سایر پارچه‌ها»; curated list stays in «نوع پارچه».
+- Next: push `2f57cf6` (+ merge origin/master) to master, TARANOM_DEPLOY_FORCE=1, re-check `.com` + `.ir` `/products`.
+
 ## 2026-09-12T11:25:00Z — TASK-20260912-002 CLOSED live `4b78bcf`
 
 - Fast-forwarded worktree onto `origin/master` (`ce24a1b`). Catalog-locale is on master.

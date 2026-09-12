@@ -63,7 +63,7 @@ tasks:
     branch: "ai/TASK-20260912-003-catalog-filter-rail"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-12T10:54:00Z"
-    heartbeat_at: "2026-09-12T10:54:00Z"
+    heartbeat_at: "2026-09-12T11:40:00Z"
     depends_on: []
     file_claims:
       - "apps/web/src/lib/catalog-filter.ts"
