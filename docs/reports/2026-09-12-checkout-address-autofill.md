@@ -29,4 +29,5 @@ No schema change. No new JS dependency. Checkout stays `no-store`.
 
 - `npx tsx src/lib/shipping-address.spec.mts` (cwd `apps/web`) → `shipping-address spec ok` (exit 0)
 - `npx tsc --noEmit` (cwd `apps/web`) → exit 0
+- Live VPS HEAD `be18707` (includes autofill `b8c8821`). API health 200 after `--no-cache` api rebuild. `.ir` / `.com` / checkout 200. TTFB home `.ir` ~0.27s.
 

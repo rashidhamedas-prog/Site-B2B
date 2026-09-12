@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-12 — **TASK-20260912-007 CLOSED** on `origin/master` `b8c8821` (live VPS `be18707` after API rebuild). Checkout hydrates saved/default address into dedicated fields. Health 200. Claims released.
 - Last verified: 2026-09-12 — **TASK-20260912-008 implementing** on `ai/TASK-20260912-008-paid-before-review`. ONLINE unpaid no longer PENDING_REVIEW. Not live until merge/deploy + migration `UnpaidOnlineAwaitingPayment1757692800007`. Did not touch checkout autofill files (007).
 - Last verified: 2026-09-12 — **TASK-20260912-007 implementing** on `ai/TASK-20260912-007-checkout-autofill`. Saved/default checkout address hydrates structured fields. Not live until merge/deploy.
 - Last verified: 2026-09-12 — **TASK-20260912-006 CLOSED** on `origin/master` + VPS `27ee8b8`. Saved-address `plaque`/`alley`/`unit` no longer 400. Health 200. Claims released. Independent Reviewer residual (DTO whitelist only).

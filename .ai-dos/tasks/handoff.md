@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T14:45:00Z — TASK-20260912-007 CLOSED live `be18707`
+
+- Saved/default checkout address now fills recipient, mobile, province, city, street, alley, plaque, unit, postal.
+- Retail checkout reads `/auth/me/profile` addresses. `hydrate(finalize(addr))` round-trips composed street.
+- Gates: shipping-address spec ok; web tsc 0. Live health 200; `.ir/checkout` and `.com/checkout` 200. Did not log in as a shopper to click a saved row.
+- Ops: first API image after 008 still had `p.orderId = o.id` (uuid vs varchar) and 502'd; rebuilt api `--no-cache` so compiled SQL has `o.id::text`. Health recovered.
+- Claims released. Independent Reviewer residual (PII form fill only; no new persistence).
+
 ## 2026-09-12T14:15:00Z — TASK-20260912-008 implementing paid-before-review
 
 - Owner: customer panel showed unpaid ONLINE orders as «در بررسی».

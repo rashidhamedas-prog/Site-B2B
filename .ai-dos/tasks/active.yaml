@@ -52,7 +52,7 @@ tasks:
       - "lifecycle spec + migration spec + api/web tsc pass"
   - id: "TASK-20260912-007"
     title: "Checkout autofills saved/default address fields"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260912-007"
     roles:
@@ -63,9 +63,11 @@ tasks:
     branch: "ai/TASK-20260912-007-checkout-autofill"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-12T14:08:00Z"
-    heartbeat_at: "2026-09-12T14:08:00Z"
+    heartbeat_at: "2026-09-12T14:45:00Z"
+    closed_at: "2026-09-12T14:45:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/shipping-address.ts"
       - "apps/web/src/lib/shipping-address.spec.mts"
       - "apps/web/src/lib/retail-addresses.ts"
