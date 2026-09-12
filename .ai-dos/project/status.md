@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-12 — **TASK-20260912-003 implementing** on `ai/TASK-20260912-003-catalog-filter-rail` (worktree `D:/proje/Site B2B`). Shared professional `/products` filter rail for wholesale + retail. Not live until merge/deploy. Did not touch 002 hero files.
 - Last verified: 2026-09-12 — **TASK-20260912-002 implementing** on `ai/TASK-20260912-002-catalog-locale-heroes` (worktree `D:/proje/Site-B2B-catalog-locale`). Architecture + Phase 1 page-scoped heroes. Not live until merge/deploy.
 - Last verified: 2026-09-12 — **TASK-20260912-001 CLOSED** on `origin/master` + VPS `3311e33`. Wholesale home stats rail compact with isometric glyphs. CMS items unchanged. Health 200. Claims released.
 

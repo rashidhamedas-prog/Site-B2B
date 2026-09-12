@@ -26,6 +26,7 @@ function paramsFromSearch(search: string): RetailCatalogSearchParams {
     'maxPrice',
     'page',
     'sort',
+    'inStock',
   ];
   for (const key of keys) {
     const value = usp.get(key);
@@ -47,6 +48,7 @@ function hasCatalogFilters(params: RetailCatalogSearchParams): boolean {
       params.categoryId ||
       params.minPrice ||
       params.maxPrice ||
+      params.inStock ||
       params.sort ||
       (params.page && Number(params.page) > 1),
   );

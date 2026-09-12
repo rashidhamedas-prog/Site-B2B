@@ -1,5 +1,47 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260912-003"
+    title: "Professional catalog filter rail for wholesale + retail /products"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260912-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260912-003"
+      implementer: "cursor:implementer-TASK-20260912-003"
+      reviewer: "self-review-catalog-filter-ui-only"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260912-003-catalog-filter-rail"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-12T10:54:00Z"
+    heartbeat_at: "2026-09-12T10:54:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/catalog-filter.ts"
+      - "apps/web/src/lib/catalog-filter.spec.mts"
+      - "apps/web/src/components/catalog/CatalogFilterRail.tsx"
+      - "apps/web/src/components/catalog/CatalogFilters.tsx"
+      - "apps/web/src/components/wholesale/ProductCatalog.tsx"
+      - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductsCatalogWithUrl.tsx"
+      - "apps/web/src/components/retail/RetailProductsCatalogWithUrl.tsx"
+      - "apps/web/src/app/globals.css"
+      - "docs/architecture/catalog-filter-rail.md"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-12-catalog-filter-rail.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Shared visual filter rail for /products. No API/schema change.
+      TASK-20260912-002 still owns catalog-locale hero files; this task
+      only overlaps the AI-DOS registry files.
+    acceptance_criteria:
+      - "Wholesale /products desktop has a sticky graphical filter rail"
+      - "Retail /products uses the same filter shell, not the old select grid"
+      - "Color uses visual swatches; active filters are dismissible chips"
+      - "Mobile uses a drawer with explicit apply, not a squeezed sidebar"
+      - "Existing query params still drive listing; filtered URLs stay noindex"
+      - "catalog-filter spec + web tsc pass"
   - id: "TASK-20260912-002"
     title: "Catalog membership, locale digits, page-scoped heroes"
     status: "in_progress"

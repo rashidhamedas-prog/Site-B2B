@@ -3,11 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronDown } from 'lucide-react';
 import { Input, Button } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { isLeadCatalogImage } from '@/lib/catalog-performance';
+import { catalogActiveFilterCount, type CatalogFilterValues } from '@/lib/catalog-filter';
+import { CatalogActiveChips } from '@/components/catalog/CatalogFilterRail';
+import { CatalogFilters } from '@/components/catalog/CatalogFilters';
 import { WholesaleProductCard } from './WholesaleProductCard';
 
 export interface CatalogSearchParams {
@@ -17,6 +20,7 @@ export interface CatalogSearchParams {
   sort?: string;
   page?: string;
   q?: string;
+  inStock?: string;
 }
 
 interface Product {
@@ -74,14 +78,6 @@ function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Produc
   };
 }
 
-const FABRICS = ['همه', 'لینن', 'کتان', 'مازاراتی', 'شال', 'مموری', 'پشمی', 'فوتر', 'لینن‌کتان', 'ویسکوز'];
-const SIZES = [
-  { value: '', label: 'همه' },
-  { value: 'FREE', label: 'فری‌سایز' },
-  { value: 'TWO', label: 'دو سایز' },
-  { value: 'THREE', label: 'سه سایز' },
-];
-const COLORS = ['بژ', 'سرمه‌ای', 'مشکی', 'سفید', 'کرم', 'خاکستری', 'قهوه‌ای', 'زیتونی'];
 const SORT_OPTIONS = [
   { value: 'newest', label: 'جدیدترین' },
   { value: 'popular', label: 'پرفروش‌ترین' },
@@ -106,87 +102,6 @@ function catalogTitle(filters: CatalogSearchParams): { h1: string; sub: string }
     h1: 'کاتالوگ محصولات',
     sub: 'مانتو شومیزی زنانه — لینن و کتان، مستقیم از تولیدی',
   };
-}
-
-function FilterPanel({
-  activeFilters,
-  onFilter,
-  onReset,
-}: {
-  activeFilters: CatalogSearchParams;
-  onFilter: (key: string, value: string) => void;
-  onReset: () => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h4 className="mb-3 text-sm font-semibold text-gray-900">نوع پارچه</h4>
-        <div className="flex flex-wrap gap-2">
-          {FABRICS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => onFilter('fabric', f === 'همه' ? '' : f)}
-              className={cn(
-                'cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                activeFilters.fabric === f || (f === 'همه' && !activeFilters.fabric)
-                  ? 'border-primary bg-primary text-white'
-                  : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary',
-              )}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="mb-3 text-sm font-semibold text-gray-900">سایزبندی</h4>
-        <div className="flex flex-wrap gap-2">
-          {SIZES.map((s) => (
-            <button
-              key={s.value || 'all'}
-              type="button"
-              onClick={() => onFilter('size', s.value)}
-              className={cn(
-                'cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                (activeFilters.size || '') === s.value
-                  ? 'border-primary bg-primary text-white'
-                  : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary',
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="mb-3 text-sm font-semibold text-gray-900">رنگ</h4>
-        <div className="flex flex-wrap gap-2">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onFilter('color', activeFilters.color === c ? '' : c)}
-              className={cn(
-                'cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
-                activeFilters.color === c
-                  ? 'border-primary bg-primary text-white'
-                  : 'border-gray-200 text-gray-600 hover:border-primary hover:text-primary',
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <Button variant="ghost" size="sm" fullWidth onClick={onReset} className="text-gray-500">
-        پاک کردن فیلترها
-      </Button>
-    </div>
-  );
 }
 
 function SkeletonCard() {
@@ -237,6 +152,7 @@ export function ProductCatalog({
       if (next.fabric) params.set('fabric', next.fabric);
       if (next.color) params.set('color', next.color);
       if (next.size) params.set('size', next.size);
+      if (next.inStock) params.set('inStock', next.inStock);
       if (nextSort && nextSort !== 'newest') params.set('sort', nextSort);
       if (nextQ) params.set('q', nextQ);
       const qs = params.toString();
@@ -253,6 +169,7 @@ export function ProductCatalog({
     if (filters.fabric) params.set('fabric', filters.fabric);
     if (filters.color) params.set('color', filters.color);
     if (filters.size) params.set('size', filters.size);
+    if (filters.inStock) params.set('inStock', filters.inStock);
     if (sort) params.set('sort', sort);
     return params.toString();
   }, [filters, sort, search]);
@@ -286,18 +203,28 @@ export function ProductCatalog({
     }
   }, [filters]);
 
-  const handleFilter = (key: string, value: string) => {
+  const handleFilter = (key: keyof CatalogFilterValues, value: string) => {
     setFilters((p) => {
       const next = { ...p, [key]: value || undefined };
       syncUrl(next, sort, search);
       return next;
     });
   };
+  const replaceFilters = (next: CatalogFilterValues) => {
+    const clean: CatalogSearchParams = {
+      fabric: next.fabric || undefined,
+      color: next.color || undefined,
+      size: next.size || undefined,
+      inStock: next.inStock || undefined,
+    };
+    setFilters(clean);
+    syncUrl(clean, sort, search);
+  };
   const resetFilters = () => {
     setFilters({});
     syncUrl({}, sort, search);
   };
-  const activeFilterCount = [filters.fabric, filters.color, filters.size].filter(Boolean).length;
+  const activeFilterCount = catalogActiveFilterCount(filters);
   const titles = catalogTitle(filters);
 
   return (
@@ -327,6 +254,7 @@ export function ProductCatalog({
           <div className="min-w-[200px] max-w-sm flex-1">
             <Input
               placeholder="جستجو در محصولات..."
+              aria-label="جستجو در محصولات"
               value={search}
               onChange={(e) => {
                 const v = e.target.value;
@@ -340,6 +268,7 @@ export function ProductCatalog({
             <div className="relative">
               <select
                 value={sort}
+                aria-label="مرتب‌سازی محصولات"
                 onChange={(e) => {
                   setSort(e.target.value);
                   syncUrl(filters, e.target.value, search);
@@ -356,53 +285,57 @@ export function ProductCatalog({
               variant="outline"
               size="md"
               className="lg:hidden"
+              aria-expanded={mobileFiltersOpen}
+              aria-controls="catalog-filter-drawer"
               onClick={() => setMobileFiltersOpen(true)}
               rightIcon={<SlidersHorizontal className="h-4 w-4" />}
             >
-              فیلتر {activeFilterCount > 0 && `(${activeFilterCount})`}
+              فیلتر {activeFilterCount > 0 && `(${activeFilterCount.toLocaleString('fa-IR')})`}
             </Button>
           </div>
         </div>
 
         <div className="flex gap-8">
-          <aside className="hidden w-60 flex-shrink-0 lg:block">
-            <div className="glass-card sticky top-28 p-5">
-              <h3 className="mb-5 text-sm font-bold text-gray-900">فیلترها</h3>
-              <FilterPanel activeFilters={filters} onFilter={handleFilter} onReset={resetFilters} />
-            </div>
-          </aside>
-
-          {mobileFiltersOpen && (
-            <>
-              <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setMobileFiltersOpen(false)} />
-              <aside className="fixed inset-y-0 right-0 z-50 w-80 overflow-y-auto glass-strong shadow-xl lg:hidden">
-                <div className="p-5">
-                  <div className="mb-6 flex items-center justify-between">
-                    <h3 className="font-bold text-gray-900">فیلترها</h3>
-                    <button
-                      type="button"
-                      onClick={() => setMobileFiltersOpen(false)}
-                      className="cursor-pointer rounded-lg p-1 transition-colors duration-200 hover:bg-gray-100"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <FilterPanel activeFilters={filters} onFilter={handleFilter} onReset={resetFilters} />
-                </div>
-              </aside>
-            </>
-          )}
+          <CatalogFilters
+            values={filters}
+            onChange={handleFilter}
+            onReplace={replaceFilters}
+            onReset={resetFilters}
+            tone="wholesale"
+            mobileOpen={mobileFiltersOpen}
+            onMobileOpenChange={setMobileFiltersOpen}
+            extraColors={products.flatMap((p) => p.variants.map((v) => v.color).filter(Boolean))}
+            extraFabrics={products.map((p) => p.fabric).filter(Boolean)}
+            loading={loading}
+          />
 
           <div className="min-w-0 flex-1">
-            <p className="mb-5 text-sm text-gray-500">
-              {!loading && <span className="font-medium text-gray-900">{total.toLocaleString('fa-IR')}</span>}
-              {loading ? 'در حال بارگذاری...' : ' محصول یافت شد'}
-            </p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-gray-500" aria-live="polite">
+                {!loading && <span className="font-medium text-gray-900">{total.toLocaleString('fa-IR')}</span>}
+                {loading ? 'در حال بارگذاری...' : ' مدل در این فهرست'}
+              </p>
+            </div>
+            <CatalogActiveChips values={filters} onChange={handleFilter} onReset={resetFilters} />
             <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 xl:grid-cols-4">
               {loading
                 ? Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)
                 : products.length === 0
-                  ? <div className="col-span-full py-16 text-center text-gray-400">محصولی یافت نشد</div>
+                  ? (
+                    <div className="col-span-full rounded-2xl border border-dashed border-[color:var(--color-border)] py-16 text-center">
+                      <p className="text-gray-700">با این ترکیب مدلی پیدا نشد.</p>
+                      <p className="mt-1 text-sm text-gray-500">یک فیلتر را بردارید یا همه را پاک کنید.</p>
+                      {activeFilterCount > 0 ? (
+                        <button
+                          type="button"
+                          onClick={resetFilters}
+                          className="mt-4 cursor-pointer text-sm font-bold text-primary"
+                        >
+                          پاک کردن فیلترها
+                        </button>
+                      ) : null}
+                    </div>
+                  )
                   : products.map((p, index) => (
                       <WholesaleProductCard
                         key={p.id}

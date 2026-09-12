@@ -2,6 +2,20 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T11:20:00Z — TASK-20260912-003 catalog filter rail (code)
+
+- Shared rail: visual color swatches, fabric chips, size cards, in-stock switch, dismissible chips.
+- Wholesale + retail `/products` wired. Mobile drawer drafts until «نمایش نتایج».
+- Gates: `catalog-filter.spec.mts` ok; `apps/web` `tsc --noEmit` 0.
+- Next: commit, push master, deploy, browser-check `.com/products` and `.ir/products`.
+
+## 2026-09-12T10:54:00Z — TASK-20260912-003 catalog filter rail (implementing)
+
+- Owner: redesign wholesale `/products` right-side filters to a current faceted UI, then apply the same shell to retail `/products`.
+- Architecture: `docs/architecture/catalog-filter-rail.md`. Shared rail, no new API, no facet-count invention. Desktop instant apply; mobile drawer + apply.
+- TASK-20260912-002 still owns catalog-locale hero files. This task claims ProductCatalog + RetailProductsCatalog + new `components/catalog/*`.
+- Next: implement shared rail, wire both catalogs, spec + tsc, then browser-check.
+
 ## 2026-09-12T10:50:00Z — TASK-20260912-002 architecture + Phase 1 heroes
 
 - Owner reports: Persian category names hidden; stats digits Latin vs Persian; inner pages show home banners.

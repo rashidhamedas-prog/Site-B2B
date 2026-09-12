@@ -2,10 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { RetailProductCard } from './RetailProductCard';
 import { trackViewItemList } from '@/lib/retail-analytics';
 import { isLeadCatalogImage } from '@/lib/catalog-performance';
+import { catalogActiveFilterCount, type CatalogFilterValues } from '@/lib/catalog-filter';
+import { CatalogActiveChips } from '@/components/catalog/CatalogFilterRail';
+import { CatalogFilters } from '@/components/catalog/CatalogFilters';
 
 type Product = {
   id: string;
@@ -40,12 +45,20 @@ export type RetailCatalogSearchParams = {
   maxPrice?: string;
   page?: string;
   sort?: string;
+  inStock?: string;
 };
 
-function mediaUrl(url?: string) {
-  if (!url) return undefined;
-  if (url.startsWith('http') || url.startsWith('/')) return url;
-  return `/media/${url}`;
+function filtersFromSearch(searchParams: RetailCatalogSearchParams): CatalogFilterValues {
+  return {
+    fabric: searchParams.fabric || undefined,
+    color: searchParams.color || undefined,
+    size: searchParams.size || undefined,
+    collar: searchParams.collar || undefined,
+    collectionId: searchParams.collectionId || undefined,
+    minPrice: searchParams.minPrice || undefined,
+    maxPrice: searchParams.maxPrice || undefined,
+    inStock: searchParams.inStock || undefined,
+  };
 }
 
 function normalizeRetailProduct(raw: Record<string, unknown> | Product): Product {
@@ -77,6 +90,12 @@ function normalizeRetailProduct(raw: Record<string, unknown> | Product): Product
 }
 
 const PAGE_SIZE = 24;
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'جدیدترین' },
+  { value: 'popular', label: 'پرفروش‌ترین' },
+  { value: 'price_asc', label: 'ارزان‌ترین' },
+  { value: 'price_desc', label: 'گران‌ترین' },
+];
 
 export function RetailProductsCatalog({
   initialProducts,
@@ -91,6 +110,8 @@ export function RetailProductsCatalog({
   seedDefaultListing?: boolean;
   searchParams?: RetailCatalogSearchParams;
 } = {}) {
+  const router = useRouter();
+  const pathname = usePathname();
   const seeded =
     seedDefaultListing && Array.isArray(initialProducts)
       ? initialProducts.map(normalizeRetailProduct)
@@ -102,19 +123,34 @@ export function RetailProductsCatalog({
   const [totalPages, setTotalPages] = useState(() =>
     typeof initialTotalPages === 'number' && seeded ? initialTotalPages : 1,
   );
-  const [fabric, setFabric] = useState(searchParams.fabric || '');
-  const [color, setColor] = useState(searchParams.color || '');
-  const [size, setSize] = useState(searchParams.size || '');
-  const [collar, setCollar] = useState(searchParams.collar || '');
-  const [collectionId, setCollectionId] = useState(searchParams.collectionId || '');
-  const [categoryId, setCategoryId] = useState(
-    searchParams.category || searchParams.categoryId || '',
-  );
-  const [minPrice, setMinPrice] = useState(searchParams.minPrice || '');
-  const [maxPrice, setMaxPrice] = useState(searchParams.maxPrice || '');
+  const [total, setTotal] = useState(() => seeded?.length ?? 0);
+  const [filters, setFilters] = useState<CatalogFilterValues>(() => filtersFromSearch(searchParams));
+  const [categoryId] = useState(searchParams.category || searchParams.categoryId || '');
   const [q, setQ] = useState(searchParams.q || searchParams.search || '');
+  const [sort, setSort] = useState(searchParams.sort || 'newest');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [collections, setCollections] = useState<Collection[]>([]);
   const skipNextFetch = useRef(Boolean(seeded));
+
+  const syncUrl = useCallback(
+    (next: CatalogFilterValues, nextSort: string, nextQ: string) => {
+      if (!pathname || !/\/products\/?$/.test(pathname)) return;
+      const params = new URLSearchParams();
+      if (next.fabric) params.set('fabric', next.fabric);
+      if (next.color) params.set('color', next.color);
+      if (next.size) params.set('size', next.size);
+      if (next.collar) params.set('collar', next.collar);
+      if (next.collectionId) params.set('collectionId', next.collectionId);
+      if (next.minPrice) params.set('minPrice', next.minPrice);
+      if (next.maxPrice) params.set('maxPrice', next.maxPrice);
+      if (next.inStock) params.set('inStock', next.inStock);
+      if (nextSort && nextSort !== 'newest') params.set('sort', nextSort);
+      if (nextQ) params.set('q', nextQ);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
 
   useEffect(() => {
     apiClient
@@ -131,18 +167,20 @@ export function RetailProductsCatalog({
         status: 'ACTIVE',
         channel: 'RETAIL',
       });
-      if (fabric) params.set('fabric', fabric);
-      if (color) params.set('color', color);
-      if (size) params.set('size', size);
-      if (collar) params.set('collar', collar);
-      if (collectionId) params.set('collectionId', collectionId);
+      if (filters.fabric) params.set('fabric', filters.fabric);
+      if (filters.color) params.set('color', filters.color);
+      if (filters.size) params.set('size', filters.size);
+      if (filters.collar) params.set('collar', filters.collar);
+      if (filters.collectionId) params.set('collectionId', filters.collectionId);
       if (categoryId) params.set('categoryId', categoryId);
-      if (minPrice) params.set('minPrice', String(Number(minPrice) * 10));
-      if (maxPrice) params.set('maxPrice', String(Number(maxPrice) * 10));
+      if (filters.minPrice) params.set('minPrice', String(Number(filters.minPrice) * 10));
+      if (filters.maxPrice) params.set('maxPrice', String(Number(filters.maxPrice) * 10));
+      if (filters.inStock) params.set('inStock', filters.inStock);
+      if (sort && sort !== 'newest') params.set('sort', sort);
       if (q.trim()) params.set('search', q.trim());
       return params;
     },
-    [fabric, color, size, collar, collectionId, categoryId, minPrice, maxPrice, q],
+    [filters, categoryId, q, sort],
   );
 
   useEffect(() => {
@@ -155,17 +193,20 @@ export function RetailProductsCatalog({
       setLoading(true);
       setPage(1);
       try {
-        const data = await apiClient.get<{ data: Product[]; meta?: { totalPages?: number } }>(
-          `/products?${buildParams(1)}`,
-        );
+        const data = await apiClient.get<{
+          data: Product[];
+          meta?: { totalPages?: number; total?: number };
+        }>(`/products?${buildParams(1)}`);
         if (!cancelled) {
           setProducts(data.data ?? []);
           setTotalPages(data.meta?.totalPages || 1);
+          setTotal(data.meta?.total ?? data.data?.length ?? 0);
         }
       } catch {
         if (!cancelled) {
           setProducts([]);
           setTotalPages(1);
+          setTotal(0);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -198,12 +239,13 @@ export function RetailProductsCatalog({
     setLoadingMore(true);
     const next = page + 1;
     try {
-      const data = await apiClient.get<{ data: Product[]; meta?: { totalPages?: number } }>(
+      const data = await apiClient.get<{ data: Product[]; meta?: { totalPages?: number; total?: number } }>(
         `/products?${buildParams(next)}`,
       );
       setProducts((prev) => [...prev, ...(data.data ?? [])]);
       setPage(next);
       setTotalPages(data.meta?.totalPages || totalPages);
+      if (typeof data.meta?.total === 'number') setTotal(data.meta.total);
     } catch {
       /* ignore */
     } finally {
@@ -211,26 +253,49 @@ export function RetailProductsCatalog({
     }
   };
 
-  const fabrics = useMemo(() => {
-    const set = new Set<string>(['لینن', 'کتان']);
+  const extraFabrics = useMemo(() => {
+    const extras: string[] = [];
     products.forEach((p) => {
-      if (p.fabric) set.add(p.fabric);
-      if (p.specs?.fabricType) set.add(p.specs.fabricType);
+      if (p.fabric) extras.push(p.fabric);
+      if (p.specs?.fabricType) extras.push(p.specs.fabricType);
     });
-    return [...set];
+    return extras;
   }, [products]);
 
-  const colors = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((p) => (p.variants ?? []).forEach((v) => v.color && set.add(v.color)));
-    return [...set];
+  const extraColors = useMemo(() => {
+    const extras: string[] = [];
+    products.forEach((p) => (p.variants ?? []).forEach((v) => v.color && extras.push(v.color)));
+    return extras;
   }, [products]);
 
   const garmentSizes = useMemo(() => {
     const set = new Set<string>();
-    products.forEach((p) => (p.variants ?? []).forEach((v) => v.size && set.add(v.size)));
+    products.forEach((p) =>
+      (p.variants ?? []).forEach((v) => {
+        if (v.size && !['FREE', 'TWO', 'THREE'].includes(v.size)) set.add(v.size);
+      }),
+    );
     return [...set];
   }, [products]);
+
+  const handleFilter = (key: keyof CatalogFilterValues, value: string) => {
+    setFilters((prev) => {
+      const next = { ...prev, [key]: value || undefined };
+      syncUrl(next, sort, q);
+      return next;
+    });
+  };
+  const replaceFilters = (next: CatalogFilterValues) => {
+    setFilters(next);
+    syncUrl(next, sort, q);
+  };
+  const resetFilters = () => {
+    setFilters({});
+    syncUrl({}, sort, q);
+  };
+
+  const activeFilterCount = catalogActiveFilterCount(filters);
+  const selectedCollection = collections.find((c) => c.id === filters.collectionId);
 
   return (
     <div className="pb-16">
@@ -238,135 +303,157 @@ export function RetailProductsCatalog({
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <p className="text-sm font-semibold text-[var(--retail-gold)]">فروشگاه</p>
           <h1 className="mt-1 text-3xl font-extrabold text-[var(--retail-ink)]">همه محصولات</h1>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <input
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              placeholder="جستجو…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
-            <select
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              value={fabric}
-              onChange={(e) => setFabric(e.target.value)}
-            >
-              <option value="">همه پارچه‌ها</option>
-              {fabrics.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
-            <select
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-            >
-              <option value="">همه رنگ‌ها</option>
-              {colors.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-            <select
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              value={size}
-              onChange={(e) => setSize(e.target.value)}
-            >
-              <option value="">همه سایزها</option>
-              <option value="FREE">فری‌سایز (نوع)</option>
-              <option value="TWO">دو سایز (نوع)</option>
-              <option value="THREE">سه سایز (نوع)</option>
-              {garmentSizes.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <input
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              placeholder="یقه (مثلاً ایستاده)"
-              value={collar}
-              onChange={(e) => setCollar(e.target.value)}
-            />
-            <select
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              value={collectionId}
-              onChange={(e) => setCollectionId(e.target.value)}
-            >
-              <option value="">همه کالکشن‌ها</option>
-              {collections.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            <input
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              placeholder="حداقل قیمت (تومان)"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              inputMode="numeric"
-            />
-            <input
-              className="rounded-xl border border-[var(--retail-border)] px-3 py-2.5 text-sm"
-              placeholder="حداکثر قیمت (تومان)"
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              inputMode="numeric"
-            />
+          <p className="mt-2 max-w-xl text-sm text-[var(--retail-muted)]">
+            پارچه، رنگ و سایز را مشخص کنید تا مدل مناسب خودتان در فهرست بماند.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <label className="relative min-w-[200px] max-w-sm flex-1">
+              <span className="sr-only">جستجو در محصولات</span>
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--retail-muted)]" />
+              <input
+                className="h-11 w-full rounded-xl border border-[var(--retail-border)] bg-white py-2.5 pr-10 pl-3 text-sm text-[var(--retail-ink)]"
+                placeholder="جستجو در محصولات…"
+                value={q}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setQ(v);
+                  syncUrl(filters, sort, v);
+                }}
+              />
+            </label>
+            <div className="mr-auto flex items-center gap-2">
+              <div className="relative">
+                <select
+                  value={sort}
+                  aria-label="مرتب‌سازی محصولات"
+                  onChange={(e) => {
+                    setSort(e.target.value);
+                    syncUrl(filters, e.target.value, q);
+                  }}
+                  className="h-11 cursor-pointer appearance-none rounded-xl border border-[var(--retail-border)] bg-white py-2 pl-8 pr-4 text-sm text-[var(--retail-ink)]"
+                >
+                  {SORT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--retail-muted)]" />
+              </div>
+              <button
+                type="button"
+                className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-xl border border-[var(--retail-border)] px-4 text-sm font-bold text-[var(--retail-ink)] lg:hidden"
+                aria-expanded={mobileFiltersOpen}
+                aria-controls="catalog-filter-drawer"
+                onClick={() => setMobileFiltersOpen(true)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                فیلتر {activeFilterCount > 0 ? `(${activeFilterCount.toLocaleString('fa-IR')})` : ''}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
-        {loading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-[var(--retail-bg)]" />
-            ))}
-          </div>
-        ) : products.length === 0 ? (
-          <p className="py-16 text-center text-[var(--retail-muted)]">محصولی با این فیلتر پیدا نشد</p>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">
-              {products.map((p, index) => (
-                <RetailProductCard
-                  key={p.id}
-                  product={p}
-                  imagePriority={isLeadCatalogImage({ index, page })}
-                />
-              ))}
-            </div>
-            {totalPages > 1 ? (
-              <nav
-                aria-label="صفحه‌بندی محصولات"
-                className="mt-10 flex flex-wrap items-center justify-center gap-3"
-              >
-                {page > 1 ? (
-                  <Link
-                    href={page === 2 ? '/products' : `/products?page=${page - 1}`}
-                    className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--retail-primary)] px-5 text-sm font-bold text-[var(--retail-primary)]"
+        <div className="flex gap-8">
+          <CatalogFilters
+            values={filters}
+            onChange={handleFilter}
+            onReplace={replaceFilters}
+            onReset={resetFilters}
+            tone="retail"
+            mobileOpen={mobileFiltersOpen}
+            onMobileOpenChange={setMobileFiltersOpen}
+            extraFabrics={extraFabrics}
+            extraColors={extraColors}
+            garmentSizes={garmentSizes}
+            collections={collections}
+            showPrice
+            showCollar
+            showCollections
+            loading={loading}
+          />
+
+          <div className="min-w-0 flex-1">
+            <p className="mb-4 text-sm text-[var(--retail-muted)]" aria-live="polite">
+              {!loading && <span className="font-medium text-[var(--retail-ink)]">{total.toLocaleString('fa-IR')}</span>}
+              {loading ? 'در حال بارگذاری...' : ' مدل در این فهرست'}
+            </p>
+            <CatalogActiveChips
+              values={filters}
+              onChange={handleFilter}
+              onReset={resetFilters}
+              collectionName={selectedCollection?.name}
+            />
+            {loading ? (
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-[var(--retail-bg)]" />
+                ))}
+              </div>
+            ) : products.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-[var(--retail-border)] py-16 text-center">
+                <p className="text-[var(--retail-ink)]">با این ترکیب مدلی پیدا نشد.</p>
+                <p className="mt-1 text-sm text-[var(--retail-muted)]">یک فیلتر را بردارید یا همه را پاک کنید.</p>
+                {activeFilterCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="mt-4 cursor-pointer text-sm font-bold text-[var(--retail-primary)]"
                   >
-                    صفحه قبل
-                  </Link>
+                    پاک کردن فیلترها
+                  </button>
                 ) : null}
-                {page < totalPages ? (
-                  <>
-                    <Link
-                      href={`/products?page=${page + 1}`}
-                      className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--retail-primary)] px-5 text-sm font-bold text-[var(--retail-primary)]"
-                    >
-                      صفحه بعد
-                    </Link>
-                    <button
-                      type="button"
-                      disabled={loadingMore}
-                      onClick={loadMore}
-                      className="cursor-pointer rounded-full px-4 py-3 text-sm font-bold text-[var(--retail-muted)] disabled:opacity-50"
-                    >
-                      {loadingMore ? 'در حال بارگذاری…' : 'بارگذاری بیشتر در همین صفحه'}
-                    </button>
-                  </>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-3">
+                  {products.map((p, index) => (
+                    <RetailProductCard
+                      key={p.id}
+                      product={p}
+                      imagePriority={isLeadCatalogImage({ index, page })}
+                    />
+                  ))}
+                </div>
+                {totalPages > 1 ? (
+                  <nav
+                    aria-label="صفحه‌بندی محصولات"
+                    className="mt-10 flex flex-wrap items-center justify-center gap-3"
+                  >
+                    {page > 1 ? (
+                      <Link
+                        href={page === 2 ? '/products' : `/products?page=${page - 1}`}
+                        className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--retail-primary)] px-5 text-sm font-bold text-[var(--retail-primary)]"
+                      >
+                        صفحه قبل
+                      </Link>
+                    ) : null}
+                    {page < totalPages ? (
+                      <>
+                        <Link
+                          href={`/products?page=${page + 1}`}
+                          className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--retail-primary)] px-5 text-sm font-bold text-[var(--retail-primary)]"
+                        >
+                          صفحه بعد
+                        </Link>
+                        <button
+                          type="button"
+                          disabled={loadingMore}
+                          onClick={loadMore}
+                          className="cursor-pointer rounded-full px-4 py-3 text-sm font-bold text-[var(--retail-muted)] disabled:opacity-50"
+                        >
+                          {loadingMore ? 'در حال بارگذاری…' : 'بارگذاری بیشتر در همین صفحه'}
+                        </button>
+                      </>
+                    ) : null}
+                  </nav>
                 ) : null}
-              </nav>
-            ) : null}
-          </>
-        )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
