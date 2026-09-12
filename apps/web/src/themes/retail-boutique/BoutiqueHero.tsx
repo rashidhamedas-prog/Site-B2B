@@ -11,6 +11,8 @@ import {
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
+import { isHomePageKey } from '@/lib/cms/page-hero-policy';
+import { useCmsPageScope } from '@/lib/cms/page-scope';
 import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
 
 function Banner({
@@ -22,7 +24,8 @@ function Banner({
   priority: boolean;
   compact?: boolean;
 }) {
-  const src = slide.imageUrl || '/retail/hero-model.webp';
+  const src = slide.imageUrl;
+  if (!src) return null;
   const alt = slide.imageAlt || slide.headline;
   return (
     <div className={`relative overflow-hidden rounded-2xl ${STOREFRONT_HERO_FRAME_CLASS} ${compact ? 'lg:max-h-[22rem]' : ''}`}>
@@ -62,7 +65,10 @@ function Banner({
 }
 
 export function BoutiqueHero(props: HeroFlatProps) {
-  const slides = normalizeHeroSlides(props, DIGIPAY_RETAIL_HERO_SLIDE);
+  const { pageKey } = useCmsPageScope();
+  const isHome = isHomePageKey(pageKey);
+  const slides = normalizeHeroSlides(props, isHome ? DIGIPAY_RETAIL_HERO_SLIDE : undefined);
+  if (!slides.length) return null;
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
   const carousel = useHeroCarousel(slides, autoplayMs, { waitForIdle: true });
   const primary = carousel.slide ?? slides[0]!;
@@ -70,7 +76,7 @@ export function BoutiqueHero(props: HeroFlatProps) {
 
   return (
     <section className="bq-container py-4 sm:py-6" aria-label="پیشنهادهای فروشگاه">
-      <h1 className="sr-only">خرید تکی پوشاک زنانه ترنم</h1>
+      {isHome ? <h1 className="sr-only">خرید تکی پوشاک زنانه ترنم</h1> : null}
       <div className={secondary ? 'grid gap-3 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]' : ''}>
         <div
           className="relative"

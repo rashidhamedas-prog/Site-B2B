@@ -1,8 +1,54 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260912-002"
+    title: "Catalog membership, locale digits, page-scoped heroes"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:architect-TASK-20260912-002"
+    roles:
+      architect: "cursor:architect-TASK-20260912-002"
+      implementer: "cursor:architect-TASK-20260912-002"
+      reviewer: "required-independent-before-membership-migration"
+      security: "required-independent-before-membership-migration"
+    branch: "ai/TASK-20260912-002-catalog-locale-heroes"
+    worktree: "D:/proje/Site-B2B-catalog-locale"
+    claimed_at: "2026-09-12T10:20:00Z"
+    heartbeat_at: "2026-09-12T10:50:00Z"
+    depends_on: []
+    file_claims:
+      - "docs/architecture/catalog-locale-page-heroes.md"
+      - "docs/adr/2026-09-12-page-scoped-heroes-and-catalog-membership.md"
+      - "apps/web/src/lib/cms/page-hero-policy.ts"
+      - "apps/web/src/lib/cms/page-hero-policy.spec.mts"
+      - "apps/web/src/lib/cms/page-scope.tsx"
+      - "apps/web/src/components/cms/CmsPage.tsx"
+      - "apps/web/src/components/wholesale/HeroSection.tsx"
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueHero.tsx"
+      - "packages/persian-utils/src/locale.ts"
+      - "packages/persian-utils/src/locale.spec.mts"
+      - "packages/persian-utils/src/index.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-12-page-scoped-heroes.md"
+      - ".ai-dos/project/architecture.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Architecture for category identity/M2M, locale digit shaping, page-scoped
+      heroes. Phase 1 implemented. TASK-20260912-001 claims released (LIVE 3311e33).
+      Phase 2 can wire shapeDigitsInText through stats. Phase 3–4 must reclaim
+      stale August category/product claims in handoff before editing.
+    acceptance_criteria:
+      - "Architecture doc names root causes, data model, phases, and open decisions"
+      - "Inner CMS pages do not prepend home campaign slides"
+      - "Home still injects campaign slides"
+      - "Missing CmsPageScope fails closed (no inject)"
+      - "shapeDigitsInText fa/en spec passes"
+      - "page-hero-policy spec + web tsc pass"
   - id: "TASK-20260912-001"
     title: "Compact graphical wholesale home stats rail under hero"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260912-001"
     roles:
@@ -13,9 +59,11 @@ tasks:
     branch: "ai/TASK-20260912-001-wholesale-stats-strip"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-12T10:10:00Z"
-    heartbeat_at: "2026-09-12T10:10:00Z"
+    heartbeat_at: "2026-09-12T10:36:00Z"
+    closed_at: "2026-09-12T10:36:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/wholesale/WholesaleStats.tsx"
       - "apps/web/src/components/wholesale/WholesaleStatGlyph.tsx"
       - "apps/web/src/lib/wholesale-stat-kind.ts"
@@ -28,9 +76,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Wholesale home stats under hero: compact proof rail (~half current
-      band height), CMS items unchanged, optional icon + label inference.
-      No API/DB. Retail trust strip untouched.
+      LIVE 3311e33. Compact proof rail under wholesale hero. CMS items
+      unchanged. Health 200. Claims released.
     acceptance_criteria:
       - "Wholesale home stats remain CMS-driven (value/label/sublabel)"
       - "Section vertical padding is about half of py-12/py-14"

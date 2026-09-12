@@ -12,6 +12,8 @@ import {
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
+import { isHomePageKey, resolveHeroImageUrl, resolvePageHeroSlides } from '@/lib/cms/page-hero-policy';
+import { useCmsPageScope } from '@/lib/cms/page-scope';
 import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
 
 const RETAIL_FALLBACK: HeroSlide = {
@@ -112,12 +114,15 @@ function RetailSlideCopy({
   slide,
   artwork = false,
   light = false,
+  titleAs = 'h2',
 }: {
   slide: HeroSlide;
   artwork?: boolean;
   light?: boolean;
+  titleAs?: 'h1' | 'h2';
 }) {
   const accentClass = light ? 'text-[#E07A5F]' : 'text-[var(--retail-gold)]';
+  const Title = titleAs;
   const renderHeadline = () => {
     if (slide.headlineAccent && slide.headline.includes(slide.headlineAccent)) {
       const parts = slide.headline.split(slide.headlineAccent);
@@ -148,7 +153,7 @@ function RetailSlideCopy({
         </div>
       ) : null}
 
-      <h2
+      <Title
         className={`break-words text-[clamp(1.35rem,4.4vw,2.35rem)] font-bold leading-[1.3] tracking-tight text-pretty ${
           light
             ? 'text-[#123A6B]'
@@ -156,7 +161,7 @@ function RetailSlideCopy({
         }`}
       >
         {renderHeadline()}
-      </h2>
+      </Title>
 
       {slide.body ? (
         <p
@@ -204,11 +209,18 @@ function RetailSlideCopy({
 
 /** B2C editorial hero — full-bleed plates + RTL copy panel (distinct from wholesale). */
 export function RetailHero(props: RetailHeroProps) {
-  const slides = applyRetailCampaignHeroSlides(normalizeHeroSlides(props, RETAIL_FALLBACK));
+  const { pageKey } = useCmsPageScope();
+  const isHome = isHomePageKey(pageKey);
+  const slides = resolvePageHeroSlides(
+    pageKey,
+    normalizeHeroSlides(props, isHome ? RETAIL_FALLBACK : undefined),
+    applyRetailCampaignHeroSlides,
+  );
+  if (!slides.length) return null;
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
   const carousel = useHeroCarousel(slides, autoplayMs, { waitForIdle: true });
 
-  const slide = carousel.slide ?? RETAIL_FALLBACK;
+  const slide = carousel.slide ?? slides[0]!;
   const isArtwork = slide.presentation === 'artwork';
   const isLight = isLightHeroOverlay(slide);
 
@@ -222,10 +234,11 @@ export function RetailHero(props: RetailHeroProps) {
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
-      <h1 className="sr-only">خرید آنلاین مانتو، شومیز و پوشاک زنانه ترنم</h1>
+      {isHome ? <h1 className="sr-only">خرید آنلاین مانتو، شومیز و پوشاک زنانه ترنم</h1> : null}
       {/* Slide 0 stays mounted (LCP). Other slides mount only while active. */}
       {slides.map((s, i) => {
-        const src = s.imageUrl || '/retail/hero-model.webp';
+        const src = resolveHeroImageUrl(pageKey, s.imageUrl, '/retail/hero-model.webp');
+        if (!src) return null;
         const isActive = i === carousel.index;
         if (!isActive && i !== 0) return null;
         const isLcp = i === 0;
@@ -290,7 +303,7 @@ export function RetailHero(props: RetailHeroProps) {
         className={`relative z-10 mx-auto flex h-full max-w-[1200px] items-end px-4 pb-14 pt-8 sm:px-6 lg:items-center lg:px-8 lg:pb-16 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
       >
         <div key={`copy-${carousel.index}`} className="animate-fade-in min-w-0 w-full lg:w-[48%]">
-          <RetailSlideCopy slide={slide} artwork={isArtwork} light={isLight} />
+          <RetailSlideCopy slide={slide} artwork={isArtwork} light={isLight} titleAs={isHome ? 'h2' : 'h1'} />
         </div>
       </div>
 

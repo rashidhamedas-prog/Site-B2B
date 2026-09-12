@@ -2,6 +2,21 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T10:50:00Z — TASK-20260912-002 architecture + Phase 1 heroes
+
+- Owner reports: Persian category names hidden; stats digits Latin vs Persian; inner pages show home banners.
+- Root causes: name/slug/merch-key collapse; digits formatted at CMS seed not render; campaign inject inside HeroSection/RetailHero for every pageKey.
+- Architecture: `docs/architecture/catalog-locale-page-heroes.md` + ADR.
+- Phase 1 shipped on this branch: `CmsPageScope` + `page-hero-policy` (fail closed). Did not edit 001 stats files. Did not reclaim stale category/product claims yet.
+- Gates (this worktree): `page-hero-policy.spec.mts` OK; `locale.spec.mts` OK; `apps/web` `tsc --noEmit` 0.
+- Next: merge/deploy Phase 1; then Phase 3 reclaim category files; Phase 4 membership after Reviewer/Security.
+- Unresolved: live `categoryBanners.categoryIds` whitelist (A4); D1 nameEn required vs recommended.
+
+## 2026-09-12T10:36:00Z — TASK-20260912-001 CLOSED live `3311e33`
+
+- Live `.com` stats under hero is a compact white rail with isometric glyphs. CMS values (+۵۰۰ / ۱۰+ / +۵۰ / +۳۰) unchanged.
+- Browser: desktop 4-col + mobile 2×2. API health 200. Claims released.
+
 ## 2026-09-12T10:40:00Z — TASK-20260912-001 wholesale stats rail (code)
 
 - Compact proof rail under wholesale hero: muted band + white card + isometric glyphs.

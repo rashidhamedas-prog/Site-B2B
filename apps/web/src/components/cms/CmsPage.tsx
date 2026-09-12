@@ -1,4 +1,5 @@
 import { resolvePageBlocks } from '@/lib/cms/fetch';
+import { CmsPageScope } from '@/lib/cms/page-scope';
 import { SiteBlocksRenderer } from './SiteBlocksRenderer';
 
 export async function CmsPage({
@@ -9,5 +10,9 @@ export async function CmsPage({
   pageKey: string;
 }) {
   const blocks = await resolvePageBlocks(channel, pageKey);
-  return <SiteBlocksRenderer blocks={blocks} channel={channel} />;
+  return (
+    <CmsPageScope channel={channel} pageKey={pageKey}>
+      <SiteBlocksRenderer blocks={blocks} channel={channel} />
+    </CmsPageScope>
+  );
 }

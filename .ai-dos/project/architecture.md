@@ -40,3 +40,4 @@ Channel differentiation: pricing (`retailPrice` / `wholesalePrice`), stock field
 | preexisting | Dual-channel single core | Documented in `docs/B2C.md`; verify gaps in audit |
 | 2026-08-26 | Omnichannel on shared core only | Phase 0+ stay on one API/DB; no second bot backend; projections never read legacy `stock`; Bale/Rubika gated |
 | 2026-08-29 | Torob Product API-first | PostgreSQL is SoT; one pure retail projection for API/XML/PDP meta; JWT aud is `TOROB_API_AUDIENCE` only; outbox is audit/invalidation not a product copy |
+| 2026-09-12 | Page-scoped heroes; locale-shaped digits; category membership | `docs/architecture/catalog-locale-page-heroes.md`. Campaign inject only `pageKey=home`. Digits stored Latin, shaped at render. Product↔category M2M with one primary for SKU. |

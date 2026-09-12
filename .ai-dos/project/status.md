@@ -1,6 +1,7 @@
 # Project Status
 
-- Last verified: 2026-09-12 — **TASK-20260912-001 implementing** compact wholesale home stats rail on `ai/TASK-20260912-001-wholesale-stats-strip`. CMS items unchanged. Not live until merge/deploy.
+- Last verified: 2026-09-12 — **TASK-20260912-002 implementing** on `ai/TASK-20260912-002-catalog-locale-heroes` (worktree `D:/proje/Site-B2B-catalog-locale`). Architecture + Phase 1 page-scoped heroes. Not live until merge/deploy.
+- Last verified: 2026-09-12 — **TASK-20260912-001 CLOSED** on `origin/master` + VPS `3311e33`. Wholesale home stats rail compact with isometric glyphs. CMS items unchanged. Health 200. Claims released.
 
 - Last verified: 2026-09-10 — **TASK-20260910-020 CLOSED** on `origin/master` `2bd11bc`. Retail DigiPay + Prima/Negin heroes live on `.ir` as 1920×560 artwork. Browser: slide 1 DigiPay, slide 2 Prima/Negin (CTA دیدن کت‌ها, URL `.ir`). Health 200. Claims released.
 - Last verified: 2026-09-10 — **TASK-20260910-001 implementing** on `ai/TASK-20260910-001-pdp-guide-cards`. PDP guide rows + wholesale related cards. Not live until merge/deploy + migration `InternalLinkGuideCards1757462400001`.

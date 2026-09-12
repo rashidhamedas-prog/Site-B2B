@@ -12,6 +12,8 @@ import {
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
 import { applyWholesalePromoHeroSlides } from '@/lib/cms/wholesale-promo-slides';
+import { isHomePageKey, resolvePageHeroSlides } from '@/lib/cms/page-hero-policy';
+import { useCmsPageScope } from '@/lib/cms/page-scope';
 import { toPersianDigits } from '@taranom/persian-utils';
 import { yearsOfOperation } from '@/lib/business-facts';
 import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
@@ -109,8 +111,17 @@ function WholesaleHeroMedia({
   );
 }
 
-function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artwork?: boolean }) {
+function WholesaleSlideCopy({
+  slide,
+  artwork = false,
+  titleAs = 'h2',
+}: {
+  slide: HeroSlide;
+  artwork?: boolean;
+  titleAs?: 'h1' | 'h2';
+}) {
   const lines = slide.headline.split('\n').filter(Boolean);
+  const Title = titleAs;
 
   return (
     <div className="max-w-3xl">
@@ -120,7 +131,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
         </p>
       ) : null}
 
-      <h2 className="mb-3 text-pretty text-2xl font-bold leading-[1.2] tracking-tight sm:mb-4 sm:text-4xl lg:text-5xl">
+      <Title className="mb-3 text-pretty text-2xl font-bold leading-[1.2] tracking-tight sm:mb-4 sm:text-4xl lg:text-5xl">
         {lines.map((line, i) => {
           const isAccent = slide.headlineAccent && line.includes(slide.headlineAccent);
           return (
@@ -130,7 +141,7 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
             </span>
           );
         })}
-      </h2>
+      </Title>
 
       {slide.body ? (
         <p className="mb-6 line-clamp-2 max-w-xl text-sm leading-relaxed text-white/75 sm:mb-8 sm:text-base">
@@ -167,10 +178,17 @@ function WholesaleSlideCopy({ slide, artwork = false }: { slide: HeroSlide; artw
 }
 
 export function HeroSection(props: HeroSectionProps) {
-  const slides = applyWholesalePromoHeroSlides(normalizeHeroSlides(props, WHOLESALE_FALLBACK));
+  const { pageKey } = useCmsPageScope();
+  const isHome = isHomePageKey(pageKey);
+  const slides = resolvePageHeroSlides(
+    pageKey,
+    normalizeHeroSlides(props, isHome ? WHOLESALE_FALLBACK : undefined),
+    applyWholesalePromoHeroSlides,
+  );
+  if (!slides.length) return null;
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
   const carousel = useHeroCarousel(slides, autoplayMs, { waitForIdle: true });
-  const slide = carousel.slide ?? WHOLESALE_FALLBACK;
+  const slide = carousel.slide ?? slides[0]!;
   const isArtwork = slide.presentation === 'artwork';
 
   return (
@@ -181,7 +199,7 @@ export function HeroSection(props: HeroSectionProps) {
       onFocusCapture={carousel.pause}
       onBlurCapture={carousel.resume}
     >
-      <h1 className="sr-only">تولیدی مانتو مشهد؛ خرید عمده از کارگاه ترنم</h1>
+      {isHome ? <h1 className="sr-only">تولیدی مانتو مشهد؛ خرید عمده از کارگاه ترنم</h1> : null}
       {/* Slide 0 stays mounted (LCP). Other slides mount only while active. */}
       {slides.map((s, i) => {
         if (!s.imageUrl) return null;
@@ -232,7 +250,7 @@ export function HeroSection(props: HeroSectionProps) {
         className={`container-site relative z-10 pb-12 pt-8 sm:pb-16 lg:pb-16 lg:pt-10 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
       >
         <div key={`ws-copy-${carousel.index}`} className="animate-fade-in">
-          <WholesaleSlideCopy slide={slide} artwork={isArtwork} />
+          <WholesaleSlideCopy slide={slide} artwork={isArtwork} titleAs={isHome ? 'h2' : 'h1'} />
         </div>
       </div>
 
