@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260912-006"
     title: "Saved-address plaque whitelist 400"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260912-006"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260912-006-address-plaque-dto"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-12T13:35:00Z"
-    heartbeat_at: "2026-09-12T13:35:00Z"
+    heartbeat_at: "2026-09-12T13:52:00Z"
+    closed_at: "2026-09-12T13:52:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/shipping-address.ts"
       - "apps/web/src/lib/shipping-address.spec.mts"
       - "apps/web/src/components/retail/RetailAccountDetails.tsx"

@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T13:52:00Z — TASK-20260912-006 CLOSED live `27ee8b8`
+
+- Customer panel address save 400 on `plaque` fixed. API DTO accepts form-only alley/plaque/unit; they are not stored separately. Client sends composed `street` only.
+- Gates: shipping-address spec ok; saved-address.dto spec ok; web+api tsc 0. VPS health 200; live otp.dto.js has `plaque`.
+- Claims released. Independent Reviewer residual (low-risk whitelist).
+
 ## 2026-09-12T13:40:00Z — TASK-20260912-006 implementing address plaque 400
 
 - Owner: customer panel save address → `property plaque should not exist`.
