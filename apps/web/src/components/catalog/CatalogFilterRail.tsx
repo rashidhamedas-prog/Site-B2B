@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import {
@@ -44,8 +45,16 @@ function FilterGroup({
   defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <details defaultOpen={defaultOpen} className="catalog-filter-group">
+    <details
+      open={open}
+      className="catalog-filter-group"
+      onToggle={(event) => {
+        const next = event.currentTarget.open;
+        if (next !== open) setOpen(next);
+      }}
+    >
       <summary className="catalog-filter-summary">
         <span>{title}</span>
         <ChevronDown className="catalog-filter-chevron" aria-hidden />
