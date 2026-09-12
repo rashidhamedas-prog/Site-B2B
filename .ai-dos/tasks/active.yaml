@@ -1,5 +1,98 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260912-008"
+    title: "Register/review only after payment captured"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260912-008"
+    roles:
+      architect: "cursor:implementer-TASK-20260912-008"
+      implementer: "cursor:implementer-TASK-20260912-008"
+      reviewer: "required-independent-payments"
+      security: "required-independent-payments-or-personal-data"
+    branch: "ai/TASK-20260912-008-paid-before-review"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-12T14:15:00Z"
+    heartbeat_at: "2026-09-12T14:15:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/order/order-payment-lifecycle.ts"
+      - "apps/api/src/modules/order/order-payment-lifecycle.spec.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
+      - "apps/api/src/modules/dashboard/dashboard.service.ts"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/database/migrations/20260912-007-unpaid-online-awaiting-payment.ts"
+      - "apps/api/src/database/migrations/20260912-007-unpaid-online-awaiting-payment.spec.ts"
+      - "packages/shared-types/src/enums.ts"
+      - "apps/web/src/components/ui/Badge.tsx"
+      - "apps/web/src/app/retail/account/page.tsx"
+      - "apps/web/src/app/retail/account/orders/page.tsx"
+      - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
+      - "apps/web/src/app/portal/dashboard/orders/[id]/page.tsx"
+      - "apps/web/src/components/admin/AdminOrders.tsx"
+      - "apps/web/src/components/admin/AdminOrderDetail.tsx"
+      - "apps/web/src/components/admin/AdminDashboard.tsx"
+      - "docs/reports/2026-09-12-paid-before-review.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Root: ONLINE create set PENDING_REVIEW + SMS «ثبت شد و در بررسی» before PSP capture.
+      ID 008 because 007 is checkout autofill. Reclaimed payment.service.ts + enums from
+      TASK-20260907-002 (hb 2026-09-08, >24h) and TASK-20260901-002 (hb 2026-09-01).
+      Reclaimed retail account pages from TASK-20260903-005 (done, claims leftover).
+      Shared yaml/WORKLOG overlap with 007 autofill is append-only. Did not touch checkout.
+    acceptance_criteria:
+      - "ONLINE total>0 creates AWAITING_PAYMENT, not PENDING_REVIEW"
+      - "Captured payment moves AWAITING_PAYMENT to PENDING_REVIEW and sends orderRegistered then"
+      - "CASH/INSTALLMENT/zero-total still enter PENDING_REVIEW on create"
+      - "lifecycle spec + migration spec + api/web tsc pass"
+  - id: "TASK-20260912-007"
+    title: "Checkout autofills saved/default address fields"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260912-007"
+    roles:
+      architect: "cursor:implementer-TASK-20260912-007"
+      implementer: "cursor:implementer-TASK-20260912-007"
+      reviewer: "required-independent-payments-pii"
+      security: "self-review-no-new-persistence"
+    branch: "ai/TASK-20260912-007-checkout-autofill"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-12T14:08:00Z"
+    heartbeat_at: "2026-09-12T14:08:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/shipping-address.ts"
+      - "apps/web/src/lib/shipping-address.spec.mts"
+      - "apps/web/src/lib/retail-addresses.ts"
+      - "apps/web/src/components/checkout/ShippingAddressForm.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/checkout/page.tsx"
+      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      - "apps/web/src/app/retail/account/addresses/page.tsx"
+      - "apps/web/src/app/retail/account/profile/page.tsx"
+      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      - "docs/architecture/checkout-shipping-address.md"
+      - "docs/reports/2026-09-12-checkout-address-autofill.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Residual of TASK-20260912-004/006: account save composes alley/plaque/unit
+      into street; retail checkout only read localStorage and did not hydrate
+      structured fields. Reclaimed checkout form/pages from in_progress 004
+      (shipped on master). Did not touch TorobPay adapter or customer-addresses DTO.
+    acceptance_criteria:
+      - "Selecting a saved checkout address fills recipient, mobile, province, city, street, alley, plaque, unit, postal"
+      - "Default saved address auto-fills the same fields on checkout load"
+      - "Retail checkout loads /auth/me/profile addresses, not only localStorage"
+      - "hydrate(finalize(addr)) round-trips alley/plaque/unit into their own fields"
+      - "shipping-address spec + web tsc pass"
   - id: "TASK-20260912-006"
     title: "Saved-address plaque whitelist 400"
     status: "done"
@@ -112,10 +205,6 @@ tasks:
       - "apps/web/src/lib/iran-provinces.ts"
       - "apps/web/src/lib/checkout-payment-ui.ts"
       - "apps/web/src/lib/checkout-payment-ui.spec.ts"
-      - "apps/web/src/lib/retail-addresses.ts"
-      - "apps/web/src/components/checkout/ShippingAddressForm.tsx"
-      - "apps/web/src/app/retail/checkout/page.tsx"
-      - "apps/web/src/app/checkout/page.tsx"
       - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
       - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
       - "apps/api/src/modules/auth/customer-addresses.ts"
@@ -131,6 +220,8 @@ tasks:
       by TASK-20260908-003. Did not touch catalog-filter or locale files.
       2026-09-12: shipping-address + RetailAccountDetails + portal profile
       reclaimed by TASK-20260912-006 (live plaque 400).
+      2026-09-12: checkout form/pages + retail-addresses reclaimed by
+      TASK-20260912-007 (saved/default autofill residual).
       Shared AI-DOS registry overlap with 002/003 is append-only.
     acceptance_criteria:
       - "Persian/Arabic postal digits convert to 10 Latin digits for TorobPay"
@@ -1265,7 +1356,8 @@ tasks:
       # "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
       # "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
       - "apps/api/src/modules/payment/adapters/payment-provider.adapter.ts"
-      - "apps/api/src/modules/payment/payment.service.ts"
+      # transferred 2026-09-12 to TASK-20260912-007 (stale hb 2026-09-08; paid-before-review):
+      # "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/modules/payment/payment.controller.ts"
       - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
@@ -1280,7 +1372,8 @@ tasks:
       # "apps/web/src/app/retail/checkout/page.tsx"
       - "apps/web/src/app/payment/callback/page.tsx"
       - "apps/web/src/app/payment/torobpay/callback/route.ts"
-      - "packages/shared-types/src/enums.ts"
+      # transferred 2026-09-12 to TASK-20260912-007 (stale hb 2026-09-08; paid-before-review):
+      # "packages/shared-types/src/enums.ts"
       - ".env.example"
       - "docs/reports/2026-09-07-torobpay-cpg-retail.md"
       - "docs/WORKLOG.md"
@@ -2030,8 +2123,9 @@ tasks:
       # "apps/web/src/components/retail/RetailAccountDetails.tsx"
       - "apps/web/src/components/retail/RetailOtpLogin.tsx"
       - "apps/web/src/app/retail/account/layout.tsx"
-      - "apps/web/src/app/retail/account/page.tsx"
-      - "apps/web/src/app/retail/account/orders/page.tsx"
+      # transferred 2026-09-12 to TASK-20260912-007 (done task leftover claims; paid-before-review):
+      # "apps/web/src/app/retail/account/page.tsx"
+      # "apps/web/src/app/retail/account/orders/page.tsx"
       # transferred 2026-09-09 to TASK-20260909-008 (stale hb; unlabeled parcels):
       # "apps/web/src/app/retail/account/orders/[id]/page.tsx"
       - "apps/web/src/app/retail/account/profile/page.tsx"
@@ -2243,7 +2337,8 @@ tasks:
       - "apps/api/src/modules/order/entities/order.entity.ts"
       - "apps/api/src/modules/order/order-stock-settlement.ts"
       - "apps/api/src/modules/order/order-stock-settlement.spec.ts"
-      - "apps/api/src/modules/payment/payment.service.ts"
+      # transferred 2026-09-12 to TASK-20260912-007 (stale hb 2026-09-01; paid-before-review):
+      # "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.module.ts"
       - "apps/api/src/database/migrations/20260901-001-stock-commit-and-addresses.ts"
       # reclaimed 2026-09-08 by TASK-20260908-001 (stale hb 2026-09-01; cart SMS entities):

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
-import { getRetailAddresses, replaceRetailAddresses } from '@/lib/retail-addresses';
+import { getRetailAddresses, replaceRetailAddresses, toRetailAddress } from '@/lib/retail-addresses';
 import { RetailAccountDetails, type AccountProfile } from '@/components/retail/RetailAccountDetails';
 
 export default function RetailProfilePage() {
@@ -17,16 +17,7 @@ export default function RetailProfilePage() {
           const local = getRetailAddresses();
           setProfile({ ...me, addresses: local });
         } else {
-          replaceRetailAddresses(
-            me.addresses.map((a) => ({
-              recipient: a.recipient,
-              mobile: a.mobile,
-              province: a.province,
-              city: a.city,
-              street: a.street,
-              postalCode: a.postalCode || '',
-            })),
-          );
+          replaceRetailAddresses(me.addresses.map(toRetailAddress));
           setProfile(me);
         }
       })

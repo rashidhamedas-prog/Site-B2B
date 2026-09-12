@@ -37,6 +37,7 @@ Primary journeys:
 2. Retail checkout → ZarinPal/cash (postal optional).
 3. Wholesale checkout → fill address → place order (ONLINE still ZarinPal).
 4. Account address book (retail + portal) uses the same form so checkout can reuse saved rows.
+5. Checkout load / click saved row → hydrate structured fields from composed street + default flag.
 
 ## 3. Capability map
 
@@ -64,6 +65,8 @@ Existing JSON on `orders.shippingAddress` and customer `addresses[]`:
 ```
 
 Form drafts may include `alley` / `plaque` / `unit`. Those are composed into `street` before POST. Saved-address DTO accepts them so a leftover client key does not 400 (`property plaque should not exist`); they are not stored as separate columns.
+
+On checkout (and account edit), `hydrateShippingAddress` parses the composed suffixes (`، کوچه …، پلاک …، واحد …`) back into their own fields so a saved or default row fills every input automatically. Retail checkout also loads `/auth/me/profile` addresses, not only `localStorage`.
 
 Canonical storage: Latin digits for `mobile` and `postalCode`. `street` persisted as the composed line so old admin/fulfillment readers keep working.
 
@@ -116,7 +119,7 @@ Failure: invalid local → no order. CPG 1011 after valid local → Persian pers
 
 ## 10. Tests, rollout, risks, ADRs
 
-Tests: `shipping-address.spec.mts` (Fa postal, plaque compose, recipient); existing `checkout-payment-ui.spec.ts`; adapter postal Fa digits; `customer-addresses` Persian postal.
+Tests: `shipping-address.spec.mts` (Fa postal, plaque compose, hydrate round-trip, default pick); existing `checkout-payment-ui.spec.ts`; adapter postal Fa digits; `customer-addresses` Persian postal.
 
 Rollout: merge to master, auto-deploy. Manual: `.ir/checkout` with TorobPay + Fa postal; `.com/checkout` address panel.
 

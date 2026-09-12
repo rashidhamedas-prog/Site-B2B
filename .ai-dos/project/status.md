@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-12 — **TASK-20260912-008 implementing** on `ai/TASK-20260912-008-paid-before-review`. ONLINE unpaid no longer PENDING_REVIEW. Not live until merge/deploy + migration `UnpaidOnlineAwaitingPayment1757692800007`. Did not touch checkout autofill files (007).
+- Last verified: 2026-09-12 — **TASK-20260912-007 implementing** on `ai/TASK-20260912-007-checkout-autofill`. Saved/default checkout address hydrates structured fields. Not live until merge/deploy.
 - Last verified: 2026-09-12 — **TASK-20260912-006 CLOSED** on `origin/master` + VPS `27ee8b8`. Saved-address `plaque`/`alley`/`unit` no longer 400. Health 200. Claims released. Independent Reviewer residual (DTO whitelist only).
 - Last verified: 2026-09-12 — **TASK-20260912-005 CLOSED** on `origin/master` + VPS `e6d8dd6`. Persian category save + home merch. پاییزی on `.ir` home pills+grid; `/category/autumn` 200. Health 200. Claims released. Independent Security residual (partial unique).
 - Last verified: 2026-09-12 — **TASK-20260912-002 CLOSED** on `origin/master` `4b78bcf`. Page-scoped heroes, locale digits, Persian category identity, product membership. Migration `ProductCategoryMembership1757670000002` applied (60 rows). Claims released.

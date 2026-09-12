@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { apiClient } from '@/lib/api';
 import { clearToken, getToken } from '@/lib/auth';
-import { getRetailAddresses, saveRetailAddress, type RetailAddress } from '@/lib/retail-addresses';
+import { getRetailAddresses, replaceRetailAddresses, saveRetailAddress, type RetailAddress } from '@/lib/retail-addresses';
 import { RetailConversion } from '@/components/retail/RetailConversion';
 import {
   stashPendingRetailPurchase,
@@ -35,6 +35,8 @@ import {
   emptyShippingAddress,
   firstAddressError,
   finalizeShippingAddress,
+  hydrateShippingAddress,
+  pickDefaultAddress,
   validateShippingAddress,
   type ShippingAddress,
 } from '@/lib/shipping-address';
@@ -92,6 +94,7 @@ export default function RetailCheckoutPage() {
   const [address, setAddress] = useState<AddressForm>(emptyShippingAddress());
   const [showAddressErrors, setShowAddressErrors] = useState(false);
   const beganCheckout = useRef(false);
+  const addressDirty = useRef(false);
 
   useEffect(() => {
     if (beganCheckout.current || items.length === 0) return;
@@ -118,13 +121,9 @@ export default function RetailCheckoutPage() {
   useEffect(() => {
     const saved = getRetailAddresses();
     setSavedAddresses(saved);
-    if (saved[0]) {
-      setAddress((a) => ({
-        ...a,
-        ...saved[0],
-        recipient: a.recipient || saved[0]!.recipient,
-        mobile: a.mobile || saved[0]!.mobile,
-      }));
+    const localDefault = pickDefaultAddress(saved);
+    if (localDefault && !addressDirty.current) {
+      setAddress(hydrateShippingAddress(localDefault));
     }
   }, []);
 
@@ -147,11 +146,24 @@ export default function RetailCheckoutPage() {
   useEffect(() => {
     if (!getToken()) return;
     apiClient
-      .get<{ balance?: number; phone?: string; ownerName?: string; businessName?: string }>(
-        '/auth/me/profile',
-      )
+      .get<{
+        balance?: number;
+        phone?: string;
+        ownerName?: string;
+        businessName?: string;
+        addresses?: Array<RetailAddress & { isDefault?: boolean }>;
+      }>('/auth/me/profile')
       .then((me) => {
         setWalletBalance(Number(me?.balance) || 0);
+        const book = Array.isArray(me?.addresses) ? me.addresses : [];
+        if (book.length) {
+          const hydrated = book.map((row) => ({ ...hydrateShippingAddress(row), isDefault: Boolean(row.isDefault), id: row.id }));
+          setSavedAddresses(hydrated);
+          replaceRetailAddresses(hydrated);
+          const def = pickDefaultAddress(book);
+          if (def && !addressDirty.current) setAddress(hydrateShippingAddress(def));
+          return;
+        }
         setAddress((a) => ({
           ...a,
           recipient: a.recipient || me?.ownerName || me?.businessName || '',
@@ -344,7 +356,7 @@ export default function RetailCheckoutPage() {
           imageUrl: i.imageUrl,
         })),
       });
-      saveRetailAddress(shippingAddress);
+      saveRetailAddress(address);
       if (order?.paymentStartError) {
         if (order.id) setPendingPayOrderId(order.id);
         setError(order.paymentStartError);
@@ -432,9 +444,15 @@ export default function RetailCheckoutPage() {
               <ShippingAddressForm
                 appearance="retail"
                 value={address}
-                onChange={setAddress}
+                onChange={(next) => {
+                  addressDirty.current = true;
+                  setAddress(next);
+                }}
                 savedAddresses={savedAddresses}
-                onSelectSaved={(next) => setAddress({ ...emptyShippingAddress(), ...next })}
+                onSelectSaved={(next) => {
+                  addressDirty.current = true;
+                  setAddress(next);
+                }}
                 mode={paymentMethod === 'ONLINE' && paymentGateway === 'TOROBPAY' ? 'torobpay' : 'standard'}
                 showErrors={showAddressErrors}
               />

@@ -2,6 +2,24 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T14:15:00Z — TASK-20260912-008 implementing paid-before-review
+
+- Owner: customer panel showed unpaid ONLINE orders as «در بررسی».
+- Root: create always PENDING_REVIEW + orderRegistered SMS before PSP capture.
+- Fix: AWAITING_PAYMENT until capture; then PENDING_REVIEW + SMS. CASH/INSTALLMENT unchanged.
+- Reclaimed payment.service + enums from stale 007-002 / 001-002; retail account pages from done 005.
+- ID 008 because 007 is checkout autofill. Did not touch checkout pages.
+- Next: lifecycle + migration specs, api/web tsc, merge master, auto-deploy + migration.
+
+
+## 2026-09-12T14:08:00Z — TASK-20260912-007 implementing checkout autofill
+
+- Owner: saved/default address at checkout must fill every dedicated field (recipient, mobile, province, city, street, alley, plaque, unit, postal).
+- Root: compose-into-street on save; retail checkout ignored `/auth/me/profile` addresses; select spread left alley/plaque/unit empty.
+- Fix: `hydrateShippingAddress` + `pickDefaultAddress`; retail profile book; same hydrate on account edit.
+- Reclaimed checkout form/pages + retail-addresses from TASK-20260912-004. Did not touch TorobPay adapter or address DTO.
+- Next: spec + web tsc, merge master, auto-deploy, confirm checkout fields fill from a saved default.
+
 ## 2026-09-12T13:52:00Z — TASK-20260912-006 CLOSED live `27ee8b8`
 
 - Customer panel address save 400 on `plaque` fixed. API DTO accepts form-only alley/plaque/unit; they are not stored separately. Client sends composed `street` only.

@@ -80,6 +80,74 @@ export function composeStreetLine(addr: Pick<ShippingAddress, 'street' | 'alley'
     .join('، ');
 }
 
+const COMPOSED_UNIT = /^(.*)[,،]\s*واحد\s+(.+)$/;
+const COMPOSED_PLAQUE = /^(.*)[,،]\s*پلاک\s+(.+)$/;
+const COMPOSED_ALLEY = /^(.*)[,،]\s*کوچه\s+(.+)$/;
+
+/** Split a stored composed street back into street / alley / plaque / unit. */
+export function parseComposedStreet(
+  line: string,
+): Pick<ShippingAddress, 'street' | 'alley' | 'plaque' | 'unit'> {
+  let rest = String(line || '').trim();
+  let unit = '';
+  let plaque = '';
+  let alley = '';
+  const unitM = rest.match(COMPOSED_UNIT);
+  if (unitM) {
+    rest = unitM[1]!.trim();
+    unit = unitM[2]!.trim();
+  }
+  const plaqueM = rest.match(COMPOSED_PLAQUE);
+  if (plaqueM) {
+    rest = plaqueM[1]!.trim();
+    plaque = plaqueM[2]!.trim();
+  }
+  const alleyM = rest.match(COMPOSED_ALLEY);
+  if (alleyM) {
+    rest = alleyM[1]!.trim();
+    alley = alleyM[2]!.trim();
+  }
+  return { street: rest, alley, plaque, unit };
+}
+
+export function hydrateShippingAddress(raw?: Partial<ShippingAddress> | null): ShippingAddress {
+  const base = emptyShippingAddress();
+  if (!raw || typeof raw !== 'object') return base;
+  const parsed = parseComposedStreet(String(raw.street || ''));
+  return {
+    recipient: String(raw.recipient || '').trim(),
+    mobile: String(raw.mobile || ''),
+    province: String(raw.province || '').trim() || base.province,
+    city: String(raw.city || '').trim() || base.city,
+    street: parsed.street,
+    postalCode: postalDigits(String(raw.postalCode || '')),
+    alley: String(raw.alley || '').trim() || parsed.alley,
+    plaque: String(raw.plaque || '').trim() || parsed.plaque,
+    unit: String(raw.unit || '').trim() || parsed.unit,
+  };
+}
+
+export function pickDefaultAddress<T extends { isDefault?: boolean }>(list: T[]): T | undefined {
+  if (!Array.isArray(list) || list.length === 0) return undefined;
+  return list.find((row) => row.isDefault) || list[0];
+}
+
+export function addressesMatch(
+  a?: Partial<ShippingAddress> | null,
+  b?: Partial<ShippingAddress> | null,
+): boolean {
+  const left = hydrateShippingAddress(a);
+  const right = hydrateShippingAddress(b);
+  return (
+    left.recipient === right.recipient &&
+    normalizeIranMobile(left.mobile) === normalizeIranMobile(right.mobile) &&
+    left.province === right.province &&
+    left.city === right.city &&
+    composeStreetLine(left) === composeStreetLine(right) &&
+    postalDigits(left.postalCode) === postalDigits(right.postalCode)
+  );
+}
+
 export function streetSignificantLen(addr: Pick<ShippingAddress, 'street' | 'alley' | 'plaque' | 'unit'>): number {
   return composeStreetLine(addr).replace(/\s/g, '').length;
 }

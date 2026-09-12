@@ -6,7 +6,7 @@ import { Button, Input, Alert } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { IRAN_PROVINCES } from '@/lib/iran-provinces';
 import { ShippingAddressForm } from '@/components/checkout/ShippingAddressForm';
-import { emptyShippingAddress, toSavedAddressPayload } from '@/lib/shipping-address';
+import { emptyShippingAddress, hydrateShippingAddress, toSavedAddressPayload } from '@/lib/shipping-address';
 
 interface SavedAddress {
   id?: string;
@@ -218,7 +218,12 @@ export default function ProfilePage() {
                 className="text-xs font-bold text-primary"
                 disabled={saving}
                 onClick={() => {
-                  setAddrDraft(a);
+                  const next = hydrateShippingAddress(a);
+                  setAddrDraft({
+                    ...next,
+                    id: a.id,
+                    isDefault: Boolean(a.isDefault),
+                  });
                   setEditingAddressId(a.id || null);
                 }}
               >

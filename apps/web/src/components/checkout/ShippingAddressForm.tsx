@@ -12,6 +12,9 @@ import {
 import { IRAN_PROVINCES } from '@/lib/iran-provinces';
 import { shapeFaDigits } from '@/lib/iran-digits';
 import {
+  addressesMatch,
+  composeStreetLine,
+  hydrateShippingAddress,
   postalDigits,
   torobpayAddressChecklist,
   validateShippingAddress,
@@ -82,10 +85,8 @@ export function ShippingAddressForm({
           <legend className={cn('mb-2 text-xs font-bold', muted[appearance])}>آدرس‌های ذخیره‌شده</legend>
           <div className="grid gap-2 sm:grid-cols-2">
             {savedAddresses.map((row, i) => {
-              const selected =
-                row.city === value.city &&
-                row.street === value.street &&
-                row.postalCode === value.postalCode;
+              const selected = addressesMatch(row, value);
+              const apply = () => onSelectSaved?.(hydrateShippingAddress(row));
               return (
                 <label
                   key={`${row.city}-${row.street}-${i}`}
@@ -104,13 +105,14 @@ export function ShippingAddressForm({
                     type="radio"
                     name={`${uid}-saved`}
                     checked={selected}
-                    onChange={() => onSelectSaved?.(row)}
+                    onChange={apply}
+                    onClick={apply}
                     className="mt-1 shrink-0"
                   />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold">{row.recipient || 'گیرنده'}</span>
                     <span className={cn('mt-0.5 block truncate text-xs', muted[appearance])}>
-                      {row.city} — {row.street}
+                      {row.city} — {composeStreetLine(hydrateShippingAddress(row))}
                     </span>
                   </span>
                 </label>

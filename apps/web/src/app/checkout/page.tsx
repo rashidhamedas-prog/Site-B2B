@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ShoppingCart, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
@@ -24,6 +24,8 @@ import {
   emptyShippingAddress,
   firstAddressError,
   finalizeShippingAddress,
+  hydrateShippingAddress,
+  pickDefaultAddress,
   validateShippingAddress,
   type ShippingAddress,
 } from '@/lib/shipping-address';
@@ -114,6 +116,7 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState<ShippingAddress>(emptyShippingAddress());
   const [savedAddresses, setSavedAddresses] = useState<ShippingAddress[]>([]);
   const [showAddressErrors, setShowAddressErrors] = useState(false);
+  const addressDirty = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -163,23 +166,33 @@ export default function CheckoutPage() {
       city?: string;
       address?: string;
       postalCode?: string;
-      addresses?: ShippingAddress[];
+      addresses?: Array<ShippingAddress & { isDefault?: boolean }>;
     }>('/auth/me/profile')
       .then((me) => {
         const book = Array.isArray(me?.addresses) ? me.addresses : [];
-        setSavedAddresses(book);
-        const def = book.find((a) => (a as { isDefault?: boolean }).isDefault) || book[0];
-        setAddress((prev) => ({
-          ...emptyShippingAddress(),
-          ...prev,
-          ...(def || {}),
-          recipient: def?.recipient || me?.ownerName || me?.businessName || prev.recipient,
-          mobile: def?.mobile || me?.phone || prev.mobile,
-          province: def?.province || me?.province || prev.province,
-          city: def?.city || me?.city || prev.city,
-          street: def?.street || me?.address || prev.street,
-          postalCode: def?.postalCode || me?.postalCode || prev.postalCode,
-        }));
+        setSavedAddresses(book.map((row) => hydrateShippingAddress(row)));
+        const def = pickDefaultAddress(book);
+        if (def && !addressDirty.current) {
+          setAddress(hydrateShippingAddress({
+            ...def,
+            recipient: def.recipient || me?.ownerName || me?.businessName || '',
+            mobile: def.mobile || me?.phone || '',
+            province: def.province || me?.province || '',
+            city: def.city || me?.city || '',
+            street: def.street || me?.address || '',
+            postalCode: def.postalCode || me?.postalCode || '',
+          }));
+        } else if (!addressDirty.current && !def) {
+          setAddress((prev) => hydrateShippingAddress({
+            ...prev,
+            recipient: prev.recipient || me?.ownerName || me?.businessName || '',
+            mobile: prev.mobile || me?.phone || '',
+            province: prev.province || me?.province || prev.province,
+            city: prev.city || me?.city || prev.city,
+            street: prev.street || me?.address || prev.street,
+            postalCode: prev.postalCode || me?.postalCode || prev.postalCode,
+          }));
+        }
       })
       .catch(() => undefined);
     apiClient.get<PublicSettings>('/settings/public?channel=WHOLESALE')
@@ -541,9 +554,15 @@ export default function CheckoutPage() {
               <ShippingAddressForm
                 appearance="wholesale"
                 value={address}
-                onChange={setAddress}
+                onChange={(next) => {
+                  addressDirty.current = true;
+                  setAddress(next);
+                }}
                 savedAddresses={savedAddresses}
-                onSelectSaved={(next) => setAddress({ ...emptyShippingAddress(), ...next })}
+                onSelectSaved={(next) => {
+                  addressDirty.current = true;
+                  setAddress(next);
+                }}
                 mode="standard"
                 showErrors={showAddressErrors}
               />

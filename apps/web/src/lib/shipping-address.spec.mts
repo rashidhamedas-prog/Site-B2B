@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import {
+  addressesMatch,
   composeStreetLine,
   finalizeShippingAddress,
+  hydrateShippingAddress,
   isAddressReady,
   isValidIranPostal,
+  pickDefaultAddress,
   postalDigits,
   streetSignificantLen,
   toSavedAddressPayload,
@@ -66,6 +69,35 @@ assert.equal('plaque' in saved, false, 'api payload omits plaque');
 assert.equal('alley' in saved, false, 'api payload omits alley');
 assert.equal('unit' in saved, false, 'api payload omits unit');
 assert.match(saved.street, /پلاک/, 'plaque composed into street');
+
+const hydrated = hydrateShippingAddress(saved);
+assert.equal(hydrated.street, String(short.street).trim(), 'hydrate street without suffixes');
+assert.equal(hydrated.alley, '۲۰', 'hydrate alley field');
+assert.equal(hydrated.plaque, '۱۲', 'hydrate plaque field');
+assert.equal(hydrated.unit, '۳', 'hydrate unit field');
+assert.equal(hydrated.recipient, 'علی رضایی', 'hydrate recipient');
+assert.equal(hydrated.city, 'مشهد', 'hydrate city');
+assert.equal(composeStreetLine(hydrated), saved.street, 'hydrate round-trips compose');
+assert.equal(addressesMatch(saved, hydrated), true, 'composed and hydrated match');
+
+const def = pickDefaultAddress([
+  { id: 'a', isDefault: false },
+  { id: 'b', isDefault: true },
+]);
+assert.equal(def?.id, 'b', 'pick default flag');
+assert.equal(pickDefaultAddress([{ id: 'only' }])?.id, 'only', 'first is default when none flagged');
+assert.equal(pickDefaultAddress([]), undefined, 'empty book');
+
+const typedInStreet = hydrateShippingAddress({
+  recipient: 'علی رضایی',
+  mobile: '09151234567',
+  province: 'خراسان رضوی',
+  city: 'مشهد',
+  street: 'خیابان احمدآباد پلاک ۱۲',
+  postalCode: '9173512345',
+});
+assert.equal(typedInStreet.plaque, '', 'do not peel plaque without composed suffix');
+assert.equal(typedInStreet.street, 'خیابان احمدآباد پلاک ۱۲', 'keep inline plaque text');
 
 const cashShortPostal = { ...full, postalCode: '12' };
 assert.ok(validateShippingAddress(cashShortPostal, 'standard').postalCode, 'partial postal invalid in standard');

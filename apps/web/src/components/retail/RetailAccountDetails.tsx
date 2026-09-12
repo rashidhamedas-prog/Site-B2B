@@ -8,9 +8,10 @@ import {
   replaceRetailAddresses,
   saveRetailAddress,
   sameRetailAddress,
+  toRetailAddress,
   type RetailAddress,
 } from '@/lib/retail-addresses';
-import { emptyShippingAddress, toSavedAddressPayload } from '@/lib/shipping-address';
+import { emptyShippingAddress, hydrateShippingAddress, toSavedAddressPayload } from '@/lib/shipping-address';
 
 export type ProfileAddress = RetailAddress & { id?: string; isDefault?: boolean };
 
@@ -32,14 +33,7 @@ const emptyAddress = (): ProfileAddress => ({
 });
 
 function toLocal(a: ProfileAddress): RetailAddress {
-  return {
-    recipient: a.recipient,
-    mobile: a.mobile,
-    province: a.province,
-    city: a.city,
-    street: a.street,
-    postalCode: a.postalCode || '',
-  };
+  return toRetailAddress(a);
 }
 
 export function RetailAccountDetails({
@@ -230,7 +224,7 @@ export function RetailAccountDetails({
                   className="text-xs font-bold text-[var(--retail-primary)]"
                   disabled={busy}
                   onClick={() => {
-                    setDraft(a);
+                    setDraft({ ...hydrateShippingAddress(a), id: a.id, isDefault: Boolean(a.isDefault) });
                     setEditingId(a.id || null);
                   }}
                 >
