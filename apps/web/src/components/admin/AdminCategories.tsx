@@ -17,6 +17,7 @@ type Category = {
   nextSequence: number;
   bannerUrl?: string | null;
   slug?: string | null;
+  nameEn?: string | null;
   seoTitle?: string | null;
   seoDescription?: string | null;
   h1?: string | null;
@@ -103,6 +104,7 @@ export function AdminCategories() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [newName, setNewName] = useState('');
+  const [newNameEn, setNewNameEn] = useState('');
   const [newSlug, setNewSlug] = useState('');
   const [newPrefix, setNewPrefix] = useState('');
   const [newBanner, setNewBanner] = useState('');
@@ -137,11 +139,13 @@ export function AdminCategories() {
     try {
       await apiClient.post('/categories', {
         name: newName.trim(),
+        nameEn: newNameEn.trim() || null,
         slug: newSlug.trim() || undefined,
         skuPrefix: newPrefix.trim(),
         bannerUrl: newBanner.trim() || null,
       });
       setNewName('');
+      setNewNameEn('');
       setNewSlug('');
       setNewPrefix('');
       setNewBanner('');
@@ -159,6 +163,7 @@ export function AdminCategories() {
     try {
       await apiClient.patch(`/categories/${c.id}`, {
         name: c.name,
+        nameEn: c.nameEn?.trim() || null,
         skuPrefix: c.skuPrefix,
         nextSequence: c.nextSequence,
         bannerUrl: c.bannerUrl?.trim() || null,
@@ -227,14 +232,24 @@ export function AdminCategories() {
 
       <div className="card p-5 space-y-3">
         <h2 className="text-sm font-bold text-gray-800">افزودن دسته‌بندی</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div>
-            <label className="block text-xs text-gray-600 mb-1">نام</label>
+            <label className="block text-xs text-gray-600 mb-1">نام فارسی</label>
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="w-full input-base"
-              placeholder="مثلاً مانتو لینن"
+              placeholder="مثلاً کت زنانه"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">نام انگلیسی (آدرس)</label>
+            <input
+              value={newNameEn}
+              onChange={(e) => setNewNameEn(e.target.value)}
+              className="w-full input-base"
+              placeholder="women coats"
+              dir="ltr"
             />
           </div>
           <div>
@@ -311,11 +326,21 @@ export function AdminCategories() {
                 <div key={c.id} className="p-4 space-y-4">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
                     <div className="lg:col-span-3">
-                      <label className="block text-xs text-gray-600 mb-1">نام</label>
+                      <label className="block text-xs text-gray-600 mb-1">نام فارسی</label>
                       <input
                         value={c.name}
                         onChange={(e) => patchItem(c.id, { name: e.target.value })}
                         className="w-full input-base"
+                      />
+                    </div>
+                    <div className="lg:col-span-2">
+                      <label className="block text-xs text-gray-600 mb-1">نام انگلیسی</label>
+                      <input
+                        dir="ltr"
+                        value={c.nameEn ?? ''}
+                        onChange={(e) => patchItem(c.id, { nameEn: e.target.value })}
+                        className="w-full input-base"
+                        placeholder="women-coats"
                       />
                     </div>
                     <div className="lg:col-span-2">

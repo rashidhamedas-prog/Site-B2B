@@ -16,6 +16,16 @@ Append newest entries at the top. Never erase another agent's record.
 - TASK-20260912-002 still owns catalog-locale hero files. This task claims ProductCatalog + RetailProductsCatalog + new `components/catalog/*`.
 - Next: implement shared rail, wire both catalogs, spec + tsc, then browser-check.
 
+## 2026-09-12T11:15:00Z — TASK-20260912-002 Phase 2–4 code
+
+- Reclaimed stale claims: 20260817-001 / 20260818-001 / 20260822-002 / 20260822-003 leftovers / 20260905-001 TrustStrip / 20260905-004 home links / 20260908-001 database.config / 20260910-001 product.service+AdminProducts / 20260826-001 useProducts / 20260810-006 dto. Heartbeats August–early Sep; PDP guide already live.
+- Phase 2: `shapeDigitsInText` on WholesaleStats, Testimonials, RetailTrustStrip, AdminBlockEditor preview. Fallbacks store Latin digits.
+- Phase 3: `normalizePublicSlug` slugifies spaces; create category uses nameEn; admin دو فیلد؛ home links از ACTIVE (حداکثر ۸)؛ banner grid pin+append.
+- Phase 4: `product_category_membership` + dual-write + listing EXISTS. `products.categoryId` kept. Independent Reviewer/Security not run — residual.
+- Gates: public-slug.spec OK; membership spec OK; locale.spec OK; web tsc 0; api tsc 0.
+- Phase 1 LIVE on VPS `dbff889`: API health 200; `.com/contact` has 0 partnership plates, `.com/` has 2; `.ir/contact` 0 DigiPay, `.ir/` 2.
+- Next: commit Phase 2–4, push master, VPS auto-deploy + membership migration.
+
 ## 2026-09-12T10:50:00Z — TASK-20260912-002 architecture + Phase 1 heroes
 
 - Owner reports: Persian category names hidden; stats digits Latin vs Persian; inner pages show home banners.

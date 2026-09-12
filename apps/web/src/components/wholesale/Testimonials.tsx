@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Star, ChevronRight, ChevronLeft, Quote } from 'lucide-react';
-import { toPersianDigits } from '@taranom/persian-utils';
+import { shapeDigitsInText } from '@taranom/persian-utils';
 import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
 
 export interface TestimonialItem {
@@ -55,10 +55,10 @@ export function Testimonials({
     footerStats?.length
       ? footerStats
       : [
-          { label: 'مشتری فعال', value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}` },
-          { label: 'شهر در ایران', value: '+۳۰' },
+          { label: 'مشتری فعال', value: `+${BUSINESS_FACTS.activeCustomers}` },
+          { label: 'شهر در ایران', value: '+30' },
           { label: 'سال تجربه', value: yearsOfOperationFa() },
-          { label: 'مدل در کاتالوگ', value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}` },
+          { label: 'مدل در کاتالوگ', value: `+${BUSINESS_FACTS.activeModels}` },
         ];
 
   const [current, setCurrent] = useState(0);
@@ -169,7 +169,9 @@ export function Testimonials({
           <div className="mt-14 grid grid-cols-2 gap-6 border-t border-[color:var(--color-border)] pt-12 sm:grid-cols-4">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
-                <p className="text-3xl font-extrabold tracking-tight text-primary">{stat.value}</p>
+                <p className="text-3xl font-extrabold tracking-tight text-primary">
+                  {shapeDigitsInText(stat.value)}
+                </p>
                 <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
               </div>
             ))}

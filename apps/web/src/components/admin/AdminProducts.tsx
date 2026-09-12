@@ -94,6 +94,7 @@ const emptySpecs: ProductSpecs = {
 const emptyForm = {
   sku: '',
   categoryId: '',
+  extraCategoryIds: [] as string[],
   name: '',
   description: '',
   wholesaleSeoTitle: '',
@@ -980,6 +981,8 @@ export function AdminProducts() {
     setForm({
       sku: src.sku,
       categoryId: src.categoryId ?? '',
+      extraCategoryIds: (src.categoryIds ?? [])
+        .filter((id) => id && id !== src.categoryId),
       name: src.name,
       slug: src.slug ?? '',
       description: src.description ?? '',
@@ -1233,6 +1236,11 @@ export function AdminProducts() {
       const payload = {
         sku: form.sku || undefined,
         categoryId: form.categoryId || undefined,
+        categoryIds: [
+          ...new Set(
+            [form.categoryId, ...form.extraCategoryIds].filter(Boolean),
+          ),
+        ],
         name: form.name,
         slug: form.slug.trim() || undefined,
         description: form.description || form.wholesaleFullContent || undefined,
@@ -1689,7 +1697,14 @@ export function AdminProducts() {
                   <label className="mb-1 block text-xs font-medium text-gray-600">دسته‌بندی</label>
                   <select
                     value={form.categoryId}
-                    onChange={(e) => setForm((f) => ({ ...f, categoryId: e.target.value }))}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        categoryId: next,
+                        extraCategoryIds: f.extraCategoryIds.filter((id) => id !== next),
+                      }));
+                    }}
                     className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   >
                     <option value="">بدون دسته‌بندی</option>
@@ -1705,6 +1720,41 @@ export function AdminProducts() {
                 </div>
                 {field('sku', 'کد SKU (اختیاری)', 'text', 'LINEN-00001')}
               </div>
+              {categories.filter((c) => c.id !== form.categoryId).length > 0 ? (
+                <div>
+                  <p className="mb-2 text-xs font-medium text-gray-600">دسته‌های اضافی</p>
+                  <div className="flex flex-wrap gap-2">
+                    {categories
+                      .filter((c) => c.id !== form.categoryId)
+                      .map((c) => {
+                        const checked = form.extraCategoryIds.includes(c.id);
+                        return (
+                          <label
+                            key={c.id}
+                            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-700"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() =>
+                                setForm((f) => ({
+                                  ...f,
+                                  extraCategoryIds: checked
+                                    ? f.extraCategoryIds.filter((id) => id !== c.id)
+                                    : [...f.extraCategoryIds, c.id],
+                                }))
+                              }
+                            />
+                            {c.name}
+                          </label>
+                        );
+                      })}
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    محصول در این دسته‌ها هم دیده می‌شود؛ SKU از دسته اصلی می‌آید.
+                  </p>
+                </div>
+              ) : null}
 
               {field('name', 'نام محصول', 'text', 'مانتو بهار')}
 

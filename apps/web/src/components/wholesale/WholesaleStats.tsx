@@ -1,4 +1,4 @@
-import { toPersianDigits } from '@taranom/persian-utils';
+import { shapeDigitsInText } from '@taranom/persian-utils';
 import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
 import { resolveWholesaleStatKind } from '@/lib/wholesale-stat-kind';
 import { WholesaleStatGlyph } from '@/components/wholesale/WholesaleStatGlyph';
@@ -12,7 +12,7 @@ export interface StatItem {
 
 const FALLBACK_ITEMS: StatItem[] = [
   {
-    value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}`,
+    value: `+${BUSINESS_FACTS.activeCustomers}`,
     label: 'مشتری عمده‌فروش',
     sublabel: 'در سراسر ایران',
     icon: 'customers',
@@ -24,13 +24,13 @@ const FALLBACK_ITEMS: StatItem[] = [
     icon: 'years',
   },
   {
-    value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}`,
+    value: `+${BUSINESS_FACTS.activeModels}`,
     label: 'مدل فعال',
     sublabel: 'بهار و تابستان',
     icon: 'models',
   },
   {
-    value: toPersianDigits(BUSINESS_FACTS.teamSize),
+    value: String(BUSINESS_FACTS.teamSize),
     label: 'نفر پرسنل',
     sublabel: 'در خط تولید',
     icon: 'team',
@@ -99,7 +99,7 @@ export function WholesaleStats({ items = FALLBACK_ITEMS }: { items?: StatItem[] 
                   </span>
                   <div className="min-w-0">
                     <p className="text-xl font-extrabold leading-none tracking-tight text-primary sm:text-2xl">
-                      {stat.value}
+                      {shapeDigitsInText(stat.value)}
                     </p>
                     <p className="mt-1 truncate text-[11px] font-semibold leading-4 text-gray-800 sm:text-xs">
                       {stat.label}

@@ -20,6 +20,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { ProductRelatedEntity } from './entities/product-related.entity';
 import { ProductInternalLinkEntity } from './entities/product-internal-link.entity';
+import { ProductCategoryMembershipEntity } from './entities/product-category-membership.entity';
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
 import { sanitizeBlogHtml } from '../blog/blog-sanitize';
 import { sanitizeGuarantee } from '../torob/torob-product-projection';
@@ -65,6 +66,7 @@ import {
 } from './internal-link-resolver';
 import type { InternalLinkView } from './dto/internal-link.dto';
 import { applyGuideOverrides, resolveInternalLinkCard } from './internal-link-card';
+import { resolveMembershipRows } from './product-category-membership';
 
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
 
@@ -192,6 +194,8 @@ export class ProductService {
     private readonly relatedRepo: Repository<ProductRelatedEntity>,
     @InjectRepository(ProductInternalLinkEntity)
     private readonly internalLinkRepo: Repository<ProductInternalLinkEntity>,
+    @InjectRepository(ProductCategoryMembershipEntity)
+    private readonly membershipRepo: Repository<ProductCategoryMembershipEntity>,
     @InjectRepository(SeoRedirectEntity)
     private readonly redirectRepo: Repository<SeoRedirectEntity>,
     @InjectRepository(VendorEntity)
@@ -488,7 +492,13 @@ export class ProductService {
     } else if (relatedIds?.length) {
       qb.andWhere('p.id IN (:...relatedIds)', { relatedIds });
     } else if (categoryId) {
-      qb.andWhere('p.categoryId = :categoryId', { categoryId });
+      qb.andWhere(
+        `(p.categoryId = :categoryId OR EXISTS (
+          SELECT 1 FROM product_category_membership m
+          WHERE m."productId" = p.id AND m."categoryId" = :categoryId
+        ))`,
+        { categoryId },
+      );
     }
     if (opts?.inStockOnly) {
       if (channel === 'RETAIL') qb.andWhere('p.retailStock > 0');
@@ -731,6 +741,76 @@ export class ProductService {
         this.relatedRepo.create({ productId, relatedProductId, sortOrder }),
       ),
     );
+  }
+
+  private async persistMemberships(
+    productId: string,
+    next: ReturnType<typeof resolveMembershipRows>,
+    repo: Repository<ProductCategoryMembershipEntity>,
+  ) {
+    if (next.length) {
+      const ids = next.map((row) => row.categoryId);
+      const found = await this.categoryRepo.count({ where: { id: In(ids) } });
+      if (found !== ids.length) {
+        throw new BadRequestException('یکی از دسته‌بندی‌ها نامعتبر است');
+      }
+    }
+    await repo.delete({ productId });
+    if (!next.length) return;
+    await repo.save(next.map((row) => repo.create({ productId, ...row })));
+  }
+
+  /** Dual-write membership. undefined extras = keep extras, move primary. */
+  async replaceMemberships(
+    productId: string,
+    primaryId: string | null | undefined,
+    extraIds: string[] | undefined,
+    em?: EntityManager,
+  ) {
+    const repo = em
+      ? em.getRepository(ProductCategoryMembershipEntity)
+      : this.membershipRepo;
+    if (extraIds === undefined) {
+      if (!primaryId) return;
+      const existing = await repo.find({ where: { productId } });
+      const extras = existing.map((row) => row.categoryId).filter((id) => id !== primaryId);
+      await this.persistMemberships(productId, resolveMembershipRows(primaryId, extras), repo);
+      return;
+    }
+    await this.persistMemberships(
+      productId,
+      resolveMembershipRows(primaryId, extraIds),
+      repo,
+    );
+  }
+
+  private async attachCategories<T>(product: ProductEntity, payload: T) {
+    const rows = await this.membershipRepo.find({
+      where: { productId: product.id },
+      order: { sortOrder: 'ASC' },
+    });
+    let ids = rows.map((row) => row.categoryId);
+    if (product.categoryId && !ids.includes(product.categoryId)) {
+      ids = [product.categoryId, ...ids];
+    }
+    const cats = ids.length
+      ? await this.categoryRepo.find({ where: { id: In(ids) } })
+      : [];
+    const byId = new Map(cats.map((c) => [c.id, c]));
+    const categories = ids
+      .map((id) => byId.get(id))
+      .filter((c): c is CategoryEntity => !!c)
+      .map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        name: c.name,
+        nameEn: c.nameEn,
+      }));
+    return {
+      ...payload,
+      categoryIds: categories.map((c) => c.id),
+      categories,
+    };
   }
 
   // ── Internal links (per-channel SEO) ───────────────────────
@@ -1375,10 +1455,13 @@ export class ProductService {
       throw new NotFoundException('محصول یافت نشد');
     }
     const cfg = await this.badgeConfig();
-    return this.attachInternalLinks(
+    return this.attachCategories(
       product,
-      await this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg),
-      channel,
+      await this.attachInternalLinks(
+        product,
+        await this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg),
+        channel,
+      ),
     );
   }
 
@@ -1420,10 +1503,13 @@ export class ProductService {
       throw new NotFoundException('محصول یافت نشد');
     }
     const cfg = await this.badgeConfig();
-    return this.attachInternalLinks(
+    return this.attachCategories(
       product,
-      await this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg),
-      channel,
+      await this.attachInternalLinks(
+        product,
+        await this.attachRelated(product, this.withBadges(product, channel, cfg), channel, cfg),
+        channel,
+      ),
     );
   }
 
@@ -1522,6 +1608,7 @@ export class ProductService {
     });
     const saved = await this.productRepo.manager.transaction(async (em) => {
       const row = await em.getRepository(ProductEntity).save(product);
+      await this.replaceMemberships(row.id, row.categoryId, data.categoryIds, em);
       await this.enqueueProductOutbox(null, row, `product:create:${row.id}`, em);
       return row;
     });
@@ -1530,14 +1617,11 @@ export class ProductService {
     await this.replaceInternalLinks(saved.id, 'WHOLESALE', data.wholesaleInternalLinks);
     await this.rememberSpecs(specs);
     const cfg = await this.badgeConfig();
-    return this.withBadges(
-      (await this.productRepo.findOne({
-        where: { id: saved.id },
-        relations: ['variants'],
-      })) as ProductEntity,
-      undefined,
-      cfg
-    );
+    const row = (await this.productRepo.findOne({
+      where: { id: saved.id },
+      relations: ['variants'],
+    })) as ProductEntity;
+    return this.attachCategories(row, this.withBadges(row, undefined, cfg));
   }
 
   private async allocateSku(categoryId: string): Promise<string> {
@@ -1582,6 +1666,7 @@ export class ProductService {
     delete (patch as any).relatedProductIds;
     delete (patch as any).retailInternalLinks;
     delete (patch as any).wholesaleInternalLinks;
+    delete (patch as any).categoryIds;
     delete (patch as any).slug;
     delete (patch as any).minOrderQty;
     delete (patch as any).allowBelowMoq;
@@ -1785,13 +1870,20 @@ export class ProductService {
     if (data.wholesaleInternalLinks !== undefined) {
       await this.replaceInternalLinks(id, 'WHOLESALE', data.wholesaleInternalLinks);
     }
+    if (data.categoryId !== undefined || data.categoryIds !== undefined) {
+      await this.replaceMemberships(
+        id,
+        data.categoryId !== undefined ? data.categoryId : updated.categoryId,
+        data.categoryIds,
+      );
+    }
 
     if (data.images) {
       const removed = oldImages.filter((url) => !data.images!.includes(url));
       if (removed.length) await this.storage.deleteByUrls(removed);
     }
     const cfg = await this.badgeConfig();
-    return this.withBadges(updated, undefined, cfg);
+    return this.attachCategories(updated, this.withBadges(updated, undefined, cfg));
   }
 
   async remove(id: string) {

@@ -18,13 +18,8 @@ try {
 }
 assert(threw, 'empty slug rejected');
 
-threw = false;
-try {
-  normalizePublicSlug('hello world');
-} catch (e) {
-  threw = e instanceof BadRequestException;
-}
-assert(threw, 'whitespace rejected');
+assert(normalizePublicSlug('hello world') === 'hello-world', 'spaces become hyphens');
+assert(normalizePublicSlug('کت زنانه') === 'kt-znanh', 'persian name with spaces slugifies');
 
 threw = false;
 try {

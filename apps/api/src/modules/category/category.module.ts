@@ -5,9 +5,10 @@ import { CategoryService } from './category.service';
 import { CategoryController } from './category.controller';
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
 import { ProductEntity } from '../product/entities/product.entity';
+import { ProductCategoryMembershipEntity } from '../product/entities/product-category-membership.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CategoryEntity, SeoRedirectEntity, ProductEntity])],
+  imports: [TypeOrmModule.forFeature([CategoryEntity, SeoRedirectEntity, ProductEntity, ProductCategoryMembershipEntity])],
   providers: [CategoryService],
   controllers: [CategoryController],
   exports: [CategoryService],
