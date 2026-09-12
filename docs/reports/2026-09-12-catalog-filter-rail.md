@@ -24,5 +24,6 @@
 
 - `node --experimental-strip-types src/lib/catalog-filter.spec.mts` → ok
 - `apps/web` `npx tsc --noEmit` → 0
-- Live VPS `fe179d8`: `.com/products` و `.ir/products` 200؛ ریل راست با سواچ/چیپ/سوئیچ.
-- Follow-up: پارچه‌های فرعی در آکاردئون «سایر پارچه‌ها» (`2f57cf6`) — هنوز روی master نرفته تا این گزارش.
+- Live VPS `f6d1a5a`: `.com/products` و `.ir/products` 200؛ ریل راست با سواچ/چیپ/سوئیچ.
+- Browser: لینن روی عمده → چیپ + ۲۲ مدل؛ تکی همان شِل کرم/طلایی + قیمت/یقه.
+- پارچه‌های فرعی در آکاردئون «سایر پارچه‌ها».

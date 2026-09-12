@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T11:52:00Z — TASK-20260912-003 CLOSED live `f6d1a5a`
+
+- Wholesale `.com/products`: sticky RTL rail; linen filter → chip + URL `?fabric=لینن` + **۲۲ مدل**. Extra fabrics collapsed under «سایر پارچه‌ها».
+- Retail `.ir/products`: same shell (cream/gold), search+sort, price/collar groups, ۲۴ مدل. Old select grid gone.
+- API health 200. Claims released. Independent Reviewer residual (UI-only).
+- Next: none for this task. Per-option facet counts still deferred (no bucket API).
+
 ## 2026-09-12T11:40:00Z — TASK-20260912-003 catalog filter rail (polish)
 
 - Extra catalog fabrics (بزایاق، ژاکارد، نام‌های بلند صفحه) moved under collapsed «سایر پارچه‌ها»; curated list stays in «نوع پارچه».

@@ -52,7 +52,7 @@ tasks:
       - "shipping-address spec + checkout-payment-ui spec + torobpay adapter spec + web tsc pass"
   - id: "TASK-20260912-003"
     title: "Professional catalog filter rail for wholesale + retail /products"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260912-003"
     roles:
@@ -63,9 +63,11 @@ tasks:
     branch: "ai/TASK-20260912-003-catalog-filter-rail"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-12T10:54:00Z"
-    heartbeat_at: "2026-09-12T11:40:00Z"
+    heartbeat_at: "2026-09-12T11:52:00Z"
+    closed_at: "2026-09-12T11:52:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/catalog-filter.ts"
       - "apps/web/src/lib/catalog-filter.spec.mts"
       - "apps/web/src/components/catalog/CatalogFilterRail.tsx"
