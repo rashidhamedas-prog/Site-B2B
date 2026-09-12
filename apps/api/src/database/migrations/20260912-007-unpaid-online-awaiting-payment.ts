@@ -18,7 +18,8 @@ export class UnpaidOnlineAwaitingPayment1757692800007 implements MigrationInterf
         AND o."voidedAt" IS NULL
         AND NOT EXISTS (
           SELECT 1 FROM "payments" p
-          WHERE p."orderId" = o.id
+          WHERE p."orderId" IS NOT NULL
+            AND p."orderId" = o.id::text
             AND p.status = 'PAID'
         )
     `);
