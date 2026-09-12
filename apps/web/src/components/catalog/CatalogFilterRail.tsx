@@ -11,6 +11,7 @@ import {
   mergeCatalogFabrics,
   toggleCatalogValue,
   type CatalogFilterValues,
+  CATALOG_FABRICS,
   CATALOG_SIZE_TYPES,
 } from '@/lib/catalog-filter';
 
@@ -118,6 +119,10 @@ export function CatalogFilterRail({
   onApply,
 }: Props) {
   const fabrics = mergeCatalogFabrics(extraFabrics);
+  const primaryFabrics = [...CATALOG_FABRICS];
+  const extraFabricOptions = fabrics.filter(
+    (fabric) => !(CATALOG_FABRICS as readonly string[]).includes(fabric),
+  );
   const colors = mergeCatalogColors(extraColors);
   const active = catalogFilterChips(values).length;
   const stockOn = values.inStock === '1' || values.inStock === 'true';
@@ -154,7 +159,7 @@ export function CatalogFilterRail({
 
         <FilterGroup title="نوع پارچه">
           <div className="flex flex-wrap gap-1.5">
-            {fabrics.map((fabric) => {
+            {primaryFabrics.map((fabric) => {
               const selected = values.fabric === fabric;
               return (
                 <button
@@ -171,6 +176,27 @@ export function CatalogFilterRail({
             })}
           </div>
         </FilterGroup>
+        {extraFabricOptions.length ? (
+          <FilterGroup title="سایر پارچه‌ها" defaultOpen={Boolean(values.fabric && extraFabricOptions.includes(values.fabric))}>
+            <div className="flex flex-wrap gap-1.5">
+              {extraFabricOptions.map((fabric) => {
+                const selected = values.fabric === fabric;
+                return (
+                  <button
+                    key={fabric}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => onChange('fabric', toggleCatalogValue(values.fabric, fabric))}
+                    className={cn('catalog-fabric-chip', selected && 'is-selected')}
+                  >
+                    <span className="catalog-fabric-swatch" data-fabric={fabric} aria-hidden />
+                    {fabric}
+                  </button>
+                );
+              })}
+            </div>
+          </FilterGroup>
+        ) : null}
 
         <FilterGroup title="سایزبندی">
           <div className="grid grid-cols-3 gap-1.5">
