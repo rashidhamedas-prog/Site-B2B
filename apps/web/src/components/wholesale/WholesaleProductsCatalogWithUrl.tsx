@@ -9,7 +9,7 @@ import { ProductCatalog, type CatalogSearchParams } from './ProductCatalog';
 function paramsFromSearch(search: string): CatalogSearchParams {
   const usp = new URLSearchParams(search.replace(/^\?/, ''));
   const next: CatalogSearchParams = {};
-  const keys: Array<keyof CatalogSearchParams> = ['q', 'fabric', 'color', 'size', 'sort', 'page'];
+  const keys: Array<keyof CatalogSearchParams> = ['q', 'fabric', 'color', 'size', 'sort', 'page', 'inStock'];
   for (const key of keys) {
     const value = usp.get(key);
     if (value) next[key] = value;
@@ -23,6 +23,7 @@ function hasCatalogFilters(params: CatalogSearchParams): boolean {
       params.fabric ||
       params.color ||
       params.size ||
+      params.inStock ||
       (params.sort && params.sort !== 'newest') ||
       (params.page && Number(params.page) > 1),
   );

@@ -8,7 +8,22 @@ Append newest entries at the top. Never erase another agent's record.
 - Root cause: `retailPostalDigits` / CPG postal used `/\D/` which drops Persian digits; street was a single short textarea; wholesale sent no `shippingAddress`.
 - Architecture: `docs/architecture/checkout-shipping-address.md`.
 - Reclaimed stale adapter claims from TASK-20260907-002 (hb 2026-09-08). Did not touch catalog-filter or locale files.
-- Next: specs + web/api tsc, then commit/push/deploy, browser-check `.ir/checkout` TorobPay + `.com/checkout` address panel.
+- Gates: shipping-address spec ok; checkout-payment-ui spec ok; torobpay adapter PASS; customer-addresses ok; web+api tsc 0.
+- Next: merge/push/deploy, browser-check `.ir/checkout` TorobPay + `.com/checkout` address panel.
+
+## 2026-09-12T11:20:00Z — TASK-20260912-003 catalog filter rail (code)
+
+- Shared rail: visual color swatches, fabric chips, size cards, in-stock switch, dismissible chips.
+- Wholesale + retail `/products` wired. Mobile drawer drafts until «نمایش نتایج».
+- Gates: `catalog-filter.spec.mts` ok; `apps/web` `tsc --noEmit` 0.
+- Next: commit, push master, deploy, browser-check `.com/products` and `.ir/products`.
+
+## 2026-09-12T10:54:00Z — TASK-20260912-003 catalog filter rail (implementing)
+
+- Owner: redesign wholesale `/products` right-side filters to a current faceted UI, then apply the same shell to retail `/products`.
+- Architecture: `docs/architecture/catalog-filter-rail.md`. Shared rail, no new API, no facet-count invention. Desktop instant apply; mobile drawer + apply.
+- TASK-20260912-002 still owns catalog-locale hero files. This task claims ProductCatalog + RetailProductsCatalog + new `components/catalog/*`.
+- Next: implement shared rail, wire both catalogs, spec + tsc, then browser-check.
 
 ## 2026-09-12T11:15:00Z — TASK-20260912-002 Phase 2–4 code
 
