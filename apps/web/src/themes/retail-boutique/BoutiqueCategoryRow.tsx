@@ -1,10 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { catalogFetchInit, categoryDisplayName, merchandiseCategories } from '@/lib/catalog/category-storefront';
 import { getServerApiBase } from '@/lib/server-api';
 
 type Category = {
   id: string;
   name: string;
+  nameEn?: string | null;
   slug?: string | null;
   bannerUrl?: string | null;
 };
@@ -22,22 +24,13 @@ function mediaUrl(url?: string | null) {
   return `/media/${url}`;
 }
 
-function displayName(name: string) {
-  const fa = name
-    .trim()
-    .split(/\s+/)
-    .filter((p) => /[\u0600-\u06FF]/.test(p))
-    .join(' ');
-  return fa || name;
-}
-
 async function fetchCategories(): Promise<Category[]> {
   try {
     const base = getServerApiBase();
-    const res = await fetch(`${base}/categories`, { next: { revalidate: 300 } });
+    const res = await fetch(`${base}/categories`, catalogFetchInit());
     if (!res.ok) return [];
     const all = (await res.json()) as Category[];
-    return (Array.isArray(all) ? all : []).slice(0, 8);
+    return merchandiseCategories(Array.isArray(all) ? all : [], { maxItems: 8 });
   } catch {
     return [];
   }
@@ -67,7 +60,7 @@ export async function BoutiqueCategoryRow() {
                   />
                 </span>
                 <span className="mt-2 block text-center text-xs font-bold text-white sm:text-sm">
-                  {displayName(c.name)}
+                  {categoryDisplayName(c)}
                 </span>
               </Link>
             </li>

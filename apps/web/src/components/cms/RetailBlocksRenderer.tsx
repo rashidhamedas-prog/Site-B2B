@@ -9,6 +9,7 @@ import { RetailCategoryBannerGrid } from '@/components/retail/RetailCategoryBann
 import { RetailCtaBanner } from '@/components/retail/RetailCtaBanner';
 import { RetailTrustStrip, RETAIL_TRUST_FALLBACK, type TrustItem } from '@/components/retail/RetailTrustStrip';
 import { RetailHomeCategoryLinks } from '@/components/retail/RetailHomeCategoryLinks';
+import { resolveHomeCategoryMaxItems } from '@/lib/catalog/category-storefront';
 import {
   filterChromeBlocks,
   heroPropsFromBlock,
@@ -83,7 +84,7 @@ export async function RetailBlocksRenderer({
               title={str(p, 'headline') || 'شومیز، کت، کاپشن و کفتان'}
               body={str(p, 'body') || 'شومیز برای بالاتنه روزمره، کت برای روی لباس، کاپشن برای سرما، کفتان وقتی یک تکه می‌خواهید.'}
               columns={typeof p.columns === 'number' ? p.columns : 5}
-              maxItems={Math.min(typeof p.maxItems === 'number' ? p.maxItems : 10, 10)}
+              maxItems={resolveHomeCategoryMaxItems(p.maxItems)}
               categoryIds={str(p, 'categoryIds') || undefined}
             />
           </Suspense>,

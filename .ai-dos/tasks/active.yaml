@@ -1,5 +1,56 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260912-005"
+    title: "Category Persian save + home merchandising"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260912-005"
+    roles:
+      architect: "cursor:implementer-TASK-20260912-005"
+      implementer: "cursor:implementer-TASK-20260912-005"
+      reviewer: "self-review-after-live-independent-security-residual"
+      security: "required-independent-database-migration"
+    branch: "ai/TASK-20260912-005-category-save-merch"
+    worktree: "D:/proje/Site-B2B-catalog-locale"
+    claimed_at: "2026-09-12T11:50:00Z"
+    heartbeat_at: "2026-09-12T11:50:00Z"
+    depends_on: []
+    file_claims:
+      - "docs/architecture/category-identity-and-home-merch.md"
+      - "docs/architecture/catalog-locale-page-heroes.md"
+      - "docs/reports/2026-09-12-category-save-merch.md"
+      - "apps/web/src/lib/catalog/category-storefront.ts"
+      - "apps/web/src/lib/catalog/category-storefront.spec.mts"
+      - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
+      - "apps/web/src/components/retail/RetailHomeCategoryLinks.tsx"
+      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueCategoryRow.tsx"
+      - "apps/web/src/lib/cms/defaults.ts"
+      - "apps/web/src/components/admin/AdminCategories.tsx"
+      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
+      - "apps/web/src/components/category/CategoryLanding.tsx"
+      - "apps/api/src/modules/category/category-unique.ts"
+      - "apps/api/src/modules/category/category-unique.spec.ts"
+      - "apps/api/src/modules/category/category.service.ts"
+      - "apps/api/src/modules/category/entities/category.entity.ts"
+      - "apps/api/src/database/migrations/20260912-005-category-live-unique.ts"
+      - "apps/api/src/database/migrations/20260912-005-category-live-unique.spec.ts"
+      - "apps/api/package.json"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/project/architecture.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Shared AI-DOS registry + WORKLOG overlap with 004 is append-only.
+      Did not touch checkout address or catalog filter rail files.
+      Live evidence: 11 ACTIVE categories; پاییزی exists; CMS categoryIds empty;
+      unique name includes tombstones; grid reverse+maxItems 10 dropped newest.
+    acceptance_criteria:
+      - "Rename colliding with a soft-deleted Persian name saves (200) and shows on storefront"
+      - "ACTIVE پاییزی appears on retail home grid without pinning categoryIds"
+      - "Home category cards cap at 16; no reverse-then-slice"
+      - "category-storefront spec + category-unique spec + migration spec + web/api tsc pass"
   - id: "TASK-20260912-004"
     title: "Professional checkout address form (TorobPay-ready)"
     status: "in_progress"

@@ -723,7 +723,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           headline: 'شومیز، کت، کاپشن و کفتان',
           body: 'شومیز برای بالاتنه روزمره، کت برای روی لباس، کاپشن برای سرما، کفتان وقتی یک تکه می‌خواهید.',
           columns: 5,
-          maxItems: 10,
+          maxItems: 16,
           categoryIds: '',
         }),
         b('products', {

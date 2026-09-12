@@ -35,7 +35,7 @@ Channel differentiation: pricing (`retailPrice` / `wholesalePrice`), stock field
 
 | Date | Decision | Notes |
 |------|----------|-------|
-| 2026-08-09 | Smallest compatible evolution of existing stack | Retain Next/Nest/PG; no greenfield rewrite (MASTER + file 02) |
+| 2026-09-12 | Category live-unique + home merch | Tombstones must not block Persian `name`; home auto shows ACTIVE up to 16, never reverse-then-slice (`category-identity-and-home-merch.md`) |
 | 2026-08-09 | Phase-1 claims = governance + required docs only | Expand `file_claims` before any `apps/*` edit |
 | preexisting | Dual-channel single core | Documented in `docs/B2C.md`; verify gaps in audit |
 | 2026-08-26 | Omnichannel on shared core only | Phase 0+ stay on one API/DB; no second bot backend; projections never read legacy `stock`; Bale/Rubika gated |

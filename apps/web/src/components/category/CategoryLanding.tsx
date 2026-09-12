@@ -65,9 +65,9 @@ function looksLikeHtml(value: string): boolean {
 
 export const fetchCategoryBySlug = cache(async (slug: string): Promise<CategoryRecord | null> => {
   try {
-    const res = await fetch(
+            const res = await fetch(
       `${getServerApiBase()}/categories/slug/${encodeURIComponent(slug)}`,
-      { next: { revalidate: 300 } },
+      { next: { revalidate: 60, tags: ['catalog'] } },
     );
     if (!res.ok) return null;
     return (await res.json()) as CategoryRecord;
@@ -79,7 +79,7 @@ export const fetchCategoryBySlug = cache(async (slug: string): Promise<CategoryR
 export const fetchPublicCategories = cache(async (): Promise<CategoryRecord[]> => {
   try {
     const res = await fetch(`${getServerApiBase()}/categories`, {
-      next: { revalidate: 300 },
+      next: { revalidate: 60, tags: ['catalog'] },
     });
     if (!res.ok) return [];
     const json = await res.json();

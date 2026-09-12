@@ -1,4 +1,9 @@
 import Link from 'next/link';
+import {
+  catalogFetchInit,
+  categoryDisplayName,
+  merchandiseCategories,
+} from '@/lib/catalog/category-storefront';
 import { getServerApiBase } from '@/lib/server-api';
 
 type Category = {
@@ -8,22 +13,13 @@ type Category = {
   slug?: string | null;
 };
 
-function labelOf(c: Category) {
-  const name = (c.name || '').trim();
-  const fa = name
-    .split(/\s+/)
-    .filter((p) => /[\u0600-\u06FF]/.test(p))
-    .join(' ');
-  return fa || name || (c.nameEn || '').trim();
-}
-
 async function fetchActiveCategories(): Promise<Category[]> {
   try {
     const base = getServerApiBase();
-    const res = await fetch(`${base}/categories`, { next: { revalidate: 300 } });
+    const res = await fetch(`${base}/categories`, catalogFetchInit());
     if (!res.ok) return [];
     const all = (await res.json()) as Category[];
-    return Array.isArray(all) ? all.slice(0, 8) : [];
+    return merchandiseCategories(Array.isArray(all) ? all : [], { maxItems: 16 });
   } catch {
     return [];
   }
@@ -54,7 +50,7 @@ export async function RetailHomeCategoryLinks() {
                   href={href}
                   className="inline-flex rounded-full border border-[var(--retail-border)] bg-white px-4 py-2 text-sm font-bold text-[var(--retail-ink)] transition hover:border-[var(--retail-gold)] hover:text-[var(--retail-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
                 >
-                  {labelOf(item)}
+                  {categoryDisplayName(item)}
                 </Link>
               </li>
             );

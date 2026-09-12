@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-12 — **TASK-20260912-005 implementing** on `ai/TASK-20260912-005-category-save-merch`. Persian category save + home merch. Live DB has پاییزی; grid reverse+cap 10 + unique-on-tombstone. Not live until merge/deploy + migration `CategoryLiveUnique1757682000005`. Did not touch 004 checkout files.
 - Last verified: 2026-09-12 — **TASK-20260912-002 CLOSED** on `origin/master` `4b78bcf`. Page-scoped heroes, locale digits, Persian category identity, product membership. Migration `ProductCategoryMembership1757670000002` applied (60 rows). Claims released.
 - Last verified: 2026-09-12 — **TASK-20260912-004 implementing** on `ai/TASK-20260912-004-checkout-address`. Code is on `origin/master` `ce24a1b`; VPS was still `fe179d8` until this close-out deploy. Did not touch 002 catalog-locale files.
 - Last verified: 2026-09-12 — **TASK-20260912-003 CLOSED** on `origin/master` + VPS `f6d1a5a`. Shared graphical filter rail live on `.com/products` and `.ir/products`. Linen filter 58→22. Health 200. Claims released.

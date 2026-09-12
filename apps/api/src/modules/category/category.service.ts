@@ -17,6 +17,7 @@ import {
   parseExportChannel,
   type ExportCategory,
 } from '../product/catalog-excel';
+import { throwCategoryUniqueOrRethrow } from './category-unique';
 
 export type CategoryUpsert = {
   name?: string;
@@ -148,7 +149,11 @@ export class CategoryService {
       wholesaleBottomContent: body.wholesaleBottomContent?.trim() || null,
     });
     this.applySeedDefaults(seed, entity);
-    return this.repo.save(entity);
+    try {
+      return await this.repo.save(entity);
+    } catch (err) {
+      throwCategoryUniqueOrRethrow(err);
+    }
   }
 
   async update(id: string, body: CategoryUpsert) {
@@ -190,7 +195,12 @@ export class CategoryService {
     }
     if (body.status !== undefined) existing.status = body.status === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE';
     if (body.faqItems !== undefined) existing.faqItems = body.faqItems;
-    const saved = await this.repo.save(existing);
+    let saved: CategoryEntity;
+    try {
+      saved = await this.repo.save(existing);
+    } catch (err) {
+      throwCategoryUniqueOrRethrow(err);
+    }
     if (previousSlug && saved.slug && previousSlug !== saved.slug) {
       await this.recordSlugRedirect(previousSlug, saved.slug);
     }

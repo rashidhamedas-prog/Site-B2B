@@ -13,7 +13,7 @@ export class CategoryEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index({ unique: true })
+  @Index('UQ_categories_name_live', { unique: true, where: '"deletedAt" IS NULL' })
   @Column()
   name: string;
 
@@ -29,7 +29,7 @@ export class CategoryEntity {
   @Column({ type: 'text', nullable: true })
   bannerUrl: string | null;
 
-  @Index({ unique: true })
+  @Index('UQ_categories_slug_live', { unique: true, where: '"deletedAt" IS NULL' })
   @Column({ nullable: true })
   slug: string | null;
 

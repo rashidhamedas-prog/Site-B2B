@@ -1,5 +1,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import {
+  catalogFetchInit,
+  categoryDisplayName,
+  merchandiseCategories,
+} from '@/lib/catalog/category-storefront';
 import { getServerApiBase } from '@/lib/server-api';
 
 type Category = {
@@ -43,15 +48,6 @@ function mediaUrl(url?: string | null) {
   return `/media/${url}`;
 }
 
-function displayName(c: Category) {
-  const name = (c.name || '').trim();
-  const fa = name
-    .split(/\s+/)
-    .filter((p) => /[\u0600-\u06FF]/.test(p))
-    .join(' ');
-  return fa || name || (c.nameEn || '').trim();
-}
-
 function fallbackFor(c: Category, index: number) {
   const slugKey = (c.slug || '').toLowerCase();
   const keys = Object.keys(FALLBACK_BY_KEY).sort((a, b) => b.length - a.length);
@@ -71,29 +67,11 @@ async function fetchCategories(
 ): Promise<Category[]> {
   try {
     const base = getServerApiBase();
-    const res = await fetch(`${base}/categories`, { next: { revalidate: 300 } });
+    const res = await fetch(`${base}/categories`, catalogFetchInit());
     if (!res.ok) return [];
     const all = (await res.json()) as Category[];
     const list = Array.isArray(all) ? all : [];
-    const idFilter = (categoryIds || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    let filtered = list;
-    if (idFilter.length) {
-      const order = new Map(idFilter.map((id, i) => [id, i]));
-      const pinned = list
-        .filter((c) => order.has(c.id))
-        .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
-      const rest = list.filter((c) => !order.has(c.id));
-      filtered = [...pinned, ...rest];
-    } else {
-      // Stable retail order: reverse createdAt DESC from API → oldest first feels catalog-like
-      filtered = [...list].reverse();
-    }
-    // maxItems 0 / very high = show all
-    if (!maxItems || maxItems >= 999) return filtered;
-    return filtered.slice(0, Math.max(1, maxItems));
+    return merchandiseCategories(list, { categoryIds, maxItems });
   } catch {
     return [];
   }
@@ -148,7 +126,7 @@ export async function RetailCategoryBannerGrid({
         <div className={`grid gap-3 sm:gap-4 ${gridClass}`}>
           {items.map((c, i) => {
             const img = mediaUrl(c.bannerUrl) || fallbackFor(c, i);
-            const label = displayName(c);
+            const label = categoryDisplayName(c);
             return (
               <Link
                 key={c.id}

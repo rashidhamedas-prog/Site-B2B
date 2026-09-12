@@ -1259,10 +1259,10 @@ function BlockFields({
             onChange={(v) => set('columns', Math.min(5, Math.max(2, Number(v) || 5)))}
           />
           <Field
-            label="حداکثر بنر (۹۹ = همه)"
-            value={String(typeof p.maxItems === 'number' ? p.maxItems : 99)}
+            label="حداکثر کارت دسته روی خانه (۱ تا ۱۶)"
+            value={String(typeof p.maxItems === 'number' ? p.maxItems : 16)}
             dir="ltr"
-            onChange={(v) => set('maxItems', Math.max(1, Number(v) || 99))}
+            onChange={(v) => set('maxItems', Math.min(16, Math.max(1, Number(v) || 16)))}
           />
           <Field
             label="شناسه دسته‌ها (اختیاری، با کاما — خالی = همه)"

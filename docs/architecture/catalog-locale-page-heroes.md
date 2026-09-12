@@ -37,7 +37,7 @@ Operators can manage catalog and CMS in Persian without English-in-the-name work
 - **A1:** Storefront language today is `fa` (`lang=fa_IR`, RTL). An `en` switch is not live; digit policy must still not bake Persian numerals into stored CMS JSON.
 - **A2:** Operators want Persian display names. ASCII slugs remain mandatory for copy-paste URLs (existing `asciiSlug` contract).
 - **A3:** SKU prefix stays category-owned. Multi-category products need exactly one **primary** category for SKU allocation.
-- **A4:** Live `categoryBanners.categoryIds` on production may be a silent whitelist. Treat as a confirmed risk until an admin read of that field proves otherwise.
+- **A4 (closed 2026-09-12):** Live RETAIL home `categoryBanners.categoryIds` is empty. New categories were dropped by reverse-then-slice plus a hard `maxItems` 10. See `docs/architecture/category-identity-and-home-merch.md`.
 - **A5:** High-risk independent Reviewer + Security required before the membership migration ships (schema + catalog query). Hero/locale presentation is low/medium and can ship first.
 
 ### Constraints

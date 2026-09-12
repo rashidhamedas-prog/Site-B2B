@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ChevronDown, Plus, Save, Trash2 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { AdminChannelTabs, type AdminChannel } from './AdminChannelTabs';
 import { AdminExcelExportButtons } from './AdminExcelExportButtons';
@@ -103,6 +104,7 @@ export function AdminCategories() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [rowError, setRowError] = useState<Record<string, string>>({});
   const [newName, setNewName] = useState('');
   const [newNameEn, setNewNameEn] = useState('');
   const [newSlug, setNewSlug] = useState('');
@@ -132,6 +134,13 @@ export function AdminCategories() {
     load().catch(() => undefined);
   }, []);
 
+  const bustCatalogStorefront = async () => {
+    await Promise.all([
+      revalidateStorefrontAfterSave('RETAIL', 'home'),
+      revalidateStorefrontAfterSave('WHOLESALE', 'home'),
+    ]);
+  };
+
   const create = async () => {
     if (!newName.trim()) return;
     setSavingId('new');
@@ -150,6 +159,7 @@ export function AdminCategories() {
       setNewPrefix('');
       setNewBanner('');
       await load();
+      void bustCatalogStorefront();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'ایجاد دسته‌بندی ناموفق بود');
     } finally {
@@ -160,6 +170,11 @@ export function AdminCategories() {
   const save = async (c: Category) => {
     setSavingId(c.id);
     setError('');
+    setRowError((p) => {
+      const next = { ...p };
+      delete next[c.id];
+      return next;
+    });
     try {
       await apiClient.patch(`/categories/${c.id}`, {
         name: c.name,
@@ -183,8 +198,11 @@ export function AdminCategories() {
         wholesaleBottomContent: c.wholesaleBottomContent?.trim() || null,
       });
       await load();
+      void bustCatalogStorefront();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'ذخیره دسته‌بندی ناموفق بود');
+      const message = e instanceof Error ? e.message : 'ذخیره دسته‌بندی ناموفق بود';
+      setError(message);
+      setRowError((p) => ({ ...p, [c.id]: message }));
     } finally {
       setSavingId(null);
     }
@@ -197,6 +215,7 @@ export function AdminCategories() {
     try {
       await apiClient.delete(`/categories/${id}`);
       await load();
+      void bustCatalogStorefront();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'حذف دسته‌بندی ناموفق بود');
     } finally {
@@ -220,7 +239,8 @@ export function AdminCategories() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">دسته‌بندی‌ها</h1>
           <p className="text-sm text-gray-500 mt-1">
-            مدیریت دسته‌بندی‌ها، سئوی تکی/عمده، فرمول SKU، و بنر مربعی ۱:۱ برای صفحه اصلی تکی
+            مدیریت دسته‌بندی‌ها، سئوی تکی/عمده، فرمول SKU، و بنر مربعی ۱:۱ برای صفحه اصلی تکی.
+            نام فارسی همان برچسب ویترین است؛ انگلیسی را در فیلد انگلیسی بگذارید.
           </p>
         </div>
         <AdminExcelExportButtons kind="categories" />
@@ -424,6 +444,11 @@ export function AdminCategories() {
                       </div>
                     </div>
                   </div>
+                  {rowError[c.id] ? (
+                    <p className="text-sm text-red-700" role="alert">
+                      {rowError[c.id]}
+                    </p>
+                  ) : null}
 
                   <div className="flex flex-wrap items-center gap-2">
                     <label className="inline-flex items-center gap-2 text-sm text-gray-700">

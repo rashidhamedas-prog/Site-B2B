@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T11:55:00Z — TASK-20260912-005 category save + home merch (implementing)
+
+- Owner: Persian category rename that does not stick; new ACTIVE «پاییزی» missing on site.
+- Live: 11 ACTIVE; پاییزی row present; CMS `categoryIds` empty; unique name includes tombstones; grid reverse+maxItems 10 dropped newest.
+- Architecture: `docs/architecture/category-identity-and-home-merch.md`.
+- Next: specs + tsc, push master, VPS auto-deploy + migration `CategoryLiveUnique1757682000005`, prove home HTML includes پاییزی.
+- Shared yaml/WORKLOG overlap with 004 is append-only. Did not touch checkout or filter-rail files.
+
 ## 2026-09-12T11:52:00Z — TASK-20260912-003 CLOSED live `f6d1a5a`
 
 - Wholesale `.com/products`: sticky RTL rail; linen filter → chip + URL `?fabric=لینن` + **۲۲ مدل**. Extra fabrics collapsed under «سایر پارچه‌ها».
