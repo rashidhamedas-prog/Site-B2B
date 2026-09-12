@@ -1,7 +1,8 @@
 # Project Status
 
+- Last verified: 2026-09-12 — **TASK-20260912-008 CLOSED** on `origin/master` + VPS `29d1e15`. ONLINE unpaid is `AWAITING_PAYMENT` until capture, then `PENDING_REVIEW`. Health 200. Migration applied. 3 leftover unpaid moved; review queue 0. Claims released. Independent Reviewer + Security residual (payments).
 - Last verified: 2026-09-12 — **TASK-20260912-007 CLOSED** on `origin/master` `b8c8821` (live VPS `be18707` after API rebuild). Checkout hydrates saved/default address into dedicated fields. Health 200. Claims released.
-- Last verified: 2026-09-12 — **TASK-20260912-008 implementing** on `ai/TASK-20260912-008-paid-before-review`. ONLINE unpaid no longer PENDING_REVIEW. Not live until merge/deploy + migration `UnpaidOnlineAwaitingPayment1757692800007`. Did not touch checkout autofill files (007).
+- Last verified: 2026-09-12 — **TASK-20260912-008 CLOSED** (see top). Previously implementing until live `29d1e15`.
 - Last verified: 2026-09-12 — **TASK-20260912-007 implementing** on `ai/TASK-20260912-007-checkout-autofill`. Saved/default checkout address hydrates structured fields. Not live until merge/deploy.
 - Last verified: 2026-09-12 — **TASK-20260912-006 CLOSED** on `origin/master` + VPS `27ee8b8`. Saved-address `plaque`/`alley`/`unit` no longer 400. Health 200. Claims released. Independent Reviewer residual (DTO whitelist only).
 - Last verified: 2026-09-12 — **TASK-20260912-005 CLOSED** on `origin/master` + VPS `e6d8dd6`. Persian category save + home merch. پاییزی on `.ir` home pills+grid; `/category/autumn` 200. Health 200. Claims released. Independent Security residual (partial unique).

@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T14:44:00Z — TASK-20260912-008 CLOSED live `29d1e15`
+
+- ONLINE unpaid no longer enters «در بررسی». Create → `AWAITING_PAYMENT`; capture → `PENDING_REVIEW` + `orderRegistered` SMS.
+- Live: API `/v1/health` 200; VPS `29d1e15`; migration `UnpaidOnlineAwaitingPayment1757692800007` (rows 92+93 duplicate from concurrent api/worker start; UPDATE idempotent).
+- DB: 3 leftover ONLINE unpaid are `AWAITING_PAYMENT` (`ORD-2026-00032/33/34`); `PENDING_REVIEW` count 0.
+- Storefronts `.ir` 200, `.com` 200. Customer-panel login not exercised (no shopper credentials).
+- Claims released. Independent Reviewer + Security residual (high-risk payments).
+
 ## 2026-09-12T14:45:00Z — TASK-20260912-007 CLOSED live `be18707`
 
 - Saved/default checkout address now fills recipient, mobile, province, city, street, alley, plaque, unit, postal.

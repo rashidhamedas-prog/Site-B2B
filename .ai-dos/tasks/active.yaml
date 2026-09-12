@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260912-008"
     title: "Register/review only after payment captured"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260912-008"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260912-008-paid-before-review"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-12T14:15:00Z"
-    heartbeat_at: "2026-09-12T14:15:00Z"
+    heartbeat_at: "2026-09-12T14:44:00Z"
+    closed_at: "2026-09-12T14:44:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/order/order-payment-lifecycle.ts"
       - "apps/api/src/modules/order/order-payment-lifecycle.spec.ts"
       - "apps/api/src/modules/order/order.service.ts"
