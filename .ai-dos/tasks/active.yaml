@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260912-005"
     title: "Category Persian save + home merchandising"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260912-005"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260912-005-category-save-merch"
     worktree: "D:/proje/Site-B2B-catalog-locale"
     claimed_at: "2026-09-12T11:50:00Z"
-    heartbeat_at: "2026-09-12T11:50:00Z"
+    heartbeat_at: "2026-09-12T12:30:00Z"
+    closed_at: "2026-09-12T12:30:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "docs/architecture/category-identity-and-home-merch.md"
       - "docs/architecture/catalog-locale-page-heroes.md"
       - "docs/reports/2026-09-12-category-save-merch.md"

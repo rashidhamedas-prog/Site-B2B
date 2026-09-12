@@ -25,3 +25,4 @@ Architecture: `docs/architecture/category-identity-and-home-merch.md`
 
 - Specs: category-storefront, category-unique, migration.
 - After deploy: `GET /v1/categories` includes پاییزی; `www.poshaktaranom.ir` home HTML includes پاییزی (or `Autumn پاییزی` until the name is cleaned).
+- LIVE `e6d8dd6`: home pills+grid show Autumn پاییزی; `/category/autumn` 200. Health 200.

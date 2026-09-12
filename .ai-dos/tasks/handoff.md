@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T12:30:00Z — TASK-20260912-005 CLOSED live `e6d8dd6`
+
+- Retail home shows **Autumn پاییزی** in pills + luxury grid (11 ACTIVE). `/category/autumn` 200.
+- Migration `CategoryLiveUnique1757682000005` applied; live unique name/slug; CMS maxItems 16.
+- Deploy note: VPS disk hit 100% during first compose build; postgres recovered after prune (6GB free). Duplicate migrations row id 91 same name — leftover of concurrent api/worker start; schema is correct.
+- Independent Security residual (partial unique migration). Claims released.
+
 ## 2026-09-12T11:55:00Z — TASK-20260912-005 category save + home merch (implementing)
 
 - Owner: Persian category rename that does not stick; new ACTIVE «پاییزی» missing on site.
