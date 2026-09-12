@@ -50,6 +50,7 @@ export function Badge({ variant = 'neutral', children, className, dot }: BadgePr
 
 const ORDER_STATUS_FA: Record<string, string> = {
   DRAFT:            'پیش‌نویس',
+  AWAITING_PAYMENT: 'در انتظار پرداخت',
   PENDING_REVIEW:   'در انتظار بررسی',
   CONFIRMED:        'تأیید شده',
   PROCESSING:       'در حال پردازش',
@@ -67,6 +68,7 @@ const ORDER_STATUS_FA: Record<string, string> = {
 
 const ORDER_STATUS_VARIANT: Record<string, BadgeVariant> = {
   DRAFT:            'neutral',
+  AWAITING_PAYMENT: 'warning',
   PENDING_REVIEW:   'warning',
   CONFIRMED:        'primary',
   PROCESSING:       'info',

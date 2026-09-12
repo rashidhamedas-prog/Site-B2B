@@ -29,6 +29,7 @@ export enum OrderType {
 
 export enum OrderStatus {
   DRAFT = 'DRAFT',
+  AWAITING_PAYMENT = 'AWAITING_PAYMENT',
   PENDING_REVIEW = 'PENDING_REVIEW',
   CONFIRMED = 'CONFIRMED',
   PROCESSING = 'PROCESSING',

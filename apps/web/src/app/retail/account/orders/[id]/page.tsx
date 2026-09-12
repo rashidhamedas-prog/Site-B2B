@@ -42,6 +42,7 @@ type Order = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
+  AWAITING_PAYMENT: 'در انتظار پرداخت',
   PENDING_REVIEW: 'در بررسی',
   CONFIRMED: 'تأیید شد',
   PACKING: 'آماده‌سازی',
@@ -69,6 +70,8 @@ export default function RetailOrderDetailPage({ params }: { params: Promise<{ id
   const { id } = use(params);
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
+  const [payError, setPayError] = useState('');
+  const [paying, setPaying] = useState(false);
 
   useEffect(() => {
     apiClient
@@ -76,6 +79,23 @@ export default function RetailOrderDetailPage({ params }: { params: Promise<{ id
       .then(setOrder)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'سفارش پیدا نشد'));
   }, [id]);
+
+  const payRemaining = async () => {
+    if (!order) return;
+    setPaying(true);
+    setPayError('');
+    try {
+      const pay = await apiClient.post<{ redirectUrl?: string }>('/payments/start', {
+        orderId: order.id,
+        channel: 'RETAIL',
+      });
+      if (!pay?.redirectUrl) throw new Error('آدرس درگاه دریافت نشد');
+      window.location.href = pay.redirectUrl;
+    } catch (err: unknown) {
+      setPayError(err instanceof Error ? err.message : 'اتصال به درگاه ناموفق بود');
+      setPaying(false);
+    }
+  };
 
   if (error) {
     return (
@@ -100,6 +120,21 @@ export default function RetailOrderDetailPage({ params }: { params: Promise<{ id
           {new Date(order.createdAt).toLocaleDateString('fa-IR', { dateStyle: 'long' })} — {STATUS_LABEL[order.status] || order.status}
         </p>
       </div>
+      {order.status === 'AWAITING_PAYMENT' ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+          <p className="text-sm font-bold text-amber-900">پرداخت این سفارش هنوز نهایی نشده است.</p>
+          <p className="mt-1 text-xs text-amber-800">بعد از پرداخت موفق، سفارش ثبت می‌شود و در بررسی قرار می‌گیرد.</p>
+          {payError ? <p className="mt-2 text-xs text-red-600">{payError}</p> : null}
+          <button
+            type="button"
+            onClick={payRemaining}
+            disabled={paying}
+            className="mt-3 rounded-full bg-[var(--retail-gold)] px-5 py-2.5 text-sm font-extrabold text-white disabled:opacity-60"
+          >
+            {paying ? 'اتصال به درگاه…' : 'تکمیل پرداخت'}
+          </button>
+        </div>
+      ) : null}
       {order.trackingCode ? (
         <p className="rounded-2xl bg-gray-50 px-4 py-3 text-sm">
           کد پیگیری: <span className="font-mono font-bold">{order.trackingCode}</span>

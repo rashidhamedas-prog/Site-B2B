@@ -355,7 +355,7 @@ export class AuthService {
           .createQueryBuilder('o')
           .select('SUM(o.total)', 'sum')
           .where('o.customerId = :cid', { cid: customer.id })
-          .andWhere("o.status NOT IN ('PENDING_REVIEW', 'CANCELLED', 'DELETED')");
+          .andWhere("o.status NOT IN ('AWAITING_PAYMENT', 'PENDING_REVIEW', 'CANCELLED', 'DELETED')");
         if (isRetailPurpose(user.purpose)) {
           spentQ.andWhere("UPPER(o.type) IN ('RETAIL', 'RETAIL_WEBSITE')");
         } else if (isWholesalePurpose(user.purpose)) {

@@ -225,6 +225,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private async handleOrderCreated(orderId: string, channel: string | null) {
     const order = await this.orders.findOne({ where: { id: orderId } });
     if (!order) return;
+    if (order.status === 'AWAITING_PAYMENT') return;
     const customer = order.customerId
       ? await this.customers.findOne({ where: { id: order.customerId } })
       : null;

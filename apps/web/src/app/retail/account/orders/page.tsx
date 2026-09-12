@@ -15,6 +15,7 @@ type OrderRow = {
 
 const STATUS_STEPS = ['PENDING_REVIEW', 'CONFIRMED', 'PACKING', 'SHIPPED', 'DELIVERED'] as const;
 const STATUS_LABEL: Record<string, string> = {
+  AWAITING_PAYMENT: 'در انتظار پرداخت',
   PENDING_REVIEW: 'در بررسی',
   CONFIRMED: 'تأیید شد',
   PACKING: 'آماده‌سازی',

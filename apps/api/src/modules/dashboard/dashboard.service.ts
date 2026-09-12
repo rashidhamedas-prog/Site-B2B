@@ -13,7 +13,7 @@ export type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
 const CANCELLED = 'CANCELLED';
 const DELETED = 'DELETED';
-const EXCLUDE_REVENUE = ['PENDING_REVIEW', 'CANCELLED', 'DELETED'];
+const EXCLUDE_REVENUE = ['AWAITING_PAYMENT', 'PENDING_REVIEW', 'CANCELLED', 'DELETED'];
 const EXCLUDE_ORDERS = ['CANCELLED', 'DELETED'];
 
 @Injectable()

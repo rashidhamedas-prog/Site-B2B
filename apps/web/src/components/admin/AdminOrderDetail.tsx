@@ -390,6 +390,14 @@ function AdminOrderDetailInner({ id }: { id: string }) {
             )}
           </div>
 
+          {!deleted && order.status === 'AWAITING_PAYMENT' && (
+            <div className="card p-5 space-y-2">
+              <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2">
+                پرداخت آنلاین این سفارش نهایی نشده؛ هنوز در صف بررسی نیست.
+              </p>
+              <button onClick={() => updateStatus('CANCELLED')} disabled={updatingStatus} className="w-full btn btn-md border border-error text-error hover:bg-red-50 flex items-center justify-center gap-2"><XCircle className="h-4 w-4" />لغو سفارش پرداخت‌نشده</button>
+            </div>
+          )}
           {!deleted && order.status === 'PENDING_REVIEW' && (
             <div className="card p-5 space-y-2">
               <button onClick={() => updateStatus('PROCESSING')} disabled={updatingStatus} className="w-full btn btn-primary btn-md flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />تأیید و پردازش</button>

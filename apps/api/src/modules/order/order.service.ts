@@ -35,11 +35,17 @@ import {
   shouldCommitStockOnConfirm,
   shouldReverseCommittedStock,
 } from './order-stock-settlement';
+import {
+  initialCreateStatus,
+  shouldNotifyOrderRegisteredOnCreate,
+  statusAfterCapturedPayment,
+} from './order-payment-lifecycle';
 import { FulfillmentService } from './fulfillment.service';
 import { snapshotVendorFulfillment, stripOrderVendorSecrets } from './fulfillment-split-policy';
 
 /** Allowed Order status transitions (admin). */
 const ORDER_TRANSITIONS: Record<string, string[]> = {
+  AWAITING_PAYMENT: ['CANCELLED', 'DELETED'],
   PENDING_REVIEW: ['CONFIRMED', 'PROCESSING', 'CANCELLED', 'DELETED'],
   CONFIRMED: ['PROCESSING', 'SHIPPED', 'CANCELLED', 'DELETED'],
   PROCESSING: ['SHIPPED', 'CANCELLED', 'DELETED'],
@@ -817,6 +823,8 @@ export class OrderService {
           : JSON.stringify(dto.shippingAddress);
     }
 
+    const initialStatus = initialCreateStatus(paymentMethod, orderTotal);
+
     // Persist the order and all financial/inventory effects on one DB connection.
     // Any failed conditional update rolls the entire checkout back.
     let saved: OrderEntity;
@@ -842,7 +850,7 @@ export class OrderService {
                 shippingAddress,
                 paymentMethod,
                 notes,
-                status: 'PENDING_REVIEW',
+                status: initialStatus,
                 intraCityFee,
                 perKgFee,
                 freeShipping,
@@ -908,17 +916,19 @@ export class OrderService {
           );
         }
 
-        await this.outbox.enqueue(
-          {
-            operationId: `${orderRow.id}:created`,
-            eventType: OUTBOX_EVENT_TYPES.ORDER_CREATED_NOTIFICATION,
-            aggregateType: 'ORDER',
-            aggregateId: orderRow.id,
-            channel,
-            payload: { orderId: orderRow.id, orderNumber: orderRow.orderNumber, customerId: dto.customerId },
-          },
-          manager,
-        );
+        if (shouldNotifyOrderRegisteredOnCreate(initialStatus)) {
+          await this.outbox.enqueue(
+            {
+              operationId: `${orderRow.id}:created`,
+              eventType: OUTBOX_EVENT_TYPES.ORDER_CREATED_NOTIFICATION,
+              aggregateType: 'ORDER',
+              aggregateId: orderRow.id,
+              channel,
+              payload: { orderId: orderRow.id, orderNumber: orderRow.orderNumber, customerId: dto.customerId },
+            },
+            manager,
+          );
+        }
 
         if (channel === 'RETAIL' && dto.affiliateId) {
           const affiliateStatus =
@@ -1096,6 +1106,59 @@ export class OrderService {
   private orderStockChannel(order: { type?: string }): 'WHOLESALE' | 'RETAIL' {
     const t = String(order.type || 'WHOLESALE').toUpperCase();
     return t === 'RETAIL' || t === 'RETAIL_WEBSITE' ? 'RETAIL' : 'WHOLESALE';
+  }
+
+  /**
+   * After a payment is captured: unpaid ONLINE enters PENDING_REVIEW;
+   * an already-reviewed CASH/invoice order confirms. Stock settles once.
+   */
+  async applyCapturedPayment(orderId: string, manager: EntityManager): Promise<void> {
+    const orderRepo = manager.getRepository(OrderEntity);
+    const locked = await orderRepo.findOne({
+      where: { id: orderId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!locked || locked.voidedAt || locked.effectsReversedAt) return;
+    if (['CANCELLED', 'DELETED'].includes(locked.status)) return;
+
+    const channel = this.orderStockChannel(locked);
+    const applied = statusAfterCapturedPayment(locked.status);
+    if (applied.nextStatus !== locked.status) {
+      const patch: Partial<OrderEntity> = { status: applied.nextStatus };
+      if (applied.nextStatus === 'CONFIRMED') patch.confirmedAt = new Date();
+      await orderRepo.update(orderId, patch as any);
+    }
+    await this.commitStockForOrder(orderId, manager);
+    if (applied.notifyRegistered) {
+      await this.outbox.enqueue(
+        {
+          operationId: `${orderId}:created`,
+          eventType: OUTBOX_EVENT_TYPES.ORDER_CREATED_NOTIFICATION,
+          aggregateType: 'ORDER',
+          aggregateId: orderId,
+          channel,
+          payload: {
+            orderId,
+            orderNumber: locked.orderNumber,
+            customerId: locked.customerId,
+          },
+        },
+        manager,
+      );
+    }
+    if (applied.nextStatus !== locked.status) {
+      await this.outbox.enqueue(
+        {
+          operationId: `${orderId}:status:${applied.nextStatus}`,
+          eventType: OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION,
+          aggregateType: 'ORDER',
+          aggregateId: orderId,
+          channel,
+          payload: { orderId, status: applied.nextStatus, previousStatus: locked.status },
+        },
+        manager,
+      );
+    }
   }
 
   /**

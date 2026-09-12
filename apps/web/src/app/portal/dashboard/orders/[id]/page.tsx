@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Package, Truck, CheckCircle, Clock } from 'lucide-react';
+import { ArrowRight, Package, Truck, CheckCircle, Clock, CreditCard } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { OrderStatusBadge } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -31,6 +31,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState('');
 
   useEffect(() => {
     apiClient.get<Order>(`/orders/${id}`)
@@ -43,6 +45,22 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   if (!order) return null;
 
   const currentIdx = STATUS_FLOW.findIndex((s) => s.key === order.status);
+
+  const payRemaining = async () => {
+    setPaying(true);
+    setPayError('');
+    try {
+      const pay = await apiClient.post<{ redirectUrl?: string }>('/payments/start', {
+        orderId: order.id,
+        channel: 'WHOLESALE',
+      });
+      if (!pay?.redirectUrl) throw new Error('آدرس درگاه دریافت نشد');
+      window.location.href = pay.redirectUrl;
+    } catch (err: unknown) {
+      setPayError(err instanceof Error ? err.message : 'اتصال به درگاه ناموفق بود');
+      setPaying(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -58,6 +76,23 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
           <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('fa-IR', { dateStyle: 'long' })}</p>
         </div>
       </div>
+
+      {order.status === 'AWAITING_PAYMENT' ? (
+        <div className="card p-4 border border-amber-200 bg-amber-50">
+          <p className="text-sm font-semibold text-amber-900">پرداخت این سفارش هنوز نهایی نشده است.</p>
+          <p className="mt-1 text-xs text-amber-800">بعد از پرداخت موفق، سفارش ثبت می‌شود و در بررسی قرار می‌گیرد.</p>
+          {payError ? <p className="mt-2 text-xs text-red-600">{payError}</p> : null}
+          <button
+            type="button"
+            onClick={payRemaining}
+            disabled={paying}
+            className="btn btn-primary btn-sm mt-3 inline-flex items-center gap-1.5"
+          >
+            <CreditCard className="h-3.5 w-3.5" />
+            {paying ? 'اتصال به درگاه...' : 'تکمیل پرداخت'}
+          </button>
+        </div>
+      ) : null}
 
       {/* Status */}
       <div className="card p-5">

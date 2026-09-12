@@ -40,6 +40,7 @@ function timeAgo(dateStr: string) {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  AWAITING_PAYMENT: { label: 'در انتظار پرداخت', color: 'text-amber-700', bg: 'bg-amber-100' },
   PENDING_REVIEW: { label: 'در انتظار بررسی', color: 'text-amber-700', bg: 'bg-amber-100' },
   PENDING:        { label: 'در انتظار', color: 'text-amber-700', bg: 'bg-amber-100' },
   CONFIRMED:      { label: 'تأیید شده', color: 'text-blue-700', bg: 'bg-blue-100' },

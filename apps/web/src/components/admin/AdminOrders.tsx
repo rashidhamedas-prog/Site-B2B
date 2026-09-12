@@ -9,9 +9,9 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
 
-const STATUS_FILTERS = ['همه', 'PENDING_REVIEW', 'PROCESSING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'DELETED'];
+const STATUS_FILTERS = ['همه', 'AWAITING_PAYMENT', 'PENDING_REVIEW', 'PROCESSING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'DELETED'];
 const STATUS_FA: Record<string, string> = {
-  PENDING_REVIEW: 'در انتظار بررسی', PROCESSING: 'در حال پردازش', CONFIRMED: 'تأیید شده',
+  AWAITING_PAYMENT: 'در انتظار پرداخت', PENDING_REVIEW: 'در انتظار بررسی', PROCESSING: 'در حال پردازش', CONFIRMED: 'تأیید شده',
   SHIPPED: 'ارسال شده', DELIVERED: 'تحویل داده شده', COMPLETED: 'تکمیل شده',
   CANCELLED: 'لغو شده', DELETED: 'حذف‌شده',
 };
@@ -135,6 +135,16 @@ export function AdminOrders() {
                   <td className="px-4 py-3"><OrderStatusBadge status={order.status} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
+                      {order.status === 'AWAITING_PAYMENT' && (
+                        <button
+                          disabled={busyId === order.id}
+                          onClick={() => updateStatus(order.id, 'CANCELLED')}
+                          className="text-error hover:opacity-80"
+                          title="لغو (پرداخت نشده)"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      )}
                       {order.status === 'PENDING_REVIEW' && (
                         <>
                           <button

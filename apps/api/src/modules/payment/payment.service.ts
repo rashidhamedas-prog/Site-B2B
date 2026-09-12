@@ -21,8 +21,6 @@ import { OrderEntity } from '../order/entities/order.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { SettingsService } from '../settings/settings.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
-import { OutboxService } from '../omnichannel/services/outbox.service';
-import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.adapter';
 import { TorobPayAdapter, torobpayCallbackIsSuccess } from './adapters/torobpay.adapter';
@@ -31,6 +29,7 @@ import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { assertPositiveFiniteIrr, toPublicPaymentDto, PaymentPublicDto } from './dto/payment-public.dto';
 import { PaymentMetrics, maskMobile } from './payment-metrics';
 import { OrderService } from '../order/order.service';
+import { isOrderPayable } from '../order/order-payment-lifecycle';
 
 interface CreatePaymentInput {
   amount?: number;
@@ -76,7 +75,6 @@ export class PaymentService {
     private readonly config: ConfigService,
     private readonly settings: SettingsService,
     private readonly affiliatePostback: AffiliatePostbackService,
-    private readonly outbox: OutboxService,
     private readonly zarinpal: ZarinPalAdapter,
     private readonly digipay: DigiPayAdapter,
     private readonly torobpay: TorobPayAdapter,
@@ -311,7 +309,7 @@ export class PaymentService {
       amount = Number(order.total) || 0;
       const t = String(order.type || '').toUpperCase();
       if (t === 'RETAIL' || t === 'RETAIL_WEBSITE') channel = 'RETAIL';
-      if (['CANCELLED', 'DELETED', 'PAID', 'CONFIRMED'].includes(order.status)) {
+      if (!isOrderPayable(order.status)) {
         throw new BadRequestException('این سفارش قابل پرداخت نیست');
       }
     } else if (input.invoiceId) {
@@ -892,7 +890,6 @@ export class PaymentService {
     const applied = await this.dataSource.transaction(async (manager) => {
       const payRepo = manager.getRepository(PaymentEntity);
       const invRepo = manager.getRepository(InvoiceEntity);
-      const orderRepo = manager.getRepository(OrderEntity);
       const ledgerRepo = manager.getRepository(PaymentLedgerEntryEntity);
 
       const locked = await payRepo.findOne({
@@ -946,22 +943,7 @@ export class PaymentService {
       );
 
       if (payment.orderId) {
-        await orderRepo.update(payment.orderId, {
-          status: 'CONFIRMED',
-          confirmedAt: new Date(),
-        } as any);
-        await this.orders.commitStockForOrder(payment.orderId, manager);
-        await this.outbox.enqueue(
-          {
-            operationId: `${payment.orderId}:status:CONFIRMED`,
-            eventType: OUTBOX_EVENT_TYPES.ORDER_STATUS_CHANGED_NOTIFICATION,
-            aggregateType: 'ORDER',
-            aggregateId: payment.orderId,
-            channel: 'RETAIL',
-            payload: { orderId: payment.orderId, status: 'CONFIRMED' },
-          },
-          manager,
-        );
+        await this.orders.applyCapturedPayment(payment.orderId, manager);
       }
 
       if (payment.invoiceId) {
@@ -1110,12 +1092,7 @@ export class PaymentService {
       );
 
       if (input.orderId) {
-        const orderRepo = manager.getRepository(OrderEntity);
-        await orderRepo.update(input.orderId, {
-          status: 'CONFIRMED',
-          confirmedAt: new Date(),
-        } as any);
-        await this.orders.commitStockForOrder(input.orderId, manager);
+        await this.orders.applyCapturedPayment(input.orderId, manager);
       }
 
       return toPublicPaymentDto(payment, { ok: true });
