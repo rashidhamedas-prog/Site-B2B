@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe, Res } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ParseIntPipe, DefaultValuePipe, Res, ForbiddenException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { InvoiceService } from './invoice.service';
 import { UserEntity } from '../auth/entities/user.entity';
+import { emptyInvoiceList, escapeInvoiceHtml } from './invoice-access';
 
 type JwtUser = { sub: string; role: string };
 
@@ -39,13 +40,24 @@ export class InvoiceController {
   ) {
     if (req.user.role === 'CUSTOMER') {
       const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
-      return this.invoiceService.findAll(page, limit, user?.customerId ?? undefined);
+      if (!user?.customerId) {
+        return emptyInvoiceList(page, limit);
+      }
+      return this.invoiceService.findAll(page, limit, user.customerId);
     }
     return this.invoiceService.findAll(page, limit, customerId, channel);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(
+    @Param('id') id: string,
+    @Request() req: Express.Request & { user: JwtUser },
+  ) {
+    if (req.user?.role === 'CUSTOMER') {
+      const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
+      if (!user?.customerId) throw new ForbiddenException('دسترسی غیرمجاز');
+      return this.invoiceService.findOneForCustomer(id, user.customerId);
+    }
     return this.invoiceService.findOne(id);
   }
 
@@ -83,18 +95,30 @@ export class InvoiceController {
 
   @Get(':id/pdf')
   @ApiOperation({ summary: 'دانلود PDF فاکتور' })
-  async downloadPdf(@Param('id') id: string, @Res() res: any) {
-    const invoice = await this.invoiceService.findOne(id);
-    const items = (invoice as any).items ?? [];
+  async downloadPdf(
+    @Param('id') id: string,
+    @Request() req: Express.Request & { user: JwtUser },
+    @Res() res: any,
+  ) {
+    let invoice;
+    if (req.user?.role === 'CUSTOMER') {
+      const user = await this.userRepo.findOne({ where: { id: req.user.sub } });
+      if (!user?.customerId) throw new ForbiddenException('دسترسی غیرمجاز');
+      invoice = await this.invoiceService.findOneForCustomer(id, user.customerId);
+    } else {
+      invoice = await this.invoiceService.findOne(id);
+    }
+    const items = (invoice as { items?: Array<Record<string, unknown>> }).items ?? [];
+    const h = escapeInvoiceHtml;
 
     const toman = (n: number) => Math.round(Number(n) / 10).toLocaleString('fa-IR');
 
-    const itemRows = items.map((item: any) => `
+    const itemRows = items.map((item) => `
       <tr>
-        <td style="padding:8px;border:1px solid #e5e7eb;">${item.description ?? item.productName ?? '-'}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb;text-align:center;">${item.quantity ?? 1}</td>
-        <td style="padding:8px;border:1px solid #e5e7eb;text-align:left;">${toman(item.unitPrice ?? 0)} ت</td>
-        <td style="padding:8px;border:1px solid #e5e7eb;text-align:left;">${toman(item.totalPrice ?? 0)} ت</td>
+        <td style="padding:8px;border:1px solid #e5e7eb;">${h(item.description ?? item.productName ?? '-')}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb;text-align:center;">${h(item.quantity ?? 1)}</td>
+        <td style="padding:8px;border:1px solid #e5e7eb;text-align:left;">${toman(Number(item.unitPrice) || 0)} ت</td>
+        <td style="padding:8px;border:1px solid #e5e7eb;text-align:left;">${toman(Number(item.totalPrice) || 0)} ت</td>
       </tr>
     `).join('');
 
@@ -102,7 +126,7 @@ export class InvoiceController {
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>فاکتور ${(invoice as any).invoiceNumber}</title>
+<title>فاکتور ${h((invoice as any).invoiceNumber)}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
   * { font-family: 'Vazirmatn', Tahoma, sans-serif; box-sizing: border-box; }
@@ -129,15 +153,15 @@ export class InvoiceController {
   </div>
   <div style="text-align:left;">
     <div style="font-size:18px;font-weight:bold;color:#1B5C4A;">فاکتور</div>
-    <div style="font-size:16px;font-weight:bold;">${(invoice as any).invoiceNumber}</div>
+    <div style="font-size:16px;font-weight:bold;">${h((invoice as any).invoiceNumber)}</div>
     <div style="color:#6b7280;font-size:11px;">تاریخ: ${new Date((invoice as any).createdAt).toLocaleDateString('fa-IR')}</div>
   </div>
 </div>
 
 <div class="meta">
-  <div class="meta-item"><div class="meta-label">مشتری</div><div class="meta-value">${(invoice as any).customer?.businessName ?? '-'}</div></div>
-  <div class="meta-item"><div class="meta-label">وضعیت</div><div class="meta-value">${(invoice as any).status}</div></div>
-  <div class="meta-item"><div class="meta-label">روش پرداخت</div><div class="meta-value">${(invoice as any).paymentTerms ?? 'نقدی'}</div></div>
+  <div class="meta-item"><div class="meta-label">مشتری</div><div class="meta-value">${h((invoice as any).customer?.businessName ?? '-')}</div></div>
+  <div class="meta-item"><div class="meta-label">وضعیت</div><div class="meta-value">${h((invoice as any).status)}</div></div>
+  <div class="meta-item"><div class="meta-label">روش پرداخت</div><div class="meta-value">${h((invoice as any).paymentTerms ?? 'نقدی')}</div></div>
   <div class="meta-item"><div class="meta-label">تلفن</div><div class="meta-value">۰۹۱۵ ۲۴۲ ۴۶۲۴</div></div>
 </div>
 
@@ -167,7 +191,7 @@ export class InvoiceController {
 </html>`;
 
     res.header('Content-Type', 'text/html; charset=utf-8');
-    res.header('Content-Disposition', `inline; filename="invoice-${(invoice as any).invoiceNumber}.html"`);
+    res.header('Content-Disposition', `inline; filename="invoice-${String((invoice as any).invoiceNumber || id).replace(/[^A-Za-z0-9._-]/g, '_')}.html"`);
     res.send(html);
   }
 }

@@ -92,7 +92,7 @@ export function PortalSidebar() {
             <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
             <p className="text-xs text-gray-400 truncate">{meta || 'حساب عمده'}</p>
           </div>
-          <button onClick={logout} className="text-gray-400 hover:text-error transition-colors" title="خروج">
+          <button type="button" onClick={logout} className="text-gray-400 hover:text-error transition-colors" title="خروج" aria-label="خروج">
             <LogOut className="h-4 w-4" />
           </button>
         </div>

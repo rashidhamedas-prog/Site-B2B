@@ -23,8 +23,9 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { OrderService } from './order.service';
 import { UserEntity } from '../auth/entities/user.entity';
 import { CreateOrderDto, QuoteDiscountsDto } from './dto/create-order.dto';
+import { shopperCanReadOrderType, shopperOrderScope } from '../auth/shopper-channel';
 
-type JwtUser = { sub: string; id: string; role: string; phone: string; customerId?: string };
+type JwtUser = { sub: string; id: string; role: string; phone: string; customerId?: string; purpose?: string };
 
 @ApiTags('orders')
 @ApiBearerAuth()
@@ -79,10 +80,18 @@ export class OrderController {
   ) {
     if (!this.isStaff(req.user.role)) {
       const cid = await this.resolveOwnCustomerId(req.user);
-      const result = await this.orderService.findAll(page, limit, cid ?? undefined, status, type, {
-        includeDeleted: false,
-        channel,
-      });
+      const scope = shopperOrderScope(req.user.purpose);
+      const result = await this.orderService.findAll(
+        page,
+        limit,
+        cid ?? undefined,
+        status,
+        scope?.type ?? type,
+        {
+          includeDeleted: false,
+          channel: scope?.channel ?? channel,
+        },
+      );
       return {
         ...result,
         data: result.data.map((order) => this.orderService.stripCustomerOrder(order)),
@@ -145,6 +154,9 @@ export class OrderController {
     if (!this.isStaff(req.user.role)) {
       const cid = await this.resolveOwnCustomerId(req.user);
       if (order.customerId !== cid) throw new ForbiddenException('دسترسی غیرمجاز');
+      if (!shopperCanReadOrderType(req.user.purpose, order.type)) {
+        throw new ForbiddenException('دسترسی غیرمجاز');
+      }
       if (order.status === 'DELETED' || order.voidedAt) {
         throw new ForbiddenException('این سفارش حذف شده است');
       }

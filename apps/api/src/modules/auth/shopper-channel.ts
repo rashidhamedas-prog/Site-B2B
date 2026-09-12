@@ -1,5 +1,7 @@
 /** Channel membership checks for a shared phone (D1: retail + wholesale). */
 
+import { isRetailPurpose, isWholesalePurpose } from './staff-access';
+
 export function isB2cCustomer(customer: { type?: string | null; notes?: string | null } | null): boolean {
   if (!customer) return false;
   if (String(customer.type || '').toUpperCase() === 'B2C') return true;
@@ -34,4 +36,37 @@ export function wholesalePortalDenial(
     return 'حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.';
   }
   return null;
+}
+
+export function isRetailOrderType(type?: string | null): boolean {
+  const t = String(type || '').toUpperCase();
+  return t === 'RETAIL' || t === 'RETAIL_WEBSITE';
+}
+
+/** Non-staff shopper lists are locked to the JWT channel. */
+export function shopperOrderScope(
+  purpose?: string | null,
+): { type: string; channel: 'RETAIL' | 'WHOLESALE' } | null {
+  if (isRetailPurpose(purpose)) return { type: 'RETAIL_WEBSITE', channel: 'RETAIL' };
+  if (isWholesalePurpose(purpose)) return { type: 'WHOLESALE', channel: 'WHOLESALE' };
+  return null;
+}
+
+export function shopperCanReadOrderType(purpose?: string | null, orderType?: string | null): boolean {
+  const scope = shopperOrderScope(purpose);
+  if (!scope) return true;
+  const retail = isRetailOrderType(orderType);
+  return scope.channel === 'RETAIL' ? retail : !retail;
+}
+
+export function omitWholesaleOnlyProfileFields<T extends Record<string, unknown>>(
+  profile: T,
+  purpose?: string | null,
+): T {
+  if (!isRetailPurpose(purpose)) return profile;
+  const next: Record<string, unknown> = { ...profile };
+  delete next.creditLimit;
+  delete next.segment;
+  delete next.customerCode;
+  return next as T;
 }

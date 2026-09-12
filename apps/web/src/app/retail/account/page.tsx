@@ -54,7 +54,8 @@ function RetailAccountHome() {
             '/auth/me/profile',
           ),
         ]);
-        setOrders(Array.isArray(res.data) ? res.data : []);
+        const rows = Array.isArray(res.data) ? res.data : [];
+        setOrders(rows);
         setWallet(Number(me?.balance) || 0);
         setName(me?.ownerName || me?.businessName || me?.phone || '');
       } catch (err: unknown) {
@@ -71,9 +72,15 @@ function RetailAccountHome() {
     <div className="space-y-6">
       <div className="rounded-2xl bg-[var(--retail-primary)] px-5 py-5 text-white">
         <p className="text-xs font-bold opacity-80">سلام{name ? ` ${name}` : ''}</p>
-        <p className="mt-2 text-xs font-bold opacity-80">اعتبار کیف‌پول</p>
-        <p className="mt-1 text-2xl font-extrabold">{toman(wallet)} تومان</p>
-        <p className="mt-1 text-xs opacity-70">در تسویه می‌توانید از اعتبار استفاده کنید</p>
+        {loadError ? (
+          <p className="mt-2 text-sm text-white/90">موجودی و سفارش‌ها الان در دسترس نیست. دوباره تلاش کنید.</p>
+        ) : (
+          <>
+            <p className="mt-2 text-xs font-bold opacity-80">اعتبار کیف‌پول</p>
+            <p className="mt-1 text-2xl font-extrabold">{toman(wallet)} تومان</p>
+            <p className="mt-1 text-xs opacity-70">در تسویه می‌توانید از اعتبار استفاده کنید</p>
+          </>
+        )}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">

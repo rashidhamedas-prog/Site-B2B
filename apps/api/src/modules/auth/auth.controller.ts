@@ -63,7 +63,7 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({ summary: 'پروفایل کاربر جاری' })
-  getProfile(@Request() req: Express.Request & { user: { sub: string; role: string; phone: string } }) {
+  getProfile(@Request() req: Express.Request & { user: { sub: string; role: string; phone: string; purpose?: string } }) {
     return this.authService.getMyProfile(req.user);
   }
 

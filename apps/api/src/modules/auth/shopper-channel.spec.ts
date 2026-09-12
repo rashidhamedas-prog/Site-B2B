@@ -1,4 +1,4 @@
-import { canEnterRetailShopper, isB2cCustomer, wholesalePortalDenial } from './shopper-channel';
+import { canEnterRetailShopper, isB2cCustomer, wholesalePortalDenial, isRetailOrderType, shopperOrderScope, shopperCanReadOrderType, omitWholesaleOnlyProfileFields } from './shopper-channel';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -25,5 +25,26 @@ assert(
   'B2C cannot open portal',
 );
 assert(wholesalePortalDenial(null) !== null, 'missing customer denied');
+
+assert(isRetailOrderType('RETAIL_WEBSITE') === true, 'retail website type');
+assert(isRetailOrderType('WHOLESALE') === false, 'wholesale type');
+assert(shopperOrderScope('retail')?.type === 'RETAIL_WEBSITE', 'retail list type forced');
+assert(shopperOrderScope('wholesale')?.type === 'WHOLESALE', 'wholesale list type forced');
+assert(shopperCanReadOrderType('retail', 'WHOLESALE') === false, 'retail jwt cannot read wholesale order');
+assert(shopperCanReadOrderType('wholesale', 'RETAIL_WEBSITE') === false, 'wholesale jwt cannot read retail order');
+assert(shopperCanReadOrderType('retail', 'RETAIL_WEBSITE') === true, 'retail jwt reads retail order');
+
+const retailProfile = omitWholesaleOnlyProfileFields(
+  { ownerName: 'علی', creditLimit: 1, segment: 'A', customerCode: 'TRN-1', balance: 0 },
+  'retail',
+);
+assert(!('creditLimit' in retailProfile), 'retail omits creditLimit');
+assert(!('segment' in retailProfile), 'retail omits segment');
+assert(!('customerCode' in retailProfile), 'retail omits customerCode');
+assert(retailProfile.balance === 0, 'retail keeps balance');
+assert(
+  'creditLimit' in omitWholesaleOnlyProfileFields({ creditLimit: 5 }, 'wholesale'),
+  'wholesale keeps creditLimit',
+);
 
 console.log('shopper-channel.spec.ts: OK');

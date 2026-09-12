@@ -30,12 +30,14 @@ import {
 } from './password-policy';
 import {
   actingRoleForPurpose,
+  isRetailPurpose,
   isStaffRole,
+  isWholesalePurpose,
   resolveAuthPurpose,
   roleAfterCustomerLink,
 } from './staff-access';
 import { canVendorLogin, isVendorRole } from '../vendor/vendor-policy';
-import { canEnterRetailShopper, wholesalePortalDenial } from './shopper-channel';
+import { canEnterRetailShopper, omitWholesaleOnlyProfileFields, wholesalePortalDenial } from './shopper-channel';
 import {
   normalizeAddressList,
   removeAddress,
@@ -343,19 +345,24 @@ export class AuthService {
     return this.userRepo.findOne({ where: { id } });
   }
 
-  async getMyProfile(user: { sub: string; role: string; phone: string }) {
+  async getMyProfile(user: { sub: string; role: string; phone: string; purpose?: string }) {
     const u = await this.userRepo.findOne({ where: { id: user.sub } });
     if (!u) return null;
     if (u.customerId) {
       const customer = await this.customerRepo.findOne({ where: { id: u.customerId } });
       if (customer) {
-        const spentRow = await this.orderRepo
+        const spentQ = this.orderRepo
           .createQueryBuilder('o')
           .select('SUM(o.total)', 'sum')
           .where('o.customerId = :cid', { cid: customer.id })
-          .andWhere("o.status NOT IN ('PENDING_REVIEW', 'CANCELLED', 'DELETED')")
-          .getRawOne();
-        return {
+          .andWhere("o.status NOT IN ('PENDING_REVIEW', 'CANCELLED', 'DELETED')");
+        if (isRetailPurpose(user.purpose)) {
+          spentQ.andWhere("UPPER(o.type) IN ('RETAIL', 'RETAIL_WEBSITE')");
+        } else if (isWholesalePurpose(user.purpose)) {
+          spentQ.andWhere("UPPER(COALESCE(o.type, 'WHOLESALE')) NOT IN ('RETAIL', 'RETAIL_WEBSITE')");
+        }
+        const spentRow = await spentQ.getRawOne();
+        const profile = {
           userId: u.id,
           phone: u.phone,
           email: u.email || customer.email,
@@ -375,6 +382,7 @@ export class AuthService {
           totalSpent: Number(spentRow?.sum) || 0,
           lastLoginAt: u.lastLoginAt,
         };
+        return omitWholesaleOnlyProfileFields(profile, user.purpose);
       }
     }
     return {

@@ -55,6 +55,7 @@ export function LoginForm() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? 'پنهان کردن رمز' : 'نمایش رمز'}
             className="absolute left-3 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

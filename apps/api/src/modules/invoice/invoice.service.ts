@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { InvoiceEntity } from './entities/invoice.entity';
 import { CustomerService } from '../customer/customer.service';
+import { isInvoiceUuid } from './invoice-access';
 
 @Injectable()
 export class InvoiceService {
@@ -59,8 +60,19 @@ export class InvoiceService {
   }
 
   async findOne(id: string) {
+    if (!isInvoiceUuid(id)) {
+      throw new BadRequestException('شناسه فاکتور نامعتبر است');
+    }
     const inv = await this.repo.findOne({ where: { id }, relations: ['customer'] });
     if (!inv) throw new NotFoundException('فاکتور یافت نشد');
+    return inv;
+  }
+
+  async findOneForCustomer(id: string, customerId: string) {
+    const inv = await this.findOne(id);
+    if (inv.customerId !== customerId) {
+      throw new ForbiddenException('دسترسی غیرمجاز');
+    }
     return inv;
   }
 
