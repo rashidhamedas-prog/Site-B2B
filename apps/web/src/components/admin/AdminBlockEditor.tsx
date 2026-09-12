@@ -85,7 +85,7 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
       });
       break;
     case 'stats':
-      Object.assign(base, { items: [{ value: '', label: '', sublabel: '' }] });
+      Object.assign(base, { items: [{ value: '', label: '', sublabel: '', icon: '' }] });
       break;
     case 'features':
       Object.assign(base, {
@@ -666,22 +666,28 @@ function BlockFields({
 
   if (block.type === 'stats') {
     const items = Array.isArray(p.items)
-      ? (p.items as Array<{ value?: string; label?: string; sublabel?: string }>)
+      ? (p.items as Array<{ value?: string; label?: string; sublabel?: string; icon?: string }>)
       : [];
     return (
       <ItemListEditor
         items={items}
         onChange={(next) => set('items', next)}
-        blank={{ value: '', label: '', sublabel: '' }}
+        blank={{ value: '', label: '', sublabel: '', icon: '' }}
         addLabel="افزودن آمار"
         renderItem={(item, _i, update) => (
-          <div className="grid gap-2 pr-6 sm:grid-cols-3">
+          <div className="grid gap-2 pr-6 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
             <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
             <Field
               label="زیربرچسب"
               value={item.sublabel ?? ''}
               onChange={(v) => update({ sublabel: v })}
+            />
+            <Field
+              label="آیکون (اختیاری: customers, years, models, team)"
+              value={item.icon ?? ''}
+              dir="ltr"
+              onChange={(v) => update({ icon: v })}
             />
           </div>
         )}

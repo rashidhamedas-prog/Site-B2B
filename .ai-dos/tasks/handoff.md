@@ -2,6 +2,19 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T10:40:00Z — TASK-20260912-001 wholesale stats rail (code)
+
+- Compact proof rail under wholesale hero: muted band + white card + isometric glyphs.
+- CMS `stats.items` unchanged; optional `icon`; kind resolver from label.
+- Gates: web `tsc --noEmit` 0; `wholesale-stat-kind.spec.mts` ok.
+- Next: commit, push, deploy, browser-check `.com` stats under hero.
+
+## 2026-09-12T10:10:00Z — TASK-20260912-001 wholesale stats rail (implementing)
+
+- Owner: make wholesale home stats under the hero more professional/graphical, with sound architecture, and about half the current band height.
+- Architecture: presentation-only. CMS `stats.items` stays source of truth. Kind resolver maps label/icon → isometric glyph. No API, no numbers rewrite, retail untouched.
+- Next: implement compact rail + spec, then tsc, commit, deploy, browser-check `.com`.
+
 ## 2026-09-09T23:01:00Z — TASK-20260910-020 CLOSED live `2bd11bc`
 
 - Live `.ir` DigiPay plate `retail-desktop-182e2ad9311d.webp` (1920×560). Prima `retail-desktop-e6ae94c783d0.webp`.

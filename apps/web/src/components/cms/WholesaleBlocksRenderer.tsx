@@ -46,7 +46,7 @@ export async function WholesaleBlocksRenderer({
         nodes.push(
           <WholesaleStats
             key={block.id}
-            items={arr<{ value: string; label: string; sublabel?: string }>(p, 'items')}
+            items={arr<{ value: string; label: string; sublabel?: string; icon?: string }>(p, 'items')}
           />,
         );
         break;

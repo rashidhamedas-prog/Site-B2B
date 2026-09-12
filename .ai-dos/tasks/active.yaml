@@ -1,5 +1,43 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260912-001"
+    title: "Compact graphical wholesale home stats rail under hero"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260912-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260912-001"
+      implementer: "cursor:implementer-TASK-20260912-001"
+      reviewer: "self-review-wholesale-cms-stats-only"
+      security: "not-required-no-triggers"
+    branch: "ai/TASK-20260912-001-wholesale-stats-strip"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-12T10:10:00Z"
+    heartbeat_at: "2026-09-12T10:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/wholesale/WholesaleStats.tsx"
+      - "apps/web/src/components/wholesale/WholesaleStatGlyph.tsx"
+      - "apps/web/src/lib/wholesale-stat-kind.ts"
+      - "apps/web/src/lib/wholesale-stat-kind.spec.mts"
+      - "apps/web/src/components/cms/WholesaleBlocksRenderer.tsx"
+      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-12-wholesale-stats-strip.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Wholesale home stats under hero: compact proof rail (~half current
+      band height), CMS items unchanged, optional icon + label inference.
+      No API/DB. Retail trust strip untouched.
+    acceptance_criteria:
+      - "Wholesale home stats remain CMS-driven (value/label/sublabel)"
+      - "Section vertical padding is about half of py-12/py-14"
+      - "Server-only render; no extra client JS or image requests"
+      - "Icons inferred from labels; optional CMS icon override"
+      - "wholesale-stat-kind spec + web tsc pass"
+      - "prefers-reduced-motion and RTL layout hold"
   - id: "TASK-20260910-001"
     title: "PDP guide rows (image+excerpt) above description; wholesale related cards"
     status: "in_progress"
