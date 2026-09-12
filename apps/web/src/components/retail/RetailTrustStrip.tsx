@@ -1,4 +1,5 @@
 import { RefreshCw, Scissors, ShieldCheck, Truck, type LucideIcon } from 'lucide-react';
+import { shapeDigitsInText } from '@taranom/persian-utils';
 
 export type TrustItem = {
   value: string;
@@ -47,7 +48,9 @@ export function RetailTrustStrip({ items }: { items?: TrustItem[] }) {
                 <Icon className="h-5 w-5" aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-extrabold text-[var(--retail-ink)]">{item.value}</p>
+                <p className="text-sm font-extrabold text-[var(--retail-ink)]">
+                  {shapeDigitsInText(item.value)}
+                </p>
                 <p className="mt-1 text-xs leading-6 text-[var(--retail-muted)]">
                   {item.label}
                   {item.sublabel ? ` — ${item.sublabel}` : ''}

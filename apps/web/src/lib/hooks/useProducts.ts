@@ -168,6 +168,13 @@ export interface Product {
     retailCanonical?: string;
   };
   categoryId?: string;
+  categoryIds?: string[];
+  categories?: Array<{
+    id: string;
+    slug?: string | null;
+    name: string;
+    nameEn?: string | null;
+  }>;
   collectionId?: string | null;
   isPreOrder?: boolean;
   preOrderDate?: string | null;

@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { BLOCK_TYPE_LABELS, newBlockId, type BlockType, type ContentBlock } from '@/lib/cms/types';
 import { AdminProductsBlockFields } from './AdminProductsBlockFields';
+import { shapeDigitsInText } from '@taranom/persian-utils';
 
 export type { BlockType, ContentBlock };
 export { BLOCK_TYPE_LABELS, newBlockId };
@@ -676,7 +677,14 @@ function BlockFields({
         addLabel="افزودن آمار"
         renderItem={(item, _i, update) => (
           <div className="grid gap-2 pr-6 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
+            <div>
+              <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
+              {item.value ? (
+                <p className="mt-1 text-[11px] text-gray-500">
+                  نمایش فارسی: {shapeDigitsInText(item.value, 'fa')}
+                </p>
+              ) : null}
+            </div>
             <Field label="برچسب" value={item.label ?? ''} onChange={(v) => update({ label: v })} />
             <Field
               label="زیربرچسب"
@@ -848,7 +856,14 @@ function BlockFields({
           addLabel="افزودن آمار"
           renderItem={(item, _i, update) => (
             <div className="grid gap-2 pr-6 sm:grid-cols-2">
-              <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
+              <div>
+                <Field label="عدد" value={item.value ?? ''} onChange={(v) => update({ value: v })} />
+                {item.value ? (
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    نمایش فارسی: {shapeDigitsInText(item.value, 'fa')}
+                  </p>
+                ) : null}
+              </div>
               <Field
                 label="برچسب"
                 value={item.label ?? ''}

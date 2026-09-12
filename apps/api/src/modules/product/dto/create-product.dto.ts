@@ -30,6 +30,15 @@ export class CreateProductDto {
   @IsString()
   categoryId?: string;
 
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'دسته‌های اضافی؛ دسته اصلی در categoryId می‌ماند و اگر در این لیست نباشد به ابتدا اضافه می‌شود',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  categoryIds?: string[];
+
   @ApiProperty({ example: 'مانتو بهار' })
   @IsString()
   @IsNotEmpty()

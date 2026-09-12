@@ -47,6 +47,7 @@ import { CategoryEntity } from '../modules/category/entities/category.entity';
 import { ProductSpecMemoryEntity } from '../modules/product/entities/product-spec-memory.entity';
 import { ProductRelatedEntity } from '../modules/product/entities/product-related.entity';
 import { ProductInternalLinkEntity } from '../modules/product/entities/product-internal-link.entity';
+import { ProductCategoryMembershipEntity } from '../modules/product/entities/product-category-membership.entity';
 import { ReturnRequestEntity } from '../modules/rma/entities/return-request.entity';
 import { ReturnRequestAuditEntity } from '../modules/rma/entities/return-request-audit.entity';
 import { ChannelConnectionEntity } from '../modules/omnichannel/entities/channel-connection.entity';
@@ -82,6 +83,7 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     ProductSpecMemoryEntity,
     ProductRelatedEntity,
     ProductInternalLinkEntity,
+    ProductCategoryMembershipEntity,
     OrderEntity, OrderItemEntity, FulfillmentOrderEntity, FulfillmentOrderItemEntity,
     VendorLedgerEntryEntity,
     InvoiceEntity,

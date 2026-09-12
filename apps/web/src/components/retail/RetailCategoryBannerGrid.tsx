@@ -5,6 +5,7 @@ import { getServerApiBase } from '@/lib/server-api';
 type Category = {
   id: string;
   name: string;
+  nameEn?: string | null;
   slug?: string | null;
   bannerUrl?: string | null;
 };
@@ -42,16 +43,26 @@ function mediaUrl(url?: string | null) {
   return `/media/${url}`;
 }
 
-function displayName(name: string) {
-  // "blouses شومیز" → prefer Persian part when present
-  const parts = name.trim().split(/\s+/);
-  const fa = parts.filter((p) => /[\u0600-\u06FF]/.test(p)).join(' ');
-  return fa || name;
+function displayName(c: Category) {
+  const name = (c.name || '').trim();
+  const fa = name
+    .split(/\s+/)
+    .filter((p) => /[\u0600-\u06FF]/.test(p))
+    .join(' ');
+  return fa || name || (c.nameEn || '').trim();
 }
 
 function fallbackFor(c: Category, index: number) {
-  const key = (c.name.split(/\s+/)[0] || '').toLowerCase();
-  return FALLBACK_BY_KEY[key] || FALLBACK_BANNERS[index % FALLBACK_BANNERS.length];
+  const slugKey = (c.slug || '').toLowerCase();
+  const keys = Object.keys(FALLBACK_BY_KEY).sort((a, b) => b.length - a.length);
+  for (const key of keys) {
+    if (slugKey === key || slugKey.endsWith(`-${key}`)) return FALLBACK_BY_KEY[key];
+  }
+  const enKey = (c.nameEn || '').trim().toLowerCase().replace(/\s+/g, '-');
+  for (const key of keys) {
+    if (enKey === key || enKey.endsWith(`-${key}`)) return FALLBACK_BY_KEY[key];
+  }
+  return FALLBACK_BANNERS[index % FALLBACK_BANNERS.length];
 }
 
 async function fetchCategories(
@@ -71,9 +82,11 @@ async function fetchCategories(
     let filtered = list;
     if (idFilter.length) {
       const order = new Map(idFilter.map((id, i) => [id, i]));
-      filtered = list
+      const pinned = list
         .filter((c) => order.has(c.id))
         .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+      const rest = list.filter((c) => !order.has(c.id));
+      filtered = [...pinned, ...rest];
     } else {
       // Stable retail order: reverse createdAt DESC from API → oldest first feels catalog-like
       filtered = [...list].reverse();
@@ -135,7 +148,7 @@ export async function RetailCategoryBannerGrid({
         <div className={`grid gap-3 sm:gap-4 ${gridClass}`}>
           {items.map((c, i) => {
             const img = mediaUrl(c.bannerUrl) || fallbackFor(c, i);
-            const label = displayName(c.name);
+            const label = displayName(c);
             return (
               <Link
                 key={c.id}

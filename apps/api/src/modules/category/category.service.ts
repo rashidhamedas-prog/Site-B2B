@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CategoryEntity } from './entities/category.entity';
 import { ProductEntity } from '../product/entities/product.entity';
-import { matchCategorySeed } from './category-seo-seed';
+import { ProductCategoryMembershipEntity } from '../product/entities/product-category-membership.entity';
+import {
+  matchCategorySeed,
+  matchCategorySeedBySlug,
+  type CategorySeoSeed,
+} from './category-seo-seed';
 import { asciiSlug } from '../../common/ascii-slug';
 import { normalizePublicSlug } from '../../common/public-slug';
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
@@ -49,6 +54,8 @@ export class CategoryService {
     private readonly redirectRepo: Repository<SeoRedirectEntity>,
     @InjectRepository(ProductEntity)
     private readonly productRepo: Repository<ProductEntity>,
+    @InjectRepository(ProductCategoryMembershipEntity)
+    private readonly membershipRepo: Repository<ProductCategoryMembershipEntity>,
   ) {}
 
   findAll(opts?: { includeHidden?: boolean }) {
@@ -91,8 +98,7 @@ export class CategoryService {
     }
   }
 
-  private applySeedDefaults(name: string, entity: CategoryEntity) {
-    const seed = matchCategorySeed(name);
+  private applySeedDefaults(seed: CategorySeoSeed | null | undefined, entity: CategoryEntity) {
     if (!seed) return;
     entity.h1 = entity.h1 || seed.retail.h1;
     entity.seoTitle = entity.seoTitle || seed.retail.seoTitle;
@@ -109,8 +115,12 @@ export class CategoryService {
   async create(body: CategoryUpsert & { name: string }) {
     if (!body?.name?.trim()) throw new BadRequestException('نام دسته‌بندی الزامی است');
     const name = body.name.trim();
-    const seed = matchCategorySeed(name);
-    const slug = await this.uniqueSlug(body.slug || seed?.slug || name);
+    const nameEn = body.nameEn?.trim() || null;
+    const seed =
+      matchCategorySeed(name) ||
+      matchCategorySeed(nameEn || '') ||
+      matchCategorySeedBySlug(asciiSlug(nameEn || name, ''));
+    const slug = await this.uniqueSlug(body.slug || seed?.slug || nameEn || name);
     const entity = this.repo.create({
       name,
       skuPrefix: String(body.skuPrefix ?? '').trim(),
@@ -137,7 +147,7 @@ export class CategoryService {
       wholesaleIntroText: body.wholesaleIntroText?.trim() || null,
       wholesaleBottomContent: body.wholesaleBottomContent?.trim() || null,
     });
-    this.applySeedDefaults(name, entity);
+    this.applySeedDefaults(seed, entity);
     return this.repo.save(entity);
   }
 
@@ -221,6 +231,13 @@ export class CategoryService {
 
   async remove(id: string) {
     const c = await this.findOne(id);
+    const productCount = await this.productRepo.count({
+      where: { categoryId: id, deletedAt: null as any },
+    });
+    const membershipCount = await this.membershipRepo.count({ where: { categoryId: id } });
+    if (productCount > 0 || membershipCount > 0) {
+      throw new BadRequestException('ابتدا محصولات این دسته را به دسته دیگری منتقل کنید');
+    }
     await this.repo.softDelete(c.id);
     return { message: 'دسته‌بندی حذف شد' };
   }

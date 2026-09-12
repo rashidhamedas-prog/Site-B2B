@@ -37,8 +37,8 @@ export function normalizePublicSlug(raw: string, fallback = 'item'): string {
   if (!trimmed) {
     throw new BadRequestException('slug الزامی است');
   }
-  if (/[?#/]/.test(trimmed) || /\s/.test(trimmed)) {
-    throw new BadRequestException('slug نباید فاصله یا کاراکتر ? # / داشته باشد');
+  if (/[?#/]/.test(trimmed)) {
+    throw new BadRequestException('slug نباید کاراکتر ? # / داشته باشد');
   }
   const slug = asciiSlug(trimmed, fallback);
   if (!slug) {
