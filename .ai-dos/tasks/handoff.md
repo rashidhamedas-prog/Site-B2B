@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T11:25:00Z — TASK-20260912-002 CLOSED live `4b78bcf`
+
+- Fast-forwarded worktree onto `origin/master` (`ce24a1b`). Catalog-locale is on master.
+- Membership migration applied (60 rows). Claims released. Independent Reviewer/Security residual.
+- Next: push close-out + auto-deploy current master (VPS was `fe179d8`, missing checkout-address tip).
+
 ## 2026-09-12T11:05:00Z — TASK-20260912-004 checkout address (implementing)
 
 - Owner: professional address form on retail+wholesale checkout; TorobPay must accept a filled Iranian address (no false incomplete).

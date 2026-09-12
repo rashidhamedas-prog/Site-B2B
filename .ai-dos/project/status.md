@@ -1,8 +1,8 @@
 # Project Status
 
-- Last verified: 2026-09-12 — **TASK-20260912-004 implementing** on `ai/TASK-20260912-004-checkout-address` (worktree `D:/proje/Site-B2B-checkout-address`). Structured checkout address + TorobPay Fa-digit postal. Not live until merge/deploy. Did not touch 002 catalog-locale files.
-- Last verified: 2026-09-12 — **TASK-20260912-003 implementing** on `ai/TASK-20260912-003-catalog-filter-rail` (worktree `D:/proje/Site B2B`). Shared professional `/products` filter rail for wholesale + retail. Not live until merge/deploy. Did not touch 002 hero files.
-- Last verified: 2026-09-12 — **TASK-20260912-002 implementing** Phase 2–4 in worktree `D:/proje/Site-B2B-catalog-locale`. Phase 1 heroes LIVE `dbff889`: API `:4000/v1/health` 200; `.com/contact` 0 campaign plates / home 2; `.ir/contact` 0 DigiPay / home 2. Locale + category identity + membership not live until this commit deploys.
+- Last verified: 2026-09-12 — **TASK-20260912-002 CLOSED** on `origin/master` `4b78bcf`. Page-scoped heroes, locale digits, Persian category identity, product membership. Migration `ProductCategoryMembership1757670000002` applied (60 rows). Claims released.
+- Last verified: 2026-09-12 — **TASK-20260912-004 implementing** on `ai/TASK-20260912-004-checkout-address`. Code is on `origin/master` `ce24a1b`; VPS was still `fe179d8` until this close-out deploy. Did not touch 002 catalog-locale files.
+- Last verified: 2026-09-12 — **TASK-20260912-003 implementing** on `ai/TASK-20260912-003-catalog-filter-rail`. Filter rail LIVE on VPS `fe179d8`. Did not touch 002 hero files.
 - Last verified: 2026-09-12 — **TASK-20260912-001 CLOSED** on `origin/master` + VPS `3311e33`. Wholesale home stats rail compact with isometric glyphs. CMS items unchanged. Health 200. Claims released.
 
 - Last verified: 2026-09-10 — **TASK-20260910-020 CLOSED** on `origin/master` `2bd11bc`. Retail DigiPay + Prima/Negin heroes live on `.ir` as 1920×560 artwork. Browser: slide 1 DigiPay, slide 2 Prima/Negin (CTA دیدن کت‌ها, URL `.ir`). Health 200. Claims released.
