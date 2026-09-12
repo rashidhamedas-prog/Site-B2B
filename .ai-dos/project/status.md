@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-12 — **TASK-20260912-004 implementing** on `ai/TASK-20260912-004-checkout-address` (worktree `D:/proje/Site-B2B-checkout-address`). Structured checkout address + TorobPay Fa-digit postal. Not live until merge/deploy. Did not touch 002 catalog-locale files.
 - Last verified: 2026-09-12 — **TASK-20260912-002 implementing** Phase 2–4 in worktree `D:/proje/Site-B2B-catalog-locale`. Phase 1 heroes LIVE `dbff889`: API `:4000/v1/health` 200; `.com/contact` 0 campaign plates / home 2; `.ir/contact` 0 DigiPay / home 2. Locale + category identity + membership not live until this commit deploys.
 - Last verified: 2026-09-12 — **TASK-20260912-001 CLOSED** on `origin/master` + VPS `3311e33`. Wholesale home stats rail compact with isometric glyphs. CMS items unchanged. Health 200. Claims released.
 - Last verified: 2026-09-12 — **TASK-20260912-001 CLOSED** on `origin/master` + VPS `3311e33`. Wholesale home stats rail compact with isometric glyphs. CMS items unchanged. Health 200. Claims released.

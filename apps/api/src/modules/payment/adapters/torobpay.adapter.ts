@@ -10,6 +10,7 @@ import {
   VerifyReturnRequest,
   VerifyReturnResult,
 } from './payment-provider.adapter';
+import { normalizeDigits } from '../../auth/phone.util';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 const MAX_RETRIES = 2;
@@ -64,6 +65,10 @@ export function compactTorobpayTransactionId(raw: string): string {
   const hex = trimmed.replace(/-/g, '');
   if (/^[0-9a-f]{32}$/i.test(hex)) return hex;
   return trimmed.slice(0, 64);
+}
+
+export function normalizeTorobpayPostal(raw?: string): string {
+  return normalizeDigits(String(raw || '')).slice(0, 10);
 }
 
 export function composeTorobpayAddress(input: {
@@ -580,7 +585,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       );
     }
 
-    const postalCode = checkout.postalCode.replace(/\D/g, '').slice(0, 10);
+    const postalCode = normalizeTorobpayPostal(checkout.postalCode);
     if (postalCode.length !== 10) {
       throw new Error('کدپستی ۱۰ رقمی برای صدور توکن ترب‌پی الزامی است');
     }

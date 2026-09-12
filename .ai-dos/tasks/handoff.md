@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T11:05:00Z — TASK-20260912-004 checkout address (implementing)
+
+- Owner: professional address form on retail+wholesale checkout; TorobPay must accept a filled Iranian address (no false incomplete).
+- Root cause: `retailPostalDigits` / CPG postal used `/\D/` which drops Persian digits; street was a single short textarea; wholesale sent no `shippingAddress`.
+- Architecture: `docs/architecture/checkout-shipping-address.md`.
+- Reclaimed stale adapter claims from TASK-20260907-002 (hb 2026-09-08). Did not touch catalog-filter or locale files.
+- Next: specs + web/api tsc, then commit/push/deploy, browser-check `.ir/checkout` TorobPay + `.com/checkout` address panel.
+
 ## 2026-09-12T11:15:00Z — TASK-20260912-002 Phase 2–4 code
 
 - Reclaimed stale claims: 20260817-001 / 20260818-001 / 20260822-002 / 20260822-003 leftovers / 20260905-001 TrustStrip / 20260905-004 home links / 20260908-001 database.config / 20260910-001 product.service+AdminProducts / 20260826-001 useProducts / 20260810-006 dto. Heartbeats August–early Sep; PDP guide already live.

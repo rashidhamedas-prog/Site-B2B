@@ -19,6 +19,7 @@ import { readTorobClid } from '@/components/retail/RetailAffiliateCapture';
 import { CheckoutChoiceList } from '@/components/checkout/CheckoutChoiceList';
 import { CheckoutPanel, CheckoutStepRail } from '@/components/checkout/CheckoutPanel';
 import { CheckoutPlaceOrderBar } from '@/components/checkout/CheckoutPlaceOrderBar';
+import { ShippingAddressForm } from '@/components/checkout/ShippingAddressForm';
 import {
   checkoutCtaHint,
   checkoutCtaLabel,
@@ -30,16 +31,15 @@ import {
 } from '@/lib/checkout-payment-ui';
 import { FALLBACK_RETAIL_SHIPPING_METHODS, isInPersonShipping, resolveShippingMethods, shippingChoiceDescription } from '@/lib/shipping-methods';
 import { pulseCheckoutIntent } from '@/lib/checkout-intent';
+import {
+  emptyShippingAddress,
+  firstAddressError,
+  finalizeShippingAddress,
+  validateShippingAddress,
+  type ShippingAddress,
+} from '@/lib/shipping-address';
 
-const PROVINCES = [
-  'تهران', 'خراسان رضوی', 'اصفهان', 'فارس', 'آذربایجان شرقی', 'آذربایجان غربی',
-  'خوزستان', 'مازندران', 'گیلان', 'کرمان', 'البرز', 'قم', 'یزد', 'همدان',
-  'کرمانشاه', 'گلستان', 'لرستان', 'مرکزی', 'قزوین', 'اردبیل', 'بوشهر',
-  'زنجان', 'سمنان', 'سیستان و بلوچستان', 'کردستان', 'کهگیلویه و بویراحمد',
-  'چهارمحال و بختیاری', 'ایلام', 'هرمزگان', 'خراسان شمالی', 'خراسان جنوبی',
-];
-
-type AddressForm = RetailAddress;
+type AddressForm = ShippingAddress;
 
 function readAff(): string | undefined {
   if (typeof window === 'undefined') return undefined;
@@ -89,14 +89,8 @@ export default function RetailCheckoutPage() {
   const [useWallet, setUseWallet] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [savedAddresses, setSavedAddresses] = useState<RetailAddress[]>([]);
-  const [address, setAddress] = useState<AddressForm>({
-    province: 'خراسان رضوی',
-    city: 'مشهد',
-    postalCode: '',
-    street: '',
-    recipient: '',
-    mobile: '',
-  });
+  const [address, setAddress] = useState<AddressForm>(emptyShippingAddress());
+  const [showAddressErrors, setShowAddressErrors] = useState(false);
   const beganCheckout = useRef(false);
 
   useEffect(() => {
@@ -219,6 +213,7 @@ export default function RetailCheckoutPage() {
     const next = parseRetailPaymentChoice(id);
     setPaymentMethod(next.method);
     if (next.gateway) setPaymentGateway(next.gateway);
+    if (next.gateway === 'TOROBPAY') setShowAddressErrors(true);
     setPendingPayOrderId(null);
     trackAddPaymentInfo(
       items.map((i) => ({
@@ -301,15 +296,20 @@ export default function RetailCheckoutPage() {
       setError('سبد خالی است');
       return;
     }
-    if (!address.province || !address.city || !address.street || !address.recipient || !address.mobile) {
-      setError('لطفاً آدرس کامل (استان، شهر، خیابان، گیرنده، موبایل) را پر کنید.');
+    const addressMode = paymentMethod === 'ONLINE' && paymentGateway === 'TOROBPAY' ? 'torobpay' : 'standard';
+    const addressError =
+      firstAddressError(validateShippingAddress(address, addressMode)) ||
+      retailTorobpayAddressError(paymentMethod, paymentGateway, address);
+    if (addressError) {
+      setShowAddressErrors(true);
+      setError(addressError);
+      document.getElementById('checkout-address')?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
       return;
     }
-    const torobpayAddressError = retailTorobpayAddressError(paymentMethod, paymentGateway, address);
-    if (torobpayAddressError) {
-      setError(torobpayAddressError);
-      return;
-    }
+    const shippingAddress = finalizeShippingAddress(address);
     setBusy(true);
     try {
       if (!(await ensureRetailAccount())) return;
@@ -331,7 +331,7 @@ export default function RetailCheckoutPage() {
         useWallet: useWallet && walletBalance > 0,
         affiliateId: readAff(),
         torobClid: readTorobClid(),
-        shippingAddress: address,
+        shippingAddress,
         notes: notes || undefined,
         items: items.map((i) => ({
           productId: i.productId,
@@ -344,7 +344,7 @@ export default function RetailCheckoutPage() {
           imageUrl: i.imageUrl,
         })),
       });
-      saveRetailAddress(address);
+      saveRetailAddress(shippingAddress);
       if (order?.paymentStartError) {
         if (order.id) setPendingPayOrderId(order.id);
         setError(order.paymentStartError);
@@ -428,85 +428,16 @@ export default function RetailCheckoutPage() {
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-start">
           <div className="space-y-5">
-            <CheckoutPanel appearance="retail" id="checkout-address" index="۰۱" title="آدرس تحویل" subtitle="گیرنده و مقصد ارسال">
-              {savedAddresses.length > 0 ? (
-                <div className="mb-4 space-y-2">
-                  <p className="text-xs text-[var(--retail-muted)]">آدرس‌های ذخیره‌شده</p>
-                  <div className="flex flex-wrap gap-2">
-                    {savedAddresses.map((a, i) => (
-                      <button
-                        key={`${a.city}-${a.street}-${i}`}
-                        type="button"
-                        onClick={() => setAddress({ ...a })}
-                        className="cursor-pointer rounded-full border border-[var(--retail-border)] bg-white px-3 py-1.5 text-xs hover:border-[var(--retail-gold)]"
-                      >
-                        {a.city} — {a.street.slice(0, 28)}{a.street.length > 28 ? '…' : ''}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="block text-sm">
-                  <span className="mb-1 block font-bold">استان</span>
-                  <select
-                    className={fieldClass}
-                    value={address.province}
-                    onChange={(e) => setAddress((a) => ({ ...a, province: e.target.value }))}
-                  >
-                    {PROVINCES.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-bold">شهر</span>
-                  <input
-                    className={fieldClass}
-                    value={address.city}
-                    onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-bold">کدپستی</span>
-                  <input
-                    className={fieldClass}
-                    value={address.postalCode}
-                    onChange={(e) => setAddress((a) => ({ ...a, postalCode: e.target.value }))}
-                    inputMode="numeric"
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="mb-1 block font-bold">موبایل گیرنده</span>
-                  <input
-                    className={fieldClass}
-                    value={address.mobile}
-                    onChange={(e) => setAddress((a) => ({ ...a, mobile: e.target.value }))}
-                    inputMode="tel"
-                  />
-                </label>
-                <label className="block text-sm sm:col-span-2">
-                  <span className="mb-1 block font-bold">نام گیرنده</span>
-                  <input
-                    className={fieldClass}
-                    value={address.recipient}
-                    onChange={(e) => setAddress((a) => ({ ...a, recipient: e.target.value }))}
-                  />
-                </label>
-                <label className="block text-sm sm:col-span-2">
-                  <span className="mb-1 block font-bold">خیابان / پلاک / واحد</span>
-                  <textarea
-                    className={`${fieldClass} min-h-20`}
-                    value={address.street}
-                    onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
-                  />
-                  {paymentGateway === 'TOROBPAY' && paymentMethod === 'ONLINE' ? (
-                    <span className="mt-1 block text-xs text-[var(--retail-muted)]">
-                      برای ترب‌پی خیابان و پلاک را کامل بنویسید.
-                    </span>
-                  ) : null}
-                </label>
-              </div>
+            <CheckoutPanel appearance="retail" id="checkout-address" index="۰۱" title="آدرس تحویل" subtitle="گیرنده، شهر و کدپستی را دقیق بنویسید">
+              <ShippingAddressForm
+                appearance="retail"
+                value={address}
+                onChange={setAddress}
+                savedAddresses={savedAddresses}
+                onSelectSaved={(next) => setAddress({ ...emptyShippingAddress(), ...next })}
+                mode={paymentMethod === 'ONLINE' && paymentGateway === 'TOROBPAY' ? 'torobpay' : 'standard'}
+                showErrors={showAddressErrors}
+              />
             </CheckoutPanel>
 
             <CheckoutPanel

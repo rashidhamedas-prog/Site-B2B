@@ -19,6 +19,10 @@ const base = {
 const first = upsertAddress([], base);
 assert(first.length === 1, 'add first');
 assert(first[0]!.mobile === '09151234567', 'persian mobile normalized');
+assert(first[0]!.postalCode === '1234567890', 'latin postal kept');
+
+const faPostal = upsertAddress([], { ...base, postalCode: '۹۱۷۳۵۱۲۳۴۵', mobile: '09150000001' });
+assert(faPostal[0]!.postalCode === '9173512345', 'persian postal stored latin');
 assert(first[0]!.isDefault === true, 'first is default');
 
 const second = upsertAddress(first, {

@@ -1,3 +1,10 @@
+import {
+  firstAddressError,
+  postalDigits,
+  validateShippingAddress,
+  type ShippingAddress,
+} from './shipping-address';
+
 export type CheckoutAppearance = 'retail' | 'wholesale';
 export type CheckoutPaymentKind = 'ONLINE' | 'CASH' | 'INSTALLMENT';
 export type CheckoutPaymentIcon = 'card' | 'wallet' | 'cash' | 'installment' | 'truck';
@@ -140,7 +147,7 @@ export function checkoutCtaHint(kind: CheckoutPaymentKind): string {
 export type RetailPaymentGateway = 'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY';
 
 export function retailPostalDigits(postalCode: string): string {
-  return String(postalCode || '').replace(/\D/g, '');
+  return postalDigits(postalCode);
 }
 
 export function retailTorobpayNeedsPostal(
@@ -158,19 +165,25 @@ export function retailTorobpayNeedsPostal(
 export function retailTorobpayAddressError(
   paymentMethod: 'ONLINE' | 'CASH',
   paymentGateway: RetailPaymentGateway,
-  address: { postalCode?: string; street?: string; recipient?: string },
+  address: Partial<ShippingAddress> & { postalCode?: string; street?: string; recipient?: string },
 ): string | null {
   if (paymentMethod !== 'ONLINE' || paymentGateway !== 'TOROBPAY') return null;
-  if (retailPostalDigits(address.postalCode || '').length !== 10) {
-    return 'برای پرداخت ترب‌پی کدپستی ۱۰ رقمی را وارد کنید.';
-  }
-  if (String(address.street || '').trim().replace(/\s/g, '').length < 8) {
-    return 'برای ترب‌پی آدرس را کامل‌تر بنویسید: خیابان، پلاک و واحد (حداقل ۸ نویسه).';
-  }
-  if (String(address.recipient || '').trim().length < 3) {
-    return 'برای ترب‌پی نام و نام خانوادگی گیرنده را کامل وارد کنید.';
-  }
-  return null;
+  return firstAddressError(
+    validateShippingAddress(
+      {
+        recipient: address.recipient || '',
+        mobile: address.mobile || '',
+        province: address.province || '',
+        city: address.city || '',
+        street: address.street || '',
+        postalCode: address.postalCode || '',
+        alley: address.alley,
+        plaque: address.plaque,
+        unit: address.unit,
+      },
+      'torobpay',
+    ),
+  );
 }
 
 export function retailSelectedPaymentId(

@@ -1,5 +1,55 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260912-004"
+    title: "Professional checkout address form (TorobPay-ready)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260912-004"
+    roles:
+      architect: "cursor:implementer-TASK-20260912-004"
+      implementer: "cursor:implementer-TASK-20260912-004"
+      reviewer: "required-independent-payments-pii"
+      security: "required-independent-payments-or-personal-data"
+    branch: "ai/TASK-20260912-004-checkout-address"
+    worktree: "D:/proje/Site-B2B-checkout-address"
+    claimed_at: "2026-09-12T11:05:00Z"
+    heartbeat_at: "2026-09-12T11:05:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/iran-digits.ts"
+      - "apps/web/src/lib/iran-geo.ts"
+      - "apps/web/src/lib/iran-provinces.ts"
+      - "apps/web/src/lib/shipping-address.ts"
+      - "apps/web/src/lib/shipping-address.spec.mts"
+      - "apps/web/src/lib/checkout-payment-ui.ts"
+      - "apps/web/src/lib/checkout-payment-ui.spec.ts"
+      - "apps/web/src/lib/retail-addresses.ts"
+      - "apps/web/src/components/checkout/ShippingAddressForm.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/checkout/page.tsx"
+      - "apps/web/src/components/retail/RetailAccountDetails.tsx"
+      - "apps/web/src/app/portal/dashboard/profile/page.tsx"
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
+      - "apps/api/src/modules/auth/customer-addresses.ts"
+      - "apps/api/src/modules/auth/customer-addresses.spec.ts"
+      - "docs/architecture/checkout-shipping-address.md"
+      - "docs/reports/2026-09-12-checkout-shipping-address.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Reclaimed stale TorobPay adapter claims from TASK-20260907-002
+      (heartbeat 2026-09-08T03:20Z, >24h). Checkout page already released
+      by TASK-20260908-003. Did not touch catalog-filter or locale files.
+      Shared AI-DOS registry overlap with 002/003 is append-only.
+    acceptance_criteria:
+      - "Persian/Arabic postal digits convert to 10 Latin digits for TorobPay"
+      - "Selecting TorobPay shows field checklist; submit scrolls to first invalid field"
+      - "Street compose includes alley/plaque/unit so CPG address length >= 8"
+      - "Wholesale checkout sends shippingAddress JSON"
+      - "shipping-address spec + checkout-payment-ui spec + torobpay adapter spec + web tsc pass"
   - id: "TASK-20260912-002"
     title: "Catalog membership, locale digits, page-scoped heroes"
     status: "in_progress"
@@ -1077,8 +1127,9 @@ tasks:
     heartbeat_at: "2026-09-08T03:20:00Z"
     depends_on: []
     file_claims:
-      - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
-      - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
+      # transferred 2026-09-12 to TASK-20260912-004 (stale hb 2026-09-08; postal digit fix):
+      # "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
+      # "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
       - "apps/api/src/modules/payment/adapters/payment-provider.adapter.ts"
       - "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.module.ts"

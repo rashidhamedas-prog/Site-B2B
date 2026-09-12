@@ -7,6 +7,9 @@ export type RetailAddress = {
   street: string;
   recipient: string;
   mobile: string;
+  alley?: string;
+  plaque?: string;
+  unit?: string;
   savedAt?: string;
 };
 
