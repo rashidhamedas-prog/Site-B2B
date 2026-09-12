@@ -10,6 +10,7 @@ import {
   compactTorobpayTransactionId,
   composeTorobpayAddress,
   normalizeTorobpayMobile,
+  normalizeTorobpayPostal,
   torobpayBasicAuthHeader,
   torobpayCallbackIsSuccess,
 } from './torobpay.adapter';
@@ -44,6 +45,8 @@ const checkout = {
 
 async function main() {
   assert(normalizeTorobpayMobile('09123456789') === '09123456789', 'local mobile');
+  assert(normalizeTorobpayPostal('۹۱۷۳۵۱۲۳۴۵') === '9173512345', 'persian postal');
+  assert(normalizeTorobpayPostal('9173512345') === '9173512345', 'latin postal');
   assert(normalizeTorobpayMobile('+989123456789') === '09123456789', 'plus98');
   assert(normalizeTorobpayMobile('9123456789') === '09123456789', 'missing0');
   let threw = false;

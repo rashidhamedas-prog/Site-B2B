@@ -12,6 +12,7 @@ import { cn } from '@/lib/cn';
 import { CheckoutChoiceList } from '@/components/checkout/CheckoutChoiceList';
 import { CheckoutPanel, CheckoutStepRail } from '@/components/checkout/CheckoutPanel';
 import { CheckoutPlaceOrderBar } from '@/components/checkout/CheckoutPlaceOrderBar';
+import { ShippingAddressForm } from '@/components/checkout/ShippingAddressForm';
 import {
   checkoutCtaHint,
   checkoutCtaLabel,
@@ -19,6 +20,13 @@ import {
 } from '@/lib/checkout-payment-ui';
 import { pulseCheckoutIntent } from '@/lib/checkout-intent';
 import { isInPersonShipping, shippingChoiceDescription } from '@/lib/shipping-methods';
+import {
+  emptyShippingAddress,
+  firstAddressError,
+  finalizeShippingAddress,
+  validateShippingAddress,
+  type ShippingAddress,
+} from '@/lib/shipping-address';
 
 function toman(n: number) { return Math.round(n / 10).toLocaleString('fa-IR'); }
 
@@ -103,6 +111,9 @@ export default function CheckoutPage() {
   const [downPaymentAmount, setDownPaymentAmount] = useState<number>(0);
   const [installmentMonths, setInstallmentMonths] = useState<number>(1);
   const [notes, setNotes] = useState('');
+  const [address, setAddress] = useState<ShippingAddress>(emptyShippingAddress());
+  const [savedAddresses, setSavedAddresses] = useState<ShippingAddress[]>([]);
+  const [showAddressErrors, setShowAddressErrors] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -142,6 +153,33 @@ export default function CheckoutPage() {
       .then((m) => {
         setShippingCompanies(m ?? []);
         if (!shippingMethod && m?.length) setShippingMethod(m[0].id);
+      })
+      .catch(() => undefined);
+    apiClient.get<{
+      phone?: string;
+      ownerName?: string;
+      businessName?: string;
+      province?: string;
+      city?: string;
+      address?: string;
+      postalCode?: string;
+      addresses?: ShippingAddress[];
+    }>('/auth/me/profile')
+      .then((me) => {
+        const book = Array.isArray(me?.addresses) ? me.addresses : [];
+        setSavedAddresses(book);
+        const def = book.find((a) => (a as { isDefault?: boolean }).isDefault) || book[0];
+        setAddress((prev) => ({
+          ...emptyShippingAddress(),
+          ...prev,
+          ...(def || {}),
+          recipient: def?.recipient || me?.ownerName || me?.businessName || prev.recipient,
+          mobile: def?.mobile || me?.phone || prev.mobile,
+          province: def?.province || me?.province || prev.province,
+          city: def?.city || me?.city || prev.city,
+          street: def?.street || me?.address || prev.street,
+          postalCode: def?.postalCode || me?.postalCode || prev.postalCode,
+        }));
       })
       .catch(() => undefined);
     apiClient.get<PublicSettings>('/settings/public?channel=WHOLESALE')
@@ -303,6 +341,17 @@ export default function CheckoutPage() {
     if (!getToken()) { router.push('/portal/login?redirect=/checkout'); return; }
     if (items.length === 0) { setError('سبد خرید خالی است'); return; }
     if (!shippingMethod) { setError('لطفاً روش ارسال را انتخاب کنید'); return; }
+    const addressError = firstAddressError(validateShippingAddress(address, 'standard'));
+    if (addressError) {
+      setShowAddressErrors(true);
+      setError(addressError);
+      document.getElementById('checkout-address')?.scrollIntoView({
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
+      return;
+    }
+    const shippingAddress = finalizeShippingAddress(address);
     if (paymentMethod === 'INSTALLMENT') {
       if (!customerId) {
         setError('برای پرداخت اقساطی باید با حساب تأییدشده وارد شوید.');
@@ -348,6 +397,7 @@ export default function CheckoutPage() {
         items: orderItems,
         shippingMethod,
         paymentMethod,
+        shippingAddress,
         discountCode: appliedCode || undefined,
         installment: paymentMethod === 'INSTALLMENT'
           ? { downPaymentAmount, months: installmentMonths }
@@ -421,7 +471,8 @@ export default function CheckoutPage() {
         <CheckoutStepRail
           appearance="wholesale"
           steps={[
-            { id: 'checkout-address', label: 'سبد' },
+            { id: 'checkout-cart', label: 'سبد' },
+            { id: 'checkout-address', label: 'آدرس' },
             { id: 'checkout-shipping', label: 'ارسال' },
             { id: 'checkout-payment', label: 'پرداخت' },
           ]}
@@ -429,7 +480,7 @@ export default function CheckoutPage() {
 
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           <div className="space-y-5 lg:col-span-2">
-            <CheckoutPanel appearance="wholesale" id="checkout-address" index="۰۱" title="اقلام سبد خرید">
+            <CheckoutPanel appearance="wholesale" id="checkout-cart" index="۰۱" title="اقلام سبد خرید">
               <div className="-mx-1 divide-y divide-black/5">
                 {items.map((item) => {
                   const lineKey = cartLineKey(item);
@@ -486,7 +537,19 @@ export default function CheckoutPage() {
               </div>
             </CheckoutPanel>
 
-            <CheckoutPanel appearance="wholesale" id="checkout-shipping" index="۰۲" title="روش ارسال">
+            <CheckoutPanel appearance="wholesale" id="checkout-address" index="۰۲" title="آدرس تحویل" subtitle="مقصد بار را دقیق بنویسید تا ارسال اشتباه نرود">
+              <ShippingAddressForm
+                appearance="wholesale"
+                value={address}
+                onChange={setAddress}
+                savedAddresses={savedAddresses}
+                onSelectSaved={(next) => setAddress({ ...emptyShippingAddress(), ...next })}
+                mode="standard"
+                showErrors={showAddressErrors}
+              />
+            </CheckoutPanel>
+
+            <CheckoutPanel appearance="wholesale" id="checkout-shipping" index="۰۳" title="روش ارسال">
               {shippingCompanies.length === 0 ? (
                 <p className="text-sm text-gray-500">روش ارسال در حال بارگذاری است…</p>
               ) : (
@@ -512,7 +575,7 @@ export default function CheckoutPage() {
             <CheckoutPanel
               appearance="wholesale"
               id="checkout-payment"
-              index="۰۳"
+              index="۰۴"
               title="روش پرداخت"
               subtitle="مسیر تسویه را مشخص کنید؛ سفارش بدون ابهام ثبت می‌شود"
             >
@@ -578,7 +641,7 @@ export default function CheckoutPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  placeholder="آدرس دقیق، نوع بسته‌بندی یا هر توضیح دیگری..."
+                  placeholder="نوع بسته‌بندی یا توضیح برای انبار…"
                   className="w-full resize-none rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>

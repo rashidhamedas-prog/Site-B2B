@@ -16,4 +16,6 @@
 
 ## شواهد گیت
 
-بعد از merge روی master و `auto-deploy` پر می‌شود.
+- Commit runtime: `4b78bcf` on `origin/master`.
+- Migration `ProductCategoryMembership1757670000002` applied; `product_category_membership` count 60.
+- API health 200. `.com/contact` 0 campaign plates / home 2; `.ir/contact` 0 DigiPay / home 2.

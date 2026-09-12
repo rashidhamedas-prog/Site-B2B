@@ -5,6 +5,8 @@ import { User, Building, Phone, Mail, MapPin, Save } from 'lucide-react';
 import { Button, Input, Alert } from '@/components/ui';
 import { apiClient } from '@/lib/api';
 import { IRAN_PROVINCES } from '@/lib/iran-provinces';
+import { ShippingAddressForm } from '@/components/checkout/ShippingAddressForm';
+import { emptyShippingAddress, finalizeShippingAddress } from '@/lib/shipping-address';
 
 interface SavedAddress {
   id?: string;
@@ -259,47 +261,47 @@ export default function ProfilePage() {
           </div>
           ))
         )}
-        <Input label="گیرنده" value={addrDraft.recipient}
-          onChange={(e) => setAddrDraft((p) => ({ ...p, recipient: e.target.value }))} />
-        <Input label="موبایل گیرنده" value={addrDraft.mobile}
-          onChange={(e) => setAddrDraft((p) => ({ ...p, mobile: e.target.value }))} />
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">استان</label>
-          <select
-            className="block w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            value={addrDraft.province}
-            onChange={(e) => setAddrDraft((p) => ({ ...p, province: e.target.value }))}
-          >
-            {IRAN_PROVINCES.map((p) => (
-              <option key={p} value={p}>{p}</option>
-            ))}
-          </select>
-        </div>
-        <Input label="شهر" value={addrDraft.city}
-          onChange={(e) => setAddrDraft((p) => ({ ...p, city: e.target.value }))} />
-        <Input label="کدپستی" value={addrDraft.postalCode || ''}
-          onChange={(e) => setAddrDraft((p) => ({ ...p, postalCode: e.target.value }))} />
-        <Input label="نشانی" value={addrDraft.street}
-          onChange={(e) => setAddrDraft((p) => ({ ...p, street: e.target.value }))} />
+        <ShippingAddressForm
+          appearance="wholesale"
+          value={{
+            recipient: addrDraft.recipient,
+            mobile: addrDraft.mobile,
+            province: addrDraft.province,
+            city: addrDraft.city,
+            street: addrDraft.street,
+            postalCode: addrDraft.postalCode || '',
+          }}
+          onChange={(next) => setAddrDraft((p) => ({ ...p, ...next }))}
+          mode="standard"
+        />
         <Button
           variant="outline"
           onClick={async () => {
             setSaving(true);
             setError(null);
             try {
+              const payload = {
+                ...addrDraft,
+                ...finalizeShippingAddress({
+                  recipient: addrDraft.recipient,
+                  mobile: addrDraft.mobile,
+                  province: addrDraft.province,
+                  city: addrDraft.city,
+                  street: addrDraft.street,
+                  postalCode: addrDraft.postalCode || '',
+                }),
+                isDefault: addrDraft.isDefault,
+              };
               const res = editingAddressId
-                ? await apiClient.patch<{ addresses: SavedAddress[] }>(`/auth/me/addresses/${editingAddressId}`, addrDraft)
-                : await apiClient.post<{ addresses: SavedAddress[] }>('/auth/me/addresses', addrDraft);
+                ? await apiClient.patch<{ addresses: SavedAddress[] }>(`/auth/me/addresses/${editingAddressId}`, payload)
+                : await apiClient.post<{ addresses: SavedAddress[] }>('/auth/me/addresses', payload);
               setAddresses(res.addresses || []);
               setSuccess(true);
               setEditingAddressId(null);
               setAddrDraft({
-                recipient: '',
-                mobile: '',
+                ...emptyShippingAddress(),
                 province: form.province || 'خراسان رضوی',
                 city: form.city,
-                street: '',
-                postalCode: '',
                 isDefault: false,
               });
             } catch (e: unknown) {

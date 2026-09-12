@@ -37,19 +37,26 @@ assert.match(retailWithTorob.find((o) => o.id === 'TOROBPAY')?.description || ''
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'TOROBPAY', '91735'), true);
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'TOROBPAY', '9173512345'), false);
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'ZARINPAL', ''), false);
-assert.equal(
+assert.equal(retailTorobpayNeedsPostal('ONLINE', 'TOROBPAY', '۹۱۷۳۵۱۲۳۴۵'), false);
+assert.match(
   retailTorobpayAddressError('ONLINE', 'TOROBPAY', {
     postalCode: '9173512345',
     street: 'آز',
     recipient: 'علی رضایی',
-  }),
-  'برای ترب‌پی آدرس را کامل‌تر بنویسید: خیابان، پلاک و واحد (حداقل ۸ نویسه).',
+    mobile: '09151234567',
+    province: 'خراسان رضوی',
+    city: 'مشهد',
+  }) || '',
+  /خیابان|پلاک/,
 );
 assert.equal(
   retailTorobpayAddressError('ONLINE', 'TOROBPAY', {
-    postalCode: '9173512345',
+    postalCode: '۹۱۷۳۵۱۲۳۴۵',
     street: 'خیابان احمدآباد پلاک ۱۲',
     recipient: 'علی رضایی',
+    mobile: '۰۹۱۵۱۲۳۴۵۶۷',
+    province: 'خراسان رضوی',
+    city: 'مشهد',
   }),
   null,
 );

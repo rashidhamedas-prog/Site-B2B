@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { normalizePhone } from './phone.util';
+import { normalizeDigits, normalizePhone } from './phone.util';
 
 export type SavedAddress = {
   id: string;
@@ -81,7 +81,8 @@ export function sanitizeSavedAddress(
   if (!recipient || !province || !city || !street) {
     throw new Error('گیرنده، استان، شهر و نشانی الزامی است');
   }
-  const postal = trim(raw.postalCode, 20);
+  const postalRaw = trim(raw.postalCode, 20);
+  const postal = postalRaw ? normalizeDigits(postalRaw).slice(0, 10) : '';
   const hasId = typeof raw.id === 'string' && UUID_RE.test(raw.id);
   return {
     id: hasId

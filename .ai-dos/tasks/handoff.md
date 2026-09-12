@@ -2,6 +2,21 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-12T11:25:00Z — TASK-20260912-002 CLOSED live `4b78bcf`
+
+- Fast-forwarded worktree onto `origin/master` (`ce24a1b`). Catalog-locale is on master.
+- Membership migration applied (60 rows). Claims released. Independent Reviewer/Security residual.
+- Next: push close-out + auto-deploy current master (VPS was `fe179d8`, missing checkout-address tip).
+
+## 2026-09-12T11:05:00Z — TASK-20260912-004 checkout address (implementing)
+
+- Owner: professional address form on retail+wholesale checkout; TorobPay must accept a filled Iranian address (no false incomplete).
+- Root cause: `retailPostalDigits` / CPG postal used `/\D/` which drops Persian digits; street was a single short textarea; wholesale sent no `shippingAddress`.
+- Architecture: `docs/architecture/checkout-shipping-address.md`.
+- Reclaimed stale adapter claims from TASK-20260907-002 (hb 2026-09-08). Did not touch catalog-filter or locale files.
+- Gates: shipping-address spec ok; checkout-payment-ui spec ok; torobpay adapter PASS; customer-addresses ok; web+api tsc 0.
+- Next: merge/push/deploy, browser-check `.ir/checkout` TorobPay + `.com/checkout` address panel.
+
 ## 2026-09-12T11:20:00Z — TASK-20260912-003 catalog filter rail (code)
 
 - Shared rail: visual color swatches, fabric chips, size cards, in-stock switch, dismissible chips.

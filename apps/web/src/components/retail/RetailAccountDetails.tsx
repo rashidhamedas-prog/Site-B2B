@@ -3,12 +3,14 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { IRAN_PROVINCES } from '@/lib/iran-provinces';
+import { ShippingAddressForm } from '@/components/checkout/ShippingAddressForm';
 import {
   replaceRetailAddresses,
   saveRetailAddress,
   sameRetailAddress,
   type RetailAddress,
 } from '@/lib/retail-addresses';
+import { emptyShippingAddress, finalizeShippingAddress } from '@/lib/shipping-address';
 
 export type ProfileAddress = RetailAddress & { id?: string; isDefault?: boolean };
 
@@ -25,12 +27,7 @@ export type AccountProfile = {
 };
 
 const emptyAddress = (): ProfileAddress => ({
-  recipient: '',
-  mobile: '',
-  province: 'خراسان رضوی',
-  city: 'مشهد',
-  street: '',
-  postalCode: '',
+  ...emptyShippingAddress(),
   isDefault: false,
 });
 
@@ -109,11 +106,12 @@ export function RetailAccountDetails({
     setErr('');
     setMsg('');
     try {
+      const payload = { ...draft, ...finalizeShippingAddress(draft), isDefault: draft.isDefault };
       const res = editingId
-        ? await apiClient.patch<{ addresses: ProfileAddress[] }>(`/auth/me/addresses/${editingId}`, draft)
-        : await apiClient.post<{ addresses: ProfileAddress[] }>('/auth/me/addresses', draft);
+        ? await apiClient.patch<{ addresses: ProfileAddress[] }>(`/auth/me/addresses/${editingId}`, payload)
+        : await apiClient.post<{ addresses: ProfileAddress[] }>('/auth/me/addresses', payload);
       persistAddresses(res.addresses || []);
-      saveRetailAddress(toLocal(draft));
+      saveRetailAddress(toLocal(payload));
       setDraft(emptyAddress());
       setEditingId(null);
       setMsg(editingId ? 'آدرس ویرایش شد' : 'آدرس اضافه شد');
@@ -253,52 +251,11 @@ export function RetailAccountDetails({
 
         <form onSubmit={saveAddress} className="space-y-3 rounded-2xl border border-dashed border-[var(--retail-border)] bg-white p-4">
           <h3 className="font-bold">{editingId ? 'ویرایش آدرس' : 'افزودن آدرس جدید'}</h3>
-          <input
-            className="w-full rounded-xl border px-4 py-3 text-sm"
-            placeholder="نام گیرنده"
-            value={draft.recipient}
-            onChange={(e) => setDraft((p) => ({ ...p, recipient: e.target.value }))}
-            required
-          />
-          <input
-            className="w-full rounded-xl border px-4 py-3 text-sm"
-            placeholder="موبایل گیرنده"
-            dir="ltr"
-            value={draft.mobile}
-            onChange={(e) => setDraft((p) => ({ ...p, mobile: e.target.value }))}
-            required
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <select
-              className="w-full rounded-xl border px-4 py-3 text-sm"
-              value={draft.province}
-              onChange={(e) => setDraft((p) => ({ ...p, province: e.target.value }))}
-            >
-              {IRAN_PROVINCES.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-            <input
-              className="w-full rounded-xl border px-4 py-3 text-sm"
-              placeholder="شهر"
-              value={draft.city}
-              onChange={(e) => setDraft((p) => ({ ...p, city: e.target.value }))}
-              required
-            />
-          </div>
-          <input
-            className="w-full rounded-xl border px-4 py-3 text-sm"
-            placeholder="کدپستی"
-            value={draft.postalCode || ''}
-            onChange={(e) => setDraft((p) => ({ ...p, postalCode: e.target.value }))}
-          />
-          <textarea
-            className="w-full rounded-xl border px-4 py-3 text-sm"
-            placeholder="خیابان، پلاک، واحد"
-            rows={3}
-            value={draft.street}
-            onChange={(e) => setDraft((p) => ({ ...p, street: e.target.value }))}
-            required
+          <ShippingAddressForm
+            appearance="retail"
+            value={draft}
+            onChange={(next) => setDraft((p) => ({ ...p, ...next }))}
+            mode="standard"
           />
           <label className="flex items-center gap-2 text-sm">
             <input
