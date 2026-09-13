@@ -1,11 +1,22 @@
 import { Injectable, NotFoundException, Optional, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
+import { customerChannelOf, isCustomerAccountStatus } from '@taranom/shared-types';
 import { CustomerEntity } from './entities/customer.entity';
+import { CustomerWalletEntryEntity } from './entities/customer-wallet-entry.entity';
 import { AuthService } from '../auth/auth.service';
 import { NotificationService } from '../notification/notification.service';
 import { CustomerMarketingService } from '../customer-marketing/customer-marketing.service';
 import { customerChannelSql, isRetailCustomerType, normalizeCustomerChannel } from './customer-channel';
+import {
+  assertPositiveRial,
+  sanitizeWalletNote,
+  tomanToRial,
+  type WalletDirection,
+  type WalletReasonCode,
+} from './customer-wallet';
+import type { UpsertCustomerDto } from './dto/upsert-customer.dto';
+import type { AdminWalletAdjustDto } from './dto/wallet.dto';
 
 /** True when the DB rejected an insert because the customer `code` already exists. */
 function isDuplicateCodeError(err: unknown): boolean {
@@ -24,10 +35,21 @@ export class CustomerService {
   constructor(
     @InjectRepository(CustomerEntity)
     private readonly repo: Repository<CustomerEntity>,
+    @InjectRepository(CustomerWalletEntryEntity)
+    private readonly walletRepo: Repository<CustomerWalletEntryEntity>,
     private readonly authService: AuthService,
     @Optional() private readonly notifications?: NotificationService,
     @Optional() private readonly marketing?: CustomerMarketingService,
   ) {}
+
+  present(customer: CustomerEntity) {
+    return {
+      ...customer,
+      balance: Number(customer.balance) || 0,
+      creditLimit: Number(customer.creditLimit) || 0,
+      channel: customerChannelOf(customer.type),
+    };
+  }
 
   async findAll(
     page = 1,
@@ -54,30 +76,39 @@ export class CustomerService {
     }
 
     qb.orderBy('c.createdAt', 'DESC').skip((page - 1) * limit).take(limit);
-    const [data, total] = await qb.getManyAndCount();
+    const [rows, total] = await qb.getManyAndCount();
 
-    return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return {
+      data: rows.map((row) => this.present(row)),
+      meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
   }
 
   async findOne(id: string) {
     const customer = await this.repo.findOne({ where: { id } });
     if (!customer) throw new NotFoundException('مشتری یافت نشد');
-    return customer;
+    return this.present(customer);
   }
 
   async findByPhone(phone: string) {
     return this.repo.findOne({ where: { phone } });
   }
 
-  async create(data: Partial<CustomerEntity>) {
+  async create(data: UpsertCustomerDto) {
+    const status = isCustomerAccountStatus(data.status) ? data.status : 'PENDING';
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = await this.nextCode();
       try {
-        const saved = await this.repo.save(this.repo.create({ ...data, code, status: 'PENDING' }));
+        const saved = await this.repo.save(this.repo.create({
+          ...data,
+          code,
+          status,
+          balance: 0,
+        }));
         if (this.marketing) {
           this.marketing.enroll(saved.id).catch(() => undefined);
         }
-        return saved;
+        return this.present(saved);
       } catch (err) {
         if (isDuplicateCodeError(err) && attempt < 4) continue;
         throw err;
@@ -104,7 +135,7 @@ export class CustomerService {
     return `TRN-${String(max + 1).padStart(5, '0')}`;
   }
 
-  async update(id: string, data: Partial<CustomerEntity>) {
+  async update(id: string, data: UpsertCustomerDto) {
     const before = await this.findOne(id);
     await this.repo.update(id, data);
     if (data.status && data.status !== before.status) {
@@ -142,40 +173,122 @@ export class CustomerService {
     return { message: 'مشتری با موفقیت حذف شد' };
   }
 
-  async updateBalance(id: string, delta: number, manager?: EntityManager) {
-    const repo = manager?.getRepository(CustomerEntity) ?? this.repo;
+  async updateBalance(
+    id: string,
+    delta: number,
+    manager?: EntityManager,
+    meta?: {
+      reasonCode?: WalletReasonCode;
+      referenceType?: string;
+      referenceId?: string;
+      idempotencyKey?: string;
+      actorUserId?: string | null;
+      note?: string;
+    },
+  ) {
     const amount = Number(delta) || 0;
-    if (amount === 0) {
-      if (!manager) return this.findOne(id);
-      const customer = await repo.findOne({ where: { id } });
-      if (!customer) throw new NotFoundException('مشتری یافت نشد');
-      return customer;
-    }
-
-    if (amount < 0) {
-      const result = await repo
-        .createQueryBuilder()
-        .update()
-        .set({ balance: () => `"balance" + (${amount})` })
-        .where('id = :id', { id })
-        .andWhere(`"balance" >= :need`, { need: Math.abs(amount) })
-        .execute();
-      if (!result.affected) {
-        throw new BadRequestException('موجودی کیف پول کافی نیست');
+    const run = async (em: EntityManager) => {
+      const repo = em.getRepository(CustomerEntity);
+      const wallet = em.getRepository(CustomerWalletEntryEntity);
+      if (amount === 0) {
+        const customer = await repo.findOne({ where: { id } });
+        if (!customer) throw new NotFoundException('مشتری یافت نشد');
+        return customer;
       }
-    } else {
-      await repo
-        .createQueryBuilder()
-        .update()
-        .set({ balance: () => `"balance" + (${amount})` })
-        .where('id = :id', { id })
-        .execute();
-    }
-    if (manager) {
+
+      const key = String(meta?.idempotencyKey || '').trim().slice(0, 120)
+        || `auto:${id}:${amount}:${Date.now()}`;
+      const prior = await wallet.findOne({ where: { idempotencyKey: key } });
+      if (prior) {
+        const customer = await repo.findOne({ where: { id } });
+        if (!customer) throw new NotFoundException('مشتری یافت نشد');
+        return customer;
+      }
+
+      if (amount < 0) {
+        const result = await repo
+          .createQueryBuilder()
+          .update()
+          .set({ balance: () => `"balance" + (${amount})` })
+          .where('id = :id', { id })
+          .andWhere(`"balance" >= :need`, { need: Math.abs(amount) })
+          .execute();
+        if (!result.affected) {
+          throw new BadRequestException('موجودی کیف پول کافی نیست');
+        }
+      } else {
+        await repo
+          .createQueryBuilder()
+          .update()
+          .set({ balance: () => `"balance" + (${amount})` })
+          .where('id = :id', { id })
+          .execute();
+      }
+
       const customer = await repo.findOne({ where: { id } });
       if (!customer) throw new NotFoundException('مشتری یافت نشد');
+      const direction: WalletDirection = amount > 0 ? 'CREDIT' : 'DEBIT';
+      await wallet.insert({
+        customerId: id,
+        direction,
+        amount: Math.abs(amount),
+        reasonCode: meta?.reasonCode || 'ADJUSTMENT',
+        referenceType: meta?.referenceType || null,
+        referenceId: meta?.referenceId || null,
+        idempotencyKey: key,
+        actorUserId: meta?.actorUserId || null,
+        note: sanitizeWalletNote(meta?.note) || null,
+        balanceAfter: Number(customer.balance) || 0,
+      });
       return customer;
+    };
+
+    if (manager) return run(manager);
+    return this.repo.manager.transaction(run);
+  }
+
+  async listWallet(customerId: string, page = 1, limit = 20) {
+    await this.findOne(customerId);
+    const take = Math.min(50, Math.max(1, limit));
+    const skip = (Math.max(1, page) - 1) * take;
+    const [rows, total] = await this.walletRepo.findAndCount({
+      where: { customerId },
+      order: { createdAt: 'DESC' },
+      skip,
+      take,
+    });
+    const customer = await this.findOne(customerId);
+    return {
+      balance: customer.balance,
+      entries: rows.map((row) => ({
+        ...row,
+        amount: Number(row.amount) || 0,
+        balanceAfter: Number(row.balanceAfter) || 0,
+      })),
+      meta: { page, limit: take, total, totalPages: Math.ceil(total / take) },
+    };
+  }
+
+  async applyAdminWallet(id: string, dto: AdminWalletAdjustDto, actorUserId?: string) {
+    let rial: number;
+    try {
+      rial = assertPositiveRial(tomanToRial(dto.amountToman));
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : 'مبلغ نامعتبر است');
     }
-    return this.findOne(id);
+    const note = sanitizeWalletNote(dto.note);
+    if (note.length < 3) {
+      throw new BadRequestException('دلیل تغییر موجودی الزامی است');
+    }
+    const delta = dto.direction === 'CREDIT' ? rial : -rial;
+    await this.updateBalance(id, delta, undefined, {
+      reasonCode: dto.direction === 'CREDIT' ? 'ADMIN_CREDIT' : 'ADMIN_DEBIT',
+      referenceType: 'admin',
+      referenceId: dto.referenceId || undefined,
+      idempotencyKey: dto.idempotencyKey,
+      actorUserId: actorUserId || null,
+      note,
+    });
+    return this.listWallet(id, 1, 20);
   }
 }

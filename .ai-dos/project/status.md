@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-13 — **TASK-20260913-011 implementing** on `ai/TASK-20260913-011-admin-customer-workspace`. Admin CRM workspace + wallet ledger. Not live until merge/deploy. Did not edit order.service or rma.service.
 - Last verified: 2026-09-13 — **TASK-20260913-009 CLOSED** on `origin/master` + VPS `718f0f8` (code `80889fb`). Admin `/admin/blog` one channel+tab workspace live. Health 200. Claims released. Admin click not exercised (no session).
 - Last verified: 2026-09-13 — **TASK-20260913-010 CLOSED** on `origin/master` + VPS `6b1beb7`. Admin product workspace + per-image `imageAlts`. Health 200; `.ir`/`.com` homes 200; live PDP has ImageObject name/caption + og:image:alt. Admin click not exercised (no session). Claims remain until live admin save.
 - Last verified: 2026-09-13 — **TASK-20260913-008 CLOSED** on `origin/master` + VPS `f61cfb1`. Admin order queues share one FSM; COMPLETED reachable; health 200. Claims remain until live admin click. Independent Reviewer residual (order status).

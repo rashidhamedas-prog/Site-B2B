@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T12:20:00Z — TASK-20260913-011 implementing customer workspace + wallet
+
+- Objective: complete synced admin CRM + append-only customer wallet.
+- Decisions: URL workspace; ledger+cache; shopper `GET /account/wallet`; no order/rma file edits.
+- Reclaimed: shared-types/index + WORKLOG from 008 (done); database.config from 012-002 (released); PortalSidebar from 004-001 (stale); RetailAccountShell from 005 (done).
+- Residual: RMA raw SQL; order reason meta; independent Reviewer/Security.
+- Next: gates, merge/deploy, live admin + shopper verify.
+
 ## 2026-09-13T12:45:00Z — TASK-20260913-009 CLOSED live `80889fb` / VPS `718f0f8`
 
 - `/admin/blog` workspace on `origin/master`. VPS already at `718f0f8` (includes blog + later product close).

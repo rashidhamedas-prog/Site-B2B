@@ -11,12 +11,14 @@ import {
   Package,
   RefreshCcw,
   User,
+  Wallet,
 } from 'lucide-react';
 import { clearToken, getToken } from '@/lib/auth';
 import { apiClient } from '@/lib/api';
 
 const NAV = [
   { href: '/account', icon: Home, label: 'خلاصه', exact: true },
+  { href: '/account/wallet', icon: Wallet, label: 'کیف پول' },
   { href: '/account/orders', icon: Package, label: 'سفارش‌ها' },
   { href: '/account/profile', icon: User, label: 'مشخصات' },
   { href: '/account/addresses', icon: MapPin, label: 'آدرس‌ها' },

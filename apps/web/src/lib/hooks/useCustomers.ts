@@ -9,12 +9,31 @@ export interface Customer {
   businessName: string;
   ownerName: string;
   phone: string;
+  phone2?: string;
+  email?: string;
   city: string;
   province: string;
+  address?: string;
+  postalCode?: string;
+  nationalId?: string;
   segment: string;
   status: string;
+  type: string;
+  businessType: string;
+  channel?: 'RETAIL' | 'WHOLESALE';
   balance: number;
   creditLimit: number;
+  notes?: string;
+  savedAddresses?: Array<{
+    id: string;
+    recipient: string;
+    mobile: string;
+    province: string;
+    city: string;
+    street: string;
+    postalCode?: string;
+    isDefault?: boolean;
+  }>;
   createdAt: string;
 }
 
@@ -27,7 +46,7 @@ export function useCustomers(params?: {
   page?: number;
   search?: string;
   segment?: string;
-  businessType?: string;
+  channel?: string;
   status?: string;
 }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -43,9 +62,7 @@ export function useCustomers(params?: {
       if (params?.page) query.set('page', String(params.page));
       if (params?.search) query.set('search', params.search);
       if (params?.segment) query.set('segment', params.segment);
-      if (params?.businessType) {
-        query.set('channel', params.businessType);
-      }
+      if (params?.channel) query.set('channel', params.channel);
       if (params?.status) query.set('status', params.status);
       const res = await apiClient.get<CustomersResult>(`/customers?${query}`);
       setCustomers(res.data);
@@ -55,11 +72,34 @@ export function useCustomers(params?: {
     } finally {
       setLoading(false);
     }
-  }, [params?.page, params?.search, params?.segment, params?.businessType, params?.status]);
+  }, [params?.page, params?.search, params?.segment, params?.channel, params?.status]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
   return { customers, meta, loading, error, refetch: fetch };
+}
+
+export function useCustomer(id: string) {
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setCustomer(await apiClient.get<Customer>(`/customers/${id}`));
+    } catch (e: unknown) {
+      setCustomer(null);
+      setError(e instanceof Error ? e.message : 'خطا');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { void reload(); }, [reload]);
+  return { customer, loading, error, reload };
 }
 
 export function useUpdateCustomerSegment() {

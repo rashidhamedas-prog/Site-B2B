@@ -1,16 +1,25 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Plus, Filter, Phone, Edit2, Trash2, X, Save, CheckCircle, XCircle } from 'lucide-react';
 import { Input, SegmentBadge, Pagination } from '@/components/ui';
-import { useCustomers } from '@/lib/hooks/useCustomers';
+import { useCustomers, type Customer } from '@/lib/hooks/useCustomers';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
-
-const SEGMENTS = ['همه', 'VIP', 'A', 'B', 'C'];
+import { AdminChannelFilter } from './AdminChannelTabs';
+import {
+  customerListApiChannel,
+  parseCustomerWorkspaceQuery,
+  serializeCustomerWorkspaceQuery,
+} from '@/lib/admin-customer-workspace';
+import {
+  CUSTOMER_SEGMENTS,
+  CUSTOMER_STATUSES,
+  customerChannelLabelFa,
+  customerStatusLabelFa,
+} from '@taranom/shared-types';
 
 const emptyForm = {
   businessName: '', ownerName: '', phone: '', phone2: '', email: '',
@@ -20,21 +29,15 @@ const emptyForm = {
 };
 type FormData = typeof emptyForm;
 
-interface Customer {
-  id: string; code: string; businessName: string; ownerName: string;
-  phone: string; phone2?: string; email?: string; type: string;
-  segment: string; status: string; province: string; city: string;
-  address?: string; postalCode?: string; nationalId?: string;
-  businessType: string; creditLimit: number; balance: number;
-  notes?: string; createdAt: string;
+function toman(n: number) {
+  return Math.round(Number(n) / 10).toLocaleString('fa-IR');
 }
 
 export function AdminCustomers() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState('');
-  const [segment, setSegment] = useState('');
-  const [channelFilter, setChannelFilter] = useState<AdminChannel | 'ALL'>('ALL');
-  const [statusFilter, setStatusFilter] = useState('');
+  const parsed = parseCustomerWorkspaceQuery(searchParams);
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
@@ -42,17 +45,19 @@ export function AdminCustomers() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const status = searchParams.get('status');
-    if (status) setStatusFilter(status);
-  }, [searchParams]);
-
-  const businessType =
-    channelFilter === 'ALL' ? undefined : channelFilter;
+  const replaceQuery = useCallback((next: Partial<typeof parsed> & { page?: number }) => {
+    const qs = serializeCustomerWorkspaceQuery({ ...parsed, ...next });
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    if (next.page) setPage(next.page);
+    else setPage(1);
+  }, [parsed, pathname, router]);
 
   const { customers, meta, loading, refetch } = useCustomers({
-    page, search: search || undefined, segment: segment || undefined,
-    businessType, status: statusFilter || undefined,
+    page,
+    search: parsed.q || undefined,
+    segment: parsed.segment || undefined,
+    channel: customerListApiChannel(parsed.channel),
+    status: parsed.status || undefined,
   });
 
   const openCreate = () => { setForm(emptyForm); setEditCustomer(null); setModal('create'); };
@@ -63,7 +68,7 @@ export function AdminCustomers() {
       phone2: c.phone2 ?? '', email: c.email ?? '', province: c.province,
       city: c.city, address: c.address ?? '', postalCode: c.postalCode ?? '',
       nationalId: c.nationalId ?? '', type: c.type === 'B2C' || c.type === 'RETAIL' ? 'B2C' : 'B2B',
-      businessType: c.businessType,
+      businessType: c.businessType || 'WHOLESALE',
       segment: c.segment, status: c.status,
       creditLimit: c.creditLimit ? String(Number(c.creditLimit) / 10) : '',
       notes: c.notes ?? '',
@@ -88,9 +93,18 @@ export function AdminCustomers() {
   }, [refetch]);
 
   const handleActivate = useCallback(async (id: string, active: boolean) => {
-    await apiClient.patch(`/customers/${id}`, { status: active ? 'ACTIVE' : 'INACTIVE' });
+    const current = customers.find((c) => c.id === id);
+    if (!current) return;
+    await apiClient.patch(`/customers/${id}`, {
+      businessName: current.businessName,
+      ownerName: current.ownerName,
+      phone: current.phone,
+      province: current.province,
+      city: current.city,
+      status: active ? 'ACTIVE' : 'INACTIVE',
+    });
     refetch();
-  }, [refetch]);
+  }, [customers, refetch]);
 
   const f = (key: keyof FormData, label: string, type = 'text', placeholder = '') => (
     <div>
@@ -98,7 +112,7 @@ export function AdminCustomers() {
       <input type={type} value={form[key] as string}
         onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30" />
     </div>
   );
 
@@ -106,7 +120,7 @@ export function AdminCustomers() {
     <div>
       <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
       <select value={form[key] as string} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30">
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30">
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
@@ -117,38 +131,48 @@ export function AdminCustomers() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-gray-900">مشتریان (CRM)</h2>
-          <p className="text-sm text-gray-500 mt-0.5">{meta.total} مشتری ثبت شده</p>
+          <p className="text-sm text-gray-500 mt-0.5">{meta.total.toLocaleString('fa-IR')} مشتری ثبت شده</p>
         </div>
-        <button onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
+        <button type="button" onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
           <Plus className="h-4 w-4" />افزودن مشتری
         </button>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="w-72">
-          <Input placeholder="جستجو نام، کد، شهر..." value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        <div className="w-72 min-w-0">
+          <Input placeholder="جستجو نام، کد، شهر..." value={parsed.q}
+            onChange={(e) => replaceQuery({ q: e.target.value })}
             rightIcon={<Search className="h-4 w-4" />} />
         </div>
         <AdminChannelFilter
-          value={channelFilter}
-          onChange={(v) => { setChannelFilter(v); setPage(1); }}
+          value={parsed.channel === 'ALL' ? 'ALL' : parsed.channel}
+          onChange={(v) => replaceQuery({ channel: v })}
         />
         <div className="flex items-center gap-1.5">
-          {[['','همه وضعیت‌ها'],['ACTIVE','فعال'],['PENDING','در انتظار'],['INACTIVE','غیرفعال']].map(([id, label]) => (
-            <button key={id || 'all-st'} type="button" onClick={() => { setStatusFilter(id); setPage(1); }}
+          <button type="button" onClick={() => replaceQuery({ status: '' })}
+            className={cn('cursor-pointer rounded-full px-3 py-1 text-xs font-medium',
+              parsed.status === '' ? 'bg-secondary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+            همه وضعیت‌ها
+          </button>
+          {CUSTOMER_STATUSES.map((id) => (
+            <button key={id} type="button" onClick={() => replaceQuery({ status: id })}
               className={cn('cursor-pointer rounded-full px-3 py-1 text-xs font-medium',
-                statusFilter === id ? 'bg-secondary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
-              {label}
+                parsed.status === id ? 'bg-secondary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+              {customerStatusLabelFa(id)}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-1.5">
-          <Filter className="h-4 w-4 text-gray-400" />
-          {SEGMENTS.map((s) => (
-            <button key={s} type="button" onClick={() => { setSegment(s === 'همه' ? '' : s); setPage(1); }}
-              className={cn('cursor-pointer px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                (s === 'همه' ? segment === '' : segment === s) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+          <Filter className="h-4 w-4 text-gray-400" aria-hidden />
+          <button type="button" onClick={() => replaceQuery({ segment: '' })}
+            className={cn('cursor-pointer px-3 py-1 rounded-full text-xs font-medium',
+              parsed.segment === '' ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
+            همه سگمنت
+          </button>
+          {CUSTOMER_SEGMENTS.map((s) => (
+            <button key={s} type="button" onClick={() => replaceQuery({ segment: s })}
+              className={cn('cursor-pointer px-3 py-1 rounded-full text-xs font-medium',
+                parsed.segment === s ? 'bg-primary text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200')}>
               {s}
             </button>
           ))}
@@ -160,8 +184,8 @@ export function AdminCustomers() {
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
-                {['کد', 'نام', 'کانال', 'موبایل', 'شهر', 'سگمنت', 'وضعیت', 'مانده', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                {['کد', 'نام', 'کانال', 'موبایل', 'شهر', 'سگمنت', 'وضعیت', 'کیف پول', ''].map((h) => (
+                  <th key={h || 'actions'} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -172,24 +196,24 @@ export function AdminCustomers() {
                     <td key={j} className="px-4 py-3"><div className="skeleton h-4 rounded w-20" /></td>
                   ))}</tr>
                 ))
-              ) : customers.filter((c) => !statusFilter || (c as Customer).status === statusFilter).length === 0 ? (
+              ) : customers.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-12 text-center">
                   <p className="text-gray-400 mb-3">مشتری‌ای یافت نشد</p>
-                  <button onClick={openCreate} className="btn btn-primary btn-sm">ثبت اولین مشتری</button>
+                  <button type="button" onClick={openCreate} className="btn btn-primary btn-sm">ثبت اولین مشتری</button>
                 </td></tr>
-              ) : (customers as Customer[]).filter((c) => !statusFilter || c.status === statusFilter).map((c) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+              ) : customers.map((c) => (
+                <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-xs font-mono text-gray-400">{c.code}</td>
                   <td className="px-4 py-3">
-                    <Link href={`/admin/customers/${c.id}`} className="text-sm font-semibold text-gray-900 hover:text-primary">
+                    <Link href={`/admin/customers/${c.id}?${serializeCustomerWorkspaceQuery(parsed)}`} className="text-sm font-semibold text-gray-900 hover:text-primary">
                       {c.businessName}
                     </Link>
                     <p className="text-xs text-gray-500">{c.ownerName}</p>
                   </td>
                   <td className="px-4 py-3">
                     <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-semibold',
-                      c.type === 'B2C' || c.type === 'RETAIL' ? 'bg-amber-100 text-amber-800' : 'bg-primary-50 text-primary')}>
-                      {c.type === 'B2C' || c.type === 'RETAIL' ? 'تکی' : 'عمده'}
+                      (c.channel || c.type) === 'RETAIL' || c.type === 'B2C' ? 'bg-amber-100 text-amber-800' : 'bg-primary-50 text-primary')}>
+                      {customerChannelLabelFa(c.channel || c.type)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm font-mono text-gray-700 dir-ltr">{c.phone}</td>
@@ -199,27 +223,33 @@ export function AdminCustomers() {
                     <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
                       c.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
                       c.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500')}>
-                      {c.status === 'ACTIVE' ? 'فعال' : c.status === 'PENDING' ? 'در انتظار' : 'غیرفعال'}
+                      {customerStatusLabelFa(c.status)}
                     </span>
                   </td>
-                  <td className={cn('px-4 py-3 text-sm font-bold', Number(c.balance) < 0 ? 'text-error' : 'text-gray-400')}>
-                    {Number(c.balance) < 0 ? `${(Math.abs(Number(c.balance)) / 10).toLocaleString('fa-IR')} ت` : '—'}
+                  <td className={cn('px-4 py-3 text-sm font-bold', Number(c.balance) < 0 ? 'text-error' : 'text-gray-700')}>
+                    {toman(Number(c.balance) || 0)} ت
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       {(c.status === 'PENDING' || c.status === 'INACTIVE') && (
-                        <button onClick={() => handleActivate(c.id, true)} className="text-success hover:opacity-80" title="فعال کردن">
+                        <button type="button" onClick={() => handleActivate(c.id, true)} className="text-success hover:opacity-80" aria-label="فعال کردن">
                           <CheckCircle className="h-4 w-4" />
                         </button>
                       )}
                       {c.status === 'ACTIVE' && (
-                        <button onClick={() => handleActivate(c.id, false)} className="text-gray-400 hover:text-error" title="غیرفعال کردن">
+                        <button type="button" onClick={() => handleActivate(c.id, false)} className="text-gray-400 hover:text-error" aria-label="غیرفعال کردن">
                           <XCircle className="h-4 w-4" />
                         </button>
                       )}
-                      <a href={`tel:${c.phone}`} className="text-gray-400 hover:text-primary"><Phone className="h-4 w-4" /></a>
-                      <button onClick={() => openEdit(c)} className="text-gray-400 hover:text-primary"><Edit2 className="h-4 w-4" /></button>
-                      <button onClick={() => setDeleteId(c.id)} className="text-gray-400 hover:text-error"><Trash2 className="h-4 w-4" /></button>
+                      <a href={`tel:${c.phone}`} className="text-gray-400 hover:text-primary" aria-label={`تماس با ${c.ownerName}`}>
+                        <Phone className="h-4 w-4" />
+                      </a>
+                      <button type="button" onClick={() => openEdit(c)} className="text-gray-400 hover:text-primary" aria-label="ویرایش سریع">
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button type="button" onClick={() => setDeleteId(c.id)} className="text-gray-400 hover:text-error" aria-label="حذف مشتری">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -232,7 +262,6 @@ export function AdminCustomers() {
         </div>
       </div>
 
-      {/* Create/Edit Modal */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -240,7 +269,9 @@ export function AdminCustomers() {
               <h3 className="text-lg font-bold text-gray-900">
                 {modal === 'create' ? 'ثبت مشتری جدید' : 'ویرایش اطلاعات مشتری'}
               </h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
+              <button type="button" onClick={closeModal} className="text-gray-400 hover:text-gray-600" aria-label="بستن">
+                <X className="h-5 w-5" />
+              </button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -272,25 +303,18 @@ export function AdminCustomers() {
                 {f('creditLimit', 'سقف اعتبار (تومان)', 'number', '5000000')}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                {sel('segment', 'سگمنت', [
-                  { value: 'VIP', label: 'VIP' }, { value: 'A', label: 'A' },
-                  { value: 'B', label: 'B' }, { value: 'C', label: 'C' },
-                ])}
-                {sel('status', 'وضعیت', [
-                  { value: 'PENDING', label: 'در انتظار تأیید' },
-                  { value: 'ACTIVE', label: 'فعال' },
-                  { value: 'INACTIVE', label: 'غیرفعال' },
-                ])}
+                {sel('segment', 'سگمنت', CUSTOMER_SEGMENTS.map((value) => ({ value, label: value })))}
+                {sel('status', 'وضعیت', CUSTOMER_STATUSES.map((value) => ({ value, label: customerStatusLabelFa(value) })))}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">یادداشت</label>
                 <textarea value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-                  rows={2} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none" />
+                  rows={2} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 resize-none" />
               </div>
             </div>
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-              <button onClick={closeModal} className="btn btn-outline btn-md">انصراف</button>
-              <button onClick={handleSave}
+              <button type="button" onClick={closeModal} className="btn btn-outline btn-md">انصراف</button>
+              <button type="button" onClick={handleSave}
                 disabled={saving || !form.businessName || !form.ownerName || !form.phone || !form.province || !form.city}
                 className="btn btn-primary btn-md flex items-center gap-2">
                 <Save className="h-4 w-4" />{saving ? 'در حال ذخیره...' : 'ذخیره'}
@@ -300,7 +324,6 @@ export function AdminCustomers() {
         </div>
       )}
 
-      {/* Delete Dialog */}
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
@@ -308,10 +331,10 @@ export function AdminCustomers() {
               <Trash2 className="h-6 w-6 text-error" />
             </div>
             <h3 className="text-lg font-bold text-gray-900 mb-2">حذف مشتری</h3>
-            <p className="text-sm text-gray-500 mb-6">تمام اطلاعات این مشتری حذف خواهد شد.</p>
+            <p className="text-sm text-gray-500 mb-6">حساب به‌صورت نرم حذف می‌شود و ورودش بسته می‌شود.</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteId(null)} className="flex-1 btn btn-outline btn-md">انصراف</button>
-              <button onClick={() => handleDelete(deleteId)} className="flex-1 btn btn-md bg-error text-white hover:bg-red-700">حذف</button>
+              <button type="button" onClick={() => setDeleteId(null)} className="flex-1 btn btn-outline btn-md">انصراف</button>
+              <button type="button" onClick={() => handleDelete(deleteId)} className="flex-1 btn btn-md bg-error text-white hover:bg-red-700">حذف</button>
             </div>
           </div>
         </div>

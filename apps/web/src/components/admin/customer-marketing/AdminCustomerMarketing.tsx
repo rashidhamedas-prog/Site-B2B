@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Phone, MessageSquare, RefreshCw } from 'lucide-react';
 import { AdminChannelTabs, type AdminChannel } from '../AdminChannelTabs';
 import { Callout, Metric, RadioCards, Section } from '../admin-omnichannel-ui';
 import { apiClient } from '@/lib/api';
 import { useMarketingBoard, useMarketingHub, useMarketingQueue } from '@/lib/hooks/useCustomerMarketing';
+import { parseCustomerWorkspaceQuery, serializeCustomerWorkspaceQuery } from '@/lib/admin-customer-workspace';
 
 const STAGE_LABEL: Record<string, string> = {
   REGISTERED: 'ثبت‌نام تکی',
@@ -28,8 +30,20 @@ const MODE_OPTIONS = [
 ];
 
 export function AdminCustomerMarketing() {
-  const [channel, setChannel] = useState<AdminChannel>('RETAIL');
-  const [tab, setTab] = useState<'today' | 'funnel' | 'rules'>('today');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const parsed = parseCustomerWorkspaceQuery(searchParams);
+  const channel: AdminChannel = parsed.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+  const tab = parsed.marketingTab;
+  const setChannel = (next: AdminChannel) => {
+    const qs = serializeCustomerWorkspaceQuery({ ...parsed, channel: next });
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+  const setTab = (next: typeof tab) => {
+    const qs = serializeCustomerWorkspaceQuery({ ...parsed, marketingTab: next, channel });
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const board = useMarketingBoard(channel);
