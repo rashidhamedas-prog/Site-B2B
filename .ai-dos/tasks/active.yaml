@@ -1,5 +1,44 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-001"
+    title: "ZarinPal capture must not roll back on stock lock join"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260913-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-001"
+      implementer: "cursor:implementer-TASK-20260913-001"
+      reviewer: "required-independent-payments"
+      security: "required-independent-payments-or-personal-data"
+    branch: "ai/TASK-20260913-001-zarinpal-capture-lock"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T07:40:00Z"
+    heartbeat_at: "2026-09-13T07:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/order/order-row-lock.ts"
+      - "apps/api/src/modules/order/order-row-lock.spec.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/fulfillment.service.ts"
+      - "apps/api/src/modules/payment/zarinpal-callback-status.ts"
+      - "apps/api/src/modules/payment/zarinpal-callback-status.spec.ts"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/web/src/app/payment/callback/page.tsx"
+      - "apps/api/package.json"
+      - "docs/reports/2026-09-13-zarinpal-capture-lock.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Live ORD-2026-00036-4FEF94: ZarinPal OK + verify_callback recorded, then
+      FOR UPDATE on LEFT JOIN order_items rolled back capture. Payment stayed PENDING.
+      Reclaimed order.service + payment.service from closed TASK-20260912-008.
+    acceptance_criteria:
+      - "commitStockForOrder does not FOR UPDATE a joined items query"
+      - "Successful ZarinPal verify moves AWAITING_PAYMENT to PENDING_REVIEW"
+      - "Duplicate verify retries applyCapturedPayment without a second charge"
+      - "order-row-lock + zarinpal-callback-status specs and api/web tsc pass"
   - id: "TASK-20260912-008"
     title: "Register/review only after payment captured"
     status: "done"

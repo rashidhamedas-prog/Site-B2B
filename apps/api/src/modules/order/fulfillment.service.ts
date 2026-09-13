@@ -72,7 +72,9 @@ export class FulfillmentService {
 
     const now = Date.now();
     const itemRepo = manager.getRepository(FulfillmentOrderItemEntity);
-    const channel = String(order.type || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    const orderType = String(order.type || '').toUpperCase();
+    const channel =
+      orderType === 'RETAIL' || orderType === 'RETAIL_WEBSITE' ? 'RETAIL' : 'WHOLESALE';
 
     try {
       for (const group of groups) {

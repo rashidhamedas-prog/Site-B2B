@@ -40,6 +40,7 @@ import {
   shouldNotifyOrderRegisteredOnCreate,
   statusAfterCapturedPayment,
 } from './order-payment-lifecycle';
+import { lockOrderRow, lockOrderRowWithItems } from './order-row-lock';
 import { FulfillmentService } from './fulfillment.service';
 import { snapshotVendorFulfillment, stripOrderVendorSecrets } from './fulfillment-split-policy';
 
@@ -1114,10 +1115,7 @@ export class OrderService {
    */
   async applyCapturedPayment(orderId: string, manager: EntityManager): Promise<void> {
     const orderRepo = manager.getRepository(OrderEntity);
-    const locked = await orderRepo.findOne({
-      where: { id: orderId },
-      lock: { mode: 'pessimistic_write' },
-    });
+    const locked = await lockOrderRow(manager, orderId);
     if (!locked || locked.voidedAt || locked.effectsReversedAt) return;
     if (['CANCELLED', 'DELETED'].includes(locked.status)) return;
 
@@ -1168,11 +1166,7 @@ export class OrderService {
   async commitStockForOrder(orderId: string, manager?: EntityManager): Promise<void> {
     const run = async (txn: EntityManager) => {
       const orderRepo = txn.getRepository(OrderEntity);
-      const locked = await orderRepo.findOne({
-        where: { id: orderId },
-        lock: { mode: 'pessimistic_write' },
-        relations: ['items'],
-      });
+      const locked = await lockOrderRowWithItems(txn, orderId);
       if (!locked || locked.stockCommittedAt || locked.effectsReversedAt) return;
       const channel = this.orderStockChannel(locked);
       for (const item of locked.items ?? []) {

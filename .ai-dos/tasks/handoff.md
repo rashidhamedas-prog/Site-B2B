@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T07:40:00Z — TASK-20260913-001 implementing zarinpal capture lock
+
+- Owner: ORD-2026-00036 stayed AWAITING_PAYMENT after ZarinPal paid.
+- Root: `commitStockForOrder` `findOne({ lock, relations: ['items'] })` → PG FOR UPDATE on LEFT JOIN; verify txn rolled back.
+- Evidence: payment_events `…:OK` signatureValid; API log QueryFailedError at 06:42:14Z; payment still PENDING.
+- Fix: lock order row only + load items separately; duplicate verify retries apply; no second start if already PAID.
+- Next: specs + tsc, merge master, deploy, POST verify for this payment (ZarinPal code 101).
+
 ## 2026-09-12T14:44:00Z — TASK-20260912-008 CLOSED live `29d1e15`
 
 - ONLINE unpaid no longer enters «در بررسی». Create → `AWAITING_PAYMENT`; capture → `PENDING_REVIEW` + `orderRegistered` SMS.

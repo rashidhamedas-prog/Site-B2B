@@ -31,19 +31,23 @@ function CallbackContent() {
 
     if (!paymentId) { setState('failed'); setError('شناسه پرداخت یافت نشد'); return; }
 
-    apiClient
-      .post<any>('/payments/verify', {
-        paymentId,
-        authority,
-        status: status || (trackingCode || result === '0' || stateParam === 'OK' ? 'OK' : ''),
-        trackingCode: trackingCode || undefined,
-        providerId: providerId || undefined,
-        result: result || undefined,
-        type: type || undefined,
-        state: stateParam || undefined,
-        transactionId: transactionId || undefined,
-        amount: callbackAmount || undefined,
-      })
+    const body = {
+      paymentId,
+      authority,
+      status: status || (trackingCode || result === '0' || stateParam === 'OK' ? 'OK' : ''),
+      trackingCode: trackingCode || undefined,
+      providerId: providerId || undefined,
+      result: result || undefined,
+      type: type || undefined,
+      state: stateParam || undefined,
+      transactionId: transactionId || undefined,
+      amount: callbackAmount || undefined,
+    };
+
+    const verify = () => apiClient.post<any>('/payments/verify', body);
+
+    verify()
+      .catch(() => verify())
       .then((res) => {
         if (res.ok) {
           setState('success');
@@ -117,13 +121,23 @@ function CallbackContent() {
 
         {state !== 'verifying' && (
           <div className="flex flex-col gap-2 mt-6">
-            <Link
-              href="/account"
-              className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
-            >
-              پیگیری سفارش تکی
-              <ArrowRight className="h-4 w-4 rotate-180" />
-            </Link>
+            {orderId ? (
+              <Link
+                href={`/account/orders/${orderId}`}
+                className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
+              >
+                پیگیری این سفارش
+                <ArrowRight className="h-4 w-4 rotate-180" />
+              </Link>
+            ) : (
+              <Link
+                href="/account"
+                className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
+              >
+                پیگیری سفارش تکی
+                <ArrowRight className="h-4 w-4 rotate-180" />
+              </Link>
+            )}
             <Link
               href="/portal/dashboard/orders"
               className="btn btn-outline btn-md inline-flex items-center justify-center gap-2"

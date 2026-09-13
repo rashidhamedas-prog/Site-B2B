@@ -22,6 +22,7 @@ import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { SettingsService } from '../settings/settings.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
+import { zarinpalCallbackIsSuccess } from './zarinpal-callback-status';
 import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.adapter';
 import { TorobPayAdapter, torobpayCallbackIsSuccess } from './adapters/torobpay.adapter';
 import type { PaymentProviderAdapter, CreatePaymentRequest } from './adapters/payment-provider.adapter';
@@ -359,6 +360,13 @@ export class PaymentService {
         await manager.query(`SELECT pg_advisory_xact_lock(hashtext($1::text))`, [
           `payment-start:${input.orderId}`,
         ]);
+        const alreadyPaid = await payRepo.findOne({
+          where: { orderId: input.orderId, status: 'PAID' as any },
+          order: { createdAt: 'DESC' },
+        });
+        if (alreadyPaid) {
+          return { kind: 'already_paid' as const, payment: alreadyPaid };
+        }
         const existing = await payRepo.findOne({
           where: { orderId: input.orderId, status: 'PENDING' as any },
           order: { createdAt: 'DESC' },
@@ -392,6 +400,33 @@ export class PaymentService {
         );
         return { kind: 'created' as const, payment };
       });
+
+      if (reused.kind === 'already_paid') {
+        try {
+          await this.dataSource.transaction(async (manager) => {
+            await this.orders.applyCapturedPayment(input.orderId!, manager);
+          });
+        } catch (err: any) {
+          this.logger.error(
+            this.paymentLogCtx({
+              event: 'payment.capture.apply_failed',
+              paymentId: reused.payment.id,
+              orderId: input.orderId,
+              extra: { message: err?.message || String(err) },
+            }),
+          );
+        }
+        const paidCb = `${gw.callbackBase}${gw.callbackBase.includes('?') ? '&' : '?'}paymentId=${reused.payment.id}&Status=OK`;
+        return {
+          paymentId: reused.payment.id,
+          authority: reused.payment.authority || '',
+          redirectUrl: reused.payment.authority
+            ? `${paidCb}&Authority=${encodeURIComponent(reused.payment.authority)}`
+            : paidCb,
+          gateway: reused.payment.gateway || gw.providerCode,
+          sandbox: gw.sandbox,
+        };
+      }
 
       if (reused.kind === 'reuse') {
         const redirectUrl = this.reuseRedirectUrl(reused.payment, gw);
@@ -717,7 +752,9 @@ export class PaymentService {
           })
           ? 'OK'
           : 'NOK'
-        : status || 'OK';
+        : zarinpalCallbackIsSuccess(status)
+          ? 'OK'
+          : 'NOK';
     this.logger.log(
       this.paymentLogCtx({
         event: 'payment.verify.begin',
@@ -757,6 +794,7 @@ export class PaymentService {
           providerCode,
         }),
       );
+      await this.retryApplyCapturedPayment(preview.orderId, paymentId);
       return toPublicPaymentDto(preview, { ok: true, alreadyVerified: true });
     }
     if (preview.status === 'CANCELLED' || preview.status === 'REFUNDED') {
@@ -997,6 +1035,7 @@ export class PaymentService {
           providerCode,
         }),
       );
+      await this.retryApplyCapturedPayment(applied.payment.orderId, paymentId);
       return toPublicPaymentDto(applied.payment, { ok: true, alreadyVerified: true });
     }
 
@@ -1015,6 +1054,25 @@ export class PaymentService {
       ok: true,
       alreadyVerified: false,
     });
+  }
+
+  /** If PSP already captured but order apply failed, retry without charging again. */
+  private async retryApplyCapturedPayment(orderId: string | null | undefined, paymentId: string) {
+    if (!orderId) return;
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        await this.orders.applyCapturedPayment(orderId, manager);
+      });
+    } catch (err: any) {
+      this.logger.error(
+        this.paymentLogCtx({
+          event: 'payment.capture.apply_failed',
+          paymentId,
+          orderId,
+          extra: { message: err?.message || String(err) },
+        }),
+      );
+    }
   }
 
   async cancelPendingForOrder(orderId: string) {
