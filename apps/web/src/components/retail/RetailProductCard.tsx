@@ -9,6 +9,7 @@ import { useRetailCart } from '@/lib/retail-cart';
 import { discountPercent, mediaUrl, toman, uniqueByColor, uniqueSizes } from '@/lib/product-display';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import dynamic from 'next/dynamic';
 
 const BoutiqueProductCard = dynamic(() =>
@@ -24,6 +25,7 @@ export type RetailCardProduct = {
   retailPrice?: number | null;
   retailCompareAtPrice?: number | null;
   images?: string[];
+  imageAlts?: Record<string, string>;
   retailStock?: number;
   stock?: number;
   totalStock?: number;
@@ -155,7 +157,7 @@ function ClassicRetailProductCard({
             <>
               <Image
                 src={image}
-                alt={product.name}
+                alt={resolveProductImageAlt(product.imageAlts, product.images?.[0], { name: product.name, fabric: product.fabric, index: 0 })}
                 fill
                 priority={imagePriority}
                 loading={imagePriority ? 'eager' : 'lazy'}

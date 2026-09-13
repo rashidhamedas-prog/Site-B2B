@@ -11,13 +11,16 @@ import { RetailProductCard } from './RetailProductCard';
 import { selectDefaultRetailVariant } from '@taranom/shared-types';
 import { looksLikeHtml, selectRetailPdpBody, lightSanitizeHtml } from '@/lib/retail-pdp-copy';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 
 type Related = {
   id: string;
   name: string;
   slug: string;
+  fabric?: string;
   retailPrice?: number | null;
   images?: string[];
+  imageAlts?: Record<string, string>;
   sale?: {
     active?: boolean;
     payable?: number;
@@ -61,6 +64,9 @@ type Product = {
   isPreOrder?: boolean;
   preOrderDate?: string | null;
   images?: string[];
+  imageAlts?: Record<string, string>;
+  careInstructions?: Record<string, unknown> | null;
+  faqItems?: Array<{ question: string; answer: string }> | null;
   variants?: Variant[];
   categoryId?: string;
   fabric?: string;
@@ -69,6 +75,27 @@ type Product = {
 
 function mediaUrl(url?: string | null) {
   return toMediaUrl(url);
+}
+
+const CARE_LABEL: Record<string, string> = { wash: 'شستشو', iron: 'اتو' };
+
+function visibleCareRows(care?: Record<string, unknown> | null) {
+  if (!care || typeof care !== 'object') return [];
+  return Object.entries(care)
+    .map(([key, value]) => ({
+      label: CARE_LABEL[key] || key,
+      value: String(value ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+    }))
+    .filter((row) => row.value);
+}
+
+function visibleFaqItems(items?: Array<{ question: string; answer: string }> | null) {
+  return (items ?? [])
+    .map((item) => ({
+      question: String(item.question ?? '').replace(/<[^>]*>/g, ' ').trim(),
+      answer: String(item.answer ?? '').replace(/<[^>]*>/g, ' ').trim(),
+    }))
+    .filter((item) => item.question && item.answer);
 }
 
 function parseSizeGuide(raw?: string | string[] | null): string[][] {
@@ -219,6 +246,8 @@ export function RetailProductDetail({
       : 0
     : discountPercent(price, compareAt);
   const body = selectRetailPdpBody(product);
+  const careRows = visibleCareRows(product.careInstructions);
+  const faqRows = visibleFaqItems(product.faqItems);
   const productRetailStock = Math.max(0, Number(product.retailStock) || 0);
   const variantStock = selectedVariant ? variantUnits(selectedVariant) : productRetailStock;
   const stock = product.variants?.length ? variantStock : productRetailStock;
@@ -356,7 +385,7 @@ export function RetailProductDetail({
                       }`}
                     >
                       {u ? (
-                        <Image src={u} alt={`${product.name} — تصویر ${(i + 1).toLocaleString('fa-IR')}`} fill className="object-cover" sizes="72px" />
+                        <Image src={u} alt={resolveProductImageAlt(product.imageAlts, img, { name: product.name, color: linkedColor, index: i })} fill className="object-cover" sizes="72px" />
                       ) : null}
                     </button>
                   );
@@ -373,7 +402,7 @@ export function RetailProductDetail({
               {main ? (
                 <Image
                   src={main}
-                  alt={color ? `${product.name} — ${color}` : product.name}
+                  alt={resolveProductImageAlt(product.imageAlts, gallery[activeImg] || main, { name: product.name, color, index: activeImg })}
                   fill
                   className="object-cover transition duration-300 hover:scale-[1.03] motion-reduce:transition-none motion-reduce:hover:scale-100"
                   sizes="(max-width:1024px) 100vw, 50vw"
@@ -553,7 +582,7 @@ export function RetailProductDetail({
         <div className="mx-auto min-w-0 max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">{guide}</div>
       ) : null}
 
-      {body || product.modelInfo ? (
+      {body || product.modelInfo || careRows.length || faqRows.length ? (
         <section className="mx-auto min-w-0 max-w-7xl space-y-4 px-4 pb-10 sm:px-6 lg:px-8" aria-label="توضیحات محصول">
           {body ? (
             <div className="rounded-2xl border border-[var(--retail-border)] bg-white p-5 sm:p-6">
@@ -574,6 +603,32 @@ export function RetailProductDetail({
               <p className="retail-prose whitespace-pre-line text-sm leading-8 text-[var(--retail-muted)]">
                 {product.modelInfo}
               </p>
+            </div>
+          ) : null}
+          {careRows.length ? (
+            <div className="rounded-2xl border border-[var(--retail-border)] bg-white p-5 sm:p-6">
+              <h2 className="mb-4 text-lg font-bold text-[var(--retail-ink)]">دستور مراقبت</h2>
+              <dl className="space-y-2 text-sm leading-7 text-[var(--retail-muted)]">
+                {careRows.map((row) => (
+                  <div key={row.label} className="flex justify-between gap-3">
+                    <dt className="shrink-0 font-semibold text-[var(--retail-ink)]">{row.label}</dt>
+                    <dd className="text-left">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ) : null}
+          {faqRows.length ? (
+            <div className="rounded-2xl border border-[var(--retail-border)] bg-white p-5 sm:p-6">
+              <h2 className="mb-4 text-lg font-bold text-[var(--retail-ink)]">پرسش‌های رایج</h2>
+              <div className="space-y-2">
+                {faqRows.map((item) => (
+                  <details key={item.question} className="rounded-lg border border-[var(--retail-border)] px-3 py-2">
+                    <summary className="cursor-pointer text-sm font-semibold text-[var(--retail-ink)]">{item.question}</summary>
+                    <p className="mt-2 text-sm leading-7 text-[var(--retail-muted)]">{item.answer}</p>
+                  </details>
+                ))}
+              </div>
             </div>
           ) : null}
         </section>
@@ -651,7 +706,7 @@ export function RetailProductDetail({
             </>
           ) : null}
           <div className="relative z-10 h-[min(90vh,900px)] w-full max-w-4xl">
-            <Image src={main} alt={product.name} fill className="object-contain" sizes="100vw" />
+            <Image src={main} alt={resolveProductImageAlt(product.imageAlts, gallery[activeImg] || main, { name: product.name, color, index: activeImg })} fill className="object-contain" sizes="100vw" />
           </div>
         </div>
       ) : null}

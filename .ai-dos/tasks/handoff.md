@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T11:55:00Z — TASK-20260913-010 implementing product workspace
+
+- `/admin/products` list+editor were incomplete vs entity: no per-image alt, FAQ/care/nameEn hidden, list ignored `channel=`.
+- SoT: `products.imageAlts` jsonb keyed by gallery URL. Saleor/Medusa/Shopify pattern applied without installing them.
+- Reclaimed stale PDP files from TASK-20260910-001 (hb 2026-09-09). Did not take ProductInternalLinkPicker.
+- Gates (observed): web `product-image-alt.spec` + `admin-product-workspace.spec` ok; api `product-image-alt.spec` + migration spec ok; `apps/web` and `apps/api` `npx tsc --noEmit` 0.
+- Next: scoped commit (not blog 009), push, auto-deploy, migration, health.
+
 ## 2026-09-13T10:45:00Z — TASK-20260913-009 implementing synced admin blog
 
 - Live `/admin/blog` had 7 hub tabs each with its own channel state; authors/settings/taxonomy/media were partial vs existing API.

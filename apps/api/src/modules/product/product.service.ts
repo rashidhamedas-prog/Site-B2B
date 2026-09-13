@@ -15,6 +15,7 @@ import {
 } from './entities/product-specs';
 import { StorageService } from '../upload/storage.service';
 import { SettingsService } from '../settings/settings.service';
+import { fillMissingProductImageAlts } from './product-image-alt';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
@@ -1569,6 +1570,7 @@ export class ProductService {
 
     const product = this.productRepo.create({
       name: data.name,
+      nameEn: data.nameEn?.trim() || null,
       fabric,
       fabricComposition: data.fabricComposition,
       description: data.description,
@@ -1590,6 +1592,12 @@ export class ProductService {
       ...saleFlags,
       isNew: false,
       images: data.images,
+      imageAlts: fillMissingProductImageAlts({
+        images: data.images,
+        imageAlts: data.imageAlts,
+        name: data.name,
+        fabric,
+      }),
       seoMeta: data.seoMeta,
       sku: data.sku!,
       slug: data.slug ? normalizePublicSlug(data.slug) : undefined,
@@ -1685,6 +1693,27 @@ export class ProductService {
     delete (patch as any).vendorId;
     delete (patch as any).commissionPercent;
     delete (patch as any).brandName;
+    delete (patch as any).imageAlts;
+    if (data.nameEn !== undefined) {
+      patch.nameEn = data.nameEn?.trim() || null;
+    }
+    const nextImages = data.images ?? existing.images ?? [];
+    if (data.imageAlts !== undefined || data.images !== undefined) {
+      const colorByUrl: Record<string, string> = {};
+      for (const v of existing.variants ?? []) {
+        if (v.imageUrl && v.color) colorByUrl[v.imageUrl] = v.color;
+      }
+      patch.imageAlts = fillMissingProductImageAlts({
+        images: nextImages,
+        imageAlts: data.imageAlts ?? existing.imageAlts,
+        name: data.name ?? existing.name,
+        fabric: this.fabricFromSpecs(
+          (data.specs as ProductSpecs) ?? existing.specs,
+          data.fabric ?? existing.fabric,
+        ),
+        colorByUrl,
+      });
+    }
     if (data.specs) {
       patch.specs = data.specs as ProductSpecs;
       patch.fabric = this.fabricFromSpecs(

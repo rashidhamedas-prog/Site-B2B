@@ -130,9 +130,10 @@ type Props = {
   sizeLabels: string[];
   drafts: ColorDraft[];
   onChange: (next: ColorDraft[]) => void;
+  onImageAssigned?: (url: string, color: string) => void;
 };
 
-export function ColorVariantsEditor({ sizeLabels, drafts, onChange }: Props) {
+export function ColorVariantsEditor({ sizeLabels, drafts, onChange, onImageAssigned }: Props) {
   const { upload, uploading } = useImageUpload();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadKey, setUploadKey] = useState<string | null>(null);
@@ -244,11 +245,15 @@ export function ColorVariantsEditor({ sizeLabels, drafts, onChange }: Props) {
     try {
       const url = await upload(file);
       if (uploadKey === 'form') {
+        const colorName = form.color;
         setForm((f) => ({ ...f, imageUrl: url }));
+        onImageAssigned?.(url, colorName);
       } else {
+        const match = drafts.find((d) => d.key === uploadKey);
         onChange(
           drafts.map((d) => (d.key === uploadKey ? { ...d, imageUrl: url } : d)),
         );
+        onImageAssigned?.(url, match?.color || form.color);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'خطا در آپلود تصویر');
@@ -301,7 +306,7 @@ export function ColorVariantsEditor({ sizeLabels, drafts, onChange }: Props) {
             <div className="flex items-center gap-2">
               {form.imageUrl ? (
                 <div className="relative h-9 w-9 rounded-lg overflow-hidden border border-gray-200">
-                  <img src={form.imageUrl} alt="" className="h-full w-full object-cover" />
+                  <img src={form.imageUrl} alt={form.color ? `رنگ ${form.color}` : 'پیش‌نمایش رنگ'} className="h-full w-full object-cover" />
                   <button
                     type="button"
                     onClick={() => setForm((p) => ({ ...p, imageUrl: '' }))}

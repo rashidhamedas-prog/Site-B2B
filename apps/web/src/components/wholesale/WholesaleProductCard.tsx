@@ -7,6 +7,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { getToken } from '@/lib/auth';
 import { channelSaleDisplay, sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 
 export type WholesaleCardProduct = {
   id: string;
@@ -26,6 +27,7 @@ export type WholesaleCardProduct = {
   wholesaleStock?: number;
   totalStock?: number;
   images?: string[];
+  imageAlts?: Record<string, string>;
   sizeType?: string;
   minOrderQty?: number;
   minimumOrderQuantity?: number;
@@ -71,7 +73,7 @@ export function WholesaleProductCard({
       >
         <ProductImage
           src={product.images?.[0]}
-          alt={product.name}
+          alt={resolveProductImageAlt(product.imageAlts, product.images?.[0], { name: product.name, fabric: product.fabric, index: 0 })}
           priority={imagePriority}
           sizes="(max-width:639px) 46vw, (max-width:1279px) 30vw, 240px"
         />

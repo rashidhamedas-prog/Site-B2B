@@ -3,6 +3,7 @@ import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { BUSINESS_FACTS } from '@/lib/business-facts';
 import { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 import { jsonLdBrandNode } from '@/lib/product-jsonld-brand';
+import { jsonLdImageObjects } from '@/lib/product-image-alt';
 
 export { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 
@@ -207,10 +208,14 @@ export function ProductJsonLd({
   channel = 'WHOLESALE',
   brandName,
   hideDefaultBrand,
+  images,
+  imageAlts,
 }: {
   name: string;
   description?: string;
   image?: string;
+  images?: string[];
+  imageAlts?: Record<string, string>;
   sku?: string;
   price?: number;
   /** Wholesale: omit unless the visitor can see the price. Default false on wholesale. */
@@ -228,7 +233,17 @@ export function ProductJsonLd({
   const fallbackImage =
     channel === 'RETAIL' ? `${RETAIL_ORIGIN}/og-retail.jpg` : `${WHOLESALE_ORIGIN}/og-wholesale.jpg`;
   const emitPrice = includePrice ?? channel !== 'WHOLESALE';
-  const productImage = absoluteJsonLdUrl(channel, image) ?? fallbackImage;
+  const gallery = (images?.length ? images : image ? [image] : []).filter(Boolean);
+  const imageObjects = jsonLdImageObjects(
+    gallery,
+    imageAlts,
+    { name, fabric, color },
+    (src) => absoluteJsonLdUrl(channel, src),
+  );
+  const productImage =
+    imageObjects.length > 0
+      ? imageObjects
+      : absoluteJsonLdUrl(channel, image) ?? fallbackImage;
   const brand = jsonLdBrandNode({ brandName, hideDefaultBrand });
 
   const additionalProperty = [
@@ -281,10 +296,14 @@ export function ProductGroupJsonLd({
   channel = 'RETAIL',
   brandName,
   hideDefaultBrand,
+  images,
+  imageAlts,
 }: {
   name: string;
   description?: string;
   image?: string;
+  images?: string[];
+  imageAlts?: Record<string, string>;
   url: string;
   sku?: string;
   price?: number;
@@ -312,7 +331,13 @@ export function ProductGroupJsonLd({
     availability,
     channel,
   });
-  const groupImage = absoluteJsonLdUrl(channel, image);
+  const groupImages = jsonLdImageObjects(
+    (images?.length ? images : image ? [image] : []).filter(Boolean),
+    imageAlts,
+    { name },
+    (urlValue) => absoluteJsonLdUrl(channel, urlValue),
+  );
+  const groupImage = groupImages[0]?.url ?? absoluteJsonLdUrl(channel, image);
   const groupId = sku || url;
   const brand = jsonLdBrandNode({ brandName, hideDefaultBrand });
 
@@ -325,7 +350,7 @@ export function ProductGroupJsonLd({
         productGroupID: groupId,
         name,
         description,
-        ...(groupImage ? { image: groupImage } : {}),
+        ...(groupImages.length ? { image: groupImages } : groupImage ? { image: groupImage } : {}),
         url,
         sku,
         ...(brand ? { brand } : {}),

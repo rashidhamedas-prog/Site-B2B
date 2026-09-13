@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { channelSaleDisplay, piecesPerPackCount, sizeCountForType, toman } from '@/lib/product-display';
 import { wholesaleMoq } from '@/lib/wholesale-order';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 
 interface Variant {
   id: string;
@@ -63,6 +64,9 @@ export interface WholesaleProduct {
   totalStock?: number;
   sku?: string;
   images: string[];
+  imageAlts?: Record<string, string>;
+  careInstructions?: Record<string, unknown> | null;
+  faqItems?: Array<{ question: string; answer: string }> | null;
   variants: Variant[];
   specs?: ProductSpecs;
   sizeType?: 'TWO' | 'THREE' | 'FREE';
@@ -71,6 +75,27 @@ export interface WholesaleProduct {
   isNew?: boolean;
   status?: string;
   sizeGuide?: string | string[];
+}
+
+const CARE_LABEL: Record<string, string> = { wash: 'شستشو', iron: 'اتو' };
+
+function visibleCareRows(care?: Record<string, unknown> | null) {
+  if (!care || typeof care !== 'object') return [];
+  return Object.entries(care)
+    .map(([key, value]) => ({
+      label: CARE_LABEL[key] || key,
+      value: String(value ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+    }))
+    .filter((row) => row.value);
+}
+
+function visibleFaqItems(items?: Array<{ question: string; answer: string }> | null) {
+  return (items ?? [])
+    .map((item) => ({
+      question: String(item.question ?? '').replace(/<[^>]*>/g, ' ').trim(),
+      answer: String(item.answer ?? '').replace(/<[^>]*>/g, ' ').trim(),
+    }))
+    .filter((item) => item.question && item.answer);
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -335,6 +360,8 @@ export function ProductDetail({
     [product.fullContent, product.wholesaleFullContent, product.description]
       .map((value) => String(value || '').trim())
       .find(Boolean) || '';
+  const careRows = visibleCareRows(product.careInstructions);
+  const faqRows = visibleFaqItems(product.faqItems);
 
   return (
     <div className="min-h-screen bg-[var(--brand-ivory,#F6F1E8)] pb-24 lg:pb-0">
@@ -357,7 +384,7 @@ export function ProductDetail({
             <div className="relative aspect-[3/4] max-h-[70vh] w-full overflow-hidden rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100">
               <ProductImage
                 src={mainImage}
-                alt={product.name}
+                alt={resolveProductImageAlt(product.imageAlts, mainImage, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: activeImage })}
                 priority
                 sizes="(max-width:1024px) 100vw, 50vw"
               />
@@ -393,7 +420,7 @@ export function ProductDetail({
                       activeImage === i ? 'border-primary' : 'border-transparent hover:border-primary-200',
                     )}
                   >
-                    <ProductImage src={img} alt="" sizes="80px" />
+                    <ProductImage src={img} alt={resolveProductImageAlt(product.imageAlts, img, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: i })} sizes="80px" />
                   </button>
                 ))}
               </div>
@@ -679,6 +706,34 @@ export function ProductDetail({
           <div className={cn('card p-6', specRows.length > 0 ? 'mt-4' : 'mt-10')}>
             <h2 className="text-lg font-bold text-gray-900 mb-4">توضیحات کامل و دستور مراقبت</h2>
             <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{body}</p>
+          </div>
+        ) : null}
+
+        {careRows.length ? (
+          <div className={cn('card p-6', body || specRows.length > 0 ? 'mt-4' : 'mt-10')}>
+            <h2 className="mb-4 text-lg font-bold text-gray-900">دستور مراقبت</h2>
+            <dl className="space-y-2 text-sm text-gray-600">
+              {careRows.map((row) => (
+                <div key={row.label} className="flex justify-between gap-3">
+                  <dt className="shrink-0 font-semibold text-gray-900">{row.label}</dt>
+                  <dd className="text-left">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : null}
+
+        {faqRows.length ? (
+          <div className={cn('card p-6', body || specRows.length > 0 || careRows.length ? 'mt-4' : 'mt-10')}>
+            <h2 className="mb-4 text-lg font-bold text-gray-900">پرسش‌های رایج</h2>
+            <div className="space-y-2">
+              {faqRows.map((item) => (
+                <details key={item.question} className="rounded-lg border border-gray-100 px-3 py-2">
+                  <summary className="cursor-pointer text-sm font-semibold text-gray-900">{item.question}</summary>
+                  <p className="mt-2 text-sm leading-7 text-gray-600">{item.answer}</p>
+                </details>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>

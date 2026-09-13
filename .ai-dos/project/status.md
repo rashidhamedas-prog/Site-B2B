@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-13 — **TASK-20260913-010 implementing** on `ai/TASK-20260913-010-admin-product-workspace`. Admin `/admin/products` workspace + `imageAlts` SoT. Not live until merge/deploy + migration. Did not take ProductInternalLinkPicker.
 - Last verified: 2026-09-13 — **TASK-20260913-009 implementing** on `ai/TASK-20260913-009-admin-blog-workspace`. Admin `/admin/blog` one channel+tab workspace; panels complete against existing blog admin APIs. Not live until merge/deploy. Did not edit 026 blog.controller/service.
 - Last verified: 2026-09-13 — **TASK-20260913-008 CLOSED** on `origin/master` + VPS `f61cfb1`. Admin order queues share one FSM; COMPLETED reachable; health 200. Claims remain until live admin click. Independent Reviewer residual (order status).
 - Last verified: 2026-09-13 — **TASK-20260913-005 CLOSED** on `origin/master` + VPS `342ea58`. Retail COD hidden unless `retailCashEnabled`; live `.ir/checkout` shows only زرین‌پال. Health 200. Claims released.

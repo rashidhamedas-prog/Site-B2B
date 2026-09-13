@@ -44,6 +44,11 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiPropertyOptional({ description: 'نام لاتین برای اسلاگ و جستجو' })
+  @IsOptional()
+  @IsString()
+  nameEn?: string;
+
   @ApiPropertyOptional({ description: 'قدیمی — از specs.fabricType استفاده کنید' })
   @IsOptional()
   @IsString()
@@ -285,6 +290,15 @@ export class CreateProductDto {
   @IsArray()
   @IsString({ each: true })
   images?: string[];
+
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: { type: 'string' },
+    description: 'متن جایگزین هر URL گالری؛ کلید باید همان آدرس تصویر باشد',
+  })
+  @IsOptional()
+  @IsObject()
+  imageAlts?: Record<string, string>;
 
   @ApiPropertyOptional()
   @IsOptional()

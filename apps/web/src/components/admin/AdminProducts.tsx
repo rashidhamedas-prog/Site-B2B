@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   Search,
   Plus,
@@ -9,8 +10,6 @@ import {
   X,
   Save,
   Layers,
-  ImagePlus,
-  Loader2,
   Package,
 } from 'lucide-react';
 import { Input, Badge, Pagination } from '@/components/ui';
@@ -37,6 +36,21 @@ import type {
   InternalLinkView,
 } from '@/lib/hooks/useProducts';
 import { AdminExcelExportButtons } from '@/components/admin/AdminExcelExportButtons';
+import { ProductImageAltEditor } from '@/components/admin/ProductImageAltEditor';
+import {
+  PRODUCT_CHANNEL_LABEL,
+  PRODUCT_EDITOR_SECTION_LABEL,
+  PRODUCT_EDITOR_SECTIONS,
+  parseProductWorkspaceQuery,
+  productListApiChannel,
+  serializeProductWorkspaceQuery,
+  type ProductEditorSection,
+  type ProductListChannel,
+} from '@/lib/admin-product-workspace';
+import {
+  normalizeProductImageAlts,
+  suggestProductImageAlt,
+} from '@/lib/product-image-alt';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'فعال',
@@ -96,7 +110,11 @@ const emptyForm = {
   categoryId: '',
   extraCategoryIds: [] as string[],
   name: '',
+  nameEn: '',
   description: '',
+  faqItems: [] as Array<{ question: string; answer: string }>,
+  careWash: '',
+  careIron: '',
   wholesaleSeoTitle: '',
   wholesaleSeoDescription: '',
   wholesaleFocusKeyword: '',
@@ -830,12 +848,16 @@ function VariantsModal({
 }
 
 export function AdminProducts() {
-  const [search, setSearch] = useState('');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const workspace = parseProductWorkspaceQuery(searchParams);
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [images, setImages] = useState<string[]>([]);
+  const [imageAlts, setImageAlts] = useState<Record<string, string>>({});
   const [colorDrafts, setColorDrafts] = useState<ColorDraft[]>([]);
   const [initialColorNames, setInitialColorNames] = useState<string[]>([]);
   const { upload: uploadImage, uploading: uploadingImg } = useImageUpload();
@@ -881,11 +903,24 @@ export function AdminProducts() {
     [refreshSpecMemory]
   );
 
+  const replaceWorkspace = useCallback(
+    (next: { channel: ProductListChannel; q?: string; section?: ProductEditorSection }) => {
+      const qs = serializeProductWorkspaceQuery({
+        channel: next.channel,
+        q: next.q ?? workspace.q,
+        section: next.section ?? workspace.section,
+      });
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, workspace.channel, workspace.q, workspace.section],
+  );
+
   const { products, meta, loading, error, refetch } = useProducts({
     page,
-    search: search || undefined,
+    search: workspace.q || undefined,
     limit: 20,
     status: 'ALL',
+    channel: productListApiChannel(workspace.channel),
   });
 
   useEffect(() => {
@@ -933,8 +968,9 @@ export function AdminProducts() {
   }, []);
 
   const openCreate = () => {
-    setForm({ ...emptyForm, specs: { ...emptySpecs, customFields: [] } });
+    setForm({ ...emptyForm, specs: { ...emptySpecs, customFields: [] }, faqItems: [] });
     setImages([]);
+    setImageAlts({});
     setColorDrafts([]);
     setInitialColorNames([]);
     setRelatedPicks([]);
@@ -961,6 +997,7 @@ export function AdminProducts() {
     const colorImgs = drafts.map((d) => d.imageUrl).filter(Boolean);
     const mergedImages = [...new Set([...(src.images ?? []), ...colorImgs])];
     setImages(mergedImages);
+    setImageAlts(normalizeProductImageAlts(src.imageAlts, mergedImages));
     setRelatedPicks(relatedPicksFromProduct(src));
     setRetailLinkPicks(internalLinksFromProduct(src.retailInternalLinks));
     setWholesaleLinkPicks(internalLinksFromProduct(src.wholesaleInternalLinks));
@@ -984,8 +1021,15 @@ export function AdminProducts() {
       extraCategoryIds: (src.categoryIds ?? [])
         .filter((id) => id && id !== src.categoryId),
       name: src.name,
+      nameEn: src.nameEn ?? '',
       slug: src.slug ?? '',
       description: src.description ?? '',
+      faqItems: (src.faqItems ?? []).map((item) => ({
+        question: item.question ?? '',
+        answer: item.answer ?? '',
+      })),
+      careWash: String((src.careInstructions as { wash?: unknown } | null)?.wash ?? ''),
+      careIron: String((src.careInstructions as { iron?: unknown } | null)?.iron ?? ''),
       retailFullContent: src.retailFullContent ?? src.description ?? '',
       wholesaleFullContent: src.wholesaleFullContent ?? src.description ?? '',
       legacyContent: src.legacyContent ?? '',
@@ -1074,6 +1118,7 @@ export function AdminProducts() {
     setModal(null);
     setEditProduct(null);
     setImages([]);
+    setImageAlts({});
     setColorDrafts([]);
     setInitialColorNames([]);
     setRelatedPicks([]);
@@ -1090,13 +1135,23 @@ export function AdminProducts() {
       try {
         const url = await uploadImage(file);
         setImages((prev) => [...prev, url]);
+        setImageAlts((prev) => ({
+          ...prev,
+          [url]:
+            prev[url] ||
+            suggestProductImageAlt({
+              name: form.name,
+              fabric: form.specs.fabricType,
+              index: images.length,
+            }),
+        }));
       } catch {
         alert('آپلود عکس با خطا مواجه شد');
       } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     },
-    [uploadImage]
+    [uploadImage, form.name, form.specs.fabricType, images.length]
   );
 
   const setSpec = (key: keyof ProductSpecs, value: string) => {
@@ -1229,9 +1284,33 @@ export function AdminProducts() {
 
       const colorImageUrls = colorDrafts.map((d) => d.imageUrl).filter(Boolean);
       const galleryImages = [...new Set([...images, ...colorImageUrls])];
+      const colorByUrl: Record<string, string> = {};
+      for (const d of colorDrafts) {
+        if (d.imageUrl && d.color.trim()) colorByUrl[d.imageUrl] = d.color.trim();
+      }
+      const nextAlts = { ...imageAlts };
+      galleryImages.forEach((url, index) => {
+        if (nextAlts[url]) return;
+        nextAlts[url] = suggestProductImageAlt({
+          name: form.name,
+          fabric: form.specs.fabricType,
+          color: colorByUrl[url],
+          index,
+        });
+      });
 
       const wholesaleIsDiscounted = !!form.wholesaleIsDiscounted;
       const retailIsDiscounted = !!form.retailIsDiscounted;
+      const faqItems = form.faqItems
+        .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
+        .filter((item) => item.question && item.answer);
+      const careInstructions =
+        form.careWash.trim() || form.careIron.trim()
+          ? {
+              ...(form.careWash.trim() ? { wash: form.careWash.trim() } : {}),
+              ...(form.careIron.trim() ? { iron: form.careIron.trim() } : {}),
+            }
+          : null;
 
       const payload = {
         sku: form.sku || undefined,
@@ -1242,8 +1321,11 @@ export function AdminProducts() {
           ),
         ],
         name: form.name,
+        nameEn: form.nameEn.trim() || null,
         slug: form.slug.trim() || undefined,
-        description: form.description || form.wholesaleFullContent || undefined,
+        description: form.description.trim() || form.wholesaleFullContent || undefined,
+        faqItems,
+        careInstructions,
         retailFullContent: form.retailFullContent.trim() || null,
         wholesaleFullContent: form.wholesaleFullContent.trim() || null,
         relatedProductIds: relatedPicks.map((item) => item.id).slice(0, 5),
@@ -1290,6 +1372,7 @@ export function AdminProducts() {
         status: form.status,
         isDiscounted: wholesaleIsDiscounted || retailIsDiscounted,
         images: galleryImages,
+        imageAlts: normalizeProductImageAlts(nextAlts, galleryImages),
         collectionId: form.collectionId || null,
         isPreOrder: form.isPreOrder,
         preOrderDate: form.isPreOrder && form.preOrderDate ? form.preOrderDate : null,
@@ -1367,6 +1450,7 @@ export function AdminProducts() {
     editProduct,
     refetch,
     images,
+    imageAlts,
     colorDrafts,
     initialColorNames,
     relatedPicks,
@@ -1479,16 +1563,51 @@ export function AdminProducts() {
         </div>
       </div>
 
-      <div className="w-72">
-        <Input
-          placeholder="جستجو نام، SKU، پارچه..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          rightIcon={<Search className="h-4 w-4" />}
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div
+          className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1"
+          role="tablist"
+          aria-label="فیلتر کانال کاتالوگ"
+        >
+          {(['ALL', 'WHOLESALE', 'RETAIL'] as const).map((id) => {
+            const active = workspace.channel === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setPage(1);
+                  replaceWorkspace({ channel: id, q: workspace.q });
+                }}
+                className={cn(
+                  'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150',
+                  active
+                    ? id === 'RETAIL'
+                      ? 'bg-amber-600 text-white'
+                      : id === 'WHOLESALE'
+                        ? 'bg-primary text-white'
+                        : 'bg-secondary text-white'
+                    : 'text-gray-600 hover:bg-white',
+                )}
+              >
+                {PRODUCT_CHANNEL_LABEL[id]}
+              </button>
+            );
+          })}
+        </div>
+        <div className="w-72">
+          <Input
+            placeholder="جستجو نام، SKU، پارچه..."
+            value={workspace.q}
+            onChange={(e) => {
+              setPage(1);
+              replaceWorkspace({ channel: workspace.channel, q: e.target.value });
+            }}
+            rightIcon={<Search className="h-4 w-4" />}
+          />
+        </div>
       </div>
 
       <div className="card overflow-hidden">
@@ -1501,8 +1620,8 @@ export function AdminProducts() {
                   'نام محصول',
                   'جنس پارچه',
                   'واریانت‌ها',
-                  'موجودی',
-                  'قیمت عمده (ت)',
+                  workspace.channel === 'RETAIL' ? 'موجودی تکی' : 'موجودی عمده',
+                  workspace.channel === 'RETAIL' ? 'قیمت تکی (ت)' : 'قیمت عمده (ت)',
                   'وضعیت',
                   '',
                 ].map((h) => (
@@ -1557,8 +1676,16 @@ export function AdminProducts() {
                       (s, v) => s + (Number((v as { wholesaleStock?: number }).wholesaleStock) || 0),
                       0
                     ) ?? 0;
-                  const totalStock =
-                    typeof p.wholesaleStock === 'number' ? p.wholesaleStock : wholesaleSum;
+                  const retailSum =
+                    p.variants?.reduce(
+                      (s, v) => s + (Number((v as { retailStock?: number }).retailStock) || 0),
+                      0
+                    ) ?? 0;
+                  const useRetail = workspace.channel === 'RETAIL';
+                  const totalStock = useRetail
+                    ? typeof p.retailStock === 'number' ? p.retailStock : retailSum
+                    : typeof p.wholesaleStock === 'number' ? p.wholesaleStock : wholesaleSum;
+                  const listPriceToman = (Number(useRetail ? p.retailPrice : p.wholesalePrice) || 0) / 10;
                   const pubs = publicationBadges[p.id] || [];
                   const varCount = new Set((p.variants ?? []).map((v) => v.color).filter(Boolean))
                     .size;
@@ -1620,14 +1747,14 @@ export function AdminProducts() {
                                 ? 'text-error'
                                 : 'text-gray-700'
                           )}
-                          title="جمع موجودی عمده از واریانت‌ها (فقط خواندنی)"
+                          title={useRetail ? 'جمع موجودی تکی از واریانت‌ها' : 'جمع موجودی عمده از واریانت‌ها'}
                         >
                           <Package className="h-3.5 w-3.5" />
                           {totalStock} عدد
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm font-bold text-gray-900">
-                        {(Number(p.wholesalePrice) / 10).toLocaleString('fa-IR')}
+                        {listPriceToman.toLocaleString('fa-IR')}
                       </td>
                       <td className="px-4 py-3">
                         <span
@@ -1651,6 +1778,7 @@ export function AdminProducts() {
                             onClick={() => openEdit(p)}
                             className="hover:text-primary text-gray-400 transition-colors"
                             title="ویرایش"
+                            aria-label={`ویرایش ${p.name}`}
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
@@ -1658,6 +1786,7 @@ export function AdminProducts() {
                             onClick={() => setDeleteId(p.id)}
                             className="hover:text-error text-gray-400 transition-colors"
                             title="حذف"
+                            aria-label={`حذف ${p.name}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -1682,17 +1811,41 @@ export function AdminProducts() {
               <h3 className="text-lg font-bold text-gray-900">
                 {modal === 'create' ? 'افزودن محصول جدید' : 'ویرایش محصول'}
               </h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600">
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600" aria-label="بستن فرم محصول">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="mx-auto w-full max-w-5xl flex-1 space-y-4 overflow-y-auto p-6">
+              <nav
+                className="sticky top-0 z-10 -mx-2 flex flex-wrap gap-1.5 bg-white/95 px-2 py-2 backdrop-blur-sm"
+                aria-label="بخش‌های فرم محصول"
+              >
+                {PRODUCT_EDITOR_SECTIONS.map((id) => (
+                  <a
+                    key={id}
+                    href={`#product-${id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      replaceWorkspace({ channel: workspace.channel, q: workspace.q, section: id });
+                      document.getElementById(`product-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className={cn(
+                      'rounded-full px-3 py-1 text-xs font-semibold transition-colors duration-150',
+                      workspace.section === id
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                    )}
+                  >
+                    {PRODUCT_EDITOR_SECTION_LABEL[id]}
+                  </a>
+                ))}
+              </nav>
               {saveError ? (
                 <p className="text-error rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm">
                   {saveError}
                 </p>
               ) : null}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div id="product-identity" className="grid scroll-mt-16 grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">دسته‌بندی</label>
                   <select
@@ -1757,6 +1910,29 @@ export function AdminProducts() {
               ) : null}
 
               {field('name', 'نام محصول', 'text', 'مانتو بهار')}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">نام لاتین (اختیاری)</label>
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={form.nameEn}
+                  onChange={(e) => setForm((f) => ({ ...f, nameEn: e.target.value }))}
+                  placeholder="Sara Linen Shirt"
+                  className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  توضیح کوتاه مشترک (سئو / خلاصه)
+                </label>
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  rows={2}
+                  placeholder="یک جمله واقعی درباره محصول — نه کپی متن عمده روی تکی"
+                  className="focus:ring-primary/30 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                />
+              </div>
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">
@@ -1787,7 +1963,7 @@ export function AdminProducts() {
                 )}
               </div>
 
-              <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+              <div id="product-specs" className="scroll-mt-16 space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                 <p className="text-sm font-semibold text-gray-800">توضیحات محصول</p>
                 <div className="grid grid-cols-2 gap-3">
                   {specField('fabricType', 'جنس پارچه', 'لینن')}
@@ -1943,7 +2119,7 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div id="product-seo" className="grid scroll-mt-16 grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="border-primary/15 bg-primary-50/40 space-y-3 rounded-xl border p-4">
                   <p className="text-primary-dark text-sm font-semibold">سئو سایت عمده (.com)</p>
                   <div>
@@ -2095,7 +2271,7 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+              <div id="product-content" className="scroll-mt-16 space-y-3 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                 <p className="text-sm font-semibold text-gray-800">توضیحات کامل و مراقبت</p>
                 <p className="text-[11px] text-gray-400">
                   پیش‌نمایش ساخته‌شده فقط داخل همین فرم می‌آید؛ برای اعمال روی محصول باید ذخیره کنید.
@@ -2163,9 +2339,90 @@ export function AdminProducts() {
                     </div>
                   </div>
                 ) : null}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">شستشو / مراقبت</label>
+                    <input
+                      type="text"
+                      value={form.careWash}
+                      onChange={(e) => setForm((f) => ({ ...f, careWash: e.target.value }))}
+                      placeholder="شستشو با آب سرد"
+                      className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">اتو</label>
+                    <input
+                      type="text"
+                      value={form.careIron}
+                      onChange={(e) => setForm((f) => ({ ...f, careIron: e.target.value }))}
+                      placeholder="اتوی ملایم از پشت"
+                      className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-600">سؤالات متداول محصول</p>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm text-xs"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          faqItems: [...f.faqItems, { question: '', answer: '' }],
+                        }))
+                      }
+                    >
+                      افزودن سؤال
+                    </button>
+                  </div>
+                  {form.faqItems.map((item, idx) => (
+                    <div key={idx} className="grid grid-cols-1 gap-2 lg:grid-cols-[1fr_1fr_auto]">
+                      <input
+                        value={item.question}
+                        onChange={(e) =>
+                          setForm((f) => {
+                            const faqItems = [...f.faqItems];
+                            faqItems[idx] = { ...faqItems[idx], question: e.target.value };
+                            return { ...f, faqItems };
+                          })
+                        }
+                        placeholder={`سؤال ${idx + 1}`}
+                        className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                      />
+                      <textarea
+                        value={item.answer}
+                        rows={2}
+                        onChange={(e) =>
+                          setForm((f) => {
+                            const faqItems = [...f.faqItems];
+                            faqItems[idx] = { ...faqItems[idx], answer: e.target.value };
+                            return { ...f, faqItems };
+                          })
+                        }
+                        placeholder="جواب واقعی، بدون وعده رتبه"
+                        className="focus:ring-primary/30 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                      />
+                      <button
+                        type="button"
+                        className="hover:text-error text-gray-400"
+                        aria-label="حذف سؤال"
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            faqItems: f.faqItems.filter((_, i) => i !== idx),
+                          }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div id="product-pricing" className="grid scroll-mt-16 grid-cols-2 gap-4">
                 {field('wholesalePrice', 'قیمت اصلی عمده‌فروشی', 'number', '125000')}
                 {field(
                   'retailPrice',
@@ -2267,7 +2524,7 @@ export function AdminProducts() {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-4 space-y-3">
+              <div id="product-channels" className="scroll-mt-16 space-y-3 rounded-lg border border-amber-100 bg-amber-50/60 p-4">
                 <p className="text-sm font-medium text-gray-800">همکار فروش (دراپ‌شیپ)</p>
                 <p className="text-xs text-gray-600">
                   فاکتور و فروشنده برای مشتری ترنم است. مشتری مبدأ ارسال را نمی‌بیند. هزینه واقعی پست
@@ -2402,7 +2659,7 @@ export function AdminProducts() {
                 retailBaseToman={Number(form.retailPrice) || 0}
               />
 
-              <div className="border-primary/30 bg-primary-50/40 space-y-3 rounded-xl border border-dashed p-4">
+              <div id="product-merch" className="border-primary/30 bg-primary-50/40 scroll-mt-16 space-y-3 rounded-xl border border-dashed p-4">
                 <p className="text-primary text-xs font-bold">فروشگاه تکی</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -2499,59 +2756,76 @@ export function AdminProducts() {
                 />
               </div>
 
-              <div>
+              <div id="product-media" className="scroll-mt-16 space-y-4">
                 <ColorVariantsEditor
                   sizeLabels={sizeOptionsForType(form.sizeType)}
                   drafts={colorDrafts}
                   onChange={setColorDrafts}
+                  onImageAssigned={(url, color) => {
+                    setImages((prev) => (prev.includes(url) ? prev : [...prev, url]));
+                    setImageAlts((prev) => ({
+                      ...prev,
+                      [url]:
+                        prev[url] ||
+                        suggestProductImageAlt({
+                          name: form.name,
+                          fabric: form.specs.fabricType,
+                          color,
+                        }),
+                    }));
+                  }}
                 />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-medium text-gray-600">
-                  گالری عمومی (اختیاری — علاوه بر عکس رنگ‌ها)
-                </label>
-                <div className="mb-2 flex flex-wrap gap-2">
-                  {images.map((url, i) => (
-                    <div
-                      key={url + i}
-                      className="relative h-16 w-16 overflow-hidden rounded-lg border border-gray-200"
-                    >
-                      <img src={url} alt="" className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[10px] text-white hover:bg-red-600"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingImg}
-                    className="hover:border-primary hover:text-primary flex h-16 w-16 flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-200 text-gray-400 transition-colors"
-                  >
-                    {uploadingImg ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ImagePlus className="h-4 w-4" />
-                    )}
-                    <span className="mt-1 text-[10px]">{uploadingImg ? '' : 'آپلود'}</span>
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageUpload}
-                  />
-                </div>
-                <p className="text-[11px] text-gray-400">
-                  عکس اصلی هر رنگ را در بخش رنگ‌بندی آپلود کنید. این گالری فقط برای تصاویر
-                  عمومی/اضافی است.
-                </p>
+                <ProductImageAltEditor
+                  images={images}
+                  imageAlts={imageAlts}
+                  draft={{ name: form.name, fabric: form.specs.fabricType }}
+                  colorByUrl={Object.fromEntries(
+                    colorDrafts
+                      .filter((d) => d.imageUrl && d.color.trim())
+                      .map((d) => [d.imageUrl, d.color.trim()]),
+                  )}
+                  uploading={uploadingImg}
+                  onUploadClick={() => fileInputRef.current?.click()}
+                  onRemove={(index) => {
+                    const url = images[index];
+                    setImages((prev) => prev.filter((_, idx) => idx !== index));
+                    if (url) {
+                      setImageAlts((prev) => {
+                        const next = { ...prev };
+                        delete next[url];
+                        return next;
+                      });
+                    }
+                  }}
+                  onAltChange={(url, alt) => setImageAlts((prev) => ({ ...prev, [url]: alt }))}
+                  onSuggestAll={() => {
+                    const colorByUrl = Object.fromEntries(
+                      colorDrafts
+                        .filter((d) => d.imageUrl && d.color.trim())
+                        .map((d) => [d.imageUrl, d.color.trim()]),
+                    );
+                    setImageAlts((prev) => {
+                      const next = { ...prev };
+                      images.forEach((url, index) => {
+                        if (next[url]) return;
+                        next[url] = suggestProductImageAlt({
+                          name: form.name,
+                          fabric: form.specs.fabricType,
+                          color: colorByUrl[url],
+                          index,
+                        });
+                      });
+                      return next;
+                    });
+                  }}
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
               </div>
             </div>
             <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">

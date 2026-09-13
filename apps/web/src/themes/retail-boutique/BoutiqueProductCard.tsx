@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { discountPercent, mediaUrl, toman } from '@/lib/product-display';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import type { RetailCardProduct } from '@/components/retail/RetailProductCard';
 import { cn } from '@/lib/cn';
@@ -72,7 +73,7 @@ export function BoutiqueProductCard({
           {image ? (
             <Image
               src={image}
-              alt={product.name}
+              alt={resolveProductImageAlt(product.imageAlts, product.images?.[0], { name: product.name, fabric: product.fabric, index: 0 })}
               fill
               priority={imagePriority}
               loading={imagePriority ? 'eager' : 'lazy'}

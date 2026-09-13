@@ -23,7 +23,7 @@ export class ProductEntity {
   name: string;
 
   @Column({ nullable: true })
-  nameEn: string;
+  nameEn: string | null;
 
   /** SEO-only description (separate from product specs on PDP) */
   @Column({ nullable: true, type: 'text' })
@@ -234,6 +234,10 @@ export class ProductEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   images: string[];
+
+  /** Per-gallery-URL alt text. Keys must match `images` (and color image URLs). */
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  imageAlts: Record<string, string>;
 
   @Column({ type: 'jsonb', nullable: true })
   seoMeta: Record<string, string>;

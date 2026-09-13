@@ -1,5 +1,63 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-010"
+    title: "Complete synced admin product workspace"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-010"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-010"
+      implementer: "cursor:implementer-TASK-20260913-010"
+      reviewer: "same-session-after-gates"
+      security: "same-session-product-image-alts"
+    branch: "ai/TASK-20260913-010-admin-product-workspace"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T11:00:00Z"
+    heartbeat_at: "2026-09-13T11:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/product-image-alt.ts"
+      - "apps/web/src/lib/product-image-alt.spec.ts"
+      - "apps/web/src/lib/admin-product-workspace.ts"
+      - "apps/web/src/lib/admin-product-workspace.spec.ts"
+      - "apps/web/src/components/admin/ProductImageAltEditor.tsx"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/web/src/components/admin/ColorVariantsEditor.tsx"
+      - "apps/web/src/lib/hooks/useProducts.ts"
+      - "apps/web/src/app/admin/products/page.tsx"
+      - "apps/api/src/modules/product/product-image-alt.ts"
+      - "apps/api/src/modules/product/product-image-alt.spec.ts"
+      - "apps/api/src/modules/product/entities/product.entity.ts"
+      - "apps/api/src/modules/product/dto/create-product.dto.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/database/migrations/20260913-010-product-image-alts.ts"
+      - "apps/api/src/database/migrations/20260913-010-product-image-alts.spec.ts"
+      - "apps/web/src/components/shared/JsonLd.tsx"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
+      - "apps/web/src/components/retail/RetailProductDetail.tsx"
+      - "apps/web/src/components/wholesale/ProductDetail.tsx"
+      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      - "apps/web/src/components/category/CategoryProductCard.tsx"
+      - "apps/web/src/components/category/category-search-params.ts"
+      - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
+      - "docs/architecture/admin-product-workspace.md"
+      - "docs/reports/2026-09-13-admin-product-workspace.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Completes /admin/products workspace + per-image alt SoT.
+      Reclaimed stale AdminProducts/useProducts/product.service from TASK-20260912-002 (released).
+      Reclaimed stale PDP/JsonLd pages from TASK-20260910-001 (hb 2026-09-09, same worktree).
+      Did not take ProductInternalLinkPicker (still 010-001).
+      WORKLOG append-only; 009 also lists it.
+    acceptance_criteria:
+      - "List ?channel=ALL|RETAIL|WHOLESALE filters catalog; Excel عمده/تکی/کامل stay export-only"
+      - "Editor has identity/specs/seo/content/pricing/channels/merch/media and dual-channel SEO"
+      - "Each gallery URL has an editable alt; save sanitizes and fills empty alts"
+      - "PDP, cards, OG, and Product JSON-LD use the same stored alt"
+      - "FAQ/care/nameEn/description save and render on PDP without FAQ rich-result schema"
+      - "image-alt + workspace specs pass; web/api tsc pass"
   - id: "TASK-20260913-009"
     title: "Complete synced admin blog workspace"
     status: "in_progress"
@@ -753,10 +811,11 @@ tasks:
       # transferred 2026-09-12 to TASK-20260912-002 (stale hb 2026-09-09; extra category checkboxes):
       # "apps/web/src/components/admin/AdminProducts.tsx"
       - "apps/web/src/components/shared/ProductInternalLinks.tsx"
-      - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
-      - "apps/web/src/app/retail/products/[slug]/page.tsx"
-      - "apps/web/src/components/wholesale/ProductDetail.tsx"
-      - "apps/web/src/components/retail/RetailProductDetail.tsx"
+      # transferred 2026-09-13 to TASK-20260913-010 (stale hb 2026-09-09; stored image alts):
+      # "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
+      # "apps/web/src/app/retail/products/[slug]/page.tsx"
+      # "apps/web/src/components/wholesale/ProductDetail.tsx"
+      # "apps/web/src/components/retail/RetailProductDetail.tsx"
       - "docs/reports/2026-09-10-pdp-guide-cards.md"
       - "docs/WORKLOG.md"
       - ".ai-dos/tasks/active.yaml"

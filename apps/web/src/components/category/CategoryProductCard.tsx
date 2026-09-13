@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { RetailProductCard } from '@/components/retail/RetailProductCard';
 import { mediaUrl, uniqueByColor, uniqueSizes } from '@/lib/product-display';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import type { CategoryChannel, CategoryProduct } from './category-search-params';
 
 export function CategoryProductCard({
@@ -31,6 +32,7 @@ export function CategoryProductCard({
           retailStock: typeof product.retailStock === 'number' ? product.retailStock : undefined,
           isPreOrder: product.isPreOrder,
           images: product.images,
+          imageAlts: product.imageAlts,
           sale: product.sale,
           variants: product.variants?.map((v) => ({
             color: v.color,
@@ -49,7 +51,7 @@ export function CategoryProductCard({
         {image ? (
           <Image
             src={image}
-            alt={product.name || 'محصول'}
+            alt={resolveProductImageAlt(product.imageAlts, product.images?.[0], { name: product.name, fabric: product.fabric, index: 0 })}
             fill
             sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
             className="object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"

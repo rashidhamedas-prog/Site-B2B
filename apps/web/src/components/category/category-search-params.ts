@@ -95,6 +95,7 @@ export type CategoryProduct = {
     badgePercent?: number;
   };
   images?: string[];
+  imageAlts?: Record<string, string>;
   retailStock?: number | null;
   wholesaleStock?: number | null;
   isPreOrder?: boolean;

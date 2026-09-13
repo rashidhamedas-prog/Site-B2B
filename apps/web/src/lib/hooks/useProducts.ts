@@ -136,6 +136,8 @@ export interface Product {
   retailStock?: number;
   totalStock?: number;
   images: string[];
+  imageAlts?: Record<string, string>;
+  nameEn?: string | null;
   variants: Array<{
     id: string;
     color: string;
@@ -203,7 +205,14 @@ export async function searchAdminProducts(
   return Array.isArray(res?.data) ? res.data : [];
 }
 
-export function useProducts(params?: { page?: number; limit?: number; search?: string; fabric?: string; status?: string }) {
+export function useProducts(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  fabric?: string;
+  status?: string;
+  channel?: string;
+}) {
   const [products, setProducts] = useState<Product[]>([]);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
@@ -219,6 +228,7 @@ export function useProducts(params?: { page?: number; limit?: number; search?: s
       if (params?.search) query.set('search', params.search);
       if (params?.fabric) query.set('fabric', params.fabric);
       if (params?.status) query.set('status', params.status);
+      if (params?.channel) query.set('channel', params.channel);
       const path = String(params?.status || '').toUpperCase() === 'ALL' ? '/products/admin' : '/products';
       const res = await apiClient.get<ProductsResult>(`${path}?${query}`);
       setProducts(res.data);
@@ -228,7 +238,7 @@ export function useProducts(params?: { page?: number; limit?: number; search?: s
     } finally {
       setLoading(false);
     }
-  }, [params?.page, params?.search, params?.fabric, params?.status]);
+  }, [params?.page, params?.search, params?.fabric, params?.status, params?.channel]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

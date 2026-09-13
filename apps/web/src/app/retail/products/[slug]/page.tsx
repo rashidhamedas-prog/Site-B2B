@@ -9,6 +9,7 @@ import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { resolveRetailPdpOption, torobHeadMeta } from '@/lib/torob-pdp-meta';
 import { resolveRetailProductSeo } from '@/lib/retail-seo-copy';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -51,7 +52,13 @@ export async function generateMetadata({
   const product = await loadCanonicalStorefrontProduct(slug, 'RETAIL');
   const option = resolveRetailPdpOption(product as any, requested);
   const { title, description, canonical } = retailSeo(product);
-  const image = absUrl(option.image || (product.images as string[] | undefined)?.[0]);
+  const firstImage = option.image || (product.images as string[] | undefined)?.[0];
+  const image = absUrl(firstImage);
+  const imageAlts = (product as { imageAlts?: Record<string, string> }).imageAlts;
+  const ogAlt = resolveProductImageAlt(imageAlts, firstImage || null, {
+    name: String(product.name || title),
+    index: 0,
+  });
 
   return {
     title,
@@ -65,7 +72,7 @@ export async function generateMetadata({
       type: 'website',
       locale: 'fa_IR',
       images: image
-        ? [{ url: image, alt: title }]
+        ? [{ url: image, alt: ogAlt }]
         : [{ url: '/og-retail.jpg', width: 1200, height: 630, alt: title }],
     },
     twitter: {
@@ -115,6 +122,8 @@ export default async function RetailProductPage({
         name={name}
         description={description}
         image={image}
+        images={product.images as string[] | undefined}
+        imageAlts={(product as { imageAlts?: Record<string, string> }).imageAlts}
         sku={product.sku as string | undefined}
         price={price}
         includePrice
@@ -129,6 +138,8 @@ export default async function RetailProductPage({
         name={name}
         description={description}
         image={image}
+        images={product.images as string[] | undefined}
+        imageAlts={(product as { imageAlts?: Record<string, string> }).imageAlts}
         url={url}
         sku={product.sku as string | undefined}
         price={price}

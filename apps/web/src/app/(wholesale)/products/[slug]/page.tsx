@@ -8,6 +8,7 @@ import { getServerApiBase } from '@/lib/server-api';
 import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-product';
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
+import { resolveProductImageAlt } from '@/lib/product-image-alt';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -40,6 +41,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await loadCanonicalStorefrontProduct(slug, 'WHOLESALE');
   const { title, description, canonical } = wholesaleSeo(product);
   const image = (product.images as string[] | undefined)?.[0];
+  const imageAlts = (product as { imageAlts?: Record<string, string> }).imageAlts;
+  const ogAlt = resolveProductImageAlt(imageAlts, image, {
+    name: String(product.name || title),
+    index: 0,
+  });
 
   return {
     title,
@@ -52,7 +58,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'website',
       locale: 'fa_IR',
       images: image
-        ? [{ url: image, alt: title }]
+        ? [{ url: image, alt: ogAlt }]
         : [{ url: '/og-wholesale.jpg', width: 1200, height: 630, alt: title }],
     },
     twitter: {
@@ -94,6 +100,8 @@ export default async function ProductPage({ params }: Props) {
           fabricLabel
         }
         image={(product.images as string[] | undefined)?.[0]}
+        images={product.images as string[] | undefined}
+        imageAlts={(product as { imageAlts?: Record<string, string> }).imageAlts}
         sku={product.sku as string | undefined}
         includePrice={false}
         availability={totalStock > 0 ? 'InStock' : isComingSoon ? 'PreOrder' : 'OutOfStock'}
