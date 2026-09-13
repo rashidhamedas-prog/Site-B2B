@@ -36,6 +36,12 @@ National geocoder, merchant onboarding, changing CPG amount unit, live money on 
 ## Validation
 
 - `npx tsx apps/web/src/lib/shipping-address.spec.mts` → `shipping-address spec ok`
-- `npx tsx apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts` → `PASS`
+- `npx tsx apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts` → `PASS` (1011 → totweb-minimal retry covered)
 - `apps/web` `tsc --noEmit` exit 0
 - `apps/api` `tsc --noEmit` exit 0
+- Live VPS `216ff56`: health 200
+- Live `ORD-2026-00037` `POST /payments/start` TOROBPAY still HTTP 400 1011 after:
+  1. sanitized street `streetLen=48` (`میدان عسگریه، خیابان قائمی بین 10 و 12، پلاک 137`)
+  2. totweb-minimal retry (no address / name / city / postal)
+- API log: `amount=14180000` both attempts. totweb docs convert toman→rial (`* 10`); our amount is already IRR, so unit matches.
+- Residual: CPG persist 1011 is **not** local address validation. Likely merchant order-insert / credit-user for this mobile, or a CPG-side limit. Panel shop `تولیدی پوشاک ترنم` still shows 0 successful orders. Independent Reviewer + Security residual (payments).

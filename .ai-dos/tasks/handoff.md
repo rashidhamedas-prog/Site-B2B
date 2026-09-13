@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T08:30:00Z — TASK-20260913-002 live 1011 is not address
+
+- Live `216ff56`. Health 200. ORD-2026-00037 still 1011 after sanitized street (48) AND totweb-minimal retry.
+- False copy fixed. Plaque triple-compose fixed. Address is not the CPG persist cause.
+- Residual: ask TorobPay why `/token` 1011 for IRR 14180000 on client `19350107` (0 panel orders). Do not send toman without confirmation — totweb multiplies *10 to rial.
+- Gates: shipping-address spec ok; adapter spec PASS; web+api tsc 0.
+
 ## 2026-09-13T08:10:00Z — TASK-20260913-002 implementing TorobPay 1011
 
 - Owner: live checkout ORD-2026-00037 (`bbbe0438-…`) TorobPay shows «آدرس را کامل‌تر بنویسید» after a complete Mashhad address.
