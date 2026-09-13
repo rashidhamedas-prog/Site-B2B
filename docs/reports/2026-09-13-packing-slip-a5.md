@@ -25,3 +25,5 @@ React text only; existing admin JWT; no new endpoint; mobile digits are not trea
 
 - `npx tsc --noEmit` in `apps/web`: exit 0
 - `TS_NODE_COMPILER_OPTIONS={"module":"commonjs"} npx ts-node --transpile-only src/lib/packing-slip.spec.ts`: `packing-slip.spec ok`
+- Live VPS `db8d0f0`; `/v1/health` 200; web container restarted 2026-09-13T08:49Z
+- Live admin preview/print click: not exercised (no admin session in this session)

@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260913-003"
     title: "A5 packing slip + shipping label on confirmed orders"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260913-003"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260913-003-packing-slip-a5"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-13T08:40:00Z"
-    heartbeat_at: "2026-09-13T08:40:00Z"
+    heartbeat_at: "2026-09-13T08:50:00Z"
+    closed_at: "2026-09-13T08:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/packing-slip.ts"
       - "apps/web/src/lib/packing-slip.spec.ts"
       - "apps/web/src/components/admin/AdminPackingSlip.tsx"
@@ -25,8 +27,8 @@ tasks:
       - "docs/architecture/packing-slip-a5.md"
       - "docs/reports/2026-09-13-packing-slip-a5.md"
     notes: |
-      Admin CONFIRMED (+ reprint later statuses): preview then print A5 packing slip with recipient/sender for parcel label.
-      Did not edit TASK-20260913-002 exclusive files (shipping-address, WORKLOG). Shared yaml/handoff/status append-only.
+      LIVE origin/master + VPS db8d0f0. Admin A5 packing/shipping label.
+      Did not edit TASK-20260913-002 exclusive files. Live admin click not exercised (no admin session).
     acceptance_criteria:
       - "Confirmed order row opens a preview with recipient, sender, items, and invoice totals"
       - "Print uses A5 portrait CSS; no innerHTML of customer fields"

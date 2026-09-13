@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T08:50:00Z — TASK-20260913-003 CLOSED live `db8d0f0`
+
+- Admin CONFIRMED (+ reprint later statuses): preview then چاپ A5 (گیرنده/فرستنده، چک‌لیست، خلاصه فاکتور).
+- Live: API health 200; VPS `db8d0f0`; web restarted 08:49Z.
+- Gates: packing-slip.spec ok; web tsc 0. Live admin click not exercised (no admin session).
+- Claims released. Residual: sender postal in settings; thermal size later.
+
 ## 2026-09-13T08:40:00Z — TASK-20260913-003 implementing A5 packing slip
 
 - Owner: admin CONFIRMED orders need a preview + A5 print label (گیرنده/فرستنده + checklist + invoice).
