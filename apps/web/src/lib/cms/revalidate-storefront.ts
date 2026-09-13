@@ -68,11 +68,12 @@ export function warmPathsForCms(channel: CmsChannel, pageKey: string): string[] 
 export function cmsCacheTags(channel: CmsChannel, pageKey: string): string[] {
   const tags = ['cms', `cms:${channel}:${pageKey}`, 'catalog', `catalog:${channel}`];
   if (pageKey === '*') {
-    return ['cms', `cms:${channel}:home`, `cms:${channel}:chrome`, 'catalog', `catalog:${channel}`];
+    return ['cms', `cms:${channel}:home`, `cms:${channel}:chrome`, 'catalog', `catalog:${channel}`, 'settings', `settings:${channel}`];
   }
   // Chrome edits also affect every page layout.
   if (pageKey === 'chrome') {
     tags.push(channel === 'RETAIL' ? 'cms:RETAIL:home' : 'cms:WHOLESALE:home');
+    tags.push('settings', `settings:${channel}`);
   }
   return tags;
 }

@@ -10,7 +10,7 @@ export const fetchPublicSettings = cache(async function fetchPublicSettings<T = 
   try {
     const base = getServerApiBase();
     const res = await fetch(`${base}/settings/public?channel=${channel}`, {
-      next: { revalidate: 120 },
+      next: { revalidate: 120, tags: ['settings', `settings:${channel}`] },
     });
     if (!res.ok) return null;
     return (await res.json()) as T;

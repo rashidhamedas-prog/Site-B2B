@@ -134,6 +134,59 @@ export function SecretField({
   );
 }
 
+export function MediaAssetField({
+  label,
+  url,
+  alt,
+  onUrl,
+  onAlt,
+  help,
+}: {
+  label: string;
+  url: string;
+  alt: string;
+  onUrl: (v: string) => void;
+  onAlt: (v: string) => void;
+  help?: string;
+}) {
+  const { upload, uploading } = useImageUpload();
+  const preview = url.startsWith('/') || url.startsWith('https://') ? url : '';
+  return (
+    <div className="space-y-2 rounded-xl border border-gray-100 p-3">
+      <p className="text-xs font-medium text-gray-600">{label}</p>
+      <div className="flex flex-wrap items-center gap-3">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt={alt || label} className="h-16 w-16 rounded-lg border border-gray-200 object-contain bg-white" />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-gray-200 text-[10px] text-gray-400">
+            بدون تصویر
+          </div>
+        )}
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-800 hover:bg-gray-50">
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {uploading ? 'در حال آپلود…' : 'آپلود تصویر'}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            disabled={uploading}
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (!file) return;
+              const next = await upload(file);
+              if (next) onUrl(next);
+            }}
+          />
+        </label>
+      </div>
+      <TextField label="آدرس تصویر" value={url} onChange={onUrl} dir="ltr" />
+      <TextField label="متن جایگزین (alt)" value={alt} onChange={onAlt} help={help ?? 'برای لوگو، OG و ImageObject استفاده می‌شود'} />
+    </div>
+  );
+}
+
 export function ToggleRow({
   label, hint, value, onChange,
 }: {
@@ -154,7 +207,7 @@ export function ToggleRow({
         aria-checked={value}
         onClick={() => onChange(!value)}
         className={cn(
-          'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+          'relative h-6 w-11 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
           value ? 'bg-primary' : 'bg-gray-200',
         )}
       >

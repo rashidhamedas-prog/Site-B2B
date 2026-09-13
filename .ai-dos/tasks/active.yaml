@@ -1,5 +1,66 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-013"
+    title: "Complete synced admin settings workspace"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-013"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-013"
+      implementer: "cursor:implementer-TASK-20260913-013"
+      reviewer: "same-session-after-gates"
+      security: "same-session-settings-secrets-seo"
+    branch: "ai/TASK-20260913-013-admin-settings-workspace"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T13:00:00Z"
+    heartbeat_at: "2026-09-13T13:00:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/admin-settings-workspace.ts"
+      - "apps/web/src/lib/admin-settings-workspace.spec.ts"
+      - "apps/web/src/lib/organization-from-settings.ts"
+      - "apps/web/src/lib/organization-from-settings.spec.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/web/src/components/admin/AdminMenus.tsx"
+      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      - "apps/web/src/components/admin/settings/types.ts"
+      - "apps/web/src/components/admin/settings/BusinessTab.tsx"
+      - "apps/web/src/components/admin/settings/SeoTab.tsx"
+      - "apps/web/src/components/admin/settings/PaymentTab.tsx"
+      - "apps/web/src/components/admin/settings/InstallmentsTab.tsx"
+      - "apps/web/src/components/admin/settings/MarketingTab.tsx"
+      - "apps/web/src/components/admin/settings/NavigationTab.tsx"
+      - "apps/web/src/app/admin/settings/page.tsx"
+      - "apps/web/src/app/admin/menus/page.tsx"
+      - "apps/web/src/components/shared/JsonLd.tsx"
+      - "apps/web/src/app/retail/layout.tsx"
+      - "apps/web/src/app/(wholesale)/layout.tsx"
+      - "apps/api/src/modules/settings/settings-seo.ts"
+      - "apps/api/src/modules/settings/settings-seo.spec.ts"
+      - "apps/api/src/modules/settings/settings-business.ts"
+      - "apps/api/src/modules/settings/settings-business.spec.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "docs/architecture/admin-settings-workspace.md"
+      - "docs/reports/2026-09-13-admin-settings-workspace.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Completes /admin/settings: URL workspace, missing fields, menus+SEO tabs,
+      save→reload→storefront revalidate, Organization/metadata from public settings.
+      Reclaimed leftover settings.service/controller/AdminSettings/types from
+      TASK-20260913-006 (door options already live via 005 + IN_PERSON default off;
+      hb 09:20Z same worktree). Reclaimed JsonLd from TASK-20260913-010 (done leftover)
+      only for Organization sync. Did not take ShippingTab (006 leftover; this task
+      only reads it). Product imageAlts stay on TASK-20260913-010 (already live).
+      WORKLOG append-only.
+    acceptance_criteria:
+      - "?section=&channel= is workspace SoT; all 9 sections complete and searchable"
+      - "Save reloads server payload and revalidates retail+wholesale chrome"
+      - "SMS fulfillment events survive save; installments minActiveInvoices editable"
+      - "Business logo/descriptions and SEO titles/OG persist; public settings expose them"
+      - "Organization/WebSite JSON-LD and layout metadata read the same public fields"
+      - "Menus editable from settings without wiping the other channel"
+      - "workspace/seo/org specs + api/web tsc pass"
   - id: "TASK-20260913-012"
     title: "Admin order/RMA links to customer workspace + RMA wallet ledger"
     status: "done"

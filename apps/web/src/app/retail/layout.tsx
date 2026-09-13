@@ -16,46 +16,61 @@ import { fetchPublicSettings } from '@/lib/server-api';
 import { normalizeEnamad, type EnamadSealConfig } from '@/lib/enamad';
 import { resolveGscVerification } from '@/lib/google-seo';
 import { parseRetailStorefrontSkin } from '@/lib/retail-storefront-skin';
+import {
+  layoutSeoFromSettings,
+  type PublicBusinessSettings,
+  type PublicPaymentFlags,
+  type PublicSeoSettings,
+} from '@/lib/organization-from-settings';
 import './retail.css';
 import '@/themes/retail-boutique/boutique.css';
 
 const REVALIDATE = 120;
 
 type PublicSettingsPayload = {
-  business?: {
+  business?: PublicBusinessSettings & {
     enamadWholesale?: Partial<EnamadSealConfig>;
     enamadRetail?: Partial<EnamadSealConfig>;
   };
+  seo?: PublicSeoSettings;
+  payment?: PublicPaymentFlags;
   marketing?: RetailMarketingPublic;
   theme?: { retailStorefrontSkin?: string };
 };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const google = await resolveGscVerification('RETAIL');
+  const [google, settings] = await Promise.all([
+    resolveGscVerification('RETAIL'),
+    fetchPublicSettings<PublicSettingsPayload>('RETAIL'),
+  ]);
+  const seo = layoutSeoFromSettings({
+    channel: 'RETAIL',
+    business: settings?.business,
+    seo: settings?.seo,
+  });
   return {
     metadataBase: new URL('https://www.poshaktaranom.ir'),
     title: {
-      default: 'فروشگاه پوشاک ترنم | خرید آنلاین مانتو',
+      default: seo.title,
       template: '%s | فروشگاه ترنم',
     },
-    description:
-      'مانتو و شومیز را تکی، مستقیم از تولیدی ترنم در مشهد بخرید. ارسال سریع، پرداخت امن و امکان تعویض سایز.',
+    description: seo.description,
     // NOTE: no layout-level canonical — a default here would make every page
     // without its own canonical claim the homepage URL (soft-duplicate signal).
     openGraph: {
       type: 'website',
       locale: 'fa_IR',
       url: 'https://www.poshaktaranom.ir',
-      siteName: 'فروشگاه پوشاک ترنم',
-      title: 'فروشگاه پوشاک ترنم | خرید آنلاین مانتو',
-      description: 'خرید تکی مانتو لینن و کتان — همان کارگاهی که برای بوتیک‌ها هم می‌دوزد.',
-      images: [{ url: '/og-retail.jpg', width: 1200, height: 630, alt: 'فروشگاه پوشاک ترنم' }],
+      siteName: seo.siteName,
+      title: seo.title,
+      description: seo.description,
+      images: [{ url: seo.ogImage, width: 1200, height: 630, alt: seo.ogAlt }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'فروشگاه پوشاک ترنم',
-      description: 'خرید تکی مانتو و شومیز از تولیدی مشهد',
-      images: ['/og-retail.jpg'],
+      title: seo.siteName,
+      description: seo.description,
+      images: [seo.ogImage],
     },
     robots: { index: true, follow: true },
     ...(google ? { verification: { google } } : {}),
@@ -98,8 +113,13 @@ export default async function RetailLayout({ children }: { children: React.React
         className="retail-root flex min-h-screen min-w-0 flex-col overflow-x-clip bg-[var(--retail-bg)] text-[var(--retail-ink)]"
         data-retail-skin={skin}
       >
-        <OrganizationJsonLd channel="RETAIL" />
-        <WebSiteJsonLd channel="RETAIL" />
+        <OrganizationJsonLd
+          channel="RETAIL"
+          business={settings?.business}
+          seo={settings?.seo}
+          payment={settings?.payment}
+        />
+        <WebSiteJsonLd channel="RETAIL" business={settings?.business} seo={settings?.seo} />
         <GoogleAnalyticsProvider channel="RETAIL" />
         <RetailPixels marketing={bag.marketing} />
         <RetailAffiliateCapture />

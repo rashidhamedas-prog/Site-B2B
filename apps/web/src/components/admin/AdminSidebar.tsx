@@ -67,7 +67,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { href: '/admin/seo', icon: Link2, label: 'سئو و ریدایرکت', module: 'content' },
       { href: '/admin/pages', icon: FileStack, label: 'صفحات سایت', module: 'content' },
       { href: '/admin/site-content', icon: PanelsTopLeft, label: 'تنظیمات محتوای سایت', module: 'content' },
-      { href: '/admin/menus', icon: Menu, label: 'منوهای سایت', module: 'content' },
+      { href: '/admin/settings?section=navigation', icon: Menu, label: 'منوهای سایت', module: 'content' },
       { href: '/admin/notifications', icon: Bell, label: 'اعلان‌ها', module: 'content' },
     ],
   },
