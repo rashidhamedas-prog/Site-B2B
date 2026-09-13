@@ -208,6 +208,8 @@ export function pageSitemapUrls(channel: SitemapChannel): SitemapUrl[] {
     { loc: `${origin}/contact`, changefreq: 'monthly', priority: '0.6' },
     { loc: `${origin}/shipping`, changefreq: 'monthly', priority: '0.45' },
     { loc: `${origin}/returns`, changefreq: 'monthly', priority: '0.45' },
+    { loc: `${origin}/privacy`, changefreq: 'yearly', priority: '0.3' },
+    { loc: `${origin}/terms`, changefreq: 'yearly', priority: '0.3' },
   ];
   const wholesale: SitemapUrl[] = [
     { loc: origin, changefreq: 'daily', priority: '1.0' },

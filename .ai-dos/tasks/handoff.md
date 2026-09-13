@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T13:35:00Z — TASK-20260913-014 implementing CMS workspace
+
+- Branch `ai/TASK-20260913-014-admin-cms-workspace`. Not merged/deployed.
+- Admin `/admin/site-content?channel=&page=` + per-page SEO + image/gallery alt + retail privacy/terms routes.
+- Product `imageAlts` stay on TASK-20260913-010 (already live); CMS products block links there.
+- Specs + api/web tsc 0. Admin click not exercised.
+- Reclaimed leftover registry/handoff from TASK-20260913-013 (done). Did not take WORKLOG (002/006).
+- Exact next: commit + merge master + VPS deploy; then operator hard-refresh site-content and save SEO/alts.
+
 ## 2026-09-13T12:56:00Z — TASK-20260913-013 CLOSED live `696f6e8`
 
 - VPS `/opt/taranom` HEAD `696f6e8`. auto-deploy exit 0.

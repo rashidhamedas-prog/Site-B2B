@@ -200,7 +200,7 @@ export function pushCommonBlocks(
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={str(p, 'imageUrl')}
-              alt={str(p, 'body') || ''}
+              alt={str(p, 'imageAlt') || str(p, 'body') || ''}
               className="mx-auto max-h-[480px] w-full max-w-4xl rounded-2xl object-cover"
             />
           ) : null}
@@ -211,7 +211,7 @@ export function pushCommonBlocks(
       );
       break;
     case 'gallery': {
-      const items = arr<{ imageUrl?: string; body?: string }>(p, 'items');
+      const items = arr<{ imageUrl?: string; imageAlt?: string; body?: string }>(p, 'items');
       nodes.push(
         <section
           key={block.id}
@@ -223,7 +223,7 @@ export function pushCommonBlocks(
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={item.imageUrl}
-                  alt={item.body || ''}
+                  alt={item.imageAlt || item.body || ''}
                   className="aspect-square w-full object-cover"
                 />
                 {item.body ? (

@@ -1,13 +1,29 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Save, Loader2, CheckCircle, Image as ImageIcon, RotateCcw, Sparkles } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 import { AdminBlockEditor, type ContentBlock } from './AdminBlockEditor';
-import { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY, getDefaultBlocks } from '@/lib/cms/defaults';
+import {
+  channelPublicHost,
+  cmsPageKeysForChannel,
+  cmsPageLabel,
+  parseCmsWorkspaceQuery,
+  serializeCmsWorkspaceQuery,
+} from '@/lib/admin-cms-workspace';
+import {
+  cmsPageSeoForSave,
+  defaultCanonical,
+  emptyCmsPageSeo,
+  normalizeCmsPageSeo,
+  type CmsPageSeo,
+} from '@/lib/cms/page-seo';
 import { productsBlockPropsForSave, productsBlockSaveRegressed } from '@/lib/cms/products-block';
 import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
+import { getDefaultBlocks } from '@/lib/cms/defaults';
 import { cn } from '@/lib/cn';
 
 interface SiteContent {
@@ -21,24 +37,21 @@ interface SiteContent {
   updatedAt?: string;
 }
 
-const CHANNEL_STORAGE_KEY = 'admin.cms.channel';
-
-function isAdminChannel(value: unknown): value is AdminChannel {
-  return value === 'RETAIL' || value === 'WHOLESALE';
-}
-
-function readInitialChannel(): AdminChannel {
-  if (typeof window === 'undefined') return 'WHOLESALE';
-  const fromUrl = new URLSearchParams(window.location.search).get('channel');
-  if (isAdminChannel(fromUrl)) return fromUrl;
-  try {
-    const stored = window.localStorage.getItem(CHANNEL_STORAGE_KEY);
-    if (isAdminChannel(stored)) return stored;
-  } catch {
-    /* ignore */
-  }
-  return 'WHOLESALE';
-}
+type SettingsSnap = {
+  business?: {
+    businessName?: string;
+    ownerName?: string;
+    phone?: string;
+    instagram?: string;
+    telegram?: string;
+    address?: string;
+    officeAddress?: string;
+    logoUrl?: string;
+    logoAlt?: string;
+    descriptionWholesale?: string;
+    descriptionRetail?: string;
+  };
+};
 
 function prepareBlocksForSave(list: ContentBlock[], channel: AdminChannel): ContentBlock[] {
   return list.map((block) => {
@@ -50,71 +63,136 @@ function prepareBlocksForSave(list: ContentBlock[], channel: AdminChannel): Cont
   });
 }
 
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, '');
+}
+
+function applyBusinessToChrome(
+  list: ContentBlock[],
+  channel: AdminChannel,
+  business: NonNullable<SettingsSnap['business']>,
+): ContentBlock[] {
+  const phone = (business.phone || '').trim();
+  const telegram = (business.telegram || '').replace(/^@/, '').trim();
+  const instagram = (business.instagram || '').replace(/^@/, '').trim();
+  const address = (business.officeAddress || business.address || '').trim();
+  const brand = (business.businessName || '').trim();
+  const blurb =
+    channel === 'RETAIL' ? business.descriptionRetail || '' : business.descriptionWholesale || '';
+
+  return list.map((block) => {
+    if (block.type === 'announcement') {
+      return {
+        ...block,
+        props: {
+          ...block.props,
+          ...(phone
+            ? { phoneLabel: phone, phoneHref: `tel:${digitsOnly(phone) || phone}` }
+            : {}),
+          ...(telegram
+            ? {
+                telegramLabel: `@${telegram}`,
+                telegramHref: `https://t.me/${telegram}`,
+              }
+            : {}),
+        },
+      };
+    }
+    if (block.type !== 'chrome') return block;
+    return {
+      ...block,
+      props: {
+        ...block.props,
+        ...(brand ? { brandName: brand } : {}),
+        ...(business.logoUrl ? { logoUrl: business.logoUrl } : {}),
+        ...(blurb ? { blurb } : {}),
+        ...(phone
+          ? {
+              phoneLabel: phone,
+              phoneHref: `tel:${digitsOnly(phone) || phone}`,
+              floatPhone: digitsOnly(phone) || phone,
+            }
+          : {}),
+        ...(business.ownerName ? { ownerLabel: business.ownerName } : {}),
+        ...(address ? { addressLines: address.split(/\n|،/).map((s) => s.trim()).filter(Boolean) } : {}),
+        ...(telegram ? { telegramHref: `https://t.me/${telegram}`, floatTelegram: telegram } : {}),
+        ...(instagram ? { instagramHref: `https://instagram.com/${instagram}` } : {}),
+      },
+    };
+  });
+}
+
 export function AdminSiteContent() {
-  const [channel, setChannel] = useState<AdminChannel>(readInitialChannel);
-  const pageKeys = useMemo(
-    () => (channel === 'WHOLESALE' ? [...CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY] : [...CMS_PAGE_KEYS_BASE]),
-    [channel],
-  );
-  const [pageKey, setPageKey] = useState<string>('home');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const workspace = parseCmsWorkspaceQuery(searchParams);
+  const channel = workspace.channel;
+  const pageKey = workspace.page;
+  const pageKeys = useMemo(() => cmsPageKeysForChannel(channel), [channel]);
+
   const [title, setTitle] = useState('');
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+  const [seo, setSeo] = useState<CmsPageSeo>(emptyCmsPageSeo);
+  const [isPublished, setIsPublished] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!pageKeys.some((p) => p.key === pageKey)) {
-      setPageKey('home');
-    }
-  }, [pageKeys, pageKey]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(CHANNEL_STORAGE_KEY, channel);
-    } catch {
-      /* ignore */
-    }
-    const url = new URL(window.location.href);
-    if (url.searchParams.get('channel') !== channel) {
-      url.searchParams.set('channel', channel);
-      window.history.replaceState({}, '', `${url.pathname}${url.search}`);
-    }
-  }, [channel]);
+  const replaceWorkspace = useCallback(
+    (next: { channel: AdminChannel; page: string }) => {
+      if (dirty && !confirm('تغییرات ذخیره‌نشده از بین می‌رود. ادامه؟')) return;
+      const qs = serializeCmsWorkspaceQuery(next);
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [dirty, pathname, router],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       let data: SiteContent | null = null;
       try {
-        data = await apiClient.get<SiteContent>(
-          `/cms/admin/site-content/${channel}/${pageKey}`,
-        );
+        data = await apiClient.get<SiteContent>(`/cms/admin/site-content/${channel}/${pageKey}`);
       } catch {
         const list = await apiClient
           .get<SiteContent[]>(`/cms/admin/site-content?channel=${channel}`)
           .catch(() => [] as SiteContent[]);
         data = (Array.isArray(list) ? list : []).find((x) => x.pageKey === pageKey) ?? null;
       }
-      const label = pageKeys.find((p) => p.key === pageKey)?.label ?? pageKey;
+      const label = cmsPageLabel(channel, pageKey);
       setTitle(data?.title || label);
       setBlocks(Array.isArray(data?.blocks) ? (data!.blocks as ContentBlock[]) : []);
+      setSeo(normalizeCmsPageSeo(data?.seo));
+      setIsPublished(data?.isPublished !== false);
       setLastSavedAt(data?.updatedAt || null);
+      setDirty(false);
     } catch {
-      const label = pageKeys.find((p) => p.key === pageKey)?.label ?? pageKey;
-      setTitle(label);
+      setTitle(cmsPageLabel(channel, pageKey));
       setBlocks([]);
+      setSeo(emptyCmsPageSeo());
+      setIsPublished(true);
       setLastSavedAt(null);
+      setDirty(false);
     } finally {
       setLoading(false);
     }
-  }, [channel, pageKey, pageKeys]);
+  }, [channel, pageKey]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
+
+  const markDirty = <T,>(setter: (value: T) => void) => {
+    return (value: T) => {
+      setDirty(true);
+      setter(value);
+    };
+  };
 
   const save = async () => {
     setSaving(true);
@@ -125,13 +203,14 @@ export function AdminSiteContent() {
         pageKey,
         title,
         blocks: prepared,
-        isPublished: true,
+        seo: cmsPageSeoForSave(seo),
+        isPublished,
       };
       const savedRow = await apiClient.put<SiteContent>(
         `/cms/admin/site-content?channel=${encodeURIComponent(channel)}`,
         payload,
       );
-      if (!isAdminChannel(savedRow?.channel) || savedRow.channel !== channel) {
+      if (savedRow?.channel !== channel) {
         throw new Error(
           `ذخیره روی کانال اشتباه برگشت (انتظار ${channelLabel(channel)}، دریافت ${savedRow?.channel || 'نامشخص'})`,
         );
@@ -140,10 +219,10 @@ export function AdminSiteContent() {
         throw new Error(`ذخیره روی صفحه اشتباه برگشت (${savedRow.pageKey})`);
       }
 
-      // Prefer what we wrote; only adopt GET if it does not regress auto→manual.
       let nextBlocks = Array.isArray(savedRow.blocks) ? (savedRow.blocks as ContentBlock[]) : prepared;
       let nextTitle = savedRow.title || title;
       let nextSavedAt = savedRow.updatedAt || null;
+      let nextSeo = normalizeCmsPageSeo(savedRow.seo ?? payload.seo);
 
       const verified = await apiClient.get<SiteContent>(
         `/cms/admin/site-content/${channel}/${pageKey}?_=${Date.now()}`,
@@ -166,6 +245,7 @@ export function AdminSiteContent() {
         nextBlocks = verified.blocks as ContentBlock[];
         nextTitle = verified.title || nextTitle;
         nextSavedAt = verified.updatedAt || nextSavedAt;
+        nextSeo = normalizeCmsPageSeo(verified.seo ?? nextSeo);
       } else if (regressed) {
         nextBlocks = prepared;
         alert(
@@ -175,7 +255,9 @@ export function AdminSiteContent() {
 
       setBlocks(nextBlocks);
       setTitle(nextTitle);
+      setSeo(nextSeo);
       setLastSavedAt(nextSavedAt);
+      setDirty(false);
 
       const bust = await revalidateStorefrontAfterSave(channel, pageKey);
       if (!bust.ok) {
@@ -196,10 +278,9 @@ export function AdminSiteContent() {
 
   const loadDefaults = () => {
     if (blocks.length > 0 && !confirm('محتوای فعلی جایگزین پیش‌فرض‌ها می‌شود. ادامه؟')) return;
-    const defaults = getDefaultBlocks(channel, pageKey);
-    setBlocks(defaults);
-    const label = pageKeys.find((p) => p.key === pageKey)?.label ?? pageKey;
-    if (!title) setTitle(label);
+    setBlocks(getDefaultBlocks(channel, pageKey));
+    if (!title) setTitle(cmsPageLabel(channel, pageKey));
+    setDirty(true);
   };
 
   const seedAllPages = async () => {
@@ -246,7 +327,24 @@ export function AdminSiteContent() {
     }
   };
 
-  const pageLabel = pageKeys.find((p) => p.key === pageKey)?.label ?? pageKey;
+  const copyFromSettings = async () => {
+    setCopying(true);
+    try {
+      const snap = await apiClient.get<SettingsSnap>('/settings/admin');
+      if (!snap?.business) throw new Error('هویت فروشگاه در تنظیمات خالی است');
+      setBlocks((prev) => applyBusinessToChrome(prev, channel, snap.business || {}));
+      setDirty(true);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'خواندن تنظیمات ناموفق بود');
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const pageLabel = cmsPageLabel(channel, pageKey);
+  const host = channelPublicHost(channel);
+  const settingsSeoHref = `/admin/settings?section=seo&channel=${channel}`;
+  const productsHref = `/admin/products?channel=${channel}`;
 
   return (
     <div className="space-y-5">
@@ -254,13 +352,13 @@ export function AdminSiteContent() {
         <div>
           <h2 className="text-xl font-bold text-gray-900">تنظیمات محتوای سایت</h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            ویرایش / حذف / افزودن تمام متن‌ها، لینک‌ها، تصاویر و شمارنده‌ها — در حال ویرایش:{' '}
-            <strong className={channel === 'RETAIL' ? 'text-amber-700' : 'text-primary'}>
-              {channelLabel(channel)}
-            </strong>
+            همه تب‌ها روی همین کانال هم‌گام‌اند —{' '}
+            <span className="font-mono text-xs" dir="ltr">
+              {host}
+            </span>
           </p>
         </div>
-        <AdminChannelTabs value={channel} onChange={setChannel} />
+        <AdminChannelTabs value={channel} onChange={(next) => replaceWorkspace({ channel: next, page: pageKey })} />
       </div>
 
       <div
@@ -284,14 +382,16 @@ export function AdminSiteContent() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="صفحات محتوا">
         {pageKeys.map((p) => (
           <button
             key={p.key}
             type="button"
-            onClick={() => setPageKey(p.key)}
+            role="tab"
+            aria-selected={pageKey === p.key}
+            onClick={() => replaceWorkspace({ channel, page: p.key })}
             className={cn(
-              'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
+              'cursor-pointer rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
               pageKey === p.key
                 ? channel === 'RETAIL'
                   ? 'bg-amber-600 text-white'
@@ -312,7 +412,7 @@ export function AdminSiteContent() {
         <div className="card max-w-4xl space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
             <div className="flex flex-wrap items-center gap-2">
-              <ImageIcon className="h-4 w-4" />
+              <ImageIcon className="h-4 w-4" aria-hidden />
               ویرایش «{pageLabel}» — {channelLabel(channel)}
               {lastSavedAt ? (
                 <span className="text-[11px] text-gray-400" dir="ltr">
@@ -323,24 +423,35 @@ export function AdminSiteContent() {
               )}
             </div>
             <div className="flex flex-wrap gap-2">
+              {pageKey === 'chrome' ? (
+                <button
+                  type="button"
+                  onClick={() => void copyFromSettings()}
+                  disabled={copying}
+                  className="btn btn-outline btn-sm flex cursor-pointer items-center gap-1.5"
+                >
+                  {copying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                  کپی تماس از تنظیمات
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={loadDefaults}
                 className="btn btn-outline btn-sm flex cursor-pointer items-center gap-1.5"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
                 پیش‌فرض این صفحه
               </button>
               <button
                 type="button"
-                onClick={seedAllPages}
+                onClick={() => void seedAllPages()}
                 disabled={seeding}
                 className="btn btn-outline btn-sm flex cursor-pointer items-center gap-1.5"
               >
                 {seeding ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
                 )}
                 ذخیره پیش‌فرض همه صفحات
               </button>
@@ -350,20 +461,123 @@ export function AdminSiteContent() {
             <label className="mb-1 block text-xs font-medium text-gray-600">عنوان صفحه</label>
             <input
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+              onChange={(e) => markDirty(setTitle)(e.target.value)}
+              className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2"
             />
           </div>
 
-          <AdminBlockEditor blocks={blocks} onChange={setBlocks} channel={channel} />
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={isPublished}
+              onChange={(e) => markDirty(setIsPublished)(e.target.checked)}
+            />
+            منتشر روی ویترین
+          </label>
+
+          {pageKey === 'chrome' ? (
+            <p className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              سئوی سراسری (عنوان پیش‌فرض، OG، سازمان) در{' '}
+              <Link href={settingsSeoHref} className="font-semibold text-primary underline">
+                تنظیمات → سئو
+              </Link>{' '}
+              است. این تب فقط هدر، فوتر و شناور را نگه می‌دارد.
+            </p>
+          ) : (
+            <fieldset className="space-y-3 rounded-xl border border-gray-100 p-4">
+              <legend className="px-1 text-sm font-semibold text-gray-800">سئوی همین صفحه</legend>
+              <p className="text-[11px] text-gray-500">
+                اگر خالی بماند، عنوان/شرح پیش‌فرض تنظیمات کانال استفاده می‌شود. کانونیکال خالی می‌شود{' '}
+                <span dir="ltr">{defaultCanonical(channel, pageKey)}</span>
+              </p>
+              <label className="block text-xs font-medium text-gray-600">
+                عنوان متا
+                <input
+                  value={seo.title}
+                  onChange={(e) => markDirty(setSeo)({ ...seo, title: e.target.value })}
+                  maxLength={200}
+                  className="focus:ring-primary/30 mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2"
+                />
+              </label>
+              <label className="block text-xs font-medium text-gray-600">
+                شرح متا
+                <textarea
+                  value={seo.description}
+                  onChange={(e) => markDirty(setSeo)({ ...seo, description: e.target.value })}
+                  maxLength={320}
+                  rows={3}
+                  className="focus:ring-primary/30 mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2"
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-medium text-gray-600">
+                  تصویر OG
+                  <input
+                    dir="ltr"
+                    value={seo.ogImage}
+                    onChange={(e) => markDirty(setSeo)({ ...seo, ogImage: e.target.value })}
+                    className="focus:ring-primary/30 mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600">
+                  آلت تصویر OG
+                  <input
+                    value={seo.ogAlt}
+                    onChange={(e) => markDirty(setSeo)({ ...seo, ogAlt: e.target.value })}
+                    maxLength={160}
+                    className="focus:ring-primary/30 mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2"
+                  />
+                </label>
+              </div>
+              <label className="block text-xs font-medium text-gray-600">
+                کانونیکال
+                <input
+                  dir="ltr"
+                  value={seo.canonical}
+                  onChange={(e) => markDirty(setSeo)({ ...seo, canonical: e.target.value })}
+                  placeholder={defaultCanonical(channel, pageKey)}
+                  className="focus:ring-primary/30 mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={seo.robots === 'index'}
+                  onChange={(e) =>
+                    markDirty(setSeo)({ ...seo, robots: e.target.checked ? 'index' : 'noindex' })
+                  }
+                />
+                ایندکس در جست‌وجو
+              </label>
+            </fieldset>
+          )}
+
+          {pageKey === 'products' ? (
+            <p className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              آلت هر عکس محصول در{' '}
+              <Link href={productsHref} className="font-semibold text-primary underline">
+                کارت محصول
+              </Link>{' '}
+              است؛ همین متن روی PDP، کارت، OG و ImageObject می‌رود.
+            </p>
+          ) : null}
+
+          <AdminBlockEditor
+            blocks={blocks}
+            onChange={(next) => {
+              setDirty(true);
+              setBlocks(next);
+            }}
+            channel={channel}
+          />
 
           <div className="sticky bottom-0 flex flex-wrap items-center gap-4 border-t border-gray-100 bg-white/95 py-3 backdrop-blur">
             <button
               type="button"
-              onClick={save}
+              onClick={() => void save()}
               disabled={saving}
               className={cn(
-                'btn btn-md flex cursor-pointer items-center gap-2 text-white',
+                'btn btn-md flex cursor-pointer items-center gap-2 text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                 channel === 'RETAIL' ? 'bg-amber-600 hover:bg-amber-700' : 'btn-primary',
               )}
             >

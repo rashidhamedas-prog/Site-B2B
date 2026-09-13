@@ -1,24 +1,21 @@
-import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { CmsPageIntro } from '@/components/cms/CmsPageIntro';
+import { metadataForCmsPage } from '@/lib/cms/fetch';
 import { RETAIL_ORIGIN } from '@/lib/seo';
 import { getServerApiBase } from '@/lib/server-api';
 
 export const revalidate = 300;
 
-export const metadata: Metadata = {
-  title: 'کلکسیون‌ها',
-  description:
-    'کلکسیون‌های فصلی مانتو و شومیز زنانه ترنم — انتخاب سریع‌تر بر اساس فصل و استایل، مستقیم از تولیدی مشهد.',
-  alternates: { canonical: `${RETAIL_ORIGIN}/collections` },
-  openGraph: {
-    title: 'کلکسیون‌های پوشاک ترنم',
-    description: 'کلکسیون‌های فصلی مانتو و شومیز زنانه — مستقیم از تولیدی ترنم.',
-    url: `${RETAIL_ORIGIN}/collections`,
-    type: 'website',
-    locale: 'fa_IR',
-  },
-};
+export async function generateMetadata() {
+  return metadataForCmsPage('RETAIL', 'collections', {
+    title: 'کلکسیون‌ها',
+    description:
+      'کلکسیون‌های فصلی مانتو و شومیز زنانه ترنم — انتخاب سریع‌تر بر اساس فصل و استایل، مستقیم از تولیدی مشهد.',
+    canonical: `${RETAIL_ORIGIN}/collections`,
+    ogAlt: 'کلکسیون‌های پوشاک ترنم',
+  });
+}
 
 type Collection = {
   id: string;
@@ -54,9 +51,7 @@ export default async function RetailCollectionsPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
       <h1 className="text-3xl font-extrabold">کلکسیون‌ها</h1>
-      <p className="mt-3 max-w-2xl text-sm text-[var(--retail-muted)]">
-        انتخاب سریع‌تر بر اساس فصل و استایل — مستقیم از تولیدی ترنم.
-      </p>
+      <CmsPageIntro channel="RETAIL" pageKey="collections" />
 
       {rows.length === 0 ? (
         <div className="mt-10">

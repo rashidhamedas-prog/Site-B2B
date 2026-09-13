@@ -1,12 +1,17 @@
-import type { Metadata } from 'next';
 import { CmsPage } from '@/components/cms/CmsPage';
+import { metadataForCmsPage } from '@/lib/cms/fetch';
+import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 
-export const metadata: Metadata = {
-  title: 'شرایط ارسال عمده',
-  description:
-    'نحوه بسته‌بندی، زمان آماده‌سازی و گزینه‌های ارسال سفارش عمده ترنم به شهرهای مختلف ایران.',
-  alternates: { canonical: 'https://poshaktaranom.com/shipping' },
-};
+export const revalidate = 60;
+
+export async function generateMetadata() {
+  return metadataForCmsPage('WHOLESALE', 'shipping', {
+    title: 'شرایط ارسال عمده',
+    description:
+      'نحوه بسته‌بندی، زمان آماده‌سازی و گزینه‌های ارسال سفارش عمده ترنم به شهرهای مختلف ایران.',
+    canonical: `${WHOLESALE_ORIGIN}/shipping`,
+  });
+}
 
 export default function ShippingPage() {
   return (
