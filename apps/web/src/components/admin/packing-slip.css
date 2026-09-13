@@ -1,20 +1,20 @@
-/* A5 packing + shipping label. High contrast for inkjet/laser. Screen preview + print. */
+/* A5 packing + shipping label — brand tokens, Vazirmatn, print-safe contrast. */
 
 .ps-modal-note {
-  color: #4b5563;
+  color: var(--brand-muted, #6b7280);
   font-size: 12px;
 }
 
 .ps-preview-frame {
-  background: #e8e4dc;
-  padding: 20px 16px 28px;
+  background: #d8cfc0;
+  padding: 22px 16px 30px;
   overflow: auto;
-  max-height: min(72vh, 900px);
+  max-height: min(72vh, 920px);
 }
 
 .ps-preview-frame .ps-sheet {
   margin: 0 auto;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 12px 28px rgba(15, 47, 40, 0.18);
 }
 
 .ps-print-root {
@@ -22,40 +22,71 @@
 }
 
 .ps-sheet {
+  --ps-green: var(--brand-green, #1b5c4a);
+  --ps-green-dark: var(--brand-green-dark, #0f2f28);
+  --ps-gold: var(--brand-gold, #c9a84c);
+  --ps-ivory: var(--brand-ivory, #f6f1e8);
+  --ps-ink: var(--brand-ink, #1a1a1a);
   width: 148mm;
   min-height: 210mm;
   box-sizing: border-box;
-  padding: 7mm;
+  padding: 0;
   background: #fff;
-  color: #111;
-  font-family: inherit;
+  color: var(--ps-ink);
+  font-family: var(--font-vazirmatn, 'Vazirmatn'), Tahoma, Arial, sans-serif;
   font-size: 11px;
-  line-height: 1.45;
-  border: 1.5pt solid #111;
+  line-height: 1.5;
+  border: 1pt solid #c9bfae;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .ps-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
-  padding-bottom: 6px;
-  border-bottom: 1.5pt solid #111;
+  padding: 7mm 7mm 6mm;
+  background: linear-gradient(180deg, var(--ps-ivory) 0%, #fff 100%);
+  border-bottom: 3px solid var(--ps-green);
+  box-shadow: inset 0 -3px 0 var(--ps-gold);
+}
+
+.ps-brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ps-logo {
+  width: 16mm;
+  height: 16mm;
+  object-fit: contain;
+  background: #fff;
+  border: 1pt solid #e4dccb;
+  border-radius: 50%;
+  padding: 1.2mm;
+  flex-shrink: 0;
 }
 
 .ps-kicker {
   margin: 0 0 2px;
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  color: #333;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ps-green);
 }
 
 .ps-brand {
   margin: 0;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   line-height: 1.2;
+  color: var(--ps-green-dark);
 }
 
 .ps-meta,
@@ -63,64 +94,102 @@
 .ps-track {
   margin: 2px 0 0;
   font-size: 10px;
+  color: #3f3f3f;
 }
 
 .ps-track.muted {
-  color: #444;
+  color: #6b6b6b;
 }
 
 .ps-head-id {
   text-align: left;
   min-width: 0;
+  padding: 4px 8px 5px;
+  background: #fff;
+  border: 1pt solid #d8cebc;
+  border-right: 3px solid var(--ps-gold);
+}
+
+.ps-order-label {
+  margin: 0;
+  font-size: 8px;
+  color: #666;
 }
 
 .ps-order {
-  margin: 0;
-  font-size: 12px;
+  margin: 1px 0 0;
+  font-size: 11px;
   font-weight: 800;
   word-break: break-all;
+  color: var(--ps-green-dark);
 }
 
 .ps-parties {
-  display: grid;
-  grid-template-columns: 32% 68%;
-  gap: 0;
-  margin-top: 6px;
-  border: 1.5pt solid #111;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5mm;
+  margin: 5mm 7mm 0;
 }
 
 .ps-party {
-  padding: 8px 8px 10px;
   min-width: 0;
+  border: 1.25pt solid #cfc5b3;
+  background: #fff;
+}
+
+.ps-party-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2.5px 8px;
+  color: #fff;
+}
+
+.ps-party.sender .ps-party-bar {
+  background: #5c6b63;
 }
 
 .ps-party.recipient {
-  min-height: 46mm;
+  border-color: var(--ps-green-dark);
+  border-width: 1.6pt;
 }
 
-.ps-party.sender {
-  border-left: 1.5pt solid #111;
+.ps-party.recipient .ps-party-bar {
+  background: var(--ps-green);
 }
 
-.ps-party h2,
-.ps-pack-title h2,
-.ps-invoice h2,
-.ps-notes h2 {
-  margin: 0 0 4px;
-  font-size: 10px;
+.ps-party-bar h2 {
+  margin: 0;
+  font-size: 11px;
   font-weight: 800;
-  text-transform: none;
+}
+
+.ps-party-bar p {
+  margin: 0;
+  font-size: 9px;
+  opacity: 0.92;
+}
+
+.ps-party-body {
+  padding: 6px 8px 8px;
+}
+
+.ps-party.recipient .ps-party-body {
+  min-height: 38mm;
+  background: #fbf8f2;
 }
 
 .ps-name {
   margin: 0;
   font-weight: 800;
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .ps-name.big {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.25;
+  color: var(--ps-green-dark);
 }
 
 .ps-phone {
@@ -129,16 +198,17 @@
 }
 
 .ps-phone.big {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .ps-addr {
-  margin: 3px 0 6px;
+  margin: 3px 0 7px;
   word-break: break-word;
+  color: #2a2a2a;
 }
 
 .ps-addr.big {
-  font-size: 12px;
+  font-size: 12.5px;
 }
 
 .ps-postal {
@@ -149,7 +219,8 @@
 
 .ps-postal-label {
   font-size: 9px;
-  color: #222;
+  font-weight: 700;
+  color: #333;
 }
 
 .ps-postal-boxes {
@@ -160,7 +231,7 @@
 .ps-postal-box {
   width: 14px;
   height: 18px;
-  border: 1pt solid #111;
+  border: 1pt solid #222;
   margin-inline-start: -1pt;
   display: flex;
   align-items: center;
@@ -168,16 +239,17 @@
   font-size: 11px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  background: #fff;
 }
 
-.ps-party.recipient .ps-postal-box {
-  width: 16px;
-  height: 22px;
+.ps-postal.large .ps-postal-box {
+  width: 17px;
+  height: 23px;
   font-size: 13px;
 }
 
 .ps-pack {
-  margin-top: 7px;
+  margin: 5mm 7mm 0;
   flex: 1 1 auto;
 }
 
@@ -185,8 +257,17 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  border-bottom: 1pt solid #111;
-  padding-bottom: 3px;
+  padding: 3px 2px 4px;
+  border-bottom: 2px solid var(--ps-green);
+}
+
+.ps-pack-title h2,
+.ps-invoice h2,
+.ps-notes h2 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ps-green-dark);
 }
 
 .ps-sheet table {
@@ -196,20 +277,26 @@
 
 .ps-sheet th,
 .ps-sheet td {
-  border-bottom: 0.6pt solid #333;
-  padding: 3px 4px;
+  border-bottom: 0.6pt solid #d4cbbd;
+  padding: 3.5px 4px;
   text-align: right;
   vertical-align: top;
 }
 
 .ps-sheet th {
   font-size: 9px;
+  background: var(--ps-ivory);
+  color: #333;
+}
+
+.ps-sheet tbody tr:nth-child(even) td {
+  background: #fcfaf6;
 }
 
 .ps-sku {
   display: block;
   font-size: 9px;
-  color: #333;
+  color: #555;
 }
 
 .ps-check {
@@ -221,13 +308,13 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1.5pt solid #111;
+  margin: 5mm 7mm 7mm;
+  padding-top: 5px;
+  border-top: 2px solid var(--ps-gold);
 }
 
 .ps-invoice dl {
-  margin: 0;
+  margin: 4px 0 0;
 }
 
 .ps-invoice dl > div {
@@ -238,11 +325,12 @@
 }
 
 .ps-invoice .total {
-  margin-top: 3px;
-  padding-top: 3px;
-  border-top: 1pt solid #111;
+  margin-top: 4px;
+  padding: 4px 0 0;
+  border-top: 1pt solid var(--ps-green);
   font-weight: 800;
-  font-size: 12px;
+  font-size: 12.5px;
+  color: var(--ps-green-dark);
 }
 
 .ps-invoice dt,
@@ -251,10 +339,14 @@
   margin: 0;
 }
 
+.ps-notes p {
+  margin-top: 4px;
+}
+
 .ps-return {
   margin-top: 6px !important;
   font-size: 9px;
-  color: #222;
+  color: #444;
 }
 
 .ps-warn {
@@ -266,7 +358,7 @@
 @media print {
   @page {
     size: A5 portrait;
-    margin: 7mm;
+    margin: 6mm;
   }
 
   html.packing-slip-print body > *:not(.ps-print-root) {
@@ -281,7 +373,6 @@
     width: 100%;
     min-height: auto;
     border: 0;
-    padding: 0;
     box-shadow: none;
   }
 

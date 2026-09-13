@@ -1,5 +1,29 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-007"
+    title: "Professional A5 packing-slip print redesign"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260913-007"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-007"
+      implementer: "cursor:implementer-TASK-20260913-007"
+    branch: "ai/TASK-20260913-007-packing-slip-design"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T09:25:00Z"
+    heartbeat_at: "2026-09-13T09:25:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/admin/AdminPackingSlip.tsx"
+      - "apps/web/src/components/admin/packing-slip.css"
+      - "docs/reports/2026-09-13-packing-slip-design.md"
+    notes: |
+      Visual-only A5 label: Vazirmatn, brand logo, sender above recipient. No settings/API change.
+    acceptance_criteria:
+      - "Sender block is a full-width row above the recipient block"
+      - "Sheet uses Vazirmatn and /logo-512.png"
+      - "Print remains A5 portrait with no innerHTML of PII"
+      - "packing-slip spec and web tsc pass"
   - id: "TASK-20260913-006"
     title: "Turn off door payment and in-person pickup on storefront"
     status: "in_progress"

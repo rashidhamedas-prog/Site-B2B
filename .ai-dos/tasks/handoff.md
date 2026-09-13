@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T09:25:00Z — TASK-20260913-007 implementing A5 print design
+
+- Visual-only: sender above recipient, Vazirmatn, `/logo-512.png`, brand green/gold.
+- Next: tsc + packing-slip spec, screenshot, merge/deploy.
+
 ## 2026-09-13T09:20:00Z — TASK-20260913-006 implementing door options off
 
 - Owner: turn remaining door options off, then full commit/merge/push/deploy.

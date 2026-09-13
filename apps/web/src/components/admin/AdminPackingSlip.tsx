@@ -17,14 +17,16 @@ import './packing-slip.css';
 
 type DetailOrder = SlipOrderInput & { id: string; status: string };
 
+const LOGO_SRC = '/logo-512.png';
+
 async function loadSender(): Promise<SlipSenderInput> {
   const settings = await apiClient.get<{ business?: SlipSenderInput }>('/settings/public');
   return settings.business ?? {};
 }
 
-function PostalRow({ code, label }: { code: string; label: string }) {
+function PostalRow({ code, label, large = false }: { code: string; label: string; large?: boolean }) {
   return (
-    <div className="ps-postal">
+    <div className={`ps-postal${large ? ' large' : ''}`}>
       <span className="ps-postal-label">{label}</span>
       <div className="ps-postal-boxes" dir="ltr" aria-label={`${label} ${code || 'نامشخص'}`}>
         {postalBoxes(code).map((d, i) => (
@@ -41,21 +43,29 @@ function SlipSheet({ model }: { model: PackingSlipModel }) {
   return (
     <article className="ps-sheet" dir="rtl" lang="fa">
       <header className="ps-head">
-        <div>
-          <p className="ps-kicker">برچسب ارسال + فاکتور بسته‌بندی</p>
-          <h1 className="ps-brand">{model.sender.name}</h1>
-          <p className="ps-meta">
-            {model.channelLabel} · {model.shippingLabel} · {model.paymentLabel}
-          </p>
+        <div className="ps-brand-lockup">
+          <img src={LOGO_SRC} alt="لوگوی پوشاک ترنم" width={72} height={72} className="ps-logo" />
+          <div>
+            <p className="ps-kicker">برچسب ارسال و فاکتور بسته‌بندی</p>
+            <h1 className="ps-brand">{model.sender.name}</h1>
+            <p className="ps-meta">
+              {model.channelLabel}
+              <span aria-hidden="true"> · </span>
+              {model.shippingLabel}
+              <span aria-hidden="true"> · </span>
+              {model.paymentLabel}
+            </p>
+          </div>
         </div>
         <div className="ps-head-id">
+          <p className="ps-order-label">شماره سفارش</p>
           <p className="ps-order" dir="ltr">
             {model.orderNumber}
           </p>
           <p className="ps-date">{model.createdAt}</p>
           {model.trackingCode ? (
             <p className="ps-track" dir="ltr">
-              رهگیری: {model.trackingCode}
+              رهگیری {model.trackingCode}
             </p>
           ) : (
             <p className="ps-track muted">کد رهگیری هنوز ثبت نشده</p>
@@ -63,28 +73,38 @@ function SlipSheet({ model }: { model: PackingSlipModel }) {
         </div>
       </header>
 
-      <section className="ps-parties">
+      <section className="ps-parties" aria-label="فرستنده و گیرنده">
         <div className="ps-party sender">
-          <h2>فرستنده</h2>
-          <p className="ps-name">{model.sender.name}</p>
-          {model.sender.phone ? (
-            <p className="ps-phone" dir="ltr">
-              {model.sender.phone}
-            </p>
-          ) : null}
-          <p className="ps-addr">{model.sender.address || 'آدرس دفتر را در تنظیمات کسب‌وکار کامل کنید.'}</p>
-          <PostalRow code={model.sender.postalCode} label="کدپستی فرستنده" />
+          <div className="ps-party-bar">
+            <h2>فرستنده</h2>
+          </div>
+          <div className="ps-party-body">
+            <p className="ps-name">{model.sender.name}</p>
+            {model.sender.phone ? (
+              <p className="ps-phone" dir="ltr">
+                {model.sender.phone}
+              </p>
+            ) : null}
+            <p className="ps-addr">{model.sender.address || 'آدرس دفتر را در تنظیمات کسب‌وکار کامل کنید.'}</p>
+            <PostalRow code={model.sender.postalCode} label="کدپستی فرستنده" />
+          </div>
         </div>
+
         <div className="ps-party recipient">
-          <h2>گیرنده — روی بسته بچسبانید</h2>
-          <p className="ps-name big">{model.recipient.name}</p>
-          {model.recipient.phone ? (
-            <p className="ps-phone big" dir="ltr">
-              {model.recipient.phone}
-            </p>
-          ) : null}
-          <p className="ps-addr big">{model.recipient.address || 'آدرس گیرنده در سفارش ثبت نشده است.'}</p>
-          <PostalRow code={model.recipient.postalCode} label="کدپستی گیرنده" />
+          <div className="ps-party-bar">
+            <h2>گیرنده</h2>
+            <p>روی بسته بچسبانید</p>
+          </div>
+          <div className="ps-party-body">
+            <p className="ps-name big">{model.recipient.name}</p>
+            {model.recipient.phone ? (
+              <p className="ps-phone big" dir="ltr">
+                {model.recipient.phone}
+              </p>
+            ) : null}
+            <p className="ps-addr big">{model.recipient.address || 'آدرس گیرنده در سفارش ثبت نشده است.'}</p>
+            <PostalRow code={model.recipient.postalCode} label="کدپستی گیرنده" large />
+          </div>
         </div>
       </section>
 
