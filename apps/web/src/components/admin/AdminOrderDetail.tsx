@@ -10,6 +10,7 @@ import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { OrderStatusBadge } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { AdminPackingSlipButton } from './AdminPackingSlip';
+import { adminCustomerWorkspaceHref } from '@/lib/admin-rma-display';
 
 interface OrderItem {
   id: string;
@@ -364,10 +365,27 @@ function AdminOrderDetailInner({ id }: { id: string }) {
             <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />اطلاعات مشتری</h3>
             {order.customer ? (
               <div className="space-y-2 text-sm">
-                <p className="font-semibold text-gray-900">{order.customer.businessName}</p>
-                <p className="text-gray-500">{order.customer.ownerName}</p>
+                <p className="font-semibold text-gray-900">
+                  <Link
+                    href={adminCustomerWorkspaceHref(order.customer.id, 'orders')}
+                    className="hover:text-primary hover:underline"
+                  >
+                    {order.customer.businessName || order.customer.ownerName || 'پرونده مشتری'}
+                  </Link>
+                </p>
+                {order.customer.ownerName && order.customer.businessName ? (
+                  <p className="text-gray-500">{order.customer.ownerName}</p>
+                ) : null}
                 <p className="text-gray-500">{order.customer.phone}</p>
                 <p className="text-gray-500">{order.customer.city}، {order.customer.province}</p>
+                <p>
+                  <Link
+                    href={adminCustomerWorkspaceHref(order.customer.id, 'orders')}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    پرونده مشتری
+                  </Link>
+                </p>
               </div>
             ) : <p className="text-sm text-gray-400">اطلاعات مشتری موجود نیست</p>}
           </div>

@@ -13,6 +13,7 @@ import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { ProductService } from '../product/product.service';
 import { channelUnitStock } from '../product/channel-product-projection';
 import { InventoryService } from '../inventory/inventory.service';
+import { CustomerService } from '../customer/customer.service';
 import { rmaStockChannel } from './rma-channel';
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -34,6 +35,7 @@ export class RmaService {
     private readonly dataSource: DataSource,
     private readonly productService: ProductService,
     private readonly inventoryService: InventoryService,
+    private readonly customerService: CustomerService,
   ) {}
 
   async create(dto: {
@@ -198,12 +200,15 @@ export class RmaService {
         if (row.refundType === 'WALLET') {
           const bonusPercent = 5;
           credit = Math.round(Number(item.totalPrice) * (1 + bonusPercent / 100));
-          const cust = await manager.query(
-            `UPDATE customers SET balance = balance + $1 WHERE id = $2 RETURNING id`,
-            [credit, row.customerId]
-          );
-          if (!cust?.length) {
-            throw new BadRequestException('اعتبار کیف پول ثبت نشد');
+          if (credit > 0) {
+            await this.customerService.updateBalance(row.customerId, credit, manager, {
+              reasonCode: 'RMA',
+              referenceType: 'RMA',
+              referenceId: row.id,
+              idempotencyKey: `rma:${row.id}:wallet`,
+              actorUserId: actorUserId || null,
+              note: `مرجوعی ${row.id}`,
+            });
           }
           row.walletCreditAmount = credit;
           // adminNote is mutable operator text — NOT the audit record.

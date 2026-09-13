@@ -2,6 +2,24 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T12:25:00Z — TASK-20260913-012 gates before merge
+
+- Objective: order→customer link, RMA credit column, RMA credit via ledger.
+- Decisions: `updateBalance(..., reasonCode RMA, idempotency rma:{id}:wallet)`; UI toman via `admin-rma-display`.
+- Gates (observed): web `admin-rma-display.spec.ts` ok; api `rma-wallet-ledger.spec.ts` ok; `apps/web` and `apps/api` `npx tsc --noEmit` 0.
+- Residual: live admin click; independent Reviewer + Security; order.service reason meta.
+- Next: commit, merge master, push, auto-deploy.
+
+## 2026-09-13T12:10:00Z — TASK-20260913-012 implementing order/RMA CRM sync
+
+- Objective: link admin order → customer workspace; show RMA wallet credit; write RMA credit through ledger.
+- Reclaimed AdminOrderDetail + WORKLOG from TASK-20260913-008 (done leftover).
+- Reclaimed WORKLOG from TASK-20260913-011 (done leftover).
+- Reclaimed rma.service.ts + rma.module.ts from TASK-20260826-001 (stale hb 2026-09-02, >24h). Previous owner notified here: 026 still owns rma-channel/audit specs and other omnichannel files.
+- Reclaimed admin-customer-workspace.md from 011 (done leftover; RMA residual closed).
+- Did not take order.service (006/008) or auth.controller (004-001).
+- Next: UI + RMA updateBalance, specs, tsc, merge/deploy.
+
 ## 2026-09-13T12:05:00Z — TASK-20260913-011 live `6854e8e`
 
 - VPS HEAD `6854e8e`. `customer_wallet_entries` exists; 0 rows (no non-zero balances to seed).

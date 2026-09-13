@@ -10,6 +10,7 @@ import { RmaService } from './rma.service';
 import { RmaController } from './rma.controller';
 import { ProductModule } from '../product/product.module';
 import { InventoryModule } from '../inventory/inventory.module';
+import { CustomerModule } from '../customer/customer.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { InventoryModule } from '../inventory/inventory.module';
     ]),
     ProductModule,
     InventoryModule,
+    CustomerModule,
   ],
   controllers: [RmaController],
   providers: [RmaService],
