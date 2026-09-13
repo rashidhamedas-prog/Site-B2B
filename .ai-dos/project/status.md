@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-13 — **TASK-20260913-001 CLOSED** on `origin/master` + VPS `a72fb84`. ORD-2026-00036 `PENDING_REVIEW` + ZarinPal PAID. Health 200. Claims released. Independent Reviewer + Security residual (payments).
 - Last verified: 2026-09-13 — **TASK-20260913-001 implementing** on `ai/TASK-20260913-001-zarinpal-capture-lock`. Live ORD-2026-00036 ZarinPal OK but order stuck `AWAITING_PAYMENT` because stock lock joined items. Not live until merge/deploy + re-verify.
 - Last verified: 2026-09-12 — **TASK-20260912-008 CLOSED** on `origin/master` + VPS `29d1e15`. ONLINE unpaid is `AWAITING_PAYMENT` until capture, then `PENDING_REVIEW`. Health 200. Migration applied. 3 leftover unpaid moved; review queue 0. Claims released. Independent Reviewer + Security residual (payments).
 - Last verified: 2026-09-12 — **TASK-20260912-007 CLOSED** on `origin/master` `b8c8821` (live VPS `be18707` after API rebuild). Checkout hydrates saved/default address into dedicated fields. Health 200. Claims released.

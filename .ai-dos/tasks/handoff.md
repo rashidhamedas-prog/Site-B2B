@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T08:00:00Z — TASK-20260913-001 CLOSED live `a72fb84`
+
+- ZarinPal capture no longer rolls back on `FOR UPDATE` + items join. ORD-2026-00036 is `PENDING_REVIEW`, payment `PAID`, stock committed, ref `92001535701`.
+- Live: API health 200; VPS `a72fb84`; `payment.verify.ok` without QueryFailedError.
+- Gates: order-row-lock + zarinpal-callback-status + lifecycle specs ok; api/web tsc 0; api `npm test` 0.
+- Claims released. Independent Reviewer + Security residual (payments).
+
 ## 2026-09-13T07:40:00Z — TASK-20260913-001 implementing zarinpal capture lock
 
 - Owner: ORD-2026-00036 stayed AWAITING_PAYMENT after ZarinPal paid.

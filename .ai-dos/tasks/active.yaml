@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260913-001"
     title: "ZarinPal capture must not roll back on stock lock join"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260913-001"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260913-001-zarinpal-capture-lock"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-13T07:40:00Z"
-    heartbeat_at: "2026-09-13T07:40:00Z"
+    heartbeat_at: "2026-09-13T08:00:00Z"
+    closed_at: "2026-09-13T08:00:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/order/order-row-lock.ts"
       - "apps/api/src/modules/order/order-row-lock.spec.ts"
       - "apps/api/src/modules/order/order.service.ts"
@@ -31,9 +33,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Live ORD-2026-00036-4FEF94: ZarinPal OK + verify_callback recorded, then
-      FOR UPDATE on LEFT JOIN order_items rolled back capture. Payment stayed PENDING.
-      Reclaimed order.service + payment.service from closed TASK-20260912-008.
+      LIVE origin/master + VPS a72fb84. ORD-2026-00036 PENDING_REVIEW + PAID ref 92001535701.
+      Independent Reviewer + Security residual (payments).
     acceptance_criteria:
       - "commitStockForOrder does not FOR UPDATE a joined items query"
       - "Successful ZarinPal verify moves AWAITING_PAYMENT to PENDING_REVIEW"
