@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ImagePlus, Loader2, Link2, Unlink, Trash2 } from 'lucide-react';
+import { ImagePlus, Link2, Loader2, Trash2, Unlink } from 'lucide-react';
 import { apiClient } from '@/lib/api';
-import type { AdminChannel } from './AdminChannelTabs';
+import { useAdminBlogWorkspace } from './AdminBlogWorkspace';
 
 interface MediaItem {
   id: string;
@@ -19,10 +19,12 @@ interface Orphan {
   slug: string;
 }
 
-export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
+export function AdminBlogTools() {
+  const { channel, syncEpoch, bump } = useAdminBlogWorkspace();
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [orphans, setOrphans] = useState<Orphan[]>([]);
   const [linkQ, setLinkQ] = useState('');
+  const [mediaQ, setMediaQ] = useState('');
   const [linkHits, setLinkHits] = useState<
     Array<{ title: string; slug: string; url: string; suggestedAnchor: string }>
   >([]);
@@ -34,9 +36,8 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
 
   const loadMedia = useCallback(async () => {
     try {
-      const res = await apiClient.get<{ items?: MediaItem[] } | MediaItem[]>(
-        `/blog/admin/media?channel=${channel}&limit=24`,
-      );
+      const qs = new URLSearchParams({ channel, limit: '24' });
+      const res = await apiClient.get<{ items?: MediaItem[] } | MediaItem[]>(`/blog/admin/media?${qs}`);
       const items = Array.isArray(res)
         ? res
         : Array.isArray((res as { items?: MediaItem[] })?.items)
@@ -62,7 +63,7 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
   useEffect(() => {
     void loadMedia();
     void loadOrphans();
-  }, [loadMedia, loadOrphans]);
+  }, [loadMedia, loadOrphans, syncEpoch]);
 
   const uploadMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -81,7 +82,7 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
         altText: altText || file.name,
       });
       setAltText('');
-      await loadMedia();
+      bump();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'آپلود ناموفق');
     } finally {
@@ -99,7 +100,7 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
     setMediaError(null);
     try {
       await apiClient.delete(`/blog/admin/media/${item.id}`);
-      await loadMedia();
+      bump();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'حذف ناموفق';
       setMediaError(msg);
@@ -129,7 +130,7 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
     <div className="mb-6 grid gap-4 lg:grid-cols-3">
       <div className="rounded-xl border border-gray-100 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
-          <ImagePlus className="h-4 w-4" />
+          <ImagePlus className="h-4 w-4" aria-hidden />
           کتابخانه رسانه
         </h3>
         {mediaError ? (
@@ -138,27 +139,42 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
           </p>
         ) : null}
         <input
+          value={mediaQ}
+          onChange={(e) => setMediaQ(e.target.value)}
+          placeholder="جست‌وجوی رسانه…"
+          className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          aria-label="جست‌وجوی رسانه"
+        />
+        <input
           value={altText}
           onChange={(e) => setAltText(e.target.value)}
           placeholder="متن جایگزین (alt) قبل از آپلود"
-          className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
+          className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          aria-label="متن جایگزین تصویر"
         />
-        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={uploadMedia} />
+        <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => void uploadMedia(e)} />
         <button
           type="button"
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
           className="btn btn-outline btn-sm mb-3 inline-flex items-center gap-1"
         >
-          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <ImagePlus className="h-3.5 w-3.5" aria-hidden />}
           آپلود تصویر
         </button>
         <div className="grid max-h-48 grid-cols-3 gap-2 overflow-y-auto">
-          {media.map((m) => (
+          {media
+            .filter((m) => {
+              const q = mediaQ.trim();
+              if (!q) return true;
+              return `${m.originalFileName} ${m.altText || ''}`.includes(q);
+            })
+            .map((m) => (
             <div key={m.id} className="relative aspect-square overflow-hidden rounded-lg border border-gray-100">
               <button
                 type="button"
                 title={m.altText || m.originalFileName}
+                aria-label={`کپی آدرس ${m.altText || m.originalFileName}`}
                 className="h-full w-full"
                 onClick={() => {
                   void navigator.clipboard.writeText(m.publicUrl);
@@ -167,6 +183,23 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={m.publicUrl} alt={m.altText || ''} className="h-full w-full object-cover" />
+              </button>
+              <button
+                type="button"
+                className="absolute right-1 top-1 rounded bg-black/70 px-1 text-[10px] text-white hover:bg-primary"
+                aria-label={`ویرایش alt ${m.originalFileName}`}
+                onClick={async () => {
+                  const next = window.prompt('متن جایگزین', m.altText || '');
+                  if (next == null) return;
+                  try {
+                    await apiClient.patch(`/blog/admin/media/${m.id}`, { altText: next });
+                    bump();
+                  } catch (err: unknown) {
+                    alert(err instanceof Error ? err.message : 'ذخیره alt ناموفق');
+                  }
+                }}
+              >
+                alt
               </button>
               <button
                 type="button"
@@ -188,21 +221,22 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
 
       <div className="rounded-xl border border-gray-100 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
-          <Link2 className="h-4 w-4" />
+          <Link2 className="h-4 w-4" aria-hidden />
           لینک داخلی پیشنهادی
         </h3>
         <input
           value={linkQ}
           onChange={(e) => void searchLinks(e.target.value)}
           placeholder="جست‌وجوی مطلب برای لینک…"
-          className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs"
+          className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          aria-label="جست‌وجوی لینک داخلی"
         />
         <div className="max-h-52 space-y-1 overflow-y-auto">
           {linkHits.map((h) => (
             <button
               key={h.slug}
               type="button"
-              className="flex w-full flex-col rounded-lg border border-gray-50 px-2 py-1.5 text-right text-xs hover:bg-gray-50"
+              className="flex w-full flex-col rounded-lg border border-gray-50 px-2 py-1.5 text-right text-xs hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
               onClick={() => {
                 void navigator.clipboard.writeText(h.url);
                 alert(`لینک کپی شد: ${h.suggestedAnchor}`);
@@ -219,12 +253,12 @@ export function AdminBlogTools({ channel }: { channel: AdminChannel }) {
 
       <div className="rounded-xl border border-gray-100 bg-white p-4">
         <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
-          <Unlink className="h-4 w-4" />
+          <Unlink className="h-4 w-4" aria-hidden />
           مقالات یتیم (بدون لینک ورودی)
         </h3>
         <div className="max-h-56 space-y-1 overflow-y-auto">
           {orphans.length === 0 ? (
-            <p className="text-xs text-gray-400">مقاله یتیمی یافت نشد.</p>
+            <p className="text-xs text-gray-400">مقاله یتیمی در این کانال یافت نشد.</p>
           ) : (
             orphans.map((o) => (
               <div key={o.id} className="rounded-lg border border-gray-50 px-2 py-1.5 text-xs">

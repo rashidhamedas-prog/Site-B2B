@@ -1,8 +1,50 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-009"
+    title: "Complete synced admin blog workspace"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-009"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-009"
+      implementer: "cursor:implementer-TASK-20260913-009"
+      reviewer: "same-session-after-gates"
+      security: "same-session-admin-blog"
+    branch: "ai/TASK-20260913-009-admin-blog-workspace"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T10:45:00Z"
+    heartbeat_at: "2026-09-13T10:45:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/admin-blog-workspace.ts"
+      - "apps/web/src/lib/admin-blog-workspace.spec.ts"
+      - "apps/web/src/components/admin/AdminBlogWorkspace.tsx"
+      - "apps/web/src/components/admin/AdminBlogHub.tsx"
+      - "apps/web/src/components/admin/AdminBlog.tsx"
+      - "apps/web/src/components/admin/AdminBlogTools.tsx"
+      - "apps/web/src/components/admin/AdminBlogTaxonomy.tsx"
+      - "apps/web/src/components/admin/AdminBlogSeoPanels.tsx"
+      - "apps/web/src/components/admin/AdminBlogModeration.tsx"
+      - "apps/web/src/components/admin/AdminBlogAnalytics.tsx"
+      - "apps/web/src/app/admin/blog/page.tsx"
+      - "docs/architecture/admin-blog-workspace.md"
+      - "docs/reports/2026-09-13-admin-blog-workspace.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Reclaimed stale AdminBlogTools/Analytics from TASK-20260810-006 (hb 2026-08-12).
+      Reclaimed WORKLOG from TASK-20260826-001 (hb 2026-09-02) for this handoff only.
+      Did not take blog.controller/service/extras (still 026). Frontend completes
+      against existing /v1/blog/admin APIs. Channel+tab live in one URL workspace.
+    acceptance_criteria:
+      - "One channel switcher on /admin/blog; all hub tabs read the same ?channel="
+      - "Tab and channel survive refresh via query string"
+      - "Taxonomy/authors/settings/redirects/comments/media expose full existing API fields"
+      - "Post save sends primaryCta and authorId; delete uses documented strategy"
+      - "Preview HTML uses lightSanitizeHtml; icon controls have aria-label"
+      - "Unit spec for workspace parse/serialize + settings payload strip"
   - id: "TASK-20260913-008"
     title: "Complete synced admin order status queues"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260913-008"
     roles:
@@ -4079,8 +4121,9 @@ tasks:
       - "apps/api/src/modules/blog/entities/blog-media-asset.entity.ts"
       - "apps/api/src/modules/blog/blog-analytics-rate-limit.spec.ts"
       - "apps/api/src/database/migrations/20260810-005-customer-channel-classification.ts"
-      - "apps/web/src/components/admin/AdminBlogTools.tsx"
-      - "apps/web/src/components/admin/AdminBlogAnalytics.tsx"
+      # transferred 2026-09-13 to TASK-20260913-009 (stale hb 2026-08-12; admin blog workspace):
+      # "apps/web/src/components/admin/AdminBlogTools.tsx"
+      # "apps/web/src/components/admin/AdminBlogAnalytics.tsx"
       - "apps/web/src/components/blog/BlogAnalyticsTracker.tsx"
       # transferred 2026-08-31 to TASK-20260830-002 (stale heartbeat; retail category ISR): "apps/web/next.config.ts"
       - "apps/api/src/main.ts"

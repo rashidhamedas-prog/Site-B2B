@@ -8,9 +8,12 @@ import {
 import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { cn } from '@/lib/cn';
-import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
+import { channelLabel, type AdminChannel } from './AdminChannelTabs';
 import { BlogEditor } from './BlogEditor';
 import { AdminBlogTools } from './AdminBlogTools';
+import { useAdminBlogWorkspace } from './AdminBlogWorkspace';
+import { BlogContent } from '@/components/blog/BlogContent';
+import { channelPublicHost } from '@/lib/admin-blog-workspace';
 
 type TabId =
   | 'content'
@@ -129,6 +132,7 @@ type FormState = {
   isCornerstone: boolean;
   isEvergreen: boolean;
   tags: string;
+  authorId: string;
   relatedProductIds: string[];
   relatedArticleIds: string[];
   version: number;
@@ -185,6 +189,7 @@ const emptyForm = (): FormState => ({
   isCornerstone: false,
   isEvergreen: false,
   tags: '',
+  authorId: '',
   relatedProductIds: [],
   relatedArticleIds: [],
   version: 1,
@@ -280,6 +285,7 @@ function postToForm(p: Post): FormState {
     isCornerstone: !!p.isCornerstone,
     isEvergreen: !!p.isEvergreen,
     tags: (p.tags || []).join(', '),
+    authorId: (p as { authorId?: string }).authorId || '',
     relatedProductIds: (p as any).relatedProductIds || [],
     relatedArticleIds: (p as any).relatedArticleIds || [],
     version: (p as any).version || 1,
@@ -349,8 +355,18 @@ function formToPayload(form: FormState, channel: AdminChannel) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
+    authorId: form.authorId || undefined,
     relatedProductIds: form.relatedProductIds,
     relatedArticleIds: form.relatedArticleIds,
+    primaryCta:
+      form.ctaTitle.trim() || form.ctaButtonUrl.trim()
+        ? {
+            title: form.ctaTitle.trim() || undefined,
+            description: form.ctaDescription.trim() || undefined,
+            buttonText: form.ctaButtonText.trim() || undefined,
+            buttonUrl: form.ctaButtonUrl.trim() || undefined,
+          }
+        : null,
     contentFormat: form.content.trim().startsWith('<') ? 'HTML' : 'MARKDOWN',
     howToSchemaEnabled: form.howToSchemaEnabled,
     commentsEnabled: form.commentsEnabled,
@@ -377,9 +393,10 @@ function formToPayload(form: FormState, channel: AdminChannel) {
 }
 
 export function AdminBlog() {
-  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
+  const { channel, syncEpoch, bump } = useAdminBlogWorkspace();
   const [posts, setPosts] = useState<Post[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [authors, setAuthors] = useState<Array<{ id: string; displayName: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -406,12 +423,14 @@ export function AdminBlog() {
     try {
       const qs = new URLSearchParams({ channel });
       if (statusFilter) qs.set('status', statusFilter);
-      const [list, cats] = await Promise.all([
+      const [list, cats, authorList] = await Promise.all([
         apiClient.get<Post[]>(`/blog/admin/posts?${qs}`),
         apiClient.get<Category[]>(`/blog/admin/categories?channel=${channel}`).catch(() => []),
+        apiClient.get<Array<{ id: string; displayName: string }>>('/blog/admin/authors').catch(() => []),
       ]);
       setPosts(Array.isArray(list) ? list : []);
       setCategories(Array.isArray(cats) ? cats : []);
+      setAuthors(Array.isArray(authorList) ? authorList : []);
     } catch {
       setPosts([]);
     } finally {
@@ -420,8 +439,8 @@ export function AdminBlog() {
   }, [channel, statusFilter]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    void load();
+  }, [load, syncEpoch]);
 
   useEffect(() => {
     if (!modal || !editId) return;
@@ -521,7 +540,7 @@ export function AdminBlog() {
       if (editId) await apiClient.put(`/blog/admin/posts/${editId}`, payload);
       else await apiClient.post('/blog/admin/posts', payload);
       setModal(false);
-      await load();
+      bump();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'خطا در ذخیره مطلب';
       alert(msg);
@@ -533,7 +552,7 @@ export function AdminBlog() {
   const runAction = async (id: string, action: string) => {
     try {
       await apiClient.post(`/blog/admin/posts/${id}/${action}`, {});
-      await load();
+      bump();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'خطا در عملیات');
     }
@@ -541,18 +560,22 @@ export function AdminBlog() {
 
   const handleDelete = async (id: string) => {
     try {
-      await apiClient.delete(`/blog/admin/posts/${id}`, { strategy: 'UNPUBLISH' });
+      await apiClient.delete(`/blog/admin/posts/${id}`, {
+        strategy: deleteStrategy,
+        redirectTarget: deleteRedirect || undefined,
+      });
       setDeleteId(null);
-      await load();
-    } catch {
-      /* ignore */
+      setDeleteRedirect('');
+      bump();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'حذف ناموفق');
     }
   };
 
   const seedCategories = async () => {
     try {
       await apiClient.post('/blog/admin/seed-categories', {});
-      await load();
+      bump();
       alert('دسته‌های پیشنهادی ساخته شد');
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'خطا');
@@ -572,7 +595,7 @@ export function AdminBlog() {
       await apiClient.post('/blog/admin/import', body);
       setImportOpen(false);
       setImportText('');
-      await load();
+      bump();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Import ناموفق');
     } finally {
@@ -587,13 +610,12 @@ export function AdminBlog() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">وبلاگ و سئو</h2>
+          <h2 className="text-lg font-bold text-gray-900">مقالات {channelLabel(channel)}</h2>
           <p className="mt-0.5 text-sm text-gray-500">
-            {posts.length.toLocaleString('fa-IR')} مطلب — {channelLabel(channel)}
+            {posts.length.toLocaleString('fa-IR')} مطلب روی {channelPublicHost(channel)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <AdminChannelTabs value={channel} onChange={setChannel} />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -610,8 +632,23 @@ export function AdminBlog() {
             Seed دسته
           </button>
           <button type="button" onClick={() => setImportOpen(true)} className="btn btn-outline btn-sm flex items-center gap-1">
-            <Upload className="h-3.5 w-3.5" />
+            <Upload className="h-3.5 w-3.5" aria-hidden />
             Import
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={async () => {
+              try {
+                const res = await apiClient.post<{ published: number }>('/blog/admin/publish-scheduled', {});
+                alert(`${(res?.published || 0).toLocaleString('fa-IR')} مطلب زمان‌بندی‌شده منتشر شد`);
+                bump();
+              } catch (e: unknown) {
+                alert(e instanceof Error ? e.message : 'انتشار زمان‌بندی ناموفق');
+              }
+            }}
+          >
+            انتشار زمان‌بندی‌ها
           </button>
           <button type="button" onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
             <Plus className="h-4 w-4" />
@@ -620,7 +657,7 @@ export function AdminBlog() {
         </div>
       </div>
 
-      <AdminBlogTools channel={channel} />
+      <AdminBlogTools />
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
@@ -690,8 +727,8 @@ export function AdminBlog() {
                     </td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1.5">
-                        <button type="button" onClick={() => openEdit(p)} className="text-gray-400 hover:text-primary" title="ویرایش">
-                          <Edit2 className="h-4 w-4" />
+                        <button type="button" onClick={() => openEdit(p)} className="text-gray-400 hover:text-primary" title="ویرایش" aria-label={`ویرایش ${p.title}`}>
+                          <Edit2 className="h-4 w-4" aria-hidden />
                         </button>
                         {p.status === 'DRAFT' && (
                           <button type="button" onClick={() => runAction(p.id, 'submit-review')} className="text-gray-400 hover:text-amber-600" title="ارسال بازبینی">
@@ -820,11 +857,34 @@ export function AdminBlog() {
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">نویسنده</label>
-                      <input
-                        value={form.authorName}
-                        onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                      />
+                      {authors.length > 0 ? (
+                        <select
+                          value={form.authorId}
+                          onChange={(e) => {
+                            const a = authors.find((x) => x.id === e.target.value);
+                            setForm((f) => ({
+                              ...f,
+                              authorId: e.target.value,
+                              authorName: a?.displayName || f.authorName,
+                            }));
+                          }}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                        >
+                          <option value="">— انتخاب نویسنده —</option>
+                          {authors.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.displayName}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={form.authorName}
+                          onChange={(e) => setForm((f) => ({ ...f, authorName: e.target.value }))}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                          placeholder="نام نویسنده"
+                        />
+                      )}
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600">دسته‌بندی</label>
@@ -1083,6 +1143,7 @@ export function AdminBlog() {
                         key={id}
                         type="button"
                         className="rounded-full bg-gray-100 px-3 py-1 font-mono text-[11px] hover:bg-red-50 hover:text-red-600"
+                        aria-label={`حذف محصول مرتبط ${id.slice(0, 8)}`}
                         onClick={() =>
                           setForm((f) => ({
                             ...f,
@@ -1093,6 +1154,53 @@ export function AdminBlog() {
                         {id.slice(0, 8)} ×
                       </button>
                     ))}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">مقالات مرتبط همین کانال</label>
+                    <select
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                      value=""
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        if (!id) return;
+                        setForm((f) => ({
+                          ...f,
+                          relatedArticleIds: f.relatedArticleIds.includes(id)
+                            ? f.relatedArticleIds
+                            : [...f.relatedArticleIds, id],
+                        }));
+                      }}
+                    >
+                      <option value="">— افزودن مقاله —</option>
+                      {posts
+                        .filter((p) => p.id !== editId)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.title}
+                          </option>
+                        ))}
+                    </select>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {form.relatedArticleIds.map((id) => {
+                        const p = posts.find((x) => x.id === id);
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            className="rounded-full bg-gray-100 px-3 py-1 text-[11px] hover:bg-red-50 hover:text-red-600"
+                            aria-label={`حذف مقاله مرتبط ${p?.title || id}`}
+                            onClick={() =>
+                              setForm((f) => ({
+                                ...f,
+                                relatedArticleIds: f.relatedArticleIds.filter((x) => x !== id),
+                              }))
+                            }
+                          >
+                            {p?.title || id.slice(0, 8)} ×
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   {editId && (
                     <button
@@ -1165,7 +1273,7 @@ export function AdminBlog() {
                           onClick={async () => {
                             try {
                               await apiClient.post(`/blog/admin/posts/${editId}/revisions/${r.id}/restore`, {});
-                              await load();
+                              bump();
                               alert('نسخه بازگردانی شد');
                               setModal(false);
                             } catch (e: unknown) {
@@ -1377,20 +1485,44 @@ export function AdminBlog() {
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                     />
                   </div>
+                  <div className="sm:col-span-2 grid gap-2 rounded-lg border border-gray-100 p-3">
+                    <p className="text-xs font-semibold text-gray-600">CTA مقاله</p>
+                    <input
+                      value={form.ctaTitle}
+                      onChange={(e) => setForm((f) => ({ ...f, ctaTitle: e.target.value }))}
+                      placeholder="عنوان دکمه/بلوک"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={form.ctaDescription}
+                      onChange={(e) => setForm((f) => ({ ...f, ctaDescription: e.target.value }))}
+                      placeholder="توضیح کوتاه"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={form.ctaButtonText}
+                      onChange={(e) => setForm((f) => ({ ...f, ctaButtonText: e.target.value }))}
+                      placeholder="متن دکمه"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                    <input
+                      value={form.ctaButtonUrl}
+                      onChange={(e) => setForm((f) => ({ ...f, ctaButtonUrl: e.target.value }))}
+                      placeholder="/products یا https://…"
+                      dir="ltr"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs"
+                    />
+                  </div>
                 </div>
               )}
 
               {tab === 'preview' && (
                 <div className="prose prose-sm max-w-none rounded-xl border border-gray-100 bg-gray-50 p-5">
-                  <p className="text-xs text-gray-400">پیش‌نمایش</p>
+                  <p className="text-xs text-gray-400">پیش‌نمایش (HTML پاک‌سازی‌شده)</p>
                   <h1 className="text-xl font-bold text-gray-900">{form.title || '—'}</h1>
                   <p className="text-sm text-gray-600">{form.excerpt}</p>
                   <hr />
-                  {form.content.trim().startsWith('<') ? (
-                    <div dangerouslySetInnerHTML={{ __html: form.content }} />
-                  ) : (
-                    <pre className="whitespace-pre-wrap text-xs leading-relaxed text-gray-700">{form.content}</pre>
-                  )}
+                  <BlogContent content={form.content} tone={channel === 'RETAIL' ? 'retail' : 'wholesale'} />
                 </div>
               )}
             </div>
@@ -1441,8 +1573,29 @@ export function AdminBlog() {
       {deleteId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-            <h3 className="mb-2 text-lg font-bold text-gray-900">حذف نرم مطلب</h3>
-            <p className="mb-6 text-sm text-gray-500">مطلب به‌صورت soft delete حذف می‌شود.</p>
+            <h3 className="mb-2 text-lg font-bold text-gray-900">حذف مطلب</h3>
+            <p className="mb-3 text-sm text-gray-500">استراتژی سئو بعد از حذف را انتخاب کنید.</p>
+            <select
+              className="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              value={deleteStrategy}
+              onChange={(e) => setDeleteStrategy(e.target.value)}
+              aria-label="استراتژی حذف"
+            >
+              <option value="UNPUBLISH">لغو انتشار (soft)</option>
+              <option value="GONE">410 Gone</option>
+              <option value="REDIRECT_ARTICLE">ریدایرکت به مقاله</option>
+              <option value="REDIRECT_CATEGORY">ریدایرکت به دسته</option>
+            </select>
+            {(deleteStrategy === 'REDIRECT_ARTICLE' || deleteStrategy === 'REDIRECT_CATEGORY') && (
+              <input
+                className="mb-4 w-full rounded-lg border border-gray-200 px-3 py-2 font-mono text-xs"
+                dir="ltr"
+                placeholder="/blog/new-slug"
+                value={deleteRedirect}
+                onChange={(e) => setDeleteRedirect(e.target.value)}
+                aria-label="مقصد ریدایرکت"
+              />
+            )}
             <div className="flex gap-3">
               <button type="button" onClick={() => setDeleteId(null)} className="btn btn-outline btn-md flex-1">
                 انصراف

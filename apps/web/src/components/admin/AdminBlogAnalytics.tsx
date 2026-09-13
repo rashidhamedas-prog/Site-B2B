@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
-import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
+import { channelLabel } from './AdminChannelTabs';
+import { useAdminBlogWorkspace } from './AdminBlogWorkspace';
 import { sanitizeGa4Id, sanitizeGscToken } from '@/lib/google';
 
 interface SummaryRow {
@@ -36,7 +37,7 @@ interface SummaryResponse {
 }
 
 export function AdminBlogAnalyticsPanel() {
-  const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
+  const { channel, syncEpoch } = useAdminBlogWorkspace();
   const [data, setData] = useState<SummaryResponse | null>(null);
   const [ga4Id, setGa4Id] = useState('');
   const [gscToken, setGscToken] = useState('');
@@ -68,22 +69,19 @@ export function AdminBlogAnalyticsPanel() {
   }, [channel]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    void load();
+  }, [load, syncEpoch]);
 
   const t = data?.totals;
   const isEmpty = !loading && !loadError && !!data && (data.items?.length ?? 0) === 0;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold">آمار وبلاگ — {channelLabel(channel)}</h2>
-          <p className="text-xs text-gray-500">
-            view / scroll / CTA داخلی + وضعیت اتصال GA4 و توکن تأیید GSC (نه آنالیتیکس GSC)
-          </p>
-        </div>
-        <AdminChannelTabs value={channel} onChange={setChannel} />
+      <div>
+        <h2 className="text-lg font-bold">آمار وبلاگ — {channelLabel(channel)}</h2>
+        <p className="text-xs text-gray-500">
+          view / scroll / CTA داخلی + وضعیت اتصال GA4 و توکن تأیید GSC (نه آنالیتیکس GSC)
+        </p>
       </div>
 
       {loadError ? (

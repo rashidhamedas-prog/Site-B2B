@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T10:45:00Z — TASK-20260913-009 implementing synced admin blog
+
+- Live `/admin/blog` had 7 hub tabs each with its own channel state; authors/settings/taxonomy/media were partial vs existing API.
+- Architecture: one workspace (`?channel=` + `?tab=`) like Ghost Admin + Payload locale switcher. No new CMS, no API rewrite (026 still owns blog.controller/service).
+- Reclaimed stale AdminBlogTools/Analytics from TASK-20260810-006. WORKLOG only from stale 026.
+- Gates (observed): `node --experimental-strip-types src/lib/admin-blog-workspace.spec.ts` ok (cwd apps/web); `apps/web` `npx tsc --noEmit` 0.
+- Next: commit scoped files, push, auto-deploy, live `/admin/blog` click.
+
 ## 2026-09-13T10:15:00Z — TASK-20260913-008 implementing synced order queues
 
 - Admin `/admin/orders` tabs were labels only: list/detail actions disagreed with `ORDER_TRANSITIONS`, COMPLETED was unreachable, PROCESSING→CONFIRMED was illegal, customer stepper used `PACKING`.
