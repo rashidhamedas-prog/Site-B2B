@@ -34,8 +34,9 @@ Confirmed 2026-09-13. Completes `/admin/customers` without a second CRM/Salesfor
 - Wholesale checkout wallet apply (still retail-only)
 - Gift cards, expiry, claim codes (Medusa/Shopify extras)
 - Editing savedAddresses from admin
-- Changing RMA raw SQL (026 claim)
 - Passing reason meta from `order.service` (006/008 claims)
+
+RMA WALLET approval now uses `CustomerService.updateBalance` (TASK-20260913-012).
 
 ## Security
 

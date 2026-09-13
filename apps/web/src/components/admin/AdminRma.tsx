@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import {
+  adminCustomerWorkspaceHref,
+  rmaRefundLabelFa,
+  rmaWalletCreditLabelFa,
+} from '@/lib/admin-rma-display';
 
 type RmaRow = {
   id: string;
@@ -12,6 +18,7 @@ type RmaRow = {
   requestType: string;
   requestedSize?: string;
   refundType: string;
+  walletCreditAmount?: number | string | null;
   status: string;
   adminNote?: string;
   createdAt: string;
@@ -91,6 +98,8 @@ export function AdminRma() {
             <tr>
               <th className="px-4 py-3 font-semibold">تاریخ</th>
               <th className="px-4 py-3 font-semibold">نوع</th>
+              <th className="px-4 py-3 font-semibold">بازپرداخت</th>
+              <th className="px-4 py-3 font-semibold">اعتبار کیف</th>
               <th className="px-4 py-3 font-semibold">دلیل</th>
               <th className="px-4 py-3 font-semibold">وضعیت</th>
               <th className="px-4 py-3 font-semibold">یادداشت ادمین</th>
@@ -100,7 +109,7 @@ export function AdminRma() {
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-gray-400">
                   درخواستی نیست
                 </td>
               </tr>
@@ -111,9 +120,18 @@ export function AdminRma() {
                     {new Date(r.createdAt).toLocaleDateString('fa-IR')}
                   </td>
                   <td className="px-4 py-3">
-                    {r.requestType === 'EXCHANGE' ? 'تعویض' : 'مرجوعی'}
-                    {r.requestedSize ? ` → ${r.requestedSize}` : ''}
+                    <div>{r.requestType === 'EXCHANGE' ? 'تعویض' : 'مرجوعی'}{r.requestedSize ? ` → ${r.requestedSize}` : ''}</div>
+                    <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                      <Link href={adminCustomerWorkspaceHref(r.customerId, 'wallet')} className="font-semibold text-primary hover:underline">
+                        مشتری
+                      </Link>
+                      <Link href={`/admin/orders/${r.orderId}`} className="font-semibold text-primary hover:underline">
+                        سفارش
+                      </Link>
+                    </div>
                   </td>
+                  <td className="px-4 py-3 whitespace-nowrap">{rmaRefundLabelFa(r.refundType)}</td>
+                  <td className="px-4 py-3 whitespace-nowrap font-semibold">{rmaWalletCreditLabelFa(r.walletCreditAmount)}</td>
                   <td className="px-4 py-3 max-w-xs truncate">{r.reason}</td>
                   <td className="px-4 py-3 font-semibold">{STATUS_FA[r.status] || r.status}</td>
                   <td className="px-4 py-3">

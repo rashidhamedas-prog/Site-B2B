@@ -1,5 +1,45 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-012"
+    title: "Admin order/RMA links to customer workspace + RMA wallet ledger"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-012"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-012"
+      implementer: "cursor:implementer-TASK-20260913-012"
+      reviewer: "required-independent-wallet-rma"
+      security: "required-independent-wallet-rma"
+    branch: "ai/TASK-20260913-012-crm-order-rma-sync"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T12:10:00Z"
+    heartbeat_at: "2026-09-13T12:10:00Z"
+    depends_on:
+      - "TASK-20260913-011"
+    file_claims:
+      - "apps/web/src/components/admin/AdminOrderDetail.tsx"
+      - "apps/web/src/components/admin/AdminRma.tsx"
+      - "apps/web/src/lib/admin-rma-display.ts"
+      - "apps/web/src/lib/admin-rma-display.spec.ts"
+      - "apps/api/src/modules/rma/rma.service.ts"
+      - "apps/api/src/modules/rma/rma.module.ts"
+      - "apps/api/src/modules/rma/rma-wallet-ledger.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-13-admin-crm-order-rma.md"
+      - "docs/architecture/admin-customer-workspace.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Leftovers after TASK-20260913-011: order detail → customer workspace,
+      /admin/rma shows refundType + walletCreditAmount, RMA APPROVED writes ledger.
+      Reclaimed AdminOrderDetail from TASK-20260913-008 (done leftover).
+      Reclaimed rma.service.ts + rma.module.ts from TASK-20260826-001 (stale hb 2026-09-02, >24h).
+      Reclaimed WORKLOG from 008/011 done leftovers.
+      Did not take order.service (006/008) or auth.controller (004-001).
+    acceptance_criteria:
+      - "Admin order customer block links to /admin/customers/:id?tab=orders"
+      - "Admin RMA table shows refund type, wallet credit (toman), and customer/order links"
+      - "RMA WALLET approval uses CustomerService.updateBalance (ledger+cache), not raw SQL"
+      - "admin-rma-display spec and web/api tsc pass"
   - id: "TASK-20260913-011"
     title: "Complete synced admin customer workspace + wallet ledger"
     status: "done"
@@ -46,9 +86,11 @@ tasks:
       - "apps/web/src/components/retail/RetailAccountShell.tsx"
       - "apps/web/src/app/portal/dashboard/wallet/page.tsx"
       - "apps/web/src/components/portal/PortalSidebar.tsx"
-      - "docs/architecture/admin-customer-workspace.md"
+      # transferred 2026-09-13 to TASK-20260913-012 (done leftover; RMA residual closed):
+      # "docs/architecture/admin-customer-workspace.md"
       - "docs/reports/2026-09-13-admin-customer-workspace.md"
-      - "docs/WORKLOG.md"
+      # transferred 2026-09-13 to TASK-20260913-012 (done leftover):
+      # "docs/WORKLOG.md"
     notes: |
       Completes /admin/customers workspace + append-only wallet ledger.
       Reclaimed shared-types/index.ts + WORKLOG from TASK-20260913-008 (done leftover).
@@ -175,14 +217,16 @@ tasks:
       - "apps/api/src/modules/order/order.controller.ts"
       - "apps/web/src/lib/hooks/useOrders.ts"
       - "apps/web/src/components/admin/AdminOrders.tsx"
-      - "apps/web/src/components/admin/AdminOrderDetail.tsx"
+      # transferred 2026-09-13 to TASK-20260913-012 (done leftover; customer workspace link):
+      # "apps/web/src/components/admin/AdminOrderDetail.tsx"
       - "apps/web/src/components/ui/Badge.tsx"
       - "apps/web/src/components/admin/AdminDashboard.tsx"
       - "apps/web/src/app/retail/account/orders/page.tsx"
       - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
       - "apps/web/src/app/portal/dashboard/orders/[id]/page.tsx"
       - "docs/reports/2026-09-13-admin-order-queues.md"
-      - "docs/WORKLOG.md"
+      # transferred 2026-09-13 to TASK-20260913-012 (done leftover):
+      # "docs/WORKLOG.md"
     notes: |
       Shared order-status catalog so admin tabs, detail, customer steppers, and API transitions stay in sync.
       Surgical edits in order.service.ts (transitions/counts/tracking guard). TASK-20260913-006 also listed this file for cash/create; that work is already on origin/master.
@@ -3238,8 +3282,9 @@ tasks:
       # transferred 2026-09-01 to TASK-20260901-002 (stock only after settle):
       # "apps/api/src/modules/order/order.service.ts"
       # "apps/api/src/modules/order/order.module.ts"
-      - "apps/api/src/modules/rma/rma.service.ts"
-      - "apps/api/src/modules/rma/rma.module.ts"
+      # transferred 2026-09-13 to TASK-20260913-012 (stale hb 2026-09-02; RMA wallet ledger):
+      # "apps/api/src/modules/rma/rma.service.ts"
+      # "apps/api/src/modules/rma/rma.module.ts"
       - "apps/api/src/modules/rma/rma-channel.ts"
       - "apps/api/src/modules/rma/rma-channel.spec.ts"
       - "apps/api/src/modules/rma/rma-audit-runtime.spec.ts"

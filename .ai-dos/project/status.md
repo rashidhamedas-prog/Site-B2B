@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-13 — **TASK-20260913-012 implementing** on `ai/TASK-20260913-012-crm-order-rma-sync`. Admin order→customer link, RMA credit column, RMA approval via wallet ledger. Not live until merge/deploy. Independent Reviewer + Security residual (wallet/PII). Live admin click not exercised.
 - Last verified: 2026-09-13 — **TASK-20260913-011 live residual** on `origin/master` + VPS `6854e8e`. Admin CRM workspace + wallet ledger table present (0 opening rows; all balances were 0). Health 200; `.ir`/`.com` 200. Admin click and shopper wallet not exercised (no session). Independent Reviewer + Security residual (wallet/PII).
 - Last verified: 2026-09-13 — **TASK-20260913-009 CLOSED** on `origin/master` + VPS `718f0f8` (code `80889fb`). Admin `/admin/blog` one channel+tab workspace live. Health 200. Claims released. Admin click not exercised (no session).
 - Last verified: 2026-09-13 — **TASK-20260913-010 CLOSED** on `origin/master` + VPS `6b1beb7`. Admin product workspace + per-image `imageAlts`. Health 200; `.ir`/`.com` homes 200; live PDP has ImageObject name/caption + og:image:alt. Admin click not exercised (no session). Claims remain until live admin save.
