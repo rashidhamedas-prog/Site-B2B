@@ -23,3 +23,5 @@
 
 - وب: `admin-rma-display.spec.ts` ok؛ `npx tsc --noEmit` 0
 - API: `rma-wallet-ledger.spec.ts` ok؛ `npx tsc --noEmit` 0
+- زنده: `origin/master` + VPS `2c02f4d`؛ health / `.ir` / `.com` 200
+- `/admin/rma` بدون نشست به صفحه ورود می‌رود؛ کلیک داخل پنل انجام نشد.

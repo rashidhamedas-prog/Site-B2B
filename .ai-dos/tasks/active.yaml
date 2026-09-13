@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260913-012"
     title: "Admin order/RMA links to customer workspace + RMA wallet ledger"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260913-012"
     roles:
@@ -13,7 +13,8 @@ tasks:
     branch: "ai/TASK-20260913-012-crm-order-rma-sync"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-13T12:10:00Z"
-    heartbeat_at: "2026-09-13T12:10:00Z"
+    heartbeat_at: "2026-09-13T12:22:00Z"
+    closed_at: "2026-09-13T12:22:00Z"
     depends_on:
       - "TASK-20260913-011"
     file_claims:

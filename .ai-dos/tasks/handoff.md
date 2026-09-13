@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T12:22:00Z — TASK-20260913-012 CLOSED live `2c02f4d`
+
+- VPS HEAD `2c02f4d`. Health 200; `.ir`/`.com` 200.
+- `/admin/rma` redirects to login (no admin session). Click path not exercised.
+- Residual: independent Reviewer + Security; `order.service` reason meta.
+
 ## 2026-09-13T12:25:00Z — TASK-20260913-012 gates before merge
 
 - Objective: order→customer link, RMA credit column, RMA credit via ledger.
