@@ -1,7 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { emptyStatusCounts } from '@taranom/shared-types';
 import { apiClient } from '../api';
+
+export interface OrderCustomer {
+  id?: string;
+  businessName?: string;
+  ownerName?: string;
+  phone?: string;
+  city?: string;
+  province?: string;
+}
 
 export interface Order {
   id: string;
@@ -17,6 +27,7 @@ export interface Order {
   trackingCode?: string;
   notes?: string;
   createdAt: string;
+  customer?: OrderCustomer;
   items: Array<{
     id: string;
     productName: string;
@@ -62,6 +73,28 @@ export function useOrders(params?: { page?: number; customerId?: string; status?
   useEffect(() => { fetch(); }, [fetch]);
 
   return { orders, meta, loading, error, refetch: fetch };
+}
+
+export function useOrderStatusCounts(type?: string) {
+  const [counts, setCounts] = useState<Record<string, number>>(emptyStatusCounts);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const query = type ? `?type=${encodeURIComponent(type)}` : '';
+      const res = await apiClient.get<Record<string, number>>(`/orders/status-counts${query}`);
+      setCounts({ ...emptyStatusCounts(), ...res });
+    } catch {
+      setCounts(emptyStatusCounts());
+    } finally {
+      setLoading(false);
+    }
+  }, [type]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  return { counts, loading, refetch: fetch };
 }
 
 export function useCreateOrder() {

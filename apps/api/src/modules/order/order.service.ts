@@ -44,19 +44,11 @@ import {
 import { lockOrderRow, lockOrderRowWithItems } from './order-row-lock';
 import { FulfillmentService } from './fulfillment.service';
 import { snapshotVendorFulfillment, stripOrderVendorSecrets } from './fulfillment-split-policy';
-
-/** Allowed Order status transitions (admin). */
-const ORDER_TRANSITIONS: Record<string, string[]> = {
-  AWAITING_PAYMENT: ['CANCELLED', 'DELETED'],
-  PENDING_REVIEW: ['CONFIRMED', 'PROCESSING', 'CANCELLED', 'DELETED'],
-  CONFIRMED: ['PROCESSING', 'SHIPPED', 'CANCELLED', 'DELETED'],
-  PROCESSING: ['SHIPPED', 'CANCELLED', 'DELETED'],
-  SHIPPED: ['DELIVERED', 'CANCELLED'],
-  DELIVERED: ['REFUNDED'],
-  CANCELLED: ['DELETED'],
-  DELETED: [],
-  REFUNDED: [],
-};
+import {
+  canTransitionOrderStatus,
+  foldStatusCounts,
+  isKnownOrderStatus,
+} from '@taranom/shared-types';
 
 @Injectable()
 export class OrderService {
@@ -1055,9 +1047,13 @@ export class OrderService {
     if (resolvedType) where.type = resolvedType;
 
     if (status) {
-      where.status = status;
+      if (!isKnownOrderStatus(status)) {
+        throw new BadRequestException('وضعیت سفارش نامعتبر است');
+      }
+      const normalizedStatus = String(status).trim().toUpperCase();
+      where.status = normalizedStatus;
       // Customers must not fetch DELETED even with explicit filter
-      if (status === 'DELETED' && !opts?.includeDeleted) {
+      if (normalizedStatus === 'DELETED' && !opts?.includeDeleted) {
         return { data: [], meta: { page, limit, total: 0, totalPages: 0 } };
       }
     } else if (!opts?.includeDeleted) {
@@ -1066,13 +1062,24 @@ export class OrderService {
 
     const [data, total] = await this.orderRepo.findAndCount({
       where,
-      relations: ['items'],
+      relations: ['items', 'customer'],
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
     });
 
     return { data, meta: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+  }
+
+  async countByStatus(type?: string) {
+    const qb = this.orderRepo
+      .createQueryBuilder('o')
+      .select('o.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('o.status');
+    if (type) qb.andWhere('o.type = :type', { type });
+    const rows = await qb.getRawMany<{ status: string; count: string }>();
+    return foldStatusCounts(rows);
   }
 
   async findOne(id: string) {
@@ -1344,8 +1351,7 @@ export class OrderService {
       throw new BadRequestException('سفارش حذف‌شده قابل تغییر وضعیت نیست');
     }
     const prev = order.status;
-    const allowed = ORDER_TRANSITIONS[prev];
-    if (allowed && prev !== status && !allowed.includes(status)) {
+    if (!canTransitionOrderStatus(prev, status)) {
       throw new BadRequestException(`انتقال وضعیت از ${prev} به ${status} مجاز نیست`);
     }
     const patch: Partial<OrderEntity> = { status };
@@ -1536,6 +1542,12 @@ export class OrderService {
     if (extra?.freightCost !== undefined) patch.freightCost = Number(extra.freightCost) || 0;
     if (extra?.freightReceiptUrl !== undefined) patch.freightReceiptUrl = extra.freightReceiptUrl || undefined;
     const order = await this.findOne(id);
+    if (order.status === 'DELETED' || order.voidedAt) {
+      throw new BadRequestException('سفارش حذف‌شده قابل ارسال نیست');
+    }
+    if (order.status !== 'SHIPPED' && !canTransitionOrderStatus(order.status, 'SHIPPED')) {
+      throw new BadRequestException('ثبت ارسال فقط از سفارش تأییدشده یا در حال پردازش مجاز است');
+    }
     await this.dataSource.transaction(async (manager) => {
       await manager.getRepository(OrderEntity).update(id, patch as any);
       await this.outbox.enqueue(

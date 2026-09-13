@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 import { getToken } from '@/lib/auth';
 import { RetailAccountAuth } from '@/components/retail/RetailAccountAuth';
@@ -16,17 +17,6 @@ type OrderRow = {
   createdAt: string;
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  AWAITING_PAYMENT: 'در انتظار پرداخت',
-  PENDING_REVIEW: 'در بررسی',
-  CONFIRMED: 'تأیید شد',
-  PACKING: 'آماده‌سازی',
-  SHIPPED: 'ارسال شده',
-  DELIVERED: 'تحویل',
-  COMPLETED: 'تکمیل',
-  CANCELLED: 'لغو',
-  REFUNDED: 'بازپرداخت',
-};
 
 function toman(n: number) {
   return Math.round(Number(n) / 10).toLocaleString('fa-IR');
@@ -119,7 +109,7 @@ function RetailAccountHome() {
                     </p>
                   </div>
                   <p className="mt-1 text-sm">
-                    {toman(o.total)} تومان — {STATUS_LABEL[o.status] || o.status}
+                    {toman(o.total)} تومان — {orderStatusLabelFa(o.status)}
                   </p>
                 </Link>
               </li>

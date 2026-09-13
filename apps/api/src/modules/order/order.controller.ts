@@ -144,6 +144,19 @@ export class OrderController {
     });
   }
 
+  @Get('status-counts')
+  @ApiOperation({ summary: 'شمارش سفارش‌ها به تفکیک وضعیت (ادمین)' })
+  statusCounts(
+    @Request() req: Express.Request & { user: JwtUser },
+    @Query('type') type?: string,
+  ) {
+    if (!this.isStaff(req.user.role)) {
+      throw new ForbiddenException('دسترسی غیرمجاز');
+    }
+    const allowed = type === 'WHOLESALE' || type === 'RETAIL_WEBSITE' ? type : undefined;
+    return this.orderService.countByStatus(allowed);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'جزئیات سفارش' })
   async findOne(

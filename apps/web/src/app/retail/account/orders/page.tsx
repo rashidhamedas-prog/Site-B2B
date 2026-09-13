@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { CUSTOMER_STATUS_FLOW, customerStatusStepIndex, orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 
 type OrderRow = {
@@ -13,18 +14,7 @@ type OrderRow = {
   trackingCode?: string | null;
 };
 
-const STATUS_STEPS = ['PENDING_REVIEW', 'CONFIRMED', 'PACKING', 'SHIPPED', 'DELIVERED'] as const;
-const STATUS_LABEL: Record<string, string> = {
-  AWAITING_PAYMENT: 'در انتظار پرداخت',
-  PENDING_REVIEW: 'در بررسی',
-  CONFIRMED: 'تأیید شد',
-  PACKING: 'آماده‌سازی',
-  SHIPPED: 'ارسال شده',
-  DELIVERED: 'تحویل',
-  COMPLETED: 'تکمیل',
-  CANCELLED: 'لغو',
-  REFUNDED: 'بازپرداخت',
-};
+const STATUS_STEPS = CUSTOMER_STATUS_FLOW;
 
 function toman(n: number) {
   return Math.round(Number(n) / 10).toLocaleString('fa-IR');
@@ -60,7 +50,7 @@ export default function RetailOrdersPage() {
     <div className="space-y-4">
       <h2 className="text-lg font-bold">سفارش‌های من</h2>
       {orders.map((o) => {
-        const idx = STATUS_STEPS.indexOf(o.status as (typeof STATUS_STEPS)[number]);
+        const idx = customerStatusStepIndex(o.status);
         return (
           <Link key={o.id} href={`/account/orders/${o.id}`} className="block rounded-2xl border border-[var(--retail-border)] bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -68,7 +58,7 @@ export default function RetailOrdersPage() {
               <p className="text-xs text-[var(--retail-muted)]">{new Date(o.createdAt).toLocaleDateString('fa-IR')}</p>
             </div>
             <p className="mt-1 text-sm">
-              {toman(o.total)} تومان — {STATUS_LABEL[o.status] || o.status}
+              {toman(o.total)} تومان — {orderStatusLabelFa(o.status)}
             </p>
             <ol className="mt-3 flex flex-wrap gap-2">
               {STATUS_STEPS.map((s, i) => (
@@ -78,7 +68,7 @@ export default function RetailOrdersPage() {
                     idx >= 0 && i <= idx ? 'bg-[var(--retail-primary)] text-white' : 'bg-gray-100 text-gray-400'
                   }`}
                 >
-                  {STATUS_LABEL[s]}
+                  {orderStatusLabelFa(s)}
                 </li>
               ))}
             </ol>

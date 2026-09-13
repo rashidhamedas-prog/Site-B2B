@@ -1,6 +1,7 @@
+import { ORDER_STATUS_VARIANT, orderStatusLabelFa, type OrderStatusVariant } from '@taranom/shared-types';
 import { cn } from '@/lib/cn';
 
-type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'primary' | 'gold';
+type BadgeVariant = OrderStatusVariant | 'gold';
 
 interface BadgeProps {
   variant?: BadgeVariant;
@@ -48,46 +49,10 @@ export function Badge({ variant = 'neutral', children, className, dot }: BadgePr
 
 // ── Order status badge ────────────────────────────────────────────────────────
 
-const ORDER_STATUS_FA: Record<string, string> = {
-  DRAFT:            'پیش‌نویس',
-  AWAITING_PAYMENT: 'در انتظار پرداخت',
-  PENDING_REVIEW:   'در انتظار بررسی',
-  CONFIRMED:        'تأیید شده',
-  PROCESSING:       'در حال پردازش',
-  PACKED:           'بسته‌بندی شده',
-  SHIPPED:          'ارسال شده',
-  DELIVERED:        'تحویل داده شده',
-  COMPLETED:        'تکمیل شده',
-  CANCELLED:        'لغو شده',
-  DELETED:          'حذف‌شده',
-  RETURN_REQUESTED: 'درخواست مرجوع',
-  RETURN_APPROVED:  'مرجوع تأیید شده',
-  RETURNED:         'مرجوع شده',
-  REFUNDED:         'بازپرداخت شده',
-};
-
-const ORDER_STATUS_VARIANT: Record<string, BadgeVariant> = {
-  DRAFT:            'neutral',
-  AWAITING_PAYMENT: 'warning',
-  PENDING_REVIEW:   'warning',
-  CONFIRMED:        'primary',
-  PROCESSING:       'info',
-  PACKED:           'info',
-  SHIPPED:          'primary',
-  DELIVERED:        'success',
-  COMPLETED:        'success',
-  CANCELLED:        'error',
-  DELETED:          'error',
-  RETURN_REQUESTED: 'warning',
-  RETURN_APPROVED:  'warning',
-  RETURNED:         'neutral',
-  REFUNDED:         'success',
-};
-
 export function OrderStatusBadge({ status }: { status: string }) {
   return (
     <Badge variant={ORDER_STATUS_VARIANT[status] ?? 'neutral'} dot>
-      {ORDER_STATUS_FA[status] ?? status}
+      {orderStatusLabelFa(status)}
     </Badge>
   );
 }

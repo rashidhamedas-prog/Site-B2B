@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T10:15:00Z — TASK-20260913-008 implementing synced order queues
+
+- Admin `/admin/orders` tabs were labels only: list/detail actions disagreed with `ORDER_TRANSITIONS`, COMPLETED was unreachable, PROCESSING→CONFIRMED was illegal, customer stepper used `PACKING`.
+- Shared catalog in `@taranom/shared-types` is the source of truth (Vendure/Medusa/Woo-style explicit FSM).
+- Overlap: `order.service.ts` also listed by TASK-20260913-006; this task only touches status machine / counts / tracking guard.
+- Next: implement, specs, tsc, browser verify, deploy.
+
 ## 2026-09-13T09:25:00Z — TASK-20260913-007 implementing A5 print design
 
 - Visual-only: sender above recipient, Vazirmatn, `/logo-512.png`, brand green/gold.

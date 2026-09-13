@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Truck, CheckCircle, XCircle, Clock, Package, MapPin, Save, Loader2, Trash2, Pencil } from 'lucide-react';
+import { adminDetailActions, adminQueueHint, CUSTOMER_STATUS_FLOW, customerStatusStepIndex, orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { OrderStatusBadge } from '@/components/ui';
@@ -68,14 +69,20 @@ function trackingLink(method: string, code: string): string {
   return urls[method] ?? urls.CHAPAR;
 }
 
-const STATUS_FLOW = [
-  { key: 'PENDING_REVIEW', label: 'در انتظار بررسی', icon: Clock },
-  { key: 'PROCESSING', label: 'در حال پردازش', icon: Package },
-  { key: 'CONFIRMED', label: 'تأیید شده', icon: CheckCircle },
-  { key: 'SHIPPED', label: 'ارسال شده', icon: Truck },
-  { key: 'DELIVERED', label: 'تحویل داده شده', icon: CheckCircle },
-  { key: 'COMPLETED', label: 'تکمیل شده', icon: CheckCircle },
-];
+const FLOW_ICONS: Record<string, typeof Clock> = {
+  PENDING_REVIEW: Clock,
+  CONFIRMED: CheckCircle,
+  PROCESSING: Package,
+  SHIPPED: Truck,
+  DELIVERED: CheckCircle,
+  COMPLETED: CheckCircle,
+};
+
+const STATUS_FLOW = CUSTOMER_STATUS_FLOW.map((key) => ({
+  key,
+  label: orderStatusLabelFa(key),
+  icon: FLOW_ICONS[key] ?? CheckCircle,
+}));
 
 function AdminOrderDetailInner({ id }: { id: string }) {
   const router = useRouter();
@@ -206,7 +213,8 @@ function AdminOrderDetailInner({ id }: { id: string }) {
 
   const deleted = order.status === 'DELETED' || !!order.voidedAt;
   const canEditItems = !deleted && !['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status);
-  const currentStepIdx = deleted ? -1 : STATUS_FLOW.findIndex((s) => s.key === order.status);
+  const currentStepIdx = deleted ? -1 : customerStatusStepIndex(order.status);
+  const detailActions = deleted ? [] : adminDetailActions(order.status);
 
   return (
     <div className="space-y-5">
@@ -392,25 +400,30 @@ function AdminOrderDetailInner({ id }: { id: string }) {
             )}
           </div>
 
-          {!deleted && order.status === 'AWAITING_PAYMENT' && (
+          {!deleted && (
             <div className="card p-5 space-y-2">
-              <p className="text-xs text-amber-800 bg-amber-50 rounded-lg px-3 py-2">
-                پرداخت آنلاین این سفارش نهایی نشده؛ هنوز در صف بررسی نیست.
-              </p>
-              <button onClick={() => updateStatus('CANCELLED')} disabled={updatingStatus} className="w-full btn btn-md border border-error text-error hover:bg-red-50 flex items-center justify-center gap-2"><XCircle className="h-4 w-4" />لغو سفارش پرداخت‌نشده</button>
+              <p className="text-xs text-gray-500 leading-6">{adminQueueHint(order.status)}</p>
+              {detailActions.map((action) => (
+                <button
+                  key={action.to}
+                  type="button"
+                  onClick={() => {
+                    if (action.confirm && !confirm(action.confirm)) return;
+                    updateStatus(action.to);
+                  }}
+                  disabled={updatingStatus}
+                  className={cn(
+                    'w-full btn btn-md flex items-center justify-center gap-2',
+                    action.kind === 'danger'
+                      ? 'border border-error text-error hover:bg-red-50'
+                      : 'btn-primary',
+                  )}
+                >
+                  {action.kind === 'danger' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                  {action.label}
+                </button>
+              ))}
             </div>
-          )}
-          {!deleted && order.status === 'PENDING_REVIEW' && (
-            <div className="card p-5 space-y-2">
-              <button onClick={() => updateStatus('PROCESSING')} disabled={updatingStatus} className="w-full btn btn-primary btn-md flex items-center justify-center gap-2"><CheckCircle className="h-4 w-4" />تأیید و پردازش</button>
-              <button onClick={() => updateStatus('CANCELLED')} disabled={updatingStatus} className="w-full btn btn-md border border-error text-error hover:bg-red-50 flex items-center justify-center gap-2"><XCircle className="h-4 w-4" />رد سفارش</button>
-            </div>
-          )}
-          {!deleted && order.status === 'PROCESSING' && (
-            <button onClick={() => updateStatus('CONFIRMED')} disabled={updatingStatus} className="w-full btn btn-primary btn-md flex items-center justify-center gap-2 card p-5"><CheckCircle className="h-4 w-4" />تأیید نهایی</button>
-          )}
-          {!deleted && order.status === 'SHIPPED' && (
-            <button onClick={() => updateStatus('DELIVERED')} disabled={updatingStatus} className="w-full btn btn-primary btn-md flex items-center justify-center gap-2 card p-5"><Truck className="h-4 w-4" />تحویل داده شد</button>
           )}
           {order.notes && (
             <div className="card p-4 bg-amber-50 border-amber-200">
