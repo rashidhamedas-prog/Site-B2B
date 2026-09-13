@@ -9,6 +9,7 @@ import {
   resolveShippingPost,
 } from './shipping-channel';
 import { normalizeBusinessPostal } from './settings-business';
+import { resolveCashOnDeliveryFlags } from './settings-payment-cash';
 
 // Central user-configurable settings, stored in DB and edited from the admin
 // panel. Consumers (shipping/sms/payment) read through the typed getters,
@@ -324,6 +325,7 @@ export class SettingsService {
       torobpayConfigured: false,
       manualCardNumber: s.manualCardNumber ?? '',
       manualCardOwner: s.manualCardOwner ?? '',
+      ...resolveCashOnDeliveryFlags(s),
     };
     out.digipayConfigured =
       !!out.digipayClientId &&

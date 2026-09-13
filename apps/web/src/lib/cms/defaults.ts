@@ -738,7 +738,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           items: [
             { value: 'ارسال سریع', label: 'پست پیشتاز، تیپاکس و ارسال تهران', sublabel: '' },
             { value: 'تعویض سایز', label: 'درخواست مرجوعی و تعویض از حساب کاربری', sublabel: '' },
-            { value: 'پرداخت امن', label: 'زرین‌پال و پرداخت در محل (با شرایط)', sublabel: '' },
+            { value: 'پرداخت امن', label: 'پرداخت آنلاین زرین‌پال', sublabel: '' },
           ],
         }),
         b('faq', {

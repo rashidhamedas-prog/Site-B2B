@@ -73,6 +73,7 @@ export default function RetailCheckoutPage() {
   const [paymentGateway, setPaymentGateway] = useState<RetailPaymentGateway>('ZARINPAL');
   const [digipayAvailable, setDigipayAvailable] = useState(false);
   const [torobpayAvailable, setTorobpayAvailable] = useState(false);
+  const [cashEnabled, setCashEnabled] = useState(false);
   const [pendingPayOrderId, setPendingPayOrderId] = useState<string | null>(null);
   const [shippingMethod, setShippingMethod] = useState('PISHTAZ');
   const [shipMethods, setShipMethods] = useState(FALLBACK_RETAIL_SHIPPING_METHODS);
@@ -140,6 +141,17 @@ export default function RetailCheckoutPage() {
       .catch(() => {
         setDigipayAvailable(false);
         setTorobpayAvailable(false);
+      });
+    apiClient
+      .get<{ payment?: { retailCashEnabled?: boolean } }>('/settings/public?channel=RETAIL')
+      .then((s) => {
+        const on = s?.payment?.retailCashEnabled === true;
+        setCashEnabled(on);
+        if (!on) setPaymentMethod((prev) => (prev === 'CASH' ? 'ONLINE' : prev));
+      })
+      .catch(() => {
+        setCashEnabled(false);
+        setPaymentMethod((prev) => (prev === 'CASH' ? 'ONLINE' : prev));
       });
   }, []);
 
@@ -211,7 +223,7 @@ export default function RetailCheckoutPage() {
 
   const walletApplied = useWallet ? Math.min(walletBalance, Math.max(0, subtotal + shipFee)) : 0;
   const payable = Math.max(0, subtotal + shipFee - walletApplied);
-  const paymentOptions = retailPaymentOptions(digipayAvailable, torobpayAvailable);
+  const paymentOptions = retailPaymentOptions(digipayAvailable, torobpayAvailable, cashEnabled);
   const selectedPaymentId = retailSelectedPaymentId(paymentMethod, paymentGateway);
   const ctaLabel = checkoutCtaLabel({
     kind: paymentMethod,
@@ -320,6 +332,11 @@ export default function RetailCheckoutPage() {
         behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
         block: 'start',
       });
+      return;
+    }
+    if (paymentMethod === 'CASH' && !cashEnabled) {
+      setPaymentMethod('ONLINE');
+      setError('پرداخت درب منزل الان فعال نیست. یک روش آنلاین را انتخاب کنید.');
       return;
     }
     const shippingAddress = finalizeShippingAddress(address);

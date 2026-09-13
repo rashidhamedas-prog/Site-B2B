@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { PaymentProviderEntity } from './entities/payment-provider.entity';
 import { DisabledPaymentAdapter } from './adapters/disabled.adapter';
 import { SettingsService } from '../settings/settings.service';
+import { isCashOnDeliveryEnabled } from '../settings/settings-payment-cash';
 
 @Injectable()
 export class PaymentProviderRegistryService {
@@ -20,7 +21,7 @@ export class PaymentProviderRegistryService {
   /** Server-authoritative checkout eligibility — never trust client. Public DTO (no secrets). */
   async listEligible(channel: 'WHOLESALE' | 'RETAIL') {
     const all = await this.listAll();
-    const pay = channel === 'RETAIL' ? await this.settings.payment() : null;
+    const pay = await this.settings.payment();
     return all
       .filter((p) => {
         if (!p.enabled || p.maintenanceMode) return false;
@@ -35,6 +36,9 @@ export class PaymentProviderRegistryService {
         if (p.code === 'TOROBPAY') {
           if (channel !== 'RETAIL') return false;
           if (!pay?.torobpayEnabled || !pay.torobpayConfigured) return false;
+        }
+        if ((p.code === 'MANUAL' || p.type === 'MANUAL') && !isCashOnDeliveryEnabled(channel, pay)) {
+          return false;
         }
         return true;
       })

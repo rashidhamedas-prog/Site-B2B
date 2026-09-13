@@ -48,7 +48,12 @@ type InstallmentsCfg = {
 };
 type PublicSettings = {
   installments: InstallmentsCfg;
-  payment?: { enabled?: boolean; manualCardNumber?: string; manualCardOwner?: string };
+  payment?: {
+    enabled?: boolean;
+    wholesaleCashEnabled?: boolean;
+    manualCardNumber?: string;
+    manualCardOwner?: string;
+  };
   shipping?: {
     freeThreshold?: number;
     baseFee?: number;
@@ -124,6 +129,7 @@ export default function CheckoutPage() {
   const [shippingCompanies, setShippingCompanies] = useState<ShippingCompany[]>([]);
   const [installmentsCfg, setInstallmentsCfg] = useState<InstallmentsCfg | null>(null);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
+  const [cashEnabled, setCashEnabled] = useState(true);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerIdReady, setCustomerIdReady] = useState(false);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
@@ -201,9 +207,13 @@ export default function CheckoutPage() {
           setInstallmentsCfg(s.installments);
           setInstallmentMonths((prev) => Math.min(Math.max(1, prev), s.installments.maxMonths));
         }
+        const cashOn = s?.payment?.wholesaleCashEnabled !== false;
+        setCashEnabled(cashOn);
         if (s?.payment?.enabled) {
           setOnlinePaymentEnabled(true);
           setPaymentMethod((prev) => (prev === 'CASH' ? 'ONLINE' : prev));
+        } else if (!cashOn) {
+          setPaymentMethod((prev) => (prev === 'CASH' ? 'INSTALLMENT' : prev));
         }
         if (s?.shipping?.wholesale?.freeThreshold != null || s?.shipping?.freeThreshold != null) {
           setFreeThreshold(
@@ -339,7 +349,7 @@ export default function CheckoutPage() {
   const installmentBlocked =
     paymentMethod === 'INSTALLMENT'
     && (eligibilityLoading || !eligibility?.eligible);
-  const paymentOptions = wholesalePaymentOptions(onlinePaymentEnabled);
+  const paymentOptions = wholesalePaymentOptions(onlinePaymentEnabled, cashEnabled);
   const ctaLabel = checkoutCtaLabel({
     kind: paymentMethod,
     channel: 'wholesale',
@@ -365,6 +375,11 @@ export default function CheckoutPage() {
       return;
     }
     const shippingAddress = finalizeShippingAddress(address);
+    if (paymentMethod === 'CASH' && !cashEnabled) {
+      setPaymentMethod(onlinePaymentEnabled ? 'ONLINE' : 'INSTALLMENT');
+      setError('پرداخت نقدی الان فعال نیست. روش دیگری را انتخاب کنید.');
+      return;
+    }
     if (paymentMethod === 'INSTALLMENT') {
       if (!customerId) {
         setError('برای پرداخت اقساطی باید با حساب تأییدشده وارد شوید.');

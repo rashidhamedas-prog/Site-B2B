@@ -107,6 +107,8 @@ export class SettingsController {
       // Safe flags only — never expose merchantId / secrets
       payment: {
         enabled: !!payment.enabled,
+        retailCashEnabled: payment.retailCashEnabled === true,
+        wholesaleCashEnabled: payment.wholesaleCashEnabled !== false,
         manualCardNumber: payment.manualCardNumber || '',
         manualCardOwner: payment.manualCardOwner || '',
       },

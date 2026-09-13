@@ -13,21 +13,23 @@ import {
 } from './checkout-payment-ui';
 
 const retailDefault = retailPaymentOptions(false);
-assert.equal(retailDefault.length, 2);
+assert.equal(retailDefault.length, 1);
 assert.equal(retailDefault[0]?.id, 'ZARINPAL');
 assert.equal(retailDefault[0]?.badge, 'پیشنهادی');
 assert.equal(retailDefault[0]?.logo, 'zarinpal');
 assert.match(retailDefault[0]?.description || '', /کارت بانکی/);
 assert.equal(retailDefault.some((o) => o.id === 'DIGIPAY'), false);
+assert.equal(retailDefault.some((o) => o.id === 'CASH'), false);
 assert.match(CHECKOUT_PAYMENT_INTRO, /پیشنهادی/);
 
-const retailWithDigipay = retailPaymentOptions(true);
+const retailWithDigipay = retailPaymentOptions(true, false, true);
 assert.equal(retailWithDigipay.length, 3);
 assert.equal(retailWithDigipay[1]?.id, 'DIGIPAY');
 assert.equal(retailWithDigipay[1]?.logo, 'digipay');
 assert.equal(retailWithDigipay[2]?.id, 'CASH');
 assert.equal(retailWithDigipay.find((o) => o.id === 'CASH')?.logo, 'cash');
 assert.equal(retailWithDigipay.some((o) => o.id === 'TOROBPAY'), false);
+assert.equal(retailPaymentOptions(true, false, false).some((o) => o.id === 'CASH'), false);
 
 const retailWithTorob = retailPaymentOptions(false, true);
 assert.equal(retailWithTorob.some((o) => o.id === 'TOROBPAY'), true);
@@ -64,6 +66,7 @@ assert.equal(
 const wholesaleOffline = wholesalePaymentOptions(false);
 assert.equal(wholesaleOffline.some((o) => o.id === 'ONLINE'), false);
 assert.equal(wholesaleOffline.map((o) => o.id).join(','), 'CASH,INSTALLMENT');
+assert.equal(wholesalePaymentOptions(true, false).map((o) => o.id).join(','), 'ONLINE,INSTALLMENT');
 
 const wholesaleOnline = wholesalePaymentOptions(true);
 assert.equal(wholesaleOnline[0]?.id, 'ONLINE');

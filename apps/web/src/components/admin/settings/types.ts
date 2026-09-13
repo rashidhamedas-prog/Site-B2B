@@ -123,6 +123,8 @@ export interface SettingsPayload {
     torobpayConfigured: boolean;
     manualCardNumber: string;
     manualCardOwner: string;
+    retailCashEnabled: boolean;
+    wholesaleCashEnabled: boolean;
   };
   installments: {
     minDownPaymentPercent: number;

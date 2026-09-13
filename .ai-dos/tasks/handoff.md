@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T09:10:00Z — TASK-20260913-005 implementing COD setting
+
+- Owner: operator disables «پرداخت درب منزل» in admin but retail/wholesale checkout still shows CASH.
+- Root: `retailPaymentOptions` / `wholesalePaymentOptions` always append CASH; `order.create` always allows CASH. No payment setting exists for COD. Disabling IN_PERSON shipping or MANUAL provider cannot hide it.
+- Approach: per-channel `retailCashEnabled` / `wholesaleCashEnabled` in payment JSON; public flags; checkout filter; create-order reject; MANUAL eligible follows the same flag. Retail defaults off (operator already removed it); wholesale cash stays on unless toggled off.
+- Reclaimed settings.service/controller + AdminSettings payment tab from TASK-20260913-004 after postal `776108a`.
+- Gates: `settings-payment-cash.spec` ok; `tsx checkout-payment-ui.spec` ok; api tsc 0; web tsc 0.
+- Next: commit, merge master, deploy. Residual: saved CMS trust/FAQ may still mention «در محل» until operator saves site-content.
+
 ## 2026-09-13T08:55:00Z — TASK-20260913-004 implementing sender postal
 
 - Admin business settings + public `postalCode` for A5 sender boxes.

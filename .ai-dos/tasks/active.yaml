@@ -1,5 +1,48 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-005"
+    title: "Honor cash-on-delivery payment setting on storefront"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-005"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-005"
+      implementer: "cursor:implementer-TASK-20260913-005"
+      reviewer: "same-session-after-gates"
+      security: "same-session-payments"
+    branch: "ai/TASK-20260913-005-honor-cod-setting"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T09:00:00Z"
+    heartbeat_at: "2026-09-13T09:00:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/settings/settings-payment-cash.ts"
+      - "apps/api/src/modules/settings/settings-payment-cash.spec.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/payment/payment-provider-registry.service.ts"
+      - "apps/web/src/components/admin/settings/types.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/web/src/lib/checkout-payment-ui.ts"
+      - "apps/web/src/lib/checkout-payment-ui.spec.ts"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/checkout/page.tsx"
+      - "apps/web/src/components/retail/RetailTrustStrip.tsx"
+      - "apps/web/src/components/retail/RetailFaq.tsx"
+      - "apps/web/src/lib/cms/defaults.ts"
+      - "docs/reports/2026-09-13-cash-on-delivery-setting.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      CASH/COD was hardcoded in checkout and always allowed by create-order.
+      Reclaimed settings.service/controller + AdminSettings payment tab from TASK-20260913-004
+      after postal commit 776108a. Did not edit TorobPay adapter files.
+    acceptance_criteria:
+      - "Admin payment tab has per-channel cash-on-delivery toggles that persist"
+      - "GET /settings/public exposes retailCashEnabled and wholesaleCashEnabled"
+      - "Checkout hides CASH when the channel flag is off"
+      - "Create-order rejects CASH when the channel flag is off"
+      - "settings-payment-cash + checkout-payment-ui specs and api/web tsc pass"
   - id: "TASK-20260913-004"
     title: "Business settings sender postal for A5 packing slip"
     status: "in_progress"
@@ -16,18 +59,20 @@ tasks:
     file_claims:
       - "apps/api/src/modules/settings/settings-business.ts"
       - "apps/api/src/modules/settings/settings-business.spec.ts"
-      - "apps/api/src/modules/settings/settings.service.ts"
-      - "apps/api/src/modules/settings/settings.controller.ts"
-      - "apps/web/src/components/admin/settings/types.ts"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/web/src/lib/packing-slip.ts"
       - "apps/web/src/lib/packing-slip.spec.ts"
       - "apps/web/src/components/admin/AdminPackingSlip.tsx"
       - "docs/architecture/packing-slip-a5.md"
       - "docs/reports/2026-09-13-sender-postal.md"
+    released_file_claims:
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/web/src/components/admin/settings/types.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
     notes: |
       Dedicated business.postalCode for sender on A5 label. JSON settings, no migration.
       Did not edit TASK-20260913-002 exclusive files.
+      Settings payment/admin files released to TASK-20260913-005 after commit 776108a.
     acceptance_criteria:
       - "Admin کسب‌وکار has a 10-digit postal field that persists"
       - "GET /settings/public includes business.postalCode"

@@ -196,6 +196,8 @@ export function AdminSettings() {
           torobpayConfigured: !!res.payment?.torobpayConfigured,
           manualCardNumber: res.payment?.manualCardNumber ?? '',
           manualCardOwner: res.payment?.manualCardOwner ?? '',
+          retailCashEnabled: res.payment?.retailCashEnabled === true,
+          wholesaleCashEnabled: res.payment?.wholesaleCashEnabled !== false,
         },
         installments: { ...installments, rules, minActiveInvoices: installments.minActiveInvoices ?? 2 },
         theme: {
@@ -501,6 +503,20 @@ export function AdminSettings() {
             <div className="space-y-5">
               <SettingsSection title="کلید اصلی پرداخت">
                 <ToggleRow label="فعال‌سازی پرداخت آنلاین (کلی)" hint="اگر خاموش باشد هیچ درگاهی کار نمی‌کند" value={data.payment.enabled} onChange={(v) => setData({ ...data, payment: { ...data.payment, enabled: v } })} />
+              </SettingsSection>
+              <SettingsSection title="پرداخت درب منزل / نقدی">
+                <ToggleRow
+                  label="نمایش پرداخت درب منزل در فروشگاه تکی"
+                  hint="اگر خاموش باشد کارت «پرداخت وقتی لباس رسید» از چک‌اوت .ir حذف می‌شود و سرور سفارش نقدی تکی را رد می‌کند"
+                  value={data.payment.retailCashEnabled === true}
+                  onChange={(v) => setData({ ...data, payment: { ...data.payment, retailCashEnabled: v } })}
+                />
+                <ToggleRow
+                  label="پرداخت نقدی / حساب با فروشگاه در عمده"
+                  hint="اگر خاموش باشد مشتری عمده فقط آنلاین یا اقساط می‌بیند"
+                  value={data.payment.wholesaleCashEnabled !== false}
+                  onChange={(v) => setData({ ...data, payment: { ...data.payment, wholesaleCashEnabled: v } })}
+                />
               </SettingsSection>
               <SettingsSection tone="wholesale" title="زرین‌پال عمده" badge=".com">
                 <ToggleRow label="فعال‌سازی درگاه عمده" value={data.payment.wholesaleEnabled !== false} onChange={(v) => setData({ ...data, payment: { ...data.payment, wholesaleEnabled: v } })} />
