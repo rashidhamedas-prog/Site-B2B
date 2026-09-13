@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T12:05:00Z — TASK-20260913-011 live `6854e8e`
+
+- VPS HEAD `6854e8e`. `customer_wallet_entries` exists; 0 rows (no non-zero balances to seed).
+- Health 200; `.ir`/`.com` 200.
+- Admin CRM click and shopper `/account/wallet` not exercised (no session).
+- Residual: RMA raw SQL; order reason meta; independent Reviewer + Security.
+
 ## 2026-09-13T12:20:00Z — TASK-20260913-011 implementing customer workspace + wallet
 
 - Objective: complete synced admin CRM + append-only customer wallet.
