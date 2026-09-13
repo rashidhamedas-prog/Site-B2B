@@ -66,7 +66,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
           body: 'شومیز و کت‌های واقعی ترنم با رنگ‌بندی فروش‌پذیر، دوخت تولیدی و شرایط همکاری شفاف برای بوتیک‌ها.',
           imageUrl: '/banners/hero-product-2026-v2/wholesale-01-77cddaaa7fb7.webp',
           mobileImageUrl: '/banners/hero-product-2026-v2/wholesale-01-mobile-eac642cb4ad0.webp',
-          imageAlt: '',
+          imageAlt: 'مدل‌های واقعی شومیز و کت ترنم برای ویترین بوتیک — فروش عمده',
           presentation: 'overlay',
           ctaLabel: 'دیدن مدل‌های عمده',
           ctaHref: '/products',
@@ -78,7 +78,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
           body: 'پک‌های عمده با موجودی قابل پیگیری، آماده‌سازی منظم و پشتیبانی مستقیم تیم فروش ترنم.',
           imageUrl: '/banners/hero-product-2026-v2/wholesale-02-5ef4e725ea3a.webp',
           mobileImageUrl: '/banners/hero-product-2026-v2/wholesale-02-mobile-362aa5129ba6.webp',
-          imageAlt: '',
+          imageAlt: 'بسته‌بندی حرفه‌ای سفارش عمده پوشاک ترنم آماده ارسال به بوتیک',
           presentation: 'overlay',
           ctaLabel: 'باز کردن کاتالوگ همکاری',
           ctaHref: '/products',
@@ -90,7 +90,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
           body: 'پارچه لینن، جزئیات گلدوزی و دوخت کنترل‌شده؛ کیفیتی که پیش از رسیدن به ویترین بررسی می‌شود.',
           imageUrl: '/banners/hero-product-2026-v2/wholesale-03-e2c9b72fb875.webp',
           mobileImageUrl: '/banners/hero-product-2026-v2/wholesale-03-mobile-33492b31461f.webp',
-          imageAlt: '',
+          imageAlt: 'جزئیات دوخت لینن و گلدوزی پوشاک ترنم از نزدیک',
           presentation: 'overlay',
           ctaLabel: 'شروع همکاری از ۶ عدد',
           ctaHref: '/portal/register',
@@ -688,7 +688,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
               body: 'شومیز لینن گلرخ با فرم آزاد، آستین سه‌ربع و رنگی که به‌سادگی با استایل روزمره هماهنگ می‌شود.',
               imageUrl: '/banners/hero-product-2026-v2/retail-01-bdf633c73bdb.webp',
               mobileImageUrl: '/banners/hero-product-2026-v2/retail-01-mobile-51f0d337d1ae.webp',
-              imageAlt: '',
+              imageAlt: 'شومیز لینن گلرخ آبی پوشاک ترنم — خرید تکی از کارگاه مشهد',
               presentation: 'overlay',
               ctaLabel: 'دیدن کالکشن لینن و کتان',
               ctaHref: '/products',
@@ -700,7 +700,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
               body: 'رنگ تمشکی و نقش‌های ظریف قلب روی لینن؛ انتخابی متفاوت برای روزهایی که رنگ بیشتری می‌خواهید.',
               imageUrl: '/banners/hero-product-2026-v2/retail-02-behgol-a99083b686a5.webp',
               mobileImageUrl: '/banners/hero-product-2026-v2/retail-02-behgol-mobile-2839c8509671.webp',
-              imageAlt: '',
+              imageAlt: 'شومیز لینن بهگل با نقش قلب — پوشاک ترنم',
               presentation: 'overlay',
               ctaLabel: 'انتخاب شومیز بهگل',
               ctaHref: '/products',
@@ -712,7 +712,7 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
               body: 'کت سبز آلیس با کتان کجراه، جیب‌های کاربردی و فرمی که برای استایل روزمره ساخته شده است.',
               imageUrl: '/banners/hero-product-2026-v2/retail-03-alice-a6cbf5dd4f92.webp',
               mobileImageUrl: '/banners/hero-product-2026-v2/retail-03-alice-mobile-209b592f0fda.webp',
-              imageAlt: '',
+              imageAlt: 'کت کتان کجراه آلیس سبز پوشاک ترنم',
               presentation: 'overlay',
               ctaLabel: 'دیدن کت آلیس',
               ctaHref: '/products',
@@ -813,24 +813,74 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
     case 'returns':
       return defaultTextPage(
         'مرجوعی و تعویض',
-        'از حساب کاربری درخواست مرجوعی یا تعویض سایز ثبت کنید. شرایط دقیق را از پشتیبانی بپرسید.'
+        'از حساب کاربری درخواست مرجوعی یا تعویض سایز ثبت کنید. شرایط دقیق را از پشتیبانی بپرسید.',
       );
+    case 'products':
+      return defaultTextPage(
+        'خرید تکی از کارگاه مشهد',
+        'شومیز، کت، کاپشن و کفتان همان کارگاهی که برای بوتیک‌ها هم می‌دوزد. فیلترها را باز کنید یا از جست‌وجو مدل را پیدا کنید.',
+      );
+    case 'collections':
+      return [b('text', { headline: '', body: 'انتخاب سریع‌تر بر اساس فصل و استایل — مستقیم از تولیدی ترنم.' })];
+    case 'privacy':
+      return [
+        b('text', {
+          headline: 'حریم خصوصی',
+          body: 'اطلاعات تماس و سفارش شما فقط برای پردازش خرید تکی، ارسال و پشتیبانی استفاده می‌شود.',
+        }),
+        b('faq', {
+          headline: '',
+          body: '',
+          items: [
+            {
+              question: 'چه اطلاعاتی جمع می‌شود؟',
+              answer:
+                'نام، شماره تماس، آدرس ارسال و سابقه سفارش تکی. این داده‌ها برای ثبت سفارش و پشتیبانی لازم است.',
+            },
+            {
+              question: 'با چه کسانی به اشتراک گذاشته می‌شود؟',
+              answer:
+                'فقط برای خدمات ضروری مثل پرداخت و حمل‌ونقل، به اندازه لازم. فروش یا واگذاری به شخص ثالث نداریم.',
+            },
+            {
+              question: 'چطور اصلاح یا حذف کنم؟',
+              answer: 'از حساب کاربری یا تماس ۰۹۱۵۲۴۲۴۶۲۴ درخواست اصلاح یا حذف بدهید.',
+            },
+          ],
+        }),
+      ];
+    case 'terms':
+      return [
+        b('text', {
+          headline: 'شرایط و قوانین خرید تکی',
+          body: 'ثبت سفارش در این سایت به معنی پذیرش شرایط زیر است. این فروشگاه فقط خرید تکی است؛ همکاری عمده در poshaktaranom.com است.',
+        }),
+        b('faq', {
+          headline: '',
+          body: '',
+          items: [
+            {
+              question: 'ثبت سفارش',
+              answer: 'سفارش پس از پرداخت آنلاین قطعی می‌شود. موجودی در لحظه تسویه بررسی می‌شود.',
+            },
+            {
+              question: 'ارسال',
+              answer: 'بسته‌بندی از مشهد انجام می‌شود. زمان رسیدن بسته به شهر و روش ارسال بستگی دارد.',
+            },
+            {
+              question: 'مرجوعی و تعویض',
+              answer: 'پس از تحویل، از حساب کاربری درخواست تعویض سایز یا مرجوعی ثبت کنید.',
+            },
+            {
+              question: 'قیمت',
+              answer: 'قیمت نمایش‌داده‌شده قیمت فروش تکی است و با قیمت همکاری عمده یکی نیست.',
+            },
+          ],
+        }),
+      ];
     default:
       return defaultTextPage(pageKey, '');
   }
 }
 
-export const CMS_PAGE_KEYS_BASE = [
-  { key: 'chrome', label: 'هدر / فوتر / شناور' },
-  { key: 'home', label: 'صفحه اصلی' },
-  { key: 'about', label: 'درباره ما' },
-  { key: 'contact', label: 'تماس با ما' },
-  { key: 'shipping', label: 'شرایط ارسال' },
-  { key: 'returns', label: 'مرجوعی' },
-  { key: 'products', label: 'محصولات' },
-  { key: 'collections', label: 'کالکشن‌ها' },
-  { key: 'privacy', label: 'حریم خصوصی' },
-  { key: 'terms', label: 'شرایط و قوانین' },
-] as const;
-
-export const CMS_WHOLESALE_ONLY = { key: 'wholesale', label: 'شرایط عمده' } as const;
+export { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY } from './page-keys';

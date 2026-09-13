@@ -1,6 +1,8 @@
+import type { Metadata } from 'next';
 import { getServerApiBase } from '@/lib/server-api-base';
 import type { ContentBlock, SiteContentDoc } from './types';
 import { getDefaultBlocks } from './defaults';
+import { metadataFromCmsSeo, normalizeCmsPageSeo } from './page-seo';
 
 /**
  * SSR CMS fetches must use the docker-internal API base.
@@ -35,6 +37,36 @@ export async function resolvePageBlocks(
   const doc = await fetchSiteContent(channel, pageKey);
   if (doc?.blocks?.length) return doc.blocks as ContentBlock[];
   return getDefaultBlocks(channel, pageKey);
+}
+
+export async function metadataForCmsPage(
+  channel: 'WHOLESALE' | 'RETAIL',
+  pageKey: string,
+  fallback: { title: string; description: string; canonical?: string; ogImage?: string; ogAlt?: string },
+): Promise<Metadata> {
+  const doc = await fetchSiteContent(channel, pageKey);
+  return metadataFromCmsSeo(normalizeCmsPageSeo(doc?.seo), fallback, channel, pageKey);
+}
+
+const INTRO_BLOCK_TYPES = new Set<ContentBlock['type']>([
+  'text',
+  'hero',
+  'faq',
+  'cta',
+  'features',
+  'html',
+  'image',
+  'gallery',
+  'contact',
+  'links',
+  'process',
+  'stats',
+  'testimonials',
+]);
+
+/** Blocks safe to render above a catalog/form page (no chrome, no nested product rails). */
+export function introBlocksFrom(blocks: ContentBlock[]): ContentBlock[] {
+  return blocks.filter((b) => INTRO_BLOCK_TYPES.has(b.type));
 }
 
 export function findBlock<T extends ContentBlock['type']>(

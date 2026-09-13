@@ -24,14 +24,24 @@ export interface ContentBlock {
   props: Record<string, unknown>;
 }
 
+export interface SiteContentSeo {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  ogAlt?: string;
+  canonical?: string;
+  robots?: string;
+}
+
 export interface SiteContentDoc {
   id?: string;
   channel: string;
   pageKey: string;
   title: string;
   blocks: ContentBlock[];
-  seo?: Record<string, string> | null;
+  seo?: SiteContentSeo | null;
   isPublished?: boolean;
+  updatedAt?: string;
 }
 
 export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {

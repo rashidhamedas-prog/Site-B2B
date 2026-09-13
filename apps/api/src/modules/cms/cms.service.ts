@@ -7,6 +7,7 @@ import { sanitizeCmsBlocks, sanitizeCmsHtml, sanitizeCmsValue } from './cms-sani
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { requirePublicCmsChannel } from './cms-public-channel';
+import { sanitizeCmsPageSeo } from './cms-page-seo';
 
 @Injectable()
 export class CmsService {
@@ -165,6 +166,7 @@ export class CmsService {
     return {
       ...row,
       blocks: sanitizeCmsBlocks(row.blocks),
+      seo: sanitizeCmsPageSeo(row.seo),
     };
   }
 
@@ -181,6 +183,7 @@ export class CmsService {
     const pageKey = data.pageKey.trim();
     const blocks =
       data.blocks !== undefined ? sanitizeCmsBlocks(data.blocks) : undefined;
+    const seo = data.seo !== undefined ? sanitizeCmsPageSeo(data.seo) : undefined;
 
     return this.siteContentRepo.manager.transaction(async (manager) => {
       const repo = manager.getRepository(SiteContentEntity);
@@ -194,7 +197,7 @@ export class CmsService {
             pageKey,
             title: data.title ?? pageKey,
             blocks: blocks ?? [],
-            seo: data.seo ?? null,
+            seo: seo ?? null,
             isPublished: data.isPublished ?? true,
           }),
         );
@@ -206,7 +209,7 @@ export class CmsService {
           {
             ...(data.title !== undefined ? { title: data.title } : {}),
             ...(blocks !== undefined ? { blocks } : {}),
-            ...(data.seo !== undefined ? { seo: data.seo } : {}),
+            ...(seo !== undefined ? { seo } : {}),
             ...(data.isPublished !== undefined ? { isPublished: !!data.isPublished } : {}),
             updatedAt: new Date(),
           },

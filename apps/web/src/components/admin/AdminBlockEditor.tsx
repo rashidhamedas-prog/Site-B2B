@@ -173,10 +173,10 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
       Object.assign(base, { headline: '', body: '' });
       break;
     case 'image':
-      Object.assign(base, { imageUrl: '', body: '' });
+      Object.assign(base, { imageUrl: '', imageAlt: '', body: '' });
       break;
     case 'gallery':
-      Object.assign(base, { items: [{ imageUrl: '', body: '' }] });
+      Object.assign(base, { items: [{ imageUrl: '', imageAlt: '', body: '' }] });
       break;
     case 'html':
       Object.assign(base, { body: '' });
@@ -327,7 +327,7 @@ function ImageUrlField({
       {value ? (
         <div className="mt-2 h-16 w-24 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="" className="h-full w-full object-cover" />
+          <img src={value} alt="پیش‌نمایش تصویر" className="h-full w-full object-cover" />
         </div>
       ) : null}
     </div>
@@ -609,13 +609,13 @@ function BlockFields({
 
   if (block.type === 'gallery') {
     const items = Array.isArray(p.items)
-      ? (p.items as Array<{ imageUrl?: string; body?: string }>)
+      ? (p.items as Array<{ imageUrl?: string; imageAlt?: string; body?: string }>)
       : [];
     return (
       <ItemListEditor
         items={items}
         onChange={(next) => set('items', next)}
-        blank={{ imageUrl: '', body: '' }}
+        blank={{ imageUrl: '', imageAlt: '', body: '' }}
         addLabel="افزودن تصویر"
         renderItem={(item, _i, update) => (
           <div className="grid gap-2 pr-6 sm:grid-cols-2">
@@ -625,7 +625,14 @@ function BlockFields({
               hint={IMAGE_HINTS.gallery}
               onChange={(v) => update({ imageUrl: v })}
             />
-            <Field label="توضیح" value={item.body ?? ''} onChange={(v) => update({ body: v })} />
+            <Field
+              label="آلت تصویر"
+              value={item.imageAlt ?? ''}
+              onChange={(v) => update({ imageAlt: v })}
+            />
+            <div className="sm:col-span-2">
+              <Field label="توضیح / کپشن" value={item.body ?? ''} onChange={(v) => update({ body: v })} />
+            </div>
           </div>
         )}
       />
@@ -1200,14 +1207,23 @@ function BlockFields({
         <Field label="عنوان" value={str(p, 'headline')} onChange={(v) => set('headline', v)} />
       )}
       {block.type === 'image' && (
-        <div className="sm:col-span-2">
-          <ImageUrlField
-            label="آدرس تصویر"
-            value={str(p, 'imageUrl')}
-            hint={IMAGE_HINTS[block.type]}
-            onChange={(v) => set('imageUrl', v)}
-          />
-        </div>
+        <>
+          <div className="sm:col-span-2">
+            <ImageUrlField
+              label="آدرس تصویر"
+              value={str(p, 'imageUrl')}
+              hint={IMAGE_HINTS[block.type]}
+              onChange={(v) => set('imageUrl', v)}
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Field
+              label="آلت تصویر"
+              value={str(p, 'imageAlt')}
+              onChange={(v) => set('imageAlt', v)}
+            />
+          </div>
+        </>
       )}
       {['cta', 'comingSoon'].includes(block.type) && (
         <>
