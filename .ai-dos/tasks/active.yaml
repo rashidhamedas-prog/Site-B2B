@@ -60,7 +60,7 @@ tasks:
       - "image-alt + workspace specs pass; web/api tsc pass"
   - id: "TASK-20260913-009"
     title: "Complete synced admin blog workspace"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260913-009"
     roles:
@@ -71,23 +71,9 @@ tasks:
     branch: "ai/TASK-20260913-009-admin-blog-workspace"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-13T10:45:00Z"
-    heartbeat_at: "2026-09-13T10:45:00Z"
+    heartbeat_at: "2026-09-13T12:45:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/lib/admin-blog-workspace.ts"
-      - "apps/web/src/lib/admin-blog-workspace.spec.ts"
-      - "apps/web/src/components/admin/AdminBlogWorkspace.tsx"
-      - "apps/web/src/components/admin/AdminBlogHub.tsx"
-      - "apps/web/src/components/admin/AdminBlog.tsx"
-      - "apps/web/src/components/admin/AdminBlogTools.tsx"
-      - "apps/web/src/components/admin/AdminBlogTaxonomy.tsx"
-      - "apps/web/src/components/admin/AdminBlogSeoPanels.tsx"
-      - "apps/web/src/components/admin/AdminBlogModeration.tsx"
-      - "apps/web/src/components/admin/AdminBlogAnalytics.tsx"
-      - "apps/web/src/app/admin/blog/page.tsx"
-      - "docs/architecture/admin-blog-workspace.md"
-      - "docs/reports/2026-09-13-admin-blog-workspace.md"
-      - "docs/WORKLOG.md"
+    file_claims: []
     notes: |
       Reclaimed stale AdminBlogTools/Analytics from TASK-20260810-006 (hb 2026-08-12).
       Reclaimed WORKLOG from TASK-20260826-001 (hb 2026-09-02) for this handoff only.

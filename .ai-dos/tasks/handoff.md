@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T12:45:00Z — TASK-20260913-009 CLOSED live `80889fb` / VPS `718f0f8`
+
+- `/admin/blog` workspace on `origin/master`. VPS already at `718f0f8` (includes blog + later product close).
+- Gates: workspace spec ok; `apps/web` `tsc --noEmit` 0; health/com/ir 200.
+- Claims released. Residual: live admin click (login).
+
 ## 2026-09-13T11:25:00Z — TASK-20260913-010 CLOSED live `6b1beb7`
 
 - `/admin/products` workspace + `imageAlts` SoT live. Health 200. Homes `.ir` 200 ~1.46s, `.com` 200 ~1.36s.
