@@ -294,6 +294,7 @@ export default function RetailCheckoutPage() {
       orderId,
       channel: 'RETAIL',
       providerCode: paymentGateway,
+      shippingAddress: finalizeShippingAddress(address),
     });
     if (!pay?.redirectUrl) {
       setError('آدرس درگاه دریافت نشد؛ دوباره تلاش کنید');

@@ -24,7 +24,11 @@ import { AffiliatePostbackService } from '../affiliate/affiliate-postback.servic
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { zarinpalCallbackIsSuccess } from './zarinpal-callback-status';
 import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.adapter';
-import { TorobPayAdapter, torobpayCallbackIsSuccess } from './adapters/torobpay.adapter';
+import {
+  TorobPayAdapter,
+  sanitizeTorobpayStreet,
+  torobpayCallbackIsSuccess,
+} from './adapters/torobpay.adapter';
 import type { PaymentProviderAdapter, CreatePaymentRequest } from './adapters/payment-provider.adapter';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { assertPositiveFiniteIrr, toPublicPaymentDto, PaymentPublicDto } from './dto/payment-public.dto';
@@ -43,6 +47,7 @@ interface CreatePaymentInput {
   channel?: 'WHOLESALE' | 'RETAIL';
   /** Retail checkout choice. Ignored on wholesale (always ZarinPal). */
   providerCode?: 'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY';
+  shippingAddress?: Record<string, unknown>;
 }
 
 export interface StartResult {
@@ -107,6 +112,31 @@ export class PaymentService {
     return this.metrics.snapshot();
   }
 
+  private checkoutAddressFromClient(raw?: Record<string, unknown>): Record<string, string> | null {
+    if (!raw || typeof raw !== 'object') return null;
+    const recipient = String(raw.recipient || raw.fullName || '').trim().slice(0, 80);
+    const mobile = String(raw.mobile || raw.phone || '').trim().slice(0, 20);
+    const province = String(raw.province || '').trim().slice(0, 80);
+    const city = String(raw.city || '').trim().slice(0, 80);
+    const street = sanitizeTorobpayStreet(
+      [
+        String(raw.street || raw.address || '').trim(),
+        String(raw.alley || '').trim() ? `کوچه ${String(raw.alley).trim()}` : '',
+        String(raw.plaque || '').trim() ? `پلاک ${String(raw.plaque).trim()}` : '',
+        String(raw.unit || '').trim() ? `واحد ${String(raw.unit).trim()}` : '',
+      ]
+        .filter(Boolean)
+        .join('، '),
+    );
+    const postalCode = String(raw.postalCode || raw.postal_code || '')
+      .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+      .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+      .replace(/\D/g, '')
+      .slice(0, 10);
+    if (!street && !recipient) return null;
+    return { recipient, mobile, province, city, street, postalCode };
+  }
+
   private parseShippingAddress(raw?: string | null): Record<string, string> {
     if (!raw) return {};
     try {
@@ -141,6 +171,7 @@ export class PaymentService {
     });
     if (!order) throw new NotFoundException('سفارش یافت نشد');
     const addr = this.parseShippingAddress(order.shippingAddress);
+    if (addr.street) addr.street = sanitizeTorobpayStreet(addr.street);
     const phone = addr.mobile || mobile || String((order as { customer?: { phone?: string } }).customer?.phone || '');
     const items = (order.items || []) as OrderItemEntity[];
     return {
@@ -312,6 +343,11 @@ export class PaymentService {
       if (t === 'RETAIL' || t === 'RETAIL_WEBSITE') channel = 'RETAIL';
       if (!isOrderPayable(order.status)) {
         throw new BadRequestException('این سفارش قابل پرداخت نیست');
+      }
+      const nextAddr = this.checkoutAddressFromClient(input.shippingAddress);
+      if (nextAddr) {
+        order.shippingAddress = JSON.stringify(nextAddr);
+        await this.orderRepo.save(order);
       }
     } else if (input.invoiceId) {
       const invoice = await this.invoiceRepo.findOne({ where: { id: input.invoiceId } });

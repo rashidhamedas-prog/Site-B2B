@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T08:10:00Z — TASK-20260913-002 implementing TorobPay 1011
+
+- Owner: live checkout ORD-2026-00037 (`bbbe0438-…`) TorobPay shows «آدرس را کامل‌تر بنویسید» after a complete Mashhad address.
+- Confirmed: street already has plaque + 10-digit postal `9157765383`; local validation passed; CPG `/token` returned 1011.
+- Root (evidence): composed street stores `پلاک 137` three times; token also sends `registration_phone_number` + tax flags that totweb/shetabit omit; 1011 mapped to address copy even when local checks passed.
+- Next: sanitize one plaque, totweb cart, camelCase name alias, retry persists latest address, honest 1011 copy.
+
 ## 2026-09-13T08:00:00Z — TASK-20260913-001 CLOSED live `a72fb84`
 
 - ZarinPal capture no longer rolls back on `FOR UPDATE` + items join. ORD-2026-00036 is `PENDING_REVIEW`, payment `PAID`, stock committed, ref `92001535701`.

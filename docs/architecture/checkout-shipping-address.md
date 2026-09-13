@@ -10,7 +10,7 @@ TASK-20260912-004. Inspected live checkout, CPG adapter, and official fields use
 
 **Assumptions (labeled):**
 
-- Confirmed: CPG token body uses `address`, `postalCode` (10 ASCII digits), `customer_full_name`, `city`, `province`, `mobile`, `registration_phone_number` (`torobpay.adapter.ts`, report `docs/reports/2026-09-07-torobpay-cpg-retail.md`, PDF v1.3.3).
+- Confirmed: CPG token body uses `address`, `postalCode` (10 ASCII digits), `customerFullName` / `customer_full_name`, `city`, `province`, `mobile` (`torobpay.adapter.ts`, totweb token sample, PDF v1.3.3). `registration_phone_number` is omitted — totweb/shetabit do not send it and it is not the shipping mobile.
 - Confirmed: Live 1011 was previously cart-shape *and* a 3-character street. Client still rejects street &lt; 8 after stripping spaces, and postal via `/\D/` which **drops Persian digits**.
 - Confirmed: Wholesale `/checkout` does not send `shippingAddress`; notes say “آدرس دقیق”.
 - Assumption: TorobPay does not publish a public city-code table. Official Persian province/city names are sufficient; custom city stays allowed.
@@ -21,7 +21,7 @@ TASK-20260912-004. Inspected live checkout, CPG adapter, and official fields use
 
 - Persian/Arabic-Indic postal `۹۱۷۳۵۱۲۳۴۵` is accepted and sent as `9173512345`.
 - Selecting TorobPay highlights missing CPG fields immediately; submit scrolls to the first invalid field.
-- CPG `address` length (no spaces) ≥ 8 after compose (street + alley + plaque + unit, else province+city prefix).
+- CPG `address` is one street line with at most one `پلاک` suffix, length (no spaces) ≥ 8 (else province+city prefix).
 - Wholesale order JSON includes the same address object.
 - Checkout JS: no new dependency; no extra network for geo; LCP of home/catalog unchanged.
 
@@ -81,12 +81,12 @@ Token fields (already implemented; this task only hardens values):
 | Field | Rule |
 | --- | --- |
 | `province`, `city` | required trimmed Persian names |
-| `address` | composed street, 8–250 chars without counting spaces as filler |
+| `address` | sanitized street, one `پلاک`, 8–250 chars without counting spaces as filler |
 | `postalCode` | exactly 10 Latin digits after Fa/Ar conversion |
-| `customer_full_name` | ≥ 3 chars, ≤ 80 |
-| `mobile` / `registration_phone_number` | `09xxxxxxxxx` |
+| `customerFullName` | ≥ 3 chars, ≤ 80 (snake alias also sent) |
+| `mobile` | `09xxxxxxxxx` |
 
-Error semantics: client field errors in Persian, active voice. Adapter keeps mapping 1011 → “آدرس را کامل‌تر بنویسید…” only after local checks passed (so 1011 is a provider persist issue, not a digit bug).
+Error semantics: client field errors in Persian, active voice. CPG 1011 is a provider persist failure (cart/name/address/merchant), not a local “short street” result — shopper copy asks to retry or pick ZarinPal.
 
 Idempotency: unchanged (`pendingPayOrderId` retry).
 
@@ -115,7 +115,7 @@ Shopper fills form (Fa digits OK)
   → CPG /token
 ```
 
-Failure: invalid local → no order. CPG 1011 after valid local → Persian persist message (existing).
+Failure: invalid local → no order. Retry `/payments/start` writes the latest address onto the unpaid order before a new token. CPG 1011 after valid local → retry/other-gateway copy.
 
 ## 10. Tests, rollout, risks, ADRs
 

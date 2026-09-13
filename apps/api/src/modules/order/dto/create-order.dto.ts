@@ -264,6 +264,11 @@ export class StartPaymentDto {
   @IsOptional()
   @IsIn(['ZARINPAL', 'DIGIPAY', 'TOROBPAY'])
   providerCode?: 'ZARINPAL' | 'DIGIPAY' | 'TOROBPAY';
+
+  /** Latest checkout address; applied to the unpaid order before TorobPay token. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  shippingAddress?: Record<string, unknown>;
 }
 
 export class VerifyPaymentDto {

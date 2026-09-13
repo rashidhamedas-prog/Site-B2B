@@ -9,6 +9,7 @@ import {
   classifyTorobpayOauthFailure,
   compactTorobpayTransactionId,
   composeTorobpayAddress,
+  sanitizeTorobpayStreet,
   normalizeTorobpayMobile,
   normalizeTorobpayPostal,
   torobpayBasicAuthHeader,
@@ -59,6 +60,12 @@ async function main() {
 
   assert(compactTorobpayTransactionId('a76bec09-11cb-4faa-be4f-c1a1f96affd2') === 'a76bec0911cb4faabe4fc1a1f96affd2', 'compact uuid');
   assert(composeTorobpayAddress({ street: '۱۲۳', city: 'مشهد', province: 'خراسان رضوی' }).includes('مشهد'), 'compose short street');
+  assert(
+    sanitizeTorobpayStreet('میدان عسگریه ، خیابان قائمی بین 10 و 12 پلاک 137، پلاک 137، پلاک 137') ===
+      'میدان عسگریه، خیابان قائمی بین 10 و 12، پلاک 137',
+    'one plaque',
+  );
+  assert(/پلاک 12/.test(sanitizeTorobpayStreet('خیابان احمدآباد پلاک ۱۲')), 'inline fa plaque');
   let addrThrew = false;
   try {
     composeTorobpayAddress({ street: 'اب', city: '', province: '' });
@@ -178,6 +185,10 @@ async function main() {
     assert(tokenBody.cartList[0].cartItems[0].category === 'general', 'token category');
     assert(tokenBody.discountAmount == null, 'no discount field');
     assert(tokenBody.cartList[0].cartItems[0].commissionType == null, 'no commission on token');
+    assert(tokenBody.cartList[0].taxAmount == null, 'no tax flag');
+    assert(tokenBody.registration_phone_number == null, 'no registration phone');
+    assert(tokenBody.customerFullName === checkout.fullName, 'camel name');
+    assert(tokenBody.customer_full_name === checkout.fullName, 'snake name');
 
     const verified = await gw.verifyReturn({
       amountIrr: 2500000,
@@ -229,7 +240,7 @@ async function main() {
     } catch (e) {
       tokenErr = e instanceof Error ? e.message : String(e);
     }
-    assert(tokenErr.includes('ترب‌پی نتوانست سفارش را ثبت کند'), '1011 mapped for shopper');
+    assert(tokenErr.includes('ترب‌پی نتوانست این پرداخت را بسازد'), '1011 mapped for shopper');
     assert(!tokenErr.includes('1042'), '1011 not confused with 1042');
 
     globalThis.fetch = (async (input: RequestInfo | URL) => {

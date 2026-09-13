@@ -71,15 +71,52 @@ export function normalizeTorobpayPostal(raw?: string): string {
   return normalizeDigits(String(raw || '')).slice(0, 10);
 }
 
+const TRAILING_PLAQUE = /^(.*)[,،]\s*پلاک\s+(.+)$/;
+const INLINE_PLAQUE = /^(.*)\s+پلاک\s+([^\s،,]+)\s*$/;
+
+function latinDigits(raw: string): string {
+  return String(raw || '')
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+}
+
+function tidyStreetPart(raw: string): string {
+  return latinDigits(raw)
+    .replace(/\s+/g, ' ')
+    .replace(/\s*،\s*/g, '، ')
+    .replace(/^،\s*|\s*،$/g, '')
+    .trim();
+}
+
+/** One street + one plaque. Duplicate «پلاک» suffixes break CPG order persist (1011). */
+export function sanitizeTorobpayStreet(raw?: string): string {
+  let rest = tidyStreetPart(raw);
+  let plaque = '';
+  let plaqueM = rest.match(TRAILING_PLAQUE);
+  while (plaqueM) {
+    rest = plaqueM[1]!.trim();
+    plaque = tidyStreetPart(plaqueM[2]);
+    plaqueM = rest.match(TRAILING_PLAQUE);
+  }
+  const inlineM = rest.match(INLINE_PLAQUE);
+  if (inlineM) {
+    rest = inlineM[1]!.trim();
+    if (!plaque) plaque = tidyStreetPart(inlineM[2]);
+  }
+  rest = tidyStreetPart(rest);
+  const withPlaque = plaque ? `${rest}، پلاک ${plaque}` : rest;
+  return withPlaque.slice(0, 250);
+}
+
 export function composeTorobpayAddress(input: {
   street?: string;
   city?: string;
   province?: string;
 }): string {
-  const street = String(input.street || '').trim();
+  const street = sanitizeTorobpayStreet(input.street);
   const city = String(input.city || '').trim();
   const province = String(input.province || '').trim();
-  const composed = [province, city, street].filter(Boolean).join('، ');
+  const composed = sanitizeTorobpayStreet([province, city, street].filter(Boolean).join('، '));
   const chosen = (street.replace(/\s/g, '').length >= MIN_ADDRESS_LEN ? street : composed) || street;
   if (chosen.replace(/\s/g, '').length < MIN_ADDRESS_LEN) {
     throw new Error('برای ترب‌پی آدرس خیابان را کامل‌تر بنویسید (خیابان، پلاک، حداقل ۸ نویسه).');
@@ -100,10 +137,7 @@ export function buildTorobpayBalancedCart(input: {
   cartList: Array<{
     cartId: string;
     totalAmount: number;
-    taxAmount: number;
     shippingAmount: number;
-    isTaxIncluded: boolean;
-    isShipmentIncluded: boolean;
     cartItems: Array<{
       id: string;
       name: string;
@@ -124,10 +158,7 @@ export function buildTorobpayBalancedCart(input: {
       {
         cartId: transactionId,
         totalAmount: amount,
-        taxAmount: 0,
         shippingAmount: 0,
-        isTaxIncluded: true,
-        isShipmentIncluded: false,
         cartItems: [
           {
             id: transactionId,
@@ -612,10 +643,10 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       mobile: phone,
       address,
       postalCode,
+      customerFullName: fullName,
       customer_full_name: fullName,
-      city: checkout.city,
-      province: checkout.province,
-      registration_phone_number: phone,
+      city: String(checkout.city || '').trim(),
+      province: String(checkout.province || '').trim(),
       cartList: cart.cartList,
     };
 
@@ -635,7 +666,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       );
       if (/\b1011\b/.test(detail) || /can't create order/i.test(detail)) {
         throw new Error(
-          'ترب‌پی نتوانست سفارش را ثبت کند. آدرس را کامل‌تر بنویسید (خیابان و پلاک) و دوباره ترب‌پی را بزنید.',
+          'ترب‌پی نتوانست این پرداخت را بسازد. دوباره ترب‌پی را بزنید یا زرین‌پال را انتخاب کنید.',
         );
       }
       throw new Error(detail);

@@ -1,5 +1,43 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-002"
+    title: "TorobPay token 1011 is not a short-address bug"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260913-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-002"
+      implementer: "cursor:implementer-TASK-20260913-002"
+      reviewer: "required-independent-payments"
+      security: "required-independent-payments-or-personal-data"
+    branch: "ai/TASK-20260913-002-torobpay-token-1011"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T08:10:00Z"
+    heartbeat_at: "2026-09-13T08:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
+      - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/api/src/modules/payment/payment.controller.ts"
+      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      - "apps/web/src/lib/shipping-address.ts"
+      - "apps/web/src/lib/shipping-address.spec.mts"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "docs/architecture/checkout-shipping-address.md"
+      - "docs/reports/2026-09-13-torobpay-token-1011.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Live ORD-2026-00037 AWAITING_PAYMENT. Address already complete; CPG 1011 mapped to address copy. Street has triplicate پلاک 137.
+    acceptance_criteria:
+      - "CPG token street has exactly one plaque suffix after sanitize"
+      - "Token body matches totweb cart (no tax flags / registration_phone_number)"
+      - "Retry /payments/start can persist the latest checkout address"
+      - "1011 shopper copy is not a false address-incomplete claim after local checks pass"
+      - "adapter + shipping-address specs and api/web tsc pass"
   - id: "TASK-20260913-001"
     title: "ZarinPal capture must not roll back on stock lock join"
     status: "done"

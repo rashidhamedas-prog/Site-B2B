@@ -96,8 +96,26 @@ const typedInStreet = hydrateShippingAddress({
   street: 'خیابان احمدآباد پلاک ۱۲',
   postalCode: '9173512345',
 });
-assert.equal(typedInStreet.plaque, '', 'do not peel plaque without composed suffix');
-assert.equal(typedInStreet.street, 'خیابان احمدآباد پلاک ۱۲', 'keep inline plaque text');
+assert.equal(typedInStreet.plaque, '۱۲', 'peel inline plaque into its field');
+assert.equal(typedInStreet.street, 'خیابان احمدآباد', 'street without plaque suffix');
+assert.equal(composeStreetLine(typedInStreet), 'خیابان احمدآباد، پلاک ۱۲', 'compose one plaque');
+
+const messyLive = hydrateShippingAddress({
+  recipient: 'حامد رشید',
+  mobile: '09386500298',
+  province: 'خراسان رضوی',
+  city: 'مشهد',
+  street: 'میدان عسگریه ، خیابان قائمی بین 10 و 12 پلاک 137، پلاک 137، پلاک 137',
+  postalCode: '9157765383',
+  plaque: '137',
+});
+assert.equal(messyLive.plaque, '137', 'live plaque once');
+assert.equal(messyLive.street.includes('پلاک'), false, 'live street stripped');
+assert.equal(
+  composeStreetLine(messyLive),
+  'میدان عسگریه، خیابان قائمی بین 10 و 12، پلاک 137',
+  'live compose one plaque',
+);
 
 const cashShortPostal = { ...full, postalCode: '12' };
 assert.ok(validateShippingAddress(cashShortPostal, 'standard').postalCode, 'partial postal invalid in standard');

@@ -65,30 +65,24 @@ export function isValidIranPostal(raw: string): boolean {
   return true;
 }
 
-export function composeStreetLine(addr: Pick<ShippingAddress, 'street' | 'alley' | 'plaque' | 'unit'>): string {
-  const street = String(addr.street || '').trim();
-  const alley = String(addr.alley || '').trim();
-  const plaque = String(addr.plaque || '').trim();
-  const unit = String(addr.unit || '').trim();
-  return [
-    street,
-    alley ? `کوچه ${alley}` : '',
-    plaque ? `پلاک ${plaque}` : '',
-    unit ? `واحد ${unit}` : '',
-  ]
-    .filter(Boolean)
-    .join('، ');
-}
-
 const COMPOSED_UNIT = /^(.*)[,،]\s*واحد\s+(.+)$/;
 const COMPOSED_PLAQUE = /^(.*)[,،]\s*پلاک\s+(.+)$/;
 const COMPOSED_ALLEY = /^(.*)[,،]\s*کوچه\s+(.+)$/;
+const INLINE_PLAQUE = /^(.*)\s+پلاک\s+([^\s،,]+)\s*$/;
+
+function tidyStreetPart(raw: string): string {
+  return String(raw || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*،\s*/g, '، ')
+    .replace(/^،\s*|\s*،$/g, '')
+    .trim();
+}
 
 /** Split a stored composed street back into street / alley / plaque / unit. */
 export function parseComposedStreet(
   line: string,
 ): Pick<ShippingAddress, 'street' | 'alley' | 'plaque' | 'unit'> {
-  let rest = String(line || '').trim();
+  let rest = tidyStreetPart(line);
   let unit = '';
   let plaque = '';
   let alley = '';
@@ -97,17 +91,39 @@ export function parseComposedStreet(
     rest = unitM[1]!.trim();
     unit = unitM[2]!.trim();
   }
-  const plaqueM = rest.match(COMPOSED_PLAQUE);
-  if (plaqueM) {
+  let plaqueM = rest.match(COMPOSED_PLAQUE);
+  while (plaqueM) {
     rest = plaqueM[1]!.trim();
     plaque = plaqueM[2]!.trim();
+    plaqueM = rest.match(COMPOSED_PLAQUE);
   }
   const alleyM = rest.match(COMPOSED_ALLEY);
   if (alleyM) {
     rest = alleyM[1]!.trim();
     alley = alleyM[2]!.trim();
   }
-  return { street: rest, alley, plaque, unit };
+  const inlineM = rest.match(INLINE_PLAQUE);
+  if (inlineM) {
+    rest = inlineM[1]!.trim();
+    if (!plaque) plaque = inlineM[2]!.trim();
+  }
+  return { street: tidyStreetPart(rest), alley, plaque, unit };
+}
+
+export function composeStreetLine(addr: Pick<ShippingAddress, 'street' | 'alley' | 'plaque' | 'unit'>): string {
+  const parsed = parseComposedStreet(addr.street);
+  const street = parsed.street;
+  const alley = String(addr.alley || '').trim() || parsed.alley;
+  const plaque = String(addr.plaque || '').trim() || parsed.plaque;
+  const unit = String(addr.unit || '').trim() || parsed.unit;
+  return [
+    street,
+    alley ? `کوچه ${alley}` : '',
+    plaque ? `پلاک ${plaque}` : '',
+    unit ? `واحد ${unit}` : '',
+  ]
+    .filter(Boolean)
+    .join('، ');
 }
 
 export function hydrateShippingAddress(raw?: Partial<ShippingAddress> | null): ShippingAddress {

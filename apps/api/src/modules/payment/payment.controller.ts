@@ -191,6 +191,7 @@ export class PaymentController {
       email: body.email,
       channel: body.channel,
       providerCode: body.providerCode,
+      shippingAddress: body.shippingAddress,
     });
   }
 
