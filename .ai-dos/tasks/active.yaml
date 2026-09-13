@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260913-013"
     title: "Complete synced admin settings workspace"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260913-013"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260913-013-admin-settings-workspace"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-13T13:00:00Z"
-    heartbeat_at: "2026-09-13T13:00:00Z"
+    heartbeat_at: "2026-09-13T12:56:00Z"
+    closed_at: "2026-09-13T12:56:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/admin-settings-workspace.ts"
       - "apps/web/src/lib/admin-settings-workspace.spec.ts"
       - "apps/web/src/lib/organization-from-settings.ts"
@@ -44,6 +46,9 @@ tasks:
       - "docs/architecture/admin-settings-workspace.md"
       - "docs/reports/2026-09-13-admin-settings-workspace.md"
       - "docs/WORKLOG.md"
+      - ".ai-dos/project/status.md"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/tasks/active.yaml"
     notes: |
       Completes /admin/settings: URL workspace, missing fields, menus+SEO tabs,
       save→reload→storefront revalidate, Organization/metadata from public settings.

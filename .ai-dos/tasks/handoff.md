@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T12:56:00Z — TASK-20260913-013 CLOSED live `696f6e8`
+
+- VPS `/opt/taranom` HEAD `696f6e8`. auto-deploy exit 0.
+- Health `https://api.poshaktaranom.com/v1/health` 200 `{"status":"ok"}`.
+- Homes `.com` 200 ~1.77s; `.ir` 200 ~1.77s.
+- Public `/settings/public` now returns `seo` + business logo/alts/descriptions; no merchantId/apiKey/secret/token/postback.
+- Live JSON-LD: `.com` ClothingStore+WebSite+#organization+ImageObject caption; `.ir` OnlineStore+parent Organization.
+- `/admin/settings` → login (`redirect=/admin/settings`). Click/save not exercised.
+- Claims released. Reclaimed leftover `status.md` from TASK-20260913-012 (done) for this close only.
+- Residual: independent Reviewer/Security (same-session recorded; SEO/public JSON-LD is a trust-boundary change); live admin save.
+
 ## 2026-09-13T13:40:00Z — TASK-20260913-013 gates
 
 - API: `settings-seo.spec` + `settings-business.spec` ok; `npx tsc --noEmit` 0.

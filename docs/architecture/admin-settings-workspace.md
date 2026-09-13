@@ -95,3 +95,7 @@ Admin edits a section
 - Saving SMS keeps every known event key.
 - Organization telephone/email/name/logo match public business fields or the documented fallback.
 - Product image alt remains per gallery URL on the product, not a settings field.
+
+## Rollout
+
+Live on `origin/master` + VPS `696f6e8`. Rollback: revert merge `696f6e8` / feat `21bfb20`. No migration.

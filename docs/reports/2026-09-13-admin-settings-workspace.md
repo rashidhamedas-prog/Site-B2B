@@ -27,4 +27,14 @@ Product per-image `imageAlts` was already live (TASK-20260913-010). Not reopened
 
 ## Verification
 
-Specs and tsc recorded in handoff after run. Live admin click not exercised until deploy.
+Specs and tsc recorded in handoff after run.
+
+Live VPS `696f6e8` (auto-deploy exit 0):
+
+| Check | Result |
+|---|---|
+| API `/v1/health` | 200 `{"status":"ok","service":"taranom-api","version":"1.0"}` |
+| `.com` home | 200 ~1.77s; ClothingStore + WebSite + `#organization` + ImageObject caption |
+| `.ir` home | 200 ~1.77s; OnlineStore + parent Organization + WebSite |
+| `/settings/public` both channels | 200; includes `seo`; no merchantId/apiKey/secret/token/postback |
+| `/admin/settings` | 200 login (`redirect=/admin/settings`); click/save not exercised |
