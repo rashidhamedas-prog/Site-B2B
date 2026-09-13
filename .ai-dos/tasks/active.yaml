@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260913-011"
     title: "Complete synced admin customer workspace + wallet ledger"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260913-011"
     roles:
