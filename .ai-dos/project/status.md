@@ -1,6 +1,7 @@
 # Project Status
 
-- Last verified: 2026-09-13 — **TASK-20260913-004 implementing** on `ai/TASK-20260913-004-sender-postal`. Business postal for A5 sender. Not live until merge/deploy.
+- Last verified: 2026-09-13 — **TASK-20260913-005 CLOSED** on `origin/master` + VPS `342ea58`. Retail COD hidden unless `retailCashEnabled`; live `.ir/checkout` shows only زرین‌پال. Health 200. Claims released.
+- Last verified: 2026-09-13 — **TASK-20260913-004 CLOSED** on `origin/master` + VPS `776108a`. Sender postal field live (empty until saved). Health 200. Claims released.
 - Last verified: 2026-09-13 — **TASK-20260913-003 CLOSED** on `origin/master` + VPS `db8d0f0`. Admin A5 packing/shipping label. Health 200. Claims released. Live admin click not exercised.
 - Last verified: 2026-09-13 — **TASK-20260913-002 live residual** on `origin/master` + VPS `216ff56`. TorobPay 1011 is not a short-address bug (ORD-2026-00037 complete Mashhad address; totweb-minimal also 1011). Health 200. Independent Reviewer + Security residual (payments).
 - Last verified: 2026-09-13 — **TASK-20260913-001 CLOSED** on `origin/master` + VPS `a72fb84`. ORD-2026-00036 `PENDING_REVIEW` + ZarinPal PAID. Health 200. Claims released. Independent Reviewer + Security residual (payments).

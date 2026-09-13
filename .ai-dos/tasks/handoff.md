@@ -2,6 +2,21 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T09:08:00Z — TASK-20260913-004 CLOSED live `776108a`
+
+- Sender postal field live on public settings (`postalCode` currently empty). Health 200.
+- Operator must save the 10-digit office postal in `/admin/settings` کسب‌وکار.
+- Gates: settings-business.spec ok; packing-slip.spec ok; api/web tsc 0.
+- Claims released (settings.service/controller/AdminSettings already handed to 005).
+
+## 2026-09-13T09:15:00Z — TASK-20260913-005 CLOSED live `342ea58`
+
+- Retail COD is off by default and hidden on live `.ir/checkout` (only زرین‌پال radio). Public `retailCashEnabled=false`, `wholesaleCashEnabled=true`.
+- Live: API health 200; VPS `342ea58`; api+web restarted ~09:12Z.
+- Gates: settings-payment-cash spec ok; checkout-payment-ui spec ok; api/web tsc 0.
+- Claims released. Residual: CMS trust/FAQ may still say «در محل» until site-content save; IN_PERSON shipping is a separate pickup option.
+- Re-enable retail COD from `/admin/settings` → درگاه پرداخت if needed.
+
 ## 2026-09-13T09:10:00Z — TASK-20260913-005 implementing COD setting
 
 - Owner: operator disables «پرداخت درب منزل» in admin but retail/wholesale checkout still shows CASH.
