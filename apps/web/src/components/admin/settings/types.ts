@@ -50,6 +50,13 @@ export interface SmsOpsSide {
   stockOutAdmin: boolean;
 }
 
+export interface SeoChannelFields {
+  defaultTitle: string;
+  defaultDescription: string;
+  ogImageUrl: string;
+  ogImageAlt: string;
+}
+
 export interface SettingsPayload {
   business: {
     businessName: string;
@@ -62,12 +69,21 @@ export interface SettingsPayload {
     address: string;
     officeAddress: string;
     postalCode: string;
+    logoUrl: string;
+    logoAlt: string;
+    descriptionWholesale: string;
+    descriptionRetail: string;
+    sameAs: string[];
     minOrderToman: number;
     defaultCreditDays: number;
     limitedStockMultiplier?: number;
     newBadgeDays?: number;
     enamadWholesale: EnamadSealConfig;
     enamadRetail: EnamadSealConfig;
+  };
+  seo: {
+    wholesale: SeoChannelFields;
+    retail: SeoChannelFields;
   };
   shipping: {
     baseFee: number;
@@ -166,10 +182,12 @@ export interface SettingsPayload {
 
 export type SettingsTabId =
   | 'business'
+  | 'navigation'
   | 'shipping'
   | 'sms'
   | 'payment'
   | 'installments'
+  | 'seo'
   | 'theme'
   | 'marketing';
 

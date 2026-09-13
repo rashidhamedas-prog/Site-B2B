@@ -1,4 +1,7 @@
-import { allRevalidatePathsForCms, cmsCacheTags, publicStorefrontPathsForCms, storefrontPathsForCms, warmPathsForCms } from './revalidate-storefront';
+/**
+ * npx ts-node --transpile-only src/lib/cms/revalidate-storefront.spec.ts
+ */
+import { allRevalidatePathsForCms, cmsCacheTags, publicStorefrontPathsForCms, storefrontPathsForCms, warmPathsForCms } from './revalidate-storefront.ts';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -15,5 +18,6 @@ assert(warmPathsForCms('RETAIL', 'home').includes('/retail'), 'warm app path');
 assert(warmPathsForCms('RETAIL', 'home').includes('/'), 'warm public path');
 assert(cmsCacheTags('RETAIL', 'home').includes('cms:RETAIL:home'), 'tag');
 assert(cmsCacheTags('WHOLESALE', 'chrome').includes('cms:WHOLESALE:home'), 'chrome tags home');
+assert(cmsCacheTags('RETAIL', 'chrome').includes('settings:RETAIL'), 'chrome busts public settings');
 
 console.log('revalidate-storefront.ts ok');

@@ -8,6 +8,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { DEFAULT_MENUS, DEFAULT_RETAIL_MENUS, type MenuItem, type MenusSettings } from '@/lib/menus';
+import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { AdminChannelTabs, channelLabel, type AdminChannel } from './AdminChannelTabs';
 
 type MenuKey = 'main' | 'footer' | 'mobile' | 'legal';
@@ -64,7 +65,7 @@ function pickChannelMenus(
   return normalizeMenus(undefined, channel);
 }
 
-export function AdminMenus() {
+export function AdminMenus({ embedded = false }: { embedded?: boolean }) {
   const [channel, setChannel] = useState<AdminChannel>('WHOLESALE');
   const [tab, setTab] = useState<MenuKey>('main');
   const [data, setData] = useState<MenusSettings | null>(null);
@@ -112,6 +113,10 @@ export function AdminMenus() {
         wholesale: nested.wholesale,
         retail: nested.retail,
       });
+      await Promise.all([
+        revalidateStorefrontAfterSave('WHOLESALE', 'chrome'),
+        revalidateStorefrontAfterSave('RETAIL', 'chrome'),
+      ]);
       setRawMenus(nested);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -168,9 +173,13 @@ export function AdminMenus() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">مدیریت منوها</h2>
+          {embedded ? (
+            <p className="text-sm font-bold text-gray-900">منوهای سایت {channelLabel(channel)}</p>
+          ) : (
+            <h2 className="text-xl font-bold text-gray-900">مدیریت منوها</h2>
+          )}
           <p className="mt-0.5 text-sm text-gray-500">
-            منوهای سایت {channelLabel(channel)} — با کشیدن و رها کردن مرتب کنید
+            تکی و عمده جدا ذخیره می‌شوند — با کشیدن و رها کردن مرتب کنید
           </p>
         </div>
         <AdminChannelTabs value={channel} onChange={setChannel} />

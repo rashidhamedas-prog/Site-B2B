@@ -2,6 +2,20 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T13:40:00Z — TASK-20260913-013 gates
+
+- API: `settings-seo.spec` + `settings-business.spec` ok; `npx tsc --noEmit` 0.
+- Web: `tsx` workspace/org/revalidate specs ok; `npx tsc --noEmit` 0.
+- Live admin click and deploy not run.
+
+## 2026-09-13T13:00:00Z — TASK-20260913-013 implementing synced settings workspace
+
+- Branch `ai/TASK-20260913-013-admin-settings-workspace`.
+- Reclaimed leftover AdminSettings / types / settings.service / settings.controller from TASK-20260913-006 (door options already live; hb 09:20Z).
+- Reclaimed JsonLd.tsx from TASK-20260913-010 (done leftover) for Organization sync only.
+- Product `imageAlts` already live; not reopened.
+- Slack public search: no settings-workspace decisions (2026-09-13).
+
 ## 2026-09-13T12:22:00Z — TASK-20260913-012 CLOSED live `2c02f4d`
 
 - VPS HEAD `2c02f4d`. Health 200; `.ir`/`.com` 200.

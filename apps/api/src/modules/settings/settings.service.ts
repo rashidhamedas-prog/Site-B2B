@@ -8,8 +8,9 @@ import {
   resolveChannelCompanies,
   resolveShippingPost,
 } from './shipping-channel';
-import { normalizeBusinessPostal } from './settings-business';
+import { normalizeBusinessPostal, normalizeBusinessSettings } from './settings-business';
 import { resolveCashOnDeliveryFlags } from './settings-payment-cash';
+import { resolveSeoSettings } from './settings-seo';
 
 // Central user-configurable settings, stored in DB and edited from the admin
 // panel. Consumers (shipping/sms/payment) read through the typed getters,
@@ -39,7 +40,10 @@ export class SettingsService {
   async set(key: string, value: Record<string, any>): Promise<AppSettingEntity> {
     let next = value;
     if (key === 'business' && value && typeof value === 'object') {
-      next = { ...value, postalCode: normalizeBusinessPostal(value.postalCode) };
+      next = normalizeBusinessSettings(value);
+    }
+    if (key === 'seo' && value && typeof value === 'object') {
+      next = resolveSeoSettings(value);
     }
     if (key === 'payment' && value && typeof value === 'object') {
       const prev = await this.get('payment');
@@ -105,6 +109,11 @@ export class SettingsService {
       address: s.address ?? '',
       officeAddress: s.officeAddress ?? '',
       postalCode: normalizeBusinessPostal(s.postalCode),
+      logoUrl: String(s.logoUrl ?? ''),
+      logoAlt: String(s.logoAlt ?? ''),
+      descriptionWholesale: String(s.descriptionWholesale ?? ''),
+      descriptionRetail: String(s.descriptionRetail ?? ''),
+      sameAs: Array.isArray(s.sameAs) ? s.sameAs.map((u: unknown) => String(u || '')).filter(Boolean) : [],
       minOrderToman: Number(s.minOrderToman) || 1000000,
       defaultCreditDays: Number(s.defaultCreditDays) || 30,
       /** Auto «موجودی محدود» when stock ≤ minOrder × this (both channels) */
@@ -500,6 +509,10 @@ export class SettingsService {
       wholesale,
       retail,
     };
+  }
+
+  async seo() {
+    return resolveSeoSettings(await this.get('seo'));
   }
 
   async siteContent() {

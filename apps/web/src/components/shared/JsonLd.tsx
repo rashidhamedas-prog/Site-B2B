@@ -1,24 +1,19 @@
 import type { SalesChannel } from '@/lib/channel';
 import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo-origins';
-import { BUSINESS_FACTS } from '@/lib/business-facts';
 import { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 import { jsonLdBrandNode } from '@/lib/product-jsonld-brand';
 import { jsonLdImageObjects } from '@/lib/product-image-alt';
+import {
+  buildOrganizationJsonLd,
+  buildWebSiteJsonLd,
+  organizationId,
+  type PublicBusinessSettings,
+  type PublicPaymentFlags,
+  type PublicSeoSettings,
+} from '@/lib/organization-from-settings';
 
 export { absoluteJsonLdUrl } from '@/lib/jsonld-url';
-
-const SAME_AS = [
-  'https://www.instagram.com/tolidi.taranom',
-  'https://t.me/toliditaranom',
-];
-
-const ADDRESS = {
-  '@type': 'PostalAddress' as const,
-  streetAddress: 'میدان 17 شهریور، پاساژ کیمیا، طبقه منفی یک، پلاک ۱۳۳',
-  addressLocality: 'مشهد',
-  addressRegion: 'خراسان رضوی',
-  addressCountry: 'IR',
-};
+export { organizationId, websiteId } from '@/lib/organization-from-settings';
 
 function JsonLdScript({ data }: { data: Record<string, unknown> }) {
   return (
@@ -29,125 +24,36 @@ function JsonLdScript({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-export function organizationId(channel: SalesChannel = 'WHOLESALE'): string {
-  return channel === 'RETAIL'
-    ? `${RETAIL_ORIGIN}/#organization`
-    : `${WHOLESALE_ORIGIN}/#organization`;
-}
-
-export function websiteId(channel: SalesChannel = 'WHOLESALE'): string {
-  return channel === 'RETAIL'
-    ? `${RETAIL_ORIGIN}/#website`
-    : `${WHOLESALE_ORIGIN}/#website`;
-}
-
 export function OrganizationJsonLd({
   channel = 'WHOLESALE',
+  business,
+  seo,
+  payment,
 }: {
   channel?: SalesChannel;
+  business?: PublicBusinessSettings;
+  seo?: PublicSeoSettings;
+  payment?: PublicPaymentFlags;
 }) {
-  if (channel === 'RETAIL') {
-    return (
-      <JsonLdScript
-        data={{
-          '@context': 'https://schema.org',
-          '@type': 'OnlineStore',
-          '@id': organizationId('RETAIL'),
-          name: 'فروشگاه پوشاک ترنم',
-          alternateName: 'Taranom Shop',
-          url: RETAIL_ORIGIN,
-          logo: `${RETAIL_ORIGIN}/logo-128.png`,
-          image: `${RETAIL_ORIGIN}/og-retail.jpg`,
-          description:
-            'خرید تکی مانتو و شومیز زنانه مستقیم از تولیدی ترنم در مشهد. ارسال به سراسر ایران، پرداخت امن و امکان تعویض سایز.',
-          telephone: '+98-915-242-4624',
-          email: 'rashidhamedas@gmail.com',
-          address: ADDRESS,
-          sameAs: SAME_AS,
-          currenciesAccepted: 'IRR',
-          paymentAccepted: 'Credit Card, Cash on Delivery',
-          parentOrganization: {
-            '@id': organizationId('WHOLESALE'),
-            '@type': 'Organization',
-            name: 'پوشاک ترنم',
-            url: WHOLESALE_ORIGIN,
-          },
-        }}
-      />
-    );
-  }
-
   return (
     <JsonLdScript
-      data={{
-        '@context': 'https://schema.org',
-        '@type': 'ClothingStore',
-        '@id': organizationId('WHOLESALE'),
-        name: 'پوشاک ترنم',
-        alternateName: 'Taranom Clothing',
-        url: WHOLESALE_ORIGIN,
-        logo: `${WHOLESALE_ORIGIN}/logo-128.png`,
-        image: `${WHOLESALE_ORIGIN}/og-wholesale.jpg`,
-        description:
-          'تولیدی مانتو شومیزی زنانه لینن و کتان در مشهد. از دوخت تا ارسال را خودمان انجام می‌دهیم و عمده می‌فروشیم به بوتیک‌ها در سراسر ایران.',
-        foundingDate: String(BUSINESS_FACTS.foundedGregorianYear),
-        telephone: '+98-915-242-4624',
-        email: 'rashidhamedas@gmail.com',
-        address: ADDRESS,
-        geo: {
-          '@type': 'GeoCoordinates',
-          latitude: '36.2972',
-          longitude: '59.6067',
-        },
-        openingHoursSpecification: [
-          {
-            '@type': 'OpeningHoursSpecification',
-            dayOfWeek: ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'],
-            opens: '09:00',
-            closes: '18:00',
-          },
-        ],
-        sameAs: SAME_AS,
-        priceRange: '$$',
-        currenciesAccepted: 'IRR',
-        paymentAccepted: 'Cash, Bank Transfer',
-        knowsAbout: ['مانتو لینن', 'فروش عمده مانتو', 'شومیزی زنانه', 'تولیدی پوشاک مشهد'],
-      }}
+      data={buildOrganizationJsonLd({ channel, business, seo, payment })}
     />
   );
 }
 
-export function WebSiteJsonLd({ channel = 'WHOLESALE' }: { channel?: SalesChannel }) {
-  if (channel === 'RETAIL') {
-    return (
-      <JsonLdScript
-        data={{
-          '@context': 'https://schema.org',
-          '@type': 'WebSite',
-          '@id': websiteId('RETAIL'),
-          name: 'فروشگاه پوشاک ترنم',
-          url: RETAIL_ORIGIN,
-          inLanguage: 'fa-IR',
-          publisher: { '@id': organizationId('RETAIL') },
-        }}
-      />
-    );
-  }
-
-  // NOTE: no SearchAction here — Google crawled the literal
-  // `?q={search_term_string}` placeholder as a URL (GSC noise), and the
-  // sitelinks-searchbox feature it powered is deprecated.
+export function WebSiteJsonLd({
+  channel = 'WHOLESALE',
+  business,
+  seo,
+}: {
+  channel?: SalesChannel;
+  business?: PublicBusinessSettings;
+  seo?: PublicSeoSettings;
+}) {
   return (
     <JsonLdScript
-      data={{
-        '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        '@id': websiteId('WHOLESALE'),
-        name: 'پوشاک ترنم',
-        url: WHOLESALE_ORIGIN,
-        inLanguage: 'fa-IR',
-        publisher: { '@id': organizationId('WHOLESALE') },
-      }}
+      data={buildWebSiteJsonLd({ channel, business, seo })}
     />
   );
 }

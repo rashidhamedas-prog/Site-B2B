@@ -20,6 +20,7 @@ const GROUPS = [
   'menus_wholesale',
   'menus_retail',
   'marketing',
+  'seo',
   'siteContent',
   'smsOps',
   'shippingPost',
@@ -42,7 +43,7 @@ export class SettingsController {
       'Cache-Control',
       'public, max-age=30, s-maxage=60, stale-while-revalidate=300',
     );
-    const [business, shipping, installments, payment, theme, menus, marketing] = await Promise.all([
+    const [business, shipping, installments, payment, theme, menus, marketing, seo] = await Promise.all([
       this.svc.business(),
       this.svc.shipping(),
       this.svc.installments(),
@@ -50,6 +51,7 @@ export class SettingsController {
       this.svc.theme(),
       this.svc.menus(channel),
       this.svc.marketing(),
+      this.svc.seo(),
     ]);
     return {
       business: {
@@ -61,6 +63,11 @@ export class SettingsController {
         address: business.address,
         officeAddress: business.officeAddress,
         postalCode: business.postalCode,
+        logoUrl: business.logoUrl,
+        logoAlt: business.logoAlt,
+        descriptionWholesale: business.descriptionWholesale,
+        descriptionRetail: business.descriptionRetail,
+        sameAs: business.sameAs,
         minOrderToman: business.minOrderToman,
         limitedStockMultiplier: business.limitedStockMultiplier,
         newBadgeDays: business.newBadgeDays,
@@ -113,6 +120,7 @@ export class SettingsController {
         manualCardOwner: payment.manualCardOwner || '',
       },
       theme,
+      seo,
       menus,
       channel: channel ? String(channel).toUpperCase() : undefined,
       marketing: {
@@ -145,7 +153,7 @@ export class SettingsController {
   @ApiBearerAuth()
   @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   async adminSettings(@Query('channel') channel?: string) {
-    const [business, shipping, sms, payment, installments, theme, menus, marketing, siteContent, smsOps, shippingPost] =
+    const [business, shipping, sms, payment, installments, theme, menus, marketing, seo, siteContent, smsOps, shippingPost] =
       await Promise.all([
         this.svc.business(),
         this.svc.shipping(),
@@ -155,6 +163,7 @@ export class SettingsController {
         this.svc.theme(),
         this.svc.menus(channel),
         this.svc.marketing(),
+        this.svc.seo(),
         this.svc.siteContent(),
         this.svc.get('smsOps'),
         this.svc.shippingPost(),
@@ -168,6 +177,7 @@ export class SettingsController {
       theme,
       menus,
       marketing,
+      seo,
       siteContent,
       smsOps: resolveSmsOps(smsOps),
       shippingPost,
@@ -248,6 +258,20 @@ export class SettingsController {
         wholesale: {
           ...prev.wholesale,
           ...(bodyPost.wholesale && typeof bodyPost.wholesale === 'object' ? bodyPost.wholesale : {}),
+        },
+      };
+    }
+    if (group === 'seo') {
+      const prev = await this.svc.seo();
+      const bodySeo = body ?? {};
+      value = {
+        wholesale: {
+          ...prev.wholesale,
+          ...(bodySeo.wholesale && typeof bodySeo.wholesale === 'object' ? bodySeo.wholesale : {}),
+        },
+        retail: {
+          ...prev.retail,
+          ...(bodySeo.retail && typeof bodySeo.retail === 'object' ? bodySeo.retail : {}),
         },
       };
     }

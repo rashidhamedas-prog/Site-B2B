@@ -12,27 +12,55 @@ import { GoogleAnalyticsProvider } from '@/components/shared/GoogleAnalyticsProv
 import { fetchSiteContent } from '@/lib/cms/fetch';
 import { defaultSiteChrome, parseChromeBlocks } from '@/lib/cms/chrome';
 import { DEFAULT_MENUS, type MenusSettings } from '@/lib/menus';
-import { getServerApiBase } from '@/lib/server-api';
+import { fetchPublicSettings } from '@/lib/server-api';
 import { normalizeEnamad, type EnamadSealConfig } from '@/lib/enamad';
 import { mergePublicTheme, type ThemeSettings } from '@/lib/theme-settings';
 import { resolveGscVerification } from '@/lib/google-seo';
+import {
+  layoutSeoFromSettings,
+  type PublicBusinessSettings,
+  type PublicPaymentFlags,
+  type PublicSeoSettings,
+} from '@/lib/organization-from-settings';
 import type { Metadata } from 'next';
 
 const REVALIDATE = 120;
 
-export async function generateMetadata(): Promise<Metadata> {
-  const google = await resolveGscVerification('WHOLESALE');
-  return google ? { verification: { google } } : {};
-}
-
 type PublicSettingsPayload = {
   theme?: ThemeSettings;
   menus?: MenusSettings;
-  business?: {
+  seo?: PublicSeoSettings;
+  payment?: PublicPaymentFlags;
+  business?: PublicBusinessSettings & {
     enamadWholesale?: Partial<EnamadSealConfig>;
     enamadRetail?: Partial<EnamadSealConfig>;
   };
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [google, settings] = await Promise.all([
+    resolveGscVerification('WHOLESALE'),
+    fetchPublicSettings<PublicSettingsPayload>('WHOLESALE'),
+  ]);
+  const seo = layoutSeoFromSettings({
+    channel: 'WHOLESALE',
+    business: settings?.business,
+    seo: settings?.seo,
+  });
+  return {
+    title: { default: seo.title, template: '%s | پوشاک ترنم' },
+    description: seo.description,
+    openGraph: {
+      type: 'website',
+      locale: 'fa_IR',
+      siteName: seo.siteName,
+      title: seo.title,
+      description: seo.description,
+      images: [{ url: seo.ogImage, width: 1200, height: 630, alt: seo.ogAlt }],
+    },
+    ...(google ? { verification: { google } } : {}),
+  };
+}
 
 function normalizeMenus(raw?: MenusSettings | null): MenusSettings {
   if (!raw) return DEFAULT_MENUS;
@@ -50,22 +78,9 @@ function normalizeMenus(raw?: MenusSettings | null): MenusSettings {
   };
 }
 
-async function fetchWholesalePublicSettings(): Promise<PublicSettingsPayload | null> {
-  try {
-    const base = getServerApiBase();
-    const res = await fetch(`${base}/settings/public?channel=WHOLESALE`, {
-      next: { revalidate: REVALIDATE },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as PublicSettingsPayload;
-  } catch {
-    return null;
-  }
-}
-
 export default async function WholesaleLayout({ children }: { children: React.ReactNode }) {
   const [settings, chromeDoc] = await Promise.all([
-    fetchWholesalePublicSettings(),
+    fetchPublicSettings<PublicSettingsPayload>('WHOLESALE'),
     fetchSiteContent('WHOLESALE', 'chrome', { revalidate: REVALIDATE }),
   ]);
 
@@ -84,8 +99,13 @@ export default async function WholesaleLayout({ children }: { children: React.Re
 
   return (
     <WholesaleChromeProvider value={bag}>
-      <OrganizationJsonLd channel="WHOLESALE" />
-      <WebSiteJsonLd channel="WHOLESALE" />
+      <OrganizationJsonLd
+        channel="WHOLESALE"
+        business={settings?.business}
+        seo={settings?.seo}
+        payment={settings?.payment}
+      />
+      <WebSiteJsonLd channel="WHOLESALE" business={settings?.business} seo={settings?.seo} />
       <GoogleAnalyticsProvider channel="WHOLESALE" />
       <ThemeRuntime theme={bag.theme} />
       <Header />
