@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, Package, Truck, CheckCircle, Clock, CreditCard } from 'lucide-react';
+import { CUSTOMER_STATUS_FLOW, customerStatusStepIndex, orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 import { OrderStatusBadge } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -18,13 +19,20 @@ interface Order {
 
 function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa-IR'); }
 
-const STATUS_FLOW = [
-  { key: 'PENDING_REVIEW', label: 'در انتظار بررسی', icon: Clock },
-  { key: 'PROCESSING',     label: 'پردازش',           icon: Package },
-  { key: 'CONFIRMED',      label: 'تأیید شده',        icon: CheckCircle },
-  { key: 'SHIPPED',        label: 'ارسال شده',        icon: Truck },
-  { key: 'DELIVERED',      label: 'تحویل داده شده',   icon: CheckCircle },
-];
+const FLOW_ICONS: Record<string, typeof Clock> = {
+  PENDING_REVIEW: Clock,
+  CONFIRMED: CheckCircle,
+  PROCESSING: Package,
+  SHIPPED: Truck,
+  DELIVERED: CheckCircle,
+  COMPLETED: CheckCircle,
+};
+
+const STATUS_FLOW = CUSTOMER_STATUS_FLOW.map((key) => ({
+  key,
+  label: orderStatusLabelFa(key),
+  icon: FLOW_ICONS[key] ?? CheckCircle,
+}));
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -44,7 +52,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   if (loading) return <div className="p-8"><div className="skeleton h-64 rounded-2xl" /></div>;
   if (!order) return null;
 
-  const currentIdx = STATUS_FLOW.findIndex((s) => s.key === order.status);
+  const currentIdx = customerStatusStepIndex(order.status);
 
   const payRemaining = async () => {
     setPaying(true);

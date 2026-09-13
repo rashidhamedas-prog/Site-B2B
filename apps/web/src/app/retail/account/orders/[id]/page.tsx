@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 
 type OrderItem = {
@@ -39,18 +40,6 @@ type Order = {
   createdAt: string;
   items: OrderItem[];
   parcels?: Parcel[];
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  AWAITING_PAYMENT: 'در انتظار پرداخت',
-  PENDING_REVIEW: 'در بررسی',
-  CONFIRMED: 'تأیید شد',
-  PACKING: 'آماده‌سازی',
-  SHIPPED: 'ارسال شده',
-  DELIVERED: 'تحویل',
-  COMPLETED: 'تکمیل',
-  CANCELLED: 'لغو',
-  REFUNDED: 'بازپرداخت',
 };
 
 const PARCEL_STATUS: Record<string, string> = {
@@ -117,7 +106,7 @@ export default function RetailOrderDetailPage({ params }: { params: Promise<{ id
       <div>
         <h2 className="text-lg font-bold">{order.orderNumber}</h2>
         <p className="text-sm text-[var(--retail-muted)]">
-          {new Date(order.createdAt).toLocaleDateString('fa-IR', { dateStyle: 'long' })} — {STATUS_LABEL[order.status] || order.status}
+          {new Date(order.createdAt).toLocaleDateString('fa-IR', { dateStyle: 'long' })} — {orderStatusLabelFa(order.status)}
         </p>
       </div>
       {order.status === 'AWAITING_PAYMENT' ? (

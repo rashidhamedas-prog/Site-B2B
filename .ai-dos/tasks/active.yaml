@@ -1,5 +1,45 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-008"
+    title: "Complete synced admin order status queues"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-008"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-008"
+      implementer: "cursor:implementer-TASK-20260913-008"
+      reviewer: "same-session-after-gates"
+      security: "same-session-order-status"
+    branch: "ai/TASK-20260913-008-admin-order-queues"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T10:15:00Z"
+    heartbeat_at: "2026-09-13T10:15:00Z"
+    depends_on: []
+    file_claims:
+      - "packages/shared-types/src/order-status.ts"
+      - "packages/shared-types/src/order-status.spec.ts"
+      - "packages/shared-types/src/index.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/order.controller.ts"
+      - "apps/web/src/lib/hooks/useOrders.ts"
+      - "apps/web/src/components/admin/AdminOrders.tsx"
+      - "apps/web/src/components/admin/AdminOrderDetail.tsx"
+      - "apps/web/src/components/ui/Badge.tsx"
+      - "apps/web/src/components/admin/AdminDashboard.tsx"
+      - "apps/web/src/app/retail/account/orders/page.tsx"
+      - "apps/web/src/app/retail/account/orders/[id]/page.tsx"
+      - "apps/web/src/app/portal/dashboard/orders/[id]/page.tsx"
+      - "docs/reports/2026-09-13-admin-order-queues.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Shared order-status catalog so admin tabs, detail, customer steppers, and API transitions stay in sync.
+      Surgical edits in order.service.ts (transitions/counts/tracking guard). TASK-20260913-006 also listed this file for cash/create; that work is already on origin/master.
+    acceptance_criteria:
+      - "Every admin queue tab has matching labels, counts, empty copy, and only legal next actions"
+      - "DELIVERED can move to COMPLETED; PROCESSING cannot move to CONFIRMED"
+      - "Customer/portal steppers use PROCESSING not PACKING, after CONFIRMED"
+      - "status-counts is staff-only; unknown status filter is 400"
+      - "shared-types + api/web tsc pass"
   - id: "TASK-20260913-007"
     title: "Professional A5 packing-slip print redesign"
     status: "in_progress"

@@ -8,6 +8,7 @@ import {
   CheckCircle2, XCircle, Plus, FileText, Wallet,
   MapPin, Activity,
 } from 'lucide-react';
+import { CUSTOMER_STATUS_FLOW, orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
@@ -40,25 +41,32 @@ function timeAgo(dateStr: string) {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  AWAITING_PAYMENT: { label: 'در انتظار پرداخت', color: 'text-amber-700', bg: 'bg-amber-100' },
-  PENDING_REVIEW: { label: 'در انتظار بررسی', color: 'text-amber-700', bg: 'bg-amber-100' },
+  AWAITING_PAYMENT: { label: orderStatusLabelFa('AWAITING_PAYMENT'), color: 'text-amber-700', bg: 'bg-amber-100' },
+  PENDING_REVIEW: { label: orderStatusLabelFa('PENDING_REVIEW'), color: 'text-amber-700', bg: 'bg-amber-100' },
   PENDING:        { label: 'در انتظار', color: 'text-amber-700', bg: 'bg-amber-100' },
-  CONFIRMED:      { label: 'تأیید شده', color: 'text-blue-700', bg: 'bg-blue-100' },
-  PROCESSING:     { label: 'در حال پردازش', color: 'text-purple-700', bg: 'bg-purple-100' },
-  SHIPPED:        { label: 'ارسال شده', color: 'text-teal-700', bg: 'bg-teal-100' },
-  DELIVERED:      { label: 'تحویل داده', color: 'text-green-700', bg: 'bg-green-100' },
-  COMPLETED:      { label: 'تکمیل شده', color: 'text-emerald-700', bg: 'bg-emerald-100' },
-  CANCELLED:      { label: 'لغو شده', color: 'text-red-700', bg: 'bg-red-100' },
+  CONFIRMED:      { label: orderStatusLabelFa('CONFIRMED'), color: 'text-blue-700', bg: 'bg-blue-100' },
+  PROCESSING:     { label: orderStatusLabelFa('PROCESSING'), color: 'text-purple-700', bg: 'bg-purple-100' },
+  SHIPPED:        { label: orderStatusLabelFa('SHIPPED'), color: 'text-teal-700', bg: 'bg-teal-100' },
+  DELIVERED:      { label: orderStatusLabelFa('DELIVERED'), color: 'text-green-700', bg: 'bg-green-100' },
+  COMPLETED:      { label: orderStatusLabelFa('COMPLETED'), color: 'text-emerald-700', bg: 'bg-emerald-100' },
+  CANCELLED:      { label: orderStatusLabelFa('CANCELLED'), color: 'text-red-700', bg: 'bg-red-100' },
+  DELETED:        { label: orderStatusLabelFa('DELETED'), color: 'text-red-700', bg: 'bg-red-100' },
 };
 
-const STATUS_FUNNEL: Array<{ key: string; label: string; color: string }> = [
-  { key: 'PENDING_REVIEW', label: 'در انتظار بررسی', color: 'bg-amber-400' },
-  { key: 'PROCESSING', label: 'در حال پردازش', color: 'bg-blue-400' },
-  { key: 'CONFIRMED', label: 'تأیید شده', color: 'bg-violet-400' },
-  { key: 'SHIPPED', label: 'ارسال شده', color: 'bg-teal-400' },
-  { key: 'DELIVERED', label: 'تحویل داده شده', color: 'bg-emerald-500' },
-  { key: 'COMPLETED', label: 'تکمیل شده', color: 'bg-emerald-600' },
-];
+const FUNNEL_COLOR: Record<string, string> = {
+  PENDING_REVIEW: 'bg-amber-400',
+  CONFIRMED: 'bg-violet-400',
+  PROCESSING: 'bg-blue-400',
+  SHIPPED: 'bg-teal-400',
+  DELIVERED: 'bg-emerald-500',
+  COMPLETED: 'bg-emerald-600',
+};
+
+const STATUS_FUNNEL: Array<{ key: string; label: string; color: string }> = CUSTOMER_STATUS_FLOW.map((key) => ({
+  key,
+  label: orderStatusLabelFa(key),
+  color: FUNNEL_COLOR[key] ?? 'bg-gray-400',
+}));
 
 function StatusBadge({ status }: { status: string }) {
   const c = STATUS_CONFIG[status] ?? { label: status, color: 'text-gray-700', bg: 'bg-gray-100' };
@@ -458,7 +466,9 @@ export function AdminDashboard() {
                 return (
                   <div key={item.key}>
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                      <span>{item.label}</span>
+                      <Link href={`/admin/orders?status=${item.key}`} className="hover:text-primary">
+                        {item.label}
+                      </Link>
                       <span className="font-semibold text-gray-700">{count.toLocaleString('fa-IR')}</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">

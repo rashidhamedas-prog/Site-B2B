@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-13 — **TASK-20260913-008 implementing** on `ai/TASK-20260913-008-admin-order-queues`. Admin order queues share one FSM. Not live until merge/deploy.
 - Last verified: 2026-09-13 — **TASK-20260913-005 CLOSED** on `origin/master` + VPS `342ea58`. Retail COD hidden unless `retailCashEnabled`; live `.ir/checkout` shows only زرین‌پال. Health 200. Claims released.
 - Last verified: 2026-09-13 — **TASK-20260913-004 CLOSED** on `origin/master` + VPS `776108a`. Sender postal field live (empty until saved). Health 200. Claims released.
 - Last verified: 2026-09-13 — **TASK-20260913-003 CLOSED** on `origin/master` + VPS `db8d0f0`. Admin A5 packing/shipping label. Health 200. Claims released. Live admin click not exercised.
