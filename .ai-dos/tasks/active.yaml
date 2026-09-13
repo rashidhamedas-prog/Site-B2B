@@ -1,5 +1,37 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-003"
+    title: "A5 packing slip + shipping label on confirmed orders"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-003"
+      implementer: "cursor:implementer-TASK-20260913-003"
+      reviewer: "same-session-after-gates"
+      security: "same-session-pii-print"
+    branch: "ai/TASK-20260913-003-packing-slip-a5"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T08:40:00Z"
+    heartbeat_at: "2026-09-13T08:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/packing-slip.ts"
+      - "apps/web/src/lib/packing-slip.spec.ts"
+      - "apps/web/src/components/admin/AdminPackingSlip.tsx"
+      - "apps/web/src/components/admin/packing-slip.css"
+      - "apps/web/src/components/admin/AdminOrders.tsx"
+      - "apps/web/src/components/admin/AdminOrderDetail.tsx"
+      - "docs/architecture/packing-slip-a5.md"
+      - "docs/reports/2026-09-13-packing-slip-a5.md"
+    notes: |
+      Admin CONFIRMED (+ reprint later statuses): preview then print A5 packing slip with recipient/sender for parcel label.
+      Did not edit TASK-20260913-002 exclusive files (shipping-address, WORKLOG). Shared yaml/handoff/status append-only.
+    acceptance_criteria:
+      - "Confirmed order row opens a preview with recipient, sender, items, and invoice totals"
+      - "Print uses A5 portrait CSS; no innerHTML of customer fields"
+      - "JSON and free-form shippingAddress both render; mobile digits are not treated as postal"
+      - "packing-slip spec and web tsc pass"
   - id: "TASK-20260913-002"
     title: "TorobPay token 1011 is not a short-address bug"
     status: "in_progress"

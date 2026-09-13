@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { OrderStatusBadge } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { AdminPackingSlipButton } from './AdminPackingSlip';
 
 interface OrderItem {
   id: string;
@@ -220,6 +221,7 @@ function AdminOrderDetailInner({ id }: { id: string }) {
         </div>
         {!deleted && (
           <div className="flex items-center gap-2">
+            <AdminPackingSlipButton orderId={order.id} status={order.status} />
             <button type="button" onClick={() => setEditing((v) => !v)} className="btn btn-outline btn-sm inline-flex items-center gap-1.5">
               <Pencil className="h-3.5 w-3.5" />{editing ? 'بستن ویرایش' : 'ویرایش'}
             </button>

@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-13 — **TASK-20260913-003 implementing** on `ai/TASK-20260913-003-packing-slip-a5`. Admin A5 packing/shipping label. Not live until merge/deploy.
 - Last verified: 2026-09-13 — **TASK-20260913-002 live residual** on `origin/master` + VPS `216ff56`. TorobPay 1011 is not a short-address bug (ORD-2026-00037 complete Mashhad address; totweb-minimal also 1011). Health 200. Independent Reviewer + Security residual (payments).
 - Last verified: 2026-09-13 — **TASK-20260913-001 CLOSED** on `origin/master` + VPS `a72fb84`. ORD-2026-00036 `PENDING_REVIEW` + ZarinPal PAID. Health 200. Claims released. Independent Reviewer + Security residual (payments).
 - Last verified: 2026-09-13 — **TASK-20260913-001 implementing** on `ai/TASK-20260913-001-zarinpal-capture-lock`. Live ORD-2026-00036 ZarinPal OK but order stuck `AWAITING_PAYMENT` because stock lock joined items. Not live until merge/deploy + re-verify.

@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T08:40:00Z — TASK-20260913-003 implementing A5 packing slip
+
+- Owner: admin CONFIRMED orders need a preview + A5 print label (گیرنده/فرستنده + checklist + invoice).
+- Approach: client projection only; `GET /orders/:id` + public business settings; no new API; no `shipping-address.ts` edit (002 claim).
+- Gates: web `tsc --noEmit` 0; packing-slip.spec ok (ts-node commonjs).
+- Visual: static A5 fixture rendered (DOM/RTL correct). Live admin click not exercised (no admin session).
+- Next: commit, merge master, deploy web.
+- Residual: dedicated sender postal in settings; thermal size later.
+
 ## 2026-09-13T08:30:00Z — TASK-20260913-002 live 1011 is not address
 
 - Live `216ff56`. Health 200. ORD-2026-00037 still 1011 after sanitized street (48) AND totweb-minimal retry.
