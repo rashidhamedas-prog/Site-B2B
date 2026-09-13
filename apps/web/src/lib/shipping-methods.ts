@@ -7,7 +7,6 @@ export const FALLBACK_RETAIL_SHIPPING_METHODS: ShippingMethodOption[] = [
   { id: 'TIPAX', label: 'تیپاکس' },
   { id: 'CHAPAR', label: 'چاپار' },
   { id: 'TEHRAN_BIKE', label: 'پیک تهران' },
-  { id: IN_PERSON_SHIPPING_ID, label: 'تحویل در محل' },
 ];
 
 export function isInPersonShipping(id?: string): boolean {

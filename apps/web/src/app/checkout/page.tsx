@@ -114,7 +114,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, total, updateQty, removeItem, clear } = useCart();
   const [shippingMethod, setShippingMethod] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'INSTALLMENT' | 'ONLINE'>('CASH');
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'INSTALLMENT' | 'ONLINE'>('ONLINE');
   const [downPaymentAmount, setDownPaymentAmount] = useState<number>(0);
   const [installmentMonths, setInstallmentMonths] = useState<number>(1);
   const [notes, setNotes] = useState('');
@@ -129,7 +129,7 @@ export default function CheckoutPage() {
   const [shippingCompanies, setShippingCompanies] = useState<ShippingCompany[]>([]);
   const [installmentsCfg, setInstallmentsCfg] = useState<InstallmentsCfg | null>(null);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState(false);
-  const [cashEnabled, setCashEnabled] = useState(true);
+  const [cashEnabled, setCashEnabled] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerIdReady, setCustomerIdReady] = useState(false);
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
@@ -207,7 +207,7 @@ export default function CheckoutPage() {
           setInstallmentsCfg(s.installments);
           setInstallmentMonths((prev) => Math.min(Math.max(1, prev), s.installments.maxMonths));
         }
-        const cashOn = s?.payment?.wholesaleCashEnabled !== false;
+        const cashOn = s?.payment?.wholesaleCashEnabled === true;
         setCashEnabled(cashOn);
         if (s?.payment?.enabled) {
           setOnlinePaymentEnabled(true);

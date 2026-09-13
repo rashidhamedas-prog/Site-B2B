@@ -23,7 +23,7 @@ import { requireDiscountChannel } from '../discount/discount-channel';
 import { PaymentService } from '../payment/payment.service';
 import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
-import { addressPlace } from '../settings/shipping-channel';
+import { addressPlace, isInPersonMethod } from '../settings/shipping-channel';
 import { allowedOrderPaymentMethods } from '../settings/settings-payment-cash';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { resolveChannelSale } from '../product/product-sale';
@@ -744,6 +744,13 @@ export class OrderService {
 
     // Shipping is ALWAYS computed server-side — ignore client freeShipping / fees.
     const shippingMethod = this.resolveCreateShippingMethod(dto, channel);
+    const shipCfg = await this.settings.shipping();
+    const inPersonOn = channel === 'RETAIL'
+      ? shipCfg.retail?.inPersonEnabled === true
+      : shipCfg.wholesale?.inPersonEnabled === true;
+    if (isInPersonMethod(shippingMethod) && !inPersonOn) {
+      throw new BadRequestException('تحویل در محل برای این فروشگاه غیرفعال است');
+    }
     let computedShipping = 0;
     let freeShipping = false;
     let intraCityFee = 0;

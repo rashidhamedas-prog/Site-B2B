@@ -63,17 +63,19 @@ assert.equal(
   null,
 );
 
-const wholesaleOffline = wholesalePaymentOptions(false);
+const wholesaleOffline = wholesalePaymentOptions(false, true);
 assert.equal(wholesaleOffline.some((o) => o.id === 'ONLINE'), false);
 assert.equal(wholesaleOffline.map((o) => o.id).join(','), 'CASH,INSTALLMENT');
 assert.equal(wholesalePaymentOptions(true, false).map((o) => o.id).join(','), 'ONLINE,INSTALLMENT');
+assert.equal(wholesalePaymentOptions(false).map((o) => o.id).join(','), 'INSTALLMENT');
 
 const wholesaleOnline = wholesalePaymentOptions(true);
 assert.equal(wholesaleOnline[0]?.id, 'ONLINE');
 assert.equal(wholesaleOnline[0]?.badge, 'پیشنهادی');
 assert.equal(wholesaleOnline[0]?.logo, 'zarinpal');
 assert.equal(wholesaleOnline.find((o) => o.id === 'INSTALLMENT')?.logo, 'installment');
-assert.match(wholesaleOnline.find((o) => o.id === 'CASH')?.description || '', /کارت نمی‌کشی/);
+assert.equal(wholesaleOnline.some((o) => o.id === 'CASH'), false);
+assert.match(wholesalePaymentOptions(true, true).find((o) => o.id === 'CASH')?.description || '', /کارت نمی‌کشی/);
 
 assert.equal(retailSelectedPaymentId('CASH', 'ZARINPAL'), 'CASH');
 assert.equal(retailSelectedPaymentId('ONLINE', 'DIGIPAY'), 'DIGIPAY');

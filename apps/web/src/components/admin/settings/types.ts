@@ -16,6 +16,7 @@ export interface ShippingCompany {
 }
 
 export interface ShippingChannelRetail {
+  inPersonEnabled: boolean;
   baseFee: number;
   perKgFee: number;
   freeThreshold: number;
@@ -25,6 +26,7 @@ export interface ShippingChannelRetail {
 }
 
 export interface ShippingChannelWholesale {
+  inPersonEnabled: boolean;
   baseFee: number;
   freeThreshold: number;
   detailsText: string;

@@ -26,12 +26,38 @@ export const IN_PERSON_LABEL = 'تحویل در محل';
 export const IN_PERSON_COMPANY: ShippingCompany = {
   id: IN_PERSON_ID,
   label: IN_PERSON_LABEL,
-  isActive: true,
+  isActive: false,
   sort: 90,
 };
 
 export function isInPersonMethod(method?: string): boolean {
   return String(method || '').toUpperCase() === IN_PERSON_ID;
+}
+
+export function looksLikeInPersonCompany(company: { id?: string; label?: string }): boolean {
+  if (isInPersonMethod(company.id)) return true;
+  return /تحویل در محل|تحویل حضوری|درب منزل/.test(String(company.label || ''));
+}
+
+/** Pickup / door drop-off is opt-in. Unset = hidden on checkout. */
+export function resolveInPersonEnabled(
+  shipping: Record<string, any> | undefined,
+  channel: SaleChannel,
+): boolean {
+  const s = shipping && typeof shipping === 'object' ? shipping : {};
+  const nested = channel === 'RETAIL' ? s.retail?.inPersonEnabled : s.wholesale?.inPersonEnabled;
+  if (typeof nested === 'boolean') return nested === true;
+  return s.inPersonEnabled === true;
+}
+
+export function publicShippingCompanies(
+  companies: Array<{ id: string; label: string; isActive?: boolean }>,
+  inPersonEnabled: boolean,
+): Array<{ id: string; label: string }> {
+  return companies
+    .filter((c) => c?.isActive !== false)
+    .filter((c) => inPersonEnabled === true || !looksLikeInPersonCompany(c))
+    .map((c) => ({ id: String(c.id), label: String(c.label) }));
 }
 
 export function hasInPersonCompany(list: ShippingCompany[]): boolean {

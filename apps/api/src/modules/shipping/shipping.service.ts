@@ -11,6 +11,7 @@ import {
 import {
   shippingPostForChannel,
   isInPersonMethod,
+  publicShippingCompanies,
   type SaleChannel,
 } from '../settings/shipping-channel';
 
@@ -198,17 +199,26 @@ export class ShippingService {
   async methods(channel?: string) {
     const ch: SaleChannel = String(channel || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
     const cfg = await this.settings.shipping();
+    const inPersonEnabled = ch === 'RETAIL'
+      ? cfg.retail?.inPersonEnabled === true
+      : cfg.wholesale?.inPersonEnabled === true;
     const fromSettings = ch === 'RETAIL' ? cfg.retail?.companies : cfg.wholesale?.companies;
     if (Array.isArray(fromSettings)) {
-      return fromSettings
-        .filter((c: { isActive?: boolean }) => c?.isActive !== false)
-        .map((c: { id: string; label: string }) => ({ id: String(c.id), label: String(c.label) }));
+      return publicShippingCompanies(fromSettings, inPersonEnabled);
     }
     if (ch === 'WHOLESALE' && Array.isArray((cfg as { companies?: unknown[] }).companies)) {
-      return ((cfg as { companies: Array<{ id: string; label: string; isActive?: boolean }> }).companies)
-        .filter((c) => c?.isActive !== false)
-        .map((c) => ({ id: String(c.id), label: String(c.label) }));
+      return publicShippingCompanies(
+        (cfg as { companies: Array<{ id: string; label: string; isActive?: boolean }> }).companies,
+        inPersonEnabled,
+      );
     }
-    return ShippingService.METHOD_DEFS.filter((m) => cfg.methods[m.id] !== false);
+    return publicShippingCompanies(
+      ShippingService.METHOD_DEFS.map((m) => ({
+        id: m.id,
+        label: m.label,
+        isActive: cfg.methods[m.id] !== false,
+      })),
+      inPersonEnabled,
+    );
   }
 }

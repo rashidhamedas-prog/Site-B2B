@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AdminOnly } from '../auth/decorators/admin-only.decorator';
 import { resolveSmsOps } from '../notification/sms-ops';
+import { publicShippingCompanies } from './shipping-channel';
 
 const GROUPS = [
   'business',
@@ -86,10 +87,9 @@ export class SettingsController {
                 kgPerPiece: retail.kgPerPiece,
               };
         const channelCompanies = (ch === 'RETAIL' ? retail.companies : wholesale.companies) ?? [];
+        const inPersonEnabled = ch === 'RETAIL' ? retail.inPersonEnabled === true : wholesale.inPersonEnabled === true;
         return {
-          companies: channelCompanies
-            .filter((c: { isActive?: boolean }) => c?.isActive !== false)
-            .map((c: { id: string; label: string }) => ({ id: c.id, label: c.label })),
+          companies: publicShippingCompanies(channelCompanies, inPersonEnabled),
           ...flat,
           retail: {
             freeThreshold: retail.freeThreshold,
@@ -108,7 +108,7 @@ export class SettingsController {
       payment: {
         enabled: !!payment.enabled,
         retailCashEnabled: payment.retailCashEnabled === true,
-        wholesaleCashEnabled: payment.wholesaleCashEnabled !== false,
+        wholesaleCashEnabled: payment.wholesaleCashEnabled === true,
         manualCardNumber: payment.manualCardNumber || '',
         manualCardOwner: payment.manualCardOwner || '',
       },

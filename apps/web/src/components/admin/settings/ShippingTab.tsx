@@ -176,6 +176,18 @@ export function ShippingTab({
         title="شرکت‌های حمل همین سایت"
         hint="فقط روش‌های فعال در چک‌اوت همین کانال دیده می‌شوند. تغییر تکی روی عمده اثر ندارد."
       >
+        <ToggleRow
+          label="تحویل در محل / مراجعه به فروشگاه"
+          hint="اگر خاموش باشد این روش در چک‌اوت دیده نمی‌شود، حتی اگر ردیفش در لیست زیر فعال باشد"
+          value={isRetail ? shipping.retail.inPersonEnabled === true : shipping.wholesale.inPersonEnabled === true}
+          onChange={(v) => {
+            if (isRetail) {
+              onShipping({ ...shipping, retail: { ...shipping.retail, inPersonEnabled: v } });
+            } else {
+              onShipping({ ...shipping, wholesale: { ...shipping.wholesale, inPersonEnabled: v } });
+            }
+          }}
+        />
         <div className="flex justify-end">
           <button
             type="button"
