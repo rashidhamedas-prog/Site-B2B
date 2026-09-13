@@ -8,6 +8,7 @@ import { useOrders } from '@/lib/hooks/useOrders';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
+import { AdminPackingSlipButton } from './AdminPackingSlip';
 
 const STATUS_FILTERS = ['همه', 'AWAITING_PAYMENT', 'PENDING_REVIEW', 'PROCESSING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'DELETED'];
 const STATUS_FA: Record<string, string> = {
@@ -135,6 +136,7 @@ export function AdminOrders() {
                   <td className="px-4 py-3"><OrderStatusBadge status={order.status} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
+                      <AdminPackingSlipButton orderId={order.id} status={order.status} compact />
                       {order.status === 'AWAITING_PAYMENT' && (
                         <button
                           disabled={busyId === order.id}

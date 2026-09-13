@@ -2,6 +2,37 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T09:10:00Z — TASK-20260913-005 implementing COD setting
+
+- Owner: operator disables «پرداخت درب منزل» in admin but retail/wholesale checkout still shows CASH.
+- Root: `retailPaymentOptions` / `wholesalePaymentOptions` always append CASH; `order.create` always allows CASH. No payment setting exists for COD. Disabling IN_PERSON shipping or MANUAL provider cannot hide it.
+- Approach: per-channel `retailCashEnabled` / `wholesaleCashEnabled` in payment JSON; public flags; checkout filter; create-order reject; MANUAL eligible follows the same flag. Retail defaults off (operator already removed it); wholesale cash stays on unless toggled off.
+- Reclaimed settings.service/controller + AdminSettings payment tab from TASK-20260913-004 after postal `776108a`.
+- Gates: `settings-payment-cash.spec` ok; `tsx checkout-payment-ui.spec` ok; api tsc 0; web tsc 0.
+- Next: commit, merge master, deploy. Residual: saved CMS trust/FAQ may still mention «در محل» until operator saves site-content.
+
+## 2026-09-13T08:55:00Z — TASK-20260913-004 implementing sender postal
+
+- Admin business settings + public `postalCode` for A5 sender boxes.
+- Next: specs + tsc, merge master, deploy.
+- Residual: operator must save the 10-digit office postal once (not invented).
+
+## 2026-09-13T08:50:00Z — TASK-20260913-003 CLOSED live `db8d0f0`
+
+- Admin CONFIRMED (+ reprint later statuses): preview then چاپ A5 (گیرنده/فرستنده، چک‌لیست، خلاصه فاکتور).
+- Live: API health 200; VPS `db8d0f0`; web restarted 08:49Z.
+- Gates: packing-slip.spec ok; web tsc 0. Live admin click not exercised (no admin session).
+- Claims released. Residual: sender postal in settings; thermal size later.
+
+## 2026-09-13T08:40:00Z — TASK-20260913-003 implementing A5 packing slip
+
+- Owner: admin CONFIRMED orders need a preview + A5 print label (گیرنده/فرستنده + checklist + invoice).
+- Approach: client projection only; `GET /orders/:id` + public business settings; no new API; no `shipping-address.ts` edit (002 claim).
+- Gates: web `tsc --noEmit` 0; packing-slip.spec ok (ts-node commonjs).
+- Visual: static A5 fixture rendered (DOM/RTL correct). Live admin click not exercised (no admin session).
+- Next: commit, merge master, deploy web.
+- Residual: dedicated sender postal in settings; thermal size later.
+
 ## 2026-09-13T08:30:00Z — TASK-20260913-002 live 1011 is not address
 
 - Live `216ff56`. Health 200. ORD-2026-00037 still 1011 after sanitized street (48) AND totweb-minimal retry.

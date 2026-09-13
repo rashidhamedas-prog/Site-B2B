@@ -1,0 +1,293 @@
+/* A5 packing + shipping label. High contrast for inkjet/laser. Screen preview + print. */
+
+.ps-modal-note {
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.ps-preview-frame {
+  background: #e8e4dc;
+  padding: 20px 16px 28px;
+  overflow: auto;
+  max-height: min(72vh, 900px);
+}
+
+.ps-preview-frame .ps-sheet {
+  margin: 0 auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.ps-print-root {
+  display: none;
+}
+
+.ps-sheet {
+  width: 148mm;
+  min-height: 210mm;
+  box-sizing: border-box;
+  padding: 7mm;
+  background: #fff;
+  color: #111;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+  border: 1.5pt solid #111;
+  display: flex;
+  flex-direction: column;
+}
+
+.ps-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1.5pt solid #111;
+}
+
+.ps-kicker {
+  margin: 0 0 2px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: #333;
+}
+
+.ps-brand {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.ps-meta,
+.ps-date,
+.ps-track {
+  margin: 2px 0 0;
+  font-size: 10px;
+}
+
+.ps-track.muted {
+  color: #444;
+}
+
+.ps-head-id {
+  text-align: left;
+  min-width: 0;
+}
+
+.ps-order {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  word-break: break-all;
+}
+
+.ps-parties {
+  display: grid;
+  grid-template-columns: 32% 68%;
+  gap: 0;
+  margin-top: 6px;
+  border: 1.5pt solid #111;
+}
+
+.ps-party {
+  padding: 8px 8px 10px;
+  min-width: 0;
+}
+
+.ps-party.recipient {
+  min-height: 46mm;
+}
+
+.ps-party.sender {
+  border-left: 1.5pt solid #111;
+}
+
+.ps-party h2,
+.ps-pack-title h2,
+.ps-invoice h2,
+.ps-notes h2 {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.ps-name {
+  margin: 0;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.ps-name.big {
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.ps-phone {
+  margin: 2px 0;
+  font-weight: 700;
+}
+
+.ps-phone.big {
+  font-size: 14px;
+}
+
+.ps-addr {
+  margin: 3px 0 6px;
+  word-break: break-word;
+}
+
+.ps-addr.big {
+  font-size: 12px;
+}
+
+.ps-postal {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ps-postal-label {
+  font-size: 9px;
+  color: #222;
+}
+
+.ps-postal-boxes {
+  display: flex;
+  gap: 0;
+}
+
+.ps-postal-box {
+  width: 14px;
+  height: 18px;
+  border: 1pt solid #111;
+  margin-inline-start: -1pt;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-party.recipient .ps-postal-box {
+  width: 16px;
+  height: 22px;
+  font-size: 13px;
+}
+
+.ps-pack {
+  margin-top: 7px;
+  flex: 1 1 auto;
+}
+
+.ps-pack-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1pt solid #111;
+  padding-bottom: 3px;
+}
+
+.ps-sheet table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ps-sheet th,
+.ps-sheet td {
+  border-bottom: 0.6pt solid #333;
+  padding: 3px 4px;
+  text-align: right;
+  vertical-align: top;
+}
+
+.ps-sheet th {
+  font-size: 9px;
+}
+
+.ps-sku {
+  display: block;
+  font-size: 9px;
+  color: #333;
+}
+
+.ps-check {
+  width: 22px;
+  text-align: center;
+}
+
+.ps-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1.5pt solid #111;
+}
+
+.ps-invoice dl {
+  margin: 0;
+}
+
+.ps-invoice dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 1px 0;
+}
+
+.ps-invoice .total {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1pt solid #111;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.ps-invoice dt,
+.ps-invoice dd,
+.ps-notes p {
+  margin: 0;
+}
+
+.ps-return {
+  margin-top: 6px !important;
+  font-size: 9px;
+  color: #222;
+}
+
+.ps-warn {
+  margin: 6px 16px 0;
+  font-size: 12px;
+  color: #9a3412;
+}
+
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 7mm;
+  }
+
+  html.packing-slip-print body > *:not(.ps-print-root) {
+    display: none !important;
+  }
+
+  html.packing-slip-print .ps-print-root {
+    display: block !important;
+  }
+
+  html.packing-slip-print .ps-sheet {
+    width: 100%;
+    min-height: auto;
+    border: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+
+  .ps-party,
+  .ps-head,
+  .ps-foot {
+    break-inside: avoid;
+  }
+}

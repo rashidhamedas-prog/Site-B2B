@@ -8,6 +8,8 @@ import {
   resolveChannelCompanies,
   resolveShippingPost,
 } from './shipping-channel';
+import { normalizeBusinessPostal } from './settings-business';
+import { resolveCashOnDeliveryFlags } from './settings-payment-cash';
 
 // Central user-configurable settings, stored in DB and edited from the admin
 // panel. Consumers (shipping/sms/payment) read through the typed getters,
@@ -36,6 +38,9 @@ export class SettingsService {
 
   async set(key: string, value: Record<string, any>): Promise<AppSettingEntity> {
     let next = value;
+    if (key === 'business' && value && typeof value === 'object') {
+      next = { ...value, postalCode: normalizeBusinessPostal(value.postalCode) };
+    }
     if (key === 'payment' && value && typeof value === 'object') {
       const prev = await this.get('payment');
       next = { ...value };
@@ -99,6 +104,7 @@ export class SettingsService {
       telegram: s.telegram ?? '@toliditaranom',
       address: s.address ?? '',
       officeAddress: s.officeAddress ?? '',
+      postalCode: normalizeBusinessPostal(s.postalCode),
       minOrderToman: Number(s.minOrderToman) || 1000000,
       defaultCreditDays: Number(s.defaultCreditDays) || 30,
       /** Auto «موجودی محدود» when stock ≤ minOrder × this (both channels) */
@@ -319,6 +325,7 @@ export class SettingsService {
       torobpayConfigured: false,
       manualCardNumber: s.manualCardNumber ?? '',
       manualCardOwner: s.manualCardOwner ?? '',
+      ...resolveCashOnDeliveryFlags(s),
     };
     out.digipayConfigured =
       !!out.digipayClientId &&

@@ -24,6 +24,7 @@ import { PaymentService } from '../payment/payment.service';
 import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { addressPlace } from '../settings/shipping-channel';
+import { allowedOrderPaymentMethods } from '../settings/settings-payment-cash';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { resolveChannelSale } from '../product/product-sale';
 import { sizesForSizeType } from '../product/product-pack';
@@ -594,10 +595,14 @@ export class OrderService {
       }
     }
 
-    const allowedPay =
-      channel === 'RETAIL' ? ['CASH', 'ONLINE'] : ['CASH', 'INSTALLMENT', 'ONLINE'];
+    const payCfg = await this.settings.payment();
+    const allowedPay = allowedOrderPaymentMethods(channel, payCfg);
     if (!allowedPay.includes(paymentMethod)) {
-      throw new BadRequestException('روش پرداخت نامعتبر است');
+      throw new BadRequestException(
+        paymentMethod === 'CASH'
+          ? 'پرداخت درب منزل برای این فروشگاه غیرفعال است'
+          : 'روش پرداخت نامعتبر است',
+      );
     }
 
     // Expand items; stock is checked at variant level (then synced to product).

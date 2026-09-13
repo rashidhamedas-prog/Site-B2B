@@ -59,6 +59,7 @@ export interface SettingsPayload {
     telegram: string;
     address: string;
     officeAddress: string;
+    postalCode: string;
     minOrderToman: number;
     defaultCreditDays: number;
     limitedStockMultiplier?: number;
@@ -122,6 +123,8 @@ export interface SettingsPayload {
     torobpayConfigured: boolean;
     manualCardNumber: string;
     manualCardOwner: string;
+    retailCashEnabled: boolean;
+    wholesaleCashEnabled: boolean;
   };
   installments: {
     minDownPaymentPercent: number;

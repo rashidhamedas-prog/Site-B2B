@@ -33,6 +33,7 @@ export function formatTomanFromRial(rial: number): string {
 export function retailPaymentOptions(
   digipayAvailable: boolean,
   torobpayAvailable = false,
+  cashEnabled = false,
 ): CheckoutChoiceOption[] {
   return [
     {
@@ -70,18 +71,22 @@ export function retailPaymentOptions(
           },
         ]
       : []),
-    {
-      id: 'CASH',
-      title: 'پرداخت وقتی لباس رسید',
-      description:
-        'الان هیچ پولی از کارت کم نمی‌شود. اول لباس به دستت می‌رسد؛ بعد همان موقع پول را به پیک یا فروشگاه می‌دهی. مثل خرید از مغازه، فقط لباس را پیک می‌آورد.',
-      icon: 'cash',
-      logo: 'cash',
-    },
+    ...(cashEnabled
+      ? [
+          {
+            id: 'CASH',
+            title: 'پرداخت وقتی لباس رسید',
+            description:
+              'الان هیچ پولی از کارت کم نمی‌شود. اول لباس به دستت می‌رسد؛ بعد همان موقع پول را به پیک یا فروشگاه می‌دهی. مثل خرید از مغازه، فقط لباس را پیک می‌آورد.',
+            icon: 'cash' as const,
+            logo: 'cash' as const,
+          },
+        ]
+      : []),
   ];
 }
 
-export function wholesalePaymentOptions(onlineEnabled: boolean): CheckoutChoiceOption[] {
+export function wholesalePaymentOptions(onlineEnabled: boolean, cashEnabled = true): CheckoutChoiceOption[] {
   return [
     ...(onlineEnabled
       ? [
@@ -97,14 +102,18 @@ export function wholesalePaymentOptions(onlineEnabled: boolean): CheckoutChoiceO
           },
         ]
       : []),
-    {
-      id: 'CASH',
-      title: 'بعداً با فروشگاه حساب کن',
-      description:
-        'الان کارت نمی‌کشی. سفارش ثبت می‌شود و بعداً با تیم فروش هماهنگ می‌کنی چطور پول را بدهی — کارت‌به‌کارت، حواله یا نقد.',
-      icon: 'cash',
-      logo: 'cash',
-    },
+    ...(cashEnabled
+      ? [
+          {
+            id: 'CASH',
+            title: 'بعداً با فروشگاه حساب کن',
+            description:
+              'الان کارت نمی‌کشی. سفارش ثبت می‌شود و بعداً با تیم فروش هماهنگ می‌کنی چطور پول را بدهی — کارت‌به‌کارت، حواله یا نقد.',
+            icon: 'cash' as const,
+            logo: 'cash' as const,
+          },
+        ]
+      : []),
     {
       id: 'INSTALLMENT',
       title: 'اقساط خود فروشگاه ترنم',
