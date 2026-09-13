@@ -1,5 +1,70 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-011"
+    title: "Complete synced admin customer workspace + wallet ledger"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260913-011"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-011"
+      implementer: "cursor:implementer-TASK-20260913-011"
+      reviewer: "required-independent-wallet-pii"
+      security: "required-independent-wallet-ledger"
+    branch: "ai/TASK-20260913-011-admin-customer-workspace"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T11:50:00Z"
+    heartbeat_at: "2026-09-13T11:50:00Z"
+    depends_on: []
+    file_claims:
+      - "packages/shared-types/src/customer-status.ts"
+      - "packages/shared-types/src/customer-status.spec.ts"
+      - "packages/shared-types/src/index.ts"
+      - "apps/web/src/lib/admin-customer-workspace.ts"
+      - "apps/web/src/lib/admin-customer-workspace.spec.ts"
+      - "apps/web/src/lib/hooks/useCustomers.ts"
+      - "apps/web/src/components/admin/AdminCustomers.tsx"
+      - "apps/web/src/components/admin/AdminCustomerRecord.tsx"
+      - "apps/web/src/components/admin/AdminCustomerWallet.tsx"
+      - "apps/web/src/components/admin/customer-marketing/AdminCustomerDossier.tsx"
+      - "apps/web/src/components/admin/customer-marketing/AdminCustomerMarketing.tsx"
+      - "apps/web/src/app/admin/customers/page.tsx"
+      - "apps/web/src/app/admin/customers/[id]/page.tsx"
+      - "apps/web/src/app/admin/customers/marketing/page.tsx"
+      - "apps/api/src/modules/customer/dto/upsert-customer.dto.ts"
+      - "apps/api/src/modules/customer/dto/wallet.dto.ts"
+      - "apps/api/src/modules/customer/entities/customer-wallet-entry.entity.ts"
+      - "apps/api/src/modules/customer/customer-wallet.ts"
+      - "apps/api/src/modules/customer/customer-wallet.spec.ts"
+      - "apps/api/src/modules/customer/customer.service.ts"
+      - "apps/api/src/modules/customer/customer.controller.ts"
+      - "apps/api/src/modules/customer/customer-self.controller.ts"
+      - "apps/api/src/modules/customer/customer.module.ts"
+      - "apps/api/src/database/migrations/20260913-011-customer-wallet-ledger.ts"
+      - "apps/api/src/database/migrations/20260913-011-customer-wallet-ledger.spec.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/web/src/app/retail/account/wallet/page.tsx"
+      - "apps/web/src/components/retail/RetailAccountShell.tsx"
+      - "apps/web/src/app/portal/dashboard/wallet/page.tsx"
+      - "apps/web/src/components/portal/PortalSidebar.tsx"
+      - "docs/architecture/admin-customer-workspace.md"
+      - "docs/reports/2026-09-13-admin-customer-workspace.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Completes /admin/customers workspace + append-only wallet ledger.
+      Reclaimed shared-types/index.ts + WORKLOG from TASK-20260913-008 (done leftover).
+      Reclaimed database.config from TASK-20260912-002 (released leftover).
+      Reclaimed PortalSidebar from TASK-20260904-001 (stale hb 2026-09-03, >24h).
+      Reclaimed RetailAccountShell from TASK-20260903-005 (done leftover).
+      Did not take order.service (006/008), rma.service (026), auth.controller (004-001).
+      Shopper wallet is GET /v1/account/wallet. RMA raw SQL remains residual.
+    acceptance_criteria:
+      - "List ?channel=&q=&status=&segment= survive refresh; marketing uses same channel query"
+      - "Customer record tabs identity/addresses/orders/wallet/marketing share one customer SoT"
+      - "Create/update DTO cannot set balance/code/id; create honors valid status"
+      - "Admin credit/debit writes ledger+cache atomically with reason and idempotency"
+      - "Retail /account/wallet and portal /portal/dashboard/wallet show the same balance+entries"
+      - "Existing customers.balance seeded as OPENING; order/invoice updateBalance writes ledger"
+      - "workspace + wallet specs and api/web tsc pass"
   - id: "TASK-20260913-010"
     title: "Complete synced admin product workspace"
     status: "done"
@@ -104,7 +169,8 @@ tasks:
     file_claims:
       - "packages/shared-types/src/order-status.ts"
       - "packages/shared-types/src/order-status.spec.ts"
-      - "packages/shared-types/src/index.ts"
+      # transferred 2026-09-13 to TASK-20260913-011 (done leftover; customer catalog export):
+      # "packages/shared-types/src/index.ts"
       - "apps/api/src/modules/order/order.service.ts"
       - "apps/api/src/modules/order/order.controller.ts"
       - "apps/web/src/lib/hooks/useOrders.ts"
@@ -702,7 +768,8 @@ tasks:
       - "apps/api/src/modules/product/internal-link-resolver.spec.ts"
       - "apps/api/src/modules/product/product.module.ts"
       - "apps/api/src/modules/product/dto/create-product.dto.ts"
-      - "apps/api/src/config/database.config.ts"
+      # transferred 2026-09-13 to TASK-20260913-011 (released leftover; wallet entity):
+      # "apps/api/src/config/database.config.ts"
       - "apps/web/src/components/admin/AdminProducts.tsx"
       - "apps/web/src/lib/hooks/useProducts.ts"
       - "docs/WORKLOG.md"
@@ -2315,7 +2382,8 @@ tasks:
       - "apps/web/src/components/retail/RetailAccountAuth.tsx"
       - "apps/web/src/components/account/ForgotPasswordFlow.tsx"
       - "apps/web/src/components/portal/LoginForm.tsx"
-      - "apps/web/src/components/portal/PortalSidebar.tsx"
+      # transferred 2026-09-13 to TASK-20260913-011 (stale hb 2026-09-03; wallet nav):
+      # "apps/web/src/components/portal/PortalSidebar.tsx"
       - "apps/web/src/components/portal/PortalHeader.tsx"
       - "docs/reports/2026-09-04-channel-customer-sessions.md"
       - "docs/WORKLOG.md"
@@ -2499,7 +2567,8 @@ tasks:
       - "apps/web/src/components/account/PasswordField.tsx"
       # transferred 2026-09-04 to TASK-20260904-001 (done; purpose=retail login):
       # "apps/web/src/components/retail/RetailAccountAuth.tsx"
-      - "apps/web/src/components/retail/RetailAccountShell.tsx"
+      # transferred 2026-09-13 to TASK-20260913-011 (done leftover; wallet nav):
+      # "apps/web/src/components/retail/RetailAccountShell.tsx"
       # transferred 2026-09-04 to TASK-20260904-002 (done task; address delete):
       # "apps/web/src/components/retail/RetailAccountDetails.tsx"
       - "apps/web/src/components/retail/RetailOtpLogin.tsx"

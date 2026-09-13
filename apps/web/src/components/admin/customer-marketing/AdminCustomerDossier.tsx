@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Phone } from 'lucide-react';
+import { customerStatusLabelFa, orderStatusLabelFa } from '@taranom/shared-types';
 import { Callout, Section } from '../admin-omnichannel-ui';
 import { Modal } from '@/components/ui';
 import { apiClient } from '@/lib/api';
@@ -17,7 +18,7 @@ const CALL_RESULTS = [
   { id: 'CALLBACK', label: 'بعداً تماس' },
 ];
 
-export function AdminCustomerDossier() {
+export function AdminCustomerDossier({ embedded = false }: { embedded?: boolean }) {
   const params = useParams<{ id: string }>();
   const id = String(params?.id || '');
   const { data, loading, error, reload } = useCustomerDossier(id);
@@ -85,6 +86,7 @@ export function AdminCustomerDossier() {
 
   return (
     <div className="space-y-5">
+      {!embedded && (
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs text-gray-500">
@@ -99,6 +101,7 @@ export function AdminCustomerDossier() {
           {channel === 'RETAIL' ? 'تکی' : 'عمده'}
         </span>
       </div>
+      )}
 
       {notice && <Callout tone="info">{notice}</Callout>}
       {noPhone && <Callout tone="warn">شماره موبایل ثبت نشده؛ تماس و پیامک ممکن نیست.</Callout>}
@@ -108,7 +111,7 @@ export function AdminCustomerDossier() {
         <Section title="هویت و قیف">
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-gray-500">کد</dt><dd className="font-mono" dir="ltr">{String(customer.code)}</dd></div>
-            <div className="flex justify-between gap-3"><dt className="text-gray-500">وضعیت حساب</dt><dd>{String(customer.status)}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="text-gray-500">وضعیت حساب</dt><dd>{customerStatusLabelFa(String(customer.status))}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-gray-500">مرحله قیف</dt><dd>{String(enrollment?.stage || 'بدون قیف')}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-gray-500">رضایت</dt><dd>{String(consent?.status || 'ثبت نشده')}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-gray-500">موبایل</dt><dd dir="ltr">{phone || '—'}</dd></div>
@@ -122,8 +125,9 @@ export function AdminCustomerDossier() {
                 setCallOpen(true);
               }}
               className="btn btn-primary btn-sm min-h-11"
+              aria-label="تماس و ثبت نتیجه"
             >
-              <Phone className="h-4 w-4" />تماس و ثبت نتیجه
+              <Phone className="h-4 w-4" aria-hidden />تماس و ثبت نتیجه
             </button>
             <button
               type="button"
@@ -195,7 +199,7 @@ export function AdminCustomerDossier() {
               {orders.map((o) => (
                 <li key={String(o.id)} className="flex justify-between gap-2">
                   <span className="font-mono" dir="ltr">{String(o.orderNumber)}</span>
-                  <span>{String(o.status)}</span>
+                  <span>{orderStatusLabelFa(String(o.status))}</span>
                 </li>
               ))}
             </ul>

@@ -70,6 +70,9 @@ function RetailAccountHome() {
             <p className="mt-2 text-xs font-bold opacity-80">اعتبار کیف‌پول</p>
             <p className="mt-1 text-2xl font-extrabold">{toman(wallet)} تومان</p>
             <p className="mt-1 text-xs opacity-70">در تسویه می‌توانید از اعتبار استفاده کنید</p>
+            <Link href="/account/wallet" className="mt-3 inline-block text-xs font-bold underline underline-offset-4">
+              گردش کیف پول
+            </Link>
           </>
         )}
       </div>
