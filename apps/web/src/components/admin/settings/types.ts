@@ -59,6 +59,7 @@ export interface SettingsPayload {
     telegram: string;
     address: string;
     officeAddress: string;
+    postalCode: string;
     minOrderToman: number;
     defaultCreditDays: number;
     limitedStockMultiplier?: number;

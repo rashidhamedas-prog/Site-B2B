@@ -75,7 +75,19 @@ const slip = buildPackingSlip(
 assert(slip.channelLabel === 'فروش تکی', 'retail channel');
 assert(slip.recipient.name === 'سارا احمدی', 'recipient name');
 assert(slip.recipient.postalCode === '9187154321', 'recipient postal');
+assert(slip.sender.postalCode === '', 'no sender postal without settings field');
 assert(slip.sender.name === 'پوشاک ترنم', 'sender from settings');
+
+const slipWithPostal = buildPackingSlip(
+  {
+    orderNumber: 'ORD-2026-00036-4FEF94',
+    createdAt: '2026-09-13T06:41:11.200Z',
+    shippingAddress: jsonAddr,
+    items: [],
+  },
+  { businessName: 'پوشاک ترنم', officeAddress: 'مشهد 09152424624', postalCode: '۹۱۸۷۱۵۴۳۲۱' },
+);
+assert(slipWithPostal.sender.postalCode === '9187154321', 'settings postal wins over address mobile');
 assert(slip.lines[0]?.quantity === 2, 'line qty');
 assert(slip.totalToman === 1160000, 'total toman');
 assert(slip.itemCount === 2, 'unit count');

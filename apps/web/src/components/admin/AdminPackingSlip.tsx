@@ -17,13 +17,9 @@ import './packing-slip.css';
 
 type DetailOrder = SlipOrderInput & { id: string; status: string };
 
-let cachedSender: SlipSenderInput | null = null;
-
 async function loadSender(): Promise<SlipSenderInput> {
-  if (cachedSender) return cachedSender;
   const settings = await apiClient.get<{ business?: SlipSenderInput }>('/settings/public');
-  cachedSender = settings.business ?? {};
-  return cachedSender;
+  return settings.business ?? {};
 }
 
 function PostalRow({ code, label }: { code: string; label: string }) {

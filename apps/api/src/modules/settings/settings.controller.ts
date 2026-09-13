@@ -59,6 +59,7 @@ export class SettingsController {
         telegram: business.telegram,
         address: business.address,
         officeAddress: business.officeAddress,
+        postalCode: business.postalCode,
         minOrderToman: business.minOrderToman,
         limitedStockMultiplier: business.limitedStockMultiplier,
         newBadgeDays: business.newBadgeDays,

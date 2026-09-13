@@ -125,6 +125,7 @@ export function AdminSettings() {
         ...res,
         business: {
           ...res.business,
+          postalCode: res.business?.postalCode ?? '',
           limitedStockMultiplier: res.business?.limitedStockMultiplier ?? 2,
           newBadgeDays: res.business?.newBadgeDays ?? 7,
           enamadWholesale: { ...EMPTY_ENAMAD, ...(res.business?.enamadWholesale ?? {}), enabled: res.business?.enamadWholesale?.enabled === true },
@@ -446,6 +447,13 @@ export function AdminSettings() {
                 </div>
                 <TextAreaField label="آدرس کارگاه" value={data.business.address} onChange={(v) => setData({ ...data, business: { ...data.business, address: v } })} />
                 <TextAreaField label="آدرس دفتر پخش" value={data.business.officeAddress} onChange={(v) => setData({ ...data, business: { ...data.business, officeAddress: v } })} />
+                <TextField
+                  label="کدپستی دفتر پخش"
+                  value={data.business.postalCode ?? ''}
+                  onChange={(v) => setData({ ...data, business: { ...data.business, postalCode: v } })}
+                  dir="ltr"
+                  help="۱۰ رقم — روی برگه بسته‌بندی A5 به‌عنوان فرستنده چاپ می‌شود"
+                />
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   <TextField label="وب‌سایت" value={data.business.website} onChange={(v) => setData({ ...data, business: { ...data.business, website: v } })} icon={<Globe className="h-4 w-4" />} dir="ltr" />
                   <TextField label="اینستاگرام" value={data.business.instagram} onChange={(v) => setData({ ...data, business: { ...data.business, instagram: v } })} icon={<Instagram className="h-4 w-4" />} dir="ltr" />

@@ -104,5 +104,5 @@ operator click → parallel GET order + public settings
 
 - Confirmed: one combined A5 (label + checklist + invoice), not two sheets.
 - Confirmed: show prices (shop request).
-- Open: dedicated sender postal in settings if پست requires it on every bag.
+- Confirmed: `business.postalCode` in admin settings + public subset; packing slip prefers it over scraping the address line.
 - Open: 100×150mm thermal later — do not block A5.

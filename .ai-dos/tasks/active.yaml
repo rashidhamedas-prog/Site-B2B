@@ -1,5 +1,38 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-004"
+    title: "Business settings sender postal for A5 packing slip"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260913-004"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-004"
+      implementer: "cursor:implementer-TASK-20260913-004"
+    branch: "ai/TASK-20260913-004-sender-postal"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T08:55:00Z"
+    heartbeat_at: "2026-09-13T08:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/settings/settings-business.ts"
+      - "apps/api/src/modules/settings/settings-business.spec.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/web/src/components/admin/settings/types.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/web/src/lib/packing-slip.ts"
+      - "apps/web/src/lib/packing-slip.spec.ts"
+      - "apps/web/src/components/admin/AdminPackingSlip.tsx"
+      - "docs/architecture/packing-slip-a5.md"
+      - "docs/reports/2026-09-13-sender-postal.md"
+    notes: |
+      Dedicated business.postalCode for sender on A5 label. JSON settings, no migration.
+      Did not edit TASK-20260913-002 exclusive files.
+    acceptance_criteria:
+      - "Admin کسب‌وکار has a 10-digit postal field that persists"
+      - "GET /settings/public includes business.postalCode"
+      - "Packing slip sender uses settings postal first, never a mobile from the address line"
+      - "settings-business + packing-slip specs and web tsc pass"
   - id: "TASK-20260913-003"
     title: "A5 packing slip + shipping label on confirmed orders"
     status: "done"

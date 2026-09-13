@@ -173,6 +173,7 @@ export type SlipSenderInput = {
   phone?: string;
   address?: string;
   officeAddress?: string;
+  postalCode?: string;
   website?: string;
 };
 
@@ -206,7 +207,7 @@ export function buildPackingSlip(order: SlipOrderInput, senderIn: SlipSenderInpu
       name: String(senderIn.businessName || 'پوشاک ترنم').trim(),
       phone: String(senderIn.phone || '').trim(),
       address: senderAddress,
-      postalCode: extractIranPostal(senderAddress),
+      postalCode: extractIranPostal(senderIn.postalCode || '') || extractIranPostal(senderAddress),
     },
     recipient: {
       name: recipientName,

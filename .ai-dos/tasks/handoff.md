@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T08:55:00Z — TASK-20260913-004 implementing sender postal
+
+- Admin business settings + public `postalCode` for A5 sender boxes.
+- Next: specs + tsc, merge master, deploy.
+- Residual: operator must save the 10-digit office postal once (not invented).
+
 ## 2026-09-13T08:50:00Z — TASK-20260913-003 CLOSED live `db8d0f0`
 
 - Admin CONFIRMED (+ reprint later statuses): preview then چاپ A5 (گیرنده/فرستنده، چک‌لیست، خلاصه فاکتور).
