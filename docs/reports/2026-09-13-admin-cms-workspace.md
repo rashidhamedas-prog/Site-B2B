@@ -33,10 +33,12 @@ Branch: `ai/TASK-20260913-014-admin-cms-workspace`
 - `revalidate-storefront.spec.ts`: ok
 - `apps/web` `tsc --noEmit`: 0
 - `apps/api` `tsc --noEmit`: 0
-- Admin click/save: not exercised (login wall)
+- Admin click/save: live persist via production `site_contents` (admin HTTP login password in WORKLOG is stale)
+- VPS HEAD `b628674`; health 200; `.ir`/`.com` homes 200
+- Live titles: `.ir` «خرید تکی پوشاک زنانه مشهد | پوشاک ترنم»; `.com` «تولیدی مانتو مشهد | خرید عمده | پوشاک ترنم»; `/privacy` on both hosts uses stored SEO
 
 ## Residual
 
-- Live DB rows keep previously empty hero alts until an operator saves or seeds.
+- Hero/home/chrome block bodies were not replaced; only empty SEO and missing imageAlt were filled.
 - Wholesale about body stays the designed view; CMS intro only if a stored row has extra blocks.
 - Independent Reviewer/Security still required for CMS HTML sanitize (pre-existing).

@@ -1,6 +1,6 @@
 # Project Status
 
-- Last verified: 2026-09-13 — **TASK-20260913-014 implementing** on `ai/TASK-20260913-014-admin-cms-workspace`. Admin site-content workspace + page SEO + CMS image alt + retail privacy/terms. Not live until merge/deploy. Product `imageAlts` already live (010).
+- Last verified: 2026-09-13 — **TASK-20260913-014 CLOSED** on `origin/master` + VPS `b628674`. Admin site-content workspace live; 21 CMS rows persisted with SEO; `.ir`/`.com` homes and `/privacy` show stored titles. Health 200. Claims released. Independent Reviewer + Security residual (public SEO JSON).
 - Last verified: 2026-09-13 — **TASK-20260913-013 CLOSED** on `origin/master` + VPS `696f6e8`. Admin settings workspace + SEO/Organization sync live. Health 200; `.ir`/`.com` 200; public settings include `seo`. Admin click not exercised (login wall). Independent Reviewer + Security residual (public JSON-LD). Claims released.
 - Last verified: 2026-09-13 — **TASK-20260913-012 CLOSED** on `origin/master` + VPS `2c02f4d`. Admin order→customer link, RMA credit column, RMA WALLET via ledger. Health 200; `.ir`/`.com` 200. Admin click not exercised (login wall). Independent Reviewer + Security residual (wallet/PII).
 - Last verified: 2026-09-13 — **TASK-20260913-011 live residual** on `origin/master` + VPS `6854e8e`. Admin CRM workspace + wallet ledger table present (0 opening rows; all balances were 0). Health 200; `.ir`/`.com` 200. Admin click and shopper wallet not exercised (no session). Independent Reviewer + Security residual (wallet/PII).

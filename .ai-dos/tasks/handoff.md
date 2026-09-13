@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T13:45:00Z — TASK-20260913-014 CLOSED live `b628674`
+
+- Code merged/pushed; VPS HEAD `b628674`. Health 200. Homes `.ir` ~1.19s / `.com` ~1.03s.
+- Live persist: created missing RETAIL pages (chrome/about/contact/shipping/returns/products/collections/privacy/terms). Filled empty SEO on all 21 rows. Filled empty hero alts on RETAIL/home + WHOLESALE/home. Did not replace live home/chrome bodies.
+- Storefront titles now read `site_contents.seo`. `/privacy` + `/terms` on `.ir` 200.
+- Admin HTTP login with WORKLOG password failed (stale). Persist was via production DB + Next revalidate with short-lived staff JWT.
+- Claims released. Residual: independent Reviewer/Security (CMS HTML sanitize / public SEO JSON); operator password rotate.
+
 ## 2026-09-13T13:35:00Z — TASK-20260913-014 implementing CMS workspace
 
 - Branch `ai/TASK-20260913-014-admin-cms-workspace`. Not merged/deployed.
