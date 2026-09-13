@@ -34,7 +34,7 @@ const DEFAULT_RETAIL_COMPANIES = [
   { id: 'TIPAX', label: 'تیپاکس', isActive: true, sort: 20 },
   { id: 'CHAPAR', label: 'چاپار', isActive: true, sort: 30 },
   { id: 'TEHRAN_BIKE', label: 'پیک تهران', isActive: true, sort: 40 },
-  { id: 'IN_PERSON', label: 'تحویل در محل', isActive: true, sort: 50 },
+  { id: 'IN_PERSON', label: 'تحویل در محل', isActive: false, sort: 50 },
 ];
 
 const DEFAULT_WHOLESALE_COMPANIES = [
@@ -43,7 +43,7 @@ const DEFAULT_WHOLESALE_COMPANIES = [
   { id: 'POST', label: 'پست پیشتاز', isActive: true, sort: 30 },
   { id: 'FREIGHT', label: 'باربری', isActive: true, sort: 40 },
   { id: 'OTHER', label: 'سایر', isActive: true, sort: 50 },
-  { id: 'IN_PERSON', label: 'تحویل در محل', isActive: true, sort: 60 },
+  { id: 'IN_PERSON', label: 'تحویل در محل', isActive: false, sort: 60 },
 ];
 
 const DEFAULT_POST = {
@@ -95,6 +95,7 @@ export function AdminSettings() {
           }];
       const ship = res.shipping ?? ({} as SettingsPayload['shipping']);
       const retailDefaults = {
+        inPersonEnabled: false,
         baseFee: ship.baseFee ?? 1_500_000,
         perKgFee: ship.perKgFee ?? 250_000,
         freeThreshold: ship.freeThreshold ?? 50_000_000,
@@ -103,6 +104,7 @@ export function AdminSettings() {
         companies: DEFAULT_RETAIL_COMPANIES,
       };
       const wholesaleDefaults = {
+        inPersonEnabled: false,
         baseFee: ship.baseFee ?? 1_500_000,
         freeThreshold: ship.freeThreshold ?? 50_000_000,
         detailsText: 'هزینه ثابت ارسال عمده؛ روش‌های فعال در چک‌اوت عمده.',
@@ -197,7 +199,7 @@ export function AdminSettings() {
           manualCardNumber: res.payment?.manualCardNumber ?? '',
           manualCardOwner: res.payment?.manualCardOwner ?? '',
           retailCashEnabled: res.payment?.retailCashEnabled === true,
-          wholesaleCashEnabled: res.payment?.wholesaleCashEnabled !== false,
+          wholesaleCashEnabled: res.payment?.wholesaleCashEnabled === true,
         },
         installments: { ...installments, rules, minActiveInvoices: installments.minActiveInvoices ?? 2 },
         theme: {
@@ -514,7 +516,7 @@ export function AdminSettings() {
                 <ToggleRow
                   label="پرداخت نقدی / حساب با فروشگاه در عمده"
                   hint="اگر خاموش باشد مشتری عمده فقط آنلاین یا اقساط می‌بیند"
-                  value={data.payment.wholesaleCashEnabled !== false}
+                  value={data.payment.wholesaleCashEnabled === true}
                   onChange={(v) => setData({ ...data, payment: { ...data.payment, wholesaleCashEnabled: v } })}
                 />
               </SettingsSection>

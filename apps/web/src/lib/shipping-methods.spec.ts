@@ -12,7 +12,7 @@ assert.equal(
   resolveShippingMethods([{ id: 'TIPAX', label: 'تیپاکس' }], FALLBACK_RETAIL_SHIPPING_METHODS)[0].id,
   'TIPAX',
 );
-assert.equal(resolveShippingMethods(null, FALLBACK_RETAIL_SHIPPING_METHODS).length, 5);
+assert.equal(resolveShippingMethods(null, FALLBACK_RETAIL_SHIPPING_METHODS).length, 4);
 assert.equal(
   resolveShippingMethods(
     [
@@ -25,7 +25,7 @@ assert.equal(
 );
 assert.equal(
   FALLBACK_RETAIL_SHIPPING_METHODS.some((m) => m.id === IN_PERSON_SHIPPING_ID),
-  true,
+  false,
 );
 assert.equal(
   shippingChoiceDescription(IN_PERSON_SHIPPING_ID, { freeShipping: true }),

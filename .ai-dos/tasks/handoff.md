@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-13T09:20:00Z — TASK-20260913-006 implementing door options off
+
+- Owner: turn remaining door options off, then full commit/merge/push/deploy.
+- Wholesale cash becomes opt-in (same as retail). IN_PERSON hidden unless `inPersonEnabled === true`.
+- Next: specs, merge master, push, auto-deploy, verify `.ir/checkout`.
+
 ## 2026-09-13T09:08:00Z — TASK-20260913-004 CLOSED live `776108a`
 
 - Sender postal field live on public settings (`postalCode` currently empty). Health 200.

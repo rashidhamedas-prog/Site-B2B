@@ -10,12 +10,11 @@ import {
 
 const unset = resolveCashOnDeliveryFlags({});
 assert.equal(unset.retailCashEnabled, false, 'retail COD unset is off');
-assert.equal(unset.wholesaleCashEnabled, true, 'wholesale cash unset stays on');
+assert.equal(unset.wholesaleCashEnabled, false, 'wholesale cash unset is off');
 assert.equal(isCashOnDeliveryEnabled('RETAIL', unset), false);
-assert.equal(isCashOnDeliveryEnabled('WHOLESALE', unset), true);
+assert.equal(isCashOnDeliveryEnabled('WHOLESALE', unset), false);
 assert.deepEqual(allowedOrderPaymentMethods('RETAIL', unset), ['ONLINE']);
 assert.deepEqual(allowedOrderPaymentMethods('WHOLESALE', unset), [
-  'CASH',
   'INSTALLMENT',
   'ONLINE',
 ]);
@@ -38,6 +37,6 @@ assert.deepEqual(allowedOrderPaymentMethods('WHOLESALE', bothOff), [
 ]);
 
 assert.equal(isCashOnDeliveryEnabled('RETAIL', null), false);
-assert.equal(isCashOnDeliveryEnabled('WHOLESALE', null), true);
+assert.equal(isCashOnDeliveryEnabled('WHOLESALE', null), false);
 
 console.log('settings-payment-cash spec ok');

@@ -1,5 +1,45 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260913-006"
+    title: "Turn off door payment and in-person pickup on storefront"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260913-006"
+    roles:
+      architect: "cursor:implementer-TASK-20260913-006"
+      implementer: "cursor:implementer-TASK-20260913-006"
+      reviewer: "same-session-after-gates"
+    branch: "ai/TASK-20260913-006-disable-door-options"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-13T09:20:00Z"
+    heartbeat_at: "2026-09-13T09:20:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/settings/settings-payment-cash.ts"
+      - "apps/api/src/modules/settings/settings-payment-cash.spec.ts"
+      - "apps/api/src/modules/settings/shipping-channel.ts"
+      - "apps/api/src/modules/settings/shipping-channel.spec.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/api/src/modules/shipping/shipping.service.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "apps/web/src/components/admin/settings/ShippingTab.tsx"
+      - "apps/web/src/components/admin/settings/types.ts"
+      - "apps/web/src/lib/checkout-payment-ui.ts"
+      - "apps/web/src/lib/checkout-payment-ui.spec.ts"
+      - "apps/web/src/lib/shipping-methods.ts"
+      - "apps/web/src/lib/shipping-methods.spec.ts"
+      - "apps/web/src/app/checkout/page.tsx"
+      - "docs/WORKLOG.md"
+    notes: |
+      Operator asked to turn remaining door options off and fully commit/merge/push/deploy.
+      Wholesale cash becomes opt-in. IN_PERSON is hidden unless inPersonEnabled is true.
+    acceptance_criteria:
+      - "Wholesale cash defaults off and checkout hides CASH unless wholesaleCashEnabled is true"
+      - "Public shipping methods omit IN_PERSON unless inPersonEnabled is true"
+      - "Live retail checkout has neither COD nor تحویل در محل"
+      - "specs + api/web tsc pass; pushed to origin/master and deployed"
   - id: "TASK-20260913-005"
     title: "Honor cash-on-delivery payment setting on storefront"
     status: "done"

@@ -143,6 +143,7 @@ export class SettingsService {
 
     const retailKgRaw = Number(retailSrc.kgPerPiece);
     const retail = {
+      inPersonEnabled: retailSrc.inPersonEnabled === true,
       baseFee: Number(retailSrc.baseFee) || legacyBase,
       perKgFee: Number(retailSrc.perKgFee) || legacyPerKg,
       freeThreshold: Number(retailSrc.freeThreshold) || legacyFree,
@@ -160,6 +161,7 @@ export class SettingsService {
     };
 
     const wholesale = {
+      inPersonEnabled: wholesaleSrc.inPersonEnabled === true,
       baseFee: Number(wholesaleSrc.baseFee) || legacyBase,
       freeThreshold: Number(wholesaleSrc.freeThreshold) || legacyFree,
       detailsText: String(

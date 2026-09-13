@@ -86,7 +86,7 @@ export function retailPaymentOptions(
   ];
 }
 
-export function wholesalePaymentOptions(onlineEnabled: boolean, cashEnabled = true): CheckoutChoiceOption[] {
+export function wholesalePaymentOptions(onlineEnabled: boolean, cashEnabled = false): CheckoutChoiceOption[] {
   return [
     ...(onlineEnabled
       ? [

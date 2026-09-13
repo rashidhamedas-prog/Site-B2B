@@ -6,7 +6,9 @@ import {
   addressPlace,
   ensureInPersonCompany,
   isInPersonMethod,
+  publicShippingCompanies,
   resolveChannelCompanies,
+  resolveInPersonEnabled,
   resolveShippingPost,
   shippingPostForChannel,
 } from './shipping-channel';
@@ -104,5 +106,22 @@ assert.deepEqual(addressPlace(JSON.stringify({ province: 'فارس', city: 'شی
   city: 'شیراز',
 });
 assert.deepEqual(addressPlace('not-json'), {});
+
+assert.equal(resolveInPersonEnabled({}, 'RETAIL'), false);
+assert.equal(resolveInPersonEnabled({ retail: { inPersonEnabled: true } }, 'RETAIL'), true);
+assert.equal(
+  publicShippingCompanies(
+    [{ id: 'IN_PERSON', label: 'تحویل در محل', isActive: true }, { id: 'TIPAX', label: 'تیپاکس', isActive: true }],
+    false,
+  ).map((c) => c.id).join(','),
+  'TIPAX',
+);
+assert.equal(
+  publicShippingCompanies(
+    [{ id: 'SHIP_1', label: 'پرداخت درب منزل', isActive: true }],
+    false,
+  ).length,
+  0,
+);
 
 console.log('shipping-channel.spec.ts: OK');
