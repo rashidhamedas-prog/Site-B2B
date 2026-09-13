@@ -629,40 +629,56 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
     if (fullName.length < 3) {
       throw new Error('برای ترب‌پی نام و نام خانوادگی گیرنده را کامل وارد کنید.');
     }
-    const cart = buildTorobpayBalancedCart({
-      amountIrr: req.amountIrr,
-      transactionId,
-      description: req.description,
-    });
-
-    const body = {
-      amount: cart.amount,
-      paymentMethodTypeDto: PAYMENT_METHOD,
-      returnURL: req.callbackUrl,
-      transactionId,
-      mobile: phone,
-      address,
-      postalCode,
-      customerFullName: fullName,
-      customer_full_name: fullName,
-      city: String(checkout.city || '').trim(),
-      province: String(checkout.province || '').trim(),
-      cartList: cart.cartList,
+    const requestToken = async (txn: string, includeAddress: boolean) => {
+      const cart = buildTorobpayBalancedCart({
+        amountIrr: req.amountIrr,
+        transactionId: txn,
+        description: req.description,
+      });
+      const body: Record<string, unknown> = {
+        amount: cart.amount,
+        paymentMethodTypeDto: PAYMENT_METHOD,
+        returnURL: req.callbackUrl,
+        transactionId: txn,
+        mobile: phone,
+        cartList: cart.cartList,
+      };
+      if (includeAddress) {
+        body.address = address;
+        body.postalCode = postalCode;
+        body.customerFullName = fullName;
+        body.customer_full_name = fullName;
+        body.city = String(checkout.city || '').trim();
+        body.province = String(checkout.province || '').trim();
+      }
+      const { ok, status, json } = await this.authorized(
+        'POST',
+        '/api/online/payment/v1/token',
+        body,
+        over,
+      );
+      return { ok, status, json, cart, body };
     };
 
-    const { ok, status, json } = await this.authorized(
-      'POST',
-      '/api/online/payment/v1/token',
-      body,
-      over,
-    );
-    const response = envelopeResponse(json);
+    const first = await requestToken(transactionId, true);
+    let chosen = first;
+    let usedTxn = transactionId;
+    const firstDetail = envelopeMessage(first.json, 'خطا در ایجاد توکن پرداخت ترب‌پی');
+    const firstFailed = !first.ok || !envelopeOk(first.json);
+    if (firstFailed && (/\b1011\b/.test(firstDetail) || /can't create order/i.test(firstDetail))) {
+      this.logger.warn(
+        `TorobPay token 1011 with address amount=${first.cart.amount} streetLen=${address.length}; retry totweb-minimal`,
+      );
+      usedTxn = compactTorobpayTransactionId(`${transactionId}r`);
+      chosen = await requestToken(usedTxn, false);
+    }
+    const response = envelopeResponse(chosen.json);
     const paymentToken = response.paymentToken ? String(response.paymentToken) : '';
     const paymentPageUrl = response.paymentPageUrl ? String(response.paymentPageUrl) : '';
-    if (!ok || !envelopeOk(json) || !paymentToken || !paymentPageUrl) {
-      const detail = envelopeMessage(json, 'خطا در ایجاد توکن پرداخت ترب‌پی');
+    if (!chosen.ok || !envelopeOk(chosen.json) || !paymentToken || !paymentPageUrl) {
+      const detail = envelopeMessage(chosen.json, 'خطا در ایجاد توکن پرداخت ترب‌پی');
       this.logger.warn(
-        `TorobPay token failed http=${status} detail=${detail.slice(0, 160)} amount=${cart.amount} streetLen=${address.length}`,
+        `TorobPay token failed http=${chosen.status} detail=${detail.slice(0, 160)} amount=${chosen.cart.amount} streetLen=${address.length}`,
       );
       if (/\b1011\b/.test(detail) || /can't create order/i.test(detail)) {
         throw new Error(
@@ -674,7 +690,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
     return {
       providerToken: paymentToken,
       redirectUrl: paymentPageUrl,
-      rawSanitized: { paymentToken, transactionId },
+      rawSanitized: { paymentToken, transactionId: usedTxn, addressOnToken: chosen.body.address != null },
     };
   }
 

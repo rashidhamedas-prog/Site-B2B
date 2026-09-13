@@ -243,6 +243,55 @@ async function main() {
     assert(tokenErr.includes('ترب‌پی نتوانست این پرداخت را بسازد'), '1011 mapped for shopper');
     assert(!tokenErr.includes('1042'), '1011 not confused with 1042');
 
+    let tokenCalls = 0;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/oauth/token')) {
+        return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
+      }
+      if (url.includes('/payment/v1/token')) {
+        tokenCalls += 1;
+        const body = JSON.parse(String(init?.body || '{}'));
+        (globalThis.fetch as { lastTokenBody?: string }).lastTokenBody = JSON.stringify(body);
+        if (tokenCalls === 1) {
+          return new Response(
+            JSON.stringify({
+              successful: false,
+              errorData: { errorCode: 1011, message: "can't create order" },
+            }),
+            { status: 400 },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            successful: true,
+            response: {
+              paymentToken: 'tok-retry',
+              paymentPageUrl: 'https://cpg.torobpay.com/pay?payment_token=tok-retry',
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+    const recovered = await gw.createPayment({
+      amountIrr: 2500000,
+      callbackUrl: 'https://www.poshaktaranom.ir/payment/torobpay/callback?paymentId=pay-1',
+      description: 'تست',
+      merchantId: 'n/a',
+      sandbox: false,
+      mobile: '09123456789',
+      orderId: 'ord-1',
+      metadata: { providerId: 'pay-5' },
+      torobpayCheckout: checkout,
+    });
+    assert(tokenCalls === 2, '1011 retries totweb-minimal');
+    assert(recovered.providerToken === 'tok-retry', 'retry token');
+    const retryBody = JSON.parse(String((globalThis.fetch as { lastTokenBody?: string }).lastTokenBody || '{}'));
+    assert(retryBody.address == null, 'retry omits address');
+    assert(retryBody.mobile === '09123456789', 'retry keeps mobile');
+
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/oauth/token')) {
