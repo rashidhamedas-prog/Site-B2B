@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260913-010"
     title: "Complete synced admin product workspace"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260913-010"
     roles:
