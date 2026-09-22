@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260922-002"
     title: "Admin sales partners edit, delete, and workspace redesign"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260922-002"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-22T07:40:00Z"
-    heartbeat_at: "2026-09-22T07:40:00Z"
+    heartbeat_at: "2026-09-22T07:50:00Z"
+    closed_at: "2026-09-22T07:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/vendor/vendor-policy.ts"
       - "apps/api/src/modules/vendor/vendor-policy.spec.ts"
       - "apps/api/src/modules/vendor/vendor.service.ts"

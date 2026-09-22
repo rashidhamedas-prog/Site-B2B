@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T07:50:00Z — TASK-20260922-002 CLOSED live `dc639b3`
+
+- VPS `/opt/taranom` HEAD `dc639b3`. auto-deploy exit 0.
+- From the VPS: health 200, `.com` 200 in 0.42s, `www` `.ir` 200 in 0.22s. `/admin/partners` 307 to login. Click path not exercised.
+- Claims released. Residual: independent Reviewer (delete guard counts; phone unique race).
+
 ## 2026-09-22T08:10:00Z — TASK-20260922-002 admin partners edit/delete
 
 - Owner: `cursor:implementer-TASK-20260922-002` on `D:/proje/Site B2B`.
