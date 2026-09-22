@@ -22,6 +22,11 @@ const bal = ledgerBalance(
 );
 assert(bal.held === 100_000, 'held');
 assert(bal.available === 10_000, 'available after reversal and payout');
+const pending = ledgerBalance(
+  [{ amountIrr: 50_000, entryType: 'COMMISSION_EARNED', availableAt: null }],
+  now,
+);
+assert(pending.held === 50_000 && pending.available === 0, 'null availableAt stays held');
 assert(bal.paid === 20_000, 'paid');
 assert(bal.reversed === 10_000, 'reversed');
 assert(!canAutoRelease(null), 'no hold');

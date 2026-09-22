@@ -6,6 +6,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { SALES_PARTNER_ACTING_ROLE, isSalesPartnerPurpose } from './sales-partner-policy';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { SalesPartnerDraftService } from './sales-partner-draft.service';
+import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
 import { CreateSalesPartnerDraftDto, PatchSalesPartnerDraftDto } from './dto/sales-partner-draft.dto';
 
 @ApiTags('sales-partners')
@@ -17,6 +18,7 @@ export class SalesPartnerMeController {
   constructor(
     private readonly catalog: SalesPartnerCatalogService,
     private readonly drafts: SalesPartnerDraftService,
+    private readonly ledger: SalesPartnerLedgerService,
   ) {}
 
   @Get('catalog')
@@ -86,6 +88,21 @@ export class SalesPartnerMeController {
   @Get('orders')
   listOrders(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
     return this.drafts.listMine(this.requirePartner(req));
+  }
+
+  @Get('commissions')
+  commissions(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+    return this.ledger.balances(this.requirePartner(req));
+  }
+
+  @Get('ledger')
+  ledgerView(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+    return this.ledger.balances(this.requirePartner(req));
+  }
+
+  @Get('payouts')
+  payouts() {
+    return [];
   }
 
   private requirePartner(req: { user?: { purpose?: string; salesPartnerId?: string } }) {

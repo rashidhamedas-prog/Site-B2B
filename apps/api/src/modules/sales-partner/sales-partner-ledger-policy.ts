@@ -35,7 +35,7 @@ export function ledgerBalance(rows: LedgerRow[], now: Date): {
     if (row.entryType === 'COMMISSION_REVERSAL') reversed += Math.abs(amount);
     if (row.entryType === 'PAYOUT') paid += Math.abs(amount);
     if (row.entryType === 'COMMISSION_EARNED' || row.entryType === 'MANUAL_ADJUSTMENT' || row.entryType === 'PAYOUT_REVERSAL') {
-      if (row.availableAt && row.availableAt.getTime() > now.getTime()) held += amount;
+      if (!row.availableAt || row.availableAt.getTime() > now.getTime()) held += amount;
       else available += amount;
     } else {
       available += amount;

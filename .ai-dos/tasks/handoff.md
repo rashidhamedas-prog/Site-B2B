@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T14:05:00Z — TASK-20260922-003 Phase 4 ledger sync coded
+
+- Job every 10 minutes reads converted drafts and writes idempotent COMMISSION_EARNED / REVERSAL.
+- `availableAt=null` stays held until delivery + `commissionHoldDays`; unset hold never auto-releases.
+- Partial RMA line reversal and payout batches are not in this slice.
+- Gates: ledger-policy spec OK; api tsc 0.
+
 ## 2026-09-22T13:45:00Z — TASK-20260922-003 Phases 2–3 coded, not live
 
 - Catalog: partner sees only `sales_partner_product_eligibility.eligible=true`. Vendor SKUs need margin >= `minMarginIrr`; partner DTO has no vendorDue.

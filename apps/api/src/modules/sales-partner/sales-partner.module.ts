@@ -5,6 +5,8 @@ import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UserEntity } from '../auth/entities/user.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
+import { OrderEntity } from '../order/entities/order.entity';
+import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { CustomerModule } from '../customer/customer.module';
 import { OrderModule } from '../order/order.module';
 import { ShippingModule } from '../shipping/shipping.module';
@@ -24,6 +26,8 @@ import {
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { SalesPartnerDraftService } from './sales-partner-draft.service';
+import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
+import { SalesPartnerLedgerJobs } from './sales-partner-ledger.jobs';
 import { SalesPartnerPublicController } from './sales-partner-public.controller';
 import { SalesPartnerAuthController } from './sales-partner-auth.controller';
 import { SalesPartnerMeController } from './sales-partner-me.controller';
@@ -46,7 +50,15 @@ const ENTITIES = [
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([...ENTITIES, AppSettingEntity, UserEntity, ProductEntity, ProductVariantEntity]),
+    TypeOrmModule.forFeature([
+      ...ENTITIES,
+      AppSettingEntity,
+      UserEntity,
+      ProductEntity,
+      ProductVariantEntity,
+      OrderEntity,
+      OrderItemEntity,
+    ]),
     AuthModule,
     CustomerModule,
     OrderModule,
@@ -59,7 +71,7 @@ const ENTITIES = [
     SalesPartnerAdminController,
     SalesPartnerConfirmationController,
   ],
-  providers: [SalesPartnerService, SalesPartnerCatalogService, SalesPartnerDraftService],
-  exports: [SalesPartnerService, SalesPartnerCatalogService, SalesPartnerDraftService],
+  providers: [SalesPartnerService, SalesPartnerCatalogService, SalesPartnerDraftService, SalesPartnerLedgerService, SalesPartnerLedgerJobs],
+  exports: [SalesPartnerService, SalesPartnerCatalogService, SalesPartnerDraftService, SalesPartnerLedgerService],
 })
 export class SalesPartnerModule {}
