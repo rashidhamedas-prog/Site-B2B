@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-22 — **TASK-20260922-002 implementing** on local `master`. Admin `/admin/partners` edit (including login phone) and guarded delete. Spec + api/web tsc passed. Not live until push/deploy. Admin click not exercised (login wall).
 - Last verified: 2026-09-22 — **TASK-20260922-001 CLOSED** on `origin/master` + VPS `d9208b2`. Admin `/admin/products` advanced filter (category including uncategorized, status, collection, in-stock). Health 200; `.com` 200; `.ir` 200. `/admin/products` 307 to login. Admin click not exercised. Claims released.
 - Last verified: 2026-09-13 — **TASK-20260913-014 CLOSED** on `origin/master` + VPS `b628674`. Admin site-content workspace live; 21 CMS rows persisted with SEO; `.ir`/`.com` homes and `/privacy` show stored titles. Health 200. Claims released. Independent Reviewer + Security residual (public SEO JSON).
 - Last verified: 2026-09-13 — **TASK-20260913-013 CLOSED** on `origin/master` + VPS `696f6e8`. Admin settings workspace + SEO/Organization sync live. Health 200; `.ir`/`.com` 200; public settings include `seo`. Admin click not exercised (login wall). Independent Reviewer + Security residual (public JSON-LD). Claims released.

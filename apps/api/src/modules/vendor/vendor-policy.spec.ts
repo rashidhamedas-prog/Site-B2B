@@ -1,11 +1,13 @@
 import {
   canVendorLogin,
+  EMPTY_VENDOR_USAGE,
   isVendorRole,
   parseAcceptSlaHours,
   parseSettlementHoldDays,
   parseVendorName,
   toPublicVendor,
   vendorOwnsResource,
+  vendorRemovalBlockers,
 } from './vendor-policy';
 
 function assert(cond: boolean, msg: string) {
@@ -40,6 +42,21 @@ assert(holdBad, 'hold 91 rejected');
 assert(vendorOwnsResource('v-a', 'v-a') === true, 'same vendor');
 assert(vendorOwnsResource('v-a', 'v-b') === false, 'horizontal deny');
 assert(vendorOwnsResource(undefined, 'v-a') === false, 'missing actor');
+
+assert(vendorRemovalBlockers(EMPTY_VENDOR_USAGE).length === 0, 'clean partner is removable');
+assert(
+  vendorRemovalBlockers({ ...EMPTY_VENDOR_USAGE, productCount: 2 }).join(' ') === '2 کالا',
+  'products block delete',
+);
+assert(
+  vendorRemovalBlockers({
+    productCount: 1,
+    fulfillmentCount: 2,
+    orderItemCount: 3,
+    ledgerCount: 4,
+  }).length === 4,
+  'every history kind blocks delete',
+);
 
 const pub = toPublicVendor({
   id: 'id1',

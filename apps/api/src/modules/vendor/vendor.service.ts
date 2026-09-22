@@ -14,6 +14,7 @@ import { VendorEntity } from './entities/vendor.entity';
 import { InviteVendorDto } from './dto/invite-vendor.dto';
 import { PatchVendorDto } from './dto/patch-vendor.dto';
 import {
+  EMPTY_VENDOR_USAGE,
   VENDOR_ROLE,
   canVendorLogin,
   parseAcceptSlaHours,
@@ -21,6 +22,8 @@ import {
   parseVendorName,
   toPublicVendor,
   vendorOwnsResource,
+  vendorRemovalBlockers,
+  type VendorUsage,
 } from './vendor-policy';
 
 @Injectable()
@@ -39,13 +42,20 @@ export class VendorService {
 
   async list() {
     const rows = await this.vendorRepo.find({ order: { createdAt: 'DESC' }, take: 200 });
-    return { data: rows.map(toPublicVendor) };
+    const usage = await this.usageByVendor(rows.map((row) => row.id));
+    return {
+      data: rows.map((row) => ({
+        ...toPublicVendor(row),
+        usage: usage.get(row.id) ?? { ...EMPTY_VENDOR_USAGE },
+      })),
+    };
   }
 
   async getByIdForAdmin(id: string) {
     const row = await this.vendorRepo.findOne({ where: { id } });
     if (!row) throw new NotFoundException('همکار پیدا نشد');
-    return toPublicVendor(row);
+    const usage = await this.usageByVendor([id]);
+    return { ...toPublicVendor(row), usage: usage.get(id) ?? { ...EMPTY_VENDOR_USAGE } };
   }
 
   async getMe(userId: string, actorVendorId?: string) {
@@ -137,14 +147,66 @@ export class VendorService {
     }
     if (dto.status !== undefined) {
       row.status = dto.status;
-      const user = await this.userRepo.findOne({ where: { id: row.userId } });
-      if (user) {
-        user.isActive = canVendorLogin(dto.status);
-        await this.userRepo.save(user);
-      }
     }
-    await this.vendorRepo.save(row);
-    return toPublicVendor(row);
+
+    const nextPhone = dto.phone !== undefined && dto.phone !== row.phone ? dto.phone : undefined;
+    if (nextPhone) {
+      const takenUser = await this.userRepo.findOne({ where: { phone: nextPhone } });
+      if (takenUser && takenUser.id !== row.userId) {
+        throw new ConflictException('این شماره قبلاً ثبت شده است');
+      }
+      const takenVendor = await this.vendorRepo.findOne({ where: { phone: nextPhone } });
+      if (takenVendor && takenVendor.id !== row.id) {
+        throw new ConflictException('این شماره قبلاً ثبت شده است');
+      }
+      row.phone = nextPhone;
+    }
+
+    try {
+      await this.dataSource.transaction(async (manager) => {
+        const users = manager.getRepository(UserEntity);
+        await manager.getRepository(VendorEntity).save(row);
+        if (nextPhone || dto.status !== undefined) {
+          const user = await users.findOne({ where: { id: row.userId } });
+          if (user) {
+            if (nextPhone) user.phone = nextPhone;
+            if (dto.status !== undefined) user.isActive = canVendorLogin(dto.status);
+            await users.save(user);
+          }
+        }
+      });
+    } catch (err) {
+      if (this.isUniqueViolation(err)) throw new ConflictException('این شماره قبلاً ثبت شده است');
+      throw err;
+    }
+
+    const usage = await this.usageByVendor([row.id]);
+    return { ...toPublicVendor(row), usage: usage.get(row.id) ?? { ...EMPTY_VENDOR_USAGE } };
+  }
+
+  async remove(id: string) {
+    const row = await this.vendorRepo.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('همکار پیدا نشد');
+
+    const usage = (await this.usageByVendor([id])).get(id) ?? { ...EMPTY_VENDOR_USAGE };
+    const blockers = vendorRemovalBlockers(usage);
+    if (blockers.length > 0) {
+      throw new ConflictException(
+        `حذف ممکن نیست؛ این همکار ${blockers.join('، ')} دارد. برای قطع دسترسی، همکار را معلق کنید.`,
+      );
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: row.userId } });
+    if (user && user.role !== VENDOR_ROLE) {
+      throw new ConflictException('حساب ورود این همکار نقش دیگری دارد و حذف نمی‌شود. همکار را معلق کنید.');
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(VendorEntity).delete({ id: row.id });
+      if (user) await manager.getRepository(UserEntity).delete({ id: user.id });
+    });
+
+    return { deleted: true, id: row.id };
   }
 
   async rotatePassword(id: string) {
@@ -157,6 +219,38 @@ export class VendorService {
     user.passwordChangedAt = new Date();
     await this.userRepo.save(user);
     return { vendor: toPublicVendor(row), initialPassword };
+  }
+
+  private async usageByVendor(ids: string[]): Promise<Map<string, VendorUsage>> {
+    const map = new Map<string, VendorUsage>();
+    for (const id of ids) map.set(id, { ...EMPTY_VENDOR_USAGE });
+    if (ids.length === 0) return map;
+
+    const tables = [
+      ['products', 'productCount'],
+      ['fulfillment_orders', 'fulfillmentCount'],
+      ['order_items', 'orderItemCount'],
+      ['vendor_ledger_entries', 'ledgerCount'],
+    ] as const;
+
+    await Promise.all(
+      tables.map(async ([table, key]) => {
+        const rows: Array<{ id: string; n: number | string }> = await this.dataSource.query(
+          `SELECT "vendorId" AS id, COUNT(*)::int AS n FROM ${table} WHERE "vendorId" = ANY($1::uuid[]) GROUP BY "vendorId"`,
+          [ids],
+        );
+        for (const hit of rows) {
+          const current = map.get(hit.id);
+          if (current) current[key] = Number(hit.n) || 0;
+        }
+      }),
+    );
+    return map;
+  }
+
+  private isUniqueViolation(err: unknown): boolean {
+    const e = (err ?? {}) as { code?: string; driverError?: { code?: string } };
+    return e.code === '23505' || e.driverError?.code === '23505';
   }
 
   private policyMessage(err: unknown): string {

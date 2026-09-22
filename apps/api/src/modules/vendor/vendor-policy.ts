@@ -44,6 +44,30 @@ export function parseVendorName(raw: unknown): string {
   return name;
 }
 
+export type VendorUsage = {
+  productCount: number;
+  fulfillmentCount: number;
+  ledgerCount: number;
+  orderItemCount: number;
+};
+
+export const EMPTY_VENDOR_USAGE: VendorUsage = {
+  productCount: 0,
+  fulfillmentCount: 0,
+  ledgerCount: 0,
+  orderItemCount: 0,
+};
+
+/** Persian reasons that block a hard delete. Empty means the invite can be removed. */
+export function vendorRemovalBlockers(usage: VendorUsage): string[] {
+  const parts: string[] = [];
+  if (usage.productCount > 0) parts.push(`${usage.productCount} کالا`);
+  if (usage.fulfillmentCount > 0) parts.push(`${usage.fulfillmentCount} مرسوله`);
+  if (usage.orderItemCount > 0) parts.push(`${usage.orderItemCount} قلم سفارش`);
+  if (usage.ledgerCount > 0) parts.push(`${usage.ledgerCount} ردیف دفتر`);
+  return parts;
+}
+
 /** Horizontal isolation: vendor JWT may only touch its own aggregate. */
 export function vendorOwnsResource(
   actorVendorId: string | null | undefined,

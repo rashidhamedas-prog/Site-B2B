@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminOnly } from '../auth/decorators/admin-only.decorator';
@@ -54,9 +54,15 @@ export class VendorAdminController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'ویرایش SLA / hold / وضعیت همکار' })
+  @ApiOperation({ summary: 'ویرایش نام، موبایل، SLA، hold، یادداشت و وضعیت همکار' })
   patch(@Param('id') id: string, @Body() dto: PatchVendorDto) {
     return this.vendors.patch(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'حذف همکار بدون سابقه کالا، سفارش یا دفتر — وگرنه ۴۰۹' })
+  remove(@Param('id') id: string) {
+    return this.vendors.remove(id);
   }
 
   @Post(':id/rotate-password')

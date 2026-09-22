@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T08:10:00Z — TASK-20260922-002 admin partners edit/delete
+
+- Owner: `cursor:implementer-TASK-20260922-002` on `D:/proje/Site B2B`.
+- Reclaimed AdminPartners + vendor-admin.controller from done TASK-20260909-018 (claims already empty).
+- Edit: name, phone (user + vendor), SLA, hold, notes, status.
+- Delete: only with zero products, fulfillments, order items, and ledger rows, and only a VENDOR login. Otherwise 409 and the UI offers suspend.
+- Gates (observed): `vendor-policy.spec.ts` OK; `apps/api` and `apps/web` `npx tsc --noEmit` 0.
+- Admin click not exercised (login wall). Storefront untouched.
+- Exact next: commit, push, auto-deploy, health check.
+
 ## 2026-09-22T07:05:00Z — TASK-20260922-001 CLOSED live `d9208b2`
 
 - VPS `/opt/taranom` HEAD `d9208b2`. auto-deploy exit 0.

@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { normalizePhone } from '../../auth/phone.util';
 import { VENDOR_STATUSES } from '../vendor-policy';
 
 export class PatchVendorDto {
@@ -9,6 +11,15 @@ export class PatchVendorDto {
   @MinLength(2)
   @MaxLength(120)
   name?: string;
+
+  @ApiPropertyOptional({ example: '09151234567' })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return normalizePhone(String(value));
+  })
+  @Matches(/^09[0-9]{9}$/, { message: 'شماره موبایل معتبر نیست' })
+  phone?: string;
 
   @ApiPropertyOptional({ enum: VENDOR_STATUSES })
   @IsOptional()

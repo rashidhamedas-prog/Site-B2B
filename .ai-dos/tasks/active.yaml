@@ -1,5 +1,47 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260922-002"
+    title: "Admin sales partners edit, delete, and workspace redesign"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260922-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260922-002"
+      implementer: "cursor:implementer-TASK-20260922-002"
+      reviewer: "same-session-after-gates"
+      security: "same-session-admin-delete-guard"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-22T07:40:00Z"
+    heartbeat_at: "2026-09-22T07:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/vendor/vendor-policy.ts"
+      - "apps/api/src/modules/vendor/vendor-policy.spec.ts"
+      - "apps/api/src/modules/vendor/vendor.service.ts"
+      - "apps/api/src/modules/vendor/vendor-admin.controller.ts"
+      - "apps/api/src/modules/vendor/dto/patch-vendor.dto.ts"
+      - "apps/web/src/components/admin/AdminPartners.tsx"
+      - "docs/architecture/admin-partners.md"
+      - "docs/reports/2026-09-22-admin-partners.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Reclaimed AdminPartners and vendor-admin.controller from done
+      TASK-20260909-018 (closed 2026-09-09, file_claims empty).
+      Edit name/phone/SLA/hold/notes/status. Delete only when the partner
+      has no products, fulfillments, order items, or ledger rows; then
+      hard-delete the VENDOR user so the phone can be invited again.
+      Partners with history stay and should be suspended.
+    acceptance_criteria:
+      - "Admin can edit partner name, phone, SLA, hold, notes, and status"
+      - "Phone change updates the login user and rejects a taken number"
+      - "Delete is refused with a Persian reason when products, parcels, order lines, or ledger rows exist"
+      - "Delete of a partner with no history removes the vendor and the VENDOR login"
+      - "Admin partners screen has search, status filter, edit, delete, and ledger without extra landing JS"
+      - "vendor-policy spec and api/web tsc pass"
   - id: "TASK-20260922-001"
     title: "Admin product list advanced filter by category"
     status: "done"
