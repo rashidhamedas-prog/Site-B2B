@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-22 — **TASK-20260922-001 implementing** on `ai/TASK-20260922-001-admin-product-filter`. Admin `/admin/products` advanced filter (category including uncategorized, status, collection, in-stock). Specs + api/web tsc 0. Not live until merge/deploy. Admin click not exercised (login wall).
 - Last verified: 2026-09-13 — **TASK-20260913-014 CLOSED** on `origin/master` + VPS `b628674`. Admin site-content workspace live; 21 CMS rows persisted with SEO; `.ir`/`.com` homes and `/privacy` show stored titles. Health 200. Claims released. Independent Reviewer + Security residual (public SEO JSON).
 - Last verified: 2026-09-13 — **TASK-20260913-013 CLOSED** on `origin/master` + VPS `696f6e8`. Admin settings workspace + SEO/Organization sync live. Health 200; `.ir`/`.com` 200; public settings include `seo`. Admin click not exercised (login wall). Independent Reviewer + Security residual (public JSON-LD). Claims released.
 - Last verified: 2026-09-13 — **TASK-20260913-012 CLOSED** on `origin/master` + VPS `2c02f4d`. Admin order→customer link, RMA credit column, RMA WALLET via ledger. Health 200; `.ir`/`.com` 200. Admin click not exercised (login wall). Independent Reviewer + Security residual (wallet/PII).

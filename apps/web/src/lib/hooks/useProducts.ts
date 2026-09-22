@@ -212,6 +212,9 @@ export function useProducts(params?: {
   fabric?: string;
   status?: string;
   channel?: string;
+  categoryId?: string;
+  collectionId?: string;
+  inStock?: boolean;
 }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
@@ -229,8 +232,10 @@ export function useProducts(params?: {
       if (params?.fabric) query.set('fabric', params.fabric);
       if (params?.status) query.set('status', params.status);
       if (params?.channel) query.set('channel', params.channel);
-      const path = String(params?.status || '').toUpperCase() === 'ALL' ? '/products/admin' : '/products';
-      const res = await apiClient.get<ProductsResult>(`${path}?${query}`);
+      if (params?.categoryId) query.set('categoryId', params.categoryId);
+      if (params?.collectionId) query.set('collectionId', params.collectionId);
+      if (params?.inStock) query.set('inStock', '1');
+      const res = await apiClient.get<ProductsResult>(`/products/admin?${query}`);
       setProducts(res.data);
       setMeta(res.meta);
     } catch (e: unknown) {
@@ -238,7 +243,17 @@ export function useProducts(params?: {
     } finally {
       setLoading(false);
     }
-  }, [params?.page, params?.search, params?.fabric, params?.status, params?.channel]);
+  }, [
+    params?.page,
+    params?.limit,
+    params?.search,
+    params?.fabric,
+    params?.status,
+    params?.channel,
+    params?.categoryId,
+    params?.collectionId,
+    params?.inStock,
+  ]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

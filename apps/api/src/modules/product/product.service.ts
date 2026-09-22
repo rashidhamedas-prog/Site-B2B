@@ -16,6 +16,11 @@ import {
 import { StorageService } from '../upload/storage.service';
 import { SettingsService } from '../settings/settings.service';
 import { fillMissingProductImageAlts } from './product-image-alt';
+import {
+  inStockPredicate,
+  parseCategoryListFilter,
+  parseOptionalUuid,
+} from './admin-product-list-filter';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateVariantDto } from './dto/create-variant.dto';
@@ -462,8 +467,21 @@ export class ProductService {
       }
     }
 
-    let categoryId = opts?.categoryId || (!relatedIds ? related?.categoryId : undefined);
-    if (opts?.categorySlug) {
+    const categoryFilter = parseCategoryListFilter(opts?.categoryId);
+    if (categoryFilter.kind === 'invalid') {
+      throw new BadRequestException('دسته نامعتبر است');
+    }
+    const collectionId = parseOptionalUuid(opts?.collectionId);
+    if (collectionId === 'invalid') {
+      throw new BadRequestException('کالکشن نامعتبر است');
+    }
+    let categoryId =
+      categoryFilter.kind === 'id'
+        ? categoryFilter.id
+        : categoryFilter.kind === 'all' && !relatedIds
+          ? related?.categoryId
+          : undefined;
+    if (opts?.categorySlug && categoryFilter.kind !== 'uncategorized') {
       const cat = await this.categoryRepo.findOne({
         where: { slug: String(opts.categorySlug).trim().toLowerCase() },
       });
@@ -492,6 +510,13 @@ export class ProductService {
       qb.andWhere('p.id IN (:...curatedIds)', { curatedIds });
     } else if (relatedIds?.length) {
       qb.andWhere('p.id IN (:...relatedIds)', { relatedIds });
+    } else if (categoryFilter.kind === 'uncategorized') {
+      qb.andWhere(
+        `(p.categoryId IS NULL AND NOT EXISTS (
+          SELECT 1 FROM product_category_membership m
+          WHERE m."productId" = p.id
+        ))`,
+      );
     } else if (categoryId) {
       qb.andWhere(
         `(p.categoryId = :categoryId OR EXISTS (
@@ -502,11 +527,10 @@ export class ProductService {
       );
     }
     if (opts?.inStockOnly) {
-      if (channel === 'RETAIL') qb.andWhere('p.retailStock > 0');
-      else if (channel === 'WHOLESALE') qb.andWhere('p.wholesaleStock > 0');
+      qb.andWhere(inStockPredicate(channel));
     }
-    if (opts?.collectionId) {
-      qb.andWhere('p.collectionId = :collectionId', { collectionId: opts.collectionId });
+    if (collectionId) {
+      qb.andWhere('p.collectionId = :collectionId', { collectionId });
     }
     if (fabric) {
       qb.andWhere("(p.fabric ILIKE :fabric OR p.specs->>'fabricType' ILIKE :fabric)", {

@@ -2,6 +2,42 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T07:10:00Z — TASK-20260922-001 admin product filter gates
+
+- Owner confirmed the filter belongs on `/admin/products`, not settings.
+- Reclaimed leftover product list files from done TASK-20260913-010 (hb 2026-09-13) and WORKLOG/governance from done TASK-20260822-003 (hb 2026-08-22). Did not take `product.controller.ts` (TASK-20260906-003).
+- Category filter matches primary `categoryId` or membership. `uncategorized` is no primary and no membership. Invalid id/collection is 400.
+- In-stock with no channel means retail or wholesale stock above zero. Excel stays channel-only.
+- Gates (observed): `admin-product-list-filter.spec.ts` ok; `admin-product-workspace.spec.ts` ok; `apps/api` and `apps/web` `npx tsc --noEmit` 0.
+- Admin click not exercised (login wall). Storefront landing untouched.
+- Exact next: commit, merge master, push, auto-deploy, then health check.
+
+## 2026-09-14T11:27:00Z — TASK-20260914-001 CLOSED owner-verified
+
+- Owner confirmed both storefronts open from Iran IP without VPN.
+- Live edge remains DNS-only on storefront A `@`/`www` for `.ir` and `.com`. Claims released.
+- Residual: optional later Iran CDN (Arvan) if origin TTFB becomes the complaint; do not re-orange-cloud those four records without a phone-on-home-data check.
+
+
+## 2026-09-14T11:22:00Z — TASK-20260914-001 gray-cloud LIVE
+
+- Dashboard login `rashidhamedas@gmail.com` account `36a2cb50a339ec81a878dde07cdec1ea`.
+- IPv6 toggle on Free is disabled. Applied DNS-only on storefront A `@`/`www` for `.ir` and `.com`. Left `erp`/`erpayan` proxied (other IPs).
+- Iran check-host: both homes HTTP 200 to `5.75.200.102`, AAAA empty, ~0.4–0.6s (was ~3.3s on some CF PoPs). Reports: com `4b72df94ke2c`, ir `4b72dfc4k105`.
+- Origin `--resolve` `.com` → nginx/1.31.2 200 WHOLESALE. `.ir` www already nginx 200 RETAIL.
+- Exact next: owner opens both homes on mobile data with VPN off. Rollback = re-enable orange cloud on those four A records.
+
+
+## 2026-09-14T11:25:00Z — TASK-20260914-001 Iran edge diagnosis (not live-applied)
+
+- Owner: `cursor:implementer-TASK-20260914-001` on `D:/proje/Site B2B`. Did not take WORKLOG (006).
+- Confirmed: both zones orange-cloud + AAAA + h3. Origin `5.75.200.102:443` and IPv4 HTTP from 7 Iranian check-host nodes are 200. nginx/UFW do not geo-block.
+- Root: Cloudflare browser path (IPv6 / HTTP/3 / anycast / challenge), not the app. VPN-on works because it exits IPv4 outside Iran.
+- Live CF change NOT applied (no API token; dashboard challenge). Architecture + runbook + dry-run script written.
+- Exact next: owner applies Network IPv6/HTTP3 off (or `node scripts/cloudflare-iran-edge.mjs --mode network --apply`), then phone-on-home-data VPN-off. If still dead, `--mode origin` gray-cloud.
+- Slack: no messages; CLI not installed. Independent Reviewer residual: exposing origin IP if gray-cloud.
+
+
 ## 2026-09-13T13:45:00Z — TASK-20260913-014 CLOSED live `b628674`
 
 - Code merged/pushed; VPS HEAD `b628674`. Health 200. Homes `.ir` ~1.19s / `.com` ~1.03s.

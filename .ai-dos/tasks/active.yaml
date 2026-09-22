@@ -1,5 +1,77 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260922-001"
+    title: "Admin product list advanced filter by category"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260922-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260922-001"
+      implementer: "cursor:implementer-TASK-20260922-001"
+      reviewer: "same-session-after-gates"
+      security: "same-session-query-allowlist"
+    branch: "ai/TASK-20260922-001-admin-product-filter"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-22T06:50:00Z"
+    heartbeat_at: "2026-09-22T06:50:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/admin-product-workspace.ts"
+      - "apps/web/src/lib/admin-product-workspace.spec.ts"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/web/src/components/admin/AdminProductListFilters.tsx"
+      - "apps/web/src/lib/hooks/useProducts.ts"
+      - "apps/api/src/modules/product/admin-product-list-filter.ts"
+      - "apps/api/src/modules/product/admin-product-list-filter.spec.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "docs/architecture/admin-product-list-filter.md"
+      - "docs/reports/2026-09-22-admin-product-list-filter.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Advanced filter on /admin/products. Category (including uncategorized),
+      status, collection, and in-stock. URL is the source of truth.
+      Reclaimed leftover claims from done TASK-20260913-010 (hb 2026-09-13, status done)
+      and done TASK-20260822-003 WORKLOG/governance (hb 2026-08-22). Did not take
+      product.controller.ts (TASK-20260906-003). Excel export stays channel-only.
+    acceptance_criteria:
+      - "/admin/products?categoryId= keeps category, including uncategorized, across refresh"
+      - "Category match includes primary categoryId or membership"
+      - "Invalid categoryId/collectionId is 400 and is not interpolated into SQL"
+      - "Active filters are removable chips; empty-filtered is distinct from an empty catalog"
+      - "Channel and search stay AND-combined; storefront landing JS is unchanged"
+      - "workspace + list-filter specs and api/web tsc pass"
+  - id: "TASK-20260914-001"
+    title: "Restore Iran storefront access without VPN"
+    status: "done"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260914-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260914-001"
+      implementer: "cursor:implementer-TASK-20260914-001"
+      reviewer: "same-session-after-evidence"
+      security: "same-session-edge-dns"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-14T11:20:00Z"
+    heartbeat_at: "2026-09-14T11:20:00Z"
+    depends_on: []
+    file_claims: []
+    released_file_claims:
+      - "docs/architecture/iran-edge-access.md"
+      - "docs/reports/2026-09-14-iran-edge-access.md"
+      - "scripts/cloudflare-iran-edge.mjs"
+      - "scripts/cloudflare-iran-edge.spec.mjs"
+    notes: |
+      CLOSED 2026-09-14: owner confirmed both storefronts open from Iran
+      without VPN. Storefront A @/www DNS-only. IPv6 toggle locked on Free.
+    acceptance_criteria:
+      - "Root cause distinguished: app/WAF vs CF anycast/IPv6/H3 vs origin block"
+      - "Architecture and operator runbook recorded with rollback"
+      - "Script can disable IPv6/HTTP3 and optionally gray-cloud A records"
+      - "Live Iran-without-VPN check recorded after owner applies edge change"
   - id: "TASK-20260913-014"
     title: "Complete synced admin site-content workspace"
     status: "done"
@@ -220,18 +292,20 @@ tasks:
     file_claims:
       - "apps/web/src/lib/product-image-alt.ts"
       - "apps/web/src/lib/product-image-alt.spec.ts"
-      - "apps/web/src/lib/admin-product-workspace.ts"
-      - "apps/web/src/lib/admin-product-workspace.spec.ts"
       - "apps/web/src/components/admin/ProductImageAltEditor.tsx"
-      - "apps/web/src/components/admin/AdminProducts.tsx"
       - "apps/web/src/components/admin/ColorVariantsEditor.tsx"
-      - "apps/web/src/lib/hooks/useProducts.ts"
+      # transferred 2026-09-22 to TASK-20260922-001 (done leftover; admin list filter):
+      # "apps/web/src/lib/admin-product-workspace.ts"
+      # "apps/web/src/lib/admin-product-workspace.spec.ts"
+      # "apps/web/src/components/admin/AdminProducts.tsx"
+      # "apps/web/src/lib/hooks/useProducts.ts"
       - "apps/web/src/app/admin/products/page.tsx"
       - "apps/api/src/modules/product/product-image-alt.ts"
       - "apps/api/src/modules/product/product-image-alt.spec.ts"
       - "apps/api/src/modules/product/entities/product.entity.ts"
       - "apps/api/src/modules/product/dto/create-product.dto.ts"
-      - "apps/api/src/modules/product/product.service.ts"
+      # transferred 2026-09-22 to TASK-20260922-001 (done leftover; category list filter):
+      # "apps/api/src/modules/product/product.service.ts"
       - "apps/api/src/database/migrations/20260913-010-product-image-alts.ts"
       - "apps/api/src/database/migrations/20260913-010-product-image-alts.spec.ts"
       - "apps/web/src/components/shared/JsonLd.tsx"
@@ -246,7 +320,8 @@ tasks:
       - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
       - "docs/architecture/admin-product-workspace.md"
       - "docs/reports/2026-09-13-admin-product-workspace.md"
-      - "docs/WORKLOG.md"
+      # transferred 2026-09-22 to TASK-20260922-001 (done leftover):
+      # "docs/WORKLOG.md"
     notes: |
       Completes /admin/products workspace + per-image alt SoT.
       Reclaimed stale AdminProducts/useProducts/product.service from TASK-20260912-002 (released).
@@ -4028,11 +4103,12 @@ tasks:
       # "apps/web/src/app/retail/retail.css"
       - "design-system/b2c/MASTER.md"
       - "design-system/default/pages/home.md"
-      - "docs/WORKLOG.md"
       - "docs/reports/2026-08-22-retail-home-cards-ui.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+      # transferred 2026-09-22 to TASK-20260922-001 (done leftover governance):
+      # "docs/WORKLOG.md"
+      # ".ai-dos/tasks/active.yaml"
+      # ".ai-dos/tasks/handoff.md"
+      # ".ai-dos/project/status.md"
     notes: |
       Append/register only on shared governance files. Do not stage middleware.ts
       or TASK-022 Excel/Torob/About work. RetailHeader remains TASK-006.

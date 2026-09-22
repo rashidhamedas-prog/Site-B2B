@@ -36,16 +36,19 @@ import type {
   InternalLinkView,
 } from '@/lib/hooks/useProducts';
 import { AdminExcelExportButtons } from '@/components/admin/AdminExcelExportButtons';
+import { AdminProductListFilters } from '@/components/admin/AdminProductListFilters';
 import { ProductImageAltEditor } from '@/components/admin/ProductImageAltEditor';
 import {
   PRODUCT_CHANNEL_LABEL,
   PRODUCT_EDITOR_SECTION_LABEL,
   PRODUCT_EDITOR_SECTIONS,
+  isAdminCategoryUuid,
   parseProductWorkspaceQuery,
   productListApiChannel,
+  productListIsNarrowed,
   serializeProductWorkspaceQuery,
-  type ProductEditorSection,
   type ProductListChannel,
+  type ProductWorkspaceQuery,
 } from '@/lib/admin-product-workspace';
 import {
   normalizeProductImageAlts,
@@ -871,7 +874,7 @@ export function AdminProducts() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<
-    Array<{ id: string; name: string; skuPrefix: string }>
+    Array<{ id: string; name: string; skuPrefix: string; status?: string }>
   >([]);
   const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([]);
   const [specMemory, setSpecMemory] = useState<SpecMemory>({});
@@ -904,28 +907,33 @@ export function AdminProducts() {
   );
 
   const replaceWorkspace = useCallback(
-    (next: { channel: ProductListChannel; q?: string; section?: ProductEditorSection }) => {
-      const qs = serializeProductWorkspaceQuery({
-        channel: next.channel,
-        q: next.q ?? workspace.q,
-        section: next.section ?? workspace.section,
-      });
+    (patch: Partial<ProductWorkspaceQuery>) => {
+      const qs = serializeProductWorkspaceQuery({ ...workspace, ...patch });
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
-    [pathname, router, workspace.channel, workspace.q, workspace.section],
+    [pathname, router, workspace],
   );
+
+  const canonicalQuery = serializeProductWorkspaceQuery(workspace);
+  useEffect(() => {
+    if (canonicalQuery === searchParams.toString()) return;
+    router.replace(canonicalQuery ? `${pathname}?${canonicalQuery}` : pathname, { scroll: false });
+  }, [canonicalQuery, pathname, router, searchParams]);
 
   const { products, meta, loading, error, refetch } = useProducts({
     page,
     search: workspace.q || undefined,
     limit: 20,
-    status: 'ALL',
+    status: workspace.status,
     channel: productListApiChannel(workspace.channel),
+    categoryId: workspace.categoryId || undefined,
+    collectionId: workspace.collectionId || undefined,
+    inStock: workspace.inStock,
   });
 
   useEffect(() => {
     apiClient
-      .get<Array<{ id: string; name: string; skuPrefix: string }>>('/categories')
+      .get<Array<{ id: string; name: string; skuPrefix: string; status?: string }>>('/categories/admin')
       .then((res) => setCategories(res ?? []))
       .catch(() => undefined);
     apiClient
@@ -967,8 +975,14 @@ export function AdminProducts() {
       .catch(() => undefined);
   }, []);
 
-  const openCreate = () => {
-    setForm({ ...emptyForm, specs: { ...emptySpecs, customFields: [] }, faqItems: [] });
+  const openCreate = (preset?: unknown) => {
+    const categoryId = typeof preset === 'string' && isAdminCategoryUuid(preset) ? preset : '';
+    setForm({
+      ...emptyForm,
+      categoryId,
+      specs: { ...emptySpecs, customFields: [] },
+      faqItems: [],
+    });
     setImages([]);
     setImageAlts({});
     setColorDrafts([]);
@@ -1552,7 +1566,13 @@ export function AdminProducts() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900">محصولات</h2>
-          <p className="mt-0.5 text-sm text-gray-500">{meta.total} مدل در کاتالوگ</p>
+          <p className="mt-0.5 text-sm text-gray-500" aria-live="polite">
+            {loading
+              ? 'در حال به‌روزرسانی فهرست…'
+              : `${meta.total.toLocaleString('fa-IR')} مدل${
+                  productListIsNarrowed(workspace) ? ' با فیلتر فعلی' : ' در کاتالوگ'
+                }`}
+          </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <AdminExcelExportButtons kind="products" />
@@ -1579,7 +1599,7 @@ export function AdminProducts() {
                 aria-selected={active}
                 onClick={() => {
                   setPage(1);
-                  replaceWorkspace({ channel: id, q: workspace.q });
+                  replaceWorkspace({ channel: id });
                 }}
                 className={cn(
                   'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors duration-150',
@@ -1603,11 +1623,29 @@ export function AdminProducts() {
             value={workspace.q}
             onChange={(e) => {
               setPage(1);
-              replaceWorkspace({ channel: workspace.channel, q: e.target.value });
+              replaceWorkspace({ q: e.target.value });
             }}
             rightIcon={<Search className="h-4 w-4" />}
           />
         </div>
+        <AdminProductListFilters
+          query={workspace}
+          categories={categories}
+          collections={collections}
+          onChange={(patch) => {
+            setPage(1);
+            replaceWorkspace(patch);
+          }}
+          onClear={() => {
+            setPage(1);
+            replaceWorkspace({
+              categoryId: '',
+              status: 'ALL',
+              collectionId: '',
+              inStock: false,
+            });
+          }}
+        />
       </div>
 
       <div className="card overflow-hidden">
@@ -1663,10 +1701,46 @@ export function AdminProducts() {
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
-                    <p className="mb-3 text-gray-400">محصولی یافت نشد</p>
-                    <button onClick={openCreate} className="btn btn-primary btn-sm">
-                      افزودن اولین محصول
-                    </button>
+                    {productListIsNarrowed(workspace) ? (
+                      <>
+                        <p className="mb-3 text-gray-500">با این فیلتر محصولی نیست</p>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPage(1);
+                              replaceWorkspace({
+                                channel: 'ALL',
+                                q: '',
+                                categoryId: '',
+                                status: 'ALL',
+                                collectionId: '',
+                                inStock: false,
+                              });
+                            }}
+                            className="btn btn-outline btn-sm min-h-11"
+                          >
+                            پاک کردن فیلتر
+                          </button>
+                          {isAdminCategoryUuid(workspace.categoryId) ? (
+                            <button
+                              type="button"
+                              onClick={() => openCreate(workspace.categoryId)}
+                              className="btn btn-primary btn-sm min-h-11"
+                            >
+                              افزودن محصول در این دسته
+                            </button>
+                          ) : null}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mb-3 text-gray-400">محصولی یافت نشد</p>
+                        <button type="button" onClick={() => openCreate()} className="btn btn-primary btn-sm">
+                          افزودن اولین محصول
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -1826,7 +1900,7 @@ export function AdminProducts() {
                     href={`#product-${id}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      replaceWorkspace({ channel: workspace.channel, q: workspace.q, section: id });
+                      replaceWorkspace({ section: id });
                       document.getElementById(`product-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }}
                     className={cn(
