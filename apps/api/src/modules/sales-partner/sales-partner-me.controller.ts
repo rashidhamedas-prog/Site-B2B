@@ -95,6 +95,14 @@ export class SalesPartnerMeController {
     return this.drafts.listMine(this.requirePartner(req));
   }
 
+  @Get('orders/:id')
+  getOrder(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Param('id') id: string,
+  ) {
+    return this.drafts.getMine(this.requirePartner(req), id);
+  }
+
   @Get('commissions')
   commissions(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
     return this.ledger.balances(this.requirePartner(req));

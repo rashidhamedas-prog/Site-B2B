@@ -510,10 +510,13 @@ Paid/shipped/delivered reuse existing `order.status_changed.notification`. A Sal
 ## 19. Deployment, flag, rollback
 
 - Additive migrations only. Default flag `mode=OFF`, `enabled=false`.
-- Rollback: set flag OFF; existing orders keep retail lifecycle; do not drop tables with data.
-- Down migrations exist for empty/new tables; after production data, roll forward with flag off.
+- Rollback: set `salesPartners.mode=OFF` and `enabled=false` in admin settings. Existing retail orders keep payment/fulfillment/RMA. Do not drop tables that have rows.
+- Down migrations exist for empty/new tables; after production data, roll forward with the flag off.
 - Backup before first production migrate (standard VPS dump).
+- Production IBAN key: set `SALES_PARTNER_IBAN_KEY` (min 16 chars) on the API host. Do not reuse `JWT_SECRET` in LIVE. `.env.example` is claimed elsewhere; document the key here until that claim is released.
+- Legal terms stay `draft-unreviewed` until owner/counsel replace the text. Do not invent final copy.
 - No second service. Modular monolith `SalesPartnerModule`.
+- LIVE checklist: hold days > 0, min payout set, SMS provider working, IBAN key set, 2–3 canary phones, independent Reviewer+Security residual closed.
 
 ## 20. Testing strategy
 

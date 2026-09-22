@@ -30,4 +30,9 @@ const canary = resolveSalesPartnerSettings({
 assert(programAllowsPartnerAction(canary, '09151234567'), 'canary phone');
 assert(!programAllowsPartnerAction(canary, '09150000000'), 'other phone blocked');
 
+const preview = resolveSalesPartnerSettings({ enabled: true, mode: 'PREVIEW', applyOpen: true });
+assert(programAllowsApply(preview), 'preview apply');
+assert(!programAllowsPartnerAction(preview, '09151234567'), 'preview cannot create orders');
+assert(resolveSalesPartnerSettings({ enabled: true, mode: 'OFF' }).enabled === false, 'off ignores enabled');
+
 console.log('sales-partner-settings.spec.ts: OK');

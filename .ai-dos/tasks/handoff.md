@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T16:10:00Z — Phase 7 isolation + partner order detail
+
+- Added GET `/v1/sales-partners/orders/:id`, partner order detail, no-store on panel HTML.
+- Isolation source spec: purpose, owned draft, no affiliateId, RETAIL_WEBSITE convert, hashed token, no Vendor ledger, payout lock.
+- PREVIEW allows apply but not drafts. Production IBAN key documented; `.env.example` not edited (claimed).
+- Observed: isolation/settings/commission/staff-access specs OK; api tsc 0.
+- Still not LIVE: browser E2E, legal terms, dedicated host key, order-column attribution.
+
 ## 2026-09-22T15:20:00Z — independent Reviewer + Security recorded
 
 - Reviewer (`6f63b59f-c25e-4127-9b53-8311f884f48d`): conditional approve flag-OFF merge. Isolation/confirm/hold/payout/price OK.

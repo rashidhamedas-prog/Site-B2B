@@ -22,9 +22,10 @@ Not live. Feature flag default OFF.
 
 ## Observed gates
 
-- sales-partner policy/commission/draft/ledger/settings/catalog-policy/iban specs OK
+- sales-partner policy/commission/draft/ledger/settings/catalog-policy/iban/isolation specs OK
 - staff-access.spec OK
-- `apps/api` `tsc --noEmit` 0 after ledger/IBAN hardening
+- PREVIEW cannot create drafts; OFF ignores `enabled=true`
+- `apps/api` `tsc --noEmit` 0 after isolation + order-detail work
 
 ## Independent review
 

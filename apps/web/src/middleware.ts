@@ -37,6 +37,9 @@ function isPrivateStorefrontPath(pathname: string): boolean {
   return (
     p.startsWith('/admin') ||
     p.startsWith('/portal') ||
+    p.startsWith('/partners') ||
+    p.startsWith('/sales-partners') ||
+    p.startsWith('/confirm/sales-partner') ||
     p.startsWith('/api') ||
     p.startsWith('/checkout') ||
     p.startsWith('/account') ||
@@ -210,7 +213,9 @@ export function middleware(request: NextRequest) {
       return res;
     };
     if (isSalesPartnerLogin) {
-      return withRobots(NextResponse.next());
+      const res = withRobots(NextResponse.next());
+      res.headers.set('Cache-Control', 'private, no-store');
+      return res;
     }
     const session = readSalesPartnerGateCookies(request.cookies);
     if (!session.token || !canEnterSalesPartners(session.token)) {
@@ -218,7 +223,9 @@ export function middleware(request: NextRequest) {
       loginUrl.searchParams.set('redirect', pathname);
       return withRobots(NextResponse.redirect(loginUrl));
     }
-    return withRobots(NextResponse.next());
+    const res = withRobots(NextResponse.next());
+    res.headers.set('Cache-Control', 'private, no-store');
+    return res;
   }
 
   if (isPartnerLogin || isPartnerRoute) {

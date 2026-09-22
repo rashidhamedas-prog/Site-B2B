@@ -20,6 +20,7 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [recipientName, setRecipientName] = useState('');
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
@@ -32,7 +33,8 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
     apiClient
       .get<PublicDraft>(`/sales-partner-confirmations/${encodeURIComponent(token)}`)
       .then(setData)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'این لینک معتبر نیست'));
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'این لینک معتبر نیست'))
+      .finally(() => setLoading(false));
   }, [token]);
 
   async function confirm() {
@@ -71,6 +73,7 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
   return (
     <main className="mx-auto min-h-screen max-w-lg px-4 py-8 text-right" dir="rtl">
       <h1 className="text-xl font-bold">تأیید سبد همکار</h1>
+      {loading && <p className="mt-4 text-sm text-stone-600" role="status">در حال بارگذاری سبد…</p>}
       {data && <p className="mt-2 text-sm text-stone-600">{data.notice}</p>}
       {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
       {done && <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900" role="status">{done}</p>}
@@ -121,10 +124,10 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
               <input type="checkbox" className="mt-1" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               این سبد را تأیید می‌کنم و می‌دانم فروشنده اصلی ترنم است.
             </label>
-            <button type="submit" className="min-h-11 w-full rounded-xl bg-[#1B5C4A] text-white" disabled={busy || !consent}>
+            <button type="submit" className="min-h-11 w-full rounded-xl bg-[#1B5C4A] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]" disabled={busy || !consent}>
               تأیید سبد
             </button>
-            <button type="button" className="min-h-11 w-full rounded-xl border" disabled={busy} onClick={() => void reject()}>
+            <button type="button" className="min-h-11 w-full rounded-xl border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]" disabled={busy} onClick={() => void reject()}>
               رد کردن سبد
             </button>
           </form>
