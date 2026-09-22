@@ -1,8 +1,11 @@
-export default function SalesPartnerCommissionsStubPage() {
+import { SalesPartnerShell } from '@/components/sales-partners/SalesPartnerShell';
+
+export default function SalesPartnerCommissionsPage() {
   return (
-    <main className="mx-auto max-w-lg px-4 py-8 text-right" dir="rtl">
-      <h1 className="text-xl font-bold">پورسانت‌ها</h1>
-      <p className="mt-3 text-sm text-stone-600">پورسانت تخمینی، در انتظار تحویل، در دوره نگهداری و قابل‌برداشت جدا نشان داده می‌شوند.</p>
-    </main>
+    <SalesPartnerShell title="پورسانت‌ها">
+      <p className="text-sm text-stone-600">
+        پورسانت بعد از پرداخت معتبر ثبت می‌شود و پس از تحویل و پایان مهلت مرجوعی قابل‌برداشت می‌شود.
+      </p>
+    </SalesPartnerShell>
   );
 }

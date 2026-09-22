@@ -1,8 +1,10 @@
 import {
   allocateOrderDiscountIrr,
+  assertCommissionRuleShape,
   commissionAmountIrr,
   eligibleMerchandiseIrr,
   selectCommissionRule,
+  vendorDueFromRetailIrr,
   vendorSkuMarginIrr,
   type CommissionRule,
 } from './sales-commission-policy';
@@ -44,5 +46,14 @@ assert(eligibleMerchandiseIrr({
 }) === 140_000, 'shipping and wallet excluded');
 assert(vendorSkuMarginIrr({ retailNetIrr: 1_000_000, vendorDueIrr: 800_000, partnerPercent: 10 }) === 100_000, 'margin ok');
 assert(vendorSkuMarginIrr({ retailNetIrr: 1_000_000, vendorDueIrr: 950_000, partnerPercent: 10 }) === -50_000, 'margin negative');
+
+assert(vendorDueFromRetailIrr(1_000_000, 20) === 800_000, 'vendor due after taranom cut');
+assert(assertCommissionRuleShape({ scope: 'PROGRAM' }) === 'PROGRAM', 'program scope');
+try {
+  assertCommissionRuleShape({ scope: 'PRODUCT' });
+  throw new Error('product without id should fail');
+} catch (err) {
+  assert(err instanceof Error && err.message === 'PRODUCT_REQUIRED', 'product required');
+}
 
 console.log('sales-commission-policy.spec.ts: OK');

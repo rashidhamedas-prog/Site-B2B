@@ -138,3 +138,35 @@ export function vendorSkuMarginIrr(input: {
   const partnerDue = commissionAmountIrr(input.retailNetIrr, input.partnerPercent);
   return input.retailNetIrr - input.vendorDueIrr - partnerDue;
 }
+
+export function vendorDueFromRetailIrr(retailNetIrr: number, taranomVendorCommissionPercent: number | null): number {
+  const net = Number.isInteger(retailNetIrr) ? retailNetIrr : 0;
+  const cutPct = Number.isInteger(taranomVendorCommissionPercent) ? Number(taranomVendorCommissionPercent) : 0;
+  const cut = Math.floor((net * cutPct) / 100);
+  return Math.max(0, net - cut);
+}
+
+export function assertCommissionRuleShape(input: {
+  scope: string;
+  productId?: string | null;
+  categoryId?: string | null;
+  salesPartnerId?: string | null;
+}): CommissionScope {
+  if (!(COMMISSION_SCOPES as readonly string[]).includes(input.scope)) {
+    throw new Error('INVALID_SCOPE');
+  }
+  const scope = input.scope as CommissionScope;
+  if ((scope === 'PRODUCT' || scope === 'PARTNER_PRODUCT') && !input.productId) {
+    throw new Error('PRODUCT_REQUIRED');
+  }
+  if ((scope === 'CATEGORY' || scope === 'PARTNER_CATEGORY') && !input.categoryId) {
+    throw new Error('CATEGORY_REQUIRED');
+  }
+  if ((scope === 'PARTNER_PRODUCT' || scope === 'PARTNER_CATEGORY') && !input.salesPartnerId) {
+    throw new Error('PARTNER_REQUIRED');
+  }
+  if (scope === 'PROGRAM' && (input.productId || input.categoryId || input.salesPartnerId)) {
+    throw new Error('PROGRAM_MUST_BE_GLOBAL');
+  }
+  return scope;
+}

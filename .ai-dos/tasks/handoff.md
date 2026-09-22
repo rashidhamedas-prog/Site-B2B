@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T13:45:00Z — TASK-20260922-003 Phases 2–3 coded, not live
+
+- Catalog: partner sees only `sales_partner_product_eligibility.eligible=true`. Vendor SKUs need margin >= `minMarginIrr`; partner DTO has no vendorDue.
+- Rules: PROGRAM/CATEGORY/PRODUCT/PARTNER_* via existing integer floor + precedence. Admin preview and program-rate create.
+- Draft: server-priced items, hashed confirmation token, SMS copy without charge-until-confirm, expire+anonymize phone.
+- Convert: `OrderService.create` channel RETAIL / type RETAIL_WEBSITE / no affiliateId / idempotency `sp-draft:{id}`. Did not edit order.service or order.entity.
+- Gates observed: sales-partner policy/commission/draft/ledger/settings/catalog-policy specs OK; staff-access.spec OK; `apps/api` and `apps/web` `npx tsc --noEmit` 0.
+- Not done: ledger jobs, payouts, E2E, a11y browser, independent Reviewer + Security, live flag.
+- Exact next: Phase 4 commission lifecycle on paid/delivered/return; then partner UX polish and admin payouts.
+
 ## 2026-09-22T12:40:00Z — TASK-20260922-003 Phase 1 coded, not live
 
 - Architecture + isolated `SalesPartnerModule`, migration, apply/OTP/admin review, JWT `purpose=sales_partner`.

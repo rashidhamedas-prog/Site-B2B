@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 export const DRAFT_STATUSES = [
   'DRAFT',
   'AWAITING_CUSTOMER_CONFIRMATION',
@@ -62,4 +64,22 @@ export function confirmationSmsText(displayName: string, confirmUrl: string): st
 
 export function isDraftExpired(expiresAt: Date | null | undefined, now: Date): boolean {
   return !!expiresAt && expiresAt.getTime() <= now.getTime();
+}
+
+export function hashConfirmationToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+export function priceDriftBps(fromIrr: number, toIrr: number): number {
+  if (!Number.isInteger(fromIrr) || !Number.isInteger(toIrr) || fromIrr < 0 || toIrr < 0) {
+    throw new Error('INVALID_PRICE');
+  }
+  if (fromIrr === toIrr) return 0;
+  if (fromIrr === 0) return 10_000;
+  return Math.floor((Math.abs(toIrr - fromIrr) * 10_000) / fromIrr);
+}
+
+export function maskCustomerPhone(phone: string | null | undefined): string | null {
+  if (!phone || phone.length < 8) return null;
+  return `${phone.slice(0, 4)}***${phone.slice(-2)}`;
 }

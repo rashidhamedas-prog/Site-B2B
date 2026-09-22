@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
+import { toman } from '@/lib/product-display';
 
 type ApplicationRow = {
   id: string;
@@ -20,22 +21,57 @@ type PartnerRow = {
   phoneMasked: string;
 };
 
+type CatalogRow = {
+  productId: string;
+  name: string;
+  slug: string | null;
+  priceIrr: number;
+  vendorSku: boolean;
+  eligible: boolean;
+  previewCommissionPercent: number;
+  marginIrr: number;
+  minMarginIrr: number;
+  canEnable: boolean;
+};
+
+type RuleRow = {
+  id: string;
+  scope: string;
+  percent: number;
+  active: boolean;
+  productId: string | null;
+  categoryId: string | null;
+  salesPartnerId: string | null;
+  note: string | null;
+};
+
+type Tab = 'applications' | 'partners' | 'catalog' | 'rules';
+
 export function AdminSalesPartners() {
-  const [tab, setTab] = useState<'applications' | 'partners'>('applications');
+  const [tab, setTab] = useState<Tab>('applications');
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [partners, setPartners] = useState<PartnerRow[]>([]);
+  const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  const [rules, setRules] = useState<RuleRow[]>([]);
+  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [rulePercent, setRulePercent] = useState(5);
+  const [ruleNote, setRuleNote] = useState('');
 
   async function load() {
     setError(null);
     try {
-      const [nextApps, nextPartners] = await Promise.all([
+      const [nextApps, nextPartners, nextCatalog, nextRules] = await Promise.all([
         apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
         apiClient.get<PartnerRow[]>('/admin/sales-partners'),
+        apiClient.get<{ items: CatalogRow[] }>(`/admin/sales-partners/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`),
+        apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
       ]);
       setApps(nextApps);
       setPartners(nextPartners);
+      setCatalog(nextCatalog.items);
+      setRules(nextRules);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود');
     }
@@ -59,19 +95,67 @@ export function AdminSalesPartners() {
     }
   }
 
+  async function toggleEligible(row: CatalogRow) {
+    const partnerPercent = row.vendorSku
+      ? Number(window.prompt('درصد پورسانت بازاریاب برای کنترل حاشیه', String(row.previewCommissionPercent)) || row.previewCommissionPercent)
+      : row.previewCommissionPercent;
+    setBusyId(row.productId);
+    try {
+      await apiClient.patch(`/admin/sales-partners/catalog/${row.productId}/eligibility`, {
+        eligible: !row.eligible,
+        partnerPercent,
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تغییر مجاز بودن محصول ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function createProgramRule() {
+    setBusyId('rule');
+    try {
+      await apiClient.post('/admin/sales-partners/rules', {
+        scope: 'PROGRAM',
+        percent: rulePercent,
+        note: ruleNote || undefined,
+      });
+      setRuleNote('');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ثبت قانون ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'applications', label: 'درخواست‌ها' },
+    { id: 'partners', label: 'همکاران بازاریاب' },
+    { id: 'catalog', label: 'محصولات مجاز' },
+    { id: 'rules', label: 'قوانین پورسانت' },
+  ];
+
   return (
     <div className="space-y-6" dir="rtl">
       <p className="text-sm text-stone-600">
         این بخش برای همکار بازاریاب است، نه تأمین‌کننده ارسال. برنامه تا روشن‌شدن فلگ روی سفارش‌های فعلی اثر ندارد.
       </p>
       {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
-      <div className="flex gap-2">
-        <button type="button" className={`min-h-11 rounded-xl px-4 ${tab === 'applications' ? 'bg-[#1B5C4A] text-white' : 'border'}`} onClick={() => setTab('applications')}>
-          درخواست‌ها
-        </button>
-        <button type="button" className={`min-h-11 rounded-xl px-4 ${tab === 'partners' ? 'bg-[#1B5C4A] text-white' : 'border'}`} onClick={() => setTab('partners')}>
-          همکاران
-        </button>
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`min-h-11 rounded-xl px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A] ${
+              tab === item.id ? 'bg-[#1B5C4A] text-white' : 'border'
+            }`}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       {tab === 'applications' && (
@@ -104,6 +188,98 @@ export function AdminSalesPartners() {
             </li>
           ))}
         </ul>
+      )}
+
+      {tab === 'catalog' && (
+        <div className="space-y-3">
+          <form
+            className="flex flex-wrap gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void load();
+            }}
+          >
+            <label className="sr-only" htmlFor="sp-catalog-q">جستجوی محصول</label>
+            <input
+              id="sp-catalog-q"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="min-h-11 min-w-0 flex-1 rounded-xl border px-3"
+              placeholder="نام محصول"
+            />
+            <button type="submit" className="min-h-11 rounded-xl border px-4">جستجو</button>
+          </form>
+          {catalog.length === 0 && <p className="text-sm text-stone-600">محصولی پیدا نشد.</p>}
+          <ul className="space-y-3">
+            {catalog.map((row) => (
+              <li key={row.productId} className="rounded-xl border p-4">
+                <p className="font-medium">{row.name}</p>
+                <p className="text-sm text-stone-600">
+                  {toman(row.priceIrr)} تومان · پورسانت پیش‌فرض {row.previewCommissionPercent}٪
+                  {row.vendorSku ? ' · کالای تأمین‌کننده' : ''}
+                </p>
+                {row.vendorSku && (
+                  <p className="mt-1 text-sm text-amber-800">
+                    {row.canEnable
+                      ? `حاشیه پس از پورسانت بازاریاب کافی است (${toman(row.marginIrr)} تومان).`
+                      : 'حاشیه کافی نیست؛ فعال‌سازی رد می‌شود.'}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="mt-3 min-h-11 rounded-lg border px-3"
+                  disabled={busyId === row.productId || (!row.eligible && !row.canEnable)}
+                  onClick={() => void toggleEligible(row)}
+                >
+                  {row.eligible ? 'غیرفعال کردن برای بازاریاب' : 'مجاز کردن برای بازاریاب'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tab === 'rules' && (
+        <div className="space-y-4">
+          <form
+            className="space-y-3 rounded-xl border p-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void createProgramRule();
+            }}
+          >
+            <p className="font-medium">نرخ پیش‌فرض برنامه</p>
+            <label className="block text-sm" htmlFor="sp-rule-percent">درصد</label>
+            <input
+              id="sp-rule-percent"
+              type="number"
+              min={0}
+              max={80}
+              value={rulePercent}
+              onChange={(e) => setRulePercent(Number(e.target.value))}
+              className="min-h-11 w-32 rounded-xl border px-3"
+            />
+            <label className="block text-sm" htmlFor="sp-rule-note">توضیح داخلی</label>
+            <input
+              id="sp-rule-note"
+              value={ruleNote}
+              onChange={(e) => setRuleNote(e.target.value)}
+              className="min-h-11 w-full rounded-xl border px-3"
+            />
+            <button type="submit" className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white" disabled={busyId === 'rule'}>
+              ثبت نرخ برنامه
+            </button>
+          </form>
+          <ul className="space-y-3">
+            {rules.length === 0 && <li className="text-sm text-stone-600">قانونی ثبت نشده؛ تا آن زمان پورسانت تخمینی صفر است.</li>}
+            {rules.map((row) => (
+              <li key={row.id} className="rounded-xl border p-4 text-sm">
+                <p className="font-medium">{row.scope} · {row.percent}٪ {row.active ? '' : '(غیرفعال)'}</p>
+                {row.note && <p className="mt-1 text-stone-600">{row.note}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
