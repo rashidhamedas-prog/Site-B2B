@@ -72,7 +72,15 @@ type DraftRow = {
   customerPhoneMasked: string | null;
 };
 
-type Tab = 'applications' | 'partners' | 'orders' | 'catalog' | 'rules' | 'payouts' | 'settings';
+type AuditRow = { id: string; action: string; targetType: string; targetId: string; createdAt: string };
+type Report = {
+  applications: { total: number; byStatus: Record<string, number> };
+  partners: { total: number; byStatus: Record<string, number> };
+  drafts: { sampleSize: number; byStatus: Record<string, number>; converted: number; customerConfirmRate: number | null };
+  note: string;
+};
+
+type Tab = 'applications' | 'partners' | 'orders' | 'catalog' | 'rules' | 'payouts' | 'settings' | 'reports';
 
 export function AdminSalesPartners() {
   const [tab, setTab] = useState<Tab>('applications');
@@ -91,11 +99,13 @@ export function AdminSalesPartners() {
   const [availableIrr, setAvailableIrr] = useState<number | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [orders, setOrders] = useState<DraftRow[]>([]);
+  const [audits, setAudits] = useState<AuditRow[]>([]);
+  const [report, setReport] = useState<Report | null>(null);
 
   async function load() {
     setError(null);
     try {
-      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts, nextSettings, nextOrders] = await Promise.all([
+      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts, nextSettings, nextOrders, nextAudits, nextReport] = await Promise.all([
         apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
         apiClient.get<PartnerRow[]>('/admin/sales-partners'),
         apiClient.get<{ items: CatalogRow[] }>(`/admin/sales-partners/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`),
@@ -103,6 +113,8 @@ export function AdminSalesPartners() {
         apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
         apiClient.get<Settings>('/admin/sales-partners/settings'),
         apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
+        apiClient.get<AuditRow[]>('/admin/sales-partners/audits'),
+        apiClient.get<Report>('/admin/sales-partners/reports'),
       ]);
       setApps(nextApps);
       setPartners(nextPartners);
@@ -111,6 +123,8 @@ export function AdminSalesPartners() {
       setPayouts(nextPayouts);
       setSettings(nextSettings);
       setOrders(nextOrders);
+      setAudits(nextAudits);
+      setReport(nextReport);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود');
     }
@@ -242,6 +256,7 @@ export function AdminSalesPartners() {
     { id: 'rules', label: 'قوانین پورسانت' },
     { id: 'payouts', label: 'تسویه' },
     { id: 'settings', label: 'تنظیمات' },
+    { id: 'reports', label: 'گزارش و سوابق' },
   ];
 
   return (
@@ -523,6 +538,38 @@ export function AdminSalesPartners() {
             ذخیره تنظیمات
           </button>
         </form>
+      )}
+
+      {tab === 'reports' && (
+        <div className="space-y-4 text-sm">
+          {report && (
+            <section className="rounded-xl border p-4">
+              <p className="font-medium">شاخص‌ها از دادهٔ همین سامانه است، نه هدف فروش.</p>
+              <p className="mt-2 text-stone-600">{report.note}</p>
+              <p className="mt-3">درخواست‌ها: {report.applications.total}</p>
+              <p>همکاران: {report.partners.total}</p>
+              <p>نمونه پیش‌سفارش: {report.drafts.sampleSize} · تبدیل‌شده: {report.drafts.converted}</p>
+              <p>
+                نرخ تأیید مشتری در نمونه:
+                {' '}
+                {report.drafts.customerConfirmRate == null
+                  ? 'هنوز تصمیم قطعی کافی نیست'
+                  : `${Math.round(report.drafts.customerConfirmRate * 100)}٪`}
+              </p>
+            </section>
+          )}
+          <section>
+            <p className="mb-2 font-medium">سوابق تصمیم</p>
+            <ul className="space-y-2">
+              {audits.length === 0 && <li className="text-stone-600">سابقه‌ای نیست.</li>}
+              {audits.map((row) => (
+                <li key={row.id} className="rounded-xl border p-3">
+                  {row.action} · {row.targetType} · {new Date(row.createdAt).toLocaleString('fa-IR')}
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       )}
     </div>
   );

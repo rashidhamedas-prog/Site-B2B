@@ -56,6 +56,20 @@ export class SalesPartnerAdminController {
     return this.drafts.listAdmin(salesPartnerId);
   }
 
+  @Get('audits')
+  audits(@Query('targetType') targetType?: string) {
+    return this.salesPartners.listAudits(targetType);
+  }
+
+  @Get('reports')
+  async reports() {
+    const [base, drafts] = await Promise.all([
+      this.salesPartners.programReport(),
+      this.drafts.adminStats(),
+    ]);
+    return { ...base, drafts };
+  }
+
   @Get('catalog')
   catalogCandidates(@Query('q') q?: string, @Query('page') page?: string) {
     return this.catalog.adminCandidates(q, Number(page) || 1);

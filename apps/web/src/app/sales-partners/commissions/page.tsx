@@ -28,6 +28,7 @@ export default function SalesPartnerCommissionsPage() {
       <p className="text-sm text-stone-600">
         پورسانت بعد از پرداخت معتبر ثبت می‌شود و تا پایان مهلت مرجوعی قابل‌برداشت نیست. عدد تخمینی اینجا نیست.
       </p>
+      {!data && !error && <p className="mt-4 text-sm text-stone-600" role="status">در حال بارگذاری…</p>}
       {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
       {data && (
         <ul className="mt-5 space-y-2 text-sm">

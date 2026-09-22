@@ -37,5 +37,7 @@ assert(/Get\('me'\)/.test(auth), 'GET me exists');
 assert(/Get\('orders\/:id'\)/.test(me), 'GET order by id exists');
 assert(/sales_partner\.application\.submitted/.test(read('sales-partner-events.ts')), 'outbox event names');
 assert(/AdminOnly/.test(read('sales-partner-admin.controller.ts')), 'admin API stays ADMIN-only');
+assert(/Get\('audits'\)/.test(read('sales-partner-admin.controller.ts')), 'admin audits');
+assert(/Get\('reports'\)/.test(read('sales-partner-admin.controller.ts')), 'admin reports');
 
 console.log('sales-partner-isolation.spec.ts: OK');

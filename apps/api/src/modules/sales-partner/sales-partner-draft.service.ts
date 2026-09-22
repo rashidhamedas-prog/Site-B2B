@@ -171,6 +171,25 @@ export class SalesPartnerDraftService {
     };
   }
 
+  async adminStats() {
+    const rows = await this.drafts.find({ take: 500, order: { createdAt: 'DESC' } });
+    const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.status] = (acc[row.status] || 0) + 1;
+      return acc;
+    }, {});
+    const converted = byStatus.CONVERTED_TO_ORDER || 0;
+    const decided = converted
+      + (byStatus.REJECTED_BY_CUSTOMER || 0)
+      + (byStatus.EXPIRED || 0)
+      + (byStatus.CANCELLED || 0);
+    return {
+      sampleSize: rows.length,
+      byStatus,
+      converted,
+      customerConfirmRate: decided > 0 ? Number((converted / decided).toFixed(3)) : null,
+    };
+  }
+
   async listAdmin(salesPartnerId?: string) {
     const rows = await this.drafts.find({
       where: salesPartnerId ? { salesPartnerId } : {},

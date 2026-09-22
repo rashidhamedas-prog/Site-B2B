@@ -107,15 +107,20 @@ export function SalesPartnerCatalog() {
                   >
                     کپی متن
                   </button>
-                  {src && (
-                    <a
-                      href={src}
-                      download
-                      className="inline-flex min-h-11 items-center rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
-                    >
-                      دانلود تصویر
-                    </a>
-                  )}
+                  {item.images.slice(0, 3).map((image, imageIndex) => {
+                    const href = mediaUrl(image);
+                    if (!href) return null;
+                    return (
+                      <a
+                        key={`${item.id}-${imageIndex}`}
+                        href={href}
+                        download
+                        className="inline-flex min-h-11 items-center rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
+                      >
+                        {imageIndex === 0 ? 'دانلود تصویر' : `تصویر ${imageIndex + 1}`}
+                      </a>
+                    );
+                  })}
                   <a
                     href={item.productUrl}
                     target="_blank"

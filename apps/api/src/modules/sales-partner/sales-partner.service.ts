@@ -368,6 +368,45 @@ export class SalesPartnerService {
     return rows.map((row) => toPublicSalesPartner(row));
   }
 
+  async listAudits(targetType?: string) {
+    const rows = await this.audits.find({
+      where: targetType ? { targetType } : {},
+      order: { createdAt: 'DESC' },
+      take: 100,
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      targetType: row.targetType,
+      targetId: row.targetId,
+      payload: salesPartnerOutboxPayload(row.payload || {}),
+      createdAt: row.createdAt,
+    }));
+  }
+
+  async programReport() {
+    const [applications, profiles] = await Promise.all([
+      this.applications.find({ take: 500, order: { createdAt: 'DESC' } }),
+      this.profiles.find({ take: 500 }),
+    ]);
+    const countBy = (rows: { status: string }[]) =>
+      rows.reduce<Record<string, number>>((acc, row) => {
+        acc[row.status] = (acc[row.status] || 0) + 1;
+        return acc;
+      }, {});
+    return {
+      applications: {
+        total: applications.length,
+        byStatus: countBy(applications),
+      },
+      partners: {
+        total: profiles.length,
+        byStatus: countBy(profiles),
+      },
+      note: 'اعداد تخمینی، قطعی و پرداخت‌شده را با هم مخلوط نکنید. جزئیات مالی در دفتر هر همکار است.',
+    };
+  }
+
   private async issuePartnerSession(phone: string) {
     const profile = await this.profiles.findOne({ where: { phone } });
     const user = await this.users.findOne({ where: { phone } });
