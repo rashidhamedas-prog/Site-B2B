@@ -44,7 +44,7 @@ import {
   toPublicSalesPartner,
 } from './sales-partner-policy';
 import { isVendorRole as vendorRole } from '../vendor/vendor-policy';
-import { ibanRecord } from './sales-partner-iban';
+import { ibanRecord, resolveIbanSecret } from './sales-partner-iban';
 import { normalizeIban } from './sales-partner-policy';
 
 @Injectable()
@@ -229,7 +229,12 @@ export class SalesPartnerService {
     } catch {
       throw new BadRequestException('شماره شبا معتبر نیست');
     }
-    const secret = String(this.config.get('JWT_SECRET') || 'sales-partner-iban');
+    let secret: string;
+    try {
+      secret = resolveIbanSecret(this.config.get('JWT_SECRET'), this.config.get('SALES_PARTNER_IBAN_KEY'));
+    } catch {
+      throw new BadRequestException('ذخیره شبا فعلاً ممکن نیست');
+    }
     const record = ibanRecord(iban, secret);
     profile.ibanLast4 = record.ibanLast4;
     profile.ibanFingerprint = record.ibanFingerprint;

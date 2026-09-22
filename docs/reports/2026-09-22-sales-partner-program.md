@@ -14,21 +14,27 @@ Not live. Feature flag default OFF.
 - Apply / OTP / admin review / `purpose=sales_partner`
 - Catalog eligibility + commission rules + vendor SKU margin guard
 - Draft → SMS hashed token → customer confirm → `RETAIL_WEBSITE` via `OrderService.create`
-- Ledger job: paid → held, cancel/refund/return → reversal
+- Ledger job: paid → held; unpaid cancel writes no reversal; approved RMA reverses that item only
+- Snapshot uses allocated promo discount; wallet is excluded
 - Partner panel: home totals, catalog, new order with variant + resend countdown, orders, commissions, payouts, IBAN profile
 - Admin: applications, partners, catalog, rules, payout confirm with idempotency
+- IBAN AES-256-GCM; prefer `SALES_PARTNER_IBAN_KEY`
 
 ## Observed gates
 
-- sales-partner policy/commission/draft/ledger/settings/catalog-policy specs OK
+- sales-partner policy/commission/draft/ledger/settings/catalog-policy/iban specs OK
 - staff-access.spec OK
-- `apps/api` and `apps/web` `tsc --noEmit` 0
+- `apps/api` `tsc --noEmit` 0 after ledger/IBAN hardening
+
+## Independent review
+
+- Reviewer: [Sales partner independent review](6f63b59f-c25e-4127-9b53-8311f884f48d) — flag-OFF merge OK; D1–D3 were LIVE blockers
+- Security: [Security Review](086a7a9b-4f08-4f0c-99b6-da68a4f61141) — no critical/high; IBAN XOR fixed to AES-GCM
 
 ## Not done
 
-- Independent Reviewer + Security
 - E2E / browser / a11y pass
-- Partial RMA line reversal
+- Dedicated production `SALES_PARTNER_IBAN_KEY`
 - Order-table attribution columns (entity claimed elsewhere)
 - Legal terms (placeholder `draft-unreviewed`)
-- Push/deploy
+- Push/deploy / LIVE enable

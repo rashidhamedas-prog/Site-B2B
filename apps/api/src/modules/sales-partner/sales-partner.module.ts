@@ -7,6 +7,7 @@ import { ProductEntity } from '../product/entities/product.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
+import { ReturnRequestEntity } from '../rma/entities/return-request.entity';
 import { CustomerModule } from '../customer/customer.module';
 import { OrderModule } from '../order/order.module';
 import { ShippingModule } from '../shipping/shipping.module';
@@ -59,6 +60,7 @@ const ENTITIES = [
       ProductVariantEntity,
       OrderEntity,
       OrderItemEntity,
+      ReturnRequestEntity,
     ]),
     AuthModule,
     CustomerModule,

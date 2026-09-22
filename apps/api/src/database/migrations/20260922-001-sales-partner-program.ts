@@ -131,6 +131,9 @@ export class SalesPartnerProgram1758542400001 implements MigrationInterface {
         "unitPriceIrr" integer NOT NULL,
         "lineTotalIrr" integer NOT NULL,
         "estimatedCommissionIrr" integer NOT NULL,
+        "commissionPercent" integer NOT NULL DEFAULT 0,
+        "ruleId" uuid,
+        "ruleVersion" integer NOT NULL DEFAULT 1,
         "productName" varchar(160),
         CONSTRAINT "PK_sales_partner_order_draft_items" PRIMARY KEY ("id"),
         CONSTRAINT "FK_sales_partner_draft_items_draft" FOREIGN KEY ("draftId") REFERENCES "sales_partner_order_drafts"("id") ON DELETE CASCADE

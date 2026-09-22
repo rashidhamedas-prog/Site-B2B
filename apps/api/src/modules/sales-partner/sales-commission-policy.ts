@@ -114,6 +114,44 @@ export function allocateOrderDiscountIrr(
   return floors;
 }
 
+export function promoDiscountIrr(orderDiscountIrr: number, walletAppliedIrr: number): number {
+  if (!Number.isInteger(orderDiscountIrr) || orderDiscountIrr < 0) throw new Error('INVALID_DISCOUNT');
+  if (!Number.isInteger(walletAppliedIrr) || walletAppliedIrr < 0) throw new Error('INVALID_WALLET');
+  return Math.max(0, orderDiscountIrr - walletAppliedIrr);
+}
+
+export function snapshotLineCommissions(input: {
+  lines: { orderItemId: string; lineTotalIrr: number; percent: number }[];
+  orderDiscountIrr: number;
+  walletAppliedIrr: number;
+}): { orderItemId: string; eligibleNetIrr: number; commissionIrr: number; percent: number }[] {
+  const promo = promoDiscountIrr(input.orderDiscountIrr, input.walletAppliedIrr);
+  const allocated = allocateOrderDiscountIrr(input.lines.map((line) => line.lineTotalIrr), promo);
+  return input.lines.map((line, index) => {
+    const eligibleNetIrr = Math.max(0, line.lineTotalIrr - allocated[index]);
+    return {
+      orderItemId: line.orderItemId,
+      eligibleNetIrr,
+      commissionIrr: commissionAmountIrr(eligibleNetIrr, line.percent),
+      percent: line.percent,
+    };
+  });
+}
+
+export function remainingReversalIrr(earnedIrr: number, alreadyReversedAbsIrr: number): number {
+  if (!Number.isInteger(earnedIrr) || earnedIrr < 0) throw new Error('INVALID_EARNED');
+  if (!Number.isInteger(alreadyReversedAbsIrr) || alreadyReversedAbsIrr < 0) throw new Error('INVALID_REVERSED');
+  return Math.max(0, earnedIrr - alreadyReversedAbsIrr);
+}
+
+export function isFullOrderReversalStatus(status: string): boolean {
+  return status === 'CANCELLED' || status === 'DELETED' || status === 'REFUNDED' || status === 'RETURNED';
+}
+
+export function isApprovedReturnStatus(status: string): boolean {
+  return status === 'APPROVED' || status === 'COMPLETED';
+}
+
 export function eligibleMerchandiseIrr(input: {
   lineTotalsAfterLineDiscountIrr: number[];
   orderDiscountIrr: number;

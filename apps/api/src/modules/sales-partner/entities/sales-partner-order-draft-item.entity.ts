@@ -27,6 +27,15 @@ export class SalesPartnerOrderDraftItemEntity {
   @Column({ type: 'int' })
   estimatedCommissionIrr: number;
 
+  @Column({ type: 'int', default: 0 })
+  commissionPercent: number;
+
+  @Column({ type: 'uuid', nullable: true })
+  ruleId: string | null;
+
+  @Column({ type: 'int', default: 1 })
+  ruleVersion: number;
+
   @Column({ type: 'varchar', length: 160, nullable: true })
   productName: string | null;
 }

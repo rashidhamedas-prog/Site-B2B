@@ -292,7 +292,7 @@ orders.salesPartnerSubmissionId uuid null
 | OTP / confirmation token | hash only | never | never | never |
 | Customer phone after convert | last-4 + hash | last-4 | masked | no |
 | Customer address | order only | no | no after confirm | customer page only |
-| IBAN | hash + last4; ciphertext if KEK present | last4 | masked | no |
+| IBAN | HMAC fingerprint + last4 + AES-256-GCM (`SALES_PARTNER_IBAN_KEY`, else domain-separated HMAC of `JWT_SECRET`) | last4 | masked | no |
 | Vendor costs / margin | eligibility row | admin | no | no |
 | Risk score formula | code | no | no | no |
 
@@ -332,8 +332,8 @@ After convert, **order FSM is the source of truth**. Do not duplicate payment/sh
 2. Valid payment (`applyCapturedPayment` / paid): `COMMISSION_EARNED` with `availableAt = deliveredAt + hold` once delivered; until delivered the row may exist as not-yet-available (`availableAt` null or far future). Implementation: insert earned on **paid** with `availableAt = NULL`; on **order DELIVERED** set `availableAt = now + holdDays` via a new `availability` update **only if** we treat availableAt as the hold clock — prefer: insert earned on paid (`held`); job promotes when `deliveredAt + hold <= now`.
 3. Hold job: earned entries with `deliveredAt + holdDays <= now` and no open RMA become **available** (computed: `availableAt <= now`).
 4. Payout batch: `PAYOUT` negative + item links.
-5. Cancel/unpaid: no earned, or full reversal.
-6. Partial return: reversal for returned items only, from snapshot.
+5. Cancel/unpaid: no earned row → no reversal. Paid then cancelled → reverse remaining earned only.
+6. Partial return: approved/completed RMA rows reverse **that orderItem only**. Full `RETURNED`/`REFUNDED`/`CANCELLED` then reverse any leftover earned, never more than remaining.
 7. Return after payout: reversal + negative balance deducted from future available.
 
 `PENDING` in the product brief maps to earned-but-not-delivered.  

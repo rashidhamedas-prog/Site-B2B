@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T15:20:00Z — independent Reviewer + Security recorded
+
+- Reviewer (`6f63b59f-c25e-4127-9b53-8311f884f48d`): conditional approve flag-OFF merge. Isolation/confirm/hold/payout/price OK.
+- Security (`086a7a9b-4f08-4f0c-99b6-da68a4f61141`): no critical/high. Medium was XOR IBAN + JWT_SECRET reuse.
+- Fixed now: reversal only if COMMISSION_EARNED exists (no phantom negative on unpaid cancel); IBAN AES-256-GCM with domain-separated key; prefer `SALES_PARTNER_IBAN_KEY`.
+- Still blocking LIVE: E2E/a11y, dedicated `SALES_PARTNER_IBAN_KEY` in prod, legal terms, order-column attribution.
+- Fixed after review: D1 unpaid cancel no longer writes reversal; D2 approved RMA reverses that line only + remaining-net on full cancel; D3 snapshot uses `snapshotLineCommissions` (promo allocated, wallet excluded); S1 IBAN AES-256-GCM.
+
 ## 2026-09-22T14:30:00Z — TASK-20260922-003 Phases 5–6 coded, not live
 
 - Partner panel: dashboard totals, variant picker, SMS resend countdown, IBAN profile (masked), payouts list.

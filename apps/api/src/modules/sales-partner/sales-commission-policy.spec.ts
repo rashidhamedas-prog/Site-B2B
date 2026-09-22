@@ -3,7 +3,12 @@ import {
   assertCommissionRuleShape,
   commissionAmountIrr,
   eligibleMerchandiseIrr,
+  isApprovedReturnStatus,
+  isFullOrderReversalStatus,
+  promoDiscountIrr,
+  remainingReversalIrr,
   selectCommissionRule,
+  snapshotLineCommissions,
   vendorDueFromRetailIrr,
   vendorSkuMarginIrr,
   type CommissionRule,
@@ -46,6 +51,22 @@ assert(eligibleMerchandiseIrr({
 }) === 140_000, 'shipping and wallet excluded');
 assert(vendorSkuMarginIrr({ retailNetIrr: 1_000_000, vendorDueIrr: 800_000, partnerPercent: 10 }) === 100_000, 'margin ok');
 assert(vendorSkuMarginIrr({ retailNetIrr: 1_000_000, vendorDueIrr: 950_000, partnerPercent: 10 }) === -50_000, 'margin negative');
+
+assert(promoDiscountIrr(30_000, 20_000) === 10_000, 'wallet is tender not discount');
+const snaps = snapshotLineCommissions({
+  lines: [
+    { orderItemId: 'a', lineTotalIrr: 100_000, percent: 10 },
+    { orderItemId: 'b', lineTotalIrr: 100_000, percent: 10 },
+  ],
+  orderDiscountIrr: 30_000,
+  walletAppliedIrr: 20_000,
+});
+assert(snaps[0].eligibleNetIrr + snaps[1].eligibleNetIrr === 190_000, 'promo allocated, wallet ignored');
+assert(snaps[0].commissionIrr + snaps[1].commissionIrr === 19_000, 'commission after discount');
+assert(remainingReversalIrr(10_000, 4_000) === 6_000, 'partial remaining');
+assert(remainingReversalIrr(10_000, 10_000) === 0, 'already reversed');
+assert(isFullOrderReversalStatus('CANCELLED') && !isFullOrderReversalStatus('DELIVERED'), 'full reverse statuses');
+assert(isApprovedReturnStatus('APPROVED') && !isApprovedReturnStatus('PENDING'), 'rma approved');
 
 assert(vendorDueFromRetailIrr(1_000_000, 20) === 800_000, 'vendor due after taranom cut');
 assert(assertCommissionRuleShape({ scope: 'PROGRAM' }) === 'PROGRAM', 'program scope');

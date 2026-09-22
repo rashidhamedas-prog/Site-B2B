@@ -336,7 +336,8 @@ export class SalesPartnerDraftService {
         categoryId: product.categoryId || null,
         lineTotalAfterDiscountIrr: lineTotalIrr,
       }, salesPartnerId, new Date());
-      const commission = commissionAmountIrr(lineTotalIrr, rule?.percent ?? 0);
+      const percent = rule?.percent ?? 0;
+      const commission = commissionAmountIrr(lineTotalIrr, percent);
       merchandiseIrr += lineTotalIrr;
       estimatedCommissionIrr += commission;
       rows.push({
@@ -346,6 +347,9 @@ export class SalesPartnerDraftService {
         unitPriceIrr,
         lineTotalIrr,
         estimatedCommissionIrr: commission,
+        commissionPercent: percent,
+        ruleId: rule?.id ?? null,
+        ruleVersion: rule?.version ?? 1,
         productName: product.name,
       });
     }
@@ -359,6 +363,9 @@ export class SalesPartnerDraftService {
     unitPriceIrr: number;
     lineTotalIrr: number;
     estimatedCommissionIrr: number;
+    commissionPercent: number;
+    ruleId: string | null;
+    ruleVersion: number;
     productName: string;
   }[]) {
     await this.items.delete({ draftId });
