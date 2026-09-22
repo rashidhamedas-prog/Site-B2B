@@ -25,7 +25,8 @@ Not live. Feature flag default OFF.
 - sales-partner policy/commission/draft/ledger/settings/catalog-policy/iban/isolation specs OK
 - staff-access.spec OK
 - PREVIEW cannot create drafts; OFF ignores `enabled=true`
-- `apps/api` `tsc --noEmit` 0 after isolation + order-detail work
+- `apps/api` and `apps/web` `tsc --noEmit` 0 after admin settings/orders/outbox
+- Live API `/v1/sales-partner-program/public-settings` is 404 until this branch deploys (expected; flag remains OFF)
 
 ## Independent review
 

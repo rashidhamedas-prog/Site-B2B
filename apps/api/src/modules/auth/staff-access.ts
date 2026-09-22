@@ -37,9 +37,9 @@ const ALL_MODULES: readonly StaffModule[] = STAFF_MODULES;
 
 export const STAFF_ROLE_MODULES: Record<StaffRole, readonly StaffModule[]> = {
   ADMIN: ALL_MODULES,
-  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'salesPartners', 'account'],
+  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'account'],
   SALES_REP: ['dashboard', 'crm', 'orders', 'catalog', 'account'],
-  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'salesPartners', 'account'],
+  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'account'],
   WAREHOUSE_MANAGER: ['dashboard', 'orders', 'catalog', 'inventory', 'account'],
   CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'content', 'account'],
 };

@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T16:25:00Z — admin settings/orders + outbox + ADMIN-only ACL
+
+- Admin settings GET/PATCH, partner suspend, admin order list.
+- Outbox events (ids/status only) on apply/review/confirm/reject/expire/payout. Producer still respects OMNICHANNEL_OUTBOX_PRODUCER.
+- salesPartners module is ADMIN-only (closes P1 mismatch with @AdminOnly API).
+- Specs: isolation/events/staff-access OK; api+web tsc 0.
+
 ## 2026-09-22T16:10:00Z — Phase 7 isolation + partner order detail
 
 - Added GET `/v1/sales-partners/orders/:id`, partner order detail, no-store on panel HTML.

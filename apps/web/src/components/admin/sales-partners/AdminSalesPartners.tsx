@@ -54,7 +54,25 @@ type PayoutRow = {
   paidAt: string | null;
 };
 
-type Tab = 'applications' | 'partners' | 'catalog' | 'rules' | 'payouts';
+type Settings = {
+  enabled: boolean;
+  mode: 'OFF' | 'PREVIEW' | 'CANARY' | 'LIVE';
+  applyOpen: boolean;
+  commissionHoldDays: number | null;
+  minPayoutIrr: number;
+  dailyDraftCap: number;
+  termsVersion: string;
+};
+
+type DraftRow = {
+  id: string;
+  statusLabel: string;
+  merchandiseIrr: number;
+  convertedOrderId: string | null;
+  customerPhoneMasked: string | null;
+};
+
+type Tab = 'applications' | 'partners' | 'orders' | 'catalog' | 'rules' | 'payouts' | 'settings';
 
 export function AdminSalesPartners() {
   const [tab, setTab] = useState<Tab>('applications');
@@ -71,22 +89,28 @@ export function AdminSalesPartners() {
   const [payoutPartnerId, setPayoutPartnerId] = useState('');
   const [bankReference, setBankReference] = useState('');
   const [availableIrr, setAvailableIrr] = useState<number | null>(null);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [orders, setOrders] = useState<DraftRow[]>([]);
 
   async function load() {
     setError(null);
     try {
-      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts] = await Promise.all([
+      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts, nextSettings, nextOrders] = await Promise.all([
         apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
         apiClient.get<PartnerRow[]>('/admin/sales-partners'),
         apiClient.get<{ items: CatalogRow[] }>(`/admin/sales-partners/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`),
         apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
         apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
+        apiClient.get<Settings>('/admin/sales-partners/settings'),
+        apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
       ]);
       setApps(nextApps);
       setPartners(nextPartners);
       setCatalog(nextCatalog.items);
       setRules(nextRules);
       setPayouts(nextPayouts);
+      setSettings(nextSettings);
+      setOrders(nextOrders);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود');
     }
@@ -158,6 +182,41 @@ export function AdminSalesPartners() {
     }
   }
 
+  async function setPartnerStatus(id: string, status: 'ACTIVE' | 'SUSPENDED' | 'CLOSED') {
+    const reason = status === 'ACTIVE' ? '' : window.prompt('دلیل را بنویسید') || '';
+    if (status !== 'ACTIVE' && reason.trim().length < 3) return;
+    setBusyId(id);
+    try {
+      await apiClient.patch(`/admin/sales-partners/${id}/status`, { status, reason: reason || undefined });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تغییر وضعیت ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function saveSettings() {
+    if (!settings) return;
+    setBusyId('settings');
+    try {
+      await apiClient.patch('/admin/sales-partners/settings', {
+        enabled: settings.enabled,
+        mode: settings.mode,
+        applyOpen: settings.applyOpen,
+        commissionHoldDays: settings.commissionHoldDays || undefined,
+        minPayoutIrr: settings.minPayoutIrr,
+        dailyDraftCap: settings.dailyDraftCap,
+        termsVersion: settings.termsVersion,
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ذخیره تنظیمات ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function createProgramRule() {
     setBusyId('rule');
     try {
@@ -178,9 +237,11 @@ export function AdminSalesPartners() {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'applications', label: 'درخواست‌ها' },
     { id: 'partners', label: 'همکاران بازاریاب' },
+    { id: 'orders', label: 'سفارش‌ها' },
     { id: 'catalog', label: 'محصولات مجاز' },
     { id: 'rules', label: 'قوانین پورسانت' },
     { id: 'payouts', label: 'تسویه' },
+    { id: 'settings', label: 'تنظیمات' },
   ];
 
   return (
@@ -231,6 +292,30 @@ export function AdminSalesPartners() {
               <p className="font-medium">{row.displayName}</p>
               <p className="text-sm text-stone-600">{row.phoneMasked} · {row.statusLabel}</p>
               {row.statusReason && <p className="mt-1 text-sm text-amber-800">{row.statusReason}</p>}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {row.status === 'ACTIVE' && (
+                  <button type="button" className="min-h-11 rounded-lg border px-3" disabled={busyId === row.id} onClick={() => void setPartnerStatus(row.id, 'SUSPENDED')}>تعلیق</button>
+                )}
+                {row.status === 'SUSPENDED' && (
+                  <button type="button" className="min-h-11 rounded-lg bg-emerald-700 px-3 text-white" disabled={busyId === row.id} onClick={() => void setPartnerStatus(row.id, 'ACTIVE')}>فعال‌سازی</button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {tab === 'orders' && (
+        <ul className="space-y-3">
+          {orders.length === 0 && <li className="text-sm text-stone-600">سفارش همکاری ثبت نشده.</li>}
+          {orders.map((row) => (
+            <li key={row.id} className="rounded-xl border p-4 text-sm">
+              <p className="font-medium">{row.statusLabel}</p>
+              <p className="mt-1 text-stone-600">
+                {toman(row.merchandiseIrr)} تومان
+                {row.customerPhoneMasked ? ` · ${row.customerPhoneMasked}` : ''}
+              </p>
+              {row.convertedOrderId && <p className="mt-1 text-stone-500">سفارش فروشگاه ساخته شده است.</p>}
             </li>
           ))}
         </ul>
@@ -384,6 +469,60 @@ export function AdminSalesPartners() {
             ))}
           </ul>
         </div>
+      )}
+
+      {tab === 'settings' && settings && (
+        <form
+          className="space-y-3 rounded-xl border p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void saveSettings();
+          }}
+        >
+          <label className="block text-sm" htmlFor="sp-mode">وضعیت برنامه</label>
+          <select
+            id="sp-mode"
+            className="min-h-11 w-full rounded-xl border px-3"
+            value={settings.mode}
+            onChange={(e) => setSettings({ ...settings, mode: e.target.value as Settings['mode'] })}
+          >
+            <option value="OFF">خاموش</option>
+            <option value="PREVIEW">پیش‌نمایش ثبت‌نام</option>
+            <option value="CANARY">آزمایشی</option>
+            <option value="LIVE">زنده</option>
+          </select>
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input type="checkbox" checked={settings.enabled} onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })} />
+            فعال بودن عملیات همکار (CANARY/LIVE)
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm">
+            <input type="checkbox" checked={settings.applyOpen} onChange={(e) => setSettings({ ...settings, applyOpen: e.target.checked })} />
+            باز بودن ثبت‌نام
+          </label>
+          <label className="block text-sm" htmlFor="sp-hold">مهلت نگهداری پورسانت (روز)</label>
+          <input
+            id="sp-hold"
+            type="number"
+            min={1}
+            max={180}
+            className="min-h-11 w-32 rounded-xl border px-3"
+            value={settings.commissionHoldDays ?? ''}
+            onChange={(e) => setSettings({ ...settings, commissionHoldDays: e.target.value ? Number(e.target.value) : null })}
+          />
+          <label className="block text-sm" htmlFor="sp-min">حداقل تسویه (ریال)</label>
+          <input
+            id="sp-min"
+            type="number"
+            min={0}
+            className="min-h-11 w-48 rounded-xl border px-3"
+            value={settings.minPayoutIrr}
+            onChange={(e) => setSettings({ ...settings, minPayoutIrr: Number(e.target.value) })}
+          />
+          <p className="text-sm text-stone-600">نسخه شرایط: {settings.termsVersion} — متن حقوقی نهایی را اختراع نکنید.</p>
+          <button type="submit" className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white" disabled={busyId === 'settings'}>
+            ذخیره تنظیمات
+          </button>
+        </form>
       )}
     </div>
   );

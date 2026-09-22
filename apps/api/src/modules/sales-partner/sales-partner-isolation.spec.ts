@@ -35,5 +35,7 @@ assert(/purpose === 'sales_partner'/.test(login) && /صفحه همکاران ب�
 assert(/pathname\.startsWith\('\/sales-partners'\)/.test(channel), 'retail rewrite exempts panel');
 assert(/Get\('me'\)/.test(auth), 'GET me exists');
 assert(/Get\('orders\/:id'\)/.test(me), 'GET order by id exists');
+assert(/sales_partner\.application\.submitted/.test(read('sales-partner-events.ts')), 'outbox event names');
+assert(/AdminOnly/.test(read('sales-partner-admin.controller.ts')), 'admin API stays ADMIN-only');
 
 console.log('sales-partner-isolation.spec.ts: OK');

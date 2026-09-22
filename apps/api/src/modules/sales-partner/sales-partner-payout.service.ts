@@ -10,6 +10,7 @@ import {
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
 import { payoutIdempotencyKey } from './sales-partner-ledger-policy';
+import { SALES_PARTNER_EVENT } from './sales-partner-events';
 
 @Injectable()
 export class SalesPartnerPayoutService {
@@ -112,6 +113,11 @@ export class SalesPartnerPayoutService {
         payoutId: payout.id,
       }));
       return payout;
+    });
+    await this.program.emitEvent(SALES_PARTNER_EVENT.PAYOUT_RECORDED, saved.id, {
+      payoutId: saved.id,
+      profileId: input.salesPartnerId,
+      status: saved.status,
     });
     return this.toPublic(saved);
   }

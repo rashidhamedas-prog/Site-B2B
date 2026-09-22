@@ -8,7 +8,9 @@ import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { SalesPartnerPayoutService } from './sales-partner-payout.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
+import { SalesPartnerDraftService } from './sales-partner-draft.service';
 import { PatchSalesPartnerStatusDto, ReviewSalesPartnerDto } from './dto/apply-sales-partner.dto';
+import { PatchSalesPartnerSettingsDto } from './dto/sales-partner-settings.dto';
 import { ConfirmSalesPartnerPayoutDto } from './dto/sales-partner-payout.dto';
 import {
   CreateSalesCommissionRuleDto,
@@ -28,11 +30,30 @@ export class SalesPartnerAdminController {
     private readonly catalog: SalesPartnerCatalogService,
     private readonly payouts: SalesPartnerPayoutService,
     private readonly ledger: SalesPartnerLedgerService,
+    private readonly drafts: SalesPartnerDraftService,
   ) {}
 
   @Get('settings/public')
   settings() {
     return this.salesPartners.publicSettings();
+  }
+
+  @Get('settings')
+  adminSettings() {
+    return this.salesPartners.adminSettings();
+  }
+
+  @Patch('settings')
+  patchSettings(
+    @Body() body: PatchSalesPartnerSettingsDto,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.salesPartners.updateSettings(req.user?.sub || req.user?.id || '', { ...body });
+  }
+
+  @Get('orders')
+  adminOrders(@Query('salesPartnerId') salesPartnerId?: string) {
+    return this.drafts.listAdmin(salesPartnerId);
   }
 
   @Get('catalog')

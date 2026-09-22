@@ -13,6 +13,8 @@ import { In, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { NotificationService } from '../notification/notification.service';
+import { OutboxService } from '../omnichannel/services/outbox.service';
+import { SALES_PARTNER_EVENT, salesPartnerOutboxPayload } from './sales-partner-events';
 import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
@@ -64,11 +66,34 @@ export class SalesPartnerService {
     private readonly config: ConfigService,
     private readonly otp: OtpService,
     @Optional() private readonly notifications?: NotificationService,
+    @Optional() private readonly outbox?: OutboxService,
   ) {}
 
   async settings(): Promise<SalesPartnerSettings> {
     const row = await this.settingsRepo.findOne({ where: { key: SALES_PARTNER_SETTINGS_KEY } });
     return resolveSalesPartnerSettings(row?.value ?? DEFAULT_SALES_PARTNER_SETTINGS);
+  }
+
+  async adminSettings() {
+    return this.settings();
+  }
+
+  async updateSettings(actorUserId: string, patch: Record<string, unknown>) {
+    const current = await this.settings();
+    const next = resolveSalesPartnerSettings({ ...current, ...patch });
+    let row = await this.settingsRepo.findOne({ where: { key: SALES_PARTNER_SETTINGS_KEY } });
+    if (!row) {
+      row = this.settingsRepo.create({ key: SALES_PARTNER_SETTINGS_KEY, value: next });
+    } else {
+      row.value = next;
+    }
+    await this.settingsRepo.save(row);
+    await this.audit(actorUserId, 'settings.updated', 'settings', SALES_PARTNER_SETTINGS_KEY, {
+      mode: next.mode,
+      enabled: next.enabled,
+      applyOpen: next.applyOpen,
+    });
+    return next;
   }
 
   async publicSettings() {
@@ -175,6 +200,11 @@ export class SalesPartnerService {
     application.profileId = profile.id;
     await this.applications.save(application);
     await this.audit(user.id, 'application.submitted', 'application', application.id, { status: 'PENDING_REVIEW' });
+    await this.emit(SALES_PARTNER_EVENT.APPLICATION_SUBMITTED, application.id, {
+      applicationId: application.id,
+      profileId: profile.id,
+      status: 'PENDING_REVIEW',
+    });
     return {
       applicationId: application.id,
       status: 'PENDING_REVIEW',
@@ -297,6 +327,11 @@ export class SalesPartnerService {
     await this.audit(actorUserId, `application.${action.toLowerCase()}`, 'profile', profile.id, {
       status: next,
     });
+    await this.emit(SALES_PARTNER_EVENT.PROFILE_STATUS_CHANGED, profile.id, {
+      profileId: profile.id,
+      status: next,
+      action,
+    });
     return toPublicSalesPartner(profile);
   }
 
@@ -321,6 +356,10 @@ export class SalesPartnerService {
       await this.users.save(user);
     }
     await this.audit(actorUserId, 'profile.status_changed', 'profile', profile.id, { status });
+    await this.emit(SALES_PARTNER_EVENT.PROFILE_STATUS_CHANGED, profile.id, {
+      profileId: profile.id,
+      status,
+    });
     return toPublicSalesPartner(profile);
   }
 
@@ -380,6 +419,22 @@ export class SalesPartnerService {
     } catch {
       throw new UnauthorizedException('کد تأیید نادرست است');
     }
+  }
+
+  async emitEvent(eventType: string, aggregateId: string, payload: Record<string, unknown>) {
+    await this.emit(eventType, aggregateId, payload);
+  }
+
+  private async emit(eventType: string, aggregateId: string, payload: Record<string, unknown>) {
+    if (!this.outbox) return;
+    await this.outbox.enqueue({
+      operationId: `${eventType}:${aggregateId}`,
+      eventType,
+      aggregateType: 'sales_partner',
+      aggregateId,
+      channel: 'RETAIL',
+      payload: salesPartnerOutboxPayload(payload),
+    });
   }
 
   private async audit(

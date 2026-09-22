@@ -38,6 +38,7 @@ import {
 } from './sales-partner-draft-policy';
 import { canSalesPartnerCreateDraft } from './sales-partner-policy';
 import { programAllowsPartnerAction } from './sales-partner-settings';
+import { SALES_PARTNER_EVENT } from './sales-partner-events';
 import { commissionAmountIrr, selectCommissionRule } from './sales-commission-policy';
 
 type DraftItemInput = { productId: string; variantId?: string; quantity: number };
@@ -158,11 +159,35 @@ export class SalesPartnerDraftService {
     if (!sent && this.config.get('NODE_ENV') === 'production') {
       throw new BadRequestException('ارسال پیامک ناموفق بود. کمی بعد دوباره تلاش کنید');
     }
+    await this.program.emitEvent(SALES_PARTNER_EVENT.CONFIRMATION_REQUESTED, draft.id, {
+      draftId: draft.id,
+      profileId: salesPartnerId,
+      status: draft.status,
+    });
     return {
       ...(await this.toPartnerView(draft.id, salesPartnerId)),
       cooldownSeconds: settings.confirmResendCooldownSeconds,
       ...(this.config.get('NODE_ENV') !== 'production' ? { devConfirmPath: `/confirm/sales-partner/${token}` } : {}),
     };
+  }
+
+  async listAdmin(salesPartnerId?: string) {
+    const rows = await this.drafts.find({
+      where: salesPartnerId ? { salesPartnerId } : {},
+      order: { updatedAt: 'DESC' },
+      take: 100,
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      salesPartnerId: row.salesPartnerId,
+      status: row.status,
+      statusLabel: humanDraftStatus(row.status),
+      merchandiseIrr: row.merchandiseIrr,
+      estimatedCommissionIrr: row.estimatedCommissionIrr,
+      convertedOrderId: row.convertedOrderId,
+      customerPhoneMasked: maskCustomerPhone(row.customerPhone),
+      updatedAt: row.updatedAt,
+    }));
   }
 
   async cancel(salesPartnerId: string, draftId: string) {
@@ -295,6 +320,11 @@ export class SalesPartnerDraftService {
       await manager.save(locked);
       return { orderId: order.id };
     });
+    await this.program.emitEvent(SALES_PARTNER_EVENT.CUSTOMER_CONFIRMED, draft.id, {
+      draftId: draft.id,
+      orderId: created.orderId,
+      status: 'CONVERTED_TO_ORDER',
+    });
     return { ...created, status: 'CONVERTED_TO_ORDER' };
   }
 
@@ -306,6 +336,10 @@ export class SalesPartnerDraftService {
     draft.status = 'REJECTED_BY_CUSTOMER';
     draft.confirmationTokenHash = null;
     await this.drafts.save(draft);
+    await this.program.emitEvent(SALES_PARTNER_EVENT.CUSTOMER_REJECTED, draft.id, {
+      draftId: draft.id,
+      status: draft.status,
+    });
     return { status: draft.status, statusLabel: humanDraftStatus(draft.status) };
   }
 
@@ -419,6 +453,10 @@ export class SalesPartnerDraftService {
       draft.customerName = null;
       draft.confirmationTokenHash = null;
       await this.drafts.save(draft);
+      await this.program.emitEvent(SALES_PARTNER_EVENT.DRAFT_EXPIRED, draft.id, {
+        draftId: draft.id,
+        status: 'EXPIRED',
+      });
     }
   }
 
