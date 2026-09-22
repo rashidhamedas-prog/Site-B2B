@@ -14,6 +14,19 @@ import { OrderItemEntity } from '../modules/order/entities/order-item.entity';
 import { FulfillmentOrderEntity } from '../modules/order/entities/fulfillment-order.entity';
 import { FulfillmentOrderItemEntity } from '../modules/order/entities/fulfillment-order-item.entity';
 import { VendorLedgerEntryEntity } from '../modules/vendor/entities/vendor-ledger-entry.entity';
+import {
+  SalesCommissionLedgerEntryEntity,
+  SalesCommissionRuleEntity,
+  SalesCommissionSnapshotEntity,
+  SalesPartnerApplicationEntity,
+  SalesPartnerAuditEventEntity,
+  SalesPartnerOrderDraftEntity,
+  SalesPartnerOrderDraftItemEntity,
+  SalesPartnerPayoutEntity,
+  SalesPartnerPayoutItemEntity,
+  SalesPartnerProductEligibilityEntity,
+  SalesPartnerProfileEntity,
+} from '../modules/sales-partner/entities';
 import { InvoiceEntity } from '../modules/invoice/entities/invoice.entity';
 import { InventoryMovementEntity } from '../modules/inventory/entities/inventory-movement.entity';
 import { WarehouseEntity } from '../modules/inventory/entities/warehouse.entity';
@@ -77,7 +90,11 @@ import {
 import { assertProductionDbSyncSafe, typeormSynchronizeEnabled } from './db-sync';
 
 export const RUNTIME_TYPEORM_ENTITIES = [
-    UserEntity, VendorEntity, CustomerEntity, CustomerWalletEntryEntity,
+    UserEntity, VendorEntity, SalesPartnerProfileEntity, SalesPartnerApplicationEntity,
+    SalesPartnerAuditEventEntity, SalesCommissionRuleEntity, SalesPartnerProductEligibilityEntity,
+    SalesPartnerOrderDraftEntity, SalesPartnerOrderDraftItemEntity, SalesCommissionSnapshotEntity,
+    SalesCommissionLedgerEntryEntity, SalesPartnerPayoutEntity, SalesPartnerPayoutItemEntity,
+    CustomerEntity, CustomerWalletEntryEntity,
     CategoryEntity,
     CollectionEntity,
     ProductEntity, ProductVariantEntity, VariantColorEntity, VariantSizeEntity,

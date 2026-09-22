@@ -1,5 +1,71 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260922-003"
+    title: "Retail Sales Partner program (همکار بازاریاب) isolated from Vendor"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260922-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260922-003"
+      implementer: "cursor:implementer-TASK-20260922-003"
+      reviewer: "required-independent-auth-orders-money"
+      security: "required-independent-auth-pii-payments"
+    branch: "feat/TASK-20260922-003-sales-partner-program"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-22T12:10:00Z"
+    heartbeat_at: "2026-09-22T12:10:00Z"
+    depends_on: []
+    file_claims:
+      - "docs/architecture/sales-partner-program.md"
+      - "docs/reports/2026-09-22-sales-partner-program.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+      - "apps/api/src/modules/sales-partner/"
+      - "apps/api/src/database/migrations/20260922-001-sales-partner-program.ts"
+      - "apps/api/src/app.module.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/api/src/modules/auth/staff-access.ts"
+      - "apps/api/src/modules/auth/staff-access.spec.ts"
+      - "apps/api/src/modules/auth/dto/login.dto.ts"
+      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
+      - "apps/api/src/modules/auth/guards/roles.guard.ts"
+      - "apps/api/src/modules/auth/auth.service.ts"
+      - "apps/api/src/modules/auth/auth.module.ts"
+      - "apps/api/src/modules/redis/redis.module.ts"
+      - "apps/web/src/lib/staff-access.ts"
+      - "apps/web/src/lib/admin-session.ts"
+      - "apps/web/src/lib/admin-session.spec.ts"
+      - "apps/web/src/lib/auth.ts"
+      - "apps/web/src/lib/hooks/useAuth.ts"
+      - "apps/web/src/lib/api.ts"
+      - "apps/web/src/middleware.ts"
+      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      - "apps/web/src/components/admin/AdminHeader.tsx"
+      - "apps/web/src/app/sales-partnership/"
+      - "apps/web/src/app/sales-partners/"
+      - "apps/web/src/app/confirm/sales-partner/"
+      - "apps/web/src/app/admin/sales-partners/"
+      - "apps/web/src/components/sales-partners/"
+      - "apps/web/src/components/admin/sales-partners/"
+    notes: |
+      Isolated SalesPartner (بازاریاب) program. Do not reuse Vendor, /partners,
+      VendorLedger, affiliateId, or JWT purpose=vendor.
+      Reclaimed stale auth/session files from TASK-20260904-001 (hb 2026-09-03)
+      and stale governance from TASK-20260913-002 (hb 2026-09-13).
+      Did not claim order.service.ts, create-order.dto.ts, payment.service.ts,
+      or vendor/* . Feature flag defaults OFF.
+    acceptance_criteria:
+      - "Architecture doc records isolation, FSMs, APIs, permission matrix, rollback"
+      - "SalesPartner tables and purpose=sales_partner exist and cannot use vendor tokens"
+      - "Same CUSTOMER phone can shop and, once ACTIVE, open the partner panel"
+      - "VENDOR and staff phones cannot become sales partners"
+      - "Duplicate apply on one phone does not create two open applications"
+      - "Only ACTIVE profiles create drafts; customer must confirm before a retail order exists"
+      - "Commission is integer IRR from eligible net merchandise; not withdrawable before delivery+hold"
+      - "Vendor SKUs stay ineligible until admin opt-in and margin guard"
+      - "Independent Reviewer and Security recorded; feature flag can disable without breaking old orders"
   - id: "TASK-20260922-002"
     title: "Admin sales partners edit, delete, and workspace redesign"
     status: "done"

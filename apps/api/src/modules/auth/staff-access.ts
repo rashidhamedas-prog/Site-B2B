@@ -27,6 +27,7 @@ export const STAFF_MODULES = [
   'settings',
   'users',
   'partners',
+  'salesPartners',
   'account',
 ] as const;
 
@@ -36,9 +37,9 @@ const ALL_MODULES: readonly StaffModule[] = STAFF_MODULES;
 
 export const STAFF_ROLE_MODULES: Record<StaffRole, readonly StaffModule[]> = {
   ADMIN: ALL_MODULES,
-  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'account'],
+  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'salesPartners', 'account'],
   SALES_REP: ['dashboard', 'crm', 'orders', 'catalog', 'account'],
-  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'account'],
+  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'salesPartners', 'account'],
   WAREHOUSE_MANAGER: ['dashboard', 'orders', 'catalog', 'inventory', 'account'],
   CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'content', 'account'],
 };
@@ -71,7 +72,7 @@ export function roleAfterCustomerLink(currentRole: string | null | undefined): s
   return 'CUSTOMER';
 }
 
-export type AuthSessionPurpose = 'admin' | 'retail' | 'wholesale' | 'vendor';
+export type AuthSessionPurpose = 'admin' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner';
 
 export function isShopperPurpose(purpose?: string | null): boolean {
   return purpose === 'retail' || purpose === 'wholesale' || purpose === 'storefront';
@@ -89,17 +90,22 @@ export function isVendorPurpose(purpose?: string | null): boolean {
   return purpose === 'vendor';
 }
 
+export function isSalesPartnerPurpose(purpose?: string | null): boolean {
+  return purpose === 'sales_partner';
+}
+
 /**
  * Login omitted purpose = wholesale (portal form).
  * Legacy JWT `storefront` validates as wholesale so existing portal sessions keep working.
  * Retail OTP/login must send `retail` explicitly.
  * Partner login must send `vendor` explicitly.
  */
-export function resolveAuthPurpose(requested?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor' | string | null): AuthSessionPurpose {
+export function resolveAuthPurpose(requested?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner' | string | null): AuthSessionPurpose {
   const p = String(requested || '').toLowerCase();
   if (p === 'admin') return 'admin';
   if (p === 'retail') return 'retail';
   if (p === 'vendor') return 'vendor';
+  if (p === 'sales_partner') return 'sales_partner';
   return 'wholesale';
 }
 
@@ -107,6 +113,7 @@ export function resolveAuthPurpose(requested?: 'admin' | 'portal' | 'retail' | '
 export function actingRoleForPurpose(purpose: AuthSessionPurpose, dbRole: string): string {
   if (purpose === 'admin') return dbRole;
   if (purpose === 'vendor') return dbRole === 'VENDOR' ? 'VENDOR' : 'CUSTOMER';
+  if (purpose === 'sales_partner') return 'SALES_PARTNER';
   return 'CUSTOMER';
 }
 

@@ -7,6 +7,7 @@ import {
   WHOLESALE_TOKEN_KEY,
   canEnterAdmin,
   canEnterPartners,
+  canEnterSalesPartners,
   cookieScopeFromPurpose,
   isAdminAuthFailureMessage,
   isAdminPurposeToken,
@@ -73,6 +74,7 @@ assert.equal(canEnterAdmin(legacyAdminJwt, 'ADMIN'), false);
 assert.equal(canEnterAdmin(adminJwt, 'CUSTOMER'), true, 'admin JWT wins over stale cookie role');
 
 assert.equal(cookieScopeFromPurpose('vendor'), 'vendor');
+assert.equal(cookieScopeFromPurpose('sales_partner'), 'sales_partner');
 assert.equal(cookieScopeFromPurpose('admin'), 'admin');
 assert.equal(cookieScopeFromPurpose('retail'), 'retail');
 assert.equal(cookieScopeFromPurpose('portal'), 'wholesale');
@@ -104,5 +106,11 @@ assert.equal(canEnterPartners(vendorJwt), true);
 assert.equal(canEnterPartners(adminJwt), false);
 assert.equal(canEnterPartners(vendorShopperJwt), false);
 assert.equal(canEnterPartners(shopperJwt), false);
+
+const salesPartnerJwt = jwtWith({ purpose: 'sales_partner', role: 'SALES_PARTNER' });
+assert.equal(canEnterSalesPartners(salesPartnerJwt), true);
+assert.equal(canEnterSalesPartners(vendorJwt), false);
+assert.equal(canEnterSalesPartners(adminJwt), false);
+assert.equal(canEnterPartners(salesPartnerJwt), false);
 
 console.log('admin-session.spec.ts ok');

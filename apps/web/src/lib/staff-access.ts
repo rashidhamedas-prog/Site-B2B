@@ -27,6 +27,7 @@ export const STAFF_MODULES = [
   'settings',
   'users',
   'partners',
+  'salesPartners',
   'account',
 ] as const;
 
@@ -36,9 +37,9 @@ const ALL_MODULES: readonly StaffModule[] = STAFF_MODULES;
 
 export const STAFF_ROLE_MODULES: Record<StaffRole, readonly StaffModule[]> = {
   ADMIN: ALL_MODULES,
-  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'account'],
+  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'salesPartners', 'account'],
   SALES_REP: ['dashboard', 'crm', 'orders', 'catalog', 'account'],
-  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'account'],
+  ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'salesPartners', 'account'],
   WAREHOUSE_MANAGER: ['dashboard', 'orders', 'catalog', 'inventory', 'account'],
   CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'content', 'account'],
 };
@@ -67,6 +68,7 @@ export function canAccessStaffModule(
 const PATH_MODULE: Array<{ prefix: string; exact?: boolean; module: StaffModule }> = [
   { prefix: '/admin/account', module: 'account' },
   { prefix: '/admin/users', module: 'users' },
+  { prefix: '/admin/sales-partners', module: 'salesPartners' },
   { prefix: '/admin/partners', module: 'partners' },
   { prefix: '/admin/settings', module: 'settings' },
   { prefix: '/admin/omnichannel', module: 'omnichannel' },

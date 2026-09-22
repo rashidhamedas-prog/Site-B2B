@@ -7,12 +7,15 @@ import {
   STOREFRONT_TOKEN_KEY,
   VENDOR_ROLE_KEY,
   VENDOR_TOKEN_KEY,
+  SALES_PARTNER_ROLE_KEY,
+  SALES_PARTNER_TOKEN_KEY,
   WHOLESALE_ROLE_KEY,
   WHOLESALE_TOKEN_KEY,
   cookieScopeFromPurpose,
   isAdminPurposeToken,
   shopperScopeFromLocation,
   canEnterPartners,
+  canEnterSalesPartners,
   type AuthCookieScope,
   type ShopperCookieScope,
 } from './admin-session';
@@ -26,6 +29,10 @@ function isBrowserAdminPath(): boolean {
 
 function isBrowserVendorPath(): boolean {
   return typeof window !== 'undefined' && window.location.pathname.startsWith('/partners');
+}
+
+function isBrowserSalesPartnerPath(): boolean {
+  return typeof window !== 'undefined' && window.location.pathname.startsWith('/sales-partners');
 }
 
 function writeCookie(name: string, value: string, maxAge: number) {
@@ -59,12 +66,16 @@ export function getToken(): string | null {
     const token = localStorage.getItem(VENDOR_TOKEN_KEY);
     return canEnterPartners(token) ? token : null;
   }
+  if (isBrowserSalesPartnerPath()) {
+    const token = localStorage.getItem(SALES_PARTNER_TOKEN_KEY);
+    return canEnterSalesPartners(token) ? token : null;
+  }
   const keys = shopperKeys(currentShopperScope());
   return localStorage.getItem(keys.token) || localStorage.getItem(STOREFRONT_TOKEN_KEY);
 }
 
 export function setToken(token: string, role: string, scope?: AuthCookieScope | 'storefront') {
-  const resolved: AuthCookieScope = scope === 'admin' || scope === 'retail' || scope === 'wholesale' || scope === 'vendor'
+  const resolved: AuthCookieScope = scope === 'admin' || scope === 'retail' || scope === 'wholesale' || scope === 'vendor' || scope === 'sales_partner'
     ? scope
     : cookieScopeFromPurpose(scope);
   const maxAge = 7 * 24 * 60 * 60;
@@ -80,6 +91,13 @@ export function setToken(token: string, role: string, scope?: AuthCookieScope | 
     localStorage.setItem(VENDOR_ROLE_KEY, role);
     writeCookie(VENDOR_TOKEN_KEY, token, maxAge);
     writeCookie(VENDOR_ROLE_KEY, role, maxAge);
+    return;
+  }
+  if (resolved === 'sales_partner') {
+    localStorage.setItem(SALES_PARTNER_TOKEN_KEY, token);
+    localStorage.setItem(SALES_PARTNER_ROLE_KEY, role);
+    writeCookie(SALES_PARTNER_TOKEN_KEY, token, maxAge);
+    writeCookie(SALES_PARTNER_ROLE_KEY, role, maxAge);
     return;
   }
   const keys = shopperKeys(resolved);
@@ -104,6 +122,13 @@ export function clearToken() {
     clearCookie(VENDOR_ROLE_KEY);
     return;
   }
+  if (typeof window !== 'undefined' && isBrowserSalesPartnerPath()) {
+    localStorage.removeItem(SALES_PARTNER_TOKEN_KEY);
+    localStorage.removeItem(SALES_PARTNER_ROLE_KEY);
+    clearCookie(SALES_PARTNER_TOKEN_KEY);
+    clearCookie(SALES_PARTNER_ROLE_KEY);
+    return;
+  }
   const keys = shopperKeys(currentShopperScope());
   localStorage.removeItem(keys.token);
   localStorage.removeItem(keys.role);
@@ -122,6 +147,9 @@ export function getRole(): string | null {
   }
   if (isBrowserVendorPath()) {
     return localStorage.getItem(VENDOR_ROLE_KEY);
+  }
+  if (isBrowserSalesPartnerPath()) {
+    return localStorage.getItem(SALES_PARTNER_ROLE_KEY);
   }
   const keys = shopperKeys(currentShopperScope());
   return localStorage.getItem(keys.role) || localStorage.getItem(STOREFRONT_ROLE_KEY);

@@ -76,7 +76,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/account', icon: CircleUser, label: 'حساب من', module: 'account' },
       { href: '/admin/users', icon: UserCog, label: 'کاربران ادمین', module: 'users' },
-      { href: '/admin/partners', icon: Handshake, label: 'همکاران فروش', module: 'partners' },
+      { href: '/admin/partners', icon: Handshake, label: 'تأمین‌کننده ارسال', module: 'partners' },
+      { href: '/admin/sales-partners', icon: Megaphone, label: 'همکار بازاریاب', module: 'salesPartners' },
       { href: '/admin/omnichannel', icon: Link2, label: 'کانال‌های انتشار', module: 'omnichannel' },
       { href: '/admin/settings', icon: Settings, label: 'تنظیمات', module: 'settings' },
     ],

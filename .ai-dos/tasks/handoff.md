@@ -2,6 +2,27 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T12:40:00Z — TASK-20260922-003 Phase 1 coded, not live
+
+- Architecture + isolated `SalesPartnerModule`, migration, apply/OTP/admin review, JWT `purpose=sales_partner`.
+- Vendor `/partners` and `affiliateId` unused. Feature flag default OFF.
+- Gates observed: sales-partner policy/commission/draft/ledger/settings specs OK; staff-access.spec OK; `apps/api` and `apps/web` `npx tsc --noEmit` 0.
+- Independent Reviewer + Security not yet run. Draft-to-order and ledger jobs not built.
+- Exact next: Phase 2 catalog eligibility + commission rules + margin guard.
+
+## 2026-09-22T12:10:00Z — TASK-20260922-003 claimed Sales Partner program
+
+- Owner: `cursor:implementer-TASK-20260922-003` on `D:/proje/Site B2B`.
+- Branch: `feat/TASK-20260922-003-sales-partner-program`.
+- Architecture: `docs/architecture/sales-partner-program.md`.
+- This is **همکار بازاریاب**, not Vendor dropship (`/partners`) and not external `affiliateId`.
+- Reclaimed stale claims:
+  - Auth/session files from TASK-20260904-001 (heartbeat 2026-09-03, >24h).
+  - Governance (`active.yaml`, `handoff.md`, `status.md`, `WORKLOG.md`) from TASK-20260913-002 (heartbeat 2026-09-13) and TASK-20260904-001.
+- Did **not** take `order.service.ts` (TASK-20260913-006), `create-order.dto.ts` / `payment.service.ts` (TASK-20260913-002), or any `vendor/*`.
+- Independent Reviewer + Security required before Done (auth, PII, money).
+- Feature flag will default OFF. Exact next: Phase 1 entities, purpose isolation, apply/review APIs.
+
 ## 2026-09-22T08:37:00Z — TASK-20260922-002 full deploy `573d98a`
 
 - Forced `TARANOM_DEPLOY_FORCE=1` auto-deploy. Exit 0. Containers recreated 08:37Z.

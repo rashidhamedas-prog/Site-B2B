@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-22 — **TASK-20260922-003 implementing** on `feat/TASK-20260922-003-sales-partner-program`. Phase 1 coded (apply/review/`purpose=sales_partner`). Architecture written. Not live. Feature flag default OFF. Independent Reviewer + Security required. Vendor `/partners` unchanged.
 - Last verified: 2026-09-22 — **TASK-20260922-002 CLOSED** after forced full deploy. VPS git and images `573d98a`. Health 200; `.com` 200; `www` `.ir` 200. `/admin/partners` 307 to login. Admin click not exercised. Claims released. On `master`; no open branch.
 - Last verified: 2026-09-22 — **TASK-20260922-001 CLOSED** on `origin/master` + VPS `d9208b2`. Admin `/admin/products` advanced filter (category including uncategorized, status, collection, in-stock). Health 200; `.com` 200; `.ir` 200. `/admin/products` 307 to login. Admin click not exercised. Claims released.
 - Last verified: 2026-09-13 — **TASK-20260913-014 CLOSED** on `origin/master` + VPS `b628674`. Admin site-content workspace live; 21 CMS rows persisted with SEO; `.ir`/`.com` homes and `/privacy` show stored titles. Health 200. Claims released. Independent Reviewer + Security residual (public SEO JSON).

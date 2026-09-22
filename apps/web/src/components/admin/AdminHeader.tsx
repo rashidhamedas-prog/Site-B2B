@@ -24,7 +24,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/discounts': 'تخفیف‌ها',
   '/admin/notifications': 'اعلان‌ها',
   '/admin/users': 'کاربران ادمین',
-  '/admin/partners': 'همکاران فروش',
+  '/admin/partners': 'تأمین‌کننده ارسال',
+  '/admin/sales-partners': 'همکار بازاریاب',
   '/admin/account': 'حساب من',
   '/admin/settings': 'تنظیمات',
 };
@@ -39,7 +40,8 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/admin/reports': 'گزارش‌های فروش و مالی',
   '/admin/seo': 'ریدایرکت‌های ۳۰۱/۳۰۲/۴۱۰ و مدیریت مسیرها',
   '/admin/users': 'نقش‌های داخلی سیستم — نه حساب ورود شخصی',
-  '/admin/partners': 'دعوت همکار برای ارسال کالا از انبار خودش',
+  '/admin/partners': 'تأمین‌کننده‌ای که کالای خودش را ارسال می‌کند',
+  '/admin/sales-partners': 'بازاریاب‌هایی که مشتری را به ترنم معرفی می‌کنند',
   '/admin/account': 'ایمیل و رمز ورود همین کاربر',
   '/admin/settings': 'کسب‌وکار، پرداخت، پیامک و یکپارچه‌سازی‌ها',
 };

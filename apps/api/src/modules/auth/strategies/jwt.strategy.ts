@@ -7,6 +7,8 @@ import { isJwtInvalidatedByPasswordChange } from '../jwt-invalidation';
 import { actingRoleForPurpose, isStaffRole, resolveAuthPurpose } from '../staff-access';
 import { canVendorLogin, isVendorRole } from '../../vendor/vendor-policy';
 import { VendorEntity } from '../../vendor/entities/vendor.entity';
+import { SalesPartnerProfileEntity } from '../../sales-partner/entities/sales-partner-profile.entity';
+import { canSalesPartnerLogin } from '../../sales-partner/sales-partner-policy';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -17,6 +19,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly authService: AuthService,
     @InjectRepository(VendorEntity)
     private readonly vendorRepo: Repository<VendorEntity>,
+    @InjectRepository(SalesPartnerProfileEntity)
+    private readonly salesPartnerRepo: Repository<SalesPartnerProfileEntity>,
   ) {
     const secret = config.get<string>('JWT_SECRET');
     const isProd = config.get<string>('NODE_ENV') === 'production';
@@ -62,6 +66,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         customerId: user.customerId,
         purpose,
         vendorId: vendor.id,
+      };
+    }
+    if (purpose === 'sales_partner') {
+      if (isVendorRole(user.role) || isStaffRole(user.role)) throw new UnauthorizedException();
+      const partner = await this.salesPartnerRepo.findOne({ where: { userId: user.id } });
+      if (!partner || !canSalesPartnerLogin(partner.status)) throw new UnauthorizedException();
+      return {
+        sub: user.id,
+        id: user.id,
+        phone: user.phone,
+        role: 'SALES_PARTNER',
+        customerId: user.customerId,
+        purpose,
+        salesPartnerId: partner.id,
       };
     }
     return {
