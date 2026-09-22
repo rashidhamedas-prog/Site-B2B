@@ -17,4 +17,5 @@
 - `npx ts-node --transpile-only src/modules/product/admin-product-list-filter.spec.ts` در `apps/api` موفق بود.
 - `npx tsx src/lib/admin-product-workspace.spec.ts` در `apps/web` موفق بود.
 - `npx tsc --noEmit` در `apps/api` و `apps/web` بدون خطا بود.
-- کلیک زندهٔ ادمین انجام نشد؛ صفحه پشت ورود مدیر است.
+- کلیک زندهٔ ادمین انجام نشد؛ `/admin/products` بدون نشست ۳۰۷ به ورود می‌رود.
+- دیپلوی `d9208b2` تمام شد. از خود سرور: health ۲۰۰، `.com` ۲۰۰، `.ir` ۲۰۰.

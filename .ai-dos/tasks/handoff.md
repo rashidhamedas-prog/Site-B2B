@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T07:05:00Z — TASK-20260922-001 CLOSED live `d9208b2`
+
+- VPS `/opt/taranom` HEAD `d9208b2`. auto-deploy exit 0.
+- From the VPS: health 200, `.com` 200, `.ir` 200. `/admin/products` 307 to login. Click path not exercised.
+- Claims released. Residual: independent Reviewer (admin list query allowlist; public invalid categoryId is now 400).
+
 ## 2026-09-22T07:10:00Z — TASK-20260922-001 admin product filter gates
 
 - Owner confirmed the filter belongs on `/admin/products`, not settings.

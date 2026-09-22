@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260922-001"
     title: "Admin product list advanced filter by category"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260922-001"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20260922-001-admin-product-filter"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-22T06:50:00Z"
-    heartbeat_at: "2026-09-22T06:50:00Z"
+    heartbeat_at: "2026-09-22T07:05:00Z"
+    closed_at: "2026-09-22T07:05:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/admin-product-workspace.ts"
       - "apps/web/src/lib/admin-product-workspace.spec.ts"
       - "apps/web/src/components/admin/AdminProducts.tsx"
