@@ -6,7 +6,10 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
+import { SalesPartnerPayoutService } from './sales-partner-payout.service';
+import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
 import { PatchSalesPartnerStatusDto, ReviewSalesPartnerDto } from './dto/apply-sales-partner.dto';
+import { ConfirmSalesPartnerPayoutDto } from './dto/sales-partner-payout.dto';
 import {
   CreateSalesCommissionRuleDto,
   PreviewSalesCommissionDto,
@@ -23,6 +26,8 @@ export class SalesPartnerAdminController {
   constructor(
     private readonly salesPartners: SalesPartnerService,
     private readonly catalog: SalesPartnerCatalogService,
+    private readonly payouts: SalesPartnerPayoutService,
+    private readonly ledger: SalesPartnerLedgerService,
   ) {}
 
   @Get('settings/public')
@@ -74,6 +79,24 @@ export class SalesPartnerAdminController {
     @Req() req: { user?: { sub?: string; id?: string } },
   ) {
     return this.salesPartners.reviewApplication(id, req.user?.sub || req.user?.id || '', body.action, body.reason);
+  }
+
+  @Get('payouts')
+  listPayouts(@Query('salesPartnerId') salesPartnerId?: string) {
+    return this.payouts.listAdmin(salesPartnerId);
+  }
+
+  @Post('payouts')
+  confirmPayout(
+    @Body() body: ConfirmSalesPartnerPayoutDto,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.payouts.confirm(req.user?.sub || req.user?.id || '', body);
+  }
+
+  @Get(':id/balances')
+  balances(@Param('id') id: string) {
+    return this.ledger.balances(id);
   }
 
   @Get()

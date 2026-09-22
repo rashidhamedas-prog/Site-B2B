@@ -44,6 +44,8 @@ import {
   toPublicSalesPartner,
 } from './sales-partner-policy';
 import { isVendorRole as vendorRole } from '../vendor/vendor-policy';
+import { ibanRecord } from './sales-partner-iban';
+import { normalizeIban } from './sales-partner-policy';
 
 @Injectable()
 export class SalesPartnerService {
@@ -215,6 +217,25 @@ export class SalesPartnerService {
   async me(salesPartnerId: string) {
     const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
     if (!profile) throw new NotFoundException();
+    return toPublicSalesPartner(profile);
+  }
+
+  async updateIban(salesPartnerId: string, ibanRaw: string) {
+    const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
+    if (!profile) throw new NotFoundException();
+    let iban: string;
+    try {
+      iban = normalizeIban(ibanRaw);
+    } catch {
+      throw new BadRequestException('شماره شبا معتبر نیست');
+    }
+    const secret = String(this.config.get('JWT_SECRET') || 'sales-partner-iban');
+    const record = ibanRecord(iban, secret);
+    profile.ibanLast4 = record.ibanLast4;
+    profile.ibanFingerprint = record.ibanFingerprint;
+    profile.ibanCipher = record.ibanCipher;
+    await this.profiles.save(profile);
+    await this.audit(profile.userId, 'profile.iban_updated', 'profile', profile.id, { ibanLast4: record.ibanLast4 });
     return toPublicSalesPartner(profile);
   }
 

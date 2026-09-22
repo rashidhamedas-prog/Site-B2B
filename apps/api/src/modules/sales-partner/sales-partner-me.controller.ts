@@ -7,7 +7,10 @@ import { SALES_PARTNER_ACTING_ROLE, isSalesPartnerPurpose } from './sales-partne
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { SalesPartnerDraftService } from './sales-partner-draft.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
+import { SalesPartnerPayoutService } from './sales-partner-payout.service';
+import { SalesPartnerService } from './sales-partner.service';
 import { CreateSalesPartnerDraftDto, PatchSalesPartnerDraftDto } from './dto/sales-partner-draft.dto';
+import { PatchSalesPartnerIbanDto } from './dto/sales-partner-payout.dto';
 
 @ApiTags('sales-partners')
 @ApiBearerAuth()
@@ -19,6 +22,8 @@ export class SalesPartnerMeController {
     private readonly catalog: SalesPartnerCatalogService,
     private readonly drafts: SalesPartnerDraftService,
     private readonly ledger: SalesPartnerLedgerService,
+    private readonly payoutsSvc: SalesPartnerPayoutService,
+    private readonly salesPartners: SalesPartnerService,
   ) {}
 
   @Get('catalog')
@@ -101,8 +106,16 @@ export class SalesPartnerMeController {
   }
 
   @Get('payouts')
-  payouts() {
-    return [];
+  payouts(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+    return this.payoutsSvc.listMine(this.requirePartner(req));
+  }
+
+  @Patch('me/iban')
+  updateIban(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Body() body: PatchSalesPartnerIbanDto,
+  ) {
+    return this.salesPartners.updateIban(this.requirePartner(req), body.iban);
   }
 
   private requirePartner(req: { user?: { purpose?: string; salesPartnerId?: string } }) {

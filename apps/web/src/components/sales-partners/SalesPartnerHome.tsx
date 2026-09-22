@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
+import { toman } from '@/lib/product-display';
 import { SalesPartnerShell } from './SalesPartnerShell';
 
 type Me = {
@@ -13,15 +14,27 @@ type Me = {
   phoneMasked: string;
 };
 
+type Draft = { id: string; status: string; statusLabel: string };
+type Balances = { held: number; available: number; paid: number };
+
 export function SalesPartnerHome() {
   const [me, setMe] = useState<Me | null>(null);
+  const [awaiting, setAwaiting] = useState(0);
+  const [balances, setBalances] = useState<Balances | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiClient
-      .get<Me>('/sales-partners/me')
-      .then(setMe)
+    Promise.all([
+      apiClient.get<Me>('/sales-partners/me'),
+      apiClient.get<Draft[]>('/sales-partners/orders'),
+      apiClient.get<Balances>('/sales-partners/commissions'),
+    ])
+      .then(([nextMe, orders, nextBalances]) => {
+        setMe(nextMe);
+        setAwaiting(orders.filter((row) => row.status === 'AWAITING_CUSTOMER_CONFIRMATION').length);
+        setBalances(nextBalances);
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'خطا در بارگذاری'))
       .finally(() => setLoading(false));
   }, []);
@@ -41,6 +54,14 @@ export function SalesPartnerHome() {
               فقط حساب فعال می‌تواند سفارش بسازد. اگر وضعیت شما در بررسی است، منتظر تصمیم ادمین بمانید.
             </p>
           )}
+        </section>
+      )}
+      {balances && (
+        <section className="mt-4 grid grid-cols-2 gap-2 text-sm">
+          <p className="rounded-xl border p-3">منتظر تأیید مشتری: {awaiting}</p>
+          <p className="rounded-xl border p-3">در نگهداری: {toman(balances.held)} تومان</p>
+          <p className="rounded-xl border p-3">قابل‌برداشت: {toman(balances.available)} تومان</p>
+          <p className="rounded-xl border p-3">پرداخت‌شده: {toman(balances.paid)} تومان</p>
         </section>
       )}
       <div className="mt-6 grid gap-2">

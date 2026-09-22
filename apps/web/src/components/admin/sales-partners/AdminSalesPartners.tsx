@@ -45,7 +45,16 @@ type RuleRow = {
   note: string | null;
 };
 
-type Tab = 'applications' | 'partners' | 'catalog' | 'rules';
+type PayoutRow = {
+  id: string;
+  salesPartnerId: string;
+  status: string;
+  amountIrr: number;
+  bankReferenceMasked: string | null;
+  paidAt: string | null;
+};
+
+type Tab = 'applications' | 'partners' | 'catalog' | 'rules' | 'payouts';
 
 export function AdminSalesPartners() {
   const [tab, setTab] = useState<Tab>('applications');
@@ -53,25 +62,31 @@ export function AdminSalesPartners() {
   const [partners, setPartners] = useState<PartnerRow[]>([]);
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [rules, setRules] = useState<RuleRow[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rulePercent, setRulePercent] = useState(5);
   const [ruleNote, setRuleNote] = useState('');
+  const [payoutPartnerId, setPayoutPartnerId] = useState('');
+  const [bankReference, setBankReference] = useState('');
+  const [availableIrr, setAvailableIrr] = useState<number | null>(null);
 
   async function load() {
     setError(null);
     try {
-      const [nextApps, nextPartners, nextCatalog, nextRules] = await Promise.all([
+      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts] = await Promise.all([
         apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
         apiClient.get<PartnerRow[]>('/admin/sales-partners'),
         apiClient.get<{ items: CatalogRow[] }>(`/admin/sales-partners/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`),
         apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
+        apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
       ]);
       setApps(nextApps);
       setPartners(nextPartners);
       setCatalog(nextCatalog.items);
       setRules(nextRules);
+      setPayouts(nextPayouts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود');
     }
@@ -113,6 +128,36 @@ export function AdminSalesPartners() {
     }
   }
 
+  async function loadBalance() {
+    if (!payoutPartnerId) return;
+    try {
+      const next = await apiClient.get<{ available: number }>(`/admin/sales-partners/${payoutPartnerId}/balances`);
+      setAvailableIrr(next.available);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'خواندن مانده ناموفق بود');
+    }
+  }
+
+  async function confirmPayout() {
+    if (!payoutPartnerId) return;
+    setBusyId('payout');
+    try {
+      await apiClient.post('/admin/sales-partners/payouts', {
+        salesPartnerId: payoutPartnerId,
+        bankReference,
+        idempotencyKey: `ui-${payoutPartnerId}-${Date.now()}`,
+        method: 'TRANSFER',
+      });
+      setBankReference('');
+      await load();
+      await loadBalance();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ثبت تسویه ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function createProgramRule() {
     setBusyId('rule');
     try {
@@ -135,6 +180,7 @@ export function AdminSalesPartners() {
     { id: 'partners', label: 'همکاران بازاریاب' },
     { id: 'catalog', label: 'محصولات مجاز' },
     { id: 'rules', label: 'قوانین پورسانت' },
+    { id: 'payouts', label: 'تسویه' },
   ];
 
   return (
@@ -276,6 +322,64 @@ export function AdminSalesPartners() {
               <li key={row.id} className="rounded-xl border p-4 text-sm">
                 <p className="font-medium">{row.scope} · {row.percent}٪ {row.active ? '' : '(غیرفعال)'}</p>
                 {row.note && <p className="mt-1 text-stone-600">{row.note}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tab === 'payouts' && (
+        <div className="space-y-4">
+          <form
+            className="space-y-3 rounded-xl border p-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void confirmPayout();
+            }}
+          >
+            <label className="block text-sm" htmlFor="sp-pay-partner">همکار بازاریاب</label>
+            <select
+              id="sp-pay-partner"
+              className="min-h-11 w-full rounded-xl border px-3"
+              value={payoutPartnerId}
+              onChange={(e) => {
+                setPayoutPartnerId(e.target.value);
+                setAvailableIrr(null);
+              }}
+            >
+              <option value="">انتخاب کنید</option>
+              {partners.map((row) => (
+                <option key={row.id} value={row.id}>{row.displayName}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="min-h-11 rounded-xl border px-4"
+              disabled={!payoutPartnerId}
+              onClick={() => void loadBalance()}
+            >
+              مشاهده مانده
+            </button>
+            {availableIrr !== null && (
+              <p className="text-sm">قابل‌برداشت: {toman(availableIrr)} تومان</p>
+            )}
+            <label className="block text-sm" htmlFor="sp-pay-ref">شماره مرجع واریز</label>
+            <input
+              id="sp-pay-ref"
+              className="min-h-11 w-full rounded-xl border px-3"
+              value={bankReference}
+              onChange={(e) => setBankReference(e.target.value)}
+              required
+            />
+            <button type="submit" className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white" disabled={busyId === 'payout'}>
+              ثبت تسویه
+            </button>
+          </form>
+          <ul className="space-y-3">
+            {payouts.length === 0 && <li className="text-sm text-stone-600">تسویه‌ای ثبت نشده.</li>}
+            {payouts.map((row) => (
+              <li key={row.id} className="rounded-xl border p-4 text-sm">
+                {toman(row.amountIrr)} تومان · {row.bankReferenceMasked} · {row.status}
               </li>
             ))}
           </ul>

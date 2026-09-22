@@ -28,6 +28,7 @@ import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { SalesPartnerDraftService } from './sales-partner-draft.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
 import { SalesPartnerLedgerJobs } from './sales-partner-ledger.jobs';
+import { SalesPartnerPayoutService } from './sales-partner-payout.service';
 import { SalesPartnerPublicController } from './sales-partner-public.controller';
 import { SalesPartnerAuthController } from './sales-partner-auth.controller';
 import { SalesPartnerMeController } from './sales-partner-me.controller';
@@ -71,7 +72,20 @@ const ENTITIES = [
     SalesPartnerAdminController,
     SalesPartnerConfirmationController,
   ],
-  providers: [SalesPartnerService, SalesPartnerCatalogService, SalesPartnerDraftService, SalesPartnerLedgerService, SalesPartnerLedgerJobs],
-  exports: [SalesPartnerService, SalesPartnerCatalogService, SalesPartnerDraftService, SalesPartnerLedgerService],
+  providers: [
+    SalesPartnerService,
+    SalesPartnerCatalogService,
+    SalesPartnerDraftService,
+    SalesPartnerLedgerService,
+    SalesPartnerLedgerJobs,
+    SalesPartnerPayoutService,
+  ],
+  exports: [
+    SalesPartnerService,
+    SalesPartnerCatalogService,
+    SalesPartnerDraftService,
+    SalesPartnerLedgerService,
+    SalesPartnerPayoutService,
+  ],
 })
 export class SalesPartnerModule {}

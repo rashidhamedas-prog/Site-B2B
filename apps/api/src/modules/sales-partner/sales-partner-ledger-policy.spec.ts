@@ -2,6 +2,7 @@ import {
   availableAtFromDelivery,
   canAutoRelease,
   earnedIdempotencyKey,
+  isPayableEarned,
   ledgerBalance,
 } from './sales-partner-ledger-policy';
 
@@ -34,5 +35,8 @@ assert(!canAutoRelease(0), 'zero hold');
 assert(canAutoRelease(14), 'hold set');
 assert(availableAtFromDelivery(new Date('2026-09-01T00:00:00.000Z'), 10).toISOString() === '2026-09-11T00:00:00.000Z', 'hold clock');
 assert(earnedIdempotencyKey('o1', 'i1') === 'sales-partner-earned:o1:i1', 'idemp');
+assert(isPayableEarned({ amountIrr: 10, entryType: 'COMMISSION_EARNED', availableAt: now, payoutId: null }, now) === true, 'payable');
+assert(isPayableEarned({ amountIrr: 10, entryType: 'COMMISSION_EARNED', availableAt: null, payoutId: null }, now) === false, 'held not payable');
+assert(isPayableEarned({ amountIrr: 10, entryType: 'COMMISSION_EARNED', availableAt: now, payoutId: 'p1' }, now) === false, 'already paid');
 
 console.log('sales-partner-ledger-policy.spec.ts: OK');

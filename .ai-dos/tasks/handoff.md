@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T14:30:00Z — TASK-20260922-003 Phases 5–6 coded, not live
+
+- Partner panel: dashboard totals, variant picker, SMS resend countdown, IBAN profile (masked), payouts list.
+- Admin payout confirm is idempotent, locks ledger rows, writes PAYOUT entry + payout items.
+- Report: `docs/reports/2026-09-22-sales-partner-program.md`.
+- Still required: independent Reviewer + Security, E2E, flag rehearsal.
+
 ## 2026-09-22T14:05:00Z — TASK-20260922-003 Phase 4 ledger sync coded
 
 - Job every 10 minutes reads converted drafts and writes idempotent COMMISSION_EARNED / REVERSAL.

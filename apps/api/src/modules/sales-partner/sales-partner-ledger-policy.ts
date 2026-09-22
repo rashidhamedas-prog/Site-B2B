@@ -63,6 +63,19 @@ export function payoutIdempotencyKey(batchKey: string): string {
   return `sales-partner-payout:${batchKey}`;
 }
 
+export function isPayableEarned(
+  row: LedgerRow & { payoutId?: string | null },
+  now: Date,
+): boolean {
+  return (
+    row.entryType === 'COMMISSION_EARNED'
+    && !row.payoutId
+    && !!row.availableAt
+    && row.availableAt.getTime() <= now.getTime()
+    && row.amountIrr > 0
+  );
+}
+
 export function convertIdempotencyKey(draftId: string): string {
   return `sales-partner-convert:${draftId}`;
 }

@@ -1,20 +1,34 @@
-# Sales Partner program — Phase 0–1
+# Sales Partner program — progress 2026-09-22
 
-Task: TASK-20260922-003  
+Task: `TASK-20260922-003`  
 Branch: `feat/TASK-20260922-003-sales-partner-program`
 
-## Done in this slice
+Isolated marketer program. Vendor `/partners` and external `affiliateId` were not reused.
 
-- Architecture: `docs/architecture/sales-partner-program.md`
-- Isolated module `apps/api/src/modules/sales-partner/`
-- JWT `purpose=sales_partner` cannot use vendor/admin/shopper tokens
-- Apply + OTP + admin review; feature flag default OFF
-- Admin `/admin/partners` label is now «تأمین‌کننده ارسال»
+## Live
 
-## Not live
+Not live. Feature flag default OFF.
 
-Program settings default `mode=OFF`. No production migrate/deploy in this note until later phases and independent review.
+## Coded
 
-## Deferred
+- Apply / OTP / admin review / `purpose=sales_partner`
+- Catalog eligibility + commission rules + vendor SKU margin guard
+- Draft → SMS hashed token → customer confirm → `RETAIL_WEBSITE` via `OrderService.create`
+- Ledger job: paid → held, cancel/refund/return → reversal
+- Partner panel: home totals, catalog, new order with variant + resend countdown, orders, commissions, payouts, IBAN profile
+- Admin: applications, partners, catalog, rules, payout confirm with idempotency
 
-Draft conversion, catalog eligibility UI, ledger jobs, payout batches, E2E, independent Reviewer/Security.
+## Observed gates
+
+- sales-partner policy/commission/draft/ledger/settings/catalog-policy specs OK
+- staff-access.spec OK
+- `apps/api` and `apps/web` `tsc --noEmit` 0
+
+## Not done
+
+- Independent Reviewer + Security
+- E2E / browser / a11y pass
+- Partial RMA line reversal
+- Order-table attribution columns (entity claimed elsewhere)
+- Legal terms (placeholder `draft-unreviewed`)
+- Push/deploy
