@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-22T08:37:00Z — TASK-20260922-002 full deploy `573d98a`
+
+- Forced `TARANOM_DEPLOY_FORCE=1` auto-deploy. Exit 0. Containers recreated 08:37Z.
+- VPS git `573d98a`. Health 200. `.com` 200 in 0.13s. `www` `.ir` 200 in 0.18s. `/admin/partners` 307 to login.
+- Task stays closed. Claims stay released. No feature branch to merge; work is on `master`.
+
 ## 2026-09-22T07:50:00Z — TASK-20260922-002 CLOSED live `dc639b3`
 
 - VPS `/opt/taranom` HEAD `dc639b3`. auto-deploy exit 0.
