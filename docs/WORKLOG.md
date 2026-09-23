@@ -2,10 +2,11 @@
 
 ## 2026-09-23 — merge و دیپلوی برنامه همکار بازاریاب
 
-- شاخه `feat/TASK-20260922-003-sales-partner-program` روی `master` merge و دیپلوی می‌شود.
-- فلگ برنامه پیش‌فرض خاموش است؛ سفارش‌های فعلی و مسیر Vendor/`/partners` تغییر رفتار نمی‌دهند.
-- migrationهای `20260922-001`، `20260922-002` و `20260923-001` با دیپلوی اعمال می‌شوند.
-- متن حقوقی همچنان `draft-unreviewed` است و LIVE روشن نمی‌شود.
+- Merge بدون fast-forward: `4c76e91` روی `origin/master` (`6e4478f` → `4c76e91`).
+- فلگ برنامه خاموش است: `GET /v1/sales-partner-program/public-settings` → `{"enabled":false,"applyOpen":false,"termsVersion":"draft-unreviewed","termsFinal":false}`.
+- Health: API `/v1/health` **200** ok؛ خرده‌فروشی `.ir` **200**؛ عمده `.com` **200**؛ `/partners` همان ورود Vendor؛ `/sales-partnership` و `/sales-partners/login` **200**.
+- ۱۱ جدول `sales_*` و ستون‌های `orders.salesSource` / `salesPartnerId` / `salesPartnerSubmissionId` روی Postgres پرود اعمال شد.
+- بیلد اول وب روی SSH قطع شد؛ تصویر api/worker ساخته شد، بعد `compose up` برای api/worker و بیلد جداگانهٔ web کامل شد. LIVE روشن نشد.
 
 ## 2026-09-23 — هشدار ریسک همکار بازاریاب
 

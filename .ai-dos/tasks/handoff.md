@@ -2,10 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T09:15:00Z — flag-OFF deploy verified
+
+- `origin/master` is `4c76e91`. API health 200. Public settings enabled=false.
+- Sales-partner tables and order attribution columns exist on production Postgres.
+- Retail/wholesale homes and Vendor `/partners` still serve. Do not enable LIVE.
+
 ## 2026-09-23T09:00:00Z — merge + flag-OFF deploy
 
-- Feature is 14 commits ahead of `origin/master` (`6e4478f`), 0 behind.
-- Merging to master and deploying. Program stays OFF. Do not enable LIVE in this cut.
+- Feature was 14 commits ahead of `origin/master` (`6e4478f`), 0 behind.
+- Merged to master and deployed. Program stays OFF.
 
 ## 2026-09-23T08:35:00Z — admin-only risk flags
 
