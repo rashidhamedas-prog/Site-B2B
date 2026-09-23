@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T12:42:00Z — share links deployed
+
+- `origin/master` and VPS are `56423fc`. API health 200.
+- Public settings unchanged: enabled, applyOpen, termsVersion 2026-09-23-v1, termsFinal.
+- Unknown share code returns 404 from the API and 302 from `/go/sp` with no cookie.
+- Not done: admin has not enabled catalog products or a PROGRAM percent. Signup OTP was not walked. Independent review of checkout attribution is still required.
+
 ## 2026-09-23T12:20:00Z — product share links
 
 - Reclaimed stale `order.service.ts` from TASK-20260913-006 (hb 2026-09-13),
