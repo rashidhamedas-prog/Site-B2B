@@ -8,9 +8,9 @@ import { normalizePhone } from '@/lib/phone';
 import { safeScopedRedirect } from '@/lib/safe-redirect';
 
 const inputClass =
-  'w-full min-h-11 rounded-xl border border-stone-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]';
+  'w-full min-h-11 rounded-2xl border border-stone-300 bg-white px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]';
 const buttonClass =
-  'w-full min-h-11 rounded-xl bg-[#1B5C4A] font-semibold text-white disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]';
+  'w-full min-h-11 rounded-2xl bg-[#1B5C4A] font-medium text-white disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]';
 
 export function SalesPartnerLoginForm() {
   const [phone, setPhone] = useState('');
@@ -76,15 +76,16 @@ export function SalesPartnerLoginForm() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-10 text-right" dir="rtl">
-      <h1 className="text-2xl font-bold text-stone-900">ورود همکار بازاریاب</h1>
-      <p className="mt-2 text-sm text-stone-600">این صفحه برای تأمین‌کننده ارسال نیست.</p>
-      <div className="mt-4 flex gap-2">
-        <button type="button" className={`min-h-11 flex-1 rounded-xl border px-3 ${mode === 'otp' ? 'border-[#1B5C4A] bg-emerald-50' : 'border-stone-200'}`} onClick={() => setMode('otp')}>
-          ورود با پیامک
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center bg-[#f6f3ee] px-4 py-10 text-right text-stone-900" dir="rtl">
+      <p className="text-[11px] font-medium text-[#1B5C4A]">ترنم · همکار بازاریاب</p>
+      <h1 className="mt-1 text-2xl font-semibold">ورود</h1>
+      <p className="mt-2 text-sm leading-7 text-stone-600">این ورود برای همکار بازاریاب است، نه تأمین‌کننده ارسال.</p>
+      <div className="mt-5 grid grid-cols-2 gap-2" role="group" aria-label="روش ورود">
+        <button type="button" className={`min-h-11 rounded-2xl px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${mode === 'otp' ? 'bg-[#1B5C4A] text-white' : 'bg-white text-stone-700'}`} onClick={() => setMode('otp')} aria-pressed={mode === 'otp'}>
+          پیامک
         </button>
-        <button type="button" className={`min-h-11 flex-1 rounded-xl border px-3 ${mode === 'password' ? 'border-[#1B5C4A] bg-emerald-50' : 'border-stone-200'}`} onClick={() => setMode('password')}>
-          ورود با رمز
+        <button type="button" className={`min-h-11 rounded-2xl px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${mode === 'password' ? 'bg-[#1B5C4A] text-white' : 'bg-white text-stone-700'}`} onClick={() => setMode('password')} aria-pressed={mode === 'password'}>
+          رمز
         </button>
       </div>
 

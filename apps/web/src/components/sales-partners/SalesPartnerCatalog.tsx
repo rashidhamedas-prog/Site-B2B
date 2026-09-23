@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { mediaUrl, toman } from '@/lib/product-display';
-import { SalesPartnerShell } from './SalesPartnerShell';
+import { SalesPartnerShell, SpAlert, SpEmpty, SpNote, SpStatus, spField, spPrimary, spSecondary } from './SalesPartnerShell';
 
 type CatalogItem = {
   id: string;
@@ -60,27 +60,27 @@ export function SalesPartnerCatalog() {
 
   return (
     <SalesPartnerShell title="محصولات قابل فروش">
-      <p className="text-sm text-stone-600">
-        لینک هر محصول مخصوص شماست. اگر مشتری از همان لینک خرید کند، پورسانت همان کالا بعد از پرداخت برایتان محاسبه می‌شود.
-        هزینه ارسال و مبلغ کیف پول داخل پورسانت نیست. مبلغ روی کارت تخمینی است و تا تحویل سفارش قابل برداشت نمی‌شود.
-      </p>
-      {loading && <p className="mt-6 text-sm text-stone-600" role="status">در حال بارگذاری محصولات…</p>}
-      {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
+      <SpNote>
+        لینک هر محصول مخصوص شماست. اگر مشتری از همان لینک خرید کند، پورسانت همان کالا بعد از پرداخت حساب می‌شود.
+        هزینه ارسال و کیف پول داخل پورسانت نیست.
+      </SpNote>
+      {loading && <div className="mt-6"><SpStatus>در حال بارگذاری محصولات…</SpStatus></div>}
+      {error && <div className="mt-4"><SpAlert>{error}</SpAlert></div>}
       {copiedId && copiedKind && (
         <p className="mt-3 text-sm text-emerald-800" role="status" aria-live="polite">
           {copiedKind === 'link' ? 'لینک فروش کپی شد.' : 'متن معرفی کپی شد.'}
         </p>
       )}
       {!loading && data && data.items.length === 0 && (
-        <p className="mt-6 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-600">
-          هنوز محصولی برای فروش همکاران بازاریاب فعال نشده است. بعد از تأیید ادمین اینجا دیده می‌شود.
-        </p>
+        <div className="mt-6">
+          <SpEmpty>فعلاً محصولی برای معرفی در کاتالوگ قرار نگرفته است. به‌محض اضافه‌شدن محصول، لینک فروش همان کالا اینجا می‌آید.</SpEmpty>
+        </div>
       )}
       <ul className="mt-5 space-y-4">
         {data?.items.map((item, index) => {
           const src = mediaUrl(item.images[0]);
           return (
-            <li key={item.id} className="overflow-hidden rounded-2xl border border-stone-200">
+            <li key={item.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
               <div className="relative aspect-[4/3] bg-stone-100">
                 {src ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -107,26 +107,26 @@ export function SalesPartnerCatalog() {
                   readOnly
                   value={item.productUrl}
                   dir="ltr"
-                  className="min-h-11 w-full min-w-0 rounded-xl border border-stone-300 px-3 text-sm"
+                  className={spField}
                   onFocus={(event) => event.currentTarget.select()}
                 />
+                <button
+                  type="button"
+                  className={spPrimary}
+                  onClick={() => void copyValue(item, 'link')}
+                >
+                  کپی لینک فروش
+                </button>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <button
-                    type="button"
-                    className="inline-flex min-h-11 items-center rounded-xl bg-[#1B5C4A] px-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]"
-                    onClick={() => void copyValue(item, 'link')}
-                  >
-                    کپی لینک فروش
-                  </button>
                   <Link
                     href={`/sales-partners/orders/new?productId=${item.id}`}
-                    className="inline-flex min-h-11 items-center rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
+                    className={spSecondary}
                   >
                     ساخت سفارش
                   </Link>
                   <button
                     type="button"
-                    className="min-h-11 rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
+                    className={spSecondary}
                     onClick={() => void copyValue(item, 'text')}
                   >
                     کپی متن
@@ -139,7 +139,7 @@ export function SalesPartnerCatalog() {
                         key={`${item.id}-${imageIndex}`}
                         href={href}
                         download
-                        className="inline-flex min-h-11 items-center rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
+                        className={spSecondary}
                       >
                         {imageIndex === 0 ? 'دانلود تصویر' : `تصویر ${imageIndex + 1}`}
                       </a>
@@ -149,7 +149,7 @@ export function SalesPartnerCatalog() {
                     href={item.productUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-h-11 items-center rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
+                    className={spSecondary}
                   >
                     صفحه محصول
                   </a>

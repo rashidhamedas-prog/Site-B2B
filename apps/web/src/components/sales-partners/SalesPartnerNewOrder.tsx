@@ -180,7 +180,7 @@ export function SalesPartnerNewOrder() {
           <label className="mb-1 block text-sm" htmlFor="sp-product">محصول</label>
           <select
             id="sp-product"
-            className="min-h-11 w-full rounded-xl border px-3"
+            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
             value={productId}
             onChange={(e) => setProductId(e.target.value)}
             required
@@ -195,7 +195,7 @@ export function SalesPartnerNewOrder() {
             <label className="mb-1 block text-sm" htmlFor="sp-variant">رنگ و سایز</label>
             <select
               id="sp-variant"
-              className="min-h-11 w-full rounded-xl border px-3"
+              className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
               value={variantId}
               onChange={(e) => setVariantId(e.target.value)}
             >
@@ -219,7 +219,7 @@ export function SalesPartnerNewOrder() {
             type="number"
             min={1}
             max={20}
-            className="min-h-11 w-full rounded-xl border px-3"
+            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
             required
@@ -230,7 +230,7 @@ export function SalesPartnerNewOrder() {
           <input
             id="sp-phone"
             inputMode="numeric"
-            className="min-h-11 w-full rounded-xl border px-3"
+            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             required
@@ -240,14 +240,14 @@ export function SalesPartnerNewOrder() {
           <label className="mb-1 block text-sm" htmlFor="sp-name">نام مشتری (اختیاری)</label>
           <input
             id="sp-name"
-            className="min-h-11 w-full rounded-xl border px-3"
+            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
         <button
           type="submit"
-          className="min-h-11 w-full rounded-xl bg-[#1B5C4A] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]"
+          className="min-h-11 w-full rounded-2xl bg-[#1B5C4A] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
           disabled={busy || !productId}
         >
           مرور و ارسال لینک تأیید
@@ -261,7 +261,7 @@ export function SalesPartnerNewOrder() {
           <p className="text-sm">پورسانت تخمینی: {toman(draft.estimatedCommissionIrr)} تومان</p>
           <p className="mt-2 text-sm text-stone-600">برای مشتری پیامک می‌شود که تا تأیید خودش سفارشی ثبت نمی‌شود.</p>
           <div className="mt-3 flex gap-2">
-            <button type="button" className="min-h-11 flex-1 rounded-xl bg-[#1B5C4A] text-white" disabled={busy} onClick={() => void sendLink()}>
+            <button type="button" className="min-h-11 flex-1 rounded-2xl bg-[#1B5C4A] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]" disabled={busy} onClick={() => void sendLink()}>
               ارسال لینک تأیید
             </button>
             <button type="button" className="min-h-11 rounded-xl border px-4" onClick={() => setConfirmOpen(false)}>بازگشت</button>

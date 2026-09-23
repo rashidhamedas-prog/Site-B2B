@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-import { SalesPartnerShell } from '@/components/sales-partners/SalesPartnerShell';
+import { SalesPartnerShell, SpAlert, SpCard, SpStatus } from '@/components/sales-partners/SalesPartnerShell';
 
 type OrderView = {
   id: string;
@@ -39,15 +39,15 @@ export default function SalesPartnerOrderDetailPage() {
 
   return (
     <SalesPartnerShell title="جزئیات سفارش">
-      <p className="text-sm text-stone-600">
-        <Link href="/sales-partners/orders" className="underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]">
+      <p className="text-sm">
+        <Link href="/sales-partners/orders" className="text-[#1B5C4A] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]">
           بازگشت به سفارش‌ها
         </Link>
       </p>
-      {loading && <p className="mt-4 text-sm text-stone-600" role="status">در حال بارگذاری…</p>}
-      {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
+      {loading && <div className="mt-4"><SpStatus>در حال بارگذاری…</SpStatus></div>}
+      {error && <div className="mt-4"><SpAlert>{error}</SpAlert></div>}
       {row && (
-        <section className="mt-4 space-y-3 text-sm">
+        <SpCard className="mt-4 space-y-3 text-sm">
           <p className="font-medium">{row.statusLabel}</p>
           {row.alerts?.map((alert) => (
             <p key={alert} className="rounded-lg bg-amber-50 p-3 text-amber-900" role="status">{alert}</p>
@@ -70,7 +70,7 @@ export default function SalesPartnerOrderDetailPage() {
             ))}
           </ul>
           <p className="text-stone-500">کد رهگیری را شما ثبت نمی‌کنید و تحویل را تأیید نمی‌کنید.</p>
-        </section>
+        </SpCard>
       )}
     </SalesPartnerShell>
   );

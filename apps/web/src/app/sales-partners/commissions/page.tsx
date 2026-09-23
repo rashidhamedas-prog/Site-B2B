@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-import { SalesPartnerShell } from '@/components/sales-partners/SalesPartnerShell';
+import { SalesPartnerShell, SpAlert, SpCard, SpNote, SpStatus } from '@/components/sales-partners/SalesPartnerShell';
 
 type Balances = {
   held: number;
@@ -24,18 +24,19 @@ export default function SalesPartnerCommissionsPage() {
   }, []);
 
   return (
-    <SalesPartnerShell title="پورسانت‌ها">
-      <p className="text-sm text-stone-600">
-        پورسانت بعد از پرداخت معتبر ثبت می‌شود و تا پایان مهلت مرجوعی قابل‌برداشت نیست. عدد تخمینی اینجا نیست.
-      </p>
-      {!data && !error && <p className="mt-4 text-sm text-stone-600" role="status">در حال بارگذاری…</p>}
-      {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
+    <SalesPartnerShell title="پورسانت">
+      <SpNote>
+        عدد این صفحه بعد از پرداخت سفارش ثبت می‌شود. تا تحویل و پایان نگهداری، قابل‌برداشت نیست.
+        تخمین روی کارت محصول اینجا نیست.
+      </SpNote>
+      {!data && !error && <div className="mt-4"><SpStatus>در حال بارگذاری…</SpStatus></div>}
+      {error && <div className="mt-4"><SpAlert>{error}</SpAlert></div>}
       {data && (
         <ul className="mt-5 space-y-2 text-sm">
-          <li className="rounded-xl border p-3">در دوره نگهداری: {toman(data.held)} تومان</li>
-          <li className="rounded-xl border p-3">قابل‌برداشت: {toman(data.available)} تومان</li>
-          <li className="rounded-xl border p-3">پرداخت‌شده: {toman(data.paid)} تومان</li>
-          <li className="rounded-xl border p-3">برگشت‌خورده: {toman(data.reversed)} تومان</li>
+          <li><SpCard>در نگهداری: <span className="tabular-nums font-medium">{toman(data.held)} تومان</span></SpCard></li>
+          <li><SpCard className="!border-[#1B5C4A]">قابل‌برداشت: <span className="tabular-nums font-medium">{toman(data.available)} تومان</span></SpCard></li>
+          <li><SpCard>پرداخت‌شده: <span className="tabular-nums font-medium">{toman(data.paid)} تومان</span></SpCard></li>
+          <li><SpCard>برگشت‌خورده: <span className="tabular-nums font-medium">{toman(data.reversed)} تومان</span></SpCard></li>
         </ul>
       )}
     </SalesPartnerShell>
