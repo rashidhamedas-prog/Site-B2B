@@ -87,6 +87,10 @@ export class OrderEntity {
   @Column({ type: 'uuid', nullable: true })
   salesPartnerSubmissionId: string | null;
 
+  /** Product ids clicked through this partner's share links. Other cart lines are not commissioned. */
+  @Column({ type: 'jsonb', nullable: true })
+  salesPartnerProductIds: string[] | null;
+
   /** Torob click id from ?torob_clid= — order attribution for Torob Sync */
   @Column({ nullable: true })
   torobClid: string;

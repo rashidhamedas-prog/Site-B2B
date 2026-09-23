@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260922-003"
     title: "Retail Sales Partner program (همکار بازاریاب) isolated from Vendor"
-    status: "done"
+    status: "in_progress"
     risk: "high"
     owner: "cursor:implementer-TASK-20260922-003"
     roles:
@@ -13,7 +13,7 @@ tasks:
     branch: "feat/TASK-20260922-003-sales-partner-program"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-22T12:10:00Z"
-    heartbeat_at: "2026-09-23T09:20:00Z"
+    heartbeat_at: "2026-09-23T12:20:00Z"
     depends_on: []
     file_claims:
       - "docs/architecture/sales-partner-program.md"
@@ -27,7 +27,13 @@ tasks:
       - "apps/api/src/database/migrations/20260922-001-sales-partner-program.ts"
       - "apps/api/src/database/migrations/20260922-002-sales-partner-commission-percent.ts"
       - "apps/api/src/database/migrations/20260923-001-sales-partner-order-attribution.ts"
+      - "apps/api/src/database/migrations/20260923-002-sales-partner-public-code.ts"
       - "apps/api/src/modules/order/entities/order.entity.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      - "apps/web/src/app/go/sp/"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/lib/channel.ts"
       - "apps/api/src/app.module.ts"
       - "apps/api/src/config/database.config.ts"
       - "apps/api/src/modules/auth/staff-access.ts"
@@ -60,8 +66,9 @@ tasks:
       and stale governance from TASK-20260913-002 (hb 2026-09-13).
       Reclaimed stale order.entity.ts from TASK-20260901-002 (hb 2026-09-01,
       other worktree). Additive salesSource/salesPartnerId columns only.
-      Did not claim order.service.ts, create-order.dto.ts, payment.service.ts,
-      or vendor/* . Feature flag defaults OFF.
+      Reclaimed stale order.service.ts, create-order.dto.ts, retail checkout, and
+      channel.ts on 2026-09-23 for product share links. Did not claim
+      payment.service.ts or vendor/*. Feature flag stays LIVE.
     acceptance_criteria:
       - "Architecture doc records isolation, FSMs, APIs, permission matrix, rollback"
       - "SalesPartner tables and purpose=sales_partner exist and cannot use vendor tokens"
@@ -570,7 +577,8 @@ tasks:
       - "apps/api/src/modules/settings/settings.service.ts"
       - "apps/api/src/modules/settings/settings.controller.ts"
       - "apps/api/src/modules/shipping/shipping.service.ts"
-      - "apps/api/src/modules/order/order.service.ts"
+      # transferred 2026-09-23 to TASK-20260922-003 (stale hb 2026-09-13; product share links):
+      # "apps/api/src/modules/order/order.service.ts"
       - "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/web/src/components/admin/settings/ShippingTab.tsx"
       - "apps/web/src/components/admin/settings/types.ts"
@@ -716,10 +724,11 @@ tasks:
       - "apps/api/src/modules/payment/adapters/torobpay.adapter.spec.ts"
       - "apps/api/src/modules/payment/payment.service.ts"
       - "apps/api/src/modules/payment/payment.controller.ts"
-      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      # transferred 2026-09-23 to TASK-20260922-003 (stale hb 2026-09-13; sales-partner click):
+      # "apps/api/src/modules/order/dto/create-order.dto.ts"
+      # "apps/web/src/app/retail/checkout/page.tsx"
       - "apps/web/src/lib/shipping-address.ts"
       - "apps/web/src/lib/shipping-address.spec.mts"
-      - "apps/web/src/app/retail/checkout/page.tsx"
       - "docs/architecture/checkout-shipping-address.md"
       - "docs/reports/2026-09-13-torobpay-token-1011.md"
       - "docs/WORKLOG.md"
@@ -3479,7 +3488,8 @@ tasks:
     file_claims:
       # transferred 2026-09-03 to TASK-20260903-004 (stale hb 2026-08-30; static cache + LCP):
       # "nginx/nginx.conf"
-      - "apps/web/src/lib/channel.ts"
+      # transferred 2026-09-23 to TASK-20260922-003 (stale hb 2026-08-30; /go/sp exempt):
+      # "apps/web/src/lib/channel.ts"
       - "apps/web/src/app/v1/torob_api/v3/products/route.ts"
       - "apps/api/src/modules/torob/torob.controller.ts"
       - "apps/api/src/modules/torob/torob-product-api.controller.ts"
@@ -3602,7 +3612,8 @@ tasks:
       # "apps/api/src/modules/order/order.service.ts"
       # "apps/api/src/modules/order/order.controller.ts"
       # reclaimed 2026-09-03 from TASK-20260824-003 / TASK-20260812-001 (stale; quote channel)
-      - "apps/api/src/modules/order/dto/create-order.dto.ts"
+      # transferred 2026-09-23 to TASK-20260922-003 (stale hb 2026-09-02; sales-partner click fields):
+      # "apps/api/src/modules/order/dto/create-order.dto.ts"
       # reclaimed 2026-09-03 from TASK-20260810-006 (stale hb 2026-08-12; related stock)
       - "apps/api/src/modules/blog/blog-extras.service.ts"
       - "apps/api/src/modules/blog/blog.module.ts"
@@ -4490,7 +4501,8 @@ tasks:
       - "apps/api/src/modules/blog/entities/seo-redirect.entity.ts"
       - "apps/web/src/lib/canonical-urls.ts"
       # transferred 2026-08-23 to TASK-20260823-002 (stale >24h; BLOCKED_PATH /retail): "apps/web/src/lib/sitemap-xml.ts"
-      - "apps/web/src/lib/channel.ts"
+      # transferred 2026-09-23 to TASK-20260922-003 (stale hb 2026-08-18; /go/sp exempt):
+      # "apps/web/src/lib/channel.ts"
       # transferred 2026-08-31 to TASK-20260831-003 (stale; retail CTA/FAQ copy): "apps/web/src/lib/cms/defaults.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; omnichannel badges): "apps/web/src/components/admin/AdminProducts.tsx"
       - "apps/web/src/components/admin/ProductDiscountSettings.tsx"

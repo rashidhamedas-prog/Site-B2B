@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
+import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { ReturnRequestEntity } from '../rma/entities/return-request.entity';
 import {
   SalesCommissionLedgerEntryEntity,
@@ -16,6 +17,7 @@ import {
   remainingReversalIrr,
   snapshotLineCommissions,
 } from './sales-commission-policy';
+import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { SalesPartnerService } from './sales-partner.service';
 import {
   availableAtFromDelivery,
@@ -55,6 +57,9 @@ export class SalesPartnerLedgerService {
     private readonly orderItems: Repository<OrderItemEntity>,
     @InjectRepository(ReturnRequestEntity)
     private readonly returns: Repository<ReturnRequestEntity>,
+    @InjectRepository(ProductVariantEntity)
+    private readonly variants: Repository<ProductVariantEntity>,
+    private readonly catalog: SalesPartnerCatalogService,
     private readonly program: SalesPartnerService,
   ) {}
 
@@ -71,6 +76,29 @@ export class SalesPartnerLedgerService {
         n += await this.syncDraft(draft);
       } catch (err) {
         this.logger.warn(`ledger sync ${draft.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return n;
+  }
+
+  async syncLinkOrders(limit = 50) {
+    const orders = await this.orders.find({
+      where: {
+        salesSource: 'SALES_PARTNER',
+        salesPartnerSubmissionId: IsNull(),
+      },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+    let n = 0;
+    for (const order of orders) {
+      if (!order.salesPartnerId) continue;
+      try {
+        const items = await this.orderItems.find({ where: { orderId: order.id } });
+        await this.ensureLinkSnapshots(order, items);
+        n += await this.applyOrderLedger(order.salesPartnerId, order);
+      } catch (err) {
+        this.logger.warn(`link ledger sync ${order.id}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     return n;
@@ -103,7 +131,11 @@ export class SalesPartnerLedgerService {
     if (!order) return 0;
     const items = await this.orderItems.find({ where: { orderId: order.id } });
     await this.ensureSnapshots(draft, order, items);
-    const snaps = await this.snapshots.find({ where: { orderId: order.id, salesPartnerId: draft.salesPartnerId } });
+    return this.applyOrderLedger(draft.salesPartnerId, order);
+  }
+
+  private async applyOrderLedger(salesPartnerId: string, order: OrderEntity) {
+    const snaps = await this.snapshots.find({ where: { orderId: order.id, salesPartnerId } });
     let writes = 0;
     if (PAID_STATUSES.includes(order.status)) {
       const settings = await this.program.settings();
@@ -113,7 +145,7 @@ export class SalesPartnerLedgerService {
         : null;
       for (const snap of snaps) {
         writes += await this.insertIgnore({
-          salesPartnerId: draft.salesPartnerId,
+          salesPartnerId,
           orderId: order.id,
           orderItemId: snap.orderItemId,
           amountIrr: Number(snap.commissionIrr),
@@ -124,15 +156,15 @@ export class SalesPartnerLedgerService {
         });
       }
     }
-    writes += await this.reverseApprovedReturns(draft, order, snaps);
+    writes += await this.reverseApprovedReturns(salesPartnerId, order, snaps);
     if (isFullOrderReversalStatus(order.status)) {
-      writes += await this.reverseRemaining(draft, order, snaps, order.status);
+      writes += await this.reverseRemaining(salesPartnerId, order, snaps, order.status);
     }
     return writes;
   }
 
   private async reverseApprovedReturns(
-    draft: SalesPartnerOrderDraftEntity,
+    salesPartnerId: string,
     order: OrderEntity,
     snaps: SalesCommissionSnapshotEntity[],
   ) {
@@ -149,7 +181,7 @@ export class SalesPartnerLedgerService {
       const snap = snaps.find((row) => row.orderItemId === rma.orderItemId);
       if (!snap) continue;
       writes += await this.reverseEarnedRemainder({
-        salesPartnerId: draft.salesPartnerId,
+        salesPartnerId,
         orderId: order.id,
         orderItemId: rma.orderItemId,
         earnedIrr: Number(snap.commissionIrr),
@@ -160,7 +192,7 @@ export class SalesPartnerLedgerService {
   }
 
   private async reverseRemaining(
-    draft: SalesPartnerOrderDraftEntity,
+    salesPartnerId: string,
     order: OrderEntity,
     snaps: SalesCommissionSnapshotEntity[],
     reason: string,
@@ -168,7 +200,7 @@ export class SalesPartnerLedgerService {
     let writes = 0;
     for (const snap of snaps) {
       writes += await this.reverseEarnedRemainder({
-        salesPartnerId: draft.salesPartnerId,
+        salesPartnerId,
         orderId: order.id,
         orderItemId: snap.orderItemId,
         earnedIrr: Number(snap.commissionIrr),
@@ -235,6 +267,59 @@ export class SalesPartnerLedgerService {
         salesPartnerId: draft.salesPartnerId,
         ruleId: meta?.ruleId ?? null,
         ruleVersion: meta?.ruleVersion ?? 1,
+        percent: snap.percent,
+        eligibleNetIrr: String(snap.eligibleNetIrr),
+        commissionIrr: String(snap.commissionIrr),
+      }));
+    }
+  }
+
+  private async ensureLinkSnapshots(order: OrderEntity, items: OrderItemEntity[]) {
+    if (!order.salesPartnerId) return;
+    const existing = await this.snapshots.count({ where: { orderId: order.id } });
+    if (existing > 0) return;
+    const clicked = new Set(order.salesPartnerProductIds || []);
+    if (!clicked.size) return;
+    const variantIds = [...new Set(items.map((item) => item.productVariantId))];
+    const variants = variantIds.length
+      ? await this.variants.find({ where: { id: In(variantIds) } })
+      : [];
+    const productByVariant = new Map(variants.map((row) => [row.id, row.productId]));
+    const clickedLines = new Map<string, { percent: number; ruleId: string | null; ruleVersion: number }>();
+    for (const item of items) {
+      const productId = productByVariant.get(item.productVariantId);
+      if (!productId || !clicked.has(productId)) continue;
+      const lineTotal = Math.max(0, Math.floor(Number(item.totalPrice || 0)));
+      const preview = await this.catalog.preview(order.salesPartnerId, productId, lineTotal);
+      clickedLines.set(item.id, {
+        percent: preview.percent,
+        ruleId: preview.ruleId,
+        ruleVersion: preview.ruleVersion,
+      });
+    }
+    if (!clickedLines.size) return;
+    const lines = items.map((item) => {
+      const meta = clickedLines.get(item.id);
+      return {
+        orderItemId: item.id,
+        lineTotalIrr: Math.max(0, Math.floor(Number(item.totalPrice || 0))),
+        percent: meta?.percent ?? 0,
+      };
+    });
+    const computed = snapshotLineCommissions({
+      lines,
+      orderDiscountIrr: Number(order.discount || 0),
+      walletAppliedIrr: Number(order.walletApplied || 0),
+    });
+    for (const snap of computed) {
+      const meta = clickedLines.get(snap.orderItemId);
+      if (!meta) continue;
+      await this.snapshots.save(this.snapshots.create({
+        orderId: order.id,
+        orderItemId: snap.orderItemId,
+        salesPartnerId: order.salesPartnerId,
+        ruleId: meta.ruleId,
+        ruleVersion: meta.ruleVersion,
         percent: snap.percent,
         eligibleNetIrr: String(snap.eligibleNetIrr),
         commissionIrr: String(snap.commissionIrr),

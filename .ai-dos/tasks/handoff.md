@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T12:20:00Z — product share links
+
+- Reclaimed stale `order.service.ts` from TASK-20260913-006 (hb 2026-09-13),
+  `create-order.dto.ts` and retail checkout from TASK-20260913-002 (hb 2026-09-13)
+  and TASK-20260826-001 (hb 2026-09-02), and `channel.ts` from TASK-20260829-001
+  (hb 2026-08-30) and TASK-20260818-001 (hb 2026-08-18).
+- Live public settings before this change: enabled, applyOpen, termsVersion 2026-09-23-v1, termsFinal.
+- Share links do not invent a program percent. Admin must enable products and set the PROGRAM rule.
+- Full signup OTP was not walked on production.
+
 ## 2026-09-23T09:45:00Z — LIVE verified
 
 - Public settings: enabled=true, applyOpen=true, termsVersion=2026-09-23-v1, termsFinal=true.

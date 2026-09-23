@@ -26,6 +26,11 @@ export class SalesPartnerProfileEntity {
   @Column({ type: 'varchar', length: 24, default: 'PENDING_REVIEW' })
   status: string;
 
+  /** Public share-link code. Not a secret and not affiliateId. */
+  @Index({ unique: true })
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  publicCode: string | null;
+
   @Column({ type: 'varchar', length: 500, nullable: true })
   statusReason: string | null;
 

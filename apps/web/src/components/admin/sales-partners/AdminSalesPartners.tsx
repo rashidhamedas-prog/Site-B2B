@@ -377,6 +377,10 @@ export function AdminSalesPartners() {
 
       {tab === 'catalog' && (
         <div className="space-y-3">
+          <p className="text-sm text-stone-600">
+            تا وقتی محصولی را مجاز نکنید، کاتالوگ همکار خالی می‌ماند و لینک فروش همان کالا پورسانت نمی‌سازد.
+            درصد برنامه را در زبانه نرخ‌ها بگذارید؛ بدون نرخ، پورسانت صفر است.
+          </p>
           <form
             className="flex flex-wrap gap-2"
             onSubmit={(e) => {

@@ -1,12 +1,21 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SalesPartnerService } from './sales-partner.service';
+import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { ApplySalesPartnerDto, VerifySalesPartnerApplicationDto } from './dto/apply-sales-partner.dto';
 
 @ApiTags('sales-partners')
 @Controller({ path: '', version: '1' })
 export class SalesPartnerPublicController {
-  constructor(private readonly salesPartners: SalesPartnerService) {}
+  constructor(
+    private readonly salesPartners: SalesPartnerService,
+    private readonly catalog: SalesPartnerCatalogService,
+  ) {}
+
+  @Get('sales-partner-links/:code/:slug')
+  resolveShareLink(@Param('code') code: string, @Param('slug') slug: string) {
+    return this.catalog.resolveShareLink(code, slug);
+  }
 
   @Get('sales-partner-program/public-settings')
   publicSettings() {

@@ -35,6 +35,7 @@ import {
   SALES_PARTNER_SETTINGS_KEY,
   type SalesPartnerSettings,
 } from './sales-partner-settings';
+import { normalizeSalesPartnerCode, salesPartnerPublicCode } from './sales-partner-attribution';
 import {
   canSalesPartnerLogin,
   canTransitionProfile,
@@ -190,6 +191,7 @@ export class SalesPartnerService {
         phone,
         displayName: application.displayName,
         status: 'PENDING_REVIEW',
+        publicCode: salesPartnerPublicCode(randomBytes(8)),
       });
       await this.profiles.save(profile);
     } else if (profile.status === 'REJECTED') {
@@ -479,6 +481,30 @@ export class SalesPartnerService {
       channel: 'RETAIL',
       payload: salesPartnerOutboxPayload(payload),
     });
+  }
+
+  async findActiveByPublicCode(code: string) {
+    const normalized = normalizeSalesPartnerCode(code);
+    if (!normalized) return null;
+    return this.profiles.findOne({ where: { publicCode: normalized, status: 'ACTIVE' } });
+  }
+
+  async ensurePublicCode(profileId: string): Promise<string> {
+    const profile = await this.profiles.findOne({ where: { id: profileId } });
+    if (!profile) throw new NotFoundException('حساب همکار پیدا نشد');
+    if (profile.publicCode) return profile.publicCode;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      profile.publicCode = salesPartnerPublicCode(randomBytes(8));
+      try {
+        await this.profiles.save(profile);
+        return profile.publicCode;
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === '23505' && attempt < 4) continue;
+        throw err;
+      }
+    }
+    throw new ConflictException('ساخت کد لینک فروش ممکن نشد');
   }
 
   async recordAudit(

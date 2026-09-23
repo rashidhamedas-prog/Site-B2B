@@ -14,7 +14,9 @@ export class SalesPartnerLedgerJobs {
     if (this.running) return;
     this.running = true;
     try {
-      const n = await this.ledger.syncConverted();
+      const drafts = await this.ledger.syncConverted();
+      const links = await this.ledger.syncLinkOrders();
+      const n = drafts + links;
       if (n > 0) this.logger.log(`sales-partner ledger wrote ${n} row(s)`);
     } catch (err: unknown) {
       this.logger.warn(`sales-partner ledger sync failed: ${err instanceof Error ? err.message : String(err)}`);

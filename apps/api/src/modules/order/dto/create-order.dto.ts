@@ -173,6 +173,19 @@ export class CreateOrderDto {
   @MaxLength(128)
   affiliateId?: string;
 
+  @ApiPropertyOptional({ description: 'Sales partner public share code. Not affiliateId.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  salesPartnerCode?: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Product ids clicked via that partner link' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(12)
+  @IsUUID('4', { each: true })
+  salesPartnerProductIds?: string[];
+
   @ApiPropertyOptional({ description: 'Torob click id (?torob_clid=)' })
   @IsOptional()
   @IsString()

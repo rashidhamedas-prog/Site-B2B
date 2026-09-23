@@ -43,6 +43,28 @@ import {
 
 type AddressForm = ShippingAddress;
 
+function readSalesPartnerClick(): { salesPartnerCode?: string; salesPartnerProductIds?: string[] } {
+  if (typeof document === 'undefined') return {};
+  const read = (name: string) => {
+    const hit = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+    if (!hit) return '';
+    try {
+      return decodeURIComponent(hit.slice(name.length + 1));
+    } catch {
+      return '';
+    }
+  };
+  const code = read('taranom_sp').trim().toLowerCase();
+  if (!/^[a-z0-9]{8}$/.test(code)) return {};
+  const salesPartnerProductIds = read('taranom_sp_products')
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+    .slice(0, 12);
+  if (!salesPartnerProductIds.length) return {};
+  return { salesPartnerCode: code, salesPartnerProductIds };
+}
+
 function readAff(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   try {
@@ -347,6 +369,7 @@ export default function RetailCheckoutPage() {
         await retryExistingOrderPay(pendingPayOrderId);
         return;
       }
+      const partnerClick = readSalesPartnerClick();
       const order = await apiClient.post<{
         orderNumber?: string;
         id?: string;
@@ -359,8 +382,9 @@ export default function RetailCheckoutPage() {
         paymentGateway: paymentMethod === 'ONLINE' ? paymentGateway : undefined,
         shippingMethod,
         useWallet: useWallet && walletBalance > 0,
-        affiliateId: readAff(),
-        torobClid: readTorobClid(),
+        affiliateId: partnerClick.salesPartnerCode ? undefined : readAff(),
+        torobClid: partnerClick.salesPartnerCode ? undefined : readTorobClid(),
+        ...partnerClick,
         shippingAddress,
         notes: notes || undefined,
         items: items.map((i) => ({

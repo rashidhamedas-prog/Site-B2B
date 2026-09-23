@@ -34,6 +34,7 @@ export function SalesPartnerCatalog() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedKind, setCopiedKind] = useState<'link' | 'text' | null>(null);
 
   useEffect(() => {
     apiClient
@@ -43,26 +44,31 @@ export function SalesPartnerCatalog() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function copyText(item: CatalogItem) {
+  async function copyValue(item: CatalogItem, kind: 'link' | 'text') {
+    const value = kind === 'link' ? item.productUrl : item.copyText;
     try {
-      await navigator.clipboard.writeText(item.copyText);
+      await navigator.clipboard.writeText(value);
       setCopiedId(item.id);
+      setCopiedKind(kind);
+      setError(null);
     } catch {
-      setError('کپی متن در این مرورگر ممکن نشد');
+      setCopiedId(item.id);
+      setCopiedKind(null);
+      setError('کپی خودکار ممکن نشد. لینک را از کادر انتخاب کنید.');
     }
   }
 
   return (
     <SalesPartnerShell title="محصولات قابل فروش">
       <p className="text-sm text-stone-600">
-        متن و عکس‌های زیر برای معرفی محصول است. قیمت نهایی هنگام ساخت سفارش از سرور خوانده می‌شود.
-        پورسانت نمایش‌داده‌شده تخمینی است، نه مبلغ قابل‌برداشت.
+        لینک هر محصول مخصوص شماست. اگر مشتری از همان لینک خرید کند، پورسانت همان کالا بعد از پرداخت برایتان محاسبه می‌شود.
+        هزینه ارسال و مبلغ کیف پول داخل پورسانت نیست. مبلغ روی کارت تخمینی است و تا تحویل سفارش قابل برداشت نمی‌شود.
       </p>
       {loading && <p className="mt-6 text-sm text-stone-600" role="status">در حال بارگذاری محصولات…</p>}
       {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
-      {copiedId && (
+      {copiedId && copiedKind && (
         <p className="mt-3 text-sm text-emerald-800" role="status" aria-live="polite">
-          متن معرفی کپی شد.
+          {copiedKind === 'link' ? 'لینک فروش کپی شد.' : 'متن معرفی کپی شد.'}
         </p>
       )}
       {!loading && data && data.items.length === 0 && (
@@ -91,19 +97,37 @@ export function SalesPartnerCatalog() {
                 </p>
                 <p className="text-sm text-stone-600">{item.stockLabel}</p>
                 <p className="text-sm text-stone-600">
-                  پورسانت تخمینی: {toman(item.estimatedCommissionIrr)} تومان ({item.commissionPercent}٪)
+                  {item.commissionPercent > 0
+                    ? `پورسانت تخمینی این قیمت: ${toman(item.estimatedCommissionIrr)} تومان (${item.commissionPercent}٪)`
+                    : 'درصد پورسانت این محصول هنوز ثبت نشده. تا آن زمان پورسانت فروش از این لینک صفر است.'}
                 </p>
+                <label className="block text-sm" htmlFor={`sp-link-${item.id}`}>لینک فروش شما</label>
+                <input
+                  id={`sp-link-${item.id}`}
+                  readOnly
+                  value={item.productUrl}
+                  dir="ltr"
+                  className="min-h-11 w-full min-w-0 rounded-xl border border-stone-300 px-3 text-sm"
+                  onFocus={(event) => event.currentTarget.select()}
+                />
                 <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 items-center rounded-xl bg-[#1B5C4A] px-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]"
+                    onClick={() => void copyValue(item, 'link')}
+                  >
+                    کپی لینک فروش
+                  </button>
                   <Link
                     href={`/sales-partners/orders/new?productId=${item.id}`}
-                    className="inline-flex min-h-11 items-center rounded-xl bg-[#1B5C4A] px-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]"
+                    className="inline-flex min-h-11 items-center rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
                   >
                     ساخت سفارش
                   </Link>
                   <button
                     type="button"
                     className="min-h-11 rounded-xl border border-stone-300 px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
-                    onClick={() => void copyText(item)}
+                    onClick={() => void copyValue(item, 'text')}
                   >
                     کپی متن
                   </button>

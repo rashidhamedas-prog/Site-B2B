@@ -45,7 +45,10 @@ export function SalesPartnerHome() {
 
   return (
     <SalesPartnerShell title="خانه">
-      <p className="text-sm text-stone-600">فروش ثبت‌شده با پورسانت قطعی یکی نیست.</p>
+        <p className="text-sm text-stone-600">
+          لینک هر محصول مخصوص شماست. خرید از آن لینک، بعد از پرداخت، پورسانت همان کالا را حساب می‌کند.
+          فروش ثبت‌شده با مبلغ قابل‌برداشت یکی نیست.
+        </p>
       {loading && <p className="mt-6 text-sm text-stone-600" role="status">در حال بارگذاری…</p>}
       {error && <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
       {me && (
@@ -78,7 +81,7 @@ export function SalesPartnerHome() {
           href="/sales-partners/catalog"
           className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 py-3 text-center text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]"
         >
-          دیدن محصولات قابل فروش
+          لینک فروش محصولات
         </Link>
         <Link
           href="/sales-partners/orders/new"

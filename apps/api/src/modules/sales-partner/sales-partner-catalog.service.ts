@@ -23,6 +23,7 @@ import {
   shortPartnerBlurb,
   stockBand,
 } from './sales-partner-catalog-policy';
+import { normalizeSalesPartnerCode, salesPartnerSharePath } from './sales-partner-attribution';
 import { SalesPartnerService } from './sales-partner.service';
 
 const PARTNER_PAGE_SIZE = 16;
@@ -44,6 +45,7 @@ export class SalesPartnerCatalogService {
 
   async partnerCatalog(salesPartnerId: string, page = 1) {
     const settings = await this.program.settings();
+    const shareCode = await this.program.ensurePublicCode(salesPartnerId);
     const rows = await this.eligibility.find({ where: { eligible: true } });
     if (!rows.length) return { items: [], page: 1, pageSize: PARTNER_PAGE_SIZE };
     const products = await this.products.find({
@@ -52,7 +54,7 @@ export class SalesPartnerCatalogService {
     const rules = await this.loadRules();
     const now = new Date();
     const mapped = products
-      .map((product) => this.toPartnerCard(product, rows, rules, salesPartnerId, now, settings.minMarginIrr))
+      .map((product) => this.toPartnerCard(product, rows, rules, salesPartnerId, now, settings.minMarginIrr, shareCode))
       .filter((row): row is NonNullable<typeof row> => !!row);
     const safePage = Math.max(1, Number(page) || 1);
     const start = (safePage - 1) * PARTNER_PAGE_SIZE;
@@ -74,7 +76,8 @@ export class SalesPartnerCatalogService {
     });
     if (!product) throw new NotFoundException('محصول پیدا نشد');
     const rules = await this.loadRules();
-    const card = this.toPartnerCard(product, [elig], rules, salesPartnerId, new Date(), settings.minMarginIrr);
+    const shareCode = await this.program.ensurePublicCode(salesPartnerId);
+    const card = this.toPartnerCard(product, [elig], rules, salesPartnerId, new Date(), settings.minMarginIrr, shareCode);
     if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
     const colors = [...new Set((product.variants || []).map((v) => v.color).filter(Boolean))];
     const sizes = [...new Set((product.variants || []).map((v) => v.size).filter(Boolean))];
@@ -248,8 +251,30 @@ export class SalesPartnerCatalogService {
       ruleId: rule?.id ?? null,
       scope: rule?.scope ?? null,
       percent: rule?.percent ?? 0,
+      ruleVersion: rule?.version ?? 1,
       commissionIrr: commissionAmountIrr(lineTotalIrr, rule?.percent ?? 0),
     };
+  }
+
+  async resolveShareLink(code: string, slug: string) {
+    const normalized = normalizeSalesPartnerCode(code);
+    const safeSlug = String(slug || '').trim();
+    if (!normalized || !safeSlug || safeSlug.length > 160 || safeSlug.includes('/') || safeSlug.includes('..')) {
+      throw new NotFoundException('لینک فروش معتبر نیست');
+    }
+    const profile = await this.program.findActiveByPublicCode(normalized);
+    if (!profile) throw new NotFoundException('لینک فروش معتبر نیست');
+    const product = await this.products.findOne({
+      where: { slug: safeSlug, status: 'ACTIVE', showOnRetail: true },
+    });
+    if (!product) throw new NotFoundException('محصول پیدا نشد');
+    const elig = await this.eligibility.findOne({ where: { productId: product.id, eligible: true } });
+    if (!elig) throw new NotFoundException('این محصول برای همکاران بازاریاب فعال نیست');
+    const settings = await this.program.settings();
+    const rules = await this.loadRules();
+    const card = this.toPartnerCard(product, [elig], rules, profile.id, new Date(), settings.minMarginIrr, normalized);
+    if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
+    return { productId: product.id, slug: product.slug, code: normalized };
   }
 
   private toPartnerCard(
@@ -259,6 +284,7 @@ export class SalesPartnerCatalogService {
     salesPartnerId: string,
     now: Date,
     minMarginIrr: number,
+    shareCode?: string | null,
   ) {
     const elig = rows.find((r) => r.productId === product.id);
     if (!elig?.eligible) return null;
@@ -276,7 +302,11 @@ export class SalesPartnerCatalogService {
       if (margin < minMarginIrr) return null;
     }
     const images = (elig.allowedImageKeys?.length ? elig.allowedImageKeys : product.images || []).slice(0, 6);
-    const productUrl = product.slug ? `/products/${product.slug}` : `/products/${product.id}`;
+    const origin = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
+    const productPath = product.slug ? `/products/${product.slug}` : `/products/${product.id}`;
+    const productUrl = product.slug && shareCode
+      ? `${origin}${salesPartnerSharePath(shareCode, product.slug)}`
+      : productPath;
     const facts = factualFacts({
       fabricType: product.specs?.fabricType || product.fabric || null,
       sizeType: product.sizeType,

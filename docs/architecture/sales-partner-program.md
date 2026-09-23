@@ -37,7 +37,7 @@ This document is the source of truth for implementation. Do not invent legal cop
 4. Iran display timezone is `Asia/Tehran`; storage is UTC `timestamptz`.
 5. UI amounts show تومان with an explicit «تومان» label; calculations stay IRR integers.
 6. Default program mode is `OFF`. Production behavior does not change until an admin turns the flag on.
-7. Attribution links/codes are **Phase 8+**. MVP is manual draft + customer confirmation.
+7. Each ACTIVE partner has a `publicCode`. Share URL is `{retail}/go/sp/{code}/{slug}`. A first-party cookie attributes only the clicked eligible products on the next retail checkout. Draft + customer confirmation stays. Sales-partner attribution wins over `affiliateId`. Self-referral earns nothing. Shipping and wallet stay outside commission.
 
 ## 3. Decisions requiring confirmation
 

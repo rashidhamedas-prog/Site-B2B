@@ -49,6 +49,9 @@ import {
   foldStatusCounts,
   isKnownOrderStatus,
 } from '@taranom/shared-types';
+import { normalizePhone } from '../auth/phone.util';
+import { attributeLinkProducts, normalizeSalesPartnerCode } from '../sales-partner/sales-partner-attribution';
+import { isBlockedSelfReferral } from '../sales-partner/sales-partner-draft-policy';
 
 @Injectable()
 export class OrderService {
@@ -828,6 +831,13 @@ export class OrderService {
           : JSON.stringify(dto.shippingAddress);
     }
 
+    const linkAttribution = await this.resolveSalesPartnerLink({
+      channel,
+      customerPhone: String((customer as { phone?: string }).phone || ''),
+      code: dto.salesPartnerCode,
+      requestedProductIds: dto.salesPartnerProductIds,
+      cartProductIds: expandedItems.map((item) => item.productId),
+    });
     const initialStatus = initialCreateStatus(paymentMethod, orderTotal);
 
     // Persist the order and all financial/inventory effects on one DB connection.
@@ -859,12 +869,16 @@ export class OrderService {
                 intraCityFee,
                 perKgFee,
                 freeShipping,
-                affiliateId: dto.affiliateId?.trim() || undefined,
-                torobClid:
-                  dto.torobClid?.trim() ||
-                  (dto.affiliateId?.trim()?.startsWith('torob|')
-                    ? dto.affiliateId.trim().slice('torob|'.length)
-                    : undefined),
+                affiliateId: linkAttribution ? undefined : dto.affiliateId?.trim() || undefined,
+                salesSource: linkAttribution ? 'SALES_PARTNER' : 'DIRECT',
+                salesPartnerId: linkAttribution?.partnerId ?? null,
+                salesPartnerProductIds: linkAttribution?.productIds ?? null,
+                torobClid: linkAttribution
+                  ? undefined
+                  : dto.torobClid?.trim() ||
+                    (dto.affiliateId?.trim()?.startsWith('torob|')
+                      ? dto.affiliateId.trim().slice('torob|'.length)
+                      : undefined),
                 walletApplied,
                 discountCodeId: usedDiscountCodeId,
                 idempotencyKey: dto.idempotencyKey || undefined,
@@ -935,7 +949,7 @@ export class OrderService {
           );
         }
 
-        if (channel === 'RETAIL' && dto.affiliateId) {
+        if (channel === 'RETAIL' && dto.affiliateId && !linkAttribution) {
           const affiliateStatus =
             paymentMethod === 'CASH' ? 'pending' : paymentMethod === 'ONLINE' && orderTotal === 0 ? 'paid' : null;
           if (affiliateStatus) {
@@ -1563,5 +1577,61 @@ export class OrderService {
       );
     });
     return this.findOne(id);
+  }
+
+  /** Public share code is re-checked here. A client-supplied partner id is never trusted. */
+  private async resolveSalesPartnerLink(input: {
+    channel: string;
+    customerPhone: string;
+    code?: string;
+    requestedProductIds?: string[];
+    cartProductIds: string[];
+  }): Promise<{ partnerId: string; productIds: string[] } | null> {
+    if (input.channel !== 'RETAIL') return null;
+    const code = normalizeSalesPartnerCode(input.code);
+    const requested = (input.requestedProductIds || []).filter((id) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
+    );
+    if (!code || !requested.length) return null;
+    try {
+      const partners: Array<{ id: string; phone: string }> = await this.dataSource.query(
+        `SELECT id, phone FROM sales_partner_profiles WHERE "publicCode" = $1 AND status = 'ACTIVE' LIMIT 1`,
+        [code],
+      );
+      const partner = partners[0];
+      if (!partner) return null;
+      const selfReferral = isBlockedSelfReferral(
+        normalizePhone(input.customerPhone),
+        normalizePhone(partner.phone),
+        true,
+      );
+      const candidates = attributeLinkProducts({
+        partnerActive: true,
+        selfReferral,
+        requestedProductIds: requested,
+        cartProductIds: input.cartProductIds,
+        eligibleProductIds: requested,
+      });
+      if (!candidates.length) return null;
+      const eligible: Array<{ productId: string }> = await this.dataSource.query(
+        `SELECT "productId" FROM sales_partner_product_eligibility WHERE eligible = true AND "productId" = ANY($1::uuid[])`,
+        [candidates],
+      );
+      const productIds = attributeLinkProducts({
+        partnerActive: true,
+        selfReferral: false,
+        requestedProductIds: candidates,
+        cartProductIds: candidates,
+        eligibleProductIds: eligible.map((row) => row.productId),
+      });
+      if (!productIds.length) return null;
+      return { partnerId: partner.id, productIds };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/sales_partner_profiles|sales_partner_product_eligibility|publicCode|salesPartnerProductIds/i.test(message)) {
+        return null;
+      }
+      throw err;
+    }
   }
 }
