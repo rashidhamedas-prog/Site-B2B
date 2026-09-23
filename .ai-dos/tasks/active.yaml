@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260922-003"
     title: "Retail Sales Partner program (همکار بازاریاب) isolated from Vendor"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260922-003"
     roles:

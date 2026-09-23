@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T09:45:00Z — LIVE verified
+
+- Public settings: enabled=true, applyOpen=true, termsVersion=2026-09-23-v1, termsFinal=true.
+- `/sales-partnership` shows apply, `/sales-partnership/terms` shows owner terms. Prefix collision with `/sales-partners` is fixed.
+- Dedicated IBAN key loaded in API. Vendor `/partners` unchanged.
+
 ## 2026-09-23T09:20:00Z — LIVE enable
 
 - Owner approved operational terms `2026-09-23-v1`.
