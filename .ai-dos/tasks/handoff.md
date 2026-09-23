@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T09:20:00Z — LIVE enable
+
+- Owner approved operational terms `2026-09-23-v1`.
+- Dedicated `SALES_PARTNER_IBAN_KEY` written on VPS `.env` (not in git).
+- Settings: LIVE, applyOpen, commissionHoldDays=14.
+
 ## 2026-09-23T09:15:00Z — flag-OFF deploy verified
 
 - `origin/master` is `4c76e91`. API health 200. Public settings enabled=false.

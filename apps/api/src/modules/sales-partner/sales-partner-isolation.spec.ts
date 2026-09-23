@@ -22,6 +22,8 @@ const shell = readFileSync(join(__dirname, '../../../../web/src/components/sales
 const payouts = readFileSync(join(__dirname, '../../../../web/src/app/sales-partners/payouts/page.tsx'), 'utf8');
 const confirm = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerConfirm.tsx'), 'utf8');
 const newOrder = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerNewOrder.tsx'), 'utf8');
+const apply = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnershipApply.tsx'), 'utf8');
+const terms = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerTerms.tsx'), 'utf8');
 
 assert(/isSalesPartnerPurpose\(req\.user\?\.purpose\)/.test(me), 'me routes require purpose');
 assert(/salesPartnerId/.test(me) && /ownedDraft|getMine|listMine/.test(draft), 'partner id required');
@@ -62,5 +64,7 @@ assert(/role="status"/.test(payouts) && /Asia\/Tehran/.test(payouts), 'payout lo
 assert(/htmlFor="cf-name"/.test(confirm) && /فروشنده اصلی/.test(confirm), 'confirm labels + Taranom seller');
 assert(!/درآمد تضمینی|فروش قطعی/.test(confirm + shell + payouts), 'no hype copy');
 assert(/LOCAL_DRAFT_KEY/.test(newOrder) && /catalogLoading/.test(newOrder), 'local draft + catalog loading');
+assert(/2026-09-23-v1/.test(terms) && /تأمین‌کننده ارسال/.test(terms), 'owner terms version exists');
+assert(/sales-partnership\/terms/.test(apply), 'apply links published terms');
 
 console.log('sales-partner-isolation.spec.ts: OK');

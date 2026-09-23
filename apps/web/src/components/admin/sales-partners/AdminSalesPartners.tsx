@@ -572,7 +572,13 @@ export function AdminSalesPartners() {
             value={settings.minPayoutIrr}
             onChange={(e) => setSettings({ ...settings, minPayoutIrr: Number(e.target.value) })}
           />
-          <p className="text-sm text-stone-600">نسخه شرایط: {settings.termsVersion} — متن حقوقی نهایی را اختراع نکنید.</p>
+          <p className="text-sm text-stone-600">
+            نسخه شرایط: {settings.termsVersion}. متن عمومی در{' '}
+            <a href="/sales-partnership/terms" className="text-[#1B5C4A] underline-offset-4 hover:underline">
+              /sales-partnership/terms
+            </a>
+            {' '}است.
+          </p>
           <button type="submit" className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white" disabled={busyId === 'settings'}>
             ذخیره تنظیمات
           </button>

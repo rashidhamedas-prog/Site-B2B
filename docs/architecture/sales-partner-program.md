@@ -45,7 +45,7 @@ This document is the source of truth for implementation. Do not invent legal cop
 |----|----------|------------------------------|
 | D1 | Exact hold days after delivery | Setting `commissionHoldDays` required and `> 0` before auto-release; no auto-settle if unset |
 | D2 | Self-referral (partner phone == customer phone) | Blocked |
-| D3 | Legal terms text | Placeholder + `termsVersion`; counsel must replace |
+| D3 | Legal terms text | Owner-approved `2026-09-23-v1` at `/sales-partnership/terms` |
 | D4 | Fixed-amount commission | Not in MVP; percent only |
 | D5 | Minimum payout | Setting `minPayoutIrr`; default 0 until owner sets |
 | D6 | Who may change attribution after convert | `ADMIN` only + reason + audit |
@@ -191,7 +191,7 @@ New module `salesPartners`. Default: `ADMIN` + `ACCOUNTANT` (payouts) + `SALES_M
 |---------|-------|
 | Layout, tokens, validation, state machines, prices, commission math | code |
 | Public intro headlines, guide FAQ, hero image | CMS later; MVP code + placeholder |
-| Legal terms | owner/counsel (`termsVersion`) |
+| Legal terms | owner-approved `2026-09-23-v1` |
 | Product photos | existing media; admin flag «مجاز برای همکار» on eligibility row |
 | Feature flag, hold days, SMS caps | admin settings `salesPartners` JSON |
 
@@ -514,7 +514,7 @@ Paid/shipped/delivered reuse existing `order.status_changed.notification`. A Sal
 - Down migrations exist for empty/new tables; after production data, roll forward with the flag off.
 - Backup before first production migrate (standard VPS dump).
 - Production IBAN key: set `SALES_PARTNER_IBAN_KEY` (min 16 chars) on the API host. Do not reuse `JWT_SECRET` in LIVE. `.env.example` is claimed elsewhere; document the key here until that claim is released.
-- Legal terms stay `draft-unreviewed` until owner/counsel replace the text. Do not invent final copy.
+- Legal terms: owner approved `2026-09-23-v1` on 2026-09-23. Public text is `/sales-partnership/terms`. Default for empty settings remains `draft-unreviewed`.
 - No second service. Modular monolith `SalesPartnerModule`.
 - LIVE checklist: hold days > 0, min payout set, SMS provider working, IBAN key set, 2–3 canary phones, independent Reviewer+Security residual closed.
 
