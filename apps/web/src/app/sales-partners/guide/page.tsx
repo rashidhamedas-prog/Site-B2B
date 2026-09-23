@@ -19,7 +19,11 @@ export default function SalesPartnerGuidePage() {
           <li>پورسانت بعد از لغو، عدم پرداخت یا مرجوعی همان قلم برمی‌گردد.</li>
         </ul>
         <p className="text-stone-600">
-          متن حقوقی نهایی شرایط همکاری، زمان تسویه و موارد لغو پورسانت باید توسط مالک یا مشاور حقوقی تأیید شود. نسخه فعلی پیش‌نویس بررسی‌نشده است.
+          متن کامل شرایط در صفحه عمومی{' '}
+          <a href="/sales-partnership/terms" className="text-[#1B5C4A] underline-offset-4 hover:underline">
+            شرایط همکاری بازاریاب
+          </a>{' '}
+          آمده است. پورسانت پس از تحویل و ۱۴ روز نگهداری قابل‌برداشت می‌شود مگر ادمین مهلت را عوض کند.
         </p>
       </div>
     </SalesPartnerShell>

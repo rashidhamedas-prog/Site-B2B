@@ -7,8 +7,7 @@ Isolated marketer program. Vendor `/partners` and external `affiliateId` were no
 
 ## Live
 
-Flag-OFF on production at `4c76e91` (2026-09-23). `GET /v1/sales-partner-program/public-settings` returns `enabled: false`.
-`SALES_PARTNER_IBAN_KEY` still required before LIVE IBAN save. Legal terms remain `draft-unreviewed`.
+LIVE on production 2026-09-23. Terms `2026-09-23-v1`. Dedicated IBAN key on API host. Hold 14 days.
 
 ## Coded
 

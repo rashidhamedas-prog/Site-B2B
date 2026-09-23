@@ -122,8 +122,12 @@ export function SalesPartnershipApply() {
           <label className="flex items-start gap-2 text-sm text-stone-700">
             <input type="checkbox" className="mt-1 min-h-5 min-w-5" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required />
             <span>
-              شرایط همکاری را خواندم. متن حقوقی نهایی هنوز باید توسط مالک یا مشاور حقوقی تأیید شود
-              {settings.termsFinal ? '' : ` (نسخه موقت ${settings.termsVersion})`}.
+              <Link href="/sales-partnership/terms" className="text-[#1B5C4A] underline-offset-4 hover:underline">
+                شرایط همکاری نسخه {settings.termsVersion}
+              </Link>
+              {' '}
+              را خواندم و می‌پذیرم
+              {settings.termsFinal ? '.' : ' (هنوز نسخه موقت است).'}
             </span>
           </label>
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
