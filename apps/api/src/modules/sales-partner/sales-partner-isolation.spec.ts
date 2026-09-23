@@ -17,10 +17,16 @@ const payout = read('sales-partner-payout.service.ts');
 const jwt = readFileSync(join(__dirname, '../auth/strategies/jwt.strategy.ts'), 'utf8');
 const login = readFileSync(join(__dirname, '../auth/auth.service.ts'), 'utf8');
 const channel = readFileSync(join(__dirname, '../../../../web/src/lib/channel.ts'), 'utf8');
+const shell = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerShell.tsx'), 'utf8');
+const payouts = readFileSync(join(__dirname, '../../../../web/src/app/sales-partners/payouts/page.tsx'), 'utf8');
+const confirm = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerConfirm.tsx'), 'utf8');
 
 assert(/isSalesPartnerPurpose\(req\.user\?\.purpose\)/.test(me), 'me routes require purpose');
 assert(/salesPartnerId/.test(me) && /ownedDraft|getMine|listMine/.test(draft), 'partner id required');
 assert(/where:\s*\{\s*id:\s*draftId,\s*salesPartnerId/.test(draft), 'owned draft scopes by partner');
+assert(/humanPartnerOrderStatus/.test(draft), 'partner sees retail order status after convert');
+assert(/partnerCommissionOverlay/.test(draft), 'delivered orders overlay hold/available');
+assert(/listAdmin[\s\S]*orderStatus/.test(draft), 'admin list uses retail order status');
 assert(/type:\s*'RETAIL_WEBSITE'/.test(draft), 'convert stays retail website');
 assert(!/affiliateId/.test(draft), 'convert must not write affiliateId');
 assert(/idempotencyKey:\s*`sp-draft:\$\{locked\.id\}`/.test(draft), 'convert idempotency');
@@ -39,5 +45,10 @@ assert(/sales_partner\.application\.submitted/.test(read('sales-partner-events.t
 assert(/AdminOnly/.test(read('sales-partner-admin.controller.ts')), 'admin API stays ADMIN-only');
 assert(/Get\('audits'\)/.test(read('sales-partner-admin.controller.ts')), 'admin audits');
 assert(/Get\('reports'\)/.test(read('sales-partner-admin.controller.ts')), 'admin reports');
+assert(/dir="rtl"/.test(shell) && /aria-label="ناوبری پنل همکار بازاریاب"/.test(shell), 'rtl shell + nav label');
+assert(/focus-visible:outline/.test(shell), 'keyboard focus on partner nav');
+assert(/role="status"/.test(payouts) && /Asia\/Tehran/.test(payouts), 'payout loading + Tehran dates');
+assert(/htmlFor="cf-name"/.test(confirm) && /فروشنده اصلی/.test(confirm), 'confirm labels + Taranom seller');
+assert(!/درآمد تضمینی|فروش قطعی/.test(confirm + shell + payouts), 'no hype copy');
 
 console.log('sales-partner-isolation.spec.ts: OK');

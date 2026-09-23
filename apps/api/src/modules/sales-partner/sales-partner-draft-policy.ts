@@ -36,6 +36,58 @@ export function canTransitionDraft(from: string | null | undefined, to: string |
   return DRAFT_TRANSITIONS[from].includes(to);
 }
 
+export type PartnerCommissionOverlay = 'HELD' | 'AVAILABLE' | 'PAID' | null;
+
+export function partnerCommissionOverlay(
+  orderStatus: string | null | undefined,
+  rows: Array<{ entryType: string; availableAt: Date | null; payoutId?: string | null }>,
+  now: Date,
+): PartnerCommissionOverlay {
+  if (orderStatus !== 'DELIVERED' && orderStatus !== 'COMPLETED') return null;
+  const earned = rows.filter((row) => row.entryType === 'COMMISSION_EARNED');
+  if (!earned.length) return 'HELD';
+  if (earned.every((row) => row.payoutId)) return 'PAID';
+  const unlocked = earned.some(
+    (row) => !row.payoutId && row.availableAt && row.availableAt.getTime() <= now.getTime(),
+  );
+  return unlocked ? 'AVAILABLE' : 'HELD';
+}
+
+export function humanPartnerOrderStatus(
+  draftStatus: string | null | undefined,
+  orderStatus?: string | null,
+  commissionOverlay?: PartnerCommissionOverlay,
+): string {
+  if (draftStatus && draftStatus !== 'CONVERTED_TO_ORDER') {
+    return humanDraftStatus(draftStatus);
+  }
+  switch (orderStatus) {
+    case 'AWAITING_PAYMENT':
+      return 'منتظر پرداخت';
+    case 'PENDING_REVIEW':
+      return 'در بررسی';
+    case 'CONFIRMED':
+    case 'PROCESSING':
+    case 'PACKED':
+      return 'در حال آماده‌سازی';
+    case 'SHIPPED':
+      return 'ارسال‌شده';
+    case 'DELIVERED':
+    case 'COMPLETED':
+      if (commissionOverlay === 'AVAILABLE') return 'پورسانت قابل‌برداشت';
+      if (commissionOverlay === 'HELD') return 'در انتظار آزادشدن پورسانت';
+      return 'تحویل‌شده';
+    case 'CANCELLED':
+    case 'DELETED':
+      return 'لغوشده';
+    case 'RETURNED':
+    case 'REFUNDED':
+      return 'مرجوع‌شده';
+    default:
+      return humanDraftStatus(draftStatus);
+  }
+}
+
 export function humanDraftStatus(status: string | null | undefined): string {
   switch (status) {
     case 'DRAFT':

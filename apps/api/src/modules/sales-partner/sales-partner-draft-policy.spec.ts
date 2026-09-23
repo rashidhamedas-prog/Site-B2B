@@ -3,7 +3,9 @@ import {
   confirmationSmsText,
   hashConfirmationToken,
   humanDraftStatus,
+  humanPartnerOrderStatus,
   isDraftExpired,
+  partnerCommissionOverlay,
   maskCustomerPhone,
   priceDriftBps,
 } from './sales-partner-draft-policy';
@@ -18,6 +20,30 @@ assert(canTransitionDraft('CUSTOMER_CONFIRMED', 'CONVERTED_TO_ORDER'), 'convert'
 assert(!canTransitionDraft('CONVERTED_TO_ORDER', 'CANCELLED'), 'converted terminal');
 assert(!canTransitionDraft('EXPIRED', 'DRAFT'), 'expired terminal');
 assert(humanDraftStatus('AWAITING_CUSTOMER_CONFIRMATION') === 'منتظر تأیید مشتری', 'label');
+assert(humanPartnerOrderStatus('DRAFT') === 'پیش‌نویس', 'draft wins before convert');
+assert(humanPartnerOrderStatus('CONVERTED_TO_ORDER', 'AWAITING_PAYMENT') === 'منتظر پرداخت', 'unpaid');
+assert(humanPartnerOrderStatus('CONVERTED_TO_ORDER', 'SHIPPED') === 'ارسال‌شده', 'shipped');
+assert(humanPartnerOrderStatus('CONVERTED_TO_ORDER', 'DELIVERED') === 'تحویل‌شده', 'delivered');
+assert(humanPartnerOrderStatus('CONVERTED_TO_ORDER', 'DELIVERED', 'HELD') === 'در انتظار آزادشدن پورسانت', 'hold after delivery');
+assert(humanPartnerOrderStatus('CONVERTED_TO_ORDER', 'DELIVERED', 'AVAILABLE') === 'پورسانت قابل‌برداشت', 'available after hold');
+assert(humanPartnerOrderStatus('CONVERTED_TO_ORDER', 'RETURNED') === 'مرجوع‌شده', 'returned');
+const holdNow = new Date('2026-09-23T08:00:00.000Z');
+assert(
+  partnerCommissionOverlay('DELIVERED', [{ entryType: 'COMMISSION_EARNED', availableAt: null }], holdNow) === 'HELD',
+  'null availableAt is held',
+);
+assert(
+  partnerCommissionOverlay(
+    'DELIVERED',
+    [{ entryType: 'COMMISSION_EARNED', availableAt: new Date('2026-09-01T00:00:00.000Z'), payoutId: null }],
+    holdNow,
+  ) === 'AVAILABLE',
+  'past availableAt is withdrawable',
+);
+assert(
+  partnerCommissionOverlay('SHIPPED', [{ entryType: 'COMMISSION_EARNED', availableAt: null }], holdNow) === null,
+  'no commission overlay before delivery',
+);
 const sms = confirmationSmsText('نگار', 'https://example.test/c/abc');
 assert(sms.includes('نگار'), 'name');
 assert(sms.includes('تأیید نکنید'), 'no charge until confirm');

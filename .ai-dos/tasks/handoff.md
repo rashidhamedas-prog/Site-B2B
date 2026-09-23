@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T07:20:00Z — partner order labels follow retail FSM
+
+- After convert, partner list/detail uses order.status (awaiting pay, review, prep, shipped, delivered, cancelled, returned).
+- Draft labels stay for unconverted rows. No tracking input. Status select is id+status only.
+
+## 2026-09-22T16:40:00Z — admin reports/audits + partner guide
+
+- Admin GET reports/audits; UI tab without mixing estimated/paid.
+- Guide lists operational rules; legal copy still draft-unreviewed.
+- Catalog can download up to 3 approved images. api+web tsc 0; isolation/catalog/events OK.
+
 ## 2026-09-22T16:25:00Z — admin settings/orders + outbox + ADMIN-only ACL
 
 - Admin settings GET/PATCH, partner suspend, admin order list.

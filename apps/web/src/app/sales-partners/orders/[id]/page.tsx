@@ -53,7 +53,9 @@ export default function SalesPartnerOrderDetailPage() {
           <p>ارسال برآوردی: {toman(row.shippingFeeIrr)} تومان</p>
           <p>پورسانت تخمینی: {toman(row.estimatedCommissionIrr)} تومان</p>
           {row.convertedOrderId && (
-            <p className="text-stone-600">سفارش فروشگاه ثبت شده است. ارسال و پرداخت با ترنم است.</p>
+            <p className="text-stone-600">
+              سفارش فروشگاه ثبت شده است. ارسال و پرداخت با ترنم است. پورسانت تخمینی با مبلغ قابل‌برداشت یکی نیست.
+            </p>
           )}
           <ul className="space-y-2">
             {row.items.map((item) => (

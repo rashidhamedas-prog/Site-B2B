@@ -8,7 +8,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, MoreThan, Repository } from 'typeorm';
+import { DataSource, In, MoreThan, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { ProductEntity } from '../product/entities/product.entity';
@@ -16,11 +16,13 @@ import { ProductVariantEntity } from '../product/entities/product-variant.entity
 import { NotificationService } from '../notification/notification.service';
 import { CustomerService } from '../customer/customer.service';
 import { OrderService } from '../order/order.service';
+import { OrderEntity } from '../order/entities/order.entity';
 import { ShippingService } from '../shipping/shipping.service';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { resolveCashOnDeliveryFlags } from '../settings/settings-payment-cash';
 import { normalizePhone } from '../auth/phone.util';
 import {
+  SalesCommissionLedgerEntryEntity,
   SalesPartnerOrderDraftEntity,
   SalesPartnerOrderDraftItemEntity,
   SalesPartnerProfileEntity,
@@ -32,7 +34,9 @@ import {
   confirmationSmsText,
   hashConfirmationToken,
   humanDraftStatus,
+  humanPartnerOrderStatus,
   isDraftExpired,
+  partnerCommissionOverlay,
   maskCustomerPhone,
   priceDriftBps,
 } from './sales-partner-draft-policy';
@@ -58,6 +62,10 @@ export class SalesPartnerDraftService {
     private readonly variants: Repository<ProductVariantEntity>,
     @InjectRepository(AppSettingEntity)
     private readonly settingsRepo: Repository<AppSettingEntity>,
+    @InjectRepository(OrderEntity)
+    private readonly orderRows: Repository<OrderEntity>,
+    @InjectRepository(SalesCommissionLedgerEntryEntity)
+    private readonly ledger: Repository<SalesCommissionLedgerEntryEntity>,
     private readonly program: SalesPartnerService,
     private readonly catalog: SalesPartnerCatalogService,
     private readonly customers: CustomerService,
@@ -196,17 +204,37 @@ export class SalesPartnerDraftService {
       order: { updatedAt: 'DESC' },
       take: 100,
     });
-    return rows.map((row) => ({
-      id: row.id,
-      salesPartnerId: row.salesPartnerId,
-      status: row.status,
-      statusLabel: humanDraftStatus(row.status),
-      merchandiseIrr: row.merchandiseIrr,
-      estimatedCommissionIrr: row.estimatedCommissionIrr,
-      convertedOrderId: row.convertedOrderId,
-      customerPhoneMasked: maskCustomerPhone(row.customerPhone),
-      updatedAt: row.updatedAt,
-    }));
+    const orderIds = [...new Set(rows.map((row) => row.convertedOrderId).filter((id): id is string => !!id))];
+    const orders = orderIds.length
+      ? await this.orderRows.find({ where: { id: In(orderIds) }, select: ['id', 'status'] })
+      : [];
+    const statusById = new Map(orders.map((order) => [order.id, order.status]));
+    const ledgerRows = orderIds.length
+      ? await this.ledger.find({
+          where: { orderId: In(orderIds), entryType: In(['COMMISSION_EARNED', 'PAYOUT']) },
+        })
+      : [];
+    const now = new Date();
+    return rows.map((row) => {
+      const orderStatus = row.convertedOrderId ? statusById.get(row.convertedOrderId) ?? null : null;
+      const overlay = partnerCommissionOverlay(
+        orderStatus,
+        ledgerRows.filter((entry) => entry.orderId === row.convertedOrderId),
+        now,
+      );
+      return {
+        id: row.id,
+        salesPartnerId: row.salesPartnerId,
+        status: row.status,
+        orderStatus,
+        statusLabel: humanPartnerOrderStatus(row.status, orderStatus, overlay),
+        merchandiseIrr: row.merchandiseIrr,
+        estimatedCommissionIrr: row.estimatedCommissionIrr,
+        convertedOrderId: row.convertedOrderId,
+        customerPhoneMasked: maskCustomerPhone(row.customerPhone),
+        updatedAt: row.updatedAt,
+      };
+    });
   }
 
   async cancel(salesPartnerId: string, draftId: string) {
@@ -482,10 +510,24 @@ export class SalesPartnerDraftService {
   private async toPartnerView(draftId: string, salesPartnerId: string) {
     const draft = await this.ownedDraft(salesPartnerId, draftId);
     const items = await this.items.find({ where: { draftId } });
+    let orderStatus: string | null = null;
+    let overlay: ReturnType<typeof partnerCommissionOverlay> = null;
+    if (draft.convertedOrderId) {
+      const order = await this.orderRows.findOne({
+        where: { id: draft.convertedOrderId },
+        select: ['id', 'status'],
+      });
+      orderStatus = order?.status ?? null;
+      const ledgerRows = await this.ledger.find({
+        where: { orderId: draft.convertedOrderId, entryType: In(['COMMISSION_EARNED', 'PAYOUT']) },
+      });
+      overlay = partnerCommissionOverlay(orderStatus, ledgerRows, new Date());
+    }
     return {
       id: draft.id,
       status: draft.status,
-      statusLabel: humanDraftStatus(draft.status),
+      orderStatus,
+      statusLabel: humanPartnerOrderStatus(draft.status, orderStatus, overlay),
       customerPhoneMasked: maskCustomerPhone(draft.customerPhone),
       customerName: draft.customerName,
       merchandiseIrr: draft.merchandiseIrr,

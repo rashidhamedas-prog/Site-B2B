@@ -32,7 +32,9 @@ export function SalesPartnerHome() {
     ])
       .then(([nextMe, orders, nextBalances]) => {
         setMe(nextMe);
-        setAwaiting(orders.filter((row) => row.status === 'AWAITING_CUSTOMER_CONFIRMATION').length);
+        setAwaiting(
+          orders.filter((row) => row.status === 'DRAFT' || row.status === 'AWAITING_CUSTOMER_CONFIRMATION').length,
+        );
         setBalances(nextBalances);
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'خطا در بارگذاری'))
@@ -58,7 +60,7 @@ export function SalesPartnerHome() {
       )}
       {balances && (
         <section className="mt-4 grid grid-cols-2 gap-2 text-sm">
-          <p className="rounded-xl border p-3">منتظر تأیید مشتری: {awaiting}</p>
+          <p className="rounded-xl border p-3">نیازمند اقدام: {awaiting}</p>
           <p className="rounded-xl border p-3">در نگهداری: {toman(balances.held)} تومان</p>
           <p className="rounded-xl border p-3">قابل‌برداشت: {toman(balances.available)} تومان</p>
           <p className="rounded-xl border p-3">پرداخت‌شده: {toman(balances.paid)} تومان</p>

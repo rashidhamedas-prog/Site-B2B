@@ -17,6 +17,7 @@ Not live. Feature flag default OFF.
 - Ledger job: paid → held; unpaid cancel writes no reversal; approved RMA reverses that item only
 - Snapshot uses allocated promo discount; wallet is excluded
 - Partner panel: home totals, catalog, new order with variant + resend countdown, orders, commissions, payouts, IBAN profile
+- After convert, partner/admin status labels follow retail order FSM; delivered overlays hold/available commission
 - Admin: applications, partners, catalog, rules, payout confirm with idempotency
 - IBAN AES-256-GCM; prefer `SALES_PARTNER_IBAN_KEY`
 
@@ -35,7 +36,7 @@ Not live. Feature flag default OFF.
 
 ## Not done
 
-- E2E / browser / a11y pass
+- Browser E2E against a running storefront (static RTL/focus/label checks are in isolation spec)
 - Dedicated production `SALES_PARTNER_IBAN_KEY`
 - Order-table attribution columns (entity claimed elsewhere)
 - Legal terms (placeholder `draft-unreviewed`)
