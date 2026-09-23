@@ -27,7 +27,7 @@ This document is the source of truth for implementation. Do not invent legal cop
 | Customer RMA has **no enforced return-window setting**. Vendor hold is per-vendor days after parcel deliver. | `rma.service.ts`, `vendor-ledger-policy.ts` |
 | Outbox: `OutboxService.enqueue` with `ON CONFLICT DO NOTHING`. | `outbox.service.ts` |
 | Money is integer IRR. Vendor commission uses `Math.floor`. | `fulfillment-split-policy.ts` |
-| No `SalesPartner` type, table, purpose, or `/sales-partners` route exists. | repo grep 2026-09-22 |
+| Isolated `SalesPartner` module, `purpose=sales_partner`, `/sales-partnership`, `/sales-partners`, `/admin/sales-partners` now exist on this branch. Feature flag default OFF. Vendor `/partners` unchanged. | `apps/api/src/modules/sales-partner/*`, `c742c94`, `4c21379` |
 
 ## 2. Assumptions (low-risk, recorded)
 
@@ -548,7 +548,7 @@ Rejected: putting partner ids in `affiliateId`; Saleor/Solidus plugins (no maint
 | 4 | Paid/delivered/return ledger + jobs | full partner UI polish |
 | 5 | Partner panel states | payout batches |
 | 6 | Admin payouts/reconciliation | live enable |
-| 7 | Independent Reviewer + Security, gates, flag rehearsal | enabling LIVE |
+| 7 | Independent Reviewer + Security, gates, flag rehearsal — **in progress 2026-09-23**: retail status labels, freshness alerts, local order form. Browser E2E, prod IBAN key, legal terms, order attribution columns still block LIVE. | enabling LIVE |
 
 Each phase is its own commit. Feature stays OFF until Phase 7.
 
