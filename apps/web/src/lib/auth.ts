@@ -32,7 +32,10 @@ function isBrowserVendorPath(): boolean {
 }
 
 function isBrowserSalesPartnerPath(): boolean {
-  return typeof window !== 'undefined' && window.location.pathname.startsWith('/sales-partners');
+  return (
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/sales-partners' || window.location.pathname.startsWith('/sales-partners/'))
+  );
 }
 
 function writeCookie(name: string, value: string, maxAge: number) {

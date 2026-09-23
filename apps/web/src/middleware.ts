@@ -9,7 +9,7 @@ import {
   readPortalGateCookies,
   readSalesPartnerGateCookies,
 } from '@/lib/admin-session';
-import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
+import { hostLooksRetail, isChannelExemptPath, isSalesPartnerPanelPath } from '@/lib/channel';
 import { panelHostLockRedirect } from '@/lib/panel-host-lock';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
 
@@ -38,7 +38,7 @@ function isPrivateStorefrontPath(pathname: string): boolean {
     p.startsWith('/admin') ||
     p.startsWith('/portal') ||
     p.startsWith('/partners') ||
-    p.startsWith('/sales-partners') ||
+    isSalesPartnerPanelPath(p) ||
     p.startsWith('/confirm/sales-partner') ||
     p.startsWith('/api') ||
     p.startsWith('/checkout') ||
@@ -205,7 +205,7 @@ export function middleware(request: NextRequest) {
   const isPartnerLogin = adminPath === '/partners/login';
   const isPartnerRoute = adminPath.startsWith('/partners') && !isPartnerLogin;
   const isSalesPartnerLogin = adminPath === '/sales-partners/login';
-  const isSalesPartnerRoute = adminPath.startsWith('/sales-partners') && !isSalesPartnerLogin;
+  const isSalesPartnerRoute = isSalesPartnerPanelPath(adminPath) && !isSalesPartnerLogin;
 
   if (isSalesPartnerLogin || isSalesPartnerRoute) {
     const withRobots = (res: NextResponse) => {
