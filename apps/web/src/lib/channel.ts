@@ -21,13 +21,18 @@ export function isRetailPath(pathname: string): boolean {
   return pathname === '/retail' || pathname.startsWith('/retail/');
 }
 
+/** Panel only. `/sales-partnership` must not match `/sales-partners`. */
+export function isSalesPartnerPanelPath(pathname: string): boolean {
+  return pathname === '/sales-partners' || pathname.startsWith('/sales-partners/');
+}
+
 /** Paths that must never be rewritten to the retail tree */
 export function isChannelExemptPath(pathname: string): boolean {
   return (
     pathname.startsWith('/admin') ||
     pathname.startsWith('/portal') ||
     pathname.startsWith('/partners') ||
-    pathname.startsWith('/sales-partners') ||
+    isSalesPartnerPanelPath(pathname) ||
     pathname.startsWith('/sales-partnership') ||
     pathname.startsWith('/confirm/sales-partner') ||
     pathname.startsWith('/api') ||
