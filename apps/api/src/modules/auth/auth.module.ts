@@ -13,10 +13,11 @@ import { UserEntity } from './entities/user.entity';
 import { CustomerEntity } from '../customer/entities/customer.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { VendorEntity } from '../vendor/entities/vendor.entity';
+import { SalesPartnerProfileEntity } from '../sales-partner/entities/sales-partner-profile.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity, CustomerEntity, OrderEntity, VendorEntity]),
+    TypeOrmModule.forFeature([UserEntity, CustomerEntity, OrderEntity, VendorEntity, SalesPartnerProfileEntity]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],

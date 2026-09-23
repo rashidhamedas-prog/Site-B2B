@@ -256,6 +256,10 @@ export class AuthService {
       );
     }
 
+    if (purpose === 'sales_partner') {
+      throw new UnauthorizedException('برای ورود همکار بازاریاب از صفحه همکاران بازاریاب استفاده کنید');
+    }
+
     if (purpose === 'vendor') {
       if (!isVendorRole(user.role)) {
         throw new UnauthorizedException('این حساب همکار نیست');

@@ -13,8 +13,10 @@ export const WHOLESALE_TOKEN_KEY = 'taranom_wholesale_token';
 export const WHOLESALE_ROLE_KEY = 'taranom_wholesale_role';
 export const VENDOR_TOKEN_KEY = 'taranom_vendor_token';
 export const VENDOR_ROLE_KEY = 'taranom_vendor_role';
+export const SALES_PARTNER_TOKEN_KEY = 'taranom_sales_partner_token';
+export const SALES_PARTNER_ROLE_KEY = 'taranom_sales_partner_role';
 
-export type AuthCookieScope = 'admin' | 'retail' | 'wholesale' | 'vendor';
+export type AuthCookieScope = 'admin' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner';
 export type ShopperCookieScope = 'retail' | 'wholesale';
 
 export type CookieGetter = {
@@ -39,6 +41,7 @@ export function cookieScopeFromPurpose(purpose?: string | null): AuthCookieScope
   if (purpose === 'admin') return 'admin';
   if (purpose === 'retail') return 'retail';
   if (purpose === 'vendor') return 'vendor';
+  if (purpose === 'sales_partner') return 'sales_partner';
   return 'wholesale';
 }
 
@@ -101,6 +104,22 @@ export function canEnterPartners(token: string | null | undefined): boolean {
   if (readJwtPurpose(token) !== 'vendor') return false;
   const payloadRole = readJwtPayload(token)?.role;
   return payloadRole === 'VENDOR';
+}
+
+export function canEnterSalesPartners(token: string | null | undefined): boolean {
+  if (readJwtPurpose(token) !== 'sales_partner') return false;
+  const payloadRole = readJwtPayload(token)?.role;
+  return payloadRole === 'SALES_PARTNER';
+}
+
+export function readSalesPartnerGateCookies(cookies: CookieGetter): {
+  token: string | undefined;
+  role: string | undefined;
+} {
+  return {
+    token: cookies.get(SALES_PARTNER_TOKEN_KEY)?.value,
+    role: cookies.get(SALES_PARTNER_ROLE_KEY)?.value,
+  };
 }
 
 export function readPartnerGateCookies(cookies: CookieGetter): {

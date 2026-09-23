@@ -10,6 +10,7 @@ import {
   isShopperPurpose,
   isRetailPurpose,
   isWholesalePurpose,
+  isSalesPartnerPurpose,
 } from './staff-access';
 
 function assert(cond: boolean, msg: string) {
@@ -24,7 +25,11 @@ for (const role of STAFF_ROLES) {
 assert(canAccessStaffModule('ADMIN', 'settings'), 'admin settings');
 assert(canAccessStaffModule('ADMIN', 'users'), 'admin users');
 assert(canAccessStaffModule('ADMIN', 'partners'), 'admin partners');
+assert(canAccessStaffModule('ADMIN', 'salesPartners'), 'admin sales partners');
+assert(!canAccessStaffModule('ACCOUNTANT', 'salesPartners'), 'accountant no sales partners until scoped API exists');
+assert(!canAccessStaffModule('SALES_MANAGER', 'salesPartners'), 'manager no sales partners until scoped API exists');
 assert(!canAccessStaffModule('SALES_REP', 'partners'), 'sales no partners');
+assert(!canAccessStaffModule('SALES_REP', 'salesPartners'), 'rep no sales partners');
 assert(canAccessStaffModule('SALES_REP', 'account'), 'staff can open own account');
 assert(!canAccessStaffModule('SALES_MANAGER', 'settings'), 'sales no settings');
 assert(canAccessStaffModule('SALES_MANAGER', 'crm'), 'sales crm');
@@ -36,6 +41,10 @@ assert(roleAfterCustomerLink('SALES_REP') === 'SALES_REP', 'otp must not demote 
 assert(roleAfterCustomerLink('CUSTOMER') === 'CUSTOMER', 'customer stays customer');
 assert(roleAfterCustomerLink('VENDOR') === 'VENDOR', 'otp must not demote vendor');
 assert(resolveAuthPurpose('vendor') === 'vendor', 'vendor purpose');
+assert(resolveAuthPurpose('sales_partner') === 'sales_partner', 'sales partner purpose is not wholesale');
+assert(isSalesPartnerPurpose('sales_partner') === true, 'sales partner purpose flag');
+assert(isSalesPartnerPurpose('vendor') === false, 'vendor is not sales partner');
+assert(actingRoleForPurpose('sales_partner', 'CUSTOMER') === 'SALES_PARTNER', 'sales partner acting role');
 assert(actingRoleForPurpose('vendor', 'VENDOR') === 'VENDOR', 'vendor acts as vendor');
 assert(actingRoleForPurpose('vendor', 'CUSTOMER') === 'CUSTOMER', 'non-vendor vendor-purpose is not elevated');
 assert(actingRoleForPurpose('wholesale', 'VENDOR') === 'CUSTOMER', 'vendor must not shop as vendor');

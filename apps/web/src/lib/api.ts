@@ -66,6 +66,8 @@ class ApiClient {
           window.location.href = '/admin/login';
         } else if (pathName.startsWith('/partners')) {
           window.location.href = '/partners/login';
+        } else if (pathName.startsWith('/sales-partners')) {
+          window.location.href = '/sales-partners/login';
         } else if (pathName.startsWith('/retail') || pathName.startsWith('/account')) {
           window.location.href = `/account?redirect=${encodeURIComponent(pathName)}`;
         } else {
@@ -132,6 +134,7 @@ class ApiClient {
       const pathName = window.location.pathname;
       if (pathName.startsWith('/admin')) window.location.href = '/admin/login';
       else if (pathName.startsWith('/partners')) window.location.href = '/partners/login';
+      else if (pathName.startsWith('/sales-partners')) window.location.href = '/sales-partners/login';
       throw new Error('نشست شما منقضی شده است');
     }
 

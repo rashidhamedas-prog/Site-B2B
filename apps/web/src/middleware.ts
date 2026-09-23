@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { canEnterAdmin, canEnterPartners, readAdminGateCookies, readPartnerGateCookies, readPortalGateCookies } from '@/lib/admin-session';
+import {
+  canEnterAdmin,
+  canEnterPartners,
+  canEnterSalesPartners,
+  readAdminGateCookies,
+  readPartnerGateCookies,
+  readPortalGateCookies,
+  readSalesPartnerGateCookies,
+} from '@/lib/admin-session';
 import { hostLooksRetail, isChannelExemptPath } from '@/lib/channel';
 import { panelHostLockRedirect } from '@/lib/panel-host-lock';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
@@ -29,6 +37,9 @@ function isPrivateStorefrontPath(pathname: string): boolean {
   return (
     p.startsWith('/admin') ||
     p.startsWith('/portal') ||
+    p.startsWith('/partners') ||
+    p.startsWith('/sales-partners') ||
+    p.startsWith('/confirm/sales-partner') ||
     p.startsWith('/api') ||
     p.startsWith('/checkout') ||
     p.startsWith('/account') ||
@@ -193,6 +204,29 @@ export function middleware(request: NextRequest) {
   const isPortalRoute = pathname.startsWith('/portal/dashboard');
   const isPartnerLogin = adminPath === '/partners/login';
   const isPartnerRoute = adminPath.startsWith('/partners') && !isPartnerLogin;
+  const isSalesPartnerLogin = adminPath === '/sales-partners/login';
+  const isSalesPartnerRoute = adminPath.startsWith('/sales-partners') && !isSalesPartnerLogin;
+
+  if (isSalesPartnerLogin || isSalesPartnerRoute) {
+    const withRobots = (res: NextResponse) => {
+      res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      return res;
+    };
+    if (isSalesPartnerLogin) {
+      const res = withRobots(NextResponse.next());
+      res.headers.set('Cache-Control', 'private, no-store');
+      return res;
+    }
+    const session = readSalesPartnerGateCookies(request.cookies);
+    if (!session.token || !canEnterSalesPartners(session.token)) {
+      const loginUrl = new URL('/sales-partners/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return withRobots(NextResponse.redirect(loginUrl));
+    }
+    const res = withRobots(NextResponse.next());
+    res.headers.set('Cache-Control', 'private, no-store');
+    return res;
+  }
 
   if (isPartnerLogin || isPartnerRoute) {
     const withRobots = (res: NextResponse) => {

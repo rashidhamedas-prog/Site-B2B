@@ -2,6 +2,111 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T09:00:00Z — merge + flag-OFF deploy
+
+- Feature is 14 commits ahead of `origin/master` (`6e4478f`), 0 behind.
+- Merging to master and deploying. Program stays OFF. Do not enable LIVE in this cut.
+
+## 2026-09-23T08:35:00Z — admin-only risk flags
+
+- evaluateSalesPartnerRisk flags volume / low confirm / expire / reject / repeat phone.
+- Partner /me does not include riskFlags. No auto-suspend.
+
+## 2026-09-23T08:20:00Z — error-scenario helpers + tests
+
+- COD spoof, self-referral, SMS fail-in-prod, resend cap, expired confirm page are unit-tested.
+- Live `/sales-partnership` is 404 until this branch deploys (flag stays OFF).
+
+## 2026-09-23T08:05:00Z — order attribution columns
+
+- Reclaimed stale `order.entity.ts` from TASK-20260901-002 (hb 2026-09-01, other worktree).
+- Additive `salesSource`, `salesPartnerId`, `salesPartnerSubmissionId`. Convert stamps them and sets `affiliateId=null`.
+- Admin PATCH attribution requires reason and is locked after COMMISSION_EARNED.
+
+## 2026-09-23T07:40:00Z — open-draft price/stock freshness
+
+- Open drafts expose `stale` + human alerts when storefront price or stock drifted.
+- Converted/cancelled rows stay quiet. Dashboard counts stale drafts separately from earned commission.
+
+## 2026-09-23T07:20:00Z — partner order labels follow retail FSM
+
+- After convert, partner list/detail uses order.status (awaiting pay, review, prep, shipped, delivered, cancelled, returned).
+- Draft labels stay for unconverted rows. No tracking input. Status select is id+status only.
+
+## 2026-09-22T16:40:00Z — admin reports/audits + partner guide
+
+- Admin GET reports/audits; UI tab without mixing estimated/paid.
+- Guide lists operational rules; legal copy still draft-unreviewed.
+- Catalog can download up to 3 approved images. api+web tsc 0; isolation/catalog/events OK.
+
+## 2026-09-22T16:25:00Z — admin settings/orders + outbox + ADMIN-only ACL
+
+- Admin settings GET/PATCH, partner suspend, admin order list.
+- Outbox events (ids/status only) on apply/review/confirm/reject/expire/payout. Producer still respects OMNICHANNEL_OUTBOX_PRODUCER.
+- salesPartners module is ADMIN-only (closes P1 mismatch with @AdminOnly API).
+- Specs: isolation/events/staff-access OK; api+web tsc 0.
+
+## 2026-09-22T16:10:00Z — Phase 7 isolation + partner order detail
+
+- Added GET `/v1/sales-partners/orders/:id`, partner order detail, no-store on panel HTML.
+- Isolation source spec: purpose, owned draft, no affiliateId, RETAIL_WEBSITE convert, hashed token, no Vendor ledger, payout lock.
+- PREVIEW allows apply but not drafts. Production IBAN key documented; `.env.example` not edited (claimed).
+- Observed: isolation/settings/commission/staff-access specs OK; api tsc 0.
+- Still not LIVE: browser E2E, legal terms, dedicated host key, order-column attribution.
+
+## 2026-09-22T15:20:00Z — independent Reviewer + Security recorded
+
+- Reviewer (`6f63b59f-c25e-4127-9b53-8311f884f48d`): conditional approve flag-OFF merge. Isolation/confirm/hold/payout/price OK.
+- Security (`086a7a9b-4f08-4f0c-99b6-da68a4f61141`): no critical/high. Medium was XOR IBAN + JWT_SECRET reuse.
+- Fixed now: reversal only if COMMISSION_EARNED exists (no phantom negative on unpaid cancel); IBAN AES-256-GCM with domain-separated key; prefer `SALES_PARTNER_IBAN_KEY`.
+- Still blocking LIVE: E2E/a11y, dedicated `SALES_PARTNER_IBAN_KEY` in prod, legal terms, order-column attribution.
+- Fixed after review: D1 unpaid cancel no longer writes reversal; D2 approved RMA reverses that line only + remaining-net on full cancel; D3 snapshot uses `snapshotLineCommissions` (promo allocated, wallet excluded); S1 IBAN AES-256-GCM.
+
+## 2026-09-22T14:30:00Z — TASK-20260922-003 Phases 5–6 coded, not live
+
+- Partner panel: dashboard totals, variant picker, SMS resend countdown, IBAN profile (masked), payouts list.
+- Admin payout confirm is idempotent, locks ledger rows, writes PAYOUT entry + payout items.
+- Report: `docs/reports/2026-09-22-sales-partner-program.md`.
+- Still required: independent Reviewer + Security, E2E, flag rehearsal.
+
+## 2026-09-22T14:05:00Z — TASK-20260922-003 Phase 4 ledger sync coded
+
+- Job every 10 minutes reads converted drafts and writes idempotent COMMISSION_EARNED / REVERSAL.
+- `availableAt=null` stays held until delivery + `commissionHoldDays`; unset hold never auto-releases.
+- Partial RMA line reversal and payout batches are not in this slice.
+- Gates: ledger-policy spec OK; api tsc 0.
+
+## 2026-09-22T13:45:00Z — TASK-20260922-003 Phases 2–3 coded, not live
+
+- Catalog: partner sees only `sales_partner_product_eligibility.eligible=true`. Vendor SKUs need margin >= `minMarginIrr`; partner DTO has no vendorDue.
+- Rules: PROGRAM/CATEGORY/PRODUCT/PARTNER_* via existing integer floor + precedence. Admin preview and program-rate create.
+- Draft: server-priced items, hashed confirmation token, SMS copy without charge-until-confirm, expire+anonymize phone.
+- Convert: `OrderService.create` channel RETAIL / type RETAIL_WEBSITE / no affiliateId / idempotency `sp-draft:{id}`. Did not edit order.service or order.entity.
+- Gates observed: sales-partner policy/commission/draft/ledger/settings/catalog-policy specs OK; staff-access.spec OK; `apps/api` and `apps/web` `npx tsc --noEmit` 0.
+- Not done: ledger jobs, payouts, E2E, a11y browser, independent Reviewer + Security, live flag.
+- Exact next: Phase 4 commission lifecycle on paid/delivered/return; then partner UX polish and admin payouts.
+
+## 2026-09-22T12:40:00Z — TASK-20260922-003 Phase 1 coded, not live
+
+- Architecture + isolated `SalesPartnerModule`, migration, apply/OTP/admin review, JWT `purpose=sales_partner`.
+- Vendor `/partners` and `affiliateId` unused. Feature flag default OFF.
+- Gates observed: sales-partner policy/commission/draft/ledger/settings specs OK; staff-access.spec OK; `apps/api` and `apps/web` `npx tsc --noEmit` 0.
+- Independent Reviewer + Security not yet run. Draft-to-order and ledger jobs not built.
+- Exact next: Phase 2 catalog eligibility + commission rules + margin guard.
+
+## 2026-09-22T12:10:00Z — TASK-20260922-003 claimed Sales Partner program
+
+- Owner: `cursor:implementer-TASK-20260922-003` on `D:/proje/Site B2B`.
+- Branch: `feat/TASK-20260922-003-sales-partner-program`.
+- Architecture: `docs/architecture/sales-partner-program.md`.
+- This is **همکار بازاریاب**, not Vendor dropship (`/partners`) and not external `affiliateId`.
+- Reclaimed stale claims:
+  - Auth/session files from TASK-20260904-001 (heartbeat 2026-09-03, >24h).
+  - Governance (`active.yaml`, `handoff.md`, `status.md`, `WORKLOG.md`) from TASK-20260913-002 (heartbeat 2026-09-13) and TASK-20260904-001.
+- Did **not** take `order.service.ts` (TASK-20260913-006), `create-order.dto.ts` / `payment.service.ts` (TASK-20260913-002), or any `vendor/*`.
+- Independent Reviewer + Security required before Done (auth, PII, money).
+- Feature flag will default OFF. Exact next: Phase 1 entities, purpose isolation, apply/review APIs.
+
 ## 2026-09-22T08:37:00Z — TASK-20260922-002 full deploy `573d98a`
 
 - Forced `TARANOM_DEPLOY_FORCE=1` auto-deploy. Exit 0. Containers recreated 08:37Z.

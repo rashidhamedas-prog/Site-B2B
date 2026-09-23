@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { ADMIN_ONLY_KEY } from '../decorators/admin-only.decorator';
-import { isShopperPurpose, isStaffRole, isVendorPurpose } from '../staff-access';
+import { isSalesPartnerPurpose, isShopperPurpose, isStaffRole, isVendorPurpose } from '../staff-access';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -24,6 +24,11 @@ export class RolesGuard implements CanActivate {
     if (!user?.role) throw new ForbiddenException('دسترسی غیرمجاز');
     if (isVendorPurpose(user.purpose)) {
       if (adminOnly || !requiredRoles.includes('VENDOR')) {
+        throw new ForbiddenException('دسترسی غیرمجاز');
+      }
+    }
+    if (isSalesPartnerPurpose(user.purpose)) {
+      if (adminOnly || !requiredRoles.includes('SALES_PARTNER')) {
         throw new ForbiddenException('دسترسی غیرمجاز');
       }
     }

@@ -32,6 +32,7 @@ import { OmnichannelModule } from './modules/omnichannel/omnichannel.module';
 import { CartModule } from './modules/cart/cart.module';
 import { CustomerMarketingModule } from './modules/customer-marketing/customer-marketing.module';
 import { VendorModule } from './modules/vendor/vendor.module';
+import { SalesPartnerModule } from './modules/sales-partner/sales-partner.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { VendorModule } from './modules/vendor/vendor.module';
     }),
     AuthModule,
     VendorModule,
+    SalesPartnerModule,
     SearchModule,
     CustomerModule,
     CategoryModule,

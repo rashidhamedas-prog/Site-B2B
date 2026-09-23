@@ -15,9 +15,9 @@ export class LoginDto {
   password: string;
 
   /** admin = staff-only; retail = .ir account; vendor = partner; wholesale/portal/omitted = .com portal */
-  @ApiPropertyOptional({ enum: ['admin', 'portal', 'retail', 'wholesale', 'vendor'] })
+  @ApiPropertyOptional({ enum: ['admin', 'portal', 'retail', 'wholesale', 'vendor', 'sales_partner'] })
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase() : value))
-  @IsIn(['admin', 'portal', 'retail', 'wholesale', 'vendor'])
-  purpose?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor';
+  @IsIn(['admin', 'portal', 'retail', 'wholesale', 'vendor', 'sales_partner'])
+  purpose?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner';
 }
