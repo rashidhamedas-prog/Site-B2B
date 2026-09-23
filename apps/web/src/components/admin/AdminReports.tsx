@@ -191,7 +191,7 @@ export function AdminReports() {
       color: 'bg-emerald-500',
     },
     {
-      label: 'تعداد سفارش‌ها',
+      label: 'سفارش‌های ارسال‌شده',
       value: data.kpis.orders.value.toLocaleString('fa-IR'),
       unit: 'سفارش',
       change: data.kpis.orders.change,
@@ -222,7 +222,7 @@ export function AdminReports() {
         <p className="text-sm text-gray-500">
           {error
             ? <span className="text-amber-600">⚠ {data?.error ? `گزارش ناقص: ${data.error}` : 'دریافت گزارش از API ناموفق بود'}</span>
-            : 'گزارش‌های فروش، مشتریان و محصولات بر اساس داده واقعی'}
+            : 'فروش، تعداد و میانگین سفارش فقط برای سفارش‌هایی است که به ارسال شده، تحویل یا تکمیل رسیده‌اند'}
         </p>
         <div className="flex items-center gap-3 flex-wrap">
           <AdminChannelTabs value={channel} onChange={setChannel} />

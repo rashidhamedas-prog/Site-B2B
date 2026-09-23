@@ -18,7 +18,7 @@ interface DashboardStats {
   orders: { total: number; pending: number; thisMonth: number; lastMonth: number; growth: number };
   ordersByStatus?: Record<string, number>;
   customers: { total: number; pending: number; active: number };
-  revenue: { total: number; thisMonth: number; outstanding: number };
+  revenue: { total: number; thisMonth: number; lastMonth?: number; growth?: number; outstanding: number };
   recentOrders: { id: string; orderNumber: string; customerName: string; city: string; total: number; status: string; createdAt: string }[];
   lowStock: { id: string; color: string; size: string; stock: number; productId: string; productName?: string }[];
   topCustomers: { id: string; businessName: string; city: string; segment: string; totalSpend: number; orderCount: number }[];
@@ -152,7 +152,7 @@ const EMPTY: DashboardStats = {
   orders: { total: 0, pending: 0, thisMonth: 0, lastMonth: 0, growth: 0 },
   ordersByStatus: {},
   customers: { total: 0, pending: 0, active: 0 },
-  revenue: { total: 0, thisMonth: 0, outstanding: 0 },
+  revenue: { total: 0, thisMonth: 0, lastMonth: 0, growth: 0, outstanding: 0 },
   recentOrders: [],
   lowStock: [],
   topCustomers: [],
@@ -208,6 +208,7 @@ export function AdminDashboard() {
   const revenueMonths = monthlyRevenue.map((m) => Math.round((Number(m.value) || 0) / 10_000_000));
   const sparkRevenue = monthlyRevenue.map((m) => Number(m.value) || 0);
   const monthLabels = monthlyRevenue.map((m) => m.label);
+  const salesGrowth = stats.revenue.growth ?? 0;
   const statusMap = stats.ordersByStatus ?? {};
   const statusTotal = Math.max(stats.orders.total, 1);
   const updatedLabel = stats.generatedAt
@@ -219,8 +220,8 @@ export function AdminDashboard() {
       label: 'فروش این ماه',
       value: toman(stats.revenue.thisMonth),
       unit: 'تومان',
-      change: stats.orders.growth >= 0 ? `+${stats.orders.growth}٪ نسبت به ماه قبل` : `${stats.orders.growth}٪`,
-      up: stats.orders.growth >= 0,
+      change: salesGrowth >= 0 ? `+${salesGrowth}٪ نسبت به ماه قبل` : `${salesGrowth}٪`,
+      up: salesGrowth >= 0,
       icon: TrendingUp,
       iconBg: 'bg-emerald-500',
       sparkValues: sparkRevenue,
@@ -349,13 +350,13 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
               <div>
                 <h3 className="font-bold text-gray-900">روند فروش ماهانه</h3>
-                <p className="text-xs text-gray-400 mt-0.5">۶ ماه اخیر (میلیون تومان)</p>
+                <p className="text-xs text-gray-400 mt-0.5">۶ ماه اخیر، بر اساس تاریخ ارسال (میلیون تومان)</p>
               </div>
               <span className={cn(
                 'text-xs font-semibold px-2.5 py-1 rounded-full',
-                stats.orders.growth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700',
+                salesGrowth >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700',
               )}>
-                {stats.orders.growth >= 0 ? '+' : ''}{stats.orders.growth}٪ نسبت به ماه قبل
+                {salesGrowth >= 0 ? '+' : ''}{salesGrowth}٪ نسبت به ماه قبل
               </span>
             </div>
             <div className="p-5">
@@ -557,14 +558,17 @@ export function AdminDashboard() {
           {/* Top customers */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-sm">برترین مشتریان</h3>
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm">برترین مشتریان</h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">بر اساس سفارش‌های ارسال‌شده</p>
+              </div>
               <Link href="/admin/customers" className="text-xs text-primary hover:underline font-medium">همه →</Link>
             </div>
             <div className="divide-y divide-gray-50">
               {loading ? (
                 <div className="p-4"><div className="h-20 bg-gray-100 rounded animate-pulse" /></div>
               ) : stats.topCustomers.length === 0 ? (
-                <div className="p-4 text-xs text-gray-400 text-center">هنوز مشتری با سفارش ثبت نشده</div>
+                <div className="p-4 text-xs text-gray-400 text-center">هنوز فروشی از سفارش ارسال‌شده ثبت نشده</div>
               ) : (
                 stats.topCustomers.map((c, i) => (
                   <div key={c.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">

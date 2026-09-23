@@ -8,11 +8,12 @@ import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import { customerChannelSql, normalizeCustomerChannel } from '../customer/customer-channel';
+import { recognizedSalePeriodSql, recognizedSaleStatuses } from './sales-recognition';
 
 export type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
-const CANCELLED = 'CANCELLED';
 const DELETED = 'DELETED';
+/** Customer-portal spend still excludes unpaid and voided orders. Admin sales use recognizedSaleStatuses. */
 const EXCLUDE_REVENUE = ['AWAITING_PAYMENT', 'PENDING_REVIEW', 'CANCELLED', 'DELETED'];
 const EXCLUDE_ORDERS = ['CANCELLED', 'DELETED'];
 
@@ -29,6 +30,7 @@ export class DashboardService {
   async getStats() {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
@@ -36,7 +38,7 @@ export class DashboardService {
       totalOrders, pendingOrders, thisMonthOrders, lastMonthOrders,
       totalCustomers, pendingCustomers, activeCustomers,
       recentOrders, lowStockVariants, topCustomersRaw,
-      totalRevenue, thisMonthRevenue, outstandingInvoices,
+      totalRevenue, thisMonthRevenue, lastMonthRevenue, outstandingInvoices,
       statusRows,
     ] = await Promise.all([
       this.orderRepo.createQueryBuilder('o')
@@ -65,23 +67,24 @@ export class DashboardService {
         .orderBy('COALESCE(v.wholesaleStock, 0)', 'ASC')
         .take(5)
         .getMany(),
-      this.orderRepo.createQueryBuilder('o')
+      this.recognizedSaleQb()
         .select('o.customerId', 'customerId')
         .addSelect('SUM(o.total)', 'totalSpend')
         .addSelect('COUNT(o.id)', 'orderCount')
-        .where('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
         .groupBy('o.customerId')
         .orderBy('SUM(o.total)', 'DESC')
         .limit(5)
         .getRawMany(),
-      this.orderRepo.createQueryBuilder('o')
+      this.recognizedSaleQb()
         .select('SUM(o.total)', 'sum')
-        .where('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
         .getRawOne(),
-      this.orderRepo.createQueryBuilder('o')
+      this.recognizedSaleQb()
         .select('SUM(o.total)', 'sum')
-        .where('o.createdAt >= :start', { start: startOfMonth })
-        .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
+        .andWhere(recognizedSalePeriodSql('o'), { start: startOfMonth, end: endOfToday })
+        .getRawOne(),
+      this.recognizedSaleQb()
+        .select('SUM(o.total)', 'sum')
+        .andWhere(recognizedSalePeriodSql('o'), { start: startOfLastMonth, end: endOfLastMonth })
         .getRawOne(),
       this.invoiceRepo.createQueryBuilder('i')
         .select('SUM(i.total - i.paidAmount)', 'sum')
@@ -112,6 +115,8 @@ export class DashboardService {
     const orderGrowth = lastMonthOrders > 0
       ? Math.round(((thisMonthOrders - lastMonthOrders) / lastMonthOrders) * 100)
       : thisMonthOrders > 0 ? 100 : 0;
+    const thisMonthSales = Number(thisMonthRevenue?.sum) || 0;
+    const lastMonthSales = Number(lastMonthRevenue?.sum) || 0;
 
     const ordersByStatus: Record<string, number> = {};
     for (const row of statusRows) {
@@ -134,7 +139,9 @@ export class DashboardService {
       },
       revenue: {
         total: Number(totalRevenue?.sum) || 0,
-        thisMonth: Number(thisMonthRevenue?.sum) || 0,
+        thisMonth: thisMonthSales,
+        lastMonth: lastMonthSales,
+        growth: this.pctChange(thisMonthSales, lastMonthSales),
         outstanding: Number(outstandingInvoices?.sum) || 0,
       },
       recentOrders: recentOrders.map((o) => ({
@@ -271,8 +278,8 @@ export class DashboardService {
     const [revenueNow, revenuePrev, ordersNow, ordersPrev, customersNow, customersPrev] = await Promise.all([
       this.sumRevenue(start, end, ch),
       this.sumRevenue(prevStart, prevEnd, ch),
-      this.countOrders(start, end, ch),
-      this.countOrders(prevStart, prevEnd, ch),
+      this.countRecognizedSales(start, end, ch),
+      this.countRecognizedSales(prevStart, prevEnd, ch),
       this.countNewCustomers(start, end, ch),
       this.countNewCustomers(prevStart, prevEnd, ch),
     ]);
@@ -360,14 +367,26 @@ export class DashboardService {
     return { start, end, prevStart, prevEnd };
   }
 
+  /** Orders that have reached SHIPPED and remain a realized sale. */
+  private recognizedSaleQb() {
+    return this.orderRepo.createQueryBuilder('o')
+      .where('o.status IN (:...saleStatuses)', { saleStatuses: recognizedSaleStatuses() });
+  }
+
   private async sumRevenue(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
-    const qb = this.orderRepo.createQueryBuilder('o')
+    const qb = this.recognizedSaleQb()
       .select('SUM(o.total)', 'sum')
-      .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+      .andWhere(recognizedSalePeriodSql('o'), { start, end });
     this.applyOrderChannel(qb, channel);
     const row = await qb.getRawOne();
     return Number(row?.sum) || 0;
+  }
+
+  private async countRecognizedSales(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
+    const qb = this.recognizedSaleQb()
+      .andWhere(recognizedSalePeriodSql('o'), { start, end });
+    this.applyOrderChannel(qb, channel);
+    return qb.getCount();
   }
 
   private async countOrders(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL'): Promise<number> {
@@ -463,8 +482,8 @@ export class DashboardService {
       .select("COALESCE(NULLIF(TRIM(c.city), ''), 'نامشخص')", 'city')
       .addSelect('COUNT(o.id)', 'count')
       .addSelect('SUM(o.total)', 'revenue')
-      .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+      .where('o.status IN (:...saleStatuses)', { saleStatuses: recognizedSaleStatuses() })
+      .andWhere(recognizedSalePeriodSql('o'), { start, end });
     this.applyOrderChannel(qb, channel);
     const rows = await qb
       .groupBy("COALESCE(NULLIF(TRIM(c.city), ''), 'نامشخص')")
@@ -524,8 +543,8 @@ export class DashboardService {
       )
       .addSelect('SUM(i.quantity)', 'qty')
       .addSelect('SUM(i.totalPrice)', 'revenue')
-      .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+      .where('o.status IN (:...saleStatuses)', { saleStatuses: recognizedSaleStatuses() })
+      .andWhere(recognizedSalePeriodSql('o'), { start, end });
     this.applyOrderChannel(qb, channel);
     const rows = await qb
       .groupBy("COALESCE(NULLIF(TRIM(CAST(p.specs->>'fabricType' AS text)), ''), NULLIF(TRIM(COALESCE(p.fabric, '')), ''), 'نامشخص')")
@@ -561,8 +580,8 @@ export class DashboardService {
       )
       .addSelect('SUM(i.quantity)', 'sold')
       .addSelect('SUM(i.totalPrice)', 'revenue')
-      .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE });
+      .where('o.status IN (:...saleStatuses)', { saleStatuses: recognizedSaleStatuses() })
+      .andWhere(recognizedSalePeriodSql('o'), { start, end });
     this.applyOrderChannel(qb, channel);
     const rows = await qb
       .groupBy('p.id')
@@ -581,8 +600,8 @@ export class DashboardService {
       .select('v.productId', 'productId')
       .addSelect('SUM(i.quantity)', 'sold')
       .where('v.productId IN (:...ids)', { ids })
-      .andWhere('o.createdAt >= :start AND o.createdAt <= :end', { start: prevStart, end: prevEnd })
-      .andWhere('o.status NOT IN (:...ex)', { ex: EXCLUDE_REVENUE })
+      .andWhere('o.status IN (:...saleStatuses)', { saleStatuses: recognizedSaleStatuses() })
+      .andWhere(recognizedSalePeriodSql('o'), { start: prevStart, end: prevEnd })
       .groupBy('v.productId');
     this.applyOrderChannel(prevQb, channel);
     const prevRows = await prevQb.getRawMany();
