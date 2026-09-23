@@ -20,12 +20,14 @@ const channel = readFileSync(join(__dirname, '../../../../web/src/lib/channel.ts
 const shell = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerShell.tsx'), 'utf8');
 const payouts = readFileSync(join(__dirname, '../../../../web/src/app/sales-partners/payouts/page.tsx'), 'utf8');
 const confirm = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerConfirm.tsx'), 'utf8');
+const newOrder = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SalesPartnerNewOrder.tsx'), 'utf8');
 
 assert(/isSalesPartnerPurpose\(req\.user\?\.purpose\)/.test(me), 'me routes require purpose');
 assert(/salesPartnerId/.test(me) && /ownedDraft|getMine|listMine/.test(draft), 'partner id required');
 assert(/where:\s*\{\s*id:\s*draftId,\s*salesPartnerId/.test(draft), 'owned draft scopes by partner');
 assert(/humanPartnerOrderStatus/.test(draft), 'partner sees retail order status after convert');
 assert(/partnerCommissionOverlay/.test(draft), 'delivered orders overlay hold/available');
+assert(/draftItemFreshness/.test(draft), 'open drafts warn on price or stock drift');
 assert(/listAdmin[\s\S]*orderStatus/.test(draft), 'admin list uses retail order status');
 assert(/type:\s*'RETAIL_WEBSITE'/.test(draft), 'convert stays retail website');
 assert(!/affiliateId/.test(draft), 'convert must not write affiliateId');
@@ -50,5 +52,6 @@ assert(/focus-visible:outline/.test(shell), 'keyboard focus on partner nav');
 assert(/role="status"/.test(payouts) && /Asia\/Tehran/.test(payouts), 'payout loading + Tehran dates');
 assert(/htmlFor="cf-name"/.test(confirm) && /فروشنده اصلی/.test(confirm), 'confirm labels + Taranom seller');
 assert(!/درآمد تضمینی|فروش قطعی/.test(confirm + shell + payouts), 'no hype copy');
+assert(/LOCAL_DRAFT_KEY/.test(newOrder) && /catalogLoading/.test(newOrder), 'local draft + catalog loading');
 
 console.log('sales-partner-isolation.spec.ts: OK');

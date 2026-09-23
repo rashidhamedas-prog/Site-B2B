@@ -32,7 +32,9 @@ import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import {
   canTransitionDraft,
   confirmationSmsText,
+  draftItemFreshness,
   hashConfirmationToken,
+  humanDraftFreshness,
   humanDraftStatus,
   humanPartnerOrderStatus,
   isDraftExpired,
@@ -523,11 +525,36 @@ export class SalesPartnerDraftService {
       });
       overlay = partnerCommissionOverlay(orderStatus, ledgerRows, new Date());
     }
+    const productIds = [...new Set(items.map((row) => row.productId))];
+    const variantIds = [...new Set(items.map((row) => row.variantId).filter((id): id is string => !!id))];
+    const products = productIds.length
+      ? await this.products.find({ where: { id: In(productIds) }, select: ['id', 'retailPrice', 'retailStock', 'status', 'showOnRetail'] })
+      : [];
+    const variants = variantIds.length
+      ? await this.variants.find({ where: { id: In(variantIds) }, select: ['id', 'retailStock'] })
+      : [];
+    const productById = new Map(products.map((row) => [row.id, row]));
+    const variantById = new Map(variants.map((row) => [row.id, row]));
+    const freshnessCodes = items.flatMap((row) => {
+      const product = productById.get(row.productId);
+      const variant = row.variantId ? variantById.get(row.variantId) : undefined;
+      return draftItemFreshness({
+        draftStatus: draft.status,
+        snapshotUnitPriceIrr: row.unitPriceIrr,
+        currentUnitPriceIrr: product ? Number(product.retailPrice || 0) : null,
+        currentStock: variant ? Number(variant.retailStock || 0) : product ? Number(product.retailStock || 0) : null,
+        quantity: row.quantity,
+        productActive: !!product && product.status === 'ACTIVE' && product.showOnRetail !== false && (!row.variantId || !!variant),
+      });
+    });
+    const alerts = humanDraftFreshness(freshnessCodes);
     return {
       id: draft.id,
       status: draft.status,
       orderStatus,
       statusLabel: humanPartnerOrderStatus(draft.status, orderStatus, overlay),
+      stale: alerts.length > 0,
+      alerts,
       customerPhoneMasked: maskCustomerPhone(draft.customerPhone),
       customerName: draft.customerName,
       merchandiseIrr: draft.merchandiseIrr,

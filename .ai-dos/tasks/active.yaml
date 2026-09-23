@@ -13,7 +13,7 @@ tasks:
     branch: "feat/TASK-20260922-003-sales-partner-program"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-22T12:10:00Z"
-    heartbeat_at: "2026-09-23T07:25:00Z"
+    heartbeat_at: "2026-09-23T07:40:00Z"
     depends_on: []
     file_claims:
       - "docs/architecture/sales-partner-program.md"

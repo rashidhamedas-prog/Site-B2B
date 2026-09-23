@@ -12,6 +12,8 @@ type Draft = {
   merchandiseIrr: number;
   estimatedCommissionIrr: number;
   customerPhoneMasked: string | null;
+  stale?: boolean;
+  alerts?: string[];
 };
 
 export default function SalesPartnerOrdersPage() {
@@ -34,6 +36,9 @@ export default function SalesPartnerOrdersPage() {
         {(rows || []).map((row) => (
           <li key={row.id} className="rounded-xl border p-4 text-sm">
             <p className="font-medium">{row.statusLabel}</p>
+            {row.stale && row.alerts?.length ? (
+              <p className="mt-2 text-amber-800" role="status">{row.alerts[0]}</p>
+            ) : null}
             <p className="mt-1 text-stone-600">
               {toman(row.merchandiseIrr)} تومان · پورسانت تخمینی {toman(row.estimatedCommissionIrr)} تومان
             </p>

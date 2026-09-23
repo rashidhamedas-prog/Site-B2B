@@ -14,12 +14,13 @@ type Me = {
   phoneMasked: string;
 };
 
-type Draft = { id: string; status: string; statusLabel: string };
+type Draft = { id: string; status: string; statusLabel: string; stale?: boolean };
 type Balances = { held: number; available: number; paid: number };
 
 export function SalesPartnerHome() {
   const [me, setMe] = useState<Me | null>(null);
   const [awaiting, setAwaiting] = useState(0);
+  const [staleCount, setStaleCount] = useState(0);
   const [balances, setBalances] = useState<Balances | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +36,7 @@ export function SalesPartnerHome() {
         setAwaiting(
           orders.filter((row) => row.status === 'DRAFT' || row.status === 'AWAITING_CUSTOMER_CONFIRMATION').length,
         );
+        setStaleCount(orders.filter((row) => row.stale).length);
         setBalances(nextBalances);
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'خطا در بارگذاری'))
@@ -61,6 +63,11 @@ export function SalesPartnerHome() {
       {balances && (
         <section className="mt-4 grid grid-cols-2 gap-2 text-sm">
           <p className="rounded-xl border p-3">نیازمند اقدام: {awaiting}</p>
+          {staleCount > 0 && (
+            <p className="col-span-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-900" role="status">
+              {staleCount} پیش‌سفارش قیمت یا موجودی‌اش عوض شده است. مبلغ نهایی هنگام تأیید مشتری از سرور محاسبه می‌شود.
+            </p>
+          )}
           <p className="rounded-xl border p-3">در نگهداری: {toman(balances.held)} تومان</p>
           <p className="rounded-xl border p-3">قابل‌برداشت: {toman(balances.available)} تومان</p>
           <p className="rounded-xl border p-3">پرداخت‌شده: {toman(balances.paid)} تومان</p>

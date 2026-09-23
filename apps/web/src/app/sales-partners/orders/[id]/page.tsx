@@ -17,6 +17,8 @@ type OrderView = {
   shippingFeeIrr: number;
   estimatedCommissionIrr: number;
   convertedOrderId: string | null;
+  stale?: boolean;
+  alerts?: string[];
   items: { id: string; name: string | null; quantity: number; lineTotalIrr: number }[];
 };
 
@@ -47,6 +49,9 @@ export default function SalesPartnerOrderDetailPage() {
       {row && (
         <section className="mt-4 space-y-3 text-sm">
           <p className="font-medium">{row.statusLabel}</p>
+          {row.alerts?.map((alert) => (
+            <p key={alert} className="rounded-lg bg-amber-50 p-3 text-amber-900" role="status">{alert}</p>
+          ))}
           {row.customerPhoneMasked && <p>مشتری: {row.customerPhoneMasked}</p>}
           {row.customerName && <p>نام ثبت‌شده: {row.customerName}</p>}
           <p>مبلغ کالا: {toman(row.merchandiseIrr)} تومان</p>

@@ -18,6 +18,7 @@ Not live. Feature flag default OFF.
 - Snapshot uses allocated promo discount; wallet is excluded
 - Partner panel: home totals, catalog, new order with variant + resend countdown, orders, commissions, payouts, IBAN profile
 - After convert, partner/admin status labels follow retail order FSM; delivered overlays hold/available commission
+- Open drafts warn on price/stock drift; new-order form keeps a device-local draft until SMS is sent
 - Admin: applications, partners, catalog, rules, payout confirm with idempotency
 - IBAN AES-256-GCM; prefer `SALES_PARTNER_IBAN_KEY`
 

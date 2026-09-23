@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T07:40:00Z — open-draft price/stock freshness
+
+- Open drafts expose `stale` + human alerts when storefront price or stock drifted.
+- Converted/cancelled rows stay quiet. Dashboard counts stale drafts separately from earned commission.
+
 ## 2026-09-23T07:20:00Z — partner order labels follow retail FSM
 
 - After convert, partner list/detail uses order.status (awaiting pay, review, prep, shipped, delivered, cancelled, returned).

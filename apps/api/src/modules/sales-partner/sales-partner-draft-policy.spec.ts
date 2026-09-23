@@ -3,6 +3,8 @@ import {
   confirmationSmsText,
   hashConfirmationToken,
   humanDraftStatus,
+  draftItemFreshness,
+  humanDraftFreshness,
   humanPartnerOrderStatus,
   isDraftExpired,
   partnerCommissionOverlay,
@@ -58,5 +60,39 @@ assert(hashConfirmationToken(token) === hashed, 'hash stable');
 assert(priceDriftBps(100_000, 100_000) === 0, 'no drift');
 assert(priceDriftBps(100_000, 101_000) === 100, '100 bps');
 assert(maskCustomerPhone('09151234567') === '0915***67', 'mask');
+assert(
+  draftItemFreshness({
+    draftStatus: 'DRAFT',
+    snapshotUnitPriceIrr: 100_000,
+    currentUnitPriceIrr: 120_000,
+    currentStock: 4,
+    quantity: 1,
+    productActive: true,
+  }).includes('PRICE_CHANGED'),
+  'price change on open draft',
+);
+assert(
+  draftItemFreshness({
+    draftStatus: 'AWAITING_CUSTOMER_CONFIRMATION',
+    snapshotUnitPriceIrr: 100_000,
+    currentUnitPriceIrr: 100_000,
+    currentStock: 0,
+    quantity: 1,
+    productActive: true,
+  }).includes('OUT_OF_STOCK'),
+  'oos on waiting draft',
+);
+assert(
+  draftItemFreshness({
+    draftStatus: 'CONVERTED_TO_ORDER',
+    snapshotUnitPriceIrr: 100_000,
+    currentUnitPriceIrr: 80_000,
+    currentStock: 0,
+    quantity: 1,
+    productActive: false,
+  }).length === 0,
+  'converted drafts stay quiet',
+);
+assert(humanDraftFreshness(['PRICE_CHANGED'])[0].includes('مبلغ نهایی'), 'server price wins copy');
 
 console.log('sales-partner-draft-policy.spec.ts: OK');

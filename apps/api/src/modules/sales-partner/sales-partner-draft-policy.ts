@@ -122,6 +122,39 @@ export function hashConfirmationToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
+export type DraftFreshnessAlert = 'PRICE_CHANGED' | 'OUT_OF_STOCK' | 'UNAVAILABLE';
+
+export const DRAFT_FRESHNESS_LABELS: Record<DraftFreshnessAlert, string> = {
+  PRICE_CHANGED: 'قیمت فروشگاه عوض شده است. مبلغ نهایی هنگام تأیید از سرور محاسبه می‌شود.',
+  OUT_OF_STOCK: 'موجودی فعلی برای این تعداد کافی نیست.',
+  UNAVAILABLE: 'این محصول فعلاً در برنامه همکاران قابل فروش نیست.',
+};
+
+const OPEN_DRAFT_STATUSES = new Set(['DRAFT', 'AWAITING_CUSTOMER_CONFIRMATION', 'CUSTOMER_CONFIRMED']);
+
+export function draftItemFreshness(input: {
+  draftStatus: string | null | undefined;
+  snapshotUnitPriceIrr: number;
+  currentUnitPriceIrr: number | null;
+  currentStock: number | null;
+  quantity: number;
+  productActive: boolean;
+}): DraftFreshnessAlert[] {
+  if (!input.draftStatus || !OPEN_DRAFT_STATUSES.has(input.draftStatus)) return [];
+  const alerts: DraftFreshnessAlert[] = [];
+  if (!input.productActive || input.currentUnitPriceIrr == null) {
+    alerts.push('UNAVAILABLE');
+    return alerts;
+  }
+  if (input.currentUnitPriceIrr !== input.snapshotUnitPriceIrr) alerts.push('PRICE_CHANGED');
+  if ((input.currentStock ?? 0) < input.quantity) alerts.push('OUT_OF_STOCK');
+  return alerts;
+}
+
+export function humanDraftFreshness(alerts: DraftFreshnessAlert[]): string[] {
+  return [...new Set(alerts)].map((code) => DRAFT_FRESHNESS_LABELS[code]);
+}
+
 export function priceDriftBps(fromIrr: number, toIrr: number): number {
   if (!Number.isInteger(fromIrr) || !Number.isInteger(toIrr) || fromIrr < 0 || toIrr < 0) {
     throw new Error('INVALID_PRICE');

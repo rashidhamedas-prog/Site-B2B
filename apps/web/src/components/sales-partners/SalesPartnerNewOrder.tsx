@@ -28,10 +28,13 @@ type Draft = {
   cooldownSeconds?: number;
 };
 
+const LOCAL_DRAFT_KEY = 'taranom.sales-partner.order-draft.v1';
+
 export function SalesPartnerNewOrder() {
   const params = useSearchParams();
   const presetId = params.get('productId');
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
   const [detail, setDetail] = useState<ProductDetail | null>(null);
   const [productId, setProductId] = useState(presetId || '');
   const [variantId, setVariantId] = useState('');
@@ -43,6 +46,43 @@ export function SalesPartnerNewOrder() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [cooldown, setCooldown] = useState(0);
+  const [localReady, setLocalReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(LOCAL_DRAFT_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as {
+          productId?: string;
+          variantId?: string;
+          quantity?: number;
+          phone?: string;
+          name?: string;
+        };
+        if (!presetId && saved.productId) setProductId(saved.productId);
+        if (saved.variantId) setVariantId(saved.variantId);
+        if (Number.isInteger(saved.quantity) && Number(saved.quantity) > 0) setQuantity(Number(saved.quantity));
+        if (saved.phone) setPhone(saved.phone);
+        if (saved.name) setName(saved.name);
+      }
+    } catch {
+      /* ignore broken local draft */
+    } finally {
+      setLocalReady(true);
+    }
+  }, [presetId]);
+
+  useEffect(() => {
+    if (!localReady) return;
+    try {
+      window.localStorage.setItem(
+        LOCAL_DRAFT_KEY,
+        JSON.stringify({ productId, variantId, quantity, phone, name }),
+      );
+    } catch {
+      /* private mode */
+    }
+  }, [localReady, productId, variantId, quantity, phone, name]);
 
   useEffect(() => {
     apiClient
@@ -51,7 +91,8 @@ export function SalesPartnerNewOrder() {
         setCatalog(res.items);
         if (!productId && res.items[0]) setProductId(res.items[0].id);
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'بارگذاری محصولات ناموفق بود'));
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'بارگذاری محصولات ناموفق بود'))
+      .finally(() => setCatalogLoading(false));
   }, []);
 
   useEffect(() => {
@@ -104,6 +145,11 @@ export function SalesPartnerNewOrder() {
       setDraft(sent);
       setConfirmOpen(false);
       setCooldown(sent.cooldownSeconds || 60);
+      try {
+        window.localStorage.removeItem(LOCAL_DRAFT_KEY);
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ارسال لینک تأیید ناموفق بود');
     } finally {
@@ -115,9 +161,11 @@ export function SalesPartnerNewOrder() {
     <SalesPartnerShell title="سفارش جدید">
       <p className="text-sm text-stone-600">
         تا وقتی مشتری لینک را تأیید نکند سفارشی ثبت یا مبلغی دریافت نمی‌شود. قیمت از سرور خوانده می‌شود.
+        اگر ارتباط قطع شود، مقادیر همین فرم روی دستگاه شما می‌ماند.
       </p>
       {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
-      {catalog.length === 0 && (
+      {catalogLoading && <p className="mt-6 text-sm text-stone-600" role="status">در حال بارگذاری محصولات…</p>}
+      {!catalogLoading && catalog.length === 0 && (
         <p className="mt-6 text-sm text-stone-600">محصول قابل فروشی برای شما فعال نشده است.</p>
       )}
 
