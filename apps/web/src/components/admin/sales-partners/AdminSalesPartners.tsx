@@ -19,6 +19,7 @@ type PartnerRow = {
   statusLabel: string;
   statusReason: string | null;
   phoneMasked: string;
+  riskFlags?: string[];
 };
 
 type CatalogRow = {
@@ -327,6 +328,9 @@ export function AdminSalesPartners() {
               <p className="font-medium">{row.displayName}</p>
               <p className="text-sm text-stone-600">{row.phoneMasked} · {row.statusLabel}</p>
               {row.statusReason && <p className="mt-1 text-sm text-amber-800">{row.statusReason}</p>}
+              {row.riskFlags && row.riskFlags.length > 0 && (
+                <p className="mt-2 text-sm text-amber-900" role="status">هشدار: {row.riskFlags.join('، ')}</p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {row.status === 'ACTIVE' && (
                   <button type="button" className="min-h-11 rounded-lg border px-3" disabled={busyId === row.id} onClick={() => void setPartnerStatus(row.id, 'SUSPENDED')}>تعلیق</button>

@@ -47,6 +47,7 @@ import {
 } from './sales-partner-policy';
 import { isVendorRole as vendorRole } from '../vendor/vendor-policy';
 import { ibanRecord, requireDedicatedIbanKey, resolveIbanSecret } from './sales-partner-iban';
+import { humanRiskFlags } from './sales-partner-risk-policy';
 import { normalizeIban } from './sales-partner-policy';
 
 @Injectable()
@@ -366,7 +367,10 @@ export class SalesPartnerService {
 
   async listPartners() {
     const rows = await this.profiles.find({ order: { createdAt: 'DESC' }, take: 100 });
-    return rows.map((row) => toPublicSalesPartner(row));
+    return rows.map((row) => ({
+      ...toPublicSalesPartner(row),
+      riskFlags: humanRiskFlags(row.riskFlags),
+    }));
   }
 
   async listAudits(targetType?: string) {

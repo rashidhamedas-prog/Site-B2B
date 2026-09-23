@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T08:35:00Z — admin-only risk flags
+
+- evaluateSalesPartnerRisk flags volume / low confirm / expire / reject / repeat phone.
+- Partner /me does not include riskFlags. No auto-suspend.
+
 ## 2026-09-23T08:20:00Z — error-scenario helpers + tests
 
 - COD spoof, self-referral, SMS fail-in-prod, resend cap, expired confirm page are unit-tested.

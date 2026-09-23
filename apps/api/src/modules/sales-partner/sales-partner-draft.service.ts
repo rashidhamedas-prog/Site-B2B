@@ -53,6 +53,7 @@ import { programAllowsPartnerAction } from './sales-partner-settings';
 import { SALES_PARTNER_EVENT } from './sales-partner-events';
 import { commissionAmountIrr, selectCommissionRule } from './sales-commission-policy';
 import { canAdminChangeAttribution, partnerOrderAttribution } from './sales-partner-attribution';
+import { evaluateSalesPartnerRisk, maxPhoneRepeats } from './sales-partner-risk-policy';
 
 type DraftItemInput = { productId: string; variantId?: string; quantity: number };
 
@@ -183,6 +184,7 @@ export class SalesPartnerDraftService {
       profileId: salesPartnerId,
       status: draft.status,
     });
+    await this.refreshRiskFlags(salesPartnerId);
     return {
       ...(await this.toPartnerView(draft.id, salesPartnerId)),
       cooldownSeconds: settings.confirmResendCooldownSeconds,
@@ -433,6 +435,7 @@ export class SalesPartnerDraftService {
       orderId: created.orderId,
       status: 'CONVERTED_TO_ORDER',
     });
+    await this.refreshRiskFlags(draft.salesPartnerId);
     return { ...created, status: 'CONVERTED_TO_ORDER' };
   }
 
@@ -448,7 +451,27 @@ export class SalesPartnerDraftService {
       draftId: draft.id,
       status: draft.status,
     });
+    await this.refreshRiskFlags(draft.salesPartnerId);
     return { status: draft.status, statusLabel: humanDraftStatus(draft.status) };
+  }
+
+  async refreshRiskFlags(salesPartnerId: string) {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const rows = await this.drafts.find({
+      where: { salesPartnerId },
+      order: { createdAt: 'DESC' },
+      take: 200,
+    });
+    const flags = evaluateSalesPartnerRisk({
+      draftsLast24h: rows.filter((row) => row.createdAt.getTime() >= since.getTime()).length,
+      decided: rows.filter((row) => ['CONVERTED_TO_ORDER', 'REJECTED_BY_CUSTOMER', 'EXPIRED', 'CANCELLED'].includes(row.status)).length,
+      converted: rows.filter((row) => row.status === 'CONVERTED_TO_ORDER').length,
+      expired: rows.filter((row) => row.status === 'EXPIRED').length,
+      rejected: rows.filter((row) => row.status === 'REJECTED_BY_CUSTOMER').length,
+      maxPhoneRepeats: maxPhoneRepeats(rows.map((row) => row.customerPhone)),
+    });
+    await this.profiles.update(salesPartnerId, { riskFlags: flags });
+    return flags;
   }
 
   private async priceItems(salesPartnerId: string, input: DraftItemInput[]) {
