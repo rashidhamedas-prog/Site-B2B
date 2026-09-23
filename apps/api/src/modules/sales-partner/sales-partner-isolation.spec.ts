@@ -31,6 +31,7 @@ assert(/partnerCommissionOverlay/.test(draft), 'delivered orders overlay hold/av
 assert(/draftItemFreshness/.test(draft), 'open drafts warn on price or stock drift');
 assert(/listAdmin[\s\S]*orderStatus/.test(draft), 'admin list uses retail order status');
 assert(/type:\s*'RETAIL_WEBSITE'/.test(draft), 'convert stays retail website');
+assert(/resolveConfirmPaymentMethod|resendBlockedReason|smsFailureBlocksSend/.test(draft), 'error-scenario helpers wired');
 assert(/partnerOrderAttribution/.test(draft), 'convert stamps salesSource columns');
 assert(/affiliateId:\s*null/.test(attribution), 'convert clears external affiliate');
 assert(!/affiliateId:\s*['"`]/.test(draft + attribution), 'must not set affiliate click id');

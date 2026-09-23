@@ -1,5 +1,10 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-23 — سناریوهای خطای همکار بازاریاب
+
+- قوانین COD، self-referral، سقف ارسال پیامک، انقضای لینک و شکست SMS در production از سرویس جدا و تست شدند.
+- صفحه زنده `/sales-partnership` هنوز ۴۰۴ است چون شاخه دیپلوی نشده.
+
 ## 2026-09-23 — منبع سفارش همکار روی جدول سفارش
 
 - ستون‌های `salesSource`، `salesPartnerId` و `salesPartnerSubmissionId` به `orders` اضافه شد. نوع سفارش همان `RETAIL_WEBSITE` می‌ماند.

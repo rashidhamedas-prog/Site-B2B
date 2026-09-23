@@ -164,6 +164,50 @@ export function priceDriftBps(fromIrr: number, toIrr: number): number {
   return Math.floor((Math.abs(toIrr - fromIrr) * 10_000) / fromIrr);
 }
 
+export function resolveConfirmPaymentMethod(
+  requested: string | null | undefined,
+  cashEnabled: boolean,
+): 'ONLINE' | 'CASH' {
+  return requested === 'CASH' && cashEnabled ? 'CASH' : 'ONLINE';
+}
+
+export function resendBlockedReason(
+  lastSentAt: Date | null | undefined,
+  sentCount: number,
+  now: Date,
+  cooldownSeconds: number,
+  dailyCap: number,
+): 'COOLDOWN' | 'DAILY_CAP' | null {
+  if (sentCount >= dailyCap) return 'DAILY_CAP';
+  if (lastSentAt) {
+    const wait = cooldownSeconds * 1000 - (now.getTime() - lastSentAt.getTime());
+    if (wait > 0) return 'COOLDOWN';
+  }
+  return null;
+}
+
+export function isBlockedSelfReferral(
+  customerPhone: string,
+  partnerPhone: string,
+  blockSelf: boolean,
+): boolean {
+  return blockSelf && customerPhone === partnerPhone;
+}
+
+export function smsFailureBlocksSend(nodeEnv: string | undefined, sent: boolean): boolean {
+  return nodeEnv === 'production' && !sent;
+}
+
+export function confirmPageGone(status: string | null | undefined): boolean {
+  return status !== 'AWAITING_CUSTOMER_CONFIRMATION';
+}
+
+export function confirmActionGone(status: string | null | undefined): boolean {
+  return status !== 'AWAITING_CUSTOMER_CONFIRMATION'
+    && status !== 'CUSTOMER_CONFIRMED'
+    && status !== 'CONVERTED_TO_ORDER';
+}
+
 export function maskCustomerPhone(phone: string | null | undefined): string | null {
   if (!phone || phone.length < 8) return null;
   return `${phone.slice(0, 4)}***${phone.slice(-2)}`;

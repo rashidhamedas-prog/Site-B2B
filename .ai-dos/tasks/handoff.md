@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T08:20:00Z — error-scenario helpers + tests
+
+- COD spoof, self-referral, SMS fail-in-prod, resend cap, expired confirm page are unit-tested.
+- Live `/sales-partnership` is 404 until this branch deploys (flag stays OFF).
+
 ## 2026-09-23T08:05:00Z — order attribution columns
 
 - Reclaimed stale `order.entity.ts` from TASK-20260901-002 (hb 2026-09-01, other worktree).

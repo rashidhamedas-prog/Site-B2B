@@ -31,14 +31,20 @@ import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import {
   canTransitionDraft,
+  confirmActionGone,
   confirmationSmsText,
+  confirmPageGone,
   draftItemFreshness,
   hashConfirmationToken,
   humanDraftFreshness,
   humanDraftStatus,
   humanPartnerOrderStatus,
+  isBlockedSelfReferral,
   isDraftExpired,
   partnerCommissionOverlay,
+  resendBlockedReason,
+  resolveConfirmPaymentMethod,
+  smsFailureBlocksSend,
   maskCustomerPhone,
   priceDriftBps,
 } from './sales-partner-draft-policy';
@@ -139,13 +145,15 @@ export class SalesPartnerDraftService {
       throw new ConflictException('برای این پیش‌سفارش نمی‌توان لینک تأیید فرستاد');
     }
     if (!draft.customerPhone) throw new BadRequestException('شماره مشتری لازم است');
-    if (draft.lastSentAt) {
-      const wait = settings.confirmResendCooldownSeconds * 1000 - (Date.now() - draft.lastSentAt.getTime());
-      if (wait > 0) throw new ForbiddenException(`ارسال دوباره تا ${Math.ceil(wait / 1000)} ثانیه دیگر ممکن نیست`);
-    }
-    if (draft.sentCount >= settings.confirmResendDailyCap) {
-      throw new ForbiddenException('سقف ارسال پیامک امروز پر شده است');
-    }
+    const resendBlock = resendBlockedReason(
+      draft.lastSentAt,
+      draft.sentCount,
+      new Date(),
+      settings.confirmResendCooldownSeconds,
+      settings.confirmResendDailyCap,
+    );
+    if (resendBlock === 'COOLDOWN') throw new ForbiddenException('ارسال دوباره هنوز ممکن نیست');
+    if (resendBlock === 'DAILY_CAP') throw new ForbiddenException('سقف ارسال پیامک امروز پر شده است');
     const existingItems = await this.items.find({ where: { draftId: draft.id } });
     const priced = await this.priceItems(salesPartnerId, existingItems.map((row) => ({
       productId: row.productId,
@@ -167,7 +175,7 @@ export class SalesPartnerDraftService {
     const confirmUrl = `${origin}/confirm/sales-partner/${token}`;
     const sms = confirmationSmsText(profile.displayName, confirmUrl);
     const sent = this.notifications ? await this.notifications.sendSms(draft.customerPhone, sms) : false;
-    if (!sent && this.config.get('NODE_ENV') === 'production') {
+    if (smsFailureBlocksSend(this.config.get('NODE_ENV'), sent)) {
       throw new BadRequestException('ارسال پیامک ناموفق بود. کمی بعد دوباره تلاش کنید');
     }
     await this.program.emitEvent(SALES_PARTNER_EVENT.CONFIRMATION_REQUESTED, draft.id, {
@@ -309,7 +317,7 @@ export class SalesPartnerDraftService {
   async publicByToken(token: string) {
     const draft = await this.draftByToken(token);
     await this.expireIfNeeded(draft);
-    if (draft.status !== 'AWAITING_CUSTOMER_CONFIRMATION') {
+    if (confirmPageGone(draft.status)) {
       throw new GoneException('این لینک دیگر معتبر نیست');
     }
     const profile = await this.profiles.findOne({ where: { id: draft.salesPartnerId } });
@@ -357,7 +365,7 @@ export class SalesPartnerDraftService {
     if (draft.status === 'CONVERTED_TO_ORDER' && draft.convertedOrderId) {
       return { orderId: draft.convertedOrderId, status: 'CONVERTED_TO_ORDER' };
     }
-    if (draft.status !== 'AWAITING_CUSTOMER_CONFIRMATION' && draft.status !== 'CUSTOMER_CONFIRMED') {
+    if (confirmActionGone(draft.status)) {
       throw new GoneException('این لینک دیگر معتبر نیست');
     }
     const profile = await this.profiles.findOne({ where: { id: draft.salesPartnerId } });
@@ -366,7 +374,7 @@ export class SalesPartnerDraftService {
     }
     const payment = await this.settingsRepo.findOne({ where: { key: 'payment' } });
     const cash = resolveCashOnDeliveryFlags(payment?.value).retailCashEnabled;
-    const paymentMethod = input.paymentMethod === 'CASH' && cash ? 'CASH' : 'ONLINE';
+    const paymentMethod = resolveConfirmPaymentMethod(input.paymentMethod, cash);
     const items = await this.items.find({ where: { draftId: draft.id } });
     const priced = await this.priceItems(draft.salesPartnerId, items.map((row) => ({
       productId: row.productId,
@@ -630,7 +638,7 @@ export class SalesPartnerDraftService {
 
   private assertCustomerPhone(phoneRaw: string, partnerPhone: string, blockSelf: boolean) {
     const phone = normalizePhone(phoneRaw);
-    if (blockSelf && phone === partnerPhone) {
+    if (isBlockedSelfReferral(phone, partnerPhone, blockSelf)) {
       throw new BadRequestException('نمی‌توانید برای شماره خودتان سفارش همکار بسازید');
     }
     return phone;
