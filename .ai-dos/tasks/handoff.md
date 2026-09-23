@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T09:00:00Z — merge + flag-OFF deploy
+
+- Feature is 14 commits ahead of `origin/master` (`6e4478f`), 0 behind.
+- Merging to master and deploying. Program stays OFF. Do not enable LIVE in this cut.
+
 ## 2026-09-23T08:35:00Z — admin-only risk flags
 
 - evaluateSalesPartnerRisk flags volume / low confirm / expire / reject / repeat phone.
