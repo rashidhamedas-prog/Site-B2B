@@ -10,6 +10,7 @@ import { SalesPartnerPayoutService } from './sales-partner-payout.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
 import { SalesPartnerDraftService } from './sales-partner-draft.service';
 import { PatchSalesPartnerStatusDto, ReviewSalesPartnerDto } from './dto/apply-sales-partner.dto';
+import { ChangeSalesPartnerAttributionDto } from './dto/sales-partner-draft.dto';
 import { PatchSalesPartnerSettingsDto } from './dto/sales-partner-settings.dto';
 import { ConfirmSalesPartnerPayoutDto } from './dto/sales-partner-payout.dto';
 import {
@@ -54,6 +55,20 @@ export class SalesPartnerAdminController {
   @Get('orders')
   adminOrders(@Query('salesPartnerId') salesPartnerId?: string) {
     return this.drafts.listAdmin(salesPartnerId);
+  }
+
+  @Patch('orders/:id/attribution')
+  changeAttribution(
+    @Param('id') id: string,
+    @Body() body: ChangeSalesPartnerAttributionDto,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.drafts.adminChangeAttribution(
+      id,
+      body.salesPartnerId,
+      body.reason,
+      req.user?.sub || req.user?.id || '',
+    );
   }
 
   @Get('audits')

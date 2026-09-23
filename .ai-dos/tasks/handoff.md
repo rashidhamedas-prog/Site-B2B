@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T08:05:00Z — order attribution columns
+
+- Reclaimed stale `order.entity.ts` from TASK-20260901-002 (hb 2026-09-01, other worktree).
+- Additive `salesSource`, `salesPartnerId`, `salesPartnerSubmissionId`. Convert stamps them and sets `affiliateId=null`.
+- Admin PATCH attribution requires reason and is locked after COMMISSION_EARNED.
+
 ## 2026-09-23T07:40:00Z — open-draft price/stock freshness
 
 - Open drafts expose `stale` + human alerts when storefront price or stock drifted.

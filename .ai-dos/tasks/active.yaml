@@ -13,7 +13,7 @@ tasks:
     branch: "feat/TASK-20260922-003-sales-partner-program"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-22T12:10:00Z"
-    heartbeat_at: "2026-09-23T07:40:00Z"
+    heartbeat_at: "2026-09-23T08:05:00Z"
     depends_on: []
     file_claims:
       - "docs/architecture/sales-partner-program.md"
@@ -26,6 +26,8 @@ tasks:
       - "apps/api/package.json"
       - "apps/api/src/database/migrations/20260922-001-sales-partner-program.ts"
       - "apps/api/src/database/migrations/20260922-002-sales-partner-commission-percent.ts"
+      - "apps/api/src/database/migrations/20260923-001-sales-partner-order-attribution.ts"
+      - "apps/api/src/modules/order/entities/order.entity.ts"
       - "apps/api/src/app.module.ts"
       - "apps/api/src/config/database.config.ts"
       - "apps/api/src/modules/auth/staff-access.ts"
@@ -56,6 +58,8 @@ tasks:
       VendorLedger, affiliateId, or JWT purpose=vendor.
       Reclaimed stale auth/session files from TASK-20260904-001 (hb 2026-09-03)
       and stale governance from TASK-20260913-002 (hb 2026-09-13).
+      Reclaimed stale order.entity.ts from TASK-20260901-002 (hb 2026-09-01,
+      other worktree). Additive salesSource/salesPartnerId columns only.
       Did not claim order.service.ts, create-order.dto.ts, payment.service.ts,
       or vendor/* . Feature flag defaults OFF.
     acceptance_criteria:
@@ -3112,7 +3116,8 @@ tasks:
       # "apps/api/src/modules/order/order.service.ts"
       # transferred 2026-09-09 to TASK-20260909-008 (stale hb; fulfillment split):
       # "apps/api/src/modules/order/order.module.ts"
-      - "apps/api/src/modules/order/entities/order.entity.ts"
+      # transferred 2026-09-23 to TASK-20260922-003 (stale hb 2026-09-01; sales partner attribution):
+      # "apps/api/src/modules/order/entities/order.entity.ts"
       - "apps/api/src/modules/order/order-stock-settlement.ts"
       - "apps/api/src/modules/order/order-stock-settlement.spec.ts"
       # transferred 2026-09-12 to TASK-20260912-007 (stale hb 2026-09-01; paid-before-review):

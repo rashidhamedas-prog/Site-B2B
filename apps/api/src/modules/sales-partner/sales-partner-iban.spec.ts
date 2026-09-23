@@ -1,4 +1,4 @@
-import { cipherIban, decipherIban, fingerprintIban, ibanRecord, resolveIbanSecret } from './sales-partner-iban';
+import { cipherIban, decipherIban, fingerprintIban, ibanRecord, requireDedicatedIbanKey, resolveIbanSecret } from './sales-partner-iban';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -12,6 +12,14 @@ assert(rec.ibanFingerprint === fingerprintIban(iban, secret), 'fp');
 assert(decipherIban(rec.ibanCipher, secret) === iban, 'roundtrip');
 assert(cipherIban(iban, secret) !== cipherIban(iban, secret), 'gcm iv unique');
 assert(resolveIbanSecret('jwt-secret-long-enough') === 'jwt-secret-long-enough', 'fallback');
+requireDedicatedIbanKey('development');
+try {
+  requireDedicatedIbanKey('production');
+  throw new Error('prod without dedicated key should fail');
+} catch (err) {
+  assert(err instanceof Error && err.message === 'SALES_PARTNER_IBAN_KEY_REQUIRED', 'prod key required');
+}
+requireDedicatedIbanKey('production', 'dedicated-iban-key-16');
 try {
   resolveIbanSecret('short');
   throw new Error('short secret should fail');

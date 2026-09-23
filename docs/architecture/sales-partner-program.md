@@ -544,7 +544,7 @@ Rejected: putting partner ids in `affiliateId`; Saleor/Solidus plugins (no maint
 | 0 | This doc + claims | coding finance without decisions |
 | 1 | Tables, purpose, apply, admin review, audit, isolation tests | catalog |
 | 2 | Eligibility, rules, snapshot calculator, margin guard — **coded 2026-09-22** | drafts |
-| 3 | Draft, SMS, confirm page, convert to `RETAIL_WEBSITE` — **coded 2026-09-22** (attribution on draft + order notes; no `orders.salesPartnerId` column because `order.entity.ts` is claimed elsewhere) | ledger jobs |
+| 3 | Draft, SMS, confirm page, convert to `RETAIL_WEBSITE` — **coded 2026-09-22**; order attribution columns added 2026-09-23 after reclaiming stale `order.entity.ts` | ledger jobs |
 | 4 | Paid/delivered/return ledger + jobs | full partner UI polish |
 | 5 | Partner panel states | payout batches |
 | 6 | Admin payouts/reconciliation | live enable |

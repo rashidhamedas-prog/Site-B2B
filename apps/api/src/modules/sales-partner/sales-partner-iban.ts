@@ -49,3 +49,10 @@ export function resolveIbanSecret(jwtSecret: string | undefined, dedicated?: str
   if (key.length < 16) throw new Error('IBAN_SECRET_MISSING');
   return key;
 }
+
+export function requireDedicatedIbanKey(appEnv: string | undefined, dedicated?: string): void {
+  const env = String(appEnv || '').toLowerCase();
+  if ((env === 'production' || env === 'staging') && !String(dedicated || '').trim()) {
+    throw new Error('SALES_PARTNER_IBAN_KEY_REQUIRED');
+  }
+}

@@ -38,7 +38,7 @@ Not live. Feature flag default OFF.
 ## Not done
 
 - Browser E2E against a running storefront (static RTL/focus/label checks are in isolation spec)
-- Dedicated production `SALES_PARTNER_IBAN_KEY`
-- Order-table attribution columns (entity claimed elsewhere)
+- Dedicated production `SALES_PARTNER_IBAN_KEY` must be set before LIVE IBAN save
+- Order attribution columns coded; migrate `20260923-001` before convert in LIVE
 - Legal terms (placeholder `draft-unreviewed`)
 - Push/deploy / LIVE enable

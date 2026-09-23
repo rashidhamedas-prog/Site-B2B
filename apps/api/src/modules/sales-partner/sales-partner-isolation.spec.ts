@@ -12,6 +12,7 @@ function read(rel: string) {
 const me = read('sales-partner-me.controller.ts');
 const auth = read('sales-partner-auth.controller.ts');
 const draft = read('sales-partner-draft.service.ts');
+const attribution = read('sales-partner-attribution.ts');
 const ledger = read('sales-partner-ledger.service.ts');
 const payout = read('sales-partner-payout.service.ts');
 const jwt = readFileSync(join(__dirname, '../auth/strategies/jwt.strategy.ts'), 'utf8');
@@ -30,7 +31,10 @@ assert(/partnerCommissionOverlay/.test(draft), 'delivered orders overlay hold/av
 assert(/draftItemFreshness/.test(draft), 'open drafts warn on price or stock drift');
 assert(/listAdmin[\s\S]*orderStatus/.test(draft), 'admin list uses retail order status');
 assert(/type:\s*'RETAIL_WEBSITE'/.test(draft), 'convert stays retail website');
-assert(!/affiliateId/.test(draft), 'convert must not write affiliateId');
+assert(/partnerOrderAttribution/.test(draft), 'convert stamps salesSource columns');
+assert(/affiliateId:\s*null/.test(attribution), 'convert clears external affiliate');
+assert(!/affiliateId:\s*['"`]/.test(draft + attribution), 'must not set affiliate click id');
+assert(/adminChangeAttribution/.test(draft), 'admin attribution change exists');
 assert(/idempotencyKey:\s*`sp-draft:\$\{locked\.id\}`/.test(draft), 'convert idempotency');
 assert(/if \(locked\.convertedOrderId\) return/.test(draft), 'convert short-circuit');
 assert(/hashConfirmationToken/.test(draft) && !/confirmationTokenHash:\s*token/.test(draft), 'token hashed');
@@ -47,6 +51,7 @@ assert(/sales_partner\.application\.submitted/.test(read('sales-partner-events.t
 assert(/AdminOnly/.test(read('sales-partner-admin.controller.ts')), 'admin API stays ADMIN-only');
 assert(/Get\('audits'\)/.test(read('sales-partner-admin.controller.ts')), 'admin audits');
 assert(/Get\('reports'\)/.test(read('sales-partner-admin.controller.ts')), 'admin reports');
+assert(/orders\/:id\/attribution/.test(read('sales-partner-admin.controller.ts')), 'admin attribution route');
 assert(/dir="rtl"/.test(shell) && /aria-label="ناوبری پنل همکار بازاریاب"/.test(shell), 'rtl shell + nav label');
 assert(/focus-visible:outline/.test(shell), 'keyboard focus on partner nav');
 assert(/role="status"/.test(payouts) && /Asia\/Tehran/.test(payouts), 'payout loading + Tehran dates');

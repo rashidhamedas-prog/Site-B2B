@@ -46,6 +46,7 @@ import { canSalesPartnerCreateDraft } from './sales-partner-policy';
 import { programAllowsPartnerAction } from './sales-partner-settings';
 import { SALES_PARTNER_EVENT } from './sales-partner-events';
 import { commissionAmountIrr, selectCommissionRule } from './sales-commission-policy';
+import { canAdminChangeAttribution, partnerOrderAttribution } from './sales-partner-attribution';
 
 type DraftItemInput = { productId: string; variantId?: string; quantity: number };
 
@@ -208,9 +209,19 @@ export class SalesPartnerDraftService {
     });
     const orderIds = [...new Set(rows.map((row) => row.convertedOrderId).filter((id): id is string => !!id))];
     const orders = orderIds.length
-      ? await this.orderRows.find({ where: { id: In(orderIds) }, select: ['id', 'status'] })
+      ? await this.orderRows.find({
+          where: { id: In(orderIds) },
+          select: ['id', 'status', 'salesSource', 'salesPartnerId', 'salesPartnerSubmissionId'],
+        })
       : [];
     const statusById = new Map(orders.map((order) => [order.id, order.status]));
+    const attributionById = new Map(
+      orders.map((order) => [order.id, {
+        salesSource: order.salesSource,
+        salesPartnerId: order.salesPartnerId,
+        salesPartnerSubmissionId: order.salesPartnerSubmissionId,
+      }]),
+    );
     const ledgerRows = orderIds.length
       ? await this.ledger.find({
           where: { orderId: In(orderIds), entryType: In(['COMMISSION_EARNED', 'PAYOUT']) },
@@ -234,9 +245,45 @@ export class SalesPartnerDraftService {
         estimatedCommissionIrr: row.estimatedCommissionIrr,
         convertedOrderId: row.convertedOrderId,
         customerPhoneMasked: maskCustomerPhone(row.customerPhone),
+        attribution: row.convertedOrderId ? attributionById.get(row.convertedOrderId) ?? null : null,
         updatedAt: row.updatedAt,
       };
     });
+  }
+
+  async adminChangeAttribution(
+    draftId: string,
+    nextPartnerId: string,
+    reason: string,
+    actorUserId: string,
+  ) {
+    const draft = await this.drafts.findOne({ where: { id: draftId } });
+    if (!draft?.convertedOrderId) throw new NotFoundException('سفارش تبدیل‌شده پیدا نشد');
+    const next = await this.profiles.findOne({ where: { id: nextPartnerId } });
+    const earned = await this.ledger.count({
+      where: { orderId: draft.convertedOrderId, entryType: 'COMMISSION_EARNED' },
+    });
+    const allowed = canAdminChangeAttribution({
+      reason,
+      hasEarnedCommission: earned > 0,
+      nextPartnerActive: next?.status === 'ACTIVE',
+    });
+    if (allowed.ok === false) throw new ConflictException(allowed.message);
+    await this.orderRows.update(draft.convertedOrderId, partnerOrderAttribution({
+      draftId: draft.id,
+      salesPartnerId: nextPartnerId,
+    }));
+    await this.program.recordAudit(actorUserId, 'order.attribution_changed', 'order', draft.convertedOrderId, {
+      draftId: draft.id,
+      fromPartnerId: draft.salesPartnerId,
+      toPartnerId: nextPartnerId,
+      reason: reason.trim(),
+    });
+    return {
+      orderId: draft.convertedOrderId,
+      salesPartnerId: nextPartnerId,
+      salesSource: 'SALES_PARTNER',
+    };
   }
 
   async cancel(salesPartnerId: string, draftId: string) {
@@ -363,6 +410,10 @@ export class SalesPartnerDraftService {
           quantity: row.quantity,
         })),
       });
+      await manager.update(OrderEntity, order.id, partnerOrderAttribution({
+        draftId: locked.id,
+        salesPartnerId: locked.salesPartnerId,
+      }));
       locked.status = 'CONVERTED_TO_ORDER';
       locked.convertedOrderId = order.id;
       locked.confirmationTokenHash = null;

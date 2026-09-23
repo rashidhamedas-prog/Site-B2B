@@ -46,7 +46,7 @@ import {
   toPublicSalesPartner,
 } from './sales-partner-policy';
 import { isVendorRole as vendorRole } from '../vendor/vendor-policy';
-import { ibanRecord, resolveIbanSecret } from './sales-partner-iban';
+import { ibanRecord, requireDedicatedIbanKey, resolveIbanSecret } from './sales-partner-iban';
 import { normalizeIban } from './sales-partner-policy';
 
 @Injectable()
@@ -261,6 +261,7 @@ export class SalesPartnerService {
     }
     let secret: string;
     try {
+      requireDedicatedIbanKey(this.config.get('NODE_ENV') || this.config.get('APP_ENV'), this.config.get('SALES_PARTNER_IBAN_KEY'));
       secret = resolveIbanSecret(this.config.get('JWT_SECRET'), this.config.get('SALES_PARTNER_IBAN_KEY'));
     } catch {
       throw new BadRequestException('ذخیره شبا فعلاً ممکن نیست');
@@ -474,6 +475,16 @@ export class SalesPartnerService {
       channel: 'RETAIL',
       payload: salesPartnerOutboxPayload(payload),
     });
+  }
+
+  async recordAudit(
+    actorUserId: string | null,
+    action: string,
+    targetType: string,
+    targetId: string,
+    payload: Record<string, unknown>,
+  ) {
+    return this.audit(actorUserId, action, targetType, targetId, payload);
   }
 
   private async audit(

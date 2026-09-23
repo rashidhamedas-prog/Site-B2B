@@ -116,3 +116,14 @@ export class ConfirmSalesPartnerDraftDto {
   @IsBoolean()
   consent: boolean;
 }
+
+export class ChangeSalesPartnerAttributionDto {
+  @ApiProperty()
+  @IsUUID()
+  salesPartnerId: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(500)
+  reason: string;
+}

@@ -66,10 +66,12 @@ type Settings = {
 
 type DraftRow = {
   id: string;
+  salesPartnerId?: string;
   statusLabel: string;
   merchandiseIrr: number;
   convertedOrderId: string | null;
   customerPhoneMasked: string | null;
+  attribution?: { salesSource: string; salesPartnerId: string | null; salesPartnerSubmissionId: string | null } | null;
 };
 
 type AuditRow = { id: string; action: string; targetType: string; targetId: string; createdAt: string };
@@ -191,6 +193,24 @@ export function AdminSalesPartners() {
       await loadBalance();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ثبت تسویه ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function changeAttribution(row: DraftRow) {
+    const next = window.prompt('شناسه همکار مقصد', row.attribution?.salesPartnerId || row.salesPartnerId || '') || '';
+    const reason = window.prompt('دلیل تغییر attribution (حداقل ۸ حرف)') || '';
+    if (!next.trim() || reason.trim().length < 8) return;
+    setBusyId(row.id);
+    try {
+      await apiClient.patch(`/admin/sales-partners/orders/${row.id}/attribution`, {
+        salesPartnerId: next.trim(),
+        reason: reason.trim(),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تغییر attribution ناموفق بود');
     } finally {
       setBusyId(null);
     }
@@ -330,7 +350,22 @@ export function AdminSalesPartners() {
                 {toman(row.merchandiseIrr)} تومان
                 {row.customerPhoneMasked ? ` · ${row.customerPhoneMasked}` : ''}
               </p>
-              {row.convertedOrderId && <p className="mt-1 text-stone-500">سفارش فروشگاه ساخته شده است.</p>}
+              {row.convertedOrderId && (
+                <div className="mt-2 space-y-2">
+                  <p className="text-stone-500">
+                    سفارش فروشگاه ساخته شده است
+                    {row.attribution?.salesSource ? ` · منبع ${row.attribution.salesSource}` : ''}
+                  </p>
+                  <button
+                    type="button"
+                    className="min-h-11 rounded-lg border px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
+                    disabled={busyId === row.id}
+                    onClick={() => void changeAttribution(row)}
+                  >
+                    تغییر attribution با دلیل
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

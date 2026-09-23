@@ -75,6 +75,18 @@ export class OrderEntity {
   @Column({ nullable: true })
   affiliateId: string;
 
+  /** How the retail order was originated. DIRECT is storefront; SALES_PARTNER is marketer draft. */
+  @Column({ default: 'DIRECT' })
+  salesSource: string;
+
+  /** Immutable after customer confirm except ADMIN + reason + audit. Not affiliateId. */
+  @Column({ type: 'uuid', nullable: true })
+  salesPartnerId: string | null;
+
+  /** Sales partner draft id that converted into this order. */
+  @Column({ type: 'uuid', nullable: true })
+  salesPartnerSubmissionId: string | null;
+
   /** Torob click id from ?torob_clid= — order attribution for Torob Sync */
   @Column({ nullable: true })
   torobClid: string;
