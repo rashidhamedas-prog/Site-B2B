@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-23T13:20:00Z — partner panel redesign
+
+- Bottom nav is home, catalog, orders, account. Account holds IBAN, commissions, payouts, and the guide.
+- ChatGPT on the logged-in tab suggested the four destinations and the catalog empty sentence. No new percent or legal text.
+- Web tsc passed. No new dependency.
+
+
+
 ## 2026-09-23T12:42:00Z — share links deployed
 
 - `origin/master` and VPS are `56423fc`. API health 200.
