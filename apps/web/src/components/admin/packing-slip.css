@@ -1,20 +1,27 @@
-/* A5 packing + shipping label — brand tokens, Vazirmatn, print-safe contrast. */
+/* A5 Minimalist Swiss / Atelier Packing Slip & Shipping Label
+   - Monochromatic clarity with single subtle forest accent
+   - Pure white background, zero heavy ink-wasting fills
+   - Crisp hairline dividers (0.5pt - 1pt)
+   - High typographic contrast with Vazirmatn variable weights
+   - Maximum legibility for couriers, pickers, and customers
+*/
 
 .ps-modal-note {
-  color: var(--brand-muted, #6b7280);
+  color: #64748b;
   font-size: 12px;
+  line-height: 1.5;
 }
 
 .ps-preview-frame {
-  background: #d8cfc0;
-  padding: 22px 16px 30px;
+  background: #e2e8f0;
+  padding: 24px 16px 32px;
   overflow: auto;
   max-height: min(72vh, 920px);
 }
 
 .ps-preview-frame .ps-sheet {
   margin: 0 auto;
-  box-shadow: 0 12px 28px rgba(15, 47, 40, 0.18);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .ps-print-root {
@@ -22,234 +29,286 @@
 }
 
 .ps-sheet {
-  --ps-green: var(--brand-green, #1b5c4a);
-  --ps-green-dark: var(--brand-green-dark, #0f2f28);
-  --ps-gold: var(--brand-gold, #c9a84c);
-  --ps-ivory: var(--brand-ivory, #f6f1e8);
-  --ps-ink: var(--brand-ink, #1a1a1a);
+  --ps-ink: #0f172a;
+  --ps-muted: #64748b;
+  --ps-border: #e2e8f0;
+  --ps-border-strong: #0f172a;
+  --ps-accent: #1b5c4a;
   width: 148mm;
   min-height: 210mm;
   box-sizing: border-box;
-  padding: 0;
-  background: #fff;
+  padding: 6mm 7mm 6mm;
+  background: #ffffff;
   color: var(--ps-ink);
   font-family: var(--font-vazirmatn, 'Vazirmatn'), Tahoma, Arial, sans-serif;
-  font-size: 11px;
-  line-height: 1.5;
-  border: 1pt solid #c9bfae;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.45;
+  font-synthesis: none;
+  border: 1px solid #cbd5e1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
 }
 
-.ps-head {
+/* ==========================================================================
+   Header / Masthead
+   ========================================================================== */
+.ps-mast {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 7mm 7mm 6mm;
-  background: linear-gradient(180deg, var(--ps-ivory) 0%, #fff 100%);
-  border-bottom: 3px solid var(--ps-green);
-  box-shadow: inset 0 -3px 0 var(--ps-gold);
+  align-items: flex-start;
+  gap: 4mm;
+  padding-bottom: 4mm;
+  border-bottom: 1.2pt solid var(--ps-border-strong);
 }
 
 .ps-brand-lockup {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 3mm;
   min-width: 0;
 }
 
 .ps-logo {
-  width: 16mm;
-  height: 16mm;
+  width: 12mm;
+  height: 12mm;
   object-fit: contain;
-  background: #fff;
-  border: 1pt solid #e4dccb;
-  border-radius: 50%;
-  padding: 1.2mm;
   flex-shrink: 0;
 }
 
 .ps-kicker {
-  margin: 0 0 2px;
+  margin: 0 0 1px;
   font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--ps-green);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ps-muted);
 }
 
 .ps-brand {
   margin: 0;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.2;
-  color: var(--ps-green-dark);
+  color: var(--ps-border-strong);
 }
 
-.ps-meta,
-.ps-date,
-.ps-track {
+.ps-meta {
   margin: 2px 0 0;
-  font-size: 10px;
-  color: #3f3f3f;
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--ps-muted);
 }
 
-.ps-track.muted {
-  color: #6b6b6b;
-}
-
-.ps-head-id {
+.ps-order-stamp {
   text-align: left;
-  min-width: 0;
-  padding: 4px 8px 5px;
-  background: #fff;
-  border: 1pt solid #d8cebc;
-  border-right: 3px solid var(--ps-gold);
+  border: 0.75pt solid var(--ps-border-strong);
+  padding: 2mm 3mm;
+  min-width: 36mm;
 }
 
 .ps-order-label {
   margin: 0;
   font-size: 8px;
-  color: #666;
+  font-weight: 600;
+  color: var(--ps-muted);
+  text-align: right;
 }
 
 .ps-order {
   margin: 1px 0 0;
-  font-size: 11px;
+  font-size: 15px;
   font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
   word-break: break-all;
-  color: var(--ps-green-dark);
+  font-variant-numeric: tabular-nums;
+  color: var(--ps-border-strong);
+  text-align: right;
 }
 
-.ps-parties {
+.ps-date,
+.ps-track {
+  margin: 2px 0 0;
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--ps-muted);
+  text-align: right;
+}
+
+.ps-track.muted {
+  color: #94a3b8;
+}
+
+/* ==========================================================================
+   Sender (Minimalist subtle row)
+   ========================================================================== */
+.ps-from {
   display: flex;
-  flex-direction: column;
-  gap: 3.5mm;
-  margin: 5mm 7mm 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4mm;
+  padding: 2.5mm 0;
+  border-bottom: 0.5pt solid var(--ps-border);
 }
 
-.ps-party {
+.ps-from-copy {
   min-width: 0;
-  border: 1.25pt solid #cfc5b3;
-  background: #fff;
+  flex: 1 1 auto;
 }
 
-.ps-party-bar {
+.ps-from h2 {
+  margin: 0;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ps-muted);
+}
+
+.ps-from-name {
+  margin: 1px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ps-from-phone,
+.ps-from-addr {
+  margin: 1px 0 0;
+  font-size: 9.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #334155;
+  text-align: right;
+}
+
+/* ==========================================================================
+   Recipient (Hero Minimalist Delivery Box)
+   ========================================================================== */
+.ps-to {
+  margin-top: 3.5mm;
+  border: 1.25pt solid var(--ps-border-strong);
+  padding: 3mm 3.5mm 3.5mm;
+  background: #ffffff;
+}
+
+.ps-to-bar {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  padding: 2.5px 8px;
-  color: #fff;
+  padding-bottom: 2mm;
+  margin-bottom: 2mm;
+  border-bottom: 0.5pt solid var(--ps-border);
 }
 
-.ps-party.sender .ps-party-bar {
-  background: #5c6b63;
-}
-
-.ps-party.recipient {
-  border-color: var(--ps-green-dark);
-  border-width: 1.6pt;
-}
-
-.ps-party.recipient .ps-party-bar {
-  background: var(--ps-green);
-}
-
-.ps-party-bar h2 {
+.ps-to-bar h2 {
   margin: 0;
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--ps-border-strong);
 }
 
-.ps-party-bar p {
+.ps-to-bar p {
   margin: 0;
-  font-size: 9px;
-  opacity: 0.92;
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--ps-muted);
 }
 
-.ps-party-body {
-  padding: 6px 8px 8px;
+.ps-to-body {
+  display: flex;
+  flex-direction: column;
 }
 
-.ps-party.recipient .ps-party-body {
-  min-height: 38mm;
-  background: #fbf8f2;
-}
-
-.ps-name {
+.ps-to-name {
   margin: 0;
-  font-weight: 800;
-  font-size: 12.5px;
-}
-
-.ps-name.big {
   font-size: 18px;
-  line-height: 1.25;
-  color: var(--ps-green-dark);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--ps-border-strong);
 }
 
-.ps-phone {
-  margin: 2px 0;
+.ps-to-phone {
+  margin: 1.2mm 0 0;
+  font-size: 13.5px;
   font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--ps-border-strong);
+  text-align: right;
 }
 
-.ps-phone.big {
-  font-size: 15px;
-}
-
-.ps-addr {
-  margin: 3px 0 7px;
+.ps-to-addr {
+  margin: 1.5mm 0 3mm;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: #1e293b;
   word-break: break-word;
-  color: #2a2a2a;
 }
 
-.ps-addr.big {
-  font-size: 12.5px;
-}
-
+/* ==========================================================================
+   Postal Code Boxes (Crisp, Clean, Geometric)
+   ========================================================================== */
 .ps-postal {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  align-items: flex-start;
+  gap: 1mm;
+  flex-shrink: 0;
 }
 
 .ps-postal-label {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
-  color: #333;
+  color: var(--ps-muted);
 }
 
 .ps-postal-boxes {
   display: flex;
-  gap: 0;
+  width: max-content;
+  max-width: 100%;
 }
 
 .ps-postal-box {
-  width: 14px;
-  height: 18px;
-  border: 1pt solid #222;
-  margin-inline-start: -1pt;
+  width: 4.2mm;
+  height: 5.4mm;
+  margin-inline-start: -0.5pt;
+  border: 0.75pt solid #475569;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
-  background: #fff;
+  background: #ffffff;
+  color: var(--ps-border-strong);
+}
+
+.ps-postal-box.gap {
+  margin-inline-end: 2mm;
 }
 
 .ps-postal.large .ps-postal-box {
-  width: 17px;
-  height: 23px;
-  font-size: 13px;
+  width: 6.2mm;
+  height: 7.8mm;
+  font-size: 14px;
+  border-width: 1pt;
+  border-color: var(--ps-border-strong);
 }
 
+/* ==========================================================================
+   Product Checklist Table
+   ========================================================================== */
 .ps-pack {
-  margin: 5mm 7mm 0;
+  margin-top: 4mm;
   flex: 1 1 auto;
 }
 
@@ -257,17 +316,30 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 3px 2px 4px;
-  border-bottom: 2px solid var(--ps-green);
+  padding-bottom: 1.2mm;
+  border-bottom: 1pt solid var(--ps-border-strong);
 }
 
-.ps-pack-title h2,
-.ps-invoice h2,
-.ps-notes h2 {
+.ps-pack-title h2 {
   margin: 0;
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 800;
-  color: var(--ps-green-dark);
+  letter-spacing: 0.04em;
+  color: var(--ps-border-strong);
+}
+
+.ps-pack-title p {
+  margin: 0;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ps-muted);
+}
+
+.ps-count {
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ps-border-strong);
 }
 
 .ps-sheet table {
@@ -277,60 +349,101 @@
 
 .ps-sheet th,
 .ps-sheet td {
-  border-bottom: 0.6pt solid #d4cbbd;
-  padding: 3.5px 4px;
+  border-bottom: 0.5pt solid var(--ps-border);
+  padding: 1.8mm 1mm;
   text-align: right;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .ps-sheet th {
-  font-size: 9px;
-  background: var(--ps-ivory);
-  color: #333;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: var(--ps-muted);
+  border-bottom: 0.75pt solid var(--ps-border-strong);
 }
 
-.ps-sheet tbody tr:nth-child(even) td {
-  background: #fcfaf6;
+.ps-sheet td {
+  font-size: 10px;
+  line-height: 1.35;
+  color: #1e293b;
+}
+
+.ps-sheet td strong {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ps-border-strong);
 }
 
 .ps-sku {
   display: block;
-  font-size: 9px;
-  color: #555;
+  font-size: 8.5px;
+  font-weight: 500;
+  color: var(--ps-muted);
+  text-align: right;
+}
+
+.ps-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .ps-check {
-  width: 22px;
+  width: 10mm;
   text-align: center;
 }
 
+.ps-tick {
+  display: inline-block;
+  width: 3.8mm;
+  height: 3.8mm;
+  border: 0.75pt solid #475569;
+  background: #ffffff;
+  vertical-align: middle;
+}
+
+/* ==========================================================================
+   Footer & Totals
+   ========================================================================== */
 .ps-foot {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin: 5mm 7mm 7mm;
-  padding-top: 5px;
-  border-top: 2px solid var(--ps-gold);
+  gap: 5mm;
+  margin-top: auto;
+  padding-top: 2.5mm;
+  border-top: 1pt solid var(--ps-border-strong);
+}
+
+.ps-invoice h2,
+.ps-notes h2 {
+  margin: 0;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--ps-muted);
 }
 
 .ps-invoice dl {
-  margin: 4px 0 0;
+  margin: 1.5mm 0 0;
 }
 
 .ps-invoice dl > div {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 1px 0;
+  padding: 0.5mm 0;
+  font-size: 10px;
+  color: #334155;
 }
 
 .ps-invoice .total {
-  margin-top: 4px;
-  padding: 4px 0 0;
-  border-top: 1pt solid var(--ps-green);
+  margin-top: 1.2mm;
+  padding-top: 1.2mm;
+  border-top: 0.75pt solid var(--ps-border-strong);
   font-weight: 800;
   font-size: 12.5px;
-  color: var(--ps-green-dark);
+  line-height: 1.2;
+  color: var(--ps-border-strong);
 }
 
 .ps-invoice dt,
@@ -339,26 +452,49 @@
   margin: 0;
 }
 
+.ps-invoice dd {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
 .ps-notes p {
-  margin-top: 4px;
+  margin-top: 1.5mm;
+  font-size: 9.5px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #475569;
 }
 
 .ps-return {
-  margin-top: 6px !important;
-  font-size: 9px;
-  color: #444;
+  font-size: 8.5px !important;
+  color: var(--ps-muted);
+}
+
+.ps-sign {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  margin-top: 2mm;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ps-border-strong);
 }
 
 .ps-warn {
   margin: 6px 16px 0;
   font-size: 12px;
-  color: #9a3412;
+  font-weight: 600;
+  line-height: 1.5;
+  color: #b91c1c;
 }
 
+/* ==========================================================================
+   Print Rules
+   ========================================================================== */
 @media print {
   @page {
     size: A5 portrait;
-    margin: 6mm;
+    margin: 5mm;
   }
 
   html.packing-slip-print body > *:not(.ps-print-root) {
@@ -374,11 +510,14 @@
     min-height: auto;
     border: 0;
     box-shadow: none;
+    padding: 0;
   }
 
-  .ps-party,
-  .ps-head,
-  .ps-foot {
+  .ps-mast,
+  .ps-from,
+  .ps-to,
+  .ps-foot,
+  .ps-sheet tr {
     break-inside: avoid;
   }
 }

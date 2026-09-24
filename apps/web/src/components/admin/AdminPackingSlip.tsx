@@ -30,7 +30,7 @@ function PostalRow({ code, label, large = false }: { code: string; label: string
       <span className="ps-postal-label">{label}</span>
       <div className="ps-postal-boxes" dir="ltr" aria-label={`${label} ${code || 'نامشخص'}`}>
         {postalBoxes(code).map((d, i) => (
-          <span key={`${label}-${i}`} className="ps-postal-box">
+          <span key={`${label}-${i}`} className={`ps-postal-box${i === 4 ? ' gap' : ''}`}>
             {d.trim() ? d : ''}
           </span>
         ))}
@@ -42,11 +42,11 @@ function PostalRow({ code, label, large = false }: { code: string; label: string
 function SlipSheet({ model }: { model: PackingSlipModel }) {
   return (
     <article className="ps-sheet" dir="rtl" lang="fa">
-      <header className="ps-head">
+      <header className="ps-mast">
         <div className="ps-brand-lockup">
-          <img src={LOGO_SRC} alt="لوگوی پوشاک ترنم" width={72} height={72} className="ps-logo" />
+          <img src={LOGO_SRC} alt="لوگوی پوشاک ترنم" width={64} height={64} className="ps-logo" />
           <div>
-            <p className="ps-kicker">برچسب ارسال و فاکتور بسته‌بندی</p>
+            <p className="ps-kicker">برگه بسته</p>
             <h1 className="ps-brand">{model.sender.name}</h1>
             <p className="ps-meta">
               {model.channelLabel}
@@ -57,7 +57,7 @@ function SlipSheet({ model }: { model: PackingSlipModel }) {
             </p>
           </div>
         </div>
-        <div className="ps-head-id">
+        <div className="ps-order-stamp">
           <p className="ps-order-label">شماره سفارش</p>
           <p className="ps-order" dir="ltr">
             {model.orderNumber}
@@ -68,64 +68,66 @@ function SlipSheet({ model }: { model: PackingSlipModel }) {
               رهگیری {model.trackingCode}
             </p>
           ) : (
-            <p className="ps-track muted">کد رهگیری هنوز ثبت نشده</p>
+            <p className="ps-track muted">رهگیری هنوز ثبت نشده</p>
           )}
         </div>
       </header>
 
-      <section className="ps-parties" aria-label="فرستنده و گیرنده">
-        <div className="ps-party sender">
-          <div className="ps-party-bar">
-            <h2>فرستنده</h2>
-          </div>
-          <div className="ps-party-body">
-            <p className="ps-name">{model.sender.name}</p>
-            {model.sender.phone ? (
-              <p className="ps-phone" dir="ltr">
-                {model.sender.phone}
-              </p>
-            ) : null}
-            <p className="ps-addr">{model.sender.address || 'آدرس دفتر را در تنظیمات کسب‌وکار کامل کنید.'}</p>
-            <PostalRow code={model.sender.postalCode} label="کدپستی فرستنده" />
-          </div>
+      <section className="ps-from" aria-label="فرستنده">
+        <div className="ps-from-copy">
+          <h2>فرستنده</h2>
+          <p className="ps-from-name">{model.sender.name}</p>
+          {model.sender.phone ? (
+            <p className="ps-from-phone" dir="ltr">
+              {model.sender.phone}
+            </p>
+          ) : null}
+          <p className="ps-from-addr">{model.sender.address || 'آدرس دفتر را در تنظیمات کسب‌وکار کامل کنید.'}</p>
         </div>
+        <PostalRow code={model.sender.postalCode} label="کدپستی فرستنده" />
+      </section>
 
-        <div className="ps-party recipient">
-          <div className="ps-party-bar">
-            <h2>گیرنده</h2>
-            <p>روی بسته بچسبانید</p>
-          </div>
-          <div className="ps-party-body">
-            <p className="ps-name big">{model.recipient.name}</p>
-            {model.recipient.phone ? (
-              <p className="ps-phone big" dir="ltr">
-                {model.recipient.phone}
-              </p>
-            ) : null}
-            <p className="ps-addr big">{model.recipient.address || 'آدرس گیرنده در سفارش ثبت نشده است.'}</p>
-            <PostalRow code={model.recipient.postalCode} label="کدپستی گیرنده" large />
-          </div>
+      <section className="ps-to" aria-label="گیرنده">
+        <div className="ps-to-bar">
+          <h2>گیرنده</h2>
+          <p>این بخش را روی بسته بچسبانید</p>
+        </div>
+        <div className="ps-to-body">
+          <p className="ps-to-name">{model.recipient.name}</p>
+          {model.recipient.phone ? (
+            <p className="ps-to-phone" dir="ltr">
+              {model.recipient.phone}
+            </p>
+          ) : null}
+          <p className="ps-to-addr">{model.recipient.address || 'آدرس گیرنده در سفارش ثبت نشده است.'}</p>
+          <PostalRow code={model.recipient.postalCode} label="کدپستی گیرنده" large />
         </div>
       </section>
 
       <section className="ps-pack">
         <div className="ps-pack-title">
-          <h2>چک‌لیست آماده‌سازی</h2>
-          <p>{model.itemCount.toLocaleString('fa-IR')} عدد</p>
+          <h2>تطبیق کالا</h2>
+          <p>
+            <span className="ps-count">{model.itemCount.toLocaleString('fa-IR')}</span>
+            <span> عدد</span>
+          </p>
         </div>
         <table>
           <thead>
             <tr>
+              <th className="ps-check">تطبیق</th>
               <th>کالا</th>
               <th>رنگ / سایز</th>
               <th>تعداد</th>
               <th>مبلغ</th>
-              <th className="ps-check">✓</th>
             </tr>
           </thead>
           <tbody>
             {model.lines.map((line, i) => (
               <tr key={`${line.sku}-${line.variant}-${i}`}>
+                <td className="ps-check">
+                  <span className="ps-tick" aria-hidden="true" />
+                </td>
                 <td>
                   <strong>{line.name}</strong>
                   <span className="ps-sku" dir="ltr">
@@ -133,9 +135,8 @@ function SlipSheet({ model }: { model: PackingSlipModel }) {
                   </span>
                 </td>
                 <td>{line.variant}</td>
-                <td>{line.quantity.toLocaleString('fa-IR')}</td>
-                <td>{line.lineToman.toLocaleString('fa-IR')}</td>
-                <td className="ps-check">☐</td>
+                <td className="ps-num">{line.quantity.toLocaleString('fa-IR')}</td>
+                <td className="ps-num">{line.lineToman.toLocaleString('fa-IR')}</td>
               </tr>
             ))}
           </tbody>
@@ -144,21 +145,21 @@ function SlipSheet({ model }: { model: PackingSlipModel }) {
 
       <footer className="ps-foot">
         <div className="ps-invoice">
-          <h2>خلاصه فاکتور</h2>
+          <h2>مبالغ سفارش</h2>
           <dl>
             <div>
               <dt>جمع اقلام</dt>
-              <dd>{model.subtotalToman.toLocaleString('fa-IR')} ت</dd>
+              <dd>{model.subtotalToman.toLocaleString('fa-IR')} تومان</dd>
             </div>
             {model.discountToman > 0 ? (
               <div>
                 <dt>تخفیف</dt>
-                <dd>−{model.discountToman.toLocaleString('fa-IR')} ت</dd>
+                <dd>−{model.discountToman.toLocaleString('fa-IR')} تومان</dd>
               </div>
             ) : null}
             <div>
               <dt>ارسال</dt>
-              <dd>{model.shippingToman === 0 ? 'رایگان' : `${model.shippingToman.toLocaleString('fa-IR')} ت`}</dd>
+              <dd>{model.shippingToman === 0 ? 'رایگان' : `${model.shippingToman.toLocaleString('fa-IR')} تومان`}</dd>
             </div>
             <div className="total">
               <dt>قابل پرداخت</dt>
@@ -167,9 +168,13 @@ function SlipSheet({ model }: { model: PackingSlipModel }) {
           </dl>
         </div>
         <div className="ps-notes">
-          <h2>یادداشت ارسال</h2>
-          <p>{model.notes || 'شکستنی نیست. قبل از پلمپ، تعداد و سایز را با جدول بالا مطابقت دهید.'}</p>
-          <p className="ps-return">مرجوعی و پیگیری فقط با همین شماره سفارش از وب‌سایت یا تماس فرستنده.</p>
+          <h2>یادداشت بسته‌بندی</h2>
+          <p>{model.notes || 'تعداد، رنگ و سایز هر ردیف را با کالا یکی کنید، بعد بسته را پلمپ کنید.'}</p>
+          <p className="ps-return">پیگیری و مرجوعی فقط با همین شماره سفارش.</p>
+          <div className="ps-sign">
+            <span className="ps-tick" aria-hidden="true" />
+            <span>تطبیق و بررسی شد</span>
+          </div>
         </div>
       </footer>
     </article>
