@@ -12,6 +12,7 @@ import {
   parseCustomerWorkspaceQuery,
   serializeCustomerWorkspaceQuery,
 } from '@/lib/admin-customer-workspace';
+import { orderDeliveryAddresses } from '@/lib/order-admin-snapshot';
 import { AdminCustomerDossier } from './customer-marketing/AdminCustomerDossier';
 import { AdminCustomerWallet } from './AdminCustomerWallet';
 import { cn } from '@/lib/cn';
@@ -36,7 +37,14 @@ export function AdminCustomerRecord() {
     type: 'B2B', businessType: 'WHOLESALE', segment: 'C', status: 'PENDING',
     creditLimit: '', notes: '',
   });
-  const [orders, setOrders] = useState<Array<{ id: string; orderNumber: string; status: string; total: number; createdAt: string }>>([]);
+  const [orders, setOrders] = useState<Array<{
+    id: string;
+    orderNumber: string;
+    status: string;
+    total: number;
+    createdAt: string;
+    shippingAddress?: string | Record<string, unknown> | null;
+  }>>([]);
 
   useEffect(() => {
     if (!customer) return;
@@ -63,7 +71,14 @@ export function AdminCustomerRecord() {
   useEffect(() => {
     if (!id) return;
     apiClient
-      .get<{ data: Array<{ id: string; orderNumber: string; status: string; total: number; createdAt: string }> }>(
+      .get<{ data: Array<{
+        id: string;
+        orderNumber: string;
+        status: string;
+        total: number;
+        createdAt: string;
+        shippingAddress?: string | Record<string, unknown> | null;
+      }> }>(
         `/orders?customerId=${encodeURIComponent(id)}&limit=20`,
       )
       .then((res) => setOrders(res.data || []))
@@ -102,6 +117,7 @@ export function AdminCustomerRecord() {
   }
 
   const listQs = serializeCustomerWorkspaceQuery({ ...parsed, tab: 'identity' });
+  const deliveryAddresses = orderDeliveryAddresses(orders);
 
   return (
     <div className="space-y-5">
@@ -217,11 +233,34 @@ export function AdminCustomerRecord() {
 
       {parsed.tab === 'addresses' && (
         <section className="rounded-2xl border border-gray-100 bg-white p-5 space-y-3">
-          <h3 className="text-sm font-bold">آدرس اصلی پرونده</h3>
+          <h3 className="text-sm font-bold">آدرس ارسال سفارش‌ها</h3>
+          {deliveryAddresses.length === 0 ? (
+            <p className="text-sm text-gray-400">روی سفارش‌های این مشتری آدرس ارسالی ثبت نشده است.</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {deliveryAddresses.map((row) => (
+                <li key={`${row.orderId}-${row.postalCode}`} className="rounded-xl border border-gray-100 p-3">
+                  <p className="font-semibold">
+                    {row.name || 'گیرنده'}
+                    {row.orderNumber ? (
+                      <>
+                        {' · '}
+                        <Link href={`/admin/orders/${row.orderId}`} className="font-mono text-xs text-primary hover:underline">{row.orderNumber}</Link>
+                      </>
+                    ) : null}
+                  </p>
+                  <p className="text-gray-600 leading-6">{row.address}</p>
+                  {row.postalCode ? <p className="text-xs text-gray-500">کد پستی <span className="font-mono dir-ltr">{row.postalCode}</span></p> : null}
+                  {row.phone ? <p className="font-mono text-xs dir-ltr text-right">{row.phone}</p> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3 className="pt-3 text-sm font-bold">آدرس اصلی پرونده</h3>
           <p className="text-sm text-gray-600">{customer.address || 'ثبت نشده'} — {customer.city}، {customer.province} {customer.postalCode || ''}</p>
           <h3 className="pt-3 text-sm font-bold">دفترچه آدرس ذخیره‌شده</h3>
           {(customer.savedAddresses || []).length === 0 ? (
-            <p className="text-sm text-gray-400">آدرس ارسال جداگانه‌ای نیست. مشتری از پنل خودش اضافه می‌کند.</p>
+            <p className="text-sm text-gray-400">دفترچه آدرس هنوز ذخیره نشده است.</p>
           ) : (
             <ul className="space-y-2 text-sm">
               {(customer.savedAddresses || []).map((a) => (

@@ -15,7 +15,7 @@ import {
 import { OrderStatusBadge, Pagination } from '@/components/ui';
 import { useOrderStatusCounts, useOrders } from '@/lib/hooks/useOrders';
 import { apiClient } from '@/lib/api';
-import { paymentMethodLabel } from '@/lib/packing-slip';
+import { asPaymentRows, describeSettlement, recipientSnapshot, type PaymentRow } from '@/lib/order-admin-snapshot';
 import { cn } from '@/lib/cn';
 import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
 import { AdminPackingSlipButton } from './AdminPackingSlip';
@@ -39,11 +39,12 @@ function parseChannel(raw: string | null): AdminChannel | 'ALL' {
   return 'ALL';
 }
 
-function customerLabel(order: {
-  customer?: { businessName?: string; ownerName?: string; phone?: string };
-}): string {
-  const c = order.customer;
-  return c?.businessName || c?.ownerName || c?.phone || '—';
+function customerLabel(order: Parameters<typeof recipientSnapshot>[0]): string {
+  return recipientSnapshot(order).name || '—';
+}
+
+function customerPhone(order: Parameters<typeof recipientSnapshot>[0]): string {
+  return recipientSnapshot(order).phone;
 }
 
 function AdminOrdersInner() {
@@ -55,6 +56,7 @@ function AdminOrdersInner() {
   const channelFilter = parseChannel(searchParams.get('channel'));
   const page = Math.max(1, Number(searchParams.get('page') || 1) || 1);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
 
   const type = channelToOrderType(channelFilter);
   const { orders, meta, loading, refetch } = useOrders({
@@ -75,6 +77,10 @@ function AdminOrdersInner() {
     const qs = q.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
+
+  useEffect(() => {
+    apiClient.get<unknown>('/payments').then((rows) => setPayments(asPaymentRows(rows))).catch(() => setPayments([]));
+  }, []);
 
   useEffect(() => {
     if (statusParam && !isAdminOrderQueue(statusParam)) {
@@ -192,13 +198,18 @@ function AdminOrdersInner() {
               ) : orders.map((order) => {
                 const deleted = order.status === 'DELETED';
                 const actions = adminQueueActions(order.status);
+                const settlement = describeSettlement({
+                  paymentMethod: order.paymentMethod,
+                  payments,
+                  orderId: order.id,
+                });
                 return (
                 <tr key={order.id} className={cn('hover:bg-gray-50 transition-colors', deleted && 'bg-red-50/40 opacity-80')}>
                   <td className="px-4 py-3 text-sm font-mono font-semibold text-gray-900">{order.orderNumber}</td>
                   <td className="px-4 py-3 text-sm text-gray-700 min-w-0">
-                    <p className="truncate max-w-[160px]">{customerLabel(order)}</p>
-                    {order.customer?.phone ? (
-                      <p className="text-[11px] text-gray-400 font-mono dir-ltr text-right">{order.customer.phone}</p>
+                    <p className="truncate max-w-[160px] min-w-0">{customerLabel(order)}</p>
+                    {customerPhone(order) ? (
+                      <p className="text-[11px] text-gray-400 font-mono dir-ltr text-right">{customerPhone(order)}</p>
                     ) : null}
                   </td>
                   <td className="px-4 py-3">
@@ -209,7 +220,12 @@ function AdminOrdersInner() {
                       {order.type === 'RETAIL_WEBSITE' ? 'تکی' : 'عمده'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{paymentMethodLabel(order.paymentMethod)}</td>
+                  <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                    <span className="block font-medium text-gray-800">{settlement.headline || '—'}</span>
+                    {settlement.statusLabel ? (
+                      <span className="block text-[10px] text-gray-400">{settlement.statusLabel}</span>
+                    ) : null}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                     {new Date(order.createdAt).toLocaleDateString('fa-IR')}
                   </td>

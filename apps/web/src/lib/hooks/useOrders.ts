@@ -24,6 +24,7 @@ export interface Order {
   total: number;
   paymentMethod: string;
   shippingMethod: string;
+  shippingAddress?: string | Record<string, unknown> | null;
   trackingCode?: string;
   notes?: string;
   createdAt: string;

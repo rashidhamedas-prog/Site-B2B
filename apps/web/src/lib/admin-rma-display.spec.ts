@@ -21,6 +21,7 @@ assert.equal(rmaWalletCreditLabelFa('125000'), '۱۲٬۵۰۰ ت');
 assert.equal(adminCustomerWorkspaceHref('abc'), '/admin/customers/abc');
 assert.equal(adminCustomerWorkspaceHref('abc', 'orders'), '/admin/customers/abc?tab=orders');
 assert.equal(adminCustomerWorkspaceHref('abc', 'wallet'), '/admin/customers/abc?tab=wallet');
+assert.equal(adminCustomerWorkspaceHref('abc', 'addresses'), '/admin/customers/abc?tab=addresses');
 assert.equal(adminCustomerWorkspaceHref(''), '/admin/customers');
 
 console.log('admin-rma-display.spec.ts: ok');

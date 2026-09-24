@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Truck, CheckCircle, XCircle, Clock, Package, MapPin, Save, Loader2, Trash2, Pencil } from 'lucide-react';
+import { ArrowRight, Truck, CheckCircle, XCircle, Clock, Package, MapPin, Save, Loader2, Trash2, Pencil, CreditCard } from 'lucide-react';
 import { adminDetailActions, adminQueueHint, CUSTOMER_STATUS_FLOW, customerStatusStepIndex, orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
@@ -11,6 +11,14 @@ import { OrderStatusBadge } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { AdminPackingSlipButton } from './AdminPackingSlip';
 import { adminCustomerWorkspaceHref } from '@/lib/admin-rma-display';
+import { channelLabel } from '@/lib/packing-slip';
+import {
+  asPaymentRows,
+  describeSettlement,
+  PAYMENT_METHOD_OPTIONS,
+  recipientSnapshot,
+  type PaymentRow,
+} from '@/lib/order-admin-snapshot';
 
 interface OrderItem {
   id: string;
@@ -36,6 +44,7 @@ interface Order {
   paymentMethod: string;
   shippingMethod: string;
   shippingAddress?: string;
+  walletApplied?: number;
   trackingCode?: string;
   freightCost?: number;
   freightReceiptUrl?: string;
@@ -48,6 +57,12 @@ interface Order {
 }
 
 function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa-IR'); }
+
+function formatPaidAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('fa-IR', { dateStyle: 'medium', timeStyle: 'short' });
+}
 
 const SHIP_METHODS = [
   { id: 'CHAPAR', label: 'چاپار' },
@@ -91,6 +106,7 @@ function AdminOrderDetailInner({ id }: { id: string }) {
   const { upload: uploadImage, uploading: uploadingReceipt } = useImageUpload();
   const receiptInputRef = useRef<HTMLInputElement>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [trackingCode, setTrackingCode] = useState('');
   const [shipMethod, setShipMethod] = useState('CHAPAR');
@@ -112,8 +128,12 @@ function AdminOrderDetailInner({ id }: { id: string }) {
   }, [searchParams]);
 
   useEffect(() => {
-    apiClient.get<Order>(`/orders/${id}`)
-      .then((data) => {
+    Promise.all([
+      apiClient.get<Order>(`/orders/${id}`),
+      apiClient.get<unknown>('/payments').then(asPaymentRows).catch(() => [] as PaymentRow[]),
+    ])
+      .then(([data, paymentRows]) => {
+        setPayments(paymentRows);
         setOrder(data);
         setTrackingCode(data.trackingCode ?? '');
         setShipMethod(data.shippingMethod ?? 'CHAPAR');
@@ -216,6 +236,16 @@ function AdminOrderDetailInner({ id }: { id: string }) {
   const canEditItems = !deleted && !['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status);
   const currentStepIdx = deleted ? -1 : customerStatusStepIndex(order.status);
   const detailActions = deleted ? [] : adminDetailActions(order.status);
+  const recipient = recipientSnapshot(order);
+  const settlement = describeSettlement({
+    paymentMethod: order.paymentMethod,
+    payments,
+    orderId: order.id,
+  });
+  const paidAtLabel = formatPaidAt(settlement.paidAt);
+  const profileCity = recipient.profilePlace.split('،').map((part) => part.trim()).filter(Boolean).pop() || '';
+  const showProfilePlace = Boolean(profileCity && recipient.address && !recipient.address.includes(profileCity));
+  const walletToman = Math.round(Number(order.walletApplied) || 0) / 10;
 
   return (
     <div className="space-y-5">
@@ -226,7 +256,7 @@ function AdminOrderDetailInner({ id }: { id: string }) {
             <h2 className="text-xl font-bold text-gray-900">{order.orderNumber}</h2>
             <OrderStatusBadge status={order.status} />
           </div>
-          <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('fa-IR', { dateStyle: 'long' })}</p>
+          <p className="text-sm text-gray-500">{new Date(order.createdAt).toLocaleDateString('fa-IR', { dateStyle: 'long' })} · {channelLabel(order.type)}</p>
         </div>
         {!deleted && (
           <div className="flex items-center gap-2">
@@ -283,7 +313,18 @@ function AdminOrderDetailInner({ id }: { id: string }) {
             </label>
             <label className="block text-xs">
               <span className="mb-1 block font-medium text-gray-600">روش پرداخت</span>
-              <input className="w-full rounded-lg border px-3 py-2 text-sm" value={editPayMethod} onChange={(e) => setEditPayMethod(e.target.value)} />
+              <select
+                className="w-full rounded-lg border px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                value={editPayMethod}
+                onChange={(e) => setEditPayMethod(e.target.value)}
+              >
+                {PAYMENT_METHOD_OPTIONS.map((method) => (
+                  <option key={method.id} value={method.id}>{method.label}</option>
+                ))}
+                {editPayMethod && !PAYMENT_METHOD_OPTIONS.some((method) => method.id === editPayMethod) ? (
+                  <option value={editPayMethod}>{editPayMethod}</option>
+                ) : null}
+              </select>
             </label>
           </div>
           <label className="block text-xs">
@@ -363,38 +404,81 @@ function AdminOrderDetailInner({ id }: { id: string }) {
         <div className="space-y-5">
           <div className="card p-5">
             <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />اطلاعات مشتری</h3>
-            {order.customer ? (
+            {recipient.hasDelivery ? (
               <div className="space-y-2 text-sm">
-                <p className="font-semibold text-gray-900">
-                  <Link
-                    href={adminCustomerWorkspaceHref(order.customer.id, 'orders')}
-                    className="hover:text-primary hover:underline"
-                  >
-                    {order.customer.businessName || order.customer.ownerName || 'پرونده مشتری'}
-                  </Link>
-                </p>
-                {order.customer.ownerName && order.customer.businessName ? (
-                  <p className="text-gray-500">{order.customer.ownerName}</p>
+                <p className="font-semibold text-gray-900">{recipient.name || 'گیرنده'}</p>
+                {recipient.phone ? (
+                  <p className="text-gray-600 font-mono dir-ltr text-right">{recipient.phone}</p>
                 ) : null}
-                <p className="text-gray-500">{order.customer.phone}</p>
-                <p className="text-gray-500">{order.customer.city}، {order.customer.province}</p>
-                <p>
-                  <Link
-                    href={adminCustomerWorkspaceHref(order.customer.id, 'orders')}
-                    className="text-xs font-semibold text-primary hover:underline"
-                  >
-                    پرونده مشتری
-                  </Link>
-                </p>
+                {recipient.address ? (
+                  <p className="text-gray-600 leading-6 min-w-0">{recipient.address}</p>
+                ) : null}
+                {recipient.postalCode ? (
+                  <p className="text-gray-500">
+                    کد پستی <span className="font-mono dir-ltr">{recipient.postalCode}</span>
+                  </p>
+                ) : null}
+                {showProfilePlace ? (
+                  <p className="text-xs text-gray-400">شهر پرونده عضویت: {recipient.profilePlace}</p>
+                ) : null}
+                {recipient.customerId ? (
+                  <p>
+                    <Link
+                      href={adminCustomerWorkspaceHref(recipient.customerId, 'addresses')}
+                      className="text-xs font-semibold text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
+                      پرونده مشتری
+                    </Link>
+                  </p>
+                ) : null}
               </div>
             ) : <p className="text-sm text-gray-400">اطلاعات مشتری موجود نیست</p>}
           </div>
 
           <div className="card p-5">
+            <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2"><CreditCard className="h-4 w-4 text-primary" />تسویه</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between gap-3">
+                <span className="text-gray-500">روش</span>
+                <span className="font-semibold text-gray-900">{settlement.headline || '—'}</span>
+              </div>
+              {settlement.statusLabel ? (
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">وضعیت</span>
+                  <span>{settlement.statusLabel}</span>
+                </div>
+              ) : null}
+              {settlement.amountToman > 0 ? (
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">مبلغ واریزی</span>
+                  <span>{settlement.amountToman.toLocaleString('fa-IR')} تومان</span>
+                </div>
+              ) : null}
+              {settlement.refId ? (
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">شماره پیگیری</span>
+                  <span className="font-mono text-xs dir-ltr">{settlement.refId}</span>
+                </div>
+              ) : null}
+              {paidAtLabel ? (
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">زمان تسویه</span>
+                  <span>{paidAtLabel}</span>
+                </div>
+              ) : null}
+              {walletToman > 0 ? (
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">کسر از کیف پول</span>
+                  <span>{walletToman.toLocaleString('fa-IR')} تومان</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="card p-5">
             <h3 className="font-bold text-gray-900 mb-3 text-sm flex items-center gap-2"><Truck className="h-4 w-4 text-primary" />ارسال</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">روش ارسال</span><span>{SHIP_METHODS.find((m) => m.id === order.shippingMethod)?.label ?? order.shippingMethod}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">روش پرداخت</span><span>{order.paymentMethod}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-gray-500">روش ارسال</span><span className="min-w-0">{SHIP_METHODS.find((m) => m.id === order.shippingMethod)?.label ?? order.shippingMethod}</span></div>
               {order.trackingCode && (
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">کد پیگیری</span>

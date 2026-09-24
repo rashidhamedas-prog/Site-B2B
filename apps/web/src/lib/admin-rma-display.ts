@@ -13,10 +13,10 @@ export function rmaWalletCreditLabelFa(rial?: number | string | null): string {
 
 export function adminCustomerWorkspaceHref(
   customerId: string,
-  tab?: 'orders' | 'wallet' | 'identity',
+  tab?: 'orders' | 'wallet' | 'identity' | 'addresses',
 ): string {
   const id = String(customerId || '').trim();
   if (!id) return '/admin/customers';
-  if (tab === 'orders' || tab === 'wallet') return `/admin/customers/${id}?tab=${tab}`;
+  if (tab === 'orders' || tab === 'wallet' || tab === 'addresses') return `/admin/customers/${id}?tab=${tab}`;
   return `/admin/customers/${id}`;
 }
