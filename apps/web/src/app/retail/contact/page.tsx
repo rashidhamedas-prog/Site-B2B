@@ -14,5 +14,5 @@ export async function generateMetadata() {
 }
 
 export default function RetailContactPage() {
-  return <CmsPage channel="RETAIL" pageKey="contact" />;
+  return <CmsPage channel="RETAIL" pageKey="contact" title="تماس با فروشگاه" />;
 }

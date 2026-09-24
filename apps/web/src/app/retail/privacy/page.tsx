@@ -14,5 +14,5 @@ export async function generateMetadata() {
 }
 
 export default function RetailPrivacyPage() {
-  return <CmsPage channel="RETAIL" pageKey="privacy" />;
+  return <CmsPage channel="RETAIL" pageKey="privacy" title="حریم خصوصی" />;
 }

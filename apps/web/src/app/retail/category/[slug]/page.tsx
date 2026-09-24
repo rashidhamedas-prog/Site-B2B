@@ -1,10 +1,13 @@
 import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
   CategoryLanding,
   categoryLandingMetadata,
+  fetchCategoryBySlug,
 } from '@/components/category/CategoryLanding';
 import { CategoryQueryOverlay } from '@/components/category/CategoryQueryOverlay';
+import { redirectIfMatched } from '@/lib/seo-redirect';
 
 /** Unfiltered /category/{slug} is public HTML; query filters stay a client overlay. */
 export const revalidate = 60;
@@ -16,6 +19,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const category = await fetchCategoryBySlug(slug);
+  if (!category) {
+    await redirectIfMatched('RETAIL', `/category/${slug}`);
+    notFound();
+  }
   return categoryLandingMetadata('RETAIL', slug, {});
 }
 

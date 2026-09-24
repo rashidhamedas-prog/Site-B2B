@@ -121,6 +121,4 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export function toman(n: number) {
-  return Math.round(Number(n) / 10).toLocaleString('fa-IR');
-}
+export { toman } from '@/lib/product-display';

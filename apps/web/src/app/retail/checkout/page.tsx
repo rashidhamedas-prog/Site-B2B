@@ -88,8 +88,15 @@ function readAff(): string | undefined {
 export default function RetailCheckoutPage() {
   const items = useRetailCart((s) => s.items);
   const clear = useRetailCart((s) => s.clear);
+  const [cartReady, setCartReady] = useState(false);
   const subtotal = useMemo(() => items.reduce((n, i) => n + i.unitPrice * i.quantity, 0), [items]);
   const pieces = useMemo(() => items.reduce((n, i) => n + i.quantity, 0), [items]);
+
+  useEffect(() => {
+    const unsub = useRetailCart.persist.onFinishHydration(() => setCartReady(true));
+    if (useRetailCart.persist.hasHydrated()) setCartReady(true);
+    return unsub;
+  }, []);
 
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE');
   const [paymentGateway, setPaymentGateway] = useState<RetailPaymentGateway>('ZARINPAL');
@@ -592,7 +599,7 @@ export default function RetailCheckoutPage() {
                   label={ctaLabel}
                   hint={ctaHint}
                   busy={busy}
-                  disabled={!items.length}
+                  disabled={!cartReady || !items.length}
                   onClick={submit}
                 />
               </div>
@@ -607,7 +614,9 @@ export default function RetailCheckoutPage() {
 
           <aside className="h-fit rounded-[1.6rem] bg-[var(--retail-surface)] p-6 ring-1 ring-[var(--retail-border)] lg:sticky lg:top-24">
             <h2 className="font-extrabold text-[var(--retail-ink)]">خلاصه سفارش</h2>
-            {items.length === 0 ? (
+            {!cartReady ? (
+              <p className="mt-4 text-sm text-[var(--retail-muted)]">در حال بارگذاری سبد…</p>
+            ) : items.length === 0 ? (
               <p className="mt-4 text-sm text-[var(--retail-muted)]">سبد خالی است</p>
             ) : (
               <ul className="mt-4 space-y-3">
@@ -672,7 +681,7 @@ export default function RetailCheckoutPage() {
                 label={ctaLabel}
                 hint={ctaHint}
                 busy={busy}
-                disabled={!items.length}
+                disabled={!cartReady || !items.length}
                 onClick={submit}
               />
             </div>
@@ -685,7 +694,7 @@ export default function RetailCheckoutPage() {
         label={ctaLabel}
         hint={ctaHint}
         busy={busy}
-        disabled={!items.length}
+        disabled={!cartReady || !items.length}
         onClick={submit}
         sticky
         amountLabel={`${toman(payable)} تومان`}

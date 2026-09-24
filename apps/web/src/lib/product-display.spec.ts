@@ -14,6 +14,8 @@ import {
 } from './product-display';
 
 assert.equal(toman(1_620_000), (162000).toLocaleString('fa-IR'));
+assert.equal(toman(14_099_990), (1_410_000).toLocaleString('fa-IR'));
+assert.equal(toman(12_580_000), (1_258_000).toLocaleString('fa-IR'));
 assert.equal(discountPercent(1_620_000, 1_790_000), 9);
 assert.equal(discountPercent(100, 100), 0);
 assert.equal(discountPercent(0, 200), 0);

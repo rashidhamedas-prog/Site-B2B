@@ -7,6 +7,11 @@ export const metadata: Metadata = {
 };
 
 export default function RetailNotFound() {
+  // #region agent log
+  if (typeof fetch !== 'undefined') {
+    fetch('http://127.0.0.1:7386/ingest/441ee71b-11ea-467a-bcb4-b19ca7c41207',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30acff'},body:JSON.stringify({sessionId:'30acff',location:'retail/not-found.tsx',message:'retail not-found rendered',data:{},timestamp:Date.now(),hypothesisId:'soft-404',runId:'pre-fix'})}).catch(()=>{});
+  }
+  // #endregion
   return (
     <div className="flex min-h-[70vh] items-center justify-center bg-[var(--retail-bg,#F6F1E8)] px-4 py-16">
       <div className="max-w-lg text-center">

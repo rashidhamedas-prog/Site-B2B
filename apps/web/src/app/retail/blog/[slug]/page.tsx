@@ -45,8 +45,12 @@ async function resolveOrRedirect(slug: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = await fetchPost(decodeURIComponent(slug), 'RETAIL');
-  if (!post) return { title: 'مطلب یافت نشد', robots: { index: false } };
+  const resolved = await resolveOrRedirect(decodeURIComponent(slug));
+  if (resolved === 'GONE') {
+    return { title: 'حذف شده', robots: { index: false, follow: false } };
+  }
+  if (!resolved) notFound();
+  const post = resolved;
   const title = post.seoTitle || post.title;
   const description = post.seoDescription || post.excerpt;
   const url = `${RETAIL_ORIGIN}/blog/${post.slug}`;

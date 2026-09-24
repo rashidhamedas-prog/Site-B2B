@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-25T02:50:00Z — retail audit root fixes
+
+- Task TASK-20260925-001 claimed; reclaimed stale middleware + retail checkout from TASK-20260922-003 (hb 2026-09-23).
+- Soft-404 loading shell removed; next.config host rewrites; /retail 301; collections category fallback; PDP/OG/H1/hydrate fixes.
+- Debug ingest left in middleware + not-found for post-deploy verification (session 30acff).
+- Next: commit, push, auto-deploy, probe live 404/301/collections/PDP.
+
 ## 2026-09-23T13:20:00Z — partner panel redesign
 
 - Bottom nav is home, catalog, orders, account. Account holds IBAN, commissions, payouts, and the guide.

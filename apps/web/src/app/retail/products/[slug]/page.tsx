@@ -10,6 +10,7 @@ import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { resolveRetailPdpOption, torobHeadMeta } from '@/lib/torob-pdp-meta';
 import { resolveRetailProductSeo } from '@/lib/retail-seo-copy';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
+import { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 
 type SeoBag = Record<string, string | undefined>;
 
@@ -33,10 +34,7 @@ function retailSeo(product: Record<string, unknown>) {
 }
 
 function absUrl(url?: string | null) {
-  if (!url) return undefined;
-  if (/^https?:\/\//i.test(url)) return url.replace(/^http:\/\//i, 'https://');
-  if (url.startsWith('/')) return `${RETAIL_ORIGIN}${url}`;
-  return url;
+  return absoluteJsonLdUrl('RETAIL', url);
 }
 
 export async function generateMetadata({

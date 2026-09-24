@@ -10,6 +10,8 @@ const COMMON_DISALLOW = [
   '/portal/',
   '/partners/',
   '/api/',
+  '/retail',
+  '/retail/',
   '/cart',
   '/checkout',
   '/account',

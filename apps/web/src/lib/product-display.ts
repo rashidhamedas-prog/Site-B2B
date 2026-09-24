@@ -13,8 +13,15 @@ export function mediaUrl(url?: string | null): string | undefined {
   return `/media/${url}`;
 }
 
+/**
+ * Prices are stored as IRR; UI shows toman.
+ * Snap values within 1 toman of a round هزار تومان (off-by-10 IRR from admin entry).
+ */
 export function toman(value: number): string {
-  return Math.round(Number(value) / 10).toLocaleString('fa-IR');
+  const raw = Math.round(Number(value) / 10);
+  const nearestThousand = Math.round(raw / 1000) * 1000;
+  const snapped = Math.abs(raw - nearestThousand) <= 1 ? nearestThousand : raw;
+  return snapped.toLocaleString('fa-IR');
 }
 
 export function discountPercent(price: number, compareAt: number): number {

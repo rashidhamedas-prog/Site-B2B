@@ -13,5 +13,5 @@ export async function generateMetadata() {
 }
 
 export default function RetailTermsPage() {
-  return <CmsPage channel="RETAIL" pageKey="terms" />;
+  return <CmsPage channel="RETAIL" pageKey="terms" title="شرایط و قوانین" />;
 }

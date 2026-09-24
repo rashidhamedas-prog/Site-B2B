@@ -158,15 +158,15 @@ export function middleware(request: NextRequest) {
   // Product slug aliases are resolved in the PDP (SKU/legacy map + seo_redirects)
   // so middleware cannot invert a later admin slug change back to an old SKU.
 
-  // /retail/* is the internal App Router tree. A 301 back to the public
-  // /products/... URL ping-pongs with `x-middleware-rewrite` and causes
-  // TooManyRedirects for extractors that follow that header (Torob).
-  // Serve 200 + noindex; PDP canonical still points at the public URL.
+  // /retail/* is the internal App Router tree. Public URLs are rewritten via
+  // next.config beforeFiles (no x-middleware-rewrite). Direct hits 301 to the
+  // clean public path so crawlers never index the internal prefix.
   if (pathname === '/retail' || pathname.startsWith('/retail/')) {
-    const res = NextResponse.next();
-    res.headers.set('x-robots-tag', 'noindex, nofollow');
-    res.headers.set('x-taranom-channel', 'RETAIL');
-    return clampStorefrontHtmlCache(res, pathname);
+    const stripped = pathname === '/retail' ? '/' : pathname.slice('/retail'.length) || '/';
+    // #region agent log
+    fetch('http://127.0.0.1:7386/ingest/441ee71b-11ea-467a-bcb4-b19ca7c41207',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30acff'},body:JSON.stringify({sessionId:'30acff',location:'middleware.ts:retail-301',message:'direct /retail → 301',data:{pathname,stripped},timestamp:Date.now(),hypothesisId:'retail-301',runId:'pre-fix'})}).catch(()=>{});
+    // #endregion
+    return redirectPublic(request, stripped);
   }
 
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
@@ -174,26 +174,20 @@ export function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_FORCE_RETAIL === '1' ||
     request.cookies.get('taranom_channel')?.value === 'retail' ||
     request.headers.get('x-taranom-channel') === 'RETAIL';
-  const retailHost = hostLooksRetail(host) || forceRetail;
-  const isPublicCategoryPath =
-    pathname === '/category' || pathname.startsWith('/category/');
 
-  // Middleware rewrite of /category/{slug} → /retail/category/{slug} makes
-  // Next skip ISR (public .ir stays no-store). Host rewrite in next.config
-  // keeps the public URL static. Cookie/env force-retail on a non-retail
-  // host still uses the middleware rewrite below.
-  if (retailHost && hostLooksRetail(host) && isPublicCategoryPath) {
-    const res = NextResponse.next();
+  // Production retail hosts use next.config host rewrites. Cookie/env force-retail
+  // on a non-retail host still needs a middleware rewrite for local testing.
+  if (forceRetail && !hostLooksRetail(host) && !isChannelExemptPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname === '/' ? '/retail' : `/retail${pathname}`;
+    const res = NextResponse.rewrite(url);
     res.headers.set('x-taranom-channel', 'RETAIL');
     return clampStorefrontHtmlCache(res, pathname);
   }
 
-  // On retail host, rewrite public URLs into /retail/* (URL bar stays clean).
-  // Child sitemaps and merchant feeds stay on shared routes (not /retail/...).
-  if (retailHost && !isChannelExemptPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname === '/' ? '/retail' : `/retail${pathname}`;
-    const res = NextResponse.rewrite(url);
+  // Retail host storefront: config already rewrote; only stamp channel + cache clamp.
+  if (hostLooksRetail(host) && !isChannelExemptPath(pathname)) {
+    const res = NextResponse.next();
     res.headers.set('x-taranom-channel', 'RETAIL');
     return clampStorefrontHtmlCache(res, pathname);
   }
@@ -249,7 +243,7 @@ export function middleware(request: NextRequest) {
     const res = NextResponse.next();
     res.headers.set(
       'x-taranom-channel',
-      pathname.startsWith('/retail') || retailHost ? 'RETAIL' : 'WHOLESALE',
+      hostLooksRetail(host) || forceRetail ? 'RETAIL' : 'WHOLESALE',
     );
     return clampStorefrontHtmlCache(res, pathname);
   }

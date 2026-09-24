@@ -7,6 +7,7 @@ import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
 import { discountPercent, mediaUrl as toMediaUrl } from '@/lib/product-display';
+import { formatSizePhrase, stockRemainingCopy } from '@/lib/retail-size-label';
 import { RetailProductCard } from './RetailProductCard';
 import { selectDefaultRetailVariant } from '@taranom/shared-types';
 import { looksLikeHtml, selectRetailPdpBody, lightSanitizeHtml } from '@/lib/retail-pdp-copy';
@@ -467,11 +468,7 @@ export function RetailProductDetail({
             <PreOrderCountdown date={product.preOrderDate} />
           ) : (
             <p className="mt-2 text-sm text-[var(--retail-muted)]">
-              {stock <= 0
-                ? 'ناموجود'
-                : stock <= 4
-                  ? `فقط ${stock.toLocaleString('fa-IR')} عدد${size ? ` از سایز ${size}` : ''}`
-                  : 'موجود'}
+              {stock <= 0 ? 'ناموجود' : stockRemainingCopy(stock, size)}
             </p>
           )}
 
@@ -641,7 +638,7 @@ export function RetailProductDetail({
               {price > 0 ? `${toman(price)} تومان` : 'قیمت به‌زودی'}
             </p>
             <p className="truncate text-[11px] text-[var(--retail-muted)]">
-              {needsSize ? (size ? `سایز ${size}` : 'سایز را انتخاب کنید') : color || product.name}
+              {needsSize ? (size ? formatSizePhrase(size) : 'سایز را انتخاب کنید') : color || product.name}
             </p>
           </div>
           <div className="flex h-12 shrink-0 items-center rounded-md border border-[var(--retail-border)] bg-white">

@@ -14,5 +14,5 @@ export async function generateMetadata() {
 }
 
 export default function RetailAboutPage() {
-  return <CmsPage channel="RETAIL" pageKey="about" />;
+  return <CmsPage channel="RETAIL" pageKey="about" title="درباره پوشاک ترنم مشهد" />;
 }

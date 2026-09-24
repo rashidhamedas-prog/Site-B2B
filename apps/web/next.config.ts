@@ -95,20 +95,42 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Retail public /category/{slug} must not go through middleware rewrite
-  // (that path stays no-store). Host rewrite keeps ISR on the public URL.
+  // Retail host: map public URLs → /retail/* via beforeFiles (keeps ISR; avoids
+  // middleware x-middleware-rewrite that Torob follows into a redirect loop).
   async rewrites() {
-    const retailCategoryHosts = [
+    const retailHosts = [
       'www.poshaktaranom.ir',
       'poshaktaranom.ir',
       'localhost.ir',
     ];
+    const retailRoutes: Array<{ source: string; destination: string }> = [
+      { source: '/', destination: '/retail' },
+      { source: '/products', destination: '/retail/products' },
+      { source: '/products/:path*', destination: '/retail/products/:path*' },
+      { source: '/category', destination: '/retail/category' },
+      { source: '/category/:path*', destination: '/retail/category/:path*' },
+      { source: '/collections', destination: '/retail/collections' },
+      { source: '/collections/:path*', destination: '/retail/collections/:path*' },
+      { source: '/blog', destination: '/retail/blog' },
+      { source: '/blog/:path*', destination: '/retail/blog/:path*' },
+      { source: '/checkout', destination: '/retail/checkout' },
+      { source: '/checkout/:path*', destination: '/retail/checkout/:path*' },
+      { source: '/account', destination: '/retail/account' },
+      { source: '/account/:path*', destination: '/retail/account/:path*' },
+      { source: '/about', destination: '/retail/about' },
+      { source: '/contact', destination: '/retail/contact' },
+      { source: '/shipping', destination: '/retail/shipping' },
+      { source: '/returns', destination: '/retail/returns' },
+      { source: '/privacy', destination: '/retail/privacy' },
+      { source: '/terms', destination: '/retail/terms' },
+    ];
     return {
-      beforeFiles: retailCategoryHosts.map((host) => ({
-        source: '/category/:slug',
-        has: [{ type: 'host' as const, value: host }],
-        destination: '/retail/category/:slug',
-      })),
+      beforeFiles: retailHosts.flatMap((host) =>
+        retailRoutes.map((route) => ({
+          ...route,
+          has: [{ type: 'host' as const, value: host }],
+        })),
+      ),
     };
   },
 
