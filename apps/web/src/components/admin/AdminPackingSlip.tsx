@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer } from 'lucide-react';
 import { Modal } from '@/components/ui';
@@ -195,7 +195,18 @@ export function AdminPackingSlipButton({
   const [error, setError] = useState('');
   const [model, setModel] = useState<PackingSlipModel | null>(null);
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => {
+    setOpen(false);
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('packing-slip-print');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open && typeof document !== 'undefined') {
+      document.documentElement.classList.remove('packing-slip-print');
+    }
+  }, [open]);
 
   const load = async () => {
     setOpen(true);
@@ -215,11 +226,18 @@ export function AdminPackingSlipButton({
   };
 
   const printSheet = () => {
+    if (typeof document === 'undefined') return;
     document.documentElement.classList.add('packing-slip-print');
-    const done = () => document.documentElement.classList.remove('packing-slip-print');
-    window.addEventListener('afterprint', done, { once: true });
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      document.documentElement.classList.remove('packing-slip-print');
+    };
+    window.addEventListener('afterprint', cleanup, { once: true });
+    // Safety fallback for browsers without reliable afterprint
+    window.setTimeout(cleanup, 120000);
     window.print();
-    window.setTimeout(done, 1500);
   };
 
   if (!canShowPackingSlip(status)) return null;

@@ -37,13 +37,13 @@
   width: 148mm;
   min-height: 210mm;
   box-sizing: border-box;
-  padding: 6mm 7mm 6mm;
+  padding: 5mm 6mm;
   background: #ffffff;
   color: var(--ps-ink);
   font-family: var(--font-vazirmatn, 'Vazirmatn'), Tahoma, Arial, sans-serif;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.4;
   font-synthesis: none;
   border: 1px solid #cbd5e1;
   display: flex;
@@ -61,45 +61,45 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 4mm;
-  padding-bottom: 4mm;
+  gap: 3mm;
+  padding-bottom: 2.5mm;
   border-bottom: 1.2pt solid var(--ps-border-strong);
 }
 
 .ps-brand-lockup {
   display: flex;
   align-items: center;
-  gap: 3mm;
+  gap: 2.5mm;
   min-width: 0;
 }
 
 .ps-logo {
-  width: 12mm;
-  height: 12mm;
+  width: 10mm;
+  height: 10mm;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .ps-kicker {
   margin: 0 0 1px;
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ps-muted);
 }
 
 .ps-brand {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.2;
   color: var(--ps-border-strong);
 }
 
 .ps-meta {
-  margin: 2px 0 0;
-  font-size: 9.5px;
+  margin: 1.5px 0 0;
+  font-size: 8.5px;
   font-weight: 500;
   color: var(--ps-muted);
 }
@@ -107,13 +107,14 @@
 .ps-order-stamp {
   text-align: left;
   border: 0.75pt solid var(--ps-border-strong);
-  padding: 2mm 3mm;
-  min-width: 36mm;
+  padding: 1.5mm 2.5mm;
+  min-width: 32mm;
+  flex-shrink: 0;
 }
 
 .ps-order-label {
   margin: 0;
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 600;
   color: var(--ps-muted);
   text-align: right;
@@ -121,7 +122,7 @@
 
 .ps-order {
   margin: 1px 0 0;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: 0.02em;
@@ -133,8 +134,8 @@
 
 .ps-date,
 .ps-track {
-  margin: 2px 0 0;
-  font-size: 9px;
+  margin: 1.5px 0 0;
+  font-size: 8px;
   font-weight: 500;
   color: var(--ps-muted);
   text-align: right;
@@ -151,8 +152,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 4mm;
-  padding: 2.5mm 0;
+  gap: 3mm;
+  padding: 1.8mm 0;
   border-bottom: 0.5pt solid var(--ps-border);
 }
 
@@ -163,7 +164,7 @@
 
 .ps-from h2 {
   margin: 0;
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--ps-muted);
@@ -171,28 +172,28 @@
 
 .ps-from-name {
   margin: 1px 0 0;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.25;
 }
 
 .ps-from-phone,
 .ps-from-addr {
   margin: 1px 0 0;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.35;
   color: #334155;
   text-align: right;
 }
 
 /* ==========================================================================
-   Recipient (Hero Minimalist Delivery Box)
+   Recipient (Hero Delivery Box for Courier)
    ========================================================================== */
 .ps-to {
-  margin-top: 3.5mm;
-  border: 1.25pt solid var(--ps-border-strong);
-  padding: 3mm 3.5mm 3.5mm;
+  margin-top: 2.2mm;
+  border: 1.2pt solid var(--ps-border-strong);
+  padding: 2.2mm 2.8mm;
   background: #ffffff;
 }
 
@@ -200,23 +201,23 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 2mm;
-  margin-bottom: 2mm;
+  gap: 6px;
+  padding-bottom: 1.2mm;
+  margin-bottom: 1.2mm;
   border-bottom: 0.5pt solid var(--ps-border);
 }
 
 .ps-to-bar h2 {
   margin: 0;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--ps-border-strong);
 }
 
 .ps-to-bar p {
   margin: 0;
-  font-size: 8.5px;
+  font-size: 7.5px;
   font-weight: 600;
   color: var(--ps-muted);
 }
@@ -228,15 +229,15 @@
 
 .ps-to-name {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.2;
   color: var(--ps-border-strong);
 }
 
 .ps-to-phone {
-  margin: 1.2mm 0 0;
-  font-size: 13.5px;
+  margin: 1mm 0 0;
+  font-size: 12.5px;
   font-weight: 700;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
@@ -245,10 +246,10 @@
 }
 
 .ps-to-addr {
-  margin: 1.5mm 0 3mm;
-  font-size: 11.5px;
+  margin: 1.2mm 0 1.8mm;
+  font-size: 10px;
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.5;
   color: #1e293b;
   word-break: break-word;
 }
@@ -260,12 +261,12 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 1mm;
+  gap: 0.8mm;
   flex-shrink: 0;
 }
 
 .ps-postal-label {
-  font-size: 8px;
+  font-size: 7.5px;
   font-weight: 700;
   color: var(--ps-muted);
 }
@@ -277,14 +278,14 @@
 }
 
 .ps-postal-box {
-  width: 4.2mm;
-  height: 5.4mm;
+  width: 3.6mm;
+  height: 4.6mm;
   margin-inline-start: -0.5pt;
   border: 0.75pt solid #475569;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -293,13 +294,13 @@
 }
 
 .ps-postal-box.gap {
-  margin-inline-end: 2mm;
+  margin-inline-end: 1.8mm;
 }
 
 .ps-postal.large .ps-postal-box {
-  width: 6.2mm;
-  height: 7.8mm;
-  font-size: 14px;
+  width: 5.2mm;
+  height: 6.4mm;
+  font-size: 12px;
   border-width: 1pt;
   border-color: var(--ps-border-strong);
 }
@@ -308,7 +309,7 @@
    Product Checklist Table
    ========================================================================== */
 .ps-pack {
-  margin-top: 4mm;
+  margin-top: 2.5mm;
   flex: 1 1 auto;
 }
 
@@ -316,13 +317,13 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding-bottom: 1.2mm;
+  padding-bottom: 1mm;
   border-bottom: 1pt solid var(--ps-border-strong);
 }
 
 .ps-pack-title h2 {
   margin: 0;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: var(--ps-border-strong);
@@ -330,13 +331,13 @@
 
 .ps-pack-title p {
   margin: 0;
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 600;
   color: var(--ps-muted);
 }
 
 .ps-count {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--ps-border-strong);
@@ -350,34 +351,34 @@
 .ps-sheet th,
 .ps-sheet td {
   border-bottom: 0.5pt solid var(--ps-border);
-  padding: 1.8mm 1mm;
+  padding: 1.3mm 1mm;
   text-align: right;
   vertical-align: middle;
 }
 
 .ps-sheet th {
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--ps-muted);
   border-bottom: 0.75pt solid var(--ps-border-strong);
 }
 
 .ps-sheet td {
-  font-size: 10px;
-  line-height: 1.35;
+  font-size: 9px;
+  line-height: 1.3;
   color: #1e293b;
 }
 
 .ps-sheet td strong {
   display: block;
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 700;
   color: var(--ps-border-strong);
 }
 
 .ps-sku {
   display: block;
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 500;
   color: var(--ps-muted);
   text-align: right;
@@ -390,14 +391,14 @@
 }
 
 .ps-check {
-  width: 10mm;
+  width: 8mm;
   text-align: center;
 }
 
 .ps-tick {
   display: inline-block;
-  width: 3.8mm;
-  height: 3.8mm;
+  width: 3.4mm;
+  height: 3.4mm;
   border: 0.75pt solid #475569;
   background: #ffffff;
   vertical-align: middle;
@@ -409,39 +410,39 @@
 .ps-foot {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5mm;
+  gap: 4mm;
   margin-top: auto;
-  padding-top: 2.5mm;
+  padding-top: 2mm;
   border-top: 1pt solid var(--ps-border-strong);
 }
 
 .ps-invoice h2,
 .ps-notes h2 {
   margin: 0;
-  font-size: 9px;
+  font-size: 8.5px;
   font-weight: 700;
   color: var(--ps-muted);
 }
 
 .ps-invoice dl {
-  margin: 1.5mm 0 0;
+  margin: 1.2mm 0 0;
 }
 
 .ps-invoice dl > div {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 0.5mm 0;
-  font-size: 10px;
+  gap: 6px;
+  padding: 0.4mm 0;
+  font-size: 9px;
   color: #334155;
 }
 
 .ps-invoice .total {
-  margin-top: 1.2mm;
-  padding-top: 1.2mm;
+  margin-top: 1mm;
+  padding-top: 1mm;
   border-top: 0.75pt solid var(--ps-border-strong);
   font-weight: 800;
-  font-size: 12.5px;
+  font-size: 11px;
   line-height: 1.2;
   color: var(--ps-border-strong);
 }
@@ -458,24 +459,24 @@
 }
 
 .ps-notes p {
-  margin-top: 1.5mm;
-  font-size: 9.5px;
+  margin-top: 1.2mm;
+  font-size: 8.5px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.4;
   color: #475569;
 }
 
 .ps-return {
-  font-size: 8.5px !important;
+  font-size: 8px !important;
   color: var(--ps-muted);
 }
 
 .ps-sign {
   display: flex;
   align-items: center;
-  gap: 2mm;
-  margin-top: 2mm;
-  font-size: 9.5px;
+  gap: 1.8mm;
+  margin-top: 1.5mm;
+  font-size: 8.5px;
   font-weight: 600;
   color: var(--ps-border-strong);
 }
@@ -493,31 +494,67 @@
    ========================================================================== */
 @media print {
   @page {
-    size: A5 portrait;
-    margin: 5mm;
+    size: 148mm 210mm;
+    margin: 0;
   }
 
+  html,
+  body {
+    width: 148mm !important;
+    height: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Isolate print container */
   html.packing-slip-print body > *:not(.ps-print-root) {
     display: none !important;
   }
 
   html.packing-slip-print .ps-print-root {
     display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    left: 0 !important;
+    width: 148mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
   }
 
   html.packing-slip-print .ps-sheet {
-    width: 100%;
-    min-height: auto;
-    border: 0;
-    box-shadow: none;
-    padding: 0;
+    width: 148mm !important;
+    max-width: 148mm !important;
+    min-height: 206mm !important;
+    max-height: 208mm !important;
+    height: 208mm !important;
+    box-sizing: border-box !important;
+    padding: 5mm 6mm !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    break-inside: avoid !important;
+    break-after: avoid !important;
+    break-before: avoid !important;
   }
 
   .ps-mast,
   .ps-from,
   .ps-to,
+  .ps-pack,
   .ps-foot,
   .ps-sheet tr {
-    break-inside: avoid;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 }
