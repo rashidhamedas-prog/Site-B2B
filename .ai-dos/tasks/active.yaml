@@ -33,7 +33,7 @@ tasks:
       - "Report documents PSI/GSC evidence; no false 28-day CWV Pass claim"
   - id: "TASK-20260926-001"
     title: "Auth UI glass shell — portal login/register then retail account"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260926-001"
     roles:
@@ -42,43 +42,20 @@ tasks:
     branch: "feat/TASK-20260926-001-portal-auth-ui"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-25T21:15:00Z"
-    heartbeat_at: "2026-09-25T21:15:00Z"
+    heartbeat_at: "2026-09-25T21:55:00Z"
+    completed_at: "2026-09-25T21:55:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/components/ui/glass-button.tsx"
-      - "apps/web/src/components/ui/index.ts"
-      - "apps/web/src/components/auth/auth-glass.css"
-      - "apps/web/src/components/auth/AuthShell.tsx"
-      - "apps/web/src/components/auth/BlurFade.tsx"
-      - "apps/web/src/components/auth/Confetti.tsx"
-      - "apps/web/src/components/auth/GlassInput.tsx"
-      - "apps/web/src/components/auth/PortalLoginAuth.tsx"
-      - "apps/web/src/components/auth/PortalRegisterAuth.tsx"
-      - "apps/web/src/components/portal/LoginForm.tsx"
-      - "apps/web/src/components/portal/RegisterForm.tsx"
-      - "apps/web/src/app/portal/login/page.tsx"
-      - "apps/web/src/app/portal/register/page.tsx"
-      - "apps/web/src/components/retail/RetailAccountAuth.tsx"
-      - "apps/web/src/components/account/ForgotPasswordFlow.tsx"
-      - "apps/web/src/app/portal/forgot-password/page.tsx"
-      - "apps/web/src/app/retail/account/forgot-password/page.tsx"
-      - "apps/web/src/components/partners/PartnerLoginForm.tsx"
-      - "apps/web/src/app/partners/login/page.tsx"
-      - "apps/web/src/components/sales-partners/SalesPartnerLoginForm.tsx"
-      - "apps/web/package.json"
-      - "package-lock.json"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
+    file_claims: []
     notes: |
+      LIVE under tip 791bf67 (auth a004008+1f7a837). Claims released.
       Shared WORKLOG/active/handoff with TASK-20260925-001 (append-only).
-      No OAuth. Phone-based flows only. Brand tokens from globals.css.
     acceptance_criteria:
       - "Portal login: phone→password steps call useAuth.login purpose=wholesale"
       - "Portal register: 4-step B2B fields call useAuth.register; success copy unchanged"
       - "Retail account: OTP+password APIs unchanged; glass AuthShell visual"
+      - "Forgot-password + partners + sales-partners on AuthShell"
       - "No Google/GitHub; RTL Persian; prefers-reduced-motion respected"
-      - "apps/web tsc --noEmit passes"
+      - "apps/web tsc --noEmit passes; live portal login shows auth-glass-root"
   - id: "TASK-20260925-001"
     title: "Retail storefront audit root fixes (soft-404, /retail, collections, PDP copy, OG, hydration)"
     status: "in_progress"
