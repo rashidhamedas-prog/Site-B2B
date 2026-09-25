@@ -6,3 +6,4 @@ export { Skeleton, ProductCardSkeleton, TableRowSkeleton } from './Skeleton';
 export { Alert } from './Alert';
 export { Modal } from './Modal';
 export { Table, Pagination } from './Table';
+export { GlassButton } from './glass-button';

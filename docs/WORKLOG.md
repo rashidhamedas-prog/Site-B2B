@@ -1,5 +1,14 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-26 — Auth UI شیشه‌ای: portal سپس retail
+
+- پوسته مشترک `AuthShell` با گرادیان برند سبز/طلایی، glass input/button، RTL، و `prefers-reduced-motion`.
+- `/portal/login`: جریان موبایل → رمز متصل به `useAuth.login({ purpose: 'wholesale' })`.
+- `/portal/register`: ۴ گام B2B (فروشگاه، تماس، موقعیت، رمز) → `useAuth.register`؛ پیام موفقیت قبلی حفظ شد.
+- `/retail/account`: همان OTP + رمز؛ فقط ظاهر روی AuthShell؛ بدون Google/GitHub.
+- deps: `framer-motion`, `canvas-confetti`, `class-variance-authority`.
+- Task: TASK-20260926-001؛ branch: `feat/TASK-20260926-001-portal-auth-ui`. tsc web OK.
+
 ## 2026-09-25 — اصلاح ریشه‌ای یافته‌های ممیزی ویترین تکی (.ir)
 
 - Soft-404: حذف `retail/loading.tsx` که با استریم شِل HTTP را روی ۲۰۰ قفل می‌کرد؛ `notFound()` در متادیتای دسته/بلاگ هم صدا زده می‌شود.

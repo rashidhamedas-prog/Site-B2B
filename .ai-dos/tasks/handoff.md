@@ -2,6 +2,23 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-25T21:45:00Z — TASK-20260926-001 auth UI implemented
+
+- Portal login/register + RetailAccountAuth on glass AuthShell (brand tokens).
+- APIs unchanged. No OAuth buttons.
+- Validation: `cd apps/web && npx tsc --noEmit` → exit 0.
+- Commit/deploy not run (await user request).
+- Claims remain until commit or abandon.
+
+## 2026-09-25T21:15:00Z — TASK-20260926-001 auth UI claim
+
+- Owner: cursor:implementer-TASK-20260926-001
+- Branch: feat/TASK-20260926-001-portal-auth-ui
+- Scope: glass AuthShell for /portal/login + /portal/register, then RetailAccountAuth restyle.
+- Deps: framer-motion, canvas-confetti, class-variance-authority (+ @types/canvas-confetti).
+- Shared claims: docs/WORKLOG.md, active.yaml, handoff.md (append-only with TASK-20260925-001).
+- Next: implement primitives → portal → tsc → retail → WORKLOG.
+
 ## 2026-09-25T02:50:00Z — retail audit root fixes
 
 - Task TASK-20260925-001 claimed; reclaimed stale middleware + retail checkout from TASK-20260922-003 (hb 2026-09-23).
