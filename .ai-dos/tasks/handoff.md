@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-25T22:37:00Z — TASK-20260926-004 LIVE
+
+- Owner: cursor:implementer-TASK-20260926-004
+- VPS deploy complete at `3fdebeb` (feat permanent + bulk order delete).
+- Claims released. Admin click on `/admin/orders?status=DELETED` not exercised (login wall).
+- Independent Reviewer + Security residual (irreversible purge / PII).
+
 ## 2026-09-25T22:30:00Z — TASK-20260926-004 admin order hard delete + bulk
 
 - Owner: cursor:implementer-TASK-20260926-004
