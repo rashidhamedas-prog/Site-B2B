@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowRight, Truck, CheckCircle, XCircle, Clock, Package, MapPin, Save, Loader2, Trash2, Pencil, CreditCard } from 'lucide-react';
+import { ArrowRight, Truck, CheckCircle, XCircle, Clock, Package, MapPin, Save, Loader2, Trash2, Pencil, CreditCard, Eraser } from 'lucide-react';
 import { adminDetailActions, adminQueueHint, CUSTOMER_STATUS_FLOW, customerStatusStepIndex, orderStatusLabelFa } from '@taranom/shared-types';
 import { apiClient } from '@/lib/api';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
@@ -122,6 +122,7 @@ function AdminOrderDetailInner({ id }: { id: string }) {
   const [editQtys, setEditQtys] = useState<Record<string, number>>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [voiding, setVoiding] = useState(false);
+  const [purging, setPurging] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('edit') === '1') setEditing(true);
@@ -229,6 +230,20 @@ function AdminOrderDetailInner({ id }: { id: string }) {
     }
   };
 
+  const purgeOrder = async () => {
+    if (!order) return;
+    if (!confirm('سفارش به‌طور کامل حذف شود؟ این کار برگشت‌پذیر نیست و ردیف از دیتابیس پاک می‌شود.')) return;
+    setPurging(true);
+    try {
+      await apiClient.delete(`/orders/${order.id}/permanent`);
+      router.push('/admin/orders?status=DELETED');
+    } catch (e: any) {
+      alert(e?.message || 'خطا در حذف کامل');
+    } finally {
+      setPurging(false);
+    }
+  };
+
   if (loading) return <div className="p-8"><div className="skeleton h-64 rounded-2xl" /></div>;
   if (!order) return null;
 
@@ -269,11 +284,22 @@ function AdminOrderDetailInner({ id }: { id: string }) {
             </button>
           </div>
         )}
+        {deleted && (
+          <button
+            type="button"
+            onClick={purgeOrder}
+            disabled={purging}
+            className="btn btn-sm bg-error text-white hover:opacity-90 inline-flex items-center gap-1.5"
+          >
+            {purging ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eraser className="h-3.5 w-3.5" />}
+            حذف کامل
+          </button>
+        )}
       </div>
 
       {deleted && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          این سفارش حذف شده است — از فرایند سایت خارج است، ولی جزئیات برای آرشیو قابل مشاهده است.
+          این سفارش حذف شده است — از فرایند سایت خارج است، ولی جزئیات برای آرشیو قابل مشاهده است. برای پاک‌کردن قطعی از «حذف کامل» استفاده کنید.
           {order.voidReason ? <span className="block mt-1 text-xs opacity-80">دلیل: {order.voidReason}</span> : null}
         </div>
       )}

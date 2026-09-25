@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-25T22:30:00Z — TASK-20260926-004 admin order hard delete + bulk
+
+- Owner: cursor:implementer-TASK-20260926-004
+- Branch: feat/TASK-20260926-004-order-hard-delete
+- Soft-void already kept DELETED rows. Added hard purge for voided orders + bulk void/purge.
+- API: `DELETE /orders/:id/permanent`, `POST /orders/bulk/void`, `POST /orders/bulk/purge` (ADMIN).
+- Guard: purge rejects non-DELETED; bulk max 50; RMA deleted first; payments/ledger/invoices detach (orderId null).
+- UI: AdminOrders checkboxes + toolbar; Eraser on deleted rows; AdminOrderDetail «حذف کامل».
+- Validation: `npx ts-node --transpile-only src/modules/order/order-purge.spec.ts` ok; api+web `tsc --noEmit` ok.
+- Security residual: PII/order purge is irreversible; independent Security still required.
+- Next: commit/push/deploy; live click on `/admin/orders?status=DELETED`.
+
 ## 2026-09-25T22:12:00Z — TASK-20260926-003 storefront warm timer
 
 - Owner: cursor:implementer-TASK-20260926-003

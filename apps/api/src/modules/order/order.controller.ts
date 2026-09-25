@@ -178,6 +178,25 @@ export class OrderController {
     return order;
   }
 
+  @Post('bulk/void')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حذف نرم دسته‌ای سفارش‌ها (ادمین)' })
+  bulkVoid(
+    @Body() body: { ids?: string[]; reason?: string } = {},
+    @Request() req?: Express.Request & { user: JwtUser },
+  ) {
+    return this.orderService.bulkVoidOrders(body?.ids, body?.reason, req?.user?.sub);
+  }
+
+  @Post('bulk/purge')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حذف کامل دسته‌ای سفارش‌های حذف‌شده (ادمین)' })
+  bulkPurge(@Body() body: { ids?: string[] } = {}) {
+    return this.orderService.bulkPurgeOrders(body?.ids);
+  }
+
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles('ADMIN')
@@ -194,6 +213,14 @@ export class OrderController {
     },
   ) {
     return this.orderService.updateOrder(id, body ?? {});
+  }
+
+  @Delete(':id/permanent')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'حذف کامل سفارش حذف‌شده — ردیف از دیتابیس پاک می‌شود' })
+  purgeOrder(@Param('id') id: string) {
+    return this.orderService.purgeOrder(id);
   }
 
   @Delete(':id')

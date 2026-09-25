@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-26 — حذف کامل و دسته‌ای سفارش در ادمین
+
+- **TASK-20260926-004**: برای سفارش‌های `DELETED` دکمه «حذف کامل» (`DELETE /orders/:id/permanent`)؛ انتخاب چندتایی + حذف نرم/کامل دسته‌ای (`POST /orders/bulk/void|purge`). فقط ADMIN؛ RMA/اقساط پاک، پرداخت/ledger جدا می‌شود.
+- Files: `order.service.ts`, `order.controller.ts`, `order-purge.spec.ts`, `AdminOrders.tsx`, `AdminOrderDetail.tsx`
+- Validation: `order-purge.spec.ts` ok; `apps/api` + `apps/web` tsc --noEmit ok.
+
 ## 2026-09-26 — Warm دوره‌ای HTML ویترین (TTFB/CWV)
 
 - اسکریپت `scripts/warm-storefront-homes.sh`: هوم + کاتالوگ تک/عمده از `127.0.0.1:3000` با Host عمومی.

@@ -1432,6 +1432,129 @@ export class OrderService {
     return this.findOne(id);
   }
 
+  private normalizeBulkIds(ids: unknown): string[] {
+    if (!Array.isArray(ids)) {
+      throw new BadRequestException('لیست شناسه سفارش الزامی است');
+    }
+    const cleaned = [
+      ...new Set(
+        ids
+          .map((value) => String(value ?? '').trim())
+          .filter((value) => value.length > 0),
+      ),
+    ];
+    if (!cleaned.length) {
+      throw new BadRequestException('حداقل یک سفارش انتخاب کنید');
+    }
+    if (cleaned.length > 50) {
+      throw new BadRequestException('حداکثر ۵۰ سفارش در هر درخواست');
+    }
+    return cleaned;
+  }
+
+  /**
+   * Hard-delete a previously voided order. Unlinks payment/invoice audit rows,
+   * removes RMA + installment dependents, then deletes the order row (CASCADE items).
+   */
+  async purgeOrder(id: string): Promise<{ id: string; purged: true }> {
+    const order = await this.findOne(id);
+    if (order.status !== 'DELETED' && !order.voidedAt) {
+      throw new BadRequestException(
+        'فقط سفارش حذف‌شده را می‌توان کامل پاک کرد. ابتدا حذف نرم کنید.',
+      );
+    }
+    await this.reverseEffects(order);
+    await this.dataSource.transaction(async (manager) => {
+      await this.purgeOrderDependents(manager, id);
+      const result = await manager.getRepository(OrderEntity).delete(id);
+      if (!result.affected) {
+        throw new NotFoundException('سفارش یافت نشد');
+      }
+    });
+    return { id, purged: true };
+  }
+
+  private async purgeOrderDependents(manager: EntityManager, id: string): Promise<void> {
+    // RMA FK is ON DELETE RESTRICT — must go first.
+    await manager.query(`DELETE FROM return_requests WHERE "orderId" = $1`, [id]);
+    await manager.query(
+      `
+      DELETE FROM installment_schedules
+      WHERE "contractId" IN (
+        SELECT id FROM installment_contracts WHERE "orderId"::text = $1::text
+      )
+      `,
+      [id],
+    );
+    await manager.query(
+      `DELETE FROM installment_contracts WHERE "orderId"::text = $1::text`,
+      [id],
+    );
+    await manager.query(
+      `DELETE FROM sales_commission_snapshots WHERE "orderId"::text = $1::text`,
+      [id],
+    );
+    // Keep financial audit rows; only detach from the purged order.
+    await manager.query(
+      `UPDATE payments SET "orderId" = NULL WHERE "orderId"::text = $1::text`,
+      [id],
+    );
+    await manager.query(
+      `UPDATE payment_ledger_entries SET "orderId" = NULL WHERE "orderId"::text = $1::text`,
+      [id],
+    );
+    await manager.query(
+      `UPDATE sales_commission_ledger_entries SET "orderId" = NULL WHERE "orderId"::text = $1::text`,
+      [id],
+    );
+    await manager.query(
+      `UPDATE invoices SET "orderId" = NULL WHERE "orderId"::text = $1::text`,
+      [id],
+    );
+  }
+
+  async bulkVoidOrders(
+    ids: unknown,
+    reason?: string,
+    processedBy?: string,
+  ): Promise<{ action: 'void'; results: Array<{ id: string; ok: boolean; error?: string }> }> {
+    const list = this.normalizeBulkIds(ids);
+    const results: Array<{ id: string; ok: boolean; error?: string }> = [];
+    for (const id of list) {
+      try {
+        await this.voidOrder(id, reason, processedBy);
+        results.push({ id, ok: true });
+      } catch (err: unknown) {
+        results.push({
+          id,
+          ok: false,
+          error: err instanceof Error ? err.message : 'خطا در حذف',
+        });
+      }
+    }
+    return { action: 'void', results };
+  }
+
+  async bulkPurgeOrders(
+    ids: unknown,
+  ): Promise<{ action: 'purge'; results: Array<{ id: string; ok: boolean; error?: string }> }> {
+    const list = this.normalizeBulkIds(ids);
+    const results: Array<{ id: string; ok: boolean; error?: string }> = [];
+    for (const id of list) {
+      try {
+        await this.purgeOrder(id);
+        results.push({ id, ok: true });
+      } catch (err: unknown) {
+        results.push({
+          id,
+          ok: false,
+          error: err instanceof Error ? err.message : 'خطا در حذف کامل',
+        });
+      }
+    }
+    return { action: 'purge', results };
+  }
+
   /**
    * Admin edit: notes/address/shipping/payment + item qty (stock delta) while active.
    */
