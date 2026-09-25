@@ -2,11 +2,15 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { ArrowRight, MessageSquare, Phone } from 'lucide-react';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { BlurFade } from '@/components/auth/BlurFade';
+import { GlassInput } from '@/components/auth/GlassInput';
+import { GlassButton } from '@/components/ui/glass-button';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
 import { cookieScopeFromPurpose } from '@/lib/admin-session';
 import { validateNewPassword } from '@/lib/password-policy';
-import { PasswordField } from './PasswordField';
 
 type ResetResult = {
   message: string;
@@ -19,10 +23,13 @@ export function ForgotPasswordFlow({
   loginHref,
   successHref,
   variant,
+  embedded = false,
 }: {
   loginHref: string;
   successHref: string;
   variant: 'retail' | 'wholesale';
+  /** When true, skip AuthShell (caller already wraps) */
+  embedded?: boolean;
 }) {
   const [step, setStep] = useState<'phone' | 'reset'>('phone');
   const [phone, setPhone] = useState('');
@@ -33,11 +40,6 @@ export function ForgotPasswordFlow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
-
-  const retail = variant === 'retail';
-  const fieldClass = retail
-    ? 'w-full rounded-xl border px-4 py-3 text-sm'
-    : 'w-full rounded-xl border border-gray-200 px-4 py-3 text-sm';
 
   const requestCode = async (e: FormEvent) => {
     e.preventDefault();
@@ -92,22 +94,29 @@ export function ForgotPasswordFlow({
     }
   };
 
-  return (
-    <div className="space-y-5">
+  const body = (
+    <div className="w-full max-w-[320px] space-y-5">
+      {!embedded ? null : (
+        <div className="text-center">
+          <p className="text-2xl font-extrabold text-[var(--brand-ink)]">بازیابی رمز</p>
+          <p className="mt-1 text-sm text-[var(--brand-muted)]">کد پیامکی برای رمز تازه</p>
+        </div>
+      )}
+
       {info ? (
-        <p className={`rounded-xl px-3 py-2 text-sm ${retail ? 'bg-amber-50 text-amber-900' : 'bg-primary-50 text-primary'}`}>
+        <p
+          role="status"
+          className="rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_12%,white)] px-3 py-2 text-sm text-[var(--color-primary-dark)]"
+        >
           {info}
         </p>
       ) : null}
+
       {step === 'phone' ? (
         <form onSubmit={requestCode} className="space-y-4" noValidate>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="forgot-phone">
-              شماره موبایل
-            </label>
+          <GlassInput icon={<Phone className="h-5 w-5" aria-hidden />}>
             <input
               id="forgot-phone"
-              className={fieldClass}
               inputMode="numeric"
               autoComplete="tel"
               placeholder="09xxxxxxxxx"
@@ -115,70 +124,75 @@ export function ForgotPasswordFlow({
               onChange={(e) => setPhone(e.target.value)}
               required
               dir="ltr"
+              aria-label="شماره موبایل"
+              className="text-left"
             />
-          </div>
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={busy}
-            className={
-              retail
-                ? 'w-full rounded-full bg-[var(--retail-gold)] py-3 text-sm font-extrabold text-white disabled:opacity-60'
-                : 'btn btn-primary btn-md w-full'
-            }
-          >
+          </GlassInput>
+          {error ? (
+            <p role="alert" className="text-center text-sm text-[var(--brand-error)]">
+              {error}
+            </p>
+          ) : null}
+          <GlassButton type="submit" size="full" disabled={busy}>
             {busy ? 'در حال ارسال…' : 'ارسال کد پیامکی'}
-          </button>
+          </GlassButton>
         </form>
       ) : (
         <form onSubmit={submitReset} className="space-y-4" noValidate>
-          <p className="text-sm text-gray-500">کد ارسال‌شده به {phone} را وارد کنید و رمز تازه بگذارید.</p>
-          {devCode ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs">کد آزمایشی: {devCode}</p> : null}
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700" htmlFor="forgot-code">
-              کد تأیید
-            </label>
+          <p className="text-center text-sm text-[var(--brand-muted)]">
+            کد ارسال‌شده به {phone} را وارد کنید و رمز تازه بگذارید.
+          </p>
+          {devCode ? (
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-900">
+              کد آزمایشی: {devCode}
+            </p>
+          ) : null}
+          <GlassInput icon={<MessageSquare className="h-5 w-5" aria-hidden />}>
             <input
               id="forgot-code"
-              className={`${fieldClass} text-center tracking-[0.4em]`}
               inputMode="numeric"
               autoComplete="one-time-code"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               required
               dir="ltr"
+              aria-label="کد تأیید"
+              className="text-center tracking-[0.35em]"
             />
-          </div>
-          <PasswordField
-            label="رمز عبور جدید"
-            value={password}
-            onChange={setPassword}
-            autoComplete="new-password"
-            required
-            hint="حداقل ۸ کاراکتر، بدون فاصله"
-          />
-          <PasswordField
-            label="تکرار رمز جدید"
-            value={confirm}
-            onChange={setConfirm}
-            autoComplete="new-password"
-            required
-          />
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={busy}
-            className={
-              retail
-                ? 'w-full rounded-full bg-[var(--retail-primary)] py-3 text-sm font-extrabold text-white disabled:opacity-60'
-                : 'btn btn-primary btn-md w-full'
-            }
-          >
+          </GlassInput>
+          <GlassInput>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+              placeholder="رمز عبور جدید (حداقل ۸)"
+              aria-label="رمز عبور جدید"
+            />
+          </GlassInput>
+          <GlassInput>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              required
+              placeholder="تکرار رمز جدید"
+              aria-label="تکرار رمز جدید"
+            />
+          </GlassInput>
+          {error ? (
+            <p role="alert" className="text-center text-sm text-[var(--brand-error)]">
+              {error}
+            </p>
+          ) : null}
+          <GlassButton type="submit" size="full" disabled={busy}>
             {busy ? 'در حال ذخیره…' : 'ذخیره رمز و ادامه'}
-          </button>
+          </GlassButton>
           <button
             type="button"
-            className="w-full text-sm text-gray-500 underline"
+            className="mx-auto flex items-center gap-1.5 text-sm text-[var(--brand-muted)] hover:text-[var(--brand-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
             onClick={() => {
               setStep('phone');
               setCode('');
@@ -186,16 +200,40 @@ export function ForgotPasswordFlow({
               setError('');
             }}
           >
+            <ArrowRight className="h-4 w-4" />
             تغییر شماره یا ارسال دوباره
           </button>
         </form>
       )}
-      <p className="text-center text-sm text-gray-500">
+
+      <p className="text-center text-sm text-[var(--brand-muted)]">
         رمز را به یاد آوردید؟{' '}
-        <Link href={loginHref} className={retail ? 'font-bold text-[var(--retail-primary)]' : 'text-primary hover:underline'}>
+        <Link
+          href={loginHref}
+          className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+        >
           بازگشت به ورود
         </Link>
       </p>
     </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <AuthShell
+      brandName={variant === 'retail' ? 'حساب من — ترنم' : 'پنل عمده ترنم'}
+      compact={variant === 'retail'}
+    >
+      <div className="w-full text-center">
+        <BlurFade>
+          <p className="text-3xl font-extrabold tracking-tight text-[var(--brand-ink)]">بازیابی رمز</p>
+        </BlurFade>
+        <BlurFade delay={0.1}>
+          <p className="mt-2 text-sm text-[var(--brand-muted)]">کد پیامکی می‌فرستیم تا رمز تازه بگذارید</p>
+        </BlurFade>
+      </div>
+      {body}
+    </AuthShell>
   );
 }

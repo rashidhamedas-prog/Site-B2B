@@ -2,15 +2,16 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
+import { MessageSquare, Phone } from 'lucide-react';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { BlurFade } from '@/components/auth/BlurFade';
+import { GlassInput } from '@/components/auth/GlassInput';
+import { GlassButton } from '@/components/ui/glass-button';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
 import { normalizePhone } from '@/lib/phone';
 import { safeScopedRedirect } from '@/lib/safe-redirect';
-
-const inputClass =
-  'w-full min-h-11 rounded-2xl border border-stone-300 bg-white px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]';
-const buttonClass =
-  'w-full min-h-11 rounded-2xl bg-[#1B5C4A] font-medium text-white disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]';
+import { cn } from '@/lib/cn';
 
 export function SalesPartnerLoginForm() {
   const [phone, setPhone] = useState('');
@@ -76,54 +77,145 @@ export function SalesPartnerLoginForm() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center bg-[#f6f3ee] px-4 py-10 text-right text-stone-900" dir="rtl">
-      <p className="text-[11px] font-medium text-[#1B5C4A]">ترنم · همکار بازاریاب</p>
-      <h1 className="mt-1 text-2xl font-semibold">ورود</h1>
-      <p className="mt-2 text-sm leading-7 text-stone-600">این ورود برای همکار بازاریاب است، نه تأمین‌کننده ارسال.</p>
-      <div className="mt-5 grid grid-cols-2 gap-2" role="group" aria-label="روش ورود">
-        <button type="button" className={`min-h-11 rounded-2xl px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${mode === 'otp' ? 'bg-[#1B5C4A] text-white' : 'bg-white text-stone-700'}`} onClick={() => setMode('otp')} aria-pressed={mode === 'otp'}>
+    <AuthShell
+      brandName="همکار بازاریاب ترنم"
+      footer={
+        <p className="text-center text-sm">
+          <Link
+            className="font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+            href="/sales-partnership"
+          >
+            درخواست همکاری
+          </Link>
+        </p>
+      }
+    >
+      <div className="w-full max-w-[320px] text-center">
+        <BlurFade>
+          <p className="text-3xl font-extrabold tracking-tight text-[var(--brand-ink)]">ورود</p>
+        </BlurFade>
+        <BlurFade delay={0.1}>
+          <p className="mt-2 text-sm leading-7 text-[var(--brand-muted)]">
+            این ورود برای همکار بازاریاب است، نه تأمین‌کننده ارسال.
+          </p>
+        </BlurFade>
+      </div>
+
+      <div
+        className="grid w-full max-w-[320px] grid-cols-2 gap-1 rounded-full bg-white/50 p-1 backdrop-blur-sm"
+        role="group"
+        aria-label="روش ورود"
+      >
+        <button
+          type="button"
+          className={cn(
+            'rounded-full py-2 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]',
+            mode === 'otp' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-[var(--brand-muted)]',
+          )}
+          onClick={() => setMode('otp')}
+          aria-pressed={mode === 'otp'}
+        >
           پیامک
         </button>
-        <button type="button" className={`min-h-11 rounded-2xl px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] ${mode === 'password' ? 'bg-[#1B5C4A] text-white' : 'bg-white text-stone-700'}`} onClick={() => setMode('password')} aria-pressed={mode === 'password'}>
+        <button
+          type="button"
+          className={cn(
+            'rounded-full py-2 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]',
+            mode === 'password' ? 'bg-white text-[var(--color-primary)] shadow-sm' : 'text-[var(--brand-muted)]',
+          )}
+          onClick={() => setMode('password')}
+          aria-pressed={mode === 'password'}
+        >
           رمز
         </button>
       </div>
 
-      {mode === 'otp' && !otpSent && (
-        <form className="mt-6 space-y-4" onSubmit={requestOtp}>
-          <label className="block text-sm font-medium" htmlFor="phone">شماره موبایل</label>
-          <input id="phone" className={inputClass} inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-          <button className={buttonClass} disabled={busy}>{busy ? 'در حال ارسال…' : 'دریافت کد'}</button>
-        </form>
-      )}
+      {error ? (
+        <p role="alert" className="w-full max-w-[320px] rounded-xl bg-red-50 px-3 py-2 text-center text-sm text-[var(--brand-error)]">
+          {error}
+        </p>
+      ) : null}
 
-      {mode === 'otp' && otpSent && (
-        <form className="mt-6 space-y-4" onSubmit={verifyOtp}>
-          <p className="text-sm text-stone-700" role="status">{status}</p>
-          <label className="block text-sm font-medium" htmlFor="code">کد تأیید</label>
-          <input id="code" className={inputClass} inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} required />
-          {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-          <button className={buttonClass} disabled={busy}>{busy ? 'در حال ورود…' : 'ورود'}</button>
+      {mode === 'otp' && !otpSent ? (
+        <form className="w-full max-w-[320px] space-y-4" onSubmit={requestOtp}>
+          <GlassInput icon={<Phone className="h-5 w-5" aria-hidden />}>
+            <input
+              id="phone"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              dir="ltr"
+              placeholder="09xxxxxxxxx"
+              aria-label="شماره موبایل"
+              className="text-left"
+            />
+          </GlassInput>
+          <GlassButton type="submit" size="full" disabled={busy}>
+            {busy ? 'در حال ارسال…' : 'دریافت کد'}
+          </GlassButton>
         </form>
-      )}
+      ) : null}
 
-      {mode === 'password' && (
-        <form className="mt-6 space-y-4" onSubmit={loginPassword}>
-          <label className="block text-sm font-medium" htmlFor="phone2">شماره موبایل</label>
-          <input id="phone2" className={inputClass} inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          <label className="block text-sm font-medium" htmlFor="password">رمز عبور</label>
-          <input id="password" type="password" className={inputClass} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-          {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-          <button className={buttonClass} disabled={busy}>{busy ? 'در حال ورود…' : 'ورود'}</button>
+      {mode === 'otp' && otpSent ? (
+        <form className="w-full max-w-[320px] space-y-4" onSubmit={verifyOtp}>
+          {status ? (
+            <p className="text-center text-sm text-[var(--brand-muted)]" role="status">
+              {status}
+            </p>
+          ) : null}
+          <GlassInput icon={<MessageSquare className="h-5 w-5" aria-hidden />}>
+            <input
+              id="code"
+              inputMode="numeric"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              required
+              dir="ltr"
+              aria-label="کد تأیید"
+              className="text-center tracking-widest"
+            />
+          </GlassInput>
+          <GlassButton type="submit" size="full" disabled={busy}>
+            {busy ? 'در حال ورود…' : 'ورود'}
+          </GlassButton>
         </form>
-      )}
+      ) : null}
 
-      <p className="mt-8 text-sm">
-        <Link className="text-[#1B5C4A] underline-offset-4 hover:underline" href="/sales-partnership">
-          درخواست همکاری
-        </Link>
-      </p>
-    </main>
+      {mode === 'password' ? (
+        <form className="w-full max-w-[320px] space-y-4" onSubmit={loginPassword}>
+          <GlassInput icon={<Phone className="h-5 w-5" aria-hidden />}>
+            <input
+              id="phone2"
+              inputMode="tel"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              dir="ltr"
+              placeholder="09xxxxxxxxx"
+              aria-label="شماره موبایل"
+              className="text-left"
+            />
+          </GlassInput>
+          <GlassInput>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="رمز عبور"
+              aria-label="رمز عبور"
+            />
+          </GlassInput>
+          <GlassButton type="submit" size="full" disabled={busy}>
+            {busy ? 'در حال ورود…' : 'ورود'}
+          </GlassButton>
+        </form>
+      ) : null}
+    </AuthShell>
   );
 }

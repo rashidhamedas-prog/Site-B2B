@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { Eye, EyeOff, Lock, Phone } from 'lucide-react';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { BlurFade } from '@/components/auth/BlurFade';
+import { GlassInput } from '@/components/auth/GlassInput';
+import { GlassButton } from '@/components/ui/glass-button';
 import { useAuth } from '@/lib/hooks/useAuth';
 
 export function PartnerLoginForm() {
@@ -16,17 +20,26 @@ export function PartnerLoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      {error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-      <div>
-        <label htmlFor="partner-phone" className="mb-2 block text-sm font-medium text-gray-800">
-          شماره موبایلی که با آن دعوت شدید
-        </label>
-        <div className="relative">
+    <AuthShell brandName="همکاران ترنم">
+      <div className="w-full max-w-[320px] text-center">
+        <BlurFade>
+          <p className="text-3xl font-extrabold tracking-tight text-[var(--brand-ink)]">ورود همکار</p>
+        </BlurFade>
+        <BlurFade delay={0.1}>
+          <p className="mt-2 text-sm leading-7 text-[var(--brand-muted)]">
+            سفارش‌هایی که ارسال‌شان با شماست. ثبت‌نام عمومی نیست؛ اگر دعوت نشده‌اید با ترنم تماس بگیرید.
+          </p>
+        </BlurFade>
+      </div>
+
+      <form onSubmit={handleSubmit} className="w-full max-w-[320px] space-y-4" noValidate>
+        {error ? (
+          <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-center text-sm text-[var(--brand-error)]">
+            {error}
+          </p>
+        ) : null}
+
+        <GlassInput icon={<Phone className="h-5 w-5" aria-hidden />}>
           <input
             id="partner-phone"
             type="tel"
@@ -37,16 +50,24 @@ export function PartnerLoginForm() {
             placeholder="0915…"
             required
             dir="ltr"
-            className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-left focus:outline-none focus:ring-2 focus:ring-primary/30"
+            aria-label="شماره موبایل"
+            className="text-left"
           />
-          <Phone className="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
-        </div>
-      </div>
-      <div>
-        <label htmlFor="partner-password" className="mb-2 block text-sm font-medium text-gray-800">
-          رمز موقت
-        </label>
-        <div className="relative">
+        </GlassInput>
+
+        <GlassInput
+          icon={
+            <button
+              type="button"
+              onClick={() => setShowPass(!showPass)}
+              className="rounded-full p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+              aria-label={showPass ? 'پنهان کردن رمز' : 'نمایش رمز'}
+            >
+              {showPass ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
+          }
+          trailing={<Lock className="h-4 w-4 text-[var(--brand-muted)]" aria-hidden />}
+        >
           <input
             id="partner-password"
             type={showPass ? 'text' : 'password'}
@@ -54,26 +75,15 @@ export function PartnerLoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30"
+            placeholder="رمز موقت"
+            aria-label="رمز موقت"
           />
-          <Lock className="pointer-events-none absolute right-4 top-3.5 h-4 w-4 text-gray-400" />
-          <button
-            type="button"
-            onClick={() => setShowPass(!showPass)}
-            className="absolute left-3 top-2 inline-flex min-h-11 min-w-11 items-center justify-center text-gray-500"
-            aria-label={showPass ? 'پنهان کردن رمز' : 'نمایش رمز'}
-          >
-            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-white disabled:opacity-50"
-      >
-        {loading ? 'در حال ورود…' : 'ورود به پنل همکار'}
-      </button>
-    </form>
+        </GlassInput>
+
+        <GlassButton type="submit" size="full" disabled={loading}>
+          {loading ? 'در حال ورود…' : 'ورود به پنل همکار'}
+        </GlassButton>
+      </form>
+    </AuthShell>
   );
 }

@@ -6,6 +6,7 @@
 - `/portal/login`: جریان موبایل → رمز متصل به `useAuth.login({ purpose: 'wholesale' })`.
 - `/portal/register`: ۴ گام B2B (فروشگاه، تماس، موقعیت، رمز) → `useAuth.register`؛ پیام موفقیت قبلی حفظ شد.
 - `/retail/account`: همان OTP + رمز؛ فقط ظاهر روی AuthShell؛ بدون Google/GitHub.
+- فاز ۳: فراموشی رمز portal/retail + ورود `/partners/login` و `/sales-partners/login` روی همان پوسته (ادمین دست‌نخورده).
 - deps: `framer-motion`, `canvas-confetti`, `class-variance-authority`.
 - Task: TASK-20260926-001؛ branch: `feat/TASK-20260926-001-portal-auth-ui`. tsc web OK.
 
