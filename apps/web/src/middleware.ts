@@ -163,9 +163,6 @@ export function middleware(request: NextRequest) {
   // clean public path so crawlers never index the internal prefix.
   if (pathname === '/retail' || pathname.startsWith('/retail/')) {
     const stripped = pathname === '/retail' ? '/' : pathname.slice('/retail'.length) || '/';
-    // #region agent log
-    fetch('http://127.0.0.1:7386/ingest/441ee71b-11ea-467a-bcb4-b19ca7c41207',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30acff'},body:JSON.stringify({sessionId:'30acff',location:'middleware.ts:retail-301',message:'direct /retail → 301',data:{pathname,stripped},timestamp:Date.now(),hypothesisId:'retail-301',runId:'pre-fix'})}).catch(()=>{});
-    // #endregion
     return redirectPublic(request, stripped);
   }
 
