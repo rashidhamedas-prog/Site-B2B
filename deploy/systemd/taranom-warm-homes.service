@@ -1,0 +1,13 @@
+[Unit]
+Description=Taranom warm retail/wholesale home+catalog HTML (CWV TTFB)
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=wholesale-admin
+WorkingDirectory=/opt/taranom
+EnvironmentFile=-/opt/taranom/.env
+ExecStart=/bin/bash /opt/taranom/scripts/warm-storefront-homes.sh
+TimeoutStartSec=120

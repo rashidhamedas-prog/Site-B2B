@@ -67,6 +67,7 @@ Lab insights مشترک: render-blocking ~330–390ms؛ unused JS ~134–142KiB�
 1. `STOREFRONT_HTML_CACHE_CONTROL = public, s-maxage=60, stale-while-revalidate=86400`
 2. هیرو retail/wholesale: mobile-first `img` + یک `preload` با `imageSrcSet`
 3. تست واحد قرارداد کش؛ tsc web پاس
+4. **Follow-on:** `taranom-warm-homes.timer` هر ~۵۰s هوم+کاتالوگ را از `127.0.0.1:3000` گرم می‌کند تا HIT غالب بماند
 
 CMS همچنان با on-demand revalidate + warm تازه می‌شود؛ `s-maxage=60` حفظ شده.
 

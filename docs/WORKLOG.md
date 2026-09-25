@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-26 — Warm دوره‌ای HTML ویترین (TTFB/CWV)
+
+- اسکریپت `scripts/warm-storefront-homes.sh`: هوم + کاتالوگ تک/عمده از `127.0.0.1:3000` با Host عمومی.
+- systemd `taranom-warm-homes.timer` هر ~۵۰ثانیه (هم‌تراز `s-maxage=60`).
+- نصب: `bash scripts/install-warm-homes-timer.sh` روی VPS.
+- Task: TASK-20260926-003؛ ادامهٔ TASK-20260926-002.
+
 ## 2026-09-26 — CWV Failed: TTFB/LCP ریشه‌ای (تک + عمده)
 
 - شواهد PSI/CrUX موبایل: `.ir` LCP 3.2–3.3s / TTFB 1.4s؛ `.com` LCP 3s / TTFB 1.6s؛ INP/CLS خوب (GSC `.com`: INP validation Passed؛ LCP>2.5s Started روی ۱۶ URL).

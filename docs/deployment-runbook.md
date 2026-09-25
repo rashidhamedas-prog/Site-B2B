@@ -8,6 +8,7 @@ Executable ops guide for this repository. Derived from evidenced scripts and con
 | Primary branch         | `master` (also accepts `main` in some scripts)                                                                 |
 | Compose file           | `docker-compose.yml`                                                                                           |
 | Auto-deploy            | `scripts/auto-deploy.sh` + `deploy/systemd/taranom-autodeploy.{service,timer}`                                 |
+| Storefront HTML warm   | `scripts/warm-storefront-homes.sh` + `deploy/systemd/taranom-warm-homes.{service,timer}` (every ~50s)          |
 | Manual bootstrap       | `deploy.sh`, `scripts/redeploy-server.sh`                                                                      |
 | CI                     | `.github/workflows/ci.yml` (`lint-and-build`; `deploy` only on `workflow_dispatch` + `production` environment) |
 | Public wholesale       | `https://poshaktaranom.com`                                                                                    |
@@ -410,6 +411,7 @@ If application rollback cannot restore correctness → execute approved restore 
 | Compose status          | `docker compose ps`                                                                                   |
 | Container logs          | `docker compose logs -f api` / `web` / `nginx`                                                        |
 | Auto-deploy             | `systemctl status taranom-autodeploy.timer`; `journalctl -u taranom-autodeploy.service`               |
+| Storefront HTML warm    | `systemctl status taranom-warm-homes.timer`; `journalctl -u taranom-warm-homes.service`               |
 | Edge                    | Nginx access/error logs inside `taranom_nginx`; rate-limit zones `api` / `auth` in `nginx/nginx.conf` |
 | Dependency healthchecks | Postgres `pg_isready`, Redis ping, Meili `/health`, MinIO `/minio/health/live` (compose)              |
 

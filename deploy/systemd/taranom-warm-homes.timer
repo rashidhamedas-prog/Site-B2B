@@ -1,0 +1,11 @@
+[Unit]
+Description=Warm Taranom storefront HTML every ~50s for CWV TTFB
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=50s
+AccuracySec=5s
+Unit=taranom-warm-homes.service
+
+[Install]
+WantedBy=timers.target

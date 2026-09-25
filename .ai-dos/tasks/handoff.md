@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-25T22:12:00Z — TASK-20260926-003 storefront warm timer
+
+- Owner: cursor:implementer-TASK-20260926-003
+- Branch: fix/TASK-20260926-003-storefront-warm
+- Adds warm-storefront-homes.sh + systemd timer (~50s) for home+catalog.
+- Next: commit/push/merge master, deploy, install timer on VPS, verify HIT TTFB.
+
 ## 2026-09-25T21:56:00Z — TASK-20260926-001 LIVE verified
 
 - VPS tip `791bf67` includes auth `1f7a837` + `a004008`. API health 200.

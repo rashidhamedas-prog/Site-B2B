@@ -1,5 +1,34 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260926-003"
+    title: "Periodic storefront HTML warm for CWV TTFB"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260926-003"
+    roles:
+      implementer: "cursor:implementer-TASK-20260926-003"
+      reviewer: "required-after-diff"
+    branch: "fix/TASK-20260926-003-storefront-warm"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-25T22:10:00Z"
+    heartbeat_at: "2026-09-25T22:10:00Z"
+    depends_on: ["TASK-20260926-002"]
+    file_claims:
+      - "scripts/warm-storefront-homes.sh"
+      - "scripts/install-warm-homes-timer.sh"
+      - "deploy/systemd/taranom-warm-homes.service"
+      - "deploy/systemd/taranom-warm-homes.timer"
+      - "docs/WORKLOG.md"
+      - "docs/deployment-runbook.md"
+      - "docs/reports/2026-09-26-cwv-ttfb-root-fix.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    notes: |
+      Follow-on to TASK-20260926-002. systemd timer every ~50s warms home+catalog.
+    acceptance_criteria:
+      - "warm script hits retail+wholesale / and /products via 127.0.0.1:3000"
+      - "timer installed and enabled on VPS"
+      - "public homes show x-nextjs-cache HIT or STALE with low TTFB after warm"
   - id: "TASK-20260926-002"
     title: "CWV Failed root fix - HTML SWR + mobile-first hero LCP"
     status: "in_progress"
@@ -24,6 +53,7 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
     notes: |
+      CWV Cache-Control live under tip including 791bf67; follow-on warm is TASK-20260926-003.
       Reclaimed middleware.ts from TASK-20260925-001 (audit already on master; CWV P0).
       Shared WORKLOG/active/handoff append-only.
     acceptance_criteria:
