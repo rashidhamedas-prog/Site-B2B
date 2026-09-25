@@ -5,9 +5,10 @@ Append newest entries at the top. Never erase another agent's record.
 ## 2026-09-25T22:12:00Z — TASK-20260926-003 storefront warm timer
 
 - Owner: cursor:implementer-TASK-20260926-003
-- Branch: fix/TASK-20260926-003-storefront-warm
-- Adds warm-storefront-homes.sh + systemd timer (~50s) for home+catalog.
-- Next: commit/push/merge master, deploy, install timer on VPS, verify HIT TTFB.
+- Branch: fix/TASK-20260926-003-storefront-warm → merged `origin/master` `4383308` (+ `.gitattributes` `43dbed0`).
+- LIVE: `taranom-warm-homes.timer` enabled; warm ok=4; public home TTFB ~0.10s with `x-nextjs-cache: HIT` and SWR=86400.
+- Hung local SSH auto-deploy sessions killed earlier this turn.
+- Claims can release after this verify.
 
 ## 2026-09-25T21:56:00Z — TASK-20260926-001 LIVE verified
 

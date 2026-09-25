@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260926-003"
     title: "Periodic storefront HTML warm for CWV TTFB"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260926-003"
     roles:
@@ -12,6 +12,7 @@ tasks:
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-25T22:10:00Z"
     heartbeat_at: "2026-09-25T22:10:00Z"
+    completed_at: "2026-09-25T22:12:00Z"
     depends_on: ["TASK-20260926-002"]
     file_claims:
       - "scripts/warm-storefront-homes.sh"
