@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-25T21:56:00Z — TASK-20260926-001 LIVE verified
+
+- VPS tip `791bf67` includes auth `1f7a837` + `a004008`. API health 200.
+- Live `/portal/login`: `auth-glass-root`, «ورود به پنل», `PortalLoginAuth`.
+- Live `/portal/register`: «مشخصات فروشگاه» + auth-glass.
+- Phase 3 forgot-password / partners / sales-partners on AuthShell. Admin untouched.
+- Claims released; status done.
+
 ## 2026-09-25T21:55:00Z — TASK-20260926-002 CWV TTFB/LCP root fix
 
 - Owner: cursor:implementer-TASK-20260926-002
