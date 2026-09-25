@@ -244,7 +244,10 @@ export function ProductCatalog({
               )}
             </nav>
             <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">{titles.h1}</h1>
-            <p className="mt-2 text-sm text-gray-500">{titles.sub}</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">{titles.sub}</p>
+            <p className="mt-3 inline-flex items-center rounded-md border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] px-3 py-1.5 text-xs font-medium text-[var(--brand-green-dark,#0F2F28)]">
+              حداقل سفارش هر مدل از ۶ عدد · قیمت همکاری پس از تأیید حساب
+            </p>
           </div>
         </div>
       )}

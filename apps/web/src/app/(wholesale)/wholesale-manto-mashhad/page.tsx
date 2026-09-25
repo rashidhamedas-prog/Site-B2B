@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   BreadcrumbJsonLd,
-  FaqJsonLd,
   organizationId,
   websiteId,
 } from '@/components/shared/JsonLd';
@@ -70,7 +69,6 @@ export default function WholesaleMantoMashhadPage() {
           { name: H1, url: PAGE_URL },
         ]}
       />
-      <FaqJsonLd items={FAQ} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{

@@ -1,21 +1,39 @@
+import type { Metadata } from 'next';
 import { CmsPageIntro } from '@/components/cms/CmsPageIntro';
 import { WholesaleProductsCatalogWithUrl } from '@/components/wholesale/WholesaleProductsCatalogWithUrl';
 import { metadataForCmsPage } from '@/lib/cms/fetch';
 import { fetchProductList } from '@/lib/server-api';
 import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { slimWholesaleCatalogProduct } from '@/lib/slim-wholesale-catalog';
+import {
+  wholesaleCatalogQueryIsUtility,
+  type WholesaleCatalogQuery,
+} from '@/lib/wholesale-catalog-seo';
 
-/** Unfiltered /products is public ISR. Filters stay a client overlay + noindex. */
+/** Clean /products stays ISR. Query variants resolve per-request for robots. */
 export const revalidate = 60;
-export const dynamic = 'force-static';
 
-export async function generateMetadata() {
-  return metadataForCmsPage('WHOLESALE', 'products', {
+type ProductsSearchParams = Promise<WholesaleCatalogQuery>;
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: ProductsSearchParams;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const utility = wholesaleCatalogQueryIsUtility(sp);
+  const base = await metadataForCmsPage('WHOLESALE', 'products', {
     title: 'کاتالوگ عمده مانتو و شومیز',
     description:
       'همه مدل‌های جاری ترنم را ببینید، با پارچه و رنگ فیلتر کنید و برای بوتیک‌تان عمده سفارش دهید.',
     canonical: `${WHOLESALE_ORIGIN}/products`,
   });
+  if (!utility) return base;
+  return {
+    ...base,
+    robots: { index: false, follow: true },
+    alternates: { ...(base.alternates ?? {}), canonical: `${WHOLESALE_ORIGIN}/products` },
+  };
 }
 
 export default async function ProductsPage() {

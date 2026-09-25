@@ -1,10 +1,12 @@
-import { FaqJsonLd } from '@/components/shared/JsonLd';
-
 export interface FaqItem {
   question: string;
   answer: string;
 }
 
+/**
+ * Visible FAQ only. Do not emit FAQPage JSON-LD — Google FAQ rich results
+ * were removed (Search updates 2026); markup would not earn that appearance.
+ */
 export function WholesaleFaq({
   headline = 'سوالاتی که معمولاً می‌پرسند',
   body = 'جواب کوتاه، بدون حاشیه — اگر چیزی جا ماند با ما تماس بگیرید.',
@@ -42,7 +44,6 @@ export function WholesaleFaq({
 
   return (
     <section className="border-t border-[color:var(--color-border)] bg-white py-16 lg:py-20">
-      <FaqJsonLd items={faqs} />
       <div className="container-site max-w-3xl">
         {headline ? (
           <h2 className="text-center text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl">

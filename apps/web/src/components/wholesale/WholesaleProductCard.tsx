@@ -59,6 +59,7 @@ export function WholesaleProductCard({
     product.wholesalePrice,
   );
   const showPrice = signedIn && price > 0;
+  const moq = product.minOrderQty ?? product.minimumOrderQuantity ?? 6;
 
   useEffect(() => {
     setSignedIn(Boolean(getToken()));
@@ -146,6 +147,9 @@ export function WholesaleProductCard({
             {showPrice && saleActive && compareAt > price ? (
               <p className="text-[11px] text-[var(--brand-muted,#6B7280)] line-through">{toman(compareAt)}</p>
             ) : null}
+            <p className="mt-1 text-[10px] font-medium text-[var(--brand-green-dark,#0F2F28)]">
+              حداقل سفارش {moq.toLocaleString('fa-IR')} عدد
+            </p>
           </div>
           <button
             type="button"
