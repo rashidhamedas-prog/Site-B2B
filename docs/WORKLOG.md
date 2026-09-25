@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-26 — CWV Failed: TTFB/LCP ریشه‌ای (تک + عمده)
+
+- شواهد PSI/CrUX موبایل: `.ir` LCP 3.2–3.3s / TTFB 1.4s؛ `.com` LCP 3s / TTFB 1.6s؛ INP/CLS خوب (GSC `.com`: INP validation Passed؛ LCP>2.5s Started روی ۱۶ URL).
+- ریشه: middleware `stale-while-revalidate=60` بعد از ~۲ دقیقه HIT را می‌کشت → MISS/STALE کند و field TTFB بالای آستانهٔ LCP.
+- Fix: `s-maxage=60, stale-while-revalidate=86400` + هیرو mobile-first با یک preload `imageSrcSet` (بدون دو fetchPriority موازی).
+- گزارش: `docs/reports/2026-09-26-cwv-ttfb-root-fix.md`. Task: TASK-20260926-002.
+
 ## 2026-09-26 — Auth UI شیشه‌ای: portal سپس retail
 
 - پوسته مشترک `AuthShell` با گرادیان برند سبز/طلایی، glass input/button، RTL، و `prefers-reduced-motion`.

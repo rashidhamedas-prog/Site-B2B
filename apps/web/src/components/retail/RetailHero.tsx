@@ -55,19 +55,25 @@ function RetailHeroMedia({
       <>
         {priority ? (
           mobile ? (
-            <>
-              <link rel="preload" as="image" href={mobile} media="(max-width: 767px)" fetchPriority="high" />
-              <link rel="preload" as="image" href={src} media="(min-width: 768px)" fetchPriority="high" />
-            </>
+            <link
+              rel="preload"
+              as="image"
+              // Single responsive preload — avoids competing high-priority
+              // fetches of both mobile + desktop plates on phones (field LCP).
+              imageSrcSet={`${mobile} 900w, ${src} 1920w`}
+              imageSizes="100vw"
+              fetchPriority="high"
+            />
           ) : (
             <link rel="preload" as="image" href={src} fetchPriority="high" />
           )
         ) : null}
         <picture>
-          {mobile ? <source media="(max-width: 767px)" srcSet={mobile} /> : null}
+          {/* Mobile-first: default img is the LCP plate on phones. */}
+          {mobile ? <source media="(min-width: 768px)" srcSet={src} /> : null}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={src}
+            src={mobile || src}
             alt={alt}
             fetchPriority={priority ? 'high' : 'auto'}
             loading={priority ? 'eager' : 'lazy'}

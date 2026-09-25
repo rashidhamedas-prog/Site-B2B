@@ -1,5 +1,36 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260926-002"
+    title: "CWV Failed root fix - HTML SWR + mobile-first hero LCP"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260926-002"
+    roles:
+      implementer: "cursor:implementer-TASK-20260926-002"
+      reviewer: "required-after-diff"
+    branch: "fix/TASK-20260926-002-cwv-ttfb"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-25T21:50:00Z"
+    heartbeat_at: "2026-09-25T21:50:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/middleware.ts"
+      - "apps/web/src/lib/storefront-html-cache.ts"
+      - "apps/web/src/lib/storefront-html-cache.spec.ts"
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/web/src/components/wholesale/HeroSection.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-26-cwv-ttfb-root-fix.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    notes: |
+      Reclaimed middleware.ts from TASK-20260925-001 (audit already on master; CWV P0).
+      Shared WORKLOG/active/handoff append-only.
+    acceptance_criteria:
+      - "Live Cache-Control shows stale-while-revalidate=86400 on public HTML"
+      - "Home heroes mobile-first; single LCP preload imageSrcSet"
+      - "storefront-html-cache.spec + apps/web tsc pass"
+      - "Report documents PSI/GSC evidence; no false 28-day CWV Pass claim"
   - id: "TASK-20260926-001"
     title: "Auth UI glass shell — portal login/register then retail account"
     status: "in_progress"
@@ -83,7 +114,6 @@ tasks:
       - "apps/web/src/lib/retail-cart.ts"
       - "apps/web/src/lib/retail-size-label.ts"
       - "apps/web/src/lib/retail-size-label.spec.ts"
-      - "apps/web/src/middleware.ts"
       - "apps/web/next.config.ts"
       - "apps/web/src/app/robots.ts"
       - "apps/web/src/components/category/CategoryLanding.tsx"
@@ -92,6 +122,7 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
     notes: |
+      middleware.ts reclaimed by TASK-20260926-002 for CWV Cache-Control.
       Reclaimed stale middleware.ts + retail checkout from TASK-20260922-003
       (heartbeat 2026-09-23, >24h stale). Root fixes from live retail audit.
     acceptance_criteria:

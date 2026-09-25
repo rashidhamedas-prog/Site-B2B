@@ -12,6 +12,7 @@ import {
 import { hostLooksRetail, isChannelExemptPath, isSalesPartnerPanelPath } from '@/lib/channel';
 import { panelHostLockRedirect } from '@/lib/panel-host-lock';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
+import { STOREFRONT_HTML_CACHE_CONTROL } from '@/lib/storefront-html-cache';
 
 /** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
 const WHOLESALE_CATEGORY_ALIASES: Record<string, string> = {
@@ -51,12 +52,14 @@ function isPrivateStorefrontPath(pathname: string): boolean {
 }
 
 /**
- * Next ISR defaults to stale-while-revalidate ≈ 1 year. That lets .ir keep
- * serving HIT HTML long after CMS save. Cap SWR to match page revalidate.
+ * Cap HTML freshness at 60s (matches page `revalidate` + CMS on-demand warm)
+ * but keep a long stale window so cold Iran/CDN traffic still gets instant
+ * HTML while Next regenerates. SWR=60 previously forced MISS after ~2 min and
+ * field TTFB ~1.4–1.6s → LCP fail on both storefronts.
  */
 function clampStorefrontHtmlCache(res: NextResponse, pathname: string): NextResponse {
   if (isPrivateStorefrontPath(pathname)) return res;
-  res.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=60');
+  res.headers.set('Cache-Control', STOREFRONT_HTML_CACHE_CONTROL);
   return res;
 }
 

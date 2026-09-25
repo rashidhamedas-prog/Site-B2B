@@ -2,13 +2,24 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-25T21:55:00Z — TASK-20260926-002 CWV TTFB/LCP root fix
+
+- Owner: cursor:implementer-TASK-20260926-002
+- Branch: fix/TASK-20260926-002-cwv-ttfb
+- Evidence: PSI Failed LCP both homes (TTFB 1.4–1.6s); GSC .com LCP>2.5s Started / INP Passed; .ir CWV no property data.
+- Reclaimed `middleware.ts` from TASK-20260925-001 (audit already on master).
+- Code: SWR 86400 + mobile-first hero preload; report `docs/reports/2026-09-26-cwv-ttfb-root-fix.md`.
+- Validation: storefront-html-cache.spec pass; apps/web tsc --noEmit pass.
+- Next: commit/push/deploy; verify live Cache-Control; do not claim 28-day field Pass yet.
+
 ## 2026-09-25T21:45:00Z — TASK-20260926-001 auth UI implemented
 
 - Portal login/register + RetailAccountAuth on glass AuthShell (brand tokens).
+- Phase 3: forgot-password + partners + sales-partners login on same shell. Admin untouched.
 - APIs unchanged. No OAuth buttons.
 - Validation: `cd apps/web && npx tsc --noEmit` → exit 0.
-- Commit/deploy not run (await user request).
-- Claims remain until commit or abandon.
+- Commits on master: `1f7a837` (portal/retail), `a004008` (phase 3). Deploy in progress on VPS.
+- Claims remain until live health verify.
 
 ## 2026-09-25T21:15:00Z — TASK-20260926-001 auth UI claim
 
