@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-26T17:10:00Z — TASK-20260926-005 CLOSED (final re-verify + branch push)
+
+- Owner close-out: cursor:implementer-TASK-20260926-005
+- Ship already on master: `df5fd41` (feat) + `78eaf26` (ai-dos live mark); tip `1dc48a3` includes both.
+- Re-verify VPS: LOCAL=ORIGIN=`1dc48a3`; health 200; `.com` origin home 200 TTFB ~0.02s; `wholesale-editorial-hero` count=1.
+- Pushed remote branch `feat/TASK-20260926-005-wholesale-editorial-ui` for record; FF-merged to master earlier.
+- Claims already empty. Independent Reviewer residual remains (visual/LCP field).
+- Docs-only closeout; no docker rebuild required (UI already LIVE).
+
 ## 2026-09-26T16:55:00Z — TASK-20260913-002 TorobPay root cause: contract 1100
 
 - Owner: cursor:implementer-TASK-20260913-002 (orchestrator fleet)

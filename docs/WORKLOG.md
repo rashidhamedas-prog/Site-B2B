@@ -8,6 +8,12 @@
 - فعال‌سازی قرارداد باید در پنل/پشتیبانی ترب‌پی انجام شود؛ بعد از آن «تست اتصال» باید ready شود.
 - Task: TASK-20260913-002؛ spec adapter PASS.
 
+## 2026-09-26 — بستن TASK-20260926-005 (Editorial Wholesale)
+
+- Re-verify VPS tip `1dc48a3`: health 200؛ هوم `.com` origin 200 / TTFB ~۰٫۰۲s؛ کلاس `wholesale-editorial-hero` در HTML.
+- Ship: `df5fd41` روی master (FF از `feat/TASK-20260926-005-wholesale-editorial-ui`)؛ claims آزاد؛ status/handoff بسته شد.
+- Docker rebuild لازم نبود (UI از قبل LIVE بود).
+
 ## 2026-09-26 — بازطراحی Editorial Wholesale (هیرو + کارت عمده)
 
 - **TASK-20260926-005**: فقط ویترین `.com` — presentation-only.

@@ -16,9 +16,10 @@ tasks:
     depends_on: []
     file_claims: []
     notes: |
-      LIVE at VPS `df5fd41`. Presentation-only Editorial Wholesale.
-      Origin HTML has wholesale-editorial-hero, lg:grid-cols-4, price gate, second-image hover classes.
-      Health 200; title/H1 SEO unchanged. Claims released. Independent Reviewer residual.
+      CLOSED after re-verify on VPS tip `1dc48a3` (feat ship `df5fd41` still in ancestry).
+      Origin HTML has wholesale-editorial-hero; health 200; home 200 TTFB ~0.02s.
+      Claims released. Independent Reviewer residual (visual/LCP field).
+      Branch feat/TASK-20260926-005-wholesale-editorial-ui fast-forward merged to master.
     acceptance_criteria:
       - "Wholesale hero taller on mobile (~5/4, max ~360px); single emerald scrim; gold hairline + solid gold primary CTA"
       - "Wholesale cards borderless with hover lift; desktop second-image crossfade; one availability chip; MOQ pill; 4-col lg grid"

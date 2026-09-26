@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-09-26 — **TASK-20260926-005 CLOSED** on `origin/master` + VPS tip `1dc48a3` (feat ship `df5fd41`). Wholesale editorial hero + Spec Sheet cards LIVE; `wholesale-editorial-hero` in origin HTML; health 200; home TTFB ~0.02s. Claims released. Independent Reviewer residual (visual/LCP field). Retail frame unchanged.
 - Last verified: 2026-09-26 — **TASK-20260922-003 CLOSED** (implementer claims released). Still LIVE: public-settings enabled / terms `2026-09-23-v1`; invalid `/go/sp` 302 no cookie; IBAN key present. **OPS residual:** PROGRAM %, catalog eligibility, optional min payout. **REVIEW residual:** independent money/attribution. Vendor `/partners` unchanged. No commission % invented.
 - Last verified: 2026-09-26 — **TASK-20260925-001 CLOSED** after VPS live retail-audit probes on tip `4ff0c36`. Soft-404 404; `/retail` 301; robots Disallow; collections+about H1; OG on `.ir`. Claims released. Checkout hydrate not browser-clicked. Independent Reviewer residual.
 - Last verified: 2026-09-26 — **TASK-20260906-003 CLOSED** (governance). Production E2E CLEAN already recorded; stale claims cleared.
