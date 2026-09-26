@@ -28,17 +28,23 @@ LIVE on production 2026-09-23. Terms `2026-09-23-v1`. Dedicated IBAN key on API 
 - staff-access.spec OK
 - PREVIEW cannot create drafts; OFF ignores `enabled=true`
 - `apps/api` and `apps/web` `tsc --noEmit` 0 after admin settings/orders/outbox
-- Live API `/v1/sales-partner-program/public-settings` is 404 until this branch deploys (expected; flag remains OFF)
+- Live API `/v1/sales-partner-program/public-settings` → 200 `{enabled:true, applyOpen:true, termsVersion:"2026-09-23-v1", termsFinal:true}` (re-verified 2026-09-26)
 
 ## Independent review
 
 - Reviewer: [Sales partner independent review](6f63b59f-c25e-4127-9b53-8311f884f48d) — flag-OFF merge OK; D1–D3 were LIVE blockers
 - Security: [Security Review](086a7a9b-4f08-4f0c-99b6-da68a4f61141) — no critical/high; IBAN XOR fixed to AES-GCM
 
-## Not done
+## Not done (updated 2026-09-26)
 
-- Browser E2E against a running storefront (static RTL/focus/label checks are in isolation spec)
-- Dedicated production `SALES_PARTNER_IBAN_KEY` must be set before LIVE IBAN save
-- Order attribution columns coded; migrate `20260923-001` before convert in LIVE
-- Legal terms (placeholder `draft-unreviewed`)
-- Push/deploy / LIVE enable
+- **Owner OPS:** set PROGRAM commission rule %, enable catalog product eligibility, optional `minPayoutIrr` floor
+- **Independent money/attribution review** still open (post-LIVE)
+- Browser E2E full apply→approve→draft→confirm walk not recorded
+- Cookie attribution (`taranom_sp`) is client-readable; server re-validates ACTIVE+eligibility
+
+## Done since earlier draft of this section
+
+- LIVE enable + terms `2026-09-23-v1` + hold 14d
+- Public settings API returning enabled subset
+- Dedicated `SALES_PARTNER_IBAN_KEY` present on API host
+- Attribution migrations applied; product share `/go/sp` live (invalid → 302, no cookie)

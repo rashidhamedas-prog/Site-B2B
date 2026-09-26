@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-26 — بستن TASK-20260922-003 (آزادسازی claim؛ باقیمانده ops)
+
+- برنامه همکار بازاریاب از قبل LIVE بود. این نوبت فقط verify زنده + آزاد کردن file_claims.
+- Verify: public-settings فعال؛ `/go/sp` نامعتبر 302 بدون کوکی؛ login پنل ۲۰۰؛ admin ۳۰۷؛ me بدون توکن ۴۰۱؛ کلید IBAN روی API موجود.
+- باقیماندهٔ مالک: درصد PROGRAM، eligibility کاتالوگ، اختیاری minPayoutIrr. Review مالی مستقل هنوز باز.
+- درصد کمیسیون ساخته نشد.
+
 ## 2026-09-26 — بستن TASK-20260925-001 پس از verify زنده ممیزی تکی
 
 - VPS tip `4ff0c36`: soft-404 گوگل‌بات برای محصول/دسته/بلاگ ناموجود = 404؛ `/retail` و `/retail/products` = 301؛ robots `Disallow: /retail`؛ کلکسیون‌ها H1 + لینک دسته؛ درباره H1؛ OG تصویر روی `.ir`.

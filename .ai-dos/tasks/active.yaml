@@ -124,7 +124,7 @@ tasks:
       - "PDP stock copy has no duplicated ????; near-miss prices snap; OG on .ir; CMS pages have H1; checkout waits for cart hydrate"
   - id: "TASK-20260922-003"
     title: "Retail Sales Partner program (همکار بازاریاب) isolated from Vendor"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260922-003"
     roles:
@@ -135,62 +135,15 @@ tasks:
     branch: "feat/TASK-20260922-003-sales-partner-program"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-22T12:10:00Z"
-    heartbeat_at: "2026-09-23T12:20:00Z"
+    heartbeat_at: "2026-09-26T16:20:00Z"
+    completed_at: "2026-09-26T16:20:00Z"
     depends_on: []
-    file_claims:
-      - "docs/architecture/sales-partner-program.md"
-      - "docs/reports/2026-09-22-sales-partner-program.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
-      - "apps/api/src/modules/sales-partner/"
-      - "apps/api/package.json"
-      - "apps/api/src/database/migrations/20260922-001-sales-partner-program.ts"
-      - "apps/api/src/database/migrations/20260922-002-sales-partner-commission-percent.ts"
-      - "apps/api/src/database/migrations/20260923-001-sales-partner-order-attribution.ts"
-      - "apps/api/src/database/migrations/20260923-002-sales-partner-public-code.ts"
-      - "apps/api/src/modules/order/entities/order.entity.ts"
-      - "apps/api/src/modules/order/order.service.ts"
-      - "apps/api/src/modules/order/dto/create-order.dto.ts"
-      - "apps/web/src/app/go/sp/"
-      - "apps/web/src/app/retail/checkout/page.tsx"
-      - "apps/web/src/lib/channel.ts"
-      - "apps/api/src/app.module.ts"
-      - "apps/api/src/config/database.config.ts"
-      - "apps/api/src/modules/auth/staff-access.ts"
-      - "apps/api/src/modules/auth/staff-access.spec.ts"
-      - "apps/api/src/modules/auth/dto/login.dto.ts"
-      - "apps/api/src/modules/auth/strategies/jwt.strategy.ts"
-      - "apps/api/src/modules/auth/guards/roles.guard.ts"
-      - "apps/api/src/modules/auth/auth.service.ts"
-      - "apps/api/src/modules/auth/auth.module.ts"
-      - "apps/api/src/modules/redis/redis.module.ts"
-      - "apps/web/src/lib/staff-access.ts"
-      - "apps/web/src/lib/admin-session.ts"
-      - "apps/web/src/lib/admin-session.spec.ts"
-      - "apps/web/src/lib/auth.ts"
-      - "apps/web/src/lib/hooks/useAuth.ts"
-      - "apps/web/src/lib/api.ts"
-      - "apps/web/src/middleware.ts"
-      - "apps/web/src/components/admin/AdminSidebar.tsx"
-      - "apps/web/src/components/admin/AdminHeader.tsx"
-      - "apps/web/src/app/sales-partnership/"
-      - "apps/web/src/app/sales-partners/"
-      - "apps/web/src/app/confirm/sales-partner/"
-      - "apps/web/src/app/admin/sales-partners/"
-      - "apps/web/src/components/sales-partners/"
-      - "apps/web/src/components/admin/sales-partners/"
+    file_claims: []
     notes: |
-      Isolated SalesPartner (بازاریاب) program. Do not reuse Vendor, /partners,
-      VendorLedger, affiliateId, or JWT purpose=vendor.
-      Reclaimed stale auth/session files from TASK-20260904-001 (hb 2026-09-03)
-      and stale governance from TASK-20260913-002 (hb 2026-09-13).
-      Reclaimed stale order.entity.ts from TASK-20260901-002 (hb 2026-09-01,
-      other worktree). Additive salesSource/salesPartnerId columns only.
-      Reclaimed stale order.service.ts, create-order.dto.ts, retail checkout, and
-      channel.ts on 2026-09-23 for product share links. Did not claim
-      payment.service.ts or vendor/*. Feature flag stays LIVE.
+      LIVE since 2026-09-23. Implementer claims released 2026-09-26 after live re-verify.
+      Code ACs PASS. OPS residual (owner): set PROGRAM commission %, enable catalog
+      eligibility, optional minPayoutIrr. REVIEW residual: independent money/attribution
+      review still open. Did not invent commission percent. Vendor /partners untouched.
     acceptance_criteria:
       - "Architecture doc records isolation, FSMs, APIs, permission matrix, rollback"
       - "SalesPartner tables and purpose=sales_partner exist and cannot use vendor tokens"

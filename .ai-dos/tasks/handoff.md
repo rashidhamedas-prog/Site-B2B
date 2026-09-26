@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-26T16:20:00Z — TASK-20260922-003 CLOSED (claims release; ops residual)
+
+- Owner close-out: cursor orchestrator (parallel fleet after push `824c2b7`)
+- Code already LIVE. Re-verify: public-settings `enabled=true` terms `2026-09-23-v1`; `/go/sp/BAD/…` and valid-shape bad code → **302** + **no** `taranom_sp` cookie; `/sales-partnership` 200; `/sales-partners/login` 200; `/admin/sales-partners` 307; `/v1/sales-partners/me` 401; `SALES_PARTNER_IBAN_KEY` present on API.
+- Implementer `file_claims` released. **Did not invent PROGRAM %.**
+- OPS residual (owner/admin): set PROGRAM commission %, enable catalog eligibility, optional `minPayoutIrr`.
+- REVIEW residual: independent money/attribution still open; cookie attribution not HttpOnly (server re-validates).
+- No docker rebuild (docs/governance only this ship).
+
 ## 2026-09-26T16:10:00Z — TASK-20260925-001 CLOSED (retail audit live verify)
 
 - Owner close-out: cursor orchestrator (resume fleet after stopped agents)
