@@ -1,5 +1,9 @@
 # Project Status
 
+- Last verified: 2026-09-26 — **TASK-20260925-001 CLOSED** after VPS live retail-audit probes on tip `4ff0c36`. Soft-404 404; `/retail` 301; robots Disallow; collections+about H1; OG on `.ir`. Claims released. Checkout hydrate not browser-clicked. Independent Reviewer residual.
+- Last verified: 2026-09-26 — **TASK-20260906-003 CLOSED** (governance). Production E2E CLEAN already recorded; stale claims cleared.
+- Last verified: 2026-09-26 — **TASK-20260926-002 CLOSED** after VPS live verify tip `4ff0c36`. Warm timer active; homes `Cache-Control` SWR=86400; `.ir`/`.com` HIT TTFB ~0.07–0.13s public; origin ~0.02s. Claims released. No 28-day field CWV Pass claim. Independent Reviewer residual (cache/LCP).
+
 - Last verified: 2026-09-23 — **TASK-20260922-003 LIVE** at VPS `56423fc`. Product share links deployed. Public settings still enabled / terms `2026-09-23-v1`. Invalid `/go/sp` is 302 and sets no cookie. Hold 14 days. Vendor `/partners` unchanged. Program percent is not set. Catalog stays empty until admin eligibility. Independent money review still open.
 
 - Last verified: 2026-09-22 — **TASK-20260922-002 CLOSED** after forced full deploy. VPS git and images `573d98a`. Health 200; `.com` 200; `www` `.ir` 200. `/admin/partners` 307 to login. Admin click not exercised. Claims released. On `master`; no open branch.

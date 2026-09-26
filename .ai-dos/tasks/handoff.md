@@ -2,6 +2,35 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-26T16:10:00Z — TASK-20260925-001 CLOSED (retail audit live verify)
+
+- Owner close-out: cursor orchestrator (resume fleet after stopped agents)
+- Code already on master/VPS tip `4ff0c36` (ship `e85224a`+). No new storefront code this turn.
+- Live probes: Googlebot product/category/blog missing → HTTP 404; `/retail` 301→`/`; `/retail/products` 301→`/products`; `robots.txt` `Disallow: /retail`; `/collections` H1 + category links; `/about` H1; PDP `og:image` on `www.poshaktaranom.ir`.
+- Checkout hydrate not browser-clicked (client gate already shipped). Claims released.
+- Independent Reviewer residual. Did not touch sales-partner checkout claims.
+
+## 2026-09-26T16:10:00Z — TASK-20260906-003 CLOSED (governance)
+
+- Owner close-out: cursor orchestrator
+- Already E2E VERIFIED CLEAN on production (status/WORKLOG; hotfix `29e07ac`).
+- Cleared stale `in_progress` + leftover file_claims. No code change.
+
+## 2026-09-26T16:05:00Z — Orchestrator resume: loop re-armed
+
+- CWV health loop restarted (PID 14520, `AGENT_LOOP_TICK_cwv-health` every 5m).
+- Prior PID 9552 was dead/wrong process. Antimetal still blocked (`ANTIMETAL_API_KEY` unset / 401).
+
+## 2026-09-26T14:22:00Z — TASK-20260926-002 CLOSED (live CWV verify)
+
+- Owner close-out: cursor orchestrator (manager fleet)
+- VPS tip `4ff0c36`. `taranom-warm-homes.timer` active+enabled (fires ~50s).
+- Public: `.ir` 200 Cache-Control `s-maxage=60, stale-while-revalidate=86400` `x-nextjs-cache: HIT` TTFB ~0.12s; `.com` same CC `STALE` TTFB ~0.11s.
+- Origin `:3000`: retail HIT ~0.02s; wholesale STALE ~0.02s; `/products` SWR=86400.
+- Health `/v1/health` 200 ~0.22s.
+- Claims released on TASK-20260926-002 (+ leftover 003 claims). Independent Reviewer residual.
+- Do **not** claim 28-day field CWV Pass; GSC Validate Fix only after CrUX window.
+
 ## 2026-09-25T22:37:00Z — TASK-20260926-004 LIVE
 
 - Owner: cursor:implementer-TASK-20260926-004

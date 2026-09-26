@@ -1,5 +1,17 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-26 — بستن TASK-20260925-001 پس از verify زنده ممیزی تکی
+
+- VPS tip `4ff0c36`: soft-404 گوگل‌بات برای محصول/دسته/بلاگ ناموجود = 404؛ `/retail` و `/retail/products` = 301؛ robots `Disallow: /retail`؛ کلکسیون‌ها H1 + لینک دسته؛ درباره H1؛ OG تصویر روی `.ir`.
+- کد از قبل روی master بود؛ این نوبت فقط closeout رجیستری + آزاد کردن claimها.
+- همزمان TASK-20260906-003 (internal-link SEO) که قبلاً E2E تمیز بود از `in_progress` به `done` بسته شد.
+
+## 2026-09-26 — بستن TASK-20260926-002 پس از verify زنده CWV
+
+- VPS `4ff0c36`: warm timer active؛ هوم `.ir` HIT / `.com` STALE؛ `Cache-Control` = `public, s-maxage=60, stale-while-revalidate=86400`.
+- TTFB عمومی ~۰٫۱۱–۰٫۱۲s؛ origin ~۰٫۰۲s؛ health 200.
+- Claims آزاد شد. Pass میدانی ۲۸روزه ادعا نشد.
+
 ## 2026-09-26 — حذف کامل و دسته‌ای سفارش در ادمین
 
 - **TASK-20260926-004**: برای سفارش‌های `DELETED` دکمه «حذف کامل» (`DELETE /orders/:id/permanent`)؛ انتخاب چندتایی + حذف نرم/کامل دسته‌ای (`POST /orders/bulk/void|purge`). فقط ADMIN؛ RMA/اقساط پاک، پرداخت/ledger جدا می‌شود.

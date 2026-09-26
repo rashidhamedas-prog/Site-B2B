@@ -39,25 +39,17 @@ tasks:
     heartbeat_at: "2026-09-25T22:10:00Z"
     completed_at: "2026-09-25T22:12:00Z"
     depends_on: ["TASK-20260926-002"]
-    file_claims:
-      - "scripts/warm-storefront-homes.sh"
-      - "scripts/install-warm-homes-timer.sh"
-      - "deploy/systemd/taranom-warm-homes.service"
-      - "deploy/systemd/taranom-warm-homes.timer"
-      - "docs/WORKLOG.md"
-      - "docs/deployment-runbook.md"
-      - "docs/reports/2026-09-26-cwv-ttfb-root-fix.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
+    file_claims: []
     notes: |
       Follow-on to TASK-20260926-002. systemd timer every ~50s warms home+catalog.
+      Claims released 2026-09-26 after re-verify (timer active; homes HIT/STALE low TTFB).
     acceptance_criteria:
       - "warm script hits retail+wholesale / and /products via 127.0.0.1:3000"
       - "timer installed and enabled on VPS"
       - "public homes show x-nextjs-cache HIT or STALE with low TTFB after warm"
   - id: "TASK-20260926-002"
     title: "CWV Failed root fix - HTML SWR + mobile-first hero LCP"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260926-002"
     roles:
@@ -66,22 +58,15 @@ tasks:
     branch: "fix/TASK-20260926-002-cwv-ttfb"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-25T21:50:00Z"
-    heartbeat_at: "2026-09-25T21:50:00Z"
+    heartbeat_at: "2026-09-26T14:22:00Z"
+    completed_at: "2026-09-26T14:22:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/middleware.ts"
-      - "apps/web/src/lib/storefront-html-cache.ts"
-      - "apps/web/src/lib/storefront-html-cache.spec.ts"
-      - "apps/web/src/components/retail/RetailHero.tsx"
-      - "apps/web/src/components/wholesale/HeroSection.tsx"
-      - "docs/WORKLOG.md"
-      - "docs/reports/2026-09-26-cwv-ttfb-root-fix.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
+    file_claims: []
     notes: |
-      CWV Cache-Control live under tip including 791bf67; follow-on warm is TASK-20260926-003.
-      Reclaimed middleware.ts from TASK-20260925-001 (audit already on master; CWV P0).
-      Shared WORKLOG/active/handoff append-only.
+      CLOSED after live VPS verify 2026-09-26: tip `4ff0c36`; warm timer active;
+      public homes Cache-Control SWR=86400; .ir HIT TTFB~0.12s; .com STALE TTFB~0.11s;
+      origin HIT/STALE ~0.02s. Claims released. No 28-day field CWV Pass claim.
+      Independent Reviewer residual (cache/LCP). Follow-on warm TASK-20260926-003 already LIVE.
     acceptance_criteria:
       - "Live Cache-Control shows stale-while-revalidate=86400 on public HTML"
       - "Home heroes mobile-first; single LCP preload imageSrcSet"
@@ -114,7 +99,7 @@ tasks:
       - "apps/web tsc --noEmit passes; live portal login shows auth-glass-root"
   - id: "TASK-20260925-001"
     title: "Retail storefront audit root fixes (soft-404, /retail, collections, PDP copy, OG, hydration)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260925-001"
     roles:
@@ -123,41 +108,15 @@ tasks:
     branch: "fix/TASK-20260925-001-retail-audit-fixes"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-25T02:40:00Z"
-    heartbeat_at: "2026-09-25T02:40:00Z"
+    heartbeat_at: "2026-09-26T16:10:00Z"
+    completed_at: "2026-09-26T16:10:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/app/retail/loading.tsx"
-      - "apps/web/src/app/retail/not-found.tsx"
-      - "apps/web/src/app/retail/collections/page.tsx"
-      - "apps/web/src/app/retail/about/page.tsx"
-      - "apps/web/src/app/retail/contact/page.tsx"
-      - "apps/web/src/app/retail/shipping/page.tsx"
-      - "apps/web/src/app/retail/privacy/page.tsx"
-      - "apps/web/src/app/retail/terms/page.tsx"
-      - "apps/web/src/app/retail/returns/page.tsx"
-      - "apps/web/src/app/retail/products/[slug]/page.tsx"
-      - "apps/web/src/app/retail/blog/[slug]/page.tsx"
-      - "apps/web/src/app/retail/category/[slug]/page.tsx"
-      - "apps/web/src/app/retail/checkout/page.tsx"
-      - "apps/web/src/components/retail/RetailProductDetail.tsx"
-      - "apps/web/src/components/retail/RetailHeader.tsx"
-      - "apps/web/src/components/cms/CmsPage.tsx"
-      - "apps/web/src/lib/product-display.ts"
-      - "apps/web/src/lib/product-display.spec.ts"
-      - "apps/web/src/lib/retail-cart.ts"
-      - "apps/web/src/lib/retail-size-label.ts"
-      - "apps/web/src/lib/retail-size-label.spec.ts"
-      - "apps/web/next.config.ts"
-      - "apps/web/src/app/robots.ts"
-      - "apps/web/src/components/category/CategoryLanding.tsx"
-      - "docs/WORKLOG.md"
-      - "docs/reports/2026-09-25-retail-audit-fixes.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
+    file_claims: []
     notes: |
-      middleware.ts reclaimed by TASK-20260926-002 for CWV Cache-Control.
-      Reclaimed stale middleware.ts + retail checkout from TASK-20260922-003
-      (heartbeat 2026-09-23, >24h stale). Root fixes from live retail audit.
+      LIVE on master/VPS tip 4ff0c36 (shipped e85224a+). Closeout 2026-09-26 after live probes.
+      Soft-404 Googlebot 404; /retail 301→/; robots Disallow /retail; collections H1+category cards;
+      about H1; PDP og:image on www.poshaktaranom.ir. Checkout hydrate client-only (not browser-clicked).
+      Claims released. Independent Reviewer residual. Did not reclaim middleware (CWV) or sales-partner checkout.
     acceptance_criteria:
       - "Missing product/category/blog return HTTP 404 (browser + Googlebot UA)"
       - "Direct /retail/* 301 to public paths; robots Disallow /retail"
@@ -2429,7 +2388,7 @@ tasks:
     notes: "User authorized isolated workspace and shared governance append on 2026-09-06. No application changes or production orders/payments/SMS. Stop on health regression. Rollback: stop load generator. Shared governance append only; preserve other owners. Entry preserved on master by TASK-20260906-003 during rebase (was stashed in worktree)."
   - id: "TASK-20260906-003"
     title: "Product internal-link SEO feature (per-channel retail/wholesale) with admin picker, suggest/validate, PDP render + JSON-LD"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260906-003"
     roles:
@@ -2440,55 +2399,15 @@ tasks:
     branch: "ai/TASK-20260906-001-product-internal-links"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-06T13:10:00Z"
-    heartbeat_at: "2026-09-06T18:30:00Z"
+    heartbeat_at: "2026-09-26T16:10:00Z"
+    completed_at: "2026-09-26T16:10:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/database/migrations/20260906-001-product-internal-links.ts"
-      # transferred 2026-09-10 to TASK-20260910-001 (stale hb 2026-09-06; PDP guide cards):
-      # "apps/api/src/modules/product/entities/product-internal-link.entity.ts"
-      # "apps/api/src/modules/product/dto/internal-link.dto.ts"
-      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; dropship SKU):
-      # "apps/api/src/modules/product/dto/create-product.dto.ts"
-      # "apps/api/src/modules/product/product.service.ts"
-      - "apps/api/src/modules/product/product.controller.ts"
-      # transferred 2026-09-09 to TASK-20260909-007:
-      # "apps/api/src/modules/product/product.module.ts"
-      # transferred 2026-09-10 to TASK-20260910-001:
-      # "apps/api/src/modules/product/internal-link-resolver.ts"
-      # transferred 2026-09-09 to TASK-20260909-007 (ProductService ctor arity):
-      # "apps/api/src/modules/product/internal-link-resolver.spec.ts"
-      # transferred 2026-09-10 to TASK-20260910-001:
-      # "apps/web/src/components/admin/ProductInternalLinkPicker.tsx"
-      # "apps/web/src/components/admin/ProductInternalLinkRow.tsx"
-      # transferred 2026-09-09 to TASK-20260909-007 (stale hb; dropship SKU):
-      # "apps/web/src/components/admin/AdminProducts.tsx"
-      # "apps/web/src/lib/hooks/useProducts.ts"
-      # transferred 2026-09-10 to TASK-20260910-001:
-      # "apps/web/src/components/shared/ProductInternalLinks.tsx"
-      # transferred 2026-09-09 to TASK-20260909-007:
-      # "apps/web/src/app/retail/products/[slug]/page.tsx"
-      # transferred 2026-09-10 to TASK-20260910-001:
-      # "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
-      - "docs/reports/2026-09-06-product-internal-links.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
+    file_claims: []
     notes: |
-      Owner asked for a professional "internal link" SEO option in admin
-      product create/edit, fully separate per channel (retail .ir vs
-      wholesale .com), rendered on each product PDP. Chose dedicated table
-      product_internal_link with a channel column (not jsonb) for queryability
-      and per-channel isolation. Stashed TASK-20260905-003 uncommitted wip
-      (stash@{1}) before branching from origin/master; that owner can pop it
-      back on their branch. Migration is additive (CREATE TABLE IF NOT EXISTS,
-      no data backfill). No new secrets. Channel leakage prevented by
-      validate-on-save + filter-on-render (showOnRetail/showOnWholesale +
-      status ACTIVE). Reuses blog suggest/checkLinks pattern and
-      ProductRelatedPicker UI pattern. Max 12 links/channel, anchor 1-60,
-      no self-link, no dup. NOTE: task id renamed 001 -> 003 during rebase
-      onto master because TASK-20260906-001 was already taken by the retail
-      boutique-theme task on master (ba254e9); branch name kept as-is.
+      Governance closeout 2026-09-26. Production E2E VERIFIED CLEAN already recorded
+      in status/WORKLOG/handoff (hotfix 29e07ac). Remaining claims were stale leftovers.
+      Original design: dedicated product_internal_link table with channel column;
+      max 12 links/channel; validate-on-save + filter-on-render; additive migration.
     acceptance_criteria:
       - "Admin product create/edit has a per-channel internal-link panel (wholesale=primary, retail=amber) matching the SEO dual-panel pattern"
       - "Each link stores targetType (PRODUCT/CATEGORY/BLOG/CUSTOM), targetId, targetUrl, anchorText, title, rel, sortOrder"

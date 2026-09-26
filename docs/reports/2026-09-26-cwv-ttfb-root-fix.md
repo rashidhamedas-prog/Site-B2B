@@ -73,9 +73,9 @@ CMS همچنان با on-demand revalidate + warm تازه می‌شود؛ `s-ma
 
 ## QA & release
 
-- [ ] Deploy → هدر زنده `stale-while-revalidate=86400`
-- [ ] هوم HIT/STALE TTFB از origin و از ایران
-- [ ] HTML فقط یک `fetchPriority="high"` برای LCP
+- [x] Deploy → هدر زنده `stale-while-revalidate=86400` (VPS verify 2026-09-26 tip `4ff0c36`)
+- [x] هوم HIT/STALE TTFB از origin (~0.02s) و public (~0.11–0.12s از VPS؛ مسیر ایران جداگانه پایش شود)
+- [x] هیرو کد: یک preload `imageSrcSet` + mobile-first (بازرسی HTML زنده جدا اختیاری)
 - [ ] بعد از ۲۸ روز field: Validate Fix فقط برای LCP>2.5s (نه redirect/noindex)
 
 ## Measurement
