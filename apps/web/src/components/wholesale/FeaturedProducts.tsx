@@ -46,7 +46,7 @@ export async function FeaturedProducts({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-5">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-6">
           {items.map((product) => (
             <WholesaleProductCard key={product.id} product={product} />
           ))}

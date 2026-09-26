@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-26T16:41:33Z — TASK-20260926-005 claimed (wholesale editorial UI)
+
+- Owner: cursor:implementer-TASK-20260926-005
+- Branch: feat/TASK-20260926-005-wholesale-editorial-ui
+- Scope: presentation-only HeroSection + WholesaleProductCard + FeaturedProducts + wholesale CSS modifier + design-system home.md
+- Reclaimed WholesaleProductCard from TASK-20260913-010 (done leftover claims).
+- Non-goals: retail UI, CMS schema, API, URL/canonical, H1 SEO text, price gate removal, home >12 products.
+
 ## 2026-09-26T16:20:00Z — TASK-20260922-003 CLOSED (claims release; ops residual)
 
 - Owner close-out: cursor orchestrator (parallel fleet after push `824c2b7`)

@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-26 — بازطراحی Editorial Wholesale (هیرو + کارت عمده)
+
+- **TASK-20260926-005**: فقط ویترین `.com` — presentation-only.
+- هیرو: modifier `.wholesale-editorial-hero` (موبایل ۵/۴ ~۳۶۰px؛ اسکریم تک‌لایه؛ خط طلا + CTA طلا؛ retail frame دست‌نخورده).
+- کارت: بدون border ثابت، hover lift، تصویر دوم دسکتاپ، یک چیپ موجودی، MOQ pill، سفارش تمام‌عرض؛ Featured `lg:grid-cols-4`.
+- بدون تغییر URL/canonical/H1 SEO/CMS schema/API/price gate؛ سقف ۱۲ کارت هوم.
+- Files: `HeroSection.tsx`, `WholesaleProductCard.tsx`, `FeaturedProducts.tsx`, `globals.css`, `design-system/default/pages/home.md`
+
 ## 2026-09-26 — بستن TASK-20260922-003 (آزادسازی claim؛ باقیمانده ops)
 
 - برنامه همکار بازاریاب از قبل LIVE بود. این نوبت فقط verify زنده + آزاد کردن file_claims.

@@ -130,12 +130,18 @@ function WholesaleSlideCopy({
   return (
     <div className="max-w-3xl">
       {slide.brandEyebrow ? (
-        <p className="text-secondary mb-5 text-sm font-semibold tracking-[0.18em]">
-          {slide.brandEyebrow}
-        </p>
+        <div className="mb-4 sm:mb-5">
+          <span
+            className="mb-3 block h-0.5 w-10 rounded-full bg-secondary"
+            aria-hidden
+          />
+          <p className="text-secondary text-sm font-semibold tracking-[0.18em]">
+            {slide.brandEyebrow}
+          </p>
+        </div>
       ) : null}
 
-      <Title className="mb-3 text-pretty text-2xl font-bold leading-[1.2] tracking-tight sm:mb-4 sm:text-4xl lg:text-5xl">
+      <Title className="mb-3 text-pretty text-2xl font-bold leading-[1.2] tracking-tight text-white sm:mb-4 sm:text-4xl lg:text-5xl">
         {lines.map((line, i) => {
           const isAccent = slide.headlineAccent && line.includes(slide.headlineAccent);
           return (
@@ -148,7 +154,7 @@ function WholesaleSlideCopy({
       </Title>
 
       {slide.body ? (
-        <p className="mb-6 line-clamp-2 max-w-xl text-sm leading-relaxed text-white/75 sm:mb-8 sm:text-base">
+        <p className="mb-6 line-clamp-2 max-w-xl text-sm leading-relaxed text-white/85 sm:mb-8 sm:text-base">
           {slide.body}
         </p>
       ) : null}
@@ -159,6 +165,7 @@ function WholesaleSlideCopy({
             <Button
               size="lg"
               variant="secondary"
+              className="text-primary-dark hover:text-primary-dark font-bold"
               leftIcon={<ArrowLeft className="rtl-flip h-5 w-5" />}
             >
               {slide.ctaLabel}
@@ -170,7 +177,7 @@ function WholesaleSlideCopy({
             <Button
               size="lg"
               variant="outline"
-              className="hover:text-primary border-white/40 text-white hover:border-white hover:bg-white"
+              className="border-white/55 bg-transparent text-white hover:border-white hover:bg-white/10 hover:text-white"
             >
               {slide.ctaSecondaryLabel}
             </Button>
@@ -197,7 +204,7 @@ export function HeroSection(props: HeroSectionProps) {
 
   return (
     <section
-      className={`bg-primary-dark relative flex items-end overflow-hidden text-white ${STOREFRONT_HERO_FRAME_CLASS}`}
+      className={`bg-primary-dark relative flex items-end overflow-hidden text-white ${STOREFRONT_HERO_FRAME_CLASS} wholesale-editorial-hero`}
       onMouseEnter={carousel.pause}
       onMouseLeave={carousel.resume}
       onFocusCapture={carousel.pause}
@@ -213,7 +220,7 @@ export function HeroSection(props: HeroSectionProps) {
         return (
           <div
             key={`${s.imageUrl}-${i}`}
-            className={`absolute inset-0 transition-opacity duration-700 ${
+            className={`absolute inset-0 transition-opacity duration-700 motion-reduce:transition-none ${
               isActive ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
             aria-hidden={!isActive}
@@ -223,35 +230,23 @@ export function HeroSection(props: HeroSectionProps) {
               mobileSrc={s.mobileImageUrl}
               alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
               priority={isLcp}
-              className={
-                'object-cover'
-              }
+              className="object-cover"
             />
           </div>
         );
       })}
-      {/* Transparent RTL scrim — never an opaque green wash (product heroes are already dark). */}
+      {/* Single two-stop RTL emerald scrim — no gold radial / grid texture (editorial). */}
       <div
         className={`absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`}
         style={{
-          background: `
-            linear-gradient(100deg, rgba(18,64,53,0.18) 0%, rgba(18,64,53,0.32) 40%, rgba(18,64,53,0.78) 68%, rgba(12,40,33,0.92) 100%),
-            radial-gradient(ellipse 42% 55% at 12% 30%, rgba(201,168,76,0.16), transparent 55%)
-          `,
-        }}
-        aria-hidden
-      />
-      <div
-        className={`absolute inset-0 opacity-[0.04] ${isArtwork ? 'md:hidden' : ''}`}
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M0 40h80M40 0v80'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundSize: '80px 80px',
+          background:
+            'linear-gradient(100deg, rgba(18,64,53,0.22) 0%, rgba(18,64,53,0.55) 45%, rgba(12,40,33,0.88) 100%)',
         }}
         aria-hidden
       />
 
       <div
-        className={`container-site relative z-10 pb-12 pt-8 sm:pb-16 lg:pb-16 lg:pt-10 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
+        className={`container-site relative z-10 pb-10 pt-10 sm:pb-14 sm:pt-12 lg:pb-16 lg:pt-12 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
       >
         <div key={`ws-copy-${carousel.index}`} className="animate-fade-in">
           <WholesaleSlideCopy slide={slide} artwork={isArtwork} titleAs={isHome ? 'h2' : 'h1'} />

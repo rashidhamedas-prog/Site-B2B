@@ -388,6 +388,23 @@ img {
   }
 }
 
+/* Wholesale editorial only — taller mobile band; retail .storefront-hero-frame unchanged. */
+.storefront-hero-frame.wholesale-editorial-hero {
+  aspect-ratio: 5 / 4;
+  max-height: 22.5rem; /* ~360px */
+}
+@media (min-width: 768px) {
+  .storefront-hero-frame.wholesale-editorial-hero {
+    aspect-ratio: 24 / 7;
+    max-height: 34rem;
+  }
+}
+@media (min-width: 1280px) {
+  .storefront-hero-frame.wholesale-editorial-hero {
+    max-height: 38rem;
+  }
+}
+
 .news-ticker {
   --ticker-duration: 40s;
   position: relative;

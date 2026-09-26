@@ -1,5 +1,35 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260926-005"
+    title: "Wholesale Editorial UI — hero + product cards"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260926-005"
+    roles:
+      implementer: "cursor:implementer-TASK-20260926-005"
+      reviewer: "required-after-diff"
+    branch: "feat/TASK-20260926-005-wholesale-editorial-ui"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-26T16:41:33Z"
+    heartbeat_at: "2026-09-26T16:41:33Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/wholesale/HeroSection.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      - "apps/web/src/components/wholesale/FeaturedProducts.tsx"
+      - "apps/web/src/app/globals.css"
+      - "design-system/default/pages/home.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Presentation-only Editorial Wholesale hero + Spec Sheet cards.
+      WholesaleProductCard reclaimed from TASK-20260913-010 (status done leftover).
+      Shared .storefront-hero-frame kept for retail; wholesale uses .wholesale-editorial-hero modifier.
+      No HeroSlide/CMS schema/API/URL/canonical/H1 SEO changes. Home ≤12 cards. LCP slide 0 only.
+    acceptance_criteria:
+      - "Wholesale hero taller on mobile (~5/4, max ~360px); single emerald scrim; gold hairline + solid gold primary CTA"
+      - "Wholesale cards borderless with hover lift; desktop second-image crossfade; one availability chip; MOQ pill; 4-col lg grid"
+      - "Retail storefront-hero-frame unchanged; no API/schema/canonical/H1 change; price gate kept"
+      - "design-system home.md + WORKLOG updated; web tsc pass; .com home smoke"
   - id: "TASK-20260926-004"
     title: "Admin permanent + bulk order delete"
     status: "done"

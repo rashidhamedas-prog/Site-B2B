@@ -1,11 +1,11 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { ProductImage } from '@/components/ui/ProductImage';
 import { getToken } from '@/lib/auth';
-import { channelSaleDisplay, sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
+import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 
@@ -60,25 +60,61 @@ export function WholesaleProductCard({
   );
   const showPrice = signedIn && price > 0;
   const moq = product.minOrderQty ?? product.minimumOrderQuantity ?? 6;
+  const primaryImage = mediaUrl(product.images?.[0]);
+  const secondImage = mediaUrl(product.images?.[1]);
+  const sizeLabel = sizeTypeLabel(product.sizeType);
+  const specParts = [
+    product.fabric || null,
+    sizeLabel || null,
+    colors.length ? `${colors.length.toLocaleString('fa-IR')} رنگ` : null,
+  ].filter(Boolean);
 
   useEffect(() => {
     setSignedIn(Boolean(getToken()));
   }, []);
 
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-lg border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] transition duration-300 hover:border-[var(--brand-gold,#C9A84C)] focus-within:ring-2 focus-within:ring-[var(--brand-gold,#C9A84C)] focus-within:ring-offset-2 motion-reduce:transition-none">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-lg bg-white transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(27,92,74,0.07)] focus-within:shadow-[0_4px_16px_rgba(27,92,74,0.07)] focus-within:ring-2 focus-within:ring-[var(--brand-gold,#C9A84C)] focus-within:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       <Link
         href={href}
         prefetch={false}
         className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)] focus:outline-none"
       >
-        <ProductImage
-          src={product.images?.[0]}
-          alt={resolveProductImageAlt(product.imageAlts, product.images?.[0], { name: product.name, fabric: product.fabric, index: 0 })}
-          priority={imagePriority}
-          sizes="(max-width:639px) 46vw, (max-width:1279px) 30vw, 240px"
-        />
-        <div className="absolute right-3 top-3 flex flex-wrap gap-1.5">
+        {primaryImage ? (
+          <>
+            <Image
+              src={primaryImage}
+              alt={resolveProductImageAlt(product.imageAlts, product.images?.[0], {
+                name: product.name,
+                fabric: product.fabric,
+                index: 0,
+              })}
+              fill
+              priority={imagePriority}
+              loading={imagePriority ? 'eager' : 'lazy'}
+              fetchPriority={imagePriority ? 'high' : 'low'}
+              sizes="(max-width:639px) 46vw, (max-width:1279px) 30vw, 280px"
+              className="object-cover object-center transition duration-500 group-hover:scale-[1.02] motion-reduce:transition-none"
+            />
+            {secondImage ? (
+              <Image
+                src={secondImage}
+                alt=""
+                aria-hidden
+                fill
+                loading="lazy"
+                fetchPriority="low"
+                sizes="(max-width:639px) 46vw, (max-width:1279px) 30vw, 280px"
+                className="hidden object-cover object-center opacity-0 transition duration-500 group-hover:opacity-100 md:block motion-reduce:hidden"
+              />
+            ) : null}
+          </>
+        ) : (
+          <div className="flex h-full items-center justify-center bg-gradient-to-b from-primary-50 to-primary-100">
+            <span className="text-xs text-primary/40">بدون تصویر</span>
+          </div>
+        )}
+        <div className="absolute right-3 top-3">
           <span
             className={`rounded-sm px-2.5 py-1 text-[10px] font-bold ${
               isAvailable
@@ -90,26 +126,21 @@ export function WholesaleProductCard({
           >
             {isAvailable ? 'آماده سفارش' : isComingSoon ? 'به‌زودی' : 'ناموجود'}
           </span>
-          {saleActive && discount ? (
-            <span className="rounded-sm bg-[var(--brand-gold,#C9A84C)] px-2.5 py-1 text-[10px] font-bold text-[var(--brand-green-dark,#0F2F28)]">
-              ٪{discount.toLocaleString('fa-IR')} تخفیف
-            </span>
-          ) : null}
-          {product.fabric ? (
-            <span className="rounded-sm bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-[var(--brand-green-dark,#0F2F28)]">
-              {product.fabric}
-            </span>
-          ) : null}
         </div>
       </Link>
 
       <div className="flex flex-1 flex-col p-3.5 sm:p-4">
-        <div className="mb-2 flex items-center justify-between gap-2 text-[10px] text-[var(--brand-muted,#6B7280)]">
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] text-[var(--brand-muted,#6B7280)]">
           <span className="font-mono tracking-wide" dir="ltr">
             {product.sku || 'TARANOM'}
           </span>
-          <span>{sizeTypeLabel(product.sizeType)}</span>
+          {saleActive && discount ? (
+            <span className="font-bold text-[var(--brand-gold-dark,#A88530)]">
+              ٪{discount.toLocaleString('fa-IR')} تخفیف
+            </span>
+          ) : null}
         </div>
+
         <Link
           href={href}
           prefetch={false}
@@ -120,42 +151,50 @@ export function WholesaleProductCard({
           </h3>
         </Link>
 
-        <div className="mt-3 flex min-h-7 items-center justify-between gap-2 border-y border-dashed border-[var(--brand-border,#E8E0D4)] py-2">
-          <div className="flex -space-x-1 space-x-reverse" aria-label={`${colors.length.toLocaleString('fa-IR')} رنگ`}>
+        {specParts.length ? (
+          <p className="mt-2 text-[11px] leading-5 text-[var(--brand-muted,#6B7280)]">
+            {specParts.join(' · ')}
+          </p>
+        ) : null}
+
+        {colors.length ? (
+          <div
+            className="mt-2.5 flex -space-x-1 space-x-reverse"
+            aria-label={`${colors.length.toLocaleString('fa-IR')} رنگ`}
+          >
             {colors.slice(0, 5).map((variant) => (
               <span
                 key={variant.color}
-                className="h-5 w-5 rounded-full border-2 border-white ring-1 ring-black/10"
+                className="h-4 w-4 rounded-full border-2 border-white ring-1 ring-black/10"
                 style={{ backgroundColor: variant.colorHex || '#d6d3d1' }}
                 title={variant.color}
               />
             ))}
           </div>
-          <span className="text-[11px] font-medium text-[var(--brand-muted,#6B7280)]">
-            {colors.length ? `${colors.length.toLocaleString('fa-IR')} رنگ` : 'رنگ‌بندی در جزئیات'}
-            {' · '}
-            {sizeTypeLabel(product.sizeType)}
-          </span>
-        </div>
+        ) : null}
 
-        <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-          <div>
-            <p className="text-[10px] text-[var(--brand-muted,#6B7280)]">قیمت همکاری هر عدد</p>
-            <p className="mt-0.5 text-base font-black text-[var(--brand-green,#1B5C4A)]">
-              {showPrice ? `${toman(price)} تومان` : 'پس از ورود'}
-            </p>
-            {showPrice && saleActive && compareAt > price ? (
-              <p className="text-[11px] text-[var(--brand-muted,#6B7280)] line-through">{toman(compareAt)}</p>
-            ) : null}
-            <p className="mt-1 text-[10px] font-medium text-[var(--brand-green-dark,#0F2F28)]">
-              حداقل سفارش {moq.toLocaleString('fa-IR')} عدد
-            </p>
+        <div className="mt-auto space-y-3 pt-4">
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] text-[var(--brand-muted,#6B7280)]">قیمت همکاری هر عدد</p>
+              <p className="mt-0.5 text-base font-black text-[var(--brand-green,#1B5C4A)]">
+                {showPrice ? `${toman(price)} تومان` : 'پس از ورود'}
+              </p>
+              {showPrice && saleActive && compareAt > price ? (
+                <p className="text-[11px] text-[var(--brand-muted,#6B7280)] line-through">
+                  {toman(compareAt)}
+                </p>
+              ) : null}
+            </div>
+            <span className="inline-flex shrink-0 items-center rounded-full bg-[var(--brand-green,#1B5C4A)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--brand-green,#1B5C4A)]">
+              حداقل {moq.toLocaleString('fa-IR')} عدد
+            </span>
           </div>
           <button
             type="button"
             onClick={() => setOrderOpen(true)}
             aria-label={`سفارش سریع ${product.name}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--brand-green,#1B5C4A)] px-3 text-xs font-bold text-white transition hover:bg-[var(--brand-green-dark,#0F2F28)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
+            className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-lg bg-[var(--brand-green,#1B5C4A)] px-3 text-xs font-bold text-white transition hover:bg-[var(--brand-green-dark,#0F2F28)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
           >
             سفارش
             <ArrowLeft className="mr-1 h-3.5 w-3.5" aria-hidden />
