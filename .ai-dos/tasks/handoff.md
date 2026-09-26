@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-26T16:55:00Z — TASK-20260913-002 TorobPay root cause: contract 1100
+
+- Owner: cursor:implementer-TASK-20260913-002 (orchestrator fleet)
+- Live CPG probe (redacted): OAuth 200 + access_token; eligible amount=100000 → **403 / 1100 / merchant no active contract**; token variants A/B/C still **1011**.
+- Panel client `19350107` / poshaktaranom.ir: 0 successful orders.
+- Code: `classifyTorobpayContractFailure`; probeConnection hard-fails on 1100; createPayment prechecks eligible; shopper 1011 copy mentions contract; admin PaymentTab hint.
+- Spec: `torobpay.adapter.spec.ts` PASS.
+- **Blocked on TorobPay ops:** activate merchant contract in panel «اطلاعات فعال‌سازی درگاه» or support. Re-test admin connection + checkout after activation.
+- Claims remain until live token succeeds post-contract.
+
 ## 2026-09-26T16:52:00Z — TASK-20260926-005 LIVE (wholesale editorial UI)
 
 - Owner: cursor:implementer-TASK-20260926-005

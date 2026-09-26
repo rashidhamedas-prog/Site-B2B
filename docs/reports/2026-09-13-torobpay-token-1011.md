@@ -8,6 +8,19 @@ Live retail checkout `ORD-2026-00037` (`bbbe0438-dd1b-4858-92cc-55f3e3155609`) s
 
 Local form already had province, city, a long street, plaque `137`, and postal `9157765383`.
 
+## 2026-09-26 — root cause confirmed (live CPG probe)
+
+OAuth with stored admin credentials succeeds. Then:
+
+- `GET /api/online/offer/v1/eligible?amount=100000` → **HTTP 403**, `errorCode=1100`, **`merchant no active contract`**
+- `POST /api/online/payment/v1/token` (totweb-minimal, snake_case cart, toman/10, with/without address) → always **1011** `can't create order`
+
+Panel shop `تولیدی پوشاک ترنم` / `poshaktaranom.ir` still shows **0** successful orders. Payload experiments cannot create a payment until TorobPay activates the merchant contract.
+
+Code fix this turn: admin connection probe and checkout start now hard-fail with a clear «قرارداد پذیرنده فعال نیست (۱۱۰۰)» message instead of soft-success / opaque 1011.
+
+**Owner action required:** in پنل ترب‌پی → «اطلاعات فعال‌سازی درگاه» complete/activate the contract, or contact TorobPay support for client `19350107`. Re-run admin «تست اتصال» until it reports ready (not 1100). Then retry a real checkout.
+
 ## Confirmed
 
 - Order `shippingAddress` street was `میدان عسگریه ، خیابان قائمی بین 10 و 12 پلاک 137، پلاک 137، پلاک 137`.

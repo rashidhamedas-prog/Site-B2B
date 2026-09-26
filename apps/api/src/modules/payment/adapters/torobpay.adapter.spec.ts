@@ -116,6 +116,12 @@ async function main() {
     json: { error_code: 1099 },
   });
   assert(inactive.failureClass === 'merchant_inactive', '1099 inactive');
+  const noContract = classifyTorobpayOauthFailure({
+    httpStatus: 403,
+    json: { successful: false, errorData: { errorCode: 1100, message: 'merchant no active contract' } },
+  });
+  assert(noContract.failureClass === 'merchant_inactive', '1100 contract');
+  assert(noContract.message.includes('قرارداد'), '1100 message');
 
   const gw = adapter();
   const originalFetch = globalThis.fetch;
@@ -213,6 +219,52 @@ async function main() {
       if (url.includes('/oauth/token')) {
         return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
       }
+      if (url.includes('/offer/v1/eligible')) {
+        return new Response(
+          JSON.stringify({
+            successful: false,
+            errorData: { errorCode: 1100, message: 'merchant no active contract' },
+          }),
+          { status: 403 },
+        );
+      }
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+    const blockedProbe = await gw.probeConnection();
+    assert(blockedProbe.ok === false, '1100 probe fails');
+    assert(blockedProbe.stage === 'eligible', '1100 probe stage');
+    assert(blockedProbe.failureClass === 'merchant_inactive', '1100 probe class');
+    assert(blockedProbe.message.includes('قرارداد'), '1100 probe message');
+
+    let contractErr = '';
+    try {
+      await gw.createPayment({
+        amountIrr: 2500000,
+        callbackUrl: 'https://www.poshaktaranom.ir/payment/torobpay/callback?paymentId=pay-1',
+        description: 'تست',
+        merchantId: 'n/a',
+        sandbox: false,
+        mobile: '09123456789',
+        orderId: 'ord-contract',
+        metadata: { providerId: 'pay-contract' },
+        torobpayCheckout: checkout,
+      });
+    } catch (e) {
+      contractErr = e instanceof Error ? e.message : String(e);
+    }
+    assert(contractErr.includes('قرارداد پذیرنده ترب‌پی فعال نیست'), 'create blocked by 1100');
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/oauth/token')) {
+        return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
+      }
+      if (url.includes('/offer/v1/eligible')) {
+        return new Response(
+          JSON.stringify({ successful: true, response: { eligible: true } }),
+          { status: 200 },
+        );
+      }
       if (url.includes('/payment/v1/token')) {
         return new Response(
           JSON.stringify({
@@ -248,6 +300,12 @@ async function main() {
       const url = String(input);
       if (url.includes('/oauth/token')) {
         return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
+      }
+      if (url.includes('/offer/v1/eligible')) {
+        return new Response(
+          JSON.stringify({ successful: true, response: { eligible: true } }),
+          { status: 200 },
+        );
       }
       if (url.includes('/payment/v1/token')) {
         tokenCalls += 1;
@@ -296,6 +354,12 @@ async function main() {
       const url = String(input);
       if (url.includes('/oauth/token')) {
         return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
+      }
+      if (url.includes('/offer/v1/eligible')) {
+        return new Response(
+          JSON.stringify({ successful: true, response: { eligible: true } }),
+          { status: 200 },
+        );
       }
       if (url.includes('/payment/v1/token')) {
         return new Response(

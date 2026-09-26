@@ -220,6 +220,37 @@ export type TorobpayProbeResult = {
   };
 };
 
+/** Official eligible/token persist refusal when the merchant contract is not live. */
+export function classifyTorobpayContractFailure(input: {
+  httpStatus?: number;
+  json: Record<string, unknown>;
+}): { failureClass: TorobpayProbeFailureClass; message: string } | null {
+  const json = input.json || {};
+  const errorData =
+    json.errorData && typeof json.errorData === 'object'
+      ? (json.errorData as Record<string, unknown>)
+      : {};
+  const code = Number(
+    errorData.errorCode ?? errorData.error_code ?? json.error_code ?? json.errorCode ?? json.code,
+  );
+  const msg = String(
+    json.user_message ||
+      json.message ||
+      errorData.userMessage ||
+      errorData.message ||
+      json.error ||
+      '',
+  ).trim();
+  if (code === 1100 || /no active contract/i.test(msg) || /قرارداد.*فعال/i.test(msg)) {
+    return {
+      failureClass: 'merchant_inactive',
+      message:
+        'قرارداد پذیرنده ترب‌پی فعال نیست (کد ۱۱۰۰). در پنل ترب‌پی بخش «اطلاعات فعال‌سازی درگاه» را کامل کنید یا از پشتیبانی ترب‌پی بخواهید قرارداد را فعال کند. تا آن زمان توکن پرداخت ساخته نمی‌شود.',
+    };
+  }
+  return null;
+}
+
 export function classifyTorobpayOauthFailure(input: {
   httpStatus: number;
   json: Record<string, unknown>;
@@ -228,6 +259,9 @@ export function classifyTorobpayOauthFailure(input: {
   const json = input.json || {};
   const code = Number(json.error_code ?? json.errorCode ?? json.code);
   const msg = String(json.user_message || json.message || json.error || '').trim();
+
+  const contract = classifyTorobpayContractFailure({ httpStatus, json });
+  if (contract) return contract;
 
   if (httpStatus === 404 || code === 1017) {
     return {
@@ -558,6 +592,37 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
             },
           },
         );
+        const contract = classifyTorobpayContractFailure({
+          httpStatus: eligible.status,
+          json: eligible.json,
+        });
+        if (contract) {
+          this.logger.warn(
+            `TorobPay probe eligible blocked http=${eligible.status} class=${contract.failureClass}`,
+          );
+          return {
+            ok: false,
+            stage: 'eligible',
+            failureClass: contract.failureClass,
+            httpStatus: eligible.status,
+            message: contract.message,
+            sandbox,
+            meta,
+          };
+        }
+        if (!eligible.ok && eligible.status >= 400) {
+          const detail = envelopeMessage(eligible.json, 'بررسی پیشنهاد اقساطی ناموفق بود');
+          this.logger.warn(`TorobPay probe eligible http=${eligible.status} detail=${detail.slice(0, 120)}`);
+          return {
+            ok: false,
+            stage: 'eligible',
+            failureClass: 'unknown',
+            httpStatus: eligible.status,
+            message: detail,
+            sandbox,
+            meta,
+          };
+        }
         const response = envelopeResponse(eligible.json);
         const isEligible = response.eligible === true;
         return {
@@ -574,7 +639,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       } catch (err) {
         const norm = this.normalizeProviderError(err);
         return {
-          ok: true,
+          ok: false,
           stage: 'eligible',
           failureClass: norm.retryable ? 'network' : 'unknown',
           message: 'احراز هویت موفق بود؛ بررسی پیشنهاد اقساطی در دسترس نبود.',
@@ -629,6 +694,36 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
     if (fullName.length < 3) {
       throw new Error('برای ترب‌پی نام و نام خانوادگی گیرنده را کامل وارد کنید.');
     }
+
+    // Hard-fail before token when CPG says the merchant contract is inactive (1100).
+    // Otherwise every start surfaces as opaque 1011 "can't create order".
+    try {
+      const eligible = await this.authorized(
+        'GET',
+        `/api/online/offer/v1/eligible?amount=${Math.max(100000, Math.floor(Number(req.amountIrr) || 0))}`,
+        undefined,
+        over,
+      );
+      const contract = classifyTorobpayContractFailure({
+        httpStatus: eligible.status,
+        json: eligible.json,
+      });
+      if (contract) {
+        this.logger.warn(
+          `TorobPay create blocked by contract http=${eligible.status} amount=${req.amountIrr}`,
+        );
+        throw new Error(contract.message);
+      }
+    } catch (err) {
+      if (err instanceof Error && /قرارداد پذیرنده ترب‌پی فعال نیست/.test(err.message)) {
+        throw err;
+      }
+      // Network / eligible soft failures: continue to token (historical path).
+      this.logger.warn(
+        `TorobPay eligible precheck skipped: ${err instanceof Error ? err.message.slice(0, 120) : 'unknown'}`,
+      );
+    }
+
     const requestToken = async (txn: string, includeAddress: boolean) => {
       const cart = buildTorobpayBalancedCart({
         amountIrr: req.amountIrr,
@@ -682,7 +777,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       );
       if (/\b1011\b/.test(detail) || /can't create order/i.test(detail)) {
         throw new Error(
-          'ترب‌پی نتوانست این پرداخت را بسازد. دوباره ترب‌پی را بزنید یا زرین‌پال را انتخاب کنید.',
+          'ترب‌پی نتوانست این پرداخت را بسازد (۱۰۱۱). اگر تست اتصال ادمین «قرارداد فعال نیست» می‌گوید، اول قرارداد پذیرنده را در پنل ترب‌پی فعال کنید؛ وگرنه زرین‌پال را انتخاب کنید.',
         );
       }
       throw new Error(detail);

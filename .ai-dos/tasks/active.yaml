@@ -816,7 +816,7 @@ tasks:
     branch: "ai/TASK-20260913-002-torobpay-token-1011"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-13T08:10:00Z"
-    heartbeat_at: "2026-09-13T08:10:00Z"
+    heartbeat_at: "2026-09-26T16:55:00Z"
     depends_on: []
     file_claims:
       - "apps/api/src/modules/payment/adapters/torobpay.adapter.ts"
@@ -828,6 +828,7 @@ tasks:
       # "apps/web/src/app/retail/checkout/page.tsx"
       - "apps/web/src/lib/shipping-address.ts"
       - "apps/web/src/lib/shipping-address.spec.mts"
+      - "apps/web/src/components/admin/settings/PaymentTab.tsx"
       - "docs/architecture/checkout-shipping-address.md"
       - "docs/reports/2026-09-13-torobpay-token-1011.md"
       - "docs/WORKLOG.md"
@@ -835,7 +836,9 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Live ORD-2026-00037 AWAITING_PAYMENT. Address already complete; CPG 1011 mapped to address copy. Street has triplicate پلاک 137.
+      2026-09-26 live root cause: eligible 1100 merchant no active contract.
+      OAuth OK; all token shapes 1011 until TorobPay activates contract for client 19350107.
+      Code now surfaces 1100 clearly on admin probe + checkout start.
     acceptance_criteria:
       - "CPG token street has exactly one plaque suffix after sanitize"
       - "Token body matches totweb cart (no tax flags / registration_phone_number)"

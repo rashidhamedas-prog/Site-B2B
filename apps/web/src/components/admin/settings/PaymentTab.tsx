@@ -82,6 +82,9 @@ export function PaymentTab({
           {torobpayBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
           تست اتصال ترب‌پی
         </button>
+        <p className="text-[11px] leading-5 text-slate-500">
+          اگر تست «قرارداد پذیرنده فعال نیست (۱۱۰۰)» بدهد، اول در پنل ترب‌پی بخش اطلاعات فعال‌سازی درگاه را کامل/فعال کنید؛ تا قرارداد فعال نشود توکن پرداخت ساخته نمی‌شود.
+        </p>
         {torobpayMsg ? <p className={cn('rounded-lg border px-3 py-2 text-xs', torobpayMsg.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-950')}>{torobpayMsg.text}</p> : null}
       </SettingsSection>
       <SettingsSection tone="retail" title="زرین‌پال فروشگاه تکی" badge=".ir">
