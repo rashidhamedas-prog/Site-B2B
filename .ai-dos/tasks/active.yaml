@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260926-005"
     title: "Wholesale Editorial UI — hero + product cards"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260926-005"
     roles:
@@ -11,20 +11,14 @@ tasks:
     branch: "feat/TASK-20260926-005-wholesale-editorial-ui"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-26T16:41:33Z"
-    heartbeat_at: "2026-09-26T16:41:33Z"
+    heartbeat_at: "2026-09-26T16:52:00Z"
+    completed_at: "2026-09-26T16:52:00Z"
     depends_on: []
-    file_claims:
-      - "apps/web/src/components/wholesale/HeroSection.tsx"
-      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
-      - "apps/web/src/components/wholesale/FeaturedProducts.tsx"
-      - "apps/web/src/app/globals.css"
-      - "design-system/default/pages/home.md"
-      - "docs/WORKLOG.md"
+    file_claims: []
     notes: |
-      Presentation-only Editorial Wholesale hero + Spec Sheet cards.
-      WholesaleProductCard reclaimed from TASK-20260913-010 (status done leftover).
-      Shared .storefront-hero-frame kept for retail; wholesale uses .wholesale-editorial-hero modifier.
-      No HeroSlide/CMS schema/API/URL/canonical/H1 SEO changes. Home ≤12 cards. LCP slide 0 only.
+      LIVE at VPS `df5fd41`. Presentation-only Editorial Wholesale.
+      Origin HTML has wholesale-editorial-hero, lg:grid-cols-4, price gate, second-image hover classes.
+      Health 200; title/H1 SEO unchanged. Claims released. Independent Reviewer residual.
     acceptance_criteria:
       - "Wholesale hero taller on mobile (~5/4, max ~360px); single emerald scrim; gold hairline + solid gold primary CTA"
       - "Wholesale cards borderless with hover lift; desktop second-image crossfade; one availability chip; MOQ pill; 4-col lg grid"
