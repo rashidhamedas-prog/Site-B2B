@@ -402,16 +402,21 @@ export class SalesPartnerService {
         acc[row.status] = (acc[row.status] || 0) + 1;
         return acc;
       }, {});
+    const appByStatus = countBy(applications);
+    const partnerByStatus = countBy(profiles);
     return {
       applications: {
         total: applications.length,
-        byStatus: countBy(applications),
+        byStatus: appByStatus,
+        pendingReview: appByStatus.PENDING_REVIEW || 0,
       },
       partners: {
         total: profiles.length,
-        byStatus: countBy(profiles),
+        byStatus: partnerByStatus,
+        active: partnerByStatus.ACTIVE || 0,
       },
       note: 'اعداد تخمینی، قطعی و پرداخت‌شده را با هم مخلوط نکنید. جزئیات مالی در دفتر هر همکار است.',
+      generatedAt: new Date().toISOString(),
     };
   }
 

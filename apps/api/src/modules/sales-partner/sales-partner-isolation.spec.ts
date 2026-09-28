@@ -60,6 +60,9 @@ assert(/sales_partner\.application\.submitted/.test(read('sales-partner-events.t
 assert(/AdminOnly/.test(read('sales-partner-admin.controller.ts')), 'admin API stays ADMIN-only');
 assert(/Get\('audits'\)/.test(read('sales-partner-admin.controller.ts')), 'admin audits');
 assert(/Get\('reports'\)/.test(read('sales-partner-admin.controller.ts')), 'admin reports');
+assert(/programBalances/.test(read('sales-partner-admin.controller.ts')), 'admin report commissions rollup');
+assert(/Get\('report'\)/.test(read('sales-partner-me.controller.ts')), 'partner personal report');
+assert(/programBalances/.test(read('sales-partner-ledger.service.ts')), 'ledger programBalances');
 assert(/orders\/:id\/attribution/.test(read('sales-partner-admin.controller.ts')), 'admin attribution route');
 assert(/dir="rtl"/.test(shell) && /aria-label="ناوبری پنل همکار بازاریاب"/.test(shell), 'rtl shell + nav label');
 assert(/focus-visible:outline/.test(shell), 'keyboard focus on partner nav');

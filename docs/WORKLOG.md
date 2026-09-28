@@ -1,5 +1,14 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-28 — داشبورد حرفه‌ای همکار بازاریاب (ادمین + پنل)
+
+- معماری: `docs/architecture/sales-partner-admin-ui.md`؛ پرامپت Stitch: `docs/prompts/stitch-sales-partner-admin-fa.md`.
+- API: گزارش ادمین با rollup پورسانت (`programBalances`) + آمار تسویه؛ `GET /sales-partners/report` برای داشبورد شخصی.
+- ادمین: تب داشبورد KPI/قیف/اقدام/سوابق؛ درخواست‌ها با فیلتر؛ گزارش و سوابق فیلترپذیر؛ UI مشترک badge/KPI.
+- پنل بازاریاب: خانه گزارش‌محور، `/sales-partners/reports`، سفارش‌ها با فیلتر، پورسانت با دفتر، ناوبری گزارش + لینک حساب.
+- 21st: جستجوی الگوهای dashboard/table (سهمیه بازیابی کد امروز ۰)؛ Stitch MCP خراب — پرامپت آماده برای paste دستی.
+- Spec isolation به‌روز؛ Task: TASK-20260928-002.
+
 ## 2026-09-28 — تایمر ارسال مجدد پیامک (سرور-محور) در همه جریان‌های OTP/تأیید
 
 - قرارداد API: موفقیت → `cooldownSeconds`؛ بلاک → 429 + `remainingSeconds` + `Retry-After` (`SmsCooldownException` + filter).

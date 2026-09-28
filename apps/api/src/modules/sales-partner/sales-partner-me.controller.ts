@@ -108,6 +108,40 @@ export class SalesPartnerMeController {
     return this.ledger.balances(this.requirePartner(req));
   }
 
+  @Get('report')
+  async partnerReport(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+    const salesPartnerId = this.requirePartner(req);
+    const [balances, drafts] = await Promise.all([
+      this.ledger.balances(salesPartnerId),
+      this.drafts.listMine(salesPartnerId),
+    ]);
+    const byStatus = drafts.reduce<Record<string, number>>((acc, row) => {
+      acc[row.status] = (acc[row.status] || 0) + 1;
+      return acc;
+    }, {});
+    const awaiting = drafts.filter(
+      (row) => row.status === 'DRAFT' || row.status === 'AWAITING_CUSTOMER_CONFIRMATION',
+    ).length;
+    const converted = byStatus.CONVERTED_TO_ORDER || 0;
+    return {
+      drafts: {
+        total: drafts.length,
+        byStatus,
+        awaiting,
+        converted,
+        stale: drafts.filter((row) => row.stale).length,
+      },
+      commissions: {
+        held: balances.held,
+        available: balances.available,
+        paid: balances.paid,
+        reversed: balances.reversed,
+      },
+      note: 'این گزارش فقط دادهٔ حساب خود شماست. مبلغ قابل‌برداشت با تخمین روی کارت محصول یکی نیست.',
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   @Get('ledger')
   ledgerView(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
     return this.ledger.balances(this.requirePartner(req));

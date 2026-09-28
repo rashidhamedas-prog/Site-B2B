@@ -78,11 +78,30 @@ export class SalesPartnerAdminController {
 
   @Get('reports')
   async reports() {
-    const [base, drafts] = await Promise.all([
+    const [base, drafts, commissions, payoutRows] = await Promise.all([
       this.salesPartners.programReport(),
       this.drafts.adminStats(),
+      this.ledger.programBalances(),
+      this.payouts.listAdmin(),
     ]);
-    return { ...base, drafts };
+    const paidIrr = payoutRows
+      .filter((row) => row.status === 'PAID')
+      .reduce((sum, row) => sum + Number(row.amountIrr || 0), 0);
+    return {
+      ...base,
+      drafts,
+      commissions: {
+        held: commissions.held,
+        available: commissions.available,
+        paid: commissions.paid,
+        reversed: commissions.reversed,
+        sampleSize: commissions.sampleSize,
+      },
+      payouts: {
+        count: payoutRows.length,
+        paidIrr,
+      },
+    };
   }
 
   @Get('catalog')

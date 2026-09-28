@@ -9,7 +9,7 @@ const NAV = [
   { href: '/sales-partners', label: 'خانه', key: 'home' },
   { href: '/sales-partners/catalog', label: 'محصولات', key: 'catalog' },
   { href: '/sales-partners/orders', label: 'سفارش‌ها', key: 'orders' },
-  { href: '/sales-partners/profile', label: 'حساب', key: 'account' },
+  { href: '/sales-partners/reports', label: 'گزارش', key: 'reports' },
 ] as const;
 
 const ACCOUNT = [
@@ -19,10 +19,11 @@ const ACCOUNT = [
   { href: '/sales-partners/guide', label: 'آموزش' },
 ];
 
-function navKey(pathname: string): (typeof NAV)[number]['key'] | null {
+function navKey(pathname: string): (typeof NAV)[number]['key'] | 'account' | null {
   if (pathname === '/sales-partners' || pathname === '/sales-partners/') return 'home';
   if (pathname.startsWith('/sales-partners/catalog')) return 'catalog';
   if (pathname.startsWith('/sales-partners/orders')) return 'orders';
+  if (pathname.startsWith('/sales-partners/reports')) return 'reports';
   if (
     pathname.startsWith('/sales-partners/profile')
     || pathname.startsWith('/sales-partners/commissions')
@@ -54,16 +55,24 @@ export function SalesPartnerShell({
             <p className="text-[11px] font-medium text-[#1B5C4A]">ترنم · همکار بازاریاب</p>
             <h1 className="truncate text-2xl font-semibold leading-8">{title}</h1>
           </div>
-          <button
-            type="button"
-            className={`min-h-11 shrink-0 rounded-full px-3 text-sm text-stone-700 ${focus}`}
-            onClick={() => {
-              clearToken();
-              window.location.href = '/sales-partners/login';
-            }}
-          >
-            خروج
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Link
+              href="/sales-partners/profile"
+              className={`inline-flex min-h-11 items-center rounded-full px-3 text-sm text-stone-700 ${focus}`}
+            >
+              حساب
+            </Link>
+            <button
+              type="button"
+              className={`min-h-11 rounded-full px-3 text-sm text-stone-700 ${focus}`}
+              onClick={() => {
+                clearToken();
+                window.location.href = '/sales-partners/login';
+              }}
+            >
+              خروج
+            </button>
+          </div>
         </header>
         {current === 'account' && (
           <nav className="mt-4 flex gap-2 overflow-x-auto" aria-label="بخش‌های حساب">

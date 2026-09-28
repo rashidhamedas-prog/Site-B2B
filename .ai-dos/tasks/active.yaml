@@ -1,5 +1,40 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260928-002"
+    title: "Sales partner admin + partner professional UI/dashboard"
+    status: "active"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260928-002"
+    roles:
+      implementer: "cursor:implementer-TASK-20260928-002"
+      reviewer: "required-after-diff"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-28T09:20:00Z"
+    heartbeat_at: "2026-09-28T09:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/admin/sales-partners/**"
+      - "apps/web/src/components/sales-partners/**"
+      - "apps/web/src/app/sales-partners/**"
+      - "apps/api/src/modules/sales-partner/sales-partner-admin.controller.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-me.controller.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-ledger.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-isolation.spec.ts"
+      - "docs/architecture/sales-partner-admin-ui.md"
+      - "docs/prompts/stitch-sales-partner-admin-fa.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      Enrich reports API; professional admin dashboard + partner report sync.
+      21st quota exhausted (patterns only). Stitch MCP broken; prompt ready.
+    acceptance_criteria:
+      - "Admin has dashboard tab with KPIs, funnel, action queue, recent audits"
+      - "Applications/reports/history polished with filters"
+      - "Partner panel has personal report page synced with ledger semantics"
+      - "GET /admin/sales-partners/reports includes commissions rollup"
+      - "GET /sales-partners/report works for partner JWT"
+      - "isolation spec OK; web tsc OK"
   - id: "TASK-20260926-005"
     title: "Wholesale Editorial UI — hero + product cards"
     status: "done"

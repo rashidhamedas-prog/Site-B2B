@@ -1,100 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-
-type ApplicationRow = {
-  id: string;
-  displayName: string;
-  phoneMasked: string;
-  status: string;
-  createdAt: string;
-};
-
-type PartnerRow = {
-  id: string;
-  displayName: string;
-  status: string;
-  statusLabel: string;
-  statusReason: string | null;
-  phoneMasked: string;
-  riskFlags?: string[];
-};
-
-type CatalogRow = {
-  productId: string;
-  name: string;
-  slug: string | null;
-  priceIrr: number;
-  vendorSku: boolean;
-  eligible: boolean;
-  previewCommissionPercent: number;
-  marginIrr: number;
-  minMarginIrr: number;
-  canEnable: boolean;
-};
-
-type RuleRow = {
-  id: string;
-  scope: string;
-  percent: number;
-  active: boolean;
-  productId: string | null;
-  categoryId: string | null;
-  salesPartnerId: string | null;
-  note: string | null;
-};
-
-type PayoutRow = {
-  id: string;
-  salesPartnerId: string;
-  status: string;
-  amountIrr: number;
-  bankReferenceMasked: string | null;
-  paidAt: string | null;
-};
-
-type Settings = {
-  enabled: boolean;
-  mode: 'OFF' | 'PREVIEW' | 'CANARY' | 'LIVE';
-  applyOpen: boolean;
-  commissionHoldDays: number | null;
-  minPayoutIrr: number;
-  dailyDraftCap: number;
-  termsVersion: string;
-};
-
-type DraftRow = {
-  id: string;
-  salesPartnerId?: string;
-  statusLabel: string;
-  merchandiseIrr: number;
-  convertedOrderId: string | null;
-  customerPhoneMasked: string | null;
-  attribution?: { salesSource: string; salesPartnerId: string | null; salesPartnerSubmissionId: string | null } | null;
-};
-
-type AuditRow = { id: string; action: string; targetType: string; targetId: string; createdAt: string };
-type Report = {
-  applications: { total: number; byStatus: Record<string, number> };
-  partners: { total: number; byStatus: Record<string, number> };
-  drafts: { sampleSize: number; byStatus: Record<string, number>; converted: number; customerConfirmRate: number | null };
-  note: string;
-};
-
-type Tab = 'applications' | 'partners' | 'orders' | 'catalog' | 'rules' | 'payouts' | 'settings' | 'reports';
+import { SpBadge, SpEmptyState, SpRefreshButton, SpSection, spFocusClass } from '@/components/sales-partners/SpUi';
+import {
+  formatSpDate,
+  spAppStatusLabel,
+  spAuditLabel,
+  SP_MODE_FA,
+} from '@/components/sales-partners/sp-labels';
+import { SpAdminDashboard, partnerBadgeLabel } from './SpAdminDashboard';
+import type {
+  ApplicationRow,
+  AuditRow,
+  CatalogRow,
+  DraftRow,
+  PartnerRow,
+  PayoutRow,
+  Report,
+  RuleRow,
+  Settings,
+  Tab,
+} from './types';
 
 export function AdminSalesPartners() {
-  const [tab, setTab] = useState<Tab>('applications');
+  const [tab, setTab] = useState<Tab>('dashboard');
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [partners, setPartners] = useState<PartnerRow[]>([]);
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [query, setQuery] = useState('');
+  const [appFilter, setAppFilter] = useState('ALL');
+  const [auditFilter, setAuditFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [rulePercent, setRulePercent] = useState(5);
   const [ruleNote, setRuleNote] = useState('');
   const [payoutPartnerId, setPayoutPartnerId] = useState('');
@@ -105,20 +48,24 @@ export function AdminSalesPartners() {
   const [audits, setAudits] = useState<AuditRow[]>([]);
   const [report, setReport] = useState<Report | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setError(null);
     try {
-      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts, nextSettings, nextOrders, nextAudits, nextReport] = await Promise.all([
-        apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
-        apiClient.get<PartnerRow[]>('/admin/sales-partners'),
-        apiClient.get<{ items: CatalogRow[] }>(`/admin/sales-partners/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`),
-        apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
-        apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
-        apiClient.get<Settings>('/admin/sales-partners/settings'),
-        apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
-        apiClient.get<AuditRow[]>('/admin/sales-partners/audits'),
-        apiClient.get<Report>('/admin/sales-partners/reports'),
-      ]);
+      const auditQs = auditFilter ? `?targetType=${encodeURIComponent(auditFilter)}` : '';
+      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts, nextSettings, nextOrders, nextAudits, nextReport] =
+        await Promise.all([
+          apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
+          apiClient.get<PartnerRow[]>('/admin/sales-partners'),
+          apiClient.get<{ items: CatalogRow[] }>(
+            `/admin/sales-partners/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`,
+          ),
+          apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
+          apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
+          apiClient.get<Settings>('/admin/sales-partners/settings'),
+          apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
+          apiClient.get<AuditRow[]>(`/admin/sales-partners/audits${auditQs}`),
+          apiClient.get<Report>('/admin/sales-partners/reports'),
+        ]);
       setApps(nextApps);
       setPartners(nextPartners);
       setCatalog(nextCatalog.items);
@@ -130,19 +77,29 @@ export function AdminSalesPartners() {
       setReport(nextReport);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود');
+    } finally {
+      setLoading(false);
     }
-  }
+  }, [auditFilter, query]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
+
+  const filteredApps = useMemo(() => {
+    if (appFilter === 'ALL') return apps;
+    return apps.filter((row) => row.status === appFilter);
+  }, [apps, appFilter]);
 
   async function review(id: string, action: 'APPROVE' | 'NEED_INFO' | 'REJECT') {
     const reason = action === 'APPROVE' ? '' : window.prompt('دلیل را بنویسید') || '';
     if (action !== 'APPROVE' && reason.trim().length < 3) return;
     setBusyId(id);
     try {
-      await apiClient.patch(`/admin/sales-partners/applications/${id}/review`, { action, reason: reason || undefined });
+      await apiClient.patch(`/admin/sales-partners/applications/${id}/review`, {
+        action,
+        reason: reason || undefined,
+      });
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ثبت تصمیم ناموفق بود');
@@ -153,7 +110,10 @@ export function AdminSalesPartners() {
 
   async function toggleEligible(row: CatalogRow) {
     const partnerPercent = row.vendorSku
-      ? Number(window.prompt('درصد پورسانت بازاریاب برای کنترل حاشیه', String(row.previewCommissionPercent)) || row.previewCommissionPercent)
+      ? Number(
+          window.prompt('درصد پورسانت بازاریاب برای کنترل حاشیه', String(row.previewCommissionPercent)) ||
+            row.previewCommissionPercent,
+        )
       : row.previewCommissionPercent;
     setBusyId(row.productId);
     try {
@@ -172,7 +132,9 @@ export function AdminSalesPartners() {
   async function loadBalance() {
     if (!payoutPartnerId) return;
     try {
-      const next = await apiClient.get<{ available: number }>(`/admin/sales-partners/${payoutPartnerId}/balances`);
+      const next = await apiClient.get<{ available: number }>(
+        `/admin/sales-partners/${payoutPartnerId}/balances`,
+      );
       setAvailableIrr(next.available);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خواندن مانده ناموفق بود');
@@ -270,8 +232,9 @@ export function AdminSalesPartners() {
   }
 
   const tabs: { id: Tab; label: string }[] = [
+    { id: 'dashboard', label: 'داشبورد' },
     { id: 'applications', label: 'درخواست‌ها' },
-    { id: 'partners', label: 'همکاران بازاریاب' },
+    { id: 'partners', label: 'همکاران' },
     { id: 'orders', label: 'سفارش‌ها' },
     { id: 'catalog', label: 'محصولات مجاز' },
     { id: 'rules', label: 'قوانین پورسانت' },
@@ -280,107 +243,234 @@ export function AdminSalesPartners() {
     { id: 'reports', label: 'گزارش و سوابق' },
   ];
 
+  const pendingCount = apps.filter((row) => row.status === 'PENDING_REVIEW').length;
+
   return (
     <div className="space-y-6" dir="rtl">
-      <p className="text-sm text-stone-600">
-        این بخش برای همکار بازاریاب است، نه تأمین‌کننده ارسال. برنامه تا روشن‌شدن فلگ روی سفارش‌های فعلی اثر ندارد.
-      </p>
-      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 max-w-2xl">
+          <p className="text-sm text-stone-600">
+            این بخش برای همکار بازاریاب است، نه تأمین‌کننده ارسال. برنامه تا روشن‌شدن فلگ روی سفارش‌های فعلی اثر ندارد.
+          </p>
+          {settings ? (
+            <p className="mt-2 text-xs text-stone-500">
+              وضعیت برنامه: {SP_MODE_FA[settings.mode] || settings.mode}
+              {settings.enabled ? ' · عملیات فعال' : ' · عملیات خاموش'}
+              {pendingCount > 0 ? ` · ${pendingCount.toLocaleString('fa-IR')} درخواست باز` : ''}
+            </p>
+          ) : null}
+        </div>
+        <SpRefreshButton onClick={() => void load()} busy={loading && !!report} />
+      </div>
+
+      {error && (
+        <p className="rounded-2xl bg-red-50 p-3 text-sm text-red-800" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="بخش‌های همکار بازاریاب">
         {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={`min-h-11 rounded-xl px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A] ${
-              tab === item.id ? 'bg-[#1B5C4A] text-white' : 'border'
+            role="tab"
+            aria-selected={tab === item.id}
+            className={`min-h-11 rounded-xl px-4 text-sm ${spFocusClass} ${
+              tab === item.id ? 'bg-[#1B5C4A] text-white' : 'border border-stone-200 bg-white text-stone-700'
             }`}
             onClick={() => setTab(item.id)}
           >
             {item.label}
+            {item.id === 'applications' && pendingCount > 0 ? (
+              <span className="mr-2 inline-flex min-w-[1.25rem] justify-center rounded-full bg-[#C9A84C] px-1.5 text-[10px] font-bold text-[#0F2F28]">
+                {pendingCount.toLocaleString('fa-IR')}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
 
+      {loading && !report ? (
+        <p className="text-sm text-stone-600" role="status">
+          در حال بارگذاری…
+        </p>
+      ) : null}
+
+      {tab === 'dashboard' && (
+        <SpAdminDashboard
+          settings={settings}
+          report={report}
+          apps={apps}
+          partners={partners}
+          orders={orders}
+          audits={audits}
+          onGo={(id) => setTab(id as Tab)}
+        />
+      )}
+
       {tab === 'applications' && (
-        <ul className="space-y-3">
-          {apps.length === 0 && <li className="text-sm text-stone-600">درخواستی نیست.</li>}
-          {apps.map((row) => (
-            <li key={row.id} className="rounded-xl border p-4">
-              <p className="font-medium">{row.displayName}</p>
-              <p className="text-sm text-stone-600">{row.phoneMasked} · {row.status}</p>
-              {row.status === 'PENDING_REVIEW' && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" className="min-h-11 rounded-lg bg-emerald-700 px-3 text-white" disabled={busyId === row.id} onClick={() => review(row.id, 'APPROVE')}>تأیید</button>
-                  <button type="button" className="min-h-11 rounded-lg border px-3" disabled={busyId === row.id} onClick={() => review(row.id, 'NEED_INFO')}>تکمیل اطلاعات</button>
-                  <button type="button" className="min-h-11 rounded-lg border border-red-300 px-3 text-red-800" disabled={busyId === row.id} onClick={() => review(row.id, 'REJECT')}>رد</button>
+        <SpSection
+          title="درخواست‌های همکاری"
+          description="بررسی، تأیید، تکمیل اطلاعات یا رد با دلیل ثبت‌شده در سوابق."
+        >
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'ALL', label: 'همه' },
+              { id: 'PENDING_REVIEW', label: 'در انتظار' },
+              { id: 'NEED_INFO', label: 'تکمیل اطلاعات' },
+              { id: 'APPROVED', label: 'تأییدشده' },
+              { id: 'REJECTED', label: 'ردشده' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={`min-h-10 rounded-full px-3 text-sm ${spFocusClass} ${
+                  appFilter === f.id ? 'bg-[#1B5C4A] text-white' : 'border border-stone-200 bg-white'
+                }`}
+                onClick={() => setAppFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <ul className="space-y-3">
+            {filteredApps.length === 0 && <li><SpEmptyState>درخواستی با این فیلتر نیست.</SpEmptyState></li>}
+            {filteredApps.map((row) => (
+              <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-stone-900">{row.displayName}</p>
+                    <p className="mt-1 text-sm text-stone-600">
+                      {row.phoneMasked}
+                      {row.createdAt ? ` · ${formatSpDate(row.createdAt)}` : ''}
+                    </p>
+                  </div>
+                  <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
                 </div>
-              )}
-            </li>
-          ))}
-        </ul>
+                {row.status === 'PENDING_REVIEW' && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-xl bg-emerald-700 px-3 text-white ${spFocusClass}`}
+                      disabled={busyId === row.id}
+                      onClick={() => void review(row.id, 'APPROVE')}
+                    >
+                      تأیید
+                    </button>
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
+                      disabled={busyId === row.id}
+                      onClick={() => void review(row.id, 'NEED_INFO')}
+                    >
+                      تکمیل اطلاعات
+                    </button>
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-xl border border-red-300 px-3 text-red-800 ${spFocusClass}`}
+                      disabled={busyId === row.id}
+                      onClick={() => void review(row.id, 'REJECT')}
+                    >
+                      رد
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </SpSection>
       )}
 
       {tab === 'partners' && (
-        <ul className="space-y-3">
-          {partners.length === 0 && <li className="text-sm text-stone-600">همکار بازاریابی ثبت نشده.</li>}
-          {partners.map((row) => (
-            <li key={row.id} className="rounded-xl border p-4">
-              <p className="font-medium">{row.displayName}</p>
-              <p className="text-sm text-stone-600">{row.phoneMasked} · {row.statusLabel}</p>
-              {row.statusReason && <p className="mt-1 text-sm text-amber-800">{row.statusReason}</p>}
-              {row.riskFlags && row.riskFlags.length > 0 && (
-                <p className="mt-2 text-sm text-amber-900" role="status">هشدار: {row.riskFlags.join('، ')}</p>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {row.status === 'ACTIVE' && (
-                  <button type="button" className="min-h-11 rounded-lg border px-3" disabled={busyId === row.id} onClick={() => void setPartnerStatus(row.id, 'SUSPENDED')}>تعلیق</button>
+        <SpSection title="همکاران بازاریاب" description="فعال‌سازی، تعلیق و مشاهده هشدار ریسک.">
+          <ul className="space-y-3">
+            {partners.length === 0 && <li><SpEmptyState>همکار بازاریابی ثبت نشده.</SpEmptyState></li>}
+            {partners.map((row) => (
+              <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium">{row.displayName}</p>
+                    <p className="mt-1 text-sm text-stone-600">{row.phoneMasked}</p>
+                    <p className="mt-1 font-mono text-[11px] text-stone-400">{row.id}</p>
+                  </div>
+                  <SpBadge status={row.status} label={partnerBadgeLabel(row)} />
+                </div>
+                {row.statusReason && <p className="mt-2 text-sm text-amber-800">{row.statusReason}</p>}
+                {row.riskFlags && row.riskFlags.length > 0 && (
+                  <p className="mt-2 text-sm text-amber-900" role="status">
+                    هشدار: {row.riskFlags.join('، ')}
+                  </p>
                 )}
-                {row.status === 'SUSPENDED' && (
-                  <button type="button" className="min-h-11 rounded-lg bg-emerald-700 px-3 text-white" disabled={busyId === row.id} onClick={() => void setPartnerStatus(row.id, 'ACTIVE')}>فعال‌سازی</button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {row.status === 'ACTIVE' && (
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
+                      disabled={busyId === row.id}
+                      onClick={() => void setPartnerStatus(row.id, 'SUSPENDED')}
+                    >
+                      تعلیق
+                    </button>
+                  )}
+                  {row.status === 'SUSPENDED' && (
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-xl bg-emerald-700 px-3 text-white ${spFocusClass}`}
+                      disabled={busyId === row.id}
+                      onClick={() => void setPartnerStatus(row.id, 'ACTIVE')}
+                    >
+                      فعال‌سازی
+                    </button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </SpSection>
       )}
 
       {tab === 'orders' && (
-        <ul className="space-y-3">
-          {orders.length === 0 && <li className="text-sm text-stone-600">سفارش همکاری ثبت نشده.</li>}
-          {orders.map((row) => (
-            <li key={row.id} className="rounded-xl border p-4 text-sm">
-              <p className="font-medium">{row.statusLabel}</p>
-              <p className="mt-1 text-stone-600">
-                {toman(row.merchandiseIrr)} تومان
-                {row.customerPhoneMasked ? ` · ${row.customerPhoneMasked}` : ''}
-              </p>
-              {row.convertedOrderId && (
-                <div className="mt-2 space-y-2">
-                  <p className="text-stone-500">
-                    سفارش فروشگاه ساخته شده است
-                    {row.attribution?.salesSource ? ` · منبع ${row.attribution.salesSource}` : ''}
-                  </p>
-                  <button
-                    type="button"
-                    className="min-h-11 rounded-lg border px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#1B5C4A]"
-                    disabled={busyId === row.id}
-                    onClick={() => void changeAttribution(row)}
-                  >
-                    تغییر attribution با دلیل
-                  </button>
+        <SpSection title="سفارش‌های همکاری" description="پیش‌سفارش‌ها و attribution پس از تبدیل.">
+          <ul className="space-y-3">
+            {orders.length === 0 && <li><SpEmptyState>سفارش همکاری ثبت نشده.</SpEmptyState></li>}
+            {orders.map((row) => (
+              <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-medium">{row.statusLabel}</p>
+                  {row.status ? <SpBadge status={row.status} label={row.statusLabel} /> : null}
                 </div>
-              )}
-            </li>
-          ))}
-        </ul>
+                <p className="mt-2 text-stone-600">
+                  {toman(row.merchandiseIrr)} تومان
+                  {row.customerPhoneMasked ? ` · ${row.customerPhoneMasked}` : ''}
+                </p>
+                {row.convertedOrderId && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-stone-500">
+                      سفارش فروشگاه ساخته شده است
+                      {row.attribution?.salesSource ? ` · منبع ${row.attribution.salesSource}` : ''}
+                    </p>
+                    <button
+                      type="button"
+                      className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
+                      disabled={busyId === row.id}
+                      onClick={() => void changeAttribution(row)}
+                    >
+                      تغییر attribution با دلیل
+                    </button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </SpSection>
       )}
 
       {tab === 'catalog' && (
-        <div className="space-y-3">
-          <p className="text-sm text-stone-600">
-            تا وقتی محصولی را مجاز نکنید، کاتالوگ همکار خالی می‌ماند و لینک فروش همان کالا پورسانت نمی‌سازد.
-            درصد برنامه را در زبانه نرخ‌ها بگذارید؛ بدون نرخ، پورسانت صفر است.
-          </p>
+        <SpSection
+          title="محصولات مجاز برای بازاریاب"
+          description="تا وقتی محصولی را مجاز نکنید، کاتالوگ همکار خالی می‌ماند و لینک فروش همان کالا پورسانت نمی‌سازد."
+        >
           <form
             className="flex flex-wrap gap-2"
             onSubmit={(e) => {
@@ -388,22 +478,35 @@ export function AdminSalesPartners() {
               void load();
             }}
           >
-            <label className="sr-only" htmlFor="sp-catalog-q">جستجوی محصول</label>
-            <input
-              id="sp-catalog-q"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="min-h-11 min-w-0 flex-1 rounded-xl border px-3"
-              placeholder="نام محصول"
-            />
-            <button type="submit" className="min-h-11 rounded-xl border px-4">جستجو</button>
+            <label className="sr-only" htmlFor="sp-catalog-q">
+              جستجوی محصول
+            </label>
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" aria-hidden />
+              <input
+                id="sp-catalog-q"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className={`min-h-11 w-full rounded-xl border border-stone-200 bg-white py-2 pr-10 pl-3 ${spFocusClass}`}
+                placeholder="نام محصول"
+              />
+            </div>
+            <button type="submit" className={`min-h-11 rounded-xl border px-4 ${spFocusClass}`}>
+              جستجو
+            </button>
           </form>
-          {catalog.length === 0 && <p className="text-sm text-stone-600">محصولی پیدا نشد.</p>}
+          {catalog.length === 0 && <SpEmptyState>محصولی پیدا نشد.</SpEmptyState>}
           <ul className="space-y-3">
             {catalog.map((row) => (
-              <li key={row.productId} className="rounded-xl border p-4">
-                <p className="font-medium">{row.name}</p>
-                <p className="text-sm text-stone-600">
+              <li key={row.productId} className="rounded-2xl border border-stone-200 bg-white p-4">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="font-medium">{row.name}</p>
+                  <SpBadge
+                    status={row.eligible ? 'ACTIVE' : 'OFF'}
+                    label={row.eligible ? 'مجاز' : 'غیرمجاز'}
+                  />
+                </div>
+                <p className="mt-1 text-sm text-stone-600">
                   {toman(row.priceIrr)} تومان · پورسانت پیش‌فرض {row.previewCommissionPercent}٪
                   {row.vendorSku ? ' · کالای تأمین‌کننده' : ''}
                 </p>
@@ -416,7 +519,7 @@ export function AdminSalesPartners() {
                 )}
                 <button
                   type="button"
-                  className="mt-3 min-h-11 rounded-lg border px-3"
+                  className={`mt-3 min-h-11 rounded-xl border px-3 ${spFocusClass}`}
                   disabled={busyId === row.productId || (!row.eligible && !row.canEnable)}
                   onClick={() => void toggleEligible(row)}
                 >
@@ -425,20 +528,22 @@ export function AdminSalesPartners() {
               </li>
             ))}
           </ul>
-        </div>
+        </SpSection>
       )}
 
       {tab === 'rules' && (
-        <div className="space-y-4">
+        <SpSection title="قوانین پورسانت" description="نرخ برنامه مبنای تخمین و محاسبه است.">
           <form
-            className="space-y-3 rounded-xl border p-4"
+            className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4"
             onSubmit={(e) => {
               e.preventDefault();
               void createProgramRule();
             }}
           >
             <p className="font-medium">نرخ پیش‌فرض برنامه</p>
-            <label className="block text-sm" htmlFor="sp-rule-percent">درصد</label>
+            <label className="block text-sm" htmlFor="sp-rule-percent">
+              درصد
+            </label>
             <input
               id="sp-rule-percent"
               type="number"
@@ -446,44 +551,61 @@ export function AdminSalesPartners() {
               max={80}
               value={rulePercent}
               onChange={(e) => setRulePercent(Number(e.target.value))}
-              className="min-h-11 w-32 rounded-xl border px-3"
+              className={`min-h-11 w-32 rounded-xl border px-3 ${spFocusClass}`}
             />
-            <label className="block text-sm" htmlFor="sp-rule-note">توضیح داخلی</label>
+            <label className="block text-sm" htmlFor="sp-rule-note">
+              توضیح داخلی
+            </label>
             <input
               id="sp-rule-note"
               value={ruleNote}
               onChange={(e) => setRuleNote(e.target.value)}
-              className="min-h-11 w-full rounded-xl border px-3"
+              className={`min-h-11 w-full rounded-xl border px-3 ${spFocusClass}`}
             />
-            <button type="submit" className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white" disabled={busyId === 'rule'}>
+            <button
+              type="submit"
+              className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}
+              disabled={busyId === 'rule'}
+            >
               ثبت نرخ برنامه
             </button>
           </form>
           <ul className="space-y-3">
-            {rules.length === 0 && <li className="text-sm text-stone-600">قانونی ثبت نشده؛ تا آن زمان پورسانت تخمینی صفر است.</li>}
+            {rules.length === 0 && (
+              <li>
+                <SpEmptyState>قانونی ثبت نشده؛ تا آن زمان پورسانت تخمینی صفر است.</SpEmptyState>
+              </li>
+            )}
             {rules.map((row) => (
-              <li key={row.id} className="rounded-xl border p-4 text-sm">
-                <p className="font-medium">{row.scope} · {row.percent}٪ {row.active ? '' : '(غیرفعال)'}</p>
+              <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">
+                    {row.scope} · {row.percent}٪
+                  </p>
+                  <SpBadge status={row.active ? 'ACTIVE' : 'OFF'} label={row.active ? 'فعال' : 'غیرفعال'} />
+                </div>
                 {row.note && <p className="mt-1 text-stone-600">{row.note}</p>}
               </li>
             ))}
           </ul>
-        </div>
+        </SpSection>
       )}
 
       {tab === 'payouts' && (
-        <div className="space-y-4">
+        <SpSection title="تسویه پورسانت" description="فقط مانده قابل‌برداشت با مرجع بانکی ثبت می‌شود.">
           <form
-            className="space-y-3 rounded-xl border p-4"
+            className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4"
             onSubmit={(e) => {
               e.preventDefault();
               void confirmPayout();
             }}
           >
-            <label className="block text-sm" htmlFor="sp-pay-partner">همکار بازاریاب</label>
+            <label className="block text-sm" htmlFor="sp-pay-partner">
+              همکار بازاریاب
+            </label>
             <select
               id="sp-pay-partner"
-              className="min-h-11 w-full rounded-xl border px-3"
+              className={`min-h-11 w-full rounded-xl border px-3 ${spFocusClass}`}
               value={payoutPartnerId}
               onChange={(e) => {
                 setPayoutPartnerId(e.target.value);
@@ -492,12 +614,14 @@ export function AdminSalesPartners() {
             >
               <option value="">انتخاب کنید</option>
               {partners.map((row) => (
-                <option key={row.id} value={row.id}>{row.displayName}</option>
+                <option key={row.id} value={row.id}>
+                  {row.displayName}
+                </option>
               ))}
             </select>
             <button
               type="button"
-              className="min-h-11 rounded-xl border px-4"
+              className={`min-h-11 rounded-xl border px-4 ${spFocusClass}`}
               disabled={!payoutPartnerId}
               onClick={() => void loadBalance()}
             >
@@ -506,118 +630,214 @@ export function AdminSalesPartners() {
             {availableIrr !== null && (
               <p className="text-sm">قابل‌برداشت: {toman(availableIrr)} تومان</p>
             )}
-            <label className="block text-sm" htmlFor="sp-pay-ref">شماره مرجع واریز</label>
+            <label className="block text-sm" htmlFor="sp-pay-ref">
+              شماره مرجع واریز
+            </label>
             <input
               id="sp-pay-ref"
-              className="min-h-11 w-full rounded-xl border px-3"
+              className={`min-h-11 w-full rounded-xl border px-3 ${spFocusClass}`}
               value={bankReference}
               onChange={(e) => setBankReference(e.target.value)}
               required
             />
-            <button type="submit" className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white" disabled={busyId === 'payout'}>
+            <button
+              type="submit"
+              className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}
+              disabled={busyId === 'payout'}
+            >
               ثبت تسویه
             </button>
           </form>
+          {report?.payouts ? (
+            <p className="text-sm text-stone-600">
+              مجموع تسویه‌های PAID در نمونه: {toman(report.payouts.paidIrr)} تومان ·{' '}
+              {report.payouts.count.toLocaleString('fa-IR')} رکورد
+            </p>
+          ) : null}
           <ul className="space-y-3">
-            {payouts.length === 0 && <li className="text-sm text-stone-600">تسویه‌ای ثبت نشده.</li>}
+            {payouts.length === 0 && <li><SpEmptyState>تسویه‌ای ثبت نشده.</SpEmptyState></li>}
             {payouts.map((row) => (
-              <li key={row.id} className="rounded-xl border p-4 text-sm">
-                {toman(row.amountIrr)} تومان · {row.bankReferenceMasked} · {row.status}
+              <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium tabular-nums">{toman(row.amountIrr)} تومان</span>
+                  <SpBadge status={row.status} label={row.status} />
+                </div>
+                <p className="mt-1 text-stone-600">
+                  {row.bankReferenceMasked}
+                  {row.paidAt ? ` · ${formatSpDate(row.paidAt)}` : ''}
+                </p>
               </li>
             ))}
           </ul>
-        </div>
+        </SpSection>
       )}
 
       {tab === 'settings' && settings && (
-        <form
-          className="space-y-3 rounded-xl border p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void saveSettings();
-          }}
-        >
-          <label className="block text-sm" htmlFor="sp-mode">وضعیت برنامه</label>
-          <select
-            id="sp-mode"
-            className="min-h-11 w-full rounded-xl border px-3"
-            value={settings.mode}
-            onChange={(e) => setSettings({ ...settings, mode: e.target.value as Settings['mode'] })}
+        <SpSection title="تنظیمات برنامه" description="فلگ عملیات، ثبت‌نام و نگهداری پورسانت.">
+          <form
+            className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void saveSettings();
+            }}
           >
-            <option value="OFF">خاموش</option>
-            <option value="PREVIEW">پیش‌نمایش ثبت‌نام</option>
-            <option value="CANARY">آزمایشی</option>
-            <option value="LIVE">زنده</option>
-          </select>
-          <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="checkbox" checked={settings.enabled} onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })} />
-            فعال بودن عملیات همکار (CANARY/LIVE)
-          </label>
-          <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="checkbox" checked={settings.applyOpen} onChange={(e) => setSettings({ ...settings, applyOpen: e.target.checked })} />
-            باز بودن ثبت‌نام
-          </label>
-          <label className="block text-sm" htmlFor="sp-hold">مهلت نگهداری پورسانت (روز)</label>
-          <input
-            id="sp-hold"
-            type="number"
-            min={1}
-            max={180}
-            className="min-h-11 w-32 rounded-xl border px-3"
-            value={settings.commissionHoldDays ?? ''}
-            onChange={(e) => setSettings({ ...settings, commissionHoldDays: e.target.value ? Number(e.target.value) : null })}
-          />
-          <label className="block text-sm" htmlFor="sp-min">حداقل تسویه (ریال)</label>
-          <input
-            id="sp-min"
-            type="number"
-            min={0}
-            className="min-h-11 w-48 rounded-xl border px-3"
-            value={settings.minPayoutIrr}
-            onChange={(e) => setSettings({ ...settings, minPayoutIrr: Number(e.target.value) })}
-          />
-          <p className="text-sm text-stone-600">
-            نسخه شرایط: {settings.termsVersion}. متن عمومی در{' '}
-            <a href="/sales-partnership/terms" className="text-[#1B5C4A] underline-offset-4 hover:underline">
-              /sales-partnership/terms
-            </a>
-            {' '}است.
-          </p>
-          <button type="submit" className="min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white" disabled={busyId === 'settings'}>
-            ذخیره تنظیمات
-          </button>
-        </form>
+            <label className="block text-sm" htmlFor="sp-mode">
+              وضعیت برنامه
+            </label>
+            <select
+              id="sp-mode"
+              className={`min-h-11 w-full rounded-xl border px-3 ${spFocusClass}`}
+              value={settings.mode}
+              onChange={(e) => setSettings({ ...settings, mode: e.target.value as Settings['mode'] })}
+            >
+              <option value="OFF">خاموش</option>
+              <option value="PREVIEW">پیش‌نمایش ثبت‌نام</option>
+              <option value="CANARY">آزمایشی</option>
+              <option value="LIVE">زنده</option>
+            </select>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={settings.enabled}
+                onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })}
+              />
+              فعال بودن عملیات همکار (CANARY/LIVE)
+            </label>
+            <label className="flex min-h-11 items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={settings.applyOpen}
+                onChange={(e) => setSettings({ ...settings, applyOpen: e.target.checked })}
+              />
+              باز بودن ثبت‌نام
+            </label>
+            <label className="block text-sm" htmlFor="sp-hold">
+              مهلت نگهداری پورسانت (روز)
+            </label>
+            <input
+              id="sp-hold"
+              type="number"
+              min={1}
+              max={180}
+              className={`min-h-11 w-32 rounded-xl border px-3 ${spFocusClass}`}
+              value={settings.commissionHoldDays ?? ''}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  commissionHoldDays: e.target.value ? Number(e.target.value) : null,
+                })
+              }
+            />
+            <label className="block text-sm" htmlFor="sp-min">
+              حداقل تسویه (ریال)
+            </label>
+            <input
+              id="sp-min"
+              type="number"
+              min={0}
+              className={`min-h-11 w-48 rounded-xl border px-3 ${spFocusClass}`}
+              value={settings.minPayoutIrr}
+              onChange={(e) => setSettings({ ...settings, minPayoutIrr: Number(e.target.value) })}
+            />
+            <p className="text-sm text-stone-600">
+              نسخه شرایط: {settings.termsVersion}. متن عمومی در{' '}
+              <a
+                href="/sales-partnership/terms"
+                className={`text-[#1B5C4A] underline-offset-4 hover:underline ${spFocusClass}`}
+              >
+                /sales-partnership/terms
+              </a>{' '}
+              است.
+            </p>
+            <button
+              type="submit"
+              className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}
+              disabled={busyId === 'settings'}
+            >
+              ذخیره تنظیمات
+            </button>
+          </form>
+        </SpSection>
       )}
 
       {tab === 'reports' && (
-        <div className="space-y-4 text-sm">
-          {report && (
-            <section className="rounded-xl border p-4">
-              <p className="font-medium">شاخص‌ها از دادهٔ همین سامانه است، نه هدف فروش.</p>
-              <p className="mt-2 text-stone-600">{report.note}</p>
-              <p className="mt-3">درخواست‌ها: {report.applications.total}</p>
-              <p>همکاران: {report.partners.total}</p>
-              <p>نمونه پیش‌سفارش: {report.drafts.sampleSize} · تبدیل‌شده: {report.drafts.converted}</p>
-              <p>
-                نرخ تأیید مشتری در نمونه:
-                {' '}
-                {report.drafts.customerConfirmRate == null
-                  ? 'هنوز تصمیم قطعی کافی نیست'
-                  : `${Math.round(report.drafts.customerConfirmRate * 100)}٪`}
-              </p>
-            </section>
-          )}
-          <section>
-            <p className="mb-2 font-medium">سوابق تصمیم</p>
+        <div className="space-y-6">
+          <SpSection title="خلاصه برنامه" description="شاخص‌های قابل گزارش از دادهٔ فعلی.">
+            {report ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border bg-white p-4 text-sm">
+                  <p className="text-stone-500">درخواست‌ها</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
+                    {report.applications.total.toLocaleString('fa-IR')}
+                  </p>
+                </div>
+                <div className="rounded-2xl border bg-white p-4 text-sm">
+                  <p className="text-stone-500">همکاران</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
+                    {report.partners.total.toLocaleString('fa-IR')}
+                  </p>
+                </div>
+                <div className="rounded-2xl border bg-white p-4 text-sm">
+                  <p className="text-stone-500">تبدیل پیش‌سفارش</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
+                    {report.drafts.converted.toLocaleString('fa-IR')}
+                    <span className="text-sm font-normal text-stone-500">
+                      {' '}
+                      / {report.drafts.sampleSize.toLocaleString('fa-IR')}
+                    </span>
+                  </p>
+                </div>
+                <div className="rounded-2xl border bg-white p-4 text-sm">
+                  <p className="text-stone-500">نرخ تأیید مشتری</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums">
+                    {report.drafts.customerConfirmRate == null
+                      ? '—'
+                      : `${Math.round(report.drafts.customerConfirmRate * 100).toLocaleString('fa-IR')}٪`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <SpEmptyState>گزارش هنوز بارگذاری نشده.</SpEmptyState>
+            )}
+            {report?.note ? (
+              <p className="rounded-2xl bg-stone-50 p-3 text-sm leading-7 text-stone-600">{report.note}</p>
+            ) : null}
+          </SpSection>
+
+          <SpSection title="سوابق تصمیم" description="فیلتر بر اساس نوع هدف.">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: '', label: 'همه' },
+                { id: 'application', label: 'درخواست' },
+                { id: 'profile', label: 'پروفایل' },
+                { id: 'order', label: 'سفارش' },
+                { id: 'payout', label: 'تسویه' },
+                { id: 'settings', label: 'تنظیمات' },
+              ].map((f) => (
+                <button
+                  key={f.id || 'all'}
+                  type="button"
+                  className={`min-h-10 rounded-full px-3 text-sm ${spFocusClass} ${
+                    auditFilter === f.id ? 'bg-[#1B5C4A] text-white' : 'border bg-white'
+                  }`}
+                  onClick={() => setAuditFilter(f.id)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
             <ul className="space-y-2">
-              {audits.length === 0 && <li className="text-stone-600">سابقه‌ای نیست.</li>}
+              {audits.length === 0 && <li><SpEmptyState>سابقه‌ای نیست.</SpEmptyState></li>}
               {audits.map((row) => (
-                <li key={row.id} className="rounded-xl border p-3">
-                  {row.action} · {row.targetType} · {new Date(row.createdAt).toLocaleString('fa-IR')}
+                <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-3 text-sm">
+                  <p className="font-medium">{spAuditLabel(row.action)}</p>
+                  <p className="mt-1 text-stone-500">
+                    {row.targetType} · {row.targetId.slice(0, 8)}… · {formatSpDate(row.createdAt)}
+                  </p>
                 </li>
               ))}
             </ul>
-          </section>
+          </SpSection>
         </div>
       )}
     </div>

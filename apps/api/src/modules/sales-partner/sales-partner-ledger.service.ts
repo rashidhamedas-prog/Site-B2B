@@ -126,6 +126,21 @@ export class SalesPartnerLedgerService {
     };
   }
 
+  /** Program-wide rollup for admin dashboard (sample cap — not a warehouse query). */
+  async programBalances() {
+    const rows = await this.entries.find({ take: 10_000, order: { createdAt: 'DESC' } });
+    const mapped = rows.map((row) => ({
+      amountIrr: Number(row.amountIrr),
+      entryType: row.entryType as 'COMMISSION_EARNED' | 'COMMISSION_REVERSAL' | 'MANUAL_ADJUSTMENT' | 'PAYOUT' | 'PAYOUT_REVERSAL',
+      availableAt: row.availableAt,
+      payoutId: row.payoutId,
+    }));
+    return {
+      ...ledgerBalance(mapped, new Date()),
+      sampleSize: rows.length,
+    };
+  }
+
   private async syncDraft(draft: SalesPartnerOrderDraftEntity) {
     const order = await this.orders.findOne({ where: { id: draft.convertedOrderId! } });
     if (!order) return 0;

@@ -27,7 +27,11 @@ export default function SalesPartnerPayoutsPage() {
   return (
     <SalesPartnerShell title="تسویه">
       <SpNote>فقط واریزی که فروشگاه با مرجع بانکی ثبت کرده اینجا دیده می‌شود.</SpNote>
-      {!rows && !error && <div className="mt-4"><SpStatus>در حال بارگذاری…</SpStatus></div>}
+      {!rows && !error && (
+        <div className="mt-4" role="status">
+          <SpStatus>در حال بارگذاری…</SpStatus>
+        </div>
+      )}
       {error && <div className="mt-4"><SpAlert>{error}</SpAlert></div>}
       {rows && rows.length === 0 && !error && <div className="mt-4"><SpEmpty>هنوز تسویه‌ای ثبت نشده است.</SpEmpty></div>}
       <ul className="mt-4 space-y-3">
