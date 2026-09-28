@@ -3,6 +3,7 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { SmsCooldownExceptionFilter } from './modules/notification/sms-cooldown-http';
 
 async function bootstrap() {
   // Trust one reverse-proxy hop (nginx) so Fastify request.ip is derived safely.
@@ -25,6 +26,9 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     })
   );
+
+  // Scoped to SmsCooldownException only — adds Retry-After next to the JSON body.
+  app.useGlobalFilters(new SmsCooldownExceptionFilter());
 
   // Register multipart for file uploads
   await app.register(require('@fastify/multipart'), {

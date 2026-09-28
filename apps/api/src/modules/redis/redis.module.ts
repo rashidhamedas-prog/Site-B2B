@@ -118,6 +118,20 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  /**
+   * Remaining TTL in whole seconds (rounded up).
+   * Returns null when Redis is unavailable, 0 when the key is missing or has no expiry.
+   */
+  async pttl(key: string): Promise<number | null> {
+    if (!this.client) return null;
+    try {
+      const ms = await this.client.pttl(key);
+      return ms > 0 ? Math.ceil(ms / 1000) : 0;
+    } catch {
+      return null;
+    }
+  }
+
   /** SET key NX EX ttl — returns true if set (first writer wins). */
   async setNxEx(key: string, ttlSeconds: number, value = '1'): Promise<boolean> {
     if (!this.client) return false;
@@ -127,6 +141,15 @@ export class RedisService implements OnModuleDestroy {
     } catch {
       return false;
     }
+  }
+}
+
+/** Thrown by OtpService.issue when the resend cooldown is still running. */
+export class OtpCooldownError extends Error {
+  constructor(readonly remainingSeconds: number) {
+    // message stays 'COOLDOWN' so existing message-based callers keep working
+    super('COOLDOWN');
+    this.name = 'OtpCooldownError';
   }
 }
 
@@ -172,6 +195,24 @@ export class OtpService {
     return `${purpose}:${phone}`;
   }
 
+  /** Configured resend cooldown window, in seconds. */
+  cooldownSeconds(): number {
+    return this.cooldown();
+  }
+
+  /** Seconds left before another OTP may be requested. 0 when a new code can be sent now. */
+  async getCooldownRemaining(phone: string, purpose: OtpPurpose = 'retail'): Promise<number> {
+    if (this.redis.isReady) {
+      const left = await this.redis.pttl(this.cooldownKey(phone, purpose));
+      if (left !== null) return left;
+    }
+    const mem = this.memory.get(this.memKey(phone, purpose));
+    if (!mem) return 0;
+    const issuedAt = mem.expiresAt - this.ttl() * 1000;
+    const left = Math.ceil((issuedAt + this.cooldown() * 1000 - Date.now()) / 1000);
+    return left > 0 ? left : 0;
+  }
+
   /** Generate + store hashed OTP. Enforces resend cooldown. */
   async issue(phone: string, name?: string, purpose: OtpPurpose = 'retail'): Promise<{ code: string }> {
     const cdKey = this.cooldownKey(phone, purpose);
@@ -180,15 +221,17 @@ export class OtpService {
     if (redisOk) {
       const allowed = await this.redis.setNxEx(cdKey, this.cooldown(), '1');
       if (!allowed) {
-        throw new Error('COOLDOWN');
+        const remaining = await this.getCooldownRemaining(phone, purpose);
+        throw new OtpCooldownError(remaining > 0 ? remaining : this.cooldown());
       }
     } else {
       const existing = this.memory.get(slot);
       if (existing && existing.expiresAt - (this.ttl() - this.cooldown()) * 1000 > Date.now()) {
         // within cooldown window from last issue
         const issuedAt = existing.expiresAt - this.ttl() * 1000;
-        if (Date.now() - issuedAt < this.cooldown() * 1000) {
-          throw new Error('COOLDOWN');
+        const elapsed = Date.now() - issuedAt;
+        if (elapsed < this.cooldown() * 1000) {
+          throw new OtpCooldownError(Math.max(1, Math.ceil((this.cooldown() * 1000 - elapsed) / 1000)));
         }
       }
     }

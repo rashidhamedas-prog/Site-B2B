@@ -20,7 +20,8 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { NotificationService } from '../notification/notification.service';
 import { CustomerMarketingService } from '../customer-marketing/customer-marketing.service';
-import { OtpService } from '../redis/redis.module';
+import { OtpCooldownError, OtpService } from '../redis/redis.module';
+import { SmsCooldownException } from '../notification/sms-cooldown-http';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
 import {
   canIssuePasswordReset,
@@ -485,7 +486,13 @@ export class AuthService {
     if (!/^09\d{9}$/.test(phone)) {
       throw new BadRequestException('شماره موبایل معتبر نیست');
     }
-    const generic = { message: GENERIC_PASSWORD_FORGOT_MESSAGE, phone };
+    // cooldownSeconds is the full configured window on every path (including
+    // cooldown blocks) so the response shape never reveals phone eligibility.
+    const generic = {
+      message: GENERIC_PASSWORD_FORGOT_MESSAGE,
+      phone,
+      cooldownSeconds: this.otpService.cooldownSeconds(),
+    };
 
     const user = await this.userRepo.findOne({ where: { phone } });
     const customer = user?.customerId
@@ -511,7 +518,9 @@ export class AuthService {
       return generic;
     }
 
-    const res: { message: string; phone: string; devCode?: string } = { ...generic };
+    const res: { message: string; phone: string; cooldownSeconds: number; devCode?: string } = {
+      ...generic,
+    };
     if (!sent && this.allowDevOtpExpose()) {
       res.devCode = code;
     }
@@ -627,8 +636,8 @@ export class AuthService {
     try {
       ({ code } = await this.otpService.issue(phone, name));
     } catch (err: any) {
-      if (err?.message === 'COOLDOWN') {
-        throw new BadRequestException('لطفاً کمی صبر کنید و دوباره درخواست کد دهید');
+      if (err instanceof OtpCooldownError) {
+        throw new SmsCooldownException(err.remainingSeconds, this.otpService.cooldownSeconds());
       }
       throw new ServiceUnavailableException('سرویس ارسال کد موقتاً در دسترس نیست');
     }
@@ -642,10 +651,17 @@ export class AuthService {
       throw new ServiceUnavailableException('ارسال پیامک ناموفق بود. بعداً تلاش کنید.');
     }
 
-    const res: { message: string; phone: string; sent: boolean; devCode?: string } = {
+    const res: {
+      message: string;
+      phone: string;
+      sent: boolean;
+      cooldownSeconds: number;
+      devCode?: string;
+    } = {
       message: sent ? 'کد تایید ارسال شد' : 'کد تایید آماده است (حالت توسعه)',
       phone,
       sent,
+      cooldownSeconds: this.otpService.cooldownSeconds(),
     };
     if (!sent && this.allowDevOtpExpose()) {
       res.devCode = code;

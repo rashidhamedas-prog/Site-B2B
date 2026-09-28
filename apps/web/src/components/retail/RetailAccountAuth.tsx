@@ -7,9 +7,12 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, MessageSquare, Phone } from '
 import { AuthShell, type ConfettiRef } from '@/components/auth/AuthShell';
 import { BlurFade } from '@/components/auth/BlurFade';
 import { GlassInput } from '@/components/auth/GlassInput';
+import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { GlassButton } from '@/components/ui/glass-button';
+import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
+import { extractSmsCooldown } from '@/lib/sms-cooldown';
 import { safeAccountRedirect } from '@/lib/safe-redirect';
 import { cn } from '@/lib/cn';
 
@@ -25,29 +28,38 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const confettiRef = useRef<ConfettiRef>(null);
+  const { secondsLeft, start: startCooldown, reset: resetCooldown } = useSmsResendCooldown();
 
   const finish = (token: string, role: string) => {
     setToken(token, role, 'retail');
     window.location.href = safeAccountRedirect(redirect);
   };
 
-  const requestOtp = async (e: FormEvent) => {
-    e.preventDefault();
+  const sendOtp = async (fromResend = false) => {
     setError('');
     setBusy(true);
     try {
-      const res = await apiClient.post<{ message: string; phone: string; devCode?: string }>(
-        '/auth/retail/otp/request',
-        { phone, name },
-      );
+      const res = await apiClient.post<{
+        message: string;
+        phone: string;
+        cooldownSeconds?: number;
+        devCode?: string;
+      }>('/auth/retail/otp/request', { phone, name });
       if (res.devCode) setDevCode(res.devCode);
       setPhone(res.phone || phone);
-      setStep('code');
+      startCooldown(extractSmsCooldown(null, res));
+      if (!fromResend) setStep('code');
     } catch (err: unknown) {
+      startCooldown(extractSmsCooldown(err));
       setError(err instanceof Error ? err.message : 'خطا در ارسال کد');
     } finally {
       setBusy(false);
     }
+  };
+
+  const requestOtp = async (e: FormEvent) => {
+    e.preventDefault();
+    await sendOtp(false);
   };
 
   const verifyOtp = async (e: FormEvent) => {
@@ -169,8 +181,8 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
                 className="text-left"
               />
             </GlassInput>
-            <GlassButton type="submit" size="full" disabled={busy}>
-              {busy ? '…' : 'دریافت کد'}
+            <GlassButton type="submit" size="full" disabled={busy || secondsLeft > 0}>
+              {busy ? '…' : secondsLeft > 0 ? `صبر کنید ${secondsLeft}ث` : 'دریافت کد'}
             </GlassButton>
           </motion.form>
         ) : null}
@@ -205,10 +217,20 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
             <GlassButton type="submit" size="full" disabled={busy}>
               {busy ? '…' : 'تأیید و ورود'}
             </GlassButton>
+            <SmsResendButton
+              secondsLeft={secondsLeft}
+              busy={busy}
+              onResend={() => void sendOtp(true)}
+            />
             <button
               type="button"
               className="mx-auto flex items-center gap-1.5 text-sm text-[var(--brand-muted)] underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
-              onClick={() => setStep('phone')}
+              onClick={() => {
+                setStep('phone');
+                resetCooldown();
+                setDevCode('');
+                setCode('');
+              }}
             >
               <ArrowRight className="h-4 w-4" />
               تغییر شماره

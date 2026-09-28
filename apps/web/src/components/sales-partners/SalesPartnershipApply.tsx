@@ -2,8 +2,12 @@
 
 import { FormEvent, type ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
+import { SmsResendButton } from '@/components/auth/SmsResendButton';
+import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { normalizePhone } from '@/lib/phone';
+import { extractSmsCooldown } from '@/lib/sms-cooldown';
 
 type PublicSettings = {
   enabled: boolean;
@@ -30,7 +34,36 @@ export function SalesPartnershipApply() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { secondsLeft, start, reset } = useSmsResendCooldown();
+
+  function applyPayload() {
+    return {
+      displayName: displayName.trim(),
+      phone: normalizePhone(phone),
+      instagram: instagram.trim() || undefined,
+      telegram: telegram.trim() || undefined,
+      acceptTerms,
+    };
+  }
+
+  async function postApplication(opts?: { advanceToOtp?: boolean }): Promise<boolean> {
+    setError(null);
+    try {
+      const res = await apiClient.post<{ cooldownSeconds?: number; remainingSeconds?: number }>(
+        '/sales-partner-applications',
+        applyPayload(),
+      );
+      start(extractSmsCooldown(null, res));
+      if (opts?.advanceToOtp) setState('otp');
+      return true;
+    } catch (err) {
+      start(extractSmsCooldown(err));
+      setError(err instanceof Error ? err.message : 'ارسال درخواست ناموفق بود');
+      return false;
+    }
+  }
 
   useEffect(() => {
     apiClient
@@ -42,21 +75,14 @@ export function SalesPartnershipApply() {
   async function submitApply(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setError(null);
-    try {
-      await apiClient.post('/sales-partner-applications', {
-        displayName: displayName.trim(),
-        phone: normalizePhone(phone),
-        instagram: instagram.trim() || undefined,
-        telegram: telegram.trim() || undefined,
-        acceptTerms,
-      });
-      setState('otp');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'ارسال درخواست ناموفق بود');
-    } finally {
-      setBusy(false);
-    }
+    await postApplication({ advanceToOtp: true });
+    setBusy(false);
+  }
+
+  async function resendApplyOtp() {
+    setResendBusy(true);
+    await postApplication();
+    setResendBusy(false);
   }
 
   async function submitOtp(event: FormEvent) {
@@ -146,6 +172,20 @@ export function SalesPartnershipApply() {
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <button type="submit" className={buttonClass} disabled={busy}>
             {busy ? 'در حال بررسی…' : 'تأیید شماره'}
+          </button>
+          <SmsResendButton secondsLeft={secondsLeft} onResend={() => void resendApplyOtp()} busy={resendBusy} />
+          <button
+            type="button"
+            className="mx-auto flex items-center gap-1.5 text-sm text-stone-600 hover:text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]"
+            onClick={() => {
+              setState('idle');
+              setCode('');
+              setError(null);
+              reset();
+            }}
+          >
+            <ArrowRight className="h-4 w-4" />
+            تغییر شماره
           </button>
         </form>
       )}

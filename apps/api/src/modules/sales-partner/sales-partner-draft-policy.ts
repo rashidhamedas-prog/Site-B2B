@@ -171,6 +171,17 @@ export function resolveConfirmPaymentMethod(
   return requested === 'CASH' && cashEnabled ? 'CASH' : 'ONLINE';
 }
 
+/** Whole seconds left on the confirmation-SMS resend cooldown; 0 when a resend is allowed. */
+export function resendCooldownRemaining(
+  lastSentAt: Date | null | undefined,
+  now: Date,
+  cooldownSeconds: number,
+): number {
+  if (!lastSentAt) return 0;
+  const wait = cooldownSeconds * 1000 - (now.getTime() - lastSentAt.getTime());
+  return wait > 0 ? Math.ceil(wait / 1000) : 0;
+}
+
 export function resendBlockedReason(
   lastSentAt: Date | null | undefined,
   sentCount: number,
@@ -179,10 +190,7 @@ export function resendBlockedReason(
   dailyCap: number,
 ): 'COOLDOWN' | 'DAILY_CAP' | null {
   if (sentCount >= dailyCap) return 'DAILY_CAP';
-  if (lastSentAt) {
-    const wait = cooldownSeconds * 1000 - (now.getTime() - lastSentAt.getTime());
-    if (wait > 0) return 'COOLDOWN';
-  }
+  if (resendCooldownRemaining(lastSentAt, now, cooldownSeconds) > 0) return 'COOLDOWN';
   return null;
 }
 

@@ -2,15 +2,18 @@
 
 import { FormEvent, useState } from 'react';
 import Link from 'next/link';
-import { MessageSquare, Phone } from 'lucide-react';
+import { ArrowRight, MessageSquare, Phone } from 'lucide-react';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { BlurFade } from '@/components/auth/BlurFade';
 import { GlassInput } from '@/components/auth/GlassInput';
+import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { GlassButton } from '@/components/ui/glass-button';
+import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
 import { normalizePhone } from '@/lib/phone';
 import { safeScopedRedirect } from '@/lib/safe-redirect';
+import { extractSmsCooldown } from '@/lib/sms-cooldown';
 import { cn } from '@/lib/cn';
 
 export function SalesPartnerLoginForm() {
@@ -22,6 +25,7 @@ export function SalesPartnerLoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const { secondsLeft, start, reset: resetCooldown } = useSmsResendCooldown();
 
   function goHome(token: string, role: string) {
     setToken(token, role, 'sales_partner');
@@ -29,15 +33,26 @@ export function SalesPartnerLoginForm() {
     window.location.href = safeScopedRedirect(params.get('redirect'), '/sales-partners', ['/sales-partners']);
   }
 
-  async function requestOtp(event: FormEvent) {
-    event.preventDefault();
+  async function requestOtp(event?: FormEvent) {
+    event?.preventDefault();
     setBusy(true);
     setError(null);
+    const wasSent = otpSent;
     try {
-      await apiClient.post('/sales-partners/auth/otp/request', { phone: normalizePhone(phone) });
+      const res = await apiClient.post<{ cooldownSeconds?: number; remainingSeconds?: number }>(
+        '/sales-partners/auth/otp/request',
+        { phone: normalizePhone(phone) },
+      );
       setOtpSent(true);
       setStatus('کد تأیید ارسال شد.');
+      start(extractSmsCooldown(null, res));
     } catch (err) {
+      const statusCode =
+        err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : 0;
+      if (statusCode === 429) {
+        start(extractSmsCooldown(err));
+        if (wasSent) setOtpSent(true);
+      }
       setError(err instanceof Error ? err.message : 'ارسال کد ناموفق بود');
     } finally {
       setBusy(false);
@@ -74,6 +89,14 @@ export function SalesPartnerLoginForm() {
       setError(err instanceof Error ? err.message : 'ورود ناموفق بود');
       setBusy(false);
     }
+  }
+
+  function changePhone() {
+    setOtpSent(false);
+    setCode('');
+    setError(null);
+    setStatus(null);
+    resetCooldown();
   }
 
   return (
@@ -180,6 +203,15 @@ export function SalesPartnerLoginForm() {
           <GlassButton type="submit" size="full" disabled={busy}>
             {busy ? 'در حال ورود…' : 'ورود'}
           </GlassButton>
+          <SmsResendButton secondsLeft={secondsLeft} onResend={() => void requestOtp()} busy={busy} />
+          <button
+            type="button"
+            className="mx-auto flex items-center gap-1.5 text-sm text-[var(--brand-muted)] hover:text-[var(--brand-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+            onClick={changePhone}
+          >
+            <ArrowRight className="h-4 w-4" />
+            تغییر شماره
+          </button>
         </form>
       ) : null}
 

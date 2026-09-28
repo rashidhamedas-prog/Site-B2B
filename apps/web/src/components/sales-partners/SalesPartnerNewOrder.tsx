@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { SmsResendButton } from '@/components/auth/SmsResendButton';
+import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
+import { extractSmsCooldown } from '@/lib/sms-cooldown';
 import { SalesPartnerShell } from './SalesPartnerShell';
 
 type CatalogItem = {
@@ -45,7 +48,7 @@ export function SalesPartnerNewOrder() {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
+  const { secondsLeft, start } = useSmsResendCooldown();
   const [localReady, setLocalReady] = useState(false);
 
   useEffect(() => {
@@ -106,12 +109,6 @@ export function SalesPartnerNewOrder() {
       .catch(() => setDetail(null));
   }, [productId]);
 
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = window.setTimeout(() => setCooldown((n) => n - 1), 1000);
-    return () => window.clearTimeout(t);
-  }, [cooldown]);
-
   const selected = useMemo(
     () => detail || catalog.find((item) => item.id === productId) || null,
     [catalog, detail, productId],
@@ -144,13 +141,14 @@ export function SalesPartnerNewOrder() {
       const sent = await apiClient.post<Draft>(`/sales-partners/order-drafts/${draft.id}/request-confirmation`, {});
       setDraft(sent);
       setConfirmOpen(false);
-      setCooldown(sent.cooldownSeconds || 60);
+      start(extractSmsCooldown(null, sent));
       try {
         window.localStorage.removeItem(LOCAL_DRAFT_KEY);
       } catch {
         /* ignore */
       }
     } catch (err) {
+      start(extractSmsCooldown(err));
       setError(err instanceof Error ? err.message : 'ارسال لینک تأیید ناموفق بود');
     } finally {
       setBusy(false);
@@ -274,14 +272,13 @@ export function SalesPartnerNewOrder() {
           <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900" role="status">
             وضعیت: {draft.statusLabel}.
           </p>
-          <button
-            type="button"
-            className="min-h-11 w-full rounded-xl border"
-            disabled={busy || cooldown > 0}
-            onClick={() => void sendLink()}
-          >
-            {cooldown > 0 ? `ارسال دوباره تا ${cooldown} ثانیه دیگر` : 'ارسال دوباره پیامک'}
-          </button>
+          <SmsResendButton
+            secondsLeft={secondsLeft}
+            onResend={() => void sendLink()}
+            busy={busy}
+            className="w-full"
+            idleLabel="ارسال دوباره پیامک"
+          />
         </div>
       )}
     </SalesPartnerShell>

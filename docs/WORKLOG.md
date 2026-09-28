@@ -1,5 +1,14 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-28 — تایمر ارسال مجدد پیامک (سرور-محور) در همه جریان‌های OTP/تأیید
+
+- قرارداد API: موفقیت → `cooldownSeconds`؛ بلاک → 429 + `remainingSeconds` + `Retry-After` (`SmsCooldownException` + filter).
+- فراموشی رمز: همچنان 200 یکسان anti-enumeration با `cooldownSeconds` در body.
+- UI مشترک: `useSmsResendCooldown` + `SmsResendButton` + `extractSmsCooldown` روی retail OTP، forgot، sales-partner login/apply، تأیید پیش‌سفارش.
+- Stitch: skill شخصی `google-stitch` + پرامپت `docs/prompts/stitch-sms-resend-timer-fa.md`.
+- Specs: sms-cooldown-http، draft-policy remaining، sales-partner-error-scenarios OK.
+- Task: TASK-20260928-001.
+
 ## 2026-09-26 — ریشهٔ TorobPay 1011: قرارداد پذیرنده غیرفعال (۱۱۰۰)
 
 - پروب زنده CPG: OAuth OK؛ `eligible` → HTTP 403 کد **۱۱۰۰** `merchant no active contract`؛ همهٔ شکل‌های `/token` همچنان ۱۰۱۱.

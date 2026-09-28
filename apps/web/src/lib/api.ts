@@ -55,8 +55,22 @@ class ApiClient {
 
     if (!res.ok) {
       const message = data?.message ?? data?.errors?.[0]?.message ?? 'خطای سرور';
-      const err = new Error(Array.isArray(message) ? message[0] : message) as Error & { status: number };
+      const err = new Error(Array.isArray(message) ? message[0] : message) as Error & {
+        status: number;
+        remainingSeconds?: number;
+        cooldownSeconds?: number;
+        retryAfter?: number;
+        code?: string;
+      };
       err.status = res.status;
+      if (typeof data?.remainingSeconds === 'number') err.remainingSeconds = data.remainingSeconds;
+      if (typeof data?.cooldownSeconds === 'number') err.cooldownSeconds = data.cooldownSeconds;
+      if (typeof data?.code === 'string') err.code = data.code;
+      const retryRaw = res.headers.get('Retry-After');
+      if (retryRaw) {
+        const n = Number(retryRaw);
+        if (Number.isFinite(n) && n > 0) err.retryAfter = Math.ceil(n);
+      }
       // Only auto-redirect on 401 if this is NOT a login request (avoid redirect loop)
       if (res.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/login') && !path.includes('/auth/retail')) {
         const { clearToken } = await import('./auth');

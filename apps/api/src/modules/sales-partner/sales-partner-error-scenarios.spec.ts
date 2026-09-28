@@ -17,6 +17,7 @@ import {
   isDraftExpired,
   priceDriftBps,
   resendBlockedReason,
+  resendCooldownRemaining,
   resolveConfirmPaymentMethod,
   smsFailureBlocksSend,
 } from './sales-partner-draft-policy';
@@ -141,6 +142,13 @@ assert(neg.available < 0 || neg.reversed >= 8_000, '27 clawback recorded');
 assert(resendBlockedReason(now, 5, now, 60, 5) === 'DAILY_CAP', '23/resend daily cap');
 assert(resendBlockedReason(now, 1, now, 60, 5) === 'COOLDOWN', '23/resend cooldown');
 assert(resendBlockedReason(new Date('2026-09-23T07:00:00.000Z'), 1, now, 60, 5) === null, '23/resend allowed');
+// blocked resends must tell the caller how long to wait (429 body)
+assert(resendCooldownRemaining(now, now, 60) === 60, '23/remaining right after send');
+assert(
+  resendCooldownRemaining(new Date('2026-09-23T07:59:15.000Z'), now, 60) === 15,
+  '23/remaining mid-cooldown',
+);
+assert(resendCooldownRemaining(new Date('2026-09-23T07:00:00.000Z'), now, 60) === 0, '23/no wait when allowed');
 
 // 25 stock after confirm before pay is retail checkout; flag OFF still blocks new drafts
 const off = resolveSalesPartnerSettings({ enabled: true, mode: 'OFF' });

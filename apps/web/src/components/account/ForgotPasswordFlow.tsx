@@ -6,11 +6,14 @@ import { ArrowRight, MessageSquare, Phone } from 'lucide-react';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { BlurFade } from '@/components/auth/BlurFade';
 import { GlassInput } from '@/components/auth/GlassInput';
+import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { GlassButton } from '@/components/ui/glass-button';
+import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
 import { cookieScopeFromPurpose } from '@/lib/admin-session';
 import { validateNewPassword } from '@/lib/password-policy';
+import { extractSmsCooldown } from '@/lib/sms-cooldown';
 
 type ResetResult = {
   message: string;
@@ -18,6 +21,24 @@ type ResetResult = {
   accessToken?: string;
   role?: string;
 };
+
+type ForgotResponse = {
+  message: string;
+  phone: string;
+  devCode?: string;
+  cooldownSeconds?: number;
+  remainingSeconds?: number;
+};
+
+function errHasSmsCooldown(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { remainingSeconds?: number; cooldownSeconds?: number; retryAfter?: number };
+  return (
+    (e.remainingSeconds != null && e.remainingSeconds > 0) ||
+    (e.retryAfter != null && e.retryAfter > 0) ||
+    (e.cooldownSeconds != null && e.cooldownSeconds > 0)
+  );
+}
 
 export function ForgotPasswordFlow({
   loginHref,
@@ -38,27 +59,40 @@ export function ForgotPasswordFlow({
   const [confirm, setConfirm] = useState('');
   const [devCode, setDevCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+  const { secondsLeft, start, reset } = useSmsResendCooldown();
 
-  const requestCode = async (e: FormEvent) => {
-    e.preventDefault();
+  async function sendForgotCode(): Promise<boolean> {
     setError('');
-    setBusy(true);
     try {
-      const res = await apiClient.post<{ message: string; phone: string; devCode?: string }>(
-        '/auth/password/forgot',
-        { phone },
-      );
+      const res = await apiClient.post<ForgotResponse>('/auth/password/forgot', { phone });
       setPhone(res.phone || phone);
       setInfo(res.message);
       if (res.devCode) setDevCode(res.devCode);
-      setStep('reset');
+      else setDevCode('');
+      start(extractSmsCooldown(null, res));
+      return true;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'ارسال کد ناموفق بود');
-    } finally {
-      setBusy(false);
+      if (errHasSmsCooldown(err)) start(extractSmsCooldown(err));
+      return false;
     }
+  }
+
+  const requestCode = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const ok = await sendForgotCode();
+    if (ok) setStep('reset');
+    setBusy(false);
+  };
+
+  const resendCode = async () => {
+    setResendBusy(true);
+    await sendForgotCode();
+    setResendBusy(false);
   };
 
   const submitReset = async (e: FormEvent) => {
@@ -190,6 +224,7 @@ export function ForgotPasswordFlow({
           <GlassButton type="submit" size="full" disabled={busy}>
             {busy ? 'در حال ذخیره…' : 'ذخیره رمز و ادامه'}
           </GlassButton>
+          <SmsResendButton secondsLeft={secondsLeft} onResend={() => void resendCode()} busy={resendBusy} />
           <button
             type="button"
             className="mx-auto flex items-center gap-1.5 text-sm text-[var(--brand-muted)] hover:text-[var(--brand-ink)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
@@ -198,10 +233,11 @@ export function ForgotPasswordFlow({
               setCode('');
               setDevCode('');
               setError('');
+              reset();
             }}
           >
             <ArrowRight className="h-4 w-4" />
-            تغییر شماره یا ارسال دوباره
+            تغییر شماره
           </button>
         </form>
       )}

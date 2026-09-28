@@ -3442,3 +3442,16 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 ### Remaining follow-up (non-blocking)
 - Wire `internal-link-resolver.spec.ts` into `npm run test` once TASK-20260905-003 releases `apps/api/package.json`.
 - Release TASK-20260906-003 file claims (review complete via E2E + prior Agent A/B/C audits).
+
+## 2026-09-28T08:07:53Z — TASK-20260928-001 claimed (SMS resend cooldown)
+
+- Owner: cursor:implementer-TASK-20260928-001
+- Branch: master (feat slice on master)
+- Scope: server-authoritative SMS/OTP resend timer across retail OTP, forgot password, sales-partner login/apply, order-confirm SMS
+- Parallel agents: backend cooldown API, frontend shared hook/button, Stitch skill+prompt
+- Non-goals: progressive cooldown, admin/marketing one-shot SMS, IP rate-limit rewrite
+
+
+## 2026-09-28T08:32:00Z — TASK-20260928-001 ready to ship
+- SMS resend cooldown API+UI complete; specs OK; web tsc OK
+

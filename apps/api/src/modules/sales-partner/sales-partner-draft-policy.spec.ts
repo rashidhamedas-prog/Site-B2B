@@ -10,6 +10,8 @@ import {
   partnerCommissionOverlay,
   maskCustomerPhone,
   priceDriftBps,
+  resendBlockedReason,
+  resendCooldownRemaining,
 } from './sales-partner-draft-policy';
 
 function assert(cond: boolean, msg: string) {
@@ -94,5 +96,20 @@ assert(
   'converted drafts stay quiet',
 );
 assert(humanDraftFreshness(['PRICE_CHANGED'])[0].includes('مبلغ نهایی'), 'server price wins copy');
+
+// resend cooldown remaining drives the 429 body
+const sentAt = new Date('2026-09-22T12:00:00.000Z');
+assert(resendCooldownRemaining(null, now, 120) === 0, 'never sent means no wait');
+assert(resendCooldownRemaining(sentAt, new Date('2026-09-22T12:00:30.000Z'), 120) === 90, 'remaining seconds');
+assert(resendCooldownRemaining(sentAt, new Date('2026-09-22T12:00:30.500Z'), 120) === 90, 'remaining rounds up');
+assert(resendCooldownRemaining(sentAt, new Date('2026-09-22T12:05:00.000Z'), 120) === 0, 'cooldown elapsed');
+assert(
+  resendBlockedReason(sentAt, 1, new Date('2026-09-22T12:00:30.000Z'), 120, 5) === 'COOLDOWN',
+  'blocked while remaining > 0',
+);
+assert(
+  resendBlockedReason(sentAt, 1, new Date('2026-09-22T12:05:00.000Z'), 120, 5) === null,
+  'allowed once remaining hits 0',
+);
 
 console.log('sales-partner-draft-policy.spec.ts: OK');

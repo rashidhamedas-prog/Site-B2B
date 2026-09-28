@@ -19,7 +19,8 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UserEntity } from '../auth/entities/user.entity';
-import { OtpService } from '../redis/redis.module';
+import { OtpCooldownError, OtpService } from '../redis/redis.module';
+import { SmsCooldownException } from '../notification/sms-cooldown-http';
 import { allowDevOtpExpose, normalizePhone } from '../auth/phone.util';
 import { isStaffRole } from '../auth/staff-access';
 import {
@@ -155,7 +156,7 @@ export class SalesPartnerService {
     return {
       applicationId: application.id,
       status: application.status,
-      cooldownSeconds: 60,
+      cooldownSeconds: this.otp.cooldownSeconds(),
       ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) ? { devCode: issued.code } : {}),
     };
   }
@@ -227,7 +228,7 @@ export class SalesPartnerService {
     }
     const issued = await this.issueOtp(phone, profile.displayName, 'sales_partner');
     return {
-      cooldownSeconds: 60,
+      cooldownSeconds: this.otp.cooldownSeconds(),
       ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) ? { devCode: issued.code } : {}),
     };
   }
@@ -446,8 +447,12 @@ export class SalesPartnerService {
     try {
       issued = await this.otp.issue(phone, name, purpose);
     } catch (err) {
-      if (err instanceof Error && err.message === 'COOLDOWN') {
-        throw new HttpException('لطفاً کمی بعد دوباره تلاش کنید', 429);
+      if (err instanceof OtpCooldownError) {
+        throw new SmsCooldownException(
+          err.remainingSeconds,
+          this.otp.cooldownSeconds(),
+          'لطفاً کمی بعد دوباره تلاش کنید',
+        );
       }
       throw err;
     }

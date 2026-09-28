@@ -21,6 +21,7 @@ import { ShippingService } from '../shipping/shipping.service';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { resolveCashOnDeliveryFlags } from '../settings/settings-payment-cash';
 import { normalizePhone } from '../auth/phone.util';
+import { SmsCooldownException } from '../notification/sms-cooldown-http';
 import {
   SalesCommissionLedgerEntryEntity,
   SalesPartnerOrderDraftEntity,
@@ -43,6 +44,7 @@ import {
   isDraftExpired,
   partnerCommissionOverlay,
   resendBlockedReason,
+  resendCooldownRemaining,
   resolveConfirmPaymentMethod,
   smsFailureBlocksSend,
   maskCustomerPhone,
@@ -146,14 +148,21 @@ export class SalesPartnerDraftService {
       throw new ConflictException('برای این پیش‌سفارش نمی‌توان لینک تأیید فرستاد');
     }
     if (!draft.customerPhone) throw new BadRequestException('شماره مشتری لازم است');
+    const resendNow = new Date();
     const resendBlock = resendBlockedReason(
       draft.lastSentAt,
       draft.sentCount,
-      new Date(),
+      resendNow,
       settings.confirmResendCooldownSeconds,
       settings.confirmResendDailyCap,
     );
-    if (resendBlock === 'COOLDOWN') throw new ForbiddenException('ارسال دوباره هنوز ممکن نیست');
+    if (resendBlock === 'COOLDOWN') {
+      throw new SmsCooldownException(
+        resendCooldownRemaining(draft.lastSentAt, resendNow, settings.confirmResendCooldownSeconds),
+        settings.confirmResendCooldownSeconds,
+        'ارسال دوباره هنوز ممکن نیست',
+      );
+    }
     if (resendBlock === 'DAILY_CAP') throw new ForbiddenException('سقف ارسال پیامک امروز پر شده است');
     const existingItems = await this.items.find({ where: { draftId: draft.id } });
     const priced = await this.priceItems(salesPartnerId, existingItems.map((row) => ({
