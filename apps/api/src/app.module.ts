@@ -23,6 +23,7 @@ import { databaseConfig } from './config/database.config';
 import { FeedsModule } from './modules/feeds/feeds.module';
 import { CategoryModule } from './modules/category/category.module';
 import { CrmModule } from './modules/crm/crm.module';
+import { ErpInventoryModule } from './modules/erp-inventory/erp-inventory.module';
 import { RmaModule } from './modules/rma/rma.module';
 import { CollectionModule } from './modules/collection/collection.module';
 import { AffiliateModule } from './modules/affiliate/affiliate.module';
@@ -55,6 +56,7 @@ import { SalesPartnerModule } from './modules/sales-partner/sales-partner.module
     InvoiceModule,
     InventoryModule,
     CrmModule,
+    ErpInventoryModule,
     DashboardModule,
     UploadModule,
     DiscountModule,

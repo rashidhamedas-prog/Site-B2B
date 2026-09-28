@@ -1,5 +1,14 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-28 — ERP → سایت: ingest ماتریس موجودی رنگ×سایز
+
+- API جدید: `PUT /v1/erp/inventory/matrix` (+ bulk + ping) با `ERP_INVENTORY_API_KEY`.
+- جداول: `erp_variant_map`, `erp_inventory_idempotency` (migration `20260928-001`).
+- Resolve واریانت: map → normalize(color|size) → barcode یکتا؛ بدون auto-create.
+- نوشتن فقط `inventoryService.setStock(variantId, qty, channel)` — نه product-level.
+- Specs: `erp-text-normalize.spec.ts`, `erp-inventory.contract.spec.ts`.
+- ERP سمت مقابل: outbox + انبار per کانال (عمده/تکی). فعال‌سازی: env key روی VPS + تنظیم انبار در ERP.
+
 ## 2026-09-28 — داشبورد حرفه‌ای همکار بازاریاب (ادمین + پنل)
 
 - معماری: `docs/architecture/sales-partner-admin-ui.md`؛ پرامپت Stitch: `docs/prompts/stitch-sales-partner-admin-fa.md`.

@@ -30,6 +30,8 @@ import {
 import { InvoiceEntity } from '../modules/invoice/entities/invoice.entity';
 import { InventoryMovementEntity } from '../modules/inventory/entities/inventory-movement.entity';
 import { WarehouseEntity } from '../modules/inventory/entities/warehouse.entity';
+import { ErpVariantMapEntity } from '../modules/erp-inventory/entities/erp-variant-map.entity';
+import { ErpInventoryIdempotencyEntity } from '../modules/erp-inventory/entities/erp-inventory-idempotency.entity';
 import { DiscountCodeEntity } from '../modules/discount/entities/discount-code.entity';
 import { TieredDiscountEntity } from '../modules/discount/entities/tiered-discount.entity';
 import { SideDiscountEntity } from '../modules/discount/entities/side-discount.entity';
@@ -107,6 +109,8 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     InvoiceEntity,
     InventoryMovementEntity,
     WarehouseEntity,
+    ErpVariantMapEntity,
+    ErpInventoryIdempotencyEntity,
     DiscountCodeEntity, TieredDiscountEntity, SideDiscountEntity,
     PaymentEntity,
     PaymentAttemptEntity,
