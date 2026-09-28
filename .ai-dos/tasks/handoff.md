@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-28T09:36:00Z — TASK-20260928-002 LIVE (sales-partner admin/partner UI)
+
+- Owner: cursor:implementer-TASK-20260928-002
+- Ship: `3b1c1c3` on master; VPS tip `3b1c1c3`; containers restarted (~1m healthy).
+- Evidence: health ok; `.next/.../sales-partners/reports` present; API has `programBalances` + `Get('report')`.
+- Admin `/admin/sales-partners` and partner `/sales-partners/reports` return 307 (auth gate) with low TTFB.
+- Residual: Stitch MCP broken + One Tap iframe blocked agent paste; prompt at `docs/prompts/stitch-sales-partner-admin-fa.md`. 21st code quota was 0 — patterns only.
+- Independent Reviewer residual (visual QA in browser while logged in).
+
 ## 2026-09-26T17:10:00Z — TASK-20260926-005 CLOSED (final re-verify + branch push)
 
 - Owner close-out: cursor:implementer-TASK-20260926-005
