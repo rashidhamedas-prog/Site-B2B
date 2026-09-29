@@ -2,6 +2,23 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-29T08:10:00Z — TASK-20260929-001 reinforced (mouseleave collapse)
+
+- Owner: cursor:implementer-TASK-20260929-001
+- User repro: while pointer stays on the open card the clipped dialog looks usable; on mouseleave the card transform drops and the nested `fixed` overlay jumps to the viewport — page collapse.
+- Defense in depth: `WholesaleQuickOrder` portals to `document.body`; card mounts it **outside** `<article>`; hover translate disabled while `orderOpen`.
+- Spec + web tsc OK. Shipping next.
+
+## 2026-09-29T07:40:00Z — TASK-20260929-001 implementing (wholesale quick-order overlay)
+
+- Owner: cursor:implementer-TASK-20260929-001
+- Root (confirmed on live `.com/products` + CDP): `WholesaleQuickOrder` is rendered inside `WholesaleProductCard`. The card has `hover:-translate-y-0.5` and `overflow-hidden`. A transformed ancestor is the containing block for `position:fixed`. While the pointer stays on the open dialog (a descendant), the card stays hovered, the overlay collapses from the viewport to the card box, and overflow clips it. Gold `focus-within` ring draws around that broken card.
+- Fix: portal the dialog to `document.body`, lock scroll, trap focus, close on Escape.
+- Non-goal: guest wholesale price visibility (modal still shows a price the card labels «پس از ورود» when the list payload includes it).
+- Evidence on live `.com/products` before the source fix: with the card `transform`, the overlay box collapsed from 1914×1080 to the card 212×526. Moving that same node to `document.body` restored 1914×1080 even while the card stayed transformed. React then reconciled it back into the card (live bundle still nests the dialog).
+- Local: `npx tsx apps/web/src/components/wholesale/WholesaleQuickOrder.portal.spec.ts` OK. `npx tsc --noEmit -p apps/web/tsconfig.json` exit 0.
+- Not deployed. Live site still has the nested dialog until this change is shipped.
+
 ## 2026-09-29T06:30:00Z — TASK-20260928-003 LIVE (sms.ir egress)
 
 - Owner: cursor:implementer-TASK-20260928-003

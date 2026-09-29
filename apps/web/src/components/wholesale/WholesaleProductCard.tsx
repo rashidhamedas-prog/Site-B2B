@@ -73,8 +73,17 @@ export function WholesaleProductCard({
     setSignedIn(Boolean(getToken()));
   }, []);
 
+  // Never nest the quick-order dialog inside this article: hover:-translate creates a
+  // fixed containing block, and mouseleave drops it so the overlay jumps to the viewport.
   return (
-    <article className="group relative flex h-full flex-col overflow-hidden rounded-lg bg-white transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(27,92,74,0.07)] focus-within:shadow-[0_4px_16px_rgba(27,92,74,0.07)] focus-within:ring-2 focus-within:ring-[var(--brand-gold,#C9A84C)] focus-within:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+    <>
+    <article
+      className={`group relative flex h-full flex-col overflow-hidden rounded-lg bg-white transition duration-300 focus-within:shadow-[0_4px_16px_rgba(27,92,74,0.07)] focus-within:ring-2 focus-within:ring-[var(--brand-gold,#C9A84C)] focus-within:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none ${
+        orderOpen
+          ? 'shadow-[0_4px_16px_rgba(27,92,74,0.07)]'
+          : 'hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(27,92,74,0.07)] motion-reduce:hover:translate-y-0'
+      }`}
+    >
       <Link
         href={href}
         prefetch={false}
@@ -202,7 +211,8 @@ export function WholesaleProductCard({
         </div>
       </div>
 
-      <WholesaleQuickOrder product={product} open={orderOpen} onClose={() => setOrderOpen(false)} />
     </article>
+    <WholesaleQuickOrder product={product} open={orderOpen} onClose={() => setOrderOpen(false)} />
+    </>
   );
 }

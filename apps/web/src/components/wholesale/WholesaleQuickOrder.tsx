@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
@@ -13,6 +14,9 @@ import {
   type WholesaleOrderProduct,
 } from '@/lib/wholesale-order';
 
+const FOCUSABLE =
+  'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])';
+
 export function WholesaleQuickOrder({
   product: initial,
   open,
@@ -23,6 +27,13 @@ export function WholesaleQuickOrder({
   onClose: () => void;
 }) {
   const { addItem } = useCart();
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
+  const [mounted, setMounted] = useState(false);
   const [product, setProduct] = useState(initial);
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState(() => wholesaleMoq(initial));
@@ -30,16 +41,21 @@ export function WholesaleQuickOrder({
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
-    setProduct(initial);
-    setQuantity(wholesaleMoq(initial));
-    setSelectedColors(defaultWholesaleColors(initial));
-    const needsFetch = !(initial.variants && initial.variants.length);
-    if (!needsFetch || !initial.slug) return;
+    const snapshot = initialRef.current;
+    setProduct(snapshot);
+    setQuantity(wholesaleMoq(snapshot));
+    setSelectedColors(defaultWholesaleColors(snapshot));
+    const needsFetch = !(snapshot.variants && snapshot.variants.length);
+    if (!needsFetch || !snapshot.slug) return;
     let cancelled = false;
     setLoading(true);
     apiClient
-      .get<WholesaleOrderProduct>(`/products/slug/${initial.slug}?channel=WHOLESALE`)
+      .get<WholesaleOrderProduct>(`/products/slug/${snapshot.slug}?channel=WHOLESALE`)
       .then((p) => {
         if (cancelled) return;
         setProduct(p);
@@ -53,7 +69,60 @@ export function WholesaleQuickOrder({
     return () => {
       cancelled = true;
     };
-  }, [open, initial]);
+  }, [open, initial.id, initial.slug]);
+
+  useEffect(() => {
+    if (!open) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+
+    const panel = panelRef.current;
+    const focusables = () =>
+      Array.from(panel?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []).filter(
+        (el) => !el.hasAttribute('disabled'),
+      );
+
+    const frame = requestAnimationFrame(() => {
+      (panelRef.current ?? focusables()[0])?.focus();
+    });
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !panelRef.current) return;
+      const list = focusables();
+      if (!list.length) {
+        event.preventDefault();
+        panelRef.current.focus();
+        return;
+      }
+      const first = list[0];
+      const last = list[list.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || !panelRef.current.contains(active))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [open]);
 
   const summary = useMemo(
     () => wholesaleOrderSummary(product, selectedColors, quantity),
@@ -101,16 +170,24 @@ export function WholesaleQuickOrder({
     }, 900);
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center md:items-center">
-      <button type="button" className="absolute inset-0 bg-black/40" aria-label="بستن" onClick={onClose} />
+  const dialog = (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 md:items-center md:p-4">
+      <button
+        type="button"
+        tabIndex={-1}
+        className="absolute inset-0 bg-black/40"
+        aria-label="بستن"
+        onClick={onClose}
+      />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="wholesale-quick-order-title"
-        className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-[var(--brand-border)] bg-[var(--brand-ivory)] md:rounded-2xl"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-[var(--brand-border)] bg-[var(--brand-ivory)] outline-none md:rounded-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-[var(--brand-border)] p-4">
           <div className="flex items-center gap-3">
@@ -121,8 +198,8 @@ export function WholesaleQuickOrder({
             ) : (
               <div className="h-16 w-16 rounded-md bg-[var(--brand-card)]" />
             )}
-            <div>
-              <h2 id="wholesale-quick-order-title" className="text-base font-bold text-[var(--brand-ink)]">
+            <div className="min-w-0">
+              <h2 id={titleId} className="text-base font-bold text-[var(--brand-ink)]">
                 {product.name}
               </h2>
               {product.sku ? <p className="text-xs text-[var(--brand-muted)]">کد: {product.sku}</p> : null}
@@ -131,7 +208,12 @@ export function WholesaleQuickOrder({
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full p-2" aria-label="بستن">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
+            aria-label="بستن"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -152,7 +234,7 @@ export function WholesaleQuickOrder({
                       key={c.name}
                       type="button"
                       onClick={() => toggleColor(c.name)}
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)] ${
                         selected
                           ? 'border-[var(--brand-green)] bg-[var(--brand-green)] text-white'
                           : 'border-[var(--brand-border)] bg-white'
@@ -220,13 +302,19 @@ export function WholesaleQuickOrder({
               <div className="mt-2 flex items-center border border-[var(--brand-border)] bg-white">
                 <button
                   type="button"
-                  className="h-10 w-10"
+                  className="h-10 w-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
+                  aria-label="کم کردن تعداد"
                   onClick={() => setQuantity((q) => Math.max(summary.minOrder, q - 1))}
                 >
                   −
                 </button>
                 <span className="w-10 text-center font-bold">{quantity.toLocaleString('fa-IR')}</span>
-                <button type="button" className="h-10 w-10" onClick={() => setQuantity((q) => q + 1)}>
+                <button
+                  type="button"
+                  className="h-10 w-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
+                  aria-label="زیاد کردن تعداد"
+                  onClick={() => setQuantity((q) => q + 1)}
+                >
                   +
                 </button>
               </div>
@@ -260,7 +348,7 @@ export function WholesaleQuickOrder({
           <button
             type="button"
             onClick={onClose}
-            className="h-12 flex-1 rounded-full border border-[var(--brand-border)] text-sm font-bold"
+            className="h-12 flex-1 rounded-full border border-[var(--brand-border)] text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
           >
             بستن
           </button>
@@ -268,7 +356,7 @@ export function WholesaleQuickOrder({
             type="button"
             disabled={!summary.canOrder || priceHidden}
             onClick={onAdd}
-            className="h-12 flex-[2] rounded-full bg-[var(--brand-green)] text-sm font-bold text-white disabled:opacity-50"
+            className="h-12 flex-[2] rounded-full bg-[var(--brand-green)] text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)] disabled:opacity-50"
           >
             {added ? 'به سبد اضافه شد' : priceHidden ? 'ورود برای سفارش' : 'افزودن به سبد خرید'}
           </button>
@@ -276,4 +364,8 @@ export function WholesaleQuickOrder({
       </div>
     </div>
   );
+
+  // The card's hover translate becomes the containing block for position:fixed,
+  // and its overflow clips the dialog. The overlay must live on document.body.
+  return createPortal(dialog, document.body);
 }

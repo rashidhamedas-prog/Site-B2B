@@ -1,5 +1,10 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-29 — سفارش سریع عمده: دیالوگ دیگر داخل کارت گیر نمی‌کند
+
+- ریشه: با موس روی کارت، `hover:translate` دیالوگ `fixed` را داخل کارت نگه می‌داشت؛ با برداشتن موس `transform` قطع می‌شد و لایه ناگهان کل viewport را می‌گرفت.
+- اصلاح: پورتال به `document.body`، خارج کردن دیالوگ از `<article>`، و قطع هاور لیفت هنگام باز بودن سفارش.
+
 ## 2026-09-29 — sms.ir egress LIVE روی VPS
 
 - Worker پایدار: `taranom-sms-egress.taranomsms.workers.dev` (حساب Cloudflare واقعی).
