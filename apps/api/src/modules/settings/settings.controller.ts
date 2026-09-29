@@ -169,18 +169,14 @@ export class SettingsController {
         this.svc.shippingPost(),
       ]);
     // Never expose egress shared secret to the browser.
-    const { egressSecret: _egressSecret, ...smsSafe } = smsRaw as Record<string, unknown>;
-    const sms = {
-      ...smsSafe,
-      egressConfigured: Boolean(smsRaw.egressBaseUrl),
-    };
+    const { egressSecret: _egressSecret, ...smsSafe } = smsRaw;
     return {
       business,
       shipping,
       sms: {
-        ...sms,
+        ...smsSafe,
         egressSecret: undefined,
-        egressConfigured: Boolean(sms.egressBaseUrl),
+        egressConfigured: Boolean(smsRaw.egressBaseUrl),
       },
       payment,
       installments,
