@@ -2,6 +2,23 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-29T13:05:00Z — TASK-20260929-003 LIVE (color select prompt)
+
+- Owner: cursor:implementer-TASK-20260929-003
+- Ship: `8660625` on master; VPS HEAD `8660625`; web container recreated ~12:55Z.
+- Evidence: health 200; `.com/` 200 TTFB ~0.09s; `.com/products` 200 TTFB ~0.23s.
+- UI: gold callout «رنگ‌های موردنظرتان را انتخاب کنید» in quick-order + PDP when color select on; turns green when min colors met.
+- Claims released. Independent Reviewer residual (visual on a color-select product).
+- Slack MCP was unavailable this session.
+
+## 2026-09-29T12:50:00Z — TASK-20260929-003 shipping (color select prompt)
+
+- Owner: cursor:implementer-TASK-20260929-003
+- Commit: `8660625` on master (pushed).
+- Spec: `wholesale-color-prompt.spec.ts` OK; web tsc OK.
+- VPS: auto-deploy was already running at push time; waiting for completion then verify tip includes 8660625 (re-run deploy if tip older).
+- Claims remain until live verify.
+
 ## 2026-09-29T12:45:00Z — TASK-20260929-003 implementing (color select prompt)
 
 - Owner: cursor:implementer-TASK-20260929-003
@@ -10,6 +27,14 @@ Append newest entries at the top. Never erase another agent's record.
 - Shared meta reclaimed from 002 for WORKLOG/active/handoff; 002 keeps badge/product claims.
 - Slack MCP unavailable in this session; no Slack context found.
 - Next: spec + tsc, commit, deploy web.
+
+## 2026-09-29T12:50:00Z — TASK-20260929-002 LIVE (order badge label)
+
+- Owner: cursor:implementer-TASK-20260929-002
+- Ship: `15e7c9d`; VPS api+web rebuilt; column `orderBadgeLabel` present; health 200; products 200.
+- Live cards: «حداقل ۱ پک» (was «حداقل ۱ عدد»).
+- Admin: Products → «برچسب کارت عمده (متن کامل)» for any custom chip text.
+- Claims released (except shared meta still with TASK-20260929-003).
 
 ## 2026-09-29T12:35:00Z — TASK-20260929-002 implementing (order badge label)
 
