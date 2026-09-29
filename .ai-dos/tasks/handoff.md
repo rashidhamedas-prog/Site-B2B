@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-29T12:45:00Z — TASK-20260929-003 implementing (color select prompt)
+
+- Owner: cursor:implementer-TASK-20260929-003
+- Goal: clear H2H callout when wholesale product allows color select (quick-order + PDP).
+- Copy: «رنگ‌های موردنظرتان را انتخاب کنید» + pack formula / min colors; turns green when ready.
+- Shared meta reclaimed from 002 for WORKLOG/active/handoff; 002 keeps badge/product claims.
+- Slack MCP unavailable in this session; no Slack context found.
+- Next: spec + tsc, commit, deploy web.
+
 ## 2026-09-29T12:35:00Z — TASK-20260929-002 implementing (order badge label)
 
 - Owner: cursor:implementer-TASK-20260929-002

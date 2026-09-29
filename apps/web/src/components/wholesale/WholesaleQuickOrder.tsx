@@ -13,6 +13,7 @@ import {
   wholesaleOrderSummary,
   type WholesaleOrderProduct,
 } from '@/lib/wholesale-order';
+import { WholesaleColorSelectPrompt } from './WholesaleColorSelectPrompt';
 
 const FOCUSABLE =
   'a[href],button:not([disabled]),textarea,input,select,[tabindex]:not([tabindex="-1"])';
@@ -222,11 +223,13 @@ export function WholesaleQuickOrder({
           {loading ? <p className="py-8 text-center text-sm text-[var(--brand-muted)]">در حال بارگذاری…</p> : null}
 
           {summary.allowColorSelect && summary.availableColors.length > 0 ? (
-            <div className="mb-4">
-              <p className="mb-2 text-sm font-bold">
-                انتخاب رنگ — حداقل {summary.minColors.toLocaleString('fa-IR')} رنگ
-              </p>
-              <div className="flex flex-wrap gap-2">
+            <div className="mb-4 space-y-3">
+              <WholesaleColorSelectPrompt
+                minColors={summary.minColors}
+                selectedCount={selectedColors.length}
+              />
+              <p className="text-sm font-bold text-[var(--brand-ink)]">انتخاب رنگ</p>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="انتخاب رنگ پک">
                 {summary.availableColors.map((c) => {
                   const selected = selectedColors.includes(c.name);
                   return (
@@ -234,6 +237,7 @@ export function WholesaleQuickOrder({
                       key={c.name}
                       type="button"
                       onClick={() => toggleColor(c.name)}
+                      aria-pressed={selected}
                       className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)] ${
                         selected
                           ? 'border-[var(--brand-green)] bg-[var(--brand-green)] text-white'
@@ -338,8 +342,10 @@ export function WholesaleQuickOrder({
           </div>
 
           {!summary.canOrder && !summary.isComingSoon ? (
-            <p className="mt-3 text-xs text-[var(--brand-error)]">
-              موجودی یا حداقل سفارش برای ثبت کافی نیست.
+            <p className="mt-3 text-xs text-[var(--brand-error)]" role="status">
+              {summary.allowColorSelect && !summary.colorsReady
+                ? `حداقل ${summary.minColors.toLocaleString('fa-IR')} رنگ انتخاب کنید تا سفارش ثبت شود.`
+                : 'موجودی یا حداقل سفارش برای ثبت کافی نیست.'}
             </p>
           ) : null}
         </div>

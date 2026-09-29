@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { channelSaleDisplay, piecesPerPackCount, sizeCountForType, toman } from '@/lib/product-display';
 import { wholesaleMoq } from '@/lib/wholesale-order';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
+import { WholesaleColorSelectPrompt } from './WholesaleColorSelectPrompt';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 
 interface Variant {
@@ -497,18 +498,27 @@ export function ProductDetail({
             </div>
 
             {availableColors.length > 0 && (
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 mb-1">
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-gray-900">
                   {allowColorSelect ? 'انتخاب رنگ' : 'رنگ‌های موجود'}
                 </h3>
-                <p className="text-xs text-gray-500 mb-3">
-                  {allowColorSelect
-                    ? `حداقل ${minColors.toLocaleString('fa-IR')} رنگ انتخاب کنید — هر پک = رنگ‌های انتخابی × همه سایزها`
-                    : packMode
+                {allowColorSelect ? (
+                  <WholesaleColorSelectPrompt
+                    minColors={minColors}
+                    selectedCount={selectedColors.length}
+                  />
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    {packMode
                       ? `هر پک = همه رنگ‌ها × همه سایزها (${piecesPerPack.toLocaleString('fa-IR')} عدد)`
                       : 'فقط جهت نمایش — سفارش بر اساس موجودی کل محصول ثبت می‌شود'}
-                </p>
-                <div className="flex flex-wrap gap-2">
+                  </p>
+                )}
+                <div
+                  className="flex flex-wrap gap-2"
+                  role={allowColorSelect ? 'group' : undefined}
+                  aria-label={allowColorSelect ? 'انتخاب رنگ پک' : undefined}
+                >
                   {availableColors.map((c) => {
                     const selected = selectedColors.includes(c.name);
                     if (!allowColorSelect) {
@@ -531,6 +541,7 @@ export function ProductDetail({
                         key={c.name}
                         type="button"
                         onClick={() => toggleColor(c.name)}
+                        aria-pressed={selected}
                         className={cn(
                           'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm shadow-sm transition-colors duration-200',
                           selected
@@ -548,10 +559,9 @@ export function ProductDetail({
                     );
                   })}
                 </div>
-                {colorError && <p className="mt-2 text-xs text-error">{colorError}</p>}
-                {allowColorSelect && selectedColors.length > 0 && (
-                  <p className="mt-2 text-xs text-gray-500">
-                    {selectedColors.length.toLocaleString('fa-IR')} رنگ انتخاب شده
+                {colorError && (
+                  <p className="text-xs text-error" role="alert">
+                    {colorError}
                   </p>
                 )}
               </div>
