@@ -27,6 +27,7 @@ export function slimWholesaleCatalogProduct(raw: Record<string, unknown>): Recor
     sale: raw.sale,
     sizeType: raw.sizeType,
     minOrderQty: raw.minOrderQty,
+    orderBadgeLabel: typeof raw.orderBadgeLabel === 'string' ? raw.orderBadgeLabel : null,
     variants,
   };
 }

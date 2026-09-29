@@ -155,6 +155,13 @@ export class ProductEntity {
   minOrderQty: number;
 
   /**
+   * Optional free-text chip on wholesale cards (full label, not only the number).
+   * Empty → storefront falls back to «حداقل N پک» from minOrderQty.
+   */
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  orderBadgeLabel: string | null;
+
+  /**
    * When true, wholesale PDP lets the buyer pick colors.
    * Order expands: each selected color × each size gets 1 piece per pack
    * (pack size = colorCount × sizeCount).

@@ -21,6 +21,7 @@ const slim = slimWholesaleCatalogProduct({
   sale: { active: true, payable: 90 },
   sizeType: 'FREE',
   minOrderQty: 6,
+  orderBadgeLabel: 'حداقل یک پک',
   variants: [
     { id: 'v1', color: 'سبز', colorHex: '#0f0', size: 'FREE', wholesaleStock: 2, retailStock: 8 },
   ],
@@ -33,6 +34,8 @@ assert.equal(slim.seoMeta, undefined);
 assert.equal(slim.description, undefined);
 assert.equal(slim.retailPrice, undefined);
 assert.equal((slim.images as string[]).length, 2);
+assert.equal(slim.minOrderQty, 6);
+assert.equal(slim.orderBadgeLabel, 'حداقل یک پک');
 assert.deepEqual(slim.variants, [
   { id: 'v1', color: 'سبز', colorHex: '#0f0', size: 'FREE', wholesaleStock: 2 },
 ]);

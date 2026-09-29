@@ -2,6 +2,22 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-29T12:35:00Z — TASK-20260929-002 implementing (order badge label)
+
+- Owner: cursor:implementer-TASK-20260929-002
+- TASK-20260929-001 closed; WholesaleProductCard claim moved here.
+- Column `orderBadgeLabel` + admin free-text; card uses `resolveWholesaleOrderBadge`.
+- Default chip: «حداقل N پک» (was wrongly «عدد»).
+- Next: specs + tsc, commit, migrate on VPS, deploy api+web.
+
+## 2026-09-29T12:18:00Z — TASK-20260929-001 LIVE (mouseleave quick-order)
+
+- Owner: cursor:implementer-TASK-20260929-001
+- Ship: `67aa4ef` on master; VPS web image `0c735dccd181` recreated ~12:15Z.
+- Live CDP on `.com/products`: dialog `onBody=true`, `insideArticle=false`; overlay stays 1920×1080 with card transform on and off (mouseleave).
+- Soft reload may be needed if an old tab still has the nested dialog.
+- Claims remain until owner visual OK; Independent Reviewer residual optional.
+
 ## 2026-09-29T08:10:00Z — TASK-20260929-001 reinforced (mouseleave collapse)
 
 - Owner: cursor:implementer-TASK-20260929-001

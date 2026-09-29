@@ -130,6 +130,7 @@ const emptyForm = {
   wholesalePrice: '',
   retailPrice: '',
   minOrderQty: '1',
+  orderBadgeLabel: '',
   status: 'ACTIVE',
   wholesaleIsDiscounted: false,
   wholesaleDiscountType: 'PERCENT' as 'PERCENT' | 'FIXED',
@@ -1088,6 +1089,7 @@ export function AdminProducts() {
         ? loadChannelBaseToman(src.retailPrice, src.retailCompareAtPrice, retailOn)
         : '',
       minOrderQty: String(src.minOrderQty ?? 1),
+      orderBadgeLabel: src.orderBadgeLabel ?? '',
       status: src.status,
       sizeType: (src.sizeType as FormData['sizeType']) || 'FREE',
       hasLength2: !!specs.length2,
@@ -1383,6 +1385,7 @@ export function AdminProducts() {
         wholesalePrice: wholesaleBaseToman * 10,
         retailPrice: form.retailPrice ? retailBaseToman * 10 : null,
         minOrderQty: Number(form.minOrderQty),
+        orderBadgeLabel: form.orderBadgeLabel.trim() || null,
         status: form.status,
         isDiscounted: wholesaleIsDiscounted || retailIsDiscounted,
         images: galleryImages,
@@ -2518,6 +2521,22 @@ export function AdminProducts() {
                     placeholder="1"
                     className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   />
+                </div>
+                <div className="max-w-md">
+                  <label className="mb-1 block text-xs font-medium text-gray-600">
+                    برچسب کارت عمده (متن کامل)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={80}
+                    value={form.orderBadgeLabel}
+                    onChange={(e) => setForm((f) => ({ ...f, orderBadgeLabel: e.target.value }))}
+                    placeholder={`خالی = حداقل ${minPackQty.toLocaleString('fa-IR')} پک`}
+                    className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                  />
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    همین متن کنار دکمه «سفارش» نشان داده می‌شود — مثلاً «حداقل ۱ پک» یا هر عبارتی برای همان محصول.
+                  </p>
                 </div>
                 <p className="text-[11px] text-gray-600">{packSummary}</p>
               </div>

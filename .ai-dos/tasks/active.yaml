@@ -1,8 +1,46 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260929-002"
+    title: "Wholesale card order-badge free text per product"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20260929-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260929-002"
+      implementer: "cursor:implementer-TASK-20260929-002"
+      reviewer: "required-after-diff"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-29T12:30:00Z"
+    heartbeat_at: "2026-09-29T12:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/product/entities/product.entity.ts"
+      - "apps/api/src/modules/product/dto/create-product.dto.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/database/migrations/20260929-001-product-order-badge-label.ts"
+      - "apps/api/src/database/migrations/20260929-001-product-order-badge-label.spec.ts"
+      - "apps/web/src/lib/wholesale-order-badge.ts"
+      - "apps/web/src/lib/wholesale-order-badge.spec.ts"
+      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      - "apps/web/src/lib/slim-wholesale-catalog.ts"
+      - "apps/web/src/lib/slim-wholesale-catalog.spec.ts"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    notes: |
+      Card chip was hard-coded as «حداقل {minOrderQty} عدد» while MOQ is packs.
+      Add nullable orderBadgeLabel (full free text). Empty → «حداقل N پک».
+      Numeric minOrderQty stays the cart/validation rule.
+    acceptance_criteria:
+      - "Admin can save any short Persian/Latin badge text per product"
+      - "Card shows custom text; empty falls back to حداقل N پک"
+      - "slim catalog + badge helper specs pass"
+      - "Migration additive/reversible"
   - id: "TASK-20260929-001"
     title: "Wholesale quick-order dialog escapes card transform"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260929-001"
     roles:
@@ -12,9 +50,11 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-29T07:40:00Z"
-    heartbeat_at: "2026-09-29T07:40:00Z"
+    heartbeat_at: "2026-09-29T12:18:00Z"
+    completed_at: "2026-09-29T12:18:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/wholesale/WholesaleQuickOrder.tsx"
       - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
       - "apps/web/src/components/wholesale/WholesaleQuickOrder.portal.spec.ts"
@@ -22,8 +62,7 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
     notes: |
-      Root: while hovered, card translate traps fixed dialog inside the card; on mouseleave transform drops and the dialog jumps to the viewport — page collapse.
-      Fix: portal to body + mount dialog outside the article + disable card lift while open.
+      LIVE 67aa4ef. Portal + mount outside article. Claims released for 002 badge work.
     acceptance_criteria:
       - "Clicking سفارش on /products opens a viewport dialog, including while the card is hovered"
       - "Closing via backdrop, close, and Escape returns focus and scroll"

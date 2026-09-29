@@ -11,6 +11,7 @@ import {
   IsObject,
   ValidateIf,
   Max,
+  MaxLength,
   IsUUID,
 } from 'class-validator';
 import { InternalLinkItemDto } from './internal-link.dto';
@@ -129,6 +130,15 @@ export class CreateProductDto {
   @IsNumber()
   @Min(1)
   minOrderQty?: number;
+
+  @ApiPropertyOptional({
+    description: 'متن کامل برچسب کارت عمده (مثلاً «حداقل ۱ پک»). خالی = پیش‌فرض از تعداد پک',
+    maxLength: 80,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  orderBadgeLabel?: string | null;
 
   @ApiPropertyOptional({ enum: ['PERCENT', 'FIXED'] })
   @IsOptional()

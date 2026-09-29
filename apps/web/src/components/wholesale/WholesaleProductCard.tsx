@@ -8,6 +8,7 @@ import { getToken } from '@/lib/auth';
 import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
+import { resolveWholesaleOrderBadge } from '@/lib/wholesale-order-badge';
 
 export type WholesaleCardProduct = {
   id: string;
@@ -31,6 +32,7 @@ export type WholesaleCardProduct = {
   sizeType?: string;
   minOrderQty?: number;
   minimumOrderQuantity?: number;
+  orderBadgeLabel?: string | null;
   allowWholesaleColorSelect?: boolean;
   minWholesaleColors?: number;
   variants?: Array<{ color?: string; colorHex?: string; stock?: number; wholesaleStock?: number; size?: string }>;
@@ -59,7 +61,7 @@ export function WholesaleProductCard({
     product.wholesalePrice,
   );
   const showPrice = signedIn && price > 0;
-  const moq = product.minOrderQty ?? product.minimumOrderQuantity ?? 6;
+  const orderBadge = resolveWholesaleOrderBadge(product);
   const primaryImage = mediaUrl(product.images?.[0]);
   const secondImage = mediaUrl(product.images?.[1]);
   const sizeLabel = sizeTypeLabel(product.sizeType);
@@ -195,8 +197,8 @@ export function WholesaleProductCard({
                 </p>
               ) : null}
             </div>
-            <span className="inline-flex shrink-0 items-center rounded-full bg-[var(--brand-green,#1B5C4A)]/10 px-2.5 py-1 text-[10px] font-bold text-[var(--brand-green,#1B5C4A)]">
-              حداقل {moq.toLocaleString('fa-IR')} عدد
+            <span className="inline-flex min-w-0 max-w-[58%] shrink items-center rounded-full bg-[var(--brand-green,#1B5C4A)]/10 px-2.5 py-1 text-[10px] font-bold leading-4 text-[var(--brand-green,#1B5C4A)]">
+              <span className="truncate">{orderBadge}</span>
             </span>
           </div>
           <button

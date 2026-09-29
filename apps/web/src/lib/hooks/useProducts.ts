@@ -129,6 +129,7 @@ export interface Product {
   hideDefaultBrand?: boolean;
   retailFeatured?: boolean;
   minOrderQty: number;
+  orderBadgeLabel?: string | null;
   allowWholesaleColorSelect?: boolean;
   minWholesaleColors?: number;
   stock?: number;

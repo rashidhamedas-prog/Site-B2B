@@ -23,6 +23,7 @@ import {
 } from './admin-product-list-filter';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { normalizeOrderBadgeLabel } from './order-badge-label';
 import { CreateVariantDto } from './dto/create-variant.dto';
 import { ProductRelatedEntity } from './entities/product-related.entity';
 import { ProductInternalLinkEntity } from './entities/product-internal-link.entity';
@@ -1610,6 +1611,7 @@ export class ProductService {
       wholesaleCompareAtPrice: prices.wholesaleCompareAtPrice,
       retailCompareAtPrice: prices.retailCompareAtPrice,
       minOrderQty,
+      orderBadgeLabel: normalizeOrderBadgeLabel(data.orderBadgeLabel),
       allowWholesaleColorSelect: !!data.allowWholesaleColorSelect,
       minWholesaleColors: Math.max(1, Number(data.minWholesaleColors) || 1),
       status: data.status,
@@ -1701,6 +1703,7 @@ export class ProductService {
     delete (patch as any).categoryIds;
     delete (patch as any).slug;
     delete (patch as any).minOrderQty;
+    delete (patch as any).orderBadgeLabel;
     delete (patch as any).allowBelowMoq;
     delete (patch as any).wholesaleIsDiscounted;
     delete (patch as any).retailIsDiscounted;
@@ -1876,6 +1879,9 @@ export class ProductService {
       } catch (e) {
         throw new BadRequestException((e as Error).message);
       }
+    }
+    if (data.orderBadgeLabel !== undefined) {
+      patch.orderBadgeLabel = normalizeOrderBadgeLabel(data.orderBadgeLabel);
     }
     if (data.retailFullContent !== undefined) {
       patch.retailFullContent = data.retailFullContent
