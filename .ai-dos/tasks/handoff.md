@@ -2,7 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-09-29T21:55:00Z — TASK-20260930-001 implementing (zero-order CRM desk)
+## 2026-09-29T21:55:00Z — TASK-20260930-001 LIVE (zero-order CRM desk)
+
+- Owner: cursor:implementer-TASK-20260930-001
+- Ship: `734d788` on master; VPS deploy complete at `734d788`.
+- Evidence: `/v1/health` 200; unauth `/v1/marketing/zero-order` 401; admin UI at `/admin/customers/marketing?mtab=zero`.
+- Claims released. Independent Reviewer + Security residual (PII marketing). SMS LIVE untouched.
+
+## 2026-09-29T21:45:00Z — TASK-20260930-001 implementing (zero-order CRM desk)
 
 - Owner: cursor:implementer-TASK-20260930-001
 - Scope: `/admin/customers/marketing` tab نوله‌ها + marketing APIs for registered-never-purchased.
