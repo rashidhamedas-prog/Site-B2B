@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-30 — **TASK-20260930-001 implementing** Zero-order CRM desk on marketing admin. Specs + tsc OK locally; not live until merge/deploy. SMS LIVE untouched.
+
 - Last verified: 2026-09-29 — **TASK-20260928-003 LIVE** on `origin/master` `7ce6c30`. sms.ir via CF Worker egress from Hetzner; `/credit` status=1; health 200. Claims released. OTP field smoke residual for owner. Reviewer/Security residual.
 
 - Last verified: 2026-09-26 — **TASK-20260926-005 CLOSED** on `origin/master` + VPS tip `1dc48a3` (feat ship `df5fd41`). Wholesale editorial hero + Spec Sheet cards LIVE; `wholesale-editorial-hero` in origin HTML; health 200; home TTFB ~0.02s. Claims released. Independent Reviewer residual (visual/LCP field). Retail frame unchanged.

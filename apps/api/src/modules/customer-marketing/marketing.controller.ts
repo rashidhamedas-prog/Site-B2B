@@ -30,6 +30,45 @@ export class MarketingController {
     return this.marketing.queue(ch);
   }
 
+  @Get('zero-order')
+  @ApiOperation({ summary: 'کوهورت ثبت‌نام بدون خرید settled' })
+  zeroOrder(
+    @Query('channel') channel?: MarketingChannel,
+    @Query('bucket') bucket?: string,
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const ch = channel === 'WHOLESALE' || channel === 'RETAIL' ? channel : undefined;
+    return this.marketing.listZeroOrder({
+      channel: ch,
+      bucket,
+      q,
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 20,
+    });
+  }
+
+  @Get('activation-stats')
+  @ApiOperation({ summary: 'نرخ فعال‌سازی ثبت‌نام به اولین خرید' })
+  activationStats(@Query('channel') channel?: MarketingChannel) {
+    const ch = channel === 'WHOLESALE' || channel === 'RETAIL' ? channel : undefined;
+    return this.marketing.activationStats(ch);
+  }
+
+  @Post('zero-order/backfill')
+  @AdminOnly()
+  @ApiOperation({ summary: 'enroll مشتریان نوله بدون قیف' })
+  backfill(
+    @Body() body: { limit?: number },
+    @Req() req: { user?: { sub?: string; role?: string } },
+  ) {
+    return this.marketing.backfillZeroOrder(
+      { id: req.user?.sub, role: req.user?.role },
+      body?.limit,
+    );
+  }
+
   @Get('settings')
   settings() {
     return this.marketing.getSettings();

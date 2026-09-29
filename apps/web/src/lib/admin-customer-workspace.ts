@@ -25,8 +25,15 @@ export const CUSTOMER_RECORD_TAB_LABEL: Record<CustomerRecordTab, string> = {
   marketing: 'بازاریابی',
 };
 
-export const CUSTOMER_MARKETING_TABS = ['today', 'funnel', 'rules'] as const;
+export const CUSTOMER_MARKETING_TABS = ['today', 'zero', 'funnel', 'rules'] as const;
 export type CustomerMarketingTab = (typeof CUSTOMER_MARKETING_TABS)[number];
+
+export const ZERO_ORDER_BUCKETS = ['fresh', 'warm', 'aging', 'cool', 'recycle'] as const;
+export type ZeroOrderBucket = (typeof ZERO_ORDER_BUCKETS)[number];
+
+export function isZeroOrderBucket(value: unknown): value is ZeroOrderBucket {
+  return typeof value === 'string' && (ZERO_ORDER_BUCKETS as readonly string[]).includes(value);
+}
 
 export function isCustomerAccountStatus(value: unknown): value is CustomerAccountStatus {
   return typeof value === 'string' && (CUSTOMER_STATUSES as readonly string[]).includes(value);
@@ -57,12 +64,14 @@ export function parseCustomerWorkspaceQuery(search: {
   segment: CustomerSegment | '';
   tab: CustomerRecordTab;
   marketingTab: CustomerMarketingTab;
+  bucket: ZeroOrderBucket | '';
 } {
   const rawChannel = (search.get('channel') || '').toUpperCase();
   const rawStatus = (search.get('status') || '').toUpperCase();
   const rawSegment = (search.get('segment') || '').toUpperCase();
   const rawTab = (search.get('tab') || '').toLowerCase();
   const rawMarketing = (search.get('mtab') || '').toLowerCase();
+  const rawBucket = (search.get('bucket') || '').toLowerCase();
   return {
     channel: isCustomerListChannel(rawChannel) ? rawChannel : 'ALL',
     q: (search.get('q') || '').trim(),
@@ -70,6 +79,7 @@ export function parseCustomerWorkspaceQuery(search: {
     segment: isCustomerSegment(rawSegment) ? rawSegment : '',
     tab: isCustomerRecordTab(rawTab) ? rawTab : 'identity',
     marketingTab: isCustomerMarketingTab(rawMarketing) ? rawMarketing : 'today',
+    bucket: isZeroOrderBucket(rawBucket) ? rawBucket : '',
   };
 }
 
@@ -80,6 +90,7 @@ export function serializeCustomerWorkspaceQuery(input: {
   segment?: string;
   tab?: CustomerRecordTab;
   marketingTab?: CustomerMarketingTab;
+  bucket?: string;
 }): string {
   const q = new URLSearchParams();
   if (input.channel && input.channel !== 'ALL') q.set('channel', input.channel);
@@ -88,6 +99,7 @@ export function serializeCustomerWorkspaceQuery(input: {
   if (input.segment && isCustomerSegment(input.segment)) q.set('segment', input.segment);
   if (input.tab && input.tab !== 'identity') q.set('tab', input.tab);
   if (input.marketingTab && input.marketingTab !== 'today') q.set('mtab', input.marketingTab);
+  if (input.bucket && isZeroOrderBucket(input.bucket)) q.set('bucket', input.bucket);
   return q.toString();
 }
 

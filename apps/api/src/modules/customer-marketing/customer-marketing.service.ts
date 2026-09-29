@@ -38,6 +38,13 @@ import { resolveMarketingSettings } from './marketing-settings';
 import { shouldQueueAbandonedCheckout } from './checkout-intent-policy';
 import { daysBetween, isSettledOrderStatus, resolveStage } from './stage-machine';
 import {
+  agingBucket,
+  isAgingBucket,
+  SETTLED_SQL_IN,
+  zeroOrderPriority,
+} from './zero-order-scoring';
+import { customerChannelSql } from '../customer/customer-channel';
+import {
   MarketingActivityEntity,
   MarketingCampaignEntity,
   MarketingCheckoutIntentEntity,
@@ -300,7 +307,7 @@ export class CustomerMarketingService {
     const params: string[] = [];
     const channelSql = channel ? (params.push(channel), 'AND f.channel = $1') : '';
     const callDue: Array<Record<string, unknown>> = await this.enrollments.query(
-      `SELECT e."customerId", c."ownerName", c."businessName", c.phone, c.status, c.type,
+      `SELECT e."customerId", c."ownerName", c."businessName", c.phone, c.status, c.type, c."createdAt",
               e."currentStepCode" AS stage, e."nextActionType", e."nextRunAt", f.channel
        FROM marketing_enrollments e
        JOIN customers c ON c.id = e."customerId" AND c."deletedAt" IS NULL
@@ -313,7 +320,7 @@ export class CustomerMarketingService {
       params,
     );
     const pendingWs: Array<Record<string, unknown>> = await this.customers.query(
-      `SELECT c.id AS "customerId", c."ownerName", c."businessName", c.phone, c.status, c.type,
+      `SELECT c.id AS "customerId", c."ownerName", c."businessName", c.phone, c.status, c.type, c."createdAt",
               'APPLIED' AS stage, 'CALL' AS "nextActionType", c."createdAt" AS "nextRunAt", 'WHOLESALE' AS channel
        FROM customers c
        WHERE c."deletedAt" IS NULL AND c.status = 'PENDING'
@@ -323,7 +330,7 @@ export class CustomerMarketingService {
        LIMIT 20`,
     );
     const retailIdle: Array<Record<string, unknown>> = await this.enrollments.query(
-      `SELECT e."customerId", c."ownerName", c."businessName", c.phone, c.status, c.type,
+      `SELECT e."customerId", c."ownerName", c."businessName", c.phone, c.status, c.type, c."createdAt",
               e."currentStepCode" AS stage, e."nextActionType", e."nextRunAt", 'RETAIL' AS channel
        FROM marketing_enrollments e
        JOIN customers c ON c.id = e."customerId" AND c."deletedAt" IS NULL
@@ -339,13 +346,390 @@ export class CustomerMarketingService {
        LIMIT 20`,
     );
     const seen = new Set<string>();
-    const items = [...callDue, ...pendingWs, ...retailIdle].filter((row) => {
+    const raw = [...callDue, ...pendingWs, ...retailIdle].filter((row) => {
       const id = String(row.customerId);
       if (seen.has(id)) return false;
       seen.add(id);
       return true;
     });
+
+    const ids = raw.map((r) => String(r.customerId));
+    const intentSet = new Set<string>();
+    if (ids.length) {
+      const intents: Array<{ customerId: string }> = await this.checkoutIntents.query(
+        `SELECT "customerId" FROM marketing_checkout_intents
+         WHERE "customerId" = ANY($1::uuid[]) AND "completedOrderId" IS NULL`,
+        [ids],
+      );
+      for (const row of intents) intentSet.add(String(row.customerId));
+    }
+
+    const items = raw.map((row) => {
+      const registeredAt = row.createdAt ? new Date(String(row.createdAt)) : new Date();
+      const days = daysBetween(registeredAt, new Date());
+      const ch = (row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL') as MarketingChannel;
+      const hasCheckoutIntent = intentSet.has(String(row.customerId));
+      const priority = zeroOrderPriority({
+        daysSinceRegister: days,
+        channel: ch,
+        customerStatus: String(row.status || ''),
+        hasCheckoutIntent,
+        lastCallResult: null,
+        daysSinceLastCall: null,
+      });
+      return {
+        ...row,
+        agingBucket: agingBucket(days),
+        priority,
+        hasCheckoutIntent,
+        daysSinceRegister: days,
+      };
+    }).sort((a, b) => Number(b.priority) - Number(a.priority));
+
     return { items };
+  }
+
+  async listZeroOrder(opts: {
+    channel?: MarketingChannel;
+    bucket?: string;
+    q?: string;
+    page?: number;
+    pageSize?: number;
+  }) {
+    const page = Math.max(1, Number(opts.page) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number(opts.pageSize) || 20));
+    const channel = opts.channel === 'WHOLESALE' || opts.channel === 'RETAIL' ? opts.channel : undefined;
+    const bucketFilter = isAgingBucket(opts.bucket) ? opts.bucket : undefined;
+    const q = String(opts.q || '').trim().slice(0, 80);
+
+    const params: unknown[] = [];
+    const push = (v: unknown) => {
+      params.push(v);
+      return `$${params.length}`;
+    };
+
+    const channelClause = channel
+      ? `AND ${customerChannelSql('c', channel)}`
+      : '';
+    const wholesaleStatus = `AND (
+      UPPER(COALESCE(c.type, '')) IN ('RETAIL', 'B2C')
+      OR UPPER(COALESCE(c.status, '')) IN ('PENDING', 'ACTIVE', 'APPROVED')
+    )`;
+    const searchClause = q
+      ? `AND (
+          c.phone ILIKE ${push(`%${q}%`)}
+          OR c."ownerName" ILIKE ${push(`%${q}%`)}
+          OR c."businessName" ILIKE ${push(`%${q}%`)}
+          OR c.code ILIKE ${push(`%${q}%`)}
+        )`
+      : '';
+
+    const rows: Array<Record<string, unknown>> = await this.customers.query(
+      `SELECT
+         c.id AS "customerId",
+         c.code,
+         c."ownerName",
+         c."businessName",
+         c.phone,
+         c.status,
+         c.type,
+         c."createdAt",
+         CASE WHEN UPPER(COALESCE(c.type, '')) IN ('RETAIL', 'B2C') THEN 'RETAIL' ELSE 'WHOLESALE' END AS channel,
+         FLOOR(EXTRACT(EPOCH FROM (NOW() - c."createdAt")) / 86400)::int AS "daysSinceRegister",
+         e.id AS "enrollmentId",
+         e."currentStepCode" AS stage,
+         e."nextRunAt",
+         e."nextActionType",
+         u."lastLoginAt",
+         (ci.id IS NOT NULL) AS "hasCheckoutIntent",
+         la."occurredAt" AS "lastCallAt",
+         la.payload->>'result' AS "lastCallResult"
+       FROM customers c
+       LEFT JOIN marketing_enrollments e ON e."customerId" = c.id
+       LEFT JOIN LATERAL (
+         SELECT u2."lastLoginAt"
+         FROM users u2
+         WHERE u2."customerId" = c.id AND u2."deletedAt" IS NULL
+         ORDER BY u2."lastLoginAt" DESC NULLS LAST
+         LIMIT 1
+       ) u ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT ci2.id
+         FROM marketing_checkout_intents ci2
+         WHERE ci2."customerId" = c.id AND ci2."completedOrderId" IS NULL
+         LIMIT 1
+       ) ci ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT a."occurredAt", a.payload
+         FROM marketing_activities a
+         WHERE a."customerId" = c.id AND a.type = 'CALL'
+         ORDER BY a."occurredAt" DESC
+         LIMIT 1
+       ) la ON TRUE
+       WHERE c."deletedAt" IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM orders o
+           WHERE o."customerId" = c.id AND o."deletedAt" IS NULL
+             AND o.status IN (${SETTLED_SQL_IN})
+         )
+         ${wholesaleStatus}
+         ${channelClause}
+         ${searchClause}
+       ORDER BY c."createdAt" ASC`,
+      params,
+    );
+
+    const now = new Date();
+    let items = rows.map((row) => {
+      const days = Number(row.daysSinceRegister) || 0;
+      const ch = (row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL') as MarketingChannel;
+      const hasCheckoutIntent = row.hasCheckoutIntent === true || row.hasCheckoutIntent === 't' || row.hasCheckoutIntent === 1;
+      const lastCallAt = row.lastCallAt ? new Date(String(row.lastCallAt)) : null;
+      const daysSinceLastCall = lastCallAt ? daysBetween(lastCallAt, now) : null;
+      const priority = zeroOrderPriority({
+        daysSinceRegister: days,
+        channel: ch,
+        customerStatus: String(row.status || ''),
+        hasCheckoutIntent,
+        lastCallResult: row.lastCallResult ? String(row.lastCallResult) : null,
+        daysSinceLastCall,
+      });
+      const bucket = agingBucket(days);
+      return {
+        customerId: String(row.customerId),
+        code: row.code ? String(row.code) : null,
+        ownerName: row.ownerName ? String(row.ownerName) : null,
+        businessName: row.businessName ? String(row.businessName) : null,
+        phone: row.phone ? String(row.phone) : null,
+        status: String(row.status || ''),
+        type: String(row.type || ''),
+        channel: ch,
+        createdAt: row.createdAt,
+        daysSinceRegister: days,
+        agingBucket: bucket,
+        priority,
+        hasCheckoutIntent,
+        lastLoginAt: row.lastLoginAt || null,
+        lastCallAt: row.lastCallAt || null,
+        lastCallResult: row.lastCallResult ? String(row.lastCallResult) : null,
+        enrollmentId: row.enrollmentId ? String(row.enrollmentId) : null,
+        stage: row.stage ? String(row.stage) : null,
+        nextRunAt: row.nextRunAt || null,
+        nextActionType: row.nextActionType ? String(row.nextActionType) : 'NONE',
+      };
+    });
+
+    if (bucketFilter) {
+      items = items.filter((i) => i.agingBucket === bucketFilter);
+    }
+    items.sort((a, b) => b.priority - a.priority || a.daysSinceRegister - b.daysSinceRegister);
+
+    const total = items.length;
+    const slice = items.slice((page - 1) * pageSize, page * pageSize);
+    return {
+      data: slice,
+      meta: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
+    };
+  }
+
+  async activationStats(channel?: MarketingChannel) {
+    const ch = channel === 'WHOLESALE' || channel === 'RETAIL' ? channel : undefined;
+    const channelSql = ch ? `AND ${customerChannelSql('c', ch)}` : '';
+    const channelSqlAlias = ch ? `AND ${customerChannelSql('c', ch)}` : '';
+
+    const zeroRows: Array<{ count: string }> = await this.customers.query(
+      `SELECT COUNT(*)::int AS count
+       FROM customers c
+       WHERE c."deletedAt" IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM orders o
+           WHERE o."customerId" = c.id AND o."deletedAt" IS NULL
+             AND o.status IN (${SETTLED_SQL_IN})
+         )
+         AND (
+           UPPER(COALESCE(c.type, '')) IN ('RETAIL', 'B2C')
+           OR UPPER(COALESCE(c.status, '')) IN ('PENDING', 'ACTIVE', 'APPROVED')
+         )
+         ${channelSql}`,
+    );
+
+    const intentRows: Array<{ count: string }> = await this.customers.query(
+      `SELECT COUNT(DISTINCT c.id)::int AS count
+       FROM customers c
+       JOIN marketing_checkout_intents ci ON ci."customerId" = c.id AND ci."completedOrderId" IS NULL
+       WHERE c."deletedAt" IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM orders o
+           WHERE o."customerId" = c.id AND o."deletedAt" IS NULL
+             AND o.status IN (${SETTLED_SQL_IN})
+         )
+         ${channelSqlAlias}`,
+    );
+
+    const convert: Array<{ windowDays: number; registered: string; converted: string; avgDays: string | null }> =
+      await this.customers.query(
+        `WITH cohorts AS (
+           SELECT
+             c.id,
+             c."createdAt" AS registered_at,
+             (
+               SELECT MIN(o."createdAt")
+               FROM orders o
+               WHERE o."customerId" = c.id AND o."deletedAt" IS NULL
+                 AND o.status IN (${SETTLED_SQL_IN})
+             ) AS first_settled_at
+           FROM customers c
+           WHERE c."deletedAt" IS NULL
+             ${channelSql}
+         )
+         SELECT 30 AS "windowDays",
+           COUNT(*) FILTER (WHERE registered_at <= NOW() - INTERVAL '30 days')::int AS registered,
+           COUNT(*) FILTER (
+             WHERE registered_at <= NOW() - INTERVAL '30 days'
+               AND first_settled_at IS NOT NULL
+               AND first_settled_at <= registered_at + INTERVAL '30 days'
+           )::int AS converted,
+           AVG(EXTRACT(EPOCH FROM (first_settled_at - registered_at)) / 86400)
+             FILTER (WHERE first_settled_at IS NOT NULL)::float AS "avgDays"
+         FROM cohorts
+         UNION ALL
+         SELECT 90 AS "windowDays",
+           COUNT(*) FILTER (WHERE registered_at <= NOW() - INTERVAL '90 days')::int AS registered,
+           COUNT(*) FILTER (
+             WHERE registered_at <= NOW() - INTERVAL '90 days'
+               AND first_settled_at IS NOT NULL
+               AND first_settled_at <= registered_at + INTERVAL '90 days'
+           )::int AS converted,
+           AVG(EXTRACT(EPOCH FROM (first_settled_at - registered_at)) / 86400)
+             FILTER (WHERE first_settled_at IS NOT NULL)::float AS "avgDays"
+         FROM cohorts`,
+      );
+
+    const byWeek: Array<{ week: string; registered: string; converted: string }> = await this.customers.query(
+      `SELECT to_char(date_trunc('week', c."createdAt"), 'IYYY-"W"IW') AS week,
+              COUNT(*)::int AS registered,
+              COUNT(*) FILTER (
+                WHERE EXISTS (
+                  SELECT 1 FROM orders o
+                  WHERE o."customerId" = c.id AND o."deletedAt" IS NULL
+                    AND o.status IN (${SETTLED_SQL_IN})
+                )
+              )::int AS converted
+       FROM customers c
+       WHERE c."deletedAt" IS NULL
+         AND c."createdAt" >= NOW() - INTERVAL '12 weeks'
+         ${channelSql}
+       GROUP BY 1
+       ORDER BY 1 DESC
+       LIMIT 12`,
+    );
+
+    const windows = convert.map((w) => {
+      const registered = Number(w.registered) || 0;
+      const converted = Number(w.converted) || 0;
+      return {
+        windowDays: Number(w.windowDays),
+        registered,
+        converted,
+        rate: registered > 0 ? Math.round((converted / registered) * 1000) / 10 : 0,
+        avgDaysToFirstOrder: w.avgDays != null ? Math.round(Number(w.avgDays) * 10) / 10 : null,
+      };
+    });
+
+    return {
+      channel: ch || 'ALL',
+      zeroOrderCount: Number(zeroRows[0]?.count) || 0,
+      withCheckoutIntent: Number(intentRows[0]?.count) || 0,
+      windows,
+      bySignupWeek: byWeek.map((w) => ({
+        week: String(w.week),
+        registered: Number(w.registered) || 0,
+        converted: Number(w.converted) || 0,
+        rate: Number(w.registered) > 0
+          ? Math.round((Number(w.converted) / Number(w.registered)) * 1000) / 10
+          : 0,
+      })),
+    };
+  }
+
+  async scheduleFollowUp(
+    customerId: string,
+    body: { nextRunAt?: string; nextActionType?: string; notes?: string; snoozeHours?: number },
+    actor: Actor,
+  ) {
+    const customer = await this.requireCustomer(customerId);
+    let enrollment = await this.enrollments.findOne({ where: { customerId } });
+    if (!enrollment) {
+      await this.enroll(customerId, { actorId: actor.id });
+      enrollment = await this.enrollments.findOne({ where: { customerId } });
+    }
+    if (!enrollment) throw new BadRequestException('امکان ثبت در قیف نیست');
+
+    const action = String(body.nextActionType || 'CALL').toUpperCase();
+    if (!['CALL', 'SMS', 'NONE'].includes(action)) {
+      throw new BadRequestException('نوع اقدام نامعتبر است');
+    }
+
+    let nextRunAt: Date;
+    if (body.snoozeHours != null && Number.isFinite(Number(body.snoozeHours))) {
+      const hours = Math.min(168, Math.max(1, Number(body.snoozeHours)));
+      nextRunAt = new Date(Date.now() + hours * 3600_000);
+    } else if (body.nextRunAt) {
+      nextRunAt = new Date(body.nextRunAt);
+      if (Number.isNaN(nextRunAt.getTime())) throw new BadRequestException('زمان پیگیری نامعتبر است');
+    } else {
+      nextRunAt = new Date(Date.now() + 24 * 3600_000);
+    }
+
+    enrollment.nextActionType = action as 'CALL' | 'SMS' | 'NONE';
+    enrollment.nextRunAt = nextRunAt;
+    await this.enrollments.save(enrollment);
+
+    const notes = String(body.notes || '').replace(/<[^>]*>/g, '').slice(0, 500);
+    await this.activity(customerId, this.channelOf(customer), 'ENROLL', {
+      followUp: true,
+      nextActionType: action,
+      nextRunAt: nextRunAt.toISOString(),
+      notes,
+    }, actor.id);
+
+    return {
+      ok: true,
+      nextRunAt: enrollment.nextRunAt,
+      nextActionType: enrollment.nextActionType,
+    };
+  }
+
+  async backfillZeroOrder(actor: Actor, limit = 100) {
+    this.assertAdmin(actor);
+    const batch = Math.min(200, Math.max(1, Number(limit) || 100));
+    const rows: Array<{ id: string }> = await this.customers.query(
+      `SELECT c.id
+       FROM customers c
+       WHERE c."deletedAt" IS NULL
+         AND NOT EXISTS (SELECT 1 FROM marketing_enrollments e WHERE e."customerId" = c.id)
+         AND NOT EXISTS (
+           SELECT 1 FROM orders o
+           WHERE o."customerId" = c.id AND o."deletedAt" IS NULL
+             AND o.status IN (${SETTLED_SQL_IN})
+         )
+         AND (
+           UPPER(COALESCE(c.type, '')) IN ('RETAIL', 'B2C')
+           OR UPPER(COALESCE(c.status, '')) IN ('PENDING', 'ACTIVE', 'APPROVED')
+         )
+       ORDER BY c."createdAt" ASC
+       LIMIT $1`,
+      [batch],
+    );
+
+    let enrolled = 0;
+    let skipped = 0;
+    for (const row of rows) {
+      const res = await this.enroll(row.id, { actorId: actor.id });
+      if (res.enrolled) enrolled += 1;
+      else skipped += 1;
+    }
+    return { scanned: rows.length, enrolled, skipped };
   }
 
   async dossier(customerId: string) {

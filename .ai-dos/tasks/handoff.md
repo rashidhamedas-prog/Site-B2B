@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-29T21:55:00Z — TASK-20260930-001 implementing (zero-order CRM desk)
+
+- Owner: cursor:implementer-TASK-20260930-001
+- Scope: `/admin/customers/marketing` tab نوله‌ها + marketing APIs for registered-never-purchased.
+- Reclaimed AdminCustomerMarketing + admin-customer-workspace from TASK-20260913-011 (done, stale claims).
+- Specs: zero-order-scoring + admin-customer-workspace OK; api/web tsc OK.
+- SMS LIVE not enabled. Next: commit, push, deploy api+web, health verify, release claims.
+
 ## 2026-09-29T13:05:00Z — TASK-20260929-003 LIVE (color select prompt)
 
 - Owner: cursor:implementer-TASK-20260929-003

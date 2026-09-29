@@ -1,5 +1,46 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260930-001"
+    title: "Zero-order CRM desk (registered never purchased)"
+    status: "implementing"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20260930-001"
+    roles:
+      architect: "cursor:implementer-TASK-20260930-001"
+      implementer: "cursor:implementer-TASK-20260930-001"
+      reviewer: "required-after-diff"
+      security: "required-pii-marketing"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-29T21:40:00Z"
+    heartbeat_at: "2026-09-29T21:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/customer-marketing/zero-order-scoring.ts"
+      - "apps/api/src/modules/customer-marketing/zero-order-scoring.spec.ts"
+      - "apps/api/src/modules/customer-marketing/customer-marketing.service.ts"
+      - "apps/api/src/modules/customer-marketing/marketing.controller.ts"
+      - "apps/api/src/modules/customer-marketing/customer-marketing.controller.ts"
+      - "apps/api/src/modules/customer-marketing/templates/h2h-defaults.ts"
+      - "apps/web/src/components/admin/customer-marketing/AdminCustomerMarketing.tsx"
+      - "apps/web/src/lib/hooks/useCustomerMarketing.ts"
+      - "apps/web/src/lib/admin-customer-workspace.ts"
+      - "apps/web/src/lib/admin-customer-workspace.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-30-zero-order-crm.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Extends /admin/customers/marketing with zero-order desk.
+      Reclaimed AdminCustomerMarketing + admin-customer-workspace from TASK-20260913-011
+      (status done, hb 2026-09-13, stale >24h; claims never released).
+      SMS LIVE stays OFF. No Salesforce clone. No /v1/crm inventory touch.
+    acceptance_criteria:
+      - "GET /v1/marketing/zero-order paginated with aging + priority"
+      - "activation-stats returns convert rates"
+      - "follow-up schedules nextRunAt; backfill enrolls missing"
+      - "Admin tab نوله‌ها works; unit scoring spec passes"
   - id: "TASK-20260929-003"
     title: "Wholesale color-select prompt on order open"
     status: "done"
@@ -616,7 +657,8 @@ tasks:
     claimed_at: "2026-09-13T11:50:00Z"
     heartbeat_at: "2026-09-13T11:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "packages/shared-types/src/customer-status.ts"
       - "packages/shared-types/src/customer-status.spec.ts"
       - "packages/shared-types/src/index.ts"

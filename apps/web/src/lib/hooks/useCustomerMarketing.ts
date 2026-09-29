@@ -82,3 +82,53 @@ export function useCustomerDossier(id: string) {
   useEffect(() => { void reload(); }, [reload]);
   return { data, loading, error, reload };
 }
+
+export type ZeroOrderRow = {
+  customerId: string;
+  code?: string | null;
+  ownerName?: string | null;
+  businessName?: string | null;
+  phone?: string | null;
+  status: string;
+  channel: MarketingChannel;
+  daysSinceRegister: number;
+  agingBucket: string;
+  priority: number;
+  hasCheckoutIntent: boolean;
+  lastLoginAt?: string | null;
+  lastCallAt?: string | null;
+  lastCallResult?: string | null;
+  enrollmentId?: string | null;
+  stage?: string | null;
+  nextRunAt?: string | null;
+  nextActionType?: string;
+};
+
+export function useZeroOrderDesk(channel: MarketingChannel, opts: { bucket?: string; q?: string; page?: number }) {
+  const [data, setData] = useState<ZeroOrderRow[]>([]);
+  const [meta, setMeta] = useState({ page: 1, pageSize: 20, total: 0, totalPages: 1 });
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = new URLSearchParams({ channel, page: String(opts.page || 1), pageSize: '20' });
+      if (opts.bucket) qs.set('bucket', opts.bucket);
+      if (opts.q?.trim()) qs.set('q', opts.q.trim());
+      const [list, st] = await Promise.all([
+        apiClient.get<{ data: ZeroOrderRow[]; meta: typeof meta }>(`/marketing/zero-order?${qs}`),
+        apiClient.get<Record<string, unknown>>(`/marketing/activation-stats?channel=${channel}`),
+      ]);
+      setData(list.data || []);
+      setMeta(list.meta || { page: 1, pageSize: 20, total: 0, totalPages: 1 });
+      setStats(st);
+    } catch {
+      setData([]);
+      setStats(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [channel, opts.bucket, opts.q, opts.page]);
+  useEffect(() => { void reload(); }, [reload]);
+  return { data, meta, stats, loading, reload };
+}

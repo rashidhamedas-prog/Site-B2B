@@ -30,6 +30,20 @@ assert.equal(parsed.segment, 'VIP');
 assert.equal(parsed.tab, 'wallet');
 assert.equal(parsed.marketingTab, 'rules');
 
+const zeroParsed = parseCustomerWorkspaceQuery({
+  get: (name) =>
+    ({
+      channel: 'WHOLESALE',
+      mtab: 'zero',
+      bucket: 'warm',
+    } as Record<string, string>)[name] ?? null,
+});
+assert.equal(zeroParsed.marketingTab, 'zero');
+assert.equal(zeroParsed.bucket, 'warm');
+const zeroQs = serializeCustomerWorkspaceQuery(zeroParsed);
+assert.match(zeroQs, /mtab=zero/);
+assert.match(zeroQs, /bucket=warm/);
+
 const qs = serializeCustomerWorkspaceQuery(parsed);
 assert.match(qs, /channel=RETAIL/);
 assert.match(qs, /tab=wallet/);

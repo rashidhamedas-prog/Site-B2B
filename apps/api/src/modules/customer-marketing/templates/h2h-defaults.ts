@@ -25,6 +25,30 @@ export const H2H_TEMPLATE_SEEDS: H2hSeed[] = [
 poshaktaranom.ir`,
   },
   {
+    code: 'retail.activation.no_buy_3d',
+    channel: 'RETAIL',
+    title: 'فعال‌سازی ۳ روز بدون خرید',
+    medium: 'SMS',
+    messageClass: 'NURTURE',
+    automation: 'off',
+    body: `پوشاک ترنم
+{name}، سه روز از ورودتان گذشت.
+اگر سایز یا مدل مشخص نشده، بگویید برای چه موقعیتی می‌خواهید تا محدودتر راهنمایی کنیم.
+poshaktaranom.ir`,
+  },
+  {
+    code: 'retail.activation.no_buy_7d',
+    channel: 'RETAIL',
+    title: 'فعال‌سازی ۷ روز بدون خرید',
+    medium: 'SMS',
+    messageClass: 'NURTURE',
+    automation: 'off',
+    body: `پوشاک ترنم
+{name}، یک هفته از ثبت‌نام گذشته و سفارشی ثبت نشده.
+اگر مانع سایز، ارسال یا انتخاب مدل است بنویسید تا همان را باز کنیم.
+poshaktaranom.ir`,
+  },
+  {
     code: 'retail.checkout.abandoned',
     channel: 'RETAIL',
     title: 'سبد مانده',

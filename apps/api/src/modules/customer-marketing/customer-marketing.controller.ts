@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -27,6 +27,16 @@ export class CustomerMarketingController {
     @Req() req: { user?: { sub?: string; role?: string } },
   ) {
     return this.marketing.logCall(customerId, body, { id: req.user?.sub, role: req.user?.role });
+  }
+
+  @Patch('follow-up')
+  @ApiOperation({ summary: 'زمان‌بندی پیگیری نوله' })
+  followUp(
+    @Param('customerId') customerId: string,
+    @Body() body: { nextRunAt?: string; nextActionType?: string; notes?: string; snoozeHours?: number },
+    @Req() req: { user?: { sub?: string; role?: string } },
+  ) {
+    return this.marketing.scheduleFollowUp(customerId, body, { id: req.user?.sub, role: req.user?.role });
   }
 
   @Post('sms')
