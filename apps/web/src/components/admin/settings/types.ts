@@ -104,6 +104,9 @@ export interface SettingsPayload {
     apiKey: string;
     lineNumber: string;
     otpTemplateId: number;
+    /** Present when SMS_EGRESS_BASE_URL (or DB) is set — EU VPS path to sms.ir */
+    egressBaseUrl?: string;
+    egressConfigured?: boolean;
     adminPhoneWholesale: string;
     adminPhoneWholesale2: string;
     adminPhoneRetail: string;

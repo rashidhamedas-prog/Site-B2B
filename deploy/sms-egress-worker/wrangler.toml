@@ -1,0 +1,10 @@
+name = "taranom-sms-egress"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# Optional custom route after DNS is ready:
+# routes = [{ pattern = "sms-egress.poshaktaranom.com/*", zone_name = "poshaktaranom.com" }]
+
+# Secret (set via: npx wrangler secret put EGRESS_SECRET)
+# EGRESS_SECRET

@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { AdminChannelTabs } from '@/components/admin/AdminChannelTabs';
+import { apiClient } from '@/lib/api';
 import { NumberField, SecretField, TextAreaField, TextField, ToggleRow } from './fields';
 import { SettingsSection } from './primitives';
 import type { SaleChannel, SettingsPayload, SmsOpsSide } from './types';
@@ -59,6 +61,18 @@ const OPS_LABELS: Record<keyof SmsOpsSide, string> = {
   stockOutAdmin: 'اتمام موجودی محصول — پیامک به ادمین',
 };
 
+type ProbeResult = {
+  ok: boolean;
+  via: 'direct' | 'egress';
+  errorCode?: string;
+  errorMessage?: string;
+  durationMs: number;
+  credit?: number | null;
+  enabled: boolean;
+  hasApiKey: boolean;
+  egressConfigured: boolean;
+};
+
 export function SmsTab({
   sms,
   smsOps,
@@ -80,6 +94,29 @@ export function SmsTab({
 }) {
   const isRetail = channel === 'RETAIL';
   const ops = isRetail ? smsOps.retail : smsOps.wholesale;
+  const [probe, setProbe] = useState<ProbeResult | null>(null);
+  const [probing, setProbing] = useState(false);
+
+  const runProbe = async () => {
+    setProbing(true);
+    try {
+      const res = await apiClient.post<ProbeResult>('/notifications/sms/probe', {});
+      setProbe(res);
+    } catch (err: any) {
+      setProbe({
+        ok: false,
+        via: sms.egressConfigured ? 'egress' : 'direct',
+        errorCode: 'HTTP',
+        errorMessage: err?.message || 'probe failed',
+        durationMs: 0,
+        enabled: sms.enabled,
+        hasApiKey: Boolean(sms.apiKey),
+        egressConfigured: Boolean(sms.egressConfigured),
+      });
+    } finally {
+      setProbing(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -104,6 +141,33 @@ export function SmsTab({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField label="شماره خط ارسال" value={sms.lineNumber} dir="ltr" onChange={(v) => onSms({ ...sms, lineNumber: v })} />
           <NumberField label="شناسه قالب OTP" value={sms.otpTemplateId} onChange={(v) => onSms({ ...sms, otpTemplateId: v })} help="برای کد ورود — اختیاری" />
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3 text-sm text-gray-700">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-gray-900">وضعیت اتصال به sms.ir</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {sms.egressConfigured
+                  ? 'ارسال از طریق egress (Cloudflare) تنظیم شده است — مناسب سرور خارج از ایران.'
+                  : 'ارسال مستقیم به api.sms.ir. اگر سرور خارج ایران است و پیامک قطع است، SMS_EGRESS_BASE_URL را روی VPS ست کنید.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void runProbe()}
+              disabled={probing}
+              className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+            >
+              {probing ? 'در حال تست…' : 'تست اتصال'}
+            </button>
+          </div>
+          {probe && (
+            <p className={`mt-3 text-xs font-medium ${probe.ok ? 'text-emerald-700' : 'text-red-700'}`}>
+              {probe.ok
+                ? `موفق — مسیر ${probe.via === 'egress' ? 'egress' : 'مستقیم'}، ${probe.durationMs}ms${probe.credit != null ? `، اعتبار: ${probe.credit}` : ''}`
+                : `ناموفق — ${probe.errorCode || 'ERROR'}${probe.errorMessage ? `: ${probe.errorMessage}` : ''} (${probe.via}, ${probe.durationMs}ms)`}
+            </p>
+          )}
         </div>
       </SettingsSection>
 

@@ -153,7 +153,7 @@ export class SettingsController {
   @ApiBearerAuth()
   @ApiQuery({ name: 'channel', required: false, enum: ['WHOLESALE', 'RETAIL'] })
   async adminSettings(@Query('channel') channel?: string) {
-    const [business, shipping, sms, payment, installments, theme, menus, marketing, seo, siteContent, smsOps, shippingPost] =
+    const [business, shipping, smsRaw, payment, installments, theme, menus, marketing, seo, siteContent, smsOps, shippingPost] =
       await Promise.all([
         this.svc.business(),
         this.svc.shipping(),
@@ -168,10 +168,20 @@ export class SettingsController {
         this.svc.get('smsOps'),
         this.svc.shippingPost(),
       ]);
+    // Never expose egress shared secret to the browser.
+    const { egressSecret: _egressSecret, ...smsSafe } = smsRaw as Record<string, unknown>;
+    const sms = {
+      ...smsSafe,
+      egressConfigured: Boolean(smsRaw.egressBaseUrl),
+    };
     return {
       business,
       shipping,
-      sms,
+      sms: {
+        ...sms,
+        egressSecret: undefined,
+        egressConfigured: Boolean(sms.egressBaseUrl),
+      },
       payment,
       installments,
       theme,
@@ -195,6 +205,11 @@ export class SettingsController {
       throw new BadRequestException('گروه تنظیمات نامعتبر است');
     }
     let value = body ?? {};
+    if (group === 'sms') {
+      // Never persist egress secrets or UI-only flags from the admin payload.
+      const { egressSecret: _es, egressConfigured: _ec, ...rest } = body ?? {};
+      value = rest;
+    }
     if (group === 'marketing') {
       const prev = await this.svc.get('marketing');
       value = {

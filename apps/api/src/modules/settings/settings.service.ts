@@ -241,11 +241,20 @@ export class SettingsService {
 
   async sms() {
     const s = await this.get('sms');
+    const egressFromDb = String(s.egressBaseUrl || '').trim();
+    const egressFromEnv = String(this.config.get('SMS_EGRESS_BASE_URL', '') || '').trim();
     return {
       enabled: s.enabled ?? true,
       apiKey: s.apiKey || this.config.get('SMSIR_API_KEY', '') || this.config.get('SMS_API_KEY', ''),
       lineNumber: s.lineNumber || this.config.get('SMSIR_LINE_NUMBER', '') || this.config.get('SMS_SENDER', ''),
       otpTemplateId: Number(s.otpTemplateId) || Number(this.config.get('SMSIR_OTP_TEMPLATE_ID', 0)),
+      /**
+       * Optional Cloudflare (or other) proxy base for api.sms.ir.
+       * Env wins so operators can fix EU-VPS TLS blocks without rewriting DB secrets.
+       */
+      egressBaseUrl: egressFromEnv || egressFromDb,
+      /** Shared secret for egress Worker — env only, never returned to admin UI. */
+      egressSecret: String(this.config.get('SMS_EGRESS_SECRET', '') || '').trim(),
       /** Admin alert phone for wholesale (.com) site events */
       adminPhoneWholesale: String(s.adminPhoneWholesale || ''),
       /** Optional second admin phone for wholesale */

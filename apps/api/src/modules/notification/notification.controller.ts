@@ -18,6 +18,12 @@ export class NotificationController {
     return this.svc.status();
   }
 
+  /** Connectivity check to sms.ir (via egress when configured). */
+  @Post('sms/probe')
+  probe() {
+    return this.svc.probe();
+  }
+
   // Admin: manual/ad-hoc SMS (e.g. marketing blast to a single number).
   @Post('sms')
   async send(@Body() body: { receptor: string; message: string }) {

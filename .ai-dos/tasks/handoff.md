@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-28T15:20:00Z — TASK-20260928-003 implementing (sms.ir egress)
+
+- Owner: cursor:implementer-TASK-20260928-003
+- Branch: fix/TASK-20260928-003-smsir-egress
+- Root: Hetzner TLS hang to api.sms.ir; DB sms OK; Kavenegar reachable but out of scope (owner sms.ir only).
+- Reclaimed settings.service/controller + AdminSettings/types/SmsTab from TASK-20260913-006 (stale hb 2026-09-13).
+- Code: sms-transport + NotificationService/controller + SmsTab probe + deploy/sms-egress-worker.
+- Specs: sms-transport.spec.ts OK; sms-ops.spec.ts OK.
+- Next: wrangler deploy Worker, set VPS SMS_EGRESS_*, restart api, probe credit, OTP smoke .ir/.com.
+- Blocked without Cloudflare login/token for Worker deploy.
+
 ## 2026-09-28T09:36:00Z — TASK-20260928-002 LIVE (sales-partner admin/partner UI)
 
 - Owner: cursor:implementer-TASK-20260928-002

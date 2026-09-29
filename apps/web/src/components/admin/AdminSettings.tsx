@@ -155,6 +155,8 @@ function hydrateSettings(res: SettingsPayload): SettingsPayload {
       apiKey: res.sms?.apiKey ?? '',
       lineNumber: res.sms?.lineNumber ?? '',
       otpTemplateId: Number(res.sms?.otpTemplateId) || 0,
+      egressBaseUrl: res.sms?.egressBaseUrl ?? '',
+      egressConfigured: Boolean(res.sms?.egressConfigured ?? res.sms?.egressBaseUrl),
       adminPhoneWholesale: res.sms?.adminPhoneWholesale ?? '',
       adminPhoneWholesale2: res.sms?.adminPhoneWholesale2 ?? '',
       adminPhoneRetail: res.sms?.adminPhoneRetail ?? '',

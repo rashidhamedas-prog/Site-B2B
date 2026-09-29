@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-28 — sms.ir: egress برای VPS اروپا (تک + عمده)
+
+- ریشه: از Hetzner TLS به `api.sms.ir` کامل نمی‌شود؛ تنظیمات DB سالم بود.
+- لایه `sms-transport` + Worker Cloudflare در `deploy/sms-egress-worker`.
+- ادمین: دکمه تست اتصال (`POST /notifications/sms/probe`)؛ secret egress به UI برنمی‌گردد.
+- env: `SMS_EGRESS_BASE_URL` / `SMS_EGRESS_SECRET`. گزارش: `docs/reports/2026-09-28-smsir-egress.md`.
+
 ## 2026-09-28 — ERP → سایت: ingest ماتریس موجودی رنگ×سایز
 
 - API جدید: `PUT /v1/erp/inventory/matrix` (+ bulk + ping) با `ERP_INVENTORY_API_KEY`.

@@ -1,5 +1,51 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260928-003"
+    title: "sms.ir EU-VPS egress + admin probe (retail+wholesale SMS)"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260928-003"
+    roles:
+      architect: "cursor:implementer-TASK-20260928-003"
+      implementer: "cursor:implementer-TASK-20260928-003"
+      reviewer: "required-after-sms-network"
+      security: "required-egress-secret-no-leak"
+    branch: "fix/TASK-20260928-003-smsir-egress"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-28T15:00:00Z"
+    heartbeat_at: "2026-09-28T15:05:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/notification/sms-transport.ts"
+      - "apps/api/src/modules/notification/sms-transport.spec.ts"
+      - "apps/api/src/modules/notification/notification.service.ts"
+      - "apps/api/src/modules/notification/notification.controller.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/api/src/modules/settings/settings.controller.ts"
+      - "apps/web/src/components/admin/settings/SmsTab.tsx"
+      - "apps/web/src/components/admin/settings/types.ts"
+      - "apps/web/src/components/admin/AdminSettings.tsx"
+      - "deploy/sms-egress-worker/src/index.ts"
+      - "deploy/sms-egress-worker/wrangler.toml"
+      - "deploy/sms-egress-worker/package.json"
+      - "deploy/sms-egress-worker/README.md"
+      - ".env.example"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-09-28-smsir-egress.md"
+      - "docs/architecture/sms-egress.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Root: Hetzner cannot TLS to api.sms.ir; DB sms settings OK.
+      Reclaimed settings.service/controller + AdminSettings/types/SmsTab from
+      TASK-20260913-006 (stale in_progress hb 2026-09-13; door-options leftovers).
+      Provider stays sms.ir only. Needs CF Worker deploy + VPS SMS_EGRESS_* env.
+    acceptance_criteria:
+      - "sms-transport rewrite/timeout/provider specs pass"
+      - "Admin POST /notifications/sms/probe works and never returns egress secret"
+      - "With SMS_EGRESS_* set, API credit probe succeeds via egress from VPS"
+      - "Retail+wholesale OTP path uses same transport (no dual providers)"
   - id: "TASK-20260928-002"
     title: "Sales partner admin + partner professional UI/dashboard"
     status: "done"
@@ -700,19 +746,23 @@ tasks:
       - "apps/api/src/modules/settings/settings-payment-cash.spec.ts"
       - "apps/api/src/modules/settings/shipping-channel.ts"
       - "apps/api/src/modules/settings/shipping-channel.spec.ts"
-      - "apps/api/src/modules/settings/settings.service.ts"
-      - "apps/api/src/modules/settings/settings.controller.ts"
+      # reclaimed 2026-09-28 by TASK-20260928-003 (stale hb 2026-09-13; sms egress):
+      # "apps/api/src/modules/settings/settings.service.ts"
+      # "apps/api/src/modules/settings/settings.controller.ts"
       - "apps/api/src/modules/shipping/shipping.service.ts"
       # transferred 2026-09-23 to TASK-20260922-003 (stale hb 2026-09-13; product share links):
       # "apps/api/src/modules/order/order.service.ts"
-      - "apps/web/src/components/admin/AdminSettings.tsx"
+      # reclaimed 2026-09-28 by TASK-20260928-003:
+      # "apps/web/src/components/admin/AdminSettings.tsx"
       - "apps/web/src/components/admin/settings/ShippingTab.tsx"
-      - "apps/web/src/components/admin/settings/types.ts"
+      # reclaimed 2026-09-28 by TASK-20260928-003:
+      # "apps/web/src/components/admin/settings/types.ts"
       - "apps/web/src/lib/checkout-payment-ui.ts"
       - "apps/web/src/lib/checkout-payment-ui.spec.ts"
       - "apps/web/src/lib/shipping-methods.ts"
       - "apps/web/src/lib/shipping-methods.spec.ts"
       - "apps/web/src/app/checkout/page.tsx"
+      # WORKLOG shared append with TASK-20260928-003
       - "docs/WORKLOG.md"
     notes: |
       Operator asked to turn remaining door options off and fully commit/merge/push/deploy.

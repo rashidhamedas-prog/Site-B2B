@@ -6,41 +6,52 @@ import {
   type SmsTemplateKey,
 } from './sms-templates.defaults';
 import { resolveSmsOps, smsOpsEnabled, type SmsChannel } from './sms-ops';
+import {
+  SMS_FETCH_TIMEOUT_MS,
+  smsIrRequest,
+  type SmsTransportConfig,
+  type SmsTransportResult,
+} from './sms-transport';
 
 // SMS provider: sms.ir (REST API v1, auth via x-api-key header).
 // API key, line number, per-event toggles, message templates and the master
 // switch are all user-configurable from the admin settings panel
 // (DB → defaults). With no API key configured the service logs and no-ops.
+// When the origin cannot reach api.sms.ir (common on EU VPS), set
+// SMS_EGRESS_BASE_URL (+ SMS_EGRESS_SECRET) to a Cloudflare Worker proxy.
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
-  private static readonly BASE = 'https://api.sms.ir/v1';
 
   constructor(private readonly settings: SettingsService) {}
 
-  static readonly FETCH_TIMEOUT_MS = 8_000;
+  static readonly FETCH_TIMEOUT_MS = SMS_FETCH_TIMEOUT_MS;
+
+  private transportCfg(cfg: { egressBaseUrl?: string; egressSecret?: string }): SmsTransportConfig {
+    return {
+      egressBaseUrl: cfg.egressBaseUrl || '',
+      egressSecret: cfg.egressSecret || '',
+      timeoutMs: NotificationService.FETCH_TIMEOUT_MS,
+    };
+  }
+
+  private logTransportFailure(path: string, result: SmsTransportResult) {
+    this.logger.error(
+      `sms.ir ${path} failed via=${result.via} code=${result.errorCode || 'PROVIDER'} ms=${result.durationMs} msg=${result.errorMessage || ''}`,
+    );
+  }
 
   private async post(apiKey: string, path: string, body: Record<string, any>): Promise<boolean> {
-    try {
-      const res = await fetch(`${NotificationService.BASE}${path}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'x-api-key': apiKey,
-        },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(NotificationService.FETCH_TIMEOUT_MS),
-      });
-      const json: any = await res.json();
-      // sms.ir returns { status: 1, message: "موفق", data: {...} } on success.
-      const ok = json?.status === 1;
-      if (!ok) this.logger.error(`sms.ir ${path} failed: ${JSON.stringify(json)}`);
-      return ok;
-    } catch (err: any) {
-      this.logger.error(`sms.ir ${path} exception: ${err.message}`);
-      return false;
-    }
+    const cfg = await this.settings.sms();
+    const result = await smsIrRequest(
+      'POST',
+      path,
+      apiKey,
+      body,
+      this.transportCfg(cfg),
+    );
+    if (!result.ok) this.logTransportFailure(path, result);
+    return result.ok;
   }
 
   private async template(key: SmsTemplateKey, vars: Record<string, string>): Promise<string> {
@@ -309,12 +320,76 @@ export class NotificationService {
       provider: 'sms.ir',
       lineNumber: cfg.lineNumber || null,
       otpTemplate: cfg.otpTemplateId || null,
+      egressConfigured: Boolean(cfg.egressBaseUrl),
+      egressBaseUrl: cfg.egressBaseUrl || null,
       adminPhoneWholesale: cfg.adminPhoneWholesale || null,
       adminPhoneWholesale2: cfg.adminPhoneWholesale2 || null,
       adminPhoneRetail: cfg.adminPhoneRetail || null,
       adminPhoneRetail2: cfg.adminPhoneRetail2 || null,
       events: cfg.events,
       templates: cfg.templates,
+    };
+  }
+
+  /**
+   * Admin connectivity probe — hits sms.ir /credit through the same transport
+   * as live sends (direct or egress). Never returns the API key.
+   */
+  async probe(): Promise<{
+    ok: boolean;
+    via: 'direct' | 'egress';
+    errorCode?: string;
+    errorMessage?: string;
+    durationMs: number;
+    credit?: number | null;
+    enabled: boolean;
+    hasApiKey: boolean;
+    egressConfigured: boolean;
+  }> {
+    const cfg = await this.settings.sms();
+    if (!cfg.enabled) {
+      return {
+        ok: false,
+        via: cfg.egressBaseUrl ? 'egress' : 'direct',
+        errorCode: 'DISABLED',
+        errorMessage: 'SMS master switch is off',
+        durationMs: 0,
+        enabled: false,
+        hasApiKey: !!cfg.apiKey,
+        egressConfigured: Boolean(cfg.egressBaseUrl),
+      };
+    }
+    if (!cfg.apiKey) {
+      return {
+        ok: false,
+        via: cfg.egressBaseUrl ? 'egress' : 'direct',
+        errorCode: 'DISABLED',
+        errorMessage: 'API key missing',
+        durationMs: 0,
+        enabled: true,
+        hasApiKey: false,
+        egressConfigured: Boolean(cfg.egressBaseUrl),
+      };
+    }
+    const result = await smsIrRequest('GET', '/credit', cfg.apiKey, undefined, this.transportCfg(cfg));
+    const data = result.body && typeof result.body === 'object' ? (result.body as any).data : null;
+    const credit =
+      typeof data === 'number'
+        ? data
+        : data && typeof data === 'object' && typeof data.credit === 'number'
+          ? data.credit
+          : null;
+    if (!result.ok) this.logTransportFailure('/credit', result);
+    return {
+      ok: result.ok,
+      via: result.via,
+      errorCode: result.errorCode,
+      errorMessage: result.errorMessage,
+      durationMs: result.durationMs,
+      credit,
+      enabled: true,
+      hasApiKey: true,
+      egressConfigured: Boolean(cfg.egressBaseUrl),
     };
   }
 }
