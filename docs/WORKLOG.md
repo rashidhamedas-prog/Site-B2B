@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-29 — sms.ir egress LIVE روی VPS
+
+- Worker پایدار: `taranom-sms-egress.taranomsms.workers.dev` (حساب Cloudflare واقعی).
+- از داخل `taranom_api` به `/credit` با کلید پنل → `status: 1 موفق` (~1.2s).
+- secret egress بعد از نشت در لاگ curl عوض شد. مسیر موقت entertaining-thing حذف شد (چالش بات).
+
 ## 2026-09-28 — sms.ir: egress برای VPS اروپا (تک + عمده)
 
 - ریشه: از Hetzner TLS به `api.sms.ir` کامل نمی‌شود؛ تنظیمات DB سالم بود.

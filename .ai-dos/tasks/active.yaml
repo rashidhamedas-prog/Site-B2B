@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260928-003"
     title: "sms.ir EU-VPS egress + admin probe (retail+wholesale SMS)"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260928-003"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "fix/TASK-20260928-003-smsir-egress"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-28T15:00:00Z"
-    heartbeat_at: "2026-09-28T15:05:00Z"
+    heartbeat_at: "2026-09-29T06:30:00Z"
+    completed_at: "2026-09-29T06:30:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/notification/sms-transport.ts"
       - "apps/api/src/modules/notification/sms-transport.spec.ts"
       - "apps/api/src/modules/notification/notification.service.ts"
@@ -37,10 +39,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Root: Hetzner cannot TLS to api.sms.ir; DB sms settings OK.
-      Reclaimed settings.service/controller + AdminSettings/types/SmsTab from
-      TASK-20260913-006 (stale in_progress hb 2026-09-13; door-options leftovers).
-      Provider stays sms.ir only. Needs CF Worker deploy + VPS SMS_EGRESS_* env.
+      LIVE 2026-09-29: credit probe via CF Worker OK (status 1). Claims released.
+      Reviewer/Security residual. Optional custom hostname DNS later.
     acceptance_criteria:
       - "sms-transport rewrite/timeout/provider specs pass"
       - "Admin POST /notifications/sms/probe works and never returns egress secret"

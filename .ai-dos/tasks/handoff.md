@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-29T06:30:00Z — TASK-20260928-003 LIVE (sms.ir egress)
+
+- Owner: cursor:implementer-TASK-20260928-003
+- Ship: `7ce6c30` on master; VPS API rebuilt `--no-cache`; health 200.
+- Egress Worker: `https://taranom-sms-egress.taranomsms.workers.dev` (CF account rashidhamedas).
+- VPS `.env`: `SMS_EGRESS_BASE_URL` + `SMS_EGRESS_SECRET` (rotated after log leak).
+- Evidence: from `taranom_api` → egress → sms.ir `/credit` → `status:1 موفق` in ~1.2s.
+- Temporary entertaining-thing workers.dev abandoned (bot challenge from Hetzner).
+- Residual: optional custom DNS `sms-egress.poshaktaranom.com` (needs DNS edit permission); claim/rebuild web for SmsTab probe UI; owner OTP smoke on .ir/.com.
+- Independent Reviewer + Security residual (egress secret handling).
+
 ## 2026-09-28T15:20:00Z — TASK-20260928-003 implementing (sms.ir egress)
 
 - Owner: cursor:implementer-TASK-20260928-003
