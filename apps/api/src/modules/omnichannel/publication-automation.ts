@@ -143,3 +143,96 @@ export function resolveRemoteIntent(input: RemoteIntentInput): RemoteIntent {
   }
   return input.hasRemoteMessage ? { action: 'UPDATE', notice: false } : { action: 'CREATE' };
 }
+
+/* ---------- live remote trail + manual publish plan ---------- */
+
+export type DeliveryTrailRow = {
+  publicationId: string;
+  destinationId: string;
+  action: string;
+  status: string;
+  providerMessageId?: string | null;
+};
+
+export type LiveRemoteMessage = {
+  publicationId: string;
+  destinationId: string;
+  providerMessageId: string;
+};
+
+/**
+ * Fold delivery history into at most one live remote message per destination.
+ * Key is destinationId only (not publicationId): republishing the same product must
+ * UPDATE the existing messenger post, not CREATE a second one.
+ */
+export function foldLiveRemoteMessages(rows: DeliveryTrailRow[]): LiveRemoteMessage[] {
+  const live = new Map<string, LiveRemoteMessage>();
+  for (const row of rows) {
+    const key = row.destinationId;
+    if (row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.providerMessageId) {
+      live.set(key, {
+        publicationId: row.publicationId,
+        destinationId: row.destinationId,
+        providerMessageId: row.providerMessageId,
+      });
+    } else if (row.action === 'DELETE' && ['SUCCEEDED', 'PENDING', 'PROCESSING', 'RETRY'].includes(row.status)) {
+      live.delete(key);
+    }
+  }
+  return [...live.values()];
+}
+
+export type ManualDeliveryPlan = {
+  creates: Array<{ destinationId: string }>;
+  updates: Array<{ destinationId: string; providerMessageId: string; publicationId: string }>;
+};
+
+/** Split manual targets into CREATE (no live post) vs UPDATE (edit existing messenger message). */
+export function planManualDeliveries(
+  targetIds: string[],
+  live: LiveRemoteMessage[],
+  pendingCreates: ReadonlySet<string> = new Set(),
+): ManualDeliveryPlan {
+  const byDest = new Map(live.map((msg) => [msg.destinationId, msg]));
+  const creates: ManualDeliveryPlan['creates'] = [];
+  const updates: ManualDeliveryPlan['updates'] = [];
+  for (const id of targetIds) {
+    if (pendingCreates.has(id)) continue;
+    const existing = byDest.get(id);
+    if (existing) {
+      updates.push({
+        destinationId: id,
+        providerMessageId: existing.providerMessageId,
+        publicationId: existing.publicationId,
+      });
+    } else {
+      creates.push({ destinationId: id });
+    }
+  }
+  return { creates, updates };
+}
+
+/**
+ * Manual admin send needs CONNECTORS only. OMNICHANNEL_AUTO_PUBLISH gates catalog automation,
+ * not the «ارسال» / «ارسال آزمایشی» buttons.
+ */
+export function canEnqueueManualDelivery(connectorsEnabled: boolean): boolean {
+  return connectorsEnabled === true;
+}
+
+/** Keep the newest row per source×channel (input must already be newest-first). */
+export function latestPublicationsBySource<T extends {
+  sourceType?: string;
+  sourceId: string;
+  channel: string;
+}>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of rows) {
+    const key = `${row.sourceType || 'PRODUCT'}:${row.sourceId}:${row.channel}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}

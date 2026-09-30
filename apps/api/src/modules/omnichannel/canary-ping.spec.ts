@@ -45,6 +45,11 @@ assert(svc.includes('imageCandidates'), 'product photos come from gallery candid
 assert(svc.includes('markPublicationDelivered'), 'successful canary delivery can mark PUBLISHED');
 assert(admin.includes('dryRun: true'), 'draft button stays dry-run');
 assert(admin.includes('dryRun: false'), 'admin can enqueue one live canary product');
+assert(svc.includes('canEnqueueManualDelivery'), 'manual send uses connectors-only gate helper');
+assert(svc.includes('planManualDeliveries'), 'manual send plans CREATE vs UPDATE');
+assert(svc.includes('foldLiveRemoteMessages'), 'live remote trail is one message per destination');
+assert(!/isOmnichannelAutoPublishEnabled\(\)\s*&&\s*areOmnichannelConnectorsEnabled\(\)/.test(svc.replace(/\s+/g, ' ')), 'manual createPublication must not require AUTO_PUBLISH');
+assert(admin.includes('connectorsOn'), 'admin tracks connectors separately from autoPublish');
 assert(svc.includes('selectCanaryDestinations(dests, [row], row.channel, row.provider)'), 'ping still constrained by canary helper (per provider)');
 assert(svc.includes('testPostDestination') && ctl.includes('test-post'), 'destination test post exists (Rubika permission proof)');
 assert(svc.includes('discoverChats') && ctl.includes('discover-chats'), 'chat-id discovery route exists');

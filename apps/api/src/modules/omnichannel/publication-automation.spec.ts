@@ -2,9 +2,13 @@
  * npx ts-node --transpile-only src/modules/omnichannel/publication-automation.spec.ts
  */
 import {
+  canEnqueueManualDelivery,
   evaluateAutomationGate,
+  foldLiveRemoteMessages,
   inQuietHours,
+  latestPublicationsBySource,
   nextQuietEnd,
+  planManualDeliveries,
   resolveRemoteIntent,
   selectAutomationDestinations,
   tehranDayStart,
@@ -156,6 +160,31 @@ function main() {
   assert(stockNoise.action === 'none' && stockNoise.reason === 'stock_only', 'ordinary stock movement does not edit');
   const restockUnchosen = resolveRemoteIntent(intentInput({ eventType: 'product.stock_changed', localAction: 'reopen', previousStatus: 'WITHDRAWN', hasRemoteMessage: false }));
   assert(restockUnchosen.action === 'none', 'restock without OOS DELETE policy does not create');
+
+  // manual publish vs automation flags
+  assert(canEnqueueManualDelivery(true) === true, 'manual send needs connectors on');
+  assert(canEnqueueManualDelivery(false) === false, 'manual send blocked when connectors off');
+
+  // live trail: one message per destination across publication rows
+  const live = foldLiveRemoteMessages([
+    { publicationId: 'p1', destinationId: 'd1', action: 'CREATE', status: 'SUCCEEDED', providerMessageId: 'm1' },
+    { publicationId: 'p2', destinationId: 'd1', action: 'CREATE', status: 'SUCCEEDED', providerMessageId: 'm2' },
+    { publicationId: 'p2', destinationId: 'd2', action: 'CREATE', status: 'SUCCEEDED', providerMessageId: 'm3' },
+    { publicationId: 'p2', destinationId: 'd2', action: 'DELETE', status: 'PENDING', providerMessageId: 'm3' },
+  ]);
+  assert(live.length === 1 && live[0].providerMessageId === 'm2' && live[0].destinationId === 'd1', 'newer CREATE wins; pending DELETE clears dest');
+
+  const plan = planManualDeliveries(['d1', 'd2', 'd3'], live, new Set(['d3']));
+  assert(plan.updates.length === 1 && plan.updates[0].providerMessageId === 'm2', 'existing dest becomes UPDATE');
+  assert(plan.creates.length === 1 && plan.creates[0].destinationId === 'd2', 'empty dest becomes CREATE');
+  assert(!plan.creates.some((row) => row.destinationId === 'd3'), 'pending CREATE is skipped');
+
+  const deduped = latestPublicationsBySource([
+    { sourceType: 'PRODUCT', sourceId: 'a', channel: 'RETAIL', status: 'READY' },
+    { sourceType: 'PRODUCT', sourceId: 'a', channel: 'RETAIL', status: 'DRAFT' },
+    { sourceType: 'PRODUCT', sourceId: 'a', channel: 'WHOLESALE', status: 'PUBLISHED' },
+  ]);
+  assert(deduped.length === 2 && deduped[0].status === 'READY', 'list keeps newest per source×channel');
 
   console.log('publication-automation.spec.ts: ok');
 }

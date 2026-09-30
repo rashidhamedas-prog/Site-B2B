@@ -1,5 +1,42 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20260930-002"
+    title: "Omnichannel admin: root-fix manual publish + live message identity"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20260930-002"
+    roles:
+      architect: "cursor:implementer-TASK-20260930-002"
+      implementer: "cursor:implementer-TASK-20260930-002"
+      reviewer: "required-independent-after-diff"
+      security: "required-connectors-admin-publish"
+    branch: "fix/TASK-20260930-002-omni-manual-publish"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-09-30T06:50:00Z"
+    heartbeat_at: "2026-09-30T07:00:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
+      - "apps/api/src/modules/omnichannel/canary-ping.spec.ts"
+      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      - "docs/reports/2026-09-30-omnichannel-manual-publish-rootfix.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Reclaimed omnichannel.service + AdminOmnichannel from TASK-20260826-001
+      (already transferred/commented; hb 2026-09-02 stale). Shared meta reclaimed
+      from stale claimants (>24h). Connectors stay owner-gated; do not flip env.
+    acceptance_criteria:
+      - "Manual publish enqueues when CONNECTORS on even if AUTO_PUBLISH off"
+      - "Manual publish fails loudly when CONNECTORS off (no silent READY)"
+      - "Republish UPDATEs existing messenger post (one live per destination)"
+      - "Withdraw deletes all live messages for source×channel"
+      - "Admin UI disables send when connectors off; checklist splits flags"
+      - "publication-automation + canary-ping specs pass; api/web tsc 0"
   - id: "TASK-20260930-001"
     title: "Zero-order CRM desk (registered never purchased)"
     status: "done"

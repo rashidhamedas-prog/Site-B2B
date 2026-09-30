@@ -56,7 +56,11 @@ import {
   type DestinationVerification,
 } from '../oos-policy';
 import {
+  canEnqueueManualDelivery,
   evaluateAutomationGate,
+  foldLiveRemoteMessages,
+  latestPublicationsBySource,
+  planManualDeliveries,
   resolveRemoteIntent,
   selectAutomationDestinations,
   tehranDayStart,
@@ -601,7 +605,8 @@ export class OmnichannelService {
   }
 
   async listPublications() {
-    return this.publications.find({ order: { createdAt: 'DESC' }, take: 100 });
+    const rows = await this.publications.find({ order: { createdAt: 'DESC' }, take: 300 });
+    return latestPublicationsBySource(rows).slice(0, 100);
   }
 
   async listDeliveries() {
@@ -683,19 +688,20 @@ export class OmnichannelService {
     if (!projection.publishable) {
       throw new BadRequestException(projection.rejectReason || 'این منبع برای این کانال قابل انتشار نیست');
     }
+    const sourceId = String(projection.sourceId || dto.preview.sourceId);
     if (!dryRun && projection.sourceType === 'PRODUCT') {
       // The 10-live-products canary cap protects the test phase; once automation is LIVE the
       // daily cap and verified destinations govern volume instead.
       const automation = readAutomationSettings(await this.loadStoredSettings());
-      const live = automation.mode === 'LIVE' ? 0 : await this.publications.count({
+      const liveCount = automation.mode === 'LIVE' ? 0 : await this.publications.count({
         where: { channel: projection.channel, sourceType: 'PRODUCT', status: In(['READY', 'PUBLISHED', 'PARTIAL']) },
       });
       const limit = canaryLimitFor(projection.channel);
-      if (automation.mode !== 'LIVE' && canaryExceeded(live, limit)) {
+      if (automation.mode !== 'LIVE' && canaryExceeded(liveCount, limit)) {
         throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است؛ برای ارسال بیشتر حالت خودکار را «زنده» کنید`);
       }
       const available = 'available' in projection ? projection.available === true : true;
-      const oos = await this.oosDecisionFor(projection.channel, available, 'PRODUCT', String(projection.sourceId || dto.preview.sourceId));
+      const oos = await this.oosDecisionFor(projection.channel, available, 'PRODUCT', sourceId);
       const reject = liveOosRejectReason(oos, available);
       if (reject) {
         throw new BadRequestException(
@@ -703,28 +709,102 @@ export class OmnichannelService {
         );
       }
     }
-    const targets = dryRun ? [] : await this.manualPublishTargets(projection.channel, dto.destinationId);
-    const saved = await this.publications.manager.transaction(async (manager) => {
-      const row = await manager.getRepository(PublicationEntity).save(
-        manager.getRepository(PublicationEntity).create({
-          sourceType: projection.sourceType,
-          sourceId: String(projection.sourceId || dto.preview.sourceId),
-          channel: projection.channel,
-          sourceUpdatedAt: new Date(),
-          projection,
-          status: dryRun ? 'DRAFT' : 'READY',
-        }),
+    // Manual send is gated by CONNECTORS only. AUTO_PUBLISH is catalog automation — conflating
+    // them caused READY rows with zero deliveries while the UI claimed the post was queued.
+    if (!dryRun && !canEnqueueManualDelivery(areOmnichannelConnectorsEnabled())) {
+      throw new BadRequestException(
+        'ارسال به پیام‌رسان خاموش است (OMNICHANNEL_CONNECTORS_ENABLED). ارسال دستی فقط به این پرچم نیاز دارد؛ انتشار خودکار جداست (OMNICHANNEL_AUTO_PUBLISH).',
       );
-      if (!dryRun && isOmnichannelAutoPublishEnabled() && areOmnichannelConnectorsEnabled()) {
-        const rendered = await this.publicationPayloadFor(projection);
-        await this.enqueueDeliveries(manager, {
-          publicationId: row.id,
-          channel: projection.channel,
-          action: 'CREATE',
-          rendered,
-          targets: targets.map((dest) => ({ destinationId: dest.id })),
-          auto: false,
+    }
+    const targets = dryRun ? [] : await this.manualPublishTargets(projection.channel, dto.destinationId);
+    if (!dryRun && targets.length === 0) {
+      throw new BadRequestException(
+        'هیچ مقصد آماده‌ای برای این کانال نیست؛ یک مقصد canary یا مقصد تأییدشده با اجازهٔ ارسال لازم است',
+      );
+    }
+    const liveRemote = dryRun
+      ? []
+      : await this.liveRemoteMessages(String(projection.sourceType), sourceId, projection.channel);
+    const pendingCreates = dryRun
+      ? new Set<string>()
+      : await this.pendingCreateDestinationsForSource(String(projection.sourceType), sourceId, projection.channel);
+    const plan = planManualDeliveries(
+      targets.map((dest) => dest.id),
+      liveRemote,
+      pendingCreates,
+    );
+    if (!dryRun && plan.creates.length === 0 && plan.updates.length === 0) {
+      throw new BadRequestException('ارسال قبلی هنوز در صف است؛ چند ثانیه صبر کنید و دوباره تلاش کنید');
+    }
+    const saved = await this.publications.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(PublicationEntity);
+      const sourceType = String(projection.sourceType);
+      let row: PublicationEntity;
+      if (dryRun) {
+        // Drafts stay separate from live rows so «ثبت پیش‌نویس» projection زنده را خراب نکند.
+        const draft = await repo.findOne({
+          where: { sourceType, sourceId, channel: projection.channel, status: 'DRAFT' },
+          order: { createdAt: 'DESC' },
         });
+        row = draft
+          ? await repo.save(Object.assign(draft, { projection, sourceUpdatedAt: new Date() }))
+          : await repo.save(repo.create({
+            sourceType,
+            sourceId,
+            channel: projection.channel,
+            sourceUpdatedAt: new Date(),
+            projection,
+            status: 'DRAFT',
+          }));
+      } else {
+        // One canonical live row per source×channel: prefer non-DRAFT so پیش‌نویس جدا بماند.
+        const existing = await repo.findOne({
+          where: {
+            sourceType,
+            sourceId,
+            channel: projection.channel,
+            status: In(['READY', 'PUBLISHED', 'PARTIAL', 'FAILED', 'WITHDRAWN']),
+          },
+          order: { createdAt: 'DESC' },
+        }) || await repo.findOne({
+          where: { sourceType, sourceId, channel: projection.channel },
+          order: { createdAt: 'DESC' },
+        });
+        row = existing
+          ? await repo.save(Object.assign(existing, {
+            projection,
+            sourceUpdatedAt: new Date(),
+            status: 'READY',
+          }))
+          : await repo.save(repo.create({
+            sourceType,
+            sourceId,
+            channel: projection.channel,
+            sourceUpdatedAt: new Date(),
+            projection,
+            status: 'READY',
+          }));
+        const rendered = await this.publicationPayloadFor(projection);
+        if (plan.creates.length) {
+          await this.enqueueDeliveries(manager, {
+            publicationId: row.id,
+            channel: projection.channel,
+            action: 'CREATE',
+            rendered,
+            targets: plan.creates,
+            auto: false,
+          });
+        }
+        if (plan.updates.length) {
+          await this.enqueueDeliveries(manager, {
+            publicationId: row.id,
+            channel: projection.channel,
+            action: 'UPDATE',
+            rendered,
+            targets: plan.updates,
+            auto: false,
+          });
+        }
       }
       await manager.getRepository(OmnichannelAuditEntity).save(
         manager.getRepository(OmnichannelAuditEntity).create({
@@ -736,14 +816,22 @@ export class OmnichannelService {
           reason: dto.reason || null,
           payload: {
             dryRun,
-            sourceId: String(projection.sourceId || dto.preview.sourceId),
+            sourceId,
             destinationIds: targets.map((dest) => dest.id),
+            createCount: plan.creates.length,
+            updateCount: plan.updates.length,
           },
         }),
       );
       return row;
     });
-    return { dryRun, publication: saved, destinationIds: targets.map((dest) => dest.id) };
+    return {
+      dryRun,
+      publication: saved,
+      destinationIds: targets.map((dest) => dest.id),
+      createCount: plan.creates.length,
+      updateCount: plan.updates.length,
+    };
   }
 
   /**
@@ -790,17 +878,26 @@ export class OmnichannelService {
     if (!row) throw new NotFoundException('انتشار یافت نشد');
     row.status = 'WITHDRAWN';
     const saved = await this.publications.save(row);
+    // Sibling rows for the same source×channel (legacy duplicates) also leave the channel.
+    await this.publications.update(
+      { sourceType: row.sourceType, sourceId: row.sourceId, channel: row.channel },
+      { status: 'WITHDRAWN' },
+    );
     let remoteDeletes = 0;
     if (areOmnichannelConnectorsEnabled()) {
-      const live = (await this.liveRemoteMessages(row.sourceType, row.sourceId, row.channel))
-        .filter((msg) => msg.publicationId === row.id);
+      // Delete every live messenger post for this product/channel — not only this publication id.
+      const live = await this.liveRemoteMessages(row.sourceType, row.sourceId, row.channel);
       if (live.length) {
         remoteDeletes = await this.enqueueDeliveries(this.publications.manager, {
           publicationId: row.id,
           channel: row.channel,
           action: 'DELETE',
           rendered: null,
-          targets: live.map((msg) => ({ destinationId: msg.destinationId, providerMessageId: msg.providerMessageId })),
+          targets: live.map((msg) => ({
+            destinationId: msg.destinationId,
+            providerMessageId: msg.providerMessageId,
+            publicationId: msg.publicationId,
+          })),
           auto: false,
         });
       }
@@ -1148,9 +1245,29 @@ export class OmnichannelService {
     return new Set(rows.map((row) => row.destinationId));
   }
 
+  /** Pending CREATEs across every publication row for this source×channel. */
+  private async pendingCreateDestinationsForSource(
+    sourceType: string,
+    sourceId: string,
+    channel: string,
+  ): Promise<Set<string>> {
+    const pubs = await this.publications.find({ where: { sourceType, sourceId, channel }, select: ['id'] });
+    if (!pubs.length) return new Set();
+    const rows = await this.deliveries.find({
+      where: {
+        publicationId: In(pubs.map((row) => row.id)),
+        action: 'CREATE',
+        status: In(['PENDING', 'PROCESSING', 'RETRY']),
+      },
+      select: ['destinationId'],
+    });
+    return new Set(rows.map((row) => row.destinationId));
+  }
+
   /**
-   * Messages that currently exist in Telegram for this source/channel: a SUCCEEDED CREATE not
-   * followed by a DELETE that succeeded or is still queued. Spans every publication row.
+   * Messages that currently exist in the messenger for this source/channel: a SUCCEEDED CREATE not
+   * followed by a DELETE that succeeded or is still queued. One entry per destination (spans every
+   * publication row so republish edits the same post).
    */
   private async liveRemoteMessages(sourceType: string, sourceId: string, channel: string) {
     const pubs = await this.publications.find({ where: { sourceType, sourceId, channel }, select: ['id'] });
@@ -1159,16 +1276,7 @@ export class OmnichannelService {
       where: { publicationId: In(pubs.map((row) => row.id)) },
       order: { createdAt: 'ASC' },
     });
-    const live = new Map<string, { publicationId: string; destinationId: string; providerMessageId: string }>();
-    for (const row of rows) {
-      const key = `${row.publicationId}:${row.destinationId}`;
-      if (row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.providerMessageId) {
-        live.set(key, { publicationId: row.publicationId, destinationId: row.destinationId, providerMessageId: row.providerMessageId });
-      } else if (row.action === 'DELETE' && ['SUCCEEDED', 'PENDING', 'PROCESSING', 'RETRY'].includes(row.status)) {
-        live.delete(key);
-      }
-    }
-    return [...live.values()];
+    return foldLiveRemoteMessages(rows);
   }
 
   /** Auto CREATE counters for the gate: distinct posts today (Tehran day) and the latest scheduled send. */

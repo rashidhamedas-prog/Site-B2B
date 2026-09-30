@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-30 — **TASK-20260930-002 implementing** on `fix/TASK-20260930-002-omni-manual-publish`. Omnichannel admin manual publish: connectors-only gate, upsert, live-by-destination, CREATE/UPDATE plan. Specs tsc green locally; not live until merge/deploy.
+
 - Last verified: 2026-09-30 — **TASK-20260930-001 LIVE** on `origin/master` + VPS `734d788`. Zero-order CRM desk at `/admin/customers/marketing?mtab=zero`. Health 200; unauth zero-order 401. Claims released. SMS LIVE untouched. Independent Reviewer + Security residual (PII).
 
 - Last verified: 2026-09-29 — **TASK-20260928-003 LIVE** on `origin/master` `7ce6c30`. sms.ir via CF Worker egress from Hetzner; `/credit` status=1; health 200. Claims released. OTP field smoke residual for owner. Reviewer/Security residual.

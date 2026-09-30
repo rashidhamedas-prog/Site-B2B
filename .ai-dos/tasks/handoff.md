@@ -2,6 +2,21 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-30T07:00:00Z — TASK-20260930-002 implementing (omnichannel manual publish rootfix)
+
+- Owner: cursor:implementer-TASK-20260930-002
+- Scope: `/admin/omnichannel` manual publish path + live message identity.
+- Reclaimed (stale >24h / transferred away from TASK-20260826-001 & shared meta claimants):
+  - `apps/api/src/modules/omnichannel/services/omnichannel.service.ts`
+  - `apps/api/src/modules/omnichannel/publication-automation.ts(+spec)`
+  - `apps/api/src/modules/omnichannel/canary-ping.spec.ts`
+  - `apps/web/src/components/admin/AdminOmnichannel.tsx`
+  - `docs/WORKLOG.md`, `.ai-dos/tasks/*`, status, report
+- Root fixes: connectors-only manual gate; upsert; foldLiveRemoteMessages by destination; plan CREATE/UPDATE; withdraw all live; listPublications dedupe; UI connectors vs autoPublish; canary ping per connection.
+- Gates observed: publication-automation + canary-ping ok; api/web tsc 0.
+- Exact next: commit, push, deploy api+web, health, verify `/admin/omnichannel` send disabled when connectors off and enqueue when connectors on without AUTO_PUBLISH.
+- Do not Done TASK-20260826-001. Independent Reviewer + Security residual (admin publish / connectors).
+
 ## 2026-09-29T21:55:00Z — TASK-20260930-001 LIVE (zero-order CRM desk)
 
 - Owner: cursor:implementer-TASK-20260930-001

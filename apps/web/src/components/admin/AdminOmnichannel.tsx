@@ -276,11 +276,13 @@ export function AdminOmnichannel() {
   const readyDestinations = destinations.filter((dest) => dest.enabled && destinationReady(dest) && connById.get(dest.connectionId)?.status === 'ACTIVE');
   const readyByChannel = (channel: Channel) => readyDestinations.filter((dest) => channelOf(dest) === channel);
   const canaryByChannel = (channel: Channel) => destinations.find((dest) => dest.isCanary && channelOf(dest) === channel);
+  const canaryForConnection = (connectionId: string) => destinations.find((dest) => dest.isCanary && dest.enabled && dest.connectionId === connectionId);
   const unverified = destinations.filter((dest) => dest.enabled && !dest.isCanary && !dest.verified);
   const retailTpl = templates.filter((row) => isProductTemplate(row, 'RETAIL')).sort((a, b) => b.version - a.version)[0];
   const wholesaleTpl = templates.filter((row) => isProductTemplate(row, 'WHOLESALE')).sort((a, b) => b.version - a.version)[0];
   const templatesReady = templateLooksReady(retailTpl?.body) && templateLooksReady(wholesaleTpl?.body);
   const flagsOn = Boolean(status?.connectors && status?.autoPublish);
+  const connectorsOn = Boolean(status?.connectors);
   const mode = status?.autoPublishMode || 'OFF';
   const rulesDirty = JSON.stringify(rules) !== JSON.stringify(savedRules);
   const deliveriesByPub = useMemo(() => {
@@ -370,6 +372,10 @@ export function AdminOmnichannel() {
   }, 'خطا در پیش‌نمایش');
 
   const doSend = (destinationId?: string) => {
+    if (!connectorsOn) {
+      setError('ارسال دستی نیاز به روشن‌بودن OMNICHANNEL_CONNECTORS_ENABLED روی سرور دارد (انتشار خودکار جداست).');
+      return;
+    }
     const target = destinationId ? destById.get(destinationId) : null;
     const where = target ? `«${target.displayName}»` : mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'مقصد تست (canary)';
     if (!window.confirm(`این منبع به ${where} ارسال می‌شود. ادامه می‌دهید؟`)) return;
@@ -571,7 +577,7 @@ export function AdminOmnichannel() {
                 }, 'تست اتصال ناموفق', 'ربات پاسخ داد؛ توکن درست است')}>
                   تست توکن
                 </button>
-                <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `ping-${row.id}` || !canaryByChannel(row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL')} title="پیام کوتاه فارسی به مقصد تست" onClick={() => run(`ping-${row.id}`, async () => {
+                <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `ping-${row.id}` || !canaryForConnection(row.id)} title={canaryForConnection(row.id) ? 'پیام کوتاه فارسی به مقصد تست همین ربات' : 'اول یک مقصد canary روی همین ربات انتخاب کنید'} onClick={() => run(`ping-${row.id}`, async () => {
                   await apiClient.post(`/omnichannel/connections/${row.id}/canary-ping`, { reason });
                 }, 'ارسال آزمایشی ناموفق', 'پیام آزمایشی به مقصد تست رفت')}>
                   پیام آزمایشی
@@ -946,7 +952,8 @@ export function AdminOmnichannel() {
     { label: 'مقصد تأییدشده', ok: readyDestinations.length > 0, detail: readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'مرحله ۲: دسترسی ربات را بررسی کنید' },
     { label: 'مقصد تست (canary)', ok: Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE')), detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان تست انتخاب کنید' },
     { label: 'قالب تکی و عمده', ok: templatesReady, detail: templatesReady ? 'ذخیره شده' : 'مرحله ۳ را برای هر دو کانال ذخیره کنید' },
-    { label: 'پرچم‌های سرور', ok: flagsOn, detail: flagsOn ? 'کانکتور و انتشار خودکار روشن' : `کانکتور ${status?.connectors ? 'روشن' : 'خاموش'} · انتشار خودکار ${status?.autoPublish ? 'روشن' : 'خاموش'} (تنظیم سرور)` },
+    { label: 'کانکتور سرور (ارسال دستی)', ok: connectorsOn, detail: connectorsOn ? 'OMNICHANNEL_CONNECTORS_ENABLED روشن است' : 'برای ارسال دستی و آزمایشی این پرچم باید روی سرور روشن باشد' },
+    { label: 'انتشار خودکار سرور', ok: Boolean(status?.autoPublish), detail: status?.autoPublish ? 'OMNICHANNEL_AUTO_PUBLISH روشن است' : 'فقط برای رویدادهای کاتالوگ؛ ارسال دستی به آن وابسته نیست' },
   ];
   const canGoLive = checklist.every((row) => row.ok) && readyDestinations.some((dest) => !dest.isCanary);
 
@@ -987,7 +994,7 @@ export function AdminOmnichannel() {
                 {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{providerLabel(providerOf(dest))} · {dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
               </select>
               <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'preview'} onClick={doPreview}>پیش‌نمایش</button>
-              <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !targetId || busy === 'send'} onClick={() => doSend(targetId)}>ارسال آزمایشی</button>
+              <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !targetId || !connectorsOn || busy === 'send'} onClick={() => doSend(targetId)}>ارسال آزمایشی</button>
             </div>
           </div>
           <div className="rounded-xl border p-3 space-y-2">
@@ -998,7 +1005,9 @@ export function AdminOmnichannel() {
               <button type="button" className="text-xs text-red-600 underline cursor-pointer" disabled={mode === 'OFF' || busy.startsWith('mode-')} onClick={() => setMode('OFF')}>خاموش‌کردن انتشار خودکار</button>
             </div>
             {!canGoLive && mode !== 'LIVE' && <p className="text-xs text-amber-700">برای زنده‌شدن همه موارد چک‌لیست و دست‌کم یک کانال تأییدشده غیر از مقصد تست لازم است.</p>}
-            {!flagsOn && <Callout tone="warn">پرچم‌های سرور (OMNICHANNEL_CONNECTORS_ENABLED / OMNICHANNEL_AUTO_PUBLISH) باید توسط مدیر سرور روشن باشند؛ بدون آن حتی حالت زنده پستی نمی‌فرستد.</Callout>}
+            {!connectorsOn && <Callout tone="warn">برای ارسال دستی یا آزمایشی، مدیر سرور باید OMNICHANNEL_CONNECTORS_ENABLED را روشن کند. OMNICHANNEL_AUTO_PUBLISH فقط رویدادهای خودکار کاتالوگ را کنترل می‌کند و برای دکمهٔ ارسال لازم نیست.</Callout>}
+            {connectorsOn && !status?.autoPublish && <Callout tone="info">کانکتور روشن است؛ ارسال دستی کار می‌کند. انتشار خودکار کاتالوگ هنوز با OMNICHANNEL_AUTO_PUBLISH خاموش است.</Callout>}
+            {flagsOn && mode === 'OFF' && <Callout tone="info">پرچم‌های سرور آماده‌اند؛ برای پست خودکار، حالت را «آزمایشی» یا «زنده» کنید.</Callout>}
           </div>
         </div>
         <div className="space-y-2">
@@ -1043,8 +1052,9 @@ export function AdminOmnichannel() {
           <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'draft'} onClick={() => run('draft', async () => {
             await apiClient.post('/omnichannel/publications', { preview: { channel: pubChannel, sourceType, sourceId }, dryRun: true, reason });
           }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد (به هیچ پیام‌رسانی نرفت)')}>ثبت پیش‌نویس</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || busy === 'send'} onClick={() => doSend(targetId || undefined)}>ارسال</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !connectorsOn || busy === 'send'} onClick={() => doSend(targetId || undefined)} title={!connectorsOn ? 'کانکتور سرور خاموش است' : undefined}>ارسال</button>
         </div>
+        {!connectorsOn && <Callout tone="warn">دکمهٔ ارسال غیرفعال است تا OMNICHANNEL_CONNECTORS_ENABLED روی سرور روشن شود. پیش‌نویس و پیش‌نمایش بدون کانکتور کار می‌کنند.</Callout>}
         {preview?.rendered && (
           <div className="grid gap-3 lg:grid-cols-[22rem_minmax(0,1fr)]">
             <div className="space-y-2">

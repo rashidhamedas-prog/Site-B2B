@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-30 — کانال انتشار: ارسال دستی ریشه‌ای اصلاح شد
+
+- ریشه: ارسال دستی به `AUTO_PUBLISH` قفل بود → READY بی‌delivery؛ هر ارسال ردیف جدید می‌ساخت؛ live message per publication نه per destination.
+- اصلاح: گیت CONNECTORS-only برای دستی؛ upsert؛ CREATE/UPDATE؛ withdraw کامل؛ UI چک‌لیست جدا؛ canary ping per-connection.
+- گزارش: `docs/reports/2026-09-30-omnichannel-manual-publish-rootfix.md`.
+
 ## 2026-09-30 — میزکار نوله (ثبت‌نام بدون خرید)
 
 - تب «نوله‌ها» در `/admin/customers/marketing`: لیست صفحه‌بندی، سطل سنی، اولویت، سبد رهاشده، زمان‌بندی پیگیری، backfill قیف.
