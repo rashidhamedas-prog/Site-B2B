@@ -54,6 +54,7 @@ import {
   normalizeProductImageAlts,
   suggestProductImageAlt,
 } from '@/lib/product-image-alt';
+import { resolveWholesaleOrderBadge } from '@/lib/wholesale-order-badge';
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'فعال',
@@ -1562,7 +1563,11 @@ export function AdminProducts() {
   const fabricLabel = (p: Product) => p.specs?.fabricType || p.fabric || '—';
   const computedPackQty = computedPackQtyFromDrafts(colorDrafts, form.sizeType);
   const minPackQty = Math.max(1, Math.floor(Number(form.minOrderQty) || 1));
-  const packSummary = `حداقل ${minPackQty.toLocaleString('fa-IR')} پک — هر پک ${computedPackQty.toLocaleString('fa-IR')} عدد — مجموع حداقل سفارش ${(minPackQty * computedPackQty).toLocaleString('fa-IR')} عدد`;
+  const orderBadgePreview = resolveWholesaleOrderBadge({
+    orderBadgeLabel: form.orderBadgeLabel,
+    minOrderQty: minPackQty,
+  });
+  const packSummary = `محاسبه پک برای سبد: حداقل ${minPackQty.toLocaleString('fa-IR')} پک — هر پک ${computedPackQty.toLocaleString('fa-IR')} عدد — مجموع حداقل سفارش ${(minPackQty * computedPackQty).toLocaleString('fa-IR')} عدد`;
 
   return (
     <div className="space-y-5">
@@ -2534,8 +2539,14 @@ export function AdminProducts() {
                     placeholder={`خالی = حداقل ${minPackQty.toLocaleString('fa-IR')} پک`}
                     className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   />
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] text-gray-500">پیش‌نمایش کنار دکمه «سفارش»:</span>
+                    <span className="inline-flex max-w-full items-center rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold leading-4 text-primary">
+                      <span className="truncate">{orderBadgePreview}</span>
+                    </span>
+                  </div>
                   <p className="mt-1 text-[11px] text-gray-500">
-                    همین متن کنار دکمه «سفارش» نشان داده می‌شود — مثلاً «حداقل ۱ پک» یا هر عبارتی برای همان محصول.
+                    همین متن روی کارت عمده کنار دکمه «سفارش» ذخیره و نمایش داده می‌شود — مثلاً «حداقل ۱ پک» یا «حداقل سفارش ۶ عدد».
                   </p>
                 </div>
                 <p className="text-[11px] text-gray-600">{packSummary}</p>

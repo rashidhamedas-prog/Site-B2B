@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-10-01 — **TASK-20261001-001 implementing** on `ai/TASK-20261001-001-order-badge-catalog`. Root: catalog normalize dropped `orderBadgeLabel` after SSR slim. Fix + admin live preview coded; not live until merge/deploy + card verify (COATS00013).
+
 - Last verified: 2026-09-30 — **TASK-20260930-003 LIVE** on `origin/master` `7c92e9c`. Wholesale TLS1.2 restored (ECDSA leaf + ECDHE-ECDSA ciphers). Windows curl apex/ir 200; openssl TLS1.2 ECDHE-ECDSA; health 200. Claims released. Independent Reviewer + Security residual (TLS edge).
 
 - Last verified: 2026-09-30 — **TASK-20260930-002 LIVE** on `origin/master` + VPS `6f45818`. Omnichannel admin manual publish root-fix: connectors-only gate, upsert, live-by-destination CREATE/UPDATE. Health 200; API marker present. Claims released. Independent Reviewer + Security residual (connectors). Admin click not exercised.

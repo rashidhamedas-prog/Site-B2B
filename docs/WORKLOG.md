@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-01 — برچسب کارت عمده روی کاتالوگ اعمال نمی‌شد
+
+- ریشه: ذخیره ادمین سالم بود (`orderBadgeLabel` در API)، ولی `normalizeCatalogProduct` هنگام hydrate SSR فیلد را می‌انداخت و `skipNextFetch` روی `/products` همان دادهٔ ناقص را نگه می‌داشت → کارت همیشه «حداقل N پک».
+- اصلاح: helper نرمال‌سازی مشترک با حفظ badge + پیش‌نمایش زنده در ادمین.
+- گزارش: `docs/reports/2026-10-01-order-badge-catalog-normalize.md`.
+
 ## 2026-09-30 — قطعی TLS عمده: cipher RSA روی گواهی ECDSA
 
 - ریشه: leaf Let's Encrypt ECDSA (YE2) + `ssl_ciphers` فقط `ECDHE-RSA-*` روی apex `.com` و `www.ir` → TLS 1.2 handshake fail؛ TLS 1.3 سالم بود و API سبز.

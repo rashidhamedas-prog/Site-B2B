@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T00:00:00Z — TASK-20261001-001 implementing (order badge catalog)
+
+- Owner: cursor:implementer-TASK-20261001-001
+- Branch: `ai/TASK-20261001-001-order-badge-catalog`
+- Symptom: Admin «برچسب کارت عمده» saves (API has `orderBadgeLabel`) but `/products` cards stay on default «حداقل N پک».
+- Root: `normalizeCatalogProduct` omitted `orderBadgeLabel`; SSR seed + `skipNextFetch` never rehydrated the field.
+- Plan: extract/normalize helper with badge+color fields; live admin chip preview; spec; deploy web.
+- Next: implement + verify COATS00013 (`حداقل سفارش 6 عدد`) on live cards.
+
 ## 2026-09-30T13:50:00Z — TASK-20260930-003 CLOSED (wholesale TLS1.2 ECDSA cipher)
 
 - Owner: cursor:implementer-TASK-20260930-003

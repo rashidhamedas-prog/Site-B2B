@@ -12,6 +12,10 @@ import { catalogActiveFilterCount, type CatalogFilterValues } from '@/lib/catalo
 import { CatalogActiveChips } from '@/components/catalog/CatalogFilterRail';
 import { CatalogFilters } from '@/components/catalog/CatalogFilters';
 import { WholesaleProductCard } from './WholesaleProductCard';
+import {
+  normalizeCatalogProduct,
+  type WholesaleCatalogProduct,
+} from './normalize-catalog-product';
 
 export interface CatalogSearchParams {
   fabric?: string;
@@ -23,60 +27,7 @@ export interface CatalogSearchParams {
   inStock?: string;
 }
 
-interface Product {
-  id: string;
-  slug: string;
-  sku: string;
-  name: string;
-  fabric: string;
-  wholesalePrice: number;
-  sale?: {
-    active?: boolean;
-    payable?: number;
-    original?: number | null;
-    badgePercent?: number;
-  };
-  status: string;
-  stock?: number;
-  wholesaleStock?: number;
-  totalStock?: number;
-  images: string[];
-  sizeType?: string;
-  minOrderQty?: number;
-  variants: { id: string; color: string; colorHex?: string; stock: number; wholesaleStock?: number; size?: string }[];
-}
-
-function normalizeCatalogProduct(raw: Record<string, unknown> | Product): Product {
-  const variants = Array.isArray(raw.variants) ? raw.variants : [];
-  return {
-    id: String(raw.id ?? ''),
-    slug: String(raw.slug ?? ''),
-    sku: String(raw.sku ?? ''),
-    name: String(raw.name ?? ''),
-    fabric: String(raw.fabric ?? ''),
-    wholesalePrice: Number(raw.wholesalePrice ?? 0),
-    sale: raw.sale && typeof raw.sale === 'object' ? (raw.sale as Product['sale']) : undefined,
-    status: String(raw.status ?? 'ACTIVE'),
-    wholesaleStock: typeof raw.wholesaleStock === 'number' ? raw.wholesaleStock : undefined,
-    stock: typeof raw.wholesaleStock === 'number' ? raw.wholesaleStock : undefined,
-    totalStock: typeof raw.wholesaleStock === 'number' ? raw.wholesaleStock : undefined,
-    images: Array.isArray(raw.images) ? (raw.images as string[]) : [],
-    sizeType: typeof raw.sizeType === 'string' ? raw.sizeType : undefined,
-    minOrderQty: typeof raw.minOrderQty === 'number' ? raw.minOrderQty : undefined,
-    variants: variants.map((v) => {
-      const row = v as { id?: string; color?: string; colorHex?: string; stock?: number; wholesaleStock?: number; size?: string };
-      const wholesale = Number(row.wholesaleStock ?? 0);
-      return {
-        id: String(row.id ?? ''),
-        color: String(row.color ?? ''),
-        colorHex: row.colorHex,
-        wholesaleStock: wholesale,
-        stock: wholesale,
-        size: row.size,
-      };
-    }),
-  };
-}
+type Product = WholesaleCatalogProduct;
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'جدیدترین' },
@@ -183,7 +134,7 @@ export function ProductCatalog({
       setLoading(true);
       try {
         const res = await apiClient.get<{ data: Product[]; meta: { total: number } }>(`/products?${buildQuery()}`);
-        setProducts(res.data);
+        setProducts((res.data ?? []).map((row) => normalizeCatalogProduct(row)));
         setTotal(res.meta?.total ?? 0);
       } catch {
         setProducts([]);
