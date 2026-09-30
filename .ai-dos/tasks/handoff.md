@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-30T13:50:00Z — TASK-20260930-003 CLOSED (wholesale TLS1.2 ECDSA cipher)
+
+- Owner: cursor:implementer-TASK-20260930-003
+- Ship: `7c92e9c` on `origin/master`. VPS nginx already hotfixed + force-recreated; git HEAD sync via autodeploy.
+- Evidence (recheck): Windows curl `poshaktaranom.com` 200; `.ir` 200; health 200; openssl TLS1.2 `ECDHE-ECDSA-AES256-GCM-SHA384`.
+- Claims released. Independent Reviewer + Security residual (TLS edge).
+- Slack MCP unreachable this close-out; no Slack incident thread found earlier.
+
 ## 2026-09-30T12:50:00Z — TASK-20260930-003 LIVE (wholesale TLS1.2 ECDSA cipher)
 
 - Owner: cursor:implementer-TASK-20260930-003
