@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-30T12:50:00Z — TASK-20260930-003 LIVE (wholesale TLS1.2 ECDSA cipher)
+
+- Owner: cursor:implementer-TASK-20260930-003
+- Root: ECDSA LE leaf + `ssl_ciphers` ECDHE-RSA-only on apex `.com` and www `.ir` → TLS1.2 alert; TLS1.3 masked for Chromium; www→apex redirect amplified outage.
+- Fix: ECDHE-ECDSA suites in `nginx/nginx.conf`; `auto-deploy.sh` `--force-recreate` nginx (stale bind-mount inode).
+- Live: VPS nginx recreated; Windows curl apex 200; openssl TLS1.2 ECDHE-ECDSA; health 200.
+- Report: `docs/reports/2026-09-30-wholesale-tls12-ecdsa-cipher-fix.md`.
+- Claims released after commit/push. Independent Reviewer + Security residual (TLS).
+
 ## 2026-09-30T07:20:00Z — TASK-20260930-002 LIVE (omnichannel manual publish rootfix)
 
 - Owner: cursor:implementer-TASK-20260930-002

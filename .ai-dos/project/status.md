@@ -1,5 +1,7 @@
 # Project Status
 
+- Last verified: 2026-09-30 — **TASK-20260930-003 LIVE** on `origin/master` (pending ship tip) + VPS nginx force-recreated. ECDSA-compatible `ssl_ciphers` on apex `.com` + `www.ir`. Windows curl apex/ir 200; openssl TLS1.2 ECDHE-ECDSA. Health 200. Claims released. Independent Reviewer + Security residual (TLS edge).
+
 - Last verified: 2026-09-30 — **TASK-20260930-002 LIVE** on `origin/master` + VPS `6f45818`. Omnichannel admin manual publish root-fix: connectors-only gate, upsert, live-by-destination CREATE/UPDATE. Health 200; API marker present. Claims released. Independent Reviewer + Security residual (connectors). Admin click not exercised.
 
 - Last verified: 2026-09-30 — **TASK-20260930-001 LIVE** on `origin/master` + VPS `734d788`. Zero-order CRM desk at `/admin/customers/marketing?mtab=zero`. Health 200; unauth zero-order 401. Claims released. SMS LIVE untouched. Independent Reviewer + Security residual (PII).

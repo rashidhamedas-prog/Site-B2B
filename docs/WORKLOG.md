@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-09-30 — قطعی TLS عمده: cipher RSA روی گواهی ECDSA
+
+- ریشه: leaf Let's Encrypt ECDSA (YE2) + `ssl_ciphers` فقط `ECDHE-RSA-*` روی apex `.com` و `www.ir` → TLS 1.2 handshake fail؛ TLS 1.3 سالم بود و API سبز.
+- اثر: کلاینت‌های Windows/Schannel و بسیاری از مسیرهای TLS1.2 سایت عمده را «بالا نمیاد» می‌دیدند؛ `www.com` سالم بود ولی به apex شکسته ریدایرکت می‌شد.
+- اصلاح: cipherهای ECDHE-ECDSA+RSA؛ `auto-deploy` روی nginx `--force-recreate` برای remount inode.
+- گزارش: `docs/reports/2026-09-30-wholesale-tls12-ecdsa-cipher-fix.md`.
+
 ## 2026-09-30 — کانال انتشار: ارسال دستی ریشه‌ای اصلاح شد
 
 - ریشه: ارسال دستی به `AUTO_PUBLISH` قفل بود → READY بی‌delivery؛ هر ارسال ردیف جدید می‌ساخت؛ live message per publication نه per destination.

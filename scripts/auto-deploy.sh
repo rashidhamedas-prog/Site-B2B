@@ -53,8 +53,9 @@ docker compose build api web worker worker-b
 
 echo "$(date -Is) starting containers..."
 docker compose up -d api web worker worker-b
-# Recreate nginx so new volume mounts (SEO Auto conf.d) apply. `restart` keeps old mounts.
-docker compose up -d nginx --no-deps
+# Force-recreate nginx: single-file bind of nginx.conf goes stale on inode replace
+# (git reset / rewrite); `up -d` alone can keep the old inode. Also remounts conf.d.
+docker compose up -d nginx --no-deps --force-recreate
 
 echo "$(date -Is) schema is TypeORM migrations only (no safety-net SQL)"
 
