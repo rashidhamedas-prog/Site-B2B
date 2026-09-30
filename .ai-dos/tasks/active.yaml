@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20260930-002"
     title: "Omnichannel admin: root-fix manual publish + live message identity"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260930-002"
     roles:
@@ -10,12 +10,14 @@ tasks:
       implementer: "cursor:implementer-TASK-20260930-002"
       reviewer: "required-independent-after-diff"
       security: "required-connectors-admin-publish"
-    branch: "fix/TASK-20260930-002-omni-manual-publish"
+    branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-09-30T06:50:00Z"
-    heartbeat_at: "2026-09-30T07:00:00Z"
+    heartbeat_at: "2026-09-30T07:20:00Z"
+    completed_at: "2026-09-30T07:20:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
       - "apps/api/src/modules/omnichannel/publication-automation.ts"
       - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
@@ -27,9 +29,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Reclaimed omnichannel.service + AdminOmnichannel from TASK-20260826-001
-      (already transferred/commented; hb 2026-09-02 stale). Shared meta reclaimed
-      from stale claimants (>24h). Connectors stay owner-gated; do not flip env.
+      LIVE 6f45818. Manual publish no longer requires AUTO_PUBLISH.
+      Connectors stay owner-gated. Independent Reviewer + Security residual.
     acceptance_criteria:
       - "Manual publish enqueues when CONNECTORS on even if AUTO_PUBLISH off"
       - "Manual publish fails loudly when CONNECTORS off (no silent READY)"

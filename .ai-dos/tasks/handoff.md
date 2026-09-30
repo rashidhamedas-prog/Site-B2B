@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-09-30T07:20:00Z — TASK-20260930-002 LIVE (omnichannel manual publish rootfix)
+
+- Owner: cursor:implementer-TASK-20260930-002
+- Ship: `6f45818` on `origin/master`; VPS HEAD `6f45818`; api/web/workers recreated (~07:12Z).
+- Evidence: `/v1/health` 200; live API bundle contains `canEnqueueManualDelivery` + `foldLiveRemoteMessages`; home TTFB unchanged (~0.03s).
+- Claims released. Independent Reviewer + Security residual (admin publish / connectors). Do not flip connector env unless owner asks.
+- Admin click path not exercised this session (login wall).
+
 ## 2026-09-30T07:00:00Z — TASK-20260930-002 implementing (omnichannel manual publish rootfix)
 
 - Owner: cursor:implementer-TASK-20260930-002
