@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T00:20:00Z — TASK-20261001-001 LIVE (order badge catalog)
+
+- Owner: cursor:implementer-TASK-20261001-001
+- Ship: `df52c3d` on `origin/master`; VPS HEAD `df52c3d`; web recreated.
+- Evidence: COATS00013 card DOM = «حداقل سفارش 6 عدد» (was «حداقل ۱ پک»); HTML contains custom badge; health 200.
+- Specs: normalize-catalog-product / wholesale-order-badge / slim-wholesale ok; web tsc 0.
+- Claims released. Independent Reviewer residual (catalog normalize path).
+
 ## 2026-10-01T00:00:00Z — TASK-20261001-001 implementing (order badge catalog)
 
 - Owner: cursor:implementer-TASK-20261001-001

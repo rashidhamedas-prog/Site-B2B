@@ -2,19 +2,21 @@ schema_version: 1
 tasks:
   - id: "TASK-20261001-001"
     title: "Preserve orderBadgeLabel through wholesale catalog normalize"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261001-001"
     roles:
       architect: "cursor:implementer-TASK-20261001-001"
       implementer: "cursor:implementer-TASK-20261001-001"
       reviewer: "required-after-diff"
-    branch: "ai/TASK-20261001-001-order-badge-catalog"
+    branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-01T00:00:00Z"
-    heartbeat_at: "2026-10-01T00:00:00Z"
+    heartbeat_at: "2026-10-01T00:20:00Z"
+    completed_at: "2026-10-01T00:20:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/wholesale/ProductCatalog.tsx"
       - "apps/web/src/components/wholesale/normalize-catalog-product.ts"
       - "apps/web/src/components/wholesale/normalize-catalog-product.spec.ts"
@@ -25,13 +27,7 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Root: SSR seed slim keeps orderBadgeLabel; ProductCatalog.normalizeCatalogProduct dropped it;
-      skipNextFetch kept stripped hydrate on clean /products. Admin save was fine (API had custom text).
-    acceptance_criteria:
-      - "normalizeCatalogProduct preserves orderBadgeLabel (and wholesale color flags)"
-      - "COATS00013 card shows saved custom badge text after deploy"
-      - "Admin pricing shows live chip preview of resolveWholesaleOrderBadge"
-      - "spec + web tsc pass"
+      LIVE df52c3d. Root was catalog hydrate drop, not admin save. COATS00013 shows custom badge.
   - id: "TASK-20260930-003"
     title: "Fix wholesale TLS1.2 outage (ECDSA cert + RSA-only ssl_ciphers)"
     status: "done"
