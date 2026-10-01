@@ -1,8 +1,41 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261001-003"
+    title: "Sales partner UX redesign (landing apply + partner panel)"
+    status: "implementing"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261001-003"
+    roles:
+      architect: "cursor:implementer-TASK-20261001-003"
+      implementer: "cursor:implementer-TASK-20261001-003"
+      reviewer: "required-after-diff"
+    branch: "ai/TASK-20261001-003-sales-partner-ux"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-01T00:35:00Z"
+    heartbeat_at: "2026-10-01T00:35:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/sales-partners/"
+      - "apps/web/src/app/sales-partners/"
+      - "apps/web/src/app/confirm/sales-partner/"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-01-sales-partner-ux-redesign.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Presentation-only UX redesign for /sales-partnership apply + /sales-partners panel.
+      No API/ledger/attribution changes. No invented commission %.
+      Reclaimed SalesPartnershipApply from TASK-20261001-002 (landing shipped e446724).
+    acceptance_criteria:
+      - "Partner shell has icon bottom nav + shared SpButton/SpSkeleton/toast"
+      - "Apply form is stepped and matches brand tokens"
+      - "Catalog copy link has live feedback; new order is 3-step wizard"
+      - "Customer confirm page has clear trust + totals hierarchy"
+      - "apps/web tsc passes; public /sales-partnership and /sales-partners/login 200"
   - id: "TASK-20261001-002"
     title: "Retail sales-partner recruitment landing (CMS + nav)"
-    status: "implementing"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261001-002"
     roles:
@@ -12,9 +45,11 @@ tasks:
     branch: "ai/TASK-20261001-002-sales-partner-landing"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-01T00:25:00Z"
-    heartbeat_at: "2026-10-01T00:55:00Z"
+    heartbeat_at: "2026-10-01T00:30:00Z"
+    completed_at: "2026-10-01T00:30:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/app/retail/sales-partnership/"
       - "apps/web/src/components/retail/RetailFeatureCards.tsx"
       - "apps/web/src/components/retail/RetailProcessSteps.tsx"
@@ -39,7 +74,7 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      CMS landing at /sales-partnership with retail chrome, process infographic, #apply CTAs. No invented commission %.
+      LIVE e446724 on origin/master. Claims released; Apply reclaimed by TASK-20261001-003 for UX polish.
   - id: "TASK-20261001-001"
     title: "Preserve orderBadgeLabel through wholesale catalog normalize"
     status: "done"

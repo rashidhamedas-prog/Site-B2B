@@ -7,7 +7,8 @@ import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
 import { extractSmsCooldown } from '@/lib/sms-cooldown';
-import { SalesPartnerShell } from './SalesPartnerShell';
+import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, SpNote, spField } from './SalesPartnerShell';
+import { SpButton, SpPageSkeleton, SpStepRail } from './SpUi';
 
 type CatalogItem = {
   id: string;
@@ -32,10 +33,12 @@ type Draft = {
 };
 
 const LOCAL_DRAFT_KEY = 'taranom.sales-partner.order-draft.v1';
+const STEPS = ['کالا', 'مشتری', 'پیامک'];
 
 export function SalesPartnerNewOrder() {
   const params = useSearchParams();
   const presetId = params.get('productId');
+  const [step, setStep] = useState(0);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [detail, setDetail] = useState<ProductDetail | null>(null);
@@ -126,8 +129,9 @@ export function SalesPartnerNewOrder() {
       });
       setDraft(created);
       setConfirmOpen(true);
+      setStep(2);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ساخت پیش‌سفارش ناموفق بود');
+      setError(err instanceof Error ? err.message : 'ساخت سفارش ناموفق بود');
     } finally {
       setBusy(false);
     }
@@ -157,120 +161,153 @@ export function SalesPartnerNewOrder() {
 
   return (
     <SalesPartnerShell title="سفارش جدید">
-      <p className="text-sm text-stone-600">
-        تا وقتی مشتری لینک را تأیید نکند سفارشی ثبت یا مبلغی دریافت نمی‌شود. قیمت از سرور خوانده می‌شود.
-        اگر ارتباط قطع شود، مقادیر همین فرم روی دستگاه شما می‌ماند.
-      </p>
-      {error && <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">{error}</p>}
-      {catalogLoading && <p className="mt-6 text-sm text-stone-600" role="status">در حال بارگذاری محصولات…</p>}
+      <SpNote>
+        تا وقتی مشتری لینک را تأیید نکند سفارشی ثبت یا مبلغی دریافت نمی‌شود. اگر ارتباط قطع شود، مقادیر همین فرم روی
+        دستگاه شما می‌ماند.
+      </SpNote>
+      <div className="mt-4">
+        <SpStepRail steps={STEPS} current={step} />
+      </div>
+      {error && <SpAlert>{error}</SpAlert>}
+      {catalogLoading && <SpPageSkeleton cards={1} />}
       {!catalogLoading && catalog.length === 0 && (
-        <p className="mt-6 text-sm text-stone-600">محصول قابل فروشی برای شما فعال نشده است.</p>
+        <SpEmpty>محصول قابل فروشی برای شما فعال نشده است.</SpEmpty>
       )}
 
-      <form
-        className="mt-5 space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void createDraft();
-        }}
-      >
-        <div>
-          <label className="mb-1 block text-sm" htmlFor="sp-product">محصول</label>
-          <select
-            id="sp-product"
-            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
-            value={productId}
-            onChange={(e) => setProductId(e.target.value)}
-            required
-          >
-            {catalog.map((item) => (
-              <option key={item.id} value={item.id}>{item.name}</option>
-            ))}
-          </select>
-        </div>
-        {detail && detail.variants.length > 0 && (
+      {!catalogLoading && catalog.length > 0 && step === 0 && (
+        <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm" htmlFor="sp-variant">رنگ و سایز</label>
+            <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-product">
+              محصول
+            </label>
             <select
-              id="sp-variant"
-              className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
-              value={variantId}
-              onChange={(e) => setVariantId(e.target.value)}
+              id="sp-product"
+              className={spField}
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+              required
             >
-              {detail.variants.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.color} / {row.size} — {row.stockLabel}
+              {catalog.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
                 </option>
               ))}
             </select>
           </div>
-        )}
-        {selected && (
-          <p className="text-sm text-stone-600">
-            قیمت فعلی {toman(selected.priceIrr)} تومان · {variant?.stockLabel || selected.stockLabel} · پورسانت تخمینی {toman(selected.estimatedCommissionIrr)} تومان
-          </p>
-        )}
-        <div>
-          <label className="mb-1 block text-sm" htmlFor="sp-qty">تعداد</label>
-          <input
-            id="sp-qty"
-            type="number"
-            min={1}
-            max={20}
-            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value))}
-            required
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm" htmlFor="sp-phone">موبایل مشتری</label>
-          <input
-            id="sp-phone"
-            inputMode="numeric"
-            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm" htmlFor="sp-name">نام مشتری (اختیاری)</label>
-          <input
-            id="sp-name"
-            className="min-h-11 w-full rounded-2xl border border-stone-300 bg-white px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        <button
-          type="submit"
-          className="min-h-11 w-full rounded-2xl bg-[#1B5C4A] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]"
-          disabled={busy || !productId}
-        >
-          مرور و ارسال لینک تأیید
-        </button>
-      </form>
-
-      {confirmOpen && draft && (
-        <section className="mt-6 rounded-2xl border p-4" role="dialog" aria-labelledby="sp-review-title">
-          <h2 id="sp-review-title" className="font-bold">مرور قبل از پیامک</h2>
-          <p className="mt-2 text-sm">مبلغ کالا: {toman(draft.merchandiseIrr)} تومان</p>
-          <p className="text-sm">پورسانت تخمینی: {toman(draft.estimatedCommissionIrr)} تومان</p>
-          <p className="mt-2 text-sm text-stone-600">برای مشتری پیامک می‌شود که تا تأیید خودش سفارشی ثبت نمی‌شود.</p>
-          <div className="mt-3 flex gap-2">
-            <button type="button" className="min-h-11 flex-1 rounded-2xl bg-[#1B5C4A] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]" disabled={busy} onClick={() => void sendLink()}>
-              ارسال لینک تأیید
-            </button>
-            <button type="button" className="min-h-11 rounded-xl border px-4" onClick={() => setConfirmOpen(false)}>بازگشت</button>
+          {detail && detail.variants.length > 0 && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-variant">
+                رنگ و سایز
+              </label>
+              <select
+                id="sp-variant"
+                className={spField}
+                value={variantId}
+                onChange={(e) => setVariantId(e.target.value)}
+              >
+                {detail.variants.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.color} / {row.size} — {row.stockLabel}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {selected && (
+            <SpCard className="!bg-[#f6f3ee] text-sm leading-6 text-stone-700">
+              قیمت فعلی {toman(selected.priceIrr)} تومان · {variant?.stockLabel || selected.stockLabel} · پورسانت تخمینی{' '}
+              {toman(selected.estimatedCommissionIrr)} تومان
+            </SpCard>
+          )}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-qty">
+              تعداد
+            </label>
+            <input
+              id="sp-qty"
+              type="number"
+              min={1}
+              max={20}
+              className={spField}
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+              required
+            />
           </div>
-        </section>
+          <SpButton className="w-full" disabled={!productId} onClick={() => setStep(1)}>
+            ادامه: اطلاعات مشتری
+          </SpButton>
+        </div>
       )}
 
-      {draft && !confirmOpen && (
-        <div className="mt-6 space-y-3">
-          <p className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900" role="status">
-            وضعیت: {draft.statusLabel}.
+      {step === 1 && (
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-phone">
+              موبایل مشتری
+            </label>
+            <input
+              id="sp-phone"
+              inputMode="numeric"
+              className={spField}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              dir="ltr"
+              placeholder="09xxxxxxxxx"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-name">
+              نام مشتری (اختیاری)
+            </label>
+            <input id="sp-name" className={spField} value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <SpButton variant="secondary" onClick={() => setStep(0)}>
+              بازگشت
+            </SpButton>
+            <SpButton
+              disabled={busy || !productId || !phone.trim()}
+              onClick={() => void createDraft()}
+            >
+              {busy ? 'در حال آماده‌سازی…' : 'مرور و پیامک'}
+            </SpButton>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && confirmOpen && draft && (
+        <SpCard className="space-y-3" role="dialog" aria-labelledby="sp-review-title">
+          <h2 id="sp-review-title" className="font-bold text-stone-900">
+            مرور قبل از پیامک
+          </h2>
+          <p className="text-sm">مبلغ کالا: {toman(draft.merchandiseIrr)} تومان</p>
+          <p className="text-sm">پورسانت تخمینی: {toman(draft.estimatedCommissionIrr)} تومان</p>
+          <p className="text-sm leading-6 text-stone-600">
+            برای مشتری پیامک می‌شود که تا تأیید خودش سفارشی ثبت نمی‌شود و پرداخت فقط به ترنم است.
+          </p>
+          <div className="flex gap-2">
+            <SpButton className="flex-1" disabled={busy} onClick={() => void sendLink()}>
+              ارسال لینک تأیید
+            </SpButton>
+            <SpButton
+              variant="secondary"
+              onClick={() => {
+                setConfirmOpen(false);
+                setStep(1);
+              }}
+            >
+              بازگشت
+            </SpButton>
+          </div>
+        </SpCard>
+      )}
+
+      {step === 2 && draft && !confirmOpen && (
+        <div className="space-y-3">
+          <p className="rounded-2xl bg-emerald-50 p-4 text-sm leading-7 text-emerald-900" role="status">
+            وضعیت: {draft.statusLabel}. لینک برای مشتری ارسال شد.
           </p>
           <SmsResendButton
             secondsLeft={secondsLeft}
@@ -279,6 +316,9 @@ export function SalesPartnerNewOrder() {
             className="w-full"
             idleLabel="ارسال دوباره پیامک"
           />
+          <SpButton variant="secondary" className="w-full" onClick={() => { window.location.href = '/sales-partners/orders'; }}>
+            رفتن به فهرست سفارش‌ها
+          </SpButton>
         </div>
       )}
     </SalesPartnerShell>

@@ -16,13 +16,34 @@ export const SP_PARTNER_STATUS_FA: Record<string, string> = {
 };
 
 export const SP_DRAFT_STATUS_FA: Record<string, string> = {
-  DRAFT: 'پیش‌نویس',
+  DRAFT: 'در حال آماده‌سازی',
   AWAITING_CUSTOMER_CONFIRMATION: 'منتظر تأیید مشتری',
-  CONVERTED_TO_ORDER: 'تبدیل به سفارش',
-  REJECTED_BY_CUSTOMER: 'رد توسط مشتری',
-  EXPIRED: 'منقضی',
-  CANCELLED: 'لغو شده',
+  CONVERTED_TO_ORDER: 'خرید شد',
+  REJECTED_BY_CUSTOMER: 'مشتری رد کرد',
+  EXPIRED: 'منقضی شد',
+  CANCELLED: 'لغو شد',
 };
+
+/** Short next-step hint for partner order cards. */
+export function spDraftNextStep(status: string, stale?: boolean): string {
+  if (stale) return 'قیمت یا موجودی عوض شده؛ قبل از ارسال دوباره بررسی کنید.';
+  switch (status) {
+    case 'DRAFT':
+      return 'لینک تأیید را برای مشتری بفرستید.';
+    case 'AWAITING_CUSTOMER_CONFIRMATION':
+      return 'منتظر تصمیم مشتری روی پیامک هستید.';
+    case 'CONVERTED_TO_ORDER':
+      return 'پرداخت و ارسال با ترنم است؛ پورسانت بعد از تحویل حساب می‌شود.';
+    case 'REJECTED_BY_CUSTOMER':
+      return 'می‌توانید سفارش تازه‌ای بسازید.';
+    case 'EXPIRED':
+      return 'لینک منقضی شد؛ در صورت نیاز دوباره سفارش بسازید.';
+    case 'CANCELLED':
+      return 'این سفارش لغو شده است.';
+    default:
+      return 'جزئیات را باز کنید.';
+  }
+}
 
 export const SP_AUDIT_ACTION_FA: Record<string, string> = {
   'application.approved': 'تأیید درخواست',

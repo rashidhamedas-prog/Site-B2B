@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, SpNote, SpStatus } from '@/components/sales-partners/SalesPartnerShell';
-import { SpBarRow, SpKpi } from '@/components/sales-partners/SpUi';
+import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, SpNote, spSecondary } from '@/components/sales-partners/SalesPartnerShell';
+import { SpBarRow, SpKpi, SpPageSkeleton } from '@/components/sales-partners/SpUi';
 import { SP_DRAFT_STATUS_FA, formatSpDate } from '@/components/sales-partners/sp-labels';
 
 type PartnerReport = {
@@ -37,13 +37,9 @@ export default function SalesPartnerReportsPage() {
   return (
     <SalesPartnerShell title="گزارش">
       <SpNote>
-        این صفحه فقط عملکرد حساب خود شما را نشان می‌دهد. اعداد قابل‌برداشت را با تخمین کارت محصول یکی نگیرید.
+        فقط عملکرد حساب خودتان. عدد قابل‌برداشت را با تخمین کارت محصول یکی نگیرید.
       </SpNote>
-      {!report && !error && (
-        <div className="mt-4">
-          <SpStatus>در حال بارگذاری…</SpStatus>
-        </div>
-      )}
+      {!report && !error && <SpPageSkeleton />}
       {error && (
         <div className="mt-4">
           <SpAlert>{error}</SpAlert>
@@ -52,9 +48,9 @@ export default function SalesPartnerReportsPage() {
       {report && (
         <div className="mt-5 space-y-4">
           <section className="grid grid-cols-2 gap-2" aria-label="پورسانت">
-            <SpKpi label="نگهداری" value={`${toman(report.commissions.held)}`} hint="تومان" />
+            <SpKpi label="در انتظار آزادسازی" value={`${toman(report.commissions.held)}`} hint="تومان" />
             <SpKpi label="قابل‌برداشت" value={`${toman(report.commissions.available)}`} hint="تومان" accent />
-            <SpKpi label="پرداخت‌شده" value={`${toman(report.commissions.paid)}`} hint="تومان" />
+            <SpKpi label="واریزشده" value={`${toman(report.commissions.paid)}`} hint="تومان" />
             <SpKpi label="برگشت‌خورده" value={`${toman(report.commissions.reversed)}`} hint="تومان" />
           </section>
 
@@ -70,13 +66,13 @@ export default function SalesPartnerReportsPage() {
                 <p className="font-semibold tabular-nums">{report.drafts.awaiting.toLocaleString('fa-IR')}</p>
               </div>
               <div className="rounded-xl bg-[#f6f3ee] p-2">
-                <p className="text-xs text-stone-500">تبدیل</p>
+                <p className="text-xs text-stone-500">خرید</p>
                 <p className="font-semibold tabular-nums">{report.drafts.converted.toLocaleString('fa-IR')}</p>
               </div>
             </div>
             <div className="mt-4 space-y-2">
               {Object.keys(report.drafts.byStatus).length === 0 ? (
-                <SpEmpty>هنوز سفارشی برای گزارش نیست.</SpEmpty>
+                <SpEmpty>هنوز سفارشی برای گزارش نیست. از محصولات لینک بفرستید.</SpEmpty>
               ) : (
                 Object.entries(report.drafts.byStatus).map(([key, value]) => (
                   <SpBarRow key={key} label={SP_DRAFT_STATUS_FA[key] || key} value={value} max={max} />
@@ -91,16 +87,10 @@ export default function SalesPartnerReportsPage() {
           </p>
 
           <div className="grid gap-2">
-            <Link
-              href="/sales-partners/commissions"
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
-            >
+            <Link href="/sales-partners/commissions" className={spSecondary}>
               جزئیات پورسانت
             </Link>
-            <Link
-              href="/sales-partners/orders"
-              className="inline-flex min-h-11 items-center justify-center rounded-2xl border border-stone-300 bg-white px-4 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
-            >
+            <Link href="/sales-partners/orders" className={spSecondary}>
               فهرست سفارش‌ها
             </Link>
           </div>

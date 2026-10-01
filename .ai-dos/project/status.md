@@ -1,6 +1,7 @@
 # Project Status
 
-- Last verified: 2026-10-01 — **TASK-20261001-002 implementing** on `ai/TASK-20261001-002-sales-partner-landing`. Retail sales-partner recruitment landing (CMS `salesPartnership`, header nav, process infographic). Not live until merge/deploy. Did not invent commission %.
+- Last verified: 2026-10-01 — **TASK-20261001-003 implementing** on `ai/TASK-20261001-003-sales-partner-ux`. Partner panel + apply UX redesign (presentation-only). tsc 0. Not live until merge/deploy. Auth panel click residual.
+- Last verified: 2026-10-01 — **TASK-20261001-002 LIVE** on `origin/master` + VPS `e446724`. Retail `/sales-partnership` CMS landing + header/footer «همکار بازاریاب»; page 200; API health 200. No invented commission %. Claims released for UX follow-up on Apply.
 - Last verified: 2026-10-01 — **TASK-20261001-001 LIVE** on `origin/master` + VPS `df52c3d`. Wholesale card `orderBadgeLabel` preserved through catalog normalize; COATS00013 shows «حداقل سفارش 6 عدد»; health 200. Claims released. Independent Reviewer residual (catalog hydrate).
 
 - Last verified: 2026-09-30 — **TASK-20260930-003 LIVE** on `origin/master` `7c92e9c`. Wholesale TLS1.2 restored (ECDSA leaf + ECDHE-ECDSA ciphers). Windows curl apex/ir 200; openssl TLS1.2 ECDHE-ECDSA; health 200. Claims released. Independent Reviewer + Security residual (TLS edge).

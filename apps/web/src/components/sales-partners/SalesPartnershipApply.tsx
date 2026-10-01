@@ -2,12 +2,13 @@
 
 import { FormEvent, type ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { normalizePhone } from '@/lib/phone';
 import { extractSmsCooldown } from '@/lib/sms-cooldown';
+import { SpButton, SpStepRail, spFocusClass } from './SpUi';
 
 type PublicSettings = {
   enabled: boolean;
@@ -18,10 +19,7 @@ type PublicSettings = {
 
 type ApplyState = 'idle' | 'otp' | 'done';
 
-const inputClass =
-  'w-full min-h-11 rounded-xl border border-stone-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]';
-const buttonClass =
-  'w-full min-h-11 rounded-xl bg-[#1B5C4A] font-semibold text-white disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]';
+const inputClass = `w-full min-h-11 rounded-2xl border border-stone-300 bg-white px-3 py-2 transition-shadow ${spFocusClass}`;
 
 export function SalesPartnershipApply() {
   const [settings, setSettings] = useState<PublicSettings | null>(null);
@@ -102,6 +100,8 @@ export function SalesPartnershipApply() {
     }
   }
 
+  const stepIndex = state === 'idle' ? 0 : state === 'otp' ? 1 : 2;
+
   return (
     <section
       id="apply"
@@ -110,97 +110,163 @@ export function SalesPartnershipApply() {
       dir="rtl"
     >
       <div className="mx-auto max-w-xl text-right">
-      <p className="text-sm font-semibold tracking-wide text-[var(--retail-accent,#C9A84C)]">ثبت‌نام</p>
-      <h2 id="sales-partner-apply-heading" className="mt-2 text-2xl font-extrabold text-[var(--retail-ink,#0F2F28)]">
-        درخواست همکاری بازاریاب
-      </h2>
-      <p className="mt-3 text-sm leading-7 text-[var(--retail-muted,#5C6B66)]">
-        نام و موبایل را وارد کنید. پس از تأیید پیامک، درخواست برای بررسی ادمین می‌رود. تا تأیید،
-        سفارش نمی‌سازید. این نقش با تأمین‌کننده ارسال فرق دارد؛ کالا را انبار یا پست نمی‌کنید.
-      </p>
-
-      {loadError && (
-        <p className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
-          {loadError}
+        <p className="text-sm font-semibold tracking-wide text-[var(--retail-accent,#C9A84C)]">ثبت‌نام</p>
+        <h2 id="sales-partner-apply-heading" className="mt-2 text-2xl font-extrabold text-[var(--retail-ink,#0F2F28)]">
+          درخواست همکاری بازاریاب
+        </h2>
+        <p className="mt-3 text-sm leading-7 text-[var(--retail-muted,#5C6B66)]">
+          نام و موبایل را وارد کنید. بعد از تأیید پیامک، درخواست برای بررسی فروشگاه می‌رود. تا تأیید، لینک فروش و سفارش
+          نمی‌سازید. کالا را انبار یا پست نمی‌کنید.
         </p>
-      )}
 
-      {settings && !settings.applyOpen && (
-        <p className="mt-6 rounded-lg border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700" role="status">
-          ثبت‌نام عمومی الان باز نیست. اگر از قبل حساب دارید، از صفحه ورود همکاران بازاریاب وارد شوید.
+        <div className="mt-8 rounded-3xl border border-stone-200/80 bg-white/80 p-5 shadow-sm shadow-stone-900/5 backdrop-blur-sm sm:p-6">
+          {!loadError && settings?.applyOpen ? (
+            <SpStepRail steps={['اطلاعات', 'پیامک', 'نتیجه']} current={stepIndex} />
+          ) : null}
+
+          {loadError && (
+            <p className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
+              {loadError}
+            </p>
+          )}
+
+          {settings && !settings.applyOpen && (
+            <p className="rounded-2xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700" role="status">
+              ثبت‌نام عمومی الان باز نیست. اگر از قبل حساب دارید، از صفحه ورود همکاران بازاریاب وارد شوید.
+            </p>
+          )}
+
+          {settings?.applyOpen && state === 'idle' && (
+            <form className="space-y-4" onSubmit={submitApply}>
+              <Field label="نام نمایشی" htmlFor="displayName">
+                <input
+                  id="displayName"
+                  className={inputClass}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                  minLength={2}
+                  placeholder="مثلاً سارا"
+                />
+              </Field>
+              <Field label="شماره موبایل" htmlFor="phone">
+                <input
+                  id="phone"
+                  className={inputClass}
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  dir="ltr"
+                  placeholder="09xxxxxxxxx"
+                />
+              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="اینستاگرام (اختیاری)" htmlFor="instagram">
+                  <input
+                    id="instagram"
+                    className={inputClass}
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    placeholder="@username"
+                    dir="ltr"
+                  />
+                </Field>
+                <Field label="تلگرام (اختیاری)" htmlFor="telegram">
+                  <input
+                    id="telegram"
+                    className={inputClass}
+                    value={telegram}
+                    onChange={(e) => setTelegram(e.target.value)}
+                    placeholder="@username"
+                    dir="ltr"
+                  />
+                </Field>
+              </div>
+              <label className="flex items-start gap-2 text-sm leading-6 text-stone-700">
+                <input
+                  type="checkbox"
+                  className="mt-1 min-h-5 min-w-5 rounded border-stone-300"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  required
+                />
+                <span>
+                  <Link href="/sales-partnership/terms" className="font-medium text-[#1B5C4A] underline-offset-4 hover:underline">
+                    شرایط همکاری نسخه {settings.termsVersion}
+                  </Link>
+                  {' '}
+                  را خواندم و می‌پذیرم
+                  {settings.termsFinal ? '.' : ' (هنوز نسخه موقت است).'}
+                </span>
+              </label>
+              {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
+              <SpButton type="submit" className="w-full" disabled={busy}>
+                {busy ? 'در حال ارسال…' : 'ادامه و دریافت کد'}
+              </SpButton>
+            </form>
+          )}
+
+          {state === 'otp' && (
+            <form className="space-y-4" onSubmit={submitOtp}>
+              <p className="rounded-2xl bg-[#1B5C4A]/5 px-3 py-2 text-sm text-stone-700" role="status">
+                کد پیامک‌شده به <span dir="ltr" className="font-medium">{phone}</span> را وارد کنید.
+              </p>
+              <Field label="کد تأیید" htmlFor="code">
+                <input
+                  id="code"
+                  className={`${inputClass} text-center tracking-[0.35em]`}
+                  inputMode="numeric"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                  dir="ltr"
+                  autoComplete="one-time-code"
+                />
+              </Field>
+              {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
+              <SpButton type="submit" className="w-full" disabled={busy}>
+                {busy ? 'در حال بررسی…' : 'تأیید شماره'}
+              </SpButton>
+              <SmsResendButton secondsLeft={secondsLeft} onResend={() => void resendApplyOtp()} busy={resendBusy} />
+              <button
+                type="button"
+                className={`mx-auto flex items-center gap-1.5 text-sm text-stone-600 hover:text-stone-900 ${spFocusClass}`}
+                onClick={() => {
+                  setState('idle');
+                  setCode('');
+                  setError(null);
+                  reset();
+                }}
+              >
+                <ArrowRight className="h-4 w-4" />
+                تغییر شماره
+              </button>
+            </form>
+          )}
+
+          {state === 'done' && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm leading-7 text-emerald-950" role="status">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" aria-hidden />
+                <div>
+                  <p className="font-semibold">درخواست ثبت شد</p>
+                  <p className="mt-1">
+                    در انتظار بررسی فروشگاه هستید. تا تأیید، نمی‌توانید لینک بفرستید یا سفارش بسازید. بعد از تأیید، از صفحه
+                    ورود وارد پنل شوید.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <p className="mt-8 text-sm">
+          <Link className="font-medium text-[#1B5C4A] underline-offset-4 hover:underline" href="/sales-partners/login">
+            ورود به پنل همکار بازاریاب
+          </Link>
         </p>
-      )}
-
-      {settings?.applyOpen && state === 'idle' && (
-        <form className="mt-8 space-y-4" onSubmit={submitApply}>
-          <Field label="نام نمایشی" htmlFor="displayName">
-            <input id="displayName" className={inputClass} value={displayName} onChange={(e) => setDisplayName(e.target.value)} required minLength={2} />
-          </Field>
-          <Field label="شماره موبایل" htmlFor="phone">
-            <input id="phone" className={inputClass} inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          </Field>
-          <Field label="اینستاگرام (اختیاری)" htmlFor="instagram">
-            <input id="instagram" className={inputClass} value={instagram} onChange={(e) => setInstagram(e.target.value)} />
-          </Field>
-          <Field label="تلگرام (اختیاری)" htmlFor="telegram">
-            <input id="telegram" className={inputClass} value={telegram} onChange={(e) => setTelegram(e.target.value)} />
-          </Field>
-          <label className="flex items-start gap-2 text-sm text-stone-700">
-            <input type="checkbox" className="mt-1 min-h-5 min-w-5" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} required />
-            <span>
-              <Link href="/sales-partnership/terms" className="text-[#1B5C4A] underline-offset-4 hover:underline">
-                شرایط همکاری نسخه {settings.termsVersion}
-              </Link>
-              {' '}
-              را خواندم و می‌پذیرم
-              {settings.termsFinal ? '.' : ' (هنوز نسخه موقت است).'}
-            </span>
-          </label>
-          {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-          <button type="submit" className={buttonClass} disabled={busy}>
-            {busy ? 'در حال ارسال…' : 'ارسال درخواست و دریافت کد'}
-          </button>
-        </form>
-      )}
-
-      {state === 'otp' && (
-        <form className="mt-8 space-y-4" onSubmit={submitOtp}>
-          <p className="text-sm text-stone-700" role="status">کد پیامک‌شده به {phone} را وارد کنید.</p>
-          <Field label="کد تأیید" htmlFor="code">
-            <input id="code" className={inputClass} inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} required />
-          </Field>
-          {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
-          <button type="submit" className={buttonClass} disabled={busy}>
-            {busy ? 'در حال بررسی…' : 'تأیید شماره'}
-          </button>
-          <SmsResendButton secondsLeft={secondsLeft} onResend={() => void resendApplyOtp()} busy={resendBusy} />
-          <button
-            type="button"
-            className="mx-auto flex items-center gap-1.5 text-sm text-stone-600 hover:text-stone-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1B5C4A]"
-            onClick={() => {
-              setState('idle');
-              setCode('');
-              setError(null);
-              reset();
-            }}
-          >
-            <ArrowRight className="h-4 w-4" />
-            تغییر شماره
-          </button>
-        </form>
-      )}
-
-      {state === 'done' && (
-        <p className="mt-8 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
-          درخواست شما ثبت شد و در انتظار بررسی است. تا تأیید ادمین نمی‌توانید سفارش بسازید.
-        </p>
-      )}
-
-      <p className="mt-10 text-sm">
-        <Link className="text-[#1B5C4A] underline-offset-4 hover:underline" href="/sales-partners/login">
-          ورود به پنل همکار بازاریاب
-        </Link>
-      </p>
       </div>
     </section>
   );
@@ -208,7 +274,7 @@ export function SalesPartnershipApply() {
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <label htmlFor={htmlFor} className="block text-sm font-medium text-stone-800">
         {label}
       </label>

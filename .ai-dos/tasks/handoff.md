@@ -2,6 +2,23 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T01:15:00Z — TASK-20261001-003 implementing (sales-partner UX redesign)
+
+- Owner: cursor:implementer-TASK-20261001-003
+- Branch: `ai/TASK-20261001-003-sales-partner-ux`
+- Scope: presentation-only partner panel + apply + customer confirm. TASK-20261001-002 landing already LIVE e446724; Apply reclaimed for UX polish.
+- Gates: `apps/web` tsc 0. Smoke: landing/login/terms 200; public-settings enabled; me 401.
+- Residual: authenticated partner journeys need ACTIVE test account; catalog empty until eligibility.
+- Next: commit → merge master → deploy web → verify apply + login live.
+
+## 2026-10-01T00:35:00Z — TASK-20261001-002 LIVE (sales-partner landing)
+
+- Owner: cursor:implementer-TASK-20261001-002
+- Ship: `e446724` on `origin/master`; VPS HEAD `e446724`; web recreated.
+- Evidence: `https://www.poshaktaranom.ir/sales-partnership` **200**; HTML has nav `/sales-partnership`, `#apply`, FAQ/CTA blocks; local API health **200**.
+- Admin edit: `/admin/site-content?channel=RETAIL&page=salesPartnership`
+- No commission % invented. Independent Reviewer residual (CMS public SEO).
+
 ## 2026-10-01T00:55:00Z — TASK-20261001-002 implementing (sales-partner landing)
 
 - Owner: cursor:implementer-TASK-20261001-002

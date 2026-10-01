@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, SpNote, SpStatus } from '@/components/sales-partners/SalesPartnerShell';
+import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, SpNote } from '@/components/sales-partners/SalesPartnerShell';
+import { SpBadge, SpPageSkeleton } from '@/components/sales-partners/SpUi';
 
 type Payout = {
   id: string;
@@ -11,6 +13,13 @@ type Payout = {
   amountIrr: number;
   bankReferenceMasked: string | null;
   paidAt: string | null;
+};
+
+const PAYOUT_FA: Record<string, string> = {
+  PAID: 'واریزشده',
+  PENDING: 'در صف',
+  FAILED: 'ناموفق',
+  CANCELLED: 'لغو',
 };
 
 export default function SalesPartnerPayoutsPage() {
@@ -26,25 +35,38 @@ export default function SalesPartnerPayoutsPage() {
 
   return (
     <SalesPartnerShell title="تسویه">
-      <SpNote>فقط واریزی که فروشگاه با مرجع بانکی ثبت کرده اینجا دیده می‌شود.</SpNote>
-      {!rows && !error && (
-        <div className="mt-4" role="status">
-          <SpStatus>در حال بارگذاری…</SpStatus>
+      <SpNote>فقط واریزی که فروشگاه با مرجع بانکی ثبت کرده اینجا دیده می‌شود. درخواست برداشت دستی از این صفحه نیست.</SpNote>
+      {!rows && !error && <SpPageSkeleton cards={2} />}
+      {error && (
+        <div className="mt-4">
+          <SpAlert>{error}</SpAlert>
         </div>
       )}
-      {error && <div className="mt-4"><SpAlert>{error}</SpAlert></div>}
-      {rows && rows.length === 0 && !error && <div className="mt-4"><SpEmpty>هنوز تسویه‌ای ثبت نشده است.</SpEmpty></div>}
+      {rows && rows.length === 0 && !error && (
+        <div className="mt-4 space-y-3">
+          <SpEmpty>هنوز تسویه‌ای ثبت نشده است.</SpEmpty>
+          <p className="text-sm leading-7 text-stone-600">
+            شبا را در بخش حساب ثبت کنید تا وقتی مبلغ قابل‌برداشت به حد لازم برسد، فروشگاه بتواند واریز کند.
+          </p>
+          <Link href="/sales-partners/profile" className="inline-flex text-sm font-medium text-[#1B5C4A] underline-offset-4 hover:underline">
+            ثبت یا ویرایش شبا
+          </Link>
+        </div>
+      )}
       <ul className="mt-4 space-y-3">
         {(rows || []).map((row) => (
           <li key={row.id}>
             <SpCard>
-            <p className="font-medium tabular-nums">{toman(row.amountIrr)} تومان · {row.status}</p>
-            <p className="mt-1 text-stone-600">
-              {row.bankReferenceMasked}{' '}
-              {row.paidAt
-                ? `· ${new Date(row.paidAt).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran', dateStyle: 'medium' })}`
-                : ''}
-            </p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium tabular-nums text-stone-900">{toman(row.amountIrr)} تومان</p>
+                <SpBadge status={row.status} label={PAYOUT_FA[row.status] || row.status} />
+              </div>
+              <p className="mt-2 text-sm text-stone-600">
+                {row.bankReferenceMasked || 'بدون مرجع بانکی'}
+                {row.paidAt
+                  ? ` · ${new Date(row.paidAt).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran', dateStyle: 'medium' })}`
+                  : ''}
+              </p>
             </SpCard>
           </li>
         ))}

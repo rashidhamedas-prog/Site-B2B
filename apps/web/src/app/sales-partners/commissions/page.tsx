@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-import { SalesPartnerShell, SpAlert, SpCard, SpNote, SpStatus } from '@/components/sales-partners/SalesPartnerShell';
-import { SpKpi } from '@/components/sales-partners/SpUi';
+import { SalesPartnerShell, SpAlert, SpCard, SpNote, spPrimary, spSecondary } from '@/components/sales-partners/SalesPartnerShell';
+import { SpKpi, SpPageSkeleton } from '@/components/sales-partners/SpUi';
 
 type Balances = {
   held: number;
@@ -43,14 +43,10 @@ export default function SalesPartnerCommissionsPage() {
   return (
     <SalesPartnerShell title="پورسانت">
       <SpNote>
-        عدد این صفحه بعد از پرداخت سفارش ثبت می‌شود. تا تحویل و پایان نگهداری، قابل‌برداشت نیست. تخمین روی کارت محصول اینجا
-        نیست.
+        این عددها بعد از پرداخت سفارش ثبت می‌شوند. تا تحویل و پایان دوره نگهداری، قابل‌برداشت نیستند. تخمین روی کارت
+        محصول اینجا نیست.
       </SpNote>
-      {!data && !error && (
-        <div className="mt-4">
-          <SpStatus>در حال بارگذاری…</SpStatus>
-        </div>
-      )}
+      {!data && !error && <SpPageSkeleton />}
       {error && (
         <div className="mt-4">
           <SpAlert>{error}</SpAlert>
@@ -59,22 +55,16 @@ export default function SalesPartnerCommissionsPage() {
       {data && (
         <div className="mt-5 space-y-4">
           <section className="grid grid-cols-2 gap-2">
-            <SpKpi label="در نگهداری" value={toman(data.held)} hint="تومان" />
+            <SpKpi label="در انتظار آزادسازی" value={toman(data.held)} hint="تومان" />
             <SpKpi label="قابل‌برداشت" value={toman(data.available)} hint="تومان" accent />
-            <SpKpi label="پرداخت‌شده" value={toman(data.paid)} hint="تومان" />
+            <SpKpi label="واریزشده" value={toman(data.paid)} hint="تومان" />
             <SpKpi label="برگشت‌خورده" value={toman(data.reversed)} hint="تومان" />
           </section>
           <div className="flex gap-2">
-            <Link
-              href="/sales-partners/payouts"
-              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-2xl border border-stone-300 bg-white px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
-            >
+            <Link href="/sales-partners/payouts" className={`${spSecondary} flex-1`}>
               سوابق تسویه
             </Link>
-            <Link
-              href="/sales-partners/reports"
-              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-2xl bg-[#1B5C4A] px-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
-            >
+            <Link href="/sales-partners/reports" className={`${spPrimary} flex-1 !w-auto`}>
               گزارش کامل
             </Link>
           </div>
@@ -100,7 +90,12 @@ export default function SalesPartnerCommissionsPage() {
             </ul>
           ) : (
             <SpCard>
-              <p className="text-sm text-stone-600">هنوز ردیف دفتری ثبت نشده است.</p>
+              <p className="text-sm leading-7 text-stone-600">
+                هنوز ردیف دفتری ثبت نشده. وقتی مشتری از لینک شما خرید کند و پرداخت انجام شود، اینجا دیده می‌شود.
+              </p>
+              <Link href="/sales-partners/catalog" className="mt-3 inline-flex text-sm font-medium text-[#1B5C4A] underline-offset-4 hover:underline">
+                رفتن به محصولات
+              </Link>
             </SpCard>
           )}
         </div>

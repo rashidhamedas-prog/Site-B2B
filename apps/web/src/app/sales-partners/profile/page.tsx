@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
-import { SalesPartnerShell, SpAlert, SpCard, spField, spPrimary } from '@/components/sales-partners/SalesPartnerShell';
+import { SalesPartnerShell, SpAlert, SpCard, SpNote, spField } from '@/components/sales-partners/SalesPartnerShell';
+import { SpButton, SpPageSkeleton, useSpToast } from '@/components/sales-partners/SpUi';
 
 type Me = {
   displayName: string;
@@ -12,10 +13,10 @@ type Me = {
 };
 
 export default function SalesPartnerProfilePage() {
+  const toast = useSpToast();
   const [me, setMe] = useState<Me | null>(null);
   const [iban, setIban] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -28,12 +29,11 @@ export default function SalesPartnerProfilePage() {
   async function saveIban() {
     setBusy(true);
     setError(null);
-    setOk(null);
     try {
       const next = await apiClient.patch<Me>('/sales-partners/me/iban', { iban });
       setMe(next);
       setIban('');
-      setOk('شبا ذخیره شد. فقط ۴ رقم آخر نمایش داده می‌شود.');
+      toast.show('شبا ذخیره شد');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ذخیره شبا ناموفق بود');
     } finally {
@@ -43,13 +43,24 @@ export default function SalesPartnerProfilePage() {
 
   return (
     <SalesPartnerShell title="حساب">
-      {error && <SpAlert>{error}</SpAlert>}
-      {ok && <p className="rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-900" role="status">{ok}</p>}
+      <SpNote>
+        شبا برای واریز پورسانت لازم است. شماره کارت کامل ذخیره نمی‌شود؛ فقط شبا. در نمایش فقط چند رقم آخر دیده می‌شود.
+      </SpNote>
+      {error && (
+        <div className="mt-4">
+          <SpAlert>{error}</SpAlert>
+        </div>
+      )}
+      {!me && !error && <SpPageSkeleton cards={1} />}
       {me && (
         <SpCard className="mt-4 text-sm">
-          <p className="text-lg font-semibold">{me.displayName}</p>
-          <p className="mt-1 text-stone-600">{me.statusLabel} · {me.phoneMasked}</p>
-          <p className="mt-3">شبا: {me.ibanMasked || 'هنوز ثبت نشده'}</p>
+          <p className="text-lg font-semibold text-stone-900">{me.displayName}</p>
+          <p className="mt-1 text-stone-600">
+            {me.statusLabel} · <span dir="ltr">{me.phoneMasked}</span>
+          </p>
+          <p className="mt-3 rounded-xl bg-[#f6f3ee] px-3 py-2">
+            شبا فعلی: {me.ibanMasked || 'هنوز ثبت نشده'}
+          </p>
         </SpCard>
       )}
       <form
@@ -59,19 +70,23 @@ export default function SalesPartnerProfilePage() {
           void saveIban();
         }}
       >
-        <label className="block text-sm" htmlFor="sp-iban">شماره شبا</label>
+        <label className="block text-sm font-medium" htmlFor="sp-iban">
+          شماره شبا جدید
+        </label>
         <input
           id="sp-iban"
           className={spField}
           value={iban}
           onChange={(e) => setIban(e.target.value)}
-          placeholder="IR..."
+          placeholder="IR… (۲۴ رقم بعد از IR)"
           autoComplete="off"
+          dir="ltr"
           required
         />
-        <button type="submit" className={spPrimary} disabled={busy}>
-          ذخیره شبا
-        </button>
+        <p className="text-xs leading-5 text-stone-500">مثال شکل: IR120170000000123456789001</p>
+        <SpButton type="submit" className="w-full" disabled={busy}>
+          {busy ? 'در حال ذخیره…' : 'ذخیره شبا'}
+        </SpButton>
       </form>
     </SalesPartnerShell>
   );
