@@ -9,6 +9,7 @@ export const CMS_PAGE_KEYS_BASE = [
   { key: 'collections', label: 'کالکشن‌ها' },
   { key: 'privacy', label: 'حریم خصوصی' },
   { key: 'terms', label: 'شرایط و قوانین' },
+  { key: 'salesPartnership', label: 'همکار بازاریاب' },
 ] as const;
 
 export const CMS_WHOLESALE_ONLY = { key: 'wholesale', label: 'شرایط عمده' } as const;

@@ -206,6 +206,7 @@ export function pageSitemapUrls(channel: SitemapChannel): SitemapUrl[] {
     { loc: `${origin}/blog`, changefreq: 'weekly', priority: '0.65' },
     { loc: `${origin}/about`, changefreq: 'monthly', priority: '0.6' },
     { loc: `${origin}/contact`, changefreq: 'monthly', priority: '0.6' },
+    { loc: `${origin}/sales-partnership`, changefreq: 'weekly', priority: '0.7' },
     { loc: `${origin}/shipping`, changefreq: 'monthly', priority: '0.45' },
     { loc: `${origin}/returns`, changefreq: 'monthly', priority: '0.45' },
     { loc: `${origin}/privacy`, changefreq: 'yearly', priority: '0.3' },

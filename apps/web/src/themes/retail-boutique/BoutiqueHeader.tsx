@@ -20,6 +20,7 @@ const PRIMARY_NAV = [
   { href: '/products', label: 'جدیدترین‌ها' },
   { href: '/collections', label: 'کلکسیون' },
   { href: '/blog', label: 'وبلاگ' },
+  { href: '/sales-partnership', label: 'همکار بازاریاب' },
   { href: '/about', label: 'درباره ما' },
 ];
 

@@ -123,6 +123,8 @@ const nextConfig: NextConfig = {
       { source: '/returns', destination: '/retail/returns' },
       { source: '/privacy', destination: '/retail/privacy' },
       { source: '/terms', destination: '/retail/terms' },
+      { source: '/sales-partnership', destination: '/retail/sales-partnership' },
+      { source: '/sales-partnership/:path*', destination: '/retail/sales-partnership/:path*' },
     ];
     return {
       beforeFiles: retailHosts.flatMap((host) =>

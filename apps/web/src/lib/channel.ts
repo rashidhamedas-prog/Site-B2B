@@ -33,7 +33,6 @@ export function isChannelExemptPath(pathname: string): boolean {
     pathname.startsWith('/portal') ||
     pathname.startsWith('/partners') ||
     isSalesPartnerPanelPath(pathname) ||
-    pathname.startsWith('/sales-partnership') ||
     pathname.startsWith('/confirm/sales-partner') ||
     pathname.startsWith('/go/sp/') ||
     pathname.startsWith('/api') ||

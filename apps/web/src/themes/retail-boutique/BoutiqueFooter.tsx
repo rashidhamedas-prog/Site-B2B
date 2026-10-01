@@ -29,6 +29,7 @@ const COLS = [
     title: 'ترنم',
     links: [
       { href: '/about', label: 'درباره ما' },
+      { href: '/sales-partnership', label: 'همکار بازاریاب' },
       { href: '/contact', label: 'تماس' },
       { href: '/blog', label: 'وبلاگ' },
       { href: 'https://poshaktaranom.com', label: 'سایت بوتیک‌داران' },

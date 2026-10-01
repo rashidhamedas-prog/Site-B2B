@@ -7,6 +7,8 @@ import { RetailFaq } from '@/components/retail/RetailFaq';
 import { RetailProductGrid } from '@/components/retail/RetailProductGrid';
 import { RetailCategoryBannerGrid } from '@/components/retail/RetailCategoryBannerGrid';
 import { RetailCtaBanner } from '@/components/retail/RetailCtaBanner';
+import { RetailFeatureCards } from '@/components/retail/RetailFeatureCards';
+import { RetailProcessSteps } from '@/components/retail/RetailProcessSteps';
 import { RetailTrustStrip, RETAIL_TRUST_FALLBACK, type TrustItem } from '@/components/retail/RetailTrustStrip';
 import { RetailHomeCategoryLinks } from '@/components/retail/RetailHomeCategoryLinks';
 import { resolveHomeCategoryMaxItems } from '@/lib/catalog/category-storefront';
@@ -111,12 +113,33 @@ export async function RetailBlocksRenderer({
             ctaHref={str(p, 'ctaHref') || undefined}
             ctaSecondaryLabel={str(p, 'ctaSecondaryLabel') || undefined}
             ctaSecondaryHref={str(p, 'ctaSecondaryHref') || undefined}
+            headingAs={str(p, 'headingAs') === 'h1' ? 'h1' : 'h2'}
           />,
         );
         break;
       case 'features':
-      case 'comingSoon':
+        nodes.push(
+          <RetailFeatureCards
+            key={block.id}
+            eyebrow={str(p, 'eyebrow') || undefined}
+            headline={str(p, 'headline') || undefined}
+            body={str(p, 'body') || undefined}
+            items={arr(p, 'items')}
+          />,
+        );
+        break;
       case 'process':
+        nodes.push(
+          <RetailProcessSteps
+            key={block.id}
+            eyebrow={str(p, 'eyebrow') || undefined}
+            headline={str(p, 'headline') || undefined}
+            body={str(p, 'body') || undefined}
+            steps={arr(p, 'steps')}
+          />,
+        );
+        break;
+      case 'comingSoon':
       case 'testimonials':
         break;
       default:

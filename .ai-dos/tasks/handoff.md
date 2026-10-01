@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T00:55:00Z — TASK-20261001-002 implementing (sales-partner landing)
+
+- Owner: cursor:implementer-TASK-20261001-002
+- Branch: `ai/TASK-20261001-002-sales-partner-landing`
+- Scope: retail `/sales-partnership` CMS landing + header nav «همکار بازاریاب» + process/features render + apply `#apply`.
+- Key: pageKey `salesPartnership`; rewrite in next.config; removed channel exempt for landing (panel still exempt); SVG step assets; no commission % invented.
+- Gates: `apps/web` tsc 0.
+- Next: WORKLOG, commit, merge/push master, deploy web, verify live `.ir/sales-partnership` + nav link.
+
 ## 2026-10-01T00:20:00Z — TASK-20261001-001 LIVE (order badge catalog)
 
 - Owner: cursor:implementer-TASK-20261001-001

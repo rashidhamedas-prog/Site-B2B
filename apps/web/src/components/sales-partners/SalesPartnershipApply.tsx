@@ -103,20 +103,20 @@ export function SalesPartnershipApply() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-xl px-4 py-10 text-right" dir="rtl">
-      <p className="text-sm text-stone-500">
-        <Link href="/" className="underline-offset-4 hover:underline">
-          بازگشت به فروشگاه
-        </Link>
-      </p>
-      <h1 className="mt-4 text-2xl font-bold text-stone-900">همکاری بازاریاب با ترنم</h1>
-      <p className="mt-3 text-sm leading-7 text-stone-700">
-        شما محصول را معرفی و مشتری را برای تصمیم‌گیری راهنمایی می‌کنید. ترنم قیمت، موجودی، پرداخت،
-        بسته‌بندی، ارسال و پشتیبانی سفارش را انجام می‌دهد. پورسانت هر سفارش پس از تحویل و پایان مهلت
-        مرجوعی قابل‌برداشت می‌شود.
-      </p>
-      <p className="mt-2 text-sm text-stone-600">
-        این نقش با «تأمین‌کننده ارسال» فرق دارد. کالا را انبار یا ارسال نمی‌کنید.
+    <section
+      id="apply"
+      className="scroll-mt-24 border-t border-[var(--retail-border,#E8E2D9)] bg-[var(--retail-bg,#F6F1E8)] px-4 py-14 sm:px-6 sm:py-16"
+      aria-labelledby="sales-partner-apply-heading"
+      dir="rtl"
+    >
+      <div className="mx-auto max-w-xl text-right">
+      <p className="text-sm font-semibold tracking-wide text-[var(--retail-accent,#C9A84C)]">ثبت‌نام</p>
+      <h2 id="sales-partner-apply-heading" className="mt-2 text-2xl font-extrabold text-[var(--retail-ink,#0F2F28)]">
+        درخواست همکاری بازاریاب
+      </h2>
+      <p className="mt-3 text-sm leading-7 text-[var(--retail-muted,#5C6B66)]">
+        نام و موبایل را وارد کنید. پس از تأیید پیامک، درخواست برای بررسی ادمین می‌رود. تا تأیید،
+        سفارش نمی‌سازید. این نقش با تأمین‌کننده ارسال فرق دارد؛ کالا را انبار یا پست نمی‌کنید.
       </p>
 
       {loadError && (
@@ -201,7 +201,8 @@ export function SalesPartnershipApply() {
           ورود به پنل همکار بازاریاب
         </Link>
       </p>
-    </main>
+      </div>
+    </section>
   );
 }
 

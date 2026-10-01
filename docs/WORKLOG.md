@@ -1,5 +1,14 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-01 — لندینگ جذب همکار بازاریاب (تک‌فروشی)
+
+- مسیر `/sales-partnership` به درخت retail منتقل شد (هدر/فوتر فروشگاه) با rewrite در `next.config`.
+- محتوای CMS با `pageKey=salesPartnership` در `/admin/site-content` قابل ویرایش: هیرو CTA، ویژگی‌ها، اینفوگرافی ۵مرحله‌ای، مقاله کوتاه، FAQ، CTA پایانی + فرم `#apply`.
+- بلوک‌های `process`/`features` روی retail رندر شدند؛ تصویر هر مرحله از ادمین قابل تنظیم است.
+- لینک «همکار بازاریاب» به هدر/فوتر classic و boutique اضافه شد.
+- سئو: metadata CMS، canonical، JSON-LD WebPage+Breadcrumb، sitemap؛ بدون عدد پورسانت ساختگی.
+- گزارش: `docs/reports/2026-10-01-sales-partner-landing.md`.
+
 ## 2026-10-01 — برچسب کارت عمده روی کاتالوگ اعمال نمی‌شد
 
 - ریشه: ذخیره ادمین سالم بود (`orderBadgeLabel` در API)، ولی `normalizeCatalogProduct` هنگام hydrate SSR فیلد را می‌انداخت و `skipNextFetch` روی `/products` همان دادهٔ ناقص را نگه می‌داشت → کارت همیشه «حداقل N پک».

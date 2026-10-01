@@ -756,7 +756,13 @@ function BlockFields({
 
   if (block.type === 'process') {
     const steps = Array.isArray(p.steps)
-      ? (p.steps as Array<{ step?: string; title?: string; description?: string }>)
+      ? (p.steps as Array<{
+          step?: string;
+          title?: string;
+          description?: string;
+          image?: string;
+          imageAlt?: string;
+        }>)
       : [];
     return (
       <div className="space-y-3">
@@ -768,7 +774,7 @@ function BlockFields({
         <ItemListEditor
           items={steps}
           onChange={(next) => set('steps', next)}
-          blank={{ step: '', title: '', description: '' }}
+          blank={{ step: '', title: '', description: '', image: '', imageAlt: '' }}
           addLabel="افزودن مرحله"
           renderItem={(item, _i, update) => (
             <div className="space-y-2 pr-6">
@@ -790,6 +796,19 @@ function BlockFields({
                 value={item.description ?? ''}
                 onChange={(v) => update({ description: v })}
               />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field
+                  label="تصویر مرحله (URL)"
+                  value={item.image ?? ''}
+                  dir="ltr"
+                  onChange={(v) => update({ image: v })}
+                />
+                <Field
+                  label="متن جایگزین تصویر"
+                  value={item.imageAlt ?? ''}
+                  onChange={(v) => update({ imageAlt: v })}
+                />
+              </div>
             </div>
           )}
         />
@@ -1242,6 +1261,12 @@ function BlockFields({
       )}
       {block.type === 'cta' && (
         <>
+          <Field
+            label="سطح عنوان (h1 فقط یک‌بار در صفحه)"
+            value={str(p, 'headingAs') || 'h2'}
+            dir="ltr"
+            onChange={(v) => set('headingAs', v === 'h1' ? 'h1' : 'h2')}
+          />
           <Field
             label="متن دکمه دوم"
             value={str(p, 'ctaSecondaryLabel')}

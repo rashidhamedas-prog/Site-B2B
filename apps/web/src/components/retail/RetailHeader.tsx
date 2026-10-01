@@ -21,6 +21,7 @@ const STATIC_NAV = [
   { href: '/products', label: 'جدیدترین‌ها' },
   { href: '/collections', label: 'کلکسیون' },
   { href: '/blog', label: 'وبلاگ' },
+  { href: '/sales-partnership', label: 'همکار بازاریاب' },
   { href: '/about', label: 'درباره ما' },
   { href: '/contact', label: 'تماس با ما' },
 ];

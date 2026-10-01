@@ -35,6 +35,7 @@ export function RetailCtaBanner({
   ctaHref,
   ctaSecondaryLabel,
   ctaSecondaryHref,
+  headingAs = 'h2',
 }: {
   eyebrow?: string;
   headline?: string;
@@ -43,8 +44,11 @@ export function RetailCtaBanner({
   ctaHref?: string;
   ctaSecondaryLabel?: string;
   ctaSecondaryHref?: string;
+  /** Use h1 once per page (e.g. sales-partnership landing hero). */
+  headingAs?: 'h1' | 'h2';
 }) {
   if (!headline && !ctaLabel) return null;
+  const HeadingTag = headingAs;
 
   return (
     <section className="relative overflow-hidden bg-[var(--retail-primary-dark)] px-4 py-14 text-white sm:px-6 sm:py-16">
@@ -63,7 +67,9 @@ export function RetailCtaBanner({
           </p>
         ) : null}
         {headline ? (
-          <h2 className="text-pretty text-2xl font-extrabold leading-snug sm:text-3xl">{headline}</h2>
+          <HeadingTag className="text-pretty text-2xl font-extrabold leading-snug sm:text-3xl">
+            {headline}
+          </HeadingTag>
         ) : null}
         {body ? (
           <p className="mx-auto mt-4 max-w-lg text-sm leading-8 text-white/75">{body}</p>

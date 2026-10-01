@@ -13,6 +13,7 @@ const RETAIL_APP_PATHS: Record<string, string[]> = {
   collections: ['/retail/collections'],
   privacy: ['/retail/privacy'],
   terms: ['/retail/terms'],
+  salesPartnership: ['/retail/sales-partnership'],
 };
 
 const WHOLESALE_PATHS: Record<string, string[]> = {
