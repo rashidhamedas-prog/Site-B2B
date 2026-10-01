@@ -1,5 +1,38 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261001-004"
+    title: "Sales-partner landing contrast + hero banner"
+    status: "implementing"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261001-004"
+    roles:
+      architect: "cursor:implementer-TASK-20261001-004"
+      implementer: "cursor:implementer-TASK-20261001-004"
+      reviewer: "required-after-diff"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-01T00:45:00Z"
+    heartbeat_at: "2026-10-01T00:45:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/retail/RetailCtaBanner.tsx"
+      - "apps/web/src/components/retail/RetailProcessSteps.tsx"
+      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
+      - "apps/web/src/lib/cms/defaults.ts"
+      - "apps/web/public/sales-partner/hero-banner.webp"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-01-sales-partner-hero-contrast.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Hotfix: globals.css h1–h6 gray-900 overrode inherited white on dark green CTA/process.
+      Ship AI hero plate + !text-white. Reclaimed WORKLOG/meta briefly from TASK-003 for this hotfix only.
+    acceptance_criteria:
+      - "Hero and process headings/body readable white on dark green"
+      - "Hero shows /sales-partner/hero-banner.webp with overlay"
+      - "apps/web tsc passes; live /sales-partnership 200 with white H1"
   - id: "TASK-20261001-003"
     title: "Sales partner UX redesign (landing apply + partner panel)"
     status: "implementing"
@@ -18,15 +51,11 @@ tasks:
       - "apps/web/src/components/sales-partners/"
       - "apps/web/src/app/sales-partners/"
       - "apps/web/src/app/confirm/sales-partner/"
-      - "docs/WORKLOG.md"
       - "docs/reports/2026-10-01-sales-partner-ux-redesign.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     notes: |
       Presentation-only UX redesign for /sales-partnership apply + /sales-partners panel.
       No API/ledger/attribution changes. No invented commission %.
-      Reclaimed SalesPartnershipApply from TASK-20261001-002 (landing shipped e446724).
+      WORKLOG/meta temporarily released to TASK-20261001-004 contrast hotfix; reclaim after 004 ships.
     acceptance_criteria:
       - "Partner shell has icon bottom nav + shared SpButton/SpSkeleton/toast"
       - "Apply form is stepped and matches brand tokens"

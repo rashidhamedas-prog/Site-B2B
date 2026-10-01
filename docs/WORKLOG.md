@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-01 — کنتراست هیرو همکار بازاریاب + بنر حرفه‌ای
+
+- ریشه: قانون سراسری `h1–h6` در `globals.css` رنگ خاکستری تیره می‌گذاشت و تیتر/متن روی بنر سبز تیره خوانا نبود.
+- اصلاح: `!text-white` روی تیتر و بدنهٔ `RetailCtaBanner` و `RetailProcessSteps`؛ بنر WebP برند (`/sales-partner/hero-banner.webp`) با گرادیان خوانایی + فیلد تصویر در ادمین.
+- گزارش: `docs/reports/2026-10-01-sales-partner-hero-contrast.md`.
+
 ## 2026-10-01 — بازطراحی UX همکار بازاریاب (لندینگ + پنل)
 
 - Presentation-only: kit مشترک `SpButton` / toast / skeleton / step rail و bottom-nav آیکون‌دار با pill متحرک.

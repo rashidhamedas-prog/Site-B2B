@@ -44,11 +44,16 @@ export function RetailProcessSteps({
             </p>
           ) : null}
           {headline ? (
-            <h2 id="retail-process-heading" className="text-2xl font-extrabold sm:text-3xl">
+            <h2
+              id="retail-process-heading"
+              className="text-2xl font-extrabold !text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.25)] sm:text-3xl"
+            >
               {headline}
             </h2>
           ) : null}
-          {body ? <p className="mt-3 text-sm leading-7 text-white/70 sm:text-base">{body}</p> : null}
+          {body ? (
+            <p className="mt-3 text-sm leading-7 !text-white/80 sm:text-base">{body}</p>
+          ) : null}
         </div>
 
         <ol className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5 lg:gap-4">
@@ -84,9 +89,11 @@ export function RetailProcessSteps({
                     مرحله {item.step}
                   </p>
                 ) : null}
-                {item.title ? <h3 className="text-base font-bold">{item.title}</h3> : null}
+                {item.title ? (
+                  <h3 className="text-base font-bold !text-white">{item.title}</h3>
+                ) : null}
                 {item.description ? (
-                  <p className="text-sm leading-7 text-white/65">{item.description}</p>
+                  <p className="text-sm leading-7 !text-white/70">{item.description}</p>
                 ) : null}
               </div>
             </li>

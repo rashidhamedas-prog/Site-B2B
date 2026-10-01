@@ -1261,6 +1261,19 @@ function BlockFields({
       )}
       {block.type === 'cta' && (
         <>
+          <div className="sm:col-span-2">
+            <ImageUrlField
+              label="تصویر پس‌زمینه بنر (اختیاری)"
+              value={str(p, 'imageUrl')}
+              hint="مثلاً /sales-partner/hero-banner.webp — متن روی گرادیان تیره خوانا می‌ماند"
+              onChange={(v) => set('imageUrl', v)}
+            />
+          </div>
+          <Field
+            label="آلت تصویر بنر"
+            value={str(p, 'imageAlt')}
+            onChange={(v) => set('imageAlt', v)}
+          />
           <Field
             label="سطح عنوان (h1 فقط یک‌بار در صفحه)"
             value={str(p, 'headingAs') || 'h2'}

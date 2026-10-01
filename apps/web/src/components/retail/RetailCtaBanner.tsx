@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { ChevronLeft } from 'lucide-react';
@@ -36,6 +37,9 @@ export function RetailCtaBanner({
   ctaSecondaryLabel,
   ctaSecondaryHref,
   headingAs = 'h2',
+  imageUrl,
+  imageAlt,
+  priority = false,
 }: {
   eyebrow?: string;
   headline?: string;
@@ -46,20 +50,45 @@ export function RetailCtaBanner({
   ctaSecondaryHref?: string;
   /** Use h1 once per page (e.g. sales-partnership landing hero). */
   headingAs?: 'h1' | 'h2';
+  /** Optional full-bleed background plate (LCP when priority). */
+  imageUrl?: string;
+  imageAlt?: string;
+  priority?: boolean;
 }) {
   if (!headline && !ctaLabel) return null;
   const HeadingTag = headingAs;
+  const hasPlate = Boolean(imageUrl);
 
   return (
-    <section className="relative overflow-hidden bg-[var(--retail-primary-dark)] px-4 py-14 text-white sm:px-6 sm:py-16">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.12]"
-        style={{
-          background:
-            'radial-gradient(ellipse 50% 70% at 80% 20%, rgba(201,168,76,0.55), transparent 60%)',
-        }}
-        aria-hidden
-      />
+    <section className="relative overflow-hidden bg-[var(--retail-primary-dark)] px-4 py-14 text-white sm:px-6 sm:py-16 md:py-20">
+      {hasPlate ? (
+        <>
+          <Image
+            src={imageUrl!}
+            alt={imageAlt || ''}
+            fill
+            priority={priority}
+            fetchPriority={priority ? 'high' : 'auto'}
+            loading={priority ? 'eager' : 'lazy'}
+            sizes="100vw"
+            className="object-cover object-center"
+          />
+          {/* Keep copy readable over fashion plate — left/center darken for RTL text. */}
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-l from-[#0F2F28]/55 via-[#0F2F28]/82 to-[#0F2F28]/94"
+            aria-hidden
+          />
+        </>
+      ) : (
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.12]"
+          style={{
+            background:
+              'radial-gradient(ellipse 50% 70% at 80% 20%, rgba(201,168,76,0.55), transparent 60%)',
+          }}
+          aria-hidden
+        />
+      )}
       <div className="relative mx-auto max-w-2xl text-center">
         {eyebrow ? (
           <p className="mb-3 text-[11px] font-semibold tracking-[0.2em] text-[var(--retail-gold)]">
@@ -67,12 +96,12 @@ export function RetailCtaBanner({
           </p>
         ) : null}
         {headline ? (
-          <HeadingTag className="text-pretty text-2xl font-extrabold leading-snug sm:text-3xl">
+          <HeadingTag className="text-pretty text-2xl font-extrabold leading-snug !text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.35)] sm:text-3xl md:text-4xl">
             {headline}
           </HeadingTag>
         ) : null}
         {body ? (
-          <p className="mx-auto mt-4 max-w-lg text-sm leading-8 text-white/75">{body}</p>
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-8 !text-white/85 sm:text-base">{body}</p>
         ) : null}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           {ctaLabel && ctaHref ? (
@@ -87,7 +116,7 @@ export function RetailCtaBanner({
           {ctaSecondaryLabel && ctaSecondaryHref ? (
             <Action
               href={ctaSecondaryHref}
-              className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-[var(--retail-gold)]/60 px-7 text-sm font-bold text-[var(--retail-gold)] transition-colors duration-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
+              className="inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-[var(--retail-gold)]/60 bg-black/25 px-7 text-sm font-bold text-[var(--retail-gold)] backdrop-blur-sm transition-colors duration-200 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)]"
             >
               {ctaSecondaryLabel}
             </Action>

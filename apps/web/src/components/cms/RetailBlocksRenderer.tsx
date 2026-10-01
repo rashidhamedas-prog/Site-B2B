@@ -114,6 +114,9 @@ export async function RetailBlocksRenderer({
             ctaSecondaryLabel={str(p, 'ctaSecondaryLabel') || undefined}
             ctaSecondaryHref={str(p, 'ctaSecondaryHref') || undefined}
             headingAs={str(p, 'headingAs') === 'h1' ? 'h1' : 'h2'}
+            imageUrl={str(p, 'imageUrl') || undefined}
+            imageAlt={str(p, 'imageAlt') || undefined}
+            priority={str(p, 'headingAs') === 'h1' && Boolean(str(p, 'imageUrl'))}
           />,
         );
         break;

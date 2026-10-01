@@ -890,6 +890,8 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           ctaSecondaryLabel: 'ورود همکاران',
           ctaSecondaryHref: '/sales-partners/login',
           headingAs: 'h1',
+          imageUrl: '/sales-partner/hero-banner.webp',
+          imageAlt: 'بنر همکاری بازاریاب پوشاک ترنم — لینن و فضای برند سبز و طلایی',
         }),
         b('features', {
           eyebrow: 'چرا این نقش ساده است',

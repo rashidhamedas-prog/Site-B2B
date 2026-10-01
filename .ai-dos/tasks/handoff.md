@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T01:40:00Z — TASK-20261001-004 implementing (hero contrast + banner)
+
+- Owner: cursor:implementer-TASK-20261001-004
+- Root: `globals.css` sets `h1–h6 { color: gray-900 }` so CTA/process titles stayed black on forest green despite parent `text-white`.
+- Fix: `!text-white` on RetailCtaBanner + RetailProcessSteps headings/body; AI hero plate `/sales-partner/hero-banner.webp` (~66KB) wired via CMS `imageUrl`.
+- Reclaimed WORKLOG/meta from TASK-003 for hotfix only (003 keeps sales-partners/confirm claims).
+- Gates: `apps/web` tsc 0.
+- Next: commit → push master → auto-deploy → verify live white H1 + banner.
+
 ## 2026-10-01T01:15:00Z — TASK-20261001-003 implementing (sales-partner UX redesign)
 
 - Owner: cursor:implementer-TASK-20261001-003
