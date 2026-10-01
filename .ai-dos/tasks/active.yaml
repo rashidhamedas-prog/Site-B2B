@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261001-004"
     title: "Sales-partner landing contrast + hero banner"
-    status: "implementing"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261001-004"
     roles:
@@ -12,9 +12,11 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-01T00:45:00Z"
-    heartbeat_at: "2026-10-01T00:45:00Z"
+    heartbeat_at: "2026-10-01T01:05:00Z"
+    completed_at: "2026-10-01T01:05:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/retail/RetailCtaBanner.tsx"
       - "apps/web/src/components/retail/RetailProcessSteps.tsx"
       - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
@@ -27,8 +29,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
+      LIVE in c6ec94d (under origin/master c453c75). Live HTML has !text-white H1/H2 + hero-banner.webp.
       Hotfix: globals.css h1–h6 gray-900 overrode inherited white on dark green CTA/process.
-      Ship AI hero plate + !text-white. Reclaimed WORKLOG/meta briefly from TASK-003 for this hotfix only.
     acceptance_criteria:
       - "Hero and process headings/body readable white on dark green"
       - "Hero shows /sales-partner/hero-banner.webp with overlay"
