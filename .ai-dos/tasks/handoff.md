@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T01:25:00Z — TASK-20261001-005 LIVE (sales-partner SEO-GEO)
+
+- Owner: cursor:implementer-TASK-20261001-005
+- Ship: `b5d0f05` on `origin/master`; VPS deploy complete at `b5d0f05`.
+- Live meta: title + description + canonical `.ir/sales-partnership` + OG hero-banner.webp.
+- Admin: open **تک‌فروشی (RETAIL)** → همکار بازاریاب (دیگر در تب عمده نیست).
+- Claims released.
+
 ## 2026-10-01T01:20:00Z — TASK-20261001-005 implementing (sales-partner SEO-GEO)
 
 - Owner: cursor:implementer-TASK-20261001-005

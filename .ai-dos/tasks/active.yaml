@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261001-005"
     title: "Sales-partner RETAIL SEO fill (SEO-GEO)"
-    status: "implementing"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261001-005"
     roles:
@@ -12,9 +12,11 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-01T01:10:00Z"
-    heartbeat_at: "2026-10-01T01:10:00Z"
+    heartbeat_at: "2026-10-01T01:25:00Z"
+    completed_at: "2026-10-01T01:25:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/cms/page-keys.ts"
       - "apps/web/src/lib/cms/default-page-seo.ts"
       - "apps/web/src/lib/cms/default-page-seo.spec.ts"
@@ -28,7 +30,7 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
       - ".ai-dos/tasks/handoff.md"
     notes: |
-      Fill salesPartnership SEO for RETAIL only; remove from WHOLESALE tabs; seed production site_contents SEO.
+      LIVE b5d0f05. Production site_contents RETAIL SEO upserted. Wholesale tab removed for this page.
     acceptance_criteria:
       - "Admin RETAIL salesPartnership shows full SEO defaults"
       - "Wholesale admin no longer lists salesPartnership"
