@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T01:05:00Z — TASK-20261001-004 LIVE (hero contrast + banner)
+
+- Owner: cursor:implementer-TASK-20261001-004
+- Ship: `c6ec94d` on `origin/master` (tip includes later chore closes).
+- Live: `https://www.poshaktaranom.ir/sales-partnership` **200**; H1/H2 have `!text-white`; HTML references `/sales-partner/hero-banner.webp`; asset in web container (~66KB).
+- Root fixed: globals.css gray-900 on headings over dark green CTA/process.
+- Claims released. Independent Reviewer residual (visual contrast).
+
 ## 2026-10-01T00:46:00Z — TASK-20261001-003 LIVE (sales-partner UX redesign)
 
 - Owner: cursor:implementer-TASK-20261001-003
