@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T01:20:00Z — TASK-20261001-005 implementing (sales-partner SEO-GEO)
+
+- Owner: cursor:implementer-TASK-20261001-005
+- Fill RETAIL SEO defaults; remove salesPartnership from WHOLESALE admin keys; upsert production `site_contents` SEO.
+- Live meta already shows title/desc/canonical/OG from DB after upsert.
+- Next: commit + deploy web for admin UX; close task.
+
 ## 2026-10-01T01:05:00Z — TASK-20261001-004 LIVE (hero contrast + banner)
 
 - Owner: cursor:implementer-TASK-20261001-004

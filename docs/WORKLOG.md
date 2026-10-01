@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-01 — سئوی تخصصی لندینگ همکار بازاریاب (RETAIL)
+
+- قرارداد SEO-GEO: صفحه فقط کانال تک‌فروشی (`.ir`)؛ از تب عمده حذف شد تا canonical اشتباه `.com` ساخته نشود.
+- متای پیش‌فرض: title/description بدون درصد پورسانت، canonical `https://www.poshaktaranom.ir/sales-partnership`، OG بنر `/sales-partner/hero-banner.webp`، robots=index.
+- ادمین: بارگذاری خودکار پیش‌فرض وقتی ردیف DB نیست؛ «پیش‌فرض این صفحه» و seed هم SEO را می‌نویسند.
+- ردیف `site_contents` RETAIL/salesPartnership در production با SEO پر شد (blocks خالی → محتوای کد پیش‌فرض).
+- گزارش: `docs/reports/2026-10-01-sales-partner-seo-geo.md`.
+
 ## 2026-10-01 — کنتراست هیرو همکار بازاریاب + بنر حرفه‌ای
 
 - ریشه: قانون سراسری `h1–h6` در `globals.css` رنگ خاکستری تیره می‌گذاشت و تیتر/متن روی بنر سبز تیره خوانا نبود.

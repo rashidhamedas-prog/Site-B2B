@@ -12,8 +12,10 @@ export async function generateMetadata() {
   return metadataForCmsPage('RETAIL', PAGE_KEY, {
     title: 'همکار بازاریاب پوشاک ترنم | معرفی بدون موجودی',
     description:
-      'پوشاک ترنم را معرفی کنید؛ موجودی، پرداخت و ارسال با ترنم است. ثبت‌نام همکار بازاریاب در پنل اختصاصی — بدون انبار و بدون دریافت پول از مشتری.',
+      'پوشاک ترنم را معرفی کنید؛ موجودی، پرداخت امن و ارسال با ترنم است. ثبت‌نام همکار بازاریاب در پنل اختصاصی — بدون انبار و بدون دریافت پول از مشتری.',
     canonical: `${RETAIL_ORIGIN}/sales-partnership`,
+    ogImage: `${RETAIL_ORIGIN}/sales-partner/hero-banner.webp`,
+    ogAlt: 'همکار بازاریاب پوشاک ترنم — معرفی محصول بدون موجودی و ارسال با برند',
   });
 }
 
@@ -26,11 +28,15 @@ function jsonLd() {
         '@type': 'WebPage',
         '@id': `${pageUrl}#webpage`,
         url: pageUrl,
-        name: 'همکار بازاریاب پوشاک ترنم',
+        name: 'همکار بازاریاب پوشاک ترنم | معرفی بدون موجودی',
         description:
-          'معرفی محصول پوشاک ترنم بدون موجودی و بدون دریافت پول از مشتری؛ پورسانت پس از تحویل طبق قوانین برنامه.',
+          'پوشاک ترنم را معرفی کنید؛ موجودی، پرداخت امن و ارسال با ترنم است. ثبت‌نام همکار بازاریاب بدون انبار و بدون دریافت پول از مشتری.',
         inLanguage: 'fa-IR',
         isPartOf: { '@type': 'WebSite', name: 'پوشاک ترنم', url: RETAIL_ORIGIN },
+        primaryImageOfPage: {
+          '@type': 'ImageObject',
+          url: `${RETAIL_ORIGIN}/sales-partner/hero-banner.webp`,
+        },
       },
       {
         '@type': 'BreadcrumbList',

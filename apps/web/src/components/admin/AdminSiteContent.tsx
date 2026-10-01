@@ -24,6 +24,7 @@ import {
 import { productsBlockPropsForSave, productsBlockSaveRegressed } from '@/lib/cms/products-block';
 import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { getDefaultBlocks } from '@/lib/cms/defaults';
+import { getDefaultPageSeo, getDefaultPageTitle } from '@/lib/cms/default-page-seo';
 import { cn } from '@/lib/cn';
 
 interface SiteContent {
@@ -165,19 +166,36 @@ export function AdminSiteContent() {
         data = (Array.isArray(list) ? list : []).find((x) => x.pageKey === pageKey) ?? null;
       }
       const label = cmsPageLabel(channel, pageKey);
-      setTitle(data?.title || label);
-      setBlocks(Array.isArray(data?.blocks) ? (data!.blocks as ContentBlock[]) : []);
-      setSeo(normalizeCmsPageSeo(data?.seo));
-      setIsPublished(data?.isPublished !== false);
-      setLastSavedAt(data?.updatedAt || null);
-      setDirty(false);
+      if (!data) {
+        const defaultSeo = getDefaultPageSeo(channel, pageKey);
+        const defaultBlocks = getDefaultBlocks(channel, pageKey);
+        const hasSeoDefault = Boolean(defaultSeo.title || defaultSeo.description || defaultSeo.canonical);
+        setTitle(getDefaultPageTitle(channel, pageKey, label));
+        setBlocks(hasSeoDefault || pageKey === 'salesPartnership' ? defaultBlocks : []);
+        setSeo(hasSeoDefault ? defaultSeo : emptyCmsPageSeo());
+        setIsPublished(true);
+        setLastSavedAt(null);
+        setDirty(hasSeoDefault || pageKey === 'salesPartnership');
+        return;
+      }
+      setTitle(data.title || label);
+      setBlocks(Array.isArray(data.blocks) ? (data.blocks as ContentBlock[]) : []);
+      const loadedSeo = normalizeCmsPageSeo(data.seo);
+      const defaultSeo = getDefaultPageSeo(channel, pageKey);
+      const seoEmpty = !loadedSeo.title && !loadedSeo.description && !loadedSeo.canonical && !loadedSeo.ogImage;
+      setSeo(seoEmpty && (defaultSeo.title || defaultSeo.canonical) ? defaultSeo : loadedSeo);
+      setIsPublished(data.isPublished !== false);
+      setLastSavedAt(data.updatedAt || null);
+      setDirty(seoEmpty && Boolean(defaultSeo.title || defaultSeo.canonical));
     } catch {
-      setTitle(cmsPageLabel(channel, pageKey));
-      setBlocks([]);
-      setSeo(emptyCmsPageSeo());
+      const label = cmsPageLabel(channel, pageKey);
+      const defaultSeo = getDefaultPageSeo(channel, pageKey);
+      setTitle(getDefaultPageTitle(channel, pageKey, label));
+      setBlocks(pageKey === 'salesPartnership' ? getDefaultBlocks(channel, pageKey) : []);
+      setSeo(defaultSeo.title ? defaultSeo : emptyCmsPageSeo());
       setIsPublished(true);
       setLastSavedAt(null);
-      setDirty(false);
+      setDirty(Boolean(defaultSeo.title));
     } finally {
       setLoading(false);
     }
@@ -279,7 +297,8 @@ export function AdminSiteContent() {
   const loadDefaults = () => {
     if (blocks.length > 0 && !confirm('محتوای فعلی جایگزین پیش‌فرض‌ها می‌شود. ادامه؟')) return;
     setBlocks(getDefaultBlocks(channel, pageKey));
-    if (!title) setTitle(cmsPageLabel(channel, pageKey));
+    setSeo(getDefaultPageSeo(channel, pageKey));
+    setTitle(getDefaultPageTitle(channel, pageKey, cmsPageLabel(channel, pageKey)));
     setDirty(true);
   };
 
@@ -295,13 +314,15 @@ export function AdminSiteContent() {
     try {
       for (const p of pageKeys) {
         const defaults = getDefaultBlocks(channel, p.key);
+        const defaultSeo = getDefaultPageSeo(channel, p.key);
         const savedRow = await apiClient.put<SiteContent>(
           `/cms/admin/site-content?channel=${encodeURIComponent(channel)}`,
           {
             channel,
             pageKey: p.key,
-            title: p.label,
+            title: getDefaultPageTitle(channel, p.key, p.label),
             blocks: prepareBlocksForSave(defaults as ContentBlock[], channel),
+            seo: cmsPageSeoForSave(defaultSeo),
             isPublished: true,
           },
         );
@@ -487,8 +508,16 @@ export function AdminSiteContent() {
             <fieldset className="space-y-3 rounded-xl border border-gray-100 p-4">
               <legend className="px-1 text-sm font-semibold text-gray-800">سئوی همین صفحه</legend>
               <p className="text-[11px] text-gray-500">
-                اگر خالی بماند، عنوان/شرح پیش‌فرض تنظیمات کانال استفاده می‌شود. کانونیکال خالی می‌شود{' '}
+                اگر خالی بماند، عنوان/شرح پیش‌فرض کد یا تنظیمات کانال استفاده می‌شود. کانونیکال خالی می‌شود{' '}
                 <span dir="ltr">{defaultCanonical(channel, pageKey)}</span>
+                {pageKey === 'salesPartnership' ? (
+                  <>
+                    {' '}
+                    — این صفحه فقط روی تک‌فروشی (
+                    <span dir="ltr">poshaktaranom.ir</span>
+                    ) ایندکس می‌شود؛ درصد پورسانت در متا اعلام نمی‌شود.
+                  </>
+                ) : null}
               </p>
               <label className="block text-xs font-medium text-gray-600">
                 عنوان متا

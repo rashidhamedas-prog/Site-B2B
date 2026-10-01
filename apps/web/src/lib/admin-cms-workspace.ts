@@ -1,4 +1,4 @@
-import { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY } from './cms/page-keys';
+import { CMS_PAGE_KEYS_BASE, CMS_RETAIL_ONLY, CMS_WHOLESALE_ONLY } from './cms/page-keys';
 
 export type AdminChannel = 'WHOLESALE' | 'RETAIL';
 
@@ -11,7 +11,9 @@ export function isAdminChannel(value: unknown): value is AdminChannel {
 }
 
 export function cmsPageKeysForChannel(channel: AdminChannel): ReadonlyArray<{ key: string; label: string }> {
-  return channel === 'WHOLESALE' ? [...CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY] : [...CMS_PAGE_KEYS_BASE];
+  return channel === 'WHOLESALE'
+    ? [...CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY]
+    : [...CMS_PAGE_KEYS_BASE, CMS_RETAIL_ONLY];
 }
 
 export function isCmsWorkspacePage(channel: AdminChannel, value: unknown): value is string {

@@ -1016,4 +1016,4 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
   }
 }
 
-export { CMS_PAGE_KEYS_BASE, CMS_WHOLESALE_ONLY } from './page-keys';
+export { CMS_PAGE_KEYS_BASE, CMS_RETAIL_ONLY, CMS_WHOLESALE_ONLY } from './page-keys';
