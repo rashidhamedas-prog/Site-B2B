@@ -35,7 +35,7 @@ tasks:
       - "apps/web tsc passes; live /sales-partnership 200 with white H1"
   - id: "TASK-20261001-003"
     title: "Sales partner UX redesign (landing apply + partner panel)"
-    status: "implementing"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261001-003"
     roles:
@@ -45,17 +45,17 @@ tasks:
     branch: "ai/TASK-20261001-003-sales-partner-ux"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-01T00:35:00Z"
-    heartbeat_at: "2026-10-01T00:35:00Z"
+    heartbeat_at: "2026-10-01T00:45:00Z"
+    completed_at: "2026-10-01T00:45:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/sales-partners/"
       - "apps/web/src/app/sales-partners/"
       - "apps/web/src/app/confirm/sales-partner/"
       - "docs/reports/2026-10-01-sales-partner-ux-redesign.md"
     notes: |
-      Presentation-only UX redesign for /sales-partnership apply + /sales-partners panel.
-      No API/ledger/attribution changes. No invented commission %.
-      WORKLOG/meta temporarily released to TASK-20261001-004 contrast hotfix; reclaim after 004 ships.
+      LIVE cc0502b. Presentation-only UX. Auth panel click residual. Meta briefly shared with TASK-004 hotfix.
     acceptance_criteria:
       - "Partner shell has icon bottom nav + shared SpButton/SpSkeleton/toast"
       - "Apply form is stepped and matches brand tokens"

@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-01T00:46:00Z — TASK-20261001-003 LIVE (sales-partner UX redesign)
+
+- Owner: cursor:implementer-TASK-20261001-003
+- Ship: `cc0502b` on `origin/master`; VPS force-deploy complete at `cc0502b`.
+- Evidence: `/sales-partnership` `#apply` 200; `/sales-partners/login` 200; API health 200; public-settings enabled; me 401; `sp-nav-pill` in web image.
+- Residual: authenticated partner click needs ACTIVE account; catalog empty until eligibility; Independent Reviewer residual.
+- Claims released (sales-partners/confirm). Meta may still be held by TASK-004 contrast hotfix.
+
 ## 2026-10-01T01:40:00Z — TASK-20261001-004 implementing (hero contrast + banner)
 
 - Owner: cursor:implementer-TASK-20261001-004
