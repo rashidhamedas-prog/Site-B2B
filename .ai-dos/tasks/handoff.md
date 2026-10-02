@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T02:10:00Z — TASK-20261002-006 LIVE (catalog filters)
+
+- Owner: cursor:implementer-TASK-20261002-006
+- Ship: `d10b628` on `origin/master` (tip `4ad808e`) + VPS force deploy complete.
+- Live: health 200; `preparePartnerCatalog` in api image; `categoryName` in `/sales-partners/catalog` and `/admin/sales-partners` chunks.
+- Claims released. Independent Reviewer + Security residual (filter query abuse / PII unchanged).
+
 ## 2026-10-02T01:45:00Z — TASK-20261002-006 shipping (catalog filters)
 
 - Owner: cursor:implementer-TASK-20261002-006

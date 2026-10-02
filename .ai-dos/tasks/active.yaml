@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261002-006"
     title: "Sales-partner catalog categories/filters + admin desk polish"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261002-006"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T01:45:00Z"
-    heartbeat_at: "2026-10-02T01:45:00Z"
+    heartbeat_at: "2026-10-02T02:10:00Z"
+    completed_at: "2026-10-02T02:10:00Z"
     depends_on: ["TASK-20261002-002"]
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.spec.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-catalog.service.ts"
@@ -38,13 +40,9 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      skill-top full: category chips + stock/sort/search for partner catalog;
-      admin catalog facets + sidebar desk; no commission formula change.
-    acceptance_criteria:
-      - "Partner catalog groups by category and filters by stock/search/sort"
-      - "Admin catalog filters by category and eligibility with facet counts"
-      - "Partner shell desktop sidebar; mobile bottom nav unchanged"
-      - "Catalog policy unit spec + tsc pass; health + storefront smoke after deploy"
+      LIVE d10b628 (tip 4ad808e). VPS force deploy complete; health 200;
+      preparePartnerCatalog in api image; categoryName in catalog/admin chunks.
+      Independent Reviewer + Security residual (filter query abuse).
   - id: "TASK-20261002-005"
     title: "About scrollytelling polish (mobile cards + full scene + vertical rail)"
     status: "done"
