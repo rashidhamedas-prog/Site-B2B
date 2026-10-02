@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261002-004"
     title: "Wholesale About sticky scrollytelling redesign"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261002-004"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261002-004-about-scrollytelling"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T01:25:00Z"
-    heartbeat_at: "2026-10-02T01:25:00Z"
+    heartbeat_at: "2026-10-02T01:40:00Z"
+    completed_at: "2026-10-02T01:40:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/wholesale/about/AboutExperience.tsx"
       - "apps/web/src/components/wholesale/about/AboutStory.tsx"
       - "apps/web/src/components/wholesale/about/AboutScene.tsx"
@@ -26,8 +28,7 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      skill-top full: Scrollama sticky-graphic + IO stages; no GSAP/Framer/Three.
-      Kill absolute-fade stages and flat end-state dress. Intro outside track.
+      LIVE e9b1187. Scrollama sticky-graphic + IO; no GSAP/Framer/Three.
     acceptance_criteria:
       - "Desktop: sticky visual morphs while 4 step panels scroll past"
       - "Mobile: readable step flow with sticky/compact scene; no scroll trap"

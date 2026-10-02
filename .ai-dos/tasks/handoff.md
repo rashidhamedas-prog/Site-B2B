@@ -2,7 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-10-02T01:40:00Z — TASK-20261002-004 implementing (About scrollytelling)
+## 2026-10-02T01:40:00Z — TASK-20261002-004 LIVE (About scrollytelling)
+
+- Owner: cursor:implementer-TASK-20261002-004
+- Ship: `e9b1187` on `origin/master` + VPS deploy complete.
+- Live: `/about` 200; HTML has `about-story-title`, `data-stage="0"`, four steps, scroll hint; API health ok.
+- Claims released. Independent Reviewer residual (visual scroll QA on desktop).
+
+## 2026-10-02T01:35:00Z — TASK-20261002-004 implementing (About scrollytelling)
 
 - Owner: cursor:implementer-TASK-20261002-004
 - Branch: `ai/TASK-20261002-004-about-scrollytelling`
