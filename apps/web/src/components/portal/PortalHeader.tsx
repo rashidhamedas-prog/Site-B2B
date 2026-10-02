@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Menu, X, ShoppingCart } from 'lucide-react';
 import {
-  LayoutDashboard, FileText, CreditCard, User, CalendarClock, Lock,
+  LayoutDashboard, FileText, CreditCard, User, CalendarClock, Lock, MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/portal/dashboard/invoices': 'فاکتورها',
   '/portal/dashboard/payments': 'پرداخت‌ها',
   '/portal/dashboard/installments': 'اقساط',
+  '/portal/dashboard/support': 'پشتیبانی',
   '/portal/dashboard/profile': 'پروفایل',
   '/portal/dashboard/security': 'امنیت و رمز',
 };
@@ -25,6 +26,7 @@ const mobileNav = [
   { href: '/portal/dashboard/invoices', icon: FileText, label: 'فاکتورها' },
   { href: '/portal/dashboard/payments', icon: CreditCard, label: 'پرداخت' },
   { href: '/portal/dashboard/installments', icon: CalendarClock, label: 'اقساط' },
+  { href: '/portal/dashboard/support', icon: MessageSquare, label: 'پشتیبانی' },
   { href: '/portal/dashboard/profile', icon: User, label: 'پروفایل' },
   { href: '/portal/dashboard/security', icon: Lock, label: 'امنیت' },
 ];
@@ -32,7 +34,13 @@ const mobileNav = [
 export function PortalHeader() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const title = PAGE_TITLES[pathname] ?? (pathname.startsWith('/portal/dashboard/orders/') ? 'جزئیات سفارش' : 'پنل مشتری');
+  const title = PAGE_TITLES[pathname] ?? (
+    pathname.startsWith('/portal/dashboard/orders/')
+      ? 'جزئیات سفارش'
+      : pathname.startsWith('/portal/dashboard/support/')
+        ? 'جزئیات تیکت'
+        : 'پنل مشتری'
+  );
 
   return (
     <>

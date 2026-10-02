@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-02 — پشتیبانی تیکتی حرفه‌ای (عمده + تک)
+
+- ماژول Nest `support`: تیکت + thread پیام، FSM وضعیت، جداسازی کانال JWT، لینک اختیاری سفارش با ownership، rate-limit Redis.
+- UI: حساب تک `/account/support`، پورتال عمده `/portal/dashboard/support`، میز ادمین `/admin/support` (فیلتر کانال/وضعیت + پاسخ/یادداشت داخلی).
+- Migration `20261002-002-support-tickets`؛ ماژول ACL `support` برای پشتیبانی/مدیر فروش.
+- گزارش: `docs/reports/2026-10-02-support-tickets.md`.
+
 ## 2026-10-02 — ریشه قطعی ایران + سخت‌سازی origin
 
 - ریشه: ابر نارنجی Cloudflare (AAAA + HTTP/3) دوباره روی هر دو ویترین؛ مسیر تونل روی SNI تکی. اپ ایران را بلاک نمی‌کرد.

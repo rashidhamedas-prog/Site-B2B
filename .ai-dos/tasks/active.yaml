@@ -1,5 +1,83 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261002-003"
+    title: "Professional support ticketing (retail + wholesale)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261002-003"
+    roles:
+      architect: "cursor:implementer-TASK-20261002-003"
+      implementer: "cursor:implementer-TASK-20261002-003"
+      reviewer: "required-after-diff"
+      security: "required-after-diff"
+    branch: "ai/TASK-20261002-003-support-tickets"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T00:46:00Z"
+    heartbeat_at: "2026-10-02T00:46:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/support/"
+      - "apps/api/src/database/migrations/20261002-002-support-tickets.ts"
+      - "apps/api/src/app.module.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/api/src/modules/auth/staff-access.ts"
+      - "apps/web/src/lib/staff-access.ts"
+      - "apps/web/src/components/support/"
+      - "apps/web/src/components/admin/AdminSupportTickets.tsx"
+      - "apps/web/src/app/admin/support/"
+      - "apps/web/src/app/retail/account/support/"
+      - "apps/web/src/app/portal/dashboard/support/"
+      - "apps/web/src/components/retail/RetailAccountShell.tsx"
+      - "apps/web/src/components/portal/PortalSidebar.tsx"
+      - "apps/web/src/components/portal/PortalHeader.tsx"
+      - "apps/web/src/components/admin/AdminSidebar.tsx"
+      - "apps/web/src/components/admin/AdminHeader.tsx"
+      - "docs/reports/2026-10-02-support-tickets.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Standard skill-top: ticket+thread for RETAIL/WHOLESALE, admin desk, FSM, rate-limit.
+      Shared docs reclaimed from TASK-20261002-002 (user priority: support tickets).
+      No attachments/live-chat/SLA in v1. Mirror RMA auth/channel patterns.
+    acceptance_criteria:
+      - "Logged-in retail+wholesale customers can create/list/reply tickets"
+      - "Admin can list/filter/reply/change status/assign; channel isolation held"
+      - "Optional orderId only when order belongs to customer"
+      - "FSM + ownership unit specs pass; health + storefront smoke after deploy"
+  - id: "TASK-20261002-002"
+    title: "Sales-partner admin/panel redesign + configurable apply form"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261002-002"
+    roles:
+      architect: "cursor:implementer-TASK-20261002-002"
+      implementer: "cursor:implementer-TASK-20261002-002"
+      reviewer: "required-after-diff"
+      security: "required-after-diff"
+    branch: "ai/TASK-20261002-002-sales-partner-redesign"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T00:50:00Z"
+    heartbeat_at: "2026-10-02T00:50:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/"
+      - "apps/api/src/database/migrations/20261002-001-sales-partner-apply-answers.ts"
+      - "apps/web/src/components/admin/sales-partners/"
+      - "apps/web/src/components/sales-partners/"
+      - "apps/web/src/app/sales-partners/"
+      - "docs/architecture/sales-partner-apply-form.md"
+      - "docs/reports/2026-10-02-sales-partner-redesign.md"
+    notes: |
+      Full-depth redesign: application detail drawer, configurable applyFormFields,
+      partner password set/change. Shared docs reclaimed by TASK-20261002-003.
+    acceptance_criteria:
+      - "Admin sees full application answers before approve/reject"
+      - "Admin can toggle/reorder/add custom apply form fields"
+      - "Public apply renders enabled fields and stores answers"
+      - "Partner can set/change password; JWT keeps salesPartnerId"
+      - "Migration expand-only; unit specs pass; deploy healthy"
   - id: "TASK-20261002-001"
     title: "Iran edge root-fix + origin hardening"
     status: "in_progress"
@@ -24,13 +102,10 @@ tasks:
       - "scripts/cloudflare-iran-edge.spec.mjs"
       - "docs/architecture/iran-edge-access.md"
       - "docs/reports/2026-10-02-iran-edge-and-origin-harden.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     notes: |
       Live DNS is orange-cloud again (AAAA+h3). Retail vhost on VPS includes xray paths.
       Fix: gray-cloud storefront+api, remove tunnel from shop SNI, origin rate-limit + hide Swagger.
+      Shared docs reclaimed by TASK-20261002-002 (2026-10-02 handoff).
     acceptance_criteria:
       - "Storefront A/www and api. resolve to origin IPv4 only (no CF AAAA)"
       - "Live HEAD Server is nginx not cloudflare; no alt-svc h3"

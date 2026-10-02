@@ -11,6 +11,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/customers/marketing': 'بازاریابی مشتریان',
   '/admin/orders': 'سفارش‌ها',
   '/admin/rma': 'مرجوعی (RMA)',
+  '/admin/support': 'پشتیبانی تیکتی',
   '/admin/invoices': 'فاکتورها',
   '/admin/payments': 'پرداخت‌ها',
   '/admin/products': 'محصولات',

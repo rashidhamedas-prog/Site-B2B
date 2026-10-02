@@ -2,6 +2,22 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T00:46:00Z — TASK-20261002-003 claim (support tickets)
+
+- Owner: cursor:implementer-TASK-20261002-003
+- Previous shared-docs owner notified: cursor:implementer-TASK-20261002-002
+- Reason: user prioritized professional support ticketing (skill-top standard) for retail+wholesale; reclaim WORKLOG/active/handoff/status.
+- Branch: `ai/TASK-20261002-003-support-tickets`
+- Scope: Nest support module + TypeORM migration + account UIs + admin desk; no attachments/SLA/live chat.
+- Next: implement + specs + deploy smoke.
+
+## 2026-10-02T00:50:00Z — reclaim shared docs for TASK-20261002-002
+
+- Previous owner notified: cursor:implementer-TASK-20261002-001
+- Reason: sales-partner redesign needs `active.yaml` / `handoff.md` / `WORKLOG.md` / `status.md`. Edge task retains nginx/main/bootstrap/cloudflare claims only.
+- New owner: cursor:implementer-TASK-20261002-002
+- Branch: `ai/TASK-20261002-002-sales-partner-redesign`
+
 ## 2026-10-02T00:45:00Z — TASK-20261002-001 LIVE (Cloudflare gray-cloud applied)
 
 - Owner: cursor:implementer-TASK-20261002-001

@@ -65,6 +65,8 @@ import { ProductRelatedEntity } from '../modules/product/entities/product-relate
 import { ProductInternalLinkEntity } from '../modules/product/entities/product-internal-link.entity';
 import { ProductCategoryMembershipEntity } from '../modules/product/entities/product-category-membership.entity';
 import { ReturnRequestEntity } from '../modules/rma/entities/return-request.entity';
+import { SupportTicketEntity } from '../modules/support/entities/support-ticket.entity';
+import { SupportTicketMessageEntity } from '../modules/support/entities/support-ticket-message.entity';
 import { ReturnRequestAuditEntity } from '../modules/rma/entities/return-request-audit.entity';
 import { ChannelConnectionEntity } from '../modules/omnichannel/entities/channel-connection.entity';
 import { ChannelDestinationEntity } from '../modules/omnichannel/entities/channel-destination.entity';
@@ -136,6 +138,8 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     AppSettingEntity,
     ReturnRequestEntity,
     ReturnRequestAuditEntity,
+    SupportTicketEntity,
+    SupportTicketMessageEntity,
     ChannelConnectionEntity,
     ChannelDestinationEntity,
     ChannelTemplateEntity,
