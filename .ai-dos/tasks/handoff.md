@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T22:35:00Z — TASK-20261003-004 LIVE (mega-nav categories)
+
+- Owner: cursor:implementer-TASK-20261003-004
+- Ship: `28ce997` on `origin/master` + VPS `TARANOM_DEPLOY_FORCE=1` rebuild; health 200
+- Browser: mega «دسته‌ها» instantly lists فوتر/کراپ/… — no «در حال بارگذاری»
+- Claims released. Independent Reviewer residual (visual hover).
+
 ## 2026-10-02T21:55:00Z — TASK-20261003-002 LIVE (blog prose links)
 
 - Owner: cursor:implementer-TASK-20261003-002

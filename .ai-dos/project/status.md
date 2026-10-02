@@ -1,6 +1,6 @@
 # Project Status
 
-- In progress: 2026-10-03 — **TASK-20261003-004** retail mega-nav categories stuck loading (SSR seed + skeleton/error). Claims held until ship.
+- Last verified: 2026-10-03 — **TASK-20261003-004 LIVE** on `origin/master` `28ce997` + VPS force rebuild. Mega-nav categories SSR-seeded; browser shows فوتر/کراپ instantly, no stuck loading. Claims released.
 - Last verified: 2026-10-03 — **TASK-20261003-003 LIVE** on `origin/master` `45c9f03` (+ tip `9f0b9dc`). Retail nav gold underline + hero copySide RTL start; browser: slide3 copy on right, nav ::before gold. Claims released. Independent Reviewer residual (hover field).
 - In progress: 2026-10-03 — **TASK-20261003-002** blog article inline links high-affordance (underline + gold mark + hover/focus). CSS claims held; shared docs reclaimed by 003.
 - In progress: 2026-10-03 — **TASK-20261003-001** sales-partner apply OTP (120s) + FA digits + 401 redirect fix + per-product PRODUCT commission + Maryam PENDING_OTP root-cause. Specs/web tsc OK; LIVE residual on earlier tip. SP code claims still held.

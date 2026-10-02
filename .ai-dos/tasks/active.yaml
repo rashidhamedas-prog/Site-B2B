@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261003-004"
     title: "Retail mega-nav categories stuck loading"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261003-004"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261003-004-mega-nav-categories"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T22:15:00Z"
-    heartbeat_at: "2026-10-02T22:15:00Z"
+    heartbeat_at: "2026-10-02T22:35:00Z"
+    completed_at: "2026-10-02T22:35:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/retail/RetailHeader.tsx"
       - "apps/web/src/components/retail/RetailChromeProvider.tsx"
       - "apps/web/src/app/retail/layout.tsx"
