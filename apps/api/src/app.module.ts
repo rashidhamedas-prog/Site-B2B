@@ -25,6 +25,7 @@ import { CategoryModule } from './modules/category/category.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { ErpInventoryModule } from './modules/erp-inventory/erp-inventory.module';
 import { RmaModule } from './modules/rma/rma.module';
+import { SupportModule } from './modules/support/support.module';
 import { CollectionModule } from './modules/collection/collection.module';
 import { AffiliateModule } from './modules/affiliate/affiliate.module';
 import { BasalamModule } from './modules/basalam/basalam.module';
@@ -67,6 +68,7 @@ import { SalesPartnerModule } from './modules/sales-partner/sales-partner.module
     ShippingModule,
     SettingsModule,
     RmaModule,
+    SupportModule,
     FeedsModule,
     AffiliateModule,
     BasalamModule,

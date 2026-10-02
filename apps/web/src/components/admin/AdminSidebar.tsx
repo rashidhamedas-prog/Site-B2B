@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell,
   Warehouse,   UserCog, LogOut, X, ChevronDown, CircleUser,
-  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2, Megaphone, Handshake,
+  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2, Megaphone, Handshake, Headphones,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { clearToken, getRole } from '@/lib/auth';
@@ -46,6 +46,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { href: '/admin/customers/marketing', icon: Megaphone, label: 'بازاریابی', module: 'crm' },
       { href: '/admin/orders', icon: ShoppingCart, label: 'سفارش‌ها', badge: 0, badgeColor: 'bg-blue-500', module: 'orders' },
       { href: '/admin/rma', icon: Package, label: 'مرجوعی (RMA)', module: 'rma' },
+      { href: '/admin/support', icon: Headphones, label: 'پشتیبانی تیکتی', module: 'support' },
       { href: '/admin/invoices', icon: FileText, label: 'فاکتورها', module: 'invoices' },
       { href: '/admin/payments', icon: CreditCard, label: 'پرداخت‌ها', module: 'payments' },
     ],

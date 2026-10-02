@@ -17,6 +17,7 @@ export const STAFF_MODULES = [
   'crm',
   'orders',
   'rma',
+  'support',
   'invoices',
   'payments',
   'catalog',
@@ -37,11 +38,11 @@ const ALL_MODULES: readonly StaffModule[] = STAFF_MODULES;
 
 export const STAFF_ROLE_MODULES: Record<StaffRole, readonly StaffModule[]> = {
   ADMIN: ALL_MODULES,
-  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'catalog', 'discounts', 'content', 'account'],
+  SALES_MANAGER: ['dashboard', 'reports', 'crm', 'orders', 'rma', 'support', 'catalog', 'discounts', 'content', 'account'],
   SALES_REP: ['dashboard', 'crm', 'orders', 'catalog', 'account'],
   ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'account'],
   WAREHOUSE_MANAGER: ['dashboard', 'orders', 'catalog', 'inventory', 'account'],
-  CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'content', 'account'],
+  CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'support', 'content', 'account'],
 };
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
@@ -76,6 +77,7 @@ const PATH_MODULE: Array<{ prefix: string; exact?: boolean; module: StaffModule 
   { prefix: '/admin/customers', module: 'crm' },
   { prefix: '/admin/orders', module: 'orders' },
   { prefix: '/admin/rma', module: 'rma' },
+  { prefix: '/admin/support', module: 'support' },
   { prefix: '/admin/invoices', module: 'invoices' },
   { prefix: '/admin/payments', module: 'payments' },
   { prefix: '/admin/products', module: 'catalog' },

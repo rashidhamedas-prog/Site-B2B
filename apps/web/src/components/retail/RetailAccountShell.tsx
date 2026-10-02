@@ -8,6 +8,7 @@ import {
   Home,
   Lock,
   MapPin,
+  MessageSquare,
   Package,
   RefreshCcw,
   User,
@@ -25,6 +26,7 @@ const NAV = [
   { href: '/account/security', icon: Lock, label: 'امنیت و رمز' },
   { href: '/account/wishlist', icon: Heart, label: 'علاقه‌مندی' },
   { href: '/account/returns', icon: RefreshCcw, label: 'مرجوعی' },
+  { href: '/account/support', icon: MessageSquare, label: 'پشتیبانی' },
 ];
 
 function isPublicAccountPath(pathname: string) {
