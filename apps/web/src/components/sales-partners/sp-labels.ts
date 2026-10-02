@@ -56,6 +56,7 @@ export const SP_AUDIT_ACTION_FA: Record<string, string> = {
   'settings.updated': 'تغییر تنظیمات برنامه',
   'payout.confirmed': 'ثبت تسویه',
   'order.attribution_changed': 'تغییر attribution سفارش',
+  'credentials.welcome_sms_sent': 'ارسال پیامک خوش‌آمد همکار',
 };
 
 export const SP_MODE_FA: Record<string, string> = {

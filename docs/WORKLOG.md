@@ -1,5 +1,12 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-03 — وضعیت «پیامک خوش‌آمد ارسال شد» روی کارت ادمین
+
+- چک لایو: SMS enabled + apiKey؛ رویداد welcome پیش‌فرض روشن؛ ۸ audit قبلی
+- `listApplications`: `welcomeSmsSent` / `welcomeSmsLastSentAt` از audit
+- کارت تأییدشده برچسب ارسال‌شده + دکمه ارسال مجدد
+- گزارش: `docs/reports/2026-10-03-sp-welcome-sms-sent-state.md`
+
 ## 2026-10-03 — پیامک خوش‌آمد همکار بازاریاب (رمز + لینک پنل)
 
 - دکمه زیر بج «تأییدشده» در `/admin/sales-partners`

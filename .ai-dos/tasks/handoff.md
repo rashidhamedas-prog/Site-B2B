@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T23:58:00Z — TASK-20261003-006 implementing (welcome SMS sent-state)
+
+- Owner: cursor:implementer-TASK-20261003-006
+- Branch: `ai/TASK-20261003-006-sp-welcome-sms-sent-state`
+- Live SMS check: enabled=true, apiKey set, welcome_event unset→default on, 8 welcome audits already
+- Code: listApplications welcomeSmsSent/LastSentAt; card status + resend label; audit FA label
+- Gates: web tsc OK; welcome-sms.spec OK; isolation welcomeSmsSent asserts OK (preexisting focus-nav fail)
+- Next: commit+push+VPS deploy; claims held
+
 ## 2026-10-02T23:15:00Z — TASK-20261003-005 LIVE (SP welcome SMS)
 
 - Owner: cursor:implementer-TASK-20261003-005

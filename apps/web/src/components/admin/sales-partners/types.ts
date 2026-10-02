@@ -9,6 +9,9 @@ export type ApplicationRow = {
   primaryChannel?: string | null;
   nationalIdMasked?: string | null;
   socialHandles?: Record<string, string> | null;
+  /** True after a successful admin welcome credentials SMS. */
+  welcomeSmsSent?: boolean;
+  welcomeSmsLastSentAt?: string | null;
 };
 
 export type ApplicationDetail = {

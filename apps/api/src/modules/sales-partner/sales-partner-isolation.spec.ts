@@ -73,6 +73,13 @@ assert(
   /redactBody:\s*true/.test(read('../notification/notification.service.ts')),
   'welcome SMS redacts logs',
 );
+assert(/welcomeSmsSent/.test(read('sales-partner.service.ts')), 'listApplications exposes welcomeSmsSent');
+assert(
+  /welcomeSmsSent/.test(
+    readFileSync(join(__dirname, '../../../../web/src/components/admin/sales-partners/types.ts'), 'utf8'),
+  ),
+  'web ApplicationRow has welcomeSmsSent',
+);
 assert(/dir="rtl"/.test(shell) && /aria-label="ناوبری پنل همکار بازاریاب"/.test(shell), 'rtl shell + nav label');
 assert(/focus-visible:outline/.test(shell), 'keyboard focus on partner nav');
 assert(/role="status"/.test(payouts) && /Asia\/Tehran/.test(payouts), 'payout loading + Tehran dates');

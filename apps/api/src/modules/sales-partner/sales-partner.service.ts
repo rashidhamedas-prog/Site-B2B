@@ -358,9 +358,34 @@ export class SalesPartnerService {
   async listApplications(status?: string) {
     const where = status ? { status } : {};
     const rows = await this.applications.find({ where, order: { createdAt: 'DESC' }, take: 100 });
+    const profileIds = [
+      ...new Set(rows.map((row) => row.profileId).filter((id): id is string => Boolean(id))),
+    ];
+    const welcomeByProfile = new Map<string, { sentAt: Date; sent: boolean }>();
+    if (profileIds.length > 0) {
+      const welcomeAudits = await this.audits.find({
+        where: {
+          action: 'credentials.welcome_sms_sent',
+          targetType: 'profile',
+          targetId: In(profileIds),
+        },
+        order: { createdAt: 'DESC' },
+        take: 500,
+      });
+      for (const audit of welcomeAudits) {
+        if (welcomeByProfile.has(audit.targetId)) continue;
+        const sentFlag = audit.payload?.sent;
+        welcomeByProfile.set(audit.targetId, {
+          sentAt: audit.createdAt,
+          // Older rows without payload.sent still mean an admin send was recorded.
+          sent: sentFlag === false ? false : true,
+        });
+      }
+    }
     return rows.map((row) => {
       const nationalId =
         row.answers && typeof row.answers.nationalId === 'string' ? row.answers.nationalId : null;
+      const welcome = row.profileId ? welcomeByProfile.get(row.profileId) : undefined;
       return {
         id: row.id,
         displayName: row.displayName,
@@ -373,6 +398,8 @@ export class SalesPartnerService {
         primaryChannel:
           typeof row.answers?.primaryChannel === 'string' ? row.answers.primaryChannel : null,
         createdAt: row.createdAt,
+        welcomeSmsSent: Boolean(welcome?.sent),
+        welcomeSmsLastSentAt: welcome?.sent ? welcome.sentAt.toISOString() : null,
       };
     });
   }

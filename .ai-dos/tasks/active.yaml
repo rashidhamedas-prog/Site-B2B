@@ -1,5 +1,38 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-006"
+    title: "SP welcome SMS sent-state on admin cards"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261003-006"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-006"
+      implementer: "cursor:implementer-TASK-20261003-006"
+      reviewer: "required-after-diff"
+      security: "not-required-status-flag"
+    branch: "ai/TASK-20261003-006-sp-welcome-sms-sent-state"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T23:55:00Z"
+    heartbeat_at: "2026-10-02T23:55:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner.service.ts"
+      - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
+      - "apps/web/src/components/admin/sales-partners/types.ts"
+      - "apps/web/src/components/sales-partners/sp-labels.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-isolation.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-03-sp-welcome-sms-sent-state.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Verify salesPartnerWelcome is wired to sms.ir path and event defaults on"
+      - "listApplications exposes welcomeSmsSent + welcomeSmsLastSentAt from audit"
+      - "Approved card shows ارسال‌شده after successful send; button no longer looks like first send"
+      - "web tsc + isolation marker for welcomeSmsSent"
+    notes: |
+      skill-top standard. Follow-up to TASK-20261003-005.
   - id: "TASK-20261003-005"
     title: "Sales-partner welcome credentials SMS button"
     status: "done"

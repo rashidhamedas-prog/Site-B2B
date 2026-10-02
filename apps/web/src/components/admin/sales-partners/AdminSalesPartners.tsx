@@ -204,7 +204,9 @@ export function AdminSalesPartners() {
 
   async function sendWelcomeSms(row: ApplicationRow) {
     const ok = window.confirm(
-      `پیامک خوش‌آمد با نام کاربری (موبایل) و رمز عبور جدید برای «${row.displayName}» (${row.phoneMasked}) ارسال شود؟\nرمز قبلی دیگر کار نمی‌کند.`,
+      row.welcomeSmsSent
+        ? `پیامک خوش‌آمد قبلاً برای «${row.displayName}» ارسال شده. ارسال مجدد با رمز جدید انجام شود؟\nرمز قبلی دیگر کار نمی‌کند.`
+        : `پیامک خوش‌آمد با نام کاربری (موبایل) و رمز عبور جدید برای «${row.displayName}» (${row.phoneMasked}) ارسال شود؟\nرمز قبلی دیگر کار نمی‌کند.`,
     );
     if (!ok) return;
     setBusyId(row.id);
@@ -214,6 +216,19 @@ export function AdminSalesPartners() {
         `/admin/sales-partners/applications/${row.id}/welcome-sms`,
         {},
       );
+      if (res?.sent !== false) {
+        setApps((prev) =>
+          prev.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  welcomeSmsSent: true,
+                  welcomeSmsLastSentAt: new Date().toISOString(),
+                }
+              : item,
+          ),
+        );
+      }
       window.alert(res?.message || (res?.sent ? 'پیامک ارسال شد' : 'انجام شد'));
       await load();
     } catch (err) {
@@ -518,14 +533,33 @@ export function AdminSalesPartners() {
                   </div>
                   <div className="flex shrink-0 flex-col items-stretch gap-2">
                     <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
+                    {row.status === 'APPROVED' && row.welcomeSmsSent && (
+                      <p
+                        className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-[11px] font-medium text-emerald-900"
+                        role="status"
+                      >
+                        پیامک خوش‌آمد ارسال شد
+                        {row.welcomeSmsLastSentAt
+                          ? ` · ${formatSpDate(row.welcomeSmsLastSentAt)}`
+                          : ''}
+                      </p>
+                    )}
                     {row.status === 'APPROVED' && (
                       <button
                         type="button"
-                        className={`min-h-10 rounded-xl border border-[#1B5C4A]/30 bg-[#E8F2EE] px-3 text-xs font-medium text-[#1B5C4A] disabled:opacity-60 ${spFocusClass}`}
+                        className={`min-h-10 rounded-xl border px-3 text-xs font-medium disabled:opacity-60 ${spFocusClass} ${
+                          row.welcomeSmsSent
+                            ? 'border-stone-200 bg-stone-50 text-stone-700'
+                            : 'border-[#1B5C4A]/30 bg-[#E8F2EE] text-[#1B5C4A]'
+                        }`}
                         disabled={busyId === row.id}
                         onClick={() => void sendWelcomeSms(row)}
                       >
-                        {busyId === row.id ? 'در حال ارسال…' : 'ارسال پیامک خوش‌آمد'}
+                        {busyId === row.id
+                          ? 'در حال ارسال…'
+                          : row.welcomeSmsSent
+                            ? 'ارسال مجدد پیامک'
+                            : 'ارسال پیامک خوش‌آمد'}
                       </button>
                     )}
                   </div>
