@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-03 — موشن منوی retail + جای متن هیرو (copySide)
+
+- منوی دسکتاپ: underline طلایی `scaleX` از inline-start، lift ملایم، focus-visible، شورون mega، fade پنل — الگوی 21st بدون JS سنگین
+- هیرو: پیش‌فرض `justify-start` (راست در RTL) تا کپی روی محصول ننشیند؛ فیلد CMS `copySide` start/end
+- گزارش: `docs/reports/2026-10-03-retail-nav-hero-copy.md` · Stitch prompt: `docs/prompts/stitch-retail-nav-hero-fa.md`
+
 ## 2026-10-03 — لینک‌های داخل مقالات وبلاگ واضح‌تر و قابل‌لمس‌تر
 
 - لینک‌های inline در `.blog-prose`: underline ضخیم، هایلایت طلایی برند، وزن ۶۰۰، padding لمسی، hover/focus-visible

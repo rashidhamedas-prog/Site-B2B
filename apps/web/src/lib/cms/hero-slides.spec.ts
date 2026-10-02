@@ -7,6 +7,7 @@ import {
   isRetailCampaignHeroAsset,
   normalizeHeroSlides,
   prependUniqueHeroSlide,
+  resolveHeroCopySide,
 } from './hero-slides';
 
 function assert(cond: boolean, msg: string) {
@@ -74,5 +75,17 @@ const dark = normalizeHeroSlides({
 });
 assert(dark[0]?.overlayTone === undefined, 'missing tone stays unset');
 assert(!isLightHeroOverlay(dark[0]!), 'default overlay is not light');
+assert(resolveHeroCopySide(dark[0]!) === 'start', 'default copySide is start (RTL right)');
+
+const copyEnd = normalizeHeroSlides({
+  slides: [{ headline: 'y', imageUrl: '/b.webp', presentation: 'overlay', copySide: 'end' }],
+});
+assert(copyEnd[0]?.copySide === 'end', 'copySide end parses');
+assert(resolveHeroCopySide(copyEnd[0]!) === 'end', 'resolve end');
+
+const junkSide = normalizeHeroSlides({
+  slides: [{ headline: 'z', imageUrl: '/c.webp', copySide: 'middle' as 'start' }],
+});
+assert(junkSide[0]?.copySide === undefined, 'invalid copySide dropped');
 
 console.log('hero-slides.spec.ts: OK');

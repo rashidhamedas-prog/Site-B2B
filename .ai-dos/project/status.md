@@ -1,7 +1,8 @@
 # Project Status
 
-- In progress: 2026-10-03 — **TASK-20261003-002** blog article inline links high-affordance (underline + gold mark + hover/focus). CSS-only in `BlogContent` / `globals.css` / `retail.css`. Claims held until ship.
-- In progress: 2026-10-03 — **TASK-20261003-001** sales-partner apply OTP (120s) + FA digits + 401 redirect fix + per-product PRODUCT commission + Maryam PENDING_OTP root-cause. Specs/web tsc OK; deploy pending owner. Shared docs reclaimed by 002; SP code claims still held.
+- In progress: 2026-10-03 — **TASK-20261003-003** retail nav gold underline motion + hero `copySide` RTL fix (default start/right). Claims held until ship.
+- In progress: 2026-10-03 — **TASK-20261003-002** blog article inline links high-affordance (underline + gold mark + hover/focus). CSS claims held; shared docs reclaimed by 003.
+- In progress: 2026-10-03 — **TASK-20261003-001** sales-partner apply OTP (120s) + FA digits + 401 redirect fix + per-product PRODUCT commission + Maryam PENDING_OTP root-cause. Specs/web tsc OK; LIVE residual on earlier tip. SP code claims still held.
 - Last verified: 2026-10-02 — **TASK-20261002-007 LIVE** on `origin/master` `dab4136` + VPS. Retail hero full-bleed editorial + CTA; health 200; `.ir` HTML has `retail-editorial-hero`. Claims released. Independent Reviewer residual (visual field).
 - Last verified: 2026-10-02 — **TASK-20261002-006 LIVE** on `origin/master` `d10b628` (tip `4ad808e`) + VPS. Partner catalog category/filters + admin desk polish; health 200; filter markers in live images. Claims released. Independent Reviewer + Security residual (filter query).
 - Last verified: 2026-10-02 — **TASK-20261002-005 LIVE** on `origin/master` `93ce995`. About polish (mobile cards, full scene, vertical rail). Claims released.

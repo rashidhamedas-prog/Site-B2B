@@ -1,5 +1,8 @@
 export type HeroOverlayTone = 'dark' | 'light';
 
+/** Logical side for overlay copy. In RTL, `start` = visual right (safe empty plate). */
+export type HeroCopySide = 'start' | 'end';
+
 export type HeroSlide = {
   brandEyebrow?: string;
   headline: string;
@@ -10,6 +13,8 @@ export type HeroSlide = {
   imageAlt?: string;
   presentation?: 'overlay' | 'artwork';
   overlayTone?: HeroOverlayTone;
+  /** Where HTML overlay copy sits. Default `start` (RTL right) keeps product plates clear. */
+  copySide?: HeroCopySide;
   ctaLabel?: string;
   ctaHref?: string;
   ctaSecondaryLabel?: string;
@@ -26,6 +31,7 @@ export type HeroFlatProps = {
   imageAlt?: string;
   presentation?: 'overlay' | 'artwork';
   overlayTone?: HeroOverlayTone;
+  copySide?: HeroCopySide;
   ctaLabel?: string;
   ctaHref?: string;
   ctaSecondaryLabel?: string;
@@ -92,6 +98,10 @@ function parseOverlayTone(value: unknown): HeroOverlayTone | undefined {
   return value === 'light' ? 'light' : value === 'dark' ? 'dark' : undefined;
 }
 
+function parseCopySide(value: unknown): HeroCopySide | undefined {
+  return value === 'end' ? 'end' : value === 'start' ? 'start' : undefined;
+}
+
 const DEFAULT_AUTOPLAY_MS = 5500;
 
 function trimUrl(value: unknown): string | undefined {
@@ -115,6 +125,7 @@ function asSlide(raw: unknown): HeroSlide | null {
     imageAlt: typeof o.imageAlt === 'string' ? o.imageAlt : undefined,
     presentation: o.presentation === 'artwork' ? 'artwork' : 'overlay',
     overlayTone: parseOverlayTone(o.overlayTone),
+    copySide: parseCopySide(o.copySide),
     ctaLabel: typeof o.ctaLabel === 'string' ? o.ctaLabel : undefined,
     ctaHref: typeof o.ctaHref === 'string' ? o.ctaHref : undefined,
     ctaSecondaryLabel: typeof o.ctaSecondaryLabel === 'string' ? o.ctaSecondaryLabel : undefined,
@@ -142,6 +153,7 @@ export function normalizeHeroSlides(props: HeroFlatProps, fallback?: HeroSlide):
         imageAlt: props.imageAlt,
         presentation: props.presentation === 'artwork' ? 'artwork' : 'overlay',
         overlayTone: props.overlayTone,
+        copySide: props.copySide,
         ctaLabel: props.ctaLabel,
         ctaHref: props.ctaHref,
         ctaSecondaryLabel: props.ctaSecondaryLabel,
@@ -160,6 +172,11 @@ export function prependUniqueHeroSlide(existing: HeroSlide[], slide: HeroSlide):
 
 export function isLightHeroOverlay(slide: HeroSlide): boolean {
   return slide.overlayTone === 'light';
+}
+
+/** Overlay copy side; defaults to logical start (RTL right) so product art stays clear. */
+export function resolveHeroCopySide(slide: Pick<HeroSlide, 'copySide'>): HeroCopySide {
+  return slide.copySide === 'end' ? 'end' : 'start';
 }
 
 export function resolveAutoplayMs(value: unknown): number {

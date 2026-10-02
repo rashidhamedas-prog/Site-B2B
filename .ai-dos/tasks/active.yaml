@@ -1,5 +1,42 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-003"
+    title: "Retail nav motion states + hero copySide RTL fix"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261003-003"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-003"
+      implementer: "cursor:implementer-TASK-20261003-003"
+      reviewer: "required-after-diff"
+      security: "not-required-ui-only"
+    branch: "ai/TASK-20261003-003-retail-nav-hero-copy"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T21:45:00Z"
+    heartbeat_at: "2026-10-02T21:45:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/retail/RetailHeader.tsx"
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/web/src/lib/cms/hero-slides.ts"
+      - "apps/web/src/lib/cms/hero-slides.spec.ts"
+      - "apps/web/src/components/admin/AdminBlockEditor.tsx"
+      - "docs/prompts/stitch-retail-nav-hero-fa.md"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-03-retail-nav-hero-copy.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Desktop nav has premium hover/active/focus/open motion (gold underline, CSS-only)"
+      - "prefers-reduced-motion respected; no new heavy JS/GSAP"
+      - "Hero overlay copy defaults to inline-start (RTL right) so product plates are not covered"
+      - "Per-slide copySide editable in admin CMS hero slides"
+      - "hero-slides.spec covers copySide parse; web tsc clean"
+    notes: |
+      skill-top full + 21st underlined nav (id 18169) adapted to Taranom tokens.
+      Root cause: justify-end in RTL packs copy to visual left over product.
+      Reclaimed shared docs from TASK-20261003-002; blog CSS claims untouched.
   - id: "TASK-20261003-002"
     title: "Blog article inline links high-affordance styling"
     status: "in_progress"
@@ -19,18 +56,14 @@ tasks:
       - "apps/web/src/components/blog/BlogContent.tsx"
       - "apps/web/src/app/globals.css"
       - "apps/web/src/app/retail/retail.css"
-      - "docs/WORKLOG.md"
       - "docs/reports/2026-10-03-blog-prose-links.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     acceptance_criteria:
       - "Inline blog links show underline + highlight mark by default (not color-only)"
       - "Retail root decoration reset does not strip blog-prose underlines"
       - "Hover/focus-visible states are clearly distinct"
       - "No new client JS; no landing/list card style change"
     notes: |
-      skill-top full. Reclaimed shared docs from TASK-20261003-001 for this UI ship.
+      skill-top full. Shared docs reclaimed by TASK-20261003-003 for nav/hero ship.
       Root cause: global/retail a{text-decoration:none} + BlogContent color-only [&_a].
   - id: "TASK-20261003-001"
     title: "Sales-partner apply OTP + eligibility + per-product commission"

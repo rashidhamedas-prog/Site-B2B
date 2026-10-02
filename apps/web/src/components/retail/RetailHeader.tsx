@@ -26,6 +26,10 @@ const STATIC_NAV = [
   { href: '/contact', label: 'تماس با ما' },
 ];
 
+/** Premium underline wipe — 21st underlined-nav pattern, gold token, logical origin for RTL. */
+const NAV_UNDERLINE =
+  "before:pointer-events-none before:absolute before:inset-x-0 before:bottom-0 before:h-[1.5px] before:[transform-origin:inline-start] before:scale-x-0 before:rounded-full before:bg-[var(--retail-gold)] before:transition-transform before:duration-300 before:ease-[cubic-bezier(0.22,1,0.36,1)] before:content-[''] motion-reduce:before:transition-none";
+
 function BrandMark({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 40 40" fill="none" aria-hidden>
@@ -37,6 +41,41 @@ function BrandMark({ className }: { className?: string }) {
       />
       <path d="M20 12 L24 16 L20 28 L16 16 Z" fill="#C9A84C" opacity="0.85" />
     </svg>
+  );
+}
+
+function isNavActive(pathname: string, href: string) {
+  const base = href.split('?')[0]!;
+  return pathname === base || (base !== '/' && pathname.startsWith(base));
+}
+
+function RetailNavLink({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'group relative inline-flex h-9 items-center px-0.5 text-[13px] font-medium tracking-wide',
+        'text-[var(--retail-ink)]/65 transition-colors duration-200 ease-out',
+        'hover:text-[var(--retail-ink)]',
+        'focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2',
+        NAV_UNDERLINE,
+        'hover:before:scale-x-100 focus-visible:before:scale-x-100',
+        active && 'font-semibold text-[var(--retail-ink)] before:scale-x-100',
+      )}
+    >
+      <span className="relative z-[1] transition-transform duration-200 ease-out group-hover:-translate-y-px motion-reduce:group-hover:translate-y-0">
+        {label}
+      </span>
+    </Link>
   );
 }
 
@@ -52,6 +91,7 @@ export function RetailHeader() {
   const [categories, setCategories] = useState<Cat[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const count = useRetailCart((s) => s.items.reduce((n, i) => n + i.quantity, 0));
+  const categoryActive = pathname.startsWith('/products') || pathname.startsWith('/category');
 
   useEffect(() => setMounted(true), []);
 
@@ -70,7 +110,7 @@ export function RetailHeader() {
       apiClient.get<Cat[] | { data: Cat[] }>('/categories').catch(() => []),
       apiClient.get<Collection[]>('/collections?active=1&channel=RETAIL').catch(() => []),
     ]).then(([cats, cols]) => {
-      const list = Array.isArray(cats) ? cats : (cats as any)?.data ?? [];
+      const list = Array.isArray(cats) ? cats : (cats as { data?: Cat[] })?.data ?? [];
       setCategories(list.slice(0, 16));
       setCollections(Array.isArray(cols) ? cols.slice(0, 8) : []);
     });
@@ -83,14 +123,17 @@ export function RetailHeader() {
         <div className="mx-auto flex h-[4.25rem] min-w-0 max-w-[1200px] items-center gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <button
             type="button"
-            className="shrink-0 cursor-pointer p-2 text-[var(--retail-ink)] xl:hidden"
+            className="shrink-0 cursor-pointer rounded-sm p-2 text-[var(--retail-ink)] transition-colors duration-200 hover:bg-[var(--retail-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2 xl:hidden"
             aria-label="منو"
             onClick={() => setOpen(true)}
           >
             <Menu className="h-5 w-5" strokeWidth={1.5} />
           </button>
 
-          <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-2 rounded-sm sm:gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
+          >
             <BrandMark className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
             <span className="truncate text-[13px] font-semibold tracking-[0.08em] text-[var(--retail-ink)] sm:tracking-[0.14em]">
               <span className="sm:hidden">ترنم</span>
@@ -98,23 +141,15 @@ export function RetailHeader() {
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-6 xl:flex">
-            {STATIC_NAV.slice(0, 2).map((item) => {
-              const base = item.href.split('?')[0]!;
-              const active = pathname === base || (base !== '/' && pathname.startsWith(base));
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    'relative text-[13px] font-medium transition',
-                    active ? 'text-[var(--retail-ink)]' : 'text-[var(--retail-ink)]/70 hover:text-[var(--retail-ink)]',
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+          <nav className="hidden items-center gap-5 xl:flex" aria-label="منوی اصلی">
+            {STATIC_NAV.slice(0, 2).map((item) => (
+              <RetailNavLink
+                key={item.label}
+                href={item.href}
+                label={item.label}
+                active={isNavActive(pathname, item.href)}
+              />
+            ))}
 
             <div
               className="relative"
@@ -123,13 +158,39 @@ export function RetailHeader() {
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-1 text-[13px] font-medium text-[var(--retail-ink)]/70 hover:text-[var(--retail-ink)]"
+                aria-expanded={megaOpen}
+                aria-haspopup="true"
+                className={cn(
+                  'group relative inline-flex h-9 cursor-pointer items-center gap-1 px-0.5 text-[13px] font-medium tracking-wide',
+                  'text-[var(--retail-ink)]/65 transition-colors duration-200 ease-out',
+                  'hover:text-[var(--retail-ink)]',
+                  'focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2',
+                  NAV_UNDERLINE,
+                  'hover:before:scale-x-100 focus-visible:before:scale-x-100 data-[open=true]:before:scale-x-100',
+                  (megaOpen || categoryActive) && 'font-semibold text-[var(--retail-ink)] before:scale-x-100',
+                )}
+                data-open={megaOpen ? 'true' : 'false'}
+                onClick={() => setMegaOpen((v) => !v)}
               >
-                دسته‌بندی
-                <ChevronDown className="h-3.5 w-3.5" />
+                <span className="relative z-[1] transition-transform duration-200 ease-out group-hover:-translate-y-px motion-reduce:group-hover:translate-y-0">
+                  دسته‌بندی
+                </span>
+                <ChevronDown
+                  className={cn(
+                    'relative z-[1] h-3.5 w-3.5 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+                    megaOpen && 'rotate-180',
+                  )}
+                />
               </button>
-              {megaOpen ? (
-                <div className="absolute right-0 top-full z-50 w-[min(90vw,36rem)] rounded-2xl border border-[var(--retail-border)] bg-white p-5 shadow-xl">
+              <div
+                className={cn(
+                  'absolute right-0 top-full z-50 w-[min(90vw,36rem)] origin-top pt-2 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+                  megaOpen
+                    ? 'pointer-events-auto translate-y-0 opacity-100'
+                    : 'pointer-events-none -translate-y-1 opacity-0',
+                )}
+              >
+                <div className="rounded-2xl border border-[var(--retail-border)] bg-white p-5 shadow-xl">
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div>
                       <p className="mb-3 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
@@ -141,7 +202,7 @@ export function RetailHeader() {
                             <li key={c.id}>
                               <Link
                                 href={`/products?categoryId=${c.id}`}
-                                className="text-sm font-semibold hover:text-[var(--retail-primary)]"
+                                className="text-sm font-semibold text-[var(--retail-ink)] transition-colors duration-150 hover:text-[var(--retail-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
                                 onClick={() => setMegaOpen(false)}
                               >
                                 {c.name}
@@ -155,7 +216,11 @@ export function RetailHeader() {
                       <p className="mb-3 text-xs font-bold text-[var(--retail-muted)]">کالکشن‌ها</p>
                       <ul className="space-y-2">
                         <li>
-                          <Link href="/collections" className="text-sm font-semibold hover:text-[var(--retail-primary)]">
+                          <Link
+                            href="/collections"
+                            className="text-sm font-semibold text-[var(--retail-ink)] transition-colors duration-150 hover:text-[var(--retail-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
+                            onClick={() => setMegaOpen(false)}
+                          >
                             همه کالکشن‌ها
                           </Link>
                         </li>
@@ -163,7 +228,7 @@ export function RetailHeader() {
                           <li key={c.id}>
                             <Link
                               href={`/products?collectionId=${c.id}`}
-                              className="text-sm font-semibold hover:text-[var(--retail-primary)]"
+                              className="text-sm font-semibold text-[var(--retail-ink)] transition-colors duration-150 hover:text-[var(--retail-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
                               onClick={() => setMegaOpen(false)}
                             >
                               {c.name}
@@ -174,38 +239,34 @@ export function RetailHeader() {
                     </div>
                   </div>
                 </div>
-              ) : null}
+              </div>
             </div>
 
-            {STATIC_NAV.slice(2).map((item) => {
-              const base = item.href.split('?')[0]!;
-              const active = pathname === base || (base !== '/' && pathname.startsWith(base));
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    'relative text-[13px] font-medium transition',
-                    active ? 'text-[var(--retail-ink)]' : 'text-[var(--retail-ink)]/70 hover:text-[var(--retail-ink)]',
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+            {STATIC_NAV.slice(2).map((item) => (
+              <RetailNavLink
+                key={item.label}
+                href={item.href}
+                label={item.label}
+                active={isNavActive(pathname, item.href)}
+              />
+            ))}
           </nav>
 
           <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-2">
             <StorefrontSearch
               channel="RETAIL"
-              className="cursor-pointer p-2 text-[var(--retail-ink)]"
+              className="cursor-pointer rounded-sm p-2 text-[var(--retail-ink)] transition-colors duration-200 hover:bg-[var(--retail-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
             />
-            <Link href="/account" className="cursor-pointer p-2 text-[var(--retail-ink)]" aria-label="حساب">
+            <Link
+              href="/account"
+              className="cursor-pointer rounded-sm p-2 text-[var(--retail-ink)] transition-colors duration-200 hover:bg-[var(--retail-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
+              aria-label="حساب"
+            >
               <User className="h-5 w-5" strokeWidth={1.4} />
             </Link>
             <button
               type="button"
-              className="relative cursor-pointer p-2 text-[var(--retail-ink)]"
+              className="relative cursor-pointer rounded-sm p-2 text-[var(--retail-ink)] transition-colors duration-200 hover:bg-[var(--retail-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
               aria-label="سبد"
               onClick={() => setCartOpen(true)}
             >
@@ -226,21 +287,27 @@ export function RetailHeader() {
           <div className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col overflow-y-auto bg-white p-6 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
               <span className="font-bold">منو</span>
-              <button type="button" className="cursor-pointer p-2" onClick={() => setOpen(false)} aria-label="بستن">
+              <button
+                type="button"
+                className="cursor-pointer rounded-sm p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
+                onClick={() => setOpen(false)}
+                aria-label="بستن"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="flex flex-col gap-4">
+            <nav className="flex flex-col gap-1" aria-label="منوی موبایل">
               {STATIC_NAV.map((item) => {
-                const base = item.href.split('?')[0]!;
-                const active = pathname === base || (base !== '/' && pathname.startsWith(base));
+                const active = isNavActive(pathname, item.href);
                 return (
                   <Link
                     key={item.label}
                     href={item.href}
                     className={cn(
-                      'text-base font-semibold',
-                      active ? 'text-[var(--retail-primary)]' : 'text-[var(--retail-ink)]',
+                      'rounded-lg px-3 py-2.5 text-base font-semibold transition-colors duration-150',
+                      active
+                        ? 'bg-[var(--retail-surface)] text-[var(--retail-primary)]'
+                        : 'text-[var(--retail-ink)] hover:bg-[var(--retail-surface)]',
                     )}
                     aria-current={active ? 'page' : undefined}
                     onClick={() => setOpen(false)}
@@ -249,12 +316,12 @@ export function RetailHeader() {
                   </Link>
                 );
               })}
-              <p className="pt-2 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
+              <p className="px-3 pt-4 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
               {categories.map((c) => (
                 <Link
                   key={c.id}
                   href={`/products?categoryId=${c.id}`}
-                  className="text-sm font-semibold"
+                  className="rounded-lg px-3 py-2 text-sm font-semibold text-[var(--retail-ink)] transition-colors duration-150 hover:bg-[var(--retail-surface)]"
                   onClick={() => setOpen(false)}
                 >
                   {c.name}

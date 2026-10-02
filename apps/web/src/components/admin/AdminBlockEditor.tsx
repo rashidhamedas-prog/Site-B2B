@@ -1033,6 +1033,7 @@ function BlockFields({
       imageAlt?: string;
       presentation?: 'overlay' | 'artwork';
       overlayTone?: 'dark' | 'light';
+      copySide?: 'start' | 'end';
       ctaLabel?: string;
       ctaHref?: string;
       ctaSecondaryLabel?: string;
@@ -1049,6 +1050,7 @@ function BlockFields({
       imageAlt: '',
       presentation: 'overlay',
       overlayTone: 'dark',
+      copySide: 'start',
       ctaLabel: '',
       ctaHref: '',
       ctaSecondaryLabel: '',
@@ -1071,6 +1073,7 @@ function BlockFields({
             imageAlt: str(p, 'imageAlt'),
             presentation: str(p, 'presentation') === 'artwork' ? 'artwork' : 'overlay',
             overlayTone: str(p, 'overlayTone') === 'light' ? 'light' : 'dark',
+            copySide: str(p, 'copySide') === 'end' ? 'end' : 'start',
             ctaLabel: str(p, 'ctaLabel'),
             ctaHref: str(p, 'ctaHref'),
             ctaSecondaryLabel: str(p, 'ctaSecondaryLabel'),
@@ -1181,6 +1184,19 @@ function BlockFields({
                 >
                   <option value="dark">تیره (سفید روی سبز ترنم)</option>
                   <option value="light">روشن (سرمه‌ای روی پس‌زمینه روشن)</option>
+                </select>
+              </label>
+              <label className="space-y-1 text-xs font-medium text-gray-600">
+                <span>جای متن روی بنر (RTL)</span>
+                <select
+                  value={item.copySide === 'end' ? 'end' : 'start'}
+                  onChange={(e) =>
+                    update({ copySide: e.target.value as 'start' | 'end' })
+                  }
+                  className="focus:border-primary w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none"
+                >
+                  <option value="start">راست تصویر (پیشنهادی — محصول چپ آزاد)</option>
+                  <option value="end">چپ تصویر (وقتی محصول سمت راست است)</option>
                 </select>
               </label>
               <Field

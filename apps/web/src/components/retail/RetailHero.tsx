@@ -9,6 +9,7 @@ import {
   isLightHeroOverlay,
   normalizeHeroSlides,
   resolveAutoplayMs,
+  resolveHeroCopySide,
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
@@ -227,6 +228,8 @@ export function RetailHero(props: RetailHeroProps) {
   const slide = carousel.slide ?? slides[0]!;
   const isArtwork = slide.presentation === 'artwork';
   const isLight = isLightHeroOverlay(slide);
+  const copySide = resolveHeroCopySide(slide);
+  const copyAtStart = copySide === 'start';
 
   return (
     <section
@@ -246,6 +249,17 @@ export function RetailHero(props: RetailHeroProps) {
         const isActive = i === carousel.index;
         if (!isActive && i !== 0) return null;
         const isLcp = i === 0;
+        const side = resolveHeroCopySide(s);
+        const productToward =
+          s.presentation === 'artwork'
+            ? 'object-cover object-left md:object-center'
+            : side === 'end'
+              ? isLightHeroOverlay(s)
+                ? 'object-cover object-[center_top] sm:object-right'
+                : 'object-cover object-[82%_center] sm:object-[78%_center] lg:object-center scale-[1.02]'
+              : isLightHeroOverlay(s)
+                ? 'object-cover object-[center_top] sm:object-left'
+                : 'object-cover object-[18%_center] sm:object-[22%_center] lg:object-center scale-[1.02]';
         return (
           <div
             key={`${src}-${i}`}
@@ -259,13 +273,7 @@ export function RetailHero(props: RetailHeroProps) {
               mobileSrc={s.mobileImageUrl}
               alt={s.imageAlt || ''}
               priority={isLcp}
-              className={
-                s.presentation === 'artwork'
-                  ? 'object-cover object-left md:object-center'
-                  : isLightHeroOverlay(s)
-                    ? 'object-cover object-[center_top] sm:object-left'
-                    : 'object-cover object-[18%_center] sm:object-[22%_center] lg:object-center scale-[1.02]'
-              }
+              className={productToward}
             />
           </div>
         );
@@ -277,8 +285,17 @@ export function RetailHero(props: RetailHeroProps) {
         style={{
           background: isLight
             ? 'linear-gradient(to top, rgba(238,244,252,0.97) 0%, rgba(238,244,252,0.88) 28%, rgba(238,244,252,0.2) 52%, transparent 72%)'
-            : `
+            : copyAtStart
+              ? `
             linear-gradient(105deg,
+              rgba(8,28,22,0.08) 0%,
+              rgba(12,39,30,0.22) 38%,
+              rgba(12,39,30,0.72) 66%,
+              rgba(8,28,22,0.92) 100%),
+            linear-gradient(to top, rgba(8,28,22,0.45) 0%, transparent 42%)
+          `
+              : `
+            linear-gradient(255deg,
               rgba(8,28,22,0.08) 0%,
               rgba(12,39,30,0.22) 38%,
               rgba(12,39,30,0.72) 66%,
@@ -292,8 +309,9 @@ export function RetailHero(props: RetailHeroProps) {
         <div
           className="pointer-events-none absolute inset-0 hidden md:block"
           style={{
-            background:
-              'linear-gradient(105deg, rgba(238,244,252,0) 0%, rgba(238,244,252,0.1) 48%, rgba(238,244,252,0.78) 72%, rgba(238,244,252,0.94) 100%)',
+            background: copyAtStart
+              ? 'linear-gradient(105deg, rgba(238,244,252,0) 0%, rgba(238,244,252,0.1) 48%, rgba(238,244,252,0.78) 72%, rgba(238,244,252,0.94) 100%)'
+              : 'linear-gradient(255deg, rgba(238,244,252,0) 0%, rgba(238,244,252,0.1) 48%, rgba(238,244,252,0.78) 72%, rgba(238,244,252,0.94) 100%)',
           }}
           aria-hidden
         />
@@ -320,9 +338,9 @@ export function RetailHero(props: RetailHeroProps) {
       />
 
       <div
-        className={`relative z-10 mx-auto flex h-full max-w-[1200px] items-end justify-end px-4 pb-16 pt-8 sm:px-6 sm:pb-[4.25rem] lg:items-center lg:px-8 lg:pb-16 ${
-          isArtwork ? 'md:sr-only md:pointer-events-none' : ''
-        }`}
+        className={`relative z-10 mx-auto flex h-full max-w-[1200px] items-end px-4 pb-16 pt-8 sm:px-6 sm:pb-[4.25rem] lg:items-center lg:px-8 lg:pb-16 ${
+          copyAtStart ? 'justify-start' : 'justify-end'
+        } ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
       >
         <div
           key={`copy-${carousel.index}`}
