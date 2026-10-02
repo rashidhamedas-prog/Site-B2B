@@ -13,5 +13,14 @@ assert(normalizeErpLabel('سايز ۱') === 'سایز 1', 'persian digit + arabi
 assert(normalizeErpLabel('سایز\u200c۱') === 'سایز1', 'zwnj stripped then digit');
 assert(variantMatchKey('مشکی', 'سایز ۱') === 'مشکی|سایز 1', 'match key');
 assert(variantMatchKey('مشکی', 'سایز 1') === variantMatchKey('مشکی', 'سایز ۱'), 'digit parity');
+assert(
+  normalizeErpLabel('فری سایز (مناسب تا 48)') === normalizeErpLabel('فری سایز'),
+  'free-size paren stripped',
+);
+assert(
+  variantMatchKey('سبز کاهویی', 'فری سایز (مناسب تا 48)') ===
+    variantMatchKey('سبز کاهویی', 'فری سایز'),
+  'color+free-size key parity',
+);
 
 console.log('erp-text-normalize.spec.ts: ok');
