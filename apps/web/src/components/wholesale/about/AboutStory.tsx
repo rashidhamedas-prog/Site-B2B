@@ -1,5 +1,5 @@
 import type { MutableRefObject } from 'react';
-import { toPersianDigits } from '@taranom/persian-utils';
+import { AboutScene } from './AboutScene';
 import styles from './about.module.css';
 
 export const ABOUT_STAGES = [
@@ -48,23 +48,15 @@ export function AboutStory({
             role="listitem"
             aria-current={isActive ? 'step' : undefined}
           >
-            <div className={styles.stepMeta}>
-              <span className={styles.stageIndex}>
-                {toPersianDigits(index + 1)} / {toPersianDigits(ABOUT_STAGES.length)}
-              </span>
-              <span className={styles.stageKicker}>{stage.kicker}</span>
+            <div className={styles.stepScene}>
+              <AboutScene activeStage={index} />
             </div>
-            <h2 className={styles.stageTitle}>{stage.title}</h2>
-            <p className={styles.stageBody}>{stage.body}</p>
-            <div className={styles.stepRail} aria-hidden="true">
-              {ABOUT_STAGES.map((_, dot) => (
-                <span
-                  key={dot}
-                  className={styles.stepDot}
-                  data-on={dot === index}
-                  data-done={dot < index}
-                />
-              ))}
+            <div className={styles.stepCopy}>
+              <div className={styles.stepMeta}>
+                <span className={styles.stageKicker}>{stage.kicker}</span>
+              </div>
+              <h2 className={styles.stageTitle}>{stage.title}</h2>
+              <p className={styles.stageBody}>{stage.body}</p>
             </div>
           </article>
         );

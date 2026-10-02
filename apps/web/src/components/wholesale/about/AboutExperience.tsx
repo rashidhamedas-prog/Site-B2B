@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { toPersianDigits } from '@taranom/persian-utils';
 import { AboutScene } from './AboutScene';
 import { ABOUT_STAGES, AboutStory } from './AboutStory';
 import styles from './about.module.css';
@@ -89,22 +88,23 @@ export function AboutExperience() {
           عدد است.
         </p>
         {!reducedMotion ? (
-          <p className={styles.scrollHint}>اسکرول کنید؛ هر مرحله کارگاه روشن می‌شود</p>
+          <p className={styles.scrollHint}>ادامه ↓ مسیر کارگاه تا عمده</p>
         ) : null}
       </header>
 
       <div ref={scrollerRef} className={styles.scroller} data-reduced={reducedMotion}>
         <div className={styles.stickyGraphic}>
           <AboutScene activeStage={activeStage} />
-          <ol className={styles.progress} aria-label="مراحل تولید">
-            {ABOUT_STAGES.map((stage, index) => (
-              <li key={stage.title} data-on={index === activeStage} data-done={index < activeStage}>
-                <span className={styles.progressIndex}>{toPersianDigits(index + 1)}</span>
-                <span className={styles.progressLabel}>{stage.title}</span>
-              </li>
-            ))}
-          </ol>
         </div>
+
+        <ol className={styles.progress} aria-label="مراحل تولید">
+          {ABOUT_STAGES.map((stage, index) => (
+            <li key={stage.title} data-on={index === activeStage} data-done={index < activeStage}>
+              <span className={styles.progressDot} aria-hidden="true" />
+              <span className={styles.progressLabel}>{stage.title}</span>
+            </li>
+          ))}
+        </ol>
 
         <AboutStory activeStage={activeStage} stepRefs={stepRefs} />
       </div>

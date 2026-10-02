@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-10-02 — **TASK-20261002-005 implementing** on `ai/TASK-20261002-005-about-scroll-polish`. About polish (mobile cards, full scene, vertical rail). Not live until merge/deploy.
 - Last verified: 2026-10-02 — **TASK-20261002-004 LIVE** on `origin/master` + VPS `e9b1187`. Wholesale About sticky scrollytelling; `/about` 200 with story markers; health 200. Claims released. Independent Reviewer residual (desktop scroll visual).
 - Last verified: 2026-10-02 — **TASK-20261002-002 LIVE** on `origin/master` + VPS `d2dfd7a`. Configurable apply form + admin drawer + partner password; health 200; public-settings includes applyFormFields. Claims released. Independent Reviewer + Security residual (PII).
 - Last verified: 2026-10-02 — **TASK-20261002-003 LIVE** on `origin/master` `cd15321`. Support tickets retail/wholesale/admin; health 200; mine API 401; `/admin/support`→login; `/account/support` chunk live. Claims released. Independent Reviewer + Security residual.

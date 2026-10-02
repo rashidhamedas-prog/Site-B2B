@@ -70,10 +70,10 @@
   background: var(--gold);
 }
 
-/* —— Scroller: sticky graphic + step column —— */
+/* —— Scroller: desktop sticky + vertical rail; mobile stacked cards —— */
 .scroller {
   display: grid;
-  gap: 1.25rem;
+  gap: 1.5rem;
   max-width: 80rem;
   margin-inline: auto;
   padding: 0 1rem 1rem;
@@ -87,63 +87,108 @@
 
 @media (min-width: 1024px) {
   .scroller {
-    grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.05fr);
-    gap: 3rem;
+    grid-template-columns: minmax(280px, 1fr) 7.5rem minmax(0, 1.05fr);
+    gap: 1.25rem 1.75rem;
     align-items: start;
     padding-inline: 2rem;
   }
 }
 
+/* Desktop-only sticky graphic */
 .stickyGraphic {
-  position: sticky;
-  top: 5.5rem;
-  z-index: 1;
-  display: grid;
-  gap: 0.85rem;
+  display: none;
 }
 
 @media (min-width: 1024px) {
   .stickyGraphic {
-    top: 6.5rem;
+    display: block;
+    position: sticky;
+    top: 6.25rem;
+    z-index: 1;
+    height: calc(100vh - 7.5rem);
+  }
+
+  .stickyGraphic .sceneWell {
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+    border-radius: 1.25rem;
   }
 }
 
+/* Vertical progress rail (desktop) */
 .progress {
   list-style: none;
   margin: 0;
   padding: 0;
   display: none;
-  gap: 0.35rem;
 }
 
 @media (min-width: 1024px) {
   .progress {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+    position: sticky;
+    top: 6.25rem;
+    height: calc(100vh - 7.5rem);
+    padding-block: 1.5rem;
   }
 }
 
 .progress li {
+  position: relative;
   display: grid;
-  gap: 0.25rem;
-  padding: 0.55rem 0.45rem;
-  border-top: 2px solid var(--line);
-  opacity: 0.45;
-  transition: opacity 220ms ease, border-color 220ms ease;
+  grid-template-columns: 0.75rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding-block: 0.85rem;
+  opacity: 0.4;
+  transition: opacity 220ms ease;
+}
+
+.progress li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0.28rem;
+  top: 1.35rem;
+  bottom: -0.85rem;
+  width: 1px;
+  background: var(--line);
+}
+
+.progress li:last-child::before {
+  display: none;
 }
 
 .progress li[data-on='true'],
 .progress li[data-done='true'] {
   opacity: 1;
-  border-top-color: var(--gold);
 }
 
-.progressIndex {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--gold);
-  font-variant-numeric: tabular-nums;
+.progress li[data-done='true']::before,
+.progress li[data-on='true']::before {
+  background: var(--gold);
+}
+
+.progressDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.2rem;
+  border-radius: 999px;
+  background: var(--line);
+  box-shadow: 0 0 0 3px var(--cream);
+  transition: background-color 220ms ease, transform 220ms ease;
+}
+
+.progress li[data-on='true'] .progressDot {
+  background: var(--gold);
+  transform: scale(1.25);
+}
+
+.progress li[data-done='true'] .progressDot {
+  background: var(--forest);
 }
 
 .progressLabel {
@@ -153,10 +198,10 @@
   color: var(--ink);
 }
 
-/* —— Steps (scroll past sticky graphic) —— */
+/* —— Steps —— */
 .steps {
   display: grid;
-  gap: 1rem;
+  gap: 1.75rem;
 }
 
 @media (min-width: 1024px) {
@@ -166,27 +211,18 @@
 }
 
 .step {
-  border: 1px solid transparent;
-  border-radius: 1.15rem;
-  background: rgba(255, 255, 255, 0.42);
-  padding: 1.35rem 1.2rem 1.45rem;
-  transition:
-    border-color 240ms ease,
-    background-color 240ms ease,
-    box-shadow 240ms ease,
-    transform 240ms ease;
+  display: grid;
+  gap: 1rem;
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
 @media (min-width: 1024px) {
   .step {
     min-height: min(72vh, 34rem);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 2.5rem 1.75rem;
-    background: transparent;
-    border-radius: 0;
-    border: none;
+    align-content: center;
+    padding: 2.5rem 0.5rem 2.5rem 0;
     border-bottom: 1px solid var(--line);
   }
 
@@ -199,15 +235,30 @@
   }
 }
 
-.step[data-active='true'] {
-  border-color: rgba(201, 168, 76, 0.45);
-  box-shadow: 0 12px 28px rgba(15, 47, 40, 0.06);
+.stepScene {
+  display: block;
 }
 
 @media (min-width: 1024px) {
-  .step[data-active='true'] {
-    border-color: transparent;
-    box-shadow: none;
+  .stepScene {
+    display: none;
+  }
+}
+
+.stepScene .sceneWell {
+  height: min(56vh, 22rem);
+  min-height: 15rem;
+  aspect-ratio: auto;
+  border-radius: 1.15rem;
+}
+
+.stepCopy {
+  padding-inline: 0.15rem;
+}
+
+@media (min-width: 1024px) {
+  .stepCopy {
+    padding-inline: 1.25rem;
   }
 }
 
@@ -216,14 +267,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem 1rem;
-  margin-bottom: 0.65rem;
-}
-
-.stageIndex {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--gold);
+  margin-bottom: 0.55rem;
 }
 
 .stageKicker {
@@ -248,43 +292,12 @@
   color: var(--muted);
 }
 
-.stepRail {
-  display: flex;
-  gap: 0.4rem;
-  margin-top: 1.25rem;
-}
-
-@media (min-width: 1024px) {
-  .stepRail {
-    display: none;
-  }
-}
-
-.stepDot {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 999px;
-  background: var(--line);
-  transition: background-color 200ms ease, transform 200ms ease;
-}
-
-.stepDot[data-on='true'] {
-  background: var(--gold);
-  transform: scale(1.35);
-}
-
-.stepDot[data-done='true'] {
-  background: var(--forest);
-}
-
 /* —— Scene —— */
 .sceneWell {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   border-radius: 1.35rem;
-  aspect-ratio: 5 / 4;
-  min-height: 16.5rem;
   background:
     radial-gradient(ellipse at 50% 18%, rgba(201, 168, 76, 0.22), transparent 42%),
     linear-gradient(165deg, #16352e 0%, #0f2f28 48%, #0b2420 100%);
@@ -292,13 +305,6 @@
     0 1px 0 rgba(255, 255, 255, 0.06) inset,
     0 22px 40px rgba(15, 47, 40, 0.18);
   contain: layout paint;
-}
-
-@media (min-width: 1024px) {
-  .sceneWell {
-    min-height: 28rem;
-    aspect-ratio: 1 / 0.95;
-  }
 }
 
 .sceneGlow {
@@ -332,14 +338,9 @@
   font-weight: 700;
 }
 
-.sceneLabel span {
-  color: var(--gold-soft);
-  font-variant-numeric: tabular-nums;
-}
-
 .sceneLabel em {
   font-style: normal;
-  opacity: 0.85;
+  color: var(--gold-soft);
 }
 
 .layer {
@@ -620,6 +621,11 @@
 
 .scroller[data-reduced='true'] .stickyGraphic {
   position: static;
+  height: auto;
+}
+
+.scroller[data-reduced='true'] .stickyGraphic .sceneWell {
+  height: min(70vh, 32rem);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -634,6 +640,12 @@
 
   .stickyGraphic {
     position: static;
+    height: auto;
+  }
+
+  .progress {
+    position: static;
+    height: auto;
   }
 
   .step {
@@ -646,11 +658,6 @@
 }
 
 @media (max-width: 639px) {
-  .sceneWell {
-    min-height: 15rem;
-    border-radius: 1.1rem;
-  }
-
   .intro {
     padding-top: 1.75rem;
     text-align: start;
@@ -658,5 +665,10 @@
 
   .lede {
     margin-inline: 0;
+  }
+
+  .stepScene .sceneWell {
+    height: min(52vh, 18rem);
+    border-radius: 1.1rem;
   }
 }

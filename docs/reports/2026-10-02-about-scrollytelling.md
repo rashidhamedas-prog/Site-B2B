@@ -25,6 +25,11 @@ Replace the failed absolute-fade sticky About story with a modern sticky-graphic
 - `cd apps/web && npx tsc --noEmit` — pass
 - Independent verify specialist: sticky+IO, intro outside, mobile, reduced-motion, brand — pass; mid-session reduced-motion IO teardown fixed after review
 
+## Polish (TASK-20261002-005)
+- Mobile: sticky graphic hidden; each step mounts its own `AboutScene` strip (~56vh)
+- Desktop: scene height `calc(100vh - 7.5rem)`; vertical progress rail between scene and copy
+- Removed `N / 4` counters; scene label is kicker-only
+
 ## Residual
 - Optional later: CSS `animation-timeline: view()` progressive enhancement for layer fades where supported
-- Visual QA on live `.com/about` after deploy
+- Optional: avoid mounting 4 mobile scenes on desktop via CSS-only stage strips (current: display:none)

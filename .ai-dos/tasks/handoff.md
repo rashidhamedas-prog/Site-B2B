@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T01:50:00Z — TASK-20261002-005 implementing (About polish)
+
+- Owner: cursor:implementer-TASK-20261002-005
+- Branch: `ai/TASK-20261002-005-about-scroll-polish`
+- Scope: mobile cards without sticky, full-height desktop scene, vertical rail, drop N/4 labels.
+- Unrelated dirty sales-partner files on worktree left untouched.
+- Next: commit about-only + deploy smoke.
+
 ## 2026-10-02T01:40:00Z — TASK-20261002-004 LIVE (About scrollytelling)
 
 - Owner: cursor:implementer-TASK-20261002-004

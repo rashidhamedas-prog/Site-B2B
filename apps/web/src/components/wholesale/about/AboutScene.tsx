@@ -1,5 +1,4 @@
 import { useId } from 'react';
-import { toPersianDigits } from '@taranom/persian-utils';
 import { ABOUT_STAGES } from './AboutStory';
 import styles from './about.module.css';
 
@@ -14,7 +13,6 @@ export function AboutScene({ activeStage }: { activeStage: number }) {
       <div className={styles.sceneGlow} />
       <div className={styles.sceneFrame}>
         <div className={styles.sceneLabel}>
-          <span>{toPersianDigits(stage + 1)}</span>
           <em>{ABOUT_STAGES[stage]?.kicker ?? ''}</em>
         </div>
 

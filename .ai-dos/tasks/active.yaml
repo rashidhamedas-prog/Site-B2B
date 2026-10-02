@@ -1,5 +1,37 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261002-005"
+    title: "About scrollytelling polish (mobile cards + full scene + vertical rail)"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261002-005"
+    roles:
+      architect: "cursor:implementer-TASK-20261002-005"
+      implementer: "cursor:implementer-TASK-20261002-005"
+      reviewer: "self-ok-low-risk"
+      security: "not-required"
+    branch: "ai/TASK-20261002-005-about-scroll-polish"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T01:45:00Z"
+    heartbeat_at: "2026-10-02T01:45:00Z"
+    depends_on: ["TASK-20261002-004"]
+    file_claims:
+      - "apps/web/src/components/wholesale/about/AboutExperience.tsx"
+      - "apps/web/src/components/wholesale/about/AboutStory.tsx"
+      - "apps/web/src/components/wholesale/about/AboutScene.tsx"
+      - "apps/web/src/components/wholesale/about/about.module.css"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-02-about-scrollytelling.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      skill-top standard polish of specialist residuals. Do not touch unrelated dirty sales-partner files.
+    acceptance_criteria:
+      - "Mobile <1024: no sticky graphic; each step has own scene strip + text"
+      - "Desktop: near full-viewport scene height; vertical progress rail"
+      - "No N/4 stage counter labels; kicker + rail titles only"
+      - "About smoke 200 after deploy"
   - id: "TASK-20261002-004"
     title: "Wholesale About sticky scrollytelling redesign"
     status: "done"
