@@ -4,6 +4,7 @@
 
 - ریشه: ابر نارنجی Cloudflare (AAAA + HTTP/3) دوباره روی هر دو ویترین؛ مسیر تونل روی SNI تکی. اپ ایران را بلاک نمی‌کرد.
 - لبه: gray-cloud برای `@`/`www`/`api` + خاموشی IPv6/HTTP3/Bot Fight. ویترین نباید دوباره نارنجی شود مگر تست گوشی بدون VPN.
+- اعمال زنده CF (لاگین MCP): هر پنج A خاکستری به `5.75.200.102`؛ تنظیمات شبکه/امنیت بالا؛ Verify: `Server: nginx`، health 200، بدون AAAA/h3.
 - origin: `limit_req` روی `/api/` ویترین؛ Swagger فقط غیرپروداکشن؛ اینکلود تونل از هاست فروشگاه حذف شود.
 - گزارش: `docs/reports/2026-10-02-iran-edge-and-origin-harden.md`.
 

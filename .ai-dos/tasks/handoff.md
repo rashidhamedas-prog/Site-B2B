@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T00:45:00Z — TASK-20261002-001 LIVE (Cloudflare gray-cloud applied)
+
+- Owner: cursor:implementer-TASK-20261002-001
+- CF MCP auth + apply: apex/www (.com/.ir) + api → DNS-only `5.75.200.102`; ipv6/http3 off; security essentially_off; browser_check off; bot fight false; SSL stays strict.
+- Verify: DNS A-only origin; `Server: nginx/1.31.2`; health 200; no `alt-svc: h3`. erp/erprayan left orange.
+- Residual: origin IP exposed; xray listeners still on same host; phone VPN-off field check for owner.
+- Claims remain until owner confirms both homes open from Iran home data without VPN.
+
 ## 2026-10-02T00:26:00Z — TASK-20261002-001 implementing (Iran edge + origin)
 
 - Owner: cursor:implementer-TASK-20261002-001
