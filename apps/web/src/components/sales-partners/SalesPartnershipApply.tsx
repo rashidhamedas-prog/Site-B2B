@@ -6,8 +6,8 @@ import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
-import { normalizePhone } from '@/lib/phone';
-import { extractSmsCooldown } from '@/lib/sms-cooldown';
+import { normalizeDigits, normalizeOtpCode, normalizePhone } from '@/lib/phone';
+import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown } from '@/lib/sms-cooldown';
 import { SpButton, SpStepRail, spFocusClass } from './SpUi';
 
 type ApplyFormField = {
@@ -110,8 +110,12 @@ export function SalesPartnershipApply() {
       if (field.key === 'instagram' || field.key === 'telegram') {
         payload[field.key] = String(v).trim();
       }
-      (payload.answers as Record<string, string | boolean>)[field.key] = typeof v === 'boolean' ? v : String(v).trim();
-      payload[field.key] = typeof v === 'boolean' ? v : String(v).trim();
+      let stored: string | boolean = typeof v === 'boolean' ? v : String(v).trim();
+      if (typeof stored === 'string' && (field.type === 'national_id' || field.key === 'nationalId')) {
+        stored = normalizeDigits(stored);
+      }
+      (payload.answers as Record<string, string | boolean>)[field.key] = stored;
+      payload[field.key] = stored;
     }
     return payload;
   }
@@ -123,11 +127,13 @@ export function SalesPartnershipApply() {
         '/sales-partner-applications',
         applyPayload(),
       );
-      start(extractSmsCooldown(null, res));
+      const seconds = extractSmsCooldown(null, res);
+      start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
       if (opts?.advanceToOtp) setState('otp');
       return true;
     } catch (err) {
-      start(extractSmsCooldown(err));
+      const seconds = extractSmsCooldown(err);
+      start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
       setError(err instanceof Error ? err.message : 'ارسال درخواست ناموفق بود');
       return false;
     }
@@ -143,14 +149,20 @@ export function SalesPartnershipApply() {
   async function submitApply(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    await postApplication({ advanceToOtp: true });
-    setBusy(false);
+    try {
+      await postApplication({ advanceToOtp: true });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function resendApplyOtp() {
     setResendBusy(true);
-    await postApplication();
-    setResendBusy(false);
+    try {
+      await postApplication();
+    } finally {
+      setResendBusy(false);
+    }
   }
 
   async function submitOtp(event: FormEvent) {
@@ -160,7 +172,7 @@ export function SalesPartnershipApply() {
     try {
       await apiClient.post('/sales-partner-applications/verify', {
         phone: normalizePhone(String(values.phone || '')),
-        code: code.trim(),
+        code: normalizeOtpCode(code),
       });
       setState('done');
     } catch (err) {
@@ -275,6 +287,7 @@ export function SalesPartnershipApply() {
                   field.type === 'national_id' ||
                   field.key === 'instagram' ||
                   field.key === 'telegram';
+                const isNumericField = field.type === 'phone' || field.type === 'national_id';
 
                 return (
                   <Field key={field.key} label={field.label} htmlFor={field.key} required={field.required}>
@@ -283,11 +296,17 @@ export function SalesPartnershipApply() {
                       className={inputClass}
                       value={String(values[field.key] || '')}
                       onChange={(e) => setField(field.key, e.target.value)}
+                      onBlur={(e) => {
+                        if (!isNumericField) return;
+                        const normalized =
+                          field.type === 'phone'
+                            ? normalizePhone(e.target.value)
+                            : normalizeDigits(e.target.value);
+                        if (normalized) setField(field.key, normalized);
+                      }}
                       required={field.required}
                       maxLength={field.maxLength}
-                      inputMode={
-                        field.type === 'phone' || field.type === 'national_id' ? 'numeric' : undefined
-                      }
+                      inputMode={isNumericField ? 'numeric' : undefined}
                       autoComplete={field.key === 'phone' ? 'tel' : field.key === 'displayName' ? 'name' : undefined}
                       dir={isLtr ? 'ltr' : undefined}
                       placeholder={

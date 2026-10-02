@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { normalizePhone } from '../../auth/phone.util';
+import { normalizeOtpCode, normalizePhone } from '../../auth/phone.util';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '../../auth/password-policy';
 
 export class ApplySalesPartnerDto {
@@ -95,9 +95,10 @@ export class VerifySalesPartnerApplicationDto {
   @Matches(/^09[0-9]{9}$/, { message: 'شماره موبایل معتبر نیست' })
   phone: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: '123456' })
+  @Transform(({ value }) => normalizeOtpCode(String(value ?? '')))
   @IsString()
-  @MaxLength(8)
+  @Matches(/^[0-9]{4,8}$/, { message: 'کد تأیید نامعتبر است' })
   code: string;
 }
 
@@ -109,9 +110,10 @@ export class SalesPartnerOtpDto {
 }
 
 export class SalesPartnerOtpVerifyDto extends SalesPartnerOtpDto {
-  @ApiProperty()
+  @ApiProperty({ example: '123456' })
+  @Transform(({ value }) => normalizeOtpCode(String(value ?? '')))
   @IsString()
-  @MaxLength(8)
+  @Matches(/^[0-9]{4,8}$/, { message: 'کد تأیید نامعتبر است' })
   code: string;
 }
 

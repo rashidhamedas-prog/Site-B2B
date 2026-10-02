@@ -71,8 +71,13 @@ class ApiClient {
         const n = Number(retryRaw);
         if (Number.isFinite(n) && n > 0) err.retryAfter = Math.ceil(n);
       }
-      // Only auto-redirect on 401 if this is NOT a login request (avoid redirect loop)
-      if (res.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/login') && !path.includes('/auth/retail')) {
+      // Only auto-redirect on 401 if this is NOT a login/OTP-verify attempt (wrong OTP must stay on form)
+      const skipAuthRedirect =
+        path.includes('/auth/login') ||
+        path.includes('/auth/retail') ||
+        path.includes('/otp/verify') ||
+        path.includes('/sales-partner-applications/verify');
+      if (res.status === 401 && typeof window !== 'undefined' && !skipAuthRedirect) {
         const { clearToken } = await import('./auth');
         clearToken();
         const pathName = window.location.pathname;

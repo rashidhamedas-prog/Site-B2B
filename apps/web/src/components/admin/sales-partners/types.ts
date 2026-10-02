@@ -60,6 +60,8 @@ export type CatalogRow = {
   vendorSku: boolean;
   eligible: boolean;
   previewCommissionPercent: number;
+  /** Active PRODUCT-scope override when set; otherwise null (PROGRAM/CATEGORY applies). */
+  productCommissionPercent?: number | null;
   marginIrr: number;
   minMarginIrr: number;
   canEnable: boolean;

@@ -13,10 +13,13 @@ function assert(cond: boolean, msg: string) {
 
 // Valid Iranian national ID sample (checksum-valid)
 const VALID_NID = '0013542419';
+const VALID_NID_FA = '۰۰۱۳۵۴۲۴۱۹';
 assert(validateIranNationalId(VALID_NID) === null, 'valid nid');
+assert(validateIranNationalId(VALID_NID_FA) === null, 'valid persian nid digits');
 assert(validateIranNationalId('1234567890') !== null, 'invalid nid');
 assert(validateIranNationalId('0000000000') !== null, 'repeated nid');
 assert(maskNationalId(VALID_NID) === '******2419', 'mask nid');
+assert(maskNationalId(VALID_NID_FA) === '******2419', 'mask persian nid');
 
 const defaults = resolveApplyFormFields(undefined);
 assert(defaults.length >= 12, 'default field count');
@@ -64,5 +67,22 @@ const missing = validateApplyAnswers(DEFAULT_APPLY_FORM_FIELDS, {
   acceptTerms: true,
 });
 assert(missing.ok === false, 'required city missing');
+
+const faDigits = validateApplyAnswers(DEFAULT_APPLY_FORM_FIELDS, {
+  displayName: 'سارا',
+  phone: '۰۹۱۵۱۲۳۴۵۶۷',
+  province: 'تهران',
+  city: 'تهران',
+  nationalId: VALID_NID_FA,
+  salesExperience: '1_to_3y',
+  primaryChannel: 'instagram',
+  motivation: 'فروش لباس',
+  acceptTerms: true,
+});
+assert(faDigits.ok === true, 'persian phone+nid apply');
+if (faDigits.ok) {
+  assert(faDigits.data.phone === '09151234567', 'phone ascii');
+  assert(faDigits.data.answers.nationalId === VALID_NID, 'nid ascii');
+}
 
 console.log('sales-partner-apply-form.spec.ts: OK');

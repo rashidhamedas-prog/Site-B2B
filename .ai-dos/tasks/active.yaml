@@ -1,5 +1,52 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-001"
+    title: "Sales-partner apply OTP + eligibility + per-product commission"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261003-001"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-001"
+      implementer: "cursor:implementer-TASK-20261003-001"
+      reviewer: "required-after-diff"
+      security: "required-after-diff"
+    branch: "ai/TASK-20261003-001-sp-apply-otp-commission"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T21:00:00Z"
+    heartbeat_at: "2026-10-02T21:00:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/redis/redis.module.ts"
+      - "apps/api/src/modules/redis/otp-cooldown.spec.ts"
+      - "apps/api/src/modules/sales-partner/dto/apply-sales-partner.dto.ts"
+      - "apps/api/src/modules/sales-partner/dto/sales-partner-catalog.dto.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-apply-form.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-apply-form.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog.service.ts"
+      - "apps/web/src/lib/api.ts"
+      - "apps/web/src/lib/phone.ts"
+      - "apps/web/src/lib/sms-cooldown.ts"
+      - "apps/web/src/components/sales-partners/SalesPartnershipApply.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnerLoginForm.tsx"
+      - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
+      - "apps/web/src/components/admin/sales-partners/types.ts"
+      - ".env.example"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-03-sales-partner-apply-otp-commission.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Sales-partner OTP resend cooldown defaults to 120s"
+      - "FA/EN digits accepted for phone, nationalId, OTP on apply/verify"
+      - "Wrong OTP on apply does not redirect away from form"
+      - "Maryam PENDING_OTP root cause documented; verify path unblocked"
+      - "Admin can enable products and set per-product PRODUCT commission rule"
+      - "Unit specs for apply-form digits + SP cooldown pass"
+    notes: |
+      skill-top full. Maryam cf7ef9a3 PENDING_OTP; 3 otp_requested, 0 submitted;
+      inactive CUSTOMER user on 09010282085.
   - id: "TASK-20261002-007"
     title: "Retail home hero + CTA editorial redesign"
     status: "done"

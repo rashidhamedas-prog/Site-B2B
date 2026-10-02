@@ -9,6 +9,7 @@ import { OtpCooldownError, OtpService } from './redis.module';
 const config = {
   get(key: string, fallback?: unknown) {
     if (key === 'OTP_RESEND_COOLDOWN_SECONDS') return 60;
+    if (key === 'OTP_SALES_PARTNER_RESEND_COOLDOWN_SECONDS') return 120;
     if (key === 'OTP_TTL_SECONDS') return 300;
     return fallback;
   },
@@ -41,7 +42,19 @@ function redisService(pttlSeconds: number | null, firstWriterWins: boolean) {
 async function main() {
   const fresh = memoryOnlyService();
   assert.equal(fresh.cooldownSeconds(), 60, 'public cooldown window');
+  assert.equal(fresh.cooldownSeconds('sales_partner_apply'), 120, 'sales-partner apply cooldown');
+  assert.equal(fresh.cooldownSeconds('sales_partner'), 120, 'sales-partner login cooldown');
   assert.equal(await fresh.getCooldownRemaining('09121234567'), 0, 'no wait before first issue');
+
+  const spIssued = await fresh.issue('09120001111', 'SP', 'sales_partner_apply');
+  assert.match(spIssued.code, /^\d{6}$/, 'sp six digit code');
+  const spRemaining = await fresh.getCooldownRemaining('09120001111', 'sales_partner_apply');
+  assert.ok(spRemaining > 110 && spRemaining <= 120, `sp cooldown remaining (got ${spRemaining})`);
+  assert.equal(
+    await fresh.verify('09120001111', spIssued.code.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)]!), 'sales_partner_apply').then(() => 'ok'),
+    'ok',
+    'persian OTP digits verify',
+  );
 
   const issued = await fresh.issue('09121234567');
   assert.match(issued.code, /^\d{6}$/, 'six digit code');

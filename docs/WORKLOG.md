@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-03 — همکار بازاریاب: OTP ثبت‌نام + محصولات مجاز + پورسانت محصولی
+
+- تایمر OTP همکار بازاریاب پیش‌فرض ۱۲۰ثانیه (`OTP_SALES_PARTNER_RESEND_COOLDOWN_SECONDS`).
+- ارقام فارسی/عربی روی تلفن، کد ملی، OTP؛ جلوگیری از ریدایرکت ۴۰۱ روی verify اشتباه.
+- ریشهیابی مریم نوروزی (`PENDING_OTP`، ۳ OTP، بدون submit؛ کاربر CUSTOMER غیرفعال).
+- ادمین کاتالوگ: پورسانت per-product با upsert قانون `PRODUCT`؛ حاشیه vendor با همان درصد.
+- گزارش: `docs/reports/2026-10-03-sales-partner-apply-otp-commission.md`.
+
 ## 2026-10-02 — بازطراحی هیرو و CTA لندینگ تکی
 
 - هیرو retail: full-bleed ادیتوریال با اسکریم نرم (بدون پنل سبز سخت)، تایپ و CTA طلایی بزرگ‌تر، fade به trust strip.

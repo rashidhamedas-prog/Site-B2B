@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T21:15:00Z — TASK-20261003-001 implementing (SP apply OTP + commission)
+
+- Owner: cursor:implementer-TASK-20261003-001
+- Branch intended: `ai/TASK-20261003-001-sp-apply-otp-commission` (working tree currently dirty; commit pending owner)
+- Maryam: `cf7ef9a3…` PENDING_OTP; 3× otp_requested; 0 submitted; user CUSTOMER inactive on `09010282085`
+- Fixes: SP cooldown 120; FA digits; 401 redirect skip on OTP verify; reactivate inactive CUSTOMER on apply verify; PRODUCT commission upsert from admin catalog
+- Gates: otp-cooldown / apply-form / phone.util / commission-policy specs OK; web tsc OK; api tsc unrelated erp-inventory errors
+- Slack: no hits. SEO/GEO: N/A
+- Next: owner approve commit+push+VPS deploy; Maryam retry OTP; Independent Reviewer + Security residual
+- Claims still held
+
 ## 2026-10-02T12:30:00Z — TASK-20261002-007 LIVE (retail hero CTA)
 
 - Owner: cursor:implementer-TASK-20261002-007
