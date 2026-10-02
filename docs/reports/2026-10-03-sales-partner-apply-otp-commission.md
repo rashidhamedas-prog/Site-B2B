@@ -70,3 +70,13 @@ No matching threads for بازاریاب/OTP/ثبت.
 1. Owner approve → commit + push + VPS deploy (set env optional; code default 120).
 2. Smoke: apply OTP timer 120; FA digits; wrong OTP stays on form; enable product + save %; Maryam retry verify.
 3. Independent Reviewer + Security residual (OTP auth + PII).
+
+## Follow-up 2026-10-03 — Internal server error on verify (Maryam)
+
+**Evidence (reproduced on VPS):** seeded OTP → `POST /v1/sales-partner-applications/verify` → `500`  
+`QueryFailedError: duplicate key value violates unique constraint "UQ_…users.phone"`
+
+**Root cause:** user `09010282085` exists with `deletedAt` set (soft-delete) + `isActive=false`.  
+`findOne({ phone })` skips soft-deleted rows → code tries `INSERT` → UNIQUE(phone) → Nest 500. OTP already consumed.
+
+**Fix:** `findOne({ phone, withDeleted: true })`, then `users.restore(id)` + reactivate CUSTOMER (same pattern as retail OTP in `auth.service.ts`).

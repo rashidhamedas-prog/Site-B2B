@@ -132,7 +132,7 @@ export class SalesPartnerService {
       throw new BadRequestException(validated.error);
     }
     const { displayName, phone, socialHandles, answers } = validated.data;
-    const user = await this.users.findOne({ where: { phone } });
+    const user = await this.users.findOne({ where: { phone }, withDeleted: true });
     if (user && (isStaffRole(user.role) || vendorRole(user.role))) {
       throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
     }
@@ -175,7 +175,8 @@ export class SalesPartnerService {
       where: { phone, status: In(['PENDING_OTP', 'PENDING_REVIEW', 'NEEDS_INFORMATION']) },
     });
     if (!application) throw new NotFoundException('درخواستی برای این شماره پیدا نشد');
-    let user = await this.users.findOne({ where: { phone } });
+    // Soft-deleted users still occupy users.phone UNIQUE — must restore, not re-insert (500 otherwise).
+    let user = await this.users.findOne({ where: { phone }, withDeleted: true });
     if (!user) {
       user = this.users.create({
         phone,
@@ -184,14 +185,18 @@ export class SalesPartnerService {
         isActive: true,
       });
       await this.users.save(user);
+    } else {
+      if (user.deletedAt) {
+        await this.users.restore(user.id);
+        user = await this.users.findOneOrFail({ where: { id: user.id } });
+      }
+      if (!user.isActive && user.role === 'CUSTOMER') {
+        user.isActive = true;
+        await this.users.save(user);
+      }
     }
     if (isStaffRole(user.role) || vendorRole(user.role)) {
       throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
-    }
-    // Prior inactive CUSTOMER accounts (e.g. soft-disabled retail) must not block apply completion.
-    if (!user.isActive && user.role === 'CUSTOMER') {
-      user.isActive = true;
-      await this.users.save(user);
     }
     application.userId = user.id;
     application.status = 'PENDING_REVIEW';
