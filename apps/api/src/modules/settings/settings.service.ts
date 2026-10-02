@@ -271,6 +271,7 @@ export class SettingsService {
         orderRegisteredAdmin: s.events?.orderRegisteredAdmin ?? true,
         wholesaleRegistrationAdmin: s.events?.wholesaleRegistrationAdmin ?? true,
         wholesaleApproved: s.events?.wholesaleApproved ?? true,
+        salesPartnerWelcome: s.events?.salesPartnerWelcome ?? true,
         fulfillmentPendingAccept: s.events?.fulfillmentPendingAccept ?? true,
         fulfillmentShipped: s.events?.fulfillmentShipped ?? true,
         fulfillmentAcceptExpired: s.events?.fulfillmentAcceptExpired ?? true,

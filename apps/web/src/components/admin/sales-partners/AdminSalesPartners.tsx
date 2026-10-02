@@ -202,6 +202,27 @@ export function AdminSalesPartners() {
     }
   }
 
+  async function sendWelcomeSms(row: ApplicationRow) {
+    const ok = window.confirm(
+      `پیامک خوش‌آمد با نام کاربری (موبایل) و رمز عبور جدید برای «${row.displayName}» (${row.phoneMasked}) ارسال شود؟\nرمز قبلی دیگر کار نمی‌کند.`,
+    );
+    if (!ok) return;
+    setBusyId(row.id);
+    setError(null);
+    try {
+      const res = await apiClient.post<{ sent?: boolean; message?: string }>(
+        `/admin/sales-partners/applications/${row.id}/welcome-sms`,
+        {},
+      );
+      window.alert(res?.message || (res?.sent ? 'پیامک ارسال شد' : 'انجام شد'));
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ارسال پیامک خوش‌آمد ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function draftCommission(row: CatalogRow): number {
     const raw = commissionDrafts[row.productId];
     if (Number.isInteger(raw) && raw >= 0 && raw <= 80) return raw;
@@ -495,7 +516,19 @@ export function AdminSalesPartners() {
                       {row.nationalIdMasked ? ` · کدملی: ${row.nationalIdMasked}` : ''}
                     </p>
                   </div>
-                  <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
+                  <div className="flex shrink-0 flex-col items-stretch gap-2">
+                    <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
+                    {row.status === 'APPROVED' && (
+                      <button
+                        type="button"
+                        className={`min-h-10 rounded-xl border border-[#1B5C4A]/30 bg-[#E8F2EE] px-3 text-xs font-medium text-[#1B5C4A] disabled:opacity-60 ${spFocusClass}`}
+                        disabled={busyId === row.id}
+                        onClick={() => void sendWelcomeSms(row)}
+                      >
+                        {busyId === row.id ? 'در حال ارسال…' : 'ارسال پیامک خوش‌آمد'}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button

@@ -9,7 +9,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, MoreThan, Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { NotificationService } from '../notification/notification.service';
@@ -56,6 +56,13 @@ import { isVendorRole as vendorRole } from '../vendor/vendor-policy';
 import { ibanRecord, requireDedicatedIbanKey, resolveIbanSecret } from './sales-partner-iban';
 import { humanRiskFlags } from './sales-partner-risk-policy';
 import { validateNewPassword } from '../auth/password-policy';
+import { smsFailureBlocksSend } from './sales-partner-draft-policy';
+import {
+  generateValidSalesPartnerTempPassword,
+  salesPartnerLoginUrl,
+  welcomeSmsCooldownActive,
+  WELCOME_SMS_COOLDOWN_MS,
+} from './sales-partner-welcome-sms';
 
 @Injectable()
 export class SalesPartnerService {
@@ -438,6 +445,99 @@ export class SalesPartnerService {
       action,
     });
     return toPublicSalesPartner(profile);
+  }
+
+  /**
+   * Admin action: regenerate password + send welcome SMS (phone = username).
+   * Never returns plaintext password. Rolls back hash if production SMS fails.
+   */
+  async sendWelcomeCredentialsSms(applicationId: string, actorUserId: string) {
+    const application = await this.applications.findOne({ where: { id: applicationId } });
+    if (!application?.profileId) throw new NotFoundException('درخواست پیدا نشد');
+    if (application.status !== 'APPROVED') {
+      throw new BadRequestException('پیامک خوش‌آمد فقط برای درخواست تأییدشده مجاز است');
+    }
+    const profile = await this.profiles.findOne({ where: { id: application.profileId } });
+    if (!profile) throw new NotFoundException('حساب همکاری پیدا نشد');
+    if (!canSalesPartnerLogin(profile.status)) {
+      throw new BadRequestException('حساب همکار بازاریاب فعال نیست');
+    }
+
+    const since = new Date(Date.now() - WELCOME_SMS_COOLDOWN_MS);
+    const recent = await this.audits.find({
+      where: {
+        action: 'credentials.welcome_sms_sent',
+        targetId: profile.id,
+        createdAt: MoreThan(since),
+      },
+      order: { createdAt: 'DESC' },
+      take: 1,
+    });
+    if (welcomeSmsCooldownActive(recent[0]?.createdAt)) {
+      throw new BadRequestException(
+        'پیامک ورود اخیراً ارسال شده است؛ حدود ۱۵ دقیقه دیگر دوباره تلاش کنید',
+      );
+    }
+
+    const loginUrl = salesPartnerLoginUrl(this.config.get('NEXT_PUBLIC_RETAIL_URL'));
+    const displayName = application.displayName || profile.displayName || undefined;
+
+    return this.users.manager.transaction(async (manager) => {
+      const user = await manager.findOne(UserEntity, {
+        where: { id: profile.userId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!user) throw new NotFoundException('کاربر پیدا نشد');
+
+      const phone = user.phone || application.phone;
+      const password = generateValidSalesPartnerTempPassword(phone);
+      const policyError = validateNewPassword(password, phone);
+      if (policyError) throw new BadRequestException(policyError);
+
+      const previousHash = user.passwordHash;
+      const previousChangedAt = user.passwordChangedAt;
+      user.passwordHash = await bcrypt.hash(password, 12);
+      user.passwordChangedAt = new Date();
+      await manager.save(user);
+
+      const sent = this.notifications
+        ? await this.notifications.salesPartnerWelcome({
+            phone,
+            password,
+            loginUrl,
+            displayName,
+          })
+        : false;
+
+      if (smsFailureBlocksSend(this.config.get('NODE_ENV'), sent)) {
+        user.passwordHash = previousHash;
+        user.passwordChangedAt = previousChangedAt;
+        await manager.save(user);
+        throw new BadRequestException('ارسال پیامک ناموفق بود؛ دوباره تلاش کنید');
+      }
+
+      await manager.save(
+        manager.create(SalesPartnerAuditEventEntity, {
+          actorUserId,
+          action: 'credentials.welcome_sms_sent',
+          targetType: 'profile',
+          targetId: profile.id,
+          payload: {
+            applicationId: application.id,
+            phoneMasked: `${phone.slice(0, 4)}***${phone.slice(-2)}`,
+            sent: Boolean(sent),
+          },
+        }),
+      );
+
+      return {
+        sent: Boolean(sent),
+        phoneMasked: `${phone.slice(0, 4)}***${phone.slice(-2)}`,
+        message: sent
+          ? 'پیامک خوش‌آمد و اطلاعات ورود ارسال شد'
+          : 'رمز به‌روز شد؛ در این محیط پیامک ارسال نشد (SMS خاموش است)',
+      };
+    });
   }
 
   async patchProfileStatus(

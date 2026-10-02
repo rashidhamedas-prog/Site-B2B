@@ -160,6 +160,14 @@ export class SalesPartnerAdminController {
     return this.salesPartners.reviewApplication(id, req.user?.sub || req.user?.id || '', body.action, body.reason);
   }
 
+  @Post('applications/:id/welcome-sms')
+  sendWelcomeSms(
+    @Param('id') id: string,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.salesPartners.sendWelcomeCredentialsSms(id, req.user?.sub || req.user?.id || '');
+  }
+
   @Get('payouts')
   listPayouts(@Query('salesPartnerId') salesPartnerId?: string) {
     return this.payouts.listAdmin(salesPartnerId);

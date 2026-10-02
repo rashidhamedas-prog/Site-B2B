@@ -64,6 +64,15 @@ assert(/programBalances/.test(read('sales-partner-admin.controller.ts')), 'admin
 assert(/Get\('report'\)/.test(read('sales-partner-me.controller.ts')), 'partner personal report');
 assert(/programBalances/.test(read('sales-partner-ledger.service.ts')), 'ledger programBalances');
 assert(/orders\/:id\/attribution/.test(read('sales-partner-admin.controller.ts')), 'admin attribution route');
+assert(
+  /applications\/:id\/welcome-sms/.test(read('sales-partner-admin.controller.ts')),
+  'admin welcome SMS route',
+);
+assert(/sendWelcomeCredentialsSms/.test(read('sales-partner.service.ts')), 'welcome SMS service');
+assert(
+  /redactBody:\s*true/.test(read('../notification/notification.service.ts')),
+  'welcome SMS redacts logs',
+);
 assert(/dir="rtl"/.test(shell) && /aria-label="ناوبری پنل همکار بازاریاب"/.test(shell), 'rtl shell + nav label');
 assert(/focus-visible:outline/.test(shell), 'keyboard focus on partner nav');
 assert(/role="status"/.test(payouts) && /Asia\/Tehran/.test(payouts), 'payout loading + Tehran dates');

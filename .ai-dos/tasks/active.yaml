@@ -1,5 +1,45 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-005"
+    title: "Sales-partner welcome credentials SMS button"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261003-005"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-005"
+      implementer: "cursor:implementer-TASK-20261003-005"
+      reviewer: "required-after-diff"
+      security: "required-after-diff"
+    branch: "ai/TASK-20261003-005-sp-welcome-sms"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T22:40:00Z"
+    heartbeat_at: "2026-10-02T22:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-admin.controller.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-welcome-sms.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-welcome-sms.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-isolation.spec.ts"
+      - "apps/api/src/modules/notification/sms-templates.defaults.ts"
+      - "apps/api/src/modules/notification/notification.service.ts"
+      - "apps/api/src/modules/settings/settings.service.ts"
+      - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
+      - "apps/web/src/components/admin/settings/SmsTab.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-03-sp-welcome-sms.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Approved application cards show welcome-SMS button under تأییدشده badge"
+      - "Click generates temp password, hashes it, sends SMS with phone+password+login URL"
+      - "API never returns plaintext password; SMS body not logged"
+      - "Admin-only + confirm dialog + rate limit; production fails closed if SMS not sent"
+      - "Unit/isolation specs pass for welcome helper + route marker"
+    notes: |
+      skill-top full + h2h. Reclaimed SP admin/service from TASK-20261003-001 (LIVE residual).
+      Login URL: /sales-partners/login on retail origin.
   - id: "TASK-20261003-004"
     title: "Retail mega-nav categories stuck loading"
     status: "done"
@@ -104,7 +144,7 @@ tasks:
       Root cause: global/retail a{text-decoration:none} + BlogContent color-only [&_a].
   - id: "TASK-20261003-001"
     title: "Sales-partner apply OTP + eligibility + per-product commission"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20261003-001"
     roles:
@@ -115,9 +155,11 @@ tasks:
     branch: "ai/TASK-20261003-001-sp-apply-otp-commission"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T21:00:00Z"
-    heartbeat_at: "2026-10-02T21:00:00Z"
+    heartbeat_at: "2026-10-02T21:40:00Z"
+    completed_at: "2026-10-02T21:40:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/redis/redis.module.ts"
       - "apps/api/src/modules/redis/otp-cooldown.spec.ts"
       - "apps/api/src/modules/sales-partner/dto/apply-sales-partner.dto.ts"
@@ -143,8 +185,8 @@ tasks:
       - "Admin can enable products and set per-product PRODUCT commission rule"
       - "Unit specs for apply-form digits + SP cooldown pass"
     notes: |
-      skill-top full. Maryam cf7ef9a3 PENDING_OTP; 3 otp_requested, 0 submitted;
-      inactive CUSTOMER user on 09010282085.
+      LIVE a1583a9/d1c1d95. Claims released 2026-10-02 for TASK-20261003-005 welcome SMS
+      (service + AdminSalesPartners reclaimed by 005 with handoff note).
   - id: "TASK-20261002-007"
     title: "Retail home hero + CTA editorial redesign"
     status: "done"

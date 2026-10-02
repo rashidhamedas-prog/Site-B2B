@@ -1,9 +1,10 @@
 # Project Status
 
+- In progress: 2026-10-03 — **TASK-20261003-005** sales-partner welcome credentials SMS under APPROVED badge. Branch `ai/TASK-20261003-005-sp-welcome-sms`. Security: redact + rollback + AdminOnly. Specs/web tsc OK; not deployed yet.
 - Last verified: 2026-10-03 — **TASK-20261003-004 LIVE** on `origin/master` `28ce997` + VPS force rebuild. Mega-nav categories SSR-seeded; browser shows فوتر/کراپ instantly, no stuck loading. Claims released.
 - Last verified: 2026-10-03 — **TASK-20261003-003 LIVE** on `origin/master` `45c9f03` (+ tip `9f0b9dc`). Retail nav gold underline + hero copySide RTL start; browser: slide3 copy on right, nav ::before gold. Claims released. Independent Reviewer residual (hover field).
-- In progress: 2026-10-03 — **TASK-20261003-002** blog article inline links high-affordance (underline + gold mark + hover/focus). CSS claims held; shared docs reclaimed by 003.
-- In progress: 2026-10-03 — **TASK-20261003-001** sales-partner apply OTP (120s) + FA digits + 401 redirect fix + per-product PRODUCT commission + Maryam PENDING_OTP root-cause. Specs/web tsc OK; LIVE residual on earlier tip. SP code claims still held.
+- Last verified: 2026-10-03 — **TASK-20261003-002 LIVE** blog prose links (`d4b0689` + polish). Claims released.
+- Last verified: 2026-10-03 — **TASK-20261003-001 LIVE** SP apply OTP + commission. Claims released for 005 welcome SMS reclaim.
 - Last verified: 2026-10-02 — **TASK-20261002-007 LIVE** on `origin/master` `dab4136` + VPS. Retail hero full-bleed editorial + CTA; health 200; `.ir` HTML has `retail-editorial-hero`. Claims released. Independent Reviewer residual (visual field).
 - Last verified: 2026-10-02 — **TASK-20261002-006 LIVE** on `origin/master` `d10b628` (tip `4ad808e`) + VPS. Partner catalog category/filters + admin desk polish; health 200; filter markers in live images. Claims released. Independent Reviewer + Security residual (filter query).
 - Last verified: 2026-10-02 — **TASK-20261002-005 LIVE** on `origin/master` `93ce995`. About polish (mobile cards, full scene, vertical rail). Claims released.

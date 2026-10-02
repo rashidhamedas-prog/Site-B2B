@@ -13,6 +13,7 @@ const SMS_CUSTOMER_EVENTS: Record<string, string> = {
   orderShipped: 'ارسال مرسوله + کد رهگیری (به مشتری)',
   paymentReceived: 'دریافت پرداخت (به مشتری)',
   wholesaleApproved: 'تأیید حساب عمده (به مشتری)',
+  salesPartnerWelcome: 'خوش‌آمد همکار بازاریاب + رمز ورود (به همکار)',
   fulfillmentPendingAccept: 'مرسوله جدید همکار — قبول ارسال (به همکار)',
   fulfillmentShipped: 'ارسال مرسوله همکار + کد رهگیری (به مشتری)',
 };
@@ -30,6 +31,8 @@ export const SMS_TEMPLATE_DEFAULTS: Record<string, string> = {
   orderRegisteredAdmin: 'پوشاک ترنم\nسفارش جدید {site}\nشماره: {orderNumber}{customerLine}',
   wholesaleRegistrationAdmin: 'پوشاک ترنم\nثبت‌نام عمده جدید\n{customerName}\n{phone}',
   wholesaleApproved: 'پوشاک ترنم\n{greet}حساب عمده شما تأیید شد.\nورود: poshaktaranom.com/portal',
+  salesPartnerWelcome:
+    'پوشاک ترنم\n{greet}به جمع همکاران بازاریابی ترنم خوش آمدید.\nنام کاربری: {phone}\nرمز عبور: {password}\nورود به پنل:\n{loginUrl}\nرمز را با کسی به اشتراک نگذارید.',
   orderConfirmed: 'پوشاک ترنم\nسفارش {orderNumber} تایید شد و آماده‌سازی آن آغاز شده است.',
   orderShipped: 'پوشاک ترنم\nسفارش {orderNumber} ارسال شد.{trackingLine}',
   paymentReceived: 'پوشاک ترنم\nپرداخت {amountToman} تومان با موفقیت ثبت شد.\nکد پیگیری: {refId}',
@@ -48,6 +51,11 @@ const SMS_TEMPLATE_META: Array<{ key: string; label: string; placeholders: strin
   { key: 'orderShipped', label: SMS_CUSTOMER_EVENTS.orderShipped, placeholders: '{orderNumber} {trackingLine} {trackingCode}' },
   { key: 'paymentReceived', label: SMS_CUSTOMER_EVENTS.paymentReceived, placeholders: '{amountToman} {refId}' },
   { key: 'wholesaleApproved', label: SMS_CUSTOMER_EVENTS.wholesaleApproved, placeholders: '{greet} {customerName}' },
+  {
+    key: 'salesPartnerWelcome',
+    label: SMS_CUSTOMER_EVENTS.salesPartnerWelcome,
+    placeholders: '{greet} {phone} {password} {loginUrl} {customerName}',
+  },
   { key: 'fulfillmentPendingAccept', label: SMS_CUSTOMER_EVENTS.fulfillmentPendingAccept, placeholders: '{orderNumber} {slaHours} {partnersUrl}' },
   { key: 'fulfillmentShipped', label: SMS_CUSTOMER_EVENTS.fulfillmentShipped, placeholders: '{parcelLabel} {orderNumber} {trackingLine} {trackingCode}' },
   { key: 'orderRegisteredAdmin', label: SMS_ADMIN_EVENTS.orderRegisteredAdmin, placeholders: '{site} {orderNumber} {customerLine}' },

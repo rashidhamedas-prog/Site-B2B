@@ -63,10 +63,18 @@ export class NotificationService {
   }
 
   // Plain SMS to one number. Returns true when actually dispatched.
-  async sendSms(receptor: string, message: string): Promise<boolean> {
+  async sendSms(
+    receptor: string,
+    message: string,
+    opts?: { redactBody?: boolean },
+  ): Promise<boolean> {
     const cfg = await this.settings.sms();
     if (!cfg.enabled || !cfg.apiKey) {
-      this.logger.log(`[SMS off] to=${receptor} msg=${message.slice(0, 60)}...`);
+      this.logger.log(
+        opts?.redactBody
+          ? `[SMS off] to=${receptor} msg=[redacted]`
+          : `[SMS off] to=${receptor} msg=${message.slice(0, 60)}...`,
+      );
       return false;
     }
     return this.post(cfg.apiKey, '/send/bulk', {
@@ -228,6 +236,28 @@ export class NotificationService {
       customerName: customerName || '',
     });
     return this.sendSms(phone, message);
+  }
+
+  /**
+   * Welcome credentials for approved sales marketing partners.
+   * Body contains a one-time-use password — never log the message text.
+   */
+  async salesPartnerWelcome(args: {
+    phone: string;
+    password: string;
+    loginUrl: string;
+    displayName?: string;
+  }) {
+    if (!(await this.eventEnabled('salesPartnerWelcome'))) return false;
+    const greet = args.displayName ? `${args.displayName} عزیز،\n` : '';
+    const message = await this.template('salesPartnerWelcome', {
+      greet,
+      phone: args.phone,
+      password: args.password,
+      loginUrl: args.loginUrl,
+      customerName: args.displayName || '',
+    });
+    return this.sendSms(args.phone, message, { redactBody: true });
   }
 
   async orderConfirmed(phone: string, orderNumber: string) {

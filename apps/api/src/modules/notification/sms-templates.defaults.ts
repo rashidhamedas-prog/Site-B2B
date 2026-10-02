@@ -10,6 +10,8 @@ export const SMS_TEMPLATE_DEFAULTS = {
   orderRegisteredAdmin: 'پوشاک ترنم\nسفارش جدید {site}\nشماره: {orderNumber}{customerLine}',
   wholesaleRegistrationAdmin: 'پوشاک ترنم\nثبت‌نام عمده جدید\n{customerName}\n{phone}',
   wholesaleApproved: 'پوشاک ترنم\n{greet}حساب عمده شما تأیید شد.\nورود: poshaktaranom.com/portal',
+  salesPartnerWelcome:
+    'پوشاک ترنم\n{greet}به جمع همکاران بازاریابی ترنم خوش آمدید.\nنام کاربری: {phone}\nرمز عبور: {password}\nورود به پنل:\n{loginUrl}\nرمز را با کسی به اشتراک نگذارید.',
   orderConfirmed: 'پوشاک ترنم\nسفارش {orderNumber} تایید شد و آماده‌سازی آن آغاز شده است.',
   orderShipped: 'پوشاک ترنم\nسفارش {orderNumber} ارسال شد.{trackingLine}',
   paymentReceived: 'پوشاک ترنم\nپرداخت {amountToman} تومان با موفقیت ثبت شد.\nکد پیگیری: {refId}',

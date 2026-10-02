@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T22:50:00Z — TASK-20261003-005 implementing (SP welcome SMS)
+
+- Owner: cursor:implementer-TASK-20261003-005
+- Branch: `ai/TASK-20261003-005-sp-welcome-sms`
+- skill-top full + h2h: دکمه زیر تأییدشده → SMS خوش‌آمد با phone/password/loginUrl
+- Reclaimed `sales-partner.service.ts` + `AdminSalesPartners.tsx` from TASK-20261003-001 (LIVE; claims released)
+- Research: nest-auth invite (no secret in response); NIST temp password; Cognito invite patterns
+- Security: AdminOnly; redactBody; no password in API/audit; tx lock + hash rollback on prod SMS fail; 15m cooldown
+- Gates: welcome-sms.spec OK; isolation welcome asserts OK (preexisting focus-nav fail unrelated); web tsc clean
+- Next: commit+push+VPS deploy; smoke admin click on APPROVED card; Independent Reviewer residual
+- Claims held
+
 ## 2026-10-02T22:35:00Z — TASK-20261003-004 LIVE (mega-nav categories)
 
 - Owner: cursor:implementer-TASK-20261003-004
