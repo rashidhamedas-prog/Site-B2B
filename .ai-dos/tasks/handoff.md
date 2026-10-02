@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T00:26:00Z — TASK-20261002-001 implementing (Iran edge + origin)
+
+- Owner: cursor:implementer-TASK-20261002-001
+- Live DNS (1.1.1.1): both shops + api still Cloudflare A/AAAA (orange). `Server: cloudflare`, `alt-svc: h3`.
+- VPS: emptied `/etc/nginx/conf.d/xray-locations.inc`; disabled `xray-nginx-route-ensure.timer` + `.path` (was rewriting shop nginx). Closed UFW 3000/3001/8000.
+- Residual: gray-cloud apply blocked (no `CLOUDFLARE_API_TOKEN` in wholesale-admin env). Origin still shares IP with xray listeners 8443/2053/2096/2083 — listing risk after gray-cloud.
+- Tests: `node --test scripts/cloudflare-iran-edge.spec.mjs` 5/5; `bootstrap-flags.spec.ts` ok.
+- Next: apply `--mode origin --apply`; deploy nginx `/api/` limit_req + Swagger gate; phone VPN-off check.
+
 ## 2026-10-01T01:25:00Z — TASK-20261001-005 LIVE (sales-partner SEO-GEO)
 
 - Owner: cursor:implementer-TASK-20261001-005
