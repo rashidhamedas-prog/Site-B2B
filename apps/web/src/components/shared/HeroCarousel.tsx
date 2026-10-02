@@ -108,15 +108,19 @@ export function HeroCarouselControls({
   const idle = tone === 'ink' ? 'bg-[#123A6B]/30 hover:bg-[#123A6B]/50' : 'bg-white/35 hover:bg-white/55';
   const controlBtn =
     tone === 'ink'
-      ? 'hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[#123A6B]/25 bg-white/80 text-[#123A6B] backdrop-blur-sm transition hover:bg-white md:inline-flex'
-      : 'hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 md:inline-flex';
+      ? 'hidden h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-[#123A6B]/25 bg-white/80 text-[#123A6B] backdrop-blur-sm transition-[background-color] duration-200 hover:bg-white md:inline-flex'
+      : 'hidden h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition-[background-color] duration-200 hover:bg-black/35 md:inline-flex';
   const pauseBtn =
     tone === 'ink'
-      ? 'inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-[#123A6B]/25 bg-white/80 text-[#123A6B] backdrop-blur-sm transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#123A6B]'
-      : 'inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition hover:bg-black/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+      ? 'inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-[#123A6B]/25 bg-white/80 text-[#123A6B] backdrop-blur-sm transition-[background-color] duration-200 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#123A6B]'
+      : 'inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/25 bg-black/20 text-white backdrop-blur-sm transition-[background-color] duration-200 hover:bg-black/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+  const dotFocus =
+    tone === 'ink'
+      ? 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#123A6B]'
+      : 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
 
   return (
-    <div className="pointer-events-auto absolute inset-x-0 bottom-5 z-20 flex items-center justify-center gap-3 sm:bottom-7">
+    <div className="pointer-events-auto absolute inset-x-0 bottom-4 z-20 flex items-center justify-center gap-3 sm:bottom-5">
       <button
         type="button"
         aria-label="اسلاید قبلی"
@@ -133,8 +137,8 @@ export function HeroCarouselControls({
             aria-current={i === index ? 'true' : undefined}
             aria-label={`اسلاید ${i + 1}`}
             onClick={() => onGoTo(i)}
-            className={`h-2 cursor-pointer rounded-full transition-all ${
-              i === index ? `w-7 ${active}` : `w-2 ${idle}`
+            className={`h-2.5 cursor-pointer rounded-full transition-[width,background-color] duration-200 motion-reduce:transition-none ${dotFocus} ${
+              i === index ? `w-8 ${active}` : `w-2.5 ${idle}`
             }`}
           />
         ))}

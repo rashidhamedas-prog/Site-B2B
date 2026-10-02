@@ -405,6 +405,23 @@ img {
   }
 }
 
+/* Retail editorial — slightly taller mobile for CTA breathing room; keep 24:7 desktop for campaign plates. */
+.storefront-hero-frame.retail-editorial-hero {
+  aspect-ratio: 5 / 4;
+  max-height: 21rem;
+}
+@media (min-width: 768px) {
+  .storefront-hero-frame.retail-editorial-hero {
+    aspect-ratio: 24 / 7;
+    max-height: 34rem;
+  }
+}
+@media (min-width: 1280px) {
+  .storefront-hero-frame.retail-editorial-hero {
+    max-height: 36.5rem;
+  }
+}
+
 .news-ticker {
   --ticker-duration: 40s;
   position: relative;

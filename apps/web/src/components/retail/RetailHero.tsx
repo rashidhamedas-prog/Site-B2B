@@ -143,27 +143,37 @@ function RetailSlideCopy({
     return slide.headline;
   };
 
+  const primaryCtaClass = light
+    ? 'group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-[#1A73E8] px-7 py-3.5 text-[15px] font-extrabold text-white shadow-[0_12px_32px_rgba(26,115,232,0.32)] transition-[filter,transform] duration-200 hover:brightness-105 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8] active:translate-y-0 sm:min-h-[3.25rem] sm:px-9'
+    : 'group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-md bg-[var(--retail-gold)] px-7 py-3.5 text-[15px] font-extrabold text-[#1a1a1a] shadow-[0_12px_36px_rgba(201,168,76,0.38)] transition-[filter,transform,box-shadow] duration-200 hover:brightness-105 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(201,168,76,0.45)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)] active:translate-y-0 sm:min-h-[3.25rem] sm:px-9';
+
+  const secondaryCtaClass = light
+    ? 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full border border-[#1A73E8]/70 px-5 py-3 text-sm font-bold text-[#1A73E8] transition-[background-color,transform] duration-200 hover:bg-[#1A73E8]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8] sm:px-7'
+    : 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-md border border-white/45 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-[2px] transition-[background-color,border-color,transform] duration-200 hover:border-white/70 hover:bg-white/16 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-7';
+
   return (
-    <div className="min-w-0 max-w-xl text-center lg:ms-auto lg:text-right">
+    <div className="min-w-0 max-w-lg text-right sm:max-w-xl">
       {slide.brandEyebrow ? (
-        <div className="mb-5 flex min-w-0 flex-wrap items-center justify-center gap-2 sm:gap-3 lg:justify-end">
-          <span className={light ? 'h-px w-8 shrink-0 bg-[#1A73E8]/45' : 'retail-gold-line shrink-0'} />
+        <div className="mb-4 flex min-w-0 flex-wrap items-center justify-end gap-2.5 sm:mb-5 sm:gap-3">
           <span
-            className={`min-w-0 text-[12px] font-medium tracking-[0.06em] sm:text-[13px] sm:tracking-[0.12em] ${
+            className={`min-w-0 text-[11px] font-semibold tracking-[0.14em] sm:text-[12px] sm:tracking-[0.16em] ${
               light ? 'text-[#1A73E8]' : 'text-[var(--retail-gold)]'
             }`}
           >
             {slide.brandEyebrow}
           </span>
-          <span className={light ? 'h-px w-8 shrink-0 bg-[#1A73E8]/45' : 'retail-gold-line shrink-0'} />
+          <span
+            className={light ? 'h-px w-10 shrink-0 bg-[#1A73E8]/45' : 'retail-gold-line shrink-0'}
+            aria-hidden
+          />
         </div>
       ) : null}
 
       <Title
-        className={`break-words text-[clamp(1.35rem,4.4vw,2.35rem)] font-bold leading-[1.3] tracking-tight text-pretty ${
+        className={`break-words text-pretty text-[clamp(1.55rem,4.8vw,2.75rem)] font-extrabold leading-[1.22] tracking-tight ${
           light
             ? 'text-[#123A6B]'
-            : '!text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.35)]'
+            : 'text-white [text-shadow:0_2px_28px_rgba(0,0,0,0.35)]'
         }`}
       >
         {renderHeadline()}
@@ -171,8 +181,8 @@ function RetailSlideCopy({
 
       {slide.body ? (
         <p
-          className={`mx-auto mt-3 line-clamp-2 max-w-md text-[13px] leading-7 lg:mx-0 lg:ms-auto sm:text-[15px] sm:leading-8 ${
-            light ? 'text-[#2C4A6E]' : 'text-white/80'
+          className={`mt-3.5 line-clamp-2 max-w-md text-[13px] leading-7 sm:mt-4 sm:text-[15px] sm:leading-8 ${
+            light ? 'text-[#2C4A6E]' : 'text-white/82'
           }`}
         >
           {slide.body}
@@ -180,30 +190,18 @@ function RetailSlideCopy({
       ) : null}
 
       <div
-        className={`mt-5 flex flex-wrap items-center justify-center gap-3 lg:justify-end ${artwork ? 'md:hidden' : ''}`}
+        className={`mt-6 flex flex-wrap items-center justify-end gap-3 sm:mt-7 sm:gap-3.5 ${
+          artwork ? 'md:hidden' : ''
+        }`}
       >
         {slide.ctaLabel && slide.ctaHref ? (
-          <Link
-            href={slide.ctaHref}
-            className={
-              light
-                ? 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-[#1A73E8] px-6 py-3 text-sm font-extrabold text-white shadow-[0_10px_28px_rgba(26,115,232,0.28)] transition-colors duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8] sm:px-8'
-                : 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-md bg-gradient-to-l from-[#A88530] to-[var(--retail-gold)] px-6 py-3 text-sm font-extrabold text-[#1a1a1a] shadow-[0_10px_30px_rgba(201,168,76,0.28)] transition-[filter] duration-200 hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)] sm:px-8'
-            }
-          >
+          <Link href={slide.ctaHref} className={primaryCtaClass}>
             {slide.ctaLabel}
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5 motion-reduce:transition-none" />
           </Link>
         ) : null}
         {slide.ctaSecondaryLabel && slide.ctaSecondaryHref ? (
-          <Link
-            href={slide.ctaSecondaryHref}
-            className={
-              light
-                ? 'inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full border border-[#1A73E8]/70 px-5 py-3.5 text-sm font-bold text-[#1A73E8] transition duration-200 hover:bg-[#1A73E8]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1A73E8] sm:px-7'
-                : 'border-[var(--retail-gold)]/60 inline-flex cursor-pointer items-center gap-2 rounded-md border bg-black/20 px-5 py-3.5 text-sm font-bold text-[var(--retail-gold)] backdrop-blur-sm transition duration-200 hover:bg-white/10 sm:px-7'
-            }
-          >
+          <Link href={slide.ctaSecondaryHref} className={secondaryCtaClass}>
             {slide.ctaSecondaryLabel}
             <ChevronLeft className="h-4 w-4" />
           </Link>
@@ -213,7 +211,7 @@ function RetailSlideCopy({
   );
 }
 
-/** B2C editorial hero — full-bleed plates + RTL copy panel (distinct from wholesale). */
+/** B2C editorial hero — full-bleed plates + soft RTL scrim (no hard split panel). */
 export function RetailHero(props: RetailHeroProps) {
   const { pageKey } = useCmsPageScope();
   const isHome = isHomePageKey(pageKey);
@@ -232,7 +230,7 @@ export function RetailHero(props: RetailHeroProps) {
 
   return (
     <section
-      className={`relative isolate overflow-hidden ${STOREFRONT_HERO_FRAME_CLASS} ${
+      className={`relative isolate overflow-hidden ${STOREFRONT_HERO_FRAME_CLASS} retail-editorial-hero ${
         isLight ? 'bg-[#EEF4FC] text-[#123A6B]' : 'bg-[var(--retail-primary-dark)] text-white'
       }`}
       onMouseEnter={carousel.pause}
@@ -251,7 +249,7 @@ export function RetailHero(props: RetailHeroProps) {
         return (
           <div
             key={`${src}-${i}`}
-            className={`absolute inset-0 transition-opacity duration-700 ease-out ${
+            className={`absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none ${
               isActive ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
             aria-hidden={!isActive}
@@ -266,22 +264,26 @@ export function RetailHero(props: RetailHeroProps) {
                   ? 'object-cover object-left md:object-center'
                   : isLightHeroOverlay(s)
                     ? 'object-cover object-[center_top] sm:object-left'
-                    : 'object-cover object-[20%_center] sm:object-center'
+                    : 'object-cover object-[18%_center] sm:object-[22%_center] lg:object-center scale-[1.02]'
               }
             />
           </div>
         );
       })}
 
-      {/* Brand wash + RTL readable scrim (copy sits on the right in RTL) */}
+      {/* Cinematic RTL scrim — soft wash into photo, not a boxed panel */}
       <div
         className={`absolute inset-0 ${isArtwork ? 'md:hidden' : ''} ${isLight ? 'md:hidden' : ''}`}
         style={{
           background: isLight
             ? 'linear-gradient(to top, rgba(238,244,252,0.97) 0%, rgba(238,244,252,0.88) 28%, rgba(238,244,252,0.2) 52%, transparent 72%)'
             : `
-            linear-gradient(100deg, rgba(12,39,30,0.15) 0%, rgba(12,39,30,0.35) 42%, rgba(12,39,30,0.82) 68%, rgba(8,28,22,0.94) 100%),
-            radial-gradient(ellipse 45% 55% at 88% 40%, rgba(201,168,76,0.18), transparent 55%)
+            linear-gradient(105deg,
+              rgba(8,28,22,0.08) 0%,
+              rgba(12,39,30,0.22) 38%,
+              rgba(12,39,30,0.72) 66%,
+              rgba(8,28,22,0.92) 100%),
+            linear-gradient(to top, rgba(8,28,22,0.45) 0%, transparent 42%)
           `,
         }}
         aria-hidden
@@ -291,13 +293,25 @@ export function RetailHero(props: RetailHeroProps) {
           className="pointer-events-none absolute inset-0 hidden md:block"
           style={{
             background:
-              'linear-gradient(100deg, rgba(238,244,252,0) 0%, rgba(238,244,252,0.12) 46%, rgba(238,244,252,0.78) 70%, rgba(238,244,252,0.94) 100%)',
+              'linear-gradient(105deg, rgba(238,244,252,0) 0%, rgba(238,244,252,0.1) 48%, rgba(238,244,252,0.78) 72%, rgba(238,244,252,0.94) 100%)',
           }}
           aria-hidden
         />
       ) : null}
+      {/* Soft exit into trust strip */}
       <div
-        className={`absolute inset-0 opacity-[0.05] ${isArtwork || isLight ? 'hidden' : ''}`}
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-10 sm:h-12"
+        style={{
+          background: isLight
+            ? 'linear-gradient(to top, var(--retail-surface, #F6F1E8), transparent)'
+            : isArtwork
+              ? 'linear-gradient(to top, rgba(246,241,232,0.55), transparent)'
+              : 'linear-gradient(to top, rgba(8,28,22,0.35), transparent)',
+        }}
+        aria-hidden
+      />
+      <div
+        className={`absolute inset-0 opacity-[0.04] ${isArtwork || isLight ? 'hidden' : ''}`}
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
@@ -306,10 +320,20 @@ export function RetailHero(props: RetailHeroProps) {
       />
 
       <div
-        className={`relative z-10 mx-auto flex h-full max-w-[1200px] items-end px-4 pb-14 pt-8 sm:px-6 lg:items-center lg:px-8 lg:pb-16 ${isArtwork ? 'md:sr-only md:pointer-events-none' : ''}`}
+        className={`relative z-10 mx-auto flex h-full max-w-[1200px] items-end justify-end px-4 pb-16 pt-8 sm:px-6 sm:pb-[4.25rem] lg:items-center lg:px-8 lg:pb-16 ${
+          isArtwork ? 'md:sr-only md:pointer-events-none' : ''
+        }`}
       >
-        <div key={`copy-${carousel.index}`} className="animate-fade-in min-w-0 w-full lg:w-[48%]">
-          <RetailSlideCopy slide={slide} artwork={isArtwork} light={isLight} titleAs={isHome ? 'h2' : 'h1'} />
+        <div
+          key={`copy-${carousel.index}`}
+          className="animate-fade-in motion-reduce:animate-none min-w-0 w-full max-w-xl lg:w-[46%]"
+        >
+          <RetailSlideCopy
+            slide={slide}
+            artwork={isArtwork}
+            light={isLight}
+            titleAs={isHome ? 'h2' : 'h1'}
+          />
         </div>
       </div>
 

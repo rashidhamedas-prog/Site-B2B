@@ -33,10 +33,10 @@ export function RetailTrustStrip({ items }: { items?: TrustItem[] }) {
 
   return (
     <section
-      className="border-y border-[var(--retail-border)] bg-[var(--retail-surface)]"
+      className="border-b border-[var(--retail-border)] bg-[var(--retail-surface)]"
       aria-label="تعهدهای فروشگاه"
     >
-      <div className={`mx-auto grid max-w-[1200px] divide-y divide-[var(--retail-border)] sm:divide-y-0 ${cols}`}>
+      <div className={`mx-auto grid max-w-[1200px] divide-y divide-[var(--retail-border)]/80 sm:divide-y-0 ${cols}`}>
         {rows.map((item) => {
           const Icon = iconFor(item.value);
           return (
@@ -44,7 +44,7 @@ export function RetailTrustStrip({ items }: { items?: TrustItem[] }) {
               key={`${item.value}-${item.label}`}
               className="flex items-start gap-3 px-4 py-5 sm:px-6 sm:py-6 lg:px-8"
             >
-              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--retail-gold)]/40 bg-white text-[var(--retail-primary)]">
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--retail-gold)]/35 bg-white text-[var(--retail-primary)] shadow-[0_1px_0_rgba(27,92,74,0.04)]">
                 <Icon className="h-5 w-5" aria-hidden />
               </span>
               <div className="min-w-0">
