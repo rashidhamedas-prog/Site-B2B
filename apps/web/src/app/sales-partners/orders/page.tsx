@@ -70,7 +70,7 @@ export default function SalesPartnerOrdersPage() {
       {rows && filtered.length === 0 && !error && (
         <SpEmpty>سفارشی با این فیلتر نیست. از محصولات لینک بفرستید یا سفارش جدید بسازید.</SpEmpty>
       )}
-      <ul className="space-y-3">
+      <ul className="grid gap-3 md:grid-cols-2">
         {filtered.map((row) => (
           <li key={row.id}>
             <SpCard>

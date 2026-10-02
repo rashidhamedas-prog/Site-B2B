@@ -47,7 +47,7 @@ export default function SalesPartnerReportsPage() {
       )}
       {report && (
         <div className="mt-5 space-y-4">
-          <section className="grid grid-cols-2 gap-2" aria-label="پورسانت">
+          <section className="grid grid-cols-2 gap-2 lg:grid-cols-4" aria-label="پورسانت">
             <SpKpi label="در انتظار آزادسازی" value={`${toman(report.commissions.held)}`} hint="تومان" />
             <SpKpi label="قابل‌برداشت" value={`${toman(report.commissions.available)}`} hint="تومان" accent />
             <SpKpi label="واریزشده" value={`${toman(report.commissions.paid)}`} hint="تومان" />

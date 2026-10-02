@@ -1,10 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import {
+  ClipboardList,
+  LayoutDashboard,
+  Package,
+  Percent,
+  ScrollText,
+  Search,
+  Settings as SettingsIcon,
+  ShoppingBag,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-import { SpBadge, SpEmptyState, SpRefreshButton, SpSection, spFocusClass } from '@/components/sales-partners/SpUi';
+import { SpBadge, SpEmptyState, SpRefreshButton, SpSection, spChipClass, spFocusClass } from '@/components/sales-partners/SpUi';
 import {
   formatSpDate,
   spAppStatusLabel,
@@ -33,9 +44,15 @@ export function AdminSalesPartners() {
   const [apps, setApps] = useState<ApplicationRow[]>([]);
   const [partners, setPartners] = useState<PartnerRow[]>([]);
   const [catalog, setCatalog] = useState<CatalogRow[]>([]);
+  const [catalogFacets, setCatalogFacets] = useState<{ id: string | null; name: string; count: number }[]>([]);
+  const [catalogTotal, setCatalogTotal] = useState(0);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [categoryId, setCategoryId] = useState('');
+  const [eligibleFilter, setEligibleFilter] = useState<'all' | 'yes' | 'no'>('all');
   const [rules, setRules] = useState<RuleRow[]>([]);
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
   const [query, setQuery] = useState('');
+  const [appliedQuery, setAppliedQuery] = useState('');
   const [appFilter, setAppFilter] = useState('ALL');
   const [auditFilter, setAuditFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -55,43 +72,81 @@ export function AdminSalesPartners() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
+  const loadCatalog = useCallback(async () => {
+    const catalogParams = new URLSearchParams();
+    if (appliedQuery) catalogParams.set('q', appliedQuery);
+    if (categoryId) catalogParams.set('categoryId', categoryId);
+    if (eligibleFilter !== 'all') catalogParams.set('eligible', eligibleFilter);
+    if (catalogPage > 1) catalogParams.set('page', String(catalogPage));
+    const catalogQs = catalogParams.toString();
+    const nextCatalog = await apiClient.get<{
+      items: CatalogRow[];
+      total?: number;
+      facets?: { categories: { id: string | null; name: string; count: number }[] };
+    }>(`/admin/sales-partners/catalog${catalogQs ? `?${catalogQs}` : ''}`);
+    setCatalog(nextCatalog.items);
+    setCatalogFacets(nextCatalog.facets?.categories || []);
+    setCatalogTotal(nextCatalog.total ?? nextCatalog.items.length);
+  }, [appliedQuery, categoryId, eligibleFilter, catalogPage]);
+
+  const loadDesk = useCallback(async () => {
+    const auditQs = auditFilter ? `?targetType=${encodeURIComponent(auditFilter)}` : '';
+    const [nextApps, nextPartners, nextRules, nextPayouts, nextSettings, nextOrders, nextAudits, nextReport] =
+      await Promise.all([
+        apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
+        apiClient.get<PartnerRow[]>('/admin/sales-partners'),
+        apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
+        apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
+        apiClient.get<Settings>('/admin/sales-partners/settings'),
+        apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
+        apiClient.get<AuditRow[]>(`/admin/sales-partners/audits${auditQs}`),
+        apiClient.get<Report>('/admin/sales-partners/reports'),
+      ]);
+    setApps(nextApps);
+    setPartners(nextPartners);
+    setRules(nextRules);
+    setPayouts(nextPayouts);
+    setSettings(nextSettings);
+    setOrders(nextOrders);
+    setAudits(nextAudits);
+    setReport(nextReport);
+  }, [auditFilter]);
+
   const load = useCallback(async () => {
     setError(null);
     try {
-      const auditQs = auditFilter ? `?targetType=${encodeURIComponent(auditFilter)}` : '';
-      const [nextApps, nextPartners, nextCatalog, nextRules, nextPayouts, nextSettings, nextOrders, nextAudits, nextReport] =
-        await Promise.all([
-          apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
-          apiClient.get<PartnerRow[]>('/admin/sales-partners'),
-          apiClient.get<{ items: CatalogRow[] }>(
-            `/admin/sales-partners/catalog${query ? `?q=${encodeURIComponent(query)}` : ''}`,
-          ),
-          apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
-          apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
-          apiClient.get<Settings>('/admin/sales-partners/settings'),
-          apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
-          apiClient.get<AuditRow[]>(`/admin/sales-partners/audits${auditQs}`),
-          apiClient.get<Report>('/admin/sales-partners/reports'),
-        ]);
-      setApps(nextApps);
-      setPartners(nextPartners);
-      setCatalog(nextCatalog.items);
-      setRules(nextRules);
-      setPayouts(nextPayouts);
-      setSettings(nextSettings);
-      setOrders(nextOrders);
-      setAudits(nextAudits);
-      setReport(nextReport);
+      await Promise.all([loadDesk(), loadCatalog()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود');
     } finally {
       setLoading(false);
     }
-  }, [auditFilter, query]);
+  }, [loadDesk, loadCatalog]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    setError(null);
+    loadDesk()
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری ناموفق بود');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadDesk]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadCatalog().catch((err: unknown) => {
+      if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری کاتالوگ ناموفق بود');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadCatalog]);
 
   const filteredApps = useMemo(() => {
     if (appFilter === 'ALL') return apps;
@@ -260,25 +315,37 @@ export function AdminSalesPartners() {
     }
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'dashboard', label: 'داشبورد' },
-    { id: 'applications', label: 'درخواست‌ها' },
-    { id: 'partners', label: 'همکاران' },
-    { id: 'orders', label: 'سفارش‌ها' },
-    { id: 'catalog', label: 'محصولات مجاز' },
-    { id: 'rules', label: 'قوانین پورسانت' },
-    { id: 'payouts', label: 'تسویه' },
-    { id: 'settings', label: 'تنظیمات' },
-    { id: 'reports', label: 'گزارش و سوابق' },
+  const tabs: { id: Tab; label: string; icon: typeof Package }[] = [
+    { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
+    { id: 'applications', label: 'درخواست‌ها', icon: ClipboardList },
+    { id: 'partners', label: 'همکاران', icon: Users },
+    { id: 'orders', label: 'سفارش‌ها', icon: ShoppingBag },
+    { id: 'catalog', label: 'محصولات مجاز', icon: Package },
+    { id: 'rules', label: 'قوانین پورسانت', icon: Percent },
+    { id: 'payouts', label: 'تسویه', icon: Wallet },
+    { id: 'settings', label: 'تنظیمات', icon: SettingsIcon },
+    { id: 'reports', label: 'گزارش و سوابق', icon: ScrollText },
   ];
 
   const pendingCount = apps.filter((row) => row.status === 'PENDING_REVIEW').length;
+  const catalogGroups = useMemo(() => {
+    const map = new Map<string, CatalogRow[]>();
+    for (const row of catalog) {
+      const name = row.categoryName || 'بدون دسته';
+      const list = map.get(name) || [];
+      list.push(row);
+      map.set(name, list);
+    }
+    return [...map.entries()];
+  }, [catalog]);
+  const catalogPages = Math.max(1, Math.ceil(catalogTotal / 20));
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-3xl border border-stone-200 bg-white p-4">
         <div className="min-w-0 max-w-2xl">
-          <p className="text-sm text-stone-600">
+          <p className="text-xs font-medium text-[#1B5C4A]">میز کار همکار بازاریاب</p>
+          <p className="mt-1 text-sm leading-7 text-stone-600">
             این بخش برای همکار بازاریاب است، نه تأمین‌کننده ارسال. برنامه تا روشن‌شدن فلگ روی سفارش‌های فعلی اثر ندارد.
           </p>
           {settings ? (
@@ -298,27 +365,34 @@ export function AdminSalesPartners() {
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="بخش‌های همکار بازاریاب">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            className={`min-h-11 rounded-xl px-4 text-sm ${spFocusClass} ${
-              tab === item.id ? 'bg-[#1B5C4A] text-white' : 'border border-stone-200 bg-white text-stone-700'
-            }`}
-            onClick={() => setTab(item.id)}
-          >
-            {item.label}
-            {item.id === 'applications' && pendingCount > 0 ? (
-              <span className="mr-2 inline-flex min-w-[1.25rem] justify-center rounded-full bg-[#C9A84C] px-1.5 text-[10px] font-bold text-[#0F2F28]">
-                {pendingCount.toLocaleString('fa-IR')}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:sticky lg:top-4 lg:flex-col lg:overflow-visible" role="tablist" aria-label="بخش‌های همکار بازاریاب">
+          {tabs.map((item) => {
+            const Icon = item.icon;
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-sm ${spFocusClass} ${
+                  active ? 'bg-[#1B5C4A] text-white' : 'border border-stone-200 bg-white text-stone-700'
+                }`}
+                onClick={() => setTab(item.id)}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                <span className="truncate">{item.label}</span>
+                {item.id === 'applications' && pendingCount > 0 ? (
+                  <span className="mr-auto inline-flex min-w-[1.25rem] justify-center rounded-full bg-[#C9A84C] px-1.5 text-[10px] font-bold text-[#0F2F28]">
+                    {pendingCount.toLocaleString('fa-IR')}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <div className="min-w-0 space-y-6">
 
       {loading && !report ? (
         <p className="text-sm text-stone-600" role="status">
@@ -506,7 +580,8 @@ export function AdminSalesPartners() {
             className="flex flex-wrap gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void load();
+              setCatalogPage(1);
+              setAppliedQuery(query.trim());
             }}
           >
             <label className="sr-only" htmlFor="sp-catalog-q">
@@ -526,39 +601,122 @@ export function AdminSalesPartners() {
               جستجو
             </button>
           </form>
-          {catalog.length === 0 && <SpEmptyState>محصولی پیدا نشد.</SpEmptyState>}
-          <ul className="space-y-3">
-            {catalog.map((row) => (
-              <li key={row.productId} className="rounded-2xl border border-stone-200 bg-white p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="font-medium">{row.name}</p>
-                  <SpBadge
-                    status={row.eligible ? 'ACTIVE' : 'OFF'}
-                    label={row.eligible ? 'مجاز' : 'غیرمجاز'}
-                  />
-                </div>
-                <p className="mt-1 text-sm text-stone-600">
-                  {toman(row.priceIrr)} تومان · پورسانت پیش‌فرض {row.previewCommissionPercent}٪
-                  {row.vendorSku ? ' · کالای تأمین‌کننده' : ''}
-                </p>
-                {row.vendorSku && (
-                  <p className="mt-1 text-sm text-amber-800">
-                    {row.canEnable
-                      ? `حاشیه پس از پورسانت بازاریاب کافی است (${toman(row.marginIrr)} تومان).`
-                      : 'حاشیه کافی نیست؛ فعال‌سازی رد می‌شود.'}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  className={`mt-3 min-h-11 rounded-xl border px-3 ${spFocusClass}`}
-                  disabled={busyId === row.productId || (!row.eligible && !row.canEnable)}
-                  onClick={() => void toggleEligible(row)}
-                >
-                  {row.eligible ? 'غیرفعال کردن برای بازاریاب' : 'مجاز کردن برای بازاریاب'}
-                </button>
-              </li>
+          <div className="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="دسته محصولات">
+            <button
+              type="button"
+              className={spChipClass(categoryId === '')}
+              aria-pressed={categoryId === ''}
+              onClick={() => {
+                setCatalogPage(1);
+                setCategoryId('');
+              }}
+            >
+              همه دسته‌ها
+            </button>
+            {catalogFacets.filter((facet) => facet.id).map((facet) => (
+              <button
+                key={facet.id}
+                type="button"
+                className={spChipClass(categoryId === facet.id)}
+                aria-pressed={categoryId === facet.id}
+                onClick={() => {
+                  setCatalogPage(1);
+                  setCategoryId(facet.id || '');
+                }}
+              >
+                {facet.name}
+                <span className="tabular-nums opacity-80">{facet.count.toLocaleString('fa-IR')}</span>
+              </button>
             ))}
-          </ul>
+          </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="وضعیت مجوز">
+            {([
+              ['all', 'همه'],
+              ['yes', 'مجاز'],
+              ['no', 'غیرمجاز'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={spChipClass(eligibleFilter === id)}
+                aria-pressed={eligibleFilter === id}
+                onClick={() => {
+                  setCatalogPage(1);
+                  setEligibleFilter(id);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-stone-500" role="status">
+            {catalogTotal.toLocaleString('fa-IR')} محصول در این فیلتر
+          </p>
+          {catalog.length === 0 && <SpEmptyState>محصولی پیدا نشد.</SpEmptyState>}
+          <div className="space-y-6">
+            {catalogGroups.map(([name, rows]) => (
+              <section key={name} aria-labelledby={`admin-cat-${rows[0]?.categoryId || 'none'}`}>
+                <h3 id={`admin-cat-${rows[0]?.categoryId || 'none'}`} className="mb-3 text-sm font-semibold text-[#1B5C4A]">
+                  {name}
+                </h3>
+                <ul className="grid gap-3 lg:grid-cols-2">
+                  {rows.map((row) => (
+                    <li key={row.productId} className="rounded-2xl border border-stone-200 bg-white p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <p className="font-medium">{row.name}</p>
+                        <SpBadge
+                          status={row.eligible ? 'ACTIVE' : 'OFF'}
+                          label={row.eligible ? 'مجاز' : 'غیرمجاز'}
+                        />
+                      </div>
+                      <p className="mt-1 text-sm text-stone-600">
+                        {toman(row.priceIrr)} تومان · پورسانت پیش‌فرض {row.previewCommissionPercent}٪
+                        {row.vendorSku ? ' · کالای تأمین‌کننده' : ''}
+                      </p>
+                      {row.vendorSku && (
+                        <p className="mt-1 text-sm text-amber-800">
+                          {row.canEnable
+                            ? `حاشیه پس از پورسانت بازاریاب کافی است (${toman(row.marginIrr)} تومان).`
+                            : 'حاشیه کافی نیست؛ فعال‌سازی رد می‌شود.'}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        className={`mt-3 min-h-11 rounded-xl border px-3 ${spFocusClass}`}
+                        disabled={busyId === row.productId || (!row.eligible && !row.canEnable)}
+                        onClick={() => void toggleEligible(row)}
+                      >
+                        {row.eligible ? 'غیرفعال کردن برای بازاریاب' : 'مجاز کردن برای بازاریاب'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+          {catalogTotal > 20 && (
+            <div className="flex items-center justify-between gap-3">
+              <button
+                type="button"
+                className={spChipClass(false)}
+                disabled={catalogPage <= 1}
+                onClick={() => setCatalogPage((current) => Math.max(1, current - 1))}
+              >
+                قبلی
+              </button>
+              <p className="text-sm tabular-nums text-stone-600">
+                {catalogPage.toLocaleString('fa-IR')} از {catalogPages.toLocaleString('fa-IR')}
+              </p>
+              <button
+                type="button"
+                className={spChipClass(false)}
+                disabled={catalogPage >= catalogPages}
+                onClick={() => setCatalogPage((current) => current + 1)}
+              >
+                بعدی
+              </button>
+            </div>
+          )}
         </SpSection>
       )}
 
@@ -877,6 +1035,8 @@ export function AdminSalesPartners() {
           </SpSection>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

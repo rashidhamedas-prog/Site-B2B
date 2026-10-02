@@ -53,7 +53,7 @@ export default function SalesPartnerPayoutsPage() {
           </Link>
         </div>
       )}
-      <ul className="mt-4 space-y-3">
+      <ul className="mt-4 grid gap-3 md:grid-cols-2">
         {(rows || []).map((row) => (
           <li key={row.id}>
             <SpCard>

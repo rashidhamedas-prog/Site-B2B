@@ -87,7 +87,7 @@ export function SalesPartnerHome() {
         </SpCard>
       )}
       {balances && (
-        <section className="mt-3 grid grid-cols-3 gap-2" aria-label="وضعیت پول">
+        <section className="mt-3 grid grid-cols-3 gap-2 sm:gap-3" aria-label="وضعیت پول">
           <SpKpi label="در انتظار آزادسازی" value={toman(balances.held)} hint="بعد از تحویل" />
           <SpKpi label="قابل‌برداشت" value={toman(balances.available)} hint="تومان" accent />
           <SpKpi label="واریزشده" value={toman(balances.paid)} hint="تومان" />
@@ -136,7 +136,7 @@ export function SalesPartnerHome() {
           سرور خوانده می‌شود.
         </p>
       )}
-      <div className="mt-5 grid gap-2">
+      <div className="mt-5 grid gap-2 sm:grid-cols-2">
         <Link href="/sales-partners/catalog" className={spPrimary} aria-disabled={!canSell}>
           <span className="inline-flex items-center gap-2">
             <Link2 className="h-4 w-4" aria-hidden />
@@ -151,7 +151,7 @@ export function SalesPartnerHome() {
         </Link>
         <Link
           href="/sales-partners/guide"
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl px-4 text-sm text-stone-700 transition-colors hover:bg-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl px-4 text-sm text-stone-700 transition-colors hover:bg-white/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C] sm:col-span-2"
         >
           آموزش کوتاه همکاری
         </Link>

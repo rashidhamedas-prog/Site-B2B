@@ -2,7 +2,10 @@ import {
   factualFacts,
   humanStockBand,
   isFactualCaption,
+  parseAdminCatalogQuery,
+  parsePartnerCatalogQuery,
   partnerCopyText,
+  preparePartnerCatalog,
   shortPartnerBlurb,
   stockBand,
 } from './sales-partner-catalog-policy';
@@ -32,5 +35,45 @@ const copy = partnerCopyText({
 assert(copy.includes('مانتو سارا'), 'copy name');
 assert(copy.includes('هنگام ثبت سفارش از سرور'), 'copy not price source');
 assert(!copy.includes('پرفروش'), 'copy no claim');
+
+const parsed = parsePartnerCatalogQuery({
+  q: '%مانتو_',
+  categoryId: 'not-a-uuid',
+  stock: 'available',
+  sort: 'commission',
+  page: 0,
+});
+assert(parsed.q === 'مانتو', 'query strips wildcards');
+assert(parsed.categoryId === '', 'category id must be uuid');
+assert(parsed.stock === 'available' && parsed.sort === 'commission', 'enums kept');
+assert(parsed.page === 1, 'page floor');
+
+const adminParsed = parseAdminCatalogQuery({ eligible: 'yes', categoryId: '11111111-1111-4111-8111-111111111111' });
+assert(adminParsed.eligible === 'yes', 'admin eligible');
+assert(adminParsed.categoryId.startsWith('11111111'), 'admin category uuid');
+
+const catA = '11111111-1111-4111-8111-111111111111';
+const catB = '22222222-2222-4222-8222-222222222222';
+const cards = [
+  { name: 'مانتو نیکی', categoryId: catA, categoryName: 'مانتو', priceIrr: 2000, stockBand: 'out_of_stock' as const, estimatedCommissionIrr: 200 },
+  { name: 'مانتو لینن', categoryId: catA, categoryName: 'مانتو', priceIrr: 1000, stockBand: 'in_stock' as const, estimatedCommissionIrr: 100 },
+  { name: 'کت کتان', categoryId: catB, categoryName: 'کت', priceIrr: 3000, stockBand: 'low' as const, estimatedCommissionIrr: 300 },
+];
+const grouped = preparePartnerCatalog(cards, { sort: 'category' });
+assert(grouped.total === 3, 'all cards');
+assert(grouped.items[0].categoryName === 'کت', 'category sort fa order');
+assert(grouped.facets.categories.length === 2, 'two categories');
+assert(grouped.facets.categories.find((row) => row.id === catA)?.count === 2, 'manteau count');
+
+const filtered = preparePartnerCatalog(cards, { categoryId: catA, stock: 'available' });
+assert(filtered.total === 1 && filtered.items[0].name === 'مانتو لینن', 'category plus available');
+assert(filtered.facets.categories.find((row) => row.id === catA)?.count === 1, 'category count respects stock and ignores the selected category');
+assert(filtered.facets.categories.some((row) => row.id === catB), 'other categories stay visible');
+assert(filtered.facets.stock.out === 1, 'stock count keeps the selected category');
+const named = preparePartnerCatalog(cards, { q: 'نیکی' });
+assert(named.total === 1 && named.items[0].name === 'مانتو نیکی', 'name search');
+
+const priced = preparePartnerCatalog(cards, { sort: 'price_desc' });
+assert(priced.items[0].name === 'کت کتان', 'price desc');
 
 console.log('sales-partner-catalog-policy.spec.ts: OK');

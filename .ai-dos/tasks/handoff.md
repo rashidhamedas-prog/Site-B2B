@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T01:45:00Z — TASK-20261002-006 shipping (catalog filters)
+
+- Owner: cursor:implementer-TASK-20261002-006
+- Branch: `master`
+- Partner catalog: category/stock/search/sort + facets; admin catalog facets + desk sidebar.
+- Gates: `sales-partner-catalog-policy.spec.ts` OK; api/web `tsc` OK.
+- Next: commit + push + VPS deploy + health/smoke.
+- Notified: TASK-20261002-005 claims released (already LIVE `93ce995`).
+
 ## 2026-10-02T01:50:00Z — TASK-20261002-005 implementing (About polish)
 
 - Owner: cursor:implementer-TASK-20261002-005

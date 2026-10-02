@@ -33,7 +33,7 @@ export default function SalesPartnerGuidePage() {
           می‌دهد. این نقش با «تأمین‌کننده ارسال» فرق دارد.
         </p>
       </SpCard>
-      <ol className="space-y-3">
+      <ol className="grid gap-3 md:grid-cols-2">
         {STEPS.map((step, index) => (
           <li key={step.title}>
             <SpCard>

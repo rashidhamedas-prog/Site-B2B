@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, In, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, In, Not, Repository } from 'typeorm';
+import { CategoryEntity } from '../category/entities/category.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import {
   SalesCommissionRuleEntity,
@@ -19,9 +20,13 @@ import {
 import {
   factualFacts,
   humanStockBand,
+  parseAdminCatalogQuery,
+  parsePartnerCatalogQuery,
   partnerCopyText,
+  preparePartnerCatalog,
   shortPartnerBlurb,
   stockBand,
+  type PartnerCatalogQuery,
 } from './sales-partner-catalog-policy';
 import { normalizeSalesPartnerCode, salesPartnerSharePath } from './sales-partner-attribution';
 import { SalesPartnerService } from './sales-partner.service';
@@ -43,27 +48,31 @@ export class SalesPartnerCatalogService {
     private readonly program: SalesPartnerService,
   ) {}
 
-  async partnerCatalog(salesPartnerId: string, page = 1) {
+  async partnerCatalog(salesPartnerId: string, query: PartnerCatalogQuery | number = {}) {
+    const parsed = parsePartnerCatalogQuery(typeof query === 'number' ? { page: query, pageSize: PARTNER_PAGE_SIZE } : { ...query, pageSize: PARTNER_PAGE_SIZE });
     const settings = await this.program.settings();
     const shareCode = await this.program.ensurePublicCode(salesPartnerId);
     const rows = await this.eligibility.find({ where: { eligible: true } });
-    if (!rows.length) return { items: [], page: 1, pageSize: PARTNER_PAGE_SIZE };
+    if (!rows.length) return preparePartnerCatalog([], parsed);
     const products = await this.products.find({
       where: { id: In(rows.map((r) => r.productId)), status: 'ACTIVE', showOnRetail: true },
     });
+    const names = await this.categoryNames(products.map((product) => product.categoryId));
     const rules = await this.loadRules();
     const now = new Date();
     const mapped = products
-      .map((product) => this.toPartnerCard(product, rows, rules, salesPartnerId, now, settings.minMarginIrr, shareCode))
+      .map((product) => this.toPartnerCard(
+        product,
+        rows,
+        rules,
+        salesPartnerId,
+        now,
+        settings.minMarginIrr,
+        shareCode,
+        names.get(product.categoryId) || 'بدون دسته',
+      ))
       .filter((row): row is NonNullable<typeof row> => !!row);
-    const safePage = Math.max(1, Number(page) || 1);
-    const start = (safePage - 1) * PARTNER_PAGE_SIZE;
-    return {
-      items: mapped.slice(start, start + PARTNER_PAGE_SIZE),
-      page: safePage,
-      pageSize: PARTNER_PAGE_SIZE,
-      total: mapped.length,
-    };
+    return preparePartnerCatalog(mapped, parsed);
   }
 
   async partnerProduct(salesPartnerId: string, productId: string) {
@@ -77,7 +86,17 @@ export class SalesPartnerCatalogService {
     if (!product) throw new NotFoundException('محصول پیدا نشد');
     const rules = await this.loadRules();
     const shareCode = await this.program.ensurePublicCode(salesPartnerId);
-    const card = this.toPartnerCard(product, [elig], rules, salesPartnerId, new Date(), settings.minMarginIrr, shareCode);
+    const names = await this.categoryNames([product.categoryId]);
+    const card = this.toPartnerCard(
+      product,
+      [elig],
+      rules,
+      salesPartnerId,
+      new Date(),
+      settings.minMarginIrr,
+      shareCode,
+      names.get(product.categoryId) || 'بدون دسته',
+    );
     if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
     const colors = [...new Set((product.variants || []).map((v) => v.color).filter(Boolean))];
     const sizes = [...new Set((product.variants || []).map((v) => v.size).filter(Boolean))];
@@ -100,53 +119,67 @@ export class SalesPartnerCatalogService {
     };
   }
 
-  async adminCandidates(query?: string, page = 1) {
+  async adminCandidates(query?: string, page = 1, categoryId?: string, eligible?: string) {
     const settings = await this.program.settings();
-    const safePage = Math.max(1, Number(page) || 1);
-    const where = query?.trim()
-      ? [{ status: 'ACTIVE', showOnRetail: true, name: ILike(`%${query.trim().slice(0, 60)}%`) }]
-      : [{ status: 'ACTIVE', showOnRetail: true }];
+    const parsed = parseAdminCatalogQuery({ q: query, page, categoryId, eligible });
+    const eligibleIds = parsed.eligible === 'all'
+      ? []
+      : (await this.eligibility.find({ where: { eligible: true }, select: { productId: true } })).map((row) => row.productId);
+    const facets = await this.adminCategoryFacets(parsed.q, parsed.eligible, eligibleIds);
+    if (parsed.eligible === 'yes' && eligibleIds.length === 0) {
+      return { items: [], page: parsed.page, pageSize: ADMIN_PAGE_SIZE, total: 0, facets: { categories: facets } };
+    }
+    const where: FindOptionsWhere<ProductEntity> = { status: 'ACTIVE', showOnRetail: true };
+    if (parsed.q) where.name = ILike(`%${parsed.q}%`);
+    if (parsed.categoryId) where.categoryId = parsed.categoryId;
+    if (parsed.eligible === 'yes') where.id = In(eligibleIds);
+    if (parsed.eligible === 'no' && eligibleIds.length) where.id = Not(In(eligibleIds));
     const [products, total] = await this.products.findAndCount({
       where,
-      order: { updatedAt: 'DESC' },
+      order: { categoryId: 'ASC', name: 'ASC' },
       take: ADMIN_PAGE_SIZE,
-      skip: (safePage - 1) * ADMIN_PAGE_SIZE,
+      skip: (parsed.page - 1) * ADMIN_PAGE_SIZE,
     });
     const eligs = products.length
       ? await this.eligibility.find({ where: { productId: In(products.map((p) => p.id)) } })
       : [];
+    const names = await this.categoryNames(products.map((product) => product.categoryId));
     const rules = await this.loadRules();
+    const items = products.map((product) => {
+      const elig = eligs.find((row) => row.productId === product.id);
+      const price = Number(product.retailPrice || 0);
+      const previewPercent = selectCommissionRule(rules, {
+        productId: product.id,
+        categoryId: product.categoryId || null,
+        lineTotalAfterDiscountIrr: price,
+      }, 'preview', new Date())?.percent ?? 0;
+      const vendor = !!product.vendorId;
+      const vendorDue = vendor ? vendorDueFromRetailIrr(price, product.commissionPercent) : 0;
+      const margin = vendor
+        ? vendorSkuMarginIrr({ retailNetIrr: price, vendorDueIrr: vendorDue, partnerPercent: previewPercent })
+        : price - commissionAmountIrr(price, previewPercent);
+      return {
+        productId: product.id,
+        name: product.name,
+        slug: product.slug,
+        categoryId: product.categoryId || null,
+        categoryName: names.get(product.categoryId) || 'بدون دسته',
+        priceIrr: price,
+        vendorSku: vendor,
+        eligible: elig?.eligible === true,
+        allowedImageKeys: elig?.allowedImageKeys ?? null,
+        previewCommissionPercent: previewPercent,
+        marginIrr: margin,
+        minMarginIrr: settings.minMarginIrr,
+        canEnable: !vendor || margin >= settings.minMarginIrr,
+      };
+    }).sort((a, b) => a.categoryName.localeCompare(b.categoryName, 'fa') || a.name.localeCompare(b.name, 'fa'));
     return {
-      items: products.map((product) => {
-        const elig = eligs.find((row) => row.productId === product.id);
-        const price = Number(product.retailPrice || 0);
-        const previewPercent = selectCommissionRule(rules, {
-          productId: product.id,
-          categoryId: product.categoryId || null,
-          lineTotalAfterDiscountIrr: price,
-        }, 'preview', new Date())?.percent ?? 0;
-        const vendor = !!product.vendorId;
-        const vendorDue = vendor ? vendorDueFromRetailIrr(price, product.commissionPercent) : 0;
-        const margin = vendor
-          ? vendorSkuMarginIrr({ retailNetIrr: price, vendorDueIrr: vendorDue, partnerPercent: previewPercent })
-          : price - commissionAmountIrr(price, previewPercent);
-        return {
-          productId: product.id,
-          name: product.name,
-          slug: product.slug,
-          priceIrr: price,
-          vendorSku: vendor,
-          eligible: elig?.eligible === true,
-          allowedImageKeys: elig?.allowedImageKeys ?? null,
-          previewCommissionPercent: previewPercent,
-          marginIrr: margin,
-          minMarginIrr: settings.minMarginIrr,
-          canEnable: !vendor || margin >= settings.minMarginIrr,
-        };
-      }),
-      page: safePage,
+      items,
+      page: parsed.page,
       pageSize: ADMIN_PAGE_SIZE,
       total,
+      facets: { categories: facets },
     };
   }
 
@@ -285,6 +318,7 @@ export class SalesPartnerCatalogService {
     now: Date,
     minMarginIrr: number,
     shareCode?: string | null,
+    categoryName = 'بدون دسته',
   ) {
     const elig = rows.find((r) => r.productId === product.id);
     if (!elig?.eligible) return null;
@@ -317,6 +351,8 @@ export class SalesPartnerCatalogService {
       id: product.id,
       name: product.name,
       slug: product.slug,
+      categoryId: product.categoryId || null,
+      categoryName,
       blurb: shortPartnerBlurb(product.description),
       priceIrr: price,
       priceLabel: priceToman,
@@ -334,6 +370,41 @@ export class SalesPartnerCatalogService {
       }),
       updatedAt: product.updatedAt,
     };
+  }
+
+  private async categoryNames(ids: Array<string | null | undefined>) {
+    const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+    const map = new Map<string, string>();
+    if (!unique.length) return map;
+    const rows = await this.products.manager.find(CategoryEntity, {
+      where: { id: In(unique) },
+      select: { id: true, name: true },
+    });
+    for (const row of rows) map.set(row.id, row.name);
+    return map;
+  }
+
+  private async adminCategoryFacets(q: string, eligible: 'all' | 'yes' | 'no', eligibleIds: string[]) {
+    if (eligible === 'yes' && eligibleIds.length === 0) return [];
+    const qb = this.products
+      .createQueryBuilder('p')
+      .leftJoin(CategoryEntity, 'c', 'c.id = p.categoryId')
+      .select('p.categoryId', 'categoryId')
+      .addSelect('MAX(c.name)', 'name')
+      .addSelect('COUNT(*)', 'count')
+      .where('p.status = :status', { status: 'ACTIVE' })
+      .andWhere('p.showOnRetail = true');
+    if (q) qb.andWhere('p.name ILIKE :q', { q: `%${q}%` });
+    if (eligible === 'yes') qb.andWhere('p.id IN (:...ids)', { ids: eligibleIds });
+    if (eligible === 'no' && eligibleIds.length) qb.andWhere('p.id NOT IN (:...ids)', { ids: eligibleIds });
+    const raw = await qb.groupBy('p.categoryId').getRawMany<Record<string, unknown>>();
+    return raw
+      .map((row) => ({
+        id: (row.categoryId ?? row.p_categoryId ?? null) as string | null,
+        name: String(row.name ?? row.c_name ?? 'بدون دسته'),
+        count: Number(row.count ?? 0),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'fa'));
   }
 
   async loadRules(): Promise<CommissionRule[]> {

@@ -48,48 +48,53 @@ function navKey(pathname: string): (typeof NAV)[number]['key'] | 'account' | nul
 export function SalesPartnerShell({
   title,
   children,
+  wide = false,
 }: {
   title: string;
   children: ReactNode;
+  wide?: boolean;
 }) {
   const pathname = usePathname() || '';
   const current = navKey(pathname);
   const reduce = useReducedMotion();
 
+  function logout() {
+    clearToken();
+    window.location.href = '/sales-partners/login';
+  }
+
   return (
     <SpToastProvider>
       <div className="min-h-screen bg-[#f6f3ee] text-stone-900" dir="rtl">
-        <div className="mx-auto min-h-screen max-w-lg px-4 pb-28 pt-5 text-right">
-          <header className="flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium tracking-wide text-[#1B5C4A]">ترنم · همکار بازاریاب</p>
-              <h1 className="truncate text-2xl font-semibold leading-8">{title}</h1>
+        <div className="mx-auto flex min-h-screen max-w-6xl">
+          <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-l border-stone-200 bg-white px-3 py-6 lg:flex">
+            <div className="px-2">
+              <p className="text-[11px] font-medium tracking-wide text-[#1B5C4A]">ترنم</p>
+              <p className="mt-1 text-base font-semibold">همکار بازاریاب</p>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <Link
-                href="/sales-partners/profile"
-                className={cn(
-                  'inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white px-3 text-sm text-stone-700 shadow-sm',
-                  spFocusClass,
-                )}
-              >
-                <UserRound className="h-4 w-4" aria-hidden />
-                حساب
-              </Link>
-              <button
-                type="button"
-                className={cn('min-h-11 rounded-full px-3 text-sm text-stone-600', spFocusClass)}
-                onClick={() => {
-                  clearToken();
-                  window.location.href = '/sales-partners/login';
-                }}
-              >
-                خروج
-              </button>
-            </div>
-          </header>
-          {current === 'account' && (
-            <nav className="mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="بخش‌های حساب">
+            <nav className="mt-6 space-y-1" aria-label="ناوبری پنل همکار بازاریاب">
+              {NAV.map((item) => {
+                const active = current === item.key;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'flex min-h-11 items-center gap-2 rounded-2xl px-3 text-sm',
+                      spFocusClass,
+                      active ? 'bg-[#1B5C4A] font-semibold text-white' : 'text-stone-700 hover:bg-[#f6f3ee]',
+                    )}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+            <p className="mb-1 mt-6 px-3 text-[11px] font-medium text-stone-500">حساب</p>
+            <nav className="space-y-1" aria-label="بخش‌های حساب">
               {ACCOUNT.map((item) => {
                 const active = pathname === item.href;
                 return (
@@ -98,9 +103,9 @@ export function SalesPartnerShell({
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm transition-colors duration-200',
+                      'flex min-h-10 items-center rounded-2xl px-3 text-sm',
                       spFocusClass,
-                      active ? 'bg-[#1B5C4A] text-white' : 'bg-white text-stone-700',
+                      active ? 'bg-[#1B5C4A] font-semibold text-white' : 'text-stone-700 hover:bg-[#f6f3ee]',
                     )}
                   >
                     {item.label}
@@ -108,11 +113,66 @@ export function SalesPartnerShell({
                 );
               })}
             </nav>
-          )}
-          <div className="mt-5">{children}</div>
+            <button
+              type="button"
+              className={cn('mt-auto min-h-11 rounded-2xl px-3 text-right text-sm text-stone-600 hover:bg-[#f6f3ee]', spFocusClass)}
+              onClick={logout}
+            >
+              خروج
+            </button>
+          </aside>
+          <div className="min-w-0 flex-1 px-4 pb-28 pt-5 text-right lg:px-8 lg:pb-10">
+            <header className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium tracking-wide text-[#1B5C4A] lg:hidden">ترنم · همکار بازاریاب</p>
+                <h1 className="truncate text-2xl font-semibold leading-8">{title}</h1>
+              </div>
+              <div className="flex shrink-0 items-center gap-1 lg:hidden">
+                <Link
+                  href="/sales-partners/profile"
+                  className={cn(
+                    'inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white px-3 text-sm text-stone-700 shadow-sm',
+                    spFocusClass,
+                  )}
+                >
+                  <UserRound className="h-4 w-4" aria-hidden />
+                  حساب
+                </Link>
+                <button
+                  type="button"
+                  className={cn('min-h-11 rounded-full px-3 text-sm text-stone-600', spFocusClass)}
+                  onClick={logout}
+                >
+                  خروج
+                </button>
+              </div>
+            </header>
+            {current === 'account' && (
+              <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="بخش‌های حساب">
+                {ACCOUNT.map((item) => {
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'inline-flex min-h-11 shrink-0 items-center rounded-full px-4 text-sm transition-colors duration-200',
+                        spFocusClass,
+                        active ? 'bg-[#1B5C4A] text-white' : 'bg-white text-stone-700',
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            )}
+            <div className={cn('mt-5', wide ? '' : 'mx-auto w-full max-w-3xl')}>{children}</div>
+          </div>
         </div>
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200/80 bg-[#f6f3ee]/95 px-2 py-2 backdrop-blur-md"
+          className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200/80 bg-[#f6f3ee]/95 px-2 py-2 backdrop-blur-md lg:hidden"
           aria-label="ناوبری پنل همکار بازاریاب"
         >
           <ul className="mx-auto grid max-w-lg grid-cols-4 gap-1">

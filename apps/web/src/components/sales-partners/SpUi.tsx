@@ -17,6 +17,15 @@ import { spStatusTone } from './sp-labels';
 export const spFocusClass =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9A84C]';
 
+export function spChipClass(active: boolean) {
+  return cn(
+    'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm transition-colors duration-200',
+    spFocusClass,
+    'disabled:opacity-40',
+    active ? 'bg-[#1B5C4A] text-white' : 'bg-white text-stone-700 ring-1 ring-stone-200 hover:ring-[#1B5C4A]/30',
+  );
+}
+
 const TONE: Record<ReturnType<typeof spStatusTone>, string> = {
   ok: 'bg-emerald-50 text-emerald-800 border-emerald-200',
   warn: 'bg-amber-50 text-amber-900 border-amber-200',

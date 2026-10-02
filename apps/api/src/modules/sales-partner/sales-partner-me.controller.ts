@@ -31,9 +31,13 @@ export class SalesPartnerMeController {
   catalogList(
     @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
     @Query('page') page?: string,
+    @Query('q') q?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('stock') stock?: string,
+    @Query('sort') sort?: string,
   ) {
     const salesPartnerId = this.requirePartner(req);
-    return this.catalog.partnerCatalog(salesPartnerId, Number(page) || 1);
+    return this.catalog.partnerCatalog(salesPartnerId, { page: Number(page) || 1, q, categoryId, stock, sort });
   }
 
   @Get('catalog/:productId')

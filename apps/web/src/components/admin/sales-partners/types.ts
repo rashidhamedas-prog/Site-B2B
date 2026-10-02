@@ -54,6 +54,8 @@ export type CatalogRow = {
   productId: string;
   name: string;
   slug: string | null;
+  categoryId?: string | null;
+  categoryName?: string;
   priceIrr: number;
   vendorSku: boolean;
   eligible: boolean;

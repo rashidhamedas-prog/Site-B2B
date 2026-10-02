@@ -105,8 +105,13 @@ export class SalesPartnerAdminController {
   }
 
   @Get('catalog')
-  catalogCandidates(@Query('q') q?: string, @Query('page') page?: string) {
-    return this.catalog.adminCandidates(q, Number(page) || 1);
+  catalogCandidates(
+    @Query('q') q?: string,
+    @Query('page') page?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('eligible') eligible?: string,
+  ) {
+    return this.catalog.adminCandidates(q, Number(page) || 1, categoryId, eligible);
   }
 
   @Patch('catalog/:productId/eligibility')

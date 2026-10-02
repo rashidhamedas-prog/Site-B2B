@@ -54,7 +54,7 @@ export default function SalesPartnerCommissionsPage() {
       )}
       {data && (
         <div className="mt-5 space-y-4">
-          <section className="grid grid-cols-2 gap-2">
+          <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <SpKpi label="در انتظار آزادسازی" value={toman(data.held)} hint="تومان" />
             <SpKpi label="قابل‌برداشت" value={toman(data.available)} hint="تومان" accent />
             <SpKpi label="واریزشده" value={toman(data.paid)} hint="تومان" />
