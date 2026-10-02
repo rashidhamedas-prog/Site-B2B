@@ -34,7 +34,8 @@ tasks:
       - "Trust strip visually syncs under hero"
       - "prefers-reduced-motion respected; web tsc clean"
     notes: |
-      Shipping: commit + merge master + VPS deploy + smoke.
+      LIVE dab4136 on origin/master + VPS. health 200; .ir has retail-editorial-hero.
+      Independent Reviewer residual (visual field). Claims released.
       skill-top full. Direction: full-bleed fashion editorial (brand guidelines).
       CTA label stays CMS («مشاهده محصولات»). No wholesale hero change.
   - id: "TASK-20261002-006"
