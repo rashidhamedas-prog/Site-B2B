@@ -16,11 +16,18 @@ export type RetailMarketingPublic = {
   takhfifanScriptUrl?: string;
 };
 
+/** Compact nav rows seeded from retail layout SSR (mega menu + mobile drawer). */
+export type RetailNavCategory = { id: string; name: string; slug?: string | null };
+export type RetailNavCollection = { id: string; name: string; slug: string };
+
 export type RetailChromeBag = {
   chrome: SiteChromeData;
   enamad: EnamadSealConfig | null;
   marketing: RetailMarketingPublic | null;
   skin: 'classic' | 'boutique';
+  /** Instant mega-nav categories — avoids client waterfall / stuck «در حال بارگذاری». */
+  navCategories?: RetailNavCategory[];
+  navCollections?: RetailNavCollection[];
 };
 
 const RetailChromeContext = createContext<RetailChromeBag | null>(null);

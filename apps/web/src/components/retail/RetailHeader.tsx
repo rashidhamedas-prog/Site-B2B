@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, Menu, ShoppingBag, User, X } from 'lucide-react';
 import { StorefrontSearch } from '@/components/shared/StorefrontSearch';
 import { useRetailCart } from '@/lib/retail-cart';
@@ -10,11 +10,20 @@ import { RetailCartDrawer } from './RetailCartDrawer';
 import { cn } from '@/lib/cn';
 import { apiClient } from '@/lib/api';
 import { NewsTicker } from '@/components/shared/NewsTicker';
-import { useRetailChrome } from '@/components/retail/RetailChromeProvider';
+import {
+  useRetailChrome,
+  type RetailNavCategory,
+  type RetailNavCollection,
+} from '@/components/retail/RetailChromeProvider';
 import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
+import { categoryDisplayName, merchandiseCategories } from '@/lib/catalog/category-storefront';
 
-type Cat = { id: string; name: string; slug?: string };
-type Collection = { id: string; name: string; slug: string };
+type Cat = RetailNavCategory;
+type Collection = RetailNavCollection;
+type NavLoadStatus = 'ready' | 'loading' | 'error';
+
+const EMPTY_CATS: Cat[] = [];
+const EMPTY_COLS: Collection[] = [];
 
 const STATIC_NAV = [
   { href: '/', label: 'صفحه اصلی' },
@@ -47,6 +56,27 @@ function BrandMark({ className }: { className?: string }) {
 function isNavActive(pathname: string, href: string) {
   const base = href.split('?')[0]!;
   return pathname === base || (base !== '/' && pathname.startsWith(base));
+}
+
+function categoryHref(c: Cat) {
+  return c.slug
+    ? `/category/${encodeURIComponent(c.slug)}`
+    : `/products?categoryId=${encodeURIComponent(c.id)}`;
+}
+
+function MegaCategorySkeleton() {
+  return (
+    <ul className="space-y-2.5" aria-busy="true" aria-label="در حال بارگذاری دسته‌ها">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <li key={i}>
+          <span
+            className="block h-4 max-w-[9rem] animate-pulse rounded-md bg-[var(--retail-border)]/80 motion-reduce:animate-none"
+            style={{ width: `${58 + ((i * 13) % 28)}%` }}
+          />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function RetailNavLink({
@@ -84,14 +114,62 @@ export function RetailHeader() {
   const bag = useRetailChrome();
   const tickerItems = resolveTickerItems(bag?.chrome.announcement, 'RETAIL');
   const showHomeTicker = isStorefrontHomePath(pathname) && tickerItems.length > 0;
+  const seededCats = bag?.navCategories ?? EMPTY_CATS;
+  const seededCols = bag?.navCollections ?? EMPTY_COLS;
   const [open, setOpen] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [categories, setCategories] = useState<Cat[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
+  const [categories, setCategories] = useState<Cat[]>(seededCats);
+  const [collections, setCollections] = useState<Collection[]>(seededCols);
+  const [navStatus, setNavStatus] = useState<NavLoadStatus>(
+    seededCats.length > 0 ? 'ready' : 'loading',
+  );
   const count = useRetailCart((s) => s.items.reduce((n, i) => n + i.quantity, 0));
   const categoryActive = pathname.startsWith('/products') || pathname.startsWith('/category');
+
+  const loadNav = useCallback(async (opts?: { showLoading?: boolean }) => {
+    if (opts?.showLoading) setNavStatus('loading');
+    try {
+      const [cats, cols] = await Promise.all([
+        apiClient.get<
+          | Array<{ id: string; name?: string | null; nameEn?: string | null; slug?: string | null }>
+          | { data: unknown }
+        >('/categories'),
+        apiClient
+          .get<Collection[]>('/collections?active=1&channel=RETAIL')
+          .catch(() => [] as Collection[]),
+      ]);
+      const raw = Array.isArray(cats)
+        ? cats
+        : Array.isArray((cats as { data?: unknown }).data)
+          ? ((
+              cats as {
+                data: Array<{
+                  id: string;
+                  name?: string | null;
+                  nameEn?: string | null;
+                  slug?: string | null;
+                }>;
+              }
+            ).data)
+          : [];
+      const list = merchandiseCategories(raw, { maxItems: 16 }).map((c) => ({
+        id: c.id,
+        name: categoryDisplayName(c),
+        slug: c.slug ?? null,
+      }));
+      if (list.length > 0) {
+        setCategories(list);
+        setNavStatus('ready');
+      } else {
+        setNavStatus((prev) => (prev === 'ready' ? 'ready' : 'error'));
+      }
+      if (Array.isArray(cols) && cols.length > 0) setCollections(cols.slice(0, 8));
+    } catch {
+      setNavStatus((prev) => (prev === 'ready' ? 'ready' : 'error'));
+    }
+  }, []);
 
   useEffect(() => setMounted(true), []);
 
@@ -106,15 +184,14 @@ export function RetailHeader() {
   }, []);
 
   useEffect(() => {
-    Promise.all([
-      apiClient.get<Cat[] | { data: Cat[] }>('/categories').catch(() => []),
-      apiClient.get<Collection[]>('/collections?active=1&channel=RETAIL').catch(() => []),
-    ]).then(([cats, cols]) => {
-      const list = Array.isArray(cats) ? cats : (cats as { data?: Cat[] })?.data ?? [];
-      setCategories(list.slice(0, 16));
-      setCollections(Array.isArray(cols) ? cols.slice(0, 8) : []);
-    });
-  }, []);
+    if (seededCats.length > 0) {
+      setCategories(seededCats);
+      setNavStatus('ready');
+    }
+    if (seededCols.length > 0) setCollections(seededCols);
+    // Soft client refresh; SSR seed already paints. Show skeleton only when seed empty.
+    void loadNav({ showLoading: seededCats.length === 0 });
+  }, [seededCats, seededCols, loadNav]);
 
   return (
     <>
@@ -194,23 +271,34 @@ export function RetailHeader() {
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div>
                       <p className="mb-3 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
-                      <ul className="space-y-2">
-                        {categories.length === 0 ? (
-                          <li className="text-sm text-[var(--retail-muted)]">در حال بارگذاری…</li>
-                        ) : (
-                          categories.map((c) => (
+                      {navStatus === 'loading' && categories.length === 0 ? (
+                        <MegaCategorySkeleton />
+                      ) : navStatus === 'error' && categories.length === 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-[var(--retail-muted)]">دسته‌ها الان در دسترس نیست.</p>
+                          <button
+                            type="button"
+                            className="cursor-pointer text-sm font-semibold text-[var(--retail-primary)] underline-offset-2 hover:underline"
+                            onClick={() => void loadNav({ showLoading: true })}
+                          >
+                            تلاش دوباره
+                          </button>
+                        </div>
+                      ) : (
+                        <ul className="space-y-2">
+                          {categories.map((c) => (
                             <li key={c.id}>
                               <Link
-                                href={`/products?categoryId=${c.id}`}
+                                href={categoryHref(c)}
                                 className="text-sm font-semibold text-[var(--retail-ink)] transition-colors duration-150 hover:text-[var(--retail-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
                                 onClick={() => setMegaOpen(false)}
                               >
                                 {c.name}
                               </Link>
                             </li>
-                          ))
-                        )}
-                      </ul>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                     <div>
                       <p className="mb-3 text-xs font-bold text-[var(--retail-muted)]">کالکشن‌ها</p>
@@ -317,10 +405,24 @@ export function RetailHeader() {
                 );
               })}
               <p className="px-3 pt-4 text-xs font-bold text-[var(--retail-muted)]">دسته‌ها</p>
+              {navStatus === 'loading' && categories.length === 0 ? (
+                <div className="px-3 py-1">
+                  <MegaCategorySkeleton />
+                </div>
+              ) : null}
+              {navStatus === 'error' && categories.length === 0 ? (
+                <button
+                  type="button"
+                  className="mx-3 cursor-pointer rounded-lg px-3 py-2 text-start text-sm font-semibold text-[var(--retail-primary)]"
+                  onClick={() => void loadNav({ showLoading: true })}
+                >
+                  تلاش دوباره برای بارگذاری دسته‌ها
+                </button>
+              ) : null}
               {categories.map((c) => (
                 <Link
                   key={c.id}
-                  href={`/products?categoryId=${c.id}`}
+                  href={categoryHref(c)}
                   className="rounded-lg px-3 py-2 text-sm font-semibold text-[var(--retail-ink)] transition-colors duration-150 hover:bg-[var(--retail-surface)]"
                   onClick={() => setOpen(false)}
                 >

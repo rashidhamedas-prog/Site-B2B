@@ -12,20 +12,64 @@ import { GoogleAnalyticsProvider } from '@/components/shared/GoogleAnalyticsProv
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/shared/JsonLd';
 import { fetchSiteContent } from '@/lib/cms/fetch';
 import { defaultSiteChrome, parseChromeBlocks } from '@/lib/cms/chrome';
-import { fetchPublicSettings } from '@/lib/server-api';
+import { fetchPublicSettings, getServerApiBase } from '@/lib/server-api';
 import { normalizeEnamad, type EnamadSealConfig } from '@/lib/enamad';
 import { resolveGscVerification } from '@/lib/google-seo';
 import { parseRetailStorefrontSkin } from '@/lib/retail-storefront-skin';
+import {
+  catalogFetchInit,
+  categoryDisplayName,
+  merchandiseCategories,
+} from '@/lib/catalog/category-storefront';
 import {
   layoutSeoFromSettings,
   type PublicBusinessSettings,
   type PublicPaymentFlags,
   type PublicSeoSettings,
 } from '@/lib/organization-from-settings';
+import type { RetailNavCategory, RetailNavCollection } from '@/components/retail/RetailChromeProvider';
 import './retail.css';
 import '@/themes/retail-boutique/boutique.css';
 
 const REVALIDATE = 120;
+
+async function fetchNavCategories(): Promise<RetailNavCategory[]> {
+  try {
+    const res = await fetch(`${getServerApiBase()}/categories`, catalogFetchInit());
+    if (!res.ok) return [];
+    const all = (await res.json()) as Array<{
+      id: string;
+      name?: string | null;
+      nameEn?: string | null;
+      slug?: string | null;
+    }>;
+    return merchandiseCategories(Array.isArray(all) ? all : [], { maxItems: 16 }).map((c) => ({
+      id: c.id,
+      name: categoryDisplayName(c),
+      slug: c.slug ?? null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchNavCollections(): Promise<RetailNavCollection[]> {
+  try {
+    const res = await fetch(
+      `${getServerApiBase()}/collections?active=1&channel=RETAIL`,
+      catalogFetchInit(),
+    );
+    if (!res.ok) return [];
+    const all = (await res.json()) as Array<{ id: string; name?: string; slug?: string }>;
+    if (!Array.isArray(all)) return [];
+    return all
+      .filter((c) => c.id && c.slug && c.name)
+      .slice(0, 8)
+      .map((c) => ({ id: c.id, name: c.name!, slug: c.slug! }));
+  } catch {
+    return [];
+  }
+}
 
 type PublicSettingsPayload = {
   business?: PublicBusinessSettings & {
@@ -78,9 +122,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RetailLayout({ children }: { children: React.ReactNode }) {
-  const [settings, chromeDoc] = await Promise.all([
+  const [settings, chromeDoc, navCategories, navCollections] = await Promise.all([
     fetchPublicSettings<PublicSettingsPayload>('RETAIL'),
     fetchSiteContent('RETAIL', 'chrome', { revalidate: REVALIDATE }),
+    fetchNavCategories(),
+    fetchNavCollections(),
   ]);
 
   const chrome = chromeDoc?.blocks?.length
@@ -95,6 +141,8 @@ export default async function RetailLayout({ children }: { children: React.React
       : null,
     marketing: settings?.marketing ?? null,
     skin,
+    navCategories,
+    navCollections,
   };
 
   const boutique = skin === 'boutique';

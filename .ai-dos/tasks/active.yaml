@@ -1,5 +1,37 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-004"
+    title: "Retail mega-nav categories stuck loading"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261003-004"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-004"
+      implementer: "cursor:implementer-TASK-20261003-004"
+      reviewer: "required-after-diff"
+      security: "not-required-ui-only"
+    branch: "ai/TASK-20261003-004-mega-nav-categories"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T22:15:00Z"
+    heartbeat_at: "2026-10-02T22:15:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/retail/RetailHeader.tsx"
+      - "apps/web/src/components/retail/RetailChromeProvider.tsx"
+      - "apps/web/src/app/retail/layout.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-03-mega-nav-categories.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Mega categories not stuck on «در حال بارگذاری» after load"
+      - "SSR seeds nav categories so first open shows links"
+      - "Loading skeleton + error/retry when client refetch fails"
+      - "web tsc clean; browser verify on .ir after deploy"
+    notes: |
+      skill-top standard. Root: empty[] after failed/late client fetch shown as infinite loading;
+      collections static link masked the hang. Fix: SSR seed via RetailChromeBag + status UI.
   - id: "TASK-20261003-003"
     title: "Retail nav motion states + hero copySide RTL fix"
     status: "done"

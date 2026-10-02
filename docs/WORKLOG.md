@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-03 — فیکس mega-nav دسته‌ها (گیر روی بارگذاری)
+
+- ریشه: خالی بودن state کلاینت به‌عنوان «در حال بارگذاری» ابدی؛ API سالم بود
+- SSR seed دسته‌ها/کالکشن‌ها در `retail/layout` → `RetailChromeBag`؛ skeleton + retry
+- گزارش: `docs/reports/2026-10-03-mega-nav-categories.md`
+
 ## 2026-10-03 — موشن منوی retail + جای متن هیرو (copySide)
 
 - منوی دسکتاپ: underline طلایی `scaleX` از inline-start، lift ملایم، focus-visible، شورون mega، fade پنل — الگوی 21st بدون JS سنگین
