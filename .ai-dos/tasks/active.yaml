@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261003-003"
     title: "Retail nav motion states + hero copySide RTL fix"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261003-003"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261003-003-retail-nav-hero-copy"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T21:45:00Z"
-    heartbeat_at: "2026-10-02T21:45:00Z"
+    heartbeat_at: "2026-10-02T22:05:00Z"
+    completed_at: "2026-10-02T22:05:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/retail/RetailHeader.tsx"
       - "apps/web/src/components/retail/RetailHero.tsx"
       - "apps/web/src/lib/cms/hero-slides.ts"
@@ -39,7 +41,7 @@ tasks:
       Reclaimed shared docs from TASK-20261003-002; blog CSS claims untouched.
   - id: "TASK-20261003-002"
     title: "Blog article inline links high-affordance styling"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261003-002"
     roles:
@@ -50,9 +52,10 @@ tasks:
     branch: "ai/TASK-20261003-002-blog-prose-links"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T21:25:00Z"
-    heartbeat_at: "2026-10-02T21:25:00Z"
+    heartbeat_at: "2026-10-02T21:55:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/blog/BlogContent.tsx"
       - "apps/web/src/app/globals.css"
       - "apps/web/src/app/retail/retail.css"
@@ -63,7 +66,7 @@ tasks:
       - "Hover/focus-visible states are clearly distinct"
       - "No new client JS; no landing/list card style change"
     notes: |
-      skill-top full. Shared docs reclaimed by TASK-20261003-003 for nav/hero ship.
+      LIVE origin/master d4b0689 + polish 15bf6bf. Shared docs owned by TASK-20261003-003.
       Root cause: global/retail a{text-decoration:none} + BlogContent color-only [&_a].
   - id: "TASK-20261003-001"
     title: "Sales-partner apply OTP + eligibility + per-product commission"

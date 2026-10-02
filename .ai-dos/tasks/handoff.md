@@ -2,6 +2,21 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T21:55:00Z — TASK-20261003-002 LIVE (blog prose links)
+
+- Owner: cursor:implementer-TASK-20261003-002
+- Ship: `d4b0689` + polish `15bf6bf` on `origin/master`
+- Live article `/blog/women-fall-fashion-trends-1405`: `.blog-prose a` brand green, underline, gold mark, weight 600→700 after polish; health 200
+- Blog CSS claims released. Shared docs remain with TASK-20261003-003. Independent Reviewer residual (visual)
+
+## 2026-10-02T22:05:00Z — TASK-20261003-003 LIVE (nav motion + hero copySide)
+
+- Owner: cursor:implementer-TASK-20261003-003
+- Ship: `45c9f03` on `origin/master` (tip later `9f0b9dc` includes it); VPS web Up; browser verify OK
+- Live: slide «آبیِ آرام» copy box left≈1002/1920 (RTL right); `justify-content:flex-start`; nav `::before` gold + active scaleX(1); `aria-label=منوی اصلی`
+- Gates: hero-slides.spec OK; web tsc clean
+- Claims released. Independent Reviewer residual (visual hover field). Stitch UI not generated (prompt filed).
+
 ## 2026-10-02T21:50:00Z — TASK-20261003-003 implementing (nav motion + hero copySide)
 
 - Owner: cursor:implementer-TASK-20261003-003
