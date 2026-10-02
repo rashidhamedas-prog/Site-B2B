@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T01:40:00Z — TASK-20261002-004 implementing (About scrollytelling)
+
+- Owner: cursor:implementer-TASK-20261002-004
+- Branch: `ai/TASK-20261002-004-about-scrollytelling`
+- Shared docs claimed (previous owners done; TASK-20261002-001 retains nginx/edge claims only).
+- Redesign: sticky graphic + IO steps; intro outside track; 4 scene layers.
+- Gates: web `tsc --noEmit` pass. Verify specialist notes addressed (IO teardown on reduced-motion).
+- Next: commit + merge master + VPS deploy + live `/about` smoke.
+
 ## 2026-10-02T01:20:00Z — TASK-20261002-002 LIVE (sales-partner redesign)
 
 - Owner: cursor:implementer-TASK-20261002-002
