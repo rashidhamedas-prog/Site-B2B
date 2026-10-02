@@ -2,12 +2,28 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T01:20:00Z — TASK-20261002-002 LIVE (sales-partner redesign)
+
+- Owner: cursor:implementer-TASK-20261002-002
+- Ship: `d2dfd7a` on `origin/master` + VPS deploy complete.
+- Fix: removed duplicate `GET /sales-partners/me` (auth controller already owned it).
+- Claims released. Independent Reviewer + Security residual (PII in answers jsonb).
+
 ## 2026-10-02T01:05:00Z — TASK-20261002-002 ready to ship (sales-partner redesign)
 
 - Owner: cursor:implementer-TASK-20261002-002
 - Reclaim shared docs briefly for WORKLOG/status/active/handoff finalize (notified TASK-20261002-003).
 - Implementation complete: drawer, form builder, dynamic apply, partner password, migration, specs OK.
 - Next: commit + merge master + VPS deploy + migration run.
+
+## 2026-10-02T01:04:00Z — TASK-20261002-003 LIVE (support tickets)
+
+- Owner: cursor:implementer-TASK-20261002-003
+- Ship: `cd15321` on `origin/master`; VPS auto-deploy complete at `cd15321` (later tip may include sales-partner `b64d4fb` on top — support remains ancestor).
+- Specs: `support-ticket.fsm.spec.ts` ok; `support-ticket.ownership.spec.ts` ok; web `tsc` clean.
+- Live: health 200; `/v1/support/tickets/mine` 401 unauth; `/admin/support` → login 307; `/account/support` 200 with support page chunk.
+- Claims released.
+- Residual: Independent Reviewer + Security (authz/PII thread); owner click create/reply with login; SMS notify not in v1.
 
 ## 2026-10-02T00:46:00Z — TASK-20261002-003 claim (support tickets)
 

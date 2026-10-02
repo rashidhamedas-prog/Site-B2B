@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261002-003"
     title: "Professional support ticketing (retail + wholesale)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261002-003"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261002-003-support-tickets"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T00:46:00Z"
-    heartbeat_at: "2026-10-02T00:46:00Z"
+    heartbeat_at: "2026-10-02T01:04:00Z"
+    completed_at: "2026-10-02T01:04:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/support/"
       - "apps/api/src/database/migrations/20261002-002-support-tickets.ts"
       - "apps/api/src/app.module.ts"
@@ -34,9 +36,7 @@ tasks:
       - "apps/web/src/components/admin/AdminHeader.tsx"
       - "docs/reports/2026-10-02-support-tickets.md"
     notes: |
-      Standard skill-top: ticket+thread for RETAIL/WHOLESALE, admin desk, FSM, rate-limit.
-      Shared docs temporarily with TASK-20261002-002 for sales-partner ship finalize.
-      No attachments/live-chat/SLA in v1. Mirror RMA auth/channel patterns.
+      LIVE cd15321. Standard skill-top ticket desk. Shared docs owned by TASK-20261002-002.
     acceptance_criteria:
       - "Logged-in retail+wholesale customers can create/list/reply tickets"
       - "Admin can list/filter/reply/change status/assign; channel isolation held"
@@ -44,7 +44,7 @@ tasks:
       - "FSM + ownership unit specs pass; health + storefront smoke after deploy"
   - id: "TASK-20261002-002"
     title: "Sales-partner admin/panel redesign + configurable apply form"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20261002-002"
     roles:
@@ -55,9 +55,11 @@ tasks:
     branch: "ai/TASK-20261002-002-sales-partner-redesign"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T00:50:00Z"
-    heartbeat_at: "2026-10-02T00:50:00Z"
+    heartbeat_at: "2026-10-02T01:20:00Z"
+    completed_at: "2026-10-02T01:20:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/"
       - "apps/api/src/database/migrations/20261002-001-sales-partner-apply-answers.ts"
       - "apps/web/src/components/admin/sales-partners/"
@@ -70,8 +72,8 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Full-depth redesign: application detail drawer, configurable applyFormFields,
-      partner password set/change. Shipping now; shared docs reclaimed for finalize.
+      LIVE d2dfd7a. Drawer + form builder + dynamic apply + partner password.
+      Duplicate GET me fixed. Independent Reviewer + Security residual (PII).
     acceptance_criteria:
       - "Admin sees full application answers before approve/reject"
       - "Admin can toggle/reorder/add custom apply form fields"
