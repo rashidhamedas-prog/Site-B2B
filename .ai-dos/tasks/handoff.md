@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T23:15:00Z — TASK-20261003-005 LIVE (SP welcome SMS)
+
+- Owner: cursor:implementer-TASK-20261003-005
+- Ship: `eea126e` on `origin/master` + VPS `TARANOM_DEPLOY_FORCE=1` (first deploy hung on web lint; force rebuild completed)
+- Live: health 200; API has welcome-sms helpers; web admin chunk has `welcome-sms`
+- Claims released. Independent Reviewer residual (admin click send). Security residual none med+ after rollback fix.
+
 ## 2026-10-02T22:50:00Z — TASK-20261003-005 implementing (SP welcome SMS)
 
 - Owner: cursor:implementer-TASK-20261003-005

@@ -1,6 +1,6 @@
 # Project Status
 
-- In progress: 2026-10-03 — **TASK-20261003-005** sales-partner welcome credentials SMS under APPROVED badge. Branch `ai/TASK-20261003-005-sp-welcome-sms`. Security: redact + rollback + AdminOnly. Specs/web tsc OK; not deployed yet.
+- Last verified: 2026-10-03 — **TASK-20261003-005 LIVE** on `origin/master` `eea126e` + VPS force rebuild. Welcome SMS button under APPROVED badge; health 200; API/web markers present. Claims released. Independent Reviewer residual (admin click).
 - Last verified: 2026-10-03 — **TASK-20261003-004 LIVE** on `origin/master` `28ce997` + VPS force rebuild. Mega-nav categories SSR-seeded; browser shows فوتر/کراپ instantly, no stuck loading. Claims released.
 - Last verified: 2026-10-03 — **TASK-20261003-003 LIVE** on `origin/master` `45c9f03` (+ tip `9f0b9dc`). Retail nav gold underline + hero copySide RTL start; browser: slide3 copy on right, nav ::before gold. Claims released. Independent Reviewer residual (hover field).
 - Last verified: 2026-10-03 — **TASK-20261003-002 LIVE** blog prose links (`d4b0689` + polish). Claims released.
