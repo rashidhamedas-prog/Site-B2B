@@ -163,7 +163,7 @@ export class SalesPartnerService {
     return {
       applicationId: application.id,
       status: application.status,
-      cooldownSeconds: this.otp.cooldownSeconds(),
+      cooldownSeconds: this.otp.cooldownSeconds('sales_partner_apply'),
       ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) ? { devCode: issued.code } : {}),
     };
   }
@@ -187,6 +187,11 @@ export class SalesPartnerService {
     }
     if (isStaffRole(user.role) || vendorRole(user.role)) {
       throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
+    }
+    // Prior inactive CUSTOMER accounts (e.g. soft-disabled retail) must not block apply completion.
+    if (!user.isActive && user.role === 'CUSTOMER') {
+      user.isActive = true;
+      await this.users.save(user);
     }
     application.userId = user.id;
     application.status = 'PENDING_REVIEW';
@@ -240,7 +245,7 @@ export class SalesPartnerService {
     }
     const issued = await this.issueOtp(phone, profile.displayName, 'sales_partner');
     return {
-      cooldownSeconds: this.otp.cooldownSeconds(),
+      cooldownSeconds: this.otp.cooldownSeconds('sales_partner'),
       ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) ? { devCode: issued.code } : {}),
     };
   }
@@ -545,7 +550,7 @@ export class SalesPartnerService {
       if (err instanceof OtpCooldownError) {
         throw new SmsCooldownException(
           err.remainingSeconds,
-          this.otp.cooldownSeconds(),
+          this.otp.cooldownSeconds(purpose),
           'لطفاً کمی بعد دوباره تلاش کنید',
         );
       }

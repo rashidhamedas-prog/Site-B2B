@@ -2,6 +2,7 @@ import { Global, Injectable, Logger, Module, OnModuleDestroy } from '@nestjs/com
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { createHash, randomInt, timingSafeEqual } from 'crypto';
+import { normalizeDigits } from '../auth/phone.util';
 
 export type OtpRecord = {
   hash: string;
@@ -174,7 +175,10 @@ export class OtpService {
     return Number(this.config.get('OTP_MAX_ATTEMPTS', 5)) || 5;
   }
 
-  private cooldown(): number {
+  private cooldown(purpose: OtpPurpose = 'retail'): number {
+    if (purpose === 'sales_partner' || purpose === 'sales_partner_apply') {
+      return Number(this.config.get('OTP_SALES_PARTNER_RESEND_COOLDOWN_SECONDS', 120)) || 120;
+    }
     return Number(this.config.get('OTP_RESEND_COOLDOWN_SECONDS', 60)) || 60;
   }
 
@@ -195,9 +199,9 @@ export class OtpService {
     return `${purpose}:${phone}`;
   }
 
-  /** Configured resend cooldown window, in seconds. */
-  cooldownSeconds(): number {
-    return this.cooldown();
+  /** Configured resend cooldown window, in seconds (purpose-aware). */
+  cooldownSeconds(purpose: OtpPurpose = 'retail'): number {
+    return this.cooldown(purpose);
   }
 
   /** Seconds left before another OTP may be requested. 0 when a new code can be sent now. */
@@ -209,7 +213,7 @@ export class OtpService {
     const mem = this.memory.get(this.memKey(phone, purpose));
     if (!mem) return 0;
     const issuedAt = mem.expiresAt - this.ttl() * 1000;
-    const left = Math.ceil((issuedAt + this.cooldown() * 1000 - Date.now()) / 1000);
+    const left = Math.ceil((issuedAt + this.cooldown(purpose) * 1000 - Date.now()) / 1000);
     return left > 0 ? left : 0;
   }
 
@@ -217,21 +221,22 @@ export class OtpService {
   async issue(phone: string, name?: string, purpose: OtpPurpose = 'retail'): Promise<{ code: string }> {
     const cdKey = this.cooldownKey(phone, purpose);
     const slot = this.memKey(phone, purpose);
+    const windowSec = this.cooldown(purpose);
     const redisOk = this.redis.isReady;
     if (redisOk) {
-      const allowed = await this.redis.setNxEx(cdKey, this.cooldown(), '1');
+      const allowed = await this.redis.setNxEx(cdKey, windowSec, '1');
       if (!allowed) {
         const remaining = await this.getCooldownRemaining(phone, purpose);
-        throw new OtpCooldownError(remaining > 0 ? remaining : this.cooldown());
+        throw new OtpCooldownError(remaining > 0 ? remaining : windowSec);
       }
     } else {
       const existing = this.memory.get(slot);
-      if (existing && existing.expiresAt - (this.ttl() - this.cooldown()) * 1000 > Date.now()) {
+      if (existing && existing.expiresAt - (this.ttl() - windowSec) * 1000 > Date.now()) {
         // within cooldown window from last issue
         const issuedAt = existing.expiresAt - this.ttl() * 1000;
         const elapsed = Date.now() - issuedAt;
-        if (elapsed < this.cooldown() * 1000) {
-          throw new OtpCooldownError(Math.max(1, Math.ceil((this.cooldown() * 1000 - elapsed) / 1000)));
+        if (elapsed < windowSec * 1000) {
+          throw new OtpCooldownError(Math.max(1, Math.ceil((windowSec * 1000 - elapsed) / 1000)));
         }
       }
     }
@@ -301,8 +306,9 @@ export class OtpService {
       throw new Error('MAX_ATTEMPTS');
     }
 
+    const normalizedCode = normalizeDigits(String(code || '').trim());
     const expected = Buffer.from(record.hash, 'hex');
-    const actual = Buffer.from(this.hashCode(phone, String(code).trim()), 'hex');
+    const actual = Buffer.from(this.hashCode(phone, normalizedCode), 'hex');
     const match = expected.length === actual.length && timingSafeEqual(expected, actual);
 
     if (!match) {

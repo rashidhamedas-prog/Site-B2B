@@ -58,8 +58,9 @@ export function AdminSalesPartners() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [rulePercent, setRulePercent] = useState(5);
+  const [rulePercent, setRulePercent] = useState(10);
   const [ruleNote, setRuleNote] = useState('');
+  const [commissionDrafts, setCommissionDrafts] = useState<Record<string, number>>({});
   const [payoutPartnerId, setPayoutPartnerId] = useState('');
   const [bankReference, setBankReference] = useState('');
   const [availableIrr, setAvailableIrr] = useState<number | null>(null);
@@ -87,6 +88,16 @@ export function AdminSalesPartners() {
     setCatalog(nextCatalog.items);
     setCatalogFacets(nextCatalog.facets?.categories || []);
     setCatalogTotal(nextCatalog.total ?? nextCatalog.items.length);
+    setCommissionDrafts((prev) => {
+      const next = { ...prev };
+      for (const row of nextCatalog.items) {
+        if (next[row.productId] === undefined) {
+          next[row.productId] =
+            row.productCommissionPercent ?? row.previewCommissionPercent ?? 10;
+        }
+      }
+      return next;
+    });
   }, [appliedQuery, categoryId, eligibleFilter, catalogPage]);
 
   const loadDesk = useCallback(async () => {
@@ -191,18 +202,35 @@ export function AdminSalesPartners() {
     }
   }
 
-  async function toggleEligible(row: CatalogRow) {
-    const partnerPercent = row.vendorSku
-      ? Number(
-          window.prompt('درصد پورسانت بازاریاب برای کنترل حاشیه', String(row.previewCommissionPercent)) ||
-            row.previewCommissionPercent,
-        )
-      : row.previewCommissionPercent;
+  function draftCommission(row: CatalogRow): number {
+    const raw = commissionDrafts[row.productId];
+    if (Number.isInteger(raw) && raw >= 0 && raw <= 80) return raw;
+    return row.productCommissionPercent ?? row.previewCommissionPercent ?? 10;
+  }
+
+  async function patchEligibility(
+    row: CatalogRow,
+    eligible: boolean,
+    opts?: { withCommission?: boolean },
+  ) {
+    const commissionPercentOverride = draftCommission(row);
+    if (
+      opts?.withCommission &&
+      (!Number.isInteger(commissionPercentOverride) ||
+        commissionPercentOverride < 0 ||
+        commissionPercentOverride > 80)
+    ) {
+      setError('پورسانت محصول باید عدد صحیح بین ۰ تا ۸۰ باشد');
+      return;
+    }
     setBusyId(row.productId);
+    setError(null);
     try {
       await apiClient.patch(`/admin/sales-partners/catalog/${row.productId}/eligibility`, {
-        eligible: !row.eligible,
-        partnerPercent,
+        eligible,
+        ...(opts?.withCommission
+          ? { commissionPercentOverride, partnerPercent: commissionPercentOverride }
+          : {}),
       });
       await load();
     } catch (err) {
@@ -210,6 +238,19 @@ export function AdminSalesPartners() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  async function toggleEligible(row: CatalogRow) {
+    const enabling = !row.eligible;
+    await patchEligibility(row, enabling, { withCommission: enabling });
+  }
+
+  async function saveProductCommission(row: CatalogRow) {
+    if (!row.eligible) {
+      setError('اول محصول را برای بازاریاب مجاز کنید، بعد پورسانت را ذخیره کنید');
+      return;
+    }
+    await patchEligibility(row, true, { withCommission: true });
   }
 
   async function loadBalance() {
@@ -670,24 +711,60 @@ export function AdminSalesPartners() {
                         />
                       </div>
                       <p className="mt-1 text-sm text-stone-600">
-                        {toman(row.priceIrr)} تومان · پورسانت پیش‌فرض {row.previewCommissionPercent}٪
+                        {toman(row.priceIrr)} تومان
                         {row.vendorSku ? ' · کالای تأمین‌کننده' : ''}
+                        {row.productCommissionPercent != null
+                          ? ` · پورسانت محصول ${row.productCommissionPercent}٪`
+                          : ` · پورسانت مؤثر ${row.previewCommissionPercent}٪`}
                       </p>
+                      <label className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-700">
+                        <span>پورسانت این محصول (%)</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={80}
+                          step={1}
+                          inputMode="numeric"
+                          dir="ltr"
+                          className={`w-20 min-h-10 rounded-xl border border-stone-300 px-2 ${spFocusClass}`}
+                          value={draftCommission(row)}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            setCommissionDrafts((prev) => ({
+                              ...prev,
+                              [row.productId]: Number.isFinite(n) ? Math.max(0, Math.min(80, Math.trunc(n))) : 0,
+                            }));
+                          }}
+                          aria-label={`پورسانت ${row.name}`}
+                        />
+                      </label>
                       {row.vendorSku && (
                         <p className="mt-1 text-sm text-amber-800">
                           {row.canEnable
                             ? `حاشیه پس از پورسانت بازاریاب کافی است (${toman(row.marginIrr)} تومان).`
-                            : 'حاشیه کافی نیست؛ فعال‌سازی رد می‌شود.'}
+                            : 'حاشیه کافی نیست؛ درصد را کمتر کنید یا این کالا را مجاز نکنید.'}
                         </p>
                       )}
-                      <button
-                        type="button"
-                        className={`mt-3 min-h-11 rounded-xl border px-3 ${spFocusClass}`}
-                        disabled={busyId === row.productId || (!row.eligible && !row.canEnable)}
-                        onClick={() => void toggleEligible(row)}
-                      >
-                        {row.eligible ? 'غیرفعال کردن برای بازاریاب' : 'مجاز کردن برای بازاریاب'}
-                      </button>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
+                          disabled={busyId === row.productId}
+                          onClick={() => void toggleEligible(row)}
+                        >
+                          {row.eligible ? 'غیرفعال کردن برای بازاریاب' : 'مجاز کردن برای بازاریاب'}
+                        </button>
+                        {row.eligible ? (
+                          <button
+                            type="button"
+                            className={`min-h-11 rounded-xl border border-[#1B5C4A]/40 px-3 text-[#1B5C4A] ${spFocusClass}`}
+                            disabled={busyId === row.productId}
+                            onClick={() => void saveProductCommission(row)}
+                          >
+                            ذخیره پورسانت محصول
+                          </button>
+                        ) : null}
+                      </div>
                     </li>
                   ))}
                 </ul>

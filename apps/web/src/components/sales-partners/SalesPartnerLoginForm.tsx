@@ -11,9 +11,9 @@ import { GlassButton } from '@/components/ui/glass-button';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
-import { normalizePhone } from '@/lib/phone';
+import { normalizeOtpCode, normalizePhone } from '@/lib/phone';
 import { safeScopedRedirect } from '@/lib/safe-redirect';
-import { extractSmsCooldown } from '@/lib/sms-cooldown';
+import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown } from '@/lib/sms-cooldown';
 import { cn } from '@/lib/cn';
 
 export function SalesPartnerLoginForm() {
@@ -45,12 +45,14 @@ export function SalesPartnerLoginForm() {
       );
       setOtpSent(true);
       setStatus('کد تأیید ارسال شد.');
-      start(extractSmsCooldown(null, res));
+      const seconds = extractSmsCooldown(null, res);
+      start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
     } catch (err) {
       const statusCode =
         err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : 0;
       if (statusCode === 429) {
-        start(extractSmsCooldown(err));
+        const seconds = extractSmsCooldown(err);
+        start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
         if (wasSent) setOtpSent(true);
       }
       setError(err instanceof Error ? err.message : 'ارسال کد ناموفق بود');
@@ -66,11 +68,12 @@ export function SalesPartnerLoginForm() {
     try {
       const res = await apiClient.post<{ accessToken: string; role: string }>('/sales-partners/auth/otp/verify', {
         phone: normalizePhone(phone),
-        code: code.trim(),
+        code: normalizeOtpCode(code),
       });
       goHome(res.accessToken, res.role);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ورود ناموفق بود');
+    } finally {
       setBusy(false);
     }
   }

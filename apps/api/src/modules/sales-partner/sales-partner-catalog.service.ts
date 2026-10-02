@@ -145,14 +145,20 @@ export class SalesPartnerCatalogService {
       : [];
     const names = await this.categoryNames(products.map((product) => product.categoryId));
     const rules = await this.loadRules();
+    const now = new Date();
     const items = products.map((product) => {
       const elig = eligs.find((row) => row.productId === product.id);
       const price = Number(product.retailPrice || 0);
-      const previewPercent = selectCommissionRule(rules, {
+      const matched = selectCommissionRule(rules, {
         productId: product.id,
         categoryId: product.categoryId || null,
         lineTotalAfterDiscountIrr: price,
-      }, 'preview', new Date())?.percent ?? 0;
+      }, 'preview', now);
+      const previewPercent = matched?.percent ?? 0;
+      const productOverridePercent =
+        matched?.scope === 'PRODUCT' || matched?.scope === 'PARTNER_PRODUCT'
+          ? matched.percent
+          : null;
       const vendor = !!product.vendorId;
       const vendorDue = vendor ? vendorDueFromRetailIrr(price, product.commissionPercent) : 0;
       const margin = vendor
@@ -169,6 +175,7 @@ export class SalesPartnerCatalogService {
         eligible: elig?.eligible === true,
         allowedImageKeys: elig?.allowedImageKeys ?? null,
         previewCommissionPercent: previewPercent,
+        productCommissionPercent: productOverridePercent,
         marginIrr: margin,
         minMarginIrr: settings.minMarginIrr,
         canEnable: !vendor || margin >= settings.minMarginIrr,
@@ -187,21 +194,58 @@ export class SalesPartnerCatalogService {
     eligible: boolean;
     allowedImageKeys?: string[];
     partnerPercent?: number;
+    commissionPercentOverride?: number;
   }) {
     const product = await this.products.findOne({ where: { id: productId } });
     if (!product) throw new NotFoundException('محصول پیدا نشد');
     const settings = await this.program.settings();
+    const rules = await this.loadRules();
+    const currentPercent =
+      selectCommissionRule(
+        rules,
+        {
+          productId: product.id,
+          categoryId: product.categoryId || null,
+          lineTotalAfterDiscountIrr: Number(product.retailPrice || 0),
+        },
+        'preview',
+        new Date(),
+      )?.percent ?? 0;
+    const overrideRaw =
+      input.commissionPercentOverride !== undefined
+        ? input.commissionPercentOverride
+        : input.partnerPercent;
+    const partnerPercent =
+      overrideRaw !== undefined && overrideRaw !== null
+        ? assertPercent(overrideRaw)
+        : assertPercent(currentPercent);
+
     let marginCheck: Record<string, unknown> | null = null;
     if (input.eligible && product.vendorId) {
       const retailNet = Number(product.retailPrice || 0);
       const vendorDue = vendorDueFromRetailIrr(retailNet, product.commissionPercent);
-      const partnerPercent = assertPercent(input.partnerPercent ?? 0);
-      const margin = vendorSkuMarginIrr({ retailNetIrr: retailNet, vendorDueIrr: vendorDue, partnerPercent });
-      marginCheck = { retailNetIrr: retailNet, marginIrr: margin, minMarginIrr: settings.minMarginIrr, partnerPercent };
+      const margin = vendorSkuMarginIrr({
+        retailNetIrr: retailNet,
+        vendorDueIrr: vendorDue,
+        partnerPercent,
+      });
+      marginCheck = {
+        retailNetIrr: retailNet,
+        marginIrr: margin,
+        minMarginIrr: settings.minMarginIrr,
+        partnerPercent,
+      };
       if (margin < settings.minMarginIrr) {
         throw new BadRequestException('حاشیه این کالای تأمین‌کننده برای برنامه بازاریاب کافی نیست');
       }
     }
+
+    let productRuleId: string | null = null;
+    if (input.eligible && overrideRaw !== undefined && overrideRaw !== null) {
+      const upserted = await this.upsertProductCommissionRule(actorId, productId, partnerPercent);
+      productRuleId = upserted.id;
+    }
+
     let row = await this.eligibility.findOne({ where: { productId } });
     if (!row) row = this.eligibility.create({ productId, eligible: false });
     row.eligible = input.eligible;
@@ -211,8 +255,45 @@ export class SalesPartnerCatalogService {
     await this.eligibility.save(row);
     await this.audit(actorId, input.eligible ? 'eligibility.enabled' : 'eligibility.disabled', 'eligibility', productId, {
       eligible: row.eligible,
+      partnerPercent,
+      productRuleId,
     });
-    return { productId, eligible: row.eligible };
+    return {
+      productId,
+      eligible: row.eligible,
+      commissionPercent: partnerPercent,
+      productRuleId,
+    };
+  }
+
+  /** One active PRODUCT rule per SKU; prior PRODUCT rows for that product are deactivated. */
+  private async upsertProductCommissionRule(actorId: string, productId: string, percent: number) {
+    const existing = await this.rules.find({
+      where: { scope: 'PRODUCT', productId, active: true },
+    });
+    for (const prev of existing) {
+      prev.active = false;
+      await this.rules.save(prev);
+    }
+    const maxVersion = existing.reduce((m, r) => Math.max(m, r.version || 1), 0);
+    const row = this.rules.create({
+      scope: 'PRODUCT',
+      percent,
+      active: true,
+      productId,
+      categoryId: null,
+      salesPartnerId: null,
+      createdBy: actorId,
+      note: 'پورسانت محصول از کاتالوگ مجاز',
+      version: maxVersion + 1,
+    });
+    await this.rules.save(row);
+    await this.audit(actorId, 'commission_rule.created', 'rule', row.id, {
+      scope: 'PRODUCT',
+      percent,
+      productId,
+    });
+    return row;
   }
 
   async listRules() {

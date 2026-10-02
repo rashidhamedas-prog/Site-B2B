@@ -256,9 +256,17 @@ export function publicApplyFormFields(fields: ApplyFormField[]): ApplyFormField[
     }));
 }
 
+/** Map Persian/Arabic-Indic digits then strip non-digits (shared with phone.util). */
+function toAsciiDigits(raw: string): string {
+  return String(raw || '')
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/\D/g, '');
+}
+
 /** Iranian national ID checksum. Returns null if valid, else Persian error. */
 export function validateIranNationalId(raw: string): string | null {
-  const code = String(raw || '').replace(/\D/g, '');
+  const code = toAsciiDigits(raw);
   if (!/^\d{10}$/.test(code)) return 'کد ملی باید ۱۰ رقم باشد';
   if (/^(\d)\1{9}$/.test(code)) return 'کد ملی معتبر نیست';
   const check = Number(code[9]);
@@ -270,7 +278,7 @@ export function validateIranNationalId(raw: string): string | null {
 }
 
 export function maskNationalId(raw: string | null | undefined): string | null {
-  const digits = String(raw || '').replace(/\D/g, '');
+  const digits = toAsciiDigits(String(raw || ''));
   if (digits.length < 4) return null;
   return `******${digits.slice(-4)}`;
 }
@@ -326,7 +334,7 @@ export function validateApplyAnswers(
     }
 
     if (field.type === 'phone' || field.key === 'phone') {
-      const digits = value.replace(/\D/g, '');
+      const digits = toAsciiDigits(value);
       const normalized = digits.length === 10 && digits.startsWith('9') ? `0${digits}` : digits;
       if (!/^09[0-9]{9}$/.test(normalized)) {
         return { ok: false, error: 'شماره موبایل معتبر نیست' };
@@ -339,7 +347,7 @@ export function validateApplyAnswers(
     if (field.type === 'national_id' || field.key === 'nationalId') {
       const nidError = validateIranNationalId(value);
       if (nidError) return { ok: false, error: nidError };
-      value = value.replace(/\D/g, '');
+      value = toAsciiDigits(value);
       answers.nationalId = value;
       continue;
     }

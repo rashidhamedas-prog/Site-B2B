@@ -13,12 +13,21 @@ export class SetSalesPartnerEligibilityDto {
   @IsString({ each: true })
   allowedImageKeys?: string[];
 
+  /** @deprecated Prefer commissionPercentOverride — kept for vendor margin prompts. */
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(80)
   partnerPercent?: number;
+
+  /** Persist/upsert PRODUCT commission rule for this SKU (0–80). */
+  @ApiPropertyOptional({ description: 'Per-product partner commission %; upserts scope=PRODUCT rule' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(80)
+  commissionPercentOverride?: number;
 }
 
 export class CreateSalesCommissionRuleDto {

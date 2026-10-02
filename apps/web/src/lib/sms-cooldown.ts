@@ -1,4 +1,6 @@
+/** Fallback when API omits cooldown (retail default). Sales-partner apply uses 120 from API. */
 export const DEFAULT_SMS_COOLDOWN = 60;
+export const DEFAULT_SALES_PARTNER_SMS_COOLDOWN = 120;
 
 type CooldownFields = {
   remainingSeconds?: number;
