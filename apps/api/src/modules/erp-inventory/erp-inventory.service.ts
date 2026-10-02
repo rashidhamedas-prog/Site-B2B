@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, In } from 'typeorm';
 import { ProductService } from '../product/product.service';
 import { InventoryService } from '../inventory/inventory.service';
 import { ErpVariantMapEntity } from './entities/erp-variant-map.entity';
+import { ErpProductMapEntity } from './entities/erp-product-map.entity';
 import { ErpInventoryIdempotencyEntity } from './entities/erp-inventory-idempotency.entity';
+import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { ErpMatrixUpsertDto, ErpMatrixVariantDto } from './dto/erp-matrix.dto';
 import { normalizeErpLabel, variantMatchKey } from './erp-text-normalize';
 import { channelUnitStock } from '../product/channel-product-projection';
@@ -31,6 +33,8 @@ export type MatrixUpsertResult = {
   ok: boolean;
   productId: string | null;
   productSku: string;
+  /** sku | product_map | barcode — how the site product was resolved */
+  resolvedBy?: 'sku' | 'product_map' | 'barcode';
   channel: 'WHOLESALE' | 'RETAIL';
   dryRun: boolean;
   matched: MatchedVariantResult[];
@@ -45,6 +49,10 @@ export class ErpInventoryService {
     private readonly inventoryService: InventoryService,
     @InjectRepository(ErpVariantMapEntity)
     private readonly mapRepo: Repository<ErpVariantMapEntity>,
+    @InjectRepository(ErpProductMapEntity)
+    private readonly productMapRepo: Repository<ErpProductMapEntity>,
+    @InjectRepository(ProductVariantEntity)
+    private readonly variantRepo: Repository<ProductVariantEntity>,
     @InjectRepository(ErpInventoryIdempotencyEntity)
     private readonly idemRepo: Repository<ErpInventoryIdempotencyEntity>,
   ) {}
@@ -64,31 +72,28 @@ export class ErpInventoryService {
       if (cached) return { ...cached, idempotent: true } as MatrixUpsertResult;
     }
 
-    let product;
-    try {
-      product = await this.productService.findBySku(productSku);
-    } catch (e) {
-      if (e instanceof NotFoundException) {
-        const result: MatrixUpsertResult = {
-          ok: false,
-          productId: null,
-          productSku,
-          channel,
-          dryRun,
-          matched: [],
-          unmatched: (body.variants || []).map((v) => ({
-            erpVariantSku: v.erpVariantSku,
-            color: v.color,
-            size: v.size,
-            barcode: v.barcode,
-            reason: 'product_sku_not_found',
-          })),
-        };
-        if (idemKey && !dryRun) await this.writeIdempotency(idemKey, result);
-        return result;
-      }
-      throw e;
+    const resolved = await this.resolveProduct(productSku, body.variants || [], dryRun);
+    if (!resolved) {
+      const result: MatrixUpsertResult = {
+        ok: false,
+        productId: null,
+        productSku,
+        channel,
+        dryRun,
+        matched: [],
+        unmatched: (body.variants || []).map((v) => ({
+          erpVariantSku: v.erpVariantSku,
+          color: v.color,
+          size: v.size,
+          barcode: v.barcode,
+          reason: 'product_sku_not_found',
+        })),
+      };
+      if (idemKey && !dryRun) await this.writeIdempotency(idemKey, result);
+      return result;
     }
+
+    const { product, resolvedBy } = resolved;
 
     const variants = product.variants || [];
     const byKey = new Map<string, (typeof variants)[0]>();
@@ -148,6 +153,7 @@ export class ErpInventoryService {
       ok: unmatched.length === 0,
       productId: product.id,
       productSku,
+      resolvedBy,
       channel,
       dryRun,
       matched,
@@ -170,6 +176,84 @@ export class ErpInventoryService {
       ok: results.every((r) => r.ok),
       results,
     };
+  }
+
+  private async resolveProduct(
+    erpProductSku: string,
+    variantRows: ErpMatrixVariantDto[],
+    dryRun: boolean,
+  ): Promise<{ product: Awaited<ReturnType<ProductService['findBySku']>>; resolvedBy: 'sku' | 'product_map' | 'barcode' } | null> {
+    try {
+      const product = await this.productService.findBySku(erpProductSku);
+      return { product, resolvedBy: 'sku' };
+    } catch (e) {
+      if (!(e instanceof NotFoundException)) throw e;
+    }
+
+    if (erpProductSku) {
+      const mapped = await this.productMapRepo.findOne({
+        where: { erpProductSku },
+      });
+      if (mapped?.productId) {
+        try {
+          const product = await this.productService.findOne(mapped.productId, undefined, {
+            allowNonActive: true,
+          });
+          return { product, resolvedBy: 'product_map' };
+        } catch (e) {
+          if (!(e instanceof NotFoundException)) throw e;
+        }
+      }
+    }
+
+    const barcodes = [
+      ...new Set(
+        (variantRows || [])
+          .map((v) => String(v.barcode || '').trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (barcodes.length === 0) return null;
+
+    const hits = await this.variantRepo.find({
+      where: { barcode: In(barcodes) },
+    });
+    if (!hits.length) return null;
+
+    const productIds = [...new Set(hits.map((h) => h.productId))];
+    if (productIds.length !== 1) return null;
+
+    const productId = productIds[0];
+    let product: Awaited<ReturnType<ProductService['findBySku']>>;
+    try {
+      product = await this.productService.findOne(productId, undefined, {
+        allowNonActive: true,
+      });
+    } catch (e) {
+      if (e instanceof NotFoundException) return null;
+      throw e;
+    }
+
+    if (!dryRun && erpProductSku) {
+      await this.persistProductMap(erpProductSku, product.id, 'barcode');
+    }
+
+    return { product, resolvedBy: 'barcode' };
+  }
+
+  private async persistProductMap(
+    erpProductSku: string,
+    productId: string,
+    matchedBy: string,
+  ) {
+    if (!erpProductSku) return;
+    await this.productMapRepo.save(
+      this.productMapRepo.create({
+        erpProductSku,
+        productId,
+        matchedBy,
+      }),
+    );
   }
 
   private async resolveVariant(
