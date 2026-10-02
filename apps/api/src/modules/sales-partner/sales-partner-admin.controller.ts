@@ -141,6 +141,11 @@ export class SalesPartnerAdminController {
     return this.salesPartners.listApplications(status);
   }
 
+  @Get('applications/:id')
+  applicationDetail(@Param('id') id: string) {
+    return this.salesPartners.getApplication(id);
+  }
+
   @Patch('applications/:id/review')
   review(
     @Param('id') id: string,

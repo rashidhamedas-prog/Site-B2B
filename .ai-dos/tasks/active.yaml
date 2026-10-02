@@ -33,13 +33,9 @@ tasks:
       - "apps/web/src/components/admin/AdminSidebar.tsx"
       - "apps/web/src/components/admin/AdminHeader.tsx"
       - "docs/reports/2026-10-02-support-tickets.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     notes: |
       Standard skill-top: ticket+thread for RETAIL/WHOLESALE, admin desk, FSM, rate-limit.
-      Shared docs reclaimed from TASK-20261002-002 (user priority: support tickets).
+      Shared docs temporarily with TASK-20261002-002 for sales-partner ship finalize.
       No attachments/live-chat/SLA in v1. Mirror RMA auth/channel patterns.
     acceptance_criteria:
       - "Logged-in retail+wholesale customers can create/list/reply tickets"
@@ -69,9 +65,13 @@ tasks:
       - "apps/web/src/app/sales-partners/"
       - "docs/architecture/sales-partner-apply-form.md"
       - "docs/reports/2026-10-02-sales-partner-redesign.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
     notes: |
       Full-depth redesign: application detail drawer, configurable applyFormFields,
-      partner password set/change. Shared docs reclaimed by TASK-20261002-003.
+      partner password set/change. Shipping now; shared docs reclaimed for finalize.
     acceptance_criteria:
       - "Admin sees full application answers before approve/reject"
       - "Admin can toggle/reorder/add custom apply form fields"

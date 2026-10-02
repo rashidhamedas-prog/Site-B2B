@@ -11,6 +11,7 @@ import { SalesPartnerPayoutService } from './sales-partner-payout.service';
 import { SalesPartnerService } from './sales-partner.service';
 import { CreateSalesPartnerDraftDto, PatchSalesPartnerDraftDto } from './dto/sales-partner-draft.dto';
 import { PatchSalesPartnerIbanDto } from './dto/sales-partner-payout.dto';
+import { SalesPartnerSetPasswordDto } from './dto/apply-sales-partner.dto';
 
 @ApiTags('sales-partners')
 @ApiBearerAuth()
@@ -158,6 +159,23 @@ export class SalesPartnerMeController {
     @Body() body: PatchSalesPartnerIbanDto,
   ) {
     return this.salesPartners.updateIban(this.requirePartner(req), body.iban);
+  }
+
+  @Patch('me/password')
+  setPassword(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Body() body: SalesPartnerSetPasswordDto,
+  ) {
+    return this.salesPartners.setOrChangePassword(
+      this.requirePartner(req),
+      body.password,
+      body.currentPassword,
+    );
+  }
+
+  @Get('me')
+  me(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+    return this.salesPartners.me(this.requirePartner(req));
   }
 
   private requirePartner(req: { user?: { purpose?: string; salesPartnerId?: string } }) {

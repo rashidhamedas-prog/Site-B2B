@@ -1,4 +1,4 @@
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PatchSalesPartnerSettingsDto {
@@ -73,4 +73,9 @@ export class PatchSalesPartnerSettingsDto {
   @IsOptional()
   @Matches(/^$|^09[0-9]{9}$/)
   canaryPhone?: string;
+
+  @ApiPropertyOptional({ description: 'Configurable public apply form fields' })
+  @IsOptional()
+  @IsArray()
+  applyFormFields?: unknown[];
 }

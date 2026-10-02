@@ -1,3 +1,10 @@
+import {
+  DEFAULT_APPLY_FORM_FIELDS,
+  publicApplyFormFields,
+  resolveApplyFormFields,
+  type ApplyFormField,
+} from './sales-partner-apply-form';
+
 export const SALES_PARTNER_SETTINGS_KEY = 'salesPartners';
 export const SALES_PARTNER_MODES = ['OFF', 'PREVIEW', 'CANARY', 'LIVE'] as const;
 export type SalesPartnerMode = (typeof SALES_PARTNER_MODES)[number];
@@ -17,6 +24,7 @@ export type SalesPartnerSettings = {
   blockSelfReferral: boolean;
   termsVersion: string;
   canaryPhone: string;
+  applyFormFields: ApplyFormField[];
 };
 
 export const DEFAULT_SALES_PARTNER_SETTINGS: SalesPartnerSettings = {
@@ -34,6 +42,7 @@ export const DEFAULT_SALES_PARTNER_SETTINGS: SalesPartnerSettings = {
   blockSelfReferral: true,
   termsVersion: 'draft-unreviewed',
   canaryPhone: '',
+  applyFormFields: DEFAULT_APPLY_FORM_FIELDS,
 };
 
 function numOr(value: unknown, fallback: number): number {
@@ -69,6 +78,7 @@ export function resolveSalesPartnerSettings(raw: Record<string, unknown> | null 
     blockSelfReferral: s.blockSelfReferral !== false,
     termsVersion: String(s.termsVersion || DEFAULT_SALES_PARTNER_SETTINGS.termsVersion).slice(0, 40),
     canaryPhone: String(s.canaryPhone || ''),
+    applyFormFields: resolveApplyFormFields(s.applyFormFields),
   };
 }
 
@@ -82,3 +92,6 @@ export function programAllowsPartnerAction(settings: SalesPartnerSettings, phone
   if (settings.mode === 'CANARY') return settings.enabled && phone === settings.canaryPhone;
   return settings.enabled;
 }
+
+export { publicApplyFormFields };
+export type { ApplyFormField };

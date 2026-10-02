@@ -4,6 +4,40 @@ export type ApplicationRow = {
   phoneMasked: string;
   status: string;
   createdAt: string;
+  city?: string | null;
+  province?: string | null;
+  primaryChannel?: string | null;
+  nationalIdMasked?: string | null;
+  socialHandles?: Record<string, string> | null;
+};
+
+export type ApplicationDetail = {
+  id: string;
+  displayName: string;
+  phone: string;
+  phoneMasked: string;
+  status: string;
+  socialHandles: Record<string, string> | null;
+  answers: Record<string, string | boolean> | null;
+  answerRows: Array<{ key: string; label: string; value: string }>;
+  reviewNote: string | null;
+  profileId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ApplyFormFieldType = 'text' | 'textarea' | 'select' | 'phone' | 'national_id' | 'checkbox';
+
+export type ApplyFormField = {
+  key: string;
+  enabled: boolean;
+  required: boolean;
+  label: string;
+  order: number;
+  type: ApplyFormFieldType;
+  options?: Array<{ value: string; label: string }>;
+  maxLength?: number;
+  locked?: boolean;
 };
 
 export type PartnerRow = {
@@ -57,6 +91,7 @@ export type Settings = {
   minPayoutIrr: number;
   dailyDraftCap: number;
   termsVersion: string;
+  applyFormFields?: ApplyFormField[];
 };
 
 export type DraftRow = {

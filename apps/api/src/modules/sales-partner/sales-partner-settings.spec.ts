@@ -35,4 +35,13 @@ assert(programAllowsApply(preview), 'preview apply');
 assert(!programAllowsPartnerAction(preview, '09151234567'), 'preview cannot create orders');
 assert(resolveSalesPartnerSettings({ enabled: true, mode: 'OFF' }).enabled === false, 'off ignores enabled');
 
+const withForm = resolveSalesPartnerSettings({
+  enabled: true,
+  mode: 'LIVE',
+  applyOpen: true,
+  applyFormFields: [{ key: 'city', enabled: false, required: false, label: 'شهر', order: 1, type: 'text' }],
+});
+assert(withForm.applyFormFields.find((f) => f.key === 'city')?.enabled === false, 'city can disable');
+assert(withForm.applyFormFields.find((f) => f.key === 'phone')?.locked === true, 'phone locked in settings');
+
 console.log('sales-partner-settings.spec.ts: OK');

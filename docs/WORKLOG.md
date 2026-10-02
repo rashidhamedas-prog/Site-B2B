@@ -1,5 +1,13 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-02 — بازطراحی همکار بازاریاب (فرم قابل‌پیکربندی + جزئیات + رمز)
+
+- ادمین: drawer جزئیات کامل درخواست قبل از تأیید؛ فرم‌بیلدر فیلدهای ثبت‌نام در تنظیمات.
+- API: `answers` jsonb + `applyFormFields` در settings؛ `GET applications/:id`؛ `PATCH me/password`.
+- پنل همکار: تعریف/تغییر رمز در پروفایل؛ فرم عمومی apply پویا.
+- Migration: `20261002-001-sales-partner-apply-answers`.
+- گزارش: `docs/reports/2026-10-02-sales-partner-redesign.md`.
+
 ## 2026-10-02 — پشتیبانی تیکتی حرفه‌ای (عمده + تک)
 
 - ماژول Nest `support`: تیکت + thread پیام، FSM وضعیت، جداسازی کانال JWT، لینک اختیاری سفارش با ownership، rate-limit Redis.

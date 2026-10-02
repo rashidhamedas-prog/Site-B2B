@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T01:05:00Z — TASK-20261002-002 ready to ship (sales-partner redesign)
+
+- Owner: cursor:implementer-TASK-20261002-002
+- Reclaim shared docs briefly for WORKLOG/status/active/handoff finalize (notified TASK-20261002-003).
+- Implementation complete: drawer, form builder, dynamic apply, partner password, migration, specs OK.
+- Next: commit + merge master + VPS deploy + migration run.
+
 ## 2026-10-02T00:46:00Z — TASK-20261002-003 claim (support tickets)
 
 - Owner: cursor:implementer-TASK-20261002-003

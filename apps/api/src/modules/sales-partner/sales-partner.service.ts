@@ -32,16 +32,21 @@ import {
   DEFAULT_SALES_PARTNER_SETTINGS,
   programAllowsApply,
   programAllowsPartnerAction,
+  publicApplyFormFields,
   resolveSalesPartnerSettings,
   SALES_PARTNER_SETTINGS_KEY,
   type SalesPartnerSettings,
 } from './sales-partner-settings';
+import {
+  answersForAdminView,
+  maskNationalId,
+  validateApplyAnswers,
+} from './sales-partner-apply-form';
 import { normalizeSalesPartnerCode, salesPartnerPublicCode } from './sales-partner-attribution';
 import {
   canSalesPartnerLogin,
   canTransitionProfile,
-  isOpenApplicationStatus,
-  parseDisplayName,
+  normalizeIban,
   parseReviewReason,
   SALES_PARTNER_ACTING_ROLE,
   SALES_PARTNER_PURPOSE,
@@ -50,7 +55,7 @@ import {
 import { isVendorRole as vendorRole } from '../vendor/vendor-policy';
 import { ibanRecord, requireDedicatedIbanKey, resolveIbanSecret } from './sales-partner-iban';
 import { humanRiskFlags } from './sales-partner-risk-policy';
-import { normalizeIban } from './sales-partner-policy';
+import { validateNewPassword } from '../auth/password-policy';
 
 @Injectable()
 export class SalesPartnerService {
@@ -106,25 +111,27 @@ export class SalesPartnerService {
       applyOpen: programAllowsApply(s),
       termsVersion: s.termsVersion,
       termsFinal: s.termsVersion !== 'draft-unreviewed',
+      applyFormFields: publicApplyFormFields(s.applyFormFields),
     };
   }
 
-  async apply(input: {
-    displayName: string;
-    phone: string;
-    instagram?: string;
-    telegram?: string;
-    acceptTerms: boolean;
-  }) {
+  async apply(input: Record<string, unknown> | object) {
     const settings = await this.settings();
     if (!programAllowsApply(settings)) {
       throw new ForbiddenException('ثبت‌نام همکاری در حال حاضر باز نیست');
     }
-    if (!input.acceptTerms) {
-      throw new BadRequestException('پذیرش شرایط همکاری لازم است');
+    const inputObj = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+    const nestedAnswers =
+      inputObj.answers && typeof inputObj.answers === 'object'
+        ? (inputObj.answers as Record<string, unknown>)
+        : {};
+    const flat: Record<string, unknown> = { ...nestedAnswers, ...inputObj };
+    delete flat.answers;
+    const validated = validateApplyAnswers(settings.applyFormFields, flat);
+    if (validated.ok === false) {
+      throw new BadRequestException(validated.error);
     }
-    const phone = normalizePhone(input.phone);
-    const displayName = parseDisplayName(input.displayName);
+    const { displayName, phone, socialHandles, answers } = validated.data;
     const user = await this.users.findOne({ where: { phone } });
     if (user && (isStaffRole(user.role) || vendorRole(user.role))) {
       throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
@@ -141,14 +148,14 @@ export class SalesPartnerService {
         phone,
         displayName,
         status: 'PENDING_OTP',
-        socialHandles: {
-          ...(input.instagram ? { instagram: String(input.instagram).slice(0, 80) } : {}),
-          ...(input.telegram ? { telegram: String(input.telegram).slice(0, 80) } : {}),
-        },
+        socialHandles: Object.keys(socialHandles).length ? socialHandles : null,
+        answers,
         userId: user?.id ?? null,
       });
     } else {
       application.displayName = displayName;
+      application.socialHandles = Object.keys(socialHandles).length ? socialHandles : application.socialHandles;
+      application.answers = answers;
     }
     await this.applications.save(application);
     const issued = await this.issueOtp(phone, displayName, 'sales_partner_apply');
@@ -193,12 +200,17 @@ export class SalesPartnerService {
         displayName: application.displayName,
         status: 'PENDING_REVIEW',
         publicCode: salesPartnerPublicCode(randomBytes(8)),
+        applicationAnswers: application.answers,
       });
       await this.profiles.save(profile);
     } else if (profile.status === 'REJECTED') {
       profile.status = 'PENDING_REVIEW';
       profile.displayName = application.displayName;
       profile.statusReason = null;
+      profile.applicationAnswers = application.answers;
+      await this.profiles.save(profile);
+    } else {
+      profile.applicationAnswers = application.answers ?? profile.applicationAnswers;
       await this.profiles.save(profile);
     }
     application.profileId = profile.id;
@@ -236,7 +248,10 @@ export class SalesPartnerService {
   async verifyLoginOtp(phoneRaw: string, code: string) {
     const phone = normalizePhone(phoneRaw);
     await this.verifyOtp(phone, code, 'sales_partner');
-    return this.issuePartnerSession(phone);
+    const session = await this.issuePartnerSession(phone);
+    const user = await this.users.findOne({ where: { phone } });
+    if (user) await this.otp.markVerifiedSession(user.id);
+    return session;
   }
 
   async loginWithPassword(phoneRaw: string, password: string) {
@@ -251,7 +266,51 @@ export class SalesPartnerService {
   async me(salesPartnerId: string) {
     const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
     if (!profile) throw new NotFoundException();
-    return toPublicSalesPartner(profile);
+    const canSetWithoutCurrent = await this.otp.hasVerifiedSession(profile.userId);
+    return {
+      ...toPublicSalesPartner(profile),
+      canSetPasswordWithoutCurrent: canSetWithoutCurrent,
+      applicationAnswers: profile.applicationAnswers,
+    };
+  }
+
+  async setOrChangePassword(
+    salesPartnerId: string,
+    password: string,
+    currentPassword?: string,
+  ) {
+    const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
+    if (!profile) throw new NotFoundException();
+    if (!canSalesPartnerLogin(profile.status)) {
+      throw new ForbiddenException('حساب همکار بازاریاب فعال نیست');
+    }
+    const user = await this.users.findOne({ where: { id: profile.userId } });
+    if (!user) throw new NotFoundException();
+    const policyError = validateNewPassword(password, user.phone);
+    if (policyError) throw new BadRequestException(policyError);
+
+    const hasOtpSession = await this.otp.hasVerifiedSession(user.id);
+    if (currentPassword) {
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) throw new BadRequestException('رمز عبور فعلی اشتباه است');
+    } else if (!hasOtpSession) {
+      throw new BadRequestException(
+        'برای تعریف رمز بدون رمز فعلی، با پیامک وارد شوید یا رمز فعلی را وارد کنید',
+      );
+    }
+
+    const same = await bcrypt.compare(password, user.passwordHash);
+    if (same) throw new BadRequestException('رمز جدید باید با رمز فعلی متفاوت باشد');
+
+    user.passwordHash = await bcrypt.hash(password, 12);
+    user.passwordChangedAt = new Date();
+    await this.users.save(user);
+    if (hasOtpSession) await this.otp.clearVerifiedSession(user.id);
+    await this.audit(user.id, 'profile.password_updated', 'profile', profile.id, {});
+    return {
+      message: currentPassword ? 'رمز عبور تغییر کرد' : 'رمز عبور ذخیره شد',
+      ...(await this.issuePartnerSession(profile.phone)),
+    };
   }
 
   async updateIban(salesPartnerId: string, ibanRaw: string) {
@@ -282,14 +341,44 @@ export class SalesPartnerService {
   async listApplications(status?: string) {
     const where = status ? { status } : {};
     const rows = await this.applications.find({ where, order: { createdAt: 'DESC' }, take: 100 });
-    return rows.map((row) => ({
-      id: row.id,
-      displayName: row.displayName,
-      phoneMasked: `${row.phone.slice(0, 4)}***${row.phone.slice(-2)}`,
-      status: row.status,
-      socialHandles: row.socialHandles,
-      createdAt: row.createdAt,
-    }));
+    return rows.map((row) => {
+      const nationalId =
+        row.answers && typeof row.answers.nationalId === 'string' ? row.answers.nationalId : null;
+      return {
+        id: row.id,
+        displayName: row.displayName,
+        phoneMasked: `${row.phone.slice(0, 4)}***${row.phone.slice(-2)}`,
+        status: row.status,
+        socialHandles: row.socialHandles,
+        nationalIdMasked: maskNationalId(nationalId),
+        city: typeof row.answers?.city === 'string' ? row.answers.city : null,
+        province: typeof row.answers?.province === 'string' ? row.answers.province : null,
+        primaryChannel:
+          typeof row.answers?.primaryChannel === 'string' ? row.answers.primaryChannel : null,
+        createdAt: row.createdAt,
+      };
+    });
+  }
+
+  async getApplication(applicationId: string) {
+    const application = await this.applications.findOne({ where: { id: applicationId } });
+    if (!application) throw new NotFoundException('درخواست پیدا نشد');
+    const settings = await this.settings();
+    return {
+      id: application.id,
+      displayName: application.displayName,
+      phone: application.phone,
+      phoneMasked: `${application.phone.slice(0, 4)}***${application.phone.slice(-2)}`,
+      status: application.status,
+      socialHandles: application.socialHandles,
+      answers: application.answers,
+      answerRows: answersForAdminView(application.answers, settings.applyFormFields),
+      reviewNote: application.reviewNote,
+      profileId: application.profileId,
+      userId: application.userId,
+      createdAt: application.createdAt,
+      updatedAt: application.updatedAt,
+    };
   }
 
   async reviewApplication(
@@ -316,6 +405,7 @@ export class SalesPartnerService {
       const settings = await this.settings();
       profile.termsVersion = settings.termsVersion;
       profile.termsAcceptedAt = profile.termsAcceptedAt ?? new Date();
+      profile.applicationAnswers = application.answers ?? profile.applicationAnswers;
     }
     profile.status = next;
     application.status = action === 'APPROVE' ? 'APPROVED' : action === 'NEED_INFO' ? 'NEEDS_INFORMATION' : 'REJECTED';

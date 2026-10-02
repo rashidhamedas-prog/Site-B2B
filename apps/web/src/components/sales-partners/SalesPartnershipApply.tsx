@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, type ReactNode, useEffect, useState } from 'react';
+import { FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
@@ -10,40 +10,110 @@ import { normalizePhone } from '@/lib/phone';
 import { extractSmsCooldown } from '@/lib/sms-cooldown';
 import { SpButton, SpStepRail, spFocusClass } from './SpUi';
 
+type ApplyFormField = {
+  key: string;
+  enabled: boolean;
+  required: boolean;
+  label: string;
+  order: number;
+  type: 'text' | 'textarea' | 'select' | 'phone' | 'national_id' | 'checkbox';
+  options?: Array<{ value: string; label: string }>;
+  maxLength?: number;
+};
+
 type PublicSettings = {
   enabled: boolean;
   applyOpen: boolean;
   termsVersion: string;
   termsFinal: boolean;
+  applyFormFields?: ApplyFormField[];
 };
 
 type ApplyState = 'idle' | 'otp' | 'done';
 
 const inputClass = `w-full min-h-11 rounded-2xl border border-stone-300 bg-white px-3 py-2 transition-shadow ${spFocusClass}`;
 
+const FALLBACK_FIELDS: ApplyFormField[] = [
+  { key: 'displayName', enabled: true, required: true, label: 'نام نمایشی', order: 10, type: 'text', maxLength: 80 },
+  { key: 'phone', enabled: true, required: true, label: 'شماره موبایل', order: 20, type: 'phone', maxLength: 11 },
+  { key: 'province', enabled: true, required: true, label: 'استان', order: 30, type: 'text', maxLength: 80 },
+  { key: 'city', enabled: true, required: true, label: 'شهر', order: 40, type: 'text', maxLength: 80 },
+  { key: 'nationalId', enabled: true, required: true, label: 'کد ملی', order: 50, type: 'national_id', maxLength: 10 },
+  {
+    key: 'salesExperience',
+    enabled: true,
+    required: true,
+    label: 'سابقه فروش',
+    order: 60,
+    type: 'select',
+    options: [
+      { value: 'none', label: 'تازه‌کار' },
+      { value: 'under_1y', label: 'کمتر از ۱ سال' },
+      { value: '1_to_3y', label: '۱ تا ۳ سال' },
+      { value: 'over_3y', label: 'بیش از ۳ سال' },
+    ],
+  },
+  {
+    key: 'primaryChannel',
+    enabled: true,
+    required: true,
+    label: 'کانال اصلی فروش',
+    order: 70,
+    type: 'select',
+    options: [
+      { value: 'instagram', label: 'اینستاگرام' },
+      { value: 'telegram', label: 'تلگرام' },
+      { value: 'in_person', label: 'حضوری' },
+      { value: 'website', label: 'سایت' },
+      { value: 'other', label: 'سایر' },
+    ],
+  },
+  { key: 'instagram', enabled: true, required: false, label: 'آیدی اینستاگرام', order: 80, type: 'text', maxLength: 80 },
+  { key: 'telegram', enabled: true, required: false, label: 'آیدی تلگرام', order: 90, type: 'text', maxLength: 80 },
+  { key: 'referrer', enabled: true, required: false, label: 'معرفی‌کننده', order: 100, type: 'text', maxLength: 120 },
+  { key: 'motivation', enabled: true, required: true, label: 'چرا همکاری؟', order: 110, type: 'textarea', maxLength: 500 },
+  { key: 'acceptTerms', enabled: true, required: true, label: 'پذیرش شرایط همکاری', order: 120, type: 'checkbox' },
+];
+
 export function SalesPartnershipApply() {
   const [settings, setSettings] = useState<PublicSettings | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [state, setState] = useState<ApplyState>('idle');
-  const [displayName, setDisplayName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [telegram, setTelegram] = useState('');
-  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { secondsLeft, start, reset } = useSmsResendCooldown();
 
+  const fields = useMemo(() => {
+    const list = settings?.applyFormFields?.length ? settings.applyFormFields : FALLBACK_FIELDS;
+    return [...list].filter((f) => f.enabled).sort((a, b) => a.order - b.order);
+  }, [settings]);
+
+  function setField(key: string, value: string | boolean) {
+    setValues((prev) => ({ ...prev, [key]: value }));
+  }
+
   function applyPayload() {
-    return {
-      displayName: displayName.trim(),
-      phone: normalizePhone(phone),
-      instagram: instagram.trim() || undefined,
-      telegram: telegram.trim() || undefined,
-      acceptTerms,
+    const phoneRaw = String(values.phone || '');
+    const payload: Record<string, unknown> = {
+      displayName: String(values.displayName || '').trim(),
+      phone: normalizePhone(phoneRaw),
+      acceptTerms: values.acceptTerms === true,
+      answers: {} as Record<string, string | boolean>,
     };
+    for (const field of fields) {
+      if (field.key === 'displayName' || field.key === 'phone' || field.key === 'acceptTerms') continue;
+      const v = values[field.key];
+      if (v === undefined || v === '') continue;
+      if (field.key === 'instagram' || field.key === 'telegram') {
+        payload[field.key] = String(v).trim();
+      }
+      (payload.answers as Record<string, string | boolean>)[field.key] = typeof v === 'boolean' ? v : String(v).trim();
+      payload[field.key] = typeof v === 'boolean' ? v : String(v).trim();
+    }
+    return payload;
   }
 
   async function postApplication(opts?: { advanceToOtp?: boolean }): Promise<boolean> {
@@ -89,7 +159,7 @@ export function SalesPartnershipApply() {
     setError(null);
     try {
       await apiClient.post('/sales-partner-applications/verify', {
-        phone: normalizePhone(phone),
+        phone: normalizePhone(String(values.phone || '')),
         code: code.trim(),
       });
       setState('done');
@@ -101,6 +171,7 @@ export function SalesPartnershipApply() {
   }
 
   const stepIndex = state === 'idle' ? 0 : state === 'otp' ? 1 : 2;
+  const phoneDisplay = String(values.phone || '');
 
   return (
     <section
@@ -115,8 +186,8 @@ export function SalesPartnershipApply() {
           درخواست همکاری بازاریاب
         </h2>
         <p className="mt-3 text-sm leading-7 text-[var(--retail-muted,#5C6B66)]">
-          نام و موبایل را وارد کنید. بعد از تأیید پیامک، درخواست برای بررسی فروشگاه می‌رود. تا تأیید، لینک فروش و سفارش
-          نمی‌سازید. کالا را انبار یا پست نمی‌کنید.
+          اطلاعات لازم را کامل کنید. بعد از تأیید پیامک، درخواست برای بررسی فروشگاه می‌رود. تا تأیید، لینک فروش و سفارش
+          نمی‌سازید.
         </p>
 
         <div className="mt-8 rounded-3xl border border-stone-200/80 bg-white/80 p-5 shadow-sm shadow-stone-900/5 backdrop-blur-sm sm:p-6">
@@ -138,69 +209,98 @@ export function SalesPartnershipApply() {
 
           {settings?.applyOpen && state === 'idle' && (
             <form className="space-y-4" onSubmit={submitApply}>
-              <Field label="نام نمایشی" htmlFor="displayName">
-                <input
-                  id="displayName"
-                  className={inputClass}
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  required
-                  minLength={2}
-                  placeholder="مثلاً سارا"
-                />
-              </Field>
-              <Field label="شماره موبایل" htmlFor="phone">
-                <input
-                  id="phone"
-                  className={inputClass}
-                  inputMode="tel"
-                  autoComplete="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  dir="ltr"
-                  placeholder="09xxxxxxxxx"
-                />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="اینستاگرام (اختیاری)" htmlFor="instagram">
-                  <input
-                    id="instagram"
-                    className={inputClass}
-                    value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
-                    placeholder="@username"
-                    dir="ltr"
-                  />
-                </Field>
-                <Field label="تلگرام (اختیاری)" htmlFor="telegram">
-                  <input
-                    id="telegram"
-                    className={inputClass}
-                    value={telegram}
-                    onChange={(e) => setTelegram(e.target.value)}
-                    placeholder="@username"
-                    dir="ltr"
-                  />
-                </Field>
-              </div>
-              <label className="flex items-start gap-2 text-sm leading-6 text-stone-700">
-                <input
-                  type="checkbox"
-                  className="mt-1 min-h-5 min-w-5 rounded border-stone-300"
-                  checked={acceptTerms}
-                  onChange={(e) => setAcceptTerms(e.target.checked)}
-                  required
-                />
-                <span>
-                  <Link href="/sales-partnership/terms" className="font-medium text-[#1B5C4A] underline-offset-4 hover:underline">
-                    شرایط همکاری نسخه {settings.termsVersion}
-                  </Link>
-                  {' '}
-                  را خواندم و می‌پذیرم
-                  {settings.termsFinal ? '.' : ' (هنوز نسخه موقت است).'}
-                </span>
-              </label>
+              {fields.map((field) => {
+                if (field.type === 'checkbox' && field.key === 'acceptTerms') {
+                  return (
+                    <label key={field.key} className="flex items-start gap-2 text-sm leading-6 text-stone-700">
+                      <input
+                        type="checkbox"
+                        className="mt-1 min-h-5 min-w-5 rounded border-stone-300"
+                        checked={values.acceptTerms === true}
+                        onChange={(e) => setField('acceptTerms', e.target.checked)}
+                        required={field.required}
+                      />
+                      <span>
+                        <Link
+                          href="/sales-partnership/terms"
+                          className="font-medium text-[#1B5C4A] underline-offset-4 hover:underline"
+                        >
+                          شرایط همکاری نسخه {settings.termsVersion}
+                        </Link>{' '}
+                        را خواندم و می‌پذیرم
+                        {settings.termsFinal ? '.' : ' (هنوز نسخه موقت است).'}
+                      </span>
+                    </label>
+                  );
+                }
+
+                if (field.type === 'textarea') {
+                  return (
+                    <Field key={field.key} label={field.label} htmlFor={field.key} required={field.required}>
+                      <textarea
+                        id={field.key}
+                        className={`${inputClass} min-h-24`}
+                        value={String(values[field.key] || '')}
+                        onChange={(e) => setField(field.key, e.target.value)}
+                        required={field.required}
+                        maxLength={field.maxLength || 500}
+                      />
+                    </Field>
+                  );
+                }
+
+                if (field.type === 'select') {
+                  return (
+                    <Field key={field.key} label={field.label} htmlFor={field.key} required={field.required}>
+                      <select
+                        id={field.key}
+                        className={inputClass}
+                        value={String(values[field.key] || '')}
+                        onChange={(e) => setField(field.key, e.target.value)}
+                        required={field.required}
+                      >
+                        <option value="">انتخاب کنید</option>
+                        {(field.options || []).map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  );
+                }
+
+                const isLtr =
+                  field.type === 'phone' ||
+                  field.type === 'national_id' ||
+                  field.key === 'instagram' ||
+                  field.key === 'telegram';
+
+                return (
+                  <Field key={field.key} label={field.label} htmlFor={field.key} required={field.required}>
+                    <input
+                      id={field.key}
+                      className={inputClass}
+                      value={String(values[field.key] || '')}
+                      onChange={(e) => setField(field.key, e.target.value)}
+                      required={field.required}
+                      maxLength={field.maxLength}
+                      inputMode={
+                        field.type === 'phone' || field.type === 'national_id' ? 'numeric' : undefined
+                      }
+                      autoComplete={field.key === 'phone' ? 'tel' : field.key === 'displayName' ? 'name' : undefined}
+                      dir={isLtr ? 'ltr' : undefined}
+                      placeholder={
+                        field.key === 'phone'
+                          ? '09xxxxxxxxx'
+                          : field.key === 'instagram' || field.key === 'telegram'
+                            ? '@username'
+                            : undefined
+                      }
+                    />
+                  </Field>
+                );
+              })}
               {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
               <SpButton type="submit" className="w-full" disabled={busy}>
                 {busy ? 'در حال ارسال…' : 'ادامه و دریافت کد'}
@@ -211,7 +311,7 @@ export function SalesPartnershipApply() {
           {state === 'otp' && (
             <form className="space-y-4" onSubmit={submitOtp}>
               <p className="rounded-2xl bg-[#1B5C4A]/5 px-3 py-2 text-sm text-stone-700" role="status">
-                کد پیامک‌شده به <span dir="ltr" className="font-medium">{phone}</span> را وارد کنید.
+                کد پیامک‌شده به <span dir="ltr" className="font-medium">{phoneDisplay}</span> را وارد کنید.
               </p>
               <Field label="کد تأیید" htmlFor="code">
                 <input
@@ -241,7 +341,7 @@ export function SalesPartnershipApply() {
                 }}
               >
                 <ArrowRight className="h-4 w-4" />
-                تغییر شماره
+                بازگشت به فرم
               </button>
             </form>
           )}
@@ -272,11 +372,22 @@ export function SalesPartnershipApply() {
   );
 }
 
-function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  required,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
       <label htmlFor={htmlFor} className="block text-sm font-medium text-stone-800">
         {label}
+        {required ? <span className="text-red-600"> *</span> : null}
       </label>
       {children}
     </div>

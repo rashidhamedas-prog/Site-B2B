@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-10-02 — **TASK-20261002-002 implementing** sales-partner admin/panel redesign + configurable apply form. Branch `ai/TASK-20261002-002-sales-partner-redesign`. Specs OK; awaiting merge/deploy.
 - Last verified: 2026-10-02 — **TASK-20261002-003 implementing** support ticketing (retail+wholesale+admin). Branch `ai/TASK-20261002-003-support-tickets`. Not live until merge/deploy + migration.
 - Last verified: 2026-10-02 — **TASK-20261002-001 LIVE** gray-cloud. Shop+api DNS-only to `5.75.200.102`; CF ipv6/http3/bot fight off; origin nginx 200; health 200. Tunnel injector disabled earlier. Owner phone VPN-off residual.
 - Last verified: 2026-10-01 — **TASK-20261001-003 LIVE** on `origin/master` + VPS `cc0502b`. Sales-partner panel + apply UX redesign (presentation-only). Landing/login 200; health 200; `sp-nav-pill` in image. Claims released. Auth panel click residual. Independent Reviewer residual.

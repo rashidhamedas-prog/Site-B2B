@@ -55,6 +55,10 @@ export class SalesPartnerProfileEntity {
   @Column({ type: 'jsonb', nullable: true })
   riskFlags: string[] | null;
 
+  /** Snapshot of approved application answers for admin/partner profile. */
+  @Column({ type: 'jsonb', nullable: true })
+  applicationAnswers: Record<string, string | boolean> | null;
+
   @Column({ type: 'timestamptz', nullable: true })
   closedAt: Date | null;
 

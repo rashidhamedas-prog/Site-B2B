@@ -12,7 +12,10 @@ import {
   SP_MODE_FA,
 } from '@/components/sales-partners/sp-labels';
 import { SpAdminDashboard, partnerBadgeLabel } from './SpAdminDashboard';
+import { SpApplicationDetailDrawer } from './SpApplicationDetailDrawer';
+import { SpApplyFormBuilder } from './SpApplyFormBuilder';
 import type {
+  ApplicationDetail,
   ApplicationRow,
   AuditRow,
   CatalogRow,
@@ -47,6 +50,10 @@ export function AdminSalesPartners() {
   const [orders, setOrders] = useState<DraftRow[]>([]);
   const [audits, setAudits] = useState<AuditRow[]>([]);
   const [report, setReport] = useState<Report | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<ApplicationDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -88,8 +95,26 @@ export function AdminSalesPartners() {
 
   const filteredApps = useMemo(() => {
     if (appFilter === 'ALL') return apps;
+    if (appFilter === 'NEED_INFO') {
+      return apps.filter((row) => row.status === 'NEEDS_INFORMATION' || row.status === 'NEED_INFO');
+    }
     return apps.filter((row) => row.status === appFilter);
   }, [apps, appFilter]);
+
+  async function openApplication(id: string) {
+    setDetailId(id);
+    setDetail(null);
+    setDetailError(null);
+    setDetailLoading(true);
+    try {
+      const next = await apiClient.get<ApplicationDetail>(`/admin/sales-partners/applications/${id}`);
+      setDetail(next);
+    } catch (err) {
+      setDetailError(err instanceof Error ? err.message : 'بارگذاری جزئیات ناموفق بود');
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
   async function review(id: string, action: 'APPROVE' | 'NEED_INFO' | 'REJECT') {
     const reason = action === 'APPROVE' ? '' : window.prompt('دلیل را بنویسید') || '';
@@ -100,9 +125,12 @@ export function AdminSalesPartners() {
         action,
         reason: reason || undefined,
       });
+      setDetailId(null);
+      setDetail(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ثبت تصمیم ناموفق بود');
+      setDetailError(err instanceof Error ? err.message : 'ثبت تصمیم ناموفق بود');
     } finally {
       setBusyId(null);
     }
@@ -205,6 +233,7 @@ export function AdminSalesPartners() {
         minPayoutIrr: settings.minPayoutIrr,
         dailyDraftCap: settings.dailyDraftCap,
         termsVersion: settings.termsVersion,
+        applyFormFields: settings.applyFormFields || [],
       });
       await load();
     } catch (err) {
@@ -312,7 +341,7 @@ export function AdminSalesPartners() {
       {tab === 'applications' && (
         <SpSection
           title="درخواست‌های همکاری"
-          description="بررسی، تأیید، تکمیل اطلاعات یا رد با دلیل ثبت‌شده در سوابق."
+          description="اول جزئیات کامل را ببینید، بعد تأیید، تکمیل اطلاعات یا رد کنید."
         >
           <div className="flex flex-wrap gap-2">
             {[
@@ -345,40 +374,42 @@ export function AdminSalesPartners() {
                       {row.phoneMasked}
                       {row.createdAt ? ` · ${formatSpDate(row.createdAt)}` : ''}
                     </p>
+                    <p className="mt-1 text-xs text-stone-500">
+                      {[row.province, row.city].filter(Boolean).join(' / ') || 'شهر ثبت نشده'}
+                      {row.primaryChannel ? ` · کانال: ${row.primaryChannel}` : ''}
+                      {row.nationalIdMasked ? ` · کدملی: ${row.nationalIdMasked}` : ''}
+                    </p>
                   </div>
                   <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
                 </div>
-                {row.status === 'PENDING_REVIEW' && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className={`min-h-11 rounded-xl bg-emerald-700 px-3 text-white ${spFocusClass}`}
-                      disabled={busyId === row.id}
-                      onClick={() => void review(row.id, 'APPROVE')}
-                    >
-                      تأیید
-                    </button>
-                    <button
-                      type="button"
-                      className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
-                      disabled={busyId === row.id}
-                      onClick={() => void review(row.id, 'NEED_INFO')}
-                    >
-                      تکمیل اطلاعات
-                    </button>
-                    <button
-                      type="button"
-                      className={`min-h-11 rounded-xl border border-red-300 px-3 text-red-800 ${spFocusClass}`}
-                      disabled={busyId === row.id}
-                      onClick={() => void review(row.id, 'REJECT')}
-                    >
-                      رد
-                    </button>
-                  </div>
-                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`min-h-11 rounded-xl bg-[#1B5C4A] px-3 text-white ${spFocusClass}`}
+                    onClick={() => void openApplication(row.id)}
+                  >
+                    مشاهده جزئیات
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
+          <SpApplicationDetailDrawer
+            open={Boolean(detailId)}
+            loading={detailLoading}
+            detail={detail}
+            listHint={apps.find((a) => a.id === detailId) || null}
+            busy={busyId === detailId}
+            error={detailError}
+            onClose={() => {
+              setDetailId(null);
+              setDetail(null);
+              setDetailError(null);
+            }}
+            onReview={(action) => {
+              if (detailId) void review(detailId, action);
+            }}
+          />
         </SpSection>
       )}
 
@@ -749,6 +780,12 @@ export function AdminSalesPartners() {
               </a>{' '}
               است.
             </p>
+            <div className="border-t border-stone-100 pt-4">
+              <SpApplyFormBuilder
+                fields={settings.applyFormFields || []}
+                onChange={(applyFormFields) => setSettings({ ...settings, applyFormFields })}
+              />
+            </div>
             <button
               type="submit"
               className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}

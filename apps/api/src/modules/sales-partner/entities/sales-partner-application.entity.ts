@@ -22,6 +22,10 @@ export class SalesPartnerApplicationEntity {
   @Column({ type: 'jsonb', nullable: true })
   socialHandles: Record<string, string> | null;
 
+  /** Structured apply answers (province, city, nationalId, custom_*, …). */
+  @Column({ type: 'jsonb', nullable: true })
+  answers: Record<string, string | boolean> | null;
+
   @Index()
   @Column({ type: 'varchar', length: 24, default: 'PENDING_OTP' })
   status: string;
