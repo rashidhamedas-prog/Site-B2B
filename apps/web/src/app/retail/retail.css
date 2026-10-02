@@ -61,6 +61,14 @@
   text-decoration: none;
 }
 
+/* Blog article links must stay underlined despite the retail-root reset. */
+.retail-root .blog-prose a {
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: max(2px, 0.12em);
+  text-underline-offset: 0.22em;
+}
+
 .retail-gold-line {
   height: 1px;
   width: 2.5rem;

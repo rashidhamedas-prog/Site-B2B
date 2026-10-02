@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T21:25:00Z — TASK-20261003-002 implementing (blog prose links)
+
+- Owner: cursor:implementer-TASK-20261003-002
+- Branch: `ai/TASK-20261003-002-blog-prose-links`
+- skill-top full: WCAG underline + brand-green color + gold highlight mark; hover thicker underline; focus-visible ring; retail-root underline restore
+- Changed: `BlogContent.tsx`, `globals.css`, `retail.css` (+ WORKLOG/report/ai-dos)
+- Reclaimed shared docs from TASK-20261003-001 (WORKLOG/active/handoff/status); SP code claims untouched
+- Next: visual verify on live article with `<a>`, then commit+push+VPS deploy
+- Claims held
+
 ## 2026-10-02T21:15:00Z — TASK-20261003-001 implementing (SP apply OTP + commission)
 
 - Owner: cursor:implementer-TASK-20261003-001

@@ -116,6 +116,89 @@ a {
   transition: color var(--transition-fast);
 }
 
+/* ── Blog prose inline links (high affordance; WCAG underline + contrast) ── */
+.blog-prose {
+  --blog-link: var(--color-primary);
+  --blog-link-hover: var(--color-primary-dark);
+  --blog-link-visited: #165243;
+  --blog-link-mark: color-mix(in srgb, var(--brand-gold) 42%, transparent);
+  --blog-link-mark-hover: color-mix(in srgb, var(--brand-gold) 62%, transparent);
+  --blog-link-underline: color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+
+.blog-prose.blog-prose--retail {
+  --blog-link: var(--retail-primary, var(--brand-green));
+  --blog-link-hover: var(--retail-primary-dark, var(--brand-green-dark));
+  --blog-link-visited: #0f4638;
+  --blog-link-mark: color-mix(in srgb, var(--retail-gold, var(--brand-gold)) 50%, transparent);
+  --blog-link-mark-hover: color-mix(in srgb, var(--retail-gold, var(--brand-gold)) 70%, transparent);
+  --blog-link-underline: color-mix(in srgb, var(--retail-primary, var(--brand-green)) 72%, transparent);
+}
+
+.blog-prose a {
+  color: var(--blog-link);
+  font-weight: 600;
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-thickness: max(2px, 0.12em);
+  text-underline-offset: 0.22em;
+  text-decoration-color: var(--blog-link-underline);
+  text-decoration-skip-ink: auto;
+  background-image: linear-gradient(
+    transparent 0 58%,
+    var(--blog-link-mark) 58% 100%
+  );
+  background-repeat: no-repeat;
+  border-radius: 0.2em;
+  padding: 0.14em 0.2em;
+  margin-inline: -0.1em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition:
+    color var(--transition-fast),
+    background-image var(--transition-fast),
+    text-decoration-color var(--transition-fast),
+    text-decoration-thickness var(--transition-fast);
+  cursor: pointer;
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--blog-link) 24%, transparent);
+}
+
+.blog-prose a:visited {
+  color: var(--blog-link-visited);
+}
+
+.blog-prose a:hover {
+  color: var(--blog-link-hover);
+  text-decoration-thickness: max(2.5px, 0.16em);
+  text-decoration-color: currentColor;
+  background-image: linear-gradient(
+    transparent 0 50%,
+    var(--blog-link-mark-hover) 50% 100%
+  );
+}
+
+.blog-prose a:active {
+  color: var(--blog-link-hover);
+  background-image: linear-gradient(
+    transparent 0 46%,
+    var(--blog-link-mark-hover) 46% 100%
+  );
+}
+
+.blog-prose a:focus-visible {
+  outline: 2px solid var(--blog-link);
+  outline-offset: 3px;
+  border-radius: 0.25em;
+  text-decoration-thickness: max(2.5px, 0.16em);
+  text-decoration-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-prose a {
+    transition: none;
+  }
+}
+
 img {
   max-width: 100%;
   height: auto;

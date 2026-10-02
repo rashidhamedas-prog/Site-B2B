@@ -1,5 +1,11 @@
 # Worklog — پلتفرم ترنم B2B
 
+## 2026-10-03 — لینک‌های داخل مقالات وبلاگ واضح‌تر و قابل‌لمس‌تر
+
+- لینک‌های inline در `.blog-prose`: underline ضخیم، هایلایت طلایی برند، وزن ۶۰۰، padding لمسی، hover/focus-visible
+- بازنشانی `text-decoration:none` در retail برای لینک‌های مقاله خنثی شد
+- گزارش: `docs/reports/2026-10-03-blog-prose-links.md`
+
 ## 2026-10-03 — همکار بازاریاب: OTP ثبت‌نام + محصولات مجاز + پورسانت محصولی
 
 - تایمر OTP همکار بازاریاب پیش‌فرض ۱۲۰ثانیه (`OTP_SALES_PARTNER_RESEND_COOLDOWN_SECONDS`).

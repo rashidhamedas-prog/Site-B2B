@@ -92,8 +92,8 @@ export function BlogContent({
         className={
           className ||
           (tone === 'retail'
-            ? 'blog-prose space-y-3 text-sm leading-loose text-stone-600 [&_a]:text-amber-800 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-stone-900 [&_h3]:mt-6 [&_h3]:text-base [&_h3]:font-bold [&_img]:my-4 [&_img]:rounded-xl [&_ul]:list-disc [&_ul]:pr-5'
-            : 'blog-prose space-y-3 text-sm leading-loose text-gray-600 [&_a]:text-primary [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h3]:mt-6 [&_h3]:text-base [&_h3]:font-bold [&_img]:my-4 [&_img]:rounded-xl [&_ul]:list-disc [&_ul]:pr-5')
+            ? 'blog-prose blog-prose--retail space-y-3 text-sm leading-loose text-stone-600 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-stone-900 [&_h3]:mt-6 [&_h3]:text-base [&_h3]:font-bold [&_img]:my-4 [&_img]:rounded-xl [&_ul]:list-disc [&_ul]:pr-5'
+            : 'blog-prose blog-prose--wholesale space-y-3 text-sm leading-loose text-gray-600 [&_h2]:mt-8 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-gray-900 [&_h3]:mt-6 [&_h3]:text-base [&_h3]:font-bold [&_img]:my-4 [&_img]:rounded-xl [&_ul]:list-disc [&_ul]:pr-5')
         }
         dangerouslySetInnerHTML={{ __html: clean }}
       />

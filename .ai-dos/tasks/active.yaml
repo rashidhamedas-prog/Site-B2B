@@ -1,5 +1,37 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-002"
+    title: "Blog article inline links high-affordance styling"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261003-002"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-002"
+      implementer: "cursor:implementer-TASK-20261003-002"
+      reviewer: "required-after-diff"
+      security: "not-required-css-only"
+    branch: "ai/TASK-20261003-002-blog-prose-links"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T21:25:00Z"
+    heartbeat_at: "2026-10-02T21:25:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/blog/BlogContent.tsx"
+      - "apps/web/src/app/globals.css"
+      - "apps/web/src/app/retail/retail.css"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-03-blog-prose-links.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Inline blog links show underline + highlight mark by default (not color-only)"
+      - "Retail root decoration reset does not strip blog-prose underlines"
+      - "Hover/focus-visible states are clearly distinct"
+      - "No new client JS; no landing/list card style change"
+    notes: |
+      skill-top full. Reclaimed shared docs from TASK-20261003-001 for this UI ship.
+      Root cause: global/retail a{text-decoration:none} + BlogContent color-only [&_a].
   - id: "TASK-20261003-001"
     title: "Sales-partner apply OTP + eligibility + per-product commission"
     status: "in_progress"
@@ -32,11 +64,7 @@ tasks:
       - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
       - "apps/web/src/components/admin/sales-partners/types.ts"
       - ".env.example"
-      - "docs/WORKLOG.md"
       - "docs/reports/2026-10-03-sales-partner-apply-otp-commission.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     acceptance_criteria:
       - "Sales-partner OTP resend cooldown defaults to 120s"
       - "FA/EN digits accepted for phone, nationalId, OTP on apply/verify"
