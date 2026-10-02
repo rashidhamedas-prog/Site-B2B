@@ -1,5 +1,42 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261002-007"
+    title: "Retail home hero + CTA editorial redesign"
+    status: "done"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261002-007"
+    roles:
+      architect: "cursor:implementer-TASK-20261002-007"
+      implementer: "cursor:implementer-TASK-20261002-007"
+      reviewer: "required-after-diff"
+      security: "not-required"
+    branch: "ai/TASK-20261002-007-retail-hero-cta"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-02T10:20:00Z"
+    heartbeat_at: "2026-10-02T12:15:00Z"
+    completed_at: "2026-10-02T12:15:00Z"
+    depends_on: []
+    file_claims: []
+    released_file_claims:
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/web/src/components/retail/RetailTrustStrip.tsx"
+      - "apps/web/src/components/shared/HeroCarousel.tsx"
+      - "apps/web/src/app/globals.css"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-02-retail-hero-cta-redesign.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Full-bleed editorial hero; no hard split panel feel"
+      - "Primary CTA prominent (min ~48px), gold brand, focus-visible"
+      - "Carousel, artwork, light/DigiPay slides, LCP priority still work"
+      - "Trust strip visually syncs under hero"
+      - "prefers-reduced-motion respected; web tsc clean"
+    notes: |
+      Shipping: commit + merge master + VPS deploy + smoke.
+      skill-top full. Direction: full-bleed fashion editorial (brand guidelines).
+      CTA label stays CMS («مشاهده محصولات»). No wholesale hero change.
   - id: "TASK-20261002-006"
     title: "Sales-partner catalog categories/filters + admin desk polish"
     status: "done"

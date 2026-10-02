@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-02T11:05:00Z — TASK-20261002-007 implementing (retail hero CTA)
+
+- Owner: cursor:implementer-TASK-20261002-007
+- Branch: `ai/TASK-20261002-007-retail-hero-cta`
+- Direction: full-bleed fashion editorial (brand locked forest/gold); CTA label stays CMS.
+- Changed: `RetailHero.tsx`, `RetailTrustStrip.tsx`, `HeroCarousel.tsx`, `globals.css` (+ WORKLOG/report/ai-dos).
+- Gates: `apps/web` `npx tsc --noEmit` exit 0.
+- Verify specialist: PASS conditional; applied artwork bottom-fade + 44px carousel chrome.
+- Slack: no relevant design threads.
+- Next: owner approve → commit + push + VPS deploy + live `.ir` smoke (hero class + CTA + trust).
+- Claims still held until ship.
+
 ## 2026-10-02T02:10:00Z — TASK-20261002-006 LIVE (catalog filters)
 
 - Owner: cursor:implementer-TASK-20261002-006

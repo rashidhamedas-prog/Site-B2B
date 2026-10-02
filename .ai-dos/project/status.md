@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-10-02 — **TASK-20261002-007 implementing** on `ai/TASK-20261002-007-retail-hero-cta`. Retail hero full-bleed editorial + CTA polish; web tsc OK; not live until commit/deploy.
 - Last verified: 2026-10-02 — **TASK-20261002-006 LIVE** on `origin/master` `d10b628` (tip `4ad808e`) + VPS. Partner catalog category/filters + admin desk polish; health 200; filter markers in live images. Claims released. Independent Reviewer + Security residual (filter query).
 - Last verified: 2026-10-02 — **TASK-20261002-005 LIVE** on `origin/master` `93ce995`. About polish (mobile cards, full scene, vertical rail). Claims released.
 - Last verified: 2026-10-02 — **TASK-20261002-004 LIVE** on `origin/master` + VPS `e9b1187`. Wholesale About sticky scrollytelling; `/about` 200 with story markers; health 200. Claims released. Independent Reviewer residual (desktop scroll visual).
