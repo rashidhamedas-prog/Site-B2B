@@ -173,11 +173,6 @@ export class SalesPartnerMeController {
     );
   }
 
-  @Get('me')
-  me(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
-    return this.salesPartners.me(this.requirePartner(req));
-  }
-
   private requirePartner(req: { user?: { purpose?: string; salesPartnerId?: string } }) {
     if (!isSalesPartnerPurpose(req.user?.purpose) || !req.user?.salesPartnerId) {
       throw new ForbiddenException('دسترسی غیرمجاز');
