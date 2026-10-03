@@ -2,7 +2,7 @@
 
 ## Executive outcome
 
-سینک موجودی ERP→سایت با `productSku = products.code` کار می‌کند. برای ۲۲ کالای با تطابق نام یکتا، SKU سایت همان کد ERP می‌شود تا `findBySku` مستقیم بگیرد. URL ویترین (`slug`) عوض نمی‌شود؛ کدهای بازاریابی قبلی alias می‌مانند.
+سینک موجودی ERP→سایت با `productSku = products.code` کار می‌کند. برای ۳۰ کالای قابل‌تطبیق، SKU و نام سایت همان ERP می‌شود تا `findBySku` مستقیم بگیرد. URL ویترین (`slug`) عوض نمی‌شود؛ کدهای بازاریابی قبلی alias می‌مانند. بارکد واریانت در صورت تطابق رنگ×سایز کپی می‌شود.
 
 ## Scope & evidence
 
@@ -30,9 +30,10 @@
 
 | ID | change | acceptance |
 |---|---|---|
-| A | alias table + SKU align 22 pairs | findBySku(erp) + slug unchanged |
-| B | skip ambiguous | no dual SKU unique clash |
+| A | alias table + SKU/name align 30 pairs | findBySku(erp) + slug unchanged |
+| B | skip missing / wrong-identity catalog | no invented products; no یاسمین→آفاق / یلدا→بارونی |
 | C | clear inventory idempotency | no 24h cached miss |
+| D | variant barcode copy when color×size match | barcodes fill without changing slug |
 
 ## QA & release decision
 
@@ -40,4 +41,6 @@ GO after migrate + align SQL + health 200 + sample PDP slug still 200.
 
 ## Measurement and next review
 
-After ERP full-sync: unmatched `product_sku_not_found` should drop for the 22. Remaining ERP codes need manual map.
+After ERP full-sync: unmatched `product_sku_not_found` should drop for the 30 aligned codes.
+
+ERP codes without a unique site row (do not invent): `7063`, `7127`, `7129`, `7168`, `7200`, `K-00227`.

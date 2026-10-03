@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-03T14:10:00Z — TASK-20261003-007 remaining SKU/name align
+
+- Owner: cursor:implementer-TASK-20261003-007
+- Branch: `ai/TASK-20261003-007-erp-sku-align`
+- 30 unique pairs (added AUTUMN00001/02/04/05/06/07/08 + LINEN-SH-509) + ERP names + barcode SQL
+- Missing on site (no invent): 7063, 7127, 7129, 7168, 7200, K-00227
+- Next: commit/push, VPS SQL, ERP full-sync
+
 ## 2026-10-03T14:05:00Z — TASK-20261003-008 LIVE (remove retail home pills)
 
 - Owner: cursor:implementer-TASK-20261003-008
