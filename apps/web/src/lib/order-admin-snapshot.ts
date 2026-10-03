@@ -125,6 +125,8 @@ export function orderHasCapturedPayment(rows: PaymentRow[] | null | undefined, o
   const status = String(picked?.status || '').toUpperCase();
   return status === 'PAID' || status === 'REFUNDED';
 }
+
+export function pickOrderPayment(rows: PaymentRow[] | null | undefined, orderId: string): PaymentRow | null {
   const id = String(orderId || '').trim();
   if (!id) return null;
   const matches = (rows || []).filter((row) => String(row.orderId || '') === id);
