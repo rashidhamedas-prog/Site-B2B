@@ -41,6 +41,8 @@ GO after migrate + align SQL + health 200 + sample PDP slug still 200.
 
 ## Measurement and next review
 
+Live VPS: 30 SKUs + names aligned (7147 via `BLOUSES00001` / slug `linen-shirt-manteau-nazgol`). Variant barcodes did not copy because site color labels differ; ERP matrix color×size remains the stock path.
+
 After ERP full-sync: unmatched `product_sku_not_found` should drop for the 30 aligned codes.
 
 ERP codes without a unique site row (do not invent): `7063`, `7127`, `7129`, `7168`, `7200`, `K-00227`.
