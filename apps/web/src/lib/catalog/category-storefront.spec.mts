@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   categoryDisplayName,
   HOME_CATEGORY_GRID_CAP,
@@ -36,5 +39,11 @@ const pinned = merchandiseCategories(newestFirst, {
   maxItems: 16,
 });
 assert(pinned.map((x) => x.id).join(',') === 'a,c,b', 'pins first then remaining API order');
+
+const renderer = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../components/cms/RetailBlocksRenderer.tsx'),
+  'utf8',
+);
+assert(!renderer.includes('RetailHomeCategoryLinks'), 'home must not inject a duplicate pill cloud');
 
 console.log('category-storefront.spec.mts: OK');

@@ -10,7 +10,6 @@ import { RetailCtaBanner } from '@/components/retail/RetailCtaBanner';
 import { RetailFeatureCards } from '@/components/retail/RetailFeatureCards';
 import { RetailProcessSteps } from '@/components/retail/RetailProcessSteps';
 import { RetailTrustStrip, RETAIL_TRUST_FALLBACK, type TrustItem } from '@/components/retail/RetailTrustStrip';
-import { RetailHomeCategoryLinks } from '@/components/retail/RetailHomeCategoryLinks';
 import { resolveHomeCategoryMaxItems } from '@/lib/catalog/category-storefront';
 import {
   filterChromeBlocks,
@@ -62,7 +61,6 @@ export async function RetailBlocksRenderer({
           nodes.push(
             <RetailTrustStrip key={statsBlock?.id ?? 'retail-trust-fallback'} items={items} />,
           );
-          nodes.push(<RetailHomeCategoryLinks key="retail-home-category-links" />);
           trustRendered = true;
         }
         break;
@@ -157,7 +155,6 @@ export async function RetailBlocksRenderer({
       0,
       <RetailTrustStrip key="retail-trust-fallback" items={RETAIL_TRUST_FALLBACK} />,
     );
-    nodes.splice(Math.min(2, nodes.length), 0, <RetailHomeCategoryLinks key="retail-home-category-links" />);
   }
 
   if (looksLikeHome && !list.some((block) => block.type === 'faq')) {

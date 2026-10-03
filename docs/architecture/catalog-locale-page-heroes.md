@@ -55,7 +55,7 @@ Operators can manage catalog and CMS in Persian without English-in-the-name work
 | Category identity | One `categories.name` (unique). `nameEn` column exists, unused in admin create/save | `category.entity.ts`, `AdminCategories.tsx` | Split display vs URL: `name` = fa label, `nameEn` = en label + slug source |
 | Slug create | `uniqueSlug(body.slug \|\| seed \|\| name)` then `normalizePublicSlug` **rejects spaces before transliteration** | `public-slug.ts` lines 40–42; `category.service.ts` `create` | Slugify first; spaces in Persian names are valid |
 | Home category grid | Fetches all ACTIVE; optional CMS `categoryIds` exclusive filter; `displayName` prefers Persian tokens; `fallbackFor` uses **first English token** as image key | `RetailCategoryBannerGrid.tsx` | `auto` = all ACTIVE; `manual` = pinned order; label from locale fields not name-splitting |
-| Home shortcuts | Four hardcoded links | `RetailHomeCategoryLinks.tsx` | Derive from catalog or CMS; no code-owned category list |
+| Home shortcuts | Text pill cloud below trust was removed (duplicated `categoryBanners`) | `RetailCategoryBannerGrid.tsx` + header mega-nav | Visual CMS tiles + nav; no second text chip list |
 | Product↔category | `products.categoryId` many-to-one; list filter `p.categoryId = :id`; SKU from that row | `product.entity.ts`, `product.service.ts` | Add membership table; keep `categoryId` as denormalized primary during dual-write |
 | CMS stats digits | Defaults call `toPersianDigits()` at seed time; admin stores whatever the operator typed; render prints the string | `defaults.ts`, `AdminBlockEditor` stats fields, `WholesaleStats` | Store Latin digits; shape at render with `UiLocale` |
 | Wholesale inner heroes | Any CMS `hero` goes through `HeroSection` which **always** `applyWholesalePromoHeroSlides()` | `HeroSection.tsx` line 170 | Inject campaigns only when `pageKey === 'home'` |
@@ -224,7 +224,7 @@ Mirror featured-products source modes (`docs/adr/2026-09-08-featured-products-bl
 - `source=auto` (default): all ACTIVE, `sortOrder`, cap `maxItems` (home budget 12–16 tiles max; current 10 is fine).
 - `source=manual`: `categoryIds` order; **do not silently hide** others unless the admin UI says «فقط همین‌ها». Preferred: manual is pin+order, auto-append remaining ACTIVE below, or exclusive with an explicit checkbox `exclusive`.
 
-`RetailHomeCategoryLinks` must read the same query or CMS, not a hardcoded quartet.
+Category discovery on default retail home is `categoryBanners` (`RetailCategoryBannerGrid`) plus header mega-nav. Do not inject a second text pill list.
 
 ### Heroes
 

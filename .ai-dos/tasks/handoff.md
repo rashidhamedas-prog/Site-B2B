@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-03T13:40:00Z — TASK-20261003-008 implementing (remove retail home pills)
+
+- Owner: cursor:implementer-TASK-20261003-008
+- Branch/worktree: `ai/TASK-20261003-008-remove-retail-pills` @ `D:/proje/Site-B2B-retail-pills`
+- Decision: delete text chip cloud; keep `categoryBanners` + mega-nav
+- Parallel: TASK-20261003-007 ERP SKU stays on `D:/proje/Site B2B`; this ship does not touch SKU files
+- Next: merge to master + VPS web rebuild + live `.ir` HTML check
+
 ## 2026-10-03T09:30:00Z — TASK-20261003-007 implementing (ERP SKU align)
 
 - Owner: cursor:implementer-TASK-20261003-007

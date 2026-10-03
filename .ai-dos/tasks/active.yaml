@@ -1,5 +1,36 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-008"
+    title: "Remove duplicate retail home category pill cloud"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261003-008"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-008"
+      implementer: "cursor:implementer-TASK-20261003-008"
+      reviewer: "required-after-diff"
+      security: "not-required-presentation"
+    branch: "ai/TASK-20261003-008-remove-retail-pills"
+    worktree: "D:/proje/Site-B2B-retail-pills"
+    claimed_at: "2026-10-03T13:40:00Z"
+    heartbeat_at: "2026-10-03T13:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/cms/RetailBlocksRenderer.tsx"
+      - "apps/web/src/components/retail/RetailHomeCategoryLinks.tsx"
+      - "apps/web/src/lib/catalog/category-storefront.spec.mts"
+      - "docs/architecture/catalog-locale-page-heroes.md"
+      - "docs/reports/2026-10-03-retail-home-pills.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Default retail home has no text chip cloud under trust strip"
+      - "CMS categoryBanners grid and header mega-nav still expose categories"
+      - "RetailHomeCategoryLinks.tsx deleted; renderer has no injection"
+      - "apps/web tsc --noEmit + category-storefront.spec.mts pass"
+    notes: |
+      skill-top full. Parallel to TASK-20261003-007. Shared WORKLOG appended; 007 owns SKU files.
   - id: "TASK-20261003-007"
     title: "Align site SKU with ERP stock-sync codes without breaking URLs"
     status: "in_progress"
