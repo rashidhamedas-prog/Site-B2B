@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261003-006"
     title: "SP welcome SMS sent-state on admin cards"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261003-006"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261003-006-sp-welcome-sms-sent-state"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-02T23:55:00Z"
-    heartbeat_at: "2026-10-02T23:55:00Z"
+    heartbeat_at: "2026-10-03T00:37:00Z"
+    completed_at: "2026-10-03T00:37:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/sales-partner.service.ts"
       - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
       - "apps/web/src/components/admin/sales-partners/types.ts"

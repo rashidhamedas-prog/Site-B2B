@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-03T00:37:00Z — TASK-20261003-006 LIVE (welcome SMS sent-state)
+
+- Owner: cursor:implementer-TASK-20261003-006
+- Ship: `665d5ac` on origin/master + VPS images rebuilt
+- Live: welcomeSmsSent in API service.js + web admin chunk; health 200
+- SMS chain wired (button → welcome-sms → salesPartnerWelcome → sendSms); prior ops check: sms enabled + apiKey
+- Claims released. Admin field click residual for delivery confirmation.
+
 ## 2026-10-02T23:58:00Z — TASK-20261003-006 implementing (welcome SMS sent-state)
 
 - Owner: cursor:implementer-TASK-20261003-006
