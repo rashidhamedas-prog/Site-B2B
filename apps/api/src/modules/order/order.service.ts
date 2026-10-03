@@ -43,7 +43,6 @@ import {
 } from './order-payment-lifecycle';
 import { lockOrderRow, lockOrderRowWithItems } from './order-row-lock';
 import { capturedPaymentBlocksDestructiveAdmin } from './order-money-guard';
-import { capturedPaymentBlocksDestructiveAdmin } from './order-money-guard';
 import { FulfillmentService } from './fulfillment.service';
 import { snapshotVendorFulfillment, stripOrderVendorSecrets } from './fulfillment-split-policy';
 import {
@@ -1404,7 +1403,9 @@ export class OrderService {
   private async assertNoCapturedPayment(orderId: string) {
     const paymentStatuses = await this.paymentService.paymentStatusesForOrder(orderId);
     const gate = capturedPaymentBlocksDestructiveAdmin({ paymentStatuses });
-    if (!gate.allowed) throw new BadRequestException(gate.reason);
+    if (gate.allowed === false) {
+      throw new BadRequestException(gate.reason);
+    }
   }
 
   /**
