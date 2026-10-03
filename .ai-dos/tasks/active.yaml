@@ -1,5 +1,48 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-009"
+    title: "Stop void/purge of captured DigiPay/TorobPay orders; restore last-night paid retail orders"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261003-009"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-009"
+      implementer: "cursor:implementer-TASK-20261003-009"
+      reviewer: "required-after-diff"
+      security: "required-payments"
+    branch: "ai/TASK-20261003-009-paid-order-guard"
+    worktree: "D:/proje/Site-B2B-paid-order-guard"
+    claimed_at: "2026-10-03T14:40:00Z"
+    heartbeat_at: "2026-10-03T14:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/order/order-money-guard.ts"
+      - "apps/api/src/modules/order/order-money-guard.spec.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/order-purge.spec.ts"
+      - "apps/api/src/modules/order/order-row-lock.ts"
+      - "apps/api/src/modules/order/order-row-lock.spec.ts"
+      - "apps/api/src/modules/payment/payment.service.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
+      - "apps/web/src/lib/payment-callback-capture.ts"
+      - "apps/web/src/lib/payment-callback-capture.spec.ts"
+      - "apps/web/src/app/payment/digipay/callback/route.ts"
+      - "apps/web/src/app/payment/torobpay/callback/route.ts"
+      - "apps/web/src/lib/order-admin-snapshot.ts"
+      - "apps/web/src/lib/order-admin-snapshot.spec.ts"
+      - "apps/web/src/components/admin/AdminOrders.tsx"
+      - "apps/web/src/components/admin/AdminOrderDetail.tsx"
+      - "scripts/restore-20261002-paid-orphan-orders.sql"
+      - "docs/reports/2026-10-03-paid-orders-purged.md"
+      - "docs/WORKLOG.md"
+    acceptance_criteria:
+      - "void/purge of an order with PAID gateway payment is rejected"
+      - "DigiPay/TorobPay callback routes call /payments/verify server-side"
+      - "ORD-2026-00008 and 00009 restored and linked to the live PAID payments"
+      - "unit specs for money-guard, purge, row-lock, callback body, admin snapshot pass"
+    notes: |
+      skill-top full. Parallel to TASK-20261003-007 on main worktree; this ship is D:/proje/Site-B2B-paid-order-guard.
+
   - id: "TASK-20261003-008"
     title: "Remove duplicate retail home category pill cloud"
     status: "done"

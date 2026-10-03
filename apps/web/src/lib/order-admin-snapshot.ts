@@ -120,7 +120,11 @@ export function asPaymentRows(payload: unknown): PaymentRow[] {
   return [];
 }
 
-export function pickOrderPayment(rows: PaymentRow[] | null | undefined, orderId: string): PaymentRow | null {
+export function orderHasCapturedPayment(rows: PaymentRow[] | null | undefined, orderId: string): boolean {
+  const picked = pickOrderPayment(rows, orderId);
+  const status = String(picked?.status || '').toUpperCase();
+  return status === 'PAID' || status === 'REFUNDED';
+}
   const id = String(orderId || '').trim();
   if (!id) return null;
   const matches = (rows || []).filter((row) => String(row.orderId || '') === id);

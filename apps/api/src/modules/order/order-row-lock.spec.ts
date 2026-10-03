@@ -57,7 +57,7 @@ async function main() {
   assert(locked?.id === 'ord-1', 'locks the order row');
   assert(calls.includes('qb:o'), 'uses orders alias only');
   assert(calls.includes('setLock:pessimistic_write'), 'pessimistic lock on main row');
-  assert(calls.includes('where:o.id = :id:ord-1'), 'filters by id');
+  assert(calls.includes('where:o.id::text = :id:ord-1'), 'filters by id with uuid/text cast');
   assert(!calls.some((c) => /left join|items/i.test(c)), 'lock query does not join items');
 
   const withItems = await lockOrderRowWithItems(manager as any, 'ord-1');

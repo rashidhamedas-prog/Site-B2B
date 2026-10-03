@@ -322,6 +322,17 @@ export class PaymentService {
     return toPublicPaymentDto(await this.findOne(id));
   }
 
+  /** Statuses for an order including historically detached rows (orderId column is varchar). */
+  async paymentStatusesForOrder(orderId: string): Promise<string[]> {
+    const id = String(orderId || '').trim();
+    if (!id) return [];
+    const rows = (await this.dataSource.query(
+      `SELECT status FROM payments WHERE "orderId"::text = $1`,
+      [id],
+    )) as Array<{ status?: string }>;
+    return rows.map((row) => String(row.status || ''));
+  }
+
   /**
    * Start or retry gateway payment for an order/invoice.
    * Failed starts leave a FAILED attempt and allow a new start for the same order.
@@ -357,8 +368,6 @@ export class PaymentService {
       }
       customerId = invoice.customerId;
       amount = Math.max(0, Number(invoice.total) - Number(invoice.paidAmount || 0));
-    } else if (input.amount && input.amount >= 10000) {
-      amount = Number(input.amount);
     } else {
       throw new BadRequestException('سفارش یا فاکتور برای پرداخت الزامی است');
     }

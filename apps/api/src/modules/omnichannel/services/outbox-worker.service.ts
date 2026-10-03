@@ -222,13 +222,25 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  private findOrderById(orderId: string) {
+    return this.orders
+      .createQueryBuilder('o')
+      .where('o.id::text = :id', { id: String(orderId) })
+      .getOne();
+  }
+
+  private findCustomerById(customerId: string) {
+    return this.customers
+      .createQueryBuilder('c')
+      .where('c.id::text = :id', { id: String(customerId) })
+      .getOne();
+  }
+
   private async handleOrderCreated(orderId: string, channel: string | null) {
-    const order = await this.orders.findOne({ where: { id: orderId } });
+    const order = await this.findOrderById(orderId);
     if (!order) return;
     if (order.status === 'AWAITING_PAYMENT') return;
-    const customer = order.customerId
-      ? await this.customers.findOne({ where: { id: order.customerId } })
-      : null;
+    const customer = order.customerId ? await this.findCustomerById(order.customerId) : null;
     const phone = customer && typeof (customer as { phone?: string }).phone === 'string'
       ? (customer as { phone: string }).phone
       : '';

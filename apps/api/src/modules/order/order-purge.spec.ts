@@ -17,7 +17,8 @@ assert(serviceSrc.includes('DELETE FROM return_requests'), 'clears RMA FK before
 assert(/async bulkVoidOrders\(/.test(serviceSrc), 'bulk void');
 assert(/async bulkPurgeOrders\(/.test(serviceSrc), 'bulk purge');
 assert(serviceSrc.includes('cleaned.length > 50'), 'bulk id cap');
-assert(serviceSrc.includes('UPDATE payments SET "orderId" = NULL'), 'detaches payments instead of deleting ledger history');
+assert(serviceSrc.includes("status NOT IN ('PAID', 'REFUNDED')"), 'does not detach captured payments');
+assert(serviceSrc.includes('assertNoCapturedPayment'), 'blocks void/purge after gateway capture');
 
 assert(controllerSrc.includes("@Post('bulk/void')"), 'bulk void route');
 assert(controllerSrc.includes("@Post('bulk/purge')"), 'bulk purge route');
