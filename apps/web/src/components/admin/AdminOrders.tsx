@@ -15,7 +15,7 @@ import {
 import { OrderStatusBadge, Pagination } from '@/components/ui';
 import { useOrderStatusCounts, useOrders } from '@/lib/hooks/useOrders';
 import { apiClient } from '@/lib/api';
-import { asPaymentRows, describeSettlement, recipientSnapshot, type PaymentRow } from '@/lib/order-admin-snapshot';
+import { asPaymentRows, describeSettlement, orderHasCapturedPayment, recipientSnapshot, type PaymentRow } from '@/lib/order-admin-snapshot';
 import { cn } from '@/lib/cn';
 import { AdminChannelFilter, type AdminChannel } from './AdminChannelTabs';
 import { AdminPackingSlipButton } from './AdminPackingSlip';
@@ -116,8 +116,12 @@ function AdminOrdersInner() {
     () => orders.filter((order) => selectedIds.includes(order.id)),
     [orders, selectedIds],
   );
-  const selectedActive = selectedOrders.filter((order) => order.status !== 'DELETED');
-  const selectedDeleted = selectedOrders.filter((order) => order.status === 'DELETED');
+  const selectedActive = selectedOrders.filter(
+    (order) => order.status !== 'DELETED' && !orderHasCapturedPayment(payments, order.id),
+  );
+  const selectedDeleted = selectedOrders.filter(
+    (order) => order.status === 'DELETED' && !orderHasCapturedPayment(payments, order.id),
+  );
 
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -341,6 +345,7 @@ function AdminOrdersInner() {
               ) : orders.length === 0 ? (
                 <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400">{emptyQueueCopy(status)}</td></tr>
               ) : orders.map((order) => {
+                const captured = orderHasCapturedPayment(payments, order.id);
                 const deleted = order.status === 'DELETED';
                 const actions = adminQueueActions(order.status);
                 const settlement = describeSettlement({
@@ -421,7 +426,7 @@ function AdminOrdersInner() {
                           <Truck className="h-4 w-4" />
                         </Link>
                       ) : null}
-                      {!deleted && (
+                      {!deleted && !captured && (
                         <>
                           <Link
                             href={`/admin/orders/${order.id}?edit=1`}
@@ -443,7 +448,7 @@ function AdminOrdersInner() {
                           </button>
                         </>
                       )}
-                      {deleted && (
+                      {deleted && !captured && (
                         <button
                           type="button"
                           disabled={busyId === order.id || bulkBusy}

@@ -42,6 +42,8 @@ import {
   statusAfterCapturedPayment,
 } from './order-payment-lifecycle';
 import { lockOrderRow, lockOrderRowWithItems } from './order-row-lock';
+import { capturedPaymentBlocksDestructiveAdmin } from './order-money-guard';
+import { capturedPaymentBlocksDestructiveAdmin } from './order-money-guard';
 import { FulfillmentService } from './fulfillment.service';
 import { snapshotVendorFulfillment, stripOrderVendorSecrets } from './fulfillment-split-policy';
 import {
@@ -1399,6 +1401,12 @@ export class OrderService {
     return this.findOne(id);
   }
 
+  private async assertNoCapturedPayment(orderId: string) {
+    const paymentStatuses = await this.paymentService.paymentStatusesForOrder(orderId);
+    const gate = capturedPaymentBlocksDestructiveAdmin({ paymentStatuses });
+    if (!gate.allowed) throw new BadRequestException(gate.reason);
+  }
+
   /**
    * Soft-void: keep row in admin list/details with status DELETED,
    * reverse all side-effects, hide from customer flows.
@@ -1408,6 +1416,7 @@ export class OrderService {
     if (order.status === 'DELETED' || order.voidedAt) {
       return order; // already voided — still viewable
     }
+    await this.assertNoCapturedPayment(id);
     await this.reverseEffects(order);
     const patch: Partial<OrderEntity> = {
       status: 'DELETED',
@@ -1463,6 +1472,7 @@ export class OrderService {
         'فقط سفارش حذف‌شده را می‌توان کامل پاک کرد. ابتدا حذف نرم کنید.',
       );
     }
+    await this.assertNoCapturedPayment(id);
     await this.reverseEffects(order);
     await this.dataSource.transaction(async (manager) => {
       await this.purgeOrderDependents(manager, id);
@@ -1496,7 +1506,7 @@ export class OrderService {
     );
     // Keep financial audit rows; only detach from the purged order.
     await manager.query(
-      `UPDATE payments SET "orderId" = NULL WHERE "orderId"::text = $1::text`,
+      `UPDATE payments SET "orderId" = NULL WHERE "orderId"::text = $1::text AND status NOT IN ('PAID', 'REFUNDED')`,
       [id],
     );
     await manager.query(

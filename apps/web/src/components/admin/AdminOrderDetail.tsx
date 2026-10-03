@@ -15,6 +15,7 @@ import { channelLabel } from '@/lib/packing-slip';
 import {
   asPaymentRows,
   describeSettlement,
+  orderHasCapturedPayment,
   PAYMENT_METHOD_OPTIONS,
   recipientSnapshot,
   type PaymentRow,
@@ -247,6 +248,7 @@ function AdminOrderDetailInner({ id }: { id: string }) {
   if (loading) return <div className="p-8"><div className="skeleton h-64 rounded-2xl" /></div>;
   if (!order) return null;
 
+  const captured = orderHasCapturedPayment(payments, order.id);
   const deleted = order.status === 'DELETED' || !!order.voidedAt;
   const canEditItems = !deleted && !['SHIPPED', 'DELIVERED', 'COMPLETED'].includes(order.status);
   const currentStepIdx = deleted ? -1 : customerStatusStepIndex(order.status);
@@ -279,12 +281,14 @@ function AdminOrderDetailInner({ id }: { id: string }) {
             <button type="button" onClick={() => setEditing((v) => !v)} className="btn btn-outline btn-sm inline-flex items-center gap-1.5">
               <Pencil className="h-3.5 w-3.5" />{editing ? 'بستن ویرایش' : 'ویرایش'}
             </button>
+            {!captured ? (
             <button type="button" onClick={voidOrder} disabled={voiding} className="btn btn-sm border border-error text-error hover:bg-red-50 inline-flex items-center gap-1.5">
               {voiding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}حذف
             </button>
+            ) : null}
           </div>
         )}
-        {deleted && (
+        {deleted && !captured && (
           <button
             type="button"
             onClick={purgeOrder}

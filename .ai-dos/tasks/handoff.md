@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-03T14:50:00Z — TASK-20261003-009 implementing (paid order void/purge)
+
+- Owner: cursor:implementer-TASK-20261003-009
+- Branch/worktree: `ai/TASK-20261003-009-paid-order-guard` @ `D:/proje/Site-B2B-paid-order-guard`
+- Incident: DigiPay 2.12M لاله + TorobPay 1.28M آتنا captured; admin void+purge at 23:44Z detached orders
+- Next: specs, commit, merge master, VPS restore SQL + apply stock, health
+- Shared yaml/handoff/WORKLOG with TASK-20261003-007 (SKU) — no overlapping runtime files
+
+
 ## 2026-10-03T14:10:00Z — TASK-20261003-007 remaining SKU/name align
 
 - Owner: cursor:implementer-TASK-20261003-007

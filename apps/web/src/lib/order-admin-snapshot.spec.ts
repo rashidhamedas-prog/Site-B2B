@@ -5,6 +5,7 @@ import {
   asPaymentRows,
   describeSettlement,
   orderDeliveryAddresses,
+  orderHasCapturedPayment,
   pickOrderPayment,
   recipientSnapshot,
 } from './order-admin-snapshot';
@@ -81,7 +82,8 @@ assert(onlineOnly.statusLabel === '', 'no invented status');
 const cash = describeSettlement({ paymentMethod: 'CASH' });
 assert(cash.headline === 'نقدی هنگام تحویل', 'cash settlement');
 
-assert(pickOrderPayment([{ orderId: 'a', status: 'CANCELLED' }, { orderId: 'a', status: 'PENDING' }], 'a')?.status === 'PENDING', 'pending outranks cancelled');
+assert(orderHasCapturedPayment([{ orderId: 'a', status: 'PAID' }], 'a') === true, 'paid blocks admin delete');
+assert(orderHasCapturedPayment([{ orderId: 'a', status: 'PENDING' }], 'a') === false, 'pending may void');
 assert(asPaymentRows([{ orderId: 'a', gateway: 'DIGIPAY' }]).length === 1, 'array payload');
 assert(asPaymentRows({ data: [{ orderId: 'a' }] }).length === 1, 'wrapped payload');
 assert(asPaymentRows(null).length === 0, 'empty payload');

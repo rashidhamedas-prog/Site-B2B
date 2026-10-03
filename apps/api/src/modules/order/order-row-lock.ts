@@ -17,7 +17,7 @@ export async function lockOrderRow(
   return manager
     .getRepository(OrderEntity)
     .createQueryBuilder('o')
-    .where('o.id = :id', { id: orderId })
+    .where('o.id::text = :id', { id: String(orderId) })
     .setLock('pessimistic_write')
     .getOne();
 }
