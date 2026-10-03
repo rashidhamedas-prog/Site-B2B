@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-03T09:30:00Z — TASK-20261003-007 implementing (ERP SKU align)
+
+- Owner: cursor:implementer-TASK-20261003-007
+- Branch: `ai/TASK-20261003-007-erp-sku-align`
+- skill-top full: identity = UUID; SKU becomes ERP `products.code`; slug stays; aliases keep old SKU
+- Pairs: 22 unique model matches. Ambiguous names skipped.
+- Next: unit tests, commit/push, VPS migrate + `_align-erp-product-skus.sh`, then ERP full-sync
+
 ## 2026-10-03T00:37:00Z — TASK-20261003-006 LIVE (welcome SMS sent-state)
 
 - Owner: cursor:implementer-TASK-20261003-006

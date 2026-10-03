@@ -1,6 +1,6 @@
 # Project Status
 
-- In progress: 2026-10-03 — **TASK-20261003-006** welcome SMS sent-state on admin cards + live SMS wiring verify. Branch `ai/TASK-20261003-006-sp-welcome-sms-sent-state`.
+- In progress: 2026-10-03 — **TASK-20261003-007** align site SKU with ERP stock-sync codes (`ai/TASK-20261003-007-erp-sku-align`). Alias table + slug unchanged.
 - Last verified: 2026-10-03 — **TASK-20261003-006 LIVE** on `origin/master` `665d5ac` + VPS. Card shows «پیامک خوش‌آمد ارسال شد»; health 200; welcomeSmsSent in API/web. Claims released.
 - Last verified: 2026-10-03 — **TASK-20261003-005 LIVE** on `origin/master` `eea126e`. Welcome SMS button under APPROVED badge.
 - Last verified: 2026-10-03 — **TASK-20261003-004 LIVE** on `origin/master` `28ce997` + VPS force rebuild. Mega-nav categories SSR-seeded; browser shows فوتر/کراپ instantly, no stuck loading. Claims released.

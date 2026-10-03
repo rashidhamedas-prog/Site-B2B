@@ -1953,7 +1953,10 @@ export function AdminProducts() {
                     اگر SKU خالی باشد، از روی این دسته‌بندی تولید می‌شود.
                   </p>
                 </div>
-                {field('sku', 'کد SKU (اختیاری)', 'text', 'LINEN-00001')}
+                {field('sku', 'کد SKU — باید با کد کالای ERP یکی باشد', 'text', '7126')}
+                <p className="mt-1 text-[11px] text-gray-400">
+                  سینک موجودی با همین کد کالا را پیدا می‌کند. اسلاگ/آدرس صفحه عوض نمی‌شود؛ کد قبلی به‌صورت alias می‌ماند.
+                </p>
               </div>
               {categories.filter((c) => c.id !== form.categoryId).length > 0 ? (
                 <div>

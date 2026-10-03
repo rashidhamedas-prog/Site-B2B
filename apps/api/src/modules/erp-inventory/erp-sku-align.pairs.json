@@ -1,0 +1,27 @@
+{
+  "note": "High-confidence unique model matches. Site SKU becomes ERP code; slug stays. Ambiguous names omitted.",
+  "pairs": [
+    { "erp": "7080", "siteSku": "SKIRT-SUITS00001" },
+    { "erp": "7102", "siteSku": "KAFTANS00001" },
+    { "erp": "7122", "siteSku": "BLOUSES00017" },
+    { "erp": "7126", "siteSku": "COATS00012" },
+    { "erp": "7132", "siteSku": "WINTER-WEAR00006" },
+    { "erp": "7136", "siteSku": "COATS00003" },
+    { "erp": "7137", "siteSku": "COATS00005" },
+    { "erp": "7141", "siteSku": "COATS00006" },
+    { "erp": "7142", "siteSku": "WINTER-WEAR00009" },
+    { "erp": "7143", "siteSku": "WINTER-WEAR00005" },
+    { "erp": "7151", "siteSku": "COATS00007" },
+    { "erp": "7152", "siteSku": "WINTER-WEAR00003" },
+    { "erp": "7154", "siteSku": "COATS00002" },
+    { "erp": "7155", "siteSku": "COATS00004" },
+    { "erp": "7157", "siteSku": "COATS00001" },
+    { "erp": "7181", "siteSku": "VESTS-SKIRTS00001" },
+    { "erp": "K-00001", "siteSku": "AUTUMN00010" },
+    { "erp": "K-00002", "siteSku": "AUTUMN00009" },
+    { "erp": "K-00007", "siteSku": "AUTUMN00011" },
+    { "erp": "K-00008", "siteSku": "AUTUMN00012" },
+    { "erp": "K-00009", "siteSku": "AUTUMN00013" },
+    { "erp": "K-00011", "siteSku": "AUTUMN00003" }
+  ]
+}

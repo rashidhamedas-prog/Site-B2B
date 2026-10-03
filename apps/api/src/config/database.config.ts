@@ -6,6 +6,7 @@ import { CustomerWalletEntryEntity } from '../modules/customer/entities/customer
 import { UserEntity } from '../modules/auth/entities/user.entity';
 import { VendorEntity } from '../modules/vendor/entities/vendor.entity';
 import { ProductEntity } from '../modules/product/entities/product.entity';
+import { ProductSkuAliasEntity } from '../modules/product/entities/product-sku-alias.entity';
 import { ProductVariantEntity } from '../modules/product/entities/product-variant.entity';
 import { VariantColorEntity } from '../modules/product/entities/variant-color.entity';
 import { VariantSizeEntity } from '../modules/product/entities/variant-size.entity';
@@ -102,7 +103,7 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     CustomerEntity, CustomerWalletEntryEntity,
     CategoryEntity,
     CollectionEntity,
-    ProductEntity, ProductVariantEntity, VariantColorEntity, VariantSizeEntity,
+    ProductEntity, ProductSkuAliasEntity, ProductVariantEntity, VariantColorEntity, VariantSizeEntity,
     ProductSpecMemoryEntity,
     ProductRelatedEntity,
     ProductInternalLinkEntity,

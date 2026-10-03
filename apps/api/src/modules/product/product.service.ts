@@ -2,7 +2,9 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository, ILike, In } from 'typeorm';
 import { ProductEntity } from './entities/product.entity';
+import { ProductSkuAliasEntity } from './entities/product-sku-alias.entity';
 import { ProductVariantEntity } from './entities/product-variant.entity';
+import { planSkuChange, skuIsOccupied } from './product-sku-alias';
 import { CategoryEntity } from '../category/entities/category.entity';
 import { VariantColorEntity } from './entities/variant-color.entity';
 import { VariantSizeEntity } from './entities/variant-size.entity';
@@ -187,6 +189,8 @@ export class ProductService {
   constructor(
     @InjectRepository(ProductEntity)
     private readonly productRepo: Repository<ProductEntity>,
+    @InjectRepository(ProductSkuAliasEntity)
+    private readonly skuAliasRepo: Repository<ProductSkuAliasEntity>,
     @InjectRepository(ProductVariantEntity)
     private readonly variantRepo: Repository<ProductVariantEntity>,
     @InjectRepository(CategoryEntity)
@@ -214,6 +218,46 @@ export class ProductService {
 
   private fabricFromSpecs(specs?: ProductSpecs | null, fallback?: string): string {
     return (specs?.fabricType || fallback || '').trim();
+  }
+
+  private async findProductBySkuKey(sku: string, relations: string[] = ['variants']) {
+    const key = String(sku || '').trim();
+    if (!key) return null;
+    const found = await this.productRepo.findOne({ where: { sku: key }, relations });
+    if (found) return found;
+    const alias = await this.skuAliasRepo.findOne({ where: { sku: key } });
+    if (alias) {
+      return this.productRepo.findOne({ where: { id: alias.productId }, relations });
+    }
+    const ilike = await this.productRepo.findOne({ where: { sku: ILike(key) }, relations });
+    if (ilike) return ilike;
+    const aliasIlike = await this.skuAliasRepo.findOne({ where: { sku: ILike(key) } });
+    if (aliasIlike) {
+      return this.productRepo.findOne({ where: { id: aliasIlike.productId }, relations });
+    }
+    return null;
+  }
+
+  private async persistSkuAliasInTx(
+    em: EntityManager,
+    productId: string,
+    oldSku: string,
+    newSku: string,
+  ) {
+    const plan = planSkuChange(oldSku, newSku);
+    if (!plan) return;
+    if (plan.aliasOld) {
+      await em.query(
+        `INSERT INTO product_sku_aliases (sku, "productId", "createdAt")
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (sku) DO UPDATE SET "productId" = EXCLUDED."productId"`,
+        [plan.aliasOld, productId],
+      );
+    }
+    await em.query(`DELETE FROM product_sku_aliases WHERE sku = $1 AND "productId" = $2`, [
+      plan.newSku,
+      productId,
+    ]);
   }
 
   private async badgeConfig(): Promise<BadgeConfig> {
@@ -408,6 +452,15 @@ export class ProductService {
         .getMany();
       for (const row of rows) {
         if (row.id && row.sku) skuToId.set(String(row.sku).toLowerCase(), row.id);
+      }
+      const aliases = await this.skuAliasRepo
+        .createQueryBuilder('a')
+        .where('LOWER(a.sku) IN (:...skus)', { skus })
+        .getMany();
+      for (const alias of aliases) {
+        if (alias.productId && alias.sku && !skuToId.has(String(alias.sku).toLowerCase())) {
+          skuToId.set(String(alias.sku).toLowerCase(), alias.productId);
+        }
       }
     }
     const out: string[] = [];
@@ -1501,19 +1554,13 @@ export class ProductService {
 
     let product =
       (await this.productRepo.findOne({ where: { slug: decoded }, relations: ['variants'] })) ||
-      (await this.productRepo.findOne({
-        where: { sku: ILike(decoded) },
-        relations: ['variants'],
-      }));
+      (await this.findProductBySkuKey(decoded));
 
     // Legacy Persian slugs ended with "-{sku}" — resolve by trailing SKU.
     if (!product && decoded.includes('-')) {
       const tail = decoded.split('-').pop()?.trim();
       if (tail) {
-        product = await this.productRepo.findOne({
-          where: { sku: ILike(tail) },
-          relations: ['variants'],
-        });
+        product = await this.findProductBySkuKey(tail);
       }
     }
 
@@ -1907,7 +1954,26 @@ export class ProductService {
       }
     }
 
+    const nextSku =
+      data.sku !== undefined ? String(data.sku || '').trim() : String(existing.sku || '').trim();
+    if (data.sku !== undefined) {
+      if (!nextSku) throw new BadRequestException('کد SKU خالی است');
+      patch.sku = nextSku;
+      const occupiedRows = await this.productRepo.find({ select: ['id', 'sku'] });
+      const occupiedAliases = await this.skuAliasRepo.find({ select: ['sku', 'productId'] });
+      const occupied = [
+        ...occupiedRows.filter((row) => row.id !== id).map((row) => row.sku),
+        ...occupiedAliases.filter((row) => row.productId !== id).map((row) => row.sku),
+      ];
+      if (skuIsOccupied(nextSku, occupied)) {
+        throw new BadRequestException('این SKU قبلاً برای کالای دیگری ثبت شده است');
+      }
+    }
+
     const updated = await this.productRepo.manager.transaction(async (em) => {
+      if (data.sku !== undefined) {
+        await this.persistSkuAliasInTx(em, id, existing.sku, nextSku);
+      }
       await em.getRepository(ProductEntity).update(id, patch as any);
       const row = await em.getRepository(ProductEntity).findOne({
         where: { id },
@@ -2115,16 +2181,13 @@ export class ProductService {
     stock: number,
     channel: 'WHOLESALE' | 'RETAIL' | string = 'WHOLESALE'
   ) {
-    const product = await this.productRepo.findOne({ where: { sku: String(sku).trim() } });
+    const product = await this.findProductBySkuKey(sku, []);
     if (!product) throw new NotFoundException(`محصول با SKU «${sku}» یافت نشد`);
     return this.setProductStock(product.id, stock, channel);
   }
 
   async findBySku(sku: string) {
-    const product = await this.productRepo.findOne({
-      where: { sku: String(sku).trim() },
-      relations: ['variants'],
-    });
+    const product = await this.findProductBySkuKey(sku);
     if (!product) throw new NotFoundException(`محصول با SKU «${sku}» یافت نشد`);
     const cfg = await this.badgeConfig();
     return this.withBadges(product, undefined, cfg);

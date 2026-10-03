@@ -1,5 +1,48 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261003-007"
+    title: "Align site SKU with ERP stock-sync codes without breaking URLs"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261003-007"
+    roles:
+      architect: "cursor:implementer-TASK-20261003-007"
+      implementer: "cursor:implementer-TASK-20261003-007"
+      reviewer: "required-after-diff"
+      security: "required-after-diff"
+    branch: "ai/TASK-20261003-007-erp-sku-align"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-03T09:30:00Z"
+    heartbeat_at: "2026-10-03T09:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/product/entities/product-sku-alias.entity.ts"
+      - "apps/api/src/modules/product/product-sku-alias.ts"
+      - "apps/api/src/modules/product/product-sku-alias.spec.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/product/product.module.ts"
+      - "apps/api/src/config/database.config.ts"
+      - "apps/api/src/database/migrations/20261003-002-product-sku-aliases.ts"
+      - "apps/api/src/modules/erp-inventory/erp-sku-align.pairs.json"
+      - "apps/api/src/modules/erp-inventory/erp-inventory.service.spec.ts"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/api/package.json"
+      - "scripts/align-erp-product-skus.js"
+      - "scripts/_align-erp-product-skus.sh"
+      - "scripts/erp-sku-align.pairs.json"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-03-erp-sku-align.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "findBySku resolves ERP product.code after catalog align"
+      - "Old marketing SKUs remain via product_sku_aliases; slugs unchanged"
+      - "erp_product_map upserted matchedBy sku_align for unique pairs"
+      - "Wholesale and retail same product row; no URL rewrite"
+      - "Ambiguous names (نازگل, ماهپوش, کمند, …) not auto-merged"
+    notes: |
+      skill-top full. ERP settings files claimed by PROD-ACC-PA02; catalog is source of match.
   - id: "TASK-20261003-006"
     title: "SP welcome SMS sent-state on admin cards"
     status: "done"

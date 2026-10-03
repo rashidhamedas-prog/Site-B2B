@@ -49,7 +49,7 @@ function createHarness(opts?: {
   mapFindOne?: (args: { where: { erpVariantSku: string } }) => Promise<unknown>;
   productMapFindOne?: (args: { where: { erpProductSku: string } }) => Promise<unknown>;
   variantFindResult?: Array<{ id: string; productId: string; barcode: string }>;
-  idemSeed?: Map<string, MatrixUpsertResult>;
+  idemSeed?: Map<string, { response: MatrixUpsertResult; expiresAt: Date }>;
 }) {
   const setStockCalls: SetStockCall[] = [];
   const mapSaves: unknown[] = [];
@@ -163,6 +163,21 @@ function baseBody(overrides: Partial<ErpMatrixUpsertDto> = {}): ErpMatrixUpsertD
     ],
     ...overrides,
   };
+}
+
+async function testErpProductCodeAsSku() {
+  const { service, setStockCalls } = createHarness({
+    product: { ...TEST_PRODUCT, sku: '7126' },
+  });
+  const result = await service.upsertMatrix(
+    baseBody({
+      productSku: '7126',
+      variants: [{ erpVariantSku: 'ERP-V1', color: 'مشکی', size: 'M', qty: 8 }],
+    }),
+  );
+  assert(result.ok === true, 'erp code sku: ok');
+  assert(result.resolvedBy === 'sku', 'erp code sku: resolvedBy sku');
+  assert(setStockCalls[0].qty === 8, 'erp code sku: qty');
 }
 
 async function testWholesaleSetStockChannel() {
@@ -390,6 +405,7 @@ async function testPartialMatchOkFalse() {
 }
 
 async function main() {
+  await testErpProductCodeAsSku();
   await testWholesaleSetStockChannel();
   await testRetailSetStockChannel();
   await testDryRunSkipsSetStock();

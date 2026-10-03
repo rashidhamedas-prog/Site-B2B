@@ -5,6 +5,7 @@ import { ProductService } from './product.service';
 import { OptionalJwtAuthGuard } from './optional-jwt.guard';
 import { ProductSearchIndexer } from './product-search-indexer';
 import { ProductEntity } from './entities/product.entity';
+import { ProductSkuAliasEntity } from './entities/product-sku-alias.entity';
 import { ProductVariantEntity } from './entities/product-variant.entity';
 import { VariantColorEntity } from './entities/variant-color.entity';
 import { VariantSizeEntity } from './entities/variant-size.entity';
@@ -22,6 +23,7 @@ import { VendorEntity } from '../vendor/entities/vendor.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([
     ProductEntity,
+    ProductSkuAliasEntity,
     ProductVariantEntity,
     ProductRelatedEntity,
     ProductInternalLinkEntity,
