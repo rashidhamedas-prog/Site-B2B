@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-03T14:05:00Z — TASK-20261003-008 LIVE (remove retail home pills)
+
+- Owner: cursor:implementer-TASK-20261003-008
+- Ship: `a461f3d` on origin/master + VPS web rebuild
+- Browser: `.ir` trust strip then CATEGORIES tiles; intro copy «اگر یک تکه…» absent
+- Health: `https://poshaktaranom.com/api/v1/health` 200
+- Claims released. Independent Reviewer residual (visual field). TASK-20261003-007 SKU still open on other worktree.
+
 ## 2026-10-03T13:40:00Z — TASK-20261003-008 implementing (remove retail home pills)
 
 - Owner: cursor:implementer-TASK-20261003-008
