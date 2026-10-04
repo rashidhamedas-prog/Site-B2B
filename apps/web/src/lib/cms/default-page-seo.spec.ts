@@ -23,6 +23,10 @@ function assert(cond: boolean, msg: string) {
   assert(!empty.title && !empty.canonical, 'no wholesale salesPartnership seo');
   const home = getDefaultPageSeo('RETAIL', 'home');
   assert(!home.title, 'home uses empty default seo');
+  const referral = getDefaultPageSeo('WHOLESALE', 'hamkarMoarefi');
+  assert(referral.canonical === 'https://poshaktaranom.com/hamkar-moarefi', 'referral canonical');
+  assert(!/\d+\s*%/.test(referral.description), 'no invented percent');
+  assert(getDefaultPageTitle('WHOLESALE', 'hamkarMoarefi', 'x') === 'همکار معرفی بوتیک', 'referral title');
 }
 
 console.log('default-page-seo.spec.ts: ok');

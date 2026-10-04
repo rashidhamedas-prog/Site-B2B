@@ -14,4 +14,7 @@ export const CMS_PAGE_KEYS_BASE = [
 /** Retail recruitment landing — not a wholesale (.com) page. */
 export const CMS_RETAIL_ONLY = { key: 'salesPartnership', label: 'همکار بازاریاب' } as const;
 
-export const CMS_WHOLESALE_ONLY = { key: 'wholesale', label: 'شرایط عمده' } as const;
+export const CMS_WHOLESALE_ONLY = [
+  { key: 'wholesale', label: 'شرایط عمده' },
+  { key: 'hamkarMoarefi', label: 'همکار معرفی بوتیک' },
+] as const;

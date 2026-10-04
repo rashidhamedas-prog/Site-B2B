@@ -39,6 +39,7 @@ export const DEFAULT_MENUS: MenusSettings = {
     },
     { id: 'about', label: 'درباره ترنم', href: '/about' },
     { id: 'wholesale', label: 'شرایط عمده', href: '/wholesale' },
+    { id: 'referral', label: 'همکار معرفی', href: '/hamkar-moarefi' },
     { id: 'blog', label: 'وبلاگ', href: '/blog' },
     { id: 'contact', label: 'تماس با ما', href: '/contact' },
     {
@@ -98,3 +99,13 @@ export const DEFAULT_RETAIL_MENUS: MenusSettings = {
     { id: 'l-shipping', label: 'شرایط ارسال', href: '/retail/shipping' },
   ],
 };
+
+export function withBoutiqueReferralNav(items: MenuItem[]): MenuItem[] {
+  const exists = items.some((item) => item.href.split('?')[0].replace(/\/$/, '') === '/hamkar-moarefi');
+  if (exists) return items;
+  const item: MenuItem = { id: 'referral', label: 'همکار معرفی', href: '/hamkar-moarefi' };
+  const index = items.findIndex((entry) => entry.href === '/wholesale');
+  const next = items.slice();
+  next.splice(index === -1 ? next.length : index + 1, 0, item);
+  return next;
+}

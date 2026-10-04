@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 
@@ -27,6 +27,10 @@ export function ReferralApplyForm() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    void loadSettings();
+  }, []);
 
   async function loadSettings() {
     setLoadingSettings(true);

@@ -1,4 +1,4 @@
-import { RETAIL_ORIGIN } from '../seo-origins';
+import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '../seo-origins';
 import { emptyCmsPageSeo, type CmsPageSeo } from './page-seo';
 
 /**
@@ -21,12 +21,27 @@ export function getDefaultPageSeo(
     };
   }
 
+  if (channel === 'WHOLESALE' && pageKey === 'hamkarMoarefi') {
+    return {
+      title: 'همکار معرفی بوتیک',
+      description:
+        'بوتیک پوشاک مناسب را به پوشاک ترنم معرفی کنید. تیم فروش صلاحیت را بررسی می‌کند و بوتیک بعد از تأیید، خودش عمده می‌خرد. شما قیمت، سفارش، پول و ارسال را بر عهده نمی‌گیرید.',
+      ogImage: '',
+      ogAlt: '',
+      canonical: `${WHOLESALE_ORIGIN}/hamkar-moarefi`,
+      robots: 'index',
+    };
+  }
+
   return emptyCmsPageSeo();
 }
 
 export function getDefaultPageTitle(channel: 'RETAIL' | 'WHOLESALE', pageKey: string, fallbackLabel: string): string {
   if (channel === 'RETAIL' && pageKey === 'salesPartnership') {
     return 'همکار بازاریاب پوشاک ترنم';
+  }
+  if (channel === 'WHOLESALE' && pageKey === 'hamkarMoarefi') {
+    return 'همکار معرفی بوتیک';
   }
   return fallbackLabel;
 }

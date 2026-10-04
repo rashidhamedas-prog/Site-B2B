@@ -33,6 +33,7 @@ function assert(cond: boolean, msg: string) {
 {
   const keys = cmsPageKeysForChannel('WHOLESALE').map((p) => p.key);
   assert(keys.includes('wholesale'), 'wholesale-only page');
+  assert(keys.includes('hamkarMoarefi'), 'referral page is editable');
   assert(!keys.includes('salesPartnership'), 'wholesale has no salesPartnership');
   assert(cmsPageLabel('RETAIL', 'home') === 'صفحه اصلی', 'label');
   assert(!cmsPageKeysForChannel('RETAIL').some((p) => p.key === 'wholesale'), 'retail has no wholesale key');

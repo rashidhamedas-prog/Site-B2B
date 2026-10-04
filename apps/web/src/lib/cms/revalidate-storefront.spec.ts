@@ -8,6 +8,7 @@ function assert(cond: boolean, msg: string) {
 }
 
 assert(storefrontPathsForCms('WHOLESALE', 'home')[0] === '/', 'wholesale home');
+assert(storefrontPathsForCms('WHOLESALE', 'hamkarMoarefi')[0] === '/hamkar-moarefi', 'referral path');
 assert(storefrontPathsForCms('RETAIL', 'home')[0] === '/retail', 'retail app home');
 assert(publicStorefrontPathsForCms('RETAIL', 'home')[0] === '/', 'retail public home');
 assert(publicStorefrontPathsForCms('WHOLESALE', 'home').length === 0, 'wholesale has no public alias');

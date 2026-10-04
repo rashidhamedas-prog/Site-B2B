@@ -191,7 +191,7 @@ export function AdminSiteContent() {
       const label = cmsPageLabel(channel, pageKey);
       const defaultSeo = getDefaultPageSeo(channel, pageKey);
       setTitle(getDefaultPageTitle(channel, pageKey, label));
-      setBlocks(pageKey === 'salesPartnership' ? getDefaultBlocks(channel, pageKey) : []);
+      setBlocks(defaultSeo.title || pageKey === 'salesPartnership' ? getDefaultBlocks(channel, pageKey) : []);
       setSeo(defaultSeo.title ? defaultSeo : emptyCmsPageSeo());
       setIsPublished(true);
       setLastSavedAt(null);

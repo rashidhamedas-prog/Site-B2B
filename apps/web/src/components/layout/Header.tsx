@@ -11,7 +11,7 @@ import { MobileMenuButton } from './MobileMenu';
 import { CartBadge } from './CartBadge';
 import { MegaNav } from './MegaNav';
 import { useMenus } from '@/lib/hooks/useMenus';
-import { DEFAULT_MENUS } from '@/lib/menus';
+import { DEFAULT_MENUS, withBoutiqueReferralNav } from '@/lib/menus';
 import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
 
@@ -21,7 +21,7 @@ export function Header() {
   const { menus } = useMenus(
     bag ? { initial: bag.menus, skipNetwork: true } : undefined,
   );
-  const main = menus.main?.length ? menus.main : DEFAULT_MENUS.main;
+  const main = withBoutiqueReferralNav(menus.main?.length ? menus.main : DEFAULT_MENUS.main);
   const { announcement, chrome } = useSiteChrome('WHOLESALE', bag?.chrome ?? null);
 
   const brandName = chromeStr(chrome, 'brandName', 'پوشاک ترنم');
@@ -126,7 +126,7 @@ export function Header() {
               </Link>
             ) : null}
 
-            <MobileMenuButton items={menus.mobile?.length ? menus.mobile : main} />
+            <MobileMenuButton items={withBoutiqueReferralNav(menus.mobile?.length ? menus.mobile : main)} />
           </div>
         </div>
       </div>

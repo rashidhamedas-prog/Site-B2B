@@ -28,6 +28,7 @@ const WHOLESALE_PATHS: Record<string, string[]> = {
   privacy: ['/privacy'],
   terms: ['/terms'],
   wholesale: ['/wholesale'],
+  hamkarMoarefi: ['/hamkar-moarefi'],
 };
 
 /** App Router destinations (after middleware rewrite for retail). */
