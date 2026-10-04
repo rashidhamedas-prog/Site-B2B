@@ -2,6 +2,53 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T14:40:00Z — TASK-20261004-002 integrity spec passed; shipping
+
+- `sales-partner-integrity.integration.spec.ts: OK` on PostgreSQL WASM (PGlite) plus a real Redis process. Native Windows initdb exits 0xC0000005, so the server path of the spec remains for a normal Postgres.
+- Checked: unique reversal 23505, SUM of 501 earned rows, cursor persist, Redis read-once and NX.
+- Panel pass [panel copy](db4077a6-f37c-4d6c-a956-320d06736b25): no further UI edits.
+- Two extra model passes stopped on the account model limit before editing. Earlier financial PASS and security PASS WITH CONDITIONS still stand.
+- Browser of the logged-in panels still needs the live site after deploy.
+
+## 2026-10-04T14:10:00Z — TASK-20261004-002 money re-review passed; still not deployable
+
+- Specs OK: `sales-partner-ledger-policy.spec.ts`, `sales-commission-policy.spec.ts`, `sales-partner-error-scenarios.spec.ts`.
+- Hold reversals stay out of payout until the matched earning is releasable, then reduce that payout. Promotion runs after reversals are written and again inside the payout transaction.
+- Discount for link freeze and backfill is allocated across every order line. Snapshot insert is `ON CONFLICT DO NOTHING`. Cursor lock is transactional and an error does not wipe the cursor.
+- Confirm link for an unpaid converted draft stays open and posts back to the same order.
+- Financial re-review [hold reversal](ed279a36-adde-4489-ba92-ae1df76d8cad): PASS.
+- Security review [session and confirm](d024c502-7b8c-4320-9d3c-bedc1f543bbe): PASS WITH CONDITIONS. Production Redis is required for OTP grants. Do not log confirm bodies. A recorded payout is not a bank transfer.
+- Not run: PostgreSQL and Redis integration. Ports 5432 and 6379 are closed. docker, podman, psql, and redis-server are not installed. The spec refuses a production database name.
+- Not run: browser. The API cannot boot without a database.
+- Do not deploy. Do not mark the task done.
+
+## 2026-10-04T13:40:00Z — TASK-20261004-002 phase 2 coded, not deployable
+
+- Unit: `sales-partner-ledger-policy.spec.ts: OK` after earned-key hash, cursor wrap, net payout.
+- Added: durable ledger cursor with transaction advisory lock, missing snapshot completion on the full order discount, link freeze inside order create, session-scoped OTP grant (`sid` + Redis GETDEL), partner/admin balance labels including debt, confirm link kept for payment retry.
+- Financial review [ledger review](b9035337-165a-4255-8825-54278fe5873f) first returned FAIL; the five must-fix items were then patched (earned key, reversal bucket on release, payoutId excluded from open balance, full-order discount, ON CONFLICT snapshots).
+- Security review [security review](7c07e948-f2ca-4801-89ea-c3f4587d1288): PASS WITH CONDITIONS. No must-fix. Conditions: production Redis for grants, do not log confirm bodies, payout is a manual record not a bank transfer.
+- Not run: PostgreSQL/Redis integration. Local ports 5432 and 6379 are closed and docker is not installed. Spec is `sales-partner-integrity.integration.spec.ts` and it refuses a production database name.
+- Not run: browser. No local API/web server.
+- Do not deploy. Do not mark done.
+
+## 2026-10-04T12:50:00Z — TASK-20261004-002 phase 1 coded, not reviewed
+
+- Ledger policy spec: `sales-partner-ledger-policy.spec.ts: OK` (local ts-node after npm install in worktree).
+- Coded: hashed reversal/payout keys, reversal bucket, SQL balance sums, net payout inside advisory lock, purge blocked while unpaid commission exists, link attribution respects OFF/PREVIEW/disabled, apply no longer overwrites an open application or reactivates a deleted/inactive user, confirm returns payment URL and resume hash.
+- Not done: F05 cursor, F09 atomic snapshots, F10 link freeze, F11 rule precedence, S04 session OTP, S05 draft revision, UI catalog/admin, browser, Postgres integration, independent Reviewer/Security.
+- Do not deploy. Do not mark done.
+
+## 2026-10-04T12:30:00Z — TASK-20261004-002 claimed (sales-partner integrity)
+
+- Owner: cursor:implementer-TASK-20261004-002
+- Branch/worktree: `ai/TASK-20261004-002-sales-partner-integrity` / `D:/proje/Site-B2B-sp-integrity` from origin/master `e81c550`
+- Reproduced on HEAD: F01–F14 and S01–S10 still present (research [SP findings](f7507deb-16b9-4a44-93ce-cbfa308b1242)). F08 purge detaches ledger without reversal. S07 Redis cooldown is already NX; attempt counters are not.
+- Slack public search for همکار/بازاریاب and sales-partner commission returned no messages.
+- Phase 1 in progress: hashed idempotency keys, reversal applied to the same bucket as the source earning, net payout allocation, SQL balance sums.
+- Open product decisions (do not invent): rate fixation instant, cash/installment collection, suspended-partner payout rights, post-payout clawback policy (safe default: carry debt), multi-partner window, partial-qty RMA (model has no quantity — not implemented), multi-item basket, IBAN beneficiary KYC, retention days, re-consent after terms change.
+- Next: failing ledger-policy specs, then service changes. No production data mutation.
+
 ## 2026-10-04T03:45:00Z — TASK-20261003-007 CLOSED LIVE
 
 - Owner: cursor:implementer-TASK-20261003-007

@@ -75,6 +75,20 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  async take(key: string): Promise<string | null> {
+    if (!this.client) return null;
+    try {
+      const value = await this.client.eval(
+        "local v = redis.call('GET', KEYS[1]); if v then redis.call('DEL', KEYS[1]) end; return v",
+        1,
+        key,
+      );
+      return typeof value === 'string' ? value : null;
+    } catch {
+      return null;
+    }
+  }
+
   async del(key: string): Promise<void> {
     if (!this.client) return;
     try {
@@ -348,6 +362,47 @@ export class OtpService {
       expiresAt: Date.now() + ttl * 1000,
       attempts: 0,
     });
+  }
+
+  private grantKey(userId: string, sessionId: string, purpose: string) {
+    return `otp:grant:${purpose}:${userId}:${sessionId}`;
+  }
+
+  /** One-time proof that this login session, not merely this user, passed OTP. */
+  async markSessionGrant(userId: string, sessionId: string, purpose: string): Promise<void> {
+    const ttl = Math.max(this.ttl(), 600);
+    const key = this.grantKey(userId, sessionId, purpose);
+    if (this.redis.isReady) {
+      await this.redis.setex(key, ttl, '1');
+    }
+    this.memory.set(key, {
+      hash: '1',
+      expiresAt: Date.now() + ttl * 1000,
+      attempts: 0,
+    });
+  }
+
+  async hasSessionGrant(userId: string, sessionId: string, purpose: string): Promise<boolean> {
+    const key = this.grantKey(userId, sessionId, purpose);
+    if (this.redis.isReady) {
+      const raw = await this.redis.get(key);
+      return Boolean(raw);
+    }
+    const mem = this.memory.get(key);
+    return Boolean(mem && mem.expiresAt >= Date.now());
+  }
+
+  async consumeSessionGrant(userId: string, sessionId: string, purpose: string): Promise<boolean> {
+    const key = this.grantKey(userId, sessionId, purpose);
+    if (this.redis.isReady) {
+      const raw = await this.redis.take(this.grantKey(userId, sessionId, purpose));
+      this.memory.delete(key);
+      return Boolean(raw);
+    }
+    const mem = this.memory.get(key);
+    if (!mem || mem.expiresAt < Date.now()) return false;
+    this.memory.delete(key);
+    return true;
   }
 
   async hasVerifiedSession(userId: string): Promise<boolean> {

@@ -142,8 +142,9 @@ export function SpAdminDashboard({
       {report?.commissions ? (
         <div className="grid gap-3 sm:grid-cols-3">
           <SpKpi label="در نگهداری" value={`${toman(report.commissions.held)} تومان`} onClick={() => onGo('payouts')} />
-          <SpKpi label="پرداخت‌شده" value={`${toman(report.commissions.paid)} تومان`} onClick={() => onGo('payouts')} />
+          <SpKpi label="ثبت واریز دستی" value={`${toman(report.commissions.paid)} تومان`} onClick={() => onGo('payouts')} />
           <SpKpi label="برگشت‌خورده" value={`${toman(report.commissions.reversed)} تومان`} onClick={() => onGo('orders')} />
+          <SpKpi label="بدهی" value={`${toman(report.commissions.debt ?? 0)} تومان`} onClick={() => onGo('payouts')} />
         </div>
       ) : null}
 

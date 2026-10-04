@@ -53,6 +53,7 @@ import {
 import { normalizePhone } from '../auth/phone.util';
 import { attributeLinkProducts, normalizeSalesPartnerCode } from '../sales-partner/sales-partner-attribution';
 import { isBlockedSelfReferral } from '../sales-partner/sales-partner-draft-policy';
+import { freezeSalesPartnerLinkSnapshots } from '../sales-partner/sales-partner-link-freeze';
 
 @Injectable()
 export class OrderService {
@@ -911,7 +912,22 @@ export class OrderService {
             commissionPercent: i.commissionPercent,
           }),
         );
-        await itemRepo.save(items);
+        const savedItems = await itemRepo.save(items);
+        if (linkAttribution) {
+          await freezeSalesPartnerLinkSnapshots(manager, {
+            orderId: orderRow.id,
+            salesPartnerId: linkAttribution.partnerId,
+            productIds: linkAttribution.productIds,
+            items: savedItems.map((item) => ({
+              id: item.id,
+              productVariantId: item.productVariantId,
+              totalPrice: item.totalPrice,
+            })),
+            orderDiscountIrr: discountAmount + walletApplied,
+            walletAppliedIrr: walletApplied,
+            at: new Date(),
+          });
+        }
 
         // Stock stays until settlement (CONFIRMED / paid). Availability was checked above.
         if (walletApplied > 0) {
@@ -1474,6 +1490,13 @@ export class OrderService {
       );
     }
     await this.assertNoCapturedPayment(id);
+    const openCommission: Array<{ n: string }> = await this.dataSource.query(
+      `SELECT COUNT(*)::text AS n FROM sales_commission_ledger_entries WHERE "orderId"::text = $1::text AND "payoutId" IS NULL`,
+      [id],
+    );
+    if (Number(openCommission[0]?.n || 0) > 0) {
+      throw new BadRequestException('سفارش تعهد پورسانت حل‌نشده دارد و قابل پاک‌سازی نیست');
+    }
     await this.reverseEffects(order);
     await this.dataSource.transaction(async (manager) => {
       await this.purgeOrderDependents(manager, id);
@@ -1722,6 +1745,23 @@ export class OrderService {
     cartProductIds: string[];
   }): Promise<{ partnerId: string; productIds: string[] } | null> {
     if (input.channel !== 'RETAIL') return null;
+    const settingsRows: Array<{ value: unknown }> = await this.dataSource.query(
+      `SELECT value FROM system_settings WHERE key = 'salesPartners' LIMIT 1`,
+    );
+    const raw = settingsRows[0]?.value;
+    const mode = raw && typeof raw === 'object' && 'mode' in (raw as object)
+      ? String((raw as { mode?: string }).mode || '').toUpperCase()
+      : '';
+    const enabled = raw && typeof raw === 'object' && (raw as { enabled?: boolean }).enabled === true;
+    if (mode === 'OFF' || mode === 'PREVIEW' || !enabled) return null;
+    if (mode === 'CANARY') {
+      const canary = String((raw as { canaryPhone?: string }).canaryPhone || '');
+      const partnersPreview: Array<{ phone: string }> = await this.dataSource.query(
+        `SELECT phone FROM sales_partner_profiles WHERE "publicCode" = $1 AND status = 'ACTIVE' LIMIT 1`,
+        [normalizeSalesPartnerCode(input.code) || ''],
+      );
+      if (!partnersPreview[0] || partnersPreview[0].phone !== canary) return null;
+    }
     const code = normalizeSalesPartnerCode(input.code);
     const requested = (input.requestedProductIds || []).filter((id) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),

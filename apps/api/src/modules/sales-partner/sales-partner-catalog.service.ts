@@ -351,6 +351,10 @@ export class SalesPartnerCatalogService {
   }
 
   async preview(salesPartnerId: string, productId: string, lineTotalIrr: number) {
+    return this.previewAt(salesPartnerId, productId, lineTotalIrr, new Date());
+  }
+
+  async previewAt(salesPartnerId: string, productId: string, lineTotalIrr: number, at: Date) {
     if (!Number.isInteger(lineTotalIrr) || lineTotalIrr < 0) {
       throw new BadRequestException('مبلغ نامعتبر است');
     }
@@ -360,7 +364,7 @@ export class SalesPartnerCatalogService {
       productId,
       categoryId: product?.categoryId || null,
       lineTotalAfterDiscountIrr: lineTotalIrr,
-    }, salesPartnerId, new Date());
+    }, salesPartnerId, at);
     return {
       ruleId: rule?.id ?? null,
       scope: rule?.scope ?? null,

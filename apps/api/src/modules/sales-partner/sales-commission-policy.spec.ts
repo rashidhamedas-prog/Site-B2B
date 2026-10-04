@@ -63,6 +63,21 @@ const snaps = snapshotLineCommissions({
 });
 assert(snaps[0].eligibleNetIrr + snaps[1].eligibleNetIrr === 190_000, 'promo allocated, wallet ignored');
 assert(snaps[0].commissionIrr + snaps[1].commissionIrr === 19_000, 'commission after discount');
+const fullOrder = snapshotLineCommissions({
+  lines: [
+    { orderItemId: 'clicked', lineTotalIrr: 100_000, percent: 10 },
+    { orderItemId: 'other', lineTotalIrr: 100_000, percent: 0 },
+  ],
+  orderDiscountIrr: 20_000,
+  walletAppliedIrr: 0,
+});
+const subset = snapshotLineCommissions({
+  lines: [{ orderItemId: 'clicked', lineTotalIrr: 100_000, percent: 10 }],
+  orderDiscountIrr: 20_000,
+  walletAppliedIrr: 0,
+});
+assert(fullOrder[0].commissionIrr === 9_000, 'clicked line shares the order discount');
+assert(subset[0].commissionIrr === 8_000, 'subset allocation is the bug we refuse to ship');
 assert(remainingReversalIrr(10_000, 4_000) === 6_000, 'partial remaining');
 assert(remainingReversalIrr(10_000, 10_000) === 0, 'already reversed');
 assert(isFullOrderReversalStatus('CANCELLED') && !isFullOrderReversalStatus('DELIVERED'), 'full reverse statuses');

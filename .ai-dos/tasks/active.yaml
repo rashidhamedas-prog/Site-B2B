@@ -1,5 +1,50 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261004-002"
+    title: "Sales-partner money integrity, auth bounds, and operator UX"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261004-002"
+    roles:
+      architect: "cursor:implementer-TASK-20261004-002"
+      implementer: "cursor:implementer-TASK-20261004-002"
+      reviewer: "required-independent-money"
+      security: "required-independent-auth-pii-payments"
+    branch: "ai/TASK-20261004-002-sales-partner-integrity"
+    worktree: "D:/proje/Site-B2B-sp-integrity"
+    claimed_at: "2026-10-04T12:30:00Z"
+    heartbeat_at: "2026-10-04T12:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/"
+      - "apps/api/src/database/migrations/20261004-001-sales-partner-integrity.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/api/src/modules/order/order-purge.spec.ts"
+      - "apps/web/src/components/sales-partners/"
+      - "apps/web/src/app/sales-partners/"
+      - "apps/web/src/app/confirm/sales-partner/"
+      - "apps/web/src/components/admin/sales-partners/"
+      - "apps/web/src/app/go/sp/"
+      - "docs/architecture/sales-partner-program.md"
+      - "docs/reports/2026-10-04-sales-partner-integrity.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Reproduced F01-F14 and S01-S10 on origin/master e81c550. Phase 1 is ledger
+      keys, net payout, SQL balances, and reversal allocation. Product decisions
+      that are still open stay fail-closed; prior accepted obligations are not deleted.
+      order.service.ts is claimed only for sales-partner attribution/purge hooks.
+      Independent Reviewer and Security are required before done.
+    acceptance_criteria:
+      - "RMA reversal key fits unique column and a second insert is a no-op"
+      - "Payout allocates net available including reversals and post-payout debt"
+      - "Partner and program balances are SQL sums, not capped row samples"
+      - "Confirm ONLINE returns a resume handle for the same order; retry does not create a second order"
+      - "Program OFF/PREVIEW blocks new link attribution; prior orders stay"
+      - "OTP proof is session-bound; apply does not reactivate a suspended account"
+      - "Unit specs for ledger allocation and payout keys pass"
   - id: "TASK-20261003-009"
     title: "Stop void/purge of captured DigiPay/TorobPay orders; restore last-night paid retail orders"
     status: "done"

@@ -41,6 +41,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     role?: string;
     purpose?: string;
     iat?: number;
+    sid?: string;
   }) {
     const user = await this.authService.findById(payload.sub);
     if (!user || !user.isActive) throw new UnauthorizedException();
@@ -80,6 +81,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         customerId: user.customerId,
         purpose,
         salesPartnerId: partner.id,
+        sid: payload.sid,
       };
     }
     return {

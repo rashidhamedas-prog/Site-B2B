@@ -16,7 +16,7 @@ import { NotificationService } from '../notification/notification.service';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import { SALES_PARTNER_EVENT, salesPartnerOutboxPayload } from './sales-partner-events';
 import * as bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UserEntity } from '../auth/entities/user.entity';
 import { OtpCooldownError, OtpService } from '../redis/redis.module';
@@ -159,12 +159,8 @@ export class SalesPartnerService {
         answers,
         userId: user?.id ?? null,
       });
-    } else {
-      application.displayName = displayName;
-      application.socialHandles = Object.keys(socialHandles).length ? socialHandles : application.socialHandles;
-      application.answers = answers;
+      await this.applications.save(application);
     }
-    await this.applications.save(application);
     const issued = await this.issueOtp(phone, displayName, 'sales_partner_apply');
     await this.audit(null, 'application.otp_requested', 'application', application.id, { phoneMasked: phone.slice(0, 4) });
     return {
@@ -192,15 +188,8 @@ export class SalesPartnerService {
         isActive: true,
       });
       await this.users.save(user);
-    } else {
-      if (user.deletedAt) {
-        await this.users.restore(user.id);
-        user = await this.users.findOneOrFail({ where: { id: user.id } });
-      }
-      if (!user.isActive && user.role === 'CUSTOMER') {
-        user.isActive = true;
-        await this.users.save(user);
-      }
+    } else if (user.deletedAt || !user.isActive) {
+      throw new ConflictException('این شماره برای ثبت‌نام همکاری در دسترس نیست');
     }
     if (isStaffRole(user.role) || vendorRole(user.role)) {
       throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
@@ -267,7 +256,7 @@ export class SalesPartnerService {
     await this.verifyOtp(phone, code, 'sales_partner');
     const session = await this.issuePartnerSession(phone);
     const user = await this.users.findOne({ where: { phone } });
-    if (user) await this.otp.markVerifiedSession(user.id);
+    if (user) await this.otp.markSessionGrant(user.id, session.sid, 'sales_partner_password');
     return session;
   }
 
@@ -280,10 +269,12 @@ export class SalesPartnerService {
     return this.issuePartnerSession(phone);
   }
 
-  async me(salesPartnerId: string) {
+  async me(salesPartnerId: string, sessionId?: string) {
     const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
     if (!profile) throw new NotFoundException();
-    const canSetWithoutCurrent = await this.otp.hasVerifiedSession(profile.userId);
+    const canSetWithoutCurrent = Boolean(
+      sessionId && await this.otp.hasSessionGrant(profile.userId, sessionId, 'sales_partner_password'),
+    );
     return {
       ...toPublicSalesPartner(profile),
       canSetPasswordWithoutCurrent: canSetWithoutCurrent,
@@ -295,6 +286,7 @@ export class SalesPartnerService {
     salesPartnerId: string,
     password: string,
     currentPassword?: string,
+    sessionId?: string,
   ) {
     const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
     if (!profile) throw new NotFoundException();
@@ -306,14 +298,18 @@ export class SalesPartnerService {
     const policyError = validateNewPassword(password, user.phone);
     if (policyError) throw new BadRequestException(policyError);
 
-    const hasOtpSession = await this.otp.hasVerifiedSession(user.id);
     if (currentPassword) {
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!valid) throw new BadRequestException('رمز عبور فعلی اشتباه است');
-    } else if (!hasOtpSession) {
-      throw new BadRequestException(
-        'برای تعریف رمز بدون رمز فعلی، با پیامک وارد شوید یا رمز فعلی را وارد کنید',
+    } else {
+      const granted = Boolean(
+        sessionId && await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
       );
+      if (!granted) {
+        throw new BadRequestException(
+          'برای تعریف رمز بدون رمز فعلی، با پیامک وارد شوید یا رمز فعلی را وارد کنید',
+        );
+      }
     }
 
     const same = await bcrypt.compare(password, user.passwordHash);
@@ -322,7 +318,6 @@ export class SalesPartnerService {
     user.passwordHash = await bcrypt.hash(password, 12);
     user.passwordChangedAt = new Date();
     await this.users.save(user);
-    if (hasOtpSession) await this.otp.clearVerifiedSession(user.id);
     await this.audit(user.id, 'profile.password_updated', 'profile', profile.id, {});
     return {
       message: currentPassword ? 'رمز عبور تغییر کرد' : 'رمز عبور ذخیره شد',
@@ -657,9 +652,11 @@ export class SalesPartnerService {
     if (!programAllowsPartnerAction(settings, phone)) {
       throw new ForbiddenException('برنامه همکاری فعلاً فعال نیست');
     }
+    const sid = randomUUID();
     user.lastLoginAt = new Date();
     await this.users.save(user);
     return {
+      sid,
       accessToken: this.jwt.sign({
         sub: user.id,
         phone: user.phone,
@@ -667,6 +664,7 @@ export class SalesPartnerService {
         customerId: user.customerId ?? undefined,
         purpose: SALES_PARTNER_PURPOSE,
         salesPartnerId: profile.id,
+        sid,
       }),
       role: SALES_PARTNER_ACTING_ROLE,
       purpose: SALES_PARTNER_PURPOSE,

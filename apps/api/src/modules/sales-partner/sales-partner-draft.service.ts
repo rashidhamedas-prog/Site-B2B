@@ -52,6 +52,7 @@ import {
 } from './sales-partner-draft-policy';
 import { canSalesPartnerCreateDraft } from './sales-partner-policy';
 import { programAllowsPartnerAction } from './sales-partner-settings';
+import { PaymentService } from '../payment/payment.service';
 import { SALES_PARTNER_EVENT } from './sales-partner-events';
 import { commissionAmountIrr, selectCommissionRule } from './sales-commission-policy';
 import { canAdminChangeAttribution, partnerOrderAttribution } from './sales-partner-attribution';
@@ -82,6 +83,7 @@ export class SalesPartnerDraftService {
     private readonly catalog: SalesPartnerCatalogService,
     private readonly customers: CustomerService,
     private readonly orders: OrderService,
+    private readonly payments: PaymentService,
     private readonly shipping: ShippingService,
     private readonly config: ConfigService,
     private readonly dataSource: DataSource,
@@ -331,17 +333,26 @@ export class SalesPartnerDraftService {
     if (confirmPageGone(draft.status)) {
       throw new GoneException('این لینک دیگر معتبر نیست');
     }
+    const resumePayment = draft.status === 'CONVERTED_TO_ORDER';
+    if (resumePayment && draft.convertedOrderId) {
+      const order = await this.orderRows.findOne({ where: { id: draft.convertedOrderId } });
+      if (!order || order.status !== 'AWAITING_PAYMENT') {
+        throw new GoneException('این سفارش دیگر در انتظار پرداخت نیست');
+      }
+    }
     const profile = await this.profiles.findOne({ where: { id: draft.salesPartnerId } });
     const items = await this.items.find({ where: { draftId: draft.id } });
     const payment = await this.settingsRepo.findOne({ where: { key: 'payment' } });
     const cash = resolveCashOnDeliveryFlags(payment?.value).retailCashEnabled;
-    const quote = await this.shipping.quote({
-      pieces: items.reduce((sum, row) => sum + row.quantity, 0),
-      orderTotal: draft.merchandiseIrr,
-      channel: 'RETAIL',
-    });
-    draft.shippingFeeIrr = Number(quote.fee || 0);
-    await this.drafts.save(draft);
+    if (!resumePayment) {
+      const quote = await this.shipping.quote({
+        pieces: items.reduce((sum, row) => sum + row.quantity, 0),
+        orderTotal: draft.merchandiseIrr,
+        channel: 'RETAIL',
+      });
+      draft.shippingFeeIrr = Number(quote.fee || 0);
+      await this.drafts.save(draft);
+    }
     return {
       seller: 'ترنم',
       partnerDisplayName: profile?.displayName || 'همکار فروش',
@@ -357,7 +368,10 @@ export class SalesPartnerDraftService {
         lineTotalIrr: row.lineTotalIrr,
       })),
       cashEnabled: cash,
-      notice: 'تا زمانی که خودتان تأیید نکنید سفارشی ثبت یا مبلغی دریافت نمی‌شود. فروشنده اصلی ترنم است.',
+      resumePayment,
+      notice: resumePayment
+        ? 'سفارش ثبت شده و هنوز پرداخت نشده است. ادامه، همان سفارش را به پرداخت می‌برد.'
+        : 'تا زمانی که خودتان تأیید نکنید سفارشی ثبت یا مبلغی دریافت نمی‌شود. فروشنده اصلی ترنم است.',
     };
   }
 
@@ -374,7 +388,7 @@ export class SalesPartnerDraftService {
     const draft = await this.draftByToken(token);
     await this.expireIfNeeded(draft);
     if (draft.status === 'CONVERTED_TO_ORDER' && draft.convertedOrderId) {
-      return { orderId: draft.convertedOrderId, status: 'CONVERTED_TO_ORDER' };
+      return this.resumeConverted(draft, input.paymentMethod);
     }
     if (confirmActionGone(draft.status)) {
       throw new GoneException('این لینک دیگر معتبر نیست');
@@ -435,7 +449,7 @@ export class SalesPartnerDraftService {
       }));
       locked.status = 'CONVERTED_TO_ORDER';
       locked.convertedOrderId = order.id;
-      locked.confirmationTokenHash = null;
+      locked.confirmationResumeTokenHash = hashConfirmationToken(token);
       await manager.save(locked);
       return { orderId: order.id };
     });
@@ -445,7 +459,43 @@ export class SalesPartnerDraftService {
       status: 'CONVERTED_TO_ORDER',
     });
     await this.refreshRiskFlags(draft.salesPartnerId);
-    return { ...created, status: 'CONVERTED_TO_ORDER' };
+    const paymentUrl = paymentMethod === 'ONLINE'
+      ? await this.startOrderPayment(created.orderId, draft.customerPhone)
+      : null;
+    return { ...created, status: 'CONVERTED_TO_ORDER', paymentUrl, paymentMethod, paid: false };
+  }
+
+  private async resumeConverted(
+    draft: SalesPartnerOrderDraftEntity,
+    paymentMethod?: 'ONLINE' | 'CASH',
+  ) {
+    const order = await this.orderRows.findOne({ where: { id: draft.convertedOrderId! } });
+    if (!order || order.salesPartnerSubmissionId !== draft.id) {
+      throw new ConflictException('بازیابی این سفارش ممکن نیست');
+    }
+    const paymentUrl = paymentMethod === 'ONLINE' && order.status === 'AWAITING_PAYMENT' && draft.customerPhone
+      ? await this.startOrderPayment(order.id, draft.customerPhone)
+      : null;
+    return {
+      orderId: order.id,
+      status: order.status,
+      paymentUrl,
+      paymentMethod: order.paymentMethod,
+      paid: order.status !== 'AWAITING_PAYMENT',
+    };
+  }
+
+  private async startOrderPayment(orderId: string, phone: string) {
+    const order = await this.orderRows.findOne({ where: { id: orderId } });
+    if (!order?.customerId) return null;
+    const started = await this.payments.start({
+      orderId,
+      customerId: order.customerId,
+      mobile: phone,
+      channel: 'RETAIL',
+      providerCode: 'ZARINPAL',
+    });
+    return started.redirectUrl;
   }
 
   async rejectByToken(token: string) {
@@ -581,7 +631,10 @@ export class SalesPartnerDraftService {
 
   private async draftByToken(token: string) {
     if (!token || token.length < 16) throw new NotFoundException('لینک تأیید معتبر نیست');
-    const draft = await this.drafts.findOne({ where: { confirmationTokenHash: hashConfirmationToken(token) } });
+    const hash = hashConfirmationToken(token);
+    const draft = await this.drafts.findOne({
+      where: [{ confirmationTokenHash: hash }, { confirmationResumeTokenHash: hash }],
+    });
     if (!draft) throw new NotFoundException('لینک تأیید معتبر نیست');
     return draft;
   }

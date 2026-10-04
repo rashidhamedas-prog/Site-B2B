@@ -96,7 +96,7 @@ export function SpKpi({
   const body = (
     <>
       <p className={cn('text-xs', accent ? 'text-[#1B5C4A]' : 'text-stone-500')}>{label}</p>
-      <p className="mt-1 truncate text-xl font-semibold tabular-nums tracking-tight text-stone-900">{value}</p>
+      <p className="mt-1 break-words text-xl font-semibold tabular-nums tracking-tight text-stone-900">{value}</p>
       {hint ? <p className="mt-1 text-[11px] leading-5 text-stone-500">{hint}</p> : null}
     </>
   );

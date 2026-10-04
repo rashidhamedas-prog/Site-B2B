@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
@@ -10,6 +10,7 @@ import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { ReturnRequestEntity } from '../rma/entities/return-request.entity';
 import { CustomerModule } from '../customer/customer.module';
 import { OrderModule } from '../order/order.module';
+import { PaymentModule } from '../payment/payment.module';
 import { ShippingModule } from '../shipping/shipping.module';
 import {
   SalesCommissionLedgerEntryEntity,
@@ -65,6 +66,7 @@ const ENTITIES = [
     AuthModule,
     CustomerModule,
     OrderModule,
+    forwardRef(() => PaymentModule),
     ShippingModule,
   ],
   controllers: [

@@ -36,10 +36,10 @@ export class SalesPartnerAuthController {
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(SALES_PARTNER_ACTING_ROLE)
   @ApiBearerAuth()
-  me(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+  me(@Req() req: { user?: { purpose?: string; salesPartnerId?: string; sid?: string } }) {
     if (!isSalesPartnerPurpose(req.user?.purpose) || !req.user?.salesPartnerId) {
       throw new ForbiddenException('دسترسی غیرمجاز');
     }
-    return this.salesPartners.me(req.user.salesPartnerId);
+    return this.salesPartners.me(req.user.salesPartnerId, req.user.sid);
   }
 }

@@ -1511,7 +1511,7 @@ export function AdminSalesPartners() {
         description={
           availableIrr == null
             ? 'ابتدا مانده را بارگذاری کنید.'
-            : `ثبت تسویه ${toman(availableIrr)} تومان برای «${partnerNameById(partners, payoutPartnerId) || 'همکار'}» با مرجع ${bankReference.trim()} بلافاصله در دفتر پورسانت PAID می‌شود.`
+            : `ثبت واریز دستی ${toman(availableIrr)} تومان برای «${partnerNameById(partners, payoutPartnerId) || 'همکار'}» با مرجع ${bankReference.trim()}. این کار انتقال بانکی نیست؛ فقط دفتر را به‌عنوان ثبت‌شده علامت می‌زند.`
         }
         confirmLabel="ثبت به‌عنوان پرداخت‌شده"
         requireReason={false}

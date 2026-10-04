@@ -32,6 +32,9 @@ export class SalesPartnerOrderDraftEntity {
   @Column({ type: 'varchar', length: 64, nullable: true })
   confirmationTokenHash: string | null;
 
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  confirmationResumeTokenHash: string | null;
+
   @Column({ type: 'timestamptz', nullable: true })
   expiresAt: Date | null;
 

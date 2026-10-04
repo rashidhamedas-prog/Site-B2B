@@ -46,6 +46,7 @@ assert(priceDriftBps(100_000, 110_000) > 0, '4 price drift detected');
 
 // 6 partner suspended after send: confirm page still readable, convert blocked by profile check
 assert(confirmPageGone('AWAITING_CUSTOMER_CONFIRMATION') === false, '6 link readable');
+assert(confirmPageGone('CONVERTED_TO_ORDER') === false, 'unpaid confirm link stays readable');
 
 // 7 customer confirms but does not pay: retail order stays AWAITING_PAYMENT, no earned yet
 assert(confirmActionGone('CUSTOMER_CONFIRMED') === false, '7 confirm then pay is retail FSM');

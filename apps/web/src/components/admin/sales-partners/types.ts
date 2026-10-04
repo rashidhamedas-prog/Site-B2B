@@ -141,7 +141,8 @@ export type Report = {
     available: number;
     paid: number;
     reversed: number;
-    sampleSize?: number;
+    debt?: number;
+    sampleSize?: number | null;
   };
   payouts?: { count: number; paidIrr: number };
   note: string;

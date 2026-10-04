@@ -15,6 +15,7 @@ type PublicDraft = {
   shippingFeeIrr: number;
   items: { name: string | null; quantity: number; lineTotalIrr: number }[];
   cashEnabled: boolean;
+  resumePayment?: boolean;
   notice: string;
 };
 
@@ -49,16 +50,40 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
     setBusy(true);
     setError(null);
     try {
-      await apiClient.post(`/sales-partner-confirmations/${encodeURIComponent(token)}/confirm`, {
-        recipientName,
-        province,
-        city,
-        address,
-        postalCode: postalCode || undefined,
-        paymentMethod,
-        consent,
-      });
-      setDone('سبد تأیید شد. اگر پرداخت آنلاین باشد، ادامه از درگاه ترنم انجام می‌شود.');
+      const result = await apiClient.post<{
+        status?: string;
+        orderId?: string;
+        paymentUrl?: string | null;
+        next?: string;
+      }>(`/sales-partner-confirmations/${encodeURIComponent(token)}/confirm`, data?.resumePayment
+        ? {
+          recipientName: 'ثبت‌شده',
+          province: 'ثبت‌شده',
+          city: 'ثبت‌شده',
+          address: 'نشانی قبلاً ثبت شده است',
+          paymentMethod,
+          consent: true,
+        }
+        : {
+          recipientName,
+          province,
+          city,
+          address,
+          postalCode: postalCode || undefined,
+          paymentMethod,
+          consent,
+        });
+      if (result.paymentUrl) {
+        window.location.assign(result.paymentUrl);
+        return;
+      }
+      if (result.orderId && paymentMethod === 'ONLINE') {
+        setDone('سفارش ثبت شد و هنوز پرداخت نشده است. ادامه پرداخت از همان سفارش انجام می‌شود.');
+        return;
+      }
+      setDone(paymentMethod === 'CASH'
+        ? 'سفارش ثبت شد. پرداخت هنگام تحویل با ترنم است؛ این پیام به معنی پرداخت‌شده نیست.'
+        : 'سفارش ثبت شد.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تأیید ناموفق بود');
     } finally {
@@ -149,6 +174,12 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
                 void confirm();
               }}
             >
+              {data.resumePayment ? (
+                <SpButton type="submit" className="w-full" disabled={busy}>
+                  {busy ? 'در حال اتصال به پرداخت…' : 'ادامه پرداخت همین سفارش'}
+                </SpButton>
+              ) : (
+                <>
               <p className="text-sm font-medium text-stone-900">نشانی تحویل</p>
               <label className="block text-sm" htmlFor="cf-name">
                 نام گیرنده
@@ -244,6 +275,8 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
               <SpButton type="button" variant="destructive" className="w-full" disabled={busy} onClick={() => void reject()}>
                 رد کردن سبد
               </SpButton>
+                </>
+              )}
             </form>
           </section>
         )}

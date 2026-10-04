@@ -25,7 +25,7 @@ type PartnerReport = {
     converted: number;
     stale: number;
   };
-  commissions: { held: number; available: number; paid: number; reversed: number };
+  commissions: { held: number; available: number; paid: number; reversed: number; debt?: number };
   note: string;
   generatedAt: string;
 };
@@ -87,10 +87,12 @@ export function SalesPartnerHome() {
         </SpCard>
       )}
       {balances && (
-        <section className="mt-3 grid grid-cols-3 gap-2 sm:gap-3" aria-label="وضعیت پول">
-          <SpKpi label="در انتظار آزادسازی" value={toman(balances.held)} hint="بعد از تحویل" />
-          <SpKpi label="قابل‌برداشت" value={toman(balances.available)} hint="تومان" accent />
-          <SpKpi label="واریزشده" value={toman(balances.paid)} hint="تومان" />
+        <section className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="وضعیت پول">
+          <SpKpi label="در انتظار آزادسازی" value={toman(balances.held)} hint="بعد از تحویل و دوره نگهداری" />
+          <SpKpi label="قابل‌برداشت" value={toman(balances.available)} hint="تومان، آماده ثبت تسویه" accent />
+          <SpKpi label="واریز ثبت‌شده" value={toman(balances.paid)} hint="ثبت دستی؛ انتقال بانکی جدا است" />
+          <SpKpi label="برگشت" value={toman(balances.reversed)} hint="مرجوعی و لغو" />
+          <SpKpi label="بدهی" value={toman(balances.debt ?? 0)} hint="از درآمد بعدی کم می‌شود" />
         </section>
       )}
       {report && (
@@ -113,7 +115,7 @@ export function SalesPartnerHome() {
               </span>
             </p>
             <p className="rounded-xl bg-[#f6f3ee] px-3 py-2">
-              خریدشده
+              سفارش ثبت‌شده
               <span className="mt-0.5 block font-semibold tabular-nums">
                 {report.drafts.converted.toLocaleString('fa-IR')}
               </span>

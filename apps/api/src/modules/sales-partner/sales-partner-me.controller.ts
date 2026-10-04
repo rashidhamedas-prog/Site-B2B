@@ -167,13 +167,14 @@ export class SalesPartnerMeController {
 
   @Patch('me/password')
   setPassword(
-    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string; sid?: string } },
     @Body() body: SalesPartnerSetPasswordDto,
   ) {
     return this.salesPartners.setOrChangePassword(
       this.requirePartner(req),
       body.password,
       body.currentPassword,
+      req.user?.sid,
     );
   }
 

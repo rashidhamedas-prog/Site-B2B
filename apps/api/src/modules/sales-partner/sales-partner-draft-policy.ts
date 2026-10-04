@@ -207,7 +207,7 @@ export function smsFailureBlocksSend(nodeEnv: string | undefined, sent: boolean)
 }
 
 export function confirmPageGone(status: string | null | undefined): boolean {
-  return status !== 'AWAITING_CUSTOMER_CONFIRMATION';
+  return status !== 'AWAITING_CUSTOMER_CONFIRMATION' && status !== 'CONVERTED_TO_ORDER';
 }
 
 export function confirmActionGone(status: string | null | undefined): boolean {

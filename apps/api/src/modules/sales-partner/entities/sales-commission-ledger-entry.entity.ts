@@ -24,11 +24,15 @@ export class SalesCommissionLedgerEntryEntity {
   @Column({ type: 'timestamptz', nullable: true })
   availableAt: Date | null;
 
-  @Column({ type: 'varchar', length: 120, unique: true })
+  @Column({ type: 'varchar', length: 80, unique: true })
   idempotencyKey: string;
 
-  @Column({ type: 'varchar', length: 40, nullable: true })
+  @Column({ type: 'varchar', length: 64, nullable: true })
   reasonCode: string | null;
+
+  /** held | available — which bucket a reversal reduces. Null on earnings. */
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  bucket: string | null;
 
   @Column({ type: 'uuid', nullable: true })
   createdBy: string | null;
