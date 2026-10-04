@@ -232,6 +232,12 @@ export class WholesaleReferralAdminController {
     return this.referrals.report(req.user?.role || '');
   }
 
+  @Get('settings')
+  @AdminOnly()
+  adminSettings(@Req() req: AuthRequest) {
+    return this.referrals.adminSettings(req.user?.role || '');
+  }
+
   @Patch('settings')
   @AdminOnly()
   saveSettings(@Req() req: AuthRequest, @Body() body: SettingsDto) {

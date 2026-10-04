@@ -115,6 +115,16 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+              {quickLinks.some((link) => link.href === '/hamkar-moarefi') ? null : (
+                <li>
+                  <Link
+                    href="/hamkar-moarefi"
+                    className="cursor-pointer text-sm text-white/55 transition-colors duration-200 hover:text-secondary"
+                  >
+                    همکار معرفی بوتیک
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
 

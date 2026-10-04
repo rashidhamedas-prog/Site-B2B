@@ -135,6 +135,12 @@ export class WholesaleReferralService implements WholesaleReferralCapture {
     };
   }
 
+  async adminSettings(role: string) {
+    if (role !== 'ADMIN') throw new ForbiddenException('فقط مدیر کل می‌تواند قواعد برنامه را ببیند.');
+    const settings = await this.settings();
+    return { settings, missing: launchFieldLabels(missingLaunchFields(settings)) };
+  }
+
   async saveSettings(actorUserId: string, role: string, patch: Record<string, unknown>) {
     if (role !== 'ADMIN') throw new ForbiddenException('فقط مدیر کل می‌تواند قواعد برنامه را ذخیره کند.');
     if (patch.repeatOrderRewards === true || patch.marketDevelopmentTier === true) {
