@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T18:30:00Z — TASK-20261004-013 live at d45781c
+
+- Owner: cursor:implementer-TASK-20261004-013
+- Pushed `d45781c` to `origin/master`. VPS `auto-deploy.sh` finished at that revision. `GET /v1/health` 200. API image contains `dist/apps/api/src/modules/dashboard/report-sql.js`.
+- Same-session review: reports stay on the existing admin `GET /dashboard/reports`. New fields are aggregates. No new public route and no secrets.
+- Claims released. A logged-in click of both channels was not done.
+
 ## 2026-10-04T18:20:00Z — TASK-20261004-013 reports desk
 
 - Owner: cursor:implementer-TASK-20261004-013

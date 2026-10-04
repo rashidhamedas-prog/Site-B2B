@@ -1,6 +1,6 @@
 # Project Status
 
-- In progress: 2026-10-04 — **TASK-20261004-013** admin reports. UUID/varchar joins fixed locally; page redesigned. Not deployed. Logged-in check still open.
+- Last verified: 2026-10-04 — **TASK-20261004-013 LIVE** on `origin/master` `d45781c`. Report joins cast uuid to text; VPS health 200; `report-sql.js` is in the API image. Claims released. Logged-in click of both channels still open.
 - Last verified: 2026-10-04 — **TASK-20261004-012 CLOSED LIVE** on `origin/master` `9c1e11d`. Admin desk is up. The 500 was TypeORM parsing `COALESCE(v.wholesaleStock, 0)` as an alias; sort is now real columns. VPS health 200. Logged-in click still needs a refresh.
 - Last verified: 2026-10-04 — **TASK-20261004-011 CLOSED LIVE** on `origin/master` `fa9ba4e`. Program rate replaces older PROGRAM rules and syncs follower products; OTP lifetime is separate from the resend countdown (300s config lifts to 600s). VPS health 200; `setProgramRate` is in the API image. Claims released. Admin desk click needs a session.
 - In progress: 2026-10-04 — **TASK-20261004-010** partner drill-down for sales-partner money cards. Specs green. Rate-page files are on 011. Not deployed yet.

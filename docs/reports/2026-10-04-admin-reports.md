@@ -24,4 +24,6 @@
 
 ## آزمون
 
-`npx ts-node --transpile-only src/modules/dashboard/report-sql.spec.ts` سبز است.
+`npx ts-node --transpile-only src/modules/dashboard/report-sql.spec.ts` سبز است. `apps/web` `tsc --noEmit` سبز است. خطای قبلی `order-money-guard.spec.ts` سر جایش است.
+
+لایو: `d45781c`. سلامت API برابر ۲۰۰. کلیک داخل نشست ادمین انجام نشد.
