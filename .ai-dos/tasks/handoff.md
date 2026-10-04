@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T21:45:00Z — TASK-20261004-014 referral rules form and terms page
+
+- Owner: cursor:implementer-TASK-20261004-014
+- Live revision `7038b69`. Health 200. Landing canonical is `https://poshaktaranom.com/hamkar-moarefi`, robots `index, follow`, `#terms` is in the initial HTML, and the program apply link is absent while `applyOpen` is false.
+- Admin rules are entered only by ADMIN at `/admin/customers/boutique-referrals`. That logged-in save was not clicked.
+- Web `tsc --noEmit` passed before the commit. Independent review is still open. Program stays off.
+
 ## 2026-10-04T20:50:00Z — TASK-20261004-014 boutique referral, program off
 
 - Owner: cursor:implementer-TASK-20261004-014
