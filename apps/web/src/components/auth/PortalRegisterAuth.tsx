@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, CheckCircle, Eye, EyeOff, Lock, Phone, Store } from 'lucide-react';
@@ -81,6 +81,7 @@ const STEP_TITLES = [
 
 export function PortalRegisterAuth() {
   const { register, loading, error } = useAuth();
+  const [referralCode, setReferralCode] = useState<string | undefined>();
   const router = useRouter();
   const [step, setStep] = useState<Step>(0);
   const [form, setForm] = useState<FormFields>(empty);
@@ -88,6 +89,11 @@ export function PortalRegisterAuth() {
   const [done, setDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const confettiRef = useRef<ConfettiRef>(null);
+
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get('ref') || '';
+    if (/^[a-z0-9]{8}$/.test(ref)) setReferralCode(ref);
+  }, []);
 
   const set = (k: keyof FormFields, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
@@ -159,6 +165,7 @@ export function PortalRegisterAuth() {
       city: form.city.trim(),
       businessType: form.businessType,
       notes: form.notes.trim() || undefined,
+      referralCode,
     });
     if (ok) {
       setDone(true);

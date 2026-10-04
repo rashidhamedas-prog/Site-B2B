@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, HttpCode, HttpStatus, UseGuards, Request, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -12,6 +12,7 @@ import {
   SavedAddressDto,
 } from './dto/otp.dto';
 import { ForgotPasswordDto, ResetPasswordDto, SetPasswordDto } from './dto/password-reset.dto';
+import { readReferralCookie } from '../wholesale-referral/wholesale-referral-policy';
 
 @ApiTags('auth')
 @Controller({ path: 'auth', version: '1' })
@@ -20,8 +21,9 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'ثبت‌نام مشتری جدید' })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  register(@Body() dto: RegisterDto, @Req() req: { headers?: { cookie?: string } }) {
+    const referralCode = dto.referralCode || readReferralCookie(req.headers?.cookie) || undefined;
+    return this.authService.register({ ...dto, referralCode });
   }
 
   @Post('login')

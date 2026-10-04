@@ -1,0 +1,88 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { API_URL } from '@/lib/seo-origins';
+
+export const metadata: Metadata = {
+  title: 'همکار معرفی بوتیک',
+  description:
+    'بوتیک‌های مناسب ترنم را معرفی کنید و نتیجهٔ هر معرفی را ببینید. خرید، قیمت و ارسال با خود ترنم است.',
+};
+
+const focus =
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-green,#1B5C4A)]';
+
+async function applyIsOpen(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_URL}/boutique-referral/public-settings`, { next: { revalidate: 300 } });
+    if (!response.ok) return false;
+    const body = (await response.json()) as { applyOpen?: boolean };
+    return body.applyOpen === true;
+  } catch {
+    return false;
+  }
+}
+
+export default async function BoutiqueReferralLandingPage() {
+  const applyOpen = await applyIsOpen();
+  return (
+    <main className="mx-auto w-full max-w-3xl px-4 py-10 text-[var(--brand-ink,#1c1917)]">
+      <p className="text-sm text-[var(--brand-muted,#57534e)]">برنامهٔ همکار معرفی بوتیک</p>
+      <h1 className="mt-3 text-2xl font-semibold leading-10 sm:text-3xl">
+        بوتیک‌های مناسب ترنم را معرفی کنید؛ نتیجهٔ هر معرفی را ببینید.
+      </h1>
+      <p className="mt-4 text-base leading-8">
+        شما بوتیک را معرفی می‌کنید. تیم فروش ترنم صلاحیت را بررسی می‌کند، با بوتیک حرف می‌زند و حساب عمده را تأیید می‌کند.
+        بعد از تأیید، بوتیک مستقیم از ترنم خرید می‌کند. شما قیمت تعیین نمی‌کنید، سفارش را نمی‌بندید، پول را نمی‌گیرید و کالا را ارسال نمی‌کنید.
+      </p>
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <a href="#terms" className={`inline-flex min-h-11 items-center justify-center rounded-full bg-[#1B5C4A] px-5 text-sm text-white ${focus}`}>
+          شرایط همکاری و پاداش را ببینید
+        </a>
+        <a href="#example" className={`inline-flex min-h-11 items-center justify-center rounded-full border border-[#1B5C4A] px-5 text-sm text-[#1B5C4A] ${focus}`}>
+          یک مسیر نمونهٔ معرفی را ببینید
+        </a>
+        {applyOpen ? (
+          <Link href="/hamkar-moarefi/apply" className={`inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm underline ${focus}`}>
+            درخواست همکاری
+          </Link>
+        ) : null}
+      </div>
+
+      <section className="mt-10 space-y-3 leading-8" aria-labelledby="value-title">
+        <h2 id="value-title" className="text-xl font-semibold">از همان روز اول چه چیزی دستتان است</h2>
+        <ul className="list-disc pe-5">
+          <li>یک لینک دعوت مشخص، بعد از تأیید همکاری.</li>
+          <li>متن دعوت و راهنمایی که ترنم تأیید کرده باشد.</li>
+          <li>وضعیت هر معرفی، دلیل قابل‌گفتن برای تأخیر یا رد، و اقدام بعدی.</li>
+          <li>پشتیبانی انسانی اگر معرفی یا پاداش نیاز به بررسی داشته باشد.</li>
+        </ul>
+        <p>به‌روزرسانی‌ها بعد از ثبت توسط تیم فروش دیده می‌شوند و لحظه‌ای نیستند.</p>
+      </section>
+
+      <section id="terms" className="mt-10 space-y-3 leading-8" aria-labelledby="terms-title">
+        <h2 id="terms-title" className="text-xl font-semibold">شرایط همکاری و پاداش</h2>
+        <p>پاداش اولیه، اگر قواعد برنامه تأیید شده باشد، فقط برای اولین سفارش عمدهٔ واجد شرایط است. ساخت سفارش به‌تنهایی پاداش را آزاد نمی‌کند.</p>
+        <p>مبلغ یا درصد، سقف، مهلت مالکیت معرفی، دورهٔ نگهداری، حداقل پرداخت و زمان واریز تا وقتی مالک برنامه آن‌ها را تأیید نکند اعلام نمی‌شود و درخواست همکاری باز نمی‌ماند.</p>
+        <p>حمل و مالیات در پایهٔ پاداش محاسبه نمی‌شود. تخفیف کالا، لغو جزئی، بازپرداخت و مرجوعی از مبلغ واجد شرایط کم می‌شود.</p>
+        <p>پاداش سفارش‌های بعدی و سطح پیشرفتهٔ توسعهٔ بازار در این نسخه فعال نیست.</p>
+      </section>
+
+      <section className="mt-10 space-y-3 leading-8">
+        <h2 className="text-xl font-semibold">چه بوتیکی مناسب است</h2>
+        <p>معیار دقیق بوتیک بعد از تأیید مالک برنامه همین‌جا منتشر می‌شود. تا آن زمان، معرفی را برای بوتیک پوشاک واقعی بفرستید که خودش خریدار عمده باشد، نه برای مشتری نهایی.</p>
+      </section>
+
+      <section id="example" className="mt-10 space-y-3 leading-8" aria-labelledby="example-title">
+        <h2 id="example-title" className="text-xl font-semibold">نمونهٔ مسیر یک معرفی</h2>
+        <p className="rounded-2xl bg-[#F6F1E8] px-4 py-3 text-sm">این جدول فقط نمایش مسیر است و وضعیت یک معرفی واقعی نیست.</p>
+        <ol className="list-decimal pe-5">
+          <li>ثبت معرفی</li>
+          <li>بررسی و پیگیری فروش</li>
+          <li>تأیید حساب عمدهٔ بوتیک</li>
+          <li>اولین سفارش پرداخت‌شده</li>
+          <li>پاداش برآوردی، سپس نگهداری، سپس قابل پرداخت</li>
+        </ol>
+      </section>
+    </main>
+  );
+}

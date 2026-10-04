@@ -44,6 +44,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/customers', icon: Users, label: 'فهرست مشتریان', exact: true, badge: 0, badgeColor: 'bg-amber-500', module: 'crm' },
       { href: '/admin/customers/marketing', icon: Megaphone, label: 'بازاریابی', module: 'crm' },
+      { href: '/admin/customers/boutique-referrals', icon: Handshake, label: 'معرفی بوتیک', module: 'crm' },
       { href: '/admin/orders', icon: ShoppingCart, label: 'سفارش‌ها', badge: 0, badgeColor: 'bg-blue-500', module: 'orders' },
       { href: '/admin/rma', icon: Package, label: 'مرجوعی (RMA)', module: 'rma' },
       { href: '/admin/support', icon: Headphones, label: 'پشتیبانی تیکتی', module: 'support' },

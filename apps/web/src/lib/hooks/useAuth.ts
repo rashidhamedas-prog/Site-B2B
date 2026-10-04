@@ -10,7 +10,7 @@ import { normalizePhone } from '../phone';
 import { safeScopedRedirect } from '../safe-redirect';
 
 interface LoginPayload { phone: string; password: string; purpose?: 'admin' | 'portal' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner' }
-interface RegisterPayload { phone: string; password: string; ownerName: string; businessName: string; province: string; city: string; businessType?: string; notes?: string }
+interface RegisterPayload { phone: string; password: string; ownerName: string; businessName: string; province: string; city: string; businessType?: string; notes?: string; referralCode?: string }
 
 export function useAuth() {
   const router = useRouter();

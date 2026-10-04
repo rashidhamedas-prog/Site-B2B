@@ -15,8 +15,10 @@ export const VENDOR_TOKEN_KEY = 'taranom_vendor_token';
 export const VENDOR_ROLE_KEY = 'taranom_vendor_role';
 export const SALES_PARTNER_TOKEN_KEY = 'taranom_sales_partner_token';
 export const SALES_PARTNER_ROLE_KEY = 'taranom_sales_partner_role';
+export const BOUTIQUE_REFERRAL_TOKEN_KEY = 'taranom_boutique_referral_token';
+export const BOUTIQUE_REFERRAL_ROLE_KEY = 'taranom_boutique_referral_role';
 
-export type AuthCookieScope = 'admin' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner';
+export type AuthCookieScope = 'admin' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner' | 'boutique_referral';
 export type ShopperCookieScope = 'retail' | 'wholesale';
 
 export type CookieGetter = {
@@ -42,6 +44,7 @@ export function cookieScopeFromPurpose(purpose?: string | null): AuthCookieScope
   if (purpose === 'retail') return 'retail';
   if (purpose === 'vendor') return 'vendor';
   if (purpose === 'sales_partner') return 'sales_partner';
+  if (purpose === 'boutique_referral') return 'boutique_referral';
   return 'wholesale';
 }
 
@@ -110,6 +113,22 @@ export function canEnterSalesPartners(token: string | null | undefined): boolean
   if (readJwtPurpose(token) !== 'sales_partner') return false;
   const payloadRole = readJwtPayload(token)?.role;
   return payloadRole === 'SALES_PARTNER';
+}
+
+export function canEnterBoutiqueReferral(token: string | null | undefined): boolean {
+  if (readJwtPurpose(token) !== 'boutique_referral') return false;
+  const payloadRole = readJwtPayload(token)?.role;
+  return payloadRole === 'REFERRAL_PARTNER';
+}
+
+export function readBoutiqueReferralGateCookies(cookies: CookieGetter): {
+  token: string | undefined;
+  role: string | undefined;
+} {
+  return {
+    token: cookies.get(BOUTIQUE_REFERRAL_TOKEN_KEY)?.value,
+    role: cookies.get(BOUTIQUE_REFERRAL_ROLE_KEY)?.value,
+  };
 }
 
 export function readSalesPartnerGateCookies(cookies: CookieGetter): {

@@ -8,6 +8,7 @@ import { actingRoleForPurpose, isStaffRole, resolveAuthPurpose } from '../staff-
 import { canVendorLogin, isVendorRole } from '../../vendor/vendor-policy';
 import { VendorEntity } from '../../vendor/entities/vendor.entity';
 import { SalesPartnerProfileEntity } from '../../sales-partner/entities/sales-partner-profile.entity';
+import { WholesaleReferralPartnerEntity } from '../../wholesale-referral/entities/wholesale-referral-partner.entity';
 import { canSalesPartnerLogin } from '../../sales-partner/sales-partner-policy';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,6 +22,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly vendorRepo: Repository<VendorEntity>,
     @InjectRepository(SalesPartnerProfileEntity)
     private readonly salesPartnerRepo: Repository<SalesPartnerProfileEntity>,
+    @InjectRepository(WholesaleReferralPartnerEntity)
+    private readonly referralRepo: Repository<WholesaleReferralPartnerEntity>,
   ) {
     const secret = config.get<string>('JWT_SECRET');
     const isProd = config.get<string>('NODE_ENV') === 'production';
@@ -82,6 +85,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         purpose,
         salesPartnerId: partner.id,
         sid: payload.sid,
+      };
+    }
+    if (purpose === 'boutique_referral') {
+      if (user.role !== 'REFERRAL_PARTNER') throw new UnauthorizedException();
+      const referral = await this.referralRepo.findOne({ where: { userId: user.id, status: 'APPROVED' } });
+      if (!referral) throw new UnauthorizedException();
+      return {
+        sub: user.id,
+        id: user.id,
+        phone: user.phone,
+        role: 'REFERRAL_PARTNER',
+        customerId: null,
+        purpose,
+        referralPartnerId: referral.id,
       };
     }
     return {

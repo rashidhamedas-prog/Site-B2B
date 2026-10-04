@@ -26,6 +26,10 @@ export function isSalesPartnerPanelPath(pathname: string): boolean {
   return pathname === '/sales-partners' || pathname.startsWith('/sales-partners/');
 }
 
+export function isBoutiqueReferralPanelPath(pathname: string): boolean {
+  return pathname === '/hamkar-moarefi/panel' || pathname.startsWith('/hamkar-moarefi/panel/');
+}
+
 /** Paths that must never be rewritten to the retail tree */
 export function isChannelExemptPath(pathname: string): boolean {
   return (
@@ -33,6 +37,8 @@ export function isChannelExemptPath(pathname: string): boolean {
     pathname.startsWith('/portal') ||
     pathname.startsWith('/partners') ||
     isSalesPartnerPanelPath(pathname) ||
+    pathname.startsWith('/hamkar-moarefi') ||
+    pathname.startsWith('/go/br/') ||
     pathname.startsWith('/confirm/sales-partner') ||
     pathname.startsWith('/go/sp/') ||
     pathname.startsWith('/api') ||

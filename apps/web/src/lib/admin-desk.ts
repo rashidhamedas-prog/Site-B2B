@@ -137,6 +137,7 @@ export const DESK_SURFACES: DeskSurfaceGroup[] = [
       { href: '/admin/orders', label: 'سفارش‌ها', hint: 'عمده و تک' },
       { href: '/admin/customers', label: 'مشتریان', hint: 'تأیید و پرونده' },
       { href: '/admin/customers/marketing', label: 'بازاریابی', hint: 'پیگیری و بدون سفارش' },
+      { href: '/admin/customers/boutique-referrals', label: 'معرفی بوتیک', hint: 'همکار معرفی عمده' },
       { href: '/admin/invoices', label: 'فاکتورها', hint: 'مانده و پیش‌فاکتور' },
       { href: '/admin/payments', label: 'پرداخت‌ها', hint: 'زرین‌پال، دیجی‌پی، ترب‌پی' },
       { href: '/admin/rma', label: 'مرجوعی', hint: 'بازگشت و تعویض' },

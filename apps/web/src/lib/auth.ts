@@ -16,6 +16,9 @@ import {
   shopperScopeFromLocation,
   canEnterPartners,
   canEnterSalesPartners,
+  BOUTIQUE_REFERRAL_ROLE_KEY,
+  BOUTIQUE_REFERRAL_TOKEN_KEY,
+  canEnterBoutiqueReferral,
   type AuthCookieScope,
   type ShopperCookieScope,
 } from './admin-session';
@@ -35,6 +38,15 @@ function isBrowserSalesPartnerPath(): boolean {
   return (
     typeof window !== 'undefined' &&
     (window.location.pathname === '/sales-partners' || window.location.pathname.startsWith('/sales-partners/'))
+  );
+}
+
+function isBrowserBoutiqueReferralPath(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/hamkar-moarefi/panel' ||
+      window.location.pathname.startsWith('/hamkar-moarefi/panel/') ||
+      window.location.pathname === '/hamkar-moarefi/login')
   );
 }
 
@@ -73,12 +85,16 @@ export function getToken(): string | null {
     const token = localStorage.getItem(SALES_PARTNER_TOKEN_KEY);
     return canEnterSalesPartners(token) ? token : null;
   }
+  if (isBrowserBoutiqueReferralPath()) {
+    const token = localStorage.getItem(BOUTIQUE_REFERRAL_TOKEN_KEY);
+    return canEnterBoutiqueReferral(token) ? token : null;
+  }
   const keys = shopperKeys(currentShopperScope());
   return localStorage.getItem(keys.token) || localStorage.getItem(STOREFRONT_TOKEN_KEY);
 }
 
 export function setToken(token: string, role: string, scope?: AuthCookieScope | 'storefront') {
-  const resolved: AuthCookieScope = scope === 'admin' || scope === 'retail' || scope === 'wholesale' || scope === 'vendor' || scope === 'sales_partner'
+  const resolved: AuthCookieScope = scope === 'admin' || scope === 'retail' || scope === 'wholesale' || scope === 'vendor' || scope === 'sales_partner' || scope === 'boutique_referral'
     ? scope
     : cookieScopeFromPurpose(scope);
   const maxAge = 7 * 24 * 60 * 60;
@@ -101,6 +117,13 @@ export function setToken(token: string, role: string, scope?: AuthCookieScope | 
     localStorage.setItem(SALES_PARTNER_ROLE_KEY, role);
     writeCookie(SALES_PARTNER_TOKEN_KEY, token, maxAge);
     writeCookie(SALES_PARTNER_ROLE_KEY, role, maxAge);
+    return;
+  }
+  if (resolved === 'boutique_referral') {
+    localStorage.setItem(BOUTIQUE_REFERRAL_TOKEN_KEY, token);
+    localStorage.setItem(BOUTIQUE_REFERRAL_ROLE_KEY, role);
+    writeCookie(BOUTIQUE_REFERRAL_TOKEN_KEY, token, maxAge);
+    writeCookie(BOUTIQUE_REFERRAL_ROLE_KEY, role, maxAge);
     return;
   }
   const keys = shopperKeys(resolved);
@@ -132,6 +155,13 @@ export function clearToken() {
     clearCookie(SALES_PARTNER_ROLE_KEY);
     return;
   }
+  if (typeof window !== 'undefined' && isBrowserBoutiqueReferralPath()) {
+    localStorage.removeItem(BOUTIQUE_REFERRAL_TOKEN_KEY);
+    localStorage.removeItem(BOUTIQUE_REFERRAL_ROLE_KEY);
+    clearCookie(BOUTIQUE_REFERRAL_TOKEN_KEY);
+    clearCookie(BOUTIQUE_REFERRAL_ROLE_KEY);
+    return;
+  }
   const keys = shopperKeys(currentShopperScope());
   localStorage.removeItem(keys.token);
   localStorage.removeItem(keys.role);
@@ -153,6 +183,9 @@ export function getRole(): string | null {
   }
   if (isBrowserSalesPartnerPath()) {
     return localStorage.getItem(SALES_PARTNER_ROLE_KEY);
+  }
+  if (isBrowserBoutiqueReferralPath()) {
+    return localStorage.getItem(BOUTIQUE_REFERRAL_ROLE_KEY);
   }
   const keys = shopperKeys(currentShopperScope());
   return localStorage.getItem(keys.role) || localStorage.getItem(STOREFRONT_ROLE_KEY);

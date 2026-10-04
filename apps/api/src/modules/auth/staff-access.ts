@@ -70,10 +70,11 @@ export function canAccessStaffModule(
 export function roleAfterCustomerLink(currentRole: string | null | undefined): string {
   if (isStaffRole(currentRole)) return currentRole;
   if (currentRole === 'VENDOR') return 'VENDOR';
+  if (currentRole === 'REFERRAL_PARTNER') return 'REFERRAL_PARTNER';
   return 'CUSTOMER';
 }
 
-export type AuthSessionPurpose = 'admin' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner';
+export type AuthSessionPurpose = 'admin' | 'retail' | 'wholesale' | 'vendor' | 'sales_partner' | 'boutique_referral';
 
 export function isShopperPurpose(purpose?: string | null): boolean {
   return purpose === 'retail' || purpose === 'wholesale' || purpose === 'storefront';
@@ -95,6 +96,10 @@ export function isSalesPartnerPurpose(purpose?: string | null): boolean {
   return purpose === 'sales_partner';
 }
 
+export function isBoutiqueReferralPurpose(purpose?: string | null): boolean {
+  return purpose === 'boutique_referral';
+}
+
 /**
  * Login omitted purpose = wholesale (portal form).
  * Legacy JWT `storefront` validates as wholesale so existing portal sessions keep working.
@@ -107,6 +112,7 @@ export function resolveAuthPurpose(requested?: 'admin' | 'portal' | 'retail' | '
   if (p === 'retail') return 'retail';
   if (p === 'vendor') return 'vendor';
   if (p === 'sales_partner') return 'sales_partner';
+  if (p === 'boutique_referral') return 'boutique_referral';
   return 'wholesale';
 }
 
@@ -115,6 +121,7 @@ export function actingRoleForPurpose(purpose: AuthSessionPurpose, dbRole: string
   if (purpose === 'admin') return dbRole;
   if (purpose === 'vendor') return dbRole === 'VENDOR' ? 'VENDOR' : 'CUSTOMER';
   if (purpose === 'sales_partner') return 'SALES_PARTNER';
+  if (purpose === 'boutique_referral') return 'REFERRAL_PARTNER';
   return 'CUSTOMER';
 }
 

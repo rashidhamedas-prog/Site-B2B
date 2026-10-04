@@ -10,7 +10,7 @@ export type OtpRecord = {
   name?: string;
 };
 
-export type OtpPurpose = 'retail' | 'password_reset' | 'sales_partner' | 'sales_partner_apply';
+export type OtpPurpose = 'retail' | 'password_reset' | 'sales_partner' | 'sales_partner_apply' | 'boutique_referral_apply' | 'boutique_referral_login';
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {

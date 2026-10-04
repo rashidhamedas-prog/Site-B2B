@@ -66,4 +66,9 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  referralCode?: string;
 }

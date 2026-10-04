@@ -4,6 +4,7 @@ import {
   ConflictException,
   BadRequestException,
   Optional,
+  Inject,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -39,6 +40,7 @@ import {
   roleAfterCustomerLink,
 } from './staff-access';
 import { canVendorLogin, isVendorRole } from '../vendor/vendor-policy';
+import { WHOLESALE_REFERRAL_CAPTURE, type WholesaleReferralCapture } from '../wholesale-referral/wholesale-referral-capture';
 import { canEnterRetailShopper, omitWholesaleOnlyProfileFields, wholesalePortalDenial } from './shopper-channel';
 import {
   normalizeAddressList,
@@ -87,6 +89,7 @@ export class AuthService {
     private readonly otpService: OtpService,
     @Optional() private readonly notifications?: NotificationService,
     @Optional() private readonly marketing?: CustomerMarketingService,
+    @Optional() @Inject(WHOLESALE_REFERRAL_CAPTURE) private readonly referralCapture?: WholesaleReferralCapture,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -191,6 +194,13 @@ export class AuthService {
       }
       if (this.marketing && result.customer?.id) {
         this.marketing.enroll(result.customer.id, { source: 'WHOLESALE_APPLICATION' }).catch(() => undefined);
+      }
+      if (this.referralCapture && result.customer?.id && dto.referralCode) {
+        this.referralCapture.onWholesaleRegistered({
+          customerId: result.customer.id,
+          phone: result.customer.phone,
+          referralCode: dto.referralCode,
+        }).catch(() => undefined);
       }
 
       return { message: result.message };

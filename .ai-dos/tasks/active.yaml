@@ -1,5 +1,38 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261004-014"
+    title: "Wholesale boutique referral partner program"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261004-014"
+    roles:
+      architect: "cursor:implementer-TASK-20261004-014"
+      implementer: "cursor:implementer-TASK-20261004-014"
+      reviewer: "required-independent-before-done"
+      security: "required-independent-auth-pii-ledger"
+    branch: "ai/TASK-20261004-014-boutique-referral"
+    worktree: "D:/proje/Site-B2B-boutique-referral"
+    claimed_at: "2026-10-04T19:30:00Z"
+    heartbeat_at: "2026-10-04T20:50:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/wholesale-referral/"
+      - "apps/api/src/database/migrations/20261004-014-wholesale-referral.ts"
+      - "apps/web/src/app/(wholesale)/hamkar-moarefi/"
+      - "apps/web/src/app/go/br/"
+      - "apps/web/src/app/admin/customers/boutique-referrals/"
+      - "apps/web/src/components/boutique-referral/"
+      - "apps/web/src/components/admin/AdminBoutiqueReferrals.tsx"
+      - "docs/architecture/wholesale-referral-program.md"
+      - "docs/reports/2026-10-04-boutique-referral-pilot.md"
+    acceptance_criteria:
+      - "Program stays off until terms and commercial settings exist"
+      - "Ownership, consent, qualifying net, ledger idempotency, and partner privacy specs pass"
+      - "Partner session is separate from wholesale, vendor, and sales-partner"
+      - "Invitation link enters the existing wholesale registration"
+    notes: |
+      Appended while TASK-20261004-010 still claims active.yaml, handoff, and status.
+      Those claims were not edited. Commercial numbers stay unset.
   - id: "TASK-20261004-013"
     title: "Admin sales reports for wholesale and retail"
     status: "done"

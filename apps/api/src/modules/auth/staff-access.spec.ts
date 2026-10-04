@@ -42,6 +42,8 @@ assert(roleAfterCustomerLink('CUSTOMER') === 'CUSTOMER', 'customer stays custome
 assert(roleAfterCustomerLink('VENDOR') === 'VENDOR', 'otp must not demote vendor');
 assert(resolveAuthPurpose('vendor') === 'vendor', 'vendor purpose');
 assert(resolveAuthPurpose('sales_partner') === 'sales_partner', 'sales partner purpose is not wholesale');
+assert(resolveAuthPurpose('boutique_referral') === 'boutique_referral', 'boutique referral purpose is not wholesale');
+assert(roleAfterCustomerLink('REFERRAL_PARTNER') === 'REFERRAL_PARTNER', 'referral partner stays referral partner');
 assert(isSalesPartnerPurpose('sales_partner') === true, 'sales partner purpose flag');
 assert(isSalesPartnerPurpose('vendor') === false, 'vendor is not sales partner');
 assert(actingRoleForPurpose('sales_partner', 'CUSTOMER') === 'SALES_PARTNER', 'sales partner acting role');

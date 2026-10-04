@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -14,10 +14,12 @@ import { CustomerEntity } from '../customer/entities/customer.entity';
 import { OrderEntity } from '../order/entities/order.entity';
 import { VendorEntity } from '../vendor/entities/vendor.entity';
 import { SalesPartnerProfileEntity } from '../sales-partner/entities/sales-partner-profile.entity';
+import { WholesaleReferralModule } from '../wholesale-referral/wholesale-referral.module';
+import { WholesaleReferralPartnerEntity } from '../wholesale-referral/entities/wholesale-referral-partner.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserEntity, CustomerEntity, OrderEntity, VendorEntity, SalesPartnerProfileEntity]),
+    TypeOrmModule.forFeature([UserEntity, CustomerEntity, OrderEntity, VendorEntity, SalesPartnerProfileEntity, WholesaleReferralPartnerEntity]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -36,6 +38,7 @@ import { SalesPartnerProfileEntity } from '../sales-partner/entities/sales-partn
       },
     }),
     // Do NOT import NotificationModule here — it already imports AuthModule (circular).
+    forwardRef(() => WholesaleReferralModule),
     // NotificationModule is @Global in AppModule, so NotificationService injects fine.
   ],
   controllers: [AuthController, UsersController],

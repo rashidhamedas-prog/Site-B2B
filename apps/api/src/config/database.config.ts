@@ -28,6 +28,14 @@ import {
   SalesPartnerProductEligibilityEntity,
   SalesPartnerProfileEntity,
 } from '../modules/sales-partner/entities';
+import { WholesaleReferralPartnerEntity } from '../modules/wholesale-referral/entities/wholesale-referral-partner.entity';
+import { WholesaleReferralIntroductionEntity } from '../modules/wholesale-referral/entities/wholesale-referral-introduction.entity';
+import { WholesaleReferralEventEntity } from '../modules/wholesale-referral/entities/wholesale-referral-event.entity';
+import { WholesaleReferralLedgerEntryEntity } from '../modules/wholesale-referral/entities/wholesale-referral-ledger-entry.entity';
+import { WholesaleReferralDisputeEntity } from '../modules/wholesale-referral/entities/wholesale-referral-dispute.entity';
+import { WholesaleReferralAuditEntity } from '../modules/wholesale-referral/entities/wholesale-referral-audit.entity';
+import { WholesaleReferralTermsAcceptanceEntity } from '../modules/wholesale-referral/entities/wholesale-referral-terms-acceptance.entity';
+import { WholesaleReferralClickEntity } from '../modules/wholesale-referral/entities/wholesale-referral-click.entity';
 import { InvoiceEntity } from '../modules/invoice/entities/invoice.entity';
 import { InventoryMovementEntity } from '../modules/inventory/entities/inventory-movement.entity';
 import { WarehouseEntity } from '../modules/inventory/entities/warehouse.entity';
@@ -100,6 +108,9 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     SalesPartnerAuditEventEntity, SalesCommissionRuleEntity, SalesPartnerProductEligibilityEntity,
     SalesPartnerOrderDraftEntity, SalesPartnerOrderDraftItemEntity, SalesCommissionSnapshotEntity,
     SalesCommissionLedgerEntryEntity, SalesPartnerPayoutEntity, SalesPartnerPayoutItemEntity,
+    WholesaleReferralPartnerEntity, WholesaleReferralIntroductionEntity, WholesaleReferralEventEntity,
+    WholesaleReferralLedgerEntryEntity, WholesaleReferralDisputeEntity, WholesaleReferralAuditEntity,
+    WholesaleReferralTermsAcceptanceEntity, WholesaleReferralClickEntity,
     CustomerEntity, CustomerWalletEntryEntity,
     CategoryEntity,
     CollectionEntity,

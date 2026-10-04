@@ -4,12 +4,14 @@ import {
   canEnterAdmin,
   canEnterPartners,
   canEnterSalesPartners,
+  canEnterBoutiqueReferral,
   readAdminGateCookies,
   readPartnerGateCookies,
   readPortalGateCookies,
   readSalesPartnerGateCookies,
+  readBoutiqueReferralGateCookies,
 } from '@/lib/admin-session';
-import { hostLooksRetail, isChannelExemptPath, isSalesPartnerPanelPath } from '@/lib/channel';
+import { hostLooksRetail, isBoutiqueReferralPanelPath, isChannelExemptPath, isSalesPartnerPanelPath } from '@/lib/channel';
 import { panelHostLockRedirect } from '@/lib/panel-host-lock';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
 import { STOREFRONT_HTML_CACHE_CONTROL } from '@/lib/storefront-html-cache';
@@ -200,6 +202,29 @@ export function middleware(request: NextRequest) {
   const isPartnerRoute = adminPath.startsWith('/partners') && !isPartnerLogin;
   const isSalesPartnerLogin = adminPath === '/sales-partners/login';
   const isSalesPartnerRoute = isSalesPartnerPanelPath(adminPath) && !isSalesPartnerLogin;
+  const isReferralLogin = adminPath === '/hamkar-moarefi/login';
+  const isReferralRoute = isBoutiqueReferralPanelPath(adminPath);
+
+  if (isReferralLogin || isReferralRoute) {
+    const withRobots = (res: NextResponse) => {
+      res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      return res;
+    };
+    if (isReferralLogin) {
+      const res = withRobots(NextResponse.next());
+      res.headers.set('Cache-Control', 'private, no-store');
+      return res;
+    }
+    const session = readBoutiqueReferralGateCookies(request.cookies);
+    if (!session.token || !canEnterBoutiqueReferral(session.token)) {
+      const loginUrl = new URL('/hamkar-moarefi/login', request.url);
+      loginUrl.searchParams.set('redirect', pathname);
+      return withRobots(NextResponse.redirect(loginUrl));
+    }
+    const res = withRobots(NextResponse.next());
+    res.headers.set('Cache-Control', 'private, no-store');
+    return res;
+  }
 
   if (isSalesPartnerLogin || isSalesPartnerRoute) {
     const withRobots = (res: NextResponse) => {
