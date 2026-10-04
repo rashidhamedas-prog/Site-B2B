@@ -23,7 +23,7 @@
 
 ## شواهد این اجرا
 
-کد صفحه، فرم ادمین و sitemap عوض شد. مشاهدهٔ HTML زنده بعد از deploy جدا ثبت می‌شود. دادهٔ میدانی Core Web Vitals و Search Console برای این URL موجود نیست و قبولی ثبت نشده است.
+بعد از deploy روی `7038b69`، `GET /v1/health` کد ۲۰۰ داد. HTML زندهٔ `/hamkar-moarefi` کنونیکال `https://poshaktaranom.com/hamkar-moarefi`، `index, follow`، عنوان شرایط و `id="terms"` را دارد. لینک `/hamkar-moarefi/apply` در HTML نیست. `applyOpen` برابر false است. sitemap صفحات عمده این آدرس را دارد. دادهٔ میدانی Core Web Vitals و Search Console برای این URL موجود نیست و قبولی ثبت نشده است. ذخیرهٔ فرم داخل نشست مدیر کل کلیک نشد.
 
 ## سنجش بعدی
 
