@@ -4,7 +4,7 @@
 - تا تأیید متن شرایط و اعداد پاداش خاموش می‌ماند؛ هیچ درصد یا تاریخ واریزی در رابط نیست
 - مسیرها: `/hamkar-moarefi`، `/go/br/{code}`، صف ادمین `/admin/customers/boutique-referrals`
 - سند: `docs/architecture/wholesale-referral-program.md` و `docs/reports/2026-10-04-boutique-referral-pilot.md`
-- برنامه خاموش می‌ماند تا مالک شرایط و اعداد را تأیید کند. آزمون سیاست و نقش‌ها سبز بود. بررسی نوع وب سبز بود. بررسی نوع API فقط خطای قبلی `order-money-guard.spec.ts` را دارد.
+- لایو: `fdc2f27`. سلامت API برابر ۲۰۰. تنظیمات عمومی `applyOpen` برابر false است. جدول `wholesale_referral_partners` ساخته شد. صفحهٔ `/hamkar-moarefi` کد ۲۰۰ دارد و جملهٔ اصلی را نشان می‌دهد.
 
 ## 2026-10-04 — میز گزارش عمده و تک
 

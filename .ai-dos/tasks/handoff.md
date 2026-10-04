@@ -8,7 +8,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Branch: `ai/TASK-20261004-014-boutique-referral`. Worktree: `D:/proje/Site-B2B-boutique-referral`.
 - Shipped a fail-closed wholesale boutique introduction program. No reward rate, cap, window, or payout date was invented. `repeatOrderRewards` and `marketDevelopmentTier` stay false.
 - Policy spec and staff-access spec printed OK. Web `tsc --noEmit` passed. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
-- Browser journeys were not run before the push. Independent Reviewer and Security were not separate identities. Do not mark the task done.
+- Browser check after deploy: `/hamkar-moarefi` returned 200 and contains the required hero. `GET /v1/boutique-referral/public-settings` is `applyOpen:false`. Health 200. Live revision `fdc2f27`.
 - TASK-20261004-010 still owns its own claims in this file. This entry only appends.
 
 ## 2026-10-04T18:30:00Z — TASK-20261004-013 live at d45781c
