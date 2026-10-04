@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261004-011"
     title: "Commission desk propagation and OTP delivery clock"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261004-011"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261004-011-commission-desk"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-04T16:05:00Z"
-    heartbeat_at: "2026-10-04T16:10:00Z"
+    heartbeat_at: "2026-10-04T17:05:00Z"
+    completed_at: "2026-10-04T17:05:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/sales-commission-policy.ts"
       - "apps/api/src/modules/sales-partner/sales-commission-policy.spec.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-catalog.service.ts"
@@ -55,6 +57,9 @@ tasks:
     notes: |
       skill-top standard. Reclaimed the sales-partner admin desk files from TASK-20261004-010
       because this request edits the same commission page. 010 ledger files stay with 010.
+      Live on origin/master fa9ba4e. VPS health 200. API image contains setProgramRate.
+      A duplicated ledger helper already on master blocked the image build; the extra copy
+      was removed and the remaining helpers were not rewritten. 010 still owns later ledger edits.
   - id: "TASK-20261004-010"
     title: "Sales-partner admin money cards drill down by partner"
     status: "in_progress"

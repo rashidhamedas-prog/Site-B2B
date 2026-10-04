@@ -1,6 +1,6 @@
 # Project Status
 
-- In progress: 2026-10-04 — **TASK-20261004-011** commission desk propagation + OTP delivery clock. Specs green. Web tsc 0. Not deployed yet.
+- Last verified: 2026-10-04 — **TASK-20261004-011 CLOSED LIVE** on `origin/master` `fa9ba4e`. Program rate replaces older PROGRAM rules and syncs follower products; OTP lifetime is separate from the resend countdown (300s config lifts to 600s). VPS health 200; `setProgramRate` is in the API image. Claims released. Admin desk click needs a session.
 - In progress: 2026-10-04 — **TASK-20261004-010** partner drill-down for sales-partner money cards. Specs green. Rate-page files are on 011. Not deployed yet.
 - Last verified: 2026-10-04 — **TASK-20261003-007 CLOSED LIVE** on `origin/master` (`0b0b53e` + close tip). 30 site SKUs/names = ERP codes; aliases + slug URLs kept; VPS SQL applied; health 200. Claims released. Ops residual: ERP full website stock sync. Missing catalog rows not invented (7063/7127/7129/7168/7200/K-00227).
 - Last verified: 2026-10-04 — **TASK-20261003-009 CLOSED LIVE** on `origin/master` (`1a62b7b` runtime + docs tip). Paid DigiPay/TorobPay void/purge blocked; ORD-00008/00009 restored PENDING_REVIEW; health 200. Claims released. Ops residual: street for 09307986215.

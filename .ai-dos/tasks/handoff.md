@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T17:05:00Z — TASK-20261004-011 live at fa9ba4e
+
+- Owner: cursor:implementer-TASK-20261004-011
+- Branch fast-forwarded to `origin/master`: `d0e480c` then `fa9ba4e`. Local `master` stays checked out in another worktree, so the merge was `git push origin HEAD:master`.
+- Docker tsc failed on a duplicated `PartnerLedgerTotals` block already on master. The second copy was deleted; `sales-partner-ledger-policy.spec.ts` OK. TASK-20261004-010 still owns later ledger edits.
+- VPS rebuild finished at `fa9ba4e`. Containers api/web/worker recreated. `GET /v1/health` and `https://poshaktaranom.com/api/v1/health` are 200. API image `grep setProgramRate` count is 1. Login page chunk contains the separate lifetime copy.
+- Claims released. Admin commission click and a real OTP SMS were not exercised (no admin session, no phone).
+
 ## 2026-10-04T16:15:00Z — TASK-20261004-011 implementing (commission desk + OTP clock)
 
 - Owner: cursor:implementer-TASK-20261004-011
