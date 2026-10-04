@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T03:30:00Z — TASK-20261003-009 LIVE (paid order guard)
+
+- Owner: cursor:implementer-TASK-20261003-009
+- Ship: `1a62b7b` on origin/master + VPS `TARANOM_DEPLOY_FORCE=1` complete
+- Live DB: ORD-2026-00008 DigiPay 21200000 PAID + ORD-2026-00009 TorobPay 12800000 PAID, both PENDING_REVIEW
+- Live API: `assertNoCapturedPayment` + `order-money-guard` in dist; health 200
+- Live web: DigiPay callback route calls server capture before 303
+- Text repair: order_items names from catalog; shipping placeholder (street lost at purge)
+- Slack public search: no useful hits
+- Claims: release after Independent Reviewer residual on admin void 400 for PAID
+- Next residual: phone customer for real street; optional uuid/varchar schema migration wave
+
 ## 2026-10-03T14:50:00Z — TASK-20261003-009 implementing (paid order void/purge)
 
 - Owner: cursor:implementer-TASK-20261003-009
