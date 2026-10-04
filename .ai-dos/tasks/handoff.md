@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T14:20:00Z — TASK-20261004-002 live at 7d866e1
+
+- master fast-forwarded: `89d5c33` then hotfix `7d866e1`.
+- First boot failed because the migration tried to shrink existing idempotency keys to varchar(80). That alter was removed. Existing earning rows are still recognized by order and item.
+- VPS `7d866e1`, `/v1/health` 200.
+- Logged-in browser walk of the partner and admin panels was not done.
+
 ## 2026-10-04T14:40:00Z — TASK-20261004-002 integrity spec passed; shipping
 
 - `sales-partner-integrity.integration.spec.ts: OK` on PostgreSQL WASM (PGlite) plus a real Redis process. Native Windows initdb exits 0xC0000005, so the server path of the spec remains for a normal Postgres.
