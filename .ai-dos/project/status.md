@@ -1,6 +1,7 @@
 # Project Status
 
 - In progress: 2026-10-03 — **TASK-20261003-007** ERP SKU align on `D:/proje/Site B2B`.
+- Last verified: 2026-10-04 — **TASK-20261003-009 CLOSED LIVE** on `origin/master` (`1a62b7b` runtime + docs tip). Paid DigiPay/TorobPay void/purge blocked; ORD-00008/00009 restored PENDING_REVIEW; health 200. Claims released. Ops residual: street for 09307986215.
 - Last verified: 2026-10-03 — **TASK-20261003-008 LIVE** on `origin/master` `a461f3d` + VPS. Pill cloud gone; CATEGORIES grid remains; `/api/v1/health` 200. Claims released.
 - Last verified: 2026-10-03 — **TASK-20261003-006 LIVE** on `origin/master` `665d5ac` + VPS. Card shows «پیامک خوش‌آمد ارسال شد»; health 200; welcomeSmsSent in API/web. Claims released.
 - Last verified: 2026-10-03 — **TASK-20261003-005 LIVE** on `origin/master` `eea126e`. Welcome SMS button under APPROVED badge.

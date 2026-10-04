@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261003-009"
     title: "Stop void/purge of captured DigiPay/TorobPay orders; restore last-night paid retail orders"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20261003-009"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261003-009-paid-order-guard"
     worktree: "D:/proje/Site-B2B-paid-order-guard"
     claimed_at: "2026-10-03T14:40:00Z"
-    heartbeat_at: "2026-10-03T14:40:00Z"
+    heartbeat_at: "2026-10-04T03:40:00Z"
+    completed_at: "2026-10-04T03:40:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/order/order-money-guard.ts"
       - "apps/api/src/modules/order/order-money-guard.spec.ts"
       - "apps/api/src/modules/order/order.service.ts"
@@ -33,15 +35,21 @@ tasks:
       - "apps/web/src/components/admin/AdminOrders.tsx"
       - "apps/web/src/components/admin/AdminOrderDetail.tsx"
       - "scripts/restore-20261002-paid-orphan-orders.sql"
+      - "scripts/fix-20261003-restored-order-text.sql"
       - "docs/reports/2026-10-03-paid-orders-purged.md"
       - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
     acceptance_criteria:
       - "void/purge of an order with PAID gateway payment is rejected"
       - "DigiPay/TorobPay callback routes call /payments/verify server-side"
       - "ORD-2026-00008 and 00009 restored and linked to the live PAID payments"
       - "unit specs for money-guard, purge, row-lock, callback body, admin snapshot pass"
     notes: |
-      skill-top full. Parallel to TASK-20261003-007 on main worktree; this ship is D:/proje/Site-B2B-paid-order-guard.
+      CLOSED LIVE on origin/master tip incl. 1a62b7b runtime + 3b9e238 docs.
+      Independent Reviewer residual: admin void 400 click on PAID order.
+      Ops residual: confirm street with 09307986215.
 
   - id: "TASK-20261003-008"
     title: "Remove duplicate retail home category pill cloud"

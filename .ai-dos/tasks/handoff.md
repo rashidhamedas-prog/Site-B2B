@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T03:40:00Z — TASK-20261003-009 CLOSED LIVE
+
+- Owner: cursor:implementer-TASK-20261003-009
+- Ship: runtime `1a62b7b` + docs tip on origin/master; VPS force deploy verified
+- Live DB: ORD-2026-00008 DigiPay 21.2M PAID + ORD-2026-00009 TorobPay 12.8M PAID, both PENDING_REVIEW
+- Live API/web: money-guard + server callback capture; health 200
+- Claims released. Independent Reviewer residual (admin void 400 click). Ops: phone 09307986215 for street.
+
 ## 2026-10-04T03:30:00Z — TASK-20261003-009 LIVE (paid order guard)
 
 - Owner: cursor:implementer-TASK-20261003-009
@@ -11,8 +19,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Live web: DigiPay callback route calls server capture before 303
 - Text repair: order_items names from catalog; shipping placeholder (street lost at purge)
 - Slack public search: no useful hits
-- Claims: release after Independent Reviewer residual on admin void 400 for PAID
-- Next residual: phone customer for real street; optional uuid/varchar schema migration wave
+- Claims: held pending close commit
 
 ## 2026-10-03T14:50:00Z — TASK-20261003-009 implementing (paid order void/purge)
 
