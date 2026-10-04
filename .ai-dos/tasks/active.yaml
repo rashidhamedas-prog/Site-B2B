@@ -86,7 +86,7 @@ tasks:
       skill-top full. Parallel to TASK-20261003-007. Shared WORKLOG appended; 007 owns SKU files.
   - id: "TASK-20261003-007"
     title: "Align site SKU with ERP stock-sync codes without breaking URLs"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20261003-007"
     roles:
@@ -97,9 +97,11 @@ tasks:
     branch: "ai/TASK-20261003-007-erp-sku-align"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-03T09:30:00Z"
-    heartbeat_at: "2026-10-03T09:30:00Z"
+    heartbeat_at: "2026-10-04T03:45:00Z"
+    completed_at: "2026-10-04T03:45:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/product/entities/product-sku-alias.entity.ts"
       - "apps/api/src/modules/product/product-sku-alias.ts"
       - "apps/api/src/modules/product/product-sku-alias.spec.ts"
@@ -126,7 +128,9 @@ tasks:
       - "Wholesale and retail same product row; no URL rewrite"
       - "Ambiguous names (نازگل, ماهپوش, کمند, …) not auto-merged"
     notes: |
-      skill-top full. ERP settings files claimed by PROD-ACC-PA02; catalog is source of match.
+      CLOSED LIVE: 30 unique SKUs+names aligned on VPS; aliases keep old marketing SKUs; slugs unchanged.
+      Missing site rows not invented: 7063, 7127, 7129, 7168, 7200, K-00227.
+      Ops residual: ERP full website stock sync for the 30 codes.
   - id: "TASK-20261003-006"
     title: "SP welcome SMS sent-state on admin cards"
     status: "done"

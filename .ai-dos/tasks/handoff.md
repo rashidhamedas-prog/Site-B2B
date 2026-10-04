@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T03:45:00Z — TASK-20261003-007 CLOSED LIVE
+
+- Owner: cursor:implementer-TASK-20261003-007
+- Ship: `0b0b53e` catalog align on origin/master + VPS SQL (30 SKUs/names + erp_product_map sku_align)
+- Live: aliases keep old marketing SKUs; PDP slug e.g. cotton-crop-jacket-aramis 200 with ERP name
+- Not invented: 7063, 7127, 7129, 7168, 7200, K-00227
+- Claims released. Ops residual: ERP full website inventory sync.
+
 ## 2026-10-04T03:40:00Z — TASK-20261003-009 CLOSED LIVE
 
 - Owner: cursor:implementer-TASK-20261003-009
