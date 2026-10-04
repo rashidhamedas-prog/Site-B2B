@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261004-012"
     title: "Admin desk for wholesale and retail"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261004-012"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-04T17:15:00Z"
-    heartbeat_at: "2026-10-04T17:15:00Z"
+    heartbeat_at: "2026-10-04T17:40:00Z"
+    completed_at: "2026-10-04T17:40:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/admin/AdminDashboard.tsx"
       - "apps/web/src/components/admin/AdminHeader.tsx"
       - "apps/web/src/lib/admin-desk.ts"
@@ -36,6 +38,8 @@ tasks:
     notes: |
       Reclaimed AdminDashboard.tsx from done TASK-20260913-008 leftover claims.
       Did not touch dashboard.controller.ts (TASK-20260904-001) or sales-partner files (010).
+      Live on origin/master c4b24e5. VPS health 200. Admin page chunk contains revenueThisMonth.
+      Logged-in click was not exercised. Claims released.
   - id: "TASK-20261004-011"
     title: "Commission desk propagation and OTP delivery clock"
     status: "done"

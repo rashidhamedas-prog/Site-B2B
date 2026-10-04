@@ -21,4 +21,4 @@
 - `npx ts-node --transpile-only src/lib/admin-desk.spec.ts` در `apps/web` سبز
 - `tsc --noEmit` وب سبز
 - کلیک داخل نشست ادمین انجام نشد
-- مستقر نشده
+- مستقر: `c4b24e5` روی VPS. سلامت عمومی ۲۰۰. قطعهٔ `/admin` فیلد `revenueThisMonth` را دارد.
