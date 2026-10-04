@@ -7,6 +7,8 @@ import { CustomerEntity } from '../customer/entities/customer.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { ProductEntity } from '../product/entities/product.entity';
+import { SupportTicketEntity } from '../support/entities/support-ticket.entity';
+import { ReturnRequestEntity } from '../rma/entities/return-request.entity';
 import { customerChannelSql, normalizeCustomerChannel } from '../customer/customer-channel';
 import { recognizedSalePeriodSql, recognizedSaleStatuses } from './sales-recognition';
 
@@ -25,6 +27,8 @@ export class DashboardService {
     @InjectRepository(CustomerEntity) private readonly customerRepo: Repository<CustomerEntity>,
     @InjectRepository(InvoiceEntity) private readonly invoiceRepo: Repository<InvoiceEntity>,
     @InjectRepository(ProductVariantEntity) private readonly variantRepo: Repository<ProductVariantEntity>,
+    @InjectRepository(SupportTicketEntity) private readonly ticketRepo: Repository<SupportTicketEntity>,
+    @InjectRepository(ReturnRequestEntity) private readonly returnRepo: Repository<ReturnRequestEntity>,
   ) {}
 
   async getStats() {
@@ -40,6 +44,13 @@ export class DashboardService {
       recentOrders, lowStockVariants, topCustomersRaw,
       totalRevenue, thisMonthRevenue, lastMonthRevenue, outstandingInvoices,
       statusRows,
+      wholesaleRevenue, retailRevenue,
+      wholesaleOrders, retailOrders,
+      wholesalePending, retailPending,
+      wholesaleCustomers, retailCustomers,
+      wholesaleTickets, retailTickets,
+      openReturns, criticalStockCount, unpaidInvoices,
+      monthlyRevenue, monthlyOrders,
     ] = await Promise.all([
       this.orderRepo.createQueryBuilder('o')
         .where('o.status NOT IN (:...ex)', { ex: EXCLUDE_ORDERS })
@@ -63,8 +74,10 @@ export class DashboardService {
         .take(8)
         .getMany(),
       this.variantRepo.createQueryBuilder('v')
+        .leftJoinAndSelect('v.product', 'product')
         .where('(COALESCE(v.wholesaleStock, 0) < 10 OR COALESCE(v.retailStock, 0) < 10)')
         .orderBy('COALESCE(v.wholesaleStock, 0)', 'ASC')
+        .addOrderBy('COALESCE(v.retailStock, 0)', 'ASC')
         .take(5)
         .getMany(),
       this.recognizedSaleQb()
@@ -96,6 +109,27 @@ export class DashboardService {
         .where('o.status NOT IN (:...ex)', { ex: [DELETED] })
         .groupBy('o.status')
         .getRawMany(),
+      this.sumRevenue(startOfMonth, endOfToday, 'WHOLESALE'),
+      this.sumRevenue(startOfMonth, endOfToday, 'RETAIL'),
+      this.countOrders(startOfMonth, endOfToday, 'WHOLESALE'),
+      this.countOrders(startOfMonth, endOfToday, 'RETAIL'),
+      this.countOrdersByStatus('PENDING_REVIEW', 'WHOLESALE'),
+      this.countOrdersByStatus('PENDING_REVIEW', 'RETAIL'),
+      this.countActiveCustomers('WHOLESALE'),
+      this.countActiveCustomers('RETAIL'),
+      this.countOpenTickets('WHOLESALE'),
+      this.countOpenTickets('RETAIL'),
+      this.returnRepo.createQueryBuilder('r')
+        .where('r.status IN (:...open)', { open: ['PENDING', 'APPROVED'] })
+        .getCount(),
+      this.variantRepo.createQueryBuilder('v')
+        .where('(COALESCE(v.wholesaleStock, 0) < 10 OR COALESCE(v.retailStock, 0) < 10)')
+        .getCount(),
+      this.invoiceRepo.createQueryBuilder('i')
+        .where("i.status NOT IN ('PAID', 'CANCELLED')")
+        .getCount(),
+      this.monthlyRevenueSeries(6),
+      this.monthlyOrderSeries(6),
     ]);
 
     const topCustomers = await Promise.all(
@@ -151,6 +185,7 @@ export class DashboardService {
         city: (o as OrderEntity & { customer?: CustomerEntity }).customer?.city ?? '',
         total: o.total,
         status: o.status,
+        type: o.type,
         createdAt: o.createdAt,
       })),
       lowStock: lowStockVariants.map((v) => ({
@@ -161,11 +196,56 @@ export class DashboardService {
         wholesaleStock: Number(v.wholesaleStock) || 0,
         retailStock: Number(v.retailStock) || 0,
         productId: v.productId,
+        productName: v.product?.name,
       })),
       topCustomers,
-      monthlyRevenue: await this.monthlyRevenueSeries(6),
-      monthlyOrders: await this.monthlyOrderSeries(6),
+      monthlyRevenue,
+      monthlyOrders,
+      channels: {
+        wholesale: {
+          revenueThisMonth: wholesaleRevenue,
+          ordersThisMonth: wholesaleOrders,
+          pendingReview: wholesalePending,
+          activeCustomers: wholesaleCustomers,
+          openTickets: wholesaleTickets,
+        },
+        retail: {
+          revenueThisMonth: retailRevenue,
+          ordersThisMonth: retailOrders,
+          pendingReview: retailPending,
+          activeCustomers: retailCustomers,
+          openTickets: retailTickets,
+        },
+      },
+      ops: {
+        openReturns,
+        criticalStock: criticalStockCount,
+        unpaidInvoices,
+      },
+      generatedAt: now.toISOString(),
+      live: true,
     };
+  }
+
+  private async countOrdersByStatus(status: string, channel: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.orderRepo.createQueryBuilder('o').where('o.status = :status', { status });
+    this.applyOrderChannel(qb, channel);
+    return qb.getCount();
+  }
+
+  private async countActiveCustomers(channel: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.customerRepo.createQueryBuilder('c')
+      .where('c.status = :status', { status: 'ACTIVE' })
+      .andWhere('c.isActive = true');
+    this.applyCustomerChannel(qb, channel);
+    return qb.getCount();
+  }
+
+  private async countOpenTickets(channel: 'WHOLESALE' | 'RETAIL') {
+    return this.ticketRepo.createQueryBuilder('t')
+      .where('t.status IN (:...open)', { open: ['OPEN', 'IN_PROGRESS', 'WAITING_CUSTOMER'] })
+      .andWhere('t.channel = :channel', { channel })
+      .getCount();
   }
 
   async getCustomerStats(customerId: string) {

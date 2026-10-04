@@ -32,7 +32,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 const PAGE_SUBTITLES: Record<string, string> = {
-  '/admin': 'نمای کلی وضعیت سیستم',
+  '/admin': 'کار امروز فروش عمده و تک',
   '/admin/customers': 'مدیریت مشتریان و CRM',
   '/admin/customers/marketing': 'اتاق پیگیری تماس و پیامک',
   '/admin/orders': 'پردازش و پیگیری سفارش‌ها',

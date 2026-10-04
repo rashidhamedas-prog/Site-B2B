@@ -9,6 +9,8 @@ import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import { UserEntity } from '../auth/entities/user.entity';
+import { SupportTicketEntity } from '../support/entities/support-ticket.entity';
+import { ReturnRequestEntity } from '../rma/entities/return-request.entity';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -21,6 +23,8 @@ import { AuthModule } from '../auth/auth.module';
       ProductVariantEntity,
       ProductEntity,
       UserEntity,
+      SupportTicketEntity,
+      ReturnRequestEntity,
     ]),
     AuthModule,
   ],

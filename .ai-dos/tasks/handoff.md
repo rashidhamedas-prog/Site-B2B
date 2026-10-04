@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T17:20:00Z — TASK-20261004-012 admin desk (not deployed)
+
+- Owner: cursor:implementer-TASK-20261004-012
+- Worktree: `D:/proje/Site B2B` on the current checkout. Not committed.
+- Reclaimed `AdminDashboard.tsx` from done TASK-20260913-008 leftover `file_claims`. Did not edit `dashboard.controller.ts` (TASK-20260904-001) or sales-partner files (010).
+- `GET /dashboard` still returns the old totals. Added `channels.wholesale|retail` (recognized revenue, created orders, pending review, active customers, open tickets), `ops` (open returns, critical stock count, open invoices), `generatedAt`, order `type`, and low-stock product name.
+- Web desk: today's queue hides zeros; both storefronts; pipeline includes unpaid; surface index covers both sites.
+- Tests: `npx ts-node --transpile-only src/lib/admin-desk.spec.ts` ok. `apps/web` `tsc --noEmit` ok. API tsc still fails on pre-existing `order-money-guard.spec.ts` only.
+- Not done: commit, deploy, logged-in browser check.
+
 ## 2026-10-04T17:05:00Z — TASK-20261004-011 live at fa9ba4e
 
 - Owner: cursor:implementer-TASK-20261004-011
