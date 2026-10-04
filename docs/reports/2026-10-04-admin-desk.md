@@ -22,3 +22,4 @@
 - `tsc --noEmit` وب سبز
 - کلیک داخل نشست ادمین انجام نشد
 - مستقر: `c4b24e5` روی VPS. سلامت عمومی ۲۰۰. قطعهٔ `/admin` فیلد `revenueThisMonth` را دارد.
+- ریشهٔ ۵۰۰ بعدی: `orderBy('COALESCE(v.wholesaleStock, 0)')` بعد از join محصول. TypeORM قبل از نقطه را alias می‌گیرد (`COALESCE(v`) و هیچ کارتی پر نمی‌شود. ترتیب به ستون‌های واقعی برگشت.

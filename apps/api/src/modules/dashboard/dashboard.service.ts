@@ -11,6 +11,7 @@ import { SupportTicketEntity } from '../support/entities/support-ticket.entity';
 import { ReturnRequestEntity } from '../rma/entities/return-request.entity';
 import { customerChannelSql, normalizeCustomerChannel } from '../customer/customer-channel';
 import { recognizedSalePeriodSql, recognizedSaleStatuses } from './sales-recognition';
+import { LOW_STOCK_ORDER, LOW_STOCK_WHERE } from './dashboard-low-stock';
 
 export type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
@@ -75,9 +76,9 @@ export class DashboardService {
         .getMany(),
       this.variantRepo.createQueryBuilder('v')
         .leftJoinAndSelect('v.product', 'product')
-        .where('(COALESCE(v.wholesaleStock, 0) < 10 OR COALESCE(v.retailStock, 0) < 10)')
-        .orderBy('COALESCE(v.wholesaleStock, 0)', 'ASC')
-        .addOrderBy('COALESCE(v.retailStock, 0)', 'ASC')
+        .where(LOW_STOCK_WHERE)
+        .orderBy(LOW_STOCK_ORDER[0], 'ASC')
+        .addOrderBy(LOW_STOCK_ORDER[1], 'ASC')
         .take(5)
         .getMany(),
       this.recognizedSaleQb()
@@ -123,7 +124,7 @@ export class DashboardService {
         .where('r.status IN (:...open)', { open: ['PENDING', 'APPROVED'] })
         .getCount(),
       this.variantRepo.createQueryBuilder('v')
-        .where('(COALESCE(v.wholesaleStock, 0) < 10 OR COALESCE(v.retailStock, 0) < 10)')
+        .where(LOW_STOCK_WHERE)
         .getCount(),
       this.invoiceRepo.createQueryBuilder('i')
         .where("i.status NOT IN ('PAID', 'CANCELLED')")
