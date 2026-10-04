@@ -86,6 +86,13 @@ function classifyFetchError(err: unknown): { code: SmsTransportErrorCode; messag
   return { code: 'NETWORK', message: msg };
 }
 
+/** Ambiguous transport failure may still have reached sms.ir. Hard failures did not. */
+export function otpDispatchFromTransport(result: Pick<SmsTransportResult, 'ok' | 'errorCode'>): 'sent' | 'pending' | 'failed' {
+  if (result.ok) return 'sent';
+  if (result.errorCode === 'TIMEOUT' || result.errorCode === 'NETWORK') return 'pending';
+  return 'failed';
+}
+
 export async function smsIrRequest(
   method: 'GET' | 'POST',
   path: string,

@@ -3,11 +3,12 @@
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { OtpDeliveryNote } from '@/components/auth/OtpDeliveryNote';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { normalizeDigits, normalizeOtpCode, normalizePhone } from '@/lib/phone';
-import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown } from '@/lib/sms-cooldown';
+import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown, readSmsCooldownSeconds } from '@/lib/sms-cooldown';
 import { SpButton, SpStepRail, spFocusClass } from './SpUi';
 
 type ApplyFormField = {
@@ -85,6 +86,8 @@ export function SalesPartnershipApply() {
   const [resendBusy, setResendBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { secondsLeft, start, reset } = useSmsResendCooldown();
+  const { secondsLeft: validityLeft, start: startValidity, reset: resetValidity } = useSmsResendCooldown();
+  const [otpPending, setOtpPending] = useState(false);
 
   const fields = useMemo(() => {
     const list = settings?.applyFormFields?.length ? settings.applyFormFields : FALLBACK_FIELDS;
@@ -123,17 +126,21 @@ export function SalesPartnershipApply() {
   async function postApplication(opts?: { advanceToOtp?: boolean }): Promise<boolean> {
     setError(null);
     try {
-      const res = await apiClient.post<{ cooldownSeconds?: number; remainingSeconds?: number }>(
-        '/sales-partner-applications',
-        applyPayload(),
-      );
+      const res = await apiClient.post<{
+        cooldownSeconds?: number;
+        remainingSeconds?: number;
+        expiresInSeconds?: number;
+        delivery?: 'sent' | 'pending' | 'failed';
+      }>('/sales-partner-applications', applyPayload());
       const seconds = extractSmsCooldown(null, res);
       start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
+      setOtpPending(res.delivery === 'pending');
+      if (res.expiresInSeconds && res.expiresInSeconds > 0) startValidity(res.expiresInSeconds);
       if (opts?.advanceToOtp) setState('otp');
       return true;
     } catch (err) {
-      const seconds = extractSmsCooldown(err);
-      start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
+      const seconds = readSmsCooldownSeconds(err);
+      if (seconds != null) start(seconds);
       setError(err instanceof Error ? err.message : 'ارسال درخواست ناموفق بود');
       return false;
     }
@@ -332,6 +339,7 @@ export function SalesPartnershipApply() {
               <p className="rounded-2xl bg-[#1B5C4A]/5 px-3 py-2 text-sm text-stone-700" role="status">
                 کد پیامک‌شده به <span dir="ltr" className="font-medium">{phoneDisplay}</span> را وارد کنید.
               </p>
+              {validityLeft > 0 || otpPending ? <OtpDeliveryNote secondsLeft={validityLeft} pending={otpPending} /> : null}
               <Field label="کد تأیید" htmlFor="code">
                 <input
                   id="code"
@@ -356,7 +364,9 @@ export function SalesPartnershipApply() {
                   setState('idle');
                   setCode('');
                   setError(null);
+                  setOtpPending(false);
                   reset();
+                  resetValidity();
                 }}
               >
                 <ArrowRight className="h-4 w-4" />

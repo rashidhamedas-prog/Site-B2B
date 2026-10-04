@@ -12,6 +12,9 @@ import {
   assertCommissionRuleShape,
   assertPercent,
   commissionAmountIrr,
+  PRODUCT_FOLLOWER_NOTE,
+  PRODUCT_OVERRIDE_NOTE_PREFIX,
+  productRuleFollowsProgram,
   selectCommissionRule,
   vendorDueFromRetailIrr,
   vendorSkuMarginIrr,
@@ -242,7 +245,14 @@ export class SalesPartnerCatalogService {
 
     let productRuleId: string | null = null;
     if (input.eligible && overrideRaw !== undefined && overrideRaw !== null) {
-      const upserted = await this.upsertProductCommissionRule(actorId, productId, partnerPercent);
+      const program = selectCommissionRule(
+        rules,
+        { productId: `none-${product.id}`, categoryId: null, lineTotalAfterDiscountIrr: 0 },
+        'preview',
+        new Date(),
+      );
+      const followsProgram = program?.scope === 'PROGRAM' && program.percent === partnerPercent;
+      const upserted = await this.upsertProductCommissionRule(actorId, productId, partnerPercent, followsProgram);
       productRuleId = upserted.id;
     }
 
@@ -267,7 +277,12 @@ export class SalesPartnerCatalogService {
   }
 
   /** One active PRODUCT rule per SKU; prior PRODUCT rows for that product are deactivated. */
-  private async upsertProductCommissionRule(actorId: string, productId: string, percent: number) {
+  private async upsertProductCommissionRule(
+    actorId: string,
+    productId: string,
+    percent: number,
+    followsProgram: boolean,
+  ) {
     const existing = await this.rules.find({
       where: { scope: 'PRODUCT', productId, active: true },
     });
@@ -284,7 +299,9 @@ export class SalesPartnerCatalogService {
       categoryId: null,
       salesPartnerId: null,
       createdBy: actorId,
-      note: 'پورسانت محصول از کاتالوگ مجاز',
+      note: followsProgram
+        ? PRODUCT_FOLLOWER_NOTE
+        : `${PRODUCT_OVERRIDE_NOTE_PREFIX}نرخ اختصاصی این محصول`,
       version: maxVersion + 1,
     });
     await this.rules.save(row);
@@ -297,7 +314,7 @@ export class SalesPartnerCatalogService {
   }
 
   async listRules() {
-    const rows = await this.rules.find({ order: { createdAt: 'DESC' }, take: 100 });
+    const rows = await this.rules.find({ order: { createdAt: 'DESC' }, take: 500 });
     return rows.map((row) => ({
       id: row.id,
       scope: row.scope,
@@ -347,6 +364,65 @@ export class SalesPartnerCatalogService {
       scope: row.scope,
       percent: row.percent,
       active: row.active,
+    };
+  }
+
+  /**
+   * One active PROGRAM rate. Optional sync of product rules that still follow the program.
+   * Explicit override notes and past order snapshots stay put.
+   */
+  async setProgramRate(actorId: string, percentRaw: number, note: string | undefined, propagateFollowers: boolean) {
+    const percent = assertPercent(percentRaw);
+    const current = await this.rules.find({
+      where: { scope: 'PROGRAM', active: true },
+      order: { createdAt: 'DESC' },
+      take: 1,
+    });
+    const previousPercent = current[0]?.percent ?? null;
+    const versionRow = await this.rules.find({
+      where: { scope: 'PROGRAM' },
+      order: { version: 'DESC' },
+      take: 1,
+    });
+    const version = (versionRow[0]?.version || 0) + 1;
+    await this.rules.update({ scope: 'PROGRAM', active: true }, { active: false, endsAt: new Date() });
+    const row = await this.rules.save(
+      this.rules.create({
+        scope: 'PROGRAM',
+        percent,
+        active: true,
+        productId: null,
+        categoryId: null,
+        salesPartnerId: null,
+        createdBy: actorId,
+        note: note?.trim().slice(0, 240) || 'نرخ پیش‌فرض برنامه',
+        version,
+      }),
+    );
+    let updatedProducts = 0;
+    if (propagateFollowers) {
+      const productRules = await this.rules.find({ where: { scope: 'PRODUCT', active: true } });
+      const ids = productRules
+        .filter((rule) => productRuleFollowsProgram(rule.note) && rule.percent !== percent)
+        .map((rule) => rule.id);
+      if (ids.length) {
+        const result = await this.rules.update({ id: In(ids) }, { percent, note: PRODUCT_FOLLOWER_NOTE });
+        updatedProducts = result.affected ?? ids.length;
+      }
+    }
+    await this.audit(actorId, 'commission_rule.program_replaced', 'rule', row.id, {
+      percent,
+      previousPercent,
+      updatedProducts,
+      propagateFollowers,
+    });
+    return {
+      id: row.id,
+      scope: row.scope,
+      percent: row.percent,
+      active: true,
+      previousPercent,
+      updatedProducts,
     };
   }
 
@@ -505,6 +581,7 @@ export class SalesPartnerCatalogService {
       categoryId: row.categoryId,
       salesPartnerId: row.salesPartnerId,
       version: row.version,
+      createdAt: row.createdAt,
     }));
   }
 

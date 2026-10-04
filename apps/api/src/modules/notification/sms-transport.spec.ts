@@ -1,10 +1,16 @@
 import * as assert from 'node:assert/strict';
 import {
   normalizeEgressBaseUrl,
+  otpDispatchFromTransport,
   resolveSmsIrUrl,
   smsIrRequest,
   SMSIR_DIRECT_BASE,
 } from './sms-transport';
+
+assert.equal(otpDispatchFromTransport({ ok: true }), 'sent');
+assert.equal(otpDispatchFromTransport({ ok: false, errorCode: 'TIMEOUT' }), 'pending');
+assert.equal(otpDispatchFromTransport({ ok: false, errorCode: 'NETWORK' }), 'pending');
+assert.equal(otpDispatchFromTransport({ ok: false, errorCode: 'PROVIDER' }), 'failed');
 
 assert.equal(normalizeEgressBaseUrl(''), '');
 assert.equal(normalizeEgressBaseUrl('https://sms-egress.example.com'), 'https://sms-egress.example.com/v1');

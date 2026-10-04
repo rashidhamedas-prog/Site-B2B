@@ -7,6 +7,7 @@ import {
   isFullOrderReversalStatus,
   promoDiscountIrr,
   remainingReversalIrr,
+  productRuleFollowsProgram,
   selectCommissionRule,
   snapshotLineCommissions,
   vendorDueFromRetailIrr,
@@ -40,6 +41,15 @@ assert(selectCommissionRule(rules, { productId: 'p2', categoryId: 'coats', lineT
 assert(selectCommissionRule(rules, { productId: 'p2', categoryId: 'other', lineTotalAfterDiscountIrr: 1 }, 'sp1', at)?.id === 'prog', 'program');
 const expired: CommissionRule = { ...rules[2], id: 'old', endsAt: new Date('2026-01-01T00:00:00.000Z') };
 assert(selectCommissionRule([expired, rules[0]], { productId: 'p1', categoryId: null, lineTotalAfterDiscountIrr: 1 }, 'sp1', at)?.id === 'prog', 'expired skipped');
+const olderProgram: CommissionRule = { ...rules[0], id: 'old-prog', percent: 20, createdAt: new Date('2026-09-01T00:00:00.000Z') };
+const newerProgram: CommissionRule = { ...rules[0], id: 'new-prog', percent: 12, createdAt: new Date('2026-10-01T00:00:00.000Z') };
+assert(
+  selectCommissionRule([olderProgram, newerProgram], { productId: 'p9', categoryId: null, lineTotalAfterDiscountIrr: 1 }, 'sp1', at)?.id === 'new-prog',
+  'newer program rate wins',
+);
+assert(productRuleFollowsProgram('پورسانت محصول از کاتالوگ مجاز'), 'catalog note follows program');
+assert(productRuleFollowsProgram(null), 'empty note follows program');
+assert(!productRuleFollowsProgram('override:نرخ اختصاصی'), 'override stays');
 
 const allocated = allocateOrderDiscountIrr([100, 100, 100], 10);
 assert(allocated.reduce((a, b) => a + b, 0) === 10, 'discount remainder');

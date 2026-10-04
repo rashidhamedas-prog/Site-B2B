@@ -41,6 +41,7 @@ function redisService(pttlSeconds: number | null, firstWriterWins: boolean) {
 
 async function main() {
   const fresh = memoryOnlyService();
+  assert.equal(fresh.ttlSeconds(), 600, 'legacy 300s OTP lifetime is lifted to 10 minutes');
   assert.equal(fresh.cooldownSeconds(), 60, 'public cooldown window');
   assert.equal(fresh.cooldownSeconds('sales_partner_apply'), 120, 'sales-partner apply cooldown');
   assert.equal(fresh.cooldownSeconds('sales_partner'), 120, 'sales-partner login cooldown');

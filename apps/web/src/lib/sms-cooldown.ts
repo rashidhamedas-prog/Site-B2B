@@ -26,3 +26,23 @@ export function extractSmsCooldown(
   }
   return DEFAULT_SMS_COOLDOWN;
 }
+
+/** Null when the payload has no cooldown, so a normal error does not start a fake timer. */
+export function readSmsCooldownSeconds(source: unknown): number | null {
+  if (!source || typeof source !== 'object') return null;
+  const row = source as CooldownFields;
+  if (row.remainingSeconds != null && row.remainingSeconds > 0) return Math.ceil(row.remainingSeconds);
+  if (row.retryAfter != null && row.retryAfter > 0) return Math.ceil(row.retryAfter);
+  if (row.cooldownSeconds != null && row.cooldownSeconds > 0) return Math.ceil(row.cooldownSeconds);
+  return null;
+}
+
+export function formatOtpValidity(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.ceil(totalSeconds));
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  const fa = (n: number) => n.toLocaleString('fa-IR');
+  if (minutes <= 0) return `${fa(rest)} ثانیه`;
+  if (rest === 0) return `${fa(minutes)} دقیقه`;
+  return `${fa(minutes)} دقیقه و ${fa(rest)} ثانیه`;
+}

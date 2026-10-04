@@ -9,6 +9,15 @@ export const COMMISSION_SCOPES = [
 ] as const;
 export type CommissionScope = (typeof COMMISSION_SCOPES)[number];
 
+/** Product rows with this note track the program rate. */
+export const PRODUCT_FOLLOWER_NOTE = 'پورسانت محصول از کاتالوگ مجاز';
+/** Explicit per-SKU rate. Program saves must not overwrite these. */
+export const PRODUCT_OVERRIDE_NOTE_PREFIX = 'override:';
+
+export function productRuleFollowsProgram(note: string | null | undefined): boolean {
+  return !String(note || '').startsWith(PRODUCT_OVERRIDE_NOTE_PREFIX);
+}
+
 export type CommissionRule = {
   id: string;
   scope: CommissionScope;
@@ -20,6 +29,7 @@ export type CommissionRule = {
   categoryId: string | null;
   salesPartnerId: string | null;
   version: number;
+  createdAt?: Date | null;
 };
 
 export type LineForCommission = {
@@ -84,7 +94,12 @@ export function selectCommissionRule(
 ): CommissionRule | null {
   const matches = rules
     .filter((rule) => ruleInForce(rule, at) && ruleMatchesLine(rule, line, salesPartnerId))
-    .sort((a, b) => SCOPE_RANK[a.scope] - SCOPE_RANK[b.scope]);
+    .sort((a, b) => {
+      const rank = SCOPE_RANK[a.scope] - SCOPE_RANK[b.scope];
+      if (rank !== 0) return rank;
+      if (a.version !== b.version) return b.version - a.version;
+      return (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0);
+    });
   return matches[0] ?? null;
 }
 

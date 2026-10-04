@@ -182,7 +182,15 @@ export class OtpService {
   ) {}
 
   private ttl(): number {
-    return Number(this.config.get('OTP_TTL_SECONDS', 300)) || 300;
+    const raw = Number(this.config.get('OTP_TTL_SECONDS', 600));
+    // 300 was the old default and expires before slow sms.ir delivery. Treat it as 10 minutes.
+    const lifted = !Number.isFinite(raw) || raw < 60 ? 600 : raw === 300 ? 600 : raw;
+    return Math.min(Math.max(lifted, 60), 900);
+  }
+
+  /** Code lifetime in seconds. Separate from the resend cooldown. */
+  ttlSeconds(): number {
+    return this.ttl();
   }
 
   private maxAttempts(): number {
@@ -344,6 +352,11 @@ export class OtpService {
   async clear(phone: string, purpose: OtpPurpose = 'retail') {
     this.memory.delete(this.memKey(phone, purpose));
     await this.redis.del(this.otpKey(phone, purpose));
+  }
+
+  /** Drop the resend lock after a definite send failure so the user can retry. */
+  async clearCooldown(phone: string, purpose: OtpPurpose = 'retail') {
+    await this.redis.del(this.cooldownKey(phone, purpose));
   }
 
   private sessionKey(userId: string) {

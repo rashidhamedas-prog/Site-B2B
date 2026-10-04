@@ -7,12 +7,13 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, MessageSquare, Phone } from '
 import { AuthShell, type ConfettiRef } from '@/components/auth/AuthShell';
 import { BlurFade } from '@/components/auth/BlurFade';
 import { GlassInput } from '@/components/auth/GlassInput';
+import { OtpDeliveryNote } from '@/components/auth/OtpDeliveryNote';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { GlassButton } from '@/components/ui/glass-button';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
-import { extractSmsCooldown } from '@/lib/sms-cooldown';
+import { extractSmsCooldown, readSmsCooldownSeconds } from '@/lib/sms-cooldown';
 import { safeAccountRedirect } from '@/lib/safe-redirect';
 import { cn } from '@/lib/cn';
 
@@ -27,8 +28,10 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
   const [devCode, setDevCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [otpPending, setOtpPending] = useState(false);
   const confettiRef = useRef<ConfettiRef>(null);
   const { secondsLeft, start: startCooldown, reset: resetCooldown } = useSmsResendCooldown();
+  const { secondsLeft: validityLeft, start: startValidity, reset: resetValidity } = useSmsResendCooldown();
 
   const finish = (token: string, role: string) => {
     setToken(token, role, 'retail');
@@ -43,14 +46,19 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
         message: string;
         phone: string;
         cooldownSeconds?: number;
+        expiresInSeconds?: number;
+        delivery?: 'sent' | 'pending' | 'failed';
         devCode?: string;
       }>('/auth/retail/otp/request', { phone, name });
       if (res.devCode) setDevCode(res.devCode);
       setPhone(res.phone || phone);
+      setOtpPending(res.delivery === 'pending');
       startCooldown(extractSmsCooldown(null, res));
+      if (res.expiresInSeconds && res.expiresInSeconds > 0) startValidity(res.expiresInSeconds);
       if (!fromResend) setStep('code');
     } catch (err: unknown) {
-      startCooldown(extractSmsCooldown(err));
+      const cooldown = readSmsCooldownSeconds(err);
+      if (cooldown != null) startCooldown(cooldown);
       setError(err instanceof Error ? err.message : 'خطا در ارسال کد');
     } finally {
       setBusy(false);
@@ -197,6 +205,7 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
             className="w-full max-w-[320px] space-y-4"
           >
             <p className="text-center text-sm text-[var(--brand-muted)]">کد به {phone} ارسال شد</p>
+            {validityLeft > 0 || otpPending ? <OtpDeliveryNote secondsLeft={validityLeft} pending={otpPending} /> : null}
             {devCode ? (
               <p className="rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-900">
                 کد آزمایشی: {devCode}
@@ -228,6 +237,8 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
               onClick={() => {
                 setStep('phone');
                 resetCooldown();
+                resetValidity();
+                setOtpPending(false);
                 setDevCode('');
                 setCode('');
               }}

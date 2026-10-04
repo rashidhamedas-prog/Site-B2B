@@ -21,6 +21,7 @@ import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UserEntity } from '../auth/entities/user.entity';
 import { OtpCooldownError, OtpService } from '../redis/redis.module';
 import { SmsCooldownException } from '../notification/sms-cooldown-http';
+import { otpDispatchFromTransport } from '../notification/sms-transport';
 import { allowDevOtpExpose, normalizePhone } from '../auth/phone.util';
 import { isStaffRole } from '../auth/staff-access';
 import {
@@ -167,7 +168,12 @@ export class SalesPartnerService {
       applicationId: application.id,
       status: application.status,
       cooldownSeconds: this.otp.cooldownSeconds('sales_partner_apply'),
-      ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) ? { devCode: issued.code } : {}),
+      expiresInSeconds: issued.expiresInSeconds,
+      delivery: issued.delivery,
+      ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) &&
+      issued.delivery !== 'sent'
+        ? { devCode: issued.code }
+        : {}),
     };
   }
 
@@ -247,7 +253,16 @@ export class SalesPartnerService {
     const issued = await this.issueOtp(phone, profile.displayName, 'sales_partner');
     return {
       cooldownSeconds: this.otp.cooldownSeconds('sales_partner'),
-      ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) ? { devCode: issued.code } : {}),
+      expiresInSeconds: issued.expiresInSeconds,
+      delivery: issued.delivery,
+      message:
+        issued.delivery === 'pending'
+          ? 'ارسال پیامک کمی طول کشید. اگر کد رسید همان را وارد کنید.'
+          : 'کد تأیید ارسال شد',
+      ...(allowDevOtpExpose(String(this.config.get('NODE_ENV') || ''), String(this.config.get('DEV_OTP_EXPOSE') || '')) &&
+      issued.delivery !== 'sent'
+        ? { devCode: issued.code }
+        : {}),
     };
   }
 
@@ -686,12 +701,17 @@ export class SalesPartnerService {
       }
       throw err;
     }
-    const sent = this.notifications ? await this.notifications.sendOtp(phone, issued.code) : false;
-    if (!sent && this.config.get('NODE_ENV') === 'production') {
+    const expiresInSeconds = this.otp.ttlSeconds();
+    if (!this.notifications) {
+      return { code: issued.code, delivery: 'failed' as const, expiresInSeconds };
+    }
+    const delivery = otpDispatchFromTransport(await this.notifications.sendOtpDetailed(phone, issued.code));
+    if (delivery === 'failed' && this.config.get('NODE_ENV') === 'production') {
       await this.otp.clear(phone, purpose);
+      await this.otp.clearCooldown(phone, purpose);
       throw new HttpException('ارسال پیامک ناموفق بود', 503);
     }
-    return issued;
+    return { code: issued.code, delivery, expiresInSeconds };
   }
 
   private async verifyOtp(phone: string, code: string, purpose: 'sales_partner' | 'sales_partner_apply') {

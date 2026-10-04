@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T16:15:00Z — TASK-20261004-011 implementing (commission desk + OTP clock)
+
+- Owner: cursor:implementer-TASK-20261004-011
+- Branch/worktree: `ai/TASK-20261004-011-commission-desk` @ `D:/proje/Site B2B`
+- Based on `origin/master`. Program save replaces stacked PROGRAM rules and syncs follower PRODUCT rules. Override notes stay. Past orders stay snapshotted.
+- OTP: resend countdown is not code lifetime. UI shows expiresInSeconds. Timeout/network keeps the code (`pending`). Hard failure clears code and cooldown. Legacy OTP_TTL 300 is lifted to 600 (cap 900).
+- Specs: commission-policy, otp-cooldown, sms-transport, sp-admin-ops, sms-cooldown OK. Web tsc 0.
+- Rate-page files reclaimed from TASK-20261004-010. Ledger claims stay on 010.
+- Next: commit, fast-forward master, push, VPS deploy, health. Admin click needs a session.
+
 ## 2026-10-04T15:20:00Z — TASK-20261004-010 implementing (commission drill-down)
 
 - Owner: cursor:implementer-TASK-20261004-010

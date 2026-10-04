@@ -29,12 +29,14 @@ import { SpApplicationDetailDrawer } from './SpApplicationDetailDrawer';
 import { SpApplyFormBuilder } from './SpApplyFormBuilder';
 import { SpReasonDialog } from './SpReasonDialog';
 import {
+  activeProgramRule,
   isActionableDraft,
   matchesApplicationSearch,
   matchesPartnerSearch,
   partnerNameById,
   payoutIdempotencyKey,
 } from './sp-admin-ops';
+import { SpCommissionRules } from './SpCommissionRules';
 import type {
   ApplicationDetail,
   ApplicationRow,
@@ -69,7 +71,10 @@ export function AdminSalesPartners() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [rulePercent, setRulePercent] = useState(10);
+  const [rulePercentTouched, setRulePercentTouched] = useState(false);
   const [ruleNote, setRuleNote] = useState('');
+  const [propagateRules, setPropagateRules] = useState(true);
+  const [ruleMessage, setRuleMessage] = useState<string | null>(null);
   const [commissionDrafts, setCommissionDrafts] = useState<Record<string, number>>({});
   const [payoutPartnerId, setPayoutPartnerId] = useState('');
   const [bankReference, setBankReference] = useState('');
@@ -464,15 +469,38 @@ export function AdminSalesPartners() {
     }
   }
 
+  useEffect(() => {
+    if (rulePercentTouched) return;
+    const active = activeProgramRule(rules);
+    if (active) setRulePercent(active.percent);
+  }, [rules, rulePercentTouched]);
+
   async function createProgramRule() {
+    if (!Number.isInteger(rulePercent) || rulePercent < 0 || rulePercent > 80) {
+      setError('درصد برنامه باید عدد صحیح بین ۰ تا ۸۰ باشد');
+      return;
+    }
     setBusyId('rule');
+    setRuleMessage(null);
     try {
-      await apiClient.post('/admin/sales-partners/rules', {
-        scope: 'PROGRAM',
-        percent: rulePercent,
-        note: ruleNote || undefined,
-      });
+      const saved = await apiClient.post<{ percent: number; updatedProducts?: number }>(
+        '/admin/sales-partners/rules',
+        {
+          scope: 'PROGRAM',
+          percent: rulePercent,
+          note: ruleNote || undefined,
+          applyToFollowerProducts: propagateRules,
+        },
+      );
+      const synced = saved.updatedProducts ?? 0;
+      setRuleMessage(
+        propagateRules
+          ? `نرخ برنامه ${saved.percent.toLocaleString('fa-IR')}٪ شد و ${synced.toLocaleString('fa-IR')} محصول پیرو هم‌گام شد.`
+          : `نرخ برنامه ${saved.percent.toLocaleString('fa-IR')}٪ شد. محصولات پیرو دست نخوردند.`,
+      );
       setRuleNote('');
+      setRulePercentTouched(false);
+      setCommissionDrafts({});
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ثبت قانون ناموفق بود');
@@ -997,6 +1025,18 @@ export function AdminSalesPartners() {
                           ? ` · پورسانت محصول ${row.productCommissionPercent}٪`
                           : ` · پورسانت مؤثر ${row.previewCommissionPercent}٪`}
                       </p>
+                      {(() => {
+                        const program = activeProgramRule(rules);
+                        if (!program) return null;
+                        const follows = draftCommission(row) === program.percent;
+                        return (
+                          <p className="mt-1 text-xs leading-5 text-stone-500">
+                            {follows
+                              ? 'پیرو نرخ برنامه؛ با ذخیرهٔ نرخ برنامه عوض می‌شود.'
+                              : 'نرخ اختصاصی این کالا؛ با نرخ برنامه عوض نمی‌شود.'}
+                          </p>
+                        );
+                      })()}
                       <label className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-700">
                         <span>پورسانت این محصول (%)</span>
                         <input
@@ -1078,63 +1118,21 @@ export function AdminSalesPartners() {
       )}
 
       {tab === 'rules' && (
-        <SpSection title="قوانین پورسانت" description="نرخ برنامه مبنای تخمین و محاسبه است.">
-          <form
-            className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void createProgramRule();
-            }}
-          >
-            <p className="font-medium">نرخ پیش‌فرض برنامه</p>
-            <label className="block text-sm" htmlFor="sp-rule-percent">
-              درصد
-            </label>
-            <input
-              id="sp-rule-percent"
-              type="number"
-              min={0}
-              max={80}
-              value={rulePercent}
-              onChange={(e) => setRulePercent(Number(e.target.value))}
-              className={`min-h-11 w-32 rounded-xl border px-3 ${spFocusClass}`}
-            />
-            <label className="block text-sm" htmlFor="sp-rule-note">
-              توضیح داخلی
-            </label>
-            <input
-              id="sp-rule-note"
-              value={ruleNote}
-              onChange={(e) => setRuleNote(e.target.value)}
-              className={`min-h-11 w-full rounded-xl border px-3 ${spFocusClass}`}
-            />
-            <button
-              type="submit"
-              className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}
-              disabled={busyId === 'rule'}
-            >
-              ثبت نرخ برنامه
-            </button>
-          </form>
-          <ul className="space-y-3">
-            {rules.length === 0 && (
-              <li>
-                <SpEmptyState>قانونی ثبت نشده؛ تا آن زمان پورسانت تخمینی صفر است.</SpEmptyState>
-              </li>
-            )}
-            {rules.map((row) => (
-              <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium">
-                    {row.scope} · {row.percent}٪
-                  </p>
-                  <SpBadge status={row.active ? 'ACTIVE' : 'OFF'} label={row.active ? 'فعال' : 'غیرفعال'} />
-                </div>
-                {row.note && <p className="mt-1 text-stone-600">{row.note}</p>}
-              </li>
-            ))}
-          </ul>
-        </SpSection>
+        <SpCommissionRules
+          rules={rules}
+          percent={rulePercent}
+          note={ruleNote}
+          propagate={propagateRules}
+          busy={busyId === 'rule'}
+          message={ruleMessage}
+          onPercent={(value) => {
+            setRulePercentTouched(true);
+            setRulePercent(value);
+          }}
+          onNote={setRuleNote}
+          onPropagate={setPropagateRules}
+          onSubmit={() => void createProgramRule()}
+        />
       )}
 
       {tab === 'payouts' && (

@@ -6,6 +6,7 @@ import { ArrowRight, MessageSquare, Phone } from 'lucide-react';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { BlurFade } from '@/components/auth/BlurFade';
 import { GlassInput } from '@/components/auth/GlassInput';
+import { OtpDeliveryNote } from '@/components/auth/OtpDeliveryNote';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { GlassButton } from '@/components/ui/glass-button';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
@@ -28,6 +29,8 @@ type ForgotResponse = {
   devCode?: string;
   cooldownSeconds?: number;
   remainingSeconds?: number;
+  expiresInSeconds?: number;
+  delivery?: 'sent' | 'pending' | 'failed';
 };
 
 function errHasSmsCooldown(err: unknown): boolean {
@@ -63,6 +66,8 @@ export function ForgotPasswordFlow({
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const { secondsLeft, start, reset } = useSmsResendCooldown();
+  const { secondsLeft: validityLeft, start: startValidity, reset: resetValidity } = useSmsResendCooldown();
+  const [otpPending, setOtpPending] = useState(false);
 
   async function sendForgotCode(): Promise<boolean> {
     setError('');
@@ -72,7 +77,9 @@ export function ForgotPasswordFlow({
       setInfo(res.message);
       if (res.devCode) setDevCode(res.devCode);
       else setDevCode('');
+      setOtpPending(res.delivery === 'pending');
       start(extractSmsCooldown(null, res));
+      if (res.expiresInSeconds && res.expiresInSeconds > 0) startValidity(res.expiresInSeconds);
       return true;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'ارسال کد ناموفق بود');
@@ -224,6 +231,7 @@ export function ForgotPasswordFlow({
           <GlassButton type="submit" size="full" disabled={busy}>
             {busy ? 'در حال ذخیره…' : 'ذخیره رمز و ادامه'}
           </GlassButton>
+          {validityLeft > 0 || otpPending ? <OtpDeliveryNote secondsLeft={validityLeft} pending={otpPending} /> : null}
           <SmsResendButton secondsLeft={secondsLeft} onResend={() => void resendCode()} busy={resendBusy} />
           <button
             type="button"
@@ -233,7 +241,9 @@ export function ForgotPasswordFlow({
               setCode('');
               setDevCode('');
               setError('');
+              setOtpPending(false);
               reset();
+              resetValidity();
             }}
           >
             <ArrowRight className="h-4 w-4" />

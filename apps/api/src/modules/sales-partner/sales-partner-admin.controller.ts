@@ -135,7 +135,11 @@ export class SalesPartnerAdminController {
     @Body() body: CreateSalesCommissionRuleDto,
     @Req() req: { user?: { sub?: string; id?: string } },
   ) {
-    return this.catalog.createRule(req.user?.sub || req.user?.id || '', body);
+    const actorId = req.user?.sub || req.user?.id || '';
+    if (body.scope === 'PROGRAM') {
+      return this.catalog.setProgramRate(actorId, body.percent, body.note, body.applyToFollowerProducts !== false);
+    }
+    return this.catalog.createRule(actorId, body);
   }
 
   @Post('rules/preview')

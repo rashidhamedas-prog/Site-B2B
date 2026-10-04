@@ -22,6 +22,7 @@ import { NotificationService } from '../notification/notification.service';
 import { CustomerMarketingService } from '../customer-marketing/customer-marketing.service';
 import { OtpCooldownError, OtpService } from '../redis/redis.module';
 import { SmsCooldownException } from '../notification/sms-cooldown-http';
+import { otpDispatchFromTransport } from '../notification/sms-transport';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
 import {
   canIssuePasswordReset,
@@ -492,6 +493,7 @@ export class AuthService {
       message: GENERIC_PASSWORD_FORGOT_MESSAGE,
       phone,
       cooldownSeconds: this.otpService.cooldownSeconds(),
+      expiresInSeconds: this.otpService.ttlSeconds(),
     };
 
     const user = await this.userRepo.findOne({ where: { phone } });
@@ -512,16 +514,17 @@ export class AuthService {
     }
 
     const isProd = this.config.get('NODE_ENV') === 'production';
-    const sent = this.notifications ? await this.notifications.sendOtp(phone, code) : false;
-    if (!sent && isProd) {
+    const dispatch = await this.dispatchLoginOtp(phone, code);
+    if (dispatch === 'failed' && isProd) {
       await this.otpService.clear(phone, 'password_reset');
+      await this.otpService.clearCooldown(phone, 'password_reset');
       return generic;
     }
 
     const res: { message: string; phone: string; cooldownSeconds: number; devCode?: string } = {
       ...generic,
     };
-    if (!sent && this.allowDevOtpExpose()) {
+    if (dispatch === 'failed' && this.allowDevOtpExpose()) {
       res.devCode = code;
     }
     return res;
@@ -630,8 +633,6 @@ export class AuthService {
       throw new BadRequestException('از صفحه ورود همکاران استفاده کنید');
     }
 
-    const isProd = this.config.get('NODE_ENV') === 'production';
-
     let code: string;
     try {
       ({ code } = await this.otpService.issue(phone, name));
@@ -642,31 +643,45 @@ export class AuthService {
       throw new ServiceUnavailableException('سرویس ارسال کد موقتاً در دسترس نیست');
     }
 
-    const sent = this.notifications
-      ? await this.notifications.sendOtp(phone, code)
-      : false;
-
-    if (!sent && isProd) {
+    const dispatch = await this.dispatchLoginOtp(phone, code);
+    if (dispatch === 'failed' && this.config.get('NODE_ENV') === 'production') {
       await this.otpService.clear(phone);
+      await this.otpService.clearCooldown(phone);
       throw new ServiceUnavailableException('ارسال پیامک ناموفق بود. بعداً تلاش کنید.');
     }
 
+    const sent = dispatch === 'sent';
     const res: {
       message: string;
       phone: string;
       sent: boolean;
+      delivery: 'sent' | 'pending' | 'failed';
       cooldownSeconds: number;
+      expiresInSeconds: number;
       devCode?: string;
     } = {
-      message: sent ? 'کد تایید ارسال شد' : 'کد تایید آماده است (حالت توسعه)',
+      message:
+        dispatch === 'pending'
+          ? 'ارسال پیامک کمی طول کشید. اگر کد رسید همان را وارد کنید.'
+          : sent
+            ? 'کد تایید ارسال شد'
+            : 'کد تایید آماده است (حالت توسعه)',
       phone,
       sent,
+      delivery: dispatch,
       cooldownSeconds: this.otpService.cooldownSeconds(),
+      expiresInSeconds: this.otpService.ttlSeconds(),
     };
-    if (!sent && this.allowDevOtpExpose()) {
+    if (dispatch === 'failed' && this.allowDevOtpExpose()) {
       res.devCode = code;
     }
     return res;
+  }
+
+  /** Keep the code when sms.ir may still deliver after a timeout. */
+  private async dispatchLoginOtp(phone: string, code: string): Promise<'sent' | 'pending' | 'failed'> {
+    if (!this.notifications) return 'failed';
+    return otpDispatchFromTransport(await this.notifications.sendOtpDetailed(phone, code));
   }
 
   /** Retail (B2C) OTP — verify and issue JWT; never auto-approve inactive B2B. */

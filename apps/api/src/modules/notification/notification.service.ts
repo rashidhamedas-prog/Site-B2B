@@ -41,17 +41,20 @@ export class NotificationService {
     );
   }
 
-  private async post(apiKey: string, path: string, body: Record<string, any>): Promise<boolean> {
-    const cfg = await this.settings.sms();
-    const result = await smsIrRequest(
-      'POST',
-      path,
-      apiKey,
-      body,
-      this.transportCfg(cfg),
-    );
+  private async postResult(
+    apiKey: string,
+    path: string,
+    body: Record<string, any>,
+    preset?: Awaited<ReturnType<SettingsService['sms']>>,
+  ): Promise<SmsTransportResult> {
+    const cfg = preset ?? (await this.settings.sms());
+    const result = await smsIrRequest('POST', path, apiKey, body, this.transportCfg(cfg));
     if (!result.ok) this.logTransportFailure(path, result);
-    return result.ok;
+    return result;
+  }
+
+  private async post(apiKey: string, path: string, body: Record<string, any>): Promise<boolean> {
+    return (await this.postResult(apiKey, path, body)).ok;
   }
 
   private async template(key: SmsTemplateKey, vars: Record<string, string>): Promise<string> {
@@ -113,20 +116,39 @@ export class NotificationService {
 
   // OTP via sms.ir fast-send template (template must define #CODE#).
   async sendOtp(receptor: string, token: string): Promise<boolean> {
+    return (await this.sendOtpDetailed(receptor, token)).ok;
+  }
+
+  /** Same send as sendOtp, with timeout/network kept distinct from a hard provider reject. */
+  async sendOtpDetailed(receptor: string, token: string): Promise<SmsTransportResult> {
     const cfg = await this.settings.sms();
     if (!cfg.enabled || !cfg.apiKey) {
-      this.logger.log(`[SMS off] OTP to=${receptor} token=${token}`);
-      return false;
+      this.logger.log(`[SMS off] OTP to=${receptor}`);
+      return { ok: false, errorCode: 'DISABLED', errorMessage: 'disabled', via: 'direct', durationMs: 0 };
     }
     if (!cfg.otpTemplateId) {
       const message = await this.template('otpFallback', { code: token });
-      return this.sendSms(receptor, message);
+      return this.postResult(
+        cfg.apiKey,
+        '/send/bulk',
+        {
+          lineNumber: cfg.lineNumber || undefined,
+          messageText: message,
+          mobiles: [receptor],
+        },
+        cfg,
+      );
     }
-    return this.post(cfg.apiKey, '/send/verify', {
-      mobile: receptor,
-      templateId: cfg.otpTemplateId,
-      parameters: [{ name: 'CODE', value: token }],
-    });
+    return this.postResult(
+      cfg.apiKey,
+      '/send/verify',
+      {
+        mobile: receptor,
+        templateId: cfg.otpTemplateId,
+        parameters: [{ name: 'CODE', value: token }],
+      },
+      cfg,
+    );
   }
 
   // ── Business event helpers (each toggleable in settings) ──

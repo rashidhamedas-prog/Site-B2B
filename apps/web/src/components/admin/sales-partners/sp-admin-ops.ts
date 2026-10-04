@@ -44,6 +44,47 @@ export function partnerSlicesForBucket(
     .sort((a, b) => b.amountIrr - a.amountIrr || a.salesPartnerId.localeCompare(b.salesPartnerId));
 }
 
+export const COMMISSION_SCOPE_FA: Record<string, string> = {
+  PROGRAM: 'نرخ برنامه',
+  CATEGORY: 'نرخ دسته',
+  PRODUCT: 'نرخ محصول',
+  PARTNER_CATEGORY: 'نرخ همکار برای دسته',
+  PARTNER_PRODUCT: 'نرخ همکار برای محصول',
+};
+
+export function productCommissionFollowsProgram(note: string | null | undefined): boolean {
+  return !String(note || '').startsWith('override:');
+}
+
+export function activeProgramRule<T extends { scope: string; active: boolean; createdAt?: string | null }>(
+  rules: T[],
+): T | null {
+  const rows = rules.filter((row) => row.scope === 'PROGRAM' && row.active);
+  rows.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  return rows[0] ?? null;
+}
+
+export function commissionDeskCounts(
+  rules: Array<{ scope: string; active: boolean; note: string | null }>,
+): { followers: number; overrides: number } {
+  let followers = 0;
+  let overrides = 0;
+  for (const row of rules) {
+    if (!row.active || row.scope !== 'PRODUCT') continue;
+    if (productCommissionFollowsProgram(row.note)) followers += 1;
+    else overrides += 1;
+  }
+  return { followers, overrides };
+}
+
+/** Integer IRR. 1_000_000 ریال = 100_000 تومان. */
+export function samplePartnerCommissionIrr(saleIrr: number, percent: number): number {
+  if (!Number.isInteger(saleIrr) || saleIrr < 0 || !Number.isInteger(percent) || percent < 0 || percent > 80) {
+    return 0;
+  }
+  return Math.floor((saleIrr * percent) / 100);
+}
+
 export function partnerNameById(partners: PartnerRow[], id: string | null | undefined): string {
   if (!id) return '';
   return partners.find((row) => row.id === id)?.displayName || '';

@@ -81,6 +81,7 @@ export type RuleRow = {
   categoryId: string | null;
   salesPartnerId: string | null;
   note: string | null;
+  createdAt?: string | null;
 };
 
 export type PayoutRow = {

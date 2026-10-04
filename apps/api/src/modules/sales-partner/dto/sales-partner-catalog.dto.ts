@@ -61,6 +61,12 @@ export class CreateSalesCommissionRuleDto {
   @IsString()
   @MaxLength(240)
   note?: string;
+
+  /** When saving PROGRAM, copy the percent onto product rules that are not explicit overrides. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  applyToFollowerProducts?: boolean;
 }
 
 export class PreviewSalesCommissionDto {

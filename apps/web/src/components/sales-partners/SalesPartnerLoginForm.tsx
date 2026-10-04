@@ -6,6 +6,7 @@ import { ArrowRight, MessageSquare, Phone } from 'lucide-react';
 import { AuthShell } from '@/components/auth/AuthShell';
 import { BlurFade } from '@/components/auth/BlurFade';
 import { GlassInput } from '@/components/auth/GlassInput';
+import { OtpDeliveryNote } from '@/components/auth/OtpDeliveryNote';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { GlassButton } from '@/components/ui/glass-button';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
@@ -13,7 +14,7 @@ import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
 import { normalizeOtpCode, normalizePhone } from '@/lib/phone';
 import { safeScopedRedirect } from '@/lib/safe-redirect';
-import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown } from '@/lib/sms-cooldown';
+import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown, readSmsCooldownSeconds } from '@/lib/sms-cooldown';
 import { cn } from '@/lib/cn';
 
 export function SalesPartnerLoginForm() {
@@ -25,7 +26,9 @@ export function SalesPartnerLoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [otpPending, setOtpPending] = useState(false);
   const { secondsLeft, start, reset: resetCooldown } = useSmsResendCooldown();
+  const { secondsLeft: validityLeft, start: startValidity, reset: resetValidity } = useSmsResendCooldown();
 
   function goHome(token: string, role: string) {
     setToken(token, role, 'sales_partner');
@@ -39,20 +42,25 @@ export function SalesPartnerLoginForm() {
     setError(null);
     const wasSent = otpSent;
     try {
-      const res = await apiClient.post<{ cooldownSeconds?: number; remainingSeconds?: number }>(
-        '/sales-partners/auth/otp/request',
-        { phone: normalizePhone(phone) },
-      );
+      const res = await apiClient.post<{
+        cooldownSeconds?: number;
+        remainingSeconds?: number;
+        expiresInSeconds?: number;
+        delivery?: 'sent' | 'pending' | 'failed';
+        message?: string;
+      }>('/sales-partners/auth/otp/request', { phone: normalizePhone(phone) });
       setOtpSent(true);
-      setStatus('کد تأیید ارسال شد.');
+      setOtpPending(res.delivery === 'pending');
+      setStatus(res.message || 'کد تأیید ارسال شد.');
       const seconds = extractSmsCooldown(null, res);
       start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
+      if (res.expiresInSeconds && res.expiresInSeconds > 0) startValidity(res.expiresInSeconds);
     } catch (err) {
       const statusCode =
         err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : 0;
       if (statusCode === 429) {
-        const seconds = extractSmsCooldown(err);
-        start(seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
+        const seconds = readSmsCooldownSeconds(err);
+        start(seconds != null && seconds > 0 ? seconds : DEFAULT_SALES_PARTNER_SMS_COOLDOWN);
         if (wasSent) setOtpSent(true);
       }
       setError(err instanceof Error ? err.message : 'ارسال کد ناموفق بود');
@@ -100,6 +108,8 @@ export function SalesPartnerLoginForm() {
     setError(null);
     setStatus(null);
     resetCooldown();
+    resetValidity();
+    setOtpPending(false);
   }
 
   return (
@@ -191,6 +201,7 @@ export function SalesPartnerLoginForm() {
               {status}
             </p>
           ) : null}
+          {validityLeft > 0 || otpPending ? <OtpDeliveryNote secondsLeft={validityLeft} pending={otpPending} /> : null}
           <GlassInput icon={<MessageSquare className="h-5 w-5" aria-hidden />}>
             <input
               id="code"
