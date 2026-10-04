@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T17:50:00Z — dashboard 500 fixed at 9c1e11d
+
+- Root cause from `taranom_api` logs: `TypeORMError: "COALESCE(v" alias was not found` inside `DashboardService.getStats`.
+- The product join made TypeORM split `orderBy('COALESCE(v.wholesaleStock, 0)')` on the first dot. That rejected the whole `Promise.all`, so every card was empty and the UI showed Internal server error.
+- Sort is now `v.wholesaleStock`, `v.retailStock`. The SQL filter is unchanged and shared by the list and the count.
+- Spec `dashboard-low-stock.spec.ts` ok. Running image contains `dashboard-low-stock.js`. No new alias errors in the three minutes after the container start. Health 200.
+
 ## 2026-10-04T17:40:00Z — TASK-20261004-012 live at c4b24e5
 
 - Owner: cursor:implementer-TASK-20261004-012
