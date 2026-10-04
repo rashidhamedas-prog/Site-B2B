@@ -10,14 +10,6 @@ export class SalesPartnerIntegrity1759564800001 implements MigrationInterface {
       ADD COLUMN IF NOT EXISTS "bucket" varchar(16)
     `);
     await queryRunner.query(`
-      ALTER TABLE "sales_commission_ledger_entries"
-      ALTER COLUMN "idempotencyKey" TYPE varchar(80)
-    `);
-    await queryRunner.query(`
-      ALTER TABLE "sales_commission_ledger_entries"
-      ALTER COLUMN "reasonCode" TYPE varchar(64)
-    `);
-    await queryRunner.query(`
       ALTER TABLE "sales_partner_order_drafts"
       ADD COLUMN IF NOT EXISTS "confirmationResumeTokenHash" varchar(64)
     `);

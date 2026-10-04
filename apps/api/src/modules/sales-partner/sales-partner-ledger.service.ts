@@ -340,6 +340,8 @@ export class SalesPartnerLedgerService {
   }) {
     const earned = await this.entries.findOne({
       where: { idempotencyKey: earnedIdempotencyKey(input.orderId, input.orderItemId) },
+    }) ?? await this.entries.findOne({
+      where: { orderId: input.orderId, orderItemId: input.orderItemId, entryType: 'COMMISSION_EARNED' },
     });
     if (!earned) return 0;
     const prior = await this.entries.find({
@@ -507,7 +509,12 @@ export class SalesPartnerLedgerService {
     reasonCode: string;
     bucket?: string | null;
   }) {
-    const found = await this.entries.findOne({ where: { idempotencyKey: row.idempotencyKey } });
+    const found = await this.entries.findOne({ where: { idempotencyKey: row.idempotencyKey } })
+      ?? (row.entryType === 'COMMISSION_EARNED'
+        ? await this.entries.findOne({
+          where: { orderId: row.orderId, orderItemId: row.orderItemId, entryType: 'COMMISSION_EARNED' },
+        })
+        : null);
     if (found) {
       if (row.entryType === 'COMMISSION_EARNED' && row.availableAt && !found.availableAt) {
         found.availableAt = row.availableAt;
