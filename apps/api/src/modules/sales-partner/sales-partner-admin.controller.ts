@@ -182,8 +182,12 @@ export class SalesPartnerAdminController {
   }
 
   @Get(':id/balances')
-  balances(@Param('id') id: string) {
-    return this.ledger.balances(id);
+  async balances(@Param('id') id: string, @Query('page') page?: string) {
+    const [money, preview] = await Promise.all([
+      this.ledger.balances(id, Number(page) || 1),
+      this.payouts.preview(id),
+    ]);
+    return { ...money, displayName: preview.displayName, ibanMasked: preview.ibanMasked };
   }
 
   @Get()

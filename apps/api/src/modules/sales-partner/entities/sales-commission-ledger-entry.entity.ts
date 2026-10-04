@@ -36,6 +36,9 @@ export class SalesCommissionLedgerEntryEntity {
   @Column({ type: 'uuid', nullable: true })
   payoutId: string | null;
 
+  @Column({ type: 'bigint', default: 0 })
+  settledIrr: string;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

@@ -64,6 +64,9 @@ export function AdminSalesPartners() {
   const [payoutPartnerId, setPayoutPartnerId] = useState('');
   const [bankReference, setBankReference] = useState('');
   const [availableIrr, setAvailableIrr] = useState<number | null>(null);
+  const [payoutName, setPayoutName] = useState('');
+  const [payoutIban, setPayoutIban] = useState<string | null>(null);
+  const [payoutKey, setPayoutKey] = useState('');
   const [settings, setSettings] = useState<Settings | null>(null);
   const [orders, setOrders] = useState<DraftRow[]>([]);
   const [audits, setAudits] = useState<AuditRow[]>([]);
@@ -91,9 +94,11 @@ export function AdminSalesPartners() {
     setCommissionDrafts((prev) => {
       const next = { ...prev };
       for (const row of nextCatalog.items) {
-        if (next[row.productId] === undefined) {
-          next[row.productId] =
-            row.productCommissionPercent ?? row.previewCommissionPercent ?? 10;
+        if (
+          next[row.productId] === undefined
+          && (row.productCommissionPercent != null || row.previewCommissionPercent != null)
+        ) {
+          next[row.productId] = row.productCommissionPercent ?? row.previewCommissionPercent ?? 0;
         }
       }
       return next;
@@ -152,7 +157,11 @@ export function AdminSalesPartners() {
   useEffect(() => {
     let cancelled = false;
     loadCatalog().catch((err: unknown) => {
-      if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری کاتالوگ ناموفق بود');
+      if (!cancelled) {
+        setCatalog([]);
+        setCatalogTotal(0);
+        setError(err instanceof Error ? err.message : 'بارگذاری کاتالوگ ناموفق بود');
+      }
     });
     return () => {
       cancelled = true;
@@ -238,10 +247,11 @@ export function AdminSalesPartners() {
     }
   }
 
-  function draftCommission(row: CatalogRow): number {
+  function draftCommission(row: CatalogRow): number | '' {
     const raw = commissionDrafts[row.productId];
     if (Number.isInteger(raw) && raw >= 0 && raw <= 80) return raw;
-    return row.productCommissionPercent ?? row.previewCommissionPercent ?? 10;
+    const known = row.productCommissionPercent ?? row.previewCommissionPercent;
+    return known == null ? '' : known;
   }
 
   async function patchEligibility(
@@ -252,7 +262,8 @@ export function AdminSalesPartners() {
     const commissionPercentOverride = draftCommission(row);
     if (
       opts?.withCommission &&
-      (!Number.isInteger(commissionPercentOverride) ||
+      (commissionPercentOverride === '' ||
+        !Number.isInteger(commissionPercentOverride) ||
         commissionPercentOverride < 0 ||
         commissionPercentOverride > 80)
     ) {
@@ -277,8 +288,7 @@ export function AdminSalesPartners() {
   }
 
   async function toggleEligible(row: CatalogRow) {
-    const enabling = !row.eligible;
-    await patchEligibility(row, enabling, { withCommission: enabling });
+    await patchEligibility(row, !row.eligible);
   }
 
   async function saveProductCommission(row: CatalogRow) {
@@ -292,26 +302,32 @@ export function AdminSalesPartners() {
   async function loadBalance() {
     if (!payoutPartnerId) return;
     try {
-      const next = await apiClient.get<{ available: number }>(
-        `/admin/sales-partners/${payoutPartnerId}/balances`,
-      );
+      const next = await apiClient.get<{
+        available: number;
+        displayName?: string;
+        ibanMasked?: string | null;
+      }>(`/admin/sales-partners/${payoutPartnerId}/balances`);
       setAvailableIrr(next.available);
+      setPayoutName(next.displayName || '');
+      setPayoutIban(next.ibanMasked ?? null);
+      setPayoutKey((current) => current || crypto.randomUUID());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خواندن مانده ناموفق بود');
     }
   }
 
   async function confirmPayout() {
-    if (!payoutPartnerId) return;
+    if (!payoutPartnerId || availableIrr === null || !payoutKey) return;
     setBusyId('payout');
     try {
       await apiClient.post('/admin/sales-partners/payouts', {
         salesPartnerId: payoutPartnerId,
         bankReference,
-        idempotencyKey: `ui-${payoutPartnerId}-${Date.now()}`,
+        idempotencyKey: payoutKey,
         method: 'TRANSFER',
       });
       setBankReference('');
+      setPayoutKey('');
       await load();
       await loadBalance();
     } catch (err) {
@@ -943,6 +959,9 @@ export function AdminSalesPartners() {
               onChange={(e) => {
                 setPayoutPartnerId(e.target.value);
                 setAvailableIrr(null);
+                setPayoutName('');
+                setPayoutIban(null);
+                setPayoutKey('');
               }}
             >
               <option value="">انتخاب کنید</option>
@@ -961,7 +980,11 @@ export function AdminSalesPartners() {
               مشاهده مانده
             </button>
             {availableIrr !== null && (
-              <p className="text-sm">قابل‌برداشت: {toman(availableIrr)} تومان</p>
+              <div className="rounded-xl bg-stone-50 p-3 text-sm leading-7">
+                <p>همکار: {payoutName || '—'}</p>
+                <p>شبا: {payoutIban || 'ثبت نشده'}</p>
+                <p>مبلغ تازه از سرور: {toman(availableIrr)} تومان</p>
+              </div>
             )}
             <label className="block text-sm" htmlFor="sp-pay-ref">
               شماره مرجع واریز
@@ -976,7 +999,7 @@ export function AdminSalesPartners() {
             <button
               type="submit"
               className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}
-              disabled={busyId === 'payout'}
+              disabled={busyId === 'payout' || availableIrr === null || !payoutKey || bankReference.trim().length < 4}
             >
               ثبت تسویه
             </button>

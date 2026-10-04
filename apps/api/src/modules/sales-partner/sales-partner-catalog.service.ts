@@ -17,6 +17,7 @@ import {
   vendorSkuMarginIrr,
   type CommissionRule,
 } from './sales-commission-policy';
+import { productMarginIrr } from './sales-partner-referral-policy';
 import {
   factualFacts,
   humanStockBand,
@@ -221,22 +222,36 @@ export class SalesPartnerCatalogService {
         : assertPercent(currentPercent);
 
     let marginCheck: Record<string, unknown> | null = null;
-    if (input.eligible && product.vendorId) {
-      const retailNet = Number(product.retailPrice || 0);
-      const vendorDue = vendorDueFromRetailIrr(retailNet, product.commissionPercent);
-      const margin = vendorSkuMarginIrr({
-        retailNetIrr: retailNet,
-        vendorDueIrr: vendorDue,
-        partnerPercent,
+    if (input.eligible) {
+      const retailNet = Math.floor(Number(product.retailPrice || 0));
+      const compare = Math.floor(Number(product.retailCompareAtPrice || 0));
+      const discountIrr = compare > retailNet ? compare - retailNet : 0;
+      const goodsCostIrr = product.vendorId
+        ? vendorDueFromRetailIrr(retailNet, product.commissionPercent)
+        : 0;
+      const margin = productMarginIrr({
+        payableIrr: retailNet,
+        discountIrr,
+        goodsCostIrr,
+        variableCostIrr: 0,
+        partnerCommissionIrr: commissionAmountIrr(retailNet, partnerPercent),
       });
       marginCheck = {
         retailNetIrr: retailNet,
+        discountIrr,
+        goodsCostIrr,
+        variableCostIrr: 0,
         marginIrr: margin,
         minMarginIrr: settings.minMarginIrr,
         partnerPercent,
+        ownProduct: !product.vendorId,
       };
       if (margin < settings.minMarginIrr) {
-        throw new BadRequestException('حاشیه این کالای تأمین‌کننده برای برنامه بازاریاب کافی نیست');
+        throw new BadRequestException(
+          product.vendorId
+            ? 'حاشیه این کالای تأمین‌کننده برای برنامه بازاریاب کافی نیست'
+            : 'حاشیه این کالا برای برنامه بازاریاب کافی نیست',
+        );
       }
     }
 
@@ -388,7 +403,13 @@ export class SalesPartnerCatalogService {
     const rules = await this.loadRules();
     const card = this.toPartnerCard(product, [elig], rules, profile.id, new Date(), settings.minMarginIrr, normalized);
     if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
-    return { productId: product.id, slug: product.slug, code: normalized };
+    return {
+      productId: product.id,
+      slug: product.slug,
+      code: normalized,
+      publicCode: normalized,
+      salesPartnerId: profile.id,
+    };
   }
 
   private toPartnerCard(

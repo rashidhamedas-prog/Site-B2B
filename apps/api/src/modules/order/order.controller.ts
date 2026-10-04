@@ -67,6 +67,14 @@ export class OrderController {
     return this.orderService.create({ ...body, customerId });
   }
 
+  @Get('referral-lock')
+  @ApiOperation({ summary: 'Whether this customer still has a sales-partner ZarinPal lock' })
+  async referralLock(@Request() req: Express.Request & { user: JwtUser }) {
+    const customerId = await this.resolveOwnCustomerId(req.user);
+    if (!customerId) return { exclusive: false };
+    return this.orderService.referralLock(customerId);
+  }
+
   @Get()
   @ApiOperation({ summary: 'لیست سفارش‌ها' })
   async findAll(

@@ -43,26 +43,20 @@ import {
 
 type AddressForm = ShippingAddress;
 
-function readSalesPartnerClick(): { salesPartnerCode?: string; salesPartnerProductIds?: string[] } {
-  if (typeof document === 'undefined') return {};
-  const read = (name: string) => {
-    const hit = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
-    if (!hit) return '';
-    try {
-      return decodeURIComponent(hit.slice(name.length + 1));
-    } catch {
-      return '';
-    }
-  };
-  const code = read('taranom_sp').trim().toLowerCase();
-  if (!/^[a-z0-9]{8}$/.test(code)) return {};
-  const salesPartnerProductIds = read('taranom_sp_products')
-    .split(',')
-    .map((id) => id.trim())
-    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
-    .slice(0, 12);
-  if (!salesPartnerProductIds.length) return {};
-  return { salesPartnerCode: code, salesPartnerProductIds };
+function readCookie(name: string): string {
+  if (typeof document === 'undefined') return '';
+  const hit = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
+  if (!hit) return '';
+  try {
+    return decodeURIComponent(hit.slice(name.length + 1));
+  } catch {
+    return '';
+  }
+}
+
+function readSalesPartnerSession(): string | undefined {
+  const token = readCookie('taranom_sp_session');
+  return token.length > 20 ? token : undefined;
 }
 
 function readAff(): string | undefined {
@@ -103,6 +97,7 @@ export default function RetailCheckoutPage() {
   const [digipayAvailable, setDigipayAvailable] = useState(false);
   const [torobpayAvailable, setTorobpayAvailable] = useState(false);
   const [cashEnabled, setCashEnabled] = useState(false);
+  const [exclusiveZarinpal, setExclusiveZarinpal] = useState(false);
   const [pendingPayOrderId, setPendingPayOrderId] = useState<string | null>(null);
   const [shippingMethod, setShippingMethod] = useState('PISHTAZ');
   const [shipMethods, setShipMethods] = useState(FALLBACK_RETAIL_SHIPPING_METHODS);
@@ -125,6 +120,33 @@ export default function RetailCheckoutPage() {
   const [showAddressErrors, setShowAddressErrors] = useState(false);
   const beganCheckout = useRef(false);
   const addressDirty = useRef(false);
+
+  useEffect(() => {
+    if (readCookie('taranom_sp_lock') === '1') setExclusiveZarinpal(true);
+    const token = readSalesPartnerSession();
+    if (token) {
+      apiClient
+        .post<{ exclusive?: boolean }>('/sales-partner-referral/status', { token })
+        .then((row) => {
+          if (row?.exclusive) setExclusiveZarinpal(true);
+        })
+        .catch(() => undefined);
+    }
+    if (getToken()) {
+      apiClient
+        .get<{ exclusive?: boolean }>('/orders/referral-lock')
+        .then((row) => {
+          if (row?.exclusive) setExclusiveZarinpal(true);
+        })
+        .catch(() => undefined);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!exclusiveZarinpal) return;
+    setPaymentMethod('ONLINE');
+    setPaymentGateway('ZARINPAL');
+  }, [exclusiveZarinpal]);
 
   useEffect(() => {
     if (beganCheckout.current || items.length === 0) return;
@@ -252,7 +274,7 @@ export default function RetailCheckoutPage() {
 
   const walletApplied = useWallet ? Math.min(walletBalance, Math.max(0, subtotal + shipFee)) : 0;
   const payable = Math.max(0, subtotal + shipFee - walletApplied);
-  const paymentOptions = retailPaymentOptions(digipayAvailable, torobpayAvailable, cashEnabled);
+  const paymentOptions = retailPaymentOptions(digipayAvailable, torobpayAvailable, cashEnabled, exclusiveZarinpal);
   const selectedPaymentId = retailSelectedPaymentId(paymentMethod, paymentGateway);
   const ctaLabel = checkoutCtaLabel({
     kind: paymentMethod,
@@ -334,7 +356,7 @@ export default function RetailCheckoutPage() {
     const pay = await apiClient.post<{ redirectUrl?: string }>('/payments/start', {
       orderId,
       channel: 'RETAIL',
-      providerCode: paymentGateway,
+      providerCode: exclusiveZarinpal ? 'ZARINPAL' : paymentGateway,
       shippingAddress: finalizeShippingAddress(address),
     });
     if (!pay?.redirectUrl) {
@@ -376,7 +398,7 @@ export default function RetailCheckoutPage() {
         await retryExistingOrderPay(pendingPayOrderId);
         return;
       }
-      const partnerClick = readSalesPartnerClick();
+      const salesPartnerSession = readSalesPartnerSession();
       const order = await apiClient.post<{
         orderNumber?: string;
         id?: string;
@@ -385,13 +407,13 @@ export default function RetailCheckoutPage() {
       }>('/orders', {
         type: 'RETAIL_WEBSITE',
         channel: 'RETAIL',
-        paymentMethod,
-        paymentGateway: paymentMethod === 'ONLINE' ? paymentGateway : undefined,
+        paymentMethod: exclusiveZarinpal ? 'ONLINE' : paymentMethod,
+        paymentGateway: exclusiveZarinpal ? 'ZARINPAL' : paymentMethod === 'ONLINE' ? paymentGateway : undefined,
         shippingMethod,
         useWallet: useWallet && walletBalance > 0,
-        affiliateId: partnerClick.salesPartnerCode ? undefined : readAff(),
-        torobClid: partnerClick.salesPartnerCode ? undefined : readTorobClid(),
-        ...partnerClick,
+        affiliateId: salesPartnerSession ? undefined : readAff(),
+        torobClid: salesPartnerSession ? undefined : readTorobClid(),
+        salesPartnerSession,
         shippingAddress,
         notes: notes || undefined,
         items: items.map((i) => ({

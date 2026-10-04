@@ -6,6 +6,7 @@ import {
   salesPartnerPublicCode,
   salesPartnerSharePath,
 } from './sales-partner-attribution';
+import './sales-partner-referral-policy.spec';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);

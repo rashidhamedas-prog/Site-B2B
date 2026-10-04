@@ -91,6 +91,24 @@ export class OrderEntity {
   @Column({ type: 'jsonb', nullable: true })
   salesPartnerProductIds: string[] | null;
 
+  /** Server session from a validated /go/sp click. Not a client-supplied partner id. */
+  @Column({ type: 'uuid', nullable: true })
+  referralSessionId: string | null;
+
+  /** When set, new payment starts for this order may only use this gateway. */
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  referralExclusiveGateway: string | null;
+
+  /** Rule id/version frozen at order create. The ledger job must not replace it. */
+  @Column({ type: 'jsonb', nullable: true })
+  salesPartnerCommissionFreeze: {
+    byProductId?: Record<string, { percent: number; ruleId: string | null; ruleVersion: number }>;
+  } | null;
+
+  /** Watermark so status changes after the first sync are scanned again. */
+  @Column({ type: 'timestamptz', nullable: true })
+  salesPartnerLedgerAppliedAt: Date | null;
+
   /** Torob click id from ?torob_clid= — order attribution for Torob Sync */
   @Column({ nullable: true })
   torobClid: string;

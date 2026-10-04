@@ -21,6 +21,7 @@ import { ShippingModule } from '../shipping/shipping.module';
 import { AffiliateModule } from '../affiliate/affiliate.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { VendorModule } from '../vendor/vendor.module';
+import { SalesPartnerModule } from '../sales-partner/sales-partner.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { VendorModule } from '../vendor/vendor.module';
     AffiliateModule,
     InventoryModule,
     VendorModule,
+    forwardRef(() => SalesPartnerModule),
   ],
   controllers: [OrderController, FulfillmentPartnerController],
   providers: [OrderService, FulfillmentService, FulfillmentJobs],

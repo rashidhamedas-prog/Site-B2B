@@ -23,6 +23,7 @@ import { SettingsService } from '../settings/settings.service';
 import { AffiliatePostbackService } from '../affiliate/affiliate-postback.service';
 import { ZarinPalAdapter } from './adapters/zarinpal.adapter';
 import { zarinpalCallbackIsSuccess } from './zarinpal-callback-status';
+import { paymentStartSwitch } from '../sales-partner/sales-partner-referral-policy';
 import { DigiPayAdapter, digipayCallbackIsSuccess } from './adapters/digipay.adapter';
 import {
   TorobPayAdapter,
@@ -341,6 +342,7 @@ export class PaymentService {
     let amount = 0;
     let customerId = input.customerId;
     let channel: 'WHOLESALE' | 'RETAIL' = input.channel === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
+    let exclusiveZarinpal = false;
 
     if (input.orderId) {
       const order = await this.orderRepo.findOne({ where: { id: input.orderId } });
@@ -352,6 +354,14 @@ export class PaymentService {
       amount = Number(order.total) || 0;
       const t = String(order.type || '').toUpperCase();
       if (t === 'RETAIL' || t === 'RETAIL_WEBSITE') channel = 'RETAIL';
+      exclusiveZarinpal = order.referralExclusiveGateway === 'ZARINPAL';
+      if (
+        exclusiveZarinpal
+        && input.providerCode
+        && String(input.providerCode).toUpperCase() !== 'ZARINPAL'
+      ) {
+        throw new BadRequestException('این سفارش فقط با زرین‌پال قابل پرداخت است');
+      }
       if (!isOrderPayable(order.status)) {
         throw new BadRequestException('این سفارش قابل پرداخت نیست');
       }
@@ -376,7 +386,10 @@ export class PaymentService {
       throw new BadRequestException('مبلغ پرداخت نامعتبر است (حداقل ۱۰۰۰ تومان)');
     }
 
-    const gw = await this.resolveGateway(channel, input.providerCode);
+    const gw = await this.resolveGateway(
+      channel,
+      exclusiveZarinpal ? 'ZARINPAL' : input.providerCode,
+    );
     if (!gw.enabled) {
       this.metrics.incr('payment_failure_total');
       throw new BadRequestException(
@@ -416,6 +429,16 @@ export class PaymentService {
           where: { orderId: input.orderId, status: 'PENDING' as any },
           order: { createdAt: 'DESC' },
         });
+        if (existing) {
+          const decision = paymentStartSwitch({
+            exclusiveZarinpal,
+            requested: gw.providerCode,
+            pendingGateway: existing.gateway || 'ZARINPAL',
+          });
+          if (decision.action !== 'proceed') {
+            throw new BadRequestException(decision.message);
+          }
+        }
         if (existing && (existing.gateway || 'ZARINPAL') !== gw.providerCode) {
           existing.status = 'CANCELLED' as any;
           existing.meta = {

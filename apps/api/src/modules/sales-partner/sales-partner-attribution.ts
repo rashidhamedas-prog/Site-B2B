@@ -58,10 +58,11 @@ export function canAdminChangeAttribution(input: {
   reason: string | null | undefined;
   hasEarnedCommission: boolean;
   nextPartnerActive: boolean;
+  compensating?: boolean;
 }): { ok: true } | { ok: false; message: string } {
   const reason = String(input.reason || '').trim();
   if (reason.length < 8) return { ok: false, message: 'دلیل تغییر attribution باید ثبت شود' };
-  if (input.hasEarnedCommission) {
+  if (input.hasEarnedCommission && !input.compensating) {
     return { ok: false, message: 'بعد از ثبت پورسانت، attribution این سفارش قفل است' };
   }
   if (!input.nextPartnerActive) return { ok: false, message: 'همکار مقصد باید فعال باشد' };

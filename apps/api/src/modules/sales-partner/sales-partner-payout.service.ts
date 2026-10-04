@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import {
   SalesCommissionLedgerEntryEntity,
   SalesPartnerPayoutEntity,
@@ -10,6 +10,7 @@ import {
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
 import { payoutIdempotencyKey } from './sales-partner-ledger-policy';
+import { payoutCarryAllowed } from './sales-partner-referral-policy';
 import { SALES_PARTNER_EVENT } from './sales-partner-events';
 
 @Injectable()
@@ -42,6 +43,21 @@ export class SalesPartnerPayoutService {
     return rows.map((row) => this.toPublic(row));
   }
 
+  async preview(salesPartnerId: string) {
+    const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
+    if (!profile) throw new NotFoundException('همکار بازاریاب پیدا نشد');
+    const balances = await this.ledger.balances(salesPartnerId, 1, 1);
+    return {
+      salesPartnerId,
+      displayName: profile.displayName,
+      ibanMasked: profile.ibanLast4 ? `IR****${profile.ibanLast4}` : null,
+      available: balances.available,
+      held: balances.held,
+      paid: balances.paid,
+      reversed: balances.reversed,
+    };
+  }
+
   async confirm(actorId: string, input: {
     salesPartnerId: string;
     bankReference: string;
@@ -58,30 +74,68 @@ export class SalesPartnerPayoutService {
     if (ref.length < 4 || ref.length > 80) throw new BadRequestException('شماره مرجع واریز نامعتبر است');
     const settings = await this.program.settings();
     const balances = await this.ledger.balances(input.salesPartnerId);
-    if (balances.available < settings.minPayoutIrr) {
-      throw new BadRequestException('مبلغ قابل‌برداشت به حداقل تسویه نرسیده است');
+    const carry = payoutCarryAllowed(balances.available);
+    if (carry.ok === false || balances.available < settings.minPayoutIrr) {
+      throw new BadRequestException(carry.ok === false ? carry.message : 'مبلغ قابل‌برداشت به حداقل تسویه نرسیده است');
     }
-    if (balances.available <= 0) throw new BadRequestException('مانده قابل‌برداشت وجود ندارد');
+    const duplicateRef = await this.payouts.findOne({ where: { bankReference: ref } });
+    if (duplicateRef && duplicateRef.idempotencyKey !== key) {
+      throw new ConflictException('این مرجع بانکی قبلاً ثبت شده است');
+    }
 
     const now = new Date();
-    const payable = (await this.entries.find({
-      where: { salesPartnerId: input.salesPartnerId, entryType: 'COMMISSION_EARNED', payoutId: IsNull() },
-    })).filter((row) => row.availableAt && row.availableAt.getTime() <= now.getTime());
-    const amount = payable.reduce((sum, row) => sum + Number(row.amountIrr), 0);
-    if (amount !== balances.available) {
-      throw new ConflictException('مانده دفتر تغییر کرده است. صفحه را تازه کنید');
-    }
-
     const saved = await this.dataSource.transaction(async (manager) => {
+      await manager.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`sp-payout:${input.salesPartnerId}`]);
       const payoutRepo = manager.getRepository(SalesPartnerPayoutEntity);
       const itemRepo = manager.getRepository(SalesPartnerPayoutItemEntity);
       const entryRepo = manager.getRepository(SalesCommissionLedgerEntryEntity);
       const again = await payoutRepo.findOne({ where: { idempotencyKey: key } });
       if (again) return again;
+      const racedRef = await payoutRepo.findOne({ where: { bankReference: ref } });
+      if (racedRef) throw new ConflictException('این مرجع بانکی قبلاً ثبت شده است');
+      const freshRows = (await manager.query(
+        `SELECT COALESCE(SUM(CASE
+           WHEN "entryType" IN ('COMMISSION_EARNED','MANUAL_ADJUSTMENT','PAYOUT_REVERSAL')
+            AND "availableAt" IS NOT NULL AND "availableAt" <= NOW() THEN "amountIrr"::bigint
+           WHEN "entryType" IN ('COMMISSION_REVERSAL','PAYOUT') THEN "amountIrr"::bigint
+           ELSE 0 END), 0)::text AS available
+         FROM sales_commission_ledger_entries
+         WHERE "salesPartnerId" = $1`,
+        [input.salesPartnerId],
+      )) as Array<{ available: string }>;
+      const available = Number(freshRows[0]?.available || 0);
+      const freshCarry = payoutCarryAllowed(available);
+      if (freshCarry.ok === false || available < settings.minPayoutIrr) {
+        throw new ConflictException(freshCarry.ok === false ? freshCarry.message : 'مانده دفتر تغییر کرده است. صفحه را تازه کنید');
+      }
+      const payable = await entryRepo
+        .createQueryBuilder('e')
+        .where('e.salesPartnerId = :id', { id: input.salesPartnerId })
+        .andWhere(`e.entryType = 'COMMISSION_EARNED'`)
+        .andWhere('e.availableAt IS NOT NULL AND e.availableAt <= :now', { now })
+        .andWhere('e.settledIrr < e.amountIrr')
+        .orderBy('e.createdAt', 'ASC')
+        .setLock('pessimistic_write')
+        .getMany();
+      let remaining = available;
+      const allocations: Array<{ row: SalesCommissionLedgerEntryEntity; take: number }> = [];
+      for (const row of payable) {
+        const open = Number(row.amountIrr) - Number(row.settledIrr || 0);
+        if (open <= 0) continue;
+        const take = Math.min(open, remaining);
+        if (take <= 0) break;
+        allocations.push({ row, take });
+        remaining -= take;
+      }
+      const paidNow = available - remaining;
+      const payAmount = paidNow > 0 ? paidNow : available;
+      if (payAmount < settings.minPayoutIrr) {
+        throw new ConflictException('مانده قابل تخصیص به پورسانت‌های آزاد نیست');
+      }
       const payout = await payoutRepo.save(payoutRepo.create({
         salesPartnerId: input.salesPartnerId,
         status: 'PAID',
-        amountIrr: String(amount),
+        amountIrr: String(payAmount),
         bankReference: ref,
         method: (input.method || 'TRANSFER').slice(0, 40),
         paidAt: now,
@@ -89,28 +143,29 @@ export class SalesPartnerPayoutService {
         note: input.note?.slice(0, 240) ?? null,
         idempotencyKey: key,
       }));
-      for (const row of payable) {
-        const locked = await entryRepo.findOne({ where: { id: row.id }, lock: { mode: 'pessimistic_write' } });
-        if (!locked || locked.payoutId) throw new ConflictException('یکی از ردیف‌ها هم‌زمان تسویه شد');
-        locked.payoutId = payout.id;
-        await entryRepo.save(locked);
+      for (const { row, take } of allocations) {
+        const nextSettled = Number(row.settledIrr || 0) + take;
+        row.settledIrr = String(nextSettled);
+        if (nextSettled >= Number(row.amountIrr)) row.payoutId = payout.id;
+        await entryRepo.save(row);
         await itemRepo.save(itemRepo.create({
           payoutId: payout.id,
-          ledgerEntryId: locked.id,
-          amountIrr: locked.amountIrr,
+          ledgerEntryId: row.id,
+          amountIrr: String(take),
         }));
       }
       await entryRepo.save(entryRepo.create({
         salesPartnerId: input.salesPartnerId,
         orderId: null,
         orderItemId: null,
-        amountIrr: String(-amount),
+        amountIrr: String(-payAmount),
         entryType: 'PAYOUT',
         availableAt: now,
         idempotencyKey: `${key}:ledger`,
         reasonCode: 'PAYOUT',
         createdBy: actorId,
         payoutId: payout.id,
+        settledIrr: '0',
       }));
       return payout;
     });

@@ -34,7 +34,6 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
   const [postalCode, setPostalCode] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'CASH'>('ONLINE');
   const [consent, setConsent] = useState(false);
 
   useEffect(() => {
@@ -49,16 +48,28 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
     setBusy(true);
     setError(null);
     try {
-      await apiClient.post(`/sales-partner-confirmations/${encodeURIComponent(token)}/confirm`, {
+      const body = await apiClient.post<{
+        orderId?: string;
+        paymentUrl?: string | null;
+        paymentStartError?: string | null;
+      }>(`/sales-partner-confirmations/${encodeURIComponent(token)}/confirm`, {
         recipientName,
         province,
         city,
         address,
         postalCode: postalCode || undefined,
-        paymentMethod,
+        paymentMethod: 'ONLINE',
         consent,
       });
-      setDone('سبد تأیید شد. اگر پرداخت آنلاین باشد، ادامه از درگاه ترنم انجام می‌شود.');
+      if (body.paymentStartError) {
+        setError(body.paymentStartError);
+        return;
+      }
+      if (body.paymentUrl) {
+        window.location.assign(body.paymentUrl);
+        return;
+      }
+      setDone('سبد تأیید شد. مبلغی برای درگاه نمانده و سفارش ثبت شد.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تأیید ناموفق بود');
     } finally {
@@ -208,26 +219,7 @@ export function SalesPartnerConfirm({ token }: { token: string }) {
               />
               <fieldset className="rounded-2xl bg-[#f6f3ee] p-3">
                 <legend className="px-1 text-sm font-medium">روش پرداخت</legend>
-                <label className="mt-2 flex min-h-11 items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name="pay"
-                    checked={paymentMethod === 'ONLINE'}
-                    onChange={() => setPaymentMethod('ONLINE')}
-                  />
-                  پرداخت آنلاین به ترنم
-                </label>
-                {data.cashEnabled && (
-                  <label className="flex min-h-11 items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name="pay"
-                      checked={paymentMethod === 'CASH'}
-                      onChange={() => setPaymentMethod('CASH')}
-                    />
-                    پرداخت در محل
-                  </label>
-                )}
+                <p className="mt-2 text-sm">پرداخت آنلاین زرین‌پال</p>
               </fieldset>
               <label className="flex items-start gap-2 text-sm leading-6 text-stone-700">
                 <input

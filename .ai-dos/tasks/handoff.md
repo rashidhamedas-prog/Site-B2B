@@ -2,6 +2,25 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T04:40:00Z — TASK-20261004-001 review notes applied
+
+- Independent code review: no blocking defect. Admin edit can no longer switch a ZarinPal-locked order to cash. Draft confirm stores the confirm-time commission freeze. Parallel clicks on the same previous session supersede the sibling. Enabling a catalog product no longer writes a 10% product rule.
+- Security review already recorded: no high finding.
+- Still uncommitted. Do not deploy.
+
+## 2026-10-04T04:30:00Z — TASK-20261004-001 implementing (referral lock)
+
+- Owner: cursor:implementer-TASK-20261004-001
+- Branch/worktree: `ai/TASK-20261004-001-sp-zarinpal-lock` @ `D:/proje/Site-B2B-sp-zarinpal` (tip base `789e4da`, uncommitted)
+- Shared docs reclaimed from TASK-20261003-007 for this append only. 007 keeps SKU code claims.
+- Research: existing ZarinPal adapter already does request/verify (100/101). SDK not added. Cookie window stays 14 days. Ledger idempotency stays on unique keys.
+- Threat: a visitor who deletes every identifier before login cannot be recovered. After login, the session binds to the customer.
+- Reconciliation SQL is read-only and was not executed: `scripts/sales-partner-reconciliation.sql`
+- Gates: `tsc --noEmit` api and web passed. Specs OK: referral policy, attribution, ledger policy, error scenarios, commission policy, checkout-payment-ui.
+- Not run: production migration, real payment, browser checkout. Independent code review still open. Security review found no high issue; click burst cap and session purge were added after it.
+- Security review: no high finding. Click mint is capped at 40 new sessions per public code per minute, and expired or superseded sessions are purged unless an order or a live binding still points at them. No unique index on bank references.
+- Next: independent code review still open. Do not deploy from this note.
+
 ## 2026-10-04T03:40:00Z — TASK-20261003-009 CLOSED LIVE
 
 - Owner: cursor:implementer-TASK-20261003-009

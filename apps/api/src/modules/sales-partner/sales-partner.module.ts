@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
@@ -30,6 +30,7 @@ import { SalesPartnerDraftService } from './sales-partner-draft.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
 import { SalesPartnerLedgerJobs } from './sales-partner-ledger.jobs';
 import { SalesPartnerPayoutService } from './sales-partner-payout.service';
+import { SalesPartnerReferralService } from './sales-partner-referral.service';
 import { SalesPartnerPublicController } from './sales-partner-public.controller';
 import { SalesPartnerAuthController } from './sales-partner-auth.controller';
 import { SalesPartnerMeController } from './sales-partner-me.controller';
@@ -64,7 +65,7 @@ const ENTITIES = [
     ]),
     AuthModule,
     CustomerModule,
-    OrderModule,
+    forwardRef(() => OrderModule),
     ShippingModule,
   ],
   controllers: [
@@ -81,6 +82,7 @@ const ENTITIES = [
     SalesPartnerLedgerService,
     SalesPartnerLedgerJobs,
     SalesPartnerPayoutService,
+    SalesPartnerReferralService,
   ],
   exports: [
     SalesPartnerService,
@@ -88,6 +90,7 @@ const ENTITIES = [
     SalesPartnerDraftService,
     SalesPartnerLedgerService,
     SalesPartnerPayoutService,
+    SalesPartnerReferralService,
   ],
 })
 export class SalesPartnerModule {}

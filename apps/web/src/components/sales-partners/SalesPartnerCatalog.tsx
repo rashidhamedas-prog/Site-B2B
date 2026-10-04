@@ -101,7 +101,10 @@ export function SalesPartnerCatalog() {
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری کاتالوگ ناموفق بود');
+        if (!cancelled) {
+          setData(null);
+          setError(err instanceof Error ? err.message : 'بارگذاری کاتالوگ ناموفق بود');
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

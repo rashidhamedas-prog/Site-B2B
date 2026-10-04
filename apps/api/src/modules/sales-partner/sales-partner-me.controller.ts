@@ -109,8 +109,11 @@ export class SalesPartnerMeController {
   }
 
   @Get('commissions')
-  commissions(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
-    return this.ledger.balances(this.requirePartner(req));
+  commissions(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Query('page') page?: string,
+  ) {
+    return this.ledger.balances(this.requirePartner(req), Number(page) || 1);
   }
 
   @Get('report')

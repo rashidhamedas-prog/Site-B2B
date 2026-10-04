@@ -18,8 +18,6 @@ import { CustomerService } from '../customer/customer.service';
 import { OrderService } from '../order/order.service';
 import { OrderEntity } from '../order/entities/order.entity';
 import { ShippingService } from '../shipping/shipping.service';
-import { AppSettingEntity } from '../settings/entities/app-setting.entity';
-import { resolveCashOnDeliveryFlags } from '../settings/settings-payment-cash';
 import { normalizePhone } from '../auth/phone.util';
 import { SmsCooldownException } from '../notification/sms-cooldown-http';
 import {
@@ -45,7 +43,6 @@ import {
   partnerCommissionOverlay,
   resendBlockedReason,
   resendCooldownRemaining,
-  resolveConfirmPaymentMethod,
   smsFailureBlocksSend,
   maskCustomerPhone,
   priceDriftBps,
@@ -55,6 +52,7 @@ import { programAllowsPartnerAction } from './sales-partner-settings';
 import { SALES_PARTNER_EVENT } from './sales-partner-events';
 import { commissionAmountIrr, selectCommissionRule } from './sales-commission-policy';
 import { canAdminChangeAttribution, partnerOrderAttribution } from './sales-partner-attribution';
+import { isUniqueViolation } from './sales-partner-referral-policy';
 import { evaluateSalesPartnerRisk, maxPhoneRepeats } from './sales-partner-risk-policy';
 
 type DraftItemInput = { productId: string; variantId?: string; quantity: number };
@@ -72,8 +70,6 @@ export class SalesPartnerDraftService {
     private readonly products: Repository<ProductEntity>,
     @InjectRepository(ProductVariantEntity)
     private readonly variants: Repository<ProductVariantEntity>,
-    @InjectRepository(AppSettingEntity)
-    private readonly settingsRepo: Repository<AppSettingEntity>,
     @InjectRepository(OrderEntity)
     private readonly orderRows: Repository<OrderEntity>,
     @InjectRepository(SalesCommissionLedgerEntryEntity)
@@ -279,24 +275,69 @@ export class SalesPartnerDraftService {
     const draft = await this.drafts.findOne({ where: { id: draftId } });
     if (!draft?.convertedOrderId) throw new NotFoundException('سفارش تبدیل‌شده پیدا نشد');
     const next = await this.profiles.findOne({ where: { id: nextPartnerId } });
-    const earned = await this.ledger.count({
+    const earnedRows = await this.ledger.find({
       where: { orderId: draft.convertedOrderId, entryType: 'COMMISSION_EARNED' },
     });
     const allowed = canAdminChangeAttribution({
       reason,
-      hasEarnedCommission: earned > 0,
+      hasEarnedCommission: earnedRows.length > 0,
       nextPartnerActive: next?.status === 'ACTIVE',
+      compensating: earnedRows.length > 0,
     });
     if (allowed.ok === false) throw new ConflictException(allowed.message);
-    await this.orderRows.update(draft.convertedOrderId, partnerOrderAttribution({
-      draftId: draft.id,
-      salesPartnerId: nextPartnerId,
-    }));
+    const fromPartnerId = draft.salesPartnerId;
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(OrderEntity, draft.convertedOrderId!, partnerOrderAttribution({
+        draftId: draft.id,
+        salesPartnerId: nextPartnerId,
+      }));
+      await manager.update(SalesPartnerOrderDraftEntity, draft.id, { salesPartnerId: nextPartnerId });
+      for (const entry of earnedRows) {
+        if (entry.salesPartnerId !== fromPartnerId) continue;
+        const amount = Math.abs(Math.floor(Number(entry.amountIrr)));
+        if (amount <= 0) continue;
+        const ledger = manager.getRepository(SalesCommissionLedgerEntryEntity);
+        const rows = [
+          ledger.create({
+            salesPartnerId: fromPartnerId,
+            orderId: draft.convertedOrderId,
+            orderItemId: entry.orderItemId,
+            amountIrr: String(-amount),
+            entryType: 'COMMISSION_REVERSAL',
+            availableAt: new Date(),
+            idempotencyKey: `attr-fix:${draft.convertedOrderId}:${entry.id}:reversal`.slice(0, 120),
+            reasonCode: 'ATTRIBUTION_FIX',
+            createdBy: actorUserId,
+            settledIrr: '0',
+          }),
+          ledger.create({
+            salesPartnerId: nextPartnerId,
+            orderId: draft.convertedOrderId,
+            orderItemId: entry.orderItemId,
+            amountIrr: String(amount),
+            entryType: 'MANUAL_ADJUSTMENT',
+            availableAt: entry.availableAt,
+            idempotencyKey: `attr-fix:${draft.convertedOrderId}:${entry.id}:${nextPartnerId}`.slice(0, 120),
+            reasonCode: 'ATTRIBUTION_FIX',
+            createdBy: actorUserId,
+            settledIrr: '0',
+          }),
+        ];
+        for (const row of rows) {
+          try {
+            await ledger.save(row);
+          } catch (err) {
+            if (!isUniqueViolation(err)) throw err;
+          }
+        }
+      }
+    });
     await this.program.recordAudit(actorUserId, 'order.attribution_changed', 'order', draft.convertedOrderId, {
       draftId: draft.id,
-      fromPartnerId: draft.salesPartnerId,
+      fromPartnerId,
       toPartnerId: nextPartnerId,
       reason: reason.trim(),
+      compensating: earnedRows.length > 0,
     });
     return {
       orderId: draft.convertedOrderId,
@@ -333,8 +374,6 @@ export class SalesPartnerDraftService {
     }
     const profile = await this.profiles.findOne({ where: { id: draft.salesPartnerId } });
     const items = await this.items.find({ where: { draftId: draft.id } });
-    const payment = await this.settingsRepo.findOne({ where: { key: 'payment' } });
-    const cash = resolveCashOnDeliveryFlags(payment?.value).retailCashEnabled;
     const quote = await this.shipping.quote({
       pieces: items.reduce((sum, row) => sum + row.quantity, 0),
       orderTotal: draft.merchandiseIrr,
@@ -356,7 +395,7 @@ export class SalesPartnerDraftService {
         unitPriceIrr: row.unitPriceIrr,
         lineTotalIrr: row.lineTotalIrr,
       })),
-      cashEnabled: cash,
+      cashEnabled: false,
       notice: 'تا زمانی که خودتان تأیید نکنید سفارشی ثبت یا مبلغی دریافت نمی‌شود. فروشنده اصلی ترنم است.',
     };
   }
@@ -374,7 +413,8 @@ export class SalesPartnerDraftService {
     const draft = await this.draftByToken(token);
     await this.expireIfNeeded(draft);
     if (draft.status === 'CONVERTED_TO_ORDER' && draft.convertedOrderId) {
-      return { orderId: draft.convertedOrderId, status: 'CONVERTED_TO_ORDER' };
+      const resumed = await this.orders.resumeExclusivePayment(draft.convertedOrderId);
+      return { orderId: draft.convertedOrderId, status: 'CONVERTED_TO_ORDER', ...resumed };
     }
     if (confirmActionGone(draft.status)) {
       throw new GoneException('این لینک دیگر معتبر نیست');
@@ -383,9 +423,7 @@ export class SalesPartnerDraftService {
     if (!profile || !canSalesPartnerCreateDraft(profile.status)) {
       throw new ForbiddenException('این همکار فعلاً نمی‌تواند سفارش بسازد');
     }
-    const payment = await this.settingsRepo.findOne({ where: { key: 'payment' } });
-    const cash = resolveCashOnDeliveryFlags(payment?.value).retailCashEnabled;
-    const paymentMethod = resolveConfirmPaymentMethod(input.paymentMethod, cash);
+    const paymentMethod = 'ONLINE' as const;
     const items = await this.items.find({ where: { draftId: draft.id } });
     const priced = await this.priceItems(draft.salesPartnerId, items.map((row) => ({
       productId: row.productId,
@@ -429,15 +467,31 @@ export class SalesPartnerDraftService {
           quantity: row.quantity,
         })),
       });
-      await manager.update(OrderEntity, order.id, partnerOrderAttribution({
-        draftId: locked.id,
-        salesPartnerId: locked.salesPartnerId,
-      }));
+      const byProductId: Record<string, { percent: number; ruleId: string | null; ruleVersion: number }> = {};
+      for (const row of priced.rows) {
+        byProductId[row.productId] = {
+          percent: row.commissionPercent,
+          ruleId: row.ruleId,
+          ruleVersion: row.ruleVersion,
+        };
+      }
+      await manager.update(OrderEntity, order.id, {
+        ...partnerOrderAttribution({
+          draftId: locked.id,
+          salesPartnerId: locked.salesPartnerId,
+        }),
+        referralExclusiveGateway: 'ZARINPAL',
+        salesPartnerCommissionFreeze: { byProductId },
+      });
       locked.status = 'CONVERTED_TO_ORDER';
       locked.convertedOrderId = order.id;
       locked.confirmationTokenHash = null;
       await manager.save(locked);
-      return { orderId: order.id };
+      return {
+        orderId: order.id,
+        paymentUrl: 'paymentUrl' in order ? order.paymentUrl ?? null : null,
+        paymentStartError: 'paymentStartError' in order ? order.paymentStartError ?? null : null,
+      };
     });
     await this.program.emitEvent(SALES_PARTNER_EVENT.CUSTOMER_CONFIRMED, draft.id, {
       draftId: draft.id,
@@ -445,7 +499,11 @@ export class SalesPartnerDraftService {
       status: 'CONVERTED_TO_ORDER',
     });
     await this.refreshRiskFlags(draft.salesPartnerId);
-    return { ...created, status: 'CONVERTED_TO_ORDER' };
+    if (!created.paymentUrl && created.orderId) {
+      const resumed = await this.orders.resumeExclusivePayment(created.orderId);
+      return { ...created, ...resumed, status: 'CONVERTED_TO_ORDER' as const };
+    }
+    return { ...created, status: 'CONVERTED_TO_ORDER' as const };
   }
 
   async rejectByToken(token: string) {

@@ -67,9 +67,9 @@ export function SalesPartnerNewOrder() {
         };
         if (!presetId && saved.productId) setProductId(saved.productId);
         if (saved.variantId) setVariantId(saved.variantId);
-        if (Number.isInteger(saved.quantity) && Number(saved.quantity) > 0) setQuantity(Number(saved.quantity));
-        if (saved.phone) setPhone(saved.phone);
-        if (saved.name) setName(saved.name);
+        if (Number.isInteger(saved.quantity) && saved.quantity >= 1 && saved.quantity <= 20) {
+          setQuantity(saved.quantity);
+        }
       }
     } catch {
       /* ignore broken local draft */
@@ -83,12 +83,12 @@ export function SalesPartnerNewOrder() {
     try {
       window.localStorage.setItem(
         LOCAL_DRAFT_KEY,
-        JSON.stringify({ productId, variantId, quantity, phone, name }),
+        JSON.stringify({ productId, variantId, quantity }),
       );
     } catch {
       /* private mode */
     }
-  }, [localReady, productId, variantId, quantity, phone, name]);
+  }, [localReady, productId, variantId, quantity]);
 
   useEffect(() => {
     apiClient
@@ -103,13 +103,20 @@ export function SalesPartnerNewOrder() {
 
   useEffect(() => {
     if (!productId) return;
+    let stale = false;
     apiClient
       .get<ProductDetail>(`/sales-partners/catalog/${productId}`)
       .then((row) => {
+        if (stale) return;
         setDetail(row);
         setVariantId(row.variants[0]?.id || '');
       })
-      .catch(() => setDetail(null));
+      .catch(() => {
+        if (!stale) setDetail(null);
+      });
+    return () => {
+      stale = true;
+    };
   }, [productId]);
 
   const selected = useMemo(
@@ -234,7 +241,11 @@ export function SalesPartnerNewOrder() {
               required
             />
           </div>
-          <SpButton className="w-full" disabled={!productId} onClick={() => setStep(1)}>
+          <SpButton
+            className="w-full"
+            disabled={!productId || !Number.isInteger(quantity) || quantity < 1 || quantity > 20}
+            onClick={() => setStep(1)}
+          >
             ادامه: اطلاعات مشتری
           </SpButton>
         </div>

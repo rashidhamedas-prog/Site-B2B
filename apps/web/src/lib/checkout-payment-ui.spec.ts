@@ -22,6 +22,9 @@ assert.equal(retailDefault.some((o) => o.id === 'DIGIPAY'), false);
 assert.equal(retailDefault.some((o) => o.id === 'CASH'), false);
 assert.match(CHECKOUT_PAYMENT_INTRO, /پیشنهادی/);
 
+assert.equal(retailPaymentOptions(true, true, true, true).map((o) => o.id).join(','), 'ZARINPAL');
+assert.equal(retailPaymentOptions(true, true, true, true)[0]?.title, 'پرداخت آنلاین زرین‌پال');
+
 const retailWithDigipay = retailPaymentOptions(true, false, true);
 assert.equal(retailWithDigipay.length, 3);
 assert.equal(retailWithDigipay[1]?.id, 'DIGIPAY');

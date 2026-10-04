@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import { isUniqueViolation } from './sales-partner-referral-policy';
 import { OrderEntity } from '../order/entities/order.entity';
 import { OrderItemEntity } from '../order/entities/order-item.entity';
 import { ProductVariantEntity } from '../product/entities/product-variant.entity';
@@ -23,7 +24,6 @@ import {
   availableAtFromDelivery,
   canAutoRelease,
   earnedIdempotencyKey,
-  ledgerBalance,
   reversalIdempotencyKey,
 } from './sales-partner-ledger-policy';
 
@@ -63,81 +63,151 @@ export class SalesPartnerLedgerService {
     private readonly program: SalesPartnerService,
   ) {}
 
-  async syncConverted(limit = 50) {
-    const drafts = await this.drafts.find({
-      where: { status: 'CONVERTED_TO_ORDER' },
-      order: { updatedAt: 'DESC' },
-      take: limit,
-    });
-    let n = 0;
-    for (const draft of drafts) {
-      if (!draft.convertedOrderId) continue;
-      try {
-        n += await this.syncDraft(draft);
-      } catch (err) {
-        this.logger.warn(`ledger sync ${draft.id}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-    return n;
+  async syncConverted(limit = 200) {
+    const result = await this.syncPending(limit);
+    return result.wrote;
   }
 
-  async syncLinkOrders(limit = 50) {
-    const orders = await this.orders.find({
-      where: {
-        salesSource: 'SALES_PARTNER',
-        salesPartnerSubmissionId: IsNull(),
-      },
+  async syncLinkOrders(limit = 200) {
+    const result = await this.syncPending(limit);
+    return result.wrote;
+  }
+
+  async syncPending(limit = 200): Promise<{ wrote: number; failed: number; backlog: number }> {
+    const rows = (await this.orders.manager.query(
+      `SELECT o.id
+       FROM orders o
+       LEFT JOIN sales_partner_ledger_retries r ON r."orderId" = o.id
+       WHERE o."salesPartnerId" IS NOT NULL
+         AND (r."orderId" IS NULL OR r."nextAttemptAt" <= NOW())
+         AND (
+           o."salesPartnerLedgerAppliedAt" IS NULL
+           OR o."updatedAt" > o."salesPartnerLedgerAppliedAt"
+         )
+       ORDER BY o."updatedAt" ASC, o.id ASC
+       LIMIT $1`,
+      [limit],
+    )) as Array<{ id: string }>;
+    const backlogRows = (await this.orders.manager.query(
+      `SELECT COUNT(*)::int AS n
+       FROM orders o
+       WHERE o."salesPartnerId" IS NOT NULL
+         AND (
+           o."salesPartnerLedgerAppliedAt" IS NULL
+           OR o."updatedAt" > o."salesPartnerLedgerAppliedAt"
+         )`,
+    )) as Array<{ n: number }>;
+    let wrote = 0;
+    let failed = 0;
+    for (const row of rows) {
+      const order = await this.orders.findOne({ where: { id: row.id } });
+      if (!order?.salesPartnerId) continue;
+      const seenAt = order.updatedAt;
+      try {
+        if (order.salesPartnerSubmissionId) {
+          const draft = await this.drafts.findOne({ where: { id: order.salesPartnerSubmissionId } });
+          if (draft) wrote += await this.syncDraft(draft);
+        } else {
+          const items = await this.orderItems.find({ where: { orderId: order.id } });
+          await this.ensureLinkSnapshots(order, items);
+          wrote += await this.applyOrderLedger(order.salesPartnerId, order);
+        }
+        await this.orders.update(order.id, { salesPartnerLedgerAppliedAt: seenAt } as any);
+        await this.orders.manager.query(`DELETE FROM sales_partner_ledger_retries WHERE "orderId" = $1`, [order.id]);
+      } catch (err) {
+        if (isUniqueViolation(err)) {
+          await this.orders.update(order.id, { salesPartnerLedgerAppliedAt: seenAt } as any);
+          continue;
+        }
+        failed += 1;
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`ledger sync ${order.id}: ${message}`);
+        await this.orders.manager.query(
+          `INSERT INTO sales_partner_ledger_retries ("orderId", attempts, "lastError", "nextAttemptAt")
+           VALUES ($1, 1, $2, NOW() + interval '10 minutes')
+           ON CONFLICT ("orderId") DO UPDATE SET
+             attempts = sales_partner_ledger_retries.attempts + 1,
+             "lastError" = EXCLUDED."lastError",
+             "nextAttemptAt" = NOW() + interval '10 minutes'`,
+          [order.id, message.slice(0, 500)],
+        );
+      }
+    }
+    return { wrote, failed, backlog: Number(backlogRows[0]?.n || 0) };
+  }
+
+  async balances(salesPartnerId: string, page = 1, pageSize = 20) {
+    const safePage = Math.max(1, page);
+    const safeSize = Math.min(50, Math.max(1, pageSize));
+    const totals = (await this.entries.manager.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN "entryType" = 'COMMISSION_REVERSAL' THEN ABS("amountIrr"::bigint) ELSE 0 END), 0)::text AS reversed,
+         COALESCE(SUM(CASE WHEN "entryType" = 'PAYOUT' THEN ABS("amountIrr"::bigint) ELSE 0 END), 0)::text AS paid,
+         COALESCE(SUM(CASE
+           WHEN "entryType" IN ('COMMISSION_EARNED','MANUAL_ADJUSTMENT','PAYOUT_REVERSAL')
+            AND ("availableAt" IS NULL OR "availableAt" > NOW()) THEN "amountIrr"::bigint
+           ELSE 0 END), 0)::text AS held,
+         COALESCE(SUM(CASE
+           WHEN "entryType" IN ('COMMISSION_EARNED','MANUAL_ADJUSTMENT','PAYOUT_REVERSAL')
+            AND "availableAt" IS NOT NULL AND "availableAt" <= NOW() THEN "amountIrr"::bigint
+           WHEN "entryType" IN ('COMMISSION_REVERSAL','PAYOUT') THEN "amountIrr"::bigint
+           ELSE 0 END), 0)::text AS available
+       FROM sales_commission_ledger_entries
+       WHERE "salesPartnerId" = $1`,
+      [salesPartnerId],
+    )) as Array<{ reversed: string; paid: string; held: string; available: string }>;
+    const [rows, total] = await this.entries.findAndCount({
+      where: { salesPartnerId },
       order: { createdAt: 'DESC' },
-      take: limit,
+      take: safeSize,
+      skip: (safePage - 1) * safeSize,
     });
-    let n = 0;
-    for (const order of orders) {
-      if (!order.salesPartnerId) continue;
-      try {
-        const items = await this.orderItems.find({ where: { orderId: order.id } });
-        await this.ensureLinkSnapshots(order, items);
-        n += await this.applyOrderLedger(order.salesPartnerId, order);
-      } catch (err) {
-        this.logger.warn(`link ledger sync ${order.id}: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-    return n;
-  }
-
-  async balances(salesPartnerId: string) {
-    const rows = await this.entries.find({ where: { salesPartnerId }, take: 500, order: { createdAt: 'DESC' } });
-    const mapped = rows.map((row) => ({
-      amountIrr: Number(row.amountIrr),
-      entryType: row.entryType as 'COMMISSION_EARNED' | 'COMMISSION_REVERSAL' | 'MANUAL_ADJUSTMENT' | 'PAYOUT' | 'PAYOUT_REVERSAL',
-      availableAt: row.availableAt,
-      payoutId: row.payoutId,
-    }));
+    const row = totals[0];
     return {
-      ...ledgerBalance(mapped, new Date()),
-      entries: rows.map((row) => ({
-        id: row.id,
-        orderId: row.orderId,
-        amountIrr: Number(row.amountIrr),
-        entryType: row.entryType,
-        availableAt: row.availableAt,
-        reasonCode: row.reasonCode,
-        createdAt: row.createdAt,
+      held: Number(row?.held || 0),
+      available: Number(row?.available || 0),
+      paid: Number(row?.paid || 0),
+      reversed: Number(row?.reversed || 0),
+      page: safePage,
+      pageSize: safeSize,
+      total,
+      entries: rows.map((entry) => ({
+        id: entry.id,
+        orderId: entry.orderId,
+        amountIrr: Number(entry.amountIrr),
+        entryType: entry.entryType,
+        availableAt: entry.availableAt,
+        reasonCode: entry.reasonCode,
+        createdAt: entry.createdAt,
       })),
     };
   }
 
-  /** Program-wide rollup for admin dashboard (sample cap — not a warehouse query). */
+  /** Program-wide rollup from the full ledger. */
   async programBalances() {
-    const rows = await this.entries.find({ take: 10_000, order: { createdAt: 'DESC' } });
-    const mapped = rows.map((row) => ({
-      amountIrr: Number(row.amountIrr),
-      entryType: row.entryType as 'COMMISSION_EARNED' | 'COMMISSION_REVERSAL' | 'MANUAL_ADJUSTMENT' | 'PAYOUT' | 'PAYOUT_REVERSAL',
-      availableAt: row.availableAt,
-      payoutId: row.payoutId,
-    }));
+    const totals = (await this.entries.manager.query(
+      `SELECT
+         COALESCE(SUM(CASE WHEN "entryType" = 'COMMISSION_REVERSAL' THEN ABS("amountIrr"::bigint) ELSE 0 END), 0)::text AS reversed,
+         COALESCE(SUM(CASE WHEN "entryType" = 'PAYOUT' THEN ABS("amountIrr"::bigint) ELSE 0 END), 0)::text AS paid,
+         COALESCE(SUM(CASE
+           WHEN "entryType" IN ('COMMISSION_EARNED','MANUAL_ADJUSTMENT','PAYOUT_REVERSAL')
+            AND ("availableAt" IS NULL OR "availableAt" > NOW()) THEN "amountIrr"::bigint
+           ELSE 0 END), 0)::text AS held,
+         COALESCE(SUM(CASE
+           WHEN "entryType" IN ('COMMISSION_EARNED','MANUAL_ADJUSTMENT','PAYOUT_REVERSAL')
+            AND "availableAt" IS NOT NULL AND "availableAt" <= NOW() THEN "amountIrr"::bigint
+           WHEN "entryType" IN ('COMMISSION_REVERSAL','PAYOUT') THEN "amountIrr"::bigint
+           ELSE 0 END), 0)::text AS available,
+         COUNT(*)::int AS sample
+       FROM sales_commission_ledger_entries`,
+    )) as Array<{ reversed: string; paid: string; held: string; available: string; sample: number }>;
+    const row = totals[0];
     return {
-      ...ledgerBalance(mapped, new Date()),
-      sampleSize: rows.length,
+      held: Number(row?.held || 0),
+      available: Number(row?.available || 0),
+      paid: Number(row?.paid || 0),
+      reversed: Number(row?.reversed || 0),
+      sampleSize: Number(row?.sample || 0),
     };
   }
 
@@ -255,18 +325,20 @@ export class SalesPartnerLedgerService {
   }
 
   private async ensureSnapshots(draft: SalesPartnerOrderDraftEntity, order: OrderEntity, items: OrderItemEntity[]) {
-    const existing = await this.snapshots.count({ where: { orderId: draft.convertedOrderId! } });
-    if (existing > 0) return;
+    const existing = await this.snapshots.find({ where: { orderId: draft.convertedOrderId! } });
+    const have = new Set(existing.map((row) => row.orderItemId));
     const source = await this.draftItems.find({ where: { draftId: draft.id } });
+    const freeze = order.salesPartnerCommissionFreeze?.byProductId;
     const lines = items.map((item) => {
       const match = source.find((row) => row.variantId && row.variantId === item.productVariantId)
         || source.find((row) => row.productName === item.productName);
+      const frozen = match ? freeze?.[match.productId] : undefined;
       return {
         orderItemId: item.id,
         lineTotalIrr: Number(item.totalPrice || 0),
-        percent: match?.commissionPercent ?? 0,
-        ruleId: match?.ruleId ?? null,
-        ruleVersion: match?.ruleVersion ?? 1,
+        percent: frozen?.percent ?? match?.commissionPercent ?? 0,
+        ruleId: frozen?.ruleId ?? match?.ruleId ?? null,
+        ruleVersion: frozen?.ruleVersion ?? match?.ruleVersion ?? 1,
       };
     });
     const computed = snapshotLineCommissions({
@@ -275,6 +347,7 @@ export class SalesPartnerLedgerService {
       walletAppliedIrr: Number(order.walletApplied || 0),
     });
     for (const snap of computed) {
+      if (have.has(snap.orderItemId)) continue;
       const meta = lines.find((line) => line.orderItemId === snap.orderItemId);
       await this.snapshots.save(this.snapshots.create({
         orderId: draft.convertedOrderId!,
@@ -291,10 +364,11 @@ export class SalesPartnerLedgerService {
 
   private async ensureLinkSnapshots(order: OrderEntity, items: OrderItemEntity[]) {
     if (!order.salesPartnerId) return;
-    const existing = await this.snapshots.count({ where: { orderId: order.id } });
-    if (existing > 0) return;
+    const existing = await this.snapshots.find({ where: { orderId: order.id } });
+    const have = new Set(existing.map((row) => row.orderItemId));
     const clicked = new Set(order.salesPartnerProductIds || []);
     if (!clicked.size) return;
+    const freeze = order.salesPartnerCommissionFreeze?.byProductId ?? null;
     const variantIds = [...new Set(items.map((item) => item.productVariantId))];
     const variants = variantIds.length
       ? await this.variants.find({ where: { id: In(variantIds) } })
@@ -302,8 +376,19 @@ export class SalesPartnerLedgerService {
     const productByVariant = new Map(variants.map((row) => [row.id, row.productId]));
     const clickedLines = new Map<string, { percent: number; ruleId: string | null; ruleVersion: number }>();
     for (const item of items) {
+      if (have.has(item.id)) continue;
       const productId = productByVariant.get(item.productVariantId);
       if (!productId || !clicked.has(productId)) continue;
+      const frozen = freeze?.[productId];
+      if (frozen) {
+        clickedLines.set(item.id, {
+          percent: frozen.percent,
+          ruleId: frozen.ruleId,
+          ruleVersion: frozen.ruleVersion,
+        });
+        continue;
+      }
+      if (freeze) continue;
       const lineTotal = Math.max(0, Math.floor(Number(item.totalPrice || 0)));
       const preview = await this.catalog.preview(order.salesPartnerId, productId, lineTotal);
       clickedLines.set(item.id, {
@@ -369,8 +454,9 @@ export class SalesPartnerLedgerService {
         createdBy: null,
       }));
       return 1;
-    } catch {
-      return 0;
+    } catch (err) {
+      if (isUniqueViolation(err)) return 0;
+      throw err;
     }
   }
 }

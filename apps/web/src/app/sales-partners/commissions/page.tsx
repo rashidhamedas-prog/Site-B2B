@@ -12,6 +12,8 @@ type Balances = {
   available: number;
   paid: number;
   reversed: number;
+  page?: number;
+  total?: number;
   entries?: Array<{
     id: string;
     amountIrr: number;
@@ -32,13 +34,15 @@ const ENTRY_FA: Record<string, string> = {
 export default function SalesPartnerCommissionsPage() {
   const [data, setData] = useState<Balances | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
+    setData(null);
     apiClient
-      .get<Balances>('/sales-partners/commissions')
+      .get<Balances>(`/sales-partners/commissions?page=${page}`)
       .then(setData)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : 'بارگذاری پورسانت ناموفق بود'));
-  }, []);
+  }, [page]);
 
   return (
     <SalesPartnerShell title="پورسانت">
@@ -70,7 +74,7 @@ export default function SalesPartnerCommissionsPage() {
           </div>
           {data.entries && data.entries.length > 0 ? (
             <ul className="space-y-2">
-              {data.entries.slice(0, 20).map((row) => (
+              {data.entries.map((row) => (
                 <li key={row.id}>
                   <SpCard className="!p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -97,6 +101,26 @@ export default function SalesPartnerCommissionsPage() {
                 رفتن به محصولات
               </Link>
             </SpCard>
+          )}
+          {(data.total || 0) > 20 && (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={spSecondary}
+                disabled={page <= 1}
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+              >
+                قبلی
+              </button>
+              <button
+                type="button"
+                className={spSecondary}
+                disabled={page * 20 >= (data.total || 0)}
+                onClick={() => setPage((current) => current + 1)}
+              >
+                بعدی
+              </button>
+            </div>
           )}
         </div>
       )}

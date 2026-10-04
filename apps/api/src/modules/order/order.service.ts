@@ -51,8 +51,11 @@ import {
   isKnownOrderStatus,
 } from '@taranom/shared-types';
 import { normalizePhone } from '../auth/phone.util';
-import { attributeLinkProducts, normalizeSalesPartnerCode } from '../sales-partner/sales-partner-attribution';
+import { attributeLinkProducts } from '../sales-partner/sales-partner-attribution';
 import { isBlockedSelfReferral } from '../sales-partner/sales-partner-draft-policy';
+import { SalesPartnerReferralService } from '../sales-partner/sales-partner-referral.service';
+import { referralPaymentDecision } from '../sales-partner/sales-partner-referral-policy';
+import { selectCommissionRule, type CommissionRule } from '../sales-partner/sales-commission-policy';
 
 @Injectable()
 export class OrderService {
@@ -75,6 +78,8 @@ export class OrderService {
     private readonly inventoryService: InventoryService,
     private readonly outbox: OutboxService,
     private readonly fulfillment: FulfillmentService,
+    @Inject(forwardRef(() => SalesPartnerReferralService))
+    private readonly referrals: SalesPartnerReferralService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
 
@@ -559,6 +564,35 @@ export class OrderService {
     return lines;
   }
 
+  async referralLock(customerId: string) {
+    return this.referrals.customerLock(customerId);
+  }
+
+  async resumeExclusivePayment(orderId: string): Promise<{ paymentUrl: string | null; paymentStartError: string | null }> {
+    const order = await this.orderRepo.findOne({ where: { id: orderId } });
+    if (!order) return { paymentUrl: null, paymentStartError: 'سفارش پیدا نشد' };
+    if (order.referralExclusiveGateway !== 'ZARINPAL') {
+      await this.orderRepo.update(order.id, { referralExclusiveGateway: 'ZARINPAL' });
+    }
+    if (Number(order.total) <= 0 || order.paymentStatus === 'PAID') {
+      return { paymentUrl: null, paymentStartError: null };
+    }
+    try {
+      const pay = await this.paymentService.start({
+        amount: Number(order.total) || 0,
+        orderId: order.id,
+        customerId: order.customerId,
+        description: `پرداخت سفارش ${order.orderNumber}`,
+        channel: 'RETAIL',
+        providerCode: 'ZARINPAL',
+      });
+      return { paymentUrl: pay.redirectUrl, paymentStartError: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'شروع پرداخت زرین‌پال ناموفق بود';
+      return { paymentUrl: null, paymentStartError: message };
+    }
+  }
+
   async create(dto: CreateOrderDto & { customerId: string }) {
     const customer = await this.customerService.findOne(dto.customerId);
     if ((customer as any).status !== 'ACTIVE' || (customer as any).isActive === false) {
@@ -572,7 +606,17 @@ export class OrderService {
     if (!dto.items?.length) throw new BadRequestException('سفارش باید حداقل یک کالا داشته باشد');
     const channel = this.resolveOrderChannel(dto);
     const orderType = channel === 'RETAIL' ? 'RETAIL_WEBSITE' : (dto.type || 'WHOLESALE');
-    const paymentMethod = this.resolveCreatePaymentMethod(dto, channel);
+    const referral = channel === 'RETAIL'
+      ? await this.referrals.resolveCheckout(dto.salesPartnerSession, dto.customerId)
+      : null;
+    const requestedMethod = this.resolveCreatePaymentMethod(dto, channel);
+    const payDecision = referralPaymentDecision({
+      sessionValid: !!referral,
+      requestedMethod,
+      requestedGateway: dto.paymentGateway,
+    });
+    if (payDecision.reject) throw new BadRequestException(payDecision.reject);
+    const paymentMethod = payDecision.exclusive ? 'ONLINE' : requestedMethod;
     const idempotencyScope = this.createOrderIdempotencyScope(dto.customerId, channel);
     const idempotencyPayloadHash = this.hashCreateOrderPayload(dto, channel, paymentMethod);
 
@@ -832,13 +876,17 @@ export class OrderService {
           : JSON.stringify(dto.shippingAddress);
     }
 
-    const linkAttribution = await this.resolveSalesPartnerLink({
-      channel,
-      customerPhone: String((customer as { phone?: string }).phone || ''),
-      code: dto.salesPartnerCode,
-      requestedProductIds: dto.salesPartnerProductIds,
-      cartProductIds: expandedItems.map((item) => item.productId),
-    });
+    const linkAttribution = referral
+      ? await this.commissionFromReferral({
+          customerPhone: String((customer as { phone?: string }).phone || ''),
+          partnerId: referral.partnerId,
+          requestedProductIds: referral.productIds,
+          cartProductIds: expandedItems.map((item) => item.productId),
+        })
+      : null;
+    const commissionFreeze = linkAttribution
+      ? await this.freezePartnerCommission(linkAttribution.partnerId, linkAttribution.productIds)
+      : null;
     const initialStatus = initialCreateStatus(paymentMethod, orderTotal);
 
     // Persist the order and all financial/inventory effects on one DB connection.
@@ -874,6 +922,9 @@ export class OrderService {
                 salesSource: linkAttribution ? 'SALES_PARTNER' : 'DIRECT',
                 salesPartnerId: linkAttribution?.partnerId ?? null,
                 salesPartnerProductIds: linkAttribution?.productIds ?? null,
+                referralSessionId: referral?.sessionId ?? null,
+                referralExclusiveGateway: referral ? 'ZARINPAL' : null,
+                salesPartnerCommissionFreeze: commissionFreeze,
                 torobClid: linkAttribution
                   ? undefined
                   : dto.torobClid?.trim() ||
@@ -990,6 +1041,18 @@ export class OrderService {
     }
 
     const full = await this.findOne(saved.id);
+    if (referral) {
+      const session = await this.referrals.openSession(referral.sessionId);
+      if (session) {
+        await this.referrals.bindCustomer(dto.customerId, {
+          sessionId: referral.sessionId,
+          partnerId: referral.partnerId,
+          publicCode: referral.publicCode,
+          productIds: referral.productIds,
+          expiresAt: new Date(session.expiresAt),
+        });
+      }
+    }
 
     if (channel === 'RETAIL' && paymentMethod === 'ONLINE' && orderTotal > 0) {
       try {
@@ -1000,12 +1063,13 @@ export class OrderService {
           description: `پرداخت سفارش ${saved.orderNumber}`,
           mobile: (customer as any).phone,
           channel: 'RETAIL',
-          providerCode:
+          providerCode: referral ? 'ZARINPAL' : (
             dto.paymentGateway === 'TOROBPAY'
               ? 'TOROBPAY'
               : dto.paymentGateway === 'DIGIPAY'
                 ? 'DIGIPAY'
-                : 'ZARINPAL',
+                : 'ZARINPAL'
+          ),
         });
         return { ...full, paymentUrl: pay.redirectUrl, paymentId: pay.paymentId };
       } catch (err: any) {
@@ -1019,7 +1083,7 @@ export class OrderService {
     }
 
     // Affiliate pending/paid intents are in the checkout outbox. Zero-total ONLINE still confirms here.
-    if (channel === 'RETAIL' && dto.affiliateId && paymentMethod === 'ONLINE' && orderTotal === 0) {
+    if (channel === 'RETAIL' && paymentMethod === 'ONLINE' && orderTotal === 0 && (referral || dto.affiliateId)) {
       await this.dataSource.transaction(async (manager) => {
         await manager.getRepository(OrderEntity).update(saved.id, {
           status: 'CONFIRMED',
@@ -1591,7 +1655,13 @@ export class OrderService {
 
     if (dto.notes !== undefined) order.notes = dto.notes;
     if (dto.shippingMethod !== undefined) order.shippingMethod = dto.shippingMethod;
-    if (dto.paymentMethod !== undefined) order.paymentMethod = dto.paymentMethod;
+    if (dto.paymentMethod !== undefined) {
+      const nextMethod = String(dto.paymentMethod).toUpperCase();
+      if (order.referralExclusiveGateway === 'ZARINPAL' && nextMethod !== 'ONLINE') {
+        throw new BadRequestException('این سفارش فقط با پرداخت آنلاین زرین‌پال قابل ثبت است');
+      }
+      order.paymentMethod = nextMethod;
+    }
     if (dto.shippingAddress !== undefined) {
       order.shippingAddress =
         typeof dto.shippingAddress === 'string'
@@ -1713,59 +1783,93 @@ export class OrderService {
     return this.findOne(id);
   }
 
-  /** Public share code is re-checked here. A client-supplied partner id is never trusted. */
-  private async resolveSalesPartnerLink(input: {
-    channel: string;
+  /** Commission is rechecked here. Gateway lock does not depend on this result. */
+  private async commissionFromReferral(input: {
     customerPhone: string;
-    code?: string;
-    requestedProductIds?: string[];
+    partnerId: string;
+    requestedProductIds: string[];
     cartProductIds: string[];
   }): Promise<{ partnerId: string; productIds: string[] } | null> {
-    if (input.channel !== 'RETAIL') return null;
-    const code = normalizeSalesPartnerCode(input.code);
-    const requested = (input.requestedProductIds || []).filter((id) =>
+    const requested = input.requestedProductIds.filter((id) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
     );
-    if (!code || !requested.length) return null;
-    try {
-      const partners: Array<{ id: string; phone: string }> = await this.dataSource.query(
-        `SELECT id, phone FROM sales_partner_profiles WHERE "publicCode" = $1 AND status = 'ACTIVE' LIMIT 1`,
-        [code],
-      );
-      const partner = partners[0];
-      if (!partner) return null;
-      const selfReferral = isBlockedSelfReferral(
-        normalizePhone(input.customerPhone),
-        normalizePhone(partner.phone),
-        true,
-      );
-      const candidates = attributeLinkProducts({
-        partnerActive: true,
-        selfReferral,
-        requestedProductIds: requested,
-        cartProductIds: input.cartProductIds,
-        eligibleProductIds: requested,
-      });
-      if (!candidates.length) return null;
-      const eligible: Array<{ productId: string }> = await this.dataSource.query(
-        `SELECT "productId" FROM sales_partner_product_eligibility WHERE eligible = true AND "productId" = ANY($1::uuid[])`,
-        [candidates],
-      );
-      const productIds = attributeLinkProducts({
-        partnerActive: true,
-        selfReferral: false,
-        requestedProductIds: candidates,
-        cartProductIds: candidates,
-        eligibleProductIds: eligible.map((row) => row.productId),
-      });
-      if (!productIds.length) return null;
-      return { partnerId: partner.id, productIds };
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (/sales_partner_profiles|sales_partner_product_eligibility|publicCode|salesPartnerProductIds/i.test(message)) {
-        return null;
-      }
-      throw err;
+    if (!requested.length) return null;
+    const partners: Array<{ id: string; phone: string; status: string }> = await this.dataSource.query(
+      `SELECT id, phone, status FROM sales_partner_profiles WHERE id = $1 LIMIT 1`,
+      [input.partnerId],
+    );
+    const partner = partners[0];
+    if (!partner || partner.status !== 'ACTIVE') return null;
+    const selfReferral = isBlockedSelfReferral(
+      normalizePhone(input.customerPhone),
+      normalizePhone(partner.phone),
+      true,
+    );
+    if (selfReferral) return null;
+    const inCart = attributeLinkProducts({
+      partnerActive: true,
+      selfReferral: false,
+      requestedProductIds: requested,
+      cartProductIds: input.cartProductIds,
+      eligibleProductIds: requested,
+    });
+    if (!inCart.length) return null;
+    const eligible: Array<{ productId: string }> = await this.dataSource.query(
+      `SELECT "productId" FROM sales_partner_product_eligibility WHERE eligible = true AND "productId" = ANY($1::uuid[])`,
+      [inCart],
+    );
+    const productIds = attributeLinkProducts({
+      partnerActive: true,
+      selfReferral: false,
+      requestedProductIds: inCart,
+      cartProductIds: inCart,
+      eligibleProductIds: eligible.map((row) => row.productId),
+    });
+    if (!productIds.length) return null;
+    return { partnerId: partner.id, productIds };
+  }
+
+  private async freezePartnerCommission(partnerId: string, productIds: string[]) {
+    const products: Array<{ id: string; categoryId: string | null }> = await this.dataSource.query(
+      `SELECT id, "categoryId" FROM products WHERE id = ANY($1::uuid[])`,
+      [productIds],
+    );
+    const rulesRaw: Array<{
+      id: string;
+      scope: CommissionRule['scope'];
+      percent: number;
+      active: boolean;
+      startsAt: Date | null;
+      endsAt: Date | null;
+      productId: string | null;
+      categoryId: string | null;
+      salesPartnerId: string | null;
+      version: number;
+    }> = await this.dataSource.query(
+      `SELECT id, scope, percent, active, "startsAt", "endsAt", "productId", "categoryId", "salesPartnerId", version
+       FROM sales_commission_rules WHERE active = true`,
+    );
+    const rules: CommissionRule[] = rulesRaw.map((row) => ({
+      ...row,
+      percent: Number(row.percent),
+      version: Number(row.version),
+      startsAt: row.startsAt ? new Date(row.startsAt) : null,
+      endsAt: row.endsAt ? new Date(row.endsAt) : null,
+    }));
+    const byProductId: Record<string, { percent: number; ruleId: string | null; ruleVersion: number }> = {};
+    const at = new Date();
+    for (const product of products) {
+      const rule = selectCommissionRule(rules, {
+        productId: product.id,
+        categoryId: product.categoryId,
+        lineTotalAfterDiscountIrr: 1,
+      }, partnerId, at);
+      byProductId[product.id] = {
+        percent: rule?.percent ?? 0,
+        ruleId: rule?.id ?? null,
+        ruleVersion: rule?.version ?? 1,
+      };
     }
+    return { byProductId };
   }
 }

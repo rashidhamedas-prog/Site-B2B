@@ -60,6 +60,11 @@ export function SalesPartnerShell({
 
   function logout() {
     clearToken();
+    try {
+      window.localStorage.removeItem('taranom.sales-partner.order-draft.v1');
+    } catch {
+      /* private mode */
+    }
     window.location.href = '/sales-partners/login';
   }
 

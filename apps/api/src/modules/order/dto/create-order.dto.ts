@@ -186,6 +186,12 @@ export class CreateOrderDto {
   @IsUUID('4', { each: true })
   salesPartnerProductIds?: string[];
 
+  @ApiPropertyOptional({ description: 'Signed sales-partner referral session. A public code is not proof.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  salesPartnerSession?: string;
+
   @ApiPropertyOptional({ description: 'Torob click id (?torob_clid=)' })
   @IsOptional()
   @IsString()

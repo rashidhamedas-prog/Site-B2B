@@ -34,18 +34,21 @@ export function retailPaymentOptions(
   digipayAvailable: boolean,
   torobpayAvailable = false,
   cashEnabled = false,
+  exclusiveZarinpal = false,
 ): CheckoutChoiceOption[] {
+  const zarinpal: CheckoutChoiceOption = {
+    id: 'ZARINPAL',
+    title: exclusiveZarinpal ? 'پرداخت آنلاین زرین‌پال' : 'زرین‌پال',
+    description:
+      'پول لباس را همین الان با کارت بانکی می‌دهی. بعد از دکمه می‌روی صفحهٔ امن زرین‌پال، رمز کارت را می‌زنی، و خودبه‌خود برمی‌گردی به فروشگاه. کارت را به خود فروشگاه نمی‌دهی.',
+    icon: 'card',
+    logo: 'zarinpal',
+    badge: 'پیشنهادی',
+    hint: 'اگر نمی‌دانی کدام را بزنی، همین را انتخاب کن.',
+  };
+  if (exclusiveZarinpal) return [zarinpal];
   return [
-    {
-      id: 'ZARINPAL',
-      title: 'زرین‌پال',
-      description:
-        'پول لباس را همین الان با کارت بانکی می‌دهی. بعد از دکمه می‌روی صفحهٔ امن زرین‌پال، رمز کارت را می‌زنی، و خودبه‌خود برمی‌گردی به فروشگاه. کارت را به خود فروشگاه نمی‌دهی.',
-      icon: 'card',
-      logo: 'zarinpal',
-      badge: 'پیشنهادی',
-      hint: 'اگر نمی‌دانی کدام را بزنی، همین را انتخاب کن.',
-    },
+    zarinpal,
     ...(digipayAvailable
       ? [
           {
