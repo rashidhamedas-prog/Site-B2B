@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ClipboardList, ShoppingBag, Users, Wallet } from 'lucide-react';
 import { toman } from '@/lib/product-display';
 import { SpBadge, SpBarRow, SpButton, SpEmptyState, SpKpi, SpSection } from '@/components/sales-partners/SpUi';
@@ -12,8 +13,16 @@ import {
   SP_PARTNER_STATUS_FA,
   spPartnerStatusLabel,
 } from '@/components/sales-partners/sp-labels';
-import type { ApplicationRow, AuditRow, DraftRow, PartnerRow, Report, Settings, Tab } from './types';
-import { actionableDrafts, auditTab, partnerNameById } from './sp-admin-ops';
+import type { ApplicationRow, AuditRow, CommissionBucket, DraftRow, PartnerRow, Report, Settings, Tab } from './types';
+import { actionableDrafts, auditTab, partnerNameById, partnerSlicesForBucket } from './sp-admin-ops';
+
+const MONEY_BUCKETS: Record<CommissionBucket, { label: string; hint: string }> = {
+  held: { label: 'در نگهداری', hint: 'پورسانتی که هنوز آزاد نشده، به تفکیک همکار' },
+  paid: { label: 'ثبت واریز دستی', hint: 'واریزهایی که برای هر همکار ثبت شده' },
+  reversed: { label: 'برگشت‌خورده', hint: 'پورسانت برگشت‌خورده هر همکار' },
+  debt: { label: 'بدهی', hint: 'مانده منفی هر همکار. رقم کارت بعد از جمع کل دفتر است و می‌تواند از جمع نفرها کمتر باشد' },
+  available: { label: 'قابل‌برداشت', hint: 'مانده آزاد هر همکار' },
+};
 
 export function SpAdminDashboard({
   settings,
@@ -31,7 +40,7 @@ export function SpAdminDashboard({
   partners: PartnerRow[];
   orders: DraftRow[];
   audits: AuditRow[];
-  onGo: (tab: Tab, extra?: { appFilter?: string; partnerFilter?: string; orderFilter?: string }) => void;
+  onGo: (tab: Tab, extra?: { appFilter?: string; partnerFilter?: string; orderFilter?: string; focusPartnerId?: string }) => void;
   onOpenApplication: (id: string) => void;
 }) {
   const pendingApps = apps.filter((row) => row.status === 'PENDING_REVIEW');
@@ -41,6 +50,16 @@ export function SpAdminDashboard({
   const partnerMax = report ? Math.max(1, ...Object.values(report.partners.byStatus || {})) : 1;
   const pendingCount = report?.applications.pendingReview ?? pendingApps.length;
   const inboxEmpty = pendingApps.length === 0 && needInfoApps.length === 0 && queueOrders.length === 0;
+  const [moneyBucket, setMoneyBucket] = useState<CommissionBucket | null>(null);
+
+  useEffect(() => {
+    if (!moneyBucket) return;
+    document.getElementById('sp-commission-breakdown')?.scrollIntoView({ block: 'nearest' });
+  }, [moneyBucket]);
+
+  function toggleMoney(bucket: CommissionBucket) {
+    setMoneyBucket((current) => (current === bucket ? null : bucket));
+  }
 
   return (
     <div className="space-y-6">
@@ -133,19 +152,51 @@ export function SpAdminDashboard({
           <SpKpi
             label="قابل‌برداشت برنامه"
             value={report ? `${toman(report.commissions?.available ?? 0)}` : '—'}
-            hint="تومان · کلیک برای تسویه"
-            onClick={() => onGo('payouts')}
+            hint="تومان · کلیک برای ریز همکاران"
+            pressed={moneyBucket === 'available'}
+            onClick={() => toggleMoney('available')}
           />
         </div>
       </div>
 
       {report?.commissions ? (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <SpKpi label="در نگهداری" value={`${toman(report.commissions.held)} تومان`} onClick={() => onGo('payouts')} />
-          <SpKpi label="ثبت واریز دستی" value={`${toman(report.commissions.paid)} تومان`} onClick={() => onGo('payouts')} />
-          <SpKpi label="برگشت‌خورده" value={`${toman(report.commissions.reversed)} تومان`} onClick={() => onGo('orders')} />
-          <SpKpi label="بدهی" value={`${toman(report.commissions.debt ?? 0)} تومان`} onClick={() => onGo('payouts')} />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <SpKpi
+            label="در نگهداری"
+            value={`${toman(report.commissions.held)} تومان`}
+            pressed={moneyBucket === 'held'}
+            onClick={() => toggleMoney('held')}
+          />
+          <SpKpi
+            label="ثبت واریز دستی"
+            value={`${toman(report.commissions.paid)} تومان`}
+            pressed={moneyBucket === 'paid'}
+            onClick={() => toggleMoney('paid')}
+          />
+          <SpKpi
+            label="برگشت‌خورده"
+            value={`${toman(report.commissions.reversed)} تومان`}
+            pressed={moneyBucket === 'reversed'}
+            onClick={() => toggleMoney('reversed')}
+          />
+          <SpKpi
+            label="بدهی"
+            value={`${toman(report.commissions.debt ?? 0)} تومان`}
+            pressed={moneyBucket === 'debt'}
+            onClick={() => toggleMoney('debt')}
+          />
         </div>
+      ) : null}
+
+      {moneyBucket && report?.commissions ? (
+        <CommissionBreakdown
+          bucket={moneyBucket}
+          cardIrr={report.commissions[moneyBucket] ?? 0}
+          rows={partnerSlicesForBucket(report.commissions.byPartner, moneyBucket)}
+          splitReady={report.commissions.byPartner != null}
+          partners={partners}
+          onOpenPartner={(id) => onGo('payouts', { focusPartnerId: id })}
+        />
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -236,6 +287,58 @@ export function SpAdminDashboard({
         </p>
       ) : null}
     </div>
+  );
+}
+
+function CommissionBreakdown({
+  bucket,
+  cardIrr,
+  rows,
+  splitReady,
+  partners,
+  onOpenPartner,
+}: {
+  bucket: CommissionBucket;
+  cardIrr: number;
+  rows: Array<{ salesPartnerId: string; amountIrr: number }>;
+  splitReady: boolean;
+  partners: PartnerRow[];
+  onOpenPartner: (id: string) => void;
+}) {
+  const meta = MONEY_BUCKETS[bucket];
+  const sum = rows.reduce((total, row) => total + row.amountIrr, 0);
+  return (
+    <SpSection id="sp-commission-breakdown" title={`ریز ${meta.label}`} description={meta.hint}>
+      {!splitReady ? (
+        <SpEmptyState>ریز سهم همکاران در این گزارش نیست. یک‌بار صفحه را تازه کنید.</SpEmptyState>
+      ) : rows.length === 0 ? (
+        <SpEmptyState>این رقم برای هیچ همکاری ثبت نشده.</SpEmptyState>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((row) => {
+            const name = partnerNameById(partners, row.salesPartnerId);
+            return (
+              <li
+                key={row.salesPartnerId}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3"
+              >
+                <span className="min-w-0 truncate font-medium">{name || 'همکار بدون نام'}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="font-semibold tabular-nums text-stone-900">{toman(row.amountIrr)} تومان</span>
+                  <SpButton variant="ghost" className="min-h-9 px-2 text-xs" onClick={() => onOpenPartner(row.salesPartnerId)}>
+                    تسویه
+                  </SpButton>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="text-xs leading-6 text-stone-500">
+        جمع ریز: {toman(sum)} تومان
+        {sum === cardIrr ? ' · با رقم کارت یکی است' : ` · رقم کارت ${toman(cardIrr)} تومان`}
+      </p>
+    </SpSection>
   );
 }
 

@@ -1,4 +1,4 @@
-import type { DraftRow, PartnerRow } from './types';
+import type { CommissionBucket, DraftRow, PartnerCommissionSlice, PartnerRow } from './types';
 
 const CLOSED_DRAFTS = new Set(['EXPIRED', 'CANCELLED', 'REJECTED_BY_CUSTOMER']);
 
@@ -31,6 +31,17 @@ export function actionableDrafts(rows: DraftRow[], limit = 8): DraftRow[] {
     .filter(isActionableDraft)
     .sort((a, b) => draftActionPriority(a) - draftActionPriority(b))
     .slice(0, limit);
+}
+
+/** Non-zero partner shares for one money card, largest amount first. */
+export function partnerSlicesForBucket(
+  rows: PartnerCommissionSlice[] | undefined,
+  bucket: CommissionBucket,
+): Array<{ salesPartnerId: string; amountIrr: number }> {
+  return (rows || [])
+    .map((row) => ({ salesPartnerId: row.salesPartnerId, amountIrr: row[bucket] }))
+    .filter((row) => row.amountIrr !== 0)
+    .sort((a, b) => b.amountIrr - a.amountIrr || a.salesPartnerId.localeCompare(b.salesPartnerId));
 }
 
 export function partnerNameById(partners: PartnerRow[], id: string | null | undefined): string {

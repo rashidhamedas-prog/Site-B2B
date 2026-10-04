@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T15:20:00Z — TASK-20261004-010 implementing (commission drill-down)
+
+- Owner: cursor:implementer-TASK-20261004-010
+- Branch/worktree: `ai/TASK-20261004-010-sp-commission-split` @ `D:/proje/Site-B2B-sp-split`
+- Reclaim: TASK-20261004-002 file claims released after its live ship at `7d866e1`; user authorized this drill-down
+- Cards held / ثبت واریز دستی / reversed / debt / available open a partner list
+- Tests: ledger-policy spec OK; sp-admin-ops spec OK
+- Isolation spec still fails on the pre-existing shell focus marker (`focus-visible:outline` lives in SpUi)
+- Browser click not done: admin login required
+- Security: admin report only; partner id + amounts; names from the desk list
+- Next: commit, fast-forward master, VPS deploy, health
+
 ## 2026-10-04T14:20:00Z — TASK-20261004-002 live at 7d866e1
 
 - master fast-forwarded: `89d5c33` then hotfix `7d866e1`.

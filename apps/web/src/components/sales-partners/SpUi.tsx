@@ -84,12 +84,14 @@ export function SpKpi({
   value,
   hint,
   accent,
+  pressed,
   onClick,
 }: {
   label: string;
   value: string;
   hint?: string;
   accent?: boolean;
+  pressed?: boolean;
   onClick?: () => void;
 }) {
   const reduce = useReducedMotion();
@@ -113,7 +115,13 @@ export function SpKpi({
       transition={{ duration: 0.28, ease: 'easeOut' }}
     >
       {onClick ? (
-        <button type="button" className={cn(className, 'block w-full')} onClick={onClick}>
+        <button
+          type="button"
+          className={cn(className, 'block w-full', pressed && 'ring-2 ring-[#1B5C4A]/40')}
+          aria-pressed={pressed}
+          aria-expanded={pressed}
+          onClick={onClick}
+        >
           {body}
         </button>
       ) : (
@@ -124,18 +132,20 @@ export function SpKpi({
 }
 
 export function SpSection({
+  id,
   title,
   description,
   action,
   children,
 }: {
+  id?: string;
   title: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-3">
+    <section id={id} className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-base font-semibold text-stone-900">{title}</h2>

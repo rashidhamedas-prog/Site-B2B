@@ -67,6 +67,106 @@ export function ledgerBalance(rows: LedgerRow[], now: Date): {
   };
 }
 
+export type PartnerLedgerTotals = {
+  salesPartnerId: string;
+  held: number;
+  available: number;
+  paid: number;
+  reversed: number;
+  debt: number;
+};
+
+/** Same clamp as the program SQL rollup, applied after a partner's own buckets are summed. */
+export function clampLedgerTotals(raw: {
+  held: number;
+  available: number;
+  paid: number;
+  reversed: number;
+}): Omit<PartnerLedgerTotals, 'salesPartnerId'> {
+  let held = raw.held;
+  let available = raw.available;
+  let debt = 0;
+  if (available < 0) {
+    debt += -available;
+    available = 0;
+  }
+  if (held < 0) {
+    debt += -held;
+    held = 0;
+  }
+  return { held, available, paid: raw.paid, reversed: raw.reversed, debt };
+}
+
+export function partnerTotalsFromBucketRows(
+  rows: Array<{ salesPartnerId: string; bucket: string; amountIrr: number }>,
+): PartnerLedgerTotals[] {
+  const grouped = new Map<string, { held: number; available: number; paid: number; reversed: number }>();
+  for (const row of rows) {
+    if (!row.salesPartnerId || row.bucket === 'skip') continue;
+    if (row.bucket !== 'held' && row.bucket !== 'available' && row.bucket !== 'paid' && row.bucket !== 'reversed') continue;
+    const current = grouped.get(row.salesPartnerId) || { held: 0, available: 0, paid: 0, reversed: 0 };
+    current[row.bucket] += row.amountIrr;
+    grouped.set(row.salesPartnerId, current);
+  }
+  const out: PartnerLedgerTotals[] = [];
+  for (const [salesPartnerId, raw] of grouped) {
+    const totals = clampLedgerTotals(raw);
+    if (totals.held === 0 && totals.available === 0 && totals.paid === 0 && totals.reversed === 0 && totals.debt === 0) continue;
+    out.push({ salesPartnerId, ...totals });
+  }
+  return out.sort((a, b) => a.salesPartnerId.localeCompare(b.salesPartnerId));
+}
+
+export type PartnerLedgerTotals = {
+  salesPartnerId: string;
+  held: number;
+  available: number;
+  paid: number;
+  reversed: number;
+  debt: number;
+};
+
+/** Same clamp as the program SQL rollup, applied after each partner's own sums. */
+export function clampLedgerTotals(raw: {
+  held: number;
+  available: number;
+  paid: number;
+  reversed: number;
+}): Omit<PartnerLedgerTotals, 'salesPartnerId'> {
+  let held = raw.held;
+  let available = raw.available;
+  let debt = 0;
+  if (available < 0) {
+    debt += -available;
+    available = 0;
+  }
+  if (held < 0) {
+    debt += -held;
+    held = 0;
+  }
+  return { held, available, paid: raw.paid, reversed: raw.reversed, debt };
+}
+
+export function partnerTotalsFromBucketRows(
+  rows: Array<{ salesPartnerId: string; bucket: string; amountIrr: number }>,
+): PartnerLedgerTotals[] {
+  const grouped = new Map<string, { held: number; available: number; paid: number; reversed: number }>();
+  for (const row of rows) {
+    if (!row.salesPartnerId || row.bucket === 'skip') continue;
+    if (row.bucket !== 'held' && row.bucket !== 'available' && row.bucket !== 'paid' && row.bucket !== 'reversed') continue;
+    const current = grouped.get(row.salesPartnerId) || { held: 0, available: 0, paid: 0, reversed: 0 };
+    current[row.bucket] += row.amountIrr;
+    grouped.set(row.salesPartnerId, current);
+  }
+  const out: PartnerLedgerTotals[] = [];
+  for (const [salesPartnerId, raw] of grouped) {
+    const totals = clampLedgerTotals(raw);
+    if (totals.held === 0 && totals.available === 0 && totals.paid === 0 && totals.reversed === 0 && totals.debt === 0) continue;
+    out.push({ salesPartnerId, ...totals });
+  }
+  return out.sort((a, b) => a.salesPartnerId.localeCompare(b.salesPartnerId));
+}
+
 export function canAutoRelease(holdDays: number | null | undefined): boolean {
   return Number.isInteger(holdDays) && Number(holdDays) > 0;
 }

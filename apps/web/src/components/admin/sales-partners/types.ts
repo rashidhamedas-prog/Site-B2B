@@ -127,6 +127,17 @@ export type AuditRow = {
   payload?: Record<string, unknown>;
 };
 
+export type CommissionBucket = 'held' | 'available' | 'paid' | 'reversed' | 'debt';
+
+export type PartnerCommissionSlice = {
+  salesPartnerId: string;
+  held: number;
+  available: number;
+  paid: number;
+  reversed: number;
+  debt: number;
+};
+
 export type Report = {
   applications: { total: number; byStatus: Record<string, number>; pendingReview?: number };
   partners: { total: number; byStatus: Record<string, number>; active?: number };
@@ -142,6 +153,7 @@ export type Report = {
     paid: number;
     reversed: number;
     debt?: number;
+    byPartner?: PartnerCommissionSlice[];
     sampleSize?: number | null;
   };
   payouts?: { count: number; paidIrr: number };

@@ -1,5 +1,44 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261004-010"
+    title: "Sales-partner admin money cards drill down by partner"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261004-010"
+    roles:
+      architect: "cursor:implementer-TASK-20261004-010"
+      implementer: "cursor:implementer-TASK-20261004-010"
+      reviewer: "required-after-diff"
+      security: "required-payments-admin-read"
+    branch: "ai/TASK-20261004-010-sp-commission-split"
+    worktree: "D:/proje/Site-B2B-sp-split"
+    claimed_at: "2026-10-04T15:10:00Z"
+    heartbeat_at: "2026-10-04T15:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner-ledger-policy.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-ledger-policy.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-ledger.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-admin.controller.ts"
+      - "apps/web/src/components/admin/sales-partners/types.ts"
+      - "apps/web/src/components/admin/sales-partners/sp-admin-ops.ts"
+      - "apps/web/src/components/admin/sales-partners/SpAdminDashboard.tsx"
+      - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
+      - "apps/web/src/components/sales-partners/SpUi.tsx"
+      - "apps/web/src/lib/sp-admin-ops.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-04-sp-commission-breakdown.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Clicking held, manual payout, reversed, debt, or available lists the partners in that bucket"
+      - "A zero card opens an empty breakdown"
+      - "Partner rows use the same clamp as the SQL card totals"
+      - "partnerTotalsFromBucketRows and partnerSlicesForBucket specs pass"
+    notes: |
+      skill-top full. Reclaimed desk files from TASK-20261004-002 after its live ship.
+      byPartner is one grouped SQL query, parallel to the existing program total.
   - id: "TASK-20261004-002"
     title: "Sales-partner money integrity, auth bounds, and operator UX"
     status: "in_progress"
@@ -15,7 +54,8 @@ tasks:
     claimed_at: "2026-10-04T12:30:00Z"
     heartbeat_at: "2026-10-04T12:30:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/"
       - "apps/api/src/database/migrations/20261004-001-sales-partner-integrity.ts"
       - "apps/api/src/modules/order/order.service.ts"
@@ -37,6 +77,9 @@ tasks:
       that are still open stay fail-closed; prior accepted obligations are not deleted.
       order.service.ts is claimed only for sales-partner attribution/purge hooks.
       Independent Reviewer and Security are required before done.
+      2026-10-04T15:10Z claims released after the live ship; owner authorized TASK-20261004-010.
+      2026-10-04T15:10Z claims released after the live ship on 7d866e1 so TASK-20261004-010
+      can show which partner owns each money card. Owner authorized the reclaim.
     acceptance_criteria:
       - "RMA reversal key fits unique column and a second insert is a no-op"
       - "Payout allocates net available including reversals and post-payout debt"

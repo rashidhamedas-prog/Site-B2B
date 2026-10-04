@@ -95,6 +95,8 @@ export class SalesPartnerAdminController {
         available: commissions.available,
         paid: commissions.paid,
         reversed: commissions.reversed,
+        debt: commissions.debt,
+        byPartner: commissions.byPartner,
         sampleSize: commissions.sampleSize,
       },
       payouts: {

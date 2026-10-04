@@ -24,6 +24,7 @@ import {
   availableAtFromDelivery,
   canAutoRelease,
   earnedIdempotencyKey,
+  partnerTotalsFromBucketRows,
   reversalIdempotencyKey,
 } from './sales-partner-ledger-policy';
 
@@ -177,8 +178,45 @@ export class SalesPartnerLedgerService {
 
   /** Full-ledger rollup. Not a sample. */
   async programBalances() {
-    const totals = await this.sumBalances(null, new Date());
-    return { ...totals, sampleSize: null as null, complete: true };
+    const now = new Date();
+    const [totals, byPartner] = await Promise.all([this.sumBalances(null, now), this.balancesByPartner(now)]);
+    return { ...totals, byPartner, sampleSize: null as null, complete: true };
+  }
+
+  /** One grouped query. Each partner is clamped the same way as the program card. */
+  private async balancesByPartner(now: Date) {
+    const rows: Array<{ salesPartnerId: string; bucket: string; amount: string }> = await this.entries.query(
+      `SELECT "salesPartnerId",
+         CASE
+           WHEN "entryType" = 'PAYOUT' THEN 'paid'
+           WHEN "entryType" = 'COMMISSION_REVERSAL' THEN 'reversed'
+           ELSE 'skip'
+         END AS bucket,
+         COALESCE(SUM(ABS("amountIrr")), 0)::text AS amount
+       FROM sales_commission_ledger_entries
+       WHERE "entryType" IN ('PAYOUT', 'COMMISSION_REVERSAL')
+       GROUP BY "salesPartnerId", 2
+       UNION ALL
+       SELECT "salesPartnerId",
+         CASE
+           WHEN "entryType" = 'COMMISSION_REVERSAL' AND bucket = 'held' THEN 'held'
+           WHEN "entryType" IN ('COMMISSION_EARNED', 'MANUAL_ADJUSTMENT', 'PAYOUT_REVERSAL')
+             AND ("availableAt" IS NULL OR "availableAt" > $1::timestamptz) THEN 'held'
+           ELSE 'available'
+         END AS bucket,
+         COALESCE(SUM("amountIrr"), 0)::text AS amount
+       FROM sales_commission_ledger_entries
+       WHERE "payoutId" IS NULL AND "entryType" <> 'PAYOUT'
+       GROUP BY "salesPartnerId", 2`,
+      [now.toISOString()],
+    );
+    return partnerTotalsFromBucketRows(
+      rows.map((row) => ({
+        salesPartnerId: row.salesPartnerId,
+        bucket: row.bucket,
+        amountIrr: Math.trunc(Number(row.amount) || 0),
+      })),
+    );
   }
 
   private async sumBalances(salesPartnerId: string | null, now: Date) {

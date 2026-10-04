@@ -497,11 +497,15 @@ export function AdminSalesPartners() {
   const actionOrderCount = orders.filter(isActionableDraft).length;
   const suspendedCount = partners.filter((row) => row.status === 'SUSPENDED').length;
 
-  function goTo(next: Tab, extra?: { appFilter?: string; partnerFilter?: string; orderFilter?: string }) {
+  function goTo(next: Tab, extra?: { appFilter?: string; partnerFilter?: string; orderFilter?: string; focusPartnerId?: string }) {
     setTab(next);
     if (extra?.appFilter) setAppFilter(extra.appFilter);
     if (extra?.partnerFilter) setPartnerFilter(extra.partnerFilter);
     if (extra?.orderFilter) setOrderFilter(extra.orderFilter);
+    if (extra?.focusPartnerId) {
+      setPayoutPartnerId(extra.focusPartnerId);
+      setAvailableIrr(null);
+    }
   }
   const catalogGroups = useMemo(() => {
     const map = new Map<string, CatalogRow[]>();

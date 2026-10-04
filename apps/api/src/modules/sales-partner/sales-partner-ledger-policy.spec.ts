@@ -7,6 +7,7 @@ import {
   earnedIdempotencyKey,
   isPayableEarned,
   ledgerBalance,
+  partnerTotalsFromBucketRows,
   payoutIdempotencyKey,
   reversalIdempotencyKey,
 } from './sales-partner-ledger-policy';
@@ -131,5 +132,20 @@ const mid = advanceLedgerCursor(page, 50);
 assert(mid.wrapped === false && mid.cursorId === 'id-49', 'full page keeps cursor on the last row');
 const tail = advanceLedgerCursor(page.slice(0, 3), 50);
 assert(tail.wrapped === true && tail.cursorAt === null, 'short page wraps so older rows are visited again');
+
+const split = partnerTotalsFromBucketRows([
+  { salesPartnerId: 'p-a', bucket: 'held', amountIrr: 75_000 },
+  { salesPartnerId: 'p-b', bucket: 'held', amountIrr: 25_000 },
+  { salesPartnerId: 'p-b', bucket: 'available', amountIrr: -10_000 },
+  { salesPartnerId: 'p-a', bucket: 'paid', amountIrr: 5_000 },
+  { salesPartnerId: 'p-a', bucket: 'reversed', amountIrr: 1_000 },
+  { salesPartnerId: 'p-z', bucket: 'skip', amountIrr: 0 },
+]);
+assert(split.find((row) => row.salesPartnerId === 'p-z') == null, 'skipped partner omitted');
+assert(split.find((row) => row.salesPartnerId === 'p-a')?.held === 75_000, 'held belongs to p-a');
+assert(split.find((row) => row.salesPartnerId === 'p-a')?.paid === 5_000, 'manual payout belongs to p-a');
+assert(split.find((row) => row.salesPartnerId === 'p-b')?.debt === 10_000, 'negative available is that partner debt');
+assert(split.find((row) => row.salesPartnerId === 'p-b')?.available === 0, 'debt clamp clears available');
+assert(split.reduce((sum, row) => sum + row.held, 0) === 100_000, 'held rows sum');
 
 console.log('sales-partner-ledger-policy.spec.ts: OK');
