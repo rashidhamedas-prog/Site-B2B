@@ -12,6 +12,15 @@ import { ReturnRequestEntity } from '../rma/entities/return-request.entity';
 import { customerChannelSql, normalizeCustomerChannel } from '../customer/customer-channel';
 import { recognizedSalePeriodSql, recognizedSaleStatuses } from './sales-recognition';
 import { LOW_STOCK_ORDER, LOW_STOCK_WHERE } from './dashboard-low-stock';
+import {
+  customerMatchesInvoiceSql,
+  customerMatchesOrderSql,
+  orderMatchesReturnSql,
+  paymentLabel,
+  orderMatchesItemSql,
+  productMatchesVariantSql,
+  variantMatchesOrderItemSql,
+} from './report-sql';
 
 export type ReportPeriod = 'week' | 'month' | 'quarter' | 'year';
 
@@ -19,6 +28,17 @@ const DELETED = 'DELETED';
 /** Customer-portal spend still excludes unpaid and voided orders. Admin sales use recognizedSaleStatuses. */
 const EXCLUDE_REVENUE = ['AWAITING_PAYMENT', 'PENDING_REVIEW', 'CANCELLED', 'DELETED'];
 const EXCLUDE_ORDERS = ['CANCELLED', 'DELETED'];
+
+function emptyPipeline() {
+  return {
+    placed: 0,
+    awaitingPayment: 0,
+    pendingReview: 0,
+    inFulfillment: 0,
+    recognized: 0,
+    cancelled: 0,
+  };
+}
 
 @Injectable()
 export class DashboardService {
@@ -345,6 +365,12 @@ export class DashboardService {
         bySegment: [],
         byFabric: [],
         topProducts: [],
+        pipeline: emptyPipeline(),
+        payments: [],
+        returns: { opened: 0, openNow: 0 },
+        adjustments: { discount: 0, shipping: 0 },
+        invoices: { count: 0, amount: 0 },
+        warnings: [],
       };
     }
   }
@@ -367,18 +393,33 @@ export class DashboardService {
 
     const avgOrder = ordersNow > 0 ? Math.round(revenueNow / ordersNow) : 0;
     const avgOrderPrev = ordersPrev > 0 ? Math.round(revenuePrev / ordersPrev) : 0;
+    const warnings: string[] = [];
+    const guard = async <T>(name: string, fn: () => Promise<T>, fallback: T): Promise<T> => {
+      try {
+        return await fn();
+      } catch {
+        warnings.push(name);
+        return fallback;
+      }
+    };
 
-    const [series, byCity, bySegment, byFabric, topProducts] = await Promise.all([
-      this.revenueSeries(period, bounds, ch),
-      this.salesByCity(start, end, ch),
-      this.customersBySegment(ch),
-      this.salesByFabric(start, end, ch),
-      this.topProducts(start, end, prevStart, prevEnd, ch),
+    const [series, byCity, bySegment, byFabric, topProducts, pipeline, payments, returns, adjustments, invoices] = await Promise.all([
+      guard('روند درآمد', () => this.revenueSeries(period, bounds, ch), []),
+      guard('فروش شهر', () => this.salesByCity(start, end, ch), []),
+      guard('سگمنت مشتریان', () => this.customersBySegment(ch), []),
+      guard('پارچه', () => this.salesByFabric(start, end, ch), []),
+      guard('محصولات', () => this.topProducts(start, end, prevStart, prevEnd, ch), []),
+      guard('وضعیت سفارش', () => this.orderPipeline(start, end, ch), emptyPipeline()),
+      guard('روش پرداخت', () => this.paymentMix(start, end, ch), []),
+      guard('مرجوعی', () => this.returnPulse(start, end, ch), { opened: 0, openNow: 0 }),
+      guard('تخفیف و ارسال', () => this.recognizedAdjustments(start, end, ch), { discount: 0, shipping: 0 }),
+      guard('فاکتور باز', () => this.openInvoices(ch), { count: 0, amount: 0 }),
     ]);
 
     return {
       period,
       channel: ch ?? 'ALL',
+      warnings,
       kpis: {
         revenue: { value: revenueNow, change: this.pctChange(revenueNow, revenuePrev) },
         orders: { value: ordersNow, change: this.pctChange(ordersNow, ordersPrev) },
@@ -390,6 +431,11 @@ export class DashboardService {
       bySegment,
       byFabric,
       topProducts,
+      pipeline,
+      payments,
+      returns,
+      adjustments,
+      invoices,
     };
   }
 
@@ -494,40 +540,38 @@ export class DashboardService {
     return qb.getCount();
   }
 
-  private async revenueSeries(
-    period: ReportPeriod,
-    bounds: { start: Date; end: Date },
-    channel?: 'WHOLESALE' | 'RETAIL',
-  ) {
+  private seriesBuckets(period: ReportPeriod, bounds: { end: Date }) {
     const now = new Date();
-    const out: Array<{ label: string; value: number }> = [];
+    const buckets: Array<{ label: string; start: Date; end: Date }> = [];
+    const seasons = ['بهار', 'تابستان', 'پاییز', 'زمستان'];
 
     if (period === 'week') {
       for (let i = 6; i >= 0; i -= 1) {
-        const day = new Date(now);
-        day.setHours(0, 0, 0, 0);
-        day.setDate(day.getDate() - i);
-        const dayEnd = new Date(day);
-        dayEnd.setHours(23, 59, 59, 999);
-        const value = await this.sumRevenue(day, dayEnd, channel);
-        out.push({
-          label: day.toLocaleDateString('fa-IR', { weekday: 'short' }),
-          value,
+        const start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - i);
+        const end = new Date(start);
+        end.setHours(23, 59, 59, 999);
+        buckets.push({
+          label: start.toLocaleDateString('fa-IR', { weekday: 'short' }),
+          start,
+          end,
         });
       }
-      return out;
+      return buckets;
     }
 
     if (period === 'month') {
       for (let i = 11; i >= 0; i -= 1) {
         const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-        out.push({
+        buckets.push({
           label: start.toLocaleDateString('fa-IR', { month: 'short' }),
-          value: await this.sumRevenue(start, end, channel),
+          start,
+          end,
         });
       }
-      return out;
+      return buckets;
     }
 
     if (period === 'quarter') {
@@ -535,31 +579,42 @@ export class DashboardService {
       for (let i = 3; i >= 0; i -= 1) {
         const start = new Date(now.getFullYear(), (q - i) * 3, 1);
         const end = new Date(now.getFullYear(), (q - i) * 3 + 3, 0, 23, 59, 59, 999);
-        out.push({
-          label: `Q${((q - i + 4) % 4) + 1}`,
-          value: await this.sumRevenue(start, end, channel),
+        const season = seasons[Math.floor(start.getMonth() / 3)] ?? 'فصل';
+        buckets.push({
+          label: `${season} ${start.toLocaleDateString('fa-IR', { year: 'numeric' })}`,
+          start,
+          end,
         });
       }
-      return out;
+      return buckets;
     }
 
-    // year
     for (let i = 3; i >= 0; i -= 1) {
       const y = now.getFullYear() - i;
       const start = new Date(y, 0, 1);
       const end = new Date(y, 11, 31, 23, 59, 59, 999);
-      const cappedEnd = end > bounds.end ? bounds.end : end;
-      out.push({
+      buckets.push({
         label: start.toLocaleDateString('fa-IR', { year: 'numeric' }),
-        value: await this.sumRevenue(start, cappedEnd, channel),
+        start,
+        end: end > bounds.end ? bounds.end : end,
       });
     }
-    return out;
+    return buckets;
+  }
+
+  private async revenueSeries(
+    period: ReportPeriod,
+    bounds: { start: Date; end: Date },
+    channel?: 'WHOLESALE' | 'RETAIL',
+  ) {
+    const buckets = this.seriesBuckets(period, bounds);
+    const values = await Promise.all(buckets.map((bucket) => this.sumRevenue(bucket.start, bucket.end, channel)));
+    return buckets.map((bucket, index) => ({ label: bucket.label, value: values[index] ?? 0 }));
   }
 
   private async salesByCity(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
     const qb = this.orderRepo.createQueryBuilder('o')
-      .innerJoin('o.customer', 'c')
+      .innerJoin(CustomerEntity, 'c', customerMatchesOrderSql())
       .select("COALESCE(NULLIF(TRIM(c.city), ''), 'نامشخص')", 'city')
       .addSelect('COUNT(o.id)', 'count')
       .addSelect('SUM(o.total)', 'revenue')
@@ -615,9 +670,9 @@ export class DashboardService {
 
   private async salesByFabric(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
     const qb = this.itemRepo.createQueryBuilder('i')
-      .innerJoin('i.order', 'o')
-      .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
-      .innerJoin(ProductEntity, 'p', 'p.id = v.productId')
+      .innerJoin(OrderEntity, 'o', orderMatchesItemSql())
+      .innerJoin(ProductVariantEntity, 'v', variantMatchesOrderItemSql())
+      .innerJoin(ProductEntity, 'p', productMatchesVariantSql())
       .select(
         "COALESCE(NULLIF(TRIM(CAST(p.specs->>'fabricType' AS text)), ''), NULLIF(TRIM(COALESCE(p.fabric, '')), ''), 'نامشخص')",
         'fabric',
@@ -650,9 +705,9 @@ export class DashboardService {
     channel?: 'WHOLESALE' | 'RETAIL',
   ) {
     const qb = this.itemRepo.createQueryBuilder('i')
-      .innerJoin('i.order', 'o')
-      .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
-      .innerJoin(ProductEntity, 'p', 'p.id = v.productId')
+      .innerJoin(OrderEntity, 'o', orderMatchesItemSql())
+      .innerJoin(ProductVariantEntity, 'v', variantMatchesOrderItemSql())
+      .innerJoin(ProductEntity, 'p', productMatchesVariantSql())
       .select('p.id', 'productId')
       .addSelect('p.name', 'name')
       .addSelect(
@@ -676,8 +731,8 @@ export class DashboardService {
 
     const ids = rows.map((r) => r.productId as string);
     const prevQb = this.itemRepo.createQueryBuilder('i')
-      .innerJoin('i.order', 'o')
-      .innerJoin(ProductVariantEntity, 'v', 'v.id = i.productVariantId')
+      .innerJoin(OrderEntity, 'o', orderMatchesItemSql())
+      .innerJoin(ProductVariantEntity, 'v', variantMatchesOrderItemSql())
       .select('v.productId', 'productId')
       .addSelect('SUM(i.quantity)', 'sold')
       .where('v.productId IN (:...ids)', { ids })
@@ -701,6 +756,90 @@ export class DashboardService {
         growth: this.pctChange(sold, prevSold),
       };
     });
+  }
+
+  /** Orders registered in the window, grouped by current status. Not the recognized-sale clock. */
+  private async orderPipeline(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.orderRepo.createQueryBuilder('o')
+      .select('o.status', 'status')
+      .addSelect('COUNT(o.id)', 'count')
+      .where('o.createdAt >= :start AND o.createdAt <= :end', { start, end });
+    this.applyOrderChannel(qb, channel);
+    const rows = await qb.groupBy('o.status').getRawMany();
+    const counts = new Map(rows.map((row) => [String(row.status || '').toUpperCase(), Number(row.count) || 0]));
+    const pick = (...keys: string[]) => keys.reduce((sum, key) => sum + (counts.get(key) || 0), 0);
+    const placed = [...counts.entries()].reduce((sum, [status, count]) => (
+      status === 'DELETED' ? sum : sum + count
+    ), 0);
+    return {
+      placed,
+      awaitingPayment: pick('AWAITING_PAYMENT'),
+      pendingReview: pick('PENDING_REVIEW'),
+      inFulfillment: pick('CONFIRMED', 'PROCESSING', 'PACKED'),
+      recognized: pick('SHIPPED', 'DELIVERED', 'COMPLETED'),
+      cancelled: pick('CANCELLED'),
+    };
+  }
+
+  private async paymentMix(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.recognizedSaleQb()
+      .select("COALESCE(NULLIF(TRIM(o.paymentMethod), ''), 'UNKNOWN')", 'method')
+      .addSelect('COUNT(o.id)', 'count')
+      .addSelect('SUM(o.total)', 'revenue')
+      .andWhere(recognizedSalePeriodSql('o'), { start, end });
+    this.applyOrderChannel(qb, channel);
+    const rows = await qb
+      .groupBy("COALESCE(NULLIF(TRIM(o.paymentMethod), ''), 'UNKNOWN')")
+      .orderBy('SUM(o.total)', 'DESC')
+      .limit(6)
+      .getRawMany();
+    return rows.map((row) => ({
+      method: String(row.method || 'UNKNOWN'),
+      label: paymentLabel(String(row.method || '')),
+      count: Number(row.count) || 0,
+      revenue: Number(row.revenue) || 0,
+    }));
+  }
+
+  private async returnPulse(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
+    const openedQb = this.returnRepo.createQueryBuilder('r')
+      .innerJoin(OrderEntity, 'o', orderMatchesReturnSql())
+      .where('r.createdAt >= :start AND r.createdAt <= :end', { start, end });
+    this.applyOrderChannel(openedQb, channel);
+    const openNowQb = this.returnRepo.createQueryBuilder('r')
+      .innerJoin(OrderEntity, 'o', orderMatchesReturnSql())
+      .where("r.status IN ('PENDING', 'APPROVED')");
+    this.applyOrderChannel(openNowQb, channel);
+    const [opened, openNow] = await Promise.all([openedQb.getCount(), openNowQb.getCount()]);
+    return { opened, openNow };
+  }
+
+  private async recognizedAdjustments(start: Date, end: Date, channel?: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.recognizedSaleQb()
+      .select('SUM(o.discount)', 'discount')
+      .addSelect('SUM(o.shippingFee)', 'shipping')
+      .andWhere(recognizedSalePeriodSql('o'), { start, end });
+    this.applyOrderChannel(qb, channel);
+    const row = await qb.getRawOne();
+    return {
+      discount: Number(row?.discount) || 0,
+      shipping: Number(row?.shipping) || 0,
+    };
+  }
+
+  /** Open invoices are a balance, not a period total. */
+  private async openInvoices(channel?: 'WHOLESALE' | 'RETAIL') {
+    const qb = this.invoiceRepo.createQueryBuilder('i')
+      .innerJoin(CustomerEntity, 'c', customerMatchesInvoiceSql())
+      .select('COUNT(i.id)', 'count')
+      .addSelect('SUM(i.total - i.paidAmount)', 'sum')
+      .where("i.status NOT IN ('PAID', 'CANCELLED', 'VOIDED', 'DRAFT')");
+    this.applyCustomerChannel(qb, channel);
+    const row = await qb.getRawOne();
+    return {
+      count: Number(row?.count) || 0,
+      amount: Math.max(0, Number(row?.sum) || 0),
+    };
   }
 
   private async monthlyRevenueSeries(months: number) {

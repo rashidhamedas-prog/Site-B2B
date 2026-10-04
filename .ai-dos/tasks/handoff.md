@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-04T18:20:00Z — TASK-20261004-013 reports desk
+
+- Owner: cursor:implementer-TASK-20261004-013
+- Root cause of the blank `/admin/reports` page: raw joins compared uuid primary keys to varchar foreign keys (`operator does not exist: uuid = character varying`). The service catch then replaced every KPI with zero.
+- Joins now use `::text`. Breakdowns are isolated. Added pipeline, payment mix, returns, discount/shipping, open invoices.
+- Spec `report-sql.spec.ts` ok. Web `tsc --noEmit` ok. API tsc still fails only on pre-existing `order-money-guard.spec.ts`.
+- Not done yet: commit, deploy, logged-in click on both channels.
+
 ## 2026-10-04T17:50:00Z — dashboard 500 fixed at 9c1e11d
 
 - Root cause from `taranom_api` logs: `TypeORMError: "COALESCE(v" alias was not found` inside `DashboardService.getStats`.
