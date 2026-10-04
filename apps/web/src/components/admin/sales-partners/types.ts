@@ -51,6 +51,8 @@ export type PartnerRow = {
   statusReason: string | null;
   phoneMasked: string;
   riskFlags?: string[];
+  ibanMasked?: string | null;
+  termsAcceptedAt?: string | null;
 };
 
 export type CatalogRow = {
@@ -98,6 +100,7 @@ export type Settings = {
   minPayoutIrr: number;
   dailyDraftCap: number;
   termsVersion: string;
+  canaryPhone?: string;
   applyFormFields?: ApplyFormField[];
 };
 
@@ -109,6 +112,9 @@ export type DraftRow = {
   merchandiseIrr: number;
   convertedOrderId: string | null;
   customerPhoneMasked: string | null;
+  orderStatus?: string | null;
+  estimatedCommissionIrr?: number;
+  updatedAt?: string;
   attribution?: { salesSource: string; salesPartnerId: string | null; salesPartnerSubmissionId: string | null } | null;
 };
 

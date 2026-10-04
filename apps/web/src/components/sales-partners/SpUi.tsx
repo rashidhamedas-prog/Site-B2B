@@ -84,26 +84,41 @@ export function SpKpi({
   value,
   hint,
   accent,
+  onClick,
 }: {
   label: string;
   value: string;
   hint?: string;
   accent?: boolean;
+  onClick?: () => void;
 }) {
   const reduce = useReducedMotion();
+  const body = (
+    <>
+      <p className={cn('text-xs', accent ? 'text-[#1B5C4A]' : 'text-stone-500')}>{label}</p>
+      <p className="mt-1 truncate text-xl font-semibold tabular-nums tracking-tight text-stone-900">{value}</p>
+      {hint ? <p className="mt-1 text-[11px] leading-5 text-stone-500">{hint}</p> : null}
+    </>
+  );
+  const className = cn(
+    'min-w-0 rounded-2xl border p-4 text-right',
+    accent ? 'border-[#1B5C4A]/30 bg-[#1B5C4A]/5' : 'border-stone-200 bg-white',
+    onClick && 'cursor-pointer transition-colors hover:border-[#1B5C4A]/50',
+    onClick && spFocusClass,
+  );
   return (
     <motion.div
       initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
-      className={cn(
-        'min-w-0 rounded-2xl border p-4',
-        accent ? 'border-[#1B5C4A]/30 bg-[#1B5C4A]/5' : 'border-stone-200 bg-white',
-      )}
     >
-      <p className={cn('text-xs', accent ? 'text-[#1B5C4A]' : 'text-stone-500')}>{label}</p>
-      <p className="mt-1 truncate text-xl font-semibold tabular-nums tracking-tight text-stone-900">{value}</p>
-      {hint ? <p className="mt-1 text-[11px] leading-5 text-stone-500">{hint}</p> : null}
+      {onClick ? (
+        <button type="button" className={cn(className, 'block w-full')} onClick={onClick}>
+          {body}
+        </button>
+      ) : (
+        <div className={className}>{body}</div>
+      )}
     </motion.div>
   );
 }
@@ -146,10 +161,20 @@ export function SpEmptyState({ children, className }: { children: ReactNode; cla
   );
 }
 
-export function SpBarRow({ label, value, max }: { label: string; value: number; max: number }) {
+export function SpBarRow({
+  label,
+  value,
+  max,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  onClick?: () => void;
+}) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
-  return (
-    <div className="min-w-0">
+  const inner = (
+    <>
       <div className="mb-1 flex items-center justify-between gap-2 text-xs text-stone-600">
         <span className="truncate">{label}</span>
         <span className="shrink-0 tabular-nums">{value.toLocaleString('fa-IR')}</span>
@@ -160,7 +185,13 @@ export function SpBarRow({ label, value, max }: { label: string; value: number; 
           style={{ width: `${pct}%` }}
         />
       </div>
-    </div>
+    </>
+  );
+  if (!onClick) return <div className="min-w-0">{inner}</div>;
+  return (
+    <button type="button" className={cn('min-w-0 w-full rounded-xl text-right', spFocusClass)} onClick={onClick}>
+      {inner}
+    </button>
   );
 }
 

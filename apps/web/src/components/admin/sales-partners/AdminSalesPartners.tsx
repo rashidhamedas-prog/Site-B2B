@@ -15,16 +15,26 @@ import {
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
-import { SpBadge, SpEmptyState, SpRefreshButton, SpSection, spChipClass, spFocusClass } from '@/components/sales-partners/SpUi';
+import { SpBadge, SpButton, SpEmptyState, SpRefreshButton, SpSection, spChipClass, spFocusClass } from '@/components/sales-partners/SpUi';
 import {
   formatSpDate,
   spAppStatusLabel,
   spAuditLabel,
+  SP_DRAFT_STATUS_FA,
   SP_MODE_FA,
+  SP_PARTNER_STATUS_FA,
 } from '@/components/sales-partners/sp-labels';
 import { SpAdminDashboard, partnerBadgeLabel } from './SpAdminDashboard';
 import { SpApplicationDetailDrawer } from './SpApplicationDetailDrawer';
 import { SpApplyFormBuilder } from './SpApplyFormBuilder';
+import { SpReasonDialog } from './SpReasonDialog';
+import {
+  isActionableDraft,
+  matchesApplicationSearch,
+  matchesPartnerSearch,
+  partnerNameById,
+  payoutIdempotencyKey,
+} from './sp-admin-ops';
 import type {
   ApplicationDetail,
   ApplicationRow,
@@ -72,6 +82,20 @@ export function AdminSalesPartners() {
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [appQuery, setAppQuery] = useState('');
+  const [partnerQuery, setPartnerQuery] = useState('');
+  const [partnerFilter, setPartnerFilter] = useState('ALL');
+  const [orderFilter, setOrderFilter] = useState('ALL');
+  const [orderPartnerId, setOrderPartnerId] = useState('');
+  const [dialogReason, setDialogReason] = useState('');
+  const [attrPartnerId, setAttrPartnerId] = useState('');
+  const [payoutConfirmOpen, setPayoutConfirmOpen] = useState(false);
+  const [statusDialog, setStatusDialog] = useState<{
+    id: string;
+    status: 'ACTIVE' | 'SUSPENDED' | 'CLOSED';
+    name: string;
+  } | null>(null);
+  const [attrDialog, setAttrDialog] = useState<DraftRow | null>(null);
 
   const loadCatalog = useCallback(async () => {
     const catalogParams = new URLSearchParams();
@@ -160,12 +184,36 @@ export function AdminSalesPartners() {
   }, [loadCatalog]);
 
   const filteredApps = useMemo(() => {
-    if (appFilter === 'ALL') return apps;
+    let rows = apps.filter((row) => matchesApplicationSearch(row, appQuery));
     if (appFilter === 'NEED_INFO') {
-      return apps.filter((row) => row.status === 'NEEDS_INFORMATION' || row.status === 'NEED_INFO');
+      rows = rows.filter((row) => row.status === 'NEEDS_INFORMATION' || row.status === 'NEED_INFO');
+    } else if (appFilter !== 'ALL') {
+      rows = rows.filter((row) => row.status === appFilter);
     }
-    return apps.filter((row) => row.status === appFilter);
-  }, [apps, appFilter]);
+    return rows;
+  }, [apps, appFilter, appQuery]);
+
+  const filteredPartners = useMemo(() => {
+    let rows = partners.filter((row) => matchesPartnerSearch(row, partnerQuery));
+    if (partnerFilter === 'RISK') {
+      rows = rows.filter((row) => (row.riskFlags?.length || 0) > 0);
+    } else if (partnerFilter !== 'ALL') {
+      rows = rows.filter((row) => row.status === partnerFilter);
+    }
+    return rows;
+  }, [partners, partnerFilter, partnerQuery]);
+
+  const filteredOrders = useMemo(() => {
+    let rows = orders;
+    if (orderPartnerId) {
+      rows = rows.filter(
+        (row) => row.salesPartnerId === orderPartnerId || row.attribution?.salesPartnerId === orderPartnerId,
+      );
+    }
+    if (orderFilter === 'ACTION') return rows.filter(isActionableDraft);
+    if (orderFilter === 'ALL' || !orderFilter) return rows;
+    return rows.filter((row) => row.status === orderFilter);
+  }, [orders, orderFilter, orderPartnerId]);
 
   async function openApplication(id: string) {
     setDetailId(id);
@@ -182,9 +230,11 @@ export function AdminSalesPartners() {
     }
   }
 
-  async function review(id: string, action: 'APPROVE' | 'NEED_INFO' | 'REJECT') {
-    const reason = action === 'APPROVE' ? '' : window.prompt('دلیل را بنویسید') || '';
-    if (action !== 'APPROVE' && reason.trim().length < 3) return;
+  async function review(id: string, action: 'APPROVE' | 'NEED_INFO' | 'REJECT', reason = '') {
+    if (action !== 'APPROVE' && reason.trim().length < 3) {
+      setDetailError('برای رد یا تکمیل اطلاعات حداقل ۳ حرف دلیل بنویسید');
+      return;
+    }
     setBusyId(id);
     try {
       await apiClient.patch(`/admin/sales-partners/applications/${id}/review`, {
@@ -289,6 +339,25 @@ export function AdminSalesPartners() {
     await patchEligibility(row, true, { withCommission: true });
   }
 
+  useEffect(() => {
+    if (!payoutPartnerId) {
+      setAvailableIrr(null);
+      return;
+    }
+    let cancelled = false;
+    apiClient
+      .get<{ available: number }>(`/admin/sales-partners/${payoutPartnerId}/balances`)
+      .then((next) => {
+        if (!cancelled) setAvailableIrr(next.available);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'خواندن مانده ناموفق بود');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [payoutPartnerId]);
+
   async function loadBalance() {
     if (!payoutPartnerId) return;
     try {
@@ -302,16 +371,26 @@ export function AdminSalesPartners() {
   }
 
   async function confirmPayout() {
-    if (!payoutPartnerId) return;
+    if (!payoutPartnerId || availableIrr == null) return;
+    const min = settings?.minPayoutIrr ?? 0;
+    if (availableIrr < min) {
+      setError('مانده از حداقل تسویه کمتر است');
+      return;
+    }
+    if (bankReference.trim().length < 4) {
+      setError('مرجع واریز حداقل ۴ حرف است');
+      return;
+    }
     setBusyId('payout');
     try {
       await apiClient.post('/admin/sales-partners/payouts', {
         salesPartnerId: payoutPartnerId,
-        bankReference,
-        idempotencyKey: `ui-${payoutPartnerId}-${Date.now()}`,
+        bankReference: bankReference.trim(),
+        idempotencyKey: payoutIdempotencyKey(payoutPartnerId, bankReference, availableIrr),
         method: 'TRANSFER',
       });
       setBankReference('');
+      setPayoutConfirmOpen(false);
       await load();
       await loadBalance();
     } catch (err) {
@@ -321,16 +400,20 @@ export function AdminSalesPartners() {
     }
   }
 
-  async function changeAttribution(row: DraftRow) {
-    const next = window.prompt('شناسه همکار مقصد', row.attribution?.salesPartnerId || row.salesPartnerId || '') || '';
-    const reason = window.prompt('دلیل تغییر attribution (حداقل ۸ حرف)') || '';
-    if (!next.trim() || reason.trim().length < 8) return;
-    setBusyId(row.id);
+  async function submitAttribution() {
+    if (!attrDialog) return;
+    if (!attrPartnerId.trim() || dialogReason.trim().length < 8) {
+      setError('همکار فعال و دلیل حداقل ۸ حرف لازم است');
+      return;
+    }
+    setBusyId(attrDialog.id);
     try {
-      await apiClient.patch(`/admin/sales-partners/orders/${row.id}/attribution`, {
-        salesPartnerId: next.trim(),
-        reason: reason.trim(),
+      await apiClient.patch(`/admin/sales-partners/orders/${attrDialog.id}/attribution`, {
+        salesPartnerId: attrPartnerId.trim(),
+        reason: dialogReason.trim(),
       });
+      setAttrDialog(null);
+      setDialogReason('');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تغییر attribution ناموفق بود');
@@ -339,12 +422,17 @@ export function AdminSalesPartners() {
     }
   }
 
-  async function setPartnerStatus(id: string, status: 'ACTIVE' | 'SUSPENDED' | 'CLOSED') {
-    const reason = status === 'ACTIVE' ? '' : window.prompt('دلیل را بنویسید') || '';
-    if (status !== 'ACTIVE' && reason.trim().length < 3) return;
-    setBusyId(id);
+  async function submitPartnerStatus() {
+    if (!statusDialog) return;
+    if (statusDialog.status !== 'ACTIVE' && dialogReason.trim().length < 3) return;
+    setBusyId(statusDialog.id);
     try {
-      await apiClient.patch(`/admin/sales-partners/${id}/status`, { status, reason: reason || undefined });
+      await apiClient.patch(`/admin/sales-partners/${statusDialog.id}/status`, {
+        status: statusDialog.status,
+        reason: dialogReason.trim() || undefined,
+      });
+      setStatusDialog(null);
+      setDialogReason('');
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تغییر وضعیت ناموفق بود');
@@ -365,6 +453,7 @@ export function AdminSalesPartners() {
         minPayoutIrr: settings.minPayoutIrr,
         dailyDraftCap: settings.dailyDraftCap,
         termsVersion: settings.termsVersion,
+        canaryPhone: settings.canaryPhone || '',
         applyFormFields: settings.applyFormFields || [],
       });
       await load();
@@ -405,6 +494,15 @@ export function AdminSalesPartners() {
   ];
 
   const pendingCount = apps.filter((row) => row.status === 'PENDING_REVIEW').length;
+  const actionOrderCount = orders.filter(isActionableDraft).length;
+  const suspendedCount = partners.filter((row) => row.status === 'SUSPENDED').length;
+
+  function goTo(next: Tab, extra?: { appFilter?: string; partnerFilter?: string; orderFilter?: string }) {
+    setTab(next);
+    if (extra?.appFilter) setAppFilter(extra.appFilter);
+    if (extra?.partnerFilter) setPartnerFilter(extra.partnerFilter);
+    if (extra?.orderFilter) setOrderFilter(extra.orderFilter);
+  }
   const catalogGroups = useMemo(() => {
     const map = new Map<string, CatalogRow[]>();
     for (const row of catalog) {
@@ -419,19 +517,19 @@ export function AdminSalesPartners() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-3xl border border-stone-200 bg-white p-4">
-        <div className="min-w-0 max-w-2xl">
-          <p className="text-xs font-medium text-[#1B5C4A]">میز کار همکار بازاریاب</p>
-          <p className="mt-1 text-sm leading-7 text-stone-600">
-            این بخش برای همکار بازاریاب است، نه تأمین‌کننده ارسال. برنامه تا روشن‌شدن فلگ روی سفارش‌های فعلی اثر ندارد.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-stone-900">میز عملیات همکار بازاریاب</p>
           {settings ? (
-            <p className="mt-2 text-xs text-stone-500">
-              وضعیت برنامه: {SP_MODE_FA[settings.mode] || settings.mode}
+            <p className="mt-1 text-xs text-stone-500">
+              {SP_MODE_FA[settings.mode] || settings.mode}
               {settings.enabled ? ' · عملیات فعال' : ' · عملیات خاموش'}
+              {settings.applyOpen ? ' · ثبت‌نام باز' : ' · ثبت‌نام بسته'}
               {pendingCount > 0 ? ` · ${pendingCount.toLocaleString('fa-IR')} درخواست باز` : ''}
             </p>
-          ) : null}
+          ) : (
+            <p className="mt-1 text-xs text-stone-500">کنترل درخواست، همکار، پیش‌سفارش و تسویه</p>
+          )}
         </div>
         <SpRefreshButton onClick={() => void load()} busy={loading && !!report} />
       </div>
@@ -465,6 +563,16 @@ export function AdminSalesPartners() {
                     {pendingCount.toLocaleString('fa-IR')}
                   </span>
                 ) : null}
+                {item.id === 'orders' && actionOrderCount > 0 ? (
+                  <span className="mr-auto inline-flex min-w-[1.25rem] justify-center rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-900">
+                    {actionOrderCount.toLocaleString('fa-IR')}
+                  </span>
+                ) : null}
+                {item.id === 'partners' && suspendedCount > 0 ? (
+                  <span className="mr-auto inline-flex min-w-[1.25rem] justify-center rounded-full bg-red-100 px-1.5 text-[10px] font-bold text-red-800">
+                    {suspendedCount.toLocaleString('fa-IR')}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -485,7 +593,11 @@ export function AdminSalesPartners() {
           partners={partners}
           orders={orders}
           audits={audits}
-          onGo={(id) => setTab(id as Tab)}
+          onGo={goTo}
+          onOpenApplication={(id) => {
+            setTab('applications');
+            void openApplication(id);
+          }}
         />
       )}
 
@@ -495,6 +607,16 @@ export function AdminSalesPartners() {
           description="اول جزئیات کامل را ببینید، بعد تأیید، تکمیل اطلاعات یا رد کنید."
         >
           <div className="flex flex-wrap gap-2">
+            <label className="sr-only" htmlFor="sp-app-q">
+              جستجوی درخواست
+            </label>
+            <input
+              id="sp-app-q"
+              value={appQuery}
+              onChange={(e) => setAppQuery(e.target.value)}
+              className={`min-h-10 min-w-[12rem] flex-1 rounded-full border border-stone-200 bg-white px-3 text-sm ${spFocusClass}`}
+              placeholder="نام، موبایل یا شهر"
+            />
             {[
               { id: 'ALL', label: 'همه' },
               { id: 'PENDING_REVIEW', label: 'در انتظار' },
@@ -576,36 +698,47 @@ export function AdminSalesPartners() {
               </li>
             ))}
           </ul>
-          <SpApplicationDetailDrawer
-            open={Boolean(detailId)}
-            loading={detailLoading}
-            detail={detail}
-            listHint={apps.find((a) => a.id === detailId) || null}
-            busy={busyId === detailId}
-            error={detailError}
-            onClose={() => {
-              setDetailId(null);
-              setDetail(null);
-              setDetailError(null);
-            }}
-            onReview={(action) => {
-              if (detailId) void review(detailId, action);
-            }}
-          />
         </SpSection>
       )}
 
       {tab === 'partners' && (
-        <SpSection title="همکاران بازاریاب" description="فعال‌سازی، تعلیق و مشاهده هشدار ریسک.">
+        <SpSection title="همکاران بازاریاب" description="فعال‌سازی، تعلیق، بستن حساب و هشدار ریسک.">
+          <div className="flex flex-wrap gap-2">
+            <input
+              value={partnerQuery}
+              onChange={(e) => setPartnerQuery(e.target.value)}
+              className={`min-h-10 min-w-[12rem] flex-1 rounded-full border border-stone-200 bg-white px-3 text-sm ${spFocusClass}`}
+              placeholder="نام، موبایل یا شبا"
+            />
+            {[
+              { id: 'ALL', label: 'همه' },
+              { id: 'ACTIVE', label: 'فعال' },
+              { id: 'SUSPENDED', label: 'تعلیق' },
+              { id: 'CLOSED', label: 'بسته' },
+              { id: 'RISK', label: 'دارای هشدار' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={spChipClass(partnerFilter === f.id)}
+                onClick={() => setPartnerFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <ul className="space-y-3">
-            {partners.length === 0 && <li><SpEmptyState>همکار بازاریابی ثبت نشده.</SpEmptyState></li>}
-            {partners.map((row) => (
+            {filteredPartners.length === 0 && <li><SpEmptyState>همکاری با این فیلتر نیست.</SpEmptyState></li>}
+            {filteredPartners.map((row) => (
               <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">{row.displayName}</p>
                     <p className="mt-1 text-sm text-stone-600">{row.phoneMasked}</p>
-                    <p className="mt-1 font-mono text-[11px] text-stone-400">{row.id}</p>
+                    <p className="mt-1 text-xs text-stone-500">
+                      {row.ibanMasked ? `شبا ${row.ibanMasked}` : 'شبا ثبت نشده'}
+                      {row.termsAcceptedAt ? ` · شرایط ${formatSpDate(row.termsAcceptedAt)}` : ''}
+                    </p>
                   </div>
                   <SpBadge status={row.status} label={partnerBadgeLabel(row)} />
                 </div>
@@ -616,25 +749,51 @@ export function AdminSalesPartners() {
                   </p>
                 )}
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <SpButton
+                    variant="secondary"
+                    className="min-h-10 px-3 text-xs"
+                    onClick={() => {
+                      setTab('orders');
+                      setOrderFilter('ALL');
+                      setOrderPartnerId(row.id);
+                    }}
+                  >
+                    سفارش‌های این همکار
+                  </SpButton>
                   {row.status === 'ACTIVE' && (
-                    <button
-                      type="button"
-                      className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
+                    <SpButton
+                      variant="secondary"
                       disabled={busyId === row.id}
-                      onClick={() => void setPartnerStatus(row.id, 'SUSPENDED')}
+                      onClick={() => {
+                        setDialogReason('');
+                        setStatusDialog({ id: row.id, status: 'SUSPENDED', name: row.displayName });
+                      }}
                     >
                       تعلیق
-                    </button>
+                    </SpButton>
                   )}
                   {row.status === 'SUSPENDED' && (
-                    <button
-                      type="button"
-                      className={`min-h-11 rounded-xl bg-emerald-700 px-3 text-white ${spFocusClass}`}
+                    <SpButton
                       disabled={busyId === row.id}
-                      onClick={() => void setPartnerStatus(row.id, 'ACTIVE')}
+                      onClick={() => {
+                        setDialogReason('');
+                        setStatusDialog({ id: row.id, status: 'ACTIVE', name: row.displayName });
+                      }}
                     >
                       فعال‌سازی
-                    </button>
+                    </SpButton>
+                  )}
+                  {row.status !== 'CLOSED' && (
+                    <SpButton
+                      variant="destructive"
+                      disabled={busyId === row.id}
+                      onClick={() => {
+                        setDialogReason('');
+                        setStatusDialog({ id: row.id, status: 'CLOSED', name: row.displayName });
+                      }}
+                    >
+                      بستن حساب
+                    </SpButton>
                   )}
                 </div>
               </li>
@@ -644,37 +803,87 @@ export function AdminSalesPartners() {
       )}
 
       {tab === 'orders' && (
-        <SpSection title="سفارش‌های همکاری" description="پیش‌سفارش‌ها و attribution پس از تبدیل.">
+        <SpSection title="سفارش‌های همکاری" description="صف اقدام جدا از تاریخچهٔ منقضی/لغو است. Attribution فقط با انتخاب همکار فعال.">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'ALL', label: 'همه' },
+              { id: 'ACTION', label: 'نیاز به اقدام' },
+              { id: 'DRAFT', label: SP_DRAFT_STATUS_FA.DRAFT },
+              { id: 'AWAITING_CUSTOMER_CONFIRMATION', label: SP_DRAFT_STATUS_FA.AWAITING_CUSTOMER_CONFIRMATION },
+              { id: 'CUSTOMER_CONFIRMED', label: SP_DRAFT_STATUS_FA.CUSTOMER_CONFIRMED },
+              { id: 'CONVERTED_TO_ORDER', label: SP_DRAFT_STATUS_FA.CONVERTED_TO_ORDER },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                className={spChipClass(orderFilter === f.id)}
+                onClick={() => setOrderFilter(f.id)}
+              >
+                {f.label}
+              </button>
+            ))}
+            <select
+              className={`min-h-10 rounded-full border border-stone-200 bg-white px-3 text-sm ${spFocusClass}`}
+              value={orderPartnerId}
+              onChange={(e) => setOrderPartnerId(e.target.value)}
+              aria-label="فیلتر همکار"
+            >
+              <option value="">همه همکاران</option>
+              {partners.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
           <ul className="space-y-3">
-            {orders.length === 0 && <li><SpEmptyState>سفارش همکاری ثبت نشده.</SpEmptyState></li>}
-            {orders.map((row) => (
+            {filteredOrders.length === 0 && <li><SpEmptyState>سفارشی با این فیلتر نیست.</SpEmptyState></li>}
+            {filteredOrders.map((row) => {
+              const partnerLabel = partnerNameById(partners, row.salesPartnerId || row.attribution?.salesPartnerId);
+              return (
               <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="font-medium">{row.statusLabel}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium">{SP_DRAFT_STATUS_FA[row.status || ''] || row.statusLabel}</p>
+                    <p className="mt-1 text-stone-600">
+                      {toman(row.merchandiseIrr)} تومان
+                      {row.estimatedCommissionIrr ? ` · تخمین پورسانت ${toman(row.estimatedCommissionIrr)}` : ''}
+                    </p>
+                    <p className="mt-1 text-xs text-stone-500">
+                      {partnerLabel || 'همکار نامشخص'}
+                      {row.customerPhoneMasked ? ` · مشتری ${row.customerPhoneMasked}` : ''}
+                      {row.orderStatus ? ` · فروشگاه ${row.orderStatus}` : ''}
+                    </p>
+                  </div>
                   {row.status ? <SpBadge status={row.status} label={row.statusLabel} /> : null}
                 </div>
-                <p className="mt-2 text-stone-600">
-                  {toman(row.merchandiseIrr)} تومان
-                  {row.customerPhoneMasked ? ` · ${row.customerPhoneMasked}` : ''}
-                </p>
-                {row.convertedOrderId && (
-                  <div className="mt-3 space-y-2">
-                    <p className="text-stone-500">
-                      سفارش فروشگاه ساخته شده است
-                      {row.attribution?.salesSource ? ` · منبع ${row.attribution.salesSource}` : ''}
-                    </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {row.convertedOrderId ? (
+                    <a
+                      href={`/admin/orders/${row.convertedOrderId}`}
+                      className={`inline-flex min-h-11 items-center rounded-xl border border-stone-200 px-3 ${spFocusClass}`}
+                    >
+                      سفارش فروشگاه
+                    </a>
+                  ) : null}
+                  {row.convertedOrderId && (
                     <button
                       type="button"
                       className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
                       disabled={busyId === row.id}
-                      onClick={() => void changeAttribution(row)}
+                      onClick={() => {
+                        setDialogReason('');
+                        setAttrPartnerId(row.attribution?.salesPartnerId || row.salesPartnerId || '');
+                        setAttrDialog(row);
+                      }}
                     >
-                      تغییر attribution با دلیل
+                      تغییر attribution
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </SpSection>
       )}
@@ -930,7 +1139,7 @@ export function AdminSalesPartners() {
             className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4"
             onSubmit={(e) => {
               e.preventDefault();
-              void confirmPayout();
+              setPayoutConfirmOpen(true);
             }}
           >
             <label className="block text-sm" htmlFor="sp-pay-partner">
@@ -949,19 +1158,17 @@ export function AdminSalesPartners() {
               {partners.map((row) => (
                 <option key={row.id} value={row.id}>
                   {row.displayName}
+                  {row.ibanMasked ? ` · ${row.ibanMasked}` : ''}
+                  {row.status !== 'ACTIVE' ? ` · ${SP_PARTNER_STATUS_FA[row.status] || row.status}` : ''}
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              className={`min-h-11 rounded-xl border px-4 ${spFocusClass}`}
-              disabled={!payoutPartnerId}
-              onClick={() => void loadBalance()}
-            >
-              مشاهده مانده
-            </button>
             {availableIrr !== null && (
-              <p className="text-sm">قابل‌برداشت: {toman(availableIrr)} تومان</p>
+              <p className="text-sm">
+                قابل‌برداشت: {toman(availableIrr)} تومان
+                {settings ? ` · حداقل ${toman(settings.minPayoutIrr)} تومان` : ''}
+                {settings?.commissionHoldDays ? ` · نگهداری ${settings.commissionHoldDays.toLocaleString('fa-IR')} روز` : ''}
+              </p>
             )}
             <label className="block text-sm" htmlFor="sp-pay-ref">
               شماره مرجع واریز
@@ -972,13 +1179,14 @@ export function AdminSalesPartners() {
               value={bankReference}
               onChange={(e) => setBankReference(e.target.value)}
               required
+              minLength={4}
             />
             <button
               type="submit"
               className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}
-              disabled={busyId === 'payout'}
+              disabled={busyId === 'payout' || !payoutPartnerId || availableIrr == null}
             >
-              ثبت تسویه
+              بررسی و ثبت تسویه
             </button>
           </form>
           {report?.payouts ? (
@@ -989,18 +1197,22 @@ export function AdminSalesPartners() {
           ) : null}
           <ul className="space-y-3">
             {payouts.length === 0 && <li><SpEmptyState>تسویه‌ای ثبت نشده.</SpEmptyState></li>}
-            {payouts.map((row) => (
+            {payouts.map((row) => {
+              const payee = partnerNameById(partners, row.salesPartnerId);
+              return (
               <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium tabular-nums">{toman(row.amountIrr)} تومان</span>
                   <SpBadge status={row.status} label={row.status} />
                 </div>
                 <p className="mt-1 text-stone-600">
-                  {row.bankReferenceMasked}
+                  {payee || 'همکار'}
+                  {row.bankReferenceMasked ? ` · ${row.bankReferenceMasked}` : ''}
                   {row.paidAt ? ` · ${formatSpDate(row.paidAt)}` : ''}
                 </p>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </SpSection>
       )}
@@ -1028,6 +1240,24 @@ export function AdminSalesPartners() {
               <option value="CANARY">آزمایشی</option>
               <option value="LIVE">زنده</option>
             </select>
+            {settings.mode === 'CANARY' ? (
+              <label className="block text-sm" htmlFor="sp-canary">
+                موبایل آزمایشی (CANARY)
+                <input
+                  id="sp-canary"
+                  dir="ltr"
+                  className={`mt-1 min-h-11 w-full rounded-xl border px-3 ${spFocusClass}`}
+                  value={settings.canaryPhone || ''}
+                  onChange={(e) => setSettings({ ...settings, canaryPhone: e.target.value })}
+                  placeholder="09xxxxxxxxx"
+                />
+              </label>
+            ) : null}
+            {settings.mode === 'LIVE' ? (
+              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                LIVE همهٔ همکاران فعال را برای پیش‌سفارش باز می‌کند. قبل از ذخیره مطمئن شوید نرخ برنامه و محصولات مجاز درست است.
+              </p>
+            ) : null}
             <label className="flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -1071,6 +1301,18 @@ export function AdminSalesPartners() {
               className={`min-h-11 w-48 rounded-xl border px-3 ${spFocusClass}`}
               value={settings.minPayoutIrr}
               onChange={(e) => setSettings({ ...settings, minPayoutIrr: Number(e.target.value) })}
+            />
+            <label className="block text-sm" htmlFor="sp-cap">
+              سقف پیش‌سفارش روزانه هر همکار
+            </label>
+            <input
+              id="sp-cap"
+              type="number"
+              min={1}
+              max={100}
+              className={`min-h-11 w-32 rounded-xl border px-3 ${spFocusClass}`}
+              value={settings.dailyDraftCap}
+              onChange={(e) => setSettings({ ...settings, dailyDraftCap: Number(e.target.value) })}
             />
             <p className="text-sm text-stone-600">
               نسخه شرایط: {settings.termsVersion}. متن عمومی در{' '}
@@ -1181,6 +1423,104 @@ export function AdminSalesPartners() {
       )}
         </div>
       </div>
+
+      <SpApplicationDetailDrawer
+        open={Boolean(detailId)}
+        key={detailId || 'closed'}
+        loading={detailLoading}
+        detail={detail}
+        listHint={apps.find((a) => a.id === detailId) || null}
+        busy={busyId === detailId}
+        error={detailError}
+        onClose={() => {
+          setDetailId(null);
+          setDetail(null);
+          setDetailError(null);
+        }}
+        onReview={(action, reason) => {
+          if (detailId) void review(detailId, action, reason);
+        }}
+        onWelcomeSms={() => {
+          const row = apps.find((a) => a.id === detailId);
+          if (row) void sendWelcomeSms(row);
+        }}
+      />
+
+      <SpReasonDialog
+        open={Boolean(statusDialog)}
+        title={
+          statusDialog?.status === 'CLOSED'
+            ? `بستن حساب «${statusDialog.name}»`
+            : statusDialog?.status === 'SUSPENDED'
+              ? `تعلیق «${statusDialog?.name}»`
+              : `فعال‌سازی «${statusDialog?.name}»`
+        }
+        description={
+          statusDialog?.status === 'CLOSED'
+            ? 'بستن حساب برگشت‌ناپذیر است و نشست ورود باطل می‌شود.'
+            : statusDialog?.status === 'ACTIVE'
+              ? 'حساب دوباره می‌تواند وارد پنل شود.'
+              : 'همکار دیگر نمی‌تواند وارد شود تا دوباره فعال شود.'
+        }
+        confirmLabel={statusDialog?.status === 'CLOSED' ? 'بستن حساب' : statusDialog?.status === 'SUSPENDED' ? 'تعلیق' : 'فعال‌سازی'}
+        destructive={statusDialog?.status !== 'ACTIVE'}
+        requireReason={statusDialog?.status !== 'ACTIVE'}
+        minLength={3}
+        reason={dialogReason}
+        onReason={setDialogReason}
+        busy={busyId === statusDialog?.id}
+        onClose={() => setStatusDialog(null)}
+        onConfirm={() => void submitPartnerStatus()}
+      />
+
+      <SpReasonDialog
+        open={Boolean(attrDialog)}
+        title="تغییر attribution سفارش"
+        description="فقط همکار فعال انتخاب کنید. بعد از ثبت پورسانت، API تغییر را رد می‌کند."
+        confirmLabel="ثبت attribution"
+        minLength={8}
+        reason={dialogReason}
+        onReason={setDialogReason}
+        extra={
+          <label className="mt-3 block text-sm">
+            همکار مقصد
+            <select
+              className={`mt-1 min-h-11 w-full rounded-xl border px-3 ${spFocusClass}`}
+              value={attrPartnerId}
+              onChange={(e) => setAttrPartnerId(e.target.value)}
+            >
+              <option value="">انتخاب کنید</option>
+              {partners
+                .filter((row) => row.status === 'ACTIVE')
+                .map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.displayName}
+                  </option>
+                ))}
+            </select>
+          </label>
+        }
+        busy={busyId === attrDialog?.id}
+        onClose={() => setAttrDialog(null)}
+        onConfirm={() => void submitAttribution()}
+      />
+
+      <SpReasonDialog
+        open={payoutConfirmOpen}
+        title="تأیید تسویه"
+        description={
+          availableIrr == null
+            ? 'ابتدا مانده را بارگذاری کنید.'
+            : `ثبت تسویه ${toman(availableIrr)} تومان برای «${partnerNameById(partners, payoutPartnerId) || 'همکار'}» با مرجع ${bankReference.trim()} بلافاصله در دفتر پورسانت PAID می‌شود.`
+        }
+        confirmLabel="ثبت به‌عنوان پرداخت‌شده"
+        requireReason={false}
+        reason={dialogReason}
+        onReason={setDialogReason}
+        busy={busyId === 'payout'}
+        onClose={() => setPayoutConfirmOpen(false)}
+        onConfirm={() => void confirmPayout()}
+      />
     </div>
   );
 }

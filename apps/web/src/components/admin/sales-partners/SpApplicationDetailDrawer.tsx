@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import type { ApplicationDetail, ApplicationRow } from './types';
-import { SpBadge, spFocusClass } from '@/components/sales-partners/SpUi';
+import { SpBadge, SpButton, spFocusClass } from '@/components/sales-partners/SpUi';
 import { formatSpDate, spAppStatusLabel } from '@/components/sales-partners/sp-labels';
 
 type Props = {
@@ -12,7 +13,8 @@ type Props = {
   busy: boolean;
   error: string | null;
   onClose: () => void;
-  onReview: (action: 'APPROVE' | 'NEED_INFO' | 'REJECT') => void;
+  onReview: (action: 'APPROVE' | 'NEED_INFO' | 'REJECT', reason?: string) => void;
+  onWelcomeSms?: () => void;
 };
 
 export function SpApplicationDetailDrawer({
@@ -24,14 +26,20 @@ export function SpApplicationDetailDrawer({
   error,
   onClose,
   onReview,
+  onWelcomeSms,
 }: Props) {
+  const [reason, setReason] = useState('');
+  const [confirmApprove, setConfirmApprove] = useState(false);
+
   if (!open) return null;
 
   const title = detail?.displayName || listHint?.displayName || 'جزئیات درخواست';
   const status = detail?.status || listHint?.status || '';
+  const reviewable = status === 'PENDING_REVIEW' || status === 'NEEDS_INFORMATION' || status === 'NEED_INFO';
+  const approved = status === 'APPROVED';
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="sp-app-detail-title">
+    <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="sp-app-detail-title" dir="rtl">
       <button type="button" className="absolute inset-0 bg-stone-900/40" aria-label="بستن" onClick={onClose} />
       <aside className="relative flex h-full w-full max-w-lg flex-col overflow-y-auto bg-[#faf8f5] shadow-2xl">
         <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-stone-200 bg-[#faf8f5]/95 px-4 py-4 backdrop-blur">
@@ -125,35 +133,62 @@ export function SpApplicationDetailDrawer({
           ) : null}
         </div>
 
-        {detail && (detail.status === 'PENDING_REVIEW' || detail.status === 'NEEDS_INFORMATION') ? (
-          <footer className="sticky bottom-0 mt-auto space-y-2 border-t border-stone-200 bg-[#faf8f5] px-4 py-4">
-            <p className="text-xs text-stone-500">قبل از تأیید، اطلاعات بالا را کامل بخوانید.</p>
+        {detail && reviewable ? (
+          <footer className="sticky bottom-0 mt-auto space-y-3 border-t border-stone-200 bg-[#faf8f5] px-4 py-4">
+            <p className="text-xs leading-6 text-stone-500">
+              تأیید، حساب را فعال می‌کند. پیامک خوش‌آمد جداگانه است. رد و تکمیل اطلاعات نیاز به دلیل دارند.
+            </p>
+            <label className="block text-sm">
+              دلیل (برای رد یا تکمیل اطلاعات)
+              <textarea
+                className={`mt-1 min-h-20 w-full rounded-xl border border-stone-300 p-3 text-sm ${spFocusClass}`}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                maxLength={500}
+              />
+            </label>
+            <label className="flex items-start gap-2 text-xs text-stone-600">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={confirmApprove}
+                onChange={(e) => setConfirmApprove(e.target.checked)}
+              />
+              اطلاعات را خواندم و تأیید حساب را می‌خواهم.
+            </label>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                className={`min-h-11 flex-1 rounded-xl bg-emerald-700 px-3 text-white ${spFocusClass}`}
+              <SpButton
+                disabled={busy || !confirmApprove}
+                className="flex-1"
                 onClick={() => onReview('APPROVE')}
               >
                 تأیید
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                className={`min-h-11 flex-1 rounded-xl border border-stone-300 bg-white px-3 ${spFocusClass}`}
-                onClick={() => onReview('NEED_INFO')}
+              </SpButton>
+              <SpButton
+                variant="secondary"
+                disabled={busy || reason.trim().length < 3}
+                className="flex-1"
+                onClick={() => onReview('NEED_INFO', reason)}
               >
                 تکمیل اطلاعات
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                className={`min-h-11 w-full rounded-xl border border-red-300 px-3 text-red-800 sm:w-auto ${spFocusClass}`}
-                onClick={() => onReview('REJECT')}
+              </SpButton>
+              <SpButton
+                variant="destructive"
+                disabled={busy || reason.trim().length < 3}
+                className="w-full"
+                onClick={() => onReview('REJECT', reason)}
               >
                 رد
-              </button>
+              </SpButton>
             </div>
+          </footer>
+        ) : null}
+
+        {detail && approved && onWelcomeSms ? (
+          <footer className="sticky bottom-0 mt-auto space-y-2 border-t border-stone-200 bg-[#faf8f5] px-4 py-4">
+            <SpButton variant="secondary" className="w-full" disabled={busy} onClick={onWelcomeSms}>
+              {listHint?.welcomeSmsSent ? 'ارسال مجدد پیامک خوش‌آمد' : 'ارسال پیامک خوش‌آمد'}
+            </SpButton>
           </footer>
         ) : null}
       </aside>

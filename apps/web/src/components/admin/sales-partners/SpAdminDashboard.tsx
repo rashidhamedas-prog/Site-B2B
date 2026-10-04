@@ -1,8 +1,8 @@
 'use client';
 
-import { Activity, ClipboardList, Users, Wallet } from 'lucide-react';
+import { ClipboardList, ShoppingBag, Users, Wallet } from 'lucide-react';
 import { toman } from '@/lib/product-display';
-import { SpBadge, SpBarRow, SpEmptyState, SpKpi, SpSection } from '@/components/sales-partners/SpUi';
+import { SpBadge, SpBarRow, SpButton, SpEmptyState, SpKpi, SpSection } from '@/components/sales-partners/SpUi';
 import {
   formatSpDate,
   spAppStatusLabel,
@@ -12,7 +12,8 @@ import {
   SP_PARTNER_STATUS_FA,
   spPartnerStatusLabel,
 } from '@/components/sales-partners/sp-labels';
-import type { ApplicationRow, AuditRow, DraftRow, PartnerRow, Report, Settings } from './types';
+import type { ApplicationRow, AuditRow, DraftRow, PartnerRow, Report, Settings, Tab } from './types';
+import { actionableDrafts, auditTab, partnerNameById } from './sp-admin-ops';
 
 export function SpAdminDashboard({
   settings,
@@ -22,6 +23,7 @@ export function SpAdminDashboard({
   orders,
   audits,
   onGo,
+  onOpenApplication,
 }: {
   settings: Settings | null;
   report: Report | null;
@@ -29,76 +31,124 @@ export function SpAdminDashboard({
   partners: PartnerRow[];
   orders: DraftRow[];
   audits: AuditRow[];
-  onGo: (tab: string) => void;
+  onGo: (tab: Tab, extra?: { appFilter?: string; partnerFilter?: string; orderFilter?: string }) => void;
+  onOpenApplication: (id: string) => void;
 }) {
   const pendingApps = apps.filter((row) => row.status === 'PENDING_REVIEW');
-  const actionOrders = orders.filter(
-    (row) => row.status === 'DRAFT' || row.status === 'AWAITING_CUSTOMER_CONFIRMATION' || !row.convertedOrderId,
-  ).slice(0, 6);
-  const draftMax = report
-    ? Math.max(1, ...Object.values(report.drafts.byStatus || {}))
-    : 1;
-  const partnerMax = report
-    ? Math.max(1, ...Object.values(report.partners.byStatus || {}))
-    : 1;
+  const needInfoApps = apps.filter((row) => row.status === 'NEEDS_INFORMATION' || row.status === 'NEED_INFO');
+  const queueOrders = actionableDrafts(orders, 8);
+  const draftMax = report ? Math.max(1, ...Object.values(report.drafts.byStatus || {})) : 1;
+  const partnerMax = report ? Math.max(1, ...Object.values(report.partners.byStatus || {})) : 1;
+  const pendingCount = report?.applications.pendingReview ?? pendingApps.length;
+  const inboxEmpty = pendingApps.length === 0 && needInfoApps.length === 0 && queueOrders.length === 0;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-gradient-to-l from-[#F6F1E8] to-white p-4">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-[#1B5C4A]">ترنم · عملیات همکار بازاریاب</p>
-          <h2 className="mt-1 text-lg font-semibold text-stone-900">داشبورد گزارش‌دهی</h2>
-          <p className="mt-1 text-sm text-stone-600">
-            شاخص‌ها از دادهٔ همین سامانه است؛ هدف فروش یا درآمد تضمینی نیست.
-          </p>
-        </div>
-        {settings ? (
-          <SpBadge status={settings.mode} label={SP_MODE_FA[settings.mode] || settings.mode} />
-        ) : null}
-      </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
+        <SpSection
+          title="نیاز به اقدام"
+          description="صف تصمیم ادمین — نه گزارش."
+          action={
+            <SpButton variant="ghost" className="min-h-9 px-2 text-sm" onClick={() => onGo('applications', { appFilter: 'PENDING_REVIEW' })}>
+              همه درخواست‌ها
+            </SpButton>
+          }
+        >
+          <ul className="space-y-2">
+            {inboxEmpty ? (
+              <li>
+                <SpEmptyState>صف خالی است. اگر ثبت‌نام باز است، درخواست جدید همین‌جا ظاهر می‌شود.</SpEmptyState>
+              </li>
+            ) : null}
+            {pendingApps.slice(0, 6).map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{row.displayName}</p>
+                  <p className="mt-0.5 text-xs text-stone-500">
+                    {row.phoneMasked} · درخواست
+                    {row.city ? ` · ${row.city}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
+                  <SpButton className="min-h-10 px-3 text-xs" onClick={() => onOpenApplication(row.id)}>
+                    بررسی
+                  </SpButton>
+                </div>
+              </li>
+            ))}
+            {needInfoApps.slice(0, 3).map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{row.displayName}</p>
+                  <p className="mt-0.5 text-xs text-stone-500">منتظر تکمیل اطلاعات</p>
+                </div>
+                <SpButton variant="secondary" className="min-h-10 px-3 text-xs" onClick={() => onOpenApplication(row.id)}>
+                  مشاهده
+                </SpButton>
+              </li>
+            ))}
+            {queueOrders.map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{row.statusLabel}</p>
+                  <p className="mt-0.5 text-xs text-stone-500">
+                    {toman(row.merchandiseIrr)} تومان
+                    {row.customerPhoneMasked ? ` · ${row.customerPhoneMasked}` : ''}
+                    {partnerNameById(partners, row.salesPartnerId) ? ` · ${partnerNameById(partners, row.salesPartnerId)}` : ''}
+                  </p>
+                </div>
+                <SpButton variant="secondary" className="min-h-10 px-3 text-xs" onClick={() => onGo('orders', { orderFilter: row.status || 'ACTION' })}>
+                  سفارش‌ها
+                </SpButton>
+              </li>
+            ))}
+          </ul>
+        </SpSection>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SpKpi
-          label="درخواست در انتظار"
-          value={(report?.applications.pendingReview ?? pendingApps.length).toLocaleString('fa-IR')}
-          hint="نیاز به تصمیم ادمین"
-          accent
-        />
-        <SpKpi
-          label="همکار فعال"
-          value={(report?.partners.active ?? partners.filter((p) => p.status === 'ACTIVE').length).toLocaleString('fa-IR')}
-          hint={`از ${(report?.partners.total ?? partners.length).toLocaleString('fa-IR')} همکار`}
-        />
-        <SpKpi
-          label="نرخ تأیید مشتری"
-          value={
-            report?.drafts.customerConfirmRate == null
-              ? '—'
-              : `${Math.round(report.drafts.customerConfirmRate * 100).toLocaleString('fa-IR')}٪`
-          }
-          hint={
-            report
-              ? `نمونه ${report.drafts.sampleSize.toLocaleString('fa-IR')} پیش‌سفارش`
-              : undefined
-          }
-        />
-        <SpKpi
-          label="قابل‌برداشت برنامه"
-          value={report ? `${toman(report.commissions?.available ?? 0)}` : '—'}
-          hint="تومان · از دفتر پورسانت"
-        />
+        <div className="space-y-3">
+          <SpKpi
+            label="درخواست در انتظار"
+            value={pendingCount.toLocaleString('fa-IR')}
+            hint={needInfoApps.length ? `${needInfoApps.length.toLocaleString('fa-IR')} مورد تکمیل اطلاعات` : 'برای تصمیم ادمین'}
+            accent={pendingCount > 0}
+            onClick={() => onGo('applications', { appFilter: 'PENDING_REVIEW' })}
+          />
+          <SpKpi
+            label="همکار فعال"
+            value={(report?.partners.active ?? partners.filter((p) => p.status === 'ACTIVE').length).toLocaleString('fa-IR')}
+            hint={`از ${(report?.partners.total ?? partners.length).toLocaleString('fa-IR')} پروفایل`}
+            onClick={() => onGo('partners', { partnerFilter: 'ACTIVE' })}
+          />
+          <SpKpi
+            label="نرخ تبدیل پیش‌سفارش"
+            value={
+              report?.drafts.customerConfirmRate == null
+                ? '—'
+                : `${Math.round(report.drafts.customerConfirmRate * 100).toLocaleString('fa-IR')}٪`
+            }
+            hint={report ? `نمونه ${report.drafts.sampleSize.toLocaleString('fa-IR')} · تبدیل‌شده به سفارش` : undefined}
+            onClick={() => onGo('orders')}
+          />
+          <SpKpi
+            label="قابل‌برداشت برنامه"
+            value={report ? `${toman(report.commissions?.available ?? 0)}` : '—'}
+            hint="تومان · کلیک برای تسویه"
+            onClick={() => onGo('payouts')}
+          />
+        </div>
       </div>
 
       {report?.commissions ? (
         <div className="grid gap-3 sm:grid-cols-3">
-          <SpKpi label="در نگهداری" value={`${toman(report.commissions.held)} تومان`} />
-          <SpKpi label="پرداخت‌شده" value={`${toman(report.commissions.paid)} تومان`} />
-          <SpKpi label="برگشت‌خورده" value={`${toman(report.commissions.reversed)} تومان`} />
+          <SpKpi label="در نگهداری" value={`${toman(report.commissions.held)} تومان`} onClick={() => onGo('payouts')} />
+          <SpKpi label="پرداخت‌شده" value={`${toman(report.commissions.paid)} تومان`} onClick={() => onGo('payouts')} />
+          <SpKpi label="برگشت‌خورده" value={`${toman(report.commissions.reversed)} تومان`} onClick={() => onGo('orders')} />
         </div>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SpSection title="قیف پیش‌سفارش‌ها" description="توزیع وضعیت در نمونهٔ اخیر">
+        <SpSection title="قیف پیش‌سفارش‌ها" description="کلیک روی هر وضعیت، همان فیلتر را در سفارش‌ها باز می‌کند">
           <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
             {report && Object.keys(report.drafts.byStatus || {}).length > 0 ? (
               Object.entries(report.drafts.byStatus).map(([key, value]) => (
@@ -107,6 +157,7 @@ export function SpAdminDashboard({
                   label={SP_DRAFT_STATUS_FA[key] || key}
                   value={value}
                   max={draftMax}
+                  onClick={() => onGo('orders', { orderFilter: key })}
                 />
               ))
             ) : (
@@ -114,7 +165,7 @@ export function SpAdminDashboard({
             )}
           </div>
         </SpSection>
-        <SpSection title="وضعیت همکاران" description="توزیع پروفایل‌های ثبت‌شده">
+        <SpSection title="وضعیت همکاران" description="کلیک، فهرست همکاران را فیلتر می‌کند">
           <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
             {report && Object.keys(report.partners.byStatus || {}).length > 0 ? (
               Object.entries(report.partners.byStatus).map(([key, value]) => (
@@ -123,6 +174,7 @@ export function SpAdminDashboard({
                   label={SP_PARTNER_STATUS_FA[key] || key}
                   value={value}
                   max={partnerMax}
+                  onClick={() => onGo('partners', { partnerFilter: key })}
                 />
               ))
             ) : (
@@ -132,77 +184,45 @@ export function SpAdminDashboard({
         </SpSection>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SpSection
-          title="نیاز به اقدام"
-          description="درخواست‌ها و سفارش‌های باز"
-          action={
-            <button type="button" className="text-sm text-[#1B5C4A] underline-offset-4 hover:underline" onClick={() => onGo('applications')}>
-              همه درخواست‌ها
-            </button>
-          }
-        >
-          <ul className="space-y-2">
-            {pendingApps.length === 0 && actionOrders.length === 0 ? (
-              <li><SpEmptyState>صف اقدام خالی است.</SpEmptyState></li>
-            ) : null}
-            {pendingApps.slice(0, 4).map((row) => (
-              <li key={row.id} className="flex items-start justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{row.displayName}</p>
-                  <p className="mt-0.5 text-xs text-stone-500">{row.phoneMasked} · درخواست</p>
-                </div>
-                <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
-              </li>
-            ))}
-            {actionOrders.slice(0, 4).map((row) => (
-              <li key={row.id} className="flex items-start justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{row.statusLabel}</p>
-                  <p className="mt-0.5 text-xs text-stone-500">
-                    {toman(row.merchandiseIrr)} تومان
-                    {row.customerPhoneMasked ? ` · ${row.customerPhoneMasked}` : ''}
-                  </p>
-                </div>
-                <ClipboardList className="h-4 w-4 shrink-0 text-stone-400" aria-hidden />
-              </li>
-            ))}
-          </ul>
-        </SpSection>
-
-        <SpSection
-          title="سوابق اخیر"
-          description="آخرین تصمیم‌های ثبت‌شده"
-          action={
-            <button type="button" className="text-sm text-[#1B5C4A] underline-offset-4 hover:underline" onClick={() => onGo('reports')}>
-              گزارش کامل
-            </button>
-          }
-        >
-          <ul className="space-y-2">
-            {audits.length === 0 ? (
-              <li><SpEmptyState>سابقه‌ای ثبت نشده.</SpEmptyState></li>
-            ) : (
-              audits.slice(0, 8).map((row) => (
-                <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-3 text-sm">
-                  <div className="flex items-start gap-2">
-                    <Activity className="mt-0.5 h-4 w-4 shrink-0 text-[#1B5C4A]" aria-hidden />
-                    <div className="min-w-0">
-                      <p className="font-medium">{spAuditLabel(row.action)}</p>
-                      <p className="mt-0.5 text-xs text-stone-500">
-                        {row.targetType} · {formatSpDate(row.createdAt)}
-                      </p>
-                    </div>
+      <SpSection
+        title="سوابق اخیر"
+        description="آخرین تصمیم‌های ثبت‌شده"
+        action={
+          <SpButton variant="ghost" className="min-h-9 px-2 text-sm" onClick={() => onGo('reports')}>
+            گزارش کامل
+          </SpButton>
+        }
+      >
+        <ul className="space-y-2">
+          {audits.length === 0 ? (
+            <li>
+              <SpEmptyState>سابقه‌ای ثبت نشده.</SpEmptyState>
+            </li>
+          ) : (
+            audits.slice(0, 8).map((row) => (
+              <li key={row.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-2 rounded-2xl border border-stone-200 bg-white p-3 text-right text-sm hover:border-[#1B5C4A]/30"
+                  onClick={() => onGo(auditTab(row.targetType))}
+                >
+                  <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-[#1B5C4A]" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="font-medium">{spAuditLabel(row.action)}</p>
+                    <p className="mt-0.5 text-xs text-stone-500">
+                      {row.targetType} · {formatSpDate(row.createdAt)}
+                    </p>
                   </div>
-                </li>
-              ))
-            )}
-          </ul>
-        </SpSection>
-      </div>
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </SpSection>
 
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-4">
         <QuickLink icon={Users} label="مدیریت همکاران" onClick={() => onGo('partners')} />
+        <QuickLink icon={ShoppingBag} label="پیش‌سفارش‌ها" onClick={() => onGo('orders', { orderFilter: 'ACTION' })} />
         <QuickLink icon={Wallet} label="تسویه پورسانت" onClick={() => onGo('payouts')} />
         <QuickLink icon={ClipboardList} label="محصولات مجاز" onClick={() => onGo('catalog')} />
       </div>
@@ -211,6 +231,7 @@ export function SpAdminDashboard({
         <p className="rounded-2xl bg-stone-50 p-3 text-sm leading-7 text-stone-600" role="note">
           {report.note}
           {report.generatedAt ? ` · به‌روز‌رسانی ${formatSpDate(report.generatedAt)}` : ''}
+          {settings ? ` · برنامه ${SP_MODE_FA[settings.mode] || settings.mode}` : ''}
         </p>
       ) : null}
     </div>
@@ -227,14 +248,10 @@ function QuickLink({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-dashed border-stone-300 bg-white px-3 text-sm text-stone-700 transition-colors hover:border-[#1B5C4A]/40 hover:bg-[#1B5C4A]/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
-    >
+    <SpButton variant="secondary" onClick={onClick} className="w-full">
       <Icon className="h-4 w-4 text-[#1B5C4A]" aria-hidden />
       {label}
-    </button>
+    </SpButton>
   );
 }
 

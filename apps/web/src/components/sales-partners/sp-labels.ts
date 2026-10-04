@@ -3,6 +3,7 @@
 export const SP_APP_STATUS_FA: Record<string, string> = {
   PENDING_REVIEW: 'در انتظار بررسی',
   NEED_INFO: 'نیاز به تکمیل اطلاعات',
+  NEEDS_INFORMATION: 'نیاز به تکمیل اطلاعات',
   APPROVED: 'تأییدشده',
   REJECTED: 'ردشده',
   WITHDRAWN: 'انصراف',
@@ -18,6 +19,7 @@ export const SP_PARTNER_STATUS_FA: Record<string, string> = {
 export const SP_DRAFT_STATUS_FA: Record<string, string> = {
   DRAFT: 'در حال آماده‌سازی',
   AWAITING_CUSTOMER_CONFIRMATION: 'منتظر تأیید مشتری',
+  CUSTOMER_CONFIRMED: 'مشتری تأیید کرد — تبدیل نشده',
   CONVERTED_TO_ORDER: 'خرید شد',
   REJECTED_BY_CUSTOMER: 'مشتری رد کرد',
   EXPIRED: 'منقضی شد',
@@ -32,6 +34,8 @@ export function spDraftNextStep(status: string, stale?: boolean): string {
       return 'لینک تأیید را برای مشتری بفرستید.';
     case 'AWAITING_CUSTOMER_CONFIRMATION':
       return 'منتظر تصمیم مشتری روی پیامک هستید.';
+    case 'CUSTOMER_CONFIRMED':
+      return 'مشتری تأیید کرده؛ تبدیل به سفارش فروشگاه را بررسی کنید.';
     case 'CONVERTED_TO_ORDER':
       return 'پرداخت و ارسال با ترنم است؛ پورسانت بعد از تحویل حساب می‌شود.';
     case 'REJECTED_BY_CUSTOMER':
@@ -69,7 +73,7 @@ export const SP_MODE_FA: Record<string, string> = {
 export function spStatusTone(status: string): 'ok' | 'warn' | 'danger' | 'neutral' | 'info' {
   const s = status.toUpperCase();
   if (['ACTIVE', 'APPROVED', 'PAID', 'CONVERTED_TO_ORDER', 'LIVE'].includes(s)) return 'ok';
-  if (['PENDING_REVIEW', 'NEED_INFO', 'AWAITING_CUSTOMER_CONFIRMATION', 'DRAFT', 'HELD', 'CANARY', 'PREVIEW'].includes(s)) {
+  if (['PENDING_REVIEW', 'NEED_INFO', 'NEEDS_INFORMATION', 'AWAITING_CUSTOMER_CONFIRMATION', 'CUSTOMER_CONFIRMED', 'DRAFT', 'HELD', 'CANARY', 'PREVIEW', 'AWAITING_PAYMENT'].includes(s)) {
     return 'warn';
   }
   if (['REJECTED', 'SUSPENDED', 'CLOSED', 'CANCELLED', 'EXPIRED', 'REJECTED_BY_CUSTOMER', 'OFF'].includes(s)) {
