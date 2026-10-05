@@ -404,6 +404,54 @@ async function testPartialMatchOkFalse() {
   assert(setStockCalls.length === 1, 'partial: setStock only for matched');
 }
 
+async function testSpaceEqualsHalfSpace() {
+  const { service, setStockCalls } = createHarness({
+    product: {
+      ...TEST_PRODUCT,
+      variants: [
+        {
+          id: 'var-brown',
+          color: 'قهوه‌ای',
+          size: 'فری سایز',
+          barcode: '1',
+          wholesaleStock: 0,
+          retailStock: 0,
+        },
+      ],
+    },
+  });
+  const result = await service.upsertMatrix(
+    baseBody({
+      variants: [{ erpVariantSku: 'B1', color: 'قهوه ای', size: 'فری سایز (مناسب تا 48)', qty: 4 }],
+    }),
+  );
+  assert(result.ok === true, 'space/zwnj brown matches');
+  assert(result.unmatched.length === 0, 'space/zwnj brown: no miss');
+  assert(setStockCalls.length === 1 && setStockCalls[0].qty === 4, 'space/zwnj brown wrote qty');
+}
+
+async function testFailedMatchIsNotCached() {
+  const { service, idemStore, setStockCalls } = createHarness();
+  const first = await service.upsertMatrix(
+    baseBody({
+      idempotencyKey: 'miss-1',
+      variants: [{ erpVariantSku: 'NOPE', color: 'آبی', size: 'XL', qty: 1 }],
+    }),
+  );
+  assert(first.ok === false, 'miss: not ok');
+  assert(!idemStore.has('miss-1'), 'miss: not cached');
+  const second = await service.upsertMatrix(
+    baseBody({
+      idempotencyKey: 'miss-1',
+      variants: [{ erpVariantSku: 'ERP-V1', color: 'مشکی', size: 'M', qty: 2 }],
+    }),
+  );
+  assert(second.ok === true, 'same key retries after a miss');
+  assert(second.idempotent !== true, 'retry is a real write');
+  assert(setStockCalls.length === 1, 'retry wrote the matched row');
+  assert(idemStore.has('miss-1'), 'success is cached');
+}
+
 async function main() {
   await testErpProductCodeAsSku();
   await testWholesaleSetStockChannel();
@@ -416,6 +464,8 @@ async function main() {
   await testAmbiguousBarcodesProductNotFound();
   await testIdempotencyReturnsCached();
   await testPartialMatchOkFalse();
+  await testSpaceEqualsHalfSpace();
+  await testFailedMatchIsNotCached();
   console.log('erp-inventory.service.spec.ts: ok');
 }
 

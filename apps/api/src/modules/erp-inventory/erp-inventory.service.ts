@@ -89,7 +89,9 @@ export class ErpInventoryService {
           reason: 'product_sku_not_found',
         })),
       };
-      if (idemKey && !dryRun) await this.writeIdempotency(idemKey, result);
+      // A miss must be recomputed on the next push. Caching it for a day
+      // hides a later spelling fix or a SKU that was just created.
+      if (idemKey && !dryRun && result.ok) await this.writeIdempotency(idemKey, result);
       return result;
     }
 
@@ -160,7 +162,7 @@ export class ErpInventoryService {
       unmatched,
     };
 
-    if (idemKey && !dryRun) await this.writeIdempotency(idemKey, result);
+    if (idemKey && !dryRun && result.ok) await this.writeIdempotency(idemKey, result);
     return result;
   }
 
