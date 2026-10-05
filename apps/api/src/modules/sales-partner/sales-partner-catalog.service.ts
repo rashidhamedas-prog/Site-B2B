@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, In, Not, Repository } from 'typeorm';
+import { FindOptionsWhere, ILike, In, MoreThan, Not, Repository } from 'typeorm';
 import { CategoryEntity } from '../category/entities/category.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import {
@@ -23,6 +23,7 @@ import {
 import {
   factualFacts,
   humanStockBand,
+  isPartnerCatalogProduct,
   parseAdminCatalogQuery,
   parsePartnerCatalogQuery,
   partnerCopyText,
@@ -55,10 +56,10 @@ export class SalesPartnerCatalogService {
     const parsed = parsePartnerCatalogQuery(typeof query === 'number' ? { page: query, pageSize: PARTNER_PAGE_SIZE } : { ...query, pageSize: PARTNER_PAGE_SIZE });
     const settings = await this.program.settings();
     const shareCode = await this.program.ensurePublicCode(salesPartnerId);
-    const rows = await this.eligibility.find({ where: { eligible: true } });
-    if (!rows.length) return preparePartnerCatalog([], parsed);
-    const products = await this.products.find({
-      where: { id: In(rows.map((r) => r.productId)), status: 'ACTIVE', showOnRetail: true },
+    const products = await this.liveRetailProducts();
+    if (!products.length) return preparePartnerCatalog([], parsed);
+    const rows = await this.eligibility.find({
+      where: { productId: In(products.map((product) => product.id)) },
     });
     const names = await this.categoryNames(products.map((product) => product.categoryId));
     const rules = await this.loadRules();
@@ -80,19 +81,20 @@ export class SalesPartnerCatalogService {
 
   async partnerProduct(salesPartnerId: string, productId: string) {
     const settings = await this.program.settings();
-    const elig = await this.eligibility.findOne({ where: { productId, eligible: true } });
-    if (!elig) throw new NotFoundException('این محصول برای همکاران بازاریاب فعال نیست');
+    const elig = await this.eligibility.findOne({ where: { productId } });
     const product = await this.products.findOne({
-      where: { id: productId, status: 'ACTIVE', showOnRetail: true },
+      where: { id: productId, status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0) },
       relations: ['variants'],
     });
-    if (!product) throw new NotFoundException('محصول پیدا نشد');
+    if (!product || !isPartnerCatalogProduct({ product, explicitEligible: elig?.eligible ?? null })) {
+      throw new NotFoundException('این محصول برای همکاران بازاریاب فعال نیست');
+    }
     const rules = await this.loadRules();
     const shareCode = await this.program.ensurePublicCode(salesPartnerId);
     const names = await this.categoryNames([product.categoryId]);
     const card = this.toPartnerCard(
       product,
-      [elig],
+      elig ? [elig] : [],
       rules,
       salesPartnerId,
       new Date(),
@@ -125,18 +127,23 @@ export class SalesPartnerCatalogService {
   async adminCandidates(query?: string, page = 1, categoryId?: string, eligible?: string) {
     const settings = await this.program.settings();
     const parsed = parseAdminCatalogQuery({ q: query, page, categoryId, eligible });
-    const eligibleIds = parsed.eligible === 'all'
-      ? []
-      : (await this.eligibility.find({ where: { eligible: true }, select: { productId: true } })).map((row) => row.productId);
-    const facets = await this.adminCategoryFacets(parsed.q, parsed.eligible, eligibleIds);
-    if (parsed.eligible === 'yes' && eligibleIds.length === 0) {
+    const excludedIds = (await this.eligibility.find({
+      where: { eligible: false },
+      select: { productId: true },
+    })).map((row) => row.productId);
+    const facets = await this.adminCategoryFacets(parsed.q, parsed.eligible, excludedIds);
+    if (parsed.eligible === 'no' && excludedIds.length === 0) {
       return { items: [], page: parsed.page, pageSize: ADMIN_PAGE_SIZE, total: 0, facets: { categories: facets } };
     }
-    const where: FindOptionsWhere<ProductEntity> = { status: 'ACTIVE', showOnRetail: true };
+    const where: FindOptionsWhere<ProductEntity> = {
+      status: 'ACTIVE',
+      showOnRetail: true,
+      retailPrice: MoreThan(0),
+    };
     if (parsed.q) where.name = ILike(`%${parsed.q}%`);
     if (parsed.categoryId) where.categoryId = parsed.categoryId;
-    if (parsed.eligible === 'yes') where.id = In(eligibleIds);
-    if (parsed.eligible === 'no' && eligibleIds.length) where.id = Not(In(eligibleIds));
+    if (parsed.eligible === 'yes' && excludedIds.length) where.id = Not(In(excludedIds));
+    if (parsed.eligible === 'no') where.id = In(excludedIds);
     const [products, total] = await this.products.findAndCount({
       where,
       order: { categoryId: 'ASC', name: 'ASC' },
@@ -175,7 +182,7 @@ export class SalesPartnerCatalogService {
         categoryName: names.get(product.categoryId) || 'بدون دسته',
         priceIrr: price,
         vendorSku: vendor,
-        eligible: elig?.eligible === true,
+        eligible: elig?.eligible !== false && (!vendor || margin >= settings.minMarginIrr),
         allowedImageKeys: elig?.allowedImageKeys ?? null,
         previewCommissionPercent: previewPercent,
         productCommissionPercent: productOverridePercent,
@@ -459,14 +466,16 @@ export class SalesPartnerCatalogService {
     const profile = await this.program.findActiveByPublicCode(normalized);
     if (!profile) throw new NotFoundException('لینک فروش معتبر نیست');
     const product = await this.products.findOne({
-      where: { slug: safeSlug, status: 'ACTIVE', showOnRetail: true },
+      where: { slug: safeSlug, status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0) },
     });
     if (!product) throw new NotFoundException('محصول پیدا نشد');
-    const elig = await this.eligibility.findOne({ where: { productId: product.id, eligible: true } });
-    if (!elig) throw new NotFoundException('این محصول برای همکاران بازاریاب فعال نیست');
+    const elig = await this.eligibility.findOne({ where: { productId: product.id } });
+    if (!isPartnerCatalogProduct({ product, explicitEligible: elig?.eligible ?? null })) {
+      throw new NotFoundException('این محصول برای همکاران بازاریاب فعال نیست');
+    }
     const settings = await this.program.settings();
     const rules = await this.loadRules();
-    const card = this.toPartnerCard(product, [elig], rules, profile.id, new Date(), settings.minMarginIrr, normalized);
+    const card = this.toPartnerCard(product, elig ? [elig] : [], rules, profile.id, new Date(), settings.minMarginIrr, normalized);
     if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
     return { productId: product.id, slug: product.slug, code: normalized };
   }
@@ -482,9 +491,8 @@ export class SalesPartnerCatalogService {
     categoryName = 'بدون دسته',
   ) {
     const elig = rows.find((r) => r.productId === product.id);
-    if (!elig?.eligible) return null;
+    if (!isPartnerCatalogProduct({ product, explicitEligible: elig?.eligible ?? null })) return null;
     const price = Number(product.retailPrice || 0);
-    if (!Number.isInteger(price) || price <= 0) return null;
     const rule = selectCommissionRule(rules, {
       productId: product.id,
       categoryId: product.categoryId || null,
@@ -496,7 +504,7 @@ export class SalesPartnerCatalogService {
       const margin = vendorSkuMarginIrr({ retailNetIrr: price, vendorDueIrr: vendorDue, partnerPercent: percent });
       if (margin < minMarginIrr) return null;
     }
-    const images = (elig.allowedImageKeys?.length ? elig.allowedImageKeys : product.images || []).slice(0, 6);
+    const images = (elig?.allowedImageKeys?.length ? elig.allowedImageKeys : product.images || []).slice(0, 6);
     const origin = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
     const productPath = product.slug ? `/products/${product.slug}` : `/products/${product.id}`;
     const productUrl = product.slug && shareCode
@@ -545,19 +553,27 @@ export class SalesPartnerCatalogService {
     return map;
   }
 
-  private async adminCategoryFacets(q: string, eligible: 'all' | 'yes' | 'no', eligibleIds: string[]) {
-    if (eligible === 'yes' && eligibleIds.length === 0) return [];
+  private liveRetailProducts() {
+    return this.products.find({
+      where: { status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0) },
+    });
+  }
+
+  private async adminCategoryFacets(q: string, eligible: 'all' | 'yes' | 'no', excludedIds: string[]) {
+    if (eligible === 'no' && excludedIds.length === 0) return [];
     const qb = this.products
       .createQueryBuilder('p')
       .leftJoin(CategoryEntity, 'c', 'c.id = p.categoryId')
       .select('p.categoryId', 'categoryId')
       .addSelect('MAX(c.name)', 'name')
       .addSelect('COUNT(*)', 'count')
-      .where('p.status = :status', { status: 'ACTIVE' })
-      .andWhere('p.showOnRetail = true');
+      .where('p.deletedAt IS NULL')
+      .andWhere('p.status = :status', { status: 'ACTIVE' })
+      .andWhere('p.showOnRetail = true')
+      .andWhere('p.retailPrice > 0');
     if (q) qb.andWhere('p.name ILIKE :q', { q: `%${q}%` });
-    if (eligible === 'yes') qb.andWhere('p.id IN (:...ids)', { ids: eligibleIds });
-    if (eligible === 'no' && eligibleIds.length) qb.andWhere('p.id NOT IN (:...ids)', { ids: eligibleIds });
+    if (eligible === 'yes' && excludedIds.length) qb.andWhere('p.id NOT IN (:...ids)', { ids: excludedIds });
+    if (eligible === 'no') qb.andWhere('p.id IN (:...ids)', { ids: excludedIds });
     const raw = await qb.groupBy('p.categoryId').getRawMany<Record<string, unknown>>();
     return raw
       .map((row) => ({

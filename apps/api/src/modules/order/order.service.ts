@@ -1788,7 +1788,15 @@ export class OrderService {
       });
       if (!candidates.length) return null;
       const eligible: Array<{ productId: string }> = await this.dataSource.query(
-        `SELECT "productId" FROM sales_partner_product_eligibility WHERE eligible = true AND "productId" = ANY($1::uuid[])`,
+        `SELECT p.id AS "productId"
+         FROM products p
+         LEFT JOIN sales_partner_product_eligibility e ON e."productId" = p.id
+         WHERE p.id = ANY($1::uuid[])
+           AND p."deletedAt" IS NULL
+           AND p.status = 'ACTIVE'
+           AND p."showOnRetail" = true
+           AND p."retailPrice" > 0
+           AND (e."productId" IS NULL OR e.eligible = true)`,
         [candidates],
       );
       const productIds = attributeLinkProducts({

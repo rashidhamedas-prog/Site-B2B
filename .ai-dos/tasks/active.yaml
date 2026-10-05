@@ -1,5 +1,42 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261005-015"
+    title: "Sales-partner test purge and live retail catalog"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261005-015"
+    roles:
+      architect: "cursor:implementer-TASK-20261005-015"
+      implementer: "cursor:implementer-TASK-20261005-015"
+      reviewer: "same-session-catalog-projection"
+      security: "same-session-scoped-purge"
+    branch: "ai/TASK-20261005-015-sp-live-catalog"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-05T13:40:00Z"
+    heartbeat_at: "2026-10-05T13:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog.service.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
+      - "docs/architecture/sales-partner-program.md"
+      - "docs/reports/2026-10-05-sales-partner-live-catalog.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Hamed Rashid and the named QA partner are gone from sales-partner tables only"
+      - "Store orders and user accounts stay"
+      - "Partner catalog includes every publishable retail product unless an admin exclusion exists"
+      - "Catalog policy spec passes"
+    notes: |
+      Owner asked for a full-depth cleanup limited to the sales-partner module.
+      Registry files were already claimed by TASK-20261004-010 and TASK-20261004-014.
+      This entry only appends. Their code claims were not edited.
+      Production purge ran before the catalog projection deploy.
   - id: "TASK-20261004-014"
     title: "Wholesale boutique referral partner program"
     status: "in_progress"

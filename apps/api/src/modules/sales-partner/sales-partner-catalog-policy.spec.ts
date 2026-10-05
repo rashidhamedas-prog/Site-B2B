@@ -2,6 +2,8 @@ import {
   factualFacts,
   humanStockBand,
   isFactualCaption,
+  isPartnerCatalogProduct,
+  isPublishableRetailProduct,
   parseAdminCatalogQuery,
   parsePartnerCatalogQuery,
   partnerCopyText,
@@ -75,5 +77,17 @@ assert(named.total === 1 && named.items[0].name === 'مانتو نیکی', 'name
 
 const priced = preparePartnerCatalog(cards, { sort: 'price_desc' });
 assert(priced.items[0].name === 'کت کتان', 'price desc');
+
+const live = { status: 'ACTIVE', showOnRetail: true, retailPrice: 1_720_000, deletedAt: null };
+assert(isPublishableRetailProduct(live), 'priced retail product is live');
+assert(!isPublishableRetailProduct({ ...live, retailPrice: 0 }), 'zero price is not live');
+assert(!isPublishableRetailProduct({ ...live, retailPrice: null }), 'missing price is not live');
+assert(!isPublishableRetailProduct({ ...live, status: 'DRAFT' }), 'draft is not live');
+assert(!isPublishableRetailProduct({ ...live, showOnRetail: false }), 'hidden retail is not live');
+assert(!isPublishableRetailProduct({ ...live, deletedAt: '2026-10-05' }), 'deleted is not live');
+assert(isPartnerCatalogProduct({ product: live, explicitEligible: null }), 'missing row is included');
+assert(isPartnerCatalogProduct({ product: live, explicitEligible: true }), 'explicit include stays');
+assert(!isPartnerCatalogProduct({ product: live, explicitEligible: false }), 'admin exclusion wins');
+assert(!isPartnerCatalogProduct({ product: { ...live, retailPrice: null }, explicitEligible: true }), 'unpriced stays out even if flagged');
 
 console.log('sales-partner-catalog-policy.spec.ts: OK');

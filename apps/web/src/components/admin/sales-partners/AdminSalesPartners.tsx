@@ -922,8 +922,8 @@ export function AdminSalesPartners() {
 
       {tab === 'catalog' && (
         <SpSection
-          title="محصولات مجاز برای بازاریاب"
-          description="تا وقتی محصولی را مجاز نکنید، کاتالوگ همکار خالی می‌ماند و لینک فروش همان کالا پورسانت نمی‌سازد."
+          title="محصولات زنده فروشگاه"
+          description="هر کالای فعال فروشگاه تکی با قیمت، همین‌جا برای همکار باز است. کالای تازه با انتشار روی سایت اضافه می‌شود. خاموش کردن یک کالا فقط همان استثنا را می‌سازد."
         >
           <form
             className="flex flex-wrap gap-2"
@@ -1069,7 +1069,7 @@ export function AdminSalesPartners() {
                         <button
                           type="button"
                           className={`min-h-11 rounded-xl border px-3 ${spFocusClass}`}
-                          disabled={busyId === row.productId}
+                          disabled={busyId === row.productId || (!row.eligible && !row.canEnable)}
                           onClick={() => void toggleEligible(row)}
                         >
                           {row.eligible ? 'غیرفعال کردن برای بازاریاب' : 'مجاز کردن برای بازاریاب'}

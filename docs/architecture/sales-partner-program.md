@@ -192,7 +192,7 @@ New module `salesPartners`. Default: `ADMIN` + `ACCOUNTANT` (payouts) + `SALES_M
 | Layout, tokens, validation, state machines, prices, commission math | code |
 | Public intro headlines, guide FAQ, hero image | CMS later; MVP code + placeholder |
 | Legal terms | owner-approved `2026-09-23-v1` |
-| Product photos | existing media; admin flag «مجاز برای همکار» on eligibility row |
+| Product photos | existing media; partner catalog is the live retail assortment, with an optional exclusion row |
 | Feature flag, hold days, SMS caps | admin settings `salesPartners` JSON |
 
 Missing content: show empty/placeholder; never invent «پرفروش» or scarcity.
@@ -271,7 +271,7 @@ MVP: percent only. Precedence: partner+product → partner+category → product 
 - `marginCheck` jsonb (internal; never shown to partner)
 - `updatedBy`, `updatedAt`
 
-Default: not eligible. Vendor/dropship products stay ineligible until opt-in + guard.
+The partner catalog is a live projection of publishable retail products (`ACTIVE`, `showOnRetail`, `retailPrice > 0`, not deleted). A missing row means included. `eligible = false` is an admin exclusion and does not copy the product. Vendor/dropship SKUs still drop out when the margin guard fails. New storefront products appear without a manual allowlist.
 
 ### Order columns (Phase 3 migration, additive)
 

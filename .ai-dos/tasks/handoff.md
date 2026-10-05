@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-05T13:45:00Z — TASK-20261005-015 sales-partner purge and live catalog
+
+- Owner: cursor:implementer-TASK-20261005-015
+- Scope stayed inside sales-partner. Production delete removed profiles حامد رشید and آزمون کیوای ترنم, their applications, 4 drafts, 1 ledger row (750000 IRR, no order), 5 outbox rows, 7 audit rows. Orders updated: 0. Users kept. 9 partners remain.
+- Catalog is now a projection of publishable retail products. Missing eligibility row means included. `eligible=false` is the only exclusion. Vendor margin guard stays.
+- `sales-partner-catalog-policy.spec.ts` OK. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
+- Logged-in admin click was not done. Slack search returned no messages for this program.
+- TASK-20261004-010 and TASK-20261004-014 code claims were not edited. Registry files were appended because both already claim them.
+
 ## 2026-10-04T21:45:00Z — TASK-20261004-014 referral rules form and terms page
 
 - Owner: cursor:implementer-TASK-20261004-014

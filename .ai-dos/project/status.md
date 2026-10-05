@@ -1,5 +1,6 @@
 # Project Status
 
+- In progress: 2026-10-05 — **TASK-20261005-015** sales-partner test purge is already applied on the live database (Hamed Rashid and آزمون کیوای ترنم removed; 9 partners left; orders untouched). Catalog projection code is not live until this revision is on `origin/master`.
 - Last verified: 2026-10-04 — **TASK-20261004-014 LIVE** on `origin/master` `7038b69`. Referral rules form is on the admin introductions page. Public `/hamkar-moarefi` is indexable with a self-canonical and `#terms` in the HTML. Program stays OFF (`applyOpen` false). Health 200. Logged-in admin save and independent review are still open.
 - Last verified: 2026-10-04 — **TASK-20261004-013 LIVE** on `origin/master` `d45781c`. Report joins cast uuid to text; VPS health 200; `report-sql.js` is in the API image. Claims released. Logged-in click of both channels still open.
 - Last verified: 2026-10-04 — **TASK-20261004-012 CLOSED LIVE** on `origin/master` `9c1e11d`. Admin desk is up. The 500 was TypeORM parsing `COALESCE(v.wholesaleStock, 0)` as an alias; sort is now real columns. VPS health 200. Logged-in click still needs a refresh.

@@ -121,6 +121,37 @@ function matchesStock(item: CatalogListCard, stock: PartnerCatalogStock): boolea
   return true;
 }
 
+/** Same gate as the retail channel projection: public, priced, not deleted. */
+export function isPublishableRetailProduct(product: {
+  status?: string | null;
+  showOnRetail?: boolean | null;
+  retailPrice?: number | string | null;
+  deletedAt?: Date | string | null;
+}): boolean {
+  if (product.deletedAt) return false;
+  if (String(product.status || '').toUpperCase() !== 'ACTIVE') return false;
+  if (product.showOnRetail === false) return false;
+  const price = Number(product.retailPrice);
+  return Number.isInteger(price) && price > 0;
+}
+
+/**
+ * Partner catalog is a live projection of the retail storefront.
+ * A missing eligibility row is included. `eligible: false` is an admin exclusion.
+ */
+export function isPartnerCatalogProduct(input: {
+  product: {
+    status?: string | null;
+    showOnRetail?: boolean | null;
+    retailPrice?: number | string | null;
+    deletedAt?: Date | string | null;
+  };
+  explicitEligible?: boolean | null;
+}): boolean {
+  if (!isPublishableRetailProduct(input.product)) return false;
+  return input.explicitEligible !== false;
+}
+
 function compareCards(a: CatalogListCard, b: CatalogListCard, sort: PartnerCatalogSort): number {
   const byName = a.name.localeCompare(b.name, 'fa');
   if (sort === 'price_asc') return a.priceIrr - b.priceIrr || byName;
