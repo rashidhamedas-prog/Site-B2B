@@ -2466,7 +2466,11 @@ export class ProductService {
     const name = String(colorName ?? '').trim();
     if (!name) throw new BadRequestException('رنگ الزامی است');
     const rows = await this.variantRepo.find({ where: { productId, color: name } });
-    if (!rows.length) throw new NotFoundException('واریانتی با این رنگ یافت نشد');
+    // Reconciliation saves delete a renamed color and then the leftover-name
+    // pass hits the same color again. Missing is success, not «واریانت یافت نشد».
+    if (!rows.length) {
+      return { message: `رنگ «${name}» روی این محصول نبود`, deleted: 0, missing: true };
+    }
     await this.variantRepo.remove(rows);
     await this.syncProductStockFromVariants(productId);
     return { message: `رنگ «${name}» و ${rows.length} سایز حذف شد`, deleted: rows.length };

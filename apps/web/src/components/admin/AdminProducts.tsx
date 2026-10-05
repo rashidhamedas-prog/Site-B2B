@@ -91,6 +91,16 @@ function sizeOptionsForType(sizeType?: string): string[] {
   return ['فری سایز'];
 }
 
+/** Same color for rename detection: ZWNJ, Arabic yeh/kaf, and extra spaces are not a new color. */
+function colorIdentity(value?: string | null): string {
+  return String(value || '')
+    .replace(/[\u200c\u200f\u200e\u202a-\u202e]/g, '')
+    .replace(/ي/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 type SpecMemory = Record<string, string[]>;
 
 const emptySpecs: ProductSpecs = {
@@ -1417,9 +1427,11 @@ export function AdminProducts() {
       }
 
       if (productId) {
+        const removedExact = new Set<string>();
         for (const d of colorDrafts) {
+          const nextName = d.color.trim();
           const body = {
-            color: d.color.trim(),
+            color: nextName,
             colorHex: d.colorHex,
             barcode: d.barcode || undefined,
             imageUrl: d.imageUrl || null,
@@ -1431,20 +1443,20 @@ export function AdminProducts() {
             })),
           };
           const wasExisting = !!d.originalColor && initialColorNames.includes(d.originalColor);
-          if (wasExisting && d.originalColor !== d.color.trim()) {
+          if (wasExisting && colorIdentity(d.originalColor) !== colorIdentity(nextName)) {
             await apiClient.delete(
               `/products/${productId}/variants/by-color?color=${encodeURIComponent(d.originalColor!)}`
             );
+            removedExact.add(d.originalColor!);
           }
           await apiClient.put(`/products/${productId}/variants/color-stock`, body);
         }
-        const keepNames = new Set(colorDrafts.map((d) => d.color.trim()));
+        const keepIdentity = new Set(colorDrafts.map((d) => colorIdentity(d.color)));
         for (const oldName of initialColorNames) {
-          if (oldName && !keepNames.has(oldName)) {
-            await apiClient.delete(
-              `/products/${productId}/variants/by-color?color=${encodeURIComponent(oldName)}`
-            );
-          }
+          if (!oldName || keepIdentity.has(colorIdentity(oldName)) || removedExact.has(oldName)) continue;
+          await apiClient.delete(
+            `/products/${productId}/variants/by-color?color=${encodeURIComponent(oldName)}`
+          );
         }
       }
 

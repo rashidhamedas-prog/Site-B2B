@@ -22,5 +22,13 @@ assert(
     variantMatchKey('سبز کاهویی', 'فری سایز'),
   'color+free-size key parity',
 );
+assert(
+  variantMatchKey('مشکی', 'سایز 1 (مناسب از 38 تا 42)') === variantMatchKey('مشکی', 'سایز ۱'),
+  'erp fit hint matches site size label',
+);
+assert(
+  variantMatchKey('سرمه‌ای', 'سایز 2 (مناسب از 44 تا 48)') === variantMatchKey('سرمه‌ای', 'سایز ۲'),
+  'zwnj color + paren size',
+);
 
 console.log('erp-text-normalize.spec.ts: ok');
