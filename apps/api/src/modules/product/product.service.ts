@@ -2642,8 +2642,9 @@ export class ProductService {
     });
   }
 
-  async getVariant(variantId: string) {
-    const v = await this.variantRepo.findOne({ where: { id: variantId }, relations: ['product'] });
+  async getVariant(variantId: string, manager?: EntityManager) {
+    const repo = manager?.getRepository(ProductVariantEntity) ?? this.variantRepo;
+    const v = await repo.findOne({ where: { id: variantId }, relations: ['product'] });
     if (!v) throw new NotFoundException('واریانت یافت نشد');
     return v;
   }

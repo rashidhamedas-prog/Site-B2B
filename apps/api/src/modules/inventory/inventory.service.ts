@@ -99,7 +99,7 @@ export class InventoryService {
   ) {
     const run = async (txn: EntityManager) => {
       const ch = this.normalizeChannel(channel);
-      const variant = await this.productService.getVariant(productVariantId);
+      const variant = await this.productService.getVariant(productVariantId, txn);
       const productId = variant.productId;
       const current = this.variantChannelStock(variant, ch);
 
