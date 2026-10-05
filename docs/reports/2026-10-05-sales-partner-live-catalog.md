@@ -27,4 +27,5 @@
 
 - `sales-partner-catalog-policy.spec.ts` → OK
 - `tsc --noEmit` در `apps/api` فقط خطای قبلی `order-money-guard.spec.ts` را دارد
+- لایو: `4caee82`. سلامت API برابر ۲۰۰. `isPartnerCatalogProduct` داخل ایمیج است.
 - کلیک داخل نشست ادمین در این جلسه انجام نشد

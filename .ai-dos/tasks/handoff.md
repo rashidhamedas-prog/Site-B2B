@@ -8,6 +8,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Scope stayed inside sales-partner. Production delete removed profiles حامد رشید and آزمون کیوای ترنم, their applications, 4 drafts, 1 ledger row (750000 IRR, no order), 5 outbox rows, 7 audit rows. Orders updated: 0. Users kept. 9 partners remain.
 - Catalog is now a projection of publishable retail products. Missing eligibility row means included. `eligible=false` is the only exclusion. Vendor margin guard stays.
 - `sales-partner-catalog-policy.spec.ts` OK. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
+- Live on origin/master `4caee82`. VPS auto-deploy finished at that revision. `GET /v1/health` 200. API image contains `isPartnerCatalogProduct`.
 - Logged-in admin click was not done. Slack search returned no messages for this program.
 - TASK-20261004-010 and TASK-20261004-014 code claims were not edited. Registry files were appended because both already claim them.
 

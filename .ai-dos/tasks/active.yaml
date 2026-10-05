@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261005-015"
     title: "Sales-partner test purge and live retail catalog"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20261005-015"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261005-015-sp-live-catalog"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-05T13:40:00Z"
-    heartbeat_at: "2026-10-05T13:40:00Z"
+    heartbeat_at: "2026-10-05T14:00:00Z"
+    completed_at: "2026-10-05T14:00:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.spec.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-catalog.service.ts"
