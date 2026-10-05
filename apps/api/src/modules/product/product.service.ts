@@ -23,6 +23,7 @@ import {
   parseCategoryListFilter,
   parseOptionalUuid,
 } from './admin-product-list-filter';
+import { catalogSearchLikePattern, catalogSearchPredicate } from './catalog-search';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { normalizeOrderBadgeLabel } from './order-badge-label';
@@ -474,6 +475,30 @@ export class ProductService {
     return out;
   }
 
+  /** Distinct colors for one page of products. Stock stays on the product row. */
+  private async attachVariantColors(products: ProductEntity[]): Promise<void> {
+    const ids = products.map((product) => product.id).filter(Boolean);
+    if (!ids.length) return;
+    const rows = await this.variantRepo.find({
+      where: { productId: In(ids) },
+      select: { id: true, productId: true, color: true },
+    });
+    const byId = new Map<string, ProductVariantEntity[]>();
+    for (const row of rows) {
+      const color = String(row.color || '').trim();
+      if (!row.productId || !color) continue;
+      const list = byId.get(row.productId) ?? [];
+      if (list.some((item) => item.color === color)) continue;
+      list.push({ color } as ProductVariantEntity);
+      byId.set(row.productId, list);
+    }
+    for (const product of products) {
+      if (!product.variants?.length) {
+        product.variants = byId.get(product.id) ?? [];
+      }
+    }
+  }
+
   async findAll(
     page = 1,
     limit = 20,
@@ -498,6 +523,11 @@ export class ProductService {
       inStockOnly?: boolean;
       /** When false (default for storefront), skip loading variants to cut payload/TTFB */
       includeVariants?: boolean;
+      /**
+       * Admin list only. Distinct colors for the page, without joining variants
+       * into the paged query.
+       */
+      summarizeVariantColors?: boolean;
     }
   ) {
     const statusFilter = status ?? 'ACTIVE';
@@ -544,8 +574,8 @@ export class ProductService {
 
     const curatedIds = await this.resolveCuratedProductIds(opts?.ids);
 
-    // Admin list (status=ALL) needs variants for stock/color counts; storefront cards do not.
-    const wantVariants = opts?.includeVariants === true || status === 'ALL';
+    // Variants stay off the paged query. Admin color counts are a second, id-bounded read.
+    const wantVariants = opts?.includeVariants === true;
 
     const qb = this.productRepo.createQueryBuilder('p').where('p.deletedAt IS NULL');
     if (wantVariants && !curatedIds.length) {
@@ -611,10 +641,9 @@ export class ProductService {
         maxPrice: opts.maxPrice,
       });
     }
-    if (search?.trim()) {
-      qb.andWhere('(p.name ILIKE :q OR p.sku ILIKE :q OR p.fabric ILIKE :q)', {
-        q: `%${search.trim()}%`,
-      });
+    const catalogQ = catalogSearchLikePattern(search);
+    if (catalogQ) {
+      qb.andWhere(catalogSearchPredicate('p'), { catalogQ });
     }
     if (related && !relatedIds?.length) {
       qb.andWhere('p.id != :rid', { rid: related.id });
@@ -661,6 +690,9 @@ export class ProductService {
       .skip(skip)
       .take(limit)
       .getMany();
+    if (opts?.summarizeVariantColors && !wantVariants) {
+      await this.attachVariantColors(data);
+    }
     const cfg = await this.badgeConfig();
     return {
       data: data.map((p) => this.withBadges(p, channel || undefined, cfg)),

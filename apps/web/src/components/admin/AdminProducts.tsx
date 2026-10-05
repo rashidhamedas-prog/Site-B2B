@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  Search,
   Plus,
   Edit2,
   Trash2,
@@ -12,7 +11,7 @@ import {
   Layers,
   Package,
 } from 'lucide-react';
-import { Input, Badge, Pagination } from '@/components/ui';
+import { Badge, Pagination } from '@/components/ui';
 import { useProducts, Product, ProductSpecs, ProductCustomField } from '@/lib/hooks/useProducts';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { apiClient } from '@/lib/api';
@@ -35,6 +34,7 @@ import type {
   InternalLinkInput,
   InternalLinkView,
 } from '@/lib/hooks/useProducts';
+import { AdminCatalogSearch } from '@/components/admin/AdminCatalogSearch';
 import { AdminExcelExportButtons } from '@/components/admin/AdminExcelExportButtons';
 import { AdminProductListFilters } from '@/components/admin/AdminProductListFilters';
 import { ProductImageAltEditor } from '@/components/admin/ProductImageAltEditor';
@@ -868,6 +868,9 @@ export function AdminProducts() {
   const searchParams = useSearchParams();
   const workspace = parseProductWorkspaceQuery(searchParams);
   const [page, setPage] = useState(1);
+  const [appliedSearch, setAppliedSearch] = useState(workspace.q);
+  const appliedSearchRef = useRef(workspace.q);
+  const pendingSearchRef = useRef<string | null>(null);
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
@@ -920,11 +923,36 @@ export function AdminProducts() {
 
   const replaceWorkspace = useCallback(
     (patch: Partial<ProductWorkspaceQuery>) => {
-      const qs = serializeProductWorkspaceQuery({ ...workspace, ...patch });
+      const qs = serializeProductWorkspaceQuery({
+        ...workspace,
+        q: appliedSearchRef.current,
+        ...patch,
+      });
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     },
     [pathname, router, workspace],
   );
+  const replaceWorkspaceRef = useRef(replaceWorkspace);
+  replaceWorkspaceRef.current = replaceWorkspace;
+
+  const commitAppliedSearch = useCallback((q: string) => {
+    pendingSearchRef.current = q;
+    appliedSearchRef.current = q;
+    setAppliedSearch(q);
+    setPage(1);
+    replaceWorkspaceRef.current({ q });
+  }, []);
+
+  useEffect(() => {
+    if (pendingSearchRef.current !== null) {
+      if (workspace.q === pendingSearchRef.current) pendingSearchRef.current = null;
+      return;
+    }
+    if (appliedSearchRef.current === workspace.q) return;
+    appliedSearchRef.current = workspace.q;
+    setAppliedSearch(workspace.q);
+    setPage(1);
+  }, [workspace.q]);
 
   const canonicalQuery = serializeProductWorkspaceQuery(workspace);
   useEffect(() => {
@@ -932,9 +960,9 @@ export function AdminProducts() {
     router.replace(canonicalQuery ? `${pathname}?${canonicalQuery}` : pathname, { scroll: false });
   }, [canonicalQuery, pathname, router, searchParams]);
 
-  const { products, meta, loading, error, refetch } = useProducts({
+  const { products, meta, loading, refreshing, error, refetch } = useProducts({
     page,
-    search: workspace.q || undefined,
+    search: appliedSearch || undefined,
     limit: 20,
     status: workspace.status,
     channel: productListApiChannel(workspace.channel),
@@ -1587,11 +1615,15 @@ export function AdminProducts() {
         <div>
           <h2 className="text-xl font-bold text-gray-900">محصولات</h2>
           <p className="mt-0.5 text-sm text-gray-500" aria-live="polite">
-            {loading
-              ? 'در حال به‌روزرسانی فهرست…'
-              : `${meta.total.toLocaleString('fa-IR')} مدل${
-                  productListIsNarrowed(workspace) ? ' با فیلتر فعلی' : ' در کاتالوگ'
-                }`}
+            {refreshing
+              ? 'در حال جستجو…'
+              : loading
+                ? 'در حال به‌روزرسانی فهرست…'
+                : `${meta.total.toLocaleString('fa-IR')} مدل${
+                    productListIsNarrowed({ ...workspace, q: appliedSearch })
+                      ? ' با فیلتر فعلی'
+                      : ' در کاتالوگ'
+                  }`}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -1637,17 +1669,11 @@ export function AdminProducts() {
             );
           })}
         </div>
-        <div className="w-72">
-          <Input
-            placeholder="جستجو نام، SKU، پارچه..."
-            value={workspace.q}
-            onChange={(e) => {
-              setPage(1);
-              replaceWorkspace({ q: e.target.value });
-            }}
-            rightIcon={<Search className="h-4 w-4" />}
-          />
-        </div>
+        <AdminCatalogSearch
+          urlQ={workspace.q}
+          refreshing={refreshing}
+          onCommit={commitAppliedSearch}
+        />
         <AdminProductListFilters
           query={workspace}
           categories={categories}
@@ -1669,6 +1695,11 @@ export function AdminProducts() {
       </div>
 
       <div className="card overflow-hidden">
+        {error && products.length > 0 ? (
+          <p className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px]">
             <thead>
@@ -1693,7 +1724,7 @@ export function AdminProducts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {loading ? (
+              {loading && products.length === 0 ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
                     {Array.from({ length: 8 }).map((_, j) => (
@@ -1721,13 +1752,16 @@ export function AdminProducts() {
               ) : products.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center">
-                    {productListIsNarrowed(workspace) ? (
+                    {productListIsNarrowed({ ...workspace, q: appliedSearch }) ? (
                       <>
                         <p className="mb-3 text-gray-500">با این فیلتر محصولی نیست</p>
                         <div className="flex flex-wrap items-center justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => {
+                              pendingSearchRef.current = '';
+                              appliedSearchRef.current = '';
+                              setAppliedSearch('');
                               setPage(1);
                               replaceWorkspace({
                                 channel: 'ALL',

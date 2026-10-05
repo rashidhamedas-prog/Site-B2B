@@ -226,10 +226,7 @@ export class ProductController {
     @Res({ passthrough: true }) res?: FastifyReply,
   ) {
     res?.header('Cache-Control', 'private, no-store');
-    const wantVariants =
-      includeVariants === '1' ||
-      includeVariants === 'true' ||
-      String(status || '').toUpperCase() === 'ALL';
+    const wantVariants = includeVariants === '1' || includeVariants === 'true';
     const merchRefs = parseMerchandisingRefs(ids);
     return this.productService.findAll(page, limit, search || q, fabric, status, color, size, {
       categoryId,
@@ -244,6 +241,7 @@ export class ProductController {
       ids: merchRefs.length ? merchRefs.map((ref) => ref.value) : undefined,
       inStockOnly: inStock === '1' || inStock === 'true',
       includeVariants: wantVariants,
+      summarizeVariantColors: !wantVariants,
     });
   }
 

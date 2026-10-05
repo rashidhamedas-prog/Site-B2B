@@ -1,5 +1,44 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261005-016"
+    title: "Admin catalog search latency and query correctness"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261005-016"
+    roles:
+      architect: "cursor:implementer-TASK-20261005-016"
+      implementer: "cursor:implementer-TASK-20261005-016"
+      reviewer: "required-after-diff"
+      security: "same-session-bound-search"
+    branch: "ai/TASK-20261005-016-admin-catalog-search"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-05T13:40:00Z"
+    heartbeat_at: "2026-10-05T14:05:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/product/catalog-search.ts"
+      - "apps/api/src/modules/product/catalog-search.spec.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/product/product.controller.ts"
+      - "apps/web/src/lib/admin-catalog-search.ts"
+      - "apps/web/src/lib/admin-catalog-search.spec.ts"
+      - "apps/web/src/lib/hooks/useProducts.ts"
+      - "apps/web/src/components/admin/AdminCatalogSearch.tsx"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "docs/architecture/admin-catalog-search.md"
+      - "docs/reports/2026-10-05-admin-catalog-search.md"
+      - "docs/WORKLOG.md"
+    acceptance_criteria:
+      - "Typing does not refetch until the query is committed"
+      - "A trailing space is kept in the field"
+      - "IME composition does not commit"
+      - "Admin list pages products without joining variants"
+      - "Search matches specs.fabricType and sku aliases with a bound parameter"
+      - "catalog-search.spec.ts and admin-catalog-search.spec.ts pass"
+    notes: |
+      Appended while TASK-20261004-010 and TASK-20261004-014 still claim active.yaml,
+      handoff, and status. Those claims were not edited. product.service.ts and
+      AdminProducts.tsx were released by earlier done tasks.
   - id: "TASK-20261005-015"
     title: "Sales-partner test purge and live retail catalog"
     status: "done"

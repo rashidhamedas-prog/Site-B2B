@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-05T14:05:00Z — TASK-20261005-016 admin catalog search
+
+- Owner: cursor:implementer-TASK-20261005-016
+- Branch: `ai/TASK-20261005-016-admin-catalog-search` from `origin/master` `4caee82b`.
+- Root cause: `/admin/products` wrote `q` on every keystroke, trimmed it, refetched, and flashed skeletons. `status=ALL` joined variants into the page query. Search ignored `specs.fabricType` and SKU aliases.
+- Fix: local draft, 300ms commit, IME gate, abort stale requests, page products without the variant join, bound search predicate.
+- `catalog-search.spec.ts` ok. `admin-catalog-search.spec.ts` ok. Web `tsc --noEmit` clean. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
+- Logged-in click of the admin search box was not done in this session.
+- TASK-20261004-010 and TASK-20261004-014 still claim this registry. This entry only appends. Their file claims were not edited.
+
 ## 2026-10-05T13:45:00Z — TASK-20261005-015 sales-partner purge and live catalog
 
 - Owner: cursor:implementer-TASK-20261005-015

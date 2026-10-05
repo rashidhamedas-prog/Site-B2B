@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '../api';
 
 export interface ProductCustomField {
@@ -206,6 +206,10 @@ export async function searchAdminProducts(
   return Array.isArray(res?.data) ? res.data : [];
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export function useProducts(params?: {
   page?: number;
   limit?: number;
@@ -220,10 +224,19 @@ export function useProducts(params?: {
   const [products, setProducts] = useState<Product[]>([]);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const hasRows = useRef(false);
 
   const fetch = useCallback(async () => {
-    setLoading(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const ticket = ++requestRef.current;
+    if (hasRows.current) setRefreshing(true);
+    else setLoading(true);
     setError(null);
     try {
       const query = new URLSearchParams();
@@ -236,13 +249,22 @@ export function useProducts(params?: {
       if (params?.categoryId) query.set('categoryId', params.categoryId);
       if (params?.collectionId) query.set('collectionId', params.collectionId);
       if (params?.inStock) query.set('inStock', '1');
-      const res = await apiClient.get<ProductsResult>(`/products/admin?${query}`);
-      setProducts(res.data);
-      setMeta(res.meta);
+      const res = await apiClient.get<ProductsResult>(`/products/admin?${query}`, {
+        signal: controller.signal,
+      });
+      if (ticket !== requestRef.current) return;
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      hasRows.current = rows.length > 0;
+      setProducts(rows);
+      setMeta(res?.meta ?? { page: 1, limit: 20, total: 0, totalPages: 1 });
     } catch (e: unknown) {
+      if (ticket !== requestRef.current || isAbortError(e)) return;
       setError(e instanceof Error ? e.message : 'خطا در دریافت محصولات');
     } finally {
-      setLoading(false);
+      if (ticket === requestRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [
     params?.page,
@@ -256,9 +278,12 @@ export function useProducts(params?: {
     params?.inStock,
   ]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    fetch();
+    return () => abortRef.current?.abort();
+  }, [fetch]);
 
-  return { products, meta, loading, error, refetch: fetch };
+  return { products, meta, loading, refreshing, error, refetch: fetch };
 }
 
 export function useProduct(id: string) {
