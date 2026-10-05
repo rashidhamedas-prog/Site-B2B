@@ -91,13 +91,13 @@ function sizeOptionsForType(sizeType?: string): string[] {
   return ['فری سایز'];
 }
 
-/** Same color for rename detection: ZWNJ, Arabic yeh/kaf, and extra spaces are not a new color. */
+/** Same color for rename detection. A space where the other side used ZWNJ is still the same color. An extra letter is not. */
 function colorIdentity(value?: string | null): string {
   return String(value || '')
     .replace(/[\u200c\u200f\u200e\u202a-\u202e]/g, '')
     .replace(/ي/g, 'ی')
     .replace(/ك/g, 'ک')
-    .replace(/\s+/g, ' ')
+    .replace(/\s+/g, '')
     .trim();
 }
 

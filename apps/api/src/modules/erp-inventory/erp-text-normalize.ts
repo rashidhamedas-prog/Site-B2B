@@ -9,11 +9,14 @@ export function normalizeErpLabel(value: string | null | undefined): string {
   // Strip parenthetical fit hints: «فری سایز (مناسب تا 48)» → «فری سایز»
   s = s.replace(/\s*[(\u060c\u061f（][^)]*[)\u060c\u061f）]\s*/g, ' ');
   s = s.replace(/\s+/g, ' ').trim().toLowerCase();
-  // Free-size aliases
-  if (/^(فری\s*سایز|free\s*size|onesize|one\s*size|f)$/i.test(s.replace(/\s+/g, ' '))) {
+  // Free-size aliases stay one canonical label, spaces included.
+  if (/^(فری\s*سایز|free\s*size|onesize|one\s*size|f)$/i.test(s)) {
     return 'فری سایز';
   }
-  return s;
+  // Editors type a normal space where the other side used ZWNJ:
+  // «قهوه ای» and «قهوه‌ای» are the same color. A different letter still differs
+  // («کرم» is not «کرمی»).
+  return s.replace(/\s+/g, '');
 }
 
 export function variantMatchKey(color: string, size: string): string {
