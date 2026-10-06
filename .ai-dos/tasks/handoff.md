@@ -8,7 +8,8 @@ Append newest entries at the top. Never erase another agent's record.
 - Depth: full. Slack search for همگام/موجودی returned no messages.
 - Live outbox on Iran: 30 done, 134 error. Wholesale split: 51 `product_sku_not_found`, 16 `variant_not_matched`. 7200/7129/6059 exist on the site with the same SKU. 7136 ERP colors are شتری and کرمی; site colors are کرم تیره, کرم, قهوه‌ای سوخته, مشکی, سبز یشمی. سبز یشمی already matched.
 - Site change: unmatched matrix response includes `onSite` (max 16). Missing product does not invent a list. کرم is not کرمی.
-- `erp-inventory.service.spec.ts` ok via ts-node. Claims: service + spec + docs. Did not edit product.service.ts.
+- `erp-inventory.service.spec.ts` ok via ts-node. Claims released. Did not edit product.service.ts.
+- Live: `edab535` on origin/master. VPS auto-deploy finished with that revision already checked out. Health 200. `siteVariantLabels` count in the API image is 2. ERP then requeued frozen errors; fresh misses now include the site color list.
 
 ## 2026-10-06T11:15:00Z — TASK-20261006-018 product create duplicate SKU
 

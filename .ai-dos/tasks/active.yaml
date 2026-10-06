@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261006-019"
     title: "Show the site color matrix when ERP stock rows do not match"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261006-019"
     roles:
@@ -15,7 +15,8 @@ tasks:
     claimed_at: "2026-10-06T13:20:00Z"
     heartbeat_at: "2026-10-06T13:40:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/erp-inventory/erp-inventory.service.ts"
       - "apps/api/src/modules/erp-inventory/erp-inventory.service.spec.ts"
       - "docs/WORKLOG.md"
