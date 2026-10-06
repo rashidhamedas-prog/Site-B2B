@@ -39,6 +39,8 @@ export type MatrixUpsertResult = {
   dryRun: boolean;
   matched: MatchedVariantResult[];
   unmatched: UnmatchedVariantResult[];
+  /** Color×size labels that exist on the resolved product. Not a match suggestion. */
+  onSite?: { color: string; size: string }[];
   idempotent?: boolean;
 };
 
@@ -160,6 +162,7 @@ export class ErpInventoryService {
       dryRun,
       matched,
       unmatched,
+      ...(unmatched.length ? { onSite: siteVariantLabels(variants) } : {}),
     };
 
     if (idemKey && !dryRun && result.ok) await this.writeIdempotency(idemKey, result);
@@ -325,6 +328,25 @@ export class ErpInventoryService {
     // Opportunistic cleanup of expired keys (bounded)
     await this.idemRepo.delete({ expiresAt: LessThan(new Date()) });
   }
+}
+
+/** Labels already on this product, capped. Callers must not treat them as a fuzzy match. */
+function siteVariantLabels(
+  variants: Array<{ color?: string | null; size?: string | null }>,
+): { color: string; size: string }[] {
+  const out: { color: string; size: string }[] = [];
+  const seen = new Set<string>();
+  for (const variant of variants || []) {
+    const color = String(variant?.color || '').trim();
+    const size = String(variant?.size || '').trim();
+    if (!color && !size) continue;
+    const key = `${color}|${size}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ color, size });
+    if (out.length >= 16) break;
+  }
+  return out;
 }
 
 /** Re-export for tests that only need normalize helpers. */

@@ -1,5 +1,6 @@
 # Project Status
 
+- In progress: 2026-10-06 — **TASK-20261006-019** stock-sync attention. A matrix miss now returns the product's real color×size labels (`onSite`). Near colors stay unmatched. ERP no longer freezes an old `product_sku_not_found`.
 - In progress: 2026-10-06 — **TASK-20261006-018** product create duplicate SKU. Slug 400 then 500 was `products.sku` unique `UQ_c44ac33a05b144dd0d9ddcf9327` with no 23505 mapper. Spec OK. Deploy follows this commit.
 - In progress: 2026-10-06 — **TASK-20261006-017** about process stills. Four readable still-lifes replace the abstract CSS scene on wholesale `/about`. Local browser verified. Deploy follows this commit.
 - In progress: 2026-10-06 — **TASK-20261006-001** hide storefront colors with zero channel stock. Specs and web tsc passed. Deploy follows this commit.

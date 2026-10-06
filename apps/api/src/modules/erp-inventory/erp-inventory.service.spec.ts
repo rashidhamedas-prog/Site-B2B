@@ -233,6 +233,8 @@ async function testUnmatchedVariantOkFalse() {
   assert(result.unmatched.length === 1, 'unmatched: one row');
   assert(result.unmatched[0].reason === 'variant_not_matched', 'unmatched: reason');
   assert(setStockCalls.length === 0, 'unmatched: no setStock');
+  assert(Array.isArray(result.onSite) && result.onSite.length === 2, 'unmatched: site matrix is listed');
+  assert(result.onSite!.some((row) => row.color === 'مشکی' && row.size === 'M'), 'unmatched: lists the real site color');
 }
 
 async function testProductSkuNotFound() {
@@ -249,6 +251,7 @@ async function testProductSkuNotFound() {
   assert(result.matched.length === 0, 'not found: no matches');
   assert(result.unmatched.length === 1, 'not found: variants listed');
   assert(result.unmatched[0].reason === 'product_sku_not_found', 'not found: reason');
+  assert(result.onSite == null, 'not found: no site matrix to invent');
   assert(setStockCalls.length === 0, 'not found: no setStock');
 }
 
@@ -452,6 +455,34 @@ async function testFailedMatchIsNotCached() {
   assert(idemStore.has('miss-1'), 'success is cached');
 }
 
+async function testNearColorIsListedNotMatched() {
+  const { service, setStockCalls } = createHarness({
+    product: {
+      ...TEST_PRODUCT,
+      variants: [
+        {
+          id: 'var-cream',
+          color: 'کرم',
+          size: 'فری سایز',
+          barcode: '',
+          wholesaleStock: 0,
+          retailStock: 0,
+        },
+      ],
+    },
+  });
+  const result = await service.upsertMatrix(
+    baseBody({
+      variants: [{ erpVariantSku: 'C1', color: 'کرمی', size: 'فری سایز (مناسب تا 48)', qty: 3 }],
+    }),
+  );
+  assert(result.ok === false, 'کرم is not کرمی');
+  assert(result.unmatched.length === 1, 'near color stays unmatched');
+  assert(setStockCalls.length === 0, 'near color writes no stock');
+  assert(result.onSite && result.onSite[0].color === 'کرم' && result.onSite[0].size === 'فری سایز',
+    'near color still reports the site label');
+}
+
 async function main() {
   await testErpProductCodeAsSku();
   await testWholesaleSetStockChannel();
@@ -465,6 +496,7 @@ async function main() {
   await testIdempotencyReturnsCached();
   await testPartialMatchOkFalse();
   await testSpaceEqualsHalfSpace();
+  await testNearColorIsListedNotMatched();
   await testFailedMatchIsNotCached();
   console.log('erp-inventory.service.spec.ts: ok');
 }

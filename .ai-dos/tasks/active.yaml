@@ -1,5 +1,35 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261006-019"
+    title: "Show the site color matrix when ERP stock rows do not match"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261006-019"
+    roles:
+      architect: "cursor:implementer-TASK-20261006-019"
+      implementer: "cursor:implementer-TASK-20261006-019"
+      reviewer: "same-session"
+      security: "same-session-no-new-auth"
+    branch: "fix/TASK-20261006-019-stock-attention"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-06T13:20:00Z"
+    heartbeat_at: "2026-10-06T13:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/erp-inventory/erp-inventory.service.ts"
+      - "apps/api/src/modules/erp-inventory/erp-inventory.service.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-06-stock-sync-attention.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Unmatched matrix result lists the product color and size labels already on the site"
+      - "A missing product does not invent that list"
+      - "کرم does not match کرمی and no stock is written"
+      - "erp-inventory.service.spec.ts passes"
+    notes: |
+      ERP outbox freeze is fixed in crm-taranom, not here. This task only returns onSite.
   - id: "TASK-20261006-018"
     title: "Product create duplicate SKU must not 500 after a slug change"
     status: "in_progress"
