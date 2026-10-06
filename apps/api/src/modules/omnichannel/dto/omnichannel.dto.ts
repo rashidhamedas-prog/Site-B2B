@@ -213,7 +213,7 @@ export class CreateTemplateDto {
   locale?: string;
 
   @IsString()
-  @MaxLength(8000)
+  @MaxLength(16000)
   body: string;
 
   @IsOptional()
@@ -230,7 +230,7 @@ export class CreateTemplateDto {
 export class PatchTemplateDto {
   @IsOptional()
   @IsString()
-  @MaxLength(8000)
+  @MaxLength(16000)
   body?: string;
 
   @IsOptional()

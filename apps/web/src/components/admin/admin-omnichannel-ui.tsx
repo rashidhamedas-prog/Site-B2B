@@ -165,6 +165,7 @@ export type Template = {
   version: number;
   enabled?: boolean;
   body?: string;
+  updatedAt?: string;
 };
 
 export type Publication = {

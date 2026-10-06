@@ -170,6 +170,9 @@ export function AdminOmnichannel() {
   const [destName, setDestName] = useState('');
   const [discovered, setDiscovered] = useState<{ connectionId: string; chats: DiscoveredChat[]; error?: string | null } | null>(null);
   const [tplChannel, setTplChannel] = useState<Channel>('RETAIL');
+  const [tplDirty, setTplDirty] = useState(false);
+  const [tplSaveError, setTplSaveError] = useState('');
+  const onTplDirty = useCallback((dirty: boolean) => { setTplDirty(dirty); }, []);
   const [previewProvider, setPreviewProvider] = useState<Provider>('TELEGRAM');
 
   const [rules, setRules] = useState<RulesDraft>(() => rulesFromStatus(null));
@@ -803,14 +806,28 @@ export function AdminOmnichannel() {
         channel={tplChannel}
         template={tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl}
         saving={busy === 'tpl-save'}
+        saveError={tplSaveError}
+        onDirtyChange={onTplDirty}
         providers={providerInfos}
         activeProviders={activeProviders.length ? activeProviders : ['TELEGRAM']}
         onSave={async (body) => {
-          await run('tpl-save', async () => {
+          setError('');
+          setNotice('');
+          setTplSaveError('');
+          setBusy('tpl-save');
+          try {
             const existing = tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl;
             if (existing) await apiClient.patch(`/omnichannel/templates/${existing.id}`, { body });
             else await apiClient.post('/omnichannel/templates', { provider: MASTER_TEMPLATE_PROVIDER, channel: tplChannel, eventType: PRODUCT_TEMPLATE_EVENT, body });
-          }, 'خطا در ذخیره قالب', `قالب ${channelLabel(tplChannel)} ذخیره شد؛ پست‌های بعدی در همه پیام‌رسان‌ها با همین شکل می‌روند`);
+            await load();
+            setNotice(`قالب ${channelLabel(tplChannel)} ذخیره شد؛ پست‌های بعدی در همه پیام‌رسان‌ها با همین شکل می‌روند`);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'خطا در ذخیره قالب';
+            setError(message);
+            setTplSaveError(message);
+          } finally {
+            setBusy('');
+          }
         }}
       />
     </Section>
@@ -1259,18 +1276,19 @@ export function AdminOmnichannel() {
         ))}
       </div>
 
+      {view === 'setup' && <Stepper steps={steps} current={currentStep} onSelect={setStep} />}
+      <div hidden={!(view === 'setup' && currentStep === 'template')}>{templatePanel}</div>
       {view === 'setup' && (
         <>
-          <Stepper steps={steps} current={currentStep} onSelect={setStep} />
           {currentStep === 'bot' && botPanel}
           {currentStep === 'channels' && channelsPanel}
-          {currentStep === 'template' && templatePanel}
           {currentStep === 'rules' && rulesPanel}
           {currentStep === 'activate' && activatePanel}
           <div className="flex justify-between">
             <button type="button" className="btn btn-secondary btn-sm" disabled={currentStep === 'bot'} onClick={() => setStep(steps[Math.max(0, steps.findIndex((row) => row.id === currentStep) - 1)].id)}>مرحله قبل</button>
-            <button type="button" className="btn btn-secondary btn-sm" disabled={currentStep === 'activate'} onClick={() => setStep(steps[Math.min(steps.length - 1, steps.findIndex((row) => row.id === currentStep) + 1)].id)}>مرحله بعد</button>
+            <button type="button" className="btn btn-secondary btn-sm" title={currentStep === 'template' && tplDirty ? 'اول قالب را ذخیره کنید' : undefined} disabled={currentStep === 'activate' || (currentStep === 'template' && tplDirty)} onClick={() => setStep(steps[Math.min(steps.length - 1, steps.findIndex((row) => row.id === currentStep) + 1)].id)}>مرحله بعد</button>
           </div>
+          {currentStep === 'template' && tplDirty && <p className="text-xs text-amber-700 text-end">تغییرات قالب هنوز روی سرور نیست. «ذخیره قالب» را بزنید، بعد به مرحله بعد بروید.</p>}
         </>
       )}
       {view === 'publish' && publishView}

@@ -77,6 +77,7 @@ import {
   renderPublicationLayout,
   renderUnavailableNotice,
   sizesLine,
+  storedProductTemplateBody,
   stringifyTemplateLayout,
   type PublicationVars,
   type RenderedPublication,
@@ -138,6 +139,14 @@ function tokenInputError(code: string): never {
  * because that is where the layouts were born; per-provider overrides are a later phase.
  */
 export const MASTER_TEMPLATE_PROVIDER = 'TELEGRAM';
+
+function productTemplateBodyOrThrow(channel: string, raw: string): string {
+  try {
+    return storedProductTemplateBody(channel, raw);
+  } catch (err) {
+    throw new BadRequestException(err instanceof Error ? err.message : 'قالب نامعتبر است');
+  }
+}
 
 @Injectable()
 export class OmnichannelService {
@@ -575,9 +584,7 @@ export class OmnichannelService {
     if (exists) throw new ConflictException('قالب تکراری است');
     const incoming = String(dto.body || '').trim();
     const productEvent = dto.eventType === 'product.published';
-    const body = productEvent && isLegacyProductTemplate(incoming)
-      ? stringifyTemplateLayout(defaultLayoutFor(dto.channel))
-      : incoming || (productEvent ? stringifyTemplateLayout(defaultLayoutFor(dto.channel)) : incoming);
+    const body = productEvent ? productTemplateBodyOrThrow(dto.channel, incoming) : incoming;
     return this.templates.save(
       this.templates.create({
         provider: dto.provider,
@@ -596,8 +603,8 @@ export class OmnichannelService {
     const row = await this.templates.findOne({ where: { id } });
     if (!row) throw new NotFoundException('قالب یافت نشد');
     if (dto.body !== undefined) {
-      row.body = row.eventType === 'product.published' && isLegacyProductTemplate(dto.body)
-        ? stringifyTemplateLayout(defaultLayoutFor(row.channel))
+      row.body = row.eventType === 'product.published'
+        ? productTemplateBodyOrThrow(row.channel, dto.body)
         : dto.body;
     }
     if (dto.enabled !== undefined) row.enabled = dto.enabled;

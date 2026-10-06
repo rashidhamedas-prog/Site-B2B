@@ -9,13 +9,20 @@ export function isAllowedSecretRef(name: string): boolean {
   return ALLOWED_SECRET_REF.test(String(name || '').trim());
 }
 
+/**
+ * Credential *shapes* only. A bare word like "token" is not a secret: the product
+ * layout uses `token` as a placeholder slot (`name`, `price`, …). GitHub secret
+ * scanning (2026) treats generic keyword hits as high-false-positive and keeps
+ * provider patterns (prefix + structure) as the trusted signal. Field names
+ * token/secret/password are still rejected by `isForbiddenSecretKey`.
+ */
 export function looksLikeSecretValue(value: string): boolean {
   const v = value.trim();
   if (v.length < 8) return false;
   if (/^SECRET_REF:/i.test(v)) return false;
   if (isAllowedSecretRef(v)) return false;
   if (TELEGRAM_TOKEN_SHAPE.test(v)) return true;
-  return /^(bot\d+:|sk-|ghp_|xox[baprs]-)/i.test(v) || /token|secret|password/i.test(v);
+  return /^(bot\d+:|sk-|ghp_|xox[baprs]-)/i.test(v);
 }
 
 function isForbiddenSecretKey(key: string): boolean {

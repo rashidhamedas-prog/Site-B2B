@@ -2,6 +2,7 @@
  * npx ts-node --transpile-only src/modules/omnichannel/omnichannel-secrets.spec.ts
  */
 import { assertNoPlaintextSecrets, isAllowedSecretRef, toPublicConnection, toPublicDestination } from './omnichannel-secrets';
+import { defaultRetailLayout, defaultWholesaleLayout } from './publication-template';
 import { resolveTelegramToken, TelegramAdapter } from './adapters/telegram.adapter';
 import { BaleAdapter } from './adapters/bale.adapter';
 import { RubikaAdapter } from './adapters/rubika.adapter';
@@ -57,6 +58,24 @@ try {
   threw = true;
 }
 assert(threw, 'api_key key rejected');
+
+assertNoPlaintextSecrets({ body: JSON.stringify(defaultRetailLayout()) });
+assertNoPlaintextSecrets({ body: JSON.stringify(defaultWholesaleLayout()) });
+assertNoPlaintextSecrets({
+  body: JSON.stringify({
+    v: 1,
+    blocks: [{ id: 't1', type: 'title', enabled: false, emoji: '🌿', token: 'name' }],
+  }),
+});
+assertNoPlaintextSecrets({ note: 'placeholder token name is not a credential' });
+
+threw = false;
+try {
+  assertNoPlaintextSecrets({ note: 'see 7123456789:AAHrealTelegramTokenValueXX now' });
+} catch {
+  threw = true;
+}
+assert(threw, 'telegram token embedded in text is rejected');
 
 const publicDest = toPublicDestination({
   id: 'd1',

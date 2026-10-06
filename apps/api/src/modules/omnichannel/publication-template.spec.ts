@@ -14,6 +14,7 @@ import {
   renderPublicationLayout,
   sanitizePhotoUrls,
   sizesLine,
+  storedProductTemplateBody,
 } from './publication-template';
 
 function assert(cond: boolean, msg: string) {
@@ -108,6 +109,26 @@ assert(sanitizePhotoUrls('RETAIL', ['/uploads/a.jpg'], 0).length === 0, 'photos 
     'RETAIL',
   );
   assert(customRaw.options.parseMode === 'PLAIN', 'hand-written raw template stays PLAIN so its angle brackets are literal');
+}
+
+{
+  const layout = defaultRetailLayout();
+  layout.blocks = layout.blocks.map((row) => (row.type === 'photos' ? { ...row, enabled: false } : row));
+  const stored = storedProductTemplateBody('RETAIL', JSON.stringify(layout));
+  const again = parseTemplateLayout(stored, 'RETAIL');
+  const photos = again.blocks.find((row) => row.type === 'photos');
+  assert(photos?.type === 'photos' && photos.enabled === false, 'disabled photos survive a save roundtrip');
+  assert(!isLegacyProductTemplate(stored), 'saved layout is not rewritten as legacy on the next read');
+  assert(stored.length < 16000 && storedProductTemplateBody('WHOLESALE', JSON.stringify(defaultWholesaleLayout())).length < 16000, 'channel layouts fit the template body cap');
+  let missingTitle = false;
+  try {
+    const stripped = defaultRetailLayout();
+    stripped.blocks = stripped.blocks.filter((row) => row.type !== 'title');
+    storedProductTemplateBody('RETAIL', JSON.stringify(stripped));
+  } catch {
+    missingTitle = true;
+  }
+  assert(missingTitle, 'a product template without a title is rejected');
 }
 
 console.log('publication-template.spec.ts: ok');

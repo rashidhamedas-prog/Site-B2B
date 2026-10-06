@@ -10,6 +10,7 @@ import {
   Toggle,
   faNumber,
   platformRendered,
+  relativeTime,
   providerLabel,
   providerLimits,
   type Channel,
@@ -300,6 +301,8 @@ export function AdminTelegramTemplateBuilder({
   template,
   saving,
   onSave,
+  saveError = '',
+  onDirtyChange,
   providers = [],
   activeProviders = ['TELEGRAM'],
 }: {
@@ -307,6 +310,8 @@ export function AdminTelegramTemplateBuilder({
   template: Template | undefined;
   saving: boolean;
   onSave: (body: string) => Promise<void>;
+  saveError?: string;
+  onDirtyChange?: (dirty: boolean) => void;
   /** Capability matrix from `/omnichannel/status`; drives the per-platform preview. */
   providers?: ProviderInfo[];
   /** Platforms with at least one bot connected (others render dimmed in the switch). */
@@ -328,6 +333,7 @@ export function AdminTelegramTemplateBuilder({
   const sample = SAMPLE[channel];
   const rendered = useMemo(() => renderSample(layout, sample), [layout, sample]);
   const dirty = JSON.stringify(layout) !== savedJson;
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
   const hasTitle = layout.blocks.some((row) => row.type === 'title' && row.enabled);
   const legacy = isLegacy(template?.body);
   const textLen = visibleLength(rendered.text || '');
@@ -391,12 +397,13 @@ export function AdminTelegramTemplateBuilder({
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => setLayout(defaults(channel))}>
           بازگشت به قالب پیشنهادی
         </button>
-        {dirty ? <Badge tone="warn">تغییرات ذخیره نشده</Badge> : legacy ? <Badge tone="warn">قالب قدیمی روی سرور</Badge> : <Badge tone="ok">ذخیره‌شده · نسخه {faNumber(template?.version || 1)}</Badge>}
+        {dirty ? <Badge tone="warn">تغییرات ذخیره نشده</Badge> : legacy ? <Badge tone="warn">قالب قدیمی روی سرور</Badge> : <Badge tone="ok">ذخیره‌شده · {relativeTime(template?.updatedAt)}</Badge>}
         <span className={`text-xs ${overflow ? 'text-red-600' : textLen > limit * 0.85 ? 'text-amber-700' : 'text-gray-500'}`}>
           طول متن نمونه {faNumber(textLen)} از {faNumber(limit)}
         </span>
       </div>
 
+      {saveError && <Callout tone="danger">{saveError}</Callout>}
       {!hasTitle && <Callout tone="warn">عنوان خاموش است؛ بدون نام محصول پست معنی ندارد. یکی از بلوک‌های «عنوان» را روشن کنید.</Callout>}
       {overflow && (
         <Callout tone="warn">

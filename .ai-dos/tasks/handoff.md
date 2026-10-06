@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-07T22:40:00Z — TASK-20261007-001 omnichannel template save
+
+- Owner: cursor:implementer-TASK-20261007-001
+- Depth: full. Slack search for قالب/انتشار and omnichannel returned no messages.
+- Root cause, proven by the spec before the fix: `assertNoPlaintextSecrets` rejected every product-template JSON because `/token|secret|password/i` matches the placeholder key `token`. Response is 400 `مقدار محرمانه در بدنه مجاز نیست`. The page-level error sits above the wizard, so the template card looks unchanged. Leaving the step unmounted the editor.
+- Fix: credential shapes only (Telegram token, `bot\d+:`, `sk-`, `ghp_`, `xox`). Forbidden field names still reject. `storedProductTemplateBody` is the write document; a disabled photos block roundtrips and is not legacy. Body cap 16000. Inline save error. Editor stays mounted. Next step stays disabled while dirty.
+- Specs: `omnichannel-secrets.spec.ts` ok, `publication-template.spec.ts` ok. Web `tsc --noEmit` ok. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
+- Security (same session): keyword substring removed; provider-shaped secrets and secret field names still rejected. Connectors were not enabled.
+- Reclaimed stale `omnichannel-secrets.ts` from TASK-20260826-001 (heartbeat 2026-09-02T23:55:00Z).
+- Live admin walkthrough follows deploy.
+
 ## 2026-10-06T15:25:00Z — TASK-20261006-020 product upload and partner in-stock catalog
 
 - Owner: cursor:implementer-TASK-20261006-020

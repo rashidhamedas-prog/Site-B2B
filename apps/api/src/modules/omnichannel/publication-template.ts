@@ -328,6 +328,15 @@ export function stringifyTemplateLayout(layout: TemplateLayout): string {
   return JSON.stringify({ v: 1, blocks: layout.blocks, options: parseTemplateOptions(layout.options) });
 }
 
+/** Canonical product-template document. Legacy one-liners upgrade to the channel default. */
+export function storedProductTemplateBody(channel: string, raw: string): string {
+  const layout = parseTemplateLayout(raw, channel);
+  if (!layout.blocks.some((row) => row.type === 'title' && row.enabled)) {
+    throw new Error('عنوان پست باید روشن باشد');
+  }
+  return stringifyTemplateLayout(layout);
+}
+
 export function publicProductPhotoUrl(channel: 'RETAIL' | 'WHOLESALE', raw: string): string | null {
   const trimmed = String(raw || '').trim();
   if (!trimmed || trimmed.length > 500) return null;

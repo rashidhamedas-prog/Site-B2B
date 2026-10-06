@@ -1,5 +1,43 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261007-001"
+    title: "Omnichannel template save persists the edited layout"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261007-001"
+    roles:
+      architect: "cursor:implementer-TASK-20261007-001"
+      implementer: "cursor:implementer-TASK-20261007-001"
+      reviewer: "same-session"
+      security: "same-session-secret-scan"
+    branch: "fix/TASK-20261007-001-omnichannel-template-save"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-06T22:10:00Z"
+    heartbeat_at: "2026-10-06T22:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
+      - "apps/api/src/modules/omnichannel/publication-template.ts"
+      - "apps/api/src/modules/omnichannel/publication-template.spec.ts"
+      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
+      - "apps/web/src/components/admin/AdminTelegramTemplateBuilder.tsx"
+      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      - "apps/web/src/components/admin/admin-omnichannel-ui.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-07-omnichannel-template-save.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "A product layout JSON that contains the placeholder key token is stored, including a disabled block"
+      - "A real Telegram token shape and a field named token are still rejected"
+      - "omnichannel-secrets.spec.ts and publication-template.spec.ts pass"
+      - "The template step shows a save failure beside the save button and keeps unsaved edits when the wizard step changes"
+    notes: |
+      Reclaimed omnichannel-secrets.ts and its spec from TASK-20260826-001
+      (heartbeat 2026-09-02T23:55:00Z, stale). Governance files are append-only.
   - id: "TASK-20261006-020"
     title: "Product image upload and in-stock sales-partner catalog"
     status: "done"
@@ -5317,8 +5355,9 @@ tasks:
       # "apps/api/src/modules/omnichannel/omnichannel.module.ts"
       # transferred 2026-09-08 to TASK-20260908-002 (stale hb 2026-09-02; marketing outbox types):
       # "apps/api/src/modules/omnichannel/omnichannel.constants.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
+      # reclaimed 2026-10-07 by TASK-20261007-001 (stale hb 2026-09-02; template save secret false positive):
+      # "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
+      # "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
       # transferred 2026-09-06 to TASK-20260905-003 (stale hb 2026-09-02; admin console v2 replaces fixed <thead> count):
       # "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
       # transferred 2026-09-05 to TASK-20260905-003 (stale hb 2026-09-02; channel-style templates):
