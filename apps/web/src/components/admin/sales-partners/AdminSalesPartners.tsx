@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ClipboardList,
   LayoutDashboard,
+  Megaphone,
   Package,
   Percent,
   ScrollText,
@@ -37,6 +38,7 @@ import {
   payoutIdempotencyKey,
 } from './sp-admin-ops';
 import { SpCommissionRules } from './SpCommissionRules';
+import { SpNoticeDesk } from './SpNoticeDesk';
 import type {
   ApplicationDetail,
   ApplicationRow,
@@ -511,6 +513,7 @@ export function AdminSalesPartners() {
 
   const tabs: { id: Tab; label: string; icon: typeof Package }[] = [
     { id: 'dashboard', label: 'داشبورد', icon: LayoutDashboard },
+    { id: 'notices', label: 'اطلاع‌رسانی', icon: Megaphone },
     { id: 'applications', label: 'درخواست‌ها', icon: ClipboardList },
     { id: 'partners', label: 'همکاران', icon: Users },
     { id: 'orders', label: 'سفارش‌ها', icon: ShoppingBag },
@@ -616,6 +619,8 @@ export function AdminSalesPartners() {
           در حال بارگذاری…
         </p>
       ) : null}
+
+      {tab === 'notices' && <SpNoticeDesk />}
 
       {tab === 'dashboard' && (
         <SpAdminDashboard

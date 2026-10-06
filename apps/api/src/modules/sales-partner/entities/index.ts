@@ -9,3 +9,5 @@ export { SalesCommissionSnapshotEntity } from './sales-commission-snapshot.entit
 export { SalesCommissionLedgerEntryEntity } from './sales-commission-ledger-entry.entity';
 export { SalesPartnerPayoutEntity } from './sales-partner-payout.entity';
 export { SalesPartnerPayoutItemEntity } from './sales-partner-payout-item.entity';
+export { SalesPartnerNoticeEntity } from './sales-partner-notice.entity';
+export { SalesPartnerNoticeReceiptEntity } from './sales-partner-notice-receipt.entity';

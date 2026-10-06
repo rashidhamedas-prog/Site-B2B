@@ -18,6 +18,8 @@ import {
   PreviewSalesCommissionDto,
   SetSalesPartnerEligibilityDto,
 } from './dto/sales-partner-catalog.dto';
+import { PublishSalesPartnerNoticeDto } from './dto/sales-partner-notice.dto';
+import { SalesPartnerNoticeService } from './sales-partner-notice.service';
 
 @ApiTags('sales-partners-admin')
 @ApiBearerAuth()
@@ -32,7 +34,26 @@ export class SalesPartnerAdminController {
     private readonly payouts: SalesPartnerPayoutService,
     private readonly ledger: SalesPartnerLedgerService,
     private readonly drafts: SalesPartnerDraftService,
+    private readonly notices: SalesPartnerNoticeService,
   ) {}
+
+  @Get('notices')
+  listNotices() {
+    return this.notices.listAdmin();
+  }
+
+  @Post('notices')
+  publishNotice(
+    @Body() body: PublishSalesPartnerNoticeDto,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.notices.publish(req.user?.sub || req.user?.id || '', body);
+  }
+
+  @Post('notices/:id/archive')
+  archiveNotice(@Param('id') id: string) {
+    return this.notices.archive(id);
+  }
 
   @Get('settings/public')
   settings() {

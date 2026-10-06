@@ -14,6 +14,11 @@ import {
 import { clearToken } from '@/lib/auth';
 import { cn } from '@/lib/cn';
 import { SpToastProvider, spFocusClass } from './SpUi';
+import {
+  SalesPartnerNoticeBanner,
+  SalesPartnerNoticeBell,
+  SalesPartnerNoticeProvider,
+} from './SalesPartnerNotices';
 
 const NAV = [
   { href: '/sales-partners', label: 'خانه', key: 'home', icon: Home },
@@ -27,6 +32,7 @@ const ACCOUNT = [
   { href: '/sales-partners/commissions', label: 'پورسانت' },
   { href: '/sales-partners/payouts', label: 'تسویه' },
   { href: '/sales-partners/guide', label: 'آموزش' },
+  { href: '/sales-partners/notices', label: 'اطلاعیه‌ها' },
 ];
 
 function navKey(pathname: string): (typeof NAV)[number]['key'] | 'account' | null {
@@ -39,6 +45,7 @@ function navKey(pathname: string): (typeof NAV)[number]['key'] | 'account' | nul
     || pathname.startsWith('/sales-partners/commissions')
     || pathname.startsWith('/sales-partners/payouts')
     || pathname.startsWith('/sales-partners/guide')
+    || pathname.startsWith('/sales-partners/notices')
   ) {
     return 'account';
   }
@@ -65,6 +72,7 @@ export function SalesPartnerShell({
 
   return (
     <SpToastProvider>
+      <SalesPartnerNoticeProvider>
       <div className="min-h-screen bg-[#f6f3ee] text-stone-900" dir="rtl">
         <div className="mx-auto flex min-h-screen max-w-6xl">
           <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-l border-stone-200 bg-white px-3 py-6 lg:flex">
@@ -127,7 +135,9 @@ export function SalesPartnerShell({
                 <p className="text-[11px] font-medium tracking-wide text-[#1B5C4A] lg:hidden">ترنم · همکار بازاریاب</p>
                 <h1 className="truncate text-2xl font-semibold leading-8">{title}</h1>
               </div>
-              <div className="flex shrink-0 items-center gap-1 lg:hidden">
+              <div className="flex shrink-0 items-center gap-1">
+                <SalesPartnerNoticeBell />
+                <div className="flex items-center gap-1 lg:hidden">
                 <Link
                   href="/sales-partners/profile"
                   className={cn(
@@ -145,8 +155,10 @@ export function SalesPartnerShell({
                 >
                   خروج
                 </button>
+                </div>
               </div>
             </header>
+            <SalesPartnerNoticeBanner />
             {current === 'account' && (
               <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="بخش‌های حساب">
                 {ACCOUNT.map((item) => {
@@ -208,6 +220,7 @@ export function SalesPartnerShell({
           </ul>
         </nav>
       </div>
+      </SalesPartnerNoticeProvider>
     </SpToastProvider>
   );
 }

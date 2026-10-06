@@ -171,4 +171,5 @@ export type Tab =
   | 'rules'
   | 'payouts'
   | 'settings'
-  | 'reports';
+  | 'reports'
+  | 'notices';

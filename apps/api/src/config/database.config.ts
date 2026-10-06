@@ -27,6 +27,8 @@ import {
   SalesPartnerPayoutItemEntity,
   SalesPartnerProductEligibilityEntity,
   SalesPartnerProfileEntity,
+  SalesPartnerNoticeEntity,
+  SalesPartnerNoticeReceiptEntity,
 } from '../modules/sales-partner/entities';
 import { WholesaleReferralPartnerEntity } from '../modules/wholesale-referral/entities/wholesale-referral-partner.entity';
 import { WholesaleReferralIntroductionEntity } from '../modules/wholesale-referral/entities/wholesale-referral-introduction.entity';
@@ -108,6 +110,7 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     SalesPartnerAuditEventEntity, SalesCommissionRuleEntity, SalesPartnerProductEligibilityEntity,
     SalesPartnerOrderDraftEntity, SalesPartnerOrderDraftItemEntity, SalesCommissionSnapshotEntity,
     SalesCommissionLedgerEntryEntity, SalesPartnerPayoutEntity, SalesPartnerPayoutItemEntity,
+    SalesPartnerNoticeEntity, SalesPartnerNoticeReceiptEntity,
     WholesaleReferralPartnerEntity, WholesaleReferralIntroductionEntity, WholesaleReferralEventEntity,
     WholesaleReferralLedgerEntryEntity, WholesaleReferralDisputeEntity, WholesaleReferralAuditEntity,
     WholesaleReferralTermsAcceptanceEntity, WholesaleReferralClickEntity,

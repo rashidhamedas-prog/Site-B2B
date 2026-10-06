@@ -12,6 +12,7 @@ import { SalesPartnerService } from './sales-partner.service';
 import { CreateSalesPartnerDraftDto, PatchSalesPartnerDraftDto } from './dto/sales-partner-draft.dto';
 import { PatchSalesPartnerIbanDto } from './dto/sales-partner-payout.dto';
 import { SalesPartnerSetPasswordDto } from './dto/apply-sales-partner.dto';
+import { SalesPartnerNoticeService } from './sales-partner-notice.service';
 
 @ApiTags('sales-partners')
 @ApiBearerAuth()
@@ -25,7 +26,29 @@ export class SalesPartnerMeController {
     private readonly ledger: SalesPartnerLedgerService,
     private readonly payoutsSvc: SalesPartnerPayoutService,
     private readonly salesPartners: SalesPartnerService,
+    private readonly notices: SalesPartnerNoticeService,
   ) {}
+
+  @Get('notices')
+  noticesFeed(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+    return this.notices.feed(this.requirePartner(req));
+  }
+
+  @Post('notices/:id/seen')
+  noticeSeen(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Param('id') id: string,
+  ) {
+    return this.notices.markSeen(this.requirePartner(req), id);
+  }
+
+  @Post('notices/:id/dismiss')
+  noticeDismiss(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Param('id') id: string,
+  ) {
+    return this.notices.dismiss(this.requirePartner(req), id);
+  }
 
   @Get('catalog')
   catalogList(

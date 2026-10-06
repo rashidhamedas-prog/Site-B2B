@@ -24,6 +24,8 @@ import {
   SalesPartnerPayoutItemEntity,
   SalesPartnerProductEligibilityEntity,
   SalesPartnerProfileEntity,
+  SalesPartnerNoticeEntity,
+  SalesPartnerNoticeReceiptEntity,
 } from './entities';
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
@@ -36,6 +38,7 @@ import { SalesPartnerAuthController } from './sales-partner-auth.controller';
 import { SalesPartnerMeController } from './sales-partner-me.controller';
 import { SalesPartnerAdminController } from './sales-partner-admin.controller';
 import { SalesPartnerConfirmationController } from './sales-partner-confirmation.controller';
+import { SalesPartnerNoticeService } from './sales-partner-notice.service';
 
 const ENTITIES = [
   SalesPartnerProfileEntity,
@@ -49,6 +52,8 @@ const ENTITIES = [
   SalesCommissionLedgerEntryEntity,
   SalesPartnerPayoutEntity,
   SalesPartnerPayoutItemEntity,
+  SalesPartnerNoticeEntity,
+  SalesPartnerNoticeReceiptEntity,
 ];
 
 @Module({
@@ -83,6 +88,7 @@ const ENTITIES = [
     SalesPartnerLedgerService,
     SalesPartnerLedgerJobs,
     SalesPartnerPayoutService,
+    SalesPartnerNoticeService,
   ],
   exports: [
     SalesPartnerService,
