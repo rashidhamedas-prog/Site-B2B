@@ -25,6 +25,7 @@ type Category = {
   introText?: string | null;
   bottomContent?: string | null;
   isIndexable?: boolean;
+  showOnHome?: boolean;
   sortOrder?: number;
   faqItems?: FaqItem[] | null;
   wholesaleH1?: string | null;
@@ -189,6 +190,7 @@ export function AdminCategories() {
         introText: c.introText?.trim() || null,
         bottomContent: c.bottomContent?.trim() || null,
         isIndexable: c.isIndexable !== false,
+        showOnHome: c.showOnHome !== false,
         sortOrder: Number.isFinite(Number(c.sortOrder)) ? Number(c.sortOrder) : 0,
         faqItems: cleanFaq(c.faqItems),
         wholesaleH1: c.wholesaleH1?.trim() || null,
@@ -239,7 +241,7 @@ export function AdminCategories() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">دسته‌بندی‌ها</h1>
           <p className="text-sm text-gray-500 mt-1">
-            مدیریت دسته‌بندی‌ها، سئوی تکی/عمده، فرمول SKU، و بنر مربعی ۱:۱ برای صفحه اصلی تکی.
+            مدیریت دسته‌بندی‌ها، سئوی تکی/عمده، فرمول SKU، بنر مربعی ۱:۱، و نمایش اختیاری در شبکهٔ صفحه اول تکی.
             نام فارسی همان برچسب ویترین است؛ انگلیسی را در فیلد انگلیسی بگذارید.
           </p>
         </div>
@@ -451,6 +453,14 @@ export function AdminCategories() {
                   ) : null}
 
                   <div className="flex flex-wrap items-center gap-2">
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={c.showOnHome !== false}
+                        onChange={(e) => patchItem(c.id, { showOnHome: e.target.checked })}
+                      />
+                      نمایش در صفحه اول
+                    </label>
                     <label className="inline-flex items-center gap-2 text-sm text-gray-700">
                       <input
                         type="checkbox"

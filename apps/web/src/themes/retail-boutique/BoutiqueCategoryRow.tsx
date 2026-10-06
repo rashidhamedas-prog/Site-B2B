@@ -9,6 +9,7 @@ type Category = {
   nameEn?: string | null;
   slug?: string | null;
   bannerUrl?: string | null;
+  showOnHome?: boolean | null;
 };
 
 const FALLBACKS = [
@@ -30,7 +31,7 @@ async function fetchCategories(): Promise<Category[]> {
     const res = await fetch(`${base}/categories`, catalogFetchInit());
     if (!res.ok) return [];
     const all = (await res.json()) as Category[];
-    return merchandiseCategories(Array.isArray(all) ? all : [], { maxItems: 8 });
+    return merchandiseCategories(Array.isArray(all) ? all : [], { maxItems: 8, homeOnly: true });
   } catch {
     return [];
   }

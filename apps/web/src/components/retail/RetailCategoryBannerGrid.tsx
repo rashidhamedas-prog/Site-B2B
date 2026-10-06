@@ -13,6 +13,7 @@ type Category = {
   nameEn?: string | null;
   slug?: string | null;
   bannerUrl?: string | null;
+  showOnHome?: boolean | null;
 };
 
 /** Map skuPrefix / name keywords → curated luxury plates (no Persian text burned in). */
@@ -71,7 +72,7 @@ async function fetchCategories(
     if (!res.ok) return [];
     const all = (await res.json()) as Category[];
     const list = Array.isArray(all) ? all : [];
-    return merchandiseCategories(list, { categoryIds, maxItems });
+    return merchandiseCategories(list, { categoryIds, maxItems, homeOnly: true });
   } catch {
     return [];
   }

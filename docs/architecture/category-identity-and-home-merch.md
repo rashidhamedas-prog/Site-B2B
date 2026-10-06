@@ -51,6 +51,7 @@ Home/category fetches used `{ next: { revalidate: 300 } }` **without** `tags: ['
 | D6 Label | Storefront prints `name` (fallback `nameEn`). No token splitting. | What the operator saved is what shoppers see. |
 | D7 Cache | Public category fetches use `tags: ['catalog']` and `revalidate: 60`. Category CUD calls existing `/admin/cms/revalidate` for RETAIL+WHOLESALE `home` (already includes tag `catalog`). | Same invalidation path as CMS; no new service. |
 | D8 Slug on rename | Do not auto-rewrite slug when only `name` changes. | Existing `/category/{slug}` URLs stay stable; operator can edit slug and get the existing 301. |
+| D9 Home visibility | `showOnHome` boolean (default `true`) filters **only** home merchandising (`homeOnly: true` in `merchandiseCategories`). | Menus, mega-nav, category pages, sitemap (`isIndexable`/`status`), and product filters stay unchanged. |
 
 ### Non-goals
 
@@ -58,6 +59,7 @@ Home/category fetches used `{ next: { revalidate: 300 } }` **without** `tags: ['
 - Website builder / extra CMS block types.
 - Auto-translating leftover mixed names (`blouses شومیز`) in a data migration (operator can clean them once unique-on-tombstone is gone).
 - Raising home product grids; this cap is **category cards** only.
+- Using `status: HIDDEN` or `isIndexable` to hide a tile from the home grid (those are lifecycle / SEO, not merchandising).
 
 ## 4. Trust / rollback
 

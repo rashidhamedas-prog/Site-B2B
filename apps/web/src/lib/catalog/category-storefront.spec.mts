@@ -40,6 +40,44 @@ const pinned = merchandiseCategories(newestFirst, {
 });
 assert(pinned.map((x) => x.id).join(',') === 'a,c,b', 'pins first then remaining API order');
 
+const homeMix = [
+  { id: 'a', name: 'شومیز', showOnHome: true },
+  { id: 'b', name: 'Autumn', showOnHome: false },
+  { id: 'c', name: 'کت', showOnHome: undefined },
+];
+assert(
+  merchandiseCategories(homeMix, { homeOnly: true, maxItems: 16 })
+    .map((x) => x.id)
+    .join(',') === 'a,c',
+  'homeOnly drops showOnHome=false and keeps undefined as visible',
+);
+assert(
+  merchandiseCategories(homeMix, { maxItems: 16 }).map((x) => x.id).join(',') === 'a,b,c',
+  'nav/path without homeOnly must keep every ACTIVE category',
+);
+assert(
+  merchandiseCategories(homeMix, { homeOnly: true, categoryIds: 'b,a', maxItems: 16 })
+    .map((x) => x.id)
+    .join(',') === 'a,c',
+  'CMS pin cannot force a home-hidden category onto the home grid',
+);
+
+const gridSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../components/retail/RetailCategoryBannerGrid.tsx'),
+  'utf8',
+);
+assert(gridSrc.includes('homeOnly: true'), 'luxury home grid filters showOnHome');
+const boutiqueSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../themes/retail-boutique/BoutiqueCategoryRow.tsx'),
+  'utf8',
+);
+assert(boutiqueSrc.includes('homeOnly: true'), 'boutique home row filters showOnHome');
+const layoutSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../app/retail/layout.tsx'),
+  'utf8',
+);
+assert(!layoutSrc.includes('homeOnly'), 'mega-nav must not use homeOnly');
+
 const renderer = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '../../components/cms/RetailBlocksRenderer.tsx'),
   'utf8',

@@ -1,5 +1,6 @@
 # Project Status
 
+- In progress: 2026-10-07 — **TASK-20261007-002** category `showOnHome` for retail home grid only. Admin checkbox + expand-only migration. Menus/SEO untouched. Specs next.
 - In progress: 2026-10-07 — **TASK-20261007-001** omnichannel template save. Product-layout JSON was rejected because the placeholder key `token` tripped the secret scan. Specs passed. Web tsc clean. Live wizard check follows deploy.
 - Last verified: 2026-10-06 — **TASK-20261006-020 LIVE** on `origin/master` `888383c`. API image has the 20MB multipart cap and partner `retailStock > 0`. Health 200. Empty galleries from today's creates were not backfilled. Logged-in upload click still open.
 - Last verified: 2026-10-06 — **TASK-20261006-019 LIVE** on `origin/master` `edab535`. Matrix misses return `onSite`. `siteVariantLabels` is in the API image. Health 200. Near colors stay unmatched.

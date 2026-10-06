@@ -66,6 +66,10 @@ export class CategoryEntity {
   @Column({ default: true })
   isIndexable: boolean;
 
+  /** Retail home category grid only — menus, SEO, and category pages ignore this. */
+  @Column({ default: true })
+  showOnHome: boolean;
+
   @Column({ type: 'int', default: 0 })
   sortOrder: number;
 

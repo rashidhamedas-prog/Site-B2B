@@ -1,5 +1,47 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261007-002"
+    title: "Category showOnHome toggle for retail home grid only"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261007-002"
+    roles:
+      architect: "cursor:implementer-TASK-20261007-002"
+      implementer: "cursor:implementer-TASK-20261007-002"
+      reviewer: "same-session"
+      security: "same-session-expand-only-ddl"
+    branch: "feat/TASK-20261007-002-category-show-on-home"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-06T22:35:00Z"
+    heartbeat_at: "2026-10-06T22:35:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/database/migrations/20261007-001-category-show-on-home.ts"
+      - "apps/api/src/database/migrations/20261007-001-category-show-on-home.spec.ts"
+      - "apps/api/src/modules/category/entities/category.entity.ts"
+      - "apps/api/src/modules/category/category.service.ts"
+      - "apps/web/src/lib/catalog/category-storefront.ts"
+      - "apps/web/src/lib/catalog/category-storefront.spec.mts"
+      - "apps/web/src/components/retail/RetailCategoryBannerGrid.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueCategoryRow.tsx"
+      - "apps/web/src/components/admin/AdminCategories.tsx"
+      - "docs/architecture/category-identity-and-home-merch.md"
+      - "docs/reports/2026-10-07-category-show-on-home.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Admin categories row has a showOnHome checkbox that PATCH-persists"
+      - "showOnHome=false removes the category from retail home grids only"
+      - "Mega-nav, category pages, sitemap, and public GET /categories list behavior for menus stay unchanged"
+      - "Migration adds showOnHome NOT NULL DEFAULT true; existing tiles stay visible"
+      - "category-storefront.spec.mts and migration spec pass"
+    notes: |
+      Reclaimed BoutiqueCategoryRow.tsx from TASK-20260906-001 (heartbeat
+      2026-09-06T09:40:00Z, stale). Reclaimed category.entity.ts from
+      TASK-20260817-001 (released earlier / stale claim). Do not filter
+      GET /categories globally — homeOnly flag on merchandiseCategories only.
   - id: "TASK-20261007-001"
     title: "Omnichannel template save persists the edited layout"
     status: "in_progress"
@@ -3941,7 +3983,8 @@ tasks:
       - "apps/web/src/themes/retail-boutique/BoutiqueFooter.tsx"
       # transferred 2026-09-07 to TASK-20260907-003:
       # "apps/web/src/themes/retail-boutique/BoutiqueHero.tsx"
-      - "apps/web/src/themes/retail-boutique/BoutiqueCategoryRow.tsx"
+      # transferred 2026-10-07 to TASK-20261007-002 (stale hb 2026-09-06; showOnHome homeOnly):
+      # "apps/web/src/themes/retail-boutique/BoutiqueCategoryRow.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueSaleRail.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueProductRail.tsx"
       # transferred 2026-09-06 to TASK-20260903-004 after ba254e merged; performance-only props:
@@ -6183,7 +6226,8 @@ tasks:
       # transferred 2026-08-31 to TASK-20260826-001 (stale >24h; cut stock dual-write): "apps/api/src/modules/product/product.service.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; optional JWT + inventory stock): "apps/api/src/modules/product/product.module.ts"
       - "apps/api/src/modules/product/product.controller.ts"
-      - "apps/api/src/modules/category/entities/category.entity.ts"
+      # transferred 2026-10-07 to TASK-20261007-002 (stale hb 2026-08-17; showOnHome):
+      # "apps/api/src/modules/category/entities/category.entity.ts"
       # transferred 2026-09-12 to TASK-20260912-002 (stale hb 2026-08-17; Persian name + nameEn slug):
       # "apps/api/src/modules/category/category.service.ts"
       - "apps/api/src/modules/category/category.controller.ts"

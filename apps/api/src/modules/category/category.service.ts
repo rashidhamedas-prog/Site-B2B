@@ -36,6 +36,7 @@ export type CategoryUpsert = {
   ogImage?: string | null;
   canonicalOverride?: string | null;
   isIndexable?: boolean;
+  showOnHome?: boolean;
   sortOrder?: number;
   status?: string;
   faqItems?: Array<{ question: string; answer: string }> | null;
@@ -139,6 +140,7 @@ export class CategoryService {
       ogImage: body.ogImage?.trim() || null,
       canonicalOverride: body.canonicalOverride?.trim() || null,
       isIndexable: body.isIndexable !== false,
+      showOnHome: body.showOnHome !== false,
       sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 0,
       status: body.status === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
       faqItems: body.faqItems ?? null,
@@ -190,6 +192,7 @@ export class CategoryService {
     assignText('wholesaleIntroText', body.wholesaleIntroText);
     assignText('wholesaleBottomContent', body.wholesaleBottomContent);
     if (body.isIndexable !== undefined) existing.isIndexable = !!body.isIndexable;
+    if (body.showOnHome !== undefined) existing.showOnHome = !!body.showOnHome;
     if (body.sortOrder !== undefined && Number.isFinite(Number(body.sortOrder))) {
       existing.sortOrder = Number(body.sortOrder);
     }

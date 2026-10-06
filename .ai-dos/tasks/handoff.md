@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-06T22:40:00Z — TASK-20261007-002 category showOnHome
+
+- Owner: cursor:implementer-TASK-20261007-002
+- Depth: full (skill-top + ECC: database-migrations, nestjs-patterns, tdd-workflow).
+- Decision D9: `showOnHome` is merchandising-only. Filter via `homeOnly` in `merchandiseCategories`; never on public `GET /categories` or nav.
+- Reclaimed `BoutiqueCategoryRow.tsx` from TASK-20260906-001 (hb 2026-09-06). Reclaimed `category.entity.ts` from TASK-20260817-001.
+- Files: migration + entity + service + AdminCategories + home grids + category-storefront + architecture D9.
+- Specs: migration spec OK; category-storefront.spec.mts OK (homeOnly boundaries + nav must not use homeOnly).
+- Deploy: after commit/push per auto-deploy.
+
 ## 2026-10-07T22:40:00Z — TASK-20261007-001 omnichannel template save
 
 - Owner: cursor:implementer-TASK-20261007-001
