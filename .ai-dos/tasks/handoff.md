@@ -10,7 +10,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Reclaimed `product.service.ts` from TASK-20261005-016. That claim's heartbeat was 2026-10-05T14:05Z and the file matched `origin/master` before this edit. Catalog-search claims were not otherwise edited.
 - `product-unique.spec.ts` OK. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
 - Verify pass: no must-fix for this 500. Logged-in admin create was not clicked here.
-- Next: commit, push `origin/master`, VPS auto-deploy, health.
+- Live on origin/master `0a3a428`. VPS auto-deploy finished at that revision. Local and `https://poshaktaranom.com/api/v1/health` are 200. API image `skuConflict` count is 3. Logged-in admin create was not clicked.
 
 ## 2026-10-06T09:30:00Z — TASK-20261006-017 about process stills
 

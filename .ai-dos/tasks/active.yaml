@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261006-018"
     title: "Product create duplicate SKU must not 500 after a slug change"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261006-018"
     roles:
@@ -15,7 +15,8 @@ tasks:
     claimed_at: "2026-10-06T10:40:00Z"
     heartbeat_at: "2026-10-06T11:15:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/product/product-unique.ts"
       - "apps/api/src/modules/product/product-unique.spec.ts"
       - "apps/api/src/modules/product/product.service.ts"
