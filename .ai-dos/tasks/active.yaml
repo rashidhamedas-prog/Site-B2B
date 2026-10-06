@@ -44,7 +44,7 @@ tasks:
       GET /categories globally — homeOnly flag on merchandiseCategories only.
   - id: "TASK-20261007-001"
     title: "Omnichannel template save persists the edited layout"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261007-001"
     roles:
@@ -55,9 +55,11 @@ tasks:
     branch: "fix/TASK-20261007-001-omnichannel-template-save"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-06T22:10:00Z"
-    heartbeat_at: "2026-10-06T22:40:00Z"
+    heartbeat_at: "2026-10-06T22:50:00Z"
+    completed_at: "2026-10-06T22:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-secrets.spec.ts"
       - "apps/api/src/modules/omnichannel/publication-template.ts"

@@ -21,7 +21,10 @@ Append newest entries at the top. Never erase another agent's record.
 - Specs: `omnichannel-secrets.spec.ts` ok, `publication-template.spec.ts` ok. Web `tsc --noEmit` ok. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
 - Security (same session): keyword substring removed; provider-shaped secrets and secret field names still rejected. Connectors were not enabled.
 - Reclaimed stale `omnichannel-secrets.ts` from TASK-20260826-001 (heartbeat 2026-09-02T23:55:00Z).
-- Live admin walkthrough follows deploy.
+- Live on origin/master `0058ce8`. Health 200. API image no longer treats the placeholder word token as a secret. Web chunk contains the unsaved-step hint.
+- Live API roundtrip on retail: photos were on, a save turned them off and the following read kept them off, then the original body was restored. Wholesale template still contains the placeholder key. Preview for a real product rendered. Connectors and auto-publish are on (3 connections, 1 destination). No customer post was sent.
+- Logged-in click in this browser stopped at `/admin/login`. The owner's open Chrome session was not reused.
+- Wizard stages on the live API: three ACTIVE bots, all WHOLESALE (Telegram, Bale, Rubika). One destination, the wholesale Telegram channel, verified and canPost, not canary. Both product templates ready. Mode CANARY, so automation does not select that destination. Retail and wholesale previews of a real product were publishable with tokens filled. No publication POST. Task closed.
 
 ## 2026-10-06T15:25:00Z — TASK-20261006-020 product upload and partner in-stock catalog
 
