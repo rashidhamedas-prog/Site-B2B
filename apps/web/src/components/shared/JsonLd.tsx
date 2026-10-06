@@ -3,6 +3,7 @@ import { RETAIL_ORIGIN, WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { absoluteJsonLdUrl } from '@/lib/jsonld-url';
 import { jsonLdBrandNode } from '@/lib/product-jsonld-brand';
 import { jsonLdImageObjects } from '@/lib/product-image-alt';
+import { variantsInStock } from '@/lib/product-display';
 import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
@@ -200,6 +201,7 @@ export function ProductGroupJsonLd({
   availability = 'InStock',
   variants,
   channel = 'RETAIL',
+  keepSoldOutColors = false,
   brandName,
   hideDefaultBrand,
   images,
@@ -216,13 +218,30 @@ export function ProductGroupJsonLd({
   includePrice?: boolean;
   currency?: string;
   availability?: 'InStock' | 'OutOfStock' | 'PreOrder';
-  variants: Array<{ color?: string; size?: string; sku?: string }>;
+  variants: Array<{
+    color?: string;
+    size?: string;
+    sku?: string;
+    retailStock?: number | null;
+    wholesaleStock?: number | null;
+    stock?: number | null;
+  }>;
   channel?: SalesChannel;
+  /** Pre-order products keep every color even when retail stock is zero. */
+  keepSoldOutColors?: boolean;
   brandName?: string | null;
   hideDefaultBrand?: boolean;
 }) {
-  const colors = [...new Set(variants.map((v) => v.color).filter(Boolean))];
-  const sizes = [...new Set(variants.map((v) => v.size).filter(Boolean))];
+  const channelKey = channel === 'WHOLESALE' ? 'wholesale' : 'retail';
+  const stockAware = variants.some((variant) =>
+    channelKey === 'retail'
+      ? variant.retailStock != null || variant.stock != null
+      : variant.wholesaleStock != null || variant.stock != null,
+  );
+  const listed =
+    keepSoldOutColors || !stockAware ? variants : variantsInStock(variants, channelKey);
+  const colors = [...new Set(listed.map((v) => v.color).filter(Boolean))];
+  const sizes = [...new Set(listed.map((v) => v.size).filter(Boolean))];
   const variesBy = [
     colors.length > 1 ? 'https://schema.org/color' : null,
     sizes.length > 1 ? 'https://schema.org/size' : null,
@@ -261,7 +280,7 @@ export function ProductGroupJsonLd({
         sku,
         ...(brand ? { brand } : {}),
         variesBy,
-        hasVariant: variants.map((v) => ({
+        hasVariant: listed.map((v) => ({
           '@type': 'Product',
           name: [name, v.color, v.size].filter(Boolean).join(' — '),
           ...(v.sku ? { sku: v.sku } : {}),

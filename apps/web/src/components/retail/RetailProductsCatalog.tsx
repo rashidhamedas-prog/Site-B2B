@@ -11,6 +11,7 @@ import { isLeadCatalogImage } from '@/lib/catalog-performance';
 import { catalogActiveFilterCount, type CatalogFilterValues } from '@/lib/catalog-filter';
 import { CatalogActiveChips } from '@/components/catalog/CatalogFilterRail';
 import { CatalogFilters } from '@/components/catalog/CatalogFilters';
+import { uniqueInStockColors } from '@/lib/product-display';
 
 type Product = {
   id: string;
@@ -264,7 +265,11 @@ export function RetailProductsCatalog({
 
   const extraColors = useMemo(() => {
     const extras: string[] = [];
-    products.forEach((p) => (p.variants ?? []).forEach((v) => v.color && extras.push(v.color)));
+    products.forEach((p) => {
+      uniqueInStockColors(p.variants ?? [], 'retail', { includeSoldOut: !!p.isPreOrder }).forEach((v) => {
+        if (v.color) extras.push(v.color);
+      });
+    });
     return extras;
   }, [products]);
 

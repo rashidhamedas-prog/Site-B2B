@@ -10,7 +10,14 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
-import { channelSaleDisplay, piecesPerPackCount, sizeCountForType, toman } from '@/lib/product-display';
+import {
+  channelSaleDisplay,
+  piecesPerPackCount,
+  sizeCountForType,
+  toman,
+  uniqueInStockColors,
+  variantsInStock,
+} from '@/lib/product-display';
 import { wholesaleMoq } from '@/lib/wholesale-order';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { WholesaleColorSelectPrompt } from './WholesaleColorSelectPrompt';
@@ -168,7 +175,9 @@ async function fetchProduct(slugOrId: string): Promise<WholesaleProduct> {
 
 function defaultColors(p: WholesaleProduct): string[] {
   if (p.allowWholesaleColorSelect) return [];
-  return Array.from(new Set(p.variants.filter((v) => v.color).map((v) => v.color)));
+  return uniqueInStockColors(p.variants, 'wholesale', {
+    includeSoldOut: p.status === 'COMING_SOON',
+  }).map((v) => v.color);
 }
 
 export function ProductDetail({
@@ -215,17 +224,21 @@ export function ProductDetail({
   const allowColorSelect = !!product?.allowWholesaleColorSelect;
   const minColors = Math.max(1, Number(product?.minWholesaleColors) || 1);
 
+  const includeSoldOutColors = product?.status === 'COMING_SOON';
   const availableColors = product
-    ? Array.from(
-        new Map(
-          product.variants
-            .filter((v) => v.color)
-            .map((v) => [v.color, { name: v.color, hex: v.colorHex || '#ccc' }] as const),
-        ).values(),
-      )
+    ? uniqueInStockColors(product.variants, 'wholesale', { includeSoldOut: includeSoldOutColors }).map((v) => ({
+        name: v.color,
+        hex: v.colorHex || '#ccc',
+      }))
     : [];
   const availableSizes = product
-    ? Array.from(new Set(product.variants.map((v) => v.size).filter(Boolean)))
+    ? Array.from(
+        new Set(
+          variantsInStock(product.variants, 'wholesale', { includeSoldOut: includeSoldOutColors })
+            .map((v) => v.size)
+            .filter(Boolean),
+        ),
+      )
     : [];
   const sizeType = product?.sizeType ?? 'FREE';
   const sizeTypeLabel = SIZE_TYPE_LABEL[sizeType];

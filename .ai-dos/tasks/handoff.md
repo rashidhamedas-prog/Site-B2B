@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-06T09:20:00Z — TASK-20261006-001 hide zero-stock colors
+
+- Owner: cursor:implementer-TASK-20261006-001
+- Slack search for موجودی/رنگ returned no messages. Depth: light. Admin matrix stays complete.
+- A color is hidden on the channel whose stock sums to 0. Retail reads `retailStock`; wholesale reads `wholesaleStock`. One in-stock size keeps the color. Pre-order and coming-soon still list colors.
+- Reclaimed stale `product-display` (TASK-20260818-001, hb 2026-08-18), `wholesale-order` (TASK-20260826-001, hb 2026-09-02), and `CategoryProductCard` (TASK-20260831-001, hb 2026-08-31).
+- `product-display.spec.ts` OK. `wholesale-order.spec.ts` OK. Web `tsc --noEmit` clean.
+- TASK-20261005-016 still owns its own claims. This entry only appends.
+
+
+
 ## 2026-10-05T14:05:00Z — TASK-20261005-016 admin catalog search
 
 - Owner: cursor:implementer-TASK-20261005-016

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
-import { discountPercent, mediaUrl, toman } from '@/lib/product-display';
+import { discountPercent, mediaUrl, toman, uniqueInStockColors } from '@/lib/product-display';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import type { RetailCardProduct } from '@/components/retail/RetailProductCard';
@@ -41,15 +41,8 @@ export function BoutiqueProductCard({
   const soldOut = !product.isPreOrder && stock <= 0;
   const [wishlisted, setWishlisted] = useState(false);
   const colors = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          (product.variants ?? [])
-            .filter((v) => v.color)
-            .map((v) => [v.color as string, v] as const),
-        ).values(),
-      ),
-    [product.variants],
+    () => uniqueInStockColors(product.variants ?? [], 'retail', { includeSoldOut: !!product.isPreOrder }),
+    [product.variants, product.isPreOrder],
   );
 
   useEffect(() => {

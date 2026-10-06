@@ -1,5 +1,49 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261006-001"
+    title: "Hide storefront colors whose channel stock is zero"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261006-001"
+    roles:
+      architect: "cursor:implementer-TASK-20261006-001"
+      implementer: "cursor:implementer-TASK-20261006-001"
+      reviewer: "same-session-storefront-stock"
+      security: "not-required-display-filter"
+    branch: "fix/TASK-20261006-001-zero-stock-colors"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-06T09:05:00Z"
+    heartbeat_at: "2026-10-06T09:20:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/product-display.ts"
+      - "apps/web/src/lib/product-display.spec.ts"
+      - "apps/web/src/lib/wholesale-order.ts"
+      - "apps/web/src/lib/wholesale-order.spec.ts"
+      - "apps/web/src/components/retail/RetailProductDetail.tsx"
+      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
+      - "apps/web/src/components/wholesale/ProductDetail.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      - "apps/web/src/components/wholesale/ProductCatalog.tsx"
+      - "apps/web/src/components/category/CategoryProductCard.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
+      - "apps/web/src/components/shared/JsonLd.tsx"
+      - "apps/web/src/app/retail/products/[slug]/page.tsx"
+      - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
+      - "docs/WORKLOG.md"
+    notes: |
+      Storefront only. Admin color matrix stays complete.
+      Reclaimed product-display from TASK-20260818-001 (hb 2026-08-18, other worktree).
+      Reclaimed wholesale-order from TASK-20260826-001 (hb 2026-09-02).
+      Reclaimed CategoryProductCard from TASK-20260831-001 (hb 2026-08-31, other worktree).
+      TASK-20261005-016 still claims this registry; this entry only appends.
+    acceptance_criteria:
+      - "A color with zero units on the current channel is absent from PDP, cards, filters, and pack math"
+      - "A color with units on any size of that channel stays, including sizes that are themselves zero"
+      - "Retail uses retailStock; wholesale uses wholesaleStock; the other channel does not revive a color"
+      - "Pre-order and coming-soon products still list their colors"
+      - "product-display.spec.ts and wholesale-order.spec.ts pass"
   - id: "TASK-20261005-016"
     title: "Admin catalog search latency and query correctness"
     status: "in_progress"
@@ -4750,7 +4794,8 @@ tasks:
       - "apps/web/src/components/layout/MobileMenu.tsx"
       # transferred 2026-09-03 to TASK-20260826-001 (stale hb 2026-08-31; collections channel):
       # "apps/web/src/components/retail/RetailHeader.tsx"
-      - "apps/web/src/components/category/CategoryProductCard.tsx"
+      # transferred 2026-10-06 to TASK-20261006-001 (stale hb 2026-08-31; hide zero-stock colors):
+      # "apps/web/src/components/category/CategoryProductCard.tsx"
       - "apps/web/src/components/category/category-search-params.ts"
       - "apps/web/src/components/category/category-search-params.spec.ts"
       - "docs/WORKLOG.md"
@@ -5227,8 +5272,9 @@ tasks:
       - "apps/api/src/modules/omnichannel/content-projection.ts"
       - "apps/api/src/modules/omnichannel/content-projection.spec.ts"
       # transferred 2026-08-29 to TASK-20260829-001: "apps/web/src/components/admin/AdminProducts.tsx"
-      - "apps/web/src/lib/wholesale-order.ts"
-      - "apps/web/src/lib/wholesale-order.spec.ts"
+      # transferred 2026-10-06 to TASK-20261006-001 (stale hb 2026-09-02; hide zero-stock colors):
+      # "apps/web/src/lib/wholesale-order.ts"
+      # "apps/web/src/lib/wholesale-order.spec.ts"
       # transferred 2026-09-06 to TASK-20260903-004 (stale hb 2026-09-02; image priority):
       # "apps/web/src/components/wholesale/ProductCatalog.tsx"
       # "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
@@ -5908,8 +5954,9 @@ tasks:
       # "apps/web/src/lib/hooks/useProducts.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; wholesaleStock only): "apps/web/src/lib/wholesale-order.ts"
       # transferred 2026-08-29 to TASK-20260826-001 (stale heartbeat; wholesaleStock only): "apps/web/src/lib/wholesale-order.spec.ts"
-      - "apps/web/src/lib/product-display.ts"
-      - "apps/web/src/lib/product-display.spec.ts"
+      # transferred 2026-10-06 to TASK-20261006-001 (stale hb 2026-08-18; hide zero-stock colors):
+      # "apps/web/src/lib/product-display.ts"
+      # "apps/web/src/lib/product-display.spec.ts"
       - "packages/shared-types/src/models.ts"
       - "scripts/apply-production-schema.sql"
       - "docs/WORKLOG.md"

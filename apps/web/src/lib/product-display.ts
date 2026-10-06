@@ -61,6 +61,55 @@ export function uniqueByColor<T extends { color?: string | null }>(variants: T[]
   return [...new Map(variants.filter((v) => v.color).map((v) => [v.color, v])).values()];
 }
 
+export type StorefrontChannel = 'retail' | 'wholesale';
+
+type ChannelStockVariant = {
+  color?: string | null;
+  retailStock?: number | null;
+  wholesaleStock?: number | null;
+  stock?: number | null;
+};
+
+/** Channel column wins. Legacy `stock` is only a fallback when that column is absent. */
+export function variantChannelStock(variant: ChannelStockVariant, channel: StorefrontChannel): number {
+  const raw = channel === 'retail' ? variant.retailStock : variant.wholesaleStock;
+  if (raw !== undefined && raw !== null) {
+    const units = Number(raw);
+    return Number.isFinite(units) ? Math.max(0, units) : 0;
+  }
+  const fallback = Number(variant.stock);
+  return Number.isFinite(fallback) ? Math.max(0, fallback) : 0;
+}
+
+/**
+ * One row per color that still has units on this channel.
+ * A color with stock on any size stays. Pre-order / coming-soon callers pass includeSoldOut.
+ */
+export function uniqueInStockColors<T extends ChannelStockVariant>(
+  variants: T[],
+  channel: StorefrontChannel,
+  options?: { includeSoldOut?: boolean },
+): T[] {
+  if (options?.includeSoldOut) return uniqueByColor(variants);
+  const totals = new Map<string, number>();
+  for (const variant of variants) {
+    if (!variant.color) continue;
+    totals.set(variant.color, (totals.get(variant.color) ?? 0) + variantChannelStock(variant, channel));
+  }
+  return uniqueByColor(variants.filter((variant) => !!variant.color && (totals.get(variant.color) ?? 0) > 0));
+}
+
+/** Size rows that belong to a color still shown on this channel. */
+export function variantsInStock<T extends ChannelStockVariant>(
+  variants: T[],
+  channel: StorefrontChannel,
+  options?: { includeSoldOut?: boolean },
+): T[] {
+  if (options?.includeSoldOut) return variants;
+  const open = new Set(uniqueInStockColors(variants, channel).map((variant) => variant.color));
+  return variants.filter((variant) => !variant.color || open.has(variant.color));
+}
+
 export function uniqueSizes(variants: Array<{ size?: string | null }>): string[] {
   return [...new Set(variants.map((v) => v.size).filter((s): s is string => !!s))];
 }

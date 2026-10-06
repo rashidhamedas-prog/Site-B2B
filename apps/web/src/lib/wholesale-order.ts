@@ -2,6 +2,8 @@ import {
   channelSaleDisplay,
   piecesPerPackCount,
   sizeCountForType,
+  uniqueInStockColors,
+  variantsInStock,
   type ChannelSale,
 } from './product-display';
 
@@ -50,7 +52,9 @@ export function wholesaleMoq(product: WholesaleOrderProduct): number {
 
 export function defaultWholesaleColors(product: WholesaleOrderProduct): string[] {
   if (product.allowWholesaleColorSelect) return [];
-  return Array.from(new Set((product.variants ?? []).filter((v) => v.color).map((v) => v.color as string)));
+  return uniqueInStockColors(product.variants ?? [], 'wholesale', {
+    includeSoldOut: product.status === 'COMING_SOON',
+  }).map((v) => v.color as string);
 }
 
 export function wholesaleOrderSummary(
@@ -59,14 +63,18 @@ export function wholesaleOrderSummary(
   packCount: number,
 ) {
   const variants = product.variants ?? [];
-  const availableColors = Array.from(
-    new Map(
-      variants
-        .filter((v) => v.color)
-        .map((v) => [v.color, { name: v.color as string, hex: v.colorHex || '#ccc' }]),
-    ).values(),
+  const includeSoldOut = product.status === 'COMING_SOON';
+  const availableColors = uniqueInStockColors(variants, 'wholesale', { includeSoldOut }).map((v) => ({
+    name: v.color as string,
+    hex: v.colorHex || '#ccc',
+  }));
+  const availableSizes = Array.from(
+    new Set(
+      variantsInStock(variants, 'wholesale', { includeSoldOut })
+        .map((v) => v.size)
+        .filter((s): s is string => !!s),
+    ),
   );
-  const availableSizes = Array.from(new Set(variants.map((v) => v.size).filter((s): s is string => !!s)));
   const allowColorSelect = !!product.allowWholesaleColorSelect;
   const minColors = Math.max(1, Number(product.minWholesaleColors) || 1);
   const colorsForOrder = allowColorSelect ? selectedColors : availableColors.map((c) => c.name);

@@ -6,7 +6,7 @@ import { Check, ChevronLeft, ChevronRight, Heart, ShoppingBag, Truck, X, ZoomIn 
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
-import { discountPercent, mediaUrl as toMediaUrl } from '@/lib/product-display';
+import { discountPercent, mediaUrl as toMediaUrl, variantsInStock } from '@/lib/product-display';
 import { formatSizePhrase, stockRemainingCopy } from '@/lib/retail-size-label';
 import { RetailProductCard } from './RetailProductCard';
 import { selectDefaultRetailVariant } from '@taranom/shared-types';
@@ -143,9 +143,14 @@ export function RetailProductDetail({
 }) {
   const boutique = useRetailSkin() === 'boutique';
   const addItem = useRetailCart((s) => s.addItem);
+  const includeSoldOutColors = !!product.isPreOrder;
+  const stockedVariants = useMemo(
+    () => variantsInStock(product.variants ?? [], 'retail', { includeSoldOut: includeSoldOutColors }),
+    [product.variants, includeSoldOutColors],
+  );
   const initial =
-    product.variants?.find((variant) => variant.id === initialVariantId) ??
-    selectDefaultRetailVariant(product.variants, product.defaultRetailVariantId) ??
+    stockedVariants.find((variant) => variant.id === initialVariantId) ??
+    selectDefaultRetailVariant(stockedVariants, product.defaultRetailVariantId) ??
     undefined;
   const [color, setColor] = useState(initial?.color ?? '');
   const [size, setSize] = useState(initial?.size ?? '');
@@ -158,7 +163,7 @@ export function RetailProductDetail({
 
   const colorMeta = useMemo(() => {
     const map = new Map<string, { hex?: string; imageUrl?: string }>();
-    for (const v of product.variants ?? []) {
+    for (const v of stockedVariants) {
       if (!v.color) continue;
       const prev = map.get(v.color) ?? {};
       map.set(v.color, {
@@ -167,19 +172,28 @@ export function RetailProductDetail({
       });
     }
     return map;
-  }, [product.variants]);
+  }, [stockedVariants]);
 
   const colors = useMemo(() => [...colorMeta.keys()], [colorMeta]);
 
-  /** Gallery: color images first (unique), then other product images */
+  /** Gallery: in-stock color images first, then other product images. Sold-out color photos drop when another color is available. */
   const gallery = useMemo(() => {
     const colorImgs = colors
       .map((c) => colorMeta.get(c)?.imageUrl)
       .filter((u): u is string => !!u);
-    const rest = (product.images ?? []).filter((u) => !colorImgs.includes(u));
+    const visible = new Set(colorImgs);
+    const hidden = new Set<string>();
+    if (colors.length > 0) {
+      for (const v of product.variants ?? []) {
+        if (!v.imageUrl || !v.color || colorMeta.has(v.color) || visible.has(v.imageUrl)) continue;
+        hidden.add(v.imageUrl);
+      }
+    }
+    const rest = (product.images ?? []).filter((u) => !colorImgs.includes(u) && !hidden.has(u));
     const merged = [...new Set([...colorImgs, ...rest])];
-    return merged.length ? merged : (product.images ?? []);
-  }, [colors, colorMeta, product.images]);
+    if (merged.length) return merged;
+    return (product.images ?? []).filter((u) => !hidden.has(u));
+  }, [colors, colorMeta, product.images, product.variants]);
 
   const [activeImg, setActiveImg] = useState(0);
 

@@ -6,7 +6,7 @@ import { ArrowLeft, Heart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
-import { discountPercent, mediaUrl, toman, uniqueByColor, uniqueSizes } from '@/lib/product-display';
+import { discountPercent, mediaUrl, toman, uniqueInStockColors, uniqueSizes, variantsInStock } from '@/lib/product-display';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
@@ -96,8 +96,14 @@ function ClassicRetailProductCard({
   const image = mediaUrl(product.images?.[0]);
   const secondImage = mediaUrl(product.images?.[1]);
   const href = getProductCanonicalPath(product.slug);
-  const colors = useMemo(() => uniqueByColor(product.variants ?? []), [product.variants]);
-  const sizes = useMemo(() => uniqueSizes(product.variants ?? []), [product.variants]);
+  const colors = useMemo(
+    () => uniqueInStockColors(product.variants ?? [], 'retail', { includeSoldOut: !!product.isPreOrder }),
+    [product.variants, product.isPreOrder],
+  );
+  const sizes = useMemo(
+    () => uniqueSizes(variantsInStock(product.variants ?? [], 'retail', { includeSoldOut: !!product.isPreOrder })),
+    [product.variants, product.isPreOrder],
+  );
   const [color, setColor] = useState(colors[0]?.color ?? '');
   const [size, setSize] = useState(sizes[0] ?? '');
   const stock =

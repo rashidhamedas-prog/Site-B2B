@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { getToken } from '@/lib/auth';
-import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueByColor } from '@/lib/product-display';
+import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueInStockColors } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { resolveWholesaleOrderBadge } from '@/lib/wholesale-order-badge';
@@ -55,7 +55,9 @@ export function WholesaleProductCard({
       : variants.reduce((sum, variant) => sum + Math.max(0, Number(variant.wholesaleStock) || 0), 0);
   const isComingSoon = product.status === 'COMING_SOON';
   const isAvailable = stock > 0 && !isComingSoon;
-  const colors = uniqueByColor(variants);
+  const colors = uniqueInStockColors(variants, 'wholesale', {
+    includeSoldOut: product.status === 'COMING_SOON',
+  });
   const { price, compareAt, discount, active: saleActive } = channelSaleDisplay(
     product.sale,
     product.wholesalePrice,

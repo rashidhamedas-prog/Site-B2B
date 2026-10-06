@@ -16,6 +16,7 @@ import {
   normalizeCatalogProduct,
   type WholesaleCatalogProduct,
 } from './normalize-catalog-product';
+import { uniqueInStockColors } from '@/lib/product-display';
 
 export interface CatalogSearchParams {
   fabric?: string;
@@ -258,7 +259,13 @@ export function ProductCatalog({
             tone="wholesale"
             mobileOpen={mobileFiltersOpen}
             onMobileOpenChange={setMobileFiltersOpen}
-            extraColors={products.flatMap((p) => p.variants.map((v) => v.color).filter(Boolean))}
+            extraColors={products.flatMap((p) =>
+              uniqueInStockColors(p.variants, 'wholesale', {
+                includeSoldOut: p.status === 'COMING_SOON',
+              })
+                .map((v) => v.color)
+                .filter((color): color is string => !!color),
+            )}
             extraFabrics={products.map((p) => p.fabric).filter(Boolean)}
             loading={loading}
           />

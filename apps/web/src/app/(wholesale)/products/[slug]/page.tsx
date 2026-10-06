@@ -9,6 +9,7 @@ import { loadCanonicalStorefrontProduct } from '@/lib/load-canonical-storefront-
 import { resolvePublicProductCanonical } from '@/lib/public-product-path';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
+import { uniqueInStockColors } from '@/lib/product-display';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -106,7 +107,9 @@ export default async function ProductPage({ params }: Props) {
         includePrice={false}
         availability={totalStock > 0 ? 'InStock' : isComingSoon ? 'PreOrder' : 'OutOfStock'}
         fabric={fabricLabel}
-        color={variants.find((v) => v.color)?.color}
+        color={
+          uniqueInStockColors(variants, 'wholesale', { includeSoldOut: isComingSoon }).find((v) => v.color)?.color
+        }
         moq={Number(product.minOrderQty ?? 0) || undefined}
         url={url}
       />

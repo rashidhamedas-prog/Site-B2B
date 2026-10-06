@@ -144,6 +144,7 @@ export default async function RetailProductPage({
         includePrice
         availability={availability}
         variants={variants}
+        keepSoldOutColors={Boolean((product as { isPreOrder?: boolean }).isPreOrder)}
         brandName={brandName}
         hideDefaultBrand={hideDefaultBrand}
       />

@@ -10,7 +10,10 @@ import {
   sizeTypeLabel,
   toman,
   uniqueByColor,
+  uniqueInStockColors,
   uniqueSizes,
+  variantChannelStock,
+  variantsInStock,
 } from './product-display';
 
 assert.equal(toman(1_620_000), (162000).toLocaleString('fa-IR'));
@@ -33,6 +36,32 @@ assert.deepEqual(
   ['کرم', 'مشکی'],
 );
 assert.deepEqual(uniqueSizes([{ size: '۱' }, { size: '۲' }, { size: '۱' }]), ['۱', '۲']);
+
+assert.equal(variantChannelStock({ wholesaleStock: 0, stock: 80 }, 'wholesale'), 0);
+assert.equal(variantChannelStock({ retailStock: 0, wholesaleStock: 4 }, 'retail'), 0);
+assert.equal(variantChannelStock({ retailStock: 2, wholesaleStock: 0 }, 'wholesale'), 0);
+assert.equal(variantChannelStock({ stock: 3 }, 'retail'), 3);
+
+const mixed = [
+  { color: 'کرم', size: '۱', retailStock: 0, wholesaleStock: 2 },
+  { color: 'کرم', size: '۲', retailStock: 0, wholesaleStock: 2 },
+  { color: 'قهوه‌ای', size: '۱', retailStock: 1, wholesaleStock: 1 },
+  { color: 'قهوه‌ای', size: '۲', retailStock: 0, wholesaleStock: 1 },
+  { color: 'مشکی', size: '۱', retailStock: 0, wholesaleStock: 0 },
+];
+assert.deepEqual(
+  uniqueInStockColors(mixed, 'retail').map((v) => v.color),
+  ['قهوه‌ای'],
+);
+assert.deepEqual(
+  uniqueInStockColors(mixed, 'wholesale').map((v) => v.color),
+  ['کرم', 'قهوه‌ای'],
+);
+assert.equal(variantsInStock(mixed, 'retail').length, 2);
+assert.deepEqual(
+  uniqueInStockColors(mixed, 'retail', { includeSoldOut: true }).map((v) => v.color),
+  ['کرم', 'قهوه‌ای', 'مشکی'],
+);
 
 assert.equal(sizeCountForType('FREE'), 1);
 assert.equal(sizeCountForType('TWO'), 2);

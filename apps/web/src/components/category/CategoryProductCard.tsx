@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { RetailProductCard } from '@/components/retail/RetailProductCard';
-import { mediaUrl, uniqueByColor, uniqueSizes } from '@/lib/product-display';
+import { mediaUrl, uniqueInStockColors, uniqueSizes, variantsInStock } from '@/lib/product-display';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import type { CategoryChannel, CategoryProduct } from './category-search-params';
 
@@ -14,10 +14,14 @@ export function CategoryProductCard({
 }) {
   const href = `/products/${product.slug}`;
   const image = mediaUrl(product.images?.[0]);
-  const variants = product.variants ?? [];
-  const colors = uniqueByColor(variants);
-  const sizes = uniqueSizes(variants);
   const retail = channel === 'RETAIL';
+  const variants = product.variants ?? [];
+  const colors = uniqueInStockColors(variants, retail ? 'retail' : 'wholesale', {
+    includeSoldOut: retail && !!product.isPreOrder,
+  });
+  const sizes = uniqueSizes(variantsInStock(variants, retail ? 'retail' : 'wholesale', {
+    includeSoldOut: retail && !!product.isPreOrder,
+  }));
 
   if (retail && product.id && product.slug) {
     return (

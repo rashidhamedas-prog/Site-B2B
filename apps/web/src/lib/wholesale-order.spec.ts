@@ -118,6 +118,51 @@ assert.equal(expiredSale.unitPrice, 1_000_000);
 assert.equal(expiredSale.saleActive, false);
 assert.equal(expiredSale.compareAt, 0);
 
+const mixedStock = wholesaleOrderSummary(
+  {
+    id: 'p-mix',
+    name: 'موجود و ناموجود',
+    sizeType: 'TWO',
+    wholesalePrice: 1000,
+    minOrderQty: 1,
+    variants: [
+      { color: 'کرم', size: '۱', wholesaleStock: 2 },
+      { color: 'کرم', size: '۲', wholesaleStock: 2 },
+      { color: 'مشکی', size: '۱', wholesaleStock: 0 },
+      { color: 'مشکی', size: '۲', wholesaleStock: 0 },
+      { color: 'قهوه‌ای', size: '۱', wholesaleStock: 1 },
+      { color: 'قهوه‌ای', size: '۲', wholesaleStock: 1 },
+    ],
+  },
+  [],
+  1,
+);
+assert.deepEqual(
+  mixedStock.availableColors.map((c) => c.name),
+  ['کرم', 'قهوه‌ای'],
+);
+assert.equal(mixedStock.piecesPerPack, 4);
+assert.equal(mixedStock.canOrder, true);
+
+const comingSoon = wholesaleOrderSummary(
+  {
+    id: 'p-soon',
+    name: 'به‌زودی',
+    status: 'COMING_SOON',
+    sizeType: 'FREE',
+    wholesalePrice: 1000,
+    minOrderQty: 1,
+    variants: [{ color: 'کرم', size: 'فری', wholesaleStock: 0 }],
+  },
+  [],
+  1,
+);
+assert.deepEqual(
+  comingSoon.availableColors.map((c) => c.name),
+  ['کرم'],
+);
+assert.equal(comingSoon.canOrder, true);
+
 assert.equal(variantWholesale({ wholesaleStock: 0, stock: 80 }), 0, 'sold-out wholesale ignores legacy stock');
 assert.equal(
   wholesaleOrderSummary({
