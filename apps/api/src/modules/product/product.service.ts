@@ -34,7 +34,12 @@ import { ProductCategoryMembershipEntity } from './entities/product-category-mem
 import { SeoRedirectEntity } from '../blog/entities/seo-redirect.entity';
 import { sanitizeBlogHtml } from '../blog/blog-sanitize';
 import { sanitizeGuarantee } from '../torob/torob-product-projection';
-import { normalizePublicSlug } from '../../common/public-slug';
+import {
+  insertProductSlug,
+  PRODUCT_SKU_TAKEN,
+  PRODUCT_SLUG_TAKEN,
+  throwProductUniqueOrRethrow,
+} from './product-unique';
 import { buildProductWorkbook, parseExportChannel, type ExportProduct } from './catalog-excel';
 import { changeProductSlug, type SalesChannel as SlugChannel } from './product-slug-redirect';
 import { computePackQty, sizesForSizeType } from './product-pack';
@@ -1356,7 +1361,8 @@ export class ProductService {
   }
 
   private async changeSlugInTransaction(productId: string, nextRaw: string) {
-    await this.productRepo.manager.transaction(async (em) => {
+    try {
+      await this.productRepo.manager.transaction(async (em) => {
       const productRepo = em.getRepository(ProductEntity);
       const redirectRepo = em.getRepository(SeoRedirectEntity);
       await changeProductSlug(
@@ -1371,7 +1377,11 @@ export class ProductService {
             return { id: row.id, slug: row.slug };
           },
           async slugTaken(slug, excludeId) {
-            const clash = await productRepo.findOne({ where: { slug } });
+            const clash = await productRepo
+              .createQueryBuilder('p')
+              .withDeleted()
+              .where('p.slug = :slug', { slug })
+              .getOne();
             return !!clash && clash.id !== excludeId;
           },
           async updateProductSlug(id, slug) {
@@ -1422,7 +1432,10 @@ export class ProductService {
         },
         nextRaw,
       );
-    });
+      });
+    } catch (err) {
+      throwProductUniqueOrRethrow(err);
+    }
   }
 
   private applySaleFromDto(
@@ -1619,6 +1632,7 @@ export class ProductService {
   }
 
   async create(data: CreateProductDto) {
+    if (data.sku) data = { ...data, sku: data.sku.trim() };
     if (!data.sku) {
       if (!data.categoryId) {
         throw new BadRequestException('دسته‌بندی الزامی است (برای تولید خودکار SKU)');
@@ -1664,10 +1678,15 @@ export class ProductService {
       ? sanitizeBlogHtml(data.wholesaleFullContent)
       : data.description || null;
 
-    if (data.slug) {
-      const slug = normalizePublicSlug(data.slug);
-      const clash = await this.productRepo.findOne({ where: { slug } });
-      if (clash) throw new BadRequestException('این slug قبلاً استفاده شده است');
+    await this.assertSkuAvailable(data.sku!);
+    const slug = insertProductSlug({
+      slug: data.slug,
+      sku: data.sku,
+      nameEn: data.nameEn,
+      name: data.name,
+    });
+    if (await this.slugExists(slug)) {
+      throw new BadRequestException(PRODUCT_SLUG_TAKEN);
     }
 
     if (fulfillment.vendorId) await this.assertAssignableVendor(fulfillment.vendorId);
@@ -1705,7 +1724,7 @@ export class ProductService {
       }),
       seoMeta: data.seoMeta,
       sku: data.sku!,
-      slug: data.slug ? normalizePublicSlug(data.slug) : undefined,
+      slug,
       categoryId: data.categoryId,
       collectionId: data.collectionId,
       isPreOrder: !!data.isPreOrder,
@@ -1719,12 +1738,17 @@ export class ProductService {
       brandName: fulfillment.brandName,
       guarantee: sanitizeGuarantee(data.guarantee) ?? null,
     });
-    const saved = await this.productRepo.manager.transaction(async (em) => {
-      const row = await em.getRepository(ProductEntity).save(product);
-      await this.replaceMemberships(row.id, row.categoryId, data.categoryIds, em);
-      await this.enqueueProductOutbox(null, row, `product:create:${row.id}`, em);
-      return row;
-    });
+    let saved: ProductEntity;
+    try {
+      saved = await this.productRepo.manager.transaction(async (em) => {
+        const row = await em.getRepository(ProductEntity).save(product);
+        await this.replaceMemberships(row.id, row.categoryId, data.categoryIds, em);
+        await this.enqueueProductOutbox(null, row, `product:create:${row.id}`, em);
+        return row;
+      });
+    } catch (err) {
+      throwProductUniqueOrRethrow(err);
+    }
     await this.replaceRelated(saved.id, data.relatedProductIds);
     await this.replaceInternalLinks(saved.id, 'RETAIL', data.retailInternalLinks);
     await this.replaceInternalLinks(saved.id, 'WHOLESALE', data.wholesaleInternalLinks);
@@ -1737,10 +1761,61 @@ export class ProductService {
     return this.attachCategories(row, this.withBadges(row, undefined, cfg));
   }
 
+  private async skuConflict(
+    sku: string,
+    em?: EntityManager,
+  ): Promise<'empty' | 'live' | 'deleted' | 'alias' | null> {
+    const key = String(sku || '').trim().toLowerCase();
+    if (!key) return 'empty';
+    const products = em ? em.getRepository(ProductEntity) : this.productRepo;
+    const aliases = em ? em.getRepository(ProductSkuAliasEntity) : this.skuAliasRepo;
+    const productHit = await products
+      .createQueryBuilder('p')
+      .withDeleted()
+      .where('LOWER(p.sku) = :sku', { sku: key })
+      .getOne();
+    if (productHit?.deletedAt) return 'deleted';
+    if (productHit) return 'live';
+    const aliasHit = await aliases
+      .createQueryBuilder('a')
+      .where('LOWER(a.sku) = :sku', { sku: key })
+      .getOne();
+    return aliasHit ? 'alias' : null;
+  }
+
+  private async skuTaken(sku: string, em?: EntityManager): Promise<boolean> {
+    return (await this.skuConflict(sku, em)) !== null;
+  }
+
+  private async assertSkuAvailable(sku: string) {
+    const conflict = await this.skuConflict(sku);
+    if (conflict === 'empty') throw new BadRequestException('کد SKU خالی است');
+    if (conflict === 'deleted') {
+      throw new BadRequestException('این SKU روی یک کالای حذف‌شده مانده است. SKU دیگری انتخاب کنید');
+    }
+    if (conflict === 'alias') {
+      throw new BadRequestException('این SKU قبلاً به‌عنوان کد قبلی یک کالا ثبت شده است');
+    }
+    if (conflict) throw new BadRequestException(PRODUCT_SKU_TAKEN);
+  }
+
+  /** Live and soft-deleted rows both occupy the slug unique index. */
+  private async slugExists(slug: string): Promise<boolean> {
+    const hit = await this.productRepo
+      .createQueryBuilder('p')
+      .withDeleted()
+      .where('p.slug = :slug', { slug })
+      .getOne();
+    if (!hit) return false;
+    if (hit.deletedAt) {
+      throw new BadRequestException('این slug روی یک کالای حذف‌شده مانده است');
+    }
+    return true;
+  }
+
   private async allocateSku(categoryId: string): Promise<string> {
     return this.productRepo.manager.transaction(async (em) => {
       const catRepo = em.getRepository(CategoryEntity);
-      const productRepo = em.getRepository(ProductEntity);
 
       const category = await catRepo
         .createQueryBuilder('c')
@@ -1759,8 +1834,8 @@ export class ProductService {
         try {
           category.nextSequence = seq + 1;
           await catRepo.save(category);
-          const exists = await productRepo.exist({ where: { sku } });
-          if (!exists) return sku;
+          const taken = await this.skuTaken(sku, em);
+          if (!taken) return sku;
         } catch {
           // ignore and retry
         }
@@ -1991,7 +2066,10 @@ export class ProductService {
     if (data.sku !== undefined) {
       if (!nextSku) throw new BadRequestException('کد SKU خالی است');
       patch.sku = nextSku;
-      const occupiedRows = await this.productRepo.find({ select: ['id', 'sku'] });
+      const occupiedRows = await this.productRepo.find({
+        select: ['id', 'sku'],
+        withDeleted: true,
+      });
       const occupiedAliases = await this.skuAliasRepo.find({ select: ['sku', 'productId'] });
       const occupied = [
         ...occupiedRows.filter((row) => row.id !== id).map((row) => row.sku),

@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-06T11:15:00Z — TASK-20261006-018 product create duplicate SKU
+
+- Owner: cursor:implementer-TASK-20261006-018
+- Depth: full. Research: map Postgres 23505 by `driverError.detail`, not the TypeORM hash name. Partial unique indexes (twentyhq/twenty#13615) were not migrated; deleted SKUs stay reserved and the API says so. Auto-suffix slugs were rejected.
+- Root cause from `taranom_api` logs 10:24–10:32 UTC: `ProductService.create` insert hit `UNIQUE (sku)` (`UQ_c44ac33a05b144dd0d9ddcf9327`). Slug was checked first, so a taken slug returned 400 and a later unique slug still 500'd on the SKU.
+- Reclaimed `product.service.ts` from TASK-20261005-016. That claim's heartbeat was 2026-10-05T14:05Z and the file matched `origin/master` before this edit. Catalog-search claims were not otherwise edited.
+- `product-unique.spec.ts` OK. API `tsc --noEmit` still fails only on pre-existing `order-money-guard.spec.ts`.
+- Verify pass: no must-fix for this 500. Logged-in admin create was not clicked here.
+- Next: commit, push `origin/master`, VPS auto-deploy, health.
+
 ## 2026-10-06T09:30:00Z — TASK-20261006-017 about process stills
 
 - Owner: cursor:implementer-TASK-20261006-017

@@ -1,5 +1,6 @@
 # Project Status
 
+- In progress: 2026-10-06 — **TASK-20261006-018** product create duplicate SKU. Slug 400 then 500 was `products.sku` unique `UQ_c44ac33a05b144dd0d9ddcf9327` with no 23505 mapper. Spec OK. Deploy follows this commit.
 - In progress: 2026-10-06 — **TASK-20261006-017** about process stills. Four readable still-lifes replace the abstract CSS scene on wholesale `/about`. Local browser verified. Deploy follows this commit.
 - In progress: 2026-10-06 — **TASK-20261006-001** hide storefront colors with zero channel stock. Specs and web tsc passed. Deploy follows this commit.
 - In progress: 2026-10-05 — **TASK-20261005-016** admin catalog search. Keystroke refetch, eaten spaces, and the variant join on `GET /products/admin` are fixed on branch `ai/TASK-20261005-016-admin-catalog-search`. Specs passed. Not on `origin/master` yet. Logged-in click of the search box is still open.

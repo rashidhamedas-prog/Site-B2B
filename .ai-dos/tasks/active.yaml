@@ -1,5 +1,35 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261006-018"
+    title: "Product create duplicate SKU must not 500 after a slug change"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261006-018"
+    roles:
+      architect: "cursor:implementer-TASK-20261006-018"
+      implementer: "cursor:implementer-TASK-20261006-018"
+      reviewer: "cursor:verify-TASK-20261006-018"
+      security: "same-session-admin-write"
+    branch: "fix/TASK-20261006-018-product-create-sku"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-06T10:40:00Z"
+    heartbeat_at: "2026-10-06T11:15:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/product/product-unique.ts"
+      - "apps/api/src/modules/product/product-unique.spec.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "docs/reports/2026-10-06-product-create-sku.md"
+      - "docs/WORKLOG.md"
+    acceptance_criteria:
+      - "A taken SKU on create returns 400, including soft-deleted rows and aliases"
+      - "A taken slug still returns 400 and the message still contains slug"
+      - "Postgres 23505 on products.sku or products.slug is not a 500"
+      - "product-unique.spec.ts passes"
+    notes: |
+      Reclaimed product.service.ts from TASK-20261005-016 (heartbeat 2026-10-05T14:05Z).
+      The file matched origin/master before this edit. 016 catalog-search claims were not edited.
+      Appended beside 017 and 001. Their claims were not edited.
   - id: "TASK-20261006-017"
     title: "Readable workshop stills on wholesale about scrollytelling"
     status: "in_progress"
