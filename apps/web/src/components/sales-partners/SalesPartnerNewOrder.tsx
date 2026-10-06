@@ -171,7 +171,7 @@ export function SalesPartnerNewOrder() {
       {error && <SpAlert>{error}</SpAlert>}
       {catalogLoading && <SpPageSkeleton cards={1} />}
       {!catalogLoading && catalog.length === 0 && (
-        <SpEmpty>محصول قابل فروشی برای شما فعال نشده است.</SpEmpty>
+        <SpEmpty>الان کالای موجودی برای فروش نیست.</SpEmpty>
       )}
 
       {!catalogLoading && catalog.length > 0 && step === 0 && (

@@ -6,13 +6,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { StorageService } from './storage.service';
+import { ProductImageProcessingError } from './image-processor';
+import { MAX_UPLOAD_IMAGE_BYTES, uploadImageKind, uploadImageRejection } from './upload-image-policy';
 
-const ALLOWED = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-const MAX_SIZE = 5 * 1024 * 1024;
-
-function ext(filename: string) {
-  const parts = filename.split('.');
-  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+function fileTooLarge(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { code?: string }).code === 'FST_REQ_FILE_TOO_LARGE';
 }
 
 @Controller({ path: 'upload', version: '1' })
@@ -28,22 +26,45 @@ export class UploadController {
       throw new BadRequestException('سرویس آپلود در دسترس نیست — MinIO را اجرا کنید');
     }
 
-    const data = await req.file();
+    let data: { filename: string; mimetype: string; file: AsyncIterable<Buffer> };
+    try {
+      data = await req.file();
+    } catch (error) {
+      if (fileTooLarge(error)) throw new BadRequestException('حجم عکس بیشتر از ۲۰ مگابایت است.');
+      throw error;
+    }
     if (!data) throw new BadRequestException('فایلی ارسال نشده');
 
-    const extension = ext(data.filename);
-    if (!ALLOWED.includes(extension)) {
-      throw new BadRequestException('فرمت فایل مجاز نیست (jpg, png, webp)');
-    }
+    const early = uploadImageRejection(data.filename, data.mimetype, 0);
+    if (early) throw new BadRequestException(early);
 
     const chunks: Buffer[] = [];
     let size = 0;
-    for await (const chunk of data.file) {
-      size += chunk.length;
-      if (size > MAX_SIZE) throw new BadRequestException('حجم فایل بیش از ۵ مگابایت است');
-      chunks.push(chunk);
+    try {
+      for await (const chunk of data.file) {
+        size += chunk.length;
+        if (size > MAX_UPLOAD_IMAGE_BYTES) {
+          throw new BadRequestException('حجم عکس بیشتر از ۲۰ مگابایت است.');
+        }
+        chunks.push(chunk);
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      if (fileTooLarge(error)) throw new BadRequestException('حجم عکس بیشتر از ۲۰ مگابایت است.');
+      throw error;
     }
 
-    return this.storage.uploadBuffer(Buffer.concat(chunks), data.mimetype, extension);
+    try {
+      return await this.storage.uploadBuffer(
+        Buffer.concat(chunks),
+        data.mimetype,
+        uploadImageKind(data.filename, data.mimetype),
+      );
+    } catch (error) {
+      if (error instanceof ProductImageProcessingError) {
+        throw new BadRequestException('این فایل به‌عنوان تصویر خوانده نشد. jpg، png یا webp سالم بفرستید.');
+      }
+      throw error;
+    }
   }
 }

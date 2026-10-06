@@ -1,5 +1,49 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261006-020"
+    title: "Product image upload and in-stock sales-partner catalog"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261006-020"
+    roles:
+      architect: "cursor:implementer-TASK-20261006-020"
+      implementer: "cursor:implementer-TASK-20261006-020"
+      reviewer: "same-session"
+      security: "same-session-admin-upload"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-06T15:20:00Z"
+    heartbeat_at: "2026-10-06T15:25:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/main.ts"
+      - "apps/api/src/modules/upload/upload.controller.ts"
+      - "apps/api/src/modules/upload/upload-image-policy.ts"
+      - "apps/api/src/modules/upload/upload-image-policy.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog.service.ts"
+      - "apps/web/src/lib/api.ts"
+      - "apps/web/src/lib/upload-image.ts"
+      - "apps/web/src/lib/upload-image.spec.ts"
+      - "apps/web/src/lib/hooks/useImageUpload.ts"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnerCatalog.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnerNewOrder.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-06-product-upload-and-partner-stock.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "jpeg without a trusted extension and jfif are accepted; heic is rejected in Persian"
+      - "Raw upload cap is 20MB and Sharp still stores WebP"
+      - "Save cannot run while a product image upload is in flight"
+      - "Partner catalog and new-order list omit retailStock 0; low stock remains"
+      - "upload-image-policy.spec.ts and sales-partner-catalog-policy.spec.ts pass"
+    notes: |
+      Reclaimed stale main.ts from TASK-20261002-001 and AdminProducts.tsx from TASK-20261005-016.
+      product.service.ts stays with TASK-20261006-018.
   - id: "TASK-20261006-019"
     title: "Show the site color matrix when ERP stock rows do not match"
     status: "done"

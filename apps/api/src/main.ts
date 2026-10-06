@@ -33,7 +33,7 @@ async function bootstrap() {
 
   // Register multipart for file uploads
   await app.register(require('@fastify/multipart'), {
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 20 * 1024 * 1024, files: 1 },
   });
 
   if (swaggerEnabled()) {

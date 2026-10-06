@@ -41,7 +41,6 @@ type CatalogResponse = {
   };
 };
 
-type StockFilter = 'all' | 'available' | 'out';
 type SortKey = CatalogResponse['sort'];
 
 function sectionsOf(items: CatalogItem[], sort: SortKey) {
@@ -64,10 +63,9 @@ export function SalesPartnerCatalog() {
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [stock, setStock] = useState<StockFilter>('all');
   const [sort, setSort] = useState<SortKey>('category');
   const [page, setPage] = useState(1);
-  const filtersKey = `${debouncedQ}|${categoryId}|${stock}|${sort}`;
+  const filtersKey = `${debouncedQ}|${categoryId}|${sort}`;
   const prevFilters = useRef(filtersKey);
 
   useEffect(() => {
@@ -87,7 +85,6 @@ export function SalesPartnerCatalog() {
     if (nextPage > 1) params.set('page', String(nextPage));
     if (debouncedQ) params.set('q', debouncedQ);
     if (categoryId) params.set('categoryId', categoryId);
-    if (stock !== 'all') params.set('stock', stock);
     if (sort !== 'category') params.set('sort', sort);
     const qs = params.toString();
     let cancelled = false;
@@ -109,7 +106,7 @@ export function SalesPartnerCatalog() {
     return () => {
       cancelled = true;
     };
-  }, [filtersKey, page, debouncedQ, categoryId, stock, sort]);
+  }, [filtersKey, page, debouncedQ, categoryId, sort]);
 
   async function copyValue(item: CatalogItem, kind: 'link' | 'text') {
     const value = kind === 'link' ? item.productUrl : item.copyText;
@@ -128,13 +125,12 @@ export function SalesPartnerCatalog() {
   );
   const pageCount = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const categoryTotal = (data?.facets.categories || []).reduce((sum, facet) => sum + facet.count, 0);
-  const filtersActive = Boolean(debouncedQ || categoryId || stock !== 'all' || sort !== 'category');
+  const filtersActive = Boolean(debouncedQ || categoryId || sort !== 'category');
 
   function clearFilters() {
     setQ('');
     setDebouncedQ('');
     setCategoryId('');
-    setStock('all');
     setSort('category');
   }
 
@@ -142,7 +138,7 @@ export function SalesPartnerCatalog() {
     <SalesPartnerShell title="محصولات قابل فروش" wide>
       <SpNote>
         هر لینک مخصوص شماست. اگر مشتری از همان لینک بخرد، پورسانت همان کالا بعد از پرداخت حساب می‌شود. هزینه ارسال و کیف
-        پول داخل پورسانت نیست.
+        پول داخل پورسانت نیست. فقط کالاهایی که موجودی فروش تکی دارند در این فهرست می‌آیند.
       </SpNote>
 
       <div className="sticky top-0 z-10 -mx-4 mt-4 space-y-3 border-b border-stone-200/80 bg-[#f6f3ee]/95 px-4 py-3 backdrop-blur-md lg:mx-0 lg:rounded-3xl lg:border lg:px-4">
@@ -180,16 +176,6 @@ export function SalesPartnerCatalog() {
           })}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {([
-            ['all', 'همه موجودی‌ها', data?.facets.stock.all],
-            ['available', 'موجود', data?.facets.stock.available],
-            ['out', 'ناموجود', data?.facets.stock.out],
-          ] as const).map(([id, label, count]) => (
-            <button key={id} type="button" className={spChipClass(stock === id)} aria-pressed={stock === id} onClick={() => setStock(id)}>
-              {label}
-              {typeof count === 'number' ? <span className="tabular-nums opacity-80">{count.toLocaleString('fa-IR')}</span> : null}
-            </button>
-          ))}
           <label className="mr-auto flex items-center gap-2 text-sm text-stone-600" htmlFor="sp-catalog-sort">
             مرتب‌سازی
             <select
@@ -226,7 +212,7 @@ export function SalesPartnerCatalog() {
           <SpEmpty>
             {filtersActive
               ? 'با این فیلتر محصولی نیست. فیلتر را بردارید یا دستهٔ دیگری را انتخاب کنید.'
-              : 'فعلاً محصولی برای معرفی فعال نشده است. به‌محض اضافه‌شدن توسط فروشگاه، لینک فروش اینجا می‌آید.'}
+              : 'الان کالای موجودی برای معرفی نیست. به‌محض موجود شدن در فروشگاه تکی، لینک فروش اینجا می‌آید.'}
           </SpEmpty>
         </div>
       )}

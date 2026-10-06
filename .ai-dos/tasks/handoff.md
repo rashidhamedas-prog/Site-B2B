@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-06T15:25:00Z — TASK-20261006-020 product upload and partner in-stock catalog
+
+- Owner: cursor:implementer-TASK-20261006-020
+- Depth: full, continuing the prior RCA. Slack had no messages on this topic.
+- Upload: accept jpeg by MIME or jfif/jpg extension, raw cap 20MB, HEIC gets a Persian rejection, Sharp failures become 400, gallery alert shows the server message, save stays disabled while `uploadingImg`. Did not invent images for the 19 empty products created 2026-10-06.
+- Partner catalog: `retailStock > 0` on the list query. Detail uses `channelAvailability(..., 'RETAIL')` and omits zero-retail variants. `matchesStock` never returns `out_of_stock`. Admin eligibility list unchanged.
+- Reclaimed stale `apps/api/src/main.ts` from TASK-20261002-001 (heartbeat 2026-10-02T00:20Z, only the multipart fileSize line). Reclaimed stale `AdminProducts.tsx` from TASK-20261005-016 (heartbeat 2026-10-05T14:05Z, only the upload alert and save disable). Did not edit `product.service.ts` (TASK-20261006-018).
+- Specs: `upload-image-policy.spec.ts`, `sales-partner-catalog-policy.spec.ts`, `upload-image.spec.ts` passed.
+- Next: commit, push, VPS auto-deploy, health. Logged-in admin upload click is still open.
+
 ## 2026-10-06T13:40:00Z — TASK-20261006-019 stock sync attention
 
 - Owner: cursor:implementer-TASK-20261006-019

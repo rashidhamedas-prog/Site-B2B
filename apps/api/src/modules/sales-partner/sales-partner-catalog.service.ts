@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, In, MoreThan, Not, Repository } from 'typeorm';
 import { CategoryEntity } from '../category/entities/category.entity';
+import { channelAvailability, channelUnitStock } from '../product/channel-product-projection';
 import { ProductEntity } from '../product/entities/product.entity';
 import {
   SalesCommissionRuleEntity,
@@ -56,7 +57,7 @@ export class SalesPartnerCatalogService {
     const parsed = parsePartnerCatalogQuery(typeof query === 'number' ? { page: query, pageSize: PARTNER_PAGE_SIZE } : { ...query, pageSize: PARTNER_PAGE_SIZE });
     const settings = await this.program.settings();
     const shareCode = await this.program.ensurePublicCode(salesPartnerId);
-    const products = await this.liveRetailProducts();
+    const products = (await this.liveRetailProducts()).filter((product) => channelAvailability(product, 'RETAIL').available);
     if (!products.length) return preparePartnerCatalog([], parsed);
     const rows = await this.eligibility.find({
       where: { productId: In(products.map((product) => product.id)) },
@@ -89,6 +90,9 @@ export class SalesPartnerCatalogService {
     if (!product || !isPartnerCatalogProduct({ product, explicitEligible: elig?.eligible ?? null })) {
       throw new NotFoundException('این محصول برای همکاران بازاریاب فعال نیست');
     }
+    if (!channelAvailability(product, 'RETAIL').available) {
+      throw new NotFoundException('این محصول فعلاً موجود نیست');
+    }
     const rules = await this.loadRules();
     const shareCode = await this.program.ensurePublicCode(salesPartnerId);
     const names = await this.categoryNames([product.categoryId]);
@@ -114,13 +118,15 @@ export class SalesPartnerCatalogService {
       }),
       colors,
       sizes,
-      variants: (product.variants || []).map((v) => ({
-        id: v.id,
-        color: v.color,
-        size: v.size,
-        stockBand: stockBand(v.retailStock),
-        stockLabel: humanStockBand(stockBand(v.retailStock)),
-      })),
+      variants: (product.variants || [])
+        .filter((v) => channelUnitStock(v, 'RETAIL') > 0)
+        .map((v) => ({
+          id: v.id,
+          color: v.color,
+          size: v.size,
+          stockBand: stockBand(v.retailStock),
+          stockLabel: humanStockBand(stockBand(v.retailStock)),
+        })),
     };
   }
 
@@ -515,7 +521,7 @@ export class SalesPartnerCatalogService {
       sizeType: product.sizeType,
     });
     const priceToman = `${Math.round(price / 10).toLocaleString('fa-IR')} تومان`;
-    const band = stockBand(product.retailStock);
+    const band = stockBand(channelAvailability(product, 'RETAIL').stock);
     return {
       id: product.id,
       name: product.name,
@@ -555,7 +561,7 @@ export class SalesPartnerCatalogService {
 
   private liveRetailProducts() {
     return this.products.find({
-      where: { status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0) },
+      where: { status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0), retailStock: MoreThan(0) },
     });
   }
 

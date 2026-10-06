@@ -132,12 +132,21 @@ class ApiClient {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: fd,
     });
-    const data = await res.json();
-    if (!res.ok) {
-      const message = data?.message ?? 'خطا در آپلود تصویر';
-      throw new Error(Array.isArray(message) ? message[0] : message);
+    const text = await res.text();
+    let data: { url?: string; key?: string; message?: string | string[] } | null = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
     }
-    return data;
+    if (!res.ok) {
+      const raw = data?.message ?? (res.status === 413 ? 'حجم عکس بیشتر از حد مجاز است.' : 'خطا در آپلود تصویر');
+      throw new Error(Array.isArray(raw) ? raw[0] : raw);
+    }
+    if (!data?.url) throw new Error('آپلود تمام شد ولی آدرس عکس برنگشت.');
+    return { url: data.url, key: data.key || '' };
   }
 
   async download(path: string, fallbackName: string): Promise<void> {

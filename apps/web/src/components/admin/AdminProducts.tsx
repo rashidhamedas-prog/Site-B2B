@@ -1200,8 +1200,8 @@ export function AdminProducts() {
               index: images.length,
             }),
         }));
-      } catch {
-        alert('آپلود عکس با خطا مواجه شد');
+      } catch (err: unknown) {
+        alert(err instanceof Error ? err.message : 'آپلود عکس با خطا مواجه شد');
       } finally {
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
@@ -2989,6 +2989,7 @@ export function AdminProducts() {
                 onClick={handleSave}
                 disabled={
                   saving ||
+                  uploadingImg ||
                   !form.name ||
                   !form.wholesalePrice ||
                   (modal === 'create' && !form.sku && !form.categoryId)
@@ -2996,7 +2997,7 @@ export function AdminProducts() {
                 className="btn btn-primary btn-md flex items-center gap-2"
               >
                 <Save className="h-4 w-4" />
-                {saving ? 'در حال ذخیره...' : 'ذخیره'}
+                {uploadingImg ? 'صبر برای آپلود عکس' : saving ? 'در حال ذخیره...' : 'ذخیره'}
               </button>
             </div>
           </div>

@@ -62,10 +62,11 @@ const cards = [
   { name: 'کت کتان', categoryId: catB, categoryName: 'کت', priceIrr: 3000, stockBand: 'low' as const, estimatedCommissionIrr: 300 },
 ];
 const grouped = preparePartnerCatalog(cards, { sort: 'category' });
-assert(grouped.total === 3, 'all cards');
+assert(grouped.total === 2, 'out of stock is hidden by default');
+assert(!grouped.items.some((row) => row.name === 'مانتو نیکی'), 'zero stock card is absent');
 assert(grouped.items[0].categoryName === 'کت', 'category sort fa order');
 assert(grouped.facets.categories.length === 2, 'two categories');
-assert(grouped.facets.categories.find((row) => row.id === catA)?.count === 2, 'manteau count');
+assert(grouped.facets.categories.find((row) => row.id === catA)?.count === 1, 'manteau count is in-stock only');
 
 const filtered = preparePartnerCatalog(cards, { categoryId: catA, stock: 'available' });
 assert(filtered.total === 1 && filtered.items[0].name === 'مانتو لینن', 'category plus available');
@@ -73,7 +74,9 @@ assert(filtered.facets.categories.find((row) => row.id === catA)?.count === 1, '
 assert(filtered.facets.categories.some((row) => row.id === catB), 'other categories stay visible');
 assert(filtered.facets.stock.out === 1, 'stock count keeps the selected category');
 const named = preparePartnerCatalog(cards, { q: 'نیکی' });
-assert(named.total === 1 && named.items[0].name === 'مانتو نیکی', 'name search');
+assert(named.total === 0, 'name search does not reveal an out-of-stock product');
+const namedLive = preparePartnerCatalog(cards, { q: 'لینن' });
+assert(namedLive.total === 1 && namedLive.items[0].name === 'مانتو لینن', 'name search keeps in-stock');
 
 const priced = preparePartnerCatalog(cards, { sort: 'price_desc' });
 assert(priced.items[0].name === 'کت کتان', 'price desc');
