@@ -94,7 +94,7 @@ export function AboutExperience() {
 
       <div ref={scrollerRef} className={styles.scroller} data-reduced={reducedMotion}>
         <div className={styles.stickyGraphic}>
-          <AboutScene activeStage={activeStage} />
+          <AboutScene activeStage={activeStage} mode="sticky" />
         </div>
 
         <ol className={styles.progress} aria-label="مراحل تولید">

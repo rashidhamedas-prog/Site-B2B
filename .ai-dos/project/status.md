@@ -1,5 +1,6 @@
 # Project Status
 
+- In progress: 2026-10-06 — **TASK-20261006-017** about process stills. Four readable still-lifes replace the abstract CSS scene on wholesale `/about`. Local browser verified. Deploy follows this commit.
 - In progress: 2026-10-06 — **TASK-20261006-001** hide storefront colors with zero channel stock. Specs and web tsc passed. Deploy follows this commit.
 - In progress: 2026-10-05 — **TASK-20261005-016** admin catalog search. Keystroke refetch, eaten spaces, and the variant join on `GET /products/admin` are fixed on branch `ai/TASK-20261005-016-admin-catalog-search`. Specs passed. Not on `origin/master` yet. Logged-in click of the search box is still open.
 - Last verified: 2026-10-05 — **TASK-20261005-015 LIVE** on `origin/master` `4caee82`. Sales-partner test rows for حامد رشید and آزمون کیوای ترنم are gone; 9 partners remain; store orders were not changed. Partner catalog follows publishable retail products. VPS health 200. Claims released. Logged-in admin click still open.

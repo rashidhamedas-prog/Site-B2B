@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-06T09:30:00Z — TASK-20261006-017 about process stills
+
+- Owner: cursor:implementer-TASK-20261006-017
+- Root cause: `/about` scrollytelling drew CSS geometry (bolt cylinder, striped plane, dashed lines, a gold circle for scissors). At a glance none of it read as fabric, pattern, sewing, or finished garments.
+- No workshop photographs exist in the repo or on `/workshop` (gradient cards only). Replaced the scene with four 3:4 still-lifes under `apps/web/public/about/process/`. Alts name the object. They are process illustrations, not a claim of a photographed Mashhad floor.
+- `about-scenes.spec.ts` ok. Web `tsc --noEmit` clean. Local browser: desktop stages 0–3 switch on scroll; mobile cards are 3:4 and the sticky frame is hidden. Last-stage sticky no longer slides under the header (`steps` padding-bottom 28vh).
+- Registry files were appended. TASK-20261006-001 claims were kept. About component files were previously released.
+
 ## 2026-10-06T09:20:00Z — TASK-20261006-001 hide zero-stock colors
 
 - Owner: cursor:implementer-TASK-20261006-001
@@ -10,8 +18,6 @@ Append newest entries at the top. Never erase another agent's record.
 - Reclaimed stale `product-display` (TASK-20260818-001, hb 2026-08-18), `wholesale-order` (TASK-20260826-001, hb 2026-09-02), and `CategoryProductCard` (TASK-20260831-001, hb 2026-08-31).
 - `product-display.spec.ts` OK. `wholesale-order.spec.ts` OK. Web `tsc --noEmit` clean.
 - TASK-20261005-016 still owns its own claims. This entry only appends.
-
-
 
 ## 2026-10-05T14:05:00Z — TASK-20261005-016 admin catalog search
 

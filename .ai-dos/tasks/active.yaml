@@ -1,5 +1,37 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261006-017"
+    title: "Readable workshop stills on wholesale about scrollytelling"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261006-017"
+    roles:
+      architect: "cursor:implementer-TASK-20261006-017"
+      implementer: "cursor:implementer-TASK-20261006-017"
+      reviewer: "same-session-visual"
+      security: "not-required"
+    branch: "ai/TASK-20261005-016-admin-catalog-search"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-06T09:10:00Z"
+    heartbeat_at: "2026-10-06T09:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/wholesale/about/about-scenes.ts"
+      - "apps/web/src/components/wholesale/about/about-scenes.spec.ts"
+      - "apps/web/src/components/wholesale/about/AboutScene.tsx"
+      - "apps/web/src/components/wholesale/about/AboutStory.tsx"
+      - "apps/web/src/components/wholesale/about/AboutExperience.tsx"
+      - "apps/web/src/components/wholesale/about/about.module.css"
+      - "apps/web/public/about/process/"
+      - "docs/reports/2026-10-06-about-process-stills.md"
+    acceptance_criteria:
+      - "Each of the four scroll stages shows a recognizable object: linen bolt, shears, sewing machine, hanger rail with carton"
+      - "Images are local webp and the scene spec passes"
+      - "Desktop scroll switches the sticky frame; mobile shows one still per card"
+      - "Copy does not call the stills photographs of the Mashhad workshop"
+    notes: |
+      Appended beside TASK-20261006-001. About files were not in that claim.
+      Published with the commit that updates origin/master.
   - id: "TASK-20261006-001"
     title: "Hide storefront colors whose channel stock is zero"
     status: "in_progress"
