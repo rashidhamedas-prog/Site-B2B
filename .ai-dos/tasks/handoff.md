@@ -38,6 +38,10 @@ Append newest entries at the top. Never erase another agent's record.
 - Specs: publication-automation.spec.ts ok; oos-policy.spec.ts ok. Security same-session: no medium+.
 - Reclaimed stale oos-policy from TASK-20260826-001.
 
+## 2026-10-07T00:40:00Z — TASK-20261007-002 LIVE
+
+- VPS tip `8d7c752` contains `abeefa7b`. API image has `20261007-001-category-show-on-home.js`. `GET /v1/categories` includes `showOnHome` 17 times. Web bundle has «نمایش در صفحه اول». Health 200. Boundary review PASS: no `homeOnly` on nav; `findAll` does not filter the flag. Claims released. Logged-in admin toggle click still open.
+
 ## 2026-10-06T22:40:00Z — TASK-20261007-002 category showOnHome
 
 - Owner: cursor:implementer-TASK-20261007-002

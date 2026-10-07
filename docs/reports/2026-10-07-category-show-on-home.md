@@ -2,7 +2,7 @@
 
 Date: 2026-10-07  
 Task: TASK-20261007-002  
-Status: Implemented (pending live deploy verify)
+Status: Live on VPS tip `8d7c752` (feature commit `abeefa7b`). Health 200. Public categories include `showOnHome`. Admin checkbox is in the web image.
 
 ## Goal
 
