@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
@@ -153,6 +154,14 @@ export class PatchOmnichannelSettingsDto {
   @IsOptional()
   @IsIn(WITHDRAW_ACTIONS)
   withdrawAction?: (typeof WITHDRAW_ACTIONS)[number];
+
+  /** Empty = all categories. Non-empty = auto-publish allowlist only. */
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(200)
+  @IsUUID('4', { each: true })
+  autoPublishCategoryIds?: string[];
 
   @IsOptional()
   @IsString()

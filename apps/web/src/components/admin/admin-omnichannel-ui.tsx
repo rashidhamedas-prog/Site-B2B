@@ -129,6 +129,8 @@ export type Status = {
   quietStartHour?: number | null;
   quietEndHour?: number | null;
   withdrawAction?: WithdrawAction;
+  /** Empty = all categories. Non-empty = auto-publish allowlist. */
+  autoPublishCategoryIds?: string[];
   outbox?: {
     pending: number;
     processing: number;

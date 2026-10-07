@@ -74,7 +74,11 @@ type RulesDraft = {
   quietEndHour: number | null;
   retrySlaSeconds: number;
   outboxRetentionDays: number;
+  /** Empty = all categories (filter off). Non-empty = auto-publish allowlist. */
+  autoPublishCategoryIds: string[];
 };
+
+type CategoryOption = { id: string; name: string; status?: string };
 
 const DEFAULT_EVENTS = ['product.created', 'product.content_changed', 'product.price_changed', 'product.visibility_changed', 'product.media_changed', 'product.withdrawn'];
 const GAP_OPTIONS = [0, 60, 90, 300, 600, 900, 1800, 3600];
@@ -94,6 +98,7 @@ function rulesFromStatus(st: Status | null): RulesDraft {
     quietEndHour: st?.quietEndHour ?? null,
     retrySlaSeconds: typeof st?.retrySlaSeconds === 'number' ? st.retrySlaSeconds : 3600,
     outboxRetentionDays: typeof st?.outboxRetentionDays === 'number' ? st.outboxRetentionDays : 90,
+    autoPublishCategoryIds: Array.isArray(st?.autoPublishCategoryIds) ? st.autoPublishCategoryIds : [],
   };
 }
 
@@ -178,6 +183,7 @@ export function AdminOmnichannel() {
   const [rules, setRules] = useState<RulesDraft>(() => rulesFromStatus(null));
   const [savedRules, setSavedRules] = useState<RulesDraft>(() => rulesFromStatus(null));
   const savedRulesRef = useRef<RulesDraft>(rulesFromStatus(null));
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
 
   const [pubChannel, setPubChannel] = useState<Channel>('RETAIL');
   const [sourceType, setSourceType] = useState<SourceType>('PRODUCT');
@@ -189,7 +195,7 @@ export function AdminOmnichannel() {
   const load = useCallback(async () => {
     setError('');
     try {
-      const [st, conns, dests, tpls, pubs, dels, box, logs, files] = await Promise.all([
+      const [st, conns, dests, tpls, pubs, dels, box, logs, files, cats] = await Promise.all([
         apiClient.get<Status>('/omnichannel/status'),
         apiClient.get<Connection[]>('/omnichannel/connections'),
         apiClient.get<Destination[]>('/omnichannel/destinations'),
@@ -199,8 +205,10 @@ export function AdminOmnichannel() {
         apiClient.get<OutboxRow[]>('/omnichannel/outbox'),
         apiClient.get<AuditRow[]>('/omnichannel/audits'),
         apiClient.get<MediaRow[]>('/omnichannel/media').catch(() => [] as MediaRow[]),
+        apiClient.get<CategoryOption[]>('/categories/admin').catch(() => [] as CategoryOption[]),
       ]);
       setStatus(st);
+      setCategoryOptions(cats.filter((row) => row.status !== 'HIDDEN'));
       const fromServer = rulesFromStatus(st);
       const previous = JSON.stringify(savedRulesRef.current);
       savedRulesRef.current = fromServer;
@@ -838,6 +846,13 @@ export function AdminOmnichannel() {
     autoPublishEventTypes: current.autoPublishEventTypes.includes(key) ? current.autoPublishEventTypes.filter((row) => row !== key) : [...current.autoPublishEventTypes, key],
   }));
 
+  const toggleCategory = (id: string) => setRules((current) => ({
+    ...current,
+    autoPublishCategoryIds: current.autoPublishCategoryIds.includes(id)
+      ? current.autoPublishCategoryIds.filter((row) => row !== id)
+      : [...current.autoPublishCategoryIds, id],
+  }));
+
   const rulesPanel = (
     <Section
       title="۴. قواعد خودکار"
@@ -874,6 +889,45 @@ export function AdminOmnichannel() {
             ))}
           </div>
           <p className="text-xs text-gray-500">مقاله بلاگ و صفحه CMS فعلاً با ارسال دستی می‌روند. تغییر موجودی همیشه طبق «رفتار ناموجودی» پایین رسیدگی می‌شود.</p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium">کدام دسته‌ها خودکار منتشر شوند؟</p>
+            {rules.autoPublishCategoryIds.length > 0
+              ? <Badge tone="ok">{faNumber(rules.autoPublishCategoryIds.length)} دسته</Badge>
+              : <Badge tone="info">همه دسته‌ها</Badge>}
+          </div>
+          <p className="text-xs text-gray-500">
+            خالی = فیلتر خاموش و همه محصولات واجد شرایط می‌روند. با انتخاب دسته، فقط محصولاتی که در همان دسته (اصلی یا عضویت) هستند به‌صورت خودکار پست می‌شوند.
+            ارسال دستی محدود نمی‌شود. اگر محصولی از لیست خارج شود و پست زنده داشته باشد، طبق «حذف از سایت» بالا از کانال برداشته می‌شود.
+          </p>
+          {categoryOptions.length === 0 ? (
+            <p className="text-xs text-amber-700">دسته‌ای برای انتخاب بارگذاری نشد. از «دسته‌بندی‌ها» حداقل یک دسته فعال بسازید.</p>
+          ) : (
+            <div className="grid max-h-64 gap-2 overflow-y-auto rounded-xl border p-3 md:grid-cols-2">
+              {categoryOptions.map((cat) => (
+                <label key={cat.id} className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={rules.autoPublishCategoryIds.includes(cat.id)}
+                    onChange={() => toggleCategory(cat.id)}
+                  />
+                  <span className="min-w-0 leading-snug">{cat.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
+          {rules.autoPublishCategoryIds.length > 0 && (
+            <button
+              type="button"
+              className="text-xs text-gray-600 underline"
+              onClick={() => setRules((current) => ({ ...current, autoPublishCategoryIds: [] }))}
+            >
+              پاک کردن انتخاب (برگشت به همه دسته‌ها)
+            </button>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

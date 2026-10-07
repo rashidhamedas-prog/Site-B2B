@@ -32,6 +32,10 @@ export { OOS_POLICIES, type OosPolicy };
 
 export const OMNICHANNEL_SETTINGS_KEY = 'omnichannel';
 export const DEFAULT_OOS_POLICY: OosPolicy = 'UPDATE';
+/** Max category UUIDs in the auto-publish allowlist (one shared list for RETAIL+WHOLESALE). */
+export const AUTO_PUBLISH_CATEGORY_IDS_MAX = 200;
+
+const CATEGORY_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type StoredOmnichannelSettings = {
   retailOosPolicy?: OosPolicy;
@@ -52,6 +56,11 @@ export type StoredOmnichannelSettings = {
   quietStartHour?: number;
   quietEndHour?: number;
   withdrawAction?: WithdrawAction;
+  /**
+   * Auto-publish category allowlist. Absent or [] = all categories (no filter).
+   * Non-empty = only products whose primary or membership category intersects this set.
+   */
+  autoPublishCategoryIds?: string[];
 };
 
 /** Read-only snapshot written by the server after getChat/getChatMember. Never admin input. */
@@ -100,8 +109,31 @@ const SETTINGS_INPUT_KEYS = new Set([
   'quietStartHour',
   'quietEndHour',
   'withdrawAction',
+  'autoPublishCategoryIds',
   'reason',
 ]);
+
+/** Parse category UUID allowlist; null = invalid shape. Empty array is valid (open filter). */
+export function parseAutoPublishCategoryIds(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  if (value.length > AUTO_PUBLISH_CATEGORY_IDS_MAX) return null;
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const item of value) {
+    if (typeof item !== 'string') return null;
+    const id = item.trim();
+    if (!CATEGORY_ID_RE.test(id)) return null;
+    const key = id.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(id);
+  }
+  return unique;
+}
+
+export function readAutoPublishCategoryIds(stored: StoredOmnichannelSettings): string[] {
+  return Array.isArray(stored.autoPublishCategoryIds) ? stored.autoPublishCategoryIds : [];
+}
 
 const AUTO_PUBLISH_EVENT_SET = new Set<string>(AUTO_PUBLISH_CANDIDATE_EVENTS);
 
@@ -304,6 +336,8 @@ export function parseStoredOmnichannelSettings(value: unknown): StoredOmnichanne
     out.quietEndHour = quietEnd;
   }
   if (isWithdrawAction(raw.withdrawAction)) out.withdrawAction = raw.withdrawAction;
+  const categoryIds = parseAutoPublishCategoryIds(raw.autoPublishCategoryIds);
+  if (categoryIds) out.autoPublishCategoryIds = categoryIds;
   return out;
 }
 
@@ -351,6 +385,9 @@ export function assertOmnichannelSettingsInput(input: unknown): void {
   if (raw.outboxRetentionDays !== undefined && parseBoundedInt(raw.outboxRetentionDays, OUTBOX_RETENTION_MIN_DAYS, OUTBOX_RETENTION_MAX_DAYS) == null) {
     throw new BadRequestException('نگهداری صف باید بین ۷ و ۳۶۵ روز باشد');
   }
+  if (raw.autoPublishCategoryIds !== undefined && parseAutoPublishCategoryIds(raw.autoPublishCategoryIds) == null) {
+    throw new BadRequestException(`لیست دسته انتشار باید آرایه‌ای از شناسه معتبر (حداکثر ${AUTO_PUBLISH_CATEGORY_IDS_MAX}) باشد`);
+  }
 }
 
 export type OmnichannelSettingsPatch = {
@@ -365,6 +402,7 @@ export type OmnichannelSettingsPatch = {
   quietStartHour?: number | null;
   quietEndHour?: number | null;
   withdrawAction?: string;
+  autoPublishCategoryIds?: string[];
 };
 
 export function hasAutomationPatch(patch: OmnichannelSettingsPatch): boolean {
@@ -373,7 +411,8 @@ export function hasAutomationPatch(patch: OmnichannelSettingsPatch): boolean {
     || patch.autoMinGapSeconds !== undefined
     || patch.quietStartHour !== undefined
     || patch.quietEndHour !== undefined
-    || patch.withdrawAction !== undefined;
+    || patch.withdrawAction !== undefined
+    || patch.autoPublishCategoryIds !== undefined;
 }
 
 export function mergeOmnichannelSettingsPatch(
@@ -419,6 +458,8 @@ export function mergeOmnichannelSettingsPatch(
     next.outboxRetentionDays = retention;
     next.outboxRetentionChosen = true;
   }
+  const categoryIds = parseAutoPublishCategoryIds(patch.autoPublishCategoryIds);
+  if (categoryIds) next.autoPublishCategoryIds = categoryIds;
   return parseStoredOmnichannelSettings(next);
 }
 
@@ -459,6 +500,7 @@ export function publicOmnichannelSettings(
     quietStartHour: automation.quietStartHour,
     quietEndHour: automation.quietEndHour,
     withdrawAction: automation.withdrawAction,
+    autoPublishCategoryIds: readAutoPublishCategoryIds(stored),
   };
 }
 

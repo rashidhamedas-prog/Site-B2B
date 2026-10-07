@@ -220,6 +220,48 @@ export function canEnqueueManualDelivery(connectorsEnabled: boolean): boolean {
   return connectorsEnabled === true;
 }
 
+/* ---------- category allowlist (auto publish only) ---------- */
+
+export type CategoryAllowlistGateInput = {
+  /** Empty / absent allowlist = open (backward compatible with LIVE). */
+  allowlist: readonly string[];
+  primaryCategoryId: string | null;
+  membershipCategoryIds: readonly string[];
+};
+
+export type CategoryAllowlistGate =
+  | { allow: true }
+  | { allow: false; reason: 'category_not_allowed' };
+
+/** Dedupe primary + memberships; drop null/blank. */
+export function collectProductCategoryIds(
+  primaryCategoryId: string | null | undefined,
+  membershipCategoryIds: readonly (string | null | undefined)[] = [],
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of [primaryCategoryId, ...membershipCategoryIds]) {
+    if (typeof raw !== 'string') continue;
+    const id = raw.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
+/**
+ * Channel eligibility gate: non-empty allowlist requires the product to share at least one
+ * category (primary or membership). Empty allowlist does not filter.
+ */
+export function evaluateCategoryAllowlistGate(input: CategoryAllowlistGateInput): CategoryAllowlistGate {
+  if (!input.allowlist.length) return { allow: true };
+  const allowed = new Set(input.allowlist);
+  const productIds = collectProductCategoryIds(input.primaryCategoryId, input.membershipCategoryIds);
+  if (productIds.some((id) => allowed.has(id))) return { allow: true };
+  return { allow: false, reason: 'category_not_allowed' };
+}
+
 /** Keep the newest row per source×channel (input must already be newest-first). */
 export function latestPublicationsBySource<T extends {
   sourceType?: string;

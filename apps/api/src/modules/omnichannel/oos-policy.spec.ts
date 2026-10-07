@@ -13,9 +13,11 @@ import {
   liveOosRejectReason,
   mergeDestinationSettings,
   mergeOmnichannelSettingsPatch,
+  parseAutoPublishCategoryIds,
   parseStoredOmnichannelSettings,
   publicOmnichannelSettings,
   readAutomationSettings,
+  readAutoPublishCategoryIds,
   readAutoPublishEventTypes,
   readChannelOos,
   readDestinationVerification,
@@ -287,6 +289,34 @@ assert(isAllowedSecretRef('DATABASE_URL') === false, 'DATABASE_URL rejected');
     assert(rejected, `invalid automation input rejected: ${JSON.stringify(bad)}`);
   }
   assertOmnichannelSettingsInput({ quietStartHour: null, quietEndHour: null });
+}
+
+// --- auto-publish category allowlist ---
+{
+  const catA = '11111111-1111-4111-8111-111111111111';
+  const catB = '22222222-2222-4222-8222-222222222222';
+  assert(readAutoPublishCategoryIds({}).length === 0, 'missing category allowlist is open');
+  assert(parseAutoPublishCategoryIds([])?.length === 0, 'empty array parses');
+  assert(parseAutoPublishCategoryIds([catA, catA, catB])?.join(',') === `${catA},${catB}`, 'dedupe category ids');
+  assert(parseAutoPublishCategoryIds(['not-a-uuid']) === null, 'reject non-uuid');
+  assert(parseAutoPublishCategoryIds('x' as unknown) === null, 'reject non-array');
+
+  const withCats = mergeOmnichannelSettingsPatch({}, { autoPublishCategoryIds: [catA, catB] });
+  assert(readAutoPublishCategoryIds(withCats).join(',') === `${catA},${catB}`, 'category allowlist merges');
+  assert(hasAutomationPatch({ autoPublishCategoryIds: [] }), 'empty category patch counts as automation');
+  const cleared = mergeOmnichannelSettingsPatch(withCats, { autoPublishCategoryIds: [] });
+  assert(readAutoPublishCategoryIds(cleared).length === 0, 'save [] clears allowlist (open)');
+  const pub = publicOmnichannelSettings(withCats, { retail: null, wholesale: null });
+  assert(pub.autoPublishCategoryIds.join(',') === `${catA},${catB}`, 'public exposes category allowlist');
+
+  let rejected = false;
+  try {
+    assertOmnichannelSettingsInput({ autoPublishCategoryIds: ['bad'] });
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, 'invalid category ids rejected');
+  assertOmnichannelSettingsInput({ autoPublishCategoryIds: [catA] });
 }
 
 // --- destination verification snapshot (server-written only) ---

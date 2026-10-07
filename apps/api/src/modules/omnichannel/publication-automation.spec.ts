@@ -3,7 +3,9 @@
  */
 import {
   canEnqueueManualDelivery,
+  collectProductCategoryIds,
   evaluateAutomationGate,
+  evaluateCategoryAllowlistGate,
   foldLiveRemoteMessages,
   inQuietHours,
   latestPublicationsBySource,
@@ -185,6 +187,16 @@ function main() {
     { sourceType: 'PRODUCT', sourceId: 'a', channel: 'WHOLESALE', status: 'PUBLISHED' },
   ]);
   assert(deduped.length === 2 && deduped[0].status === 'READY', 'list keeps newest per source×channel');
+
+  // category allowlist: empty = open; non-empty = primary ∪ memberships
+  assert(collectProductCategoryIds('A', ['A', 'B', '', null]).join(',') === 'A,B', 'collect dedupes');
+  assert(evaluateCategoryAllowlistGate({ allowlist: [], primaryCategoryId: 'x', membershipCategoryIds: [] }).allow === true, 'empty allowlist open');
+  assert(evaluateCategoryAllowlistGate({ allowlist: ['A'], primaryCategoryId: 'A', membershipCategoryIds: [] }).allow === true, 'primary hit');
+  assert(evaluateCategoryAllowlistGate({ allowlist: ['A'], primaryCategoryId: 'B', membershipCategoryIds: ['A'] }).allow === true, 'membership hit');
+  const denied = evaluateCategoryAllowlistGate({ allowlist: ['A'], primaryCategoryId: 'B', membershipCategoryIds: ['C'] });
+  assert(denied.allow === false && denied.reason === 'category_not_allowed', 'miss deny');
+  assert(evaluateCategoryAllowlistGate({ allowlist: ['A', 'B'], primaryCategoryId: null, membershipCategoryIds: ['B'] }).allow === true, 'null primary membership ok');
+  assert(evaluateCategoryAllowlistGate({ allowlist: ['A'], primaryCategoryId: null, membershipCategoryIds: [] }).allow === false, 'no categories deny');
 
   console.log('publication-automation.spec.ts: ok');
 }

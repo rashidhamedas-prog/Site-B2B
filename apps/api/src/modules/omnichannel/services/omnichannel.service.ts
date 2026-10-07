@@ -7,6 +7,7 @@ import { ChannelProjectionService } from './channel-projection.service';
 import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
 import { normalizeSalesChannel } from '../../product/channel-product-projection';
 import { ProductEntity } from '../../product/entities/product.entity';
+import { ProductCategoryMembershipEntity } from '../../product/entities/product-category-membership.entity';
 import { PreviewDto, CreatePublicationDto, PatchDestinationDto, PatchOmnichannelSettingsDto, PutSecretDto } from '../dto/omnichannel.dto';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
@@ -44,6 +45,7 @@ import {
   parseStoredOmnichannelSettings,
   publicOmnichannelSettings,
   readAutomationSettings,
+  readAutoPublishCategoryIds,
   readAutoPublishEventTypes,
   readChannelOos,
   resolveOosDecision,
@@ -58,6 +60,7 @@ import {
 import {
   canEnqueueManualDelivery,
   evaluateAutomationGate,
+  evaluateCategoryAllowlistGate,
   foldLiveRemoteMessages,
   latestPublicationsBySource,
   planManualDeliveries,
@@ -167,6 +170,8 @@ export class OmnichannelService {
     private readonly audits: Repository<OmnichannelAuditEntity>,
     @InjectRepository(ProductEntity)
     private readonly products: Repository<ProductEntity>,
+    @InjectRepository(ProductCategoryMembershipEntity)
+    private readonly productCategoryMemberships: Repository<ProductCategoryMembershipEntity>,
     @InjectRepository(CmsPageEntity)
     private readonly cmsPages: Repository<CmsPageEntity>,
     @InjectRepository(OmnichannelMediaAssetEntity)
@@ -529,6 +534,7 @@ export class OmnichannelService {
       quietStartHour: automation.quietStartHour,
       quietEndHour: automation.quietEndHour,
       withdrawAction: automation.withdrawAction,
+      autoPublishCategoryCount: readAutoPublishCategoryIds(next).length,
     });
     return publicOmnichannelSettings(parseStoredOmnichannelSettings(saved.value), await this.canaryDestinationIds());
   }
@@ -1155,11 +1161,26 @@ export class OmnichannelService {
     const chosen = readAutoPublishEventTypes(stored).events;
     const oos = readChannelOos(stored, input.channel);
     const live = await this.liveRemoteMessages('PRODUCT', input.sourceId, input.channel);
+    const allowlist = readAutoPublishCategoryIds(stored);
+    let publishable = input.publishable;
+    if (allowlist.length > 0) {
+      const cats = await this.productCategoryIdsFor(input.sourceId);
+      const categoryGate = evaluateCategoryAllowlistGate({
+        allowlist,
+        primaryCategoryId: cats.primaryCategoryId,
+        membershipCategoryIds: cats.membershipCategoryIds,
+      });
+      if (!categoryGate.allow) {
+        if (live.length === 0) return 'category_not_allowed';
+        // Left the allowlist while a remote post exists → same path as unpublishable.
+        publishable = false;
+      }
+    }
     const intent = resolveRemoteIntent({
       eventType: input.eventType,
       localAction: input.localAction,
       previousStatus: input.previousStatus,
-      publishable: input.publishable,
+      publishable,
       available: input.available,
       hasRemoteMessage: live.length > 0,
       oosPolicy: oos.policy,
@@ -1284,6 +1305,21 @@ export class OmnichannelService {
       order: { createdAt: 'ASC' },
     });
     return foldLiveRemoteMessages(rows);
+  }
+
+  /** Primary categoryId + membership rows for category allowlist (auto publish only). */
+  private async productCategoryIdsFor(productId: string): Promise<{
+    primaryCategoryId: string | null;
+    membershipCategoryIds: string[];
+  }> {
+    const [product, memberships] = await Promise.all([
+      this.products.findOne({ where: { id: productId }, select: ['id', 'categoryId'] }),
+      this.productCategoryMemberships.find({ where: { productId }, select: ['categoryId'] }),
+    ]);
+    return {
+      primaryCategoryId: product?.categoryId ?? null,
+      membershipCategoryIds: memberships.map((row) => row.categoryId),
+    };
   }
 
   /** Auto CREATE counters for the gate: distinct posts today (Tehran day) and the latest scheduled send. */

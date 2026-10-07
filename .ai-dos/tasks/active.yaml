@@ -1,5 +1,45 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261007-003"
+    title: "Omnichannel auto-publish category allowlist"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261007-003"
+    roles:
+      architect: "cursor:implementer-TASK-20261007-003"
+      implementer: "cursor:implementer-TASK-20261007-003"
+      reviewer: "same-session"
+      security: "same-session-admin-settings"
+    branch: "feat/TASK-20261007-003-omni-category-allowlist"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-07T00:05:00Z"
+    heartbeat_at: "2026-10-07T00:05:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/omnichannel/publication-automation.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
+      - "apps/api/src/modules/omnichannel/oos-policy.ts"
+      - "apps/api/src/modules/omnichannel/oos-policy.spec.ts"
+      - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
+      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel.module.ts"
+      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      - "apps/web/src/components/admin/admin-omnichannel-ui.tsx"
+      - "docs/reports/2026-10-07-omnichannel-category-allowlist.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Admin rules panel can select categories; empty means all categories"
+      - "Non-empty autoPublishCategoryIds blocks auto CREATE when product categories miss the allowlist"
+      - "Product leaving allowlist with a live remote post follows withdrawAction"
+      - "Manual publish is not restricted by the category allowlist"
+      - "publication-automation.spec.ts and oos-policy.spec.ts pass"
+    notes: |
+      Reclaimed oos-policy.ts + oos-policy.spec.ts from TASK-20260826-001
+      (heartbeat 2026-09-02T23:55:00Z, stale). Append-only on governance files
+      shared with TASK-20261007-002. Depth full (skill-top + ECC).
   - id: "TASK-20261007-002"
     title: "Category showOnHome toggle for retail home grid only"
     status: "in_progress"
@@ -5365,8 +5405,9 @@ tasks:
       - "apps/api/src/modules/cms/cms-sanitize.ts"
       - "apps/api/src/modules/cms/cms-sanitize.spec.ts"
       - "apps/web/src/components/cms/CmsPage.tsx"
-      - "apps/api/src/modules/omnichannel/oos-policy.ts"
-      - "apps/api/src/modules/omnichannel/oos-policy.spec.ts"
+      # reclaimed 2026-10-07 by TASK-20261007-003 (stale hb 2026-09-02; category allowlist):
+      # "apps/api/src/modules/omnichannel/oos-policy.ts"
+      # "apps/api/src/modules/omnichannel/oos-policy.spec.ts"
       - ".cursor/agents/omnichannel-implementer.md"
       - ".cursor/agents/omnichannel-security.md"
       - ".cursor/agents/omnichannel-ops.md"

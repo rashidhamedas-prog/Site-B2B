@@ -16,6 +16,7 @@ import { BaleAdapter } from './adapters/bale.adapter';
 import { RubikaAdapter } from './adapters/rubika.adapter';
 import { ChannelAdapterRegistry } from './adapters/adapter-registry';
 import { ProductEntity } from '../product/entities/product.entity';
+import { ProductCategoryMembershipEntity } from '../product/entities/product-category-membership.entity';
 import { CmsPageEntity } from '../cms/entities/cms-page.entity';
 import { BlogPostEntity } from '../blog/entities/blog-post.entity';
 import { UserEntity } from '../auth/entities/user.entity';
@@ -39,6 +40,7 @@ import { AppSettingEntity } from '../settings/entities/app-setting.entity';
       OmnichannelAuditEntity,
       OmnichannelMediaAssetEntity,
       ProductEntity,
+      ProductCategoryMembershipEntity,
       CmsPageEntity,
       BlogPostEntity,
       UserEntity,

@@ -2,6 +2,17 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-07T00:10:00Z — TASK-20261007-003 omnichannel category allowlist
+
+- Owner: cursor:implementer-TASK-20261007-003
+- Depth: full (skill-top + ECC planner + parallel explore/security). Research: master catalog + channel eligibility allowlist; release gate before auto CREATE; empty = open for LIVE safety.
+- Decision: `autoPublishCategoryIds` in `app_settings.omnichannel` jsonb. Empty/absent = all categories. Non-empty intersects primary `categoryId` ∪ memberships. Auto-only; manual unrestricted. Leave-list + live remote → `publishable:false` → withdrawAction.
+- Pure: `evaluateCategoryAllowlistGate` / `collectProductCategoryIds` in publication-automation.ts. Settings parse/merge/public in oos-policy.ts. Gate in `autoSyncRemote`.
+- UI: rules panel §۴ multi-select under events.
+- Specs: publication-automation.spec.ts ok; oos-policy.spec.ts ok. Security same-session: no medium+.
+- Reclaimed stale oos-policy from TASK-20260826-001.
+- Deploy: awaiting explicit commit/push (user git rule).
+
 ## 2026-10-06T22:40:00Z — TASK-20261007-002 category showOnHome
 
 - Owner: cursor:implementer-TASK-20261007-002

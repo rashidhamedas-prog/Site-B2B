@@ -1,5 +1,6 @@
 # Project Status
 
+- In progress: 2026-10-07 — **TASK-20261007-003** Omnichannel auto-publish category allowlist. Admin multi-select on rules panel; empty=all; gate in `autoSyncRemote`. Specs green. Commit/deploy pending owner ask.
 - In progress: 2026-10-07 — **TASK-20261007-002** category `showOnHome` for retail home grid only. Admin checkbox + expand-only migration. Menus/SEO untouched. Specs next.
 - Last verified: 2026-10-07 — **TASK-20261007-001 CLOSED LIVE** on `origin/master` `0058ce8`. Template save roundtrip kept a disabled photos block and then restored it. Wizard stages checked: wholesale bots only, one non-canary wholesale destination, CANARY mode, both previews rendered. No customer post. Claims released.
 - Last verified: 2026-10-06 — **TASK-20261006-020 LIVE** on `origin/master` `888383c`. API image has the 20MB multipart cap and partner `retailStock > 0`. Health 200. Empty galleries from today's creates were not backfilled. Logged-in upload click still open.
