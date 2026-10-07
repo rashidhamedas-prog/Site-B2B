@@ -1,3 +1,15 @@
+## 2026-10-07 — ۵۰۰ پرداخت خرده‌فروشی (`system_settings`) [TASK-20261007-008]
+
+- ریشه: `resolveSalesPartnerLink` روی هر `POST /orders` خرده‌فروشی جدول ناموجود `system_settings` را می‌خواند.
+- اصلاح: `app_settings` + soft-fail تا attribution سفارش را نترکاند.
+- گزارش: `docs/reports/2026-10-07-retail-checkout-system-settings-500.md`
+
+## 2026-10-07 — آپلود عکس محصول کند / ناموفق
+
+- ریشه: Sharp روی عکس ۴۸MP موبایل fail می‌کرد؛ nginx آپلود را بعد از ۶۰ ثانیه قطع می‌کرد؛ فایل خام تا ۲۰MB از ایران POST می‌شد.
+- کلاینت ادمین قبل از ارسال تا ۱۲۰۰×۱۶۰۰ کوچک می‌کند؛ Sharp سقف ۶۰MP + timeout + حداکثر ۲ همزمان؛ nginx `/api/v1/upload/` برابر ۱۸۰ ثانیه.
+- گزارش: `docs/reports/2026-10-07-product-image-upload-timeout.md`
+
 ## 2026-10-07 — جزئیات پیش‌نویس در داشبورد همکار بازاریاب
 
 - در `/admin/sales-partners` تب سفارش‌ها و صف داشبورد، پیش‌نویس با «مشاهده جزئیات» باز می‌شود.

@@ -2,6 +2,34 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-07T11:50:00Z — TASK-20261007-007 shipping upload fix
+
+- Owner: cursor:implementer-TASK-20261007-007
+- User asked to finish end-to-end (commit/push/deploy).
+- Specs re-run OK before ship: prepare-product-image, upload-image, image-processor.
+- Prior: Sharp 60MP + semaphore 2 + client downscale + nginx 180s upload locations + 120s fetch abort.
+
+## 2026-10-07T11:40:00Z — TASK-20261007-007 product image upload hang
+
+- Owner: cursor:implementer-TASK-20261007-007
+- Depth: skill-top **full**. ECC orch-fix-defect / tdd-workflow. Slack public search: no related messages.
+- Root: Sharp 40MP cap rejected 48MP phone JPEGs; nginx `/api/` 60s cut Iran uploads; raw 20MB POST.
+- Change: client downscale 1200×1600; Sharp 60MP + 20s timeout + concurrency 2; nginx `/api/v1/upload/` 180s; fetch abort 120s.
+- Reclaimed stale nginx.conf from TASK-20261002-001. Did not edit AdminProducts (016).
+- Security: medium pixel-bomb mitigated (60MP + semaphore). Auth/MIME unchanged.
+- Specs executed: prepare-product-image.spec.ts OK; upload-image.spec.ts OK; image-processor.spec.ts OK.
+- Verify [9a9e3077](9a9e3077-c767-4406-a688-e8778c5304a9): PASS all five AC.
+- Residual: logged-in production click; HEIC on Chrome; Blog Tools bypasses prepare hook.
+
+## 2026-10-07T11:26:00Z — TASK-20261007-008 retail checkout system_settings 500
+
+- Owner: cursor:implementer-TASK-20261007-008
+- Root: `resolveSalesPartnerLink` selected `system_settings`; live table is `app_settings`. Uncaught QueryFailedError → Nest "Internal server error" on every retail pay click since 89d5c331.
+- Fix: `sales-partner-checkout-link.ts` SQL + gate + soft-fail; OrderService uses it; catch wraps the settings query.
+- Shared worktree with TASK-20261007-006; no overlap on 006 file_claims except append-only governance.
+- Specs executed: `npx ts-node --transpile-only src/modules/sales-partner/sales-partner-checkout-link.spec.ts` → ok.
+- Deploy: blocked on explicit user commit/push (live checkout stays 500 until API image rebuild).
+
 ## 2026-10-07T11:15:00Z — TASK-20261007-006 admin draft order detail
 
 - Owner: cursor:implementer-TASK-20261007-006

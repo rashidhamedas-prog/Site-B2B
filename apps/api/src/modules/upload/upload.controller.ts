@@ -6,7 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { StorageService } from './storage.service';
-import { ProductImageProcessingError } from './image-processor';
+import { isProductImageTimeout, ProductImageProcessingError } from './image-processor';
 import { MAX_UPLOAD_IMAGE_BYTES, uploadImageKind, uploadImageRejection } from './upload-image-policy';
 
 function fileTooLarge(error: unknown): boolean {
@@ -62,6 +62,9 @@ export class UploadController {
       );
     } catch (error) {
       if (error instanceof ProductImageProcessingError) {
+        if (isProductImageTimeout(error)) {
+          throw new BadRequestException('پردازش عکس بیش از حد طول کشید. فایل کوچک‌تری بفرستید.');
+        }
         throw new BadRequestException('این فایل به‌عنوان تصویر خوانده نشد. jpg، png یا webp سالم بفرستید.');
       }
       throw error;

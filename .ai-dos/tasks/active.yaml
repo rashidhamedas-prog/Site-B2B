@@ -1,5 +1,75 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20261007-008"
+    title: "Retail checkout 500 from missing system_settings"
+    status: "in_progress"
+    risk: "high"
+    owner: "cursor:implementer-TASK-20261007-008"
+    roles:
+      architect: "cursor:implementer-TASK-20261007-008"
+      implementer: "cursor:implementer-TASK-20261007-008"
+      reviewer: "same-session-verify"
+      security: "same-session-payments"
+    branch: "feat/TASK-20261007-006-sp-admin-draft-detail"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-07T11:26:00Z"
+    heartbeat_at: "2026-10-07T11:30:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner-checkout-link.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-checkout-link.spec.ts"
+      - "apps/api/src/modules/order/order.service.ts"
+      - "docs/reports/2026-10-07-retail-checkout-system-settings-500.md"
+    notes: |
+      Shared worktree with 006/007. Append-only on WORKLOG/status/handoff/active.yaml.
+      Does not edit 006 admin UI or 007 upload files. Attribution must not 500 retail pay.
+    acceptance_criteria:
+      - "OrderService does not query system_settings"
+      - "Retail partner settings are read from app_settings"
+      - "Missing system_settings / app_settings is a null link, not HTTP 500"
+      - "sales-partner-checkout-link.spec.ts passes"
+  - id: "TASK-20261007-007"
+    title: "Product image upload hang and phone-JPEG failures"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261007-007"
+    roles:
+      architect: "cursor:implementer-TASK-20261007-007"
+      implementer: "cursor:implementer-TASK-20261007-007"
+      reviewer: "cursor:verify-TASK-20261007-007"
+      security: "same-session-admin-upload"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-07T11:25:00Z"
+    heartbeat_at: "2026-10-07T11:50:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/upload/image-processor.ts"
+      - "apps/api/src/modules/upload/image-processor.spec.ts"
+      - "apps/api/src/modules/upload/upload.controller.ts"
+      - "apps/web/src/lib/prepare-product-image.ts"
+      - "apps/web/src/lib/prepare-product-image.spec.ts"
+      - "apps/web/src/lib/upload-image.ts"
+      - "apps/web/src/lib/upload-image.spec.ts"
+      - "apps/web/src/lib/hooks/useImageUpload.ts"
+      - "apps/web/src/lib/api.ts"
+      - "nginx/nginx.conf"
+      - "docs/reports/2026-10-07-product-image-upload-timeout.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Phone-sized JPEGs above 40MP are accepted by Sharp (limit covers 48MP cameras)"
+      - "Admin client downscales to 1200x1600 before POST when the browser can decode the file"
+      - "nginx /api/v1/upload/ read/send/body timeouts are 180s on both shop vhosts"
+      - "Client fetch aborts with a Persian timeout after 120s"
+      - "prepare-product-image.spec.ts, upload-image.spec.ts, and image-processor.spec.ts pass"
+    notes: |
+      skill-top full + ECC orch-fix-defect / tdd-workflow.
+      Reclaimed stale nginx.conf from TASK-20261002-001 (heartbeat 2026-10-02, LIVE residual).
+      Did not claim AdminProducts.tsx (TASK-20261005-016 still lists it); hook covers gallery and color.
+      Append-only on WORKLOG/status/handoff shared with 005/006/018.
   - id: "TASK-20261007-006"
     title: "Admin sales-partner draft order detail drawer"
     status: "in_progress"

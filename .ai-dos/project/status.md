@@ -1,5 +1,7 @@
 # Project Status
 
+- In progress: 2026-10-07 — **TASK-20261007-008** retail checkout 500 (`system_settings`). `app_settings` + soft-fail. Spec OK. Deploy after commit.
+- In progress: 2026-10-07 — **TASK-20261007-007** product image upload hang / phone JPEG. Shipping commit/push/deploy. Specs OK; verify PASS. Logged-in admin click residual.
 - In progress: 2026-10-07 — **TASK-20261007-006** admin sales-partner draft order detail drawer. View-only GET + RTL drawer. Specs: draft-detail + sp-admin-ops OK. Shipping commit/push/deploy.
 - In progress: 2026-10-07 — **TASK-20261007-005** sales-partner `PENDING_OTP` Persian badge. Specs green; shipping with 006.
 - Last verified: 2026-10-07 — **TASK-20261007-002 LIVE** on `origin/master` `abeefa7b` (VPS tip `8d7c752` includes it). API `/v1/categories` returns `showOnHome` (17). Web image has «نمایش در صفحه اول». Health 200. Home grid only; menus unchanged. Claims released. Logged-in admin click still open.

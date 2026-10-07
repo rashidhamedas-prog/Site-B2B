@@ -1,4 +1,5 @@
 import { getToken } from './auth';
+import { UPLOAD_FETCH_TIMEOUT_MS, UPLOAD_TIMEOUT_MESSAGE } from './upload-image';
 
 function resolveApiBase(): string {
   // Browser on production hosts: same-origin /api (avoids CORS between .ir ↔ .com)
@@ -127,11 +128,24 @@ class ApiClient {
     const token = getToken();
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch(`${this.baseUrl}/upload/image`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: fd,
-    });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), UPLOAD_FETCH_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/upload/image`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+        signal: ctrl.signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(UPLOAD_TIMEOUT_MESSAGE);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
     const text = await res.text();
     let data: { url?: string; key?: string; message?: string | string[] } | null = null;
     if (text) {

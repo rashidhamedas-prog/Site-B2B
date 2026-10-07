@@ -1,5 +1,7 @@
 import * as assert from 'node:assert/strict';
 import {
+  isProductImageTimeout,
+  MAX_INPUT_PIXELS,
   PRODUCT_IMAGE_HEIGHT,
   PRODUCT_IMAGE_WIDTH,
   ProductImageProcessingError,
@@ -33,6 +35,14 @@ async function main() {
     () => processProductImage(Buffer.from('not an image'), 'image/jpeg'),
     ProductImageProcessingError
   );
+
+  assert.ok(MAX_INPUT_PIXELS > 48_000_000, '48MP phone JPEGs must be under the Sharp pixel cap');
+  assert.ok(MAX_INPUT_PIXELS <= 60_000_000, 'pixel cap stays near phone sensors, not 120MP');
+  assert.equal(
+    isProductImageTimeout(new ProductImageProcessingError(new Error('timeout: 20000ms'))),
+    true,
+  );
+  assert.equal(isProductImageTimeout(new ProductImageProcessingError(new Error('corrupt'))), false);
 
   console.log('image-processor.spec.ts: ok');
 }
