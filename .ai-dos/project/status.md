@@ -1,9 +1,9 @@
 # Project Status
 
-- In progress: 2026-10-07 — **TASK-20261007-008** retail checkout 500 (`system_settings`). `app_settings` + soft-fail. Spec OK. Deploy after commit.
+- Last verified: 2026-10-07 — **TASK-20261007-008 CLOSED LIVE**. Checkout 500 fix on `d9c02f0`; VPS tip `02b5969`. Health 200; unauth `POST /orders` 401. Claims released. Shopper pay click residual.
 - In progress: 2026-10-07 — **TASK-20261007-007** product image upload hang / phone JPEG. Shipping commit/push/deploy. Specs OK; verify PASS. Logged-in admin click residual.
-- In progress: 2026-10-07 — **TASK-20261007-006** admin sales-partner draft order detail drawer. View-only GET + RTL drawer. Specs: draft-detail + sp-admin-ops OK. Shipping commit/push/deploy.
-- In progress: 2026-10-07 — **TASK-20261007-005** sales-partner `PENDING_OTP` Persian badge. Specs green; shipping with 006.
+- Last verified: 2026-10-07 — **TASK-20261007-006 LIVE** (with **005**) on VPS tip `02b5969` (feat ship `99f76464`). Admin draft detail `getAdmin` in API image; `SpOrderDetailDrawer` in web image; health 200; unauth order detail 401. Claims releasing. Logged-in admin click still open.
+- Last verified: 2026-10-07 — **TASK-20261007-005 LIVE** with 006 on `99f76464` / VPS `02b5969`. PENDING_OTP Persian badge. Claims releasing.
 - Last verified: 2026-10-07 — **TASK-20261007-002 LIVE** on `origin/master` `abeefa7b` (VPS tip `8d7c752` includes it). API `/v1/categories` returns `showOnHome` (17). Web image has «نمایش در صفحه اول». Health 200. Home grid only; menus unchanged. Claims released. Logged-in admin click still open.
 - Last verified: 2026-10-07 — **TASK-20261007-004 CLOSED LIVE** on `origin/master` `7767dc4`. Bulk withdraw route in API image; health 200. Claims released. Logged-in admin click still open.
 - Last verified: 2026-10-07 — **TASK-20261007-003 LIVE** on `origin/master` `d36a18a`. Category allowlist for auto-publish; empty=all; health 200; API marker present. Claims released. Logged-in admin select residual.

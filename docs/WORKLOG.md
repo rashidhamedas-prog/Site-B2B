@@ -15,6 +15,7 @@
 - در `/admin/sales-partners` تب سفارش‌ها و صف داشبورد، پیش‌نویس با «مشاهده جزئیات» باز می‌شود.
 - API: `GET /admin/sales-partners/orders/:id` — اقلام، مبالغ، مشتری/همکار ماسک‌شده؛ بدون توکن تأیید.
 - کشوی RTL read-only؛ ویرایش همچنان در پنل همکار. سفارش تبدیل‌شده لینک فروشگاه را دارد.
+- لایو: feat `99f76464` داخل tip سرور `02b5969`. سلامت API برابر ۲۰۰. مسیر بدون توکن ۴۰۱. `getAdmin` و `SpOrderDetailDrawer` در ایمیج‌ها هست.
 - گزارش: `docs/reports/2026-10-07-sp-admin-draft-order-detail.md`
 
 ## 2026-10-07 — برچسب فارسی وضعیت PENDING_OTP همکار بازاریاب
@@ -22,6 +23,7 @@
 - ریشه: `SP_APP_STATUS_FA` وضعیت `PENDING_OTP` (و `CANCELLED`) را نداشت؛ badge ادمین enum خام نشان می‌داد.
 - API: `humanApplicationStatus` + `statusLabel` در `listApplications` / `getApplication`.
 - Web: map جامع با `satisfies`، فیلتر «منتظر OTP»، راهنمای کارت/کشو؛ اکشن بررسی فقط بعد از OTP.
+- لایو با همان `99f76464` / VPS `02b5969`.
 - گزارش: `docs/reports/2026-10-07-sp-pending-otp-status-label.md`
 
 ## 2026-10-07 — برداشت گروهی انتشارها از کانال

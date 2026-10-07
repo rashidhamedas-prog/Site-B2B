@@ -2,7 +2,7 @@
 tasks:
   - id: "TASK-20261007-008"
     title: "Retail checkout 500 from missing system_settings"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20261007-008"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "feat/TASK-20261007-006-sp-admin-draft-detail"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-07T11:26:00Z"
-    heartbeat_at: "2026-10-07T11:30:00Z"
+    heartbeat_at: "2026-10-07T11:50:00Z"
+    completed_at: "2026-10-07T11:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/sales-partner-checkout-link.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-checkout-link.spec.ts"
       - "apps/api/src/modules/order/order.service.ts"
@@ -72,7 +74,7 @@ tasks:
       Append-only on WORKLOG/status/handoff shared with 005/006/018.
   - id: "TASK-20261007-006"
     title: "Admin sales-partner draft order detail drawer"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261007-006"
     roles:
@@ -80,12 +82,13 @@ tasks:
       implementer: "cursor:implementer-TASK-20261007-006"
       reviewer: "same-session-verify"
       security: "same-session-masked-pii"
-    branch: "fix/TASK-20261007-006-sp-admin-draft-detail"
+    branch: "feat/TASK-20261007-006-sp-admin-draft-detail"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-07T11:15:00Z"
-    heartbeat_at: "2026-10-07T11:15:00Z"
+    heartbeat_at: "2026-10-07T11:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/sales-partner-admin.controller.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-draft.service.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-isolation.spec.ts"
@@ -109,11 +112,10 @@ tasks:
       - "Converted orders still link to /admin/orders/:id"
       - "isolation + sp-admin-ops specs pass"
     notes: |
-      Reclaimed AdminSalesPartners/SpAdminDashboard/types from TASK-20261007-005 (awaiting commit, same worktree, OTP label already in those files).
-      skill-top full. View-only; partner continues edit/send.
+      LIVE on VPS tip 02b5969 (feat 99f76464). getAdmin + SpOrderDetailDrawer verified in images. Claims released.
   - id: "TASK-20261007-005"
     title: "Sales-partner PENDING_OTP Persian status label"
-    status: "in_progress"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261007-005"
     roles:
@@ -124,9 +126,10 @@ tasks:
     branch: "fix/TASK-20261007-005-sp-pending-otp-label"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-07T09:20:00Z"
-    heartbeat_at: "2026-10-07T09:40:00Z"
+    heartbeat_at: "2026-10-07T11:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/sales-partner/sales-partner-policy.ts"
       - "apps/api/src/modules/sales-partner/sales-partner-policy.spec.ts"
       - "apps/api/src/modules/sales-partner/sales-partner.service.ts"
@@ -146,9 +149,7 @@ tasks:
       - "PENDING_OTP filter chip and card hint exist; review actions stay gated"
       - "sales-partner-policy.spec.ts and sp-labels.spec.ts pass"
     notes: |
-      skill-top full. Root cause: SP_APP_STATUS_FA omitted PENDING_OTP after OTP apply flow shipped.
-      Append WORKLOG/status/handoff while TASK-20261007-002 also claims those paths (append-only).
-      Verify PASS 2026-10-07T09:40Z. Specs executed OK. Awaiting user commit/push/deploy.
+      LIVE with TASK-20261007-006 on 99f76464 / VPS 02b5969. Claims released.
   - id: "TASK-20261007-004"
     title: "Omnichannel publications bulk selective withdraw"
     status: "done"

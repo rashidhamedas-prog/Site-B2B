@@ -21,6 +21,14 @@ Append newest entries at the top. Never erase another agent's record.
 - Verify [9a9e3077](9a9e3077-c767-4406-a688-e8778c5304a9): PASS all five AC.
 - Residual: logged-in production click; HEIC on Chrome; Blog Tools bypasses prepare hook.
 
+## 2026-10-07T11:50:00Z — TASK-20261007-008 CLOSED LIVE
+
+- Owner: cursor:implementer-TASK-20261007-008
+- origin/master `d9c02f0` (tip at verify `02b5969` includes it + upload follow-on).
+- VPS `/opt/taranom` at `02b5969`. API image has `sales-partner-checkout-link.js` and `app_settings`; no `system_settings` in `order.service.js`.
+- Health 200. `POST /v1/orders` without session is 401 (not 500). No `system_settings` in last 5m API logs.
+- Residual: logged-in pay click not re-done from this session (would create a real order).
+
 ## 2026-10-07T11:26:00Z — TASK-20261007-008 retail checkout system_settings 500
 
 - Owner: cursor:implementer-TASK-20261007-008
@@ -29,6 +37,13 @@ Append newest entries at the top. Never erase another agent's record.
 - Shared worktree with TASK-20261007-006; no overlap on 006 file_claims except append-only governance.
 - Specs executed: `npx ts-node --transpile-only src/modules/sales-partner/sales-partner-checkout-link.spec.ts` → ok.
 - Deploy: blocked on explicit user commit/push (live checkout stays 500 until API image rebuild).
+
+## 2026-10-07T11:50:00Z — TASK-20261007-006 + 005 CLOSED LIVE
+
+- Owner: cursor:implementer-TASK-20261007-006
+- Ship commit: `99f76464` on `origin/master`; VPS tip `02b5969` (includes ship).
+- Live: health 200; `GET /v1/admin/sales-partners/orders/:id` → 401 unauth; API image has `getAdmin`; web image has `SpOrderDetailDrawer`.
+- Claims: releasing on docs tip. Logged-in admin click residual.
 
 ## 2026-10-07T11:15:00Z — TASK-20261007-006 admin draft order detail
 
@@ -40,7 +55,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Reclaimed AdminSalesPartners / SpAdminDashboard / types from TASK-20261007-005 (same worktree, OTP work kept).
 - Security: masked phones; no confirmation token in admin payload/UI. ADMIN-only controller unchanged.
 - Specs executed: `sales-partner-admin-draft-detail.spec.ts` OK; `apps/web/src/lib/sp-admin-ops.spec.ts` OK via api ts-node. Isolation spec still fails later at pre-existing partner-nav `focus-visible:outline` (unrelated).
-- Deploy: blocked on explicit user commit/push.
+- Deploy: done via master push + VPS auto-deploy.
 
 ## 2026-10-07T09:40:00Z — TASK-20261007-005 Verify PASS (awaiting commit)
 
