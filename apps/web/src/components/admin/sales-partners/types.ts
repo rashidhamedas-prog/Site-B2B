@@ -3,6 +3,8 @@ export type ApplicationRow = {
   displayName: string;
   phoneMasked: string;
   status: string;
+  /** Localized label from API when present. */
+  statusLabel?: string;
   createdAt: string;
   city?: string | null;
   province?: string | null;
@@ -20,6 +22,8 @@ export type ApplicationDetail = {
   phone: string;
   phoneMasked: string;
   status: string;
+  /** Localized label from API when present. */
+  statusLabel?: string;
   socialHandles: Record<string, string> | null;
   answers: Record<string, string | boolean> | null;
   answerRows: Array<{ key: string; label: string; value: string }>;
@@ -117,6 +121,32 @@ export type DraftRow = {
   estimatedCommissionIrr?: number;
   updatedAt?: string;
   attribution?: { salesSource: string; salesPartnerId: string | null; salesPartnerSubmissionId: string | null } | null;
+};
+
+export type DraftDetailItem = {
+  id: string;
+  productId: string;
+  variantId: string | null;
+  name: string | null;
+  quantity: number;
+  unitPriceIrr: number;
+  lineTotalIrr: number;
+  estimatedCommissionIrr: number;
+};
+
+export type DraftDetail = DraftRow & {
+  customerName: string | null;
+  shippingFeeIrr: number;
+  expiresAt: string | null;
+  sentCount: number;
+  lastSentAt: string | null;
+  stale?: boolean;
+  alerts?: string[];
+  items: DraftDetailItem[];
+  partnerDisplayName?: string | null;
+  partnerStatus?: string | null;
+  partnerPhoneMasked?: string | null;
+  createdAt?: string;
 };
 
 export type AuditRow = {

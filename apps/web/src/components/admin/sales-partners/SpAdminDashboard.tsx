@@ -33,6 +33,7 @@ export function SpAdminDashboard({
   audits,
   onGo,
   onOpenApplication,
+  onOpenOrder,
 }: {
   settings: Settings | null;
   report: Report | null;
@@ -42,6 +43,7 @@ export function SpAdminDashboard({
   audits: AuditRow[];
   onGo: (tab: Tab, extra?: { appFilter?: string; partnerFilter?: string; orderFilter?: string; focusPartnerId?: string }) => void;
   onOpenApplication: (id: string) => void;
+  onOpenOrder: (id: string) => void;
 }) {
   const pendingApps = apps.filter((row) => row.status === 'PENDING_REVIEW');
   const needInfoApps = apps.filter((row) => row.status === 'NEEDS_INFORMATION' || row.status === 'NEED_INFO');
@@ -89,7 +91,7 @@ export function SpAdminDashboard({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
+                  <SpBadge status={row.status} label={spAppStatusLabel(row.status, row.statusLabel)} />
                   <SpButton className="min-h-10 px-3 text-xs" onClick={() => onOpenApplication(row.id)}>
                     بررسی
                   </SpButton>
@@ -117,8 +119,8 @@ export function SpAdminDashboard({
                     {partnerNameById(partners, row.salesPartnerId) ? ` · ${partnerNameById(partners, row.salesPartnerId)}` : ''}
                   </p>
                 </div>
-                <SpButton variant="secondary" className="min-h-10 px-3 text-xs" onClick={() => onGo('orders', { orderFilter: row.status || 'ACTION' })}>
-                  سفارش‌ها
+                <SpButton variant="secondary" className="min-h-10 px-3 text-xs" onClick={() => onOpenOrder(row.id)}>
+                  مشاهده جزئیات
                 </SpButton>
               </li>
             ))}

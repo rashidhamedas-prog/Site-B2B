@@ -9,6 +9,29 @@ export type SpDeskNav = {
   orderFilter?: string;
 };
 
+/** Ops-desk hint: what the admin should know, not the partner CTA. */
+export function adminDraftNextStep(status: string, stale?: boolean): string {
+  if (stale) return 'قیمت یا موجودی نسبت به زمان ثبت عوض شده؛ همکار باید قبل از ارسال لینک دوباره بررسی کند.';
+  switch (status) {
+    case 'DRAFT':
+      return 'این پیش‌نویس هنوز برای مشتری ارسال نشده. جزئیات را ببینید؛ ادامه ثبت از پنل همکار است.';
+    case 'AWAITING_CUSTOMER_CONFIRMATION':
+      return 'لینک تأیید برای مشتری رفته است. منتظر تصمیم مشتری بمانید.';
+    case 'CUSTOMER_CONFIRMED':
+      return 'مشتری تأیید کرده اما سفارش فروشگاه هنوز کامل نشده.';
+    case 'CONVERTED_TO_ORDER':
+      return 'سفارش فروشگاه ثبت شده. پرداخت و ارسال در میز سفارش‌های فروشگاه پیگیری می‌شود.';
+    case 'REJECTED_BY_CUSTOMER':
+      return 'مشتری این پیش‌سفارش را نپذیرفت.';
+    case 'EXPIRED':
+      return 'مهلت لینک تمام شده است.';
+    case 'CANCELLED':
+      return 'این پیش‌سفارش لغو شده است.';
+    default:
+      return 'جزئیات پیش‌سفارش را باز کنید.';
+  }
+}
+
 export function isActionableDraft(row: Pick<DraftRow, 'status' | 'convertedOrderId' | 'orderStatus'>): boolean {
   const status = row.status || '';
   if (CLOSED_DRAFTS.has(status)) return false;

@@ -86,6 +86,7 @@ Audits unchanged; UI maps `action` → FA label.
 
 Inspired by catalog patterns (KPI cards, status-badge tables, timeline history) without retrieving paid source:
 
+- Admin orders: row click + «مشاهده جزئیات» opens a read-only RTL drawer (`GET /admin/sales-partners/orders/:id`) for DRAFT and later statuses; converted rows still link to `/admin/orders/:id`. No confirmation tokens or unmasked phones.
 - Admin: ops dashboard like existing `AdminDashboard` + filtered tables.
 - Partner: cream mobile shell, emerald primary, gold focus ring.
 - Motion: opacity/transform ≤300ms; respect `prefers-reduced-motion`.

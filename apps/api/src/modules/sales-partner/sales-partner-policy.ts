@@ -14,11 +14,17 @@ export const SALES_PARTNER_PROFILE_STATUSES = [
 export type SalesPartnerProfileStatus = (typeof SALES_PARTNER_PROFILE_STATUSES)[number];
 
 export const OPEN_APPLICATION_STATUSES = ['PENDING_OTP', 'PENDING_REVIEW', 'NEEDS_INFORMATION'] as const;
-export type SalesPartnerApplicationStatus =
-  | (typeof OPEN_APPLICATION_STATUSES)[number]
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'CANCELLED';
+
+/** Canonical application lifecycle statuses (DB + admin list). */
+export const SALES_PARTNER_APPLICATION_STATUSES = [
+  'PENDING_OTP',
+  'PENDING_REVIEW',
+  'NEEDS_INFORMATION',
+  'APPROVED',
+  'REJECTED',
+  'CANCELLED',
+] as const;
+export type SalesPartnerApplicationStatus = (typeof SALES_PARTNER_APPLICATION_STATUSES)[number];
 
 const PROFILE_TRANSITIONS: Record<SalesPartnerProfileStatus, readonly SalesPartnerProfileStatus[]> = {
   PENDING_REVIEW: ['ACTIVE', 'NEEDS_INFORMATION', 'REJECTED'],
@@ -61,6 +67,32 @@ export function canSalesPartnerCreateDraft(status: string | null | undefined): b
 
 export function isOpenApplicationStatus(status: string | null | undefined): boolean {
   return !!status && (OPEN_APPLICATION_STATUSES as readonly string[]).includes(status);
+}
+
+export function isSalesPartnerApplicationStatus(
+  value: string | null | undefined,
+): value is SalesPartnerApplicationStatus {
+  return !!value && (SALES_PARTNER_APPLICATION_STATUSES as readonly string[]).includes(value);
+}
+
+/** Persian label for application status — single server source of truth. */
+export function humanApplicationStatus(status: string | null | undefined): string {
+  switch (status) {
+    case 'PENDING_OTP':
+      return 'در انتظار تأیید پیامکی';
+    case 'PENDING_REVIEW':
+      return 'در انتظار بررسی';
+    case 'NEEDS_INFORMATION':
+      return 'نیاز به تکمیل اطلاعات';
+    case 'APPROVED':
+      return 'تأییدشده';
+    case 'REJECTED':
+      return 'ردشده';
+    case 'CANCELLED':
+      return 'لغوشده';
+    default:
+      return status && String(status).trim() ? String(status) : 'نامشخص';
+  }
 }
 
 export function salesPartnerOwnsResource(

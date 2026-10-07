@@ -78,6 +78,11 @@ export class SalesPartnerAdminController {
     return this.drafts.listAdmin(salesPartnerId);
   }
 
+  @Get('orders/:id')
+  adminOrder(@Param('id') id: string) {
+    return this.drafts.getAdmin(id);
+  }
+
   @Patch('orders/:id/attribution')
   changeAttribution(
     @Param('id') id: string,

@@ -64,6 +64,26 @@ assert(/programBalances/.test(read('sales-partner-admin.controller.ts')), 'admin
 assert(/Get\('report'\)/.test(read('sales-partner-me.controller.ts')), 'partner personal report');
 assert(/programBalances/.test(read('sales-partner-ledger.service.ts')), 'ledger programBalances');
 assert(/orders\/:id\/attribution/.test(read('sales-partner-admin.controller.ts')), 'admin attribution route');
+assert(/Get\('orders\/:id'\)/.test(read('sales-partner-admin.controller.ts')), 'admin draft detail route');
+assert(/async getAdmin\(/.test(draft) && /toDraftDetail\(/.test(draft), 'admin reuses draft detail without partner JWT');
+assert(
+  /SpOrderDetailDrawer/.test(
+    readFileSync(join(__dirname, '../../../../web/src/components/admin/sales-partners/AdminSalesPartners.tsx'), 'utf8'),
+  ),
+  'admin desk opens order detail drawer',
+);
+assert(
+  /onOpenOrder/.test(
+    readFileSync(join(__dirname, '../../../../web/src/components/admin/sales-partners/SpAdminDashboard.tsx'), 'utf8'),
+  ),
+  'dashboard queue opens draft detail',
+);
+assert(
+  !/confirmationTokenHash/.test(
+    readFileSync(join(__dirname, '../../../../web/src/components/admin/sales-partners/SpOrderDetailDrawer.tsx'), 'utf8'),
+  ),
+  'admin drawer never renders confirmation token',
+);
 assert(
   /applications\/:id\/welcome-sms/.test(read('sales-partner-admin.controller.ts')),
   'admin welcome SMS route',

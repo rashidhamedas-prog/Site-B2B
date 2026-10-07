@@ -47,6 +47,7 @@ import { normalizeSalesPartnerCode, salesPartnerPublicCode } from './sales-partn
 import {
   canSalesPartnerLogin,
   canTransitionProfile,
+  humanApplicationStatus,
   normalizeIban,
   parseReviewReason,
   SALES_PARTNER_ACTING_ROLE,
@@ -401,6 +402,7 @@ export class SalesPartnerService {
         displayName: row.displayName,
         phoneMasked: `${row.phone.slice(0, 4)}***${row.phone.slice(-2)}`,
         status: row.status,
+        statusLabel: humanApplicationStatus(row.status),
         socialHandles: row.socialHandles,
         nationalIdMasked: maskNationalId(nationalId),
         city: typeof row.answers?.city === 'string' ? row.answers.city : null,
@@ -424,6 +426,7 @@ export class SalesPartnerService {
       phone: application.phone,
       phoneMasked: `${application.phone.slice(0, 4)}***${application.phone.slice(-2)}`,
       status: application.status,
+      statusLabel: humanApplicationStatus(application.status),
       socialHandles: application.socialHandles,
       answers: application.answers,
       answerRows: answersForAdminView(application.answers, settings.applyFormFields),

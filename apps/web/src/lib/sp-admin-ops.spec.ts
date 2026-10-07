@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import {
   actionableDrafts,
+  adminDraftNextStep,
   auditTab,
   isActionableDraft,
   matchesApplicationSearch,
@@ -16,6 +17,10 @@ import {
 } from '../components/admin/sales-partners/sp-admin-ops.ts';
 
 const base = { id: '1', statusLabel: 'x', merchandiseIrr: 1, convertedOrderId: null, customerPhoneMasked: null };
+
+assert.equal(adminDraftNextStep('DRAFT').includes('ارسال نشده'), true);
+assert.equal(adminDraftNextStep('CONVERTED_TO_ORDER').includes('فروشگاه'), true);
+assert.equal(adminDraftNextStep('DRAFT', true).includes('موجودی'), true);
 
 assert.equal(isActionableDraft({ ...base, status: 'EXPIRED' }), false);
 assert.equal(isActionableDraft({ ...base, status: 'DRAFT' }), true);

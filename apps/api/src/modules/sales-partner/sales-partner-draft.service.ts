@@ -327,6 +327,47 @@ export class SalesPartnerDraftService {
     return this.toPartnerView(draftId, salesPartnerId);
   }
 
+  async getAdmin(draftId: string) {
+    const draft = await this.drafts.findOne({ where: { id: draftId } });
+    if (!draft) throw new NotFoundException('پیش‌سفارش پیدا نشد');
+    await this.expireIfNeeded(draft);
+    const [detail, partner] = await Promise.all([
+      this.toDraftDetail(draft),
+      this.profiles.findOne({
+        where: { id: draft.salesPartnerId },
+        select: ['id', 'displayName', 'status', 'phone'],
+      }),
+    ]);
+    let attribution: {
+      salesSource: string | null;
+      salesPartnerId: string | null;
+      salesPartnerSubmissionId: string | null;
+    } | null = null;
+    if (draft.convertedOrderId) {
+      const order = await this.orderRows.findOne({
+        where: { id: draft.convertedOrderId },
+        select: ['id', 'salesSource', 'salesPartnerId', 'salesPartnerSubmissionId'],
+      });
+      attribution = order
+        ? {
+            salesSource: order.salesSource,
+            salesPartnerId: order.salesPartnerId,
+            salesPartnerSubmissionId: order.salesPartnerSubmissionId,
+          }
+        : null;
+    }
+    return {
+      ...detail,
+      salesPartnerId: draft.salesPartnerId,
+      partnerDisplayName: partner?.displayName ?? null,
+      partnerStatus: partner?.status ?? null,
+      partnerPhoneMasked: partner ? maskCustomerPhone(partner.phone) : null,
+      createdAt: draft.createdAt,
+      updatedAt: draft.updatedAt,
+      attribution,
+    };
+  }
+
   async publicByToken(token: string) {
     const draft = await this.draftByToken(token);
     await this.expireIfNeeded(draft);
@@ -655,6 +696,11 @@ export class SalesPartnerDraftService {
 
   private async toPartnerView(draftId: string, salesPartnerId: string) {
     const draft = await this.ownedDraft(salesPartnerId, draftId);
+    return this.toDraftDetail(draft);
+  }
+
+  private async toDraftDetail(draft: SalesPartnerOrderDraftEntity) {
+    const draftId = draft.id;
     const items = await this.items.find({ where: { draftId } });
     let orderStatus: string | null = null;
     let overlay: ReturnType<typeof partnerCommissionOverlay> = null;

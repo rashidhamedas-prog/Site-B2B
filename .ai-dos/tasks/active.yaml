@@ -1,5 +1,84 @@
-schema_version: 1
+﻿schema_version: 1
 tasks:
+  - id: "TASK-20261007-006"
+    title: "Admin sales-partner draft order detail drawer"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261007-006"
+    roles:
+      architect: "cursor:implementer-TASK-20261007-006"
+      implementer: "cursor:implementer-TASK-20261007-006"
+      reviewer: "same-session-verify"
+      security: "same-session-masked-pii"
+    branch: "fix/TASK-20261007-006-sp-admin-draft-detail"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-07T11:15:00Z"
+    heartbeat_at: "2026-10-07T11:15:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner-admin.controller.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-draft.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-isolation.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-admin-draft-detail.spec.ts"
+      - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
+      - "apps/web/src/components/admin/sales-partners/SpAdminDashboard.tsx"
+      - "apps/web/src/components/admin/sales-partners/SpOrderDetailDrawer.tsx"
+      - "apps/web/src/components/admin/sales-partners/types.ts"
+      - "apps/web/src/components/admin/sales-partners/sp-admin-ops.ts"
+      - "apps/web/src/lib/sp-admin-ops.spec.ts"
+      - "docs/architecture/sales-partner-admin-ui.md"
+      - "docs/reports/2026-10-07-sp-admin-draft-order-detail.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Admin order list opens details for DRAFT and other draft statuses"
+      - "GET /admin/sales-partners/orders/:id returns items, amounts, masked phones, no confirmation token"
+      - "Dashboard queue opens the same drawer instead of only filtering"
+      - "Converted orders still link to /admin/orders/:id"
+      - "isolation + sp-admin-ops specs pass"
+    notes: |
+      Reclaimed AdminSalesPartners/SpAdminDashboard/types from TASK-20261007-005 (awaiting commit, same worktree, OTP label already in those files).
+      skill-top full. View-only; partner continues edit/send.
+  - id: "TASK-20261007-005"
+    title: "Sales-partner PENDING_OTP Persian status label"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261007-005"
+    roles:
+      architect: "cursor:implementer-TASK-20261007-005"
+      implementer: "cursor:implementer-TASK-20261007-005"
+      reviewer: "same-session-verify"
+      security: "not-required-display-only"
+    branch: "fix/TASK-20261007-005-sp-pending-otp-label"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-07T09:20:00Z"
+    heartbeat_at: "2026-10-07T09:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner-policy.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-policy.spec.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner.service.ts"
+      - "apps/web/src/components/sales-partners/sp-labels.ts"
+      - "apps/web/src/components/sales-partners/sp-labels.spec.ts"
+      - "apps/web/src/components/admin/sales-partners/SpApplicationDetailDrawer.tsx"
+      - "docs/architecture/sales-partner-program.md"
+      - "docs/reports/2026-10-07-sp-pending-otp-status-label.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Admin applications list never shows raw PENDING_OTP"
+      - "spAppStatusLabel and humanApplicationStatus cover all SALES_PARTNER_APPLICATION_STATUSES"
+      - "API list/detail applications include statusLabel"
+      - "PENDING_OTP filter chip and card hint exist; review actions stay gated"
+      - "sales-partner-policy.spec.ts and sp-labels.spec.ts pass"
+    notes: |
+      skill-top full. Root cause: SP_APP_STATUS_FA omitted PENDING_OTP after OTP apply flow shipped.
+      Append WORKLOG/status/handoff while TASK-20261007-002 also claims those paths (append-only).
+      Verify PASS 2026-10-07T09:40Z. Specs executed OK. Awaiting user commit/push/deploy.
   - id: "TASK-20261007-004"
     title: "Omnichannel publications bulk selective withdraw"
     status: "done"
@@ -115,7 +194,7 @@ tasks:
       Reclaimed BoutiqueCategoryRow.tsx from TASK-20260906-001 (heartbeat
       2026-09-06T09:40:00Z, stale). Reclaimed category.entity.ts from
       TASK-20260817-001 (released earlier / stale claim). Do not filter
-      GET /categories globally — homeOnly flag on merchandiseCategories only.
+      GET /categories globally â€” homeOnly flag on merchandiseCategories only.
   - id: "TASK-20261007-001"
     title: "Omnichannel template save persists the edited layout"
     status: "done"
@@ -229,7 +308,7 @@ tasks:
     acceptance_criteria:
       - "Unmatched matrix result lists the product color and size labels already on the site"
       - "A missing product does not invent that list"
-      - "کرم does not match کرمی and no stock is written"
+      - "Ú©Ø±Ù… does not match Ú©Ø±Ù…ÛŒ and no stock is written"
       - "erp-inventory.service.spec.ts passes"
     notes: |
       ERP outbox freeze is fixed in crm-taranom, not here. This task only returns onSite.
@@ -794,7 +873,7 @@ tasks:
       - "Old marketing SKUs remain via product_sku_aliases; slugs unchanged"
       - "erp_product_map upserted matchedBy sku_align for unique pairs"
       - "Wholesale and retail same product row; no URL rewrite"
-      - "Ambiguous names (نازگل, ماهپوش, کمند, …) not auto-merged"
+      - "Ambiguous names (Ù†Ø§Ø²Ú¯Ù„, Ù…Ø§Ù‡Ù¾ÙˆØ´, Ú©Ù…Ù†Ø¯, â€¦) not auto-merged"
     notes: |
       CLOSED LIVE: 30 unique SKUs+names aligned on VPS; aliases keep old marketing SKUs; slugs unchanged.
       Missing site rows not invented: 7063, 7127, 7129, 7168, 7200, K-00227.
@@ -830,7 +909,7 @@ tasks:
     acceptance_criteria:
       - "Verify salesPartnerWelcome is wired to sms.ir path and event defaults on"
       - "listApplications exposes welcomeSmsSent + welcomeSmsLastSentAt from audit"
-      - "Approved card shows ارسال‌شده after successful send; button no longer looks like first send"
+      - "Approved card shows Ø§Ø±Ø³Ø§Ù„â€ŒØ´Ø¯Ù‡ after successful send; button no longer looks like first send"
       - "web tsc + isolation marker for welcomeSmsSent"
     notes: |
       skill-top standard. Follow-up to TASK-20261003-005.
@@ -868,7 +947,7 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     acceptance_criteria:
-      - "Approved application cards show welcome-SMS button under تأییدشده badge"
+      - "Approved application cards show welcome-SMS button under ØªØ£ÛŒÛŒØ¯Ø´Ø¯Ù‡ badge"
       - "Click generates temp password, hashes it, sends SMS with phone+password+login URL"
       - "API never returns plaintext password; SMS body not logged"
       - "Admin-only + confirm dialog + rate limit; production fails closed if SMS not sent"
@@ -903,7 +982,7 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     acceptance_criteria:
-      - "Mega categories not stuck on «در حال بارگذاری» after load"
+      - "Mega categories not stuck on Â«Ø¯Ø± Ø­Ø§Ù„ Ø¨Ø§Ø±Ú¯Ø°Ø§Ø±ÛŒÂ» after load"
       - "SSR seeds nav categories so first open shows links"
       - "Loading skeleton + error/retry when client refetch fails"
       - "web tsc clean; browser verify on .ir after deploy"
@@ -1060,7 +1139,7 @@ tasks:
       LIVE dab4136 on origin/master + VPS. health 200; .ir has retail-editorial-hero.
       Independent Reviewer residual (visual field). Claims released.
       skill-top full. Direction: full-bleed fashion editorial (brand guidelines).
-      CTA label stays CMS («مشاهده محصولات»). No wholesale hero change.
+      CTA label stays CMS (Â«Ù…Ø´Ø§Ù‡Ø¯Ù‡ Ù…Ø­ØµÙˆÙ„Ø§ØªÂ»). No wholesale hero change.
   - id: "TASK-20261002-006"
     title: "Sales-partner catalog categories/filters + admin desk polish"
     status: "done"
@@ -1353,7 +1432,7 @@ tasks:
       - ".ai-dos/project/status.md"
     notes: |
       LIVE in c6ec94d (under origin/master c453c75). Live HTML has !text-white H1/H2 + hero-banner.webp.
-      Hotfix: globals.css h1–h6 gray-900 overrode inherited white on dark green CTA/process.
+      Hotfix: globals.css h1â€“h6 gray-900 overrode inherited white on dark green CTA/process.
     acceptance_criteria:
       - "Hero and process headings/body readable white on dark green"
       - "Hero shows /sales-partner/hero-banner.webp with overlay"
@@ -1526,7 +1605,7 @@ tasks:
       - "Manual publish enqueues when CONNECTORS on even if AUTO_PUBLISH off"
       - "Manual publish fails loudly when CONNECTORS off (no silent READY)"
       - "Republish UPDATEs existing messenger post (one live per destination)"
-      - "Withdraw deletes all live messages for source×channel"
+      - "Withdraw deletes all live messages for sourceÃ—channel"
       - "Admin UI disables send when connectors off; checklist splits flags"
       - "publication-automation + canary-ping specs pass; api/web tsc 0"
   - id: "TASK-20260930-001"
@@ -1570,7 +1649,7 @@ tasks:
       - "GET /v1/marketing/zero-order paginated with aging + priority"
       - "activation-stats returns convert rates"
       - "follow-up schedules nextRunAt; backfill enrolls missing"
-      - "Admin tab نوله‌ها works; unit scoring spec passes"
+      - "Admin tab Ù†ÙˆÙ„Ù‡â€ŒÙ‡Ø§ works; unit scoring spec passes"
   - id: "TASK-20260929-003"
     title: "Wholesale color-select prompt on order open"
     status: "done"
@@ -1632,11 +1711,11 @@ tasks:
       - "apps/web/src/lib/slim-wholesale-catalog.spec.ts"
       - "apps/web/src/components/admin/AdminProducts.tsx"
     notes: |
-      LIVE 15e7c9d. Cards show «حداقل ۱ پک» by default. Custom text via Admin → Products → برچسب کارت عمده.
+      LIVE 15e7c9d. Cards show Â«Ø­Ø¯Ø§Ù‚Ù„ Û± Ù¾Ú©Â» by default. Custom text via Admin â†’ Products â†’ Ø¨Ø±Ú†Ø³Ø¨ Ú©Ø§Ø±Øª Ø¹Ù…Ø¯Ù‡.
       Shared meta (WORKLOG/active/handoff) may still be claimed by TASK-20260929-003.
     acceptance_criteria:
       - "Admin can save any short Persian/Latin badge text per product"
-      - "Card shows custom text; empty falls back to حداقل N پک"
+      - "Card shows custom text; empty falls back to Ø­Ø¯Ø§Ù‚Ù„ N Ù¾Ú©"
       - "slim catalog + badge helper specs pass"
       - "Migration additive/reversible"
   - id: "TASK-20260929-001"
@@ -1665,7 +1744,7 @@ tasks:
     notes: |
       LIVE 67aa4ef. Portal + mount outside article. Claims released for 002 badge work.
     acceptance_criteria:
-      - "Clicking سفارش on /products opens a viewport dialog, including while the card is hovered"
+      - "Clicking Ø³ÙØ§Ø±Ø´ on /products opens a viewport dialog, including while the card is hovered"
       - "Closing via backdrop, close, and Escape returns focus and scroll"
       - "Portal regression spec passes"
   - id: "TASK-20260928-003"
@@ -1741,7 +1820,7 @@ tasks:
       - "GET /sales-partners/report works for partner JWT"
       - "isolation spec OK; web tsc OK"
   - id: "TASK-20260926-005"
-    title: "Wholesale Editorial UI — hero + product cards"
+    title: "Wholesale Editorial UI â€” hero + product cards"
     status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20260926-005"
@@ -1838,7 +1917,7 @@ tasks:
       - "storefront-html-cache.spec + apps/web tsc pass"
       - "Report documents PSI/GSC evidence; no false 28-day CWV Pass claim"
   - id: "TASK-20260926-001"
-    title: "Auth UI glass shell — portal login/register then retail account"
+    title: "Auth UI glass shell â€” portal login/register then retail account"
     status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20260926-001"
@@ -1856,7 +1935,7 @@ tasks:
       LIVE under tip 791bf67 (auth a004008+1f7a837). Claims released.
       Shared WORKLOG/active/handoff with TASK-20260925-001 (append-only).
     acceptance_criteria:
-      - "Portal login: phone→password steps call useAuth.login purpose=wholesale"
+      - "Portal login: phoneâ†’password steps call useAuth.login purpose=wholesale"
       - "Portal register: 4-step B2B fields call useAuth.register; success copy unchanged"
       - "Retail account: OTP+password APIs unchanged; glass AuthShell visual"
       - "Forgot-password + partners + sales-partners on AuthShell"
@@ -1879,7 +1958,7 @@ tasks:
     file_claims: []
     notes: |
       LIVE on master/VPS tip 4ff0c36 (shipped e85224a+). Closeout 2026-09-26 after live probes.
-      Soft-404 Googlebot 404; /retail 301→/; robots Disallow /retail; collections H1+category cards;
+      Soft-404 Googlebot 404; /retail 301â†’/; robots Disallow /retail; collections H1+category cards;
       about H1; PDP og:image on www.poshaktaranom.ir. Checkout hydrate client-only (not browser-clicked).
       Claims released. Independent Reviewer residual. Did not reclaim middleware (CWV) or sales-partner checkout.
     acceptance_criteria:
@@ -1888,7 +1967,7 @@ tasks:
       - "Collections page useful when Collection table empty; nav not a dead end"
       - "PDP stock copy has no duplicated ????; near-miss prices snap; OG on .ir; CMS pages have H1; checkout waits for cart hydrate"
   - id: "TASK-20260922-003"
-    title: "Retail Sales Partner program (همکار بازاریاب) isolated from Vendor"
+    title: "Retail Sales Partner program (Ù‡Ù…Ú©Ø§Ø± Ø¨Ø§Ø²Ø§Ø±ÛŒØ§Ø¨) isolated from Vendor"
     status: "done"
     risk: "high"
     owner: "cursor:implementer-TASK-20260922-003"
@@ -2116,7 +2195,7 @@ tasks:
       - ".ai-dos/tasks/active.yaml"
     notes: |
       Completes /admin/settings: URL workspace, missing fields, menus+SEO tabs,
-      save→reload→storefront revalidate, Organization/metadata from public settings.
+      saveâ†’reloadâ†’storefront revalidate, Organization/metadata from public settings.
       Reclaimed leftover settings.service/controller/AdminSettings/types from
       TASK-20260913-006 (door options already live via 005 + IN_PERSON default off;
       hb 09:20Z same worktree). Reclaimed JsonLd from TASK-20260913-010 (done leftover)
@@ -2161,7 +2240,7 @@ tasks:
       - "docs/architecture/admin-customer-workspace.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Leftovers after TASK-20260913-011: order detail → customer workspace,
+      Leftovers after TASK-20260913-011: order detail â†’ customer workspace,
       /admin/rma shows refundType + walletCreditAmount, RMA APPROVED writes ledger.
       Reclaimed AdminOrderDetail from TASK-20260913-008 (done leftover).
       Reclaimed rma.service.ts + rma.module.ts from TASK-20260826-001 (stale hb 2026-09-02, >24h).
@@ -2295,7 +2374,7 @@ tasks:
       Did not take ProductInternalLinkPicker (still 010-001).
       WORKLOG append-only; 009 also lists it.
     acceptance_criteria:
-      - "List ?channel=ALL|RETAIL|WHOLESALE filters catalog; Excel عمده/تکی/کامل stay export-only"
+      - "List ?channel=ALL|RETAIL|WHOLESALE filters catalog; Excel Ø¹Ù…Ø¯Ù‡/ØªÚ©ÛŒ/Ú©Ø§Ù…Ù„ stay export-only"
       - "Editor has identity/specs/seo/content/pricing/channels/merch/media and dual-channel SEO"
       - "Each gallery URL has an editable alt; save sanitizes and fills empty alts"
       - "PDP, cards, OG, and Product JSON-LD use the same stored alt"
@@ -2440,7 +2519,7 @@ tasks:
     acceptance_criteria:
       - "Wholesale cash defaults off and checkout hides CASH unless wholesaleCashEnabled is true"
       - "Public shipping methods omit IN_PERSON unless inPersonEnabled is true"
-      - "Live retail checkout has neither COD nor تحویل در محل"
+      - "Live retail checkout has neither COD nor ØªØ­ÙˆÛŒÙ„ Ø¯Ø± Ù…Ø­Ù„"
       - "specs + api/web tsc pass; pushed to origin/master and deployed"
   - id: "TASK-20260913-005"
     title: "Honor cash-on-delivery payment setting on storefront"
@@ -2512,7 +2591,7 @@ tasks:
       Did not edit TASK-20260913-002 exclusive files.
       Settings payment/admin files released to TASK-20260913-005 after commit 776108a.
     acceptance_criteria:
-      - "Admin کسب‌وکار has a 10-digit postal field that persists"
+      - "Admin Ú©Ø³Ø¨â€ŒÙˆÚ©Ø§Ø± has a 10-digit postal field that persists"
       - "GET /settings/public includes business.postalCode"
       - "Packing slip sender uses settings postal first, never a mobile from the address line"
       - "settings-business + packing-slip specs and web tsc pass"
@@ -2674,7 +2753,7 @@ tasks:
       - ".ai-dos/tasks/handoff.md"
       - ".ai-dos/project/status.md"
     notes: |
-      Root: ONLINE create set PENDING_REVIEW + SMS «ثبت شد و در بررسی» before PSP capture.
+      Root: ONLINE create set PENDING_REVIEW + SMS Â«Ø«Ø¨Øª Ø´Ø¯ Ùˆ Ø¯Ø± Ø¨Ø±Ø±Ø³ÛŒÂ» before PSP capture.
       ID 008 because 007 is checkout autofill. Reclaimed payment.service.ts + enums from
       TASK-20260907-002 (hb 2026-09-08, >24h) and TASK-20260901-002 (hb 2026-09-01).
       Reclaimed retail account pages from TASK-20260903-005 (done, claims leftover).
@@ -2813,11 +2892,11 @@ tasks:
     notes: |
       Shared AI-DOS registry + WORKLOG overlap with 004 is append-only.
       Did not touch checkout address or catalog filter rail files.
-      Live evidence: 11 ACTIVE categories; پاییزی exists; CMS categoryIds empty;
+      Live evidence: 11 ACTIVE categories; Ù¾Ø§ÛŒÛŒØ²ÛŒ exists; CMS categoryIds empty;
       unique name includes tombstones; grid reverse+maxItems 10 dropped newest.
     acceptance_criteria:
       - "Rename colliding with a soft-deleted Persian name saves (200) and shows on storefront"
-      - "ACTIVE پاییزی appears on retail home grid without pinning categoryIds"
+      - "ACTIVE Ù¾Ø§ÛŒÛŒØ²ÛŒ appears on retail home grid without pinning categoryIds"
       - "Home category cards cap at 16; no reverse-then-slice"
       - "category-storefront spec + category-unique spec + migration spec + web/api tsc pass"
   - id: "TASK-20260912-004"
@@ -3068,12 +3147,12 @@ tasks:
       Reclaimed stale 20260906-003 (hb 2026-09-06, feature already LIVE),
       20260905-001 RetailProductDetail (hb 2026-09-05), and 20260826-001
       ProductDetail + wholesale PDP page (omnichannel leftover). Owner asked
-      to replace «لینک‌های مرتبط» with «راهنما», move above توضیحات محصول,
+      to replace Â«Ù„ÛŒÙ†Ú©â€ŒÙ‡Ø§ÛŒ Ù…Ø±ØªØ¨Ø·Â» with Â«Ø±Ø§Ù‡Ù†Ù…Ø§Â», move above ØªÙˆØ¶ÛŒØ­Ø§Øª Ù…Ø­ØµÙˆÙ„,
       full-row cards with excerpt + uploadable image, and wholesale related
       products as visual cards like retail (WholesaleProductCard, not retail
       prices). WORKLOG is append-only; 020 owns retail hero banners.
     acceptance_criteria:
-      - "PDP heading is راهنما not لینک‌های مرتبط on both channels"
+      - "PDP heading is Ø±Ø§Ù‡Ù†Ù…Ø§ not Ù„ÛŒÙ†Ú©â€ŒÙ‡Ø§ÛŒ Ù…Ø±ØªØ¨Ø· on both channels"
       - "Guide section renders above product description, each link a full row with image + short excerpt"
       - "Admin can upload an override image and edit excerpt; empty falls back to target page"
       - "Wholesale related products use WholesaleProductCard (image, stock, colors) not text pills"
@@ -3109,7 +3188,7 @@ tasks:
       - "docs/WORKLOG.md"
     notes: |
       Live on poshaktaranom.ir. Runtime 2bd11bc. Browser verified DigiPay
-      (slide 1) and Prima/Negin (slide 2, retail CTA دیدن کت‌ها, .ir URL).
+      (slide 1) and Prima/Negin (slide 2, retail CTA Ø¯ÛŒØ¯Ù† Ú©Øªâ€ŒÙ‡Ø§, .ir URL).
       Claims released.
     acceptance_criteria:
       - "Desktop plates are 1920x560 professional artwork matching the supplied layouts"
@@ -3184,7 +3263,7 @@ tasks:
     acceptance_criteria:
       - "GET /vendors/:id/ledger returns held/available/paid for staff"
       - "POST /vendors/:id/ledger/pay marks AVAILABLE (incl. time-released HELD) as PAID idempotently"
-      - "AdminPartners shows ledger + ثبت پرداخت for available balance"
+      - "AdminPartners shows ledger + Ø«Ø¨Øª Ù¾Ø±Ø¯Ø§Ø®Øª for available balance"
       - "policy spec + api/web tsc pass"
   - id: "TASK-20260909-016"
     title: "Re-export wholesale promo banners at 1920x560 24:7 without stretch"
@@ -3243,7 +3322,7 @@ tasks:
     acceptance_criteria:
       - "DELIVERED accrues net payable (goods-commission) with holdDays; idempotent unique"
       - "Partner GET /partners/ledger shows held/available/paid"
-      - "Cron releases HELD→AVAILABLE after availableAt"
+      - "Cron releases HELDâ†’AVAILABLE after availableAt"
       - "vendor-ledger-policy spec + api/web tsc pass"
     notes: |
       LIVE `715fce6` (import fix + migration 016). Payout admin UI deferred. Claims released.
@@ -3300,8 +3379,8 @@ tasks:
       - "docs/reports/2026-09-09-wholesale-promo-banners.md"
     notes: |
       LIVE origin/master + VPS `8b201f2`. Migration WholesalePromoHeroes1757430000012 id=77.
-      Home HTML has partnership plate + «برای بوتیکت»; asset 200 43668B. Health 200.
-      WORKLOG owned by 011 — recorded in report.
+      Home HTML has partnership plate + Â«Ø¨Ø±Ø§ÛŒ Ø¨ÙˆØªÛŒÚ©ØªÂ»; asset 200 43668B. Health 200.
+      WORKLOG owned by 011 â€” recorded in report.
     acceptance_criteria:
       - "Wholesale home hero prepends partnership then jackets artwork slides"
       - "CTA hrefs stay on-host: /portal/register and /category/women-coats"
@@ -3427,7 +3506,7 @@ tasks:
       Claims released. Next phases: SMS/Telegram notify + tracking bot + ledger.
     acceptance_criteria:
       - "Paid/confirmed order creates one fulfillment parcel per vendorId (null=OWN) idempotently"
-      - "Customer order JSON has unlabeled مرسوله N and never vendorId/commission"
+      - "Customer order JSON has unlabeled Ù…Ø±Ø³ÙˆÙ„Ù‡ N and never vendorId/commission"
       - "Partner JWT lists/accepts only own parcels; cannot read OWN or other vendors"
       - "Parent shippingFee unchanged; parcel shippingFee always 0"
       - "fulfillment-split-policy spec + api/web tsc pass"
@@ -3503,7 +3582,7 @@ tasks:
     file_claims: []
     notes: |
       LIVE on origin/master under tip 445f6e7 (fix 9d28e49). VPS source has requireWriteChannel + admin verify save.
-      Operator must hard-refresh admin, open ?channel=RETAIL, save, confirm «ذخیره و تأیید شد» and DB updatedAt moves.
+      Operator must hard-refresh admin, open ?channel=RETAIL, save, confirm Â«Ø°Ø®ÛŒØ±Ù‡ Ùˆ ØªØ£ÛŒÛŒØ¯ Ø´Ø¯Â» and DB updatedAt moves.
     acceptance_criteria:
       - "Upsert without channel is rejected (no silent WHOLESALE)"
       - "Admin save verifies returned channel and reloads from DB"
@@ -3621,7 +3700,7 @@ tasks:
       UI-only: first-time-shopper copy under each method + official ZarinPal/DigiPay/Torob marks.
       Did not touch order/payment adapters or checkout page files claimed by TASK-20260908-007.
       Governance overlap with TASK-20260909-001: active.yaml / handoff.md only (registry).
-      WORKLOG.md claimed by 001 — recorded in report instead.
+      WORKLOG.md claimed by 001 â€” recorded in report instead.
     acceptance_criteria:
       - "Each retail/wholesale payment option has a plain-language description and its own logo"
       - "Official ZarinPal, DigiPay, Torob marks used; cash/installment have dedicated marks"
@@ -3709,7 +3788,7 @@ tasks:
       Builtin IN_PERSON shipped. Hydrate-if-missing blocked operator delete on retail.
       Shipping claims released 2026-09-09 to TASK-20260909-005 (stale heartbeat; same worktree).
     acceptance_criteria:
-      - "Admin shipping companies include تحویل در محل for retail and wholesale"
+      - "Admin shipping companies include ØªØ­ÙˆÛŒÙ„ Ø¯Ø± Ù…Ø­Ù„ for retail and wholesale"
       - "GET /shipping/methods?channel= includes IN_PERSON when not already present"
       - "Quote for IN_PERSON is 0 and skips post/snapp fees"
       - "shipping-channel spec and shipping-methods spec pass"
@@ -3936,7 +4015,7 @@ tasks:
       Health 200. Claims released. Did not edit TorobPay settings/payment/order.
     acceptance_criteria:
       - "Reports page loads or shows a real API error; analytics nav removed as duplicate"
-      - "CRM عمده/تکی filter uses customer type B2B vs B2C and returns matching rows"
+      - "CRM Ø¹Ù…Ø¯Ù‡/ØªÚ©ÛŒ filter uses customer type B2B vs B2C and returns matching rows"
       - "Postal quote toggleable; POST/PISHTAZ uses destination+weight when enabled"
       - "Admin SMS on paid orders only; abandoned-cart 30m; stock-out to admin phones; events per channel"
       - "Ticker lines editable from admin settings page without opening buried CMS chrome"
@@ -3969,7 +4048,7 @@ tasks:
       Shared governance append-only.
       LIVE 2026-09-07: origin/master + VPS /opt/taranom = eb4a433. Claims released.
     acceptance_criteria:
-      - "Retail and wholesale home heroes share a slim 2:1 / 24:7 frame, not 82–92vh"
+      - "Retail and wholesale home heroes share a slim 2:1 / 24:7 frame, not 82â€“92vh"
       - "Category and boutique campaign banners use the same frame"
       - "Homepage shows a looping CSS news ticker with pause and reduced-motion static"
       - "Primary CTAs name the next action; no new JS deps; LCP stays slide 0"
@@ -4202,11 +4281,11 @@ tasks:
       Live category H1/title via DB migration, not CategoryLanding.
       Shared governance append-only with TASK-20260905-003.
     acceptance_criteria:
-      - "Retail home title is brand + تک‌فروشی, not a مانتو category query"
+      - "Retail home title is brand + ØªÚ©â€ŒÙØ±ÙˆØ´ÛŒ, not a Ù…Ø§Ù†ØªÙˆ category query"
       - "Retail home has visible links to shomiz, women-coats, winter-wear, kaftan"
-      - "Category seed+DB copy owns خرید شومیز زنانه, خرید کت زنانه, کفتان زنانه"
-      - "Retail PDP meta strips خرید عمده; kapshan-bamber-65 title is کاپشن بامبری زنانه"
-      - "Wholesale home/about/register speak تولیدی مشهد + MOQ 6 + همکاری with تولیدی لباس"
+      - "Category seed+DB copy owns Ø®Ø±ÛŒØ¯ Ø´ÙˆÙ…ÛŒØ² Ø²Ù†Ø§Ù†Ù‡, Ø®Ø±ÛŒØ¯ Ú©Øª Ø²Ù†Ø§Ù†Ù‡, Ú©ÙØªØ§Ù† Ø²Ù†Ø§Ù†Ù‡"
+      - "Retail PDP meta strips Ø®Ø±ÛŒØ¯ Ø¹Ù…Ø¯Ù‡; kapshan-bamber-65 title is Ú©Ø§Ù¾Ø´Ù† Ø¨Ø§Ù…Ø¨Ø±ÛŒ Ø²Ù†Ø§Ù†Ù‡"
+      - "Wholesale home/about/register speak ØªÙˆÙ„ÛŒØ¯ÛŒ Ù…Ø´Ù‡Ø¯ + MOQ 6 + Ù‡Ù…Ú©Ø§Ø±ÛŒ with ØªÙˆÙ„ÛŒØ¯ÛŒ Ù„Ø¨Ø§Ø³"
       - "retail-seo-copy spec and web+api tsc pass"
   - id: "TASK-20260905-003"
     title: "Omnichannel admin console + UTF-8 canary ping"
@@ -4238,7 +4317,7 @@ tasks:
       adapter + dto from TASK-20260826-001 (stale hb 2026-09-02).
       2026-09-06: owner ordered a professional, fully configurable,
       graphical channel-posting setup that runs automatically after a
-      one-time configuration ("نهایی کن"). Reclaimed oos-policy,
+      one-time configuration ("Ù†Ù‡Ø§ÛŒÛŒ Ú©Ù†"). Reclaimed oos-policy,
       constants, secrets, outbox.service from TASK-20260826-001 (stale
       hb 2026-09-02). Automation is an explicit admin mode
       (OFF/CANARY/LIVE, default OFF) with daily cap, min gap, quiet
@@ -4352,7 +4431,7 @@ tasks:
       Shared governance: append-only with TASK-20260904-004 / 003 / 002.
     acceptance_criteria:
       - "Retail shell clips horizontal overflow (retail-root + main min-w-0)"
-      - "Header brand does not force overflow on 320–390px; wordmark shortens on small screens"
+      - "Header brand does not force overflow on 320â€“390px; wordmark shortens on small screens"
       - "Retail PDP description is a full-width block below gallery+buy on desktop and mobile, not an accordion in the buy column"
       - "Category hero is not a 21:9 strip on retail phones"
       - "web tsc and retail-pdp-copy spec pass; no new npm deps"
@@ -4610,7 +4689,7 @@ tasks:
     notes: |
       Owner asked to ship residuals from TASK-20260903-005 reviews:
       JWT revoke after password change, portal login open redirect,
-      Persian digits on retail OTP DTOs, register hint 6→8.
+      Persian digits on retail OTP DTOs, register hint 6â†’8.
       Also: pending wholesale reset stays on page; clear OTP session
       after setPassword; issue fresh JWT so the current tab stays in.
       Reclaimed auth.service/controller/otp/redis/security/register/forgot
@@ -4624,7 +4703,7 @@ tasks:
       - "change/set/reset return a fresh accessToken for the current purpose so the actor stays signed in"
       - "useAuth portal/admin redirect is prefix-allowlisted"
       - "Retail OTP phone/code DTOs accept Persian digits via Transform"
-      - "Wholesale register placeholder says حداقل ۸ کاراکتر"
+      - "Wholesale register placeholder says Ø­Ø¯Ø§Ù‚Ù„ Û¸ Ú©Ø§Ø±Ø§Ú©ØªØ±"
       - "Pending wholesale reset shows the post-approval message instead of navigating away"
       - "api+web tsc and new jwt-invalidation / safe-redirect / phone specs pass"
   - id: "TASK-20260903-004"
@@ -5022,9 +5101,9 @@ tasks:
       (status done). Do not edit ProductCatalog.tsx or server-api.ts
       (TASK-20260826-001 same-day). Do not edit Header/middleware
       (TASK-20260831-001 same-day). Erika 301 only for proven same
-      product linen-shirt-manteau-erika → linen-sport-jacket-erika.
+      product linen-shirt-manteau-erika â†’ linen-sport-jacket-erika.
     acceptance_criteria:
-      - "Retail home CTA fallback no longer says عمده‌فروش هستید or ورود به سایت عمده"
+      - "Retail home CTA fallback no longer says Ø¹Ù…Ø¯Ù‡â€ŒÙØ±ÙˆØ´ Ù‡Ø³ØªÛŒØ¯ or ÙˆØ±ÙˆØ¯ Ø¨Ù‡ Ø³Ø§ÛŒØª Ø¹Ù…Ø¯Ù‡"
       - "Unfiltered wholesale /products is force-static ISR; filters noindex via client"
       - "linen-shirt-manteau-erika 301s to linen-sport-jacket-erika"
       - "Do not edit ProductCatalog or claimed PDP/API files"
@@ -5114,7 +5193,7 @@ tasks:
     acceptance_criteria:
       - "Admin login accepts Persian/Arabic digits and +98 phones; staff roles can open /admin"
       - "Wholesale and retail homepage search opens an overlay and queries GET /products?search="
-      - "Retail category cards use product.retailStock so in-stock items are not ناموجود"
+      - "Retail category cards use product.retailStock so in-stock items are not Ù†Ø§Ù…ÙˆØ¬ÙˆØ¯"
       - "Staff CRUD: create/list/edit/toggle/reset-password; last-admin and self-lockout guarded"
       - "Roles are UserRole only; sidebar + RolesGuard honor staff modules; users/settings ADMIN-only"
       - "Retail OTP / wholesale register never demote a staff row to CUSTOMER"
@@ -5173,7 +5252,7 @@ tasks:
       - "Retail home product cards do not serialize wholesale seoMeta into HTML"
       - "Unfiltered /products is force-static ISR; filtered URLs stay noindex via client meta"
       - "Published indexable retail blog posts appear in /sitemaps/blog.xml"
-      - "Retail footer no longer uses خرید عمده as the visible anchor"
+      - "Retail footer no longer uses Ø®Ø±ÛŒØ¯ Ø¹Ù…Ø¯Ù‡ as the visible anchor"
       - "web unit spec for sitemap merge passes; no middleware or API product projection edit"
   - id: "TASK-20260830-002"
     title: "VPS TTFB infrastructure diagnostic (no migration)"
@@ -5609,7 +5688,7 @@ tasks:
       - "apps/api/src/modules/upload/upload.module.ts"
     notes: |
       SHIP 2026-08-31: owner authorized commit/merge/deploy. Connectors stay
-      off. Soak/canary/restore-drill still NOT done — do not mark Done.
+      off. Soak/canary/restore-drill still NOT done â€” do not mark Done.
       Reclaimed product.module + inventory.service after Torob claims released.
       Human-authorized Omnichannel program from desktop audit.
       Phases 0-8. Reclaimed stale .github/workflows/ci.yml from
@@ -5741,8 +5820,8 @@ tasks:
       - "Isolated commit of PHASE-03A+03B only; unrelated dirty files stay unstaged"
       - "Malformed concatenated URLs absent from source href/canonical/JSON-LD"
       - "No DB migration run; Prisma not applicable"
-      - "Live product 301 /product/161/شلوار-ماهین → /products/maserati-pants-mahin one hop"
-      - "Live category 301 /category/20 and /category/20/شلوار → /category/women-pants"
+      - "Live product 301 /product/161/Ø´Ù„ÙˆØ§Ø±-Ù…Ø§Ù‡ÛŒÙ† â†’ /products/maserati-pants-mahin one hop"
+      - "Live category 301 /category/20 and /category/20/Ø´Ù„ÙˆØ§Ø± â†’ /category/women-pants"
       - "Storefront smoke + sitemap + intentional 404/410 + account exclusion + uploads closed"
   - id: "TASK-20260824-001"
     title: "PHASE-03B GSC exact URL cleanup (no deploy)"
@@ -6056,7 +6135,7 @@ tasks:
     notes: |
       Append/register only on shared governance files. Do not stage middleware.ts
       or TASK-022 Excel/Torob/About work. RetailHeader remains TASK-006.
-      defaults.ts remains TASK-017 — home trust/CTA fallbacks live in the renderer.
+      defaults.ts remains TASK-017 â€” home trust/CTA fallbacks live in the renderer.
     acceptance_criteria:
       - "Retail product cards are editorial: image-first, centered name/price, no per-card trust row"
       - "Home uses compact cards (max 12); catalog keeps size/quick-add"
@@ -6266,7 +6345,7 @@ tasks:
     notes: |
       Stale reclaim 2026-08-18 from TASK-20260817-001 (landed live; residuals AVIF/blog picker)
       and TASK-20260810-006 (heartbeat 2026-08-12) for overlapping product/admin/order/SEO files.
-      2026-08-18T10:50Z: reclaimed middleware.ts + PDP [slug] pages — static WP slug map
+      2026-08-18T10:50Z: reclaimed middleware.ts + PDP [slug] pages â€” static WP slug map
       inverted live canonical bezayagh-jacket-rose back to coats00014.
       Do not run production content/related --apply or discount backfill SQL without owner backup+confirm.
     acceptance_criteria:
@@ -6474,8 +6553,8 @@ tasks:
     notes: |
       PR #31 MERGED ``ee9c044`` (remediation ``46821e8``); VPS /opt/taranom HEAD=ee9c044;
       auto-deploy exit 0 ~2026-08-11T13:29Z; API/wholesale/retail health 200; stacks healthy.
-      Readiness **71/100** — do not inflate from deploy/health alone. Task in_progress; claims retained;
-      website-builder blocked. Staging E2E / retail OTP / rollback-offbox / full Torob still NOT RUN → not Done.
+      Readiness **71/100** â€” do not inflate from deploy/health alone. Task in_progress; claims retained;
+      website-builder blocked. Staging E2E / retail OTP / rollback-offbox / full Torob still NOT RUN â†’ not Done.
       Do not Done until all AC MET + fresh independent Reviewer+Security PASS.
       Code SHA / evidence SHA / deploy SHA recorded separately in status.md.
     additional_scope:
@@ -6489,7 +6568,7 @@ tasks:
       TypeORM synchronize, mutate production data, deploy, or change the readiness score
       without durable evidence. Preserve public URLs and existing transaction prices.
 
-      BLOG — CONTINUE AND COMPLETE THE AUGUST IMPLEMENTATION
+      BLOG â€” CONTINUE AND COMPLETE THE AUGUST IMPLEMENTATION
       1. Build a requirement-to-evidence matrix for `seo/weblog.md`, the August blog commits
          (`51a4ad7`, `c8028d6`, `fc0ec7e`), and all `docs/BLOG_*` documents. The current
          BLOG_TEST_REPORT contains planned/manual expectations, not sufficient executed evidence.
@@ -6498,7 +6577,7 @@ tasks:
          the retail conditional Image/fallback pattern while retaining wholesale tokens.
          Normalize public media URLs at the storage/API boundary; allow only required image
          origins in Next config, never an arbitrary wildcard.
-      3. Retail navigation/design: add `/blog` / `وبلاگ` to the shared RetailHeader navigation
+      3. Retail navigation/design: add `/blog` / `ÙˆØ¨Ù„Ø§Ú¯` to the shared RetailHeader navigation
          and active states for desktop/mobile. Replace the ad-hoc brown blog palette across
          list/detail/category/tag/search/author pages with the locked tokens from
          `design-system/b2c/MASTER.md` (#1B5C4A, #0F2F28, #C9A84C, #F6F1E8).
@@ -6689,8 +6768,8 @@ tasks:
       - "npm run lint; typecheck web+api; npm run test; npm run build; git diff --check"
       - "20 parallel callback concurrency suite; idempotency and refund duplicate cases"
     notes: |
-      Phases 0–3/6/7–8 shipped live (master 16f2594). BNPL 4–5 BLOCKED.
-      Security+Reviewer PASS WITH CONDITIONS — do not Done until residuals closed or accepted.
+      Phases 0â€“3/6/7â€“8 shipped live (master 16f2594). BNPL 4â€“5 BLOCKED.
+      Security+Reviewer PASS WITH CONDITIONS â€” do not Done until residuals closed or accepted.
       Do not edit TASK-006 claimed files.
     phase: 6
     phase_0_status: "complete"

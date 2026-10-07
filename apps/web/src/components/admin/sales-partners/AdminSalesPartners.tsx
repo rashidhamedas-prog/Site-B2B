@@ -27,6 +27,7 @@ import {
 } from '@/components/sales-partners/sp-labels';
 import { SpAdminDashboard, partnerBadgeLabel } from './SpAdminDashboard';
 import { SpApplicationDetailDrawer } from './SpApplicationDetailDrawer';
+import { SpOrderDetailDrawer } from './SpOrderDetailDrawer';
 import { SpApplyFormBuilder } from './SpApplyFormBuilder';
 import { SpReasonDialog } from './SpReasonDialog';
 import {
@@ -44,6 +45,7 @@ import type {
   ApplicationRow,
   AuditRow,
   CatalogRow,
+  DraftDetail,
   DraftRow,
   PartnerRow,
   PayoutRow,
@@ -89,6 +91,10 @@ export function AdminSalesPartners() {
   const [detail, setDetail] = useState<ApplicationDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [orderDetailId, setOrderDetailId] = useState<string | null>(null);
+  const [orderDetail, setOrderDetail] = useState<DraftDetail | null>(null);
+  const [orderDetailLoading, setOrderDetailLoading] = useState(false);
+  const [orderDetailError, setOrderDetailError] = useState<string | null>(null);
   const [appQuery, setAppQuery] = useState('');
   const [partnerQuery, setPartnerQuery] = useState('');
   const [partnerFilter, setPartnerFilter] = useState('ALL');
@@ -222,7 +228,26 @@ export function AdminSalesPartners() {
     return rows.filter((row) => row.status === orderFilter);
   }, [orders, orderFilter, orderPartnerId]);
 
+  async function openOrder(id: string) {
+    setDetailId(null);
+    setDetail(null);
+    setOrderDetailId(id);
+    setOrderDetail(null);
+    setOrderDetailError(null);
+    setOrderDetailLoading(true);
+    try {
+      const next = await apiClient.get<DraftDetail>(`/admin/sales-partners/orders/${id}`);
+      setOrderDetail(next);
+    } catch (err) {
+      setOrderDetailError(err instanceof Error ? err.message : 'بارگذاری جزئیات سفارش ناموفق بود');
+    } finally {
+      setOrderDetailLoading(false);
+    }
+  }
+
   async function openApplication(id: string) {
+    setOrderDetailId(null);
+    setOrderDetail(null);
     setDetailId(id);
     setDetail(null);
     setDetailError(null);
@@ -635,6 +660,10 @@ export function AdminSalesPartners() {
             setTab('applications');
             void openApplication(id);
           }}
+          onOpenOrder={(id) => {
+            setTab('orders');
+            void openOrder(id);
+          }}
         />
       )}
 
@@ -656,7 +685,8 @@ export function AdminSalesPartners() {
             />
             {[
               { id: 'ALL', label: 'همه' },
-              { id: 'PENDING_REVIEW', label: 'در انتظار' },
+              { id: 'PENDING_OTP', label: 'منتظر OTP' },
+              { id: 'PENDING_REVIEW', label: 'در انتظار بررسی' },
               { id: 'NEED_INFO', label: 'تکمیل اطلاعات' },
               { id: 'APPROVED', label: 'تأییدشده' },
               { id: 'REJECTED', label: 'ردشده' },
@@ -691,7 +721,15 @@ export function AdminSalesPartners() {
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-stretch gap-2">
-                    <SpBadge status={row.status} label={spAppStatusLabel(row.status)} />
+                    <SpBadge status={row.status} label={spAppStatusLabel(row.status, row.statusLabel)} />
+                    {row.status === 'PENDING_OTP' && (
+                      <p
+                        className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[11px] font-medium text-amber-900"
+                        role="status"
+                      >
+                        هنوز کد پیامکی ثبت‌نام را تأیید نکرده
+                      </p>
+                    )}
                     {row.status === 'APPROVED' && row.welcomeSmsSent && (
                       <p
                         className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-[11px] font-medium text-emerald-900"
@@ -840,7 +878,7 @@ export function AdminSalesPartners() {
       )}
 
       {tab === 'orders' && (
-        <SpSection title="سفارش‌های همکاری" description="صف اقدام جدا از تاریخچهٔ منقضی/لغو است. Attribution فقط با انتخاب همکار فعال.">
+        <SpSection title="سفارش‌های همکاری" description="هر پیش‌نویس و سفارش تبدیل‌شده را باز کنید. Attribution فقط بعد از تبدیل و با همکار فعال.">
           <div className="flex flex-wrap gap-2">
             {[
               { id: 'ALL', label: 'همه' },
@@ -880,7 +918,11 @@ export function AdminSalesPartners() {
               return (
               <li key={row.id} className="rounded-2xl border border-stone-200 bg-white p-4 text-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="min-w-0">
+                  <button
+                    type="button"
+                    className={`min-w-0 flex-1 text-right ${spFocusClass} rounded-xl`}
+                    onClick={() => void openOrder(row.id)}
+                  >
                     <p className="font-medium">{SP_DRAFT_STATUS_FA[row.status || ''] || row.statusLabel}</p>
                     <p className="mt-1 text-stone-600">
                       {toman(row.merchandiseIrr)} تومان
@@ -891,10 +933,17 @@ export function AdminSalesPartners() {
                       {row.customerPhoneMasked ? ` · مشتری ${row.customerPhoneMasked}` : ''}
                       {row.orderStatus ? ` · فروشگاه ${row.orderStatus}` : ''}
                     </p>
-                  </div>
+                  </button>
                   {row.status ? <SpBadge status={row.status} label={row.statusLabel} /> : null}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <SpButton
+                    variant="secondary"
+                    className="min-h-11 px-3 text-sm"
+                    onClick={() => void openOrder(row.id)}
+                  >
+                    مشاهده جزئیات
+                  </SpButton>
                   {row.convertedOrderId ? (
                     <a
                       href={`/admin/orders/${row.convertedOrderId}`}
@@ -1430,6 +1479,35 @@ export function AdminSalesPartners() {
       )}
         </div>
       </div>
+
+      <SpOrderDetailDrawer
+        open={Boolean(orderDetailId)}
+        key={orderDetailId || 'order-closed'}
+        loading={orderDetailLoading}
+        detail={orderDetail}
+        listHint={orders.find((row) => row.id === orderDetailId) || null}
+        partnerName={partnerNameById(
+          partners,
+          orderDetail?.salesPartnerId || orders.find((row) => row.id === orderDetailId)?.salesPartnerId,
+        )}
+        error={orderDetailError}
+        onClose={() => {
+          setOrderDetailId(null);
+          setOrderDetail(null);
+          setOrderDetailError(null);
+        }}
+        onChangeAttribution={
+          orderDetail?.convertedOrderId
+            ? () => {
+                const row = orders.find((item) => item.id === orderDetailId);
+                if (!row) return;
+                setDialogReason('');
+                setAttrPartnerId(row.attribution?.salesPartnerId || row.salesPartnerId || '');
+                setAttrDialog(row);
+              }
+            : undefined
+        }
+      />
 
       <SpApplicationDetailDrawer
         open={Boolean(detailId)}

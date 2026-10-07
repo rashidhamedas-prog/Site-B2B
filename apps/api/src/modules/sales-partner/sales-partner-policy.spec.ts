@@ -2,12 +2,15 @@ import {
   canSalesPartnerCreateDraft,
   canSalesPartnerLogin,
   canTransitionProfile,
+  humanApplicationStatus,
   humanProfileStatus,
+  isSalesPartnerApplicationStatus,
   isSalesPartnerPurpose,
   maskIban,
   maskPhone,
   normalizeIban,
   parseDisplayName,
+  SALES_PARTNER_APPLICATION_STATUSES,
   salesPartnerOwnsResource,
   toPublicSalesPartner,
 } from './sales-partner-policy';
@@ -53,5 +56,17 @@ const pub = toPublicSalesPartner({
 assert(!pub.phoneMasked.includes('34567'), 'no raw phone');
 assert(pub.ibanMasked === 'IR****9012', 'iban last4');
 assert(pub.statusLabel === humanProfileStatus('ACTIVE'), 'label');
+
+assert(isSalesPartnerApplicationStatus('PENDING_OTP'), 'otp status');
+assert(isSalesPartnerApplicationStatus('PENDING_REVIEW'), 'review status');
+assert(!isSalesPartnerApplicationStatus('ACTIVE'), 'profile status is not application');
+assert(humanApplicationStatus('PENDING_OTP') === 'در انتظار تأیید پیامکی', 'otp label');
+assert(humanApplicationStatus('PENDING_REVIEW') === 'در انتظار بررسی', 'review label');
+assert(humanApplicationStatus('CANCELLED') === 'لغوشده', 'cancelled label');
+for (const status of SALES_PARTNER_APPLICATION_STATUSES) {
+  const label = humanApplicationStatus(status);
+  assert(label !== status, `application status ${status} must have FA label`);
+  assert(!/^[A-Z_]+$/.test(label), `application status ${status} must not stay raw enum`);
+}
 
 console.log('sales-partner-policy.spec.ts: OK');

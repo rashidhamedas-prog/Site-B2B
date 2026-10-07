@@ -2,6 +2,35 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-07T11:15:00Z — TASK-20261007-006 admin draft order detail
+
+- Owner: cursor:implementer-TASK-20261007-006
+- Depth: skill-top **full**. Repos/patterns: ops-desk detail drawer; Shopify/Medusa draft as distinct from converted order.
+- Skills: ui-ux-product-design (drawer/queue), ui-styling (existing Sp* kit), ui-ux-pro-max (touch targets / RTL).
+- Root: list showed DRAFT but no open path; dashboard button only switched filter.
+- Change: `getAdmin` + `GET orders/:id` + `SpOrderDetailDrawer`; dashboard `onOpenOrder`.
+- Reclaimed AdminSalesPartners / SpAdminDashboard / types from TASK-20261007-005 (same worktree, OTP work kept).
+- Security: masked phones; no confirmation token in admin payload/UI. ADMIN-only controller unchanged.
+- Specs executed: `sales-partner-admin-draft-detail.spec.ts` OK; `apps/web/src/lib/sp-admin-ops.spec.ts` OK via api ts-node. Isolation spec still fails later at pre-existing partner-nav `focus-visible:outline` (unrelated).
+- Deploy: blocked on explicit user commit/push.
+
+## 2026-10-07T09:40:00Z — TASK-20261007-005 Verify PASS (awaiting commit)
+
+- Owner: cursor:implementer-TASK-20261007-005
+- Independent Verify: **PASS** (application badges / statusLabel / OTP gate / filter / specs coverage).
+- Specs executed: `sales-partner-policy.spec.ts` OK; `sp-labels.spec.ts` OK.
+- Residuals (out of AC): payout `SpBadge` still uses raw `row.status`; partner select fallback; draft order labels rely on API `statusLabel`.
+- Deploy: still blocked on explicit user commit/push.
+
+## 2026-10-07T09:35:00Z — TASK-20261007-005 PENDING_OTP FA label (awaiting commit)
+
+- Owner: cursor:implementer-TASK-20261007-005
+- Depth: skill-top **full** (research Record/satisfies; Verify specialist).
+- Root cause: `SP_APP_STATUS_FA` omitted `PENDING_OTP` after OTP apply; badge fell back to raw enum.
+- Fix: API `humanApplicationStatus` + `statusLabel` on list/detail; web exhaustive map + filter/hint; review stays gated.
+- Specs: `sales-partner-policy.spec.ts` OK; `sp-labels.spec.ts` OK.
+- Deploy: blocked on explicit user commit/push (user git rule). Auto-deploy after commit.
+
 ## 2026-10-07T00:55:00Z — TASK-20261007-004 omnichannel bulk withdraw ship
 
 - Owner: cursor:implementer-TASK-20261007-004

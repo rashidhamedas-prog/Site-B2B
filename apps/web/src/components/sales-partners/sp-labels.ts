@@ -1,11 +1,32 @@
 /** Shared FA labels + presentation helpers for sales-partner admin + partner portal. */
 
-export const SP_APP_STATUS_FA: Record<string, string> = {
+/**
+ * Application statuses mirrored from API `SALES_PARTNER_APPLICATION_STATUSES`.
+ * Keep in sync with `apps/api/.../sales-partner-policy.ts` — specs assert coverage.
+ */
+export const SP_APPLICATION_STATUSES = [
+  'PENDING_OTP',
+  'PENDING_REVIEW',
+  'NEEDS_INFORMATION',
+  'APPROVED',
+  'REJECTED',
+  'CANCELLED',
+] as const;
+export type SpApplicationStatus = (typeof SP_APPLICATION_STATUSES)[number];
+
+/** Exhaustive FA labels for canonical application statuses. */
+export const SP_APP_STATUS_FA = {
+  PENDING_OTP: 'در انتظار تأیید پیامکی',
   PENDING_REVIEW: 'در انتظار بررسی',
-  NEED_INFO: 'نیاز به تکمیل اطلاعات',
   NEEDS_INFORMATION: 'نیاز به تکمیل اطلاعات',
   APPROVED: 'تأییدشده',
   REJECTED: 'ردشده',
+  CANCELLED: 'لغوشده',
+} as const satisfies Record<SpApplicationStatus, string>;
+
+/** Legacy / alternate codes that still appear in older rows or filters. */
+const SP_APP_STATUS_ALIASES_FA: Record<string, string> = {
+  NEED_INFO: SP_APP_STATUS_FA.NEEDS_INFORMATION,
   WITHDRAWN: 'انصراف',
 };
 
@@ -73,10 +94,25 @@ export const SP_MODE_FA: Record<string, string> = {
 export function spStatusTone(status: string): 'ok' | 'warn' | 'danger' | 'neutral' | 'info' {
   const s = status.toUpperCase();
   if (['ACTIVE', 'APPROVED', 'PAID', 'CONVERTED_TO_ORDER', 'LIVE'].includes(s)) return 'ok';
-  if (['PENDING_REVIEW', 'NEED_INFO', 'NEEDS_INFORMATION', 'AWAITING_CUSTOMER_CONFIRMATION', 'CUSTOMER_CONFIRMED', 'DRAFT', 'HELD', 'CANARY', 'PREVIEW', 'AWAITING_PAYMENT'].includes(s)) {
+  if (
+    [
+      'PENDING_OTP',
+      'PENDING_REVIEW',
+      'NEED_INFO',
+      'NEEDS_INFORMATION',
+      'AWAITING_CUSTOMER_CONFIRMATION',
+      'CUSTOMER_CONFIRMED',
+      'DRAFT',
+      'HELD',
+      'CANARY',
+      'PREVIEW',
+      'AWAITING_PAYMENT',
+      'PENDING_TERMS',
+    ].includes(s)
+  ) {
     return 'warn';
   }
-  if (['REJECTED', 'SUSPENDED', 'CLOSED', 'CANCELLED', 'EXPIRED', 'REJECTED_BY_CUSTOMER', 'OFF'].includes(s)) {
+  if (['REJECTED', 'SUSPENDED', 'CLOSED', 'CANCELLED', 'EXPIRED', 'REJECTED_BY_CUSTOMER', 'OFF', 'WITHDRAWN'].includes(s)) {
     return 'danger';
   }
   if (s.includes('CONFIRM') || s.includes('PROCESS')) return 'info';
@@ -87,8 +123,16 @@ export function spAuditLabel(action: string): string {
   return SP_AUDIT_ACTION_FA[action] || action;
 }
 
-export function spAppStatusLabel(status: string): string {
-  return SP_APP_STATUS_FA[status] || status;
+/**
+ * Resolve Persian application status label.
+ * Prefer API `statusLabel` when it is already localized; otherwise map codes locally.
+ */
+export function spAppStatusLabel(status: string, apiLabel?: string | null): string {
+  if (apiLabel && apiLabel.trim() && apiLabel !== status) return apiLabel.trim();
+  if (status in SP_APP_STATUS_FA) {
+    return SP_APP_STATUS_FA[status as SpApplicationStatus];
+  }
+  return SP_APP_STATUS_ALIASES_FA[status] || status;
 }
 
 export function spPartnerStatusLabel(status: string, fallback?: string | null): string {

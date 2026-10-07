@@ -1,3 +1,17 @@
+## 2026-10-07 — جزئیات پیش‌نویس در داشبورد همکار بازاریاب
+
+- در `/admin/sales-partners` تب سفارش‌ها و صف داشبورد، پیش‌نویس با «مشاهده جزئیات» باز می‌شود.
+- API: `GET /admin/sales-partners/orders/:id` — اقلام، مبالغ، مشتری/همکار ماسک‌شده؛ بدون توکن تأیید.
+- کشوی RTL read-only؛ ویرایش همچنان در پنل همکار. سفارش تبدیل‌شده لینک فروشگاه را دارد.
+- گزارش: `docs/reports/2026-10-07-sp-admin-draft-order-detail.md`
+
+## 2026-10-07 — برچسب فارسی وضعیت PENDING_OTP همکار بازاریاب
+
+- ریشه: `SP_APP_STATUS_FA` وضعیت `PENDING_OTP` (و `CANCELLED`) را نداشت؛ badge ادمین enum خام نشان می‌داد.
+- API: `humanApplicationStatus` + `statusLabel` در `listApplications` / `getApplication`.
+- Web: map جامع با `satisfies`، فیلتر «منتظر OTP»، راهنمای کارت/کشو؛ اکشن بررسی فقط بعد از OTP.
+- گزارش: `docs/reports/2026-10-07-sp-pending-otp-status-label.md`
+
 ## 2026-10-07 — برداشت گروهی انتشارها از کانال
 
 - در `/admin/omnichannel` بخش «انتشارها»: چک‌باکس ردیف، انتخاب همهٔ فعال‌ها، نوار اکشن با شمارنده و «برداشتن انتخاب‌شده‌ها».

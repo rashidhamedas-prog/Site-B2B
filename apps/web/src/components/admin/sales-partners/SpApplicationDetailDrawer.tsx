@@ -36,7 +36,9 @@ export function SpApplicationDetailDrawer({
   const title = detail?.displayName || listHint?.displayName || 'جزئیات درخواست';
   const status = detail?.status || listHint?.status || '';
   const reviewable = status === 'PENDING_REVIEW' || status === 'NEEDS_INFORMATION' || status === 'NEED_INFO';
+  const pendingOtp = status === 'PENDING_OTP';
   const approved = status === 'APPROVED';
+  const statusLabel = spAppStatusLabel(status, detail?.statusLabel || listHint?.statusLabel);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-labelledby="sp-app-detail-title" dir="rtl">
@@ -50,7 +52,7 @@ export function SpApplicationDetailDrawer({
             </h2>
             {status ? (
               <div className="mt-2">
-                <SpBadge status={status} label={spAppStatusLabel(status)} />
+                <SpBadge status={status} label={statusLabel} />
               </div>
             ) : null}
           </div>
@@ -132,6 +134,14 @@ export function SpApplicationDetailDrawer({
             </>
           ) : null}
         </div>
+
+        {detail && pendingOtp ? (
+          <footer className="sticky bottom-0 mt-auto space-y-2 border-t border-stone-200 bg-[#faf8f5] px-4 py-4">
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-6 text-amber-950" role="status">
+              کاربر هنوز کد پیامکی ثبت‌نام را تأیید نکرده. تا تکمیل OTP این درخواست در صف بررسی ادمین نیست.
+            </p>
+          </footer>
+        ) : null}
 
         {detail && reviewable ? (
           <footer className="sticky bottom-0 mt-auto space-y-3 border-t border-stone-200 bg-[#faf8f5] px-4 py-4">

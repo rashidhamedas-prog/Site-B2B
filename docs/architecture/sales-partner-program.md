@@ -221,6 +221,8 @@ Statuses: `PENDING_REVIEW | NEEDS_INFORMATION | ACTIVE | SUSPENDED | REJECTED | 
 - `userId` nullable until OTP
 - `profileId` nullable
 - unique partial index: one open application per phone (`PENDING_OTP`, `PENDING_REVIEW`, `NEEDS_INFORMATION`)
+- application statuses: `PENDING_OTP | PENDING_REVIEW | NEEDS_INFORMATION | APPROVED | REJECTED | CANCELLED`
+- FA labels: API `humanApplicationStatus` + web `SP_APP_STATUS_FA` / `spAppStatusLabel` (never render raw enum)
 
 ### `sales_partner_order_drafts` / `_items`
 
