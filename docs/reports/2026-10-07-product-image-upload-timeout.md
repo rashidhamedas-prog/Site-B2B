@@ -35,4 +35,9 @@ TASK-20261006-020 سقف حجم را به ۲۰ مگابایت برد؛ کلیک 
 
 ## Deploy
 
-منتظر commit/push صریح کاربر.
+لایو روی `origin/master` / VPS `02b5969c` (۲۰۲۶-۱۰-۰۷).
+
+- API: `MAX_INPUT_PIXELS = 60_000_000` و `withSharpSlot` در ایمیج
+- nginx: `location ^~ /api/v1/upload/` با تایم‌اوت ۱۸۰ ثانیه روی هر دو ویترین + `/v1/upload/` روی api.
+- وب: `createImageBitmap` در چانک ادمین
+- سلامت: `/api/v1/health` ۲۰۰؛ هوم `.ir`/`.com` ۲۰۰؛ `POST /upload/image` بدون توکن ۴۰۱

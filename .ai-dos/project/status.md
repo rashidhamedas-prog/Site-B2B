@@ -1,7 +1,7 @@
 # Project Status
 
 - Last verified: 2026-10-07 — **TASK-20261007-008 CLOSED LIVE**. Checkout 500 fix on `d9c02f0`; VPS tip `02b5969`. Health 200; unauth `POST /orders` 401. Claims released. Shopper pay click residual.
-- In progress: 2026-10-07 — **TASK-20261007-007** product image upload hang / phone JPEG. Shipping commit/push/deploy. Specs OK; verify PASS. Logged-in admin click residual.
+- Last verified: 2026-10-07 — **TASK-20261007-007 CLOSED LIVE** on `origin/master` `02b5969c`. API image has `MAX_INPUT_PIXELS=60_000_000` + `withSharpSlot`; nginx has `/api/v1/upload/` 180s (×2 shops + `/v1/upload/`); web chunk has `createImageBitmap`. Health 200; homes 200; unauth upload 401. Claims released. Logged-in admin click residual.
 - Last verified: 2026-10-07 — **TASK-20261007-006 LIVE** (with **005**) on VPS tip `02b5969` (feat ship `99f76464`). Admin draft detail `getAdmin` in API image; `SpOrderDetailDrawer` in web image; health 200; unauth order detail 401. Claims releasing. Logged-in admin click still open.
 - Last verified: 2026-10-07 — **TASK-20261007-005 LIVE** with 006 on `99f76464` / VPS `02b5969`. PENDING_OTP Persian badge. Claims releasing.
 - Last verified: 2026-10-07 — **TASK-20261007-002 LIVE** on `origin/master` `abeefa7b` (VPS tip `8d7c752` includes it). API `/v1/categories` returns `showOnHome` (17). Web image has «نمایش در صفحه اول». Health 200. Home grid only; menus unchanged. Claims released. Logged-in admin click still open.

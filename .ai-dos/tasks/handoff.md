@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-07T11:55:00Z — TASK-20261007-007 CLOSED LIVE
+
+- Owner: cursor:implementer-TASK-20261007-007
+- Live: `origin/master` + VPS `02b5969c`. Containers recreated ~2m before verify; health 200.
+- Markers: API `MAX_INPUT_PIXELS = 60_000_000` + `withSharpSlot`; nginx `proxy_read_timeout 180s` ×3 upload locations; web admin chunks include `createImageBitmap`.
+- Smoke: `.ir`/`.com` 200; `/api/v1/health` 200; unauth `POST /api/v1/upload/image` 401.
+- Claims released. Residual: logged-in gallery click with a real phone JPEG.
+
 ## 2026-10-07T11:50:00Z — TASK-20261007-007 shipping upload fix
 
 - Owner: cursor:implementer-TASK-20261007-007

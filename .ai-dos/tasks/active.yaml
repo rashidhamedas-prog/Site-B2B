@@ -32,7 +32,7 @@ tasks:
       - "sales-partner-checkout-link.spec.ts passes"
   - id: "TASK-20261007-007"
     title: "Product image upload hang and phone-JPEG failures"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261007-007"
     roles:
@@ -40,12 +40,14 @@ tasks:
       implementer: "cursor:implementer-TASK-20261007-007"
       reviewer: "cursor:verify-TASK-20261007-007"
       security: "same-session-admin-upload"
-    branch: "master"
+    branch: "ai/TASK-20261007-007-upload-ship"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-07T11:25:00Z"
-    heartbeat_at: "2026-10-07T11:50:00Z"
+    heartbeat_at: "2026-10-07T11:55:00Z"
+    completed_at: "2026-10-07T11:55:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/upload/image-processor.ts"
       - "apps/api/src/modules/upload/image-processor.spec.ts"
       - "apps/api/src/modules/upload/upload.controller.ts"
