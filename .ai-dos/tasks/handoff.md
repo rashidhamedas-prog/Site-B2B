@@ -2,6 +2,26 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-07T00:45:00Z — TASK-20261007-004 omnichannel bulk withdraw
+
+- Owner: cursor:implementer-TASK-20261007-004
+- Depth: full (skill-top + ECC api-design/tdd + Verify + Security specialists).
+- Research: SaaS bulk-action bar (checkbox + page select-all + confirm with count); Nest partial-success envelope; reuse AdminOrders pattern.
+- Repos kept: nest-crud (body ids + bulk route naming), NENE2 partial-success, AdminOrders in-repo.
+- Decision: `POST publications/bulk-withdraw` before `:id/withdraw`; max 100; `{ action:'withdraw', results:[{id,ok,error?}] }`; UI only selects non-WITHDRAWN.
+- Reclaimed AdminOmnichannel.tsx + omnichannel.service.ts + dto from TASK-20261007-003 (allowlist complete, awaiting commit).
+- Security: assertNoPlaintextSecrets on bulk + single withdraw reason (M1 fix). No connectors enabled.
+- Spec: `bulk-publication-ids.spec.ts` ok via ts-node.
+- Deploy: awaiting explicit commit/push (user git rule).
+
+## 2026-10-07T00:21:00Z — TASK-20261007-003 omnichannel category allowlist CLOSED LIVE
+
+- Owner: cursor:implementer-TASK-20261007-003
+- Live: `origin/master` + VPS `d36a18a`. Deploy complete. Health 200.
+- API image contains `category_not_allowed` and `autoPublishCategoryIds`.
+- Empty allowlist keeps current LIVE posts; selecting categories filters auto CREATE only.
+- Claims released. Logged-in admin click residual.
+
 ## 2026-10-07T00:10:00Z — TASK-20261007-003 omnichannel category allowlist
 
 - Owner: cursor:implementer-TASK-20261007-003
@@ -11,7 +31,6 @@ Append newest entries at the top. Never erase another agent's record.
 - UI: rules panel §۴ multi-select under events.
 - Specs: publication-automation.spec.ts ok; oos-policy.spec.ts ok. Security same-session: no medium+.
 - Reclaimed stale oos-policy from TASK-20260826-001.
-- Deploy: awaiting explicit commit/push (user git rule).
 
 ## 2026-10-06T22:40:00Z — TASK-20261007-002 category showOnHome
 
