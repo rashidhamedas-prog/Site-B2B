@@ -1,6 +1,6 @@
 # Project Status
 
-- In progress: 2026-10-07 — **TASK-20261007-004** Omnichannel publications bulk/selective withdraw. Checkboxes + bulk bar + `POST publications/bulk-withdraw`. Spec green. Commit/deploy pending owner ask.
+- Last verified: 2026-10-07 — **TASK-20261007-004** Omnichannel publications bulk/selective withdraw shipping (commit/push/deploy in progress).
 - Last verified: 2026-10-07 — **TASK-20261007-003 LIVE** on `origin/master` `d36a18a`. Category allowlist for auto-publish; empty=all; health 200; API marker present. Claims released. Logged-in admin select residual.
 - In progress: 2026-10-07 — **TASK-20261007-002** category `showOnHome` for retail home grid only. Admin checkbox + expand-only migration. Menus/SEO untouched. Specs next.
 - Last verified: 2026-10-07 — **TASK-20261007-001 CLOSED LIVE** on `origin/master` `0058ce8`. Template save roundtrip kept a disabled photos block and then restored it. Wizard stages checked: wholesale bots only, one non-canary wholesale destination, CANARY mode, both previews rendered. No customer post. Claims released.

@@ -79,6 +79,7 @@ type RulesDraft = {
 };
 
 type CategoryOption = { id: string; name: string; status?: string };
+type BulkWithdrawResult = { action: string; results: Array<{ id: string; ok: boolean; error?: string }> };
 
 const DEFAULT_EVENTS = ['product.created', 'product.content_changed', 'product.price_changed', 'product.visibility_changed', 'product.media_changed', 'product.withdrawn'];
 const GAP_OPTIONS = [0, 60, 90, 300, 600, 900, 1800, 3600];
@@ -111,6 +112,14 @@ function gapLabel(seconds: number) {
 
 function modeLabel(mode?: AutoPublishMode) {
   return mode === 'LIVE' ? 'زنده' : mode === 'CANARY' ? 'آزمایشی' : 'خاموش';
+}
+
+function summarizeBulkWithdraw(result: BulkWithdrawResult): string {
+  const ok = result.results.filter((row) => row.ok).length;
+  const fail = result.results.length - ok;
+  if (fail <= 0) return `${faNumber(ok)} انتشار از کانال برداشته شد`;
+  const firstError = result.results.find((row) => !row.ok)?.error;
+  return `${faNumber(ok)} موفق، ${faNumber(fail)} ناموفق${firstError ? ` — ${firstError}` : ''}`;
 }
 
 /** One master template per sales channel, stored under Telegram; every adapter converts it to its own format. */
@@ -191,6 +200,8 @@ export function AdminOmnichannel() {
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('بازبینی ادمین');
   const [preview, setPreview] = useState<{ projection: Record<string, unknown>; rendered?: Rendered } | null>(null);
+  const [selectedPubIds, setSelectedPubIds] = useState<string[]>([]);
+  const selectAllPubsRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -233,6 +244,12 @@ export function AdminOmnichannel() {
 
   useEffect(() => { void load(); }, [load]);
 
+  useEffect(() => {
+    setSelectedPubIds((prev) =>
+      prev.filter((id) => publications.some((pub) => pub.id === id && pub.status !== 'WITHDRAWN')),
+    );
+  }, [publications]);
+
   const run = async (key: string, fn: () => Promise<void>, fallback: string, ok?: string) => {
     setError('');
     setNotice('');
@@ -252,6 +269,53 @@ export function AdminOmnichannel() {
 
   const connById = useMemo(() => new Map(connections.map((row) => [row.id, row])), [connections]);
   const destById = useMemo(() => new Map(destinations.map((row) => [row.id, row])), [destinations]);
+  const withdrawablePubIds = useMemo(
+    () => publications.filter((pub) => pub.status !== 'WITHDRAWN').map((pub) => pub.id),
+    [publications],
+  );
+  const allWithdrawableSelected =
+    withdrawablePubIds.length > 0 && withdrawablePubIds.every((id) => selectedPubIds.includes(id));
+  const someWithdrawableSelected = withdrawablePubIds.some((id) => selectedPubIds.includes(id));
+
+  useEffect(() => {
+    if (!selectAllPubsRef.current) return;
+    selectAllPubsRef.current.indeterminate = someWithdrawableSelected && !allWithdrawableSelected;
+  }, [someWithdrawableSelected, allWithdrawableSelected]);
+
+  const togglePubOne = (id: string) => {
+    setSelectedPubIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const togglePubAll = () => {
+    setSelectedPubIds((prev) => {
+      if (allWithdrawableSelected) return prev.filter((id) => !withdrawablePubIds.includes(id));
+      return [...new Set([...prev, ...withdrawablePubIds])];
+    });
+  };
+
+  const runBulkWithdraw = () => {
+    const ids = selectedPubIds.filter((id) => withdrawablePubIds.includes(id));
+    if (!ids.length) {
+      setError('حداقل یک انتشار فعال انتخاب کنید');
+      return;
+    }
+    if (!window.confirm(`${faNumber(ids.length)} انتشار از کانال‌ها برداشته شود؟`)) return;
+    void run(
+      'bulk-withdraw',
+      async () => {
+        const result = await apiClient.post<BulkWithdrawResult>('/omnichannel/publications/bulk-withdraw', {
+          ids,
+          reason,
+        });
+        setSelectedPubIds([]);
+        const summary = summarizeBulkWithdraw(result);
+        const fail = result.results.filter((row) => !row.ok).length;
+        if (fail > 0) setError(summary);
+        else setNotice(summary);
+      },
+      'خطا در برداشت گروهی',
+    );
+  };
   const providerInfos = useMemo<ProviderInfo[]>(
     () => PROVIDERS.map((provider) => status?.providers?.find((row) => row.provider === provider) || fallbackProviderInfo(provider)),
     [status?.providers],
@@ -1144,55 +1208,124 @@ export function AdminOmnichannel() {
         )}
       </Section>
 
-      <Section title="انتشارها" description="هر ردیف یک محصول در یک کانال است؛ زیر آن وضعیت ارسال به هر مقصد را می‌بینید." actions={<button type="button" className="btn btn-secondary btn-sm" disabled={busy === 'reconcile'} onClick={() => run('reconcile', async () => { await apiClient.post('/omnichannel/reconcile', { reason }); }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق با سایت</button>}>
+      <Section title="انتشارها" description="هر ردیف یک محصول در یک کانال است؛ زیر آن وضعیت ارسال به هر مقصد را می‌بینید." actions={<button type="button" className="btn btn-secondary btn-sm" disabled={busy === 'reconcile' || busy === 'bulk-withdraw'} onClick={() => run('reconcile', async () => { await apiClient.post('/omnichannel/reconcile', { reason }); }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق با سایت</button>}>
         {publications.length === 0 ? (
           <Callout tone="info">هنوز انتشاری ثبت نشده. با فعال‌شدن حالت خودکار، محصول‌های جدید خودشان اینجا ظاهر می‌شوند.</Callout>
         ) : (
-          <ul className="divide-y rounded-xl border">
-            {publications.map((pub) => {
-              const st = publicationStatus(pub.status);
-              const rows = deliveriesByPub.get(pub.id) || [];
-              const name = pub.projection?.name || pub.sourceId;
-              return (
-                <li key={pub.id} className="p-3 space-y-2 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-gray-900">{name}</span>
-                    {pub.projection?.sku && <span className="text-xs text-gray-500 font-mono">#{pub.projection.sku}</span>}
-                    <Badge tone="off">{channelLabel(pub.channel)}</Badge>
-                    <Badge tone={st.tone}>{st.label}</Badge>
-                    <span className="text-xs text-gray-400">{relativeTime(pub.createdAt)}</span>
-                    <span className="flex-1" />
-                    {pub.projection?.url && <a className="text-xs text-primary underline" href={pub.projection.url} target="_blank" rel="noreferrer">صفحه محصول</a>}
-                    {pub.status !== 'WITHDRAWN' && (
-                      <button type="button" className="text-xs text-red-600 underline cursor-pointer" onClick={() => { if (window.confirm('پست این محصول از کانال‌ها برداشته شود؟')) void run(`withdraw-${pub.id}`, async () => { await apiClient.post(`/omnichannel/publications/${pub.id}/withdraw`, { reason }); }, 'خطا در برداشت', 'برداشته شد'); }}>برداشتن از کانال</button>
-                    )}
-                  </div>
-                  {rows.length > 0 && (
-                    <ul className="grid gap-1 md:grid-cols-2">
-                      {rows.map((row) => {
-                        const ds = deliveryStatus(row.status);
-                        const dest = row.destinationId ? destById.get(row.destinationId) : undefined;
-                        return (
-                          <li key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-2 py-1.5 text-xs">
-                            {dest && <ProviderChip provider={providerOf(dest)} />}
-                            <span className="font-medium">{dest?.displayName || 'مقصد حذف‌شده'}</span>
-                            <span className="text-gray-500">{actionLabel(row.action)}</span>
-                            <Badge tone={ds.tone}>{ds.label}</Badge>
-                            {row.lastError && <span className="text-red-700 truncate max-w-[16rem]" title={row.lastError}>{errorLabel(row.lastError)}</span>}
-                            {row.nextAttemptAt && (row.status === 'RETRY' || row.status === 'PENDING') && <span className="text-gray-400">تلاش بعدی {relativeTime(row.nextAttemptAt)}</span>}
-                            <span className="flex-1" />
-                            {(row.status === 'DEAD' || row.status === 'FAILED') && (
-                              <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
+          <div className="space-y-2">
+            {selectedPubIds.length > 0 && (
+              <div
+                role="toolbar"
+                aria-label="عملیات گروهی انتشارها"
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5"
+              >
+                <label className="inline-flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
+                  <input
+                    ref={selectAllPubsRef}
+                    type="checkbox"
+                    checked={allWithdrawableSelected}
+                    onChange={togglePubAll}
+                    disabled={busy === 'bulk-withdraw' || withdrawablePubIds.length === 0}
+                    aria-label="انتخاب همه انتشارهای فعال این فهرست"
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  {faNumber(selectedPubIds.length)} انتخاب‌شده
+                  {withdrawablePubIds.length > 0 && (
+                    <span className="text-gray-400 font-normal">از {faNumber(withdrawablePubIds.length)} فعال</span>
                   )}
-                </li>
-              );
-            })}
-          </ul>
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  disabled={busy === 'bulk-withdraw' || selectedPubIds.length === 0}
+                  onClick={runBulkWithdraw}
+                >
+                  برداشتن انتخاب‌شده‌ها از کانال
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  disabled={busy === 'bulk-withdraw'}
+                  onClick={() => setSelectedPubIds([])}
+                >
+                  پاک‌کردن انتخاب
+                </button>
+              </div>
+            )}
+            {selectedPubIds.length === 0 && withdrawablePubIds.length > 0 && (
+              <div className="flex items-center gap-2 px-1">
+                <input
+                  ref={selectAllPubsRef}
+                  type="checkbox"
+                  checked={false}
+                  onChange={togglePubAll}
+                  disabled={busy === 'bulk-withdraw'}
+                  aria-label="انتخاب همه انتشارهای فعال این فهرست"
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-xs text-gray-500">انتخاب همهٔ فعال‌ها برای برداشت گروهی</span>
+              </div>
+            )}
+            <ul className="divide-y rounded-xl border">
+              {publications.map((pub) => {
+                const st = publicationStatus(pub.status);
+                const rows = deliveriesByPub.get(pub.id) || [];
+                const name = pub.projection?.name || pub.sourceId;
+                const withdrawable = pub.status !== 'WITHDRAWN';
+                const checked = selectedPubIds.includes(pub.id);
+                return (
+                  <li key={pub.id} className={`p-3 space-y-2 text-sm ${checked ? 'bg-primary/5' : ''}`}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {withdrawable ? (
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => togglePubOne(pub.id)}
+                          disabled={busy === 'bulk-withdraw'}
+                          aria-label={`انتخاب ${name}`}
+                          className="h-4 w-4 rounded border-gray-300 shrink-0"
+                        />
+                      ) : (
+                        <span className="inline-block w-4 h-4 shrink-0" aria-hidden />
+                      )}
+                      <span className="font-medium text-gray-900">{name}</span>
+                      {pub.projection?.sku && <span className="text-xs text-gray-500 font-mono">#{pub.projection.sku}</span>}
+                      <Badge tone="off">{channelLabel(pub.channel)}</Badge>
+                      <Badge tone={st.tone}>{st.label}</Badge>
+                      <span className="text-xs text-gray-400">{relativeTime(pub.createdAt)}</span>
+                      <span className="flex-1" />
+                      {pub.projection?.url && <a className="text-xs text-primary underline" href={pub.projection.url} target="_blank" rel="noreferrer">صفحه محصول</a>}
+                      {withdrawable && (
+                        <button type="button" className="text-xs text-red-600 underline cursor-pointer disabled:opacity-50" disabled={busy === 'bulk-withdraw'} onClick={() => { if (window.confirm('پست این محصول از کانال‌ها برداشته شود؟')) void run(`withdraw-${pub.id}`, async () => { await apiClient.post(`/omnichannel/publications/${pub.id}/withdraw`, { reason }); setSelectedPubIds((prev) => prev.filter((id) => id !== pub.id)); }, 'خطا در برداشت', 'برداشته شد'); }}>برداشتن از کانال</button>
+                      )}
+                    </div>
+                    {rows.length > 0 && (
+                      <ul className="grid gap-1 md:grid-cols-2">
+                        {rows.map((row) => {
+                          const ds = deliveryStatus(row.status);
+                          const dest = row.destinationId ? destById.get(row.destinationId) : undefined;
+                          return (
+                            <li key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-2 py-1.5 text-xs">
+                              {dest && <ProviderChip provider={providerOf(dest)} />}
+                              <span className="font-medium">{dest?.displayName || 'مقصد حذف‌شده'}</span>
+                              <span className="text-gray-500">{actionLabel(row.action)}</span>
+                              <Badge tone={ds.tone}>{ds.label}</Badge>
+                              {row.lastError && <span className="text-red-700 truncate max-w-[16rem]" title={row.lastError}>{errorLabel(row.lastError)}</span>}
+                              {row.nextAttemptAt && (row.status === 'RETRY' || row.status === 'PENDING') && <span className="text-gray-400">تلاش بعدی {relativeTime(row.nextAttemptAt)}</span>}
+                              <span className="flex-1" />
+                              {(row.status === 'DEAD' || row.status === 'FAILED') && (
+                                <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </Section>
     </>

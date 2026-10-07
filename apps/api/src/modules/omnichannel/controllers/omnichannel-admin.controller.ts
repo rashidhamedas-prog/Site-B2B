@@ -9,6 +9,7 @@ import { OmnichannelAdminGuard } from '../guards/omnichannel-admin.guard';
 import { OmnichannelService } from '../services/omnichannel.service';
 import {
   ActorReasonDto,
+  BulkWithdrawPublicationsDto,
   CreateConnectionDto,
   CreateDestinationDto,
   CreatePublicationDto,
@@ -217,8 +218,19 @@ export class OmnichannelAdminController {
     return this.svc.retryDelivery(id, req.omnichannelActor, body.reason);
   }
 
+  @Post('publications/bulk-withdraw')
+  @ApiOperation({ summary: 'برداشتن گروهی انتشارها از کانال (ادمین)' })
+  bulkWithdrawPublications(
+    @Body() body: BulkWithdrawPublicationsDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets(body);
+    return this.svc.bulkWithdraw(body.ids, req.omnichannelActor, body.reason);
+  }
+
   @Post('publications/:id/withdraw')
   withdraw(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets(body);
     return this.svc.withdraw(id, req.omnichannelActor, body.reason);
   }
 

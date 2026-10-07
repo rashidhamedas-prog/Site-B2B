@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
@@ -17,6 +18,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { BULK_WITHDRAW_PUBLICATION_MAX } from '../bulk-publication-ids';
 import {
   AUTO_DAILY_CAP_MAX,
   AUTO_DAILY_CAP_MIN,
@@ -289,6 +291,21 @@ export class ActorReasonDto {
   @IsString()
   @MaxLength(240)
   reason: string;
+}
+
+/** Admin bulk channel withdraw — same semantics as POST publications/:id/withdraw per id. */
+export class BulkWithdrawPublicationsDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(BULK_WITHDRAW_PUBLICATION_MAX)
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  ids: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  reason?: string;
 }
 
 export class PatchMediaAltDto {

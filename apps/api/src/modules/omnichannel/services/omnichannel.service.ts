@@ -69,6 +69,7 @@ import {
   tehranDayStart,
 } from '../publication-automation';
 import { CANARY_PING_TEXT } from '../canary-ping';
+import { normalizeBulkPublicationIds } from '../bulk-publication-ids';
 import {
   defaultLayoutFor,
   emptyPublicationVars,
@@ -917,6 +918,37 @@ export class OmnichannelService {
     }
     await this.audit(who, 'withdraw', 'PUBLICATION', saved.id, row.channel, reason, { remoteDeletes });
     return saved;
+  }
+
+  /**
+   * Withdraw many publications independently. One failure does not roll back others.
+   * Envelope matches admin order bulk void: { action, results: [{ id, ok, error? }] }.
+   */
+  async bulkWithdraw(
+    ids: unknown,
+    actor?: Actor,
+    reason?: string,
+  ): Promise<{ action: 'withdraw'; results: Array<{ id: string; ok: boolean; error?: string }> }> {
+    const who = this.requireActor(actor);
+    const normalized = normalizeBulkPublicationIds(ids);
+    if ('error' in normalized) {
+      throw new BadRequestException(normalized.error);
+    }
+    const results: Array<{ id: string; ok: boolean; error?: string }> = [];
+    for (const id of normalized.ids) {
+      try {
+        // Per-id withdraw already writes omnichannel_audits.
+        await this.withdraw(id, who, reason);
+        results.push({ id, ok: true });
+      } catch (err: unknown) {
+        results.push({
+          id,
+          ok: false,
+          error: err instanceof Error ? err.message : 'خطا در برداشت',
+        });
+      }
+    }
+    return { action: 'withdraw', results };
   }
 
   async testConnection(id: string, actor?: Actor) {

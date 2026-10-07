@@ -2,8 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261007-004"
     title: "Omnichannel publications bulk selective withdraw"
-    status: "in_progress"
-    # implementation complete; awaiting owner commit/push/deploy
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261007-004"
     roles:
@@ -14,9 +13,11 @@ tasks:
     branch: "feat/TASK-20261007-004-omni-bulk-withdraw"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-07T00:15:00Z"
-    heartbeat_at: "2026-10-07T00:15:00Z"
+    heartbeat_at: "2026-10-07T00:55:00Z"
+    completed_at: "2026-10-07T00:55:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/omnichannel/bulk-publication-ids.ts"
       - "apps/api/src/modules/omnichannel/bulk-publication-ids.spec.ts"
       - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"

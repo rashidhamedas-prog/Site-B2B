@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-07T00:55:00Z — TASK-20261007-004 omnichannel bulk withdraw ship
+
+- Owner: cursor:implementer-TASK-20261007-004
+- Owner asked commit/push/deploy. Shipping runtime + report; claims released after push.
+- Prior: full skill-top + ECC; Verify + Security; spec ok; assertNoPlaintextSecrets on withdraw paths.
+
 ## 2026-10-07T00:45:00Z — TASK-20261007-004 omnichannel bulk withdraw
 
 - Owner: cursor:implementer-TASK-20261007-004
