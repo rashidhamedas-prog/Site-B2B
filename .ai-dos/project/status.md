@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-10-10 — **TASK-20261010-001 LIVE**. Wholesale shop DNS proxied (IPv6/HTTP3 off, no AAAA). Iran check-host HTTPS to `poshaktaranom.com` 200 via Cloudflare; gray-cloud path was TLS timeout. No docker rebuild. Claims released.
 - Last verified: 2026-10-07 — **TASK-20261007-008 CLOSED LIVE**. Checkout 500 fix on `d9c02f0`; VPS tip `02b5969`. Health 200; unauth `POST /orders` 401. Claims released. Shopper pay click residual.
 - Last verified: 2026-10-07 — **TASK-20261007-007 CLOSED LIVE** on `origin/master` `02b5969c`. API image has `MAX_INPUT_PIXELS=60_000_000` + `withSharpSlot`; nginx has `/api/v1/upload/` 180s (×2 shops + `/v1/upload/`); web chunk has `createImageBitmap`. Health 200; homes 200; unauth upload 401. Claims released. Logged-in admin click residual.
 - Last verified: 2026-10-07 — **TASK-20261007-006 LIVE** (with **005**) on VPS tip `02b5969` (feat ship `99f76464`). Admin draft detail `getAdmin` in API image; `SpOrderDetailDrawer` in web image; health 200; unauth order detail 401. Claims releasing. Logged-in admin click still open.

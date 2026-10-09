@@ -9,15 +9,30 @@ test("parseArgs defaults to network dry-run", () => {
   assert.equal(opts.apply, false);
 });
 
-test("parseArgs apply origin", () => {
-  const opts = parseArgs(["--mode=origin", "--apply"]);
-  assert.equal(opts.mode, "origin");
+test("parseArgs apply proxy", () => {
+  const opts = parseArgs(["--mode=proxy", "--apply"]);
+  assert.equal(opts.mode, "proxy");
   assert.equal(opts.apply, true);
   assert.equal(opts.dryRun, false);
+  assert.equal(opts.confirmGray, false);
+});
+
+test("parseArgs refuses gray-cloud apply without an explicit rollback flag", () => {
+  assert.throws(
+    () => parseArgs(["--mode=origin", "--apply"]),
+    /confirm-gray/,
+  );
+});
+
+test("parseArgs allows gray-cloud only as a confirmed rollback", () => {
+  const opts = parseArgs(["--mode=origin", "--apply", "--confirm-gray"]);
+  assert.equal(opts.mode, "origin");
+  assert.equal(opts.apply, true);
+  assert.equal(opts.confirmGray, true);
 });
 
 test("parseArgs rejects unknown mode", () => {
-  assert.throws(() => parseArgs(["--mode=arvan"]), /network\|origin/);
+  assert.throws(() => parseArgs(["--mode=arvan"]), /network\|proxy\|origin/);
 });
 
 test("networkPatches turn off ipv6 http3 and harsh browser checks", () => {
