@@ -5,6 +5,14 @@
 - تأیید: از نودهای ایران هوم عمده ۲۰۰ در حدود نیم‌ثانیه، با `x-taranom-channel: WHOLESALE`. ری‌بیلد داکر لازم نبود.
 - گزارش: `docs/reports/2026-10-10-wholesale-iran-tls-edge.md`
 
+## 2026-10-10 — صف دستور GA4 خرده‌فروشی [TASK-20261010-002]
+
+- Windsor، پراپرتی `547378194`: `page_view` در ۳۱ اوت ۸۶، در ۱ سپتامبر ۷، از ۲ سپتامبر صفر. ۱ تا ۹ اکتبر فقط `session_start` (۷۰۸) و بدون رویداد فروشگاهی.
+- `gtag` دیگر آرایه معمولی صف نمی‌کند؛ GTM همان `arguments` را برمی‌گرداند. `page_view` فقط یک دستور است، با `send_page_view: false`.
+- خرید همچنان سمت کلاینت و یک‌بار برای هر `transaction_id`. Measurement Protocol وصل نشد چون API secret نیست.
+- تست: `retail-analytics.spec.ts` سبز؛ `tsc` وب سبز. دیباگ‌ویو و دیپلوی انجام نشده.
+- گزارش: `docs/analytics/`.
+
 ## 2026-10-07 — ۵۰۰ پرداخت خرده‌فروشی (`system_settings`) [TASK-20261007-008]
 
 - ریشه: `resolveSalesPartnerLink` روی هر `POST /orders` خرده‌فروشی جدول ناموجود `system_settings` را می‌خواند.

@@ -158,6 +158,8 @@ function ecommerceEvent(name: string, params: Record<string, unknown>) {
     });
     const gtagParams: Record<string, unknown> = { ...params, currency: GA4_CURRENCY };
     if (items) gtagParams.items = items;
+    const sendTo = resolveRetailGa4Id();
+    if (sendTo) gtagParams.send_to = sendTo;
     gtagEvent(name, gtagParams);
   } catch {
     /* never throw into storefront UI */
@@ -178,6 +180,26 @@ export function trackViewItem(input: RetailAnalyticsItemInput) {
   const item = toGa4Item(input);
   if (!item) return;
   ecommerceEvent('view_item', {
+    currency: GA4_CURRENCY,
+    value: item.price * item.quantity,
+    items: [item],
+  });
+}
+
+export function trackSelectItem(input: RetailAnalyticsItemInput, listName?: string, listId?: string) {
+  const item = toGa4Item({ ...input, itemListName: listName, itemListId: listId });
+  if (!item) return;
+  ecommerceEvent('select_item', {
+    item_list_id: listId,
+    item_list_name: listName,
+    items: [item],
+  });
+}
+
+export function trackAddToWishlist(input: RetailAnalyticsItemInput) {
+  const item = toGa4Item(input);
+  if (!item) return;
+  ecommerceEvent('add_to_wishlist', {
     currency: GA4_CURRENCY,
     value: item.price * item.quantity,
     items: [item],
@@ -380,6 +402,79 @@ export function trackPurchase(opts: {
   ecommerceEvent('purchase', payload);
   for (const id of ids) markPurchaseFired(id);
   clearPendingRetailPurchase();
+}
+
+const CONTACT_METHODS = new Set(['phone', 'sms', 'whatsapp', 'telegram', 'instagram', 'rubika', 'bale']);
+
+const AFFILIATE_EVENTS = new Set([
+  'affiliate_landing_view',
+  'affiliate_signup_start',
+  'affiliate_link_created',
+  'affiliate_link_copied',
+  'affiliate_catalog_view',
+  'affiliate_order_created',
+  'affiliate_payment_link_sent',
+]);
+
+const PII_PARAM_KEY = /phone|mobile|email|name|address|token|otp|national|card|iban|password|authority/i;
+const PII_PARAM_VALUE = /@|09\d{9}|\+98\d{10}/;
+
+export function sanitizeEventParams(
+  params: Record<string, unknown>,
+): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const [key, raw] of Object.entries(params)) {
+    if (PII_PARAM_KEY.test(key)) continue;
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      out[key] = raw;
+      continue;
+    }
+    if (typeof raw !== 'string' && typeof raw !== 'boolean') continue;
+    const value = String(raw).trim();
+    if (!value || value.length > 80 || PII_PARAM_VALUE.test(value)) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+function plainEvent(name: string, params: Record<string, unknown>) {
+  if (!shouldSendRetailAnalytics()) return;
+  const safe = sanitizeEventParams(params);
+  const sendTo = resolveRetailGa4Id();
+  const payload: Record<string, unknown> = { ...safe };
+  if (sendTo) payload.send_to = sendTo;
+  dataLayerPush({ event: name, ...safe });
+  gtagEvent(name, payload);
+}
+
+export function trackSearch(term: string) {
+  const search_term = String(term ?? '').trim().slice(0, 80);
+  if (!search_term || PII_PARAM_VALUE.test(search_term)) return;
+  plainEvent('search', { search_term });
+}
+
+export function trackContactClick(contactMethod: string) {
+  const contact_method = String(contactMethod ?? '').trim().toLowerCase();
+  if (!CONTACT_METHODS.has(contact_method)) return;
+  plainEvent('contact_click', { contact_method });
+}
+
+export function trackPartnerAuth(name: 'sign_up' | 'login') {
+  plainEvent(name, { method: 'sales_partner' });
+}
+
+export function trackAffiliateEvent(
+  name:
+    | 'affiliate_landing_view'
+    | 'affiliate_signup_start'
+    | 'affiliate_link_created'
+    | 'affiliate_link_copied'
+    | 'affiliate_catalog_view'
+    | 'affiliate_order_created'
+    | 'affiliate_payment_link_sent',
+) {
+  if (!AFFILIATE_EVENTS.has(name)) return;
+  plainEvent(name, { sales_channel: 'affiliate' });
 }
 
 export function publicRetailPagePath(): string {

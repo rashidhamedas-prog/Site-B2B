@@ -7,9 +7,12 @@ import {
   hasPurchaseBeenFired,
   itemVariant,
   markPurchaseFired,
+  sanitizeEventParams,
   toGa4Item,
   trackAddToCart,
+  trackContactClick,
   trackPurchase,
+  trackSearch,
 } from './retail-analytics';
 import {
   isAdminAnalyticsPath,
@@ -90,6 +93,9 @@ assert.equal(stripRetailInternalPath('/retail'), '/');
 assert.equal(stripRetailInternalPath('/products'), '/products');
 assert.equal(publicAnalyticsPagePath('/retail/products', 'utm_source=google&phone=09120000000'), '/products?utm_source=google');
 assert.equal(sanitizeAnalyticsSearch('utm_campaign=spring&otp=1234'), 'utm_campaign=spring');
+assert.equal(sanitizeAnalyticsSearch('Authority=A000&utm_source=torob'), 'utm_source=torob');
+assert.equal(sanitizeAnalyticsSearch('q=09120000000&color=red'), 'color=red');
+assert.equal(sanitizeAnalyticsSearch('foo=bar'), '');
 assert.equal(shouldLoadProductionTags('localhost', '/products'), false);
 assert.equal(shouldLoadProductionTags('www.poshaktaranom.ir', '/admin/login'), false);
 assert.equal(shouldLoadProductionTags('www.poshaktaranom.ir', '/products'), true);
@@ -100,6 +106,59 @@ assert.equal(hostLooksRetail('www.poshaktaranom.com'), false);
 trackAddToCart({ sku: 'NOOP', name: 'noop', unitPrice: 10, quantity: 1 });
 trackPurchase({ transactionId: 'NO-WINDOW', valueIrr: 10, items: [{ sku: 'NOOP', name: 'noop', unitPrice: 10 }] });
 
+assert.deepEqual(sanitizeEventParams({ method: 'sales_partner', phone: '09120000000', email: 'a@b.c' }), {
+  method: 'sales_partner',
+});
+assert.equal(trackSearch('09121234567'), undefined);
+
+const storage = new Map<string, string>();
+const memoryStorage = {
+  getItem: (key: string) => storage.get(key) ?? null,
+  setItem: (key: string, value: string) => {
+    storage.set(key, value);
+  },
+  removeItem: (key: string) => {
+    storage.delete(key);
+  },
+};
+const dataLayer: Array<Record<string, unknown> | IArguments> = [];
+Object.assign(globalThis, {
+  window: {
+    location: {
+      hostname: 'www.poshaktaranom.ir',
+      pathname: '/',
+      search: '',
+      origin: 'https://www.poshaktaranom.ir',
+    },
+    dataLayer,
+    sessionStorage: memoryStorage,
+    localStorage: memoryStorage,
+  },
+});
+
 ensureGtagStub();
+const gtag = (globalThis as { window: Window }).window.gtag;
+assert.equal(typeof gtag, 'function');
+gtag?.('event', 'page_view', { page_path: '/' });
+const queued = dataLayer.at(-1);
+assert.equal(Array.isArray(queued), false);
+assert.equal(Object.prototype.toString.call(queued), '[object Arguments]');
+
+const beforePurchase = dataLayer.filter((entry) => !Array.isArray(entry) && entry.event === 'purchase').length;
+trackPurchase({
+  transactionId: 'RT-DEDUP',
+  valueIrr: 1_000,
+  items: [{ sku: 'MNT-001', name: 'مانتو', unitPrice: 1_000, quantity: 1 }],
+});
+trackPurchase({
+  transactionId: 'RT-DEDUP',
+  valueIrr: 1_000,
+  items: [{ sku: 'MNT-001', name: 'مانتو', unitPrice: 1_000, quantity: 1 }],
+});
+const purchaseHits = dataLayer.filter((entry) => !Array.isArray(entry) && entry.event === 'purchase').length;
+assert.equal(purchaseHits - beforePurchase, 1, 'one purchase per transaction_id');
+trackContactClick('whatsapp');
+const contact = dataLayer.find((entry) => !Array.isArray(entry) && entry.event === 'contact_click');
+assert.equal(contact && 'contact_method' in contact ? contact.contact_method : '', 'whatsapp');
 
 console.log('retail-analytics.spec.ts ok');

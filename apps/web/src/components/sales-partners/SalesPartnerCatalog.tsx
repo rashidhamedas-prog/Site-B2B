@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Copy, ExternalLink, FileText, Search, ShoppingBag } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { trackAffiliateEvent } from '@/lib/retail-analytics';
 import { mediaUrl, toman } from '@/lib/product-display';
 import { SalesPartnerShell, SpAlert, SpEmpty, SpNote, spField } from './SalesPartnerShell';
 import { SpButton, SpPageSkeleton, spChipClass, useSpToast } from './SpUi';
@@ -67,6 +68,13 @@ export function SalesPartnerCatalog() {
   const [page, setPage] = useState(1);
   const filtersKey = `${debouncedQ}|${categoryId}|${sort}`;
   const prevFilters = useRef(filtersKey);
+  const catalogViewed = useRef(false);
+
+  useEffect(() => {
+    if (!data || catalogViewed.current) return;
+    catalogViewed.current = true;
+    trackAffiliateEvent('affiliate_catalog_view');
+  }, [data]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedQ(q.trim()), 300);
@@ -113,6 +121,7 @@ export function SalesPartnerCatalog() {
     try {
       await navigator.clipboard.writeText(value);
       toast.show(kind === 'link' ? 'لینک فروش کپی شد' : 'متن معرفی کپی شد');
+      if (kind === 'link') trackAffiliateEvent('affiliate_link_copied');
       setError(null);
     } catch {
       setError('کپی خودکار ممکن نشد. لینک را از کادر انتخاب کنید.');

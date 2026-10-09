@@ -14,6 +14,7 @@ import {
   type GoogleChannel,
 } from '@/lib/google';
 import { setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
+import { trackContactClick } from '@/lib/retail-analytics';
 
 type MarketingPublic = {
   ga4WholesaleId?: string;
@@ -30,6 +31,11 @@ declare global {
 function bindGa4(measurementId: string) {
   if (typeof window === 'undefined' || !measurementId) return;
   ensureGtagStub();
+  const flagged = window as Window & { __taranomGa4Config?: Set<string> };
+  if (!flagged.__taranomGa4Config) flagged.__taranomGa4Config = new Set();
+  if (flagged.__taranomGa4Config.has(measurementId)) return;
+  flagged.__taranomGa4Config.add(measurementId);
+  window.gtag?.('config', measurementId, { send_page_view: false });
 }
 
 function currentPublicPath(pathname: string, search: string) {
@@ -46,8 +52,8 @@ function channelAllowedOnHost(channel: GoogleChannel, host: string | null): bool
 }
 
 /**
- * Sends SPA page_view through the GTM dataLayer / gtag stub.
- * Does not load gtag.js — GTM-NKBCGQJV is the single GA4 source of truth.
+ * Sends one SPA page_view through the GTM-owned gtag command queue.
+ * Does not load gtag.js. GTM is the single GA4 loader for this channel.
  */
 export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
   const pathname = usePathname();
@@ -58,22 +64,20 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
     const key = `${id}|${path}`;
     if (lastSent.current === key) return;
     lastSent.current = key;
-    ensureGtagStub();
-    const pageLocation =
-      typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
-    const pageTitle = typeof document !== 'undefined' ? document.title : path;
-    window.dataLayer?.push({
-      event: 'page_view',
-      page_path: path,
-      page_location: pageLocation,
-      page_title: pageTitle,
-    });
-    window.gtag?.('event', 'page_view', {
-      page_path: path,
-      page_location: pageLocation,
-      page_title: pageTitle,
-      send_to: id,
-    });
+    const flush = () => {
+      ensureGtagStub();
+      const pageLocation =
+        typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
+      const pageTitle = typeof document !== 'undefined' ? document.title : path;
+      window.gtag?.('event', 'page_view', {
+        page_path: path,
+        page_location: pageLocation,
+        page_title: pageTitle,
+        send_to: id,
+      });
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
+    else flush();
   };
 
   useEffect(() => {
@@ -123,5 +127,32 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, channel]);
 
+  useEffect(() => {
+    if (channel !== 'RETAIL') return;
+    const onClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest('a');
+      const href = anchor?.getAttribute('href') || '';
+      if (!href) return;
+      const method = contactMethodFromHref(href);
+      if (method) trackContactClick(method);
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [channel]);
+
+  return null;
+}
+
+function contactMethodFromHref(href: string): string | null {
+  const value = href.toLowerCase();
+  if (value.startsWith('tel:')) return 'phone';
+  if (value.startsWith('sms:') || value.startsWith('smsto:')) return 'sms';
+  if (value.includes('wa.me') || value.includes('whatsapp.com')) return 'whatsapp';
+  if (value.includes('t.me') || value.includes('telegram.')) return 'telegram';
+  if (value.includes('instagram.com')) return 'instagram';
+  if (value.includes('rubika.ir')) return 'rubika';
+  if (value.includes('ble.ir')) return 'bale';
   return null;
 }

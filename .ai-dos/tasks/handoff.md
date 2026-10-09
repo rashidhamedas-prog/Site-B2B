@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-09T22:05:00Z — TASK-20261010-002 retail GA4 command queue
+
+- Owner: cursor:implementer-TASK-20261010-002
+- Depth: skill-top full. Windsor retail property `547378194` confirmed page_view 86 on 2026-08-31, 7 on 2026-09-01, 0 from 2026-09-02. October 1–9: session_start 708 and no page_view, view_item, add_to_cart, begin_checkout, or purchase.
+- Reclaimed stale `google.ts`, `retail-analytics.ts`, spec, and `GoogleAnalytics.tsx` from TASK-20260823-001 and TASK-20260822-005.
+- Did not edit catalog/cards claimed by TASK-20261006-001, payment callback, or payment.service.
+- Spec: `npx tsx apps/web/src/lib/retail-analytics.spec.ts` ok. `npx tsc --noEmit -p apps/web` exit 0.
+- Not deployed. DebugView and browser page_view count not run.
+- Residual: GTM admin checklist, server MP secret, select_item/search/partner auth wiring.
+
 ## 2026-10-09T21:45:00Z — TASK-20261010-001 LIVE (wholesale Iran TLS)
 
 - Owner: cursor:implementer-TASK-20261010-001

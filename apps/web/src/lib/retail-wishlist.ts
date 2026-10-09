@@ -1,5 +1,7 @@
 'use client';
 
+import { trackAddToWishlist } from './retail-analytics';
+
 /** Local wishlist for retail storefront (skill B2C). */
 const KEY = 'taranom-retail-wishlist';
 
@@ -39,5 +41,12 @@ export function toggleWishlist(item: WishlistItem): boolean {
   const exists = cur.some((i) => i.productId === item.productId);
   const next = exists ? cur.filter((i) => i.productId !== item.productId) : [...cur, item];
   write(next);
+  if (!exists) {
+    trackAddToWishlist({
+      productId: item.productId,
+      name: item.name,
+      price: item.price,
+    });
+  }
   return !exists;
 }

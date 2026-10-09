@@ -68,8 +68,34 @@ export function isAdminAnalyticsPath(pathname: string | null | undefined): boole
   return p === '/admin' || p.startsWith('/admin/');
 }
 
-const SENSITIVE_QUERY =
-  /^(phone|mobile|email|otp|token|password|recipient|address|street|postal|nationalid|national_id|access_token)$/i;
+/** Query keys safe to keep on a GA4 page path. Everything else is dropped. */
+const ANALYTICS_QUERY_ALLOWLIST = new Set([
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'utm_id',
+  'gclid',
+  'gbraid',
+  'wbraid',
+  'fbclid',
+  'msclkid',
+  'ttclid',
+  'yclid',
+  'srsltid',
+  'q',
+  'query',
+  'search',
+  'page',
+  'sort',
+  'color',
+  'size',
+  'category',
+  'collection',
+]);
+
+const PII_QUERY_VALUE = /@|09\d{9}|\+98\d{10}/;
 
 /** Strip the internal App Router `/retail` prefix so GA4 sees the public URL. */
 export function stripRetailInternalPath(pathname: string | null | undefined): string {
@@ -84,13 +110,20 @@ export function stripRetailInternalPath(pathname: string | null | undefined): st
 }
 
 export function sanitizeAnalyticsSearch(search: string | null | undefined): string {
-  const raw = String(search ?? '').replace(/^\?/, '');
+  const raw = String(search ?? '')
+    .replace(/^\?/, '')
+    .split('#')[0] ?? '';
   if (!raw) return '';
   const params = new URLSearchParams(raw);
-  for (const key of [...params.keys()]) {
-    if (SENSITIVE_QUERY.test(key)) params.delete(key);
+  const next = new URLSearchParams();
+  for (const [key, value] of params.entries()) {
+    const normalized = key.trim().toLowerCase();
+    if (!ANALYTICS_QUERY_ALLOWLIST.has(normalized)) continue;
+    const clean = value.trim();
+    if (!clean || clean.length > 120 || PII_QUERY_VALUE.test(clean)) continue;
+    next.append(normalized, clean);
   }
-  return params.toString();
+  return next.toString();
 }
 
 /**
@@ -117,7 +150,9 @@ export function shouldLoadProductionTags(
 
 /**
  * dataLayer-compatible gtag stub. Does NOT load gtag.js — GTM owns the GA4 tag.
- * Queued commands are processed when the GTM Google Tag boots.
+ * Commands must be queued as an `arguments` object. A rest-parameter array is
+ * not replayed as a gtag command, so page_view and ecommerce never reach GA4
+ * while the container's own session_start and scroll still do.
  */
 export function ensureGtagStub(): void {
   if (typeof window === 'undefined') return;
@@ -127,7 +162,8 @@ export function ensureGtagStub(): void {
   };
   w.dataLayer = w.dataLayer || [];
   if (typeof w.gtag === 'function') return;
-  w.gtag = function gtag(...args: unknown[]) {
-    w.dataLayer!.push(args);
+  w.gtag = function gtag() {
+    // GTM replays only the Arguments object, not a copied array.
+    w.dataLayer!.push(arguments);
   };
 }
