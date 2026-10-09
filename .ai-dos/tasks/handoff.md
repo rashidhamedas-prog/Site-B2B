@@ -20,6 +20,14 @@ Append newest entries at the top. Never erase another agent's record.
 - Spec: `npx tsx apps/web/src/lib/retail-analytics.spec.ts` ok. `npx tsc --noEmit -p apps/web` exit 0.
 - DebugView still needs a Google login. GA4 Admin unwanted referrals remain NEEDS ACCESS. Payment layout queues ignore_referrer only for approved gateway hosts.
 
+## 2026-10-09T23:15:00Z — TASK-20261010-003 LIVE
+
+- Owner: cursor:implementer-TASK-20261010-003
+- Commits: `0e647eba` (CWV) + `b289796d` (trackSelectItem) on `origin/master` (tip later moved to omnichannel `c7fe29c5` which still contains them).
+- Live origin: `CDN-Cache-Control` + `Cloudflare-CDN-Cache-Control` present; `/` and `/products` `x-nextjs-cache: HIT`; health 200.
+- Public: catalog HTML has `q=65`, `w=1200`, **no** `w=1920`. `.com` CF briefly `UPDATING`; `.ir` still often `DYNAMIC` (zone rule).
+- Follow-up: finish Windsor Search Console OAuth; GSC Validate Fix after CrUX window.
+
 ## 2026-10-09T22:55:00Z — TASK-20261010-003 CWV root fixes (pre-deploy)
 
 - Owner: cursor:implementer-TASK-20261010-003
