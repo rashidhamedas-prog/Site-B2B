@@ -8,7 +8,7 @@ import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
 import { discountPercent, mediaUrl, toman, uniqueInStockColors, uniqueSizes, variantsInStock } from '@/lib/product-display';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
-import { trackSelectCurrentItem } from '@/lib/retail-analytics';
+import { trackSelectItem } from '@/lib/retail-analytics';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import dynamic from 'next/dynamic';
@@ -98,7 +98,7 @@ function ClassicRetailProductCard({
   const secondImage = mediaUrl(product.images?.[1]);
   const href = getProductCanonicalPath(product.slug);
   const selectProduct = () => {
-    trackSelectCurrentItem({
+    trackSelectItem({
       sku: product.sku,
       productId: product.id,
       name: product.name,
