@@ -10,6 +10,7 @@ import { OmnichannelService } from '../services/omnichannel.service';
 import {
   ActorReasonDto,
   BulkWithdrawPublicationsDto,
+  ClearWaitingOutboxDto,
   CreateConnectionDto,
   CreateDestinationDto,
   CreatePublicationDto,
@@ -21,6 +22,7 @@ import {
   PatchTemplateDto,
   PreviewDto,
   PutSecretDto,
+  RequeueByCategoryDto,
 } from '../dto/omnichannel.dto';
 import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
@@ -206,6 +208,20 @@ export class OmnichannelAdminController {
   @Get('outbox')
   listOutbox() {
     return this.svc.listOutbox();
+  }
+
+  @Post('outbox/clear-waiting')
+  @ApiOperation({ summary: 'خالی کردن کل صف انتظار (لغو نرم؛ بدون حذف ردیف)' })
+  clearWaitingOutbox(@Body() body: ClearWaitingOutboxDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets(body);
+    return this.svc.clearWaitingOutbox(body, req.omnichannelActor);
+  }
+
+  @Post('publications/requeue-by-category')
+  @ApiOperation({ summary: 'ارسال مجدد همه محصولات یک دسته به کانال‌های آماده' })
+  requeueByCategory(@Body() body: RequeueByCategoryDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets(body);
+    return this.svc.requeueByCategory(body, req.omnichannelActor);
   }
 
   @Get('audits')

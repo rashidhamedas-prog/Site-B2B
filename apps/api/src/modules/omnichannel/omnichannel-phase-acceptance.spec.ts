@@ -83,6 +83,9 @@ assert(adminOmni.includes('هنوز انتشاری ثبت نشده') && adminOmn
   assert(tables >= 3 && heads === tables, 'admin tables have headers');
 }
 assert(adminOmni.includes('autoPublishMode') && adminOmni.includes('withdrawAction') && adminOmni.includes('/verify'), 'admin console v2: automation mode, withdraw action, destination verify');
+assert(omniAdmin.includes("outbox/clear-waiting") && omniAdmin.includes('publications/requeue-by-category'), 'admin clear-waiting and category requeue routes');
+assert(omniSvc.includes('clearWaitingOutbox') && omniSvc.includes('requeueByCategory'), 'service clear-waiting and category requeue');
+assert(adminOmni.includes('خالی کردن صف انتظار') && adminOmni.includes('شروع ارسال دسته'), 'admin UI clear queue and category requeue');
 assert(omniAdmin.includes("Delete('connections/:id')") && omniAdmin.includes("Delete('destinations/:id')"), 'admin can delete connections and destinations');
 assert(omniSvc.includes('deleteConnection') && omniSvc.includes('deleteDestination'), 'service deletes connection/destination after detaching deliveries');
 assert(adminOmni.includes('conn-del-') && adminOmni.includes('dest-del-') && adminOmni.includes('apiClient.delete(`/omnichannel/connections/${row.id}`)'), 'admin has delete buttons for bots and channels');

@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-09T23:15:00Z — TASK-20261010-005 omnichannel queue clear + category requeue
+
+- Owner: cursor:implementer-TASK-20261010-005
+- Depth: skill-top full. ECC agent-first. H2H for admin Persian copy.
+- Specialists: explore map, omnichannel-architect plan, security + phase-reviewer (PASS WITH CONDITIONS; canary/WITHDRAWN patched after).
+- Code: soft-cancel waiting outbox; requeue-by-category; worker withdrawn gate; metric honesty; AdminOmnichannel buttons.
+- Specs: bulk-requeue-category.spec + outbox.service.spec ok. Web tsc 0. Acceptance SMS assert still pre-existing fail.
+- Shared claims: WORKLOG/handoff/status/active also used by 003/004 — append only.
+- Not committed/deployed (user commit rule). Residual: owner smoke clear + dryRun one category on LIVE after deploy.
+
 ## 2026-10-09T23:05:00Z — TASK-20261010-004 retail GA4 gaps
 
 - Owner: cursor:implementer-TASK-20261010-004

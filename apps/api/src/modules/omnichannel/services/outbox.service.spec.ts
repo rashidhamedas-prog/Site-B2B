@@ -2,6 +2,8 @@
  * npx ts-node --transpile-only src/modules/omnichannel/services/outbox.service.spec.ts
  */
 import {
+  CANCEL_PENDING_SQL,
+  CANCEL_STALE_PROCESSING_SQL,
   MARK_DONE_SQL,
   MARK_FAILURE_SQL,
   buildDedupeKey,
@@ -79,6 +81,11 @@ async function main() {
   assert(MARK_DONE_SQL.includes('"lockedAt" = NULL'), 'done SQL clears the lease');
   assert(MARK_FAILURE_SQL.includes('status = $2'), 'failure SQL sets PENDING or DEAD');
   assert(MARK_FAILURE_SQL.includes('"lockedAt" = NULL'), 'failure SQL clears the lease');
+  assert(CANCEL_PENDING_SQL.includes("WHERE status = 'PENDING'"), 'cancel only PENDING');
+  assert(CANCEL_PENDING_SQL.includes('RETURNING id'), 'cancel returns ids');
+  assert(!CANCEL_PENDING_SQL.toLowerCase().includes('delete'), 'cancel never deletes');
+  assert(CANCEL_STALE_PROCESSING_SQL.includes("status = 'PROCESSING'"), 'stale only PROCESSING');
+  assert(CANCEL_STALE_PROCESSING_SQL.includes('"lockedAt"'), 'stale uses lease age');
 
   const leased = leaseRowsFromQueryResult([[{ id: 'a' }, { id: 'b' }], 2]);
   assert(leased.map((r) => r.id).join(',') === 'a,b', 'UPDATE RETURNING tuple unwraps rows');

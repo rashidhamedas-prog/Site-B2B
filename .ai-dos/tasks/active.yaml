@@ -1,5 +1,46 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20261010-005"
+    title: "Omnichannel clear waiting queue + requeue by category"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261010-005"
+    roles:
+      architect: "cursor:omnichannel-architect"
+      implementer: "cursor:implementer-TASK-20261010-005"
+      reviewer: "cursor:omnichannel-phase-reviewer"
+      security: "cursor:omnichannel-security"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-09T23:10:00Z"
+    heartbeat_at: "2026-10-09T23:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/omnichannel/bulk-requeue-category.ts"
+      - "apps/api/src/modules/omnichannel/bulk-requeue-category.spec.ts"
+      - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
+      - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox.service.spec.ts"
+      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
+      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      - "docs/reports/2026-10-10-omnichannel-queue-clear-requeue.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      skill-top full + ECC + H2H. Shared governance files also claimed by
+      TASK-20261010-003/004 — append-only WORKLOG/handoff/status; do not
+      revert GA4/CWV claims. Soft-cancel outbox only (no DELETE).
+    acceptance_criteria:
+      - "POST /omnichannel/outbox/clear-waiting soft-cancels PENDING (no DELETE)"
+      - "POST /omnichannel/publications/requeue-by-category dryRun + live with gap"
+      - "Canary mode refuses oversize category blast; WITHDRAWN skipped"
+      - "Admin UI: clear queue + category requeue in Persian"
+      - "bulk-requeue-category + outbox.service specs pass"
   - id: "TASK-20261010-004"
     title: "Retail GA4 gtag-only funnel and affiliate events"
     status: "in_progress"

@@ -202,6 +202,11 @@ export function AdminOmnichannel() {
   const [preview, setPreview] = useState<{ projection: Record<string, unknown>; rendered?: Rendered } | null>(null);
   const [selectedPubIds, setSelectedPubIds] = useState<string[]>([]);
   const selectAllPubsRef = useRef<HTMLInputElement>(null);
+  const [requeueChannel, setRequeueChannel] = useState<Channel>('WHOLESALE');
+  const [requeueCategoryId, setRequeueCategoryId] = useState('');
+  const [requeuePreview, setRequeuePreview] = useState<{ matched: number; hasMore: boolean } | null>(null);
+  const [requeueOffset, setRequeueOffset] = useState(0);
+  const [requeueTargetId, setRequeueTargetId] = useState('');
 
   const load = useCallback(async () => {
     setError('');
@@ -375,6 +380,119 @@ export function AdminOmnichannel() {
     return deliveries.filter((row) => row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.createdAt && new Date(row.createdAt) >= start).length;
   }, [deliveries]);
   const failing = deliveries.filter((row) => row.status === 'DEAD' || row.status === 'FAILED').length;
+  const deferredPending = outbox.filter(
+    (row) => row.status === 'PENDING' && row.availableAt && new Date(row.availableAt).getTime() > Date.now() + 5_000,
+  ).length;
+
+  const clearWaitingQueue = () => {
+    const pending = status?.outbox?.pending ?? 0;
+    if (pending <= 0) {
+      setNotice('صف انتظار از قبل خالی است');
+      return;
+    }
+    const why = window.prompt(
+      `همه ${faNumber(pending)} رویداد در انتظار لغو شود؟ این کار پست‌های در صف را نمی‌فرستد (حذف از دیتابیس نیست). دلیل را بنویسید:`,
+      reason || 'پاک‌سازی صف انتظار',
+    );
+    if (why == null) return;
+    const trimmed = why.trim();
+    if (!trimmed) {
+      setError('دلیل خالی کردن صف الزامی است');
+      return;
+    }
+    if (!window.confirm(`تأیید نهایی: ${faNumber(pending)} رویداد در انتظار لغو شود؟`)) return;
+    void run(
+      'clear-waiting',
+      async () => {
+        const result = await apiClient.post<{
+          cancelledEvents: number;
+          cancelledDeliveries: number;
+        }>('/omnichannel/outbox/clear-waiting', { confirm: true, reason: trimmed });
+        setNotice(
+          `${faNumber(result.cancelledEvents)} رویداد و ${faNumber(result.cancelledDeliveries)} ارسال لغو شد`,
+        );
+      },
+      'خطا در خالی کردن صف',
+    );
+  };
+
+  const previewRequeueByCategory = () => {
+    if (!requeueCategoryId) {
+      setError('یک دسته انتخاب کنید');
+      return;
+    }
+    void run(
+      'requeue-preview',
+      async () => {
+        const result = await apiClient.post<{ matched: number; hasMore: boolean }>(
+          '/omnichannel/publications/requeue-by-category',
+          {
+            channel: requeueChannel,
+            categoryId: requeueCategoryId,
+            reason: reason || 'پیش‌نمایش ارسال دسته',
+            dryRun: true,
+            offset: requeueOffset,
+          },
+        );
+        setRequeuePreview({ matched: result.matched, hasMore: result.hasMore });
+        setNotice(
+          result.matched
+            ? `${faNumber(result.matched)} محصول از افست ${faNumber(requeueOffset)}${result.hasMore ? ' (ادامه دارد)' : ''}`
+            : 'در این دسته محصول واجد شرایطی پیدا نشد',
+        );
+      },
+      'خطا در شمارش محصولات دسته',
+    );
+  };
+
+  const runRequeueByCategory = () => {
+    if (!requeueCategoryId) {
+      setError('یک دسته انتخاب کنید');
+      return;
+    }
+    if (!connectorsOn) {
+      setError('کانکتور سرور خاموش است');
+      return;
+    }
+    const catName = categoryOptions.find((c) => c.id === requeueCategoryId)?.name || 'دسته';
+    const countHint = requeuePreview?.matched != null ? faNumber(requeuePreview.matched) : '؟';
+    if (!window.confirm(
+      `ارسال مجدد تا ${countHint} محصول «${catName}» در کانال ${requeueChannel === 'WHOLESALE' ? 'عمده' : 'تکی'} شروع شود؟ پست‌ها با فاصلهٔ قواعد خودکار به صف می‌روند.`,
+    )) return;
+    void run(
+      'requeue-category',
+      async () => {
+        const result = await apiClient.post<{
+          queued: number;
+          matched: number;
+          hasMore: boolean;
+          skipped: Array<{ productId: string; reason: string }>;
+          errors: Array<{ productId: string; error: string }>;
+          nextOffset: number | null;
+        }>('/omnichannel/publications/requeue-by-category', {
+          channel: requeueChannel,
+          categoryId: requeueCategoryId,
+          reason: reason || 'ارسال مجدد بر اساس دسته',
+          confirm: true,
+          dryRun: false,
+          destinationId: requeueTargetId || undefined,
+          offset: requeueOffset,
+        });
+        setRequeuePreview({ matched: result.matched, hasMore: result.hasMore });
+        if (result.nextOffset != null) setRequeueOffset(result.nextOffset);
+        else setRequeueOffset(0);
+        const skipN = result.skipped?.length || 0;
+        const errN = result.errors?.length || 0;
+        setNotice(
+          `${faNumber(result.queued)} ارسال به صف رفت`
+          + (skipN ? ` · ${faNumber(skipN)} رد شد` : '')
+          + (errN ? ` · ${faNumber(errN)} خطا` : '')
+          + (result.hasMore ? ' · هنوز محصول باقی است؛ دوباره بزنید' : ''),
+        );
+      },
+      'خطا در ارسال مجدد دسته',
+    );
+  };
 
   const steps: Array<{ id: Step; label: string; state: StepState; hint?: string }> = [
     {
@@ -1166,6 +1284,47 @@ export function AdminOmnichannel() {
 
   const publishView = (
     <>
+      <Section title="شروع دوباره بر اساس دسته" description="اول صف انتظار را خالی کنید، بعد دسته را انتخاب کنید تا همهٔ محصولات همان دسته دوباره به کانال‌های آماده بروند. ارسال با فاصلهٔ قواعد خودکار انجام می‌شود تا پیام‌رسان شلوغ نشود.">
+        <div className="flex flex-wrap gap-2 items-end">
+          <label className="text-xs text-gray-600 space-y-1">
+            <span className="block">کانال</span>
+            <select className="border rounded-lg px-3 py-2 text-sm" value={requeueChannel} onChange={(e) => { setRequeueChannel(e.target.value as Channel); setRequeuePreview(null); setRequeueOffset(0); }}>
+              <option value="WHOLESALE">عمده</option>
+              <option value="RETAIL">تکی</option>
+            </select>
+          </label>
+          <label className="text-xs text-gray-600 space-y-1 flex-1 min-w-[12rem]">
+            <span className="block">دسته</span>
+            <select className="border rounded-lg px-3 py-2 text-sm w-full" value={requeueCategoryId} onChange={(e) => { setRequeueCategoryId(e.target.value); setRequeuePreview(null); setRequeueOffset(0); }}>
+              <option value="">انتخاب دسته…</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-gray-600 space-y-1 min-w-[12rem]">
+            <span className="block">مقصد (اختیاری)</span>
+            <select className="border rounded-lg px-3 py-2 text-sm w-full" value={requeueTargetId} onChange={(e) => setRequeueTargetId(e.target.value)}>
+              <option value="">طبق قواعد خودکار</option>
+              {readyByChannel(requeueChannel).map((dest) => (
+                <option key={dest.id} value={dest.id}>{providerLabel(providerOf(dest))} · {dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="btn btn-secondary btn-sm" disabled={!requeueCategoryId || busy === 'requeue-preview'} onClick={previewRequeueByCategory}>شمارش محصولات</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!requeueCategoryId || !connectorsOn || busy === 'requeue-category'} onClick={runRequeueByCategory} title={!connectorsOn ? 'کانکتور سرور خاموش است' : undefined}>شروع ارسال دسته</button>
+          <button type="button" className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50" disabled={busy === 'clear-waiting' || !(status?.outbox?.pending)} onClick={clearWaitingQueue}>خالی کردن صف انتظار</button>
+        </div>
+        {requeuePreview && (
+          <p className="text-xs text-gray-600 mt-2">
+            آخرین شمارش: {faNumber(requeuePreview.matched)} محصول{requeuePreview.hasMore ? ' (بیش از سقف ۱۰۰؛ برای ادامه دوباره بزنید)' : ''}
+          </p>
+        )}
+        <p className="text-xs text-amber-800 mt-2 leading-5">
+          خالی بودن مقصد = طبق قواعد خودکار همان کانال. محصولاتی که قبلاً از کانال برداشته شده‌اند دوباره ارسال نمی‌شوند. قبل از blast بزرگ، صف انتظار را خالی کنید.
+        </p>
+      </Section>
+
       <Section title="ارسال دستی" description="برای مواردی که نمی‌خواهید منتظر رویداد خودکار بمانید: یک محصول، مقاله یا صفحه را انتخاب کنید و به یک مقصد یا طبق قواعد خودکار بفرستید.">
         <div className="flex flex-wrap gap-2">
           <select className="border rounded-lg px-3 py-2 text-sm" value={pubChannel} onChange={(e) => setPubChannel(e.target.value as Channel)}>
@@ -1333,7 +1492,20 @@ export function AdminOmnichannel() {
 
   const opsView = (
     <>
-      <Section title="صف رویدادها" description="هر تغییر سایت اول به این صف می‌آید و ورکر آن را به کانال می‌رساند. تأخیر «موکول‌شده» یعنی فاصله بین پست یا ساعت سکوت.">
+      <Section
+        title="صف رویدادها"
+        description="هر تغییر سایت اول به این صف می‌آید و ورکر آن را به کانال می‌رساند. تأخیر «موکول‌شده» یعنی فاصله بین پست یا ساعت سکوت."
+        actions={(
+          <button
+            type="button"
+            className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+            disabled={busy === 'clear-waiting' || !(status?.outbox?.pending)}
+            onClick={clearWaitingQueue}
+          >
+            خالی کردن صف انتظار
+          </button>
+        )}
+      >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -1352,7 +1524,7 @@ export function AdminOmnichannel() {
                 const deferred = row.status === 'PENDING' && row.availableAt && new Date(row.availableAt).getTime() > Date.now() + 5_000;
                 return (
                   <tr key={row.id} className="border-t">
-                    <td className="p-2">{row.eventType === 'publication.deliver_requested' ? 'ارسال به کانال' : row.eventType === 'product.stock_changed' ? 'تغییر موجودی' : eventLabel(row.eventType)}</td>
+                    <td className="p-2">{row.eventType === 'publication.deliver.requested' || row.eventType === 'publication.deliver_requested' ? 'ارسال به کانال' : row.eventType === 'product.stock_changed' ? 'تغییر موجودی' : eventLabel(row.eventType)}</td>
                     <td className="p-2">{channelLabel(row.channel)}</td>
                     <td className="p-2"><Badge tone={st.tone}>{deferred ? 'موکول‌شده' : st.label}</Badge></td>
                     <td className="p-2">{faNumber(row.attempts)}</td>
@@ -1447,8 +1619,25 @@ export function AdminOmnichannel() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label="ربات" value={activeConnections.length ? summarizeBots(activeConnections) : 'ثبت نشده'} hint={status?.connectors ? (providerInfos.some((info) => !info.enabled) ? `کانکتور روشن · ${providerInfos.filter((info) => !info.enabled).map((info) => info.label).join('، ')} خاموش` : 'کانکتور روشن') : 'کانکتور سرور خاموش'} tone={activeConnections.length && status?.connectors ? 'ok' : 'warn'} />
         <Metric label="کانال‌های آماده" value={readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'هیچ'} hint={unverified.length ? `${faNumber(unverified.length)} مقصد تأییدنشده` : 'همه تأیید شده'} tone={readyDestinations.length ? (unverified.length ? 'warn' : 'ok') : 'warn'} />
-        <Metric label="پست‌های امروز" value={`${faNumber(sentToday)} از ${faNumber(status?.autoDailyCap ?? 20)}`} hint={failing ? `${faNumber(failing)} ارسال ناموفق` : 'بدون خطا'} tone={failing ? 'danger' : 'ok'} />
-        <Metric label="صف" value={`${faNumber(status?.outbox?.pending ?? 0)} در انتظار`} hint={status?.outbox?.dead ? `${faNumber(status.outbox.dead)} متوقف` : status?.outbox?.oldestPendingAgeSec ? `قدیمی‌ترین ${faNumber(status.outbox.oldestPendingAgeSec)} ثانیه` : 'روان'} tone={status?.outbox?.dead ? 'danger' : 'ok'} />
+        <Metric
+          label="پست‌های امروز"
+          value={`${faNumber(sentToday)} از ${faNumber(status?.autoDailyCap ?? 20)}`}
+          hint={failing ? `${faNumber(failing)} ناموفق در ۱۰۰ ارسال اخیر` : 'بدون خطا در فهرست اخیر'}
+          tone={failing ? 'danger' : 'ok'}
+        />
+        <Metric
+          label="صف"
+          value={`${faNumber(status?.outbox?.pending ?? 0)} در انتظار`}
+          hint={[
+            status?.outbox?.dead ? `${faNumber(status.outbox.dead)} متوقف` : '',
+            deferredPending ? `${faNumber(deferredPending)} موکول‌شده در فهرست` : '',
+            !status?.outbox?.dead && !deferredPending && status?.outbox?.oldestPendingAgeSec
+              ? `قدیمی‌ترین ${faNumber(status.outbox.oldestPendingAgeSec)} ثانیه`
+              : '',
+            !status?.outbox?.dead && !deferredPending && !status?.outbox?.oldestPendingAgeSec ? 'روان' : '',
+          ].filter(Boolean).join(' · ') || 'روان'}
+          tone={status?.outbox?.dead || (status?.outbox?.pending ?? 0) > 20 ? 'danger' : 'ok'}
+        />
       </div>
 
       {error && <Callout tone="danger">{error}</Callout>}

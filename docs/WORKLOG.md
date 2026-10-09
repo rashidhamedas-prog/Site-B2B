@@ -1,3 +1,12 @@
+## 2026-10-10 — صف کانال انتشار: پاک‌سازی + ارسال دسته [TASK-20261010-005]
+
+- ریشه: صف ۷۹+۳۹ و DRAFTها از PENDING موکول‌شده، DEAD، و reconcile بدون ارسال؛ دکمهٔ خالی‌کردن صف و blast دسته وجود نداشت.
+- API: `outbox/clear-waiting` (لغو نرم بدون DELETE) و `publications/requeue-by-category` با dryRun، سقف ۱۰۰، فاصلهٔ minGap؛ canary و WITHDRAWN رعایت می‌شود.
+- Worker: CREATE/UPDATE برای انتشار برداشته‌شده رد می‌شود. متریک صف دیگر با DONE تاریخچه منحرف نمی‌شود.
+- UI ادمین: «خالی کردن صف انتظار» + «شروع دوباره بر اساس دسته».
+- تست: bulk-requeue-category + outbox.service سبز؛ tsc وب سبز.
+- گزارش: `docs/reports/2026-10-10-omnichannel-queue-clear-requeue.md`
+
 ## 2026-10-10 — CWV موبایل ریشه‌ای [TASK-20261010-003]
 
 - Windsor: فقط GA4 وصل بود؛ Search Console هنوز OAuth نشده. اندازه‌گیری: warm origin سریع؛ HTML `.ir` اغلب `CF DYNAMIC`؛ کارت کاتالوگ `w=1920` در src.

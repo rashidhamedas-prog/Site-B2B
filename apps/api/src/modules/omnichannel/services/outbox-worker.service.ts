@@ -384,6 +384,20 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       captionAbove: payload.captionAbove,
       linkPreview: payload.linkPreview,
     };
+    const publicationIdEarly = String(payload.publicationId || '');
+    if (
+      (action === 'CREATE' || action === 'UPDATE')
+      && publicationIdEarly
+      && await this.omnichannel.isPublicationWithdrawn(publicationIdEarly)
+    ) {
+      const withdrawn = await this.findDelivery(payload, eventId);
+      if (withdrawn && withdrawn.status !== 'SUCCEEDED') {
+        withdrawn.status = 'DEAD';
+        withdrawn.lastError = 'publication_withdrawn';
+        await this.deliveries.save(withdrawn);
+      }
+      return;
+    }
     let providerMessageId: string | undefined;
     if (action === 'UPDATE') {
       try {

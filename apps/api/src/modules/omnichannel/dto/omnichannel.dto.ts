@@ -308,6 +308,50 @@ export class BulkWithdrawPublicationsDto {
   reason?: string;
 }
 
+/** Soft-cancel all PENDING outbox rows (and stale PROCESSING). Never DELETE. */
+export class ClearWaitingOutboxDto {
+  @IsBoolean()
+  confirm: boolean;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(240)
+  reason: string;
+}
+
+/** Enqueue CREATE/UPDATE for every visible product in a category (batched). */
+export class RequeueByCategoryDto {
+  @IsIn(OMNICHANNEL_CHANNELS)
+  channel: (typeof OMNICHANNEL_CHANNELS)[number];
+
+  @IsUUID('4')
+  categoryId: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(240)
+  reason: string;
+
+  /** Required when dryRun is false. */
+  @IsOptional()
+  @IsBoolean()
+  confirm?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  dryRun?: boolean;
+
+  @IsOptional()
+  @IsUUID('4')
+  destinationId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
+}
+
 export class PatchMediaAltDto {
   @IsString()
   @MaxLength(200)

@@ -80,6 +80,33 @@ SET status = $2,
 WHERE id = $1
 `;
 
+/** Soft-cancel waiting work — never DELETE. DONE keeps audit/retention history. */
+export const CANCEL_PENDING_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = 'DONE',
+    "completedAt" = NOW(),
+    "lastError" = $1,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE status = 'PENDING'
+RETURNING id
+`;
+
+/** Only stale PROCESSING locks (worker crash / hung lease). Fresh mid-send stays. */
+export const CANCEL_STALE_PROCESSING_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = 'DONE',
+    "completedAt" = NOW(),
+    "lastError" = $1,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE status = 'PROCESSING'
+  AND ("lockedAt" IS NULL OR "lockedAt" < NOW() - ($2 * INTERVAL '1 minute'))
+RETURNING id
+`;
+
 @Injectable()
 export class OutboxService {
   constructor(
@@ -159,6 +186,28 @@ export class OutboxService {
        WHERE id = $1 AND status <> 'DONE'`,
       [id],
     );
+  }
+
+  /**
+   * Admin clear-waiting: PENDING → DONE (cancelled), plus stale PROCESSING only.
+   * Never DELETE. Returns cancelled event ids for linked delivery cleanup.
+   */
+  async cancelWaiting(opts: {
+    pendingError: string;
+    staleError: string;
+    staleLockMinutes?: number;
+  }): Promise<{ cancelledPendingIds: string[]; cancelledStaleIds: string[] }> {
+    const pendingRaw = await this.dataSource.query(CANCEL_PENDING_SQL, [
+      opts.pendingError.slice(0, 2000),
+    ]);
+    const cancelledPendingIds = leaseRowsFromQueryResult(pendingRaw).map((r) => r.id);
+    const minutes = Math.max(1, Math.min(60, Math.floor(opts.staleLockMinutes ?? 5)));
+    const staleRaw = await this.dataSource.query(CANCEL_STALE_PROCESSING_SQL, [
+      opts.staleError.slice(0, 2000),
+      minutes,
+    ]);
+    const cancelledStaleIds = leaseRowsFromQueryResult(staleRaw).map((r) => r.id);
+    return { cancelledPendingIds, cancelledStaleIds };
   }
 
   async markDone(id: string): Promise<void> {

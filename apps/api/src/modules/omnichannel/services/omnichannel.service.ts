@@ -8,7 +8,15 @@ import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection
 import { normalizeSalesChannel } from '../../product/channel-product-projection';
 import { ProductEntity } from '../../product/entities/product.entity';
 import { ProductCategoryMembershipEntity } from '../../product/entities/product-category-membership.entity';
-import { PreviewDto, CreatePublicationDto, PatchDestinationDto, PatchOmnichannelSettingsDto, PutSecretDto } from '../dto/omnichannel.dto';
+import {
+  PreviewDto,
+  CreatePublicationDto,
+  ClearWaitingOutboxDto,
+  PatchDestinationDto,
+  PatchOmnichannelSettingsDto,
+  PutSecretDto,
+  RequeueByCategoryDto,
+} from '../dto/omnichannel.dto';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelTemplateEntity } from '../entities/channel-template.entity';
@@ -70,6 +78,14 @@ import {
 } from '../publication-automation';
 import { CANARY_PING_TEXT } from '../canary-ping';
 import { normalizeBulkPublicationIds } from '../bulk-publication-ids';
+import {
+  CLEAR_WAITING_ERROR,
+  CLEAR_WAITING_STALE_ERROR,
+  REQUEUE_BY_CATEGORY_MAX,
+  normalizeClearWaitingInput,
+  normalizeRequeueByCategoryInput,
+  staggeredAvailableAt,
+} from '../bulk-requeue-category';
 import {
   defaultLayoutFor,
   emptyPublicationVars,
@@ -633,9 +649,10 @@ export class OmnichannelService {
 
   async outboxMetrics() {
     try {
+      // Active statuses only — DONE history must not crowd out pending/dead counters.
       const rows = await this.events.find({
         select: ['status', 'availableAt', 'lockedAt'],
-        take: 2000,
+        where: { status: In(['PENDING', 'PROCESSING', 'DEAD']) },
       });
       return summarizeOutbox(rows);
     } catch (err) {
@@ -659,6 +676,176 @@ export class OmnichannelService {
         lastError: row.lastError ? redactProviderError(row.lastError) : row.lastError,
       createdAt: row.createdAt,
     }));
+  }
+
+  /**
+   * Soft-cancel the entire waiting queue. PENDING → DONE + cancelled marker; stale PROCESSING
+   * locks only. Linked PENDING/RETRY/PROCESSING deliveries → DEAD. Never DELETE outbox rows.
+   */
+  async clearWaitingOutbox(dto: ClearWaitingOutboxDto, actor?: Actor) {
+    const who = this.requireActor(actor);
+    const normalized = normalizeClearWaitingInput(dto);
+    if ('error' in normalized) throw new BadRequestException(normalized.error);
+    assertNoPlaintextSecrets({ reason: normalized.reason });
+    const { cancelledPendingIds, cancelledStaleIds } = await this.outbox.cancelWaiting({
+      pendingError: CLEAR_WAITING_ERROR,
+      staleError: CLEAR_WAITING_STALE_ERROR,
+    });
+    const cancelledIds = [...cancelledPendingIds, ...cancelledStaleIds];
+    let cancelledDeliveries = 0;
+    if (cancelledIds.length) {
+      const result = await this.deliveries
+        .createQueryBuilder()
+        .update(PublicationDeliveryEntity)
+        .set({ status: 'DEAD', lastError: CLEAR_WAITING_ERROR })
+        .where('"eventId" IN (:...ids)', { ids: cancelledIds })
+        .andWhere('status IN (:...st)', { st: ['PENDING', 'RETRY', 'PROCESSING'] })
+        .execute();
+      cancelledDeliveries = Number(result.affected || 0);
+    }
+    await this.audit(who, 'outbox_clear_waiting', 'OUTBOX', 'batch', null, normalized.reason, {
+      cancelledEvents: cancelledIds.length,
+      cancelledPending: cancelledPendingIds.length,
+      cancelledStale: cancelledStaleIds.length,
+      cancelledDeliveries,
+    });
+    return {
+      cancelledEvents: cancelledIds.length,
+      cancelledPending: cancelledPendingIds.length,
+      cancelledStale: cancelledStaleIds.length,
+      cancelledDeliveries,
+      outbox: await this.outboxMetrics(),
+    };
+  }
+
+  /**
+   * Admin blast: enqueue CREATE/UPDATE for products in a category (primary or membership).
+   * Bypasses automation daily_cap / quiet hours; still requires connectors + ready destinations.
+   * Posts are staggered by autoMinGapSeconds so messengers are not flooded.
+   */
+  async requeueByCategory(dto: RequeueByCategoryDto, actor?: Actor) {
+    const who = this.requireActor(actor);
+    const normalized = normalizeRequeueByCategoryInput(dto);
+    if ('error' in normalized) throw new BadRequestException(normalized.error);
+    assertNoPlaintextSecrets({ reason: normalized.reason });
+    const productIds = await this.productIdsForCategory(
+      normalized.categoryId,
+      normalized.channel,
+      REQUEUE_BY_CATEGORY_MAX + 1,
+      normalized.offset,
+    );
+    const hasMore = productIds.length > REQUEUE_BY_CATEGORY_MAX;
+    const batch = productIds.slice(0, REQUEUE_BY_CATEGORY_MAX);
+    if (normalized.dryRun) {
+      return {
+        dryRun: true,
+        matched: batch.length,
+        hasMore,
+        offset: normalized.offset,
+        nextOffset: hasMore ? normalized.offset + batch.length : null,
+        queued: 0,
+        skipped: [] as Array<{ productId: string; reason: string }>,
+        errors: [] as Array<{ productId: string; error: string }>,
+      };
+    }
+    if (!canEnqueueManualDelivery(areOmnichannelConnectorsEnabled())) {
+      throw new BadRequestException(
+        'ارسال به پیام‌رسان خاموش است (OMNICHANNEL_CONNECTORS_ENABLED).',
+      );
+    }
+    const automation = readAutomationSettings(await this.loadStoredSettings());
+    if (automation.mode !== 'LIVE') {
+      const liveCount = await this.publications.count({
+        where: {
+          channel: normalized.channel,
+          sourceType: 'PRODUCT',
+          status: In(['READY', 'PUBLISHED', 'PARTIAL']),
+        },
+      });
+      const limit = canaryLimitFor(normalized.channel);
+      if (canaryExceeded(liveCount, limit)) {
+        throw new BadRequestException(
+          `سقف canary کانال ${normalized.channel} برابر ${limit} محصول است؛ برای ارسال دسته‌ای حالت خودکار را «زنده» کنید`,
+        );
+      }
+      const room = Math.max(0, limit - liveCount);
+      if (batch.length > room) {
+        throw new BadRequestException(
+          `در حالت آزمایشی فقط ${room} محصول دیگر جا دارد (سقف ${limit}). حالت را «زنده» کنید یا دستهٔ کوچک‌تری بفرستید`,
+        );
+      }
+    }
+    const targets = await this.manualPublishTargets(normalized.channel, normalized.destinationId);
+    if (!targets.length) {
+      throw new BadRequestException(
+        'هیچ مقصد آماده‌ای برای این کانال نیست؛ یک مقصد canary یا مقصد تأییدشده لازم است',
+      );
+    }
+    const gap = automation.minGapSeconds;
+    const now = new Date();
+    const skipped: Array<{ productId: string; reason: string }> = [];
+    const errors: Array<{ productId: string; error: string }> = [];
+    let queued = 0;
+    let scheduleIndex = 0;
+    for (const productId of batch) {
+      try {
+        const result = await this.enqueueCategoryProduct(productId, {
+          channel: normalized.channel,
+          destinationId: normalized.destinationId,
+          reason: normalized.reason,
+          actor: who,
+          availableAt: staggeredAvailableAt(scheduleIndex, gap, now),
+          targets,
+        });
+        if (result.queued > 0) {
+          queued += result.queued;
+          scheduleIndex += 1;
+        } else if (result.skipReason) {
+          skipped.push({ productId, reason: result.skipReason });
+        }
+      } catch (err: unknown) {
+        errors.push({
+          productId,
+          error: err instanceof Error ? err.message : 'خطا در صف‌گذاری',
+        });
+      }
+    }
+    await this.audit(
+      who,
+      'publications_requeue_by_category',
+      'PUBLICATION',
+      'batch',
+      normalized.channel,
+      normalized.reason,
+      {
+        categoryId: normalized.categoryId,
+        matched: batch.length,
+        queued,
+        skipped: skipped.length,
+        errors: errors.length,
+        hasMore,
+        destinationId: normalized.destinationId || null,
+      },
+    );
+    return {
+      dryRun: false,
+      matched: batch.length,
+      hasMore,
+      offset: normalized.offset,
+      nextOffset: hasMore ? normalized.offset + batch.length : null,
+      queued,
+      skipped,
+      errors,
+      outbox: await this.outboxMetrics(),
+    };
+  }
+
+  /** Worker gate: withdrawn publications must not CREATE/UPDATE on messengers. */
+  async isPublicationWithdrawn(publicationId: string): Promise<boolean> {
+    const id = String(publicationId || '').trim();
+    if (!id) return false;
+    const row = await this.publications.findOne({ where: { id }, select: ['id', 'status'] });
+    return row?.status === 'WITHDRAWN';
   }
 
   async listAudits() {
@@ -1464,6 +1651,180 @@ export class OmnichannelService {
     const bySku = await this.products.findOne({ where: { sku: key }, select: ['id'] });
     if (bySku) return bySku.id;
     throw new NotFoundException('محصول یافت نشد');
+  }
+
+  /** Active products in category (primary categoryId or membership), channel-visible. */
+  private async productIdsForCategory(
+    categoryId: string,
+    channel: 'RETAIL' | 'WHOLESALE',
+    limit: number,
+    offset: number,
+  ): Promise<string[]> {
+    const visibility =
+      channel === 'RETAIL'
+        ? 'p."showOnRetail" IS NOT FALSE'
+        : 'p."showOnWholesale" IS NOT FALSE';
+    const rows: Array<{ id: string }> = await this.products.query(
+      `
+      SELECT DISTINCT p.id
+      FROM products p
+      LEFT JOIN product_category_membership m ON m."productId" = p.id
+      WHERE UPPER(COALESCE(p.status, '')) = 'ACTIVE'
+        AND ${visibility}
+        AND (p."categoryId" = $1 OR m."categoryId" = $1)
+      ORDER BY p.id
+      LIMIT $2 OFFSET $3
+      `,
+      [categoryId, limit, offset],
+    );
+    return rows.map((row) => row.id);
+  }
+
+  /**
+   * One product for category requeue — same CREATE/UPDATE plan as manual publish,
+   * with an explicit availableAt for messenger spacing.
+   */
+  private async enqueueCategoryProduct(
+    productId: string,
+    opts: {
+      channel: 'RETAIL' | 'WHOLESALE';
+      destinationId?: string;
+      reason: string;
+      actor: Actor;
+      availableAt: Date;
+      targets: ChannelDestinationEntity[];
+    },
+  ): Promise<{ queued: number; skipReason?: string }> {
+    const { projection } = await this.preview({
+      channel: opts.channel,
+      sourceType: 'PRODUCT',
+      sourceId: productId,
+    });
+    if (!projection.publishable) {
+      return { queued: 0, skipReason: projection.rejectReason || 'غیرقابل انتشار' };
+    }
+    const sourceId = String(projection.sourceId || productId);
+    const available = 'available' in projection ? projection.available === true : true;
+    const oos = await this.oosDecisionFor(opts.channel, available, 'PRODUCT', sourceId);
+    const reject = liveOosRejectReason(oos, available);
+    if (reject) {
+      return { queued: 0, skipReason: `ناموجود (${oos.policy})` };
+    }
+    const liveRemote = await this.liveRemoteMessages('PRODUCT', sourceId, opts.channel);
+    const pendingCreates = await this.pendingCreateDestinationsForSource(
+      'PRODUCT',
+      sourceId,
+      opts.channel,
+    );
+    const plan = planManualDeliveries(
+      opts.targets.map((dest) => dest.id),
+      liveRemote,
+      pendingCreates,
+    );
+    if (plan.creates.length === 0 && plan.updates.length === 0) {
+      return { queued: 0, skipReason: 'ارسال قبلی هنوز در صف است' };
+    }
+    const rendered = await this.publicationPayloadFor(projection);
+    let queued = 0;
+    await this.publications.manager.transaction(async (manager) => {
+      const repo = manager.getRepository(PublicationEntity);
+      const withdrawn = await repo.findOne({
+        where: {
+          sourceType: 'PRODUCT',
+          sourceId,
+          channel: opts.channel,
+          status: 'WITHDRAWN',
+        },
+        order: { createdAt: 'DESC' },
+      });
+      if (withdrawn) {
+        return;
+      }
+      const existing = await repo.findOne({
+        where: {
+          sourceType: 'PRODUCT',
+          sourceId,
+          channel: opts.channel,
+          status: In(['READY', 'PUBLISHED', 'PARTIAL', 'FAILED']),
+        },
+        order: { createdAt: 'DESC' },
+      }) || await repo.findOne({
+        where: {
+          sourceType: 'PRODUCT',
+          sourceId,
+          channel: opts.channel,
+          status: In(['DRAFT', 'READY', 'PUBLISHED', 'PARTIAL', 'FAILED']),
+        },
+        order: { createdAt: 'DESC' },
+      });
+      const row = existing
+        ? await repo.save(Object.assign(existing, {
+          projection,
+          sourceUpdatedAt: new Date(),
+          status: 'READY',
+        }))
+        : await repo.save(repo.create({
+          sourceType: 'PRODUCT',
+          sourceId,
+          channel: opts.channel,
+          sourceUpdatedAt: new Date(),
+          projection,
+          status: 'READY',
+        }));
+      if (plan.creates.length) {
+        queued += await this.enqueueDeliveries(manager, {
+          publicationId: row.id,
+          channel: opts.channel,
+          action: 'CREATE',
+          rendered,
+          targets: plan.creates,
+          auto: false,
+          availableAt: opts.availableAt,
+        });
+      }
+      if (plan.updates.length) {
+        queued += await this.enqueueDeliveries(manager, {
+          publicationId: row.id,
+          channel: opts.channel,
+          action: 'UPDATE',
+          rendered,
+          targets: plan.updates,
+          auto: false,
+          availableAt: opts.availableAt,
+        });
+      }
+      await manager.getRepository(OmnichannelAuditEntity).save(
+        manager.getRepository(OmnichannelAuditEntity).create({
+          actorId: opts.actor.id,
+          action: 'publish_category_requeue',
+          entityType: 'PUBLICATION',
+          entityId: row.id,
+          channel: opts.channel,
+          reason: opts.reason,
+          payload: {
+            productId,
+            createCount: plan.creates.length,
+            updateCount: plan.updates.length,
+            availableAt: opts.availableAt.toISOString(),
+          },
+        }),
+      );
+    });
+    if (queued === 0) {
+      const stillWithdrawn = await this.publications.findOne({
+        where: {
+          sourceType: 'PRODUCT',
+          sourceId,
+          channel: opts.channel,
+          status: 'WITHDRAWN',
+        },
+        select: ['id'],
+      });
+      if (stillWithdrawn) {
+        return { queued: 0, skipReason: 'از کانال برداشته شده؛ دوباره اضافه نشد' };
+      }
+    }
+    return { queued };
   }
 
   /**
