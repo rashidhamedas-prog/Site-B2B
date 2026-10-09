@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { OtpDeliveryNote } from '@/components/auth/OtpDeliveryNote';
@@ -10,6 +10,7 @@ import { apiClient } from '@/lib/api';
 import { normalizeDigits, normalizeOtpCode, normalizePhone } from '@/lib/phone';
 import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown, readSmsCooldownSeconds } from '@/lib/sms-cooldown';
 import { SpButton, SpStepRail, spFocusClass } from './SpUi';
+import { trackAffiliateEvent, trackPartnerAuth } from '@/lib/retail-analytics';
 
 type ApplyFormField = {
   key: string;
@@ -88,6 +89,20 @@ export function SalesPartnershipApply() {
   const { secondsLeft, start, reset } = useSmsResendCooldown();
   const { secondsLeft: validityLeft, start: startValidity, reset: resetValidity } = useSmsResendCooldown();
   const [otpPending, setOtpPending] = useState(false);
+  const landingSent = useRef(false);
+  const signupStarted = useRef(false);
+
+  useEffect(() => {
+    if (landingSent.current) return;
+    landingSent.current = true;
+    trackAffiliateEvent('affiliate_landing_view');
+  }, []);
+
+  function startSignup() {
+    if (signupStarted.current) return;
+    signupStarted.current = true;
+    trackAffiliateEvent('affiliate_signup_start');
+  }
 
   const fields = useMemo(() => {
     const list = settings?.applyFormFields?.length ? settings.applyFormFields : FALLBACK_FIELDS;
@@ -182,6 +197,7 @@ export function SalesPartnershipApply() {
         code: normalizeOtpCode(code),
       });
       setState('done');
+      trackPartnerAuth('sign_up');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'کد تأیید نادرست است');
     } finally {
@@ -227,7 +243,7 @@ export function SalesPartnershipApply() {
           )}
 
           {settings?.applyOpen && state === 'idle' && (
-            <form className="space-y-4" onSubmit={submitApply}>
+            <form className="space-y-4" onSubmit={submitApply} onFocus={startSignup}>
               {fields.map((field) => {
                 if (field.type === 'checkbox' && field.key === 'acceptTerms') {
                   return (

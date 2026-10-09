@@ -91,6 +91,19 @@ export default function RetailCheckoutPage() {
   const [cartReady, setCartReady] = useState(false);
   const subtotal = useMemo(() => items.reduce((n, i) => n + i.unitPrice * i.quantity, 0), [items]);
   const pieces = useMemo(() => items.reduce((n, i) => n + i.quantity, 0), [items]);
+  const analyticsItems = useMemo<RetailAnalyticsItemInput[]>(
+    () =>
+      items.map((i) => ({
+        productId: i.productId,
+        sku: i.sku,
+        name: i.productName,
+        color: i.color,
+        size: i.size,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+      })),
+    [items],
+  );
 
   useEffect(() => {
     const unsub = useRetailCart.persist.onFinishHydration(() => setCartReady(true));
@@ -117,6 +130,7 @@ export default function RetailCheckoutPage() {
     shipping: number;
   }>({ amount: 0, skus: [], items: [], shipping: 0 });
   const [shipFee, setShipFee] = useState(0);
+  const [shipQuoted, setShipQuoted] = useState(false);
   const [shipMeta, setShipMeta] = useState<{ freeShipping?: boolean; estimatedDays?: string }>({});
   const [useWallet, setUseWallet] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -228,8 +242,11 @@ export default function RetailCheckoutPage() {
   useEffect(() => {
     if (!pieces) {
       setShipFee(0);
+      setShipQuoted(true);
       return;
     }
+    let cancelled = false;
+    setShipQuoted(false);
     const params = new URLSearchParams({
       pieces: String(pieces),
       orderTotal: String(subtotal),
@@ -241,13 +258,20 @@ export default function RetailCheckoutPage() {
     apiClient
       .get<{ fee?: number; freeShipping?: boolean; estimatedDays?: string }>(`/shipping/quote?${params}`)
       .then((q) => {
+        if (cancelled) return;
         setShipFee(Number(q.fee) || 0);
         setShipMeta({ freeShipping: q.freeShipping, estimatedDays: q.estimatedDays });
+        setShipQuoted(true);
       })
       .catch(() => {
+        if (cancelled) return;
         setShipFee(isInPersonShipping(shippingMethod) ? 0 : 650_000);
         setShipMeta(isInPersonShipping(shippingMethod) ? { estimatedDays: 'هماهنگی برای مراجعه' } : {});
+        setShipQuoted(true);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [pieces, subtotal, shippingMethod, address.province, address.city]);
 
   const walletApplied = useWallet ? Math.min(walletBalance, Math.max(0, subtotal + shipFee)) : 0;
@@ -261,6 +285,17 @@ export default function RetailCheckoutPage() {
     payableRial: payable,
   });
   const ctaHint = checkoutCtaHint(paymentMethod);
+  const paymentSelection = selectedPaymentId || (paymentMethod === 'CASH' ? 'CASH' : paymentGateway);
+
+  useEffect(() => {
+    if (!analyticsItems.length || !shipQuoted || !shippingMethod) return;
+    trackAddShippingInfo(analyticsItems, subtotal + shipFee, shippingMethod);
+  }, [analyticsItems, shipQuoted, shippingMethod, shipFee, subtotal]);
+
+  useEffect(() => {
+    if (!analyticsItems.length || !shipQuoted || !paymentSelection) return;
+    trackAddPaymentInfo(analyticsItems, payable, paymentSelection);
+  }, [analyticsItems, shipQuoted, paymentSelection, payable]);
 
   const choosePayment = (id: string) => {
     const next = parseRetailPaymentChoice(id);
@@ -268,19 +303,6 @@ export default function RetailCheckoutPage() {
     if (next.gateway) setPaymentGateway(next.gateway);
     if (next.gateway === 'TOROBPAY') setShowAddressErrors(true);
     setPendingPayOrderId(null);
-    trackAddPaymentInfo(
-      items.map((i) => ({
-        productId: i.productId,
-        sku: i.sku,
-        name: i.productName,
-        color: i.color,
-        size: i.size,
-        unitPrice: i.unitPrice,
-        quantity: i.quantity,
-      })),
-      payable,
-      next.method === 'CASH' ? 'CASH' : next.gateway ?? 'ZARINPAL',
-    );
   };
 
   /** No account / incomplete retail customer → open account page (silent). */
@@ -519,22 +541,7 @@ export default function RetailCheckoutPage() {
                 legend="روش ارسال"
                 name="retail-shipping"
                 value={shippingMethod}
-                onChange={(next) => {
-                  setShippingMethod(next);
-                  trackAddShippingInfo(
-                    items.map((i) => ({
-                      productId: i.productId,
-                      sku: i.sku,
-                      name: i.productName,
-                      color: i.color,
-                      size: i.size,
-                      unitPrice: i.unitPrice,
-                      quantity: i.quantity,
-                    })),
-                    subtotal + shipFee,
-                    next,
-                  );
-                }}
+                onChange={setShippingMethod}
                 options={shipMethods.map((m) => ({
                   id: m.id,
                   title: m.label,

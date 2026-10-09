@@ -69,11 +69,19 @@ export function SalesPartnerCatalog() {
   const filtersKey = `${debouncedQ}|${categoryId}|${sort}`;
   const prevFilters = useRef(filtersKey);
   const catalogViewed = useRef(false);
+  const linkCreated = useRef(false);
 
   useEffect(() => {
     if (!data || catalogViewed.current) return;
     catalogViewed.current = true;
     trackAffiliateEvent('affiliate_catalog_view');
+  }, [data]);
+
+  useEffect(() => {
+    if (!data || linkCreated.current) return;
+    if (!data.items.some((item) => item.productUrl)) return;
+    linkCreated.current = true;
+    trackAffiliateEvent('affiliate_link_created');
   }, [data]);
 
   useEffect(() => {

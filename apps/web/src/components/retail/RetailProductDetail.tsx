@@ -13,6 +13,7 @@ import { selectDefaultRetailVariant } from '@taranom/shared-types';
 import { looksLikeHtml, selectRetailPdpBody, lightSanitizeHtml } from '@/lib/retail-pdp-copy';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
+import { trackViewItemList } from '@/lib/retail-analytics';
 
 type Related = {
   id: string;
@@ -224,6 +225,22 @@ export function RetailProductDetail({
       .then((r) => setRelated(r.data ?? []))
       .catch(() => setRelated([]));
   }, [product.id, product.relatedProducts]);
+
+  useEffect(() => {
+    if (!related.length) return;
+    trackViewItemList(
+      related.map((item) => ({
+        productId: item.id,
+        name: item.name,
+        unitPrice: Number(item.sale?.payable ?? item.retailPrice ?? 0),
+        quantity: 1,
+        itemListId: 'related',
+        itemListName: 'related',
+      })),
+      'related',
+      'related',
+    );
+  }, [related]);
 
   // Sync gallery when color changes
   useEffect(() => {

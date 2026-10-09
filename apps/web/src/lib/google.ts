@@ -60,6 +60,9 @@ export function isNonProductionAnalyticsHost(host: string | null | undefined): b
   if (h.endsWith('.ngrok.io') || h.endsWith('.ngrok-free.app') || h.endsWith('.trycloudflare.com')) {
     return true;
   }
+  if (h.startsWith('preview.') || h.includes('.preview.') || h.startsWith('staging.') || h.startsWith('dev.')) {
+    return true;
+  }
   return false;
 }
 
@@ -137,6 +140,40 @@ export function publicAnalyticsPagePath(
   const path = stripRetailInternalPath(pathname);
   const q = sanitizeAnalyticsSearch(search);
   return q ? `${path}?${q}` : path;
+}
+
+/** Confirmed retail stream. Used only when env and admin settings are empty. */
+export const RETAIL_GA4_MEASUREMENT_ID = 'G-F2V7VSJMLE';
+
+export function pageViewDedupeKey(measurementId: string, publicPath: string): string {
+  return `${measurementId}|${publicPath}`;
+}
+
+export function shouldSendPageView(previousKey: string, nextKey: string): boolean {
+  if (!nextKey || nextKey.endsWith('|')) return false;
+  return previousKey !== nextKey;
+}
+
+export const PAYMENT_REFERRER_HOSTS = [
+  'web.mydigipay.com',
+  'www.mydigipay.com',
+  'api.mydigipay.com',
+  'uatweb.mydigipay.info',
+  'payment.zarinpal.com',
+  'sandbox.zarinpal.com',
+  'www.zarinpal.com',
+  'zarinpal.com',
+  'cpg.torobpay.com',
+] as const;
+
+/** True only for the return hosts of the live retail gateways. */
+export function isApprovedPaymentReferrer(referrer: string | null | undefined): boolean {
+  try {
+    const host = new URL(String(referrer || '')).hostname.toLowerCase();
+    return (PAYMENT_REFERRER_HOSTS as readonly string[]).includes(host);
+  } catch {
+    return false;
+  }
 }
 
 export function shouldLoadProductionTags(

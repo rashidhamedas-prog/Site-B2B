@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { hostLooksRetail } from '@/lib/channel';
 import {
@@ -9,8 +9,11 @@ import {
   ensureGtagStub,
   isAdminAnalyticsPath,
   isNonProductionAnalyticsHost,
+  pageViewDedupeKey,
   publicAnalyticsPagePath,
+  RETAIL_GA4_MEASUREMENT_ID,
   sanitizeGa4Id,
+  shouldSendPageView,
   type GoogleChannel,
 } from '@/lib/google';
 import { setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
@@ -38,6 +41,12 @@ function bindGa4(measurementId: string) {
   window.gtag?.('config', measurementId, { send_page_view: false });
 }
 
+function isBlockedPath(pathname: string | null | undefined): boolean {
+  if (isAdminAnalyticsPath(pathname)) return true;
+  const p = pathname || '';
+  return p === '/preview' || p.startsWith('/preview/') || p.includes('/preview/');
+}
+
 function currentPublicPath(pathname: string, search: string) {
   if (typeof window !== 'undefined') {
     return publicAnalyticsPagePath(window.location.pathname, window.location.search);
@@ -57,12 +66,14 @@ function channelAllowedOnHost(channel: GoogleChannel, host: string | null): bool
  */
 export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
   const pathname = usePathname();
-  const readyId = useRef<string>('');
+  const searchParams = useSearchParams();
+  const search = searchParams?.toString() ?? '';
+  const [boundId, setBoundId] = useState('');
   const lastSent = useRef<string>('');
 
   const sendPageView = (id: string, path: string) => {
-    const key = `${id}|${path}`;
-    if (lastSent.current === key) return;
+    const key = pageViewDedupeKey(id, path);
+    if (!shouldSendPageView(lastSent.current, key)) return;
     lastSent.current = key;
     const flush = () => {
       ensureGtagStub();
@@ -76,12 +87,13 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
         send_to: id,
       });
     };
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
-    else flush();
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => requestAnimationFrame(flush));
+    } else flush();
   };
 
   useEffect(() => {
-    if (isAdminAnalyticsPath(pathname)) return;
+    if (isBlockedPath(pathname)) return;
     const host = typeof window !== 'undefined' ? window.location.hostname : null;
     if (isNonProductionAnalyticsHost(host)) return;
     if (!channelAllowedOnHost(channel, host)) return;
@@ -100,32 +112,32 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
       } catch {
         /* env-only fallback already applied */
       }
+      if (!ga4 && channel === 'RETAIL') ga4 = RETAIL_GA4_MEASUREMENT_ID;
       if (cancelled) return;
       if (ga4) {
         bindGa4(ga4);
-        readyId.current = ga4;
+        setBoundId(ga4);
         setGa4RumiMeasurementId(ga4);
-        sendPageView(ga4, currentPublicPath(pathname || '/', ''));
       }
     })();
     return () => {
       cancelled = true;
     };
-    // Intentionally run once on mount to load scripts; path changes tracked below.
+    // Load once; later path and search changes are handled below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channel]);
 
   useEffect(() => {
-    if (isAdminAnalyticsPath(pathname)) return;
+    if (isBlockedPath(pathname)) return;
     const host = typeof window !== 'undefined' ? window.location.hostname : null;
     if (isNonProductionAnalyticsHost(host)) return;
     if (!channelAllowedOnHost(channel, host)) return;
-    const id = readyId.current || ga4EnvFor(channel);
+    const id = boundId;
     if (!id) return;
     ensureGtagStub();
-    sendPageView(id, currentPublicPath(pathname || '/', ''));
+    sendPageView(id, currentPublicPath(pathname || '/', search));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, channel]);
+  }, [pathname, search, channel, boundId]);
 
   useEffect(() => {
     if (channel !== 'RETAIL') return;

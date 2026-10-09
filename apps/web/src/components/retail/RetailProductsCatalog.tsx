@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ChevronDown, Search, SlidersHorizontal } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { RetailProductCard } from './RetailProductCard';
-import { trackViewItemList } from '@/lib/retail-analytics';
+import { inferRetailItemList, trackViewItemList } from '@/lib/retail-analytics';
 import { isLeadCatalogImage } from '@/lib/catalog-performance';
 import { catalogActiveFilterCount, type CatalogFilterValues } from '@/lib/catalog-filter';
 import { CatalogActiveChips } from '@/components/catalog/CatalogFilterRail';
@@ -220,6 +220,10 @@ export function RetailProductsCatalog({
 
   useEffect(() => {
     if (loading || page !== 1 || products.length === 0) return;
+    const list =
+      typeof window === 'undefined'
+        ? { id: 'products', name: 'products' }
+        : inferRetailItemList(window.location.pathname, window.location.search);
     trackViewItemList(
       products.map((p) => ({
         productId: p.id,
@@ -227,11 +231,11 @@ export function RetailProductsCatalog({
         name: p.name,
         unitPrice: Number(p.retailPrice ?? 0),
         quantity: 1,
-        itemListId: 'retail_catalog',
-        itemListName: 'Retail Catalog',
+        itemListId: list.id,
+        itemListName: list.name,
       })),
-      'Retail Catalog',
-      'retail_catalog',
+      list.name,
+      list.id,
     );
   }, [loading, page, products]);
 

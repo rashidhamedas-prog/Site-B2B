@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-09T23:05:00Z — TASK-20261010-004 retail GA4 gaps
+
+- Owner: cursor:implementer-TASK-20261010-004
+- Depth: skill-top full. ECC tests first. GTM stays the loader; gtag is the only GA4 sender.
+- Overlap: TASK-20261010-003 keeps image quality. This task owns the `select_item` onClick on `RetailProductCard.tsx` and reverted the uncommitted quality/sizes lines so this commit does not import 003's helper.
+- Spec: `npx tsx apps/web/src/lib/retail-analytics.spec.ts` ok. `npx tsc --noEmit -p apps/web` exit 0.
+- DebugView still needs a Google login. GA4 Admin unwanted referrals remain NEEDS ACCESS. Payment layout queues ignore_referrer only for approved gateway hosts.
+
 ## 2026-10-09T22:55:00Z — TASK-20261010-003 CWV root fixes (pre-deploy)
 
 - Owner: cursor:implementer-TASK-20261010-003

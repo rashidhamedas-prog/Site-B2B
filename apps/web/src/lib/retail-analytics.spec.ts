@@ -2,13 +2,19 @@ import assert from 'node:assert/strict';
 import {
   GA4_CURRENCY,
   RETAIL_ITEM_BRAND,
+  affiliatePurchaseParams,
   buildPurchasePayload,
+  checkoutCartFingerprint,
+  claimCheckoutStep,
   ga4ValueFromStoredIrr,
   hasPurchaseBeenFired,
+  inferRetailItemList,
   itemVariant,
   markPurchaseFired,
   sanitizeEventParams,
   toGa4Item,
+  trackAddPaymentInfo,
+  trackAddShippingInfo,
   trackAddToCart,
   trackContactClick,
   trackPurchase,
@@ -16,17 +22,63 @@ import {
 } from './retail-analytics';
 import {
   isAdminAnalyticsPath,
+  isApprovedPaymentReferrer,
   isNonProductionAnalyticsHost,
+  pageViewDedupeKey,
   publicAnalyticsPagePath,
   sanitizeAnalyticsSearch,
   shouldLoadProductionTags,
+  shouldSendPageView,
   stripRetailInternalPath,
   ensureGtagStub,
 } from './google';
 import { hostLooksRetail } from './channel';
 
 assert.equal(GA4_CURRENCY, 'IRR');
-assert.equal(ga4ValueFromStoredIrr(1_620_000), 1_620_000, 'stored IRR is sent as IRR');
+assert.equal(ga4ValueFromStoredIrr(32_500_000), 32_500_000, '32500000 IRR is not multiplied');
+const listed = toGa4Item({ sku: 'SKU-325', name: 'نمونه', unitPrice: 32_500_000, quantity: 1, color: 'مشکی' }, 0);
+assert.equal(listed?.price, 32_500_000);
+assert.equal(listed?.item_id, 'SKU-325');
+assert.equal(listed?.item_brand, RETAIL_ITEM_BRAND);
+assert.equal(listed?.quantity, 1);
+
+const homeKey = pageViewDedupeKey('G-F2V7VSJMLE', '/');
+const nextKey = pageViewDedupeKey('G-F2V7VSJMLE', '/products');
+assert.equal(shouldSendPageView('', homeKey), true);
+assert.equal(shouldSendPageView(homeKey, homeKey), false);
+assert.equal(shouldSendPageView(homeKey, nextKey), true);
+assert.equal(isApprovedPaymentReferrer('https://web.mydigipay.com/checkout'), true);
+assert.equal(isApprovedPaymentReferrer('https://www.poshaktaranom.ir/'), false);
+assert.equal(isNonProductionAnalyticsHost('preview.poshaktaranom.ir'), true);
+assert.deepEqual(inferRetailItemList('/category/shomiz', ''), { id: '/category/shomiz', name: 'category' });
+assert.equal(inferRetailItemList('/products', '?q=coat').name, 'search');
+assert.equal(inferRetailItemList('/products/coat', '').name, 'related');
+
+const fingerprint = checkoutCartFingerprint([{ sku: 'SKU-325', quantity: 1, unitPrice: 32_500_000 }]);
+assert.equal(claimCheckoutStep('add_shipping_info', fingerprint, 'PISHTAZ'), true);
+assert.equal(claimCheckoutStep('add_shipping_info', fingerprint, 'PISHTAZ'), false);
+assert.equal(claimCheckoutStep('add_payment_info', fingerprint, 'ZARINPAL'), true);
+assert.equal(claimCheckoutStep('add_payment_info', fingerprint, 'ZARINPAL'), false);
+
+const affiliate = affiliatePurchaseParams({ network: 'torob', code: 'sp_abc' });
+assert.equal(affiliate.affiliation, 'affiliate');
+assert.equal(affiliate.affiliate_network, 'torob');
+assert.equal(affiliate.affiliate_code, 'sp_abc');
+const leaked = affiliatePurchaseParams({ network: 'torob', code: '09121234567' });
+assert.equal(leaked.affiliate_code, undefined);
+assert.equal(JSON.stringify(leaked).includes('0912'), false);
+const purchased = buildPurchasePayload({
+  transactionId: 'RT-325',
+  valueIrr: 32_500_000,
+  items: [{ sku: 'SKU-325', name: 'نمونه', unitPrice: 32_500_000, quantity: 1 }],
+  shippingIrr: 650_000,
+  affiliateNetwork: 'torob',
+  affiliateCode: '09120000000',
+});
+assert.equal(purchased?.value, 32_500_000);
+assert.equal(purchased?.shipping, 650_000);
+assert.equal(purchased?.affiliate_code, undefined);
+assert.equal(JSON.stringify(purchased).includes('0912'), false);
 assert.equal(ga4ValueFromStoredIrr(1_620_000.4), 1_620_000);
 assert.equal(ga4ValueFromStoredIrr(-10), 0);
 assert.equal(ga4ValueFromStoredIrr(undefined), 0);
@@ -136,6 +188,15 @@ Object.assign(globalThis, {
   },
 });
 
+function gtagEvents() {
+  return dataLayer
+    .filter((entry) => Object.prototype.toString.call(entry) === '[object Arguments]')
+    .map((entry) => {
+      const args = entry as unknown as { 0?: string; 1?: string; 2?: Record<string, unknown> };
+      return { command: args[0], name: args[1], params: args[2] ?? {} };
+    });
+}
+
 ensureGtagStub();
 const gtag = (globalThis as { window: Window }).window.gtag;
 assert.equal(typeof gtag, 'function');
@@ -144,21 +205,57 @@ const queued = dataLayer.at(-1);
 assert.equal(Array.isArray(queued), false);
 assert.equal(Object.prototype.toString.call(queued), '[object Arguments]');
 
-const beforePurchase = dataLayer.filter((entry) => !Array.isArray(entry) && entry.event === 'purchase').length;
+const beforePurchase = gtagEvents().filter((entry) => entry.name === 'purchase').length;
 trackPurchase({
   transactionId: 'RT-DEDUP',
-  valueIrr: 1_000,
-  items: [{ sku: 'MNT-001', name: 'مانتو', unitPrice: 1_000, quantity: 1 }],
+  valueIrr: 32_500_000,
+  items: [{ sku: 'SKU-325', name: 'نمونه', unitPrice: 32_500_000, quantity: 1 }],
 });
 trackPurchase({
   transactionId: 'RT-DEDUP',
-  valueIrr: 1_000,
-  items: [{ sku: 'MNT-001', name: 'مانتو', unitPrice: 1_000, quantity: 1 }],
+  valueIrr: 32_500_000,
+  items: [{ sku: 'SKU-325', name: 'نمونه', unitPrice: 32_500_000, quantity: 1 }],
 });
-const purchaseHits = dataLayer.filter((entry) => !Array.isArray(entry) && entry.event === 'purchase').length;
-assert.equal(purchaseHits - beforePurchase, 1, 'one purchase per transaction_id');
+const purchaseHits = gtagEvents().filter((entry) => entry.name === 'purchase');
+assert.equal(purchaseHits.length - beforePurchase, 1, 'one purchase per transaction_id');
+assert.equal(purchaseHits.at(-1)?.params.value, 32_500_000);
+assert.equal(purchaseHits.at(-1)?.params.currency, 'IRR');
+
+trackAddShippingInfo(
+  [{ sku: 'SKU-SHIP', name: 'ارسال', unitPrice: 32_500_000, quantity: 1 }],
+  32_500_000,
+  'PISHTAZ',
+);
+trackAddShippingInfo(
+  [{ sku: 'SKU-SHIP', name: 'ارسال', unitPrice: 32_500_000, quantity: 1 }],
+  32_500_000,
+  'PISHTAZ',
+);
+const shippingHits = gtagEvents().filter((entry) => entry.name === 'add_shipping_info');
+assert.equal(shippingHits.length, 1, 'default shipping is sent once');
+assert.equal(shippingHits[0]?.params.value, 32_500_000);
+
+trackAddPaymentInfo(
+  [{ sku: 'SKU-PAY', name: 'پرداخت', unitPrice: 32_500_000, quantity: 1 }],
+  32_500_000,
+  'ZARINPAL',
+);
+trackAddPaymentInfo(
+  [{ sku: 'SKU-PAY', name: 'پرداخت', unitPrice: 32_500_000, quantity: 1 }],
+  32_500_000,
+  'ZARINPAL',
+);
+const paymentHits = gtagEvents().filter((entry) => entry.name === 'add_payment_info');
+assert.equal(paymentHits.length, 1, 'default payment is sent once');
+
 trackContactClick('whatsapp');
-const contact = dataLayer.find((entry) => !Array.isArray(entry) && entry.event === 'contact_click');
-assert.equal(contact && 'contact_method' in contact ? contact.contact_method : '', 'whatsapp');
+const contact = gtagEvents().find((entry) => entry.name === 'contact_click');
+assert.equal(contact?.params.contact_method, 'whatsapp');
+
+const objectEvents = dataLayer.filter((entry) => {
+  if (Object.prototype.toString.call(entry) === '[object Arguments]') return false;
+  return Boolean(entry && typeof entry === 'object' && 'event' in entry);
+});
+assert.equal(objectEvents.length, 0, 'GA4 events are gtag commands, not object pushes');
 
 console.log('retail-analytics.spec.ts ok');

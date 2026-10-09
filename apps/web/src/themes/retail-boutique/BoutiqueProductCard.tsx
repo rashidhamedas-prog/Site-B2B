@@ -8,6 +8,7 @@ import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { discountPercent, mediaUrl, toman, uniqueInStockColors } from '@/lib/product-display';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
+import { trackSelectCurrentItem } from '@/lib/retail-analytics';
 import type { RetailCardProduct } from '@/components/retail/RetailProductCard';
 import { cn } from '@/lib/cn';
 
@@ -34,6 +35,14 @@ export function BoutiqueProductCard({
     : discountPercent(price, compareAt);
   const image = mediaUrl(product.images?.[0]);
   const href = getProductCanonicalPath(product.slug);
+  const selectProduct = () => {
+    trackSelectCurrentItem({
+      sku: product.sku,
+      productId: product.id,
+      name: product.name,
+      price,
+    });
+  };
   const stock =
     typeof product.retailStock === 'number'
       ? product.retailStock
@@ -59,6 +68,7 @@ export function BoutiqueProductCard({
       <div className="relative aspect-[3/4] overflow-hidden bg-[#f3eee6]">
         <Link
           href={href}
+          onClick={selectProduct}
           prefetch={false}
           className="absolute inset-0"
           aria-label={`مشاهده ${product.name}`}
@@ -113,6 +123,7 @@ export function BoutiqueProductCard({
       <div className="flex flex-1 flex-col gap-1.5 px-3 py-3 text-right">
         <Link
           href={href}
+          onClick={selectProduct}
           prefetch={false}
           className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-neutral-900"
         >

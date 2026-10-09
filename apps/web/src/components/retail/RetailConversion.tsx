@@ -17,6 +17,15 @@ type Props = {
   items?: RetailAnalyticsItemInput[];
 };
 
+function readOpaquePartnerCode(): string {
+  try {
+    const match = document.cookie.match(/(?:^|; )taranom_sp=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  } catch {
+    return '';
+  }
+}
+
 function readAff(): { raw?: string; network?: string; clickId?: string } {
   try {
     const raw = sessionStorage.getItem('taranom_aff') || undefined;
@@ -130,6 +139,8 @@ export function RetailConversion({
       extraTransactionIds: [orderId, orderNumber, ...(pending?.transactionIds ?? [])].filter(
         (id): id is string => Boolean(id),
       ),
+      affiliateNetwork: aff.network,
+      affiliateCode: readOpaquePartnerCode(),
     });
   }, [orderId, orderNumber, amountIrr, shippingIrr, skus, items]);
 

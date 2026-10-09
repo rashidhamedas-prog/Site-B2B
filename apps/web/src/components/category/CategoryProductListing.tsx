@@ -1,4 +1,5 @@
 import { CategoryProductCard } from './CategoryProductCard';
+import { CategoryListBeacon } from './CategoryListBeacon';
 import {
   categoryPageQuery,
   type CategoryChannel,
@@ -23,6 +24,18 @@ export function CategoryProductListing({
 
   return (
     <>
+      <CategoryListBeacon
+        channel={channel}
+        slug={slug}
+        items={products.map((product) => ({
+          productId: product.id,
+          name: product.name || product.slug || '',
+          unitPrice: Number(product.sale?.payable ?? product.retailPrice ?? 0),
+          quantity: 1,
+          itemListId: `/category/${slug}`,
+          itemListName: 'category',
+        }))}
+      />
       {products.length ? (
         <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
           {products.map((product) => (

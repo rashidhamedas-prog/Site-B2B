@@ -12,6 +12,7 @@ import { GlassButton } from '@/components/ui/glass-button';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
+import { trackPartnerAuth } from '@/lib/retail-analytics';
 import { normalizeOtpCode, normalizePhone } from '@/lib/phone';
 import { safeScopedRedirect } from '@/lib/safe-redirect';
 import { DEFAULT_SALES_PARTNER_SMS_COOLDOWN, extractSmsCooldown, readSmsCooldownSeconds } from '@/lib/sms-cooldown';
@@ -31,6 +32,7 @@ export function SalesPartnerLoginForm() {
   const { secondsLeft: validityLeft, start: startValidity, reset: resetValidity } = useSmsResendCooldown();
 
   function goHome(token: string, role: string) {
+    trackPartnerAuth('login');
     setToken(token, role, 'sales_partner');
     const params = new URLSearchParams(window.location.search);
     window.location.href = safeScopedRedirect(params.get('redirect'), '/sales-partners', ['/sales-partners']);

@@ -5,6 +5,14 @@
 - تست: catalog-performance + storefront-html-cache سبز؛ `tsc` وب سبز.
 - گزارش: `docs/reports/2026-10-10-cwv-speed-root-fix.md`
 
+## 2026-10-10 — قیف GA4 خرده‌فروشی [TASK-20261010-004]
+
+- ارسال GA4 فقط با `gtag('event')` است. `dataLayer.push({event})` برای page view و ecommerce حذف شد. رویداد پیکسل `taranom_affiliate_purchase` ماند.
+- قیمت ۳۲٬۵۰۰٬۰۰۰ ریال دوباره در ۱۰ ضرب نمی‌شود. ارسال و پرداخت پیش‌فرض هر کدام یک بار، بعد از اعلام هزینه ارسال، ثبت می‌شوند.
+- `select_item` از کارت محصول است. بازگشت از زرین‌پال، دیجی‌پی و ترب‌پی فقط روی همان دامنه‌ها `ignore_referrer` می‌گیرد. فهرست Unwanted Referrals در ادمین GA4 هنوز باید دستی اضافه شود.
+- تست: `retail-analytics.spec.ts` سبز؛ `tsc` وب سبز.
+- گزارش: `docs/analytics/GA4-ADMIN-CHECKLIST.md`.
+
 ## 2026-10-10 — عمده بدون فیلترشکن [TASK-20261010-001]
 
 - ریشه: HTTPS مستقیم به IP هتزنر از بیشتر شبکه‌های ایران تایم‌اوت می‌شود، در حالی که TCP/443 وصل است. تکی چون پروکسی کلودفلر بود باز می‌شد.

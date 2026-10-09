@@ -7,7 +7,10 @@ import {
   isAdminAnalyticsPath,
   isNonProductionAnalyticsHost,
   publicAnalyticsPagePath,
+  RETAIL_GA4_MEASUREMENT_ID,
+  sanitizeAnalyticsSearch,
   sanitizeGa4Id,
+  stripRetailInternalPath,
   type GoogleChannel,
 } from './google';
 
@@ -56,6 +59,9 @@ type PurchasePayload = {
   shipping?: number;
   tax?: number;
   coupon?: string;
+  affiliation?: 'affiliate';
+  affiliate_network?: string;
+  affiliate_code?: string;
 };
 
 export type PendingRetailPurchase = {
@@ -127,15 +133,6 @@ export function shouldSendRetailAnalytics(opts?: {
   return true;
 }
 
-function dataLayerPush(entry: Record<string, unknown>) {
-  try {
-    window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(entry);
-  } catch {
-    /* adblock / deny */
-  }
-}
-
 function gtagEvent(name: string, params: Record<string, unknown>) {
   try {
     ensureGtagStub();
@@ -151,11 +148,6 @@ function ecommerceEvent(name: string, params: Record<string, unknown>) {
   try {
     if (!shouldSendRetailAnalytics()) return;
     const items = Array.isArray(params.items) ? params.items : undefined;
-    dataLayerPush({ ecommerce: null });
-    dataLayerPush({
-      event: name,
-      ecommerce: params,
-    });
     const gtagParams: Record<string, unknown> = { ...params, currency: GA4_CURRENCY };
     if (items) gtagParams.items = items;
     const sendTo = resolveRetailGa4Id();
@@ -218,6 +210,46 @@ export function trackViewItemList(items: RetailAnalyticsItemInput[], listName: s
   });
 }
 
+const checkoutSteps = new Set<string>();
+
+export function checkoutCartFingerprint(
+  items: Array<{ sku?: string; productId?: string; quantity?: number; unitPrice?: number; price?: number }>,
+): string {
+  return items
+    .map((item) => `${item.sku || item.productId || ''}:${item.quantity || 1}:${item.unitPrice ?? item.price ?? 0}`)
+    .join(',');
+}
+
+/** Returns true the first time this cart and selection are seen. */
+export function claimCheckoutStep(eventName: string, fingerprint: string, selection: string): boolean {
+  const key = `${eventName}|${fingerprint}|${selection}`;
+  if (!eventName || !selection || checkoutSteps.has(key)) return false;
+  checkoutSteps.add(key);
+  return true;
+}
+
+export function inferRetailItemList(pathname: string, search = ''): { id: string; name: string } {
+  const path = stripRetailInternalPath((pathname || '/').split('?')[0]);
+  const raw = new URLSearchParams(String(search || '').replace(/^\?/, '').split('#')[0] || '');
+  const params = new URLSearchParams(sanitizeAnalyticsSearch(search));
+  if (params.get('q') || params.get('query') || params.get('search')) {
+    return { id: 'search', name: 'search' };
+  }
+  if (raw.get('collectionId') || raw.get('collection') || path.startsWith('/collection')) {
+    return { id: 'collection', name: 'collection' };
+  }
+  if (path.startsWith('/category/')) return { id: path, name: 'category' };
+  if (path.startsWith('/collection')) return { id: path, name: 'collection' };
+  if (/^\/products\/[^/]+$/.test(path)) return { id: 'related', name: 'related' };
+  return { id: 'products', name: 'products' };
+}
+
+export function trackSelectCurrentItem(input: RetailAnalyticsItemInput) {
+  if (typeof window === 'undefined') return;
+  const list = inferRetailItemList(window.location.pathname, window.location.search);
+  trackSelectItem({ ...input, itemListId: list.id, itemListName: list.name }, list.name, list.id);
+}
+
 export function trackAddToCart(input: RetailAnalyticsItemInput) {
   const item = toGa4Item(input);
   if (!item) return;
@@ -265,13 +297,16 @@ export function trackAddShippingInfo(
   valueIrr: number,
   shippingTier: string,
 ) {
+  const tier = String(shippingTier || '').trim();
+  if (!tier) return;
+  if (!claimCheckoutStep('add_shipping_info', checkoutCartFingerprint(inputs), tier)) return;
   const items = inputs
     .map((it, i) => toGa4Item(it, i))
     .filter((it): it is Ga4Item => Boolean(it));
   ecommerceEvent('add_shipping_info', {
     currency: GA4_CURRENCY,
     value: ga4ValueFromStoredIrr(valueIrr),
-    shipping_tier: shippingTier,
+    shipping_tier: tier,
     items,
   });
 }
@@ -281,15 +316,40 @@ export function trackAddPaymentInfo(
   valueIrr: number,
   paymentType: string,
 ) {
+  const payment = String(paymentType || '').trim();
+  if (!payment) return;
+  if (!claimCheckoutStep('add_payment_info', checkoutCartFingerprint(inputs), payment)) return;
   const items = inputs
     .map((it, i) => toGa4Item(it, i))
     .filter((it): it is Ga4Item => Boolean(it));
   ecommerceEvent('add_payment_info', {
     currency: GA4_CURRENCY,
     value: ga4ValueFromStoredIrr(valueIrr),
-    payment_type: paymentType,
+    payment_type: payment,
     items,
   });
+}
+
+export function affiliatePurchaseParams(input: { network?: string; code?: string }): {
+  affiliation?: 'affiliate';
+  affiliate_network?: string;
+  affiliate_code?: string;
+} {
+  const out: {
+    affiliation?: 'affiliate';
+    affiliate_network?: string;
+    affiliate_code?: string;
+  } = {};
+  const network = String(input.network || '').trim().toLowerCase();
+  if (network && network.length <= 32 && !/@/.test(network) && !/09\d{9}/.test(network)) {
+    out.affiliate_network = network;
+  }
+  const code = String(input.code || '').trim();
+  if (code && code.length <= 40 && !/@/.test(code) && !/09\d{9}/.test(code) && !/\+98/.test(code)) {
+    out.affiliate_code = code;
+  }
+  if (out.affiliate_network || out.affiliate_code) out.affiliation = 'affiliate';
+  return out;
 }
 
 export function buildPurchasePayload(opts: {
@@ -299,6 +359,9 @@ export function buildPurchasePayload(opts: {
   shippingIrr?: number;
   taxIrr?: number;
   coupon?: string;
+  affiliation?: string;
+  affiliateNetwork?: string;
+  affiliateCode?: string;
 }): PurchasePayload | null {
   const transaction_id = String(opts.transactionId || '').trim();
   if (!transaction_id) return null;
@@ -316,7 +379,14 @@ export function buildPurchasePayload(opts: {
   const tax = ga4ValueFromStoredIrr(opts.taxIrr);
   if (tax > 0) payload.tax = tax;
   const coupon = String(opts.coupon ?? '').trim();
-  if (coupon) payload.coupon = coupon;
+  if (coupon && !PII_PARAM_VALUE.test(coupon)) payload.coupon = coupon;
+  const affiliate = affiliatePurchaseParams({
+    network: opts.affiliateNetwork,
+    code: opts.affiliateCode,
+  });
+  if (affiliate.affiliation) payload.affiliation = affiliate.affiliation;
+  if (affiliate.affiliate_network) payload.affiliate_network = affiliate.affiliate_network;
+  if (affiliate.affiliate_code) payload.affiliate_code = affiliate.affiliate_code;
   return payload;
 }
 
@@ -391,6 +461,8 @@ export function trackPurchase(opts: {
   items: RetailAnalyticsItemInput[];
   shippingIrr?: number;
   extraTransactionIds?: string[];
+  affiliateNetwork?: string;
+  affiliateCode?: string;
 }) {
   const payload = buildPurchasePayload(opts);
   if (!payload) return;
@@ -443,7 +515,6 @@ function plainEvent(name: string, params: Record<string, unknown>) {
   const sendTo = resolveRetailGa4Id();
   const payload: Record<string, unknown> = { ...safe };
   if (sendTo) payload.send_to = sendTo;
-  dataLayerPush({ event: name, ...safe });
   gtagEvent(name, payload);
 }
 
@@ -483,5 +554,5 @@ export function publicRetailPagePath(): string {
 }
 
 export function resolveRetailGa4Id(fromSettings?: string | null): string {
-  return sanitizeGa4Id(fromSettings) || ga4EnvFor('RETAIL');
+  return sanitizeGa4Id(fromSettings) || ga4EnvFor('RETAIL') || RETAIL_GA4_MEASUREMENT_ID;
 }

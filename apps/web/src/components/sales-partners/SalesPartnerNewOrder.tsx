@@ -7,6 +7,7 @@ import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
 import { extractSmsCooldown } from '@/lib/sms-cooldown';
+import { trackAffiliateEvent } from '@/lib/retail-analytics';
 import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, SpNote, spField } from './SalesPartnerShell';
 import { SpButton, SpPageSkeleton, SpStepRail } from './SpUi';
 
@@ -130,6 +131,7 @@ export function SalesPartnerNewOrder() {
       setDraft(created);
       setConfirmOpen(true);
       setStep(2);
+      trackAffiliateEvent('affiliate_order_created');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ساخت سفارش ناموفق بود');
     } finally {
@@ -145,6 +147,7 @@ export function SalesPartnerNewOrder() {
       const sent = await apiClient.post<Draft>(`/sales-partners/order-drafts/${draft.id}/request-confirmation`, {});
       setDraft(sent);
       setConfirmOpen(false);
+      trackAffiliateEvent('affiliate_payment_link_sent');
       start(extractSmsCooldown(null, sent));
       try {
         window.localStorage.removeItem(LOCAL_DRAFT_KEY);
