@@ -3,6 +3,10 @@ import Link from 'next/link';
 import { RetailProductCard } from '@/components/retail/RetailProductCard';
 import { mediaUrl, uniqueInStockColors, uniqueSizes, variantsInStock } from '@/lib/product-display';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
+import {
+  CATALOG_CARD_IMAGE_QUALITY,
+  CATALOG_CARD_IMAGE_SIZES,
+} from '@/lib/catalog-performance';
 import type { CategoryChannel, CategoryProduct } from './category-search-params';
 
 export function CategoryProductCard({
@@ -57,7 +61,8 @@ export function CategoryProductCard({
             src={image}
             alt={resolveProductImageAlt(product.imageAlts, product.images?.[0], { name: product.name, fabric: product.fabric, index: 0 })}
             fill
-            sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 25vw"
+            quality={CATALOG_CARD_IMAGE_QUALITY}
+            sizes={CATALOG_CARD_IMAGE_SIZES}
             className="object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (

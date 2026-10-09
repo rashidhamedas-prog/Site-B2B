@@ -1,5 +1,6 @@
 # Project Status
 
+- In progress: 2026-10-10 — **TASK-20261010-003** storefront CWV root fixes (CDN-Cache-Control, catalog image budget, wholesale force-static, CartProvider scope, LandingPopups). Specs + web tsc green. Deploy follows this commit. Windsor Search Console OAuth still needed for GSC CWV API.
 - Last verified: 2026-10-10 — **TASK-20261010-002 LIVE** on `origin/master` `08fa509`. Web image contains `__taranomGa4Config`. Health 200; `.ir` and `.com` 200. Claims released. DebugView still open.
 - Last verified: 2026-10-10 — **TASK-20261010-001 LIVE**. Wholesale shop DNS proxied (IPv6/HTTP3 off, no AAAA). Iran check-host HTTPS to `poshaktaranom.com` 200 via Cloudflare; gray-cloud path was TLS timeout. No docker rebuild. Claims released.
 - Last verified: 2026-10-07 — **TASK-20261007-008 CLOSED LIVE**. Checkout 500 fix on `d9c02f0`; VPS tip `02b5969`. Health 200; unauth `POST /orders` 401. Claims released. Shopper pay click residual.

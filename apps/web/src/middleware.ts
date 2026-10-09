@@ -14,7 +14,10 @@ import {
 import { hostLooksRetail, isBoutiqueReferralPanelPath, isChannelExemptPath, isSalesPartnerPanelPath } from '@/lib/channel';
 import { panelHostLockRedirect } from '@/lib/panel-host-lock';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
-import { STOREFRONT_HTML_CACHE_CONTROL } from '@/lib/storefront-html-cache';
+import {
+  STOREFRONT_HTML_CACHE_CONTROL,
+  STOREFRONT_HTML_CDN_CACHE_CONTROL,
+} from '@/lib/storefront-html-cache';
 
 /** Legacy wholesale category aliases → public `/category/{slug}` (no UUID). */
 const WHOLESALE_CATEGORY_ALIASES: Record<string, string> = {
@@ -62,6 +65,9 @@ function isPrivateStorefrontPath(pathname: string): boolean {
 function clampStorefrontHtmlCache(res: NextResponse, pathname: string): NextResponse {
   if (isPrivateStorefrontPath(pathname)) return res;
   res.headers.set('Cache-Control', STOREFRONT_HTML_CACHE_CONTROL);
+  // Prefer Cloudflare’s CDN-specific header so PoPs can HIT anonymous HTML.
+  res.headers.set('CDN-Cache-Control', STOREFRONT_HTML_CDN_CACHE_CONTROL);
+  res.headers.set('Cloudflare-CDN-Cache-Control', STOREFRONT_HTML_CDN_CACHE_CONTROL);
   return res;
 }
 

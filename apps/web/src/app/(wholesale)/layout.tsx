@@ -3,6 +3,7 @@ import { Footer } from '@/components/layout/Footer';
 import { ScrollToTop } from '@/components/shared/ScrollToTop';
 import { FloatingContact } from '@/components/shared/FloatingContact';
 import { ThemeRuntime } from '@/components/wholesale/ThemeRuntime';
+import { CartProvider } from '@/lib/cart';
 import {
   WholesaleChromeProvider,
   type WholesaleChromeBag,
@@ -99,20 +100,22 @@ export default async function WholesaleLayout({ children }: { children: React.Re
 
   return (
     <WholesaleChromeProvider value={bag}>
-      <OrganizationJsonLd
-        channel="WHOLESALE"
-        business={settings?.business}
-        seo={settings?.seo}
-        payment={settings?.payment}
-      />
-      <WebSiteJsonLd channel="WHOLESALE" business={settings?.business} seo={settings?.seo} />
-      <GoogleAnalyticsProvider channel="WHOLESALE" />
-      <ThemeRuntime theme={bag.theme} />
-      <Header />
-      <main>{children}</main>
-      <Footer />
-      <FloatingContact chrome={bag.chrome} />
-      <ScrollToTop />
+      <CartProvider>
+        <OrganizationJsonLd
+          channel="WHOLESALE"
+          business={settings?.business}
+          seo={settings?.seo}
+          payment={settings?.payment}
+        />
+        <WebSiteJsonLd channel="WHOLESALE" business={settings?.business} seo={settings?.seo} />
+        <GoogleAnalyticsProvider channel="WHOLESALE" />
+        <ThemeRuntime theme={bag.theme} />
+        <Header />
+        <main>{children}</main>
+        <Footer />
+        <FloatingContact chrome={bag.chrome} />
+        <ScrollToTop />
+      </CartProvider>
     </WholesaleChromeProvider>
   );
 }

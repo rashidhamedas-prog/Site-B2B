@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
-import { CartProvider } from '@/lib/cart';
 import { ToastProvider } from '@/components/shared/Toast';
 import { DeferredGtm } from '@/components/shared/DeferredGtm';
 import { resolveGscTokensForRootHead } from '@/lib/google-seo';
@@ -95,9 +94,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="font-sans antialiased">
         <ToastProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
+          {/* Wholesale CartProvider lives in (wholesale)/layout + /checkout/layout
+              so retail .ir does not hydrate B2B cart state on every page. */}
+          {children}
         </ToastProvider>
       </body>
     </html>

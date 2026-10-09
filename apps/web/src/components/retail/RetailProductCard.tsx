@@ -8,6 +8,7 @@ import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
 import { discountPercent, mediaUrl, toman, uniqueInStockColors, uniqueSizes, variantsInStock } from '@/lib/product-display';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
+import { trackSelectCurrentItem } from '@/lib/retail-analytics';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import dynamic from 'next/dynamic';
@@ -96,6 +97,16 @@ function ClassicRetailProductCard({
   const image = mediaUrl(product.images?.[0]);
   const secondImage = mediaUrl(product.images?.[1]);
   const href = getProductCanonicalPath(product.slug);
+  const selectProduct = () => {
+    trackSelectCurrentItem({
+      sku: product.sku,
+      productId: product.id,
+      name: product.name,
+      price,
+      color: product.variants?.find((v) => v.color)?.color,
+      size: product.variants?.find((v) => v.size)?.size,
+    });
+  };
   const colors = useMemo(
     () => uniqueInStockColors(product.variants ?? [], 'retail', { includeSoldOut: !!product.isPreOrder }),
     [product.variants, product.isPreOrder],
@@ -155,6 +166,7 @@ function ClassicRetailProductCard({
       <div className="relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)]">
         <Link
           href={href}
+          onClick={selectProduct}
           prefetch={false}
           className="absolute inset-0 z-[1] cursor-pointer focus:outline-none"
           aria-label={`مشاهده ${product.name}`}
@@ -234,6 +246,7 @@ function ClassicRetailProductCard({
 
         <Link
           href={href}
+          onClick={selectProduct}
           prefetch={false}
           tabIndex={-1}
           aria-hidden
@@ -288,6 +301,7 @@ function ClassicRetailProductCard({
 
         <Link
           href={href}
+          onClick={selectProduct}
           prefetch={false}
           className="mx-auto rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
         >
@@ -330,6 +344,7 @@ function ClassicRetailProductCard({
         {compact ? (
           <Link
             href={href}
+            onClick={selectProduct}
             prefetch={false}
             className="mt-auto inline-flex min-h-11 items-center justify-center text-xs font-bold text-[var(--retail-primary)] underline-offset-4 transition hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] md:sr-only"
           >
@@ -339,6 +354,7 @@ function ClassicRetailProductCard({
         ) : soldOut ? (
           <Link
             href={href}
+            onClick={selectProduct}
             prefetch={false}
             className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md border border-[var(--retail-border)] px-3 text-sm font-bold text-[var(--retail-ink)] transition hover:border-[var(--retail-gold)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
           >
@@ -347,6 +363,7 @@ function ClassicRetailProductCard({
         ) : needsSize && !size ? (
           <Link
             href={href}
+            onClick={selectProduct}
             prefetch={false}
             className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md bg-[var(--retail-primary)] px-3 text-sm font-bold text-white transition hover:bg-[var(--retail-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)]"
           >

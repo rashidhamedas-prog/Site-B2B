@@ -1,5 +1,102 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20261010-004"
+    title: "Retail GA4 gtag-only funnel and affiliate events"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261010-004"
+    roles:
+      architect: "cursor:implementer-TASK-20261010-004"
+      implementer: "cursor:implementer-TASK-20261010-004"
+      reviewer: "same-session-spec"
+      security: "same-session-no-pii"
+    branch: "fix/TASK-20261010-002-ga4-retail"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-09T22:50:00Z"
+    heartbeat_at: "2026-10-09T22:50:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/google.ts"
+      - "apps/web/src/lib/retail-analytics.ts"
+      - "apps/web/src/lib/retail-analytics.spec.ts"
+      - "apps/web/src/components/shared/GoogleAnalytics.tsx"
+      - "apps/web/src/components/shared/GoogleAnalyticsProvider.tsx"
+      - "apps/web/src/app/retail/checkout/page.tsx"
+      - "apps/web/src/app/payment/layout.tsx"
+      - "apps/web/src/components/retail/RetailConversion.tsx"
+      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      - "apps/web/src/components/retail/RetailProductDetail.tsx"
+      - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
+      - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
+      - "apps/web/src/components/category/CategoryProductListing.tsx"
+      - "apps/web/src/components/category/CategoryListBeacon.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnershipApply.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnerLoginForm.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnerCatalog.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnerNewOrder.tsx"
+      - "docs/analytics/GA4-ADMIN-CHECKLIST.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      Gap fix on the live GA4 layer. Does not rewrite it.
+      RetailProductCard click handler overlaps TASK-20261010-003 image-quality
+      edits. This task keeps only the select_item onClick. 003 still owns
+      image quality and must not revert the onClick.
+    acceptance_criteria:
+      - "GA4 events leave through gtag('event') only"
+      - "32500000 IRR is not multiplied"
+      - "Default shipping and payment each fire once"
+      - "Affiliate payloads contain no phone, name, or address"
+      - "retail-analytics.spec.ts and web tsc pass"
+  - id: "TASK-20261010-003"
+    title: "Storefront mobile CWV root fixes (TTFB/LCP/INP)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261010-003"
+    roles:
+      architect: "cursor:implementer-TASK-20261010-003"
+      implementer: "cursor:implementer-TASK-20261010-003"
+      reviewer: "same-session-live-probe"
+      security: "same-session-cache-headers"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-09T22:40:00Z"
+    heartbeat_at: "2026-10-09T22:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/lib/storefront-html-cache.ts"
+      - "apps/web/src/lib/storefront-html-cache.spec.ts"
+      - "apps/web/src/middleware.ts"
+      - "apps/web/next.config.ts"
+      - "apps/web/src/app/layout.tsx"
+      - "apps/web/src/app/(wholesale)/layout.tsx"
+      - "apps/web/src/app/checkout/layout.tsx"
+      - "apps/web/src/app/(wholesale)/products/page.tsx"
+      - "apps/web/src/components/wholesale/LandingPopups.tsx"
+      - "apps/web/src/lib/catalog-performance.ts"
+      - "apps/web/src/lib/catalog-performance.spec.ts"
+      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      - "apps/web/src/components/category/CategoryProductCard.tsx"
+      - "docs/reports/2026-10-10-cwv-speed-root-fix.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    notes: |
+      skill-top full + ECC react-performance. Windsor Search Console not connected
+      (only GA4). Reclaimed stale catalog card files from TASK-20261006-001
+      (heartbeat 2026-10-06). Card click tracking moved to TASK-20261010-004.
+      Did not edit product-display / stock filter logic.
+    acceptance_criteria:
+      - "Wholesale /products is force-static with static metadata"
+      - "CartProvider is not on retail root layout"
+      - "Cloudflare-CDN-Cache-Control set on public HTML"
+      - "Catalog card images use quality ≤70 and shared sizes helper"
+      - "LandingPopups exit-intent gated to fine pointer"
+      - "catalog-performance + storefront-html-cache specs pass"
+      - "Live smoke: health + both homes 200"
   - id: "TASK-20261010-002"
     title: "Retail GA4 page_view and ecommerce command queue"
     status: "done"
@@ -548,17 +645,18 @@ tasks:
       - "apps/web/src/lib/wholesale-order.ts"
       - "apps/web/src/lib/wholesale-order.spec.ts"
       - "apps/web/src/components/retail/RetailProductDetail.tsx"
-      - "apps/web/src/components/retail/RetailProductCard.tsx"
       - "apps/web/src/components/retail/RetailProductsCatalog.tsx"
       - "apps/web/src/components/wholesale/ProductDetail.tsx"
-      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
       - "apps/web/src/components/wholesale/ProductCatalog.tsx"
-      - "apps/web/src/components/category/CategoryProductCard.tsx"
       - "apps/web/src/themes/retail-boutique/BoutiqueProductCard.tsx"
       - "apps/web/src/components/shared/JsonLd.tsx"
       - "apps/web/src/app/retail/products/[slug]/page.tsx"
       - "apps/web/src/app/(wholesale)/products/[slug]/page.tsx"
       - "docs/WORKLOG.md"
+    released_file_claims:
+      - "apps/web/src/components/retail/RetailProductCard.tsx"
+      - "apps/web/src/components/wholesale/WholesaleProductCard.tsx"
+      - "apps/web/src/components/category/CategoryProductCard.tsx"
     notes: |
       Storefront only. Admin color matrix stays complete.
       Reclaimed product-display from TASK-20260818-001 (hb 2026-08-18, other worktree).

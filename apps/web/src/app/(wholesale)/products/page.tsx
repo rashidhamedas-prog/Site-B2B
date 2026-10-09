@@ -5,35 +5,22 @@ import { metadataForCmsPage } from '@/lib/cms/fetch';
 import { fetchProductList } from '@/lib/server-api';
 import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { slimWholesaleCatalogProduct } from '@/lib/slim-wholesale-catalog';
-import {
-  wholesaleCatalogQueryIsUtility,
-  type WholesaleCatalogQuery,
-} from '@/lib/wholesale-catalog-seo';
 
-/** Clean /products stays ISR. Query variants resolve per-request for robots. */
+/**
+ * Clean /products stays ISR (mirror retail). Filtered / page>1 URLs are a
+ * client overlay that already emits robots noindex — do not read searchParams
+ * here or the route becomes dynamic and cold TTFB regresses.
+ */
 export const revalidate = 60;
+export const dynamic = 'force-static';
 
-type ProductsSearchParams = Promise<WholesaleCatalogQuery>;
-
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: ProductsSearchParams;
-}): Promise<Metadata> {
-  const sp = await searchParams;
-  const utility = wholesaleCatalogQueryIsUtility(sp);
-  const base = await metadataForCmsPage('WHOLESALE', 'products', {
+export async function generateMetadata(): Promise<Metadata> {
+  return metadataForCmsPage('WHOLESALE', 'products', {
     title: 'کاتالوگ عمده مانتو و شومیز',
     description:
       'همه مدل‌های جاری ترنم را ببینید، با پارچه و رنگ فیلتر کنید و برای بوتیک‌تان عمده سفارش دهید.',
     canonical: `${WHOLESALE_ORIGIN}/products`,
   });
-  if (!utility) return base;
-  return {
-    ...base,
-    robots: { index: false, follow: true },
-    alternates: { ...(base.alternates ?? {}), canonical: `${WHOLESALE_ORIGIN}/products` },
-  };
 }
 
 export default async function ProductsPage() {

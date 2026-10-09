@@ -100,15 +100,20 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
 
     const timers: ReturnType<typeof setTimeout>[] = [];
     const order: PopupId[] = ['boutique', 'newsletter'];
+    // Touch / phone: exit-intent mouseout is noise and steals first interactions (INP).
+    const finePointer =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(pointer: fine)').matches;
 
     for (const id of order) {
       const config = theme.popups[id];
       if (!config?.enabled || wasDismissed(id)) continue;
 
       if (config.trigger === 'delay') {
-        timers.push(
-          setTimeout(() => tryOpen(id, config), Math.max(1, config.delaySeconds) * 1000),
-        );
+        // On coarse pointers, wait at least 12s so LCP/INP settle first.
+        const base = Math.max(1, config.delaySeconds) * 1000;
+        const ms = finePointer ? base : Math.max(base, 12_000);
+        timers.push(setTimeout(() => tryOpen(id, config), ms));
       }
     }
 
@@ -123,10 +128,14 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
       }
     };
 
-    document.addEventListener('mouseout', onExit);
+    if (finePointer) {
+      document.addEventListener('mouseout', onExit);
+    }
     return () => {
       timers.forEach(clearTimeout);
-      document.removeEventListener('mouseout', onExit);
+      if (finePointer) {
+        document.removeEventListener('mouseout', onExit);
+      }
     };
   }, [theme, tryOpen, onHome]);
 

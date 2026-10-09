@@ -1,3 +1,10 @@
+## 2026-10-10 — CWV موبایل ریشه‌ای [TASK-20261010-003]
+
+- Windsor: فقط GA4 وصل بود؛ Search Console هنوز OAuth نشده. اندازه‌گیری: warm origin سریع؛ HTML `.ir` اغلب `CF DYNAMIC`؛ کارت کاتالوگ `w=1920` در src.
+- کد: `CDN-Cache-Control` برای لبه؛ سقف `deviceSizes` ۱۲۰۰؛ کاتالوگ عمده `force-static`؛ `CartProvider` از root تکی خارج شد؛ کیفیت کارت ۶۵؛ پاپ‌آپ عمده بدون exit-intent لمسی.
+- تست: catalog-performance + storefront-html-cache سبز؛ `tsc` وب سبز.
+- گزارش: `docs/reports/2026-10-10-cwv-speed-root-fix.md`
+
 ## 2026-10-10 — عمده بدون فیلترشکن [TASK-20261010-001]
 
 - ریشه: HTTPS مستقیم به IP هتزنر از بیشتر شبکه‌های ایران تایم‌اوت می‌شود، در حالی که TCP/443 وصل است. تکی چون پروکسی کلودفلر بود باز می‌شد.

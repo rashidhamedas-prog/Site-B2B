@@ -1,8 +1,16 @@
-import { catalogHydrationKey, isLeadCatalogImage } from './catalog-performance';
+import {
+  CATALOG_CARD_IMAGE_QUALITY,
+  CATALOG_CARD_IMAGE_SIZES,
+  catalogHydrationKey,
+  isLeadCatalogImage,
+} from './catalog-performance';
 
 function assert(condition: boolean, message: string) {
   if (!condition) throw new Error(message);
 }
+
+assert(CATALOG_CARD_IMAGE_QUALITY <= 70, 'catalog card quality must stay ≤70 for LCP');
+assert(CATALOG_CARD_IMAGE_SIZES.includes('46vw'), 'mobile catalog sizes must stay ~half viewport');
 
 const ssrKey = catalogHydrationKey(false, '{}');
 const hydratedUnfilteredKey = catalogHydrationKey(false, '{}');

@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-09T22:55:00Z — TASK-20261010-003 CWV root fixes (pre-deploy)
+
+- Owner: cursor:implementer-TASK-20261010-003
+- Depth: skill-top full. ECC react-performance. Windsor Search Console **not** connected — connect URL in report. GA4 only.
+- Reclaimed stale card files from TASK-20261006-001 (hb 2026-10-06); left stock-filter claims intact.
+- Evidence: warm timer active; origin home TTFB ~15ms; catalog lead src was w=1920 (~56KB vs ~25KB at 640).
+- Code: CDN-Cache-Control, deviceSizes cap 1200, wholesale /products force-static, CartProvider wholesale+checkout only, card quality 65, LandingPopups fine-pointer exit-intent.
+- Specs: catalog-performance + storefront-html-cache pass; web tsc 0.
+- Residual: user must finish Windsor Search Console OAuth for GSC CWV API; field CrUX validation takes days after deploy.
+
 ## 2026-10-09T22:30:00Z — TASK-20261010-002 LIVE
 
 - Owner: cursor:implementer-TASK-20261010-002

@@ -9,6 +9,10 @@ import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueInStockColors
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { resolveWholesaleOrderBadge } from '@/lib/wholesale-order-badge';
+import {
+  CATALOG_CARD_IMAGE_QUALITY,
+  CATALOG_CARD_IMAGE_SIZES,
+} from '@/lib/catalog-performance';
 
 export type WholesaleCardProduct = {
   id: string;
@@ -106,7 +110,8 @@ export function WholesaleProductCard({
               priority={imagePriority}
               loading={imagePriority ? 'eager' : 'lazy'}
               fetchPriority={imagePriority ? 'high' : 'low'}
-              sizes="(max-width:639px) 46vw, (max-width:1279px) 30vw, 280px"
+              quality={CATALOG_CARD_IMAGE_QUALITY}
+              sizes={CATALOG_CARD_IMAGE_SIZES}
               className="object-cover object-center transition duration-500 group-hover:scale-[1.02] motion-reduce:transition-none"
             />
             {secondImage ? (
@@ -117,7 +122,8 @@ export function WholesaleProductCard({
                 fill
                 loading="lazy"
                 fetchPriority="low"
-                sizes="(max-width:639px) 46vw, (max-width:1279px) 30vw, 280px"
+                quality={CATALOG_CARD_IMAGE_QUALITY}
+                sizes={CATALOG_CARD_IMAGE_SIZES}
                 className="hidden object-cover object-center opacity-0 transition duration-500 group-hover:opacity-100 md:block motion-reduce:hidden"
               />
             ) : null}
