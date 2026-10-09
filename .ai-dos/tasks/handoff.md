@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-09T22:30:00Z — TASK-20261010-002 LIVE
+
+- Owner: cursor:implementer-TASK-20261010-002
+- Fast-forward `origin/master` `43a667be..08fa509c`. VPS `TARANOM_DEPLOY_FORCE=1` because git was already reset before the image rebuild.
+- Live marker: `docker exec taranom_web` finds `__taranomGa4Config` in `.next/static/chunks/646-e5033fcfc4eb50ab.js`.
+- Smoke: `/v1/health` 200; `https://www.poshaktaranom.ir/` 200 (TTFB ~0.26s); `https://poshaktaranom.com/` 200 (TTFB ~0.23s).
+- Claims released. Residual: GA4 DebugView and the admin checklist. Windsor will not show new page views until the next day.
+
 ## 2026-10-09T22:05:00Z — TASK-20261010-002 retail GA4 command queue
 
 - Owner: cursor:implementer-TASK-20261010-002

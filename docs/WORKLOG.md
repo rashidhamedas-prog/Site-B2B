@@ -10,7 +10,8 @@
 - Windsor، پراپرتی `547378194`: `page_view` در ۳۱ اوت ۸۶، در ۱ سپتامبر ۷، از ۲ سپتامبر صفر. ۱ تا ۹ اکتبر فقط `session_start` (۷۰۸) و بدون رویداد فروشگاهی.
 - `gtag` دیگر آرایه معمولی صف نمی‌کند؛ GTM همان `arguments` را برمی‌گرداند. `page_view` فقط یک دستور است، با `send_page_view: false`.
 - خرید همچنان سمت کلاینت و یک‌بار برای هر `transaction_id`. Measurement Protocol وصل نشد چون API secret نیست.
-- تست: `retail-analytics.spec.ts` سبز؛ `tsc` وب سبز. دیباگ‌ویو و دیپلوی انجام نشده.
+- تست: `retail-analytics.spec.ts` سبز؛ `tsc` وب سبز.
+- لایو: `08fa509` روی origin/master و VPS. سلامت API برابر ۲۰۰. هوم تک و عمده ۲۰۰. مارکر `__taranomGa4Config` در باندل وب هست. DebugView هنوز باز است.
 - گزارش: `docs/analytics/`.
 
 ## 2026-10-07 — ۵۰۰ پرداخت خرده‌فروشی (`system_settings`) [TASK-20261007-008]

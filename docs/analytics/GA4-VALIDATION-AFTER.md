@@ -6,7 +6,8 @@ Date: 2026-10-10. This is not a production DebugView pass. The change is local u
 
 - `npx tsx apps/web/src/lib/retail-analytics.spec.ts` → `retail-analytics.spec.ts ok`
 - `npx tsc --noEmit -p apps/web` → exit 0
-- Windsor retail property `547378194` still shows the pre-fix outage (see `GA4-AUDIT-BEFORE.md`). October 1–9 has no `page_view`.
+- Deployed `08fa509` to the VPS. API health 200. `https://www.poshaktaranom.ir/` 200. `https://poshaktaranom.com/` 200. The web image contains `__taranomGa4Config`.
+- Windsor retail property `547378194` still shows the pre-fix outage (see `GA4-AUDIT-BEFORE.md`). October 1–9 has no `page_view`. That extract is before this deploy.
 
 ## Spec coverage
 

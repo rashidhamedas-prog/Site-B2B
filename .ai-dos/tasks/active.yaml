@@ -2,7 +2,7 @@
 tasks:
   - id: "TASK-20261010-002"
     title: "Retail GA4 page_view and ecommerce command queue"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261010-002"
     roles:
@@ -13,9 +13,11 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-09T21:50:00Z"
-    heartbeat_at: "2026-10-09T22:05:00Z"
+    heartbeat_at: "2026-10-09T22:30:00Z"
+    completed_at: "2026-10-09T22:30:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/lib/google.ts"
       - "apps/web/src/lib/retail-analytics.ts"
       - "apps/web/src/lib/retail-analytics.spec.ts"
