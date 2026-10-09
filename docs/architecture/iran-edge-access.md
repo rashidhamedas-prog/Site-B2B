@@ -6,11 +6,13 @@ Audience: implementers operating `poshaktaranom.ir` (retail) and `poshaktaranom.
 
 **Goal:** A shopper on a normal Iranian residential IP (MCI, Irancell, Shatel, Rightel, …) opens either storefront in a normal browser without a VPN.
 
+**Locked 2026-10-10:** shop DNS (`poshaktaranom.com`, `www`, `api.poshaktaranom.com`, `poshaktaranom.ir`, `www.poshaktaranom.ir`) stays **proxied**. IPv6 compatibility and HTTP/3 stay **off** (no AAAA, no `alt-svc: h3`). Do not gray-cloud these names. Direct TLS to `5.75.200.102` times out from most Iranian networks even though TCP/443 connects. Rollback to gray-cloud requires `scripts/cloudflare-iran-edge.mjs --mode origin --apply --confirm-gray`.
+
 **Non-goals:** Moving the VPS, changing checkout/payments, replacing Next/nginx, enabling a new CDN account without owner credentials, or documenting third-party VPN software on the origin.
 
 **Assumptions (labeled):**
 
-- Confirmed 2026-10-02: both zones use Cloudflare NS and had **regressed to orange-cloud** (AAAA + `alt-svc: h3`) after the 2026-09-14 gray-cloud fix. Target remains **DNS-only** for shop A records.
+- Confirmed 2026-10-10: shop names are proxied, IPv6 and HTTP/3 are off, and Iran HTTPS to the wholesale apex returns 200. The 2026-10-02 gray-cloud target is retired.
 - Confirmed: nginx and UFW do not country-block. Ports 80/443 allow anywhere.
 - Confirmed: seven Iranian check-host nodes (Tehran / Isfahan / Shiraz, country `IR`) get HTTP 200 on both hostnames over IPv4, and TCP 443 to the origin in ~80–120 ms.
 - Confirmed: the same nodes see Cloudflare A + AAAA, and some PoPs (`188.114.99.0`) take ~3.2–3.6 s while others (`188.114.96.3`, `104.21.x`) take ~0.3–0.7 s.
@@ -44,8 +46,8 @@ Trust boundary that matters here is **the public edge**, not the app. The app ne
 | Item | Evidence |
 | --- | --- |
 | Origin | Hetzner `5.75.200.102`, nginx TLS, Docker `web` |
-| DNS | Cloudflare NS; shop A `@` / `www` / `api` **DNS-only** → origin IPv4 |
-| Resolved A | Must be `5.75.200.102`, not `104.21.*` / `172.67.*` / `188.114.*` |
+| DNS | Cloudflare NS; shop A `@` / `www` / `api` **proxied**. Origin stays `5.75.200.102` |
+| Resolved A | Cloudflare anycast (`104.21.*` / `172.67.*` / `188.114.*`), never the raw origin, for shop names |
 | AAAA | None on shop hostnames |
 | HTTP/3 | Off at origin (HTTP/2). Must not advertise `alt-svc: h3` |
 | SSL if any record is re-proxied | Full (strict) only. Never Flexible |
@@ -56,6 +58,17 @@ Trust boundary that matters here is **the public edge**, not the app. The app ne
 Orange-cloud was turned on around 2026-08-30 / 2026-09-06 to cut Iran→Nuremberg TTFB. Before that, gray-cloud from Iran still loaded (home ~1317 ms). See `docs/reports/2026-08-30-vps-ttfb-diagnostic.md`.
 
 ## 4. Root cause
+
+**Supersedes the 2026-10-02 gray-cloud conclusion for shoppers.** Measured 2026-10-10 from seven Iranian check-host nodes:
+
+- TCP/443 to `5.75.200.102` succeeded in ~70–100 ms on every node.
+- HTTPS to gray-cloud `https://poshaktaranom.com/` **timed out (~19 s)** on Tehran, Isfahan, and Shiraz. One Qom node returned 200.
+- The same nodes fetched proxied `https://www.poshaktaranom.ir/` in ~0.5 s.
+- After proxying the wholesale names, those nodes returned **200 in ~0.4–0.7 s** (one Shiraz node 2.5 s) via Cloudflare addresses, with `x-taranom-channel: WHOLESALE`. No AAAA. No `alt-svc: h3`.
+
+The application does not reject Iran. The failure is **TLS to the raw Hetzner address** on Iranian paths. Gray-cloud exposes that address. Orange-cloud with IPv6 and HTTP/3 off does not.
+
+The 2026-10-02 notes below described an earlier orange-cloud regression (AAAA + HTTP/3). Those two settings are already off on the Free plan for these zones and must stay off. They are not a reason to un-proxy the shops.
 
 The sites are **not banned nationwide** and the **application does not reject Iran**.
 
@@ -76,36 +89,35 @@ Datacenter probes in Iran use IPv4 + HTTP/1.1, which is why check-host reports 2
 | App WAF / `CF-IPCountry` | No such logic in `nginx/nginx.conf` |
 | DNS poisoning of these names | Iranian nodes resolve the real Cloudflare A/AAAA set |
 | Origin down | Foreign and IR-hosting HTTP 200; `Server: cloudflare`, `x-taranom-channel` present |
-| Only `.com` filtered | `.ir` has the same orange-cloud + AAAA + h3 behavior |
+| Only the `.com` name is nationally filtered | After proxy, Iranian nodes reach `.com` over TLS in under a second. The timeout was the raw origin address |
 
 ## 6. Target architecture
 
 Keep the modular monolith and Hetzner origin. Change **only the public edge** so the primary audience (Iran) hits a path that already works.
 
-**Phase 0 — applied 2026-09-14 (reversible, no app deploy):**
+**Phase 0 — locked 2026-10-10 (reversible only with `--confirm-gray`):**
 
-Storefront A `@`/`www` on both zones are DNS-only. Free plan cannot disable IPv6 while proxied.
+Storefront A records are proxied. IPv6 compatibility and HTTP/3 are off, so the proxied names have no AAAA and do not advertise HTTP/3. Keep it that way. Gray-cloud is the outage, not the fix.
 
 **If a later re-proxy happens:**
 
 1. Cloudflare Network: **IPv6 Compatibility off**, **HTTP/3 off** on both zones.
 2. Security: **Essentially Off**, Bot Fight / Super Bot Fight **off**, not Under Attack.
-3. If shoppers still need a VPN: DNS A `@` and `www` → **DNS only (gray cloud)** on both zones. Origin already has Let’s Encrypt; Full (strict) can stay for a later re-proxy.
-4. Do not add origin AAAA.
+3. If shoppers still need a VPN, do **not** gray-cloud the shop. Re-check that IPv6 and HTTP/3 are off and that Iran HTTPS hits a Cloudflare address. Gray-cloud is an explicit rollback only.
+4. Do not add origin AAAA. SSL stays **Full (strict)**.
 
-**Phase 1 — if gray-cloud TTFB or origin listing becomes a problem:**
+**Phase 1 — only if Cloudflare anycast from Iran is slow again:**
 
-Put an **Iran-compatible CDN** (typically Arvancloud) in front of the same origin. Cloudflare may remain NS or a secondary path for Googlebot, but Iranian browsers must not depend on CF anycast + AAAA + h3.
+Put an Iran-compatible CDN in front of the same origin. Do not fall back to publishing `5.75.200.102` on the shop names.
 
 **Phase 2 — hygiene (mandatory):** do not share the public website **IP or SNI** with unrelated long-lived tunnels. A listed origin IP or a shop hostname used as tunnel TLS front recreates this outage even after gray-cloud. Keep tunnel listeners off `www.poshaktaranom.ir` / `poshaktaranom.com`.
 
 ```text
-Phase 0 origin mode
-Iran browser --IPv4/TCP--> 5.75.200.102 nginx --> Next
+Locked path
+Iran browser --IPv4/TCP--> Cloudflare (no AAAA, no h3) --> 5.75.200.102 nginx --> Next
 
-Phase 1 Iran CDN
-Iran browser --IPv4/TCP--> Arvan edge --> 5.75.200.102 nginx --> Next
-Other / Googlebot --> current or CF IPv4 --> same origin
+Do not use
+Iran browser --TLS--> 5.75.200.102   (TCP connects, HTTPS times out)
 ```
 
 ## 7. Security
@@ -121,8 +133,8 @@ Other / Googlebot --> current or CF IPv4 --> same origin
 1. Snapshot current DNS (A/AAAA, proxied flag) and Network/Security toggles.
 2. Apply Phase 0 `--mode network` (IPv6/HTTP3/security). TTL is 300 s.
 3. From a phone on home data, VPN off, open both homes.
-4. If still dead, `--mode origin` (gray-cloud). Recheck.
-5. Rollback: restore proxied=true and previous Network toggles. Cache rules already in the account stay inert while gray.
+4. Keep `--mode proxy`. Do not run `--mode origin` unless rolling back on purpose (`--confirm-gray`).
+5. Rollback to gray-cloud: `--mode origin --apply --confirm-gray`. That publishes `5.75.200.102` again and brings the Iran TLS timeout back.
 
 No VPS rebuild is required. Do not run `auto-deploy` for this change.
 

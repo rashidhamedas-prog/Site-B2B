@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-09T21:45:00Z — TASK-20261010-001 LIVE (wholesale Iran TLS)
+
+- Owner: cursor:implementer-TASK-20261010-001
+- Root: gray-cloud HTTPS to `5.75.200.102` timed out from IR nodes (TCP/443 was fine). Proxied retail on the same nodes was ~0.5s.
+- Applied: proxied A for `poshaktaranom.com`, `www.poshaktaranom.com`, `api.poshaktaranom.com`, `poshaktaranom.ir`. IPv6 off, HTTP/3 off, SSL strict, bot fight off. No AAAA.
+- Verify: IR check-host `https://poshaktaranom.com/` 200 via Cloudflare (6/7; ir2 was already a dead probe). `www` 301. API health 200. `x-taranom-channel: WHOLESALE`.
+- Guard: `scripts/cloudflare-iran-edge.mjs --mode origin --apply` now throws unless `--confirm-gray`. Desired re-apply is `--mode proxy`.
+- Tests: `node --test scripts/cloudflare-iran-edge.spec.mjs`.
+- No VPS rebuild. Claims released. Residual: a real MCI/Irancell handset with VPN off was not in this session; datacenter IR nodes are the evidence.
+
 ## 2026-10-07T11:55:00Z — TASK-20261007-007 CLOSED LIVE
 
 - Owner: cursor:implementer-TASK-20261007-007

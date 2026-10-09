@@ -3,14 +3,19 @@
  * Iran-edge helper for poshaktaranom.ir / poshaktaranom.com.
  * Reads CLOUDFLARE_API_TOKEN only from the environment. Default is dry-run.
  *
- *   node scripts/cloudflare-iran-edge.mjs --mode network --dry-run
- *   node scripts/cloudflare-iran-edge.mjs --mode origin --apply
+ * Desired state (2026-10-10): shop A records are proxied. Direct TLS to the
+ * Hetzner origin times out from most Iranian networks even when TCP/443 connects.
+ * IPv6 and HTTP/3 stay off so orange-cloud does not publish AAAA or h3.
+ *
+ *   node scripts/cloudflare-iran-edge.mjs --mode proxy --dry-run
+ *   node scripts/cloudflare-iran-edge.mjs --mode proxy --apply
+ *   node scripts/cloudflare-iran-edge.mjs --mode origin --apply --confirm-gray
  */
 const API = "https://api.cloudflare.com/client/v4";
 const ZONE_NAMES = ["poshaktaranom.com", "poshaktaranom.ir"];
 
 export function parseArgs(argv) {
-  const out = { mode: "network", apply: false, dryRun: true };
+  const out = { mode: "network", apply: false, dryRun: true, confirmGray: false };
   for (const arg of argv) {
     if (arg === "--apply") {
       out.apply = true;
@@ -18,12 +23,19 @@ export function parseArgs(argv) {
     } else if (arg === "--dry-run") {
       out.dryRun = true;
       out.apply = false;
+    } else if (arg === "--confirm-gray") {
+      out.confirmGray = true;
     } else if (arg.startsWith("--mode=")) {
       out.mode = arg.slice("--mode=".length);
     }
   }
-  if (out.mode !== "network" && out.mode !== "origin") {
-    throw new Error(`mode must be network|origin, got ${out.mode}`);
+  if (out.mode !== "network" && out.mode !== "origin" && out.mode !== "proxy") {
+    throw new Error(`mode must be network|proxy|origin, got ${out.mode}`);
+  }
+  if (out.mode === "origin" && out.apply && !out.confirmGray) {
+    throw new Error(
+      "origin gray-cloud breaks Iran TLS to the Hetzner IP; pass --confirm-gray only to roll back",
+    );
   }
   return out;
 }
@@ -96,10 +108,14 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       name,
       id: zone.id,
       settings: networkPatches(),
+      proxyCloud:
+        opts.mode === "proxy" ? storefront.map((r) => ({ id: r.id, name: r.name, type: "A", proxied: r.proxied })) : [],
       grayCloud:
         opts.mode === "origin" ? storefront.map((r) => ({ id: r.id, name: r.name, type: "A", proxied: r.proxied })) : [],
       deleteAaaa:
-        opts.mode === "origin" ? storefront6.map((r) => ({ id: r.id, name: r.name, type: "AAAA" })) : [],
+        opts.mode === "origin" || opts.mode === "proxy"
+          ? storefront6.map((r) => ({ id: r.id, name: r.name, type: "AAAA" }))
+          : [],
     });
   }
 
@@ -119,6 +135,10 @@ async function main(argv = process.argv.slice(2), env = process.env) {
       console.log(`patched ${zone.name} bot_management.fight_mode=false`);
     } catch (err) {
       console.warn(`bot_management skipped on ${zone.name}: ${err.message}`);
+    }
+    for (const rec of zone.proxyCloud || []) {
+      await cf(token, "PATCH", `/zones/${zone.id}/dns_records/${rec.id}`, { proxied: true });
+      console.log(`proxied ${zone.name} ${rec.name}`);
     }
     for (const rec of zone.grayCloud) {
       await cf(token, "PATCH", `/zones/${zone.id}/dns_records/${rec.id}`, { proxied: false });
