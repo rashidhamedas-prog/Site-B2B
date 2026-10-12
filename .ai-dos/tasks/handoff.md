@@ -2,13 +2,20 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-10-12T21:30:00Z — TASK-20261013-001 marketing bulk SMS (ready ship)
+## 2026-10-12T22:20:00Z — TASK-20261013-001 CLOSED LIVE (complete)
 
-- Owner: `cursor:implementer-TASK-20261013-001`. Depth: skill-top full. Slack: no hits.
-- API: audience helpers + bulk preview/compose; create/go-live require selected `customerIds`; canary uses bodyOverride/sample vars.
-- UI: tab `blast` → `AdminBulkSmsDesk` (picker, phone preview, eligibility, canary, confirm live).
-- Specs: `campaign-audience.spec.ts` ok; workspace blast tab; web tsc 0. Verify PASS WITH CONDITIONS → closed (no empty audience go-live).
-- LIVE: `744a90df` on origin/master; VPS force-deploy complete at `744a90d`; `/v1/health` 200. Hard-refresh admin → بازاریابی → ارسال گروهی.
+- Owner released. Merged to `origin/master` tip `fa16008d` (feat `744a90df`).
+- VPS `/opt/taranom` at `fa16008`; `/v1/health` 200; `campaign-audience.js` in API image.
+- Master worktree `Site-B2B-paid-order-guard` fast-forwarded to tip.
+- Feature branch `ai/TASK-20261013-001-bulk-sms` aligned with master; claims empty.
+- User: hard-refresh admin → بازاریابی → ارسال گروهی.
+
+## 2026-10-12T21:30:00Z — TASK-20261013-001 marketing bulk SMS (shipped)
+
+- Depth: skill-top full. Slack: no hits.
+- API: bulk preview/compose; selected `customerIds`; canary + go-live gates.
+- UI: tab `blast` → `AdminBulkSmsDesk`.
+- Superseded by CLOSED LIVE above.
 
 ## 2026-10-12T15:58:00Z — TASK-20261012-001 CLOSED LIVE (master)
 

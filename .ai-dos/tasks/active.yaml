@@ -4,21 +4,23 @@ tasks:
     title: "Marketing bulk personalized SMS desk"
     status: "done"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20261013-001"
+    owner: ""
     roles:
       architect: "cursor:skill-top-full"
       implementer: "cursor:implementer-TASK-20261013-001"
       reviewer: "required-after-diff"
       security: "consent-gates-reuse"
-    branch: "master"
+    branch: "ai/TASK-20261013-001-bulk-sms"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-12T21:00:00Z"
-    heartbeat_at: "2026-10-12T21:00:00Z"
+    heartbeat_at: "2026-10-12T22:20:00Z"
     depends_on: []
     file_claims: []
     notes: |
-      Shipped. skill-top full + ECC nestjs/frontend + Slack empty.
-      Tab ارسال گروهی; campaign.filter.customerIds; send-gates preserved.
+      CLOSED LIVE. origin/master tip fa16008d (feat 744a90df + docs).
+      VPS fa16008 health 200; campaign-audience in API image.
+      Tab ارسال گروهی; selected customerIds only; send-gates preserved.
+      Claims released; feature branch merged via cherry-pick to master.
     acceptance_criteria:
       - "Select customers per RETAIL/WHOLESALE channel"
       - "Personalized preview + eligibility skip reasons"

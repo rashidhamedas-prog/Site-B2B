@@ -1,5 +1,6 @@
 # Project Status
 
+- Last verified: 2026-10-12 — **TASK-20261013-001 CLOSED LIVE**. Bulk personalized SMS desk on `origin/master` `fa16008d` (feat `744a90df`); VPS tip `fa16008`; health 200; tab ارسال گروهی; claims released.
 - Last verified: 2026-10-12 — **TASK-20261012-001 CLOSED LIVE**. PR #81 `e48db3f`; admin CMS slide 0 outerwear on RETAIL+WHOLESALE; browser QA eager/high, no duplicate image preload; claims released.
 - In progress: 2026-10-10 — **TASK-20261010-005** omnichannel clear-waiting queue + requeue-by-category. Specs for helpers green; web tsc green. Not committed/deployed yet. Owner smoke after deploy.
 - In progress: 2026-10-10 — **TASK-20261010-004** retail GA4 gaps (gtag-only sender, checkout defaults, select_item, affiliate events, payment ignore_referrer). Spec and web tsc green. Deploy follows.
