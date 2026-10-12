@@ -30,8 +30,9 @@
 - ترتیب hero از CMS مرجع است؛ کمپین runtime دیگر اسلاید ادمین را عقب نمی‌زند.
 - media مشترک: اسلاید صفر eager/high؛ بعدی‌ها lazy/auto؛ preload دستی viewport-mismatched حذف شد.
 - تست‌های policy، normalization و DOM media سبز؛ tsc وب سبز؛ reviewer مستقل PASS.
-- Ship: PR #81 → `e48db3f7`؛ VPS `9b05535` (ancestor OK)؛ health 200. HTML عمومی `.ir` و `.com` هر دو outerwear-2026 slide 0 را نشان می‌دهند؛ WebPها 200.
-- باز: بستن رسمی تسک/آزادسازی claim؛ read-back ادمین ثبت‌نشده؛ smoke شبکه/LCP پس از deploy.
+- Ship: PR #81 → `e48db3f`؛ VPS deploy OK؛ health 200.
+- Admin: RETAIL/home و WHOLESALE/home اسلاید ۰ ذخیره و از API عمومی خوانده شد؛ HTML زنده outerwear؛ بدون DigiPay/partnership در جایگاه اول.
+- QA مرورگر: headline/CTA/alt درست؛ slide0 eager/high؛ بدون preload تکراری تصویر.
 - گزارش: `docs/reports/2026-10-12-dual-channel-outerwear-heroes.md`
 
 ## 2026-10-12 — هات‌فیکس crash صفحه کانال‌های انتشار

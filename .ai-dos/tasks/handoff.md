@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T15:58:00Z — TASK-20261012-001 CLOSED LIVE (master)
+
+- Owner: `cursor:implementer-TASK-20261012-001`; worktree `D:/proje/Site-B2B-dual-hero`.
+- Admin publish confirmed via public CMS read-back: RETAIL `2026-10-12T13:53:27Z`, WHOLESALE `2026-10-12T13:52:18Z`.
+- Live browser: `.ir` camel outerwear + «لایه‌ای گرم…» + CTA جدیدترین‌ها; `.com` brown outerwear + «لایه فصل…» + dual CTAs.
+- Media contract: first img eager/high, later lazy/auto, no image preload links; WHOLESALE revalidate 200.
+- Status → `done`; file_claims released. Governance commit landed on master.
+
 ## 2026-10-12T15:25:00Z — TASK-20261012-004 live notice metrics
 
 - Owner: `cursor:implementer-TASK-20261012-004`. Depth: skill-top full.
@@ -14,8 +22,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Owner: `cursor:implementer-TASK-20261012-001`; worktree `D:/proje/Site-B2B-dual-hero`.
 - Merged: PR #81 → `e48db3f7` on master. VPS `/opt/taranom` tip `9b05535` (ancestor of `e48db3f7`); local health 200.
 - Live public smoke (this session): `/v1/health` 200; `.ir/` 200 with `retail-desktop/mobile-180617246c9c.webp`; `.com/` 200 with `wholesale-desktop/mobile-9d541eef7362.webp`; both static WebP 200.
-- Status remains `in_progress` (not done). Open: formal close + claims release; logged-in admin save/read-back not re-recorded; post-deploy browser network/LCP (no duplicate preload) not re-run.
-- Docs-only sync; no commit unless asked.
+- Superseded by CLOSED entry above.
 
 ## 2026-10-12T15:05:00Z — TASK-20261012-003 LIVE
 

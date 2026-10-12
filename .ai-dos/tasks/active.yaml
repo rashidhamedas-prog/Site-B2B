@@ -155,7 +155,11 @@ tasks:
       skill-top full + seo-geo-architecture implement + banner-design + Figma.
       CLOSED 2026-10-12: PR #81 e48db3f LIVE; admin CMS RETAIL/WHOLESALE home slide 0
       saved (13:53Z / 13:52Z); revalidate WHOLESALE 200; browser QA eager/high + no
+<<<<<<< HEAD
       image preload; partnership false-alarm was autoplay later slides; claims released.
+=======
+      image preload; claims released.
+>>>>>>> f847f9e2 (docs(cms): close dual-channel outerwear hero task)
   - id: "TASK-20261010-005"
     title: "Omnichannel clear waiting queue + requeue by category"
     status: "in_progress"
