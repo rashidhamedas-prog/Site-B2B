@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261012-004"
     title: "Live sales-partner notice admin metrics"
-    status: "in_progress"
+    status: "review"
     risk: "low"
     owner: "cursor:implementer-TASK-20261012-004"
     roles:

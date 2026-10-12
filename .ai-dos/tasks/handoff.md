@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T15:25:00Z — TASK-20261012-004 live notice metrics
+
+- Owner: `cursor:implementer-TASK-20261012-004`. Depth: skill-top full.
+- API: `activeAudienceCount`; list `{ items, activeAudienceCount }`; frozen `audienceCount` kept.
+- UI: live مخاطب + send snapshot; KPIs; 45s visible poll + in-flight lock; archived uses send audience.
+- Spec metrics ok; web tsc 0. Next: commit/push/deploy.
+
 ## 2026-10-12T14:50:00Z — TASK-20261012-001 docs sync (post-merge evidence)
 
 - Owner: `cursor:implementer-TASK-20261012-001`; worktree `D:/proje/Site-B2B-dual-hero`.
