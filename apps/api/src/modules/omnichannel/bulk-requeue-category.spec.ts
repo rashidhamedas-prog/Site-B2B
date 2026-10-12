@@ -23,7 +23,9 @@ assert(CLEAR_WAITING_ERROR === 'cancelled_by_admin', 'cancel marker');
   const bad = normalizeClearWaitingInput({ reason: 'x', confirm: false });
   assert('error' in bad, 'confirm required');
   const ok = normalizeClearWaitingInput({ reason: 'پاک‌سازی صف', confirm: true });
-  assert('ok' in ok && ok.reason === 'پاک‌سازی صف', 'clear ok');
+  assert('ok' in ok && ok.reason === 'پاک‌سازی صف' && ok.scope === 'channel', 'clear defaults to channel scope');
+  const all = normalizeClearWaitingInput({ reason: 'پاک‌سازی کامل', confirm: true, scope: 'all' });
+  assert('ok' in all && all.scope === 'all', 'clear all scope');
 }
 
 {

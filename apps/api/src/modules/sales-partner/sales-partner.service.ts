@@ -736,7 +736,8 @@ export class SalesPartnerService {
       eventType,
       aggregateType: 'sales_partner',
       aggregateId,
-      channel: 'RETAIL',
+      // Not a messenger storefront channel — avoid RETAIL/تکی mislabel in publish console.
+      channel: null,
       payload: salesPartnerOutboxPayload(payload),
     });
   }

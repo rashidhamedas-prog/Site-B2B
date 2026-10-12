@@ -1,4 +1,8 @@
-import { areOmnichannelConnectorsEnabled, OUTBOX_EVENT_TYPES } from '../omnichannel.constants';
+import {
+  areOmnichannelConnectorsEnabled,
+  OUTBOX_EVENT_TYPES,
+  SALES_PARTNER_OUTBOX_EVENT_TYPES,
+} from '../omnichannel.constants';
 
 export const PHASE3_EVENT_TYPES = [
   OUTBOX_EVENT_TYPES.SEARCH_REINDEX_REQUESTED,
@@ -12,6 +16,7 @@ export const PHASE3_EVENT_TYPES = [
   OUTBOX_EVENT_TYPES.CUSTOMER_APPROVED_MARKETING,
   OUTBOX_EVENT_TYPES.MARKETING_SEND_REQUESTED,
   OUTBOX_EVENT_TYPES.MARKETING_CAMPAIGN_DISPATCH,
+  ...SALES_PARTNER_OUTBOX_EVENT_TYPES,
 ] as const;
 
 export const PHASE4_EVENT_TYPES = [

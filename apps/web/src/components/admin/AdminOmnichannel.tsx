@@ -32,6 +32,8 @@ import {
   gateBlockReasonLabel,
   hourLabel,
   isChannelPublishEventType,
+  isOutboxRowForConfiguredChannels,
+  outboxChannelCellLabel,
   isIntentionalError,
   isProvider,
   outboxStatus,
@@ -408,13 +410,24 @@ export function AdminOmnichannel() {
   const deadOther = status?.outboxDeadByEventType?.deadOther
     ?? Math.max(0, (status?.outbox?.dead ?? 0) - deadChannel);
   const deadMetric = outboxScope === 'channel' ? deadChannel : (status?.outbox?.dead ?? deadChannel + deadOther);
+  const configuredPublishChannels = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of connections) {
+      const ch = String(row.channel || '').toUpperCase();
+      if (ch === 'RETAIL' || ch === 'WHOLESALE') set.add(ch);
+    }
+    return set;
+  }, [connections]);
+
   const filteredOutbox = useMemo(() => {
     let rows = outbox;
     if (outboxScope === 'channel') {
-      rows = rows.filter((row) => isChannelPublishEventType(row.eventType));
+      rows = rows.filter((row) =>
+        isOutboxRowForConfiguredChannels(row.eventType, row.channel, configuredPublishChannels),
+      );
     }
     return rows;
-  }, [outbox, outboxScope]);
+  }, [outbox, outboxScope, configuredPublishChannels]);
   const filteredPublications = useMemo(() => {
     if (deliveryFilter !== 'failed') return publications;
     const failedPubIds = new Set(
@@ -448,7 +461,11 @@ export function AdminOmnichannel() {
         const result = await apiClient.post<{
           cancelledEvents: number;
           cancelledDeliveries: number;
-        }>('/omnichannel/outbox/clear-waiting', { confirm: true, reason: trimmed });
+        }>('/omnichannel/outbox/clear-waiting', {
+          confirm: true,
+          reason: trimmed,
+          scope: outboxScope === 'all' ? 'all' : 'channel',
+        });
         setNotice(
           `${faNumber(result.cancelledEvents)} رویداد و ${faNumber(result.cancelledDeliveries)} ارسال لغو شد`,
         );
@@ -1643,7 +1660,7 @@ export function AdminOmnichannel() {
     <>
       <Section
         title="صف رویدادها"
-        description="هر تغییر سایت اول به این صف می‌آید و ورکر آن را به کانال می‌رساند. پیش‌فرض فقط رویدادهای انتشار کانال است تا نویز پیامک/جستجو کارت وضعیت را قرمز نکند."
+        description="پیش‌فرض فقط رویدادهای انتشار پیام‌رسان است. ستون «کانال» برای ارسال کانال یعنی تکی/عمده؛ برای همکار فروش، پیامک و جستجو دامنهٔ سیستمی است نه مقصد تلگرام."
         actions={(
           <div className="flex flex-wrap gap-2 items-center">
             <div className="inline-flex gap-1 rounded-lg bg-gray-100 p-1" role="group" aria-label="محدوده صف">
@@ -1668,6 +1685,16 @@ export function AdminOmnichannel() {
             {faNumber(deadOther)} رویداد متوقفِ غیرکانال (مثل پیامک یا جستجو) از این فهرست پنهان است. برای دیدن همه، «همه» را بزنید — حذف از دیتابیس انجام نمی‌شود.
           </Callout>
         )}
+        {outboxScope === 'channel' && configuredPublishChannels.size === 1 && configuredPublishChannels.has('WHOLESALE') && (
+          <Callout tone="info">
+            فقط ربات/اتصال عمده دارید؛ رویدادهای انتشار تکی از این فهرست پنهان‌اند. خالی کردن صف هم فقط رویدادهای ارسال کانال را لغو می‌کند.
+          </Callout>
+        )}
+        {outboxScope === 'all' && (
+          <Callout tone="warn">
+            نمای «همه» صف مشترک کل سامانه است. برچسب‌های همکار / پیامک / سیستم مقصد پیام‌رسان نیستند؛ تکی و عمده فقط برای رویدادهای انتشار کانال معنا دارند.
+          </Callout>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -1688,7 +1715,7 @@ export function AdminOmnichannel() {
                 return (
                   <tr key={row.id} className={`border-t ${row.status === 'DEAD' ? 'bg-red-50/40' : ''}`}>
                     <td className="p-2">{row.eventType === 'publication.deliver.requested' || row.eventType === 'publication.deliver_requested' ? 'ارسال به کانال' : row.eventType === 'product.stock_changed' ? 'تغییر موجودی' : eventLabel(row.eventType)}</td>
-                    <td className="p-2">{channelLabel(row.channel)}</td>
+                    <td className="p-2">{outboxChannelCellLabel(row.eventType, row.channel)}</td>
                     <td className="p-2"><Badge tone={intentional ? 'off' : st.tone}>{intentional ? 'عمدی' : deferred ? 'موکول‌شده' : st.label}</Badge></td>
                     <td className="p-2">{faNumber(row.attempts)}</td>
                     <td className="p-2 text-xs text-gray-500">{deferred ? relativeTime(row.availableAt) : relativeTime(row.createdAt)}</td>

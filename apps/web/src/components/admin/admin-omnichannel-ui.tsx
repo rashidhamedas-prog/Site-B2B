@@ -1,6 +1,12 @@
 'use client';
 
 import { Fragment, type ReactNode } from 'react';
+export {
+  channelLabel,
+  isChannelPublishEventType,
+  isOutboxRowForConfiguredChannels,
+  outboxChannelCellLabel,
+} from './admin-omnichannel-outbox';
 
 /* ---------- shared types (mirror the admin API) ---------- */
 
@@ -314,12 +320,6 @@ export function isIntentionalError(error?: string | null) {
   return key.includes('cancelled_by_admin') || key.includes('publication_withdrawn');
 }
 
-/** Messenger / catalog outbox events (excludes SMS, search, marketing noise). */
-export function isChannelPublishEventType(eventType: string) {
-  const t = String(eventType || '');
-  return t.startsWith('product.') || t.startsWith('blog.') || t.startsWith('cms.') || t.startsWith('publication.');
-}
-
 export function gateBlockReasonLabel(reason?: GateBlockReason | null) {
   switch (reason) {
     case 'mode_off':
@@ -457,10 +457,6 @@ export function platformRendered(rendered: Rendered | null | undefined, info: Pr
   if (!info.protectContent) next.protectContent = false;
   if (!info.captionAbove) next.captionAbove = false;
   return next;
-}
-
-export function channelLabel(channel?: string | null) {
-  return channel === 'WHOLESALE' ? 'عمده' : channel === 'RETAIL' ? 'تکی' : channel || '—';
 }
 
 export function publicationStatus(status: string) {

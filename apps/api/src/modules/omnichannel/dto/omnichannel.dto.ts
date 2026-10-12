@@ -308,7 +308,7 @@ export class BulkWithdrawPublicationsDto {
   reason?: string;
 }
 
-/** Soft-cancel all PENDING outbox rows (and stale PROCESSING). Never DELETE. */
+/** Soft-cancel PENDING outbox rows (and stale PROCESSING). Never DELETE. */
 export class ClearWaitingOutboxDto {
   @IsBoolean()
   confirm: boolean;
@@ -317,6 +317,11 @@ export class ClearWaitingOutboxDto {
   @MinLength(1)
   @MaxLength(240)
   reason: string;
+
+  /** Default channel = messenger/catalog only; all = shared outbox including SMS/search. */
+  @IsOptional()
+  @IsIn(['all', 'channel'])
+  scope?: 'all' | 'channel';
 }
 
 /** Enqueue CREATE/UPDATE for every visible product in a category (batched). */

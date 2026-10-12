@@ -158,6 +158,10 @@ assert(adminOmni.includes("وضعیت و اقدام") && adminOmni.includes("ت�
 assert(adminOmni.includes('مقصد آزمایشی') && !adminOmni.includes('مقصد تست (canary)'), 'canary jargon removed from primary UI');
 assert(omniSvc.includes('diagnoseGateBlock') && omniAdmin.includes('gateBlockReason'), 'status exposes gateBlockReason diagnosis');
 assert(omniSvc.includes('outboxDeadByEventType') && omniAdmin.includes('outboxDeadByEventType'), 'status exposes dead-by-eventType');
+assert(lease.includes('SALES_PARTNER_OUTBOX_EVENT_TYPES') || lease.includes('sales_partner.'), 'sales_partner ACK leased');
+assert(workerSrc.includes('sales_partner.'), 'worker ACKs sales_partner domain events');
+assert(adminOmni.includes('outboxChannelCellLabel') || adminOmniUi.includes('outboxChannelCellLabel'), 'UI domain channel labels');
+assert(adminOmni.includes('isOutboxRowForConfiguredChannels') || adminOmniUi.includes('isOutboxRowForConfiguredChannels'), 'UI filters by configured bots');
 assert(src('modules/omnichannel/gate-block-reason.ts').includes('resolveGateBlockReason'), 'gate-block-reason helper');
 assert(dbSync.includes('forbidden in production/staging'), 'DB_SYNC fail-closed');
 assert(checkout.includes("channel: 'WHOLESALE'"), 'wholesale checkout sends channel');

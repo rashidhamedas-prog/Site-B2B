@@ -11,7 +11,7 @@ import { SearchService } from '../../search/search.service';
 import { NotificationService } from '../../notification/notification.service';
 import { AffiliatePostbackService } from '../../affiliate/affiliate-postback.service';
 import { OutboxEventEntity } from '../entities/outbox-event.entity';
-import { OUTBOX_EVENT_TYPES } from '../omnichannel.constants';
+import { OUTBOX_EVENT_TYPES, SALES_PARTNER_OUTBOX_EVENT_TYPES } from '../omnichannel.constants';
 import { DeliveryDeferredError, shouldSkipPublicationDeliver } from './publication-deliver';
 import { OutboxService } from './outbox.service';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
@@ -19,6 +19,8 @@ import { safeWorkerError } from '../adapters/telegram-errors';
 import { OmnichannelService } from './omnichannel.service';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
+
+const SALES_PARTNER_ACK = new Set<string>(SALES_PARTNER_OUTBOX_EVENT_TYPES);
 import { CustomerMarketingService } from '../../customer-marketing/customer-marketing.service';
 import { MarketingSmsSender } from '../../customer-marketing/marketing-sms.sender';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
@@ -188,6 +190,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         }
         return;
       default:
+        // Audit already persisted at emit time; ACK so rows do not sit PENDING forever
+        // or appear as stuck «تکی» messenger work in the publish console.
+        if (SALES_PARTNER_ACK.has(row.eventType) || row.eventType.startsWith('sales_partner.')) {
+          return;
+        }
         if (row.eventType === OUTBOX_EVENT_TYPES.BLOG_PUBLISHED) {
           await this.omnichannel.syncBlogPublications(String(payload.postId || row.aggregateId), row.channel);
           return;

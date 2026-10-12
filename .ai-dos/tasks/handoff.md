@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T17:30:00Z — TASK-20261012-002 outbox تکی mislabel + sales_partner ACK
+
+- Depth: skill-top full. Reclaimed AdminOmnichannel/outbox files from stale 005.
+- RCA: sales_partner.* stamped RETAIL, never leased → PENDING «تکی» noise in publish console.
+- Fix: null channel; lease+ACK; UI domain labels + filter by configured bots; clear-waiting scope=channel default.
+- Specs: bulk-requeue, lease, outbox.service, phase-acceptance, outbox-label — ok.
+- Next: commit + push master + VPS deploy; hard-refresh ops tab with «فقط ارسال کانال».
+
 ## 2026-10-12T13:35:00Z — TASK-20261012-001 dual-channel heroes pre-deploy
 
 - Owner: `cursor:implementer-TASK-20261012-001`; branch/worktree: `feat/TASK-20261012-001-dual-hero` / `D:/proje/Site-B2B-dual-hero`.
@@ -20,7 +28,8 @@ Append newest entries at the top. Never erase another agent's record.
 
 - Root: default-view `useEffect` ran after `if (loading && !status) return` → React hooks mismatch → production `error.tsx`.
 - Fix: move checklist/setupComplete + that effect above the early return in `AdminOmnichannel.tsx`.
-- Next: commit + push + VPS deploy; smoke logged-in `/admin/omnichannel`.
+- Shipped: `85d8147` on origin/master; VPS deploy complete; chunk `HOOKS_ORDER_OK`; health 200.
+- Smoke: hard-refresh `/admin/omnichannel` while logged in.
 
 ## 2026-10-12T16:00:00Z — Omnichannel UX redesign phases A→E
 

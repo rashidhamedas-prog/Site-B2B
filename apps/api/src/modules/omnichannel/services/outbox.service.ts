@@ -93,6 +93,25 @@ WHERE status = 'PENDING'
 RETURNING id
 `;
 
+/** Soft-cancel only messenger/catalog publish events (not SMS/search/sales_partner). */
+export const CANCEL_PENDING_CHANNEL_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = 'DONE',
+    "completedAt" = NOW(),
+    "lastError" = $1,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE status = 'PENDING'
+  AND (
+    "eventType" LIKE 'product.%'
+    OR "eventType" LIKE 'blog.%'
+    OR "eventType" LIKE 'cms.%'
+    OR "eventType" LIKE 'publication.%'
+  )
+RETURNING id
+`;
+
 /** Only stale PROCESSING locks (worker crash / hung lease). Fresh mid-send stays. */
 export const CANCEL_STALE_PROCESSING_SQL = `
 UPDATE omnichannel_outbox_events
@@ -104,6 +123,25 @@ SET status = 'DONE',
     "updatedAt" = NOW()
 WHERE status = 'PROCESSING'
   AND ("lockedAt" IS NULL OR "lockedAt" < NOW() - ($2 * INTERVAL '1 minute'))
+RETURNING id
+`;
+
+export const CANCEL_STALE_PROCESSING_CHANNEL_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = 'DONE',
+    "completedAt" = NOW(),
+    "lastError" = $1,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE status = 'PROCESSING'
+  AND ("lockedAt" IS NULL OR "lockedAt" < NOW() - ($2 * INTERVAL '1 minute'))
+  AND (
+    "eventType" LIKE 'product.%'
+    OR "eventType" LIKE 'blog.%'
+    OR "eventType" LIKE 'cms.%'
+    OR "eventType" LIKE 'publication.%'
+  )
 RETURNING id
 `;
 
@@ -196,16 +234,20 @@ export class OutboxService {
     pendingError: string;
     staleError: string;
     staleLockMinutes?: number;
+    /** When 'channel', only soft-cancel messenger/catalog publish event types. */
+    scope?: 'all' | 'channel';
   }): Promise<{ cancelledPendingIds: string[]; cancelledStaleIds: string[] }> {
-    const pendingRaw = await this.dataSource.query(CANCEL_PENDING_SQL, [
-      opts.pendingError.slice(0, 2000),
-    ]);
+    const channelOnly = opts.scope === 'channel';
+    const pendingRaw = await this.dataSource.query(
+      channelOnly ? CANCEL_PENDING_CHANNEL_SQL : CANCEL_PENDING_SQL,
+      [opts.pendingError.slice(0, 2000)],
+    );
     const cancelledPendingIds = leaseRowsFromQueryResult(pendingRaw).map((r) => r.id);
     const minutes = Math.max(1, Math.min(60, Math.floor(opts.staleLockMinutes ?? 5)));
-    const staleRaw = await this.dataSource.query(CANCEL_STALE_PROCESSING_SQL, [
-      opts.staleError.slice(0, 2000),
-      minutes,
-    ]);
+    const staleRaw = await this.dataSource.query(
+      channelOnly ? CANCEL_STALE_PROCESSING_CHANNEL_SQL : CANCEL_STALE_PROCESSING_SQL,
+      [opts.staleError.slice(0, 2000), minutes],
+    );
     const cancelledStaleIds = leaseRowsFromQueryResult(staleRaw).map((r) => r.id);
     return { cancelledPendingIds, cancelledStaleIds };
   }

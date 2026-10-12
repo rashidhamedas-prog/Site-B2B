@@ -102,7 +102,26 @@ export const OUTBOX_EVENT_TYPES = {
   CUSTOMER_APPROVED_MARKETING: 'customer.approved.marketing',
   MARKETING_SEND_REQUESTED: 'marketing.send.requested',
   MARKETING_CAMPAIGN_DISPATCH: 'marketing.campaign.dispatch',
+  /** Sales-partner domain events (audit already written at emit; worker ACKs only). */
+  SALES_PARTNER_APPLICATION_SUBMITTED: 'sales_partner.application.submitted',
+  SALES_PARTNER_PROFILE_STATUS_CHANGED: 'sales_partner.profile.status_changed',
+  SALES_PARTNER_CONFIRMATION_REQUESTED: 'sales_partner.draft.confirmation_requested',
+  SALES_PARTNER_CUSTOMER_CONFIRMED: 'sales_partner.draft.customer_confirmed',
+  SALES_PARTNER_CUSTOMER_REJECTED: 'sales_partner.draft.customer_rejected',
+  SALES_PARTNER_DRAFT_EXPIRED: 'sales_partner.draft.expired',
+  SALES_PARTNER_PAYOUT_RECORDED: 'sales_partner.payout.recorded',
 } as const;
+
+/** Domain events that must not be mistaken for messenger publish work. */
+export const SALES_PARTNER_OUTBOX_EVENT_TYPES = [
+  OUTBOX_EVENT_TYPES.SALES_PARTNER_APPLICATION_SUBMITTED,
+  OUTBOX_EVENT_TYPES.SALES_PARTNER_PROFILE_STATUS_CHANGED,
+  OUTBOX_EVENT_TYPES.SALES_PARTNER_CONFIRMATION_REQUESTED,
+  OUTBOX_EVENT_TYPES.SALES_PARTNER_CUSTOMER_CONFIRMED,
+  OUTBOX_EVENT_TYPES.SALES_PARTNER_CUSTOMER_REJECTED,
+  OUTBOX_EVENT_TYPES.SALES_PARTNER_DRAFT_EXPIRED,
+  OUTBOX_EVENT_TYPES.SALES_PARTNER_PAYOUT_RECORDED,
+] as const;
 
 export const AUTO_PUBLISH_CANDIDATE_EVENTS = [
   OUTBOX_EVENT_TYPES.PRODUCT_CREATED,

@@ -24,7 +24,8 @@ export function staggeredAvailableAt(
 export function normalizeClearWaitingInput(body: {
   reason?: unknown;
   confirm?: unknown;
-}): { ok: true; reason: string } | { error: string } {
+  scope?: unknown;
+}): { ok: true; reason: string; scope: 'all' | 'channel' } | { error: string } {
   if (body?.confirm !== true) {
     return { error: 'برای خالی کردن صف، تأیید صریح (confirm: true) لازم است' };
   }
@@ -35,7 +36,9 @@ export function normalizeClearWaitingInput(body: {
   if (reason.length > 240) {
     return { error: 'دلیل حداکثر ۲۴۰ نویسه است' };
   }
-  return { ok: true, reason };
+  const rawScope = String(body?.scope ?? 'channel').toLowerCase();
+  const scope: 'all' | 'channel' = rawScope === 'all' ? 'all' : 'channel';
+  return { ok: true, reason, scope };
 }
 
 export function normalizeRequeueByCategoryInput(body: {

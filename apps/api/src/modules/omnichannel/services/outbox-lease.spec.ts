@@ -88,6 +88,14 @@ assert(
   leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.MARKETING_CAMPAIGN_DISPATCH),
   'marketing campaign is leased without connectors',
 );
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.SALES_PARTNER_APPLICATION_SUBMITTED),
+  'sales_partner events leased for ACK drain',
+);
+assert(
+  leaseEventTypes(false).includes(OUTBOX_EVENT_TYPES.SALES_PARTNER_PROFILE_STATUS_CHANGED),
+  'sales_partner status_changed leased',
+);
 
 {
   type Row = { id: string; status: 'PENDING' | 'PROCESSING'; lockedBy: string | null };

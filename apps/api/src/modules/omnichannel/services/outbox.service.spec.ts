@@ -3,6 +3,7 @@
  */
 import {
   CANCEL_PENDING_SQL,
+  CANCEL_PENDING_CHANNEL_SQL,
   CANCEL_STALE_PROCESSING_SQL,
   MARK_DONE_SQL,
   MARK_FAILURE_SQL,
@@ -84,6 +85,9 @@ async function main() {
   assert(CANCEL_PENDING_SQL.includes("WHERE status = 'PENDING'"), 'cancel only PENDING');
   assert(CANCEL_PENDING_SQL.includes('RETURNING id'), 'cancel returns ids');
   assert(!CANCEL_PENDING_SQL.toLowerCase().includes('delete'), 'cancel never deletes');
+  assert(CANCEL_PENDING_CHANNEL_SQL.includes("LIKE 'product.%'"), 'channel cancel scopes product');
+  assert(CANCEL_PENDING_CHANNEL_SQL.includes("LIKE 'publication.%'"), 'channel cancel scopes publication');
+  assert(!CANCEL_PENDING_CHANNEL_SQL.includes('sales_partner'), 'channel cancel skips sales_partner');
   assert(CANCEL_STALE_PROCESSING_SQL.includes("status = 'PROCESSING'"), 'stale only PROCESSING');
   assert(CANCEL_STALE_PROCESSING_SQL.includes('"lockedAt"'), 'stale uses lease age');
 

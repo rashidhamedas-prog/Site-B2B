@@ -770,6 +770,7 @@ export class OmnichannelService {
     const { cancelledPendingIds, cancelledStaleIds } = await this.outbox.cancelWaiting({
       pendingError: CLEAR_WAITING_ERROR,
       staleError: CLEAR_WAITING_STALE_ERROR,
+      scope: normalized.scope,
     });
     const cancelledIds = [...cancelledPendingIds, ...cancelledStaleIds];
     let cancelledDeliveries = 0;

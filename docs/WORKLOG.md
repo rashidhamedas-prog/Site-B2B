@@ -1,3 +1,10 @@
+## 2026-10-12 — صف کانال: برچسب تکی اشتباه + ACK همکار فروش
+
+- ریشه: `sales_partner.*` با `channel: RETAIL` در outbox مشترک، بدون lease → «در صف» ابدی و برچسب «تکی» شبیه مقصد پیام‌رسان.
+- UI: ستون کانال برای غیرانتشار = همکار/پیامک/سیستم؛ فیلتر کانال فقط ربات‌های پیکربندی‌شده؛ clear-waiting پیش‌فرض `scope=channel`.
+- Worker: ACK رویدادهای `sales_partner.*`؛ enqueue با `channel: null`.
+- گزارش: `docs/reports/2026-10-12-omnichannel-outbox-channel-label.md`
+
 ## 2026-10-12 — بنر رویه تک و عمده [TASK-20261012-001]
 
 - چهار WebP سبک از تصاویر واقعی محصول: تک شتری و عمده قهوه‌ای؛ desktop `1920×560` و mobile `1200×960`، حداکثر 29.4KB.
