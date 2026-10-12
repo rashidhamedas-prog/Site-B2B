@@ -1,6 +1,6 @@
 # Project Status
 
-- In progress: 2026-10-12 — **TASK-20261012-001** dual-channel outerwear heroes. Four responsive assets + Figma complete; CMS order authoritative; focused specs and web tsc green; independent review PASS. Commit/deploy/admin save follows.
+- Last verified: 2026-10-12 — **TASK-20261012-001 CLOSED LIVE**. PR #81 `e48db3f`; admin CMS slide 0 outerwear on RETAIL+WHOLESALE; revalidate + browser QA (eager/high, no duplicate image preload); claims released.
 - In progress: 2026-10-10 — **TASK-20261010-005** omnichannel clear-waiting queue + requeue-by-category. Specs for helpers green; web tsc green. Not committed/deployed yet. Owner smoke after deploy.
 - In progress: 2026-10-10 — **TASK-20261010-004** retail GA4 gaps (gtag-only sender, checkout defaults, select_item, affiliate events, payment ignore_referrer). Spec and web tsc green. Deploy follows.
 - Last verified: 2026-10-10 — **TASK-20261010-003 LIVE** (`0e647eba`+`b289796d` on master; tip may be newer). Origin CDN-Cache-Control present; public catalog `q=65` / no `w=1920`; health 200. Claims released. Windsor Search Console OAuth + GSC Validate Fix still open.

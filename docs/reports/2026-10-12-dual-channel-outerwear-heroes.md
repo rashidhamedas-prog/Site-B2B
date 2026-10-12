@@ -56,6 +56,10 @@ Figma: [Taranom — Outerwear Heroes 2026](https://www.figma.com/design/yoWEk4wu
 - Web build: compile/type stage PASS؛ static generation به‌علت timeout موجود در `/portal/register` و چند route ادمین/پرتال FAIL شد؛ هیچ failure به hero نسبت داده نشد.
 - `git diff --check`: PASS.
 - Independent review: PASS؛ بدون blocker.
+- Ship (2026-10-12): PR #81 merge `e48db3f7`؛ VPS tip `59c2ad1`؛ health 200.
+- Admin CMS: `WHOLESALE/home` و `RETAIL/home` اسلاید ۰ outerwear ذخیره و خوانده شد.
+- Live public HTML: `.ir` و `.com` اسلاید ۰ outerwear؛ WebPها 200؛ browser QA eager/high بدون preload تکراری.
+- بسته شد: claims آزاد.
 
 ## منابع بازاعتبارسنجی‌شده
 
