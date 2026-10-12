@@ -2,12 +2,23 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T15:58:00Z — TASK-20261012-001 CLOSED (sync main + agent confirm)
+
+- Parallel confirm: wholesale save stuck; admin GET + live HTML + `POST /admin/cms/revalidate` WHOLESALE/home 200.
+- Earlier old-banner look = autoplay later promo slides / ISR lag, not failed PUT.
+- Main-repo governance synced to `done` + claims released (mirror of dual-hero worktree).
+
+## 2026-10-12T15:50:00Z — TASK-20261012-004 LIVE
+
+- Commits `1b3fdc8d` + tip `d3daf79` on origin/master. VPS force-deploy complete; health ok; `activeAudienceCount` in API image.
+- Hard-refresh admin → اطلاع‌رسانی: مخاطب باید ~۷۵ (زنده) باشد؛ زیرش snapshot ارسال.
+
 ## 2026-10-12T15:25:00Z — TASK-20261012-004 live notice metrics
 
 - Owner: `cursor:implementer-TASK-20261012-004`. Depth: skill-top full.
 - API: `activeAudienceCount`; list `{ items, activeAudienceCount }`; frozen `audienceCount` kept.
 - UI: live مخاطب + send snapshot; KPIs; 45s visible poll + in-flight lock; archived uses send audience.
-- Spec metrics ok; web tsc 0. Next: commit/push/deploy.
+- Spec metrics ok; web tsc 0. Shipped (see LIVE).
 
 ## 2026-10-12T14:50:00Z — TASK-20261012-001 docs sync (post-merge evidence)
 

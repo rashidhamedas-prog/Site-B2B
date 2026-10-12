@@ -13,18 +13,11 @@ tasks:
     branch: "ai/TASK-20261012-004-live-notice-metrics"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-12T15:15:00Z"
-    heartbeat_at: "2026-10-12T15:15:00Z"
+    heartbeat_at: "2026-10-12T15:50:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/sales-partner/sales-partner-notice.service.ts"
-      - "apps/api/src/modules/sales-partner/sales-partner-notice-metrics.spec.ts"
-      - "apps/web/src/components/admin/sales-partners/SpNoticeDesk.tsx"
-      - "docs/reports/2026-10-12-sp-notice-live-metrics.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
+    file_claims: []
     notes: |
-      skill-top full. Additive activeAudienceCount; keep frozen audienceCount.
+      LIVE at d3daf79. Additive activeAudienceCount; keep frozen audienceCount.
       UI: live مخاطب primary + send snapshot caption; 45s visible poll.
     acceptance_criteria:
       - "list/publish/archive return activeAudienceCount = live ACTIVE count"
