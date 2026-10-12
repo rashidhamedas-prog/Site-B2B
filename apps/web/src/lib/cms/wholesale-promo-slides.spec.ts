@@ -24,6 +24,25 @@ assert((parsed[1]?.imageAlt || '').length > 20, 'jackets alt is descriptive');
 assert(parsed[0]?.headline.includes('بوتیکت'), 'headline matches banner offer');
 assert(parsed[1]?.headline.includes('کت'), 'jackets headline matches banner offer');
 
+const cmsOrdered = normalizeHeroSlides({
+  slides: [
+    {
+      headline: 'لایه فصل، ویترین شما',
+      imageUrl: '/banners/outerwear-2026/wholesale-desktop-9d541eef7362.webp',
+      mobileImageUrl: '/banners/outerwear-2026/wholesale-mobile-9d541eef7362.webp',
+      imageAlt: 'مدل با کاپشن زنانه قهوه‌ای لوزی‌دوزی‌شده تولیدی پوشاک ترنم',
+      presentation: 'overlay',
+      copySide: 'start',
+    },
+    ...WHOLESALE_PROMO_HERO_SLIDES,
+  ],
+});
+assert(cmsOrdered[0]?.headline.includes('ویترین شما'), 'wholesale CMS first slide is preserved');
+assert(
+  cmsOrdered[0]?.mobileImageUrl?.includes('wholesale-mobile'),
+  'wholesale mobile art direction parses'
+);
+
 const product = {
   headline: 'مدل‌های واقعی برای ویترین شما',
   imageUrl: '/banners/hero-product-2026-v2/wholesale-01.webp',
@@ -33,10 +52,7 @@ const applied = applyWholesalePromoHeroSlides(normalizeHeroSlides({ slides: [pro
 assert(applied.length === 3, 'prepends ahead of product slides');
 assert(applied[0]?.imageUrl === WHOLESALE_PROMO_PARTNERSHIP_SLIDE.imageUrl, 'partnership is first');
 assert(applied[1]?.imageUrl === WHOLESALE_PROMO_JACKETS_SLIDE.imageUrl, 'jackets is second');
-assert(
-  applyWholesalePromoHeroSlides(applied).length === 3,
-  'idempotent apply does not duplicate',
-);
+assert(applyWholesalePromoHeroSlides(applied).length === 3, 'idempotent apply does not duplicate');
 assert(isWholesalePromoHeroAsset(WHOLESALE_PROMO_PARTNERSHIP_SLIDE.imageUrl), 'asset match');
 
 console.log('wholesale-promo-slides.spec.ts: OK');

@@ -1,3 +1,12 @@
+## 2026-10-12 — بنر رویه تک و عمده [TASK-20261012-001]
+
+- چهار WebP سبک از تصاویر واقعی محصول: تک شتری و عمده قهوه‌ای؛ desktop `1920×560` و mobile `1200×960`، حداکثر 29.4KB.
+- فایل Figma چهار frame دارد؛ متن و CTA در HTML مانده و داخل bitmap حک نشده است.
+- ترتیب hero از CMS مرجع است؛ کمپین runtime دیگر اسلاید ادمین را عقب نمی‌زند.
+- media مشترک: اسلاید صفر eager/high؛ بعدی‌ها lazy/auto؛ preload دستی viewport-mismatched حذف شد.
+- تست‌های policy، normalization و DOM media سبز؛ tsc وب سبز؛ reviewer مستقل PASS.
+- گزارش: `docs/reports/2026-10-12-dual-channel-outerwear-heroes.md`
+
 ## 2026-10-12 — هات‌فیکس crash صفحه کانال‌های انتشار
 
 - ریشه: `useEffect` تب پیش‌فرض بعد از `if (loading && !status) return` → نقض Rules of Hooks و `error.tsx` در پروداکشن.

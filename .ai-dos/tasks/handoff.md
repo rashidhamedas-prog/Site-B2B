@@ -2,6 +2,20 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T13:35:00Z — TASK-20261012-001 dual-channel heroes pre-deploy
+
+- Owner: `cursor:implementer-TASK-20261012-001`; branch/worktree: `feat/TASK-20261012-001-dual-hero` / `D:/proje/Site-B2B-dual-hero`.
+- Scope: real-product retail/wholesale homepage hero artwork, CMS-authoritative order, responsive media/LCP contract, Figma, admin publication.
+- Assets: retail/wholesale desktop `1920×560`, mobile `1200×960`, WebP 19,470–29,324 bytes; public and archive copies.
+- Figma: `https://www.figma.com/design/yoWEk4wuQNRjU3wUU3hVdn`.
+- Code: removed runtime campaign injection from standard retail/wholesale heroes; extracted `StorefrontHeroMedia`; no manual preload; CMS alt in both channels.
+- Validation: page policy spec PASS; retail/wholesale slide specs PASS; DOM media spec PASS; web tsc PASS; diff check PASS.
+- Build: compile/type validation passed, but static generation failed after unrelated 60s timeouts on `/portal/register` and multiple admin/portal routes; hero routes were not the reported failure.
+- Review: independent PASS after exact-zero manual preload assertion; no blocker.
+- Baseline: health + `.ir` + `.com` 200; current public homes each had one image preload.
+- Next: build, commit/push/deploy; save the new slide as position 0 in `RETAIL/home` and `WHOLESALE/home`; read-back/revalidate; live browser/network smoke.
+- Shared governance files were append-only; CMS API and stale omnichannel claims untouched.
+
 ## 2026-10-12T16:30:00Z — Hotfix /admin/omnichannel crash (Rules of Hooks)
 
 - Root: default-view `useEffect` ran after `if (loading && !status) return` → React hooks mismatch → production `error.tsx`.

@@ -20,12 +20,12 @@ assert(parsed[0]?.overlayTone === 'light', 'light overlay tone');
 assert(parsed[0]?.presentation === 'artwork', 'artwork presentation');
 assert((parsed[0]?.imageAlt || '').length > 20, 'descriptive alt');
 assert(parsed[0]?.ctaHref === '/products', 'digipay stays on retail catalog');
-assert(!parsed[0]?.headline || parsed[0].imageUrl !== parsed[0].headline, 'text is not the image url');
-assert(isLightHeroOverlay(parsed[0]!), 'artwork light still uses light overlay on mobile');
 assert(
-  parsed[0]?.imageUrl === DIGIPAY_RETAIL_HERO_IMAGE,
-  'desktop plate path',
+  !parsed[0]?.headline || parsed[0].imageUrl !== parsed[0].headline,
+  'text is not the image url'
 );
+assert(isLightHeroOverlay(parsed[0]!), 'artwork light still uses light overlay on mobile');
+assert(parsed[0]?.imageUrl === DIGIPAY_RETAIL_HERO_IMAGE, 'desktop plate path');
 
 const coats = normalizeHeroSlides({ slides: [PRIMA_NEGIN_RETAIL_HERO_SLIDE] });
 assert(coats[0]?.ctaHref === '/category/women-coats', 'prima/negin stay on retail coats');
@@ -35,6 +35,26 @@ assert(coats[0]?.presentation === 'artwork', 'prima/negin artwork');
 assert((coats[0]?.imageAlt || '').includes('پریما'), 'alt names the models');
 assert(!isLightHeroOverlay(coats[0]!), 'dark artwork is not light');
 
+const cmsOrdered = normalizeHeroSlides({
+  slides: [
+    {
+      headline: 'لایه‌ای گرم، استایلی آرام',
+      imageUrl: '/banners/outerwear-2026/retail-desktop-180617246c9c.webp',
+      mobileImageUrl: '/banners/outerwear-2026/retail-mobile-180617246c9c.webp',
+      imageAlt: 'مدل با کاپشن زنانه شتری لوزی‌دوزی‌شده پوشاک ترنم در استودیو',
+      presentation: 'overlay',
+      copySide: 'start',
+    },
+    DIGIPAY_RETAIL_HERO_SLIDE,
+  ],
+});
+assert(cmsOrdered[0]?.headline.includes('استایلی آرام'), 'retail CMS first slide is preserved');
+assert(
+  cmsOrdered[0]?.mobileImageUrl?.includes('retail-mobile'),
+  'retail mobile art direction parses'
+);
+assert(resolveHeroCopySide(cmsOrdered[0]!) === 'start', 'retail copy stays on RTL start');
+
 const product = {
   headline: 'آبیِ آرام برای هر روز شما',
   imageUrl: '/banners/hero-product-2026-v2/retail-01.webp',
@@ -42,13 +62,13 @@ const product = {
 };
 const prepended = prependUniqueHeroSlide(
   normalizeHeroSlides({ slides: [product] }),
-  DIGIPAY_RETAIL_HERO_SLIDE,
+  DIGIPAY_RETAIL_HERO_SLIDE
 );
 assert(prepended.length === 2, 'prepends ahead of product slides');
 assert(prepended[0]?.imageUrl === DIGIPAY_RETAIL_HERO_SLIDE.imageUrl, 'digipay is first');
 assert(
   prependUniqueHeroSlide(prepended, DIGIPAY_RETAIL_HERO_SLIDE).length === 2,
-  'idempotent prepend',
+  'idempotent prepend'
 );
 
 const replaced = applyRetailCampaignHeroSlides(
@@ -61,7 +81,7 @@ const replaced = applyRetailCampaignHeroSlides(
       },
       product,
     ],
-  }),
+  })
 );
 assert(replaced.length === 3, 'campaign pair plus remaining product slide');
 assert(replaced[0]?.imageUrl === DIGIPAY_RETAIL_HERO_SLIDE.imageUrl, 'hashed digipay first');
