@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import {
   SpButton,
   SpEmptyState,
+  SpKpi,
   SpRefreshButton,
   SpSection,
   SpSkeleton,
@@ -24,13 +25,19 @@ type AdminNotice = {
   linkLabel: string | null;
   linkUrl: string | null;
   tone: Tone;
+  /** Frozen ACTIVE count at publish time. */
   audienceCount: number;
+  /** Live ACTIVE roster when the admin list was fetched. */
+  activeAudienceCount: number;
   seenCount: number;
   dismissedCount: number;
   publishedAt: string;
   expiresAt: string | null;
   archivedAt: string | null;
 };
+
+const LIVE_POLL_MS = 45_000;
+const FOCUS_REFRESH_MIN_MS = 15_000;
 
 /** Match SalesPartnerNotices partner UI labels/styles. */
 const TONE_LABEL: Record<Tone, string> = {
@@ -139,30 +146,45 @@ function NoticeBannerPreview({
 }
 
 function MetricTriplet({
-  audience,
+  liveAudience,
+  sentAudience,
   seen,
   dismissed,
+  archived,
 }: {
-  audience: number;
+  liveAudience: number;
+  sentAudience: number;
   seen: number;
   dismissed: number;
+  archived: boolean;
 }) {
   const items = [
-    { label: 'مخاطب', value: audience },
+    { label: 'مخاطب', value: liveAudience },
     { label: 'دیده', value: seen },
     { label: 'بسته', value: dismissed },
   ];
+  const sentLabel = sentAudience.toLocaleString('fa-IR');
+  const liveLabel = liveAudience.toLocaleString('fa-IR');
   return (
-    <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
-      {items.map((item) => (
-        <div key={item.label} className="flex items-baseline gap-1">
-          <dt>{item.label}</dt>
-          <dd className="font-medium tabular-nums text-stone-900">
-            {item.value.toLocaleString('fa-IR')}
-          </dd>
-        </div>
-      ))}
-    </dl>
+    <div className="space-y-1">
+      <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-600">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-baseline gap-1">
+            <dt>{item.label}</dt>
+            <dd className="font-medium tabular-nums text-stone-900">
+              {item.value.toLocaleString('fa-IR')}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-[11px] leading-5 text-stone-500">
+        {archived
+          ? `${sentLabel} مخاطب در لحظهٔ ارسال · آمار تا زمان برداشتن`
+          : liveAudience === sentAudience
+            ? `${sentLabel} مخاطب در لحظهٔ ارسال`
+            : `${sentLabel} مخاطب در لحظهٔ ارسال (الان ${liveLabel} همکار فعال)`}
+      </p>
+    </div>
   );
 }
 
@@ -182,23 +204,67 @@ export function SpNoticeDesk() {
   const [status, setStatus] = useState('');
   const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('active');
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [liveActivePartners, setLiveActivePartners] = useState<number | null>(null);
   const confirmSendPanelRef = useRef<HTMLDivElement>(null);
   const confirmArchivePanelRef = useRef<HTMLDivElement>(null);
+  const lastFetchAtRef = useRef(0);
+  const loadInFlightRef = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (mode: 'initial' | 'soft' = 'soft') => {
+    if (loadInFlightRef.current) return;
+    loadInFlightRef.current = true;
+    if (mode === 'initial') setLoading(true);
     setError('');
     try {
-      const next = await apiClient.get<AdminNotice[]>('/admin/sales-partners/notices');
-      setRows(next);
+      const next = await apiClient.get<{ items: AdminNotice[]; activeAudienceCount: number } | AdminNotice[]>(
+        '/admin/sales-partners/notices',
+      );
+      const items = Array.isArray(next) ? next : next.items;
+      const live = Array.isArray(next)
+        ? next.find((row) => typeof row.activeAudienceCount === 'number')?.activeAudienceCount
+        : next.activeAudienceCount;
+      setRows(items);
+      if (typeof live === 'number') setLiveActivePartners(live);
+      lastFetchAtRef.current = Date.now();
+      setLastSyncedAt(new Date());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خواندن اطلاعیه‌ها ناموفق بود');
     } finally {
       setLoading(false);
+      loadInFlightRef.current = false;
     }
   }, []);
 
+  const refreshIfStale = useCallback(() => {
+    if (Date.now() - lastFetchAtRef.current < FOCUS_REFRESH_MIN_MS) return;
+    void load('soft');
+  }, [load]);
+
   useEffect(() => {
-    void load();
+    void load('initial');
+  }, [load]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshIfStale();
+    };
+    const onFocus = () => refreshIfStale();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [refreshIfStale]);
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== 'visible') return;
+      void load('soft');
+    };
+    const id = window.setInterval(tick, LIVE_POLL_MS);
+    return () => window.clearInterval(id);
   }, [load]);
 
   useEffect(() => {
@@ -218,6 +284,23 @@ export function SpNoticeDesk() {
 
   const activeCount = useMemo(() => rows.filter((row) => !row.archivedAt).length, [rows]);
   const archivedCount = useMemo(() => rows.filter((row) => Boolean(row.archivedAt)).length, [rows]);
+  const activeSeenTotal = useMemo(
+    () => rows.filter((row) => !row.archivedAt).reduce((sum, row) => sum + row.seenCount, 0),
+    [rows],
+  );
+  const activeDismissedTotal = useMemo(
+    () => rows.filter((row) => !row.archivedAt).reduce((sum, row) => sum + row.dismissedCount, 0),
+    [rows],
+  );
+  const lastSyncedLabel = useMemo(() => {
+    if (!lastSyncedAt) return null;
+    return lastSyncedAt.toLocaleTimeString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Asia/Tehran',
+    });
+  }, [lastSyncedAt]);
 
   function resetForm() {
     setTitle('');
@@ -282,13 +365,7 @@ export function SpNoticeDesk() {
         title="میز اطلاع‌رسانی"
         description="بنویسید، همان لحظه ببینید همکار چه می‌بیند، بعد با تأیید برای همه همکاران فعال بفرستید."
         action={
-          <SpRefreshButton
-            busy={loading || busy}
-            onClick={() => {
-              setLoading(true);
-              void load();
-            }}
-          />
+          <SpRefreshButton busy={loading || busy} onClick={() => void load(loading ? 'initial' : 'soft')} />
         }
       >
         <div className="grid gap-5 lg:grid-cols-5">
@@ -434,7 +511,11 @@ export function SpNoticeDesk() {
             </div>
 
             <p className="rounded-2xl border border-stone-200 bg-stone-50/80 px-3 py-2 text-xs leading-6 text-stone-600">
-              مخاطب: همه همکاران فعال — بالای پنل می‌ماند تا خودشان «خواندم» بزنند.
+              مخاطب ارسال = همه همکاران فعال در همین لحظه
+              {liveActivePartners != null
+                ? ` (الان ${liveActivePartners.toLocaleString('fa-IR')} نفر)`
+                : ''}
+              . اگر بعداً همکار جدید اضافه شود، عدد ارسال همان می‌ماند؛ آمار دیده/بسته و مخاطب زنده در لیست به‌روز می‌شود.
             </p>
 
             {error ? (
@@ -495,8 +576,33 @@ export function SpNoticeDesk() {
 
       <SpSection
         title="اطلاعیه‌های فرستاده‌شده"
-        description="«دیده» یعنی وارد پنل شده و اطلاعیه برایشان نمایش داده شده؛ «بسته» یعنی خواندم زده‌اند."
+        description="مخاطب در کارت‌ها تعداد همکاران فعال الان است (زنده). عدد لحظهٔ ارسال زیرش می‌ماند. دیده و بسته هم زنده به‌روز می‌شوند."
       >
+        {!loading && liveActivePartners != null ? (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SpKpi
+              accent
+              label="همکاران فعال الان"
+              value={liveActivePartners.toLocaleString('fa-IR')}
+              hint="مخاطب فعلی پنل — زنده"
+            />
+            <SpKpi
+              label="دیدهٔ کل (فعال)"
+              value={activeSeenTotal.toLocaleString('fa-IR')}
+              hint="از آخرین تازه‌سازی"
+            />
+            <SpKpi
+              label="بسته‌شدهٔ کل (فعال)"
+              value={activeDismissedTotal.toLocaleString('fa-IR')}
+              hint="«خواندم» زده‌اند"
+            />
+          </div>
+        ) : null}
+        {lastSyncedLabel ? (
+          <p className="text-[11px] text-stone-500">
+            آخرین به‌روزرسانی · {lastSyncedLabel} · خودکار هر ۴۵ ثانیه وقتی این صفحه باز است
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           {(
             [
@@ -569,9 +675,17 @@ export function SpNoticeDesk() {
                   <p className="mt-2 text-xs text-stone-500">{formatSpDate(row.publishedAt)}</p>
                   <div className="mt-2">
                     <MetricTriplet
-                      audience={row.audienceCount}
+                      liveAudience={
+                        row.archivedAt
+                          ? row.audienceCount
+                          : typeof row.activeAudienceCount === 'number'
+                            ? row.activeAudienceCount
+                            : row.audienceCount
+                      }
+                      sentAudience={row.audienceCount}
                       seen={row.seenCount}
                       dismissed={row.dismissedCount}
+                      archived={Boolean(row.archivedAt)}
                     />
                   </div>
                 </div>

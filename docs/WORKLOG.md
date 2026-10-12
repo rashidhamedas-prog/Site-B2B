@@ -1,3 +1,9 @@
+## 2026-10-12 — آمار زنده اطلاعیه همکاران [TASK-20261012-004]
+
+- API: `activeAudienceCount` زنده + envelope لیست `{ items, activeAudienceCount }`؛ `audienceCount` زمان ارسال حفظ می‌شود.
+- UI: مخاطب = زنده؛ KPI همکاران فعال؛ soft poll هر ۴۵ثانیه وقتی تب دیده می‌شود.
+- گزارش: `docs/reports/2026-10-12-sp-notice-live-metrics.md`
+
 ## 2026-10-12 — بازطراحی میز اطلاع‌رسانی همکاران [TASK-20261012-003] LIVE
 
 - تب ادمین notices: compose + پیش‌نمایش زنده بنر همکار + تأیید قبل از ارسال + تاریخچه فعال/آرشیو.

@@ -1,5 +1,36 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261012-004"
+    title: "Live sales-partner notice admin metrics"
+    status: "in_progress"
+    risk: "low"
+    owner: "cursor:implementer-TASK-20261012-004"
+    roles:
+      architect: "cursor:api-ui-specialists"
+      implementer: "cursor:implementer-TASK-20261012-004"
+      reviewer: "required-after-diff"
+      security: "not-required-additive-admin-read"
+    branch: "ai/TASK-20261012-004-live-notice-metrics"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-12T15:15:00Z"
+    heartbeat_at: "2026-10-12T15:15:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner-notice.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-notice-metrics.spec.ts"
+      - "apps/web/src/components/admin/sales-partners/SpNoticeDesk.tsx"
+      - "docs/reports/2026-10-12-sp-notice-live-metrics.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    notes: |
+      skill-top full. Additive activeAudienceCount; keep frozen audienceCount.
+      UI: live مخاطب primary + send snapshot caption; 45s visible poll.
+    acceptance_criteria:
+      - "list/publish/archive return activeAudienceCount = live ACTIVE count"
+      - "UI shows live audience (~75) with send-time snapshot retained"
+      - "soft poll when tab visible; no skeleton flash on poll"
+      - "spec + web/api tsc green; deploy verified"
   - id: "TASK-20261012-003"
     title: "Sales partners notice desk 2026 redesign"
     status: "done"

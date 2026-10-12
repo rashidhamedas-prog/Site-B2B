@@ -42,7 +42,7 @@ export class SalesPartnerNoticeService {
     const now = new Date();
     const prepared = prepareSalesPartnerNotice(raw, now);
     if (prepared.ok === false) throw new BadRequestException(prepared.error);
-    const audienceCount = await this.profiles.count({ where: { status: 'ACTIVE' } });
+    const audienceCount = await this.countActivePartners();
     const row = await this.notices.save(
       this.notices.create({
         ...prepared.value,
@@ -52,13 +52,21 @@ export class SalesPartnerNoticeService {
         createdByUserId: actorUserId || null,
       }),
     );
-    return this.toAdmin(row, 0, 0);
+    return this.toAdmin(row, 0, 0, audienceCount);
   }
 
   async listAdmin() {
     const rows = await this.notices.find({ order: { publishedAt: 'DESC' }, take: 40 });
-    const counts = await this.receiptCounts(rows.map((row) => row.id));
-    return rows.map((row) => this.toAdmin(row, counts.get(row.id)?.seen ?? 0, counts.get(row.id)?.dismissed ?? 0));
+    const [counts, activeAudienceCount] = await Promise.all([
+      this.receiptCounts(rows.map((row) => row.id)),
+      this.countActivePartners(),
+    ]);
+    return {
+      activeAudienceCount,
+      items: rows.map((row) =>
+        this.toAdmin(row, counts.get(row.id)?.seen ?? 0, counts.get(row.id)?.dismissed ?? 0, activeAudienceCount),
+      ),
+    };
   }
 
   async archive(id: string) {
@@ -68,8 +76,16 @@ export class SalesPartnerNoticeService {
       row.archivedAt = new Date();
       await this.notices.save(row);
     }
-    const counts = await this.receiptCounts([row.id]);
-    return this.toAdmin(row, counts.get(row.id)?.seen ?? 0, counts.get(row.id)?.dismissed ?? 0);
+    const [counts, activeAudienceCount] = await Promise.all([
+      this.receiptCounts([row.id]),
+      this.countActivePartners(),
+    ]);
+    return this.toAdmin(
+      row,
+      counts.get(row.id)?.seen ?? 0,
+      counts.get(row.id)?.dismissed ?? 0,
+      activeAudienceCount,
+    );
   }
 
   async feed(salesPartnerId: string) {
@@ -173,11 +189,21 @@ export class SalesPartnerNoticeService {
     };
   }
 
-  private toAdmin(row: SalesPartnerNoticeEntity, seenCount: number, dismissedCount: number) {
+  private async countActivePartners() {
+    return this.profiles.count({ where: { status: 'ACTIVE' } });
+  }
+
+  private toAdmin(
+    row: SalesPartnerNoticeEntity,
+    seenCount: number,
+    dismissedCount: number,
+    activeAudienceCount: number,
+  ) {
     return {
       ...this.toPartner(row),
       audience: 'ACTIVE' as const,
       audienceCount: row.audienceCount,
+      activeAudienceCount,
       seenCount,
       dismissedCount,
       archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
