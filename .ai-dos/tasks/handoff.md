@@ -10,6 +10,12 @@ Append newest entries at the top. Never erase another agent's record.
 - Status remains `in_progress` (not done). Open: formal close + claims release; logged-in admin save/read-back not re-recorded; post-deploy browser network/LCP (no duplicate preload) not re-run.
 - Docs-only sync; no commit unless asked.
 
+## 2026-10-12T15:05:00Z — TASK-20261012-003 LIVE
+
+- Commit `95c3fb76` on `origin/master` (+ branch `ai/TASK-20261012-003-sp-notice-desk`).
+- VPS auto-deploy complete at `95c3fb7`; API health OK.
+- Claims released (status done). User hard-refresh admin → همکاران → اطلاع‌رسانی.
+
 ## 2026-10-12T14:25:00Z — TASK-20261012-003 SpNoticeDesk 2026 redesign
 
 - Owner: `cursor:implementer-TASK-20261012-003`. Depth: skill-top full.
@@ -17,7 +23,7 @@ Append newest entries at the top. Never erase another agent's record.
 - Code: `SpNoticeDesk.tsx` — compose|preview, confirm-send + focus, optional link/expiry, history active/archived, partner TONE_*.
 - Skills: ECC frontend-design-direction, frontend-design, ui-ux-product-design. Slack search empty; chat.postMessage N/A.
 - Validation: `apps/web` tsc exit 0.
-- Next: user smoke on `/admin` → همکاران → اطلاع‌رسانی; commit/deploy when asked.
+- Shipped: commit + push master + VPS deploy (see LIVE entry above).
 - Shared WORKLOG/handoff/active append-only vs 001/002.
 
 ## 2026-10-12T17:30:00Z — TASK-20261012-002 outbox تکی mislabel + sales_partner ACK
