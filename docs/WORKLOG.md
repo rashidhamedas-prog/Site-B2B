@@ -1,3 +1,9 @@
+## 2026-10-12 — بازطراحی میز اطلاع‌رسانی همکاران [TASK-20261012-003]
+
+- تب ادمین notices: compose + پیش‌نمایش زنده بنر همکار + تأیید قبل از ارسال + تاریخچه فعال/آرشیو.
+- برچسب اهمیت هم‌راستا با پنل همکار: اطلاع / مهم / فوری؛ API بدون تغییر.
+- گزارش: `docs/reports/2026-10-12-sp-notice-desk-redesign.md`
+
 ## 2026-10-12 — clear-waiting هم‌راستا با فیلتر کانال پیکربندی‌شده
 
 - شرط review: خالی‌کردن صف کانال دیگر همهٔ `product.*` تکی را وقتی فقط ربات عمده دارید لغو نمی‌کند (`channels[]` + SQL).
@@ -17,6 +23,8 @@
 - ترتیب hero از CMS مرجع است؛ کمپین runtime دیگر اسلاید ادمین را عقب نمی‌زند.
 - media مشترک: اسلاید صفر eager/high؛ بعدی‌ها lazy/auto؛ preload دستی viewport-mismatched حذف شد.
 - تست‌های policy، normalization و DOM media سبز؛ tsc وب سبز؛ reviewer مستقل PASS.
+- Ship: PR #81 → `e48db3f7`؛ VPS `9b05535` (ancestor OK)؛ health 200. HTML عمومی `.ir` و `.com` هر دو outerwear-2026 slide 0 را نشان می‌دهند؛ WebPها 200.
+- باز: بستن رسمی تسک/آزادسازی claim؛ read-back ادمین ثبت‌نشده؛ smoke شبکه/LCP پس از deploy.
 - گزارش: `docs/reports/2026-10-12-dual-channel-outerwear-heroes.md`
 
 ## 2026-10-12 — هات‌فیکس crash صفحه کانال‌های انتشار

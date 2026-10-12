@@ -2,6 +2,24 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T14:50:00Z — TASK-20261012-001 docs sync (post-merge evidence)
+
+- Owner: `cursor:implementer-TASK-20261012-001`; worktree `D:/proje/Site-B2B-dual-hero`.
+- Merged: PR #81 → `e48db3f7` on master. VPS `/opt/taranom` tip `9b05535` (ancestor of `e48db3f7`); local health 200.
+- Live public smoke (this session): `/v1/health` 200; `.ir/` 200 with `retail-desktop/mobile-180617246c9c.webp`; `.com/` 200 with `wholesale-desktop/mobile-9d541eef7362.webp`; both static WebP 200.
+- Status remains `in_progress` (not done). Open: formal close + claims release; logged-in admin save/read-back not re-recorded; post-deploy browser network/LCP (no duplicate preload) not re-run.
+- Docs-only sync; no commit unless asked.
+
+## 2026-10-12T14:25:00Z — TASK-20261012-003 SpNoticeDesk 2026 redesign
+
+- Owner: `cursor:implementer-TASK-20261012-003`. Depth: skill-top full.
+- Parallel: design-direction + explore partner notice fidelity; independent review PASS WITH CONDITIONS → fixed.
+- Code: `SpNoticeDesk.tsx` — compose|preview, confirm-send + focus, optional link/expiry, history active/archived, partner TONE_*.
+- Skills: ECC frontend-design-direction, frontend-design, ui-ux-product-design. Slack search empty; chat.postMessage N/A.
+- Validation: `apps/web` tsc exit 0.
+- Next: user smoke on `/admin` → همکاران → اطلاع‌رسانی; commit/deploy when asked.
+- Shared WORKLOG/handoff/active append-only vs 001/002.
+
 ## 2026-10-12T17:30:00Z — TASK-20261012-002 outbox تکی mislabel + sales_partner ACK
 
 - Depth: skill-top full. Reclaimed AdminOmnichannel/outbox files from stale 005.
