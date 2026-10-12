@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261012-004"
     title: "Live sales-partner notice admin metrics"
-    status: "review"
+    status: "done"
     risk: "low"
     owner: "cursor:implementer-TASK-20261012-004"
     roles:
@@ -108,7 +108,7 @@ tasks:
       - "specs green; deploy verified"
   - id: "TASK-20261012-001"
     title: "Dual-channel outerwear homepage hero banners"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261012-001"
     roles:
@@ -119,9 +119,10 @@ tasks:
     branch: "feat/TASK-20261012-001-dual-hero"
     worktree: "D:/proje/Site-B2B-dual-hero"
     claimed_at: "2026-10-12T13:08:00Z"
-    heartbeat_at: "2026-10-12T14:50:00Z"
+    heartbeat_at: "2026-10-12T15:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/retail/RetailHero.tsx"
       - "apps/web/src/components/wholesale/HeroSection.tsx"
       - "apps/web/src/components/shared/StorefrontHeroMedia.tsx"
@@ -152,13 +153,9 @@ tasks:
       - "Focused hero specs, web typecheck/build, live health and both storefront smokes pass"
     notes: |
       skill-top full + seo-geo-architecture implement + banner-design + Figma.
-      Shared governance files overlap TASK-20261010-004/005; append-only and
-      preserve their entries. No CMS API edits; stale omnichannel CMS claims remain untouched.
-      2026-10-12 post-merge: PR #81 → e48db3f7 on master; VPS /opt/taranom 9b05535
-      (ancestor e48db3f7); health 200. Public HTML: .ir has retail-*-180617246c9c;
-      .com has wholesale-*-9d541eef7362; both WebP assets 200. Still in_progress —
-      no formal close/claims release; admin API read-back not re-logged; post-deploy
-      browser network/LCP (no duplicate preload) not re-run.
+      CLOSED 2026-10-12: PR #81 e48db3f LIVE; admin CMS RETAIL/WHOLESALE home slide 0
+      saved (13:53Z / 13:52Z); revalidate WHOLESALE 200; browser QA eager/high + no
+      image preload; partnership false-alarm was autoplay later slides; claims released.
   - id: "TASK-20261010-005"
     title: "Omnichannel clear waiting queue + requeue by category"
     status: "in_progress"
