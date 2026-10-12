@@ -1,17 +1,16 @@
 'use client';
 
-import Image, { getImageProps } from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui';
 import { ArrowLeft } from 'lucide-react';
 import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
+import { StorefrontHeroMedia } from '@/components/shared/StorefrontHeroMedia';
 import {
   normalizeHeroSlides,
   resolveAutoplayMs,
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
-import { applyWholesalePromoHeroSlides } from '@/lib/cms/wholesale-promo-slides';
 import { isHomePageKey, resolvePageHeroSlides } from '@/lib/cms/page-hero-policy';
 import { useCmsPageScope } from '@/lib/cms/page-scope';
 import { toPersianDigits } from '@taranom/persian-utils';
@@ -32,89 +31,6 @@ const WHOLESALE_FALLBACK: HeroSlide = {
 
 export type HeroSectionProps = HeroFlatProps;
 
-function isLocalStaticAsset(src: string): boolean {
-  return src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/_next/');
-}
-
-function WholesaleHeroMedia({
-  src,
-  mobileSrc,
-  alt,
-  className,
-  priority,
-}: {
-  src: string;
-  mobileSrc?: string;
-  alt: string;
-  className: string;
-  priority: boolean;
-}) {
-  if (isLocalStaticAsset(src)) {
-    const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
-    return (
-      <>
-        {priority ? (
-          mobile ? (
-            <link
-              rel="preload"
-              as="image"
-              imageSrcSet={`${mobile} 900w, ${src} 1920w`}
-              imageSizes="100vw"
-              fetchPriority="high"
-            />
-          ) : (
-            <link rel="preload" as="image" href={src} fetchPriority="high" />
-          )
-        ) : null}
-        <picture>
-          {/* Mobile-first: default img is the LCP plate on phones. */}
-          {mobile ? <source media="(min-width: 768px)" srcSet={src} /> : null}
-          {/* Local static WebP — skip Next optimizer so 24:7 plates are not re-encoded. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mobile || src}
-            alt={alt}
-            fetchPriority={priority ? 'high' : 'auto'}
-            decoding="async"
-            loading={priority ? 'eager' : 'lazy'}
-            className={`absolute inset-0 h-full w-full ${className}`}
-          />
-        </picture>
-      </>
-    );
-  }
-
-  return (
-    <picture>
-      {mobileSrc ? (
-        <source
-          media="(max-width: 767px)"
-          srcSet={
-            getImageProps({
-              src: mobileSrc,
-              alt: '',
-              fill: true,
-              sizes: '100vw',
-              quality: 70,
-            }).props.srcSet
-          }
-        />
-      ) : null}
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        priority={priority}
-        fetchPriority={priority ? 'high' : 'auto'}
-        loading={priority ? 'eager' : 'lazy'}
-        quality={75}
-        sizes="100vw"
-        className={className}
-      />
-    </picture>
-  );
-}
-
 function WholesaleSlideCopy({
   slide,
   artwork = false,
@@ -131,10 +47,7 @@ function WholesaleSlideCopy({
     <div className="max-w-3xl">
       {slide.brandEyebrow ? (
         <div className="mb-4 sm:mb-5">
-          <span
-            className="mb-3 block h-0.5 w-10 rounded-full bg-secondary"
-            aria-hidden
-          />
+          <span className="bg-secondary mb-3 block h-0.5 w-10 rounded-full" aria-hidden />
           <p className="text-secondary text-sm font-semibold tracking-[0.18em]">
             {slide.brandEyebrow}
           </p>
@@ -192,9 +105,7 @@ export function HeroSection(props: HeroSectionProps) {
   const { pageKey } = useCmsPageScope();
   const isHome = isHomePageKey(pageKey);
   const slides = resolvePageHeroSlides(
-    pageKey,
-    normalizeHeroSlides(props, isHome ? WHOLESALE_FALLBACK : undefined),
-    applyWholesalePromoHeroSlides,
+    normalizeHeroSlides(props, isHome ? WHOLESALE_FALLBACK : undefined)
   );
   if (!slides.length) return null;
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
@@ -225,10 +136,10 @@ export function HeroSection(props: HeroSectionProps) {
             }`}
             aria-hidden={!isActive}
           >
-            <WholesaleHeroMedia
+            <StorefrontHeroMedia
               src={s.imageUrl}
               mobileSrc={s.mobileImageUrl}
-              alt={s.presentation === 'artwork' ? s.imageAlt || '' : ''}
+              alt={s.imageAlt || ''}
               priority={isLcp}
               className="object-cover"
             />

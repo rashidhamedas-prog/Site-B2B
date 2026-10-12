@@ -4,15 +4,10 @@ export function isHomePageKey(pageKey: string | null | undefined): boolean {
   return String(pageKey || '').trim() === CMS_HOME_PAGE_KEY;
 }
 
-/** Home campaign plates are merchandising for `pageKey=home` only. */
-export function shouldInjectHomeCampaign(pageKey: string | null | undefined): boolean {
-  return isHomePageKey(pageKey);
-}
-
 export function resolveHeroImageUrl(
   pageKey: string | null | undefined,
   imageUrl: string | undefined,
-  homeFallback: string,
+  homeFallback: string
 ): string {
   const url = String(imageUrl || '').trim();
   if (url) return url;
@@ -20,11 +15,7 @@ export function resolveHeroImageUrl(
   return '';
 }
 
-export function resolvePageHeroSlides<T>(
-  pageKey: string | null | undefined,
-  slides: T[],
-  injectHomeCampaign: (slides: T[]) => T[],
-): T[] {
-  if (!shouldInjectHomeCampaign(pageKey)) return slides;
-  return injectHomeCampaign(slides);
+/** CMS order is authoritative; merchandising is saved and reordered in Admin. */
+export function resolvePageHeroSlides<T>(slides: T[]): T[] {
+  return slides;
 }

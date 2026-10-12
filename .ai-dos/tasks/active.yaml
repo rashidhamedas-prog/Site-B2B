@@ -1,5 +1,53 @@
 ﻿schema_version: 1
 tasks:
+  - id: "TASK-20261012-001"
+    title: "Dual-channel outerwear homepage hero banners"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261012-001"
+    roles:
+      architect: "cursor:implementer-TASK-20261012-001"
+      implementer: "cursor:implementer-TASK-20261012-001"
+      reviewer: "required-after-diff"
+      security: "not-required-static-media-and-storefront-rendering"
+    branch: "feat/TASK-20261012-001-dual-hero"
+    worktree: "D:/proje/Site-B2B-dual-hero"
+    claimed_at: "2026-10-12T13:08:00Z"
+    heartbeat_at: "2026-10-12T13:35:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/web/src/components/retail/RetailHero.tsx"
+      - "apps/web/src/components/wholesale/HeroSection.tsx"
+      - "apps/web/src/components/shared/StorefrontHeroMedia.tsx"
+      - "apps/web/src/components/shared/StorefrontHeroMedia.spec.tsx"
+      - "apps/web/src/lib/cms/page-hero-policy.ts"
+      - "apps/web/src/lib/cms/page-hero-policy.spec.mts"
+      - "apps/web/src/lib/cms/hero-slides.spec.ts"
+      - "apps/web/src/lib/cms/wholesale-promo-slides.spec.ts"
+      - "apps/web/public/banners/outerwear-2026/retail-desktop-180617246c9c.webp"
+      - "apps/web/public/banners/outerwear-2026/retail-mobile-180617246c9c.webp"
+      - "apps/web/public/banners/outerwear-2026/wholesale-desktop-9d541eef7362.webp"
+      - "apps/web/public/banners/outerwear-2026/wholesale-mobile-9d541eef7362.webp"
+      - "assets/banners/hero-2026/retail-desktop-180617246c9c.webp"
+      - "assets/banners/hero-2026/retail-mobile-180617246c9c.webp"
+      - "assets/banners/hero-2026/wholesale-desktop-9d541eef7362.webp"
+      - "assets/banners/hero-2026/wholesale-mobile-9d541eef7362.webp"
+      - "docs/reports/2026-10-12-dual-channel-outerwear-heroes.md"
+      - "docs/WORKLOG.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+      - ".ai-dos/project/status.md"
+    acceptance_criteria:
+      - "Retail and wholesale each use the approved real-product image as CMS slide 0"
+      - "CMS slide order is authoritative; runtime campaign injection no longer changes slide 0"
+      - "Desktop 1920x560 and mobile 1200x960 WebP assets are cache-busted and <=400KB"
+      - "Only slide 0 is eager/high-priority and viewport-specific art direction causes no duplicate preload"
+      - "Admin save/read-back/revalidate succeeds independently for RETAIL/home and WHOLESALE/home"
+      - "Focused hero specs, web typecheck/build, live health and both storefront smokes pass"
+    notes: |
+      skill-top full + seo-geo-architecture implement + banner-design + Figma.
+      Shared governance files overlap TASK-20261010-004/005; append-only and
+      preserve their entries. No CMS API edits; stale omnichannel CMS claims remain untouched.
   - id: "TASK-20261010-005"
     title: "Omnichannel clear waiting queue + requeue by category"
     status: "in_progress"

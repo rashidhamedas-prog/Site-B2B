@@ -1,11 +1,10 @@
 'use client';
 
-import Image, { getImageProps } from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { HeroCarouselControls, useHeroCarousel } from '@/components/shared/HeroCarousel';
+import { StorefrontHeroMedia } from '@/components/shared/StorefrontHeroMedia';
 import {
-  applyRetailCampaignHeroSlides,
   isLightHeroOverlay,
   normalizeHeroSlides,
   resolveAutoplayMs,
@@ -13,7 +12,11 @@ import {
   type HeroFlatProps,
   type HeroSlide,
 } from '@/lib/cms/hero-slides';
-import { isHomePageKey, resolveHeroImageUrl, resolvePageHeroSlides } from '@/lib/cms/page-hero-policy';
+import {
+  isHomePageKey,
+  resolveHeroImageUrl,
+  resolvePageHeroSlides,
+} from '@/lib/cms/page-hero-policy';
 import { useCmsPageScope } from '@/lib/cms/page-scope';
 import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
 
@@ -30,92 +33,6 @@ const RETAIL_FALLBACK: HeroSlide = {
 };
 
 export type RetailHeroProps = HeroFlatProps;
-
-function isLocalStaticAsset(src: string): boolean {
-  return src.startsWith('/') && !src.startsWith('//') && !src.startsWith('/_next/');
-}
-
-function RetailHeroMedia({
-  src,
-  mobileSrc,
-  alt,
-  className,
-  priority,
-}: {
-  src: string;
-  mobileSrc?: string;
-  alt: string;
-  className: string;
-  priority: boolean;
-}) {
-  // All local hero plates are already 1920×560 WebP. Next optimizer q=75
-  // re-encodes slides 1+ and is what made remaining banners look soft.
-  if (isLocalStaticAsset(src)) {
-    const mobile = mobileSrc && isLocalStaticAsset(mobileSrc) ? mobileSrc : undefined;
-    return (
-      <>
-        {priority ? (
-          mobile ? (
-            <link
-              rel="preload"
-              as="image"
-              // Single responsive preload — avoids competing high-priority
-              // fetches of both mobile + desktop plates on phones (field LCP).
-              imageSrcSet={`${mobile} 900w, ${src} 1920w`}
-              imageSizes="100vw"
-              fetchPriority="high"
-            />
-          ) : (
-            <link rel="preload" as="image" href={src} fetchPriority="high" />
-          )
-        ) : null}
-        <picture>
-          {/* Mobile-first: default img is the LCP plate on phones. */}
-          {mobile ? <source media="(min-width: 768px)" srcSet={src} /> : null}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mobile || src}
-            alt={alt}
-            fetchPriority={priority ? 'high' : 'auto'}
-            loading={priority ? 'eager' : 'lazy'}
-            decoding="async"
-            className={`absolute inset-0 h-full w-full ${className}`}
-          />
-        </picture>
-      </>
-    );
-  }
-
-  return (
-    <picture>
-      {mobileSrc ? (
-        <source
-          media="(max-width: 767px)"
-          srcSet={
-            getImageProps({
-              src: mobileSrc,
-              alt: '',
-              fill: true,
-              sizes: '100vw',
-              quality: 70,
-            }).props.srcSet
-          }
-        />
-      ) : null}
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        priority={priority}
-        fetchPriority={priority ? 'high' : 'auto'}
-        loading={priority ? 'eager' : 'lazy'}
-        quality={75}
-        sizes="100vw"
-        className={className}
-      />
-    </picture>
-  );
-}
 
 function RetailSlideCopy({
   slide,
@@ -171,10 +88,8 @@ function RetailSlideCopy({
       ) : null}
 
       <Title
-        className={`break-words text-pretty text-[clamp(1.55rem,4.8vw,2.75rem)] font-extrabold leading-[1.22] tracking-tight ${
-          light
-            ? 'text-[#123A6B]'
-            : 'text-white [text-shadow:0_2px_28px_rgba(0,0,0,0.35)]'
+        className={`text-pretty break-words text-[clamp(1.55rem,4.8vw,2.75rem)] font-extrabold leading-[1.22] tracking-tight ${
+          light ? 'text-[#123A6B]' : 'text-white [text-shadow:0_2px_28px_rgba(0,0,0,0.35)]'
         }`}
       >
         {renderHeadline()}
@@ -217,9 +132,7 @@ export function RetailHero(props: RetailHeroProps) {
   const { pageKey } = useCmsPageScope();
   const isHome = isHomePageKey(pageKey);
   const slides = resolvePageHeroSlides(
-    pageKey,
-    normalizeHeroSlides(props, isHome ? RETAIL_FALLBACK : undefined),
-    applyRetailCampaignHeroSlides,
+    normalizeHeroSlides(props, isHome ? RETAIL_FALLBACK : undefined)
   );
   if (!slides.length) return null;
   const autoplayMs = resolveAutoplayMs(props.autoplayMs);
@@ -268,7 +181,7 @@ export function RetailHero(props: RetailHeroProps) {
             }`}
             aria-hidden={!isActive}
           >
-            <RetailHeroMedia
+            <StorefrontHeroMedia
               src={src}
               mobileSrc={s.mobileImageUrl}
               alt={s.imageAlt || ''}
@@ -344,7 +257,7 @@ export function RetailHero(props: RetailHeroProps) {
       >
         <div
           key={`copy-${carousel.index}`}
-          className="animate-fade-in motion-reduce:animate-none min-w-0 w-full max-w-xl lg:w-[46%]"
+          className="animate-fade-in w-full min-w-0 max-w-xl motion-reduce:animate-none lg:w-[46%]"
         >
           <RetailSlideCopy
             slide={slide}
