@@ -1,3 +1,9 @@
+## 2026-10-13 — ارسال گروهی پیامک شخصی‌سازی‌شده بازاریابی [TASK-20261013-001]
+
+- تب ادمین «ارسال گروهی»: انتخاب مشتریان تکی/عمده جدا، پیش‌نمایش شخصی، کاناری، تأیید ارسال زنده.
+- API: `POST /marketing/bulk/preview|compose`؛ کمپین فقط با `customerIds`؛ dispatch روی مخاطب انتخابی.
+- رضایت/مسدودسازی/سقف‌ها حفظ؛ گزارش: `docs/reports/2026-10-13-marketing-bulk-sms.md`
+
 ## 2026-10-12 — آمار زنده اطلاعیه همکاران [TASK-20261012-004]
 
 - API: `activeAudienceCount` زنده + envelope لیست `{ items, activeAudienceCount }`؛ `audienceCount` زمان ارسال حفظ می‌شود.
