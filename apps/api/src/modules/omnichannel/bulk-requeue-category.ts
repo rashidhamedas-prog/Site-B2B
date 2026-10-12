@@ -25,7 +25,13 @@ export function normalizeClearWaitingInput(body: {
   reason?: unknown;
   confirm?: unknown;
   scope?: unknown;
-}): { ok: true; reason: string; scope: 'all' | 'channel' } | { error: string } {
+  channels?: unknown;
+}): {
+  ok: true;
+  reason: string;
+  scope: 'all' | 'channel';
+  channels: Array<'RETAIL' | 'WHOLESALE'>;
+} | { error: string } {
   if (body?.confirm !== true) {
     return { error: 'برای خالی کردن صف، تأیید صریح (confirm: true) لازم است' };
   }
@@ -38,7 +44,14 @@ export function normalizeClearWaitingInput(body: {
   }
   const rawScope = String(body?.scope ?? 'channel').toLowerCase();
   const scope: 'all' | 'channel' = rawScope === 'all' ? 'all' : 'channel';
-  return { ok: true, reason, scope };
+  const channels: Array<'RETAIL' | 'WHOLESALE'> = [];
+  if (Array.isArray(body?.channels)) {
+    for (const raw of body.channels) {
+      const ch = String(raw || '').toUpperCase();
+      if ((ch === 'RETAIL' || ch === 'WHOLESALE') && !channels.includes(ch)) channels.push(ch);
+    }
+  }
+  return { ok: true, reason, scope, channels };
 }
 
 export function normalizeRequeueByCategoryInput(body: {

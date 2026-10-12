@@ -4,6 +4,7 @@
 import {
   CANCEL_PENDING_SQL,
   CANCEL_PENDING_CHANNEL_SQL,
+  CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL,
   CANCEL_STALE_PROCESSING_SQL,
   MARK_DONE_SQL,
   MARK_FAILURE_SQL,
@@ -88,6 +89,8 @@ async function main() {
   assert(CANCEL_PENDING_CHANNEL_SQL.includes("LIKE 'product.%'"), 'channel cancel scopes product');
   assert(CANCEL_PENDING_CHANNEL_SQL.includes("LIKE 'publication.%'"), 'channel cancel scopes publication');
   assert(!CANCEL_PENDING_CHANNEL_SQL.includes('sales_partner'), 'channel cancel skips sales_partner');
+  assert(CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL.includes('ANY($2::text[])'), 'channel cancel respects configured bots');
+  assert(CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL.includes('"channel" IS NULL'), 'unscoped publish rows still cleared');
   assert(CANCEL_STALE_PROCESSING_SQL.includes("status = 'PROCESSING'"), 'stale only PROCESSING');
   assert(CANCEL_STALE_PROCESSING_SQL.includes('"lockedAt"'), 'stale uses lease age');
 

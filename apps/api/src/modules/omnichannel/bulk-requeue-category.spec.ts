@@ -24,8 +24,16 @@ assert(CLEAR_WAITING_ERROR === 'cancelled_by_admin', 'cancel marker');
   assert('error' in bad, 'confirm required');
   const ok = normalizeClearWaitingInput({ reason: 'پاک‌سازی صف', confirm: true });
   assert('ok' in ok && ok.reason === 'پاک‌سازی صف' && ok.scope === 'channel', 'clear defaults to channel scope');
+  assert('ok' in ok && ok.channels.length === 0, 'channels empty by default');
   const all = normalizeClearWaitingInput({ reason: 'پاک‌سازی کامل', confirm: true, scope: 'all' });
   assert('ok' in all && all.scope === 'all', 'clear all scope');
+  const scoped = normalizeClearWaitingInput({
+    reason: 'پاک‌سازی عمده',
+    confirm: true,
+    scope: 'channel',
+    channels: ['WHOLESALE', 'WHOLESALE', 'nope'],
+  });
+  assert('ok' in scoped && scoped.channels.join(',') === 'WHOLESALE', 'channels filtered unique');
 }
 
 {

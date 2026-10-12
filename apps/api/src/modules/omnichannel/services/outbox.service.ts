@@ -93,6 +93,13 @@ WHERE status = 'PENDING'
 RETURNING id
 `;
 
+const CHANNEL_PUBLISH_TYPE_SQL = `(
+    "eventType" LIKE 'product.%'
+    OR "eventType" LIKE 'blog.%'
+    OR "eventType" LIKE 'cms.%'
+    OR "eventType" LIKE 'publication.%'
+  )`;
+
 /** Soft-cancel only messenger/catalog publish events (not SMS/search/sales_partner). */
 export const CANCEL_PENDING_CHANNEL_SQL = `
 UPDATE omnichannel_outbox_events
@@ -103,12 +110,26 @@ SET status = 'DONE',
     "lockedBy" = NULL,
     "updatedAt" = NOW()
 WHERE status = 'PENDING'
-  AND (
-    "eventType" LIKE 'product.%'
-    OR "eventType" LIKE 'blog.%'
-    OR "eventType" LIKE 'cms.%'
-    OR "eventType" LIKE 'publication.%'
-  )
+  AND ${CHANNEL_PUBLISH_TYPE_SQL}
+RETURNING id
+`;
+
+/**
+ * Same as channel cancel, but skip storefront channels the admin did not register
+ * (e.g. hide RETAIL rows when only WHOLESALE bots exist). Null channel = dual-sync, still cleared.
+ * $1 = error marker, $2 = text[] of UPPER channel codes.
+ */
+export const CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = 'DONE',
+    "completedAt" = NOW(),
+    "lastError" = $1,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE status = 'PENDING'
+  AND ${CHANNEL_PUBLISH_TYPE_SQL}
+  AND ("channel" IS NULL OR UPPER("channel") = ANY($2::text[]))
 RETURNING id
 `;
 
@@ -136,12 +157,22 @@ SET status = 'DONE',
     "updatedAt" = NOW()
 WHERE status = 'PROCESSING'
   AND ("lockedAt" IS NULL OR "lockedAt" < NOW() - ($2 * INTERVAL '1 minute'))
-  AND (
-    "eventType" LIKE 'product.%'
-    OR "eventType" LIKE 'blog.%'
-    OR "eventType" LIKE 'cms.%'
-    OR "eventType" LIKE 'publication.%'
-  )
+  AND ${CHANNEL_PUBLISH_TYPE_SQL}
+RETURNING id
+`;
+
+export const CANCEL_STALE_PROCESSING_CHANNEL_FOR_CHANNELS_SQL = `
+UPDATE omnichannel_outbox_events
+SET status = 'DONE',
+    "completedAt" = NOW(),
+    "lastError" = $1,
+    "lockedAt" = NULL,
+    "lockedBy" = NULL,
+    "updatedAt" = NOW()
+WHERE status = 'PROCESSING'
+  AND ("lockedAt" IS NULL OR "lockedAt" < NOW() - ($3 * INTERVAL '1 minute'))
+  AND ${CHANNEL_PUBLISH_TYPE_SQL}
+  AND ("channel" IS NULL OR UPPER("channel") = ANY($2::text[]))
 RETURNING id
 `;
 
@@ -236,17 +267,33 @@ export class OutboxService {
     staleLockMinutes?: number;
     /** When 'channel', only soft-cancel messenger/catalog publish event types. */
     scope?: 'all' | 'channel';
+    /** When scope=channel and non-empty, skip other storefront channels (align with UI filter). */
+    channels?: Array<'RETAIL' | 'WHOLESALE'>;
   }): Promise<{ cancelledPendingIds: string[]; cancelledStaleIds: string[] }> {
     const channelOnly = opts.scope === 'channel';
+    const scopedChannels = (opts.channels || [])
+      .map((c) => String(c || '').toUpperCase())
+      .filter((c): c is 'RETAIL' | 'WHOLESALE' => c === 'RETAIL' || c === 'WHOLESALE');
+    const useChannelFilter = channelOnly && scopedChannels.length > 0;
+    const err = opts.pendingError.slice(0, 2000);
     const pendingRaw = await this.dataSource.query(
-      channelOnly ? CANCEL_PENDING_CHANNEL_SQL : CANCEL_PENDING_SQL,
-      [opts.pendingError.slice(0, 2000)],
+      !channelOnly
+        ? CANCEL_PENDING_SQL
+        : useChannelFilter
+          ? CANCEL_PENDING_CHANNEL_FOR_CHANNELS_SQL
+          : CANCEL_PENDING_CHANNEL_SQL,
+      useChannelFilter ? [err, scopedChannels] : [err],
     );
     const cancelledPendingIds = leaseRowsFromQueryResult(pendingRaw).map((r) => r.id);
     const minutes = Math.max(1, Math.min(60, Math.floor(opts.staleLockMinutes ?? 5)));
+    const staleErr = opts.staleError.slice(0, 2000);
     const staleRaw = await this.dataSource.query(
-      channelOnly ? CANCEL_STALE_PROCESSING_CHANNEL_SQL : CANCEL_STALE_PROCESSING_SQL,
-      [opts.staleError.slice(0, 2000), minutes],
+      !channelOnly
+        ? CANCEL_STALE_PROCESSING_SQL
+        : useChannelFilter
+          ? CANCEL_STALE_PROCESSING_CHANNEL_FOR_CHANNELS_SQL
+          : CANCEL_STALE_PROCESSING_CHANNEL_SQL,
+      useChannelFilter ? [staleErr, scopedChannels, minutes] : [staleErr, minutes],
     );
     const cancelledStaleIds = leaseRowsFromQueryResult(staleRaw).map((r) => r.id);
     return { cancelledPendingIds, cancelledStaleIds };

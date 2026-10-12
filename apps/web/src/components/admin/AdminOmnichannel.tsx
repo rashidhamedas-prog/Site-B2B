@@ -444,17 +444,26 @@ export function AdminOmnichannel() {
       setNotice('صف انتظار از قبل خالی است');
       return;
     }
-    const why = window.prompt(
-      `همه ${faNumber(pending)} رویداد در انتظار لغو شود؟ این کار پست‌های در صف را نمی‌فرستد (حذف از دیتابیس نیست). دلیل را بنویسید:`,
-      reason || 'پاک‌سازی صف انتظار',
-    );
+    const channelOnly = outboxScope !== 'all';
+    const visibleWaiting = filteredOutbox.filter(
+      (row) => row.status === 'PENDING' || row.status === 'PROCESSING',
+    ).length;
+    const channelNames = [...configuredPublishChannels]
+      .map((ch) => (ch === 'WHOLESALE' ? 'عمده' : 'تکی'))
+      .join(' و ');
+    const promptText = channelOnly
+      ? `فقط رویدادهای ارسال کانال${channelNames ? ` (${channelNames})` : ''} لغو شود؟ پیامک و همکار فروش دست نخورده می‌مانند. در این فهرست حدود ${faNumber(visibleWaiting)} ردیف در انتظار دیده می‌شود (کل صف مشترک: ${faNumber(pending)}). حذف از دیتابیس نیست. دلیل را بنویسید:`
+      : `همه ${faNumber(pending)} رویداد صف مشترک (شامل پیامک/جستجو/همکار) لغو شود؟ حذف از دیتابیس نیست. دلیل را بنویسید:`;
+    const why = window.prompt(promptText, reason || 'پاک‌سازی صف انتظار');
     if (why == null) return;
     const trimmed = why.trim();
     if (!trimmed) {
       setError('دلیل خالی کردن صف الزامی است');
       return;
     }
-    if (!window.confirm(`تأیید نهایی: ${faNumber(pending)} رویداد در انتظار لغو شود؟`)) return;
+    if (!window.confirm(channelOnly
+      ? `تأیید نهایی: فقط ارسال کانال${channelNames ? ` (${channelNames})` : ''} لغو شود؟`
+      : `تأیید نهایی: همه ${faNumber(pending)} رویداد صف مشترک لغو شود؟`)) return;
     void run(
       'clear-waiting',
       async () => {
@@ -464,7 +473,10 @@ export function AdminOmnichannel() {
         }>('/omnichannel/outbox/clear-waiting', {
           confirm: true,
           reason: trimmed,
-          scope: outboxScope === 'all' ? 'all' : 'channel',
+          scope: channelOnly ? 'channel' : 'all',
+          ...(channelOnly && configuredPublishChannels.size
+            ? { channels: [...configuredPublishChannels] as Array<'RETAIL' | 'WHOLESALE'> }
+            : {}),
         });
         setNotice(
           `${faNumber(result.cancelledEvents)} رویداد و ${faNumber(result.cancelledDeliveries)} ارسال لغو شد`,

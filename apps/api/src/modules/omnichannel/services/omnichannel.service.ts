@@ -771,6 +771,7 @@ export class OmnichannelService {
       pendingError: CLEAR_WAITING_ERROR,
       staleError: CLEAR_WAITING_STALE_ERROR,
       scope: normalized.scope,
+      channels: normalized.scope === 'channel' ? normalized.channels : undefined,
     });
     const cancelledIds = [...cancelledPendingIds, ...cancelledStaleIds];
     let cancelledDeliveries = 0;

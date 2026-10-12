@@ -322,6 +322,14 @@ export class ClearWaitingOutboxDto {
   @IsOptional()
   @IsIn(['all', 'channel'])
   scope?: 'all' | 'channel';
+
+  /** When scope=channel: only cancel rows for these storefront channels (plus null/unscoped). */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(2)
+  @ArrayUnique()
+  @IsIn(OMNICHANNEL_CHANNELS, { each: true })
+  channels?: Array<(typeof OMNICHANNEL_CHANNELS)[number]>;
 }
 
 /** Enqueue CREATE/UPDATE for every visible product in a category (batched). */
