@@ -25,7 +25,7 @@ export const CUSTOMER_RECORD_TAB_LABEL: Record<CustomerRecordTab, string> = {
   marketing: 'بازاریابی',
 };
 
-export const CUSTOMER_MARKETING_TABS = ['today', 'zero', 'funnel', 'rules'] as const;
+export const CUSTOMER_MARKETING_TABS = ['today', 'zero', 'blast', 'funnel', 'rules'] as const;
 export type CustomerMarketingTab = (typeof CUSTOMER_MARKETING_TABS)[number];
 
 export const ZERO_ORDER_BUCKETS = ['fresh', 'warm', 'aging', 'cool', 'recycle'] as const;

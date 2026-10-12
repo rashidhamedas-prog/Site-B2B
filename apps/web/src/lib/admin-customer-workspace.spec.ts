@@ -1,16 +1,19 @@
 /**
- * npx ts-node --transpile-only src/lib/admin-customer-workspace.spec.ts
+ * From apps/api: npx ts-node --transpile-only ../web/src/lib/admin-customer-workspace.spec.ts
  */
-import assert from 'node:assert/strict';
 import {
   parseCustomerWorkspaceQuery,
   serializeCustomerWorkspaceQuery,
 } from './admin-customer-workspace.ts';
 
+function assert(cond: boolean, msg: string) {
+  if (!cond) throw new Error(msg);
+}
+
 const empty = parseCustomerWorkspaceQuery({ get: () => null });
-assert.equal(empty.channel, 'ALL');
-assert.equal(empty.tab, 'identity');
-assert.equal(empty.status, '');
+assert(empty.channel === 'ALL', 'default channel');
+assert(empty.tab === 'identity', 'default tab');
+assert(empty.status === '', 'default status');
 
 const parsed = parseCustomerWorkspaceQuery({
   get: (name) =>
@@ -23,12 +26,12 @@ const parsed = parseCustomerWorkspaceQuery({
       mtab: 'rules',
     } as Record<string, string>)[name] ?? null,
 });
-assert.equal(parsed.channel, 'RETAIL');
-assert.equal(parsed.q, 'ترنم');
-assert.equal(parsed.status, 'PENDING');
-assert.equal(parsed.segment, 'VIP');
-assert.equal(parsed.tab, 'wallet');
-assert.equal(parsed.marketingTab, 'rules');
+assert(parsed.channel === 'RETAIL', 'channel');
+assert(parsed.q === 'ترنم', 'q trim');
+assert(parsed.status === 'PENDING', 'status');
+assert(parsed.segment === 'VIP', 'segment');
+assert(parsed.tab === 'wallet', 'tab');
+assert(parsed.marketingTab === 'rules', 'mtab rules');
 
 const zeroParsed = parseCustomerWorkspaceQuery({
   get: (name) =>
@@ -38,15 +41,26 @@ const zeroParsed = parseCustomerWorkspaceQuery({
       bucket: 'warm',
     } as Record<string, string>)[name] ?? null,
 });
-assert.equal(zeroParsed.marketingTab, 'zero');
-assert.equal(zeroParsed.bucket, 'warm');
+assert(zeroParsed.marketingTab === 'zero', 'mtab zero');
+assert(zeroParsed.bucket === 'warm', 'bucket');
 const zeroQs = serializeCustomerWorkspaceQuery(zeroParsed);
-assert.match(zeroQs, /mtab=zero/);
-assert.match(zeroQs, /bucket=warm/);
+assert(/mtab=zero/.test(zeroQs), 'serialize mtab');
+assert(/bucket=warm/.test(zeroQs), 'serialize bucket');
+
+const blastParsed = parseCustomerWorkspaceQuery({
+  get: (name) =>
+    ({
+      channel: 'RETAIL',
+      mtab: 'blast',
+    } as Record<string, string>)[name] ?? null,
+});
+assert(blastParsed.marketingTab === 'blast', 'mtab blast');
+assert(/mtab=blast/.test(serializeCustomerWorkspaceQuery(blastParsed)), 'serialize blast');
 
 const qs = serializeCustomerWorkspaceQuery(parsed);
-assert.match(qs, /channel=RETAIL/);
-assert.match(qs, /tab=wallet/);
-assert.equal(serializeCustomerWorkspaceQuery({ channel: 'ALL', tab: 'identity' }), '');
+assert(/channel=RETAIL/.test(qs), 'serialize channel');
+assert(/tab=wallet/.test(qs), 'serialize tab');
+assert(serializeCustomerWorkspaceQuery({ channel: 'ALL', tab: 'identity' }) === '', 'empty qs');
 
 console.log('admin-customer-workspace.spec.ts: ok');
+

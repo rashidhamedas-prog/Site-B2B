@@ -1,5 +1,30 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261013-001"
+    title: "Marketing bulk personalized SMS desk"
+    status: "done"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261013-001"
+    roles:
+      architect: "cursor:skill-top-full"
+      implementer: "cursor:implementer-TASK-20261013-001"
+      reviewer: "required-after-diff"
+      security: "consent-gates-reuse"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-12T21:00:00Z"
+    heartbeat_at: "2026-10-12T21:00:00Z"
+    depends_on: []
+    file_claims: []
+    notes: |
+      Shipped. skill-top full + ECC nestjs/frontend + Slack empty.
+      Tab ارسال گروهی; campaign.filter.customerIds; send-gates preserved.
+    acceptance_criteria:
+      - "Select customers per RETAIL/WHOLESALE channel"
+      - "Personalized preview + eligibility skip reasons"
+      - "Compose → canary → go-live only for selected audience"
+      - "Consent/suppression/caps not bypassed"
+      - "Spec + tsc green; deploy verified"
   - id: "TASK-20261012-004"
     title: "Live sales-partner notice admin metrics"
     status: "done"

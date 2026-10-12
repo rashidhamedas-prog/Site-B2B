@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T21:30:00Z — TASK-20261013-001 marketing bulk SMS (ready ship)
+
+- Owner: `cursor:implementer-TASK-20261013-001`. Depth: skill-top full. Slack: no hits.
+- API: audience helpers + bulk preview/compose; create/go-live require selected `customerIds`; canary uses bodyOverride/sample vars.
+- UI: tab `blast` → `AdminBulkSmsDesk` (picker, phone preview, eligibility, canary, confirm live).
+- Specs: `campaign-audience.spec.ts` ok; workspace blast tab; web tsc 0. Verify PASS WITH CONDITIONS → closed (no empty audience go-live).
+- Next: commit + push + VPS auto-deploy; hard-refresh admin → بازاریابی → ارسال گروهی.
+
 ## 2026-10-12T15:58:00Z — TASK-20261012-001 CLOSED (sync main + agent confirm)
 
 - Parallel confirm: wholesale save stuck; admin GET + live HTML + `POST /admin/cms/revalidate` WHOLESALE/home 200.

@@ -43,6 +43,12 @@ import {
   SETTLED_SQL_IN,
   zeroOrderPriority,
 } from './zero-order-scoring';
+import {
+  maskPhone,
+  normalizeCustomerIds,
+  parseCampaignAudienceFilter,
+  smsSegmentHint,
+} from './campaign-audience';
 import { customerChannelSql } from '../customer/customer-channel';
 import {
   MarketingActivityEntity,
@@ -1037,39 +1043,241 @@ export class CustomerMarketingService {
     };
   }
 
-  async listCampaigns() {
-    const rows = await this.campaigns.find({ order: { createdAt: 'DESC' }, take: 30 });
-    return { data: rows };
+  async listCampaigns(channel?: MarketingChannel) {
+    const where = channel ? { channel } : {};
+    const rows = await this.campaigns.find({ where, order: { createdAt: 'DESC' }, take: 30 });
+    return {
+      data: rows.map((r) => {
+        const audience = parseCampaignAudienceFilter(r.filter);
+        return {
+          ...r,
+          audienceCount: audience.customerIds.length,
+          hasCustomBody: !!audience.bodyOverride,
+        };
+      }),
+    };
   }
 
-  async createCampaign(input: { channel: MarketingChannel; title: string; templateId?: string; messageClass?: MessageClass }, actor: Actor) {
+  async createCampaign(input: {
+    channel: MarketingChannel;
+    title: string;
+    templateId?: string;
+    messageClass?: MessageClass;
+    customerIds?: string[];
+    bodyOverride?: string;
+  }, actor: Actor) {
     this.assertLiveRole(actor);
+    if (input.channel !== 'RETAIL' && input.channel !== 'WHOLESALE') {
+      throw new BadRequestException('کانال نامعتبر است');
+    }
     if (input.messageClass && input.messageClass !== 'NURTURE' && input.messageClass !== 'PROMO') {
       throw new BadRequestException('کلاس پیام بازاریابی فقط NURTURE یا PROMO است');
     }
+    const customerIds = normalizeCustomerIds(input.customerIds);
+    if (!customerIds.length) {
+      throw new BadRequestException('AUDIENCE_REQUIRED: حداقل یک مشتری انتخاب کنید');
+    }
+    let bodyOverride = typeof input.bodyOverride === 'string' && input.bodyOverride.trim()
+      ? input.bodyOverride.trim()
+      : null;
+    if (bodyOverride && bodyOverride.length > 700) {
+      throw new BadRequestException('متن پیامک حداکثر ۷۰۰ کاراکتر است');
+    }
+    if (!input.templateId && !bodyOverride) {
+      throw new BadRequestException('TEMPLATE_MISSING: قالب یا متن اختصاصی لازم است');
+    }
+    if (input.templateId) {
+      const tpl = await this.templates.findOne({ where: { id: input.templateId } });
+      if (!tpl || tpl.channel !== input.channel) {
+        throw new BadRequestException('TEMPLATE_CHANNEL: قالب با کانال هم‌خوان نیست');
+      }
+    }
+    await this.assertCustomersOnChannel(customerIds, input.channel);
     return this.campaigns.save(this.campaigns.create({
       channel: input.channel,
-      title: input.title,
+      title: input.title.trim() || 'ارسال گروهی',
       templateId: input.templateId ?? null,
       messageClass: input.messageClass === 'NURTURE' ? 'NURTURE' : 'PROMO',
       mode: 'OFF',
-      filter: { grantedOnly: true },
+      filter: {
+        grantedOnly: true,
+        customerIds,
+        bodyOverride,
+      },
       createdByUserId: actor.id ?? null,
     }));
+  }
+
+  /**
+   * Dry-run eligibility + personalized previews for a selected audience.
+   * Does not queue SMS.
+   */
+  async previewBulkSms(input: {
+    channel: MarketingChannel;
+    customerIds: string[];
+    templateId?: string;
+    body?: string;
+    messageClass?: MessageClass;
+  }, actor: Actor) {
+    this.assertLiveRole(actor);
+    const channel = input.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const customerIds = normalizeCustomerIds(input.customerIds);
+    if (!customerIds.length) throw new BadRequestException('حداقل یک مشتری انتخاب کنید');
+    const settings = await this.getSettings();
+    const tpl = input.templateId
+      ? await this.templates.findOne({ where: { id: input.templateId, channel, isActive: true } })
+      : null;
+    if (input.templateId && !tpl) throw new BadRequestException('TEMPLATE_MISSING');
+    const sourceBody = (input.body?.trim() || tpl?.body || '').trim();
+    if (!sourceBody) throw new BadRequestException('TEMPLATE_MISSING: متن پیام خالی است');
+    if (sourceBody.length > 700) {
+      throw new BadRequestException('متن پیامک حداکثر ۷۰۰ کاراکتر است');
+    }
+    const messageClass: MessageClass =
+      input.messageClass === 'NURTURE' || input.messageClass === 'PROMO'
+        ? input.messageClass
+        : (tpl?.messageClass === 'NURTURE' ? 'NURTURE' : 'PROMO');
+
+    const customers = await this.customers.find({ where: { id: In(customerIds) } });
+    const byId = new Map(customers.map((c) => [c.id, c]));
+    const consents = await this.consents.find({
+      where: { customerId: In(customerIds), channel },
+    });
+    const consentById = new Map(consents.map((c) => [c.customerId, c]));
+    const phones = customers.map((c) => normalizePhone(c.phone)).filter(Boolean);
+    const suppressRows = phones.length
+      ? await this.suppressions.find({ where: { phoneNormalized: In(phones) } })
+      : [];
+    const suppressed = new Set(suppressRows.map((s) => s.phoneNormalized));
+
+    const eligible: Array<{
+      customerId: string;
+      name: string;
+      phoneMasked: string | null;
+      preview: string;
+      segments: number;
+      chars: number;
+    }> = [];
+    const skipped: Array<{
+      customerId: string;
+      name: string;
+      reason: string;
+    }> = [];
+
+    for (const id of customerIds) {
+      const customer = byId.get(id);
+      if (!customer) {
+        skipped.push({ customerId: id, name: '—', reason: 'NOT_FOUND' });
+        continue;
+      }
+      const name = customer.ownerName || customer.businessName || 'بدون نام';
+      if (this.channelOf(customer) !== channel) {
+        skipped.push({ customerId: id, name, reason: 'CHANNEL_MISMATCH' });
+        continue;
+      }
+      const phone = normalizePhone(customer.phone);
+      if (!phone) {
+        skipped.push({ customerId: id, name, reason: 'NO_PHONE' });
+        continue;
+      }
+      const consent = consentById.get(id);
+      const decision = decideConsent({
+        messageClass,
+        consent: consent?.status ?? null,
+        suppressed: suppressed.has(phone),
+        treatRegisterAutoAsPromoConsent: settings.treatRegisterAutoAsPromoConsent,
+      });
+      if (!decision.allow && 'reason' in decision) {
+        skipped.push({ customerId: id, name, reason: decision.reason });
+        continue;
+      }
+      const preview = fillTemplate(sourceBody, this.templateVars(customer));
+      if (!preview) {
+        skipped.push({ customerId: id, name, reason: 'EMPTY_BODY' });
+        continue;
+      }
+      const hint = smsSegmentHint(preview);
+      eligible.push({
+        customerId: id,
+        name,
+        phoneMasked: maskPhone(phone),
+        preview,
+        segments: hint.segments,
+        chars: hint.chars,
+      });
+    }
+
+    return {
+      channel,
+      messageClass,
+      selected: customerIds.length,
+      eligibleCount: eligible.length,
+      skippedCount: skipped.length,
+      eligible,
+      skipped,
+      samplePreviews: eligible.slice(0, 3),
+      caps: {
+        maxBatch: SMS_IR_BULK_MAX,
+        dailyCapPerChannel: settings.dailyCapPerChannel,
+        moduleEnabled: settings.enabled,
+        mode: settings.mode,
+      },
+      variables: ['name', 'city', 'orderNumber', 'productName'],
+    };
+  }
+
+  /** Create a targeted campaign from selected customers (does not send). */
+  async composeBulkCampaign(input: {
+    channel: MarketingChannel;
+    title: string;
+    customerIds: string[];
+    templateId?: string;
+    bodyOverride?: string;
+    messageClass?: MessageClass;
+  }, actor: Actor) {
+    const customerIds = normalizeCustomerIds(input.customerIds);
+    if (!customerIds.length) throw new BadRequestException('حداقل یک مشتری انتخاب کنید');
+    const preview = await this.previewBulkSms({
+      channel: input.channel,
+      customerIds,
+      templateId: input.templateId,
+      body: input.bodyOverride,
+      messageClass: input.messageClass,
+    }, actor);
+    if (!preview.eligibleCount) {
+      throw new BadRequestException('هیچ مخاطب واجدی برای ارسال نیست');
+    }
+    const campaign = await this.createCampaign({
+      channel: input.channel,
+      title: input.title,
+      templateId: input.templateId,
+      bodyOverride: input.bodyOverride,
+      messageClass: input.messageClass || preview.messageClass,
+      customerIds: preview.eligible.map((e) => e.customerId),
+    }, actor);
+    return { campaign, preview };
   }
 
   async campaignCanary(id: string, actor: Actor) {
     this.assertAdmin(actor);
     const campaign = await this.campaigns.findOne({ where: { id } });
     if (!campaign) throw new NotFoundException('کمپین یافت نشد');
+    const audience = parseCampaignAudienceFilter(campaign.filter);
     const tpl = campaign.templateId
       ? await this.templates.findOne({ where: { id: campaign.templateId } })
       : null;
-    if (!tpl) throw new BadRequestException('TEMPLATE_MISSING');
+    const sourceBody = audience.bodyOverride || tpl?.body || '';
+    if (!sourceBody) throw new BadRequestException('TEMPLATE_MISSING');
     const settings = await this.getSettings();
     const phone = await this.canaryPhone(campaign.channel, settings);
     if (!phone) throw new BadRequestException('NO_PHONE: شماره آزمایشی نیست');
-    const body = fillTemplate(tpl.body, { name: 'آزمایش', city: 'مشهد', orderNumber: '', productName: '' });
+    const sampleCustomer = audience.customerIds.length
+      ? await this.customers.findOne({ where: { id: audience.customerIds[0] } })
+      : null;
+    const vars = sampleCustomer
+      ? this.templateVars(sampleCustomer)
+      : { name: 'آزمایش', city: 'مشهد', orderNumber: '', productName: '' };
+    const body = fillTemplate(sourceBody, vars);
     const result = await this.queueSms({
       customer: null,
       channel: campaign.channel,
@@ -1085,7 +1293,7 @@ export class CustomerMarketingService {
     campaign.canaryAt = new Date();
     campaign.canarySucceeded = result.status === 'QUEUED' || result.status === 'SENT';
     await this.campaigns.save(campaign);
-    return { campaign, result };
+    return { campaign, result, previewBody: body };
   }
 
   async goLiveCampaign(id: string, actor: Actor) {
@@ -1097,6 +1305,10 @@ export class CustomerMarketingService {
     const campaign = await this.campaigns.findOne({ where: { id } });
     if (!campaign) throw new NotFoundException('کمپین یافت نشد');
     if (!campaign.canarySucceeded) throw new BadRequestException('ابتدا آزمایش کاناری باید موفق شود');
+    const audience = parseCampaignAudienceFilter(campaign.filter);
+    if (!audience.customerIds.length) {
+      throw new BadRequestException('AUDIENCE_REQUIRED: ارسال زنده فقط برای مخاطب انتخاب‌شده');
+    }
     campaign.mode = 'LIVE';
     await this.campaigns.save(campaign);
     await this.outbox.enqueue({
@@ -1107,7 +1319,11 @@ export class CustomerMarketingService {
       channel: campaign.channel,
       payload: { campaignId: campaign.id },
     });
-    return campaign;
+    return {
+      ...campaign,
+      audienceCount: audience.customerIds.length,
+      audienceMode: 'selected' as const,
+    };
   }
 
   async dispatchCampaign(campaignId: string) {
@@ -1116,21 +1332,33 @@ export class CustomerMarketingService {
     const campaign = await this.campaigns.findOne({ where: { id: campaignId } });
     if (!campaign || campaign.mode !== 'LIVE') return;
     const messageClass = campaign.messageClass === 'PROMO' ? 'PROMO' : 'NURTURE';
-    const consents = await this.consents.find({
-      where: messageClass === 'PROMO'
-        ? { channel: campaign.channel, status: 'GRANTED' }
-        : { channel: campaign.channel, status: In(['REGISTER_AUTO', 'GRANTED']) },
-    });
-    const ids = consents.map((g) => g.customerId);
-    if (!ids.length) return;
-    const customers = await this.customers.find({ where: { id: In(ids) } });
+    const audience = parseCampaignAudienceFilter(campaign.filter);
     const tpl = campaign.templateId
       ? await this.templates.findOne({ where: { id: campaign.templateId } })
       : null;
-    if (!tpl) return;
+    const sourceBody = audience.bodyOverride || tpl?.body || '';
+    if (!sourceBody) return;
+
+    let customers: CustomerEntity[];
+    if (audience.customerIds.length) {
+      customers = await this.customers.find({ where: { id: In(audience.customerIds) } });
+      customers = customers.filter((c) => this.channelOf(c) === campaign.channel);
+    } else {
+      // Legacy: all consented on channel (pre-audience campaigns).
+      const consents = await this.consents.find({
+        where: messageClass === 'PROMO'
+          ? { channel: campaign.channel, status: 'GRANTED' }
+          : { channel: campaign.channel, status: In(['REGISTER_AUTO', 'GRANTED']) },
+      });
+      const ids = consents.map((g) => g.customerId);
+      if (!ids.length) return;
+      customers = await this.customers.find({ where: { id: In(ids) } });
+    }
+
     let queued = 0;
     for (const customer of customers.slice(0, SMS_IR_BULK_MAX)) {
-      const body = fillTemplate(tpl.body, this.templateVars(customer));
+      const body = fillTemplate(sourceBody, this.templateVars(customer));
+      if (!body) continue;
       await this.queueSms({
         customer,
         channel: campaign.channel,
@@ -1144,6 +1372,17 @@ export class CustomerMarketingService {
       queued += 1;
     }
     return { queued };
+  }
+
+  private async assertCustomersOnChannel(customerIds: string[], channel: MarketingChannel) {
+    const rows = await this.customers.find({ where: { id: In(customerIds) } });
+    if (rows.length !== customerIds.length) {
+      throw new BadRequestException('برخی مشتریان یافت نشدند');
+    }
+    const bad = rows.filter((c) => this.channelOf(c) !== channel);
+    if (bad.length) {
+      throw new BadRequestException(`CHANNEL_MISMATCH: ${bad.length} مشتری خارج از کانال ${channel}`);
+    }
   }
 
   async handleRegisteredEvent(customerId: string) {

@@ -131,16 +131,55 @@ export class MarketingController {
   }
 
   @Get('campaigns')
-  campaigns() {
-    return this.marketing.listCampaigns();
+  campaigns(@Query('channel') channel?: MarketingChannel) {
+    const ch = channel === 'WHOLESALE' || channel === 'RETAIL' ? channel : undefined;
+    return this.marketing.listCampaigns(ch);
   }
 
   @Post('campaigns')
   createCampaign(
-    @Body() body: { channel: MarketingChannel; title: string; templateId?: string; messageClass?: 'NURTURE' | 'PROMO' },
+    @Body() body: {
+      channel: MarketingChannel;
+      title: string;
+      templateId?: string;
+      messageClass?: 'NURTURE' | 'PROMO';
+      customerIds?: string[];
+      bodyOverride?: string;
+    },
     @Req() req: { user?: { sub?: string; role?: string } },
   ) {
     return this.marketing.createCampaign(body, { id: req.user?.sub, role: req.user?.role });
+  }
+
+  @Post('bulk/preview')
+  @ApiOperation({ summary: 'پیش‌نمایش پیامک شخصی‌سازی‌شده برای مخاطبان انتخابی' })
+  bulkPreview(
+    @Body() body: {
+      channel: MarketingChannel;
+      customerIds: string[];
+      templateId?: string;
+      body?: string;
+      messageClass?: 'NURTURE' | 'PROMO';
+    },
+    @Req() req: { user?: { sub?: string; role?: string } },
+  ) {
+    return this.marketing.previewBulkSms(body, { id: req.user?.sub, role: req.user?.role });
+  }
+
+  @Post('bulk/compose')
+  @ApiOperation({ summary: 'ساخت کمپین ارسال گروهی از مخاطبان انتخابی (بدون ارسال زنده)' })
+  bulkCompose(
+    @Body() body: {
+      channel: MarketingChannel;
+      title: string;
+      customerIds: string[];
+      templateId?: string;
+      bodyOverride?: string;
+      messageClass?: 'NURTURE' | 'PROMO';
+    },
+    @Req() req: { user?: { sub?: string; role?: string } },
+  ) {
+    return this.marketing.composeBulkCampaign(body, { id: req.user?.sub, role: req.user?.role });
   }
 
   @Post('campaigns/:id/canary')

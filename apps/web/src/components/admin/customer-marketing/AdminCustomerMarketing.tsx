@@ -20,6 +20,7 @@ import {
   serializeCustomerWorkspaceQuery,
   type ZeroOrderBucket,
 } from '@/lib/admin-customer-workspace';
+import { AdminBulkSmsDesk } from './AdminBulkSmsDesk';
 
 const STAGE_LABEL: Record<string, string> = {
   REGISTERED: 'ثبت‌نام تکی',
@@ -181,7 +182,7 @@ export function AdminCustomerMarketing() {
       </div>
 
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="لایه‌های بازاریابی">
-        {([['today', 'امروز'], ['zero', 'نوله‌ها'], ['funnel', 'قیف'], ['rules', 'متن و قوانین']] as const).map(([id, label]) => (
+        {([['today', 'امروز'], ['zero', 'نوله‌ها'], ['blast', 'ارسال گروهی'], ['funnel', 'قیف'], ['rules', 'متن و قوانین']] as const).map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -414,6 +415,15 @@ export function AdminCustomerMarketing() {
             )}
           </Section>
         </div>
+      )}
+
+      {tab === 'blast' && (
+        <AdminBulkSmsDesk
+          channel={channel}
+          templates={hub.templates}
+          settings={hub.settings}
+          onNotice={setNotice}
+        />
       )}
 
       {tab === 'funnel' && (
