@@ -34,6 +34,9 @@ Dense RTL ops desk (forest `#1B5C4A` / gold focus `#C9A84C`). Not marketing UI. 
 
 - `npx tsc --noEmit` in `apps/web`: exit 0
 - Independent review: PASS WITH CONDITIONS → majors fixed (preview «همه اطلاعیه‌ها» removed; focus on confirm panels)
+- Commit: `95c3fb76` on `origin/master` (branch `ai/TASK-20261012-003-sp-notice-desk`)
+- VPS: `bash scripts/auto-deploy.sh` → deploy complete at `95c3fb7`
+- Live: `GET /v1/health` → ok; `.com` HTTP 200
 
 ## Non-goals (unchanged)
 
