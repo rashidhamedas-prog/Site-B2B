@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { AdminTelegramTemplateBuilder } from './AdminTelegramTemplateBuilder';
 import {
+  AttentionStrip,
   Badge,
   Callout,
   EVENT_LABELS,
@@ -22,12 +23,16 @@ import {
   actionLabel,
   channelLabel,
   chatTypeLabel,
+  deliveryFailureTone,
   deliveryStatus,
   destinationReady,
   errorLabel,
   eventLabel,
   faNumber,
+  gateBlockReasonLabel,
   hourLabel,
+  isChannelPublishEventType,
+  isIntentionalError,
   isProvider,
   outboxStatus,
   platformRendered,
@@ -37,6 +42,7 @@ import {
   templateLooksReady,
   tokenDraftReady,
   tokenSourceLabel,
+  type AttentionItem,
   type AuditRow,
   type AutoPublishMode,
   type Channel,
@@ -58,9 +64,11 @@ import {
   type WithdrawAction,
 } from './admin-omnichannel-ui';
 
-type View = 'setup' | 'publish' | 'ops';
+type View = 'status' | 'publish' | 'settings' | 'ops';
 type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
 type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE';
+type OutboxScope = 'channel' | 'all';
+type DeliveryFilter = 'all' | 'failed';
 
 type RulesDraft = {
   autoPublishMode: AutoPublishMode;
@@ -167,8 +175,13 @@ export function AdminOmnichannel() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const [view, setView] = useState<View>('setup');
+  const [view, setView] = useState<View>('status');
   const [step, setStep] = useState<Step | null>(null);
+  const [settingsCollapsed, setSettingsCollapsed] = useState(false);
+  const [defaultViewApplied, setDefaultViewApplied] = useState(false);
+  const [highlightCanaryPicker, setHighlightCanaryPicker] = useState(false);
+  const [deliveryFilter, setDeliveryFilter] = useState<DeliveryFilter>('all');
+  const [outboxScope, setOutboxScope] = useState<OutboxScope>('channel');
 
   const [connProvider, setConnProvider] = useState<Provider>('TELEGRAM');
   const [connName, setConnName] = useState('');
@@ -374,15 +387,43 @@ export function AdminOmnichannel() {
     }
     return map;
   }, [deliveries]);
-  const sentToday = useMemo(() => {
+  const sentTodayClient = useMemo(() => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     return deliveries.filter((row) => row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.createdAt && new Date(row.createdAt) >= start).length;
   }, [deliveries]);
-  const failing = deliveries.filter((row) => row.status === 'DEAD' || row.status === 'FAILED').length;
+  const sentToday = typeof status?.sentToday === 'number' ? status.sentToday : sentTodayClient;
+  const failingReal = deliveries.filter(
+    (row) => (row.status === 'DEAD' || row.status === 'FAILED') && !isIntentionalError(row.lastError),
+  ).length;
+  const failingIntentional = deliveries.filter(
+    (row) => (row.status === 'DEAD' || row.status === 'FAILED') && isIntentionalError(row.lastError),
+  ).length;
+  const failing = failingReal;
   const deferredPending = outbox.filter(
     (row) => row.status === 'PENDING' && row.availableAt && new Date(row.availableAt).getTime() > Date.now() + 5_000,
   ).length;
+  const deadChannel = status?.outboxDeadByEventType?.deadChannel
+    ?? outbox.filter((row) => row.status === 'DEAD' && isChannelPublishEventType(row.eventType)).length;
+  const deadOther = status?.outboxDeadByEventType?.deadOther
+    ?? Math.max(0, (status?.outbox?.dead ?? 0) - deadChannel);
+  const deadMetric = outboxScope === 'channel' ? deadChannel : (status?.outbox?.dead ?? deadChannel + deadOther);
+  const filteredOutbox = useMemo(() => {
+    let rows = outbox;
+    if (outboxScope === 'channel') {
+      rows = rows.filter((row) => isChannelPublishEventType(row.eventType));
+    }
+    return rows;
+  }, [outbox, outboxScope]);
+  const filteredPublications = useMemo(() => {
+    if (deliveryFilter !== 'failed') return publications;
+    const failedPubIds = new Set(
+      deliveries
+        .filter((row) => (row.status === 'DEAD' || row.status === 'FAILED') && !isIntentionalError(row.lastError))
+        .map((row) => row.publicationId),
+    );
+    return publications.filter((pub) => failedPubIds.has(pub.id));
+  }, [publications, deliveries, deliveryFilter]);
 
   const clearWaitingQueue = () => {
     const pending = status?.outbox?.pending ?? 0;
@@ -451,7 +492,7 @@ export function AdminOmnichannel() {
       return;
     }
     if (!connectorsOn) {
-      setError('کانکتور سرور خاموش است');
+      setError('ارسال از سرور خاموش است');
       return;
     }
     const catName = categoryOptions.find((c) => c.id === requeueCategoryId)?.name || 'دسته';
@@ -523,7 +564,7 @@ export function AdminOmnichannel() {
       id: 'activate',
       label: 'تست و فعال‌سازی',
       state: mode === 'LIVE' && flagsOn ? 'done' : mode === 'CANARY' ? 'warn' : 'todo',
-      hint: mode === 'LIVE' ? (flagsOn ? 'انتشار خودکار زنده است' : 'پرچم سرور خاموش است') : mode === 'CANARY' ? 'فقط به مقصد تست می‌رود' : 'هنوز روشن نشده',
+      hint: mode === 'LIVE' ? (flagsOn ? 'انتشار خودکار زنده است' : 'ارسال از سرور خاموش است') : mode === 'CANARY' ? 'فقط به مقصد آزمایشی می‌رود' : 'هنوز روشن نشده',
     },
   ];
   const currentStep: Step = step || steps.find((row) => row.state !== 'done')?.id || 'activate';
@@ -557,7 +598,7 @@ export function AdminOmnichannel() {
   const setMode = (next: AutoPublishMode) => run(`mode-${next}`, async () => {
     await apiClient.patch('/omnichannel/settings', { autoPublishMode: next, reason });
     setRules((current) => ({ ...current, autoPublishMode: next }));
-  }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی فعال شد؛ پست‌ها فقط به مقصد تست می‌روند' : 'انتشار خودکار زنده شد');
+  }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی فعال شد؛ پست‌ها فقط به مقصد آزمایشی می‌روند' : 'انتشار خودکار زنده شد');
 
   const doPreview = () => run('preview', async () => {
     const res = await apiClient.post<{ projection: Record<string, unknown>; rendered?: Rendered }>('/omnichannel/preview', { channel: pubChannel, sourceType, sourceId });
@@ -570,7 +611,7 @@ export function AdminOmnichannel() {
       return;
     }
     const target = destinationId ? destById.get(destinationId) : null;
-    const where = target ? `«${target.displayName}»` : mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'مقصد تست (canary)';
+    const where = target ? `«${target.displayName}»` : mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'مقصد آزمایشی';
     if (!window.confirm(`این منبع به ${where} ارسال می‌شود. ادامه می‌دهید؟`)) return;
     void run('send', async () => {
       await apiClient.post('/omnichannel/publications', {
@@ -770,9 +811,9 @@ export function AdminOmnichannel() {
                 }, 'تست اتصال ناموفق', 'ربات پاسخ داد؛ توکن درست است')}>
                   تست توکن
                 </button>
-                <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `ping-${row.id}` || !canaryForConnection(row.id)} title={canaryForConnection(row.id) ? 'پیام کوتاه فارسی به مقصد تست همین ربات' : 'اول یک مقصد canary روی همین ربات انتخاب کنید'} onClick={() => run(`ping-${row.id}`, async () => {
+                <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `ping-${row.id}` || !canaryForConnection(row.id)} title={canaryForConnection(row.id) ? 'پیام کوتاه فارسی به مقصد آزمایشی همین ربات' : 'اول یک مقصد آزمایشی روی همین ربات انتخاب کنید'} onClick={() => run(`ping-${row.id}`, async () => {
                   await apiClient.post(`/omnichannel/connections/${row.id}/canary-ping`, { reason });
-                }, 'ارسال آزمایشی ناموفق', 'پیام آزمایشی به مقصد تست رفت')}>
+                }, 'ارسال آزمایشی ناموفق', 'پیام آزمایشی به مقصد آزمایشی رفت')}>
                   پیام آزمایشی
                 </button>
                 <button type="button" className="text-xs text-gray-600 underline cursor-pointer" onClick={() => run(`toggle-${row.id}`, async () => {
@@ -892,7 +933,7 @@ export function AdminOmnichannel() {
             const ready = destinationReady(dest) && dest.enabled;
             const needsTestPost = Boolean(v?.ok) && v?.chatType !== 'private' && v?.canPost !== true && (v?.permissionCheck === 'test_post' || v?.permissionCheck === 'unavailable' || info.permissionCheck === 'test_post');
             return (
-              <li key={dest.id} className={`rounded-xl border p-3 text-sm space-y-2 ${dest.enabled ? 'bg-white' : 'bg-gray-50 opacity-70'}`}>
+              <li key={dest.id} className={`rounded-xl border p-3 text-sm space-y-2 ${dest.enabled ? 'bg-white' : 'bg-gray-50 opacity-70'} ${highlightCanaryPicker && !dest.isCanary ? 'ring-2 ring-amber-400 border-amber-300' : ''}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900 truncate flex items-center gap-2">{dest.displayName} <ProviderChip provider={conn?.provider} /></p>
@@ -901,7 +942,7 @@ export function AdminOmnichannel() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1 justify-end">
-                    {dest.isCanary && <Badge tone="info">مقصد تست</Badge>}
+                    {dest.isCanary && <Badge tone="info">مقصد آزمایشی</Badge>}
                     {ready ? <Badge tone="ok">آماده ارسال</Badge> : v && !v.ok ? <Badge tone="danger">دسترسی ندارد</Badge> : needsTestPost ? <Badge tone="warn">نیاز به پست آزمایشی</Badge> : v && v.ok ? <Badge tone="warn">اجازه ارسال ندارد</Badge> : <Badge tone="warn">تأییدنشده</Badge>}
                   </div>
                 </div>
@@ -946,10 +987,11 @@ export function AdminOmnichannel() {
                       پست آزمایشی
                     </button>
                   )}
-                  <button type="button" className="text-xs text-gray-700 underline cursor-pointer" onClick={() => run(`canary-${dest.id}`, async () => {
+                  <button type="button" className={`text-xs underline cursor-pointer ${highlightCanaryPicker && !dest.isCanary ? 'text-amber-800 font-semibold' : 'text-gray-700'}`} onClick={() => run(`canary-${dest.id}`, async () => {
                     await apiClient.patch(`/omnichannel/destinations/${dest.id}`, { isCanary: !dest.isCanary });
-                  }, 'تغییر مقصد تست ناموفق')}>
-                    {dest.isCanary ? 'برداشتن از تست' : 'انتخاب به‌عنوان مقصد تست'}
+                    setHighlightCanaryPicker(false);
+                  }, 'تغییر مقصد آزمایشی ناموفق', dest.isCanary ? 'از مقصد آزمایشی برداشته شد' : 'مقصد آزمایشی انتخاب شد')}>
+                    {dest.isCanary ? 'برداشتن از آزمایشی' : 'انتخاب به‌عنوان مقصد آزمایشی'}
                   </button>
                   <button type="button" className="text-xs text-gray-500 underline cursor-pointer" onClick={() => run(`enable-${dest.id}`, async () => {
                     await apiClient.patch(`/omnichannel/destinations/${dest.id}`, { enabled: !dest.enabled });
@@ -1055,12 +1097,12 @@ export function AdminOmnichannel() {
             value={rules.autoPublishMode}
             onChange={(autoPublishMode) => setRules((current) => ({ ...current, autoPublishMode }))}
             options={[
-              { value: 'OFF', title: 'خاموش', hint: 'هیچ پستی خودکار نمی‌رود؛ فقط ارسال دستی از تب انتشارها.' },
-              { value: 'CANARY', title: 'آزمایشی', hint: 'همه قواعد اجرا می‌شوند اما پست فقط به «مقصد تست» می‌رود. برای اطمینان قبل از زنده‌شدن.', badge: 'امن', tone: 'info' },
+              { value: 'OFF', title: 'خاموش', hint: 'هیچ پستی خودکار نمی‌رود؛ فقط ارسال دستی از تب انتشار.' },
+              { value: 'CANARY', title: 'آزمایشی', hint: 'همه قواعد اجرا می‌شوند اما پست فقط به «مقصد آزمایشی» می‌رود. برای اطمینان قبل از زنده‌شدن.', badge: 'امن', tone: 'info' },
               { value: 'LIVE', title: 'زنده', hint: 'پست به همه کانال‌های تأییدشده می‌رود. مشتری‌ها می‌بینند.', badge: 'واقعی', tone: 'ok', disabled: readyDestinations.filter((dest) => !dest.isCanary).length === 0 },
             ]}
           />
-          {readyDestinations.filter((dest) => !dest.isCanary).length === 0 && <p className="text-xs text-amber-700">برای حالت زنده دست‌کم یک کانال تأییدشده (غیر از مقصد تست) لازم است.</p>}
+          {readyDestinations.filter((dest) => !dest.isCanary).length === 0 && <p className="text-xs text-amber-700">برای حالت زنده دست‌کم یک کانال تأییدشده (غیر از مقصد آزمایشی) لازم است.</p>}
         </div>
 
         <div className="space-y-2">
@@ -1200,15 +1242,96 @@ export function AdminOmnichannel() {
     </Section>
   );
 
+  const hasCanary = Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE'));
   const checklist: Array<{ label: string; ok: boolean; detail: string }> = [
     { label: 'ربات فعال', ok: activeConnections.length > 0, detail: activeConnections.length ? summarizeBots(activeConnections) : 'مرحله ۱ را کامل کنید' },
     { label: 'مقصد تأییدشده', ok: readyDestinations.length > 0, detail: readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'مرحله ۲: دسترسی ربات را بررسی کنید' },
-    { label: 'مقصد تست (canary)', ok: Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE')), detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان تست انتخاب کنید' },
+    { label: 'مقصد آزمایشی', ok: hasCanary, detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان آزمایشی انتخاب کنید' },
     { label: 'قالب تکی و عمده', ok: templatesReady, detail: templatesReady ? 'ذخیره شده' : 'مرحله ۳ را برای هر دو کانال ذخیره کنید' },
-    { label: 'کانکتور سرور (ارسال دستی)', ok: connectorsOn, detail: connectorsOn ? 'OMNICHANNEL_CONNECTORS_ENABLED روشن است' : 'برای ارسال دستی و آزمایشی این پرچم باید روی سرور روشن باشد' },
-    { label: 'انتشار خودکار سرور', ok: Boolean(status?.autoPublish), detail: status?.autoPublish ? 'OMNICHANNEL_AUTO_PUBLISH روشن است' : 'فقط برای رویدادهای کاتالوگ؛ ارسال دستی به آن وابسته نیست' },
+    { label: 'ارسال از سرور (دستی)', ok: connectorsOn, detail: connectorsOn ? 'ارسال دستی از سرور روشن است' : 'برای ارسال دستی و آزمایشی، مدیر سرور باید ارسال را روشن کند' },
+    { label: 'انتشار خودکار سرور', ok: Boolean(status?.autoPublish), detail: status?.autoPublish ? 'انتشار خودکار روی سرور روشن است' : 'فقط برای رویدادهای کاتالوگ؛ ارسال دستی به آن وابسته نیست' },
   ];
+  const setupComplete = checklist.every((row) => row.ok) || mode !== 'OFF';
   const canGoLive = checklist.every((row) => row.ok) && readyDestinations.some((dest) => !dest.isCanary);
+
+  useEffect(() => {
+    if (defaultViewApplied || loading) return;
+    if (setupComplete) {
+      setView('publish');
+      setSettingsCollapsed(true);
+    } else {
+      setView('settings');
+      setSettingsCollapsed(false);
+    }
+    setDefaultViewApplied(true);
+  }, [defaultViewApplied, loading, setupComplete]);
+
+  const goSelectCanary = () => {
+    setView('settings');
+    setSettingsCollapsed(false);
+    setStep('channels');
+    setHighlightCanaryPicker(true);
+  };
+  const goFailedDeliveries = () => {
+    setView('publish');
+    setDeliveryFilter('failed');
+  };
+  const goDeadQueue = () => {
+    setView('ops');
+    setOutboxScope('channel');
+  };
+
+  const attentionItems: AttentionItem[] = [];
+  if (!hasCanary && (mode === 'CANARY' || mode === 'OFF' || !setupComplete)) {
+    attentionItems.push({
+      id: 'canary',
+      title: 'مقصد آزمایشی ندارید',
+      detail: mode === 'CANARY'
+        ? 'حالت آزمایشی روشن است ولی مقصد آزمایشی انتخاب نشده؛ هیچ پستی ارسال نمی‌شود.'
+        : 'یک کانال یا چت خصوصی را به‌عنوان مقصد آزمایشی انتخاب کنید تا تست امن باشد.',
+      tone: 'warn',
+      actionLabel: 'انتخاب مقصد آزمایشی',
+      onAction: goSelectCanary,
+    });
+  }
+  if (failingReal > 0) {
+    attentionItems.push({
+      id: 'failed-deliveries',
+      title: `${faNumber(failingReal)} ارسال ناموفق`,
+      detail: failingIntentional
+        ? `${faNumber(failingIntentional)} مورد عمدی (لغو ادمین یا برداشت) جدا شمرده شد.`
+        : 'در ۱۰۰ ارسال اخیر؛ علت را ببینید و در صورت نیاز دوباره تلاش کنید.',
+      tone: 'danger',
+      actionLabel: 'مشاهده ارسال‌های ناموفق',
+      onAction: goFailedDeliveries,
+    });
+  }
+  if (deadChannel > 0 || (outboxScope === 'all' && (status?.outbox?.dead ?? 0) > 0)) {
+    const deadShow = deadChannel > 0 ? deadChannel : (status?.outbox?.dead ?? 0);
+    attentionItems.push({
+      id: 'dead-outbox',
+      title: `${faNumber(deadShow)} رویداد متوقف`,
+      detail: deadOther > 0
+        ? `${faNumber(deadChannel)} مربوط به کانال · ${faNumber(deadOther)} رویداد دیگر (پیامک/جستجو/…) در صف کلی`
+        : 'پس از چند تلاش ناموفق متوقف شده‌اند؛ خطا را در صف ببینید.',
+      tone: 'danger',
+      actionLabel: 'باز کردن صف متوقف',
+      onAction: goDeadQueue,
+    });
+  }
+  if (sentToday === 0 && status?.gateBlockReason && status.gateBlockReason !== 'none' && attentionItems.length < 3) {
+    const label = gateBlockReasonLabel(status.gateBlockReason);
+    if (label) {
+      attentionItems.push({
+        id: 'gate-block',
+        title: 'پست خودکار امروز صفر است',
+        detail: label,
+        tone: 'warn',
+        actionLabel: status.gateBlockReason === 'no_canary' ? 'انتخاب مقصد آزمایشی' : 'رفتن به تنظیمات',
+        onAction: status.gateBlockReason === 'no_canary' ? goSelectCanary : () => { setView('settings'); setSettingsCollapsed(false); setStep('rules'); },
+      });
+    }
+  }
 
   const previewInfo = providerInfo(previewProvider);
   const previewRendered = preview?.rendered ? platformRendered(preview.rendered, previewInfo) : null;
@@ -1220,20 +1343,23 @@ export function AdminOmnichannel() {
   );
 
   const activatePanel = (
-    <Section title="۵. تست و فعال‌سازی" description="اول یک محصول واقعی را به مقصد تست بفرستید و شکل پست را در همان پیام‌رسان ببینید؛ بعد حالت خودکار را روشن کنید.">
+    <Section title="۵. تست و فعال‌سازی" description="اول یک محصول واقعی را به مقصد آزمایشی بفرستید و شکل پست را در همان پیام‌رسان ببینید؛ بعد حالت خودکار را روشن کنید.">
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-3">
-          <ul className="rounded-xl border divide-y">
-            {checklist.map((row) => (
-              <li key={row.label} className="flex items-start gap-3 p-3 text-sm">
-                <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${row.ok ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-800'}`}>{row.ok ? '✓' : '!'}</span>
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-900">{row.label}</p>
-                  <p className="text-xs text-gray-500 truncate">{row.detail}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <details className="rounded-xl border" open={!setupComplete}>
+            <summary className="cursor-pointer p-3 text-sm font-medium text-gray-900">چک‌لیست آمادگی ({faNumber(checklist.filter((row) => row.ok).length)} از {faNumber(checklist.length)})</summary>
+            <ul className="divide-y border-t">
+              {checklist.map((row) => (
+                <li key={row.label} className="flex items-start gap-3 p-3 text-sm">
+                  <span className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs ${row.ok ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-800'}`}>{row.ok ? '✓' : '!'}</span>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900">{row.label}</p>
+                    <p className="text-xs text-gray-500 truncate">{row.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </details>
           <div className="rounded-xl border p-3 space-y-2">
             <p className="text-sm font-medium">پست آزمایشی با محصول واقعی</p>
             <div className="flex flex-wrap gap-2">
@@ -1257,10 +1383,10 @@ export function AdminOmnichannel() {
               <button type="button" className="btn btn-primary btn-sm" disabled={mode === 'LIVE' || busy.startsWith('mode-') || !canGoLive} onClick={() => { if (window.confirm('از این لحظه هر محصول جدید یا تغییر قیمت طبق قواعد به کانال‌های واقعی می‌رود. ادامه می‌دهید؟')) void setMode('LIVE'); }}>فعال‌سازی زنده</button>
               <button type="button" className="text-xs text-red-600 underline cursor-pointer" disabled={mode === 'OFF' || busy.startsWith('mode-')} onClick={() => setMode('OFF')}>خاموش‌کردن انتشار خودکار</button>
             </div>
-            {!canGoLive && mode !== 'LIVE' && <p className="text-xs text-amber-700">برای زنده‌شدن همه موارد چک‌لیست و دست‌کم یک کانال تأییدشده غیر از مقصد تست لازم است.</p>}
-            {!connectorsOn && <Callout tone="warn">برای ارسال دستی یا آزمایشی، مدیر سرور باید OMNICHANNEL_CONNECTORS_ENABLED را روشن کند. OMNICHANNEL_AUTO_PUBLISH فقط رویدادهای خودکار کاتالوگ را کنترل می‌کند و برای دکمهٔ ارسال لازم نیست.</Callout>}
-            {connectorsOn && !status?.autoPublish && <Callout tone="info">کانکتور روشن است؛ ارسال دستی کار می‌کند. انتشار خودکار کاتالوگ هنوز با OMNICHANNEL_AUTO_PUBLISH خاموش است.</Callout>}
-            {flagsOn && mode === 'OFF' && <Callout tone="info">پرچم‌های سرور آماده‌اند؛ برای پست خودکار، حالت را «آزمایشی» یا «زنده» کنید.</Callout>}
+            {!canGoLive && mode !== 'LIVE' && <p className="text-xs text-amber-700">برای زنده‌شدن همه موارد چک‌لیست و دست‌کم یک کانال تأییدشده غیر از مقصد آزمایشی لازم است.</p>}
+            {!connectorsOn && <Callout tone="warn">برای ارسال دستی یا آزمایشی، مدیر سرور باید «ارسال از سرور» را روشن کند. انتشار خودکار کاتالوگ جداگانه کنترل می‌شود و برای دکمهٔ ارسال لازم نیست.</Callout>}
+            {connectorsOn && !status?.autoPublish && <Callout tone="info">ارسال از سرور روشن است؛ ارسال دستی کار می‌کند. انتشار خودکار کاتالوگ هنوز روی سرور خاموش است.</Callout>}
+            {flagsOn && mode === 'OFF' && <Callout tone="info">سرور آماده است؛ برای پست خودکار، حالت را «آزمایشی» یا «زنده» کنید.</Callout>}
           </div>
         </div>
         <div className="space-y-2">
@@ -1312,7 +1438,7 @@ export function AdminOmnichannel() {
             </select>
           </label>
           <button type="button" className="btn btn-secondary btn-sm" disabled={!requeueCategoryId || busy === 'requeue-preview'} onClick={previewRequeueByCategory}>شمارش محصولات</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!requeueCategoryId || !connectorsOn || busy === 'requeue-category'} onClick={runRequeueByCategory} title={!connectorsOn ? 'کانکتور سرور خاموش است' : undefined}>شروع ارسال دسته</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!requeueCategoryId || !connectorsOn || busy === 'requeue-category'} onClick={runRequeueByCategory} title={!connectorsOn ? 'ارسال از سرور خاموش است' : undefined}>شروع ارسال دسته</button>
           <button type="button" className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50" disabled={busy === 'clear-waiting' || !(status?.outbox?.pending)} onClick={clearWaitingQueue}>خالی کردن صف انتظار</button>
         </div>
         {requeuePreview && (
@@ -1338,7 +1464,7 @@ export function AdminOmnichannel() {
           </select>
           <input className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[14rem]" placeholder={sourceType === 'PRODUCT' ? 'کد، اسلاگ یا لینک محصول' : 'شناسه یا اسلاگ'} value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
           <select className="border rounded-lg px-3 py-2 text-sm" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-            <option value="">طبق قواعد خودکار ({mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'فقط مقصد تست'})</option>
+            <option value="">طبق قواعد خودکار ({mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'فقط مقصد آزمایشی'})</option>
             {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{providerLabel(providerOf(dest))} · {dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
           </select>
           <input className="border rounded-lg px-3 py-2 text-sm w-44" placeholder="دلیل (برای حسابرسی)" value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -1346,9 +1472,9 @@ export function AdminOmnichannel() {
           <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'draft'} onClick={() => run('draft', async () => {
             await apiClient.post('/omnichannel/publications', { preview: { channel: pubChannel, sourceType, sourceId }, dryRun: true, reason });
           }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد (به هیچ پیام‌رسانی نرفت)')}>ثبت پیش‌نویس</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !connectorsOn || busy === 'send'} onClick={() => doSend(targetId || undefined)} title={!connectorsOn ? 'کانکتور سرور خاموش است' : undefined}>ارسال</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !connectorsOn || busy === 'send'} onClick={() => doSend(targetId || undefined)} title={!connectorsOn ? 'ارسال از سرور خاموش است' : undefined}>ارسال</button>
         </div>
-        {!connectorsOn && <Callout tone="warn">دکمهٔ ارسال غیرفعال است تا OMNICHANNEL_CONNECTORS_ENABLED روی سرور روشن شود. پیش‌نویس و پیش‌نمایش بدون کانکتور کار می‌کنند.</Callout>}
+        {!connectorsOn && <Callout tone="warn">دکمهٔ ارسال غیرفعال است تا «ارسال از سرور» روشن شود. پیش‌نویس و پیش‌نمایش بدون آن کار می‌کنند.</Callout>}
         {preview?.rendered && (
           <div className="grid gap-3 lg:grid-cols-[22rem_minmax(0,1fr)]">
             <div className="space-y-2">
@@ -1367,9 +1493,23 @@ export function AdminOmnichannel() {
         )}
       </Section>
 
-      <Section title="انتشارها" description="هر ردیف یک محصول در یک کانال است؛ زیر آن وضعیت ارسال به هر مقصد را می‌بینید." actions={<button type="button" className="btn btn-secondary btn-sm" disabled={busy === 'reconcile' || busy === 'bulk-withdraw'} onClick={() => run('reconcile', async () => { await apiClient.post('/omnichannel/reconcile', { reason }); }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق با سایت</button>}>
-        {publications.length === 0 ? (
-          <Callout tone="info">هنوز انتشاری ثبت نشده. با فعال‌شدن حالت خودکار، محصول‌های جدید خودشان اینجا ظاهر می‌شوند.</Callout>
+      <Section
+        title="انتشارها"
+        description="هر ردیف یک محصول در یک کانال است؛ زیر آن وضعیت ارسال به هر مقصد را می‌بینید."
+        actions={(
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="inline-flex gap-1 rounded-lg bg-gray-100 p-1" role="group" aria-label="فیلتر ارسال">
+              <button type="button" className={`px-2.5 py-1 rounded-md text-xs cursor-pointer ${deliveryFilter === 'all' ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setDeliveryFilter('all')}>همه</button>
+              <button type="button" className={`px-2.5 py-1 rounded-md text-xs cursor-pointer ${deliveryFilter === 'failed' ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setDeliveryFilter('failed')}>
+                ناموفق{failingReal > 0 ? ` (${faNumber(failingReal)})` : ''}
+              </button>
+            </div>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={busy === 'reconcile' || busy === 'bulk-withdraw'} onClick={() => run('reconcile', async () => { await apiClient.post('/omnichannel/reconcile', { reason }); }, 'خطا در تطبیق', 'تطبیق انجام شد')}>تطبیق با سایت</button>
+          </div>
+        )}
+      >
+        {filteredPublications.length === 0 ? (
+          <Callout tone="info">{deliveryFilter === 'failed' ? 'ارسال ناموفقِ واقعی در فهرست اخیر نیست.' : 'هنوز انتشاری ثبت نشده. با فعال‌شدن حالت خودکار، محصول‌های جدید خودشان اینجا ظاهر می‌شوند.'}</Callout>
         ) : (
           <div className="space-y-2">
             {selectedPubIds.length > 0 && (
@@ -1426,7 +1566,7 @@ export function AdminOmnichannel() {
               </div>
             )}
             <ul className="divide-y rounded-xl border">
-              {publications.map((pub) => {
+              {filteredPublications.map((pub) => {
                 const st = publicationStatus(pub.status);
                 const rows = deliveriesByPub.get(pub.id) || [];
                 const name = pub.projection?.name || pub.sourceId;
@@ -1462,17 +1602,25 @@ export function AdminOmnichannel() {
                       <ul className="grid gap-1 md:grid-cols-2">
                         {rows.map((row) => {
                           const ds = deliveryStatus(row.status);
+                          const intentional = isIntentionalError(row.lastError);
+                          const failTone = (row.status === 'DEAD' || row.status === 'FAILED')
+                            ? deliveryFailureTone(row.lastError)
+                            : ds.tone;
                           const dest = row.destinationId ? destById.get(row.destinationId) : undefined;
                           return (
                             <li key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-2 py-1.5 text-xs">
                               {dest && <ProviderChip provider={providerOf(dest)} />}
                               <span className="font-medium">{dest?.displayName || 'مقصد حذف‌شده'}</span>
                               <span className="text-gray-500">{actionLabel(row.action)}</span>
-                              <Badge tone={ds.tone}>{ds.label}</Badge>
-                              {row.lastError && <span className="text-red-700 truncate max-w-[16rem]" title={row.lastError}>{errorLabel(row.lastError)}</span>}
+                              <Badge tone={failTone}>{intentional ? 'عمدی' : ds.label}</Badge>
+                              {row.lastError && (
+                                <span className={`truncate max-w-[16rem] ${intentional ? 'text-gray-500' : 'text-red-700'}`} title={row.lastError}>
+                                  {errorLabel(row.lastError)}
+                                </span>
+                              )}
                               {row.nextAttemptAt && (row.status === 'RETRY' || row.status === 'PENDING') && <span className="text-gray-400">تلاش بعدی {relativeTime(row.nextAttemptAt)}</span>}
                               <span className="flex-1" />
-                              {(row.status === 'DEAD' || row.status === 'FAILED') && (
+                              {(row.status === 'DEAD' || row.status === 'FAILED') && !intentional && (
                                 <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
                               )}
                             </li>
@@ -1494,18 +1642,31 @@ export function AdminOmnichannel() {
     <>
       <Section
         title="صف رویدادها"
-        description="هر تغییر سایت اول به این صف می‌آید و ورکر آن را به کانال می‌رساند. تأخیر «موکول‌شده» یعنی فاصله بین پست یا ساعت سکوت."
+        description="هر تغییر سایت اول به این صف می‌آید و ورکر آن را به کانال می‌رساند. پیش‌فرض فقط رویدادهای انتشار کانال است تا نویز پیامک/جستجو کارت وضعیت را قرمز نکند."
         actions={(
-          <button
-            type="button"
-            className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
-            disabled={busy === 'clear-waiting' || !(status?.outbox?.pending)}
-            onClick={clearWaitingQueue}
-          >
-            خالی کردن صف انتظار
-          </button>
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="inline-flex gap-1 rounded-lg bg-gray-100 p-1" role="group" aria-label="محدوده صف">
+              <button type="button" className={`px-2.5 py-1 rounded-md text-xs cursor-pointer ${outboxScope === 'channel' ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setOutboxScope('channel')}>فقط ارسال کانال</button>
+              <button type="button" className={`px-2.5 py-1 rounded-md text-xs cursor-pointer ${outboxScope === 'all' ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setOutboxScope('all')}>
+                همه{deadOther > 0 ? ` (+${faNumber(deadOther)} غیرکانال)` : ''}
+              </button>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+              disabled={busy === 'clear-waiting' || !(status?.outbox?.pending)}
+              onClick={clearWaitingQueue}
+            >
+              خالی کردن صف انتظار
+            </button>
+          </div>
         )}
       >
+        {outboxScope === 'channel' && deadOther > 0 && (
+          <Callout tone="info">
+            {faNumber(deadOther)} رویداد متوقفِ غیرکانال (مثل پیامک یا جستجو) از این فهرست پنهان است. برای دیدن همه، «همه» را بزنید — حذف از دیتابیس انجام نمی‌شود.
+          </Callout>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -1519,21 +1680,22 @@ export function AdminOmnichannel() {
               </tr>
             </thead>
             <tbody>
-              {outbox.map((row) => {
+              {filteredOutbox.map((row) => {
                 const st = outboxStatus(row.status);
                 const deferred = row.status === 'PENDING' && row.availableAt && new Date(row.availableAt).getTime() > Date.now() + 5_000;
+                const intentional = isIntentionalError(row.lastError);
                 return (
-                  <tr key={row.id} className="border-t">
+                  <tr key={row.id} className={`border-t ${row.status === 'DEAD' ? 'bg-red-50/40' : ''}`}>
                     <td className="p-2">{row.eventType === 'publication.deliver.requested' || row.eventType === 'publication.deliver_requested' ? 'ارسال به کانال' : row.eventType === 'product.stock_changed' ? 'تغییر موجودی' : eventLabel(row.eventType)}</td>
                     <td className="p-2">{channelLabel(row.channel)}</td>
-                    <td className="p-2"><Badge tone={st.tone}>{deferred ? 'موکول‌شده' : st.label}</Badge></td>
+                    <td className="p-2"><Badge tone={intentional ? 'off' : st.tone}>{intentional ? 'عمدی' : deferred ? 'موکول‌شده' : st.label}</Badge></td>
                     <td className="p-2">{faNumber(row.attempts)}</td>
                     <td className="p-2 text-xs text-gray-500">{deferred ? relativeTime(row.availableAt) : relativeTime(row.createdAt)}</td>
-                    <td className="p-2 text-xs text-red-700 max-w-[18rem] truncate" title={row.lastError || ''}>{row.lastError ? errorLabel(row.lastError) : '—'}</td>
+                    <td className={`p-2 text-xs max-w-[18rem] truncate ${intentional ? 'text-gray-500' : 'text-red-700'}`} title={row.lastError || ''}>{row.lastError ? errorLabel(row.lastError) : '—'}</td>
                   </tr>
                 );
               })}
-              {outbox.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={6}>رویدادی در صف نیست</td></tr>}
+              {filteredOutbox.length === 0 && <tr><td className="p-3 text-gray-400" colSpan={6}>{outboxScope === 'channel' ? 'رویداد انتشار کانال در صف نیست' : 'رویدادی در صف نیست'}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1601,6 +1763,31 @@ export function AdminOmnichannel() {
 
   /* ---------- page ---------- */
 
+  const statusView = (
+    <div className="space-y-4">
+      <Section title="وضعیت انتشار" description="خلاصهٔ آمادگی و حالت خودکار. برای کار روزانه به تب «انتشار» بروید؛ تنظیمات یک‌باره در تب «تنظیمات» است.">
+        <div className="flex flex-wrap gap-2 items-center">
+          <Badge tone={mode === 'LIVE' ? 'ok' : mode === 'CANARY' ? 'info' : 'off'}>انتشار خودکار: {modeLabel(mode)}</Badge>
+          <Badge tone={connectorsOn ? 'ok' : 'warn'}>{connectorsOn ? 'ارسال از سرور روشن' : 'ارسال از سرور خاموش'}</Badge>
+          <Badge tone={hasCanary ? 'ok' : 'warn'}>{hasCanary ? 'مقصد آزمایشی دارد' : 'بدون مقصد آزمایشی'}</Badge>
+          {status?.gateBlockReason && status.gateBlockReason !== 'none' && (
+            <Badge tone="warn">{gateBlockReasonLabel(status.gateBlockReason)}</Badge>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2 pt-2">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setView('publish')}>رفتن به انتشار</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setView('settings'); setSettingsCollapsed(false); setStep('activate'); }}>تست و فعال‌سازی</button>
+          {!hasCanary && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={goSelectCanary}>انتخاب مقصد آزمایشی</button>
+          )}
+        </div>
+      </Section>
+      {attentionItems.length === 0 && (
+        <Callout tone="ok">مورد فوری برای اقدام نیست. پست‌های امروز: {faNumber(sentToday)} از {faNumber(status?.autoDailyCap ?? 20)}.</Callout>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-5 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1616,55 +1803,108 @@ export function AdminOmnichannel() {
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>تازه‌سازی</button>
       </div>
 
+      <AttentionStrip items={attentionItems} />
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Metric label="ربات" value={activeConnections.length ? summarizeBots(activeConnections) : 'ثبت نشده'} hint={status?.connectors ? (providerInfos.some((info) => !info.enabled) ? `کانکتور روشن · ${providerInfos.filter((info) => !info.enabled).map((info) => info.label).join('، ')} خاموش` : 'کانکتور روشن') : 'کانکتور سرور خاموش'} tone={activeConnections.length && status?.connectors ? 'ok' : 'warn'} />
-        <Metric label="کانال‌های آماده" value={readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'هیچ'} hint={unverified.length ? `${faNumber(unverified.length)} مقصد تأییدنشده` : 'همه تأیید شده'} tone={readyDestinations.length ? (unverified.length ? 'warn' : 'ok') : 'warn'} />
+        <Metric
+          label="ربات"
+          value={activeConnections.length ? summarizeBots(activeConnections) : 'ثبت نشده'}
+          hint={status?.connectors ? (providerInfos.some((info) => !info.enabled) ? `ارسال روشن · ${providerInfos.filter((info) => !info.enabled).map((info) => info.label).join('، ')} خاموش` : 'ارسال از سرور روشن') : 'ارسال از سرور خاموش'}
+          tone={activeConnections.length && status?.connectors ? 'ok' : 'warn'}
+        />
+        <Metric
+          label="کانال‌های آماده"
+          value={readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'هیچ'}
+          hint={unverified.length ? `${faNumber(unverified.length)} مقصد تأییدنشده` : 'همه تأیید شده'}
+          tone={readyDestinations.length ? (unverified.length ? 'warn' : 'ok') : 'warn'}
+        />
         <Metric
           label="پست‌های امروز"
           value={`${faNumber(sentToday)} از ${faNumber(status?.autoDailyCap ?? 20)}`}
-          hint={failing ? `${faNumber(failing)} ناموفق در ۱۰۰ ارسال اخیر` : 'بدون خطا در فهرست اخیر'}
-          tone={failing ? 'danger' : 'ok'}
+          hint={status?.gateBlockReason && status.gateBlockReason !== 'none' && sentToday === 0
+            ? gateBlockReasonLabel(status.gateBlockReason)
+            : 'سقف روزانه طبق قواعد'}
+          tone={sentToday === 0 && status?.gateBlockReason && status.gateBlockReason !== 'none' ? 'warn' : 'ok'}
         />
         <Metric
           label="صف"
           value={`${faNumber(status?.outbox?.pending ?? 0)} در انتظار`}
           hint={[
-            status?.outbox?.dead ? `${faNumber(status.outbox.dead)} متوقف` : '',
-            deferredPending ? `${faNumber(deferredPending)} موکول‌شده در فهرست` : '',
-            !status?.outbox?.dead && !deferredPending && status?.outbox?.oldestPendingAgeSec
+            deadMetric > 0 ? `${faNumber(deadMetric)} متوقف${outboxScope === 'channel' ? ' (کانال)' : ''}` : '',
+            deferredPending ? `${faNumber(deferredPending)} موکول‌شده` : '',
+            deadMetric <= 0 && !deferredPending && status?.outbox?.oldestPendingAgeSec
               ? `قدیمی‌ترین ${faNumber(status.outbox.oldestPendingAgeSec)} ثانیه`
               : '',
-            !status?.outbox?.dead && !deferredPending && !status?.outbox?.oldestPendingAgeSec ? 'روان' : '',
+            deadMetric <= 0 && !deferredPending && !status?.outbox?.oldestPendingAgeSec ? 'روان' : '',
           ].filter(Boolean).join(' · ') || 'روان'}
-          tone={status?.outbox?.dead || (status?.outbox?.pending ?? 0) > 20 ? 'danger' : 'ok'}
+          tone={deadChannel > 0 || (status?.outbox?.pending ?? 0) > 20 ? 'danger' : 'ok'}
         />
       </div>
 
       {error && <Callout tone="danger">{error}</Callout>}
       {notice && <Callout tone="ok">{notice}</Callout>}
 
-      <div className="flex gap-1 rounded-xl bg-gray-100 p-1 w-fit" role="tablist" aria-label="بخش‌ها">
-        {([['setup', 'راه‌اندازی'], ['publish', 'انتشارها'], ['ops', 'عملیات']] as Array<[View, string]>).map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={view === id} className={`px-4 py-1.5 rounded-lg text-sm cursor-pointer ${view === id ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setView(id)}>
+      <div className="flex flex-wrap gap-1 rounded-xl bg-gray-100 p-1 w-fit" role="tablist" aria-label="بخش‌ها">
+        {([
+          ['status', 'وضعیت و اقدام'],
+          ['publish', 'انتشار'],
+          ['settings', 'تنظیمات'],
+          ['ops', 'صف و حسابرسی'],
+        ] as Array<[View, string]>).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={view === id}
+            className={`px-4 py-1.5 rounded-lg text-sm cursor-pointer ${view === id ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`}
+            onClick={() => {
+              setView(id);
+              if (id === 'settings') setSettingsCollapsed(false);
+            }}
+          >
             {label}
-            {id === 'publish' && failing > 0 && <span className="mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{faNumber(failing)}</span>}
+            {id === 'publish' && failingReal > 0 && (
+              <span className="mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{faNumber(failingReal)}</span>
+            )}
+            {id === 'ops' && deadChannel > 0 && (
+              <span className="mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{faNumber(deadChannel)}</span>
+            )}
           </button>
         ))}
       </div>
 
-      {view === 'setup' && <Stepper steps={steps} current={currentStep} onSelect={setStep} />}
-      <div hidden={!(view === 'setup' && currentStep === 'template')}>{templatePanel}</div>
-      {view === 'setup' && (
+      {view === 'status' && statusView}
+
+      {view === 'settings' && (
         <>
-          {currentStep === 'bot' && botPanel}
-          {currentStep === 'channels' && channelsPanel}
-          {currentStep === 'rules' && rulesPanel}
-          {currentStep === 'activate' && activatePanel}
-          <div className="flex justify-between">
-            <button type="button" className="btn btn-secondary btn-sm" disabled={currentStep === 'bot'} onClick={() => setStep(steps[Math.max(0, steps.findIndex((row) => row.id === currentStep) - 1)].id)}>مرحله قبل</button>
-            <button type="button" className="btn btn-secondary btn-sm" title={currentStep === 'template' && tplDirty ? 'اول قالب را ذخیره کنید' : undefined} disabled={currentStep === 'activate' || (currentStep === 'template' && tplDirty)} onClick={() => setStep(steps[Math.min(steps.length - 1, steps.findIndex((row) => row.id === currentStep) + 1)].id)}>مرحله بعد</button>
-          </div>
-          {currentStep === 'template' && tplDirty && <p className="text-xs text-amber-700 text-end">تغییرات قالب هنوز روی سرور نیست. «ذخیره قالب» را بزنید، بعد به مرحله بعد بروید.</p>}
+          {setupComplete && settingsCollapsed ? (
+            <Section
+              title="تنظیمات راه‌اندازی"
+              description="راه‌اندازی کامل شده. برای ویرایش ربات، کانال، قالب یا قواعد، تنظیمات را باز کنید."
+              actions={<button type="button" className="btn btn-secondary btn-sm" onClick={() => setSettingsCollapsed(false)}>باز کردن تنظیمات</button>}
+            >
+              <p className="text-sm text-gray-600">حالت فعلی: {modeLabel(mode)} · مقصد آزمایشی: {hasCanary ? 'دارد' : 'ندارد'} · کانال آماده: {faNumber(readyDestinations.length)}</p>
+            </Section>
+          ) : (
+            <>
+              {setupComplete && (
+                <div className="flex justify-end">
+                  <button type="button" className="text-xs text-gray-600 underline cursor-pointer" onClick={() => setSettingsCollapsed(true)}>جمع‌کردن مراحل</button>
+                </div>
+              )}
+              <Stepper steps={steps} current={currentStep} onSelect={setStep} />
+              <div hidden={currentStep !== 'template'}>{templatePanel}</div>
+              {currentStep === 'bot' && botPanel}
+              {currentStep === 'channels' && channelsPanel}
+              {currentStep === 'rules' && rulesPanel}
+              {currentStep === 'activate' && activatePanel}
+              <div className="flex justify-between">
+                <button type="button" className="btn btn-secondary btn-sm" disabled={currentStep === 'bot'} onClick={() => setStep(steps[Math.max(0, steps.findIndex((row) => row.id === currentStep) - 1)].id)}>مرحله قبل</button>
+                <button type="button" className="btn btn-secondary btn-sm" title={currentStep === 'template' && tplDirty ? 'اول قالب را ذخیره کنید' : undefined} disabled={currentStep === 'activate' || (currentStep === 'template' && tplDirty)} onClick={() => setStep(steps[Math.min(steps.length - 1, steps.findIndex((row) => row.id === currentStep) + 1)].id)}>مرحله بعد</button>
+              </div>
+              {currentStep === 'template' && tplDirty && <p className="text-xs text-amber-700 text-end">تغییرات قالب هنوز روی سرور نیست. «ذخیره قالب» را بزنید، بعد به مرحله بعد بروید.</p>}
+            </>
+          )}
         </>
       )}
       {view === 'publish' && publishView}

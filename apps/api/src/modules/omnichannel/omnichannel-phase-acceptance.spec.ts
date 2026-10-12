@@ -119,7 +119,7 @@ assert(
   'leaseBatch unwraps TypeORM UPDATE RETURNING tuple',
 );
 assert(
-  src('modules/notification/notification.service.ts').includes('AbortSignal.timeout'),
+  src('modules/notification/sms-transport.ts').includes('AbortSignal.timeout'),
   'SMS fetch has a hard timeout',
 );
 assert(lease.includes('jitterRatio') && lease.includes('0.25'), 'retry backoff includes jitter');
@@ -153,6 +153,12 @@ assert(omniSvc.includes('ChannelAdapterRegistry') && !omniSvc.includes("provider
 assert(workerSrc.includes('ChannelAdapterRegistry') && !workerSrc.includes('TelegramAdapter'), 'worker resolves adapter from registry');
 assert(omniAdmin.includes('getSettings') && omniAdmin.includes('patchSettings'), 'admin settings endpoints');
 assert(adminOmni.includes('retailOosPolicy') && adminOmni.includes('isCanary'), 'admin OOS radios and canary picker');
+assert(adminOmni.includes('AttentionStrip') && adminOmniUi.includes('AttentionStrip'), 'admin AttentionStrip for actionable warnings');
+assert(adminOmni.includes("وضعیت و اقدام") && adminOmni.includes("تنظیمات"), 'admin tabs status/settings IA');
+assert(adminOmni.includes('مقصد آزمایشی') && !adminOmni.includes('مقصد تست (canary)'), 'canary jargon removed from primary UI');
+assert(omniSvc.includes('diagnoseGateBlock') && omniAdmin.includes('gateBlockReason'), 'status exposes gateBlockReason diagnosis');
+assert(omniSvc.includes('outboxDeadByEventType') && omniAdmin.includes('outboxDeadByEventType'), 'status exposes dead-by-eventType');
+assert(src('modules/omnichannel/gate-block-reason.ts').includes('resolveGateBlockReason'), 'gate-block-reason helper');
 assert(dbSync.includes('forbidden in production/staging'), 'DB_SYNC fail-closed');
 assert(checkout.includes("channel: 'WHOLESALE'"), 'wholesale checkout sends channel');
 assert(lease.includes("PRODUCT_STOCK_CHANGED"), 'worker leases product.stock_changed');

@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T16:00:00Z — Omnichannel UX redesign phases A→E
+
+- Owner: cursor (this session). Reclaimed AdminOmnichannel + omnichannel status from stale TASK-20261010-005 scope for UX-only work; queue APIs untouched.
+- Depth: full. Parallel: UI inventory, queue RCA, docs, admin patterns; then implement A–E.
+- UI: AttentionStrip, tabs وضعیت/انتشار/تنظیمات/صف, collapsed stepper, channel-scoped dead metric, intentional badges, Persian jargon.
+- API: gate-block-reason.ts; status.sentToday / gateBlockReason / outboxDeadByEventType.
+- Specs: gate-block-reason + omnichannel-phase-acceptance ok; web tsc 0 for omni files.
+- Docs: WORKLOG + docs/reports/2026-10-12-omnichannel-ux-redesign.md.
+- Not committed/deployed (await user commit ask). Smoke after deploy: canary missing → Attention CTA → mark canary → strip clears.
+
 ## 2026-10-09T23:15:00Z — TASK-20261010-005 omnichannel queue clear + category requeue
 
 - Owner: cursor:implementer-TASK-20261010-005

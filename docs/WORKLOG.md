@@ -1,3 +1,11 @@
+## 2026-10-12 — بازطراحی UX کانال‌های انتشار (A→E)
+
+- نوار AttentionStrip با CTA برای مقصد آزمایشی، ارسال ناموفق، صف متوقف، و دلیل gate.
+- تب‌ها: وضعیت و اقدام / انتشار / تنظیمات / صف و حسابرسی؛ stepper بعد از setup جمع می‌شود.
+- API status: `sentToday` (تهران)، `gateBlockReason`، `outboxDeadByEventType`؛ متریک متوقف پیش‌فرض کانال‌محور.
+- واژگان فارسی؛ خطاهای عمدی جدا از «خراب».
+- تست: gate-block-reason + acceptance؛ گزارش: `docs/reports/2026-10-12-omnichannel-ux-redesign.md`
+
 ## 2026-10-10 — صف کانال انتشار: پاک‌سازی + ارسال دسته [TASK-20261010-005]
 
 - ریشه: صف ۷۹+۳۹ و DRAFTها از PENDING موکول‌شده، DEAD، و reconcile بدون ارسال؛ دکمهٔ خالی‌کردن صف و blast دسته وجود نداشت.

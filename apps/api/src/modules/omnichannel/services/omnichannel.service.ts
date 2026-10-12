@@ -87,6 +87,12 @@ import {
   staggeredAvailableAt,
 } from '../bulk-requeue-category';
 import {
+  resolveGateBlockReason,
+  summarizeDeadByEventType,
+  type GateBlockReason,
+} from '../gate-block-reason';
+import { tehranHour } from '../../../lib/tehran-time';
+import {
   defaultLayoutFor,
   emptyPublicationVars,
   extractProductLookupKey,
@@ -661,6 +667,80 @@ export class OmnichannelService {
       }
       throw err;
     }
+  }
+
+  /** DEAD outbox grouped by eventType for operator diagnosis (channel-only + all). */
+  async outboxDeadByEventType() {
+    try {
+      const rows = await this.events.find({
+        select: ['eventType', 'status'],
+        where: { status: 'DEAD' },
+        take: 2000,
+      });
+      const all = summarizeDeadByEventType(rows, { channelOnly: false });
+      const channel = summarizeDeadByEventType(rows, { channelOnly: true });
+      const deadChannel = channel.reduce((sum, row) => sum + row.count, 0);
+      const deadOther = all.reduce((sum, row) => sum + row.count, 0) - deadChannel;
+      return { all, channel, deadChannel, deadOther };
+    } catch (err) {
+      if (isMissingRelationError(err)) {
+        return { all: [], channel: [], deadChannel: 0, deadOther: 0 };
+      }
+      throw err;
+    }
+  }
+
+  /** SUCCEEDED CREATE deliveries since Tehran midnight (aligned with automation day). */
+  async sentTodayCount(): Promise<number> {
+    const dayStart = tehranDayStart(new Date());
+    try {
+      const n = await this.deliveries
+        .createQueryBuilder('d')
+        .where('d.action = :action', { action: 'CREATE' })
+        .andWhere('d.status = :status', { status: 'SUCCEEDED' })
+        .andWhere('d.createdAt >= :dayStart', { dayStart })
+        .getCount();
+      return n;
+    } catch (err) {
+      if (isMissingRelationError(err)) return 0;
+      throw err;
+    }
+  }
+
+  /** Why auto posts may be idle — for admin AttentionStrip. */
+  async diagnoseGateBlock(): Promise<{
+    gateBlockReason: GateBlockReason;
+    sentToday: number;
+    outboxDeadByEventType: Awaited<ReturnType<OmnichannelService['outboxDeadByEventType']>>;
+  }> {
+    const [stored, dests, conns, sentToday, deadBreakdown] = await Promise.all([
+      this.loadStoredSettings(),
+      this.destinations.find({ where: { enabled: true } }),
+      this.connections.find(),
+      this.sentTodayCount(),
+      this.outboxDeadByEventType(),
+    ]);
+    const automation = readAutomationSettings(stored);
+    const activeConnIds = new Set(conns.filter((c) => c.status === 'ACTIVE').map((c) => c.id));
+    const hasCanary = dests.some((d) => isCanarySettings(d.settings) && activeConnIds.has(d.connectionId));
+    const hasReadyDestination = dests.some((d) => {
+      if (!activeConnIds.has(d.connectionId)) return false;
+      if (isCanarySettings(d.settings)) return true;
+      return destinationCanPost(d.settings as Record<string, unknown> | null | undefined);
+    });
+    const gateBlockReason = resolveGateBlockReason({
+      mode: automation.mode,
+      connectorsEnabled: areOmnichannelConnectorsEnabled(),
+      autoPublishFlag: isOmnichannelAutoPublishEnabled(),
+      hasCanary,
+      hasReadyDestination,
+      sentToday,
+      dailyCap: automation.dailyCap,
+      quietStartHour: automation.quietStartHour,
+      quietEndHour: automation.quietEndHour,
+      tehranHourNow: tehranHour(new Date()),
+    });
+    return { gateBlockReason, sentToday, outboxDeadByEventType: deadBreakdown };
   }
 
   async listOutbox() {

@@ -102,6 +102,15 @@ export type DiscoveredChat = {
   via: 'channel_post' | 'forward' | 'member' | 'message';
 };
 
+export type GateBlockReason =
+  | 'mode_off'
+  | 'flags_off'
+  | 'no_canary'
+  | 'no_destination'
+  | 'daily_cap'
+  | 'quiet'
+  | 'none';
+
 export type Status = {
   autoPublish: boolean;
   connectors: boolean;
@@ -137,6 +146,17 @@ export type Status = {
     dead: number;
     oldestPendingAgeSec: number;
     staleLocks: number;
+  };
+  /** SUCCEEDED CREATE deliveries since Tehran day start (server). */
+  sentToday?: number;
+  /** Why auto-publish may be idle. */
+  gateBlockReason?: GateBlockReason;
+  /** DEAD outbox breakdown for AttentionStrip / queue hygiene. */
+  outboxDeadByEventType?: {
+    all: Array<{ eventType: string; count: number }>;
+    channel: Array<{ eventType: string; count: number }>;
+    deadChannel: number;
+    deadOther: number;
   };
 };
 
@@ -280,7 +300,46 @@ const ERROR_LABELS: Record<string, string> = {
   webhook_active: 'روی این ربات وب‌هوک فعال است؛ getUpdates کار نمی‌کند. وب‌هوک را بردارید یا شناسه را دستی وارد کنید',
   delete_window_expired: 'بله فقط پیام‌های کمتر از ۴۸ ساعت را حذف می‌کند؛ این پیام قدیمی‌تر بود',
   unknown_provider: 'پلتفرم این اتصال پشتیبانی نمی‌شود',
+  cancelled_by_admin: 'با دستور ادمین از صف لغو شد (عمدی)',
+  publication_withdrawn: 'انتشار از کانال برداشته شده بود (عمدی)',
 };
+
+/** Delivery/outbox errors that are intentional ops outcomes, not broken sends. */
+const INTENTIONAL_ERROR_KEYS = new Set(['cancelled_by_admin', 'publication_withdrawn']);
+
+export function isIntentionalError(error?: string | null) {
+  if (!error) return false;
+  const key = String(error).trim();
+  if (INTENTIONAL_ERROR_KEYS.has(key)) return true;
+  return key.includes('cancelled_by_admin') || key.includes('publication_withdrawn');
+}
+
+/** Messenger / catalog outbox events (excludes SMS, search, marketing noise). */
+export function isChannelPublishEventType(eventType: string) {
+  const t = String(eventType || '');
+  return t.startsWith('product.') || t.startsWith('blog.') || t.startsWith('cms.') || t.startsWith('publication.');
+}
+
+export function gateBlockReasonLabel(reason?: GateBlockReason | null) {
+  switch (reason) {
+    case 'mode_off':
+      return 'انتشار خودکار خاموش است';
+    case 'flags_off':
+      return 'ارسال از سرور یا انتشار خودکار روی سرور خاموش است';
+    case 'no_canary':
+      return 'حالت آزمایشی روشن است ولی مقصد آزمایشی انتخاب نشده';
+    case 'no_destination':
+      return 'هیچ کانال آماده‌ای برای ارسال نیست';
+    case 'daily_cap':
+      return 'سقف پست روزانه پر شده است';
+    case 'quiet':
+      return 'الان ساعت سکوت است؛ ارسال‌ها موکول می‌شوند';
+    case 'none':
+      return '';
+    default:
+      return '';
+  }
+}
 
 /* ---------- providers (labels/tones only; rules come from the API matrix) ---------- */
 
@@ -423,7 +482,15 @@ export function actionLabel(action: string) {
 export function errorLabel(error?: string | null) {
   if (!error) return '';
   const key = String(error).trim();
-  return ERROR_LABELS[key] || key;
+  if (ERROR_LABELS[key]) return ERROR_LABELS[key];
+  for (const [code, label] of Object.entries(ERROR_LABELS)) {
+    if (key.includes(code)) return label;
+  }
+  return key;
+}
+
+export function deliveryFailureTone(error?: string | null): Tone {
+  return isIntentionalError(error) ? 'off' : 'danger';
 }
 
 export function eventLabel(eventType: string) {
@@ -527,6 +594,39 @@ export function Callout({ tone, children }: { tone: Tone; children: ReactNode })
   return (
     <div className={`rounded-xl border p-3 text-sm leading-6 ${TONE_CLASS[tone]}`} role={tone === 'danger' ? 'alert' : 'status'}>
       {children}
+    </div>
+  );
+}
+
+export type AttentionItem = {
+  id: string;
+  title: string;
+  detail: string;
+  tone?: Tone;
+  actionLabel: string;
+  onAction: () => void;
+};
+
+/** Max 3 diagnosis cards with one CTA each — replaces opaque red metric badges. */
+export function AttentionStrip({ items, title = 'نیازمند اقدام' }: { items: AttentionItem[]; title?: string }) {
+  if (!items.length) return null;
+  const shown = items.slice(0, 3);
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 space-y-3" role="region" aria-label={title}>
+      <p className="text-sm font-semibold text-amber-950">{title}</p>
+      <ul className="grid gap-2 md:grid-cols-3">
+        {shown.map((item) => (
+          <li key={item.id} className={`rounded-xl border bg-white p-3 space-y-2 ${TONE_CLASS[item.tone || 'warn']}`}>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900">{item.title}</p>
+              <p className="text-xs text-gray-600 mt-1 leading-5">{item.detail}</p>
+            </div>
+            <button type="button" className="btn btn-secondary btn-sm w-full" onClick={item.onAction}>
+              {item.actionLabel}
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

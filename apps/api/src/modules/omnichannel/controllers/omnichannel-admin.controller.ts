@@ -45,14 +45,24 @@ export class OmnichannelAdminController {
   @ApiOperation({ summary: 'وضعیت پرچم Omnichannel' })
   async status() {
     await this.svc.ensureProductTemplates();
-    const settings = await this.svc.getSettings();
+    const [settings, outbox, diagnosis] = await Promise.all([
+      this.svc.getSettings(),
+      this.svc.outboxMetrics(),
+      this.svc.diagnoseGateBlock(),
+    ]);
     return {
       autoPublish: isOmnichannelAutoPublishEnabled(),
       connectors: areOmnichannelConnectorsEnabled(),
       phase: 8,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
-      outbox: await this.svc.outboxMetrics(),
+      outbox,
+      /** SUCCEEDED CREATE deliveries since Tehran day start. */
+      sentToday: diagnosis.sentToday,
+      /** Why auto-publish may be idle — for admin AttentionStrip. */
+      gateBlockReason: diagnosis.gateBlockReason,
+      /** DEAD outbox by eventType (channel vs all). */
+      outboxDeadByEventType: diagnosis.outboxDeadByEventType,
       /** Per-platform capability matrix + boolean readiness (enabled flag, token present). Never token values. */
       providers: providerReadiness(),
       /** Write-only token inventory: source + fingerprint, never the secret. */
