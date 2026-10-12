@@ -4,10 +4,9 @@ Append newest entries at the top. Never erase another agent's record.
 
 ## 2026-10-12T22:20:00Z — TASK-20261013-001 CLOSED LIVE (complete)
 
-- Owner released. Merged to `origin/master` tip `fa16008d` (feat `744a90df`).
-- VPS `/opt/taranom` at `fa16008`; `/v1/health` 200; `campaign-audience.js` in API image.
-- Master worktree `Site-B2B-paid-order-guard` fast-forwarded to tip.
-- Feature branch `ai/TASK-20261013-001-bulk-sms` aligned with master; claims empty.
+- Owner released. Merged to `origin/master` tip `853e7538` (feat `744a90df` + close docs).
+- VPS `/opt/taranom` at `853e753`; health `{"status":"ok"}`; `campaign-audience.js` in API image.
+- Master worktree `Site-B2B-paid-order-guard` FF to tip; feature branch aligned; claims empty.
 - User: hard-refresh admin → بازاریابی → ارسال گروهی.
 
 ## 2026-10-12T21:30:00Z — TASK-20261013-001 marketing bulk SMS (shipped)
