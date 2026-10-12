@@ -2,7 +2,7 @@
 tasks:
   - id: "TASK-20261012-001"
     title: "Dual-channel outerwear homepage hero banners"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer-TASK-20261012-001"
     roles:
@@ -13,9 +13,10 @@ tasks:
     branch: "feat/TASK-20261012-001-dual-hero"
     worktree: "D:/proje/Site-B2B-dual-hero"
     claimed_at: "2026-10-12T13:08:00Z"
-    heartbeat_at: "2026-10-12T13:35:00Z"
+    heartbeat_at: "2026-10-12T15:50:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/web/src/components/retail/RetailHero.tsx"
       - "apps/web/src/components/wholesale/HeroSection.tsx"
       - "apps/web/src/components/shared/StorefrontHeroMedia.tsx"
@@ -48,6 +49,8 @@ tasks:
       skill-top full + seo-geo-architecture implement + banner-design + Figma.
       Shared governance files overlap TASK-20261010-004/005; append-only and
       preserve their entries. No CMS API edits; stale omnichannel CMS claims remain untouched.
+      CLOSED 2026-10-12: PR #81 e48db3f LIVE; admin CMS RETAIL/WHOLESALE home slide 0
+      saved (13:53Z / 13:52Z); browser QA eager/high + no image preload; claims released.
   - id: "TASK-20261010-005"
     title: "Omnichannel clear waiting queue + requeue by category"
     status: "in_progress"
