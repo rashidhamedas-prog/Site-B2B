@@ -2,19 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-<<<<<<< HEAD
-## 2026-10-12T15:58:00Z — TASK-20261012-001 CLOSED LIVE (master)
-=======
 ## 2026-10-12T21:30:00Z — TASK-20261013-001 marketing bulk SMS (ready ship)
 
 - Owner: `cursor:implementer-TASK-20261013-001`. Depth: skill-top full. Slack: no hits.
 - API: audience helpers + bulk preview/compose; create/go-live require selected `customerIds`; canary uses bodyOverride/sample vars.
 - UI: tab `blast` → `AdminBulkSmsDesk` (picker, phone preview, eligibility, canary, confirm live).
 - Specs: `campaign-audience.spec.ts` ok; workspace blast tab; web tsc 0. Verify PASS WITH CONDITIONS → closed (no empty audience go-live).
-- Next: commit + push + VPS auto-deploy; hard-refresh admin → بازاریابی → ارسال گروهی.
+- LIVE: `744a90df` on origin/master; VPS force-deploy complete at `744a90d`; `/v1/health` 200. Hard-refresh admin → بازاریابی → ارسال گروهی.
 
-## 2026-10-12T15:58:00Z — TASK-20261012-001 CLOSED (sync main + agent confirm)
->>>>>>> f0fcf4bb (feat(admin): add personalized bulk SMS desk for retail and wholesale)
+## 2026-10-12T15:58:00Z — TASK-20261012-001 CLOSED LIVE (master)
 
 - Owner: `cursor:implementer-TASK-20261012-001`; worktree `D:/proje/Site-B2B-dual-hero`.
 - Admin publish confirmed via public CMS read-back: RETAIL `2026-10-12T13:53:27Z`, WHOLESALE `2026-10-12T13:52:18Z`.
