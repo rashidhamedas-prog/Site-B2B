@@ -583,6 +583,31 @@ export function AdminOmnichannel() {
     if (targetProvider) setPreviewProvider(targetProvider);
   }, [targetProvider]);
 
+  // Must run before any conditional return — Rules of Hooks.
+  const hasCanary = Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE'));
+  const checklist: Array<{ label: string; ok: boolean; detail: string }> = [
+    { label: 'ربات فعال', ok: activeConnections.length > 0, detail: activeConnections.length ? summarizeBots(activeConnections) : 'مرحله ۱ را کامل کنید' },
+    { label: 'مقصد تأییدشده', ok: readyDestinations.length > 0, detail: readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'مرحله ۲: دسترسی ربات را بررسی کنید' },
+    { label: 'مقصد آزمایشی', ok: hasCanary, detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان آزمایشی انتخاب کنید' },
+    { label: 'قالب تکی و عمده', ok: templatesReady, detail: templatesReady ? 'ذخیره شده' : 'مرحله ۳ را برای هر دو کانال ذخیره کنید' },
+    { label: 'ارسال از سرور (دستی)', ok: connectorsOn, detail: connectorsOn ? 'ارسال دستی از سرور روشن است' : 'برای ارسال دستی و آزمایشی، مدیر سرور باید ارسال را روشن کند' },
+    { label: 'انتشار خودکار سرور', ok: Boolean(status?.autoPublish), detail: status?.autoPublish ? 'انتشار خودکار روی سرور روشن است' : 'فقط برای رویدادهای کاتالوگ؛ ارسال دستی به آن وابسته نیست' },
+  ];
+  const setupComplete = checklist.every((row) => row.ok) || mode !== 'OFF';
+  const canGoLive = checklist.every((row) => row.ok) && readyDestinations.some((dest) => !dest.isCanary);
+
+  useEffect(() => {
+    if (defaultViewApplied || loading) return;
+    if (setupComplete) {
+      setView('publish');
+      setSettingsCollapsed(true);
+    } else {
+      setView('settings');
+      setSettingsCollapsed(false);
+    }
+    setDefaultViewApplied(true);
+  }, [defaultViewApplied, loading, setupComplete]);
+
   // Selecting a platform card pre-fills the conventional env name unless the admin typed a custom one.
   const pickProvider = (next: Provider) => {
     setConnProvider(next);
@@ -1241,30 +1266,6 @@ export function AdminOmnichannel() {
       </div>
     </Section>
   );
-
-  const hasCanary = Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE'));
-  const checklist: Array<{ label: string; ok: boolean; detail: string }> = [
-    { label: 'ربات فعال', ok: activeConnections.length > 0, detail: activeConnections.length ? summarizeBots(activeConnections) : 'مرحله ۱ را کامل کنید' },
-    { label: 'مقصد تأییدشده', ok: readyDestinations.length > 0, detail: readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'مرحله ۲: دسترسی ربات را بررسی کنید' },
-    { label: 'مقصد آزمایشی', ok: hasCanary, detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان آزمایشی انتخاب کنید' },
-    { label: 'قالب تکی و عمده', ok: templatesReady, detail: templatesReady ? 'ذخیره شده' : 'مرحله ۳ را برای هر دو کانال ذخیره کنید' },
-    { label: 'ارسال از سرور (دستی)', ok: connectorsOn, detail: connectorsOn ? 'ارسال دستی از سرور روشن است' : 'برای ارسال دستی و آزمایشی، مدیر سرور باید ارسال را روشن کند' },
-    { label: 'انتشار خودکار سرور', ok: Boolean(status?.autoPublish), detail: status?.autoPublish ? 'انتشار خودکار روی سرور روشن است' : 'فقط برای رویدادهای کاتالوگ؛ ارسال دستی به آن وابسته نیست' },
-  ];
-  const setupComplete = checklist.every((row) => row.ok) || mode !== 'OFF';
-  const canGoLive = checklist.every((row) => row.ok) && readyDestinations.some((dest) => !dest.isCanary);
-
-  useEffect(() => {
-    if (defaultViewApplied || loading) return;
-    if (setupComplete) {
-      setView('publish');
-      setSettingsCollapsed(true);
-    } else {
-      setView('settings');
-      setSettingsCollapsed(false);
-    }
-    setDefaultViewApplied(true);
-  }, [defaultViewApplied, loading, setupComplete]);
 
   const goSelectCanary = () => {
     setView('settings');

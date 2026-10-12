@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-12T16:30:00Z — Hotfix /admin/omnichannel crash (Rules of Hooks)
+
+- Root: default-view `useEffect` ran after `if (loading && !status) return` → React hooks mismatch → production `error.tsx`.
+- Fix: move checklist/setupComplete + that effect above the early return in `AdminOmnichannel.tsx`.
+- Next: commit + push + VPS deploy; smoke logged-in `/admin/omnichannel`.
+
 ## 2026-10-12T16:00:00Z — Omnichannel UX redesign phases A→E
 
 - Owner: cursor (this session). Reclaimed AdminOmnichannel + omnichannel status from stale TASK-20261010-005 scope for UX-only work; queue APIs untouched.

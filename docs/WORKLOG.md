@@ -1,3 +1,9 @@
+## 2026-10-12 — هات‌فیکس crash صفحه کانال‌های انتشار
+
+- ریشه: `useEffect` تب پیش‌فرض بعد از `if (loading && !status) return` → نقض Rules of Hooks و `error.tsx` در پروداکشن.
+- اصلاح: checklist / setupComplete / همان effect قبل از early return.
+- فایل: `apps/web/src/components/admin/AdminOmnichannel.tsx`
+
 ## 2026-10-12 — بازطراحی UX کانال‌های انتشار (A→E)
 
 - نوار AttentionStrip با CTA برای مقصد آزمایشی، ارسال ناموفق، صف متوقف، و دلیل gate.
