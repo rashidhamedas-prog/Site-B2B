@@ -241,6 +241,17 @@ export function AdminProductsBlockFields({
           <p className="mt-2 text-[11px] text-gray-500">
             در حالت خودکار، چینش دستی ذخیره نمی‌شود و ویترین از کاتالوگ ساخته می‌شود.
           </p>
+        ) : (
+          <p className="mt-2 text-[11px] text-amber-700">
+            در انتخاب دستی، مدل ناموجود از گرید حذف می‌شود و جای خالی می‌ماند — برای پر شدن تا سقف{' '}
+            {PRODUCTS_BLOCK_HOME_CAP} بهتر است «خودکار از کاتالوگ» باشد.
+          </p>
+        )}
+        {channel === 'RETAIL' && str(p, 'headline').trim() === 'همه محصولات' ? (
+          <p className="mt-2 text-[11px] text-amber-700">
+            عنوان «همه محصولات» روی هوم گمراه‌کننده است؛ هوم حداکثر {PRODUCTS_BLOCK_HOME_CAP} کارت
+            نشان می‌دهد. کاتالوگ کامل در مسیر /products است — عنوان پیشنهادی: «جدیدترین‌ها».
+          </p>
         ) : null}
       </div>
 

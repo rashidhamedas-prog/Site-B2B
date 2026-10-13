@@ -101,12 +101,14 @@ const SORT_OPTIONS = [
 export function RetailProductsCatalog({
   initialProducts,
   initialTotalPages,
+  initialTotal,
   initialPage = 1,
   seedDefaultListing = false,
   searchParams = {},
 }: {
   initialProducts?: Array<Record<string, unknown> | Product>;
   initialTotalPages?: number;
+  initialTotal?: number;
   initialPage?: number;
   seedDefaultListing?: boolean;
   searchParams?: RetailCatalogSearchParams;
@@ -124,7 +126,13 @@ export function RetailProductsCatalog({
   const [totalPages, setTotalPages] = useState(() =>
     typeof initialTotalPages === 'number' && seeded ? initialTotalPages : 1,
   );
-  const [total, setTotal] = useState(() => seeded?.length ?? 0);
+  const [total, setTotal] = useState(() =>
+    seeded
+      ? typeof initialTotal === 'number' && initialTotal >= 0
+        ? initialTotal
+        : seeded.length
+      : 0,
+  );
   const [filters, setFilters] = useState<CatalogFilterValues>(() => filtersFromSearch(searchParams));
   const [categoryId] = useState(searchParams.category || searchParams.categoryId || '');
   const [q, setQ] = useState(searchParams.q || searchParams.search || '');

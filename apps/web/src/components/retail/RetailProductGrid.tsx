@@ -1,6 +1,11 @@
 import Link from 'next/link';
+import { toPersianDigits } from '@taranom/persian-utils';
 import { slimRetailCatalogProduct } from '@/lib/server-api';
 import { fetchProductsBlockCatalog } from '@/lib/cms/fetch-products-block';
+import {
+  honestHomeProductsHeadline,
+  homeProductsCtaLabel,
+} from '@/lib/cms/products-block';
 import { RetailProductCard, type RetailCardProduct } from './RetailProductCard';
 
 /** SSR product grid for retail home — compact editorial cards, no client waterfall. */
@@ -9,9 +14,16 @@ export async function RetailProductGrid({
 }: {
   props?: Record<string, unknown>;
 }) {
-  const { query, products: raw, error } = await fetchProductsBlockCatalog('RETAIL', props);
+  const { query, products: raw, error, catalogTotal } = await fetchProductsBlockCatalog('RETAIL', props);
   if (!query.enabled) return null;
   const products = raw.map((row) => slimRetailCatalogProduct(row)) as RetailCardProduct[];
+  const headline = honestHomeProductsHeadline(query.headline, catalogTotal, products.length);
+  const ctaLabel = homeProductsCtaLabel(
+    query.ctaLabel,
+    catalogTotal,
+    products.length,
+    toPersianDigits,
+  );
 
   return (
     <section className="relative overflow-hidden bg-[var(--retail-bg)] py-14 sm:py-20">
@@ -39,19 +51,19 @@ export async function RetailProductGrid({
             ) : (
               <p className="text-[11px] font-semibold tracking-[0.2em] text-[var(--retail-gold)]">COLLECTION</p>
             )}
-            {query.headline ? (
-              <h2 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{query.headline}</h2>
+            {headline ? (
+              <h2 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{headline}</h2>
             ) : null}
             {query.body ? (
               <p className="mt-2 max-w-xl text-sm text-[var(--retail-ink)]/70">{query.body}</p>
             ) : null}
           </div>
-          {query.ctaLabel && query.ctaHref ? (
+          {ctaLabel && query.ctaHref ? (
             <Link
               href={query.ctaHref}
               className="inline-flex min-h-11 cursor-pointer items-center border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
             >
-              {query.ctaLabel}
+              {ctaLabel}
             </Link>
           ) : null}
         </div>
@@ -66,7 +78,7 @@ export async function RetailProductGrid({
                 href={query.ctaHref}
                 className="mt-4 inline-flex cursor-pointer border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
               >
-                {query.ctaLabel}
+                {ctaLabel}
               </Link>
             ) : null}
           </div>

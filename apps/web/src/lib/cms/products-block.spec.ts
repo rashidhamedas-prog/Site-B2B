@@ -1,5 +1,7 @@
 import {
   capProductsBlockLimit,
+  honestHomeProductsHeadline,
+  homeProductsCtaLabel,
   normalizeProductsBlock,
   parseProductIds,
   productsBlockCatalogParams,
@@ -89,5 +91,20 @@ assert(
 
 assert(capProductsBlockLimit(0) === 1, 'min 1');
 assert(capProductsBlockLimit(200) === 12, 'max 12');
+
+assert(
+  honestHomeProductsHeadline('همه محصولات', 79, 12) === 'جدیدترین‌ها',
+  'rewrite misleading all-products headline',
+);
+assert(
+  honestHomeProductsHeadline('منتخب فصل', 79, 12) === 'منتخب فصل',
+  'keep custom headline',
+);
+assert(
+  homeProductsCtaLabel('مشاهده همه محصولات', 79, 12, (n) => `P${n}`) ===
+    'مشاهده همه محصولات (P79)',
+  'cta shows catalog total',
+);
+assert(homeProductsCtaLabel('مشاهده همه', 12, 12) === 'مشاهده همه', 'no count when complete');
 
 console.log('products-block.spec.ts ok');

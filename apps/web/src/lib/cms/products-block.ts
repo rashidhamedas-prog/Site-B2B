@@ -1,6 +1,28 @@
 export const PRODUCTS_BLOCK_HOME_CAP = 12;
 export const PRODUCTS_BLOCK_MAX_IDS = 16;
 
+/** Home rail is capped; «همه محصولات» as H2 reads like a broken full catalog. */
+export function honestHomeProductsHeadline(
+  headline: string,
+  catalogTotal: number,
+  shown: number,
+): string {
+  const trimmed = headline.trim();
+  if (trimmed === 'همه محصولات' && catalogTotal > shown) return 'جدیدترین‌ها';
+  return trimmed;
+}
+
+export function homeProductsCtaLabel(
+  label: string,
+  catalogTotal: number,
+  shown: number,
+  formatCount: (n: number) => string = String,
+): string {
+  const base = label.trim() || 'مشاهده همه محصولات';
+  if (catalogTotal <= shown) return base;
+  return `${base} (${formatCount(catalogTotal)})`;
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SKU_RE = /^[a-z0-9][a-z0-9_-]{0,46}\d[a-z0-9_-]{0,46}$/i;
 

@@ -1,6 +1,11 @@
 import Link from 'next/link';
+import { toPersianDigits } from '@taranom/persian-utils';
 import { getServerApiBase, slimRetailCatalogProduct } from '@/lib/server-api';
 import { fetchProductsBlockCatalog } from '@/lib/cms/fetch-products-block';
+import {
+  honestHomeProductsHeadline,
+  homeProductsCtaLabel,
+} from '@/lib/cms/products-block';
 import { BoutiqueProductCard } from './BoutiqueProductCard';
 import type { RetailCardProduct } from '@/components/retail/RetailProductCard';
 
@@ -65,9 +70,21 @@ export async function BoutiqueProductRail({
 }: {
   props?: Record<string, unknown>;
 }) {
-  const { query, products: raw, error } = await fetchProductsBlockCatalog('RETAIL', props);
+  const { query, products: raw, error, catalogTotal } = await fetchProductsBlockCatalog(
+    'RETAIL',
+    props,
+  );
   if (!query.enabled) return null;
   const products = raw.map((row) => slimRetailCatalogProduct(row)) as RetailCardProduct[];
+  const headline =
+    honestHomeProductsHeadline(query.headline, catalogTotal, products.length) ||
+    'جدیدترین‌های ترنم';
+  const ctaLabel = homeProductsCtaLabel(
+    query.ctaLabel,
+    catalogTotal,
+    products.length,
+    toPersianDigits,
+  );
 
   return (
     <section className="bq-container py-6">
@@ -75,12 +92,12 @@ export async function BoutiqueProductRail({
         <div className="mb-5 flex items-end justify-between gap-3">
           <div>
             {query.eyebrow ? <p className="text-xs font-semibold text-[#1b5c4a]">{query.eyebrow}</p> : null}
-            <h2 className="text-xl font-extrabold text-neutral-900">{query.headline || 'جدیدترین‌های ترنم'}</h2>
+            <h2 className="text-xl font-extrabold text-neutral-900">{headline}</h2>
             {query.body ? <p className="mt-1 text-sm text-neutral-500">{query.body}</p> : null}
           </div>
-          {query.ctaLabel && query.ctaHref ? (
+          {ctaLabel && query.ctaHref ? (
             <Link href={query.ctaHref} className="text-sm font-bold text-[#1b5c4a]">
-              {query.ctaLabel}
+              {ctaLabel}
             </Link>
           ) : null}
         </div>
