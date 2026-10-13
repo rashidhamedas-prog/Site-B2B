@@ -1,3 +1,9 @@
+## 2026-10-13 — ارسال کانال ناموفق (validate_failed آلبوم) [TASK-20261013-005]
+
+- ریشه: `sendMediaGroup` با `show_caption_above_media` → ۱۰ DEAD WHOLESALE؛ lastError فقط `validate_failed`؛ ۴۵ DEAD سفارش با `uuid = varchar`.
+- فیکس: آلبوم بدون captionAbove؛ توضیح تلگرام در lastError؛ finderهای `::text` برای وضعیت سفارش.
+- گزارش: `docs/reports/2026-10-13-omnichannel-publish-validate-failed.md`
+
 ## 2026-10-13 — هوم خرده‌فروشی: جای خالی «همه محصولات» + کاتالوگ ناقص
 
 - ریشه: CMS `manual` + ۱۲ ID + `inStockOnly` → ۱۱ کارت (حفرهٔ گرید) و عنوان گمراه‌کننده در حالی که ۷۹ مدل ACTIVE است.

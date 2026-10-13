@@ -17,11 +17,29 @@ export function classifyTelegramHttpError(status: number, description = ''): Tel
 
 export function classifyTelegramThrow(err: unknown): TelegramErrorCode {
   if (!err || typeof err !== 'object') return 'validate_failed';
-  const named = err as { name?: string; code?: string; status?: number; message?: string };
+  const named = err as {
+    name?: string;
+    code?: string;
+    status?: number;
+    message?: string;
+    description?: string;
+    telegramCode?: string;
+  };
   if (named.name === 'TimeoutError' || named.name === 'AbortError' || named.code === 'ABORT_ERR') {
     return 'timeout';
   }
-  return classifyTelegramHttpError(Number(named.status || 0), String(named.message || ''));
+  if (
+    named.telegramCode === 'invalid_credential'
+    || named.telegramCode === 'rate_limited'
+    || named.telegramCode === 'provider_unavailable'
+    || named.telegramCode === 'timeout'
+    || named.telegramCode === 'duplicate'
+    || named.telegramCode === 'validate_failed'
+  ) {
+    return named.telegramCode;
+  }
+  const detail = String(named.description || named.message || '');
+  return classifyTelegramHttpError(Number(named.status || 0), detail);
 }
 
 export function redactProviderError(message: string): string {
@@ -34,7 +52,13 @@ export function redactProviderError(message: string): string {
 export function safeWorkerError(err: unknown): string {
   const code = classifyTelegramThrow(err);
   if (code !== 'validate_failed') return code;
-  return redactProviderError(err instanceof Error ? err.message : String(err));
+  const named = err && typeof err === 'object'
+    ? (err as { description?: string; message?: string })
+    : null;
+  const detail = String(named?.description || named?.message || (err instanceof Error ? err.message : String(err)) || '');
+  // Prefer the human Telegram description over the opaque code alone.
+  if (detail && detail !== 'validate_failed') return redactProviderError(detail);
+  return 'validate_failed';
 }
 
 export function assertNoSecretLeak(haystack: string, secret: string) {

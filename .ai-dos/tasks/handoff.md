@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T14:05:00Z — TASK-20261013-005 publish validate_failed RCA (pre-deploy)
+
+- Depth: skill-top full. Slack empty. Live dead=55; 10 channel validate_failed albums+captionAbove; 45 order uuid.
+- Code: album omits show_caption_above_media; description on validate_failed; order finders cast uuid.
+- Specs: telegram.adapter + phase-acceptance ok.
+- Next: commit → push → VPS auto-deploy → hard-refresh → retry 10 DEAD channel / small blast.
+- Residual: env TELEGRAM_BOT_TOKEN is 401; vault still used — refresh env to match vault.
+
 ## 2026-10-13T12:15:00Z — TASK-20261013-003 CLOSED LIVE
 
 - Ship: `cc0b625f` → `origin/master`; VPS deploy complete at `cc0b625`; API `:4000/v1/health` ok; `.com` 200.

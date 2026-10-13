@@ -30,6 +30,15 @@ async function main() {
   assert(resolveTelegramToken('DATABASE_URL') === null, 'allowlist blocks DATABASE_URL');
   assert(redactProviderError(`https://api.telegram.org/bot${token}/sendMessage`) === 'https://api.telegram.org/bot[redacted]/sendMessage', 'bot path redacted');
   assert(!safeWorkerError(new Error(`failed ${token}`)).includes(token), 'worker error redacts token');
+  assert(
+    safeWorkerError({
+      status: 400,
+      telegramCode: 'validate_failed',
+      description: 'Bad Request: group send failed',
+      message: 'validate_failed',
+    }) === 'Bad Request: group send failed',
+    'worker keeps Telegram description for validate_failed',
+  );
   assertNoSecretLeak('invalid_credential', token);
   let leak = false;
   try {
@@ -129,7 +138,7 @@ async function main() {
   } catch (err) {
     duplicate = classifyTelegramThrow(err) === 'duplicate';
     const msg = err instanceof Error ? err.message : String(err);
-    assert(msg === 'duplicate', 'create throws classified code');
+    assert(msg === 'duplicate', 'create throws classified code for known outcomes');
     assertNoSecretLeak(msg, token);
   }
   assert(duplicate, 'duplicate create');
@@ -144,6 +153,16 @@ async function main() {
     assertNoSecretLeak(msg, token);
   }
   assert(classified401, 'create 401 classified not raw');
+
+  adapter.http = async () => jsonRes(400, { ok: false, description: 'Bad Request: group send failed' });
+  let groupFailed = '';
+  try {
+    await adapter.create({ secretRef: 'TELEGRAM_TEST_TOKEN', chatId: '-1001', text: 'x' });
+  } catch (err) {
+    groupFailed = err instanceof Error ? err.message : '';
+    assert(classifyTelegramThrow(err) === 'validate_failed', '400 group send is validate_failed');
+  }
+  assert(groupFailed === 'Bad Request: group send failed', 'validate_failed keeps Telegram description');
 
   adapter.http = async (url) => {
     calls.push(String(url));
@@ -193,7 +212,8 @@ async function main() {
   assert(mg!.body.disable_notification === true && mg!.body.protect_content === true, 'silent/protect on album');
   assert(!('reply_markup' in mg!.body), 'albums never carry reply_markup');
   const media = mg!.body.media as Array<Record<string, unknown>>;
-  assert(media[0].parse_mode === 'HTML' && media[0].show_caption_above_media === true, 'caption parse_mode + above flag on first media');
+  assert(media[0].parse_mode === 'HTML' && media[0].caption === '<b>مانتو</b>', 'caption + parse_mode on first media');
+  assert(!('show_caption_above_media' in media[0]), 'albums omit show_caption_above_media (live DEAD correlation)');
   assert(!('caption' in media[1]), 'caption only on first media');
 
   bodies.length = 0;
@@ -207,6 +227,7 @@ async function main() {
   const kb = sp!.body.reply_markup as { inline_keyboard: Array<Array<{ text: string; url: string }>> };
   assert(kb.inline_keyboard.length === 1 && kb.inline_keyboard[0][0].url.includes('poshaktaranom.ir'), 'only allowlisted button survives');
   assert(sp!.body.parse_mode === 'HTML' && sp!.body.disable_notification === true, 'parse_mode + silent on photo');
+  assert(sp!.body.show_caption_above_media === true, 'single photo still sends captionAbove');
 
   bodies.length = 0;
   await adapter.create({ ...albumOpts, photoUrls: [], parseMode: 'PLAIN', linkPreview: false });

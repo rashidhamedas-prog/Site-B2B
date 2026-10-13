@@ -1,5 +1,36 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261013-005"
+    title: "Root-fix channel publish DEAD (album captionAbove + error detail + order uuid)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261013-005"
+    roles:
+      architect: "cursor:skill-top-full"
+      implementer: "cursor:implementer-TASK-20261013-005"
+      reviewer: "cursor:omnichannel-phase-reviewer"
+      security: "cursor:omnichannel-security"
+    branch: "ai/TASK-20261013-004-retail-home-products"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-13T14:00:00Z"
+    heartbeat_at: "2026-10-13T14:00:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
+      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.spec.ts"
+      - "apps/api/src/modules/omnichannel/adapters/telegram-errors.ts"
+      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
+      - "docs/reports/2026-10-13-omnichannel-publish-validate-failed.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      skill-top full. Live: 10 publication.deliver DEAD validate_failed (WHOLESALE albums+captionAbove);
+      5 intentional; 45 order DEAD uuid=varchar. Env TELEGRAM_BOT_TOKEN 401; vault still delivers.
+      Task id 005 (004 already used for retail home on this worktree).
+    acceptance_criteria:
+      - "sendMediaGroup omits show_caption_above_media; sendPhoto keeps it"
+      - "validate_failed lastError stores Telegram description"
+      - "order status/shipped handlers use uuid::text finders"
+      - "telegram.adapter.spec + phase-acceptance green; deploy + health"
   - id: "TASK-20261013-003"
     title: "Conversion funnel fixes (retail + wholesale)"
     status: "done"

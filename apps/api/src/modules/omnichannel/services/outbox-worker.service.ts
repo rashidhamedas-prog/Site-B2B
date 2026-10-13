@@ -267,9 +267,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleOrderStatus(orderId: string, status: string) {
-    const order = await this.orders.findOne({ where: { id: orderId } });
+    // Cast uuid columns via findOrderById / findCustomerById — plain findOne(id: string)
+    // raises Postgres `operator does not exist: uuid = character varying` and DEAD-letters SMS.
+    const order = await this.findOrderById(orderId);
     if (!order?.customerId) return;
-    const customer = await this.customers.findOne({ where: { id: order.customerId } });
+    const customer = await this.findCustomerById(order.customerId);
     const phone = customer && typeof (customer as { phone?: string }).phone === 'string'
       ? (customer as { phone: string }).phone
       : '';
@@ -323,9 +325,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`fulfillment shipped notify skipped aggregate=${aggregateId}`);
       return;
     }
-    const order = await this.orders.findOne({ where: { id: orderId } });
+    const order = await this.findOrderById(orderId);
     if (!order?.customerId) return;
-    const customer = await this.customers.findOne({ where: { id: order.customerId } });
+    const customer = await this.findCustomerById(order.customerId);
     const phone =
       customer && typeof (customer as { phone?: string }).phone === 'string'
         ? (customer as { phone: string }).phone

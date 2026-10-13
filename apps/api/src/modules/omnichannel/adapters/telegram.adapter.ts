@@ -159,10 +159,18 @@ export class TelegramAdapter implements ChannelAdapter {
     });
     const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string; result?: T };
     if (!res.ok || json.ok === false) {
+      const description = redactProviderError(String(json.description || ''));
       const code = classifyTelegramHttpError(res.status, json.description);
-      const err = new Error(code) as Error & { status?: number; description?: string };
+      // Known codes stay as Error.message (worker treats `duplicate` as success-noop).
+      // Only opaque validate_failed uses the Telegram description so DEAD rows are actionable.
+      const err = new Error(code === 'validate_failed' && description ? description : code) as Error & {
+        status?: number;
+        description?: string;
+        telegramCode?: string;
+      };
       err.status = res.status;
-      err.description = redactProviderError(String(json.description || ''));
+      err.description = description;
+      err.telegramCode = code;
       throw err;
     }
     return json.result as T;
@@ -275,13 +283,16 @@ export class TelegramAdapter implements ChannelAdapter {
     let keyboardAttached = false;
     if (photos.length >= 2) {
       // Albums cannot carry reply_markup (Bot API); buttons ride on the overflow message if any.
+      // Do NOT set show_caption_above_media on InputMediaPhoto albums — live WHOLESALE DEAD rows
+      // were 100% multi-photo + captionAbove=true (validate_failed), while single sendPhoto with
+      // captionAbove and albums without captionAbove succeeded.
       const result = await this.telegramCall<Array<{ message_id: number }>>(token, 'sendMediaGroup', {
         chat_id: chatId,
         ...common,
         media: photos.map((url, index) => ({
           type: 'photo',
           media: url,
-          ...(index === 0 && caption ? { caption, ...parse, ...(opts.captionAbove ? { show_caption_above_media: true } : {}) } : {}),
+          ...(index === 0 && caption ? { caption, ...parse } : {}),
         })),
       }, 20_000);
       ids.push(...(result || []).map((row) => String(row.message_id)).filter((id) => id && id !== 'undefined'));
