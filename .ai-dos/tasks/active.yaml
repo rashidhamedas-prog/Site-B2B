@@ -17,8 +17,8 @@ tasks:
     depends_on: []
     file_claims: []
     notes: |
-      CLOSED LIVE. tip c3a84cf on origin/master + VPS. Excess PENDING CREATE soft-cancelled.
-      Claims released.
+      CLOSED LIVE. tip c3a84cf on origin/master + VPS. Soft-cancel 15 PENDING CREATE verified
+      (PENDING=0; today SUCCEEDED=18 historical). Claims released.
     acceptance_criteria:
       - "Daily cap counts all CREATE slots (not only auto=true)"
       - "Category requeue and manual CREATE respect remaining room"

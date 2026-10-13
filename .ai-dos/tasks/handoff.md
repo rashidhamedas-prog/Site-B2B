@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T15:25:00Z — TASK-20261013-006 soft-cancel verified
+
+- Soft-cancel: 15 PENDING CREATE → outbox DONE + delivery DEAD `cancelled_by_admin`.
+- Live: PENDING CREATE=0; today SUCCEEDED CREATE=18 (historical overshoot); DEAD cancelled=15.
+- Health `/v1/health` ok. Cap enforce live (`c3a84cf`); close docs `868b4d24` on master.
+- Owner: hard-refresh `/admin/omnichannel` — room=0 until Tehran midnight / raise cap.
+
 ## 2026-10-13T15:20:00Z — TASK-20261013-006 CLOSED LIVE
 
 - Ship: `c3a84cf9` → origin/master; VPS `c3a84cf` health ok; excess PENDING CREATE soft-cancelled.

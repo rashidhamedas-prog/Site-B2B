@@ -27,6 +27,15 @@ Almost all overshoot came from category/manual blasts stamped `auto: false`.
 - Category requeue and manual CREATE respect remaining room; dry-run exposes `dailyRoom`.
 - Soft-cancel excess PENDING CREATE after deploy when already over the cap.
 
+## Post-deploy ops (verified)
+
+| Step | Result |
+| --- | --- |
+| Deploy tip | `c3a84cf` on VPS; health ok |
+| Soft-cancel excess PENDING CREATE | **15** → outbox `DONE` + delivery `DEAD` (`cancelled_by_admin`) |
+| Remaining PENDING CREATE | **0** |
+| Today SUCCEEDED CREATE | **18** (historical overshoot; no further posts until room resets) |
+
 ## Owner
 
 Hard-refresh `/admin/omnichannel` — «پست‌های امروز» باید با سقف هم‌خوان باشد؛ ارسال دسته با صف خالی وقتی room=0 خطا می‌دهد.
