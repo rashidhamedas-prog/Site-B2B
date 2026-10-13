@@ -40,6 +40,7 @@ export default async function ProductsPage() {
           slimWholesaleCatalogProduct(row as Record<string, unknown>),
         )}
         initialTotal={initial.meta.total}
+        initialTotalPages={initial.meta.totalPages}
       />
     </>
   );

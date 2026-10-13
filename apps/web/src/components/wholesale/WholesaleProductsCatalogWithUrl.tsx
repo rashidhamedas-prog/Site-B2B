@@ -32,9 +32,11 @@ function hasCatalogFilters(params: CatalogSearchParams): boolean {
 export function WholesaleProductsCatalogWithUrl({
   initialProducts,
   initialTotal,
+  initialTotalPages,
 }: {
   initialProducts?: Array<Record<string, unknown>>;
   initialTotal?: number;
+  initialTotalPages?: number;
 }) {
   const router = useRouter();
   const [params, setParams] = useState<CatalogSearchParams>({});
@@ -79,6 +81,7 @@ export function WholesaleProductsCatalogWithUrl({
         searchParams={params}
         initialProducts={filtered ? undefined : initialProducts}
         initialTotal={filtered ? undefined : initialTotal}
+        initialTotalPages={filtered ? undefined : initialTotalPages}
       />
     </>
   );

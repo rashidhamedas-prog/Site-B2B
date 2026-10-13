@@ -30,6 +30,8 @@ export interface CatalogSearchParams {
 
 type Product = WholesaleCatalogProduct;
 
+const PAGE_SIZE = 24;
+
 const SORT_OPTIONS = [
   { value: 'newest', label: 'جدیدترین' },
   { value: 'popular', label: 'پرفروش‌ترین' },
@@ -75,6 +77,7 @@ export function ProductCatalog({
   hideHeader = false,
   initialProducts,
   initialTotal,
+  initialTotalPages,
 }: {
   searchParams: CatalogSearchParams;
   embedded?: boolean;
@@ -82,6 +85,7 @@ export function ProductCatalog({
   /** SSR first page for clean listing — crawlers see product links in HTML */
   initialProducts?: Array<Record<string, unknown> | Product>;
   initialTotal?: number;
+  initialTotalPages?: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -94,7 +98,16 @@ export function ProductCatalog({
   const [total, setTotal] = useState(() =>
     typeof initialTotal === 'number' ? initialTotal : seeded?.length ?? 0,
   );
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(() =>
+    typeof initialTotalPages === 'number' && seeded
+      ? Math.max(1, initialTotalPages)
+      : typeof initialTotal === 'number' && seeded
+        ? Math.max(1, Math.ceil(initialTotal / PAGE_SIZE))
+        : 1,
+  );
   const [loading, setLoading] = useState(() => !seeded);
+  const [loadingMore, setLoadingMore] = useState(false);
   const skipNextFetch = useRef(Boolean(seeded));
 
   const syncUrl = useCallback(
@@ -113,18 +126,22 @@ export function ProductCatalog({
     [embedded, pathname, router],
   );
 
-  const buildQuery = useCallback(() => {
-    const params = new URLSearchParams();
-    params.set('limit', '24');
-    params.set('channel', 'WHOLESALE');
-    if (search) params.set('search', search);
-    if (filters.fabric) params.set('fabric', filters.fabric);
-    if (filters.color) params.set('color', filters.color);
-    if (filters.size) params.set('size', filters.size);
-    if (filters.inStock) params.set('inStock', filters.inStock);
-    if (sort) params.set('sort', sort);
-    return params.toString();
-  }, [filters, sort, search]);
+  const buildQuery = useCallback(
+    (p: number) => {
+      const params = new URLSearchParams();
+      params.set('limit', String(PAGE_SIZE));
+      params.set('page', String(p));
+      params.set('channel', 'WHOLESALE');
+      if (search) params.set('search', search);
+      if (filters.fabric) params.set('fabric', filters.fabric);
+      if (filters.color) params.set('color', filters.color);
+      if (filters.size) params.set('size', filters.size);
+      if (filters.inStock) params.set('inStock', filters.inStock);
+      if (sort) params.set('sort', sort);
+      return params.toString();
+    },
+    [filters, sort, search],
+  );
 
   useEffect(() => {
     if (skipNextFetch.current) {
@@ -133,19 +150,48 @@ export function ProductCatalog({
     }
     const timer = setTimeout(async () => {
       setLoading(true);
+      setPage(1);
       try {
-        const res = await apiClient.get<{ data: Product[]; meta: { total: number } }>(`/products?${buildQuery()}`);
+        const res = await apiClient.get<{
+          data: Product[];
+          meta?: { total?: number; totalPages?: number };
+        }>(`/products?${buildQuery(1)}`);
         setProducts((res.data ?? []).map((row) => normalizeCatalogProduct(row)));
         setTotal(res.meta?.total ?? 0);
+        setTotalPages(res.meta?.totalPages || 1);
       } catch {
         setProducts([]);
         setTotal(0);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     }, 300);
     return () => clearTimeout(timer);
   }, [buildQuery]);
+
+  const loadMore = async () => {
+    if (loadingMore || page >= totalPages) return;
+    setLoadingMore(true);
+    const next = page + 1;
+    try {
+      const res = await apiClient.get<{
+        data: Product[];
+        meta?: { total?: number; totalPages?: number };
+      }>(`/products?${buildQuery(next)}`);
+      setProducts((prev) => [
+        ...prev,
+        ...(res.data ?? []).map((row) => normalizeCatalogProduct(row)),
+      ]);
+      setPage(next);
+      setTotalPages(res.meta?.totalPages || totalPages);
+      if (typeof res.meta?.total === 'number') setTotal(res.meta.total);
+    } catch {
+      /* keep current page */
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -273,8 +319,20 @@ export function ProductCatalog({
           <div className="min-w-0 flex-1">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-gray-500" aria-live="polite">
-                {!loading && <span className="font-medium text-gray-900">{total.toLocaleString('fa-IR')}</span>}
-                {loading ? 'در حال بارگذاری...' : ' مدل در این فهرست'}
+                {loading ? (
+                  'در حال بارگذاری...'
+                ) : (
+                  <>
+                    <span className="font-medium text-gray-900">{total.toLocaleString('fa-IR')}</span>
+                    {' مدل در این فهرست'}
+                    {totalPages > 1 && products.length > 0 ? (
+                      <span className="text-gray-400">
+                        {' · '}
+                        {products.length.toLocaleString('fa-IR')} نمایش‌داده‌شده
+                      </span>
+                    ) : null}
+                  </>
+                )}
               </p>
             </div>
             <CatalogActiveChips values={filters} onChange={handleFilter} onReset={resetFilters} />
@@ -304,11 +362,32 @@ export function ProductCatalog({
                         imagePriority={isLeadCatalogImage({
                           index,
                           embedded,
-                          page: Math.max(1, Number(filters.page) || 1),
+                          page,
                         })}
                       />
                     ))}
             </div>
+            {!loading && products.length > 0 && totalPages > 1 ? (
+              <nav
+                aria-label="صفحه‌بندی محصولات"
+                className="mt-10 flex flex-wrap items-center justify-center gap-3"
+              >
+                {page < totalPages ? (
+                  <button
+                    type="button"
+                    disabled={loadingMore}
+                    onClick={loadMore}
+                    className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-primary px-5 text-sm font-bold text-primary disabled:opacity-50"
+                  >
+                    {loadingMore
+                      ? 'در حال بارگذاری…'
+                      : `بارگذاری بیشتر (${(total - products.length).toLocaleString('fa-IR')} مدل باقی)`}
+                  </button>
+                ) : (
+                  <p className="text-sm text-gray-500">همهٔ مدل‌های این فهرست نمایش داده شد.</p>
+                )}
+              </nav>
+            ) : null}
           </div>
         </div>
       </div>

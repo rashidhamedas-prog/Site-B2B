@@ -1,3 +1,9 @@
+## 2026-10-13 — کاتالوگ عمده: بارگذاری بیشتر (۹۱ مدل / فقط ۲۴)
+
+- ریشه: `ProductCatalog` فقط `limit=24` می‌گرفت و UI صفحه‌بندی نداشت؛ شمارنده `meta.total` را نشان می‌داد.
+- فیکس: `page` در query + «بارگذاری بیشتر» مثل الگوی خرده‌فروشی؛ SSR `initialTotalPages`.
+- گزارش: `docs/reports/2026-10-13-wholesale-catalog-load-more.md`
+
 ## 2026-10-13 — قیف تبدیل تکی + عمده [TASK-20261013-003]
 
 - سبد تا verify موفق پاک نمی‌شود؛ TorobPay UI خاموش؛ قیمت عمده روی کارت بدون لاگین؛ GA4 ecommerce عمده (`add_to_cart` / `begin_checkout`).
