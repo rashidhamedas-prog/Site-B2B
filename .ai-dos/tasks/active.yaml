@@ -2,9 +2,9 @@ schema_version: 1
 tasks:
   - id: "TASK-20261013-005"
     title: "Root-fix channel publish DEAD (album captionAbove + error detail + order uuid)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20261013-005"
+    owner: ""
     roles:
       architect: "cursor:skill-top-full"
       implementer: "cursor:implementer-TASK-20261013-005"
@@ -15,17 +15,10 @@ tasks:
     claimed_at: "2026-10-13T14:00:00Z"
     heartbeat_at: "2026-10-13T14:00:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.ts"
-      - "apps/api/src/modules/omnichannel/adapters/telegram.adapter.spec.ts"
-      - "apps/api/src/modules/omnichannel/adapters/telegram-errors.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "docs/reports/2026-10-13-omnichannel-publish-validate-failed.md"
-      - "docs/WORKLOG.md"
+    file_claims: []
     notes: |
-      skill-top full. Live: 10 publication.deliver DEAD validate_failed (WHOLESALE albums+captionAbove);
-      5 intentional; 45 order DEAD uuid=varchar. Env TELEGRAM_BOT_TOKEN 401; vault still delivers.
-      Task id 005 (004 already used for retail home on this worktree).
+      CLOSED LIVE. tip 3508092 on origin/master + VPS. After requeue: SUCCEEDED 23→31,
+      no new validate_failed; only intentional DEAD remain. Claims released.
     acceptance_criteria:
       - "sendMediaGroup omits show_caption_above_media; sendPhoto keeps it"
       - "validate_failed lastError stores Telegram description"

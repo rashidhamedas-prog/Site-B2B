@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T14:25:00Z — TASK-20261013-005 CLOSED LIVE
+
+- Ship: `c852b560` (album) + `7395b646` (order uuid) → `origin/master`; VPS `7395b64` health ok.
+- Live proof: channel SUCCEEDED 22→34; validate_failed DEAD → 0; order.* 139 DONE after requeue.
+- Owner: hard-refresh `/admin/omnichannel`; optional refresh env TELEGRAM_BOT_TOKEN (vault OK).
+- Claims released.
+
 ## 2026-10-13T14:05:00Z — TASK-20261013-005 publish validate_failed RCA (pre-deploy)
 
 - Depth: skill-top full. Slack empty. Live dead=55; 10 channel validate_failed albums+captionAbove; 45 order uuid.

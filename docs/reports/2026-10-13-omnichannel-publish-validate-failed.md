@@ -41,9 +41,21 @@ Non-channel: 45 DEAD with `operator does not exist: uuid = character varying` fr
 - `telegram-errors.ts`: `safeWorkerError` / `classifyTelegramThrow` prefer `description` + `telegramCode`.
 - `outbox-worker.service.ts`: order status + fulfillment shipped use `findOrderById` / `findCustomerById`.
 
-## Owner ops after deploy
+## Follow-up (same session)
 
-1. Hard-refresh `/admin/omnichannel` → صف و حسابرسی.
-2. Retry the 10 channel DEAD (or small category requeue dry-run → live).
-3. Optionally refresh env `TELEGRAM_BOT_TOKEN` to match vault (env alone is 401).
-4. Do not flip connector flags.
+Order SMS DEAD used the same outbox: `orders.customerId` is **uuid** but marketing `settledOrders` / QBs bound varchar → `uuid = character varying`. Fixed entity + `::text` casts + worker isolates marketing from SMS ACK (`7395b646`).
+
+## Live proof after deploy + soft requeue
+
+| Metric | Before | After |
+| --- | --- | --- |
+| Channel delivery SUCCEEDED | 22–23 | **34** |
+| Channel DEAD (real) | 10 `validate_failed` | **0** |
+| Channel DEAD (intentional) | 5 | 5 (`cancelled_by_admin` / `publication_withdrawn`) |
+| Order.* outbox | 45 DEAD uuid | **139 DONE**, 0 uuid errors |
+
+## Owner ops
+
+1. Hard-refresh `/admin/omnichannel` → صف و حسابرسی (نشان «ارسال ناموفق» باید خالی از خطای واقعی باشد).
+2. Optionally refresh env `TELEGRAM_BOT_TOKEN` to match vault (env alone was 401).
+3. Do not flip connector flags.
