@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T11:30:00Z — TASK-20261013-002 publish silence RCA + fix
+
+- Depth: skill-top full. Slack: no hits. ECC agent-first + omnichannel architect/explore.
+- VPS: connectors/auto ON; worker OK; last CREATE 2026-10-08; Oct 10 mass DELETE; orphan DRAFTs.
+- RCA: (1) `enqueueCategoryProduct` silent-return on any WITHDRAWN sibling; (2) stock_only trap on orphan DRAFT; (3) unsafe findOne for multi-version pubs; (4) worker silent missing dest.
+- Code on `ai/TASK-20261013-002-publish-orphan-heal`. Specs ok. Reclaimed files from closed TASK-20261012-002.
+- Next: commit + push master + VPS deploy; admin category dry-run then small live blast.
+
 ## 2026-10-12T22:20:00Z — TASK-20261013-001 CLOSED LIVE (complete)
 
 - Owner released. Merged to `origin/master` tip `853e7538` (feat `744a90df` + close docs).

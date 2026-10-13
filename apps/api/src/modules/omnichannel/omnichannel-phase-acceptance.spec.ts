@@ -85,6 +85,15 @@ assert(adminOmni.includes('هنوز انتشاری ثبت نشده') && adminOmn
 assert(adminOmni.includes('autoPublishMode') && adminOmni.includes('withdrawAction') && adminOmni.includes('/verify'), 'admin console v2: automation mode, withdraw action, destination verify');
 assert(omniAdmin.includes("outbox/clear-waiting") && omniAdmin.includes('publications/requeue-by-category'), 'admin clear-waiting and category requeue routes');
 assert(omniSvc.includes('clearWaitingOutbox') && omniSvc.includes('requeueByCategory'), 'service clear-waiting and category requeue');
+assert(
+  omniSvc.includes('stale WITHDRAWN sibling must not')
+    && workerSrc.includes('publication deliver missing destination'),
+  'publish silence fix: requeue reopens withdrawn; worker fails missing dest',
+);
+assert(
+  src('modules/omnichannel/publication-automation.ts').includes('Orphan heal'),
+  'stock_changed heals orphan DRAFT under OOS DELETE',
+);
 assert(adminOmni.includes('خالی کردن صف انتظار') && adminOmni.includes('شروع ارسال دسته'), 'admin UI clear queue and category requeue');
 assert(omniAdmin.includes("Delete('connections/:id')") && omniAdmin.includes("Delete('destinations/:id')"), 'admin can delete connections and destinations');
 assert(omniSvc.includes('deleteConnection') && omniSvc.includes('deleteDestination'), 'service deletes connection/destination after detaching deliveries');

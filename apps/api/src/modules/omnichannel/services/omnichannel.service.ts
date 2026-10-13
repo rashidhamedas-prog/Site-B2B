@@ -1040,19 +1040,13 @@ export class OmnichannelService {
             status: 'DRAFT',
           }));
       } else {
-        // One canonical live row per source×channel: prefer non-DRAFT so پیش‌نویس جدا بماند.
-        const existing = await repo.findOne({
-          where: {
-            sourceType,
-            sourceId,
-            channel: projection.channel,
-            status: In(['READY', 'PUBLISHED', 'PARTIAL', 'FAILED', 'WITHDRAWN']),
-          },
-          order: { createdAt: 'DESC' },
-        }) || await repo.findOne({
+        // Newest row (DRAFT / WITHDRAWN / READY / …). Reopen withdrawn orphans instead of
+        // inserting another parallel publication that never reaches the messenger.
+        const existing = (await repo.find({
           where: { sourceType, sourceId, channel: projection.channel },
-          order: { createdAt: 'DESC' },
-        });
+          order: { updatedAt: 'DESC', createdAt: 'DESC' },
+          take: 1,
+        }))[0] ?? null;
         row = existing
           ? await repo.save(Object.assign(existing, {
             projection,
@@ -1393,10 +1387,13 @@ export class OmnichannelService {
       }
       throw err;
     }
-    const existing = await this.publications.findOne({
+    // Multiple version rows exist per source×channel (unique includes sourceUpdatedAt).
+    // Always mutate the newest; findOne+order is unreliable across TypeORM versions.
+    const existing = (await this.publications.find({
       where: { sourceType, sourceId, channel },
-      order: { createdAt: 'DESC' },
-    });
+      order: { updatedAt: 'DESC', createdAt: 'DESC' },
+      take: 1,
+    }))[0] ?? null;
     const previousStatus = existing?.status ?? null;
     const available = 'available' in projection ? projection.available === true : true;
     let action = nextPublicationAction(existing, projection.publishable);
@@ -1490,10 +1487,11 @@ export class OmnichannelService {
       chosenEvents: chosen,
     });
     if (intent.action === 'none') return intent.reason;
-    const publication = await this.publications.findOne({
+    const publication = (await this.publications.find({
       where: { sourceType: 'PRODUCT', sourceId: input.sourceId, channel: input.channel },
-      order: { createdAt: 'DESC' },
-    });
+      order: { updatedAt: 'DESC', createdAt: 'DESC' },
+      take: 1,
+    }))[0] ?? null;
     if (!publication) return 'no_publication';
     if (intent.action === 'DELETE') {
       const count = await this.enqueueDeliveries(this.publications.manager, {
@@ -1544,7 +1542,8 @@ export class OmnichannelService {
     });
     if (gate.allow === false) return gate.reason;
     const withMessage = new Set(live.map((msg) => msg.destinationId));
-    const pending = await this.pendingCreateDestinations(publication.id);
+    // Source-wide pending CREATEs (sibling publication rows) — same dedupe as manual/requeue.
+    const pending = await this.pendingCreateDestinationsForSource('PRODUCT', input.sourceId, input.channel);
     const targets = selectAutomationDestinations(dests, conns, input.channel, automation.mode)
       .filter((dest) => !withMessage.has(dest.id) && !pending.has(dest.id))
       .map((dest) => ({ destinationId: dest.id }));
@@ -1810,35 +1809,18 @@ export class OmnichannelService {
     let queued = 0;
     await this.publications.manager.transaction(async (manager) => {
       const repo = manager.getRepository(PublicationEntity);
-      const withdrawn = await repo.findOne({
+      // Newest row wins (including WITHDRAWN/DRAFT). A stale WITHDRAWN sibling must not
+      // block requeue — that left the publish console unable to restock the channel after
+      // mass withdraw while inventory kept creating orphan drafts.
+      const existing = (await repo.find({
         where: {
           sourceType: 'PRODUCT',
           sourceId,
           channel: opts.channel,
-          status: 'WITHDRAWN',
         },
-        order: { createdAt: 'DESC' },
-      });
-      if (withdrawn) {
-        return;
-      }
-      const existing = await repo.findOne({
-        where: {
-          sourceType: 'PRODUCT',
-          sourceId,
-          channel: opts.channel,
-          status: In(['READY', 'PUBLISHED', 'PARTIAL', 'FAILED']),
-        },
-        order: { createdAt: 'DESC' },
-      }) || await repo.findOne({
-        where: {
-          sourceType: 'PRODUCT',
-          sourceId,
-          channel: opts.channel,
-          status: In(['DRAFT', 'READY', 'PUBLISHED', 'PARTIAL', 'FAILED']),
-        },
-        order: { createdAt: 'DESC' },
-      });
+        order: { updatedAt: 'DESC', createdAt: 'DESC' },
+        take: 1,
+      }))[0] ?? null;
       const row = existing
         ? await repo.save(Object.assign(existing, {
           projection,
@@ -1892,20 +1874,6 @@ export class OmnichannelService {
         }),
       );
     });
-    if (queued === 0) {
-      const stillWithdrawn = await this.publications.findOne({
-        where: {
-          sourceType: 'PRODUCT',
-          sourceId,
-          channel: opts.channel,
-          status: 'WITHDRAWN',
-        },
-        select: ['id'],
-      });
-      if (stillWithdrawn) {
-        return { queued: 0, skipReason: 'از کانال برداشته شده؛ دوباره اضافه نشد' };
-      }
-    }
     return { queued };
   }
 

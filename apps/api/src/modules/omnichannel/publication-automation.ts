@@ -130,11 +130,27 @@ export function resolveRemoteIntent(input: RemoteIntentInput): RemoteIntent {
       : { action: 'none', reason: 'oos_update_keep' };
   }
   if (input.eventType === STOCK_EVENT) {
-    if (input.localAction !== 'reopen') return { action: 'none', reason: 'stock_only' };
-    if (input.hasRemoteMessage) return { action: 'UPDATE', notice: false };
-    return input.oosChosen && input.oosPolicy === 'DELETE'
-      ? { action: 'CREATE' }
-      : { action: 'none', reason: 'stock_only' };
+    if (input.localAction === 'reopen') {
+      if (input.hasRemoteMessage) return { action: 'UPDATE', notice: false };
+      return input.oosChosen && input.oosPolicy === 'DELETE'
+        ? { action: 'CREATE' }
+        : { action: 'none', reason: 'stock_only' };
+    }
+    // Orphan heal: a prior reopen left a non-withdrawn row with no messenger post.
+    // Later stock ticks use localAction update/refresh and used to stick on stock_only
+    // forever — so the channel looked "dead" after a mass withdraw + inventory sync.
+    if (
+      !input.hasRemoteMessage
+      && input.publishable
+      && input.available
+      && (input.previousStatus === 'DRAFT' || input.previousStatus === 'READY' || input.previousStatus === 'PARTIAL' || input.previousStatus === 'FAILED')
+      && (input.localAction === 'update' || input.localAction === 'refresh')
+      && input.oosChosen
+      && input.oosPolicy === 'DELETE'
+    ) {
+      return { action: 'CREATE' };
+    }
+    return { action: 'none', reason: 'stock_only' };
   }
   if (!input.chosenEvents.includes(input.eventType)) {
     return input.localAction === 'reopen' && input.hasRemoteMessage

@@ -372,9 +372,16 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     const destinationId = String(payload.destinationId || '');
     const action = String(payload.action || 'CREATE').toUpperCase();
     const dest = await this.destinations.findOne({ where: { id: destinationId } });
-    if (!dest) return;
+    if (!dest) {
+      throw new Error(`publication deliver missing destination ${destinationId || '(empty)'}`);
+    }
     const conn = await this.connections.findOne({ where: { id: dest.connectionId } });
-    if (!conn || !this.adapters.has(conn.provider)) return;
+    if (!conn) {
+      throw new Error(`publication deliver missing connection for destination ${destinationId}`);
+    }
+    if (!this.adapters.has(conn.provider)) {
+      throw new Error(`publication deliver has no adapter for provider ${conn.provider}`);
+    }
     const adapter = this.adapters.for(conn.provider);
     const input = {
       secretRef: conn.secretRef,
@@ -420,7 +427,13 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       providerMessageId = (await adapter.create(input)).providerMessageId;
     }
     const row = await this.findDelivery(payload, eventId);
-    if (!row) return;
+    if (!row) {
+      // Adapter already ran — must not throw/retry (duplicate messenger posts). ACK outbox.
+      this.logger.error(
+        `publication deliver missing delivery row after ${action} (event ${eventId || 'n/a'}, dest ${destinationId})`,
+      );
+      return;
+    }
     row.status = 'SUCCEEDED';
     row.providerMessageId = providerMessageId || row.providerMessageId;
     row.lastError = null;

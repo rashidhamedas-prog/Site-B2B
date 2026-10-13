@@ -158,8 +158,35 @@ function main() {
   assert(restockHide.action === 'UPDATE' && restockHide.notice === false, 'restock after HIDE restores the full post');
   const restockDelete = resolveRemoteIntent(intentInput({ eventType: 'product.stock_changed', localAction: 'reopen', previousStatus: 'WITHDRAWN', oosChosen: true, oosPolicy: 'DELETE', hasRemoteMessage: false }));
   assert(restockDelete.action === 'CREATE', 'restock after DELETE recreates the post');
-  const stockNoise = resolveRemoteIntent(intentInput({ eventType: 'product.stock_changed', localAction: 'refresh' }));
-  assert(stockNoise.action === 'none' && stockNoise.reason === 'stock_only', 'ordinary stock movement does not edit');
+  const stockNoise = resolveRemoteIntent(intentInput({ eventType: 'product.stock_changed', localAction: 'refresh', hasRemoteMessage: true }));
+  assert(stockNoise.action === 'none' && stockNoise.reason === 'stock_only', 'ordinary stock movement does not edit live posts');
+  const orphanHeal = resolveRemoteIntent(intentInput({
+    eventType: 'product.stock_changed',
+    localAction: 'update',
+    previousStatus: 'DRAFT',
+    hasRemoteMessage: false,
+    oosChosen: true,
+    oosPolicy: 'DELETE',
+  }));
+  assert(orphanHeal.action === 'CREATE', 'orphan DRAFT with no remote post heals on stock under OOS DELETE');
+  const orphanNoPolicy = resolveRemoteIntent(intentInput({
+    eventType: 'product.stock_changed',
+    localAction: 'update',
+    previousStatus: 'DRAFT',
+    hasRemoteMessage: false,
+    oosChosen: true,
+    oosPolicy: 'HIDE',
+  }));
+  assert(orphanNoPolicy.action === 'none' && orphanNoPolicy.reason === 'stock_only', 'orphan heal requires OOS DELETE');
+  const brandNewStock = resolveRemoteIntent(intentInput({
+    eventType: 'product.stock_changed',
+    localAction: 'create',
+    previousStatus: null,
+    hasRemoteMessage: false,
+    oosChosen: true,
+    oosPolicy: 'DELETE',
+  }));
+  assert(brandNewStock.action === 'none' && brandNewStock.reason === 'stock_only', 'first-ever stock create stays stock_only');
   const restockUnchosen = resolveRemoteIntent(intentInput({ eventType: 'product.stock_changed', localAction: 'reopen', previousStatus: 'WITHDRAWN', hasRemoteMessage: false }));
   assert(restockUnchosen.action === 'none', 'restock without OOS DELETE policy does not create');
 

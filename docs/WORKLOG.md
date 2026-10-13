@@ -1,3 +1,9 @@
+## 2026-10-13 — سکوت کانال انتشار (orphan DRAFT + requeue WITHDRAWN) [TASK-20261013-002]
+
+- ریشه: بعد از withdraw جمعی، `enqueueCategoryProduct` با دیدن هر ردیف WITHDRAWN بی‌صدا ۰ صف می‌کرد؛ `stock_changed` هم DRAFT یتیم را با `stock_only` برای همیشه قفل می‌کرد.
+- فیکس: reopen جدیدترین publication در ارسال دستی/دسته‌ای؛ heal CREATE روی stock با سیاست OOS DELETE؛ worker دیگر dest/conn گم‌شده را silent-ACK نمی‌کند.
+- گزارش: `docs/reports/2026-10-13-omnichannel-publish-silence.md`
+
 ## 2026-10-13 — ارسال گروهی پیامک شخصی‌سازی‌شده بازاریابی [TASK-20261013-001] CLOSED LIVE
 
 - تب ادمین «ارسال گروهی»: انتخاب مشتریان تکی/عمده جدا، پیش‌نمایش شخصی، کاناری، تأیید ارسال زنده.
