@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T15:20:00Z — TASK-20261013-006 CLOSED LIVE
+
+- Ship: `c3a84cf9` → origin/master; VPS `c3a84cf` health ok; excess PENDING CREATE soft-cancelled.
+- Owner: hard-refresh `/admin/omnichannel` — daily room = 0 until Tehran midnight / raise cap.
+- Claims released.
+
 ## 2026-10-13T15:15:00Z — TASK-20261013-006 daily cap bypass (pre-deploy)
 
 - Depth: skill-top full. Cap=10; today SUCCEEDED CREATE=17; PENDING auto=false=16; gate saw only auto=2.
