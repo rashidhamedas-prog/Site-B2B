@@ -38,10 +38,11 @@ export async function fetchProductsBlockCatalog(
       ? fetchProductList({ channel, limit: 1, page: 1, sort: 'newest' })
       : Promise.resolve(null),
   ]);
-  const catalogTotal =
+  const catalogTotal = Number(
     catalogCount && catalogCount.meta.failed !== true
       ? catalogCount.meta.total
-      : result.meta.total;
+      : result.meta.total,
+  ) || 0;
   return {
     query,
     products: result.data,
