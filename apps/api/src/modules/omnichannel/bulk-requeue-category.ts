@@ -8,8 +8,8 @@ export const CLEAR_WAITING_ERROR = 'cancelled_by_admin';
 export const CLEAR_WAITING_STALE_ERROR = 'cancelled_by_admin_stale_lock';
 
 /**
- * Schedule the i-th product in a blast so the worker respects min-gap without
- * relying on automation daily_cap / quiet hours.
+ * Schedule the i-th product in a blast so the worker respects min-gap.
+ * Daily CREATE room is enforced by the caller (requeueByCategory) — not here.
  */
 export function staggeredAvailableAt(
   index: number,

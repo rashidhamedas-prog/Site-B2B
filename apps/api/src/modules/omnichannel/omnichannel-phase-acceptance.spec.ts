@@ -86,6 +86,16 @@ assert(adminOmni.includes('autoPublishMode') && adminOmni.includes('withdrawActi
 assert(omniAdmin.includes("outbox/clear-waiting") && omniAdmin.includes('publications/requeue-by-category'), 'admin clear-waiting and category requeue routes');
 assert(omniSvc.includes('clearWaitingOutbox') && omniSvc.includes('requeueByCategory'), 'service clear-waiting and category requeue');
 assert(
+  omniSvc.includes('countCreatesTowardDailyCap')
+    && omniSvc.includes('remainingDailyCreates')
+    && omniSvc.includes('سقف پست جدید امروز پر است'),
+  'daily CREATE cap covers manual + category blast, not only auto=true',
+);
+assert(
+  src('modules/omnichannel/publication-automation.ts').includes('remainingDailyCreates'),
+  'remainingDailyCreates helper exported for cap math',
+);
+assert(
   omniSvc.includes('stale WITHDRAWN sibling must not')
     && workerSrc.includes('publication deliver missing destination'),
   'publish silence fix: requeue reopens withdrawn; worker fails missing dest',

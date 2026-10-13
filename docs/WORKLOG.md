@@ -1,3 +1,9 @@
+## 2026-10-13 — تجاوز سقف روزانه کانال (auto=false bypass) [TASK-20261013-006]
+
+- ریشه: شمارندهٔ gate فقط `auto=true` می‌دید؛ ارسال دسته/دستی با `auto=false` سقف ۱۰ را رد می‌کرد (۱۷ موفق + ۱۶ صف).
+- فیکس: شمارش همهٔ CREATEهای امروز (موفق + در صف)؛ اعمال سقف روی دسته و ارسال دستی؛ soft-cancel صف اضافه.
+- گزارش: `docs/reports/2026-10-13-omnichannel-daily-cap-bypass.md`
+
 ## 2026-10-13 — ارسال کانال ناموفق (validate_failed آلبوم) [TASK-20261013-005]
 
 - ریشه: `sendMediaGroup` با `show_caption_above_media` → ۱۰ DEAD WHOLESALE؛ lastError فقط `validate_failed`؛ ۴۵ DEAD سفارش با `uuid = varchar`.

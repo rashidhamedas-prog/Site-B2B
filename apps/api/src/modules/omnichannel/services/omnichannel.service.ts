@@ -68,6 +68,7 @@ import {
 import {
   canEnqueueManualDelivery,
   evaluateAutomationGate,
+  remainingDailyCreates,
   evaluateCategoryAllowlistGate,
   foldLiveRemoteMessages,
   latestPublicationsBySource,
@@ -690,17 +691,14 @@ export class OmnichannelService {
     }
   }
 
-  /** SUCCEEDED CREATE deliveries since Tehran midnight (aligned with automation day). */
-  async sentTodayCount(): Promise<number> {
-    const dayStart = tehranDayStart(new Date());
+  /**
+   * CREATE slots used today (Tehran day): landed SUCCEEDED + in-flight PENDING/PROCESSING/RETRY.
+   * Counts distinct publications so multi-destination albums still use one slot. Aligns with the
+   * automation gate — manual/category blasts are included (not only auto=true).
+   */
+  async sentTodayCount(channel?: string): Promise<number> {
     try {
-      const n = await this.deliveries
-        .createQueryBuilder('d')
-        .where('d.action = :action', { action: 'CREATE' })
-        .andWhere('d.status = :status', { status: 'SUCCEEDED' })
-        .andWhere('d.createdAt >= :dayStart', { dayStart })
-        .getCount();
-      return n;
+      return await this.countCreatesTowardDailyCap(channel);
     } catch (err) {
       if (isMissingRelationError(err)) return 0;
       throw err;
@@ -802,8 +800,9 @@ export class OmnichannelService {
 
   /**
    * Admin blast: enqueue CREATE/UPDATE for products in a category (primary or membership).
-   * Bypasses automation daily_cap / quiet hours; still requires connectors + ready destinations.
-   * Posts are staggered by autoMinGapSeconds so messengers are not flooded.
+   * Respects the daily CREATE cap (same counter as automation); still requires connectors + ready
+   * destinations. Posts are staggered by autoMinGapSeconds so messengers are not flooded.
+   * Quiet hours are not applied — admins may blast outside the auto window, within the daily room.
    */
   async requeueByCategory(dto: RequeueByCategoryDto, actor?: Actor) {
     const who = this.requireActor(actor);
@@ -818,6 +817,9 @@ export class OmnichannelService {
     );
     const hasMore = productIds.length > REQUEUE_BY_CATEGORY_MAX;
     const batch = productIds.slice(0, REQUEUE_BY_CATEGORY_MAX);
+    const automation = readAutomationSettings(await this.loadStoredSettings());
+    const counters = await this.automationCounters(normalized.channel);
+    const dailyRoom = remainingDailyCreates(counters.sentToday, automation.dailyCap);
     if (normalized.dryRun) {
       return {
         dryRun: true,
@@ -826,6 +828,9 @@ export class OmnichannelService {
         offset: normalized.offset,
         nextOffset: hasMore ? normalized.offset + batch.length : null,
         queued: 0,
+        dailyCap: automation.dailyCap,
+        sentToday: counters.sentToday,
+        dailyRoom,
         skipped: [] as Array<{ productId: string; reason: string }>,
         errors: [] as Array<{ productId: string; error: string }>,
       };
@@ -835,7 +840,11 @@ export class OmnichannelService {
         'ارسال به پیام‌رسان خاموش است (OMNICHANNEL_CONNECTORS_ENABLED).',
       );
     }
-    const automation = readAutomationSettings(await this.loadStoredSettings());
+    if (dailyRoom <= 0) {
+      throw new BadRequestException(
+        `سقف پست جدید امروز پر است (${counters.sentToday} از ${automation.dailyCap}). فردا دوباره تلاش کنید یا سقف را در تنظیمات بالا ببرید.`,
+      );
+    }
     if (automation.mode !== 'LIVE') {
       const liveCount = await this.publications.count({
         where: {
@@ -869,7 +878,12 @@ export class OmnichannelService {
     const errors: Array<{ productId: string; error: string }> = [];
     let queued = 0;
     let scheduleIndex = 0;
+    let createRoom = dailyRoom;
     for (const productId of batch) {
+      if (createRoom <= 0) {
+        skipped.push({ productId, reason: 'سقف پست روزانه پر شد' });
+        continue;
+      }
       try {
         const result = await this.enqueueCategoryProduct(productId, {
           channel: normalized.channel,
@@ -878,10 +892,12 @@ export class OmnichannelService {
           actor: who,
           availableAt: staggeredAvailableAt(scheduleIndex, gap, now),
           targets,
+          allowCreate: createRoom > 0,
         });
         if (result.queued > 0) {
           queued += result.queued;
           scheduleIndex += 1;
+          if (result.created > 0) createRoom = Math.max(0, createRoom - result.created);
         } else if (result.skipReason) {
           skipped.push({ productId, reason: result.skipReason });
         }
@@ -1018,6 +1034,15 @@ export class OmnichannelService {
     );
     if (!dryRun && plan.creates.length === 0 && plan.updates.length === 0) {
       throw new BadRequestException('ارسال قبلی هنوز در صف است؛ چند ثانیه صبر کنید و دوباره تلاش کنید');
+    }
+    if (!dryRun && plan.creates.length) {
+      const automation = readAutomationSettings(await this.loadStoredSettings());
+      const counters = await this.automationCounters(projection.channel);
+      if (remainingDailyCreates(counters.sentToday, automation.dailyCap) <= 0) {
+        throw new BadRequestException(
+          `سقف پست جدید امروز پر است (${counters.sentToday} از ${automation.dailyCap}). ویرایش پست‌های موجود هنوز مجاز است.`,
+        );
+      }
     }
     const saved = await this.publications.manager.transaction(async (manager) => {
       const repo = manager.getRepository(PublicationEntity);
@@ -1622,22 +1647,41 @@ export class OmnichannelService {
     };
   }
 
-  /** Auto CREATE counters for the gate: distinct posts today (Tehran day) and the latest scheduled send. */
+  /**
+   * CREATE slots used toward the daily cap for a sales channel (Tehran day).
+   * Includes manual/category (`auto=false`) and automation; reserves in-flight rows.
+   */
+  private async countCreatesTowardDailyCap(channel?: string): Promise<number> {
+    const dayStart = tehranDayStart(new Date());
+    const qb = this.deliveries
+      .createQueryBuilder('d')
+      .innerJoin(PublicationEntity, 'p', 'p.id = d.publicationId')
+      .where('d.action = :action', { action: 'CREATE' })
+      .andWhere('d.status IN (:...st)', { st: ['PENDING', 'PROCESSING', 'RETRY', 'SUCCEEDED'] })
+      .andWhere('d.createdAt >= :dayStart', { dayStart });
+    if (channel) qb.andWhere('p.channel = :channel', { channel });
+    const row = await qb.select('COUNT(DISTINCT d.publicationId)', 'n').getRawOne<{ n: string }>();
+    return Number(row?.n || 0);
+  }
+
+  /** CREATE counters for the gate: slots used today + latest scheduled send (for min-gap). */
   private async automationCounters(channel: string): Promise<{ sentToday: number; lastScheduledAt: Date | null }> {
     const dayStart = tehranDayStart(new Date());
-    const base = () => this.events.createQueryBuilder('e')
-      .where('e.eventType = :type', { type: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED })
-      .andWhere('e.channel = :channel', { channel })
-      .andWhere("e.payload->>'action' = 'CREATE'")
-      .andWhere("e.payload->>'auto' = 'true'");
-    const [today, last] = await Promise.all([
-      base().andWhere('e.createdAt >= :dayStart', { dayStart }).select("COUNT(DISTINCT e.payload->>'publicationId')", 'n').getRawOne<{ n: string }>(),
-      base().select('MAX(e.availableAt)', 'last').getRawOne<{ last: Date | string | null }>(),
+    const [sentToday, last] = await Promise.all([
+      this.countCreatesTowardDailyCap(channel),
+      this.events
+        .createQueryBuilder('e')
+        .where('e.eventType = :type', { type: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED })
+        .andWhere('e.channel = :channel', { channel })
+        .andWhere("e.payload->>'action' = 'CREATE'")
+        .andWhere('e.createdAt >= :dayStart', { dayStart })
+        .select('MAX(e.availableAt)', 'last')
+        .getRawOne<{ last: Date | string | null }>(),
     ]);
     const lastRaw = last?.last ?? null;
     const lastScheduledAt = lastRaw ? new Date(lastRaw) : null;
     return {
-      sentToday: Number(today?.n || 0),
+      sentToday,
       lastScheduledAt: lastScheduledAt && !Number.isNaN(lastScheduledAt.getTime()) ? lastScheduledAt : null,
     };
   }
@@ -1774,22 +1818,24 @@ export class OmnichannelService {
       actor: Actor;
       availableAt: Date;
       targets: ChannelDestinationEntity[];
+      /** When false, UPDATE-only (daily CREATE room exhausted). */
+      allowCreate?: boolean;
     },
-  ): Promise<{ queued: number; skipReason?: string }> {
+  ): Promise<{ queued: number; created: number; skipReason?: string }> {
     const { projection } = await this.preview({
       channel: opts.channel,
       sourceType: 'PRODUCT',
       sourceId: productId,
     });
     if (!projection.publishable) {
-      return { queued: 0, skipReason: projection.rejectReason || 'غیرقابل انتشار' };
+      return { queued: 0, created: 0, skipReason: projection.rejectReason || 'غیرقابل انتشار' };
     }
     const sourceId = String(projection.sourceId || productId);
     const available = 'available' in projection ? projection.available === true : true;
     const oos = await this.oosDecisionFor(opts.channel, available, 'PRODUCT', sourceId);
     const reject = liveOosRejectReason(oos, available);
     if (reject) {
-      return { queued: 0, skipReason: `ناموجود (${oos.policy})` };
+      return { queued: 0, created: 0, skipReason: `ناموجود (${oos.policy})` };
     }
     const liveRemote = await this.liveRemoteMessages('PRODUCT', sourceId, opts.channel);
     const pendingCreates = await this.pendingCreateDestinationsForSource(
@@ -1802,11 +1848,19 @@ export class OmnichannelService {
       liveRemote,
       pendingCreates,
     );
+    if (opts.allowCreate === false) plan.creates.length = 0;
     if (plan.creates.length === 0 && plan.updates.length === 0) {
-      return { queued: 0, skipReason: 'ارسال قبلی هنوز در صف است' };
+      return {
+        queued: 0,
+        created: 0,
+        skipReason: opts.allowCreate === false && liveRemote.length === 0
+          ? 'سقف پست روزانه پر شد'
+          : 'ارسال قبلی هنوز در صف است',
+      };
     }
     const rendered = await this.publicationPayloadFor(projection);
     let queued = 0;
+    let created = 0;
     await this.publications.manager.transaction(async (manager) => {
       const repo = manager.getRepository(PublicationEntity);
       // Newest row wins (including WITHDRAWN/DRAFT). A stale WITHDRAWN sibling must not
@@ -1836,7 +1890,7 @@ export class OmnichannelService {
           status: 'READY',
         }));
       if (plan.creates.length) {
-        queued += await this.enqueueDeliveries(manager, {
+        const n = await this.enqueueDeliveries(manager, {
           publicationId: row.id,
           channel: opts.channel,
           action: 'CREATE',
@@ -1845,6 +1899,8 @@ export class OmnichannelService {
           auto: false,
           availableAt: opts.availableAt,
         });
+        queued += n;
+        if (n > 0) created += 1;
       }
       if (plan.updates.length) {
         queued += await this.enqueueDeliveries(manager, {
@@ -1874,7 +1930,7 @@ export class OmnichannelService {
         }),
       );
     });
-    return { queued };
+    return { queued, created };
   }
 
   /**

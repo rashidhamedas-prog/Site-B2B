@@ -25,7 +25,10 @@ export type AutomationGateInput = {
   chosenEvents: readonly string[];
   connectorsEnabled: boolean;
   autoPublishFlag: boolean;
-  /** Distinct auto posts already scheduled today (Tehran day) for this sales channel. */
+  /**
+   * Distinct CREATE posts already landed or reserved today (Tehran day) for this sales channel —
+   * SUCCEEDED + in-flight PENDING/PROCESSING/RETRY, auto and manual alike.
+   */
   sentToday: number;
   dailyCap: number;
   /** availableAt of the latest auto CREATE for this channel, if any. */
@@ -51,7 +54,9 @@ export function evaluateAutomationGate(input: AutomationGateInput): AutomationGa
   if (!input.createTrigger && !input.chosenEvents.includes(input.eventType)) {
     return { allow: false, reason: 'event_not_chosen' };
   }
-  if (input.sentToday >= input.dailyCap) return { allow: false, reason: 'daily_cap' };
+  if (remainingDailyCreates(input.sentToday, input.dailyCap) <= 0) {
+    return { allow: false, reason: 'daily_cap' };
+  }
   let sendAt = input.now;
   if (input.lastScheduledAt && input.minGapSeconds > 0) {
     const gapEnd = new Date(input.lastScheduledAt.getTime() + input.minGapSeconds * 1000);
@@ -61,6 +66,13 @@ export function evaluateAutomationGate(input: AutomationGateInput): AutomationGa
     sendAt = nextQuietEnd(sendAt, input.quietEndHour);
   }
   return { allow: true, sendAt, deferred: sendAt.getTime() > input.now.getTime() };
+}
+
+/** How many new CREATE posts may still be queued today before hitting the daily cap. */
+export function remainingDailyCreates(sentToday: number, dailyCap: number): number {
+  const used = Math.max(0, Math.floor(Number(sentToday) || 0));
+  const cap = Math.max(0, Math.floor(Number(dailyCap) || 0));
+  return Math.max(0, cap - used);
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   canEnqueueManualDelivery,
   collectProductCategoryIds,
   evaluateAutomationGate,
+  remainingDailyCreates,
   evaluateCategoryAllowlistGate,
   foldLiveRemoteMessages,
   inQuietHours,
@@ -78,6 +79,9 @@ function main() {
   assert(evaluateAutomationGate(gateInput({ eventType: 'product.media_changed', createTrigger: true })).allow === true, 'createTrigger bypasses chosen check');
   const capped = evaluateAutomationGate(gateInput({ sentToday: 20 }));
   assert(capped.allow === false && capped.reason === 'daily_cap', 'daily cap');
+  assert(remainingDailyCreates(7, 10) === 3, 'remaining room');
+  assert(remainingDailyCreates(10, 10) === 0, 'full cap');
+  assert(remainingDailyCreates(12, 10) === 0, 'overshoot clamps to zero room');
 
   // gate: immediate, min-gap, quiet hours
   const now = new Date('2026-09-06T08:00:00.000Z');

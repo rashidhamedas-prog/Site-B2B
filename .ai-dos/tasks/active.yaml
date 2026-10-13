@@ -1,5 +1,35 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261013-006"
+    title: "Enforce daily CREATE cap on manual + category blast"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261013-006"
+    roles:
+      architect: "cursor:skill-top-full"
+      implementer: "cursor:implementer-TASK-20261013-006"
+      reviewer: "cursor:omnichannel-phase-reviewer"
+      security: "not-required-cap-policy"
+    branch: "ai/TASK-20261013-004-retail-home-products"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-13T15:10:00Z"
+    heartbeat_at: "2026-10-13T15:10:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/omnichannel/publication-automation.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
+      - "apps/api/src/modules/omnichannel/bulk-requeue-category.ts"
+      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
+      - "docs/reports/2026-10-13-omnichannel-daily-cap-bypass.md"
+      - "docs/WORKLOG.md"
+    notes: |
+      skill-top full. Live: cap=10, SUCCEEDED CREATE=17, PENDING auto=false=16.
+      Gate counted only auto=true (2). Fix counters + enforce on requeue/manual.
+    acceptance_criteria:
+      - "Daily cap counts all CREATE slots (not only auto=true)"
+      - "Category requeue and manual CREATE respect remaining room"
+      - "Specs green; deploy; excess PENDING CREATE soft-cancelled"
   - id: "TASK-20261013-005"
     title: "Root-fix channel publish DEAD (album captionAbove + error detail + order uuid)"
     status: "done"

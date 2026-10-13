@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T15:15:00Z — TASK-20261013-006 daily cap bypass (pre-deploy)
+
+- Depth: skill-top full. Cap=10; today SUCCEEDED CREATE=17; PENDING auto=false=16; gate saw only auto=2.
+- Fix: countCreatesTowardDailyCap all flags + in-flight; requeue/manual enforce remainingDailyCreates.
+- Specs: publication-automation + phase-acceptance + bulk-requeue ok.
+- Next: commit → push master → deploy api/worker → soft-cancel excess PENDING CREATE.
+
 ## 2026-10-13T14:25:00Z — TASK-20261013-005 CLOSED LIVE
 
 - Ship: `c852b560` (album) + `7395b646` (order uuid) → `origin/master`; VPS `7395b64` health ok.
