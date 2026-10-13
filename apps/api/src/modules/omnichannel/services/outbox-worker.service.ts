@@ -255,8 +255,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       await this.notifications.orderRegistered(phone, order.orderNumber);
     }
     if (this.marketing && order.customerId) {
+      // Marketing must not DEAD-letter transactional order SMS if a uuid bind slips.
       await this.marketing.completeCheckoutIntent(order.customerId, order.id).catch(() => undefined);
-      await this.marketing.evaluateCustomer(order.customerId);
+      await this.marketing.evaluateCustomer(order.customerId).catch(() => undefined);
     }
     const ch = String(channel || '').toUpperCase() === 'RETAIL' ? 'RETAIL' : 'WHOLESALE';
     const label =
@@ -282,7 +283,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       await this.notifications.orderShipped(phone, order.orderNumber, order.trackingCode);
     }
     if (this.marketing && order.customerId) {
-      await this.marketing.evaluateCustomer(order.customerId);
+      await this.marketing.evaluateCustomer(order.customerId).catch(() => undefined);
     }
   }
 

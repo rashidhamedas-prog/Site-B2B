@@ -17,7 +17,8 @@ export class OrderEntity {
   @JoinColumn({ name: 'customerId' })
   customer: CustomerEntity;
 
-  @Column()
+  /** DB column is uuid — declare type so TypeORM does not bind varchar (uuid = varchar). */
+  @Column({ type: 'uuid' })
   customerId: string;
 
   @Column({ default: 'WHOLESALE' })

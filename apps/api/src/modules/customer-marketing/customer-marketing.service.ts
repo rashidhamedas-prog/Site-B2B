@@ -747,11 +747,12 @@ export class CustomerMarketingService {
       this.suppressions.findOne({ where: { phoneNormalized: normalizePhone(customer.phone) } }),
       this.enrollments.findOne({ where: { customerId } }),
       this.activities.find({ where: { customerId }, order: { occurredAt: 'DESC' }, take: 40 }),
-      this.orders.find({
-        where: { customerId },
-        order: { createdAt: 'DESC' },
-        take: 8,
-      }),
+      this.orders
+        .createQueryBuilder('o')
+        .where('o."customerId"::text = :cid', { cid: String(customerId) })
+        .orderBy('o.createdAt', 'DESC')
+        .take(8)
+        .getMany(),
       this.templates.find({ where: { channel, isActive: true }, order: { code: 'ASC' } }),
       this.getSettings(),
     ]);
@@ -1414,7 +1415,7 @@ export class CustomerMarketingService {
     const settledSince = intent
       ? await this.orders
         .createQueryBuilder('o')
-        .where('o.customerId = :cid', { cid: customer.id })
+        .where('o."customerId"::text = :cid', { cid: String(customer.id) })
         .andWhere('o.createdAt >= :since', { since: intent.startedAt })
         .andWhere('o.status IN (:...st)', { st: [...SETTLED_ORDER_STATUSES] })
         .getCount()
@@ -1423,7 +1424,7 @@ export class CustomerMarketingService {
       ? await this.payments
         .createQueryBuilder('p')
         .innerJoin(OrderEntity, 'o', 'o.id = p.orderId')
-        .where('o.customerId = :cid', { cid: customer.id })
+        .where('o."customerId"::text = :cid', { cid: String(customer.id) })
         .andWhere('p.status = :st', { st: 'FAILED' })
         .andWhere('p.createdAt >= :since', { since: intent.startedAt })
         .getCount()
@@ -1738,7 +1739,12 @@ export class CustomerMarketingService {
   }
 
   private async settledOrders(customerId: string) {
-    const rows = await this.orders.find({ where: { customerId }, order: { createdAt: 'DESC' } });
+    // orders.customerId is uuid; bind via ::text so string params never raise uuid = varchar.
+    const rows = await this.orders
+      .createQueryBuilder('o')
+      .where('o."customerId"::text = :cid', { cid: String(customerId) })
+      .orderBy('o.createdAt', 'DESC')
+      .getMany();
     return rows.filter((o) => isSettledOrderStatus(o.status));
   }
 
