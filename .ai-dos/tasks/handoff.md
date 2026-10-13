@@ -2,6 +2,11 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T12:15:00Z — TASK-20261013-003 CLOSED LIVE
+
+- Ship: `cc0b625f` → `origin/master`; VPS deploy complete at `cc0b625`; API `:4000/v1/health` ok; `.com` 200.
+- Claims released. Owner: hard-refresh checkout pages; smoke fail-payment keeps cart.
+
 ## 2026-10-13T15:45:00Z — TASK-20261013-003 conversion funnel (ship ready)
 
 - Specs: checkout-payment-ui + retail-analytics ok; web tsc 0.
