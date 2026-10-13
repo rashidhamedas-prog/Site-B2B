@@ -1,3 +1,9 @@
+## 2026-10-13 — قیف تبدیل تکی + عمده [TASK-20261013-003]
+
+- سبد تا verify موفق پاک نمی‌شود؛ TorobPay UI خاموش؛ قیمت عمده روی کارت بدون لاگین؛ GA4 ecommerce عمده (`add_to_cart` / `begin_checkout`).
+- COD همچنان فقط از ادمین؛ PENDING عمده بدون تغییر.
+- گزارش: `docs/reports/2026-10-13-conversion-funnel-fixes.md`
+
 ## 2026-10-13 — سکوت کانال انتشار (orphan DRAFT + requeue WITHDRAWN) [TASK-20261013-002]
 
 - ریشه: بعد از withdraw جمعی، `enqueueCategoryProduct` با دیدن هر ردیف WITHDRAWN بی‌صدا ۰ صف می‌کرد؛ `stock_changed` هم DRAFT یتیم را با `stock_only` برای همیشه قفل می‌کرد.

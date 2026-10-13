@@ -123,14 +123,23 @@ export function shouldSendRetailAnalytics(opts?: {
   pathname?: string | null;
   channel?: GoogleChannel;
 }): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = opts?.host ?? window.location.hostname;
-  const pathname = opts?.pathname ?? window.location.pathname;
+  const hasWindow = typeof window !== 'undefined';
+  if (!hasWindow && opts?.host == null) return false;
+  const host = opts?.host ?? (hasWindow ? window.location.hostname : '');
+  const pathname = opts?.pathname ?? (hasWindow ? window.location.pathname : '');
   if (isNonProductionAnalyticsHost(host)) return false;
   if (isAdminAnalyticsPath(pathname)) return false;
-  if (opts?.channel === 'WHOLESALE') return false;
+  // Explicit WHOLESALE: allow ecommerce on wholesale hosts (.com).
+  if (opts?.channel === 'WHOLESALE') return !hostLooksRetail(host);
   if (!hostLooksRetail(host)) return false;
   return true;
+}
+
+export function shouldSendWholesaleAnalytics(opts?: {
+  host?: string | null;
+  pathname?: string | null;
+}): boolean {
+  return shouldSendRetailAnalytics({ ...opts, channel: 'WHOLESALE' });
 }
 
 function gtagEvent(name: string, params: Record<string, unknown>) {
@@ -144,13 +153,22 @@ function gtagEvent(name: string, params: Record<string, unknown>) {
   }
 }
 
+function resolveEcommerceGa4Id(channel: GoogleChannel): string {
+  if (channel === 'WHOLESALE') return ga4EnvFor('WHOLESALE');
+  return resolveRetailGa4Id();
+}
+
 function ecommerceEvent(name: string, params: Record<string, unknown>) {
   try {
-    if (!shouldSendRetailAnalytics()) return;
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const channel: GoogleChannel = hostLooksRetail(host) ? 'RETAIL' : 'WHOLESALE';
+    if (!shouldSendRetailAnalytics({ channel: channel === 'WHOLESALE' ? 'WHOLESALE' : undefined })) {
+      return;
+    }
     const items = Array.isArray(params.items) ? params.items : undefined;
     const gtagParams: Record<string, unknown> = { ...params, currency: GA4_CURRENCY };
     if (items) gtagParams.items = items;
-    const sendTo = resolveRetailGa4Id();
+    const sendTo = resolveEcommerceGa4Id(channel);
     if (sendTo) gtagParams.send_to = sendTo;
     gtagEvent(name, gtagParams);
   } catch {

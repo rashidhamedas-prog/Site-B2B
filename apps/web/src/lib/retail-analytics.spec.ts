@@ -19,6 +19,7 @@ import {
   trackContactClick,
   trackPurchase,
   trackSearch,
+  shouldSendRetailAnalytics,
 } from './retail-analytics';
 import {
   isAdminAnalyticsPath,
@@ -154,6 +155,14 @@ assert.equal(shouldLoadProductionTags('www.poshaktaranom.ir', '/products'), true
 assert.equal(hostLooksRetail('www.poshaktaranom.ir'), true);
 assert.equal(hostLooksRetail('poshaktaranom.com'), false);
 assert.equal(hostLooksRetail('www.poshaktaranom.com'), false);
+assert.equal(
+  shouldSendRetailAnalytics({ host: 'poshaktaranom.com', pathname: '/products', channel: 'WHOLESALE' }),
+  true,
+);
+assert.equal(
+  shouldSendRetailAnalytics({ host: 'www.poshaktaranom.ir', pathname: '/products', channel: 'WHOLESALE' }),
+  false,
+);
 
 trackAddToCart({ sku: 'NOOP', name: 'noop', unitPrice: 10, quantity: 1 });
 trackPurchase({ transactionId: 'NO-WINDOW', valueIrr: 10, items: [{ sku: 'NOOP', name: 'noop', unitPrice: 10 }] });

@@ -10,6 +10,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
+import { trackAddToCart } from '@/lib/retail-analytics';
 import {
   channelSaleDisplay,
   piecesPerPackCount,
@@ -345,6 +346,13 @@ export function ProductDetail({
         imageUrl: product.images?.[0],
       });
     }
+    trackAddToCart({
+      productId: product.id,
+      sku: product.sku,
+      name: product.name,
+      unitPrice,
+      quantity: normalizedQty,
+    });
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 3000);
   };

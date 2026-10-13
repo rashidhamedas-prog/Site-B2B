@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
+import { trackAddToCart } from '@/lib/retail-analytics';
 import { mediaUrl, toman } from '@/lib/product-display';
 import {
   defaultWholesaleColors,
@@ -164,6 +165,13 @@ export function WholesaleQuickOrder({
         imageUrl: image,
       });
     }
+    trackAddToCart({
+      productId: product.id,
+      sku: product.sku,
+      name: product.name,
+      unitPrice: summary.unitPrice,
+      quantity: qty,
+    });
     setAdded(true);
     window.setTimeout(() => {
       setAdded(false);

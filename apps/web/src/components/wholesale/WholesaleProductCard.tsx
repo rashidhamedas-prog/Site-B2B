@@ -2,9 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { getToken } from '@/lib/auth';
 import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueInStockColors } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
@@ -50,7 +49,6 @@ export function WholesaleProductCard({
   imagePriority?: boolean;
 }) {
   const [orderOpen, setOrderOpen] = useState(false);
-  const [signedIn, setSignedIn] = useState(false);
   const href = `/products/${product.slug || product.id}`;
   const variants = product.variants ?? [];
   const stock =
@@ -66,7 +64,7 @@ export function WholesaleProductCard({
     product.sale,
     product.wholesalePrice,
   );
-  const showPrice = signedIn && price > 0;
+  const showPrice = price > 0;
   const orderBadge = resolveWholesaleOrderBadge(product);
   const primaryImage = mediaUrl(product.images?.[0]);
   const secondImage = mediaUrl(product.images?.[1]);
@@ -76,10 +74,6 @@ export function WholesaleProductCard({
     sizeLabel || null,
     colors.length ? `${colors.length.toLocaleString('fa-IR')} رنگ` : null,
   ].filter(Boolean);
-
-  useEffect(() => {
-    setSignedIn(Boolean(getToken()));
-  }, []);
 
   // Never nest the quick-order dialog inside this article: hover:-translate creates a
   // fixed containing block, and mouseleave drops it so the overlay jumps to the viewport.
@@ -197,7 +191,7 @@ export function WholesaleProductCard({
             <div className="min-w-0">
               <p className="text-[10px] text-[var(--brand-muted,#6B7280)]">قیمت همکاری هر عدد</p>
               <p className="mt-0.5 text-base font-black text-[var(--brand-green,#1B5C4A)]">
-                {showPrice ? `${toman(price)} تومان` : 'پس از ورود'}
+                {showPrice ? `${toman(price)} تومان` : 'تماس بگیرید'}
               </p>
               {showPrice && saleActive && compareAt > price ? (
                 <p className="text-[11px] text-[var(--brand-muted,#6B7280)] line-through">

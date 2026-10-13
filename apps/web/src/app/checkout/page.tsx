@@ -19,6 +19,7 @@ import {
   wholesalePaymentOptions,
 } from '@/lib/checkout-payment-ui';
 import { pulseCheckoutIntent } from '@/lib/checkout-intent';
+import { trackBeginCheckout } from '@/lib/retail-analytics';
 import { isInPersonShipping, shippingChoiceDescription } from '@/lib/shipping-methods';
 import {
   emptyShippingAddress,
@@ -122,6 +123,7 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<ShippingAddress[]>([]);
   const [showAddressErrors, setShowAddressErrors] = useState(false);
   const addressDirty = useRef(false);
+  const beganCheckout = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -155,6 +157,23 @@ export default function CheckoutPage() {
     if (!getToken() || items.length === 0) return;
     pulseCheckoutIntent('WHOLESALE');
   }, [items.length]);
+
+  useEffect(() => {
+    if (beganCheckout.current || items.length === 0) return;
+    beganCheckout.current = true;
+    trackBeginCheckout(
+      items.map((i) => ({
+        productId: i.productId,
+        sku: i.sku,
+        name: i.productName,
+        color: i.color,
+        size: i.size,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+      })),
+      total,
+    );
+  }, [items, total]);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -440,7 +459,7 @@ export default function CheckoutPage() {
           customerId,
           description: `پرداخت سفارش ${res.orderNumber} — پوشاک ترنم`,
         });
-        clear();
+        // Keep cart until /payment/callback verify succeeds so cancel/fail can recover.
         window.location.href = pay.redirectUrl;
         return;
       }

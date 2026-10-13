@@ -305,26 +305,29 @@ export default function RetailCheckoutPage() {
     setPendingPayOrderId(null);
   };
 
-  /** No account / incomplete retail customer → open account page (silent). */
-  const goOpenAccount = () => {
-    clearToken();
+  /** Incomplete / missing retail account → account page; keep cart and avoid wiping a valid token unless auth failed. */
+  const goOpenAccount = (opts?: { clearSession?: boolean }) => {
+    if (opts?.clearSession) clearToken();
     window.location.href = '/account?redirect=/checkout';
   };
 
   const ensureRetailAccount = async (): Promise<boolean> => {
     if (!getToken()) {
-      window.location.href = '/account?redirect=/checkout';
+      setError('برای ثبت سفارش اول وارد شوید یا حساب باز کنید. سبد شما حفظ می‌شود.');
+      goOpenAccount();
       return false;
     }
     try {
       const me = await apiClient.get<{ customerId?: string }>('/auth/me/profile');
       if (!me?.customerId) {
+        setError('حساب تکی شما کامل نیست. چند لحظه برای تکمیل حساب.');
         goOpenAccount();
         return false;
       }
       return true;
     } catch {
-      goOpenAccount();
+      setError('نشست شما منقضی شده. دوباره وارد شوید؛ سبد حفظ می‌شود.');
+      goOpenAccount({ clearSession: true });
       return false;
     }
   };
@@ -348,7 +351,7 @@ export default function RetailCheckoutPage() {
         .map((it) => toGa4Item(it))
         .filter((it): it is NonNullable<ReturnType<typeof toGa4Item>> => Boolean(it)),
     });
-    clear();
+    // Keep cart until /payment/callback verify succeeds so cancel/fail can recover.
     window.location.href = redirectUrl;
   };
 
@@ -613,7 +616,14 @@ export default function RetailCheckoutPage() {
 
               {!getToken() ? (
                 <p className="mt-3 text-center text-sm text-[var(--retail-muted)]">
-                  با زدن دکمه پرداخت، اگر حساب نداشته باشید به صفحه باز کردن حساب می‌روید.
+                  قبل از پرداخت وارد حساب شوید.{' '}
+                  <a
+                    href="/account?redirect=/checkout"
+                    className="font-bold text-[var(--retail-ink)] underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-ink)]"
+                  >
+                    ورود یا باز کردن حساب
+                  </a>
+                  — سبد شما اینجا می‌ماند.
                 </p>
               ) : null}
             </CheckoutPanel>

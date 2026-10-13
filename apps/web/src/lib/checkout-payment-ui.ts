@@ -26,6 +26,12 @@ export type CheckoutChoiceOption = {
 export const CHECKOUT_PAYMENT_INTRO =
   'اگر اسم این روش‌ها را نمی‌شناسی نگران نباش. هر کارت را بخوان و یکی را انتخاب کن. شک داشتی همان گزینهٔ «پیشنهادی» را بزن.';
 
+/**
+ * TorobPay merchant contract is inactive in production (token 1011 / error 1100).
+ * Keep UI off until ops re-enables after a live eligible smoke.
+ */
+export const RETAIL_TOROBPAY_UI_ENABLED = false;
+
 export function formatTomanFromRial(rial: number): string {
   return Math.round(Number(rial) / 10).toLocaleString('fa-IR');
 }
@@ -35,6 +41,7 @@ export function retailPaymentOptions(
   torobpayAvailable = false,
   cashEnabled = false,
 ): CheckoutChoiceOption[] {
+  const showTorobpay = RETAIL_TOROBPAY_UI_ENABLED && torobpayAvailable;
   return [
     {
       id: 'ZARINPAL',
@@ -58,7 +65,7 @@ export function retailPaymentOptions(
           },
         ]
       : []),
-    ...(torobpayAvailable
+    ...(showTorobpay
       ? [
           {
             id: 'TOROBPAY',

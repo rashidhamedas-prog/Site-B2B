@@ -5,9 +5,20 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, XCircle, Loader2, ArrowRight } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { clearWholesaleCartStorage } from '@/lib/cart';
+import { useRetailCart } from '@/lib/retail-cart';
 import { RetailConversion } from '@/components/retail/RetailConversion';
 
 function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa-IR'); }
+
+function clearStorefrontCartsAfterPaid() {
+  try {
+    useRetailCart.getState().clear();
+  } catch {
+    /* persist may not be ready */
+  }
+  clearWholesaleCartStorage();
+}
 
 function CallbackContent() {
   const params = useSearchParams();
@@ -50,6 +61,7 @@ function CallbackContent() {
       .catch(() => verify())
       .then((res) => {
         if (res.ok) {
+          clearStorefrontCartsAfterPaid();
           setState('success');
           setRefId(res.refId ?? '');
           setAmount(Number(res.amount ?? 0));
@@ -102,7 +114,9 @@ function CallbackContent() {
               <XCircle className="h-9 w-9 text-amber-600" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">پرداخت لغو شد</h1>
-            <p className="text-sm text-gray-500 mt-2">شما از ادامه پرداخت انصراف دادید. مبلغی کسر نشده است.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              انصراف دادید و مبلغی کم نشده. سبد خریدتان هنوز پر است؛ می‌توانید دوباره پرداخت کنید.
+            </p>
           </>
         )}
 
@@ -114,14 +128,14 @@ function CallbackContent() {
             <h1 className="text-xl font-bold text-gray-900">پرداخت ناموفق</h1>
             <p className="text-sm text-gray-500 mt-2">{error}</p>
             <p className="text-xs text-gray-400 mt-3">
-              در صورت کسر مبلغ، طی ۷۲ ساعت به حساب شما بازگردانده می‌شود
+              در صورت کسر مبلغ، طی ۷۲ ساعت به حساب شما بازگردانده می‌شود. سبد شما حفظ شده است.
             </p>
           </>
         )}
 
         {state !== 'verifying' && (
           <div className="flex flex-col gap-2 mt-6">
-            {orderId ? (
+            {state === 'success' && orderId ? (
               <Link
                 href={`/account/orders/${orderId}`}
                 className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
@@ -129,7 +143,8 @@ function CallbackContent() {
                 پیگیری این سفارش
                 <ArrowRight className="h-4 w-4 rotate-180" />
               </Link>
-            ) : (
+            ) : null}
+            {state === 'success' && !orderId ? (
               <Link
                 href="/account"
                 className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
@@ -137,13 +152,32 @@ function CallbackContent() {
                 پیگیری سفارش تکی
                 <ArrowRight className="h-4 w-4 rotate-180" />
               </Link>
+            ) : null}
+            {(state === 'failed' || state === 'cancelled') && (
+              <>
+                <Link
+                  href="/checkout"
+                  className="btn btn-primary btn-md inline-flex items-center justify-center gap-2"
+                >
+                  بازگشت به سبد و ادامه پرداخت
+                  <ArrowRight className="h-4 w-4 rotate-180" />
+                </Link>
+                <Link
+                  href="/retail/checkout"
+                  className="btn btn-outline btn-md inline-flex items-center justify-center gap-2"
+                >
+                  چک‌اوت فروشگاه تکی
+                </Link>
+              </>
             )}
-            <Link
-              href="/portal/dashboard/orders"
-              className="btn btn-outline btn-md inline-flex items-center justify-center gap-2"
-            >
-              سفارش‌های عمده
-            </Link>
+            {state === 'success' ? (
+              <Link
+                href="/portal/dashboard/orders"
+                className="btn btn-outline btn-md inline-flex items-center justify-center gap-2"
+              >
+                سفارش‌های عمده
+              </Link>
+            ) : null}
           </div>
         )}
       </div>

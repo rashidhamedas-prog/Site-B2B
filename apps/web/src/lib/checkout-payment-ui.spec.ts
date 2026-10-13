@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   CHECKOUT_PAYMENT_INTRO,
+  RETAIL_TOROBPAY_UI_ENABLED,
   checkoutCtaHint,
   checkoutCtaLabel,
   formatTomanFromRial,
@@ -32,10 +33,12 @@ assert.equal(retailWithDigipay.some((o) => o.id === 'TOROBPAY'), false);
 assert.equal(retailPaymentOptions(true, false, false).some((o) => o.id === 'CASH'), false);
 
 const retailWithTorob = retailPaymentOptions(false, true);
-assert.equal(retailWithTorob.some((o) => o.id === 'TOROBPAY'), true);
-assert.equal(retailWithTorob.find((o) => o.id === 'TOROBPAY')?.title, 'ترب‌پی');
-assert.equal(retailWithTorob.find((o) => o.id === 'TOROBPAY')?.logo, 'torobpay');
-assert.match(retailWithTorob.find((o) => o.id === 'TOROBPAY')?.description || '', /قسط/);
+assert.equal(RETAIL_TOROBPAY_UI_ENABLED, false);
+assert.equal(
+  retailWithTorob.some((o) => o.id === 'TOROBPAY'),
+  false,
+  'TorobPay UI stays hidden until merchant contract is live',
+);
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'TOROBPAY', '91735'), true);
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'TOROBPAY', '9173512345'), false);
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'ZARINPAL', ''), false);

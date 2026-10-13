@@ -2,6 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-13T15:45:00Z — TASK-20261013-003 conversion funnel (ship ready)
+
+- Specs: checkout-payment-ui + retail-analytics ok; web tsc 0.
+- A–D done: cart clear after verify; TorobPay UI off; public wholesale card price; wholesale GA4 ATC/begin_checkout.
+- Next: commit → push → VPS auto-deploy → `/v1/health`.
+
+## 2026-10-13T12:00:00Z — TASK-20261013-003 conversion funnel (in progress)
+
+- Branch: `ai/TASK-20261013-003-conversion-funnel` from master tip.
+- Scope: defer cart clear; soft retail auth; hide TorobPay UI; public wholesale card prices; wholesale GA4 ecommerce.
+- Locked: COD admin-only; PENDING wholesale unchanged.
+
 ## 2026-10-13T11:30:00Z — TASK-20261013-002 CLOSED LIVE
 
 - Depth: skill-top full. Slack empty. Reviews: phase + security PASS WITH CONDITIONS (ops dry-run residual).

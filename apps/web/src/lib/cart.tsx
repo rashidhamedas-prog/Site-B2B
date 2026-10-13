@@ -3,7 +3,19 @@
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { pulseCartHeartbeat } from '@/lib/cart-heartbeat';
 
-const CART_STORAGE_KEY = 'taranom_cart';
+export const WHOLESALE_CART_STORAGE_KEY = 'taranom_cart';
+const CART_STORAGE_KEY = WHOLESALE_CART_STORAGE_KEY;
+
+/** Clear wholesale cart outside CartProvider (e.g. payment callback after verify). */
+export function clearWholesaleCartStorage() {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify([]));
+    window.dispatchEvent(new Event('taranom-wholesale-cart-cleared'));
+  } catch {
+    /* private mode / blocked storage */
+  }
+}
 
 export interface CartItem {
   productId: string;
@@ -133,6 +145,12 @@ function loadInitialCart(): CartState {
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, undefined, loadInitialCart);
+
+  useEffect(() => {
+    const onExternalClear = () => dispatch({ type: 'CLEAR' });
+    window.addEventListener('taranom-wholesale-cart-cleared', onExternalClear);
+    return () => window.removeEventListener('taranom-wholesale-cart-cleared', onExternalClear);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
