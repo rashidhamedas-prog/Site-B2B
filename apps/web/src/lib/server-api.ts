@@ -107,13 +107,19 @@ export async function fetchProductList<T = Record<string, unknown>>(options: {
       return { data: json, meta: { page, limit, total: json.length, totalPages: 1 } };
     }
     const data = Array.isArray(json.data) ? json.data : [];
+    const total = json.meta?.total ?? data.length;
+    const limitMeta = json.meta?.limit ?? limit;
+    const totalPages = Math.max(
+      1,
+      json.meta?.totalPages ?? Math.ceil(total / Math.max(1, limitMeta)),
+    );
     return {
       data,
       meta: {
         page: json.meta?.page ?? page,
-        limit: json.meta?.limit ?? limit,
-        total: json.meta?.total ?? data.length,
-        totalPages: json.meta?.totalPages ?? 1,
+        limit: limitMeta,
+        total,
+        totalPages,
       },
     };
   } catch {

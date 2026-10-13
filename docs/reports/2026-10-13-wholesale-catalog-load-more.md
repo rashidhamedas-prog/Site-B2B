@@ -16,6 +16,8 @@ Counter showed `meta.total` (~91) while the grid only rendered the first API pag
 - Pass `page` + `limit=24` in the wholesale catalog query.
 - Seed `initialTotalPages` from SSR (`products/page.tsx` → `WholesaleProductsCatalogWithUrl`).
 - Add «بارگذاری بیشتر» that appends the next page (keeps first-page LCP budget).
+- Show the button when `products.length < total` (ISR sometimes seeded `total=91` with `totalPages=1`).
+- `fetchProductList` derives `totalPages` from `total/limit` when API meta omits it.
 - Show «X نمایش‌داده‌شده» when more pages remain.
 
 ## Perf

@@ -7,7 +7,8 @@
 ## 2026-10-13 — کاتالوگ عمده: بارگذاری بیشتر (۹۱ مدل / فقط ۲۴)
 
 - ریشه: `ProductCatalog` فقط `limit=24` می‌گرفت و UI صفحه‌بندی نداشت؛ شمارنده `meta.total` را نشان می‌داد.
-- فیکس: `page` در query + «بارگذاری بیشتر» مثل الگوی خرده‌فروشی؛ SSR `initialTotalPages`.
+- فیکس: `page` در query + «بارگذاری بیشتر»؛ نمایش دکمه بر اساس `products.length < total` (نه فقط totalPages).
+- `fetchProductList` هم totalPages را از total/limit مشتق می‌کند اگر meta ناقص باشد.
 - گزارش: `docs/reports/2026-10-13-wholesale-catalog-load-more.md`
 
 ## 2026-10-13 — قیف تبدیل تکی + عمده [TASK-20261013-003]

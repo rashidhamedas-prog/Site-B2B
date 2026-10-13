@@ -99,16 +99,19 @@ export function ProductCatalog({
     typeof initialTotal === 'number' ? initialTotal : seeded?.length ?? 0,
   );
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(() =>
-    typeof initialTotalPages === 'number' && seeded
-      ? Math.max(1, initialTotalPages)
-      : typeof initialTotal === 'number' && seeded
-        ? Math.max(1, Math.ceil(initialTotal / PAGE_SIZE))
-        : 1,
-  );
+  const [totalPages, setTotalPages] = useState(() => {
+    if (!seeded) return 1;
+    const fromTotal =
+      typeof initialTotal === 'number' ? Math.max(1, Math.ceil(initialTotal / PAGE_SIZE)) : 1;
+    const fromMeta =
+      typeof initialTotalPages === 'number' ? Math.max(1, initialTotalPages) : 1;
+    // Prefer the larger value — ISR/SSR sometimes seeds total without totalPages.
+    return Math.max(fromMeta, fromTotal);
+  });
   const [loading, setLoading] = useState(() => !seeded);
   const [loadingMore, setLoadingMore] = useState(false);
   const skipNextFetch = useRef(Boolean(seeded));
+  const hasMore = !loading && products.length > 0 && products.length < total;
 
   const syncUrl = useCallback(
     (next: CatalogSearchParams, nextSort: string, nextQ: string) => {
@@ -171,7 +174,7 @@ export function ProductCatalog({
   }, [buildQuery]);
 
   const loadMore = async () => {
-    if (loadingMore || page >= totalPages) return;
+    if (loadingMore || products.length >= total) return;
     setLoadingMore(true);
     const next = page + 1;
     try {
@@ -179,13 +182,19 @@ export function ProductCatalog({
         data: Product[];
         meta?: { total?: number; totalPages?: number };
       }>(`/products?${buildQuery(next)}`);
-      setProducts((prev) => [
-        ...prev,
-        ...(res.data ?? []).map((row) => normalizeCatalogProduct(row)),
-      ]);
+      const chunk = (res.data ?? []).map((row) => normalizeCatalogProduct(row));
+      setProducts((prev) => [...prev, ...chunk]);
       setPage(next);
-      setTotalPages(res.meta?.totalPages || totalPages);
+      const nextTotal = typeof res.meta?.total === 'number' ? res.meta.total : total;
       if (typeof res.meta?.total === 'number') setTotal(res.meta.total);
+      const pagesFromMeta = res.meta?.totalPages;
+      setTotalPages(
+        Math.max(
+          pagesFromMeta || 1,
+          Math.ceil(nextTotal / PAGE_SIZE),
+          next,
+        ),
+      );
     } catch {
       /* keep current page */
     } finally {
@@ -325,7 +334,7 @@ export function ProductCatalog({
                   <>
                     <span className="font-medium text-gray-900">{total.toLocaleString('fa-IR')}</span>
                     {' مدل در این فهرست'}
-                    {totalPages > 1 && products.length > 0 ? (
+                    {hasMore ? (
                       <span className="text-gray-400">
                         {' · '}
                         {products.length.toLocaleString('fa-IR')} نمایش‌داده‌شده
@@ -367,12 +376,12 @@ export function ProductCatalog({
                       />
                     ))}
             </div>
-            {!loading && products.length > 0 && totalPages > 1 ? (
+            {hasMore || (!loading && products.length > 0 && products.length >= total && total > PAGE_SIZE) ? (
               <nav
                 aria-label="صفحه‌بندی محصولات"
                 className="mt-10 flex flex-wrap items-center justify-center gap-3"
               >
-                {page < totalPages ? (
+                {hasMore ? (
                   <button
                     type="button"
                     disabled={loadingMore}
