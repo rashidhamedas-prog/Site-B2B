@@ -2,9 +2,9 @@ schema_version: 1
 tasks:
   - id: "TASK-20261013-002"
     title: "Fix omnichannel publish silence (orphan DRAFT + WITHDRAWN requeue)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20261013-002"
+    owner: ""
     roles:
       architect: "cursor:omnichannel-architect"
       implementer: "cursor:implementer-TASK-20261013-002"
@@ -15,20 +15,10 @@ tasks:
     claimed_at: "2026-10-13T11:30:00Z"
     heartbeat_at: "2026-10-13T11:30:00Z"
     depends_on: []
-    file_claims:
-      - "apps/api/src/modules/omnichannel/publication-automation.ts"
-      - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
-      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
-      - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
-      - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
-      - "docs/WORKLOG.md"
-      - "docs/reports/2026-10-13-omnichannel-publish-silence.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
+    file_claims: []
     notes: |
-      skill-top full. Reclaimed omnichannel.service + outbox-worker from stale
-      TASK-20261012-002 (label/ACK shipped; this is publish silence RCA).
-      Slack search empty. Connectors already on — CODE fix only.
+      CLOSED LIVE. origin/master + VPS tip 69c13f8. Connectors already on.
+      Owner smoke: dry-run then small category blast. Claims released.
     acceptance_criteria:
       - "Category requeue reopens newest WITHDRAWN/DRAFT; no silent skip"
       - "stock_changed heals orphan DRAFT under OOS DELETE"

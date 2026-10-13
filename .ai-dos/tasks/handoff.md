@@ -2,13 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-10-13T11:30:00Z — TASK-20261013-002 publish silence RCA + fix
+## 2026-10-13T11:30:00Z — TASK-20261013-002 CLOSED LIVE
 
-- Depth: skill-top full. Slack: no hits. ECC agent-first + omnichannel architect/explore.
-- VPS: connectors/auto ON; worker OK; last CREATE 2026-10-08; Oct 10 mass DELETE; orphan DRAFTs.
-- RCA: (1) `enqueueCategoryProduct` silent-return on any WITHDRAWN sibling; (2) stock_only trap on orphan DRAFT; (3) unsafe findOne for multi-version pubs; (4) worker silent missing dest.
-- Code on `ai/TASK-20261013-002-publish-orphan-heal`. Specs ok. Reclaimed files from closed TASK-20261012-002.
-- Next: commit + push master + VPS deploy; admin category dry-run then small live blast.
+- Depth: skill-top full. Slack empty. Reviews: phase + security PASS WITH CONDITIONS (ops dry-run residual).
+- Ship: `69c13f81` → `origin/master`; VPS deploy complete at `69c13f8`; API health ok; worker heartbeat fresh.
+- RCA fixed: WITHDRAWN requeue silent-skip; orphan DRAFT stock_only; latest-row lookup; worker missing dest.
+- Owner: hard-refresh `/admin/omnichannel` → dry-run دسته → small live blast on allowlisted category.
+
+## 2026-10-13T11:25:00Z — TASK-20261013-002 publish silence RCA + fix (pre-deploy)
+
+- Code on `ai/TASK-20261013-002-publish-orphan-heal`. Specs ok. Reclaimed from TASK-20261012-002.
 
 ## 2026-10-12T22:20:00Z — TASK-20261013-001 CLOSED LIVE (complete)
 
