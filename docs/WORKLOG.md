@@ -1,10 +1,10 @@
-## 2026-10-14 — قواعد انتشار per-bot × پلتفرم [TASK-20261014-001]
+## 2026-10-14 — قواعد انتشار per-bot × پلتفرم [TASK-20261014-001] LIVE
 
 - هدف: هر ربات عمده/تکی روی هر پلتفرم (Telegram/Bale/Rubika) تنظیمات و قالب جدا داشته باشد.
 - ذخیره: `ChannelConnection.publishSettings`؛ قالب با `connectionId`؛ migration بک‌فیل از تنظیمات سراسری قدیمی.
 - worker: `autoSyncRemote` برای هر اتصال ACTIVE جداگانه gate/cap/OOS/دسته را می‌خواند؛ canary یکتا per connection.
 - ادمین: انتخاب ربات در قواعد و قالب؛ `PATCH .../connections/:id/publish-settings`؛ تنظیمات سراسری فقط retry/retention.
-- تست: connection-publish-settings + migration + publication-automation + phase-acceptance.
+- Live: `463eb1ba` روی origin/master + VPS؛ migration `ConnectionPublishSettings…` اعمال شد؛ `/v1/health` ok.
 - گزارش: `docs/reports/2026-10-14-per-connection-publish-settings.md`
 
 ## 2026-10-13 — تجاوز سقف روزانه کانال (auto=false bypass) [TASK-20261013-006]

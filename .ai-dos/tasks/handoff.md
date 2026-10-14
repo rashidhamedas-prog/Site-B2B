@@ -2,13 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-14T13:30:00Z — TASK-20261014-001 CLOSED LIVE
+
+- Ship: `463eb1ba` → origin/master + VPS; deploy complete at `463eb1b`; health ok.
+- Migration `ConnectionPublishSettings1760438400001` applied on live DB.
+- Owner: hard-refresh `/admin/omnichannel` → برای هر ربات قواعد را جدا انتخاب/ذخیره کن.
+- Claims released.
+
 ## 2026-10-14T13:00:00Z — TASK-20261014-001 per-connection publish settings (code ready)
 
-- Depth: skill-top full. Slack: no hits.
-- Isolation: publishSettings on connection; templates.connectionId; autoSyncRemote per ACTIVE bot; canary per connection.
-- Specs green. Phase review FAIL→fixed (partial unique indexes). Security PASS WITH CONDITIONS.
-- Next: user commit + push + VPS migrate/deploy; hard-refresh `/admin/omnichannel` → select each bot → save rules.
-- Claims: not committed (await user explicit commit/deploy).
+- Superseded by CLOSED LIVE above.
 
 ## 2026-10-13T15:25:00Z — TASK-20261013-006 soft-cancel verified
 
