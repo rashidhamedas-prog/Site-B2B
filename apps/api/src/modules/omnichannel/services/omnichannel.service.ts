@@ -2,7 +2,7 @@ import {
   BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, In, Repository } from 'typeorm';
+import { EntityManager, In, IsNull, Repository } from 'typeorm';
 import { ChannelProjectionService } from './channel-projection.service';
 import { canaryExceeded, canaryLimitFor } from '../../product/channel-projection';
 import { normalizeSalesChannel } from '../../product/channel-product-projection';
@@ -13,6 +13,7 @@ import {
   CreatePublicationDto,
   ClearWaitingOutboxDto,
   PatchDestinationDto,
+  PatchConnectionPublishSettingsDto,
   PatchOmnichannelSettingsDto,
   PutSecretDto,
   RequeueByCategoryDto,
@@ -44,7 +45,6 @@ import {
   assertOmnichannelSettingsInput,
   destinationCanPost,
   findCanaryDestinationId,
-  hasAutomationPatch,
   isCanarySettings,
   liveOosRejectReason,
   mergeDestinationSettings,
@@ -75,8 +75,18 @@ import {
   planManualDeliveries,
   resolveRemoteIntent,
   selectAutomationDestinations,
+  selectAutomationDestinationsForConnection,
   tehranDayStart,
 } from '../publication-automation';
+import {
+  assertConnectionPublishSettingsInput,
+  hasConnectionPublishPatch,
+  mergeConnectionPublishSettingsPatch,
+  parseConnectionPublishSettings,
+  publicConnectionPublishSettings,
+  resolveConnectionPublishSettings,
+  seedConnectionPublishFromGlobal,
+} from '../connection-publish-settings';
 import { CANARY_PING_TEXT } from '../canary-ping';
 import { normalizeBulkPublicationIds } from '../bulk-publication-ids';
 import {
@@ -161,9 +171,8 @@ function tokenInputError(code: string): never {
 }
 
 /**
- * One master layout per sales channel feeds every platform; the adapters convert the canonical
- * HTML to Bale Markdown / Rubika metadata. The row keeps `provider = TELEGRAM` as its storage key
- * because that is where the layouts were born; per-provider overrides are a later phase.
+ * Channel-wide fallback template (connectionId null) still uses TELEGRAM as storage key.
+ * Per-bot templates bind connectionId and override the fallback for that connection only.
  */
 export const MASTER_TEMPLATE_PROVIDER = 'TELEGRAM';
 
@@ -234,8 +243,23 @@ export class OmnichannelService {
   }
 
   async listConnections() {
-    const rows = await this.connections.find({ order: { createdAt: 'DESC' } });
-    return rows.map((row) => toPublicConnection(row));
+    const [rows, global] = await Promise.all([
+      this.connections.find({ order: { createdAt: 'DESC' } }),
+      this.loadStoredSettings(),
+    ]);
+    return rows.map((row) => this.toPublicConnectionWithPublish(row, global));
+  }
+
+  private toPublicConnectionWithPublish(
+    row: ChannelConnectionEntity,
+    global: Awaited<ReturnType<OmnichannelService['loadStoredSettings']>>,
+  ) {
+    const channel = row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const resolved = resolveConnectionPublishSettings(row.publishSettings, global, channel);
+    return {
+      ...toPublicConnection(row),
+      publishSettings: publicConnectionPublishSettings(resolved),
+    };
   }
 
   async listSecretStatuses() {
@@ -316,13 +340,16 @@ export class OmnichannelService {
       where: { provider: dto.provider, channel: dto.channel, name: dto.name },
     });
     if (exists) throw new ConflictException('اتصال تکراری است');
+    const global = await this.loadStoredSettings();
+    const channel = dto.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
     const saved = await this.connections.save(
       this.connections.create({
         ...dto,
         status: 'DISABLED',
+        publishSettings: seedConnectionPublishFromGlobal(global, channel) as Record<string, unknown>,
       }),
     );
-    return toPublicConnection(saved);
+    return this.toPublicConnectionWithPublish(saved, global);
   }
 
   async patchConnection(id: string, dto: PatchConnectionDto) {
@@ -332,7 +359,8 @@ export class OmnichannelService {
     if (dto.name !== undefined) row.name = dto.name;
     if (dto.secretRef !== undefined) row.secretRef = dto.secretRef;
     if (dto.status !== undefined) row.status = dto.status;
-    return toPublicConnection(await this.connections.save(row));
+    const saved = await this.connections.save(row);
+    return this.toPublicConnectionWithPublish(saved, await this.loadStoredSettings());
   }
 
   async deleteConnection(id: string, actor?: Actor) {
@@ -372,7 +400,7 @@ export class OmnichannelService {
     if (exists) throw new ConflictException('مقصد تکراری است');
     const settings = sanitizeDestinationSettings(dto.settings);
     if (settings.isCanary === true) {
-      await this.assertUniqueCanary(connection.provider, connection.channel);
+      await this.assertUniqueCanary(connection.id);
     }
     const saved = await this.destinations.save(
       this.destinations.create({
@@ -396,7 +424,7 @@ export class OmnichannelService {
     if (dto.enabled !== undefined) row.enabled = dto.enabled;
     if (dto.isCanary !== undefined) {
       if (dto.isCanary === true) {
-        await this.assertUniqueCanary(connection.provider, connection.channel, row.id);
+        await this.assertUniqueCanary(connection.id, row.id);
       }
       row.settings = mergeDestinationSettings(row.settings, dto.isCanary);
     }
@@ -523,44 +551,124 @@ export class OmnichannelService {
     return publicOmnichannelSettings(stored, await this.canaryDestinationIds());
   }
 
+  /**
+   * Global blob: retry SLA + retention only.
+   * Automation / OOS / categories require connectionId (or PATCH .../publish-settings).
+   */
   async patchSettings(dto: PatchOmnichannelSettingsDto, actor?: Actor) {
     const who = this.requireActor(actor);
     assertOmnichannelSettingsInput(dto);
-    const hasOos = !!(dto.retailOosPolicy || dto.wholesaleOosPolicy);
-    const hasLeftovers = !!(
-      dto.autoPublishEventTypes
-      || dto.retrySlaSeconds != null
-      || dto.outboxRetentionDays != null
-    );
-    if (!hasOos && !hasLeftovers && !hasAutomationPatch(dto)) {
-      throw new BadRequestException('حداقل یک تنظیم کانال لازم است');
+    const publishPatch = hasConnectionPublishPatch({
+      oosPolicy: dto.oosPolicy,
+      autoPublishEventTypes: dto.autoPublishEventTypes,
+      autoPublishMode: dto.autoPublishMode,
+      autoDailyCap: dto.autoDailyCap,
+      autoMinGapSeconds: dto.autoMinGapSeconds,
+      quietStartHour: dto.quietStartHour,
+      quietEndHour: dto.quietEndHour,
+      withdrawAction: dto.withdrawAction,
+      autoPublishCategoryIds: dto.autoPublishCategoryIds,
+    }) || !!(dto.retailOosPolicy || dto.wholesaleOosPolicy);
+    if (publishPatch) {
+      if (!dto.connectionId) {
+        throw new BadRequestException(
+          'قواعد انتشار (حالت، سقف، فاصله، سکوت، رویداد، دسته، ناموجودی) باید برای هر ربات جدا ذخیره شود؛ connectionId لازم است',
+        );
+      }
+      const oosForConn = dto.oosPolicy
+        || dto.wholesaleOosPolicy
+        || dto.retailOosPolicy;
+      return this.patchConnectionPublishSettings(dto.connectionId, {
+        oosPolicy: oosForConn,
+        autoPublishEventTypes: dto.autoPublishEventTypes,
+        autoPublishMode: dto.autoPublishMode,
+        autoDailyCap: dto.autoDailyCap,
+        autoMinGapSeconds: dto.autoMinGapSeconds,
+        quietStartHour: dto.quietStartHour,
+        quietEndHour: dto.quietEndHour,
+        withdrawAction: dto.withdrawAction,
+        autoPublishCategoryIds: dto.autoPublishCategoryIds,
+        reason: dto.reason,
+      }, actor);
+    }
+    const hasLeftovers = dto.retrySlaSeconds != null || dto.outboxRetentionDays != null;
+    if (!hasLeftovers) {
+      throw new BadRequestException('حداقل یک تنظیم سراسری (بازه تلاش / نگهداری outbox) لازم است');
     }
     const previous = await this.loadStoredSettings();
-    const next = mergeOmnichannelSettingsPatch(previous, dto);
-    if (next.autoPublishMode && next.autoPublishMode !== 'OFF' && previous.autoPublishMode !== next.autoPublishMode) {
-      await this.assertAutomationPrerequisites(next.autoPublishMode);
-    }
+    const next = mergeOmnichannelSettingsPatch(previous, {
+      retrySlaSeconds: dto.retrySlaSeconds,
+      outboxRetentionDays: dto.outboxRetentionDays,
+    });
     const saved = await this.appSettings.save(
       this.appSettings.create({ key: OMNICHANNEL_SETTINGS_KEY, value: next }),
     );
-    const automation = readAutomationSettings(next);
     await this.audit(who, 'settings_patch', 'SETTINGS', OMNICHANNEL_SETTINGS_KEY, null, dto.reason || null, {
-      retailOosPolicy: next.retailOosPolicy || null,
-      wholesaleOosPolicy: next.wholesaleOosPolicy || null,
-      retailOosChosen: next.retailOosChosen === true,
-      wholesaleOosChosen: next.wholesaleOosChosen === true,
-      autoPublishEventTypesChosen: next.autoPublishEventTypesChosen === true,
       retrySlaChosen: next.retrySlaChosen === true,
       outboxRetentionChosen: next.outboxRetentionChosen === true,
-      autoPublishMode: automation.mode,
-      autoDailyCap: automation.dailyCap,
-      autoMinGapSeconds: automation.minGapSeconds,
-      quietStartHour: automation.quietStartHour,
-      quietEndHour: automation.quietEndHour,
-      withdrawAction: automation.withdrawAction,
-      autoPublishCategoryCount: readAutoPublishCategoryIds(next).length,
     });
     return publicOmnichannelSettings(parseStoredOmnichannelSettings(saved.value), await this.canaryDestinationIds());
+  }
+
+  async getConnectionPublishSettings(connectionId: string) {
+    const row = await this.connections.findOne({ where: { id: connectionId } });
+    if (!row) throw new NotFoundException('اتصال یافت نشد');
+    const global = await this.loadStoredSettings();
+    const channel = row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    return {
+      connectionId: row.id,
+      provider: row.provider,
+      channel,
+      name: row.name,
+      ...publicConnectionPublishSettings(resolveConnectionPublishSettings(row.publishSettings, global, channel)),
+    };
+  }
+
+  async patchConnectionPublishSettings(
+    connectionId: string,
+    dto: PatchConnectionPublishSettingsDto,
+    actor?: Actor,
+  ) {
+    const who = this.requireActor(actor);
+    try {
+      assertConnectionPublishSettingsInput(dto);
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : 'تنظیمات نامعتبر');
+    }
+    if (!hasConnectionPublishPatch(dto)) {
+      throw new BadRequestException('حداقل یک قاعده انتشار لازم است');
+    }
+    const row = await this.connections.findOne({ where: { id: connectionId } });
+    if (!row) throw new NotFoundException('اتصال یافت نشد');
+    const channel = row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const previous = parseConnectionPublishSettings(row.publishSettings);
+    const next = mergeConnectionPublishSettingsPatch(previous, dto);
+    if (next.autoPublishMode && next.autoPublishMode !== 'OFF' && previous.autoPublishMode !== next.autoPublishMode) {
+      await this.assertAutomationPrerequisitesForConnection(row, next.autoPublishMode);
+    }
+    row.publishSettings = next as Record<string, unknown>;
+    const saved = await this.connections.save(row);
+    const resolved = resolveConnectionPublishSettings(saved.publishSettings, await this.loadStoredSettings(), channel);
+    await this.audit(who, 'connection_publish_settings_patch', 'CONNECTION', saved.id, channel, dto.reason || null, {
+      provider: saved.provider,
+      autoPublishMode: resolved.automation.mode,
+      autoDailyCap: resolved.automation.dailyCap,
+      autoMinGapSeconds: resolved.automation.minGapSeconds,
+      quietStartHour: resolved.automation.quietStartHour,
+      quietEndHour: resolved.automation.quietEndHour,
+      withdrawAction: resolved.automation.withdrawAction,
+      oosPolicy: resolved.oosPolicy,
+      oosChosen: resolved.oosChosen,
+      autoPublishCategoryCount: resolved.categoryIds.length,
+      eventsChosen: resolved.eventsChosen,
+    });
+    return {
+      connectionId: saved.id,
+      provider: saved.provider,
+      channel,
+      name: saved.name,
+      ...publicConnectionPublishSettings(resolved),
+    };
   }
 
   async listTemplates() {
@@ -572,7 +680,7 @@ export class OmnichannelService {
     const upgraded: string[] = [];
     for (const channel of ['RETAIL', 'WHOLESALE'] as const) {
       const rows = await this.templates.find({
-        where: { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType: 'product.published' },
+        where: { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType: 'product.published', connectionId: IsNull() },
         order: { version: 'DESC' },
       });
       const latest = rows[0];
@@ -603,14 +711,25 @@ export class OmnichannelService {
   async createTemplate(dto: CreateTemplateDto) {
     assertNoPlaintextSecrets(dto);
     const version = dto.version ?? 1;
-    const exists = await this.templates.findOne({
-      where: {
-        provider: dto.provider,
-        channel: dto.channel,
-        eventType: dto.eventType,
-        version,
-      },
-    });
+    const connectionId = dto.connectionId || null;
+    if (connectionId) {
+      const conn = await this.connections.findOne({ where: { id: connectionId } });
+      if (!conn) throw new NotFoundException('اتصال یافت نشد');
+      if (conn.channel !== dto.channel) {
+        throw new BadRequestException('کانال قالب با کانال ربات یکی نیست');
+      }
+    }
+    const exists = connectionId
+      ? await this.templates.findOne({ where: { connectionId, eventType: dto.eventType, version } })
+      : await this.templates.findOne({
+        where: {
+          provider: dto.provider,
+          channel: dto.channel,
+          eventType: dto.eventType,
+          version,
+          connectionId: IsNull(),
+        },
+      });
     if (exists) throw new ConflictException('قالب تکراری است');
     const incoming = String(dto.body || '').trim();
     const productEvent = dto.eventType === 'product.published';
@@ -619,6 +738,7 @@ export class OmnichannelService {
       this.templates.create({
         provider: dto.provider,
         channel: dto.channel,
+        connectionId,
         eventType: dto.eventType,
         locale: dto.locale ?? 'fa',
         body,
@@ -817,9 +937,11 @@ export class OmnichannelService {
     );
     const hasMore = productIds.length > REQUEUE_BY_CATEGORY_MAX;
     const batch = productIds.slice(0, REQUEUE_BY_CATEGORY_MAX);
-    const automation = readAutomationSettings(await this.loadStoredSettings());
-    const counters = await this.automationCounters(normalized.channel);
-    const dailyRoom = remainingDailyCreates(counters.sentToday, automation.dailyCap);
+    const targetsPreview = await this.manualPublishTargets(normalized.channel, normalized.destinationId);
+    const publishScope = await this.resolvePublishScopeForTargets(normalized.channel, targetsPreview);
+    const automation = publishScope.automation;
+    const counters = { sentToday: publishScope.sentToday };
+    const dailyRoom = publishScope.dailyRoom;
     if (normalized.dryRun) {
       return {
         dryRun: true,
@@ -831,6 +953,7 @@ export class OmnichannelService {
         dailyCap: automation.dailyCap,
         sentToday: counters.sentToday,
         dailyRoom,
+        connectionId: publishScope.connectionId || null,
         skipped: [] as Array<{ productId: string; reason: string }>,
         errors: [] as Array<{ productId: string; error: string }>,
       };
@@ -842,7 +965,7 @@ export class OmnichannelService {
     }
     if (dailyRoom <= 0) {
       throw new BadRequestException(
-        `سقف پست جدید امروز پر است (${counters.sentToday} از ${automation.dailyCap}). فردا دوباره تلاش کنید یا سقف را در تنظیمات بالا ببرید.`,
+        `سقف پست جدید امروز پر است (${counters.sentToday} از ${automation.dailyCap}). فردا دوباره تلاش کنید یا سقف را در تنظیمات همین ربات بالا ببرید.`,
       );
     }
     if (automation.mode !== 'LIVE') {
@@ -866,7 +989,7 @@ export class OmnichannelService {
         );
       }
     }
-    const targets = await this.manualPublishTargets(normalized.channel, normalized.destinationId);
+    const targets = targetsPreview;
     if (!targets.length) {
       throw new BadRequestException(
         'هیچ مقصد آماده‌ای برای این کانال نیست؛ یک مقصد canary یا مقصد تأییدشده لازم است',
@@ -988,26 +1111,6 @@ export class OmnichannelService {
       throw new BadRequestException(projection.rejectReason || 'این منبع برای این کانال قابل انتشار نیست');
     }
     const sourceId = String(projection.sourceId || dto.preview.sourceId);
-    if (!dryRun && projection.sourceType === 'PRODUCT') {
-      // The 10-live-products canary cap protects the test phase; once automation is LIVE the
-      // daily cap and verified destinations govern volume instead.
-      const automation = readAutomationSettings(await this.loadStoredSettings());
-      const liveCount = automation.mode === 'LIVE' ? 0 : await this.publications.count({
-        where: { channel: projection.channel, sourceType: 'PRODUCT', status: In(['READY', 'PUBLISHED', 'PARTIAL']) },
-      });
-      const limit = canaryLimitFor(projection.channel);
-      if (automation.mode !== 'LIVE' && canaryExceeded(liveCount, limit)) {
-        throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است؛ برای ارسال بیشتر حالت خودکار را «زنده» کنید`);
-      }
-      const available = 'available' in projection ? projection.available === true : true;
-      const oos = await this.oosDecisionFor(projection.channel, available, 'PRODUCT', sourceId);
-      const reject = liveOosRejectReason(oos, available);
-      if (reject) {
-        throw new BadRequestException(
-          `کالای ناموجود با سیاست ${oos.policy} در این کانال منتشر نمی‌شود`,
-        );
-      }
-    }
     // Manual send is gated by CONNECTORS only. AUTO_PUBLISH is catalog automation — conflating
     // them caused READY rows with zero deliveries while the UI claimed the post was queued.
     if (!dryRun && !canEnqueueManualDelivery(areOmnichannelConnectorsEnabled())) {
@@ -1020,6 +1123,27 @@ export class OmnichannelService {
       throw new BadRequestException(
         'هیچ مقصد آماده‌ای برای این کانال نیست؛ یک مقصد canary یا مقصد تأییدشده با اجازهٔ ارسال لازم است',
       );
+    }
+    if (!dryRun && projection.sourceType === 'PRODUCT') {
+      const channel = projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+      const scope = await this.resolvePublishScopeForTargets(channel, targets);
+      // The 10-live-products canary cap protects the test phase; once this bot is LIVE the
+      // daily cap and verified destinations govern volume instead.
+      const liveCount = scope.automation.mode === 'LIVE' ? 0 : await this.publications.count({
+        where: { channel: projection.channel, sourceType: 'PRODUCT', status: In(['READY', 'PUBLISHED', 'PARTIAL']) },
+      });
+      const limit = canaryLimitFor(projection.channel);
+      if (scope.automation.mode !== 'LIVE' && canaryExceeded(liveCount, limit)) {
+        throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است؛ برای ارسال بیشتر حالت خودکار همین ربات را «زنده» کنید`);
+      }
+      const available = 'available' in projection ? projection.available === true : true;
+      const oos = await this.oosDecisionFor(channel, available, 'PRODUCT', sourceId, scope.connectionId);
+      const reject = liveOosRejectReason(oos, available);
+      if (reject) {
+        throw new BadRequestException(
+          `کالای ناموجود با سیاست ${oos.policy} در این کانال منتشر نمی‌شود`,
+        );
+      }
     }
     const liveRemote = dryRun
       ? []
@@ -1036,11 +1160,13 @@ export class OmnichannelService {
       throw new BadRequestException('ارسال قبلی هنوز در صف است؛ چند ثانیه صبر کنید و دوباره تلاش کنید');
     }
     if (!dryRun && plan.creates.length) {
-      const automation = readAutomationSettings(await this.loadStoredSettings());
-      const counters = await this.automationCounters(projection.channel);
-      if (remainingDailyCreates(counters.sentToday, automation.dailyCap) <= 0) {
+      const scope = await this.resolvePublishScopeForTargets(
+        projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL',
+        targets,
+      );
+      if (scope.dailyRoom <= 0) {
         throw new BadRequestException(
-          `سقف پست جدید امروز پر است (${counters.sentToday} از ${automation.dailyCap}). ویرایش پست‌های موجود هنوز مجاز است.`,
+          `سقف پست جدید امروز پر است (${scope.sentToday} از ${scope.automation.dailyCap}). ویرایش پست‌های موجود هنوز مجاز است.`,
         );
       }
     }
@@ -1140,6 +1266,10 @@ export class OmnichannelService {
    * Manual publish targets: an explicit destination (canary or verified), otherwise the same set
    * automation would use — canary only unless automation is LIVE.
    */
+  /**
+   * Manual targets: one destination if requested; otherwise every canary or verified destination
+   * on ACTIVE bots (independent of each bot's autoPublishMode).
+   */
   private async manualPublishTargets(channel: string, destinationId?: string) {
     const dests = await this.destinations.find({ where: { enabled: true } });
     const conns = await this.connections.find();
@@ -1156,8 +1286,57 @@ export class OmnichannelService {
       }
       return [dest];
     }
-    const mode = readAutomationSettings(await this.loadStoredSettings()).mode;
-    return selectAutomationDestinations(dests, conns, channel, mode === 'LIVE' ? 'LIVE' : 'CANARY');
+    return selectAutomationDestinations(dests, conns, channel, 'LIVE');
+  }
+
+  /** Cap / gap / mode for the bot(s) that own these destinations (tightest room if several). */
+  private async resolvePublishScopeForTargets(
+    channel: 'RETAIL' | 'WHOLESALE',
+    targets: Array<{ connectionId: string }>,
+  ) {
+    const global = await this.loadStoredSettings();
+    const connIds = [...new Set(targets.map((row) => row.connectionId))];
+    if (!connIds.length) {
+      const automation = readAutomationSettings(global);
+      const counters = await this.automationCounters(channel);
+      return {
+        automation,
+        sentToday: counters.sentToday,
+        dailyRoom: remainingDailyCreates(counters.sentToday, automation.dailyCap),
+        connectionId: undefined as string | undefined,
+      };
+    }
+    let best: {
+      automation: ReturnType<typeof readAutomationSettings>;
+      sentToday: number;
+      dailyRoom: number;
+      connectionId: string;
+    } | null = null;
+    for (const connectionId of connIds) {
+      const conn = await this.connections.findOne({ where: { id: connectionId } });
+      if (!conn) continue;
+      const resolved = resolveConnectionPublishSettings(conn.publishSettings, global, channel);
+      const counters = await this.automationCountersForConnection(connectionId, channel);
+      const dailyRoom = remainingDailyCreates(counters.sentToday, resolved.automation.dailyCap);
+      const candidate = {
+        automation: resolved.automation,
+        sentToday: counters.sentToday,
+        dailyRoom,
+        connectionId,
+      };
+      if (!best || candidate.dailyRoom < best.dailyRoom) best = candidate;
+    }
+    if (!best) {
+      const automation = readAutomationSettings(global);
+      const counters = await this.automationCounters(channel);
+      return {
+        automation,
+        sentToday: counters.sentToday,
+        dailyRoom: remainingDailyCreates(counters.sentToday, automation.dailyCap),
+        connectionId: undefined as string | undefined,
+      };
+    }
+    return best;
   }
 
   async markPublicationDelivered(publicationId: string) {
@@ -1463,9 +1642,8 @@ export class OmnichannelService {
   }
 
   /**
-   * Channel automation for one product/channel. Reads the owner's mode, OOS policy, chosen events
-   * and guardrails; enqueues CREATE/UPDATE/DELETE deliveries through the outbox. Returns a short
-   * reason string for logs/tests. Never throws on "nothing to do".
+   * Channel automation for one product/channel. Each ACTIVE connection evaluates its own
+   * publishSettings (mode, cap, events, categories, OOS, withdraw) independently.
    */
   private async autoSyncRemote(input: {
     sourceId: string;
@@ -1477,116 +1655,158 @@ export class OmnichannelService {
     localAction: string;
     previousStatus: string | null;
   }): Promise<string> {
-    const stored = await this.loadStoredSettings();
-    const automation = readAutomationSettings(stored);
-    if (automation.mode === 'OFF') return 'mode_off';
     if (!areOmnichannelConnectorsEnabled() || !isOmnichannelAutoPublishEnabled()) return 'flags_off';
-    const chosen = readAutoPublishEventTypes(stored).events;
-    const oos = readChannelOos(stored, input.channel);
-    const live = await this.liveRemoteMessages('PRODUCT', input.sourceId, input.channel);
-    const allowlist = readAutoPublishCategoryIds(stored);
-    let publishable = input.publishable;
-    if (allowlist.length > 0) {
-      const cats = await this.productCategoryIdsFor(input.sourceId);
-      const categoryGate = evaluateCategoryAllowlistGate({
-        allowlist,
-        primaryCategoryId: cats.primaryCategoryId,
-        membershipCategoryIds: cats.membershipCategoryIds,
-      });
-      if (!categoryGate.allow) {
-        if (live.length === 0) return 'category_not_allowed';
-        // Left the allowlist while a remote post exists → same path as unpublishable.
-        publishable = false;
-      }
-    }
-    const intent = resolveRemoteIntent({
-      eventType: input.eventType,
-      localAction: input.localAction,
-      previousStatus: input.previousStatus,
-      publishable,
-      available: input.available,
-      hasRemoteMessage: live.length > 0,
-      oosPolicy: oos.policy,
-      oosChosen: oos.chosen,
-      withdrawAction: automation.withdrawAction,
-      chosenEvents: chosen,
-    });
-    if (intent.action === 'none') return intent.reason;
+    const [global, dests, conns, live] = await Promise.all([
+      this.loadStoredSettings(),
+      this.destinations.find({ where: { enabled: true } }),
+      this.connections.find({ where: { channel: input.channel, status: 'ACTIVE' } }),
+      this.liveRemoteMessages('PRODUCT', input.sourceId, input.channel),
+    ]);
+    if (!conns.length) return 'mode_off';
     const publication = (await this.publications.find({
       where: { sourceType: 'PRODUCT', sourceId: input.sourceId, channel: input.channel },
       order: { updatedAt: 'DESC', createdAt: 'DESC' },
       take: 1,
     }))[0] ?? null;
     if (!publication) return 'no_publication';
-    if (intent.action === 'DELETE') {
-      const count = await this.enqueueDeliveries(this.publications.manager, {
-        publicationId: publication.id,
-        channel: input.channel,
-        action: 'DELETE',
-        rendered: null,
-        targets: live.map((msg) => ({ destinationId: msg.destinationId, providerMessageId: msg.providerMessageId, publicationId: msg.publicationId })),
-        auto: true,
-      });
-      return count ? 'delete' : 'delete_deduped';
-    }
-    if (!input.projection) return 'no_projection';
-    const rendered = await this.publicationPayloadFor(input.projection);
-    if (intent.action === 'UPDATE') {
-      const text = intent.notice
-        ? renderUnavailableNotice(await this.publicationVarsFor(input.projection), rendered.parseMode)
-        : rendered.text;
-      const count = await this.enqueueDeliveries(this.publications.manager, {
-        publicationId: publication.id,
-        channel: input.channel,
-        action: 'UPDATE',
-        rendered: { ...rendered, text },
-        targets: live.map((msg) => ({ destinationId: msg.destinationId, providerMessageId: msg.providerMessageId, publicationId: msg.publicationId })),
-        auto: true,
-      });
-      return count ? (intent.notice ? 'update_notice' : 'update') : 'update_deduped';
-    }
-    const [dests, conns, counters] = await Promise.all([
-      this.destinations.find({ where: { enabled: true } }),
-      this.connections.find(),
-      this.automationCounters(input.channel),
-    ]);
-    const gate = evaluateAutomationGate({
-      mode: automation.mode,
-      eventType: input.eventType,
-      chosenEvents: chosen,
-      connectorsEnabled: true,
-      autoPublishFlag: true,
-      sentToday: counters.sentToday,
-      dailyCap: automation.dailyCap,
-      lastScheduledAt: counters.lastScheduledAt,
-      minGapSeconds: automation.minGapSeconds,
-      quietStartHour: automation.quietStartHour,
-      quietEndHour: automation.quietEndHour,
-      now: new Date(),
-      createTrigger: true,
-    });
-    if (gate.allow === false) return gate.reason;
-    const withMessage = new Set(live.map((msg) => msg.destinationId));
-    // Source-wide pending CREATEs (sibling publication rows) — same dedupe as manual/requeue.
     const pending = await this.pendingCreateDestinationsForSource('PRODUCT', input.sourceId, input.channel);
-    const targets = selectAutomationDestinations(dests, conns, input.channel, automation.mode)
-      .filter((dest) => !withMessage.has(dest.id) && !pending.has(dest.id))
-      .map((dest) => ({ destinationId: dest.id }));
-    if (!targets.length) return 'no_destination';
-    const count = await this.enqueueDeliveries(this.publications.manager, {
-      publicationId: publication.id,
-      channel: input.channel,
-      action: 'CREATE',
-      rendered,
-      targets,
-      auto: true,
-      availableAt: gate.sendAt,
-    });
-    if (count && publication.status === 'DRAFT') {
-      publication.status = 'READY';
-      await this.publications.save(publication);
+    const cats = await this.productCategoryIdsFor(input.sourceId);
+    const results: string[] = [];
+    for (const conn of conns) {
+      const resolved = resolveConnectionPublishSettings(conn.publishSettings, global, input.channel);
+      const { automation } = resolved;
+      if (automation.mode === 'OFF') {
+        results.push('mode_off');
+        continue;
+      }
+      const connDestIds = new Set(dests.filter((d) => d.connectionId === conn.id).map((d) => d.id));
+      const liveOnConn = live.filter((msg) => connDestIds.has(msg.destinationId));
+      let publishable = input.publishable;
+      if (resolved.categoryIds.length > 0) {
+        const categoryGate = evaluateCategoryAllowlistGate({
+          allowlist: resolved.categoryIds,
+          primaryCategoryId: cats.primaryCategoryId,
+          membershipCategoryIds: cats.membershipCategoryIds,
+        });
+        if (!categoryGate.allow) {
+          if (liveOnConn.length === 0) {
+            results.push('category_not_allowed');
+            continue;
+          }
+          publishable = false;
+        }
+      }
+      const intent = resolveRemoteIntent({
+        eventType: input.eventType,
+        localAction: input.localAction,
+        previousStatus: input.previousStatus,
+        publishable,
+        available: input.available,
+        hasRemoteMessage: liveOnConn.length > 0,
+        oosPolicy: resolved.oosPolicy,
+        oosChosen: resolved.oosChosen,
+        withdrawAction: automation.withdrawAction,
+        chosenEvents: resolved.events,
+      });
+      if (intent.action === 'none') {
+        results.push(intent.reason);
+        continue;
+      }
+      if (intent.action === 'DELETE') {
+        const count = await this.enqueueDeliveries(this.publications.manager, {
+          publicationId: publication.id,
+          channel: input.channel,
+          action: 'DELETE',
+          rendered: null,
+          targets: liveOnConn.map((msg) => ({
+            destinationId: msg.destinationId,
+            providerMessageId: msg.providerMessageId,
+            publicationId: msg.publicationId,
+          })),
+          auto: true,
+        });
+        results.push(count ? 'delete' : 'delete_deduped');
+        continue;
+      }
+      if (!input.projection) {
+        results.push('no_projection');
+        continue;
+      }
+      const rendered = await this.publicationPayloadFor(input.projection, conn.id);
+      if (intent.action === 'UPDATE') {
+        const text = intent.notice
+          ? renderUnavailableNotice(await this.publicationVarsFor(input.projection), rendered.parseMode)
+          : rendered.text;
+        const count = await this.enqueueDeliveries(this.publications.manager, {
+          publicationId: publication.id,
+          channel: input.channel,
+          action: 'UPDATE',
+          rendered: { ...rendered, text },
+          targets: liveOnConn.map((msg) => ({
+            destinationId: msg.destinationId,
+            providerMessageId: msg.providerMessageId,
+            publicationId: msg.publicationId,
+          })),
+          auto: true,
+        });
+        results.push(count ? (intent.notice ? 'update_notice' : 'update') : 'update_deduped');
+        continue;
+      }
+      const counters = await this.automationCountersForConnection(conn.id, input.channel);
+      const gate = evaluateAutomationGate({
+        mode: automation.mode,
+        eventType: input.eventType,
+        chosenEvents: resolved.events,
+        connectorsEnabled: true,
+        autoPublishFlag: true,
+        sentToday: counters.sentToday,
+        dailyCap: automation.dailyCap,
+        lastScheduledAt: counters.lastScheduledAt,
+        minGapSeconds: automation.minGapSeconds,
+        quietStartHour: automation.quietStartHour,
+        quietEndHour: automation.quietEndHour,
+        now: new Date(),
+        createTrigger: true,
+      });
+      if (gate.allow === false) {
+        results.push(gate.reason);
+        continue;
+      }
+      const withMessage = new Set(liveOnConn.map((msg) => msg.destinationId));
+      const targets = selectAutomationDestinationsForConnection(dests, conn, automation.mode)
+        .filter((dest) => !withMessage.has(dest.id) && !pending.has(dest.id))
+        .map((dest) => ({ destinationId: dest.id }));
+      if (!targets.length) {
+        results.push('no_destination');
+        continue;
+      }
+      const count = await this.enqueueDeliveries(this.publications.manager, {
+        publicationId: publication.id,
+        channel: input.channel,
+        action: 'CREATE',
+        rendered,
+        targets,
+        auto: true,
+        availableAt: gate.sendAt,
+      });
+      if (count && publication.status === 'DRAFT') {
+        publication.status = 'READY';
+        await this.publications.save(publication);
+      }
+      results.push(count ? (gate.deferred ? 'create_deferred' : 'create') : 'create_deduped');
     }
-    return count ? (gate.deferred ? 'create_deferred' : 'create') : 'create_deduped';
+    const success = results.find((r) =>
+      r === 'create'
+      || r === 'create_deferred'
+      || r === 'update'
+      || r === 'update_notice'
+      || r === 'delete'
+      || r === 'create_deduped'
+      || r === 'update_deduped'
+      || r === 'delete_deduped');
+    if (success) return success;
+    if (results.every((r) => r === 'mode_off')) return 'mode_off';
+    return results[0] || 'mode_off';
   }
 
   /** Destinations with a CREATE still in flight for this publication (avoid double posts). */
@@ -1648,10 +1868,10 @@ export class OmnichannelService {
   }
 
   /**
-   * CREATE slots used toward the daily cap for a sales channel (Tehran day).
-   * Includes manual/category (`auto=false`) and automation; reserves in-flight rows.
+   * CREATE slots used toward the daily cap (Tehran day).
+   * When connectionId is set, only deliveries to that bot's destinations count.
    */
-  private async countCreatesTowardDailyCap(channel?: string): Promise<number> {
+  private async countCreatesTowardDailyCap(channel?: string, connectionId?: string): Promise<number> {
     const dayStart = tehranDayStart(new Date());
     const qb = this.deliveries
       .createQueryBuilder('d')
@@ -1660,11 +1880,46 @@ export class OmnichannelService {
       .andWhere('d.status IN (:...st)', { st: ['PENDING', 'PROCESSING', 'RETRY', 'SUCCEEDED'] })
       .andWhere('d.createdAt >= :dayStart', { dayStart });
     if (channel) qb.andWhere('p.channel = :channel', { channel });
+    if (connectionId) {
+      qb.innerJoin(ChannelDestinationEntity, 'dest', 'dest.id = d.destinationId')
+        .andWhere('dest.connectionId = :connectionId', { connectionId });
+    }
     const row = await qb.select('COUNT(DISTINCT d.publicationId)', 'n').getRawOne<{ n: string }>();
     return Number(row?.n || 0);
   }
 
-  /** CREATE counters for the gate: slots used today + latest scheduled send (for min-gap). */
+  /** CREATE counters for one bot: slots used today + latest scheduled send (for min-gap). */
+  private async automationCountersForConnection(
+    connectionId: string,
+    channel: string,
+  ): Promise<{ sentToday: number; lastScheduledAt: Date | null }> {
+    const dayStart = tehranDayStart(new Date());
+    const destIds = (
+      await this.destinations.find({ where: { connectionId }, select: ['id'] })
+    ).map((row) => row.id);
+    const [sentToday, last] = await Promise.all([
+      this.countCreatesTowardDailyCap(channel, connectionId),
+      destIds.length
+        ? this.events
+          .createQueryBuilder('e')
+          .where('e.eventType = :type', { type: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED })
+          .andWhere('e.channel = :channel', { channel })
+          .andWhere("e.payload->>'action' = 'CREATE'")
+          .andWhere("e.payload->>'destinationId' IN (:...destIds)", { destIds })
+          .andWhere('e.createdAt >= :dayStart', { dayStart })
+          .select('MAX(e.availableAt)', 'last')
+          .getRawOne<{ last: Date | string | null }>()
+        : Promise.resolve({ last: null }),
+    ]);
+    const lastRaw = last?.last ?? null;
+    const lastScheduledAt = lastRaw ? new Date(lastRaw) : null;
+    return {
+      sentToday,
+      lastScheduledAt: lastScheduledAt && !Number.isNaN(lastScheduledAt.getTime()) ? lastScheduledAt : null,
+    };
+  }
+
+  /** @deprecated Prefer automationCountersForConnection — kept for channel-wide diagnosis. */
   private async automationCounters(channel: string): Promise<{ sentToday: number; lastScheduledAt: Date | null }> {
     const dayStart = tehranDayStart(new Date());
     const [sentToday, last] = await Promise.all([
@@ -1719,7 +1974,10 @@ export class OmnichannelService {
     return this.mediaAssets.save(row);
   }
 
-  private async publicationPayloadFor(projection: Record<string, unknown>): Promise<RenderedPublication> {
+  private async publicationPayloadFor(
+    projection: Record<string, unknown>,
+    connectionId?: string,
+  ): Promise<RenderedPublication> {
     const eventType = projection.sourceType === 'BLOG_POST'
       ? 'blog.published'
       : projection.sourceType === 'CMS_PAGE'
@@ -1727,12 +1985,31 @@ export class OmnichannelService {
         : 'product.published';
     const channel = projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
     if (eventType === 'product.published') await this.ensureProductTemplates();
-    const rows = await this.templates.find({
-      where: { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType, enabled: true },
-      order: { version: 'DESC' },
-      take: 1,
-    });
-    const layout = parseTemplateLayout(rows[0]?.body, channel);
+    let body: string | undefined;
+    if (connectionId) {
+      const perBot = await this.templates.find({
+        where: { connectionId, eventType, enabled: true },
+        order: { version: 'DESC' },
+        take: 1,
+      });
+      body = perBot[0]?.body;
+    }
+    if (!body) {
+      const rows = await this.templates.find({
+        where: [
+          { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType, enabled: true, connectionId: IsNull() },
+        ],
+        order: { version: 'DESC' },
+        take: 1,
+      });
+      body = rows[0]?.body
+        || (await this.templates.find({
+          where: { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType, enabled: true },
+          order: { version: 'DESC' },
+          take: 5,
+        })).find((row) => !row.connectionId)?.body;
+    }
+    const layout = parseTemplateLayout(body, channel);
     return renderPublicationLayout(layout, await this.publicationVarsFor(projection), channel);
   }
 
@@ -2002,18 +2279,21 @@ export class OmnichannelService {
     };
   }
 
-  /** Turning automation on needs somewhere to post; LIVE additionally needs a verified channel or canary. */
-  private async assertAutomationPrerequisites(mode: 'CANARY' | 'LIVE') {
-    const dests = await this.destinations.find({ where: { enabled: true } });
-    const conns = await this.connections.find();
-    const any = ['RETAIL', 'WHOLESALE'].some(
-      (channel) => selectAutomationDestinations(dests, conns, channel, mode).length > 0,
-    );
-    if (!any) {
+  /** Turning automation on for one bot needs a canary (CANARY) or verified destination (LIVE) on that bot. */
+  private async assertAutomationPrerequisitesForConnection(
+    conn: ChannelConnectionEntity,
+    mode: 'CANARY' | 'LIVE',
+  ) {
+    if (conn.status !== 'ACTIVE') {
+      throw new BadRequestException('ابتدا وضعیت این ربات را ACTIVE کنید');
+    }
+    const dests = await this.destinations.find({ where: { connectionId: conn.id, enabled: true } });
+    const ready = selectAutomationDestinationsForConnection(dests, conn, mode);
+    if (!ready.length) {
       throw new BadRequestException(
         mode === 'CANARY'
-          ? 'برای حالت آزمایشی، یک مقصد canary روی یک اتصال فعال (تلگرام، بله یا روبیکا) لازم است'
-          : 'برای حالت زنده، دست‌کم یک مقصد فعال و بررسی‌شده (ربات ادمین با اجازه ارسال، یا ارسال آزمایشی موفق) لازم است',
+          ? 'برای حالت آزمایشی این ربات، یک مقصد canary روی همین اتصال لازم است'
+          : 'برای حالت زنده این ربات، دست‌کم یک مقصد فعال و بررسی‌شده روی همین اتصال لازم است',
       );
     }
   }
@@ -2047,16 +2327,12 @@ export class OmnichannelService {
     }
   }
 
-  /** One canary per (provider, sales channel); a second one is a conflict, not a silent replace. */
-  private async assertUniqueCanary(provider: string, channel: string, exceptId?: string) {
-    if (!isOmnichannelProvider(provider)) {
-      throw new BadRequestException('پلتفرم این اتصال پشتیبانی نمی‌شود');
-    }
-    const dests = await this.destinations.find();
-    const conns = await this.connections.find();
-    const current = findCanaryDestinationId(dests, conns, channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL', provider);
-    if (current && current !== exceptId) {
-      throw new ConflictException(`برای این کانال ${capabilitiesFor(provider).label} قبلاً مقصد canary ثبت شده`);
+  /** One canary per bot connection; each wholesale Telegram/Bale/Rubika bot may have its own. */
+  private async assertUniqueCanary(connectionId: string, exceptId?: string) {
+    const dests = await this.destinations.find({ where: { connectionId } });
+    const current = dests.find((dest) => isCanarySettings(dest.settings));
+    if (current && current.id !== exceptId) {
+      throw new ConflictException('برای این ربات قبلاً مقصد canary ثبت شده');
     }
   }
 
@@ -2077,9 +2353,19 @@ export class OmnichannelService {
     available: boolean,
     sourceType: string,
     sourceId: string,
+    connectionId?: string,
   ) {
     const stored = await this.loadStoredSettings();
-    const { policy, chosen } = readChannelOos(stored, channel);
+    let policy = readChannelOos(stored, channel).policy;
+    let chosen = readChannelOos(stored, channel).chosen;
+    if (connectionId) {
+      const conn = await this.connections.findOne({ where: { id: connectionId } });
+      if (conn) {
+        const resolved = resolveConnectionPublishSettings(conn.publishSettings, stored, channel);
+        policy = resolved.oosPolicy;
+        chosen = resolved.oosChosen;
+      }
+    }
     const hasRemoteMessage = sourceType === 'PRODUCT'
       ? await this.sourceHasRemoteMessage(sourceType, sourceId, channel)
       : false;

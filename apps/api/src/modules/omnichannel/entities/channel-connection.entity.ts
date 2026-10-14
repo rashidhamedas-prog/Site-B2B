@@ -33,6 +33,13 @@ export class ChannelConnectionEntity {
   @Column({ type: 'text', nullable: true })
   lastError: string | null;
 
+  /**
+   * Per-bot publish rules (mode, cap, gap, quiet, events, categories, OOS, withdraw).
+   * Isolated from other connections; never holds tokens.
+   */
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  publishSettings: Record<string, unknown>;
+
   @OneToMany(() => ChannelDestinationEntity, (d) => d.connection)
   destinations: ChannelDestinationEntity[];
 

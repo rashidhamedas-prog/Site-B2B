@@ -3,8 +3,14 @@ import {
 } from 'typeorm';
 
 @Entity('omnichannel_channel_templates')
-@Index('UQ_omnichannel_templates_provider_channel_event_version', ['provider', 'channel', 'eventType', 'version'], {
+/** Channel-wide fallback rows only (connectionId IS NULL). Per-bot rows use a separate partial unique. */
+@Index('UQ_omnichannel_templates_fallback_provider_channel_event_version', ['provider', 'channel', 'eventType', 'version'], {
   unique: true,
+  where: '"connectionId" IS NULL',
+})
+@Index('UQ_omnichannel_templates_connection_event_version', ['connectionId', 'eventType', 'version'], {
+  unique: true,
+  where: '"connectionId" IS NOT NULL',
 })
 export class ChannelTemplateEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -15,6 +21,10 @@ export class ChannelTemplateEntity {
 
   @Column({ type: 'varchar' })
   channel: string;
+
+  /** When set, this template belongs to one bot connection; null = channel-wide fallback. */
+  @Column({ type: 'uuid', nullable: true })
+  connectionId: string | null;
 
   @Column({ type: 'varchar' })
   eventType: string;

@@ -18,6 +18,7 @@ import {
   PatchConnectionDto,
   PatchDestinationDto,
   PatchMediaAltDto,
+  PatchConnectionPublishSettingsDto,
   PatchOmnichannelSettingsDto,
   PatchTemplateDto,
   PreviewDto,
@@ -108,6 +109,24 @@ export class OmnichannelAdminController {
   @Patch('connections/:id')
   patchConnection(@Param('id') id: string, @Body() body: PatchConnectionDto) {
     return this.svc.patchConnection(id, body);
+  }
+
+  @Get('connections/:id/publish-settings')
+  @ApiOperation({ summary: 'قواعد انتشار این ربات (جدا از ربات‌ها و پلتفرم‌های دیگر)' })
+  getConnectionPublishSettings(@Param('id') id: string) {
+    assertNoPlaintextSecrets({ id });
+    return this.svc.getConnectionPublishSettings(id);
+  }
+
+  @Patch('connections/:id/publish-settings')
+  @ApiOperation({ summary: 'ذخیره قواعد انتشار فقط برای این ربات' })
+  patchConnectionPublishSettings(
+    @Param('id') id: string,
+    @Body() body: PatchConnectionPublishSettingsDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets({ id, ...body });
+    return this.svc.patchConnectionPublishSettings(id, body, req.omnichannelActor);
   }
 
   @Delete('connections/:id')

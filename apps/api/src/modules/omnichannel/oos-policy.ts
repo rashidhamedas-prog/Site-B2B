@@ -98,8 +98,10 @@ export type PreviewOosAnnotation = {
 };
 
 const SETTINGS_INPUT_KEYS = new Set([
+  'connectionId',
   'retailOosPolicy',
   'wholesaleOosPolicy',
+  'oosPolicy',
   'autoPublishEventTypes',
   'retrySlaSeconds',
   'outboxRetentionDays',

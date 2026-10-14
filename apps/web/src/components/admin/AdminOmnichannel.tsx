@@ -75,6 +75,8 @@ type DeliveryFilter = 'all' | 'failed';
 type RulesDraft = {
   autoPublishMode: AutoPublishMode;
   autoPublishEventTypes: string[];
+  /** OOS for the selected bot's sales channel. */
+  oosPolicy: OosPolicy;
   retailOosPolicy: OosPolicy;
   wholesaleOosPolicy: OosPolicy;
   withdrawAction: WithdrawAction;
@@ -100,6 +102,7 @@ function rulesFromStatus(st: Status | null): RulesDraft {
   return {
     autoPublishMode: st?.autoPublishMode || 'OFF',
     autoPublishEventTypes: st?.autoPublishEventTypes?.length ? st.autoPublishEventTypes : DEFAULT_EVENTS,
+    oosPolicy: st?.wholesaleOosPolicy || st?.retailOosPolicy || 'UPDATE',
     retailOosPolicy: st?.retailOosPolicy || 'UPDATE',
     wholesaleOosPolicy: st?.wholesaleOosPolicy || 'UPDATE',
     withdrawAction: st?.withdrawAction || 'DELETE',
@@ -110,6 +113,28 @@ function rulesFromStatus(st: Status | null): RulesDraft {
     retrySlaSeconds: typeof st?.retrySlaSeconds === 'number' ? st.retrySlaSeconds : 3600,
     outboxRetentionDays: typeof st?.outboxRetentionDays === 'number' ? st.outboxRetentionDays : 90,
     autoPublishCategoryIds: Array.isArray(st?.autoPublishCategoryIds) ? st.autoPublishCategoryIds : [],
+  };
+}
+
+function rulesFromConnection(conn: Connection | null | undefined, st: Status | null): RulesDraft {
+  const base = rulesFromStatus(st);
+  const ps = conn?.publishSettings;
+  if (!ps) return base;
+  const channel = conn?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+  const oos = ps.oosPolicy || (channel === 'WHOLESALE' ? base.wholesaleOosPolicy : base.retailOosPolicy);
+  return {
+    ...base,
+    autoPublishMode: ps.autoPublishMode || 'OFF',
+    autoPublishEventTypes: ps.autoPublishEventTypes?.length ? ps.autoPublishEventTypes : DEFAULT_EVENTS,
+    oosPolicy: oos,
+    retailOosPolicy: channel === 'RETAIL' ? oos : base.retailOosPolicy,
+    wholesaleOosPolicy: channel === 'WHOLESALE' ? oos : base.wholesaleOosPolicy,
+    withdrawAction: ps.withdrawAction || 'DELETE',
+    autoDailyCap: typeof ps.autoDailyCap === 'number' ? ps.autoDailyCap : 20,
+    autoMinGapSeconds: typeof ps.autoMinGapSeconds === 'number' ? ps.autoMinGapSeconds : 90,
+    quietStartHour: ps.quietStartHour ?? null,
+    quietEndHour: ps.quietEndHour ?? null,
+    autoPublishCategoryIds: Array.isArray(ps.autoPublishCategoryIds) ? ps.autoPublishCategoryIds : [],
   };
 }
 
@@ -132,11 +157,13 @@ function summarizeBulkWithdraw(result: BulkWithdrawResult): string {
   return `${faNumber(ok)} موفق، ${faNumber(fail)} ناموفق${firstError ? ` — ${firstError}` : ''}`;
 }
 
-/** One master template per sales channel, stored under Telegram; every adapter converts it to its own format. */
+/** Channel-wide fallback templates stay under Telegram; per-bot templates bind connectionId. */
 const MASTER_TEMPLATE_PROVIDER: Provider = 'TELEGRAM';
 
-function isProductTemplate(row: Template, channel: Channel) {
-  return row.provider === MASTER_TEMPLATE_PROVIDER && row.channel === channel && row.eventType === PRODUCT_TEMPLATE_EVENT && row.enabled !== false;
+function isProductTemplate(row: Template, channel: Channel, connectionId?: string) {
+  if (row.channel !== channel || row.eventType !== PRODUCT_TEMPLATE_EVENT || row.enabled === false) return false;
+  if (connectionId) return row.connectionId === connectionId;
+  return row.provider === MASTER_TEMPLATE_PROVIDER && !row.connectionId;
 }
 
 function defaultSecretRef(provider: Provider) {
@@ -199,6 +226,10 @@ export function AdminOmnichannel() {
   const [destName, setDestName] = useState('');
   const [discovered, setDiscovered] = useState<{ connectionId: string; chats: DiscoveredChat[]; error?: string | null } | null>(null);
   const [tplChannel, setTplChannel] = useState<Channel>('RETAIL');
+  /** Bot whose publish rules / template are being edited (required for isolation). */
+  const [rulesConnectionId, setRulesConnectionId] = useState('');
+  const rulesConnectionIdRef = useRef('');
+  const [tplConnectionId, setTplConnectionId] = useState('');
   const [tplDirty, setTplDirty] = useState(false);
   const [tplSaveError, setTplSaveError] = useState('');
   const onTplDirty = useCallback((dirty: boolean) => { setTplDirty(dirty); }, []);
@@ -240,12 +271,6 @@ export function AdminOmnichannel() {
       ]);
       setStatus(st);
       setCategoryOptions(cats.filter((row) => row.status !== 'HIDDEN'));
-      const fromServer = rulesFromStatus(st);
-      const previous = JSON.stringify(savedRulesRef.current);
-      savedRulesRef.current = fromServer;
-      setSavedRules(fromServer);
-      // Adopt server values unless the admin has unsaved edits in the draft.
-      setRules((current) => (JSON.stringify(current) === previous ? fromServer : current));
       setConnections(conns);
       setDestinations(dests);
       setTemplates(tpls);
@@ -255,6 +280,18 @@ export function AdminOmnichannel() {
       setAudits(logs);
       setMedia(files);
       setDestConnectionId((current) => (current && conns.some((row) => row.id === current) ? current : conns[0]?.id || ''));
+      const nextRulesId = rulesConnectionIdRef.current && conns.some((row) => row.id === rulesConnectionIdRef.current)
+        ? rulesConnectionIdRef.current
+        : (conns[0]?.id || '');
+      rulesConnectionIdRef.current = nextRulesId;
+      setRulesConnectionId(nextRulesId);
+      setTplConnectionId((current) => (current && conns.some((row) => row.id === current) ? current : conns[0]?.id || ''));
+      const selectedConn = conns.find((row) => row.id === nextRulesId) || null;
+      const fromServer = rulesFromConnection(selectedConn, st);
+      const previous = JSON.stringify(savedRulesRef.current);
+      savedRulesRef.current = fromServer;
+      setSavedRules(fromServer);
+      setRules((draft) => (JSON.stringify(draft) === previous ? fromServer : draft));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'خطا در بارگذاری');
     } finally {
@@ -373,12 +410,22 @@ export function AdminOmnichannel() {
   const canaryByChannel = (channel: Channel) => destinations.find((dest) => dest.isCanary && channelOf(dest) === channel);
   const canaryForConnection = (connectionId: string) => destinations.find((dest) => dest.isCanary && dest.enabled && dest.connectionId === connectionId);
   const unverified = destinations.filter((dest) => dest.enabled && !dest.isCanary && !dest.verified);
-  const retailTpl = templates.filter((row) => isProductTemplate(row, 'RETAIL')).sort((a, b) => b.version - a.version)[0];
-  const wholesaleTpl = templates.filter((row) => isProductTemplate(row, 'WHOLESALE')).sort((a, b) => b.version - a.version)[0];
+  const activeTplConnectionId = tplConnectionId || rulesConnectionId;
+  const retailTpl = (
+    templates.filter((row) => isProductTemplate(row, 'RETAIL', activeTplConnectionId)).sort((a, b) => b.version - a.version)[0]
+    || templates.filter((row) => isProductTemplate(row, 'RETAIL')).sort((a, b) => b.version - a.version)[0]
+  );
+  const wholesaleTpl = (
+    templates.filter((row) => isProductTemplate(row, 'WHOLESALE', activeTplConnectionId)).sort((a, b) => b.version - a.version)[0]
+    || templates.filter((row) => isProductTemplate(row, 'WHOLESALE')).sort((a, b) => b.version - a.version)[0]
+  );
   const templatesReady = templateLooksReady(retailTpl?.body) && templateLooksReady(wholesaleTpl?.body);
+  const rulesConn = connections.find((row) => row.id === rulesConnectionId) || null;
+  const rulesReadyDestinations = readyDestinations.filter((dest) => dest.connectionId === rulesConnectionId);
   const flagsOn = Boolean(status?.connectors && status?.autoPublish);
   const connectorsOn = Boolean(status?.connectors);
-  const mode = status?.autoPublishMode || 'OFF';
+  /** Selected bot's mode (global status.autoPublishMode is legacy leftover only). */
+  const mode = rules.autoPublishMode || 'OFF';
   const rulesDirty = JSON.stringify(rules) !== JSON.stringify(savedRules);
   const deliveriesByPub = useMemo(() => {
     const map = new Map<string, Delivery[]>();
@@ -646,13 +693,35 @@ export function AdminOmnichannel() {
   /* ---------- actions ---------- */
 
   const saveRules = () => run('rules', async () => {
-    await apiClient.patch('/omnichannel/settings', { ...rules, reason });
-  }, 'خطا در ذخیره قواعد', 'قواعد خودکار ذخیره شد');
+    if (!rulesConnectionId) throw new Error('اول ربات را برای قواعد انتخاب کنید');
+    const conn = connections.find((row) => row.id === rulesConnectionId);
+    const channel = conn?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    await apiClient.patch(`/omnichannel/connections/${rulesConnectionId}/publish-settings`, {
+      autoPublishMode: rules.autoPublishMode,
+      autoPublishEventTypes: rules.autoPublishEventTypes,
+      oosPolicy: rules.oosPolicy || (channel === 'WHOLESALE' ? rules.wholesaleOosPolicy : rules.retailOosPolicy),
+      withdrawAction: rules.withdrawAction,
+      autoDailyCap: rules.autoDailyCap,
+      autoMinGapSeconds: rules.autoMinGapSeconds,
+      quietStartHour: rules.quietStartHour,
+      quietEndHour: rules.quietEndHour,
+      autoPublishCategoryIds: rules.autoPublishCategoryIds,
+      reason,
+    });
+    if (rules.retrySlaSeconds != null || rules.outboxRetentionDays != null) {
+      await apiClient.patch('/omnichannel/settings', {
+        retrySlaSeconds: rules.retrySlaSeconds,
+        outboxRetentionDays: rules.outboxRetentionDays,
+        reason,
+      });
+    }
+  }, 'خطا در ذخیره قواعد', 'قواعد این ربات ذخیره شد');
 
   const setMode = (next: AutoPublishMode) => run(`mode-${next}`, async () => {
-    await apiClient.patch('/omnichannel/settings', { autoPublishMode: next, reason });
+    if (!rulesConnectionId) throw new Error('اول ربات را برای قواعد انتخاب کنید');
+    await apiClient.patch(`/omnichannel/connections/${rulesConnectionId}/publish-settings`, { autoPublishMode: next, reason });
     setRules((current) => ({ ...current, autoPublishMode: next }));
-  }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی فعال شد؛ پست‌ها فقط به مقصد آزمایشی می‌روند' : 'انتشار خودکار زنده شد');
+  }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار این ربات خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی این ربات فعال شد' : 'انتشار خودکار این ربات زنده شد');
 
   const doPreview = () => run('preview', async () => {
     const res = await apiClient.post<{ projection: Record<string, unknown>; rendered?: Rendered }>('/omnichannel/preview', { channel: pubChannel, sourceType, sourceId });
@@ -1073,18 +1142,36 @@ export function AdminOmnichannel() {
   const templatePanel = (
     <Section
       title="۳. قالب پست"
-      description="یک‌بار شکل پست را برای تکی و عمده تنظیم کنید؛ همین یک قالب برای تلگرام، بله و روبیکا استفاده می‌شود و هر پیام‌رسان خودش به فرمت خودش (HTML، Markdown، متادیتا) تبدیل می‌شود. از این به بعد هر پست خودکار دقیقاً با همین چیدمان و با عکس و مشخصات همان محصول می‌رود."
+      description="قالب برای هر ربات جدا ذخیره می‌شود. اگر برای این ربات قالبی نباشد، از قالب پیش‌فرض همان کانال فروش (تکی/عمده) استفاده می‌شود."
       actions={
-        <div className="flex gap-1 rounded-xl bg-gray-100 p-1" role="tablist">
-          {(['RETAIL', 'WHOLESALE'] as Channel[]).map((ch) => {
-            const ready = templateLooksReady((ch === 'RETAIL' ? retailTpl : wholesaleTpl)?.body);
-            return (
-              <button key={ch} type="button" role="tab" aria-selected={tplChannel === ch} className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 cursor-pointer ${tplChannel === ch ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setTplChannel(ch)}>
-                {channelLabel(ch)}
-                <span className={`h-2 w-2 rounded-full ${ready ? 'bg-emerald-500' : 'bg-amber-400'}`} aria-label={ready ? 'آماده' : 'ناقص'} />
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="border rounded-lg px-2 py-1.5 text-sm bg-white"
+            value={tplConnectionId}
+            onChange={(e) => {
+              const id = e.target.value;
+              setTplConnectionId(id);
+              const conn = connections.find((row) => row.id === id);
+              if (conn) setTplChannel(conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+            }}
+          >
+            {connections.map((row) => (
+              <option key={row.id} value={row.id}>
+                {providerLabel(row.provider)} · {row.name}
+              </option>
+            ))}
+          </select>
+          <div className="flex gap-1 rounded-xl bg-gray-100 p-1" role="tablist">
+            {(['RETAIL', 'WHOLESALE'] as Channel[]).map((ch) => {
+              const ready = templateLooksReady((ch === 'RETAIL' ? retailTpl : wholesaleTpl)?.body);
+              return (
+                <button key={ch} type="button" role="tab" aria-selected={tplChannel === ch} className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 cursor-pointer ${tplChannel === ch ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setTplChannel(ch)}>
+                  {channelLabel(ch)}
+                  <span className={`h-2 w-2 rounded-full ${ready ? 'bg-emerald-500' : 'bg-amber-400'}`} aria-label={ready ? 'آماده' : 'ناقص'} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       }
     >
@@ -1102,11 +1189,21 @@ export function AdminOmnichannel() {
           setTplSaveError('');
           setBusy('tpl-save');
           try {
-            const existing = tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl;
-            if (existing) await apiClient.patch(`/omnichannel/templates/${existing.id}`, { body });
-            else await apiClient.post('/omnichannel/templates', { provider: MASTER_TEMPLATE_PROVIDER, channel: tplChannel, eventType: PRODUCT_TEMPLATE_EVENT, body });
+            if (!tplConnectionId) throw new Error('اول ربات را برای قالب انتخاب کنید');
+            const existing = (tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl);
+            const perBot = existing?.connectionId === tplConnectionId ? existing : null;
+            if (perBot) await apiClient.patch(`/omnichannel/templates/${perBot.id}`, { body });
+            else {
+              await apiClient.post('/omnichannel/templates', {
+                provider: MASTER_TEMPLATE_PROVIDER,
+                channel: tplChannel,
+                connectionId: tplConnectionId,
+                eventType: PRODUCT_TEMPLATE_EVENT,
+                body,
+              });
+            }
             await load();
-            setNotice(`قالب ${channelLabel(tplChannel)} ذخیره شد؛ پست‌های بعدی در همه پیام‌رسان‌ها با همین شکل می‌روند`);
+            setNotice(`قالب این ربات (${channelLabel(tplChannel)}) ذخیره شد`);
           } catch (err) {
             const message = err instanceof Error ? err.message : 'خطا در ذخیره قالب';
             setError(message);
@@ -1131,19 +1228,56 @@ export function AdminOmnichannel() {
       : [...current.autoPublishCategoryIds, id],
   }));
 
+  const pickRulesConnection = (id: string) => {
+    rulesConnectionIdRef.current = id;
+    setRulesConnectionId(id);
+    const conn = connections.find((row) => row.id === id) || null;
+    const fromServer = rulesFromConnection(conn, status);
+    savedRulesRef.current = fromServer;
+    setSavedRules(fromServer);
+    setRules(fromServer);
+    if (conn) {
+      setTplConnectionId(id);
+      setTplChannel(conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+    }
+  };
+
   const rulesPanel = (
     <Section
       title="۴. قواعد خودکار"
-      description="این‌ها یک‌بار تنظیم می‌شوند و بعد سیستم خودش تصمیم می‌گیرد چه چیزی، کجا و با چه ریتمی برود. تا «ذخیره» را نزنید هیچ تغییری اعمال نمی‌شود."
+      description="هر ربات و هر پلتفرم قواعد خودش را دارد (حالت، سقف، فاصله، سکوت، رویداد، دسته، ناموجودی). تا «ذخیره» را نزنید تغییری اعمال نمی‌شود."
       actions={
         <>
           {rulesDirty && <Badge tone="warn">ذخیره نشده</Badge>}
           <button type="button" className="btn btn-secondary btn-sm" disabled={!rulesDirty} onClick={() => setRules(savedRules)}>انصراف</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!rulesDirty || busy === 'rules'} onClick={saveRules}>{busy === 'rules' ? 'در حال ذخیره…' : 'ذخیره قواعد'}</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!rulesDirty || !rulesConnectionId || busy === 'rules'} onClick={saveRules}>{busy === 'rules' ? 'در حال ذخیره…' : 'ذخیره قواعد این ربات'}</button>
         </>
       }
     >
       <div className="space-y-5">
+        <div className="space-y-2">
+          <p className="text-sm font-medium">ربات / پلتفرم</p>
+          {connections.length === 0 ? (
+            <Callout tone="warn">اول در مرحله ۱ یک ربات ثبت کنید؛ قواعد بدون ربات ذخیره نمی‌شود.</Callout>
+          ) : (
+            <select
+              className="border rounded-lg px-3 py-2 text-sm w-full bg-white max-w-xl"
+              value={rulesConnectionId}
+              onChange={(e) => pickRulesConnection(e.target.value)}
+            >
+              {connections.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {providerLabel(row.provider)} · {channelLabel(row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL')} · {row.name}
+                  {row.status !== 'ACTIVE' ? ' (غیرفعال)' : ''}
+                </option>
+              ))}
+            </select>
+          )}
+          {rulesConn?.publishSettings?.settingsSource === 'global_fallback' && (
+            <p className="text-xs text-amber-700">هنوز ذخیرهٔ اختصاصی ندارد؛ مقادیر از تنظیمات قدیمی کپی شده‌اند. با اولین ذخیره فقط مال همین ربات می‌شوند.</p>
+          )}
+        </div>
+
         <div className="space-y-2">
           <p className="text-sm font-medium">حالت انتشار خودکار</p>
           <RadioCards<AutoPublishMode>
@@ -1151,12 +1285,12 @@ export function AdminOmnichannel() {
             value={rules.autoPublishMode}
             onChange={(autoPublishMode) => setRules((current) => ({ ...current, autoPublishMode }))}
             options={[
-              { value: 'OFF', title: 'خاموش', hint: 'هیچ پستی خودکار نمی‌رود؛ فقط ارسال دستی از تب انتشار.' },
-              { value: 'CANARY', title: 'آزمایشی', hint: 'همه قواعد اجرا می‌شوند اما پست فقط به «مقصد آزمایشی» می‌رود. برای اطمینان قبل از زنده‌شدن.', badge: 'امن', tone: 'info' },
-              { value: 'LIVE', title: 'زنده', hint: 'پست به همه کانال‌های تأییدشده می‌رود. مشتری‌ها می‌بینند.', badge: 'واقعی', tone: 'ok', disabled: readyDestinations.filter((dest) => !dest.isCanary).length === 0 },
+              { value: 'OFF', title: 'خاموش', hint: 'برای این ربات هیچ پستی خودکار نمی‌رود؛ فقط ارسال دستی.' },
+              { value: 'CANARY', title: 'آزمایشی', hint: 'قواعد این ربات اجرا می‌شوند اما پست فقط به مقصد آزمایشی همین ربات می‌رود.', badge: 'امن', tone: 'info' },
+              { value: 'LIVE', title: 'زنده', hint: 'پست به کانال‌های تأییدشدهٔ همین ربات می‌رود.', badge: 'واقعی', tone: 'ok', disabled: rulesReadyDestinations.filter((dest) => !dest.isCanary).length === 0 },
             ]}
           />
-          {readyDestinations.filter((dest) => !dest.isCanary).length === 0 && <p className="text-xs text-amber-700">برای حالت زنده دست‌کم یک کانال تأییدشده (غیر از مقصد آزمایشی) لازم است.</p>}
+          {rulesReadyDestinations.filter((dest) => !dest.isCanary).length === 0 && <p className="text-xs text-amber-700">برای حالت زنده این ربات دست‌کم یک کانال تأییدشده لازم است.</p>}
         </div>
 
         <div className="space-y-2">
@@ -1208,14 +1342,19 @@ export function AdminOmnichannel() {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {([['RETAIL', 'retailOosPolicy'], ['WHOLESALE', 'wholesaleOosPolicy']] as Array<[Channel, 'retailOosPolicy' | 'wholesaleOosPolicy']>).map(([ch, key]) => (
+        <div className="grid gap-4 md:grid-cols-1 max-w-xl">
+          {([rulesConn?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL'] as Channel[]).map((ch) => (
             <div key={ch} className="space-y-2">
-              <p className="text-sm font-medium">وقتی موجودی کانال {channelLabel(ch)} تمام شد</p>
+              <p className="text-sm font-medium">وقتی موجودی کانال {channelLabel(ch)} تمام شد (همین ربات)</p>
               <RadioCards<OosPolicy>
                 name={`oos-${ch}`}
-                value={rules[key]}
-                onChange={(value) => setRules((current) => ({ ...current, [key]: value }))}
+                value={rules.oosPolicy}
+                onChange={(value) => setRules((current) => ({
+                  ...current,
+                  oosPolicy: value,
+                  retailOosPolicy: ch === 'RETAIL' ? value : current.retailOosPolicy,
+                  wholesaleOosPolicy: ch === 'WHOLESALE' ? value : current.wholesaleOosPolicy,
+                }))}
                 columns={3}
                 options={[
                   { value: 'UPDATE', title: 'پست بماند', hint: 'ویرایش‌های بعدی هم اعمال می‌شود.' },

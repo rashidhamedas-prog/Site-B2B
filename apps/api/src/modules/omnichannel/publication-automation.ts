@@ -95,6 +95,19 @@ export function selectAutomationDestinations<
   });
 }
 
+/** Destinations for one bot only — uses that connection's own autoPublishMode. */
+export function selectAutomationDestinationsForConnection<
+  D extends { id: string; connectionId: string; enabled: boolean; settings?: Record<string, unknown> | null },
+  C extends { id: string; provider: string; channel: string; status: string },
+>(dests: D[], conn: C, mode: AutoPublishMode): D[] {
+  if (mode === 'OFF' || conn.status !== 'ACTIVE' || !isOmnichannelProvider(conn.provider)) return [];
+  return dests.filter((dest) => {
+    if (!dest.enabled || dest.connectionId !== conn.id) return false;
+    if (isCanarySettings(dest.settings)) return true;
+    return mode === 'LIVE' && destinationCanPost(dest.settings);
+  });
+}
+
 export type RemoteIntent =
   | { action: 'CREATE' }
   | { action: 'UPDATE'; notice: boolean }

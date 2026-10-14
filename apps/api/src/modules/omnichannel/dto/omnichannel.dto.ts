@@ -91,6 +91,14 @@ export class PatchConnectionDto {
 }
 
 export class PatchOmnichannelSettingsDto {
+  /**
+   * When set with automation/OOS fields, writes to that bot only.
+   * Required for autoPublish* / OOS / withdraw / categories (no longer global).
+   */
+  @IsOptional()
+  @IsUUID('4')
+  connectionId?: string;
+
   @IsOptional()
   @IsIn(OOS_POLICIES)
   retailOosPolicy?: (typeof OOS_POLICIES)[number];
@@ -98,6 +106,11 @@ export class PatchOmnichannelSettingsDto {
   @IsOptional()
   @IsIn(OOS_POLICIES)
   wholesaleOosPolicy?: (typeof OOS_POLICIES)[number];
+
+  /** Single-connection OOS (preferred over retail/wholesale when connectionId is set). */
+  @IsOptional()
+  @IsIn(OOS_POLICIES)
+  oosPolicy?: (typeof OOS_POLICIES)[number];
 
   @IsOptional()
   @IsArray()
@@ -119,7 +132,7 @@ export class PatchOmnichannelSettingsDto {
   @Max(OUTBOX_RETENTION_MAX_DAYS)
   outboxRetentionDays?: number;
 
-  /** Channel automation. OFF never enqueues from catalog events. */
+  /** Per-connection automation when connectionId is set. */
   @IsOptional()
   @IsIn(AUTO_PUBLISH_MODES)
   autoPublishMode?: (typeof AUTO_PUBLISH_MODES)[number];
@@ -158,6 +171,67 @@ export class PatchOmnichannelSettingsDto {
   withdrawAction?: (typeof WITHDRAW_ACTIONS)[number];
 
   /** Empty = all categories. Non-empty = auto-publish allowlist only. */
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(200)
+  @IsUUID('4', { each: true })
+  autoPublishCategoryIds?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  reason?: string;
+}
+
+/** PATCH /omnichannel/connections/:id/publish-settings */
+export class PatchConnectionPublishSettingsDto {
+  @IsOptional()
+  @IsIn(OOS_POLICIES)
+  oosPolicy?: (typeof OOS_POLICIES)[number];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(AUTO_PUBLISH_CANDIDATE_EVENTS, { each: true })
+  autoPublishEventTypes?: (typeof AUTO_PUBLISH_CANDIDATE_EVENTS)[number][];
+
+  @IsOptional()
+  @IsIn(AUTO_PUBLISH_MODES)
+  autoPublishMode?: (typeof AUTO_PUBLISH_MODES)[number];
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(AUTO_DAILY_CAP_MIN)
+  @Max(AUTO_DAILY_CAP_MAX)
+  autoDailyCap?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(AUTO_MIN_GAP_MIN_SECONDS)
+  @Max(AUTO_MIN_GAP_MAX_SECONDS)
+  autoMinGapSeconds?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  quietStartHour?: number | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  quietEndHour?: number | null;
+
+  @IsOptional()
+  @IsIn(WITHDRAW_ACTIONS)
+  withdrawAction?: (typeof WITHDRAW_ACTIONS)[number];
+
   @IsOptional()
   @IsArray()
   @ArrayUnique()
@@ -213,6 +287,11 @@ export class CreateTemplateDto {
 
   @IsIn(OMNICHANNEL_CHANNELS)
   channel: (typeof OMNICHANNEL_CHANNELS)[number];
+
+  /** Bind template to one bot; omit for channel-wide fallback. */
+  @IsOptional()
+  @IsUUID('4')
+  connectionId?: string;
 
   @IsString()
   @MaxLength(80)

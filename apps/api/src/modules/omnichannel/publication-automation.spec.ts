@@ -14,6 +14,7 @@ import {
   planManualDeliveries,
   resolveRemoteIntent,
   selectAutomationDestinations,
+  selectAutomationDestinationsForConnection,
   tehranDayStart,
   tehranHour,
   type AutomationGateInput,
@@ -120,6 +121,14 @@ function main() {
   assert(ids(selectAutomationDestinations(dests, conns, 'RETAIL', 'CANARY')) === 'canary', 'CANARY selects the canary only');
   assert(ids(selectAutomationDestinations(dests, conns, 'RETAIL', 'LIVE')) === 'canary,live', 'LIVE adds verified can-post destinations only');
   assert(ids(selectAutomationDestinations(dests, conns, 'WHOLESALE', 'LIVE')) === 'wholesale', 'channel isolation');
+  assert(
+    ids(selectAutomationDestinationsForConnection(dests, conns[0], 'LIVE')) === 'canary,live',
+    'per-connection LIVE ignores other bots',
+  );
+  assert(
+    ids(selectAutomationDestinationsForConnection(dests, conns[1], 'CANARY')) === '',
+    'per-connection CANARY with no canary on that bot is empty',
+  );
 
   // remote intent: chosen catalog events
   const create = resolveRemoteIntent(intentInput({ eventType: 'product.created', localAction: 'create', previousStatus: null, hasRemoteMessage: false }));

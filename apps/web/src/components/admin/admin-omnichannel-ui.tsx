@@ -166,6 +166,21 @@ export type Status = {
   };
 };
 
+export type ConnectionPublishSettings = {
+  oosPolicy?: OosPolicy;
+  oosChosen?: boolean;
+  autoPublishEventTypes?: string[];
+  autoPublishEventTypesChosen?: boolean;
+  autoPublishMode?: AutoPublishMode;
+  autoDailyCap?: number;
+  autoMinGapSeconds?: number;
+  quietStartHour?: number | null;
+  quietEndHour?: number | null;
+  withdrawAction?: WithdrawAction;
+  autoPublishCategoryIds?: string[];
+  settingsSource?: 'connection' | 'global_fallback';
+};
+
 export type Connection = {
   id: string;
   provider: string;
@@ -173,6 +188,7 @@ export type Connection = {
   name: string;
   secretRef: string;
   status: string;
+  publishSettings?: ConnectionPublishSettings;
 };
 
 export type Destination = {
@@ -189,6 +205,7 @@ export type Template = {
   id: string;
   provider: string;
   channel: string;
+  connectionId?: string | null;
   eventType: string;
   version: number;
   enabled?: boolean;
