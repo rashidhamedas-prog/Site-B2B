@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { setToken } from '@/lib/auth';
 import { SalesPartnerShell, SpAlert, SpCard, SpNote, spField } from '@/components/sales-partners/SalesPartnerShell';
+import { SalesPartnerSmsIdentity } from '@/components/sales-partners/SalesPartnerSmsIdentity';
 import { SpButton, SpPageSkeleton, useSpToast } from '@/components/sales-partners/SpUi';
 
 type Me = {
@@ -110,6 +111,9 @@ export default function SalesPartnerProfilePage() {
           </p>
         </SpCard>
       )}
+      <div className="mt-5">
+        <SalesPartnerSmsIdentity />
+      </div>
       <form
         className="mt-5 space-y-3"
         onSubmit={(e) => {

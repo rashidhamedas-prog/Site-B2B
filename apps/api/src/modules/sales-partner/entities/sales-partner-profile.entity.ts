@@ -59,6 +59,19 @@ export class SalesPartnerProfileEntity {
   @Column({ type: 'jsonb', nullable: true })
   applicationAnswers: Record<string, string | boolean> | null;
 
+  /** Public shop label inside the customer confirmation SMS. Not the legal display name. */
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  smsShopName: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  smsGreeting: string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  smsChannel: string | null;
+
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  smsHandle: string | null;
+
   @Column({ type: 'timestamptz', nullable: true })
   closedAt: Date | null;
 

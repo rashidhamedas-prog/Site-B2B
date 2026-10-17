@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { normalizeDigits } from '../auth/phone.util';
+import { composeCustomerConfirmationSms } from './sales-partner-sms-profile';
 
 export const DRAFT_STATUSES = [
   'DRAFT',
@@ -110,9 +111,24 @@ export function humanDraftStatus(status: string | null | undefined): string {
   }
 }
 
-export function confirmationSmsText(displayName: string, confirmUrl: string): string {
-  const name = displayName.trim() || 'ترنم';
-  return `همکار فروش ${name} یک سبد برای شما آماده کرده است. تا زمانی که خودتان آن را تأیید نکنید سفارشی ثبت یا مبلغی دریافت نمی‌شود. ${confirmUrl}`;
+export function confirmationSmsText(
+  displayName: string,
+  confirmUrl: string,
+  extras?: {
+    shopName?: string | null;
+    greeting?: string | null;
+    channel?: string | null;
+    handle?: string | null;
+  },
+): string {
+  return composeCustomerConfirmationSms({
+    displayName,
+    confirmUrl,
+    shopName: extras?.shopName,
+    greeting: extras?.greeting,
+    channel: extras?.channel,
+    handle: extras?.handle,
+  });
 }
 
 export function isDraftExpired(expiresAt: Date | null | undefined, now: Date): boolean {

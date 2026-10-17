@@ -62,19 +62,25 @@ const cards = [
   { name: 'کت کتان', categoryId: catB, categoryName: 'کت', priceIrr: 3000, stockBand: 'low' as const, estimatedCommissionIrr: 300 },
 ];
 const grouped = preparePartnerCatalog(cards, { sort: 'category' });
-assert(grouped.total === 2, 'out of stock is hidden by default');
-assert(!grouped.items.some((row) => row.name === 'مانتو نیکی'), 'zero stock card is absent');
-assert(grouped.items[0].categoryName === 'کت', 'category sort fa order');
+assert(grouped.total === 3, 'default lists the retail catalog including out of stock');
+assert(grouped.items.some((row) => row.name === 'مانتو نیکی'), 'out of stock stays visible');
+assert(grouped.facets.stock.available === 2 && grouped.facets.stock.out === 1, 'stock facets split availability');
+const availableOnly = preparePartnerCatalog(cards, { stock: 'available', sort: 'category' });
+assert(availableOnly.total === 2 && !availableOnly.items.some((row) => row.name === 'مانتو نیکی'), 'available filter hides out of stock');
+assert(availableOnly.items[0].categoryName === 'کت', 'category sort fa order');
 assert(grouped.facets.categories.length === 2, 'two categories');
-assert(grouped.facets.categories.find((row) => row.id === catA)?.count === 1, 'manteau count is in-stock only');
+assert(grouped.facets.categories.find((row) => row.id === catA)?.count === 2, 'category count includes out of stock when stock=all');
+const outOnly = preparePartnerCatalog(cards, { stock: 'out' });
+assert(outOnly.total === 1 && outOnly.items[0].name === 'مانتو نیکی', 'out filter');
 
 const filtered = preparePartnerCatalog(cards, { categoryId: catA, stock: 'available' });
 assert(filtered.total === 1 && filtered.items[0].name === 'مانتو لینن', 'category plus available');
 assert(filtered.facets.categories.find((row) => row.id === catA)?.count === 1, 'category count respects stock and ignores the selected category');
 assert(filtered.facets.categories.some((row) => row.id === catB), 'other categories stay visible');
 assert(filtered.facets.stock.out === 1, 'stock count keeps the selected category');
-const named = preparePartnerCatalog(cards, { q: 'نیکی' });
-assert(named.total === 0, 'name search does not reveal an out-of-stock product');
+const named = preparePartnerCatalog(cards, { q: 'نیکی', stock: 'available' });
+assert(named.total === 0, 'available search hides an out-of-stock product');
+assert(preparePartnerCatalog(cards, { q: 'نیکی' }).total === 1, 'all-stock search keeps the out-of-stock name');
 const namedLive = preparePartnerCatalog(cards, { q: 'لینن' });
 assert(namedLive.total === 1 && namedLive.items[0].name === 'مانتو لینن', 'name search keeps in-stock');
 

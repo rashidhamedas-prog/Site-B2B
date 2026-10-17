@@ -5,11 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import { SmsResendButton } from '@/components/auth/SmsResendButton';
 import { useSmsResendCooldown } from '@/hooks/useSmsResendCooldown';
 import { apiClient } from '@/lib/api';
-import { toman } from '@/lib/product-display';
+import { mediaUrl, toman } from '@/lib/product-display';
 import { extractSmsCooldown } from '@/lib/sms-cooldown';
 import { trackAffiliateEvent } from '@/lib/retail-analytics';
 import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, SpNote, spField } from './SalesPartnerShell';
-import { SpButton, SpPageSkeleton, SpStepRail } from './SpUi';
+import { SalesPartnerSmsIdentity } from './SalesPartnerSmsIdentity';
+import { SpButton, SpPageSkeleton, SpStepRail, spChipClass } from './SpUi';
 
 type CatalogItem = {
   id: string;
@@ -18,6 +19,8 @@ type CatalogItem = {
   stockBand: string;
   stockLabel: string;
   estimatedCommissionIrr: number;
+  images?: string[];
+  categoryName?: string;
 };
 
 type Variant = { id: string; color: string; size: string; stockBand: string; stockLabel: string };
@@ -43,6 +46,7 @@ export function SalesPartnerNewOrder() {
   const [step, setStep] = useState(0);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [query, setQuery] = useState('');
   const [detail, setDetail] = useState<ProductDetail | null>(null);
   const [productId, setProductId] = useState(presetId || '');
   const [variantId, setVariantId] = useState('');
@@ -53,6 +57,7 @@ export function SalesPartnerNewOrder() {
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [smsDirty, setSmsDirty] = useState(false);
   const { secondsLeft, start } = useSmsResendCooldown();
   const [localReady, setLocalReady] = useState(false);
 
@@ -90,18 +95,23 @@ export function SalesPartnerNewOrder() {
   }, [localReady, productId, variantId, quantity]);
 
   useEffect(() => {
-    apiClient
-      .get<{ items: CatalogItem[] }>('/sales-partners/catalog')
-      .then((res) => {
-        setCatalog(res.items);
-        if (!productId && res.items[0]) setProductId(res.items[0].id);
-      })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'بارگذاری محصولات ناموفق بود'))
-      .finally(() => setCatalogLoading(false));
-  }, []);
+    const handle = window.setTimeout(() => {
+      const search = new URLSearchParams({ stock: 'available' });
+      if (query.trim()) search.set('q', query.trim());
+      apiClient
+        .get<{ items: CatalogItem[] }>(`/sales-partners/catalog?${search.toString()}`)
+        .then((res) => setCatalog(res.items))
+        .catch((err: unknown) => setError(err instanceof Error ? err.message : 'بارگذاری محصولات ناموفق بود'))
+        .finally(() => setCatalogLoading(false));
+    }, query.trim() ? 300 : 0);
+    return () => window.clearTimeout(handle);
+  }, [query]);
 
   useEffect(() => {
-    if (!productId) return;
+    if (!productId) {
+      setDetail(null);
+      return;
+    }
     let cancelled = false;
     const requestedId = productId;
     apiClient
@@ -113,8 +123,11 @@ export function SalesPartnerNewOrder() {
           current && row.variants.some((item) => item.id === current) ? current : row.variants[0]?.id || '',
         );
       })
-      .catch(() => {
-        if (!cancelled) setDetail(null);
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setDetail(null);
+          setError(err instanceof Error ? err.message : 'این کالا برای سفارش در دسترس نیست');
+        }
       });
     return () => {
       cancelled = true;
@@ -126,6 +139,17 @@ export function SalesPartnerNewOrder() {
     [catalog, detail, productId],
   );
   const variant = detail?.variants.find((row) => row.id === variantId);
+  const colors = useMemo(
+    () => [...new Set((detail?.variants || []).map((row) => row.color).filter(Boolean))],
+    [detail],
+  );
+  const activeColor = variant?.color || colors[0] || '';
+  const sizes = (detail?.variants || []).filter((row) => !activeColor || row.color === activeColor);
+
+  function chooseColor(color: string) {
+    const next = detail?.variants.find((row) => row.color === color);
+    if (next) setVariantId(next.id);
+  }
 
   async function createDraft() {
     setError(null);
@@ -171,6 +195,8 @@ export function SalesPartnerNewOrder() {
     }
   }
 
+  const canContinueProduct = detail ? detail.variants.length === 0 || Boolean(variantId) : false;
+
   return (
     <SalesPartnerShell title="سفارش جدید">
       <SpNote>
@@ -182,71 +208,127 @@ export function SalesPartnerNewOrder() {
       </div>
       {error && <SpAlert>{error}</SpAlert>}
       {catalogLoading && <SpPageSkeleton cards={1} />}
-      {!catalogLoading && catalog.length === 0 && (
+      {!catalogLoading && catalog.length === 0 && !query.trim() && !productId && (
         <SpEmpty>الان کالای موجودی برای فروش نیست.</SpEmpty>
       )}
 
-      {!catalogLoading && catalog.length > 0 && step === 0 && (
+      {!catalogLoading && step === 0 && (catalog.length > 0 || query.trim() || productId) && (
         <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-product">
-              محصول
-            </label>
-            <select
-              id="sp-product"
-              className={spField}
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-              required
-            >
-              {catalog.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {detail && detail.variants.length > 0 && (
-            <div>
-              <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-variant">
-                رنگ و سایز
-              </label>
-              <select
-                id="sp-variant"
-                className={spField}
-                value={variantId}
-                onChange={(e) => setVariantId(e.target.value)}
-              >
-                {detail.variants.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.color} / {row.size} — {row.stockLabel}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
           {selected && (
-            <SpCard className="!bg-[#f6f3ee] text-sm leading-6 text-stone-700">
-              قیمت فعلی {toman(selected.priceIrr)} تومان · {variant?.stockLabel || selected.stockLabel} · پورسانت تخمینی{' '}
-              {toman(selected.estimatedCommissionIrr)} تومان
+            <SpCard className="flex gap-3">
+              {mediaUrl(selected.images?.[0]) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={mediaUrl(selected.images?.[0])}
+                  alt=""
+                  width={72}
+                  height={72}
+                  className="h-[72px] w-[72px] shrink-0 rounded-2xl object-cover"
+                />
+              ) : null}
+              <div className="min-w-0">
+                <p className="text-xs text-[#1B5C4A]">{selected.categoryName}</p>
+                <h2 className="truncate text-base font-bold">{selected.name}</h2>
+                <p className="mt-1 text-sm leading-6 text-stone-600">
+                  {toman(selected.priceIrr)} تومان · {variant?.stockLabel || selected.stockLabel}
+                  {selected.estimatedCommissionIrr > 0
+                    ? ` · پورسانت تخمینی ${toman(selected.estimatedCommissionIrr)} تومان`
+                    : ''}
+                </p>
+              </div>
             </SpCard>
           )}
+
           <div>
-            <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-qty">
-              تعداد
+            <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-product-q">
+              جستجوی کالای موجود
             </label>
             <input
-              id="sp-qty"
-              type="number"
-              min={1}
-              max={20}
+              id="sp-product-q"
               className={spField}
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              required
+              value={query}
+              placeholder="نام کالا"
+              onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <SpButton className="w-full" disabled={!productId} onClick={() => setStep(1)}>
+          <ul className="max-h-80 space-y-2 overflow-auto rounded-3xl" aria-label="نتایج کالا">
+            {catalog.length === 0 ? (
+              <li className="px-1 text-sm text-stone-600">با این نام کالای موجودی نیست.</li>
+            ) : catalog.map((item) => {
+              const active = item.id === productId;
+              const src = mediaUrl(item.images?.[0]);
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-right ${active ? 'border-[#1B5C4A] bg-[#1B5C4A]/5' : 'border-stone-200 bg-white'}`}
+                    onClick={() => setProductId(item.id)}
+                  >
+                    {src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={src} alt="" width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                    ) : (
+                      <span className="h-12 w-12 shrink-0 rounded-xl bg-stone-100" />
+                    )}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{item.name}</span>
+                      <span className="block text-xs text-stone-500">
+                        {toman(item.priceIrr)} تومان · {item.stockLabel}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {colors.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-sm font-medium" id="sp-color-label">رنگ</p>
+              <div className="flex flex-wrap gap-2" role="group" aria-labelledby="sp-color-label">
+                {colors.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    className={spChipClass(color === activeColor)}
+                    aria-pressed={color === activeColor}
+                    onClick={() => chooseColor(color)}
+                  >
+                    {color}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {sizes.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-sm font-medium" id="sp-size-label">سایز</p>
+              <div className="flex flex-wrap gap-2" role="group" aria-labelledby="sp-size-label">
+                {sizes.map((row) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    className={spChipClass(row.id === variantId)}
+                    aria-pressed={row.id === variantId}
+                    onClick={() => setVariantId(row.id)}
+                  >
+                    {row.size} · {row.stockLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <p className="mb-1.5 text-sm font-medium" id="sp-qty-label">تعداد</p>
+            <div className="flex w-fit items-center gap-2" role="group" aria-labelledby="sp-qty-label">
+              <button type="button" className={spChipClass(false)} aria-label="کم کردن تعداد" onClick={() => setQuantity((current) => Math.max(1, current - 1))}>−</button>
+              <span className="min-w-8 text-center tabular-nums" aria-live="polite">{quantity.toLocaleString('fa-IR')}</span>
+              <button type="button" className={spChipClass(false)} aria-label="افزودن تعداد" onClick={() => setQuantity((current) => Math.min(20, current + 1))}>+</button>
+            </div>
+          </div>
+          <SpButton className="w-full" disabled={!canContinueProduct} onClick={() => setStep(1)}>
             ادامه: اطلاعات مشتری
           </SpButton>
         </div>
@@ -254,6 +336,12 @@ export function SalesPartnerNewOrder() {
 
       {step === 1 && (
         <div className="space-y-4">
+          {selected ? (
+            <p className="text-sm text-stone-600">
+              {selected.name}
+              {variant ? ` · ${variant.color} / ${variant.size}` : ''} · {quantity.toLocaleString('fa-IR')} عدد
+            </p>
+          ) : null}
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-phone">
               موبایل مشتری
@@ -267,13 +355,14 @@ export function SalesPartnerNewOrder() {
               required
               dir="ltr"
               placeholder="09xxxxxxxxx"
+              autoComplete="tel"
             />
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium" htmlFor="sp-name">
               نام مشتری (اختیاری)
             </label>
-            <input id="sp-name" className={spField} value={name} onChange={(e) => setName(e.target.value)} />
+            <input id="sp-name" className={spField} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <SpButton variant="secondary" onClick={() => setStep(0)}>
@@ -290,27 +379,26 @@ export function SalesPartnerNewOrder() {
       )}
 
       {step === 2 && confirmOpen && draft && (
-        <SpCard className="space-y-3" role="dialog" aria-labelledby="sp-review-title">
-          <h2 id="sp-review-title" className="font-bold text-stone-900">
-            مرور قبل از پیامک
-          </h2>
-          <p className="text-sm">محصول: {selected?.name || '—'}</p>
-          <p className="text-sm">
-            رنگ و سایز: {variant ? `${variant.color} / ${variant.size}` : '—'}
-          </p>
-          <p className="text-sm">تعداد: {quantity}</p>
-          <p className="text-sm">
-            موبایل مشتری: <span dir="ltr" className="inline-block">{phone}</span>
-          </p>
-          {name.trim() ? <p className="text-sm">نام مشتری: {name.trim()}</p> : null}
-          <p className="text-sm">مبلغ کالا: {toman(draft.merchandiseIrr)} تومان</p>
-          <p className="text-sm">پورسانت تخمینی: {toman(draft.estimatedCommissionIrr)} تومان</p>
-          <p className="text-sm leading-6 text-stone-600">
-            برای مشتری پیامک می‌شود که تا تأیید خودش سفارشی ثبت نمی‌شود و پرداخت فقط به ترنم است.
-          </p>
+        <div className="space-y-4">
+          <SpCard className="space-y-2" role="region" aria-labelledby="sp-review-title">
+            <h2 id="sp-review-title" className="font-bold text-stone-900">مرور قبل از پیامک</h2>
+            <p className="text-sm">محصول: {selected?.name || '—'}</p>
+            <p className="text-sm">رنگ و سایز: {variant ? `${variant.color} / ${variant.size}` : '—'}</p>
+            <p className="text-sm">تعداد: {quantity.toLocaleString('fa-IR')}</p>
+            <p className="text-sm">
+              موبایل مشتری: <span dir="ltr" className="inline-block">{phone}</span>
+            </p>
+            {name.trim() ? <p className="text-sm">نام مشتری: {name.trim()}</p> : null}
+            <p className="text-sm">مبلغ کالا: {toman(draft.merchandiseIrr)} تومان</p>
+            <p className="text-sm">پورسانت تخمینی: {toman(draft.estimatedCommissionIrr)} تومان</p>
+            <p className="text-sm leading-6 text-stone-600">
+              برای مشتری پیامک می‌شود که تا تأیید خودش سفارشی ثبت نمی‌شود و پرداخت فقط به ترنم است.
+            </p>
+          </SpCard>
+          <SalesPartnerSmsIdentity onDirty={setSmsDirty} />
           <div className="flex gap-2">
-            <SpButton className="flex-1" disabled={busy} onClick={() => void sendLink()}>
-              ارسال لینک تأیید
+            <SpButton className="flex-1" disabled={busy || smsDirty} onClick={() => void sendLink()}>
+              {smsDirty ? 'اول معرفی را ذخیره کنید' : 'ارسال لینک تأیید'}
             </SpButton>
             <SpButton
               variant="secondary"
@@ -319,10 +407,10 @@ export function SalesPartnerNewOrder() {
                 setStep(1);
               }}
             >
-              ویرایش قبل از ارسال
+              ویرایش
             </SpButton>
           </div>
-        </SpCard>
+        </div>
       )}
 
       {step === 2 && draft && !confirmOpen && (

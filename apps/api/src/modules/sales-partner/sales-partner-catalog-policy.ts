@@ -115,10 +115,10 @@ function matchesText(item: CatalogListCard, q: string): boolean {
   return hay.includes(q.toLocaleLowerCase('fa'));
 }
 
-/** Partner surfaces only sell in-stock retail units. `low` (1–2) stays. `out` matches nothing. */
+/** `all` is the retail catalog. `available` is what a partner can order today. */
 function matchesStock(item: CatalogListCard, stock: PartnerCatalogStock): boolean {
-  if (item.stockBand === 'out_of_stock') return false;
-  if (stock === 'out') return false;
+  if (stock === 'available') return item.stockBand !== 'out_of_stock';
+  if (stock === 'out') return item.stockBand === 'out_of_stock';
   return true;
 }
 

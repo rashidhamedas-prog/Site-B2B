@@ -61,6 +61,7 @@ import { ibanRecord, requireDedicatedIbanKey, resolveIbanSecret } from './sales-
 import { humanRiskFlags } from './sales-partner-risk-policy';
 import { validateNewPassword } from '../auth/password-policy';
 import { smsFailureBlocksSend } from './sales-partner-draft-policy';
+import { parsePartnerSmsIdentity, presentSmsProfile } from './sales-partner-sms-profile';
 import {
   generateValidSalesPartnerTempPassword,
   salesPartnerLoginUrl,
@@ -388,6 +389,42 @@ export class SalesPartnerService {
     await this.profiles.save(profile);
     await this.audit(profile.userId, 'profile.iban_updated', 'profile', profile.id, { ibanLast4: record.ibanLast4 });
     return toPublicSalesPartner(profile);
+  }
+
+  async smsProfile(salesPartnerId: string) {
+    const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
+    if (!profile) throw new NotFoundException();
+    return presentSmsProfile(profile);
+  }
+
+  async updateSmsProfile(
+    salesPartnerId: string,
+    input: { shopName?: string; greeting?: string; channel?: string; handle?: string },
+  ) {
+    const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
+    if (!profile) throw new NotFoundException();
+    if (!canSalesPartnerLogin(profile.status)) {
+      throw new ForbiddenException('حساب همکار بازاریاب فعال نیست');
+    }
+    const parsed = parsePartnerSmsIdentity({
+      shopName: input.shopName !== undefined ? input.shopName : profile.smsShopName,
+      greeting: input.greeting !== undefined ? input.greeting : profile.smsGreeting,
+      channel: input.channel !== undefined ? input.channel : profile.smsChannel,
+      handle: input.handle !== undefined ? input.handle : profile.smsHandle,
+    });
+    if (!parsed.ok) throw new BadRequestException(parsed.error);
+    profile.smsShopName = parsed.value.shopName || null;
+    profile.smsGreeting = parsed.value.greeting || null;
+    profile.smsChannel = parsed.value.channel || null;
+    profile.smsHandle = parsed.value.handle || null;
+    await this.profiles.save(profile);
+    await this.audit(profile.userId, 'profile.sms_identity_updated', 'profile', profile.id, {
+      channel: profile.smsChannel,
+      hasShopName: Boolean(profile.smsShopName),
+      hasGreeting: Boolean(profile.smsGreeting),
+      hasHandle: Boolean(profile.smsHandle),
+    });
+    return presentSmsProfile(profile);
   }
 
   async listApplications(status?: string) {

@@ -180,7 +180,12 @@ export class SalesPartnerDraftService {
     const token = randomBytes(32).toString('base64url');
     const origin = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
     const confirmUrl = `${origin}/confirm/sales-partner/${token}`;
-    const sms = confirmationSmsText(profile.displayName, confirmUrl);
+    const sms = confirmationSmsText(profile.displayName, confirmUrl, {
+      shopName: profile.smsShopName,
+      greeting: profile.smsGreeting,
+      channel: profile.smsChannel,
+      handle: profile.smsHandle,
+    });
     const sent = this.notifications ? await this.notifications.sendSms(draft.customerPhone, sms) : false;
     if (smsFailureBlocksSend(this.config.get('NODE_ENV'), sent)) {
       throw new BadRequestException('ارسال پیامک ناموفق بود. کمی بعد دوباره تلاش کنید');

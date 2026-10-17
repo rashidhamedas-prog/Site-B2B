@@ -11,6 +11,7 @@ import { SalesPartnerPayoutService } from './sales-partner-payout.service';
 import { SalesPartnerService } from './sales-partner.service';
 import { CreateSalesPartnerDraftDto, PatchSalesPartnerDraftDto } from './dto/sales-partner-draft.dto';
 import { PatchSalesPartnerIbanDto } from './dto/sales-partner-payout.dto';
+import { PatchSalesPartnerSmsProfileDto } from './dto/sales-partner-sms-profile.dto';
 import { SalesPartnerSetPasswordDto } from './dto/apply-sales-partner.dto';
 import { SalesPartnerNoticeService } from './sales-partner-notice.service';
 
@@ -178,6 +179,19 @@ export class SalesPartnerMeController {
   @Get('payouts')
   payouts(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
     return this.payoutsSvc.listMine(this.requirePartner(req));
+  }
+
+  @Get('me/sms-profile')
+  smsProfile(@Req() req: { user?: { purpose?: string; salesPartnerId?: string } }) {
+    return this.salesPartners.smsProfile(this.requirePartner(req));
+  }
+
+  @Patch('me/sms-profile')
+  updateSmsProfile(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Body() body: PatchSalesPartnerSmsProfileDto,
+  ) {
+    return this.salesPartners.updateSmsProfile(this.requirePartner(req), body);
   }
 
   @Patch('me/iban')

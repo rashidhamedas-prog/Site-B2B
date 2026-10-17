@@ -65,8 +65,9 @@ export function SalesPartnerCatalog() {
   const [debouncedQ, setDebouncedQ] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [sort, setSort] = useState<SortKey>('category');
+  const [stock, setStock] = useState<'all' | 'available' | 'out'>('all');
   const [page, setPage] = useState(1);
-  const filtersKey = `${debouncedQ}|${categoryId}|${sort}`;
+  const filtersKey = `${debouncedQ}|${categoryId}|${sort}|${stock}`;
   const prevFilters = useRef(filtersKey);
   const catalogViewed = useRef(false);
   const linkCreated = useRef(false);
@@ -102,6 +103,7 @@ export function SalesPartnerCatalog() {
     if (debouncedQ) params.set('q', debouncedQ);
     if (categoryId) params.set('categoryId', categoryId);
     if (sort !== 'category') params.set('sort', sort);
+    if (stock !== 'all') params.set('stock', stock);
     const qs = params.toString();
     let cancelled = false;
     setLoading(true);
@@ -122,7 +124,7 @@ export function SalesPartnerCatalog() {
     return () => {
       cancelled = true;
     };
-  }, [filtersKey, page, debouncedQ, categoryId, sort]);
+  }, [filtersKey, page, debouncedQ, categoryId, sort, stock]);
 
   async function copyValue(item: CatalogItem, kind: 'link' | 'text') {
     const value = kind === 'link' ? item.productUrl : item.copyText;
@@ -142,20 +144,22 @@ export function SalesPartnerCatalog() {
   );
   const pageCount = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const categoryTotal = (data?.facets.categories || []).reduce((sum, facet) => sum + facet.count, 0);
-  const filtersActive = Boolean(debouncedQ || categoryId || sort !== 'category');
+  const filtersActive = Boolean(debouncedQ || categoryId || sort !== 'category' || stock !== 'all');
 
   function clearFilters() {
     setQ('');
     setDebouncedQ('');
     setCategoryId('');
     setSort('category');
+    setStock('all');
   }
 
   return (
     <SalesPartnerShell title="محصولات قابل فروش" wide>
       <SpNote>
-        هر لینک مخصوص شماست. اگر مشتری از همان لینک بخرد، پورسانت همان کالا بعد از پرداخت حساب می‌شود. هزینه ارسال و کیف
-        پول داخل پورسانت نیست. فقط کالاهایی که موجودی فروش تکی دارند در این فهرست می‌آیند.
+        هر لینک مخصوص شماست. این فهرست همان کالاهای منتشرشدهٔ فروشگاه تکی است، از جمله کالاهایی که فعلاً ناموجودند.
+        سفارش مشتری فقط برای کالای موجود باز است. پورسانت بعد از پرداخت همان کالا حساب می‌شود و هزینه ارسال و کیف پول
+        داخل آن نیست.
       </SpNote>
 
       <div className="sticky top-0 z-10 -mx-4 mt-4 space-y-3 border-b border-stone-200/80 bg-[#f6f3ee]/95 px-4 py-3 backdrop-blur-md lg:mx-0 lg:rounded-3xl lg:border lg:px-4">
@@ -193,6 +197,29 @@ export function SalesPartnerCatalog() {
           })}
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="وضعیت موجودی">
+            {([
+              ['all', 'همه کالاها'],
+              ['available', 'قابل سفارش'],
+              ['out', 'ناموجود'],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={spChipClass(stock === key)}
+                aria-pressed={stock === key}
+                onClick={() => setStock(key)}
+              >
+                {label}
+                {key === 'available' && data ? (
+                  <span className="tabular-nums opacity-80">{data.facets.stock.available.toLocaleString('fa-IR')}</span>
+                ) : null}
+                {key === 'out' && data ? (
+                  <span className="tabular-nums opacity-80">{data.facets.stock.out.toLocaleString('fa-IR')}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
           <label className="mr-auto flex items-center gap-2 text-sm text-stone-600" htmlFor="sp-catalog-sort">
             مرتب‌سازی
             <select
@@ -297,13 +324,19 @@ export function SalesPartnerCatalog() {
                           <FileText className="h-4 w-4" aria-hidden />
                           کپی متن
                         </SpButton>
-                        <Link
-                          href={`/sales-partners/orders/new?productId=${item.id}`}
-                          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white px-3 text-sm text-stone-800 transition-[transform,border-color] duration-200 hover:border-[#1B5C4A]/40 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
-                        >
-                          <ShoppingBag className="h-4 w-4" aria-hidden />
-                          سفارش مشتری
-                        </Link>
+                        {item.stockBand === 'out_of_stock' ? (
+                          <p className="flex min-h-11 items-center justify-center rounded-2xl bg-stone-100 px-3 text-center text-xs leading-5 text-stone-600">
+                            تا موجود شدن، سفارش بسته است
+                          </p>
+                        ) : (
+                          <Link
+                            href={`/sales-partners/orders/new?productId=${item.id}`}
+                            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white px-3 text-sm text-stone-800 transition-[transform,border-color] duration-200 hover:border-[#1B5C4A]/40 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]"
+                          >
+                            <ShoppingBag className="h-4 w-4" aria-hidden />
+                            سفارش مشتری
+                          </Link>
+                        )}
                       </div>
                       <a
                         href={item.productUrl}

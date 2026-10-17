@@ -28,7 +28,7 @@ const NAV = [
 ] as const;
 
 const ACCOUNT = [
-  { href: '/sales-partners/profile', label: 'شبا' },
+  { href: '/sales-partners/profile', label: 'حساب' },
   { href: '/sales-partners/commissions', label: 'پورسانت' },
   { href: '/sales-partners/payouts', label: 'تسویه' },
   { href: '/sales-partners/guide', label: 'آموزش' },

@@ -559,9 +559,14 @@ export class SalesPartnerCatalogService {
     return map;
   }
 
+  /**
+   * Same publish gate as the retail storefront. Stock is not a publish gate:
+   * `product.retailStock` is the synced retail sum, and the list marks zero as
+   * «فعلاً ناموجود» instead of dropping the product.
+   */
   private liveRetailProducts() {
     return this.products.find({
-      where: { status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0), retailStock: MoreThan(0) },
+      where: { status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0) },
     });
   }
 
