@@ -71,4 +71,46 @@ const banner = pickNoticeBanner([
 ]);
 assert(banner?.id === 'old-urgent', 'urgent beats newer info and dismissed is skipped');
 
+const titleAtCap = 'ن'.repeat(120);
+const bodyAtCap = 'م'.repeat(2000);
+const atCap = prepareSalesPartnerNotice({ title: titleAtCap, body: bodyAtCap, tone: 'info' }, now);
+assert(atCap.ok, 'in-limit notice');
+if (atCap.ok) {
+  assert(atCap.value.title === titleAtCap, 'title kept at cap');
+  assert(atCap.value.body === bodyAtCap, 'body kept at cap');
+}
+
+const titleOver = prepareSalesPartnerNotice(
+  { title: 'ن'.repeat(121), body: 'متن اطلاعیه', tone: 'info' },
+  now,
+);
+assert(
+  titleOver.ok === false && titleOver.error === 'عنوان اطلاعیه حداکثر ۱۲۰ کاراکتر است',
+  'title over max',
+);
+
+const bodyOver = prepareSalesPartnerNotice(
+  { title: 'عنوان', body: 'م'.repeat(2001), tone: 'info' },
+  now,
+);
+assert(
+  bodyOver.ok === false && bodyOver.error === 'متن اطلاعیه حداکثر ۲۰۰۰ کاراکتر است',
+  'body over max',
+);
+
+const labelOver = prepareSalesPartnerNotice(
+  {
+    title: 'عنوان',
+    body: 'متن اطلاعیه',
+    tone: 'info',
+    linkLabel: 'ب'.repeat(41),
+    linkUrl: '/sales-partners/catalog',
+  },
+  now,
+);
+assert(
+  labelOver.ok === false && labelOver.error === 'برچسب لینک حداکثر ۴۰ کاراکتر است',
+  'link label over max',
+);
+
 console.log('sales-partner-notice-policy.spec.ts ok');

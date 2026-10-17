@@ -43,6 +43,7 @@ import {
   isBlockedSelfReferral,
   isDraftExpired,
   partnerCommissionOverlay,
+  normalizeConfirmAddress,
   resendBlockedReason,
   resendCooldownRemaining,
   resolveConfirmPaymentMethod,
@@ -177,12 +178,6 @@ export class SalesPartnerDraftService {
     draft.merchandiseIrr = priced.merchandiseIrr;
     draft.estimatedCommissionIrr = priced.estimatedCommissionIrr;
     const token = randomBytes(32).toString('base64url');
-    draft.confirmationTokenHash = hashConfirmationToken(token);
-    draft.status = 'AWAITING_CUSTOMER_CONFIRMATION';
-    draft.expiresAt = new Date(Date.now() + settings.draftTtlHours * 3600 * 1000);
-    draft.sentCount += 1;
-    draft.lastSentAt = new Date();
-    await this.drafts.save(draft);
     const origin = (process.env.NEXT_PUBLIC_RETAIL_URL || 'https://www.poshaktaranom.ir').replace(/\/$/, '');
     const confirmUrl = `${origin}/confirm/sales-partner/${token}`;
     const sms = confirmationSmsText(profile.displayName, confirmUrl);
@@ -190,6 +185,12 @@ export class SalesPartnerDraftService {
     if (smsFailureBlocksSend(this.config.get('NODE_ENV'), sent)) {
       throw new BadRequestException('ارسال پیامک ناموفق بود. کمی بعد دوباره تلاش کنید');
     }
+    draft.confirmationTokenHash = hashConfirmationToken(token);
+    draft.status = 'AWAITING_CUSTOMER_CONFIRMATION';
+    draft.expiresAt = new Date(Date.now() + settings.draftTtlHours * 3600 * 1000);
+    draft.sentCount += 1;
+    draft.lastSentAt = new Date();
+    await this.drafts.save(draft);
     await this.program.emitEvent(SALES_PARTNER_EVENT.CONFIRMATION_REQUESTED, draft.id, {
       draftId: draft.id,
       profileId: salesPartnerId,
@@ -204,11 +205,19 @@ export class SalesPartnerDraftService {
   }
 
   async adminStats() {
-    const rows = await this.drafts.find({ take: 500, order: { createdAt: 'DESC' } });
-    const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
-      acc[row.status] = (acc[row.status] || 0) + 1;
-      return acc;
-    }, {});
+    const rows = await this.drafts
+      .createQueryBuilder('draft')
+      .select('draft.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('draft.status')
+      .getRawMany<{ status: string; count: string }>();
+    const byStatus: Record<string, number> = {};
+    let sampleSize = 0;
+    for (const row of rows) {
+      const count = Number(row.count) || 0;
+      byStatus[row.status] = count;
+      sampleSize += count;
+    }
     const converted = byStatus.CONVERTED_TO_ORDER || 0;
     const decided = converted
       + (byStatus.REJECTED_BY_CUSTOMER || 0)
@@ -219,6 +228,7 @@ export class SalesPartnerDraftService {
       byStatus,
       converted,
       customerConfirmRate: decided > 0 ? Number((converted / decided).toFixed(3)) : null,
+      total: sampleSize,
     };
   }
 
@@ -431,6 +441,8 @@ export class SalesPartnerDraftService {
     if (draft.status === 'CONVERTED_TO_ORDER' && draft.convertedOrderId) {
       return this.resumeConverted(draft, input.paymentMethod);
     }
+    const address = normalizeConfirmAddress(input);
+    if (address.ok === false) throw new BadRequestException(address.error);
     if (confirmActionGone(draft.status)) {
       throw new GoneException('این لینک دیگر معتبر نیست');
     }
@@ -450,7 +462,13 @@ export class SalesPartnerDraftService {
     const settings = await this.program.settings();
     this.assertPriceStable(items, priced.rows, settings.priceDriftMaxBps);
     if (!draft.customerPhone) throw new BadRequestException('شماره مشتری نامعتبر است');
-    const customer = await this.ensureRetailCustomer(draft.customerPhone, input.recipientName, input.province, input.city, input.address);
+    const customer = await this.ensureRetailCustomer(
+      draft.customerPhone,
+      address.value.recipientName,
+      address.value.province,
+      address.value.city,
+      address.value.address,
+    );
     const created = await this.dataSource.transaction(async (manager) => {
       const locked = await manager.findOne(SalesPartnerOrderDraftEntity, {
         where: { id: draft.id },
@@ -470,11 +488,11 @@ export class SalesPartnerDraftService {
         paymentMethod,
         idempotencyKey: `sp-draft:${locked.id}`,
         shippingAddress: {
-          recipientName: input.recipientName,
-          province: input.province,
-          city: input.city,
-          address: input.address,
-          postalCode: input.postalCode || '',
+          recipientName: address.value.recipientName,
+          province: address.value.province,
+          city: address.value.city,
+          address: address.value.address,
+          postalCode: address.value.postalCode,
           phone: draft.customerPhone,
         },
         notes: `salesPartner:${locked.salesPartnerId}`,

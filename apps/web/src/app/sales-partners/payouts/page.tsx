@@ -36,7 +36,11 @@ export default function SalesPartnerPayoutsPage() {
   return (
     <SalesPartnerShell title="تسویه">
       <SpNote>فقط واریزی که فروشگاه با مرجع بانکی ثبت کرده اینجا دیده می‌شود. درخواست برداشت دستی از این صفحه نیست.</SpNote>
-      {!rows && !error && <SpPageSkeleton cards={2} />}
+      {!rows && !error && (
+        <div role="status">
+          <SpPageSkeleton cards={2} />
+        </div>
+      )}
       {error && (
         <div className="mt-4">
           <SpAlert>{error}</SpAlert>

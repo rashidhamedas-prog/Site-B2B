@@ -26,6 +26,17 @@ export class SalesPartnerApplicationEntity {
   @Column({ type: 'jsonb', nullable: true })
   answers: Record<string, string | boolean> | null;
 
+  /**
+   * Newer answers held until OTP succeeds. Canonical fields stay unchanged
+   * so an unauthenticated resubmit cannot overwrite a reviewed application.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  pendingRevision: {
+    displayName: string;
+    socialHandles: Record<string, string> | null;
+    answers: Record<string, string | boolean> | null;
+  } | null;
+
   @Index()
   @Column({ type: 'varchar', length: 24, default: 'PENDING_OTP' })
   status: string;

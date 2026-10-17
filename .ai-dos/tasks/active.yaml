@@ -1,5 +1,29 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261018-001"
+    title: "Sales partner P0/P1 audit fixes"
+    status: "done"
+    risk: "high"
+    owner: "cursor:implementer"
+    roles:
+      architect: "cursor:skill-top-full"
+      implementer: "cursor:implementer"
+      reviewer: "cursor:isolation-spec"
+      security: "otp-before-revision-and-sms-before-token"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-17T22:00:00Z"
+    heartbeat_at: "2026-10-17T22:40:00Z"
+    depends_on: []
+    file_claims: []
+    notes: |
+      P0-01 P0-02 and selected P1 closed. Product/legal decisions not invented.
+      Claims released after commit.
+    acceptance_criteria:
+      - "NEEDS_INFORMATION can resubmit after OTP into PENDING_REVIEW"
+      - "Confirmation token is stored only after SMS is allowed"
+      - "Customer phone is not written to localStorage"
+      - "Specs listed in the 2026-10-18 report pass"
   - id: "TASK-20261013-006"
     title: "Enforce daily CREATE cap on manual + category blast"
     status: "done"

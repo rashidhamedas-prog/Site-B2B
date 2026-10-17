@@ -33,7 +33,8 @@ type Draft = {
   cooldownSeconds?: number;
 };
 
-const LOCAL_DRAFT_KEY = 'taranom.sales-partner.order-draft.v1';
+const LEGACY_DRAFT_KEY = 'taranom.sales-partner.order-draft.v1';
+const SESSION_SELECTION_KEY = 'taranom.sales-partner.order-selection.v1';
 const STEPS = ['کالا', 'مشتری', 'پیامک'];
 
 export function SalesPartnerNewOrder() {
@@ -57,23 +58,20 @@ export function SalesPartnerNewOrder() {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(LOCAL_DRAFT_KEY);
+      window.localStorage.removeItem(LEGACY_DRAFT_KEY);
+      const raw = window.sessionStorage.getItem(SESSION_SELECTION_KEY);
       if (raw) {
         const saved = JSON.parse(raw) as {
           productId?: string;
           variantId?: string;
           quantity?: number;
-          phone?: string;
-          name?: string;
         };
         if (!presetId && saved.productId) setProductId(saved.productId);
         if (saved.variantId) setVariantId(saved.variantId);
         if (Number.isInteger(saved.quantity) && Number(saved.quantity) > 0) setQuantity(Number(saved.quantity));
-        if (saved.phone) setPhone(saved.phone);
-        if (saved.name) setName(saved.name);
       }
     } catch {
-      /* ignore broken local draft */
+      /* ignore broken tab selection */
     } finally {
       setLocalReady(true);
     }
@@ -82,14 +80,14 @@ export function SalesPartnerNewOrder() {
   useEffect(() => {
     if (!localReady) return;
     try {
-      window.localStorage.setItem(
-        LOCAL_DRAFT_KEY,
-        JSON.stringify({ productId, variantId, quantity, phone, name }),
+      window.sessionStorage.setItem(
+        SESSION_SELECTION_KEY,
+        JSON.stringify({ productId, variantId, quantity }),
       );
     } catch {
       /* private mode */
     }
-  }, [localReady, productId, variantId, quantity, phone, name]);
+  }, [localReady, productId, variantId, quantity]);
 
   useEffect(() => {
     apiClient
@@ -104,13 +102,23 @@ export function SalesPartnerNewOrder() {
 
   useEffect(() => {
     if (!productId) return;
+    let cancelled = false;
+    const requestedId = productId;
     apiClient
-      .get<ProductDetail>(`/sales-partners/catalog/${productId}`)
+      .get<ProductDetail>(`/sales-partners/catalog/${requestedId}`)
       .then((row) => {
+        if (cancelled || row.id !== requestedId) return;
         setDetail(row);
-        setVariantId(row.variants[0]?.id || '');
+        setVariantId((current) =>
+          current && row.variants.some((item) => item.id === current) ? current : row.variants[0]?.id || '',
+        );
       })
-      .catch(() => setDetail(null));
+      .catch(() => {
+        if (!cancelled) setDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [productId]);
 
   const selected = useMemo(
@@ -150,7 +158,8 @@ export function SalesPartnerNewOrder() {
       trackAffiliateEvent('affiliate_payment_link_sent');
       start(extractSmsCooldown(null, sent));
       try {
-        window.localStorage.removeItem(LOCAL_DRAFT_KEY);
+        window.localStorage.removeItem(LEGACY_DRAFT_KEY);
+        window.sessionStorage.removeItem(SESSION_SELECTION_KEY);
       } catch {
         /* ignore */
       }
@@ -165,8 +174,8 @@ export function SalesPartnerNewOrder() {
   return (
     <SalesPartnerShell title="سفارش جدید">
       <SpNote>
-        تا وقتی مشتری لینک را تأیید نکند سفارشی ثبت یا مبلغی دریافت نمی‌شود. اگر ارتباط قطع شود، مقادیر همین فرم روی
-        دستگاه شما می‌ماند.
+        تا وقتی مشتری لینک را تأیید نکند سفارشی ثبت یا مبلغی دریافت نمی‌شود. انتخاب کالا فقط تا بستن همین زبانه می‌ماند؛
+        شماره و نام مشتری روی دستگاه ذخیره نمی‌شود.
       </SpNote>
       <div className="mt-4">
         <SpStepRail steps={STEPS} current={step} />
@@ -285,6 +294,15 @@ export function SalesPartnerNewOrder() {
           <h2 id="sp-review-title" className="font-bold text-stone-900">
             مرور قبل از پیامک
           </h2>
+          <p className="text-sm">محصول: {selected?.name || '—'}</p>
+          <p className="text-sm">
+            رنگ و سایز: {variant ? `${variant.color} / ${variant.size}` : '—'}
+          </p>
+          <p className="text-sm">تعداد: {quantity}</p>
+          <p className="text-sm">
+            موبایل مشتری: <span dir="ltr" className="inline-block">{phone}</span>
+          </p>
+          {name.trim() ? <p className="text-sm">نام مشتری: {name.trim()}</p> : null}
           <p className="text-sm">مبلغ کالا: {toman(draft.merchandiseIrr)} تومان</p>
           <p className="text-sm">پورسانت تخمینی: {toman(draft.estimatedCommissionIrr)} تومان</p>
           <p className="text-sm leading-6 text-stone-600">
@@ -301,7 +319,7 @@ export function SalesPartnerNewOrder() {
                 setStep(1);
               }}
             >
-              بازگشت
+              ویرایش قبل از ارسال
             </SpButton>
           </div>
         </SpCard>

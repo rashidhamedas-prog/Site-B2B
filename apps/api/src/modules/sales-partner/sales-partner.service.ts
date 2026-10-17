@@ -45,11 +45,13 @@ import {
 } from './sales-partner-apply-form';
 import { normalizeSalesPartnerCode, salesPartnerPublicCode } from './sales-partner-attribution';
 import {
+  applicationFieldsAfterOtp,
   canSalesPartnerLogin,
   canTransitionProfile,
   humanApplicationStatus,
   normalizeIban,
   parseReviewReason,
+  salesPartnerReapplyBlocked,
   SALES_PARTNER_ACTING_ROLE,
   SALES_PARTNER_PURPOSE,
   toPublicSalesPartner,
@@ -146,9 +148,14 @@ export class SalesPartnerService {
       throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
     }
     const existingProfile = await this.profiles.findOne({ where: { phone } });
-    if (existingProfile && ['ACTIVE', 'SUSPENDED', 'PENDING_REVIEW', 'NEEDS_INFORMATION'].includes(existingProfile.status)) {
+    if (existingProfile && salesPartnerReapplyBlocked(existingProfile.status)) {
       throw new ConflictException('برای این شماره درخواست یا حساب همکاری وجود دارد');
     }
+    const revision = {
+      displayName,
+      socialHandles: Object.keys(socialHandles).length ? socialHandles : null,
+      answers,
+    };
     let application = await this.applications.findOne({
       where: { phone, status: In(['PENDING_OTP', 'PENDING_REVIEW', 'NEEDS_INFORMATION']) },
     });
@@ -157,12 +164,20 @@ export class SalesPartnerService {
         phone,
         displayName,
         status: 'PENDING_OTP',
-        socialHandles: Object.keys(socialHandles).length ? socialHandles : null,
+        socialHandles: revision.socialHandles,
         answers,
+        pendingRevision: null,
         userId: user?.id ?? null,
       });
-      await this.applications.save(application);
+    } else if (application.status === 'PENDING_OTP') {
+      application.displayName = revision.displayName;
+      application.socialHandles = revision.socialHandles;
+      application.answers = revision.answers;
+      application.pendingRevision = null;
+    } else {
+      application.pendingRevision = revision;
     }
+    await this.applications.save(application);
     const issued = await this.issueOtp(phone, displayName, 'sales_partner_apply');
     await this.audit(null, 'application.otp_requested', 'application', application.id, { phoneMasked: phone.slice(0, 4) });
     return {
@@ -201,8 +216,13 @@ export class SalesPartnerService {
     if (isStaffRole(user.role) || vendorRole(user.role)) {
       throw new ConflictException('این شماره برای همکاری بازاریاب قابل استفاده نیست');
     }
+    const verified = applicationFieldsAfterOtp(application);
     application.userId = user.id;
-    application.status = 'PENDING_REVIEW';
+    application.displayName = verified.displayName;
+    application.socialHandles = verified.socialHandles;
+    application.answers = verified.answers;
+    application.pendingRevision = null;
+    application.status = verified.status;
     await this.applications.save(application);
 
     let profile = await this.profiles.findOne({ where: { userId: user.id } });
@@ -216,10 +236,14 @@ export class SalesPartnerService {
         applicationAnswers: application.answers,
       });
       await this.profiles.save(profile);
-    } else if (profile.status === 'REJECTED') {
+    } else if (profile.status === 'REJECTED' || profile.status === 'NEEDS_INFORMATION') {
       profile.status = 'PENDING_REVIEW';
       profile.displayName = application.displayName;
       profile.statusReason = null;
+      profile.applicationAnswers = application.answers;
+      await this.profiles.save(profile);
+    } else if (profile.status === 'PENDING_REVIEW') {
+      profile.displayName = application.displayName;
       profile.applicationAnswers = application.answers;
       await this.profiles.save(profile);
     } else {
@@ -633,31 +657,44 @@ export class SalesPartnerService {
   }
 
   async programReport() {
-    const [applications, profiles] = await Promise.all([
-      this.applications.find({ take: 500, order: { createdAt: 'DESC' } }),
-      this.profiles.find({ take: 500 }),
+    const [applications, partners] = await Promise.all([
+      this.countByStatus(this.applications, 'application'),
+      this.countByStatus(this.profiles, 'profile'),
     ]);
-    const countBy = (rows: { status: string }[]) =>
-      rows.reduce<Record<string, number>>((acc, row) => {
-        acc[row.status] = (acc[row.status] || 0) + 1;
-        return acc;
-      }, {});
-    const appByStatus = countBy(applications);
-    const partnerByStatus = countBy(profiles);
     return {
       applications: {
-        total: applications.length,
-        byStatus: appByStatus,
-        pendingReview: appByStatus.PENDING_REVIEW || 0,
+        total: applications.total,
+        byStatus: applications.byStatus,
+        pendingReview: applications.byStatus.PENDING_REVIEW || 0,
       },
       partners: {
-        total: profiles.length,
-        byStatus: partnerByStatus,
-        active: partnerByStatus.ACTIVE || 0,
+        total: partners.total,
+        byStatus: partners.byStatus,
+        active: partners.byStatus.ACTIVE || 0,
       },
       note: 'اعداد تخمینی، قطعی و پرداخت‌شده را با هم مخلوط نکنید. جزئیات مالی در دفتر هر همکار است.',
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private async countByStatus(
+    repo: Repository<SalesPartnerApplicationEntity> | Repository<SalesPartnerProfileEntity>,
+    alias: string,
+  ): Promise<{ total: number; byStatus: Record<string, number> }> {
+    const rows = await repo
+      .createQueryBuilder(alias)
+      .select(`${alias}.status`, 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy(`${alias}.status`)
+      .getRawMany<{ status: string; count: string }>();
+    const byStatus: Record<string, number> = {};
+    let total = 0;
+    for (const row of rows) {
+      const count = Number(row.count) || 0;
+      byStatus[row.status] = count;
+      total += count;
+    }
+    return { total, byStatus };
   }
 
   private async issuePartnerSession(phone: string) {

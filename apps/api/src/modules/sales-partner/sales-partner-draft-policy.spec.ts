@@ -9,6 +9,7 @@ import {
   isDraftExpired,
   partnerCommissionOverlay,
   maskCustomerPhone,
+  normalizeConfirmAddress,
   priceDriftBps,
   resendBlockedReason,
   resendCooldownRemaining,
@@ -111,5 +112,29 @@ assert(
   resendBlockedReason(sentAt, 1, new Date('2026-09-22T12:05:00.000Z'), 120, 5) === null,
   'allowed once remaining hits 0',
 );
+const blank = normalizeConfirmAddress({
+  recipientName: '  ',
+  province: 'خراسان',
+  city: 'مشهد',
+  address: 'خیابان امام',
+});
+assert(blank.ok === false, 'blank recipient rejected');
+const postal = normalizeConfirmAddress({
+  recipientName: 'نگار رضایی',
+  province: ' خراسان ',
+  city: 'مشهد',
+  address: '  خیابان امام ۱۲ ',
+  postalCode: '۹۱۷۹۹۱۲۳۴۵',
+});
+assert(postal.ok === true && postal.ok && postal.value.postalCode === '9179912345', 'persian postal normalized');
+assert(postal.ok === true && postal.value.province === 'خراسان', 'address trimmed');
+const shortPostal = normalizeConfirmAddress({
+  recipientName: 'نگار رضایی',
+  province: 'خراسان',
+  city: 'مشهد',
+  address: 'خیابان امام',
+  postalCode: '123',
+});
+assert(shortPostal.ok === false, 'short postal rejected');
 
 console.log('sales-partner-draft-policy.spec.ts: OK');

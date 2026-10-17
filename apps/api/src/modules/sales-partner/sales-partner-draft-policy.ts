@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { normalizeDigits } from '../auth/phone.util';
 
 export const DRAFT_STATUSES = [
   'DRAFT',
@@ -200,6 +201,33 @@ export function isBlockedSelfReferral(
   blockSelf: boolean,
 ): boolean {
   return blockSelf && customerPhone === partnerPhone;
+}
+
+export function normalizeConfirmAddress(input: {
+  recipientName: string;
+  province: string;
+  city: string;
+  address: string;
+  postalCode?: string;
+}):
+  | {
+      ok: true;
+      value: { recipientName: string; province: string; city: string; address: string; postalCode: string };
+    }
+  | { ok: false; error: string } {
+  const recipientName = input.recipientName.trim();
+  const province = input.province.trim();
+  const city = input.city.trim();
+  const address = input.address.trim();
+  if (recipientName.length < 2) return { ok: false, error: 'نام گیرنده را کامل بنویسید' };
+  if (!province) return { ok: false, error: 'استان را بنویسید' };
+  if (!city) return { ok: false, error: 'شهر را بنویسید' };
+  if (address.length < 5) return { ok: false, error: 'نشانی را کامل بنویسید' };
+  const postalCode = normalizeDigits(input.postalCode || '');
+  if (postalCode && !/^\d{10}$/.test(postalCode)) {
+    return { ok: false, error: 'کدپستی باید ۱۰ رقم باشد' };
+  }
+  return { ok: true, value: { recipientName, province, city, address, postalCode } };
 }
 
 export function smsFailureBlocksSend(nodeEnv: string | undefined, sent: boolean): boolean {

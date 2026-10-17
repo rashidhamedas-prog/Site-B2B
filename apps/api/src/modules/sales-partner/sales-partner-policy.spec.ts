@@ -1,4 +1,5 @@
 import {
+  applicationFieldsAfterOtp,
   canSalesPartnerCreateDraft,
   canSalesPartnerLogin,
   canTransitionProfile,
@@ -12,6 +13,7 @@ import {
   parseDisplayName,
   SALES_PARTNER_APPLICATION_STATUSES,
   salesPartnerOwnsResource,
+  salesPartnerReapplyBlocked,
   toPublicSalesPartner,
 } from './sales-partner-policy';
 
@@ -22,6 +24,33 @@ function assert(cond: boolean, msg: string) {
 assert(isSalesPartnerPurpose('sales_partner'), 'purpose');
 assert(!isSalesPartnerPurpose('vendor'), 'not vendor');
 assert(!isSalesPartnerPurpose('retail'), 'not retail');
+assert(canTransitionProfile('NEEDS_INFORMATION', 'PENDING_REVIEW'), 'needs info returns to review');
+assert(salesPartnerReapplyBlocked('ACTIVE'), 'active cannot reapply');
+assert(salesPartnerReapplyBlocked('SUSPENDED'), 'suspended cannot reapply');
+assert(salesPartnerReapplyBlocked('CLOSED'), 'closed cannot reapply');
+assert(!salesPartnerReapplyBlocked('NEEDS_INFORMATION'), 'needs info can resubmit');
+assert(!salesPartnerReapplyBlocked('PENDING_REVIEW'), 'pending review can revise');
+const revised = applicationFieldsAfterOtp({
+  displayName: 'قدیم',
+  socialHandles: { instagram: 'old' },
+  answers: { city: 'قدیم' },
+  pendingRevision: {
+    displayName: 'جدید',
+    socialHandles: null,
+    answers: { city: 'مشهد' },
+  },
+  status: 'NEEDS_INFORMATION',
+});
+assert(revised.displayName === 'جدید' && revised.answers?.city === 'مشهد', 'otp applies revision');
+assert(revised.pendingRevision === null && revised.status === 'PENDING_REVIEW', 'revision consumed');
+const untouched = applicationFieldsAfterOtp({
+  displayName: 'همان',
+  socialHandles: null,
+  answers: null,
+  pendingRevision: null,
+  status: 'PENDING_OTP',
+});
+assert(untouched.displayName === 'همان' && untouched.status === 'PENDING_REVIEW', 'otp without revision');
 assert(canTransitionProfile('PENDING_REVIEW', 'ACTIVE'), 'approve');
 assert(!canTransitionProfile('PENDING_REVIEW', 'SUSPENDED'), 'no skip');
 assert(canTransitionProfile('ACTIVE', 'SUSPENDED'), 'suspend');

@@ -139,25 +139,68 @@ export function AdminSalesPartners() {
 
   const loadDesk = useCallback(async () => {
     const auditQs = auditFilter ? `?targetType=${encodeURIComponent(auditFilter)}` : '';
-    const [nextApps, nextPartners, nextRules, nextPayouts, nextSettings, nextOrders, nextAudits, nextReport] =
-      await Promise.all([
-        apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
-        apiClient.get<PartnerRow[]>('/admin/sales-partners'),
-        apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
-        apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
-        apiClient.get<Settings>('/admin/sales-partners/settings'),
-        apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
-        apiClient.get<AuditRow[]>(`/admin/sales-partners/audits${auditQs}`),
-        apiClient.get<Report>('/admin/sales-partners/reports'),
-      ]);
-    setApps(nextApps);
-    setPartners(nextPartners);
-    setRules(nextRules);
-    setPayouts(nextPayouts);
-    setSettings(nextSettings);
-    setOrders(nextOrders);
-    setAudits(nextAudits);
-    setReport(nextReport);
+    const tasks: Array<{ label: string; run: () => Promise<unknown>; apply: (value: unknown) => void }> = [
+      {
+        label: 'درخواست‌ها',
+        run: () => apiClient.get<ApplicationRow[]>('/admin/sales-partners/applications'),
+        apply: (value) => setApps(value as ApplicationRow[]),
+      },
+      {
+        label: 'همکاران',
+        run: () => apiClient.get<PartnerRow[]>('/admin/sales-partners'),
+        apply: (value) => setPartners(value as PartnerRow[]),
+      },
+      {
+        label: 'قوانین',
+        run: () => apiClient.get<RuleRow[]>('/admin/sales-partners/rules'),
+        apply: (value) => setRules(value as RuleRow[]),
+      },
+      {
+        label: 'تسویه‌ها',
+        run: () => apiClient.get<PayoutRow[]>('/admin/sales-partners/payouts'),
+        apply: (value) => setPayouts(value as PayoutRow[]),
+      },
+      {
+        label: 'تنظیمات',
+        run: () => apiClient.get<Settings>('/admin/sales-partners/settings'),
+        apply: (value) => setSettings(value as Settings),
+      },
+      {
+        label: 'سفارش‌ها',
+        run: () => apiClient.get<DraftRow[]>('/admin/sales-partners/orders'),
+        apply: (value) => setOrders(value as DraftRow[]),
+      },
+      {
+        label: 'ممیزی',
+        run: () => apiClient.get<AuditRow[]>(`/admin/sales-partners/audits${auditQs}`),
+        apply: (value) => setAudits(value as AuditRow[]),
+      },
+      {
+        label: 'گزارش',
+        run: () => apiClient.get<Report>('/admin/sales-partners/reports'),
+        apply: (value) => setReport(value as Report),
+      },
+    ];
+    const settled = await Promise.all(
+      tasks.map(async (task) => {
+        try {
+          return { task, value: await task.run(), error: null as string | null };
+        } catch (err) {
+          return {
+            task,
+            value: null,
+            error: err instanceof Error ? err.message : 'بارگذاری ناموفق بود',
+          };
+        }
+      }),
+    );
+    const failed = settled.filter((row) => row.error);
+    for (const row of settled) {
+      if (!row.error) row.task.apply(row.value);
+    }
+    if (failed.length > 0) {
+      throw new Error(`این بخش‌ها بارگذاری نشد: ${failed.map((row) => row.task.label).join('، ')}`);
+    }
   }, [auditFilter]);
 
   const load = useCallback(async () => {

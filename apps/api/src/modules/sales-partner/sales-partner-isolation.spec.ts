@@ -34,7 +34,7 @@ assert(/partnerCommissionOverlay/.test(draft), 'delivered orders overlay hold/av
 assert(/draftItemFreshness/.test(draft), 'open drafts warn on price or stock drift');
 assert(/listAdmin[\s\S]*orderStatus/.test(draft), 'admin list uses retail order status');
 assert(/type:\s*'RETAIL_WEBSITE'/.test(draft), 'convert stays retail website');
-assert(/resolveConfirmPaymentMethod|resendBlockedReason|smsFailureBlocksSend/.test(draft), 'error-scenario helpers wired');
+assert(/smsFailureBlocksSend[\s\S]{0,400}confirmationTokenHash/.test(draft), 'failed sms does not replace token first');
 assert(/partnerOrderAttribution/.test(draft), 'convert stamps salesSource columns');
 assert(/affiliateId:\s*null/.test(attribution), 'convert clears external affiliate');
 assert(!/affiliateId:\s*['"`]/.test(draft + attribution), 'must not set affiliate click id');
@@ -100,12 +100,13 @@ assert(
   ),
   'web ApplicationRow has welcomeSmsSent',
 );
+const focus = readFileSync(join(__dirname, '../../../../web/src/components/sales-partners/SpUi.tsx'), 'utf8');
 assert(/dir="rtl"/.test(shell) && /aria-label="ناوبری پنل همکار بازاریاب"/.test(shell), 'rtl shell + nav label');
-assert(/focus-visible:outline/.test(shell), 'keyboard focus on partner nav');
+assert(/spFocusClass/.test(shell) && /focus-visible:outline/.test(focus), 'keyboard focus on partner nav');
 assert(/role="status"/.test(payouts) && /Asia\/Tehran/.test(payouts), 'payout loading + Tehran dates');
 assert(/htmlFor="cf-name"/.test(confirm) && /فروشنده اصلی/.test(confirm), 'confirm labels + Taranom seller');
 assert(!/درآمد تضمینی|فروش قطعی/.test(confirm + shell + payouts), 'no hype copy');
-assert(/LOCAL_DRAFT_KEY/.test(newOrder) && /catalogLoading/.test(newOrder), 'local draft + catalog loading');
+assert(/LEGACY_DRAFT_KEY/.test(newOrder) && /sessionStorage/.test(newOrder) && !/localStorage\.setItem/.test(newOrder) && /catalogLoading/.test(newOrder), 'legacy pii draft cleared + catalog loading');
 assert(/2026-09-23-v1/.test(terms) && /تأمین‌کننده ارسال/.test(terms), 'owner terms version exists');
 assert(/sales-partnership\/terms/.test(apply), 'apply links published terms');
 

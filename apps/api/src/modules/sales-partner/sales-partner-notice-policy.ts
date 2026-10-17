@@ -33,18 +33,30 @@ export type BannerCandidate = {
   dismissed: boolean;
 };
 
-const TITLE_MAX = 120;
-const BODY_MAX = 2000;
-const LABEL_MAX = 40;
-const URL_MAX = 500;
+export const SALES_PARTNER_NOTICE_TITLE_MAX = 120;
+export const SALES_PARTNER_NOTICE_BODY_MAX = 2000;
+export const SALES_PARTNER_NOTICE_LINK_LABEL_MAX = 40;
+export const SALES_PARTNER_NOTICE_LINK_URL_MAX = 500;
+
+export const SALES_PARTNER_NOTICE_TITLE_TOO_LONG = 'عنوان اطلاعیه حداکثر ۱۲۰ کاراکتر است';
+export const SALES_PARTNER_NOTICE_BODY_TOO_LONG = 'متن اطلاعیه حداکثر ۲۰۰۰ کاراکتر است';
+export const SALES_PARTNER_NOTICE_LINK_LABEL_TOO_LONG = 'برچسب لینک حداکثر ۴۰ کاراکتر است';
+export const SALES_PARTNER_NOTICE_LINK_URL_TOO_LONG = 'آدرس لینک حداکثر ۵۰۰ کاراکتر است';
+
 const TONE_RANK: Record<NoticeTone, number> = { urgent: 3, important: 2, info: 1 };
 
 export function prepareSalesPartnerNotice(
   input: NoticeDraftInput,
   now: Date,
 ): { ok: true; value: PreparedNotice } | { ok: false; error: string } {
-  const title = plainLine(input.title, TITLE_MAX);
-  const body = plainBody(input.body, BODY_MAX);
+  const title = plainLine(input.title);
+  const body = plainBody(input.body);
+  if (codePointLength(title) > SALES_PARTNER_NOTICE_TITLE_MAX) {
+    return { ok: false, error: SALES_PARTNER_NOTICE_TITLE_TOO_LONG };
+  }
+  if (codePointLength(body) > SALES_PARTNER_NOTICE_BODY_MAX) {
+    return { ok: false, error: SALES_PARTNER_NOTICE_BODY_TOO_LONG };
+  }
   if (title.length < 2) return { ok: false, error: 'عنوان اطلاعیه را بنویسید' };
   if (body.length < 2) return { ok: false, error: 'متن اطلاعیه را بنویسید' };
 
@@ -105,7 +117,10 @@ function resolveNoticeLink(
   urlRaw: string | undefined,
 ): { ok: true; linkLabel: string | null; linkUrl: string | null } | { ok: false; error: string } {
   const linkUrl = safeNoticeHref(urlRaw);
-  const label = plainLine(labelRaw, LABEL_MAX);
+  const label = plainLine(labelRaw);
+  if (codePointLength(label) > SALES_PARTNER_NOTICE_LINK_LABEL_MAX) {
+    return { ok: false, error: SALES_PARTNER_NOTICE_LINK_LABEL_TOO_LONG };
+  }
   const hadUrl = Boolean((urlRaw || '').trim());
   if (hadUrl && !linkUrl) {
     return { ok: false, error: 'لینک باید با / شروع شود یا یک آدرس https باشد' };
@@ -117,7 +132,7 @@ function resolveNoticeLink(
 
 export function safeNoticeHref(raw: string | undefined): string | null {
   const value = (raw || '').trim();
-  if (!value || value.length > URL_MAX) return null;
+  if (!value || value.length > SALES_PARTNER_NOTICE_LINK_URL_MAX) return null;
   if (value.startsWith('/') && !value.startsWith('//') && !value.includes('\\')) {
     if (!/^\/[A-Za-z0-9\-._~%/?#&=+]*$/.test(value)) return null;
     return value;
@@ -127,29 +142,28 @@ export function safeNoticeHref(raw: string | undefined): string | null {
     if (url.protocol !== 'https:') return null;
     if (url.username || url.password) return null;
     const href = url.toString();
-    return href.length <= URL_MAX ? href : null;
+    return href.length <= SALES_PARTNER_NOTICE_LINK_URL_MAX ? href : null;
   } catch {
     return null;
   }
 }
 
-function plainLine(raw: string | undefined, max: number): string {
-  return clip(stripMarkup(raw).replace(/\s+/g, ' ').trim(), max);
+function plainLine(raw: string | undefined): string {
+  return stripMarkup(raw).replace(/\s+/g, ' ').trim();
 }
 
-function plainBody(raw: string | undefined, max: number): string {
-  const cleaned = stripMarkup(raw)
+function plainBody(raw: string | undefined): string {
+  return stripMarkup(raw)
     .replace(/\r\n/g, '\n')
     .replace(/[^\S\n]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  return clip(cleaned, max);
 }
 
 function stripMarkup(raw: string | undefined): string {
   return (raw || '').replace(/<[^>]*>/g, '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 }
 
-function clip(value: string, max: number): string {
-  return Array.from(value).slice(0, max).join('');
+function codePointLength(value: string): number {
+  return Array.from(value).length;
 }

@@ -168,6 +168,41 @@ export type PublicSalesPartner = {
   termsAcceptedAt: string | null;
 };
 
+const REAPPLY_BLOCKED_PROFILE_STATUSES = new Set(['ACTIVE', 'SUSPENDED', 'CLOSED']);
+
+/** Active, suspended, and closed accounts cannot open another application. */
+export function salesPartnerReapplyBlocked(status: string | null | undefined): boolean {
+  return Boolean(status && REAPPLY_BLOCKED_PROFILE_STATUSES.has(status));
+}
+
+export type SalesPartnerApplyRevision = {
+  displayName: string;
+  socialHandles: Record<string, string> | null;
+  answers: Record<string, string | boolean> | null;
+};
+
+/**
+ * Apply a stored revision only after OTP. Reviewed rows keep their canonical
+ * fields until then. The verified application always returns to PENDING_REVIEW.
+ */
+export function applicationFieldsAfterOtp<T extends {
+  displayName: string;
+  socialHandles: Record<string, string> | null;
+  answers: Record<string, string | boolean> | null;
+  pendingRevision: SalesPartnerApplyRevision | null;
+  status: string;
+}>(application: T): T {
+  const pending = application.pendingRevision;
+  return {
+    ...application,
+    displayName: pending?.displayName ?? application.displayName,
+    socialHandles: pending ? pending.socialHandles : application.socialHandles,
+    answers: pending ? pending.answers : application.answers,
+    pendingRevision: null,
+    status: 'PENDING_REVIEW',
+  };
+}
+
 export function toPublicSalesPartner(input: {
   id: string;
   displayName: string;
