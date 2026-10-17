@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Copy, ExternalLink, FileText, Search, ShoppingBag } from 'lucide-react';
+import { Copy, Download, ExternalLink, FileText, Search, ShoppingBag } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { trackAffiliateEvent } from '@/lib/retail-analytics';
 import { mediaUrl, toman } from '@/lib/product-display';
@@ -35,7 +35,7 @@ type CatalogResponse = {
   page: number;
   pageSize: number;
   total: number;
-  sort: 'category' | 'price_asc' | 'price_desc' | 'commission';
+  sort: 'priority' | 'category' | 'price_asc' | 'price_desc' | 'commission';
   facets: {
     categories: CatalogFacet[];
     stock: { all: number; available: number; out: number };
@@ -64,7 +64,8 @@ export function SalesPartnerCatalog() {
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [sort, setSort] = useState<SortKey>('category');
+  const [sort, setSort] = useState<SortKey>('priority');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [stock, setStock] = useState<'all' | 'available' | 'out'>('all');
   const [page, setPage] = useState(1);
   const filtersKey = `${debouncedQ}|${categoryId}|${sort}|${stock}`;
@@ -102,7 +103,7 @@ export function SalesPartnerCatalog() {
     if (nextPage > 1) params.set('page', String(nextPage));
     if (debouncedQ) params.set('q', debouncedQ);
     if (categoryId) params.set('categoryId', categoryId);
-    if (sort !== 'category') params.set('sort', sort);
+    if (sort !== 'priority') params.set('sort', sort);
     if (stock !== 'all') params.set('stock', stock);
     const qs = params.toString();
     let cancelled = false;
@@ -144,14 +145,27 @@ export function SalesPartnerCatalog() {
   );
   const pageCount = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const categoryTotal = (data?.facets.categories || []).reduce((sum, facet) => sum + facet.count, 0);
-  const filtersActive = Boolean(debouncedQ || categoryId || sort !== 'category' || stock !== 'all');
+  const filtersActive = Boolean(debouncedQ || categoryId || sort !== 'priority' || stock !== 'all');
 
   function clearFilters() {
     setQ('');
     setDebouncedQ('');
     setCategoryId('');
-    setSort('category');
+    setSort('priority');
     setStock('all');
+  }
+
+  async function downloadImages(item: CatalogItem) {
+    setDownloadingId(item.id);
+    setError(null);
+    try {
+      await apiClient.download(`/sales-partners/catalog/${item.id}/images.zip`, `${item.slug || 'product'}-images.zip`);
+      toast.show('تصاویر دانلود شد');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'دانلود تصاویر ناموفق بود');
+    } finally {
+      setDownloadingId(null);
+    }
   }
 
   return (
@@ -228,6 +242,7 @@ export function SalesPartnerCatalog() {
               onChange={(event) => setSort(event.target.value as SortKey)}
               className={`${spField} w-auto min-w-36 pr-3`}
             >
+              <option value="priority">اولویت نمایش</option>
               <option value="category">دسته</option>
               <option value="price_asc">ارزان‌تر</option>
               <option value="price_desc">گران‌تر</option>
@@ -319,6 +334,17 @@ export function SalesPartnerCatalog() {
                         <Copy className="h-4 w-4" aria-hidden />
                         کپی لینک فروش
                       </SpButton>
+                      {item.images.length > 0 ? (
+                        <SpButton
+                          variant="secondary"
+                          className="w-full"
+                          disabled={downloadingId === item.id}
+                          onClick={() => void downloadImages(item)}
+                        >
+                          <Download className="h-4 w-4" aria-hidden />
+                          {downloadingId === item.id ? 'در حال دانلود…' : 'دانلود تصاویر'}
+                        </SpButton>
+                      ) : null}
                       <div className="grid grid-cols-2 gap-2">
                         <SpButton variant="secondary" onClick={() => void copyValue(item, 'text')}>
                           <FileText className="h-4 w-4" aria-hidden />

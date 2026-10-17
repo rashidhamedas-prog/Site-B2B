@@ -1,4 +1,5 @@
-import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { COMMISSION_SCOPES } from '../sales-commission-policy';
 
@@ -28,6 +29,16 @@ export class SetSalesPartnerEligibilityDto {
   @Min(0)
   @Max(80)
   commissionPercentOverride?: number;
+}
+
+export class SetSalesPartnerDisplayPriorityDto {
+  @ApiProperty({ nullable: true, type: Number, description: '1 is first. Null clears the rank.' })
+  @Transform(({ value }) => (value === null || value === '' ? null : Number(value)))
+  @ValidateIf((_, value) => value !== null)
+  @IsInt()
+  @Min(1)
+  @Max(999)
+  displayPriority!: number | null;
 }
 
 export class CreateSalesCommissionRuleDto {

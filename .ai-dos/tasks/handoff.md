@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-17T23:40:00Z — TASK-20261018-002 partner images, live picker, display priority
+
+- Depth: skill-top full. Download zip is same-origin and key-allowlisted. Order picker uses `scope=order` up to 200, then parallel pages. Admin rank is `displayPriority` (lower first).
+- Specs: `sales-partner-image-zip.spec.ts`, `sales-partner-catalog-policy.spec.ts` OK. Web `tsc` OK.
+- Migration: `20261018-003-sales-partner-display-priority.ts` (additive).
+- Next: commit, push, deploy, confirm health. Claims on the files below until that lands.
+
 ## 2026-10-14T13:30:00Z — TASK-20261014-001 CLOSED LIVE
 
 - Ship: `463eb1ba` → origin/master + VPS; deploy complete at `463eb1b`; health ok.

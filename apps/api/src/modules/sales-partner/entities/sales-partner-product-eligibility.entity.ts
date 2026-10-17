@@ -17,6 +17,10 @@ export class SalesPartnerProductEligibilityEntity {
   @Column({ type: 'boolean', default: false })
   eligible: boolean;
 
+  /** Lower number is listed first in the partner catalog. Null sorts after ranked products. */
+  @Column({ type: 'int', nullable: true })
+  displayPriority: number | null;
+
   @Column({ type: 'jsonb', nullable: true })
   allowedImageKeys: string[] | null;
 

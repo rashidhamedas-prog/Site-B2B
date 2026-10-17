@@ -80,6 +80,7 @@ export function AdminSalesPartners() {
   const [propagateRules, setPropagateRules] = useState(true);
   const [ruleMessage, setRuleMessage] = useState<string | null>(null);
   const [commissionDrafts, setCommissionDrafts] = useState<Record<string, number>>({});
+  const [priorityDrafts, setPriorityDrafts] = useState<Record<string, string>>({});
   const [payoutPartnerId, setPayoutPartnerId] = useState('');
   const [bankReference, setBankReference] = useState('');
   const [availableIrr, setAvailableIrr] = useState<number | null>(null);
@@ -414,6 +415,35 @@ export function AdminSalesPartners() {
     await patchEligibility(row, true, { withCommission: true });
   }
 
+  function draftPriority(row: CatalogRow): string {
+    if (row.productId in priorityDrafts) return priorityDrafts[row.productId] ?? '';
+    return row.displayPriority ? String(row.displayPriority) : '';
+  }
+
+  async function savePriority(row: CatalogRow) {
+    const raw = draftPriority(row).trim();
+    const displayPriority = raw === '' ? null : Number(raw);
+    if (displayPriority !== null && (!Number.isInteger(displayPriority) || displayPriority < 1 || displayPriority > 999)) {
+      setError('اولویت باید عدد ۱ تا ۹۹۹ باشد. برای برداشتن اولویت، کادر را خالی بگذارید.');
+      return;
+    }
+    setBusyId(row.productId);
+    setError(null);
+    try {
+      await apiClient.patch(`/admin/sales-partners/catalog/${row.productId}/priority`, { displayPriority });
+      setPriorityDrafts((prev) => {
+        const next = { ...prev };
+        delete next[row.productId];
+        return next;
+      });
+      await loadCatalog();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ذخیره اولویت نمایش ناموفق بود');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   useEffect(() => {
     if (!payoutPartnerId) {
       setAvailableIrr(null);
@@ -606,16 +636,6 @@ export function AdminSalesPartners() {
       setAvailableIrr(null);
     }
   }
-  const catalogGroups = useMemo(() => {
-    const map = new Map<string, CatalogRow[]>();
-    for (const row of catalog) {
-      const name = row.categoryName || 'بدون دسته';
-      const list = map.get(name) || [];
-      list.push(row);
-      map.set(name, list);
-    }
-    return [...map.entries()];
-  }, [catalog]);
   const catalogPages = Math.max(1, Math.ceil(catalogTotal / 20));
 
   return (
@@ -1096,20 +1116,18 @@ export function AdminSalesPartners() {
             ))}
           </div>
           <p className="text-sm text-stone-500" role="status">
-            {catalogTotal.toLocaleString('fa-IR')} محصول در این فیلتر
+            {catalogTotal.toLocaleString('fa-IR')} محصول در این فیلتر. عدد کوچک‌تر در پنل همکار جلوتر است.
           </p>
           {catalog.length === 0 && <SpEmptyState>محصولی پیدا نشد.</SpEmptyState>}
           <div className="space-y-6">
-            {catalogGroups.map(([name, rows]) => (
-              <section key={name} aria-labelledby={`admin-cat-${rows[0]?.categoryId || 'none'}`}>
-                <h3 id={`admin-cat-${rows[0]?.categoryId || 'none'}`} className="mb-3 text-sm font-semibold text-[#1B5C4A]">
-                  {name}
-                </h3>
-                <ul className="grid gap-3 lg:grid-cols-2">
-                  {rows.map((row) => (
+            <ul className="grid gap-3 lg:grid-cols-2">
+                  {catalog.map((row) => (
                     <li key={row.productId} className="rounded-2xl border border-stone-200 bg-white p-4">
                       <div className="flex flex-wrap items-start justify-between gap-2">
-                        <p className="font-medium">{row.name}</p>
+                        <div>
+                          <p className="text-xs font-medium text-[#1B5C4A]">{row.categoryName || 'بدون دسته'}</p>
+                          <p className="font-medium">{row.name}</p>
+                        </div>
                         <SpBadge
                           status={row.eligible ? 'ACTIVE' : 'OFF'}
                           label={row.eligible ? 'مجاز' : 'غیرمجاز'}
@@ -1134,6 +1152,31 @@ export function AdminSalesPartners() {
                           </p>
                         );
                       })()}
+                      <label className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-700">
+                        <span>اولویت نمایش</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={999}
+                          step={1}
+                          inputMode="numeric"
+                          dir="ltr"
+                          className={`w-20 min-h-10 rounded-xl border border-stone-300 px-2 ${spFocusClass}`}
+                          value={draftPriority(row)}
+                          onChange={(e) => {
+                            setPriorityDrafts((prev) => ({ ...prev, [row.productId]: e.target.value }));
+                          }}
+                          aria-label={`اولویت نمایش ${row.name}`}
+                        />
+                        <button
+                          type="button"
+                          className={`min-h-10 rounded-xl border border-[#1B5C4A]/40 px-3 text-[#1B5C4A] ${spFocusClass}`}
+                          disabled={busyId === row.productId}
+                          onClick={() => void savePriority(row)}
+                        >
+                          ذخیره اولویت
+                        </button>
+                      </label>
                       <label className="mt-2 flex flex-wrap items-center gap-2 text-sm text-stone-700">
                         <span>پورسانت این محصول (%)</span>
                         <input
@@ -1185,8 +1228,6 @@ export function AdminSalesPartners() {
                     </li>
                   ))}
                 </ul>
-              </section>
-            ))}
           </div>
           {catalogTotal > 20 && (
             <div className="flex items-center justify-between gap-3">

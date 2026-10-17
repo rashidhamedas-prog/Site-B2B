@@ -52,7 +52,7 @@ export function partnerCopyText(input: {
 
 const CATALOG_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export type PartnerCatalogSort = 'category' | 'price_asc' | 'price_desc' | 'commission';
+export type PartnerCatalogSort = 'priority' | 'category' | 'price_asc' | 'price_desc' | 'commission';
 export type PartnerCatalogStock = 'all' | 'available' | 'out';
 export type AdminCatalogEligible = 'all' | 'yes' | 'no';
 
@@ -63,6 +63,8 @@ export type PartnerCatalogQuery = {
   stock?: string;
   sort?: string;
   pageSize?: number;
+  /** `order` raises the page cap so the partner order picker can list live stock in one response. */
+  scope?: string;
 };
 
 export type ParsedPartnerCatalogQuery = {
@@ -81,6 +83,8 @@ export type CatalogListCard = {
   priceIrr: number;
   stockBand: StockBand;
   estimatedCommissionIrr: number;
+  /** Lower number is shown first. Missing priority sorts after ranked products. */
+  displayPriority?: number | null;
 };
 
 function cleanQuery(raw: string | undefined, max = 60): string {
@@ -89,10 +93,15 @@ function cleanQuery(raw: string | undefined, max = 60): string {
 
 export function parsePartnerCatalogQuery(input: PartnerCatalogQuery = {}): ParsedPartnerCatalogQuery {
   const page = Math.max(1, Math.min(50, Math.trunc(Number(input.page) || 1)));
-  const pageSize = Math.max(1, Math.min(48, Math.trunc(Number(input.pageSize) || 24)));
+  const orderPicker = input.scope === 'order';
+  const pageCap = orderPicker ? 200 : 48;
+  const pageFallback = orderPicker ? 200 : 24;
+  const pageSize = Math.max(1, Math.min(pageCap, Math.trunc(Number(input.pageSize) || pageFallback)));
   const stock: PartnerCatalogStock = input.stock === 'available' || input.stock === 'out' ? input.stock : 'all';
   const sort: PartnerCatalogSort =
-    input.sort === 'price_asc' || input.sort === 'price_desc' || input.sort === 'commission' ? input.sort : 'category';
+    input.sort === 'category' || input.sort === 'price_asc' || input.sort === 'price_desc' || input.sort === 'commission'
+      ? input.sort
+      : 'priority';
   const categoryId = CATALOG_UUID.test(String(input.categoryId || '')) ? String(input.categoryId) : '';
   return { page, pageSize, q: cleanQuery(input.q), categoryId, stock, sort };
 }
@@ -158,7 +167,10 @@ function compareCards(a: CatalogListCard, b: CatalogListCard, sort: PartnerCatal
   if (sort === 'price_asc') return a.priceIrr - b.priceIrr || byName;
   if (sort === 'price_desc') return b.priceIrr - a.priceIrr || byName;
   if (sort === 'commission') return b.estimatedCommissionIrr - a.estimatedCommissionIrr || byName;
-  return a.categoryName.localeCompare(b.categoryName, 'fa') || byName;
+  if (sort === 'category') return a.categoryName.localeCompare(b.categoryName, 'fa') || byName;
+  const ap = a.displayPriority ?? 1_000_000;
+  const bp = b.displayPriority ?? 1_000_000;
+  return ap - bp || byName;
 }
 
 export function preparePartnerCatalog<T extends CatalogListCard>(items: T[], raw: PartnerCatalogQuery = {}) {

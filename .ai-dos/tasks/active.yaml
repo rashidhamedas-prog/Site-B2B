@@ -1,5 +1,34 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261018-002"
+    title: "Partner image download, full live picker, display priority"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer"
+    roles:
+      architect: "cursor:skill-top-full"
+      implementer: "cursor:implementer"
+      reviewer: "cursor:self-verify"
+      security: "zip-allowlist-owned-media-only"
+    branch: "master"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-17T23:20:00Z"
+    heartbeat_at: "2026-10-17T23:40:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog.service.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-catalog-policy.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-me.controller.ts"
+      - "apps/api/src/modules/sales-partner/sales-partner-admin.controller.ts"
+      - "apps/web/src/components/sales-partners/SalesPartnerCatalog.tsx"
+      - "apps/web/src/components/sales-partners/SalesPartnerNewOrder.tsx"
+      - "apps/web/src/components/admin/sales-partners/AdminSalesPartners.tsx"
+    acceptance_criteria:
+      - "Partner catalog card downloads a zip of that product's owned images"
+      - "New-order picker lists the full available catalog, not page size 16"
+      - "Admin displayPriority is the default order in the partner panel"
+    notes: |
+      No new zip dependency. External image hosts rejected.
   - id: "TASK-20261018-001"
     title: "Sales partner P0/P1 audit fixes"
     status: "done"

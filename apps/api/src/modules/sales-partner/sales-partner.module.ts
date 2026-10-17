@@ -12,6 +12,7 @@ import { CustomerModule } from '../customer/customer.module';
 import { OrderModule } from '../order/order.module';
 import { PaymentModule } from '../payment/payment.module';
 import { ShippingModule } from '../shipping/shipping.module';
+import { UploadModule } from '../upload/upload.module';
 import {
   SalesCommissionLedgerEntryEntity,
   SalesCommissionRuleEntity,
@@ -73,6 +74,7 @@ const ENTITIES = [
     OrderModule,
     forwardRef(() => PaymentModule),
     ShippingModule,
+    UploadModule,
   ],
   controllers: [
     SalesPartnerPublicController,

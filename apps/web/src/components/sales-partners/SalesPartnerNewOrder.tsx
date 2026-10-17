@@ -95,16 +95,42 @@ export function SalesPartnerNewOrder() {
   }, [localReady, productId, variantId, quantity]);
 
   useEffect(() => {
+    let cancelled = false;
     const handle = window.setTimeout(() => {
-      const search = new URLSearchParams({ stock: 'available' });
+      const search = new URLSearchParams({ stock: 'available', scope: 'order', pageSize: '200', sort: 'priority' });
       if (query.trim()) search.set('q', query.trim());
       apiClient
-        .get<{ items: CatalogItem[] }>(`/sales-partners/catalog?${search.toString()}`)
-        .then((res) => setCatalog(res.items))
-        .catch((err: unknown) => setError(err instanceof Error ? err.message : 'بارگذاری محصولات ناموفق بود'))
-        .finally(() => setCatalogLoading(false));
+        .get<{ items: CatalogItem[]; page: number; pageSize: number; total: number }>(`/sales-partners/catalog?${search.toString()}`)
+        .then(async (first) => {
+          const pages = Math.min(50, Math.ceil(first.total / Math.max(1, first.pageSize)));
+          const rest = pages > 1
+            ? await Promise.all(
+              Array.from({ length: pages - 1 }, (_, index) => {
+                const next = new URLSearchParams(search);
+                next.set('page', String(index + 2));
+                return apiClient.get<{ items: CatalogItem[] }>(`/sales-partners/catalog?${next.toString()}`);
+              }),
+            )
+            : [];
+          const seen = new Set<string>();
+          const items = [first, ...rest].flatMap((page) => page.items).filter((item) => {
+            if (seen.has(item.id)) return false;
+            seen.add(item.id);
+            return true;
+          });
+          if (!cancelled) setCatalog(items);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : 'بارگذاری محصولات ناموفق بود');
+        })
+        .finally(() => {
+          if (!cancelled) setCatalogLoading(false);
+        });
     }, query.trim() ? 300 : 0);
-    return () => window.clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
   }, [query]);
 
   useEffect(() => {
@@ -251,7 +277,12 @@ export function SalesPartnerNewOrder() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <ul className="max-h-80 space-y-2 overflow-auto rounded-3xl" aria-label="نتایج کالا">
+          <p className="text-sm text-stone-600" role="status">
+            {query.trim()
+              ? `${catalog.length.toLocaleString('fa-IR')} نتیجه در موجودی زنده`
+              : `${catalog.length.toLocaleString('fa-IR')} کالای موجود`}
+          </p>
+          <ul className="max-h-[32rem] space-y-2 overflow-auto rounded-3xl" aria-label="موجودی زنده">
             {catalog.length === 0 ? (
               <li className="px-1 text-sm text-stone-600">با این نام کالای موجودی نیست.</li>
             ) : catalog.map((item) => {
@@ -267,7 +298,7 @@ export function SalesPartnerNewOrder() {
                   >
                     {src ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={src} alt="" width={48} height={48} className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                      <img src={src} alt="" width={48} height={48} loading="lazy" decoding="async" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
                     ) : (
                       <span className="h-12 w-12 shrink-0 rounded-xl bg-stone-100" />
                     )}

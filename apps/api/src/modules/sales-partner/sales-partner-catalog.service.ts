@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, PayloadTooLargeException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, In, MoreThan, Not, Repository } from 'typeorm';
 import { CategoryEntity } from '../category/entities/category.entity';
@@ -35,6 +35,14 @@ import {
 } from './sales-partner-catalog-policy';
 import { normalizeSalesPartnerCode, salesPartnerSharePath } from './sales-partner-attribution';
 import { SalesPartnerService } from './sales-partner.service';
+import { StorageService } from '../upload/storage.service';
+import { isMissingObjectError } from '../upload/storage-delete';
+import {
+  partnerImageEntryName,
+  partnerImageObjectKey,
+  partnerImageZipName,
+  storeZip,
+} from './sales-partner-image-zip';
 
 const PARTNER_PAGE_SIZE = 16;
 const ADMIN_PAGE_SIZE = 20;
@@ -51,10 +59,14 @@ export class SalesPartnerCatalogService {
     @InjectRepository(SalesPartnerAuditEventEntity)
     private readonly audits: Repository<SalesPartnerAuditEventEntity>,
     private readonly program: SalesPartnerService,
+    private readonly storage: StorageService,
   ) {}
 
   async partnerCatalog(salesPartnerId: string, query: PartnerCatalogQuery | number = {}) {
-    const parsed = parsePartnerCatalogQuery(typeof query === 'number' ? { page: query, pageSize: PARTNER_PAGE_SIZE } : { ...query, pageSize: PARTNER_PAGE_SIZE });
+    const raw = typeof query === 'number' ? { page: query } : query;
+    const parsed = parsePartnerCatalogQuery(
+      raw.pageSize == null && raw.scope !== 'order' ? { ...raw, pageSize: PARTNER_PAGE_SIZE } : raw,
+    );
     const settings = await this.program.settings();
     const shareCode = await this.program.ensurePublicCode(salesPartnerId);
     const products = (await this.liveRetailProducts()).filter((product) => channelAvailability(product, 'RETAIL').available);
@@ -150,30 +162,38 @@ export class SalesPartnerCatalogService {
     if (parsed.categoryId) where.categoryId = parsed.categoryId;
     if (parsed.eligible === 'yes' && excludedIds.length) where.id = Not(In(excludedIds));
     if (parsed.eligible === 'no') where.id = In(excludedIds);
-    const [products, total] = await this.products.findAndCount({
+    // Rank in memory so page 1 is what partners see first. The live retail set is far under this cap.
+    const [matched, total] = await this.products.findAndCount({
       where,
-      order: { categoryId: 'ASC', name: 'ASC' },
-      take: ADMIN_PAGE_SIZE,
-      skip: (parsed.page - 1) * ADMIN_PAGE_SIZE,
+      order: { name: 'ASC' },
+      take: 500,
     });
-    const eligs = products.length
-      ? await this.eligibility.find({ where: { productId: In(products.map((p) => p.id)) } })
+    const rankRows = matched.length
+      ? await this.eligibility.find({ where: { productId: In(matched.map((p) => p.id)) } })
       : [];
+    const rank = new Map(rankRows.map((row) => [row.productId, row.displayPriority ?? null]));
+    const ordered = [...matched].sort((a, b) => {
+      const ap = rank.get(a.id) ?? 1_000_000;
+      const bp = rank.get(b.id) ?? 1_000_000;
+      return ap - bp || a.name.localeCompare(b.name, 'fa');
+    });
+    const products = ordered.slice((parsed.page - 1) * ADMIN_PAGE_SIZE, parsed.page * ADMIN_PAGE_SIZE);
+    const eligs = rankRows.filter((row) => products.some((product) => product.id === row.productId));
     const names = await this.categoryNames(products.map((product) => product.categoryId));
     const rules = await this.loadRules();
     const now = new Date();
     const items = products.map((product) => {
       const elig = eligs.find((row) => row.productId === product.id);
       const price = Number(product.retailPrice || 0);
-      const matched = selectCommissionRule(rules, {
+      const matchedRule = selectCommissionRule(rules, {
         productId: product.id,
         categoryId: product.categoryId || null,
         lineTotalAfterDiscountIrr: price,
       }, 'preview', now);
-      const previewPercent = matched?.percent ?? 0;
+      const previewPercent = matchedRule?.percent ?? 0;
       const productOverridePercent =
-        matched?.scope === 'PRODUCT' || matched?.scope === 'PARTNER_PRODUCT'
-          ? matched.percent
+        matchedRule?.scope === 'PRODUCT' || matchedRule?.scope === 'PARTNER_PRODUCT'
+          ? matchedRule.percent
           : null;
       const vendor = !!product.vendorId;
       const vendorDue = vendor ? vendorDueFromRetailIrr(price, product.commissionPercent) : 0;
@@ -195,13 +215,14 @@ export class SalesPartnerCatalogService {
         marginIrr: margin,
         minMarginIrr: settings.minMarginIrr,
         canEnable: !vendor || margin >= settings.minMarginIrr,
+        displayPriority: elig?.displayPriority ?? null,
       };
-    }).sort((a, b) => a.categoryName.localeCompare(b.categoryName, 'fa') || a.name.localeCompare(b.name, 'fa'));
+    });
     return {
       items,
       page: parsed.page,
       pageSize: ADMIN_PAGE_SIZE,
-      total,
+      total: Math.min(total, matched.length),
       facets: { categories: facets },
     };
   }
@@ -287,6 +308,70 @@ export class SalesPartnerCatalogService {
       commissionPercent: partnerPercent,
       productRuleId,
     };
+  }
+
+  async setDisplayPriority(productId: string, actorId: string, displayPriority: number | null) {
+    const product = await this.products.findOne({ where: { id: productId } });
+    if (!product) throw new NotFoundException('محصول پیدا نشد');
+    let row = await this.eligibility.findOne({ where: { productId } });
+    if (!row) {
+      row = this.eligibility.create({ productId, eligible: true, displayPriority });
+    } else {
+      row.displayPriority = displayPriority;
+    }
+    row.updatedBy = actorId;
+    await this.eligibility.save(row);
+    await this.audit(actorId, 'display_priority.set', 'eligibility', productId, { displayPriority });
+    return { productId, eligible: row.eligible, displayPriority: row.displayPriority };
+  }
+
+  /** Same-origin zip of the images already visible on the partner card. No arbitrary URL fetch. */
+  async partnerImageArchive(salesPartnerId: string, productId: string) {
+    const card = await this.partnerCatalogCard(salesPartnerId, productId);
+    const keys = [...new Set((card.images || []).map((image) => partnerImageObjectKey(image)).filter((key): key is string => !!key))].slice(0, 6);
+    if (!keys.length) throw new NotFoundException('تصویری برای دانلود این کالا ثبت نشده');
+    const files: { name: string; data: Buffer }[] = [];
+    let total = 0;
+    for (const key of keys) {
+      let data: Buffer;
+      try {
+        data = await this.storage.readOwnedImage(key);
+      } catch (err) {
+        if (isMissingObjectError(err)) continue;
+        throw err;
+      }
+      total += data.length;
+      if (total > 24 * 1024 * 1024) throw new PayloadTooLargeException('حجم تصاویر این کالا برای دانلود زیاد است');
+      files.push({ name: partnerImageEntryName(key, files.length), data });
+    }
+    if (!files.length) throw new NotFoundException('فایل تصویر این کالا در انبار پیدا نشد');
+    return { filename: partnerImageZipName(card.slug), body: storeZip(files) };
+  }
+
+  private async partnerCatalogCard(salesPartnerId: string, productId: string) {
+    const settings = await this.program.settings();
+    const elig = await this.eligibility.findOne({ where: { productId } });
+    const product = await this.products.findOne({
+      where: { id: productId, status: 'ACTIVE', showOnRetail: true, retailPrice: MoreThan(0) },
+    });
+    if (!product || !isPartnerCatalogProduct({ product, explicitEligible: elig?.eligible ?? null })) {
+      throw new NotFoundException('این محصول برای همکاران بازاریاب فعال نیست');
+    }
+    const rules = await this.loadRules();
+    const shareCode = await this.program.ensurePublicCode(salesPartnerId);
+    const names = await this.categoryNames([product.categoryId]);
+    const card = this.toPartnerCard(
+      product,
+      elig ? [elig] : [],
+      rules,
+      salesPartnerId,
+      new Date(),
+      settings.minMarginIrr,
+      shareCode,
+      names.get(product.categoryId) || 'بدون دسته',
+    );
+    if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
+    return card;
   }
 
   /** One active PRODUCT rule per SKU; prior PRODUCT rows for that product are deactivated. */
@@ -536,6 +621,7 @@ export class SalesPartnerCatalogService {
       estimatedCommissionIrr: commissionAmountIrr(price, percent),
       commissionPercent: percent,
       images,
+      displayPriority: elig?.displayPriority ?? null,
       productUrl,
       copyText: partnerCopyText({
         name: product.name,

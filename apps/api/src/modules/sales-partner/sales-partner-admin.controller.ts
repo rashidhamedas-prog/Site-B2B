@@ -16,6 +16,7 @@ import { ConfirmSalesPartnerPayoutDto } from './dto/sales-partner-payout.dto';
 import {
   CreateSalesCommissionRuleDto,
   PreviewSalesCommissionDto,
+  SetSalesPartnerDisplayPriorityDto,
   SetSalesPartnerEligibilityDto,
 } from './dto/sales-partner-catalog.dto';
 import { PublishSalesPartnerNoticeDto } from './dto/sales-partner-notice.dto';
@@ -149,6 +150,15 @@ export class SalesPartnerAdminController {
     @Req() req: { user?: { sub?: string; id?: string } },
   ) {
     return this.catalog.setEligibility(productId, req.user?.sub || req.user?.id || '', body);
+  }
+
+  @Patch('catalog/:productId/priority')
+  setDisplayPriority(
+    @Param('productId') productId: string,
+    @Body() body: SetSalesPartnerDisplayPriorityDto,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.catalog.setDisplayPriority(productId, req.user?.sub || req.user?.id || '', body.displayPriority);
   }
 
   @Get('rules')

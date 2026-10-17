@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req, StreamableFile, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -59,9 +59,31 @@ export class SalesPartnerMeController {
     @Query('categoryId') categoryId?: string,
     @Query('stock') stock?: string,
     @Query('sort') sort?: string,
+    @Query('pageSize') pageSize?: string,
+    @Query('scope') scope?: string,
   ) {
     const salesPartnerId = this.requirePartner(req);
-    return this.catalog.partnerCatalog(salesPartnerId, { page: Number(page) || 1, q, categoryId, stock, sort });
+    return this.catalog.partnerCatalog(salesPartnerId, {
+      page: Number(page) || 1,
+      pageSize: pageSize ? Number(pageSize) : undefined,
+      q,
+      categoryId,
+      stock,
+      sort,
+      scope,
+    });
+  }
+
+  @Get('catalog/:productId/images.zip')
+  async catalogImages(
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Param('productId') productId: string,
+  ) {
+    const file = await this.catalog.partnerImageArchive(this.requirePartner(req), productId);
+    return new StreamableFile(file.body, {
+      type: 'application/zip',
+      disposition: `attachment; filename="${file.filename}"`,
+    });
   }
 
   @Get('catalog/:productId')

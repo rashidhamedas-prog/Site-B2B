@@ -74,6 +74,7 @@ export type CatalogRow = {
   marginIrr: number;
   minMarginIrr: number;
   canEnable: boolean;
+  displayPriority?: number | null;
 };
 
 export type RuleRow = {

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, OnModuleInit, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -99,6 +99,33 @@ export class StorageService implements OnModuleInit {
       }
     }
     return { url, key };
+  }
+
+  /** Read one already-sanitized product image. Rejects keys outside products/ or blog/. */
+  async readOwnedImage(key: string): Promise<Buffer> {
+    const safe = sanitizeObjectKey(key);
+    if (!safe || !/\.(jpe?g|png|webp|gif)$/i.test(safe)) {
+      throw new BadRequestException('آدرس تصویر مجاز نیست');
+    }
+    if (!this.ready) throw new ServiceUnavailableException('انبار تصویر در دسترس نیست');
+    const stream: Readable = await this.minioClient.getObject(this.bucket, safe);
+    const chunks: Buffer[] = [];
+    let total = 0;
+    try {
+      for await (const chunk of stream) {
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        total += buf.length;
+        if (total > 8 * 1024 * 1024) {
+          throw new BadRequestException('حجم تصویر بیشتر از حد دانلود است');
+        }
+        chunks.push(buf);
+      }
+    } catch (err) {
+      if (isMissingObjectError(err)) throw err;
+      if (err instanceof BadRequestException) throw err;
+      throw err;
+    }
+    return Buffer.concat(chunks);
   }
 
   async deleteByUrls(urls: string[], opts?: { excludeProductId?: string }): Promise<void> {

@@ -87,6 +87,18 @@ assert(namedLive.total === 1 && namedLive.items[0].name === 'مانتو لینن
 const priced = preparePartnerCatalog(cards, { sort: 'price_desc' });
 assert(priced.items[0].name === 'کت کتان', 'price desc');
 
+const ranked = preparePartnerCatalog([
+  { ...cards[0], displayPriority: 2 },
+  { ...cards[1], displayPriority: null },
+  { ...cards[2], displayPriority: 1 },
+]);
+assert(ranked.sort === 'priority', 'default sort is admin priority');
+assert(ranked.items.map((row) => row.name).join('|') === 'کت کتان|مانتو نیکی|مانتو لینن', 'lower priority number is first and unranked is last');
+const orderPage = parsePartnerCatalogQuery({ scope: 'order', stock: 'available' });
+assert(orderPage.pageSize === 200 && orderPage.stock === 'available', 'order picker asks for the live set');
+assert(parsePartnerCatalogQuery({ scope: 'order', pageSize: 9999 }).pageSize === 200, 'order picker page cap');
+assert(parsePartnerCatalogQuery({}).pageSize === 24, 'catalog page stays bounded when scope is omitted');
+
 const live = { status: 'ACTIVE', showOnRetail: true, retailPrice: 1_720_000, deletedAt: null };
 assert(isPublishableRetailProduct(live), 'priced retail product is live');
 assert(!isPublishableRetailProduct({ ...live, retailPrice: 0 }), 'zero price is not live');
