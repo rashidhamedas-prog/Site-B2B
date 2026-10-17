@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getServerApiBase } from '@/lib/server-api-base';
 import type { ContentBlock, SiteContentDoc } from './types';
 import { getDefaultBlocks } from './defaults';
+import { ensureWholesaleHomeCategoryBlock } from './wholesale-home-categories';
 import { metadataFromCmsSeo, normalizeCmsPageSeo } from './page-seo';
 
 /**
@@ -35,8 +36,11 @@ export async function resolvePageBlocks(
   pageKey: string,
 ): Promise<ContentBlock[]> {
   const doc = await fetchSiteContent(channel, pageKey);
-  if (doc?.blocks?.length) return doc.blocks as ContentBlock[];
-  return getDefaultBlocks(channel, pageKey);
+  const blocks = doc?.blocks?.length
+    ? (doc.blocks as ContentBlock[])
+    : getDefaultBlocks(channel, pageKey);
+  if (channel === 'WHOLESALE' && pageKey === 'home') return ensureWholesaleHomeCategoryBlock(blocks);
+  return blocks;
 }
 
 export async function metadataForCmsPage(

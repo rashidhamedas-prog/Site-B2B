@@ -5,6 +5,11 @@ import { metadataForCmsPage } from '@/lib/cms/fetch';
 import { fetchProductList } from '@/lib/server-api';
 import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { slimWholesaleCatalogProduct } from '@/lib/slim-wholesale-catalog';
+import { fetchStorefrontCategories } from '@/lib/catalog/fetch-storefront-categories';
+import {
+  toWholesaleCategoryTiles,
+  WholesaleCategoryIndexView,
+} from '@/components/wholesale/WholesaleCategoryIndex';
 
 /**
  * Clean /products stays ISR (mirror retail). Filtered / page>1 URLs are a
@@ -24,17 +29,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ProductsPage() {
-  const initial = await fetchProductList({
-    channel: 'WHOLESALE',
-    limit: 24,
-    page: 1,
-    status: 'ACTIVE',
-    sort: 'newest',
-  });
+  const [initial, categoryRows] = await Promise.all([
+    fetchProductList({
+      channel: 'WHOLESALE',
+      limit: 24,
+      page: 1,
+      status: 'ACTIVE',
+      sort: 'newest',
+    }),
+    fetchStorefrontCategories(),
+  ]);
+  const categoryTiles = toWholesaleCategoryTiles(categoryRows);
 
   return (
     <>
       <CmsPageIntro channel="WHOLESALE" pageKey="products" />
+      <WholesaleCategoryIndexView items={categoryTiles} showThumbs={false} body="" />
       <WholesaleProductsCatalogWithUrl
         initialProducts={initial.data.map((row) =>
           slimWholesaleCatalogProduct(row as Record<string, unknown>),

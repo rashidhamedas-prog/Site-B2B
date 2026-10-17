@@ -14,8 +14,15 @@ import { useMenus } from '@/lib/hooks/useMenus';
 import { DEFAULT_MENUS, withBoutiqueReferralNav } from '@/lib/menus';
 import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
+import type { ReactNode } from 'react';
 
-export function Header() {
+export function Header({
+  categoryNav = null,
+  mobileCategories = null,
+}: {
+  categoryNav?: ReactNode;
+  mobileCategories?: ReactNode;
+}) {
   const pathname = usePathname();
   const bag = useWholesaleChrome();
   const { menus } = useMenus(
@@ -100,6 +107,7 @@ export function Header() {
             </div>
           </Link>
 
+          <div className="hidden lg:block">{categoryNav}</div>
           <MegaNav items={main} megaEnabled={menus.megaEnabled !== false} />
 
           <div className="flex items-center gap-1.5">
@@ -126,7 +134,10 @@ export function Header() {
               </Link>
             ) : null}
 
-            <MobileMenuButton items={withBoutiqueReferralNav(menus.mobile?.length ? menus.mobile : main)} />
+            <MobileMenuButton
+              items={withBoutiqueReferralNav(menus.mobile?.length ? menus.mobile : main)}
+              categoryList={mobileCategories}
+            />
           </div>
         </div>
       </div>

@@ -3,9 +3,12 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   categoryDisplayName,
+  categoryStorefrontHref,
   HOME_CATEGORY_GRID_CAP,
+  insertCategoryBlockAfterHero,
   merchandiseCategories,
   resolveHomeCategoryMaxItems,
+  WHOLESALE_CATEGORY_INDEX_CAP,
 } from './category-storefront.ts';
 
 function assert(cond: boolean, msg: string) {
@@ -83,5 +86,69 @@ const renderer = readFileSync(
   'utf8',
 );
 assert(!renderer.includes('RetailHomeCategoryLinks'), 'home must not inject a duplicate pill cloud');
+
+assert(categoryStorefrontHref({ id: '1', slug: 'shomiz' }) === '/category/shomiz', 'slug href');
+assert(
+  categoryStorefrontHref({ id: 'abc', slug: ' ' }) === '/products?categoryId=abc',
+  'blank slug falls back to id',
+);
+
+const seventeen = Array.from({ length: 17 }, (_, i) => ({
+  id: `c${i}`,
+  name: i === 16 ? 'شومیز' : `cat-${i}`,
+  showOnHome: i > 9 ? false : true,
+}));
+assert(
+  merchandiseCategories(seventeen, { maxItems: 16 }).length === 16,
+  'retail image cap still drops the 17th',
+);
+const wholesaleIndex = merchandiseCategories(seventeen, {
+  maxItems: WHOLESALE_CATEGORY_INDEX_CAP,
+  capCeiling: WHOLESALE_CATEGORY_INDEX_CAP,
+});
+assert(wholesaleIndex.length === 17, 'wholesale index keeps all 17 active categories');
+assert(wholesaleIndex[16]?.name === 'شومیز', 'شومیز stays visible when it sorts last');
+assert(
+  merchandiseCategories(seventeen, {
+    homeOnly: true,
+    maxItems: 16,
+  }).every((row) => row.showOnHome !== false),
+  'retail homeOnly still hides unchecked tiles',
+);
+
+const savedHome = [
+  { id: 'hero', type: 'hero' },
+  { id: 'stats', type: 'stats' },
+  { id: 'products', type: 'products' },
+];
+const inserted = { id: 'wholesale-home-categories', type: 'categoryBanners' };
+const withCats = insertCategoryBlockAfterHero(savedHome, inserted);
+assert(withCats[1]?.type === 'categoryBanners', 'missing wholesale home block is inserted after the hero');
+assert(insertCategoryBlockAfterHero(withCats, inserted).length === withCats.length, 'existing category block is not duplicated');
+
+const wholesaleRenderer = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../components/cms/WholesaleBlocksRenderer.tsx'),
+  'utf8',
+);
+assert(wholesaleRenderer.includes('WholesaleCategoryIndex'), 'wholesale renderer mounts the category index');
+assert(!wholesaleRenderer.includes('Retail-only block'), 'wholesale no longer drops category banners');
+const wholesaleLayout = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../app/(wholesale)/layout.tsx'),
+  'utf8',
+);
+assert(wholesaleLayout.includes('WholesaleCategoryNavSlot'), 'wholesale nav streams categories without blocking the header');
+assert(wholesaleLayout.includes('<Suspense'), 'category nav is outside the header fetch');
+assert(!wholesaleLayout.includes('homeOnly'), 'wholesale nav must list categories hidden from the retail home grid');
+const navSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../components/wholesale/WholesaleCategoryNav.tsx'),
+  'utf8',
+);
+assert(navSrc.includes('capCeiling: WHOLESALE_CATEGORY_INDEX_CAP'), 'nav uses the wholesale index cap');
+assert(!navSrc.includes('homeOnly'), 'nav keeps categories hidden on the retail home grid');
+const fetchSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../cms/fetch.ts'),
+  'utf8',
+);
+assert(fetchSrc.includes('ensureWholesaleHomeCategoryBlock'), 'saved wholesale home still receives the category block');
 
 console.log('category-storefront.spec.mts: OK');

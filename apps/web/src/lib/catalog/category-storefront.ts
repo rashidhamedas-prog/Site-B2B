@@ -1,6 +1,13 @@
 /** Home category cards: performance-first ceiling (landing, not a product list). */
 export const HOME_CATEGORY_GRID_CAP = 16;
 
+/**
+ * Wholesale category index (text + tiny thumb). Higher than the image-card cap
+ * so a sortOrder that puts شومیز last still shows every active category.
+ * Image mosaics on retail stay on HOME_CATEGORY_GRID_CAP.
+ */
+export const WHOLESALE_CATEGORY_INDEX_CAP = 24;
+
 export const CATALOG_REVALIDATE_SECONDS = 60;
 
 export function catalogFetchInit(): { next: { revalidate: number; tags: string[] } } {
@@ -16,6 +23,18 @@ export type CategoryLabel = {
 /** Canonical storefront label: whatever the operator saved on `name`. */
 export function categoryDisplayName(c: CategoryLabel): string {
   return (c.name || '').trim() || (c.nameEn || '').trim();
+}
+
+export type CategoryHref = {
+  id: string;
+  slug?: string | null;
+};
+
+/** Public category URL. Slug pages stay canonical; id query is only a fallback. */
+export function categoryStorefrontHref(c: CategoryHref): string {
+  const slug = (c.slug || '').trim();
+  if (slug) return `/category/${encodeURIComponent(slug)}`;
+  return `/products?categoryId=${encodeURIComponent(c.id)}`;
 }
 
 export function resolveHomeCategoryMaxItems(raw: unknown): number {
@@ -43,10 +62,24 @@ export function categoriesVisibleOnHome<T extends HomeMerchCategory>(list: T[]):
  */
 export function merchandiseCategories<T extends HomeMerchCategory>(
   list: T[],
-  opts: { categoryIds?: string | null; maxItems?: unknown; homeOnly?: boolean },
+  opts: {
+    categoryIds?: string | null;
+    maxItems?: unknown;
+    homeOnly?: boolean;
+    /** Override the retail image-grid ceiling. Wholesale index passes 24. */
+    capCeiling?: number;
+  },
 ): T[] {
   const source = opts.homeOnly ? categoriesVisibleOnHome(list) : list;
-  const cap = resolveHomeCategoryMaxItems(opts.maxItems);
+  const ceiling =
+    typeof opts.capCeiling === 'number' && Number.isFinite(opts.capCeiling)
+      ? Math.max(1, Math.floor(opts.capCeiling))
+      : HOME_CATEGORY_GRID_CAP;
+  const requested = opts.maxItems;
+  const cap =
+    typeof requested === 'number' && Number.isFinite(requested)
+      ? Math.min(ceiling, Math.max(1, Math.floor(requested)))
+      : ceiling;
   const idFilter = (opts.categoryIds || '')
     .split(',')
     .map((s) => s.trim())
@@ -61,4 +94,12 @@ export function merchandiseCategories<T extends HomeMerchCategory>(
     ordered = [...pinned, ...rest];
   }
   return ordered.slice(0, cap);
+}
+
+/** Insert a category block after the hero unless one is already present. */
+export function insertCategoryBlockAfterHero<T extends { type: string }>(blocks: T[], block: T): T[] {
+  if (blocks.some((item) => item.type === 'categoryBanners')) return blocks;
+  const heroAt = blocks.findIndex((item) => item.type === 'hero');
+  if (heroAt < 0) return [block, ...blocks];
+  return [...blocks.slice(0, heroAt + 1), block, ...blocks.slice(heroAt + 1)];
 }

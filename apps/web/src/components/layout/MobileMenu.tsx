@@ -4,9 +4,16 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui';
+import type { ReactNode } from 'react';
 import type { MenuItem } from '@/lib/menus';
 
-export function MobileMenuButton({ items }: { items: MenuItem[] }) {
+export function MobileMenuButton({
+  items,
+  categoryList = null,
+}: {
+  items: MenuItem[];
+  categoryList?: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -50,6 +57,7 @@ export function MobileMenuButton({ items }: { items: MenuItem[] }) {
                 )}
               </div>
             ))}
+            {categoryList ? <div onClick={() => setOpen(false)}>{categoryList}</div> : null}
             <div className="mt-3 border-t border-gray-100 pt-3">
               <Link href="/portal/register" onClick={() => setOpen(false)} className="cursor-pointer">
                 <Button variant="primary" fullWidth>

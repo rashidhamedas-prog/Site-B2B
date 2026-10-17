@@ -11,6 +11,7 @@ import { HowItWorks } from '@/components/wholesale/HowItWorks';
 import { Testimonials } from '@/components/wholesale/Testimonials';
 import { WholesaleFaq } from '@/components/wholesale/WholesaleFaq';
 import { CtaBanner } from '@/components/wholesale/CtaBanner';
+import { WholesaleCategoryIndex } from '@/components/wholesale/WholesaleCategoryIndex';
 import {
   filterChromeBlocks,
   heroPropsFromBlock,
@@ -132,7 +133,17 @@ export async function WholesaleBlocksRenderer({
         );
         break;
       case 'categoryBanners':
-        // Retail-only block
+        nodes.push(
+          <Suspense key={block.id} fallback={<SectionSkeleton className="h-96" />}>
+            <WholesaleCategoryIndex
+              headline={str(p, 'headline') || undefined}
+              body={str(p, 'body') || undefined}
+              columns={typeof p.columns === 'number' ? p.columns : 4}
+              maxItems={p.maxItems}
+              categoryIds={str(p, 'categoryIds') || undefined}
+            />
+          </Suspense>,
+        );
         break;
       default:
         pushCommonBlocks(block, p, nodes);

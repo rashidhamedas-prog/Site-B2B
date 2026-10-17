@@ -1,4 +1,9 @@
+import { Suspense } from 'react';
 import { Header } from '@/components/layout/Header';
+import {
+  WholesaleCategoryNavSlot,
+  WholesaleMobileCategorySlot,
+} from '@/components/wholesale/WholesaleCategoryNav';
 import { Footer } from '@/components/layout/Footer';
 import { ScrollToTop } from '@/components/shared/ScrollToTop';
 import { FloatingContact } from '@/components/shared/FloatingContact';
@@ -110,7 +115,18 @@ export default async function WholesaleLayout({ children }: { children: React.Re
         <WebSiteJsonLd channel="WHOLESALE" business={settings?.business} seo={settings?.seo} />
         <GoogleAnalyticsProvider channel="WHOLESALE" />
         <ThemeRuntime theme={bag.theme} />
-        <Header />
+        <Header
+          categoryNav={
+            <Suspense fallback={null}>
+              <WholesaleCategoryNavSlot />
+            </Suspense>
+          }
+          mobileCategories={
+            <Suspense fallback={null}>
+              <WholesaleMobileCategorySlot />
+            </Suspense>
+          }
+        />
         <main>{children}</main>
         <Footer />
         <FloatingContact chrome={bag.chrome} />

@@ -97,6 +97,13 @@ export function defaultWholesaleHome(): ContentBlock[] {
         },
       ],
     }),
+    b('categoryBanners', {
+      headline: 'دسته‌بندی محصولات',
+      body: 'همه دسته‌های فعال کاتالوگ عمده؛ هر لینک به صفحهٔ همان مجموعه می‌رود.',
+      columns: 4,
+      maxItems: 24,
+      categoryIds: '',
+    }),
     b('stats', {
       items: [
         {
