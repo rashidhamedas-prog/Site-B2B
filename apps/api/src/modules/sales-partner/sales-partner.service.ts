@@ -412,7 +412,9 @@ export class SalesPartnerService {
       channel: input.channel !== undefined ? input.channel : profile.smsChannel,
       handle: input.handle !== undefined ? input.handle : profile.smsHandle,
     });
-    if (!parsed.ok) throw new BadRequestException(parsed.error);
+    if (parsed.ok === false) {
+      throw new BadRequestException(parsed.error);
+    }
     profile.smsShopName = parsed.value.shopName || null;
     profile.smsGreeting = parsed.value.greeting || null;
     profile.smsChannel = parsed.value.channel || null;
