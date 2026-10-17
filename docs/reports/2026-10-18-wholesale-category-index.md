@@ -22,3 +22,4 @@
 ## Check
 
 - `node --experimental-strip-types src/lib/catalog/category-storefront.spec.mts`
+- Live `6dcadfa`: health 200. Public home and `/products` include all 17 `/category/{slug}` links, including `/category/shomiz`. `/category/shomiz` returns the wholesale blouse catalog.
