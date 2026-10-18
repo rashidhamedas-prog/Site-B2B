@@ -12,6 +12,7 @@ export type XlsxSheetMatrix = {
 };
 
 const MAX_XLSX_BYTES = 8 * 1024 * 1024;
+const MAX_ENTRY_BYTES = 16 * 1024 * 1024;
 const MAX_ROWS = 20_000;
 const MAX_COLS = 64;
 
@@ -47,6 +48,9 @@ function parseCellRef(ref: string): { col: number; row: number } | null {
 type ZipEntry = { name: string; data: Buffer };
 
 function readZipEntries(buf: Buffer): ZipEntry[] {
+  if (buf.length < 4 || buf.readUInt32LE(0) !== 0x04034b50) {
+    throw new Error('فایل اکسل معتبر نیست');
+  }
   if (buf.length > MAX_XLSX_BYTES) {
     throw new Error('حجم فایل اکسل بیشتر از ۸ مگابایت است');
   }
@@ -73,16 +77,13 @@ function readZipEntries(buf: Buffer): ZipEntry[] {
     if (method === 0) {
       data = Buffer.from(compressed);
     } else if (method === 8) {
+      if (uncompSize > MAX_ENTRY_BYTES) {
+        throw new Error('شیت اکسل بیش از حد بزرگ است');
+      }
       try {
-        data = inflateRawSync(compressed);
+        data = inflateRawSync(compressed, { maxOutputLength: MAX_ENTRY_BYTES });
       } catch {
         throw new Error('باز کردن فشرده‌سازی اکسل ناموفق بود');
-      }
-      if (uncompSize && data.length !== uncompSize) {
-        // Some writers leave size 0 when bit 3 is set; tolerate length mismatch only then.
-        if (uncompSize > 0 && Math.abs(data.length - uncompSize) > 0) {
-          /* keep inflated bytes */
-        }
       }
     } else {
       throw new Error('فرمت فشرده‌سازی اکسل پشتیبانی نمی‌شود');
