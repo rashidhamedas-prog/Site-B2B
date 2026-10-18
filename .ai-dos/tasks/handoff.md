@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-18T00:05:00Z — TASK-20261018-002 CLOSED LIVE
+
+- Ship: `00fe1eff` → origin/master. VPS deploy complete at `00fe1ef`. Health check passed.
+- Owner: hard-refresh `/sales-partners/catalog`, `/sales-partners/orders/new`, and `/admin/sales-partners` (محصولات مجاز).
+- Claims released.
+
 ## 2026-10-17T23:40:00Z — TASK-20261018-002 partner images, live picker, display priority
 
 - Depth: skill-top full. Download zip is same-origin and key-allowlisted. Order picker uses `scope=order` up to 200, then parallel pages. Admin rank is `displayPriority` (lower first).

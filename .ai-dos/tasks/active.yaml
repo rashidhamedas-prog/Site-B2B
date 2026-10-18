@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261018-002"
     title: "Partner image download, full live picker, display priority"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
     owner: "cursor:implementer"
     roles:
