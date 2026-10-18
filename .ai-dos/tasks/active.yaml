@@ -2,9 +2,9 @@ schema_version: 1
 tasks:
   - id: "TASK-20261018-003"
     title: "Admin Excel price-update import (wholesale + retail)"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20261018-003"
+    owner: ""
     roles:
       architect: "cursor:skill-top-full"
       implementer: "cursor:implementer-TASK-20261018-003"
@@ -13,9 +13,11 @@ tasks:
     branch: "ai/TASK-20261018-003-price-excel-import"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-18T11:45:00Z"
-    heartbeat_at: "2026-10-18T11:45:00Z"
+    heartbeat_at: "2026-10-18T12:00:00Z"
+    completed_at: "2026-10-18T12:00:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/common/xlsx-reader.ts"
       - "apps/api/src/common/xlsx-reader.spec.ts"
       - "apps/api/src/modules/product/product-channel-prices.ts"

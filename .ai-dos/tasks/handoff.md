@@ -2,13 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-10-18T12:15:00Z — TASK-20261018-003 admin Excel price import
+## 2026-10-18T12:00:00Z — TASK-20261018-003 CLOSED LIVE
+
+- Ship: `7ce457db` → origin/master + VPS. Deploy complete; health OK.
+- Owner: hard-refresh `/admin` محصولات → قالب راهنما / پیش‌نمایش / اعمال قیمت.
+- Claims released.
+
+## 2026-10-18T11:50:00Z — TASK-20261018-003 admin Excel price import
 
 - Depth: skill-top full. Template + dry-run + apply for wholesale/retail finals (+ optional compare-at).
 - New: `xlsx-reader.ts`, `catalog-price-import.ts`, `product-channel-prices.ts` (extracted normalize), `AdminExcelPriceImport.tsx`.
-- Specs OK: xlsx-reader, catalog-price-import, product-pricing.invariant. Web `tsc` OK. API tsc clean for claimed files (pre-existing order-money-guard.spec noise).
+- Specs OK: xlsx-reader, catalog-price-import, product-pricing.invariant. Web `tsc` OK.
 - 21st: searched upload dropzones; kept native admin controls (AI off / density).
-- Next: commit → push → merge/deploy → smoke admin template download + dry-run.
 
 ## 2026-10-18T00:05:00Z — TASK-20261018-002 CLOSED LIVE
 
