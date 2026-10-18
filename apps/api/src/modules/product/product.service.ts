@@ -41,6 +41,20 @@ import {
   throwProductUniqueOrRethrow,
 } from './product-unique';
 import { buildProductWorkbook, parseExportChannel, type ExportProduct } from './catalog-excel';
+import {
+  buildPriceImportTemplate,
+  parsePriceImportBuffer,
+  planPriceImportRows,
+  summarizePricePlans,
+  PRICE_IMPORT_MAX_BYTES,
+  type PriceImportProduct,
+  type PriceRowPlan,
+} from './catalog-price-import';
+import {
+  normalizeProductChannelPrices,
+  type ProductChannelPriceInput,
+  type ProductChannelPrices,
+} from './product-channel-prices';
 import { changeProductSlug, type SalesChannel as SlugChannel } from './product-slug-redirect';
 import { computePackQty, sizesForSizeType } from './product-pack';
 import {
@@ -83,109 +97,10 @@ import type { InternalLinkView } from './dto/internal-link.dto';
 import { applyGuideOverrides, resolveInternalLinkCard } from './internal-link-card';
 import { resolveMembershipRows } from './product-category-membership';
 
+export type { ProductChannelPriceInput, ProductChannelPrices };
+export { normalizeProductChannelPrices };
+
 type BadgeConfig = { limitedStockMultiplier: number; newBadgeDays: number };
-
-export type ProductChannelPriceInput = {
-  wholesalePrice?: unknown;
-  retailPrice?: unknown;
-  wholesaleCompareAtPrice?: unknown;
-  retailCompareAtPrice?: unknown;
-  /** Defaults true (create). When false, retailPrice may be null. */
-  showOnRetail?: boolean;
-  /**
-   * Defaults true. Display gating only — DB column wholesalePrice is NOT NULL,
-   * so a positive wholesale final is always required regardless of this flag.
-   */
-  showOnWholesale?: boolean;
-};
-
-export type ProductChannelPrices = {
-  wholesalePrice: number;
-  retailPrice: number | null;
-  wholesaleCompareAtPrice: number | null;
-  retailCompareAtPrice: number | null;
-};
-
-/**
- * Parse IRR money: null/'' → null; reject NaN/negative/non-integer/unsafe-huge.
- * Zero is syntactically parseable; channel finals still require > 0 below.
- */
-function parseIrr(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null;
-  if (typeof value === 'bigint') {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
-      throw new BadRequestException('مبلغ ریالی نامعتبر است');
-    }
-    if (n > Number.MAX_SAFE_INTEGER) {
-      throw new BadRequestException('مبلغ خارج از محدوده امن Number است');
-    }
-    return n;
-  }
-  const n = typeof value === 'number' ? value : Number(String(value).trim());
-  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {
-    throw new BadRequestException('مبلغ ریالی باید عدد صحیح غیرمنفی (ریال) باشد');
-  }
-  // Guard unsafe JS precision for money beyond Number.MAX_SAFE_INTEGER
-  if (n > Number.MAX_SAFE_INTEGER) {
-    throw new BadRequestException('مبلغ خارج از محدوده امن Number است');
-  }
-  return n;
-}
-
-/**
- * HIGH-5 channel pricing invariant (create + update):
- * - wholesalePrice / retailPrice = FINAL transaction prices (after discount)
- * - compare-at optional; when set must be STRICTLY greater than that channel's final
- * - showOnRetail true (default): retailPrice required, positive (> 0)
- * - showOnRetail false: retailPrice may be null (clearing final only allowed off-channel)
- * - wholesalePrice always required positive (> 0) — DB column is NOT NULL;
- *   showOnWholesale only gates storefront display, not column nullability
- * - zero / negative / NaN / > MAX_SAFE_INTEGER rejected
- */
-export function normalizeProductChannelPrices(
-  input: ProductChannelPriceInput
-): ProductChannelPrices {
-  const showOnRetail = input.showOnRetail !== false;
-
-  const wholesalePrice = parseIrr(input.wholesalePrice);
-  if (wholesalePrice === null || wholesalePrice <= 0) {
-    throw new BadRequestException('قیمت نهایی عمده الزامی است و باید مثبت باشد');
-  }
-
-  const retailPrice = parseIrr(input.retailPrice);
-  if (showOnRetail) {
-    if (retailPrice === null || retailPrice <= 0) {
-      throw new BadRequestException(
-        'قیمت نهایی تکی برای نمایش در فروشگاه تکی الزامی است و باید مثبت باشد'
-      );
-    }
-  } else if (retailPrice !== null && retailPrice <= 0) {
-    throw new BadRequestException('قیمت نهایی تکی در صورت ارسال باید مثبت باشد');
-  }
-
-  const wholesaleCompareAtPrice = parseIrr(input.wholesaleCompareAtPrice);
-  const retailCompareAtPrice = parseIrr(input.retailCompareAtPrice);
-
-  if (wholesaleCompareAtPrice !== null && wholesaleCompareAtPrice <= wholesalePrice) {
-    throw new BadRequestException('قیمت قبل از تخفیف عمده باید از قیمت نهایی بیشتر باشد');
-  }
-  if (retailCompareAtPrice !== null) {
-    if (retailPrice === null) {
-      throw new BadRequestException('قیمت قبل از تخفیف تکی بدون قیمت نهایی معتبر نیست');
-    }
-    if (retailCompareAtPrice <= retailPrice) {
-      throw new BadRequestException('قیمت قبل از تخفیف تکی باید از قیمت نهایی بیشتر باشد');
-    }
-  }
-
-  return {
-    wholesalePrice,
-    retailPrice,
-    wholesaleCompareAtPrice,
-    retailCompareAtPrice,
-  };
-}
 
 @Injectable()
 export class ProductService {
@@ -2871,5 +2786,161 @@ export class ProductService {
       relatedSkus: relatedSkusByProduct.get(p.id) ?? [],
     }));
     return buildProductWorkbook({ products: payload, channel });
+  }
+
+  async exportPriceTemplate() {
+    const products = await this.productRepo
+      .createQueryBuilder('p')
+      .select([
+        'p.id',
+        'p.sku',
+        'p.name',
+        'p.showOnWholesale',
+        'p.showOnRetail',
+        'p.wholesalePrice',
+        'p.retailPrice',
+        'p.wholesaleCompareAtPrice',
+        'p.retailCompareAtPrice',
+      ])
+      .where('p.deletedAt IS NULL')
+      .orderBy('p.sku', 'ASC')
+      .getMany();
+    const payload: PriceImportProduct[] = products.map((p) => ({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      showOnWholesale: p.showOnWholesale,
+      showOnRetail: p.showOnRetail,
+      wholesalePrice: Number(p.wholesalePrice),
+      retailPrice: p.retailPrice != null ? Number(p.retailPrice) : null,
+      wholesaleCompareAtPrice:
+        p.wholesaleCompareAtPrice != null ? Number(p.wholesaleCompareAtPrice) : null,
+      retailCompareAtPrice: p.retailCompareAtPrice != null ? Number(p.retailCompareAtPrice) : null,
+    }));
+    return buildPriceImportTemplate(payload);
+  }
+
+  private async loadProductsForPriceImport(skus: string[]): Promise<{
+    bySku: Map<string, PriceImportProduct & { entity: ProductEntity }>;
+    byId: Map<string, PriceImportProduct & { entity: ProductEntity }>;
+  }> {
+    const unique = [...new Set(skus.map((s) => s.trim().toLowerCase()).filter(Boolean))];
+    const bySku = new Map<string, PriceImportProduct & { entity: ProductEntity }>();
+    const byId = new Map<string, PriceImportProduct & { entity: ProductEntity }>();
+    if (!unique.length) return { bySku, byId };
+
+    const rows = await this.productRepo
+      .createQueryBuilder('p')
+      .where('p.deletedAt IS NULL')
+      .andWhere('LOWER(p.sku) IN (:...skus)', { skus: unique })
+      .getMany();
+
+    const foundIds = new Set(rows.map((r) => r.id));
+    const aliases = await this.skuAliasRepo
+      .createQueryBuilder('a')
+      .where('LOWER(a.sku) IN (:...skus)', { skus: unique })
+      .getMany();
+    const aliasProductIds = aliases.map((a) => a.productId).filter((id) => !foundIds.has(id));
+    const aliasProducts = aliasProductIds.length
+      ? await this.productRepo.find({ where: { id: In([...new Set(aliasProductIds)]) } })
+      : [];
+    const productById = new Map<string, ProductEntity>();
+    for (const p of [...rows, ...aliasProducts]) productById.set(p.id, p);
+
+    const toImport = (p: ProductEntity): PriceImportProduct & { entity: ProductEntity } => ({
+      id: p.id,
+      sku: p.sku,
+      name: p.name,
+      showOnWholesale: p.showOnWholesale,
+      showOnRetail: p.showOnRetail,
+      wholesalePrice: Number(p.wholesalePrice),
+      retailPrice: p.retailPrice != null ? Number(p.retailPrice) : null,
+      wholesaleCompareAtPrice:
+        p.wholesaleCompareAtPrice != null ? Number(p.wholesaleCompareAtPrice) : null,
+      retailCompareAtPrice: p.retailCompareAtPrice != null ? Number(p.retailCompareAtPrice) : null,
+      entity: p,
+    });
+
+    for (const p of productById.values()) {
+      const item = toImport(p);
+      bySku.set(String(p.sku).toLowerCase(), item);
+      byId.set(p.id, item);
+    }
+    for (const a of aliases) {
+      const p = productById.get(a.productId);
+      if (!p) continue;
+      bySku.set(String(a.sku).toLowerCase(), toImport(p));
+    }
+    return { bySku, byId };
+  }
+
+  async importPricesFromExcel(buffer: Buffer, dryRun: boolean) {
+    if (!buffer?.length) throw new BadRequestException('فایلی ارسال نشده');
+    if (buffer.length > PRICE_IMPORT_MAX_BYTES) {
+      throw new BadRequestException('حجم فایل اکسل بیشتر از ۸ مگابایت است');
+    }
+    let rows;
+    try {
+      rows = parsePriceImportBuffer(buffer);
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : 'خواندن اکسل ناموفق بود');
+    }
+
+    const skus = rows.map((r) => r.sku).filter(Boolean);
+    const { bySku, byId } = await this.loadProductsForPriceImport(skus);
+    const plans = planPriceImportRows(rows, bySku, byId);
+    const summary = summarizePricePlans(plans);
+
+    if (dryRun) {
+      return {
+        dryRun: true as const,
+        applied: 0,
+        ...summary,
+      };
+    }
+
+    const changes = plans.filter((p): p is Extract<PriceRowPlan, { kind: 'change' }> => p.kind === 'change');
+    if (!changes.length) {
+      return {
+        dryRun: false as const,
+        applied: 0,
+        ...summary,
+      };
+    }
+
+    let applied = 0;
+    await this.productRepo.manager.transaction(async (em) => {
+      const repo = em.getRepository(ProductEntity);
+      for (const change of changes) {
+        const existing = bySku.get(change.sku.toLowerCase())?.entity;
+        if (!existing) continue;
+        const patch = {
+          wholesalePrice: change.patch.wholesalePrice,
+          retailPrice: change.patch.retailPrice,
+          wholesaleCompareAtPrice: change.patch.wholesaleCompareAtPrice,
+          retailCompareAtPrice: change.patch.retailCompareAtPrice,
+          wholesaleIsDiscounted: change.patch.wholesaleIsDiscounted,
+          retailIsDiscounted: change.patch.retailIsDiscounted,
+          isDiscounted: change.patch.isDiscounted,
+          isFeatured: change.patch.isDiscounted,
+        };
+        await repo.update(change.productId, patch as any);
+        const after = await repo.findOne({ where: { id: change.productId } });
+        if (!after) continue;
+        await this.enqueueProductOutbox(
+          existing,
+          after,
+          `product:price-import:${change.productId}:${change.excelRow}`,
+          em,
+        );
+        applied += 1;
+      }
+    });
+
+    return {
+      dryRun: false as const,
+      applied,
+      ...summary,
+    };
   }
 }

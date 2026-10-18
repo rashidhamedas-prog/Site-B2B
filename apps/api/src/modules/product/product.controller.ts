@@ -258,6 +258,57 @@ export class ProductController {
     return res.send(buffer);
   }
 
+  @Get('admin/price-template.xlsx')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'قالب اکسل فقط برای به‌روزرسانی قیمت عمده/تکی' })
+  async exportPriceTemplate(@Res() res: FastifyReply) {
+    const { buffer, filename } = await this.productService.exportPriceTemplate();
+    res.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.header('Content-Disposition', contentDispositionUtf8(filename));
+    res.header('Cache-Control', 'private, no-store');
+    return res.send(buffer);
+  }
+
+  @Post('admin/prices/import.xlsx')
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
+  @ApiOperation({ summary: 'پیش‌نمایش یا اعمال آپدیت قیمت از اکسل (فقط قیمت)' })
+  async importPricesExcel(
+    @Req() req: AuthedReq & { file?: () => Promise<any> },
+    @Query('dryRun') dryRunRaw?: string,
+  ) {
+    const dryRun = dryRunRaw !== '0' && dryRunRaw !== 'false';
+    let data: { filename?: string; mimetype?: string; file: AsyncIterable<Buffer> };
+    try {
+      data = await (req as any).file();
+    } catch {
+      throw new BadRequestException('آپلود فایل ناموفق بود');
+    }
+    if (!data) throw new BadRequestException('فایلی ارسال نشده');
+    const name = String(data.filename || '').toLowerCase();
+    const mime = String(data.mimetype || '').toLowerCase();
+    const looksXlsx =
+      name.endsWith('.xlsx') ||
+      mime.includes('spreadsheetml') ||
+      mime.includes('officedocument') ||
+      mime === 'application/octet-stream';
+    if (!looksXlsx) {
+      throw new BadRequestException('فقط فایل .xlsx پذیرفته می‌شود');
+    }
+    const chunks: Buffer[] = [];
+    let size = 0;
+    const max = 8 * 1024 * 1024;
+    for await (const chunk of data.file) {
+      size += chunk.length;
+      if (size > max) throw new BadRequestException('حجم فایل اکسل بیشتر از ۸ مگابایت است');
+      chunks.push(chunk);
+    }
+    return this.productService.importPricesFromExcel(Buffer.concat(chunks), dryRun);
+  }
+
   @Get('slug/:slug')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'جزئیات محصول با slug' })

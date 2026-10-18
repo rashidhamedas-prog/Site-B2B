@@ -1,5 +1,44 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261018-003"
+    title: "Admin Excel price-update import (wholesale + retail)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:implementer-TASK-20261018-003"
+    roles:
+      architect: "cursor:skill-top-full"
+      implementer: "cursor:implementer-TASK-20261018-003"
+      reviewer: "cursor:verify-pass"
+      security: "admin-jwt-multipart-xlsx-only"
+    branch: "ai/TASK-20261018-003-price-excel-import"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-18T11:45:00Z"
+    heartbeat_at: "2026-10-18T11:45:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/common/xlsx-reader.ts"
+      - "apps/api/src/common/xlsx-reader.spec.ts"
+      - "apps/api/src/modules/product/product-channel-prices.ts"
+      - "apps/api/src/modules/product/catalog-price-import.ts"
+      - "apps/api/src/modules/product/catalog-price-import.spec.ts"
+      - "apps/api/src/modules/product/product.service.ts"
+      - "apps/api/src/modules/product/product.controller.ts"
+      - "apps/web/src/components/admin/AdminExcelPriceImport.tsx"
+      - "apps/web/src/components/admin/AdminProducts.tsx"
+      - "apps/web/src/lib/api.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-18-catalog-price-excel-import.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    acceptance_criteria:
+      - "Admin can download price-only .xlsx template with guide sheet"
+      - "Upload dry-run returns matched/changed/error/skipped counts with Persian row errors"
+      - "Apply updates only wholesale/retail final and optional compare-at prices; empty cell = no change"
+      - "Match by SKU; admin JWT only; no new npm spreadsheet dependency"
+      - "xlsx-reader + catalog-price-import specs pass"
+    notes: |
+      skill-top full. Reuse xlsx-builder writer; add minimal ZIP/OOXML reader.
+      21st: searched dropzones; AI off + preserve admin density — native file input.
   - id: "TASK-20261018-002"
     title: "Partner image download, full live picker, display priority"
     status: "done"

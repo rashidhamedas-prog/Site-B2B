@@ -36,6 +36,7 @@ import type {
 } from '@/lib/hooks/useProducts';
 import { AdminCatalogSearch } from '@/components/admin/AdminCatalogSearch';
 import { AdminExcelExportButtons } from '@/components/admin/AdminExcelExportButtons';
+import { AdminExcelPriceImport } from '@/components/admin/AdminExcelPriceImport';
 import { AdminProductListFilters } from '@/components/admin/AdminProductListFilters';
 import { ProductImageAltEditor } from '@/components/admin/ProductImageAltEditor';
 import {
@@ -1628,6 +1629,7 @@ export function AdminProducts() {
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           <AdminExcelExportButtons kind="products" />
+          <AdminExcelPriceImport onApplied={() => void refetch()} />
           <button onClick={openCreate} className="btn btn-primary btn-md flex items-center gap-2">
             <Plus className="h-4 w-4" />
             افزودن محصول

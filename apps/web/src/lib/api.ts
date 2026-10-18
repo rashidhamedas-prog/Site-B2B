@@ -163,6 +163,101 @@ class ApiClient {
     return { url: data.url, key: data.key || '' };
   }
 
+  async uploadPriceImportExcel(
+    file: File,
+    dryRun: boolean,
+  ): Promise<{
+    dryRun: boolean;
+    applied: number;
+    totalRows: number;
+    matched: number;
+    changed: number;
+    skipped: number;
+    errors: number;
+    errorSamples?: Array<{ excelRow: number; sku: string; message: string }>;
+    changeSamples?: Array<{
+      excelRow: number;
+      sku: string;
+      before: {
+        wholesalePrice: number;
+        retailPrice: number | null;
+        wholesaleCompareAtPrice: number | null;
+        retailCompareAtPrice: number | null;
+      };
+      after: {
+        wholesalePrice: number;
+        retailPrice: number | null;
+        wholesaleCompareAtPrice: number | null;
+        retailCompareAtPrice: number | null;
+      };
+    }>;
+  }> {
+    const token = getToken();
+    const fd = new FormData();
+    fd.append('file', file);
+    const q = dryRun ? 'dryRun=1' : 'dryRun=0';
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), UPLOAD_FETCH_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}/products/admin/prices/import.xlsx?${q}`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+        signal: ctrl.signal,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('زمان آپلود اکسل تمام شد. دوباره تلاش کنید.');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
+    }
+    const text = await res.text();
+    let data: { message?: string | string[] } | null = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+    }
+    if (!res.ok) {
+      const raw = data?.message ?? 'خطا در آپلود اکسل قیمت';
+      throw new Error(Array.isArray(raw) ? raw[0] : raw);
+    }
+    if (!data || typeof data !== 'object') {
+      throw new Error('پاسخ سرور نامعتبر بود');
+    }
+    return data as {
+      dryRun: boolean;
+      applied: number;
+      totalRows: number;
+      matched: number;
+      changed: number;
+      skipped: number;
+      errors: number;
+      errorSamples?: Array<{ excelRow: number; sku: string; message: string }>;
+      changeSamples?: Array<{
+        excelRow: number;
+        sku: string;
+        before: {
+          wholesalePrice: number;
+          retailPrice: number | null;
+          wholesaleCompareAtPrice: number | null;
+          retailCompareAtPrice: number | null;
+        };
+        after: {
+          wholesalePrice: number;
+          retailPrice: number | null;
+          wholesaleCompareAtPrice: number | null;
+          retailCompareAtPrice: number | null;
+        };
+      }>;
+    };
+  }
+
   async download(path: string, fallbackName: string): Promise<void> {
     const token = getToken();
     const res = await fetch(`${this.baseUrl}${path}`, {
