@@ -1,3 +1,8 @@
+## 2026-10-18 — سقف inflate اکسل قیمت + تست در npm test
+
+- `xlsx-reader` فقط ZIP واقعی می‌پذیرد و هر entry فشرده را تا ۱۶MB باز می‌کند.
+- `xlsx-reader.spec` و `catalog-price-import.spec` به `apps/api` test script اضافه شدند.
+
 ## 2026-10-18 — آپدیت قیمت عمده/تکی از اکسل [TASK-20261018-003]
 
 - ادمین محصولات: قالب `.xlsx` فقط قیمت + پیش‌نمایش dry-run + اعمال؛ سلول خالی = بدون تغییر.
