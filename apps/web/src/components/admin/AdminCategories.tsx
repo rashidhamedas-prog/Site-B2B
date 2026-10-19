@@ -11,6 +11,12 @@ import {
   Upload,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import {
+  categoryCtaFromUnknown,
+  defaultCategoryCta,
+  serializeCategoryCta,
+  type CategoryCtaConfig,
+} from '@/lib/catalog/category-cta';
 import { cn } from '@/lib/cn';
 import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
@@ -36,11 +42,13 @@ type Category = {
   showOnHome?: boolean;
   sortOrder?: number;
   faqItems?: FaqItem[] | null;
+  cta?: CategoryCtaConfig | null;
   wholesaleH1?: string | null;
   wholesaleSeoTitle?: string | null;
   wholesaleSeoDescription?: string | null;
   wholesaleIntroText?: string | null;
   wholesaleBottomContent?: string | null;
+  wholesaleCta?: CategoryCtaConfig | null;
   status?: string;
 };
 
@@ -243,11 +251,13 @@ export function AdminCategories() {
         showOnHome: c.showOnHome !== false,
         sortOrder: Number.isFinite(Number(c.sortOrder)) ? Number(c.sortOrder) : 0,
         faqItems: cleanFaq(c.faqItems),
+        cta: serializeCategoryCta(categoryCtaFromUnknown(c.cta)),
         wholesaleH1: c.wholesaleH1?.trim() || null,
         wholesaleSeoTitle: c.wholesaleSeoTitle?.trim() || null,
         wholesaleSeoDescription: c.wholesaleSeoDescription?.trim() || null,
         wholesaleIntroText: c.wholesaleIntroText?.trim() || null,
         wholesaleBottomContent: c.wholesaleBottomContent?.trim() || null,
+        wholesaleCta: serializeCategoryCta(categoryCtaFromUnknown(c.wholesaleCta)),
       });
       await load();
       void bustCatalogStorefront();
@@ -670,6 +680,13 @@ export function AdminCategories() {
                               rows={6}
                             />
                           </div>
+                          <div className="lg:col-span-2">
+                            <CategoryCtaEditor
+                              channel="RETAIL"
+                              value={categoryCtaFromUnknown(c.cta)}
+                              onChange={(cta) => patchItem(c.id, { cta })}
+                            />
+                          </div>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -711,6 +728,13 @@ export function AdminCategories() {
                               onChange={(v) => patchItem(c.id, { wholesaleBottomContent: v })}
                               multiline
                               rows={6}
+                            />
+                          </div>
+                          <div className="lg:col-span-2">
+                            <CategoryCtaEditor
+                              channel="WHOLESALE"
+                              value={categoryCtaFromUnknown(c.wholesaleCta)}
+                              onChange={(wholesaleCta) => patchItem(c.id, { wholesaleCta })}
                             />
                           </div>
                         </div>
@@ -824,6 +848,116 @@ function BannerDropzone({
           }}
         />
       </div>
+    </div>
+  );
+}
+
+function CategoryCtaEditor({
+  channel,
+  value,
+  onChange,
+}: {
+  channel: AdminChannel;
+  value: CategoryCtaConfig;
+  onChange: (next: CategoryCtaConfig) => void;
+}) {
+  const patch = (partial: Partial<CategoryCtaConfig>) => onChange({ ...value, ...partial });
+  const title =
+    channel === 'WHOLESALE' ? 'تنظیمات دکمه CTA — سایت عمده' : 'تنظیمات دکمه CTA — سایت تک';
+  const sampleLabel =
+    channel === 'WHOLESALE' ? 'مشاهده مدل‌ها و خرید عمده' : 'مشاهده مدل‌ها و خرید آنلاین';
+
+  return (
+    <div className="space-y-3 rounded-xl border border-dashed border-primary/30 bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-gray-800">{title}</h3>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            className="rounded border-gray-300"
+            checked={value.enabled}
+            onChange={(e) => patch({ enabled: e.target.checked })}
+          />
+          فعال
+        </label>
+      </div>
+      <p className="text-xs text-gray-500">
+        وقتی غیرفعال باشد هیچ دکمه‌ای در صفحه دسته نمایش داده نمی‌شود. مقصد «لیست محصولات» به{' '}
+        <code className="rounded bg-gray-100 px-1" dir="ltr">
+          #category-listing
+        </code>{' '}
+        وصل می‌شود.
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field
+          label="متن دکمه"
+          value={value.label}
+          onChange={(label) => patch({ label })}
+          hint={!value.label.trim() ? `نمونه: ${sampleLabel}` : undefined}
+        />
+        <div>
+          <label className="mb-1 block text-xs text-gray-600">مقصد دکمه</label>
+          <select
+            className="input-base w-full"
+            value={value.destination}
+            onChange={(e) =>
+              patch({
+                destination: e.target.value === 'custom' ? 'custom' : 'listing',
+                customUrl: e.target.value === 'custom' ? value.customUrl : null,
+              })
+            }
+          >
+            <option value="listing">لیست محصولات همین صفحه</option>
+            <option value="custom">لینک سفارشی</option>
+          </select>
+        </div>
+        {value.destination === 'custom' ? (
+          <div className="sm:col-span-2">
+            <Field
+              label="آدرس لینک سفارشی"
+              value={value.customUrl ?? ''}
+              onChange={(customUrl) => patch({ customUrl: customUrl.trim() || null })}
+              dir="ltr"
+              hint="مسیر داخلی مثل /products یا آدرس https معتبر"
+            />
+          </div>
+        ) : null}
+        <div>
+          <label className="mb-1 block text-xs text-gray-600">محل نمایش</label>
+          <select
+            className="input-base w-full"
+            value={value.placement}
+            onChange={(e) =>
+              patch({
+                placement: e.target.value === 'below_bottom' ? 'below_bottom' : 'below_intro',
+              })
+            }
+          >
+            <option value="below_intro">زیر مقدمه (قبل از محصولات)</option>
+            <option value="below_bottom">پایین صفحه (بعد از محتوا و FAQ)</option>
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-gray-600">ظاهر دکمه</label>
+          <select
+            className="input-base w-full"
+            value={value.variant}
+            onChange={(e) =>
+              patch({ variant: e.target.value === 'secondary' ? 'secondary' : 'primary' })
+            }
+          >
+            <option value="primary">اصلی</option>
+            <option value="secondary">ثانویه</option>
+          </select>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="btn btn-outline btn-sm"
+        onClick={() => onChange(defaultCategoryCta())}
+      >
+        بازنشانی به غیرفعال
+      </button>
     </div>
   );
 }

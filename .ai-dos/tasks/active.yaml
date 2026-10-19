@@ -1,5 +1,43 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261019-002"
+    title: "Per-channel category CTA (admin + CategoryLanding)"
+    status: "in_progress"
+    risk: "medium"
+    owner: "cursor:skill-top-full"
+    roles:
+      architect: "cursor:skill-top-full"
+      implementer: "cursor:implementer-TASK-20261019-002"
+      reviewer: "pending-owner"
+      security: "admin-jwt-cta-url-sanitize"
+    branch: "ai/TASK-20261019-002-category-cta"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-19T12:05:00Z"
+    heartbeat_at: "2026-10-19T12:15:00Z"
+    depends_on: []
+    file_claims:
+      - "apps/api/src/modules/category/category-cta.ts"
+      - "apps/api/src/modules/category/category-cta.spec.ts"
+      - "apps/api/src/modules/category/category.service.ts"
+      - "apps/api/src/modules/category/entities/category.entity.ts"
+      - "apps/api/src/database/migrations/20261019-002-category-cta.ts"
+      - "apps/api/src/database/migrations/20261019-002-category-cta.spec.ts"
+      - "apps/web/src/lib/catalog/category-cta.ts"
+      - "apps/web/src/lib/catalog/category-cta.spec.mts"
+      - "apps/web/src/components/category/CategoryCtaLink.tsx"
+      - "apps/web/src/components/category/CategoryLanding.tsx"
+      - "apps/web/src/components/admin/AdminCategories.tsx"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    acceptance_criteria:
+      - "cta + wholesaleCta jsonb columns; default null = disabled"
+      - "Admin can set enabled/label/destination/customUrl/placement/variant per channel"
+      - "CategoryLanding renders channel CTA; listing target #category-listing; sticky scroll-mt"
+      - "Unsafe custom URLs rejected; SEO/listing/ids unchanged; no prod enable by default"
+      - "No commit/push/deploy without owner approval"
+    notes: |
+      skill-top full. Design: jsonb cta / wholesaleCta mirroring retail unprefixed + wholesale* pattern.
+      Migration prepared for dev only — do not run on production without approval.
   - id: "TASK-20261019-001"
     title: "Admin categories UX + showOnHome home fix + square banner optimize"
     status: "done"

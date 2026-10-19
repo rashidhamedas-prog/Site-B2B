@@ -12,6 +12,12 @@ import { getCategoryCanonicalUrl, siteOrigin, type PublicSite } from '@/lib/cano
 import { mediaUrl } from '@/lib/product-display';
 import { getServerApiBase } from '@/lib/server-api';
 import { redirectIfMatched } from '@/lib/seo-redirect';
+import {
+  categoryCtaFromUnknown,
+  resolveCategoryCtaHref,
+  type CategoryCtaConfig,
+} from '@/lib/catalog/category-cta';
+import { CategoryCtaLink } from './CategoryCtaLink';
 import { CategoryProductListing } from './CategoryProductListing';
 import {
   buildCategoryProductsQuery,
@@ -41,11 +47,13 @@ export type CategoryRecord = {
   isIndexable?: boolean;
   status?: string;
   faqItems?: Array<{ question: string; answer: string }> | null;
+  cta?: CategoryCtaConfig | null;
   wholesaleH1?: string | null;
   wholesaleSeoTitle?: string | null;
   wholesaleSeoDescription?: string | null;
   wholesaleIntroText?: string | null;
   wholesaleBottomContent?: string | null;
+  wholesaleCta?: CategoryCtaConfig | null;
 };
 
 function siteOf(channel: CategoryChannel): PublicSite {
@@ -126,6 +134,7 @@ function copyFor(category: CategoryRecord, channel: CategoryChannel) {
         `خرید ${name} زنانه مستقیم از تولیدی ترنم؛ مدل‌های اسپرت با رنگ‌بندی و سایزبندی متنوع.`,
       intro: category.introText || '',
       bottom: category.bottomContent || '',
+      cta: categoryCtaFromUnknown(category.cta),
     };
   }
   return {
@@ -136,7 +145,32 @@ function copyFor(category: CategoryRecord, channel: CategoryChannel) {
       `خرید عمده ${name} زنانه مستقیم از تولیدی ترنم مشهد؛ مناسب بوتیک‌ها و فروشندگان سراسر ایران.`,
     intro: category.wholesaleIntroText || '',
     bottom: category.wholesaleBottomContent || '',
+    cta: categoryCtaFromUnknown(category.wholesaleCta),
   };
+}
+
+function CategoryCtaSlot({
+  cta,
+  channel,
+  placement,
+}: {
+  cta: CategoryCtaConfig;
+  channel: CategoryChannel;
+  placement: 'below_intro' | 'below_bottom';
+}) {
+  if (!cta.enabled || cta.placement !== placement) return null;
+  if (!resolveCategoryCtaHref(cta)) return null;
+  return (
+    <div
+      className={
+        placement === 'below_intro'
+          ? 'mt-6 flex flex-wrap gap-3'
+          : 'mx-auto mt-10 flex max-w-3xl flex-wrap gap-3'
+      }
+    >
+      <CategoryCtaLink cta={cta} channel={channel} />
+    </div>
+  );
 }
 
 export async function categoryLandingMetadata(
@@ -299,7 +333,9 @@ export async function CategoryLanding({
             ) : null}
           </header>
 
-          <div id="category-listing">
+          <CategoryCtaSlot cta={copy.cta} channel={channel} placement="below_intro" />
+
+          <div id="category-listing" className="scroll-mt-32">
             <div id="category-listing-static">
               <CategoryProductListing
                 channel={channel}
@@ -331,6 +367,8 @@ export async function CategoryLanding({
               </dl>
             </section>
           ) : null}
+
+          <CategoryCtaSlot cta={copy.cta} channel={channel} placement="below_bottom" />
 
           {siblingLinks.length ? (
             <section className="mt-14">

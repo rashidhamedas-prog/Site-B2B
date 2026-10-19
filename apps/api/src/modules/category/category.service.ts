@@ -18,6 +18,7 @@ import {
   type ExportCategory,
 } from '../product/catalog-excel';
 import { throwCategoryUniqueOrRethrow } from './category-unique';
+import { normalizeCategoryCta, type CategoryCta } from './category-cta';
 
 export type CategoryUpsert = {
   name?: string;
@@ -40,11 +41,13 @@ export type CategoryUpsert = {
   sortOrder?: number;
   status?: string;
   faqItems?: Array<{ question: string; answer: string }> | null;
+  cta?: CategoryCta | null;
   wholesaleH1?: string | null;
   wholesaleSeoTitle?: string | null;
   wholesaleSeoDescription?: string | null;
   wholesaleIntroText?: string | null;
   wholesaleBottomContent?: string | null;
+  wholesaleCta?: CategoryCta | null;
 };
 
 @Injectable()
@@ -144,11 +147,14 @@ export class CategoryService {
       sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 0,
       status: body.status === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
       faqItems: body.faqItems ?? null,
+      cta: body.cta !== undefined ? normalizeCategoryCta(body.cta) : null,
       wholesaleH1: body.wholesaleH1?.trim() || null,
       wholesaleSeoTitle: body.wholesaleSeoTitle?.trim() || null,
       wholesaleSeoDescription: body.wholesaleSeoDescription?.trim() || null,
       wholesaleIntroText: body.wholesaleIntroText?.trim() || null,
       wholesaleBottomContent: body.wholesaleBottomContent?.trim() || null,
+      wholesaleCta:
+        body.wholesaleCta !== undefined ? normalizeCategoryCta(body.wholesaleCta) : null,
     });
     this.applySeedDefaults(seed, entity);
     try {
@@ -198,6 +204,10 @@ export class CategoryService {
     }
     if (body.status !== undefined) existing.status = body.status === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE';
     if (body.faqItems !== undefined) existing.faqItems = body.faqItems;
+    if (body.cta !== undefined) existing.cta = normalizeCategoryCta(body.cta);
+    if (body.wholesaleCta !== undefined) {
+      existing.wholesaleCta = normalizeCategoryCta(body.wholesaleCta);
+    }
     let saved: CategoryEntity;
     try {
       saved = await this.repo.save(existing);

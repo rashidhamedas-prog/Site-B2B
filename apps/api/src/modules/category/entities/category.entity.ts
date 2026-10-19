@@ -79,6 +79,17 @@ export class CategoryEntity {
   @Column({ type: 'jsonb', nullable: true })
   faqItems: Array<{ question: string; answer: string }> | null;
 
+  /** Retail storefront CTA knobs; null = disabled (legacy default). */
+  @Column({ type: 'jsonb', nullable: true })
+  cta: {
+    enabled: boolean;
+    label: string;
+    destination: 'listing' | 'custom';
+    customUrl: string | null;
+    placement: 'below_intro' | 'below_bottom';
+    variant: 'primary' | 'secondary';
+  } | null;
+
   @Column({ type: 'text', nullable: true })
   wholesaleH1: string | null;
 
@@ -93,6 +104,17 @@ export class CategoryEntity {
 
   @Column({ type: 'text', nullable: true })
   wholesaleBottomContent: string | null;
+
+  /** Wholesale storefront CTA knobs; null = disabled (legacy default). */
+  @Column({ type: 'jsonb', nullable: true })
+  wholesaleCta: {
+    enabled: boolean;
+    label: string;
+    destination: 'listing' | 'custom';
+    customUrl: string | null;
+    placement: 'below_intro' | 'below_bottom';
+    variant: 'primary' | 'secondary';
+  } | null;
 
   @CreateDateColumn()
   createdAt: Date;

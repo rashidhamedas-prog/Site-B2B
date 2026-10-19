@@ -2,6 +2,21 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-19T12:15:00Z — TASK-20261019-002 commit local (no push/deploy)
+
+- Owner chose option 3: local migration + commit, no deploy.
+- Local `npm run migration:run` failed: Postgres `localhost:5432` ECONNREFUSED (Docker not available on this machine).
+- Commit on branch `ai/TASK-20261019-002-category-cta`. Push/deploy still blocked until owner says so.
+- Next: start local Postgres or run migration on approved staging, then smoke-test admin CTA + bamber scroll.
+
+## 2026-10-19T12:05:00Z — TASK-20261019-002 category CTA (dev, not shipped)
+
+- Depth: skill-top full. Per-channel CTA via `cta` / `wholesaleCta` jsonb (null = disabled).
+- API: `category-cta.ts` normalize + URL sanitize; migration `20261019-002-category-cta.ts`.
+- Web: AdminCategories CTA editors under SEO tabs; CategoryLanding slots below intro / below FAQ; `#category-listing` + `scroll-mt-32`.
+- Specs OK: category-cta (api+web), migration source. Web `tsc` clean. API `tsc` still has pre-existing order-money-guard.spec errors (unrelated).
+- Constraints honored at that point: no commit/push/deploy.
+
 ## 2026-10-19T08:06:00Z — TASK-20261019-001 CLOSED LIVE
 
 - Ship: `5c4d040f` → origin/master + VPS force rebuild; deploy complete at `5c4d040`; health OK.
