@@ -101,7 +101,7 @@ export default function SalesPartnerOrderDetailPage() {
               . بعد از آن خودکار منقضی می‌شود.
             </p>
           )}
-          <SpCancelDraftButton draftId={row.id} status={row.status} onDone={setRow} />
+          <SpCancelDraftButton<OrderView> draftId={row.id} status={row.status} onDone={setRow} />
           <p className="text-stone-500">کد رهگیری را شما ثبت نمی‌کنید و تحویل را تأیید نمی‌کنید.</p>
         </SpCard>
       )}
