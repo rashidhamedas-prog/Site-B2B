@@ -27,8 +27,9 @@ export const CHECKOUT_PAYMENT_INTRO =
   'اگر اسم این روش‌ها را نمی‌شناسی نگران نباش. هر کارت را بخوان و یکی را انتخاب کن. شک داشتی همان گزینهٔ «پیشنهادی» را بزن.';
 
 /**
- * TorobPay merchant contract is inactive in production (token 1011 / error 1100).
- * Keep UI off until ops re-enables after a live eligible smoke.
+ * Storefront card stays off until a live eligible smoke with an in-range amount
+ * (200,000–1,000,000,000 IRR) returns success. Eligibility 1011 is an amount-range
+ * refusal after the contract check, not proof the merchant contract is inactive.
  */
 export const RETAIL_TOROBPAY_UI_ENABLED = false;
 

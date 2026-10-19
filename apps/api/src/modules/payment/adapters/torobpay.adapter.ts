@@ -21,6 +21,15 @@ const PAYMENT_METHOD = 'ONLINE_CREDIT';
 /** totweb / shetabit shops use a Latin category; a Persian label can fail their order insert (1011). */
 const DEFAULT_CATEGORY = 'general';
 const MIN_ADDRESS_LEN = 8;
+/**
+ * Official eligibility catalog (torobpay-for-woocommerce error codes):
+ * code 1011 on GET /offer/v1/eligible means the amount is outside
+ * 200,000–1,000,000,000 IRR. That code is only returned after the contract check passes.
+ */
+export const TOROBPAY_MIN_AMOUNT_IRR = 200_000;
+export const TOROBPAY_MAX_AMOUNT_IRR = 1_000_000_000;
+/** In-range smoke amount. 100,000 IRR is below the floor and always returns eligibility 1011. */
+export const TOROBPAY_PROBE_AMOUNT_IRR = TOROBPAY_MIN_AMOUNT_IRR;
 
 type TokenCache = {
   accessToken: string;
@@ -147,10 +156,7 @@ export function buildTorobpayBalancedCart(input: {
     }>;
   }>;
 } {
-  const amount = Math.floor(Number(input.amountIrr) || 0);
-  if (!Number.isFinite(amount) || amount < 10_000) {
-    throw new Error('مبلغ پرداخت ترب‌پی نامعتبر است');
-  }
+  const amount = assertTorobpayAmountIrr(input.amountIrr);
   const transactionId = compactTorobpayTransactionId(input.transactionId);
   return {
     amount,
@@ -198,6 +204,7 @@ export type TorobpayProbeFailureClass =
   | 'invalid_client'
   | 'invalid_grant'
   | 'merchant_inactive'
+  | 'invalid_amount'
   | 'network'
   | 'unknown';
 
@@ -246,6 +253,56 @@ export function classifyTorobpayContractFailure(input: {
       failureClass: 'merchant_inactive',
       message:
         'قرارداد پذیرنده ترب‌پی فعال نیست (کد ۱۱۰۰). در پنل ترب‌پی بخش «اطلاعات فعال‌سازی درگاه» را کامل کنید یا از پشتیبانی ترب‌پی بخواهید قرارداد را فعال کند. تا آن زمان توکن پرداخت ساخته نمی‌شود.',
+    };
+  }
+  return null;
+}
+
+export function assertTorobpayAmountIrr(amountIrr: number): number {
+  const amount = Math.floor(Number(amountIrr) || 0);
+  if (!Number.isFinite(amount) || amount < TOROBPAY_MIN_AMOUNT_IRR || amount > TOROBPAY_MAX_AMOUNT_IRR) {
+    throw new Error(
+      'مبلغ ترب‌پی خارج از بازهٔ مجاز است. ترب‌پی فقط از ۲۰۰٬۰۰۰ تا ۱٬۰۰۰٬۰۰۰٬۰۰۰ ریال را می‌پذیرد.',
+    );
+  }
+  return amount;
+}
+
+function torobpayErrorCode(json: Record<string, unknown>): number {
+  const errorData =
+    json.errorData && typeof json.errorData === 'object'
+      ? (json.errorData as Record<string, unknown>)
+      : {};
+  return Number(errorData.errorCode ?? errorData.error_code ?? json.error_code ?? json.errorCode ?? json.code);
+}
+
+function torobpayErrorText(json: Record<string, unknown>): string {
+  const errorData =
+    json.errorData && typeof json.errorData === 'object'
+      ? (json.errorData as Record<string, unknown>)
+      : {};
+  return String(
+    json.user_message || json.message || errorData.userMessage || errorData.message || json.error || '',
+  ).trim();
+}
+
+/**
+ * Eligibility-only. Do not use for OAuth: code 1011 there means bad Basic credentials.
+ * Eligibility 1011 is "Invalid amount" and means the merchant contract check already passed.
+ */
+export function classifyTorobpayEligibleFailure(input: {
+  httpStatus?: number;
+  json: Record<string, unknown>;
+}): { failureClass: TorobpayProbeFailureClass; message: string } | null {
+  const contract = classifyTorobpayContractFailure(input);
+  if (contract) return contract;
+  const code = torobpayErrorCode(input.json || {});
+  const msg = torobpayErrorText(input.json || {});
+  if (code === 1011 || /invalid amount/i.test(msg)) {
+    return {
+      failureClass: 'invalid_amount',
+      message:
+        'مبلغ خارج از بازهٔ ترب‌پی است (۱۰۱۱). بازهٔ رسمی ۲۰۰٬۰۰۰ تا ۱٬۰۰۰٬۰۰۰٬۰۰۰ ریال است. این کد روی بررسی پیشنهاد یعنی قرارداد پذیرنده رد نشده.',
     };
   }
   return null;
@@ -583,7 +640,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
 
       try {
         const eligible = await this.fetchRaw(
-          `${API_BASE}/api/online/offer/v1/eligible?amount=100000`,
+          `${API_BASE}/api/online/offer/v1/eligible?amount=${TOROBPAY_PROBE_AMOUNT_IRR}`,
           {
             method: 'GET',
             headers: {
@@ -592,7 +649,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
             },
           },
         );
-        const contract = classifyTorobpayContractFailure({
+        const contract = classifyTorobpayEligibleFailure({
           httpStatus: eligible.status,
           json: eligible.json,
         });
@@ -695,27 +752,32 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
       throw new Error('برای ترب‌پی نام و نام خانوادگی گیرنده را کامل وارد کنید.');
     }
 
-    // Hard-fail before token when CPG says the merchant contract is inactive (1100).
-    // Otherwise every start surfaces as opaque 1011 "can't create order".
+    const amountIrr = assertTorobpayAmountIrr(req.amountIrr);
+    // Hard-fail before token when CPG rejects the contract (1100) or the amount (eligibility 1011).
+    // Eligibility 1011 is a different failure from token 1011 "can't create order".
     try {
       const eligible = await this.authorized(
         'GET',
-        `/api/online/offer/v1/eligible?amount=${Math.max(100000, Math.floor(Number(req.amountIrr) || 0))}`,
+        `/api/online/offer/v1/eligible?amount=${amountIrr}`,
         undefined,
         over,
       );
-      const contract = classifyTorobpayContractFailure({
+      const contract = classifyTorobpayEligibleFailure({
         httpStatus: eligible.status,
         json: eligible.json,
       });
       if (contract) {
         this.logger.warn(
-          `TorobPay create blocked by contract http=${eligible.status} amount=${req.amountIrr}`,
+          `TorobPay create blocked http=${eligible.status} class=${contract.failureClass} amount=${amountIrr}`,
         );
         throw new Error(contract.message);
       }
     } catch (err) {
-      if (err instanceof Error && /قرارداد پذیرنده ترب‌پی فعال نیست/.test(err.message)) {
+      if (
+        err instanceof Error &&
+        (/قرارداد پذیرنده ترب‌پی فعال نیست/.test(err.message) ||
+          /خارج از بازهٔ ترب‌پی/.test(err.message))
+      ) {
         throw err;
       }
       // Network / eligible soft failures: continue to token (historical path).
@@ -726,7 +788,7 @@ export class TorobPayAdapter implements PaymentProviderAdapter {
 
     const requestToken = async (txn: string, includeAddress: boolean) => {
       const cart = buildTorobpayBalancedCart({
-        amountIrr: req.amountIrr,
+        amountIrr,
         transactionId: txn,
         description: req.description,
       });

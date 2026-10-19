@@ -83,7 +83,7 @@ export function PaymentTab({
           تست اتصال ترب‌پی
         </button>
         <p className="text-[11px] leading-5 text-slate-500">
-          اگر تست «قرارداد پذیرنده فعال نیست (۱۱۰۰)» بدهد، اول در پنل ترب‌پی بخش اطلاعات فعال‌سازی درگاه را کامل/فعال کنید؛ تا قرارداد فعال نشود توکن پرداخت ساخته نمی‌شود.
+          تست اتصال با ۲۰۰٬۰۰۰ ریال انجام می‌شود؛ مبلغ کمتر خطای ۱۰۱۱ «Invalid amount» می‌دهد و ربطی به قرارداد ندارد. فقط اگر پیام «قرارداد پذیرنده فعال نیست (۱۱۰۰)» آمد، بخش اطلاعات فعال‌سازی درگاه را در پنل ترب‌پی کامل کنید.
         </p>
         {torobpayMsg ? <p className={cn('rounded-lg border px-3 py-2 text-xs', torobpayMsg.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-950')}>{torobpayMsg.text}</p> : null}
       </SettingsSection>

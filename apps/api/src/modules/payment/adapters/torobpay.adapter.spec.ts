@@ -5,7 +5,10 @@
 import { ConfigService } from '@nestjs/config';
 import {
   TorobPayAdapter,
+  TOROBPAY_PROBE_AMOUNT_IRR,
+  assertTorobpayAmountIrr,
   buildTorobpayBalancedCart,
+  classifyTorobpayEligibleFailure,
   classifyTorobpayOauthFailure,
   compactTorobpayTransactionId,
   composeTorobpayAddress,
@@ -83,6 +86,25 @@ async function main() {
   assert(cart.cartList[0].cartItems[0].amount === 14300000, 'single line equals payable');
   assert(cart.cartList[0].cartItems[0].category === 'general', 'latin category');
   assert(!('commissionType' in cart.cartList[0].cartItems[0]), 'omit commission');
+  assert(assertTorobpayAmountIrr(200_000) === 200_000, 'min amount');
+  let lowAmount = false;
+  try {
+    buildTorobpayBalancedCart({ amountIrr: 100_000, transactionId: 'pay-low' });
+  } catch (e) {
+    lowAmount = e instanceof Error && e.message.includes('خارج از بازه');
+  }
+  assert(lowAmount, '100000 rial is below the official floor');
+  const amount1011 = classifyTorobpayEligibleFailure({
+    httpStatus: 400,
+    json: { successful: false, errorData: { errorCode: 1011, message: 'Invalid amount' } },
+  });
+  assert(amount1011?.failureClass === 'invalid_amount', 'eligibility 1011 is amount');
+  assert(amount1011?.message.includes('۲۰۰'), 'eligibility 1011 names the floor');
+  const oauth1011 = classifyTorobpayOauthFailure({
+    httpStatus: 401,
+    json: { error_code: 1011, message: 'Invalid amount' },
+  });
+  assert(oauth1011.failureClass === 'invalid_client', 'oauth 1011 stays credentials');
 
   assert(torobpayCallbackIsSuccess({ state: 'OK' }) === true, 'state OK');
   assert(torobpayCallbackIsSuccess({ status: 'FAILED' }) === false, 'FAILED');
@@ -125,12 +147,19 @@ async function main() {
 
   const gw = adapter();
   const originalFetch = globalThis.fetch;
+  let probeEligibleAmount = '';
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.includes('/oauth/token')) {
       return new Response(JSON.stringify({ access_token: 'jwt-test' }), { status: 200 });
     }
     if (url.includes('/offer/v1/eligible')) {
+      const eligibleAmount = new URL(url).searchParams.get('amount') || '';
+      if (!probeEligibleAmount) probeEligibleAmount = eligibleAmount;
+      assert(
+        eligibleAmount === String(TOROBPAY_PROBE_AMOUNT_IRR) || eligibleAmount === '2500000',
+        'eligible amount stays inside the official range',
+      );
       return new Response(
         JSON.stringify({ successful: true, response: { eligible: true } }),
         { status: 200 },
@@ -170,6 +199,7 @@ async function main() {
     assert(probe.ok === true, 'probe ok');
     assert(probe.stage === 'ready', 'probe ready');
     assert(probe.eligible === true, 'eligible');
+    assert(probeEligibleAmount === String(TOROBPAY_PROBE_AMOUNT_IRR), 'probe amount is the official floor');
     assert(!('access_token' in probe), 'probe no token');
 
     const created = await gw.createPayment({
