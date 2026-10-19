@@ -2,9 +2,10 @@ schema_version: 1
 tasks:
   - id: "TASK-20261019-001"
     title: "Admin categories UX + showOnHome home fix + square banner optimize"
-    status: "in_progress"
+    status: "done"
     risk: "medium"
-    owner: "cursor:implementer-TASK-20261019-001"
+    owner: ""
+    completed_at: "2026-10-19T08:06:00Z"
     roles:
       architect: "cursor:skill-top-full"
       implementer: "cursor:implementer-TASK-20261019-001"
@@ -13,9 +14,10 @@ tasks:
     branch: "master"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-19T07:45:00Z"
-    heartbeat_at: "2026-10-19T07:45:00Z"
+    heartbeat_at: "2026-10-19T08:06:00Z"
     depends_on: []
-    file_claims:
+    file_claims: []
+    released_file_claims:
       - "apps/api/src/modules/upload/image-processor.ts"
       - "apps/api/src/modules/upload/image-processor.spec.ts"
       - "apps/api/src/modules/upload/storage.service.ts"
