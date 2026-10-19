@@ -27,11 +27,10 @@ export const CHECKOUT_PAYMENT_INTRO =
   'اگر اسم این روش‌ها را نمی‌شناسی نگران نباش. هر کارت را بخوان و یکی را انتخاب کن. شک داشتی همان گزینهٔ «پیشنهادی» را بزن.';
 
 /**
- * Storefront card stays off until a live eligible smoke with an in-range amount
- * (200,000–1,000,000,000 IRR) returns success. Eligibility 1011 is an amount-range
- * refusal after the contract check, not proof the merchant contract is inactive.
+ * Live CPG check on 2026-10-20: contract active, eligible at 200,000 IRR, token created.
+ * The card still follows the admin toggle and the provider registry.
  */
-export const RETAIL_TOROBPAY_UI_ENABLED = false;
+export const RETAIL_TOROBPAY_UI_ENABLED = true;
 
 export function formatTomanFromRial(rial: number): string {
   return Math.round(Number(rial) / 10).toLocaleString('fa-IR');

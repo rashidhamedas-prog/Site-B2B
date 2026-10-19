@@ -33,11 +33,11 @@ assert.equal(retailWithDigipay.some((o) => o.id === 'TOROBPAY'), false);
 assert.equal(retailPaymentOptions(true, false, false).some((o) => o.id === 'CASH'), false);
 
 const retailWithTorob = retailPaymentOptions(false, true);
-assert.equal(RETAIL_TOROBPAY_UI_ENABLED, false);
+assert.equal(RETAIL_TOROBPAY_UI_ENABLED, true);
 assert.equal(
   retailWithTorob.some((o) => o.id === 'TOROBPAY'),
-  false,
-  'TorobPay UI stays hidden until merchant contract is live',
+  true,
+  'TorobPay shows when the provider is eligible',
 );
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'TOROBPAY', '91735'), true);
 assert.equal(retailTorobpayNeedsPostal('ONLINE', 'TOROBPAY', '9173512345'), false);
