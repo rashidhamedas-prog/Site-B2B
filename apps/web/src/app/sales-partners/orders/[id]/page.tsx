@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
 import { SalesPartnerShell, SpAlert, SpCard } from '@/components/sales-partners/SalesPartnerShell';
 import { SpBadge, SpPageSkeleton } from '@/components/sales-partners/SpUi';
+import { SpCancelDraftButton } from '@/components/sales-partners/SpCancelDraftButton';
 import { spDraftNextStep } from '@/components/sales-partners/sp-labels';
 
 type OrderView = {
@@ -19,6 +20,7 @@ type OrderView = {
   shippingFeeIrr: number;
   estimatedCommissionIrr: number;
   convertedOrderId: string | null;
+  expiresAt: string | null;
   stale?: boolean;
   alerts?: string[];
   items: { id: string; name: string | null; quantity: number; lineTotalIrr: number }[];
@@ -92,6 +94,14 @@ export default function SalesPartnerOrderDetailPage() {
               </li>
             ))}
           </ul>
+          {row.expiresAt && (row.status === 'DRAFT' || row.status === 'AWAITING_CUSTOMER_CONFIRMATION') && (
+            <p className="text-stone-500">
+              مهلت این پیش‌سفارش:{' '}
+              {new Date(row.expiresAt).toLocaleString('fa-IR', { dateStyle: 'medium', timeStyle: 'short' })}
+              . بعد از آن خودکار منقضی می‌شود.
+            </p>
+          )}
+          <SpCancelDraftButton draftId={row.id} status={row.status} onDone={setRow} />
           <p className="text-stone-500">کد رهگیری را شما ثبت نمی‌کنید و تحویل را تأیید نمی‌کنید.</p>
         </SpCard>
       )}

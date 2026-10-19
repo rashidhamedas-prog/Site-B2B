@@ -135,6 +135,16 @@ export function isDraftExpired(expiresAt: Date | null | undefined, now: Date): b
   return !!expiresAt && expiresAt.getTime() <= now.getTime();
 }
 
+/** Open drafts the TTL sweep may close. Confirmed and converted rows are never selected. */
+export function isSweepableExpiredDraft(
+  status: string | null | undefined,
+  expiresAt: Date | null | undefined,
+  now: Date,
+): boolean {
+  if (status !== 'DRAFT' && status !== 'AWAITING_CUSTOMER_CONFIRMATION') return false;
+  return isDraftExpired(expiresAt, now) && canTransitionDraft(status, 'EXPIRED');
+}
+
 export function hashConfirmationToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }

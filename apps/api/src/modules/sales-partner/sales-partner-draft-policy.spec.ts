@@ -7,6 +7,7 @@ import {
   humanDraftFreshness,
   humanPartnerOrderStatus,
   isDraftExpired,
+  isSweepableExpiredDraft,
   partnerCommissionOverlay,
   maskCustomerPhone,
   normalizeConfirmAddress,
@@ -56,6 +57,23 @@ assert(!sms.includes('درآمد تضمینی') && !sms.includes('فروش قط�
 const now = new Date('2026-09-22T12:00:00.000Z');
 assert(isDraftExpired(new Date('2026-09-22T11:00:00.000Z'), now), 'expired');
 assert(!isDraftExpired(new Date('2026-09-22T13:00:00.000Z'), now), 'fresh');
+assert(isSweepableExpiredDraft('DRAFT', new Date('2026-09-22T11:00:00.000Z'), now), 'sweep draft');
+assert(
+  isSweepableExpiredDraft('AWAITING_CUSTOMER_CONFIRMATION', new Date('2026-09-22T11:00:00.000Z'), now),
+  'sweep awaiting',
+);
+assert(!isSweepableExpiredDraft('DRAFT', new Date('2026-09-22T13:00:00.000Z'), now), 'fresh draft stays');
+assert(
+  !isSweepableExpiredDraft('CUSTOMER_CONFIRMED', new Date('2026-09-22T11:00:00.000Z'), now),
+  'confirmed is not swept',
+);
+assert(
+  !isSweepableExpiredDraft('CONVERTED_TO_ORDER', new Date('2026-09-22T11:00:00.000Z'), now),
+  'converted is not swept',
+);
+assert(!canTransitionDraft('CONVERTED_TO_ORDER', 'EXPIRED'), 'converted cannot expire');
+assert(canTransitionDraft('DRAFT', 'CANCELLED'), 'partner can cancel draft');
+assert(!canTransitionDraft('CUSTOMER_CONFIRMED', 'CANCELLED'), 'confirmed cannot be cancelled');
 const token = 'raw-token-value';
 const hashed = hashConfirmationToken(token);
 assert(hashed !== token && hashed.length === 64, 'token hashed');

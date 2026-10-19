@@ -41,7 +41,7 @@ import {
   humanDraftStatus,
   humanPartnerOrderStatus,
   isBlockedSelfReferral,
-  isDraftExpired,
+  isSweepableExpiredDraft,
   partnerCommissionOverlay,
   normalizeConfirmAddress,
   resendBlockedReason,
@@ -238,6 +238,7 @@ export class SalesPartnerDraftService {
   }
 
   async listAdmin(salesPartnerId?: string) {
+    await this.expireDue(40);
     const rows = await this.drafts.find({
       where: salesPartnerId ? { salesPartnerId } : {},
       order: { updatedAt: 'DESC' },
@@ -323,14 +324,58 @@ export class SalesPartnerDraftService {
   }
 
   async cancel(salesPartnerId: string, draftId: string) {
-    const draft = await this.ownedDraft(salesPartnerId, draftId);
-    if (!canTransitionDraft(draft.status, 'CANCELLED')) {
-      throw new ConflictException('این پیش‌سفارش قابل لغو نیست');
+    const now = new Date();
+    const outcome = await this.dataSource.transaction(async (manager) => {
+      const locked = await manager.findOne(SalesPartnerOrderDraftEntity, {
+        where: { id: draftId, salesPartnerId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!locked) throw new NotFoundException('پیش‌سفارش پیدا نشد');
+      if (isSweepableExpiredDraft(locked.status, locked.expiresAt, now)) {
+        this.applyExpiry(locked);
+        await manager.save(locked);
+        return 'expired' as const;
+      }
+      if (!canTransitionDraft(locked.status, 'CANCELLED')) {
+        throw new ConflictException('این پیش‌سفارش قابل لغو نیست');
+      }
+      locked.status = 'CANCELLED';
+      locked.confirmationTokenHash = null;
+      await manager.save(locked);
+      return 'cancelled' as const;
+    });
+    if (outcome === 'expired') await this.afterExpired(draftId, salesPartnerId);
+    else await this.afterCancelled(draftId, salesPartnerId);
+    return this.toPartnerView(draftId, salesPartnerId);
+  }
+
+  /** Close due open drafts. Idempotent: a row already confirmed or converted is skipped. */
+  async expireDue(limit = 40): Promise<number> {
+    const cap = Math.min(Math.max(Math.floor(limit) || 1, 1), 50);
+    const now = new Date();
+    const due = await this.drafts
+      .createQueryBuilder('draft')
+      .select(['draft.id', 'draft.salesPartnerId'])
+      .where('draft.status IN (:...statuses)', {
+        statuses: ['DRAFT', 'AWAITING_CUSTOMER_CONFIRMATION'],
+      })
+      .andWhere('draft.expiresAt IS NOT NULL AND draft.expiresAt <= :now', { now })
+      .orderBy('draft.expiresAt', 'ASC')
+      .take(cap)
+      .getMany();
+    const partners = new Set<string>();
+    let closed = 0;
+    for (const row of due) {
+      const changed = await this.expireLocked(row.id, now);
+      if (!changed) continue;
+      closed += 1;
+      partners.add(row.salesPartnerId);
+      await this.afterExpired(row.id, row.salesPartnerId, false);
     }
-    draft.status = 'CANCELLED';
-    draft.confirmationTokenHash = null;
-    await this.drafts.save(draft);
-    return this.toPartnerView(draft.id, salesPartnerId);
+    for (const partnerId of partners) {
+      await this.refreshRiskFlags(partnerId);
+    }
+    return closed;
   }
 
   async listMine(salesPartnerId: string) {
@@ -703,18 +748,65 @@ export class SalesPartnerDraftService {
     return draft;
   }
 
-  private async expireIfNeeded(draft: SalesPartnerOrderDraftEntity) {
-    if (isDraftExpired(draft.expiresAt, new Date()) && canTransitionDraft(draft.status, 'EXPIRED')) {
-      draft.status = 'EXPIRED';
-      draft.customerPhone = null;
-      draft.customerName = null;
-      draft.confirmationTokenHash = null;
-      await this.drafts.save(draft);
-      await this.program.emitEvent(SALES_PARTNER_EVENT.DRAFT_EXPIRED, draft.id, {
-        draftId: draft.id,
-        status: 'EXPIRED',
+  private applyExpiry(draft: SalesPartnerOrderDraftEntity) {
+    draft.status = 'EXPIRED';
+    draft.customerPhone = null;
+    draft.customerName = null;
+    draft.confirmationTokenHash = null;
+  }
+
+  private async expireLocked(id: string, now: Date): Promise<boolean> {
+    return this.dataSource.transaction(async (manager) => {
+      const locked = await manager.findOne(SalesPartnerOrderDraftEntity, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
       });
+      if (!locked || !isSweepableExpiredDraft(locked.status, locked.expiresAt, now)) return false;
+      this.applyExpiry(locked);
+      await manager.save(locked);
+      return true;
+    });
+  }
+
+  private async afterExpired(draftId: string, salesPartnerId: string, refreshRisk = true) {
+    await this.program.emitEvent(SALES_PARTNER_EVENT.DRAFT_EXPIRED, draftId, {
+      draftId,
+      status: 'EXPIRED',
+    });
+    await this.program.recordAudit(null, 'draft.expired', 'sales_partner_draft', draftId, {
+      salesPartnerId,
+      reason: 'ttl',
+    });
+    if (refreshRisk) await this.refreshRiskFlags(salesPartnerId);
+  }
+
+  private async afterCancelled(draftId: string, salesPartnerId: string) {
+    await this.program.emitEvent(SALES_PARTNER_EVENT.DRAFT_CANCELLED, draftId, {
+      draftId,
+      status: 'CANCELLED',
+    });
+    await this.program.recordAudit(null, 'draft.cancelled', 'sales_partner_draft', draftId, {
+      salesPartnerId,
+      reason: 'partner',
+    });
+    await this.refreshRiskFlags(salesPartnerId);
+  }
+
+  private async expireIfNeeded(draft: SalesPartnerOrderDraftEntity) {
+    const now = new Date();
+    if (!isSweepableExpiredDraft(draft.status, draft.expiresAt, now)) return;
+    const changed = await this.expireLocked(draft.id, now);
+    if (!changed) {
+      const fresh = await this.drafts.findOne({ where: { id: draft.id } });
+      if (!fresh) return;
+      draft.status = fresh.status;
+      draft.customerPhone = fresh.customerPhone;
+      draft.customerName = fresh.customerName;
+      draft.confirmationTokenHash = fresh.confirmationTokenHash;
+      return;
     }
+    this.applyExpiry(draft);
+    await this.afterExpired(draft.id, draft.salesPartnerId);
   }
 
   private async toPartnerView(draftId: string, salesPartnerId: string) {

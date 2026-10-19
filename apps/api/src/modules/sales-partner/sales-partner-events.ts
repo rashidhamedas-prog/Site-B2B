@@ -5,6 +5,7 @@ export const SALES_PARTNER_EVENT = {
   CUSTOMER_CONFIRMED: 'sales_partner.draft.customer_confirmed',
   CUSTOMER_REJECTED: 'sales_partner.draft.customer_rejected',
   DRAFT_EXPIRED: 'sales_partner.draft.expired',
+  DRAFT_CANCELLED: 'sales_partner.draft.cancelled',
   PAYOUT_RECORDED: 'sales_partner.payout.recorded',
 } as const;
 

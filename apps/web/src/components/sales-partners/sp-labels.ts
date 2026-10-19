@@ -81,6 +81,8 @@ export const SP_AUDIT_ACTION_FA: Record<string, string> = {
   'settings.updated': 'تغییر تنظیمات برنامه',
   'payout.confirmed': 'ثبت تسویه',
   'order.attribution_changed': 'تغییر attribution سفارش',
+  'draft.cancelled': 'لغو پیش‌سفارش توسط همکار',
+  'draft.expired': 'انقضای مهلت پیش‌سفارش',
   'credentials.welcome_sms_sent': 'ارسال پیامک خوش‌آمد همکار',
 };
 

@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import { toman } from '@/lib/product-display';
 import { SalesPartnerShell, SpAlert, SpCard, SpEmpty, spPrimary } from '@/components/sales-partners/SalesPartnerShell';
 import { SpBadge, SpPageSkeleton, spFocusClass } from '@/components/sales-partners/SpUi';
+import { SpCancelDraftButton } from '@/components/sales-partners/SpCancelDraftButton';
 import { spDraftNextStep } from '@/components/sales-partners/sp-labels';
 import { cn } from '@/lib/cn';
 
@@ -102,6 +103,11 @@ export default function SalesPartnerOrdersPage() {
               >
                 جزئیات سفارش
               </Link>
+              <SpCancelDraftButton
+                draftId={row.id}
+                status={row.status}
+                onDone={(next) => setRows((current) => current?.map((item) => (item.id === next.id ? { ...item, ...next } : item)) ?? current)}
+              />
             </SpCard>
           </li>
         ))}

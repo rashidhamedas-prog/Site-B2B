@@ -7,6 +7,7 @@ import {
   Index,
 } from 'typeorm';
 
+@Index('IDX_sp_drafts_status_expires', ['status', 'expiresAt'])
 @Entity('sales_partner_order_drafts')
 export class SalesPartnerOrderDraftEntity {
   @PrimaryGeneratedColumn('uuid')

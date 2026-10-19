@@ -32,6 +32,7 @@ import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { SalesPartnerDraftService } from './sales-partner-draft.service';
 import { SalesPartnerLedgerService } from './sales-partner-ledger.service';
+import { SalesPartnerDraftJobs } from './sales-partner-draft.jobs';
 import { SalesPartnerLedgerJobs } from './sales-partner-ledger.jobs';
 import { SalesPartnerPayoutService } from './sales-partner-payout.service';
 import { SalesPartnerPublicController } from './sales-partner-public.controller';
@@ -89,6 +90,7 @@ const ENTITIES = [
     SalesPartnerDraftService,
     SalesPartnerLedgerService,
     SalesPartnerLedgerJobs,
+    SalesPartnerDraftJobs,
     SalesPartnerPayoutService,
     SalesPartnerNoticeService,
   ],
