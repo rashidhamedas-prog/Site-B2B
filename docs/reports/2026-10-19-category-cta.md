@@ -21,13 +21,15 @@
 
 ## وضعیت انتشار
 
-- Commit محلی: بله (طبق درخواست مالک)
-- Push / Deploy Production: خیر (منتظر تأیید)
-- Migration روی DB محلی این ماشین: ناموفق — Postgres روی `localhost:5432` در دسترس نبود (`ECONNREFUSED`)
-- Migration Production: اجرا نشده
+- Commit: `61233b3e` روی `ai/TASK-20261019-002-category-cta` و `origin/master`
+- VPS deploy: کامل در `61233b3`؛ API health `ok`
+- Migration Production: با `migrationsRun` روی استارت API اعمال شد؛ ستون‌های `cta` و `wholesaleCta` در `categories` موجودند
+- Migration روی DB محلی لپ‌تاپ: ناموفق بود (`ECONNREFUSED`) — بی‌اهمیت پس از apply پروداکشن
 
 ## تست
 
 - `category-cta.spec` (api + web) OK
 - migration source spec OK
 - `apps/web` tsc OK
+- Storefront smoke: `https://poshaktaranom.com/category/bamber` → HTTP 200
+- هیچ CTA به‌صورت خودکار فعال نشد (پیش‌فرض NULL)

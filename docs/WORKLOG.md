@@ -1,9 +1,10 @@
-## 2026-10-19 — CTA قابل‌مدیریت دسته (عمده/تک) [TASK-20261019-002]
+## 2026-10-19 — CTA قابل‌مدیریت دسته (عمده/تک) [TASK-20261019-002] LIVE
 
 - jsonb جدا: `cta` و `wholesaleCta`؛ پیش‌فرض NULL = غیرفعال.
 - ادمین: `/admin/categories` → تب سئو کانال → تنظیمات CTA؛ ویترین: `CategoryLanding` زیر مقدمه یا پایین FAQ.
 - مقصد listing = `#category-listing` + `scroll-mt-32`؛ URL سفارشی sanitize می‌شود.
-- گزارش: `docs/reports/2026-10-19-category-cta.md` — commit محلی؛ migration محلی به‌خاطر نبود Postgres اجرا نشد؛ بدون push/deploy.
+- Ship: `61233b3e` → origin/master + VPS auto-deploy؛ health OK؛ ستون‌های `cta`/`wholesaleCta` روی production تأیید شد.
+- گزارش: `docs/reports/2026-10-19-category-cta.md`
 
 ## 2026-10-19 — ادمین دسته: تیک هوم، بنر ۱:۱، UX [TASK-20261019-001]
 
