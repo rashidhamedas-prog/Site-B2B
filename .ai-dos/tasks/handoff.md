@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-19T12:27:00Z — TASK-20261019-002 CLOSED LIVE
+
+- Ship: `61233b3e` → origin/master + VPS auto-deploy complete at `61233b3`.
+- API health: `{"status":"ok"}`; columns `cta` + `wholesaleCta` present; `/category/bamber` HTTP 200.
+- Owner: hard-refresh `/admin/categories`, enable wholesale CTA for بامبر (text + listing + below_intro), confirm scroll on storefront. Retail CTA stays off until set.
+
 ## 2026-10-19T12:15:00Z — TASK-20261019-002 commit local (no push/deploy)
 
 - Owner chose option 3: local migration + commit, no deploy.
