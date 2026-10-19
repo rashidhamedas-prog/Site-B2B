@@ -26,6 +26,12 @@ import { SmsCooldownException } from '../notification/sms-cooldown-http';
 import { otpDispatchFromTransport } from '../notification/sms-transport';
 import { allowDevOtpExpose, normalizePhone } from './phone.util';
 import {
+  patchRetailCustomerIdentity,
+  retailSignupIdentity,
+  usablePersonName,
+  usablePlace,
+} from './retail-identity';
+import {
   canIssuePasswordReset,
   canSetPasswordWithoutCurrent,
   GENERIC_PASSWORD_FORGOT_MESSAGE,
@@ -430,11 +436,34 @@ export class AuthService {
       await this.userRepo.update(userId, { email: email || (null as unknown as string) });
     }
     if (u.customerId) {
+      const customer = await this.customerRepo.findOne({ where: { id: u.customerId } });
+      const retailProfile = customer?.type === 'B2C' || (customer?.notes || '').includes('فروشگاه آنلاین');
       const patch: Partial<CustomerEntity> = {};
-      if (data.ownerName !== undefined) patch.ownerName = data.ownerName.trim().slice(0, 120);
-      if (data.businessName !== undefined) patch.businessName = data.businessName.trim().slice(0, 160);
-      if (data.province !== undefined) patch.province = data.province.trim().slice(0, 80);
-      if (data.city !== undefined) patch.city = data.city.trim().slice(0, 80);
+      if (data.ownerName !== undefined) {
+        const ownerName = usablePersonName(data.ownerName, 120);
+        if (retailProfile && !ownerName) throw new BadRequestException('نام و نام خانوادگی الزامی است');
+        patch.ownerName = (ownerName || data.ownerName.trim()).slice(0, 120);
+        if (retailProfile && customer && !usablePersonName(customer.businessName, 160) && data.businessName === undefined && ownerName) {
+          patch.businessName = ownerName.slice(0, 160);
+        }
+      }
+      if (data.businessName !== undefined) {
+        const businessName = data.businessName.trim().slice(0, 160);
+        if (retailProfile && businessName && !usablePersonName(businessName, 160)) {
+          throw new BadRequestException('نام فروشگاه نباید عنوان پیش‌فرض باشد');
+        }
+        patch.businessName = businessName;
+      }
+      if (data.province !== undefined) {
+        const province = usablePlace(data.province);
+        if (retailProfile && !province) throw new BadRequestException('استان الزامی است');
+        patch.province = (province || data.province.trim()).slice(0, 80);
+      }
+      if (data.city !== undefined) {
+        const city = usablePlace(data.city);
+        if (retailProfile && !city) throw new BadRequestException('شهر الزامی است');
+        patch.city = (city || data.city.trim()).slice(0, 80);
+      }
       if (data.postalCode !== undefined) patch.postalCode = data.postalCode.trim().slice(0, 20) || (null as unknown as string);
       if (data.address !== undefined) patch.address = data.address.trim().slice(0, 500) || (null as unknown as string);
       if (data.email !== undefined) patch.email = data.email.trim() || (null as unknown as string);
@@ -447,7 +476,17 @@ export class AuthService {
     const customer = await this.requireCustomer(userId);
     try {
       const next = upsertAddress(normalizeAddressList(customer.savedAddresses), body);
-      await this.customerRepo.update(customer.id, { savedAddresses: next });
+      const chosen = next.find((row) => row.isDefault) || next[0];
+      const identity = chosen
+        ? patchRetailCustomerIdentity(customer, {
+            name: chosen.recipient,
+            province: chosen.province,
+            city: chosen.city,
+            street: chosen.street,
+            postalCode: chosen.postalCode,
+          })
+        : {};
+      await this.customerRepo.update(customer.id, { savedAddresses: next, ...identity });
       return { addresses: next };
     } catch (e) {
       throw new BadRequestException(e instanceof Error ? e.message : 'آدرس نامعتبر است');
@@ -695,7 +734,11 @@ export class AuthService {
   }
 
   /** Retail (B2C) OTP — verify and issue JWT; never auto-approve inactive B2B. */
-  async verifyRetailOtp(rawPhone: string, code: string, name?: string) {
+  async verifyRetailOtp(
+    rawPhone: string,
+    code: string,
+    identity?: { name?: string; province?: string; city?: string },
+  ) {
     const phone = normalizePhone(rawPhone);
     const existingVendor = await this.userRepo.findOne({ where: { phone } });
     if (existingVendor && isVendorRole(existingVendor.role)) {
@@ -717,7 +760,12 @@ export class AuthService {
       throw new UnauthorizedException('کد منقضی شده یا یافت نشد. دوباره درخواست کنید.');
     }
 
-    const displayName = (name?.trim() || otpName || 'خریدار ترنم').slice(0, 80);
+    const facts = retailSignupIdentity({
+      name: identity?.name,
+      otpName,
+      province: identity?.province,
+      city: identity?.city,
+    });
 
     let user = await this.userRepo.findOne({ where: { phone }, withDeleted: true });
     let customer: CustomerEntity | null = null;
@@ -739,13 +787,15 @@ export class AuthService {
       }
 
       if (!customer) {
+        if (!facts.name) throw new BadRequestException('نام و نام خانوادگی الزامی است');
+        if (!facts.province || !facts.city) throw new BadRequestException('استان و شهر الزامی است');
         customer = await this.createCustomerWithUniqueCode(
           {
-            businessName: displayName,
-            ownerName: displayName,
+            businessName: facts.name,
+            ownerName: facts.name,
             phone,
-            province: 'تهران',
-            city: 'تهران',
+            province: facts.province,
+            city: facts.city,
             type: 'B2C',
             businessType: 'RETAIL',
             status: 'ACTIVE',
@@ -759,10 +809,26 @@ export class AuthService {
         if (customer.status === 'BLOCKED' || customer.status === 'SUSPENDED') {
           throw new UnauthorizedException('حساب شما غیرفعال است. با پشتیبانی تماس بگیرید.');
         }
+        if (!usablePersonName(customer.ownerName, 120) && !facts.name) {
+          throw new BadRequestException('نام و نام خانوادگی الزامی است');
+        }
+        if (
+          customer.province === 'تهران' &&
+          customer.city === 'تهران' &&
+          !String(customer.address || '').trim() &&
+          (!facts.province || !facts.city)
+        ) {
+          throw new BadRequestException('استان و شهر الزامی است');
+        }
+        const identityPatch = patchRetailCustomerIdentity(customer, {
+          name: facts.name,
+          province: facts.province,
+          city: facts.city,
+        });
         await customerRepo.update(customer.id, {
           status: 'ACTIVE',
           isActive: true,
-          ownerName: customer.ownerName || displayName,
+          ...identityPatch,
         });
         customer.status = 'ACTIVE';
       } else if (customer.status === 'BLOCKED' || customer.status === 'SUSPENDED') {
@@ -834,7 +900,7 @@ export class AuthService {
     if (!customer) {
       customer = await this.createCustomerWithUniqueCode({
         businessName: user.phone,
-        ownerName: user.email || 'خریدار ترنم',
+        ownerName: usablePersonName(user.email, 120) || user.phone,
         phone: user.phone,
         province: 'تهران',
         city: 'تهران',

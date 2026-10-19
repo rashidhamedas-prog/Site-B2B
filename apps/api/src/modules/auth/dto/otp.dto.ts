@@ -33,6 +33,18 @@ export class VerifyRetailOtpDto {
   @IsString()
   @MaxLength(80)
   name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  province?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  city?: string;
 }
 
 export class UpdateProfileDto {

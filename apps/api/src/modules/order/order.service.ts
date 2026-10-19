@@ -15,6 +15,7 @@ import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
 import { InvoiceEntity } from '../invoice/entities/invoice.entity';
 import { CustomerService } from '../customer/customer.service';
+import { CustomerEntity } from '../customer/entities/customer.entity';
 import { ProductService } from '../product/product.service';
 import { NotificationService } from '../notification/notification.service';
 import { SettingsService } from '../settings/settings.service';
@@ -24,6 +25,7 @@ import { PaymentService } from '../payment/payment.service';
 import { InstallmentService } from '../payment/installment.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { addressPlace, isInPersonMethod } from '../settings/shipping-channel';
+import { patchRetailCustomerIdentity } from '../auth/retail-identity';
 import { allowedOrderPaymentMethods } from '../settings/settings-payment-cash';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { resolveChannelSale } from '../product/product-sale';
@@ -852,6 +854,19 @@ export class OrderService {
     let saved: OrderEntity;
     try {
       saved = await this.dataSource.transaction(async (manager) => {
+        if (channel === 'RETAIL' && dto.shippingAddress && typeof dto.shippingAddress === 'object') {
+          const ship = dto.shippingAddress;
+          const identity = patchRetailCustomerIdentity(customer, {
+            name: typeof ship.recipient === 'string' ? ship.recipient : '',
+            province: typeof ship.province === 'string' ? ship.province : '',
+            city: typeof ship.city === 'string' ? ship.city : '',
+            street: typeof ship.street === 'string' ? ship.street : '',
+            postalCode: typeof ship.postalCode === 'string' ? ship.postalCode : '',
+          });
+          if (Object.keys(identity).length) {
+            await manager.getRepository(CustomerEntity).update(customer.id, identity);
+          }
+        }
         const orderRepo = manager.getRepository(OrderEntity);
         const itemRepo = manager.getRepository(OrderItemEntity);
 

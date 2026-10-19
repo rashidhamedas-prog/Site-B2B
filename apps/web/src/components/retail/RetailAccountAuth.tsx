@@ -16,12 +16,25 @@ import { setToken } from '@/lib/auth';
 import { extractSmsCooldown, readSmsCooldownSeconds } from '@/lib/sms-cooldown';
 import { safeAccountRedirect } from '@/lib/safe-redirect';
 import { cn } from '@/lib/cn';
+import { IRAN_PROVINCES } from '@/lib/iran-geo';
+
+function retailIdentityError(name: string, province: string, city: string): string {
+  const trimmed = name.replace(/\s+/g, ' ').trim();
+  if (trimmed.length < 2 || trimmed === 'خریدار ترنم' || trimmed === 'نامشخص') {
+    return 'نام و نام خانوادگی را کامل وارد کنید';
+  }
+  if (!province.trim()) return 'استان را انتخاب کنید';
+  if (city.replace(/\s+/g, ' ').trim().length < 2) return 'شهر را وارد کنید';
+  return '';
+}
 
 export function RetailAccountAuth({ redirect }: { redirect: string }) {
   const [mode, setMode] = useState<'otp' | 'password'>('otp');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [province, setProvince] = useState('');
+  const [city, setCity] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -39,6 +52,11 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
   };
 
   const sendOtp = async (fromResend = false) => {
+    const identityError = retailIdentityError(name, province, city);
+    if (identityError) {
+      setError(identityError);
+      return;
+    }
     setError('');
     setBusy(true);
     try {
@@ -77,7 +95,7 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
     try {
       const res = await apiClient.post<{ accessToken: string; role: string }>(
         '/auth/retail/otp/verify',
-        { phone, code, name },
+        { phone, code, name: name.trim(), province, city: city.trim() },
       );
       finish(res.accessToken, res.role);
     } catch (err: unknown) {
@@ -169,11 +187,38 @@ export function RetailAccountAuth({ redirect }: { redirect: string }) {
           >
             <GlassInput>
               <input
-                placeholder="نام (اختیاری)"
+                placeholder="نام و نام خانوادگی"
                 autoComplete="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                aria-label="نام"
+                required
+                minLength={2}
+                aria-label="نام و نام خانوادگی"
+              />
+            </GlassInput>
+            <GlassInput>
+              <select
+                value={province}
+                onChange={(e) => setProvince(e.target.value)}
+                required
+                aria-label="استان"
+                className="w-full bg-transparent"
+              >
+                <option value="">استان</option>
+                {IRAN_PROVINCES.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+            </GlassInput>
+            <GlassInput>
+              <input
+                placeholder="شهر"
+                autoComplete="address-level2"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                required
+                minLength={2}
+                aria-label="شهر"
               />
             </GlassInput>
             <GlassInput icon={<Phone className="h-5 w-5" aria-hidden />}>

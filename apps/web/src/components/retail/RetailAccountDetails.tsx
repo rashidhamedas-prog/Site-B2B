@@ -74,6 +74,16 @@ export function RetailAccountDetails({
 
   const saveProfile = async (e: FormEvent) => {
     e.preventDefault();
+    const owner = form.ownerName.replace(/\s+/g, ' ').trim();
+    const cityName = form.city.replace(/\s+/g, ' ').trim();
+    if (owner.length < 2 || owner === 'خریدار ترنم' || owner === 'نامشخص') {
+      setErr('نام و نام خانوادگی را کامل وارد کنید');
+      return;
+    }
+    if (!form.province.trim() || cityName.length < 2) {
+      setErr('استان و شهر الزامی است');
+      return;
+    }
     setBusy(true);
     setErr('');
     setMsg('');
@@ -153,6 +163,9 @@ export function RetailAccountDetails({
           placeholder="نام و نام خانوادگی"
           value={form.ownerName}
           onChange={(e) => setForm((p) => ({ ...p, ownerName: e.target.value }))}
+          required
+          minLength={2}
+          aria-label="نام و نام خانوادگی"
         />
         <input
           className="w-full rounded-xl border px-4 py-3 text-sm"
@@ -166,6 +179,8 @@ export function RetailAccountDetails({
             className="w-full rounded-xl border px-4 py-3 text-sm"
             value={form.province}
             onChange={(e) => setForm((p) => ({ ...p, province: e.target.value }))}
+            required
+            aria-label="استان"
           >
             {IRAN_PROVINCES.map((p) => (
               <option key={p} value={p}>{p}</option>
@@ -176,6 +191,9 @@ export function RetailAccountDetails({
             placeholder="شهر"
             value={form.city}
             onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))}
+            required
+            minLength={2}
+            aria-label="شهر"
           />
         </div>
         <input

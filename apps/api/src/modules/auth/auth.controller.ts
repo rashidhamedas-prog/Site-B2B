@@ -44,7 +44,11 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'تأیید OTP و ورود فروشگاه تکی' })
   verifyRetailOtp(@Body() body: VerifyRetailOtpDto) {
-    return this.authService.verifyRetailOtp(body.phone, body.code, body.name);
+    return this.authService.verifyRetailOtp(body.phone, body.code, {
+      name: body.name,
+      province: body.province,
+      city: body.city,
+    });
   }
 
   @Post('password/forgot')
