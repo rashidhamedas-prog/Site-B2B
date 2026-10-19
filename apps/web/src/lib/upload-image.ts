@@ -2,6 +2,8 @@
 export const MAX_UPLOAD_IMAGE_BYTES = 20 * 1024 * 1024;
 export const PRODUCT_IMAGE_WIDTH = 1200;
 export const PRODUCT_IMAGE_HEIGHT = 1600;
+export const CATEGORY_BANNER_SIZE = 1200;
+export type ImageUploadProfile = 'product' | 'categoryBanner';
 export const UPLOAD_FETCH_TIMEOUT_MS = 120_000;
 export const UPLOAD_TIMEOUT_MESSAGE =
   'آپلود بیش از حد طول کشید. اتصال را بررسی کنید یا عکس کوچک‌تری بفرستید.';

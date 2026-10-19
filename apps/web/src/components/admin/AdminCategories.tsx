@@ -1,7 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ChevronDown, Plus, Save, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChevronDown,
+  ImagePlus,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
@@ -33,6 +41,7 @@ type Category = {
   wholesaleSeoDescription?: string | null;
   wholesaleIntroText?: string | null;
   wholesaleBottomContent?: string | null;
+  status?: string;
 };
 
 const EMPTY_FAQ: FaqItem[] = [
@@ -100,12 +109,21 @@ function cleanFaq(items?: FaqItem[] | null): FaqItem[] {
   return (items ?? []).filter((f) => f.question.trim() || f.answer.trim());
 }
 
+function bannerSrc(url?: string | null) {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('/')) return url;
+  return `/media/${url}`;
+}
+
 export function AdminCategories() {
   const [items, setItems] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [rowError, setRowError] = useState<Record<string, string>>({});
+  const [okFlash, setOkFlash] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState('');
+  const [homeFilter, setHomeFilter] = useState<'all' | 'on' | 'off'>('all');
   const [newName, setNewName] = useState('');
   const [newNameEn, setNewNameEn] = useState('');
   const [newSlug, setNewSlug] = useState('');
@@ -113,10 +131,23 @@ export function AdminCategories() {
   const [newBanner, setNewBanner] = useState('');
   const [openIds, setOpenIds] = useState<Record<string, boolean>>({});
   const [seoTab, setSeoTab] = useState<Record<string, AdminChannel>>({});
-  const { upload, uploading } = useImageUpload();
+  const { upload, uploading } = useImageUpload('categoryBanner');
+  const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const patchItem = (id: string, patch: Partial<Category>) =>
     setItems((p) => p.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+
+  const flashOk = (id: string, message: string) => {
+    setOkFlash((p) => ({ ...p, [id]: message }));
+    if (flashTimers.current[id]) clearTimeout(flashTimers.current[id]);
+    flashTimers.current[id] = setTimeout(() => {
+      setOkFlash((p) => {
+        const next = { ...p };
+        delete next[id];
+        return next;
+      });
+    }, 2200);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -133,6 +164,9 @@ export function AdminCategories() {
 
   useEffect(() => {
     load().catch(() => undefined);
+    return () => {
+      Object.values(flashTimers.current).forEach(clearTimeout);
+    };
   }, []);
 
   const bustCatalogStorefront = async () => {
@@ -141,6 +175,21 @@ export function AdminCategories() {
       revalidateStorefrontAfterSave('WHOLESALE', 'home'),
     ]);
   };
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((c) => {
+      if (homeFilter === 'on' && c.showOnHome === false) return false;
+      if (homeFilter === 'off' && c.showOnHome !== false) return false;
+      if (!q) return true;
+      const hay = [c.name, c.nameEn, c.slug, c.skuPrefix]
+        .map((s) => (s || '').toLowerCase())
+        .join(' ');
+      return hay.includes(q);
+    });
+  }, [items, query, homeFilter]);
+
+  const homeOnCount = items.filter((c) => c.showOnHome !== false).length;
 
   const create = async () => {
     if (!newName.trim()) return;
@@ -153,6 +202,7 @@ export function AdminCategories() {
         slug: newSlug.trim() || undefined,
         skuPrefix: newPrefix.trim(),
         bannerUrl: newBanner.trim() || null,
+        showOnHome: true,
       });
       setNewName('');
       setNewNameEn('');
@@ -201,9 +251,45 @@ export function AdminCategories() {
       });
       await load();
       void bustCatalogStorefront();
+      flashOk(c.id, 'ذخیره شد');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'ذخیره دسته‌بندی ناموفق بود';
       setError(message);
+      setRowError((p) => ({ ...p, [c.id]: message }));
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const toggleFlag = async (
+    c: Category,
+    key: 'showOnHome' | 'isIndexable',
+    checked: boolean,
+  ) => {
+    const previous = c[key];
+    patchItem(c.id, { [key]: checked });
+    setSavingId(c.id);
+    setRowError((p) => {
+      const next = { ...p };
+      delete next[c.id];
+      return next;
+    });
+    try {
+      await apiClient.patch(`/categories/${c.id}`, { [key]: checked });
+      void bustCatalogStorefront();
+      flashOk(
+        c.id,
+        key === 'showOnHome'
+          ? checked
+            ? 'در صفحه اول نمایش داده می‌شود'
+            : 'از صفحه اول برداشته شد'
+          : checked
+            ? 'قابل ایندکس'
+            : 'noindex شد',
+      );
+    } catch (e: unknown) {
+      patchItem(c.id, { [key]: previous });
+      const message = e instanceof Error ? e.message : 'به‌روزرسانی ناموفق بود';
       setRowError((p) => ({ ...p, [c.id]: message }));
     } finally {
       setSavingId(null);
@@ -227,12 +313,25 @@ export function AdminCategories() {
 
   const onUpload = async (id: string | 'new', file: File | undefined) => {
     if (!file) return;
-    const url = await upload(file);
-    if (id === 'new') {
-      setNewBanner(url);
-      return;
+    setError('');
+    try {
+      const url = await upload(file);
+      if (id === 'new') {
+        setNewBanner(url);
+        return;
+      }
+      patchItem(id, { bannerUrl: url });
+      setSavingId(id);
+      await apiClient.patch(`/categories/${id}`, { bannerUrl: url });
+      void bustCatalogStorefront();
+      flashOk(id, 'بنر بهینه شد و ذخیره شد');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'آپلود بنر ناموفق بود';
+      setError(message);
+      if (id !== 'new') setRowError((p) => ({ ...p, [id]: message }));
+    } finally {
+      if (id !== 'new') setSavingId(null);
     }
-    patchItem(id, { bannerUrl: url });
   };
 
   return (
@@ -240,99 +339,121 @@ export function AdminCategories() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900">دسته‌بندی‌ها</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            مدیریت دسته‌بندی‌ها، سئوی تکی/عمده، فرمول SKU، بنر مربعی ۱:۱، و نمایش اختیاری در شبکهٔ صفحه اول تکی.
-            فهرست عمده همهٔ دسته‌های فعال را نشان می‌دهد؛ برای برداشتن از آن فهرست وضعیت را مخفی کنید.
-            نام فارسی همان برچسب ویترین است؛ انگلیسی را در فیلد انگلیسی بگذارید.
+          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+            تیک «نمایش در صفحه اول» بلافاصله روی شبکهٔ هوم تکی و عمده اعمال می‌شود. منو و ناو همچنان همهٔ
+            دسته‌های فعال را نشان می‌دهند. بنر مربعی ۱:۱ هنگام آپلود فشرده و به ۱۲۰۰×۱۲۰۰ WebP تبدیل
+            می‌شود.
+          </p>
+          <p className="mt-2 text-xs text-gray-400">
+            {items.length.toLocaleString('fa-IR')} دسته ·{' '}
+            {homeOnCount.toLocaleString('fa-IR')} تا روی صفحه اول
           </p>
         </div>
         <AdminExcelExportButtons kind="categories" />
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
       ) : null}
 
-      <div className="card p-5 space-y-3">
+      <div className="card space-y-3 p-5">
         <h2 className="text-sm font-bold text-gray-800">افزودن دسته‌بندی</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <div>
-            <label className="block text-xs text-gray-600 mb-1">نام فارسی</label>
+            <label className="mb-1 block text-xs text-gray-600">نام فارسی</label>
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full input-base"
+              className="input-base w-full"
               placeholder="مثلاً کت زنانه"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">نام انگلیسی (آدرس)</label>
+            <label className="mb-1 block text-xs text-gray-600">نام انگلیسی (آدرس)</label>
             <input
               value={newNameEn}
               onChange={(e) => setNewNameEn(e.target.value)}
-              className="w-full input-base"
+              className="input-base w-full"
               placeholder="women coats"
               dir="ltr"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">اسلاگ</label>
+            <label className="mb-1 block text-xs text-gray-600">اسلاگ</label>
             <input
               value={newSlug}
               onChange={(e) => setNewSlug(e.target.value)}
-              className="w-full input-base"
+              className="input-base w-full"
               placeholder="manto-linen"
               dir="ltr"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-600 mb-1">پیشوند SKU</label>
+            <label className="mb-1 block text-xs text-gray-600">پیشوند SKU</label>
             <input
               value={newPrefix}
               onChange={(e) => setNewPrefix(e.target.value)}
-              className="w-full input-base"
+              className="input-base w-full"
               placeholder="LINEN-"
               dir="ltr"
             />
           </div>
-          <div>
-            <label className="block text-xs text-gray-600 mb-1">بنر ۱:۱ (URL)</label>
-            <input
-              value={newBanner}
-              onChange={(e) => setNewBanner(e.target.value)}
-              className="w-full input-base"
-              placeholder="/media/..."
-              dir="ltr"
-            />
-            <label className="mt-1 inline-flex cursor-pointer text-xs text-primary">
-              آپلود تصویر
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                disabled={uploading}
-                onChange={(e) => onUpload('new', e.target.files?.[0])}
-              />
-            </label>
-          </div>
+          <BannerDropzone
+            url={newBanner}
+            uploading={uploading}
+            onUrlChange={setNewBanner}
+            onFile={(file) => onUpload('new', file)}
+          />
           <button
+            type="button"
             onClick={create}
-            disabled={savingId === 'new'}
-            className="btn btn-primary btn-md mt-6 sm:mt-0 flex items-center justify-center gap-2"
+            disabled={savingId === 'new' || !newName.trim()}
+            className="btn btn-primary btn-md mt-6 flex items-center justify-center gap-2 sm:mt-0"
           >
             <Plus className="h-4 w-4" />
             افزودن
           </button>
         </div>
-        <p className="text-xs text-gray-400">
-          نمونه SKU: <span className="font-mono">LINEN-00001</span> — بنر مربعی برای شبکه ۳×۳ صفحه تکی
-        </p>
       </div>
 
-      <div className="card p-0 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="card overflow-hidden p-0">
+        <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 p-4">
           <h2 className="font-bold text-gray-900">لیست</h2>
-          <button onClick={load} className="btn btn-outline btn-sm" disabled={loading}>
+          <div className="relative min-w-[12rem] flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="input-base w-full pe-3 ps-9 text-sm"
+              placeholder="جستجو نام، اسلاگ، SKU…"
+            />
+          </div>
+          <div className="flex rounded-lg border border-gray-200 p-0.5 text-xs">
+            {(
+              [
+                ['all', 'همه'],
+                ['on', 'روی هوم'],
+                ['off', 'مخفی از هوم'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setHomeFilter(id)}
+                className={cn(
+                  'rounded-md px-2.5 py-1.5 transition-colors',
+                  homeFilter === id
+                    ? 'bg-gray-900 text-white'
+                    : 'text-gray-600 hover:bg-gray-50',
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={load} className="btn btn-outline btn-sm" disabled={loading}>
             بروزرسانی
           </button>
         </div>
@@ -340,165 +461,158 @@ export function AdminCategories() {
         {loading ? (
           <div className="p-6 text-sm text-gray-500">در حال بارگذاری...</div>
         ) : (
-          <div className="divide-y divide-gray-50">
-            {items.map((c) => {
+          <div className="divide-y divide-gray-100">
+            {filtered.map((c) => {
               const open = !!openIds[c.id];
               const tab = seoTab[c.id] ?? 'RETAIL';
               const introWords = wordCount(tab === 'RETAIL' ? c.introText : c.wholesaleIntroText);
+              const busy = savingId === c.id;
               return (
-                <div key={c.id} className="p-4 space-y-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-                    <div className="lg:col-span-3">
-                      <label className="block text-xs text-gray-600 mb-1">نام فارسی</label>
-                      <input
-                        value={c.name}
-                        onChange={(e) => patchItem(c.id, { name: e.target.value })}
-                        className="w-full input-base"
-                      />
-                    </div>
-                    <div className="lg:col-span-2">
-                      <label className="block text-xs text-gray-600 mb-1">نام انگلیسی</label>
-                      <input
-                        dir="ltr"
-                        value={c.nameEn ?? ''}
-                        onChange={(e) => patchItem(c.id, { nameEn: e.target.value })}
-                        className="w-full input-base"
-                        placeholder="women-coats"
-                      />
-                    </div>
-                    <div className="lg:col-span-2">
-                      <label className="block text-xs text-gray-600 mb-1">اسلاگ</label>
-                      <input
-                        dir="ltr"
-                        value={c.slug ?? ''}
-                        onChange={(e) => patchItem(c.id, { slug: e.target.value })}
-                        className="w-full input-base"
-                        placeholder="manto"
-                      />
-                    </div>
-                    <div className="lg:col-span-2">
-                      <label className="block text-xs text-gray-600 mb-1">پیشوند SKU</label>
-                      <input
-                        dir="ltr"
-                        value={c.skuPrefix ?? ''}
-                        onChange={(e) => patchItem(c.id, { skuPrefix: e.target.value })}
-                        className="w-full input-base"
-                      />
-                    </div>
-                    <div className="lg:col-span-1">
-                      <label className="block text-xs text-gray-600 mb-1">Seq</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={c.nextSequence ?? 1}
-                        onChange={(e) =>
-                          patchItem(c.id, { nextSequence: Number(e.target.value) || 1 })
-                        }
-                        className="w-full input-base"
-                      />
-                    </div>
-                    <div className="lg:col-span-1">
-                      <label className="block text-xs text-gray-600 mb-1">ترتیب</label>
-                      <input
-                        type="number"
-                        value={c.sortOrder ?? 0}
-                        onChange={(e) =>
-                          patchItem(c.id, { sortOrder: Number(e.target.value) || 0 })
-                        }
-                        className="w-full input-base"
-                      />
-                    </div>
-                    <div className="lg:col-span-3">
-                      <label className="block text-xs text-gray-600 mb-1">بنر ۱:۱</label>
-                      <div className="flex items-center gap-2">
-                        {c.bannerUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={
-                              c.bannerUrl.startsWith('http') || c.bannerUrl.startsWith('/')
-                                ? c.bannerUrl
-                                : `/media/${c.bannerUrl}`
-                            }
-                            alt=""
-                            className="h-12 w-12 rounded object-cover ring-1 ring-gray-200"
-                          />
-                        ) : (
-                          <div className="h-12 w-12 rounded bg-gray-100 ring-1 ring-gray-200" />
-                        )}
-                        <div className="min-w-0 flex-1">
+                <div key={c.id} className="space-y-3 p-4">
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
+                    <BannerDropzone
+                      url={c.bannerUrl}
+                      uploading={uploading && busy}
+                      compact
+                      onUrlChange={(v) => patchItem(c.id, { bannerUrl: v })}
+                      onFile={(file) => onUpload(c.id, file)}
+                    />
+
+                    <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6">
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-[11px] text-gray-500">نام فارسی</label>
+                        <input
+                          value={c.name}
+                          onChange={(e) => patchItem(c.id, { name: e.target.value })}
+                          className="input-base w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] text-gray-500">انگلیسی</label>
+                        <input
+                          dir="ltr"
+                          value={c.nameEn ?? ''}
+                          onChange={(e) => patchItem(c.id, { nameEn: e.target.value })}
+                          className="input-base w-full"
+                          placeholder="crop"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] text-gray-500">اسلاگ</label>
+                        <input
+                          dir="ltr"
+                          value={c.slug ?? ''}
+                          onChange={(e) => patchItem(c.id, { slug: e.target.value })}
+                          className="input-base w-full"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-[11px] text-gray-500">SKU</label>
+                        <input
+                          dir="ltr"
+                          value={c.skuPrefix ?? ''}
+                          onChange={(e) => patchItem(c.id, { skuPrefix: e.target.value })}
+                          className="input-base w-full"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="mb-1 block text-[11px] text-gray-500">Seq</label>
                           <input
-                            dir="ltr"
-                            value={c.bannerUrl ?? ''}
-                            onChange={(e) => patchItem(c.id, { bannerUrl: e.target.value })}
-                            className="w-full input-base text-xs"
-                            placeholder="/media/..."
+                            type="number"
+                            min={1}
+                            value={c.nextSequence ?? 1}
+                            onChange={(e) =>
+                              patchItem(c.id, { nextSequence: Number(e.target.value) || 1 })
+                            }
+                            className="input-base w-full"
                           />
-                          <label className="mt-1 inline-flex cursor-pointer text-xs text-primary">
-                            آپلود
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              disabled={uploading}
-                              onChange={(e) => onUpload(c.id, e.target.files?.[0])}
-                            />
-                          </label>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[11px] text-gray-500">ترتیب</label>
+                          <input
+                            type="number"
+                            value={c.sortOrder ?? 0}
+                            onChange={(e) =>
+                              patchItem(c.id, { sortOrder: Number(e.target.value) || 0 })
+                            }
+                            className="input-base w-full"
+                          />
                         </div>
                       </div>
                     </div>
                   </div>
-                  {rowError[c.id] ? (
-                    <p className="text-sm text-red-700" role="alert">
-                      {rowError[c.id]}
-                    </p>
-                  ) : null}
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <label
+                      className={cn(
+                        'inline-flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors',
+                        c.showOnHome !== false
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+                          : 'border-gray-200 bg-white text-gray-600',
+                      )}
+                    >
                       <input
                         type="checkbox"
+                        className="rounded border-gray-300"
                         checked={c.showOnHome !== false}
-                        onChange={(e) => patchItem(c.id, { showOnHome: e.target.checked })}
+                        disabled={busy}
+                        onChange={(e) => toggleFlag(c, 'showOnHome', e.target.checked)}
                       />
                       نمایش در صفحه اول
                     </label>
-                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <label className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700">
                       <input
                         type="checkbox"
+                        className="rounded border-gray-300"
                         checked={c.isIndexable !== false}
-                        onChange={(e) => patchItem(c.id, { isIndexable: e.target.checked })}
+                        disabled={busy}
+                        onChange={(e) => toggleFlag(c, 'isIndexable', e.target.checked)}
                       />
-                      قابل ایندکس (isIndexable)
+                      قابل ایندکس
                     </label>
                     <button
                       type="button"
                       onClick={() => setOpenIds((p) => ({ ...p, [c.id]: !p[c.id] }))}
                       className="btn btn-outline btn-sm inline-flex items-center gap-1.5"
                     >
-                      <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
+                      <ChevronDown
+                        className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
+                      />
                       سئو تکی / عمده
                     </button>
                     <button
+                      type="button"
                       onClick={() => save(c)}
-                      disabled={savingId === c.id}
+                      disabled={busy}
                       className={cn(
                         'btn btn-primary btn-sm flex items-center gap-1.5',
-                        savingId === c.id && 'opacity-60',
+                        busy && 'opacity-60',
                       )}
                     >
-                      <Save className="h-4 w-4" /> ذخیره
+                      <Save className="h-4 w-4" /> ذخیره فیلدها
                     </button>
                     <button
+                      type="button"
                       onClick={() => remove(c.id)}
-                      disabled={savingId === c.id}
-                      className="btn btn-outline btn-sm text-error flex items-center gap-1.5"
+                      disabled={busy}
+                      className="btn btn-outline btn-sm flex items-center gap-1.5 text-error"
                     >
                       <Trash2 className="h-4 w-4" /> حذف
                     </button>
+                    {okFlash[c.id] ? (
+                      <span className="text-xs font-medium text-emerald-700">{okFlash[c.id]}</span>
+                    ) : null}
                   </div>
 
+                  {rowError[c.id] ? (
+                    <p className="text-sm text-red-700" role="alert">
+                      {rowError[c.id]}
+                    </p>
+                  ) : null}
+
                   {open ? (
-                    <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4 space-y-4">
+                    <div className="space-y-4 rounded-xl border border-gray-100 bg-gray-50/70 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <AdminChannelTabs
                           value={tab}
@@ -612,11 +726,103 @@ export function AdminCategories() {
                 </div>
               );
             })}
-            {items.length === 0 && (
-              <div className="p-6 text-sm text-gray-500">هیچ دسته‌بندی‌ای ثبت نشده است.</div>
+            {filtered.length === 0 && (
+              <div className="p-6 text-sm text-gray-500">
+                {items.length === 0
+                  ? 'هیچ دسته‌بندی‌ای ثبت نشده است.'
+                  : 'نتیجه‌ای برای این فیلتر نیست.'}
+              </div>
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function BannerDropzone({
+  url,
+  uploading,
+  onUrlChange,
+  onFile,
+  compact,
+}: {
+  url?: string | null;
+  uploading?: boolean;
+  onUrlChange: (v: string) => void;
+  onFile: (file: File | undefined) => void;
+  compact?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const src = bannerSrc(url);
+  const size = compact ? 'h-20 w-20' : 'h-16 w-16';
+
+  return (
+    <div className={cn(compact ? 'shrink-0' : '')}>
+      {!compact ? (
+        <label className="mb-1 block text-xs text-gray-600">بنر ۱:۱</label>
+      ) : null}
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50/80 p-2',
+          compact && 'flex-col border-solid bg-white p-1.5',
+        )}
+      >
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className={cn(
+            'relative overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-200',
+            size,
+            uploading && 'opacity-60',
+          )}
+          aria-label="آپلود بنر دسته"
+        >
+          {src ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={src} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full flex-col items-center justify-center gap-0.5 text-gray-400">
+              <ImagePlus className="h-5 w-5" />
+              <span className="text-[10px]">۱:۱</span>
+            </span>
+          )}
+        </button>
+        <div className={cn('min-w-0', compact ? 'w-full' : 'flex-1')}>
+          {!compact ? (
+            <input
+              dir="ltr"
+              value={url ?? ''}
+              onChange={(e) => onUrlChange(e.target.value)}
+              className="input-base w-full text-xs"
+              placeholder="/media/..."
+            />
+          ) : null}
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            className={cn(
+              'inline-flex items-center gap-1 text-xs font-medium text-primary',
+              compact ? 'mt-1 w-full justify-center' : 'mt-1',
+            )}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            {uploading ? 'در حال بهینه‌سازی…' : 'آپلود و بهینه‌سازی'}
+          </button>
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          disabled={uploading}
+          onChange={(e) => {
+            onFile(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
       </div>
     </div>
   );
@@ -650,13 +856,27 @@ function Field({
           onChange={(e) => onChange(e.target.value)}
           rows={rows}
           dir={dir}
-          className="input-base w-full min-h-[6rem]"
+          className="input-base min-h-[6rem] w-full"
         />
       ) : (
-        <input value={value} onChange={(e) => onChange(e.target.value)} dir={dir} className="input-base w-full" />
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          dir={dir}
+          className="input-base w-full"
+        />
       )}
       {hint ? (
-        <p className={cn('mt-1 text-[11px]', hintTone === 'ok' ? 'text-emerald-600' : hintTone === 'warn' ? 'text-amber-600' : 'text-gray-400')}>
+        <p
+          className={cn(
+            'mt-1 text-[11px]',
+            hintTone === 'ok'
+              ? 'text-emerald-600'
+              : hintTone === 'warn'
+                ? 'text-amber-600'
+                : 'text-gray-400',
+          )}
+        >
           {hint}
         </p>
       ) : null}
@@ -693,7 +913,9 @@ function FaqEditor({
           </button>
         </div>
       </div>
-      <p className="text-xs text-gray-400">جفت سؤال/جواب — به صورت آرایه JSON برای اسکیما ذخیره می‌شود.</p>
+      <p className="text-xs text-gray-400">
+        جفت سؤال/جواب — به صورت آرایه JSON برای اسکیما ذخیره می‌شود.
+      </p>
       <div className="space-y-3">
         {items.map((item, idx) => (
           <div key={idx} className="grid grid-cols-1 gap-2 lg:grid-cols-2">
@@ -713,7 +935,7 @@ function FaqEditor({
               />
               <button
                 type="button"
-                className="btn btn-outline btn-sm text-error self-start"
+                className="btn btn-outline btn-sm self-start text-error"
                 onClick={() => onChange(items.filter((_, i) => i !== idx))}
                 aria-label="حذف سؤال"
               >

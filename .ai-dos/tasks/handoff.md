@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-19T08:00:00Z — TASK-20261019-001 admin categories home + banner
+
+- Depth: skill-top full. Wholesale home CMS now respects `showOnHome`; nav/`/products` unchanged.
+- Instant PATCH for home/indexable toggles; categoryBanner Sharp 1200² WebP; AdminCategories redesign.
+- Specs: image-processor + category-storefront OK; web tsc OK.
+- Next: commit, push, deploy, health + hard-refresh `/admin/categories` and both homes.
+
 ## 2026-10-18T12:00:00Z — TASK-20261018-003 CLOSED LIVE
 
 - Ship: `7ce457db` → origin/master + VPS. Deploy complete; health OK.

@@ -132,6 +132,19 @@ const wholesaleRenderer = readFileSync(
 );
 assert(wholesaleRenderer.includes('WholesaleCategoryIndex'), 'wholesale renderer mounts the category index');
 assert(!wholesaleRenderer.includes('Retail-only block'), 'wholesale no longer drops category banners');
+const wholesaleIndexSrc = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '../../components/wholesale/WholesaleCategoryIndex.tsx'),
+  'utf8',
+);
+assert(
+  wholesaleIndexSrc.includes('homeOnly: true'),
+  'wholesale home CMS index filters showOnHome like retail',
+);
+assert(
+  /toWholesaleCategoryTiles\([\s\S]*homeOnly:\s*opts\?\.homeOnly/.test(wholesaleIndexSrc) ||
+    wholesaleIndexSrc.includes('homeOnly: opts?.homeOnly'),
+  'products/nav tiles can still pass homeOnly false/omit',
+);
 const wholesaleLayout = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), '../../app/(wholesale)/layout.tsx'),
   'utf8',

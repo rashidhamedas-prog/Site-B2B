@@ -26,12 +26,13 @@ function mediaUrl(url?: string | null) {
 
 export function toWholesaleCategoryTiles(
   rows: StorefrontCategoryRow[],
-  opts?: { categoryIds?: string | null; maxItems?: unknown },
+  opts?: { categoryIds?: string | null; maxItems?: unknown; homeOnly?: boolean },
 ): WholesaleCategoryTile[] {
   return merchandiseCategories(rows, {
     categoryIds: opts?.categoryIds,
     maxItems: opts?.maxItems ?? WHOLESALE_CATEGORY_INDEX_CAP,
     capCeiling: WHOLESALE_CATEGORY_INDEX_CAP,
+    homeOnly: opts?.homeOnly,
   }).flatMap((row) => {
     const name = categoryDisplayName(row);
     if (!name) return [];
@@ -56,7 +57,7 @@ function columnClass(columns: number) {
 export function WholesaleCategoryIndexView({
   items,
   headline = 'دسته‌بندی محصولات',
-  body = 'همه دسته‌های فعال کاتالوگ عمده؛ هر لینک به صفحهٔ همان مجموعه می‌رود.',
+  body = 'دسته‌های انتخاب‌شده برای صفحه اول؛ هر لینک به صفحهٔ همان مجموعه می‌رود.',
   columns = 4,
   showThumbs = true,
 }: {
@@ -130,7 +131,8 @@ export async function WholesaleCategoryIndex({
   categoryIds?: string;
 }) {
   const rows = await fetchStorefrontCategories();
-  const items = toWholesaleCategoryTiles(rows, { categoryIds, maxItems });
+  // Home CMS block only — nav and /products keep the full ACTIVE list.
+  const items = toWholesaleCategoryTiles(rows, { categoryIds, maxItems, homeOnly: true });
   return (
     <WholesaleCategoryIndexView items={items} headline={headline} body={body} columns={columns} />
   );

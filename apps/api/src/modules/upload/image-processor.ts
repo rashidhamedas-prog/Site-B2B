@@ -2,10 +2,15 @@
 export const PRODUCT_IMAGE_WIDTH = 1200;
 export const PRODUCT_IMAGE_HEIGHT = 1600;
 export const PRODUCT_IMAGE_QUALITY = 82;
+/** Category home banner: square 1:1 cover crop, WebP output */
+export const CATEGORY_BANNER_SIZE = 1200;
+export const CATEGORY_BANNER_QUALITY = 80;
 /** 48MP phone sensors are ~50e6 pixels; 40e6 used to fail those uploads. */
 export const MAX_INPUT_PIXELS = 60_000_000;
 export const SHARP_TIMEOUT_SECONDS = 20;
 export const MAX_SHARP_CONCURRENT = 2;
+
+export type ImageProcessProfile = 'product' | 'categoryBanner';
 
 let sharpInflight = 0;
 const sharpWaiters: Array<() => void> = [];
@@ -71,4 +76,52 @@ export async function processProductImage(input: Buffer, _mimetype: string): Pro
       throw new ProductImageProcessingError(error);
     }
   });
+}
+
+/** Square cover crop for retail/wholesale home category tiles. */
+export async function processCategoryBannerImage(
+  input: Buffer,
+  _mimetype: string,
+): Promise<ProcessedImage> {
+  return withSharpSlot(async () => {
+    try {
+      const sharp = require('sharp') as typeof import('sharp');
+      const buffer = await sharp(input, {
+        limitInputPixels: MAX_INPUT_PIXELS,
+      })
+        .timeout({ seconds: SHARP_TIMEOUT_SECONDS })
+        .rotate()
+        .resize(CATEGORY_BANNER_SIZE, CATEGORY_BANNER_SIZE, {
+          fit: 'cover',
+          position: 'centre',
+        })
+        .webp({ quality: CATEGORY_BANNER_QUALITY, effort: 4 })
+        .toBuffer();
+
+      return { buffer, mimetype: 'image/webp', extension: 'webp' };
+    } catch (error) {
+      throw new ProductImageProcessingError(error);
+    }
+  });
+}
+
+export async function processUploadImage(
+  input: Buffer,
+  mimetype: string,
+  profile: ImageProcessProfile = 'product',
+): Promise<ProcessedImage> {
+  if (profile === 'categoryBanner') {
+    return processCategoryBannerImage(input, mimetype);
+  }
+  return processProductImage(input, mimetype);
+}
+
+export function parseImageProcessProfile(raw: unknown): ImageProcessProfile {
+  const value = String(raw ?? '')
+    .trim()
+    .toLowerCase();
+  if (value === 'categorybanner' || value === 'category-banner' || value === 'category_banner') {
+    return 'categoryBanner';
+  }
+  return 'product';
 }

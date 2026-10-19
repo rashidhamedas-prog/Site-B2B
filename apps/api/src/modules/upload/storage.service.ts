@@ -4,7 +4,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Readable } from 'stream';
 
-import { processProductImage } from './image-processor';
+import { processUploadImage, type ImageProcessProfile } from './image-processor';
 import { isMissingObjectError, sanitizeObjectKey } from './storage-delete';
 import { assertUrlsUnreferenced } from '../omnichannel/media-references';
 import { OmnichannelMediaAssetEntity } from '../omnichannel/entities/omnichannel-media-asset.entity';
@@ -80,9 +80,16 @@ export class StorageService implements OnModuleInit {
     return null;
   }
 
-  async uploadBuffer(buffer: Buffer, mimetype: string, extension: string, keyPrefix = 'products'): Promise<{ url: string; key: string }> {
-    const processed = await processProductImage(buffer, mimetype);
-    const key = `${keyPrefix}/${Date.now()}-${Math.random().toString(16).slice(2)}.${processed.extension}`;
+  async uploadBuffer(
+    buffer: Buffer,
+    mimetype: string,
+    extension: string,
+    keyPrefix = 'products',
+    profile: ImageProcessProfile = 'product',
+  ): Promise<{ url: string; key: string }> {
+    const processed = await processUploadImage(buffer, mimetype, profile);
+    const prefix = profile === 'categoryBanner' ? 'categories' : keyPrefix;
+    const key = `${prefix}/${Date.now()}-${Math.random().toString(16).slice(2)}.${processed.extension}`;
     const stream = Readable.from(processed.buffer);
     await this.minioClient.putObject(this.bucket, key, stream, processed.buffer.length, {
       'Content-Type': processed.mimetype,

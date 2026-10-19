@@ -1,4 +1,8 @@
-import { PRODUCT_IMAGE_HEIGHT, PRODUCT_IMAGE_WIDTH } from './upload-image';
+import {
+  CATEGORY_BANNER_SIZE,
+  PRODUCT_IMAGE_HEIGHT,
+  PRODUCT_IMAGE_WIDTH,
+} from './upload-image';
 
 /** Skip another encode when the file is already small enough for the Iran path. */
 export const SKIP_PREPARE_BYTES = 1_200_000;
@@ -65,6 +69,54 @@ export async function prepareProductUploadFile(file: File): Promise<File> {
     );
     if (!blob || blob.size === 0) return file;
     const base = file.name.replace(/\.[^.]+$/, '') || 'product';
+    return new File([blob], `${base}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+  } finally {
+    bitmap.close();
+  }
+}
+
+/**
+ * Center-crop to a square in the browser before POST so category banners
+ * stay near the 1:1 home tile budget (server still re-encodes with Sharp).
+ */
+export async function prepareCategoryBannerUploadFile(file: File): Promise<File> {
+  if (typeof window === 'undefined' || typeof createImageBitmap !== 'function') return file;
+  if (!shouldPrepareProductImage(file) && file.size <= SKIP_PREPARE_BYTES) {
+    // Still crop when dimensions are clearly not square and large enough to matter.
+  }
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    return file;
+  }
+
+  try {
+    const side = Math.min(bitmap.width, bitmap.height);
+    if (side <= 0) return file;
+    const alreadySquareSmall =
+      bitmap.width === bitmap.height &&
+      bitmap.width <= CATEGORY_BANNER_SIZE &&
+      file.size <= SKIP_PREPARE_BYTES &&
+      file.type !== 'image/heic' &&
+      file.type !== 'image/heif';
+    if (alreadySquareSmall) return file;
+
+    const out = Math.min(CATEGORY_BANNER_SIZE, side);
+    const sx = Math.floor((bitmap.width - side) / 2);
+    const sy = Math.floor((bitmap.height - side) / 2);
+    const canvas = document.createElement('canvas');
+    canvas.width = out;
+    canvas.height = out;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, sx, sy, side, side, 0, 0, out, out);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.82),
+    );
+    if (!blob || blob.size === 0) return file;
+    const base = file.name.replace(/\.[^.]+$/, '') || 'category-banner';
     return new File([blob], `${base}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
   } finally {
     bitmap.close();

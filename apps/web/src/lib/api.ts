@@ -124,15 +124,22 @@ class ApiClient {
     });
   }
 
-  async uploadImage(file: File): Promise<{ url: string; key: string }> {
+  async uploadImage(
+    file: File,
+    opts?: { profile?: 'product' | 'categoryBanner' },
+  ): Promise<{ url: string; key: string }> {
     const token = getToken();
     const fd = new FormData();
     fd.append('file', file);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), UPLOAD_FETCH_TIMEOUT_MS);
+    const profile = opts?.profile === 'categoryBanner' ? 'categoryBanner' : '';
+    const uploadUrl = profile
+      ? `${this.baseUrl}/upload/image?profile=${encodeURIComponent(profile)}`
+      : `${this.baseUrl}/upload/image`;
     let res: Response;
     try {
-      res = await fetch(`${this.baseUrl}/upload/image`, {
+      res = await fetch(uploadUrl, {
         method: 'POST',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: fd,

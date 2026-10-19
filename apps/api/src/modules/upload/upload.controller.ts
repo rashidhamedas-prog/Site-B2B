@@ -6,7 +6,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { StorageService } from './storage.service';
-import { isProductImageTimeout, ProductImageProcessingError } from './image-processor';
+import {
+  isProductImageTimeout,
+  parseImageProcessProfile,
+  ProductImageProcessingError,
+} from './image-processor';
 import { MAX_UPLOAD_IMAGE_BYTES, uploadImageKind, uploadImageRejection } from './upload-image-policy';
 
 function fileTooLarge(error: unknown): boolean {
@@ -54,11 +58,17 @@ export class UploadController {
       throw error;
     }
 
+    const profile = parseImageProcessProfile(
+      typeof req?.query?.profile === 'string' ? req.query.profile : undefined,
+    );
+
     try {
       return await this.storage.uploadBuffer(
         Buffer.concat(chunks),
         data.mimetype,
         uploadImageKind(data.filename, data.mimetype),
+        'products',
+        profile,
       );
     } catch (error) {
       if (error instanceof ProductImageProcessingError) {

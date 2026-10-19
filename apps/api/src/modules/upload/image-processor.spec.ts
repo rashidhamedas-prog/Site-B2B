@@ -1,10 +1,13 @@
 import * as assert from 'node:assert/strict';
 import {
+  CATEGORY_BANNER_SIZE,
   isProductImageTimeout,
   MAX_INPUT_PIXELS,
+  parseImageProcessProfile,
   PRODUCT_IMAGE_HEIGHT,
   PRODUCT_IMAGE_WIDTH,
   ProductImageProcessingError,
+  processCategoryBannerImage,
   processProductImage,
 } from './image-processor';
 
@@ -43,6 +46,25 @@ async function main() {
     true,
   );
   assert.equal(isProductImageTimeout(new ProductImageProcessingError(new Error('corrupt'))), false);
+
+  const landscape = await sharp({
+    create: {
+      width: 1600,
+      height: 900,
+      channels: 3,
+      background: { r: 180, g: 140, b: 90 },
+    },
+  })
+    .png()
+    .toBuffer();
+  const banner = await processCategoryBannerImage(landscape, 'image/png');
+  const bannerMeta = await sharp(banner.buffer).metadata();
+  assert.equal(banner.mimetype, 'image/webp');
+  assert.equal(bannerMeta.width, CATEGORY_BANNER_SIZE);
+  assert.equal(bannerMeta.height, CATEGORY_BANNER_SIZE);
+  assert.ok(banner.buffer.length < landscape.length);
+  assert.equal(parseImageProcessProfile('category-banner'), 'categoryBanner');
+  assert.equal(parseImageProcessProfile('product'), 'product');
 
   console.log('image-processor.spec.ts: ok');
 }
