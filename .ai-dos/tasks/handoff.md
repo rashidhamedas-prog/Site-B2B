@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-19T14:00:00Z — TASK-20261019-003 category inline links
+
+- Admin intro and bottom copy for both channels use a small TipTap editor (bold, italic, internal link).
+- API `sanitizeCategoryCopy` keeps plain text and allows only p/br/strong/em plus href starting with `/`.
+- No migration. Storefront `RichText` still renders existing paragraphs and saved HTML.
+
 ## 2026-10-19T12:27:00Z — TASK-20261019-002 CLOSED LIVE
 
 - Ship: `61233b3e` → origin/master + VPS auto-deploy complete at `61233b3`.

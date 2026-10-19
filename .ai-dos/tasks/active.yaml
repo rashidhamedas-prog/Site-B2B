@@ -1,5 +1,32 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261019-003"
+    title: "Internal links in category intro and bottom copy"
+    status: "done"
+    risk: "medium"
+    owner: "cursor"
+    branch: "ai/TASK-20261019-003-category-inline-links"
+    worktree: "D:/proje/Site B2B"
+    claimed_at: "2026-10-19T14:00:00Z"
+    file_claims: []
+    released_file_claims:
+      - "apps/api/src/modules/category/category-copy.ts"
+      - "apps/api/src/modules/category/category-copy.spec.ts"
+      - "apps/api/src/modules/category/category.service.ts"
+      - "apps/api/package.json"
+      - "apps/web/src/lib/catalog/category-copy.ts"
+      - "apps/web/src/components/admin/CategoryCopyEditor.tsx"
+      - "apps/web/src/components/admin/AdminCategories.tsx"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-19-category-inline-links.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    acceptance_criteria:
+      - "Admin can select text in intro or bottom copy on both channels and insert a site-relative link"
+      - "Existing plain paragraphs stay plain until edited"
+      - "javascript, protocol-relative, and external hrefs are stripped on write and public read"
+      - "No schema migration"
+
   - id: "TASK-20261019-002"
     title: "Per-channel category CTA (admin + CategoryLanding)"
     status: "done"

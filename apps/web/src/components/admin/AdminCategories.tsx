@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown,
@@ -22,6 +23,11 @@ import { revalidateStorefrontAfterSave } from '@/lib/cms/revalidate-client';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { AdminChannelTabs, type AdminChannel } from './AdminChannelTabs';
 import { AdminExcelExportButtons } from './AdminExcelExportButtons';
+
+const CategoryCopyEditor = dynamic(
+  () => import('./CategoryCopyEditor').then((m) => m.CategoryCopyEditor),
+  { ssr: false, loading: () => <div className="min-h-[6rem] rounded-lg bg-gray-100" /> },
+);
 
 type FaqItem = { question: string; answer: string };
 
@@ -58,7 +64,10 @@ const EMPTY_FAQ: FaqItem[] = [
 ];
 
 function wordCount(text: string | null | undefined): number {
-  return (text ?? '').trim().split(/\s+/).filter(Boolean).length;
+  const plain = (text ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ');
+  return plain.trim().split(/\s+/).filter(Boolean).length;
 }
 
 function retailTitlePreview(name: string, seoTitle?: string | null) {
@@ -661,23 +670,19 @@ export function AdminCategories() {
                             />
                           </div>
                           <div className="lg:col-span-2">
-                            <Field
+                            <CategoryCopyEditor
                               label="متن مقدمه (حدود ۸۰ تا ۱۵۰ کلمه)"
                               value={c.introText ?? ''}
                               onChange={(v) => patchItem(c.id, { introText: v })}
-                              multiline
-                              rows={5}
                               hint={`${introWords.toLocaleString('fa-IR')} کلمه`}
                               hintTone={introWords >= 80 && introWords <= 150 ? 'ok' : 'warn'}
                             />
                           </div>
                           <div className="lg:col-span-2">
-                            <Field
+                            <CategoryCopyEditor
                               label="محتوای پایین صفحه"
                               value={c.bottomContent ?? ''}
                               onChange={(v) => patchItem(c.id, { bottomContent: v })}
-                              multiline
-                              rows={6}
                             />
                           </div>
                           <div className="lg:col-span-2">
@@ -711,23 +716,19 @@ export function AdminCategories() {
                             />
                           </div>
                           <div className="lg:col-span-2">
-                            <Field
+                            <CategoryCopyEditor
                               label="متن مقدمه عمده (حدود ۸۰ تا ۱۵۰ کلمه)"
                               value={c.wholesaleIntroText ?? ''}
                               onChange={(v) => patchItem(c.id, { wholesaleIntroText: v })}
-                              multiline
-                              rows={5}
                               hint={`${introWords.toLocaleString('fa-IR')} کلمه`}
                               hintTone={introWords >= 80 && introWords <= 150 ? 'ok' : 'warn'}
                             />
                           </div>
                           <div className="lg:col-span-2">
-                            <Field
+                            <CategoryCopyEditor
                               label="محتوای پایین صفحه عمده"
                               value={c.wholesaleBottomContent ?? ''}
                               onChange={(v) => patchItem(c.id, { wholesaleBottomContent: v })}
-                              multiline
-                              rows={6}
                             />
                           </div>
                           <div className="lg:col-span-2">

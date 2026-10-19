@@ -19,6 +19,7 @@ import {
 } from '../product/catalog-excel';
 import { throwCategoryUniqueOrRethrow } from './category-unique';
 import { normalizeCategoryCta, type CategoryCta } from './category-cta';
+import { sanitizeCategoryCopy } from './category-copy';
 
 export type CategoryUpsert = {
   name?: string;
@@ -64,16 +65,15 @@ export class CategoryService {
   ) {}
 
   findAll(opts?: { includeHidden?: boolean }) {
-    if (opts?.includeHidden) {
-      return this.repo.find({
-        where: { deletedAt: null as any },
+    const where = opts?.includeHidden
+      ? { deletedAt: null as any }
+      : ({ deletedAt: null as any, status: 'ACTIVE' } as any);
+    return this.repo
+      .find({
+        where,
         order: { sortOrder: 'ASC', createdAt: 'DESC' } as any,
-      });
-    }
-    return this.repo.find({
-      where: { deletedAt: null as any, status: 'ACTIVE' } as any,
-      order: { sortOrder: 'ASC', createdAt: 'DESC' } as any,
-    });
+      })
+      .then((rows) => rows.map((row) => this.withSafeCopy(row)));
   }
 
   async findOne(id: string) {
@@ -87,7 +87,15 @@ export class CategoryService {
     if (!normalized) throw new NotFoundException('دسته‌بندی یافت نشد');
     const c = await this.repo.findOne({ where: { slug: normalized } });
     if (!c || c.status === 'HIDDEN') throw new NotFoundException('دسته‌بندی یافت نشد');
-    return c;
+    return this.withSafeCopy(c);
+  }
+
+  private withSafeCopy(row: CategoryEntity): CategoryEntity {
+    row.introText = sanitizeCategoryCopy(row.introText);
+    row.bottomContent = sanitizeCategoryCopy(row.bottomContent);
+    row.wholesaleIntroText = sanitizeCategoryCopy(row.wholesaleIntroText);
+    row.wholesaleBottomContent = sanitizeCategoryCopy(row.wholesaleBottomContent);
+    return row;
   }
 
   private async uniqueSlug(desired: string, excludeId?: string): Promise<string> {
@@ -157,6 +165,7 @@ export class CategoryService {
         body.wholesaleCta !== undefined ? normalizeCategoryCta(body.wholesaleCta) : null,
     });
     this.applySeedDefaults(seed, entity);
+    this.withSafeCopy(entity);
     try {
       return await this.repo.save(entity);
     } catch (err) {
@@ -182,12 +191,19 @@ export class CategoryService {
       if (value === undefined) return;
       (existing as any)[key] = value?.trim() ? value.trim() : null;
     };
+    const assignCopy = (
+      key: 'introText' | 'bottomContent' | 'wholesaleIntroText' | 'wholesaleBottomContent',
+      value: string | null | undefined,
+    ) => {
+      if (value === undefined) return;
+      existing[key] = sanitizeCategoryCopy(value);
+    };
     assignText('nameEn', body.nameEn);
     assignText('seoTitle', body.seoTitle);
     assignText('seoDescription', body.seoDescription);
     assignText('h1', body.h1);
-    assignText('introText', body.introText);
-    assignText('bottomContent', body.bottomContent);
+    assignCopy('introText', body.introText);
+    assignCopy('bottomContent', body.bottomContent);
     assignText('heroImage', body.heroImage);
     assignText('heroImageAlt', body.heroImageAlt);
     assignText('ogImage', body.ogImage);
@@ -195,8 +211,8 @@ export class CategoryService {
     assignText('wholesaleH1', body.wholesaleH1);
     assignText('wholesaleSeoTitle', body.wholesaleSeoTitle);
     assignText('wholesaleSeoDescription', body.wholesaleSeoDescription);
-    assignText('wholesaleIntroText', body.wholesaleIntroText);
-    assignText('wholesaleBottomContent', body.wholesaleBottomContent);
+    assignCopy('wholesaleIntroText', body.wholesaleIntroText);
+    assignCopy('wholesaleBottomContent', body.wholesaleBottomContent);
     if (body.isIndexable !== undefined) existing.isIndexable = !!body.isIndexable;
     if (body.showOnHome !== undefined) existing.showOnHome = !!body.showOnHome;
     if (body.sortOrder !== undefined && Number.isFinite(Number(body.sortOrder))) {
