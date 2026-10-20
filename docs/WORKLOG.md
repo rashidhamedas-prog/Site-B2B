@@ -3,6 +3,7 @@
 - شواهد: پنل ۲۹ محصول موجود نمایشی؛ GA4 پیک ۳–۵ اکتبر (اوج ۱۸ جلسه) و cliff در ۶ اکتبر؛ فید زنده ۵۹۰ گزینه / ۳۳۶ موجود ولی image روی `poshaktaranom.com`.
 - ریشه کد: Product API v3 حالت رسمی `product_id_desc` + `cursor` را ۴۰۰ می‌کرد؛ `mediaOrigin`/`absMedia` تصویر را روی دامنهٔ عمده می‌گذاشت.
 - فیکس: cursor pagination، rebase تصویر به `www.poshaktaranom.ir`، `category_name`؛ تست‌های torob سبز.
+- دیپلوی: `7240578` روی master؛ چون DNS فروشگاه روی replica ایران است، همان پچ روی `185.213.167.61` build/recreate شد — فید زنده حالا ۲۳۰۰ تصویر روی `.ir`.
 - گزارش: `docs/reports/2026-10-20-torob-traffic-cliff-rca.md`. بعد از دیپلوی: همگام‌سازی مجدد در پنل + بررسی بودجه PPC/ads.
 
 ## 2026-10-20 — بله Omnichannel: LIVE آماده، گیت canary خراب، UX دسترسی
