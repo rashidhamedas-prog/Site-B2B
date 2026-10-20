@@ -206,21 +206,34 @@ export class TelegramAdapter implements ChannelAdapter {
         out.canDelete = true;
         return out;
       }
-      const member = await this.telegramCall<TelegramChatMember>(token, 'getChatMember', {
-        chat_id: target,
-        user_id: me.id,
-      });
-      const status = String(member.status || '');
-      const admin = status === 'administrator' || status === 'creator';
-      out.botIsAdmin = admin;
-      if (chatType === 'channel') {
-        out.canPost = status === 'creator' || (admin && member.can_post_messages === true);
-        out.canEdit = status === 'creator' || (admin && member.can_edit_messages === true);
-      } else {
-        out.canPost = admin || status === 'member';
-        out.canEdit = admin;
+      try {
+        const member = await this.telegramCall<TelegramChatMember>(token, 'getChatMember', {
+          chat_id: target,
+          user_id: me.id,
+        });
+        const status = String(member.status || '');
+        const admin = status === 'administrator' || status === 'creator';
+        out.botIsAdmin = admin;
+        if (chatType === 'channel') {
+          out.canPost = status === 'creator' || (admin && member.can_post_messages === true);
+          out.canEdit = status === 'creator' || (admin && member.can_edit_messages === true);
+        } else {
+          out.canPost = admin || status === 'member';
+          out.canEdit = admin;
+        }
+        out.canDelete = status === 'creator' || (admin && member.can_delete_messages === true);
+      } catch (memberErr: unknown) {
+        const code = classifyTelegramThrow(memberErr);
+        return {
+          ...out,
+          ok: false,
+          botIsAdmin: false,
+          canPost: false,
+          canEdit: false,
+          canDelete: false,
+          error: code,
+        };
       }
-      out.canDelete = status === 'creator' || (admin && member.can_delete_messages === true);
       try {
         const count = await this.telegramCall<number>(token, 'getChatMemberCount', { chat_id: target });
         out.memberCount = Number.isFinite(Number(count)) ? Number(count) : null;

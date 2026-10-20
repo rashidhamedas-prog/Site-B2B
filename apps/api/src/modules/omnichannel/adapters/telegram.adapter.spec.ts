@@ -21,6 +21,11 @@ function jsonRes(status: number, body: unknown): Response {
 
 async function main() {
   assert(classifyTelegramHttpError(401) === 'invalid_credential', '401');
+  assert(classifyTelegramHttpError(403) === 'invalid_credential', '403 bare is bad token');
+  assert(
+    classifyTelegramHttpError(403, 'Forbidden: permission_denied') === 'permission_denied',
+    '403 permission_denied is chat rights, not bad token',
+  );
   assert(classifyTelegramHttpError(429) === 'rate_limited', '429');
   assert(classifyTelegramHttpError(503) === 'provider_unavailable', '5xx');
   assert(classifyTelegramHttpError(409, 'already') === 'duplicate', 'duplicate');

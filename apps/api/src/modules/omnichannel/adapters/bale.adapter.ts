@@ -120,19 +120,32 @@ export class BaleAdapter implements ChannelAdapter {
         out.canDelete = true;
         return out;
       }
-      const member = await this.baleCall<BaleChatMember>(token, 'getChatMember', { chat_id: target, user_id: me.id });
-      const status = String(member.status || '').toLowerCase();
-      const owner = status === 'creator' || status === 'owner';
-      const admin = owner || status === 'administrator';
-      out.botIsAdmin = admin;
-      if (chatType === 'channel') {
-        out.canPost = owner || (admin && member.can_post_messages === true);
-        out.canEdit = owner || (admin && member.can_edit_messages === true);
-      } else {
-        out.canPost = admin || status === 'member';
-        out.canEdit = admin;
+      try {
+        const member = await this.baleCall<BaleChatMember>(token, 'getChatMember', { chat_id: target, user_id: me.id });
+        const status = String(member.status || '').toLowerCase();
+        const owner = status === 'creator' || status === 'owner';
+        const admin = owner || status === 'administrator';
+        out.botIsAdmin = admin;
+        if (chatType === 'channel') {
+          out.canPost = owner || (admin && member.can_post_messages === true);
+          out.canEdit = owner || (admin && member.can_edit_messages === true);
+        } else {
+          out.canPost = admin || status === 'member';
+          out.canEdit = admin;
+        }
+        out.canDelete = owner || (admin && member.can_delete_messages === true);
+      } catch (memberErr: unknown) {
+        const code = classifyTelegramThrow(memberErr);
+        return {
+          ...out,
+          ok: false,
+          botIsAdmin: false,
+          canPost: false,
+          canEdit: false,
+          canDelete: false,
+          error: code,
+        };
       }
-      out.canDelete = owner || (admin && member.can_delete_messages === true);
       try {
         const count = await this.baleCall<number>(token, 'getChatMembersCount', { chat_id: target });
         out.memberCount = Number.isFinite(Number(count)) ? Number(count) : null;

@@ -5,6 +5,7 @@ import { isAllowedSecretRef } from './omnichannel-secrets';
 import {
   annotatePreviewOos,
   assertOmnichannelSettingsInput,
+  canaryEligibleForAutomation,
   destinationCanPost,
   effectiveWorkerRetentionDays,
   effectiveWorkerRetrySlaSeconds,
@@ -344,6 +345,13 @@ assert(isAllowedSecretRef('DATABASE_URL') === false, 'DATABASE_URL rejected');
   assert(!destinationCanPost(withDestinationVerification({}, { ...snap!, canPost: false })), 'admin without post right cannot post');
   assert(!destinationCanPost(withDestinationVerification({}, { ...snap!, ok: false })), 'failed check cannot post');
   assert(destinationCanPost(withDestinationVerification({}, { checkedAt: snap!.checkedAt, ok: true, chatType: 'private' })), 'private chat resolves → can post');
+
+  assert(canaryEligibleForAutomation({ isCanary: true }), 'unchecked canary stays eligible');
+  assert(
+    !canaryEligibleForAutomation(withDestinationVerification({ isCanary: true }, { checkedAt: snap!.checkedAt, ok: false, error: 'permission_denied', chatType: 'channel', canPost: false })),
+    'failed canary is not automation-eligible',
+  );
+  assert(canaryEligibleForAutomation(withSnap), 'verified canary with post rights stays eligible');
 
   const toggled = mergeDestinationSettings(withSnap, false);
   assert(toggled.isCanary === undefined && !!toggled.verified, 'canary toggle keeps the snapshot');

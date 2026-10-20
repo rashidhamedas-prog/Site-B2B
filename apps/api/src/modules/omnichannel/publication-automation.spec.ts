@@ -125,6 +125,22 @@ function main() {
     ids(selectAutomationDestinationsForConnection(dests, conns[0], 'LIVE')) === 'canary,live',
     'per-connection LIVE ignores other bots',
   );
+  const failedCanary = [
+    ...dests,
+    {
+      id: 'brokenCanary',
+      connectionId: 'c1',
+      enabled: true,
+      settings: {
+        isCanary: true,
+        verified: { checkedAt: new Date().toISOString(), ok: false, error: 'permission_denied', chatType: 'channel', canPost: false },
+      },
+    },
+  ];
+  assert(
+    !ids(selectAutomationDestinations(failedCanary, conns, 'RETAIL', 'LIVE')).includes('brokenCanary'),
+    'failed channel canary is excluded from LIVE automation',
+  );
   assert(
     ids(selectAutomationDestinationsForConnection(dests, conns[1], 'CANARY')) === '',
     'per-connection CANARY with no canary on that bot is empty',
