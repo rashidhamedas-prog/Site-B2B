@@ -5,6 +5,7 @@ import { IntegrationHealthTracker } from '../../common/integration-health';
 import { OrderEntity } from '../order/entities/order.entity';
 import { ProductEntity } from '../product/entities/product.entity';
 import { SettingsService } from '../settings/settings.service';
+import { torobPurchaseAfterGt } from './torob-order-filter';
 
 type TorobProduct = {
   product_url: string;
@@ -114,13 +115,13 @@ export class TorobService {
 
     const take = Math.min(1000, Math.max(1, Number.isFinite(limitRaw!) ? Number(limitRaw) : 100));
 
+    // Official contract: purchase_timestamp_gt filters by purchase_timestamp only (createdAt).
+    // Including updatedAt OR-matches returned older purchases after a status touch; Torob panel
+    // rejects those with "purchase_timestamp before purchase_timestamp_gt".
     let rows: OrderEntity[] = [];
     try {
       rows = await this.orders.find({
-        where: [
-          { torobClid: Not(IsNull()), createdAt: MoreThan(gt) },
-          { torobClid: Not(IsNull()), updatedAt: MoreThan(gt) },
-        ],
+        where: { torobClid: Not(IsNull()), createdAt: MoreThan(gt) },
         relations: ['items', 'customer'],
         order: { createdAt: 'ASC' },
         take,
@@ -132,13 +133,7 @@ export class TorobService {
       return { success: true as const, data: [] as TorobOrder[] };
     }
 
-    // De-dupe OR matches
-    const seen = new Set<string>();
-    rows = rows.filter((o) => {
-      if (!o.torobClid || seen.has(o.id)) return false;
-      seen.add(o.id);
-      return true;
-    });
+    rows = rows.filter((o) => !!o.torobClid && torobPurchaseAfterGt(o.createdAt, gt));
 
     const skus = [...new Set(rows.flatMap((o) => (o.items || []).map((i) => i.sku).filter(Boolean)))];
     let bySku = new Map<string, ProductEntity>();
