@@ -67,6 +67,14 @@
 3. **`category_name`** در payload برای کمک به دسته‌بندی ترب.
 4. تست‌های واحد به‌روز و سبز.
 
+### دیپلوی
+
+| Origin | وضعیت |
+|--------|--------|
+| `master` git | `7240578` |
+| Hetzner `5.75.200.102` | API/worker ایمیج جدید؛ DNS فروشگاه اینجا نیست |
+| Iran `185.213.167.61` (DNS زنده) | فایل‌ها پچ + `docker compose build api` + recreate؛ فید زنده: **۲۳۰۰** `image_link` روی `www.poshaktaranom.ir` |
+
 ## اقدام مالک پس از دیپلوی
 
 1. در پنل ترب همگام‌سازی مجدد Product API را بزنید (آدرس: `https://www.poshaktaranom.ir/v1/torob_api/v3/products`).
