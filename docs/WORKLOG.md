@@ -1,3 +1,8 @@
+﻿## 2026-10-20 — فیکس تست سفارش ترب: purchase_timestamp_gt
+
+- پنل: `purchase_timestamp` سفارش (۱۰:۰۲) قبل از `purchase_timestamp_gt` (۱۰:۱۵) بود.
+- علت: `listOrders` با OR روی `updatedAt` سفارش قدیمِ تازه‌به‌روزشده را برمی‌گرداند ولی `purchase_timestamp` همان `createdAt` است.
+- فیکس: فیلتر فقط `createdAt > gt` + گارد `torobPurchaseAfterGt`؛ تست واحد برای کیس پنل.
 ## 2026-10-20 — افت ورودی ترب: RCA + فیکس cursor API و تصویر
 
 - شواهد: پنل ۲۹ محصول موجود نمایشی؛ GA4 پیک ۳–۵ اکتبر (اوج ۱۸ جلسه) و cliff در ۶ اکتبر؛ فید زنده ۵۹۰ گزینه / ۳۳۶ موجود ولی image روی `poshaktaranom.com`.
@@ -3208,3 +3213,4 @@
 - پنج بنر بدون انسان/مانکن و بنر آخر تکی با یک مدل انسانی و کت آلیس طراحی شد.
 - خروجی WebP مستقل دسکتاپ و موبایل، defaults جدید و migration برگشت‌پذیر CMS اضافه شدند.
 - مسیر جدید `hero-product-2026-v2` نیز مستقیم سرو می‌شود تا خطای optimizer در high-DPR تکرار نشود.
+
