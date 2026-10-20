@@ -635,6 +635,24 @@ export function destinationCanPost(settings: Record<string, unknown> | null | un
 }
 
 /**
+ * Canary destinations may receive automation before a full LIVE verify — but once a check says
+ * the bot cannot post (e.g. Bale/Telegram channel without admin), keep them out of the send path
+ * so LIVE mode does not enqueue doomed deliveries. Unchecked canaries still qualify.
+ */
+export function canaryEligibleForAutomation(settings: Record<string, unknown> | null | undefined): boolean {
+  if (!isCanarySettings(settings)) return false;
+  const verified = readDestinationVerification(settings);
+  if (!verified) return true;
+  if (!verified.ok) return false;
+  if (verified.chatType === 'private') return true;
+  if (verified.canPost === false) return false;
+  if (verified.canPost === true) return true;
+  return verified.permissionCheck === 'test_post' || verified.permissionCheck === 'unavailable'
+    ? false
+    : true;
+}
+
+/**
  * Enabled canary destinations on ACTIVE connections for one sales channel. Any official provider
  * qualifies (Telegram, Bale, Rubika); pass `provider` to restrict to one bot platform.
  */

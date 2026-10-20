@@ -969,7 +969,7 @@ export function AdminOmnichannel() {
   const channelsPanel = (
     <Section
       title="۲. کانال‌ها و مقصدها"
-      description="ربات را در کانال ادمین کنید (با اجازه ارسال، ویرایش و حذف پیام)، بعد شناسه کانال را ثبت کنید و «بررسی دسترسی» را بزنید. اگر شناسه را نمی‌دانید، یک پیام از کانال را برای ربات فوروارد کنید و «پیدا کردن شناسه» را بزنید. یک مقصد را «تست» کنید تا پست‌های آزمایشی فقط همان‌جا برود."
+      description="برای بله/تلگرام: اول در خود پیام‌رسان ربات را ادمین کانال کنید (اجازه ارسال، ویرایش و حذف). توکن فقط در vault سرور است؛ اینجا فقط مقصد را ثبت و «بررسی دسترسی» بزنید. اگر شناسه را نمی‌دانید، پیام کانال را برای ربات فوروارد کنید و «پیدا کردن شناسه» را بزنید. یک مقصد را «آزمایشی» کنید تا پست‌های تست فقط همان‌جا برود."
     >
       {botConnections.length === 0 && <Callout tone="warn">اول در مرحله ۱ یک ربات ثبت کنید؛ مقصد بدون ربات معنا ندارد.</Callout>}
       <div className="grid md:grid-cols-4 gap-2">
@@ -1026,7 +1026,7 @@ export function AdminOmnichannel() {
                 ? <span className="text-red-700">{errorLabel(discovered.error) || 'جست‌وجو ناموفق بود'}</span>
                 : discovered.chats.length
                   ? `${faNumber(discovered.chats.length)} چت پیدا شد — روی «استفاده» بزنید تا شناسه و نام پر شود`
-                  : 'چیزی پیدا نشد. ربات را در کانال ادمین کنید، یک پست در کانال بگذارید یا پیامی از کانال را برای ربات فوروارد کنید و دوباره بزنید.'}
+                  : 'چیزی پیدا نشد. ربات باید ادمین کانال باشد؛ یک پست در کانال بگذارید یا پیامی از کانال را برای ربات فوروارد کنید و دوباره بزنید. شناسه را می‌توانید دستی هم وارد کنید (مثلاً @toliditaranom).'}
             </p>
             <button type="button" className="text-xs text-gray-500 underline cursor-pointer" onClick={() => setDiscovered(null)}>بستن</button>
           </div>
@@ -1096,7 +1096,11 @@ export function AdminOmnichannel() {
                 <div className="flex flex-wrap gap-2 pt-1">
                   <button type="button" className="btn btn-secondary btn-sm" disabled={busy === `verify-${dest.id}` || !status?.connectors} onClick={() => run(`verify-${dest.id}`, async () => {
                     const res = await apiClient.post<Destination & { botUsername?: string | null }>(`/omnichannel/destinations/${dest.id}/verify`, {});
-                    if (res?.verified && !res.verified.ok) throw new Error(errorLabel(res.verified.error) || 'ربات به این مقصد دسترسی ندارد');
+                    if (res?.verified && !res.verified.ok) {
+                      const bot = res.botUsername ? `@${res.botUsername}` : 'ربات این اتصال';
+                      const base = errorLabel(res.verified.error) || 'ربات به این مقصد دسترسی ندارد';
+                      throw new Error(`${base} — ${bot} را در کانال ادمین کنید و دوباره بررسی کنید`);
+                    }
                   }, 'بررسی دسترسی ناموفق', 'دسترسی ربات بررسی شد')}>
                     بررسی دسترسی
                   </button>

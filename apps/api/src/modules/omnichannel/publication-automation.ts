@@ -7,7 +7,7 @@ import {
   type AutoPublishMode,
   type WithdrawAction,
 } from './omnichannel.constants';
-import { destinationCanPost, isCanarySettings, type OosPolicy } from './oos-policy';
+import { canaryEligibleForAutomation, destinationCanPost, isCanarySettings, type OosPolicy } from './oos-policy';
 export {
   tehranHour,
   tehranDayStart,
@@ -90,7 +90,7 @@ export function selectAutomationDestinations<
     if (!dest.enabled) return false;
     const conn = byId.get(dest.connectionId);
     if (!conn || !isOmnichannelProvider(conn.provider) || conn.channel !== channel || conn.status !== 'ACTIVE') return false;
-    if (isCanarySettings(dest.settings)) return true;
+    if (isCanarySettings(dest.settings)) return canaryEligibleForAutomation(dest.settings);
     return mode === 'LIVE' && destinationCanPost(dest.settings);
   });
 }
@@ -103,7 +103,7 @@ export function selectAutomationDestinationsForConnection<
   if (mode === 'OFF' || conn.status !== 'ACTIVE' || !isOmnichannelProvider(conn.provider)) return [];
   return dests.filter((dest) => {
     if (!dest.enabled || dest.connectionId !== conn.id) return false;
-    if (isCanarySettings(dest.settings)) return true;
+    if (isCanarySettings(dest.settings)) return canaryEligibleForAutomation(dest.settings);
     return mode === 'LIVE' && destinationCanPost(dest.settings);
   });
 }

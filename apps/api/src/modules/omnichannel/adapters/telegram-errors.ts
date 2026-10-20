@@ -1,13 +1,28 @@
 export type TelegramErrorCode =
   | 'invalid_credential'
+  | 'permission_denied'
   | 'rate_limited'
   | 'provider_unavailable'
   | 'timeout'
   | 'duplicate'
   | 'validate_failed';
 
+/** Bot token is fine but the bot is not allowed to act in that chat (not admin / cannot post). */
+export function isPermissionDeniedDescription(description = ''): boolean {
+  const text = String(description || '').toLowerCase();
+  return (
+    text.includes('permission_denied')
+    || text.includes('not enough rights')
+    || text.includes('chat_admin_required')
+    || text.includes('need administrator')
+    || text.includes('bot is not a member')
+  );
+}
+
 export function classifyTelegramHttpError(status: number, description = ''): TelegramErrorCode {
   const text = String(description || '').toLowerCase();
+  // Prefer chat-permission failures over treating HTTP 403 as a bad token.
+  if (isPermissionDeniedDescription(text)) return 'permission_denied';
   if (status === 401 || status === 403) return 'invalid_credential';
   if (status === 429) return 'rate_limited';
   if (status >= 500) return 'provider_unavailable';
@@ -30,6 +45,7 @@ export function classifyTelegramThrow(err: unknown): TelegramErrorCode {
   }
   if (
     named.telegramCode === 'invalid_credential'
+    || named.telegramCode === 'permission_denied'
     || named.telegramCode === 'rate_limited'
     || named.telegramCode === 'provider_unavailable'
     || named.telegramCode === 'timeout'

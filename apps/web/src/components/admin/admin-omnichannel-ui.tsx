@@ -318,6 +318,7 @@ const ERROR_LABELS: Record<string, string> = {
   duplicate: 'قبلاً همین محتوا ارسال/ویرایش شده بود',
   validate_failed: 'پیام‌رسان درخواست را رد کرد (شناسه یا محتوای پست را بررسی کنید)',
   chat_not_found: 'چت پیدا نشد؛ ربات را به کانال اضافه کنید یا شناسه را درست وارد کنید',
+  permission_denied: 'ربات ادمین کانال نیست یا اجازهٔ ارسال ندارد — در تنظیمات کانال، ربات را ادمین کنید (ارسال / ویرایش / حذف پیام)',
   destination_missing: 'شناسه مقصد خالی است',
   provider_message_missing: 'شناسه پیام روی پیام‌رسان ثبت نشده بود',
   webhook_active: 'روی این ربات وب‌هوک فعال است؛ getUpdates کار نمی‌کند. وب‌هوک را بردارید یا شناسه را دستی وارد کنید',
@@ -550,10 +551,17 @@ export function templateLooksReady(body?: string) {
   }
 }
 
-/** Destination that automation may post to: canary, or verified with post rights. */
+/** Destination that automation may post to: canary (unless check failed), or verified with post rights. */
 export function destinationReady(dest: Destination) {
-  if (dest.isCanary) return true;
   const v = dest.verified;
+  if (dest.isCanary) {
+    if (!v) return true;
+    if (!v.ok) return false;
+    if (v.chatType === 'private') return true;
+    if (v.canPost === false) return false;
+    if (v.canPost === true) return true;
+    return !(v.permissionCheck === 'test_post' || v.permissionCheck === 'unavailable');
+  }
   if (!v || !v.ok) return false;
   return v.chatType === 'private' ? true : v.canPost === true;
 }

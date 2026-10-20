@@ -1,3 +1,23 @@
+## 2026-10-20 — بله Omnichannel: LIVE آماده، گیت canary خراب، UX دسترسی
+
+- وضعیت سرور: اتصال BALE `ACTIVE` + `autoPublishMode=LIVE`؛ مقصد `@toliditaranom` (canary) ثبت است. پروب `tapi.bale.ai`: `@balerelaitbot` زنده؛ `getChat` کانال OK؛ `getChatMember`/`sendMessage` هنوز `permission_denied` (ربات ادمین نیست).
+- کد: `permission_denied` از ۴۰۳ جدا شد (دیگر به‌اشتباه invalid_credential نیست)؛ inspect بله/تلگرام بعد از getChat موفق، خطای عضو را با متادیتای کانال برمی‌گرداند؛ canary شکست‌خورده از automation/ready خارج می‌شود؛ برچسب و پیام «بررسی دسترسی» واضح‌تر شد.
+- باقی فقط مالک: در اپ بله کانال «تولیدی ترنم» → مدیران → `@balerelaitbot` با ارسال/ویرایش/حذف. بعد در `/admin/omnichannel` «بررسی دسترسی» (+ در صورت نیاز پست آزمایشی).
+
+## 2026-10-20 — راه‌اندازی اتصال بله Omnichannel (نیمه‌تمام تا ادمین کانال)
+
+- تحقیق: فقط `tapi.bale.ai` رسمی؛ مسیر موجود `BaleAdapter` + vault `BALE_BOT_TOKEN` (نه env خام). اتصال `ACTIVE` عمده از قبل بود؛ مقصد بله وجود نداشت.
+- توکن زنده: getMe → `@balerelaitbot` (نام نمایشی «ربات کانال های ترنم»). کانال `@toliditaranom` = «تولیدی ترنم | متخصص در لینن» (id `4858359991`).
+- BotFather وب: «عضویت بازو در گروه» برای `@Balerelaitbot` فعال شد. مخاطب با نام کاربری اضافه شد. افزودن/ادمین‌کردن بازو به کانال از وب بله نتیجه نداد (جستجوی عضو خالی).
+- DB: مقصد canary `618955c4-…` با `destinationKey=@toliditaranom` ثبت شد. verify هنوز `permission_denied` / `canPost=false` چون ربات ادمین کانال نیست.
+- باقی برای مالک (معمولاً اپ موبایل): کانال → مدیران → افزودن `@balerelaitbot` با ارسال/ویرایش/حذف پیام. بعد verify + پست آزمایشی از `/admin/omnichannel`. توصیه: چرخش توکن در BotFather چون در چت BotFather دیده شد؛ سپس vault ادمین را به‌روز کنید. ربات دوم `toliditaranombot` در BotFather هست ولی vault فعلی همین `@balerelaitbot` است.
+
+## 2026-10-20 — replica ایران: کارت ترب‌پی روی چک‌اوت
+
+- DNS فروشگاه به `185.213.167.61` می‌رود (نه Hetzner). آنجا هنوز `RETAIL_TOROBPAY_UI_ENABLED=false` و چانک قدیمی بود؛ API همان‌جا `TOROBPAY` را برمی‌گرداند.
+- فلگ UI روی replica به `true`؛ rebuild فقط `web`+`nginx` بدون restore دیتابیس. چانک عمومی `4278-9f6ef7ee66331247.js` با گیت `t?[{id:"TOROBPAY"` تأیید شد و در DOM چک‌اوت «ترب‌پی» دیده شد.
+- انتقال آرشیو کامل از Hetzner→IR روی SSH قطع می‌شد؛ پچ فایل + build محلی روی replica.
+
 ## 2026-10-20 — بستن پیش‌سفارش همکار بازاریاب
 
 - حذف فیزیکی پیش‌نویس همکاری انجام نمی‌شود. همکار فقط `DRAFT` و `AWAITING_CUSTOMER_CONFIRMATION` خودش را لغو می‌کند (`CANCELLED`، توکن باطل، audit و outbox).
