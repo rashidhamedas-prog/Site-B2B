@@ -43,6 +43,29 @@ export class ProductEntity {
   @Column({ default: 'FREE' })
   sizeType: ProductSizeType;
 
+  /**
+   * Custom size labels when sizeType=CUSTOM.
+   * Preset types (FREE/TWO/THREE) keep this null and use product-pack presets.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  sizeLabels: string[] | null;
+
+  /** Optional PDP size-guide lines; null → preset or custom labels. */
+  @Column({ type: 'jsonb', nullable: true })
+  sizeGuideLines: string[] | null;
+
+  /**
+   * AUTO = colors × sizes (1 each). MANUAL = per-size qty in packComposition.
+   * XOR with packComposition: MANUAL requires composition; AUTO clears it.
+   * Not the cart boolean `packMode`.
+   */
+  @Column({ type: 'varchar', length: 16, default: 'AUTO' })
+  packDefinitionMode: 'AUTO' | 'MANUAL';
+
+  /** When packDefinitionMode=MANUAL: size label → pieces per color per pack. */
+  @Column({ type: 'jsonb', nullable: true })
+  packComposition: Record<string, number> | null;
+
   @Column({ default: 'ACTIVE' })
   status: string;
 

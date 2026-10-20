@@ -1,4 +1,4 @@
-export type ProductSizeType = 'TWO' | 'THREE' | 'FREE';
+export type ProductSizeType = 'TWO' | 'THREE' | 'FREE' | 'CUSTOM';
 
 export interface ProductCustomField {
   key: string;
@@ -43,7 +43,7 @@ export const SPEC_FIELD_KEYS = [
 
 export type SpecFieldKey = (typeof SPEC_FIELD_KEYS)[number];
 
-export const SIZE_GUIDE: Record<ProductSizeType, string[]> = {
+export const SIZE_GUIDE: Record<Exclude<ProductSizeType, 'CUSTOM'>, string[]> = {
   TWO: [
     'سایز ۱ مناسب ۳۸ تا ۴۲',
     'سایز ۲ مناسب ۴۲ تا ۴۸',
@@ -57,3 +57,21 @@ export const SIZE_GUIDE: Record<ProductSizeType, string[]> = {
     'مناسب از ۳۸ تا ۴۸',
   ],
 };
+
+/** Prefer admin guide lines; else preset guide; else custom labels as plain lines. */
+export function resolveSizeGuide(
+  sizeType?: string | null,
+  sizeGuideLines?: string[] | null,
+  sizeLabels?: string[] | null,
+): string[] {
+  const custom = (sizeGuideLines ?? []).map((s) => String(s || '').trim()).filter(Boolean);
+  if (custom.length) return custom;
+  const t = String(sizeType || 'FREE').toUpperCase() as ProductSizeType;
+  if (t === 'CUSTOM') {
+    return (sizeLabels ?? []).map((s) => String(s || '').trim()).filter(Boolean);
+  }
+  if (t === 'TWO' || t === 'THREE' || t === 'FREE') {
+    return SIZE_GUIDE[t];
+  }
+  return SIZE_GUIDE.FREE;
+}

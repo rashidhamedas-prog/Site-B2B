@@ -30,6 +30,7 @@ export function factualFacts(input: {
   if (input.sizeType === 'FREE') facts.push('سایز: فری‌سایز');
   else if (input.sizeType === 'TWO') facts.push('سایز: دو سایز');
   else if (input.sizeType === 'THREE') facts.push('سایز: سه سایز');
+  else if (input.sizeType === 'CUSTOM') facts.push('سایز: سفارشی');
   return facts;
 }
 

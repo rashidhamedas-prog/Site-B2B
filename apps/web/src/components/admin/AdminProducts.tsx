@@ -40,6 +40,10 @@ import { AdminExcelPriceImport } from '@/components/admin/AdminExcelPriceImport'
 import { AdminProductListFilters } from '@/components/admin/AdminProductListFilters';
 import { ProductImageAltEditor } from '@/components/admin/ProductImageAltEditor';
 import {
+  piecesPerPackCount,
+  sizesForSizeType,
+} from '@/lib/product-display';
+import {
   PRODUCT_CHANNEL_LABEL,
   PRODUCT_EDITOR_SECTION_LABEL,
   PRODUCT_EDITOR_SECTIONS,
@@ -68,6 +72,7 @@ const SIZE_TYPE_LABELS: Record<string, string> = {
   TWO: 'محصول ۲ سایزی',
   THREE: 'محصول ۳ سایزی',
   FREE: 'فری سایز',
+  CUSTOM: 'سایزبندی سفارشی',
 };
 
 const COMMON_COLORS: Array<{ name: string; hex: string }> = [
@@ -85,11 +90,11 @@ const COMMON_COLORS: Array<{ name: string; hex: string }> = [
   { name: 'خردلی', hex: '#D4A017' },
 ];
 
-function sizeOptionsForType(sizeType?: string): string[] {
-  const t = String(sizeType || 'FREE').toUpperCase();
-  if (t === 'TWO') return ['سایز ۱', 'سایز ۲'];
-  if (t === 'THREE') return ['سایز ۱', 'سایز ۲', 'سایز ۳'];
-  return ['فری سایز'];
+function sizeOptionsForType(
+  sizeType?: string,
+  sizeLabels?: Array<string | null | undefined> | null,
+): string[] {
+  return sizesForSizeType(sizeType, sizeLabels);
 }
 
 /** Same color for rename detection. A space where the other side used ZWNJ is still the same color. An extra letter is not. */
@@ -159,7 +164,11 @@ const emptyForm = {
   retailFullContent: '',
   wholesaleFullContent: '',
   legacyContent: '',
-  sizeType: 'FREE' as 'TWO' | 'THREE' | 'FREE',
+  sizeType: 'FREE' as 'TWO' | 'THREE' | 'FREE' | 'CUSTOM',
+  sizeLabels: [] as string[],
+  sizeGuideLines: [] as string[],
+  packDefinitionMode: 'AUTO' as 'AUTO' | 'MANUAL',
+  packComposition: {} as Record<string, string>,
   specs: emptySpecs,
   hasLength2: false,
   hasLength3: false,
@@ -269,10 +278,22 @@ function loadChannelBaseToman(
 
 function computedPackQtyFromDrafts(
   drafts: Array<{ color: string }>,
-  sizeType: string
+  sizeType: string,
+  sizeLabels: string[],
+  packDefinitionMode: 'AUTO' | 'MANUAL',
+  packComposition: Record<string, string>,
 ): number {
-  const names = new Set(drafts.map((d) => d.color.trim()).filter(Boolean));
-  return names.size * sizeOptionsForType(sizeType).length;
+  const colors = drafts.map((d) => d.color.trim()).filter(Boolean);
+  const composition: Record<string, number> = {};
+  for (const [k, v] of Object.entries(packComposition)) {
+    composition[k] = Math.max(0, Math.floor(Number(v) || 0));
+  }
+  return piecesPerPackCount(colors, {
+    sizeType,
+    sizeLabels,
+    packDefinitionMode,
+    packComposition: composition,
+  });
 }
 
 interface Variant {
@@ -383,7 +404,7 @@ function VariantsModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const sizeOpts = sizeOptionsForType(product.sizeType);
+  const sizeOpts = sizeOptionsForType(product.sizeType, product.sizeLabels);
   const [form, setForm] = useState<VariantForm>({ ...emptyVariantForm });
   const [editColor, setEditColor] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -1045,7 +1066,7 @@ export function AdminProducts() {
       src = p;
     }
     setEditProduct(src);
-    const sizeLabels = sizeOptionsForType(src.sizeType);
+    const sizeLabels = sizeOptionsForType(src.sizeType, src.sizeLabels);
     const drafts = draftsFromVariants(src.variants ?? [], sizeLabels);
     setColorDrafts(drafts);
     setInitialColorNames(drafts.map((d) => d.originalColor || d.color).filter(Boolean));
@@ -1132,6 +1153,16 @@ export function AdminProducts() {
       orderBadgeLabel: src.orderBadgeLabel ?? '',
       status: src.status,
       sizeType: (src.sizeType as FormData['sizeType']) || 'FREE',
+      sizeLabels: Array.isArray(src.sizeLabels)
+        ? src.sizeLabels.map((s) => String(s || '').trim()).filter(Boolean)
+        : [],
+      sizeGuideLines: Array.isArray(src.sizeGuideLines)
+        ? src.sizeGuideLines.map((s) => String(s || '').trim()).filter(Boolean)
+        : [],
+      packDefinitionMode: src.packDefinitionMode === 'MANUAL' ? 'MANUAL' : 'AUTO',
+      packComposition: Object.fromEntries(
+        Object.entries(src.packComposition ?? {}).map(([k, v]) => [k, String(v ?? '')]),
+      ),
       hasLength2: !!specs.length2,
       hasLength3: !!specs.length3,
       collectionId: src.collectionId ?? '',
@@ -1298,8 +1329,33 @@ export function AdminProducts() {
         .filter((cf) => cf.label.trim() || cf.value.trim())
         .map((cf) => ({ label: cf.label.trim(), value: cf.value.trim() }));
 
-      const sizeLabels = sizeOptionsForType(form.sizeType);
-      const computedPackQty = computedPackQtyFromDrafts(colorDrafts, form.sizeType);
+      const sizeLabels = sizeOptionsForType(form.sizeType, form.sizeLabels);
+      if (form.sizeType === 'CUSTOM' && sizeLabels.length < 1) {
+        setSaveError('برای سایزبندی سفارشی حداقل یک سایز وارد کنید');
+        setSaving(false);
+        return;
+      }
+      const packCompositionPayload = Object.fromEntries(
+        sizeLabels.map((label) => [
+          label,
+          Math.max(0, Math.floor(Number(form.packComposition[label]) || 0)),
+        ]),
+      );
+      if (form.packDefinitionMode === 'MANUAL') {
+        const total = Object.values(packCompositionPayload).reduce((a, b) => a + b, 0);
+        if (total < 1) {
+          setSaveError('در پک دستی مجموع تعداد سایزها باید حداقل ۱ باشد');
+          setSaving(false);
+          return;
+        }
+      }
+      const computedPackQty = computedPackQtyFromDrafts(
+        colorDrafts,
+        form.sizeType,
+        form.sizeLabels,
+        form.packDefinitionMode,
+        form.packComposition,
+      );
 
       const specs: ProductSpecs = {
         fabricType: form.specs.fabricType?.trim() || undefined,
@@ -1422,6 +1478,11 @@ export function AdminProducts() {
         seoMeta,
         specs,
         sizeType: form.sizeType,
+        sizeLabels: form.sizeType === 'CUSTOM' ? sizeLabels : null,
+        sizeGuideLines: form.sizeGuideLines.map((s) => s.trim()).filter(Boolean),
+        packDefinitionMode: form.packDefinitionMode,
+        packComposition:
+          form.packDefinitionMode === 'MANUAL' ? packCompositionPayload : null,
         wholesalePrice: wholesaleBaseToman * 10,
         retailPrice: form.retailPrice ? retailBaseToman * 10 : null,
         minOrderQty: Number(form.minOrderQty),
@@ -1602,7 +1663,14 @@ export function AdminProducts() {
   );
 
   const fabricLabel = (p: Product) => p.specs?.fabricType || p.fabric || '—';
-  const computedPackQty = computedPackQtyFromDrafts(colorDrafts, form.sizeType);
+  const resolvedSizeLabels = sizeOptionsForType(form.sizeType, form.sizeLabels);
+  const computedPackQty = computedPackQtyFromDrafts(
+    colorDrafts,
+    form.sizeType,
+    form.sizeLabels,
+    form.packDefinitionMode,
+    form.packComposition,
+  );
   const minPackQty = Math.max(1, Math.floor(Number(form.minOrderQty) || 1));
   const orderBadgePreview = resolveWholesaleOrderBadge({
     orderBadgeLabel: form.orderBadgeLabel,
@@ -2105,7 +2173,10 @@ export function AdminProducts() {
                       تعداد در هر پک
                     </label>
                     <p className="rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm text-gray-700">
-                      {computedPackQty.toLocaleString('fa-IR')} عدد (رنگ‌های متمایز × سایز)
+                      {computedPackQty.toLocaleString('fa-IR')} عدد
+                      {form.packDefinitionMode === 'MANUAL'
+                        ? ' (پک دستی)'
+                        : ' (رنگ‌های متمایز × ترکیب سایز)'}
                     </p>
                   </div>
                 </div>
@@ -2610,11 +2681,68 @@ export function AdminProducts() {
               <div className="border-primary-100 bg-primary-50/40 space-y-3 rounded-xl border p-4">
                 <p className="text-xs font-bold text-gray-800">سفارش عمده — پک و رنگ</p>
                 <p className="text-[11px] leading-relaxed text-gray-500">
-                  فرمول پک عمده:{' '}
-                  <span className="font-semibold text-gray-800">تعداد رنگ × تعداد سایز</span> (از هر
-                  ترکیب رنگ/سایز یک عدد در هر پک). اگر انتخاب رنگ فعال باشد، فقط رنگ‌های انتخابی
-                  مشتری در محاسبه می‌آید.
+                  تعریف پک یا خودکار است یا دستی (یکی از دو حالت). خودکار: از هر ترکیب رنگ×سایز یک
+                  عدد. دستی: تعداد هر سایز را خودتان برای هر رنگ در یک پک مشخص می‌کنید. اگر انتخاب
+                  رنگ فعال باشد، فقط رنگ‌های انتخابی مشتری در محاسبه می‌آید.
                 </p>
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="packDefinitionMode"
+                      checked={form.packDefinitionMode === 'AUTO'}
+                      onChange={() =>
+                        setForm((f) => ({ ...f, packDefinitionMode: 'AUTO', packComposition: {} }))
+                      }
+                    />
+                    <span className="text-sm text-gray-700">پک خودکار (رنگ × سایز)</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="packDefinitionMode"
+                      checked={form.packDefinitionMode === 'MANUAL'}
+                      onChange={() =>
+                        setForm((f) => {
+                          const labels = sizeOptionsForType(f.sizeType, f.sizeLabels);
+                          const next: Record<string, string> = {};
+                          for (const label of labels) {
+                            next[label] = f.packComposition[label] || '1';
+                          }
+                          return { ...f, packDefinitionMode: 'MANUAL', packComposition: next };
+                        })
+                      }
+                    />
+                    <span className="text-sm text-gray-700">پک دستی</span>
+                  </label>
+                </div>
+                {form.packDefinitionMode === 'MANUAL' && (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {resolvedSizeLabels.map((label) => (
+                      <div key={label}>
+                        <label className="mb-1 block text-[11px] font-medium text-gray-600">
+                          تعداد «{label}» در هر پک (هر رنگ)
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={99}
+                          value={form.packComposition[label] ?? '0'}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              packComposition: {
+                                ...f.packComposition,
+                                [label]: e.target.value,
+                              },
+                            }))
+                          }
+                          className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex flex-wrap items-end gap-4">
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
@@ -2664,20 +2792,119 @@ export function AdminProducts() {
                   <label className="mb-1 block text-xs font-medium text-gray-600">نوع سایز</label>
                   <select
                     value={form.sizeType}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        sizeType: e.target.value as FormData['sizeType'],
-                      }))
-                    }
+                    onChange={(e) => {
+                      const nextType = e.target.value as FormData['sizeType'];
+                      setForm((f) => {
+                        const labels =
+                          nextType === 'CUSTOM'
+                            ? f.sizeLabels.length
+                              ? f.sizeLabels
+                              : ['سایز ۱']
+                            : sizeOptionsForType(nextType);
+                        const packComposition: Record<string, string> = {};
+                        if (f.packDefinitionMode === 'MANUAL') {
+                          for (const label of labels) {
+                            packComposition[label] = f.packComposition[label] || '1';
+                          }
+                        }
+                        return {
+                          ...f,
+                          sizeType: nextType,
+                          sizeLabels: nextType === 'CUSTOM' ? labels : [],
+                          packComposition,
+                        };
+                      });
+                    }}
                     className="focus:ring-primary/30 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                   >
                     <option value="TWO">محصول ۲ سایزی</option>
                     <option value="THREE">محصول ۳ سایزی</option>
                     <option value="FREE">فری سایز</option>
+                    <option value="CUSTOM">سایزبندی سفارشی</option>
                   </select>
                 </div>
               </div>
+
+              {form.sizeType === 'CUSTOM' && (
+                <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50/70 p-4">
+                  <p className="text-xs font-bold text-gray-800">سایزهای سفارشی این محصول</p>
+                  <p className="text-[11px] text-gray-500">
+                    هر ردیف یک برچسب سایز است (مثلاً ۳۸ یا S). ترتیب نمایش همان ترتیب فهرست است.
+                  </p>
+                  <div className="space-y-2">
+                    {form.sizeLabels.map((label, index) => (
+                      <div key={`size-${index}`} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={label}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setForm((f) => {
+                              const sizeLabels = [...f.sizeLabels];
+                              sizeLabels[index] = value;
+                              const packComposition = { ...f.packComposition };
+                              if (f.packDefinitionMode === 'MANUAL') {
+                                const prev = f.sizeLabels[index];
+                                if (prev && prev !== value && packComposition[prev] != null) {
+                                  packComposition[value] = packComposition[prev];
+                                  delete packComposition[prev];
+                                }
+                              }
+                              return { ...f, sizeLabels, packComposition };
+                            });
+                          }}
+                          placeholder={`سایز ${index + 1}`}
+                          className="focus:ring-primary/30 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForm((f) => {
+                              const removed = f.sizeLabels[index];
+                              const sizeLabels = f.sizeLabels.filter((_, i) => i !== index);
+                              const packComposition = { ...f.packComposition };
+                              if (removed) delete packComposition[removed];
+                              return { ...f, sizeLabels, packComposition };
+                            })
+                          }
+                          className="rounded-lg border border-gray-200 px-3 text-xs text-gray-600 hover:bg-white"
+                        >
+                          حذف
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        sizeLabels: [...f.sizeLabels, `سایز ${f.sizeLabels.length + 1}`],
+                      }))
+                    }
+                    className="rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-white"
+                  >
+                    + افزودن سایز
+                  </button>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      راهنمای سایز (اختیاری — هر خط یک توضیح)
+                    </label>
+                    <textarea
+                      value={form.sizeGuideLines.join('\n')}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          sizeGuideLines: e.target.value.split('\n'),
+                        }))
+                      }
+                      rows={3}
+                      placeholder={'۳۸ مناسب دور سینه ۹۰\n۴۰ مناسب دور سینه ۹۴'}
+                      className="focus:ring-primary/30 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div id="product-channels" className="scroll-mt-16 space-y-3 rounded-lg border border-amber-100 bg-amber-50/60 p-4">
                 <p className="text-sm font-medium text-gray-800">همکار فروش (دراپ‌شیپ)</p>
@@ -2913,7 +3140,7 @@ export function AdminProducts() {
 
               <div id="product-media" className="scroll-mt-16 space-y-4">
                 <ColorVariantsEditor
-                  sizeLabels={sizeOptionsForType(form.sizeType)}
+                  sizeLabels={resolvedSizeLabels}
                   drafts={colorDrafts}
                   onChange={setColorDrafts}
                   onImageAssigned={(url, color) => {

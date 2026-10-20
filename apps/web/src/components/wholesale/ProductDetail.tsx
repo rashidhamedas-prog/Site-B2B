@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { trackAddToCart } from '@/lib/retail-analytics';
 import {
   channelSaleDisplay,
+  compositionPerSize,
   piecesPerPackCount,
   sizeCountForType,
   toman,
@@ -78,7 +79,10 @@ export interface WholesaleProduct {
   faqItems?: Array<{ question: string; answer: string }> | null;
   variants: Variant[];
   specs?: ProductSpecs;
-  sizeType?: 'TWO' | 'THREE' | 'FREE';
+  sizeType?: 'TWO' | 'THREE' | 'FREE' | 'CUSTOM';
+  sizeLabels?: string[] | null;
+  packDefinitionMode?: 'AUTO' | 'MANUAL' | null;
+  packComposition?: Record<string, number> | null;
   isDiscounted?: boolean;
   isLimitedStock?: boolean;
   isNew?: boolean;
@@ -115,10 +119,11 @@ const SIZE_GUIDE: Record<'TWO' | 'THREE' | 'FREE', string[]> = {
   FREE: ['مناسب از ۳۸ تا ۴۸'],
 };
 
-const SIZE_TYPE_LABEL: Record<'TWO' | 'THREE' | 'FREE', string> = {
+const SIZE_TYPE_LABEL: Record<'TWO' | 'THREE' | 'FREE' | 'CUSTOM', string> = {
   TWO: 'محصول ۲ سایزی',
   THREE: 'محصول ۳ سایزی',
   FREE: 'محصول فری سایز',
+  CUSTOM: 'سایزبندی سفارشی',
 };
 
 const SPEC_LABELS: Array<{ key: keyof ProductSpecs; label: string }> = [
@@ -164,7 +169,10 @@ function resolveSizeGuide(product: WholesaleProduct): string[] {
       .filter(Boolean);
   }
   const sizeType = product.sizeType ?? 'FREE';
-  return SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE;
+  if (sizeType === 'CUSTOM') {
+    return (product.sizeLabels ?? []).map((s) => String(s || '').trim()).filter(Boolean);
+  }
+  return SIZE_GUIDE[sizeType as 'TWO' | 'THREE' | 'FREE'] ?? SIZE_GUIDE.FREE;
 }
 
 async function fetchProduct(slugOrId: string): Promise<WholesaleProduct> {
@@ -242,7 +250,7 @@ export function ProductDetail({
       )
     : [];
   const sizeType = product?.sizeType ?? 'FREE';
-  const sizeTypeLabel = SIZE_TYPE_LABEL[sizeType];
+  const sizeTypeLabel = SIZE_TYPE_LABEL[sizeType] ?? SIZE_TYPE_LABEL.FREE;
   const sharedSizeLabel =
     availableSizes.length <= 1 ||
     availableSizes.every((s) => s === availableSizes[0] || s.includes('سایزی') || s.includes('فری'));
@@ -259,10 +267,17 @@ export function ProductDetail({
     ? selectedColors
     : availableColors.map((c) => c.name);
   const colorCount = Math.max(0, colorsForOrder.length);
-  const sizeCount = sizeCountForType(product?.sizeType) ?? Math.max(0, availableSizes.length);
+  const packConfig = {
+    sizeType: product?.sizeType,
+    sizeLabels: product?.sizeLabels,
+    packDefinitionMode: product?.packDefinitionMode,
+    packComposition: product?.packComposition,
+  };
+  const sizeCount =
+    sizeCountForType(product?.sizeType, product?.sizeLabels) ?? Math.max(0, availableSizes.length);
   const packMode = availableColors.length > 0 && sizeCount > 0;
   const piecesPerPack = packMode
-    ? piecesPerPackCount(colorsForOrder, product?.sizeType, availableSizes)
+    ? piecesPerPackCount(colorsForOrder, packConfig, availableSizes)
     : 1;
   const totalPieces = packMode ? quantity * piecesPerPack : quantity;
   const { price: unitPrice, compareAt, discount, active: saleActive } = channelSaleDisplay(
@@ -270,15 +285,17 @@ export function ProductDetail({
     product?.wholesalePrice,
   );
 
-  // Stock gate: each selected color×size needs ≥ pack count pieces
+  // Stock gate: each active size needs composition[size] × pack count
   const packStockOk = (() => {
     if (!product || !packMode) return totalStock >= minOrder;
     if (allowColorSelect && selectedColors.length < minColors) return false;
     const colors = colorsForOrder;
-    if (!colors.length || !availableSizes.length) return false;
-    const need = quantity;
+    const perSize = compositionPerSize(packConfig);
+    const activeSizes = availableSizes.filter((size) => (perSize[size] ?? 1) > 0);
+    if (!colors.length || !activeSizes.length) return false;
     for (const color of colors) {
-      for (const size of availableSizes) {
+      for (const size of activeSizes) {
+        const need = (perSize[size] ?? 1) * quantity;
         const v = product.variants.find((x) => x.color === color && x.size === size);
         if (!v || variantWholesale(v) < need) return false;
       }

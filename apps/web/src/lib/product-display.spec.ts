@@ -66,6 +66,7 @@ assert.deepEqual(
 assert.equal(sizeCountForType('FREE'), 1);
 assert.equal(sizeCountForType('TWO'), 2);
 assert.equal(sizeCountForType('THREE'), 3);
+assert.equal(sizeCountForType('CUSTOM', ['۳۸', '۴۰']), 2);
 assert.equal(sizeCountForType(undefined), null);
 assert.equal(sizeCountForType(''), null);
 
@@ -74,6 +75,22 @@ assert.equal(piecesPerPackCount(['آبی', 'قرمز'], 'TWO'), 4);
 assert.equal(piecesPerPackCount(['آبی', 'قرمز', 'سبز'], 'THREE'), 9);
 assert.equal(piecesPerPackCount(['آبی', 'آبی'], 'THREE'), 3);
 assert.equal(piecesPerPackCount(['آبی', 'قرمز'], undefined, ['۱', '۲']), 4);
+assert.equal(
+  piecesPerPackCount(['آبی', 'قرمز'], {
+    sizeType: 'TWO',
+    packDefinitionMode: 'MANUAL',
+    packComposition: { 'سایز ۱': 2, 'سایز ۲': 1 },
+  }),
+  6,
+);
+assert.equal(
+  piecesPerPackCount(['آبی'], {
+    sizeType: 'CUSTOM',
+    sizeLabels: ['S', 'M', 'L'],
+    packDefinitionMode: 'AUTO',
+  }),
+  3,
+);
 
 const live = channelSaleDisplay({ active: true, payable: 800_000, original: 1_000_000, badgePercent: 20 }, 800_000);
 assert.equal(live.price, 800_000);

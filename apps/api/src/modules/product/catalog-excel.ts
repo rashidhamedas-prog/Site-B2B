@@ -87,6 +87,9 @@ export type ExportProduct = {
   fabric?: string | null;
   specs?: ProductSpecs | null;
   sizeType?: string | null;
+  sizeLabels?: string[] | null;
+  packDefinitionMode?: string | null;
+  packComposition?: Record<string, number> | null;
   categoryId?: string | null;
   category?: { id?: string; name?: string; slug?: string | null } | null;
   showOnWholesale?: boolean | null;
@@ -275,7 +278,12 @@ function productRow(p: ExportProduct): ExcelCell[] {
   const colors = [...new Set(variants.map((v) => String(v.color || '').trim()).filter(Boolean))];
   const sizes = [...new Set(variants.map((v) => String(v.size || '').trim()).filter(Boolean))];
   const barcodes = [...new Set(variants.map((v) => String(v.barcode || '').trim()).filter(Boolean))];
-  const packQty = computePackQty(colors, p.sizeType);
+  const packQty = computePackQty(colors, {
+    sizeType: p.sizeType,
+    sizeLabels: p.sizeLabels,
+    packDefinitionMode: p.packDefinitionMode,
+    packComposition: p.packComposition,
+  });
   const minPack = Math.max(1, Math.floor(Number(p.minOrderQty) || 1));
   const wholesaleSale = resolveChannelSale(p, 'WHOLESALE');
   const retailSale = resolveChannelSale(p, 'RETAIL');

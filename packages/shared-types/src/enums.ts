@@ -58,6 +58,7 @@ export enum ProductSizeType {
   TWO = 'TWO',
   THREE = 'THREE',
   FREE = 'FREE',
+  CUSTOM = 'CUSTOM',
 }
 
 export enum InvoiceType {

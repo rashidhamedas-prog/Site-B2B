@@ -52,6 +52,7 @@ function sizesLabel(sizeType?: string | null, sizes?: string[]): string {
   if (t === 'TWO') return 'دو سایز';
   if (t === 'THREE') return 'سه سایز';
   if (t === 'FREE') return 'فری‌سایز';
+  if (t === 'CUSTOM') return 'سایزبندی سفارشی';
   return '';
 }
 

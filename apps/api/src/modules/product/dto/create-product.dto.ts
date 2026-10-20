@@ -70,10 +70,46 @@ export class CreateProductDto {
   @IsObject()
   specs?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ enum: ['TWO', 'THREE', 'FREE'], default: 'FREE' })
+  @ApiPropertyOptional({ enum: ['TWO', 'THREE', 'FREE', 'CUSTOM'], default: 'FREE' })
   @IsOptional()
-  @IsIn(['TWO', 'THREE', 'FREE'])
+  @IsIn(['TWO', 'THREE', 'FREE', 'CUSTOM'])
   sizeType?: string;
+
+  @ApiPropertyOptional({
+    description: 'برچسب سایزهای سفارشی وقتی sizeType=CUSTOM',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  sizeLabels?: string[];
+
+  @ApiPropertyOptional({
+    description: 'خطوط راهنمای سایز (اختیاری)',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  sizeGuideLines?: string[];
+
+  @ApiPropertyOptional({
+    enum: ['AUTO', 'MANUAL'],
+    default: 'AUTO',
+    description: 'AUTO=فرمول رنگ×سایز؛ MANUAL=ترکیب دستی packComposition (XOR)',
+  })
+  @IsOptional()
+  @IsIn(['AUTO', 'MANUAL'])
+  packDefinitionMode?: 'AUTO' | 'MANUAL';
+
+  @ApiPropertyOptional({
+    description: 'تعداد هر سایز در یک پک به‌ازای هر رنگ (فقط MANUAL)',
+    type: 'object',
+    additionalProperties: { type: 'number' },
+  })
+  @IsOptional()
+  @IsObject()
+  packComposition?: Record<string, number>;
 
   @ApiProperty({
     description:

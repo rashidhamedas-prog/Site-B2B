@@ -2029,7 +2029,7 @@ export class OmnichannelService {
     const specs = (product.specs || {}) as ProductSpecs;
     vars.fabric = String(specs.fabricType || product.fabric || '').trim();
     vars.length = String(specs.length || '').trim();
-    vars.sizes = sizesLine(product.sizeType);
+    vars.sizes = sizesLine(product.sizeType, product.sizeLabels);
     const colors = [...new Set((product.variants || []).map((row) => String(row.color || '').trim()).filter(Boolean))];
     vars.colors = colors.join('، ');
     vars.colorCount = colors.length ? `${colors.length} رنگ` : '';

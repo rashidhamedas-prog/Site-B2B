@@ -12,7 +12,7 @@ import { ProductSpecMemoryEntity } from './entities/product-spec-memory.entity';
 import {
   ProductSizeType,
   ProductSpecs,
-  SIZE_GUIDE,
+  resolveSizeGuide,
   SPEC_FIELD_KEYS,
 } from './entities/product-specs';
 import { StorageService } from '../upload/storage.service';
@@ -56,7 +56,12 @@ import {
   type ProductChannelPrices,
 } from './product-channel-prices';
 import { changeProductSlug, type SalesChannel as SlugChannel } from './product-slug-redirect';
-import { computePackQty, sizesForSizeType } from './product-pack';
+import {
+  computePackQty,
+  normalizeProductPackSizeFields,
+  sizesForSizeType,
+  type PackSizeConfig,
+} from './product-pack';
 import {
   generateChannelContent,
   type ProductContentInput,
@@ -264,10 +269,8 @@ export class ProductService {
     const isLimitedStock = stock > 0 && stock <= minOrder * multiplier;
     const sizeType = (product.sizeType || 'FREE') as ProductSizeType;
     const sale = resolveChannelSale(product, isRetail ? 'RETAIL' : 'WHOLESALE');
-    const packQty = computePackQty(
-      (product.variants ?? []).map((v) => v.color),
-      sizeType,
-    );
+    const packConfig = this.packConfigFor(product);
+    const packQty = computePackQty((product.variants ?? []).map((v) => v.color), packConfig);
     const fullContent = isRetail
       ? product.retailFullContent || product.description
       : product.wholesaleFullContent || product.description;
@@ -304,7 +307,11 @@ export class ProductService {
       minOrderQty: minOrder,
       isLimitedStock,
       totalStock: stock,
-      sizeGuide: SIZE_GUIDE[sizeType] ?? SIZE_GUIDE.FREE,
+      sizeLabels: product.sizeLabels ?? null,
+      sizeGuideLines: product.sizeGuideLines ?? null,
+      packDefinitionMode: product.packDefinitionMode === 'MANUAL' ? 'MANUAL' : 'AUTO',
+      packComposition: product.packComposition ?? null,
+      sizeGuide: resolveSizeGuide(sizeType, product.sizeGuideLines, product.sizeLabels),
       channel: isRetail ? 'RETAIL' : 'WHOLESALE',
       badgeSettings: { limitedStockMultiplier: multiplier, newBadgeDays },
     };
@@ -451,8 +458,9 @@ export class ProductService {
     }
   ) {
     const statusFilter = status ?? 'ACTIVE';
-    const sizeType = (size && ['FREE', 'TWO', 'THREE'].includes(size) ? size : undefined) as
-      ProductSizeType | undefined;
+    const sizeType = (size && ['FREE', 'TWO', 'THREE', 'CUSTOM'].includes(size)
+      ? size
+      : undefined) as ProductSizeType | undefined;
     const garmentSize = opts?.garmentSize || (size && !sizeType ? size : undefined);
 
     let related: ProductEntity | null = null;
@@ -1606,6 +1614,14 @@ export class ProductService {
 
     if (fulfillment.vendorId) await this.assertAssignableVendor(fulfillment.vendorId);
 
+    const packSize = this.resolvePackSizeFields({
+      sizeType: data.sizeType,
+      sizeLabels: data.sizeLabels,
+      sizeGuideLines: data.sizeGuideLines,
+      packDefinitionMode: data.packDefinitionMode,
+      packComposition: data.packComposition,
+    });
+
     const product = this.productRepo.create({
       name: data.name,
       nameEn: data.nameEn?.trim() || null,
@@ -1618,7 +1634,11 @@ export class ProductService {
       careInstructions: data.careInstructions ?? null,
       faqItems: data.faqItems ?? null,
       specs,
-      sizeType: (data.sizeType as ProductSizeType) || 'FREE',
+      sizeType: packSize.sizeType,
+      sizeLabels: packSize.sizeLabels,
+      sizeGuideLines: packSize.sizeGuideLines,
+      packDefinitionMode: packSize.packDefinitionMode,
+      packComposition: packSize.packComposition,
       wholesalePrice: prices.wholesalePrice,
       retailPrice: prices.retailPrice,
       wholesaleCompareAtPrice: prices.wholesaleCompareAtPrice,
@@ -1949,6 +1969,29 @@ export class ProductService {
         throw new BadRequestException((e as Error).message);
       }
     }
+    if (
+      data.sizeType !== undefined ||
+      data.sizeLabels !== undefined ||
+      data.sizeGuideLines !== undefined ||
+      data.packDefinitionMode !== undefined ||
+      data.packComposition !== undefined
+    ) {
+      const packSize = this.resolvePackSizeFields({
+        sizeType: data.sizeType ?? existing.sizeType,
+        sizeLabels: data.sizeLabels !== undefined ? data.sizeLabels : existing.sizeLabels,
+        sizeGuideLines:
+          data.sizeGuideLines !== undefined ? data.sizeGuideLines : existing.sizeGuideLines,
+        packDefinitionMode:
+          data.packDefinitionMode ?? existing.packDefinitionMode ?? 'AUTO',
+        packComposition:
+          data.packComposition !== undefined ? data.packComposition : existing.packComposition,
+      });
+      patch.sizeType = packSize.sizeType;
+      patch.sizeLabels = packSize.sizeLabels;
+      patch.sizeGuideLines = packSize.sizeGuideLines;
+      patch.packDefinitionMode = packSize.packDefinitionMode;
+      patch.packComposition = packSize.packComposition;
+    }
     if (data.orderBadgeLabel !== undefined) {
       patch.orderBadgeLabel = normalizeOrderBadgeLabel(data.orderBadgeLabel);
     }
@@ -2218,18 +2261,51 @@ export class ProductService {
     return this.withBadges(product, undefined, cfg);
   }
 
-  private sizeLabelForProduct(product: ProductEntity): string {
-    const map: Record<string, string> = {
-      TWO: 'سایز ۱',
-      THREE: 'سایز ۱',
-      FREE: 'فری سایز',
+  private packConfigFor(
+    product: Pick<
+      ProductEntity,
+      'sizeType' | 'sizeLabels' | 'packDefinitionMode' | 'packComposition'
+    >,
+  ): PackSizeConfig {
+    return {
+      sizeType: product.sizeType,
+      sizeLabels: product.sizeLabels,
+      packDefinitionMode: product.packDefinitionMode,
+      packComposition: product.packComposition,
     };
-    return map[product.sizeType] || 'فری سایز';
   }
 
-  /** Available size choices based on product sizeType */
-  sizesForProduct(sizeType?: string): string[] {
-    return sizesForSizeType(sizeType);
+  private resolvePackSizeFields(input: {
+    sizeType?: string | null;
+    sizeLabels?: string[] | null;
+    sizeGuideLines?: string[] | null;
+    packDefinitionMode?: string | null;
+    packComposition?: Record<string, number> | null;
+  }) {
+    try {
+      return normalizeProductPackSizeFields(input);
+    } catch (e) {
+      throw new BadRequestException((e as Error).message);
+    }
+  }
+
+  private sizeLabelForProduct(product: ProductEntity): string {
+    const sizes = this.sizesForProduct(product);
+    if (sizes.length) return sizes[0];
+    return 'فری سایز';
+  }
+
+  /** Available size choices for a product (presets or CUSTOM sizeLabels). */
+  sizesForProduct(
+    productOrSizeType?:
+      | string
+      | Pick<ProductEntity, 'sizeType' | 'sizeLabels'>
+      | null,
+  ): string[] {
+    if (productOrSizeType != null && typeof productOrSizeType === 'object') {
+      return sizesForSizeType(productOrSizeType.sizeType, productOrSizeType.sizeLabels);
+    }
+    return sizesForSizeType(typeof productOrSizeType === 'string' ? productOrSizeType : undefined);
   }
 
   /**
@@ -2264,7 +2340,7 @@ export class ProductService {
     }
 
     const explicitSize = String(data.size ?? '').trim();
-    const sizes = explicitSize ? [explicitSize] : this.sizesForProduct(product.sizeType);
+    const sizes = explicitSize ? [explicitSize] : this.sizesForProduct(product);
     const imageUrl =
       data.imageUrl !== undefined ? String(data.imageUrl || '').trim() || null : undefined;
 
@@ -2360,7 +2436,7 @@ export class ProductService {
     const imageUrl =
       data.imageUrl !== undefined ? String(data.imageUrl || '').trim() || null : undefined;
 
-    const productSizes = this.sizesForProduct(product.sizeType);
+    const productSizes = this.sizesForProduct(product);
     const perSize = new Map<string, { wholesale?: number; retail?: number }>();
 
     if (Array.isArray(data.sizes) && data.sizes.length > 0) {
@@ -2644,7 +2720,8 @@ export class ProductService {
 
   private contentInputFromProduct(product: ProductEntity, categoryName?: string | null): ProductContentInput {
     const colors = [...new Set((product.variants ?? []).map((v) => String(v.color || '').trim()).filter(Boolean))];
-    const sizes = sizesForSizeType(product.sizeType);
+    const packConfig = this.packConfigFor(product);
+    const sizes = sizesForSizeType(product.sizeType, product.sizeLabels);
     return {
       name: product.name,
       description: product.description,
@@ -2656,7 +2733,7 @@ export class ProductService {
       sizeType: product.sizeType,
       colors,
       sizes,
-      packQty: computePackQty(colors, product.sizeType),
+      packQty: computePackQty(colors, packConfig),
       minPackQty: Math.max(1, Number(product.minOrderQty) || 1),
       careInstructions: product.careInstructions,
       categoryName: categoryName ?? null,

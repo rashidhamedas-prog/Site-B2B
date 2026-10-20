@@ -135,11 +135,15 @@ export function formatChannelToman(rial: unknown): string {
   return String(Math.round(n / 10)).replace(/\B(?=(\d{3})+(?!\d))/g, '/');
 }
 
-export function sizesLine(sizeType?: string | null): string {
+export function sizesLine(sizeType?: string | null, sizeLabels?: string[] | null): string {
   const kind = String(sizeType || '').toUpperCase();
   if (kind === 'TWO') return '۲ سایز (مناسب از ۳۸ تا ۴۸)';
   if (kind === 'THREE') return '۳ سایز (مناسب از ۳۸ تا ۴۸)';
   if (kind === 'FREE') return 'فری سایز (مناسب از ۳۸ تا ۴۸)';
+  if (kind === 'CUSTOM') {
+    const labels = (sizeLabels ?? []).map((s) => String(s || '').trim()).filter(Boolean);
+    return labels.length ? labels.join('، ') : 'سایزبندی سفارشی';
+  }
   return '';
 }
 

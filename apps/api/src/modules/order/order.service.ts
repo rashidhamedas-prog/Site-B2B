@@ -29,7 +29,7 @@ import { patchRetailCustomerIdentity } from '../auth/retail-identity';
 import { allowedOrderPaymentMethods } from '../settings/settings-payment-cash';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { resolveChannelSale } from '../product/product-sale';
-import { sizesForSizeType } from '../product/product-pack';
+import { compositionPerSize, sizesForSizeType } from '../product/product-pack';
 import { channelUnitStock } from '../product/channel-product-projection';
 import { InventoryService } from '../inventory/inventory.service';
 import { OutboxService } from '../omnichannel/services/outbox.service';
@@ -435,8 +435,8 @@ export class OrderService {
 
   /**
    * Wholesale invoice expansion:
-   * 1 pack = 1 piece of every (selected/all) color × every size
-   * ⇒ pack size = colorCount × sizeCount; N packs ⇒ N pieces per cell.
+   * AUTO: 1 pack = 1 piece of every (selected/all) color × every size.
+   * MANUAL: 1 pack = packComposition[size] pieces per selected color for each size.
    */
   private expandByPackMatrix(
     product: {
@@ -449,6 +449,9 @@ export class OrderService {
       allowWholesaleColorSelect?: boolean;
       minWholesaleColors?: number;
       sizeType?: string;
+      sizeLabels?: string[] | null;
+      packDefinitionMode?: string | null;
+      packComposition?: Record<string, number> | null;
       specs?: { packQty?: string | number } | null;
       variants?: Array<{
         id: string;
@@ -490,8 +493,15 @@ export class OrderService {
     const allColors = Array.from(
       new Set(variants.map((v) => String(v.color || '').trim()).filter(Boolean)),
     );
-    const allSizes = sizesForSizeType(product.sizeType);
-    if (!allColors.length || !allSizes.length) {
+    const allSizes = sizesForSizeType(product.sizeType, product.sizeLabels);
+    const perSize = compositionPerSize({
+      sizeType: product.sizeType,
+      sizeLabels: product.sizeLabels,
+      packDefinitionMode: product.packDefinitionMode,
+      packComposition: product.packComposition,
+    });
+    const activeSizes = allSizes.filter((size) => (perSize[size] ?? 0) > 0);
+    if (!allColors.length || !activeSizes.length) {
       throw new BadRequestException(`رنگ/سایز برای ${product.name} ناقص است`);
     }
 
@@ -514,8 +524,6 @@ export class OrderService {
       colors = uniqueSelected;
     }
 
-    // Pack formula: colors × sizes — one piece per color×size cell per pack
-    const qtyPerCell = sets;
     const unitPrice = this.unitPriceForChannel(channel, product, Number(opts?.unitPrice ?? 0));
     const productName = product.name ?? opts?.productName ?? '';
     const sku = product.sku ?? opts?.sku ?? '';
@@ -532,7 +540,9 @@ export class OrderService {
     }> = [];
 
     for (const color of colors) {
-      for (const size of allSizes) {
+      for (const size of activeSizes) {
+        const perPack = perSize[size] ?? 0;
+        const qty = perPack * sets;
         const variant = variants.find(
           (v) => String(v.color || '').trim() === color && String(v.size || '').trim() === size,
         );
@@ -542,14 +552,14 @@ export class OrderService {
           );
         }
         const stock = this.channelVariantStock(variant, channel);
-        if (stock < qtyPerCell) {
+        if (stock < qty) {
           throw new BadRequestException(
-            `موجودی کافی نیست برای ${product.name} (${color}/${size}) — نیاز: ${qtyPerCell}، موجودی: ${stock}`,
+            `موجودی کافی نیست برای ${product.name} (${color}/${size}) — نیاز: ${qty}، موجودی: ${stock}`,
           );
         }
         lines.push({
           productVariantId: variant.id,
-          quantity: qtyPerCell,
+          quantity: qty,
           unitPrice,
           productName,
           sku,

@@ -1,4 +1,11 @@
-﻿## 2026-10-20 — فیکس تست سفارش ترب: purchase_timestamp_gt
+## 2026-10-20 — سایزبندی سفارشی + پک AUTO|MANUAL (XOR)
+
+- ادمین محصول: `sizeType=CUSTOM` با `sizeLabels`/`sizeGuideLines`؛ تعریف پک یا `AUTO` (رنگ×سایز) یا `MANUAL` (`packComposition` per-size).
+- API: ستون‌های `sizeLabels`, `sizeGuideLines`, `packDefinitionMode`, `packComposition` + نرمال‌سازی در `product-pack.ts`.
+- سفارش عمده `expandByPackMatrix` و ویترین (`product-display` / `wholesale-order`) از همان قاعده پیروی می‌کنند.
+- محصولات FREE/TWO/THREE با AUTO بدون تغییر رفتار پیش‌فرض می‌مانند.
+
+## 2026-10-20 — فیکس تست سفارش ترب: purchase_timestamp_gt
 
 - پنل: `purchase_timestamp` سفارش (۱۰:۰۲) قبل از `purchase_timestamp_gt` (۱۰:۱۵) بود.
 - علت: `listOrders` با OR روی `updatedAt` سفارش قدیمِ تازه‌به‌روزشده را برمی‌گرداند ولی `purchase_timestamp` همان `createdAt` است.

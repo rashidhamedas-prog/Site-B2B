@@ -1,10 +1,12 @@
 import {
   channelSaleDisplay,
+  compositionPerSize,
   piecesPerPackCount,
   sizeCountForType,
   uniqueInStockColors,
   variantsInStock,
   type ChannelSale,
+  type PackSizeConfig,
 } from './product-display';
 
 export type WholesaleOrderVariant = {
@@ -34,6 +36,9 @@ export type WholesaleOrderProduct = {
   images?: string[];
   variants?: WholesaleOrderVariant[];
   sizeType?: string;
+  sizeLabels?: string[] | null;
+  packDefinitionMode?: string | null;
+  packComposition?: Record<string, number> | null;
   status?: string;
   specs?: { fabricType?: string; packQty?: string };
   fullContent?: string | null;
@@ -78,11 +83,22 @@ export function wholesaleOrderSummary(
   const allowColorSelect = !!product.allowWholesaleColorSelect;
   const minColors = Math.max(1, Number(product.minWholesaleColors) || 1);
   const colorsForOrder = allowColorSelect ? selectedColors : availableColors.map((c) => c.name);
-  const typedSizeCount = sizeCountForType(product.sizeType);
+  const packConfig: PackSizeConfig = {
+    sizeType: product.sizeType,
+    sizeLabels: product.sizeLabels,
+    packDefinitionMode: product.packDefinitionMode,
+    packComposition: product.packComposition,
+  };
+  const typedSizeCount = sizeCountForType(product.sizeType, product.sizeLabels);
   const sizeCount = typedSizeCount ?? Math.max(0, availableSizes.length);
-  const packMode = availableColors.length > 0 && sizeCount > 0;
+  const perSize = compositionPerSize(packConfig);
+  const activeSizes = (availableSizes.length
+    ? availableSizes
+    : Object.keys(perSize)
+  ).filter((size) => (perSize[size] ?? 1) > 0);
+  const packMode = availableColors.length > 0 && sizeCount > 0 && activeSizes.length > 0;
   const piecesPerPack = packMode
-    ? piecesPerPackCount(colorsForOrder, product.sizeType, availableSizes)
+    ? piecesPerPackCount(colorsForOrder, packConfig, availableSizes)
     : 1;
   const pieces = packMode ? packCount * piecesPerPack : packCount;
   const minOrder = wholesaleMoq(product);
@@ -100,11 +116,12 @@ export function wholesaleOrderSummary(
   const packStockOk = (() => {
     if (!packMode) return totalStock >= minOrder;
     if (allowColorSelect && selectedColors.length < minColors) return false;
-    if (!colorsForOrder.length || !availableSizes.length) return false;
+    if (!colorsForOrder.length || !activeSizes.length) return false;
     for (const color of colorsForOrder) {
-      for (const size of availableSizes) {
+      for (const size of activeSizes) {
+        const need = (perSize[size] ?? 1) * packCount;
         const v = variants.find((x) => x.color === color && x.size === size);
-        if (!v || variantWholesale(v) < packCount) return false;
+        if (!v || variantWholesale(v) < need) return false;
       }
     }
     return true;

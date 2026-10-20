@@ -151,7 +151,11 @@ export interface Product {
     imageUrl?: string | null;
   }>;
   specs?: ProductSpecs;
-  sizeType?: 'TWO' | 'THREE' | 'FREE';
+  sizeType?: 'TWO' | 'THREE' | 'FREE' | 'CUSTOM';
+  sizeLabels?: string[] | null;
+  sizeGuideLines?: string[] | null;
+  packDefinitionMode?: 'AUTO' | 'MANUAL' | null;
+  packComposition?: Record<string, number> | null;
   isDiscounted?: boolean;
   isLimitedStock?: boolean;
   createdAt?: string;

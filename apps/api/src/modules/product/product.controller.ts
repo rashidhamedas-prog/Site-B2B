@@ -443,7 +443,7 @@ export class ProductController {
     },
   ) {
     const product = await this.productService.findOne(id, undefined, { allowNonActive: true });
-    const plan = parseColorStockPlan(body, this.productService.sizesForProduct(product.sizeType));
+    const plan = parseColorStockPlan(body, this.productService.sizesForProduct(product));
     const updated = await this.productService.setColorStock(id, body);
     await this.inventoryService.applyPlanToVariants(updated, plan, 'تنظیم موجودی رنگ', req.user?.id);
     return Promise.all(updated.map((row) => this.productService.getVariant(row.id)));

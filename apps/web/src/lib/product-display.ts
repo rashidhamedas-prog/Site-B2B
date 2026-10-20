@@ -41,20 +41,82 @@ export function channelSaleDisplay(
   return { price, compareAt, discount, active };
 }
 
+export type PackDefinitionMode = 'AUTO' | 'MANUAL';
+
+export type PackSizeConfig = {
+  sizeType?: string | null;
+  sizeLabels?: string[] | null;
+  packDefinitionMode?: string | null;
+  packComposition?: Record<string, number> | null;
+};
+
 export function sizeTypeLabel(sizeType?: string | null): string {
   if (sizeType === 'FREE') return 'فری‌سایز';
   if (sizeType === 'TWO') return '۲ سایز';
   if (sizeType === 'THREE') return '۳ سایز';
+  if (sizeType === 'CUSTOM') return 'سایزبندی سفارشی';
   return sizeType || 'سایزبندی کامل';
 }
 
-/** FREE=1, TWO=2, THREE=3. Unknown/missing → null so callers can fall back to variants. */
-export function sizeCountForType(sizeType?: string | null): number | null {
+export function normalizeSizeLabels(raw?: Array<string | null | undefined> | null): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw ?? []) {
+    const label = String(item ?? '').trim();
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    out.push(label);
+  }
+  return out;
+}
+
+export function sizesForSizeType(
+  sizeType?: string | null,
+  sizeLabels?: Array<string | null | undefined> | null,
+): string[] {
+  const t = String(sizeType || 'FREE').toUpperCase();
+  if (t === 'CUSTOM') return normalizeSizeLabels(sizeLabels);
+  if (t === 'TWO') return ['سایز ۱', 'سایز ۲'];
+  if (t === 'THREE') return ['سایز ۱', 'سایز ۲', 'سایز ۳'];
+  return ['فری سایز'];
+}
+
+/** FREE=1, TWO=2, THREE=3, CUSTOM=label count. Unknown/missing → null. */
+export function sizeCountForType(
+  sizeType?: string | null,
+  sizeLabels?: Array<string | null | undefined> | null,
+): number | null {
   const t = String(sizeType || '').toUpperCase();
   if (t === 'FREE') return 1;
   if (t === 'TWO') return 2;
   if (t === 'THREE') return 3;
+  if (t === 'CUSTOM') {
+    const n = normalizeSizeLabels(sizeLabels).length;
+    return n > 0 ? n : null;
+  }
   return null;
+}
+
+export function compositionPerSize(config: PackSizeConfig = {}): Record<string, number> {
+  const sizes = sizesForSizeType(config.sizeType, config.sizeLabels);
+  const mode = String(config.packDefinitionMode || 'AUTO').toUpperCase() === 'MANUAL' ? 'MANUAL' : 'AUTO';
+  const out: Record<string, number> = {};
+  if (mode === 'AUTO') {
+    for (const size of sizes) out[size] = 1;
+    return out;
+  }
+  const raw = config.packComposition && typeof config.packComposition === 'object'
+    ? config.packComposition
+    : {};
+  for (const size of sizes) {
+    const n = Math.floor(Number((raw as Record<string, unknown>)[size] ?? 0));
+    out[size] = Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+  return out;
+}
+
+export function piecesPerColorInPack(config: PackSizeConfig = {}): number {
+  return Object.values(compositionPerSize(config)).reduce((sum, n) => sum + n, 0);
 }
 
 export function uniqueByColor<T extends { color?: string | null }>(variants: T[]): T[] {
@@ -128,14 +190,27 @@ export function packPieces(colorCount: number, sizeCount: number): number {
   return Math.max(1, Math.max(0, colorCount) * Math.max(0, sizeCount));
 }
 
-/** Prefer sizeType sizes; if missing, fall back to distinct variant sizes. Duplicate colors count once. */
+/**
+ * Prefer product pack config (AUTO/MANUAL + CUSTOM labels).
+ * Legacy callers may pass sizeType string + fallbackSizes.
+ */
 export function piecesPerPackCount(
   colors: Array<string | null | undefined>,
-  sizeType?: string | null,
+  sizeTypeOrConfig?: string | null | PackSizeConfig,
   fallbackSizes?: Array<string | null | undefined>,
 ): number {
   const colorCount = distinctColorCount(colors);
-  const typed = sizeCountForType(sizeType);
+  const config: PackSizeConfig =
+    sizeTypeOrConfig && typeof sizeTypeOrConfig === 'object'
+      ? sizeTypeOrConfig
+      : { sizeType: sizeTypeOrConfig as string | null | undefined };
+
+  if (String(config.packDefinitionMode || 'AUTO').toUpperCase() === 'MANUAL') {
+    const perColor = piecesPerColorInPack(config);
+    return Math.max(0, colorCount * perColor);
+  }
+
+  const typed = sizeCountForType(config.sizeType, config.sizeLabels);
   const sizeCount =
     typed ?? uniqueSizes((fallbackSizes ?? []).map((size) => ({ size }))).length;
   return packPieces(colorCount, sizeCount);
