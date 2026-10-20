@@ -49,4 +49,39 @@ assert(TOROB_REACHABILITY_BODY.total === 0, 'reachability empty');
 assert(TOROB_REACHABILITY_BODY.max_pages === 1, 'reachability max_pages');
 assert(Array.isArray(TOROB_REACHABILITY_BODY.products), 'reachability products');
 
+function paginateCursor(total: number, cursor?: string) {
+  const items = Array.from({ length: total }, (_, i) => ({
+    page_unique: `id-${String(i).padStart(3, '0')}`,
+  })).sort((a, b) => b.page_unique.localeCompare(a.page_unique));
+  const start = cursor
+    ? items.findIndex((item) => item.page_unique.localeCompare(cursor) < 0)
+    : 0;
+  const from = start < 0 ? items.length : start;
+  const products = items.slice(from, from + TOROB_PAGE_SIZE);
+  const last = products[products.length - 1];
+  const hasMore = from + products.length < items.length;
+  return {
+    products,
+    next_cursor: hasMore && last ? last.page_unique : null,
+  };
+}
+
+{
+  const first = paginateCursor(201);
+  assert(first.products.length === 100, 'cursor p1 size');
+  assert(!!first.next_cursor, 'cursor p1 next');
+  const second = paginateCursor(201, first.next_cursor!);
+  assert(second.products.length === 100, 'cursor p2 size');
+  assert(!!second.next_cursor, 'cursor p2 next');
+  const third = paginateCursor(201, second.next_cursor!);
+  assert(third.products.length === 1, 'cursor p3 size');
+  assert(third.next_cursor === null, 'cursor p3 done');
+  const seen = new Set([
+    ...first.products.map((p) => p.page_unique),
+    ...second.products.map((p) => p.page_unique),
+    ...third.products.map((p) => p.page_unique),
+  ]);
+  assert(seen.size === 201, 'cursor covers all');
+}
+
 console.log('torob-product-api.spec ok');

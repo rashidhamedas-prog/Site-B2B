@@ -26,9 +26,18 @@ expectError({ page: 1, sort: 'price' }, 'sort');
 expectError({ page_urls: [] }, 'خالی');
 expectError({ page_uniques: [] }, 'خالی');
 expectError({ page: 1.5, sort: 'date_added_desc' }, 'صحیح');
+expectError({ sort: 'product_id_desc', page: 1 }, 'page');
+expectError({ cursor: 'abc', sort: 'date_added_desc' }, 'cursor');
+expectError({ cursor: '', sort: 'product_id_desc' }, 'cursor');
 
 const list = parseTorobProductRequest({ page: 2, sort: 'date_updated_desc' });
 assert(list.mode === 'list' && list.page === 2 && list.sort === 'date_updated_desc', 'list parse');
+
+const cursorFirst = parseTorobProductRequest({ sort: 'product_id_desc' });
+assert(cursorFirst.mode === 'cursor' && cursorFirst.cursor === undefined, 'cursor first page');
+
+const cursorNext = parseTorobProductRequest({ cursor: 'uuid-1', sort: 'product_id_desc' });
+assert(cursorNext.mode === 'cursor' && cursorNext.cursor === 'uuid-1', 'cursor next page');
 
 assert(torobMaxPages(0) === 1, 'max 0');
 assert(torobMaxPages(1) === 1, 'max 1');

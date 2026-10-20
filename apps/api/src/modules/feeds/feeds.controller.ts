@@ -225,7 +225,8 @@ export class FeedsController {
   async torob(@Res() res: Response) {
     const rows = await this.loadAllActive();
     const brand = await this.brandName();
-    const mediaOrigin = this.siteBase();
+    // Always retail canonical so image_links match page_url (.ir), not wholesale .com CDN host.
+    const mediaOrigin = RETAIL_CANONICAL_ORIGIN;
     const items = rows.flatMap((product) =>
       enumeratePublishableOptions(product as any, mediaOrigin, RETAIL_CANONICAL_ORIGIN)
         .filter((row) => row.publishable && row.payload)
