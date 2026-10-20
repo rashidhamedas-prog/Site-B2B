@@ -4,6 +4,7 @@
 - API: ستون‌های `sizeLabels`, `sizeGuideLines`, `packDefinitionMode`, `packComposition` + نرمال‌سازی در `product-pack.ts`.
 - سفارش عمده `expandByPackMatrix` و ویترین (`product-display` / `wholesale-order`) از همان قاعده پیروی می‌کنند.
 - محصولات FREE/TWO/THREE با AUTO بدون تغییر رفتار پیش‌فرض می‌مانند.
+- LIVE: `edd88031` روی VPS؛ health 200؛ ستون‌های چهارگانه روی `products` تأیید شد.
 
 ## 2026-10-20 — فیکس تست سفارش ترب: purchase_timestamp_gt
 
