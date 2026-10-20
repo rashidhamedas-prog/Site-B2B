@@ -13,7 +13,8 @@ Re-read https://github.com/torob/Torob-Sync/blob/main/product_api_v3.md before i
 
 | Mode | Body |
 |------|------|
-| list | `{ "page": <int>=1, "sort": "date_added_desc" \| "date_updated_desc" }` |
+| list | `{ "page": <int>≥1, "sort": "date_added_desc" \| "date_updated_desc" }` |
+| cursor | `{ "sort": "product_id_desc" }` then `{ "cursor": "<next_cursor>", "sort": "product_id_desc" }` — no `page`/`limit`/`size` |
 | urls | `{ "page_urls": ["https://..."] }` (min 1) |
 | uniques | `{ "page_uniques": ["..."] }` (min 1) |
 
@@ -22,7 +23,9 @@ Reject with HTTP 400 and `{"error":"<precise message>"}`:
 - empty body
 - combined modes
 - unknown fields
-- `page` without `sort` or `sort` without `page`
+- `page` without `sort` or page-sort without `page` (except cursor mode)
+- `page` together with `sort: product_id_desc`
+- `cursor` without `sort: product_id_desc`
 - `page < 1` or non-integer
 - invalid `sort`
 - empty `page_urls` / `page_uniques`
@@ -35,14 +38,16 @@ Reject with HTTP 400 and `{"error":"<precise message>"}`:
   "current_page": 1,
   "total": 0,
   "max_pages": 1,
+  "next_cursor": null,
   "products": []
 }
 ```
 
 - Page size is 100 except the last page
-- `current_page`, `total`, `max_pages` are integers
-- `total=0` → `max_pages=1`
-- Stable tie-breaker after the sort timestamp (e.g. `page_unique`)
+- Page mode: `current_page`, `total`, `max_pages` are integers; `total=0` → `max_pages=1`
+- Cursor mode: `current_page` / `total` / `max_pages` may be `null`; set `next_cursor` (opaque) or `null` on last page
+- Stable tie-breaker after the sort timestamp (e.g. `page_unique`); cursor sort is `page_unique` desc
+- `image_links` must use the retail canonical host (`www.poshaktaranom.ir`), never wholesale `.com`
 
 ## Product fields (shop-side)
 

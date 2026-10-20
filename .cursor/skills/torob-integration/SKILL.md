@@ -25,7 +25,7 @@ Never invent a private Torob product write API. Torob **pulls** from your endpoi
 - One **pure projection** for price, availability, URLs, images, guarantee. Convert currency **once**.
 - Discover the shop currency and the retail stock column **before** coding. Do not use wholesale/legacy stock for Torob availability.
 - JWT: `X-Torob-Token` required, `X-Torob-Token-Version` exactly `1`, EdDSA/Ed25519 only, official public key, `exp`/`nbf`/`aud` required. `aud` equals the **exact** public API hostname from config, never a domain list, never a client `Host` header.
-- Pagination: page size 100; `sort` is `date_added_desc` or `date_updated_desc`; no defaults; exclusive modes; `max_pages` is `1` when `total=0`.
+- Pagination: page size 100; page sorts `date_added_desc` / `date_updated_desc`; cursor mode `sort=product_id_desc` + optional `cursor` / `next_cursor`; no defaults; exclusive modes; `max_pages` is `1` when `total=0` (page mode).
 - Variant `page_unique` is a stable UUID. Product-level IDs use a different namespace. Deleted/hidden/unpublishable options disappear from list and lookup.
 - No secrets, tokens, or private keys in the skill or git.
 

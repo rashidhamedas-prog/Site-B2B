@@ -1,3 +1,10 @@
+## 2026-10-20 — افت ورودی ترب: RCA + فیکس cursor API و تصویر
+
+- شواهد: پنل ۲۹ محصول موجود نمایشی؛ GA4 پیک ۳–۵ اکتبر (اوج ۱۸ جلسه) و cliff در ۶ اکتبر؛ فید زنده ۵۹۰ گزینه / ۳۳۶ موجود ولی image روی `poshaktaranom.com`.
+- ریشه کد: Product API v3 حالت رسمی `product_id_desc` + `cursor` را ۴۰۰ می‌کرد؛ `mediaOrigin`/`absMedia` تصویر را روی دامنهٔ عمده می‌گذاشت.
+- فیکس: cursor pagination، rebase تصویر به `www.poshaktaranom.ir`، `category_name`؛ تست‌های torob سبز.
+- گزارش: `docs/reports/2026-10-20-torob-traffic-cliff-rca.md`. بعد از دیپلوی: همگام‌سازی مجدد در پنل + بررسی بودجه PPC/ads.
+
 ## 2026-10-20 — بله Omnichannel: LIVE آماده، گیت canary خراب، UX دسترسی
 
 - وضعیت سرور: اتصال BALE `ACTIVE` + `autoPublishMode=LIVE`؛ مقصد `@toliditaranom` (canary) ثبت است. پروب `tapi.bale.ai`: `@balerelaitbot` زنده؛ `getChat` کانال OK؛ `getChatMember`/`sendMessage` هنوز `permission_denied` (ربات ادمین نیست).

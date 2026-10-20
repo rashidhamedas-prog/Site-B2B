@@ -1,13 +1,22 @@
-export const TOROB_SORTS = ['date_added_desc', 'date_updated_desc'] as const;
-export type TorobSort = (typeof TOROB_SORTS)[number];
+export const TOROB_PAGE_SORTS = ['date_added_desc', 'date_updated_desc'] as const;
+/** @deprecated Use TOROB_PAGE_SORTS — kept for older imports */
+export const TOROB_SORTS = TOROB_PAGE_SORTS;
+export type TorobPageSort = (typeof TOROB_PAGE_SORTS)[number];
+export type TorobSort = TorobPageSort;
+export const TOROB_CURSOR_SORT = 'product_id_desc' as const;
 
-export type TorobListQuery = { mode: 'list'; page: number; sort: TorobSort };
+export type TorobListQuery = { mode: 'list'; page: number; sort: TorobPageSort };
+export type TorobCursorQuery = {
+  mode: 'cursor';
+  sort: typeof TOROB_CURSOR_SORT;
+  cursor?: string;
+};
 export type TorobLookupQuery =
   | { mode: 'urls'; page_urls: string[] }
   | { mode: 'uniques'; page_uniques: string[] };
-export type TorobProductQuery = TorobListQuery | TorobLookupQuery;
+export type TorobProductQuery = TorobListQuery | TorobCursorQuery | TorobLookupQuery;
 
-const ALLOWED_KEYS = new Set(['page', 'sort', 'page_urls', 'page_uniques']);
+const ALLOWED_KEYS = new Set(['page', 'sort', 'cursor', 'page_urls', 'page_uniques']);
 
 export class TorobBadRequest extends Error {
   readonly status = 400;
@@ -66,34 +75,61 @@ export function parseTorobProductRequest(body: unknown): TorobProductQuery {
 
   const hasPage = Object.prototype.hasOwnProperty.call(body, 'page');
   const hasSort = Object.prototype.hasOwnProperty.call(body, 'sort');
+  const hasCursor = Object.prototype.hasOwnProperty.call(body, 'cursor');
   const hasUrls = Object.prototype.hasOwnProperty.call(body, 'page_urls');
   const hasUniques = Object.prototype.hasOwnProperty.call(body, 'page_uniques');
-  const modeCount = Number(hasPage || hasSort) + Number(hasUrls) + Number(hasUniques);
-  if (modeCount !== 1) {
-    throw new TorobBadRequest('فقط یکی از حالت‌های page+sort، page_urls یا page_uniques مجاز است');
-  }
 
   if (hasUrls) {
+    if (hasPage || hasSort || hasCursor || hasUniques) {
+      throw new TorobBadRequest('فقط یکی از حالت‌های page+sort، cursor، page_urls یا page_uniques مجاز است');
+    }
     return { mode: 'urls', page_urls: asNonEmptyStringList(body.page_urls, 'page_urls') };
   }
   if (hasUniques) {
+    if (hasPage || hasSort || hasCursor || hasUrls) {
+      throw new TorobBadRequest('فقط یکی از حالت‌های page+sort، cursor، page_urls یا page_uniques مجاز است');
+    }
     return { mode: 'uniques', page_uniques: asNonEmptyStringList(body.page_uniques, 'page_uniques') };
   }
 
-  if (hasPage && !hasSort) {
-    throw new TorobBadRequest('پارامتر sort همراه page الزامی است');
+  if (!hasSort) {
+    if (hasPage) throw new TorobBadRequest('پارامتر sort همراه page الزامی است');
+    if (hasCursor) throw new TorobBadRequest('پارامتر sort همراه cursor الزامی است');
+    throw new TorobBadRequest('بدنه درخواست خالی است');
   }
-  if (hasSort && !hasPage) {
+  if (typeof body.sort !== 'string') {
+    throw new TorobBadRequest('sort باید رشته باشد');
+  }
+
+  // Cursor mode: {"sort":"product_id_desc"} or {"cursor":"...","sort":"product_id_desc"} — no page/limit/size
+  if (body.sort === TOROB_CURSOR_SORT) {
+    if (hasPage) {
+      throw new TorobBadRequest('در حالت cursor پارامتر page مجاز نیست');
+    }
+    let cursor: string | undefined;
+    if (hasCursor) {
+      if (typeof body.cursor !== 'string' || !body.cursor.trim()) {
+        throw new TorobBadRequest('cursor باید رشته غیرخالی باشد');
+      }
+      cursor = body.cursor.trim();
+    }
+    return { mode: 'cursor', sort: TOROB_CURSOR_SORT, cursor };
+  }
+
+  if (hasCursor) {
+    throw new TorobBadRequest('cursor فقط با sort=product_id_desc مجاز است');
+  }
+  if (!hasPage) {
     throw new TorobBadRequest('پارامتر page همراه sort الزامی است');
   }
   const page = asInt(body.page, 'page');
   if (page < 1) {
     throw new TorobBadRequest('page باید بزرگ‌تر یا مساوی ۱ باشد');
   }
-  if (typeof body.sort !== 'string' || !TOROB_SORTS.includes(body.sort as TorobSort)) {
-    throw new TorobBadRequest('sort فقط date_added_desc یا date_updated_desc است');
+  if (!TOROB_PAGE_SORTS.includes(body.sort as TorobPageSort)) {
+    throw new TorobBadRequest('sort فقط date_added_desc، date_updated_desc یا product_id_desc است');
   }
-  return { mode: 'list', page, sort: body.sort as TorobSort };
+  return { mode: 'list', page, sort: body.sort as TorobPageSort };
 }
 
 export function torobMaxPages(total: number): number {

@@ -146,4 +146,18 @@ const baseProduct = {
   assert(published.filter((row) => row.publishable).length === 1, 'foreign variant skipped');
 }
 
+{
+  const row = projectTorobOption({
+    product: {
+      ...baseProduct,
+      images: ['https://poshaktaranom.com/media/products/coat.webp'],
+    },
+    mediaOrigin: 'https://www.poshaktaranom.ir',
+  });
+  assert(
+    row.payload?.image_links[0] === 'https://www.poshaktaranom.ir/media/products/coat.webp',
+    'rebase wholesale media host to retail',
+  );
+}
+
 console.log('torob-product-projection.spec ok');

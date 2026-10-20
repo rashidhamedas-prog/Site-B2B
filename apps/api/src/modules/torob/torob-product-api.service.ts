@@ -38,12 +38,21 @@ export class TorobProductApiService {
     private readonly variants: Repository<ProductVariantEntity>,
   ) {}
 
+  /**
+   * Torob image_links must stay on the retail host (same as page_url).
+   * Never prefer MINIO_PUBLIC_URL / wholesale .com — absolute DB URLs are rebased in absMedia.
+   */
   private mediaOrigin() {
-    return (
-      process.env.MINIO_PUBLIC_URL ||
-      process.env.NEXT_PUBLIC_RETAIL_URL ||
-      RETAIL_CANONICAL_ORIGIN
-    ).replace(/\/$/, '');
+    const raw = String(process.env.NEXT_PUBLIC_RETAIL_URL || RETAIL_CANONICAL_ORIGIN).trim();
+    try {
+      const host = new URL(raw).hostname.toLowerCase();
+      if (host === 'poshaktaranom.ir' || host === 'www.poshaktaranom.ir') {
+        return RETAIL_CANONICAL_ORIGIN;
+      }
+      return `${new URL(raw).protocol}//${new URL(raw).host}`.replace(/\/$/, '');
+    } catch {
+      return RETAIL_CANONICAL_ORIGIN;
+    }
   }
 
   private storeOrigin() {
@@ -97,6 +106,26 @@ export class TorobProductApiService {
     });
   }
 
+  /** product_id_desc: opaque cursor over page_unique (stable, highest-first string order). */
+  private sortByProductIdDesc(items: TorobProductPayload[]): TorobProductPayload[] {
+    return [...items].sort((a, b) => b.page_unique.localeCompare(a.page_unique));
+  }
+
+  private paginateCursor(items: TorobProductPayload[], cursor?: string) {
+    const ordered = this.sortByProductIdDesc(items);
+    const start = cursor
+      ? ordered.findIndex((item) => item.page_unique.localeCompare(cursor) < 0)
+      : 0;
+    const from = start < 0 ? ordered.length : start;
+    const products = ordered.slice(from, from + TOROB_PAGE_SIZE);
+    const last = products[products.length - 1];
+    const hasMore = from + products.length < ordered.length;
+    return {
+      products,
+      next_cursor: hasMore && last ? last.page_unique : null,
+    };
+  }
+
   async handleRaw(body: unknown) {
     const query = parseTorobProductRequest(body);
     return this.handle(query);
@@ -126,7 +155,20 @@ export class TorobProductApiService {
         current_page: query.page,
         total,
         max_pages: maxPages,
+        next_cursor: null,
         products: ordered.slice(start, start + TOROB_PAGE_SIZE),
+      };
+    }
+
+    if (query.mode === 'cursor') {
+      const page = this.paginateCursor(published, query.cursor);
+      return {
+        api_version: TOROB_API_VERSION,
+        current_page: null,
+        total: null,
+        max_pages: null,
+        next_cursor: page.next_cursor,
+        products: page.products,
       };
     }
 
@@ -139,6 +181,7 @@ export class TorobProductApiService {
       current_page: 1,
       total: matched.length,
       max_pages: torobMaxPages(matched.length),
+      next_cursor: null,
       products: matched,
     };
   }

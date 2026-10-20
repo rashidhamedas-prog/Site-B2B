@@ -106,6 +106,7 @@ export interface TorobProductPayload {
   current_price: number;
   old_price?: number;
   availability: boolean;
+  category_name?: string;
   image_links: string[];
   short_desc?: string;
   spec: Record<string, string>;
@@ -167,12 +168,39 @@ export function flattenSpec(specs?: Record<string, unknown> | null, extra?: Reco
   return out;
 }
 
+const TOROB_MEDIA_HOSTS = new Set([
+  'poshaktaranom.com',
+  'www.poshaktaranom.com',
+  'poshaktaranom.ir',
+  'www.poshaktaranom.ir',
+  'api.poshaktaranom.com',
+  'storage.poshaktaranom.com',
+]);
+
+/** Keep Torob image_links on the same retail origin as page_url (never wholesale .com). */
+function rebaseTorobMediaUrl(absolute: string, mediaOrigin: string): string {
+  try {
+    const parsed = new URL(absolute);
+    if (!TOROB_MEDIA_HOSTS.has(parsed.hostname.toLowerCase())) return absolute;
+    const base = mediaOrigin.replace(/\/$/, '') || RETAIL_CANONICAL_ORIGIN;
+    return `${base}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return absolute;
+  }
+}
+
 function absMedia(url: string | undefined, mediaOrigin: string): string {
   if (!url) return '';
-  if (/^https?:\/\//i.test(url)) return url.replace(/^http:\/\//i, 'https://');
-  const base = mediaOrigin.replace(/\/$/, '');
-  if (url.startsWith('/')) return `${base}${url}`;
-  return `${base}/media/${url}`;
+  const base = (mediaOrigin || RETAIL_CANONICAL_ORIGIN).replace(/\/$/, '');
+  let absolute: string;
+  if (/^https?:\/\//i.test(url)) {
+    absolute = url.replace(/^http:\/\//i, 'https://');
+  } else if (url.startsWith('/')) {
+    absolute = `${base}${url}`;
+  } else {
+    absolute = `${base}/media/${url}`;
+  }
+  return rebaseTorobMediaUrl(absolute, base);
 }
 
 export function collectImageLinks(
@@ -270,6 +298,7 @@ export function projectTorobOption(input: {
     ? [variant.color, variant.size].filter(Boolean).join(' / ') || undefined
     : undefined;
 
+  const categoryName = String(product.category?.name || '').trim().slice(0, 200) || undefined;
   const payload: TorobProductPayload = {
     page_unique: variant ? pageUniqueForVariant(variant.id) : pageUniqueForProduct(product.id),
     page_url: retailPageUrl(slug, variant?.id, storeOrigin),
@@ -282,11 +311,12 @@ export function projectTorobOption(input: {
       fabric: product.fabric || undefined,
       color: variant?.color || undefined,
       size: variant?.size || undefined,
-      category: product.category?.name || undefined,
+      category: categoryName,
     }),
     date_added: toIso8601(variant?.createdAt || product.createdAt),
     date_updated: maxUpdatedAt(product.updatedAt, product.createdAt, variant?.updatedAt, variant?.createdAt),
   };
+  if (categoryName) payload.category_name = categoryName;
   if (subtitle) payload.subtitle = subtitle.slice(0, 500);
   if (oldPriceToman != null && oldPriceToman > currentPrice) payload.old_price = oldPriceToman;
   const desc = shortDesc(product);
