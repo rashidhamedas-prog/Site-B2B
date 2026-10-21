@@ -32,7 +32,7 @@ function emitGa4(event: string, articleId: string) {
   });
 }
 
-export function BlogAnalyticsTracker({ articleId, title }: { articleId: string; title?: string }) {
+export function BlogAnalyticsTracker({ articleId }: { articleId: string; title?: string }) {
   const sent = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -51,15 +51,8 @@ export function BlogAnalyticsTracker({ articleId, title }: { articleId: string; 
       emitGa4(event, articleId);
     };
 
+    // blog_article_view only: a GA4 `view_item` here would count articles as products in ecommerce reports.
     track('view');
-    if (title) {
-      ensureGtagStub();
-      window.gtag?.('event', 'view_item', {
-        item_name: title,
-        item_id: articleId,
-        item_category: 'blog',
-      });
-    }
 
     const onScroll = () => {
       const doc = document.documentElement;
@@ -75,7 +68,7 @@ export function BlogAnalyticsTracker({ articleId, title }: { articleId: string; 
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
-  }, [articleId, title]);
+  }, [articleId]);
 
   return null;
 }

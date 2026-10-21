@@ -87,6 +87,8 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
       const pageLocation =
         typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
       const pageTitle = typeof document !== 'undefined' ? document.title : path;
+      // Later events on this page (e.g. purchase on /payment/callback) must not carry gateway tokens from the raw URL.
+      window.gtag?.('set', { page_location: pageLocation });
       window.gtag?.('event', 'page_view', {
         page_path: path,
         page_location: pageLocation,
