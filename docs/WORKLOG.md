@@ -19,7 +19,9 @@
 - API: ستون‌های `sizeLabels`, `sizeGuideLines`, `packDefinitionMode`, `packComposition` + نرمال‌سازی در `product-pack.ts`.
 - سفارش عمده `expandByPackMatrix` و ویترین (`product-display` / `wholesale-order`) از همان قاعده پیروی می‌کنند.
 - محصولات FREE/TWO/THREE با AUTO بدون تغییر رفتار پیش‌فرض می‌مانند.
-- LIVE: `edd88031` روی VPS؛ health 200؛ ستون‌های چهارگانه روی `products` تأیید شد.
+- Hetzner (`5.75.200.102`): `edd88031` deploy شد؛ ولی DNS همهٔ دامنه‌ها روی replica ایران است، پس تغییر روی سایت زنده دیده نمی‌شد.
+- LIVE (2026-10-21) روی replica ایران `185.213.167.61`: سورس replica فقط از master عقب بود (همهٔ نسخه‌هایش در تاریخچهٔ git بود)؛ کل `apps/api`، `apps/web`، `packages` از `32857740` جایگزین شد (بکاپ: `/opt/taranom/backups/pre-custom-size-*`)، `docker compose build api web worker` + recreate api/worker/web/nginx. migrationهای `ProductCustomSizePack1760976000001` و `SalesPartnerDraftExpiryIndex1761000000001` اجرا شد؛ چهار ستون روی `products` تأیید شد؛ chunk ادمین «پک دستی» دارد؛ health 200، هوم ~0.32s TTFB.
+- درس: deploy روی Hetzner به‌تنهایی سایت زنده را عوض نمی‌کند؛ هر تغییر runtime باید روی replica ایران هم build/recreate شود.
 
 ## 2026-10-20 — فیکس تست سفارش ترب: purchase_timestamp_gt
 
