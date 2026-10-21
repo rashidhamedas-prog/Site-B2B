@@ -4,6 +4,7 @@ import {
   RETAIL_ITEM_BRAND,
   affiliatePurchaseParams,
   buildPurchasePayload,
+  cartAgeBucket,
   cartAgeDays,
   cartFingerprintHash,
   checkoutCartFingerprint,
@@ -151,6 +152,8 @@ assert.equal(isNonProductionAnalyticsHost('www.poshaktaranom.ir'), false);
 assert.equal(isAdminAnalyticsPath('/admin'), true);
 assert.equal(isAdminAnalyticsPath('/admin/blog'), true);
 assert.equal(isAdminAnalyticsPath('/products'), false);
+assert.equal(isAdminAnalyticsPath('/confirm/sales-partner/abc123'), true);
+assert.equal(isAdminAnalyticsPath('/confirmation'), false);
 
 assert.equal(stripRetailInternalPath('/retail/products'), '/products');
 assert.equal(stripRetailInternalPath('/retail'), '/');
@@ -383,9 +386,17 @@ const filteredCart = enforceEventAllowlist('add_to_cart', {
   page_location: 'https://poshaktaranom.com/payment/callback?Authority=A0000123',
   cart_fp: 'k3j9x2',
   cart_age_days: 2,
+  cart_age_bucket: '1_3_days',
   items: [{ item_id: 'SKU', item_name: 'نمونه', price: 10, quantity: 1, discount: 1, item_list_id: 'x', email: 'a@b.co', item_category: '0912-345-6789' }],
 });
-assert.deepEqual(Object.keys(filteredCart!).sort(), ['cart_age_days', 'cart_fp', 'currency', 'items', 'value']);
+assert.deepEqual(Object.keys(filteredCart!).sort(), ['cart_age_bucket', 'cart_age_days', 'cart_fp', 'currency', 'items', 'value']);
+for (const bad of ['2_days', '9', 'SAME_DAY ', 'same_day; drop', '']) {
+  assert.equal(enforceEventAllowlist('add_to_cart', { cart_age_bucket: bad })!.cart_age_bucket, undefined, `bucket enum rejects ${bad}`);
+}
+assert.deepEqual(
+  [0, 1, 3, 4, 7, 8, 400].map(cartAgeBucket),
+  ['same_day', '1_3_days', '1_3_days', '4_7_days', '4_7_days', '8_plus_days', '8_plus_days'],
+);
 assert.deepEqual(Object.keys((filteredCart!.items as object[])[0]!).sort(), ['item_id', 'item_name', 'price', 'quantity']);
 assert.equal(enforceEventAllowlist('add_to_cart', { currency: 'USD' })!.currency, undefined, 'currency enum');
 assert.equal(enforceEventAllowlist('add_to_cart', { cart_fp: 'SKU-1:1:10' })!.cart_fp, undefined, 'raw fingerprint rejected');
@@ -421,6 +432,7 @@ trackAddToCart({ sku: 'CO-1', productId: 'p1', name: 'کوهورت', unitPrice: 
 const atc = gtagEvents().filter((e) => e.name === 'add_to_cart').at(-1)!;
 assert.equal(atc.params.cart_fp, cartFingerprintHash(wholesaleCart), 'add_to_cart fp = post-add cart');
 assert.equal(atc.params.cart_age_days, 0);
+assert.equal(atc.params.cart_age_bucket, 'same_day');
 assert.equal(atc.params.send_to, 'G-YVT5DXZF5Z');
 const cohort = JSON.parse(storage.get('taranom_ga4_cart_cohort')!) as { since: number; fp: string };
 // Pretend the first add happened 3 days ago; a second add keeps the cohort start.
@@ -437,6 +449,7 @@ const bcHits = gtagEvents().filter((e) => e.name === 'begin_checkout');
 assert.equal(bcHits.length - fpBefore, 1, 'begin_checkout once per cart fp');
 assert.equal(bcHits.at(-1)!.params.cart_fp, cartFingerprintHash(wholesaleCart), 'same fp as last add_to_cart');
 assert.equal(bcHits.at(-1)!.params.cart_age_days, 3);
+assert.equal(bcHits.at(-1)!.params.cart_age_bucket, '1_3_days');
 trackBeginCheckout([...checkoutInputs, { sku: 'CO-3', productId: 'p3', quantity: 1, unitPrice: 1, name: 'x' }], 251);
 assert.equal(gtagEvents().filter((e) => e.name === 'begin_checkout').length - fpBefore, 2, 'changed cart → new begin_checkout');
 

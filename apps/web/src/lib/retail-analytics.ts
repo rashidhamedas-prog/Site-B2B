@@ -172,10 +172,15 @@ export const EVENT_PARAM_ENUMS: Record<string, ReadonlySet<string>> = {
   sales_channel: new Set(['affiliate']),
   affiliation: new Set(['affiliate']),
   currency: new Set([GA4_CURRENCY.toLowerCase()]),
+  cart_age_bucket: new Set(['same_day', '1_3_days', '4_7_days', '8_plus_days']),
 };
 
 const LEAD_PARAMS = ['lead_type', 'cta_location', 'business_type', 'referral', 'payment_type'] as const;
-const CART_COHORT_PARAMS = ['cart_fp', 'cart_age_days'] as const;
+/**
+ * GA4 Admin: `cart_age_bucket` = event-scoped custom dimension (4 values); `cart_age_days` = custom
+ * metric only. `cart_fp` is for dedupe/exploration and must never become a custom dimension.
+ */
+const CART_COHORT_PARAMS = ['cart_fp', 'cart_age_days', 'cart_age_bucket'] as const;
 const AFFILIATE_PARAMS = ['sales_channel'] as const;
 
 /**
@@ -260,6 +265,7 @@ function safeItem(raw: unknown): Record<string, string | number> | null {
 
 function safeParamValue(key: string, raw: unknown): unknown {
   const allowed = EVENT_PARAM_ENUMS[key];
+  if (key === 'cart_age_bucket') return typeof raw === 'string' && allowed.has(raw) ? raw : undefined;
   if (allowed) {
     if (typeof raw !== 'string') return undefined;
     const value = raw.trim();
@@ -470,10 +476,22 @@ function writeCartCohort(cohort: CartCohort) {
   }
 }
 
+export type CartAgeBucket = 'same_day' | '1_3_days' | '4_7_days' | '8_plus_days';
+
+export function cartAgeBucket(days: number): CartAgeBucket {
+  if (days <= 0) return 'same_day';
+  if (days <= 3) return '1_3_days';
+  if (days <= 7) return '4_7_days';
+  return '8_plus_days';
+}
+
 function cohortParams(fp: string, cohort: CartCohort | null) {
-  const out: { cart_fp?: string; cart_age_days?: number } = {};
+  const out: { cart_fp?: string; cart_age_days?: number; cart_age_bucket?: CartAgeBucket } = {};
   if (fp) out.cart_fp = fp;
-  if (cohort) out.cart_age_days = cartAgeDays(cohort.since);
+  if (cohort) {
+    out.cart_age_days = cartAgeDays(cohort.since);
+    out.cart_age_bucket = cartAgeBucket(out.cart_age_days);
+  }
   return out;
 }
 

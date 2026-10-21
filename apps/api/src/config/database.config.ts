@@ -181,6 +181,17 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     MarketingCheckoutIntentEntity,
 ];
 
+/**
+ * Only the API process runs migrations (see `runMigrationsWithLock` in main.ts). Workers share
+ * the image and env; starting them together used to apply the same migration two or three times.
+ */
+export function migrationRunnerEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  const prodLike = env.NODE_ENV === 'production' || String(env.APP_ENV || '').toLowerCase() === 'staging';
+  if (!prodLike) return false;
+  if (String(env.OMNICHANNEL_WORKER || '').toLowerCase() === 'true') return false;
+  return String(env.TYPEORM_MIGRATIONS_RUN ?? 'true').trim().toLowerCase() !== 'false';
+}
+
 export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => {
   const NODE_ENV = config.get('NODE_ENV');
   const APP_ENV = config.get('APP_ENV');
@@ -195,7 +206,7 @@ export const databaseConfig = (config: ConfigService): TypeOrmModuleOptions => {
     database: config.get('DB_NAME', 'taranom_db'),
     entities: RUNTIME_TYPEORM_ENTITIES,
     migrations: compiledMigrationFiles(),
-    migrationsRun: NODE_ENV === 'production' || String(APP_ENV || '').toLowerCase() === 'staging',
+    migrationsRun: false,
     synchronize: typeormSynchronizeEnabled({ NODE_ENV, APP_ENV, DB_SYNC }),
     logging: NODE_ENV === 'development',
     ssl: config.get('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,

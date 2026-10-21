@@ -5,8 +5,17 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { swaggerEnabled } from './bootstrap-flags';
 import { SmsCooldownExceptionFilter } from './modules/notification/sms-cooldown-http';
+import { ConfigService } from '@nestjs/config';
+import type { DataSourceOptions } from 'typeorm';
+import { databaseConfig, migrationRunnerEnabled } from './config/database.config';
+import { runMigrationsWithLock } from './database/run-migrations';
 
 async function bootstrap() {
+  if (migrationRunnerEnabled()) {
+    const env = { get: (key: string, fallback?: unknown) => process.env[key] ?? fallback } as unknown as ConfigService;
+    await runMigrationsWithLock(databaseConfig(env) as DataSourceOptions);
+  }
+
   // Trust one reverse-proxy hop (nginx) so Fastify request.ip is derived safely.
   // Do not parse raw x-forwarded-for in application code — use extractClientIp(req).
   const app = await NestFactory.create<NestFastifyApplication>(

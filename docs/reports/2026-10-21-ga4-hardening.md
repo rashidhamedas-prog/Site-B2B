@@ -48,14 +48,15 @@
 
 ## گزارش cohort سبد (جایگزین invariant روزانه)
 
-پیش‌نیاز GA4 Admin: custom dimension سطح event برای `cart_fp` و `cart_age_days`.
+> اصلاح‌شده در TASK-20261021-003 (`docs/reports/2026-10-21-migration-lock-ga4-defs-host-logs.md`).
+
+پیش‌نیاز GA4 Admin: فقط `cart_age_bucket` به‌عنوان custom dimension سطح event (۴ مقدار: `same_day`، `1_3_days`، `4_7_days`، `8_plus_days`) و `cart_age_days` فقط به‌عنوان custom metric عددی. `cart_fp` فقط برای dedupe در رویداد می‌ماند و **هرگز** custom dimension نمی‌شود؛ هیچ شناسهٔ سبد/session/user/transaction به‌صورت dimension پرکاردینال ثبت نشود.
 
 Exploration (Free form، بازهٔ ۷/۲۸ روز):
-1. سبدهای یکتا با add_to_cart: `Event name = add_to_cart`، متریک unique `cart_fp` (ردیف: `cart_fp`، شمارش ردیف‌ها).
-2. سبدهای یکتا که checkout شروع کردند: همان با `begin_checkout`.
-3. نرخ: (۲) ÷ (۱) فقط روی `cart_fp`های مشترک (Segment overlap یا export).
-4. تکرار: `Event count` به ازای `cart_fp` و session؛ مقدار >۱ روی begin_checkout یعنی تکرار (بعد از dedupe فقط با تغییر سبد).
-5. سبدهای روزهای قبل: فیلتر `cart_age_days >= 1` جدا گزارش شود؛ begin_checkout این سبدها نسبت به add_to_cart همان روز سنجیده نشود.
+1. نرخ شروع checkout: `begin_checkout` ÷ `add_to_cart` (Event count) به تفکیک `cart_age_bucket`.
+2. سبدهای روزهای قبل: ردیف‌های `cart_age_bucket ≠ same_day` جدا گزارش شوند؛ begin_checkout این سبدها نسبت به add_to_cart همان روز سنجیده نشود.
+3. میانگین سن سبد: metric `cart_age_days` ÷ Event count.
+4. تکرار begin_checkout: کلاینت با `cart_fp` در sessionStorage dedupe می‌کند؛ بررسی تکرار فقط در BigQuery export (نه dimension).
 
 ## تست‌ها
 - Web: `tsc --noEmit` سبز؛ `google.spec.ts ok`؛ `retail-analytics.spec.ts ok`.
@@ -88,7 +89,7 @@ Exploration (Free form، بازهٔ ۷/۲۸ روز):
 
 ## کارهای فقط در GA4/GTM Admin
 - Accept MP terms + ساخت API secret هر استریم (برای `ga4-mp-validate` و فعال‌سازی بعدی فلگ).
-- Custom dimension: `cart_fp`، `cart_age_days`.
+- Custom dimension: فقط `cart_age_bucket`؛ custom metric: `cart_age_days` (نه `cart_fp`).
 - Enhanced measurement: «Page changes based on browser history events» خاموش (اپ SPA page_view را خودش می‌فرستد).
 - Key events و internal traffic (IP دفتر).
-- اختیاری (defense in depth): `send_page_view=false` روی Google tag هر دو کانتینر.
+- الزامی (TASK-003): `send_page_view=false` روی Google tag هر دو کانتینر.

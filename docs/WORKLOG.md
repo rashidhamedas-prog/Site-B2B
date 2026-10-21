@@ -1,3 +1,12 @@
+## 2026-10-21 — race مایگریشن، cart_age_bucket، page_view اپ‌مالک، لاگ و دیسک Hetzner (TASK-20261021-003)
+
+- ریشهٔ ردیف تکراری 003: api/worker/worker_b هر سه `migrationsRun: true` و هم‌زمان بالا آمدند؛ TypeORM قفل بین‌پروسسی ندارد. فیکس: فقط api با `pg_advisory_lock` قبل از Nest مایگریت می‌کند؛ workerها `TYPEORM_MIGRATIONS_RUN=false`. migration جدید ندارد.
+- DB: بعد از بکاپ و restore-check، ۱۴ ردیف تکراری history در هر دو DB در تراکنش حذف شد؛ کوئری dup هر دو 0 ردیف، ۷۹/۷۹، md5 یکسان. schema 003 سالم.
+- GA4: `cart_age_bucket` (۴ مقدار) dimension؛ `cart_age_days` فقط metric؛ `cart_fp` هرگز dimension.
+- page_view: `send_page_view=false` در GTM هر دو استریم؛ `/portal`، `/partners`، `/sales-partners` حالا اپ‌مالک‌اند (وگرنه page_view صفر می‌شد)؛ `/confirm/*` (توکن در path) بدون GTM.
+- Hetzner: logrotate روزانه/100M/۷، journald 300M، WARP خارج از syslog، lead-api کند (RestartSec=600)، سقف لاگ docker، هشدار دیسک ۸۰/۹۰٪؛ restart dockerd + prune بیلدکش → ۱۶GB آزاد. بکاپی حذف نشد.
+- گزارش: `docs/reports/2026-10-21-migration-lock-ga4-defs-host-logs.md`.
+
 ## 2026-10-21 — فیکس ثبت شبا در پنل همکار بازاریاب
 
 - مشکل: در صفحهٔ «حساب» پنل همکار، ذخیرهٔ شبا برای ورودی‌های رایج رد می‌شد.
@@ -11,6 +20,7 @@
 - فیکس: سبد بعد از mount؛ پوستهٔ بارگذاری/مهمان/سبد خالی؛ GA مستقل از سبد؛ `set`/`config` با `send_page_view:false` پیش از GTM روی مسیرهای اپ‌مالک؛ validator داخلی + اسکریپت debug MP؛ backoff ‏nextAttemptAt (≤۴۶h، انقضا ۷۱h)، claim با SKIP LOCKED + lease + فنس؛ migration `20261021-003`؛ allowlist per-event + `cart_fp`/`cart_age_days`.
 - تست: tsc وب، specهای وب/API، concurrency روی Postgres یک‌بارمصرف، Playwright محلی ۱۲ pass / ۱ skip. فلگ `GA4_SERVER_PURCHASE_ENABLED` خاموش.
 - گزارش: `docs/reports/2026-10-21-ga4-hardening.md`.
+- LIVE `ca5d232a` روی Hetzner و replica ایران با بکاپ و تست restore قبل از migration؛ migration 003 + UNIQUE + ایندکس روی هر دو تأیید شد؛ Playwright روی production ۱۴/۱۴. Hetzner دیسک پر بود (build شکست) → پاک‌سازی لاگ/کش و deploy مجدد.
 
 ## 2026-10-21 — فیکس ریشه‌ای قیف GA4 (تکی + عمده)
 

@@ -66,9 +66,10 @@ export function isNonProductionAnalyticsHost(host: string | null | undefined): b
   return false;
 }
 
+/** No GTM/GA at all: admin, and `/confirm/*` whose path segment is a secret token. */
 export function isAdminAnalyticsPath(pathname: string | null | undefined): boolean {
   const p = pathname || '';
-  return p === '/admin' || p.startsWith('/admin/');
+  return p === '/admin' || p.startsWith('/admin/') || p.startsWith('/confirm/');
 }
 
 /**

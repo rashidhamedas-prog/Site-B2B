@@ -23,7 +23,7 @@ type GtagEvent = { name: string; params: Record<string, unknown> };
 const LEAD_KEYS = ['lead_type', 'cta_location', 'business_type', 'referral', 'payment_type', 'send_to'];
 const ECOMMERCE_KEYS = [
   'currency', 'value', 'items', 'transaction_id', 'shipping', 'shipping_tier', 'payment_type',
-  'item_list_id', 'item_list_name', 'coupon', 'cart_fp', 'cart_age_days', 'send_to',
+  'item_list_id', 'item_list_name', 'coupon', 'cart_fp', 'cart_age_days', 'cart_age_bucket', 'send_to',
 ];
 const ITEM_KEYS = [
   'item_id', 'item_name', 'item_brand', 'item_category', 'item_variant', 'price', 'quantity', 'index', 'item_list_name',
@@ -203,6 +203,7 @@ test('checkout funnel: begin/shipping/payment only on submit, deduped; order_req
   expect(shipping[0]!.params.cart_fp).toBe(fp);
   expect(payment[0]!.params.cart_fp).toBe(fp);
   expect(begin[0]!.params.cart_age_days).toBe(2);
+  expect(begin[0]!.params.cart_age_bucket).toBe('1_3_days');
   for (const e of [...begin, ...shipping, ...payment]) {
     expect(e.params.send_to).toBe(WHOLESALE_GA4);
     expectOnlyKeys(e, ECOMMERCE_KEYS);

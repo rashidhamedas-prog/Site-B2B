@@ -48,7 +48,7 @@ function bindGa4(measurementId: string) {
   if (flagged.__taranomGa4Config.has(measurementId)) return;
   flagged.__taranomGa4Config.add(measurementId);
   // Must precede the first config, or the GTM container's Google tag still sends its own page_view.
-  // Only while this route owns page_view: after a bounce to /portal etc. GTM's page_view must stay.
+  // Only while this route owns page_view (every public layout mounts GoogleAnalyticsProvider).
   if (document.querySelector(`[${GA_PAGEVIEW_OWNER_ATTR}]`)) window.gtag?.('set', { send_page_view: false });
   window.gtag?.('config', measurementId, { send_page_view: false });
 }
