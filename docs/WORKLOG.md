@@ -6,6 +6,7 @@
 - page_view: `send_page_view=false` در GTM هر دو استریم؛ `/portal`، `/partners`، `/sales-partners` حالا اپ‌مالک‌اند (وگرنه page_view صفر می‌شد)؛ `/confirm/*` (توکن در path) بدون GTM.
 - Hetzner: logrotate روزانه/100M/۷، journald 300M، WARP خارج از syslog، lead-api کند (RestartSec=600)، سقف لاگ docker، هشدار دیسک ۸۰/۹۰٪؛ restart dockerd + prune بیلدکش → ۱۶GB آزاد. بکاپی حذف نشد.
 - گزارش: `docs/reports/2026-10-21-migration-lock-ga4-defs-host-logs.md`.
+- LIVE `80c10ad5` روی Hetzner (BUILD_ID `hwTFR9t0IE8IOc9V840oU`) و replica (`dxoctNz9jqQ0mdSHVmmz_`)؛ فقط api `migrations.done`، dup=0 هر دو؛ GTM عمده v4 و تکی v3 با `send_page_view=false`؛ Playwright production ۱۸/۱۸ (spec جدید page_view شبکه‌ای هر دو دامنه).
 
 ## 2026-10-21 — فیکس ثبت شبا در پنل همکار بازاریاب
 

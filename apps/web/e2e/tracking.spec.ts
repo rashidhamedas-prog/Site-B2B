@@ -131,7 +131,7 @@ for (const path of [
   });
 }
 
-test('network: hard redirect callback → /portal/login keeps GTM page_view, dr carries no tokens', async ({ page }) => {
+test('network: hard redirect callback → /portal/login: one app page_view, dr carries no tokens', async ({ page }) => {
   const { hits } = await setup(page);
   const callback = `${process.env.E2E_WHOLESALE_ORIGIN}/payment/callback?Authority=A000TEST&Status=OK&paymentId=00000000-0000-0000-0000-000000000000`;
   await page.goto('/portal/login', { referer: callback });
@@ -145,7 +145,8 @@ test('network: hard redirect callback → /portal/login keeps GTM page_view, dr 
     expect(`${hit.dl ?? ''} ${hit.dp ?? ''} ${hit.dr ?? ''}`, `${hit.en}: no gateway token`).not.toMatch(TOKEN_PATTERN);
   }
   const views = hits.filter((h) => h.en === 'page_view');
-  expect(views, 'GTM still owns page_view on non-app routes').toHaveLength(1);
+  expect(views, 'exactly one page_view on /portal/login').toHaveLength(1);
+  expect(views[0]!.tid).toBe(WHOLESALE_GA4);
   expect(views[0]!.dr).toMatch(/\/payment\/callback$/);
 });
 

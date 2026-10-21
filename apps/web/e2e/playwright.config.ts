@@ -23,6 +23,9 @@ const proxyArgs = proxy
 
 process.env.E2E_MODE = isLocal ? 'local' : 'prod';
 process.env.E2E_WHOLESALE_ORIGIN = isLocal ? 'http://poshaktaranom.com' : base.origin;
+process.env.E2E_RETAIL_ORIGIN = isLocal
+  ? 'http://www.poshaktaranom.ir'
+  : process.env.E2E_RETAIL_URL || 'https://www.poshaktaranom.ir';
 
 export default {
   testDir: '.',

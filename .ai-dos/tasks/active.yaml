@@ -2,7 +2,8 @@ schema_version: 1
 tasks:
   - id: "TASK-20261021-003"
     title: "P0 migration race (advisory lock, api-only runner, history dedupe), GA4 cart_age_bucket, app-owned page_view on every public route, Hetzner log caps + disk alert"
-    status: "in_progress"
+    status: "deployed"
+    deployed_commit: "80c10ad5"
     risk: "high"
     owner: "cursor"
     reviewer: "pending"

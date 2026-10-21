@@ -62,4 +62,31 @@ SELECT timestamp, name, COUNT(*) FROM migrations GROUP BY timestamp, name HAVING
 `GA4_SERVER_PURCHASE_ENABLED` روی هر دو سرور تنظیم نشده (= false).
 
 ## Deploy و تست production
-(بعد از deploy تکمیل می‌شود.)
+
+| | Hetzner `5.75.200.102` | replica ایران `185.213.167.61` (DNS زنده هر دو دامنه) |
+|---|---|---|
+| سورس | git `80c10ad508f126090d58442c6bf9e6f11a75cd1c` (auto-deploy) | `SOURCE_SHA=80c10ad5-task003` (patch ۱۷ فایل، بکاپ `backups/pre-task003-20261021-165110/files-before.tgz`) |
+| web `BUILD_ID` | `hwTFR9t0IE8IOc9V840oU` | `dxoctNz9jqQ0mdSHVmmz_` |
+| `TYPEORM_MIGRATIONS_RUN` | api `true`، worker `false`، worker_b `false` | api `true`، worker `false` (worker_b روی replica اجرا نمی‌شود) |
+| لاگ بعد از boot | فقط api: `{"event":"migrations.done","count":0}`؛ workerها ۰ خط migration | همان |
+| کوئری dup بعد از deploy | 0 rows، ۷۹/۷۹ | 0 rows، ۷۹/۷۹ |
+| سقف لاگ کانتینر | هر ۹ کانتینر `max-size 10m, max-file 3` | فقط api/worker (سرویس‌های زیرساخت با `--no-deps` بازسازی نشدند) |
+| `GA4_SERVER_PURCHASE_ENABLED` | تنظیم نشده (false) | تنظیم نشده (false) |
+| دیسک | ۱۲GB آزاد (۶۸٪) بعد از build | ۴۶GB آزاد (۴۱٪) |
+
+GTM منتشرشده (از `gtm.js` زنده): `GTM-M3LQFGZV` نسخهٔ ۴ و `GTM-NKBCGQJV` نسخهٔ ۳، هر دو `vtp_configSettingsTable: send_page_view=false`. انتشار عمده عمداً بعد از deploy کد انجام شد تا `/portal` حتی چند دقیقه بی page_view نماند. marker مالکیت در HTML ‏`/portal/login`، `/partners/login`، `/sales-partners/login` (WHOLESALE) و هوم تکی (RETAIL) تأیید شد.
+
+Playwright روی production (`E2E_BASE_URL=https://poshaktaranom.com`، hitها محلی جواب داده می‌شوند و به GA نمی‌رسند): **۱۸/۱۸ pass**. spec جدید `e2e/pageview-network.spec.ts` در سطح شبکه برای هر دامنه جدا:
+- عمده: `/checkout` → یک page_view (`G-YVT5DXZF5Z`)؛ کلیک SPA به `/products` (بدون reload سند) → دقیقاً یکی دیگر. callback با `Authority/paymentId` → یک page_view با `dl=https://poshaktaranom.com/payment/callback` بدون query.
+- تکی: `/` → یک page_view (`G-F2V7VSJMLE`)؛ SPA به `/products` → دقیقاً یکی دیگر. callback → یک page_view با `dl=https://www.poshaktaranom.ir/payment/callback`.
+- هیچ hit به استریم دیگر؛ هیچ `authority|paymentid|trackingcode|token` در dl/dp/dr؛ `/portal/login` با referrer توکن‌دار → یک page_view با dr پاک.
+
+Smoke: `api.poshaktaranom.com/v1/health` 200 (0.49s)، هوم عمده 200 (0.83s)، `/portal/login` 200، هوم تکی 200 (0.88s)، callback تکی 200.
+
+Rollback: کد ← `git revert 274ec218` + deploy؛ GTM ← نسخهٔ ۳ کانتینر عمده را republish (اما قبلش revert کد، وگرنه دو page_view)؛ host ← فایل‌های `/var/backups/taranom-host/*` و حذف drop-inها.
+
+## باز / خارج از این تسک
+- push تلگرام هشدار دیسک: `DISK_ALERT_TELEGRAM_CHAT_ID` در `.env` Hetzner لازم است.
+- ثبت custom dimension ‏`cart_age_bucket` و metric ‏`cart_age_days` در GA4 Admin هر دو property (دستی).
+- `order-money-guard.spec.ts` (کامیت `8bb51acd`، خارج از این تسک) در `tsc -p apps/api` خطای narrowing دارد.
+- `lead-api` و `lead_postgres` (پروژهٔ جدا) خاموش/خراب‌اند؛ فقط loop کند شد.
