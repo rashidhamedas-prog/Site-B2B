@@ -3,7 +3,7 @@ tasks:
   - id: "TASK-20261021-001"
     title: "GA4 funnel root-cause fix: checkout inflation, server purchase exactly-once, wholesale leads"
     status: "deployed"
-    deployed_commit: "42a18e1a"
+    deployed_commit: "24341139"
     risk: "high"
     owner: "cursor"
     reviewer: "pending (independent)"

@@ -4630,3 +4630,10 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 - Next: independent review + security review (high risk: payment verify path + migration); pg_dump backup before deploy (migrationsRun creates analytics_event_log); set GA4_MP_* secrets on VPS .env then flip GA4_SERVER_PURCHASE_ENABLED=true.
 - Rollback: flag false -> git revert -> migration down (drops only analytics_event_log).
 - Docs: docs/reports/2026-10-21-ga4-funnel-root-cause-fix.md, docs/analytics/GA4-FUNNEL-FIX-MANUAL-STEPS.md.
+## 2026-10-21 — TASK-20261021-001 — review fixes live
+
+- Independent review: CHANGES REQUESTED (flag off, no prod impact). Fixed H1/M1/M2/M3/M5/L2/L4/L5 in e26235ca + 2cfa566c; docs 24341139.
+- Live on Hetzner (auto-deploy) and Iran replica (tar patch, backup backups/pre-ga4-review-20261021-121656, pg_restore list ok). Migration AnalyticsEventLogGaIds1761004800002 confirmed on both.
+- GTM: unwanted referrals regex saved on both Google tags (G-F2V7VSJMLE, G-YVT5DXZF5Z), verified after reload.
+- Blocked: analytics.google.com returns 403 to the agent browser (key events, MP secrets, enhanced measurement still manual). Torob panel UTM still manual.
+- Before enabling GA4_SERVER_PURCHASE_ENABLED: create MP secrets per stream, put in /opt/taranom/.env on BOTH servers, recreate api. Roll back web+api together.
