@@ -17,6 +17,22 @@ export function retailToWholesaleUrl(content: string, path = '/'): string {
   return url.toString();
 }
 
+/** Add the retail→wholesale UTMs to an admin-entered link only when it targets the wholesale host and has none. */
+export function withRetailToWholesaleUtm(href: string | undefined, content: string): string | undefined {
+  if (!href) return href;
+  try {
+    const url = new URL(href);
+    const host = url.hostname.toLowerCase();
+    if (host !== 'poshaktaranom.com' && host !== 'www.poshaktaranom.com') return href;
+    if (url.searchParams.has('utm_source')) return href;
+    const tagged = new URL(retailToWholesaleUrl(content));
+    tagged.searchParams.forEach((value, key) => url.searchParams.set(key, value));
+    return url.toString();
+  } catch {
+    return href;
+  }
+}
+
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'https://api.poshaktaranom.com/v1';
 

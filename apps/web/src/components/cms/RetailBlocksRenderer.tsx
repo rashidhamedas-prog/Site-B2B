@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
-import { retailToWholesaleUrl } from '@/lib/seo-origins';
+import { retailToWholesaleUrl, withRetailToWholesaleUtm } from '@/lib/seo-origins';
 import type { ContentBlock } from '@/lib/cms/types';
 import { arr, str } from '@/lib/cms/fetch';
 import { RetailHero } from '@/components/retail/RetailHero';
@@ -109,7 +109,7 @@ export async function RetailBlocksRenderer({
             headline={str(p, 'headline') || undefined}
             body={str(p, 'body') || undefined}
             ctaLabel={str(p, 'ctaLabel') || undefined}
-            ctaHref={str(p, 'ctaHref') || undefined}
+            ctaHref={withRetailToWholesaleUtm(str(p, 'ctaHref') || undefined, 'cms_cta')}
             ctaSecondaryLabel={str(p, 'ctaSecondaryLabel') || undefined}
             ctaSecondaryHref={str(p, 'ctaSecondaryHref') || undefined}
             headingAs={str(p, 'headingAs') === 'h1' ? 'h1' : 'h2'}
