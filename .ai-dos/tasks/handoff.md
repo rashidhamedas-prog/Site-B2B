@@ -4621,3 +4621,12 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 ## 2026-09-28T08:32:00Z — TASK-20260928-001 ready to ship
 - SMS resend cooldown API+UI complete; specs OK; web tsc OK
 
+
+## 2026-10-21 — TASK-20261021-001 (GA4 funnel fix) — checkpoint
+
+- Objective: root-cause fix of GA4 funnel (retail inflation, purchase=0, wholesale page_view-only).
+- State: code + specs + docs done in working tree on master; NOT committed / deployed (awaiting user approval).
+- Gates: web tsc OK, next build OK, retail-analytics.spec OK, api ga4-mp.spec + migration spec + payment hardening specs OK. API tsc has a pre-existing error in order-money-guard.spec.ts (untouched).
+- Next: independent review + security review (high risk: payment verify path + migration); pg_dump backup before deploy (migrationsRun creates analytics_event_log); set GA4_MP_* secrets on VPS .env then flip GA4_SERVER_PURCHASE_ENABLED=true.
+- Rollback: flag false -> git revert -> migration down (drops only analytics_event_log).
+- Docs: docs/reports/2026-10-21-ga4-funnel-root-cause-fix.md, docs/analytics/GA4-FUNNEL-FIX-MANUAL-STEPS.md.

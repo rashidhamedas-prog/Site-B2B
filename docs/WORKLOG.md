@@ -5,6 +5,14 @@
 - فیکس: نرمال‌سازی اعداد فارسی/عربی + حذف نویسه‌های bidi/zero-width + افزودن خودکار `IR`؛ پیام‌های فارسی DTO؛ خطا و راهنما کنار فیلد شبا.
 - تست: `sales-partner-policy.spec.ts` و `sales-partner-iban.spec.ts` سبز؛ tsc وب و API بدون خطای جدید.
 
+## 2026-10-21 — فیکس ریشه‌ای قیف GA4 (تکی + عمده)
+
+- ریشه: begin/shipping/payment روی mount و تغییر state شلیک می‌شدند؛ `/payment/*` بدون GA (purchase=0، landing خالی)؛ عمده بدون Measurement ID fallback و بدون رویداد lead.
+- فیکس: مراحل checkout فقط روی submit با dedupe سبد در sessionStorage؛ purchase سرور با Measurement Protocol و `analytics_event_log` (UNIQUE eventName+transactionId) پشت `GA4_SERVER_PURCHASE_ENABLED`؛ GA در `/payment/layout`؛ عمده view_item/select_item/lead events؛ UTM لینک‌های تکی→عمده.
+- تست: tsc وب، next build، retail-analytics.spec، ga4-mp.spec، spec migration، specهای payment سبز. پکیج جدید ندارد.
+- گزارش: `docs/reports/2026-10-21-ga4-funnel-root-cause-fix.md`؛ کارهای دستی: `docs/analytics/GA4-FUNNEL-FIX-MANUAL-STEPS.md`.
+- وضعیت: commit/deploy منتظر تأیید کاربر (migration نیاز به بکاپ دارد).
+
 ## 2026-10-20 — سایزبندی سفارشی + پک AUTO|MANUAL (XOR)
 
 - ادمین محصول: `sizeType=CUSTOM` با `sizeLabels`/`sizeGuideLines`؛ تعریف پک یا `AUTO` (رنگ×سایز) یا `MANUAL` (`packComposition` per-size).
