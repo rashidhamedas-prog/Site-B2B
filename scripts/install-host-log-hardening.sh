@@ -21,12 +21,14 @@ sudo tee /etc/logrotate.d/rsyslog >/dev/null <<'EOF'
 /var/log/user.log
 /var/log/cron.log
 {
+	su root syslog
 	daily
 	maxsize 100M
 	rotate 7
 	missingok
 	notifempty
 	compress
+	create 0640 syslog adm
 	sharedscripts
 	postrotate
 		/usr/lib/rsyslog/rsyslog-rotate
@@ -34,6 +36,14 @@ sudo tee /etc/logrotate.d/rsyslog >/dev/null <<'EOF'
 }
 EOF
 sudo logrotate -d /etc/logrotate.d/rsyslog >/dev/null 2>&1
+
+# rsyslogd runs as `syslog`: with /var/log at 0755 it cannot recreate a rotated file and loops
+# "omfile suspended/resumed" on every message. Ubuntu default is root:syslog 0775.
+sudo chown root:syslog /var/log
+sudo chmod 0775 /var/log
+for f in syslog mail.log kern.log auth.log user.log cron.log; do
+  [ -e "/var/log/$f" ] || sudo install -o syslog -g adm -m 0640 /dev/null "/var/log/$f"
+done
 
 # maxsize is only evaluated when logrotate runs: run it hourly.
 sudo mkdir -p /etc/systemd/system/logrotate.timer.d

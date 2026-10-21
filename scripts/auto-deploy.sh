@@ -72,3 +72,9 @@ if [ "$ok" != "1" ]; then
 fi
 
 echo "$(date -Is) deploy complete at $(git rev-parse --short HEAD)"
+
+# Every build leaves cache and the previous images behind; on a 38G disk that ran out mid-build.
+# Keep 3G of warm cache for fast rebuilds; dangling images only (tagged images stay).
+docker builder prune -f --max-used-space 3g >/dev/null 2>&1 || true
+docker image prune -f >/dev/null 2>&1 || true
+echo "$(date -Is) disk after cleanup: $(df -h / | awk 'NR==2 {print $4 " free (" $5 " used)"}')"

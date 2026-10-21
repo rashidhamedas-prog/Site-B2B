@@ -46,7 +46,7 @@ SELECT timestamp, name, COUNT(*) FROM migrations GROUP BY timestamp, name HAVING
 
 ## ۴. پایداری Hetzner
 
-**منبع رشد syslog (۶۶۵MB در ۳.۵ روز):** `lead-api.service` (پروژهٔ جدا) هر ۷ ثانیه crash می‌کرد (۲۴۵ هزار restart؛ `lead_postgres` از ۵ هفته پیش متوقف است)، لاگ DEBUG ‏`warp-svc` (Cloudflare WARP)، و xray.
+**منبع رشد syslog (۶۶۵MB در ۳.۵ روز):** `lead-api.service` (پروژهٔ جدا) هر ۷ ثانیه crash می‌کرد (۲۴۵ هزار restart؛ `lead_postgres` از ۵ هفته پیش متوقف است)، لاگ DEBUG ‏`warp-svc` (Cloudflare WARP)، و xray. پیام‌های «file action suspended/resumed» ریشهٔ جدا داشتند: `/var/log` روی `0755` بود (پیش‌فرض Ubuntu ‏`root:syslog 0775`)، پس rsyslogd (کاربر `syslog`) فایل چرخیده را نمی‌توانست دوباره بسازد و برای هر پیام یک جفت suspend/resume می‌نوشت؛ احتمالاً چون `su root syslog` در بلاک logrotate نبود، کسی برای ساکت کردن logrotate مجوز را ۷۵۵ کرده بود. فیکس: `0775` + `su root syslog` + `create 0640 syslog adm`؛ بعد از چرخش اجباری فایل جدید ساخته شد و ۰ پیام suspend.
 
 `scripts/install-host-log-hardening.sh` (idempotent؛ نسخهٔ قبلی فایل‌ها در `/var/backups/taranom-host`):
 - logrotate خانوادهٔ syslog: `daily`، `maxsize 100M`، `rotate 7`، `compress`؛ تایمر logrotate ساعتی (تا maxsize واقعاً اعمال شود).
@@ -56,6 +56,7 @@ SELECT timestamp, name, COUNT(*) FROM migrations GROUP BY timestamp, name HAVING
 - `/etc/docker/daemon.json`: `json-file` با `max-size 10m`، `max-file 3`؛ compose هم برای همهٔ سرویس‌ها (postgres/redis/meili/minio/web/nginx) همین سقف را دارد (meili ۳۴۴MB و postgres ۱۷۴MB بی‌سقف بودند).
 - هشدار دیسک: `scripts/disk-alert.sh` هر ۱۰ دقیقه (cron root)؛ ۸۰٪ warning، ۹۰٪ critical، recovery؛ syslog (`taranom-disk-alert`) + `/var/lib/taranom/disk-alert.log`؛ push تلگرام فقط اگر `DISK_ALERT_TELEGRAM_CHAT_ID` در `.env` باشد (فعلاً تنظیم نشده). هر سه مسیر روی سرور تست شد.
 - فضا: restart کنترل‌شدهٔ dockerd (کانتینرها در ۴۵ ثانیه healthy) leaseهای stale بیلدکش را آزاد کرد (12.6GB → 3.9GB) و prune شد. **۲.۸GB → ۱۶GB آزاد (۹۳٪ → ۵۸٪).** هیچ بکاپی حذف نشد.
+- رشد بعد از هر build: `auto-deploy.sh` بعد از deploy موفق `docker builder prune --max-used-space 3g` (۳GB کش گرم برای build سریع) و `docker image prune` (فقط dangling) اجرا می‌کند. بعد از دو build امروز: ۱۳GB آزاد (۶۶٪).
 - سیاست retention بکاپ: `backup-postgres.sh` روزانه 02:15 با `BACKUP_KEEP_DAYS=14` (پیش‌فرض)؛ پوشه‌های `pre-*` دستی‌اند و حذف خودکار نمی‌شوند. فایل‌های `/tmp/cutover-*` (۱.۵GB، بکاپ MinIO زمان cutover) دست نخوردند.
 
 ## ۵. فلگ
