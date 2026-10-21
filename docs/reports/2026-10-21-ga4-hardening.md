@@ -64,6 +64,28 @@ Exploration (Free form، بازهٔ ۷/۲۸ روز):
 - Playwright محلی: ۱۳ pass، ۱ skip (PDP نیاز به کاتالوگ). تست‌های network بعد از همهٔ فیکس‌ها ۱۵/۱۵ (۵ تکرار × ۳ تست).
 - `ga4-purchase.error-path.spec` سبز.
 
+## Deploy (LIVE `ca5d232a`)
+
+| | Hetzner `5.75.200.102` | replica ایران `185.213.167.61` (DNS زنده) |
+|---|---|---|
+| بکاپ قبل از migration | `backups/postgres/pre-ga4-hardening-20261021T143837Z` | `backups/pre-ga4-hardening-20261021-145401` (+ `files-before.tgz`) |
+| تست restore در DB موقت | ۱۱۴ جدول / ۷ سفارش / ۹۱ migration = live | ۱۱۴ / ۷ / ۹۲ = live |
+| سورس | git `ca5d232` | `SOURCE_SHA=ca5d232a-ga4-hardening` |
+| chunk `/checkout` | `page-c9c158cc3d49ec32.js` | `page-c9c158cc3d49ec32.js` |
+| migration 003 | اجرا شد (دو ردیف 124/125: race اجرای هم‌زمان api/worker/worker_b با `migrationsRun`؛ migration idempotent است، schema درست) | اجرا شد، یک ردیف (api اول، بعد worker) |
+| UNIQUE `UQ_analytics_event_log_event_txn` + `IDX_…_status_next` + ستون‌ها | ✓ | ✓ |
+| `GA4_SERVER_PURCHASE_ENABLED=true` | ندارد | ندارد |
+
+- Hetzner: build اول با «no space left on device» شکست خورد (دیسک ۹۶٪). فقط journal (۳۴۶MB)، syslog چرخیده، کش apt/npm/pip پاک شد → ۳GB آزاد؛ deploy با `TARANOM_DEPLOY_FORCE=1` موفق. syslog جاری ۶۶۰MB است و سریع رشد می‌کند → بدهی.
+- Smoke (هر دو origin واقعی): `api.poshaktaranom.com/v1/health` 200، `/checkout` 200، PDP 200، callback 200، هوم 200 (TTFB ۰.۲۹–۰.۵۸s از کلاینت).
+- Playwright روی production (`E2E_BASE_URL=https://poshaktaranom.com`): **۱۴/۱۴ pass** شامل PDP. همهٔ hitها `tid=G-YVT5DXZF5Z`؛ هیچ توکنی در dl/dp/dr.
+- Rollback: `pg_restore` از بکاپ بالا (تست شده) یا `down()` migration 003؛ replica: `tar -xzf files-before.tgz` + build.
+
+## بدهی فنی
+- `migrationsRun` در هر سه پروسس api/worker/worker_b → race؛ فقط api یا advisory lock.
+- `npm test` در `apps/api` روی Windows از سقف ۸۱۹۱ کاراکتر cmd بیشتر است (از قبل).
+- دیسک Hetzner و syslog پرحجم.
+
 ## کارهای فقط در GA4/GTM Admin
 - Accept MP terms + ساخت API secret هر استریم (برای `ga4-mp-validate` و فعال‌سازی بعدی فلگ).
 - Custom dimension: `cart_fp`، `cart_age_days`.
