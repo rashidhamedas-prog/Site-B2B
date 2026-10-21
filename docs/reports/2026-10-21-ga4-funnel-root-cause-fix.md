@@ -50,11 +50,28 @@ Task: `TASK-20261021-001` · ریسک: high (مسیر پرداخت + migration) 
 `20261021-001-analytics-event-log` فقط یک جدول جدید می‌سازد (`CREATE TABLE IF NOT EXISTS` + unique + دو index). به جدول‌های موجود دست نمی‌زند. down = `DROP TABLE IF EXISTS "analytics_event_log"`.
 در production با `migrationsRun` هنگام بالا آمدن api اجرا می‌شود ← **قبل از دیپلوی بکاپ `pg_dump` بگیرید.**
 
+`20261021-002-analytics-event-log-ga-ids` دو ستون nullable (`gaClientId`، `gaSessionId`) اضافه می‌کند تا job بتواند purchaseهای ناموفق سمت سرور را دوباره بفرستد. شناسهٔ مستعار `_ga` است، نه داده شخصی.
+
 ## Rollback
 
 1. فوری: `GA4_SERVER_PURCHASE_ENABLED=false` و ری‌استارت api (purchase به مرورگر برمی‌گردد).
-2. کد: `git revert` روی commit.
+2. کد: `git revert` روی commit. **وب و API را با هم برگردانید:** وب حالا `gaClientId`/`gaSessionId` را به `/payments/verify` می‌فرستد و DTO قدیمی (با `forbidNonWhitelisted`) آن را با 400 رد می‌کند.
 3. دیتابیس (اختیاری): migration down؛ جدول فقط لاگ آنالیتیکس است.
+
+## بازبینی مستقل و اصلاحات (همان روز)
+
+بازبینی کد/امنیت: **CHANGES REQUESTED** (فلگ خاموش بود، پس production آسیبی ندید). اصلاحات:
+
+- **مالکیت purchase یک‌بار و اتمیک تعیین می‌شود.** با client id: سرور ردیف را `PENDING → SENDING` claim می‌کند و تنها فرستنده می‌ماند؛ شکست → `FAILED` و cron هر ۵ دقیقه (حداکثر ۵ تلاش، تا ۷۲ ساعت) دوباره می‌فرستد. بدون client id: `PENDING → CLIENT_FALLBACK` و سرور دیگر هرگز برای آن تراکنش نمی‌فرستد. claim ناموفق → وضعیت تازه از DB خوانده می‌شود (نه مقدار کهنه). این دوبار شمردن و صفر شمردن در verifyهای هم‌زمان را می‌بندد.
+- **verify دیگر منتظر Google نمی‌ماند:** یک تلاش inline با سقف ۱.۵ ثانیه (قبلاً ۲×۴ ثانیه)؛ body پاسخ cancel می‌شود.
+- **بعد از 2xx، خطای ثبت `SENT` دیگر purchase را به مرورگر نمی‌دهد.**
+- مقایسهٔ stale با `now() - interval` در SQL (بی‌وابستگی به timezone Node).
+- نام index‌های entity با migration یکی شد.
+- `/checkout` عمده حالا GA را خودش mount می‌کند (رویدادهای checkout بعد از hard load گم نمی‌شوند).
+- `page_location` پاک‌شده با `gtag('set')` هم ست می‌شود تا رویدادهای بعدی صفحهٔ برگشت (مثل purchase) توکن درگاه (`Authority`، `paymentId`) را به Google نبرند.
+- `view_item` ساختگی وبلاگ حذف شد (مقاله را محصول حساب می‌کرد)؛ فقط `blog_article_view` می‌ماند.
+
+تصمیم محصولی (بدون تغییر): سفارش COD تکی تا پرداخت نشود `purchase` نیست.
 
 ## SEO
 
