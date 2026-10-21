@@ -117,7 +117,12 @@ export function parseReviewReason(raw: unknown): string {
 const IRAN_IBAN = /^IR[0-9]{24}$/;
 
 export function normalizeIban(raw: unknown): string {
-  const iban = String(raw ?? '').replace(/[\s-]/g, '').toUpperCase();
+  let iban = String(raw ?? '')
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\s\-_.\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u2010-\u2015\u2212]/g, '')
+    .toUpperCase();
+  if (/^[0-9]{24}$/.test(iban)) iban = `IR${iban}`;
   if (!IRAN_IBAN.test(iban)) throw new Error('INVALID_IBAN');
   return iban;
 }

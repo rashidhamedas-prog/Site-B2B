@@ -23,6 +23,7 @@ export default function SalesPartnerProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [ibanError, setIbanError] = useState<string | null>(null);
   const [pwdError, setPwdError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pwdBusy, setPwdBusy] = useState(false);
@@ -36,14 +37,14 @@ export default function SalesPartnerProfilePage() {
 
   async function saveIban() {
     setBusy(true);
-    setError(null);
+    setIbanError(null);
     try {
       const next = await apiClient.patch<Me>('/sales-partners/me/iban', { iban });
       setMe((prev) => ({ ...next, canSetPasswordWithoutCurrent: prev?.canSetPasswordWithoutCurrent }));
       setIban('');
       toast.show('شبا ذخیره شد');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره شبا ناموفق بود');
+      setIbanError(err instanceof Error ? err.message : 'ذخیره شبا ناموفق بود');
     } finally {
       setBusy(false);
     }
@@ -132,7 +133,13 @@ export default function SalesPartnerProfilePage() {
           placeholder="IRxxxxxxxxxxxxxxxxxxxxxx"
           dir="ltr"
           autoComplete="off"
+          aria-describedby="sp-iban-hint"
+          aria-invalid={ibanError ? true : undefined}
         />
+        <p id="sp-iban-hint" className="text-xs text-stone-500">
+          ۲۴ رقم شبا را با یا بدون IR وارد کنید؛ اعداد فارسی و فاصله هم قبول است.
+        </p>
+        {ibanError ? <SpAlert>{ibanError}</SpAlert> : null}
         <SpButton type="submit" disabled={busy || !iban.trim()}>
           {busy ? 'در حال ذخیره…' : 'ذخیره شبا'}
         </SpButton>

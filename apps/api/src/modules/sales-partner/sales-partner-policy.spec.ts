@@ -72,6 +72,16 @@ try {
   assert(err instanceof Error && err.message === 'INVALID_DISPLAY_NAME', 'short name');
 }
 assert(normalizeIban('ir 120170000000123456789012') === 'IR120170000000123456789012', 'iban');
+assert(normalizeIban('IR۱۲۰۱۷۰۰۰۰۰۰۰۱۲۳۴۵۶۷۸۹۰۱۲') === 'IR120170000000123456789012', 'iban persian digits');
+assert(normalizeIban('\u200EIR12-0170-0000-0012-3456-7890-12\u200F') === 'IR120170000000123456789012', 'iban bidi marks');
+assert(normalizeIban('120170000000123456789012') === 'IR120170000000123456789012', 'iban without IR');
+assert(normalizeIban('IR 12 0170 0000 0012 3456 7890 12') === 'IR120170000000123456789012', 'iban spaced');
+try {
+  normalizeIban('IR1201700000001234');
+  assert(false, 'iban too short');
+} catch (err) {
+  assert(err instanceof Error && err.message === 'INVALID_IBAN', 'iban too short');
+}
 assert(maskIban('IR120170000000123456789012') === 'IR12****9012', 'mask iban');
 assert(maskPhone('09151234567') === '0915***67', 'mask phone');
 const pub = toPublicSalesPartner({

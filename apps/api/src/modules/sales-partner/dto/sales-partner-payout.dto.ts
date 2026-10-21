@@ -33,8 +33,8 @@ export class ConfirmSalesPartnerPayoutDto {
 
 export class PatchSalesPartnerIbanDto {
   @ApiProperty()
-  @IsString()
-  @MinLength(26)
-  @MaxLength(32)
+  @IsString({ message: 'شماره شبا معتبر نیست' })
+  @MinLength(24, { message: 'شماره شبا باید ۲۴ رقم بعد از IR باشد' })
+  @MaxLength(80, { message: 'شماره شبا معتبر نیست' })
   iban: string;
 }
