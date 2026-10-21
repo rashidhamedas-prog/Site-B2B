@@ -27,6 +27,8 @@ import { TorobPayAdapter } from './adapters/torobpay.adapter';
 import { DisabledPaymentAdapter } from './adapters/disabled.adapter';
 import { PaymentProviderRegistryService } from './payment-provider-registry.service';
 import { OrderModule } from '../order/order.module';
+import { AnalyticsEventLogEntity } from './entities/analytics-event-log.entity';
+import { Ga4PurchaseService } from './ga4-purchase.service';
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { OrderModule } from '../order/order.module';
       OrderEntity,
       InvoiceEntity,
       CustomerEntity,
+      AnalyticsEventLogEntity,
     ]),
     AuthModule,
     AffiliateModule,
@@ -54,6 +57,7 @@ import { OrderModule } from '../order/order.module';
     InstallmentOverdueJob,
     PaymentMetrics,
     PaymentProviderRegistryService,
+    Ga4PurchaseService,
     ZarinPalAdapter,
     DigiPayAdapter,
     TorobPayAdapter,

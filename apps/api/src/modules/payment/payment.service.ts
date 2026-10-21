@@ -6,8 +6,11 @@ import {
   ForbiddenException,
   ConflictException,
   Inject,
+  Optional,
   forwardRef,
 } from '@nestjs/common';
+import { Ga4PurchaseService } from './ga4-purchase.service';
+import type { Ga4Channel } from './ga4-mp';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -87,7 +90,35 @@ export class PaymentService {
     private readonly metrics: PaymentMetrics,
     @Inject(forwardRef(() => OrderService))
     private readonly orders: OrderService,
+    @Optional()
+    private readonly ga4Purchase?: Ga4PurchaseService,
   ) {}
+
+  private paymentChannel(p: { meta?: Record<string, any> | null; callbackUrl?: string | null }): Ga4Channel {
+    return p.meta?.channel === 'RETAIL' || (p.callbackUrl || '').includes('poshaktaranom.ir')
+      ? 'RETAIL'
+      : 'WHOLESALE';
+  }
+
+  /** GA4 purchase after verified capture. Never throws into payment flow. */
+  private async ga4PurchaseAfterVerify(
+    payment: { id: string; orderId?: string | null; meta?: Record<string, any> | null; callbackUrl?: string | null },
+    extra?: { gaClientId?: string; gaSessionId?: string },
+  ): Promise<boolean> {
+    if (!this.ga4Purchase || !payment.orderId) return false;
+    try {
+      const res = await this.ga4Purchase.sendPurchaseOnce({
+        orderId: payment.orderId,
+        paymentId: payment.id,
+        channel: this.paymentChannel(payment),
+        gaClientId: extra?.gaClientId,
+        gaSessionId: extra?.gaSessionId,
+      });
+      return res.serverOwned;
+    } catch {
+      return false;
+    }
+  }
 
   /** Safe structured fields for start/verify logs (no raw mobile/email). */
   private paymentLogCtx(fields: {
@@ -771,6 +802,8 @@ export class PaymentService {
       state?: string;
       transactionId?: string;
       amount?: string;
+      gaClientId?: string;
+      gaSessionId?: string;
     },
   ): Promise<PaymentPublicDto> {
     // Fast path outside txn for terminal states
@@ -840,7 +873,8 @@ export class PaymentService {
         }),
       );
       await this.retryApplyCapturedPayment(preview.orderId, paymentId);
-      return toPublicPaymentDto(preview, { ok: true, alreadyVerified: true });
+      const ga4ServerPurchase = await this.ga4PurchaseAfterVerify(preview, extra);
+      return toPublicPaymentDto(preview, { ok: true, alreadyVerified: true, ga4ServerPurchase });
     }
     if (preview.status === 'CANCELLED' || preview.status === 'REFUNDED') {
       // Soft-cancelled locally must not permanently block a successful PSP verify.
@@ -1081,7 +1115,12 @@ export class PaymentService {
         }),
       );
       await this.retryApplyCapturedPayment(applied.payment.orderId, paymentId);
-      return toPublicPaymentDto(applied.payment, { ok: true, alreadyVerified: true });
+      const ga4Dup = await this.ga4PurchaseAfterVerify(applied.payment, extra);
+      return toPublicPaymentDto(applied.payment, {
+        ok: true,
+        alreadyVerified: true,
+        ga4ServerPurchase: ga4Dup,
+      });
     }
 
     this.metrics.incr('payment_success_total');
@@ -1095,9 +1134,11 @@ export class PaymentService {
       }),
     );
 
+    const ga4ServerPurchase = await this.ga4PurchaseAfterVerify(applied.payment, extra);
     return toPublicPaymentDto(applied.payment, {
       ok: true,
       alreadyVerified: false,
+      ga4ServerPurchase,
     });
   }
 

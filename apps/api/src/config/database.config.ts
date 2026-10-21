@@ -53,6 +53,7 @@ import { PaymentLedgerEntryEntity } from '../modules/payment/entities/payment-le
 import { RefundEntity } from '../modules/payment/entities/refund.entity';
 import { PaymentEventEntity } from '../modules/payment/entities/payment-event.entity';
 import { PaymentProviderEntity } from '../modules/payment/entities/payment-provider.entity';
+import { AnalyticsEventLogEntity } from '../modules/payment/entities/analytics-event-log.entity';
 import {
   InstallmentContractEntity,
   InstallmentScheduleEntity,
@@ -137,6 +138,7 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     RefundEntity,
     PaymentEventEntity,
     PaymentProviderEntity,
+    AnalyticsEventLogEntity,
     InstallmentContractEntity,
     InstallmentScheduleEntity,
     BlogPostEntity,

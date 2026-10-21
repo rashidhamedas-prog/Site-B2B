@@ -205,6 +205,8 @@ export class PaymentController {
       state: body.state,
       transactionId: body.transactionId,
       amount: body.amount,
+      gaClientId: body.gaClientId,
+      gaSessionId: body.gaSessionId,
     });
   }
 

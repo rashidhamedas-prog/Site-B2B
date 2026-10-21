@@ -342,6 +342,20 @@ export class VerifyPaymentDto {
   @IsString()
   @MaxLength(32)
   amount?: string;
+
+  /** GA4 client id from the `_ga` cookie (e.g. 123456789.1700000000). Not PII. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  gaClientId?: string;
+
+  /** GA4 session id from the `_ga_<stream>` cookie. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  gaSessionId?: string;
 }
 
 export class ManualPaymentDto {

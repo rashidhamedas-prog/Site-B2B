@@ -18,6 +18,8 @@ export type PaymentPublicDto = {
   alreadyVerified?: boolean;
   cancelled?: boolean;
   error?: string;
+  /** True when the API owns the GA4 purchase for this order (browser must skip it). */
+  ga4ServerPurchase?: boolean;
 };
 
 const PUBLIC_EXTRA_KEYS = new Set<keyof PaymentPublicDto>([
@@ -27,6 +29,7 @@ const PUBLIC_EXTRA_KEYS = new Set<keyof PaymentPublicDto>([
   'alreadyVerified',
   'cancelled',
   'error',
+  'ga4ServerPurchase',
 ]);
 
 /**
