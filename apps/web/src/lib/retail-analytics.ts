@@ -8,6 +8,7 @@ import {
   isNonProductionAnalyticsHost,
   publicAnalyticsPagePath,
   RETAIL_GA4_MEASUREMENT_ID,
+  WHOLESALE_GA4_MEASUREMENT_ID,
   sanitizeAnalyticsSearch,
   sanitizeGa4Id,
   stripRetailInternalPath,
@@ -154,7 +155,7 @@ function gtagEvent(name: string, params: Record<string, unknown>) {
 }
 
 function resolveEcommerceGa4Id(channel: GoogleChannel): string {
-  if (channel === 'WHOLESALE') return ga4EnvFor('WHOLESALE');
+  if (channel === 'WHOLESALE') return resolveWholesaleGa4Id();
   return resolveRetailGa4Id();
 }
 
@@ -229,6 +230,7 @@ export function trackViewItemList(items: RetailAnalyticsItemInput[], listName: s
 }
 
 const checkoutSteps = new Set<string>();
+const CHECKOUT_STEP_STORAGE_PREFIX = 'taranom_ga4_checkout_step:';
 
 export function checkoutCartFingerprint(
   items: Array<{ sku?: string; productId?: string; quantity?: number; unitPrice?: number; price?: number }>,
@@ -238,12 +240,34 @@ export function checkoutCartFingerprint(
     .join(',');
 }
 
-/** Returns true the first time this cart and selection are seen. */
+function checkoutStepStorageKey(eventName: string, fingerprint: string, selection: string): string {
+  return `${CHECKOUT_STEP_STORAGE_PREFIX}${eventName}|${fingerprint}|${selection}`;
+}
+
+/** Returns true the first time this cart and selection are seen (memory + sessionStorage). */
 export function claimCheckoutStep(eventName: string, fingerprint: string, selection: string): boolean {
   const key = `${eventName}|${fingerprint}|${selection}`;
-  if (!eventName || !selection || checkoutSteps.has(key)) return false;
+  if (!eventName || !selection || !fingerprint) return false;
+  if (checkoutSteps.has(key)) return false;
+  try {
+    if (typeof window !== 'undefined') {
+      const storageKey = checkoutStepStorageKey(eventName, fingerprint, selection);
+      if (window.sessionStorage?.getItem(storageKey)) {
+        checkoutSteps.add(key);
+        return false;
+      }
+      window.sessionStorage?.setItem(storageKey, '1');
+    }
+  } catch {
+    /* private mode — memory dedupe still applies */
+  }
   checkoutSteps.add(key);
   return true;
+}
+
+/** begin_checkout once per cart fingerprint per session (not on page mount). */
+export function claimBeginCheckout(fingerprint: string): boolean {
+  return claimCheckoutStep('begin_checkout', fingerprint, 'start');
 }
 
 export function inferRetailItemList(pathname: string, search = ''): { id: string; name: string } {
@@ -300,6 +324,8 @@ export function trackViewCart(inputs: RetailAnalyticsItemInput[], valueIrr: numb
 }
 
 export function trackBeginCheckout(inputs: RetailAnalyticsItemInput[], valueIrr: number) {
+  const fingerprint = checkoutCartFingerprint(inputs);
+  if (!claimBeginCheckout(fingerprint)) return;
   const items = inputs
     .map((it, i) => toGa4Item(it, i))
     .filter((it): it is Ga4Item => Boolean(it));
@@ -488,7 +514,8 @@ export function trackPurchase(opts: {
     .map((id) => String(id || '').trim())
     .filter(Boolean);
   if (ids.some((id) => hasPurchaseBeenFired(id))) return;
-  if (!shouldSendRetailAnalytics()) return;
+  // Host-aware: retail on .ir, wholesale on .com (both after backend verify only).
+  if (!shouldSendRetailAnalytics() && !shouldSendWholesaleAnalytics()) return;
   ecommerceEvent('purchase', payload);
   for (const id of ids) markPurchaseFired(id);
   clearPendingRetailPurchase();
@@ -561,8 +588,11 @@ export function trackAffiliateEvent(
     | 'affiliate_catalog_view'
     | 'affiliate_order_created'
     | 'affiliate_payment_link_sent',
+  /** Optional opaque id (e.g. draft id) so resend/refresh does not duplicate the event. */
+  dedupeKey?: string,
 ) {
   if (!AFFILIATE_EVENTS.has(name)) return;
+  if (dedupeKey && !claimCheckoutStep(name, String(dedupeKey).slice(0, 64), 'once')) return;
   plainEvent(name, { sales_channel: 'affiliate' });
 }
 
@@ -573,4 +603,78 @@ export function publicRetailPagePath(): string {
 
 export function resolveRetailGa4Id(fromSettings?: string | null): string {
   return sanitizeGa4Id(fromSettings) || ga4EnvFor('RETAIL') || RETAIL_GA4_MEASUREMENT_ID;
+}
+
+export function resolveWholesaleGa4Id(fromSettings?: string | null): string {
+  return sanitizeGa4Id(fromSettings) || ga4EnvFor('WHOLESALE') || WHOLESALE_GA4_MEASUREMENT_ID;
+}
+
+/** Read GA4 client_id from the `_ga` cookie for Measurement Protocol attribution. */
+export function readGa4ClientId(): string | undefined {
+  try {
+    if (typeof document === 'undefined') return undefined;
+    const match = document.cookie.match(/(?:^|; )_ga=([^;]+)/);
+    if (!match?.[1]) return undefined;
+    const raw = decodeURIComponent(match[1]);
+    // Format: GA1.1.XXXXXXXXXX.YYYYYYYYYY
+    const parts = raw.split('.');
+    if (parts.length >= 4) return `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** GA4 session id from `_ga_<STREAM>` (GS1 and GS2 cookie formats). */
+export function readGa4SessionId(measurementId: string): string | undefined {
+  try {
+    if (typeof document === 'undefined') return undefined;
+    const suffix = String(measurementId || '').replace(/^G-/, '');
+    if (!suffix) return undefined;
+    const match = document.cookie.match(new RegExp(`(?:^|; )_ga_${suffix}=([^;]+)`));
+    if (!match?.[1]) return undefined;
+    return parseGa4SessionCookie(decodeURIComponent(match[1]));
+  } catch {
+    return undefined;
+  }
+}
+
+export function parseGa4SessionCookie(raw: string): string | undefined {
+  const v = String(raw || '');
+  const gs2 = v.match(/^GS2\.\d+\.s(\d{6,14})/);
+  if (gs2) return gs2[1];
+  const parts = v.split('.');
+  if (parts[0] === 'GS1' && /^\d{6,14}$/.test(parts[2] || '')) return parts[2];
+  return undefined;
+}
+
+const WHOLESALE_LEAD_EVENTS = new Set([
+  'generate_lead',
+  'wholesale_cta_click',
+  'phone_click',
+  'telegram_click',
+  'whatsapp_click',
+  'contact_form_start',
+  'contact_form_submit',
+  'wholesale_order_request',
+]);
+
+export function trackWholesaleLead(
+  name: string,
+  params: Record<string, unknown> = {},
+) {
+  if (!WHOLESALE_LEAD_EVENTS.has(name)) return;
+  if (!shouldSendWholesaleAnalytics()) return;
+  try {
+    const safe = sanitizeEventParams({
+      ...params,
+      page_path: publicRetailPagePath(),
+    });
+    const sendTo = resolveWholesaleGa4Id();
+    const payload: Record<string, unknown> = { ...safe, lead_type: name };
+    if (sendTo) payload.send_to = sendTo;
+    gtagEvent(name, payload);
+  } catch {
+    /* never throw into UI */
+  }
 }

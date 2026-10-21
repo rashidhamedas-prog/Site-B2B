@@ -189,7 +189,7 @@ export function SalesPartnerNewOrder() {
       setDraft(created);
       setConfirmOpen(true);
       setStep(2);
-      trackAffiliateEvent('affiliate_order_created');
+      trackAffiliateEvent('affiliate_order_created', created?.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ساخت سفارش ناموفق بود');
     } finally {
@@ -205,7 +205,7 @@ export function SalesPartnerNewOrder() {
       const sent = await apiClient.post<Draft>(`/sales-partners/order-drafts/${draft.id}/request-confirmation`, {});
       setDraft(sent);
       setConfirmOpen(false);
-      trackAffiliateEvent('affiliate_payment_link_sent');
+      trackAffiliateEvent('affiliate_payment_link_sent', draft.id);
       start(extractSmsCooldown(null, sent));
       try {
         window.localStorage.removeItem(LEGACY_DRAFT_KEY);

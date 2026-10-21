@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { retailToWholesaleUrl } from '@/lib/seo-origins';
 import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 import { EnamadSeal } from '@/components/shared/EnamadSeal';
 import { useRetailChrome } from '@/components/retail/RetailChromeProvider';
@@ -32,7 +33,7 @@ const COLS = [
       { href: '/sales-partnership', label: 'همکار بازاریاب' },
       { href: '/contact', label: 'تماس' },
       { href: '/blog', label: 'وبلاگ' },
-      { href: 'https://poshaktaranom.com', label: 'سایت بوتیک‌داران' },
+      { href: retailToWholesaleUrl('footer'), label: 'سایت بوتیک‌داران' },
     ],
   },
 ];

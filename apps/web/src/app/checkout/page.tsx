@@ -19,7 +19,12 @@ import {
   wholesalePaymentOptions,
 } from '@/lib/checkout-payment-ui';
 import { pulseCheckoutIntent } from '@/lib/checkout-intent';
-import { trackBeginCheckout } from '@/lib/retail-analytics';
+import {
+  trackAddPaymentInfo,
+  trackAddShippingInfo,
+  trackBeginCheckout,
+  trackWholesaleLead,
+} from '@/lib/retail-analytics';
 import { isInPersonShipping, shippingChoiceDescription } from '@/lib/shipping-methods';
 import {
   emptyShippingAddress,
@@ -123,7 +128,6 @@ export default function CheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<ShippingAddress[]>([]);
   const [showAddressErrors, setShowAddressErrors] = useState(false);
   const addressDirty = useRef(false);
-  const beganCheckout = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -157,23 +161,6 @@ export default function CheckoutPage() {
     if (!getToken() || items.length === 0) return;
     pulseCheckoutIntent('WHOLESALE');
   }, [items.length]);
-
-  useEffect(() => {
-    if (beganCheckout.current || items.length === 0) return;
-    beganCheckout.current = true;
-    trackBeginCheckout(
-      items.map((i) => ({
-        productId: i.productId,
-        sku: i.sku,
-        name: i.productName,
-        color: i.color,
-        size: i.size,
-        unitPrice: i.unitPrice,
-        quantity: i.quantity,
-      })),
-      total,
-    );
-  }, [items, total]);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -418,6 +405,20 @@ export default function CheckoutPage() {
         return;
       }
     }
+    const analyticsItems = items.map((i) => ({
+      productId: i.productId,
+      sku: i.sku,
+      name: i.productName,
+      color: i.color,
+      size: i.size,
+      unitPrice: i.unitPrice,
+      quantity: i.quantity,
+    }));
+    trackBeginCheckout(analyticsItems, finalTotal);
+    if (shippingMethod) {
+      trackAddShippingInfo(analyticsItems, finalTotal, shippingMethod);
+    }
+    trackAddPaymentInfo(analyticsItems, finalTotal, paymentMethod);
     setLoading(true); setError('');
     try {
       if (!customerId) {
@@ -450,6 +451,11 @@ export default function CheckoutPage() {
           ? { downPaymentAmount, months: installmentMonths }
           : undefined,
         notes,
+      });
+      // Order row exists now (not a purchase until payment verify).
+      trackWholesaleLead('wholesale_order_request', {
+        cta_location: 'checkout_submit',
+        payment_type: paymentMethod.toLowerCase(),
       });
 
       if (paymentMethod === 'ONLINE') {

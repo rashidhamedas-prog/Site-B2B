@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -10,7 +10,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { cn } from '@/lib/cn';
-import { trackAddToCart } from '@/lib/retail-analytics';
+import { trackAddToCart, trackViewItem } from '@/lib/retail-analytics';
 import {
   channelSaleDisplay,
   compositionPerSize,
@@ -213,6 +213,22 @@ export function ProductDetail({
   );
   const [colorError, setColorError] = useState('');
   const [quickOpen, setQuickOpen] = useState(false);
+  const viewedProductId = useRef('');
+
+  useEffect(() => {
+    if (!product?.id || viewedProductId.current === product.id) return;
+    viewedProductId.current = product.id;
+    const price = Number(product.wholesalePrice ?? 0);
+    trackViewItem({
+      productId: product.id,
+      sku: product.sku || undefined,
+      name: product.name,
+      unitPrice: price,
+      quantity: 1,
+      itemListName: 'Wholesale Product Detail',
+      itemListId: 'wholesale_pdp',
+    });
+  }, [product]);
 
   useEffect(() => {
     // Product is server-rendered when initialProduct is provided; no client refetch.

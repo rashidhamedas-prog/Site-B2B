@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import {
+  clearPendingRetailPurchase,
   readPendingRetailPurchase,
   trackPurchase,
   type RetailAnalyticsItemInput,
@@ -15,6 +16,11 @@ type Props = {
   /** product sku/ids for yektanet product API */
   skus?: string[];
   items?: RetailAnalyticsItemInput[];
+  /**
+   * GA4 purchase only after verified payment, and only when the API did not already send it.
+   * Pass false for unpaid orders (COD / order created) and when `ga4ServerPurchase` is true.
+   */
+  sendGa4Purchase?: boolean;
 };
 
 function readOpaquePartnerCode(): string {
@@ -51,6 +57,7 @@ export function RetailConversion({
   shippingIrr,
   skus = [],
   items,
+  sendGa4Purchase = true,
 }: Props) {
   const fired = useRef(false);
 
@@ -122,27 +129,37 @@ export function RetailConversion({
     }
 
     const pending = readPendingRetailPurchase();
-    const transactionId = String(orderNumber || orderId || pending?.transactionIds[0] || '').trim();
+    if (!sendGa4Purchase) {
+      clearPendingRetailPurchase();
+      return;
+    }
+    // Prefer the human order number (same id the API uses) when the pending stash belongs to this order.
+    const pendingMatches =
+      !!pending && (!orderId || pending.transactionIds.includes(orderId));
+    const transactionId = String(
+      orderNumber || (pendingMatches ? pending?.transactionIds[0] : '') || orderId || '',
+    ).trim();
+    const own = pendingMatches ? pending : null;
     const analyticsItems: RetailAnalyticsItemInput[] =
       items && items.length
         ? items
-        : pending?.items?.length
-          ? pending.items
+        : own?.items?.length
+          ? own.items
           : (skus.length ? skus : []).map((sku) => ({ sku, name: sku, quantity: 1 }));
-    const valueIrr = amountIrr > 0 ? amountIrr : pending?.value ?? 0;
+    const valueIrr = amountIrr > 0 ? amountIrr : own?.value ?? 0;
 
     trackPurchase({
       transactionId,
       valueIrr,
       items: analyticsItems,
-      shippingIrr: shippingIrr ?? pending?.shipping,
-      extraTransactionIds: [orderId, orderNumber, ...(pending?.transactionIds ?? [])].filter(
+      shippingIrr: shippingIrr ?? own?.shipping,
+      extraTransactionIds: [orderId, orderNumber, ...(own?.transactionIds ?? [])].filter(
         (id): id is string => Boolean(id),
       ),
       affiliateNetwork: aff.network,
       affiliateCode: readOpaquePartnerCode(),
     });
-  }, [orderId, orderNumber, amountIrr, shippingIrr, skus, items]);
+  }, [orderId, orderNumber, amountIrr, shippingIrr, skus, items, sendGa4Purchase]);
 
   return null;
 }

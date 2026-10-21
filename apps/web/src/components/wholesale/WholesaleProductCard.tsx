@@ -8,6 +8,7 @@ import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueInStockColors
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import { resolveWholesaleOrderBadge } from '@/lib/wholesale-order-badge';
+import { trackSelectItem, trackWholesaleLead } from '@/lib/retail-analytics';
 import {
   CATALOG_CARD_IMAGE_QUALITY,
   CATALOG_CARD_IMAGE_SIZES,
@@ -50,6 +51,17 @@ export function WholesaleProductCard({
 }) {
   const [orderOpen, setOrderOpen] = useState(false);
   const href = `/products/${product.slug || product.id}`;
+  const onSelect = () =>
+    trackSelectItem(
+      {
+        productId: product.id,
+        sku: product.sku,
+        name: product.name,
+        price: product.sale?.payable ?? product.wholesalePrice ?? 0,
+      },
+      'wholesale_catalog',
+      'wholesale_catalog',
+    );
   const variants = product.variants ?? [];
   const stock =
     typeof product.wholesaleStock === 'number'
@@ -89,6 +101,7 @@ export function WholesaleProductCard({
       <Link
         href={href}
         prefetch={false}
+        onClick={onSelect}
         className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)] focus:outline-none"
       >
         {primaryImage ? (
@@ -157,6 +170,7 @@ export function WholesaleProductCard({
         <Link
           href={href}
           prefetch={false}
+          onClick={onSelect}
           className="rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
         >
           <h3 className="line-clamp-2 min-h-10 text-sm font-bold leading-5 text-[var(--brand-ink,#1A1A1A)]">
@@ -205,7 +219,13 @@ export function WholesaleProductCard({
           </div>
           <button
             type="button"
-            onClick={() => setOrderOpen(true)}
+            onClick={() => {
+              trackWholesaleLead('wholesale_cta_click', {
+                cta_location: 'catalog_quick_order',
+                item_id: product.sku || product.id,
+              });
+              setOrderOpen(true);
+            }}
             aria-label={`سفارش سریع ${product.name}`}
             className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-lg bg-[var(--brand-green,#1B5C4A)] px-3 text-xs font-bold text-white transition hover:bg-[var(--brand-green-dark,#0F2F28)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)]"
           >

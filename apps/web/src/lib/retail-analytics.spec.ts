@@ -5,7 +5,12 @@ import {
   affiliatePurchaseParams,
   buildPurchasePayload,
   checkoutCartFingerprint,
+  claimBeginCheckout,
   claimCheckoutStep,
+  parseGa4SessionCookie,
+  resolveWholesaleGa4Id,
+  trackBeginCheckout,
+  trackWholesaleLead,
   ga4ValueFromStoredIrr,
   hasPurchaseBeenFired,
   inferRetailItemList,
@@ -266,5 +271,45 @@ const objectEvents = dataLayer.filter((entry) => {
   return Boolean(entry && typeof entry === 'object' && 'event' in entry);
 });
 assert.equal(objectEvents.length, 0, 'GA4 events are gtag commands, not object pushes');
+
+// begin_checkout: once per cart fingerprint per session (remount / gateway return must not re-fire).
+const bcItems = [{ sku: 'SKU-BC', name: 'شروع', unitPrice: 10_000_000, quantity: 1 }];
+trackBeginCheckout(bcItems, 10_000_000);
+trackBeginCheckout(bcItems, 10_000_000);
+assert.equal(gtagEvents().filter((e) => e.name === 'begin_checkout').length, 1, 'begin_checkout deduped');
+assert.ok(
+  [...storage.keys()].some((k) => k.startsWith('taranom_ga4_checkout_step:begin_checkout|')),
+  'begin_checkout dedupe persisted to sessionStorage',
+);
+// A fresh module instance (page reload) still sees the sessionStorage marker.
+storage.set('taranom_ga4_checkout_step:begin_checkout|SKU-RELOAD:1:5|start', '1');
+assert.equal(claimBeginCheckout('SKU-RELOAD:1:5'), false, 'reload does not re-claim begin_checkout');
+assert.equal(claimBeginCheckout(''), false, 'empty cart never claims');
+
+// GA cookies → MP client/session ids.
+assert.equal(parseGa4SessionCookie('GS1.1.1761000000.3.1.1761000100.0.0.0'), '1761000000');
+assert.equal(parseGa4SessionCookie('GS2.1.s1761000000$o3$g1$t1761000100'), '1761000000');
+assert.equal(parseGa4SessionCookie('garbage'), undefined);
+
+assert.equal(resolveWholesaleGa4Id(), 'G-YVT5DXZF5Z');
+assert.equal(resolveWholesaleGa4Id('g-abc123'), 'G-ABC123');
+
+// Wholesale lead events: never on the retail host; PII stripped on wholesale host.
+const leadsBefore = gtagEvents().filter((e) => e.name === 'phone_click').length;
+trackWholesaleLead('phone_click', { cta_location: 'floating_contact' });
+assert.equal(gtagEvents().filter((e) => e.name === 'phone_click').length, leadsBefore, 'no lead on retail host');
+const win = (globalThis as unknown as { window: { location: Record<string, string> } }).window;
+win.location.hostname = 'poshaktaranom.com';
+win.location.origin = 'https://poshaktaranom.com';
+trackWholesaleLead('phone_click', { cta_location: 'floating_contact', phone: '09121234567', note: 'a@b.co' });
+trackWholesaleLead('not_allowed_event', { cta_location: 'x' });
+const lead = gtagEvents().filter((e) => e.name === 'phone_click').at(-1);
+assert.equal(lead?.params.cta_location, 'floating_contact');
+assert.equal(lead?.params.send_to, 'G-YVT5DXZF5Z');
+assert.equal(lead?.params.phone, undefined, 'phone key stripped');
+assert.equal(lead?.params.note, undefined, 'email value stripped');
+assert.equal(gtagEvents().some((e) => e.name === 'not_allowed_event'), false);
+win.location.hostname = 'www.poshaktaranom.ir';
+win.location.origin = 'https://www.poshaktaranom.ir';
 
 console.log('retail-analytics.spec.ts ok');

@@ -137,25 +137,7 @@ export default function RetailCheckoutPage() {
   const [savedAddresses, setSavedAddresses] = useState<RetailAddress[]>([]);
   const [address, setAddress] = useState<AddressForm>(emptyShippingAddress());
   const [showAddressErrors, setShowAddressErrors] = useState(false);
-  const beganCheckout = useRef(false);
   const addressDirty = useRef(false);
-
-  useEffect(() => {
-    if (beganCheckout.current || items.length === 0) return;
-    beganCheckout.current = true;
-    trackBeginCheckout(
-      items.map((i) => ({
-        productId: i.productId,
-        sku: i.sku,
-        name: i.productName,
-        color: i.color,
-        size: i.size,
-        unitPrice: i.unitPrice,
-        quantity: i.quantity,
-      })),
-      subtotal,
-    );
-  }, [items, subtotal]);
 
   useEffect(() => {
     if (items.length === 0) return;
@@ -287,16 +269,6 @@ export default function RetailCheckoutPage() {
   const ctaHint = checkoutCtaHint(paymentMethod);
   const paymentSelection = selectedPaymentId || (paymentMethod === 'CASH' ? 'CASH' : paymentGateway);
 
-  useEffect(() => {
-    if (!analyticsItems.length || !shipQuoted || !shippingMethod) return;
-    trackAddShippingInfo(analyticsItems, subtotal + shipFee, shippingMethod);
-  }, [analyticsItems, shipQuoted, shippingMethod, shipFee, subtotal]);
-
-  useEffect(() => {
-    if (!analyticsItems.length || !shipQuoted || !paymentSelection) return;
-    trackAddPaymentInfo(analyticsItems, payable, paymentSelection);
-  }, [analyticsItems, shipQuoted, paymentSelection, payable]);
-
   const choosePayment = (id: string) => {
     const next = parseRetailPaymentChoice(id);
     setPaymentMethod(next.method);
@@ -394,6 +366,14 @@ export default function RetailCheckoutPage() {
       return;
     }
     const shippingAddress = finalizeShippingAddress(address);
+    // Checkout funnel events only after the shopper actually starts checkout (not on mount).
+    trackBeginCheckout(analyticsItems, subtotal);
+    if (shippingMethod) {
+      trackAddShippingInfo(analyticsItems, subtotal + shipFee, shippingMethod);
+    }
+    if (paymentSelection) {
+      trackAddPaymentInfo(analyticsItems, payable, paymentSelection);
+    }
     setBusy(true);
     try {
       if (!(await ensureRetailAccount())) return;
@@ -488,6 +468,7 @@ export default function RetailCheckoutPage() {
           skus={doneMeta.skus}
           items={doneMeta.items}
           shippingIrr={doneMeta.shipping}
+          sendGa4Purchase={false}
         />
         <h1 className="text-2xl font-extrabold text-[var(--retail-primary)]">سفارش ثبت شد</h1>
         <p className="mt-3 text-[var(--retail-muted)]">شماره سفارش: {done}</p>

@@ -8,6 +8,13 @@ import { apiClient } from '@/lib/api';
 import { clearWholesaleCartStorage } from '@/lib/cart';
 import { useRetailCart } from '@/lib/retail-cart';
 import { RetailConversion } from '@/components/retail/RetailConversion';
+import { hostLooksRetail } from '@/lib/channel';
+import {
+  readGa4ClientId,
+  readGa4SessionId,
+  resolveRetailGa4Id,
+  resolveWholesaleGa4Id,
+} from '@/lib/retail-analytics';
 
 function toman(n: number) { return Math.round(Number(n) / 10).toLocaleString('fa-IR'); }
 
@@ -26,6 +33,7 @@ function CallbackContent() {
   const [refId, setRefId] = useState('');
   const [amount, setAmount] = useState(0);
   const [orderId, setOrderId] = useState('');
+  const [ga4ServerPurchase, setGa4ServerPurchase] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -42,7 +50,11 @@ function CallbackContent() {
 
     if (!paymentId) { setState('failed'); setError('شناسه پرداخت یافت نشد'); return; }
 
+    const retailHost = hostLooksRetail(window.location.host);
+    const streamId = retailHost ? resolveRetailGa4Id() : resolveWholesaleGa4Id();
     const body = {
+      gaClientId: readGa4ClientId(),
+      gaSessionId: readGa4SessionId(streamId),
       paymentId,
       authority,
       status: status || (trackingCode || result === '0' || stateParam === 'OK' ? 'OK' : ''),
@@ -66,6 +78,7 @@ function CallbackContent() {
           setRefId(res.refId ?? '');
           setAmount(Number(res.amount ?? 0));
           setOrderId(res.orderId ?? '');
+          setGa4ServerPurchase(res.ga4ServerPurchase === true);
         } else if (res.cancelled) {
           setState('cancelled');
         } else {
@@ -80,7 +93,11 @@ function CallbackContent() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 text-center">
         {state === 'success' && (
-          <RetailConversion orderId={orderId || undefined} amountIrr={amount} />
+          <RetailConversion
+            orderId={orderId || undefined}
+            amountIrr={amount}
+            sendGa4Purchase={!ga4ServerPurchase}
+          />
         )}
         {state === 'verifying' && (
           <>

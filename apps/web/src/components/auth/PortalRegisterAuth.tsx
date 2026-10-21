@@ -11,6 +11,7 @@ import { GlassButton } from '@/components/ui/glass-button';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { normalizePhone } from '@/lib/phone';
 import { cn } from '@/lib/cn';
+import { trackWholesaleLead } from '@/lib/retail-analytics';
 
 const PROVINCES = [
   'تهران',
@@ -168,6 +169,11 @@ export function PortalRegisterAuth() {
       referralCode,
     });
     if (ok) {
+      trackWholesaleLead('generate_lead', {
+        cta_location: 'portal_register',
+        business_type: form.businessType,
+        referral: referralCode ? 'yes' : 'no',
+      });
       setDone(true);
       fireSideCanons(confettiRef.current?.fire);
     }

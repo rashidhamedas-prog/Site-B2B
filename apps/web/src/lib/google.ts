@@ -142,8 +142,11 @@ export function publicAnalyticsPagePath(
   return q ? `${path}?${q}` : path;
 }
 
-/** Confirmed retail stream. Used only when env and admin settings are empty. */
+/** Confirmed retail stream (Windsor property 547378194). Fallback when env/admin empty. */
 export const RETAIL_GA4_MEASUREMENT_ID = 'G-F2V7VSJMLE';
+
+/** Confirmed wholesale stream (Windsor property 547352333). Fallback when env/admin empty. */
+export const WHOLESALE_GA4_MEASUREMENT_ID = 'G-YVT5DXZF5Z';
 
 export function pageViewDedupeKey(measurementId: string, publicPath: string): string {
   return `${measurementId}|${publicPath}`;

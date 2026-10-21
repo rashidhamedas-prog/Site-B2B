@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
+import { retailToWholesaleUrl } from '@/lib/seo-origins';
 import type { ContentBlock } from '@/lib/cms/types';
 import { arr, str } from '@/lib/cms/fetch';
 import { RetailHero } from '@/components/retail/RetailHero';
@@ -168,7 +169,7 @@ export async function RetailBlocksRenderer({
         headline="برای بوتیک سفارش می‌دهید؟"
         body="قیمت همکاری و موجودی عمده روی سایت بوتیک‌داران است؛ این فروشگاه فقط خرید تکی است."
         ctaLabel="رفتن به سفارش عمده"
-        ctaHref="https://poshaktaranom.com"
+        ctaHref={retailToWholesaleUrl('home_cta')}
       />,
     );
   }

@@ -6,6 +6,7 @@ import { MessageCircle, Phone, X, Send } from 'lucide-react';
 import { chromeStr, useSiteChrome, type SiteChromeData } from '@/lib/cms/useSiteChrome';
 import { hostLooksRetail, isRetailPath } from '@/lib/channel';
 import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
+import { trackWholesaleLead } from '@/lib/retail-analytics';
 
 function isRetailSurface(pathname: string): boolean {
   if (isRetailPath(pathname) || pathname.startsWith('/retail')) return true;
@@ -44,7 +45,10 @@ export function FloatingContact({
   if (pathname === '/checkout' || pathname.startsWith('/checkout/')) return null;
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 flex flex-col-reverse items-start gap-3">
+    <div
+      className="fixed bottom-6 left-6 z-50 flex flex-col-reverse items-start gap-3"
+      data-cta-location="floating_contact"
+    >
       {open && (
         <div className="flex flex-col gap-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
           {whatsapp ? (
@@ -88,7 +92,11 @@ export function FloatingContact({
       )}
 
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          const next = !open;
+          if (next) trackWholesaleLead('wholesale_cta_click', { cta_location: 'floating_contact' });
+          setOpen(next);
+        }}
         aria-label={open ? 'بستن پنجره تماس' : 'ارتباط با ما'}
         className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105"
       >

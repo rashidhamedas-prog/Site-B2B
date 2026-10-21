@@ -12,12 +12,19 @@ import {
   pageViewDedupeKey,
   publicAnalyticsPagePath,
   RETAIL_GA4_MEASUREMENT_ID,
+  WHOLESALE_GA4_MEASUREMENT_ID,
   sanitizeGa4Id,
   shouldSendPageView,
   type GoogleChannel,
 } from '@/lib/google';
 import { setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
-import { trackContactClick } from '@/lib/retail-analytics';
+import { trackContactClick, trackWholesaleLead } from '@/lib/retail-analytics';
+
+const WHOLESALE_LEAD_BY_METHOD: Record<string, string> = {
+  phone: 'phone_click',
+  whatsapp: 'whatsapp_click',
+  telegram: 'telegram_click',
+};
 
 type MarketingPublic = {
   ga4WholesaleId?: string;
@@ -101,18 +108,21 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
     let cancelled = false;
     (async () => {
       let ga4 = ga4EnvFor(channel);
-      try {
-        const s = await apiClient.get<{ marketing?: MarketingPublic }>('/settings/public');
-        const m = s.marketing ?? {};
-        if (!ga4) {
-          ga4 = sanitizeGa4Id(
-            channel === 'RETAIL' ? m.ga4RetailId : m.ga4WholesaleId,
-          );
+      if (!ga4) {
+        // Admin override, capped so the first page_view is not late (late hit = empty landing page).
+        try {
+          const s = await Promise.race([
+            apiClient.get<{ marketing?: MarketingPublic }>('/settings/public'),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200)),
+          ]);
+          const m = s?.marketing ?? {};
+          ga4 = sanitizeGa4Id(channel === 'RETAIL' ? m.ga4RetailId : m.ga4WholesaleId);
+        } catch {
+          /* fall back to the confirmed stream id below */
         }
-      } catch {
-        /* env-only fallback already applied */
       }
       if (!ga4 && channel === 'RETAIL') ga4 = RETAIL_GA4_MEASUREMENT_ID;
+      if (!ga4 && channel === 'WHOLESALE') ga4 = WHOLESALE_GA4_MEASUREMENT_ID;
       if (cancelled) return;
       if (ga4) {
         bindGa4(ga4);
@@ -140,7 +150,7 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
   }, [pathname, search, channel, boundId]);
 
   useEffect(() => {
-    if (channel !== 'RETAIL') return;
+    // One capture listener per channel mount; cleaned up on unmount (Strict Mode safe).
     const onClick = (event: MouseEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
@@ -148,7 +158,16 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
       const href = anchor?.getAttribute('href') || '';
       if (!href) return;
       const method = contactMethodFromHref(href);
-      if (method) trackContactClick(method);
+      if (!method) return;
+      if (channel === 'RETAIL') {
+        trackContactClick(method);
+        return;
+      }
+      const leadEvent = WHOLESALE_LEAD_BY_METHOD[method];
+      if (!leadEvent) return;
+      const location =
+        anchor?.closest('[data-cta-location]')?.getAttribute('data-cta-location') || 'page_link';
+      trackWholesaleLead(leadEvent, { cta_location: location.slice(0, 40) });
     };
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);

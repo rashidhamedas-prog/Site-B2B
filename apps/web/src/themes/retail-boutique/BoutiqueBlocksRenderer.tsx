@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Suspense } from 'react';
+import { retailToWholesaleUrl } from '@/lib/seo-origins';
 import type { ContentBlock } from '@/lib/cms/types';
 import { arr, str } from '@/lib/cms/fetch';
 import { RetailFaq } from '@/components/retail/RetailFaq';
@@ -140,7 +141,7 @@ export async function BoutiqueBlocksRenderer({
         headline="بوتیک دارید؟"
         body="اگر برای فروشگاه سفارش می‌دهید، از سایت بوتیک‌داران ترنم قیمت و موجودی عمده را ببینید."
         ctaLabel="ورود به سایت بوتیک‌داران"
-        ctaHref="https://poshaktaranom.com"
+        ctaHref={retailToWholesaleUrl('boutique_home_cta')}
       />,
     );
   }
