@@ -28,16 +28,26 @@ export class AnalyticsEventLogEntity {
   measurementId: string | null;
 
   @Column({ type: 'uuid', nullable: true })
-  @Index()
+  @Index('IDX_analytics_event_log_order')
   orderId: string | null;
 
   @Column({ type: 'uuid', nullable: true })
   paymentId: string | null;
 
-  /** PENDING | SENDING | SENT | CLIENT_FALLBACK | SKIPPED */
+  /**
+   * PENDING | SENDING | SENT | FAILED (server-owned, retried by job) |
+   * CLIENT_FALLBACK (browser owns it; server never sends) | SKIPPED
+   */
   @Column({ length: 16, default: 'PENDING' })
-  @Index()
+  @Index('IDX_analytics_event_log_status')
   status: string;
+
+  /** Pseudonymous `_ga` client id, kept only so FAILED rows can be retried. */
+  @Column({ length: 32, nullable: true })
+  gaClientId: string | null;
+
+  @Column({ length: 20, nullable: true })
+  gaSessionId: string | null;
 
   @Column({ type: 'int', default: 0 })
   attempts: number;
