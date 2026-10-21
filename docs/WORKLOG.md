@@ -11,7 +11,9 @@
 - فیکس: مراحل checkout فقط روی submit با dedupe سبد در sessionStorage؛ purchase سرور با Measurement Protocol و `analytics_event_log` (UNIQUE eventName+transactionId) پشت `GA4_SERVER_PURCHASE_ENABLED`؛ GA در `/payment/layout`؛ عمده view_item/select_item/lead events؛ UTM لینک‌های تکی→عمده.
 - تست: tsc وب، next build، retail-analytics.spec، ga4-mp.spec، spec migration، specهای payment سبز. پکیج جدید ندارد.
 - گزارش: `docs/reports/2026-10-21-ga4-funnel-root-cause-fix.md`؛ کارهای دستی: `docs/analytics/GA4-FUNNEL-FIX-MANUAL-STEPS.md`.
-- وضعیت: commit/deploy منتظر تأیید کاربر (migration نیاز به بکاپ دارد).
+- LIVE: `42a18e1a` روی master (branch `ai/TASK-20261021-001-ga4-funnel`). Hetzner با `auto-deploy.sh`؛ replica ایران (`185.213.167.61`، DNS زنده هر دو دامنه) با patch فایل + build api/web/worker. بکاپ قبل از migration: Hetzner `backups/postgres/20261021T105201Z`، replica `backups/pre-ga4-funnel-20261021-110425`. `AnalyticsEventLog1761004800001` و `UQ_analytics_event_log_event_txn` روی هر دو تأیید شد؛ health و هر دو ویترین 200؛ UTM فوتر تکی زنده.
+- فیکس تکمیلی: فوتر واقعی تکی `RetailFooter` بود (نه Boutique)؛ CTAهای CMS با مقصد عمده موقع رندر UTM می‌گیرند (لینک همچنان از ادمین قابل ویرایش).
+- باقی‌مانده: `GA4_SERVER_PURCHASE_ENABLED` خاموش است تا API secretها در GA4 ساخته و در `.env` هر دو سرور گذاشته شوند.
 
 ## 2026-10-20 — سایزبندی سفارشی + پک AUTO|MANUAL (XOR)
 
