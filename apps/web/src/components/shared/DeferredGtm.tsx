@@ -3,8 +3,13 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import {
+  GA_PAGEVIEW_OWNER_ATTR,
+  defaultGa4IdFor,
+  ensureGtagStub,
   isAdminAnalyticsPath,
   isNonProductionAnalyticsHost,
+  preGtmGtagSet,
+  publicAnalyticsPagePath,
   sanitizeGtmId,
 } from '@/lib/google';
 import { resolveGtmIdForHost } from '@/components/shared/GoogleTagManager';
@@ -26,7 +31,12 @@ export function DeferredGtm({ gtmId }: { gtmId?: string } = {}) {
     if (isNonProductionAnalyticsHost(window.location.hostname)) return;
     const id = sanitizeGtmId(gtmId) || resolveGtmIdForHost(window.location.hostname);
     if (!id) return;
-    if (document.getElementById('gtm-deferred')) return;
+    if (document.getElementById('gtm-deferred')) {
+      // GTM already loaded: a global page_location from the landing URL would stick to later hits.
+      const page_location = `${window.location.origin}${publicAnalyticsPagePath(window.location.pathname, window.location.search)}`;
+      (window as Window & { gtag?: (...args: unknown[]) => void }).gtag?.('set', { page_location });
+      return;
+    }
 
     let disposed = false;
     let scheduled = false;
@@ -51,6 +61,26 @@ export function DeferredGtm({ gtmId }: { gtmId?: string } = {}) {
       if (!resolved) return;
       const w = window as Window & { dataLayer?: unknown[] };
       w.dataLayer = w.dataLayer || [];
+      const owner = document.querySelector(`[${GA_PAGEVIEW_OWNER_ATTR}]`)?.getAttribute(GA_PAGEVIEW_OWNER_ATTR);
+      const preset = preGtmGtagSet({
+        origin: window.location.origin,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        appOwnsPageView: !!owner,
+        referrer: document.referrer,
+      });
+      const gw = w as Window & { gtag?: (...args: unknown[]) => void; __taranomGa4Config?: Set<string> };
+      if (preset) {
+        ensureGtagStub();
+        gw.gtag?.('set', preset);
+      }
+      // The app's own config can land after GTM (it waits for /settings/public); queue it here.
+      const ownedId = owner ? defaultGa4IdFor(owner) : '';
+      if (ownedId && !gw.__taranomGa4Config?.has(ownedId)) {
+        if (!gw.__taranomGa4Config) gw.__taranomGa4Config = new Set();
+        gw.__taranomGa4Config.add(ownedId);
+        gw.gtag?.('config', ownedId, { send_page_view: false });
+      }
       w.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
       const f = document.getElementsByTagName('script')[0];
       const j = document.createElement('script');

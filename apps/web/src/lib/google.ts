@@ -71,8 +71,11 @@ export function isAdminAnalyticsPath(pathname: string | null | undefined): boole
   return p === '/admin' || p.startsWith('/admin/');
 }
 
-/** Query keys safe to keep on a GA4 page path. Everything else is dropped. */
-const ANALYTICS_QUERY_ALLOWLIST = new Set([
+/**
+ * Query keys kept on a GA4 page path (campaign attribution only). Everything else —
+ * search terms, filters, gateway params (Authority, paymentId, trackingCode, token) — is dropped.
+ */
+export const ANALYTICS_QUERY_ALLOWLIST: ReadonlySet<string> = new Set([
   'utm_source',
   'utm_medium',
   'utm_campaign',
@@ -82,23 +85,44 @@ const ANALYTICS_QUERY_ALLOWLIST = new Set([
   'gclid',
   'gbraid',
   'wbraid',
-  'fbclid',
-  'msclkid',
-  'ttclid',
-  'yclid',
-  'srsltid',
-  'q',
-  'query',
-  'search',
-  'page',
-  'sort',
-  'color',
-  'size',
-  'category',
-  'collection',
 ]);
 
-const PII_QUERY_VALUE = /@|09\d{9}|\+98\d{10}/;
+const NON_ASCII_DIGITS = /[\u06F0-\u06F9\u0660-\u0669]/g;
+
+function asciiDigits(value: string): string {
+  return value.replace(NON_ASCII_DIGITS, (d) => {
+    const code = d.charCodeAt(0);
+    return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
+  });
+}
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value.replace(/\+/g, ' '));
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Email or Iranian mobile in any common spelling: `%40`-encoded, Persian/Arabic digits,
+ * separators (0912-345-6789, +98 912 345 6789, 0098…).
+ */
+export function looksLikePii(raw: unknown): boolean {
+  if (raw == null) return false;
+  const value = asciiDigits(safeDecode(String(raw)));
+  if (/@|%40|\uFF20/i.test(value)) return true;
+  const compact = value.replace(/[\s\-–.()_/]/g, '');
+  if (/(?:^|\D)(?:\+98|0098|98|0)9\d{9}(?!\d)/.test(compact)) return true;
+  if (/^9\d{9}$/.test(compact)) return true;
+  return false;
+}
+
+/** Stricter check for URL query values: also drops bare 10-digit ids (national id). */
+function looksLikeQueryPii(value: string): boolean {
+  if (looksLikePii(value)) return true;
+  return /^\d{10}$/.test(asciiDigits(safeDecode(value)).replace(/[\s-]/g, ''));
+}
 
 /** Strip the internal App Router `/retail` prefix so GA4 sees the public URL. */
 export function stripRetailInternalPath(pathname: string | null | undefined): string {
@@ -123,7 +147,7 @@ export function sanitizeAnalyticsSearch(search: string | null | undefined): stri
     const normalized = key.trim().toLowerCase();
     if (!ANALYTICS_QUERY_ALLOWLIST.has(normalized)) continue;
     const clean = value.trim();
-    if (!clean || clean.length > 120 || PII_QUERY_VALUE.test(clean)) continue;
+    if (!clean || clean.length > 120 || looksLikeQueryPii(clean)) continue;
     next.append(normalized, clean);
   }
   return next.toString();
@@ -142,11 +166,50 @@ export function publicAnalyticsPagePath(
   return q ? `${path}?${q}` : path;
 }
 
+/** SSR marker rendered by GoogleAnalyticsProvider on routes where the app sends page_view itself. */
+export const GA_PAGEVIEW_OWNER_ATTR = 'data-ga-pageview-owner';
+
+/**
+ * gtag `set` fields to queue before gtm.js loads. The container's Google tag otherwise
+ * sends an automatic page_view from the raw URL (gateway tokens, double counting).
+ * Returns null when the container's defaults are already safe for this page.
+ */
+export function preGtmGtagSet(input: {
+  origin: string;
+  pathname: string;
+  search: string;
+  appOwnsPageView: boolean;
+  referrer?: string;
+}): { page_location: string; page_referrer?: string; send_page_view?: false } | null {
+  const path = publicAnalyticsPagePath(input.pathname, input.search);
+  const page_location = `${input.origin}${path}`;
+  const rawReferrer = String(input.referrer || '');
+  const host = (() => {
+    try {
+      return new URL(input.origin).hostname;
+    } catch {
+      return '';
+    }
+  })();
+  const page_referrer = rawReferrer ? sanitizeAnalyticsReferrer(rawReferrer, host) : '';
+  const referrerFields = rawReferrer && page_referrer !== rawReferrer ? { page_referrer } : {};
+  if (input.appOwnsPageView) return { page_location, ...referrerFields, send_page_view: false };
+  const raw = `${stripRetailInternalPath(input.pathname)}${input.search && input.search !== '?' ? (input.search.startsWith('?') ? input.search : `?${input.search}`) : ''}`;
+  return raw === path && !('page_referrer' in referrerFields) ? null : { page_location, ...referrerFields };
+}
+
 /** Confirmed retail stream (Windsor property 547378194). Fallback when env/admin empty. */
 export const RETAIL_GA4_MEASUREMENT_ID = 'G-F2V7VSJMLE';
 
 /** Confirmed wholesale stream (Windsor property 547352333). Fallback when env/admin empty. */
 export const WHOLESALE_GA4_MEASUREMENT_ID = 'G-YVT5DXZF5Z';
+
+/** Stream id known synchronously (env or confirmed fallback); admin overrides arrive later. */
+export function defaultGa4IdFor(channel: string | null | undefined): string {
+  if (channel === 'RETAIL') return ga4EnvFor('RETAIL') || RETAIL_GA4_MEASUREMENT_ID;
+  if (channel === 'WHOLESALE') return ga4EnvFor('WHOLESALE') || WHOLESALE_GA4_MEASUREMENT_ID;
+  return '';
+}
 
 export function pageViewDedupeKey(measurementId: string, publicPath: string): string {
   return `${measurementId}|${publicPath}`;
@@ -176,6 +239,28 @@ export function isApprovedPaymentReferrer(referrer: string | null | undefined): 
     return (PAYMENT_REFERRER_HOSTS as readonly string[]).includes(host);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Referrer safe for GA4 `page_referrer`: gateway hosts → origin only (their paths carry
+ * Authority/tokens); same site → sanitized public path; other sites → origin + path, no query.
+ */
+export function sanitizeAnalyticsReferrer(
+  referrer: string | null | undefined,
+  currentHost?: string | null,
+): string {
+  try {
+    const u = new URL(String(referrer || ''));
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '';
+    if (isApprovedPaymentReferrer(u.href)) return `${u.origin}/`;
+    const host = String(currentHost || '').split(':')[0]!.toLowerCase();
+    if (host && u.hostname.toLowerCase() === host) {
+      return `${u.origin}${publicAnalyticsPagePath(u.pathname, u.search)}`;
+    }
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return '';
   }
 }
 

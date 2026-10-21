@@ -5,6 +5,13 @@
 - فیکس: نرمال‌سازی اعداد فارسی/عربی + حذف نویسه‌های bidi/zero-width + افزودن خودکار `IR`؛ پیام‌های فارسی DTO؛ خطا و راهنما کنار فیلد شبا.
 - تست: `sales-partner-policy.spec.ts` و `sales-partner-iban.spec.ts` سبز؛ tsc وب و API بدون خطای جدید.
 
+## 2026-10-21 — سخت‌سازی GA4: checkout عمده، page_view تکی، MP validation، retry اتمیک
+
+- ریشه: hydration mismatch سبد (React #418) و نبود پوسته در `/checkout` عمده؛ page_view خودکار تگ GTM با URL خام (توکن درگاه + دوبل)؛ 2xx در MP به‌اشتباه SENT؛ retry ناسازگار با ۷۲h و claim غیراتمیک؛ نبود allowlist پارامتر.
+- فیکس: سبد بعد از mount؛ پوستهٔ بارگذاری/مهمان/سبد خالی؛ GA مستقل از سبد؛ `set`/`config` با `send_page_view:false` پیش از GTM روی مسیرهای اپ‌مالک؛ validator داخلی + اسکریپت debug MP؛ backoff ‏nextAttemptAt (≤۴۶h، انقضا ۷۱h)، claim با SKIP LOCKED + lease + فنس؛ migration `20261021-003`؛ allowlist per-event + `cart_fp`/`cart_age_days`.
+- تست: tsc وب، specهای وب/API، concurrency روی Postgres یک‌بارمصرف، Playwright محلی ۱۲ pass / ۱ skip. فلگ `GA4_SERVER_PURCHASE_ENABLED` خاموش.
+- گزارش: `docs/reports/2026-10-21-ga4-hardening.md`.
+
 ## 2026-10-21 — فیکس ریشه‌ای قیف GA4 (تکی + عمده)
 
 - ریشه: begin/shipping/payment روی mount و تغییر state شلیک می‌شدند؛ `/payment/*` بدون GA (purchase=0، landing خالی)؛ عمده بدون Measurement ID fallback و بدون رویداد lead.

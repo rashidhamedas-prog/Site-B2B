@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { hostLooksRetail } from '@/lib/channel';
 import {
+  GA_PAGEVIEW_OWNER_ATTR,
   ga4EnvFor,
   ensureGtagStub,
   isAdminAnalyticsPath,
@@ -13,6 +14,7 @@ import {
   publicAnalyticsPagePath,
   RETAIL_GA4_MEASUREMENT_ID,
   WHOLESALE_GA4_MEASUREMENT_ID,
+  sanitizeAnalyticsReferrer,
   sanitizeGa4Id,
   shouldSendPageView,
   type GoogleChannel,
@@ -45,6 +47,9 @@ function bindGa4(measurementId: string) {
   if (!flagged.__taranomGa4Config) flagged.__taranomGa4Config = new Set();
   if (flagged.__taranomGa4Config.has(measurementId)) return;
   flagged.__taranomGa4Config.add(measurementId);
+  // Must precede the first config, or the GTM container's Google tag still sends its own page_view.
+  // Only while this route owns page_view: after a bounce to /portal etc. GTM's page_view must stay.
+  if (document.querySelector(`[${GA_PAGEVIEW_OWNER_ATTR}]`)) window.gtag?.('set', { send_page_view: false });
   window.gtag?.('config', measurementId, { send_page_view: false });
 }
 
@@ -87,8 +92,12 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
       const pageLocation =
         typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
       const pageTitle = typeof document !== 'undefined' ? document.title : path;
+      const pageReferrer = sanitizeAnalyticsReferrer(document.referrer, window.location.hostname);
       // Later events on this page (e.g. purchase on /payment/callback) must not carry gateway tokens from the raw URL.
-      window.gtag?.('set', { page_location: pageLocation });
+      window.gtag?.(
+        'set',
+        pageReferrer ? { page_location: pageLocation, page_referrer: pageReferrer } : { page_location: pageLocation },
+      );
       window.gtag?.('event', 'page_view', {
         page_path: path,
         page_location: pageLocation,
@@ -107,6 +116,7 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
     if (isNonProductionAnalyticsHost(host)) return;
     if (!channelAllowedOnHost(channel, host)) return;
 
+    const landingPath = currentPublicPath(pathname || '/', search);
     let cancelled = false;
     (async () => {
       let ga4 = ga4EnvFor(channel);
@@ -125,12 +135,19 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
       }
       if (!ga4 && channel === 'RETAIL') ga4 = RETAIL_GA4_MEASUREMENT_ID;
       if (!ga4 && channel === 'WHOLESALE') ga4 = WHOLESALE_GA4_MEASUREMENT_ID;
-      if (cancelled) return;
-      if (ga4) {
-        bindGa4(ga4);
-        setBoundId(ga4);
-        setGa4RumiMeasurementId(ga4);
+      if (!ga4) return;
+      if (cancelled) {
+        // Unmounted before binding (e.g. guest bounced from /checkout to a route without GA):
+        // still record the landing page once. The shared ref dedupes Strict Mode remounts.
+        if (!lastSent.current) {
+          bindGa4(ga4);
+          sendPageView(ga4, landingPath);
+        }
+        return;
       }
+      bindGa4(ga4);
+      setBoundId(ga4);
+      setGa4RumiMeasurementId(ga4);
     })();
     return () => {
       cancelled = true;

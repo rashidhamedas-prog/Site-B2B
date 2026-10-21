@@ -1,7 +1,8 @@
 'use client';
 
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
 import { pulseCartHeartbeat } from '@/lib/cart-heartbeat';
+import { registerCartSnapshot } from '@/lib/retail-analytics';
 
 export const WHOLESALE_CART_STORAGE_KEY = 'taranom_cart';
 const CART_STORAGE_KEY = WHOLESALE_CART_STORAGE_KEY;
@@ -67,7 +68,8 @@ type CartAction =
   | { type: 'ADD'; item: CartItem }
   | { type: 'UPDATE_QTY'; lineKey: string; quantity: number }
   | { type: 'REMOVE'; lineKey: string }
-  | { type: 'CLEAR' };
+  | { type: 'CLEAR' }
+  | { type: 'HYDRATE'; items: CartItem[] };
 
 function normalizeQty(quantity: number, minOrderQty: number) {
   const step = Math.max(1, Number(minOrderQty) || 1);
@@ -113,6 +115,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { items: state.items.filter((i) => cartLineKey(i) !== action.lineKey) };
     case 'CLEAR':
       return { items: [] };
+    case 'HYDRATE':
+      return { items: action.items };
     default:
       return state;
   }
@@ -122,6 +126,8 @@ interface CartContextValue {
   items: CartItem[];
   count: number;
   total: number;
+  /** False on the server and the first client render; items are not read from storage yet. */
+  hydrated: boolean;
   addItem: (item: CartItem) => void;
   updateQty: (lineKey: string, quantity: number) => void;
   removeItem: (lineKey: string) => void;
@@ -129,36 +135,61 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue>({
-  items: [], count: 0, total: 0,
+  items: [], count: 0, total: 0, hydrated: false,
   addItem: () => {}, updateQty: () => {}, removeItem: () => {}, clear: () => {},
 });
 
-function loadInitialCart(): CartState {
-  if (typeof window === 'undefined') return { items: [] };
+const EMPTY_CART: CartState = { items: [] };
+
+function readStoredCart(): CartItem[] {
   try {
     const raw = localStorage.getItem(CART_STORAGE_KEY);
-    return raw ? { items: JSON.parse(raw) as CartItem[] } : { items: [] };
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed) ? (parsed as CartItem[]) : [];
   } catch {
-    return { items: [] };
+    return [];
   }
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(cartReducer, undefined, loadInitialCart);
+  // Server and first client render must match (empty); storage is read after mount.
+  const [state, rawDispatch] = useReducer(cartReducer, EMPTY_CART);
+  const [hydrated, setHydrated] = useState(false);
+  const stateRef = useRef<CartState>(EMPTY_CART);
+  stateRef.current = state;
+
+  // Keeps stateRef ahead of React so add_to_cart (fired right after addItem) sees the post-add cart.
+  const dispatch = (action: CartAction) => {
+    stateRef.current = cartReducer(stateRef.current, action);
+    rawDispatch(action);
+  };
 
   useEffect(() => {
+    dispatch({ type: 'HYDRATE', items: readStoredCart() });
+    setHydrated(true);
+    registerCartSnapshot(() => stateRef.current.items);
     const onExternalClear = () => dispatch({ type: 'CLEAR' });
     window.addEventListener('taranom-wholesale-cart-cleared', onExternalClear);
-    return () => window.removeEventListener('taranom-wholesale-cart-cleared', onExternalClear);
+    return () => {
+      window.removeEventListener('taranom-wholesale-cart-cleared', onExternalClear);
+      registerCartSnapshot(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
+    // Writing before HYDRATE would overwrite the saved cart with [].
+    if (!hydrated) return;
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(state.items));
+    } catch {
+      /* private mode / blocked storage */
+    }
     pulseCartHeartbeat({
       channel: 'WHOLESALE',
       items: state.items.map((i) => ({ productId: i.productId, name: i.productName, quantity: i.quantity })),
     });
-  }, [state.items]);
+  }, [state.items, hydrated]);
 
   const count = state.items.reduce((s, i) => s + cartItemPieces(i), 0);
   const total = state.items.reduce((s, i) => s + i.unitPrice * cartItemPieces(i), 0);
@@ -168,6 +199,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items: state.items,
       count,
       total,
+      hydrated,
       addItem: (item) => dispatch({ type: 'ADD', item }),
       updateQty: (lineKey, quantity) => dispatch({ type: 'UPDATE_QTY', lineKey, quantity }),
       removeItem: (lineKey) => dispatch({ type: 'REMOVE', lineKey }),

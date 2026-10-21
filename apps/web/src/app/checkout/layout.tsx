@@ -9,9 +9,10 @@ import { GoogleAnalyticsProvider } from '@/components/shared/GoogleAnalyticsProv
  */
 export default function WholesaleCheckoutLayout({ children }: { children: ReactNode }) {
   return (
-    <CartProvider>
-      {children}
+    <>
+      <CartProvider>{children}</CartProvider>
+      {/* Outside the cart tree: page_view must not depend on cart/auth branches. */}
       <GoogleAnalyticsProvider channel="WHOLESALE" />
-    </CartProvider>
+    </>
   );
 }

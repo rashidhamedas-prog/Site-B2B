@@ -4,7 +4,12 @@ import {
   RETAIL_ITEM_BRAND,
   affiliatePurchaseParams,
   buildPurchasePayload,
+  cartAgeDays,
+  cartFingerprintHash,
   checkoutCartFingerprint,
+  enforceEventAllowlist,
+  EVENT_PARAM_ALLOWLIST,
+  registerCartSnapshot,
   claimBeginCheckout,
   claimCheckoutStep,
   parseGa4SessionCookie,
@@ -30,6 +35,7 @@ import {
   isAdminAnalyticsPath,
   isApprovedPaymentReferrer,
   isNonProductionAnalyticsHost,
+  looksLikePii,
   pageViewDedupeKey,
   publicAnalyticsPagePath,
   sanitizeAnalyticsSearch,
@@ -152,7 +158,7 @@ assert.equal(stripRetailInternalPath('/products'), '/products');
 assert.equal(publicAnalyticsPagePath('/retail/products', 'utm_source=google&phone=09120000000'), '/products?utm_source=google');
 assert.equal(sanitizeAnalyticsSearch('utm_campaign=spring&otp=1234'), 'utm_campaign=spring');
 assert.equal(sanitizeAnalyticsSearch('Authority=A000&utm_source=torob'), 'utm_source=torob');
-assert.equal(sanitizeAnalyticsSearch('q=09120000000&color=red'), 'color=red');
+assert.equal(sanitizeAnalyticsSearch('q=09120000000&color=red'), '', 'search/filter params are not campaign params');
 assert.equal(sanitizeAnalyticsSearch('foo=bar'), '');
 assert.equal(shouldLoadProductionTags('localhost', '/products'), false);
 assert.equal(shouldLoadProductionTags('www.poshaktaranom.ir', '/admin/login'), false);
@@ -309,6 +315,159 @@ assert.equal(lead?.params.send_to, 'G-YVT5DXZF5Z');
 assert.equal(lead?.params.phone, undefined, 'phone key stripped');
 assert.equal(lead?.params.note, undefined, 'email value stripped');
 assert.equal(gtagEvents().some((e) => e.name === 'not_allowed_event'), false);
+
+// --- Allowlist: every lead event keeps only enum params (+ send_to). ---
+const ADDRESS = 'تهران خیابان ولیعصر پلاک ۱۲';
+const PII_VALUES = [
+  '۰۹۱۲۳۴۵۶۷۸۹',
+  '0912-345-6789',
+  '+98 912 345 6789',
+  'ali%40example.com',
+  'ali@example.com',
+  'Authority=A0000123',
+  'paymentId=00000000-0000-0000-0000-000000000000',
+  'trackingCode=123',
+  'token=abc',
+  ADDRESS,
+];
+const LEAD_EVENTS = [
+  'phone_click',
+  'whatsapp_click',
+  'telegram_click',
+  'wholesale_cta_click',
+  'wholesale_order_request',
+  'generate_lead',
+  'contact_form_start',
+  'contact_form_submit',
+];
+const LEAD_ALLOWED = ['lead_type', 'cta_location', 'business_type', 'referral', 'payment_type', 'send_to'];
+for (const name of LEAD_EVENTS) {
+  assert.deepEqual([...EVENT_PARAM_ALLOWLIST[name]!].sort(), LEAD_ALLOWED.filter((k) => k !== 'send_to').sort());
+  trackWholesaleLead(name, {
+    cta_location: 'floating_contact',
+    business_type: 'BOUTIQUE',
+    referral: 'yes',
+    payment_type: 'online',
+    item_id: 'SKU-1',
+    page_path: '/products?phone=09121234567',
+    address: ADDRESS,
+    note: ADDRESS,
+    customer_name: 'علی',
+    mobile: '۰۹۱۲۳۴۵۶۷۸۹',
+    authority: 'A0000123',
+    paymentId: '00000000-0000-0000-0000-000000000000',
+    trackingCode: '123',
+    token: 'abc',
+  });
+  const hit = gtagEvents().filter((e) => e.name === name).at(-1);
+  assert.ok(hit, `${name} sent`);
+  assert.deepEqual(Object.keys(hit!.params).sort(), LEAD_ALLOWED.slice().sort(), `${name}: only allowlisted keys`);
+  assert.equal(hit!.params.lead_type, name);
+  assert.equal(hit!.params.business_type, 'BOUTIQUE');
+
+  for (const bad of PII_VALUES) {
+    trackWholesaleLead(name, { cta_location: bad, business_type: bad, referral: bad, payment_type: bad });
+    const dirty = gtagEvents().filter((e) => e.name === name).at(-1)!;
+    assert.deepEqual(Object.keys(dirty.params).sort(), ['lead_type', 'send_to'], `${name}: non-enum "${bad}" dropped`);
+    assert.equal(JSON.stringify(dirty.params).includes(bad), false);
+  }
+}
+trackWholesaleLead('phone_click', { cta_location: 'header' });
+assert.equal(gtagEvents().filter((e) => e.name === 'phone_click').at(-1)?.params.cta_location, undefined, 'unknown cta_location dropped');
+
+assert.equal(enforceEventAllowlist('made_up_event', { value: 1 }), null, 'unknown events are not sent');
+const filteredCart = enforceEventAllowlist('add_to_cart', {
+  currency: 'IRR',
+  value: 10,
+  email: 'a@b.co',
+  page_location: 'https://poshaktaranom.com/payment/callback?Authority=A0000123',
+  cart_fp: 'k3j9x2',
+  cart_age_days: 2,
+  items: [{ item_id: 'SKU', item_name: 'نمونه', price: 10, quantity: 1, discount: 1, item_list_id: 'x', email: 'a@b.co', item_category: '0912-345-6789' }],
+});
+assert.deepEqual(Object.keys(filteredCart!).sort(), ['cart_age_days', 'cart_fp', 'currency', 'items', 'value']);
+assert.deepEqual(Object.keys((filteredCart!.items as object[])[0]!).sort(), ['item_id', 'item_name', 'price', 'quantity']);
+assert.equal(enforceEventAllowlist('add_to_cart', { currency: 'USD' })!.currency, undefined, 'currency enum');
+assert.equal(enforceEventAllowlist('add_to_cart', { cart_fp: 'SKU-1:1:10' })!.cart_fp, undefined, 'raw fingerprint rejected');
+assert.equal(enforceEventAllowlist('add_to_cart', { cart_age_days: 1.5 })!.cart_age_days, undefined);
+assert.equal(enforceEventAllowlist('add_payment_info', { payment_type: 'ZARINPAL' })!.payment_type, 'ZARINPAL');
+assert.equal(enforceEventAllowlist('add_payment_info', { payment_type: ADDRESS })!.payment_type, undefined);
+assert.equal(enforceEventAllowlist('purchase', { transaction_id: 'ali@example.com' })!.transaction_id, undefined);
+assert.equal(enforceEventAllowlist('contact_click', { contact_method: 'fax' })!.contact_method, undefined);
+for (const bad of PII_VALUES.slice(0, 5)) {
+  assert.equal(enforceEventAllowlist('search', { search_term: bad })!.search_term, undefined, `search_term drops ${bad}`);
+  assert.equal(looksLikePii(bad), true, `PII detected: ${bad}`);
+  assert.equal(Object.keys(sanitizeEventParams({ v: bad })).length, 0, `second layer drops ${bad}`);
+}
+assert.equal(looksLikePii('SKU-325'), false);
+assert.equal(looksLikePii('floating_contact'), false);
+
+// --- Cart cohort: cart_fp (short hash) + cart_age_days. ---
+assert.match(cartFingerprintHash([{ sku: 'SKU-1', quantity: 2, unitPrice: 10 }]), /^[a-z0-9]{1,8}$/);
+assert.equal(cartFingerprintHash([]), '');
+assert.equal(cartFingerprintHash([{ sku: 'SKU-1', quantity: 2, unitPrice: 10 }]).includes('SKU'), false);
+const noon = new Date(2026, 9, 21, 12, 0, 0).getTime();
+assert.equal(cartAgeDays(noon, noon), 0);
+assert.equal(cartAgeDays(new Date(2026, 9, 21, 0, 5).getTime(), new Date(2026, 9, 21, 23, 55).getTime()), 0, 'same day');
+assert.equal(cartAgeDays(new Date(2026, 9, 20, 23, 55).getTime(), new Date(2026, 9, 21, 0, 5).getTime()), 1, 'next calendar day');
+assert.equal(cartAgeDays(noon - 3 * 86_400_000, noon), 3);
+assert.equal(cartAgeDays(noon + 86_400_000, noon), 0, 'clock skew never negative');
+
+let wholesaleCart: Array<{ sku: string; productId: string; quantity: number; unitPrice: number }> = [];
+registerCartSnapshot(() => wholesaleCart);
+storage.delete('taranom_ga4_cart_cohort');
+wholesaleCart = [{ sku: 'CO-1', productId: 'p1', quantity: 2, unitPrice: 100 }];
+trackAddToCart({ sku: 'CO-1', productId: 'p1', name: 'کوهورت', unitPrice: 100, quantity: 2 });
+const atc = gtagEvents().filter((e) => e.name === 'add_to_cart').at(-1)!;
+assert.equal(atc.params.cart_fp, cartFingerprintHash(wholesaleCart), 'add_to_cart fp = post-add cart');
+assert.equal(atc.params.cart_age_days, 0);
+assert.equal(atc.params.send_to, 'G-YVT5DXZF5Z');
+const cohort = JSON.parse(storage.get('taranom_ga4_cart_cohort')!) as { since: number; fp: string };
+// Pretend the first add happened 3 days ago; a second add keeps the cohort start.
+storage.set('taranom_ga4_cart_cohort', JSON.stringify({ ...cohort, since: Date.now() - 3 * 86_400_000 }));
+wholesaleCart = [...wholesaleCart, { sku: 'CO-2', productId: 'p2', quantity: 1, unitPrice: 50 }];
+trackAddToCart({ sku: 'CO-2', productId: 'p2', name: 'دوم', unitPrice: 50, quantity: 1 });
+assert.equal(gtagEvents().filter((e) => e.name === 'add_to_cart').at(-1)!.params.cart_age_days, 3);
+
+const checkoutInputs = wholesaleCart.map((i) => ({ ...i, name: i.sku }));
+const fpBefore = gtagEvents().filter((e) => e.name === 'begin_checkout').length;
+trackBeginCheckout(checkoutInputs, 250);
+trackBeginCheckout(checkoutInputs, 250);
+const bcHits = gtagEvents().filter((e) => e.name === 'begin_checkout');
+assert.equal(bcHits.length - fpBefore, 1, 'begin_checkout once per cart fp');
+assert.equal(bcHits.at(-1)!.params.cart_fp, cartFingerprintHash(wholesaleCart), 'same fp as last add_to_cart');
+assert.equal(bcHits.at(-1)!.params.cart_age_days, 3);
+trackBeginCheckout([...checkoutInputs, { sku: 'CO-3', productId: 'p3', quantity: 1, unitPrice: 1, name: 'x' }], 251);
+assert.equal(gtagEvents().filter((e) => e.name === 'begin_checkout').length - fpBefore, 2, 'changed cart → new begin_checkout');
+
+const shipBefore = gtagEvents().filter((e) => e.name === 'add_shipping_info').length;
+trackAddShippingInfo(checkoutInputs, 250, 'TIPAX');
+trackAddShippingInfo(checkoutInputs, 250, 'TIPAX');
+trackAddShippingInfo(checkoutInputs, 250, 'PISHTAZ');
+const shipHits = gtagEvents().filter((e) => e.name === 'add_shipping_info');
+assert.equal(shipHits.length - shipBefore, 2, 'add_shipping_info once per (fp, method)');
+assert.equal(shipHits.at(-1)!.params.cart_fp, cartFingerprintHash(wholesaleCart));
+assert.equal(shipHits.at(-1)!.params.cart_age_days, 3);
+const payBefore = gtagEvents().filter((e) => e.name === 'add_payment_info').length;
+trackAddPaymentInfo(checkoutInputs, 250, 'ONLINE');
+trackAddPaymentInfo(checkoutInputs, 250, 'ONLINE');
+trackAddPaymentInfo(checkoutInputs, 250, 'CASH');
+const payHits = gtagEvents().filter((e) => e.name === 'add_payment_info');
+assert.equal(payHits.length - payBefore, 2, 'add_payment_info once per (fp, method)');
+assert.equal(payHits.at(-1)!.params.payment_type, 'CASH');
+
+// New cart after the old one was emptied starts a fresh cohort (age 0).
+wholesaleCart = [{ sku: 'NEW-1', productId: 'n1', quantity: 1, unitPrice: 10 }];
+trackAddToCart({ sku: 'NEW-1', productId: 'n1', name: 'جدید', unitPrice: 10, quantity: 1 });
+assert.equal(gtagEvents().filter((e) => e.name === 'add_to_cart').at(-1)!.params.cart_age_days, 0);
+registerCartSnapshot(null);
+
+// Nothing sent anywhere carries PII / gateway tokens.
+const everything = JSON.stringify(gtagEvents().map((e) => e.params));
+for (const needle of ['09121234567', '۰۹۱۲', '0912-345', '+98 912', 'example.com', 'A0000123', '00000000-0000', 'trackingCode', 'token', 'ولیعصر']) {
+  assert.equal(everything.includes(needle), false, `no "${needle}" in any GA param`);
+}
+
 win.location.hostname = 'www.poshaktaranom.ir';
 win.location.origin = 'https://www.poshaktaranom.ir';
 

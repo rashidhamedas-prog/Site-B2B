@@ -116,9 +116,31 @@ function pickInstallmentRule(
   };
 }
 
+const LOGIN_REDIRECT = '/portal/login?redirect=/checkout';
+
+/** Same markup on server and first client render; replaces the old blank `return null`. */
+function CheckoutStatusCard({ guest }: { guest: boolean }) {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="card p-10 max-w-sm w-full text-center space-y-4" role="status" aria-live="polite" aria-busy="true">
+        <ShoppingCart className="h-12 w-12 text-gray-200 mx-auto" />
+        {guest ? (
+          <>
+            <p className="text-lg font-bold text-gray-900">در حال انتقال به صفحه ورود…</p>
+            <Link href={LOGIN_REDIRECT} className="btn btn-primary btn-md block">ورود به حساب</Link>
+          </>
+        ) : (
+          <p className="text-lg font-bold text-gray-900">در حال بارگذاری…</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, total, updateQty, removeItem, clear } = useCart();
+  const { items, total, hydrated, updateQty, removeItem, clear } = useCart();
+  const [auth, setAuth] = useState<'pending' | 'guest' | 'authed'>('pending');
   const [shippingMethod, setShippingMethod] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'INSTALLMENT' | 'ONLINE'>('ONLINE');
   const [downPaymentAmount, setDownPaymentAmount] = useState<number>(0);
@@ -152,9 +174,14 @@ export default function CheckoutPage() {
   const [shippingBaseFee, setShippingBaseFee] = useState(1_500_000);
 
   useEffect(() => {
-    if (!getToken()) {
-      router.replace('/portal/login?redirect=/checkout');
+    if (getToken()) {
+      setAuth('authed');
+      return;
     }
+    setAuth('guest');
+    // Let the layout's GA boundary (client-rendered after hydration) mount and record the landing page first.
+    const t = window.setTimeout(() => router.replace(LOGIN_REDIRECT), 300);
+    return () => window.clearTimeout(t);
   }, [router]);
 
   useEffect(() => {
@@ -364,10 +391,8 @@ export default function CheckoutPage() {
   });
   const ctaHint = checkoutCtaHint(paymentMethod);
 
-  if (!getToken()) return null;
-
   const handleSubmit = async () => {
-    if (!getToken()) { router.push('/portal/login?redirect=/checkout'); return; }
+    if (!getToken()) { router.push(LOGIN_REDIRECT); return; }
     if (items.length === 0) { setError('سبد خرید خالی است'); return; }
     if (!shippingMethod) { setError('لطفاً روش ارسال را انتخاب کنید'); return; }
     const addressError = firstAddressError(validateShippingAddress(address, 'standard'));
@@ -477,6 +502,8 @@ export default function CheckoutPage() {
       setError(e instanceof Error ? e.message : 'خطا در ثبت سفارش');
     } finally { setLoading(false); }
   };
+
+  if (auth !== 'authed' || !hydrated) return <CheckoutStatusCard guest={auth === 'guest'} />;
 
   if (done) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">

@@ -9,6 +9,7 @@ import {
  */
 @Entity('analytics_event_log')
 @Unique('UQ_analytics_event_log_event_txn', ['eventName', 'transactionId'])
+@Index('IDX_analytics_event_log_status_next', ['status', 'nextAttemptAt'])
 export class AnalyticsEventLogEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -35,8 +36,11 @@ export class AnalyticsEventLogEntity {
   paymentId: string | null;
 
   /**
-   * PENDING | SENDING | SENT | FAILED (server-owned, retried by job) |
-   * CLIENT_FALLBACK (browser owns it; server never sends) | SKIPPED
+   * PENDING → SENDING (server claimed, leased) → SENT (2xx = transport accepted
+   * only, not payload validity) | FAILED (transient, retried at nextAttemptAt) |
+   * INVALID (schema/4xx, terminal) | EXPIRED (71h old or attempts exhausted).
+   * CLIENT_FALLBACK: browser owns it; server never sends. SKIPPED: not tracked.
+   * Server-owned: SENDING, SENT, FAILED, INVALID, EXPIRED.
    */
   @Column({ length: 16, default: 'PENDING' })
   @Index('IDX_analytics_event_log_status')
@@ -55,11 +59,24 @@ export class AnalyticsEventLogEntity {
   @Column({ type: 'bigint', default: 0 })
   valueIrr: number;
 
+  /** Short code only (http_500, timeout, network, schema_invalid:<field>…). */
   @Column({ type: 'text', nullable: true })
   lastError: string | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   sentAt: Date | null;
+
+  /** Original purchase time; sent as timestamp_micros on every attempt. */
+  @Column({ type: 'timestamptz', nullable: true })
+  eventAt: Date | null;
+
+  /** When a FAILED row is next due (backoff schedule). */
+  @Column({ type: 'timestamptz', nullable: true })
+  nextAttemptAt: Date | null;
+
+  /** SENDING claim lease; an expired lease lets another worker reclaim. */
+  @Column({ type: 'timestamptz', nullable: true })
+  leaseUntil: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

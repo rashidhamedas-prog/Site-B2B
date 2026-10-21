@@ -6,10 +6,10 @@ import {
   ensureGtagStub,
   isAdminAnalyticsPath,
   isNonProductionAnalyticsHost,
+  looksLikePii,
   publicAnalyticsPagePath,
   RETAIL_GA4_MEASUREMENT_ID,
   WHOLESALE_GA4_MEASUREMENT_ID,
-  sanitizeAnalyticsSearch,
   sanitizeGa4Id,
   stripRetailInternalPath,
   type GoogleChannel,
@@ -143,11 +143,173 @@ export function shouldSendWholesaleAnalytics(opts?: {
   return shouldSendRetailAnalytics({ ...opts, channel: 'WHOLESALE' });
 }
 
-function gtagEvent(name: string, params: Record<string, unknown>) {
+const LEAD_EVENT_NAMES = [
+  'generate_lead',
+  'wholesale_cta_click',
+  'phone_click',
+  'telegram_click',
+  'whatsapp_click',
+  'contact_form_start',
+  'contact_form_submit',
+  'wholesale_order_request',
+] as const;
+
+/** Allowed values (lowercase, matched case-insensitively) for enum params. Anything else is dropped. */
+export const EVENT_PARAM_ENUMS: Record<string, ReadonlySet<string>> = {
+  lead_type: new Set<string>(LEAD_EVENT_NAMES),
+  cta_location: new Set([
+    'floating_contact',
+    'page_link',
+    'checkout_submit',
+    'portal_register',
+    'catalog_quick_order',
+  ]),
+  business_type: new Set(['retail', 'boutique', 'wholesale', 'online']),
+  referral: new Set(['yes', 'no']),
+  payment_type: new Set(['online', 'cash', 'installment', 'zarinpal', 'digipay', 'torobpay']),
+  contact_method: new Set(['phone', 'sms', 'whatsapp', 'telegram', 'instagram', 'rubika', 'bale']),
+  method: new Set(['sales_partner']),
+  sales_channel: new Set(['affiliate']),
+  affiliation: new Set(['affiliate']),
+  currency: new Set([GA4_CURRENCY.toLowerCase()]),
+};
+
+const LEAD_PARAMS = ['lead_type', 'cta_location', 'business_type', 'referral', 'payment_type'] as const;
+const CART_COHORT_PARAMS = ['cart_fp', 'cart_age_days'] as const;
+const AFFILIATE_PARAMS = ['sales_channel'] as const;
+
+/**
+ * Single source of truth for what each event may carry. Events not listed are not sent;
+ * keys not listed are dropped. `send_to` is added by the choke point after filtering.
+ */
+export const EVENT_PARAM_ALLOWLIST: Record<string, readonly string[]> = {
+  view_item: ['currency', 'value', 'items'],
+  view_item_list: ['currency', 'item_list_id', 'item_list_name', 'items'],
+  select_item: ['currency', 'item_list_id', 'item_list_name', 'items'],
+  add_to_wishlist: ['currency', 'value', 'items'],
+  add_to_cart: ['currency', 'value', 'items', ...CART_COHORT_PARAMS],
+  remove_from_cart: ['currency', 'value', 'items'],
+  view_cart: ['currency', 'value', 'items'],
+  begin_checkout: ['currency', 'value', 'items', 'coupon', ...CART_COHORT_PARAMS],
+  add_shipping_info: ['currency', 'value', 'items', 'coupon', 'shipping_tier', ...CART_COHORT_PARAMS],
+  add_payment_info: ['currency', 'value', 'items', 'coupon', 'payment_type', ...CART_COHORT_PARAMS],
+  purchase: [
+    'transaction_id',
+    'currency',
+    'value',
+    'items',
+    'shipping',
+    'tax',
+    'coupon',
+    'affiliation',
+    'affiliate_network',
+    'affiliate_code',
+  ],
+  search: ['search_term'],
+  contact_click: ['contact_method'],
+  sign_up: ['method'],
+  login: ['method'],
+  affiliate_landing_view: AFFILIATE_PARAMS,
+  affiliate_signup_start: AFFILIATE_PARAMS,
+  affiliate_link_created: AFFILIATE_PARAMS,
+  affiliate_link_copied: AFFILIATE_PARAMS,
+  affiliate_catalog_view: AFFILIATE_PARAMS,
+  affiliate_order_created: AFFILIATE_PARAMS,
+  affiliate_payment_link_sent: AFFILIATE_PARAMS,
+  ...Object.fromEntries(LEAD_EVENT_NAMES.map((name) => [name, LEAD_PARAMS])),
+};
+
+export const GA4_ITEM_PARAM_ALLOWLIST = [
+  'item_id',
+  'item_name',
+  'item_brand',
+  'item_category',
+  'item_variant',
+  'price',
+  'quantity',
+  'index',
+  'item_list_name',
+] as const;
+
+const SAFE_TOKEN = /^[\p{L}\p{M}\p{N}_\-./ ]{1,100}$/u;
+const NUMERIC_PARAMS = new Set(['value', 'shipping', 'tax', 'price', 'quantity', 'index']);
+
+function safeString(raw: unknown, max = 100): string | undefined {
+  if (typeof raw !== 'string' && typeof raw !== 'number') return undefined;
+  const value = String(raw).trim();
+  if (!value || value.length > max || looksLikePii(value) || PII_PARAM_VALUE.test(value)) return undefined;
+  return value;
+}
+
+function safeNumber(raw: unknown): number | undefined {
+  const n = typeof raw === 'number' ? raw : Number.NaN;
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
+function safeItem(raw: unknown): Record<string, string | number> | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const src = raw as Record<string, unknown>;
+  const out: Record<string, string | number> = {};
+  for (const key of GA4_ITEM_PARAM_ALLOWLIST) {
+    if (!(key in src)) continue;
+    const v = NUMERIC_PARAMS.has(key) ? safeNumber(src[key]) : safeString(src[key]);
+    if (v !== undefined) out[key] = v;
+  }
+  return out.item_id || out.item_name ? out : null;
+}
+
+function safeParamValue(key: string, raw: unknown): unknown {
+  const allowed = EVENT_PARAM_ENUMS[key];
+  if (allowed) {
+    if (typeof raw !== 'string') return undefined;
+    const value = raw.trim();
+    return allowed.has(value.toLowerCase()) ? value : undefined;
+  }
+  if (key === 'items') {
+    if (!Array.isArray(raw)) return undefined;
+    return raw.slice(0, 200).map(safeItem).filter((it): it is Record<string, string | number> => Boolean(it));
+  }
+  if (NUMERIC_PARAMS.has(key)) return safeNumber(raw);
+  if (key === 'cart_age_days') {
+    return typeof raw === 'number' && Number.isInteger(raw) && raw >= 0 && raw <= 3650 ? raw : undefined;
+  }
+  if (key === 'cart_fp') return typeof raw === 'string' && /^[a-z0-9]{1,16}$/.test(raw) ? raw : undefined;
+  if (key === 'search_term') return safeString(raw, 80);
+  const value = safeString(raw, 64);
+  return value && SAFE_TOKEN.test(value) ? value : undefined;
+}
+
+/**
+ * Allowlist layer: unknown event → null; unknown key or out-of-enum / PII-looking value → dropped.
+ * Then the legacy key/value regex runs as a second layer on scalar params.
+ */
+export function enforceEventAllowlist(
+  name: string,
+  params: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const allowed = EVENT_PARAM_ALLOWLIST[name];
+  if (!allowed) return null;
+  const out: Record<string, unknown> = {};
+  for (const key of allowed) {
+    if (!(key in params)) continue;
+    const value = safeParamValue(key, params[key]);
+    if (value === undefined) continue;
+    if (key !== 'item_list_name' && PII_PARAM_KEY.test(key)) continue;
+    if (typeof value === 'string' && PII_PARAM_VALUE.test(value)) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+/** The only place that calls gtag('event'). */
+function gtagEvent(name: string, params: Record<string, unknown>, sendTo?: string) {
   try {
+    const safe = enforceEventAllowlist(name, params);
+    if (!safe) return;
+    if (sendTo) safe.send_to = sendTo;
     ensureGtagStub();
     if (typeof window.gtag === 'function') {
-      window.gtag('event', name, params);
+      window.gtag('event', name, safe);
     }
   } catch {
     /* adblock / deny */
@@ -166,12 +328,8 @@ function ecommerceEvent(name: string, params: Record<string, unknown>) {
     if (!shouldSendRetailAnalytics({ channel: channel === 'WHOLESALE' ? 'WHOLESALE' : undefined })) {
       return;
     }
-    const items = Array.isArray(params.items) ? params.items : undefined;
     const gtagParams: Record<string, unknown> = { ...params, currency: GA4_CURRENCY };
-    if (items) gtagParams.items = items;
-    const sendTo = resolveEcommerceGa4Id(channel);
-    if (sendTo) gtagParams.send_to = sendTo;
-    gtagEvent(name, gtagParams);
+    gtagEvent(name, gtagParams, resolveEcommerceGa4Id(channel));
   } catch {
     /* never throw into storefront UI */
   }
@@ -240,6 +398,107 @@ export function checkoutCartFingerprint(
     .join(',');
 }
 
+/** Short non-reversible id for a cart fingerprint (FNV-1a 32-bit, base36). Empty cart → ''. */
+export function cartFingerprintHash(
+  items: Parameters<typeof checkoutCartFingerprint>[0],
+): string {
+  const fingerprint = checkoutCartFingerprint(items);
+  if (!fingerprint) return '';
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < fingerprint.length; i++) {
+    hash ^= fingerprint.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+}
+
+const CART_COHORT_KEY = 'taranom_ga4_cart_cohort';
+const RETAIL_CART_STORAGE_KEY = 'taranom_retail_cart';
+const DAY_MS = 86_400_000;
+
+type CartCohort = { fp: string; since: number };
+type CartSnapshotReader = () => RetailAnalyticsItemInput[] | null;
+
+let cartSnapshotReader: CartSnapshotReader | null = null;
+
+/** Cart owners register a synchronous reader so add_to_cart can fingerprint the post-add cart. */
+export function registerCartSnapshot(reader: CartSnapshotReader | null) {
+  cartSnapshotReader = reader;
+}
+
+function readCartSnapshot(): RetailAnalyticsItemInput[] | null {
+  try {
+    const fromOwner = cartSnapshotReader?.();
+    if (fromOwner) return fromOwner;
+    if (typeof window === 'undefined') return null;
+    // zustand persist writes synchronously inside set(), before trackAddToCart runs.
+    const raw = window.localStorage?.getItem(RETAIL_CART_STORAGE_KEY);
+    const items = raw ? (JSON.parse(raw) as { state?: { items?: unknown } })?.state?.items : null;
+    return Array.isArray(items) ? (items as RetailAnalyticsItemInput[]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whole local calendar days between the first add and now (0 = same day). */
+export function cartAgeDays(since: number, now = Date.now()): number {
+  const start = new Date(since);
+  const end = new Date(now);
+  const a = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const b = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.max(0, Math.round((b - a) / DAY_MS));
+}
+
+function readCartCohort(): CartCohort | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const raw = window.localStorage?.getItem(CART_COHORT_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Partial<CartCohort>) : null;
+    if (!parsed || typeof parsed.since !== 'number' || !Number.isFinite(parsed.since)) return null;
+    return { fp: String(parsed.fp || ''), since: parsed.since };
+  } catch {
+    return null;
+  }
+}
+
+function writeCartCohort(cohort: CartCohort) {
+  try {
+    if (typeof window === 'undefined') return;
+    window.localStorage?.setItem(CART_COHORT_KEY, JSON.stringify(cohort));
+  } catch {
+    /* private mode */
+  }
+}
+
+function cohortParams(fp: string, cohort: CartCohort | null) {
+  const out: { cart_fp?: string; cart_age_days?: number } = {};
+  if (fp) out.cart_fp = fp;
+  if (cohort) out.cart_age_days = cartAgeDays(cohort.since);
+  return out;
+}
+
+/** add_to_cart: a cart that was empty before this add starts a new cohort. */
+function noteCartAdd(input: RetailAnalyticsItemInput) {
+  const snapshot = readCartSnapshot();
+  const cart = snapshot?.length ? snapshot : [input];
+  const addedQty = Math.max(1, Math.round(Number(input.quantity) || 1));
+  const cartQty = cart.reduce((n, it) => n + Math.max(0, Number(it.quantity) || 0), 0);
+  const prev = readCartCohort();
+  const fp = cartFingerprintHash(cart);
+  const cohort: CartCohort = {
+    fp,
+    since: prev && cartQty > addedQty ? prev.since : Date.now(),
+  };
+  writeCartCohort(cohort);
+  return cohortParams(fp, cohort);
+}
+
+function noteCheckoutCart(fp: string) {
+  const cohort = readCartCohort();
+  if (cohort && fp && cohort.fp !== fp) writeCartCohort({ ...cohort, fp });
+  return cohortParams(fp, cohort);
+}
+
 function checkoutStepStorageKey(eventName: string, fingerprint: string, selection: string): string {
   return `${CHECKOUT_STEP_STORAGE_PREFIX}${eventName}|${fingerprint}|${selection}`;
 }
@@ -273,8 +532,7 @@ export function claimBeginCheckout(fingerprint: string): boolean {
 export function inferRetailItemList(pathname: string, search = ''): { id: string; name: string } {
   const path = stripRetailInternalPath((pathname || '/').split('?')[0]);
   const raw = new URLSearchParams(String(search || '').replace(/^\?/, '').split('#')[0] || '');
-  const params = new URLSearchParams(sanitizeAnalyticsSearch(search));
-  if (params.get('q') || params.get('query') || params.get('search')) {
+  if (raw.get('q') || raw.get('query') || raw.get('search')) {
     return { id: 'search', name: 'search' };
   }
   if (raw.get('collectionId') || raw.get('collection') || path.startsWith('/collection')) {
@@ -299,6 +557,7 @@ export function trackAddToCart(input: RetailAnalyticsItemInput) {
     currency: GA4_CURRENCY,
     value: item.price * item.quantity,
     items: [item],
+    ...noteCartAdd(input),
   });
 }
 
@@ -324,8 +583,8 @@ export function trackViewCart(inputs: RetailAnalyticsItemInput[], valueIrr: numb
 }
 
 export function trackBeginCheckout(inputs: RetailAnalyticsItemInput[], valueIrr: number) {
-  const fingerprint = checkoutCartFingerprint(inputs);
-  if (!claimBeginCheckout(fingerprint)) return;
+  const fp = cartFingerprintHash(inputs);
+  if (!claimBeginCheckout(fp)) return;
   const items = inputs
     .map((it, i) => toGa4Item(it, i))
     .filter((it): it is Ga4Item => Boolean(it));
@@ -333,6 +592,7 @@ export function trackBeginCheckout(inputs: RetailAnalyticsItemInput[], valueIrr:
     currency: GA4_CURRENCY,
     value: ga4ValueFromStoredIrr(valueIrr),
     items,
+    ...noteCheckoutCart(fp),
   });
 }
 
@@ -343,7 +603,8 @@ export function trackAddShippingInfo(
 ) {
   const tier = String(shippingTier || '').trim();
   if (!tier) return;
-  if (!claimCheckoutStep('add_shipping_info', checkoutCartFingerprint(inputs), tier)) return;
+  const fp = cartFingerprintHash(inputs);
+  if (!claimCheckoutStep('add_shipping_info', fp, tier)) return;
   const items = inputs
     .map((it, i) => toGa4Item(it, i))
     .filter((it): it is Ga4Item => Boolean(it));
@@ -352,6 +613,7 @@ export function trackAddShippingInfo(
     value: ga4ValueFromStoredIrr(valueIrr),
     shipping_tier: tier,
     items,
+    ...noteCheckoutCart(fp),
   });
 }
 
@@ -362,7 +624,8 @@ export function trackAddPaymentInfo(
 ) {
   const payment = String(paymentType || '').trim();
   if (!payment) return;
-  if (!claimCheckoutStep('add_payment_info', checkoutCartFingerprint(inputs), payment)) return;
+  const fp = cartFingerprintHash(inputs);
+  if (!claimCheckoutStep('add_payment_info', fp, payment)) return;
   const items = inputs
     .map((it, i) => toGa4Item(it, i))
     .filter((it): it is Ga4Item => Boolean(it));
@@ -371,6 +634,7 @@ export function trackAddPaymentInfo(
     value: ga4ValueFromStoredIrr(valueIrr),
     payment_type: payment,
     items,
+    ...noteCheckoutCart(fp),
   });
 }
 
@@ -533,7 +797,7 @@ const AFFILIATE_EVENTS = new Set([
   'affiliate_payment_link_sent',
 ]);
 
-const PII_PARAM_KEY = /phone|mobile|email|name|address|token|otp|national|card|iban|password|authority/i;
+const PII_PARAM_KEY = /phone|mobile|email|name|address|token|otp|national|card|iban|password|authority|payment_?id|tracking|ref_?id/i;
 const PII_PARAM_VALUE = /@|09\d{9}|\+98\d{10}/;
 
 export function sanitizeEventParams(
@@ -548,7 +812,7 @@ export function sanitizeEventParams(
     }
     if (typeof raw !== 'string' && typeof raw !== 'boolean') continue;
     const value = String(raw).trim();
-    if (!value || value.length > 80 || PII_PARAM_VALUE.test(value)) continue;
+    if (!value || value.length > 80 || PII_PARAM_VALUE.test(value) || looksLikePii(value)) continue;
     out[key] = value;
   }
   return out;
@@ -556,16 +820,12 @@ export function sanitizeEventParams(
 
 function plainEvent(name: string, params: Record<string, unknown>) {
   if (!shouldSendRetailAnalytics()) return;
-  const safe = sanitizeEventParams(params);
-  const sendTo = resolveRetailGa4Id();
-  const payload: Record<string, unknown> = { ...safe };
-  if (sendTo) payload.send_to = sendTo;
-  gtagEvent(name, payload);
+  gtagEvent(name, sanitizeEventParams(params), resolveRetailGa4Id());
 }
 
 export function trackSearch(term: string) {
   const search_term = String(term ?? '').trim().slice(0, 80);
-  if (!search_term || PII_PARAM_VALUE.test(search_term)) return;
+  if (!search_term || PII_PARAM_VALUE.test(search_term) || looksLikePii(search_term)) return;
   plainEvent('search', { search_term });
 }
 
@@ -648,17 +908,9 @@ export function parseGa4SessionCookie(raw: string): string | undefined {
   return undefined;
 }
 
-const WHOLESALE_LEAD_EVENTS = new Set([
-  'generate_lead',
-  'wholesale_cta_click',
-  'phone_click',
-  'telegram_click',
-  'whatsapp_click',
-  'contact_form_start',
-  'contact_form_submit',
-  'wholesale_order_request',
-]);
+const WHOLESALE_LEAD_EVENTS: ReadonlySet<string> = new Set(LEAD_EVENT_NAMES);
 
+/** Lead events carry only enum params (see EVENT_PARAM_ALLOWLIST); page context comes from gtag('set'). */
 export function trackWholesaleLead(
   name: string,
   params: Record<string, unknown> = {},
@@ -666,14 +918,7 @@ export function trackWholesaleLead(
   if (!WHOLESALE_LEAD_EVENTS.has(name)) return;
   if (!shouldSendWholesaleAnalytics()) return;
   try {
-    const safe = sanitizeEventParams({
-      ...params,
-      page_path: publicRetailPagePath(),
-    });
-    const sendTo = resolveWholesaleGa4Id();
-    const payload: Record<string, unknown> = { ...safe, lead_type: name };
-    if (sendTo) payload.send_to = sendTo;
-    gtagEvent(name, payload);
+    gtagEvent(name, { ...sanitizeEventParams(params), lead_type: name }, resolveWholesaleGa4Id());
   } catch {
     /* never throw into UI */
   }
