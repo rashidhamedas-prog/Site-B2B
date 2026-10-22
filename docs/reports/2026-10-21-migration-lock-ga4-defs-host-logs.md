@@ -89,5 +89,6 @@ Rollback: کد ← `git revert 274ec218` + deploy؛ GTM ← نسخهٔ ۳ کان
 ## باز / خارج از این تسک
 - push تلگرام هشدار دیسک: `DISK_ALERT_TELEGRAM_CHAT_ID` در `.env` Hetzner لازم است.
 - ثبت custom dimension ‏`cart_age_bucket` و metric ‏`cart_age_days` در GA4 Admin هر دو property (دستی).
+- به‌روزرسانی ۲۲ مهر: در هر دو property تعداد custom dimension و custom metric صفر است و `cart_fp` ثبت نشده. هشدار دیسک از ۲۱ مهر ۱۷:۲۷ به خاطر نداشتن بیت اجرا (mode 100644 + `git reset`) اجرا نمی‌شد. حالا cron با `/bin/bash` اجرا می‌کند، mode در گیت 100755 است و پیام شامل host/mount/free/used/thresholds/time است. dry-run هشدار و recovery تست شد. چت خصوصی تلگرام هنوز تعیین نشده.
 - `order-money-guard.spec.ts` (کامیت `8bb51acd`، خارج از این تسک) در `tsc -p apps/api` خطای narrowing دارد.
 - `lead-api` و `lead_postgres` (پروژهٔ جدا) خاموش/خراب‌اند؛ فقط loop کند شد.

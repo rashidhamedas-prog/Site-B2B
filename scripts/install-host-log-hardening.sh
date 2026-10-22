@@ -94,7 +94,7 @@ fi
 sudo chmod +x "$APP_DIR/scripts/disk-alert.sh"
 sudo mkdir -p /var/lib/taranom
 sudo tee /etc/cron.d/taranom-disk-alert >/dev/null <<EOF
-*/10 * * * * root $APP_DIR/scripts/disk-alert.sh
+*/10 * * * * root /bin/bash $APP_DIR/scripts/disk-alert.sh
 EOF
 sudo chmod 644 /etc/cron.d/taranom-disk-alert
 

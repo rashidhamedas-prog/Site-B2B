@@ -1,3 +1,10 @@
+## 2026-10-22 — تکمیل هشدار دیسک Hetzner + بررسی Custom Definitions در GA4
+
+- هشدار دیسک از ۲۱ مهر ۱۷:۲۷ UTC بی‌صدا اجرا نمی‌شد: mode گیت `disk-alert.sh` 100644 بود و `git reset` در auto-deploy بیت اجرا را برمی‌داشت. فیکس: cron با `/bin/bash` اجرا می‌کند و mode هر دو اسکریپت در گیت 100755 شد. اولین اجرای سالم: 09:50:01 UTC امروز.
+- `disk-alert.sh` حالا پیام کامل می‌فرستد (host، mount، فضای آزاد، درصد مصرف، آستانه‌ها، زمان UTC)، پیام recovery دارد، تکرار هم‌سطح را ۶ ساعت سرکوب می‌کند، حالت `DISK_ALERT_DRY_RUN=1` دارد و token را از stdin به curl می‌دهد (نه argv). از `.env` بکاپ ۶۰۰ گرفته شد (`backups/env/.env.20261022T094734Z`).
+- `DISK_ALERT_TELEGRAM_CHAT_ID` هنوز تنظیم نشده، چون تنها مقصد تلگرامِ موجود کانال عمومی مشتری‌هاست و برای هشدار سرور مناسب نیست. تا تعیین چت خصوصی، هشدار فقط در syslog و `disk-alert.log` ثبت می‌شود.
+- GA4: در هر دو property (تکی `547378194` و عمده `547352333`) تعداد custom dimension و custom metric صفر است. `cart_fp` ثبت نشده، پس Archive لازم نیست. باید در هر دو `cart_age_bucket` (Event dimension) و `cart_age_days` (Custom metric، Standard) ساخته شود.
+
 ## 2026-10-21 — race مایگریشن، cart_age_bucket، page_view اپ‌مالک، لاگ و دیسک Hetzner (TASK-20261021-003)
 
 - ریشهٔ ردیف تکراری 003: api/worker/worker_b هر سه `migrationsRun: true` و هم‌زمان بالا آمدند؛ TypeORM قفل بین‌پروسسی ندارد. فیکس: فقط api با `pg_advisory_lock` قبل از Nest مایگریت می‌کند؛ workerها `TYPEORM_MIGRATIONS_RUN=false`. migration جدید ندارد.
