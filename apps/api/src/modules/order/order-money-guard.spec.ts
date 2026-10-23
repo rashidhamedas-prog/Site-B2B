@@ -25,7 +25,10 @@ assert(unpaid.allowed === true, 'unpaid may be voided');
 const paid = capturedPaymentBlocksDestructiveAdmin({
   paymentStatuses: ['PENDING', 'PAID'],
 });
-assert(paid.allowed === false, 'any PAID row blocks void/purge');
-assert(typeof paid.reason === 'string' && paid.reason.includes('پرداخت'), 'persian reason');
+if (paid.allowed === false) {
+  assert(paid.reason.includes('پرداخت'), 'persian reason');
+} else {
+  throw new Error('any PAID row blocks void/purge');
+}
 
 console.log('order-money-guard.spec.ts: ok');
