@@ -1,3 +1,10 @@
+## 2026-10-23 — robots Draft A (OAI-SearchBot)
+
+- گروه صریح `OAI-SearchBot` با همان Allow/Disallow گروه `*`. `GPTBot` و `Google-Extended` و `Googlebot` گروه جدا ندارند. Sitemap همچنان بر اساس کانال است.
+- Deploy انجام نشد.
+- CI: `lint-and-build` قبل از این روی master هم در `npm test` می‌مرد (`@taranom/shared-types` → `dist/index.js` که در گیت نیست). ورک‌فلو حالا همان پکیج را قبل از تست API بیلد می‌کند. ربطی به robots ندارد.
+- همان job بعد از سبز شدن تست، روی `order-money-guard.spec.ts` با TS2339 می‌ایستاد (`reason` روی شاخهٔ `allowed: true`). فقط narrowing در همان spec.
+
 ## 2026-10-22 — تکمیل هشدار دیسک Hetzner + بررسی Custom Definitions در GA4
 
 - هشدار دیسک از ۲۱ مهر ۱۷:۲۷ UTC بی‌صدا اجرا نمی‌شد: mode گیت `disk-alert.sh` 100644 بود و `git reset` در auto-deploy بیت اجرا را برمی‌داشت. فیکس: cron با `/bin/bash` اجرا می‌کند و mode هر دو اسکریپت در گیت 100755 شد. اولین اجرای سالم: 09:50:01 UTC امروز.
