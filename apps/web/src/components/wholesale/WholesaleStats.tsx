@@ -1,11 +1,5 @@
 import { shapeDigitsInText } from '@taranom/persian-utils';
-import {
-  BUSINESS_FACTS,
-  COMPANY_PRODUCTION_YEARS_LABEL,
-  COMPANY_PRODUCTION_YEARS_SUBLABEL,
-  yearsOfOperationFa,
-} from '@/lib/business-facts';
-import { alignCompanyProductionStat } from '@/lib/company-year-claim';
+import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
 import { resolveWholesaleStatKind } from '@/lib/wholesale-stat-kind';
 import { WholesaleStatGlyph } from '@/components/wholesale/WholesaleStatGlyph';
 
@@ -25,8 +19,8 @@ const FALLBACK_ITEMS: StatItem[] = [
   },
   {
     value: yearsOfOperationFa(),
-    label: COMPANY_PRODUCTION_YEARS_LABEL,
-    sublabel: COMPANY_PRODUCTION_YEARS_SUBLABEL,
+    label: 'سال تجربه',
+    sublabel: 'در بازار پوشاک',
     icon: 'years',
   },
   {
@@ -74,13 +68,10 @@ function cellClass(index: number, count: number): string {
 /**
  * Compact post-hero proof rail for wholesale.
  * Height budget is ~half the former py-12/14 number stack.
- * Server-only: inline SVG, no client JS. Other CMS stats stay as saved.
- * The production-year row is rewritten to the solar-year claim (founded ۱۳۹۴).
+ * Server-only: inline SVG, no client JS, CMS items stay authoritative.
  */
 export function WholesaleStats({ items = FALLBACK_ITEMS }: { items?: StatItem[] }) {
-  const rows = items
-    .map((row) => alignCompanyProductionStat(row))
-    .filter((row) => row.value && row.label);
+  const rows = items.filter((row) => row.value && row.label);
   if (!rows.length) return null;
 
   return (

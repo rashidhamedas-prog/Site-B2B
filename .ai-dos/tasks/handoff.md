@@ -2,13 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-10-23T09:50:00Z — TASK-20261023-001 GEO robots + brand years (PR, no deploy)
+## 2026-10-23T10:00:00Z — TASK-20261023-001 robots Draft A only (years reverted)
 
-- Owner: cursor. Branch: `cursor/geo-robots-brand-years-3f88`. Do not merge. Do not deploy.
-- Robots Draft A: explicit `OAI-SearchBot` shares allow/disallow with `*`. No GPTBot, Google-Extended, or Googlebot group. Sitemap still channel-based.
-- Live «۱۴ سال تجربه تولیدی» is stored CMS copy, not `yearsOfOperation()` (that returned 11 via Gregorian 2026-2015). Function now uses Tehran solar year minus 1394. Storefront rewrites company year stats/feature titles. Founder marketing bio left in place.
-- Specs: `robots-policy.spec.ts`, `business-facts.spec.ts`, `wholesale-stat-kind.spec.mts`.
-- Ops after merge: `scripts/auto-deploy.sh`, then curl both `/robots.txt` and check wholesale home + about.
+- Owner: cursor. Branch: `cursor/geo-robots-brand-years-3f88`. PR #82. Do not merge. Do not deploy.
+- Ops pulled brand/year copy out of this deploy path. Those files are restored to master. This branch is robots Draft A only.
+- `OAI-SearchBot` shares allow/disallow with `*`. No GPTBot, Google-Extended, or Googlebot group. Sitemap still channel-based.
+- Spec: `robots-policy.spec.ts`.
 
 ## 2026-10-19T14:00:00Z — TASK-20261019-003 category inline links
 
