@@ -15,7 +15,34 @@ import {
   type TemplateButton,
 } from '../publication-template';
 
+/** Official Bot API host. Used when `TELEGRAM_API_URL` is unset or blank. */
 export const TELEGRAM_API = 'https://api.telegram.org';
+
+/**
+ * Base for every Bot API method. Blank env keeps TELEGRAM_API.
+ * Trailing slashes are removed so the request stays `{base}/bot{token}/{method}`.
+ * The value is the prefix before `/bot`, not a full method URL.
+ */
+export function telegramApiBase(source: { TELEGRAM_API_URL?: string | undefined } = process.env): string {
+  const raw = String(source.TELEGRAM_API_URL ?? '').trim();
+  if (!raw) return TELEGRAM_API;
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error('telegram_api_url_invalid');
+  }
+  if (
+    (parsed.protocol !== 'https:' && parsed.protocol !== 'http:')
+    || parsed.username
+    || parsed.password
+    || parsed.search
+    || parsed.hash
+  ) {
+    throw new Error('telegram_api_url_invalid');
+  }
+  return parsed.toString().replace(/\/+$/, '');
+}
 
 /**
  * Env-name indirection shared by every provider: `${PROVIDER}_…` names only.
@@ -151,7 +178,7 @@ export class TelegramAdapter implements ChannelAdapter {
     body?: Record<string, unknown>,
     timeoutMs = 12_000,
   ): Promise<T> {
-    const res = await this.http(`${TELEGRAM_API}/bot${token}/${method}`, {
+    const res = await this.http(`${telegramApiBase()}/bot${token}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: body ? JSON.stringify(body) : undefined,

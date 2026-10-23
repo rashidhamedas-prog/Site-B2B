@@ -165,6 +165,7 @@ assert(worker.includes('OMNICHANNEL_WORKER'), 'independent worker entry');
 assert(bale.includes('ConnectorDisabledError') && rubika.includes('ConnectorDisabledError'), 'Bale/Rubika gated');
 assert(bale.includes('isOmnichannelProviderEnabled') && rubika.includes('isOmnichannelProviderEnabled'), 'Bale/Rubika honour per-provider kill switch');
 assert(telegram.includes('api.telegram.org'), 'Telegram official API');
+assert(telegram.includes('TELEGRAM_API_URL'), 'Telegram base URL is env-overridable');
 assert(bale.includes('https://tapi.bale.ai') && !bale.includes('parse_mode'), 'Bale official API, Markdown-only (no parse_mode)');
 assert(rubika.includes('https://botapi.rubika.ir/v3') && rubika.includes('meta_data_parts') && rubika.includes('requestSendFile'), 'Rubika official API v3 (metadata + upload flow)');
 assert(!rubika.includes('sendMediaGroup') && !rubika.includes('button_link'), 'Rubika: no invented album/button-url API');
