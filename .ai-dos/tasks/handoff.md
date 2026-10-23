@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-23T10:00:00Z — TASK-20261023-001 robots Draft A only (years reverted)
+
+- Owner: cursor. Branch: `cursor/geo-robots-brand-years-3f88`. PR #82. Do not merge. Do not deploy.
+- Ops pulled brand/year copy out of this deploy path. Those files are restored to master. This branch is robots Draft A only.
+- `OAI-SearchBot` shares allow/disallow with `*`. No GPTBot, Google-Extended, or Googlebot group. Sitemap still channel-based.
+- Spec: `robots-policy.spec.ts`.
+
 ## 2026-10-19T14:00:00Z — TASK-20261019-003 category inline links
 
 - Admin intro and bottom copy for both channels use a small TipTap editor (bold, italic, internal link).

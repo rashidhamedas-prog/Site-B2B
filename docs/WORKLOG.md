@@ -1,3 +1,8 @@
+## 2026-10-23 — robots Draft A فقط (بدون تغییر ادعای سال)
+
+- `robots.txt`: گروه صریح `OAI-SearchBot` با همان Allow/Disallow گروه `*`. `GPTBot` و `Google-Extended` و `Googlebot` گروه جدا ندارند. Sitemap همچنان بر اساس کانال است.
+- ادعای سال و متن برند از این PR خارج شد و به master برگشت. Deploy انجام نشد.
+
 ## 2026-10-22 — تکمیل هشدار دیسک Hetzner + بررسی Custom Definitions در GA4
 
 - هشدار دیسک از ۲۱ مهر ۱۷:۲۷ UTC بی‌صدا اجرا نمی‌شد: mode گیت `disk-alert.sh` 100644 بود و `git reset` در auto-deploy بیت اجرا را برمی‌داشت. فیکس: cron با `/bin/bash` اجرا می‌کند و mode هر دو اسکریپت در گیت 100755 شد. اولین اجرای سالم: 09:50:01 UTC امروز.
