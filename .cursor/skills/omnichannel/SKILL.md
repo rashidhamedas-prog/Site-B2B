@@ -29,7 +29,7 @@ Do not skip ahead to live Telegram. Destination canary and connector flags are o
 ## Hard stops
 
 - Do not set `OMNICHANNEL_CONNECTORS_ENABLED=true` or `OMNICHANNEL_AUTO_PUBLISH=true` unless the owner explicitly orders that step in this chat.
-- Do not invent Bale/Rubika APIs. Telegram is `api.telegram.org` only.
+- Do not invent Bale/Rubika APIs. Telegram uses the official Bot API path `{base}/bot{token}/{method}`. Base defaults to `https://api.telegram.org`; `TELEGRAM_API_URL` may point at a gateway. Do not change the Bale or Rubika bases.
 - Do not guess remaining §9 values (MOQ policy, which edits auto-publish, retry SLA, CMS routes, retention) into live worker behavior. Store them like OOS (`*Chosen`).
 
 ## Load next
