@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Star, ChevronRight, ChevronLeft, Quote } from 'lucide-react';
 import { shapeDigitsInText } from '@taranom/persian-utils';
-import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+import { BUSINESS_FACTS, COMPANY_PRODUCTION_YEARS_STAT } from '@/lib/business-facts';
 
 export interface TestimonialItem {
   id?: number | string;
@@ -57,7 +57,7 @@ export function Testimonials({
       : [
           { label: 'مشتری فعال', value: `+${BUSINESS_FACTS.activeCustomers}` },
           { label: 'شهر در ایران', value: '+30' },
-          { label: 'سال تجربه', value: yearsOfOperationFa() },
+          { label: COMPANY_PRODUCTION_YEARS_STAT.label, value: COMPANY_PRODUCTION_YEARS_STAT.value },
           { label: 'مدل در کاتالوگ', value: `+${BUSINESS_FACTS.activeModels}` },
         ];
 

@@ -52,14 +52,17 @@ const FACTS = [
   {
     value: toPersianDigits(BUSINESS_FACTS.foundedSolarYear),
     label: 'سال آغاز کار در مشهد',
+    phrase: false,
   },
   {
     value: yearsOfOperationFa(),
-    label: 'سال فعالیت تولیدی',
+    label: 'در مشهد',
+    phrase: true,
   },
   {
     value: toPersianDigits(BUSINESS_FACTS.teamSize),
     label: 'نفر در خط تولید',
+    phrase: false,
   },
 ] as const;
 
@@ -166,7 +169,15 @@ export function WholesaleAboutView() {
               {FACTS.map((fact) => (
                 <div key={fact.label} className="sm:border-l sm:border-[#E8E0D4] sm:pr-0 sm:first:border-l-0">
                   <dt className="text-sm text-[#6B7280]">{fact.label}</dt>
-                  <dd className="mt-2 text-4xl font-extrabold tracking-tight text-[#1B5C4A]">{fact.value}</dd>
+                  <dd
+                    className={
+                      fact.phrase
+                        ? 'mt-2 max-w-xs text-2xl font-extrabold leading-snug tracking-tight text-[#1B5C4A] sm:text-3xl'
+                        : 'mt-2 text-4xl font-extrabold tracking-tight text-[#1B5C4A]'
+                    }
+                  >
+                    {fact.value}
+                  </dd>
                 </div>
               ))}
             </dl>
