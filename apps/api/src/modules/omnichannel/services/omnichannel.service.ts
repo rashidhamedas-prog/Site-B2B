@@ -35,6 +35,16 @@ import {
   isOmnichannelProviderEnabled,
   OUTBOX_EVENT_TYPES,
 } from '../omnichannel.constants';
+import {
+  FREE_POST_SOURCE_TYPE,
+  assertFreePostEnabled,
+  assertFreePostReason,
+  buildFreePostProjection,
+  catalogPublicationsForReconcile,
+  freePostQuietBlock,
+  parseFreePostInput,
+  renderFreePost,
+} from '../free-post';
 import { capabilitiesFor } from '../provider-capabilities';
 import { OutboxService } from './outbox.service';
 import { applyReconcileIntents, reconcilePublicationIntents } from './reconcile';
@@ -130,7 +140,7 @@ import {
   PatchConnectionDto,
   PatchTemplateDto,
 } from '../dto/omnichannel.dto';
-import { assertNoPlaintextSecrets, toPublicConnection, toPublicDestination } from '../omnichannel-secrets';
+import { assertNoPlaintextSecrets, looksLikeSecretValue, toPublicConnection, toPublicDestination } from '../omnichannel-secrets';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import {
   assertNoVaultLeak,
@@ -1079,6 +1089,7 @@ export class OmnichannelService {
 
   async preview(dto: PreviewDto) {
     const kind = String(dto.sourceType || 'PRODUCT').toUpperCase();
+    if (kind === FREE_POST_SOURCE_TYPE) return this.previewFreePost(dto);
     if (kind !== 'PRODUCT' && kind !== 'BLOG_POST' && kind !== 'CMS_PAGE') {
       throw new BadRequestException('sourceType باید PRODUCT یا BLOG_POST یا CMS_PAGE باشد');
     }
@@ -1103,8 +1114,35 @@ export class OmnichannelService {
     };
   }
 
+  /**
+   * Free caption stays on the publication gateway: validate, then the same
+   * createPublication → outbox `publication.deliver.requested` path as catalog posts.
+   * This method does not perform a provider send.
+   */
+  private previewFreePost(dto: PreviewDto) {
+    assertFreePostEnabled();
+    const channel = normalizeSalesChannel(dto.channel);
+    const draft = parseFreePostInput({
+      channel,
+      caption: dto.caption,
+      mediaUrl: dto.mediaUrl,
+      sourceId: dto.sourceId,
+    });
+    const projection = buildFreePostProjection(draft);
+    return {
+      dryRun: true,
+      projection,
+      rendered: renderFreePost(projection),
+    };
+  }
+
   async createPublication(dto: CreatePublicationDto, actor?: Actor) {
     const who = this.requireActor(actor);
+    const requestedKind = String(dto.preview?.sourceType || '').toUpperCase();
+    if (requestedKind === FREE_POST_SOURCE_TYPE) {
+      assertFreePostEnabled();
+      assertFreePostReason(dto.reason);
+    }
     const dryRun = dto.dryRun !== false;
     const { projection } = await this.preview(dto.preview);
     if (!projection.publishable) {
@@ -1170,6 +1208,12 @@ export class OmnichannelService {
         );
       }
     }
+    if (!dryRun && String(projection.sourceType) === FREE_POST_SOURCE_TYPE && plan.creates.length > 0) {
+      await this.assertFreePostNotInLiveQuietHours(
+        projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL',
+        targets,
+      );
+    }
     const saved = await this.publications.manager.transaction(async (manager) => {
       const repo = manager.getRepository(PublicationEntity);
       const sourceType = String(projection.sourceType);
@@ -1213,6 +1257,11 @@ export class OmnichannelService {
             status: 'READY',
           }));
         const rendered = await this.publicationPayloadFor(projection);
+        // Live FREE_POST uses this same outbox enqueue as PRODUCT / BLOG_POST / CMS_PAGE.
+        // The worker adapter is the only Telegram hop. Do not call the Bot API here.
+        const gatewaySource = String(projection.sourceType) === FREE_POST_SOURCE_TYPE
+          ? FREE_POST_SOURCE_TYPE
+          : undefined;
         if (plan.creates.length) {
           await this.enqueueDeliveries(manager, {
             publicationId: row.id,
@@ -1221,6 +1270,7 @@ export class OmnichannelService {
             rendered,
             targets: plan.creates,
             auto: false,
+            sourceType: gatewaySource,
           });
         }
         if (plan.updates.length) {
@@ -1231,6 +1281,7 @@ export class OmnichannelService {
             rendered,
             targets: plan.updates,
             auto: false,
+            sourceType: gatewaySource,
           });
         }
       }
@@ -1244,10 +1295,14 @@ export class OmnichannelService {
           reason: dto.reason || null,
           payload: {
             dryRun,
+            sourceType: String(projection.sourceType || ''),
             sourceId,
             destinationIds: targets.map((dest) => dest.id),
             createCount: plan.creates.length,
             updateCount: plan.updates.length,
+            ...(String(projection.sourceType) === FREE_POST_SOURCE_TYPE
+              ? { hasMedia: Boolean((projection as { mediaUrl?: string | null }).mediaUrl), gateway: 'publication.deliver.requested' }
+              : {}),
           },
         }),
       );
@@ -1339,6 +1394,69 @@ export class OmnichannelService {
     return best;
   }
 
+  /** LIVE quiet hours apply to a new free-caption create. Catalog manual send is unchanged. */
+  private async assertFreePostNotInLiveQuietHours(
+    channel: 'RETAIL' | 'WHOLESALE',
+    targets: Array<{ connectionId: string }>,
+  ) {
+    const global = await this.loadStoredSettings();
+    const hour = tehranHour(new Date());
+    for (const target of targets) {
+      const conn = await this.connections.findOne({ where: { id: target.connectionId } });
+      if (!conn) continue;
+      const resolved = resolveConnectionPublishSettings(conn.publishSettings, global, channel);
+      const block = freePostQuietBlock({
+        mode: resolved.automation.mode,
+        quietStartHour: resolved.automation.quietStartHour,
+        quietEndHour: resolved.automation.quietEndHour,
+        tehranHourNow: hour,
+        creating: true,
+      });
+      if (block) throw new BadRequestException(block);
+    }
+  }
+
+  /**
+   * After the shared publication worker has already sent via the channel adapter.
+   * Stores actor, reason, destination, and provider message id. No caption, token, or credential.
+   */
+  async recordFreePostDelivery(input: {
+    publicationId: string;
+    destinationId: string;
+    providerMessageId?: string | null;
+    action: string;
+  }) {
+    const publicationId = String(input.publicationId || '').trim();
+    if (!publicationId) return;
+    const row = await this.publications.findOne({
+      where: { id: publicationId },
+      select: ['id', 'sourceType', 'sourceId', 'channel'],
+    });
+    if (!row || row.sourceType !== FREE_POST_SOURCE_TYPE) return;
+    const prior = await this.audits.findOne({
+      where: { entityType: 'PUBLICATION', entityId: row.id },
+      order: { createdAt: 'DESC' },
+    });
+    const rawMessageId = String(input.providerMessageId || '').trim();
+    const providerMessageId = rawMessageId && !looksLikeSecretValue(rawMessageId) ? rawMessageId : null;
+    await this.audits.save(this.audits.create({
+      actorId: prior?.actorId || 'system',
+      action: 'free_post_delivered',
+      entityType: 'PUBLICATION',
+      entityId: row.id,
+      channel: row.channel,
+      reason: prior?.reason || null,
+      payload: {
+        sourceType: FREE_POST_SOURCE_TYPE,
+        sourceId: row.sourceId,
+        destinationId: String(input.destinationId || ''),
+        providerMessageId: providerMessageId || null,
+        deliveryAction: String(input.action || ''),
+        gateway: 'publication.deliver.requested',
+      },
+    }));
+  }
+
   async markPublicationDelivered(publicationId: string) {
     const row = await this.publications.findOne({ where: { id: publicationId } });
     if (!row || row.status === 'WITHDRAWN') return;
@@ -1380,6 +1498,7 @@ export class OmnichannelService {
             publicationId: msg.publicationId,
           })),
           auto: false,
+          sourceType: row.sourceType === FREE_POST_SOURCE_TYPE ? FREE_POST_SOURCE_TYPE : undefined,
         });
       }
     }
@@ -1492,10 +1611,11 @@ export class OmnichannelService {
       return rows;
     });
     const existing = await this.publications.find({
-      select: ['sourceId', 'channel', 'status', 'sourceUpdatedAt'],
+      select: ['sourceType', 'sourceId', 'channel', 'status', 'sourceUpdatedAt'],
     });
-    const intents = reconcilePublicationIntents(visible, existing);
-    const next = applyReconcileIntents(visible, existing);
+    const catalogExisting = catalogPublicationsForReconcile(existing);
+    const intents = reconcilePublicationIntents(visible, catalogExisting);
+    const next = applyReconcileIntents(visible, catalogExisting);
     for (const intent of intents) {
       if (intent.action === 'withdraw') {
         await this.publications.update(
@@ -1978,6 +2098,9 @@ export class OmnichannelService {
     projection: Record<string, unknown>,
     connectionId?: string,
   ): Promise<RenderedPublication> {
+    if (String(projection.sourceType || '').toUpperCase() === FREE_POST_SOURCE_TYPE) {
+      return renderFreePost(projection);
+    }
     const eventType = projection.sourceType === 'BLOG_POST'
       ? 'blog.published'
       : projection.sourceType === 'CMS_PAGE'
@@ -2224,6 +2347,8 @@ export class OmnichannelService {
       targets: Array<{ destinationId: string; providerMessageId?: string; publicationId?: string }>;
       auto: boolean;
       availableAt?: Date;
+      /** Set only for FREE_POST so the worker can audit after the shared adapter send. */
+      sourceType?: string;
     },
   ): Promise<number> {
     const deliveryRepo = manager.getRepository(PublicationDeliveryEntity);
@@ -2246,6 +2371,7 @@ export class OmnichannelService {
           channel: input.channel,
           auto: input.auto,
           ...(target.providerMessageId ? { providerMessageId: target.providerMessageId } : {}),
+          ...(input.sourceType === FREE_POST_SOURCE_TYPE ? { sourceType: FREE_POST_SOURCE_TYPE } : {}),
           ...(input.rendered ? this.deliveryPayload(input.rendered) : {}),
         },
       }, manager);

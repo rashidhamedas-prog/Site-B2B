@@ -11,6 +11,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  ValidateIf,
   Matches,
   Max,
   MaxLength,
@@ -340,9 +341,23 @@ export class PreviewDto {
   @MaxLength(40)
   sourceType: string;
 
+  /** Required for PRODUCT / BLOG_POST / CMS_PAGE. FREE_POST may omit it; the server mints `free:<uuid>`. */
+  @ValidateIf((o: { sourceType?: string }) => String(o.sourceType || '').toUpperCase() !== 'FREE_POST')
   @IsString()
   @MaxLength(80)
-  sourceId: string;
+  sourceId?: string;
+
+  /** FREE_POST caption. Ignored by the catalog preview path. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(4096)
+  caption?: string;
+
+  /** Optional single image URL for FREE_POST. Catalog sends ignore it. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  mediaUrl?: string;
 }
 
 export class CreatePublicationDto {

@@ -10,7 +10,7 @@ export type ConnectionStatus = (typeof CONNECTION_STATUSES)[number];
 export const OUTBOX_STATUSES = ['PENDING', 'PROCESSING', 'DONE', 'DEAD'] as const;
 export type OutboxStatus = (typeof OUTBOX_STATUSES)[number];
 
-export const PUBLICATION_SOURCE_TYPES = ['PRODUCT', 'BLOG_POST', 'CMS_PAGE'] as const;
+export const PUBLICATION_SOURCE_TYPES = ['PRODUCT', 'BLOG_POST', 'CMS_PAGE', 'FREE_POST'] as const;
 export type PublicationSourceType = (typeof PUBLICATION_SOURCE_TYPES)[number];
 
 export const PUBLICATION_STATUSES = [
@@ -52,6 +52,11 @@ export function isOmnichannelAutoPublishEnabled(): boolean {
 
 export function areOmnichannelConnectorsEnabled(): boolean {
   return process.env.OMNICHANNEL_CONNECTORS_ENABLED === 'true';
+}
+
+/** Free-caption posts. Default off until Ops sets the exact string `true`. */
+export function isOmnichannelFreePostEnabled(): boolean {
+  return process.env.OMNICHANNEL_FREE_POST_ENABLED === 'true';
 }
 
 export function isOmnichannelProvider(value: unknown): value is OmnichannelProvider {

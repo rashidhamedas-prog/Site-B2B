@@ -29,6 +29,7 @@ import { assertNoPlaintextSecrets } from '../omnichannel-secrets';
 import {
   areOmnichannelConnectorsEnabled,
   isOmnichannelAutoPublishEnabled,
+  isOmnichannelFreePostEnabled,
 } from '../omnichannel.constants';
 import { providerReadiness } from '../provider-capabilities';
 
@@ -54,6 +55,8 @@ export class OmnichannelAdminController {
     return {
       autoPublish: isOmnichannelAutoPublishEnabled(),
       connectors: areOmnichannelConnectorsEnabled(),
+      /** Free-caption mode. Default false. Does not open a second Telegram client. */
+      freePost: isOmnichannelFreePostEnabled(),
       phase: 8,
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
