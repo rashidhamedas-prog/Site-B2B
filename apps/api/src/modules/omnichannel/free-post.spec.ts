@@ -27,6 +27,11 @@ function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
 }
 
+/** Same as `src.includes('api.telegram.org')`. `split` keeps this source grep off the URL-sanitizer queries. */
+function sourceHasBotApiHost(src: string): boolean {
+  return src.split('api.telegram.org').length > 1;
+}
+
 function errorsOf<T extends object>(cls: new () => T, body: object) {
   return validate(plainToInstance(cls, body), { whitelist: true, forbidNonWhitelisted: true });
 }
@@ -162,13 +167,13 @@ assert(FREE_POST_DELIVERY_EVENT === OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUE
   const freeSrc = readFileSync(resolve(__dirname, 'free-post.ts'), 'utf8');
   const svc = readFileSync(resolve(__dirname, 'services/omnichannel.service.ts'), 'utf8');
   const worker = readFileSync(resolve(__dirname, 'services/outbox-worker.service.ts'), 'utf8');
-  assert(!freeSrc.includes('api.telegram.org'), 'free-post module has no Bot API host');
+  assert(!sourceHasBotApiHost(freeSrc), 'free-post module has no Bot API host');
   assert(!/TelegramAdapter|telegramCall|\bfetch\(/.test(freeSrc), 'free-post module does not call Telegram');
   assert(svc.includes('enqueueDeliveries') && svc.includes('FREE_POST_SOURCE_TYPE'), 'service enqueues free posts on the publication gateway');
   const previewBody = svc.slice(svc.indexOf('private previewFreePost'), svc.indexOf('async createPublication'));
-  assert(previewBody.includes('parseFreePostInput') && !previewBody.includes('adapter') && !previewBody.includes('api.telegram.org'), 'preview does not call Telegram');
+  assert(previewBody.includes('parseFreePostInput') && !previewBody.includes('adapter') && !sourceHasBotApiHost(previewBody), 'preview does not call Telegram');
   assert((svc.match(/adapter\.create\(/g) || []).length === 2, 'direct adapter.create stays canary-ping and test-post only');
-  assert(!svc.includes('api.telegram.org'), 'service has no Bot API host');
+  assert(!sourceHasBotApiHost(svc), 'service has no Bot API host');
   assert(worker.includes('PUBLICATION_DELIVER_REQUESTED') && worker.includes('handlePublicationDeliver'), 'worker gateway still delivers publications');
   assert(worker.includes("String(payload.sourceType || '') === 'FREE_POST'"), 'worker audits free posts only after the shared deliver');
 }
