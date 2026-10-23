@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Star, ChevronRight, ChevronLeft, Quote } from 'lucide-react';
 import { shapeDigitsInText } from '@taranom/persian-utils';
-import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+import { BUSINESS_FACTS, COMPANY_PRODUCTION_YEARS_LABEL, yearsOfOperationFa } from '@/lib/business-facts';
+import { alignCompanyProductionStat } from '@/lib/company-year-claim';
 
 export interface TestimonialItem {
   id?: number | string;
@@ -51,15 +52,16 @@ export function Testimonials({
           },
         ];
 
-  const stats =
+  const stats = (
     footerStats?.length
       ? footerStats
       : [
           { label: 'مشتری فعال', value: `+${BUSINESS_FACTS.activeCustomers}` },
           { label: 'شهر در ایران', value: '+30' },
-          { label: 'سال تجربه', value: yearsOfOperationFa() },
+          { label: COMPANY_PRODUCTION_YEARS_LABEL, value: yearsOfOperationFa() },
           { label: 'مدل در کاتالوگ', value: `+${BUSINESS_FACTS.activeModels}` },
-        ];
+        ]
+  ).map((row) => alignCompanyProductionStat(row));
 
   const [current, setCurrent] = useState(0);
   const prev = () => setCurrent((c) => (c - 1 + testimonials.length) % testimonials.length);

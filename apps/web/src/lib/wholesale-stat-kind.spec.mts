@@ -7,6 +7,10 @@ function assert(cond: boolean, msg: string) {
 assert(resolveWholesaleStatKind({ label: 'مشتری عمده‌فروش' }) === 'customers', 'customer label');
 assert(resolveWholesaleStatKind({ label: 'مشتری فعال' }) === 'customers', 'active customer');
 assert(resolveWholesaleStatKind({ label: 'سال تجربه' }) === 'years', 'years label');
+assert(
+  resolveWholesaleStatKind({ label: 'سال فعالیت تولیدی' }) === 'years',
+  'production years label'
+);
 assert(resolveWholesaleStatKind({ label: 'سال تأسیس' }) === 'years', 'founded label');
 assert(resolveWholesaleStatKind({ label: 'مدل فعال' }) === 'models', 'models label');
 assert(resolveWholesaleStatKind({ label: 'در هر فصل' }) === 'models', 'season label');

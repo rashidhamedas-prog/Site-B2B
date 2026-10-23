@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { toPersianDigits } from '@taranom/persian-utils';
 import { BreadcrumbJsonLd, organizationId, websiteId } from '@/components/shared/JsonLd';
 import { AboutExperience } from '@/components/wholesale/about/AboutExperience';
-import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+import { BUSINESS_FACTS, COMPANY_PRODUCTION_YEARS_LABEL, yearsOfOperationFa } from '@/lib/business-facts';
 import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 
 const PAGE_URL = `${WHOLESALE_ORIGIN}/about`;
@@ -55,7 +55,7 @@ const FACTS = [
   },
   {
     value: yearsOfOperationFa(),
-    label: 'سال فعالیت تولیدی',
+    label: COMPANY_PRODUCTION_YEARS_LABEL,
   },
   {
     value: toPersianDigits(BUSINESS_FACTS.teamSize),

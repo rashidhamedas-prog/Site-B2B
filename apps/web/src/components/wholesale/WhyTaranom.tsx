@@ -8,7 +8,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { toPersianDigits } from '@taranom/persian-utils';
-import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+import { BUSINESS_FACTS, companyProductionYearsTitle } from '@/lib/business-facts';
+import { alignCompanyProductionFeature } from '@/lib/company-year-claim';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Package,
@@ -36,7 +37,7 @@ export function WhyTaranom({
   body?: string;
   items?: FeatureItem[];
 }) {
-  const features =
+  const source =
     items?.length
       ? items
       : [
@@ -54,7 +55,7 @@ export function WhyTaranom({
           },
           {
             icon: 'Zap',
-            title: `${yearsOfOperationFa()} سال تجربه تولیدی`,
+            title: companyProductionYearsTitle(),
             description: `از ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.`,
           },
           {
@@ -73,6 +74,7 @@ export function WhyTaranom({
             description: 'ویزیتور اختصاصی برای مشتریان مشهد و چند شهر. پشتیبانی تلفنی و تلگرامی.',
           },
         ];
+  const features = source.map((item) => alignCompanyProductionFeature(item));
 
   return (
     <section className="section relative overflow-hidden bg-surface-muted">
