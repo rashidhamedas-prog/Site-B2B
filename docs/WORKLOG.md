@@ -2,6 +2,7 @@
 
 - گروه صریح `OAI-SearchBot` با همان Allow/Disallow گروه `*`. `GPTBot` و `Google-Extended` و `Googlebot` گروه جدا ندارند. Sitemap همچنان بر اساس کانال است.
 - Deploy انجام نشد.
+- CI: `lint-and-build` قبل از این روی master هم در `npm test` می‌مرد (`@taranom/shared-types` → `dist/index.js` که در گیت نیست). ورک‌فلو حالا همان پکیج را قبل از تست API بیلد می‌کند. ربطی به robots ندارد.
 
 ## 2026-10-22 — تکمیل هشدار دیسک Hetzner + بررسی Custom Definitions در GA4
 
