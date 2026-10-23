@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-23T18:00:00Z — FREE_POST MVP (no deploy)
+
+- Branch `cursor/omnichannel-free-post-e7fd`. Flag `OMNICHANNEL_FREE_POST_ENABLED` default off.
+- Network path is the existing publication outbox gateway (`publication.deliver.requested` → worker → current channel adapter). No new Bot API client.
+- Iran/Hetzner deploy not run. Enabling the flag needs a separate Hamed GO.
+- Tests: `apps/api` `npx ts-node --transpile-only src/modules/omnichannel/free-post.spec.ts`.
+
 ## 2026-10-19T14:00:00Z — TASK-20261019-003 category inline links
 
 - Admin intro and bottom copy for both channels use a small TipTap editor (bold, italic, internal link).

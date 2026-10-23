@@ -445,5 +445,17 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     if (publicationId && action === 'CREATE') {
       await this.omnichannel.markPublicationDelivered(publicationId);
     }
+    if (publicationId && String(payload.sourceType || '') === 'FREE_POST') {
+      try {
+        await this.omnichannel.recordFreePostDelivery({
+          publicationId,
+          destinationId,
+          providerMessageId: providerMessageId || row.providerMessageId,
+          action,
+        });
+      } catch {
+        this.logger.warn(`free post delivery audit skipped publication=${publicationId}`);
+      }
+    }
   }
 }

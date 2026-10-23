@@ -68,7 +68,7 @@ import {
 
 type View = 'status' | 'publish' | 'settings' | 'ops';
 type Step = 'bot' | 'channels' | 'template' | 'rules' | 'activate';
-type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE';
+type SourceType = 'PRODUCT' | 'BLOG_POST' | 'CMS_PAGE' | 'FREE_POST';
 type OutboxScope = 'channel' | 'all';
 type DeliveryFilter = 'all' | 'failed';
 
@@ -243,6 +243,9 @@ export function AdminOmnichannel() {
   const [pubChannel, setPubChannel] = useState<Channel>('RETAIL');
   const [sourceType, setSourceType] = useState<SourceType>('PRODUCT');
   const [sourceId, setSourceId] = useState('');
+  const [freeCaption, setFreeCaption] = useState('');
+  const [freeMediaUrl, setFreeMediaUrl] = useState('');
+  const [freeSourceId, setFreeSourceId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [reason, setReason] = useState('بازبینی ادمین');
   const [preview, setPreview] = useState<{ projection: Record<string, unknown>; rendered?: Rendered } | null>(null);
@@ -659,6 +662,16 @@ export function AdminOmnichannel() {
     if (targetProvider) setPreviewProvider(targetProvider);
   }, [targetProvider]);
 
+  useEffect(() => {
+    if (!status?.freePost && sourceType === 'FREE_POST') setSourceType('PRODUCT');
+  }, [status?.freePost, sourceType]);
+
+  useEffect(() => {
+    if (sourceType !== 'FREE_POST' || freeSourceId) return;
+    const id = globalThis.crypto?.randomUUID?.();
+    if (id) setFreeSourceId(`free:${id}`);
+  }, [sourceType, freeSourceId]);
+
   // Must run before any conditional return — Rules of Hooks.
   const hasCanary = Boolean(canaryByChannel('RETAIL') || canaryByChannel('WHOLESALE'));
   const checklist: Array<{ label: string; ok: boolean; detail: string }> = [
@@ -723,9 +736,24 @@ export function AdminOmnichannel() {
     setRules((current) => ({ ...current, autoPublishMode: next }));
   }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار این ربات خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی این ربات فعال شد' : 'انتشار خودکار این ربات زنده شد');
 
+  const manualPreviewBody = () => {
+    if (sourceType === 'FREE_POST') {
+      return {
+        channel: pubChannel,
+        sourceType,
+        ...(freeSourceId ? { sourceId: freeSourceId } : {}),
+        caption: freeCaption,
+        ...(freeMediaUrl.trim() ? { mediaUrl: freeMediaUrl.trim() } : {}),
+      };
+    }
+    return { channel: pubChannel, sourceType, sourceId };
+  };
+
   const doPreview = () => run('preview', async () => {
-    const res = await apiClient.post<{ projection: Record<string, unknown>; rendered?: Rendered }>('/omnichannel/preview', { channel: pubChannel, sourceType, sourceId });
+    const res = await apiClient.post<{ projection: Record<string, unknown>; rendered?: Rendered }>('/omnichannel/preview', manualPreviewBody());
     setPreview({ projection: res.projection, rendered: res.rendered });
+    const nextId = String(res.projection?.sourceId || '');
+    if (sourceType === 'FREE_POST' && nextId.startsWith('free:')) setFreeSourceId(nextId);
   }, 'خطا در پیش‌نمایش');
 
   const doSend = (destinationId?: string) => {
@@ -733,12 +761,27 @@ export function AdminOmnichannel() {
       setError('ارسال دستی نیاز به روشن‌بودن OMNICHANNEL_CONNECTORS_ENABLED روی سرور دارد (انتشار خودکار جداست).');
       return;
     }
+    if (sourceType === 'FREE_POST') {
+      if (!freeCaption.trim()) {
+        setError('متن پست را بنویسید');
+        return;
+      }
+      if (!reason.trim()) {
+        setError('برای متن آزاد دلیل حسابرسی الزامی است');
+        return;
+      }
+      if (!preview?.rendered) {
+        setError('اول پیش‌نمایش را ببینید. ارسال زنده فقط بعد از پیش‌نمایش، از همان صف کانال انتشار، انجام می‌شود.');
+        return;
+      }
+    }
     const target = destinationId ? destById.get(destinationId) : null;
     const where = target ? `«${target.displayName}»` : mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'مقصد آزمایشی';
-    if (!window.confirm(`این منبع به ${where} ارسال می‌شود. ادامه می‌دهید؟`)) return;
+    const lead = sourceType === 'FREE_POST' ? 'این متن آزاد' : 'این منبع';
+    if (!window.confirm(`${lead} از صف کانال انتشار به ${where} می‌رود. ادامه می‌دهید؟`)) return;
     void run('send', async () => {
       await apiClient.post('/omnichannel/publications', {
-        preview: { channel: pubChannel, sourceType, sourceId },
+        preview: manualPreviewBody(),
         dryRun: false,
         ...(destinationId ? { destinationId } : {}),
         reason,
@@ -1630,23 +1673,60 @@ export function AdminOmnichannel() {
             <option value="RETAIL">تکی</option>
             <option value="WHOLESALE">عمده</option>
           </select>
-          <select className="border rounded-lg px-3 py-2 text-sm" value={sourceType} onChange={(e) => setSourceType(e.target.value as SourceType)}>
+          <select className="border rounded-lg px-3 py-2 text-sm" value={sourceType} onChange={(e) => { setSourceType(e.target.value as SourceType); setPreview(null); }}>
             <option value="PRODUCT">محصول</option>
             <option value="BLOG_POST">مقاله بلاگ</option>
             <option value="CMS_PAGE">صفحه CMS</option>
+            {status?.freePost ? <option value="FREE_POST">متن آزاد</option> : null}
           </select>
-          <input className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[14rem]" placeholder={sourceType === 'PRODUCT' ? 'کد، اسلاگ یا لینک محصول' : 'شناسه یا اسلاگ'} value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
+          {sourceType === 'FREE_POST' ? (
+            <>
+              <textarea
+                className="border rounded-lg px-3 py-2 text-sm w-full min-h-[6.5rem]"
+                placeholder="متن یا کپشن پست"
+                value={freeCaption}
+                maxLength={4096}
+                onChange={(e) => { setFreeCaption(e.target.value); setPreview(null); }}
+              />
+              <input
+                className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[14rem]"
+                placeholder="آدرس یک تصویر روی دامنه ترنم (اختیاری)"
+                value={freeMediaUrl}
+                onChange={(e) => { setFreeMediaUrl(e.target.value); setPreview(null); }}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  const id = globalThis.crypto?.randomUUID?.();
+                  if (id) setFreeSourceId(`free:${id}`);
+                  setPreview(null);
+                }}
+              >
+                پست تازه
+              </button>
+            </>
+          ) : (
+            <input className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[14rem]" placeholder={sourceType === 'PRODUCT' ? 'کد، اسلاگ یا لینک محصول' : 'شناسه یا اسلاگ'} value={sourceId} onChange={(e) => setSourceId(e.target.value)} />
+          )}
           <select className="border rounded-lg px-3 py-2 text-sm" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
             <option value="">طبق قواعد خودکار ({mode === 'LIVE' ? 'همه کانال‌های تأییدشده' : 'فقط مقصد آزمایشی'})</option>
             {readyByChannel(pubChannel).map((dest) => <option key={dest.id} value={dest.id}>{providerLabel(providerOf(dest))} · {dest.displayName}{dest.isCanary ? ' (تست)' : ''}</option>)}
           </select>
           <input className="border rounded-lg px-3 py-2 text-sm w-44" placeholder="دلیل (برای حسابرسی)" value={reason} onChange={(e) => setReason(e.target.value)} />
-          <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'preview'} onClick={doPreview}>پیش‌نمایش</button>
-          <button type="button" className="btn btn-secondary btn-sm" disabled={!sourceId.trim() || busy === 'draft'} onClick={() => run('draft', async () => {
-            await apiClient.post('/omnichannel/publications', { preview: { channel: pubChannel, sourceType, sourceId }, dryRun: true, reason });
+          <button type="button" className="btn btn-secondary btn-sm" disabled={(sourceType === 'FREE_POST' ? !freeCaption.trim() : !sourceId.trim()) || busy === 'preview'} onClick={doPreview}>پیش‌نمایش</button>
+          <button type="button" className="btn btn-secondary btn-sm" disabled={(sourceType === 'FREE_POST' ? !freeCaption.trim() || !reason.trim() : !sourceId.trim()) || busy === 'draft'} onClick={() => run('draft', async () => {
+            if (sourceType === 'FREE_POST' && !reason.trim()) throw new Error('برای متن آزاد دلیل حسابرسی الزامی است');
+            await apiClient.post('/omnichannel/publications', { preview: manualPreviewBody(), dryRun: true, reason });
           }, 'خطا در پیش‌نویس', 'پیش‌نویس ثبت شد (به هیچ پیام‌رسانی نرفت)')}>ثبت پیش‌نویس</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!sourceId.trim() || !connectorsOn || busy === 'send'} onClick={() => doSend(targetId || undefined)} title={!connectorsOn ? 'ارسال از سرور خاموش است' : undefined}>ارسال</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={(sourceType === 'FREE_POST' ? !freeCaption.trim() || !preview?.rendered : !sourceId.trim()) || !connectorsOn || busy === 'send'} onClick={() => doSend(targetId || undefined)} title={!connectorsOn ? 'ارسال از سرور خاموش است' : undefined}>ارسال</button>
         </div>
+        {sourceType === 'FREE_POST' && (
+          <Callout tone="info">
+            متن آزاد از همان صف کانال انتشار می‌رود، نه مسیر جدا. پیش‌نویس چیزی نمی‌فرستد. ارسال زنده بعد از پیش‌نمایش است و همان سقف روزانه و ساعت سکوت حالت زنده را دارد.
+            {freeSourceId ? <span className="block mt-1 font-mono text-[11px]" dir="ltr">{freeSourceId}</span> : null}
+          </Callout>
+        )}
         {!connectorsOn && <Callout tone="warn">دکمهٔ ارسال غیرفعال است تا «ارسال از سرور» روشن شود. پیش‌نویس و پیش‌نمایش بدون آن کار می‌کنند.</Callout>}
         {preview?.rendered && (
           <div className="grid gap-3 lg:grid-cols-[22rem_minmax(0,1fr)]">
@@ -1761,6 +1841,7 @@ export function AdminOmnichannel() {
                         <span className="inline-block w-4 h-4 shrink-0" aria-hidden />
                       )}
                       <span className="font-medium text-gray-900">{name}</span>
+                      {pub.sourceType === 'FREE_POST' && <Badge tone="info">متن آزاد</Badge>}
                       {pub.projection?.sku && <span className="text-xs text-gray-500 font-mono">#{pub.projection.sku}</span>}
                       <Badge tone="off">{channelLabel(pub.channel)}</Badge>
                       <Badge tone={st.tone}>{st.label}</Badge>
@@ -1768,7 +1849,7 @@ export function AdminOmnichannel() {
                       <span className="flex-1" />
                       {pub.projection?.url && <a className="text-xs text-primary underline" href={pub.projection.url} target="_blank" rel="noreferrer">صفحه محصول</a>}
                       {withdrawable && (
-                        <button type="button" className="text-xs text-red-600 underline cursor-pointer disabled:opacity-50" disabled={busy === 'bulk-withdraw'} onClick={() => { if (window.confirm('پست این محصول از کانال‌ها برداشته شود؟')) void run(`withdraw-${pub.id}`, async () => { await apiClient.post(`/omnichannel/publications/${pub.id}/withdraw`, { reason }); setSelectedPubIds((prev) => prev.filter((id) => id !== pub.id)); }, 'خطا در برداشت', 'برداشته شد'); }}>برداشتن از کانال</button>
+                        <button type="button" className="text-xs text-red-600 underline cursor-pointer disabled:opacity-50" disabled={busy === 'bulk-withdraw'} onClick={() => { if (window.confirm(pub.sourceType === 'FREE_POST' ? 'این پست متن آزاد از کانال برداشته شود؟' : 'پست این محصول از کانال‌ها برداشته شود؟')) void run(`withdraw-${pub.id}`, async () => { await apiClient.post(`/omnichannel/publications/${pub.id}/withdraw`, { reason }); setSelectedPubIds((prev) => prev.filter((id) => id !== pub.id)); }, 'خطا در برداشت', 'برداشته شد'); }}>برداشتن از کانال</button>
                       )}
                     </div>
                     {rows.length > 0 && (

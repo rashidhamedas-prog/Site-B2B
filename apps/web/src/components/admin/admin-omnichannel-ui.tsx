@@ -120,6 +120,8 @@ export type GateBlockReason =
 export type Status = {
   autoPublish: boolean;
   connectors: boolean;
+  /** OMNICHANNEL_FREE_POST_ENABLED. Hidden when absent or false. */
+  freePost?: boolean;
   phase: number;
   retailCanaryLimit: number;
   wholesaleCanaryLimit: number;
