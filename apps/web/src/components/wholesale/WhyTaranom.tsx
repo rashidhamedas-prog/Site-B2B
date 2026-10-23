@@ -54,7 +54,7 @@ export function WhyTaranom({
           },
           {
             icon: 'Zap',
-            title: `${yearsOfOperationFa()} سال تجربه تولیدی`,
+            title: yearsOfOperationFa(),
             description: `از ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.`,
           },
           {

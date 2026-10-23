@@ -1,5 +1,5 @@
 import { shapeDigitsInText } from '@taranom/persian-utils';
-import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+import { BUSINESS_FACTS, COMPANY_PRODUCTION_YEARS_STAT } from '@/lib/business-facts';
 import { resolveWholesaleStatKind } from '@/lib/wholesale-stat-kind';
 import { WholesaleStatGlyph } from '@/components/wholesale/WholesaleStatGlyph';
 
@@ -18,9 +18,9 @@ const FALLBACK_ITEMS: StatItem[] = [
     icon: 'customers',
   },
   {
-    value: yearsOfOperationFa(),
-    label: 'سال تجربه',
-    sublabel: 'در بازار پوشاک',
+    value: COMPANY_PRODUCTION_YEARS_STAT.value,
+    label: COMPANY_PRODUCTION_YEARS_STAT.label,
+    sublabel: COMPANY_PRODUCTION_YEARS_STAT.sublabel,
     icon: 'years',
   },
   {

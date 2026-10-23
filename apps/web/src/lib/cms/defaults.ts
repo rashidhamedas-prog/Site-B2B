@@ -1,5 +1,9 @@
 import { toPersianDigits } from '@taranom/persian-utils';
-import { BUSINESS_FACTS, yearsOfOperationFa } from '@/lib/business-facts';
+import {
+  BUSINESS_FACTS,
+  COMPANY_PRODUCTION_YEARS_STAT,
+  yearsOfOperationFa,
+} from '@/lib/business-facts';
 import { DIGIPAY_RETAIL_HERO_SLIDE, PRIMA_NEGIN_RETAIL_HERO_SLIDE } from '@/lib/cms/hero-slides';
 import { newBlockId, type ContentBlock, type BlockType } from './types';
 
@@ -111,7 +115,11 @@ export function defaultWholesaleHome(): ContentBlock[] {
           label: 'مشتری عمده‌فروش',
           sublabel: 'در سراسر ایران',
         },
-        { value: yearsOfOperationFa(), label: 'سال تجربه', sublabel: 'در بازار پوشاک' },
+        {
+          value: COMPANY_PRODUCTION_YEARS_STAT.value,
+          label: COMPANY_PRODUCTION_YEARS_STAT.label,
+          sublabel: COMPANY_PRODUCTION_YEARS_STAT.sublabel,
+        },
         {
           value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}`,
           label: 'مدل فعال',
@@ -143,7 +151,7 @@ export function defaultWholesaleHome(): ContentBlock[] {
         },
         {
           icon: 'Zap',
-          title: `${yearsOfOperationFa()} سال تجربه تولیدی`,
+          title: yearsOfOperationFa(),
           description: `از ${toPersianDigits(BUSINESS_FACTS.foundedSolarYear)} تا امروز، تامین‌کننده بوتیک‌ها در مشهد و سراسر ایران با کلکسیون‌های فصلی مستمر.`,
         },
         {
@@ -262,7 +270,10 @@ export function defaultWholesaleHome(): ContentBlock[] {
       footerStats: [
         { value: `+${toPersianDigits(BUSINESS_FACTS.activeCustomers)}`, label: 'مشتری فعال' },
         { value: '+۳۰', label: 'شهر در ایران' },
-        { value: yearsOfOperationFa(), label: 'سال تجربه' },
+        {
+          value: COMPANY_PRODUCTION_YEARS_STAT.value,
+          label: COMPANY_PRODUCTION_YEARS_STAT.label,
+        },
         { value: `+${toPersianDigits(BUSINESS_FACTS.activeModels)}`, label: 'مدل در کاتالوگ' },
       ],
     }),

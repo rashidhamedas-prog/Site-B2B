@@ -1,8 +1,9 @@
-import { toPersianDigits } from '@taranom/persian-utils';
-
 /**
  * Single source of truth for public business claims.
  * Verified facts only — see SEO-REMAINING-MANUAL-ACTIONS.md before editing numbers.
+ *
+ * Company production tenure is a locked phrase. Do not derive a plus-count
+ * from foundedGregorianYear.
  */
 export const BUSINESS_FACTS = {
   /** سال شمسی تأسیس تولیدی */
@@ -17,12 +18,23 @@ export const BUSINESS_FACTS = {
   activeModels: 50,
 } as const;
 
-/** Years of operation computed from founding year (Gregorian). */
-export function yearsOfOperation(now: Date = new Date()): number {
-  return Math.max(1, now.getFullYear() - BUSINESS_FACTS.foundedGregorianYear);
-}
+/** Full locked claim: «بیش از ۱۰ سال فعالیت تولیدی». */
+export const COMPANY_PRODUCTION_YEARS_CLAIM = 'بیش از ۱۰ سال فعالیت تولیدی';
 
-/** e.g. "۱۱+" — years of operation in Persian digits with a '+' suffix. */
+/**
+ * Homepage B0 stat split. Together with the label this is the locked claim;
+ * «در مشهد» is the place sublabel.
+ */
+export const COMPANY_PRODUCTION_YEARS_STAT = {
+  value: 'بیش از ۱۰',
+  label: 'سال فعالیت تولیدی',
+  sublabel: 'در مشهد',
+} as const;
+
+/**
+ * Public company production-years claim.
+ * Always the locked phrase — never a calendar N+ from 2015.
+ */
 export function yearsOfOperationFa(): string {
-  return `${toPersianDigits(yearsOfOperation())}+`;
+  return COMPANY_PRODUCTION_YEARS_CLAIM;
 }

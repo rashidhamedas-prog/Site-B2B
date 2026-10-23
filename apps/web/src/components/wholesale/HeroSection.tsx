@@ -13,15 +13,14 @@ import {
 } from '@/lib/cms/hero-slides';
 import { isHomePageKey, resolvePageHeroSlides } from '@/lib/cms/page-hero-policy';
 import { useCmsPageScope } from '@/lib/cms/page-scope';
-import { toPersianDigits } from '@taranom/persian-utils';
-import { yearsOfOperation } from '@/lib/business-facts';
+import { yearsOfOperationFa } from '@/lib/business-facts';
 import { STOREFRONT_HERO_FRAME_CLASS } from '@/lib/cms/news-ticker';
 
 const WHOLESALE_FALLBACK: HeroSlide = {
   brandEyebrow: 'پوشاک ترنم',
   headline: 'مانتو زنانه\nمستقیم از تولیدی\nبه بوتیک شما',
   headlineAccent: 'به بوتیک شما',
-  body: `تولیدکننده مانتو شومیزی لینن و کتان در مشهد — بیش از ${toPersianDigits(yearsOfOperation())} سال تجربه، فروش عمده به سراسر ایران.`,
+  body: `تولیدکننده مانتو شومیزی لینن و کتان در مشهد — ${yearsOfOperationFa()}، فروش عمده به سراسر ایران.`,
   imageUrl: '',
   ctaLabel: 'دیدن مدل‌های عمده',
   ctaHref: '/products',
