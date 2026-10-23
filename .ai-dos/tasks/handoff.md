@@ -2,6 +2,16 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-23T22:45:00Z — TASK-20261023-002 telegram egress scaffold
+
+- Objective: scaffold `deploy/telegram-egress-worker` only. Parent merges and deploys. No `wrangler deploy`. No Iran env.
+- Decisions: optional `EGRESS_SECRET` (401 only when set) because `TelegramAdapter` does not send `x-taranom-egress-secret` yet. Upstream fixed to `https://api.telegram.org`. Path allowlist `/bot{token}/{method}`. Redirects manual. Logs redact `/bot…/`.
+- Changed: worker src + spec + wrangler + README, `docs/architecture/telegram-egress.md`, worklog, report.
+- Tests: `node --experimental-strip-types --test src/index.spec.ts` in `deploy/telegram-egress-worker`.
+- Next: parent deploy on the same Cloudflare account as `taranom-sms-egress`, then set Iran `TELEGRAM_API_URL` to the worker origin with no `/bot` suffix. Leave `EGRESS_SECRET` unset until the adapter sends the header.
+- Overlap: TASK-20261023-001 still lists `docs/WORKLOG.md` and this handoff. That work shipped as PR #85. This task only prepends its own entries.
+- Risk: unset secret makes the worker an open Bot API proxy. Do not publish the URL until the secret header exists, or accept that until then.
+
 ## 2026-10-23T18:00:00Z — FREE_POST MVP (no deploy)
 
 - Branch `cursor/omnichannel-free-post-e7fd`. Flag `OMNICHANNEL_FREE_POST_ENABLED` default off.
