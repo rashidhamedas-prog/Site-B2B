@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { usePresence } from '@/components/motion/usePresence';
 import type { ReactNode } from 'react';
 import type { MenuItem } from '@/lib/menus';
 
@@ -15,6 +16,7 @@ export function MobileMenuButton({
   categoryList?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const menu = usePresence(open);
   return (
     <>
       <button
@@ -25,8 +27,8 @@ export function MobileMenuButton({
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
-      {open && (
-        <div className="fixed inset-x-0 top-[108px] z-40 animate-slide-up border-t border-[color:var(--color-border)] bg-white/95 shadow-lg backdrop-blur-xl lg:hidden">
+      {menu.mounted ? (
+        <div className={`tn-drop fixed inset-x-0 top-[108px] z-40 border-t border-[color:var(--color-border)] bg-white/95 shadow-lg backdrop-blur-xl lg:hidden ${menu.shown ? 'is-open' : ''}`}>
           <nav className="container-site space-y-1 py-4">
             {items.map((link) => (
               <div key={link.id}>
@@ -67,7 +69,7 @@ export function MobileMenuButton({
             </div>
           </nav>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

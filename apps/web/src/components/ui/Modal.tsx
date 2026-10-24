@@ -4,6 +4,7 @@ import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { usePresence } from '@/components/motion/usePresence';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';
 
@@ -32,10 +33,11 @@ export function Modal({ open, onClose, title, children, size = 'md', className }
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  const presence = usePresence(open);
 
   // Scroll lock + focus trap/restore
   useEffect(() => {
-    if (!open) return;
+    if (!open || !presence.mounted) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -82,26 +84,26 @@ export function Modal({ open, onClose, title, children, size = 'md', className }
       document.removeEventListener('keydown', onKeyDown);
       previouslyFocused.current?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open, onClose, presence.mounted]);
 
-  if (!open) return null;
+  if (!presence.mounted) return null;
 
   const content = (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      className={cn('tn-modal fixed inset-0 z-50 flex items-center justify-center p-4', presence.shown && 'is-open')}
       onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="tn-modal-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
       <div
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          'relative z-10 w-full glass-strong rounded-2xl overflow-hidden animate-slide-up outline-none',
+          'tn-modal-panel relative z-10 w-full glass-strong rounded-2xl overflow-hidden outline-none',
           sizeClasses[size],
           className
         )}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler } from 'lucide-react';
+import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler, Check } from 'lucide-react';
 import { Button, Badge, Alert } from '@/components/ui';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
@@ -441,7 +441,7 @@ export function ProductDetail({
         <div className="grid gap-8 lg:grid-cols-2 xl:gap-12">
           {/* Image gallery */}
           <div className="max-w-full space-y-3 overflow-hidden">
-            <div className="pdp-main-frame rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100">
+            <div data-tn-hero="" className="pdp-main-frame tn-media rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100">
               <ProductImage
                 src={mainImage}
                 alt={resolveProductImageAlt(product.imageAlts, mainImage, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: activeImage })}
@@ -733,8 +733,8 @@ export function ProductDetail({
 
             <div className="hidden gap-3 flex-wrap lg:flex">
               <Button size="lg" variant="primary" fullWidth disabled={!canOrder} onClick={handleAddToCart}
-                rightIcon={<ShoppingCart className="h-5 w-5" />}>
-                {isComingSoon ? 'پیش‌خرید — افزودن به سبد' : 'افزودن به سبد خرید'}
+                rightIcon={addedToCart ? <Check className="h-5 w-5" aria-hidden /> : <ShoppingCart className="h-5 w-5" />}>
+                {addedToCart ? 'به سبد اضافه شد' : isComingSoon ? 'پیش‌خرید — افزودن به سبد' : 'افزودن به سبد خرید'}
               </Button>
               <a href="tel:09152424624">
                 <Button size="lg" variant="outline" rightIcon={<Phone className="h-5 w-5" />}>تماس</Button>

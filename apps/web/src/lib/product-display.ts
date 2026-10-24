@@ -1,8 +1,13 @@
 /**
- * PDP hero slot. On a 360px phone at DPR 2 the browser asks for ~720px
- * (`deviceSizes` includes 720). Desktop column is about 640 CSS pixels.
+ * PDP hero slot. Matches `.pdp-main-frame`: below 1024px the width is the
+ * content box (px-4 / sm:px-6) or the 3:4 height cap, whichever is smaller.
+ * A 390px phone at DPR 2 then selects the 720 candidate instead of 828 from
+ * a 100vw slot. `env(safe-area-inset-bottom)` is left out of `sizes` because
+ * Chrome drops the whole candidate when `env()` appears there. Desktop column
+ * stays 640 CSS pixels.
  */
-export const PDP_MAIN_IMAGE_SIZES = '(max-width: 1024px) 100vw, 640px';
+export const PDP_MAIN_IMAGE_SIZES =
+  '(max-width: 639px) min(calc(100vw - 2rem), calc((100svh - 22rem) * 0.75)), (max-width: 1023px) min(calc(100vw - 3rem), calc((100svh - 22rem) * 0.75)), 640px';
 
 /** Shared storefront display helpers. Prices are IRR; UI shows toman. */
 

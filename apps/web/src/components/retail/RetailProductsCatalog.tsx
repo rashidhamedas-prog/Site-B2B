@@ -405,8 +405,12 @@ export function RetailProductsCatalog({
             />
             {loading ? (
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-3">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-[var(--retail-bg)]" />
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="tn-card-skeleton">
+                    <div className="skeleton aspect-[3/4] w-full rounded-xl" />
+                    <div className="skeleton h-4 w-3/4 rounded" />
+                    <div className="skeleton h-3 w-1/2 rounded" />
+                  </div>
                 ))}
               </div>
             ) : products.length === 0 ? (
