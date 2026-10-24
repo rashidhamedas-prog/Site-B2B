@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261024-004"
     title: "GA4/GTM root fix — gateway referral suffix, Torob UTM normalize, Web Vitals after page_view, Iran-only docs"
-    status: "deployed"
+    status: "waiting_data"
     deployed_commit: "eb73ee94"
     risk: "high"
     owner: "cursor"
@@ -11,7 +11,7 @@ tasks:
     branch: "ai/TASK-20261024-004-ga4-root-fix"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-10-24T13:15:00Z"
-    acceptance: "Payment gateway referrers use suffix regex incl. shaparak; Torob hits normalize to torob/cpc; Web Vitals never precede page_view; iran-edge-access operative text is Iran-only; tests green; deployed Iran only; no fake GA events."
+    acceptance: "Admin/GTM/MP/Torob-manual done with evidence in report §18c. Remaining: 3 full post-deploy Windsor days + real PAID purchase to prove MP end-to-end. No fake Prod purchase."
     file_claims:
       - "apps/web/src/lib/google.ts"
       - "apps/web/src/lib/google.spec.ts"

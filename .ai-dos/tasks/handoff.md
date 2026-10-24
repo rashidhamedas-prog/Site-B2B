@@ -2,15 +2,31 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-10-24T13:26:00Z — TASK-20261024-004 CLOSED LIVE (Iran)
+## 2026-10-24T14:12:00Z — TASK-20261024-004 Admin/GTM/MP completed (waiting_data)
+
+- Owner logged into Analytics + GTM; Torob UTM accepted as done by owner.
+- Proven Admin: unwanted-referral regex already correct both streams (reload); retail+wholesale `cart_age_bucket` dim + `cart_age_days` Standard metric; no `cart_fp`; GTM Teki/Omde `send_page_view=false`.
+- MP: created `iran-server-purchase` secrets both streams → Iran `/opt/taranom/.env` only + flag true; api wouldEnable both true; health ok after full `compose up -d` (avoid `--no-deps` alone if it recreates empty network).
+- Status → `waiting_data`: 3 post-deploy Windsor days + real PAID purchase for MP e2e. Report §18c updated. Secrets not committed.
+
+## 2026-10-24T13:45:00Z — TASK-20261024-004 NOT CLOSED (verification triage)
+
+- Owner rejected “closed” on deploy alone. Evidence pass completed Iran-only.
+- Proven: live regex in Next chunks; prod e2e `ignore_referrer` mydigipay+shaparak; CDP sanitized `page_view` + `/g/collect`; MP flag/secrets ABSENT → stays off; unit specs ownership/retry/fallback/hardening OK; no fake Prod purchase.
+- Waiting data: 3 full post-deploy days; Windsor 22–24 baseline still shows mydigipay referral, torob/ads, blank/(not set) landing; vitals LCP/CLS/INP still flowing.
+- Blocked manual: GA4 Admin Missing permissions (unwanted referrals + cart_age_* defs); Torob panel chrome-error — path in `docs/analytics/GA4-FUNNEL-FIX-MANUAL-STEPS.md` §3; `ga4-mp-concurrency` SKIPPED without disposable PG.
+- Report §18: `docs/reports/2026-10-24-ga4-gtm-iran-root-fix.md`. Do not mark task done until Admin/Torob evidence + 3-day window.
+
+## 2026-10-24T13:26:00Z — TASK-20261024-004 deploy note (Iran) — superseded as “closed”
 
 - PR #89 merged → `origin/master` `eb73ee94`.
-- Iran backup `20261024T132043Z`; autodeploy complete at `eb73ee9`; health 200; web markers `shaparak.ir` / `mydigipay.info` / `campaign_source` in chunks.
+- Iran backup `20261024T132043Z`; autodeploy complete at `eb73ee9`; health 200; web markers in chunks.
 - Smoke: `.ir`/`.com`/API 200; DNS A = `185.213.167.61`.
+- **Not acceptance complete** — see 13:45 triage.
 
 ## 2026-10-24T13:30:00Z — TASK-20261024-004 GA4/GTM Iran root fix
 
-- Superseded by CLOSED LIVE above.
+- Superseded by deploy note + 13:45 triage.
 
 ## 2026-10-24T12:40:00Z — TASK-20261023-002 merge master into egress scaffold
 

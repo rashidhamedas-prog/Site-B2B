@@ -4,7 +4,7 @@ Task: `TASK-20261024-004` · تاریخ شواهد: ۲۰۲۶-۱۰-۲۴ · منب
 
 ## ۱. خلاصه مدیریتی
 
-Production فقط روی ایران (`185.213.167.61`) است؛ DNS هر دو دامنه و API به همان IP می‌رسد. purchase صفر در GA4 با صفر بودن پرداخت‌های `PAID` در ۱۰ روز اخیر هم‌خوان است. تناقض Sessions که قبلاً گزارش شده بود با Query هم‌بازه/هم‌معیار بازتولید نشد (false positive). ایرادهای قطعی باقی‌مانده در کد اصلاح شدند: matcher پسوندی درگاه (+ shaparak)، نرمال‌سازی `torob/cpc`، و جلوگیری از ارسال Web Vitals قبل از اولین `page_view`. Measurement Protocol سرور عمداً خاموش ماند (Secret در `.env` ایران نیست).
+Production فقط روی ایران (`185.213.167.61`) است؛ DNS هر دو دامنه و API به همان IP می‌رسد. purchase صفر در GA4 با صفر بودن پرداخت‌های `PAID` در ۱۰ روز اخیر هم‌خوان است. تناقض Sessions که قبلاً گزارش شده بود با Query هم‌بازه/هم‌معیار بازتولید نشد (false positive). ایرادهای قطعی باقی‌مانده در کد اصلاح شدند: matcher پسوندی درگاه (+ shaparak)، نرمال‌سازی `torob/cpc`، و جلوگیری از ارسال Web Vitals قبل از اولین `page_view`. Measurement Protocol سرور بعد از ساخت Secret هر دو stream و نوشتن در `/opt/taranom/.env` ایران با `GA4_SERVER_PURCHASE_ENABLED=true` روشن شد (بدون purchase ساختگی Prod).
 
 ## ۲. معماری واقعی فعلی
 
@@ -116,3 +116,52 @@ sessions روزانه ۲۳–۴۲؛ transactions=۰؛ بعد از ۲۱ اکتب�
 2. P1: پنل ترب UTM
 3. P2: MP Secret + flag
 4. P3: Custom definitions cart age در Admin
+
+## ۱۸. بستن تأیید با مدرک (۲۰۲۶-۱۰-۲۴T13:40Z) — کار هنوز بسته نیست
+
+Deploy کد به‌تنهایی «حل‌شده» حساب نمی‌شود. وضعیت سه‌گانهٔ زیر پس از Reload/Admin attempt، Windsor، e2e prod، و SSH ایران است.
+
+### الف) انجام و اثبات‌شده
+
+| مورد | مدرک |
+|---|---|
+| Regex درگاه روی ویترین زنده ایران | chunkهای `1912-*.js` و `app/layout-*.js`: `(^\|\.)(mydigipay\.com\|mydigipay\.info\|zarinpal\.com\|torobpay\.com\|shaparak\.ir)$` |
+| `ignore_referrer` برای درگاه / نه برای دیگران | Playwright prod روی `www.poshaktaranom.ir`: mydigipay + shaparak **ok**؛ evil.example **ok** (منفی) |
+| `page_view` بدون توکن درگاه | Browser CDP: `page_location=…/payment/callback`؛ network `/g/collect` با `tid=G-F2V7VSJMLE`؛ owner `data-ga-pageview-owner=RETAIL` |
+| گیت Web Vitals | `web-vitals-gate.spec.ts ok`؛ روی callback بلافاصله vitals در dataLayer نبود |
+| نرمال `torob/cpc` در کد | `google.spec.ts` + `retail-analytics.spec.ts` ok |
+| MP خاموش ماندن | Iran `.env` و api env: `GA4_SERVER_PURCHASE_ENABLED` و هر دو `GA4_MP_*_API_SECRET` = **ABSENT** → `wouldEnable*=false`؛ اسکن bundle وب بدون Secret |
+| تست‌های غیرprod ownership/retry/fallback | `ga4-mp.spec`، `ga4-purchase.ownership`، `ga4-purchase.error-path`، `payment-concurrency.hardening` ok |
+| عدم ارسال purchase ساختگی به Production | هیچ hit خرید تستی به GA4 Prod فرستاده نشد |
+
+### ب) انجام‌شده ولی منتظر داده واقعی
+
+| مورد | وضعیت |
+|---|---|
+| اثر Web Vitals gate روی `(not set)` / Landing خالی | Windsor ۲۲–۲۴ مهر: Web Vitals (LCP/CLS/INP) قطع نشده؛ عمده هنوز landing خالی/`(not set)` با direct دارد. نیاز به **۳ روز کامل** بعد از deploy (`eb73ee94` روی ایران، HEAD فعلی `ef9a64a` شامل آن ancestor است) |
+| کاهش `web.mydigipay.com / referral` | هنوز در تکی ۲۴ مهر دیده شد (session_start≈۱) — حتی با کد callback؛ بدون Admin unwanted referrals کامل نمی‌شود |
+| نرمال ترب در ترافیک واقعی | هنوز `torob / ads` و تاریخی `TorobPay_pdp`؛ کد فقط hitهای جدید سایت را normalize می‌کند |
+| purchase end-to-end | بدون پرداخت `PAID` واقعی تأیید نمی‌شود |
+| `ga4-mp-concurrency` با Postgres | بدون `GA4_CONCURRENCY_PG_URL` → **SKIPPED** (exactly-once در SQL/unit اثبات شد؛ race واقعی DB نه) |
+
+### ج) انجام‌شده پس از لاگین مالک (Admin/GTM/ترب) — شواهد ۲۰۲۶-۱۰-۲۴ عصر
+
+| مورد | شواهد |
+|---|---|
+| Unwanted referrals هر دو stream | Regex دقیق `(^|\.)(mydigipay\.com|mydigipay\.info|zarinpal\.com|torobpay\.com|shaparak\.ir)$` از قبل روی Google tag هر دو stream؛ Save غیرفعال (بدون تغییر)؛ Reload همچنان همان regex |
+| Custom defs Retail `547378194` | `cart_age_bucket` Event dim + `cart_age_days` Event metric Standard؛ لیست ۱ از ۱؛ بدون `cart_fp` |
+| Custom defs Wholesale `547352333` | همان دو تعریف؛ لیست ۱ از ۱ هر تب؛ بدون `cart_fp` |
+| GTM `send_page_view=false` | Retail `GTM-NKBCGQJV` تگ «GA4 - Teki» + Wholesale `GTM-M3LQFGZV` تگ «GA4 - Omde» — هر دو `send_page_view` = false |
+| ترب UTM | مالک اعلام کرد انجام شد و OK — پذیرفته؛ spot-check پنل در این جلسه تکرار نشد |
+| Measurement Protocol | Secret nickname `iran-server-purchase` روی streamهای `15339405586` و `15339578659`؛ مقادیر فقط در `/opt/taranom/.env` ایران؛ `GA4_SERVER_PURCHASE_ENABLED=true`؛ داخل api: `wouldEnableRetail/Wholesale=true`؛ health `{"status":"ok"}` پس از بازگردانی استک |
+
+### د) هنوز waiting data (نه blocked دسترسی)
+
+| مورد | دلیل |
+|---|---|
+| مقایسهٔ روزانهٔ کامل ۳روزهٔ post-deploy | پنجره هنوز پر نشده؛ baseline ۲۲–۲۴ ثبت شد |
+| purchase end-to-end با MP | فقط با پرداخت `PAID` واقعی — بدون خرید ساختگی Prod |
+
+### یادداشت ops
+
+بازنویسی `.env` + `docker compose up -d --force-recreate --no-deps api` موقتاً شبکهٔ خالی ساخت و بقیهٔ سرویس‌ها را orphan کرد؛ بلافاصله `docker compose up -d` کامل استک را از volumeها برگرداند (api healthy، ویترین ۳۰۱، health OK). برای flip بعدی env: `docker compose up -d api` **بدون** `--no-deps` وقتی شبکه تازه ساخته می‌شود.

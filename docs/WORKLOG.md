@@ -1,8 +1,17 @@
+## 2026-10-24 — تکمیل Admin/GTM/MP پس از لاگین مالک
+
+- Unwanted referrals هر دو stream: regex درگاه از قبل درست بود (Save غیرفعال؛ Reload همان).
+- Custom defs: `cart_age_bucket` + `cart_age_days` روی تکی و عمده؛ بدون `cart_fp`.
+- GTM تکی/عمده: `send_page_view=false` روی Google Tag.
+- ترب UTM: تأیید مالک (OK).
+- MP: Secret هر دو stream → فقط `.env` ایران + `GA4_SERVER_PURCHASE_ENABLED=true`؛ api `wouldEnable*=true`؛ health OK. بدون purchase ساختگی.
+- گزارش §۱۸ به‌روز: `docs/reports/2026-10-24-ga4-gtm-iran-root-fix.md`.
+
 ## 2026-10-24 — اصلاح ریشه‌ای GA4/GTM (تکی+عمده) روی تک‌سرور ایران
 
 - شواهد: DNS هر دو دامنه → ایران؛ purchase=0 با PAID خالی ۱۰روز هم‌خوان؛ تناقض sessions false positive؛ mydigipay/shaparak و UTM ترب مخلوط؛ `(not set)` عمده با Web Vitals قبل از page_view.
 - کد: suffix matcher درگاه + نرمال `torob/cpc` + گیت Web Vitals بعد از page_view؛ docs لبه ایران بدون Hetzner عملیاتی.
-- MP سرور خاموش می‌ماند تا Secret در `.env` ایران؛ event ساختگی Production ارسال نشد.
+- MP سرور بعداً با Secret روشن شد (ورودی بالا).
 - گزارش: `docs/reports/2026-10-24-ga4-gtm-iran-root-fix.md`.
 
 ## 2026-10-24 — مبدأ تولید واحد ایران (حذف دیپلوی آلمان)

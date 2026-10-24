@@ -160,7 +160,11 @@ assert.equal(stripRetailInternalPath('/retail'), '/');
 assert.equal(stripRetailInternalPath('/products'), '/products');
 assert.equal(publicAnalyticsPagePath('/retail/products', 'utm_source=google&phone=09120000000'), '/products?utm_source=google');
 assert.equal(sanitizeAnalyticsSearch('utm_campaign=spring&otp=1234'), 'utm_campaign=spring');
-assert.equal(sanitizeAnalyticsSearch('Authority=A000&utm_source=torob'), 'utm_source=torob');
+assert.equal(
+  sanitizeAnalyticsSearch('Authority=A000&utm_source=torob'),
+  'utm_source=torob&utm_medium=cpc',
+  'Torob source without medium normalizes to torob/cpc',
+);
 assert.equal(sanitizeAnalyticsSearch('q=09120000000&color=red'), '', 'search/filter params are not campaign params');
 assert.equal(sanitizeAnalyticsSearch('foo=bar'), '');
 assert.equal(shouldLoadProductionTags('localhost', '/products'), false);
