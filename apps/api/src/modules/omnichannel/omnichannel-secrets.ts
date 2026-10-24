@@ -59,11 +59,14 @@ export function toPublicConnection<T extends { secretRef?: string | null }>(row:
   return { ...row, secretRef: row.secretRef ? String(row.secretRef) : null };
 }
 
-/** Public shape: isCanary flag + server-written verification snapshot only; never raw settings. */
-export function toPublicDestination<T extends { settings?: Record<string, unknown> }>(
+/** Public shape: isCanary flag + server-written verification snapshot only; never raw settings/publishSettings. */
+export function toPublicDestination<T extends {
+  settings?: Record<string, unknown>;
+  publishSettings?: Record<string, unknown>;
+}>(
   row: T,
-): Omit<T, 'settings'> & { isCanary: boolean; verified: Record<string, unknown> | null } {
-  const { settings, ...rest } = row;
+): Omit<T, 'settings' | 'publishSettings'> & { isCanary: boolean; verified: Record<string, unknown> | null } {
+  const { settings, publishSettings: _publishSettings, ...rest } = row;
   const verified = settings?.verified;
   return {
     ...rest,

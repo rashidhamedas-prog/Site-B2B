@@ -30,6 +30,10 @@ export class ChannelDestinationEntity {
   @Column({ type: 'jsonb', default: {} })
   settings: Record<string, unknown>;
 
+  /** Per-destination automation/OOS/cap (primary scope). Connection blob is compat fallback. */
+  @Column({ type: 'jsonb', default: {} })
+  publishSettings: Record<string, unknown>;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

@@ -1,3 +1,13 @@
+## 2026-10-24 — ایزولهٔ تنظیمات Omnichannel روی destinationId
+
+- کلید اصلی تنظیمات اپراتور: `destinationId` (قالب، قواعد خودکار، سقف روزانه، تب‌های وضعیت/انتشار/صف). Connection فقط هویت/توکن ربات.
+- Migration `20261024-001`: `destinations.publishSettings` + `templates.destinationId` با بک‌فیل از connection و کلون قالب برای چندمقصدی.
+- API: `GET|PATCH .../destinations/:id/publish-settings`؛ قالب محصول بدون destinationId رد می‌شود؛ لیست/status با `?destinationId=`؛ `publicationPayloadFor` همیشه connection/destination می‌گیرد.
+- نوشتن روی connection publish-settings مسدود؛ status وقتی مقصد انتخاب شده سقف/حالت همان مقصد را نشان می‌دهد.
+- Automation و سقف روزانه per-destination؛ UI با `selectedDestinationId` و remount قالب‌ساز.
+- با FREE_POST master ادغام شد: enqueue per-destination + `sourceType` gateway.
+- گزارش: `docs/reports/2026-10-24-omnichannel-destination-isolation.md`.
+
 ## 2026-10-23 — FREE_POST MVP (متن آزاد کانال انتشار) — بدون دیپلوی
 
 - ادمین می‌تواند از «ارسال دستی» یک کپشن آزاد (و حداکثر یک تصویر) بفرستد، بدون PRODUCT / BLOG_POST / CMS_PAGE.
