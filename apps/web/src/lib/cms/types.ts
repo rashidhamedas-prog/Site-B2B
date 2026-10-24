@@ -5,6 +5,10 @@ export type BlockType =
   | 'stats'
   | 'features'
   | 'process'
+  | 'storyboard'
+  | 'moneyTimeline'
+  | 'earningExample'
+  | 'roles'
   | 'testimonials'
   | 'faq'
   | 'cta'
@@ -51,6 +55,10 @@ export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
   stats: 'آمار و شمارنده',
   features: 'ویژگی‌ها / کارت‌ها',
   process: 'فرآیند / مراحل',
+  storyboard: 'استوری‌برد همکار بازاریاب',
+  moneyTimeline: 'نوار زمان پورسانت',
+  earningExample: 'مثال درآمد',
+  roles: 'کار شما / کار ترنم',
   testimonials: 'نظرات مشتریان',
   faq: 'سوالات متداول',
   cta: 'دعوت به اقدام',

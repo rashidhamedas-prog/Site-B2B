@@ -21,5 +21,7 @@
 | affiliate_catalog_view | First catalog payload | sales_channel=affiliate | `SalesPartnerCatalog.tsx` | no | no partner id | helper |
 | affiliate_link_copied | Share link copied | sales_channel=affiliate | `SalesPartnerCatalog.tsx` | no | no code dimension | helper |
 | affiliate_landing_view, affiliate_signup_start, affiliate_link_created, affiliate_order_created, affiliate_payment_link_sent | Helpers ready, call sites not wired | sales_channel=affiliate | `retail-analytics.ts` | order event optional | no person id | helper |
+| sp_story_step_view | A storyboard card is at least half visible, once per step | sales_channel=affiliate, step 1–6 | `StoryCarousel.tsx` | no | no person id | helper |
+| sp_story_cta_click | Click on an in-page `#apply` link | sales_channel=affiliate | `StoryCarousel.tsx` | no | no person id | helper |
 
 Item fields when present: `item_id` (SKU, else product id), `item_name`, `item_brand` `Taranom`, `item_category`, `item_variant` as `color / size`, `price`, `quantity`, `discount`, `index`, list id and name.

@@ -5,6 +5,8 @@ import type { ContentBlock } from '@/lib/cms/types';
 import { arr, str } from '@/lib/cms/fetch';
 import { RetailFaq } from '@/components/retail/RetailFaq';
 import { RetailCtaBanner } from '@/components/retail/RetailCtaBanner';
+import { RetailFeatureCards } from '@/components/retail/RetailFeatureCards';
+import { renderSalesStoryBlock } from '@/components/sales-partners/storyboard/render-block';
 import { RETAIL_TRUST_FALLBACK, type TrustItem } from '@/components/retail/RetailTrustStrip';
 import {
   filterChromeBlocks,
@@ -85,6 +87,7 @@ export async function BoutiqueBlocksRenderer({
                 headline={str(p, 'headline') || undefined}
                 body={str(p, 'body') || undefined}
                 items={arr(p, 'items')}
+                emitJsonLd={p.emitJsonLd !== false}
               />
             </div>
           </div>,
@@ -101,10 +104,34 @@ export async function BoutiqueBlocksRenderer({
             ctaHref={withRetailToWholesaleUtm(str(p, 'ctaHref') || undefined, 'cms_cta')}
             ctaSecondaryLabel={str(p, 'ctaSecondaryLabel') || undefined}
             ctaSecondaryHref={str(p, 'ctaSecondaryHref') || undefined}
+            headingAs={str(p, 'headingAs') === 'h1' ? 'h1' : 'h2'}
+            imageUrl={str(p, 'imageUrl') || undefined}
+            imageAlt={str(p, 'imageAlt') || undefined}
+            priority={str(p, 'headingAs') === 'h1' && Boolean(str(p, 'imageUrl'))}
           />,
         );
         break;
       case 'features':
+        if (!looksLikeHome) {
+          nodes.push(
+            <RetailFeatureCards
+              key={block.id}
+              eyebrow={str(p, 'eyebrow') || undefined}
+              headline={str(p, 'headline') || undefined}
+              body={str(p, 'body') || undefined}
+              items={arr(p, 'items')}
+            />,
+          );
+        }
+        break;
+      case 'storyboard':
+      case 'moneyTimeline':
+      case 'earningExample':
+      case 'roles': {
+        const storyNode = renderSalesStoryBlock(block);
+        if (storyNode) nodes.push(storyNode);
+        break;
+      }
       case 'comingSoon':
       case 'process':
       case 'testimonials':

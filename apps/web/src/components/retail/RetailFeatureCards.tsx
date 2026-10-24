@@ -46,7 +46,7 @@ export function RetailFeatureCards({
       <div className="mx-auto max-w-6xl">
         <div className="mx-auto mb-10 max-w-2xl text-center">
           {eyebrow ? (
-            <p className="mb-2 text-sm font-semibold tracking-wide text-[var(--retail-accent,#C9A84C)]">
+            <p className="mb-2 text-sm font-semibold tracking-wide text-gold-700">
               {eyebrow}
             </p>
           ) : null}
