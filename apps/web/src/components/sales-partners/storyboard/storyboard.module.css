@@ -72,6 +72,7 @@
 
 .steps {
   display: flex;
+  align-items: start;
   gap: 0.75rem;
   margin: 0;
   padding: 0.25rem 6% 0.75rem;
@@ -85,11 +86,14 @@
 
 .step {
   flex: 0 0 88%;
+  align-self: start;
+  height: auto;
   min-width: 0;
   scroll-snap-align: center;
 }
 
 .figure {
+  height: auto;
   margin: 0;
   min-width: 0;
   max-width: 100%;
@@ -106,11 +110,20 @@
 }
 
 .stepNo {
-  margin: 0;
-  color: #836a27;
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 2.25rem;
+  height: 2rem;
+  margin: 0 0 0.45rem;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  background: #0f2f28;
+  color: #fff;
+  font-size: 16px;
   font-weight: 800;
-  line-height: 1.4;
+  line-height: 1;
 }
 
 .cardTitle {
