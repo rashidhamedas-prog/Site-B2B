@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
-const sharp = require('../../apps/api/node_modules/sharp');
+const sharp = require('sharp');
 
 for (const name of ['og-retail', 'og-wholesale']) {
   const src = `apps/web/public/${name}.jpg`;

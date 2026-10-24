@@ -5,6 +5,14 @@
 - فیکس: defer `ConnectorDisabledError` در worker؛ `POST .../outbox/revive-connector-disabled`؛ UUID در JWT؛ harden audits/`api.ts`/AttentionStrip.
 - گزارش: `docs/reports/2026-10-24-omnichannel-bale-connector-dead-revive.md`.
 
+## 2026-10-24 — وصله امنیتی Next.js 15.5.28 و sharp 0.35.5
+
+- قفل قبلی: `next` 15.5.19 و `sharp` 0.34.5 (وب) به‌علاوه `sharp` 0.33.5 داخل API. هر سه advisory هدف (`GHSA-2xp9-vwfh-vxw4`، `GHSA-2464-fhr4-w9xw` / CVE-2026-96889، `GHSA-p3m5-59mp-jv5r`) روی 15.5.28 + sharp 0.35.5 از `npm audit` خارج شدند.
+- `next@15.5.28` هنوز بازه `sharp@^0.34.3` را می‌پذیرد؛ هر دو ورک‌اسپیس `sharp` را روی 0.35.5 پین کردند تا lockfile روی 0.34 نماند.
+- `images.formats` عوض نشد: libheif داخل sharp 0.35.5 برابر 1.23.5 است و Next رمزگشایی AVIF را از 1.23.2 به بعد امن می‌داند. `"use server"` در مخزن نیست.
+- موتور Node به `>=20.9.0` (الزام sharp 0.35.5) به‌روز شد. Dockerfile و دیپلوی دست نخورده؛ این شاخه merge نشده است.
+- گزارش: `docs/reports/2026-10-24-next-15-5-security.md`.
+
 ## 2026-10-24 — اصلاح ریشه‌ای GA4/GTM (تکی+عمده) روی تک‌سرور ایران
 
 - شواهد: DNS هر دو دامنه → ایران؛ purchase=0 با PAID خالی ۱۰روز هم‌خوان؛ تناقض sessions false positive؛ mydigipay/shaparak و UTM ترب مخلوط؛ `(not set)` عمده با Web Vitals قبل از page_view.
