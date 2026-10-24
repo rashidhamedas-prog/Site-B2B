@@ -1143,24 +1143,27 @@ export class OmnichannelService {
     }
     const limit = Math.max(1, Math.min(500, Math.floor(Number(dto.limit) || 200)));
     const eventIds = await this.outbox.requeueConnectorDisabledDead(limit);
-    // Linked by eventId + any orphan DEAD rows that still carry the gate-off lastError.
-    const byEvent = eventIds.length
-      ? await this.deliveries
-        .createQueryBuilder()
-        .update(PublicationDeliveryEntity)
-        .set({ status: 'PENDING', lastError: null, nextAttemptAt: new Date() })
-        .where('"eventId" IN (:...ids)', { ids: eventIds })
-        .andWhere('status IN (:...st)', { st: ['DEAD', 'FAILED', 'RETRY'] })
-        .execute()
-      : { affected: 0 };
-    const byError = await this.deliveries
-      .createQueryBuilder()
-      .update(PublicationDeliveryEntity)
-      .set({ status: 'PENDING', lastError: null, nextAttemptAt: new Date() })
-      .where('status IN (:...st)', { st: ['DEAD', 'FAILED'] })
-      .andWhere('"lastError" ILIKE :pat', { pat: '%connector is disabled%' })
-      .execute();
-    const revivedDeliveries = Number(byEvent.affected || 0) + Number(byError.affected || 0);
+    // Raw SQL avoids TypeORM :...ids expanding an empty/odd list into uuid "undefined".
+    let revivedDeliveries = 0;
+    if (eventIds.length) {
+      const linked: Array<{ id: string }> = await this.deliveries.manager.query(
+        `UPDATE omnichannel_publication_deliveries
+         SET status = 'PENDING', "lastError" = NULL, "nextAttemptAt" = NOW()
+         WHERE "eventId" = ANY($1::uuid[])
+           AND status IN ('DEAD', 'FAILED', 'RETRY')
+         RETURNING id`,
+        [eventIds],
+      );
+      revivedDeliveries += Array.isArray(linked) ? linked.length : 0;
+    }
+    const orphans: Array<{ id: string }> = await this.deliveries.manager.query(
+      `UPDATE omnichannel_publication_deliveries
+       SET status = 'PENDING', "lastError" = NULL, "nextAttemptAt" = NOW()
+       WHERE status IN ('DEAD', 'FAILED')
+         AND "lastError" ILIKE '%connector is disabled%'
+       RETURNING id`,
+    );
+    revivedDeliveries += Array.isArray(orphans) ? orphans.length : 0;
     await this.audit(who, 'outbox_revive_connector_disabled', 'OUTBOX', 'batch', null, reason, {
       revivedEvents: eventIds.length,
       revivedDeliveries,
