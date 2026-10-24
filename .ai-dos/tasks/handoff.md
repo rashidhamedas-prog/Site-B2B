@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-24T08:30:00Z — TASK-20261024-002 orphan size variants
+
+- Evidence: live WHOLESALE search showed CUSTOM+MANUAL 37–40 still emitting variant size leftover from AUTO pack.
+- Fix: write-path prune + read-path chart filter + migration `20261024-002`.
+- Specs OK: size-chart-variants, migration source, product-pack, color-stock-plan.
+- Next: commit → master → VPS auto-deploy → re-check sample slugs.
+
 ## 2026-10-23T18:00:00Z — FREE_POST MVP (no deploy)
 
 - Branch `cursor/omnichannel-free-post-e7fd`. Flag `OMNICHANNEL_FREE_POST_ENABLED` default off.

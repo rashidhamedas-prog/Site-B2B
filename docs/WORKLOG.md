@@ -1,3 +1,10 @@
+## 2026-10-24 — پاکسازی سایز یتیم بعد از AUTO→CUSTOM/MANUAL
+
+- ریشه: کارت دسته سایز را از `variant.size` می‌خواند؛ بعد از پک دستی/سایز سفارشی ردیف قدیمی در DB می‌ماند و ادمین با `ensureSizeStocks` مخفی‌اش می‌کند.
+- شواهد زنده: دو محصول کفش زنانه CUSTOM+MANUAL با labels 37–40 و variant فری‌سایز.
+- فیکس: prune در update/color-stock + فیلتر projection/storefront + migration یک‌باره `20261024-002`.
+- گزارش: `docs/reports/2026-10-24-orphan-size-variants.md`.
+
 ## 2026-10-24 — ایزولهٔ تنظیمات Omnichannel روی destinationId
 
 - کلید اصلی تنظیمات اپراتور: `destinationId` (قالب، قواعد خودکار، سقف روزانه، تب‌های وضعیت/انتشار/صف). Connection فقط هویت/توکن ربات.

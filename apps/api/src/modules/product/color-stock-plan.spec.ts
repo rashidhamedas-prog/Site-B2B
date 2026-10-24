@@ -25,6 +25,21 @@ function assert(cond: boolean, msg: string) {
 }
 
 {
+  // Payload may still mention a leftover AUTO size; service ignores it via chartSet.
+  const plan = parseColorStockPlan(
+    {
+      sizes: [
+        { size: '37', wholesaleStock: 2 },
+        { size: 'فری سایز', wholesaleStock: 9 },
+      ],
+    },
+    ['37', '38', '39', '40'],
+  );
+  assert(plan.get('فری سایز')?.wholesale === 9, 'parser keeps raw payload key');
+  assert(plan.get('37')?.wholesale === 2, 'numeric size kept');
+}
+
+{
   const plan = parseColorStockPlan({ wholesaleStock: 10, retailStock: 2 }, ['۱', '۲']);
   assert(plan.get('۱')?.wholesale === 10 && plan.get('۱')?.retail === 2, 'first size gets pool');
   assert(plan.get('۲')?.wholesale === 0 && plan.get('۲')?.retail === 0, 'siblings zeroed');

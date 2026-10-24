@@ -62,6 +62,7 @@ import {
   sizesForSizeType,
   type PackSizeConfig,
 } from './product-pack';
+import { orphanSizeVariants, variantsOnSizeChart } from './size-chart-variants';
 import {
   generateChannelContent,
   type ProductContentInput,
@@ -270,11 +271,15 @@ export class ProductService {
     const sizeType = (product.sizeType || 'FREE') as ProductSizeType;
     const sale = resolveChannelSale(product, isRetail ? 'RETAIL' : 'WHOLESALE');
     const packConfig = this.packConfigFor(product);
-    const packQty = computePackQty((product.variants ?? []).map((v) => v.color), packConfig);
+    const chartSource = { sizeType: product.sizeType, sizeLabels: product.sizeLabels };
+    const chartVariants = variantsOnSizeChart(product.variants ?? [], chartSource);
+    const packQty = computePackQty(chartVariants.map((v) => v.color), packConfig);
     const fullContent = isRetail
       ? product.retailFullContent || product.description
       : product.wholesaleFullContent || product.description;
-    const variants = (product.variants ?? []).map((v) => {
+    // Public/admin projection: never surface sizes outside the current size chart
+    // (stale AUTO «فری سایز» rows after CUSTOM/MANUAL edits).
+    const variants = chartVariants.map((v) => {
       const vWholesale = Number(v.wholesaleStock) || 0;
       const vRetail = Number(v.retailStock) || 0;
       const row = {
@@ -1969,13 +1974,13 @@ export class ProductService {
         throw new BadRequestException((e as Error).message);
       }
     }
-    if (
+    const sizeChartTouched =
       data.sizeType !== undefined ||
       data.sizeLabels !== undefined ||
       data.sizeGuideLines !== undefined ||
       data.packDefinitionMode !== undefined ||
-      data.packComposition !== undefined
-    ) {
+      data.packComposition !== undefined;
+    if (sizeChartTouched) {
       const packSize = this.resolvePackSizeFields({
         sizeType: data.sizeType ?? existing.sizeType,
         sizeLabels: data.sizeLabels !== undefined ? data.sizeLabels : existing.sizeLabels,
@@ -2043,11 +2048,19 @@ export class ProductService {
         await this.persistSkuAliasInTx(em, id, existing.sku, nextSku);
       }
       await em.getRepository(ProductEntity).update(id, patch as any);
-      const row = await em.getRepository(ProductEntity).findOne({
+      let row = await em.getRepository(ProductEntity).findOne({
         where: { id },
         relations: ['variants'],
       });
       if (!row) throw new NotFoundException('محصول یافت نشد');
+      if (sizeChartTouched) {
+        await this.pruneOrphanSizeVariants(id, em);
+        row = await em.getRepository(ProductEntity).findOne({
+          where: { id },
+          relations: ['variants'],
+        });
+        if (!row) throw new NotFoundException('محصول یافت نشد');
+      }
       await this.enqueueProductOutbox(existing, row, `product:update:${id}`, em);
       return row;
     });
@@ -2177,6 +2190,40 @@ export class ProductService {
       ...(retailChanged ? { updatedAt: new Date() } : {}),
     });
     return { wholesaleStock: wholesaleSum, retailStock: retailSum };
+  }
+
+  /**
+   * Hard-delete variants whose size is outside the product size chart.
+   * Keeps order-line snapshots (no FK). Clears erp_variant_map when present.
+   * Empty CUSTOM chart → no-op (avoid wiping mid-edit).
+   */
+  async pruneOrphanSizeVariants(productId: string, manager?: EntityManager): Promise<number> {
+    const variantRepo = manager?.getRepository(ProductVariantEntity) ?? this.variantRepo;
+    const productRepo = manager?.getRepository(ProductEntity) ?? this.productRepo;
+    const product = await productRepo.findOne({
+      where: { id: productId },
+      relations: ['variants'],
+    });
+    if (!product) return 0;
+    const orphans = orphanSizeVariants(product.variants ?? [], {
+      sizeType: product.sizeType,
+      sizeLabels: product.sizeLabels,
+    });
+    if (!orphans.length) return 0;
+    const ids = orphans.map((v) => v.id).filter(Boolean);
+    if (ids.length) {
+      try {
+        await (manager ?? this.productRepo.manager).query(
+          `DELETE FROM erp_variant_map WHERE "variantId" = ANY($1::uuid[])`,
+          [ids],
+        );
+      } catch {
+        // Table may be absent in older envs; variant delete still proceeds.
+      }
+    }
+    await variantRepo.remove(orphans);
+    await this.syncProductStockFromVariants(productId, manager);
+    return orphans.length;
   }
 
   /** Adjust product-level stock by delta (orders deduct with negative delta). */
@@ -2437,12 +2484,15 @@ export class ProductService {
       data.imageUrl !== undefined ? String(data.imageUrl || '').trim() || null : undefined;
 
     const productSizes = this.sizesForProduct(product);
+    const chartSet = productSizes.length ? new Set(productSizes) : null;
     const perSize = new Map<string, { wholesale?: number; retail?: number }>();
 
     if (Array.isArray(data.sizes) && data.sizes.length > 0) {
       for (const row of data.sizes) {
         const label = String(row.size ?? '').trim();
         if (!label) continue;
+        // Ignore payload sizes outside the current chart so AUTO leftovers cannot reappear.
+        if (chartSet && !chartSet.has(label)) continue;
         const wholesale =
           row.wholesaleStock !== undefined && row.wholesaleStock !== null
             ? Math.max(0, Math.floor(Number(row.wholesaleStock)))
@@ -2486,7 +2536,8 @@ export class ProductService {
       }
     }
 
-    const sizes = Array.from(new Set([...productSizes, ...Array.from(perSize.keys())]));
+    // Upsert only chart sizes — never union with stale DB/payload orphans.
+    const sizes = productSizes.length ? productSizes : Array.from(perSize.keys());
     const existing = product.variants ?? [];
     const updated: ProductVariantEntity[] = [];
 
@@ -2525,6 +2576,26 @@ export class ProductService {
       }
       const saved = await this.variantRepo.save(row);
       updated.push(Array.isArray(saved) ? saved[0] : saved);
+    }
+
+    if (chartSet) {
+      const stale = existing.filter(
+        (v) => v.color === color.name && !chartSet.has(String(v.size ?? '').trim()),
+      );
+      if (stale.length) {
+        const staleIds = stale.map((v) => v.id).filter(Boolean);
+        if (staleIds.length) {
+          try {
+            await this.productRepo.manager.query(
+              `DELETE FROM erp_variant_map WHERE "variantId" = ANY($1::uuid[])`,
+              [staleIds],
+            );
+          } catch {
+            // optional table
+          }
+        }
+        await this.variantRepo.remove(stale);
+      }
     }
 
     await this.syncProductStockFromVariants(productId);

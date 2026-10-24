@@ -16,9 +16,10 @@ import {
   compositionPerSize,
   piecesPerPackCount,
   sizeCountForType,
+  storefrontSizeLabels,
   toman,
   uniqueInStockColors,
-  variantsInStock,
+  variantsOnSizeChart,
 } from '@/lib/product-display';
 import { wholesaleMoq } from '@/lib/wholesale-order';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
@@ -250,20 +251,23 @@ export function ProductDetail({
   const minColors = Math.max(1, Number(product?.minWholesaleColors) || 1);
 
   const includeSoldOutColors = product?.status === 'COMING_SOON';
+  const chartVariants = product
+    ? variantsOnSizeChart(product.variants, {
+        sizeType: product.sizeType,
+        sizeLabels: product.sizeLabels,
+      })
+    : [];
   const availableColors = product
-    ? uniqueInStockColors(product.variants, 'wholesale', { includeSoldOut: includeSoldOutColors }).map((v) => ({
+    ? uniqueInStockColors(chartVariants, 'wholesale', { includeSoldOut: includeSoldOutColors }).map((v) => ({
         name: v.color,
         hex: v.colorHex || '#ccc',
       }))
     : [];
   const availableSizes = product
-    ? Array.from(
-        new Set(
-          variantsInStock(product.variants, 'wholesale', { includeSoldOut: includeSoldOutColors })
-            .map((v) => v.size)
-            .filter(Boolean),
-        ),
-      )
+    ? storefrontSizeLabels(chartVariants, {
+        sizeType: product.sizeType,
+        sizeLabels: product.sizeLabels,
+      }, { channel: 'wholesale', includeSoldOut: includeSoldOutColors })
     : [];
   const sizeType = product?.sizeType ?? 'FREE';
   const sizeTypeLabel = SIZE_TYPE_LABEL[sizeType] ?? SIZE_TYPE_LABEL.FREE;
