@@ -152,6 +152,7 @@ test('network: hard redirect callback → /portal/login: one app page_view, dr c
 
 for (const [referer, approved] of [
   ['https://web.mydigipay.com/', true],
+  ['https://sep.shaparak.ir/pg/Pay', true],
   ['https://evil.example/', false],
 ] as const) {
   test(`ignore_referrer only for approved gateway referrer (${new URL(referer).host})`, async ({ page }) => {
@@ -165,7 +166,7 @@ for (const [referer, approved] of [
       .filter((a) => a[0] === 'set' && a[1] && typeof a[1] === 'object')
       .map((a) => (a[1] as Record<string, unknown>).page_referrer)
       .find(Boolean);
-    if (approved) expect(pageReferrer).toBe('https://web.mydigipay.com/');
+    if (approved) expect(String(pageReferrer)).toMatch(new RegExp(`^${new URL(referer).origin}/`));
   });
 }
 

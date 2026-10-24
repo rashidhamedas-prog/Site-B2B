@@ -137,11 +137,75 @@ export function stripRetailInternalPath(pathname: string | null | undefined): st
   return path || '/';
 }
 
-export function sanitizeAnalyticsSearch(search: string | null | undefined): string {
+/**
+ * Marketplace Torob (not TorobPay gateway). Medium aliases seen in the wild that must
+ * collapse to lowercase `torob / cpc` for new hits only.
+ */
+const TOROB_SOURCE_RE = /^torob$/i;
+const TOROB_REFERRER_HOST_RE = /(^|\.)torob\.com$/i;
+
+export type TorobCampaignOverride = { source: 'torob'; medium: 'cpc' };
+
+function hostFromReferrer(referrer: string | null | undefined): string {
+  try {
+    return new URL(String(referrer || '')).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function readUtm(params: URLSearchParams, key: 'utm_source' | 'utm_medium'): string {
+  for (const [k, v] of params.entries()) {
+    if (k.trim().toLowerCase() === key) return v.trim();
+  }
+  return '';
+}
+
+/** True when search or referrer indicates Torob marketplace traffic that must be `torob / cpc`. */
+export function resolveTorobCampaignOverride(opts: {
+  search?: string | null;
+  referrer?: string | null;
+}): TorobCampaignOverride | null {
+  const raw = String(opts.search ?? '')
+    .replace(/^\?/, '')
+    .split('#')[0] ?? '';
+  const params = raw ? new URLSearchParams(raw) : new URLSearchParams();
+  const source = readUtm(params, 'utm_source');
+  const refHost = hostFromReferrer(opts.referrer);
+  const fromTorobHost = !!refHost && TOROB_REFERRER_HOST_RE.test(refHost) && !isPaymentGatewayHost(refHost);
+  const fromTorobSource = TOROB_SOURCE_RE.test(source);
+  if (!fromTorobSource && !fromTorobHost) return null;
+  return { source: 'torob', medium: 'cpc' };
+}
+
+/**
+ * gtag campaign_* fields only when the URL is missing/wrong Torob UTM (or referrer-only).
+ * When the query is already `utm_source=torob&utm_medium=cpc`, page_location is enough.
+ */
+export function shouldSetTorobCampaignFields(opts: {
+  search?: string | null;
+  referrer?: string | null;
+}): TorobCampaignOverride | null {
+  const override = resolveTorobCampaignOverride(opts);
+  if (!override) return null;
+  const raw = String(opts.search ?? '')
+    .replace(/^\?/, '')
+    .split('#')[0] ?? '';
+  const params = raw ? new URLSearchParams(raw) : new URLSearchParams();
+  const source = readUtm(params, 'utm_source');
+  const medium = readUtm(params, 'utm_medium');
+  if (source === 'torob' && medium === 'cpc') return null;
+  return override;
+}
+
+export function sanitizeAnalyticsSearch(
+  search: string | null | undefined,
+  opts?: { referrer?: string | null },
+): string {
   const raw = String(search ?? '')
     .replace(/^\?/, '')
     .split('#')[0] ?? '';
-  if (!raw) return '';
+  if (!raw && !opts?.referrer) return '';
   const params = new URLSearchParams(raw);
   const next = new URLSearchParams();
   for (const [key, value] of params.entries()) {
@@ -150,6 +214,11 @@ export function sanitizeAnalyticsSearch(search: string | null | undefined): stri
     const clean = value.trim();
     if (!clean || clean.length > 120 || looksLikeQueryPii(clean)) continue;
     next.append(normalized, clean);
+  }
+  const torob = resolveTorobCampaignOverride({ search: raw, referrer: opts?.referrer });
+  if (torob) {
+    next.set('utm_source', torob.source);
+    next.set('utm_medium', torob.medium);
   }
   return next.toString();
 }
@@ -161,9 +230,10 @@ export function sanitizeAnalyticsSearch(search: string | null | undefined): stri
 export function publicAnalyticsPagePath(
   pathname: string | null | undefined,
   search?: string | null,
+  opts?: { referrer?: string | null },
 ): string {
   const path = stripRetailInternalPath(pathname);
-  const q = sanitizeAnalyticsSearch(search);
+  const q = sanitizeAnalyticsSearch(search, opts);
   return q ? `${path}?${q}` : path;
 }
 
@@ -181,8 +251,14 @@ export function preGtmGtagSet(input: {
   search: string;
   appOwnsPageView: boolean;
   referrer?: string;
-}): { page_location: string; page_referrer?: string; send_page_view?: false } | null {
-  const path = publicAnalyticsPagePath(input.pathname, input.search);
+}): {
+  page_location: string;
+  page_referrer?: string;
+  send_page_view?: false;
+  campaign_source?: string;
+  campaign_medium?: string;
+} | null {
+  const path = publicAnalyticsPagePath(input.pathname, input.search, { referrer: input.referrer });
   const page_location = `${input.origin}${path}`;
   const rawReferrer = String(input.referrer || '');
   const host = (() => {
@@ -194,9 +270,16 @@ export function preGtmGtagSet(input: {
   })();
   const page_referrer = rawReferrer ? sanitizeAnalyticsReferrer(rawReferrer, host) : '';
   const referrerFields = rawReferrer && page_referrer !== rawReferrer ? { page_referrer } : {};
-  if (input.appOwnsPageView) return { page_location, ...referrerFields, send_page_view: false };
+  const torob = shouldSetTorobCampaignFields({ search: input.search, referrer: input.referrer });
+  const campaignFields = torob
+    ? { campaign_source: torob.source, campaign_medium: torob.medium }
+    : {};
+  if (input.appOwnsPageView) {
+    return { page_location, ...referrerFields, ...campaignFields, send_page_view: false };
+  }
   const raw = `${stripRetailInternalPath(input.pathname)}${input.search && input.search !== '?' ? (input.search.startsWith('?') ? input.search : `?${input.search}`) : ''}`;
-  return raw === path && !('page_referrer' in referrerFields) ? null : { page_location, ...referrerFields };
+  if (raw === path && !('page_referrer' in referrerFields) && !torob) return null;
+  return { page_location, ...referrerFields, ...campaignFields };
 }
 
 /** Confirmed retail stream (Windsor property 547378194). Fallback when env/admin empty. */
@@ -221,6 +304,28 @@ export function shouldSendPageView(previousKey: string, nextKey: string): boolea
   return previousKey !== nextKey;
 }
 
+/**
+ * Unwanted / payment-return domains (suffix match). Same rule as GA4 Admin unwanted referrals:
+ * `(^|\.)(mydigipay\.com|mydigipay\.info|zarinpal\.com|torobpay\.com|shaparak\.ir)$`
+ */
+export const PAYMENT_REFERRER_DOMAIN_RE =
+  '(^|\\.)(mydigipay\\.com|mydigipay\\.info|zarinpal\\.com|torobpay\\.com|shaparak\\.ir)$';
+
+const PAYMENT_GATEWAY_HOST_RE = new RegExp(PAYMENT_REFERRER_DOMAIN_RE, 'i');
+
+/** Hostname is a known payment / bank return host (any subdomain). */
+export function isPaymentGatewayHost(host: string | null | undefined): boolean {
+  const h = String(host || '')
+    .split(':')[0]!
+    .toLowerCase()
+    .trim();
+  if (!h) return false;
+  return PAYMENT_GATEWAY_HOST_RE.test(h);
+}
+
+/**
+ * @deprecated Prefer `isPaymentGatewayHost` / suffix regex. Kept for e2e fixtures that list examples.
+ */
 export const PAYMENT_REFERRER_HOSTS = [
   'web.mydigipay.com',
   'www.mydigipay.com',
@@ -231,13 +336,14 @@ export const PAYMENT_REFERRER_HOSTS = [
   'www.zarinpal.com',
   'zarinpal.com',
   'cpg.torobpay.com',
+  'sep.shaparak.ir',
 ] as const;
 
-/** True only for the return hosts of the live retail gateways. */
+/** True only for the return hosts of the live retail gateways (any matching subdomain). */
 export function isApprovedPaymentReferrer(referrer: string | null | undefined): boolean {
   try {
     const host = new URL(String(referrer || '')).hostname.toLowerCase();
-    return (PAYMENT_REFERRER_HOSTS as readonly string[]).includes(host);
+    return isPaymentGatewayHost(host);
   } catch {
     return false;
   }
