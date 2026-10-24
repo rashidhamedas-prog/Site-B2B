@@ -36,12 +36,23 @@ else
     -e POSTGRES_USER="$PG_USER" \
     -e POSTGRES_DB="$DISPOSABLE_DB" \
     postgres:16-alpine >/dev/null
-  for _ in $(seq 1 40); do
-    if docker exec "$CONTAINER" pg_isready -U "$PG_USER" >/dev/null 2>&1; then
+  # The official image accepts connections once while it runs init scripts,
+  # then restarts. pg_isready during that first window makes the next psql
+  # fail with "no such file or directory". Wait for the second ready line.
+  ready=0
+  for _ in $(seq 1 60); do
+    ready_lines="$(docker logs "$CONTAINER" 2>&1 | grep -c 'database system is ready to accept connections' || true)"
+    if [ "${ready_lines:-0}" -ge 2 ]; then
+      ready=1
       break
     fi
     sleep 0.5
   done
+  if [ "$ready" != 1 ]; then
+    echo "disposable postgres did not finish its restart" >&2
+    docker logs "$CONTAINER" >&2 || true
+    exit 1
+  fi
 fi
 
 psqlc() {
