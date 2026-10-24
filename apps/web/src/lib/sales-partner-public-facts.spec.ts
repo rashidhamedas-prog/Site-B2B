@@ -56,9 +56,9 @@ assert(STORY_FRAME.mobile.width / STORY_FRAME.mobile.height === 4 / 5, 'mobile r
 const steps = salesPartnerStorySteps();
 assert(steps.length === 6, 'six scenes');
 assert(STORYBOARD_ART_VERSION === 'v2b', 'desktop art version');
-assert(STORYBOARD_MOBILE_ART_VERSION === 'v2a', 'mobile art version stays on the text cards');
+assert(STORYBOARD_MOBILE_ART_VERSION === 'v2b', 'mobile art version');
 assert(steps[0]?.image === '/sales-partner/storyboard/scene-01-desktop-v2b.webp', 'scene 1 desktop slot');
-assert(steps[0]?.imageMobile === '/sales-partner/storyboard/scene-01-mobile-v2a.webp', 'scene 1 mobile slot');
+assert(steps[0]?.imageMobile === '/sales-partner/storyboard/scene-01-mobile-v2b.webp', 'scene 1 mobile slot');
 assert(steps[5]?.image === '/sales-partner/storyboard/scene-06-desktop-v2b.webp', 'scene 6 desktop slot');
 for (const step of steps) {
   const sceneAlt = storySceneAlt(step.n);
@@ -120,7 +120,7 @@ const legacy = parseStorySteps([
   },
 ])[0];
 assert(legacy?.image === '/sales-partner/storyboard/scene-02-desktop-v2b.webp', 'legacy desktop path maps to v2b');
-assert(legacy?.imageMobile === '/sales-partner/storyboard/scene-02-mobile-v2a.webp', 'legacy mobile path maps to v2a');
+assert(legacy?.imageMobile === '/sales-partner/storyboard/scene-02-mobile-v2b.webp', 'legacy mobile path maps to v2b');
 const previous = parseStorySteps([
   {
     n: 2,
@@ -131,7 +131,7 @@ const previous = parseStorySteps([
   },
 ])[0];
 assert(previous?.image === '/sales-partner/storyboard/scene-02-desktop-v2b.webp', 'v2a desktop path maps to v2b');
-assert(previous?.imageMobile === '/sales-partner/storyboard/scene-02-mobile-v2a.webp', 'current mobile file is kept');
+assert(previous?.imageMobile === '/sales-partner/storyboard/scene-02-mobile-v2b.webp', 'v2a mobile path maps to v2b');
 assert(previous?.imageAlt === storySceneAlt(2), 'missing image alt falls back to the scene description');
 const custom = parseStorySteps([
   { n: 2, title: 't', body: 'b', image: 'https://cdn.example/custom.webp', imageMobile: 'https://cdn.example/m.webp' },

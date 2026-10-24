@@ -1,11 +1,8 @@
-import { formatTomanFa, storyCardAlt, type StoryStepCopy } from '@/lib/sales-partner-public-facts';
+import { formatTomanFa, type StoryStepCopy } from '@/lib/sales-partner-public-facts';
 import { StoryArt } from './StoryArt';
 import styles from './storyboard.module.css';
 
-/**
- * Desktop (from 768px) shows the text-free photo and the brief copy in HTML.
- * Mobile keeps the baked-text card: the caption is hidden and the alt carries the copy.
- */
+/** Text-free photo at every width. The brief copy sits in the caption; the alt describes the scene. */
 export function StoryStep({ step, eager = false }: { step: StoryStepCopy; eager?: boolean }) {
   const aside = step.aside;
   return (
@@ -28,7 +25,6 @@ export function StoryStep({ step, eager = false }: { step: StoryStepCopy; eager?
             </p>
           ) : null}
         </figcaption>
-        <p className={styles.mobileCopy}>{storyCardAlt(step)}</p>
       </figure>
     </li>
   );

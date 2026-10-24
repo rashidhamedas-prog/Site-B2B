@@ -47,7 +47,7 @@ function str(props: Record<string, unknown>, key: string) {
 }
 
 const FILE_HINT =
-  'از عرض ۷۶۸ پیکسل تصویر دسکتاپ بدون متن است و عنوان و توضیح زیر تصویر نوشته می‌شود. موبایل همان کارت متن‌دار است. فایل را با پسوند نسخه عوض کنید: scene-0N-desktop-v2b.webp (۱۲۸۰×۷۲۰، بدون متن) و scene-0N-mobile-v2a.webp (۱۰۸۰×۱۳۵۰، با متن).';
+  'عنوان و توضیح زیر تصویر نوشته می‌شود، در هر عرض. هر دو فایل بدون متن‌اند. اگر فایل عوض می‌شود پسوند نسخه را عوض کنید: scene-0N-desktop-v2b.webp (۱۲۸۰×۷۲۰) و scene-0N-mobile-v2b.webp (۱۰۸۰×۱۳۵۰).';
 
 export function AdminStoryBlockFields({
   block,

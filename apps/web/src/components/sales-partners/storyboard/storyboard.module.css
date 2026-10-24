@@ -91,14 +91,18 @@
 
 .figure {
   margin: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .caption {
-  display: none;
+  display: block;
+  min-width: 0;
   margin-top: 0.85rem;
   color: #0f2f28;
   font-family: var(--font-vazirmatn), Tahoma, sans-serif;
   text-align: start;
+  overflow-wrap: break-word;
 }
 
 .stepNo {
@@ -127,19 +131,6 @@
 
 .asideLabel {
   font-weight: 800;
-}
-
-/* Mobile screen readers still need the copy that is only painted inside the card. */
-.mobileCopy {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 .frame {
@@ -366,14 +357,6 @@
 
   .step {
     flex: none;
-  }
-
-  .caption {
-    display: block;
-  }
-
-  .mobileCopy {
-    display: none;
   }
 
   .stages {

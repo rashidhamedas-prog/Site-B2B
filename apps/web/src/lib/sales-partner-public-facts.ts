@@ -3,12 +3,12 @@
  * Image slots are versioned filenames. A later art swap bumps the version suffix.
  *
  * Desktop: scene-0N-desktop-v2b.webp — 1280×720 (16:9), text-free photo.
- *   From 768px the step number, title and description render in HTML under the image.
- * Mobile:  scene-0N-mobile-v2a.webp  — 1080×1350 (4:5), Persian copy baked in.
+ * Mobile:  scene-0N-mobile-v2b.webp  — 1080×1350 (4:5), text-free photo.
+ * The step number, title and description render in HTML under the image at every width.
  *
  * Filenames carry an art version suffix so browser, CDN and next/image caches
- * cannot keep serving an older file. `storyCardAlt` is the baked mobile copy.
- * `storySceneAlt` describes the text-free desktop picture and does not repeat that copy.
+ * cannot keep serving an older file. `storySceneAlt` describes the picture and
+ * does not repeat the HTML copy. `storyCardAlt` is that copy, kept for tests.
  */
 
 export const SP_COMMISSION_PERCENT = 20;
@@ -25,12 +25,9 @@ export const STORY_FRAME = {
 } as const;
 
 export const STORYBOARD_PUBLIC_DIR = '/sales-partner/storyboard';
-/**
- * Desktop art generation. Bump when the desktop files change.
- * Mobile text cards stay on their own suffix until text-free mobile art exists.
- */
+/** Art generation for both frames. Bump when the files change so caches drop the old art. */
 export const STORYBOARD_ART_VERSION = 'v2b';
-export const STORYBOARD_MOBILE_ART_VERSION = 'v2a';
+export const STORYBOARD_MOBILE_ART_VERSION = 'v2b';
 
 const LEGACY_STORYBOARD_SRC = /^\/sales-partner\/storyboard\/scene-\d{2}-(?:desktop|mobile)(?:-v[0-9a-z]+)?\.webp$/;
 
