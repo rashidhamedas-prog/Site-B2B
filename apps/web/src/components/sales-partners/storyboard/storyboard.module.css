@@ -44,6 +44,18 @@
   margin-top: 1.5rem;
 }
 
+/* Mobile carousel track is as tall as the longest slide. This clip follows the
+   active slide so a short caption does not leave a hole above the dots. */
+.scroller {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .scroller {
+    overflow: hidden;
+  }
+}
+
 .controls {
   display: flex;
   justify-content: space-between;

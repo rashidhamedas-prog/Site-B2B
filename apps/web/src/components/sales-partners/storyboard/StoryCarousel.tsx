@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { toPersianDigits } from '@taranom/persian-utils';
 import { trackSalesPartnerStory } from '@/lib/retail-analytics';
 import styles from './storyboard.module.css';
@@ -9,9 +9,26 @@ function reducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/** The flex line is as tall as the longest slide. Clip it to the active slide on mobile. */
+function fitActiveSlide(region: HTMLElement | null, scroller: HTMLElement | null, index: number) {
+  const list = region?.querySelector('ol');
+  if (!scroller || !list) return;
+  if (window.innerWidth >= 768) {
+    scroller.style.height = '';
+    return;
+  }
+  const item = list.children[index] as HTMLElement | undefined;
+  if (!item) return;
+  const style = getComputedStyle(list);
+  const pad = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+  const border = (parseFloat(style.borderTopWidth) || 0) + (parseFloat(style.borderBottomWidth) || 0);
+  scroller.style.height = `${Math.ceil(item.offsetHeight + pad + border)}px`;
+}
+
 /** Mobile scroll-snap enhancer. The list itself swipes without this script. */
 export function StoryCarousel({ count, children }: { count: number; children: ReactNode }) {
   const regionRef = useRef<HTMLDivElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const indexRef = useRef(0);
   const [index, setIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
@@ -30,6 +47,21 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
     if (isMobile) list.tabIndex = 0;
     else list.removeAttribute('tabindex');
   }, [isMobile, count]);
+
+  useLayoutEffect(() => {
+    const fit = () => fitActiveSlide(regionRef.current, scrollerRef.current, indexRef.current);
+    fit();
+    const list = regionRef.current?.querySelector('ol');
+    if (!list) return;
+    const observer = new ResizeObserver(fit);
+    observer.observe(list);
+    for (const child of list.children) observer.observe(child);
+    window.addEventListener('resize', fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', fit);
+    };
+  }, [count, index, isMobile]);
 
   useEffect(() => {
     const region = regionRef.current;
@@ -66,6 +98,7 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
     const onScroll = () => {
       if (window.innerWidth >= 768) return;
       closest();
+      fitActiveSlide(region, scrollerRef.current, indexRef.current);
     };
     list.addEventListener('scroll', onScroll, { passive: true });
 
@@ -124,6 +157,7 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
     const next = Math.min(items.length - 1, Math.max(0, indexRef.current + delta));
     indexRef.current = next;
     setIndex(next);
+    fitActiveSlide(regionRef.current, scrollerRef.current, next);
     items[next]?.scrollIntoView({
       inline: 'center',
       block: 'nearest',
@@ -176,7 +210,9 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
           </button>
         </div>
       ) : null}
-      {children}
+      <div ref={scrollerRef} className={styles.scroller}>
+        {children}
+      </div>
       {isMobile ? (
         <div className={styles.dots}>
           {Array.from({ length: count }, (_, dot) => (
