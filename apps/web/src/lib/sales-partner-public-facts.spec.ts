@@ -18,6 +18,9 @@ import {
   salesPartnerStorySteps,
   parseStorySteps,
   storyCardAlt,
+  storySceneAlt,
+  STORYBOARD_ART_VERSION,
+  STORYBOARD_MOBILE_ART_VERSION,
 } from './sales-partner-public-facts.ts';
 
 function assert(cond: boolean, msg: string) {
@@ -52,9 +55,17 @@ assert(STORY_FRAME.mobile.width / STORY_FRAME.mobile.height === 4 / 5, 'mobile r
 
 const steps = salesPartnerStorySteps();
 assert(steps.length === 6, 'six scenes');
-assert(steps[0]?.image === '/sales-partner/storyboard/scene-01-desktop-v2a.webp', 'scene 1 desktop slot');
+assert(STORYBOARD_ART_VERSION === 'v2b', 'desktop art version');
+assert(STORYBOARD_MOBILE_ART_VERSION === 'v2a', 'mobile art version stays on the text cards');
+assert(steps[0]?.image === '/sales-partner/storyboard/scene-01-desktop-v2b.webp', 'scene 1 desktop slot');
 assert(steps[0]?.imageMobile === '/sales-partner/storyboard/scene-01-mobile-v2a.webp', 'scene 1 mobile slot');
-assert(steps[5]?.image === '/sales-partner/storyboard/scene-06-desktop-v2a.webp', 'scene 6 desktop slot');
+assert(steps[5]?.image === '/sales-partner/storyboard/scene-06-desktop-v2b.webp', 'scene 6 desktop slot');
+for (const step of steps) {
+  const sceneAlt = storySceneAlt(step.n);
+  assert(step.imageAlt === sceneAlt && sceneAlt.length > 20, `scene ${step.n} image alt`);
+  assert(!sceneAlt.includes(step.title), `scene ${step.n} alt repeats the title`);
+  assert(sceneAlt !== storyCardAlt(step), `scene ${step.n} alt duplicates the baked copy`);
+}
 assert(
   storyCardAlt(steps[0]!) ===
     'رایگان ثبت‌نام کنید. فرم پایین همین صفحه را پر کنید و کدی را که پیامک می‌شود وارد کنید. عضویت رایگان است.',
@@ -99,11 +110,33 @@ function webpSize(buf: Buffer): { width: number; height: number } {
   };
 }
 
-assert(
-  parseStorySteps([{ n: 2, title: 't', image: '/sales-partner/storyboard/scene-02-desktop.webp', imageMobile: '/sales-partner/storyboard/scene-02-mobile.webp' }])[0]?.image ===
-    '/sales-partner/storyboard/scene-02-desktop-v2a.webp',
-  'legacy CMS storyboard path maps to the versioned file',
-);
+const legacy = parseStorySteps([
+  {
+    n: 2,
+    title: 't',
+    body: 'b',
+    image: '/sales-partner/storyboard/scene-02-desktop.webp',
+    imageMobile: '/sales-partner/storyboard/scene-02-mobile.webp',
+  },
+])[0];
+assert(legacy?.image === '/sales-partner/storyboard/scene-02-desktop-v2b.webp', 'legacy desktop path maps to v2b');
+assert(legacy?.imageMobile === '/sales-partner/storyboard/scene-02-mobile-v2a.webp', 'legacy mobile path maps to v2a');
+const previous = parseStorySteps([
+  {
+    n: 2,
+    title: 't',
+    body: 'b',
+    image: '/sales-partner/storyboard/scene-02-desktop-v2a.webp',
+    imageMobile: '/sales-partner/storyboard/scene-02-mobile-v2a.webp',
+  },
+])[0];
+assert(previous?.image === '/sales-partner/storyboard/scene-02-desktop-v2b.webp', 'v2a desktop path maps to v2b');
+assert(previous?.imageMobile === '/sales-partner/storyboard/scene-02-mobile-v2a.webp', 'current mobile file is kept');
+assert(previous?.imageAlt === storySceneAlt(2), 'missing image alt falls back to the scene description');
+const custom = parseStorySteps([
+  { n: 2, title: 't', body: 'b', image: 'https://cdn.example/custom.webp', imageMobile: 'https://cdn.example/m.webp' },
+])[0];
+assert(custom?.image === 'https://cdn.example/custom.webp', 'custom desktop path is kept');
 
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), '../../public/sales-partner/storyboard');
 for (const step of steps) {

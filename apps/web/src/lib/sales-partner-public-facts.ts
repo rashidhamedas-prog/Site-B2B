@@ -2,15 +2,13 @@
  * Public sales-partner figures and the copy that must stay in lockstep with them.
  * Image slots are versioned filenames. A later art swap bumps the version suffix.
  *
- * Desktop: scene-0N-desktop-v2a.webp — 1280×720 (16:9)
- * Mobile:  scene-0N-mobile-v2a.webp  — 1080×1350 (4:5)
+ * Desktop: scene-0N-desktop-v2b.webp — 1280×720 (16:9), text-free photo.
+ *   From 768px the step number, title and description render in HTML under the image.
+ * Mobile:  scene-0N-mobile-v2a.webp  — 1080×1350 (4:5), Persian copy baked in.
  *
- * Filenames carry an art version suffix (STORYBOARD_ART_VERSION). A new art set
- * gets a new suffix so browser, CDN and next/image caches cannot serve old art.
- *
- * The files in public/ are the v2 cards. Persian copy is baked into each image,
- * so the card renders the picture only. `storyCardAlt` is that step's heading
- * plus its description from the brief (scene 4 includes the «راه دوم» note).
+ * Filenames carry an art version suffix so browser, CDN and next/image caches
+ * cannot keep serving an older file. `storyCardAlt` is the baked mobile copy.
+ * `storySceneAlt` describes the text-free desktop picture and does not repeat that copy.
  */
 
 export const SP_COMMISSION_PERCENT = 20;
@@ -27,8 +25,12 @@ export const STORY_FRAME = {
 } as const;
 
 export const STORYBOARD_PUBLIC_DIR = '/sales-partner/storyboard';
-/** Bump with every art swap (new files, new names) so no cache serves the old art. */
-export const STORYBOARD_ART_VERSION = 'v2a';
+/**
+ * Desktop art generation. Bump when the desktop files change.
+ * Mobile text cards stay on their own suffix until text-free mobile art exists.
+ */
+export const STORYBOARD_ART_VERSION = 'v2b';
+export const STORYBOARD_MOBILE_ART_VERSION = 'v2a';
 
 const LEGACY_STORYBOARD_SRC = /^\/sales-partner\/storyboard\/scene-\d{2}-(?:desktop|mobile)(?:-v[0-9a-z]+)?\.webp$/;
 
@@ -43,7 +45,7 @@ export function storyboardImageSrc(scene: number): { desktop: string; mobile: st
   const n = String(Math.min(99, Math.max(1, Math.trunc(scene) || 1))).padStart(2, '0');
   return {
     desktop: `${STORYBOARD_PUBLIC_DIR}/scene-${n}-desktop-${STORYBOARD_ART_VERSION}.webp`,
-    mobile: `${STORYBOARD_PUBLIC_DIR}/scene-${n}-mobile-${STORYBOARD_ART_VERSION}.webp`,
+    mobile: `${STORYBOARD_PUBLIC_DIR}/scene-${n}-mobile-${STORYBOARD_MOBILE_ART_VERSION}.webp`,
   };
 }
 
@@ -129,9 +131,11 @@ export type StoryStepCopy = {
   title: string;
   body: string;
   aside?: StoryAside;
-  /** Stable public path. v2 replaces this file; the name stays. */
+  /** Stable public path. A new art set uses a new version suffix. */
   image: string;
   imageMobile: string;
+  /** Describes the text-free desktop picture. Not the heading or the body. */
+  imageAlt: string;
 };
 
 function sentence(head: string, tail: string): string {
@@ -141,9 +145,8 @@ function sentence(head: string, tail: string): string {
 }
 
 /**
- * Alt for one card: the brief heading, then its description.
- * Scene 4's description includes the «راه دوم» aside, which is baked into that card.
- * Nothing else on the card repeats this string.
+ * Alt for the mobile card, where the brief heading and description are baked into the picture.
+ * Scene 4 includes the «راه دوم» note. Desktop does not use this string: the copy is HTML there.
  */
 export function storyCardAlt(step: {
   title?: string;
@@ -159,12 +162,26 @@ export function storyCardAlt(step: {
   return sentence(sentence(title, body), aside);
 }
 
+/** What the text-free desktop photo shows. Kept off the heading and the body so the alt is not a second copy. */
+const SCENE_IMAGE_ALT: Record<number, string> = {
+  1: 'زنی با شال کرم روی مبل نشسته و به یک فرم روی گوشی نگاه می‌کند. کنار صفحه حباب پیامکی با چهار نقطه است.',
+  2: 'همان زن پشت میز به یک پوشه و ساعت شنی نگاه می‌کند. روی میز پوشه، ساعت شنی و فنجان چای است.',
+  3: 'نمای نزدیک از دست‌ها که گوشی را گرفته‌اند. روی صفحه یک داشبورد با نمودار و چند کارت دیده می‌شود.',
+  4: 'دست‌ها گوشی را نشان می‌دهند که کارت یک کت روی آن است. بالای صفحه سه حباب گفتگو، دوربین و ویترین است.',
+  5: 'ون سبز تیره با جعبهٔ کادو کنار در ایستاده و زن با فنجان چای روی پله نشسته است.',
+  6: 'زن با شال سبز به کیف پول روی میز نگاه می‌کند. کنار کیف، یک کارت و چند سکه است.',
+};
+
+export function storySceneAlt(n: number): string {
+  return SCENE_IMAGE_ALT[n] ?? 'صحنهٔ راهنمای همکاری بازاریاب، بدون نوشتار روی تصویر.';
+}
+
 export function salesPartnerStorySteps(): StoryStepCopy[] {
   const days = formatTomanFa(SP_LINK_DAYS);
   const hold = formatTomanFa(SP_HOLD_DAYS);
   const hours = formatTomanFa(SP_REVIEW_HOURS);
   const percent = formatTomanFa(SP_COMMISSION_PERCENT);
-  const scenes: Array<Omit<StoryStepCopy, 'image' | 'imageMobile'>> = [
+  const scenes: Array<Omit<StoryStepCopy, 'image' | 'imageMobile' | 'imageAlt'>> = [
     {
       n: 1,
       title: 'رایگان ثبت‌نام کنید',
@@ -202,7 +219,7 @@ export function salesPartnerStorySteps(): StoryStepCopy[] {
   ];
   return scenes.map((scene) => {
     const src = storyboardImageSrc(scene.n);
-    return { ...scene, image: src.desktop, imageMobile: src.mobile };
+    return { ...scene, image: src.desktop, imageMobile: src.mobile, imageAlt: storySceneAlt(scene.n) };
   });
 }
 
@@ -326,12 +343,14 @@ export function parseStorySteps(raw: unknown): StoryStepCopy[] {
       const asideBody = typeof extra.body === 'string' ? extra.body.trim() : '';
       if (asideTitle || asideBody) aside = { title: asideTitle, body: asideBody };
     }
+    const storedAlt = typeof record.imageAlt === 'string' ? record.imageAlt.trim() : '';
     const step: StoryStepCopy = {
       n,
       title,
       body,
       image: currentStoryboardSrc(record.image, src.desktop),
       imageMobile: currentStoryboardSrc(record.imageMobile, src.mobile),
+      imageAlt: storedAlt || storySceneAlt(n),
     };
     if (aside) step.aside = aside;
     steps.push(step);

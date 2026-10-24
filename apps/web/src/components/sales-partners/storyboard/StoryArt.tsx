@@ -2,9 +2,9 @@ import Image from 'next/image';
 import styles from './storyboard.module.css';
 
 /**
- * Art-directed frame. `srcSet` on `<source>` points at the stable mobile filename;
- * the desktop file is the next/image fallback. Replacing those two files is the
- * whole v2 swap — the box stays 4:5 below 768px and 16:9 from 768px up.
+ * Art-directed frame. Below 768px the mobile text card is used.
+ * From 768px the text-free desktop file is the next/image fallback.
+ * The box stays 4:5 below 768px and 16:9 from 768px up.
  */
 export function StoryArt({
   desktopSrc,
