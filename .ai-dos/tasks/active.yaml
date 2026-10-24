@@ -2,7 +2,7 @@ schema_version: 1
 tasks:
   - id: "TASK-20261024-003"
     title: "Sole Iran production origin — retire Hetzner deploy path, Iran backup, quarantine DE"
-    status: "in_progress"
+    status: "done"
     risk: "high"
     owner: "cursor"
     reviewer: "pending"
