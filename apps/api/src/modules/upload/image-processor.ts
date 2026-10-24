@@ -12,6 +12,16 @@ export const MAX_SHARP_CONCURRENT = 2;
 
 export type ImageProcessProfile = 'product' | 'categoryBanner';
 
+/**
+ * sharp 0.35 points package.json `types` at an ESM declaration (`export default`).
+ * This package typechecks as CommonJS with classic node resolution, which ignores
+ * `exports.require.types` (the callable `export =` types). `typeof import('sharp')`
+ * is therefore the module namespace and is not callable. `require('sharp')` is
+ * still the CJS factory at runtime, so only the cast changes.
+ */
+type SharpModule = typeof import('sharp');
+export type SharpFactory = SharpModule extends { default: infer Factory } ? Factory : SharpModule;
+
 let sharpInflight = 0;
 const sharpWaiters: Array<() => void> = [];
 
@@ -56,7 +66,7 @@ export function isProductImageTimeout(error: unknown): boolean {
 export async function processProductImage(input: Buffer, _mimetype: string): Promise<ProcessedImage> {
   return withSharpSlot(async () => {
     try {
-      const sharp = require('sharp') as typeof import('sharp');
+      const sharp = require('sharp') as SharpFactory;
       const buffer = await sharp(input, {
         limitInputPixels: MAX_INPUT_PIXELS,
       })
@@ -85,7 +95,7 @@ export async function processCategoryBannerImage(
 ): Promise<ProcessedImage> {
   return withSharpSlot(async () => {
     try {
-      const sharp = require('sharp') as typeof import('sharp');
+      const sharp = require('sharp') as SharpFactory;
       const buffer = await sharp(input, {
         limitInputPixels: MAX_INPUT_PIXELS,
       })

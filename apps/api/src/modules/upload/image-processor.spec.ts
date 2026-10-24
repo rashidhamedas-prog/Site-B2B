@@ -9,10 +9,11 @@ import {
   ProductImageProcessingError,
   processCategoryBannerImage,
   processProductImage,
+  type SharpFactory,
 } from './image-processor';
 
 async function main() {
-  const sharp = require('sharp') as typeof import('sharp');
+  const sharp = require('sharp') as SharpFactory;
   const oversized = await sharp({
     create: {
       width: 2400,

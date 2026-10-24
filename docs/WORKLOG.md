@@ -1,3 +1,9 @@
+## 2026-10-24 — تایپ‌چک API بعد از sharp 0.35.5
+
+- ریشه: `types` در sharp 0.35 به اعلان ESM (`export default`) اشاره می‌کند. `tsc` اپ API با `module: commonjs` و resolution کلاسیک، شرط `exports.require.types` را نادیده می‌گیرد؛ پس `typeof import('sharp')` دیگر callable نیست. `require('sharp')` در اجرا همان factory سی‌جی‌اس است.
+- فیکس: کست به `default` (نوع `SharpConstructor`). نسخهٔ next 15.5.28 و sharp 0.35.5 دست نخورده. JS خروجی همان `require('sharp')` است.
+- گزارش: `docs/reports/2026-10-24-sharp-035-api-types.md`.
+
 ## 2026-10-24 — حرکت ملایم ویترین، روی شاخهٔ کنتراست (بدون دیپلوی)
 
 - شاخه `cursor/subtle-motion-c199` روی `cursor/visual-a11y-2026-10-a472` (PR #95) rebase شد. PR فقط حرکت را نسبت به همان شاخه نشان می‌دهد. merge و push به `master` انجام نشد.
