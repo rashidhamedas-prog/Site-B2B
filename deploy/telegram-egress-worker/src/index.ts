@@ -19,9 +19,20 @@ export interface Env {
   EGRESS_SECRET?: string;
 }
 
+/**
+ * Album uploads are JPEGs capped on the API (~9 MB each, usually far smaller).
+ * 32 MB covers a full album without holding an unbounded body in the Worker.
+ * Oversized bodies are rejected whole — a cut multipart would be another truncated file.
+ */
+export const MAX_EGRESS_BODY_BYTES = 32 * 1024 * 1024;
+/** Shorter than the API's 28s upload timeout so a hung Bot API returns 502 instead of an abort race. */
+export const UPSTREAM_TIMEOUT_MS = 26_000;
+
 export type EgressDeps = {
   fetchImpl?: typeof fetch;
   log?: (message: string) => void;
+  maxBodyBytes?: number;
+  upstreamTimeoutMs?: number;
 };
 
 function corsHeaders(): HeadersInit {
@@ -51,6 +62,57 @@ export function redactBotSecrets(message: string): string {
   return String(message || '')
     .replace(/\/bot[^/\s?#]+/gi, '/bot[redacted]')
     .replace(/\d{6,}:[A-Za-z0-9_-]{8,}/g, '[redacted-token]');
+}
+
+function declaredLength(request: Request): number | null {
+  const raw = request.headers.get('content-length');
+  if (raw == null || raw.trim() === '') return null;
+  if (!/^\d{1,12}$/.test(raw.trim())) return null;
+  const n = Number(raw);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
+/** Stream-read until `maxBytes`. Returns null when the body would exceed the cap. */
+export async function readCappedBody(
+  stream: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<Uint8Array | null> {
+  if (!stream) return new Uint8Array(0);
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value || value.byteLength === 0) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        return null;
+      }
+      chunks.push(value);
+    }
+  } catch (err) {
+    await reader.cancel().catch(() => undefined);
+    throw err;
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+function upstreamSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(ms);
+  }
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), ms).unref?.();
+  return ctrl.signal;
 }
 
 function safeContentType(value: string | null): string | null {
@@ -163,22 +225,35 @@ export async function handleTelegramEgress(request: Request, env: Env, deps: Egr
     upstreamHeaders.Accept = accept.trim();
   }
 
-  let body: ArrayBuffer | undefined;
+  let bodyBytes: Uint8Array | undefined;
   if (request.method === 'POST') {
     const contentType = safeContentType(request.headers.get('Content-Type'));
     if (request.headers.get('Content-Type') && !contentType) {
       return json(400, { ok: false, description: 'content-type not allowed' });
     }
-    if (contentType) upstreamHeaders['Content-Type'] = contentType;
-    body = await request.arrayBuffer();
+    const maxBody = deps.maxBodyBytes ?? MAX_EGRESS_BODY_BYTES;
+    const declared = declaredLength(request);
+    if (declared !== null && declared > maxBody) {
+      return json(413, { ok: false, description: 'body too large' });
+    }
+    const capped = await readCappedBody(request.body, maxBody);
+    if (!capped) {
+      return json(413, { ok: false, description: 'body too large' });
+    }
+    if (capped.byteLength) {
+      if (contentType) upstreamHeaders['Content-Type'] = contentType;
+      upstreamHeaders['Content-Length'] = String(capped.byteLength);
+      bodyBytes = capped;
+    }
   }
 
   try {
     const upstreamRes = await fetchImpl(upstream.toString(), {
       method: request.method,
       headers: upstreamHeaders,
-      body: body && body.byteLength ? body : undefined,
+      body: bodyBytes,
       redirect: 'manual',
+      signal: upstreamSignal(deps.upstreamTimeoutMs ?? UPSTREAM_TIMEOUT_MS),
     });
     const contentType = safeContentType(upstreamRes.headers.get('Content-Type')) || 'application/octet-stream';
     return new Response(upstreamRes.body, {
