@@ -4,13 +4,16 @@ Executable ops guide for this repository. Derived from evidenced scripts and con
 
 | Field                  | Value                                                                                                          |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Sole production origin | Iran `185.213.167.61` — SSH `tnadmin@…:3031` (key `id_ed25519_taranom_storefront_ir`)                          |
 | App dir (VPS)          | `/opt/taranom`                                                                                                 |
 | Primary branch         | `master` (also accepts `main` in some scripts)                                                                 |
 | Compose file           | `docker-compose.yml`                                                                                           |
-| Auto-deploy            | `scripts/auto-deploy.sh` + `deploy/systemd/taranom-autodeploy.{service,timer}`                                 |
+| Auto-deploy            | `scripts/auto-deploy.sh` + `deploy/systemd/taranom-autodeploy.{service,timer}` (user `tnadmin`)               |
+| Daily DB backup        | `scripts/backup-postgres.sh` via `/etc/cron.d/taranom-postgres-backup` (`scripts/install-postgres-backup-cron.sh`) |
 | Storefront HTML warm   | `scripts/warm-storefront-homes.sh` + `deploy/systemd/taranom-warm-homes.{service,timer}` (every ~50s)          |
 | Manual bootstrap       | `deploy.sh`, `scripts/redeploy-server.sh`                                                                      |
-| CI                     | `.github/workflows/ci.yml` (`lint-and-build`; `deploy` only on `workflow_dispatch` + `production` environment) |
+| CI                     | `.github/workflows/ci.yml` (`lint-and-build`; `deploy` only on `workflow_dispatch` + `production` → Iran)      |
+| Decommissioned         | Hetzner `5.75.200.102` — do not deploy; quarantine with `scripts/decommission-hetzner-origin.sh`               |
 | Public wholesale       | `https://poshaktaranom.com`                                                                                    |
 | Public retail          | `https://www.poshaktaranom.ir` (apex redirects to www)                                                         |
 | Public API             | `https://api.poshaktaranom.com`                                                                                |
@@ -73,14 +76,17 @@ docker compose up postgres redis minio minio-init meilisearch -d
 
 ### 1.2 Production baseline — ⛔ HUMAN AUTHORIZATION REQUIRED
 
-SSH (public host/port/user are already documented; key is a secret — do not print key material):
+SSH to **Iran sole origin** (key is a secret — do not print key material):
 
 ```bash
-ssh -i <path-to-deploy-key> -p 2222 wholesale-admin@5.75.200.102
+# POSIX
+ssh -p 3031 -i ~/.ssh/id_ed25519_taranom_storefront_ir -o IdentitiesOnly=yes tnadmin@185.213.167.61
+# Windows PowerShell
+# ssh -p 3031 -i $env:USERPROFILE\.ssh\id_ed25519_taranom_storefront_ir -o IdentitiesOnly=yes tnadmin@185.213.167.61
 cd /opt/taranom
 git rev-parse HEAD
 git log -1 --oneline
-docker compose ps
+sudo docker compose ps
 curl -sf http://localhost:4000/v1/health; echo
 curl -sf -o /dev/null -w "web %{http_code}\n" http://localhost:3000
 curl -sf -o /dev/null -w "wholesale %{http_code}\n" https://poshaktaranom.com/
@@ -240,7 +246,7 @@ On VPS, timer runs `scripts/auto-deploy.sh` which:
 ### 4.3 Immediate VPS deploy — ⛔ HUMAN AUTHORIZATION REQUIRED
 
 ```bash
-ssh -i <path-to-deploy-key> -p 2222 wholesale-admin@5.75.200.102
+ssh -p 3031 -i ~/.ssh/id_ed25519_taranom_storefront_ir -o IdentitiesOnly=yes tnadmin@185.213.167.61
 cd /opt/taranom
 # Preferred:
 bash scripts/auto-deploy.sh
@@ -438,8 +444,9 @@ verify_after: <health + retail + wholesale + admin results>
 ## 9. Secrets & redaction
 
 - Never commit `.env`, SSL private keys, SSH keys, dump files, or gateway credentials.
-- CI secret name only: `VPS_SSH_KEY` (and optional `VPS_HOST` / `VPS_USER` / `VPS_PORT` overrides).
-- Public facts allowed in docs: host `5.75.200.102`, SSH port `2222`, user `wholesale-admin`, domains above.
+- CI secret name only: `VPS_SSH_KEY` (and optional `VPS_HOST` / `VPS_USER` / `VPS_PORT` overrides) — must target **Iran**.
+- Public facts allowed in docs: host `185.213.167.61`, SSH port `3031`, user `tnadmin`, domains above.
+- Decommissioned (do not deploy): former Hetzner `5.75.200.102:2222` / `wholesale-admin`.
 - Rotate any credential that appears in chat or logs.
 
 ---

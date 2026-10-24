@@ -29,7 +29,7 @@ set -e
 echo "$OUT" | head -n 5
 [[ $EC -ne 0 ]] && echo "$OUT" | grep -qi 'not in immutable allowlist\|production\|forbidden' && echo "PROD_HOST_OK exit=$EC" || { echo "PROD_HOST_FAIL"; exit 4; }
 
-echo "=== prod IP as host denied ==="
+echo "=== prod IP as host denied (decommissioned Hetzner) ==="
 set +e
 OUT=$(E2E_TARGET=local E2E_ALLOW_MUTATION=1 E2E_PHONE=1 E2E_PASSWORD=1 E2E_PRODUCT_ID=1 \
   API_URL='http://5.75.200.102:4000/v1' WEB_URL='http://127.0.0.1:9' "$SCRIPT" 2>&1)
@@ -37,6 +37,15 @@ EC=$?
 set -e
 echo "$OUT" | head -n 5
 [[ $EC -ne 0 ]] && echo "$OUT" | grep -qi 'not in immutable allowlist\|production\|forbidden\|5\.75\.200\.102' && echo "PROD_IP_OK exit=$EC" || { echo "PROD_IP_FAIL"; exit 5; }
+
+echo "=== prod IP as host denied (Iran sole origin) ==="
+set +e
+OUT=$(E2E_TARGET=local E2E_ALLOW_MUTATION=1 E2E_PHONE=1 E2E_PASSWORD=1 E2E_PRODUCT_ID=1 \
+  API_URL='http://185.213.167.61:4000/v1' WEB_URL='http://127.0.0.1:9' "$SCRIPT" 2>&1)
+EC=$?
+set -e
+echo "$OUT" | head -n 5
+[[ $EC -ne 0 ]] && echo "$OUT" | grep -qi 'not in immutable allowlist\|production\|forbidden\|185\.213\.167\.61' && echo "PROD_IR_IP_OK exit=$EC" || { echo "PROD_IR_IP_FAIL"; exit 5; }
 
 echo "=== production alias (www) denied ==="
 set +e

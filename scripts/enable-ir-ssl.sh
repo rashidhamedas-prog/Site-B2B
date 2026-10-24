@@ -5,10 +5,11 @@ set -euo pipefail
 
 DOMAIN_IR=poshaktaranom.ir
 WWW_IR=www.poshaktaranom.ir
-EXPECTED_IP=5.75.200.102
+EXPECTED_IP=185.213.167.61
 SSL_DIR=/opt/taranom/nginx/ssl/${DOMAIN_IR}
 # Must match the docker volume mounted into nginx as /var/www/certbot
 WEBROOT=/var/lib/docker/volumes/taranom_certbot_www/_data
+DEPLOY_USER="${DEPLOY_USER:-tnadmin}"
 
 echo "==> Checking public DNS for ${DOMAIN_IR} ..."
 RESOLVED=$(dig +short ${DOMAIN_IR} A @1.1.1.1 | head -1 || true)
@@ -31,7 +32,7 @@ echo "==> Linking certs into nginx/ssl ..."
 sudo mkdir -p "${SSL_DIR}"
 sudo cp -L "/etc/letsencrypt/live/${DOMAIN_IR}/fullchain.pem" "${SSL_DIR}/fullchain.pem"
 sudo cp -L "/etc/letsencrypt/live/${DOMAIN_IR}/privkey.pem" "${SSL_DIR}/privkey.pem"
-sudo chown -R wholesale-admin:wholesale-admin "${SSL_DIR}"
+sudo chown -R "${DEPLOY_USER}:${DEPLOY_USER}" "${SSL_DIR}"
 sudo chmod 640 "${SSL_DIR}/privkey.pem"
 
 echo "==> Reloading nginx container ..."

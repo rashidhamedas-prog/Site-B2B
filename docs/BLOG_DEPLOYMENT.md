@@ -32,7 +32,8 @@ BLOG_ALLOW_FALLBACK=0
 
 ```bash
 git push origin master
-ssh -i ~/.ssh/wholesale_server -p 2222 wholesale-admin@5.75.200.102 \
+# Sole Iran origin — never Hetzner
+ssh -p 3031 -i ~/.ssh/id_ed25519_taranom_storefront_ir -o IdentitiesOnly=yes tnadmin@185.213.167.61 \
   'cd /opt/taranom && bash scripts/auto-deploy.sh'
 ```
 

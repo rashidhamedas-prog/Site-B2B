@@ -2,12 +2,18 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-24T08:40:00Z — TASK-20261024-003 sole Iran origin
+
+- Branch `ai/TASK-20261024-003-sole-iran-origin`.
+- Repo retarget + Iran backup cron + Hetzner quarantine + GH `VPS_*` → Iran.
+- Physical Hetzner VM destroy remains console step (`hcloud` absent). Ops smoke passed.
+
 ## 2026-10-24T08:30:00Z — TASK-20261024-002 orphan size variants
 
 - Evidence: live WHOLESALE search showed CUSTOM+MANUAL 37–40 still emitting variant size leftover from AUTO pack.
 - Fix: write-path prune + read-path chart filter + migration `20261024-002`.
 - Specs OK: size-chart-variants, migration source, product-pack, color-stock-plan.
-- Next: commit → master → VPS auto-deploy → re-check sample slugs.
+- Shipped on master; sole-Iran task shares WORKLOG/handoff only.
 
 ## 2026-10-23T18:00:00Z — FREE_POST MVP (no deploy)
 

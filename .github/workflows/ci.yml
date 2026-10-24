@@ -68,15 +68,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Hetzner VPS
+      - name: Deploy to Iran VPS (sole production origin)
         uses: appleboy/ssh-action@v1.2.0
         with:
-          # Host and user are the already-documented public values; override via
-          # repo secrets if the server changes. Only VPS_SSH_KEY must be set.
-          host: ${{ secrets.VPS_HOST || '5.75.200.102' }}
-          username: ${{ secrets.VPS_USER || 'wholesale-admin' }}
+          # Sole Iran origin defaults. Override via repo secrets if the host changes.
+          # Only VPS_SSH_KEY must be set; host/user/port should match Iran.
+          host: ${{ secrets.VPS_HOST || '185.213.167.61' }}
+          username: ${{ secrets.VPS_USER || 'tnadmin' }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 2222 }}
+          port: ${{ secrets.VPS_PORT || 3031 }}
           command_timeout: 30m
           script: |
             set -euo pipefail

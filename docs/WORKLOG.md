@@ -1,3 +1,11 @@
+## 2026-10-24 — مبدأ تولید واحد ایران (حذف دیپلوی آلمان)
+
+- سیاست: فقط `tnadmin@185.213.167.61:3031` production است؛ هتزنر `5.75.200.102` از دیپلوی/قوانین/CI خارج شد.
+- قوانین: `.cursor/rules/sole-iran-origin.mdc` + بازنویسی `auto-deploy.mdc`؛ به‌روزرسانی `docs/conventions.md`، `docs/deployment-runbook.md`، `iran-edge-access.md`، overview AI-DOS.
+- CI defaults → ایران؛ اسکریپت بکاپ روزانه `install-postgres-backup-cron.sh`؛ قرنطینه هتزنر `decommission-hetzner-origin.sh`.
+- Ops: بکاپ `20261024T081607Z` ok؛ autodeploy ایران active؛ استک هتزنر down + marker؛ secrets `VPS_*` روی ایران؛ smoke ویترین/API 200.
+- گزارش: `docs/reports/2026-10-24-sole-iran-origin.md`.
+
 ## 2026-10-24 — پاکسازی سایز یتیم بعد از AUTO→CUSTOM/MANUAL
 
 - ریشه: کارت دسته سایز را از `variant.size` می‌خواند؛ بعد از پک دستی/سایز سفارشی ردیف قدیمی در DB می‌ماند و ادمین با `ensureSizeStocks` مخفی‌اش می‌کند.
