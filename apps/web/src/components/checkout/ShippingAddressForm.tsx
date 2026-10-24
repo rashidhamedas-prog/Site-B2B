@@ -94,7 +94,7 @@ export function ShippingAddressForm({
                     'flex min-w-0 cursor-pointer items-start gap-2 rounded-2xl border px-3 py-2.5 text-right transition-[border-color,opacity] duration-150',
                     appearance === 'retail'
                       ? selected
-                        ? 'border-[var(--retail-gold)] bg-[var(--retail-gold)]/5'
+                        ? 'border-[var(--brand-gold-700,#836A27)] bg-[var(--brand-gold-700,#836A27)]/5'
                         : 'border-[var(--retail-border)] bg-white hover:border-[var(--retail-gold)]'
                       : selected
                         ? 'border-primary bg-primary/5'

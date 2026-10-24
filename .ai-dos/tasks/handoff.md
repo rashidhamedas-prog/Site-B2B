@@ -2,14 +2,31 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
-## 2026-10-24T16:10:00Z — TASK-20261024-006 telegram media upload + reject truncated JPEG
+## 2026-10-24T16:10:00Z — TASK-20261024-008 telegram media upload + reject truncated JPEG
 
 - Branch `cursor/telegram-media-upload-e227`. No wrangler deploy, no Iran deploy, no env/secret/DB change.
 - Flag `TELEGRAM_MEDIA_UPLOAD_MODE` defaults to `url`. `upload` reads MinIO then same-origin HTTPS, Sharp WebP→JPEG (long edge 2560, ≤9MB), multipart via existing `TELEGRAM_API_URL`.
 - Worker caps the body at 32MB, forwards multipart Content-Type, 413 instead of a cut body, upstream abort 26s.
 - Upload: busboy `truncated` at `fileSize` (historically 5 MiB / 5242880, no EOI) is now rejected. Post-save decode. Sharp still downscales to WebP.
-- Overlap: TASK-20261024-005 still lists WORKLOG/handoff/active.yaml. This task only prepends its own entries.
+- Id: this branch first recorded the work as TASK-20261024-006. Master already owns 006 (visual/a11y) and 007 (motion), so the registry id is 008. WORKLOG/handoff/active.yaml still overlap 007, 006, and 005; this entry only prepends.
 - Next: merge, deploy the egress Worker, then set the flag on Iran and restart api + omnichannel worker. Rollback is unset/`url` plus restart.
+
+## 2026-10-24T15:50:00Z — subtle motion on top of visual/a11y (no deploy)
+
+- Branch `cursor/subtle-motion-c199`, rebased onto `cursor/visual-a11y-2026-10-a472` (PR #95). PR base is that branch, not `master`. Do not merge and do not push `master`.
+- Conflicts in the two PDP files kept `.pdp-main-frame` and the gold/a11y markup, then added `data-tn-hero`.
+- PDP `sizes` now follows the frame. On a 390×844 phone at DPR 2 the hero frame is 358px and the image request is `w=720`.
+- Evidence on the combined local build (Next 15.5.28): `tsc --noEmit` and `next build` exit 0. Shared JS stays 103 kB. axe color-contrast is 0 on home and `/products/yalda-memory-jacket` for both channels at 360 and 1440. Reduced motion leaves the hero visible and does not arm reveals. Videos in `/opt/cursor/artifacts/motion/`.
+- Lighthouse mobile vs the saved master run: wholesale LCP 3526→3445, CLS 0, TBT 100→33. Retail LCP 3187→3292 (repeat 3328), CLS 0, TBT 38→41 (repeat 57).
+- Next: review the stacked PR. Do not autodeploy.
+
+## 2026-10-24T16:40:00Z — visual/a11y storefront (no deploy)
+
+- Branch `cursor/visual-a11y-2026-10-a472`. Do not merge and do not push `master`. Production deploy needs the owner's written GO.
+- Scope: wholesale hero popup → dismissible bottom bar; gold.700 `#836A27`; single dark green `#0F2F28`; muted `#4B5563`; PDP image 720w; sticky bar / chat clearance; skip link, names, 24px dots, focus outline.
+- Evidence: `apps/web` `tsc --noEmit` and `next build` succeeded. Local axe (`wcag2a/aa` + 2.1/2.2) on home + `/products/yalda-memory-jacket` for wholesale and retail cookie, 360 and 1440: zero `color-contrast` nodes. Screenshots in `/opt/cursor/artifacts/visual-a11y/`.
+- Overlap note: `docs/WORKLOG.md` and this handoff are also claimed by TASK-20261024-005. This entry is a prepend only. That task's code was not edited.
+- Next: review the PR. Do not autodeploy.
 
 ## 2026-10-24T13:50:00Z — TASK-20261024-005 omnichannel Bale DEAD revive
 

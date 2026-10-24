@@ -113,7 +113,7 @@ export async function RetailCategoryBannerGrid({
       />
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center sm:mb-10">
-          <p className="text-[11px] font-semibold tracking-[0.22em] text-[var(--retail-gold)]">
+          <p className="text-[11px] font-semibold tracking-[0.22em] text-[var(--brand-gold-700,#836A27)]">
             CATEGORIES
           </p>
           <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[var(--retail-ink)] sm:text-3xl">

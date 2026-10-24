@@ -318,7 +318,7 @@ export function RetailProductsCatalog({
     <div className="pb-16">
       <div className="border-b border-[var(--retail-border)] bg-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold text-[var(--retail-gold)]">فروشگاه</p>
+          <p className="text-sm font-semibold text-[var(--brand-gold-700,#836A27)]">فروشگاه</p>
           <h1 className="mt-1 text-3xl font-extrabold text-[var(--retail-ink)]">همه محصولات</h1>
           <p className="mt-2 max-w-xl text-sm text-[var(--retail-muted)]">
             پارچه، رنگ و سایز را مشخص کنید تا مدل مناسب خودتان در فهرست بماند.
@@ -405,8 +405,12 @@ export function RetailProductsCatalog({
             />
             {loading ? (
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-3">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-[var(--retail-bg)]" />
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="tn-card-skeleton">
+                    <div className="skeleton aspect-[3/4] w-full rounded-xl" />
+                    <div className="skeleton h-4 w-3/4 rounded" />
+                    <div className="skeleton h-3 w-1/2 rounded" />
+                  </div>
                 ))}
               </div>
             ) : products.length === 0 ? (

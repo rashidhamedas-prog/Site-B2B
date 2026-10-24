@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler } from 'lucide-react';
+import { ShoppingCart, Phone, Share2, ChevronLeft, Truck, RotateCcw, Shield, Sparkles, Ruler, Check } from 'lucide-react';
 import { Button, Badge, Alert } from '@/components/ui';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { apiClient } from '@/lib/api';
@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn';
 import { trackAddToCart, trackViewItem } from '@/lib/retail-analytics';
 import {
   channelSaleDisplay,
+  PDP_MAIN_IMAGE_SIZES,
   compositionPerSize,
   piecesPerPackCount,
   sizeCountForType,
@@ -423,10 +424,10 @@ export function ProductDetail({
   const faqRows = visibleFaqItems(product.faqItems);
 
   return (
-    <div className="min-h-screen bg-[var(--brand-ivory,#F6F1E8)] pb-24 lg:pb-0">
+    <div className="min-h-screen bg-[var(--brand-ivory,#F6F1E8)] pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-0">
       <div className="border-b border-[color:var(--color-border)] bg-white">
         <div className="container-site py-3">
-          <nav className="flex items-center gap-2 text-sm text-gray-500">
+          <nav className="flex items-center gap-2 text-sm text-[var(--brand-muted,#4B5563)]">
             <Link href="/" className="cursor-pointer transition-colors duration-200 hover:text-primary">خانه</Link>
             <ChevronLeft className="h-3 w-3 rtl-flip" />
             <Link href="/products" className="cursor-pointer transition-colors duration-200 hover:text-primary">محصولات</Link>
@@ -440,19 +441,23 @@ export function ProductDetail({
         <div className="grid gap-8 lg:grid-cols-2 xl:gap-12">
           {/* Image gallery */}
           <div className="max-w-full space-y-3 overflow-hidden">
-            <div className="relative aspect-[3/4] max-h-[70vh] w-full overflow-hidden rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100">
+            <div data-tn-hero="" className="pdp-main-frame tn-media rounded-2xl bg-gradient-to-b from-primary-50 to-primary-100">
               <ProductImage
                 src={mainImage}
                 alt={resolveProductImageAlt(product.imageAlts, mainImage, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: activeImage })}
                 priority
-                sizes="(max-width:1024px) 100vw, 50vw"
+                sizes={PDP_MAIN_IMAGE_SIZES}
               />
-              <button type="button" className="absolute top-3 left-3 z-10 cursor-pointer rounded-xl bg-white/90 p-2 shadow-sm backdrop-blur-sm transition-colors duration-200 hover:bg-white">
-                <Share2 className="h-4 w-4 text-gray-600" />
+              <button
+                type="button"
+                aria-label="اشتراک‌گذاری محصول"
+                className="absolute top-3 left-3 z-10 inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl bg-white/90 shadow-sm backdrop-blur-sm transition-colors duration-200 hover:bg-white"
+              >
+                <Share2 className="h-4 w-4 text-[var(--brand-muted,#4B5563)]" aria-hidden />
               </button>
               <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
                 {product.isNew && (
-                  <span className="rounded bg-secondary px-2.5 py-0.5 text-xs font-bold text-white">جدید</span>
+                  <span className="rounded bg-secondary px-2.5 py-0.5 text-xs font-bold text-[var(--brand-ink,#1A1A1A)]">جدید</span>
                 )}
                 {saleActive && (
                   <span className="rounded bg-primary px-2.5 py-0.5 text-xs font-bold text-white">
@@ -474,9 +479,11 @@ export function ProductDetail({
                     key={img}
                     type="button"
                     onClick={() => setActiveImage(i)}
+                    aria-label={`تصویر ${(i + 1).toLocaleString('fa-IR')} از ${product.images.length.toLocaleString('fa-IR')}`}
+                    aria-current={activeImage === i ? 'true' : undefined}
                     className={cn(
                       'relative aspect-[3/4] w-full cursor-pointer overflow-hidden rounded-xl border-2 transition-colors duration-200',
-                      activeImage === i ? 'border-primary' : 'border-transparent hover:border-primary-200',
+                      activeImage === i ? 'border-[var(--brand-gold-700,#836A27)]' : 'border-transparent hover:border-primary-200',
                     )}
                   >
                     <ProductImage src={img} alt={resolveProductImageAlt(product.imageAlts, img, { name: product.name, fabric: product.specs?.fabricType || product.fabric, index: i })} sizes="80px" />
@@ -499,7 +506,7 @@ export function ProductDetail({
                 {product.specs?.manufacturingBadge && (
                   <Badge variant="gold">{product.specs.manufacturingBadge}</Badge>
                 )}
-                {product.sku && <span className="text-sm text-gray-400">کد: {product.sku}</span>}
+                {product.sku && <span className="text-sm text-[var(--brand-muted,#4B5563)]">کد: {product.sku}</span>}
               </div>
             </div>
 
@@ -520,17 +527,17 @@ export function ProductDetail({
             <div className="rounded-2xl bg-primary-50 border border-primary-100 p-4">
               <div className="flex items-baseline justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">قیمت عمده (هر عدد)</p>
+                  <p className="text-xs text-[var(--brand-muted,#4B5563)] mb-1">قیمت عمده (هر عدد)</p>
                   <p className="text-3xl font-extrabold text-primary">
                     {toman(unitPrice)}
                     <span className="text-base font-medium mr-1">تومان</span>
                   </p>
                   {saleActive && compareAt > unitPrice ? (
-                    <p className="mt-1 text-sm text-gray-400 line-through">{toman(compareAt)} تومان</p>
+                    <p className="mt-1 text-sm text-[var(--brand-muted,#4B5563)] line-through">{toman(compareAt)} تومان</p>
                   ) : null}
                 </div>
                 <div className="text-left">
-                  <p className="text-xs text-gray-500 mb-1">
+                  <p className="text-xs text-[var(--brand-muted,#4B5563)] mb-1">
                     {packMode ? 'حداقل تعداد پک' : 'حداقل سفارش'}
                   </p>
                   <p className="text-lg font-bold text-gray-700">
@@ -566,7 +573,7 @@ export function ProductDetail({
                     selectedCount={selectedColors.length}
                   />
                 ) : (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-[var(--brand-muted,#4B5563)]">
                     {packMode
                       ? `هر پک = همه رنگ‌ها × همه سایزها (${piecesPerPack.toLocaleString('fa-IR')} عدد)`
                       : 'فقط جهت نمایش — سفارش بر اساس موجودی کل محصول ثبت می‌شود'}
@@ -644,7 +651,7 @@ export function ProductDetail({
                   </span>
                 ))}
                 {sharedSizeLabel && availableSizes.length === 1 && availableSizes[0] !== sizeTypeLabel && (
-                  <span className="text-xs text-gray-500">{availableSizes[0]}</span>
+                  <span className="text-xs text-[var(--brand-muted,#4B5563)]">{availableSizes[0]}</span>
                 )}
               </div>
               {!canOrder && !isComingSoon && (
@@ -653,7 +660,7 @@ export function ProductDetail({
                 </p>
               )}
               {canOrder && !isComingSoon && (
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-[var(--brand-muted,#4B5563)]">
                   موجودی کل: {effectiveStock} عدد
                 </p>
               )}
@@ -670,7 +677,7 @@ export function ProductDetail({
                   </div>
                   <div>
                     <h2 className="text-lg font-bold text-gray-900">راهنمای سایز</h2>
-                    <p className="text-xs text-gray-500 mt-0.5">اندازه‌گیری پیشنهادی بر اساس نوع سایزبندی محصول</p>
+                    <p className="text-xs text-[var(--brand-muted,#4B5563)] mt-0.5">اندازه‌گیری پیشنهادی بر اساس نوع سایزبندی محصول</p>
                   </div>
                 </div>
                 <ul className="grid gap-3 sm:grid-cols-2">
@@ -695,22 +702,24 @@ export function ProductDetail({
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                   <button type="button" onClick={() => setQuantity(Math.max(minOrder, quantity - 1))}
                     disabled={quantity <= minOrder}
-                    className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium disabled:opacity-40">−</button>
+                    aria-label="کاهش تعداد"
+                    className="flex h-11 w-11 items-center justify-center text-lg font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-40">−</button>
                   <span className="w-12 text-center font-bold text-gray-900">{quantity}</span>
                   <button type="button" onClick={() => setQuantity(Math.min(maxQty, quantity + 1))}
                     disabled={quantity >= maxQty}
-                    className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors text-lg font-medium disabled:opacity-40">+</button>
+                    aria-label="افزایش تعداد"
+                    className="flex h-11 w-11 items-center justify-center text-lg font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:opacity-40">+</button>
                 </div>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-[var(--brand-muted,#4B5563)]">
                   جمع: <span className="font-bold text-gray-900">{totalPrice.toLocaleString('fa-IR')} تومان</span>
                 </span>
                 {packMode ? (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-[var(--brand-muted,#4B5563)]">
                     {totalPieces.toLocaleString('fa-IR')} عدد
                     {' '}({quantity.toLocaleString('fa-IR')} پک × {Math.max(colorCount, 1).toLocaleString('fa-IR')} رنگ × {Math.max(sizeCount, 1).toLocaleString('fa-IR')} سایز)
                   </span>
                 ) : (
-                  <span className="text-xs text-gray-400">حداقل سفارش: {minOrder.toLocaleString('fa-IR')} عدد</span>
+                  <span className="text-xs text-[var(--brand-muted,#4B5563)]">حداقل سفارش: {minOrder.toLocaleString('fa-IR')} عدد</span>
                 )}
               </div>
             </div>
@@ -724,8 +733,8 @@ export function ProductDetail({
 
             <div className="hidden gap-3 flex-wrap lg:flex">
               <Button size="lg" variant="primary" fullWidth disabled={!canOrder} onClick={handleAddToCart}
-                rightIcon={<ShoppingCart className="h-5 w-5" />}>
-                {isComingSoon ? 'پیش‌خرید — افزودن به سبد' : 'افزودن به سبد خرید'}
+                rightIcon={addedToCart ? <Check className="h-5 w-5" aria-hidden /> : <ShoppingCart className="h-5 w-5" />}>
+                {addedToCart ? 'به سبد اضافه شد' : isComingSoon ? 'پیش‌خرید — افزودن به سبد' : 'افزودن به سبد خرید'}
               </Button>
               <a href="tel:09152424624">
                 <Button size="lg" variant="outline" rightIcon={<Phone className="h-5 w-5" />}>تماس</Button>
@@ -747,7 +756,7 @@ export function ProductDetail({
               ].map((item) => (
                 <div key={item.label} className="flex flex-col items-center gap-1.5 text-center">
                   <div className="text-primary">{item.icon}</div>
-                  <span className="text-xs text-gray-500">{item.label}</span>
+                  <span className="text-xs text-[var(--brand-muted,#4B5563)]">{item.label}</span>
                 </div>
               ))}
             </div>
@@ -762,7 +771,7 @@ export function ProductDetail({
             <dl className="grid gap-3 sm:grid-cols-2">
               {specRows.map((row) => (
                 <div key={`${row.label}-${row.value}`} className="flex items-baseline justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
-                  <dt className="text-sm text-gray-500 flex-shrink-0">{row.label}</dt>
+                  <dt className="text-sm text-[var(--brand-muted,#4B5563)] flex-shrink-0">{row.label}</dt>
                   <dd className="text-sm font-semibold text-gray-900 text-left">{row.value}</dd>
                 </div>
               ))}
@@ -806,7 +815,7 @@ export function ProductDetail({
         ) : null}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] p-3 lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] px-3 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] lg:hidden">
         <button
           type="button"
           onClick={() => setQuickOpen(true)}

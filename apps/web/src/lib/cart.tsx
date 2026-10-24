@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
 import { pulseCartHeartbeat } from '@/lib/cart-heartbeat';
+import { notifyCartAdded } from '@/components/motion/CartToast';
 import { registerCartSnapshot } from '@/lib/retail-analytics';
 
 export const WHOLESALE_CART_STORAGE_KEY = 'taranom_cart';
@@ -200,7 +201,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       count,
       total,
       hydrated,
-      addItem: (item) => dispatch({ type: 'ADD', item }),
+      addItem: (item) => {
+        dispatch({ type: 'ADD', item });
+        notifyCartAdded(item.productName);
+      },
       updateQty: (lineKey, quantity) => dispatch({ type: 'UPDATE_QTY', lineKey, quantity }),
       removeItem: (lineKey) => dispatch({ type: 'REMOVE', lineKey }),
       clear: () => dispatch({ type: 'CLEAR' }),

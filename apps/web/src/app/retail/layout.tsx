@@ -9,6 +9,7 @@ import {
   type RetailMarketingPublic,
 } from '@/components/retail/RetailChromeProvider';
 import { GoogleAnalyticsProvider } from '@/components/shared/GoogleAnalyticsProvider';
+import { SkipLink } from '@/components/shared/SkipLink';
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/shared/JsonLd';
 import { fetchSiteContent } from '@/lib/cms/fetch';
 import { defaultSiteChrome, parseChromeBlocks } from '@/lib/cms/chrome';
@@ -171,8 +172,9 @@ export default async function RetailLayout({ children }: { children: React.React
         <GoogleAnalyticsProvider channel="RETAIL" />
         <RetailPixels marketing={bag.marketing} />
         <RetailAffiliateCapture />
+        <SkipLink />
         <Header />
-        <main id="retail-main" className="min-w-0 flex-1 overflow-x-clip">
+        <main id="main" className="min-w-0 flex-1 overflow-x-clip">
           {children}
         </main>
         <Footer />

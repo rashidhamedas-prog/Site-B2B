@@ -2,7 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { beginProductTransition } from '@/components/motion/product-transition';
 import { Heart } from 'lucide-react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { discountPercent, mediaUrl, toman, uniqueInStockColors } from '@/lib/product-display';
@@ -47,6 +49,8 @@ export function BoutiqueProductCard({
     typeof product.retailStock === 'number'
       ? product.retailStock
       : (product.variants ?? []).reduce((sum, v) => sum + Math.max(0, Number(v.retailStock) || 0), 0);
+  const router = useRouter();
+  const [imageReady, setImageReady] = useState(false);
   const soldOut = !product.isPreOrder && stock <= 0;
   const [wishlisted, setWishlisted] = useState(false);
   const colors = useMemo(
@@ -61,14 +65,22 @@ export function BoutiqueProductCard({
   return (
     <article
       className={cn(
-        'flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-sm',
+        'tn-card flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-sm',
         className,
       )}
     >
-      <div className="relative aspect-[3/4] overflow-hidden bg-[#f3eee6]">
+      <div
+        className={cn('tn-media relative aspect-[3/4] overflow-hidden bg-[#f3eee6]', image && !imageReady && 'tn-media-pending')}
+        onLoad={(event) => {
+          if ((event.target as HTMLElement).tagName === 'IMG') setImageReady(true);
+        }}
+      >
         <Link
           href={href}
-          onClick={selectProduct}
+          onClick={(event) => {
+            selectProduct();
+            beginProductTransition(event, () => router.push(href));
+          }}
           prefetch={false}
           className="absolute inset-0"
           aria-label={`مشاهده ${product.name}`}
@@ -81,7 +93,7 @@ export function BoutiqueProductCard({
               priority={imagePriority}
               loading={imagePriority ? 'eager' : 'lazy'}
               fetchPriority={imagePriority ? 'high' : 'low'}
-              className={cn('object-cover', soldOut && 'opacity-60 grayscale')}
+              className={cn('tn-card-img object-cover', soldOut && 'opacity-60 grayscale')}
               sizes="(max-width:767px) 46vw, (max-width:1280px) 24vw, 288px"
             />
           ) : (

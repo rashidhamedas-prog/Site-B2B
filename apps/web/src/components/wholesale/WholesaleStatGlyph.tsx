@@ -1,7 +1,7 @@
 import type { WholesaleStatKind } from '@/lib/wholesale-stat-kind';
 
 const EMERALD = '#1B5C4A';
-const EMERALD_DARK = '#124035';
+const EMERALD_DARK = '#0F2F28';
 const EMERALD_MID = '#2D7A5F';
 const GOLD = '#C9A84C';
 const GOLD_LIGHT = '#E5C97C';

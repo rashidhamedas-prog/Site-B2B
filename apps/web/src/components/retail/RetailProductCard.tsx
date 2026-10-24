@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowLeft, Heart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Check, Heart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { beginProductTransition } from '@/components/motion/product-transition';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
 import { discountPercent, mediaUrl, storefrontSizeLabels, toman, uniqueInStockColors, variantsOnSizeChart } from '@/lib/product-display';
@@ -81,9 +83,11 @@ function ClassicRetailProductCard({
   compact?: boolean;
   imagePriority?: boolean;
 }) {
+  const router = useRouter();
   const addItem = useRetailCart((s) => s.addItem);
   const [wishlisted, setWishlisted] = useState(false);
   const [added, setAdded] = useState(false);
+  const [imageReady, setImageReady] = useState(false);
   const sale = product.sale;
   const price = Number(sale?.payable ?? product.retailPrice ?? 0);
   const compareAt = sale?.active
@@ -176,11 +180,19 @@ function ClassicRetailProductCard({
   };
 
   return (
-    <article className="group relative flex h-full flex-col bg-transparent transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,47,40,0.08)] focus-within:shadow-[0_16px_40px_rgba(15,47,40,0.08)] motion-reduce:transform-none motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      <div className="relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)]">
+    <article className="tn-card group relative flex h-full flex-col bg-transparent focus-within:shadow-[0_16px_40px_rgba(15,47,40,0.08)]">
+      <div
+        className={`tn-media relative aspect-[3/4] overflow-hidden bg-[var(--retail-card)] ${image && !imageReady ? 'tn-media-pending' : ''}`}
+        onLoad={(event) => {
+          if ((event.target as HTMLElement).tagName === 'IMG') setImageReady(true);
+        }}
+      >
         <Link
           href={href}
-          onClick={selectProduct}
+          onClick={(event) => {
+            selectProduct();
+            beginProductTransition(event, () => router.push(href));
+          }}
           prefetch={false}
           className="absolute inset-0 z-[1] cursor-pointer focus:outline-none"
           aria-label={`مشاهده ${product.name}`}
@@ -194,7 +206,7 @@ function ClassicRetailProductCard({
                 priority={imagePriority}
                 loading={imagePriority ? 'eager' : 'lazy'}
                 fetchPriority={imagePriority ? 'high' : 'low'}
-                className={`object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none ${soldOut ? 'opacity-60 grayscale' : ''}`}
+                className={`tn-card-img object-cover ${soldOut ? 'opacity-60 grayscale' : ''}`}
                 sizes="(max-width:767px) 46vw, (max-width:1280px) 24vw, 288px"
               />
               {!compact && secondImage && !soldOut ? (
@@ -205,7 +217,7 @@ function ClassicRetailProductCard({
                   fill
                   loading="lazy"
                   fetchPriority="low"
-                  className="hidden object-cover opacity-0 transition duration-500 group-hover:opacity-100 md:block motion-reduce:hidden"
+                  className="tn-card-img tn-card-alt hidden object-cover opacity-0 md:block motion-reduce:hidden"
                   sizes="25vw"
                 />
               ) : null}
@@ -220,12 +232,12 @@ function ClassicRetailProductCard({
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between p-2.5 sm:p-3">
           <div className="flex flex-col items-start gap-1.5">
             {discount ? (
-              <span className="rounded-full bg-[var(--retail-gold)] px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
+              <span className="rounded-full bg-[var(--retail-gold)] px-2.5 py-1 text-[10px] font-bold text-[var(--brand-ink,#1A1A1A)]">
                 ٪{discount.toLocaleString('fa-IR')} تخفیف
               </span>
             ) : null}
             {product.isNew ? (
-              <span className="rounded-full border border-[var(--retail-gold)] bg-white/90 px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
+              <span className="rounded-full border border-[var(--brand-gold-700,#836A27)] bg-white/90 px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
                 جدید
               </span>
             ) : null}
@@ -388,14 +400,12 @@ function ClassicRetailProductCard({
             type="button"
             disabled={!canQuickAdd}
             onClick={onAdd}
-            className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center rounded-md bg-[var(--retail-primary)] px-3 text-sm font-bold text-white transition hover:bg-[var(--retail-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-auto inline-flex min-h-12 cursor-pointer items-center justify-center gap-1.5 rounded-md bg-[var(--retail-primary)] px-3 text-sm font-bold text-white transition hover:bg-[var(--retail-primary-dark)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] disabled:cursor-not-allowed disabled:opacity-50"
           >
+            {added ? <Check className="h-4 w-4" aria-hidden /> : null}
             {added ? 'به سبد اضافه شد' : 'افزودن به سبد'}
           </button>
         )}
-        <span className="sr-only" aria-live="polite">
-          {added ? `${product.name} به سبد اضافه شد` : ''}
-        </span>
       </div>
     </article>
   );

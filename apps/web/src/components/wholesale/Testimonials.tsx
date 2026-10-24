@@ -99,7 +99,7 @@ export function Testimonials({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-gray-900">{t.name}</p>
-                    <p className="truncate text-xs text-gray-400">
+                    <p className="truncate text-xs text-[var(--brand-muted,#4B5563)]">
                       {[t.business, t.city].filter(Boolean).join(' · ')}
                     </p>
                   </div>
@@ -123,7 +123,7 @@ export function Testimonials({
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900">{testimonials[current].name}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-[var(--brand-muted,#4B5563)]">
                     {[testimonials[current].business, testimonials[current].city]
                       .filter(Boolean)
                       .join(' · ')}
@@ -147,11 +147,15 @@ export function Testimonials({
                   <button
                     key={i}
                     onClick={() => setCurrent(i)}
-                    className={`h-2 cursor-pointer rounded-full transition-all duration-250 ${
-                      i === current ? 'w-7 bg-primary' : 'w-2 bg-gray-200 hover:bg-gray-300'
-                    }`}
+                    className="inline-flex h-6 min-w-6 cursor-pointer items-center justify-center"
                     aria-label={`نظر ${i + 1}`}
-                  />
+                  >
+                    <span
+                      className={`block h-2 rounded-full transition-all duration-250 ${
+                        i === current ? 'w-7 bg-primary' : 'w-2 bg-gray-200 hover:bg-gray-300'
+                      }`}
+                    />
+                  </button>
                 ))}
               </div>
               <button

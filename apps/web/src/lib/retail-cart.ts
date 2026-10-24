@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { trackAddToCart, trackRemoveFromCart } from '@/lib/retail-analytics';
 import { pulseCartHeartbeat } from '@/lib/cart-heartbeat';
+import { notifyCartAdded } from '@/components/motion/CartToast';
 
 export interface RetailCartItem {
   productId: string;
@@ -55,6 +56,7 @@ export const useRetailCart = create<RetailCartState>()(
           return { items: [...state.items, { ...item, quantity: qty }] };
         });
         trackAddToCart(asAnalyticsItem({ ...item, quantity: qty }, qty));
+        notifyCartAdded(item.productName);
         const next = get().items;
         pulseCartHeartbeat({
           channel: 'RETAIL',

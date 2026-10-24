@@ -2,8 +2,11 @@ import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { ToastProvider } from '@/components/shared/Toast';
 import { DeferredGtm } from '@/components/shared/DeferredGtm';
+import { CartToast } from '@/components/motion/CartToast';
+import { SectionReveal } from '@/components/motion/SectionReveal';
 import { resolveGscTokensForRootHead } from '@/lib/google-seo';
 import './globals.css';
+import './motion.css';
 
 /** Public HTML can be ISR. User-specific routes (cart/checkout/account) stay dynamic via their own trees. */
 export const revalidate = 60;
@@ -72,7 +75,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#124035',
+  themeColor: '#0F2F28',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -93,6 +96,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-sans antialiased">
+        <SectionReveal />
+        <CartToast />
         <ToastProvider>
           {/* Wholesale CartProvider lives in (wholesale)/layout + /checkout/layout
               so retail .ir does not hydrate B2B cart state on every page. */}

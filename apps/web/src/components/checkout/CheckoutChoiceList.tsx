@@ -94,8 +94,8 @@ export function CheckoutChoiceList({
                 option.disabled && 'cursor-not-allowed opacity-55',
                 selected
                   ? retail
-                    ? 'border-[var(--retail-gold)] bg-white shadow-[0_10px_28px_rgba(27,92,74,0.08)]'
-                    : 'border-secondary bg-white shadow-[0_10px_28px_rgba(27,92,74,0.08)]'
+                    ? 'border-[var(--brand-gold-700,#836A27)] bg-white shadow-[0_10px_28px_rgba(27,92,74,0.08)]'
+                    : 'border-[var(--brand-gold-700,#836A27)] bg-white shadow-[0_10px_28px_rgba(27,92,74,0.08)]'
                   : retail
                     ? 'border-[var(--retail-border)] bg-[var(--retail-card)]/40 hover:border-[var(--retail-gold)]/50'
                     : 'border-gray-200 bg-[var(--brand-ivory,#F6F1E8)]/40 hover:border-secondary/50',
@@ -170,7 +170,7 @@ export function CheckoutChoiceList({
                 )}
                 aria-hidden
               >
-                {selected ? <span className="h-1.5 w-1.5 rounded-full bg-white" /> : null}
+                {selected ? <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-ink,#1A1A1A)]" /> : null}
               </span>
             </button>
           );

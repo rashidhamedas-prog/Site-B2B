@@ -54,7 +54,7 @@ export function RetailFaq({
             <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 text-right text-base font-bold text-[var(--retail-ink)] [&::-webkit-details-marker]:hidden">
               {item.question}
               <span
-                className="faq-plus inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--retail-border)] text-lg leading-none text-[var(--retail-gold)] transition duration-200"
+                className="faq-plus inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--brand-gold-700,#836A27)] text-lg leading-none text-[var(--brand-gold-700,#836A27)] transition duration-200"
                 aria-hidden
               >
                 +

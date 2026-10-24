@@ -79,7 +79,7 @@ export function RetailFooter() {
       </div>
       <div className="border-t border-white/10 py-4">
         <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-center gap-3 px-4 sm:px-6 sm:flex-row sm:justify-between lg:px-8">
-          <p className="text-center text-xs text-white/45">{copyright}</p>
+          <p className="on-dark-muted text-center text-xs">{copyright}</p>
           <EnamadSeal
             channel="RETAIL"
             size={72}
