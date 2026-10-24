@@ -82,8 +82,10 @@ async function main() {
   const prevFlag = process.env.OMNICHANNEL_CONNECTORS_ENABLED;
   const prevTok = process.env.TELEGRAM_TEST_TOKEN;
   const prevApiUrl = process.env.TELEGRAM_API_URL;
+  const prevUploadMode = process.env.TELEGRAM_MEDIA_UPLOAD_MODE;
   delete process.env.OMNICHANNEL_CONNECTORS_ENABLED;
   delete process.env.TELEGRAM_API_URL;
+  delete process.env.TELEGRAM_MEDIA_UPLOAD_MODE;
 
   let disabled = false;
   try {
@@ -357,12 +359,64 @@ async function main() {
   const missingChat = await adapter.inspectDestination('TELEGRAM_TEST_TOKEN', '@nope');
   assert(missingChat.ok === false && missingChat.error === 'chat_not_found', 'chat_not_found surfaced');
 
+  // upload mode: bytes from our storage, multipart attach:// — not an Iran-only URL
+  process.env.TELEGRAM_MEDIA_UPLOAD_MODE = 'upload';
+  const sharp = require('sharp') as typeof import('sharp').default;
+  const webp = await sharp({
+    create: { width: 16, height: 16, channels: 3, background: { r: 9, g: 40, b: 70 } },
+  }).webp().toBuffer();
+  adapter.photoLoader = async (url) => {
+    assert(url.startsWith('https://www.poshaktaranom.ir/'), 'loader only sees allowlisted photos');
+    return webp;
+  };
+  const uploadCalls: Array<{ url: string; body: BodyInit | null | undefined; headers?: HeadersInit }> = [];
+  adapter.http = async (url, init) => {
+    uploadCalls.push({ url: String(url), body: init?.body, headers: init?.headers });
+    const method = String(url).endsWith('/sendMediaGroup') ? [{ message_id: 3 }, { message_id: 4 }] : { message_id: 8 };
+    return jsonRes(200, { ok: true, result: method });
+  };
+  const uploadedAlbum = await adapter.create(albumOpts);
+  assert(uploadedAlbum.providerMessageId === '3,4', 'upload album ids');
+  const albumCall = uploadCalls.find((call) => call.url.endsWith('/sendMediaGroup'));
+  assert(!!albumCall && albumCall.body instanceof FormData, 'sendMediaGroup is multipart');
+  assert(albumCall!.headers == null, 'multipart lets fetch set the boundary');
+  const albumMedia = JSON.parse(String((albumCall!.body as FormData).get('media'))) as Array<Record<string, unknown>>;
+  assert(albumMedia[0].media === 'attach://photo0' && albumMedia[1].media === 'attach://photo1', 'attach names');
+  assert(!String(albumMedia[0].media).includes('poshaktaranom'), 'Telegram is not asked to fetch the URL');
+  assert(!('show_caption_above_media' in albumMedia[0]), 'upload albums still omit captionAbove');
+  const part = (albumCall!.body as FormData).get('photo0');
+  assert(part instanceof Blob, 'photo0 file part');
+  const jpeg = Buffer.from(await (part as Blob).arrayBuffer());
+  assert(jpeg[0] === 0xff && jpeg[1] === 0xd8 && jpeg[jpeg.length - 1] === 0xd9, 'uploaded part is a finished JPEG');
+
+  uploadCalls.length = 0;
+  const uploadedOne = await adapter.create({ ...albumOpts, photoUrls: ['https://www.poshaktaranom.ir/uploads/a.jpg'] });
+  assert(uploadedOne.providerMessageId === '8', 'upload single id');
+  const photoCall = uploadCalls.find((call) => call.url.endsWith('/sendPhoto'));
+  assert(!!photoCall && photoCall.body instanceof FormData, 'sendPhoto is multipart');
+  assert((photoCall!.body as FormData).get('show_caption_above_media') === 'true', 'single upload keeps captionAbove');
+  assert(String((photoCall!.body as FormData).get('reply_markup')).includes('poshaktaranom.ir'), 'button rides on the file upload');
+
+  process.env.TELEGRAM_MEDIA_UPLOAD_MODE = 'url';
+  uploadCalls.length = 0;
+  adapter.http = async (url, init) => {
+    uploadCalls.push({ url: String(url), body: init?.body, headers: init?.headers });
+    return jsonRes(200, { ok: true, result: { message_id: 9 } });
+  };
+  await adapter.create({ ...albumOpts, photoUrls: ['https://www.poshaktaranom.ir/uploads/a.jpg'] });
+  const urlMode = uploadCalls.find((call) => call.url.endsWith('/sendPhoto'));
+  assert(!!urlMode && typeof urlMode.body === 'string', 'url mode stays JSON');
+  assert(JSON.parse(String(urlMode!.body)).photo === 'https://www.poshaktaranom.ir/uploads/a.jpg', 'url mode still passes the URL');
+  adapter.photoLoader = null;
+
   if (prevFlag === undefined) delete process.env.OMNICHANNEL_CONNECTORS_ENABLED;
   else process.env.OMNICHANNEL_CONNECTORS_ENABLED = prevFlag;
   if (prevTok === undefined) delete process.env.TELEGRAM_TEST_TOKEN;
   else process.env.TELEGRAM_TEST_TOKEN = prevTok;
   if (prevApiUrl === undefined) delete process.env.TELEGRAM_API_URL;
   else process.env.TELEGRAM_API_URL = prevApiUrl;
+  if (prevUploadMode === undefined) delete process.env.TELEGRAM_MEDIA_UPLOAD_MODE;
+  else process.env.TELEGRAM_MEDIA_UPLOAD_MODE = prevUploadMode;
 
   console.log('telegram.adapter.spec.ts: ok');
 }

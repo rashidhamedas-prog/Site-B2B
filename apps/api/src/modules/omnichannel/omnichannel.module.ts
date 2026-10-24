@@ -25,11 +25,14 @@ import { OmnichannelMediaAssetEntity } from './entities/omnichannel-media-asset.
 import { OmnichannelAdminGuard } from './guards/omnichannel-admin.guard';
 import { OmnichannelTokenVaultService } from './services/omnichannel-token-vault.service';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
+import { UploadModule } from '../upload/upload.module';
+import { StorageService } from '../upload/storage.service';
 
 @Global()
 @Module({
   imports: [
     AuthModule,
+    UploadModule,
     TypeOrmModule.forFeature([
       ChannelConnectionEntity,
       ChannelDestinationEntity,
@@ -52,7 +55,15 @@ import { AppSettingEntity } from '../settings/entities/app-setting.entity';
     OmnichannelService,
     OutboxService,
     ChannelProjectionService,
-    TelegramAdapter,
+    {
+      provide: TelegramAdapter,
+      useFactory: (storage: StorageService) => {
+        const adapter = new TelegramAdapter();
+        adapter.images = storage;
+        return adapter;
+      },
+      inject: [StorageService],
+    },
     BaleAdapter,
     RubikaAdapter,
     ChannelAdapterRegistry,

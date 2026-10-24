@@ -1,3 +1,11 @@
+## 2026-10-24 — آپلود فایل تلگرام + رد JPEG ناقص (بدون دیپلوی)
+
+- `WEBPAGE_CURL_FAILED`: تلگرام URL عکس `poshaktaranom.com/media/…` را می‌گیرد و به مبدأ ایران نمی‌رسد. پرچم `TELEGRAM_MEDIA_UPLOAD_MODE` پیش‌فرض `url` است. `upload` عکس را از MinIO (وگرنه HTTPS همان مبدأ) می‌خواند، WebP را با Sharp به JPEG (لبهٔ بلند ≤۲۵۶۰، زیر سقف عکس) تبدیل می‌کند و `multipart` را از همان `TELEGRAM_API_URL` می‌فرستد.
+- ورکر egress بدنه را با سقف ۳۲MB می‌خواند، `Content-Type` مرز multipart را دست نمی‌زند، و بدنه‌های بزرگ‌تر را ۴۱۳ می‌کند بدون پروکسی ناقص. تایم‌اوت بالادست ۲۶ ثانیه.
+- آپلود محصول: سقف ۵MB قدیمی استریم را دقیقاً روی ۵۲۴۲۸۸۰ بایت می‌بست و EOI را می‌انداخت. حالا `truncated` رد می‌شود، JPEG بی‌EOI ذخیره نمی‌شود، و بعد از نوشتن در MinIO دوباره decode می‌شود. Sharp همان مسیر قبلی را به WebP کوچک می‌کند.
+- دیپلوی ایران و `wrangler deploy` انجام نشد. روشن‌کردن پرچم بعد از دیپلوی ورکر است.
+- گزارش: `docs/reports/2026-10-24-telegram-media-upload.md`.
+
 ## 2026-10-24 — تایپ‌چک API بعد از sharp 0.35.5
 
 - ریشه: `types` در sharp 0.35 به اعلان ESM (`export default`) اشاره می‌کند. `tsc` اپ API با `module: commonjs` و resolution کلاسیک، شرط `exports.require.types` را نادیده می‌گیرد؛ پس `typeof import('sharp')` دیگر callable نیست. `require('sharp')` در اجرا همان factory سی‌جی‌اس است.

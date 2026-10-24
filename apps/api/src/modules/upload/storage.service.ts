@@ -4,7 +4,8 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Readable } from 'stream';
 
-import { processUploadImage, type ImageProcessProfile } from './image-processor';
+import { processUploadImage, ProductImageProcessingError, type ImageProcessProfile } from './image-processor';
+import { confirmStoredImage, rejectTruncatedJpeg } from './upload-bytes';
 import { isMissingObjectError, sanitizeObjectKey } from './storage-delete';
 import { assertUrlsUnreferenced } from '../omnichannel/media-references';
 import { OmnichannelMediaAssetEntity } from '../omnichannel/entities/omnichannel-media-asset.entity';
@@ -87,6 +88,9 @@ export class StorageService implements OnModuleInit {
     keyPrefix = 'products',
     profile: ImageProcessProfile = 'product',
   ): Promise<{ url: string; key: string }> {
+    // Sharp already fits product shots inside 1200×1600 WebP. Reject a cut JPEG
+    // (the historical 5 MiB body, no EOI) before that encode.
+    rejectTruncatedJpeg(buffer);
     const processed = await processUploadImage(buffer, mimetype, profile);
     const prefix = profile === 'categoryBanner' ? 'categories' : keyPrefix;
     const key = `${prefix}/${Date.now()}-${Math.random().toString(16).slice(2)}.${processed.extension}`;
@@ -94,6 +98,20 @@ export class StorageService implements OnModuleInit {
     await this.minioClient.putObject(this.bucket, key, stream, processed.buffer.length, {
       'Content-Type': processed.mimetype,
     });
+    try {
+      // Read the object we just wrote. Do not use readOwnedImage: that allowlist
+      // is products|blog only, and category banners live under categories/.
+      const stored = await this.readObjectBytes(key, processed.buffer.length);
+      await confirmStoredImage(stored, processed.buffer.length);
+    } catch (err) {
+      try {
+        await this.minioClient.removeObject(this.bucket, key);
+      } catch {
+        // The integrity error is the one the caller needs.
+      }
+      if (err instanceof ProductImageProcessingError) throw err;
+      throw new ProductImageProcessingError(err);
+    }
     const url = this.buildPublicUrl(key);
     try {
       await this.dataSource.getRepository(OmnichannelMediaAssetEntity).upsert(
@@ -106,6 +124,23 @@ export class StorageService implements OnModuleInit {
       }
     }
     return { url, key };
+  }
+
+  /** Bytes of an object this process just wrote. Stops once the saved image is larger than expected. */
+  private async readObjectBytes(key: string, maxBytes: number): Promise<Buffer> {
+    const stream: Readable = await this.minioClient.getObject(this.bucket, key);
+    const chunks: Buffer[] = [];
+    let total = 0;
+    for await (const chunk of stream) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      total += buf.length;
+      if (total > maxBytes) {
+        stream.destroy?.();
+        throw new ProductImageProcessingError(new Error('stored image length mismatch'));
+      }
+      chunks.push(buf);
+    }
+    return Buffer.concat(chunks);
   }
 
   /** Read one already-sanitized product image. Rejects keys outside products/ or blog/. */

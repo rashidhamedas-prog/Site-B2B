@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import type { DataSourceOptions } from 'typeorm';
 import { databaseConfig, migrationRunnerEnabled } from './config/database.config';
 import { runMigrationsWithLock } from './database/run-migrations';
+import { MAX_UPLOAD_IMAGE_BYTES } from './modules/upload/upload-image-policy';
 
 async function bootstrap() {
   if (migrationRunnerEnabled()) {
@@ -40,9 +41,13 @@ async function bootstrap() {
   // Scoped to SmsCooldownException only — adds Retry-After next to the JSON body.
   app.useGlobalFilters(new SmsCooldownExceptionFilter());
 
-  // Register multipart for file uploads
+  // Register multipart for file uploads.
+  // throwFileSizeLimit defaults to true, but busboy still ends the stream at fileSize
+  // and only sets `file.truncated`. The upload controller rejects that flag. The previous
+  // 5 MiB cap stored exactly 5242880 bytes and dropped the JPEG EOI marker.
   await app.register(require('@fastify/multipart'), {
-    limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+    limits: { fileSize: MAX_UPLOAD_IMAGE_BYTES, files: 1 },
+    throwFileSizeLimit: true,
   });
 
   if (swaggerEnabled()) {
