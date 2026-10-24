@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-24T16:10:00Z — TASK-20261024-006 telegram media upload + reject truncated JPEG
+
+- Branch `cursor/telegram-media-upload-e227`. No wrangler deploy, no Iran deploy, no env/secret/DB change.
+- Flag `TELEGRAM_MEDIA_UPLOAD_MODE` defaults to `url`. `upload` reads MinIO then same-origin HTTPS, Sharp WebP→JPEG (long edge 2560, ≤9MB), multipart via existing `TELEGRAM_API_URL`.
+- Worker caps the body at 32MB, forwards multipart Content-Type, 413 instead of a cut body, upstream abort 26s.
+- Upload: busboy `truncated` at `fileSize` (historically 5 MiB / 5242880, no EOI) is now rejected. Post-save decode. Sharp still downscales to WebP.
+- Overlap: TASK-20261024-005 still lists WORKLOG/handoff/active.yaml. This task only prepends its own entries.
+- Next: merge, deploy the egress Worker, then set the flag on Iran and restart api + omnichannel worker. Rollback is unset/`url` plus restart.
+
 ## 2026-10-24T13:50:00Z — TASK-20261024-005 omnichannel Bale DEAD revive
 
 - Branch `ai/TASK-20261024-005-omni-bale-revive` (worktree `Site B2B-omni-fix`).

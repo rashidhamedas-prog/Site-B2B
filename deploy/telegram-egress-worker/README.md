@@ -35,6 +35,19 @@ Restart API and workers after the env change. Unset `TELEGRAM_API_URL` to go bac
 
 `TelegramAdapter` does **not** send `x-taranom-egress-secret` yet. Leave `EGRESS_SECRET` unset until a later change adds that header. If the secret is set early, every Bot API call returns 401.
 
+## Multipart photo uploads
+
+`TELEGRAM_MEDIA_UPLOAD_MODE` defaults to `url` (JSON, image URL in `photo` / `media`). Set it to `upload` only after this Worker revision is deployed. The API then reads each product image from MinIO (or same-origin HTTPS) and POSTs `multipart/form-data` to `{TELEGRAM_API_URL}/bot{token}/sendPhoto|sendMediaGroup`.
+
+This Worker:
+
+- Forwards `Content-Type` unchanged, including the multipart boundary
+- Stream-reads the body and forwards it only when the complete buffer is at most 32 MB
+- Returns 413 `body too large` without calling Telegram when the cap is exceeded (it does not proxy a truncated body)
+- Aborts the upstream `fetch` after 26 seconds
+
+Rollback of the flag is an env change on the API and the omnichannel worker (`url` or unset, then restart). The Worker can stay deployed. Do not `wrangler deploy` from a pull request.
+
 ## Security
 
 - `EGRESS_SECRET` unset → header not required (open proxy; do not publish the URL until you accept that, or set the secret together with the API header)

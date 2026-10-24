@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { handleTelegramEgress, redactBotSecrets, resolveBotRoute, type Env } from './index.ts';
+import { handleTelegramEgress, readCappedBody, redactBotSecrets, resolveBotRoute, type Env } from './index.ts';
 
 const TOKEN = '123456789:AA-test-token-not-real';
 
@@ -81,8 +81,11 @@ describe('handleTelegramEgress', () => {
     assert.equal(call.url, `https://api.telegram.org/bot${TOKEN}/sendMessage`);
     assert.equal(call.init.method, 'POST');
     assert.equal((call.init.headers as Record<string, string>)['Content-Type'], 'application/json');
-    const forwarded = new TextDecoder().decode(call.init.body as ArrayBuffer);
+    const rawBody = call.init.body;
+    const forwarded = new TextDecoder().decode(rawBody instanceof Uint8Array ? rawBody : new Uint8Array(rawBody as ArrayBuffer));
     assert.equal(forwarded, '{"chat_id":1,"text":"ping"}');
+    assert.equal((call.init.headers as Record<string, string>)['Content-Length'], String(Buffer.byteLength('{"chat_id":1,"text":"ping"}')));
+    assert.ok(call.init.signal, 'upstream fetch has a timeout');
     assert.equal((call.init.headers as Record<string, string>)['x-taranom-egress-secret'], undefined);
   });
 
@@ -133,6 +136,62 @@ describe('handleTelegramEgress', () => {
       assert.equal(res.status, 404, path);
     }
     assert.equal(callsOf(fetchImpl).length, 0);
+  });
+
+  it('forwards multipart content-type and the complete body', async () => {
+    const payload = '--b\r\nContent-Disposition: form-data; name="photo"\r\n\r\nJPEG\r\n--b--\r\n';
+    const contentType = 'multipart/form-data; boundary=----formdata-undici-0123';
+    const fetchImpl = mockFetch();
+    const res = await handleTelegramEgress(
+      new Request(`https://egress.example/bot${TOKEN}/sendMediaGroup`, {
+        method: 'POST',
+        headers: { 'Content-Type': contentType },
+        body: payload,
+      }),
+      {},
+      { fetchImpl },
+    );
+    assert.equal(res.status, 200);
+    const call = callsOf(fetchImpl)[0];
+    assert.equal(call.url, `https://api.telegram.org/bot${TOKEN}/sendMediaGroup`);
+    assert.equal((call.init.headers as Record<string, string>)['Content-Type'], contentType);
+    const rawBody = call.init.body;
+    const forwarded = new TextDecoder().decode(rawBody instanceof Uint8Array ? rawBody : new Uint8Array(rawBody as ArrayBuffer));
+    assert.equal(forwarded, payload);
+    assert.equal((call.init.headers as Record<string, string>)['Content-Length'], String(Buffer.byteLength(payload)));
+  });
+
+  it('rejects an oversized body before calling Telegram', async () => {
+    const fetchImpl = mockFetch();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new Uint8Array(20));
+        controller.close();
+      },
+    });
+    const res = await handleTelegramEgress(
+      new Request(`https://egress.example/bot${TOKEN}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'multipart/form-data; boundary=b' },
+        body: stream,
+        duplex: 'half',
+      } as RequestInit),
+      {},
+      { fetchImpl, maxBodyBytes: 8 },
+    );
+    assert.equal(res.status, 413);
+    assert.match(await res.text(), /body too large/);
+    assert.equal(callsOf(fetchImpl).length, 0);
+    const capped = await readCappedBody(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(20));
+          controller.close();
+        },
+      }),
+      8,
+    );
+    assert.equal(capped, null);
   });
 
   it('redacts the bot token in upstream error logs and the 502 body', async () => {

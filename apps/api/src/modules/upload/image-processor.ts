@@ -56,7 +56,7 @@ export function isProductImageTimeout(error: unknown): boolean {
 export async function processProductImage(input: Buffer, _mimetype: string): Promise<ProcessedImage> {
   return withSharpSlot(async () => {
     try {
-      const sharp = require('sharp') as typeof import('sharp');
+      const sharp = require('sharp') as typeof import('sharp').default;
       const buffer = await sharp(input, {
         limitInputPixels: MAX_INPUT_PIXELS,
       })
@@ -85,7 +85,7 @@ export async function processCategoryBannerImage(
 ): Promise<ProcessedImage> {
   return withSharpSlot(async () => {
     try {
-      const sharp = require('sharp') as typeof import('sharp');
+      const sharp = require('sharp') as typeof import('sharp').default;
       const buffer = await sharp(input, {
         limitInputPixels: MAX_INPUT_PIXELS,
       })

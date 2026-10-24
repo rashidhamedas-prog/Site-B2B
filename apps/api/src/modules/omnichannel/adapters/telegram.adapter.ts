@@ -14,6 +14,24 @@ import {
   sanitizePhotoUrls,
   type TemplateButton,
 } from '../publication-template';
+import {
+  TELEGRAM_PHOTO_CONCURRENCY,
+  TELEGRAM_PHOTO_FETCH_TIMEOUT_MS,
+  TELEGRAM_UPLOAD_TIMEOUT_MS,
+  buildTelegramAlbumForm,
+  buildTelegramPhotoForm,
+  loadOwnedPhotoBytes,
+  mapLimit,
+  prepareTelegramUpload,
+  telegramMediaUploadMode,
+  type PreparedTelegramPhoto,
+} from './telegram-media';
+
+/** MinIO reader. The adapter does not import StorageService, so unit tests can construct it alone. */
+export interface OwnedImageReader {
+  ready: boolean;
+  readOwnedImage(key: string): Promise<Buffer>;
+}
 
 /** Official Bot API host. Used when `TELEGRAM_API_URL` is unset or blank. */
 export const TELEGRAM_API = 'https://api.telegram.org';
@@ -146,6 +164,9 @@ type TelegramChatMember = {
 export class TelegramAdapter implements ChannelAdapter {
   readonly provider = 'TELEGRAM';
   http: typeof fetch = globalThis.fetch.bind(globalThis);
+  /** Set by the Nest factory. Tests leave this null and stub `photoLoader` when they need bytes. */
+  images: OwnedImageReader | null = null;
+  photoLoader: ((url: string) => Promise<Buffer>) | null = null;
 
   protected assertEnabled() {
     if (!isOmnichannelProviderEnabled(this.provider)) throw new ConnectorDisabledError(this.provider);
@@ -175,13 +196,15 @@ export class TelegramAdapter implements ChannelAdapter {
   private async telegramCall<T>(
     token: string,
     method: string,
-    body?: Record<string, unknown>,
+    body?: Record<string, unknown> | FormData,
     timeoutMs = 12_000,
   ): Promise<T> {
+    const form = typeof FormData !== 'undefined' && body instanceof FormData;
     const res = await this.http(`${telegramApiBase()}/bot${token}/${method}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
+      // FormData must set its own multipart boundary. A manual Content-Type drops it.
+      headers: form ? undefined : { 'Content-Type': 'application/json' },
+      body: form ? body : body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(timeoutMs),
     });
     const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string; result?: T };
@@ -321,7 +344,43 @@ export class TelegramAdapter implements ChannelAdapter {
     const overflow = text && !caption ? text : '';
     const ids: string[] = [];
     let keyboardAttached = false;
-    if (photos.length >= 2) {
+    if (photos.length && telegramMediaUploadMode() === 'upload') {
+      const prepared = await this.prepareOwnedPhotos(photos);
+      if (prepared.length >= 2) {
+        const result = await this.telegramCall<Array<{ message_id: number }>>(
+          token,
+          'sendMediaGroup',
+          buildTelegramAlbumForm({
+            chatId,
+            photos: prepared,
+            caption: caption || undefined,
+            parseMode: opts.parseMode,
+            silent: opts.silent,
+            protectContent: opts.protectContent,
+          }),
+          TELEGRAM_UPLOAD_TIMEOUT_MS,
+        );
+        ids.push(...(result || []).map((row) => String(row.message_id)).filter((id) => id && id !== 'undefined'));
+      } else if (prepared.length === 1) {
+        const result = await this.telegramCall<{ message_id: number }>(
+          token,
+          'sendPhoto',
+          buildTelegramPhotoForm({
+            chatId,
+            photo: prepared[0],
+            caption: caption || undefined,
+            parseMode: opts.parseMode,
+            captionAbove: Boolean(caption && opts.captionAbove),
+            silent: opts.silent,
+            protectContent: opts.protectContent,
+            replyMarkup: keyboard,
+          }),
+          TELEGRAM_UPLOAD_TIMEOUT_MS,
+        );
+        keyboardAttached = !!keyboard;
+        ids.push(String(result.message_id));
+      }
+    } else if (photos.length >= 2) {
       // Albums cannot carry reply_markup (Bot API); buttons ride on the overflow message if any.
       // Do NOT set show_caption_above_media on InputMediaPhoto albums — live WHOLESALE DEAD rows
       // were 100% multi-photo + captionAbove=true (validate_failed), while single sendPhoto with
@@ -428,5 +487,21 @@ export class TelegramAdapter implements ChannelAdapter {
   private photosFrom(input: Record<string, unknown>): string[] {
     const channel = input.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
     return sanitizePhotoUrls(channel, input.photoUrls);
+  }
+
+  /** MinIO key when the URL is `/media/…`, otherwise same-origin HTTPS. Sharp turns WebP into JPEG. */
+  private async prepareOwnedPhotos(urls: string[]): Promise<PreparedTelegramPhoto[]> {
+    const raws = await mapLimit(urls, TELEGRAM_PHOTO_CONCURRENCY, (url) => this.loadPhoto(url));
+    return mapLimit(raws, TELEGRAM_PHOTO_CONCURRENCY, (raw) => prepareTelegramUpload(raw));
+  }
+
+  private loadPhoto(url: string): Promise<Buffer> {
+    if (this.photoLoader) return this.photoLoader(url);
+    const reader = this.images?.ready ? this.images : null;
+    return loadOwnedPhotoBytes(url, {
+      readStorage: reader ? (key) => reader.readOwnedImage(key) : undefined,
+      fetchImpl: this.http,
+      timeoutMs: TELEGRAM_PHOTO_FETCH_TIMEOUT_MS,
+    });
   }
 }

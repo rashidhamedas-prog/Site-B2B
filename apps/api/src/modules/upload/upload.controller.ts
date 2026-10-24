@@ -12,6 +12,18 @@ import {
   ProductImageProcessingError,
 } from './image-processor';
 import { MAX_UPLOAD_IMAGE_BYTES, uploadImageKind, uploadImageRejection } from './upload-image-policy';
+import { readUploadFile, UploadTooLargeError } from './upload-bytes';
+
+function imageFailureMessage(error: ProductImageProcessingError): string {
+  const cause = error.cause instanceof Error ? error.cause.message : String(error.cause ?? '');
+  if (/length mismatch/i.test(cause)) {
+    return 'فایل ذخیره‌شده ناقص بود و کنار گذاشته شد. دوباره آپلود کنید.';
+  }
+  if (/EOI|truncated/i.test(cause)) {
+    return 'فایل JPEG ناقص است و ذخیره نشد. عکس را دوباره بفرستید.';
+  }
+  return 'این فایل به‌عنوان تصویر خوانده نشد. jpg، png یا webp سالم بفرستید.';
+}
 
 function fileTooLarge(error: unknown): boolean {
   return !!error && typeof error === 'object' && (error as { code?: string }).code === 'FST_REQ_FILE_TOO_LARGE';
@@ -42,19 +54,15 @@ export class UploadController {
     const early = uploadImageRejection(data.filename, data.mimetype, 0);
     if (early) throw new BadRequestException(early);
 
-    const chunks: Buffer[] = [];
-    let size = 0;
+    const file = data.file as AsyncIterable<Buffer> & { truncated?: boolean };
+    let buffer: Buffer;
     try {
-      for await (const chunk of data.file) {
-        size += chunk.length;
-        if (size > MAX_UPLOAD_IMAGE_BYTES) {
-          throw new BadRequestException('حجم عکس بیشتر از ۲۰ مگابایت است.');
-        }
-        chunks.push(chunk);
-      }
+      // Reject when the parser stops at fileSize (`truncated`) instead of keeping a cut file.
+      buffer = await readUploadFile(file, MAX_UPLOAD_IMAGE_BYTES);
     } catch (error) {
-      if (error instanceof BadRequestException) throw error;
-      if (fileTooLarge(error)) throw new BadRequestException('حجم عکس بیشتر از ۲۰ مگابایت است.');
+      if (error instanceof UploadTooLargeError || fileTooLarge(error)) {
+        throw new BadRequestException('حجم عکس بیشتر از ۲۰ مگابایت است.');
+      }
       throw error;
     }
 
@@ -64,7 +72,7 @@ export class UploadController {
 
     try {
       return await this.storage.uploadBuffer(
-        Buffer.concat(chunks),
+        buffer,
         data.mimetype,
         uploadImageKind(data.filename, data.mimetype),
         'products',
@@ -75,7 +83,7 @@ export class UploadController {
         if (isProductImageTimeout(error)) {
           throw new BadRequestException('پردازش عکس بیش از حد طول کشید. فایل کوچک‌تری بفرستید.');
         }
-        throw new BadRequestException('این فایل به‌عنوان تصویر خوانده نشد. jpg، png یا webp سالم بفرستید.');
+        throw new BadRequestException(imageFailureMessage(error));
       }
       throw error;
     }
