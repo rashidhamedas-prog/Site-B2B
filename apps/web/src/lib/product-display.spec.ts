@@ -8,12 +8,14 @@ import {
   piecesPerPackCount,
   sizeCountForType,
   sizeTypeLabel,
+  storefrontSizeLabels,
   toman,
   uniqueByColor,
   uniqueInStockColors,
   uniqueSizes,
   variantChannelStock,
   variantsInStock,
+  variantsOnSizeChart,
 } from './product-display';
 
 assert.equal(toman(1_620_000), (162000).toLocaleString('fa-IR'));
@@ -36,6 +38,20 @@ assert.deepEqual(
   ['کرم', 'مشکی'],
 );
 assert.deepEqual(uniqueSizes([{ size: '۱' }, { size: '۲' }, { size: '۱' }]), ['۱', '۲']);
+
+{
+  const leftover = [
+    { size: '37', wholesaleStock: 2 },
+    { size: 'فری سایز', wholesaleStock: 0 },
+    { size: '40', wholesaleStock: 1 },
+  ];
+  const chart = { sizeType: 'CUSTOM', sizeLabels: ['37', '38', '39', '40'] };
+  assert.deepEqual(
+    variantsOnSizeChart(leftover, chart).map((v) => v.size),
+    ['37', '40'],
+  );
+  assert.deepEqual(storefrontSizeLabels(leftover, chart, { channel: 'wholesale' }), ['37', '40']);
+}
 
 assert.equal(variantChannelStock({ wholesaleStock: 0, stock: 80 }, 'wholesale'), 0);
 assert.equal(variantChannelStock({ retailStock: 0, wholesaleStock: 4 }, 'retail'), 0);

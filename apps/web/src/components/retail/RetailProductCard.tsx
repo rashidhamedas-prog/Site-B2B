@@ -6,7 +6,7 @@ import { ArrowLeft, Heart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
-import { discountPercent, mediaUrl, toman, uniqueInStockColors, uniqueSizes, variantsInStock } from '@/lib/product-display';
+import { discountPercent, mediaUrl, storefrontSizeLabels, toman, uniqueInStockColors, variantsOnSizeChart } from '@/lib/product-display';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { trackSelectCurrentItem } from '@/lib/retail-analytics';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
@@ -32,6 +32,8 @@ export type RetailCardProduct = {
   totalStock?: number;
   isNew?: boolean;
   isPreOrder?: boolean;
+  sizeType?: string | null;
+  sizeLabels?: string[] | null;
   sale?: {
     active?: boolean;
     payable?: number;
@@ -107,13 +109,25 @@ function ClassicRetailProductCard({
       size: product.variants?.find((v) => v.size)?.size,
     });
   };
+  const chart = useMemo(
+    () => ({ sizeType: product.sizeType, sizeLabels: product.sizeLabels }),
+    [product.sizeType, product.sizeLabels],
+  );
+  const chartVariants = useMemo(
+    () => variantsOnSizeChart(product.variants ?? [], chart),
+    [product.variants, chart],
+  );
   const colors = useMemo(
-    () => uniqueInStockColors(product.variants ?? [], 'retail', { includeSoldOut: !!product.isPreOrder }),
-    [product.variants, product.isPreOrder],
+    () => uniqueInStockColors(chartVariants, 'retail', { includeSoldOut: !!product.isPreOrder }),
+    [chartVariants, product.isPreOrder],
   );
   const sizes = useMemo(
-    () => uniqueSizes(variantsInStock(product.variants ?? [], 'retail', { includeSoldOut: !!product.isPreOrder })),
-    [product.variants, product.isPreOrder],
+    () =>
+      storefrontSizeLabels(chartVariants, chart, {
+        channel: 'retail',
+        includeSoldOut: !!product.isPreOrder,
+      }),
+    [chartVariants, chart, product.isPreOrder],
   );
   const [color, setColor] = useState(colors[0]?.color ?? '');
   const [size, setSize] = useState(sizes[0] ?? '');
@@ -125,7 +139,7 @@ function ClassicRetailProductCard({
 
   useEffect(() => setWishlisted(isInWishlist(product.id)), [product.id]);
 
-  const selectedVariant = (product.variants ?? []).find(
+  const selectedVariant = chartVariants.find(
     (v) => (!color || v.color === color) && (!size || v.size === size),
   );
   const needsSize = sizes.length > 1;

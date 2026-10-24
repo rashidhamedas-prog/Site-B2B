@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Taranom — daily Postgres custom-format backup (expand-only ops helper).
-# Intended for VPS cron: 15 2 * * * wholesale-admin /opt/taranom/scripts/backup-postgres.sh
+# Intended for Iran sole-origin cron (install via scripts/install-postgres-backup-cron.sh):
+#   15 2 * * * tnadmin /bin/bash /opt/taranom/scripts/backup-postgres.sh
 # Does NOT touch MinIO/object storage. Does NOT restore.
 set -euo pipefail
 

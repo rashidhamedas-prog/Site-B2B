@@ -176,6 +176,49 @@ export function uniqueSizes(variants: Array<{ size?: string | null }>): string[]
   return [...new Set(variants.map((v) => v.size).filter((s): s is string => !!s))];
 }
 
+export type SizeChartSource = {
+  sizeType?: string | null;
+  sizeLabels?: Array<string | null | undefined> | null;
+};
+
+/**
+ * Drop variant sizes outside the product size chart (e.g. leftover «فری سایز»
+ * after FREE → CUSTOM). Empty CUSTOM chart → no filter (mid-edit safety).
+ */
+export function variantsOnSizeChart<T extends { size?: string | null }>(
+  variants: T[] | null | undefined,
+  source: SizeChartSource,
+): T[] {
+  const rows = variants ?? [];
+  const allowed = sizesForSizeType(source.sizeType, source.sizeLabels);
+  if (!allowed.length) return rows;
+  const set = new Set(allowed);
+  return rows.filter((row) => {
+    const size = String(row.size ?? '').trim();
+    return !size || set.has(size);
+  });
+}
+
+/** Size labels for cards/PDP: chart when defined, else distinct variant sizes. */
+export function storefrontSizeLabels<T extends ChannelStockVariant & { size?: string | null }>(
+  variants: T[] | null | undefined,
+  source: SizeChartSource,
+  options?: { channel?: StorefrontChannel; includeSoldOut?: boolean },
+): string[] {
+  const onChart = variantsOnSizeChart(variants, source);
+  const channel = options?.channel;
+  const scoped = channel
+    ? variantsInStock(onChart, channel, { includeSoldOut: options?.includeSoldOut })
+    : onChart;
+  const fromVariants = uniqueSizes(scoped);
+  const chart = sizesForSizeType(source.sizeType, source.sizeLabels);
+  if (!chart.length) return fromVariants;
+  // Prefer chart order; only include labels that still have a variant row (or all chart if none).
+  const present = new Set(fromVariants);
+  const ordered = chart.filter((label) => present.has(label));
+  return ordered.length ? ordered : chart;
+}
+
 export function distinctColorCount(colors: Array<string | null | undefined>): number {
   const seen = new Set<string>();
   for (const raw of colors) {

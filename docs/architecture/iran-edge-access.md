@@ -6,9 +6,9 @@ Audience: implementers operating `poshaktaranom.ir` (retail) and `poshaktaranom.
 
 **Goal:** A shopper on a normal Iranian residential IP (MCI, Irancell, Shatel, Rightel, …) opens either storefront in a normal browser without a VPN.
 
-**Locked 2026-10-10:** shop DNS (`poshaktaranom.com`, `www`, `api.poshaktaranom.com`, `poshaktaranom.ir`, `www.poshaktaranom.ir`) stays **proxied**. IPv6 compatibility and HTTP/3 stay **off** (no AAAA, no `alt-svc: h3`). Do not gray-cloud these names. Direct TLS to `5.75.200.102` times out from most Iranian networks even though TCP/443 connects. Rollback to gray-cloud requires `scripts/cloudflare-iran-edge.mjs --mode origin --apply --confirm-gray`.
+**Locked 2026-10-24 (sole Iran origin):** production origin is Iran `185.213.167.61` (`/opt/taranom`). Hetzner `5.75.200.102` is decommissioned — do not point DNS or deploys at it. Shop DNS may be Cloudflare-proxied or DNS-only to Iran; IPv6 and HTTP/3 stay **off** (no AAAA, no `alt-svc: h3`). Historical note: direct TLS from Iranian ISPs to the old Hetzner origin timed out; that failure mode does not apply to the Iran origin.
 
-**Non-goals:** Moving the VPS, changing checkout/payments, replacing Next/nginx, enabling a new CDN account without owner credentials, or documenting third-party VPN software on the origin.
+**Non-goals:** Reintroducing a Germany origin, changing checkout/payments, replacing Next/nginx, enabling a new CDN account without owner credentials, or documenting third-party VPN software on the origin.
 
 **Assumptions (labeled):**
 
@@ -31,12 +31,11 @@ Audience: implementers operating `poshaktaranom.ir` (retail) and `poshaktaranom.
 ```text
 Iran residential browser
     → ISP DNS / DPI / IPv6 / UDP:443
-        → Cloudflare anycast (188.114.x / 104.21.x / 172.67.x + AAAA + h3)
-            → origin 5.75.200.102:443 nginx
+        → Cloudflare anycast (optional) or direct A → 185.213.167.61
+            → origin 185.213.167.61:443 nginx
                 → Next web (RETAIL on .ir, WHOLESALE on .com)
 Googlebot / foreign VPN
-    → Cloudflare (usually IPv4, working PoP)
-        → same origin
+    → same Iran origin (possibly via Cloudflare)
 ```
 
 Trust boundary that matters here is **the public edge**, not the app. The app never sees a request that dies on IPv6, QUIC, or a Cloudflare interstitial.
@@ -45,8 +44,8 @@ Trust boundary that matters here is **the public edge**, not the app. The app ne
 
 | Item | Evidence |
 | --- | --- |
-| Origin | Hetzner `5.75.200.102`, nginx TLS, Docker `web` |
-| DNS | Cloudflare NS; shop A `@` / `www` / `api` **proxied**. Origin stays `5.75.200.102` |
+| Origin | Iran `185.213.167.61`, nginx TLS, Docker `web` (sole production) |
+| DNS | Cloudflare NS; shop A for `@` / `www` / `api` / `.ir` → Iran origin (proxied or DNS-only per current ops) |
 | Resolved A | Cloudflare anycast (`104.21.*` / `172.67.*` / `188.114.*`), never the raw origin, for shop names |
 | AAAA | None on shop hostnames |
 | HTTP/3 | Off at origin (HTTP/2). Must not advertise `alt-svc: h3` |

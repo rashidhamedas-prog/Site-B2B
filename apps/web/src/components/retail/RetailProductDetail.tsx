@@ -6,7 +6,12 @@ import { Check, ChevronLeft, ChevronRight, Heart, ShoppingBag, Truck, X, ZoomIn 
 import { toman, useRetailCart } from '@/lib/retail-cart';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
-import { discountPercent, mediaUrl as toMediaUrl, variantsInStock } from '@/lib/product-display';
+import {
+  discountPercent,
+  mediaUrl as toMediaUrl,
+  variantsInStock,
+  variantsOnSizeChart,
+} from '@/lib/product-display';
 import { formatSizePhrase, stockRemainingCopy } from '@/lib/retail-size-label';
 import { RetailProductCard } from './RetailProductCard';
 import { selectDefaultRetailVariant } from '@taranom/shared-types';
@@ -72,6 +77,8 @@ type Product = {
   variants?: Variant[];
   categoryId?: string;
   fabric?: string;
+  sizeType?: string | null;
+  sizeLabels?: string[] | null;
   defaultRetailVariantId?: string | null;
 };
 
@@ -146,8 +153,16 @@ export function RetailProductDetail({
   const addItem = useRetailCart((s) => s.addItem);
   const includeSoldOutColors = !!product.isPreOrder;
   const stockedVariants = useMemo(
-    () => variantsInStock(product.variants ?? [], 'retail', { includeSoldOut: includeSoldOutColors }),
-    [product.variants, includeSoldOutColors],
+    () =>
+      variantsInStock(
+        variantsOnSizeChart(product.variants ?? [], {
+          sizeType: product.sizeType,
+          sizeLabels: product.sizeLabels,
+        }),
+        'retail',
+        { includeSoldOut: includeSoldOutColors },
+      ),
+    [product.variants, product.sizeType, product.sizeLabels, includeSoldOutColors],
   );
   const initial =
     stockedVariants.find((variant) => variant.id === initialVariantId) ??

@@ -38,7 +38,8 @@ PRODUCT_SKU_ENV="${E2E_PRODUCT_SKU:-}"
 EXPECTED_INITIAL_STATUS="PENDING_REVIEW"
 EXPECTED_PAYMENT_METHOD="CASH"
 EXPECTED_ITEMS_COUNT=1
-PROD_IP_DENYLIST="5.75.200.102"
+# Live Iran origin + decommissioned Hetzner (keep both blocked for mutation E2E).
+PROD_IP_DENYLIST="185.213.167.61,5.75.200.102"
 
 IMMUTABLE_LOCAL_HOSTS="localhost,127.0.0.1,::1"
 IMMUTABLE_STAGING_API_HOSTS="staging-api.poshaktaranom.com,www.staging-api.poshaktaranom.com"
@@ -116,12 +117,12 @@ host_in_csv "$API_HOST" "$ALLOWED_API_HOSTS" || fail "API_URL host '$API_HOST' n
 host_in_csv "$WEB_HOST" "$ALLOWED_WEB_HOSTS" || fail "WEB_URL host '$WEB_HOST' not in immutable allowlist for E2E_TARGET=$TARGET ('$ALLOWED_WEB_HOSTS')."
 
 case "$API_HOST" in
-  api.poshaktaranom.com|poshaktaranom.com|poshaktaranom.ir|www.poshaktaranom.com|www.poshaktaranom.ir|5.75.200.102)
+  api.poshaktaranom.com|poshaktaranom.com|poshaktaranom.ir|www.poshaktaranom.com|www.poshaktaranom.ir|185.213.167.61|5.75.200.102)
     fail "API_URL host '$API_HOST' is production — forbidden."
     ;;
 esac
 case "$WEB_HOST" in
-  poshaktaranom.com|poshaktaranom.ir|www.poshaktaranom.com|www.poshaktaranom.ir|5.75.200.102)
+  poshaktaranom.com|poshaktaranom.ir|www.poshaktaranom.com|www.poshaktaranom.ir|185.213.167.61|5.75.200.102)
     fail "WEB_URL host '$WEB_HOST' is production — forbidden."
     ;;
 esac

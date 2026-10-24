@@ -1,0 +1,32 @@
+---
+description: Production is Iran-only; Hetzner/Germany must not receive deploys or act as a live origin
+alwaysApply: true
+---
+
+# Sole Iran production origin (الزامی)
+
+## Policy
+
+- **Only** `tnadmin@185.213.167.61:3031` (`/opt/taranom`) is production for wholesale + retail + API.
+- Hetzner / Germany (`5.75.200.102`, user `wholesale-admin`, port `2222`, key `wholesale_server`) is **decommissioned**. Do not SSH there for deploy, do not start its Docker stack, do not re-enable its `taranom-autodeploy` timer.
+- Do not dual-deploy, “sync to both servers”, or treat Hetzner as failover without an explicit new architecture task and data-replication plan.
+- Live DNS for shop hostnames must point at the Iran origin (or Cloudflare in front of Iran). Do not point production DNS at `5.75.200.102`.
+
+## Agent / CI defaults
+
+| Item | Value |
+| --- | --- |
+| Host | `185.213.167.61` |
+| SSH port | `3031` |
+| User | `tnadmin` |
+| Deploy key (local) | `id_ed25519_taranom_storefront_ir` |
+| App dir | `/opt/taranom` |
+| CI secrets | `VPS_HOST` / `VPS_PORT` / `VPS_USER` / `VPS_SSH_KEY` must target Iran |
+
+## Backups
+
+Scheduled Postgres dump on Iran is mandatory ops baseline (`scripts/backup-postgres.sh` via `/etc/cron.d/taranom-postgres-backup`). Do not claim production readiness without a recent listable dump on Iran.
+
+## Historical docs
+
+Dated reports under `docs/reports/` may still mention Hetzner as history. Operative rules, runbooks, CI defaults, and agent deploy steps must describe Iran only.

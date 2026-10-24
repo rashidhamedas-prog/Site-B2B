@@ -48,9 +48,11 @@ docs/
 
 ## Deploy
 
-- سرور: `/opt/taranom` — جزئیات در `TARANOM-SERVER-INFO.txt`
-- اسکریپت: `deploy.sh` / `scripts/auto-deploy.sh`
+- **مبدأ تولید واحد:** سرور ایران `tnadmin@185.213.167.61:3031` مسیر `/opt/taranom`
+- هتزنر/آلمان (`5.75.200.102`) از مدار تولید خارج است — دیپلوی یا dual-deploy ممنوع
+- اسکریپت: `scripts/auto-deploy.sh` (+ `deploy/systemd/taranom-autodeploy.*`)
 - پس از deploy: health check + در صورت امکان `scripts/e2e-purchase-test.sh`
+- جزئیات: `docs/deployment-runbook.md` و قانون `.cursor/rules/sole-iran-origin.mdc`
 
 ### Deploy خودکار بعد از هر تغییر (الزامی)
 
@@ -59,7 +61,9 @@ docs/
 1. به‌روزرسانی `docs/WORKLOG.md` (+ report در صورت نیاز)
 2. `git add` فایل‌های مربوط + `git commit` (Conventional Commits)
 3. `git push origin HEAD` (معمولاً `master`)
-4. Deploy روی VPS: SSH به سرور و اجرای `scripts/auto-deploy.sh` یا `sudo systemctl start taranom-autodeploy.service`
+4. Deploy **فقط روی ایران**:
+   - `ssh -p 3031 -i <id_ed25519_taranom_storefront_ir> -o IdentitiesOnly=yes tnadmin@185.213.167.61`
+   - سپس `cd /opt/taranom && bash scripts/auto-deploy.sh` یا `sudo systemctl start taranom-autodeploy.service`
 5. Health check: API `/v1/health` و در صورت امکان صفحهٔ تکی/عمده
 
 استثنا: تغییرات فقط-مستندات بدون اثر runtime می‌توانند بدون rebuild docker تمام شوند، ولی push همچنان انجام شود.

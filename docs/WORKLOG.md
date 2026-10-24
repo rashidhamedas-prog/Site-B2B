@@ -1,3 +1,28 @@
+## 2026-10-24 — مبدأ تولید واحد ایران (حذف دیپلوی آلمان)
+
+- سیاست: فقط `tnadmin@185.213.167.61:3031` production است؛ هتزنر `5.75.200.102` از دیپلوی/قوانین/CI خارج شد.
+- قوانین: `.cursor/rules/sole-iran-origin.mdc` + بازنویسی `auto-deploy.mdc`؛ به‌روزرسانی `docs/conventions.md`، `docs/deployment-runbook.md`، `iran-edge-access.md`، overview AI-DOS.
+- CI defaults → ایران؛ اسکریپت بکاپ روزانه `install-postgres-backup-cron.sh`؛ قرنطینه هتزنر `decommission-hetzner-origin.sh`.
+- Ops: بکاپ `20261024T081607Z` ok؛ autodeploy ایران active؛ استک هتزنر down + marker؛ secrets `VPS_*` روی ایران؛ smoke ویترین/API 200.
+- گزارش: `docs/reports/2026-10-24-sole-iran-origin.md`.
+
+## 2026-10-24 — پاکسازی سایز یتیم بعد از AUTO→CUSTOM/MANUAL
+
+- ریشه: کارت دسته سایز را از `variant.size` می‌خواند؛ بعد از پک دستی/سایز سفارشی ردیف قدیمی در DB می‌ماند و ادمین با `ensureSizeStocks` مخفی‌اش می‌کند.
+- شواهد زنده: دو محصول کفش زنانه CUSTOM+MANUAL با labels 37–40 و variant فری‌سایز.
+- فیکس: prune در update/color-stock + فیلتر projection/storefront + migration یک‌باره `20261024-002`.
+- گزارش: `docs/reports/2026-10-24-orphan-size-variants.md`.
+
+## 2026-10-24 — ایزولهٔ تنظیمات Omnichannel روی destinationId
+
+- کلید اصلی تنظیمات اپراتور: `destinationId` (قالب، قواعد خودکار، سقف روزانه، تب‌های وضعیت/انتشار/صف). Connection فقط هویت/توکن ربات.
+- Migration `20261024-001`: `destinations.publishSettings` + `templates.destinationId` با بک‌فیل از connection و کلون قالب برای چندمقصدی.
+- API: `GET|PATCH .../destinations/:id/publish-settings`؛ قالب محصول بدون destinationId رد می‌شود؛ لیست/status با `?destinationId=`؛ `publicationPayloadFor` همیشه connection/destination می‌گیرد.
+- نوشتن روی connection publish-settings مسدود؛ status وقتی مقصد انتخاب شده سقف/حالت همان مقصد را نشان می‌دهد.
+- Automation و سقف روزانه per-destination؛ UI با `selectedDestinationId` و remount قالب‌ساز.
+- با FREE_POST master ادغام شد: enqueue per-destination + `sourceType` gateway.
+- گزارش: `docs/reports/2026-10-24-omnichannel-destination-isolation.md`.
+
 ## 2026-10-23 — اسکلت Worker خروجی تلگرام (بدون دیپلوی)
 
 - ورکر `deploy/telegram-egress-worker` فقط `/bot{token}/{method}` را به `https://api.telegram.org` پروکسی می‌کند. `..`، درصد، `@`، و تزریق هاست رد می‌شود.
@@ -14,6 +39,12 @@
 - شناسهٔ پایدار `free:<uuid>` است تا تطبیق کاتالوگ و برداشت محصول به پست آزاد نخورد.
 - دیپلوی ایران/Hetzner انجام نشد. روشن‌کردن پرچم و ارسال زنده جداگانه GO حامد می‌خواهد.
 - گزارش: `docs/reports/2026-10-23-omnichannel-free-post.md`.
+
+## 2026-10-23 — پایهٔ Bot API تلگرام از env
+
+- `TelegramAdapter` اگر `TELEGRAM_API_URL` خالی باشد همچنان `https://api.telegram.org` را صدا می‌زند. اسلش‌های انتهایی حذف می‌شوند و مسیر `{base}/bot{token}/{method}` می‌ماند (getMe، sendMessage و بقیهٔ متدها).
+- پروکسی ساخته نشد و env سرور ایران عوض نشد. اعمال آنجا بعد از بررسی Ops است. آدرس غلط تا unset و ری‌استارت api و workerها، تلگرام را قطع می‌کند.
+- `scripts/disk-alert.sh` همچنان مستقیم به `api.telegram.org` می‌رود. ربات و `BALE`/`RUBIKA` دست نخورده‌اند.
 
 ## 2026-10-23 — قفل سابقه تولیدی: بیش از ۱۰ سال
 

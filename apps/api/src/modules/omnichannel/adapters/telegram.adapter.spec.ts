@@ -3,7 +3,7 @@
  */
 import { ConnectorDisabledError } from './channel-adapter';
 import { assertNoSecretLeak, classifyTelegramHttpError, classifyTelegramThrow, redactProviderError, safeWorkerError } from './telegram-errors';
-import { resolveTelegramToken, TELEGRAM_API, TelegramAdapter } from './telegram.adapter';
+import { resolveTelegramToken, TELEGRAM_API, telegramApiBase, TelegramAdapter } from './telegram.adapter';
 import { BaleAdapter } from './bale.adapter';
 import { RubikaAdapter } from './rubika.adapter';
 
@@ -31,6 +31,32 @@ async function main() {
   assert(classifyTelegramHttpError(409, 'already') === 'duplicate', 'duplicate');
   assert(classifyTelegramThrow({ name: 'AbortError' }) === 'timeout', 'timeout');
 
+  assert(telegramApiBase({}) === TELEGRAM_API, 'unset TELEGRAM_API_URL stays on the official host');
+  assert(telegramApiBase({ TELEGRAM_API_URL: '   ' }) === TELEGRAM_API, 'blank TELEGRAM_API_URL stays on the official host');
+  assert(
+    telegramApiBase({ TELEGRAM_API_URL: 'https://proxy.example/tg///' }) === 'https://proxy.example/tg',
+    'trailing slashes stripped',
+  );
+  assert(
+    telegramApiBase({ TELEGRAM_API_URL: 'http://127.0.0.1:8081/' }) === 'http://127.0.0.1:8081',
+    'http gateway without a trailing slash',
+  );
+  for (const bad of [
+    'ftp://proxy.example',
+    'not a url',
+    'https://user:pass@proxy.example',
+    'https://proxy.example/tg?x=1',
+    'file:///etc/passwd',
+  ]) {
+    let rejected = false;
+    try {
+      telegramApiBase({ TELEGRAM_API_URL: bad });
+    } catch (err) {
+      rejected = err instanceof Error && err.message === 'telegram_api_url_invalid';
+    }
+    assert(rejected, `reject bad TELEGRAM_API_URL (${bad.split(':')[0]})`);
+  }
+
   const token = '123456:AA-test-token-not-real';
   assert(resolveTelegramToken('DATABASE_URL') === null, 'allowlist blocks DATABASE_URL');
   assert(redactProviderError(`https://api.telegram.org/bot${token}/sendMessage`) === 'https://api.telegram.org/bot[redacted]/sendMessage', 'bot path redacted');
@@ -55,7 +81,9 @@ async function main() {
 
   const prevFlag = process.env.OMNICHANNEL_CONNECTORS_ENABLED;
   const prevTok = process.env.TELEGRAM_TEST_TOKEN;
+  const prevApiUrl = process.env.TELEGRAM_API_URL;
   delete process.env.OMNICHANNEL_CONNECTORS_ENABLED;
+  delete process.env.TELEGRAM_API_URL;
 
   let disabled = false;
   try {
@@ -95,7 +123,40 @@ async function main() {
   };
   const unauthorized = await adapter.validateConnection('TELEGRAM_TEST_TOKEN');
   assert(unauthorized.error === 'invalid_credential', '401 getMe');
-  assert(calls[0].startsWith(`${TELEGRAM_API}/bot${token}/getMe`), 'official getMe URL');
+  assert(calls[0] === `${TELEGRAM_API}/bot${token}/getMe`, 'official getMe URL when TELEGRAM_API_URL is unset');
+
+  process.env.TELEGRAM_API_URL = 'https://proxy.example/tg/';
+  const proxyCalls: string[] = [];
+  adapter.http = async (url) => {
+    proxyCalls.push(String(url));
+    return jsonRes(200, { ok: true, result: { id: 1, username: 'proxy_bot' } });
+  };
+  const viaProxy = await adapter.validateConnection('TELEGRAM_TEST_TOKEN');
+  assert(viaProxy.ok === true, 'getMe via TELEGRAM_API_URL');
+  assert(proxyCalls[0] === `https://proxy.example/tg/bot${token}/getMe`, 'override keeps /bot{token}/getMe');
+
+  proxyCalls.length = 0;
+  adapter.http = async (url) => {
+    proxyCalls.push(String(url));
+    return jsonRes(200, { ok: true, result: { message_id: 5 } });
+  };
+  const proxied = await adapter.create({
+    secretRef: 'TELEGRAM_TEST_TOKEN',
+    chatId: '-1001',
+    text: 'ping',
+  });
+  assert(proxied.providerMessageId === '5', 'create via override');
+  assert(proxyCalls[0] === `https://proxy.example/tg/bot${token}/sendMessage`, 'sendMessage uses the same base');
+
+  process.env.TELEGRAM_API_URL = 'ftp://nope';
+  let fetched = 0;
+  adapter.http = async () => {
+    fetched += 1;
+    return jsonRes(200, { ok: true, result: {} });
+  };
+  const badBase = await adapter.validateConnection('TELEGRAM_TEST_TOKEN');
+  assert(badBase.ok === false && badBase.error === 'validate_failed' && fetched === 0, 'invalid base never calls fetch');
+  delete process.env.TELEGRAM_API_URL;
 
   adapter.http = async () => jsonRes(429, { ok: false, description: 'Too Many Requests' });
   assert((await adapter.validateConnection('TELEGRAM_TEST_TOKEN')).error === 'rate_limited', '429');
@@ -300,6 +361,8 @@ async function main() {
   else process.env.OMNICHANNEL_CONNECTORS_ENABLED = prevFlag;
   if (prevTok === undefined) delete process.env.TELEGRAM_TEST_TOKEN;
   else process.env.TELEGRAM_TEST_TOKEN = prevTok;
+  if (prevApiUrl === undefined) delete process.env.TELEGRAM_API_URL;
+  else process.env.TELEGRAM_API_URL = prevApiUrl;
 
   console.log('telegram.adapter.spec.ts: ok');
 }

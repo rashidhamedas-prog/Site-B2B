@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { RetailProductCard } from '@/components/retail/RetailProductCard';
-import { mediaUrl, uniqueInStockColors, uniqueSizes, variantsInStock } from '@/lib/product-display';
+import { mediaUrl, storefrontSizeLabels, uniqueInStockColors, variantsOnSizeChart } from '@/lib/product-display';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
 import {
   CATALOG_CARD_IMAGE_QUALITY,
@@ -19,13 +19,15 @@ export function CategoryProductCard({
   const href = `/products/${product.slug}`;
   const image = mediaUrl(product.images?.[0]);
   const retail = channel === 'RETAIL';
-  const variants = product.variants ?? [];
+  const chart = { sizeType: product.sizeType, sizeLabels: product.sizeLabels };
+  const variants = variantsOnSizeChart(product.variants ?? [], chart);
   const colors = uniqueInStockColors(variants, retail ? 'retail' : 'wholesale', {
     includeSoldOut: retail && !!product.isPreOrder,
   });
-  const sizes = uniqueSizes(variantsInStock(variants, retail ? 'retail' : 'wholesale', {
+  const sizes = storefrontSizeLabels(variants, chart, {
+    channel: retail ? 'retail' : 'wholesale',
     includeSoldOut: retail && !!product.isPreOrder,
-  }));
+  });
 
   if (retail && product.id && product.slug) {
     return (
@@ -42,6 +44,8 @@ export function CategoryProductCard({
           images: product.images,
           imageAlts: product.imageAlts,
           sale: product.sale,
+          sizeType: product.sizeType,
+          sizeLabels: product.sizeLabels ?? undefined,
           variants: product.variants?.map((v) => ({
             color: v.color,
             colorHex: v.colorHex,

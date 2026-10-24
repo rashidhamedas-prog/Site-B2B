@@ -3,8 +3,9 @@ import {
   compositionPerSize,
   piecesPerPackCount,
   sizeCountForType,
+  storefrontSizeLabels,
   uniqueInStockColors,
-  variantsInStock,
+  variantsOnSizeChart,
   type ChannelSale,
   type PackSizeConfig,
 } from './product-display';
@@ -67,19 +68,20 @@ export function wholesaleOrderSummary(
   selectedColors: string[],
   packCount: number,
 ) {
-  const variants = product.variants ?? [];
+  const chart = {
+    sizeType: product.sizeType,
+    sizeLabels: product.sizeLabels,
+  };
+  const variants = variantsOnSizeChart(product.variants ?? [], chart);
   const includeSoldOut = product.status === 'COMING_SOON';
   const availableColors = uniqueInStockColors(variants, 'wholesale', { includeSoldOut }).map((v) => ({
     name: v.color as string,
     hex: v.colorHex || '#ccc',
   }));
-  const availableSizes = Array.from(
-    new Set(
-      variantsInStock(variants, 'wholesale', { includeSoldOut })
-        .map((v) => v.size)
-        .filter((s): s is string => !!s),
-    ),
-  );
+  const availableSizes = storefrontSizeLabels(variants, chart, {
+    channel: 'wholesale',
+    includeSoldOut,
+  });
   const allowColorSelect = !!product.allowWholesaleColorSelect;
   const minColors = Math.max(1, Number(product.minWholesaleColors) || 1);
   const colorsForOrder = allowColorSelect ? selectedColors : availableColors.map((c) => c.name);

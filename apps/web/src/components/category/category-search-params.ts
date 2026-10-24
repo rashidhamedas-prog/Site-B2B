@@ -88,6 +88,8 @@ export type CategoryProduct = {
   fabric?: string;
   retailPrice?: number | null;
   wholesalePrice?: number | null;
+  sizeType?: string | null;
+  sizeLabels?: string[] | null;
   sale?: {
     active?: boolean;
     payable?: number;
