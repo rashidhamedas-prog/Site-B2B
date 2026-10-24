@@ -662,6 +662,9 @@ tasks:
     file_claims:
       - "apps/api/src/modules/omnichannel/bulk-requeue-category.ts"
       - "apps/api/src/modules/omnichannel/bulk-requeue-category.spec.ts"
+      - "docs/reports/2026-10-10-omnichannel-queue-clear-requeue.md"
+    released_file_claims:
+      # transferred 2026-10-24 to TASK-20260826-001 (stale hb 2026-10-09; destination isolation):
       - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
       - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
       - "apps/api/src/modules/omnichannel/services/outbox.service.ts"
@@ -670,15 +673,9 @@ tasks:
       - "apps/api/src/modules/omnichannel/services/outbox-worker.service.ts"
       - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
       - "apps/web/src/components/admin/AdminOmnichannel.tsx"
-      - "docs/reports/2026-10-10-omnichannel-queue-clear-requeue.md"
-      - "docs/WORKLOG.md"
-      - ".ai-dos/tasks/active.yaml"
-      - ".ai-dos/tasks/handoff.md"
-      - ".ai-dos/project/status.md"
     notes: |
-      skill-top full + ECC + H2H. Shared governance files also claimed by
-      TASK-20261010-003/004 — append-only WORKLOG/handoff/status; do not
-      revert GA4/CWV claims. Soft-cancel outbox only (no DELETE).
+      2026-10-24: overlapping service/UI claims reclaimed by TASK-20260826-001
+      (destination-scoped settings). Soft-cancel outbox only (no DELETE).
     acceptance_criteria:
       - "POST /omnichannel/outbox/clear-waiting soft-cancels PENDING (no DELETE)"
       - "POST /omnichannel/publications/requeue-by-category dryRun + live with gap"
@@ -6369,12 +6366,30 @@ tasks:
       implementer: "cursor:implementer-TASK-20260826-001"
       reviewer: "required-independent-before-done"
       security: "required-independent-before-done"
-    branch: "ai/TASK-20260826-001-blog-authors"
+    branch: "ai/TASK-20260826-001-destination-settings"
     worktree: "D:/proje/Site B2B"
     claimed_at: "2026-08-26T12:45:00Z"
-    heartbeat_at: "2026-09-02T23:55:00Z"
+    heartbeat_at: "2026-10-24T07:20:00Z"
     depends_on: []
     file_claims:
+      # 2026-10-24 destination-scoped publish settings:
+      - "apps/api/src/database/migrations/20261024-001-destination-publish-settings.ts"
+      - "apps/api/src/database/migrations/20261024-001-destination-publish-settings.spec.ts"
+      - "apps/api/src/modules/omnichannel/destination-publish-settings.ts"
+      - "apps/api/src/modules/omnichannel/destination-publish-settings.spec.ts"
+      - "apps/api/src/modules/omnichannel/connection-publish-settings.ts"
+      - "apps/api/src/modules/omnichannel/connection-publish-settings.spec.ts"
+      - "apps/api/src/modules/omnichannel/dto/omnichannel.dto.ts"
+      - "apps/api/src/modules/omnichannel/controllers/omnichannel-admin.controller.ts"
+      - "apps/api/src/modules/omnichannel/services/omnichannel.service.ts"
+      - "apps/api/src/modules/omnichannel/omnichannel-phase-acceptance.spec.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.ts"
+      - "apps/api/src/modules/omnichannel/publication-automation.spec.ts"
+      - "apps/web/src/components/admin/AdminOmnichannel.tsx"
+      - "apps/web/src/components/admin/AdminTelegramTemplateBuilder.tsx"
+      - "apps/web/src/components/admin/admin-omnichannel-ui.tsx"
+      - "docs/reports/2026-10-24-omnichannel-destination-isolation.md"
+
       - "apps/api/src/modules/product/channel-product-projection.ts"
       - "apps/api/src/modules/product/channel-product-projection.spec.ts"
       - "apps/api/src/modules/product/channel-stock-isolation.spec.ts"

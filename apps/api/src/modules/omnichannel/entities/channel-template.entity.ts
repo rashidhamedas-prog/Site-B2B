@@ -3,14 +3,20 @@ import {
 } from 'typeorm';
 
 @Entity('omnichannel_channel_templates')
-/** Channel-wide fallback rows only (connectionId IS NULL). Per-bot rows use a separate partial unique. */
+/** Channel-wide fallback: both connectionId and destinationId null. */
 @Index('UQ_omnichannel_templates_fallback_provider_channel_event_version', ['provider', 'channel', 'eventType', 'version'], {
   unique: true,
-  where: '"connectionId" IS NULL',
+  where: '"connectionId" IS NULL AND "destinationId" IS NULL',
 })
+/** Per-bot compat rows without destination binding. */
 @Index('UQ_omnichannel_templates_connection_event_version', ['connectionId', 'eventType', 'version'], {
   unique: true,
-  where: '"connectionId" IS NOT NULL',
+  where: '"connectionId" IS NOT NULL AND "destinationId" IS NULL',
+})
+/** Primary operator scope: one product template layout per destination. */
+@Index('UQ_omnichannel_templates_destination_event_version', ['destinationId', 'eventType', 'version'], {
+  unique: true,
+  where: '"destinationId" IS NOT NULL',
 })
 export class ChannelTemplateEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -22,9 +28,13 @@ export class ChannelTemplateEntity {
   @Column({ type: 'varchar' })
   channel: string;
 
-  /** When set, this template belongs to one bot connection; null = channel-wide fallback. */
+  /** When set without destinationId, this template belongs to one bot (compat). */
   @Column({ type: 'uuid', nullable: true })
   connectionId: string | null;
+
+  /** Primary scope: template for one destination chat. */
+  @Column({ type: 'uuid', nullable: true })
+  destinationId: string | null;
 
   @Column({ type: 'varchar' })
   eventType: string;

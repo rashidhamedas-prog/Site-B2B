@@ -81,8 +81,10 @@ const publicDest = toPublicDestination({
   id: 'd1',
   destinationKey: '-100',
   settings: { note: 'hidden' },
+  publishSettings: { autoDailyCap: 7, seeded: true },
 });
 assert(!('settings' in publicDest), 'settings stripped from public destination');
+assert(!('publishSettings' in publicDest), 'raw publishSettings stripped from public destination');
 assert(publicDest.isCanary === false, 'raw settings do not leak as canary');
 assert(toPublicDestination({ id: 'd2', settings: { isCanary: true } }).isCanary === true, 'isCanary exposed');
 

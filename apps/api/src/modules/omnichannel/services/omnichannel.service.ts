@@ -14,9 +14,15 @@ import {
   ClearWaitingOutboxDto,
   PatchDestinationDto,
   PatchConnectionPublishSettingsDto,
+  PatchDestinationPublishSettingsDto,
   PatchOmnichannelSettingsDto,
   PutSecretDto,
   RequeueByCategoryDto,
+  CreateTemplateDto,
+  PatchTemplateDto,
+  CreateDestinationDto,
+  CreateConnectionDto,
+  PatchConnectionDto,
 } from '../dto/omnichannel.dto';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
@@ -89,14 +95,19 @@ import {
   tehranDayStart,
 } from '../publication-automation';
 import {
-  assertConnectionPublishSettingsInput,
-  hasConnectionPublishPatch,
-  mergeConnectionPublishSettingsPatch,
-  parseConnectionPublishSettings,
   publicConnectionPublishSettings,
   resolveConnectionPublishSettings,
   seedConnectionPublishFromGlobal,
 } from '../connection-publish-settings';
+import {
+  assertDestinationPublishSettingsInput,
+  hasDestinationPublishPatch,
+  mergeDestinationPublishSettingsPatch,
+  parseDestinationPublishSettings,
+  publicDestinationPublishSettings,
+  resolveDestinationPublishSettings,
+  seedDestinationPublishFromConnection,
+} from '../destination-publish-settings';
 import { CANARY_PING_TEXT } from '../canary-ping';
 import { normalizeBulkPublicationIds } from '../bulk-publication-ids';
 import {
@@ -133,13 +144,6 @@ import type { ProductSpecs } from '../../product/entities/product-specs';
 import { summarizeOutbox } from './outbox-metrics';
 import { canDeleteMediaAsset, countMediaReferences } from '../media-references';
 import { CmsPageEntity } from '../../cms/entities/cms-page.entity';
-import {
-  CreateConnectionDto,
-  CreateDestinationDto,
-  CreateTemplateDto,
-  PatchConnectionDto,
-  PatchTemplateDto,
-} from '../dto/omnichannel.dto';
 import { assertNoPlaintextSecrets, looksLikeSecretValue, toPublicConnection, toPublicDestination } from '../omnichannel-secrets';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import {
@@ -396,8 +400,26 @@ export class OmnichannelService {
   }
 
   async listDestinations() {
-    const rows = await this.destinations.find({ order: { createdAt: 'DESC' } });
-    return rows.map((row) => toPublicDestination(row));
+    const [rows, conns, global] = await Promise.all([
+      this.destinations.find({ order: { createdAt: 'DESC' } }),
+      this.connections.find(),
+      this.loadStoredSettings(),
+    ]);
+    const connById = new Map(conns.map((row) => [row.id, row]));
+    return rows.map((row) => {
+      const conn = connById.get(row.connectionId);
+      const channel = conn?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+      const resolved = resolveDestinationPublishSettings(
+        row.publishSettings,
+        conn?.publishSettings,
+        global,
+        channel,
+      );
+      return {
+        ...toPublicDestination(row),
+        publishSettings: publicDestinationPublishSettings(resolved),
+      };
+    });
   }
 
   async createDestination(dto: CreateDestinationDto) {
@@ -412,6 +434,13 @@ export class OmnichannelService {
     if (settings.isCanary === true) {
       await this.assertUniqueCanary(connection.id);
     }
+    const global = await this.loadStoredSettings();
+    const channel = connection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const publishSettings = seedDestinationPublishFromConnection(
+      connection.publishSettings,
+      global,
+      channel,
+    ) as Record<string, unknown>;
     const saved = await this.destinations.save(
       this.destinations.create({
         connectionId: dto.connectionId,
@@ -419,9 +448,15 @@ export class OmnichannelService {
         displayName: dto.displayName,
         enabled: dto.enabled ?? true,
         settings,
+        publishSettings,
       }),
     );
-    return toPublicDestination(saved);
+    return {
+      ...toPublicDestination(saved),
+      publishSettings: publicDestinationPublishSettings(
+        resolveDestinationPublishSettings(saved.publishSettings, connection.publishSettings, global, channel),
+      ),
+    };
   }
 
   async patchDestination(id: string, dto: PatchDestinationDto) {
@@ -563,12 +598,12 @@ export class OmnichannelService {
 
   /**
    * Global blob: retry SLA + retention only.
-   * Automation / OOS / categories require connectionId (or PATCH .../publish-settings).
+   * Automation / OOS / categories require destinationId (preferred) or connectionId compat.
    */
   async patchSettings(dto: PatchOmnichannelSettingsDto, actor?: Actor) {
     const who = this.requireActor(actor);
     assertOmnichannelSettingsInput(dto);
-    const publishPatch = hasConnectionPublishPatch({
+    const publishPatch = hasDestinationPublishPatch({
       oosPolicy: dto.oosPolicy,
       autoPublishEventTypes: dto.autoPublishEventTypes,
       autoPublishMode: dto.autoPublishMode,
@@ -580,16 +615,11 @@ export class OmnichannelService {
       autoPublishCategoryIds: dto.autoPublishCategoryIds,
     }) || !!(dto.retailOosPolicy || dto.wholesaleOosPolicy);
     if (publishPatch) {
-      if (!dto.connectionId) {
-        throw new BadRequestException(
-          'قواعد انتشار (حالت، سقف، فاصله، سکوت، رویداد، دسته، ناموجودی) باید برای هر ربات جدا ذخیره شود؛ connectionId لازم است',
-        );
-      }
-      const oosForConn = dto.oosPolicy
+      const oosForDest = dto.oosPolicy
         || dto.wholesaleOosPolicy
         || dto.retailOosPolicy;
-      return this.patchConnectionPublishSettings(dto.connectionId, {
-        oosPolicy: oosForConn,
+      const patchBody = {
+        oosPolicy: oosForDest,
         autoPublishEventTypes: dto.autoPublishEventTypes,
         autoPublishMode: dto.autoPublishMode,
         autoDailyCap: dto.autoDailyCap,
@@ -599,7 +629,13 @@ export class OmnichannelService {
         withdrawAction: dto.withdrawAction,
         autoPublishCategoryIds: dto.autoPublishCategoryIds,
         reason: dto.reason,
-      }, actor);
+      };
+      if (dto.destinationId) {
+        return this.patchDestinationPublishSettings(dto.destinationId, patchBody, actor);
+      }
+      throw new BadRequestException(
+        'قواعد انتشار باید برای هر مقصد جدا ذخیره شود؛ destinationId لازم است (نه connectionId)',
+      );
     }
     const hasLeftovers = dto.retrySlaSeconds != null || dto.outboxRetentionDays != null;
     if (!hasLeftovers) {
@@ -634,33 +670,78 @@ export class OmnichannelService {
     };
   }
 
+  /**
+   * Operator writes moved to destinations/:id/publish-settings.
+   * Connection blob stays read-only seed/compat for dual-read.
+   */
   async patchConnectionPublishSettings(
-    connectionId: string,
-    dto: PatchConnectionPublishSettingsDto,
+    _connectionId: string,
+    _dto: PatchConnectionPublishSettingsDto,
+    _actor?: Actor,
+  ) {
+    throw new BadRequestException(
+      'قواعد انتشار دیگر روی ربات ذخیره نمی‌شود؛ برای هر کانال از destinations/:id/publish-settings استفاده کنید',
+    );
+  }
+
+  async getDestinationPublishSettings(destinationId: string) {
+    const dest = await this.destinations.findOne({ where: { id: destinationId } });
+    if (!dest) throw new NotFoundException('مقصد یافت نشد');
+    const conn = await this.connections.findOne({ where: { id: dest.connectionId } });
+    if (!conn) throw new NotFoundException('اتصال یافت نشد');
+    const global = await this.loadStoredSettings();
+    const channel = conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const resolved = resolveDestinationPublishSettings(
+      dest.publishSettings,
+      conn.publishSettings,
+      global,
+      channel,
+    );
+    return {
+      destinationId: dest.id,
+      connectionId: conn.id,
+      provider: conn.provider,
+      channel,
+      displayName: dest.displayName,
+      ...publicDestinationPublishSettings(resolved),
+    };
+  }
+
+  async patchDestinationPublishSettings(
+    destinationId: string,
+    dto: PatchDestinationPublishSettingsDto,
     actor?: Actor,
   ) {
     const who = this.requireActor(actor);
     try {
-      assertConnectionPublishSettingsInput(dto);
+      assertDestinationPublishSettingsInput(dto);
     } catch (err) {
       throw new BadRequestException(err instanceof Error ? err.message : 'تنظیمات نامعتبر');
     }
-    if (!hasConnectionPublishPatch(dto)) {
+    if (!hasDestinationPublishPatch(dto)) {
       throw new BadRequestException('حداقل یک قاعده انتشار لازم است');
     }
-    const row = await this.connections.findOne({ where: { id: connectionId } });
-    if (!row) throw new NotFoundException('اتصال یافت نشد');
-    const channel = row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
-    const previous = parseConnectionPublishSettings(row.publishSettings);
-    const next = mergeConnectionPublishSettingsPatch(previous, dto);
+    const dest = await this.destinations.findOne({ where: { id: destinationId } });
+    if (!dest) throw new NotFoundException('مقصد یافت نشد');
+    const conn = await this.connections.findOne({ where: { id: dest.connectionId } });
+    if (!conn) throw new NotFoundException('اتصال یافت نشد');
+    const channel = conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+    const previous = parseDestinationPublishSettings(dest.publishSettings);
+    const next = mergeDestinationPublishSettingsPatch(previous, dto);
     if (next.autoPublishMode && next.autoPublishMode !== 'OFF' && previous.autoPublishMode !== next.autoPublishMode) {
-      await this.assertAutomationPrerequisitesForConnection(row, next.autoPublishMode);
+      await this.assertAutomationPrerequisitesForDestination(dest, conn, next.autoPublishMode);
     }
-    row.publishSettings = next as Record<string, unknown>;
-    const saved = await this.connections.save(row);
-    const resolved = resolveConnectionPublishSettings(saved.publishSettings, await this.loadStoredSettings(), channel);
-    await this.audit(who, 'connection_publish_settings_patch', 'CONNECTION', saved.id, channel, dto.reason || null, {
-      provider: saved.provider,
+    dest.publishSettings = next as Record<string, unknown>;
+    const saved = await this.destinations.save(dest);
+    const resolved = resolveDestinationPublishSettings(
+      saved.publishSettings,
+      conn.publishSettings,
+      await this.loadStoredSettings(),
+      channel,
+    );
+    await this.audit(who, 'destination_publish_settings_patch', 'DESTINATION', saved.id, channel, dto.reason || null, {
+      connectionId: conn.id,
+      provider: conn.provider,
       autoPublishMode: resolved.automation.mode,
       autoDailyCap: resolved.automation.dailyCap,
       autoMinGapSeconds: resolved.automation.minGapSeconds,
@@ -673,16 +754,23 @@ export class OmnichannelService {
       eventsChosen: resolved.eventsChosen,
     });
     return {
-      connectionId: saved.id,
-      provider: saved.provider,
+      destinationId: saved.id,
+      connectionId: conn.id,
+      provider: conn.provider,
       channel,
-      name: saved.name,
-      ...publicConnectionPublishSettings(resolved),
+      displayName: saved.displayName,
+      ...publicDestinationPublishSettings(resolved),
     };
   }
 
-  async listTemplates() {
+  async listTemplates(destinationId?: string) {
     await this.ensureProductTemplates();
+    if (destinationId) {
+      return this.templates.find({
+        where: [{ destinationId }, { destinationId: IsNull() }],
+        order: { createdAt: 'DESC' },
+      });
+    }
     return this.templates.find({ order: { createdAt: 'DESC' } });
   }
 
@@ -721,34 +809,56 @@ export class OmnichannelService {
   async createTemplate(dto: CreateTemplateDto) {
     assertNoPlaintextSecrets(dto);
     const version = dto.version ?? 1;
-    const connectionId = dto.connectionId || null;
-    if (connectionId) {
+    const productEvent = dto.eventType === 'product.published';
+    let destinationId = dto.destinationId || null;
+    let connectionId = dto.connectionId || null;
+    if (productEvent && !destinationId) {
+      throw new BadRequestException('برای قالب محصول destinationId لازم است');
+    }
+    if (destinationId) {
+      const dest = await this.destinations.findOne({ where: { id: destinationId } });
+      if (!dest) throw new NotFoundException('مقصد یافت نشد');
+      const conn = await this.connections.findOne({ where: { id: dest.connectionId } });
+      if (!conn) throw new NotFoundException('اتصال یافت نشد');
+      if (conn.channel !== dto.channel) {
+        throw new BadRequestException('کانال قالب با کانال مقصد یکی نیست');
+      }
+      connectionId = conn.id;
+      const exists = await this.templates.findOne({
+        where: { destinationId, eventType: dto.eventType, version },
+      });
+      if (exists) throw new ConflictException('قالب تکراری است');
+    } else if (connectionId) {
       const conn = await this.connections.findOne({ where: { id: connectionId } });
       if (!conn) throw new NotFoundException('اتصال یافت نشد');
       if (conn.channel !== dto.channel) {
         throw new BadRequestException('کانال قالب با کانال ربات یکی نیست');
       }
-    }
-    const exists = connectionId
-      ? await this.templates.findOne({ where: { connectionId, eventType: dto.eventType, version } })
-      : await this.templates.findOne({
+      const exists = await this.templates.findOne({
+        where: { connectionId, eventType: dto.eventType, version, destinationId: IsNull() },
+      });
+      if (exists) throw new ConflictException('قالب تکراری است');
+    } else {
+      const exists = await this.templates.findOne({
         where: {
           provider: dto.provider,
           channel: dto.channel,
           eventType: dto.eventType,
           version,
           connectionId: IsNull(),
+          destinationId: IsNull(),
         },
       });
-    if (exists) throw new ConflictException('قالب تکراری است');
+      if (exists) throw new ConflictException('قالب تکراری است');
+    }
     const incoming = String(dto.body || '').trim();
-    const productEvent = dto.eventType === 'product.published';
     const body = productEvent ? productTemplateBodyOrThrow(dto.channel, incoming) : incoming;
     return this.templates.save(
       this.templates.create({
         provider: dto.provider,
         channel: dto.channel,
         connectionId,
+        destinationId,
         eventType: dto.eventType,
         locale: dto.locale ?? 'fa',
         body,
@@ -771,22 +881,50 @@ export class OmnichannelService {
     return this.templates.save(row);
   }
 
-  async listPublications() {
+  async listPublications(destinationId?: string) {
+    if (destinationId) {
+      const deliveryRows = await this.deliveries.find({
+        where: { destinationId },
+        select: ['publicationId'],
+        take: 500,
+      });
+      const ids = [...new Set(deliveryRows.map((row) => row.publicationId))];
+      if (!ids.length) return [];
+      const rows = await this.publications.find({
+        where: { id: In(ids) },
+        order: { createdAt: 'DESC' },
+        take: 300,
+      });
+      return latestPublicationsBySource(rows).slice(0, 100);
+    }
     const rows = await this.publications.find({ order: { createdAt: 'DESC' }, take: 300 });
     return latestPublicationsBySource(rows).slice(0, 100);
   }
 
-  async listDeliveries() {
-    const rows = await this.deliveries.find({ order: { createdAt: 'DESC' }, take: 100 });
+  async listDeliveries(destinationId?: string) {
+    const rows = await this.deliveries.find({
+      where: destinationId ? { destinationId } : {},
+      order: { createdAt: 'DESC' },
+      take: 100,
+    });
     return rows.map((row) => ({
       ...row,
       lastError: row.lastError ? redactProviderError(row.lastError) : row.lastError,
     }));
   }
 
-  async outboxMetrics() {
+  async outboxMetrics(destinationId?: string) {
     try {
       // Active statuses only — DONE history must not crowd out pending/dead counters.
+      if (destinationId) {
+        const rows = await this.events
+          .createQueryBuilder('e')
+          .select(['e.status', 'e.availableAt', 'e.lockedAt'])
+          .where('e.status IN (:...st)', { st: ['PENDING', 'PROCESSING', 'DEAD'] })
+          .andWhere("e.payload->>'destinationId' = :destinationId", { destinationId })
+          .getMany();
+        return summarizeOutbox(rows);
+      }
       const rows = await this.events.find({
         select: ['status', 'availableAt', 'lockedAt'],
         where: { status: In(['PENDING', 'PROCESSING', 'DEAD']) },
@@ -826,9 +964,9 @@ export class OmnichannelService {
    * Counts distinct publications so multi-destination albums still use one slot. Aligns with the
    * automation gate — manual/category blasts are included (not only auto=true).
    */
-  async sentTodayCount(channel?: string): Promise<number> {
+  async sentTodayCount(channel?: string, destinationId?: string): Promise<number> {
     try {
-      return await this.countCreatesTowardDailyCap(channel);
+      return await this.countCreatesTowardDailyCap(channel, undefined, destinationId);
     } catch (err) {
       if (isMissingRelationError(err)) return 0;
       throw err;
@@ -836,22 +974,71 @@ export class OmnichannelService {
   }
 
   /** Why auto posts may be idle — for admin AttentionStrip. */
-  async diagnoseGateBlock(): Promise<{
+  async diagnoseGateBlock(destinationId?: string): Promise<{
     gateBlockReason: GateBlockReason;
     sentToday: number;
     outboxDeadByEventType: Awaited<ReturnType<OmnichannelService['outboxDeadByEventType']>>;
+    /** When destinationId set: operator-facing rules for that destination (not global leftovers). */
+    scopedPublish?: {
+      autoPublishMode: string;
+      autoDailyCap: number;
+      autoMinGapSeconds: number;
+      quietStartHour: number | null;
+      quietEndHour: number | null;
+      withdrawAction: string;
+      settingsSource: string;
+    };
   }> {
-    const [stored, dests, conns, sentToday, deadBreakdown] = await Promise.all([
+    const [stored, dests, conns, deadBreakdown] = await Promise.all([
       this.loadStoredSettings(),
       this.destinations.find({ where: { enabled: true } }),
       this.connections.find(),
-      this.sentTodayCount(),
       this.outboxDeadByEventType(),
     ]);
-    const automation = readAutomationSettings(stored);
     const activeConnIds = new Set(conns.filter((c) => c.status === 'ACTIVE').map((c) => c.id));
-    const hasCanary = dests.some((d) => isCanarySettings(d.settings) && activeConnIds.has(d.connectionId));
-    const hasReadyDestination = dests.some((d) => {
+    let automation = readAutomationSettings(stored);
+    let scopeDests = dests;
+    let sentToday = await this.sentTodayCount();
+    let scopedPublish: {
+      autoPublishMode: string;
+      autoDailyCap: number;
+      autoMinGapSeconds: number;
+      quietStartHour: number | null;
+      quietEndHour: number | null;
+      withdrawAction: string;
+      settingsSource: string;
+    } | undefined;
+    if (destinationId) {
+      const dest = dests.find((d) => d.id === destinationId)
+        || await this.destinations.findOne({ where: { id: destinationId } });
+      if (dest) {
+        const conn = conns.find((c) => c.id === dest.connectionId)
+          || await this.connections.findOne({ where: { id: dest.connectionId } });
+        if (conn) {
+          const channel = conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+          const resolved = resolveDestinationPublishSettings(
+            dest.publishSettings,
+            conn.publishSettings,
+            stored,
+            channel,
+          );
+          automation = resolved.automation;
+          scopeDests = [dest];
+          sentToday = await this.sentTodayCount(channel, destinationId);
+          scopedPublish = {
+            autoPublishMode: resolved.automation.mode,
+            autoDailyCap: resolved.automation.dailyCap,
+            autoMinGapSeconds: resolved.automation.minGapSeconds,
+            quietStartHour: resolved.automation.quietStartHour ?? null,
+            quietEndHour: resolved.automation.quietEndHour ?? null,
+            withdrawAction: resolved.automation.withdrawAction,
+            settingsSource: resolved.source,
+          };
+        }
+      }
+    }
+    const hasCanary = scopeDests.some((d) => isCanarySettings(d.settings) && activeConnIds.has(d.connectionId));
+    const hasReadyDestination = scopeDests.some((d) => {
       if (!activeConnIds.has(d.connectionId)) return false;
       if (isCanarySettings(d.settings)) return true;
       return destinationCanPost(d.settings as Record<string, unknown> | null | undefined);
@@ -868,11 +1055,21 @@ export class OmnichannelService {
       quietEndHour: automation.quietEndHour,
       tehranHourNow: tehranHour(new Date()),
     });
-    return { gateBlockReason, sentToday, outboxDeadByEventType: deadBreakdown };
+    return { gateBlockReason, sentToday, outboxDeadByEventType: deadBreakdown, scopedPublish };
   }
 
-  async listOutbox() {
-    const rows = await this.events.find({ order: { createdAt: 'DESC' }, take: 100 });
+  async listOutbox(destinationId?: string) {
+    let rows: OutboxEventEntity[];
+    if (destinationId) {
+      rows = await this.events
+        .createQueryBuilder('e')
+        .where("e.payload->>'destinationId' = :destinationId", { destinationId })
+        .orderBy('e.createdAt', 'DESC')
+        .take(100)
+        .getMany();
+    } else {
+      rows = await this.events.find({ order: { createdAt: 'DESC' }, take: 100 });
+    }
     return rows.map((row) => ({
       id: row.id,
       eventType: row.eventType,
@@ -1079,7 +1276,22 @@ export class OmnichannelService {
     return row?.status === 'WITHDRAWN';
   }
 
-  async listAudits() {
+  async listAudits(destinationId?: string) {
+    if (destinationId) {
+      return this.audits
+        .createQueryBuilder('a')
+        .select([
+          'a.id', 'a.actorId', 'a.action', 'a.entityType', 'a.entityId',
+          'a.channel', 'a.reason', 'a.createdAt',
+        ])
+        .where(
+          "(a.entityId = :destinationId OR a.payload->>'destinationId' = :destinationId OR a.payload->'destinationIds' ? :destinationId)",
+          { destinationId },
+        )
+        .orderBy('a.createdAt', 'DESC')
+        .take(100)
+        .getMany();
+    }
     return this.audits.find({
       order: { createdAt: 'DESC' },
       take: 100,
@@ -1099,7 +1311,13 @@ export class OmnichannelService {
       : String(dto.sourceId || '').trim();
     const projection = await this.projection.previewSource(kind, sourceId, channel);
     const available = 'available' in projection ? projection.available === true : true;
-    const oos = await this.oosDecisionFor(channel, available, kind, sourceId);
+    let connectionId = dto.connectionId || undefined;
+    let destinationId = dto.destinationId || undefined;
+    if (destinationId && !connectionId) {
+      const dest = await this.destinations.findOne({ where: { id: destinationId } });
+      if (dest) connectionId = dest.connectionId;
+    }
+    const oos = await this.oosDecisionFor(channel, available, kind, sourceId, connectionId, destinationId);
     const annotated = {
       ...projection,
       ...annotatePreviewOos(
@@ -1110,7 +1328,7 @@ export class OmnichannelService {
     return {
       dryRun: true,
       projection: annotated,
-      rendered: await this.publicationPayloadFor(annotated),
+      rendered: await this.publicationPayloadFor(annotated, connectionId, destinationId),
     };
   }
 
@@ -1175,7 +1393,15 @@ export class OmnichannelService {
         throw new BadRequestException(`سقف canary کانال ${projection.channel} برابر ${limit} محصول است؛ برای ارسال بیشتر حالت خودکار همین ربات را «زنده» کنید`);
       }
       const available = 'available' in projection ? projection.available === true : true;
-      const oos = await this.oosDecisionFor(channel, available, 'PRODUCT', sourceId, scope.connectionId);
+      const scopeDestId = targets[0]?.id;
+      const oos = await this.oosDecisionFor(
+        channel,
+        available,
+        'PRODUCT',
+        sourceId,
+        scope.connectionId,
+        scopeDestId,
+      );
       const reject = liveOosRejectReason(oos, available);
       if (reject) {
         throw new BadRequestException(
@@ -1256,34 +1482,36 @@ export class OmnichannelService {
             projection,
             status: 'READY',
           }));
-        const rendered = await this.publicationPayloadFor(projection);
         // Live FREE_POST uses this same outbox enqueue as PRODUCT / BLOG_POST / CMS_PAGE.
         // The worker adapter is the only Telegram hop. Do not call the Bot API here.
         const gatewaySource = String(projection.sourceType) === FREE_POST_SOURCE_TYPE
           ? FREE_POST_SOURCE_TYPE
           : undefined;
-        if (plan.creates.length) {
-          await this.enqueueDeliveries(manager, {
-            publicationId: row.id,
-            channel: projection.channel,
-            action: 'CREATE',
-            rendered,
-            targets: plan.creates,
-            auto: false,
-            sourceType: gatewaySource,
-          });
-        }
-        if (plan.updates.length) {
-          await this.enqueueDeliveries(manager, {
-            publicationId: row.id,
-            channel: projection.channel,
-            action: 'UPDATE',
-            rendered,
-            targets: plan.updates,
-            auto: false,
-            sourceType: gatewaySource,
-          });
-        }
+        const destById = new Map(targets.map((dest) => [dest.id, dest]));
+        const enqueuePerTarget = async (
+          action: 'CREATE' | 'UPDATE',
+          planTargets: Array<{ destinationId: string; providerMessageId?: string; publicationId?: string }>,
+        ) => {
+          for (const target of planTargets) {
+            const dest = destById.get(target.destinationId);
+            const rendered = await this.publicationPayloadFor(
+              projection,
+              dest?.connectionId,
+              target.destinationId,
+            );
+            await this.enqueueDeliveries(manager, {
+              publicationId: row.id,
+              channel: projection.channel,
+              action,
+              rendered,
+              targets: [target],
+              auto: false,
+              sourceType: gatewaySource,
+            });
+          }
+        };
+        if (plan.creates.length) await enqueuePerTarget('CREATE', plan.creates);
+        if (plan.updates.length) await enqueuePerTarget('UPDATE', plan.updates);
       }
       await manager.getRepository(OmnichannelAuditEntity).save(
         manager.getRepository(OmnichannelAuditEntity).create({
@@ -1344,14 +1572,13 @@ export class OmnichannelService {
     return selectAutomationDestinations(dests, conns, channel, 'LIVE');
   }
 
-  /** Cap / gap / mode for the bot(s) that own these destinations (tightest room if several). */
+  /** Cap / gap / mode for destinations (tightest daily room if several). */
   private async resolvePublishScopeForTargets(
     channel: 'RETAIL' | 'WHOLESALE',
-    targets: Array<{ connectionId: string }>,
+    targets: Array<{ id: string; connectionId: string; publishSettings?: Record<string, unknown> }>,
   ) {
     const global = await this.loadStoredSettings();
-    const connIds = [...new Set(targets.map((row) => row.connectionId))];
-    if (!connIds.length) {
+    if (!targets.length) {
       const automation = readAutomationSettings(global);
       const counters = await this.automationCounters(channel);
       return {
@@ -1359,6 +1586,7 @@ export class OmnichannelService {
         sentToday: counters.sentToday,
         dailyRoom: remainingDailyCreates(counters.sentToday, automation.dailyCap),
         connectionId: undefined as string | undefined,
+        destinationId: undefined as string | undefined,
       };
     }
     let best: {
@@ -1366,18 +1594,29 @@ export class OmnichannelService {
       sentToday: number;
       dailyRoom: number;
       connectionId: string;
+      destinationId: string;
     } | null = null;
-    for (const connectionId of connIds) {
-      const conn = await this.connections.findOne({ where: { id: connectionId } });
+    for (const target of targets) {
+      const conn = await this.connections.findOne({ where: { id: target.connectionId } });
       if (!conn) continue;
-      const resolved = resolveConnectionPublishSettings(conn.publishSettings, global, channel);
-      const counters = await this.automationCountersForConnection(connectionId, channel);
+      const dest = target.publishSettings != null
+        ? target
+        : await this.destinations.findOne({ where: { id: target.id } });
+      if (!dest) continue;
+      const resolved = resolveDestinationPublishSettings(
+        dest.publishSettings,
+        conn.publishSettings,
+        global,
+        channel,
+      );
+      const counters = await this.automationCountersForDestination(dest.id, channel);
       const dailyRoom = remainingDailyCreates(counters.sentToday, resolved.automation.dailyCap);
       const candidate = {
         automation: resolved.automation,
         sentToday: counters.sentToday,
         dailyRoom,
-        connectionId,
+        connectionId: conn.id,
+        destinationId: dest.id,
       };
       if (!best || candidate.dailyRoom < best.dailyRoom) best = candidate;
     }
@@ -1389,6 +1628,7 @@ export class OmnichannelService {
         sentToday: counters.sentToday,
         dailyRoom: remainingDailyCreates(counters.sentToday, automation.dailyCap),
         connectionId: undefined as string | undefined,
+        destinationId: undefined as string | undefined,
       };
     }
     return best;
@@ -1762,7 +2002,7 @@ export class OmnichannelService {
   }
 
   /**
-   * Channel automation for one product/channel. Each ACTIVE connection evaluates its own
+   * Channel automation for one product/channel. Each enabled destination evaluates its own
    * publishSettings (mode, cap, events, categories, OOS, withdraw) independently.
    */
   private async autoSyncRemote(input: {
@@ -1792,15 +2032,22 @@ export class OmnichannelService {
     const pending = await this.pendingCreateDestinationsForSource('PRODUCT', input.sourceId, input.channel);
     const cats = await this.productCategoryIdsFor(input.sourceId);
     const results: string[] = [];
-    for (const conn of conns) {
-      const resolved = resolveConnectionPublishSettings(conn.publishSettings, global, input.channel);
+    const connById = new Map(conns.map((row) => [row.id, row]));
+    for (const dest of dests) {
+      const conn = connById.get(dest.connectionId);
+      if (!conn) continue;
+      const resolved = resolveDestinationPublishSettings(
+        dest.publishSettings,
+        conn.publishSettings,
+        global,
+        input.channel,
+      );
       const { automation } = resolved;
       if (automation.mode === 'OFF') {
         results.push('mode_off');
         continue;
       }
-      const connDestIds = new Set(dests.filter((d) => d.connectionId === conn.id).map((d) => d.id));
-      const liveOnConn = live.filter((msg) => connDestIds.has(msg.destinationId));
+      const liveOnDest = live.filter((msg) => msg.destinationId === dest.id);
       let publishable = input.publishable;
       if (resolved.categoryIds.length > 0) {
         const categoryGate = evaluateCategoryAllowlistGate({
@@ -1809,7 +2056,7 @@ export class OmnichannelService {
           membershipCategoryIds: cats.membershipCategoryIds,
         });
         if (!categoryGate.allow) {
-          if (liveOnConn.length === 0) {
+          if (liveOnDest.length === 0) {
             results.push('category_not_allowed');
             continue;
           }
@@ -1822,7 +2069,7 @@ export class OmnichannelService {
         previousStatus: input.previousStatus,
         publishable,
         available: input.available,
-        hasRemoteMessage: liveOnConn.length > 0,
+        hasRemoteMessage: liveOnDest.length > 0,
         oosPolicy: resolved.oosPolicy,
         oosChosen: resolved.oosChosen,
         withdrawAction: automation.withdrawAction,
@@ -1838,7 +2085,7 @@ export class OmnichannelService {
           channel: input.channel,
           action: 'DELETE',
           rendered: null,
-          targets: liveOnConn.map((msg) => ({
+          targets: liveOnDest.map((msg) => ({
             destinationId: msg.destinationId,
             providerMessageId: msg.providerMessageId,
             publicationId: msg.publicationId,
@@ -1852,7 +2099,7 @@ export class OmnichannelService {
         results.push('no_projection');
         continue;
       }
-      const rendered = await this.publicationPayloadFor(input.projection, conn.id);
+      const rendered = await this.publicationPayloadFor(input.projection, conn.id, dest.id);
       if (intent.action === 'UPDATE') {
         const text = intent.notice
           ? renderUnavailableNotice(await this.publicationVarsFor(input.projection), rendered.parseMode)
@@ -1862,7 +2109,7 @@ export class OmnichannelService {
           channel: input.channel,
           action: 'UPDATE',
           rendered: { ...rendered, text },
-          targets: liveOnConn.map((msg) => ({
+          targets: liveOnDest.map((msg) => ({
             destinationId: msg.destinationId,
             providerMessageId: msg.providerMessageId,
             publicationId: msg.publicationId,
@@ -1872,7 +2119,7 @@ export class OmnichannelService {
         results.push(count ? (intent.notice ? 'update_notice' : 'update') : 'update_deduped');
         continue;
       }
-      const counters = await this.automationCountersForConnection(conn.id, input.channel);
+      const counters = await this.automationCountersForDestination(dest.id, input.channel);
       const gate = evaluateAutomationGate({
         mode: automation.mode,
         eventType: input.eventType,
@@ -1892,11 +2139,10 @@ export class OmnichannelService {
         results.push(gate.reason);
         continue;
       }
-      const withMessage = new Set(liveOnConn.map((msg) => msg.destinationId));
-      const targets = selectAutomationDestinationsForConnection(dests, conn, automation.mode)
-        .filter((dest) => !withMessage.has(dest.id) && !pending.has(dest.id))
-        .map((dest) => ({ destinationId: dest.id }));
-      if (!targets.length) {
+      const eligible = selectAutomationDestinationsForConnection([dest], conn, automation.mode)
+        .filter((row) => !pending.has(row.id) && liveOnDest.length === 0)
+        .map((row) => ({ destinationId: row.id }));
+      if (!eligible.length) {
         results.push('no_destination');
         continue;
       }
@@ -1905,7 +2151,7 @@ export class OmnichannelService {
         channel: input.channel,
         action: 'CREATE',
         rendered,
-        targets,
+        targets: eligible,
         auto: true,
         availableAt: gate.sendAt,
       });
@@ -1989,9 +2235,13 @@ export class OmnichannelService {
 
   /**
    * CREATE slots used toward the daily cap (Tehran day).
-   * When connectionId is set, only deliveries to that bot's destinations count.
+   * Prefer destinationId; connectionId scopes all of that bot's destinations.
    */
-  private async countCreatesTowardDailyCap(channel?: string, connectionId?: string): Promise<number> {
+  private async countCreatesTowardDailyCap(
+    channel?: string,
+    connectionId?: string,
+    destinationId?: string,
+  ): Promise<number> {
     const dayStart = tehranDayStart(new Date());
     const qb = this.deliveries
       .createQueryBuilder('d')
@@ -2000,7 +2250,9 @@ export class OmnichannelService {
       .andWhere('d.status IN (:...st)', { st: ['PENDING', 'PROCESSING', 'RETRY', 'SUCCEEDED'] })
       .andWhere('d.createdAt >= :dayStart', { dayStart });
     if (channel) qb.andWhere('p.channel = :channel', { channel });
-    if (connectionId) {
+    if (destinationId) {
+      qb.andWhere('d.destinationId = :destinationId', { destinationId });
+    } else if (connectionId) {
       qb.innerJoin(ChannelDestinationEntity, 'dest', 'dest.id = d.destinationId')
         .andWhere('dest.connectionId = :connectionId', { connectionId });
     }
@@ -2008,7 +2260,33 @@ export class OmnichannelService {
     return Number(row?.n || 0);
   }
 
-  /** CREATE counters for one bot: slots used today + latest scheduled send (for min-gap). */
+  /** CREATE counters for one destination: slots used today + latest scheduled send (for min-gap). */
+  private async automationCountersForDestination(
+    destinationId: string,
+    channel: string,
+  ): Promise<{ sentToday: number; lastScheduledAt: Date | null }> {
+    const dayStart = tehranDayStart(new Date());
+    const [sentToday, last] = await Promise.all([
+      this.countCreatesTowardDailyCap(channel, undefined, destinationId),
+      this.events
+        .createQueryBuilder('e')
+        .where('e.eventType = :type', { type: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED })
+        .andWhere('e.channel = :channel', { channel })
+        .andWhere("e.payload->>'action' = 'CREATE'")
+        .andWhere("e.payload->>'destinationId' = :destinationId", { destinationId })
+        .andWhere('e.createdAt >= :dayStart', { dayStart })
+        .select('MAX(e.availableAt)', 'last')
+        .getRawOne<{ last: Date | string | null }>(),
+    ]);
+    const lastRaw = last?.last ?? null;
+    const lastScheduledAt = lastRaw ? new Date(lastRaw) : null;
+    return {
+      sentToday,
+      lastScheduledAt: lastScheduledAt && !Number.isNaN(lastScheduledAt.getTime()) ? lastScheduledAt : null,
+    };
+  }
+
+  /** CREATE counters for one bot (compat / multi-dest scope). */
   private async automationCountersForConnection(
     connectionId: string,
     channel: string,
@@ -2097,6 +2375,7 @@ export class OmnichannelService {
   private async publicationPayloadFor(
     projection: Record<string, unknown>,
     connectionId?: string,
+    destinationId?: string,
   ): Promise<RenderedPublication> {
     if (String(projection.sourceType || '').toUpperCase() === FREE_POST_SOURCE_TYPE) {
       return renderFreePost(projection);
@@ -2109,9 +2388,17 @@ export class OmnichannelService {
     const channel = projection.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
     if (eventType === 'product.published') await this.ensureProductTemplates();
     let body: string | undefined;
-    if (connectionId) {
+    if (destinationId) {
+      const perDest = await this.templates.find({
+        where: { destinationId, eventType, enabled: true },
+        order: { version: 'DESC' },
+        take: 1,
+      });
+      body = perDest[0]?.body;
+    }
+    if (!body && connectionId) {
       const perBot = await this.templates.find({
-        where: { connectionId, eventType, enabled: true },
+        where: { connectionId, eventType, enabled: true, destinationId: IsNull() },
         order: { version: 'DESC' },
         take: 1,
       });
@@ -2120,7 +2407,14 @@ export class OmnichannelService {
     if (!body) {
       const rows = await this.templates.find({
         where: [
-          { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType, enabled: true, connectionId: IsNull() },
+          {
+            provider: MASTER_TEMPLATE_PROVIDER,
+            channel,
+            eventType,
+            enabled: true,
+            connectionId: IsNull(),
+            destinationId: IsNull(),
+          },
         ],
         order: { version: 'DESC' },
         take: 1,
@@ -2130,7 +2424,7 @@ export class OmnichannelService {
           where: { provider: MASTER_TEMPLATE_PROVIDER, channel, eventType, enabled: true },
           order: { version: 'DESC' },
           take: 5,
-        })).find((row) => !row.connectionId)?.body;
+        })).find((row) => !row.connectionId && !row.destinationId)?.body;
     }
     const layout = parseTemplateLayout(body, channel);
     return renderPublicationLayout(layout, await this.publicationVarsFor(projection), channel);
@@ -2222,17 +2516,29 @@ export class OmnichannelService {
       allowCreate?: boolean;
     },
   ): Promise<{ queued: number; created: number; skipReason?: string }> {
+    const primaryDest = opts.destinationId
+      ? opts.targets.find((row) => row.id === opts.destinationId) || opts.targets[0]
+      : opts.targets[0];
     const { projection } = await this.preview({
       channel: opts.channel,
       sourceType: 'PRODUCT',
       sourceId: productId,
+      destinationId: primaryDest?.id,
+      connectionId: primaryDest?.connectionId,
     });
     if (!projection.publishable) {
       return { queued: 0, created: 0, skipReason: projection.rejectReason || 'غیرقابل انتشار' };
     }
     const sourceId = String(projection.sourceId || productId);
     const available = 'available' in projection ? projection.available === true : true;
-    const oos = await this.oosDecisionFor(opts.channel, available, 'PRODUCT', sourceId);
+    const oos = await this.oosDecisionFor(
+      opts.channel,
+      available,
+      'PRODUCT',
+      sourceId,
+      primaryDest?.connectionId,
+      primaryDest?.id,
+    );
     const reject = liveOosRejectReason(oos, available);
     if (reject) {
       return { queued: 0, created: 0, skipReason: `ناموجود (${oos.policy})` };
@@ -2258,7 +2564,6 @@ export class OmnichannelService {
           : 'ارسال قبلی هنوز در صف است',
       };
     }
-    const rendered = await this.publicationPayloadFor(projection);
     let queued = 0;
     let created = 0;
     await this.publications.manager.transaction(async (manager) => {
@@ -2289,30 +2594,33 @@ export class OmnichannelService {
           projection,
           status: 'READY',
         }));
-      if (plan.creates.length) {
-        const n = await this.enqueueDeliveries(manager, {
-          publicationId: row.id,
-          channel: opts.channel,
-          action: 'CREATE',
-          rendered,
-          targets: plan.creates,
-          auto: false,
-          availableAt: opts.availableAt,
-        });
-        queued += n;
-        if (n > 0) created += 1;
-      }
-      if (plan.updates.length) {
-        queued += await this.enqueueDeliveries(manager, {
-          publicationId: row.id,
-          channel: opts.channel,
-          action: 'UPDATE',
-          rendered,
-          targets: plan.updates,
-          auto: false,
-          availableAt: opts.availableAt,
-        });
-      }
+      const destById = new Map(opts.targets.map((dest) => [dest.id, dest]));
+      const enqueuePerTarget = async (
+        action: 'CREATE' | 'UPDATE',
+        planTargets: Array<{ destinationId: string; providerMessageId?: string; publicationId?: string }>,
+      ) => {
+        for (const target of planTargets) {
+          const dest = destById.get(target.destinationId);
+          const rendered = await this.publicationPayloadFor(
+            projection,
+            dest?.connectionId,
+            target.destinationId,
+          );
+          const n = await this.enqueueDeliveries(manager, {
+            publicationId: row.id,
+            channel: opts.channel,
+            action,
+            rendered,
+            targets: [target],
+            auto: false,
+            availableAt: opts.availableAt,
+          });
+          queued += n;
+          if (action === 'CREATE' && n > 0) created += 1;
+        }
+      };
+      if (plan.creates.length) await enqueuePerTarget('CREATE', plan.creates);
+      if (plan.updates.length) await enqueuePerTarget('UPDATE', plan.updates);
       await manager.getRepository(OmnichannelAuditEntity).save(
         manager.getRepository(OmnichannelAuditEntity).create({
           actorId: opts.actor.id,
@@ -2424,6 +2732,28 @@ export class OmnichannelService {
     }
   }
 
+  /** Turning automation on for one destination: that destination must itself be eligible. */
+  private async assertAutomationPrerequisitesForDestination(
+    dest: ChannelDestinationEntity,
+    conn: ChannelConnectionEntity,
+    mode: 'CANARY' | 'LIVE',
+  ) {
+    if (conn.status !== 'ACTIVE') {
+      throw new BadRequestException('ابتدا وضعیت این ربات را ACTIVE کنید');
+    }
+    if (!dest.enabled) {
+      throw new BadRequestException('این مقصد غیرفعال است');
+    }
+    const ready = selectAutomationDestinationsForConnection([dest], conn, mode);
+    if (!ready.length) {
+      throw new BadRequestException(
+        mode === 'CANARY'
+          ? 'برای حالت آزمایشی، این مقصد باید canary باشد'
+          : 'برای حالت زنده، این مقصد باید canary یا بررسی‌شده با اجازهٔ ارسال باشد',
+      );
+    }
+  }
+
   private async loadStoredSettings() {
     try {
       const row = await this.appSettings.findOne({ where: { key: OMNICHANNEL_SETTINGS_KEY } });
@@ -2480,11 +2810,27 @@ export class OmnichannelService {
     sourceType: string,
     sourceId: string,
     connectionId?: string,
+    destinationId?: string,
   ) {
     const stored = await this.loadStoredSettings();
     let policy = readChannelOos(stored, channel).policy;
     let chosen = readChannelOos(stored, channel).chosen;
-    if (connectionId) {
+    if (destinationId) {
+      const dest = await this.destinations.findOne({ where: { id: destinationId } });
+      const conn = dest
+        ? await this.connections.findOne({ where: { id: dest.connectionId } })
+        : null;
+      if (dest && conn) {
+        const resolved = resolveDestinationPublishSettings(
+          dest.publishSettings,
+          conn.publishSettings,
+          stored,
+          channel,
+        );
+        policy = resolved.oosPolicy;
+        chosen = resolved.oosChosen;
+      }
+    } else if (connectionId) {
       const conn = await this.connections.findOne({ where: { id: connectionId } });
       if (conn) {
         const resolved = resolveConnectionPublishSettings(conn.publishSettings, stored, channel);

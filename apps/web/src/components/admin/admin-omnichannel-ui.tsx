@@ -180,7 +180,7 @@ export type ConnectionPublishSettings = {
   quietEndHour?: number | null;
   withdrawAction?: WithdrawAction;
   autoPublishCategoryIds?: string[];
-  settingsSource?: 'connection' | 'global_fallback';
+  settingsSource?: 'destination' | 'connection' | 'global_fallback';
 };
 
 export type Connection = {
@@ -201,6 +201,7 @@ export type Destination = {
   enabled: boolean;
   isCanary?: boolean;
   verified?: Verification | null;
+  publishSettings?: ConnectionPublishSettings;
 };
 
 export type Template = {
@@ -208,6 +209,7 @@ export type Template = {
   provider: string;
   channel: string;
   connectionId?: string | null;
+  destinationId?: string | null;
   eventType: string;
   version: number;
   enabled?: boolean;

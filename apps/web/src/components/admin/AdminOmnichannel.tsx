@@ -138,6 +138,32 @@ function rulesFromConnection(conn: Connection | null | undefined, st: Status | n
   };
 }
 
+function rulesFromDestination(
+  dest: Destination | null | undefined,
+  conn: Connection | null | undefined,
+  st: Status | null,
+): RulesDraft {
+  const base = rulesFromConnection(conn, st);
+  const ps = dest?.publishSettings;
+  if (!ps) return base;
+  const channel = conn?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
+  const oos = ps.oosPolicy || base.oosPolicy;
+  return {
+    ...base,
+    autoPublishMode: ps.autoPublishMode || 'OFF',
+    autoPublishEventTypes: ps.autoPublishEventTypes?.length ? ps.autoPublishEventTypes : DEFAULT_EVENTS,
+    oosPolicy: oos,
+    retailOosPolicy: channel === 'RETAIL' ? oos : base.retailOosPolicy,
+    wholesaleOosPolicy: channel === 'WHOLESALE' ? oos : base.wholesaleOosPolicy,
+    withdrawAction: ps.withdrawAction || 'DELETE',
+    autoDailyCap: typeof ps.autoDailyCap === 'number' ? ps.autoDailyCap : 20,
+    autoMinGapSeconds: typeof ps.autoMinGapSeconds === 'number' ? ps.autoMinGapSeconds : 90,
+    quietStartHour: ps.quietStartHour ?? null,
+    quietEndHour: ps.quietEndHour ?? null,
+    autoPublishCategoryIds: Array.isArray(ps.autoPublishCategoryIds) ? ps.autoPublishCategoryIds : [],
+  };
+}
+
 function gapLabel(seconds: number) {
   if (seconds === 0) return 'بدون فاصله';
   if (seconds < 60) return `${faNumber(seconds)} ثانیه`;
@@ -157,13 +183,14 @@ function summarizeBulkWithdraw(result: BulkWithdrawResult): string {
   return `${faNumber(ok)} موفق، ${faNumber(fail)} ناموفق${firstError ? ` — ${firstError}` : ''}`;
 }
 
-/** Channel-wide fallback templates stay under Telegram; per-bot templates bind connectionId. */
+/** Channel-wide fallback templates stay under Telegram; per-destination templates bind destinationId. */
 const MASTER_TEMPLATE_PROVIDER: Provider = 'TELEGRAM';
 
-function isProductTemplate(row: Template, channel: Channel, connectionId?: string) {
+function isProductTemplate(row: Template, channel: Channel, destinationId?: string, connectionId?: string) {
   if (row.channel !== channel || row.eventType !== PRODUCT_TEMPLATE_EVENT || row.enabled === false) return false;
-  if (connectionId) return row.connectionId === connectionId;
-  return row.provider === MASTER_TEMPLATE_PROVIDER && !row.connectionId;
+  if (destinationId) return row.destinationId === destinationId;
+  if (connectionId) return row.connectionId === connectionId && !row.destinationId;
+  return row.provider === MASTER_TEMPLATE_PROVIDER && !row.connectionId && !row.destinationId;
 }
 
 function defaultSecretRef(provider: Provider) {
@@ -226,7 +253,10 @@ export function AdminOmnichannel() {
   const [destName, setDestName] = useState('');
   const [discovered, setDiscovered] = useState<{ connectionId: string; chats: DiscoveredChat[]; error?: string | null } | null>(null);
   const [tplChannel, setTplChannel] = useState<Channel>('RETAIL');
-  /** Bot whose publish rules / template are being edited (required for isolation). */
+  /** Destination whose publish rules / template / tabs are scoped (primary isolation key). */
+  const [selectedDestinationId, setSelectedDestinationId] = useState('');
+  const selectedDestinationIdRef = useRef('');
+  /** Compat: parent bot of selected destination (wizard step 1). */
   const [rulesConnectionId, setRulesConnectionId] = useState('');
   const rulesConnectionIdRef = useRef('');
   const [tplConnectionId, setTplConnectionId] = useState('');
@@ -260,15 +290,17 @@ export function AdminOmnichannel() {
   const load = useCallback(async () => {
     setError('');
     try {
+      const scopeId = selectedDestinationIdRef.current;
+      const q = scopeId ? `?destinationId=${encodeURIComponent(scopeId)}` : '';
       const [st, conns, dests, tpls, pubs, dels, box, logs, files, cats] = await Promise.all([
-        apiClient.get<Status>('/omnichannel/status'),
+        apiClient.get<Status>(`/omnichannel/status${q}`),
         apiClient.get<Connection[]>('/omnichannel/connections'),
         apiClient.get<Destination[]>('/omnichannel/destinations'),
-        apiClient.get<Template[]>('/omnichannel/templates'),
-        apiClient.get<Publication[]>('/omnichannel/publications'),
-        apiClient.get<Delivery[]>('/omnichannel/deliveries'),
-        apiClient.get<OutboxRow[]>('/omnichannel/outbox'),
-        apiClient.get<AuditRow[]>('/omnichannel/audits'),
+        apiClient.get<Template[]>(`/omnichannel/templates${q}`),
+        apiClient.get<Publication[]>(`/omnichannel/publications${q}`),
+        apiClient.get<Delivery[]>(`/omnichannel/deliveries${q}`),
+        apiClient.get<OutboxRow[]>(`/omnichannel/outbox${q}`),
+        apiClient.get<AuditRow[]>(`/omnichannel/audits${q}`),
         apiClient.get<MediaRow[]>('/omnichannel/media').catch(() => [] as MediaRow[]),
         apiClient.get<CategoryOption[]>('/categories/admin').catch(() => [] as CategoryOption[]),
       ]);
@@ -283,14 +315,24 @@ export function AdminOmnichannel() {
       setAudits(logs);
       setMedia(files);
       setDestConnectionId((current) => (current && conns.some((row) => row.id === current) ? current : conns[0]?.id || ''));
-      const nextRulesId = rulesConnectionIdRef.current && conns.some((row) => row.id === rulesConnectionIdRef.current)
-        ? rulesConnectionIdRef.current
-        : (conns[0]?.id || '');
+      const nextDestId = selectedDestinationIdRef.current && dests.some((row) => row.id === selectedDestinationIdRef.current)
+        ? selectedDestinationIdRef.current
+        : (dests[0]?.id || '');
+      selectedDestinationIdRef.current = nextDestId;
+      setSelectedDestinationId(nextDestId);
+      const nextDest = dests.find((row) => row.id === nextDestId) || null;
+      const nextRulesId = nextDest?.connectionId
+        || (rulesConnectionIdRef.current && conns.some((row) => row.id === rulesConnectionIdRef.current)
+          ? rulesConnectionIdRef.current
+          : (conns[0]?.id || ''));
       rulesConnectionIdRef.current = nextRulesId;
       setRulesConnectionId(nextRulesId);
-      setTplConnectionId((current) => (current && conns.some((row) => row.id === current) ? current : conns[0]?.id || ''));
+      setTplConnectionId(nextRulesId);
       const selectedConn = conns.find((row) => row.id === nextRulesId) || null;
-      const fromServer = rulesFromConnection(selectedConn, st);
+      if (selectedConn) {
+        setTplChannel(selectedConn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+      }
+      const fromServer = rulesFromDestination(nextDest, selectedConn, st);
       const previous = JSON.stringify(savedRulesRef.current);
       savedRulesRef.current = fromServer;
       setSavedRules(fromServer);
@@ -413,18 +455,30 @@ export function AdminOmnichannel() {
   const canaryByChannel = (channel: Channel) => destinations.find((dest) => dest.isCanary && channelOf(dest) === channel);
   const canaryForConnection = (connectionId: string) => destinations.find((dest) => dest.isCanary && dest.enabled && dest.connectionId === connectionId);
   const unverified = destinations.filter((dest) => dest.enabled && !dest.isCanary && !dest.verified);
-  const activeTplConnectionId = tplConnectionId || rulesConnectionId;
+  const selectedDestination = destinations.find((row) => row.id === selectedDestinationId) || null;
+  const activeTplConnectionId = selectedDestination?.connectionId || tplConnectionId || rulesConnectionId;
   const retailTpl = (
-    templates.filter((row) => isProductTemplate(row, 'RETAIL', activeTplConnectionId)).sort((a, b) => b.version - a.version)[0]
-    || templates.filter((row) => isProductTemplate(row, 'RETAIL')).sort((a, b) => b.version - a.version)[0]
+    (selectedDestinationId
+      ? templates.filter((row) => isProductTemplate(row, 'RETAIL', selectedDestinationId)).sort((a, b) => b.version - a.version)[0]
+      : null)
+    || templates.filter((row) => isProductTemplate(row, 'RETAIL', undefined, activeTplConnectionId)).sort((a, b) => b.version - a.version)[0]
+    || null
   );
   const wholesaleTpl = (
-    templates.filter((row) => isProductTemplate(row, 'WHOLESALE', activeTplConnectionId)).sort((a, b) => b.version - a.version)[0]
-    || templates.filter((row) => isProductTemplate(row, 'WHOLESALE')).sort((a, b) => b.version - a.version)[0]
+    (selectedDestinationId
+      ? templates.filter((row) => isProductTemplate(row, 'WHOLESALE', selectedDestinationId)).sort((a, b) => b.version - a.version)[0]
+      : null)
+    || templates.filter((row) => isProductTemplate(row, 'WHOLESALE', undefined, activeTplConnectionId)).sort((a, b) => b.version - a.version)[0]
+    || null
   );
-  const templatesReady = templateLooksReady(retailTpl?.body) && templateLooksReady(wholesaleTpl?.body);
-  const rulesConn = connections.find((row) => row.id === rulesConnectionId) || null;
-  const rulesReadyDestinations = readyDestinations.filter((dest) => dest.connectionId === rulesConnectionId);
+  const activeChannelTpl = tplChannel === 'WHOLESALE' ? wholesaleTpl : retailTpl;
+  const templatesReady = selectedDestinationId
+    ? templateLooksReady(activeChannelTpl?.body)
+    : false;
+  const rulesConn = connections.find((row) => row.id === (selectedDestination?.connectionId || rulesConnectionId)) || null;
+  const rulesReadyDestinations = selectedDestinationId
+    ? readyDestinations.filter((dest) => dest.id === selectedDestinationId)
+    : readyDestinations.filter((dest) => dest.connectionId === rulesConnectionId);
   const flagsOn = Boolean(status?.connectors && status?.autoPublish);
   const connectorsOn = Boolean(status?.connectors);
   /** Selected bot's mode (global status.autoPublishMode is legacy leftover only). */
@@ -630,14 +684,18 @@ export function AdminOmnichannel() {
     {
       id: 'template',
       label: 'قالب پست',
-      state: templatesReady ? 'done' : templateLooksReady(retailTpl?.body) || templateLooksReady(wholesaleTpl?.body) ? 'warn' : 'todo',
-      hint: templatesReady ? 'تکی و عمده ذخیره شده' : 'قالب تکی یا عمده آماده نیست',
+      state: templatesReady ? 'done' : selectedDestinationId ? 'warn' : 'todo',
+      hint: !selectedDestinationId
+        ? 'اول مقصد را انتخاب کنید'
+        : templatesReady
+          ? 'قالب این مقصد ذخیره شده'
+          : 'قالب این مقصد آماده نیست',
     },
     {
       id: 'rules',
       label: 'قواعد خودکار',
       state: mode !== 'OFF' ? 'done' : status?.autoPublishEventTypesChosen ? 'warn' : 'todo',
-      hint: `${modeLabel(mode)} · روزانه تا ${faNumber(status?.autoDailyCap ?? 20)} پست`,
+      hint: `${modeLabel(mode)} · روزانه تا ${faNumber(rules.autoDailyCap)} پست`,
     },
     {
       id: 'activate',
@@ -678,7 +736,7 @@ export function AdminOmnichannel() {
     { label: 'ربات فعال', ok: activeConnections.length > 0, detail: activeConnections.length ? summarizeBots(activeConnections) : 'مرحله ۱ را کامل کنید' },
     { label: 'مقصد تأییدشده', ok: readyDestinations.length > 0, detail: readyDestinations.length ? readyDestinations.map((dest) => dest.displayName).join('، ') : 'مرحله ۲: دسترسی ربات را بررسی کنید' },
     { label: 'مقصد آزمایشی', ok: hasCanary, detail: [canaryByChannel('RETAIL')?.displayName, canaryByChannel('WHOLESALE')?.displayName].filter(Boolean).join('، ') || 'یک مقصد را به‌عنوان آزمایشی انتخاب کنید' },
-    { label: 'قالب تکی و عمده', ok: templatesReady, detail: templatesReady ? 'ذخیره شده' : 'مرحله ۳ را برای هر دو کانال ذخیره کنید' },
+    { label: 'قالب این مقصد', ok: templatesReady, detail: !selectedDestinationId ? 'مقصد انتخاب نشده' : templatesReady ? 'ذخیره شده' : 'مرحله ۳ را ذخیره کنید' },
     { label: 'ارسال از سرور (دستی)', ok: connectorsOn, detail: connectorsOn ? 'ارسال دستی از سرور روشن است' : 'برای ارسال دستی و آزمایشی، مدیر سرور باید ارسال را روشن کند' },
     { label: 'انتشار خودکار سرور', ok: Boolean(status?.autoPublish), detail: status?.autoPublish ? 'انتشار خودکار روی سرور روشن است' : 'فقط برای رویدادهای کاتالوگ؛ ارسال دستی به آن وابسته نیست' },
   ];
@@ -706,10 +764,10 @@ export function AdminOmnichannel() {
   /* ---------- actions ---------- */
 
   const saveRules = () => run('rules', async () => {
-    if (!rulesConnectionId) throw new Error('اول ربات را برای قواعد انتخاب کنید');
-    const conn = connections.find((row) => row.id === rulesConnectionId);
+    if (!selectedDestinationId) throw new Error('اول مقصد (کانال پیام‌رسان) را انتخاب کنید');
+    const conn = connections.find((row) => row.id === (selectedDestination?.connectionId || rulesConnectionId));
     const channel = conn?.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
-    await apiClient.patch(`/omnichannel/connections/${rulesConnectionId}/publish-settings`, {
+    await apiClient.patch(`/omnichannel/destinations/${selectedDestinationId}/publish-settings`, {
       autoPublishMode: rules.autoPublishMode,
       autoPublishEventTypes: rules.autoPublishEventTypes,
       oosPolicy: rules.oosPolicy || (channel === 'WHOLESALE' ? rules.wholesaleOosPolicy : rules.retailOosPolicy),
@@ -728,15 +786,23 @@ export function AdminOmnichannel() {
         reason,
       });
     }
-  }, 'خطا در ذخیره قواعد', 'قواعد این ربات ذخیره شد');
+  }, 'خطا در ذخیره قواعد', 'قواعد این مقصد ذخیره شد');
 
   const setMode = (next: AutoPublishMode) => run(`mode-${next}`, async () => {
-    if (!rulesConnectionId) throw new Error('اول ربات را برای قواعد انتخاب کنید');
-    await apiClient.patch(`/omnichannel/connections/${rulesConnectionId}/publish-settings`, { autoPublishMode: next, reason });
+    if (!selectedDestinationId) throw new Error('اول مقصد را انتخاب کنید');
+    await apiClient.patch(`/omnichannel/destinations/${selectedDestinationId}/publish-settings`, { autoPublishMode: next, reason });
     setRules((current) => ({ ...current, autoPublishMode: next }));
-  }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار این ربات خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی این ربات فعال شد' : 'انتشار خودکار این ربات زنده شد');
+  }, 'تغییر حالت ناموفق', next === 'OFF' ? 'انتشار خودکار این مقصد خاموش شد' : next === 'CANARY' ? 'حالت آزمایشی این مقصد فعال شد' : 'انتشار خودکار این مقصد زنده شد');
 
   const manualPreviewBody = () => {
+    const destId = targetId || selectedDestinationId || undefined;
+    const connId = (destId ? destById.get(destId)?.connectionId : null)
+      || selectedDestination?.connectionId
+      || undefined;
+    const scope = {
+      ...(destId ? { destinationId: destId } : {}),
+      ...(connId ? { connectionId: connId } : {}),
+    };
     if (sourceType === 'FREE_POST') {
       return {
         channel: pubChannel,
@@ -744,9 +810,10 @@ export function AdminOmnichannel() {
         ...(freeSourceId ? { sourceId: freeSourceId } : {}),
         caption: freeCaption,
         ...(freeMediaUrl.trim() ? { mediaUrl: freeMediaUrl.trim() } : {}),
+        ...scope,
       };
     }
-    return { channel: pubChannel, sourceType, sourceId };
+    return { channel: pubChannel, sourceType, sourceId, ...scope };
   };
 
   const doPreview = () => run('preview', async () => {
@@ -780,10 +847,11 @@ export function AdminOmnichannel() {
     const lead = sourceType === 'FREE_POST' ? 'این متن آزاد' : 'این منبع';
     if (!window.confirm(`${lead} از صف کانال انتشار به ${where} می‌رود. ادامه می‌دهید؟`)) return;
     void run('send', async () => {
+      const destId = destinationId || targetId || selectedDestinationId || undefined;
       await apiClient.post('/omnichannel/publications', {
         preview: manualPreviewBody(),
         dryRun: false,
-        ...(destinationId ? { destinationId } : {}),
+        ...(destId ? { destinationId: destId } : {}),
         reason,
       });
       setView('publish');
@@ -1186,80 +1254,97 @@ export function AdminOmnichannel() {
     </Section>
   );
 
+  const pickSelectedDestination = (id: string) => {
+    selectedDestinationIdRef.current = id;
+    setSelectedDestinationId(id);
+    const dest = destinations.find((row) => row.id === id) || null;
+    const conn = dest ? connections.find((row) => row.id === dest.connectionId) || null : null;
+    if (conn) {
+      rulesConnectionIdRef.current = conn.id;
+      setRulesConnectionId(conn.id);
+      setTplConnectionId(conn.id);
+      setTplChannel(conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+      setPubChannel(conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
+    }
+    if (id) setTargetId(id);
+    const fromServer = rulesFromDestination(dest, conn, status);
+    savedRulesRef.current = fromServer;
+    setSavedRules(fromServer);
+    setRules(fromServer);
+    void load();
+  };
+
   const templatePanel = (
     <Section
       title="۳. قالب پست"
-      description="قالب برای هر ربات جدا ذخیره می‌شود. اگر برای این ربات قالبی نباشد، از قالب پیش‌فرض همان کانال فروش (تکی/عمده) استفاده می‌شود."
+      description="قالب برای هر مقصد (کانال پیام‌رسان) جدا ذخیره می‌شود. تعویض مقصد هرگز قالب مقصد دیگر را نشان نمی‌دهد."
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <select
             className="border rounded-lg px-2 py-1.5 text-sm bg-white"
-            value={tplConnectionId}
-            onChange={(e) => {
-              const id = e.target.value;
-              setTplConnectionId(id);
-              const conn = connections.find((row) => row.id === id);
-              if (conn) setTplChannel(conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL');
-            }}
+            value={selectedDestinationId}
+            onChange={(e) => pickSelectedDestination(e.target.value)}
           >
-            {connections.map((row) => (
-              <option key={row.id} value={row.id}>
-                {providerLabel(row.provider)} · {row.name}
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-1 rounded-xl bg-gray-100 p-1" role="tablist">
-            {(['RETAIL', 'WHOLESALE'] as Channel[]).map((ch) => {
-              const ready = templateLooksReady((ch === 'RETAIL' ? retailTpl : wholesaleTpl)?.body);
+            <option value="">انتخاب مقصد…</option>
+            {destinations.map((dest) => {
+              const conn = connById.get(dest.connectionId);
               return (
-                <button key={ch} type="button" role="tab" aria-selected={tplChannel === ch} className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 cursor-pointer ${tplChannel === ch ? 'bg-white shadow-sm font-medium' : 'text-gray-600'}`} onClick={() => setTplChannel(ch)}>
-                  {channelLabel(ch)}
-                  <span className={`h-2 w-2 rounded-full ${ready ? 'bg-emerald-500' : 'bg-amber-400'}`} aria-label={ready ? 'آماده' : 'ناقص'} />
-                </button>
+                <option key={dest.id} value={dest.id}>
+                  {conn ? `${providerLabel(conn.provider)} · ${conn.name} · ` : ''}{dest.displayName}
+                </option>
               );
             })}
-          </div>
+          </select>
+          {selectedDestination && rulesConn && (
+            <Badge tone="info">{channelLabel(rulesConn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL')}</Badge>
+          )}
         </div>
       }
     >
-      <AdminTelegramTemplateBuilder
-        channel={tplChannel}
-        template={tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl}
-        saving={busy === 'tpl-save'}
-        saveError={tplSaveError}
-        onDirtyChange={onTplDirty}
-        providers={providerInfos}
-        activeProviders={activeProviders.length ? activeProviders : ['TELEGRAM']}
-        onSave={async (body) => {
-          setError('');
-          setNotice('');
-          setTplSaveError('');
-          setBusy('tpl-save');
-          try {
-            if (!tplConnectionId) throw new Error('اول ربات را برای قالب انتخاب کنید');
-            const existing = (tplChannel === 'RETAIL' ? retailTpl : wholesaleTpl);
-            const perBot = existing?.connectionId === tplConnectionId ? existing : null;
-            if (perBot) await apiClient.patch(`/omnichannel/templates/${perBot.id}`, { body });
-            else {
-              await apiClient.post('/omnichannel/templates', {
-                provider: MASTER_TEMPLATE_PROVIDER,
-                channel: tplChannel,
-                connectionId: tplConnectionId,
-                eventType: PRODUCT_TEMPLATE_EVENT,
-                body,
-              });
+      {!selectedDestinationId ? (
+        <Callout tone="warn">اول یک مقصد از مرحله ۲ انتخاب کنید؛ بدون مقصد قالب ذخیره نمی‌شود.</Callout>
+      ) : (
+        <AdminTelegramTemplateBuilder
+          key={selectedDestinationId}
+          channel={tplChannel}
+          template={activeChannelTpl}
+          saving={busy === 'tpl-save'}
+          saveError={tplSaveError}
+          onDirtyChange={onTplDirty}
+          providers={providerInfos}
+          activeProviders={activeProviders.length ? activeProviders : ['TELEGRAM']}
+          onSave={async (body) => {
+            setError('');
+            setNotice('');
+            setTplSaveError('');
+            setBusy('tpl-save');
+            try {
+              if (!selectedDestinationId) throw new Error('اول مقصد را برای قالب انتخاب کنید');
+              const existing = activeChannelTpl;
+              const perDest = existing?.destinationId === selectedDestinationId ? existing : null;
+              if (perDest) await apiClient.patch(`/omnichannel/templates/${perDest.id}`, { body });
+              else {
+                await apiClient.post('/omnichannel/templates', {
+                  provider: MASTER_TEMPLATE_PROVIDER,
+                  channel: tplChannel,
+                  destinationId: selectedDestinationId,
+                  connectionId: selectedDestination?.connectionId || tplConnectionId || undefined,
+                  eventType: PRODUCT_TEMPLATE_EVENT,
+                  body,
+                });
+              }
+              await load();
+              setNotice(`قالب این مقصد (${channelLabel(tplChannel)}) ذخیره شد`);
+            } catch (err) {
+              const message = err instanceof Error ? err.message : 'خطا در ذخیره قالب';
+              setError(message);
+              setTplSaveError(message);
+            } finally {
+              setBusy('');
             }
-            await load();
-            setNotice(`قالب این ربات (${channelLabel(tplChannel)}) ذخیره شد`);
-          } catch (err) {
-            const message = err instanceof Error ? err.message : 'خطا در ذخیره قالب';
-            setError(message);
-            setTplSaveError(message);
-          } finally {
-            setBusy('');
-          }
-        }}
-      />
+          }}
+        />
+      )}
     </Section>
   );
 
@@ -1279,6 +1364,11 @@ export function AdminOmnichannel() {
     rulesConnectionIdRef.current = id;
     setRulesConnectionId(id);
     const conn = connections.find((row) => row.id === id) || null;
+    const firstDest = destinations.find((row) => row.connectionId === id);
+    if (firstDest) {
+      pickSelectedDestination(firstDest.id);
+      return;
+    }
     const fromServer = rulesFromConnection(conn, status);
     savedRulesRef.current = fromServer;
     setSavedRules(fromServer);
@@ -1292,36 +1382,47 @@ export function AdminOmnichannel() {
   const rulesPanel = (
     <Section
       title="۴. قواعد خودکار"
-      description="هر ربات و هر پلتفرم قواعد خودش را دارد (حالت، سقف، فاصله، سکوت، رویداد، دسته، ناموجودی). تا «ذخیره» را نزنید تغییری اعمال نمی‌شود."
+      description="هر مقصد قواعد خودش را دارد (حالت، سقف، فاصله، سکوت، رویداد، دسته، ناموجودی). دو کانال زیر یک ربات می‌توانند سقف و قالب متفاوت داشته باشند."
       actions={
         <>
           {rulesDirty && <Badge tone="warn">ذخیره نشده</Badge>}
           <button type="button" className="btn btn-secondary btn-sm" disabled={!rulesDirty} onClick={() => setRules(savedRules)}>انصراف</button>
-          <button type="button" className="btn btn-primary btn-sm" disabled={!rulesDirty || !rulesConnectionId || busy === 'rules'} onClick={saveRules}>{busy === 'rules' ? 'در حال ذخیره…' : 'ذخیره قواعد این ربات'}</button>
+          <button type="button" className="btn btn-primary btn-sm" disabled={!rulesDirty || !selectedDestinationId || busy === 'rules'} onClick={saveRules}>{busy === 'rules' ? 'در حال ذخیره…' : 'ذخیره قواعد این مقصد'}</button>
         </>
       }
     >
       <div className="space-y-5">
         <div className="space-y-2">
-          <p className="text-sm font-medium">ربات / پلتفرم</p>
-          {connections.length === 0 ? (
-            <Callout tone="warn">اول در مرحله ۱ یک ربات ثبت کنید؛ قواعد بدون ربات ذخیره نمی‌شود.</Callout>
+          <p className="text-sm font-medium">مقصد (کانال پیام‌رسان)</p>
+          {destinations.length === 0 ? (
+            <Callout tone="warn">اول در مرحله ۲ یک مقصد ثبت کنید؛ قواعد بدون مقصد ذخیره نمی‌شود.</Callout>
           ) : (
             <select
               className="border rounded-lg px-3 py-2 text-sm w-full bg-white max-w-xl"
-              value={rulesConnectionId}
-              onChange={(e) => pickRulesConnection(e.target.value)}
+              value={selectedDestinationId}
+              onChange={(e) => pickSelectedDestination(e.target.value)}
             >
-              {connections.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {providerLabel(row.provider)} · {channelLabel(row.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL')} · {row.name}
-                  {row.status !== 'ACTIVE' ? ' (غیرفعال)' : ''}
-                </option>
-              ))}
+              <option value="">انتخاب مقصد…</option>
+              {destinations.map((dest) => {
+                const conn = connById.get(dest.connectionId);
+                return (
+                  <option key={dest.id} value={dest.id}>
+                    {conn ? `${providerLabel(conn.provider)} · ${channelLabel(conn.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL')} · ${conn.name} · ` : ''}
+                    {dest.displayName}
+                    {!dest.enabled ? ' (غیرفعال)' : ''}
+                  </option>
+                );
+              })}
             </select>
           )}
-          {rulesConn?.publishSettings?.settingsSource === 'global_fallback' && (
-            <p className="text-xs text-amber-700">هنوز ذخیرهٔ اختصاصی ندارد؛ مقادیر از تنظیمات قدیمی کپی شده‌اند. با اولین ذخیره فقط مال همین ربات می‌شوند.</p>
+          {!selectedDestinationId && (
+            <Callout tone="warn">بدون انتخاب مقصد، قواعد و قالب ویرایش نمی‌شوند.</Callout>
+          )}
+          {selectedDestination?.publishSettings?.settingsSource === 'connection' && (
+            <p className="text-xs text-amber-700">هنوز ذخیرهٔ اختصاصی این مقصد ندارد؛ مقادیر از ربات والد آمده‌اند. با اولین ذخیره فقط مال همین مقصد می‌شوند.</p>
+          )}
+          {selectedDestination?.publishSettings?.settingsSource === 'global_fallback' && (
+            <p className="text-xs text-amber-700">هنوز ذخیرهٔ اختصاصی ندارد؛ مقادیر از تنظیمات قدیمی کپی شده‌اند.</p>
           )}
         </div>
 
@@ -1332,12 +1433,22 @@ export function AdminOmnichannel() {
             value={rules.autoPublishMode}
             onChange={(autoPublishMode) => setRules((current) => ({ ...current, autoPublishMode }))}
             options={[
-              { value: 'OFF', title: 'خاموش', hint: 'برای این ربات هیچ پستی خودکار نمی‌رود؛ فقط ارسال دستی.' },
-              { value: 'CANARY', title: 'آزمایشی', hint: 'قواعد این ربات اجرا می‌شوند اما پست فقط به مقصد آزمایشی همین ربات می‌رود.', badge: 'امن', tone: 'info' },
-              { value: 'LIVE', title: 'زنده', hint: 'پست به کانال‌های تأییدشدهٔ همین ربات می‌رود.', badge: 'واقعی', tone: 'ok', disabled: rulesReadyDestinations.filter((dest) => !dest.isCanary).length === 0 },
+              { value: 'OFF', title: 'خاموش', hint: 'برای این مقصد هیچ پستی خودکار نمی‌رود؛ فقط ارسال دستی.', disabled: !selectedDestinationId },
+              { value: 'CANARY', title: 'آزمایشی', hint: 'فقط اگر این مقصد canary باشد پست آزمایشی می‌رود.', badge: 'امن', tone: 'info', disabled: !selectedDestinationId },
+              {
+                value: 'LIVE',
+                title: 'زنده',
+                hint: 'پست به همین مقصد می‌رود اگر تأیید شده باشد.',
+                badge: 'واقعی',
+                tone: 'ok',
+                disabled: !selectedDestination
+                  || (!selectedDestination.isCanary && !destinationReady(selectedDestination)),
+              },
             ]}
           />
-          {rulesReadyDestinations.filter((dest) => !dest.isCanary).length === 0 && <p className="text-xs text-amber-700">برای حالت زنده این ربات دست‌کم یک کانال تأییدشده لازم است.</p>}
+          {selectedDestination && !selectedDestination.isCanary && !destinationReady(selectedDestination) && (
+            <p className="text-xs text-amber-700">برای حالت زنده این مقصد باید بررسی دسترسی شده باشد.</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -2047,7 +2158,7 @@ export function AdminOmnichannel() {
         </div>
       </Section>
       {attentionItems.length === 0 && (
-        <Callout tone="ok">مورد فوری برای اقدام نیست. پست‌های امروز: {faNumber(sentToday)} از {faNumber(status?.autoDailyCap ?? 20)}.</Callout>
+        <Callout tone="ok">مورد فوری برای اقدام نیست. پست‌های امروز: {faNumber(sentToday)} از {faNumber(rules.autoDailyCap)}.</Callout>
       )}
     </div>
   );
@@ -2084,10 +2195,10 @@ export function AdminOmnichannel() {
         />
         <Metric
           label="پست‌های امروز"
-          value={`${faNumber(sentToday)} از ${faNumber(status?.autoDailyCap ?? 20)}`}
+          value={`${faNumber(sentToday)} از ${faNumber(selectedDestinationId ? rules.autoDailyCap : (status?.autoDailyCap ?? rules.autoDailyCap))}`}
           hint={status?.gateBlockReason && status.gateBlockReason !== 'none' && sentToday === 0
             ? gateBlockReasonLabel(status.gateBlockReason)
-            : 'سقف روزانه طبق قواعد'}
+            : selectedDestinationId ? 'سقف روزانه این مقصد' : 'سقف روزانه طبق قواعد'}
           tone={sentToday === 0 && status?.gateBlockReason && status.gateBlockReason !== 'none' ? 'warn' : 'ok'}
         />
         <Metric

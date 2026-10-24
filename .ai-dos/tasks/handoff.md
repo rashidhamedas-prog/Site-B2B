@@ -4644,3 +4644,19 @@ The originally reported bug (blog-link save error on retail/wholesale) is fully 
 - GTM: unwanted referrals regex saved on both Google tags (G-F2V7VSJMLE, G-YVT5DXZF5Z), verified after reload.
 - Blocked: analytics.google.com returns 403 to the agent browser (key events, MP secrets, enhanced measurement still manual). Torob panel UTM still manual.
 - Before enabling GA4_SERVER_PURCHASE_ENABLED: create MP secrets per stream, put in /opt/taranom/.env on BOTH servers, recreate api. Roll back web+api together.
+## 2026-10-24T07:19:31Z — TASK-20260826-001 destination-scoped publish settings — claimed
+
+- Task / owner / role: TASK-20260826-001 / cursor:implementer-TASK-20260826-001 / implementer
+- Branch / worktree: ai/TASK-20260826-001-destination-settings / D:/proje/Site B2B
+- Objective: destinationId is primary scope for templates + auto rules; connection stays bot credentials; dual-read destination → connection → channel fallback.
+- Reclaimed stale claims from TASK-20261010-005 (hb 2026-10-09, >24h): omnichannel.service.ts, omnichannel-admin.controller.ts, omnichannel.dto.ts, AdminOmnichannel.tsx, omnichannel-phase-acceptance.spec.ts, outbox.service(+spec), outbox-worker.service.ts. Previous owner notified here.
+- Also claiming: channel-destination/template entities (already on 026), destination-publish-settings(+spec), migration 20261024-001, AdminTelegramTemplateBuilder (key remount), admin-omnichannel-ui types, publication-automation if call-site only, docs/reports + WORKLOG append-only.
+- Exact next: implement migration + resolve/sanitize + API + AdminOmnichannel selectedDestinationId + specs/tsc. No commit/push/deploy. No connector flags.
+
+## 2026-10-24T07:31:34Z — TASK-20260826-001 destination-scoped settings — implementer complete (pre-commit)
+
+- Task / owner / role: TASK-20260826-001 / cursor:implementer-TASK-20260826-001 / implementer
+- Branch: ai/TASK-20260826-001-destination-settings
+- Files: migration+spec, destination-publish-settings(+spec), entities, dto, controller, omnichannel.service, phase-acceptance, AdminOmnichannel, admin-omnichannel-ui, report, WORKLOG, active.yaml/handoff
+- Gates: destination/connection/phase/publication-automation specs ok; web tsc 0; api tsc only pre-existing order-money-guard.spec noise
+- Exact next: independent Reviewer + Security; parent commit/push/deploy. Do not Done TASK-20260826-001. Do not flip connector flags.

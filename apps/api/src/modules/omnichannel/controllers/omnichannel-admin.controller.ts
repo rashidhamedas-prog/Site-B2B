@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards,
+  Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -19,6 +19,7 @@ import {
   PatchDestinationDto,
   PatchMediaAltDto,
   PatchConnectionPublishSettingsDto,
+  PatchDestinationPublishSettingsDto,
   PatchOmnichannelSettingsDto,
   PatchTemplateDto,
   PreviewDto,
@@ -45,13 +46,14 @@ export class OmnichannelAdminController {
 
   @Get('status')
   @ApiOperation({ summary: 'وضعیت پرچم Omnichannel' })
-  async status() {
+  async status(@Query('destinationId') destinationId?: string) {
     await this.svc.ensureProductTemplates();
     const [settings, outbox, diagnosis] = await Promise.all([
       this.svc.getSettings(),
-      this.svc.outboxMetrics(),
-      this.svc.diagnoseGateBlock(),
+      this.svc.outboxMetrics(destinationId),
+      this.svc.diagnoseGateBlock(destinationId),
     ]);
+    const scoped = diagnosis.scopedPublish;
     return {
       autoPublish: isOmnichannelAutoPublishEnabled(),
       connectors: areOmnichannelConnectorsEnabled(),
@@ -61,17 +63,30 @@ export class OmnichannelAdminController {
       retailCanaryLimit: 10,
       wholesaleCanaryLimit: 10,
       outbox,
-      /** SUCCEEDED CREATE deliveries since Tehran day start. */
+      /** SUCCEEDED CREATE deliveries since Tehran day start (scoped when destinationId set). */
       sentToday: diagnosis.sentToday,
       /** Why auto-publish may be idle — for admin AttentionStrip. */
       gateBlockReason: diagnosis.gateBlockReason,
       /** DEAD outbox by eventType (channel vs all). */
       outboxDeadByEventType: diagnosis.outboxDeadByEventType,
+      scopedDestinationId: destinationId || null,
       /** Per-platform capability matrix + boolean readiness (enabled flag, token present). Never token values. */
       providers: providerReadiness(),
       /** Write-only token inventory: source + fingerprint, never the secret. */
       secrets: await this.svc.listSecretStatuses(),
       ...settings,
+      // When a destination is selected, operator metrics must not use stale global leftovers.
+      ...(scoped
+        ? {
+            autoPublishMode: scoped.autoPublishMode,
+            autoDailyCap: scoped.autoDailyCap,
+            autoMinGapSeconds: scoped.autoMinGapSeconds,
+            quietStartHour: scoped.quietStartHour,
+            quietEndHour: scoped.quietEndHour,
+            withdrawAction: scoped.withdrawAction,
+            settingsSource: scoped.settingsSource,
+          }
+        : {}),
     };
   }
 
@@ -122,7 +137,10 @@ export class OmnichannelAdminController {
   }
 
   @Patch('connections/:id/publish-settings')
-  @ApiOperation({ summary: 'ذخیره قواعد انتشار فقط برای این ربات' })
+  @ApiOperation({
+    summary: 'منسوخ — قواعد باید روی هر مقصد ذخیره شود',
+    deprecated: true,
+  })
   patchConnectionPublishSettings(
     @Param('id') id: string,
     @Body() body: PatchConnectionPublishSettingsDto,
@@ -169,6 +187,24 @@ export class OmnichannelAdminController {
     return this.svc.createDestination(body);
   }
 
+  @Get('destinations/:id/publish-settings')
+  @ApiOperation({ summary: 'قواعد انتشار این مقصد (جدا از سایر کانال‌های همان ربات)' })
+  getDestinationPublishSettings(@Param('id') id: string) {
+    assertNoPlaintextSecrets({ id });
+    return this.svc.getDestinationPublishSettings(id);
+  }
+
+  @Patch('destinations/:id/publish-settings')
+  @ApiOperation({ summary: 'ذخیره قواعد انتشار فقط برای این مقصد' })
+  patchDestinationPublishSettings(
+    @Param('id') id: string,
+    @Body() body: PatchDestinationPublishSettingsDto,
+    @Req() req: Authed,
+  ) {
+    assertNoPlaintextSecrets({ id, ...body });
+    return this.svc.patchDestinationPublishSettings(id, body, req.omnichannelActor);
+  }
+
   @Patch('destinations/:id')
   patchDestination(@Param('id') id: string, @Body() body: PatchDestinationDto) {
     return this.svc.patchDestination(id, body);
@@ -196,8 +232,8 @@ export class OmnichannelAdminController {
   }
 
   @Get('templates')
-  listTemplates() {
-    return this.svc.listTemplates();
+  listTemplates(@Query('destinationId') destinationId?: string) {
+    return this.svc.listTemplates(destinationId);
   }
 
   @Post('templates/ensure')
@@ -228,18 +264,18 @@ export class OmnichannelAdminController {
   }
 
   @Get('publications')
-  listPublications() {
-    return this.svc.listPublications();
+  listPublications(@Query('destinationId') destinationId?: string) {
+    return this.svc.listPublications(destinationId);
   }
 
   @Get('deliveries')
-  listDeliveries() {
-    return this.svc.listDeliveries();
+  listDeliveries(@Query('destinationId') destinationId?: string) {
+    return this.svc.listDeliveries(destinationId);
   }
 
   @Get('outbox')
-  listOutbox() {
-    return this.svc.listOutbox();
+  listOutbox(@Query('destinationId') destinationId?: string) {
+    return this.svc.listOutbox(destinationId);
   }
 
   @Post('outbox/clear-waiting')
@@ -257,8 +293,8 @@ export class OmnichannelAdminController {
   }
 
   @Get('audits')
-  listAudits() {
-    return this.svc.listAudits();
+  listAudits(@Query('destinationId') destinationId?: string) {
+    return this.svc.listAudits(destinationId);
   }
 
   @Post('deliveries/:id/retry')

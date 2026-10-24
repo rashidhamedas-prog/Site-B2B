@@ -83,24 +83,44 @@ assert(adminOmni.includes('هنوز انتشاری ثبت نشده') && adminOmn
   assert(tables >= 3 && heads === tables, 'admin tables have headers');
 }
 assert(adminOmni.includes('autoPublishMode') && adminOmni.includes('withdrawAction') && adminOmni.includes('/verify'), 'admin console v2: automation mode, withdraw action, destination verify');
-assert(adminOmni.includes('publish-settings') || adminOmni.includes('rulesConnectionId') || adminOmni.includes('قواعد این ربات'), 'admin console: per-bot publish rules UI');
 assert(
-  omniSvc.includes('patchConnectionPublishSettings')
-    && omniSvc.includes('selectAutomationDestinationsForConnection')
-    && omniSvc.includes('automationCountersForConnection'),
-  'per-connection publish settings + automation isolation',
+  adminOmni.includes('selectedDestinationId')
+    && (adminOmni.includes('destinations/') && adminOmni.includes('publish-settings')),
+  'admin console: destination-scoped publish rules UI',
 );
 assert(
-  omniAdmin.includes('connections/:id/publish-settings'),
-  'admin API exposes per-connection publish-settings',
+  omniSvc.includes('patchDestinationPublishSettings')
+    && omniSvc.includes('resolveDestinationPublishSettings')
+    && omniSvc.includes('automationCountersForDestination'),
+  'per-destination publish settings + automation isolation',
 );
 assert(
-  src('modules/omnichannel/connection-publish-settings.ts').includes('resolveConnectionPublishSettings'),
-  'connection publish settings module',
+  omniSvc.includes('دیگر روی ربات ذخیره نمی‌شود')
+    && omniAdmin.includes('منسوخ'),
+  'connection publish-settings write is deprecated / blocked',
 );
 assert(
-  src('database/migrations/20261014-001-connection-publish-settings.ts').includes('publishSettings'),
-  'migration adds connection publishSettings',
+  omniAdmin.includes('scopedPublish') || omniSvc.includes('scopedPublish'),
+  'status diagnosis exposes destination-scoped publish metrics',
+);
+assert(
+  omniAdmin.includes('destinations/:id/publish-settings'),
+  'admin API exposes per-destination publish-settings',
+);
+assert(
+  src('modules/omnichannel/destination-publish-settings.ts').includes('resolveDestinationPublishSettings'),
+  'destination publish settings module',
+);
+assert(
+  src('database/migrations/20261024-001-destination-publish-settings.ts').includes('publishSettings')
+    && src('database/migrations/20261024-001-destination-publish-settings.ts').includes('destinationId'),
+  'migration adds destination publishSettings + template destinationId',
+);
+assert(
+  omniSvc.includes('private async publicationPayloadFor(')
+    && omniSvc.includes('destinationId?: string')
+    && omniSvc.includes('automationCountersForDestination'),
+  'publicationPayloadFor + per-destination counters',
 );
 assert(omniAdmin.includes("outbox/clear-waiting") && omniAdmin.includes('publications/requeue-by-category'), 'admin clear-waiting and category requeue routes');
 assert(omniSvc.includes('clearWaitingOutbox') && omniSvc.includes('requeueByCategory'), 'service clear-waiting and category requeue');
