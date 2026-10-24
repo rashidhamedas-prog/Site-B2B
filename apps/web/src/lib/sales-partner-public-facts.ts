@@ -1,9 +1,12 @@
 /**
  * Public sales-partner figures and the copy that must stay in lockstep with them.
- * Image slots are stable filenames. A later art swap replaces the same files.
+ * Image slots are versioned filenames. A later art swap bumps the version suffix.
  *
- * Desktop: scene-0N-desktop.webp — 1280×720 (16:9)
- * Mobile:  scene-0N-mobile.webp  — 1080×1350 (4:5)
+ * Desktop: scene-0N-desktop-v2a.webp — 1280×720 (16:9)
+ * Mobile:  scene-0N-mobile-v2a.webp  — 1080×1350 (4:5)
+ *
+ * Filenames carry an art version suffix (STORYBOARD_ART_VERSION). A new art set
+ * gets a new suffix so browser, CDN and next/image caches cannot serve old art.
  *
  * The files in public/ are the v2 cards. Persian copy is baked into each image,
  * so the card renders the picture only. `storyCardAlt` is that step's heading
@@ -24,12 +27,23 @@ export const STORY_FRAME = {
 } as const;
 
 export const STORYBOARD_PUBLIC_DIR = '/sales-partner/storyboard';
+/** Bump with every art swap (new files, new names) so no cache serves the old art. */
+export const STORYBOARD_ART_VERSION = 'v2a';
+
+const LEGACY_STORYBOARD_SRC = /^\/sales-partner\/storyboard\/scene-\d{2}-(?:desktop|mobile)(?:-v[0-9a-z]+)?\.webp$/;
+
+/** Stored CMS paths that point at an older storyboard file fall back to the current versioned slot. */
+function currentStoryboardSrc(stored: unknown, fallback: string): string {
+  const value = typeof stored === 'string' ? stored.trim() : '';
+  if (!value || LEGACY_STORYBOARD_SRC.test(value)) return fallback;
+  return value;
+}
 
 export function storyboardImageSrc(scene: number): { desktop: string; mobile: string } {
   const n = String(Math.min(99, Math.max(1, Math.trunc(scene) || 1))).padStart(2, '0');
   return {
-    desktop: `${STORYBOARD_PUBLIC_DIR}/scene-${n}-desktop.webp`,
-    mobile: `${STORYBOARD_PUBLIC_DIR}/scene-${n}-mobile.webp`,
+    desktop: `${STORYBOARD_PUBLIC_DIR}/scene-${n}-desktop-${STORYBOARD_ART_VERSION}.webp`,
+    mobile: `${STORYBOARD_PUBLIC_DIR}/scene-${n}-mobile-${STORYBOARD_ART_VERSION}.webp`,
   };
 }
 
@@ -316,11 +330,8 @@ export function parseStorySteps(raw: unknown): StoryStepCopy[] {
       n,
       title,
       body,
-      image: typeof record.image === 'string' && record.image.trim() ? record.image.trim() : src.desktop,
-      imageMobile:
-        typeof record.imageMobile === 'string' && record.imageMobile.trim()
-          ? record.imageMobile.trim()
-          : src.mobile,
+      image: currentStoryboardSrc(record.image, src.desktop),
+      imageMobile: currentStoryboardSrc(record.imageMobile, src.mobile),
     };
     if (aside) step.aside = aside;
     steps.push(step);

@@ -47,7 +47,7 @@ function str(props: Record<string, unknown>, key: string) {
 }
 
 const FILE_HINT =
-  'دور کارت متن تکراری نشان داده نمی‌شود. متن جایگزین تصویر همان عنوان و توضیح این قدم است، چون این متن داخل خود تصویر است. اگر فایل عوض می‌شود، نام را نگه دارید: scene-0N-desktop.webp (۱۲۸۰×۷۲۰) و scene-0N-mobile.webp (۱۰۸۰×۱۳۵۰).';
+  'دور کارت متن تکراری نشان داده نمی‌شود. متن جایگزین تصویر همان عنوان و توضیح این قدم است، چون این متن داخل خود تصویر است. اگر فایل عوض می‌شود، پسوند نسخه را عوض کنید تا کش تصویر قدیمی را نشان ندهد: scene-0N-desktop-v2a.webp (۱۲۸۰×۷۲۰) و scene-0N-mobile-v2a.webp (۱۰۸۰×۱۳۵۰).';
 
 export function AdminStoryBlockFields({
   block,

@@ -16,6 +16,7 @@ import {
   renderEarningRepeatNote,
   salesPartnerFaqItems,
   salesPartnerStorySteps,
+  parseStorySteps,
   storyCardAlt,
 } from './sales-partner-public-facts.ts';
 
@@ -51,9 +52,9 @@ assert(STORY_FRAME.mobile.width / STORY_FRAME.mobile.height === 4 / 5, 'mobile r
 
 const steps = salesPartnerStorySteps();
 assert(steps.length === 6, 'six scenes');
-assert(steps[0]?.image === '/sales-partner/storyboard/scene-01-desktop.webp', 'scene 1 desktop slot');
-assert(steps[0]?.imageMobile === '/sales-partner/storyboard/scene-01-mobile.webp', 'scene 1 mobile slot');
-assert(steps[5]?.image === '/sales-partner/storyboard/scene-06-desktop.webp', 'scene 6 desktop slot');
+assert(steps[0]?.image === '/sales-partner/storyboard/scene-01-desktop-v2a.webp', 'scene 1 desktop slot');
+assert(steps[0]?.imageMobile === '/sales-partner/storyboard/scene-01-mobile-v2a.webp', 'scene 1 mobile slot');
+assert(steps[5]?.image === '/sales-partner/storyboard/scene-06-desktop-v2a.webp', 'scene 6 desktop slot');
 assert(
   storyCardAlt(steps[0]!) ===
     'رایگان ثبت‌نام کنید. فرم پایین همین صفحه را پر کنید و کدی را که پیامک می‌شود وارد کنید. عضویت رایگان است.',
@@ -97,6 +98,12 @@ function webpSize(buf: Buffer): { width: number; height: number } {
     height: buf.readUInt16LE(start + 5) & 0x3fff,
   };
 }
+
+assert(
+  parseStorySteps([{ n: 2, title: 't', image: '/sales-partner/storyboard/scene-02-desktop.webp', imageMobile: '/sales-partner/storyboard/scene-02-mobile.webp' }])[0]?.image ===
+    '/sales-partner/storyboard/scene-02-desktop-v2a.webp',
+  'legacy CMS storyboard path maps to the versioned file',
+);
 
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), '../../public/sales-partner/storyboard');
 for (const step of steps) {
