@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { beginProductTransition } from '@/components/motion/product-transition';
 import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueInStockColors } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
@@ -49,7 +51,9 @@ export function WholesaleProductCard({
   product: WholesaleCardProduct;
   imagePriority?: boolean;
 }) {
+  const router = useRouter();
   const [orderOpen, setOrderOpen] = useState(false);
+  const [imageReady, setImageReady] = useState(false);
   const href = `/products/${product.slug || product.id}`;
   const onSelect = () =>
     trackSelectItem(
@@ -92,17 +96,21 @@ export function WholesaleProductCard({
   return (
     <>
     <article
-      className={`group relative flex h-full flex-col overflow-hidden rounded-lg bg-white transition duration-300 focus-within:shadow-[0_4px_16px_rgba(27,92,74,0.07)] focus-within:ring-2 focus-within:ring-[var(--brand-gold,#C9A84C)] focus-within:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none ${
-        orderOpen
-          ? 'shadow-[0_4px_16px_rgba(27,92,74,0.07)]'
-          : 'hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(27,92,74,0.07)] motion-reduce:hover:translate-y-0'
+      className={`tn-card group relative flex h-full flex-col overflow-hidden rounded-lg bg-white focus-within:shadow-[0_4px_16px_rgba(27,92,74,0.07)] focus-within:ring-2 focus-within:ring-[var(--brand-gold,#C9A84C)] focus-within:ring-offset-2 ${
+        orderOpen ? 'shadow-[0_4px_16px_rgba(27,92,74,0.07)]' : ''
       }`}
     >
       <Link
         href={href}
         prefetch={false}
-        onClick={onSelect}
-        className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)] focus:outline-none"
+        onClick={(event) => {
+          onSelect();
+          beginProductTransition(event, () => router.push(href));
+        }}
+        onLoad={(event) => {
+          if ((event.target as HTMLElement).tagName === 'IMG') setImageReady(true);
+        }}
+        className={`tn-media relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)] focus:outline-none ${primaryImage && !imageReady ? 'tn-media-pending' : ''}`}
       >
         {primaryImage ? (
           <>
@@ -119,7 +127,7 @@ export function WholesaleProductCard({
               fetchPriority={imagePriority ? 'high' : 'low'}
               quality={CATALOG_CARD_IMAGE_QUALITY}
               sizes={CATALOG_CARD_IMAGE_SIZES}
-              className="object-cover object-center transition duration-500 group-hover:scale-[1.02] motion-reduce:transition-none"
+              className="tn-card-img object-cover object-center"
             />
             {secondImage ? (
               <Image
@@ -131,7 +139,7 @@ export function WholesaleProductCard({
                 fetchPriority="low"
                 quality={CATALOG_CARD_IMAGE_QUALITY}
                 sizes={CATALOG_CARD_IMAGE_SIZES}
-                className="hidden object-cover object-center opacity-0 transition duration-500 group-hover:opacity-100 md:block motion-reduce:hidden"
+                className="tn-card-img tn-card-alt hidden object-cover object-center opacity-0 md:block motion-reduce:hidden"
               />
             ) : null}
           </>

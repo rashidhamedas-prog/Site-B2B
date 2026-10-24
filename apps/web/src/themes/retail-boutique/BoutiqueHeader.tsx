@@ -13,6 +13,7 @@ import { apiClient } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { NewsTicker } from '@/components/shared/NewsTicker';
 import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
+import { usePresence } from '@/components/motion/usePresence';
 
 type Cat = { id: string; name: string; slug?: string };
 
@@ -29,6 +30,7 @@ export function BoutiqueHeader() {
   const bag = useRetailChrome();
   const { announcement, chrome } = useSiteChrome('RETAIL', bag?.chrome ?? null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menu = usePresence(menuOpen);
   const [megaOpen, setMegaOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -90,7 +92,7 @@ export function BoutiqueHeader() {
               aria-label="سبد خرید"
               onClick={() => setCartOpen(true)}
             >
-              <ShoppingBag className="h-5 w-5" />
+              <ShoppingBag data-cart-icon="" className="h-5 w-5" />
               {mounted && count > 0 ? (
                 <span className="absolute left-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#c9a84c] px-1 text-[10px] font-bold text-neutral-900">
                   {count > 9 ? '۹+' : count.toLocaleString('fa-IR')}
@@ -155,10 +157,10 @@ export function BoutiqueHeader() {
         </div>
       </header>
 
-      {menuOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-black/50" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />
-          <div className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col overflow-y-auto bg-[#0b0f0e] p-6 text-white">
+      {menu.mounted ? (
+        <div className={cn('tn-drawer fixed inset-0 z-50 lg:hidden', menu.shown && 'is-open')} data-edge="start">
+          <button type="button" className="tn-drawer-backdrop" aria-label="بستن منو" onClick={() => setMenuOpen(false)} />
+          <div className="tn-drawer-panel absolute inset-y-0 flex w-[min(100%,20rem)] flex-col overflow-y-auto bg-[#0b0f0e] p-6 text-white">
             <div className="mb-6 flex items-center justify-between">
               <span className="font-bold">منو</span>
               <button type="button" className="p-2" onClick={() => setMenuOpen(false)} aria-label="بستن">

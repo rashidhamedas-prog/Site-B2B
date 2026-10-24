@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { toman, useRetailCart } from '@/lib/retail-cart';
+import { usePresence } from '@/components/motion/usePresence';
 import { apiClient } from '@/lib/api';
 import { trackViewCart } from '@/lib/retail-analytics';
 
@@ -17,6 +18,7 @@ function mediaUrl(url?: string) {
 type Related = { id: string; name: string; slug: string; retailPrice?: number | null; images?: string[] };
 
 export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const presence = usePresence(open);
   const items = useRetailCart((s) => s.items);
   const updateQty = useRetailCart((s) => s.updateQty);
   const removeItem = useRetailCart((s) => s.removeItem);
@@ -60,12 +62,12 @@ export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: ()
       .catch(() => setRelated([]));
   }, [open, seed, cartIds]);
 
-  if (!open) return null;
+  if (!presence.mounted) return null;
 
   return (
-    <div className="fixed inset-0 z-[60]">
-      <button type="button" className="absolute inset-0 bg-black/40" aria-label="بستن" onClick={onClose} />
-      <aside className="absolute inset-y-0 left-0 flex w-full max-w-md flex-col bg-white shadow-2xl">
+    <div className={`tn-drawer fixed inset-0 z-[60] ${presence.shown ? 'is-open' : ''}`} data-edge="end">
+      <button type="button" className="tn-drawer-backdrop" aria-label="بستن" onClick={onClose} />
+      <aside className="tn-drawer-panel absolute inset-y-0 flex w-full max-w-md flex-col bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-[var(--retail-border)] px-5 py-4">
           <h2 className="flex items-center gap-2 text-base font-extrabold">
             <ShoppingBag className="h-5 w-5" />

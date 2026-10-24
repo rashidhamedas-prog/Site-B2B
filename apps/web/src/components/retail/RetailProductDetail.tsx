@@ -444,7 +444,8 @@ export function RetailProductDetail({
 
             <button
               type="button"
-              className="pdp-main-frame cursor-zoom-in bg-[var(--retail-card)] lg:flex-1"
+              data-tn-hero=""
+              className="pdp-main-frame tn-media cursor-zoom-in bg-[var(--retail-card)] lg:flex-1"
               onClick={() => setZoomOpen(true)}
               aria-label={`بزرگنمایی تصویر ${product.name}`}
             >

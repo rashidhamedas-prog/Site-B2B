@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { CatalogFilterRail, type CatalogFilterTone, type CatalogCollectionOption } from './CatalogFilterRail';
 import type { CatalogFilterValues } from '@/lib/catalog-filter';
+import { usePresence } from '@/components/motion/usePresence';
 
 type Props = {
   values: CatalogFilterValues;
@@ -45,6 +46,7 @@ export function CatalogFilters({
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const [draft, setDraft] = useState<CatalogFilterValues>(values);
+  const drawer = usePresence(mobileOpen);
 
   useEffect(() => {
     if (mobileOpen) setDraft(values);
@@ -102,17 +104,17 @@ export function CatalogFilters({
         </div>
       </aside>
 
-      {mobileOpen ? (
-        <div className="lg:hidden">
+      {drawer.mounted ? (
+        <div className={`tn-drawer lg:hidden ${drawer.shown ? 'is-open' : ''}`} data-edge="start">
           <button
             type="button"
-            className="catalog-filter-backdrop"
+            className="tn-drawer-backdrop catalog-filter-backdrop"
             aria-label="بستن فیلترها"
             onClick={() => onMobileOpenChange(false)}
           />
           <aside
             id="catalog-filter-drawer"
-            className="catalog-filter-drawer"
+            className="catalog-filter-drawer tn-drawer-panel"
             data-tone={tone}
             role="dialog"
             aria-modal="true"

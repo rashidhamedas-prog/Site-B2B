@@ -16,6 +16,7 @@ import {
   type RetailNavCollection,
 } from '@/components/retail/RetailChromeProvider';
 import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
+import { usePresence } from '@/components/motion/usePresence';
 import { categoryDisplayName, merchandiseCategories } from '@/lib/catalog/category-storefront';
 
 type Cat = RetailNavCategory;
@@ -117,6 +118,7 @@ export function RetailHeader() {
   const seededCats = bag?.navCategories ?? EMPTY_CATS;
   const seededCols = bag?.navCollections ?? EMPTY_COLS;
   const [open, setOpen] = useState(false);
+  const menu = usePresence(open);
   const [megaOpen, setMegaOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -358,7 +360,7 @@ export function RetailHeader() {
               aria-label="سبد"
               onClick={() => setCartOpen(true)}
             >
-              <ShoppingBag className="h-5 w-5" strokeWidth={1.4} />
+              <ShoppingBag data-cart-icon="" className="h-5 w-5" strokeWidth={1.4} />
               {mounted && count > 0 && (
                 <span className="absolute left-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--retail-gold)] px-1 text-[10px] font-bold text-[var(--brand-ink,#1A1A1A)]">
                   {count > 9 ? '۹+' : count.toLocaleString('fa-IR')}
@@ -369,10 +371,10 @@ export function RetailHeader() {
         </div>
       </header>
 
-      {open && (
-        <div className="fixed inset-0 z-50 xl:hidden">
-          <button type="button" className="absolute inset-0 bg-black/40" aria-label="بستن" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 right-0 flex w-[min(100%,20rem)] flex-col overflow-y-auto bg-white p-6 shadow-xl">
+      {menu.mounted ? (
+        <div className={cn('tn-drawer fixed inset-0 z-50 xl:hidden', menu.shown && 'is-open')} data-edge="start">
+          <button type="button" className="tn-drawer-backdrop" aria-label="بستن" onClick={() => setOpen(false)} />
+          <div className="tn-drawer-panel absolute inset-y-0 flex w-[min(100%,20rem)] flex-col overflow-y-auto bg-white p-6 shadow-xl">
             <div className="mb-8 flex items-center justify-between">
               <span className="font-bold">منو</span>
               <button
@@ -432,7 +434,7 @@ export function RetailHeader() {
             </nav>
           </div>
         </div>
-      )}
+      ) : null}
 
       <RetailCartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
     </>

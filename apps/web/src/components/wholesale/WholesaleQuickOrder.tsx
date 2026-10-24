@@ -3,7 +3,8 @@
 import Image from 'next/image';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+import { usePresence } from '@/components/motion/usePresence';
 import { apiClient } from '@/lib/api';
 import { useCart } from '@/lib/cart';
 import { trackAddToCart } from '@/lib/retail-analytics';
@@ -36,6 +37,7 @@ export function WholesaleQuickOrder({
   const initialRef = useRef(initial);
   initialRef.current = initial;
   const [mounted, setMounted] = useState(false);
+  const presence = usePresence(open);
   const [product, setProduct] = useState(initial);
   const [loading, setLoading] = useState(false);
   const [quantity, setQuantity] = useState(() => wholesaleMoq(initial));
@@ -74,7 +76,7 @@ export function WholesaleQuickOrder({
   }, [open, initial.id, initial.slug]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!presence.mounted) return;
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prevHtmlOverflow = document.documentElement.style.overflow;
     const prevBodyOverflow = document.body.style.overflow;
@@ -124,7 +126,7 @@ export function WholesaleQuickOrder({
       document.removeEventListener('keydown', onKeyDown);
       previouslyFocused?.focus();
     };
-  }, [open]);
+  }, [presence.mounted]);
 
   const summary = useMemo(
     () => wholesaleOrderSummary(product, selectedColors, quantity),
@@ -179,14 +181,14 @@ export function WholesaleQuickOrder({
     }, 900);
   };
 
-  if (!open || !mounted) return null;
+  if (!presence.mounted || !mounted) return null;
 
   const dialog = (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center p-0 md:items-center md:p-4">
+    <div className={`tn-drawer fixed inset-0 z-[80] flex items-end justify-center p-0 md:items-center md:p-4 ${presence.shown ? 'is-open' : ''}`} data-edge="down">
       <button
         type="button"
         tabIndex={-1}
-        className="absolute inset-0 bg-black/40"
+        className="tn-drawer-backdrop"
         aria-label="بستن"
         onClick={onClose}
       />
@@ -196,7 +198,7 @@ export function WholesaleQuickOrder({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-[var(--brand-border)] bg-[var(--brand-ivory)] outline-none md:rounded-2xl"
+        className="tn-drawer-panel relative z-10 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-[var(--brand-border)] bg-[var(--brand-ivory)] outline-none md:rounded-2xl"
       >
         <div className="flex items-start justify-between gap-3 border-b border-[var(--brand-border)] p-4">
           <div className="flex items-center gap-3">
@@ -370,8 +372,9 @@ export function WholesaleQuickOrder({
             type="button"
             disabled={!summary.canOrder || priceHidden}
             onClick={onAdd}
-            className="h-12 flex-[2] rounded-full bg-[var(--brand-green)] text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)] disabled:opacity-50"
+            className="inline-flex h-12 flex-[2] items-center justify-center gap-1.5 rounded-full bg-[var(--brand-green)] text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold,#C9A84C)] disabled:opacity-50"
           >
+            {added ? <Check className="h-4 w-4" aria-hidden /> : null}
             {added ? 'به سبد اضافه شد' : priceHidden ? 'ورود برای سفارش' : 'افزودن به سبد خرید'}
           </button>
         </div>

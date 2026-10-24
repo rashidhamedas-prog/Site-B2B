@@ -58,8 +58,8 @@ export function CategoryProductCard({
   }
 
   return (
-    <article className="group overflow-hidden rounded-lg border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)]">
-      <Link href={href} className="relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)]">
+    <article className="tn-card group overflow-hidden rounded-lg border border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)]">
+      <Link href={href} className="tn-media relative block aspect-[3/4] overflow-hidden bg-[var(--brand-card,#F3EEE6)]">
         {image ? (
           <Image
             src={image}
@@ -67,7 +67,7 @@ export function CategoryProductCard({
             fill
             quality={CATALOG_CARD_IMAGE_QUALITY}
             sizes={CATALOG_CARD_IMAGE_SIZES}
-            className="object-cover transition duration-300 group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+            className="tn-card-img object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-[var(--brand-muted,#6B7280)]">
