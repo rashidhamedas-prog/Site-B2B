@@ -26,6 +26,7 @@ sharp 0.35.5 پکیج دوگانه است:
 - اجرا: ابعاد، webp، timeout و سقف پیکسل عوض نشده. spec پردازش تصویر روی sharp 0.35.5 سبز است.
 - دیپلوی: این شاخه `origin/master` را جلو نمی‌برد. تایمر ایران فقط master را pull می‌کند. merge به master ایمیج را دوباره می‌سازد.
 - ایمیج: Dockerfile و باینری native عوض نشده. sharp داخل ایمیج همان 0.35.5 می‌ماند.
+- جاب `omnichannel-migrate` به sharp ربطی ندارد. روی این PR یک‌بار شکست چون `pg_isready` در پنجرهٔ init ایمیج رسمی Postgres موفق شد و psql بعدی سوکت را پیدا نکرد. اسکریپت حالا تا دومین پیام `database system is ready to accept connections` صبر می‌کند. اسکیمای production عوض نشده.
 
 ## تست‌های وب از قبل قرمز
 
