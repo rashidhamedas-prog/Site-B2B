@@ -47,7 +47,7 @@ function str(props: Record<string, unknown>, key: string) {
 }
 
 const FILE_HINT =
-  'متن زیر کارت نشان داده نمی‌شود؛ متن جایگزین تصویر همین عنوان و توضیح است، چون نسخهٔ ۲ آن را داخل خود تصویر دارد. فایل را با همین نام عوض کنید: scene-0N-desktop.webp (۱۲۸۰×۷۲۰) و scene-0N-mobile.webp (۱۰۸۰×۱۳۵۰).';
+  'دور کارت متن تکراری نشان داده نمی‌شود. متن جایگزین تصویر همان عنوان و توضیح این قدم است، چون این متن داخل خود تصویر است. اگر فایل عوض می‌شود، نام را نگه دارید: scene-0N-desktop.webp (۱۲۸۰×۷۲۰) و scene-0N-mobile.webp (۱۰۸۰×۱۳۵۰).';
 
 export function AdminStoryBlockFields({
   block,

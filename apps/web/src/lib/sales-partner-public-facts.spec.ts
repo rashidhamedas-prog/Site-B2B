@@ -1,6 +1,9 @@
 /**
  * npx tsx src/lib/sales-partner-public-facts.spec.ts
  */
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { getDefaultBlocks } from './cms/defaults.ts';
 import {
   EARNING_DISCOUNT_PERCENT,
@@ -61,7 +64,53 @@ assert(
     'لینک مخصوص خودتان را بفرستید. از بخش «محصولات» لینک هر کالا را کپی کنید و با عکس‌های آماده برای دوستان یا در اینستاگرام و تلگرام بفرستید. اگر مشتری تا ۱۴ روز از همان لینک خرید کند، خرید به نام شما ثبت می‌شود. راه دوم: مشتری حضوری دارید؟ در «سفارش جدید» سبد را بسازید؛ پیامک تأیید برای مشتری می‌رود و خودش پرداخت می‌کند.',
   `scene 4 alt drifted: ${storyCardAlt(steps[3]!)}`,
 );
-assert(storyCardAlt(steps[5]!).includes('۲۰٪') && storyCardAlt(steps[5]!).includes('۱۴ روز'), 'scene 6 alt facts');
+assert(
+  storyCardAlt(steps[1]!) ===
+    'کمتر از ۱۲ ساعت صبر کنید. همکاران ترنم درخواستتان را بررسی می‌کنند. بعد از تأیید، نام کاربری و رمز برایتان پیامک می‌شود.',
+  'scene 2 alt',
+);
+assert(
+  storyCardAlt(steps[2]!) ===
+    'وارد پنل همکاران شوید. با همان شماره موبایل وارد شوید. محصولات، سفارش‌ها، پورسانت و تسویه همه در پنل است.',
+  'scene 3 alt',
+);
+assert(
+  storyCardAlt(steps[4]!) ===
+    'بقیهٔ کار با ترنم. مشتری روی درگاه امن ترنم پرداخت می‌کند. ما بسته‌بندی و ارسال می‌کنیم. لازم نیست پولی دریافت کنید یا جنسی نگه دارید.',
+  'scene 5 alt',
+);
+assert(
+  storyCardAlt(steps[5]!) ===
+    '۲۰٪ پورسانت بگیرید. بعد از تحویل سفارش و گذشت ۱۴ روز، پورسانت قابل‌برداشت می‌شود و به شماره شبای شما واریز می‌شود.',
+  `scene 6 alt drifted: ${storyCardAlt(steps[5]!)}`,
+);
+
+function webpSize(buf: Buffer): { width: number; height: number } {
+  if (buf.subarray(0, 4).toString() !== 'RIFF' || buf.subarray(8, 12).toString() !== 'WEBP') {
+    throw new Error('not a webp');
+  }
+  if (buf.subarray(12, 16).toString() !== 'VP8 ') throw new Error('expected lossy VP8');
+  const start = buf.indexOf(Buffer.from([0x9d, 0x01, 0x2a]));
+  if (start < 0) throw new Error('missing VP8 frame');
+  return {
+    width: buf.readUInt16LE(start + 3) & 0x3fff,
+    height: buf.readUInt16LE(start + 5) & 0x3fff,
+  };
+}
+
+const publicDir = join(dirname(fileURLToPath(import.meta.url)), '../../public/sales-partner/storyboard');
+for (const step of steps) {
+  const desktop = webpSize(readFileSync(join(publicDir, step.image.replace('/sales-partner/storyboard/', ''))));
+  const mobile = webpSize(readFileSync(join(publicDir, step.imageMobile.replace('/sales-partner/storyboard/', ''))));
+  assert(
+    desktop.width === STORY_FRAME.desktop.width && desktop.height === STORY_FRAME.desktop.height,
+    `scene ${step.n} desktop ${desktop.width}x${desktop.height}`,
+  );
+  assert(
+    mobile.width === STORY_FRAME.mobile.width && mobile.height === STORY_FRAME.mobile.height,
+    `scene ${step.n} mobile ${mobile.width}x${mobile.height}`,
+  );
+}
 
 const faq = salesPartnerFaqItems();
 assert(faq.length === 12, 'twelve faq items');

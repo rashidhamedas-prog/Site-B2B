@@ -1,12 +1,13 @@
 /**
  * Public sales-partner figures and the copy that must stay in lockstep with them.
- * Image slots are stable filenames: drop v2 art in place, do not rename.
+ * Image slots are stable filenames. A later art swap replaces the same files.
  *
  * Desktop: scene-0N-desktop.webp — 1280×720 (16:9)
  * Mobile:  scene-0N-mobile.webp  — 1080×1350 (4:5)
  *
- * Files in the repo today are temporary placeholders (the mobile files are still
- * 9:16). Layout boxes are already the v2 ratios.
+ * The files in public/ are the v2 cards. Persian copy is baked into each image,
+ * so the card renders the picture only. `storyCardAlt` is that step's heading
+ * plus its description from the brief (scene 4 includes the «راه دوم» note).
  */
 
 export const SP_COMMISSION_PERCENT = 20;
@@ -125,7 +126,11 @@ function sentence(head: string, tail: string): string {
   return /[.!?؟…]$/.test(head) ? `${head} ${tail}` : `${head}. ${tail}`;
 }
 
-/** Full card copy for the image alt. v2 bakes this text into the picture, so it is not repeated in HTML. */
+/**
+ * Alt for one card: the brief heading, then its description.
+ * Scene 4's description includes the «راه دوم» aside, which is baked into that card.
+ * Nothing else on the card repeats this string.
+ */
 export function storyCardAlt(step: {
   title?: string;
   body?: string;
