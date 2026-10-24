@@ -73,7 +73,7 @@ export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: ()
             <ShoppingBag className="h-5 w-5" />
             سبد خرید
           </h2>
-          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-gray-50">
+          <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-gray-50" aria-label="بستن">
             <X className="h-5 w-5" />
           </button>
         </div>
