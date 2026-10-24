@@ -12,7 +12,12 @@ import { NotificationService } from '../../notification/notification.service';
 import { AffiliatePostbackService } from '../../affiliate/affiliate-postback.service';
 import { OutboxEventEntity } from '../entities/outbox-event.entity';
 import { OUTBOX_EVENT_TYPES, SALES_PARTNER_OUTBOX_EVENT_TYPES } from '../omnichannel.constants';
-import { DeliveryDeferredError, shouldSkipPublicationDeliver } from './publication-deliver';
+import {
+  DeliveryDeferredError,
+  isConnectorDisabledError,
+  shouldSkipPublicationDeliver,
+} from './publication-deliver';
+
 import { OutboxService } from './outbox.service';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { safeWorkerError } from '../adapters/telegram-errors';
@@ -185,6 +190,9 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         try {
           await this.handlePublicationDeliver(payload, row.id);
         } catch (err: unknown) {
+          // Per-provider kill switch (or race while global flag flips): hold the lease,
+          // do not burn attempts into DEAD — same as global connectors-off deferral.
+          if (isConnectorDisabledError(err)) throw new DeliveryDeferredError();
           await this.markDeliveryFailure(payload, row, err);
           throw err;
         }

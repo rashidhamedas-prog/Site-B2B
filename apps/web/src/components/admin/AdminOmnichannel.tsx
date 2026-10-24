@@ -34,6 +34,7 @@ import {
   isChannelPublishEventType,
   isOutboxRowForConfiguredChannels,
   outboxChannelCellLabel,
+  isConnectorDisabledError,
   isIntentionalError,
   isProvider,
   outboxStatus,
@@ -292,6 +293,7 @@ export function AdminOmnichannel() {
     try {
       const scopeId = selectedDestinationIdRef.current;
       const q = scopeId ? `?destinationId=${encodeURIComponent(scopeId)}` : '';
+      // Soft lists must not blank the whole console when one endpoint fails (e.g. brief API restart → HTML 502).
       const [st, conns, dests, tpls, pubs, dels, box, logs, files, cats] = await Promise.all([
         apiClient.get<Status>(`/omnichannel/status${q}`),
         apiClient.get<Connection[]>('/omnichannel/connections'),
@@ -300,7 +302,7 @@ export function AdminOmnichannel() {
         apiClient.get<Publication[]>(`/omnichannel/publications${q}`),
         apiClient.get<Delivery[]>(`/omnichannel/deliveries${q}`),
         apiClient.get<OutboxRow[]>(`/omnichannel/outbox${q}`),
-        apiClient.get<AuditRow[]>(`/omnichannel/audits${q}`),
+        apiClient.get<AuditRow[]>(`/omnichannel/audits${q}`).catch(() => [] as AuditRow[]),
         apiClient.get<MediaRow[]>('/omnichannel/media').catch(() => [] as MediaRow[]),
         apiClient.get<CategoryOption[]>('/categories/admin').catch(() => [] as CategoryOption[]),
       ]);
@@ -499,13 +501,18 @@ export function AdminOmnichannel() {
     return deliveries.filter((row) => row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.createdAt && new Date(row.createdAt) >= start).length;
   }, [deliveries]);
   const sentToday = typeof status?.sentToday === 'number' ? status.sentToday : sentTodayClient;
+  const failingGate = deliveries.filter(
+    (row) => (row.status === 'DEAD' || row.status === 'FAILED') && isConnectorDisabledError(row.lastError),
+  ).length;
   const failingReal = deliveries.filter(
-    (row) => (row.status === 'DEAD' || row.status === 'FAILED') && !isIntentionalError(row.lastError),
+    (row) => (row.status === 'DEAD' || row.status === 'FAILED')
+      && !isIntentionalError(row.lastError)
+      && !isConnectorDisabledError(row.lastError),
   ).length;
   const failingIntentional = deliveries.filter(
     (row) => (row.status === 'DEAD' || row.status === 'FAILED') && isIntentionalError(row.lastError),
   ).length;
-  const failing = failingReal;
+  const failing = failingReal + failingGate;
   const deferredPending = outbox.filter(
     (row) => row.status === 'PENDING' && row.availableAt && new Date(row.availableAt).getTime() > Date.now() + 5_000,
   ).length;
@@ -1607,6 +1614,28 @@ export function AdminOmnichannel() {
     setView('ops');
     setOutboxScope('channel');
   };
+  const reviveConnectorDisabled = () => {
+    if (!connectorsOn) {
+      setError('ارسال از سرور خاموش است');
+      return;
+    }
+    if (!window.confirm(
+      `${faNumber(failingGate || status?.outbox?.dead || 0)} رویداد/ارسال متوقف‌شده به‌خاطر خاموشی کانکتور دوباره به صف برود؟`,
+    )) return;
+    void run(
+      'revive-connector-disabled',
+      async () => {
+        const result = await apiClient.post<{ revivedEvents: number; revivedDeliveries: number }>(
+          '/omnichannel/outbox/revive-connector-disabled',
+          { confirm: true, reason: reason || 'بازتلاش پس از روشن‌شدن کانکتور', limit: 200 },
+        );
+        setNotice(
+          `${faNumber(result.revivedEvents)} رویداد و ${faNumber(result.revivedDeliveries)} ارسال دوباره به صف رفت`,
+        );
+      },
+      'خطا در بازتلاش ارسال‌های متوقف',
+    );
+  };
 
   const attentionItems: AttentionItem[] = [];
   if (!hasCanary && (mode === 'CANARY' || mode === 'OFF' || !setupComplete)) {
@@ -1619,6 +1648,18 @@ export function AdminOmnichannel() {
       tone: 'warn',
       actionLabel: 'انتخاب مقصد آزمایشی',
       onAction: goSelectCanary,
+    });
+  }
+  if (failingGate > 0) {
+    attentionItems.push({
+      id: 'connector-disabled-dead',
+      title: `${faNumber(failingGate)} ارسال متوقف (خاموشی کانکتور)`,
+      detail: connectorsOn
+        ? 'این‌ها وقتی ارسال از سرور خاموش بود متوقف شدند؛ الان کانکتور روشن است — بازتلاش کنید.'
+        : 'ارسال از سرور هنوز خاموش است؛ اول پرچم کانکتور را روشن کنید.',
+      tone: connectorsOn ? 'warn' : 'danger',
+      actionLabel: connectorsOn ? 'بازتلاش همین‌ها' : 'مشاهده ارسال‌های ناموفق',
+      onAction: connectorsOn ? reviveConnectorDisabled : goFailedDeliveries,
     });
   }
   if (failingReal > 0) {
@@ -2238,8 +2279,8 @@ export function AdminOmnichannel() {
             }}
           >
             {label}
-            {id === 'publish' && failingReal > 0 && (
-              <span className="mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{faNumber(failingReal)}</span>
+            {id === 'publish' && failing > 0 && (
+              <span className="mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{faNumber(failing)}</span>
             )}
             {id === 'ops' && deadChannel > 0 && (
               <span className="mr-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">{faNumber(deadChannel)}</span>

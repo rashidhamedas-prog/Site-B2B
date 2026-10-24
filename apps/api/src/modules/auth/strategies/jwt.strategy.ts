@@ -13,6 +13,9 @@ import { canSalesPartnerLogin } from '../../sales-partner/sales-partner-policy';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+const JWT_SUB_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
@@ -46,7 +49,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     iat?: number;
     sid?: string;
   }) {
-    const user = await this.authService.findById(payload.sub);
+    const sub = String(payload?.sub || '').trim();
+    // Invalid sub must be 401 — never a QueryFailedError 500 that the admin UI shows as «خطای سرور».
+    if (!JWT_SUB_UUID_RE.test(sub)) throw new UnauthorizedException();
+    const user = await this.authService.findById(sub);
     if (!user || !user.isActive) throw new UnauthorizedException();
     if (isJwtInvalidatedByPasswordChange(payload.iat, user.passwordChangedAt)) {
       throw new UnauthorizedException();

@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-24T13:50:00Z — TASK-20261024-005 omnichannel Bale DEAD revive
+
+- Branch `ai/TASK-20261024-005-omni-bale-revive` (worktree `Site B2B-omni-fix`).
+- Evidence: 33 DEAD outbox/deliveries = BALE connector disabled; connectors+vault now on; «خطای سرور» = 502 HTML during API recreate / non-JSON.
+- Code: worker defer ConnectorDisabledError; revive endpoint; audits jsonb_exists; JWT UUID→401; admin AttentionStrip + 502 copy.
+- Specs: publication-deliver, phase-acceptance, jwt-sub-uuid, admin connector-disabled source OK.
+- Next: commit/push/deploy Iran; call revive; smoke Bale verify + DEAD counts.
+
+
 ## 2026-10-24T13:26:00Z — TASK-20261024-004 CLOSED LIVE (Iran)
 
 - PR #89 merged → `origin/master` `eb73ee94`.
