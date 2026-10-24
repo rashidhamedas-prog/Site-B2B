@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 import { Modal, Button } from '@/components/ui';
+import { usePresence } from '@/components/motion/usePresence';
 import type { ThemePopupConfig, ThemeSettings } from './ThemeApply';
 
 const DISMISS_PREFIX = 'taranom_popup_dismissed_';
@@ -71,9 +72,11 @@ function NewsletterPopup({
 
 function BoutiqueBar({
   config,
+  shown,
   onClose,
 }: {
   config: ThemePopupConfig;
+  shown: boolean;
   onClose: () => void;
 }) {
   const handleClose = () => {
@@ -83,7 +86,7 @@ function BoutiqueBar({
 
   return (
     <aside
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] shadow-[0_-8px_24px_rgba(15,47,40,0.12)]"
+      className={`tn-bar fixed inset-x-0 bottom-0 z-40 border-t border-[var(--brand-border,#E8E0D4)] bg-[var(--brand-ivory,#F6F1E8)] shadow-[0_-8px_24px_rgba(15,47,40,0.12)] ${shown ? 'is-open' : ''}`}
       aria-label={config.title}
     >
       <div className="container-site flex items-center gap-2 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:gap-3">
@@ -114,6 +117,7 @@ function BoutiqueBar({
 export function LandingPopups({ theme }: { theme: ThemeSettings }) {
   const pathname = usePathname();
   const [barOpen, setBarOpen] = useState(false);
+  const bar = usePresence(barOpen);
   const [newsletterOpen, setNewsletterOpen] = useState(false);
   const onHome = pathname === '/' || pathname === '';
 
@@ -123,7 +127,7 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
   }, []);
 
   useEffect(() => {
-    if (!barOpen) {
+    if (!bar.mounted) {
       document.documentElement.style.removeProperty('--wholesale-bottom-bar');
       return;
     }
@@ -131,7 +135,7 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
     return () => {
       document.documentElement.style.removeProperty('--wholesale-bottom-bar');
     };
-  }, [barOpen]);
+  }, [bar.mounted]);
 
   useEffect(() => {
     if (!onHome) return;
@@ -186,7 +190,9 @@ export function LandingPopups({ theme }: { theme: ThemeSettings }) {
 
   return (
     <>
-      {boutique && barOpen ? <BoutiqueBar config={boutique} onClose={() => setBarOpen(false)} /> : null}
+      {boutique && bar.mounted ? (
+        <BoutiqueBar config={boutique} shown={bar.shown} onClose={() => setBarOpen(false)} />
+      ) : null}
       {newsletter ? (
         <NewsletterPopup
           config={newsletter}
