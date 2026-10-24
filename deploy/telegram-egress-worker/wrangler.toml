@@ -1,0 +1,7 @@
+name = "taranom-telegram-egress"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# Prefer a custom host when DNS exists (same account as taranom-sms-egress).
+# routes = [{ pattern = "telegram-egress.poshaktaranom.com/*", zone_name = "poshaktaranom.com" }]

@@ -2,6 +2,12 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-24T12:40:00Z — TASK-20261023-002 merge master into egress scaffold
+
+- Merged origin/master into `cursor/telegram-egress-worker-0fb8` so PR #87 is mergeable.
+- Conflicts were only `.ai-dos/tasks/active.yaml`, `.ai-dos/tasks/handoff.md`, and `docs/WORKLOG.md`. Kept master's live records, then added this scaffold after those newer entries.
+- `deploy/telegram-egress-worker/` and `docs/architecture/telegram-egress.md` were not on master. Scaffold kept. No wrangler deploy, no env/secrets, TelegramAdapter unchanged.
+
 ## 2026-10-24T08:40:00Z — TASK-20261024-003 sole Iran origin
 
 - Branch `ai/TASK-20261024-003-sole-iran-origin`.
@@ -14,6 +20,16 @@ Append newest entries at the top. Never erase another agent's record.
 - Fix: write-path prune + read-path chart filter + migration `20261024-002`.
 - Specs OK: size-chart-variants, migration source, product-pack, color-stock-plan.
 - Shipped on master; sole-Iran task shares WORKLOG/handoff only.
+
+## 2026-10-23T22:45:00Z — TASK-20261023-002 telegram egress scaffold
+
+- Objective: scaffold `deploy/telegram-egress-worker` only. Parent merges and deploys. No `wrangler deploy`. No Iran env.
+- Decisions: optional `EGRESS_SECRET` (401 only when set) because `TelegramAdapter` does not send `x-taranom-egress-secret` yet. Upstream fixed to `https://api.telegram.org`. Path allowlist `/bot{token}/{method}`. Redirects manual. Logs redact `/bot…/`.
+- Changed: worker src + spec + wrangler + README, `docs/architecture/telegram-egress.md`, worklog, report.
+- Tests: `node --experimental-strip-types --test src/index.spec.ts` in `deploy/telegram-egress-worker`.
+- Next: parent deploy on the same Cloudflare account as `taranom-sms-egress`, then set Iran `TELEGRAM_API_URL` to the worker origin with no `/bot` suffix. Leave `EGRESS_SECRET` unset until the adapter sends the header.
+- Overlap: TASK-20261023-001 still lists `docs/WORKLOG.md` and this handoff. That work shipped as PR #85. This task only prepends its own entries.
+- Risk: unset secret makes the worker an open Bot API proxy. Do not publish the URL until the secret header exists, or accept that until then.
 
 ## 2026-10-23T18:00:00Z — FREE_POST MVP (no deploy)
 

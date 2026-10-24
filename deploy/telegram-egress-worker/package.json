@@ -1,0 +1,13 @@
+{
+  "name": "taranom-telegram-egress",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "node --experimental-strip-types --test src/index.spec.ts"
+  },
+  "devDependencies": {
+    "wrangler": "^4.34.0"
+  }
+}

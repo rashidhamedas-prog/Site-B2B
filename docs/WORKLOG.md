@@ -23,6 +23,14 @@
 - با FREE_POST master ادغام شد: enqueue per-destination + `sourceType` gateway.
 - گزارش: `docs/reports/2026-10-24-omnichannel-destination-isolation.md`.
 
+## 2026-10-23 — اسکلت Worker خروجی تلگرام (بدون دیپلوی)
+
+- ورکر `deploy/telegram-egress-worker` فقط `/bot{token}/{method}` را به `https://api.telegram.org` پروکسی می‌کند. `..`، درصد، `@`، و تزریق هاست رد می‌شود.
+- هدر اختیاری `x-taranom-egress-secret` مثل SMS egress است. تا وقتی آداپتر این هدر را نفرستد، `EGRESS_SECRET` خالی می‌ماند و درخواست رد نمی‌شود.
+- لاگ و متن 502 قطعهٔ توکن `/bot…/` را حذف می‌کند. `TelegramAdapter` در این PR عوض نشده (مال #86).
+- `wrangler deploy` و env ایران انجام نشد. دیپلوی روی همان اکانت Cloudflare مربوط به sms-egress با GO جدا است. ایران `TELEGRAM_API_URL` را برابر origin ورکر می‌گذارد، بدون `/bot…`.
+- یادداشت: `docs/architecture/telegram-egress.md`. گزارش: `docs/reports/2026-10-23-telegram-egress-worker.md`.
+
 ## 2026-10-23 — FREE_POST MVP (متن آزاد کانال انتشار) — بدون دیپلوی
 
 - ادمین می‌تواند از «ارسال دستی» یک کپشن آزاد (و حداکثر یک تصویر) بفرستد، بدون PRODUCT / BLOG_POST / CMS_PAGE.

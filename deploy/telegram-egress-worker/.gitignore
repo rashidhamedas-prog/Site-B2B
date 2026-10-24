@@ -1,0 +1,4 @@
+node_modules/
+.wrangler/
+.egress-secret.tmp
+*.log
