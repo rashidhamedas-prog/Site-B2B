@@ -219,6 +219,7 @@ export function pageSitemapUrls(channel: SitemapChannel): SitemapUrl[] {
     { loc: `${origin}/workshop`, changefreq: 'monthly', priority: '0.65' },
     { loc: `${origin}/wholesale`, changefreq: 'weekly', priority: '0.8' },
     { loc: `${origin}/about`, changefreq: 'monthly', priority: '0.7' },
+    { loc: `${origin}/about/hamed-rashid`, changefreq: 'monthly', priority: '0.6' },
     { loc: `${origin}/contact`, changefreq: 'monthly', priority: '0.7' },
     { loc: `${origin}/hamkar-moarefi`, changefreq: 'weekly', priority: '0.6' },
     { loc: `${origin}/blog`, changefreq: 'weekly', priority: '0.65' },

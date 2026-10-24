@@ -30,6 +30,7 @@ const COLS = [
     title: 'ترنم',
     links: [
       { href: '/about', label: 'درباره ما' },
+      { href: 'https://poshaktaranom.com/about/hamed-rashid?utm_source=retail&utm_medium=pdp&utm_campaign=retail_to_wholesale', label: 'بنیان‌گذار ترنم' },
       { href: '/sales-partnership', label: 'همکار بازاریاب' },
       { href: '/contact', label: 'تماس' },
       { href: '/blog', label: 'وبلاگ' },

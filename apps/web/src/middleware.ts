@@ -13,6 +13,7 @@ import {
 } from '@/lib/admin-session';
 import { hostLooksRetail, isBoutiqueReferralPanelPath, isChannelExemptPath, isSalesPartnerPanelPath } from '@/lib/channel';
 import { panelHostLockRedirect } from '@/lib/panel-host-lock';
+import { WHOLESALE_ORIGIN } from '@/lib/seo-origins';
 import { lookupGscLegacyRedirect } from '@/lib/gsc-legacy-redirects';
 import {
   STOREFRONT_HTML_CACHE_CONTROL,
@@ -191,6 +192,11 @@ export function middleware(request: NextRequest) {
     const res = NextResponse.rewrite(url);
     res.headers.set('x-taranom-channel', 'RETAIL');
     return clampStorefrontHtmlCache(res, pathname);
+  }
+
+  // Founder bio is a wholesale-only (.com) page: never serve a mirror on the retail host.
+  if (hostLooksRetail(host) && (pathname === '/about/hamed-rashid' || pathname.startsWith('/about/hamed-rashid/'))) {
+    return NextResponse.redirect(`${WHOLESALE_ORIGIN}/about/hamed-rashid`, 301);
   }
 
   // Retail host storefront: config already rewrote; only stamp channel + cache clamp.
