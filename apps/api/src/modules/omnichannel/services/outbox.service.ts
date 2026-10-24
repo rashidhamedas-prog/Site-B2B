@@ -263,7 +263,7 @@ export class OutboxService {
    */
   async requeueConnectorDisabledDead(limit = 200): Promise<string[]> {
     const capped = Math.max(1, Math.min(500, Math.floor(Number(limit) || 200)));
-    const rows: Array<{ id: string }> = await this.dataSource.query(
+    const rows: Array<{ id?: string }> = await this.dataSource.query(
       `UPDATE omnichannel_outbox_events
        SET status = 'PENDING', attempts = 0, "availableAt" = NOW(), "completedAt" = NULL,
            "lockedAt" = NULL, "lockedBy" = NULL, "lastError" = NULL, "updatedAt" = NOW()
@@ -279,7 +279,10 @@ export class OutboxService {
        RETURNING id`,
       [capped],
     );
-    return (rows || []).map((row) => String(row.id));
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return (Array.isArray(rows) ? rows : [])
+      .map((row) => String(row?.id || '').trim())
+      .filter((id) => uuidRe.test(id));
   }
 
   /**
