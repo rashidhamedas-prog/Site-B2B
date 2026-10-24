@@ -45,19 +45,19 @@ export function CheckoutPlaceOrderBar({
         disabled={disabled || busy}
         onClick={onClick}
         className={cn(
-          'flex w-full min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-extrabold text-white transition-opacity duration-200',
+          'flex w-full min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full px-5 text-sm font-extrabold transition-opacity duration-200',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           retail
-            ? 'bg-[var(--retail-gold)] focus-visible:ring-[var(--retail-gold)] hover:opacity-95'
-            : 'bg-primary focus-visible:ring-primary hover:bg-primary-light',
+            ? 'bg-[var(--retail-gold)] text-[var(--brand-ink,#1A1A1A)] focus-visible:ring-[var(--retail-gold)] hover:opacity-95'
+            : 'bg-primary text-white focus-visible:ring-primary hover:bg-primary-light',
         )}
       >
         {busy ? (
-          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden />
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
         ) : null}
         <span>{label}</span>
       </button>
-      <p className={cn('mt-2 flex items-start justify-center gap-1.5 text-center text-[11px] leading-5', retail ? 'text-[var(--retail-muted)]' : 'text-gray-400')}>
+      <p className={cn('mt-2 flex items-start justify-center gap-1.5 text-center text-xs leading-5', retail ? 'text-[var(--retail-muted)]' : 'text-[var(--brand-muted,#4B5563)]')}>
         <Lock className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />
         <span>{hint}</span>
       </p>

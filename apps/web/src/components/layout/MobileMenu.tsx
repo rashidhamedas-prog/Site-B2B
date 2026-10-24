@@ -35,7 +35,7 @@ export function MobileMenuButton({
                   onClick={() => setOpen(false)}
                   className={
                     link.highlight
-                      ? 'flex cursor-pointer items-center rounded-lg bg-secondary px-3 py-2.5 text-sm font-bold text-white'
+                      ? 'flex cursor-pointer items-center rounded-lg bg-secondary px-3 py-2.5 text-sm font-bold text-[var(--brand-ink,#1A1A1A)]'
                       : 'flex cursor-pointer items-center rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-primary-50 hover:text-primary'
                   }
                 >

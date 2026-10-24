@@ -4,15 +4,19 @@
 
 /* ── CSS Variables ───────────────────────────────────────────────────────────── */
 :root {
-  /* Brand primitives — only these three hues are brand colors */
+  /* Brand primitives — green, gold, ivory. Dark green is one token. */
   --brand-green: #1B5C4A;
+  /* Single dark green. #124035 is retired and must not be reintroduced. */
   --brand-green-dark: #0F2F28;
   --brand-gold: #C9A84C;
+  /* Gold text and borders on light backgrounds (4.6:1 on ivory). */
+  --brand-gold-700: #836A27;
   --brand-ivory: #F6F1E8;
   --brand-ink: #1A1A1A;
   --brand-surface: #FFFFFF;
   --brand-card: #F3EEE6;
-  --brand-muted: #6B7280;
+  /* 6.7:1 on ivory. #6B7280 on cream was 4.3:1. */
+  --brand-muted: #4B5563;
   --brand-border: #E8E0D4;
   --brand-error: #DC2626;
 
@@ -21,7 +25,7 @@
   --color-primary-dark:   var(--brand-green-dark);
   --color-secondary:      var(--brand-gold);
   --color-secondary-light:#E5C97C;
-  --color-secondary-dark: #A88530;
+  --color-secondary-dark: var(--brand-gold-700);
 
   --color-white:          #FFFFFF;
   --color-background:     #FAFBF9;
@@ -48,7 +52,7 @@
   --shadow-sm:            0 1px 2px rgba(27, 92, 74, 0.04);
   --shadow-card:          0 4px 16px rgba(27, 92, 74, 0.07);
   --shadow-card-hover:    0 12px 32px rgba(27, 92, 74, 0.12);
-  --shadow-hero:          0 24px 48px rgba(18, 64, 53, 0.18);
+  --shadow-hero:          0 24px 48px rgba(15, 47, 40, 0.18);
 
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -63,7 +67,7 @@
   --glass-blur: 12px;
   --glass-bg: rgba(255, 255, 255, 0.72);
   --glass-bg-strong: rgba(255, 255, 255, 0.88);
-  --glass-bg-dark: rgba(18, 64, 53, 0.55);
+  --glass-bg-dark: rgba(15, 47, 40, 0.55);
   --glass-border: rgba(255, 255, 255, 0.45);
   --glass-border-dark: rgba(255, 255, 255, 0.18);
   --glass-shadow: 0 8px 32px rgba(27, 92, 74, 0.1);
@@ -266,7 +270,7 @@ img {
     @apply bg-primary text-white hover:bg-primary-light active:bg-primary-dark shadow-sm;
   }
   .btn-secondary {
-    @apply bg-secondary text-white hover:bg-secondary-light active:bg-secondary-dark shadow-sm;
+    @apply bg-secondary text-[var(--brand-ink,#1A1A1A)] hover:bg-secondary-light active:bg-secondary-dark shadow-sm;
   }
   .btn-outline {
     @apply border border-primary text-primary bg-transparent hover:bg-primary hover:text-white;
@@ -388,7 +392,7 @@ img {
     background:
       radial-gradient(ellipse 70% 80% at 10% 20%, rgba(201, 168, 76, 0.18), transparent 50%),
       radial-gradient(ellipse 50% 60% at 90% 80%, rgba(45, 122, 95, 0.4), transparent 55%),
-      linear-gradient(160deg, #124035 0%, #1B5C4A 55%, #2D7A5F 100%);
+      linear-gradient(160deg, var(--brand-green-dark) 0%, #1B5C4A 55%, #2D7A5F 100%);
   }
 
   .reveal {
@@ -559,7 +563,7 @@ img {
   --cf-border: var(--color-border);
   --cf-surface: var(--color-surface);
   --cf-primary: var(--color-primary);
-  --cf-gold: var(--color-secondary);
+  --cf-gold: var(--brand-gold-700, #836A27);
   --cf-muted-bg: var(--color-surface-muted);
 }
 .catalog-filter-rail[data-tone='retail'],
@@ -570,7 +574,7 @@ img {
   --cf-border: var(--retail-border, var(--color-border));
   --cf-surface: var(--retail-surface, var(--color-surface));
   --cf-primary: var(--retail-primary, var(--color-primary));
-  --cf-gold: var(--retail-gold, var(--color-secondary));
+  --cf-gold: var(--brand-gold-700, #836A27);
   --cf-muted-bg: var(--retail-card, var(--color-surface-muted));
 }
 .catalog-filter-shell {
@@ -579,7 +583,7 @@ img {
   --cf-border: var(--color-border);
   --cf-surface: var(--color-surface);
   --cf-primary: var(--color-primary);
-  --cf-gold: var(--color-secondary);
+  --cf-gold: var(--brand-gold-700, #836A27);
   --cf-muted-bg: var(--color-surface-muted);
   border: 1px solid var(--cf-border);
   background: var(--cf-surface);
@@ -878,7 +882,7 @@ img {
   --cf-border: var(--color-border);
   --cf-surface: var(--color-surface);
   --cf-primary: var(--color-primary);
-  --cf-gold: var(--color-secondary);
+  --cf-gold: var(--brand-gold-700, #836A27);
   --cf-muted-bg: var(--color-surface-muted);
   position: fixed;
   inset-block: 0;
@@ -919,4 +923,50 @@ img {
 @media print {
   .no-print { display: none !important; }
   body { font-size: 12pt; color: #000; }
+}
+
+/* Skip link — first focusable control on storefront layouts. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: 0.75rem;
+  top: 0.75rem;
+  z-index: 80;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  background: #fff;
+  color: var(--brand-ink, #1a1a1a);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-card);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: none;
+}
+
+/* Visible keyboard focus. Offset keeps the ring readable on dark controls. */
+:focus-visible {
+  outline: 2px solid var(--brand-ink, #1a1a1a) !important;
+  outline-offset: 3px !important;
+}
+
+/* PDP main photo. Mobile width tracks the viewport so DPR 2 selects ~720px. */
+.pdp-main-frame {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  max-height: min(70vh, 760px);
+  overflow: hidden;
+}
+@media (max-width: 1023px) {
+  .pdp-main-frame {
+    width: min(100%, calc((100svh - 22rem - env(safe-area-inset-bottom, 0px)) * 0.75));
+    max-height: calc(100svh - 22rem - env(safe-area-inset-bottom, 0px));
+    margin-inline: auto;
+  }
+}
+
+.on-dark-muted {
+  color: #c5d5d0;
 }

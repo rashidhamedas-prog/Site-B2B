@@ -134,7 +134,7 @@ export default async function ProductPage({ params }: Props) {
       {related.length > 0 ? (
         <section className="container-site pb-16">
           <h2 className="text-xl font-extrabold text-gray-900">محصولات مرتبط</h2>
-          <p className="mt-1 text-sm text-gray-500">مدل‌های پیشنهادی برای تکمیل خرید عمده</p>
+          <p className="mt-1 text-sm text-[var(--brand-muted,#4B5563)]">مدل‌های پیشنهادی برای تکمیل خرید عمده</p>
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
             {related.map((item) => (
               <WholesaleProductCard key={item.id} product={item} />

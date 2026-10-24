@@ -1,5 +1,22 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261024-006"
+    title: "Storefront visual and accessibility contrast fixes"
+    status: "in_review"
+    risk: "medium"
+    owner: "cursor"
+    reviewer: "pending"
+    security: "pending"
+    branch: "cursor/visual-a11y-2026-10-a472"
+    worktree: "/workspace"
+    claimed_at: "2026-10-24T15:00:00Z"
+    acceptance: "Local next build and tsc clean. axe color-contrast is zero on wholesale and retail home and PDP at 360 and 1440. No merge and no production deploy."
+    file_claims:
+      - "apps/web storefront contrast/a11y files only; not api.ts or admin omnichannel"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-24-visual-a11y.md"
+      - ".ai-dos/tasks/handoff.md"
+    note: "WORKLOG and handoff overlap TASK-20261024-005. Only a prepend was added. Omnichannel files were not edited."
   - id: "TASK-20261024-005"
     title: "Omnichannel Bale DEAD revive + connector-disabled defer + JWT/502 harden"
     status: "in_progress"

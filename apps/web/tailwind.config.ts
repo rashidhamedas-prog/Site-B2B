@@ -12,7 +12,7 @@ const config: Config = {
         primary: {
           DEFAULT: '#1B5C4A',
           light: '#2D7A5F',
-          dark: '#124035',
+          dark: '#0F2F28',
           50: '#EEF5F2',
           100: '#D5E9E2',
           200: '#AACFC0',
@@ -27,7 +27,7 @@ const config: Config = {
         secondary: {
           DEFAULT: '#C9A84C',
           light: '#E5C97C',
-          dark: '#A88530',
+          dark: '#836A27',
           50: '#FBF6E9',
           100: '#F6EDD3',
           200: '#EEDBA7',
@@ -35,7 +35,7 @@ const config: Config = {
           400: '#DDB850',
           500: '#C9A84C',
           600: '#A88530',
-          700: '#7E6324',
+          700: '#836A27',
           800: '#544218',
           900: '#2A210C',
         },
@@ -47,6 +47,10 @@ const config: Config = {
           DEFAULT: '#FFFFFF',
           muted: '#F3F6F4',
           page: '#FAFBF9',
+        },
+        gold: {
+          500: '#C9A84C',
+          700: '#836A27',
         },
       },
 
@@ -86,7 +90,7 @@ const config: Config = {
         sm: '0 1px 2px rgba(27,92,74,0.04)',
         md: '0 4px 16px rgba(27,92,74,0.07)',
         lg: '0 12px 32px rgba(27,92,74,0.12)',
-        xl: '0 24px 48px rgba(18,64,53,0.18)',
+        xl: '0 24px 48px rgba(15,47,40,0.18)',
         card: '0 4px 16px rgba(27,92,74,0.07)',
         'card-hover': '0 12px 32px rgba(27,92,74,0.12)',
       },
@@ -94,9 +98,9 @@ const config: Config = {
       backgroundImage: {
         'gradient-brand': 'linear-gradient(135deg, #1B5C4A 0%, #2D7A5F 100%)',
         'gradient-gold': 'linear-gradient(135deg, #A88530 0%, #E5C97C 100%)',
-        'gradient-hero': 'linear-gradient(160deg, #124035 0%, #1B5C4A 50%, #2D7A5F 100%)',
+        'gradient-hero': 'linear-gradient(160deg, #0F2F28 0%, #1B5C4A 50%, #2D7A5F 100%)',
         'gradient-hero-soft':
-          'radial-gradient(ellipse 70% 80% at 15% 20%, rgba(201,168,76,0.2), transparent 50%), linear-gradient(160deg, #124035 0%, #1B5C4A 55%, #2D7A5F 100%)',
+          'radial-gradient(ellipse 70% 80% at 15% 20%, rgba(201,168,76,0.2), transparent 50%), linear-gradient(160deg, #0F2F28 0%, #1B5C4A 55%, #2D7A5F 100%)',
       },
 
       transitionDuration: {

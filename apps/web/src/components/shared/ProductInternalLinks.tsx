@@ -59,7 +59,7 @@ export function ProductInternalLinks({
         className={
           retail
             ? 'mt-1 text-sm text-[var(--retail-muted)]'
-            : 'mt-1 text-sm text-gray-500'
+            : 'mt-1 text-sm text-[var(--brand-muted,#4B5563)]'
         }
       >
         {subtitle}

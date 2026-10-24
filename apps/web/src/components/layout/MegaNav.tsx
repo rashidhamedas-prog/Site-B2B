@@ -20,7 +20,7 @@ export function MegaNav({ items, megaEnabled }: { items: MenuItem[]; megaEnabled
             <Link
               key={link.id}
               href={link.href}
-              className="ms-1 cursor-pointer rounded-lg bg-secondary px-3.5 py-2 text-sm font-bold text-white shadow-sm transition-colors duration-200 hover:bg-secondary-light"
+              className="ms-1 cursor-pointer rounded-lg bg-secondary px-3.5 py-2 text-sm font-bold text-[var(--brand-ink,#1A1A1A)] shadow-sm transition-colors duration-200 hover:bg-secondary-light"
             >
               {link.label}
             </Link>
@@ -61,7 +61,7 @@ export function MegaNav({ items, megaEnabled }: { items: MenuItem[]; megaEnabled
               <div className="absolute end-0 top-full z-50 pt-2 animate-fade-in">
                 <div className="glass-strong w-[min(92vw,36rem)] rounded-2xl p-4">
                   <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                    <p className="text-xs font-semibold tracking-wide text-gray-400 uppercase">دسته‌بندی‌ها</p>
+                    <p className="text-xs font-semibold tracking-wide text-[var(--brand-muted,#4B5563)] uppercase">دسته‌بندی‌ها</p>
                     <Link
                       href={link.href}
                       className="cursor-pointer text-xs font-medium text-primary hover:underline"

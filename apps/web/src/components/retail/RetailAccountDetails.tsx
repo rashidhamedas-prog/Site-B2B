@@ -281,7 +281,7 @@ export function RetailAccountDetails({
             <button
               type="submit"
               disabled={busy}
-              className="rounded-full bg-[var(--retail-gold)] px-5 py-2.5 text-sm font-extrabold text-white"
+              className="rounded-full bg-[var(--retail-gold)] px-5 py-2.5 text-sm font-extrabold text-[var(--brand-ink,#1A1A1A)]"
             >
               {editingId ? 'ذخیره آدرس' : 'افزودن آدرس'}
             </button>

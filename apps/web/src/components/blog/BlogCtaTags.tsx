@@ -52,7 +52,7 @@ export function BlogPrimaryCta({
   const btn =
     tone === 'retail'
       ? 'inline-block rounded-xl bg-amber-500 px-6 py-2.5 text-sm font-semibold text-[#2c1810] transition hover:bg-amber-400'
-      : 'inline-block rounded-xl bg-secondary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-secondary/90';
+      : 'inline-block rounded-xl bg-secondary px-6 py-2.5 text-sm font-semibold text-[var(--brand-ink,#1A1A1A)] transition-colors hover:bg-secondary/90';
 
   const openNew = 'openInNewTab' in data ? !!data.openInNewTab : false;
 

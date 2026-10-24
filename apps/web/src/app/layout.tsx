@@ -72,7 +72,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: '#124035',
+  themeColor: '#0F2F28',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

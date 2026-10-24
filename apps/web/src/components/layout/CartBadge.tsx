@@ -12,7 +12,7 @@ export function CartBadge() {
       aria-label="سبد خرید">
       <ShoppingCart className="h-5 w-5" />
       {count > 0 && (
-        <span className="absolute -top-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-white text-[10px] font-bold">
+        <span className="absolute -top-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[10px] font-bold text-[var(--brand-ink,#1A1A1A)]">
           {count > 9 ? '۹+' : count.toLocaleString('fa-IR')}
         </span>
       )}

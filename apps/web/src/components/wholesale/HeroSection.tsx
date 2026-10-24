@@ -77,7 +77,7 @@ function WholesaleSlideCopy({
             <Button
               size="lg"
               variant="secondary"
-              className="text-primary-dark hover:text-primary-dark font-bold"
+              className="font-bold text-[var(--brand-ink,#1A1A1A)] hover:text-[var(--brand-ink,#1A1A1A)]"
               leftIcon={<ArrowLeft className="rtl-flip h-5 w-5" />}
             >
               {slide.ctaLabel}
@@ -150,7 +150,7 @@ export function HeroSection(props: HeroSectionProps) {
         className={`absolute inset-0 ${isArtwork ? 'md:hidden' : ''}`}
         style={{
           background:
-            'linear-gradient(100deg, rgba(18,64,53,0.22) 0%, rgba(18,64,53,0.55) 45%, rgba(12,40,33,0.88) 100%)',
+            'linear-gradient(100deg, rgba(15,47,40,0.22) 0%, rgba(15,47,40,0.55) 45%, rgba(15,47,40,0.88) 100%)',
         }}
         aria-hidden
       />

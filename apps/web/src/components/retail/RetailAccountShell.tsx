@@ -74,7 +74,7 @@ export function RetailAccountFrame({ children }: { children: React.ReactNode }) 
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-bold text-[var(--retail-gold)]">حساب مشتری</p>
+          <p className="text-xs font-bold text-[var(--brand-gold-700,#836A27)]">حساب مشتری</p>
           <h1 className="text-2xl font-extrabold">پنل من</h1>
           {name ? <p className="mt-1 text-sm text-[var(--retail-muted)]">{name}</p> : null}
         </div>

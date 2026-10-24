@@ -57,7 +57,7 @@ export function HowItWorks({
             <p className="mb-3 text-sm font-semibold tracking-wide text-secondary">{eyebrow}</p>
           ) : null}
           {headline ? <h2 className="section-title text-white">{headline}</h2> : null}
-          {body ? <p className="text-base text-white/55">{body}</p> : null}
+          {body ? <p className="text-base on-dark-muted">{body}</p> : null}
         </div>
 
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
@@ -72,7 +72,7 @@ export function HowItWorks({
                   {step.step}
                 </p>
                 <h3 className="mb-2 text-base font-bold text-white">{step.title}</h3>
-                <p className="text-sm leading-relaxed text-white/55">{step.description}</p>
+                <p className="text-sm leading-relaxed on-dark-muted">{step.description}</p>
               </div>
             </div>
           ))}

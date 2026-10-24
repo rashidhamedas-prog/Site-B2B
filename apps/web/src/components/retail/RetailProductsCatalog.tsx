@@ -318,7 +318,7 @@ export function RetailProductsCatalog({
     <div className="pb-16">
       <div className="border-b border-[var(--retail-border)] bg-white">
         <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <p className="text-sm font-semibold text-[var(--retail-gold)]">فروشگاه</p>
+          <p className="text-sm font-semibold text-[var(--brand-gold-700,#836A27)]">فروشگاه</p>
           <h1 className="mt-1 text-3xl font-extrabold text-[var(--retail-ink)]">همه محصولات</h1>
           <p className="mt-2 max-w-xl text-sm text-[var(--retail-muted)]">
             پارچه، رنگ و سایز را مشخص کنید تا مدل مناسب خودتان در فهرست بماند.

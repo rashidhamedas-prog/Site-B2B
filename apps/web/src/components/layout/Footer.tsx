@@ -70,11 +70,11 @@ export function Footer() {
               </div>
               <div>
                 <div className="text-base font-bold text-white">{brandName}</div>
-                {brandTagline ? <div className="text-xs text-white/50">{brandTagline}</div> : null}
+                {brandTagline ? <div className="text-xs on-dark-muted">{brandTagline}</div> : null}
               </div>
             </div>
             {blurb ? (
-              <p className="mb-5 text-sm leading-relaxed text-white/55">{blurb}</p>
+              <p className="mb-5 text-sm leading-relaxed on-dark-muted">{blurb}</p>
             ) : null}
             <div className="flex items-center gap-2.5">
               {telegramHref ? (
@@ -82,7 +82,7 @@ export function Footer() {
                   href={telegramHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-white transition-colors duration-200 hover:bg-secondary"
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-white transition-colors duration-200 hover:bg-secondary hover:text-[var(--brand-ink,#1A1A1A)]"
                   aria-label="تلگرام"
                 >
                   <Send className="h-4 w-4" />
@@ -93,7 +93,7 @@ export function Footer() {
                   href={instagramHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-white transition-colors duration-200 hover:bg-secondary"
+                  className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-white/10 text-white transition-colors duration-200 hover:bg-secondary hover:text-[var(--brand-ink,#1A1A1A)]"
                   aria-label="اینستاگرام"
                 >
                   <Instagram className="h-4 w-4" />
@@ -109,7 +109,7 @@ export function Footer() {
                 <li key={link.id}>
                   <Link
                     href={link.href}
-                    className="cursor-pointer text-sm text-white/55 transition-colors duration-200 hover:text-secondary"
+                    className="cursor-pointer text-sm on-dark-muted transition-colors duration-200 hover:text-secondary"
                   >
                     {link.label}
                   </Link>
@@ -119,7 +119,7 @@ export function Footer() {
                 <li>
                   <Link
                     href="/hamkar-moarefi"
-                    className="cursor-pointer text-sm text-white/55 transition-colors duration-200 hover:text-secondary"
+                    className="cursor-pointer text-sm on-dark-muted transition-colors duration-200 hover:text-secondary"
                   >
                     همکار معرفی بوتیک
                   </Link>
@@ -135,7 +135,7 @@ export function Footer() {
                 <li key={link.id}>
                   <Link
                     href={link.href}
-                    className="cursor-pointer text-sm text-white/55 transition-colors duration-200 hover:text-secondary"
+                    className="cursor-pointer text-sm on-dark-muted transition-colors duration-200 hover:text-secondary"
                   >
                     {link.label}
                   </Link>
@@ -148,7 +148,7 @@ export function Footer() {
             <h3 className="mb-4 text-sm font-semibold tracking-wide text-white">{contactTitle}</h3>
             <ul className="space-y-4">
               {phoneLabel ? (
-                <li className="flex items-start gap-2.5 text-sm text-white/55">
+                <li className="flex items-start gap-2.5 text-sm on-dark-muted">
                   <Phone className="mt-0.5 h-4 w-4 flex-shrink-0 text-secondary" />
                   <div>
                     <a
@@ -158,17 +158,17 @@ export function Footer() {
                       {phoneLabel}
                     </a>
                     {ownerLabel ? (
-                      <span className="text-xs text-white/40">{ownerLabel}</span>
+                      <span className="on-dark-muted text-xs">{ownerLabel}</span>
                     ) : null}
                   </div>
                 </li>
               ) : null}
               {addressLines.length > 0 ? (
-                <li className="flex items-start gap-2.5 text-sm text-white/55">
+                <li className="flex items-start gap-2.5 text-sm on-dark-muted">
                   <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-secondary" />
                   <div>
                     {addressTitle ? <p>{addressTitle}</p> : null}
-                    <p className="mt-0.5 text-xs leading-relaxed text-white/40">
+                    <p className="on-dark-muted mt-0.5 text-xs leading-relaxed">
                       {addressLines.map((line, i) => (
                         <span key={i}>
                           {i > 0 ? <br /> : null}
@@ -185,7 +185,7 @@ export function Footer() {
       </div>
 
       <div className="relative border-t border-white/10">
-        <div className="container-site flex flex-col items-center justify-between gap-4 py-5 text-xs text-white/40 sm:flex-row">
+        <div className="on-dark-muted container-site flex flex-col items-center justify-between gap-4 py-5 text-xs sm:flex-row">
           <p>{copyright}</p>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
             <EnamadSeal
