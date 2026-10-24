@@ -4,10 +4,13 @@ export function RetailFaq({
   headline = 'سوالات پرتکرار',
   body = 'قبل از خرید، این چند مورد را یک‌بار بخوانید.',
   items,
+  emitJsonLd = true,
 }: {
   headline?: string;
   body?: string;
   items?: Array<{ question: string; answer: string }>;
+  /** Sales-partnership puts FAQPage in the page graph; skip the second script. */
+  emitJsonLd?: boolean;
 }) {
   const faqs =
     items?.length
@@ -37,7 +40,7 @@ export function RetailFaq({
 
   return (
     <section className="mx-auto max-w-[800px] px-4 py-16 sm:px-6">
-      <FaqJsonLd items={faqs} />
+      {emitJsonLd ? <FaqJsonLd items={faqs} /> : null}
       {headline ? (
         <h2 className="text-center text-2xl font-extrabold text-[var(--retail-ink)]">{headline}</h2>
       ) : null}

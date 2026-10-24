@@ -6,6 +6,8 @@ import { cn } from '@/lib/cn';
 import { useImageUpload } from '@/lib/hooks/useImageUpload';
 import { BLOCK_TYPE_LABELS, newBlockId, type BlockType, type ContentBlock } from '@/lib/cms/types';
 import { AdminProductsBlockFields } from './AdminProductsBlockFields';
+import { AdminStoryBlockFields } from './AdminStoryBlockFields';
+import { storyboardImageSrc } from '@/lib/sales-partner-public-facts';
 import { shapeDigitsInText } from '@taranom/persian-utils';
 
 export type { BlockType, ContentBlock };
@@ -193,6 +195,47 @@ export function createEmptyBlock(type: BlockType): ContentBlock {
       Object.assign(base, {
         headline: '',
         items: [{ label: '', href: '' }],
+      });
+      break;
+    case 'storyboard':
+      Object.assign(base, {
+        headline: '',
+        body: '',
+        steps: [1, 2, 3, 4, 5, 6].map((n) => ({
+          n,
+          title: '',
+          body: '',
+          image: storyboardImageSrc(n).desktop,
+          imageMobile: storyboardImageSrc(n).mobile,
+        })),
+      });
+      break;
+    case 'moneyTimeline':
+      Object.assign(base, {
+        headline: '',
+        note: '',
+        stages: [{ title: '', body: '' }],
+      });
+      break;
+    case 'earningExample':
+      Object.assign(base, {
+        badge: 'مثال — قیمت‌ها فرضی است',
+        story: '',
+        items: [{ label: '', priceToman: 0 }],
+        discountPercent: 10,
+        commissionPercent: 20,
+        minPayoutToman: 1_000_000,
+        repeatNote: '',
+        disclaimer: '',
+      });
+      break;
+    case 'roles':
+      Object.assign(base, {
+        headline: 'کار شما / کار ترنم',
+        youLabel: 'کار شما',
+        taranomLabel: 'کار ترنم',
+        you: [''],
+        taranom: [''],
       });
       break;
   }
@@ -399,6 +442,15 @@ function BlockFields({
 
   if (block.type === 'products') {
     return <AdminProductsBlockFields block={block} onChange={onChange} channel={channel} />;
+  }
+
+  if (
+    block.type === 'storyboard' ||
+    block.type === 'moneyTimeline' ||
+    block.type === 'earningExample' ||
+    block.type === 'roles'
+  ) {
+    return <AdminStoryBlockFields block={block} onChange={onChange} />;
   }
 
   if (block.type === 'announcement') {

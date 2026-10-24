@@ -17,6 +17,7 @@ import {
   heroPropsFromBlock,
   pushCommonBlocks,
 } from './block-shared';
+import { renderSalesStoryBlock } from '@/components/sales-partners/storyboard/render-block';
 
 function SectionSkeleton({ className = 'h-64' }: { className?: string }) {
   return (
@@ -98,6 +99,7 @@ export async function RetailBlocksRenderer({
             headline={str(p, 'headline') || undefined}
             body={str(p, 'body') || undefined}
             items={arr(p, 'items')}
+            emitJsonLd={p.emitJsonLd !== false}
           />,
         );
         break;
@@ -130,6 +132,14 @@ export async function RetailBlocksRenderer({
           />,
         );
         break;
+      case 'storyboard':
+      case 'moneyTimeline':
+      case 'earningExample':
+      case 'roles': {
+        const storyNode = renderSalesStoryBlock(block);
+        if (storyNode) nodes.push(storyNode);
+        break;
+      }
       case 'process':
         nodes.push(
           <RetailProcessSteps

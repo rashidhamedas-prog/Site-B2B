@@ -1,5 +1,22 @@
 import { toPersianDigits } from '@taranom/persian-utils';
 import {
+  EARNING_DISCLAIMER,
+  EARNING_DISCOUNT_PERCENT,
+  EARNING_EXAMPLE_ITEMS,
+  EARNING_REPEAT_TEMPLATE,
+  SALES_PARTNER_MONEY_NOTE,
+  SP_COMMISSION_PERCENT,
+  SP_HOLD_DAYS,
+  SP_MIN_PAYOUT_TOMAN,
+  earningExampleStory,
+  formatTomanFa,
+  salesPartnerFaqItems,
+  salesPartnerMoneyStages,
+  salesPartnerRoles,
+  salesPartnerStorySteps,
+  salesPartnerWhoClosing,
+} from '@/lib/sales-partner-public-facts';
+import {
   BUSINESS_FACTS,
   COMPANY_PRODUCTION_YEARS_STAT,
   yearsOfOperationFa,
@@ -987,10 +1004,37 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
           imageUrl: '/sales-partner/hero-banner.webp',
           imageAlt: 'بنر همکاری بازاریاب پوشاک ترنم — لینن و فضای برند سبز و طلایی',
         }),
+        b('storyboard', {
+          headline: 'با ترنم چطور درآمد داشته باشم؟ — ۶ قدم ساده',
+          body: 'شما فقط معرفی می‌کنید؛ دریافت پول، بسته‌بندی و ارسال با ترنم است.',
+          steps: salesPartnerStorySteps(),
+        }),
+        b('moneyTimeline', {
+          headline: 'پول شما کی می‌رسد؟',
+          stages: salesPartnerMoneyStages(),
+          note: SALES_PARTNER_MONEY_NOTE,
+        }),
+        b('earningExample', {
+          badge: 'مثال — قیمت‌ها فرضی است',
+          story: earningExampleStory(),
+          items: EARNING_EXAMPLE_ITEMS,
+          discountPercent: EARNING_DISCOUNT_PERCENT,
+          commissionPercent: SP_COMMISSION_PERCENT,
+          minPayoutToman: SP_MIN_PAYOUT_TOMAN,
+          repeatNote: EARNING_REPEAT_TEMPLATE,
+          disclaimer: EARNING_DISCLAIMER,
+        }),
+        b('roles', {
+          headline: 'کار شما / کار ترنم',
+          youLabel: 'کار شما',
+          taranomLabel: 'کار ترنم',
+          you: salesPartnerRoles().you,
+          taranom: salesPartnerRoles().taranom,
+        }),
         b('features', {
           eyebrow: 'چرا این نقش ساده است',
           headline: 'بدون انبار، بدون دریافت پول، با پشتیبانی ترنم',
-          body: 'ترس‌های رایج فروش اجتماعی را با مسئولیت واقعی پنل پاسخ می‌دهیم — بدون وعدهٔ درآمد تضمینی.',
+          body: 'بدون انبار و بدون وعدهٔ درآمد تضمینی.',
           items: [
             {
               icon: 'Package',
@@ -1003,105 +1047,31 @@ export function getDefaultBlocks(channel: 'WHOLESALE' | 'RETAIL', pageKey: strin
               description: 'پرداخت روی درگاه ترنم است؛ شما واسطهٔ مالی نیستید.',
             },
             {
-              icon: 'Link2',
-              title: 'لینک و سفارش اختصاصی',
-              description: 'از پنل لینک محصول یا پیش‌فاکتور تأیید مشتری می‌سازید.',
-            },
-            {
               icon: 'Wallet',
-              title: 'پورسانت با زمان شفاف',
-              description:
-                'پس از تحویل و اتمام مهلت مرجوعی؛ درصد روی کالاهای واجدشرایط طبق قوانین ادمین در پنل دیده می‌شود.',
-            },
-          ],
-        }),
-        b('process', {
-          eyebrow: 'مسیر همکاری',
-          headline: 'از ثبت‌نام تا پورسانت — مرحله‌به‌مرحله',
-          body: 'پنج قدم واضح تا فعال شدن نقش همکار بازاریاب',
-          steps: [
-            {
-              step: '۰۱',
-              title: 'ثبت‌نام',
-              description: 'فرم را پر کنید و موبایل را با پیامک تأیید کنید.',
-              image: '/sales-partner/steps/01-register.svg',
-              imageAlt: 'آیکون ثبت‌نام همکار بازاریاب',
-            },
-            {
-              step: '۰۲',
-              title: 'بررسی ادمین',
-              description: 'پس از تأیید، وضعیت فعال می‌شود؛ تا قبل از آن سفارش نمی‌سازید.',
-              image: '/sales-partner/steps/02-review.svg',
-              imageAlt: 'آیکون بررسی درخواست همکاری',
-            },
-            {
-              step: '۰۳',
-              title: 'ورود به پنل',
-              description: 'با همان شماره وارد پنل همکاران بازاریاب شوید.',
-              image: '/sales-partner/steps/03-panel.svg',
-              imageAlt: 'آیکون ورود به پنل همکار',
-            },
-            {
-              step: '۰۴',
-              title: 'معرفی و سفارش',
-              description: 'از کاتالوگ تأییدشده لینک بفرستید یا پیش‌فاکتور بسازید تا مشتری تأیید کند.',
-              image: '/sales-partner/steps/04-share.svg',
-              imageAlt: 'آیکون اشتراک‌گذاری لینک محصول',
-            },
-            {
-              step: '۰۵',
-              title: 'پورسانت',
-              description:
-                'بعد از پرداخت، تحویل و پایان مهلت مرجوعی، مبلغ طبق قوانین برنامه در دسترس قرار می‌گیرد.',
-              image: '/sales-partner/steps/05-payout.svg',
-              imageAlt: 'آیکون دریافت پورسانت پس از تحویل',
+              title: `پورسانت ${formatTomanFa(SP_COMMISSION_PERCENT)}٪`,
+              description: `پس از تحویل و ${formatTomanFa(SP_HOLD_DAYS)} روز، پورسانت مبلغ کالا بعد از تخفیف قابل‌برداشت است. هزینهٔ ارسال حساب نمی‌شود.`,
             },
           ],
         }),
         b('text', {
           headline: 'همکار بازاریاب پوشاک ترنم کیست؟',
           body:
-            'همکار بازاریاب کسی است که پوشاک ترنم را به دوستان، مخاطبان اینستاگرام، مشتریان حضوری یا شبکهٔ خودش معرفی می‌کند. تصمیم خرید، پرداخت و ارسال با مشتری و ترنم است؛ شما واسطهٔ اعتماد و راهنمایی انتخاب هستید.\n\nاین نقش برای افراد ۱۸ تا حدود ۵۵ سال که وقت پاره‌وقت دارند مناسب است: فروشندهٔ شبکه‌های اجتماعی، خانه‌دار، دانشجو، فروشندهٔ حضوری، یا کسی که درآمد مکمل می‌خواهد — بدون اینکه بخواهد انباردار یا پیک باشد.\n\nبا عمده‌فروشی بوتیک‌ها در poshaktaranom.com یکی نیست و با «تأمین‌کننده ارسال» هم فرق دارد. آنجا کالا را شریک تأمین می‌فرستد؛ اینجا شما فقط معرفی می‌کنید.\n\nدرآمد تضمینی یا درصد ثابت عمومی در این صفحه اعلام نمی‌شود. درصد پورسانت روی کالاهای واجدشرایط فقط از قوانین ثبت‌شده در پنل/ادمین دیده می‌شود.',
+            'همکار بازاریاب کسی است که پوشاک ترنم را به دوستان، مخاطبان اینستاگرام، مشتریان حضوری یا شبکهٔ خودش معرفی می‌کند. تصمیم خرید، پرداخت و ارسال با مشتری و ترنم است؛ شما واسطهٔ اعتماد و راهنمایی انتخاب هستید.\n\nاین نقش برای افراد ۱۸ تا حدود ۵۵ سال که وقت پاره‌وقت دارند مناسب است: فروشندهٔ شبکه‌های اجتماعی، خانه‌دار، دانشجو، فروشندهٔ حضوری، یا کسی که درآمد مکمل می‌خواهد — بدون اینکه بخواهد انباردار یا پیک باشد.\n\nبا عمده‌فروشی بوتیک‌ها در poshaktaranom.com یکی نیست و با «تأمین‌کننده ارسال» هم فرق دارد. آنجا کالا را شریک تأمین می‌فرستد؛ اینجا شما فقط معرفی می‌کنید.\n\n' +
+            salesPartnerWhoClosing(),
         }),
         b('faq', {
           headline: 'سوالات پرتکرار',
           body: 'پاسخ‌های کوتاه قبل از ثبت‌نام',
-          items: [
-            {
-              question: 'آیا باید کالا بخرم یا انبار کنم؟',
-              answer: 'خیر. موجودی و انبار با ترنم است.',
-            },
-            {
-              question: 'پول مشتری دست من است؟',
-              answer: 'خیر. پرداخت روی درگاه ترنم انجام می‌شود.',
-            },
-            {
-              question: 'کی پورسانت می‌گیرم؟',
-              answer:
-                'پس از تحویل سفارش و پایان مهلت مرجوعی، طبق تنظیمات برنامه (از جمله نگه‌داشت اعلام‌شده در شرایط همکاری).',
-            },
-            {
-              question: 'درصد پورسانت چقدر است؟',
-              answer:
-                'در پنل، روی کالاهای واجدشرایط، طبق قوانین ثبت‌شدهٔ ادمین نمایش داده می‌شود. اینجا عدد ثابت عمومی اعلام نمی‌کنیم.',
-            },
-            {
-              question: 'ثبت‌نام یعنی بلافاصله فروش؟',
-              answer: 'خیر. تا تأیید ادمین وضعیت بررسی است و سفارش ساخته نمی‌شود.',
-            },
-            {
-              question: 'با تأمین‌کننده ارسال یکی است؟',
-              answer: 'خیر. همکار بازاریاب ارسال و انبارداری انجام نمی‌دهد.',
-            },
-          ],
+          emitJsonLd: false,
+          items: salesPartnerFaqItems(),
         }),
         b('cta', {
           eyebrow: 'قدم بعدی',
-          headline: 'آماده‌اید معرفی را شروع کنید؟',
-          body: 'ثبت‌نام چند دقیقه طول می‌کشد. بعد از تأیید ادمین، پنل و کاتالوگ در دسترس است.',
-          ctaLabel: 'ثبت‌نام همکار بازاریاب',
+          headline: 'آماده‌اید؟ رایگان ثبت‌نام کنید',
+          body: 'عضویت رایگان است. فرم پایین همین صفحه را پر کنید.',
+          ctaLabel: 'رایگان ثبت‌نام کنید',
           ctaHref: '#apply',
-          ctaSecondaryLabel: 'ورود به پنل',
+          ctaSecondaryLabel: 'ورود همکاران',
           ctaSecondaryHref: '/sales-partners/login',
         }),
       ];
