@@ -1,3 +1,9 @@
+/**
+ * PDP hero slot. On a 360px phone at DPR 2 the browser asks for ~720px
+ * (`deviceSizes` includes 720). Desktop column is about 640 CSS pixels.
+ */
+export const PDP_MAIN_IMAGE_SIZES = '(max-width: 1024px) 100vw, 640px';
+
 /** Shared storefront display helpers. Prices are IRR; UI shows toman. */
 
 export type ChannelSale = {

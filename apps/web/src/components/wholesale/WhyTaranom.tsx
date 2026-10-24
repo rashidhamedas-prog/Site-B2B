@@ -94,7 +94,7 @@ export function WhyTaranom({
                 key={feature.title}
                 className="group glass-card p-5 transition-all duration-250 hover:-translate-y-0.5"
               >
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white transition-colors duration-250 group-hover:bg-secondary">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white transition-colors duration-250 group-hover:bg-secondary group-hover:text-[var(--brand-ink,#1A1A1A)]">
                   <Icon className="h-5 w-5" />
                 </div>
                 <h3 className="mb-2 text-base font-bold text-gray-900">{feature.title}</h3>

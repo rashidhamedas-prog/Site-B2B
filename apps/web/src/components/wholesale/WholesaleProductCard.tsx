@@ -146,7 +146,7 @@ export function WholesaleProductCard({
               isAvailable
                 ? 'bg-[var(--brand-green,#1B5C4A)] text-white'
                 : isComingSoon
-                  ? 'bg-[var(--brand-gold,#C9A84C)] text-[var(--brand-green-dark,#0F2F28)]'
+                  ? 'bg-[var(--brand-gold,#C9A84C)] text-[var(--brand-ink,#1A1A1A)]'
                   : 'bg-[var(--brand-ink,#1A1A1A)] text-white'
             }`}
           >
@@ -156,12 +156,12 @@ export function WholesaleProductCard({
       </Link>
 
       <div className="flex flex-1 flex-col p-3.5 sm:p-4">
-        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] text-[var(--brand-muted,#6B7280)]">
+        <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] text-[var(--brand-muted,#4B5563)]">
           <span className="font-mono tracking-wide" dir="ltr">
             {product.sku || 'TARANOM'}
           </span>
           {saleActive && discount ? (
-            <span className="font-bold text-[var(--brand-gold-dark,#A88530)]">
+            <span className="font-bold text-[var(--brand-gold-700,#836A27)]">
               ٪{discount.toLocaleString('fa-IR')} تخفیف
             </span>
           ) : null}
@@ -179,7 +179,7 @@ export function WholesaleProductCard({
         </Link>
 
         {specParts.length ? (
-          <p className="mt-2 text-[11px] leading-5 text-[var(--brand-muted,#6B7280)]">
+          <p className="mt-2 text-[11px] leading-5 text-[var(--brand-muted,#4B5563)]">
             {specParts.join(' · ')}
           </p>
         ) : null}
@@ -203,12 +203,12 @@ export function WholesaleProductCard({
         <div className="mt-auto space-y-3 pt-4">
           <div className="flex items-end justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[10px] text-[var(--brand-muted,#6B7280)]">قیمت همکاری هر عدد</p>
+              <p className="text-xs text-[var(--brand-muted,#4B5563)]">قیمت همکاری هر عدد</p>
               <p className="mt-0.5 text-base font-black text-[var(--brand-green,#1B5C4A)]">
                 {showPrice ? `${toman(price)} تومان` : 'تماس بگیرید'}
               </p>
               {showPrice && saleActive && compareAt > price ? (
-                <p className="text-[11px] text-[var(--brand-muted,#6B7280)] line-through">
+                <p className="text-[11px] text-[var(--brand-muted,#4B5563)] line-through">
                   {toman(compareAt)}
                 </p>
               ) : null}

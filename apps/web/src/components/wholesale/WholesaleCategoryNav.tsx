@@ -39,7 +39,7 @@ export async function WholesaleMobileCategorySlot() {
   if (categories.length === 0) return null;
   return (
     <div className="mt-3 border-t border-gray-100 pt-3">
-      <p className="px-3 pb-1 text-xs font-bold text-gray-400">دسته‌بندی محصولات</p>
+      <p className="px-3 pb-1 text-xs font-bold text-[var(--brand-muted,#4B5563)]">دسته‌بندی محصولات</p>
       {categories.map((category) => (
         <Link
           key={category.id}

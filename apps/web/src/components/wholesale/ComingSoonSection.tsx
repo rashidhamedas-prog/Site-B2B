@@ -140,13 +140,13 @@ export async function ComingSoonSection({
                   <h3 className="line-clamp-2 text-xs font-semibold leading-tight text-gray-800">
                     {product.name}
                   </h3>
-                  {product.fabric && <p className="text-xs text-gray-400">{product.fabric}</p>}
+                  {product.fabric && <p className="text-xs text-[var(--brand-muted,#4B5563)]">{product.fabric}</p>}
                   <div className="mt-auto flex items-center justify-between pt-1">
                     <p className="text-[11px] font-medium text-secondary-dark">پیش‌خرید</p>
                     <div className="text-left">
                       <p className="text-sm font-bold text-primary">{price > 0 ? `${toman(price)} ت` : '—'}</p>
                       {saleActive && compareAt > price ? (
-                        <p className="text-[11px] text-gray-400 line-through">{toman(compareAt)}</p>
+                        <p className="text-[11px] text-[var(--brand-muted,#4B5563)] line-through">{toman(compareAt)}</p>
                       ) : null}
                     </div>
                   </div>

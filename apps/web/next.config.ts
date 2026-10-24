@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
     // Cap at 1200: catalog/home cards were emitting src w=1920 as the fallback
     // candidate even with ~46vw sizes — wasted LCP bytes on Slow 4G / CrUX.
     // Full-bleed heroes use direct /banners/*.webp, not the optimizer.
-    deviceSizes: [375, 640, 750, 828, 1080, 1200],
+    deviceSizes: [375, 640, 720, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     // Allow catalog cards at 65 without Next 16 hard-fail on non-default quality.
     qualities: [65, 75],

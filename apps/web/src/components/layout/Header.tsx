@@ -73,7 +73,7 @@ export function Header({
               ) : null}
               {telegramLabel ? (
                 <>
-                  <span className="hidden text-white/40 sm:inline">|</span>
+                  <span className="on-dark-muted hidden sm:inline">|</span>
                   <a
                     href={telegramHref}
                     target="_blank"
@@ -102,7 +102,7 @@ export function Header({
             <div className="leading-tight">
               <div className="text-lg font-extrabold tracking-tight text-primary">{brandName}</div>
               {brandTagline ? (
-                <div className="text-[11px] font-medium text-gray-400">{brandTagline}</div>
+                <div className="text-[11px] font-medium text-[var(--brand-muted,#4B5563)]">{brandTagline}</div>
               ) : null}
             </div>
           </Link>

@@ -44,9 +44,14 @@ export function FloatingContact({
   if (pathname.startsWith('/admin') || retail) return null;
   if (pathname === '/checkout' || pathname.startsWith('/checkout/')) return null;
 
+  const onProduct = /^\/products\/[^/]+/.test(pathname);
+  const dockClass = onProduct
+    ? 'bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] lg:bottom-6'
+    : 'bottom-[calc(1.5rem+var(--wholesale-bottom-bar,0px)+env(safe-area-inset-bottom,0px))]';
+
   return (
     <div
-      className="fixed bottom-6 left-6 z-50 flex flex-col-reverse items-start gap-3"
+      className={`fixed left-6 z-50 flex flex-col-reverse items-start gap-3 ${dockClass}`}
       data-cta-location="floating_contact"
     >
       {open && (
@@ -100,7 +105,7 @@ export function FloatingContact({
         aria-label={open ? 'بستن پنجره تماس' : 'ارتباط با ما'}
         className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105"
       >
-        {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {open ? <X className="h-6 w-6" aria-hidden /> : <MessageCircle className="h-6 w-6" aria-hidden />}
       </button>
     </div>
   );

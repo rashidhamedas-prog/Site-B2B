@@ -360,7 +360,7 @@ export function RetailHeader() {
             >
               <ShoppingBag className="h-5 w-5" strokeWidth={1.4} />
               {mounted && count > 0 && (
-                <span className="absolute left-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--retail-gold)] px-1 text-[10px] font-bold text-white">
+                <span className="absolute left-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--retail-gold)] px-1 text-[10px] font-bold text-[var(--brand-ink,#1A1A1A)]">
                   {count > 9 ? '۹+' : count.toLocaleString('fa-IR')}
                 </span>
               )}

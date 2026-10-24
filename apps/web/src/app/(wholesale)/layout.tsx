@@ -7,6 +7,7 @@ import {
 import { Footer } from '@/components/layout/Footer';
 import { ScrollToTop } from '@/components/shared/ScrollToTop';
 import { FloatingContact } from '@/components/shared/FloatingContact';
+import { SkipLink } from '@/components/shared/SkipLink';
 import { ThemeRuntime } from '@/components/wholesale/ThemeRuntime';
 import { CartProvider } from '@/lib/cart';
 import {
@@ -115,6 +116,7 @@ export default async function WholesaleLayout({ children }: { children: React.Re
         <WebSiteJsonLd channel="WHOLESALE" business={settings?.business} seo={settings?.seo} />
         <GoogleAnalyticsProvider channel="WHOLESALE" />
         <ThemeRuntime theme={bag.theme} />
+        <SkipLink />
         <Header
           categoryNav={
             <Suspense fallback={null}>
@@ -127,7 +129,7 @@ export default async function WholesaleLayout({ children }: { children: React.Re
             </Suspense>
           }
         />
-        <main>{children}</main>
+        <main id="main">{children}</main>
         <Footer />
         <FloatingContact chrome={bag.chrome} />
         <ScrollToTop />

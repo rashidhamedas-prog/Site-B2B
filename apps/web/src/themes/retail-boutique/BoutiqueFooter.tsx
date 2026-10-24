@@ -83,7 +83,7 @@ export function BoutiqueFooter() {
       </div>
       <div className="border-t border-white/10 py-4">
         <div className="bq-container flex flex-col items-center justify-between gap-3 sm:flex-row">
-          <p className="text-center text-xs text-white/45">{copyright}</p>
+          <p className="on-dark-muted text-center text-xs">{copyright}</p>
           <EnamadSeal
             channel="RETAIL"
             size={72}

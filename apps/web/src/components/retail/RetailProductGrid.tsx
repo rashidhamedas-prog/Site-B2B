@@ -47,9 +47,9 @@ export async function RetailProductGrid({
         <div className="mb-8 flex flex-col items-center gap-4 text-center sm:mb-10 sm:flex-row sm:items-end sm:justify-between sm:text-right">
           <div>
             {query.eyebrow ? (
-              <p className="text-[11px] font-semibold tracking-[0.2em] text-[var(--retail-gold)]">{query.eyebrow}</p>
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-[var(--brand-gold-700,#836A27)]">{query.eyebrow}</p>
             ) : (
-              <p className="text-[11px] font-semibold tracking-[0.2em] text-[var(--retail-gold)]">COLLECTION</p>
+              <p className="text-[11px] font-semibold tracking-[0.2em] text-[var(--brand-gold-700,#836A27)]">COLLECTION</p>
             )}
             {headline ? (
               <h2 className="mt-2 text-2xl font-extrabold text-[var(--retail-ink)] sm:text-3xl">{headline}</h2>
@@ -61,7 +61,7 @@ export async function RetailProductGrid({
           {ctaLabel && query.ctaHref ? (
             <Link
               href={query.ctaHref}
-              className="inline-flex min-h-11 cursor-pointer items-center border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
+              className="inline-flex min-h-11 cursor-pointer items-center border-b border-[var(--brand-gold-700,#836A27)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
             >
               {ctaLabel}
             </Link>
@@ -76,7 +76,7 @@ export async function RetailProductGrid({
             {query.ctaHref ? (
               <Link
                 href={query.ctaHref}
-                className="mt-4 inline-flex cursor-pointer border-b border-[var(--retail-gold)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
+                className="mt-4 inline-flex cursor-pointer border-b border-[var(--brand-gold-700,#836A27)] pb-0.5 text-sm font-bold text-[var(--retail-primary)]"
               >
                 {ctaLabel}
               </Link>

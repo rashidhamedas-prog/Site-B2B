@@ -8,6 +8,7 @@ import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { apiClient } from '@/lib/api';
 import {
   discountPercent,
+  PDP_MAIN_IMAGE_SIZES,
   mediaUrl as toMediaUrl,
   variantsInStock,
   variantsOnSizeChart,
@@ -137,7 +138,7 @@ function PreOrderCountdown({ date }: { date: string }) {
     const id = setInterval(tick, 60_000);
     return () => clearInterval(id);
   }, [date]);
-  return <p className="mt-2 text-sm font-bold text-[var(--retail-gold)]">{label}</p>;
+  return <p className="mt-2 text-sm font-bold text-[var(--brand-gold-700,#836A27)]">{label}</p>;
 }
 
 export function RetailProductDetail({
@@ -383,7 +384,7 @@ export function RetailProductDetail({
       type="button"
       disabled={!canBuy || price <= 0}
       onClick={onAdd}
-      className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-[var(--retail-primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--retail-primary-dark)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)] disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex min-h-12 min-w-[8.5rem] flex-1 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md bg-[var(--retail-primary)] px-4 text-sm font-extrabold text-white transition hover:bg-[var(--retail-primary-dark)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-gold-700,#836A27)] disabled:cursor-not-allowed disabled:opacity-50"
     >
       {added ? <Check className="h-4 w-4" aria-hidden /> : <ShoppingBag className="h-4 w-4" aria-hidden />}
       {added
@@ -402,8 +403,8 @@ export function RetailProductDetail({
     <div
       className={
         boutique
-          ? 'bq-light-panel mx-3 my-4 min-w-0 overflow-hidden rounded-3xl bg-white text-neutral-900 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:mx-6 lg:pb-0'
-          : 'min-w-0 bg-[var(--retail-bg)] pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-0'
+          ? 'bq-light-panel mx-3 my-4 min-w-0 overflow-hidden rounded-3xl bg-white text-neutral-900 pb-[calc(8rem+env(safe-area-inset-bottom,0px))] lg:mx-6 lg:pb-0'
+          : 'min-w-0 bg-[var(--retail-bg)] pb-[calc(8rem+env(safe-area-inset-bottom,0px))] lg:pb-0'
       }
     >
       <div className="mx-auto grid min-w-0 max-w-7xl gap-8 px-4 py-8 sm:gap-10 sm:px-6 lg:grid-cols-12 lg:px-8 lg:py-14">
@@ -427,7 +428,8 @@ export function RetailProductDetail({
                       aria-selected={selected}
                       onClick={() => selectGalleryImage(i)}
                       title={linkedColor || undefined}
-                      className={`relative h-16 w-16 shrink-0 cursor-pointer overflow-hidden bg-[var(--retail-card)] ring-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--retail-gold)] lg:h-auto lg:w-full lg:aspect-square ${
+                      aria-label={`تصویر ${(i + 1).toLocaleString('fa-IR')} از ${gallery.length.toLocaleString('fa-IR')}${linkedColor ? `، ${linkedColor}` : ''}`}
+                      className={`relative h-11 w-11 shrink-0 cursor-pointer overflow-hidden bg-[var(--retail-card)] ring-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-gold-700,#836A27)] sm:h-16 sm:w-16 lg:h-auto lg:w-full lg:aspect-square ${
                         selected ? 'ring-[var(--retail-primary)]' : 'ring-transparent'
                       }`}
                     >
@@ -442,7 +444,7 @@ export function RetailProductDetail({
 
             <button
               type="button"
-              className="relative aspect-[3/4] w-full cursor-zoom-in overflow-hidden bg-[var(--retail-card)] lg:flex-1"
+              className="pdp-main-frame cursor-zoom-in bg-[var(--retail-card)] lg:flex-1"
               onClick={() => setZoomOpen(true)}
               aria-label={`بزرگنمایی تصویر ${product.name}`}
             >
@@ -452,7 +454,7 @@ export function RetailProductDetail({
                   alt={resolveProductImageAlt(product.imageAlts, gallery[activeImg] || main, { name: product.name, color, index: activeImg })}
                   fill
                   className="object-cover transition duration-300 hover:scale-[1.03] motion-reduce:transition-none motion-reduce:hover:scale-100"
-                  sizes="(max-width:1024px) 100vw, 50vw"
+                  sizes={PDP_MAIN_IMAGE_SIZES}
                   priority
                 />
               ) : null}

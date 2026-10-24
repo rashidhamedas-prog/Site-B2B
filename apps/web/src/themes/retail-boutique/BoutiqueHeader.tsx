@@ -52,12 +52,6 @@ export function BoutiqueHeader() {
 
   return (
     <>
-      <a
-        href="#retail-main"
-        className="sr-only focus:not-sr-only focus:absolute focus:right-4 focus:top-2 focus:z-[90] focus:rounded-lg focus:bg-white focus:px-3 focus:py-2 focus:text-sm focus:text-neutral-900"
-      >
-        رفتن به محتوا
-      </a>
       {showHomeTicker ? <NewsTicker items={tickerItems} tone="ink" /> : null}
       {showAnn && !showHomeTicker ? (
         <div className="bg-gradient-to-l from-[#0b0f0e] to-[#1b5c4a] px-4 py-2 text-center text-xs text-white sm:text-sm">

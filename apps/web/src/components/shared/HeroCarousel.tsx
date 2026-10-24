@@ -137,10 +137,14 @@ export function HeroCarouselControls({
             aria-current={i === index ? 'true' : undefined}
             aria-label={`اسلاید ${i + 1}`}
             onClick={() => onGoTo(i)}
-            className={`h-2.5 cursor-pointer rounded-full transition-[width,background-color] duration-200 motion-reduce:transition-none ${dotFocus} ${
-              i === index ? `w-8 ${active}` : `w-2.5 ${idle}`
-            }`}
-          />
+            className={`inline-flex h-6 min-w-6 cursor-pointer items-center justify-center ${dotFocus}`}
+          >
+            <span
+              className={`block h-2.5 rounded-full transition-[width,background-color] duration-200 motion-reduce:transition-none ${
+                i === index ? `w-8 ${active}` : `w-2.5 ${idle}`
+              }`}
+            />
+          </button>
         ))}
       </div>
       <button

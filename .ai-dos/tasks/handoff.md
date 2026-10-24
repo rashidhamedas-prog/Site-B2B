@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-24T16:40:00Z — visual/a11y storefront (no deploy)
+
+- Branch `cursor/visual-a11y-2026-10-a472`. Do not merge and do not push `master`. Production deploy needs the owner's written GO.
+- Scope: wholesale hero popup → dismissible bottom bar; gold.700 `#836A27`; single dark green `#0F2F28`; muted `#4B5563`; PDP image 720w; sticky bar / chat clearance; skip link, names, 24px dots, focus outline.
+- Evidence: `apps/web` `tsc --noEmit` and `next build` succeeded. Local axe (`wcag2a/aa` + 2.1/2.2) on home + `/products/yalda-memory-jacket` for wholesale and retail cookie, 360 and 1440: zero `color-contrast` nodes. Screenshots in `/opt/cursor/artifacts/visual-a11y/`.
+- Overlap note: `docs/WORKLOG.md` and this handoff are also claimed by TASK-20261024-005. This entry is a prepend only. That task's code was not edited.
+- Next: review the PR. Do not autodeploy.
+
 ## 2026-10-24T13:50:00Z — TASK-20261024-005 omnichannel Bale DEAD revive
 
 - Branch `ai/TASK-20261024-005-omni-bale-revive` (worktree `Site B2B-omni-fix`).

@@ -220,12 +220,12 @@ function ClassicRetailProductCard({
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between p-2.5 sm:p-3">
           <div className="flex flex-col items-start gap-1.5">
             {discount ? (
-              <span className="rounded-full bg-[var(--retail-gold)] px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
+              <span className="rounded-full bg-[var(--retail-gold)] px-2.5 py-1 text-[10px] font-bold text-[var(--brand-ink,#1A1A1A)]">
                 ٪{discount.toLocaleString('fa-IR')} تخفیف
               </span>
             ) : null}
             {product.isNew ? (
-              <span className="rounded-full border border-[var(--retail-gold)] bg-white/90 px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
+              <span className="rounded-full border border-[var(--brand-gold-700,#836A27)] bg-white/90 px-2.5 py-1 text-[10px] font-bold text-[var(--retail-primary-dark)]">
                 جدید
               </span>
             ) : null}

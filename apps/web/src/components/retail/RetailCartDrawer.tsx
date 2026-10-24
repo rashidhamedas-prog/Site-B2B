@@ -168,8 +168,8 @@ export function RetailCartDrawer({ open, onClose }: { open: boolean; onClose: ()
           <Link
             href="/checkout"
             onClick={onClose}
-            className={`block rounded-full py-3 text-center text-sm font-extrabold text-white ${
-              items.length ? 'bg-[var(--retail-gold)]' : 'pointer-events-none bg-gray-300'
+            className={`block rounded-full py-3 text-center text-sm font-extrabold ${
+              items.length ? 'bg-[var(--retail-gold)] text-[var(--brand-ink,#1A1A1A)]' : 'pointer-events-none bg-gray-300 text-white'
             }`}
           >
             تسویه حساب
