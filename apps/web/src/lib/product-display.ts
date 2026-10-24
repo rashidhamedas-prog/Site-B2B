@@ -200,17 +200,16 @@ export function variantsOnSizeChart<T extends { size?: string | null }>(
 }
 
 /** Size labels for cards/PDP: chart when defined, else distinct variant sizes. */
-export function storefrontSizeLabels(
-  variants: Array<{ size?: string | null }> | null | undefined,
+export function storefrontSizeLabels<T extends ChannelStockVariant & { size?: string | null }>(
+  variants: T[] | null | undefined,
   source: SizeChartSource,
   options?: { channel?: StorefrontChannel; includeSoldOut?: boolean },
 ): string[] {
+  const onChart = variantsOnSizeChart(variants, source);
   const channel = options?.channel;
   const scoped = channel
-    ? variantsInStock(variantsOnSizeChart(variants, source), channel, {
-        includeSoldOut: options?.includeSoldOut,
-      })
-    : variantsOnSizeChart(variants, source);
+    ? variantsInStock(onChart, channel, { includeSoldOut: options?.includeSoldOut })
+    : onChart;
   const fromVariants = uniqueSizes(scoped);
   const chart = sizesForSizeType(source.sizeType, source.sizeLabels);
   if (!chart.length) return fromVariants;
