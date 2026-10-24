@@ -36,9 +36,15 @@
 | هتزنر | `docker compose down`؛ autodeploy `disabled`/`inactive`؛ ۰ کانتینر در حال اجرا؛ marker `/etc/taranom/HETZNER_DECOMMISSIONED` |
 | Smoke زنده | `poshaktaranom.com` 200، `www.poshaktaranom.ir` 200، `api.../v1/health` ok |
 
+## نکات ops اضافه‌شده حین اجرا
+
+- درخت `/opt/taranom` ایران تا این کار `.git` نداشت؛ با کلید `github_deploy` منتقل‌شده از هتزنر، `git init` + `fetch/reset` به `origin/master` انجام شد (`.env` حفظ شد).
+- یونیت systemd اول با `User=wholesale-admin` شکست می‌خورد (`status=217`)؛ به `tnadmin` اصلاح شد.
+- استک هتزنر یک‌بار بعد از قرنطینه دوباره دیده شد → `compose down` مجدد + `systemctl mask` برای timer/service.
+
 ## باقی‌ماندهٔ انسانی
 
-- **حذف فیزیکی VM هتزنر** از کنسول Hetzner Cloud (CLI محلی `hcloud` موجود نبود). استک از قبل خاموش است.
+- **حذف فیزیکی VM هتزنر** از کنسول Hetzner Cloud (CLI محلی `hcloud` موجود نبود). استک خاموش و autodeploy mask است.
 - بکاپ off-box / MinIO زمان‌بندی‌شده هنوز follow-up است (فقط Postgres روزانه در این کار).
 
 ## Rollback
