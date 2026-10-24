@@ -2,7 +2,8 @@ schema_version: 1
 tasks:
   - id: "TASK-20261024-004"
     title: "GA4/GTM root fix — gateway referral suffix, Torob UTM normalize, Web Vitals after page_view, Iran-only docs"
-    status: "in_progress"
+    status: "deployed"
+    deployed_commit: "eb73ee94"
     risk: "high"
     owner: "cursor"
     reviewer: "pending"

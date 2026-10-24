@@ -59,7 +59,11 @@ Migration جدید ندارد. روی ایران از قبل: `AnalyticsEventLog
 
 ## ۱۰–۱۱. Deploy و سلامت
 
-فقط ایران. پس از deploy: health + `.ir` + `.com` بررسی می‌شود. DNS A = `185.213.167.61`.
+- Backup: `/opt/taranom/backups/postgres/20261024T132043Z` (≈2.1MB).
+- Autodeploy ایران complete at `eb73ee9` (PR #89 → `eb73ee94`).
+- Health API `{"status":"ok"}`; `.ir` 200 TTFB≈0.45s؛ `.com` 200 TTFB≈0.38s.
+- DNS A: `poshaktaranom.com` و `www.poshaktaranom.ir` → `185.213.167.61`.
+- مارکر زنده در image وب: `mydigipay.info`, `shaparak`, `ignore_referrer` در chunks.
 
 ## ۱۲. مقایسه GA4 (Windsor، تاریخ دقیق)
 
