@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-24T13:30:00Z — TASK-20261024-004 GA4/GTM Iran root fix
+
+- Branch `ai/TASK-20261024-004-ga4-root-fix`.
+- Code: payment gateway suffix matcher (+shaparak), Torob→`torob/cpc`, Web Vitals gated after page_view.
+- Docs: iran-edge-access operative text Iran-only; host-log hardening header; report `2026-10-24-ga4-gtm-iran-root-fix.md`.
+- Specs: google.spec + web-vitals-gate; web tsc ok. No new migration. MP flag stays off (no secret on Iran .env).
+- Next: commit/push/deploy Iran only + smoke.
+
 ## 2026-10-24T12:40:00Z — TASK-20261023-002 merge master into egress scaffold
 
 - Merged origin/master into `cursor/telegram-egress-worker-0fb8` so PR #87 is mergeable.

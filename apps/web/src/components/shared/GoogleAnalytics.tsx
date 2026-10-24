@@ -14,12 +14,13 @@ import {
   publicAnalyticsPagePath,
   RETAIL_GA4_MEASUREMENT_ID,
   WHOLESALE_GA4_MEASUREMENT_ID,
+  shouldSetTorobCampaignFields,
   sanitizeAnalyticsReferrer,
   sanitizeGa4Id,
   shouldSendPageView,
   type GoogleChannel,
 } from '@/lib/google';
-import { setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
+import { markGa4PageViewSent, setGa4RumiMeasurementId } from '@/components/shared/WebVitalsReporter';
 import { trackContactClick, trackWholesaleLead } from '@/lib/retail-analytics';
 
 const WHOLESALE_LEAD_BY_METHOD: Record<string, string> = {
@@ -61,7 +62,9 @@ function isBlockedPath(pathname: string | null | undefined): boolean {
 
 function currentPublicPath(pathname: string, search: string) {
   if (typeof window !== 'undefined') {
-    return publicAnalyticsPagePath(window.location.pathname, window.location.search);
+    return publicAnalyticsPagePath(window.location.pathname, window.location.search, {
+      referrer: document.referrer,
+    });
   }
   return publicAnalyticsPagePath(pathname, search);
 }
@@ -93,17 +96,25 @@ export function GoogleAnalytics({ channel }: { channel: GoogleChannel }) {
         typeof window !== 'undefined' ? `${window.location.origin}${path}` : path;
       const pageTitle = typeof document !== 'undefined' ? document.title : path;
       const pageReferrer = sanitizeAnalyticsReferrer(document.referrer, window.location.hostname);
+      const torob = shouldSetTorobCampaignFields({
+        search: typeof window !== 'undefined' ? window.location.search : '',
+        referrer: typeof document !== 'undefined' ? document.referrer : '',
+      });
       // Later events on this page (e.g. purchase on /payment/callback) must not carry gateway tokens from the raw URL.
-      window.gtag?.(
-        'set',
-        pageReferrer ? { page_location: pageLocation, page_referrer: pageReferrer } : { page_location: pageLocation },
-      );
+      const setFields: Record<string, string> = { page_location: pageLocation };
+      if (pageReferrer) setFields.page_referrer = pageReferrer;
+      if (torob) {
+        setFields.campaign_source = torob.source;
+        setFields.campaign_medium = torob.medium;
+      }
+      window.gtag?.('set', setFields);
       window.gtag?.('event', 'page_view', {
         page_path: path,
         page_location: pageLocation,
         page_title: pageTitle,
         send_to: id,
       });
+      markGa4PageViewSent(id);
     };
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(() => requestAnimationFrame(flush));

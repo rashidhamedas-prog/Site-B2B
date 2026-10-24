@@ -1,3 +1,10 @@
+## 2026-10-24 — اصلاح ریشه‌ای GA4/GTM (تکی+عمده) روی تک‌سرور ایران
+
+- شواهد: DNS هر دو دامنه → ایران؛ purchase=0 با PAID خالی ۱۰روز هم‌خوان؛ تناقض sessions false positive؛ mydigipay/shaparak و UTM ترب مخلوط؛ `(not set)` عمده با Web Vitals قبل از page_view.
+- کد: suffix matcher درگاه + نرمال `torob/cpc` + گیت Web Vitals بعد از page_view؛ docs لبه ایران بدون Hetzner عملیاتی.
+- MP سرور خاموش می‌ماند تا Secret در `.env` ایران؛ event ساختگی Production ارسال نشد.
+- گزارش: `docs/reports/2026-10-24-ga4-gtm-iran-root-fix.md`.
+
 ## 2026-10-24 — مبدأ تولید واحد ایران (حذف دیپلوی آلمان)
 
 - سیاست: فقط `tnadmin@185.213.167.61:3031` production است؛ هتزنر `5.75.200.102` از دیپلوی/قوانین/CI خارج شد.

@@ -33,7 +33,7 @@ export function DeferredGtm({ gtmId }: { gtmId?: string } = {}) {
     if (!id) return;
     if (document.getElementById('gtm-deferred')) {
       // GTM already loaded: a global page_location from the landing URL would stick to later hits.
-      const page_location = `${window.location.origin}${publicAnalyticsPagePath(window.location.pathname, window.location.search)}`;
+      const page_location = `${window.location.origin}${publicAnalyticsPagePath(window.location.pathname, window.location.search, { referrer: document.referrer })}`;
       (window as Window & { gtag?: (...args: unknown[]) => void }).gtag?.('set', { page_location });
       return;
     }

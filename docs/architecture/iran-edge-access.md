@@ -16,7 +16,7 @@ Audience: implementers operating `poshaktaranom.ir` (retail) and `poshaktaranom.
 - Confirmed: nginx and UFW do not country-block. Ports 80/443 allow anywhere.
 - Confirmed: seven Iranian check-host nodes (Tehran / Isfahan / Shiraz, country `IR`) get HTTP 200 on both hostnames over IPv4, and TCP 443 to the origin in ~80–120 ms.
 - Confirmed: the same nodes see Cloudflare A + AAAA, and some PoPs (`188.114.99.0`) take ~3.2–3.6 s while others (`188.114.96.3`, `104.21.x`) take ~0.3–0.7 s.
-- Confirmed: this operator workstation exits via `5.75.200.102`, so it is not an Iran-residential vantage point.
+- Historical: some operator workstations once exited via the decommissioned Hetzner IP `5.75.200.102` and were not Iran-residential vantage points.
 - Assumption: “must enable VPN from an Iran IP” is a browser + residential-ISP failure on the Cloudflare path (IPv6 / HTTP/3 / anycast / JS challenge), not an application 4xx/5xx.
 - Open: we did not drive a real MCI/Irancell handset in this session.
 
@@ -90,38 +90,31 @@ Datacenter probes in Iran use IPv4 + HTTP/1.1, which is why check-host reports 2
 | Origin down | Foreign and IR-hosting HTTP 200; `Server: cloudflare`, `x-taranom-channel` present |
 | Only the `.com` name is nationally filtered | After proxy, Iranian nodes reach `.com` over TLS in under a second. The timeout was the raw origin address |
 
-## 6. Target architecture
+## 6. Target architecture (sole Iran origin — locked 2026-10-24)
 
-Keep the modular monolith and Hetzner origin. Change **only the public edge** so the primary audience (Iran) hits a path that already works.
+Keep the modular monolith on the **Iran** origin only. Do not reintroduce a Germany/Hetzner origin, dual-deploy, or failover without a new architecture task.
 
-**Phase 0 — locked 2026-10-10 (reversible only with `--confirm-gray`):**
+**Edge policy:**
 
-Storefront A records are proxied. IPv6 compatibility and HTTP/3 are off, so the proxied names have no AAAA and do not advertise HTTP/3. Keep it that way. Gray-cloud is the outage, not the fix.
+1. Cloudflare Network (if proxied): **IPv6 Compatibility off**, **HTTP/3 off** on both zones.
+2. Security: **Essentially Off**, Bot Fight / Super Bot Fight **off**, not Under Attack — only when those settings are required for Iran reachability.
+3. Do **not** gray-cloud shop names to a decommissioned foreign IP. Public A records must resolve to Iran `185.213.167.61` (directly or via Cloudflare proxy whose origin is Iran).
+4. Do not add origin AAAA. SSL stays **Full (strict)** when Cloudflare is used.
 
-**If a later re-proxy happens:**
-
-1. Cloudflare Network: **IPv6 Compatibility off**, **HTTP/3 off** on both zones.
-2. Security: **Essentially Off**, Bot Fight / Super Bot Fight **off**, not Under Attack.
-3. If shoppers still need a VPN, do **not** gray-cloud the shop. Re-check that IPv6 and HTTP/3 are off and that Iran HTTPS hits a Cloudflare address. Gray-cloud is an explicit rollback only.
-4. Do not add origin AAAA. SSL stays **Full (strict)**.
-
-**Phase 1 — only if Cloudflare anycast from Iran is slow again:**
-
-Put an Iran-compatible CDN in front of the same origin. Do not fall back to publishing `5.75.200.102` on the shop names.
-
-**Phase 2 — hygiene (mandatory):** do not share the public website **IP or SNI** with unrelated long-lived tunnels. A listed origin IP or a shop hostname used as tunnel TLS front recreates this outage even after gray-cloud. Keep tunnel listeners off `www.poshaktaranom.ir` / `poshaktaranom.com`.
+**Hygiene:** do not share the public website **IP or SNI** with unrelated long-lived tunnels. Keep tunnel listeners off `www.poshaktaranom.ir` / `poshaktaranom.com`.
 
 ```text
-Locked path
-Iran browser --IPv4/TCP--> Cloudflare (no AAAA, no h3) --> 5.75.200.102 nginx --> Next
+Locked path (2026-10-24+)
+Iran browser --IPv4/TCP--> Cloudflare (optional; no AAAA, no h3) --> 185.213.167.61 nginx --> Next
+  or DNS-only A --> 185.213.167.61
 
-Do not use
-Iran browser --TLS--> 5.75.200.102   (TCP connects, HTTPS times out)
+Historical (decommissioned — do not use)
+Iran browser --TLS--> 5.75.200.102   (old Hetzner origin; TCP could connect while HTTPS timed out)
 ```
 
 ## 7. Security
 
-- Gray-cloud **exposes** `5.75.200.102`. That IP is already public in historical DNS and this repo.
+- Publishing a decommissioned foreign origin IP on shop DNS recreates the old Iran TLS timeout. Keep shop A on Iran.
 - TLS stays on origin (existing certificates). Do not switch Cloudflare SSL to Flexible.
 - Do not commit API tokens. The helper script reads `CLOUDFLARE_API_TOKEN` from the environment only.
 - Softening Bot Fight is an availability choice for an Iran-only shop; rate limits on `/v1` stay in nginx.
@@ -130,21 +123,20 @@ Iran browser --TLS--> 5.75.200.102   (TCP connects, HTTPS times out)
 ## 8. Rollout and rollback
 
 1. Snapshot current DNS (A/AAAA, proxied flag) and Network/Security toggles.
-2. Apply Phase 0 `--mode network` (IPv6/HTTP3/security). TTL is 300 s.
+2. Confirm shop A / Cloudflare origin target is `185.213.167.61` only.
 3. From a phone on home data, VPN off, open both homes.
-4. Keep `--mode proxy`. Do not run `--mode origin` unless rolling back on purpose (`--confirm-gray`).
-5. Rollback to gray-cloud: `--mode origin --apply --confirm-gray`. That publishes `5.75.200.102` again and brings the Iran TLS timeout back.
+4. Rollback of edge toggles must **not** repoint DNS at `5.75.200.102`.
 
-No VPS rebuild is required. Do not run `auto-deploy` for this change.
+Deploy/runtime changes use Iran only (`tnadmin@185.213.167.61:3031`, `scripts/auto-deploy.sh`).
 
 ## 9. Tests
 
 - `node --test scripts/cloudflare-iran-edge.spec.mjs`
-- After apply: `Resolve-DnsName www.poshaktaranom.ir -Type AAAA` must be empty; `curl -sI https://www.poshaktaranom.ir/` must **not** send `alt-svc: h3` if HTTP/3 is off; `Server` is `nginx` when gray, `cloudflare` when still proxied.
+- After apply: `Resolve-DnsName www.poshaktaranom.ir -Type AAAA` must be empty; `curl -sI https://www.poshaktaranom.ir/` must **not** send `alt-svc: h3` if HTTP/3 is off; origin or Cloudflare `Server` as configured.
 - Iran phone, VPN off: both homes render.
+- DNS A for shop + api hostnames must not equal `5.75.200.102`.
 
 ## 10. Decisions requiring confirmation
 
-- Owner Cloudflare login or API token (Zone DNS + Zone Settings Edit) to apply Phase 0 live.
-- Whether Phase 1 should be Arvancloud (account + NS/CNAME) versus staying on origin IPv4.
-- Whether the public website should keep sharing `5.75.200.102` with other services.
+- Owner Cloudflare login or API token (Zone DNS + Zone Settings Edit) for edge toggles.
+- Whether a future Iran-compatible CDN should sit in front of the **Iran** origin (not Hetzner).

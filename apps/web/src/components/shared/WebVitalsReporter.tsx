@@ -8,8 +8,26 @@ type MetricName = 'LCP' | 'CLS' | 'INP' | 'FID';
 /** Set by GoogleAnalytics once the channel measurement ID is resolved (env or admin). */
 let resolvedGa4Id = '';
 
+/** Measurement IDs that have already sent an app-owned page_view in this tab. */
+const pageViewSentIds = new Set<string>();
+
 export function setGa4RumiMeasurementId(id: string) {
   resolvedGa4Id = id || '';
+}
+
+/** Call after the first successful app page_view so RUM cannot open a session alone. */
+export function markGa4PageViewSent(measurementId: string) {
+  const id = String(measurementId || '').trim();
+  if (id) pageViewSentIds.add(id);
+}
+
+export function hasGa4PageViewSent(measurementId: string): boolean {
+  return pageViewSentIds.has(String(measurementId || '').trim());
+}
+
+/** Test-only reset. */
+export function resetGa4PageViewSentForTests() {
+  pageViewSentIds.clear();
 }
 
 function activeMeasurementId(channel: GoogleChannel): string {
@@ -24,6 +42,8 @@ function roundForGa4(name: MetricName, value: number): number {
 function reportMetric(name: MetricName, value: number, measurementId: string) {
   if (typeof window === 'undefined') return;
   if (!Number.isFinite(value) || value < 0) return;
+  // Without a prior page_view, GA4 can open a session with landing (not set).
+  if (!measurementId || !hasGa4PageViewSent(measurementId)) return;
   ensureGtagStub();
   if (typeof window.gtag !== 'function') return;
 
@@ -32,8 +52,8 @@ function reportMetric(name: MetricName, value: number, measurementId: string) {
     value: roundForGa4(name, value),
     metric_value: value,
     non_interaction: true,
+    send_to: measurementId,
   };
-  if (measurementId) payload.send_to = measurementId;
 
   window.gtag('event', name, payload);
 }

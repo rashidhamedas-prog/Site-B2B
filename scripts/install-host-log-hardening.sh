@@ -1,8 +1,9 @@
 #!/bin/bash
-# Idempotent host log caps + disk alert for the Hetzner origin. Run as a sudoer:
+# Idempotent host log caps + disk alert for the sole Iran production origin
+# (tnadmin@185.213.167.61, /opt/taranom). Run as a sudoer:
 #   bash scripts/install-host-log-hardening.sh
 # Does not restart dockerd (daemon.json log-opts only reach containers created afterwards)
-# and never touches backups.
+# and never touches backups. Do not run this against the decommissioned Hetzner host.
 set -euo pipefail
 APP_DIR="${APP_DIR:-/opt/taranom}"
 SAVE_DIR=/var/backups/taranom-host

@@ -1,9 +1,9 @@
 import { headers } from 'next/headers';
 import { GoogleAnalyticsProvider } from '@/components/shared/GoogleAnalyticsProvider';
 import { hostLooksRetail } from '@/lib/channel';
-import { PAYMENT_REFERRER_HOSTS } from '@/lib/google';
+import { PAYMENT_REFERRER_DOMAIN_RE } from '@/lib/google';
 
-const ignoreReferrerScript = `(function(){try{var ref=document.referrer;if(!ref)return;var host=new URL(ref).hostname.toLowerCase();var ok=${JSON.stringify(PAYMENT_REFERRER_HOSTS)};if(ok.indexOf(host)<0)return;var meta=document.createElement('meta');meta.name='referrer';meta.content='no-referrer';document.head.appendChild(meta);window.dataLayer=window.dataLayer||[];if(typeof window.gtag!=='function'){window.gtag=function(){window.dataLayer.push(arguments)};}window.gtag('set','ignore_referrer',true);}catch(e){}})();`;
+const ignoreReferrerScript = `(function(){try{var ref=document.referrer;if(!ref)return;var host=new URL(ref).hostname.toLowerCase();if(!/${PAYMENT_REFERRER_DOMAIN_RE}/i.test(host))return;var meta=document.createElement('meta');meta.name='referrer';meta.content='no-referrer';document.head.appendChild(meta);window.dataLayer=window.dataLayer||[];if(typeof window.gtag!=='function'){window.gtag=function(){window.dataLayer.push(arguments)};}window.gtag('set','ignore_referrer',true);}catch(e){}})();`;
 
 /**
  * Payment return only. Keeps the original session when the referrer is an approved gateway,

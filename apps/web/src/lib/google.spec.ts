@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';
 import {
   ANALYTICS_QUERY_ALLOWLIST,
+  isApprovedPaymentReferrer,
+  isPaymentGatewayHost,
   looksLikePii,
   preGtmGtagSet,
   publicAnalyticsPagePath,
+  resolveTorobCampaignOverride,
   sanitizeAnalyticsReferrer,
   sanitizeAnalyticsSearch,
+  shouldSetTorobCampaignFields,
   stripRetailInternalPath,
 } from './google';
 
@@ -28,6 +32,45 @@ assert.equal(publicAnalyticsPagePath('/payment/callback', 'trackingCode=123&toke
 assert.equal(
   publicAnalyticsPagePath('/products', '?utm_source=torob&utm_medium=cpc&phone=09121234567'),
   '/products?utm_source=torob&utm_medium=cpc',
+);
+// Torob aliases → torob/cpc (new hits only; historical GA rows unchanged).
+assert.equal(
+  publicAnalyticsPagePath('/products', '?utm_source=Torob&utm_medium=PPC'),
+  '/products?utm_source=torob&utm_medium=cpc',
+);
+assert.equal(
+  publicAnalyticsPagePath('/products', '?utm_source=torob&utm_medium=TorobPay_pdp'),
+  '/products?utm_source=torob&utm_medium=cpc',
+);
+assert.equal(
+  publicAnalyticsPagePath('/products', '?utm_source=torob&utm_medium=ads&utm_campaign=coat'),
+  '/products?utm_source=torob&utm_medium=cpc&utm_campaign=coat',
+);
+assert.equal(
+  publicAnalyticsPagePath('/products', '', { referrer: 'https://api.torob.com/p/x' }),
+  '/products?utm_source=torob&utm_medium=cpc',
+);
+assert.equal(
+  resolveTorobCampaignOverride({ search: '?utm_source=google&utm_medium=organic' }),
+  null,
+);
+assert.deepEqual(
+  shouldSetTorobCampaignFields({ search: '?utm_source=Torob&utm_medium=PPC' }),
+  { source: 'torob', medium: 'cpc' },
+);
+assert.equal(
+  shouldSetTorobCampaignFields({ search: '?utm_source=torob&utm_medium=cpc' }),
+  null,
+  'already-normalized UTM needs no campaign_* set',
+);
+assert.deepEqual(
+  shouldSetTorobCampaignFields({ search: '', referrer: 'https://api.torob.com/' }),
+  { source: 'torob', medium: 'cpc' },
+);
+assert.equal(
+  shouldSetTorobCampaignFields({ search: '', referrer: 'https://cpg.torobpay.com/pay' }),
+  null,
+  'TorobPay gateway is not Torob marketplace',
 );
 assert.equal(publicAnalyticsPagePath('/products', 'gclid=Cj0KCQjwTEST_abc-123&q=coat&email=a%40b.co'), '/products?gclid=Cj0KCQjwTEST_abc-123');
 assert.equal(sanitizeAnalyticsSearch('gbraid=0AAAA&wbraid=CkEx&utm_id=42&fbclid=x&page=2'), 'gbraid=0AAAA&wbraid=CkEx&utm_id=42');
@@ -52,8 +95,8 @@ for (const value of piiValues) {
   assert.equal(looksLikePii(value), true, `looksLikePii(${value})`);
   assert.equal(
     sanitizeAnalyticsSearch(`utm_source=torob&utm_term=${encodeURIComponent(value)}`),
-    'utm_source=torob',
-    `utm_term=${value} dropped`,
+    'utm_source=torob&utm_medium=cpc',
+    `utm_term=${value} dropped; Torob medium normalized`,
   );
 }
 assert.equal(sanitizeAnalyticsSearch('utm_term=0012345678'), '', 'bare 10-digit id (national id) dropped');
@@ -73,9 +116,21 @@ assert.equal(
   sanitizeAnalyticsReferrer('https://www.zarinpal.com/pg/StartPay/A000000000000000000000000000TEST', 'poshaktaranom.com'),
   'https://www.zarinpal.com/',
 );
+assert.equal(isPaymentGatewayHost('web.mydigipay.com'), true);
+assert.equal(isPaymentGatewayHost('foo.mydigipay.info'), true);
+assert.equal(isPaymentGatewayHost('sep.shaparak.ir'), true);
+assert.equal(isPaymentGatewayHost('cpg.torobpay.com'), true);
+assert.equal(isPaymentGatewayHost('api.torob.com'), false);
+assert.equal(isPaymentGatewayHost('evil.example'), false);
+assert.equal(isApprovedPaymentReferrer('https://sep.shaparak.ir/payment'), true);
+assert.equal(isApprovedPaymentReferrer('https://evil.example/'), false);
+assert.equal(
+  sanitizeAnalyticsReferrer('https://sep.shaparak.ir/pg/Pay?token=SECRET', 'www.poshaktaranom.ir'),
+  'https://sep.shaparak.ir/',
+);
 assert.equal(
   sanitizeAnalyticsReferrer('https://poshaktaranom.com/checkout?token=abc&utm_source=torob', 'poshaktaranom.com'),
-  'https://poshaktaranom.com/checkout?utm_source=torob',
+  'https://poshaktaranom.com/checkout?utm_source=torob&utm_medium=cpc',
 );
 assert.equal(
   sanitizeAnalyticsReferrer('https://evil.example/path?email=a@b.co', 'poshaktaranom.com'),
