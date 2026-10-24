@@ -47,7 +47,13 @@ class ApiClient {
         data = JSON.parse(text);
       } catch {
         if (!res.ok) {
-          const err = new Error('خطای سرور') as Error & { status: number };
+          const restarting = res.status === 502 || res.status === 503 || res.status === 504
+            || /<!DOCTYPE|<html/i.test(text);
+          const err = new Error(
+            restarting
+              ? 'سرور در حال به‌روزرسانی است؛ چند ثانیه بعد صفحه را تازه کنید'
+              : 'خطای سرور',
+          ) as Error & { status: number };
           err.status = res.status;
           throw err;
         }

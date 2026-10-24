@@ -330,6 +330,7 @@ const ERROR_LABELS: Record<string, string> = {
   unknown_provider: 'پلتفرم این اتصال پشتیبانی نمی‌شود',
   cancelled_by_admin: 'با دستور ادمین از صف لغو شد (عمدی)',
   publication_withdrawn: 'انتشار از کانال برداشته شده بود (عمدی)',
+  'connector is disabled': 'ارسال از سرور خاموش بود؛ با روشن‌بودن کانکتور می‌توان بازتلاش کرد',
 };
 
 /** Delivery/outbox errors that are intentional ops outcomes, not broken sends. */
@@ -340,6 +341,11 @@ export function isIntentionalError(error?: string | null) {
   const key = String(error).trim();
   if (INTENTIONAL_ERROR_KEYS.has(key)) return true;
   return key.includes('cancelled_by_admin') || key.includes('publication_withdrawn');
+}
+
+/** DEAD only because OMNICHANNEL_CONNECTORS_ENABLED / per-provider kill switch was off. */
+export function isConnectorDisabledError(error?: string | null) {
+  return /connector is disabled/i.test(String(error || ''));
 }
 
 export function gateBlockReasonLabel(reason?: GateBlockReason | null) {
@@ -508,7 +514,9 @@ export function errorLabel(error?: string | null) {
 }
 
 export function deliveryFailureTone(error?: string | null): Tone {
-  return isIntentionalError(error) ? 'off' : 'danger';
+  if (isIntentionalError(error)) return 'off';
+  if (isConnectorDisabledError(error)) return 'warn';
+  return 'danger';
 }
 
 export function eventLabel(eventType: string) {

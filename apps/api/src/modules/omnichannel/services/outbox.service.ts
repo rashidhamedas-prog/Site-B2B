@@ -258,6 +258,31 @@ export class OutboxService {
   }
 
   /**
+   * Soft-revive DEAD publication.deliver rows that only failed because connectors were off.
+   * Never DELETE. Returns revived event ids (empty when none match).
+   */
+  async requeueConnectorDisabledDead(limit = 200): Promise<string[]> {
+    const capped = Math.max(1, Math.min(500, Math.floor(Number(limit) || 200)));
+    const rows: Array<{ id: string }> = await this.dataSource.query(
+      `UPDATE omnichannel_outbox_events
+       SET status = 'PENDING', attempts = 0, "availableAt" = NOW(), "completedAt" = NULL,
+           "lockedAt" = NULL, "lockedBy" = NULL, "lastError" = NULL, "updatedAt" = NOW()
+       WHERE id IN (
+         SELECT id FROM omnichannel_outbox_events
+         WHERE status = 'DEAD'
+           AND "eventType" = 'publication.deliver.requested'
+           AND "lastError" ILIKE '%connector is disabled%'
+         ORDER BY "updatedAt" ASC
+         LIMIT $1
+         FOR UPDATE SKIP LOCKED
+       )
+       RETURNING id`,
+      [capped],
+    );
+    return (rows || []).map((row) => String(row.id));
+  }
+
+  /**
    * Admin clear-waiting: PENDING → DONE (cancelled), plus stale PROCESSING only.
    * Never DELETE. Returns cancelled event ids for linked delivery cleanup.
    */

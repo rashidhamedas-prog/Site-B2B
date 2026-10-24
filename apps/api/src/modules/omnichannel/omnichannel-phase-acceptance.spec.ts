@@ -123,6 +123,8 @@ assert(
   'publicationPayloadFor + per-destination counters',
 );
 assert(omniAdmin.includes("outbox/clear-waiting") && omniAdmin.includes('publications/requeue-by-category'), 'admin clear-waiting and category requeue routes');
+assert(omniAdmin.includes('outbox/revive-connector-disabled') && omniSvc.includes('reviveConnectorDisabledDead'), 'admin revive connector-disabled DEAD');
+assert(workerSrc.includes('isConnectorDisabledError') && workerSrc.includes('DeliveryDeferredError'), 'worker defers connector-disabled instead of DEAD');
 assert(omniSvc.includes('clearWaitingOutbox') && omniSvc.includes('requeueByCategory'), 'service clear-waiting and category requeue');
 assert(
   omniSvc.includes('countCreatesTowardDailyCap')

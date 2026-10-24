@@ -12,6 +12,7 @@ import {
   PreviewDto,
   CreatePublicationDto,
   ClearWaitingOutboxDto,
+  ReviveConnectorDisabledDto,
   PatchDestinationDto,
   PatchConnectionPublishSettingsDto,
   PatchDestinationPublishSettingsDto,
@@ -1126,6 +1127,53 @@ export class OmnichannelService {
   }
 
   /**
+   * Soft-revive DEAD messenger delivers that only failed while connectors/provider kill-switch
+   * was off. Requires OMNICHANNEL_CONNECTORS_ENABLED=true. Never DELETE.
+   */
+  async reviveConnectorDisabledDead(dto: ReviveConnectorDisabledDto, actor?: Actor) {
+    const who = this.requireActor(actor);
+    if (!dto?.confirm) throw new BadRequestException('confirm لازم است');
+    const reason = String(dto.reason || '').trim();
+    if (!reason) throw new BadRequestException('دلیل الزامی است');
+    assertNoPlaintextSecrets({ reason });
+    if (!areOmnichannelConnectorsEnabled()) {
+      throw new BadRequestException(
+        'اول OMNICHANNEL_CONNECTORS_ENABLED را روی سرور روشن کنید؛ بدون آن بازتلاش بی‌فایده است',
+      );
+    }
+    const limit = Math.max(1, Math.min(500, Math.floor(Number(dto.limit) || 200)));
+    const eventIds = await this.outbox.requeueConnectorDisabledDead(limit);
+    // Linked by eventId + any orphan DEAD rows that still carry the gate-off lastError.
+    const byEvent = eventIds.length
+      ? await this.deliveries
+        .createQueryBuilder()
+        .update(PublicationDeliveryEntity)
+        .set({ status: 'PENDING', lastError: null, nextAttemptAt: new Date() })
+        .where('"eventId" IN (:...ids)', { ids: eventIds })
+        .andWhere('status IN (:...st)', { st: ['DEAD', 'FAILED', 'RETRY'] })
+        .execute()
+      : { affected: 0 };
+    const byError = await this.deliveries
+      .createQueryBuilder()
+      .update(PublicationDeliveryEntity)
+      .set({ status: 'PENDING', lastError: null, nextAttemptAt: new Date() })
+      .where('status IN (:...st)', { st: ['DEAD', 'FAILED'] })
+      .andWhere('"lastError" ILIKE :pat', { pat: '%connector is disabled%' })
+      .execute();
+    const revivedDeliveries = Number(byEvent.affected || 0) + Number(byError.affected || 0);
+    await this.audit(who, 'outbox_revive_connector_disabled', 'OUTBOX', 'batch', null, reason, {
+      revivedEvents: eventIds.length,
+      revivedDeliveries,
+      limit,
+    });
+    return {
+      revivedEvents: eventIds.length,
+      revivedDeliveries,
+      outbox: await this.outboxMetrics(),
+    };
+  }
+
+  /**
    * Admin blast: enqueue CREATE/UPDATE for products in a category (primary or membership).
    * Respects the daily CREATE cap (same counter as automation); still requires connectors + ready
    * destinations. Posts are staggered by autoMinGapSeconds so messengers are not flooded.
@@ -1285,7 +1333,7 @@ export class OmnichannelService {
           'a.channel', 'a.reason', 'a.createdAt',
         ])
         .where(
-          "(a.entityId = :destinationId OR a.payload->>'destinationId' = :destinationId OR a.payload->'destinationIds' ? :destinationId)",
+          "(a.entityId = :destinationId OR a.payload->>'destinationId' = :destinationId OR jsonb_exists(COALESCE(a.payload->'destinationIds', '[]'::jsonb), :destinationId))",
           { destinationId },
         )
         .orderBy('a.createdAt', 'DESC')

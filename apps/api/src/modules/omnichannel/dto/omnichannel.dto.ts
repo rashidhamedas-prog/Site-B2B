@@ -480,6 +480,23 @@ export class BulkWithdrawPublicationsDto {
   reason?: string;
 }
 
+/** Soft-revive DEAD publication.deliver rows that failed only while connectors were off. */
+export class ReviveConnectorDisabledDto {
+  @IsBoolean()
+  confirm: boolean;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(240)
+  reason: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+}
+
 /** Soft-cancel PENDING outbox rows (and stale PROCESSING). Never DELETE. */
 export class ClearWaitingOutboxDto {
   @IsBoolean()

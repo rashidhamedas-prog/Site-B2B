@@ -1,3 +1,10 @@
+## 2026-10-24 — Omnichannel: بنر خطای سرور + بازتلاش DEAD بله
+
+- ریشه بنر: 502/HTML هنگام recreate کانتینر API → «خطای سرور»؛ endpointهای scoped با مقصد بله سالم‌اند.
+- ریشه ۳۶/۳۸: ۳۳ رویداد DEAD با `BALE connector is disabled` وقتی کانکتور خاموش بود؛ الان کانکتور+vault روشن است ولی صف نمی‌چرخید.
+- فیکس: defer `ConnectorDisabledError` در worker؛ `POST .../outbox/revive-connector-disabled`؛ UUID در JWT؛ harden audits/`api.ts`/AttentionStrip.
+- گزارش: `docs/reports/2026-10-24-omnichannel-bale-connector-dead-revive.md`.
+
 ## 2026-10-24 — اصلاح ریشه‌ای GA4/GTM (تکی+عمده) روی تک‌سرور ایران
 
 - شواهد: DNS هر دو دامنه → ایران؛ purchase=0 با PAID خالی ۱۰روز هم‌خوان؛ تناقض sessions false positive؛ mydigipay/shaparak و UTM ترب مخلوط؛ `(not set)` عمده با Web Vitals قبل از page_view.

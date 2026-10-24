@@ -11,6 +11,7 @@ import {
   ActorReasonDto,
   BulkWithdrawPublicationsDto,
   ClearWaitingOutboxDto,
+  ReviveConnectorDisabledDto,
   CreateConnectionDto,
   CreateDestinationDto,
   CreatePublicationDto,
@@ -283,6 +284,13 @@ export class OmnichannelAdminController {
   clearWaitingOutbox(@Body() body: ClearWaitingOutboxDto, @Req() req: Authed) {
     assertNoPlaintextSecrets(body);
     return this.svc.clearWaitingOutbox(body, req.omnichannelActor);
+  }
+
+  @Post('outbox/revive-connector-disabled')
+  @ApiOperation({ summary: 'بازتلاش رویدادهای متوقف که فقط به‌خاطر خاموشی کانکتور مرده بودند' })
+  reviveConnectorDisabled(@Body() body: ReviveConnectorDisabledDto, @Req() req: Authed) {
+    assertNoPlaintextSecrets(body);
+    return this.svc.reviveConnectorDisabledDead(body, req.omnichannelActor);
   }
 
   @Post('publications/requeue-by-category')
