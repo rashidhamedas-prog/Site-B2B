@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { toPersianDigits } from '@taranom/persian-utils';
 import { trackSalesPartnerStory } from '@/lib/retail-analytics';
+import { closestSlideIndex, indexAfterJump, indexAfterStep, indexOnScrollEnd } from './carousel-index';
 import styles from './storyboard.module.css';
 
 function reducedMotion(): boolean {
@@ -30,6 +31,9 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
   const regionRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const indexRef = useRef(0);
+  const pendingRef = useRef<number | null>(null);
+  const correctRef = useRef(false);
+  const endScrollRef = useRef<() => void>(() => {});
   const [index, setIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -79,28 +83,52 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
       }
     };
 
-    const closest = () => {
+    const measureClosest = () => {
       const box = list.getBoundingClientRect();
       const mid = box.left + box.width / 2;
-      let best = 0;
-      let bestDist = Number.POSITIVE_INFINITY;
-      items.forEach((item, itemIndex) => {
-        const rect = item.getBoundingClientRect();
-        const dist = Math.abs(rect.left + rect.width / 2 - mid);
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = itemIndex;
-        }
-      });
-      remember(best);
+      return closestSlideIndex(
+        items.map((item) => {
+          const rect = item.getBoundingClientRect();
+          return rect.left + rect.width / 2;
+        }),
+        mid,
+      );
     };
+
+    const finishScroll = () => {
+      if (window.innerWidth >= 768) {
+        pendingRef.current = null;
+        return;
+      }
+      const measured = measureClosest();
+      if (pendingRef.current !== null && measured !== pendingRef.current && !correctRef.current) {
+        correctRef.current = true;
+        items[pendingRef.current]?.scrollIntoView({
+          inline: 'center',
+          block: 'nearest',
+          behavior: 'auto',
+        });
+        return;
+      }
+      const settled = indexOnScrollEnd(
+        { index: indexRef.current, pending: pendingRef.current },
+        measured,
+        items.length,
+      );
+      pendingRef.current = settled.pending;
+      correctRef.current = false;
+      if (settled.index !== indexRef.current) remember(settled.index);
+      fitActiveSlide(region, scrollerRef.current, settled.index);
+    };
+    endScrollRef.current = finishScroll;
 
     const onScroll = () => {
       if (window.innerWidth >= 768) return;
-      closest();
-      fitActiveSlide(region, scrollerRef.current, indexRef.current);
+      const heightIndex = pendingRef.current ?? measureClosest();
+      fitActiveSlide(region, scrollerRef.current, heightIndex);
     };
     list.addEventListener('scroll', onScroll, { passive: true });
+    list.addEventListener('scrollend', finishScroll);
 
     const view = new IntersectionObserver(
       (entries) => {
@@ -139,6 +167,7 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
       });
       return () => {
         list.removeEventListener('scroll', onScroll);
+        list.removeEventListener('scrollend', finishScroll);
         view.disconnect();
         reveal.disconnect();
       };
@@ -146,23 +175,33 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
 
     return () => {
       list.removeEventListener('scroll', onScroll);
+      list.removeEventListener('scrollend', finishScroll);
       view.disconnect();
     };
   }, [count]);
 
-  const goBy = (delta: number) => {
+  const goTo = (target: number) => {
     const list = regionRef.current?.querySelector('ol');
     if (!list) return;
     const items = [...list.children] as HTMLElement[];
-    const next = Math.min(items.length - 1, Math.max(0, indexRef.current + delta));
-    indexRef.current = next;
-    setIndex(next);
-    fitActiveSlide(regionRef.current, scrollerRef.current, next);
-    items[next]?.scrollIntoView({
+    const move = indexAfterJump(target, items.length);
+    correctRef.current = false;
+    pendingRef.current = move.pending;
+    indexRef.current = move.index;
+    setIndex(move.index);
+    fitActiveSlide(regionRef.current, scrollerRef.current, move.index);
+    const behavior = reducedMotion() ? 'auto' : 'smooth';
+    items[move.index]?.scrollIntoView({
       inline: 'center',
       block: 'nearest',
-      behavior: reducedMotion() ? 'auto' : 'smooth',
+      behavior,
     });
+    window.setTimeout(() => endScrollRef.current(), behavior === 'auto' ? 60 : 700);
+  };
+
+  const goBy = (delta: number) => {
+    const move = indexAfterStep(indexRef.current, delta, count);
+    goTo(move.index);
   };
 
   useEffect(() => {
@@ -222,7 +261,7 @@ export function StoryCarousel({ count, children }: { count: number; children: Re
               className={styles.dot}
               aria-label={`رفتن به مرحلهٔ ${toPersianDigits(dot + 1)}`}
               aria-current={dot === index ? 'step' : undefined}
-              onClick={() => goBy(dot - indexRef.current)}
+              onClick={() => goTo(dot)}
             >
               <span className={styles.dotMark} aria-hidden="true" />
             </button>
