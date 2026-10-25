@@ -3,6 +3,7 @@
 - کلید CREATE دیگر `Date.now()` ندارد؛ هر محصول در هر مقصد یک CREATE فعال. تکراری‌ها soft-supersede می‌شوند و DELETE نمی‌شوند.
 - سقف، فاصله و HOLD کهنه قبل از `adapter.create` اعمال می‌شود. تأیید مجدد HOLD در کنسول انتشار است.
 - بکاپ ایران `20261025T113411Z`. Dry-run معادل: ۱۳۹ CREATE، ۹۸ keeper، ۴۱ loser (فقط DEAD/SUCCEEDED). GO برای push و migration داده شد. `worker-b` روشن نمی‌شود.
+- سخت‌سازی موازی (`88c14c8d`): تایم‌اوت→HOLD بدون RETRY، عدم reuse خودکار send_unconfirmed، سقف بعد از DELETE همان‌روز آزاد نمی‌شود، claim اتمی.
 - گزارش: `docs/reports/2026-10-25-omnichannel-dedup-daily-cap.md`.
 
 ## 2026-10-25 — لوگوی یکسان هدر فروشگاه تکی (بدون دیپلوی)
