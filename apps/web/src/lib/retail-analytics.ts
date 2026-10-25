@@ -857,6 +857,18 @@ export function trackPartnerAuth(name: 'sign_up' | 'login') {
   plainEvent(name, { method: 'sales_partner' });
 }
 
+export function trackSalesPartnerStory(
+  name: 'sp_story_step_view' | 'sp_story_cta_click',
+  step?: number,
+) {
+  if (name !== 'sp_story_step_view' && name !== 'sp_story_cta_click') return;
+  const params: Record<string, unknown> = { sales_channel: 'affiliate' };
+  if (name === 'sp_story_step_view' && typeof step === 'number' && step >= 1 && step <= 6) {
+    params.step = step;
+  }
+  plainEvent(name, params);
+}
+
 export function trackAffiliateEvent(
   name:
     | 'affiliate_landing_view'
