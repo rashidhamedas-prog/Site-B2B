@@ -61,12 +61,60 @@ export type PackSizeConfig = {
   packComposition?: Record<string, number> | null;
 };
 
+/**
+ * Chart / variant token for FREE (ERP + DB + match). ASCII space — do not ZWNJ.
+ * Display copy uses {@link FREE_SIZE_FILTER_LABEL}.
+ */
+export const FREE_SIZE_CHART_LABEL = 'فری سایز';
+/** Filter / summary UI label (ZWNJ). Never write this into variant.size. */
+export const FREE_SIZE_FILTER_LABEL = 'فری‌سایز';
+
+/** Shared size-type summary for filters and badges (CUSTOM → caller uses sizeLabels). */
+export const SIZE_TYPE_SUMMARY: Record<'FREE' | 'TWO' | 'THREE', string> = {
+  FREE: FREE_SIZE_FILTER_LABEL,
+  TWO: 'سایز ۱ و ۲',
+  THREE: 'سایز ۱ تا ۳',
+};
+
+/** Sizing fields needed on catalog cards (mirror wholesale slim). */
+export type CatalogSizing = {
+  sizeType?: string | null;
+  sizeLabels?: string[] | null;
+  packDefinitionMode?: string | null;
+  packComposition?: Record<string, number> | null;
+};
+
+export function pickCatalogSizing(
+  raw: Record<string, unknown> | null | undefined,
+): CatalogSizing {
+  const src = raw ?? {};
+  return {
+    sizeType: src.sizeType == null || src.sizeType === '' ? null : String(src.sizeType),
+    sizeLabels: Array.isArray(src.sizeLabels)
+      ? normalizeSizeLabels(src.sizeLabels as Array<string | null | undefined>)
+      : null,
+    packDefinitionMode:
+      src.packDefinitionMode == null || src.packDefinitionMode === ''
+        ? null
+        : String(src.packDefinitionMode),
+    packComposition:
+      src.packComposition && typeof src.packComposition === 'object'
+        ? (src.packComposition as Record<string, number>)
+        : null,
+  };
+}
+
 export function sizeTypeLabel(sizeType?: string | null): string {
-  if (sizeType === 'FREE') return 'فری‌سایز';
+  if (sizeType === 'FREE') return FREE_SIZE_FILTER_LABEL;
   if (sizeType === 'TWO') return '۲ سایز';
   if (sizeType === 'THREE') return '۳ سایز';
   if (sizeType === 'CUSTOM') return 'سایزبندی سفارشی';
   return sizeType || 'سایزبندی کامل';
+}
+
+/** Chip / filter display: chart FREE token → ZWNJ label; others pass through. */
+export function displaySizeLabel(label: string): string {
+  return label === FREE_SIZE_CHART_LABEL ? FREE_SIZE_FILTER_LABEL : label;
 }
 
 export function normalizeSizeLabels(raw?: Array<string | null | undefined> | null): string[] {
@@ -81,15 +129,23 @@ export function normalizeSizeLabels(raw?: Array<string | null | undefined> | nul
   return out;
 }
 
+/**
+ * Chart rows for a known sizeType. Missing/invalid → [] (never invent FREE).
+ * Callers that need pack defaults must pass sizeType ?? 'FREE' explicitly.
+ */
 export function sizesForSizeType(
   sizeType?: string | null,
   sizeLabels?: Array<string | null | undefined> | null,
 ): string[] {
-  const t = String(sizeType || 'FREE').toUpperCase();
+  const t = String(sizeType ?? '')
+    .trim()
+    .toUpperCase();
+  if (!t) return [];
   if (t === 'CUSTOM') return normalizeSizeLabels(sizeLabels);
   if (t === 'TWO') return ['سایز ۱', 'سایز ۲'];
   if (t === 'THREE') return ['سایز ۱', 'سایز ۲', 'سایز ۳'];
-  return ['فری سایز'];
+  if (t === 'FREE') return [FREE_SIZE_CHART_LABEL];
+  return [];
 }
 
 /** FREE=1, TWO=2, THREE=3, CUSTOM=label count. Unknown/missing → null. */
@@ -109,7 +165,8 @@ export function sizeCountForType(
 }
 
 export function compositionPerSize(config: PackSizeConfig = {}): Record<string, number> {
-  const sizes = sizesForSizeType(config.sizeType, config.sizeLabels);
+  // Pack math historically treated missing type as FREE — keep that explicit here.
+  const sizes = sizesForSizeType(config.sizeType ?? 'FREE', config.sizeLabels);
   const mode = String(config.packDefinitionMode || 'AUTO').toUpperCase() === 'MANUAL' ? 'MANUAL' : 'AUTO';
   const out: Record<string, number> = {};
   if (mode === 'AUTO') {
@@ -228,6 +285,34 @@ export function storefrontSizeLabels<T extends ChannelStockVariant & { size?: st
   const present = new Set(fromVariants);
   const ordered = chart.filter((label) => present.has(label));
   return ordered.length ? ordered : chart;
+}
+
+export type StorefrontSizeChip = { label: string; available: boolean };
+
+/**
+ * Card chips: chart labels when known. If list payload has no size rows, all chips
+ * are available (no per-size stock). When variants include sizes, retailStock=0 → unavailable.
+ */
+export function storefrontSizeChips<T extends ChannelStockVariant & { size?: string | null }>(
+  variants: T[] | null | undefined,
+  source: SizeChartSource,
+  options?: { channel?: StorefrontChannel; includeSoldOut?: boolean },
+): StorefrontSizeChip[] {
+  const labels = storefrontSizeLabels(variants, source, {
+    ...options,
+    includeSoldOut: true,
+  });
+  const rows = variants ?? [];
+  const hasSizeRows = rows.some((row) => String(row.size ?? '').trim());
+  if (!hasSizeRows || options?.includeSoldOut) {
+    return labels.map((label) => ({ label, available: true }));
+  }
+  const channel = options?.channel ?? 'retail';
+  return labels.map((label) => {
+    const matching = rows.filter((row) => String(row.size ?? '').trim() === label);
+    const available = matching.some((row) => variantChannelStock(row, channel) > 0);
+    return { label, available };
+  });
 }
 
 export function distinctColorCount(colors: Array<string | null | undefined>): number {

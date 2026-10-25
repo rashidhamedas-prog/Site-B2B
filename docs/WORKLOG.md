@@ -1,3 +1,10 @@
+## 2026-10-25 — فیکس چیپ «فری سایز» جعلی روی /products خرده‌فروشی (بدون merge)
+
+- ریشه: `slimRetailCatalogProduct` و `normalizeRetailProduct` فیلدهای `sizeType`/`sizeLabels` را حذف می‌کردند و `sizesForSizeType` نوع خالی را FREE فرض می‌کرد.
+- `pickCatalogSizing` + نگه داشتن sizing در slim؛ `sizesForSizeType(undefined)→[]`؛ چیپ کارت از `storefrontSizeChips`. ثابت نمایش `فری‌سایز` جدا از توکن چارت `فری سایز`.
+- DB: ACTIVE با sizeType خالی = ۰ → backfill لازم نیست. Branch `fix/retail-card-sizing`؛ merge به master فقط با تأیید صریح.
+- گزارش: `docs/reports/2026-10-25-retail-card-sizing.md`.
+
 ## 2026-10-25 — delta dedupe: uncertain_after_timeout + deploy
 
 - reconcile دیگر DRAFT موازی نمی‌سازد؛ publication را reuse می‌کند. سقف فقط از `autoDailyCap` (بدون env). تایم‌اوت → HOLD با `uncertain_after_timeout`.

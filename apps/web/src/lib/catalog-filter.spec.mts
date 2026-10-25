@@ -19,6 +19,8 @@ assert(catalogColorHex('رنگ‌ناموجود') === '#D6D3D1', 'neutral fallba
 assert(isLightCatalogSwatch('#FFFFFF') === true, 'white is light');
 assert(isLightCatalogSwatch('#111111') === false, 'black is dark');
 assert(catalogSizeLabel('FREE') === 'فری‌سایز', 'free size label');
+assert(catalogSizeLabel('TWO') === 'سایز ۱ و ۲', 'two size summary');
+assert(catalogSizeLabel('THREE') === 'سایز ۱ تا ۳', 'three size summary');
 assert(catalogSizeLabel('38') === '38', 'garment size passthrough');
 
 assert(catalogActiveFilterCount({}) === 0, 'empty count');
@@ -32,7 +34,7 @@ const chips = catalogFilterChips(
   'بهار',
 );
 assert(chips[0]?.label === 'فقط موجود', 'stock chip first');
-assert(chips.some((c) => c.label === 'سایز: دو سایز'), 'size chip');
+assert(chips.some((c) => c.label === 'سایز: سایز ۱ و ۲'), 'size chip');
 assert(chips.some((c) => c.label === 'کالکشن: بهار'), 'collection name');
 
 assert(toggleCatalogValue('لینن', 'لینن') === '', 'toggle off');

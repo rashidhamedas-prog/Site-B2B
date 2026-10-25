@@ -1,3 +1,5 @@
+import { FREE_SIZE_FILTER_LABEL, SIZE_TYPE_SUMMARY } from '@/lib/product-display';
+
 export type CatalogFilterValues = {
   fabric?: string;
   color?: string;
@@ -28,9 +30,9 @@ export const CATALOG_FABRICS = [
 ] as const;
 
 export const CATALOG_SIZE_TYPES = [
-  { value: 'FREE', label: 'فری‌سایز', hint: 'یک سایز' },
-  { value: 'TWO', label: 'دو سایز', hint: 'سایز ۱ و ۲' },
-  { value: 'THREE', label: 'سه سایز', hint: 'سایز ۱ تا ۳' },
+  { value: 'FREE', label: SIZE_TYPE_SUMMARY.FREE, hint: 'یک سایز' },
+  { value: 'TWO', label: SIZE_TYPE_SUMMARY.TWO, hint: SIZE_TYPE_SUMMARY.TWO },
+  { value: 'THREE', label: SIZE_TYPE_SUMMARY.THREE, hint: SIZE_TYPE_SUMMARY.THREE },
 ] as const;
 
 export const CATALOG_COLOR_SWATCHES: ReadonlyArray<{ name: string; hex: string }> = [
@@ -49,9 +51,9 @@ export const CATALOG_COLOR_SWATCHES: ReadonlyArray<{ name: string; hex: string }
 ];
 
 const SIZE_LABEL: Record<string, string> = {
-  FREE: 'فری‌سایز',
-  TWO: 'دو سایز',
-  THREE: 'سه سایز',
+  FREE: FREE_SIZE_FILTER_LABEL,
+  TWO: SIZE_TYPE_SUMMARY.TWO,
+  THREE: SIZE_TYPE_SUMMARY.THREE,
 };
 
 const CHIP_TITLES: Record<keyof CatalogFilterValues, string> = {
