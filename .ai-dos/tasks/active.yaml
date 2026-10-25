@@ -1,5 +1,23 @@
 schema_version: 1
 tasks:
+  - id: "TASK-20261025-001"
+    title: "Product card click falls through when view transitions fail"
+    status: "in_review"
+    risk: "low"
+    owner: "cursor"
+    reviewer: "pending"
+    security: "n/a"
+    branch: "cursor/fix-product-card-navigation-52c6"
+    claimed_at: "2026-10-25T08:20:00Z"
+    acceptance: "Chromium click on retail, wholesale, and boutique cards navigates. startViewTransition is called on document. preventDefault runs only after a successful start. A missing or throwing API leaves Next Link navigation intact and clears the view-transition name. Spec covers present, absent, and throw. No merge and no production deploy."
+    file_claims:
+      - "apps/web/src/components/motion/product-transition.ts"
+      - "apps/web/src/components/motion/product-transition.spec.ts"
+      - "docs/WORKLOG.md"
+      - "docs/reports/2026-10-25-product-card-click.md"
+      - ".ai-dos/tasks/active.yaml"
+      - ".ai-dos/tasks/handoff.md"
+    notes: "motion/ is also claimed by TASK-20261024-007 (in_review, other branch). This task edits only product-transition.ts and its spec. WORKLOG, handoff, and active.yaml overlap 008/007/006/005; this entry only prepends. Do not merge."
   - id: "TASK-20261024-008"
     title: "Telegram multipart photo upload + reject truncated product images"
     status: "in_progress"
