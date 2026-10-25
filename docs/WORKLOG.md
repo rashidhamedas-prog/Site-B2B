@@ -1,3 +1,9 @@
+## 2026-10-25 — VT update sync: رفع hang کلیک کارت در Chromium e2e (بدون دیپلوی)
+
+- ریشه: await روی hero داخل callbackِ `startViewTransition` در Chromium باعث می‌شد `router.push` تا تایم‌اوت VT (~4s) اعمال نشود؛ e2e با بودجه ۱.۵s قرمز می‌شد.
+- callback فقط sync `navigate`؛ نام‌گذاری hero و skip بیرون از update با بودجه ۳۰۰ms؛ تایمر ensure اگر `finished` هنگ کرد دوباره navigate می‌کند.
+- Unit: `product-transition.spec.ts`. Deploy دستی؛ PR #105. Hetzner دست نخورده.
+
 ## 2026-10-25 — فیکس چیپ «فری سایز» جعلی روی /products خرده‌فروشی (بدون merge)
 
 - ریشه: `slimRetailCatalogProduct` و `normalizeRetailProduct` فیلدهای `sizeType`/`sizeLabels` را حذف می‌کردند و `sizesForSizeType` نوع خالی را FREE فرض می‌کرد.

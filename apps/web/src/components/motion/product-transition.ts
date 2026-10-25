@@ -116,10 +116,14 @@ function waitForProductHero(path: string, budgetMs: number): Promise<boolean> {
  * Illegal invocation in Chromium/WebKit; if that happens after preventDefault,
  * navigation would be lost — so failures always fall back to navigate().
  *
- * The update callback must not await requestAnimationFrame (rAF is paused during
- * the update). Hero attach uses MutationObserver with a 300ms setTimeout ceiling.
- * Morph only runs when the destination was prefetched (`warmProductRoute`);
- * otherwise the click falls through to default Link navigation.
+ * The VT update callback must stay synchronous (or only await microtasks).
+ * Chromium pauses rAF during the update; Next/React navigation work scheduled
+ * via macrotasks then cannot flush while we also await a timer-backed hero
+ * poll — URL never changes until Chrome's ~4s VT timeout. Navigate inside a
+ * sync update, attach the PDP hero outside the callback with a 300ms budget,
+ * and skip the morph if the hero is late. Morph only runs when the destination
+ * was prefetched (`warmProductRoute`); otherwise the click falls through to
+ * default Link navigation.
  */
 export function beginProductTransition(event: ProductClick, navigate: () => void) {
   if (
@@ -160,11 +164,25 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
   };
 
   try {
-    let transition!: ViewTransitionLike;
-    transition = start.call(document, async () => {
+    // Sync update only — never await timers/rAF inside the VT callback.
+    const transition = start.call(document, () => {
       go();
-      const attached = await waitForProductHero(path, PRODUCT_TRANSITION_BUDGET_MS);
-      // Budget exceeded without a hero — drop the morph so the new page paints immediately.
+    });
+
+    const ensureLanded = () => {
+      if (normalizePath(window.location.pathname) === path) return;
+      navigated = true;
+      navigate();
+      try {
+        transition.skipTransition?.();
+      } catch {
+        /* older engines */
+      }
+    };
+
+    // Hero naming runs outside the update callback so MutationObserver /
+    // setTimeout are not starved by Chromium's VT update scheduling.
+    void waitForProductHero(path, PRODUCT_TRANSITION_BUDGET_MS).then((attached) => {
       if (!attached) {
         try {
           transition.skipTransition?.();
@@ -174,14 +192,8 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
       }
     });
 
-    // Safety: if the update somehow stalls past the budget, skip anyway.
-    const skipTimer = window.setTimeout(() => {
-      try {
-        transition.skipTransition?.();
-      } catch {
-        /* older engines */
-      }
-    }, PRODUCT_TRANSITION_BUDGET_MS + 50);
+    // Safety: skip morph + force navigation if VT.finished hangs (Chromium).
+    const skipTimer = window.setTimeout(ensureLanded, PRODUCT_TRANSITION_BUDGET_MS + 50);
 
     void transition.finished
       .catch(() => {
@@ -190,6 +202,8 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
       .finally(() => {
         window.clearTimeout(skipTimer);
         clearProductName();
+        // If router.push during VT was dropped, land the navigation now.
+        ensureLanded();
       });
   } catch {
     img.style.viewTransitionName = '';

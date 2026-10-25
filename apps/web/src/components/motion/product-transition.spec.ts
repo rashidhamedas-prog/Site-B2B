@@ -186,17 +186,19 @@ async function whenBoundCallSucceeds() {
   assert.equal(img.style.viewTransitionName, '', 'card name cleared after finished');
 }
 
-/** When rAF never fires and hero is late, update still resolves under 350ms. */
-async function whenRafNeverFiresResolvesUnderBudget() {
+/** Update callback must return immediately — never await timer/rAF work. */
+async function whenUpdateCallbackStaysSynchronous() {
   await warmReady();
   let updateMs = 0;
+  let updateReturnedPromise = false;
   let finished = Promise.resolve();
   const { setHeroVisible, getRafCalls } = installDocument(function (this: unknown, update: Update) {
     setHeroVisible(false);
     const t0 = Date.now();
-    finished = Promise.resolve(update()).then(() => {
-      updateMs = Date.now() - t0;
-    });
+    const result = update();
+    updateReturnedPromise = result != null && typeof (result as Promise<void>).then === 'function';
+    updateMs = Date.now() - t0;
+    finished = Promise.resolve(result).then(() => undefined);
     return { finished, skipTransition() {} };
   });
 
@@ -204,11 +206,8 @@ async function whenRafNeverFiresResolvesUnderBudget() {
   beginProductTransition(event, () => undefined);
   await finished;
   assert.equal(getRafCalls(), 0, 'no rAF scheduled');
-  assert.ok(
-    updateMs <= PRODUCT_TRANSITION_BUDGET_MS + 50,
-    `update resolved in ${updateMs}ms (budget ${PRODUCT_TRANSITION_BUDGET_MS}ms)`,
-  );
-  assert.ok(updateMs < 350, `must resolve under 350ms, got ${updateMs}ms`);
+  assert.equal(updateReturnedPromise, false, 'update must not return a Promise');
+  assert.ok(updateMs < 50, `sync update must finish under 50ms, got ${updateMs}ms`);
 }
 
 /** Cold (not prefetched) route leaves the Link click alone. */
@@ -283,8 +282,8 @@ async function whenFinishedRejectsWithoutNavigate() {
   assert.equal(event.defaultPrevented, true);
 }
 
-/** skipTransition is armed when the 300ms budget elapses. */
-async function whenSlowUpdateSkipsTransition() {
+/** skipTransition is armed when the 300ms hero budget elapses (outside update). */
+async function whenSlowHeroSkipsTransition() {
   await warmReady();
   let skipped = 0;
   let finished = Promise.resolve();
@@ -302,18 +301,63 @@ async function whenSlowUpdateSkipsTransition() {
   const { event } = makeEvent();
   beginProductTransition(event, () => undefined);
   await finished;
-  await new Promise((r) => setTimeout(r, 50));
-  assert.ok(skipped >= 1, 'skipTransition called when budget elapses');
+  await new Promise((r) => setTimeout(r, PRODUCT_TRANSITION_BUDGET_MS + 80));
+  assert.ok(skipped >= 1, 'skipTransition called when hero budget elapses');
+}
+
+/** If VT finished but URL never changed, navigate() runs again from finally. */
+async function whenFinishedWithoutUrlChangeRetriesNavigate() {
+  await warmReady();
+  let finished = Promise.resolve();
+  installDocument(function (this: unknown, update: Update) {
+    finished = Promise.resolve(update()).then(() => undefined);
+    return { finished, skipTransition() {} };
+  });
+  // Stay on the listing path so the finally fallback must re-fire navigate.
+  (globalThis as unknown as { window: { location: { pathname: string } } }).window.location.pathname =
+    '/products';
+
+  const { event } = makeEvent();
+  let navigated = 0;
+  beginProductTransition(event, () => {
+    navigated += 1;
+  });
+  await finished;
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.ok(navigated >= 2, `finally must retry navigate when still on listing (got ${navigated})`);
+}
+
+/** If VT.finished never settles, the budget timer still forces navigation. */
+async function whenFinishedHangsBudgetStillNavigates() {
+  await warmReady();
+  installDocument(function (this: unknown, update: Update) {
+    update();
+    return { finished: new Promise(() => {}), skipTransition() {} };
+  });
+  (globalThis as unknown as { window: { location: { pathname: string } } }).window.location.pathname =
+    '/products';
+
+  const { event } = makeEvent();
+  let navigated = 0;
+  beginProductTransition(event, () => {
+    navigated += 1;
+  });
+  assert.equal(navigated, 1, 'sync update navigates once');
+  await new Promise((r) => setTimeout(r, PRODUCT_TRANSITION_BUDGET_MS + 80));
+  assert.ok(navigated >= 2, `budget timer must re-navigate while finished hangs (got ${navigated})`);
 }
 
 async function main() {
   await whenBoundCallSucceeds();
-  await whenRafNeverFiresResolvesUnderBudget();
+  await whenUpdateCallbackStaysSynchronous();
   await whenRouteColdNoPreventDefault();
   await whenStartThrows();
   await whenModifierOrMiddleClick();
   await whenFinishedRejectsWithoutNavigate();
-  await whenSlowUpdateSkipsTransition();
+  await whenSlowHeroSkipsTransition();
+  await whenFinishedWithoutUrlChangeRetriesNavigate();
+  await whenFinishedHangsBudgetStillNavigates();
   console.log('product-transition.spec.ts ok');
 }
 
