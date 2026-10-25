@@ -19,6 +19,10 @@ function clearProductName() {
  * Progressive card → product morph. No-ops without the View Transitions API
  * or when the visitor asked for reduced motion. Direct loads never set a
  * view-transition-name, so the product LCP image stays a normal image.
+ *
+ * Call startViewTransition on document. Copying the method and calling it
+ * unbound throws TypeError (Illegal invocation) in Chromium, and preventDefault
+ * then swallows the <a>/Next Link navigation. Any failure leaves the click alone.
  */
 export function beginProductTransition(event: ProductClick, navigate: () => void) {
   if (
@@ -32,10 +36,7 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
     return;
   }
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const start = (document as Document & {
-    startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> };
-  }).startViewTransition;
-  if (typeof start !== 'function') return;
+  if (typeof document.startViewTransition !== 'function') return;
 
   const anchor = event.currentTarget instanceof HTMLAnchorElement
     ? event.currentTarget
@@ -43,21 +44,24 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
   const img = anchor?.querySelector('img');
   if (!(img instanceof HTMLImageElement) || !anchor) return;
 
-  event.preventDefault();
   img.style.viewTransitionName = 'tn-product';
-  const path = new URL(anchor.href, window.location.origin).pathname;
-
-  const transition = start(async () => {
-    navigate();
-    const begun = performance.now();
-    while (performance.now() - begun < 800) {
-      const hero = document.querySelector('[data-tn-hero] img');
-      if (window.location.pathname === path && hero instanceof HTMLImageElement) {
-        hero.style.viewTransitionName = 'tn-product';
-        return;
+  try {
+    const path = new URL(anchor.href, window.location.origin).pathname;
+    const transition = document.startViewTransition(async () => {
+      navigate();
+      const begun = performance.now();
+      while (performance.now() - begun < 800) {
+        const hero = document.querySelector('[data-tn-hero] img');
+        if (window.location.pathname === path && hero instanceof HTMLImageElement) {
+          hero.style.viewTransitionName = 'tn-product';
+          return;
+        }
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
       }
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
-    }
-  });
-  void transition.finished.finally(clearProductName);
+    });
+    void transition.finished.finally(clearProductName);
+    event.preventDefault();
+  } catch {
+    clearProductName();
+  }
 }

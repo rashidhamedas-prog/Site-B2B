@@ -2,6 +2,14 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-25T08:40:00Z — TASK-20261025-001 product card click in Chromium
+
+- Branch `cursor/fix-product-card-navigation-52c6`. Do not merge. Merging deploys to Iran and needs the owner's approval.
+- `beginProductTransition` called `document.startViewTransition` unbound (`const start = document.startViewTransition; start(...)`), so Chromium threw `Illegal invocation` after `preventDefault` and `router.push` never ran. Retail, wholesale, and boutique cards all use this helper.
+- Fix: call `document.startViewTransition(...)`. `preventDefault` runs only after that call succeeds. A throw clears `tn-product` and leaves the Next Link click intact. Cards were not rewritten.
+- Overlap: `apps/web/src/components/motion/` is still claimed by TASK-20261024-007 (`in_review`, other branch). This task only edits `product-transition.ts` plus its spec. WORKLOG, handoff, and active.yaml are prepend-only; those files stay claimed by 008/007/006/005.
+- Evidence: `apps/web` `tsc --noEmit` and `product-transition.spec.ts` (API present, absent, throws). No production deploy.
+
 ## 2026-10-24T16:10:00Z — TASK-20261024-008 telegram media upload + reject truncated JPEG
 
 - Branch `cursor/telegram-media-upload-e227`. No wrangler deploy, no Iran deploy, no env/secret/DB change.
