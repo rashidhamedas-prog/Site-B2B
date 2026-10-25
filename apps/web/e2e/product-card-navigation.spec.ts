@@ -81,15 +81,18 @@ async function openListing(page: Page, listPath: string, retailCookie: boolean) 
   // /retail/products 301s to /products; wait for the catalog shell.
   await page.waitForLoadState('load');
 
-  const card = page.locator('article.tn-card a[href^="/products/"]').first();
+  // Prefer the media Link (tn-media) which owns the VT click handler.
+  const card = page.locator('article.tn-card a.tn-media[href^="/products/"]').first();
   try {
-    await expect(card, 'at least one product card link').toBeVisible({ timeout: 30_000 });
+    await expect(card, 'at least one product card media link').toBeVisible({ timeout: 30_000 });
   } catch {
     // Cookie/channel race on the redirect: land on /products with retail cookie.
     if (retailCookie) {
       await page.goto('/products', { waitUntil: 'domcontentloaded' });
     }
-    await expect(card, 'at least one product card link after retry').toBeVisible({ timeout: 30_000 });
+    await expect(card, 'at least one product card media link after retry').toBeVisible({
+      timeout: 30_000,
+    });
   }
   const href = await card.getAttribute('href');
   expect(href, 'card href').toMatch(/^\/products\/[^/?#]+/);
@@ -102,16 +105,17 @@ async function openListing(page: Page, listPath: string, retailCookie: boolean) 
   await card.dispatchEvent('pointerenter');
   await card.dispatchEvent('touchstart');
   await card.hover({ force: true }).catch(() => undefined);
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(400);
 
   const clickAt = Date.now();
-  await card.click({ force: true });
-
-  await expect(page).toHaveURL(new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[?#]|$)`), {
-    timeout: 1_500,
-  });
+  const urlPattern = new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[?#]|$)`);
+  await Promise.all([
+    page.waitForURL(urlPattern, { timeout: 1_500 }),
+    card.click({ force: true }),
+  ]);
   const urlMs = Date.now() - clickAt;
   expect(urlMs, `URL changed within 1500ms (took ${urlMs}ms)`).toBeLessThanOrEqual(1_500);
+  await expect(page).toHaveURL(urlPattern);
 
   const heading = page.locator('h1').first();
   await expect(heading, 'product h1 visible').toBeVisible({ timeout: Math.max(100, 1_500 - urlMs) });

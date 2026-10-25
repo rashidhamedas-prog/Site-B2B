@@ -94,7 +94,13 @@ function installDocument(
   g.document = doc;
   g.window = {
     matchMedia: () => ({ matches: false }),
-    location: { origin: ORIGIN, pathname: HREF },
+    location: {
+      origin: ORIGIN,
+      pathname: HREF,
+      assign() {
+        /* tests override when asserting hard-nav */
+      },
+    },
     setTimeout: globalThis.setTimeout.bind(globalThis),
     clearTimeout: globalThis.clearTimeout.bind(globalThis),
   };
@@ -332,21 +338,28 @@ async function whenFinishedWithoutUrlChangeRetriesNavigate() {
 /** If VT.finished never settles, the budget timer still forces navigation. */
 async function whenFinishedHangsBudgetStillNavigates() {
   await warmReady();
+  const assigns: string[] = [];
   installDocument(function (this: unknown, update: Update) {
     update();
     return { finished: new Promise(() => {}), skipTransition() {} };
   });
-  (globalThis as unknown as { window: { location: { pathname: string } } }).window.location.pathname =
-    '/products';
+  const win = (globalThis as unknown as {
+    window: { location: { pathname: string; assign?: (url: string) => void } };
+  }).window;
+  win.location.pathname = '/products';
+  win.location.assign = (url: string) => {
+    assigns.push(url);
+  };
 
   const { event } = makeEvent();
   let navigated = 0;
   beginProductTransition(event, () => {
     navigated += 1;
   });
-  assert.equal(navigated, 1, 'sync update navigates once');
+  assert.equal(navigated, 1, 'navigate runs once before VT');
   await new Promise((r) => setTimeout(r, PRODUCT_TRANSITION_BUDGET_MS + 80));
-  assert.ok(navigated >= 2, `budget timer must re-navigate while finished hangs (got ${navigated})`);
+  assert.ok(navigated >= 2, `budget timer must soft-retry while finished hangs (got ${navigated})`);
+  assert.ok(assigns.includes(HREF), `hard-nav assign fallback must fire (got ${JSON.stringify(assigns)})`);
 }
 
 async function main() {

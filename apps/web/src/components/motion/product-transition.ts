@@ -182,8 +182,16 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
       } catch {
         /* older engines */
       }
-      // Soft retry — go() is a no-op once navigated; call navigate() directly.
+      // Soft retry first (go() is a no-op once navigated).
       navigate();
+      // router.push updates the URL immediately on success. If we are still on
+      // the listing after the budget, soft-nav failed — hard-nav so preventDefault
+      // never strands the click (seen flaky under Chromium + VT in CI).
+      window.setTimeout(() => {
+        if (normalizePath(window.location.pathname) !== path) {
+          window.location.assign(path);
+        }
+      }, 0);
     };
 
     // Hero naming outside the update callback (MutationObserver + budget).
