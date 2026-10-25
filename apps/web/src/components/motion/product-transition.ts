@@ -19,6 +19,10 @@ function clearProductName() {
  * Progressive card → product morph. No-ops without the View Transitions API
  * or when the visitor asked for reduced motion. Direct loads never set a
  * view-transition-name, so the product LCP image stays a normal image.
+ *
+ * startViewTransition must run with `this === document`. An unbound call throws
+ * Illegal invocation in Chromium/WebKit; if that happens after preventDefault,
+ * navigation would be lost — so failures always fall back to navigate().
  */
 export function beginProductTransition(event: ProductClick, navigate: () => void) {
   if (
@@ -47,17 +51,33 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
   img.style.viewTransitionName = 'tn-product';
   const path = new URL(anchor.href, window.location.origin).pathname;
 
-  const transition = start(async () => {
+  let navigated = false;
+  const go = () => {
+    if (navigated) return;
+    navigated = true;
     navigate();
-    const begun = performance.now();
-    while (performance.now() - begun < 800) {
-      const hero = document.querySelector('[data-tn-hero] img');
-      if (window.location.pathname === path && hero instanceof HTMLImageElement) {
-        hero.style.viewTransitionName = 'tn-product';
-        return;
+  };
+
+  try {
+    const transition = start.call(document, async () => {
+      go();
+      const begun = performance.now();
+      while (performance.now() - begun < 800) {
+        const hero = document.querySelector('[data-tn-hero] img');
+        if (window.location.pathname === path && hero instanceof HTMLImageElement) {
+          hero.style.viewTransitionName = 'tn-product';
+          return;
+        }
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
       }
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
-    }
-  });
-  void transition.finished.finally(clearProductName);
+    });
+    void transition.finished
+      .catch(() => {
+        if (!navigated) go();
+      })
+      .finally(clearProductName);
+  } catch {
+    img.style.viewTransitionName = '';
+    go();
+  }
 }
