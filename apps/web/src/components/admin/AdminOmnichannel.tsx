@@ -2029,6 +2029,9 @@ export function AdminOmnichannel() {
                               {(row.status === 'DEAD' || row.status === 'FAILED') && !intentional && (
                                 <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
                               )}
+                              {row.status === 'HOLD' && (
+                                <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`reapprove-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/reapprove`, { reason }); }, 'خطا در تأیید مجدد', 'برای ارسال تأیید شد')}>تأیید مجدد</button>
+                              )}
                             </li>
                           );
                         })}

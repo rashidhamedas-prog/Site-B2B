@@ -234,8 +234,8 @@ function main() {
 
   const plan = planManualDeliveries(['d1', 'd2', 'd3'], live, new Set(['d3']));
   assert(plan.updates.length === 1 && plan.updates[0].providerMessageId === 'm2', 'existing dest becomes UPDATE');
-  assert(plan.creates.length === 1 && plan.creates[0].destinationId === 'd2', 'empty dest becomes CREATE');
-  assert(!plan.creates.some((row) => row.destinationId === 'd3'), 'pending CREATE is skipped');
+  assert(plan.creates.some((row) => row.destinationId === 'd2'), 'empty dest becomes CREATE');
+  assert(plan.creates.some((row) => row.destinationId === 'd3'), 'pending CREATE is reused by enqueue');
 
   const deduped = latestPublicationsBySource([
     { sourceType: 'PRODUCT', sourceId: 'a', channel: 'RETAIL', status: 'READY' },

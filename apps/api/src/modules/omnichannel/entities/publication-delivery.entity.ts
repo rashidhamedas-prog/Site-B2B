@@ -9,6 +9,10 @@ import { OutboxEventEntity } from './outbox-event.entity';
 @Index('UQ_omnichannel_deliveries_event_destination_action', ['eventId', 'destinationId', 'action'], {
   unique: true,
 })
+@Index('UQ_omnichannel_deliveries_active_create', ['idempotencyKey'], {
+  unique: true,
+  where: `"status" IN ('PENDING','PROCESSING','RETRY','SUCCEEDED','HOLD') AND "action" = 'CREATE' AND "supersededAt" IS NULL`,
+})
 export class PublicationDeliveryEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -51,6 +55,33 @@ export class PublicationDeliveryEntity {
 
   @Column({ type: 'text', nullable: true })
   lastError: string | null;
+
+  @Column({ type: 'varchar' })
+  sourceType: string;
+
+  @Column({ type: 'varchar' })
+  sourceId: string;
+
+  @Column({ type: 'varchar' })
+  idempotencyKey: string;
+
+  @Column({ type: 'boolean', default: false })
+  auto: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  deferredReason: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  supersededAt: Date | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  sentAt: Date | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  contentHash: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  reapprovedAt: Date | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

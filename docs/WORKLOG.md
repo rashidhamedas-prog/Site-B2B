@@ -5,6 +5,26 @@
 - متن کپشن از لبهٔ شروع (راست) ۱۰px فاصله دارد تا در ۳۲۰ و ۳۶۰ و ۴۱۴ بریده نشود.
 - merge و push به `master` انجام نشد.
 
+## 2026-10-25 — delta dedupe: uncertain_after_timeout + deploy
+
+- reconcile دیگر DRAFT موازی نمی‌سازد؛ publication را reuse می‌کند. سقف فقط از `autoDailyCap` (بدون env). تایم‌اوت → HOLD با `uncertain_after_timeout`.
+- HOLD/PENDING/RETRY در شمارش سقف؛ revive outbox با stagger و supersede sibling. بودجه CREATE media ۵۰s. `npm test` با runner کوتاه (رفع سقف cmd ویندوز).
+- گزارش: `docs/reports/2026-10-25-omnichannel-dedup-daily-cap.md`.
+
+## 2026-10-25 — یکتایی ارسال بله/روبیکا و سقف روزانه در worker
+
+- کلید CREATE دیگر `Date.now()` ندارد؛ هر محصول در هر مقصد یک CREATE فعال. تکراری‌ها soft-supersede می‌شوند و DELETE نمی‌شوند.
+- سقف، فاصله و HOLD کهنه قبل از `adapter.create` اعمال می‌شود. تأیید مجدد HOLD در کنسول انتشار است.
+- بکاپ ایران `20261025T113411Z`. Dry-run معادل: ۱۳۹ CREATE، ۹۸ keeper، ۴۱ loser (فقط DEAD/SUCCEEDED). GO برای push و migration داده شد. `worker-b` روشن نمی‌شود.
+- سخت‌سازی موازی (`88c14c8d`): تایم‌اوت→HOLD بدون RETRY، عدم reuse خودکار send_unconfirmed، سقف بعد از DELETE همان‌روز آزاد نمی‌شود، claim اتمی.
+- گزارش: `docs/reports/2026-10-25-omnichannel-dedup-daily-cap.md`.
+
+## 2026-10-25 — لوگوی یکسان هدر فروشگاه تکی (بدون دیپلوی)
+
+- هدر `.ir` همان فایل `/logo-128.png` هدر عمده را نشان می‌دهد. واژهٔ لاتین `POSHAK TARANOM` با «پوشاک ترنم» عوض شد و زیرش «فروشگاه آنلاین» آمد. alt و نام لینک: «پوشاک ترنم – فروشگاه آنلاین».
+- زیرعنوان هدر `.com` همان «تولیدی مانتو زنانه مشهد» ماند. فایل هدر عمده با `master` یکی است.
+- merge و push به `master` انجام نشد.
+
 ## 2026-10-24 — سوراخ زیر کپشن کاروسل موبایل (بدون دیپلوی)
 
 - ردیف فلکس به اندازهٔ بلندترین اسلاید بود و زیر کپشن کوتاه حدود ۲۰۰px کرم خالی می‌ماند. روی موبایل ارتفاع قاب اسکرول به اسلاید فعال می‌چسبد. نشان شماره همان ۱۶px سبز `#0F2F28` با متن سفید است.
@@ -97,7 +117,6 @@
 - `images.formats` عوض نشد: libheif داخل sharp 0.35.5 برابر 1.23.5 است و Next رمزگشایی AVIF را از 1.23.2 به بعد امن می‌داند. `"use server"` در مخزن نیست.
 - موتور Node به `>=20.9.0` (الزام sharp 0.35.5) به‌روز شد. Dockerfile و دیپلوی دست نخورده؛ این شاخه merge نشده است.
 - گزارش: `docs/reports/2026-10-24-next-15-5-security.md`.
-
 ## 2026-10-24 — اصلاح ریشه‌ای GA4/GTM (تکی+عمده) روی تک‌سرور ایران
 
 - شواهد: DNS هر دو دامنه → ایران؛ purchase=0 با PAID خالی ۱۰روز هم‌خوان؛ تناقض sessions false positive؛ mydigipay/shaparak و UTM ترب مخلوط؛ `(not set)` عمده با Web Vitals قبل از page_view.

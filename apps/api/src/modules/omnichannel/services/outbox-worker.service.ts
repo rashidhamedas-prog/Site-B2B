@@ -15,9 +15,9 @@ import { OUTBOX_EVENT_TYPES, SALES_PARTNER_OUTBOX_EVENT_TYPES } from '../omnicha
 import {
   DeliveryDeferredError,
   isConnectorDisabledError,
+  isUnconfirmedSendError,
   shouldSkipPublicationDeliver,
 } from './publication-deliver';
-
 import { OutboxService } from './outbox.service';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { safeWorkerError } from '../adapters/telegram-errors';
@@ -36,7 +36,14 @@ export function isOmnichannelWorkerProcess(): boolean {
   return process.env.OMNICHANNEL_WORKER === 'true';
 }
 
-const HANDLE_TIMEOUT_MS = 25_000;
+/** Default handle budget for non-messenger work. */
+const HANDLE_TIMEOUT_MS = 35_000;
+/**
+ * CREATE/UPDATE with media must outlive Rubika/Bale upload stacks (15s + 30s) so
+ * withTimeout does not race a still-running adapter.create into a duplicate RETRY.
+ * Ambiguous timeouts still HOLD via isUnconfirmedSendError — never auto-resend.
+ */
+const HANDLE_TIMEOUT_CREATE_MEDIA_MS = 50_000;
 
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -106,15 +113,27 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       const batch = await this.outbox.leaseBatch(this.workerId, 20);
       for (const row of batch) {
         try {
+          const handleMs = row.eventType === OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED
+            ? HANDLE_TIMEOUT_CREATE_MEDIA_MS
+            : HANDLE_TIMEOUT_MS;
           await this.withTimeout(
             this.handle(row),
-            HANDLE_TIMEOUT_MS,
+            handleMs,
             `outbox ${row.eventType} ${row.id}`,
           );
           await this.outbox.markDone(row.id);
         } catch (err: unknown) {
           if (err instanceof DeliveryDeferredError) {
-            await this.outbox.releaseDeferred(row.id);
+            // Gate defers before claim; if a row were PROCESSING, restore PENDING without burning attempts.
+            await this.releaseProcessingDelivery(row.id);
+            await this.outbox.releaseDeferred(row.id, err.availableAt);
+          } else if (
+            row.eventType === OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED
+            && isUnconfirmedSendError(err)
+          ) {
+            await this.omnichannel.markCreateUnconfirmed(row.id);
+            await this.outbox.markDone(row.id);
+            this.logger.warn(`outbox ${row.eventType} ${row.id} unconfirmed send → HOLD`);
           } else {
             const message = safeWorkerError(err);
             this.logger.warn(`outbox ${row.eventType} ${row.id} failed: ${message}`);
@@ -142,6 +161,21 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       ]);
     } finally {
       if (timer) clearTimeout(timer);
+    }
+  }
+
+  /** Leave PROCESSING after a soft defer so the next lease can reclaim without a duplicate create. */
+  private async releaseProcessingDelivery(eventId: string): Promise<void> {
+    if (!eventId) return;
+    try {
+      await this.deliveries.query(
+        `UPDATE "omnichannel_publication_deliveries"
+         SET status = 'PENDING', "updatedAt" = NOW()
+         WHERE "eventId" = $1 AND action = 'CREATE' AND status = 'PROCESSING' AND "supersededAt" IS NULL`,
+        [eventId],
+      );
+    } catch {
+      /* bookkeeping best-effort */
     }
   }
 
@@ -190,8 +224,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         try {
           await this.handlePublicationDeliver(payload, row.id);
         } catch (err: unknown) {
-          // Per-provider kill switch (or race while global flag flips): hold the lease,
-          // do not burn attempts into DEAD — same as global connectors-off deferral.
+          if (err instanceof DeliveryDeferredError) throw err;
           if (isConnectorDisabledError(err)) throw new DeliveryDeferredError();
           await this.markDeliveryFailure(payload, row, err);
           throw err;
@@ -368,7 +401,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private async markDeliveryFailure(payload: Record<string, unknown>, event: OutboxEventEntity, err: unknown) {
     try {
       const row = await this.findDelivery(payload, event.id);
-      if (!row || row.status === 'SUCCEEDED') return;
+      if (!row || row.status === 'SUCCEEDED' || row.status === 'HOLD') return;
       const dead = shouldDeadLetter(event.attempts, event.maxAttempts);
       row.status = dead ? 'DEAD' : 'RETRY';
       row.attempts = Number(event.attempts || 0);
@@ -423,6 +456,19 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       }
       return;
     }
+    if (action === 'CREATE') {
+      const gate = await this.omnichannel.reserveCreateSend({
+        eventId,
+        destinationId,
+        connectionId: conn.id,
+        provider: conn.provider,
+        channel: String(payload.channel || conn.channel || 'RETAIL'),
+      });
+      if (gate.kind === 'stop') return;
+      if (gate.kind === 'defer') {
+        throw new DeliveryDeferredError(gate.message, gate.availableAt, gate.reason);
+      }
+    }
     let providerMessageId: string | undefined;
     if (action === 'UPDATE') {
       try {
@@ -434,8 +480,21 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       }
     } else if (action === 'DELETE') {
       await adapter.delete(input);
+      const deletedPublicationId = String(payload.publicationId || '');
+      if (deletedPublicationId) {
+        await this.omnichannel.supersedeCreatesAfterDelete(deletedPublicationId, destinationId);
+      }
     } else {
-      providerMessageId = (await adapter.create(input)).providerMessageId;
+      try {
+        providerMessageId = (await adapter.create(input)).providerMessageId;
+      } catch (err: unknown) {
+        if (isConnectorDisabledError(err)) throw err;
+        if (isUnconfirmedSendError(err)) {
+          await this.omnichannel.markCreateUnconfirmed(eventId);
+          return;
+        }
+        throw err;
+      }
     }
     const row = await this.findDelivery(payload, eventId);
     if (!row) {
@@ -445,10 +504,17 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       );
       return;
     }
-    row.status = 'SUCCEEDED';
-    row.providerMessageId = providerMessageId || row.providerMessageId;
-    row.lastError = null;
-    await this.deliveries.save(row);
+    if (action === 'CREATE') {
+      const saved = await this.omnichannel.markCreateSucceeded(row.id, providerMessageId || row.providerMessageId);
+      if (!saved) return;
+    } else {
+      row.status = 'SUCCEEDED';
+      row.sentAt = new Date();
+      row.providerMessageId = providerMessageId || row.providerMessageId;
+      row.lastError = null;
+      row.deferredReason = null;
+      await this.deliveries.save(row);
+    }
     const publicationId = String(payload.publicationId || row.publicationId || '');
     if (publicationId && action === 'CREATE') {
       await this.omnichannel.markPublicationDelivered(publicationId);

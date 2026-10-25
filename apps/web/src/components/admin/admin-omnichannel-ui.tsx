@@ -299,6 +299,7 @@ const DELIVERY_STATUS: Record<string, { label: string; tone: Tone }> = {
   RETRY: { label: 'تلاش مجدد', tone: 'warn' },
   DEAD: { label: 'متوقف', tone: 'danger' },
   FAILED: { label: 'ناموفق', tone: 'danger' },
+  HOLD: { label: 'نیاز به تأیید', tone: 'warn' },
 };
 
 const OUTBOX_STATUS: Record<string, { label: string; tone: Tone }> = {
@@ -331,10 +332,17 @@ const ERROR_LABELS: Record<string, string> = {
   cancelled_by_admin: 'با دستور ادمین از صف لغو شد (عمدی)',
   publication_withdrawn: 'انتشار از کانال برداشته شده بود (عمدی)',
   'connector is disabled': 'ارسال از سرور خاموش بود؛ با روشن‌بودن کانکتور می‌توان بازتلاش کرد',
+  superseded_duplicate: 'ارسال تکراری بود و کنار گذاشته شد (عمدی)',
+  stale_needs_reapproval: 'پست قدیمی است و قبل از ارسال باید دوباره تأیید شود',
+  uncertain_after_timeout: 'نتیجهٔ ارسال معلوم نیست (تایم‌اوت)؛ قبل از تلاش دوباره کانال را چک کنید',
+  send_unconfirmed: 'نتیجهٔ ارسال معلوم نیست؛ قبل از تلاش دوباره کانال را چک کنید',
+  daily_cap: 'سقف ارسال امروز پر است؛ به روز بعد موکول شد',
+  min_gap: 'فاصلهٔ حداقل بین ارسال‌ها رعایت نشده؛ کمی بعد دوباره تلاش می‌شود',
+  rate_limit: 'سقف نرخ ارسال پر است؛ یک دقیقه بعد دوباره تلاش می‌شود',
 };
 
 /** Delivery/outbox errors that are intentional ops outcomes, not broken sends. */
-const INTENTIONAL_ERROR_KEYS = new Set(['cancelled_by_admin', 'publication_withdrawn']);
+const INTENTIONAL_ERROR_KEYS = new Set(['cancelled_by_admin', 'publication_withdrawn', 'superseded_duplicate']);
 
 export function isIntentionalError(error?: string | null) {
   if (!error) return false;

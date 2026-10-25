@@ -1,10 +1,20 @@
 import { ConnectorDisabledError } from '../adapters/channel-adapter';
+import { classifyTelegramThrow } from '../adapters/telegram-errors';
 import { areOmnichannelConnectorsEnabled } from '../omnichannel.constants';
 
 export class DeliveryDeferredError extends Error {
-  constructor() {
-    super('publication delivery deferred until connectors are enabled');
+  readonly availableAt: Date | null;
+  readonly reason: string;
+
+  constructor(
+    message = 'publication delivery deferred until connectors are enabled',
+    availableAt: Date | null = null,
+    reason = 'connectors_disabled',
+  ) {
+    super(message);
     this.name = 'DeliveryDeferredError';
+    this.availableAt = availableAt;
+    this.reason = reason;
   }
 }
 
@@ -25,4 +35,14 @@ export function isConnectorDisabledError(err: unknown): boolean {
 
 export function isConnectorDisabledLastError(lastError?: string | null): boolean {
   return CONNECTOR_DISABLED_ERROR_RE.test(String(lastError || ''));
+}
+
+/**
+ * Ambiguous create outcome: the messenger may already have the post.
+ * Must HOLD + ACK, never RETRY.
+ */
+export function isUnconfirmedSendError(err: unknown): boolean {
+  if (classifyTelegramThrow(err) === 'timeout') return true;
+  const message = err instanceof Error ? err.message : String(err || '');
+  return /timed?\s*out|timeout|AbortError|TimeoutError/i.test(message);
 }

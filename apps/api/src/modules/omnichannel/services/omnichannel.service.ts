@@ -37,6 +37,7 @@ import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { ConnectorDisabledError } from '../adapters/channel-adapter';
 import {
   areOmnichannelConnectorsEnabled,
+  DELIVERY_DEFERRED_REASONS,
   isOmnichannelAutoPublishEnabled,
   isOmnichannelProvider,
   isOmnichannelProviderEnabled,
@@ -53,7 +54,16 @@ import {
   renderFreePost,
 } from '../free-post';
 import { capabilitiesFor } from '../provider-capabilities';
-import { OutboxService } from './outbox.service';
+import { buildDedupeKey, OutboxService, sanitizeOutboxPayload } from './outbox.service';
+
+function insertedId(raw: unknown): string | null {
+  const rows = Array.isArray(raw) && raw.length === 2 && Array.isArray(raw[0]) && typeof raw[1] === 'number'
+    ? raw[0]
+    : raw;
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const id = (rows[0] as { id?: unknown }).id;
+  return typeof id === 'string' ? id : null;
+}
 import { applyReconcileIntents, reconcilePublicationIntents } from './reconcile';
 import { applyOosLocalAction, nextPublicationAction, syncChannelsForEvent } from './publication-sync';
 import { AppSettingEntity } from '../../settings/entities/app-setting.entity';
@@ -95,6 +105,24 @@ import {
   selectAutomationDestinationsForConnection,
   tehranDayStart,
 } from '../publication-automation';
+import {
+  buildIdempotencyKey,
+  capJitterMs,
+  contentHash,
+  dailyCapForProvider,
+  decideCreateEnqueue,
+  decideDailyCap,
+  decideMinGap,
+  decideRetryAgainstSibling,
+  decideSendWinner,
+  effectiveMinGapSeconds,
+  maxSendsPerMinute,
+  planCreateSend,
+  publicationToReuse,
+  staleDeliveryHours,
+  type ExistingCreateRow,
+} from '../delivery-idempotency';
+import { ACTIVE_CREATE_INDEX_PREDICATE } from '../delivery-dedupe-sql';
 import {
   publicConnectionPublishSettings,
   resolveConnectionPublishSettings,
@@ -1142,36 +1170,32 @@ export class OmnichannelService {
       );
     }
     const limit = Math.max(1, Math.min(500, Math.floor(Number(dto.limit) || 200)));
-    const eventIds = await this.outbox.requeueConnectorDisabledDead(limit);
-    // Raw SQL avoids TypeORM :...ids expanding an empty/odd list into uuid "undefined".
-    let revivedDeliveries = 0;
-    if (eventIds.length) {
-      const linked: Array<{ id: string }> = await this.deliveries.manager.query(
-        `UPDATE omnichannel_publication_deliveries
-         SET status = 'PENDING', "lastError" = NULL, "nextAttemptAt" = NOW()
-         WHERE "eventId" = ANY($1::uuid[])
-           AND status IN ('DEAD', 'FAILED', 'RETRY')
-         RETURNING id`,
-        [eventIds],
-      );
-      revivedDeliveries += Array.isArray(linked) ? linked.length : 0;
+    const rows = await this.deliveries
+      .createQueryBuilder('d')
+      .where('d.status = :status', { status: 'DEAD' })
+      .andWhere('d.action = :action', { action: 'CREATE' })
+      .andWhere('d.supersededAt IS NULL')
+      .andWhere(`d."lastError" ILIKE :marker`, { marker: '%connector is disabled%' })
+      .orderBy('d.createdAt', 'ASC')
+      .take(limit)
+      .getMany();
+    let reactivated = 0;
+    let superseded = 0;
+    for (const row of rows) {
+      const result = await this.reactivateDelivery(row, who, reason, 'revive_connector_disabled');
+      if (result.superseded) superseded += 1;
+      else if (result.retried) reactivated += 1;
     }
-    const orphans: Array<{ id: string }> = await this.deliveries.manager.query(
-      `UPDATE omnichannel_publication_deliveries
-       SET status = 'PENDING', "lastError" = NULL, "nextAttemptAt" = NOW()
-       WHERE status IN ('DEAD', 'FAILED')
-         AND "lastError" ILIKE '%connector is disabled%'
-       RETURNING id`,
-    );
-    revivedDeliveries += Array.isArray(orphans) ? orphans.length : 0;
     await this.audit(who, 'outbox_revive_connector_disabled', 'OUTBOX', 'batch', null, reason, {
-      revivedEvents: eventIds.length,
-      revivedDeliveries,
+      revivedEvents: reactivated,
+      revivedDeliveries: reactivated,
+      superseded,
       limit,
     });
     return {
-      revivedEvents: eventIds.length,
-      revivedDeliveries,
+      revivedEvents: reactivated,
+      revivedDeliveries: reactivated,
+      superseded,
       outbox: await this.outboxMetrics(),
     };
   }
@@ -1876,14 +1900,312 @@ export class OmnichannelService {
     if (!reason) throw new BadRequestException('reason الزامی است');
     const row = await this.deliveries.findOne({ where: { id } });
     if (!row) throw new NotFoundException('تحویل یافت نشد');
-    if (row.status === 'SUCCEEDED') return { retried: false, delivery: row };
-    row.status = 'PENDING';
-    row.nextAttemptAt = new Date();
-    row.lastError = null;
-    const saved = await this.deliveries.save(row);
-    if (row.eventId) await this.outbox.requeue(row.eventId);
-    await this.audit(who, 'retry', 'DELIVERY', saved.id, null, reason, { publicationId: saved.publicationId });
-    return { retried: true, delivery: saved };
+    return this.reactivateDelivery(row, who, reason, 'retry');
+  }
+
+  /** Human approval for a HOLD row. Refreshes the stale clock and queues through the daily cap. */
+  async reapproveDelivery(id: string, actor?: Actor, reason?: string) {
+    const who = this.requireActor(actor);
+    if (!reason) throw new BadRequestException('reason الزامی است');
+    const row = await this.deliveries.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('تحویل یافت نشد');
+    if (row.status !== 'HOLD') throw new BadRequestException('فقط ردیف متوقف‌شده برای تأیید مجدد قابل صف است');
+    row.reapprovedAt = new Date();
+    return this.reactivateDelivery(row, who, reason, 'reapprove');
+  }
+
+  private async reactivateDelivery(
+    row: PublicationDeliveryEntity,
+    who: Actor,
+    reason: string,
+    auditAction: string,
+  ) {
+    if (row.status === 'SUCCEEDED' && !row.supersededAt) {
+      return { retried: false, superseded: false, delivery: row };
+    }
+    const sibling = row.idempotencyKey
+      ? await this.deliveries.findOne({
+        where: {
+          idempotencyKey: row.idempotencyKey,
+          action: 'CREATE',
+          status: 'SUCCEEDED',
+          supersededAt: IsNull(),
+        },
+      })
+      : null;
+    if (decideRetryAgainstSibling({
+      deliveryId: row.id,
+      hasLiveSucceededSibling: Boolean(sibling && sibling.id !== row.id),
+    }) === 'supersede') {
+      row.status = 'DEAD';
+      row.lastError = 'superseded_duplicate';
+      row.supersededAt = new Date();
+      const saved = await this.deliveries.save(row);
+      await this.audit(who, auditAction, 'DELIVERY', saved.id, null, reason, { superseded: true });
+      return { retried: false, superseded: true, delivery: saved };
+    }
+    const slot = await this.nextCreateAvailableAt(row.destinationId);
+    const reactivated = await this.deliveries.query(
+      `UPDATE "omnichannel_publication_deliveries"
+       SET status = 'PENDING', attempts = 0, "lastError" = NULL, "deferredReason" = $2,
+           "nextAttemptAt" = $3, "supersededAt" = NULL,
+           "reapprovedAt" = COALESCE($4, "reapprovedAt"), "updatedAt" = NOW()
+       WHERE id = $1
+         AND status IN ('DEAD', 'FAILED', 'HOLD', 'RETRY', 'PENDING')
+       RETURNING id`,
+      [row.id, slot.reason, slot.availableAt, row.reapprovedAt || null],
+    );
+    if (!insertedId(reactivated)) {
+      return { retried: false, superseded: false, delivery: row };
+    }
+    const saved = await this.deliveries.findOne({ where: { id: row.id } }) || row;
+    const event = row.eventId ? await this.events.findOne({ where: { id: row.eventId } }) : null;
+    const payload = {
+      ...(event?.payload || {}),
+      publicationId: row.publicationId,
+      destinationId: row.destinationId,
+      action: row.action,
+      deliveryId: row.id,
+    };
+    if (event) {
+      const dedupeKey = buildDedupeKey({
+        operationId: row.idempotencyKey || row.id,
+        eventType: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED,
+        aggregateType: 'PUBLICATION',
+        aggregateId: row.sourceId || row.publicationId,
+        channel: event.channel,
+      });
+      await this.outbox.reopen(event.id, slot.availableAt, dedupeKey, payload);
+    }
+    await this.audit(who, auditAction, 'DELIVERY', saved.id, null, reason, {
+      publicationId: saved.publicationId,
+      availableAt: slot.availableAt.toISOString(),
+      deferredReason: slot.reason,
+    });
+    return { retried: true, superseded: false, delivery: saved };
+  }
+
+  private async nextCreateAvailableAt(destinationId: string): Promise<{ availableAt: Date; reason: string | null }> {
+    const dest = await this.destinations.findOne({ where: { id: destinationId } });
+    const conn = dest ? await this.connections.findOne({ where: { id: dest.connectionId } }) : null;
+    const global = await this.loadStoredSettings();
+    const resolved = dest && conn
+      ? resolveDestinationPublishSettings(dest.publishSettings, conn.publishSettings, global, conn.channel as 'RETAIL' | 'WHOLESALE')
+      : null;
+    const now = new Date();
+    const cap = dailyCapForProvider(conn?.provider || '', resolved?.automation.dailyCap ?? 0);
+    const sentToday = await this.countCreatesTowardDailyCap(conn?.channel, undefined, destinationId);
+    const gap = decideMinGap(now, await this.lastSentAt(destinationId), effectiveMinGapSeconds(resolved?.automation.minGapSeconds ?? 0));
+    let availableAt = gap.allow ? now : (gap.availableAt || now);
+    let reason: string | null = gap.allow ? null : 'min_gap';
+    const capped = decideDailyCap({
+      sentToday,
+      inFlight: 0,
+      cap,
+      now,
+      quietEndHour: resolved?.automation.quietEndHour ?? null,
+      jitterMs: capJitterMs(destinationId, tehranDayStart(now)),
+    });
+    if (!capped.allow && capped.availableAt) {
+      availableAt = capped.availableAt;
+      reason = 'daily_cap';
+    }
+    return { availableAt, reason };
+  }
+
+  private async lastSentAt(destinationId: string): Promise<Date | null> {
+    const raw = await this.deliveries
+      .createQueryBuilder('d')
+      .select('MAX(d.sentAt)', 'last')
+      .where('d.destinationId = :destinationId', { destinationId })
+      .andWhere('d.action = :action', { action: 'CREATE' })
+      .andWhere('d.status = :status', { status: 'SUCCEEDED' })
+      .getRawOne<{ last: Date | string | null }>();
+    if (!raw?.last) return null;
+    const at = new Date(raw.last);
+    return Number.isNaN(at.getTime()) ? null : at;
+  }
+
+  /** Worker gate: one CREATE send, or defer/hold/supersede without calling the adapter. */
+  async reserveCreateSend(input: {
+    eventId: string;
+    destinationId: string;
+    connectionId: string;
+    provider: string;
+    channel: string;
+  }): Promise<
+    | { kind: 'send' }
+    | { kind: 'stop' }
+    | { kind: 'defer'; availableAt: Date; reason: 'daily_cap' | 'min_gap' | 'rate_limit'; message: string }
+  > {
+    const row = input.eventId
+      ? await this.deliveries.findOne({ where: { eventId: input.eventId } })
+      : null;
+    if (!row) return { kind: 'stop' };
+    if (row.action !== 'CREATE') return { kind: 'send' };
+    if (row.supersededAt || row.status === 'SUCCEEDED' || row.status === 'HOLD') return { kind: 'stop' };
+    if (row.status === 'PROCESSING') {
+      await this.markCreateUnconfirmed(input.eventId);
+      return { kind: 'stop' };
+    }
+    const dest = await this.destinations.findOne({ where: { id: input.destinationId } });
+    const conn = await this.connections.findOne({ where: { id: input.connectionId } });
+    const global = await this.loadStoredSettings();
+    const resolved = dest && conn
+      ? resolveDestinationPublishSettings(dest.publishSettings, conn.publishSettings, global, (input.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL'))
+      : null;
+    const cap = dailyCapForProvider(input.provider, resolved?.automation.dailyCap ?? 0);
+    const quietEndHour = resolved?.automation.quietEndHour ?? null;
+    const minGapSeconds = effectiveMinGapSeconds(resolved?.automation.minGapSeconds ?? 0);
+    return this.deliveries.manager.transaction(async (tx) => {
+      const now = new Date();
+      const day = tehranDayStart(now);
+      const key = row.idempotencyKey || row.id;
+      await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [key]);
+      await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`cap:${input.destinationId}:${day.toISOString()}`]);
+      const others = await tx.query(
+        `SELECT id, status, "createdAt"
+         FROM "omnichannel_publication_deliveries"
+         WHERE "idempotencyKey" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL AND id <> $2`,
+        [key, row.id],
+      ) as Array<{ id: string; status: string; createdAt: Date | string }>;
+      const counts = await tx.query(
+        `SELECT
+           (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries"
+             WHERE "destinationId" = $1 AND action = 'CREATE'
+               AND status = 'SUCCEEDED' AND "sentAt" >= $2 AND id <> $3) AS sent,
+           (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries"
+             WHERE "destinationId" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL
+               AND (
+                 (status = 'PROCESSING' AND "updatedAt" >= $4)
+                 OR status IN ('HOLD', 'PENDING', 'RETRY')
+               )
+               AND id <> $3) AS inflight,
+           (SELECT MAX("sentAt") FROM "omnichannel_publication_deliveries"
+             WHERE "destinationId" = $1 AND action = 'CREATE' AND status = 'SUCCEEDED') AS last_sent,
+           (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries" d
+             INNER JOIN "omnichannel_channel_destinations" dest ON dest.id = d."destinationId"
+             WHERE dest."connectionId" = $5 AND d.status = 'SUCCEEDED' AND d."sentAt" >= $6) AS per_minute`,
+        [
+          input.destinationId,
+          day,
+          row.id,
+          new Date(now.getTime() - 10 * 60_000),
+          input.connectionId,
+          new Date(now.getTime() - 60_000),
+        ],
+      ) as Array<{ sent: number; inflight: number; last_sent: Date | string | null; per_minute: number }>;
+      const count = counts[0] || { sent: 0, inflight: 0, last_sent: null, per_minute: 0 };
+      const lastSentAt = count.last_sent ? new Date(count.last_sent) : null;
+      const plan = planCreateSend({
+        now,
+        createdAt: new Date(row.createdAt),
+        reapprovedAt: row.reapprovedAt ? new Date(row.reapprovedAt) : null,
+        staleHours: staleDeliveryHours(),
+        sentToday: Number(count.sent || 0),
+        inFlight: Number(count.inflight || 0),
+        cap,
+        lastSentAt: lastSentAt && !Number.isNaN(lastSentAt.getTime()) ? lastSentAt : null,
+        minGapSeconds,
+        sendsLastMinute: Number(count.per_minute || 0),
+        maxPerMinute: maxSendsPerMinute(),
+        quietEndHour,
+        jitterMs: capJitterMs(input.destinationId, day),
+        winner: decideSendWinner(
+          { id: row.id, createdAt: new Date(row.createdAt) },
+          others.map((other) => ({
+            id: other.id,
+            status: other.status,
+            createdAt: new Date(other.createdAt),
+          })),
+        ),
+      });
+      if (plan.kind === 'supersede') {
+        await tx.query(
+          `UPDATE "omnichannel_publication_deliveries"
+           SET status = 'DEAD', "lastError" = 'superseded_duplicate', "supersededAt" = NOW(), "updatedAt" = NOW()
+           WHERE id = $1`,
+          [row.id],
+        );
+        return { kind: 'stop' as const };
+      }
+      if (plan.kind === 'hold') {
+        const holdReason: (typeof DELIVERY_DEFERRED_REASONS)[number] = 'stale_needs_reapproval';
+        await tx.query(
+          `UPDATE "omnichannel_publication_deliveries"
+           SET status = 'HOLD', "deferredReason" = $2, "lastError" = $2, "updatedAt" = NOW()
+           WHERE id = $1`,
+          [row.id, holdReason],
+        );
+        return { kind: 'stop' as const };
+      }
+      if (plan.kind === 'defer') {
+        await tx.query(
+          `UPDATE "omnichannel_publication_deliveries"
+           SET "deferredReason" = $2, "nextAttemptAt" = $3, "updatedAt" = NOW()
+           WHERE id = $1 AND status <> 'SUCCEEDED'`,
+          [row.id, plan.reason, plan.availableAt],
+        );
+        return { kind: 'defer' as const, availableAt: plan.availableAt, reason: plan.reason, message: plan.reason };
+      }
+      const claimed = await tx.query(
+        `UPDATE "omnichannel_publication_deliveries"
+         SET status = 'PROCESSING', "deferredReason" = NULL, "updatedAt" = NOW()
+         WHERE id = $1 AND status IN ('PENDING', 'RETRY')
+         RETURNING id`,
+        [row.id],
+      );
+      if (!insertedId(claimed)) return { kind: 'stop' as const };
+      return { kind: 'send' as const };
+    });
+  }
+
+  async markCreateUnconfirmed(eventId: string): Promise<void> {
+    if (!eventId) return;
+    const reason: (typeof DELIVERY_DEFERRED_REASONS)[number] = 'uncertain_after_timeout';
+    await this.deliveries.query(
+      `UPDATE "omnichannel_publication_deliveries"
+       SET status = 'HOLD', "deferredReason" = $2, "lastError" = $2, "updatedAt" = NOW()
+       WHERE "eventId" = $1 AND action = 'CREATE' AND status <> 'SUCCEEDED' AND "supersededAt" IS NULL`,
+      [eventId, reason],
+    );
+  }
+
+  /** Late success may finish after HOLD uncertain_after_timeout; never overwrite a different SUCCEEDED. */
+  async markCreateSucceeded(deliveryId: string, providerMessageId?: string | null): Promise<boolean> {
+    const raw = await this.deliveries.query(
+      `UPDATE "omnichannel_publication_deliveries"
+       SET status = 'SUCCEEDED',
+           "sentAt" = COALESCE("sentAt", NOW()),
+           "providerMessageId" = COALESCE($2, "providerMessageId"),
+           "lastError" = NULL,
+           "deferredReason" = NULL,
+           "updatedAt" = NOW()
+       WHERE id = $1
+         AND "supersededAt" IS NULL
+         AND status IN ('PROCESSING', 'HOLD')
+       RETURNING id`,
+      [deliveryId, providerMessageId || null],
+    );
+    return Boolean(insertedId(raw));
+  }
+
+  async supersedeCreatesAfterDelete(publicationId: string, destinationId: string): Promise<void> {
+    const pub = await this.publications.findOne({
+      where: { id: publicationId },
+      select: ['id', 'sourceType', 'sourceId'],
+    });
+    if (!pub) return;
+    await this.deliveries
+      .createQueryBuilder()
+      .update(PublicationDeliveryEntity)
+      .set({ supersededAt: new Date() })
+      .where('sourceType = :sourceType', { sourceType: pub.sourceType })
+      .andWhere('sourceId = :sourceId', { sourceId: pub.sourceId })
+      .andWhere('destinationId = :destinationId', { destinationId })
+      .andWhere('action = :action', { action: 'CREATE' })
+      .andWhere('supersededAt IS NULL')
+      .execute();
   }
 
   async reconcile(actor?: Actor, reason?: string) {
@@ -1914,24 +2236,39 @@ export class OmnichannelService {
           { status: 'WITHDRAWN' },
         );
       } else {
-        const already = existing.find((row) => row.sourceId === intent.sourceId && row.channel === intent.channel && row.status === 'DRAFT');
-        if (already) continue;
         const { projection } = await this.preview({
           channel: intent.channel as 'RETAIL' | 'WHOLESALE',
           sourceType: 'PRODUCT',
           sourceId: intent.sourceId,
         });
         if (!projection.publishable) continue;
-        await this.publications.save(
-          this.publications.create({
+        // One live row per source×channel — reopen WITHDRAWN/FAILED; never insert a parallel DRAFT.
+        const candidates = await this.publications.find({
+          where: {
             sourceType: 'PRODUCT',
             sourceId: intent.sourceId,
             channel: intent.channel,
-            sourceUpdatedAt: new Date(),
-            projection,
-            status: 'DRAFT',
-          }),
-        );
+          },
+          order: { updatedAt: 'DESC', createdAt: 'DESC' },
+        });
+        const reuse = publicationToReuse(candidates);
+        if (reuse) {
+          reuse.projection = projection;
+          reuse.sourceUpdatedAt = new Date();
+          if (reuse.status === 'WITHDRAWN' || reuse.status === 'FAILED') reuse.status = 'DRAFT';
+          await this.publications.save(reuse);
+        } else {
+          await this.publications.save(
+            this.publications.create({
+              sourceType: 'PRODUCT',
+              sourceId: intent.sourceId,
+              channel: intent.channel,
+              sourceUpdatedAt: new Date(),
+              projection,
+              status: 'DRAFT',
+            }),
+          );
+        }
       }
     }
     await this.audit(who, 'reconcile', 'PUBLICATION', 'batch', null, reason || 'reconcile', {
@@ -2020,16 +2357,30 @@ export class OmnichannelService {
       existing.status = 'WITHDRAWN';
       await this.publications.save(existing);
     } else if (action === 'create') {
-      await this.publications.save(
-        this.publications.create({
+      await this.publications.manager.transaction(async (tx) => {
+        await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`publication:${sourceType}:${sourceId}:${channel}`]);
+        const repo = tx.getRepository(PublicationEntity);
+        const again = (await repo.find({
+          where: { sourceType, sourceId, channel },
+          order: { updatedAt: 'DESC', createdAt: 'DESC' },
+          take: 1,
+        }))[0] ?? null;
+        if (again) {
+          again.projection = projection;
+          again.sourceUpdatedAt = new Date();
+          if (again.status === 'WITHDRAWN' || again.status === 'FAILED') again.status = 'DRAFT';
+          await repo.save(again);
+          return;
+        }
+        await repo.save(repo.create({
           sourceType,
           sourceId,
           channel,
           sourceUpdatedAt: new Date(),
           projection,
           status: 'DRAFT',
-        }),
-      );
+        }));
+      });
     } else if (action !== 'skip' && existing) {
       existing.projection = projection;
       existing.sourceUpdatedAt = new Date();
@@ -2080,7 +2431,6 @@ export class OmnichannelService {
       take: 1,
     }))[0] ?? null;
     if (!publication) return 'no_publication';
-    const pending = await this.pendingCreateDestinationsForSource('PRODUCT', input.sourceId, input.channel);
     const cats = await this.productCategoryIdsFor(input.sourceId);
     const results: string[] = [];
     const connById = new Map(conns.map((row) => [row.id, row]));
@@ -2191,7 +2541,7 @@ export class OmnichannelService {
         continue;
       }
       const eligible = selectAutomationDestinationsForConnection([dest], conn, automation.mode)
-        .filter((row) => !pending.has(row.id) && liveOnDest.length === 0)
+        .filter((row) => liveOnDest.length === 0)
         .map((row) => ({ destinationId: row.id }));
       if (!eligible.length) {
         results.push('no_destination');
@@ -2247,7 +2597,7 @@ export class OmnichannelService {
       where: {
         publicationId: In(pubs.map((row) => row.id)),
         action: 'CREATE',
-        status: In(['PENDING', 'PROCESSING', 'RETRY']),
+        status: In(['PENDING', 'PROCESSING', 'RETRY', 'HOLD']),
       },
       select: ['destinationId'],
     });
@@ -2298,8 +2648,16 @@ export class OmnichannelService {
       .createQueryBuilder('d')
       .innerJoin(PublicationEntity, 'p', 'p.id = d.publicationId')
       .where('d.action = :action', { action: 'CREATE' })
-      .andWhere('d.status IN (:...st)', { st: ['PENDING', 'PROCESSING', 'RETRY', 'SUCCEEDED'] })
-      .andWhere('d.createdAt >= :dayStart', { dayStart });
+      .andWhere(`(
+        (d.status = 'SUCCEEDED' AND d.sentAt >= :dayStart)
+        OR (
+          d."supersededAt" IS NULL
+          AND (
+            (d.status = 'PROCESSING' AND d.updatedAt >= :recent)
+            OR d.status IN ('HOLD', 'PENDING', 'RETRY')
+          )
+        )
+      )`, { dayStart, recent: new Date(Date.now() - 10 * 60_000) });
     if (channel) qb.andWhere('p.channel = :channel', { channel });
     if (destinationId) {
       qb.andWhere('d.destinationId = :destinationId', { destinationId });
@@ -2307,7 +2665,7 @@ export class OmnichannelService {
       qb.innerJoin(ChannelDestinationEntity, 'dest', 'dest.id = d.destinationId')
         .andWhere('dest.connectionId = :connectionId', { connectionId });
     }
-    const row = await qb.select('COUNT(DISTINCT d.publicationId)', 'n').getRawOne<{ n: string }>();
+    const row = await qb.select('COUNT(*)', 'n').getRawOne<{ n: string }>();
     return Number(row?.n || 0);
   }
 
@@ -2710,45 +3068,292 @@ export class OmnichannelService {
       sourceType?: string;
     },
   ): Promise<number> {
-    const deliveryRepo = manager.getRepository(PublicationDeliveryEntity);
-    // Stamped so a post can be recreated after an OOS delete; in-flight/live checks stop double posts.
-    const stamp = Date.now();
     let created = 0;
     for (const target of input.targets) {
-      const publicationId = target.publicationId || input.publicationId;
-      const queued = await this.outbox.enqueue({
-        operationId: `pub:${publicationId}:${target.destinationId}:${input.action}:${stamp}`,
-        eventType: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED,
-        aggregateType: 'PUBLICATION',
-        aggregateId: publicationId,
-        channel: input.channel,
-        availableAt: input.availableAt,
-        payload: {
-          publicationId,
-          destinationId: target.destinationId,
-          action: input.action,
-          channel: input.channel,
-          auto: input.auto,
-          ...(target.providerMessageId ? { providerMessageId: target.providerMessageId } : {}),
-          ...(input.sourceType === FREE_POST_SOURCE_TYPE ? { sourceType: FREE_POST_SOURCE_TYPE } : {}),
-          ...(input.rendered ? this.deliveryPayload(input.rendered) : {}),
-        },
-      }, manager);
-      if (!queued.id) continue;
-      await deliveryRepo.save(
-        deliveryRepo.create({
-          publicationId,
-          destinationId: target.destinationId,
-          eventId: queued.id,
-          action: input.action,
-          status: 'PENDING',
-          providerMessageId: target.providerMessageId || null,
-          nextAttemptAt: input.availableAt || null,
-        }),
-      );
-      created += 1;
+      created += await this.enqueueOneDelivery(manager, input, target, true);
     }
     return created;
+  }
+
+  private async enqueueOneDelivery(
+    manager: EntityManager,
+    input: {
+      publicationId: string;
+      channel: string;
+      action: 'CREATE' | 'UPDATE' | 'DELETE';
+      rendered: RenderedPublication | null;
+      auto: boolean;
+      availableAt?: Date;
+      sourceType?: string;
+    },
+    target: { destinationId: string; providerMessageId?: string; publicationId?: string },
+    allowConvert: boolean,
+  ): Promise<number> {
+    return manager.transaction(async (tx) => {
+      const publicationId = target.publicationId || input.publicationId;
+      const publication = await tx.getRepository(PublicationEntity).findOne({ where: { id: publicationId } });
+      const sourceType = input.sourceType || publication?.sourceType || 'PRODUCT';
+      const sourceId = publication?.sourceId || publicationId;
+      const hash = contentHash({
+        text: input.rendered?.text,
+        photoUrls: input.rendered?.photoUrls,
+        buttons: input.rendered?.buttons,
+      });
+      const idempotencyKey = buildIdempotencyKey({
+        action: input.action,
+        sourceType,
+        sourceId,
+        destinationId: target.destinationId,
+        providerMessageId: target.providerMessageId,
+        contentHash: hash,
+      });
+      await tx.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [idempotencyKey]);
+      if (input.action === 'CREATE') {
+        const existing = await this.loadActiveCreates(tx, idempotencyKey);
+        const decision = decideCreateEnqueue(existing, hash);
+        if (decision.kind === 'skip') return 0;
+        if (decision.kind === 'convert_update') {
+          if (!allowConvert) return 0;
+          return this.enqueueOneDelivery(tx, {
+            ...input,
+            action: 'UPDATE',
+            publicationId: decision.publicationId,
+          }, {
+            destinationId: target.destinationId,
+            providerMessageId: decision.providerMessageId,
+            publicationId: decision.publicationId,
+          }, false);
+        }
+        if (decision.kind === 'merge' || decision.kind === 'reuse') {
+          if (decision.kind === 'merge') {
+            const inflight = await tx.query(
+              `SELECT status FROM "omnichannel_outbox_events" WHERE id = $1`,
+              [decision.eventId],
+            ) as Array<{ status?: string }>;
+            if (inflight[0]?.status === 'PROCESSING') return 0;
+          }
+          await this.supersedeDeliveryIds(tx, decision.supersedeIds);
+          await this.retargetDelivery(tx, decision, {
+            publicationId,
+            sourceType,
+            sourceId,
+            destinationId: target.destinationId,
+            channel: input.channel,
+            action: 'CREATE',
+            auto: input.auto,
+            hash,
+            idempotencyKey,
+            availableAt: input.availableAt || new Date(),
+            providerMessageId: null,
+            rendered: input.rendered,
+            reset: decision.kind === 'reuse',
+          });
+          return decision.kind === 'reuse' ? 1 : 0;
+        }
+      }
+      const queued = await this.outbox.enqueue({
+        operationId: idempotencyKey,
+        eventType: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED,
+        aggregateType: 'PUBLICATION',
+        aggregateId: sourceId,
+        channel: input.channel,
+        availableAt: input.availableAt,
+        payload: this.outboxDeliveryPayload(input, target, publicationId, sourceType),
+      }, tx);
+      if (!queued.id) return 0;
+      const inserted = await tx.query(
+        `INSERT INTO "omnichannel_publication_deliveries" (
+          "publicationId", "destinationId", "eventId", "action", "status", "providerMessageId",
+          "attempts", "nextAttemptAt", "sourceType", "sourceId", "idempotencyKey", "auto",
+          "contentHash", "createdAt", "updatedAt"
+        ) VALUES (
+          $1, $2, $3, $4, 'PENDING', $5,
+          0, $6, $7, $8, $9, $10,
+          $11, NOW(), NOW()
+        )
+        ON CONFLICT ("idempotencyKey") WHERE ${ACTIVE_CREATE_INDEX_PREDICATE}
+        DO NOTHING
+        RETURNING id`,
+        [
+          publicationId,
+          target.destinationId,
+          queued.id,
+          input.action,
+          target.providerMessageId || null,
+          input.availableAt || null,
+          sourceType,
+          sourceId,
+          idempotencyKey,
+          input.auto,
+          hash,
+        ],
+      );
+      const deliveryId = insertedId(inserted);
+      if (!deliveryId) {
+        await tx.query(
+          `UPDATE "omnichannel_outbox_events"
+           SET status = 'DONE', "completedAt" = NOW(), "lastError" = 'create_deduped',
+               "lockedAt" = NULL, "lockedBy" = NULL, "updatedAt" = NOW()
+           WHERE id = $1 AND status = 'PENDING'`,
+          [queued.id],
+        );
+        return 0;
+      }
+      await tx.query(
+        `UPDATE "omnichannel_outbox_events"
+         SET payload = payload || $2::jsonb, "updatedAt" = NOW()
+         WHERE id = $1`,
+        [queued.id, JSON.stringify({ deliveryId })],
+      );
+      return 1;
+    });
+  }
+
+  private async loadActiveCreates(tx: EntityManager, idempotencyKey: string): Promise<ExistingCreateRow[]> {
+    const rows = await tx.query(
+      `SELECT id, status, "contentHash", "providerMessageId", "eventId", "publicationId", "createdAt", "deferredReason"
+       FROM "omnichannel_publication_deliveries"
+       WHERE "idempotencyKey" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL`,
+      [idempotencyKey],
+    ) as Array<Record<string, string | null>>;
+    return rows.map((row) => ({
+      id: String(row.id),
+      status: String(row.status),
+      contentHash: row.contentHash,
+      providerMessageId: row.providerMessageId,
+      eventId: String(row.eventId),
+      publicationId: String(row.publicationId),
+      createdAt: new Date(String(row.createdAt)),
+      deferredReason: row.deferredReason,
+    }));
+  }
+
+  private async supersedeDeliveryIds(tx: EntityManager, ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    await tx.query(
+      `UPDATE "omnichannel_publication_deliveries"
+       SET status = 'DEAD', "lastError" = 'superseded_duplicate', "supersededAt" = NOW(), "updatedAt" = NOW()
+       WHERE id = ANY($1::uuid[])`,
+      [ids],
+    );
+    await tx.query(
+      `UPDATE "omnichannel_outbox_events" e
+       SET status = 'DEAD', "lastError" = 'superseded_duplicate', "completedAt" = COALESCE(e."completedAt", NOW()),
+           "lockedAt" = NULL, "lockedBy" = NULL, "updatedAt" = NOW()
+       FROM "omnichannel_publication_deliveries" d
+       WHERE d.id = ANY($1::uuid[]) AND e.id = d."eventId" AND e.status <> 'DONE'`,
+      [ids],
+    );
+  }
+
+  private async retargetDelivery(
+    tx: EntityManager,
+    decision: { deliveryId: string; eventId: string },
+    input: {
+      publicationId: string;
+      sourceType: string;
+      sourceId: string;
+      destinationId: string;
+      channel: string;
+      action: string;
+      auto: boolean;
+      hash: string;
+      idempotencyKey: string;
+      availableAt: Date;
+      providerMessageId: string | null;
+      rendered: RenderedPublication | null;
+      reset: boolean;
+    },
+  ): Promise<void> {
+    await tx.query(
+      `UPDATE "omnichannel_publication_deliveries"
+       SET "publicationId" = $2,
+           "contentHash" = $3,
+           "auto" = $4,
+           "nextAttemptAt" = $5,
+           "providerMessageId" = COALESCE($6, "providerMessageId"),
+           status = CASE WHEN $7 THEN 'PENDING' ELSE status END,
+           attempts = CASE WHEN $7 THEN 0 ELSE attempts END,
+           "lastError" = CASE WHEN $7 THEN NULL ELSE "lastError" END,
+           "deferredReason" = CASE WHEN $7 THEN NULL ELSE "deferredReason" END,
+           "supersededAt" = CASE WHEN $7 THEN NULL ELSE "supersededAt" END,
+           "updatedAt" = NOW()
+       WHERE id = $1`,
+      [
+        decision.deliveryId,
+        input.publicationId,
+        input.hash,
+        input.auto,
+        input.availableAt,
+        input.providerMessageId,
+        input.reset,
+      ],
+    );
+    const payload = {
+      ...(input.rendered ? this.deliveryPayload(input.rendered) : {}),
+      publicationId: input.publicationId,
+      destinationId: input.destinationId,
+      action: input.action,
+      channel: input.channel,
+      auto: input.auto,
+      deliveryId: decision.deliveryId,
+      ...(input.sourceType === FREE_POST_SOURCE_TYPE ? { sourceType: FREE_POST_SOURCE_TYPE } : {}),
+      ...(input.providerMessageId ? { providerMessageId: input.providerMessageId } : {}),
+    };
+    const dedupeKey = buildDedupeKey({
+      operationId: input.idempotencyKey,
+      eventType: OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED,
+      aggregateType: 'PUBLICATION',
+      aggregateId: input.sourceId,
+      channel: input.channel,
+    });
+    await tx.query(
+      `UPDATE "omnichannel_outbox_events"
+       SET status = 'PENDING',
+           attempts = 0,
+           "availableAt" = $2,
+           "completedAt" = NULL,
+           "lockedAt" = NULL,
+           "lockedBy" = NULL,
+           "lastError" = NULL,
+           "dedupeKey" = CASE
+             WHEN EXISTS (
+               SELECT 1 FROM "omnichannel_outbox_events" other
+               WHERE other."dedupeKey" = $3 AND other.id <> "omnichannel_outbox_events".id
+             ) THEN "dedupeKey"
+             ELSE $3
+           END,
+           payload = $4::jsonb,
+           "updatedAt" = NOW()
+       WHERE id = $1`,
+      [decision.eventId, input.availableAt, dedupeKey, JSON.stringify(sanitizeOutboxPayload(payload))],
+    );
+  }
+
+  private outboxDeliveryPayload(
+    input: {
+      channel: string;
+      action: string;
+      auto: boolean;
+      rendered: RenderedPublication | null;
+      sourceType?: string;
+    },
+    target: { destinationId: string; providerMessageId?: string },
+    publicationId: string,
+    sourceType: string,
+  ): Record<string, unknown> {
+    return {
+      publicationId,
+      destinationId: target.destinationId,
+      action: input.action,
+      channel: input.channel,
+      auto: input.auto,
+      ...(target.providerMessageId ? { providerMessageId: target.providerMessageId } : {}),
+      ...(sourceType === FREE_POST_SOURCE_TYPE || input.sourceType === FREE_POST_SOURCE_TYPE
+        ? { sourceType: FREE_POST_SOURCE_TYPE }
+        : {}),
+      ...(input.rendered ? this.deliveryPayload(input.rendered) : {}),
+    };
   }
 
   private deliveryPayload(rendered: RenderedPublication): Record<string, unknown> {
