@@ -59,7 +59,8 @@ jobs:
         working-directory: apps/api
 
       - name: Install Playwright browsers
-        run: npx --yes playwright@1.49.1 install --with-deps chromium webkit
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Start Next and run product-card e2e
         working-directory: apps/web
@@ -81,7 +82,7 @@ jobs:
           curl -sf "http://127.0.0.1:3000/products" >/dev/null
           curl -sf "http://127.0.0.1:3000/icon-192.png" >/dev/null
           curl -sf "http://127.0.0.1:3000/icon-512.png" >/dev/null
-          npx --yes playwright@1.49.1 test -c e2e/playwright.product-card.config.ts
+          npx playwright test -c e2e/playwright.product-card.config.ts
 
   omnichannel-migrate:
     runs-on: ubuntu-latest
