@@ -5,7 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Heart } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { beginProductTransition } from '@/components/motion/product-transition';
+import {
+  beginProductTransition,
+  warmProductRoute,
+} from '@/components/motion/product-transition';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
 import {
@@ -206,11 +209,13 @@ function ClassicRetailProductCard({
       >
         <Link
           href={href}
+          prefetch
+          onPointerEnter={() => warmProductRoute(href, (path) => router.prefetch(path))}
+          onTouchStart={() => warmProductRoute(href, (path) => router.prefetch(path))}
           onClick={(event) => {
             selectProduct();
             beginProductTransition(event, () => router.push(href));
           }}
-          prefetch={false}
           className="absolute inset-0 z-[1] cursor-pointer focus:outline-none"
           aria-label={`مشاهده ${product.name}`}
         >

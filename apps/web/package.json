@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "npx --yes tsx src/components/motion/product-transition.spec.ts",
+    "test:e2e:product-card": "npx --yes playwright test -c e2e/playwright.product-card.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
