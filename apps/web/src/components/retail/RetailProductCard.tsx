@@ -8,7 +8,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { beginProductTransition } from '@/components/motion/product-transition';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { useRetailCart } from '@/lib/retail-cart';
-import { discountPercent, mediaUrl, storefrontSizeLabels, toman, uniqueInStockColors, variantsOnSizeChart } from '@/lib/product-display';
+import {
+  discountPercent,
+  displaySizeLabel,
+  mediaUrl,
+  storefrontSizeChips,
+  toman,
+  uniqueInStockColors,
+  variantsOnSizeChart,
+} from '@/lib/product-display';
 import { getProductCanonicalPath } from '@/lib/canonical-urls';
 import { trackSelectCurrentItem } from '@/lib/retail-analytics';
 import { useRetailSkin } from '@/components/retail/RetailChromeProvider';
@@ -125,16 +133,21 @@ function ClassicRetailProductCard({
     () => uniqueInStockColors(chartVariants, 'retail', { includeSoldOut: !!product.isPreOrder }),
     [chartVariants, product.isPreOrder],
   );
-  const sizes = useMemo(
+  const sizeChips = useMemo(
     () =>
-      storefrontSizeLabels(chartVariants, chart, {
+      storefrontSizeChips(chartVariants, chart, {
         channel: 'retail',
         includeSoldOut: !!product.isPreOrder,
       }),
     [chartVariants, chart, product.isPreOrder],
   );
+  const sizes = useMemo(() => sizeChips.map((chip) => chip.label), [sizeChips]);
+  const firstAvailableSize = useMemo(
+    () => sizeChips.find((chip) => chip.available)?.label ?? '',
+    [sizeChips],
+  );
   const [color, setColor] = useState(colors[0]?.color ?? '');
-  const [size, setSize] = useState(sizes[0] ?? '');
+  const [size, setSize] = useState(firstAvailableSize);
   const stock =
     typeof product.retailStock === 'number'
       ? product.retailStock
@@ -146,9 +159,13 @@ function ClassicRetailProductCard({
   const selectedVariant = chartVariants.find(
     (v) => (!color || v.color === color) && (!size || v.size === size),
   );
+  const sizeChipAvailable = !size || sizeChips.some((chip) => chip.label === size && chip.available);
   const needsSize = sizes.length > 1;
   const canQuickAdd =
-    !soldOut && price > 0 && (product.isPreOrder || stock > 0) && (!sizes.length || !!size);
+    !soldOut &&
+    price > 0 &&
+    (product.isPreOrder || stock > 0) &&
+    (!sizes.length || (!!size && sizeChipAvailable));
 
   const onWishlist = () => {
     setWishlisted(
@@ -348,22 +365,33 @@ function ClassicRetailProductCard({
           ) : null}
         </div>
 
-        {!compact && sizes.length > 0 ? (
+        {!compact && sizeChips.length > 0 ? (
           <div className="flex flex-wrap items-center justify-center gap-1.5" aria-label="سایز">
-            {sizes.slice(0, 6).map((row) => (
-              <button
-                key={row}
-                type="button"
-                onClick={() => setSize(row)}
-                className={`min-h-9 min-w-9 cursor-pointer rounded-full border px-2.5 text-[11px] ${
-                  size === row
-                    ? 'border-[var(--retail-primary)] bg-[var(--retail-primary)]/5 font-bold text-[var(--retail-primary)]'
-                    : 'border-[var(--retail-border)] text-[var(--retail-ink)]'
-                }`}
-              >
-                {row}
-              </button>
-            ))}
+            {sizeChips.slice(0, 6).map((chip) => {
+              const selected = size === chip.label;
+              const disabled = !chip.available;
+              return (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => {
+                    if (disabled) return;
+                    setSize(chip.label);
+                  }}
+                  disabled={disabled}
+                  aria-disabled={disabled}
+                  className={`min-h-9 min-w-9 rounded-full border px-2.5 text-[11px] ${
+                    disabled
+                      ? 'cursor-not-allowed border-[var(--retail-border)] bg-[var(--retail-muted)]/15 text-[var(--retail-muted)]'
+                      : selected
+                        ? 'cursor-pointer border-[var(--retail-primary)] bg-[var(--retail-primary)]/5 font-bold text-[var(--retail-primary)]'
+                        : 'cursor-pointer border-[var(--retail-border)] text-[var(--retail-ink)]'
+                  }`}
+                >
+                  {displaySizeLabel(chip.label)}
+                </button>
+              );
+            })}
           </div>
         ) : null}
 

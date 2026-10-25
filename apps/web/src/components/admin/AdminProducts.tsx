@@ -94,7 +94,8 @@ function sizeOptionsForType(
   sizeType?: string,
   sizeLabels?: Array<string | null | undefined> | null,
 ): string[] {
-  return sizesForSizeType(sizeType, sizeLabels);
+  // New products default to FREE in the form; keep options usable when type is unset.
+  return sizesForSizeType(sizeType || 'FREE', sizeLabels);
 }
 
 /** Same color for rename detection. A space where the other side used ZWNJ is still the same color. An extra letter is not. */

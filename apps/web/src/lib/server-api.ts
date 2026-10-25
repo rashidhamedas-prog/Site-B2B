@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { getServerApiBase } from '@/lib/server-api-base';
+import { pickCatalogSizing } from '@/lib/product-display';
 
 export { getServerApiBase } from '@/lib/server-api-base';
 
@@ -51,6 +52,7 @@ export function slimRetailCatalogProduct(raw: Record<string, unknown>): Record<s
     isNew: raw.isNew,
     isPreOrder: raw.isPreOrder,
     sale: raw.sale,
+    ...pickCatalogSizing(raw),
     variants,
     specs,
   };

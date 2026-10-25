@@ -1,13 +1,20 @@
 import assert from 'node:assert/strict';
 import {
+  FREE_SIZE_CHART_LABEL,
+  FREE_SIZE_FILTER_LABEL,
+  SIZE_TYPE_SUMMARY,
   channelSaleDisplay,
   discountPercent,
+  displaySizeLabel,
   mediaUrl,
   meetsMoq,
   packPieces,
   piecesPerPackCount,
+  pickCatalogSizing,
   sizeCountForType,
   sizeTypeLabel,
+  sizesForSizeType,
+  storefrontSizeChips,
   storefrontSizeLabels,
   toman,
   uniqueByColor,
@@ -24,9 +31,67 @@ assert.equal(toman(12_580_000), (1_258_000).toLocaleString('fa-IR'));
 assert.equal(discountPercent(1_620_000, 1_790_000), 9);
 assert.equal(discountPercent(100, 100), 0);
 assert.equal(discountPercent(0, 200), 0);
-assert.equal(sizeTypeLabel('FREE'), 'فری‌سایز');
+assert.equal(sizeTypeLabel('FREE'), FREE_SIZE_FILTER_LABEL);
 assert.equal(sizeTypeLabel('TWO'), '۲ سایز');
 assert.equal(sizeTypeLabel('THREE'), '۳ سایز');
+assert.equal(displaySizeLabel(FREE_SIZE_CHART_LABEL), FREE_SIZE_FILTER_LABEL);
+assert.equal(displaySizeLabel('سایز ۱'), 'سایز ۱');
+assert.equal(SIZE_TYPE_SUMMARY.TWO, 'سایز ۱ و ۲');
+assert.equal(SIZE_TYPE_SUMMARY.THREE, 'سایز ۱ تا ۳');
+
+assert.deepEqual(sizesForSizeType(undefined), []);
+assert.deepEqual(sizesForSizeType(''), []);
+assert.deepEqual(sizesForSizeType('NOPE'), []);
+assert.deepEqual(sizesForSizeType('FREE'), [FREE_SIZE_CHART_LABEL]);
+assert.deepEqual(sizesForSizeType('TWO'), ['سایز ۱', 'سایز ۲']);
+assert.deepEqual(sizesForSizeType('THREE'), ['سایز ۱', 'سایز ۲', 'سایز ۳']);
+assert.deepEqual(sizesForSizeType('CUSTOM', ['37', '38']), ['37', '38']);
+
+{
+  const picked = pickCatalogSizing({
+    sizeType: 'THREE',
+    sizeLabels: null,
+    packDefinitionMode: 'AUTO',
+    packComposition: { 'سایز ۱': 1 },
+    name: 'ignore',
+  });
+  assert.equal(picked.sizeType, 'THREE');
+  assert.deepEqual(picked.sizeLabels, null);
+  assert.equal(picked.packDefinitionMode, 'AUTO');
+  assert.equal(picked.packComposition?.['سایز ۱'], 1);
+  assert.deepEqual(pickCatalogSizing({}).sizeType, null);
+}
+
+{
+  const two = storefrontSizeChips([], { sizeType: 'TWO' }, { channel: 'retail' });
+  assert.deepEqual(
+    two.map((c) => c.label),
+    ['سایز ۱', 'سایز ۲'],
+  );
+  assert.ok(two.every((c) => c.available), 'empty variants → all available');
+
+  const three = storefrontSizeChips([], { sizeType: 'THREE' }, { channel: 'retail' });
+  assert.equal(three.length, 3);
+
+  const free = storefrontSizeChips([], { sizeType: 'FREE' }, { channel: 'retail' });
+  assert.deepEqual(free, [{ label: FREE_SIZE_CHART_LABEL, available: true }]);
+
+  const missing = storefrontSizeChips([], { sizeType: undefined }, { channel: 'retail' });
+  assert.deepEqual(missing, []);
+
+  const mixedStock = storefrontSizeChips(
+    [
+      { size: 'سایز ۱', retailStock: 2 },
+      { size: 'سایز ۲', retailStock: 0 },
+    ],
+    { sizeType: 'TWO' },
+    { channel: 'retail' },
+  );
+  assert.deepEqual(mixedStock, [
+    { label: 'سایز ۱', available: true },
+    { label: 'سایز ۲', available: false },
+  ]);
+}
 assert.equal(packPieces(3, 2), 6);
 assert.equal(packPieces(0, 0), 1);
 assert.equal(meetsMoq(6, 6), true);

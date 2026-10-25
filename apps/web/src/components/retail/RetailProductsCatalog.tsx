@@ -11,7 +11,7 @@ import { isLeadCatalogImage } from '@/lib/catalog-performance';
 import { catalogActiveFilterCount, type CatalogFilterValues } from '@/lib/catalog-filter';
 import { CatalogActiveChips } from '@/components/catalog/CatalogFilterRail';
 import { CatalogFilters } from '@/components/catalog/CatalogFilters';
-import { uniqueInStockColors } from '@/lib/product-display';
+import { pickCatalogSizing, uniqueInStockColors } from '@/lib/product-display';
 
 type Product = {
   id: string;
@@ -26,6 +26,8 @@ type Product = {
   totalStock?: number;
   isNew?: boolean;
   isPreOrder?: boolean;
+  sizeType?: string | null;
+  sizeLabels?: string[] | null;
   variants?: Array<{ color: string; colorHex?: string; size: string; stock?: number; retailStock?: number }>;
   specs?: { collarModel?: string; fabricType?: string };
 };
@@ -63,6 +65,7 @@ function filtersFromSearch(searchParams: RetailCatalogSearchParams): CatalogFilt
 }
 
 function normalizeRetailProduct(raw: Record<string, unknown> | Product): Product {
+  const sizing = pickCatalogSizing(raw as Record<string, unknown>);
   return {
     id: String(raw.id ?? ''),
     name: String(raw.name ?? ''),
@@ -80,6 +83,8 @@ function normalizeRetailProduct(raw: Record<string, unknown> | Product): Product
     retailStock: typeof raw.retailStock === 'number' ? raw.retailStock : undefined,
     isNew: Boolean(raw.isNew),
     isPreOrder: Boolean(raw.isPreOrder),
+    sizeType: sizing.sizeType,
+    sizeLabels: sizing.sizeLabels,
     variants: Array.isArray(raw.variants)
       ? (raw.variants as Array<{ color: string; colorHex?: string; size: string; stock?: number; retailStock?: number }>)
       : [],
@@ -207,7 +212,7 @@ export function RetailProductsCatalog({
           meta?: { totalPages?: number; total?: number };
         }>(`/products?${buildParams(1)}`);
         if (!cancelled) {
-          setProducts(data.data ?? []);
+          setProducts((data.data ?? []).map((row) => normalizeRetailProduct(row as Product)));
           setTotalPages(data.meta?.totalPages || 1);
           setTotal(data.meta?.total ?? data.data?.length ?? 0);
         }
@@ -255,7 +260,10 @@ export function RetailProductsCatalog({
       const data = await apiClient.get<{ data: Product[]; meta?: { totalPages?: number; total?: number } }>(
         `/products?${buildParams(next)}`,
       );
-      setProducts((prev) => [...prev, ...(data.data ?? [])]);
+      setProducts((prev) => [
+        ...prev,
+        ...(data.data ?? []).map((row) => normalizeRetailProduct(row as Product)),
+      ]);
       setPage(next);
       setTotalPages(data.meta?.totalPages || totalPages);
       if (typeof data.meta?.total === 'number') setTotal(data.meta.total);
