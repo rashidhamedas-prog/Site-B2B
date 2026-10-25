@@ -54,7 +54,8 @@ function claimOnce(row: { status: string }): boolean {
     'HOLD reason uncertain_after_timeout is catalogued',
   );
   // No auto-resend: decision layer treats HOLD as skip, not reuse.
-  const heldStatus = 'HOLD';
+  // Widened off the 'HOLD' literal so the inequality is a real check (TS2367).
+  const heldStatus: string = 'HOLD';
   assert(heldStatus !== 'RETRY' && heldStatus !== 'PENDING', 'timeout must not land on RETRY/PENDING');
 }
 
