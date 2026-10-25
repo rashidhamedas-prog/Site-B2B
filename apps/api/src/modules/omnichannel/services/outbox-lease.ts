@@ -59,7 +59,7 @@ WITH cte AS (
         )
       )
     )
-  ORDER BY "availableAt" ASC
+  ORDER BY "availableAt" ASC, "createdAt" ASC
   LIMIT $1
   FOR UPDATE SKIP LOCKED
 )

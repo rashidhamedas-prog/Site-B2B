@@ -29,7 +29,7 @@ export type DeliveryAction = (typeof DELIVERY_ACTIONS)[number];
 export const OOS_POLICIES = ['UPDATE', 'HIDE', 'DELETE'] as const;
 export type OosPolicy = (typeof OOS_POLICIES)[number];
 
-export const DELIVERY_STATUSES = ['PENDING', 'PROCESSING', 'SUCCEEDED', 'RETRY', 'DEAD'] as const;
+export const DELIVERY_STATUSES = ['PENDING', 'PROCESSING', 'SUCCEEDED', 'RETRY', 'DEAD', 'HOLD'] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
 export const FORBIDDEN_SECRET_KEYS = [

@@ -310,6 +310,12 @@ export class OmnichannelAdminController {
     return this.svc.retryDelivery(id, req.omnichannelActor, body.reason);
   }
 
+  @Post('deliveries/:id/reapprove')
+  @ApiOperation({ summary: 'تأیید مجدد ارسال متوقف‌شده (HOLD)' })
+  reapproveDelivery(@Param('id') id: string, @Body() body: ActorReasonDto, @Req() req: Authed) {
+    return this.svc.reapproveDelivery(id, req.omnichannelActor, body.reason);
+  }
+
   @Post('publications/bulk-withdraw')
   @ApiOperation({ summary: 'برداشتن گروهی انتشارها از کانال (ادمین)' })
   bulkWithdrawPublications(

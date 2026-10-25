@@ -43,6 +43,7 @@ assert(
   'shipped notify leased without connectors',
 );
 assert(LEASE_SQL.includes('FOR UPDATE SKIP LOCKED'), 'lease skips locked rows');
+assert(LEASE_SQL.includes('ORDER BY "availableAt" ASC, "createdAt" ASC'), 'equal availableAt stays FIFO by createdAt');
 assert(LEASE_SQL.includes('"lockedAt" IS NULL'), 'PROCESSING with a null lock is reclaimable');
 assert(
   !(PHASE3_EVENT_TYPES as readonly string[]).includes(OUTBOX_EVENT_TYPES.PRODUCT_CREATED),

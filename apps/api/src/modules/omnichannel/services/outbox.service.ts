@@ -237,12 +237,47 @@ export class OutboxService {
     return this.repo.find({ where: { id: In(ids) } });
   }
 
-  async releaseDeferred(id: string): Promise<void> {
+  async releaseDeferred(id: string, availableAt?: Date | null): Promise<void> {
+    if (availableAt) {
+      await this.dataSource.query(
+        `UPDATE omnichannel_outbox_events
+         SET status = 'PENDING', "lockedAt" = NULL, "lockedBy" = NULL,
+             attempts = GREATEST(attempts - 1, 0), "availableAt" = $2, "updatedAt" = NOW()
+         WHERE id = $1`,
+        [id, availableAt],
+      );
+      return;
+    }
     await this.dataSource.query(
       `UPDATE omnichannel_outbox_events
        SET status = 'PENDING', "lockedAt" = NULL, "lockedBy" = NULL, attempts = GREATEST(attempts - 1, 0)
        WHERE id = $1`,
       [id],
+    );
+  }
+
+  /** Put a DONE or DEAD event back on the same row. Does not insert a second event. */
+  async reopen(id: string, availableAt: Date, dedupeKey: string, payload: Record<string, unknown>): Promise<void> {
+    await this.dataSource.query(
+      `UPDATE omnichannel_outbox_events
+       SET status = 'PENDING',
+           attempts = 0,
+           "availableAt" = $2,
+           "completedAt" = NULL,
+           "lockedAt" = NULL,
+           "lockedBy" = NULL,
+           "lastError" = NULL,
+           "dedupeKey" = CASE
+             WHEN EXISTS (
+               SELECT 1 FROM omnichannel_outbox_events other
+               WHERE other."dedupeKey" = $3 AND other.id <> omnichannel_outbox_events.id
+             ) THEN "dedupeKey"
+             ELSE $3
+           END,
+           payload = $4::jsonb,
+           "updatedAt" = NOW()
+       WHERE id = $1`,
+      [id, availableAt, dedupeKey, JSON.stringify(sanitizeOutboxPayload(payload))],
     );
   }
 

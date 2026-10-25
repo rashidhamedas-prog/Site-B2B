@@ -193,6 +193,7 @@ export type DeliveryTrailRow = {
   action: string;
   status: string;
   providerMessageId?: string | null;
+  supersededAt?: Date | string | null;
 };
 
 export type LiveRemoteMessage = {
@@ -209,6 +210,7 @@ export type LiveRemoteMessage = {
 export function foldLiveRemoteMessages(rows: DeliveryTrailRow[]): LiveRemoteMessage[] {
   const live = new Map<string, LiveRemoteMessage>();
   for (const row of rows) {
+    if (row.supersededAt) continue;
     const key = row.destinationId;
     if (row.action === 'CREATE' && row.status === 'SUCCEEDED' && row.providerMessageId) {
       live.set(key, {
@@ -238,8 +240,11 @@ export function planManualDeliveries(
   const creates: ManualDeliveryPlan['creates'] = [];
   const updates: ManualDeliveryPlan['updates'] = [];
   for (const id of targetIds) {
-    if (pendingCreates.has(id)) continue;
     const existing = byDest.get(id);
+    if (pendingCreates.has(id)) {
+      if (!existing) creates.push({ destinationId: id });
+      continue;
+    }
     if (existing) {
       updates.push({
         destinationId: id,

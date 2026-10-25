@@ -2,9 +2,18 @@ import { ConnectorDisabledError } from '../adapters/channel-adapter';
 import { areOmnichannelConnectorsEnabled } from '../omnichannel.constants';
 
 export class DeliveryDeferredError extends Error {
-  constructor() {
-    super('publication delivery deferred until connectors are enabled');
+  readonly availableAt: Date | null;
+  readonly reason: string;
+
+  constructor(
+    message = 'publication delivery deferred until connectors are enabled',
+    availableAt: Date | null = null,
+    reason = 'connectors_disabled',
+  ) {
+    super(message);
     this.name = 'DeliveryDeferredError';
+    this.availableAt = availableAt;
+    this.reason = reason;
   }
 }
 

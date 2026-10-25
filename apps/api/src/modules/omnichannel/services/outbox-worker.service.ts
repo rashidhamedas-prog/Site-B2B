@@ -17,7 +17,6 @@ import {
   isConnectorDisabledError,
   shouldSkipPublicationDeliver,
 } from './publication-deliver';
-
 import { OutboxService } from './outbox.service';
 import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { safeWorkerError } from '../adapters/telegram-errors';
@@ -114,7 +113,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
           await this.outbox.markDone(row.id);
         } catch (err: unknown) {
           if (err instanceof DeliveryDeferredError) {
-            await this.outbox.releaseDeferred(row.id);
+            await this.outbox.releaseDeferred(row.id, err.availableAt);
           } else {
             const message = safeWorkerError(err);
             this.logger.warn(`outbox ${row.eventType} ${row.id} failed: ${message}`);
@@ -190,8 +189,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         try {
           await this.handlePublicationDeliver(payload, row.id);
         } catch (err: unknown) {
-          // Per-provider kill switch (or race while global flag flips): hold the lease,
-          // do not burn attempts into DEAD — same as global connectors-off deferral.
+          if (err instanceof DeliveryDeferredError) throw err;
           if (isConnectorDisabledError(err)) throw new DeliveryDeferredError();
           await this.markDeliveryFailure(payload, row, err);
           throw err;
@@ -368,7 +366,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private async markDeliveryFailure(payload: Record<string, unknown>, event: OutboxEventEntity, err: unknown) {
     try {
       const row = await this.findDelivery(payload, event.id);
-      if (!row || row.status === 'SUCCEEDED') return;
+      if (!row || row.status === 'SUCCEEDED' || row.status === 'HOLD') return;
       const dead = shouldDeadLetter(event.attempts, event.maxAttempts);
       row.status = dead ? 'DEAD' : 'RETRY';
       row.attempts = Number(event.attempts || 0);
@@ -423,6 +421,19 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       }
       return;
     }
+    if (action === 'CREATE') {
+      const gate = await this.omnichannel.reserveCreateSend({
+        eventId,
+        destinationId,
+        connectionId: conn.id,
+        provider: conn.provider,
+        channel: String(payload.channel || conn.channel || 'RETAIL'),
+      });
+      if (gate.kind === 'stop') return;
+      if (gate.kind === 'defer') {
+        throw new DeliveryDeferredError(gate.message, gate.availableAt, gate.reason);
+      }
+    }
     let providerMessageId: string | undefined;
     if (action === 'UPDATE') {
       try {
@@ -434,8 +445,22 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       }
     } else if (action === 'DELETE') {
       await adapter.delete(input);
+      const deletedPublicationId = String(payload.publicationId || '');
+      if (deletedPublicationId) {
+        await this.omnichannel.supersedeCreatesAfterDelete(deletedPublicationId, destinationId);
+      }
     } else {
-      providerMessageId = (await adapter.create(input)).providerMessageId;
+      try {
+        providerMessageId = (await adapter.create(input)).providerMessageId;
+      } catch (err: unknown) {
+        if (isConnectorDisabledError(err)) throw err;
+        const message = err instanceof Error ? err.message : '';
+        if (message.includes('timed out')) {
+          await this.omnichannel.markCreateUnconfirmed(eventId);
+          return;
+        }
+        throw err;
+      }
     }
     const row = await this.findDelivery(payload, eventId);
     if (!row) {
@@ -446,8 +471,10 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     row.status = 'SUCCEEDED';
+    row.sentAt = new Date();
     row.providerMessageId = providerMessageId || row.providerMessageId;
     row.lastError = null;
+    row.deferredReason = null;
     await this.deliveries.save(row);
     const publicationId = String(payload.publicationId || row.publicationId || '');
     if (publicationId && action === 'CREATE') {
