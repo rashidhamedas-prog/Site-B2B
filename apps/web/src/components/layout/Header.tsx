@@ -14,7 +14,6 @@ import { useMenus } from '@/lib/hooks/useMenus';
 import { DEFAULT_MENUS, withBoutiqueReferralNav } from '@/lib/menus';
 import { chromeStr, useSiteChrome } from '@/lib/cms/useSiteChrome';
 import { useWholesaleChrome } from '@/components/wholesale/WholesaleChromeProvider';
-import { safeStorefrontLogoSrc, WHOLESALE_HEADER_SUBTITLE } from '@/lib/storefront-brand';
 import type { ReactNode } from 'react';
 
 export function Header({
@@ -37,7 +36,10 @@ export function Header({
   const logoUrl = chromeStr(chrome, 'logoUrl', '/logo-128.png');
   // Relative CMS paths only — a header <img> is auto-preloaded by React 19
   // ahead of the LCP hero even with loading=lazy / fetchPriority=low.
-  const logoHref = safeStorefrontLogoSrc(logoUrl);
+  const logoHref =
+    logoUrl.startsWith('/') && !logoUrl.startsWith('//') && !/[\s"'()\\]/.test(logoUrl)
+      ? logoUrl
+      : '/logo-128.png';
   const registerLabel = chromeStr(chrome, 'registerLabel', 'ثبت‌نام عمده‌فروش');
   const registerHref = chromeStr(chrome, 'registerHref', '/portal/register');
   const portalHref = chromeStr(chrome, 'portalHref', '/portal');
@@ -100,12 +102,7 @@ export function Header({
             <div className="leading-tight">
               <div className="text-lg font-extrabold tracking-tight text-primary">{brandName}</div>
               {brandTagline ? (
-                <div
-                  data-brand-subtitle=""
-                  className="text-[11px] font-medium text-[var(--brand-muted,#4B5563)]"
-                >
-                  {WHOLESALE_HEADER_SUBTITLE}
-                </div>
+                <div className="text-[11px] font-medium text-[var(--brand-muted,#4B5563)]">{brandTagline}</div>
               ) : null}
             </div>
           </Link>

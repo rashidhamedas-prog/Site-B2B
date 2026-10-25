@@ -6,9 +6,6 @@ export const WHOLESALE_BRAND_NAME_FA = 'پوشاک ترنم';
 
 export const RETAIL_HEADER_SUBTITLE = 'فروشگاه آنلاین';
 
-/** Shown under the wholesale wordmark. The header already had a subtitle. */
-export const WHOLESALE_HEADER_SUBTITLE = 'تولید و عمده';
-
 /** Single accessible name for the retail logo link and its image. */
 export const RETAIL_LOGO_ALT = `${WHOLESALE_BRAND_NAME_FA} – ${RETAIL_HEADER_SUBTITLE}`;
 
