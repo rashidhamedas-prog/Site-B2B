@@ -2070,7 +2070,7 @@ export class OmnichannelService {
       const counts = await tx.query(
         `SELECT
            (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries"
-             WHERE "destinationId" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL
+             WHERE "destinationId" = $1 AND action = 'CREATE'
                AND status = 'SUCCEEDED' AND "sentAt" >= $2 AND id <> $3) AS sent,
            (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries"
              WHERE "destinationId" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL
@@ -2141,12 +2141,14 @@ export class OmnichannelService {
         );
         return { kind: 'defer' as const, availableAt: plan.availableAt, reason: plan.reason, message: plan.reason };
       }
-      await tx.query(
+      const claimed = await tx.query(
         `UPDATE "omnichannel_publication_deliveries"
          SET status = 'PROCESSING', "deferredReason" = NULL, "updatedAt" = NOW()
-         WHERE id = $1`,
+         WHERE id = $1 AND status IN ('PENDING', 'RETRY')
+         RETURNING id`,
         [row.id],
       );
+      if (!insertedId(claimed)) return { kind: 'stop' as const };
       return { kind: 'send' as const };
     });
   }
@@ -2159,6 +2161,25 @@ export class OmnichannelService {
        WHERE "eventId" = $1 AND action = 'CREATE' AND status <> 'SUCCEEDED' AND "supersededAt" IS NULL`,
       [eventId],
     );
+  }
+
+  /** Late success may finish after HOLD send_unconfirmed; never overwrite a different SUCCEEDED. */
+  async markCreateSucceeded(deliveryId: string, providerMessageId?: string | null): Promise<boolean> {
+    const raw = await this.deliveries.query(
+      `UPDATE "omnichannel_publication_deliveries"
+       SET status = 'SUCCEEDED',
+           "sentAt" = COALESCE("sentAt", NOW()),
+           "providerMessageId" = COALESCE($2, "providerMessageId"),
+           "lastError" = NULL,
+           "deferredReason" = NULL,
+           "updatedAt" = NOW()
+       WHERE id = $1
+         AND "supersededAt" IS NULL
+         AND status IN ('PROCESSING', 'HOLD')
+       RETURNING id`,
+      [deliveryId, providerMessageId || null],
+    );
+    return Boolean(insertedId(raw));
   }
 
   async supersedeCreatesAfterDelete(publicationId: string, destinationId: string): Promise<void> {
@@ -2553,7 +2574,7 @@ export class OmnichannelService {
       where: {
         publicationId: In(pubs.map((row) => row.id)),
         action: 'CREATE',
-        status: In(['PENDING', 'PROCESSING', 'RETRY']),
+        status: In(['PENDING', 'PROCESSING', 'RETRY', 'HOLD']),
       },
       select: ['destinationId'],
     });
@@ -2604,10 +2625,9 @@ export class OmnichannelService {
       .createQueryBuilder('d')
       .innerJoin(PublicationEntity, 'p', 'p.id = d.publicationId')
       .where('d.action = :action', { action: 'CREATE' })
-      .andWhere('d.supersededAt IS NULL')
       .andWhere(`(
         (d.status = 'SUCCEEDED' AND d.sentAt >= :dayStart)
-        OR (d.status = 'PROCESSING' AND d.updatedAt >= :recent)
+        OR (d.status = 'PROCESSING' AND d."supersededAt" IS NULL AND d.updatedAt >= :recent)
       )`, { dayStart, recent: new Date(Date.now() - 10 * 60_000) });
     if (channel) qb.andWhere('p.channel = :channel', { channel });
     if (destinationId) {
@@ -3162,7 +3182,7 @@ export class OmnichannelService {
 
   private async loadActiveCreates(tx: EntityManager, idempotencyKey: string): Promise<ExistingCreateRow[]> {
     const rows = await tx.query(
-      `SELECT id, status, "contentHash", "providerMessageId", "eventId", "publicationId", "createdAt"
+      `SELECT id, status, "contentHash", "providerMessageId", "eventId", "publicationId", "createdAt", "deferredReason"
        FROM "omnichannel_publication_deliveries"
        WHERE "idempotencyKey" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL`,
       [idempotencyKey],
@@ -3175,6 +3195,7 @@ export class OmnichannelService {
       eventId: String(row.eventId),
       publicationId: String(row.publicationId),
       createdAt: new Date(String(row.createdAt)),
+      deferredReason: row.deferredReason,
     }));
   }
 

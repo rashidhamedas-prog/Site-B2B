@@ -66,6 +66,14 @@ GO داده شد. ترتیب باقی‌مانده:
 
 اگر worker بعد از رزرو PROCESSING و قبل از ثبت `sentAt` قطع شود، یا `adapter.create` تایم‌اوت بدهد، ردیف `HOLD` با دلیل `send_unconfirmed` می‌شود و خودکار دوباره ارسال نمی‌شود. تأیید مجدد بعد از چک کردن کانال است. ردیف SUCCEEDED و ردیف بدون delivery اصلاً به adapter نمی‌رسند. اگر insert تحویل با ایندکس یکتا برخورد کند، رویداد outbox همان تراکنش DONE می‌شود تا بدون ردیف تحویل در صف نماند.
 
+### سخت‌سازی بعد از بازبینی موازی
+
+- تشخیص تایم‌اوت با `isUnconfirmedSendError` (timeout / AbortError / «timed out»)؛ بودجهٔ handle به ۳۵s رسید تا از آپلود ۲۸s جلوتر باشد.
+- HOLD (stale یا send_unconfirmed) دیگر با enqueue خودکار reuse نمی‌شود؛ فقط `reapprove`.
+- شمارش سقف روزانه، CREATEهای SUCCEEDED امروز را حتی بعد از `supersededAt` حساب می‌کند تا DELETE همان‌روز سقف را باز نکند.
+- claim اتمی: فقط `PENDING|RETRY` → `PROCESSING` با `RETURNING`. موفقیت CREATE فقط روی `PROCESSING|HOLD` ثبت می‌شود.
+- در migration، loserهای SUCCEEDED وضعیت خود را نگه می‌دارند و فقط از ایندکس فعال خارج می‌شوند.
+
 ## انتخاب طراحی
 
 ایندکس یکتای ناقص Postgres جلوی دو CREATE فعال را می‌گیرد. قفل advisory فقط تصمیم merge/reuse را سریال می‌کند و جای ایندکس را نمی‌گیرد. الگوی outbox موجود پروژه حفظ شد؛ کتابخانهٔ outbox دوم اضافه نشد.

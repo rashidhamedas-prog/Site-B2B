@@ -72,6 +72,13 @@ function row(partial: Partial<ExistingCreateRow> & Pick<ExistingCreateRow, 'id' 
   const again = decideCreateEnqueue([dead], 'hash-new');
   assert(again.kind === 'reuse' && again.deliveryId === 'dead-1', 'DEAD row is reused (5047)');
   assert(decideRetryAgainstSibling({ deliveryId: 'dead-1', hasLiveSucceededSibling: false }) === 'retry', 'retry keeps the same row');
+  const held = decideCreateEnqueue([row({
+    id: 'hold-1',
+    status: 'HOLD',
+    deferredReason: 'send_unconfirmed',
+    createdAt: new Date('2026-10-25T10:00:00.000Z'),
+  })], 'hash-new');
+  assert(held.kind === 'skip' && held.reason === 'hold_needs_reapproval', 'send_unconfirmed HOLD is not auto-reused');
 }
 
 {

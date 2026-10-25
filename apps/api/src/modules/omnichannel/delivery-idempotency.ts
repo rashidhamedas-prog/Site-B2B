@@ -8,7 +8,8 @@ export const DEFAULT_MAX_SENDS_PER_MINUTE = 2;
 export const PROCESSING_RESERVATION_MS = 10 * 60_000;
 
 const ACTIVE_MERGE = new Set(['PENDING', 'PROCESSING', 'RETRY']);
-const REUSABLE = new Set(['DEAD', 'FAILED', 'HOLD']);
+/** HOLD always needs human reapprove (stale or send_unconfirmed). Never auto-reuse. */
+const REUSABLE = new Set(['DEAD', 'FAILED']);
 
 export type DeliveryActionName = 'CREATE' | 'UPDATE' | 'DELETE';
 
@@ -50,11 +51,12 @@ export type ExistingCreateRow = {
   eventId: string;
   publicationId: string;
   createdAt: Date;
+  deferredReason?: string | null;
 };
 
 export type CreateEnqueueDecision =
   | { kind: 'insert' }
-  | { kind: 'skip'; reason: 'create_deduped' }
+  | { kind: 'skip'; reason: 'create_deduped' | 'hold_needs_reapproval' }
   | { kind: 'convert_update'; providerMessageId: string; publicationId: string }
   | { kind: 'merge'; deliveryId: string; eventId: string; supersedeIds: string[] }
   | { kind: 'reuse'; deliveryId: string; eventId: string; supersedeIds: string[] };
@@ -84,6 +86,8 @@ export function decideCreateEnqueue(rows: ExistingCreateRow[], nextHash: string)
     }
     return { kind: 'skip', reason: 'create_deduped' };
   }
+  const held = rows.filter((row) => row.status === 'HOLD');
+  if (held.length) return { kind: 'skip', reason: 'hold_needs_reapproval' };
   const active = rows.filter((row) => ACTIVE_MERGE.has(row.status));
   if (active.length) {
     const winner = newest(active);

@@ -30,7 +30,8 @@ async function main() {
   assert(upSql.includes('CREATE UNIQUE INDEX'), 'up builds the partial unique index');
   assert(upSql.includes('omnichannel_delivery_dedupe_undo'), 'up snapshots losers for down()');
   assert(!/DELETE\s+FROM\s+"omnichannel_publication_deliveries"/i.test(upSql), 'up does not delete delivery rows');
-  assert(upSql.includes(`status = 'DEAD'`), 'losers become DEAD');
+  assert(upSql.includes(`status = 'DEAD'`), 'non-SUCCEEDED losers become DEAD');
+  assert(upSql.includes(`WHEN d.status = 'SUCCEEDED' THEN d.status`), 'SUCCEEDED losers keep status and only leave the index');
 
   const down = createRunner();
   await migration.down(down.runner);

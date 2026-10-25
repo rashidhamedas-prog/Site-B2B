@@ -69,11 +69,15 @@ export class OmnichannelDeliveryIdempotency1761364800001 implements MigrationInt
 
     await queryRunner.query(DEDUPE_UNDO_INSERT_SQL);
 
+    // SUCCEEDED losers keep status (providerMessageId stays usable); only leave the active index.
     await queryRunner.query(`
       UPDATE "omnichannel_publication_deliveries" d
       SET
-        status = 'DEAD',
-        "lastError" = 'superseded_duplicate',
+        status = CASE WHEN d.status = 'SUCCEEDED' THEN d.status ELSE 'DEAD' END,
+        "lastError" = CASE
+          WHEN d.status = 'SUCCEEDED' THEN d."lastError"
+          ELSE 'superseded_duplicate'
+        END,
         "supersededAt" = NOW(),
         "updatedAt" = NOW()
       FROM "omnichannel_delivery_dedupe_undo" u

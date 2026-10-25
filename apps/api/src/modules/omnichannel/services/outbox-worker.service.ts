@@ -15,6 +15,7 @@ import { OUTBOX_EVENT_TYPES, SALES_PARTNER_OUTBOX_EVENT_TYPES } from '../omnicha
 import {
   DeliveryDeferredError,
   isConnectorDisabledError,
+  isUnconfirmedSendError,
   shouldSkipPublicationDeliver,
 } from './publication-deliver';
 import { OutboxService } from './outbox.service';
@@ -35,7 +36,8 @@ export function isOmnichannelWorkerProcess(): boolean {
   return process.env.OMNICHANNEL_WORKER === 'true';
 }
 
-const HANDLE_TIMEOUT_MS = 25_000;
+/** Must exceed TELEGRAM_UPLOAD_TIMEOUT_MS (28s) so a mid-upload CREATE is not abandoned mid-flight. */
+const HANDLE_TIMEOUT_MS = 35_000;
 
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -114,6 +116,13 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         } catch (err: unknown) {
           if (err instanceof DeliveryDeferredError) {
             await this.outbox.releaseDeferred(row.id, err.availableAt);
+          } else if (
+            row.eventType === OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED
+            && isUnconfirmedSendError(err)
+          ) {
+            await this.omnichannel.markCreateUnconfirmed(row.id);
+            await this.outbox.markDone(row.id);
+            this.logger.warn(`outbox ${row.eventType} ${row.id} unconfirmed send → HOLD`);
           } else {
             const message = safeWorkerError(err);
             this.logger.warn(`outbox ${row.eventType} ${row.id} failed: ${message}`);
@@ -454,8 +463,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
         providerMessageId = (await adapter.create(input)).providerMessageId;
       } catch (err: unknown) {
         if (isConnectorDisabledError(err)) throw err;
-        const message = err instanceof Error ? err.message : '';
-        if (message.includes('timed out')) {
+        if (isUnconfirmedSendError(err)) {
           await this.omnichannel.markCreateUnconfirmed(eventId);
           return;
         }
@@ -470,12 +478,17 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       );
       return;
     }
-    row.status = 'SUCCEEDED';
-    row.sentAt = new Date();
-    row.providerMessageId = providerMessageId || row.providerMessageId;
-    row.lastError = null;
-    row.deferredReason = null;
-    await this.deliveries.save(row);
+    if (action === 'CREATE') {
+      const saved = await this.omnichannel.markCreateSucceeded(row.id, providerMessageId || row.providerMessageId);
+      if (!saved) return;
+    } else {
+      row.status = 'SUCCEEDED';
+      row.sentAt = new Date();
+      row.providerMessageId = providerMessageId || row.providerMessageId;
+      row.lastError = null;
+      row.deferredReason = null;
+      await this.deliveries.save(row);
+    }
     const publicationId = String(payload.publicationId || row.publicationId || '');
     if (publicationId && action === 'CREATE') {
       await this.omnichannel.markPublicationDelivered(publicationId);
