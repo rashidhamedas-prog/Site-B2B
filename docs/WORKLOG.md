@@ -4,6 +4,7 @@
 - کلیک‌های پشت‌سرهم «بعد» از ایندکس فعلی یکی‌یکی جلو می‌روند.
 - متن کپشن از لبهٔ شروع (راست) ۱۰px فاصله دارد تا در ۳۲۰ و ۳۶۰ و ۴۱۴ بریده نشود.
 - merge و push به `master` انجام نشد.
+- پس از merge با `master`، تایپ‌چک API روی مقایسهٔ literal در `delivery-claim.spec.ts` می‌ایستاد. نوع `heldStatus` به `string` باز شد؛ مقدار همان `HOLD` است و رفتار dedupe عوض نشد.
 
 ## 2026-10-25 — delta dedupe: uncertain_after_timeout + deploy
 
