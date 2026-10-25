@@ -1,3 +1,9 @@
+## 2026-10-25 — delta dedupe: uncertain_after_timeout + deploy
+
+- reconcile دیگر DRAFT موازی نمی‌سازد؛ publication را reuse می‌کند. سقف فقط از `autoDailyCap` (بدون env). تایم‌اوت → HOLD با `uncertain_after_timeout`.
+- HOLD/PENDING/RETRY در شمارش سقف؛ revive outbox با stagger و supersede sibling. بودجه CREATE media ۵۰s. `npm test` با runner کوتاه (رفع سقف cmd ویندوز).
+- گزارش: `docs/reports/2026-10-25-omnichannel-dedup-daily-cap.md`.
+
 ## 2026-10-25 — یکتایی ارسال بله/روبیکا و سقف روزانه در worker
 
 - کلید CREATE دیگر `Date.now()` ندارد؛ هر محصول در هر مقصد یک CREATE فعال. تکراری‌ها soft-supersede می‌شوند و DELETE نمی‌شوند.

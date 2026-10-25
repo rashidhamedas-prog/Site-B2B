@@ -49,10 +49,12 @@ if [ -f "$APP_DIR/.env" ]; then
   set +a
 fi
 echo "$(date -Is) building images..."
-docker compose build api web worker worker-b
+# worker-b stays off: dual workers raced CREATE sends before atomic claim; keep one worker.
+docker compose build api web worker
 
 echo "$(date -Is) starting containers..."
-docker compose up -d api web worker worker-b
+docker compose up -d api web worker
+docker compose stop worker-b >/dev/null 2>&1 || true
 # Force-recreate nginx: single-file bind of nginx.conf goes stale on inode replace
 # (git reset / rewrite); `up -d` alone can keep the old inode. Also remounts conf.d.
 docker compose up -d nginx --no-deps --force-recreate

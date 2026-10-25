@@ -22,7 +22,7 @@ Enqueue داخل تراکنش با `pg_advisory_xact_lock(hashtext(key))` تصم
 
 سقف روزانه در worker، قبل از `adapter.create`، منبع حقیقت است. شمارش: CREATEهای SUCCEEDED امروز به وقت تهران بر اساس `sentAt`، به‌علاوه PROCESSINGهای ده دقیقهٔ اخیر. شمارش ردیفی است، نه distinct publication. اگر سقف پر باشد attempts نمی‌سوزد و `availableAt` می‌رود به ابتدای روز بعد تهران به‌اضافهٔ `quietEndHour` و یک jitter ثابت برای همان مقصد. ترتیب صف با `availableAt` و بعد `createdAt` است.
 
-فاصلهٔ حداقل ارسال در worker شصت ثانیه است (اگر تنظیم مقصد بیشتر باشد، همان عدد بزرگ‌تر). حداکثر ارسال در دقیقه برای هر connection پیش‌فرض ۲ است (`OMNICHANNEL_MAX_SENDS_PER_MINUTE`). سقف هر پلتفرم از `autoDailyCap` همان مقصد می‌آید و با `OMNICHANNEL_DAILY_CAP_BALE` / `_RUBIKA` / `_TELEGRAM` قابل override است.
+فاصلهٔ حداقل ارسال در worker شصت ثانیه است (اگر تنظیم مقصد بیشتر باشد، همان عدد بزرگ‌تر). حداکثر ارسال در دقیقه برای هر connection پیش‌فرض ۲ است (`OMNICHANNEL_MAX_SENDS_PER_MINUTE`). سقف فقط از `autoDailyCap` اتصال/مقصد (با fallback `DEFAULT_AUTO_DAILY_CAP=20`) خوانده می‌شود؛ envی مثل `OMNICHANNEL_DAILY_CAP_*` عمداً پشتیبانی نمی‌شود. مقدار سقف بله را حامد در پنل تنظیم می‌کند.
 
 CREATE قدیمی‌تر از `OMNICHANNEL_STALE_DELIVERY_HOURS` (پیش‌فرض ۲۴) ارسال نمی‌شود. وضعیت `HOLD` و دلیل `stale_needs_reapproval` می‌گیرد. در کنسول انتشار دکمهٔ «تأیید مجدد» هست و reason در audit ذخیره می‌شود.
 
@@ -64,15 +64,21 @@ GO داده شد. ترتیب باقی‌مانده:
 4. API اول بالا می‌آید تا `runMigrationsWithLock` ایندکس `UQ_omnichannel_deliveries_active_create` را بسازد؛ بعد health و وجود ایندکس چک می‌شود؛ بعد فقط `taranom_worker` روشن می‌شود.
 5. `scripts/auto-deploy.sh` استفاده نمی‌شود چون worker-b را هم بالا می‌آورد.
 
-اگر worker بعد از رزرو PROCESSING و قبل از ثبت `sentAt` قطع شود، یا `adapter.create` تایم‌اوت بدهد، ردیف `HOLD` با دلیل `send_unconfirmed` می‌شود و خودکار دوباره ارسال نمی‌شود. تأیید مجدد بعد از چک کردن کانال است. ردیف SUCCEEDED و ردیف بدون delivery اصلاً به adapter نمی‌رسند. اگر insert تحویل با ایندکس یکتا برخورد کند، رویداد outbox همان تراکنش DONE می‌شود تا بدون ردیف تحویل در صف نماند.
+اگر worker بعد از رزرو PROCESSING و قبل از ثبت `sentAt` قطع شود، یا `adapter.create` تایم‌اوت بدهد، ردیف `HOLD` با دلیل `uncertain_after_timeout` می‌شود و خودکار دوباره ارسال نمی‌شود. تأیید مجدد بعد از چک کردن کانال است. ردیف SUCCEEDED و ردیف بدون delivery اصلاً به adapter نمی‌رسند. اگر insert تحویل با ایندکس یکتا برخورد کند، رویداد outbox همان تراکنش DONE می‌شود تا بدون ردیف تحویل در صف نماند.
 
 ### سخت‌سازی بعد از بازبینی موازی
 
-- تشخیص تایم‌اوت با `isUnconfirmedSendError` (timeout / AbortError / «timed out»)؛ بودجهٔ handle به ۳۵s رسید تا از آپلود ۲۸s جلوتر باشد.
-- HOLD (stale یا send_unconfirmed) دیگر با enqueue خودکار reuse نمی‌شود؛ فقط `reapprove`.
-- شمارش سقف روزانه، CREATEهای SUCCEEDED امروز را حتی بعد از `supersededAt` حساب می‌کند تا DELETE همان‌روز سقف را باز نکند.
+- تشخیص تایم‌اوت با `isUnconfirmedSendError` (timeout / AbortError / «timed out»)؛ بودجهٔ handle عمومی ۳۵s و CREATE/رسانه ۵۰s.
+- HOLD (stale یا uncertain_after_timeout) دیگر با enqueue خودکار reuse نمی‌شود؛ فقط `reapprove`.
+- شمارش سقف روزانه، CREATEهای SUCCEEDED امروز را حتی بعد از `supersededAt` حساب می‌کند تا DELETE همان‌روز سقف را باز نکند؛ HOLD/PENDING/RETRY هم slot می‌گیرند.
 - claim اتمی: فقط `PENDING|RETRY` → `PROCESSING` با `RETURNING`. موفقیت CREATE فقط روی `PROCESSING|HOLD` ثبت می‌شود.
 - در migration، loserهای SUCCEEDED وضعیت خود را نگه می‌دارند و فقط از ایندکس فعال خارج می‌شوند.
+
+### delta بازبینی code (D1–D8)
+
+- reconcile / sync / manual / category همه publication را reuse می‌کنند (بدون DRAFT موازی).
+- `DELIVERY_DEFERRED_REASONS` متمرکز شد؛ `npm test` از `scripts/run-unit-specs.cjs` می‌آید (رفع سقف طول خط cmd روی ویندوز).
+- تست `delivery-claim.spec.ts`: دو worker → یک claim، تایم‌اوت بدون RETRY، سقف از autoDailyCap.
 
 ## انتخاب طراحی
 

@@ -32,6 +32,7 @@ assert(isConnectorDisabledLastError('cancelled_by_admin') === false, 'intentiona
 assert(isUnconfirmedSendError(new Error('timeout')) === true, 'adapter timeout string');
 assert(isUnconfirmedSendError(Object.assign(new Error('aborted'), { name: 'AbortError' })) === true, 'AbortError');
 assert(isUnconfirmedSendError(new Error('outbox publication.deliver.requested x timed out after 35000ms')) === true, 'handle race timeout');
+assert(isUnconfirmedSendError(new Error('outbox publication.deliver.requested x timed out after 50000ms')) === true, 'CREATE media timeout');
 assert(isUnconfirmedSendError(new Error('Bad Request: chat not found')) === false, 'hard provider errors stay retryable');
 
 console.log('publication-deliver.spec.ts: ok');

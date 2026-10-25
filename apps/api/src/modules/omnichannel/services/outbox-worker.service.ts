@@ -36,8 +36,14 @@ export function isOmnichannelWorkerProcess(): boolean {
   return process.env.OMNICHANNEL_WORKER === 'true';
 }
 
-/** Must exceed TELEGRAM_UPLOAD_TIMEOUT_MS (28s) so a mid-upload CREATE is not abandoned mid-flight. */
+/** Default handle budget for non-messenger work. */
 const HANDLE_TIMEOUT_MS = 35_000;
+/**
+ * CREATE/UPDATE with media must outlive Rubika/Bale upload stacks (15s + 30s) so
+ * withTimeout does not race a still-running adapter.create into a duplicate RETRY.
+ * Ambiguous timeouts still HOLD via isUnconfirmedSendError — never auto-resend.
+ */
+const HANDLE_TIMEOUT_CREATE_MEDIA_MS = 50_000;
 
 @Injectable()
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
@@ -107,14 +113,19 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       const batch = await this.outbox.leaseBatch(this.workerId, 20);
       for (const row of batch) {
         try {
+          const handleMs = row.eventType === OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED
+            ? HANDLE_TIMEOUT_CREATE_MEDIA_MS
+            : HANDLE_TIMEOUT_MS;
           await this.withTimeout(
             this.handle(row),
-            HANDLE_TIMEOUT_MS,
+            handleMs,
             `outbox ${row.eventType} ${row.id}`,
           );
           await this.outbox.markDone(row.id);
         } catch (err: unknown) {
           if (err instanceof DeliveryDeferredError) {
+            // Gate defers before claim; if a row were PROCESSING, restore PENDING without burning attempts.
+            await this.releaseProcessingDelivery(row.id);
             await this.outbox.releaseDeferred(row.id, err.availableAt);
           } else if (
             row.eventType === OUTBOX_EVENT_TYPES.PUBLICATION_DELIVER_REQUESTED
@@ -150,6 +161,21 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       ]);
     } finally {
       if (timer) clearTimeout(timer);
+    }
+  }
+
+  /** Leave PROCESSING after a soft defer so the next lease can reclaim without a duplicate create. */
+  private async releaseProcessingDelivery(eventId: string): Promise<void> {
+    if (!eventId) return;
+    try {
+      await this.deliveries.query(
+        `UPDATE "omnichannel_publication_deliveries"
+         SET status = 'PENDING', "updatedAt" = NOW()
+         WHERE "eventId" = $1 AND action = 'CREATE' AND status = 'PROCESSING' AND "supersededAt" IS NULL`,
+        [eventId],
+      );
+    } catch {
+      /* bookkeeping best-effort */
     }
   }
 

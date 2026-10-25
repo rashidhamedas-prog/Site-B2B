@@ -32,6 +32,17 @@ export type OosPolicy = (typeof OOS_POLICIES)[number];
 export const DELIVERY_STATUSES = ['PENDING', 'PROCESSING', 'SUCCEEDED', 'RETRY', 'DEAD', 'HOLD'] as const;
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
+/** Snake_case reasons stored on publication_deliveries.deferredReason (and some lastError mirrors). */
+export const DELIVERY_DEFERRED_REASONS = [
+  'daily_cap',
+  'min_gap',
+  'rate_limit',
+  'stale_needs_reapproval',
+  'uncertain_after_timeout',
+  'superseded_duplicate',
+] as const;
+export type DeliveryDeferredReason = (typeof DELIVERY_DEFERRED_REASONS)[number];
+
 export const FORBIDDEN_SECRET_KEYS = [
   'secret',
   'token',

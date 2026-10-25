@@ -37,6 +37,7 @@ import { ChannelAdapterRegistry } from '../adapters/adapter-registry';
 import { ConnectorDisabledError } from '../adapters/channel-adapter';
 import {
   areOmnichannelConnectorsEnabled,
+  DELIVERY_DEFERRED_REASONS,
   isOmnichannelAutoPublishEnabled,
   isOmnichannelProvider,
   isOmnichannelProviderEnabled,
@@ -117,6 +118,7 @@ import {
   effectiveMinGapSeconds,
   maxSendsPerMinute,
   planCreateSend,
+  publicationToReuse,
   staleDeliveryHours,
   type ExistingCreateRow,
 } from '../delivery-idempotency';
@@ -2074,7 +2076,11 @@ export class OmnichannelService {
                AND status = 'SUCCEEDED' AND "sentAt" >= $2 AND id <> $3) AS sent,
            (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries"
              WHERE "destinationId" = $1 AND action = 'CREATE' AND "supersededAt" IS NULL
-               AND status = 'PROCESSING' AND "updatedAt" >= $4 AND id <> $3) AS inflight,
+               AND (
+                 (status = 'PROCESSING' AND "updatedAt" >= $4)
+                 OR status IN ('HOLD', 'PENDING', 'RETRY')
+               )
+               AND id <> $3) AS inflight,
            (SELECT MAX("sentAt") FROM "omnichannel_publication_deliveries"
              WHERE "destinationId" = $1 AND action = 'CREATE' AND status = 'SUCCEEDED') AS last_sent,
            (SELECT COUNT(*)::int FROM "omnichannel_publication_deliveries" d
@@ -2124,11 +2130,12 @@ export class OmnichannelService {
         return { kind: 'stop' as const };
       }
       if (plan.kind === 'hold') {
+        const holdReason: (typeof DELIVERY_DEFERRED_REASONS)[number] = 'stale_needs_reapproval';
         await tx.query(
           `UPDATE "omnichannel_publication_deliveries"
-           SET status = 'HOLD', "deferredReason" = 'stale_needs_reapproval', "lastError" = 'stale_needs_reapproval', "updatedAt" = NOW()
+           SET status = 'HOLD', "deferredReason" = $2, "lastError" = $2, "updatedAt" = NOW()
            WHERE id = $1`,
-          [row.id],
+          [row.id, holdReason],
         );
         return { kind: 'stop' as const };
       }
@@ -2155,15 +2162,16 @@ export class OmnichannelService {
 
   async markCreateUnconfirmed(eventId: string): Promise<void> {
     if (!eventId) return;
+    const reason: (typeof DELIVERY_DEFERRED_REASONS)[number] = 'uncertain_after_timeout';
     await this.deliveries.query(
       `UPDATE "omnichannel_publication_deliveries"
-       SET status = 'HOLD', "deferredReason" = 'send_unconfirmed', "lastError" = 'send_unconfirmed', "updatedAt" = NOW()
+       SET status = 'HOLD', "deferredReason" = $2, "lastError" = $2, "updatedAt" = NOW()
        WHERE "eventId" = $1 AND action = 'CREATE' AND status <> 'SUCCEEDED' AND "supersededAt" IS NULL`,
-      [eventId],
+      [eventId, reason],
     );
   }
 
-  /** Late success may finish after HOLD send_unconfirmed; never overwrite a different SUCCEEDED. */
+  /** Late success may finish after HOLD uncertain_after_timeout; never overwrite a different SUCCEEDED. */
   async markCreateSucceeded(deliveryId: string, providerMessageId?: string | null): Promise<boolean> {
     const raw = await this.deliveries.query(
       `UPDATE "omnichannel_publication_deliveries"
@@ -2228,24 +2236,39 @@ export class OmnichannelService {
           { status: 'WITHDRAWN' },
         );
       } else {
-        const already = existing.find((row) => row.sourceId === intent.sourceId && row.channel === intent.channel && row.status === 'DRAFT');
-        if (already) continue;
         const { projection } = await this.preview({
           channel: intent.channel as 'RETAIL' | 'WHOLESALE',
           sourceType: 'PRODUCT',
           sourceId: intent.sourceId,
         });
         if (!projection.publishable) continue;
-        await this.publications.save(
-          this.publications.create({
+        // One live row per source×channel — reopen WITHDRAWN/FAILED; never insert a parallel DRAFT.
+        const candidates = await this.publications.find({
+          where: {
             sourceType: 'PRODUCT',
             sourceId: intent.sourceId,
             channel: intent.channel,
-            sourceUpdatedAt: new Date(),
-            projection,
-            status: 'DRAFT',
-          }),
-        );
+          },
+          order: { updatedAt: 'DESC', createdAt: 'DESC' },
+        });
+        const reuse = publicationToReuse(candidates);
+        if (reuse) {
+          reuse.projection = projection;
+          reuse.sourceUpdatedAt = new Date();
+          if (reuse.status === 'WITHDRAWN' || reuse.status === 'FAILED') reuse.status = 'DRAFT';
+          await this.publications.save(reuse);
+        } else {
+          await this.publications.save(
+            this.publications.create({
+              sourceType: 'PRODUCT',
+              sourceId: intent.sourceId,
+              channel: intent.channel,
+              sourceUpdatedAt: new Date(),
+              projection,
+              status: 'DRAFT',
+            }),
+          );
+        }
       }
     }
     await this.audit(who, 'reconcile', 'PUBLICATION', 'batch', null, reason || 'reconcile', {
@@ -2627,7 +2650,13 @@ export class OmnichannelService {
       .where('d.action = :action', { action: 'CREATE' })
       .andWhere(`(
         (d.status = 'SUCCEEDED' AND d.sentAt >= :dayStart)
-        OR (d.status = 'PROCESSING' AND d."supersededAt" IS NULL AND d.updatedAt >= :recent)
+        OR (
+          d."supersededAt" IS NULL
+          AND (
+            (d.status = 'PROCESSING' AND d.updatedAt >= :recent)
+            OR d.status IN ('HOLD', 'PENDING', 'RETRY')
+          )
+        )
       )`, { dayStart, recent: new Date(Date.now() - 10 * 60_000) });
     if (channel) qb.andWhere('p.channel = :channel', { channel });
     if (destinationId) {

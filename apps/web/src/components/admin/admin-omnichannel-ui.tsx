@@ -334,8 +334,11 @@ const ERROR_LABELS: Record<string, string> = {
   'connector is disabled': 'ارسال از سرور خاموش بود؛ با روشن‌بودن کانکتور می‌توان بازتلاش کرد',
   superseded_duplicate: 'ارسال تکراری بود و کنار گذاشته شد (عمدی)',
   stale_needs_reapproval: 'پست قدیمی است و قبل از ارسال باید دوباره تأیید شود',
+  uncertain_after_timeout: 'نتیجهٔ ارسال معلوم نیست (تایم‌اوت)؛ قبل از تلاش دوباره کانال را چک کنید',
   send_unconfirmed: 'نتیجهٔ ارسال معلوم نیست؛ قبل از تلاش دوباره کانال را چک کنید',
   daily_cap: 'سقف ارسال امروز پر است؛ به روز بعد موکول شد',
+  min_gap: 'فاصلهٔ حداقل بین ارسال‌ها رعایت نشده؛ کمی بعد دوباره تلاش می‌شود',
+  rate_limit: 'سقف نرخ ارسال پر است؛ یک دقیقه بعد دوباره تلاش می‌شود',
 };
 
 /** Delivery/outbox errors that are intentional ops outcomes, not broken sends. */

@@ -8,7 +8,7 @@ export const DEFAULT_MAX_SENDS_PER_MINUTE = 2;
 export const PROCESSING_RESERVATION_MS = 10 * 60_000;
 
 const ACTIVE_MERGE = new Set(['PENDING', 'PROCESSING', 'RETRY']);
-/** HOLD always needs human reapprove (stale or send_unconfirmed). Never auto-reuse. */
+/** HOLD always needs human reapprove (stale or uncertain_after_timeout). Never auto-reuse. */
 const REUSABLE = new Set(['DEAD', 'FAILED']);
 
 export type DeliveryActionName = 'CREATE' | 'UPDATE' | 'DELETE';
@@ -148,10 +148,12 @@ export function effectiveMinGapSeconds(configured: number): number {
   return Math.max(MIN_SEND_GAP_FLOOR_SECONDS, n);
 }
 
-/** Destination setting wins unless a provider env override is set. */
-export function dailyCapForProvider(provider: string, configured: number, env: NodeJS.ProcessEnv = process.env): number {
-  const fromEnv = Number(env[`OMNICHANNEL_DAILY_CAP_${String(provider || '').toUpperCase()}`]);
-  if (Number.isFinite(fromEnv) && fromEnv > 0) return Math.floor(fromEnv);
+/**
+ * Daily CREATE cap from connection/destination `autoDailyCap` only (UI/DB).
+ * No `OMNICHANNEL_DAILY_CAP_*` env override — that would be a second source of truth.
+ * `provider` is kept for call-site clarity; it does not change the number.
+ */
+export function dailyCapForProvider(_provider: string, configured: number): number {
   const n = Math.floor(Number(configured) || 0);
   return n > 0 ? n : DEFAULT_AUTO_DAILY_CAP;
 }

@@ -293,31 +293,73 @@ export class OutboxService {
   }
 
   /**
-   * Soft-revive DEAD publication.deliver rows that only failed because connectors were off.
-   * Never DELETE. Returns revived event ids (empty when none match).
+   * Soft-revive DEAD publication.deliver outbox rows that only failed because connectors were off.
+   * Never DELETE. Skips keys that already have a live SUCCEEDED CREATE (marks those deliveries
+   * superseded instead). Staggers availableAt so a blast cannot empty the daily cap in one tick.
+   * Prefer OmnichannelService.reviveConnectorDisabledDead for full delivery+cap gating.
    */
   async requeueConnectorDisabledDead(limit = 200): Promise<string[]> {
     const capped = Math.max(1, Math.min(500, Math.floor(Number(limit) || 200)));
-    const rows: Array<{ id?: string }> = await this.dataSource.query(
-      `UPDATE omnichannel_outbox_events
-       SET status = 'PENDING', attempts = 0, "availableAt" = NOW(), "completedAt" = NULL,
-           "lockedAt" = NULL, "lockedBy" = NULL, "lastError" = NULL, "updatedAt" = NOW()
-       WHERE id IN (
-         SELECT id FROM omnichannel_outbox_events
-         WHERE status = 'DEAD'
-           AND "eventType" = 'publication.deliver.requested'
-           AND "lastError" ILIKE '%connector is disabled%'
-         ORDER BY "updatedAt" ASC
-         LIMIT $1
-         FOR UPDATE SKIP LOCKED
-       )
-       RETURNING id`,
-      [capped],
-    );
+    const candidates: Array<{ id?: string; delivery_id?: string; idempotency_key?: string | null }> =
+      await this.dataSource.query(
+        `SELECT e.id, d.id AS delivery_id, d."idempotencyKey" AS idempotency_key
+         FROM omnichannel_outbox_events e
+         LEFT JOIN omnichannel_publication_deliveries d ON d."eventId" = e.id
+         WHERE e.status = 'DEAD'
+           AND e."eventType" = 'publication.deliver.requested'
+           AND e."lastError" ILIKE '%connector is disabled%'
+         ORDER BY e."updatedAt" ASC
+         LIMIT $1`,
+        [capped],
+      );
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return (Array.isArray(rows) ? rows : [])
-      .map((row) => String(row?.id || '').trim())
-      .filter((id) => uuidRe.test(id));
+    const revived: string[] = [];
+    let stagger = 0;
+    for (const row of Array.isArray(candidates) ? candidates : []) {
+      const eventId = String(row?.id || '').trim();
+      if (!uuidRe.test(eventId)) continue;
+      const key = String(row?.idempotency_key || '').trim();
+      const deliveryId = String(row?.delivery_id || '').trim();
+      if (key) {
+        const sibling: Array<{ id?: string }> = await this.dataSource.query(
+          `SELECT id FROM omnichannel_publication_deliveries
+           WHERE "idempotencyKey" = $1 AND action = 'CREATE' AND status = 'SUCCEEDED'
+             AND "supersededAt" IS NULL
+             AND ($2::uuid IS NULL OR id <> $2::uuid)
+           LIMIT 1`,
+          [key, uuidRe.test(deliveryId) ? deliveryId : null],
+        );
+        if (Array.isArray(sibling) && sibling.length) {
+          if (uuidRe.test(deliveryId)) {
+            await this.dataSource.query(
+              `UPDATE omnichannel_publication_deliveries
+               SET status = 'DEAD', "lastError" = 'superseded_duplicate', "supersededAt" = NOW(), "updatedAt" = NOW()
+               WHERE id = $1 AND status <> 'SUCCEEDED'`,
+              [deliveryId],
+            );
+          }
+          await this.dataSource.query(
+            `UPDATE omnichannel_outbox_events
+             SET status = 'DONE', "completedAt" = NOW(), "lastError" = 'superseded_duplicate',
+                 "lockedAt" = NULL, "lockedBy" = NULL, "updatedAt" = NOW()
+             WHERE id = $1`,
+            [eventId],
+          );
+          continue;
+        }
+      }
+      const availableAt = new Date(Date.now() + stagger * 60_000);
+      stagger += 1;
+      await this.dataSource.query(
+        `UPDATE omnichannel_outbox_events
+         SET status = 'PENDING', attempts = 0, "availableAt" = $2, "completedAt" = NULL,
+             "lockedAt" = NULL, "lockedBy" = NULL, "lastError" = NULL, "updatedAt" = NOW()
+         WHERE id = $1 AND status = 'DEAD'`,
+        [eventId, availableAt],
+      );
+      revived.push(eventId);
+    }
+    return revived;
   }
 
   /**

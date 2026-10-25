@@ -6,6 +6,7 @@ import { tehranDayStart } from '../../lib/tehran-time';
 import {
   buildIdempotencyKey,
   contentHash,
+  dailyCapForProvider,
   decideCreateEnqueue,
   decideDailyCap,
   decideRetryAgainstSibling,
@@ -15,6 +16,7 @@ import {
   publicationToReuse,
   type ExistingCreateRow,
 } from './delivery-idempotency';
+import { DEFAULT_AUTO_DAILY_CAP, DELIVERY_DEFERRED_REASONS } from './omnichannel.constants';
 import { planManualDeliveries } from './publication-automation';
 
 function assert(cond: boolean, msg: string) {
@@ -75,10 +77,16 @@ function row(partial: Partial<ExistingCreateRow> & Pick<ExistingCreateRow, 'id' 
   const held = decideCreateEnqueue([row({
     id: 'hold-1',
     status: 'HOLD',
-    deferredReason: 'send_unconfirmed',
+    deferredReason: 'uncertain_after_timeout',
     createdAt: new Date('2026-10-25T10:00:00.000Z'),
   })], 'hash-new');
-  assert(held.kind === 'skip' && held.reason === 'hold_needs_reapproval', 'send_unconfirmed HOLD is not auto-reused');
+  assert(held.kind === 'skip' && held.reason === 'hold_needs_reapproval', 'uncertain_after_timeout HOLD is not auto-reused');
+  assert(DELIVERY_DEFERRED_REASONS.includes('uncertain_after_timeout'), 'deferred reason catalog includes timeout HOLD');
+  assert(dailyCapForProvider('BALE', 0) === DEFAULT_AUTO_DAILY_CAP, 'empty autoDailyCap falls back to default 20');
+  assert(dailyCapForProvider('BALE', 7) === 7, 'stored autoDailyCap wins');
+  process.env.OMNICHANNEL_DAILY_CAP_BALE = '99';
+  assert(dailyCapForProvider('BALE', 7) === 7, 'OMNICHANNEL_DAILY_CAP_* env must not override UI/DB cap');
+  delete process.env.OMNICHANNEL_DAILY_CAP_BALE;
 }
 
 {
