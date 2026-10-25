@@ -179,7 +179,7 @@ async function whenBoundCallSucceeds() {
 
   assert.equal(thisArg, doc, 'startViewTransition must run with this=document');
   assert.equal(event.defaultPrevented, true);
-  assert.equal(navigated, 1, 'navigate runs inside the transition update');
+  assert.equal(navigated, 1, 'navigate runs before startViewTransition');
   await finished;
   await Promise.resolve();
   assert.equal(getRafCalls(), 0, 'update callback must not schedule rAF');
@@ -225,7 +225,7 @@ async function whenRouteColdNoPreventDefault() {
   assert.equal(navigated, 0);
 }
 
-/** if startViewTransition throws, navigate still runs and name is cleared. */
+/** if startViewTransition throws, navigate already ran and name is cleared. */
 async function whenStartThrows() {
   await warmReady();
   installDocument(function () {
@@ -237,7 +237,7 @@ async function whenStartThrows() {
     navigated += 1;
   });
   assert.equal(event.defaultPrevented, true, 'preventDefault already ran before start');
-  assert.equal(navigated, 1, 'catch path still navigates');
+  assert.equal(navigated, 1, 'navigate ran before startViewTransition threw');
   assert.equal(img.style.viewTransitionName, '', 'name cleared on failure');
 }
 
@@ -259,14 +259,15 @@ async function whenModifierOrMiddleClick() {
   }
 }
 
-/** finished rejection still navigates if the update never ran. */
-async function whenFinishedRejectsWithoutNavigate() {
+/** Navigate already ran before VT; finished rejection must not strand the user. */
+async function whenFinishedRejectsAfterNavigate() {
   await warmReady();
   let rejectFinished!: (reason?: unknown) => void;
   const finished = new Promise<void>((_, reject) => {
     rejectFinished = reject;
   });
-  installDocument(function () {
+  installDocument(function (this: unknown, update: Update) {
+    update();
     return { finished, skipTransition() {} };
   });
   const { event } = makeEvent();
@@ -274,11 +275,11 @@ async function whenFinishedRejectsWithoutNavigate() {
   beginProductTransition(event, () => {
     navigated += 1;
   });
-  assert.equal(navigated, 0);
+  assert.equal(navigated, 1, 'navigate runs before VT.finished');
   rejectFinished(new Error('transition aborted'));
   await Promise.resolve();
   await Promise.resolve();
-  assert.equal(navigated, 1, 'finished rejection falls back to navigate');
+  assert.equal(navigated, 1, 'no duplicate navigate when already on path');
   assert.equal(event.defaultPrevented, true);
 }
 
@@ -354,7 +355,7 @@ async function main() {
   await whenRouteColdNoPreventDefault();
   await whenStartThrows();
   await whenModifierOrMiddleClick();
-  await whenFinishedRejectsWithoutNavigate();
+  await whenFinishedRejectsAfterNavigate();
   await whenSlowHeroSkipsTransition();
   await whenFinishedWithoutUrlChangeRetriesNavigate();
   await whenFinishedHangsBudgetStillNavigates();

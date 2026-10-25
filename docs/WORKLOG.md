@@ -1,7 +1,8 @@
-## 2026-10-25 — VT update sync: رفع hang کلیک کارت در Chromium e2e (بدون دیپلوی)
+## 2026-10-25 — VT update sync + standalone e2e runner (بدون دیپلوی)
 
-- ریشه: await روی hero داخل callbackِ `startViewTransition` در Chromium باعث می‌شد `router.push` تا تایم‌اوت VT (~4s) اعمال نشود؛ e2e با بودجه ۱.۵s قرمز می‌شد.
-- callback فقط sync `navigate`؛ نام‌گذاری hero و skip بیرون از update با بودجه ۳۰۰ms؛ تایمر ensure اگر `finished` هنگ کرد دوباره navigate می‌کند.
+- ریشه ۱: await روی hero داخل callbackِ VT در Chromium؛ `router.push` تا ~۴s اعمال نمی‌شد.
+- ریشه ۲: CI با `next start` روی `output:standalone` (unsupported) — soft-nav خراب.
+- navigate قبل از startViewTransition؛ update فقط sync؛ hero/skip بیرون با بودجه ۳۰۰ms؛ CI با `node .next/standalone/apps/web/server.js` مثل Docker.
 - Unit: `product-transition.spec.ts`. Deploy دستی؛ PR #105. Hetzner دست نخورده.
 
 ## 2026-10-25 — فیکس چیپ «فری سایز» جعلی روی /products خرده‌فروشی (بدون merge)

@@ -116,14 +116,12 @@ function waitForProductHero(path: string, budgetMs: number): Promise<boolean> {
  * Illegal invocation in Chromium/WebKit; if that happens after preventDefault,
  * navigation would be lost — so failures always fall back to navigate().
  *
- * The VT update callback must stay synchronous (or only await microtasks).
- * Chromium pauses rAF during the update; Next/React navigation work scheduled
- * via macrotasks then cannot flush while we also await a timer-backed hero
- * poll — URL never changes until Chrome's ~4s VT timeout. Navigate inside a
- * sync update, attach the PDP hero outside the callback with a 300ms budget,
- * and skip the morph if the hero is late. Morph only runs when the destination
- * was prefetched (`warmProductRoute`); otherwise the click falls through to
- * default Link navigation.
+ * Navigate before startViewTransition so soft-nav is not gated on Chromium's
+ * VT update scheduling (rAF/macrotask starvation). The update callback stays
+ * synchronous; PDP hero naming uses MutationObserver + a 300ms budget outside
+ * the callback, and the morph is skipped if the hero is late. Morph only runs
+ * when the destination was prefetched (`warmProductRoute`); otherwise the click
+ * falls through to default Link navigation.
  */
 export function beginProductTransition(event: ProductClick, navigate: () => void) {
   if (
@@ -163,25 +161,32 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
     navigate();
   };
 
+  // Navigate before startViewTransition so Next/React soft-nav is not gated on
+  // Chromium's VT update scheduling (rAF/macrotask starvation). Old-state
+  // capture still sees the named card image in this same turn.
+  go();
+
   try {
     // Sync update only — never await timers/rAF inside the VT callback.
     const transition = start.call(document, () => {
-      go();
+      const hero = document.querySelector('[data-tn-hero] img');
+      if (hero instanceof HTMLImageElement) {
+        hero.style.viewTransitionName = 'tn-product';
+      }
     });
 
     const ensureLanded = () => {
       if (normalizePath(window.location.pathname) === path) return;
-      navigated = true;
-      navigate();
       try {
         transition.skipTransition?.();
       } catch {
         /* older engines */
       }
+      // Soft retry — go() is a no-op once navigated; call navigate() directly.
+      navigate();
     };
 
-    // Hero naming runs outside the update callback so MutationObserver /
-    // setTimeout are not starved by Chromium's VT update scheduling.
+    // Hero naming outside the update callback (MutationObserver + budget).
     void waitForProductHero(path, PRODUCT_TRANSITION_BUDGET_MS).then((attached) => {
       if (!attached) {
         try {
@@ -192,21 +197,20 @@ export function beginProductTransition(event: ProductClick, navigate: () => void
       }
     });
 
-    // Safety: skip morph + force navigation if VT.finished hangs (Chromium).
+    // Safety: skip morph + soft-retry navigate if VT.finished hangs (Chromium).
     const skipTimer = window.setTimeout(ensureLanded, PRODUCT_TRANSITION_BUDGET_MS + 50);
 
     void transition.finished
       .catch(() => {
-        if (!navigated) go();
+        /* navigate already attempted above */
       })
       .finally(() => {
         window.clearTimeout(skipTimer);
         clearProductName();
-        // If router.push during VT was dropped, land the navigation now.
         ensureLanded();
       });
   } catch {
     img.style.viewTransitionName = '';
-    go();
+    if (normalizePath(window.location.pathname) !== path) navigate();
   }
 }
