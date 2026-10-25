@@ -4,7 +4,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { beginProductTransition } from '@/components/motion/product-transition';
+import {
+  beginProductTransition,
+  warmProductRoute,
+} from '@/components/motion/product-transition';
 import { Heart } from 'lucide-react';
 import { isInWishlist, toggleWishlist } from '@/lib/retail-wishlist';
 import { discountPercent, mediaUrl, toman, uniqueInStockColors } from '@/lib/product-display';
@@ -77,11 +80,13 @@ export function BoutiqueProductCard({
       >
         <Link
           href={href}
+          prefetch
+          onPointerEnter={() => warmProductRoute(href, (path) => router.prefetch(path))}
+          onTouchStart={() => warmProductRoute(href, (path) => router.prefetch(path))}
           onClick={(event) => {
             selectProduct();
             beginProductTransition(event, () => router.push(href));
           }}
-          prefetch={false}
           className="absolute inset-0"
           aria-label={`مشاهده ${product.name}`}
         >

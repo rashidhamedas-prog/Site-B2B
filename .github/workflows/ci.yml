@@ -31,6 +31,10 @@ jobs:
         run: npm test
         working-directory: apps/api
 
+      - name: Web unit suite (product-transition)
+        run: npx --yes tsx src/components/motion/product-transition.spec.ts
+        working-directory: apps/web
+
       - name: Dependency audit (high+)
         run: npm audit --audit-level=high
         continue-on-error: true
@@ -48,10 +52,44 @@ jobs:
         working-directory: apps/web
         env:
           NEXT_PUBLIC_API_URL: https://api.poshaktaranom.com
+          API_INTERNAL_URL: https://poshaktaranom.com/api/v1
 
       - name: Build API
         run: npm run build
         working-directory: apps/api
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Start Next and run product-card e2e
+        working-directory: apps/web
+        env:
+          E2E_BASE_URL: http://127.0.0.1:3000
+          API_INTERNAL_URL: https://poshaktaranom.com/api/v1
+          NEXT_PUBLIC_API_URL: https://poshaktaranom.com/api/v1
+        run: |
+          set -euo pipefail
+          # output:standalone — `next start` is unsupported; match Docker runner.
+          STANDALONE_WEB=".next/standalone/apps/web"
+          mkdir -p "$STANDALONE_WEB/.next"
+          rm -rf "$STANDALONE_WEB/.next/static" "$STANDALONE_WEB/public"
+          cp -a .next/static "$STANDALONE_WEB/.next/static"
+          cp -a public "$STANDALONE_WEB/public"
+          test -f "$STANDALONE_WEB/server.js"
+          PORT=3000 HOSTNAME=127.0.0.1 node "$STANDALONE_WEB/server.js" &
+          pid=$!
+          trap 'kill $pid' EXIT
+          for i in $(seq 1 60); do
+            if curl -sf "http://127.0.0.1:3000/products" >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -sf "http://127.0.0.1:3000/products" >/dev/null
+          curl -sf "http://127.0.0.1:3000/icon-192.png" >/dev/null
+          curl -sf "http://127.0.0.1:3000/icon-512.png" >/dev/null
+          npx playwright test -c e2e/playwright.product-card.config.ts
 
   omnichannel-migrate:
     runs-on: ubuntu-latest

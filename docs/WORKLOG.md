@@ -1,3 +1,10 @@
+## 2026-10-25 — VT update sync + standalone e2e runner (بدون دیپلوی)
+
+- ریشه ۱: await روی hero داخل callbackِ VT در Chromium؛ `router.push` تا ~۴s اعمال نمی‌شد.
+- ریشه ۲: CI با `next start` روی `output:standalone` (unsupported) — soft-nav خراب.
+- navigate قبل از startViewTransition؛ update فقط sync؛ hero/skip بیرون با بودجه ۳۰۰ms؛ CI با `node .next/standalone/apps/web/server.js` مثل Docker.
+- Unit: `product-transition.spec.ts`. Deploy دستی؛ PR #105. Hetzner دست نخورده.
+
 ## 2026-10-25 — فیکس چیپ «فری سایز» جعلی روی /products خرده‌فروشی (بدون merge)
 
 - ریشه: `slimRetailCatalogProduct` و `normalizeRetailProduct` فیلدهای `sizeType`/`sizeLabels` را حذف می‌کردند و `sizesForSizeType` نوع خالی را FREE فرض می‌کرد.

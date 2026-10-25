@@ -5,7 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { beginProductTransition } from '@/components/motion/product-transition';
+import {
+  beginProductTransition,
+  warmProductRoute,
+} from '@/components/motion/product-transition';
 import { channelSaleDisplay, mediaUrl, sizeTypeLabel, toman, uniqueInStockColors } from '@/lib/product-display';
 import { WholesaleQuickOrder } from './WholesaleQuickOrder';
 import { resolveProductImageAlt } from '@/lib/product-image-alt';
@@ -102,7 +105,9 @@ export function WholesaleProductCard({
     >
       <Link
         href={href}
-        prefetch={false}
+        prefetch
+        onPointerEnter={() => warmProductRoute(href, (path) => router.prefetch(path))}
+        onTouchStart={() => warmProductRoute(href, (path) => router.prefetch(path))}
         onClick={(event) => {
           onSelect();
           beginProductTransition(event, () => router.push(href));
