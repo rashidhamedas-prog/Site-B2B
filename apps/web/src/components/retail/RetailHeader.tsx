@@ -18,6 +18,12 @@ import {
 import { isStorefrontHomePath, resolveTickerItems } from '@/lib/cms/news-ticker';
 import { usePresence } from '@/components/motion/usePresence';
 import { categoryDisplayName, merchandiseCategories } from '@/lib/catalog/category-storefront';
+import {
+  RETAIL_HEADER_SUBTITLE,
+  RETAIL_LOGO_ALT,
+  STOREFRONT_LOGO_PATH,
+  WHOLESALE_BRAND_NAME_FA,
+} from '@/lib/storefront-brand';
 
 type Cat = RetailNavCategory;
 type Collection = RetailNavCollection;
@@ -39,20 +45,6 @@ const STATIC_NAV = [
 /** Premium underline wipe — 21st underlined-nav pattern, gold token, logical origin for RTL. */
 const NAV_UNDERLINE =
   "before:pointer-events-none before:absolute before:inset-x-0 before:bottom-0 before:h-[1.5px] before:[transform-origin:inline-start] before:scale-x-0 before:rounded-full before:bg-[var(--retail-gold)] before:transition-transform before:duration-300 before:ease-[cubic-bezier(0.22,1,0.36,1)] before:content-[''] motion-reduce:before:transition-none";
-
-function BrandMark({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 40 40" fill="none" aria-hidden>
-      <path
-        d="M20 4 L28 10 L32 20 L28 30 L20 36 L12 30 L8 20 L12 10 Z"
-        stroke="#C9A84C"
-        strokeWidth="1.5"
-        fill="none"
-      />
-      <path d="M20 12 L24 16 L20 28 L16 16 Z" fill="#C9A84C" opacity="0.85" />
-    </svg>
-  );
-}
 
 function isNavActive(pathname: string, href: string) {
   const base = href.split('?')[0]!;
@@ -211,12 +203,27 @@ export function RetailHeader() {
 
           <Link
             href="/"
-            className="flex min-w-0 items-center gap-2 rounded-sm sm:gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
+            className="flex min-w-0 items-center gap-1.5 rounded-sm sm:gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--retail-gold)] focus-visible:ring-offset-2"
           >
-            <BrandMark className="h-8 w-8 shrink-0 sm:h-9 sm:w-9" />
-            <span className="truncate text-[13px] font-semibold tracking-[0.08em] text-[var(--retail-ink)] sm:tracking-[0.14em]">
-              <span className="sm:hidden">ترنم</span>
-              <span className="hidden sm:inline">POSHAK TARANOM</span>
+            <img
+              src={STOREFRONT_LOGO_PATH}
+              alt={RETAIL_LOGO_ALT}
+              width={128}
+              height={128}
+              decoding="async"
+              fetchPriority="low"
+              className="h-8 w-8 shrink-0 object-contain sm:h-9 sm:w-9"
+            />
+            <span aria-hidden="true" className="min-w-0 leading-tight">
+              <span className="block truncate text-[13px] font-semibold text-[var(--retail-ink)]">
+                {WHOLESALE_BRAND_NAME_FA}
+              </span>
+              <span
+                data-brand-subtitle=""
+                className="mt-0.5 block truncate text-[11px] font-medium text-[var(--brand-muted,#4B5563)]"
+              >
+                {RETAIL_HEADER_SUBTITLE}
+              </span>
             </span>
           </Link>
 
