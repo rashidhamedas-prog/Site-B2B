@@ -112,6 +112,29 @@ assert(balances.paid === 8_000 && balances.available === 0, '17 second payout ha
 // 19 IDOR is ownership scoped in service; self-referral is explicit
 assert(isBlockedSelfReferral('09151234567', '09151234567', true), '20 self-referral blocked');
 assert(isBlockedSelfReferral('09151234567', '09151234567', false) === false, '20 policy can allow');
+assert(
+  isBlockedSelfReferral('09151111111', '09152222222', true, {
+    buyerCustomerId: 'c1',
+    partnerCustomerId: 'c1',
+  }),
+  '20 self-referral by customerId',
+);
+assert(
+  isBlockedSelfReferral('09151111111', '09152222222', true, {
+    buyerUserId: 'u1',
+    partnerUserId: 'u1',
+  }),
+  '20 self-referral by userId',
+);
+assert(
+  isBlockedSelfReferral('09151111111', '09152222222', true, {
+    buyerCustomerId: 'c1',
+    partnerCustomerId: 'c2',
+    buyerUserId: 'u1',
+    partnerUserId: 'u2',
+  }) === false,
+  '20 distinct buyer/partner ids allowed',
+);
 
 // 21 vendor SKU margin guard
 assert(vendorSkuMarginIrr({ retailNetIrr: 100_000, vendorDueIrr: 80_000, partnerPercent: 25 }) < 0, '21 negative margin rejected');

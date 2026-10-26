@@ -218,10 +218,15 @@ export class SalesPartnerMeController {
 
   @Patch('me/iban')
   updateIban(
-    @Req() req: { user?: { purpose?: string; salesPartnerId?: string } },
+    @Req() req: { user?: { purpose?: string; salesPartnerId?: string; sid?: string } },
     @Body() body: PatchSalesPartnerIbanDto,
   ) {
-    return this.salesPartners.updateIban(this.requirePartner(req), body.iban);
+    return this.salesPartners.updateIban(
+      this.requirePartner(req),
+      body.iban,
+      body.currentPassword,
+      req.user?.sid,
+    );
   }
 
   @Patch('me/password')

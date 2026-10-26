@@ -74,7 +74,7 @@ export function SalesPartnerShell({
     <SpToastProvider>
       <SalesPartnerNoticeProvider>
       <div className="min-h-screen bg-[#f6f3ee] text-stone-900" dir="rtl">
-        <div className="mx-auto flex min-h-screen max-w-6xl">
+        <div className="mx-auto flex min-h-screen max-w-6xl pb-24 lg:pb-0">
           <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-l border-stone-200 bg-white px-3 py-6 lg:flex">
             <div className="px-2">
               <p className="text-[11px] font-medium tracking-wide text-[#1B5C4A]">ترنم</p>
@@ -184,7 +184,7 @@ export function SalesPartnerShell({
           </div>
         </div>
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200/80 bg-[#f6f3ee]/95 px-2 py-2 backdrop-blur-md lg:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200/80 bg-[#f6f3ee]/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md lg:hidden"
           aria-label="ناوبری پنل همکار بازاریاب"
         >
           <ul className="mx-auto grid max-w-lg grid-cols-4 gap-1">

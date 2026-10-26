@@ -46,6 +46,10 @@ export class SalesPartnerProfileEntity {
   @Column({ type: 'text', nullable: true })
   ibanCipher: string | null;
 
+  /** Set when IBAN changes; blocks payout confirm during cooldown. */
+  @Column({ type: 'timestamptz', nullable: true })
+  ibanChangedAt: Date | null;
+
   @Column({ type: 'varchar', length: 40, nullable: true })
   termsVersion: string | null;
 

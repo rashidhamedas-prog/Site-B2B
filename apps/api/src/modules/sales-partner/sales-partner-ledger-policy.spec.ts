@@ -5,6 +5,7 @@ import {
   boundedIdempotencyKey,
   canAutoRelease,
   earnedIdempotencyKey,
+  isCommissionEarnOrderStatus,
   isPayableEarned,
   ledgerBalance,
   partnerTotalsFromBucketRows,
@@ -147,5 +148,9 @@ assert(split.find((row) => row.salesPartnerId === 'p-a')?.paid === 5_000, 'manua
 assert(split.find((row) => row.salesPartnerId === 'p-b')?.debt === 10_000, 'negative available is that partner debt');
 assert(split.find((row) => row.salesPartnerId === 'p-b')?.available === 0, 'debt clamp clears available');
 assert(split.reduce((sum, row) => sum + row.held, 0) === 100_000, 'held rows sum');
+
+assert(!isCommissionEarnOrderStatus('PENDING_REVIEW'), 'PENDING_REVIEW does not earn');
+assert(isCommissionEarnOrderStatus('CONFIRMED'), 'CONFIRMED earns');
+assert(isCommissionEarnOrderStatus('DELIVERED'), 'DELIVERED earns');
 
 console.log('sales-partner-ledger-policy.spec.ts: OK');

@@ -57,6 +57,8 @@ export type PartnerRow = {
   riskFlags?: string[];
   ibanMasked?: string | null;
   termsAcceptedAt?: string | null;
+  ibanChangedAt?: string | null;
+  payoutBlockedUntil?: string | null;
 };
 
 export type CatalogRow = {
