@@ -225,8 +225,61 @@ export function isBlockedSelfReferral(
   customerPhone: string,
   partnerPhone: string,
   blockSelf: boolean,
+  ids?: {
+    buyerCustomerId?: string | null;
+    buyerUserId?: string | null;
+    partnerUserId?: string | null;
+    partnerCustomerId?: string | null;
+  },
 ): boolean {
-  return blockSelf && customerPhone === partnerPhone;
+  if (!blockSelf) return false;
+  if (customerPhone && partnerPhone && customerPhone === partnerPhone) return true;
+  if (ids?.buyerCustomerId && ids?.partnerCustomerId && ids.buyerCustomerId === ids.partnerCustomerId) {
+    return true;
+  }
+  if (ids?.buyerUserId && ids?.partnerUserId && ids.buyerUserId === ids.partnerUserId) {
+    return true;
+  }
+  return false;
+}
+
+/** Normalize shipping fields for self-referral address risk flagging (not a hard block). */
+export function normalizeShippingFingerprint(input: {
+  province?: string | null;
+  city?: string | null;
+  address?: string | null;
+  street?: string | null;
+  postalCode?: string | null;
+}): string {
+  const parts = [
+    input.province,
+    input.city,
+    input.address || input.street,
+    input.postalCode,
+  ].map((part) => String(part || '').trim().toLowerCase().replace(/\s+/g, ' '));
+  return parts.filter(Boolean).join('|');
+}
+
+export function shippingAddressMatchesPartner(
+  buyer: {
+    province?: string | null;
+    city?: string | null;
+    address?: string | null;
+    street?: string | null;
+    postalCode?: string | null;
+  },
+  partner: {
+    province?: string | null;
+    city?: string | null;
+    address?: string | null;
+    street?: string | null;
+    postalCode?: string | null;
+  },
+): boolean {
+  const left = normalizeShippingFingerprint(buyer);
+  const right = normalizeShippingFingerprint(partner);
+  if (!left || !right) return false;
+  return left === right;
 }
 
 export function normalizeConfirmAddress(input: {

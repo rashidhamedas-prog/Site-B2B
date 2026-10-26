@@ -297,27 +297,65 @@ export class SalesPartnerDraftService {
     const draft = await this.drafts.findOne({ where: { id: draftId } });
     if (!draft?.convertedOrderId) throw new NotFoundException('سفارش تبدیل‌شده پیدا نشد');
     const next = await this.profiles.findOne({ where: { id: nextPartnerId } });
-    const earned = await this.ledger.count({
+    const earnedPreview = await this.ledger.count({
       where: { orderId: draft.convertedOrderId, entryType: 'COMMISSION_EARNED' },
     });
     const allowed = canAdminChangeAttribution({
       reason,
-      hasEarnedCommission: earned > 0,
+      hasEarnedCommission: earnedPreview > 0,
       nextPartnerActive: next?.status === 'ACTIVE',
     });
     if (allowed.ok === false) throw new ConflictException(allowed.message);
-    await this.orderRows.update(draft.convertedOrderId, partnerOrderAttribution({
+    const fromPartnerId = draft.salesPartnerId;
+    const orderId = draft.convertedOrderId;
+
+    await this.dataSource.transaction(async (manager) => {
+      const lockKeys = [...new Set([fromPartnerId, nextPartnerId])].sort();
+      for (const partnerId of lockKeys) {
+        await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+          `sales-partner-ledger:${partnerId}`,
+        ]);
+      }
+      const lockedDraft = await manager.findOne(SalesPartnerOrderDraftEntity, {
+        where: { id: draftId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!lockedDraft?.convertedOrderId || lockedDraft.convertedOrderId !== orderId) {
+        throw new NotFoundException('سفارش تبدیل‌شده پیدا نشد');
+      }
+      const earned = await manager.getRepository(SalesCommissionLedgerEntryEntity).count({
+        where: { orderId, entryType: 'COMMISSION_EARNED' },
+      });
+      if (earned > 0) {
+        throw new ConflictException('بعد از ثبت پورسانت، attribution این سفارش قفل است');
+      }
+      lockedDraft.salesPartnerId = nextPartnerId;
+      await manager.save(lockedDraft);
+      await manager.update(
+        OrderEntity,
+        orderId,
+        partnerOrderAttribution({ draftId: lockedDraft.id, salesPartnerId: nextPartnerId }),
+      );
+      await manager.query(
+        `DELETE FROM sales_commission_snapshots AS s
+         WHERE s."orderId" = $1
+           AND NOT EXISTS (
+             SELECT 1 FROM sales_commission_ledger_entries AS e
+             WHERE e."orderId" = s."orderId"
+               AND e."orderItemId" = s."orderItemId"
+           )`,
+        [orderId],
+      );
+    });
+
+    await this.program.recordAudit(actorUserId, 'order.attribution_changed', 'order', orderId, {
       draftId: draft.id,
-      salesPartnerId: nextPartnerId,
-    }));
-    await this.program.recordAudit(actorUserId, 'order.attribution_changed', 'order', draft.convertedOrderId, {
-      draftId: draft.id,
-      fromPartnerId: draft.salesPartnerId,
+      fromPartnerId,
       toPartnerId: nextPartnerId,
       reason: reason.trim(),
     });
     return {
-      orderId: draft.convertedOrderId,
+      orderId,
       salesPartnerId: nextPartnerId,
       salesSource: 'SALES_PARTNER',
     };

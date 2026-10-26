@@ -43,7 +43,11 @@ import {
 
 type AddressForm = ShippingAddress;
 
-function readSalesPartnerClick(): { salesPartnerCode?: string; salesPartnerProductIds?: string[] } {
+function readSalesPartnerClick(): {
+  salesPartnerCode?: string;
+  salesPartnerProductIds?: string[];
+  salesPartnerAttributionToken?: string;
+} {
   if (typeof document === 'undefined') return {};
   const read = (name: string) => {
     const hit = document.cookie.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`));
@@ -61,8 +65,9 @@ function readSalesPartnerClick(): { salesPartnerCode?: string; salesPartnerProdu
     .map((id) => id.trim())
     .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
     .slice(0, 12);
-  if (!salesPartnerProductIds.length) return {};
-  return { salesPartnerCode: code, salesPartnerProductIds };
+  const salesPartnerAttributionToken = read('taranom_sp_token').trim();
+  if (!salesPartnerProductIds.length || !salesPartnerAttributionToken) return {};
+  return { salesPartnerCode: code, salesPartnerProductIds, salesPartnerAttributionToken };
 }
 
 function readAff(): string | undefined {

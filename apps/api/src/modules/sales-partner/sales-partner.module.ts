@@ -27,6 +27,7 @@ import {
   SalesPartnerProfileEntity,
   SalesPartnerNoticeEntity,
   SalesPartnerNoticeReceiptEntity,
+  SalesPartnerLinkClickEntity,
 } from './entities';
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
@@ -56,6 +57,7 @@ const ENTITIES = [
   SalesPartnerPayoutItemEntity,
   SalesPartnerNoticeEntity,
   SalesPartnerNoticeReceiptEntity,
+  SalesPartnerLinkClickEntity,
 ];
 
 @Module({

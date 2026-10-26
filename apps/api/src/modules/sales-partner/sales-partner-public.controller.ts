@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { ApplySalesPartnerDto, VerifySalesPartnerApplicationDto } from './dto/apply-sales-partner.dto';
+import { extractClientIp } from '../../common/client-ip';
 
 @ApiTags('sales-partners')
 @Controller({ path: '', version: '1' })
@@ -13,8 +14,19 @@ export class SalesPartnerPublicController {
   ) {}
 
   @Get('sales-partner-links/:code/:slug')
-  resolveShareLink(@Param('code') code: string, @Param('slug') slug: string) {
-    return this.catalog.resolveShareLink(code, slug);
+  resolveShareLink(
+    @Param('code') code: string,
+    @Param('slug') slug: string,
+    @Query('priorToken') priorToken: string | undefined,
+    @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
+  ) {
+    const uaRaw = req.headers?.['user-agent'];
+    const userAgent = Array.isArray(uaRaw) ? uaRaw[0] : String(uaRaw || '');
+    return this.catalog.resolveShareLink(code, slug, {
+      ip: extractClientIp(req),
+      userAgent,
+      priorToken,
+    });
   }
 
   @Get('sales-partner-program/public-settings')

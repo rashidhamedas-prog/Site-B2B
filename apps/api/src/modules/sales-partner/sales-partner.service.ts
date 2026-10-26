@@ -3,7 +3,9 @@ import {
   ConflictException,
   ForbiddenException,
   HttpException,
+  HttpStatus,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
   UnauthorizedException,
@@ -19,8 +21,16 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'crypto';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UserEntity } from '../auth/entities/user.entity';
-import { OtpCooldownError, OtpService } from '../redis/redis.module';
+import { OtpCooldownError, OtpService, RedisService } from '../redis/redis.module';
 import { SmsCooldownException } from '../notification/sms-cooldown-http';
+import {
+  isSalesPartnerLoginLocked,
+  isSalesPartnerPhoneLoginLocked,
+  salesPartnerLoginFailKey,
+  salesPartnerLoginPhoneFailKey,
+  SALES_PARTNER_LOGIN_WINDOW_SEC,
+} from './sales-partner-login-lockout';
+import { resolveIbanCooldownHours, ibanPayoutBlockedUntil } from './sales-partner-iban-cooldown';
 import { otpDispatchFromTransport } from '../notification/sms-transport';
 import { allowDevOtpExpose, normalizePhone } from '../auth/phone.util';
 import { isStaffRole } from '../auth/staff-access';
@@ -71,6 +81,8 @@ import {
 
 @Injectable()
 export class SalesPartnerService {
+  private readonly logger = new Logger(SalesPartnerService.name);
+
   constructor(
     @InjectRepository(SalesPartnerProfileEntity)
     private readonly profiles: Repository<SalesPartnerProfileEntity>,
@@ -85,9 +97,14 @@ export class SalesPartnerService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly otp: OtpService,
+    private readonly redis: RedisService,
     @Optional() private readonly notifications?: NotificationService,
     @Optional() private readonly outbox?: OutboxService,
   ) {}
+
+  ibanCooldownHours(): number {
+    return resolveIbanCooldownHours(this.config.get('SALES_PARTNER_IBAN_COOLDOWN_HOURS'));
+  }
 
   async settings(): Promise<SalesPartnerSettings> {
     const row = await this.settingsRepo.findOne({ where: { key: SALES_PARTNER_SETTINGS_KEY } });
@@ -301,13 +318,59 @@ export class SalesPartnerService {
     return session;
   }
 
-  async loginWithPassword(phoneRaw: string, password: string) {
+  async loginWithPassword(phoneRaw: string, password: string, clientIp = 'unknown') {
     const phone = normalizePhone(phoneRaw);
+    const failKey = salesPartnerLoginFailKey(phone, clientIp);
+    const phoneKey = salesPartnerLoginPhoneFailKey(phone);
+    const [ipFails, phoneFails] = await Promise.all([
+      this.readLoginFailCount(failKey),
+      this.readLoginFailCount(phoneKey),
+    ]);
+    if (isSalesPartnerLoginLocked(ipFails) || isSalesPartnerPhoneLoginLocked(phoneFails)) {
+      throw new HttpException(
+        { message: 'تلاش بیش از حد؛ چند دقیقه دیگر دوباره تلاش کنید', code: 'LOGIN_LOCKED' },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
     const user = await this.users.findOne({ where: { phone } });
-    if (!user) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    if (!user) {
+      await this.bumpLoginFails(phone, clientIp);
+      throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    if (!valid) {
+      await this.bumpLoginFails(phone, clientIp);
+      throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    }
+    await Promise.all([this.redis.del(failKey), this.redis.del(phoneKey)]);
     return this.issuePartnerSession(phone);
+  }
+
+  private async readLoginFailCount(key: string): Promise<number> {
+    if (!this.redis.isReady) {
+      this.logger.warn(`sales-partner login lockout fail-open: redis not ready (key=${key.split(':')[0]})`);
+      return 0;
+    }
+    try {
+      const raw = await this.redis.get(key);
+      const n = Number(raw || 0);
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      this.logger.warn(`sales-partner login lockout fail-open: redis get failed`);
+      return 0;
+    }
+  }
+
+  private async bumpLoginFails(phone: string, clientIp: string): Promise<void> {
+    await Promise.all([
+      this.redis.incrWithTtl(salesPartnerLoginFailKey(phone, clientIp), SALES_PARTNER_LOGIN_WINDOW_SEC),
+      this.redis.incrWithTtl(salesPartnerLoginPhoneFailKey(phone), SALES_PARTNER_LOGIN_WINDOW_SEC),
+    ]);
+  }
+
+  /** Wrong IBAN step-up password also feeds the phone-wide login lockout. */
+  async bumpIbanAuthFailure(phone: string): Promise<void> {
+    await this.redis.incrWithTtl(salesPartnerLoginPhoneFailKey(normalizePhone(phone)), SALES_PARTNER_LOGIN_WINDOW_SEC);
   }
 
   async me(salesPartnerId: string, sessionId?: string) {
@@ -366,9 +429,36 @@ export class SalesPartnerService {
     };
   }
 
-  async updateIban(salesPartnerId: string, ibanRaw: string) {
+  async updateIban(
+    salesPartnerId: string,
+    ibanRaw: string,
+    currentPassword?: string,
+    sessionId?: string,
+  ) {
     const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
     if (!profile) throw new NotFoundException();
+    const user = await this.users.findOne({ where: { id: profile.userId } });
+    if (!user) throw new NotFoundException();
+
+    // Dual step-up (XOR): password path or OTP session grant. Lockout bumps on any failed attempt.
+    const stepUpPassword = typeof currentPassword === 'string' ? currentPassword : '';
+    let authorized = false;
+    if (stepUpPassword.length > 0) {
+      authorized = await bcrypt.compare(stepUpPassword, user.passwordHash);
+    } else if (sessionId) {
+      authorized = Boolean(
+        await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
+      );
+    }
+    if (!authorized) {
+      await this.bumpIbanAuthFailure(profile.phone);
+      throw new BadRequestException(
+        stepUpPassword.length > 0
+          ? 'رمز عبور فعلی اشتباه است'
+          : 'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
+      );
+    }
+
     let iban: string;
     try {
       iban = normalizeIban(ibanRaw);
@@ -386,9 +476,25 @@ export class SalesPartnerService {
     profile.ibanLast4 = record.ibanLast4;
     profile.ibanFingerprint = record.ibanFingerprint;
     profile.ibanCipher = record.ibanCipher;
+    profile.ibanChangedAt = new Date();
     await this.profiles.save(profile);
-    await this.audit(profile.userId, 'profile.iban_updated', 'profile', profile.id, { ibanLast4: record.ibanLast4 });
-    return toPublicSalesPartner(profile);
+    await this.audit(profile.userId, 'profile.iban_updated', 'profile', profile.id, {
+      ibanLast4: record.ibanLast4,
+      ibanChangedAt: profile.ibanChangedAt.toISOString(),
+    });
+    const sms = `شبا حساب همکار بازاریاب شما در ترنم تغییر کرد. اگر این کار را نکرده‌اید با پشتیبانی تماس بگیرید.`;
+    if (this.notifications) {
+      try {
+        await this.notifications.sendSms(profile.phone, sms);
+      } catch (err: unknown) {
+        this.logger.warn(`IBAN change SMS failed for profile ${profile.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return {
+      ...toPublicSalesPartner(profile),
+      ibanChangedAt: profile.ibanChangedAt.toISOString(),
+      payoutBlockedUntil: ibanPayoutBlockedUntil(profile.ibanChangedAt, this.ibanCooldownHours())?.toISOString() ?? null,
+    };
   }
 
   async smsProfile(salesPartnerId: string) {
@@ -672,11 +778,29 @@ export class SalesPartnerService {
   }
 
   async listPartners() {
+    const cooldownHours = this.ibanCooldownHours();
+    const now = new Date();
     const rows = await this.profiles.find({ order: { createdAt: 'DESC' }, take: 100 });
-    return rows.map((row) => ({
-      ...toPublicSalesPartner(row),
-      riskFlags: humanRiskFlags(row.riskFlags),
-    }));
+    return rows.map((row) => {
+      const blockedUntil = ibanPayoutBlockedUntil(row.ibanChangedAt, cooldownHours, now);
+      return {
+        ...toPublicSalesPartner(row),
+        riskFlags: humanRiskFlags(row.riskFlags),
+        ibanChangedAt: row.ibanChangedAt ? row.ibanChangedAt.toISOString() : null,
+        payoutBlockedUntil: blockedUntil ? blockedUntil.toISOString() : null,
+      };
+    });
+  }
+
+  async getPartnerIbanCooldown(salesPartnerId: string) {
+    const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
+    if (!profile) throw new NotFoundException('همکار بازاریاب پیدا نشد');
+    const blockedUntil = ibanPayoutBlockedUntil(profile.ibanChangedAt, this.ibanCooldownHours());
+    return {
+      ibanChangedAt: profile.ibanChangedAt ? profile.ibanChangedAt.toISOString() : null,
+      payoutBlockedUntil: blockedUntil ? blockedUntil.toISOString() : null,
+      ibanCooldownHours: this.ibanCooldownHours(),
+    };
   }
 
   async listAudits(targetType?: string) {

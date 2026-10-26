@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   Optional,
@@ -8,6 +9,7 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
@@ -54,16 +56,23 @@ import {
 } from '@taranom/shared-types';
 import { normalizePhone } from '../auth/phone.util';
 import { attributeLinkProducts, normalizeSalesPartnerCode } from '../sales-partner/sales-partner-attribution';
-import { isBlockedSelfReferral } from '../sales-partner/sales-partner-draft-policy';
+import {
+  isBlockedSelfReferral,
+  shippingAddressMatchesPartner,
+} from '../sales-partner/sales-partner-draft-policy';
 import { freezeSalesPartnerLinkSnapshots } from '../sales-partner/sales-partner-link-freeze';
 import {
   salesPartnerCheckoutAttributionOpen,
   salesPartnerProgramSettingsSql,
   softFailSalesPartnerLinkQuery,
 } from '../sales-partner/sales-partner-checkout-link';
+import { verifySalesPartnerAttributionToken } from '../sales-partner/sales-partner-link-token';
+import { resolveSalesPartnerAttrSecret } from '../sales-partner/sales-partner-attr-secret';
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
@@ -83,6 +92,7 @@ export class OrderService {
     private readonly inventoryService: InventoryService,
     private readonly outbox: OutboxService,
     private readonly fulfillment: FulfillmentService,
+    private readonly config: ConfigService,
     @Optional() private readonly notifications?: NotificationService,
   ) {}
 
@@ -850,12 +860,26 @@ export class OrderService {
           : JSON.stringify(dto.shippingAddress);
     }
 
+    const shippingForRisk = typeof dto.shippingAddress === 'object' && dto.shippingAddress
+      ? dto.shippingAddress
+      : null;
     const linkAttribution = await this.resolveSalesPartnerLink({
       channel,
       customerPhone: String((customer as { phone?: string }).phone || ''),
+      buyerCustomerId: dto.customerId,
+      buyerUserId: (customer as { userId?: string | null }).userId ?? null,
       code: dto.salesPartnerCode,
+      attributionToken: dto.salesPartnerAttributionToken,
       requestedProductIds: dto.salesPartnerProductIds,
       cartProductIds: expandedItems.map((item) => item.productId),
+      shippingAddress: shippingForRisk
+        ? {
+            province: typeof shippingForRisk.province === 'string' ? shippingForRisk.province : '',
+            city: typeof shippingForRisk.city === 'string' ? shippingForRisk.city : '',
+            street: typeof shippingForRisk.street === 'string' ? shippingForRisk.street : '',
+            postalCode: typeof shippingForRisk.postalCode === 'string' ? shippingForRisk.postalCode : '',
+          }
+        : null,
     });
     const initialStatus = initialCreateStatus(paymentMethod, orderTotal);
 
@@ -1766,13 +1790,25 @@ export class OrderService {
     return this.findOne(id);
   }
 
-  /** Public share code is re-checked here. A client-supplied partner id is never trusted. */
+  /**
+   * Public share code is re-checked here. Client-supplied partner id is never trusted.
+   * Attribution requires a valid HMAC cookie token (last-click wins at the storefront).
+   */
   private async resolveSalesPartnerLink(input: {
     channel: string;
     customerPhone: string;
+    buyerCustomerId?: string | null;
+    buyerUserId?: string | null;
     code?: string;
+    attributionToken?: string;
     requestedProductIds?: string[];
     cartProductIds: string[];
+    shippingAddress?: {
+      province?: string;
+      city?: string;
+      street?: string;
+      postalCode?: string;
+    } | null;
   }): Promise<{ partnerId: string; productIds: string[] } | null> {
     if (input.channel !== 'RETAIL') return null;
     try {
@@ -1795,23 +1831,84 @@ export class OrderService {
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id),
       );
       if (!code || !requested.length) return null;
-      const partners: Array<{ id: string; phone: string }> = await this.dataSource.query(
-        `SELECT id, phone FROM sales_partner_profiles WHERE "publicCode" = $1 AND status = 'ACTIVE' LIMIT 1`,
+
+      let secret: string;
+      try {
+        secret = resolveSalesPartnerAttrSecret(
+          this.config.get('SALES_PARTNER_ATTR_SECRET'),
+          this.config.get('JWT_SECRET'),
+        );
+      } catch (err: unknown) {
+        this.logger.warn(
+          `sales-partner attribution secret unavailable: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        return null;
+      }
+      const tokenCheck = verifySalesPartnerAttributionToken({
+        token: input.attributionToken,
+        code,
+        productIds: requested,
+        secret,
+      });
+      if (!tokenCheck.ok) return null;
+      const tokenProductIds = tokenCheck.productIds;
+
+      const partners: Array<{ id: string; phone: string; userId: string }> = await this.dataSource.query(
+        `SELECT id, phone, "userId" FROM sales_partner_profiles WHERE "publicCode" = $1 AND status = 'ACTIVE' LIMIT 1`,
         [code],
       );
       const partner = partners[0];
       if (!partner) return null;
+
+      const partnerCustomers: Array<{ id: string; province: string; city: string; address: string; postalCode: string }> =
+        await this.dataSource.query(
+          `SELECT id, province, city, address, "postalCode" FROM customers WHERE phone = $1 AND "deletedAt" IS NULL LIMIT 1`,
+          [normalizePhone(partner.phone)],
+        );
+      const partnerCustomer = partnerCustomers[0] ?? null;
+      const buyerUsers: Array<{ id: string }> = await this.dataSource.query(
+        `SELECT id FROM users WHERE phone = $1 LIMIT 1`,
+        [normalizePhone(input.customerPhone)],
+      );
+
       const selfReferral = isBlockedSelfReferral(
         normalizePhone(input.customerPhone),
         normalizePhone(partner.phone),
         true,
+        {
+          buyerCustomerId: input.buyerCustomerId,
+          buyerUserId: input.buyerUserId || buyerUsers[0]?.id || null,
+          partnerUserId: partner.userId,
+          partnerCustomerId: partnerCustomer?.id ?? null,
+        },
       );
+      if (
+        !selfReferral
+        && input.shippingAddress
+        && partnerCustomer
+        && shippingAddressMatchesPartner(input.shippingAddress, partnerCustomer)
+      ) {
+        await this.dataSource.query(
+          `UPDATE sales_partner_profiles
+           SET "riskFlags" = (
+             SELECT COALESCE(jsonb_agg(DISTINCT flag), '[]'::jsonb)
+             FROM (
+               SELECT jsonb_array_elements_text(COALESCE("riskFlags", '[]'::jsonb)) AS flag
+               UNION
+               SELECT 'SELF_REFERRAL_ADDRESS_MATCH'
+             ) AS flags
+           )
+           WHERE id = $1`,
+          [partner.id],
+        );
+      }
+
       const candidates = attributeLinkProducts({
         partnerActive: true,
         selfReferral,
-        requestedProductIds: requested,
+        requestedProductIds: tokenProductIds,
         cartProductIds: input.cartProductIds,
-        eligibleProductIds: requested,
+        eligibleProductIds: tokenProductIds,
       });
       if (!candidates.length) return null;
       const eligible: Array<{ productId: string }> = await this.dataSource.query(

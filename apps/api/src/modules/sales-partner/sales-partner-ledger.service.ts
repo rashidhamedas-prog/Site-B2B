@@ -24,19 +24,11 @@ import {
   availableAtFromDelivery,
   canAutoRelease,
   earnedIdempotencyKey,
+  isCommissionEarnOrderStatus,
   partnerTotalsFromBucketRows,
   reversalIdempotencyKey,
 } from './sales-partner-ledger-policy';
 
-const PAID_STATUSES = [
-  'PENDING_REVIEW',
-  'CONFIRMED',
-  'PROCESSING',
-  'PACKED',
-  'SHIPPED',
-  'DELIVERED',
-  'COMPLETED',
-];
 const DELIVERED_STATUSES = ['DELIVERED', 'COMPLETED'];
 
 @Injectable()
@@ -295,7 +287,7 @@ export class SalesPartnerLedgerService {
   private async applyOrderLedger(salesPartnerId: string, order: OrderEntity) {
     const snaps = await this.snapshots.find({ where: { orderId: order.id, salesPartnerId } });
     let writes = 0;
-    if (PAID_STATUSES.includes(order.status)) {
+    if (isCommissionEarnOrderStatus(order.status)) {
       const settings = await this.program.settings();
       const delivered = DELIVERED_STATUSES.includes(order.status) && order.deliveredAt;
       const availableAt = delivered && canAutoRelease(settings.commissionHoldDays)

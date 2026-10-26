@@ -10,6 +10,10 @@ import {
 import { SalesPartnerService } from './sales-partner.service';
 import { allocatePayoutIrr, boundedIdempotencyKey, payoutIdempotencyKey } from './sales-partner-ledger-policy';
 import { SALES_PARTNER_EVENT } from './sales-partner-events';
+import {
+  ibanPayoutBlockedUntil,
+  resolveIbanCooldownHours,
+} from './sales-partner-iban-cooldown';
 
 @Injectable()
 export class SalesPartnerPayoutService {
@@ -42,6 +46,7 @@ export class SalesPartnerPayoutService {
 
   async confirm(actorId: string, input: {
     salesPartnerId: string;
+    expectedAmountIrr: number;
     bankReference: string;
     method?: string;
     note?: string;
@@ -49,11 +54,23 @@ export class SalesPartnerPayoutService {
   }) {
     const profile = await this.profiles.findOne({ where: { id: input.salesPartnerId } });
     if (!profile) throw new NotFoundException('همکار بازاریاب پیدا نشد');
+    const expected = Math.floor(Number(input.expectedAmountIrr));
+    if (!Number.isInteger(expected) || expected < 1) {
+      throw new BadRequestException('مبلغ مورد انتظار نامعتبر است');
+    }
+    const cooldownHours = resolveIbanCooldownHours(this.program.ibanCooldownHours());
+    const blockedUntil = ibanPayoutBlockedUntil(profile.ibanChangedAt, cooldownHours);
+    if (blockedUntil) {
+      throw new ConflictException(
+        `به‌خاطر تغییر شبا، تسویه تا ${blockedUntil.toISOString()} مسدود است`,
+      );
+    }
     const requestHash = boundedIdempotencyKey('preq', [
       input.salesPartnerId,
       input.idempotencyKey.trim(),
       input.bankReference.trim(),
       input.method || 'MANUAL_TRANSFER',
+      String(expected),
     ].join('|'));
     const key = payoutIdempotencyKey(input.salesPartnerId, requestHash);
     const existing = await this.payouts.findOne({ where: { idempotencyKey: key } });
@@ -109,6 +126,9 @@ export class SalesPartnerPayoutService {
         })),
         now,
       );
+      if (allocation.amountIrr !== expected) {
+        throw new ConflictException('مانده تغییر کرده؛ دوباره بارگذاری کنید');
+      }
       if (allocation.amountIrr < settings.minPayoutIrr || allocation.amountIrr <= 0) {
         throw new BadRequestException('مبلغ قابل‌برداشت به حداقل تسویه نرسیده است');
       }
@@ -152,6 +172,65 @@ export class SalesPartnerPayoutService {
       payoutId: saved.id,
       profileId: input.salesPartnerId,
       status: saved.status,
+    });
+    return this.toPublic(saved);
+  }
+
+  async reverse(actorId: string, payoutId: string, reason: string) {
+    const note = String(reason || '').trim();
+    if (note.length < 8) throw new BadRequestException('دلیل برگشت حداقل ۸ حرف است');
+
+    const preview = await this.payouts.findOne({ where: { id: payoutId } });
+    if (!preview) throw new NotFoundException('تسویه پیدا نشد');
+    if (preview.status === 'REVERSED') return this.toPublic(preview);
+
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const payoutRepo = manager.getRepository(SalesPartnerPayoutEntity);
+      const entryRepo = manager.getRepository(SalesCommissionLedgerEntryEntity);
+      // Same lock order as confirm: advisory first, then row lock — avoids deadlock.
+      await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        `sales-partner-ledger:${preview.salesPartnerId}`,
+      ]);
+
+      const again = await payoutRepo.findOne({
+        where: { id: payoutId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!again) throw new NotFoundException('تسویه پیدا نشد');
+      if (again.status === 'REVERSED') return again;
+      if (again.status !== 'RECORDED') {
+        throw new ConflictException('فقط تسویه ثبت‌شده قابل برگشت است');
+      }
+
+      const amount = Math.abs(Number(again.amountIrr));
+      const reverseKey = boundedIdempotencyKey('payout-rev', again.id);
+      const existingRev = await entryRepo.findOne({ where: { idempotencyKey: reverseKey } });
+      if (!existingRev) {
+        // Restore payable balance via PAYOUT_REVERSAL only. Do NOT detach COMMISSION_EARNED
+        // (that would double-count with the reversal on the next allocatePayoutIrr).
+        await entryRepo.save(entryRepo.create({
+          salesPartnerId: again.salesPartnerId,
+          orderId: null,
+          orderItemId: null,
+          amountIrr: String(amount),
+          entryType: 'PAYOUT_REVERSAL',
+          availableAt: new Date(),
+          idempotencyKey: reverseKey,
+          reasonCode: note.slice(0, 64),
+          createdBy: actorId,
+          payoutId: null,
+        }));
+      }
+
+      again.status = 'REVERSED';
+      again.note = [again.note, `REVERSE:${note}`].filter(Boolean).join(' | ').slice(0, 240);
+      return payoutRepo.save(again);
+    });
+
+    await this.program.recordAudit(actorId, 'payout.reversed', 'payout', saved.id, {
+      salesPartnerId: saved.salesPartnerId,
+      amountIrr: Number(saved.amountIrr),
+      reason: note,
     });
     return this.toPublic(saved);
   }

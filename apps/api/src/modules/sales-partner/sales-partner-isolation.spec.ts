@@ -39,6 +39,11 @@ assert(/partnerOrderAttribution/.test(draft), 'convert stamps salesSource column
 assert(/affiliateId:\s*null/.test(attribution), 'convert clears external affiliate');
 assert(!/affiliateId:\s*['"`]/.test(draft + attribution), 'must not set affiliate click id');
 assert(/adminChangeAttribution/.test(draft), 'admin attribution change exists');
+assert(/lockedDraft\.salesPartnerId\s*=\s*nextPartnerId/.test(draft), 'attribution updates draft partner');
+assert(/expectedAmountIrr/.test(read('dto/sales-partner-payout.dto.ts')), 'payout confirm expects amount');
+assert(/payouts\/:id\/reverse/.test(read('sales-partner-admin.controller.ts')), 'payout reverse route');
+assert(/isCommissionEarnOrderStatus/.test(ledger), 'PENDING_REVIEW excluded from earn');
+assert(/safe-area-inset-bottom/.test(shell), 'mobile nav safe-area padding');
 assert(/idempotencyKey:\s*`sp-draft:\$\{locked\.id\}`/.test(draft), 'convert idempotency');
 assert(/if \(locked\.convertedOrderId\) return/.test(draft), 'convert short-circuit');
 assert(/hashConfirmationToken/.test(draft) && !/confirmationTokenHash:\s*token/.test(draft), 'token hashed');

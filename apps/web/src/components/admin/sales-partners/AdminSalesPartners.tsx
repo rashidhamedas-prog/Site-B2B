@@ -490,6 +490,7 @@ export function AdminSalesPartners() {
     try {
       await apiClient.post('/admin/sales-partners/payouts', {
         salesPartnerId: payoutPartnerId,
+        expectedAmountIrr: availableIrr,
         bankReference: bankReference.trim(),
         idempotencyKey: payoutIdempotencyKey(payoutPartnerId, bankReference, availableIrr),
         method: 'TRANSFER',
@@ -499,7 +500,14 @@ export function AdminSalesPartners() {
       await load();
       await loadBalance();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ثبت تسویه ناموفق بود');
+      const status = err && typeof err === 'object' && 'status' in err ? Number((err as { status?: number }).status) : 0;
+      if (status === 409) {
+        setError('مانده تغییر کرده؛ دوباره بارگذاری کنید');
+        setPayoutConfirmOpen(false);
+        await loadBalance();
+      } else {
+        setError(err instanceof Error ? err.message : 'ثبت تسویه ناموفق بود');
+      }
     } finally {
       setBusyId(null);
     }
@@ -1310,6 +1318,17 @@ export function AdminSalesPartners() {
                 {settings?.commissionHoldDays ? ` · نگهداری ${settings.commissionHoldDays.toLocaleString('fa-IR')} روز` : ''}
               </p>
             )}
+            {(() => {
+              const selected = partners.find((row) => row.id === payoutPartnerId);
+              if (!selected?.payoutBlockedUntil) return null;
+              return (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900" role="status">
+                  به‌خاطر تغییر شبا، تسویه تا{' '}
+                  {new Date(selected.payoutBlockedUntil).toLocaleString('fa-IR', { timeZone: 'Asia/Tehran' })}{' '}
+                  مسدود است.
+                </p>
+              );
+            })()}
             <label className="block text-sm" htmlFor="sp-pay-ref">
               شماره مرجع واریز
             </label>
@@ -1324,7 +1343,12 @@ export function AdminSalesPartners() {
             <button
               type="submit"
               className={`min-h-11 rounded-xl bg-[#1B5C4A] px-4 text-white ${spFocusClass}`}
-              disabled={busyId === 'payout' || !payoutPartnerId || availableIrr == null}
+              disabled={
+                busyId === 'payout'
+                || !payoutPartnerId
+                || availableIrr == null
+                || Boolean(partners.find((row) => row.id === payoutPartnerId)?.payoutBlockedUntil)
+              }
             >
               بررسی و ثبت تسویه
             </button>
