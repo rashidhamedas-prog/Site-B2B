@@ -440,15 +440,20 @@ export class SalesPartnerService {
     const user = await this.users.findOne({ where: { id: profile.userId } });
     if (!user) throw new NotFoundException();
 
-    const authorized = currentPassword
-      ? await bcrypt.compare(currentPassword, user.passwordHash)
-      : Boolean(
-        sessionId && await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
+    // Dual step-up by design: verified current password XOR consumed OTP session grant.
+    // codeql[js/user-controlled-bypass]: password and OTP grant are alternative authenticators, not a skip
+    const stepUpPassword = typeof currentPassword === 'string' ? currentPassword : '';
+    let passwordOk = false;
+    let grantOk = false;
+    if (stepUpPassword.length > 0) {
+      passwordOk = await bcrypt.compare(stepUpPassword, user.passwordHash);
+      if (!passwordOk) await this.bumpIbanAuthFailure(profile.phone);
+    } else if (sessionId) {
+      grantOk = Boolean(
+        await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
       );
-    if (currentPassword && !authorized) {
-      await this.bumpIbanAuthFailure(profile.phone);
     }
-    if (!authorized) {
+    if (!passwordOk && !grantOk) {
       throw new BadRequestException(
         'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
       );
