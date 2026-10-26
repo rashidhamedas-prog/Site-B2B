@@ -440,21 +440,18 @@ export class SalesPartnerService {
     const user = await this.users.findOne({ where: { id: profile.userId } });
     if (!user) throw new NotFoundException();
 
-    if (currentPassword) {
-      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-      if (!valid) {
-        await this.bumpIbanAuthFailure(profile.phone);
-        throw new BadRequestException('رمز عبور فعلی اشتباه است');
-      }
-    } else {
-      const granted = Boolean(
+    const authorized = currentPassword
+      ? await bcrypt.compare(currentPassword, user.passwordHash)
+      : Boolean(
         sessionId && await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
       );
-      if (!granted) {
-        throw new BadRequestException(
-          'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
-        );
-      }
+    if (currentPassword && !authorized) {
+      await this.bumpIbanAuthFailure(profile.phone);
+    }
+    if (!authorized) {
+      throw new BadRequestException(
+        'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
+      );
     }
 
     let iban: string;

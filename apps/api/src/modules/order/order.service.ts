@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   NotFoundException,
   BadRequestException,
   Optional,
@@ -70,6 +71,8 @@ import { resolveSalesPartnerAttrSecret } from '../sales-partner/sales-partner-at
 
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     @InjectRepository(OrderEntity)
     private readonly orderRepo: Repository<OrderEntity>,
@@ -1835,7 +1838,10 @@ export class OrderService {
           this.config.get('SALES_PARTNER_ATTR_SECRET'),
           this.config.get('JWT_SECRET'),
         );
-      } catch {
+      } catch (err: unknown) {
+        this.logger.warn(
+          `sales-partner attribution secret unavailable: ${err instanceof Error ? err.message : String(err)}`,
+        );
         return null;
       }
       const tokenCheck = verifySalesPartnerAttributionToken({

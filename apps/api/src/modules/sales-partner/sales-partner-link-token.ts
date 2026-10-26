@@ -124,7 +124,9 @@ export function verifySalesPartnerAttributionToken(input: {
   now?: Date;
 }): { ok: true; productIds: string[] } | { ok: false; reason: 'missing' | 'invalid' | 'expired' | 'mismatch' } {
   const parsed = parseSignedPayload(input.token, input.secret, input.now ?? new Date());
-  if (!parsed.ok) return parsed;
+  if (parsed.ok === false) {
+    return { ok: false, reason: parsed.reason };
+  }
   const code = String(input.code || '').trim().toLowerCase();
   if (parsed.payload.c !== code) return { ok: false, reason: 'mismatch' };
   const allowed = new Set(parsed.payload.p.map((id) => String(id).toLowerCase()));

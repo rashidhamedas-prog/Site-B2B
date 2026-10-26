@@ -13,8 +13,22 @@ function jwtWith(payload: Record<string, unknown>): string {
 async function openGuide(page: Page) {
   // Block every API call — CI points NEXT_PUBLIC_API_URL at production.
   await page.route('**/*', async (route) => {
-    const url = route.request().url();
-    if (/\/api\/v1\//.test(url) || /poshaktaranom\.com/.test(url)) {
+    let hostname = '';
+    let pathname = '';
+    try {
+      const parsed = new URL(route.request().url());
+      hostname = parsed.hostname.toLowerCase();
+      pathname = parsed.pathname;
+    } catch {
+      await route.continue();
+      return;
+    }
+    const isProdApiHost =
+      hostname === 'poshaktaranom.com'
+      || hostname === 'www.poshaktaranom.com'
+      || hostname === 'api.poshaktaranom.com';
+    const isApiPath = pathname === '/api/v1' || pathname.startsWith('/api/v1/');
+    if (isProdApiHost || isApiPath) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
