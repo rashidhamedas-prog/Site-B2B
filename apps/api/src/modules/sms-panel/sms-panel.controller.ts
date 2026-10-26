@@ -9,11 +9,20 @@ import {
   Query,
   Req,
   UseGuards,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { SmsPanelService } from './sms-panel.service';
+import {
+  SmsApproveDto,
+  SmsConfirmDto,
+  SmsCreateCampaignDto,
+  SmsSendDto,
+  SmsTemplateDto,
+} from './sms-panel.dto';
 import {
   SMS_ALL,
   SMS_MANAGERS,
@@ -22,7 +31,12 @@ import {
   SmsRoles,
   SmsRolesGuard,
 } from './sms-roles';
-import type { SmsMessageClass } from './domain/template';
+
+const smsBodyPipe = new ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: false,
+  transform: true,
+});
 
 @ApiTags('admin-sms')
 @ApiBearerAuth()
@@ -49,16 +63,17 @@ export class SmsPanelController {
 
   @Post('send')
   @SmsRoles(...SMS_SEND_SINGLE)
-  send(@Req() req: Request, @Body() body: any) {
+  @UsePipes(smsBodyPipe)
+  send(@Req() req: Request, @Body() body: SmsSendDto) {
     const a = this.actor(req);
     return this.sms.sendSingle({
       actorId: a.id,
       actorRole: a.role,
-      to: body.to || body.phone,
-      body: body.body || body.message,
+      to: body.to,
+      body: body.body,
       templateId: body.templateId,
       vars: body.vars || {},
-      messageClass: (body.messageClass || 'TRANSACTIONAL') as SmsMessageClass,
+      messageClass: body.messageClass,
       customerId: body.customerId,
       ip: a.ip,
     });
@@ -72,19 +87,21 @@ export class SmsPanelController {
 
   @Post('templates')
   @SmsRoles(...SMS_MANAGERS)
-  createTemplate(@Req() req: Request, @Body() body: any) {
+  @UsePipes(smsBodyPipe)
+  createTemplate(@Req() req: Request, @Body() body: SmsTemplateDto) {
     return this.sms.createTemplate(this.actor(req).id, body);
   }
 
   @Patch('templates/:id')
   @SmsRoles(...SMS_MANAGERS)
-  updateTemplate(@Req() req: Request, @Param('id') id: string, @Body() body: any) {
+  @UsePipes(smsBodyPipe)
+  updateTemplate(@Req() req: Request, @Param('id') id: string, @Body() body: Partial<SmsTemplateDto>) {
     return this.sms.updateTemplate(this.actor(req).id, id, body);
   }
 
   @Post('templates/:id/preview')
   @SmsRoles(...SMS_ALL)
-  previewTemplate(@Param('id') id: string, @Body() body: any) {
+  previewTemplate(@Param('id') id: string, @Body() body: { vars?: Record<string, string> }) {
     return this.sms.previewTemplate(id, body.vars || {});
   }
 
@@ -96,13 +113,13 @@ export class SmsPanelController {
 
   @Post('lists')
   @SmsRoles(...SMS_MARKETERS)
-  createList(@Req() req: Request, @Body() body: any) {
+  createList(@Req() req: Request, @Body() body: { name: string; description?: string; type?: string }) {
     return this.sms.createList(this.actor(req).id, body);
   }
 
   @Post('lists/:id/import')
   @SmsRoles(...SMS_MARKETERS)
-  importList(@Param('id') id: string, @Body() body: any) {
+  importList(@Param('id') id: string, @Body() body: { phones?: string[]; csv?: string }) {
     const phones = Array.isArray(body.phones)
       ? body.phones
       : String(body.csv || '')
@@ -114,13 +131,13 @@ export class SmsPanelController {
 
   @Get('lists/:id/members')
   @SmsRoles(...SMS_MARKETERS)
-  members(@Param('id') id: string) {
-    return this.sms.listMembers(id);
+  members(@Req() req: Request, @Param('id') id: string) {
+    return this.sms.listMembers(id, this.actor(req).role);
   }
 
   @Post('segments/preview')
   @SmsRoles(...SMS_MARKETERS)
-  segmentPreview(@Body() body: any) {
+  segmentPreview(@Body() body: { filter?: Record<string, unknown> }) {
     return { count: 0, filter: body.filter || {}, note: 'سگمنت پویا در نسخه بعدی کامل می‌شود' };
   }
 
@@ -132,8 +149,10 @@ export class SmsPanelController {
 
   @Post('campaigns')
   @SmsRoles(...SMS_MARKETERS)
-  createCampaign(@Req() req: Request, @Body() body: any) {
-    return this.sms.createCampaign(this.actor(req).id, body);
+  @UsePipes(smsBodyPipe)
+  createCampaign(@Req() req: Request, @Body() body: SmsCreateCampaignDto) {
+    const a = this.actor(req);
+    return this.sms.createCampaign(a.id, body, a.role);
   }
 
   @Get('campaigns/:id')
@@ -156,20 +175,23 @@ export class SmsPanelController {
 
   @Post('campaigns/:id/confirm')
   @SmsRoles(...SMS_MARKETERS)
-  confirm(@Req() req: Request, @Param('id') id: string, @Body() body: any) {
+  @UsePipes(smsBodyPipe)
+  confirm(@Req() req: Request, @Param('id') id: string, @Body() body: SmsConfirmDto) {
     return this.sms.confirmCampaign(this.actor(req).id, id, body);
   }
 
   @Post('campaigns/:id/approve')
   @SmsRoles(...SMS_MANAGERS)
-  approve(@Req() req: Request, @Param('id') id: string, @Body() body: any) {
+  @UsePipes(smsBodyPipe)
+  approve(@Req() req: Request, @Param('id') id: string, @Body() body: SmsApproveDto) {
     return this.sms.approveCampaign(this.actor(req).id, id, body || {});
   }
 
   @Post('campaigns/:id/canary')
   @SmsRoles(...SMS_MARKETERS)
   canary(@Req() req: Request, @Param('id') id: string) {
-    return this.sms.canaryCampaign(this.actor(req).id, id);
+    const a = this.actor(req);
+    return this.sms.canaryCampaign(a.id, id, a.role);
   }
 
   @Post('campaigns/:id/pause')
@@ -202,10 +224,8 @@ export class SmsPanelController {
 
   @Get('messages/:id')
   @SmsRoles(...SMS_ALL)
-  async message(@Param('id') id: string) {
-    const rows = await this.sms.listMessages({ take: 500 });
-    const row = rows.find((r: any) => r.id === id);
-    return row || { id, status: 'NOT_FOUND' };
+  message(@Param('id') id: string) {
+    return this.sms.getMessage(id);
   }
 
   @Get('reports/summary')
@@ -236,7 +256,7 @@ export class SmsPanelController {
 
   @Post('blacklist')
   @SmsRoles(...SMS_MANAGERS)
-  addBlacklist(@Req() req: Request, @Body() body: any) {
+  addBlacklist(@Req() req: Request, @Body() body: { phone: string; reason?: string; scope?: string }) {
     return this.sms.addBlacklist(
       this.actor(req).id,
       body.phone,
@@ -248,12 +268,12 @@ export class SmsPanelController {
   @Delete('blacklist/:phone')
   @SmsRoles(...SMS_MANAGERS)
   delBlacklist(@Req() req: Request, @Param('phone') phone: string) {
-    return this.sms.removeBlacklist(this.actor(req).id, phone);
+    return this.sms.removeBlacklist(this.actor(req).id, decodeURIComponent(phone));
   }
 
   @Post('blacklist/import')
   @SmsRoles(...SMS_MANAGERS)
-  async importBlacklist(@Req() req: Request, @Body() body: any) {
+  async importBlacklist(@Req() req: Request, @Body() body: { phones?: string[]; reason?: string; scope?: string }) {
     const phones = Array.isArray(body.phones) ? body.phones : [];
     let ok = 0;
     for (const p of phones.slice(0, 5000)) {
@@ -271,14 +291,14 @@ export class SmsPanelController {
 
   @Post('unsubscribes')
   @SmsRoles(...SMS_MANAGERS)
-  addUnsub(@Req() req: Request, @Body() body: any) {
+  addUnsub(@Req() req: Request, @Body() body: { phone: string; source?: string }) {
     return this.sms.addUnsubscribe(this.actor(req).id, body.phone, body.source || 'ADMIN');
   }
 
   @Delete('unsubscribes/:phone')
   @SmsRoles(...SMS_MANAGERS)
   delUnsub(@Req() req: Request, @Param('phone') phone: string) {
-    return this.sms.removeUnsubscribe(this.actor(req).id, phone);
+    return this.sms.removeUnsubscribe(this.actor(req).id, decodeURIComponent(phone));
   }
 
   @Get('audit-log')
@@ -296,9 +316,9 @@ export class SmsPanelController {
 
   @Patch('settings')
   @SmsRoles(...SMS_MANAGERS)
-  async patchSettings(@Req() req: Request, @Body() body: any) {
+  async patchSettings(@Req() req: Request, @Body() body: Record<string, unknown>) {
     const a = this.actor(req);
-    const s = await this.sms.patchPanelSettings(a.id, body, a.ip);
+    const s = await this.sms.patchPanelSettings(a.id, body as any, a.ip);
     return this.sms.settingsPublicView(s);
   }
 

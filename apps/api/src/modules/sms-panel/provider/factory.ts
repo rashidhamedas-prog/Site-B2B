@@ -1,4 +1,6 @@
+import { DisabledSmsProvider } from './disabled.provider';
 import { MockSmsProvider } from './mock.provider';
+import { resolveSmsSecrets } from './secrets';
 import { SmsIrProvider, type SmsIrProviderConfig } from './smsir.provider';
 import type { SmsProvider } from './types';
 
@@ -32,29 +34,45 @@ export function guardedFetch(fetchImpl: typeof fetch = fetch): typeof fetch {
 
 export function resolveSmsProviderId(
   env: NodeJS.ProcessEnv = process.env,
-): 'mock' | 'smsir' {
-  if (env.NODE_ENV === 'test') return 'mock';
-  const raw = String(env.SMS_PROVIDER || 'smsir').toLowerCase();
-  if (raw === 'mock') return 'mock';
-  return 'smsir';
+): 'mock' | 'smsir' | 'disabled' {
+  return resolveSmsSecrets(env).providerMode;
 }
 
 export function createSmsProvider(opts?: {
   env?: NodeJS.ProcessEnv;
   smsir?: SmsIrProviderConfig;
   mock?: MockSmsProvider;
+  db?: {
+    apiKey?: string;
+    lineNumber?: string;
+    otpTemplateId?: string | number;
+    egressBaseUrl?: string;
+    egressSecret?: string;
+  } | null;
 }): SmsProvider {
   const env = opts?.env || process.env;
-  const id = resolveSmsProviderId(env);
-  if (id === 'mock') {
+  const db = opts?.db ?? {
+    apiKey: opts?.smsir?.apiKey,
+    lineNumber: opts?.smsir?.lineService || opts?.smsir?.linePromo,
+    egressBaseUrl: opts?.smsir?.transport?.egressBaseUrl || undefined,
+    egressSecret: opts?.smsir?.transport?.egressSecret || undefined,
+  };
+  const secrets = resolveSmsSecrets(env, db);
+
+  if (secrets.providerMode === 'mock') {
     return opts?.mock || new MockSmsProvider();
   }
-  if (!opts?.smsir?.apiKey) {
-    // No key → mock that reports disabled-like failures via zero credit path
-    return opts?.mock || new MockSmsProvider();
+  if (secrets.providerMode === 'disabled' || !secrets.apiKey) {
+    return new DisabledSmsProvider();
   }
   return new SmsIrProvider({
-    ...opts.smsir,
-    fetchImpl: guardedFetch(opts.smsir.fetchImpl || fetch),
+    apiKey: secrets.apiKey,
+    linePromo: secrets.linePromo || opts?.smsir?.linePromo,
+    lineService: secrets.lineService || opts?.smsir?.lineService,
+    transport: {
+      egressBaseUrl: secrets.egressBaseUrl,
+      egressSecret: secrets.egressSecret,
+    },
+    fetchImpl: guardedFetch(opts?.smsir?.fetchImpl || fetch),
   });
 }

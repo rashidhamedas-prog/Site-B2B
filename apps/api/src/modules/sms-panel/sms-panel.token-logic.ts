@@ -27,3 +27,10 @@ export function tokenFlow(input: {
     stale: (other: typeof payload) => payloadHashLike(other) !== expected,
   };
 }
+
+export function confirmationTokenActive(
+  conf: { usedAt: Date | null; expiresAt: Date },
+  now = Date.now(),
+): boolean {
+  return !conf.usedAt && conf.expiresAt.getTime() >= now;
+}

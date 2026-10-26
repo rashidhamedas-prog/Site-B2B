@@ -3,7 +3,8 @@ import { SMS_ALL, SMS_MANAGERS, SMS_MARKETERS, SMS_SEND_SINGLE, smsRoleLabel } f
 import { ensureOptOutFooter, fillTemplateStrict } from './domain/template';
 import { countSmsParts } from './domain/parts';
 import { createHash } from 'crypto';
-import { tokenFlow } from './sms-panel.token-logic';
+import { confirmationTokenActive, tokenFlow } from './sms-panel.token-logic';
+import { assertSendAllowed, checkSendSingleAllowed } from './sms-panel.policy';
 
 assert.ok(SMS_ALL.includes('ADMIN'));
 assert.ok((SMS_MANAGERS as readonly string[]).includes('SMS_MANAGER'));
@@ -27,6 +28,21 @@ assert.ok(raw.length >= 32);
 assert.strictEqual(hash, createHash('sha256').update(raw).digest('hex'));
 assert.ok(!stale(payload));
 assert.ok(stale({ ...payload, body: 'changed' }));
+
+const expiredConf = {
+  usedAt: null as Date | null,
+  expiresAt: new Date(Date.now() - 60_000),
+};
+assert.ok(!confirmationTokenActive(expiredConf));
+const reusedConf = {
+  usedAt: new Date(),
+  expiresAt: new Date(Date.now() + 60_000),
+};
+assert.ok(!confirmationTokenActive(reusedConf));
+
+assert.throws(() => assertSendAllowed('SMS_OPERATOR', 'PROMO'), /FORBIDDEN/);
+assert.throws(() => assertSendAllowed('SMS_MARKETER', 'TRANSACTIONAL'), /FORBIDDEN/);
+assert.ok(checkSendSingleAllowed('SMS_OPERATOR', 'OTP')?.kind === 'FORBIDDEN');
 
 const body = ensureOptOutFooter('تخفیف ویژه', 'PROMO');
 assert.ok(body.includes('لغو11'));

@@ -6,10 +6,29 @@ export function countSmsParts(body: string): number {
   return Math.ceil(n / 67);
 }
 
+const DIGIT_FA_AR: Record<string, string> = {
+  '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+  '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
+  '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+  '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+};
+
+/** True only if trimmed body ends with «لغو11» (sync with API domain/template). */
+export function hasOptOutFooter(body: string): boolean {
+  const src = String(body || '').trimEnd();
+  let compact = '';
+  for (let i = Math.max(0, src.length - 32); i < src.length; i++) {
+    const ch = src.charAt(i);
+    if (ch === ' ' || ch === '\n' || ch === '\r' || ch === '\t') continue;
+    compact += DIGIT_FA_AR[ch] ?? ch;
+  }
+  return compact.endsWith('لغو11');
+}
+
 export function ensureOptOutFooter(body: string, messageClass: string): string {
   if (messageClass === 'OTP') return String(body || '');
-  const text = String(body || '').replace(/\s+$/, '');
-  if (/لغو\s*11|لغو۱۱/.test(text) || text.includes('لغو11')) return text;
+  const text = String(body || '').trimEnd();
+  if (hasOptOutFooter(text)) return text;
   return `${text}\nلغو11`;
 }
 

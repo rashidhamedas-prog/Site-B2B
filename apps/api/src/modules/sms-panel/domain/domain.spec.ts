@@ -30,6 +30,9 @@ assert.strictEqual(fillTemplateStrict('سلام {name}', { name: 'علی' }), '�
 assert.throws(() => fillTemplateStrict('سلام {name}', {}), /MISSING/);
 assert.throws(() => fillTemplateStrict('سلام {x}', { x: '1' }, ['name']), /UNKNOWN/);
 assert.ok(hasOptOutFooter('متن\nلغو11'));
+assert.equal(hasOptOutFooter('...link/11'), false);
+assert.equal(hasOptOutFooter('متن لینک https://x.com/11'), false);
+assert.ok(hasOptOutFooter('متن\nلغو۱۱')); // Persian digits OK via normalize
 assert.ok(ensureOptOutFooter('تبلیغ', 'PROMO').endsWith('لغو11'));
 assert.ok(ensureOptOutFooter('خدماتی\nلغو11', 'TRANSACTIONAL').endsWith('لغو11'));
 assert.strictEqual(ensureOptOutFooter('کد {code}', 'OTP'), 'کد {code}');

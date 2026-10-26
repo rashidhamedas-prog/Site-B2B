@@ -1,6 +1,8 @@
 import * as assert from 'node:assert/strict';
+import { DisabledSmsProvider } from './disabled.provider';
 import { MockSmsProvider } from './mock.provider';
 import { SmsIrProvider } from './smsir.provider';
+import { lineForMessageClass, resolveSmsSecrets } from './secrets';
 import {
   assertTestBlocksRealSmsNetwork,
   createSmsProvider,
@@ -11,10 +13,43 @@ import {
 // --- resolve / factory ---
 assert.strictEqual(resolveSmsProviderId({ NODE_ENV: 'test' } as any), 'mock');
 assert.strictEqual(resolveSmsProviderId({ NODE_ENV: 'production', SMS_PROVIDER: 'mock' } as any), 'mock');
-assert.strictEqual(resolveSmsProviderId({ NODE_ENV: 'production', SMS_PROVIDER: 'smsir' } as any), 'smsir');
+assert.strictEqual(
+  resolveSmsProviderId({ NODE_ENV: 'production', SMS_PROVIDER: 'smsir' } as any),
+  'disabled',
+);
+assert.strictEqual(
+  resolveSmsProviderId({
+    NODE_ENV: 'production',
+    SMS_PROVIDER: 'smsir',
+    SMSIR_API_KEY: 'k',
+  } as any),
+  'smsir',
+);
 
 const forced = createSmsProvider({ env: { NODE_ENV: 'test' } as any });
 assert.strictEqual(forced.id, 'mock');
+
+const prodDisabled = createSmsProvider({
+  env: { NODE_ENV: 'production', SMS_PROVIDER: 'smsir' } as NodeJS.ProcessEnv,
+});
+assert.strictEqual(prodDisabled.id, 'disabled');
+
+const envWins = resolveSmsSecrets(
+  { SMSIR_API_KEY: 'FROM_ENV' } as NodeJS.ProcessEnv,
+  { apiKey: 'FROM_DB' },
+);
+assert.strictEqual(envWins.apiKey, 'FROM_ENV');
+assert.strictEqual(envWins.providerMode, 'smsir');
+
+const promoNoLine = lineForMessageClass('PROMO', { linePromo: '', lineService: '9982007567' });
+assert.ok('error' in promoNoLine && promoNoLine.error === 'LINE_NOT_CONFIGURED');
+const promoLine = lineForMessageClass('PROMO', {
+  linePromo: '30005000',
+  lineService: '9982007567',
+});
+assert.ok('line' in promoLine && promoLine.line === '30005000');
+const txLine = lineForMessageClass('TRANSACTIONAL', { linePromo: '30005000', lineService: '' });
+assert.ok('error' in txLine && txLine.error === 'LINE_NOT_CONFIGURED');
 
 // --- Mock scenarios ---
 async function runMock() {
@@ -70,12 +105,14 @@ async function runSmsIr() {
   const p = new SmsIrProvider({
     apiKey: 'TEST_KEY_PLACEHOLDER',
     lineService: '9982007567',
+    linePromo: '30005000',
     fetchImpl,
   });
 
   const bulk = await p.sendBulk({
     to: ['09121111111', '09122222222', '09123333333'],
     body: 'test',
+    line: '9982007567',
     idempotencyKey: 'b1',
   });
   assert.ok(bulk.ok);
@@ -94,9 +131,49 @@ async function runSmsIr() {
     err.name = 'TimeoutError';
     throw err;
   };
-  const p2 = new SmsIrProvider({ apiKey: 'TEST_KEY_PLACEHOLDER', fetchImpl: timeoutFetch });
-  const r = await p2.sendSingle({ to: '09121234567', body: 'x', idempotencyKey: 't1' });
+  const p2 = new SmsIrProvider({
+    apiKey: 'TEST_KEY_PLACEHOLDER',
+    lineService: '9982007567',
+    fetchImpl: timeoutFetch,
+  });
+  const r = await p2.sendSingle({
+    to: '09121234567',
+    body: 'x',
+    line: '9982007567',
+    idempotencyKey: 't1',
+  });
   assert.ok(!r.ok && r.error?.code === 'TIMEOUT' && r.error.ambiguous);
+
+  const p3 = new SmsIrProvider({
+    apiKey: 'TEST_KEY_PLACEHOLDER',
+    lineService: '9982007567',
+    fetchImpl,
+  });
+  const tooMany = Array.from({ length: 101 }, (_, i) => `0912100${String(i).padStart(4, '0')}`);
+  await assert.rejects(
+    () =>
+      p3.sendBulk({
+        to: tooMany,
+        body: 'x',
+        line: '9982007567',
+        idempotencyKey: 'big',
+      }),
+    /SMS_BULK_TOO_LARGE/,
+  );
+}
+
+async function runDisabled() {
+  const d = new DisabledSmsProvider();
+  const single = await d.sendSingle({
+    to: '09121234567',
+    body: 'x',
+    idempotencyKey: 'd1',
+  });
+  assert.ok(!single.ok && single.error?.code === 'DISABLED');
+  const bulk = await d.sendBulk({ to: ['09121111111'], body: 'x', idempotencyKey: 'd2' });
+  assert.ok(!bulk.ok && bulk.error?.code === 'DISABLED');
+  const credit = await d.getCredit();
+  assert.strictEqual(credit.amount, 0);
 }
 
 // --- anti-network guard ---
@@ -131,14 +208,21 @@ function runGuard() {
 async function main() {
   await runMock();
   await runSmsIr();
+  await runDisabled();
   runGuard();
-  // NODE_ENV=test must never pick smsir
+  // NODE_ENV=test must never pick smsir or call api.sms.ir
   if (process.env.NODE_ENV === 'test') {
+    let fetchCalled = false;
+    const fetchSpy: typeof fetch = async () => {
+      fetchCalled = true;
+      return { ok: true, status: 200, json: async () => ({}), text: async () => '' } as any;
+    };
     const p = createSmsProvider({
       env: process.env,
-      smsir: { apiKey: 'SHOULD_NOT_USE' },
+      smsir: { apiKey: 'SHOULD_NOT_USE', fetchImpl: fetchSpy },
     });
     assert.strictEqual(p.id, 'mock');
+    assert.ok(!fetchCalled, 'test factory must not invoke sms.ir fetch');
   }
   console.log('sms-panel provider: OK');
 }

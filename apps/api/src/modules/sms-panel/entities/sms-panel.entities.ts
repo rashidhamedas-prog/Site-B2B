@@ -182,8 +182,32 @@ export class SmsConfirmationEntity {
   @Column({ type: 'uuid', nullable: true })
   actorId: string | null;
 
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  otpHash: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  otpExpiresAt: Date | null;
+
+  @Column({ type: 'int', default: 0 })
+  otpAttempts: number;
+
   @CreateDateColumn()
   createdAt: Date;
+}
+
+@Entity('sms_campaign_recipient')
+export class SmsCampaignRecipientEntity {
+  @PrimaryColumn({ type: 'uuid' })
+  campaignId: string;
+
+  @PrimaryColumn({ length: 16 })
+  phoneNormalized: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  customerId: string | null;
+
+  @Column({ type: 'int', default: 1 })
+  parts: number;
 }
 
 @Entity('sms_message')
@@ -371,6 +395,7 @@ export const SMS_PANEL_ENTITIES = [
   SmsContactListMemberEntity,
   SmsCampaignEntity,
   SmsConfirmationEntity,
+  SmsCampaignRecipientEntity,
   SmsMessageEntity,
   SmsUnsubscribeEntity,
   SmsBlacklistEntity,

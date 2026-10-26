@@ -67,12 +67,6 @@ export class SmsIrProvider implements SmsProvider {
 
   constructor(private readonly cfg: SmsIrProviderConfig) {}
 
-  private line(prefer: 'promo' | 'service' | 'any' = 'any'): string | undefined {
-    if (prefer === 'promo') return this.cfg.linePromo || this.cfg.lineService;
-    if (prefer === 'service') return this.cfg.lineService || this.cfg.linePromo;
-    return this.cfg.lineService || this.cfg.linePromo;
-  }
-
   async sendSingle(req: {
     to: string;
     body: string;
@@ -102,13 +96,36 @@ export class SmsIrProvider implements SmsProvider {
     line?: string;
     idempotencyKey: string;
   }): Promise<BulkSendResult> {
-    const mobiles = req.to.slice(0, this.capabilities.maxBatch);
+    if (req.to.length > this.capabilities.maxBatch) {
+      throw new Error(`SMS_BULK_TOO_LARGE: max ${this.capabilities.maxBatch}`);
+    }
+    const mobiles = req.to;
+    if (!req.line) {
+      return {
+        ok: false,
+        results: mobiles.map((to) => ({
+          to,
+          error: {
+            code: 'PROVIDER',
+            retryable: false,
+            ambiguous: false,
+            message: 'LINE_NOT_CONFIGURED',
+          },
+        })),
+        error: {
+          code: 'PROVIDER',
+          retryable: false,
+          ambiguous: false,
+          message: 'LINE_NOT_CONFIGURED',
+        },
+      };
+    }
     const result = await smsIrRequest(
       'POST',
       '/send/bulk',
       this.cfg.apiKey,
       {
-        lineNumber: req.line || this.line('any') || undefined,
+        lineNumber: req.line,
         messageText: req.body,
         mobiles,
       },

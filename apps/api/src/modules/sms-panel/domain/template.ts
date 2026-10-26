@@ -53,9 +53,10 @@ function latinDigitsOnlyTail(raw: string): string {
   return out;
 }
 
+/** True only when trimmed body ends with «لغو11» (optional spaces already stripped in tail). */
 export function hasOptOutFooter(body: string): boolean {
   const normalized = latinDigitsOnlyTail(body);
-  return normalized.includes('لغو11') || normalized.endsWith('11');
+  return normalized.endsWith('لغو11');
 }
 
 /** Append locked «لغو11» for PROMO/TRANSACTIONAL (not OTP). Idempotent. */

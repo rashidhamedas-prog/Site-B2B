@@ -1,3 +1,10 @@
+## 2026-10-26 — فیکس ریویو PR #107 پنل پیامک (بدون merge/deploy)
+
+- OTP واقعی ۶ رقمی برای confirm + snapshot مخاطبین + re-check در dispatch.
+- DisabledSmsProvider وقتی کلید نیست؛ secrets env-first؛ خط PROMO/SERVICE جدا.
+- Redis rate limit / promo cap / token bucket؛ اعتبار = credit − صف؛ FSM کامل‌تر.
+- تست‌های fsm/gates/provider؛ unit-specs ۱۲۹ OK. بدون merge/deploy/SMS واقعی.
+
 ## 2026-10-26 — پنل پیامک ادمین (feat/sms-panel، بدون merge/deploy)
 
 - Spec + UI-SPEC + ماکاپ‌ها در `docs/specs/sms-panel.md` و `docs/design/sms-panel/`.
