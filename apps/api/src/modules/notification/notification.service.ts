@@ -12,6 +12,8 @@ import {
   type SmsTransportConfig,
   type SmsTransportResult,
 } from './sms-transport';
+import { createSmsProvider } from '../sms-panel/provider/factory';
+import type { SmsProvider } from '../sms-panel/provider/types';
 
 // SMS provider: sms.ir (REST API v1, auth via x-api-key header).
 // API key, line number, per-event toggles, message templates and the master
@@ -19,6 +21,7 @@ import {
 // (DB → defaults). With no API key configured the service logs and no-ops.
 // When the origin cannot reach api.sms.ir (common on EU VPS), set
 // SMS_EGRESS_BASE_URL (+ SMS_EGRESS_SECRET) to a Cloudflare Worker proxy.
+// Sends go through SmsProvider adapter (mock forced in NODE_ENV=test).
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
@@ -33,6 +36,29 @@ export class NotificationService {
       egressSecret: cfg.egressSecret || '',
       timeoutMs: NotificationService.FETCH_TIMEOUT_MS,
     };
+  }
+
+  private async buildProvider(
+    preset?: Awaited<ReturnType<SettingsService['sms']>>,
+  ): Promise<{ provider: SmsProvider; cfg: Awaited<ReturnType<SettingsService['sms']>> }> {
+    const cfg = preset ?? (await this.settings.sms());
+    const apiKey =
+      process.env.SMSIR_API_KEY || cfg.apiKey || process.env.SMS_API_KEY || '';
+    const lineService =
+      process.env.SMSIR_LINE_SERVICE ||
+      process.env.SMSIR_LINE_NUMBER ||
+      cfg.lineNumber ||
+      process.env.SMS_SENDER ||
+      '';
+    const provider = createSmsProvider({
+      smsir: {
+        apiKey,
+        lineService,
+        linePromo: process.env.SMSIR_LINE_PROMO || lineService,
+        transport: this.transportCfg(cfg),
+      },
+    });
+    return { provider, cfg };
   }
 
   private logTransportFailure(path: string, result: SmsTransportResult) {
@@ -71,7 +97,7 @@ export class NotificationService {
     message: string,
     opts?: { redactBody?: boolean },
   ): Promise<boolean> {
-    const cfg = await this.settings.sms();
+    const { provider, cfg } = await this.buildProvider();
     if (!cfg.enabled || !cfg.apiKey) {
       this.logger.log(
         opts?.redactBody
@@ -80,25 +106,38 @@ export class NotificationService {
       );
       return false;
     }
-    return this.post(cfg.apiKey, '/send/bulk', {
-      lineNumber: cfg.lineNumber || undefined,
-      messageText: message,
-      mobiles: [receptor],
+    if (provider.id === 'mock' && process.env.NODE_ENV === 'test') {
+      const r = await provider.sendSingle({
+        to: receptor,
+        body: message,
+        line: cfg.lineNumber || undefined,
+        idempotencyKey: `notify:single:${receptor}:${Date.now()}`,
+      });
+      return r.ok;
+    }
+    const r = await provider.sendSingle({
+      to: receptor,
+      body: message,
+      line: cfg.lineNumber || undefined,
+      idempotencyKey: `notify:single:${receptor}:${Date.now()}`,
     });
+    return r.ok;
   }
 
   // Bulk SMS to many numbers (marketing blast).
   async sendBulk(receptors: string[], message: string): Promise<boolean> {
-    const cfg = await this.settings.sms();
+    const { provider, cfg } = await this.buildProvider();
     if (!cfg.enabled || !cfg.apiKey || receptors.length === 0) {
       this.logger.log(`[SMS off/bulk] count=${receptors.length}`);
       return false;
     }
-    return this.post(cfg.apiKey, '/send/bulk', {
-      lineNumber: cfg.lineNumber || undefined,
-      messageText: message,
-      mobiles: receptors,
+    const r = await provider.sendBulk({
+      to: receptors,
+      body: message,
+      line: cfg.lineNumber || undefined,
+      idempotencyKey: `notify:bulk:${Date.now()}`,
     });
+    return r.ok;
   }
 
   /** Marketing / blast path: never send more than 100 numbers per sms.ir request. */
