@@ -317,8 +317,8 @@ async function main() {
       save: async () => undefined,
     };
     const otp = {
-      consumeSessionGrant: async () => false,
       hasSessionGrant: async () => false,
+      consumeSessionGrant: async () => false,
     };
     const config = {
       get: (key: string) => {

@@ -440,23 +440,29 @@ export class SalesPartnerService {
     const user = await this.users.findOne({ where: { id: profile.userId } });
     if (!user) throw new NotFoundException();
 
-    // Dual step-up by design: verified current password XOR consumed OTP session grant.
-    // codeql[js/user-controlled-bypass]: password and OTP grant are alternative authenticators, not a skip
+    // Dual step-up: password and OTP grant are checked independently (OR), never gated on each other.
     const stepUpPassword = typeof currentPassword === 'string' ? currentPassword : '';
-    let passwordOk = false;
-    let grantOk = false;
-    if (stepUpPassword.length > 0) {
-      passwordOk = await bcrypt.compare(stepUpPassword, user.passwordHash);
-      if (!passwordOk) await this.bumpIbanAuthFailure(profile.phone);
-    } else if (sessionId) {
-      grantOk = Boolean(
-        await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
-      );
+    const passwordOk = stepUpPassword.length > 0
+      ? await bcrypt.compare(stepUpPassword, user.passwordHash)
+      : false;
+    if (stepUpPassword.length > 0 && !passwordOk) {
+      await this.bumpIbanAuthFailure(profile.phone);
     }
-    if (!passwordOk && !grantOk) {
+    const grantPresent = Boolean(
+      sessionId && await this.otp.hasSessionGrant(user.id, sessionId, 'sales_partner_password'),
+    );
+    if (!passwordOk && !grantPresent) {
       throw new BadRequestException(
         'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
       );
+    }
+    if (!passwordOk && grantPresent && sessionId) {
+      const consumed = await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password');
+      if (!consumed) {
+        throw new BadRequestException(
+          'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
+        );
+      }
     }
 
     let iban: string;
