@@ -6,6 +6,7 @@ import {
   draftItemFreshness,
   humanDraftFreshness,
   humanPartnerOrderStatus,
+  isBlockedSelfReferral,
   isDraftExpired,
   isSweepableExpiredDraft,
   partnerCommissionOverlay,
@@ -14,6 +15,7 @@ import {
   priceDriftBps,
   resendBlockedReason,
   resendCooldownRemaining,
+  shippingAddressMatchesPartner,
 } from './sales-partner-draft-policy';
 
 function assert(cond: boolean, msg: string) {
@@ -154,5 +156,24 @@ const shortPostal = normalizeConfirmAddress({
   postalCode: '123',
 });
 assert(shortPostal.ok === false, 'short postal rejected');
+
+assert(
+  shippingAddressMatchesPartner(
+    { province: 'تهران', city: 'تهران', street: 'ولیعصر ۱۲', postalCode: '1234567890' },
+    { province: 'تهران', city: 'تهران', address: 'ولیعصر ۱۲', postalCode: '1234567890' },
+  ),
+  'matching shipping address flags self-referral risk',
+);
+assert(
+  !shippingAddressMatchesPartner(
+    { province: 'تهران', city: 'تهران', street: 'ولیعصر ۱۲', postalCode: '1234567890' },
+    { province: 'اصفهان', city: 'اصفهان', address: 'چهارباغ', postalCode: '8174678901' },
+  ),
+  'different address does not flag',
+);
+assert(
+  isBlockedSelfReferral('a', 'b', true, { buyerUserId: 'u', partnerUserId: 'u' }),
+  'userId self-referral blocked',
+);
 
 console.log('sales-partner-draft-policy.spec.ts: OK');

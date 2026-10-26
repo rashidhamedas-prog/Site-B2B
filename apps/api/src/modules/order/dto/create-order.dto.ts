@@ -186,6 +186,14 @@ export class CreateOrderDto {
   @IsUUID('4', { each: true })
   salesPartnerProductIds?: string[];
 
+  @ApiPropertyOptional({
+    description: 'HMAC attribution token from /go/sp click (required for sales-partner attribution)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  salesPartnerAttributionToken?: string;
+
   @ApiPropertyOptional({ description: 'Torob click id (?torob_clid=)' })
   @IsOptional()
   @IsString()

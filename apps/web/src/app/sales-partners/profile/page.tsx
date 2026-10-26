@@ -19,6 +19,7 @@ export default function SalesPartnerProfilePage() {
   const toast = useSpToast();
   const [me, setMe] = useState<Me | null>(null);
   const [iban, setIban] = useState('');
+  const [ibanCurrentPassword, setIbanCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -39,9 +40,22 @@ export default function SalesPartnerProfilePage() {
     setBusy(true);
     setIbanError(null);
     try {
-      const next = await apiClient.patch<Me>('/sales-partners/me/iban', { iban });
-      setMe((prev) => ({ ...next, canSetPasswordWithoutCurrent: prev?.canSetPasswordWithoutCurrent }));
+      const body: { iban: string; currentPassword?: string } = { iban };
+      if (!me?.canSetPasswordWithoutCurrent) {
+        if (!ibanCurrentPassword) {
+          setIbanError('رمز فعلی را وارد کنید یا با پیامک وارد شوید');
+          setBusy(false);
+          return;
+        }
+        body.currentPassword = ibanCurrentPassword;
+      }
+      const next = await apiClient.patch<Me>('/sales-partners/me/iban', body);
+      setMe((prev) => ({
+        ...next,
+        canSetPasswordWithoutCurrent: body.currentPassword ? prev?.canSetPasswordWithoutCurrent : false,
+      }));
       setIban('');
+      setIbanCurrentPassword('');
       toast.show('شبا ذخیره شد');
     } catch (err) {
       setIbanError(err instanceof Error ? err.message : 'ذخیره شبا ناموفق بود');
@@ -137,8 +151,25 @@ export default function SalesPartnerProfilePage() {
           aria-invalid={ibanError ? true : undefined}
         />
         <p id="sp-iban-hint" className="text-xs text-stone-500">
-          ۲۴ رقم شبا را با یا بدون IR وارد کنید؛ اعداد فارسی و فاصله هم قبول است.
+          ۲۴ رقم شبا را با یا بدون IR وارد کنید؛ اعداد فارسی و فاصله هم قبول است. بعد از تغییر، تسویه تا ۷۲ ساعت مسدود می‌شود.
         </p>
+        {!me?.canSetPasswordWithoutCurrent ? (
+          <div>
+            <label className="block text-sm font-medium" htmlFor="sp-iban-password">
+              رمز فعلی (برای تأیید تغییر شبا)
+            </label>
+            <input
+              id="sp-iban-password"
+              type="password"
+              className={`${spField} mt-1`}
+              value={ibanCurrentPassword}
+              onChange={(e) => setIbanCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          </div>
+        ) : (
+          <p className="text-xs text-stone-500">چون با پیامک وارد شده‌اید، تغییر شبا بدون رمز فعلی ممکن است.</p>
+        )}
         {ibanError ? <SpAlert>{ibanError}</SpAlert> : null}
         <SpButton type="submit" disabled={busy || !iban.trim()}>
           {busy ? 'در حال ذخیره…' : 'ذخیره شبا'}

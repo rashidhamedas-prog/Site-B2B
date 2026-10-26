@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException, PayloadTooLargeException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, In, MoreThan, Not, Repository } from 'typeorm';
 import { CategoryEntity } from '../category/entities/category.entity';
@@ -7,8 +8,15 @@ import { ProductEntity } from '../product/entities/product.entity';
 import {
   SalesCommissionRuleEntity,
   SalesPartnerAuditEventEntity,
+  SalesPartnerLinkClickEntity,
   SalesPartnerProductEligibilityEntity,
 } from './entities';
+import {
+  hashClientIp,
+  hashUserAgent,
+  mergePriorProductIds,
+  signSalesPartnerAttributionToken,
+} from './sales-partner-link-token';
 import {
   assertCommissionRuleShape,
   assertPercent,
@@ -58,8 +66,11 @@ export class SalesPartnerCatalogService {
     private readonly rules: Repository<SalesCommissionRuleEntity>,
     @InjectRepository(SalesPartnerAuditEventEntity)
     private readonly audits: Repository<SalesPartnerAuditEventEntity>,
+    @InjectRepository(SalesPartnerLinkClickEntity)
+    private readonly linkClicks: Repository<SalesPartnerLinkClickEntity>,
     private readonly program: SalesPartnerService,
     private readonly storage: StorageService,
+    private readonly config: ConfigService,
   ) {}
 
   async partnerCatalog(salesPartnerId: string, query: PartnerCatalogQuery | number = {}) {
@@ -548,7 +559,15 @@ export class SalesPartnerCatalogService {
     };
   }
 
-  async resolveShareLink(code: string, slug: string) {
+  /**
+   * Records a click and returns a signed attribution token.
+   * Last-click wins: a newer partner code/token replaces the previous cookie on the storefront.
+   */
+  async resolveShareLink(
+    code: string,
+    slug: string,
+    meta?: { ip?: string; userAgent?: string; priorProductIds?: string[] },
+  ) {
     const normalized = normalizeSalesPartnerCode(code);
     const safeSlug = String(slug || '').trim();
     if (!normalized || !safeSlug || safeSlug.length > 160 || safeSlug.includes('/') || safeSlug.includes('..')) {
@@ -568,7 +587,30 @@ export class SalesPartnerCatalogService {
     const rules = await this.loadRules();
     const card = this.toPartnerCard(product, elig ? [elig] : [], rules, profile.id, new Date(), settings.minMarginIrr, normalized);
     if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
-    return { productId: product.id, slug: product.slug, code: normalized };
+
+    const secret = String(this.config.get('JWT_SECRET') || '');
+    if (!secret) throw new BadRequestException('پیکربندی attribution ناقص است');
+    const productIds = mergePriorProductIds(meta?.priorProductIds, product.id);
+    await this.linkClicks.save(this.linkClicks.create({
+      code: normalized,
+      productId: product.id,
+      ipHash: hashClientIp(meta?.ip || 'unknown', secret),
+      uaHash: hashUserAgent(meta?.userAgent || 'unknown', secret),
+    }));
+    const attributionToken = signSalesPartnerAttributionToken({
+      code: normalized,
+      productIds,
+      secret,
+    });
+    return {
+      productId: product.id,
+      slug: product.slug,
+      code: normalized,
+      productIds,
+      attributionToken,
+      /** Last partner click wins at cookie/checkout time. */
+      attributionPolicy: 'last_click',
+    };
   }
 
   private toPartnerCard(

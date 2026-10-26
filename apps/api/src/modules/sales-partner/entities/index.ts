@@ -11,3 +11,4 @@ export { SalesPartnerPayoutEntity } from './sales-partner-payout.entity';
 export { SalesPartnerPayoutItemEntity } from './sales-partner-payout-item.entity';
 export { SalesPartnerNoticeEntity } from './sales-partner-notice.entity';
 export { SalesPartnerNoticeReceiptEntity } from './sales-partner-notice-receipt.entity';
+export { SalesPartnerLinkClickEntity } from './sales-partner-link-click.entity';

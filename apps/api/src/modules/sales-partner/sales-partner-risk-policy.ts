@@ -4,6 +4,7 @@ export const RISK_FLAG_CODES = [
   'HIGH_EXPIRE',
   'HIGH_REJECT',
   'REPEAT_CUSTOMER',
+  'SELF_REFERRAL_ADDRESS_MATCH',
 ] as const;
 export type SalesPartnerRiskFlag = (typeof RISK_FLAG_CODES)[number];
 
@@ -13,6 +14,7 @@ const RISK_FLAG_LABELS: Record<SalesPartnerRiskFlag, string> = {
   HIGH_EXPIRE: 'انقضای زیاد لینک تأیید',
   HIGH_REJECT: 'رد زیاد توسط مشتری',
   REPEAT_CUSTOMER: 'تکرار یک شماره مشتری',
+  SELF_REFERRAL_ADDRESS_MATCH: 'آدرس ارسال مشابه همکار',
 };
 
 export function evaluateSalesPartnerRisk(input: {

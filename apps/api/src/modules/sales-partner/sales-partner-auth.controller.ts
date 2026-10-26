@@ -28,8 +28,14 @@ export class SalesPartnerAuthController {
   }
 
   @Post('auth/login')
-  login(@Body() body: SalesPartnerPasswordLoginDto) {
-    return this.salesPartners.loginWithPassword(body.phone, body.password);
+  login(
+    @Body() body: SalesPartnerPasswordLoginDto,
+    @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
+  ) {
+    const forwarded = req.headers?.['x-forwarded-for'];
+    const forwardedIp = Array.isArray(forwarded) ? forwarded[0] : String(forwarded || '').split(',')[0];
+    const clientIp = String(forwardedIp || req.ip || 'unknown').trim();
+    return this.salesPartners.loginWithPassword(body.phone, body.password, clientIp);
   }
 
   @Get('me')

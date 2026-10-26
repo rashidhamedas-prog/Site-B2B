@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
   Optional,
@@ -19,8 +20,14 @@ import * as bcrypt from 'bcryptjs';
 import { randomBytes, randomUUID } from 'crypto';
 import { AppSettingEntity } from '../settings/entities/app-setting.entity';
 import { UserEntity } from '../auth/entities/user.entity';
-import { OtpCooldownError, OtpService } from '../redis/redis.module';
+import { OtpCooldownError, OtpService, RedisService } from '../redis/redis.module';
 import { SmsCooldownException } from '../notification/sms-cooldown-http';
+import {
+  isSalesPartnerLoginLocked,
+  salesPartnerLoginFailKey,
+  SALES_PARTNER_LOGIN_WINDOW_SEC,
+} from './sales-partner-login-lockout';
+import { resolveIbanCooldownHours, ibanPayoutBlockedUntil } from './sales-partner-iban-cooldown';
 import { otpDispatchFromTransport } from '../notification/sms-transport';
 import { allowDevOtpExpose, normalizePhone } from '../auth/phone.util';
 import { isStaffRole } from '../auth/staff-access';
@@ -85,9 +92,14 @@ export class SalesPartnerService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly otp: OtpService,
+    private readonly redis: RedisService,
     @Optional() private readonly notifications?: NotificationService,
     @Optional() private readonly outbox?: OutboxService,
   ) {}
+
+  ibanCooldownHours(): number {
+    return resolveIbanCooldownHours(this.config.get('SALES_PARTNER_IBAN_COOLDOWN_HOURS'));
+  }
 
   async settings(): Promise<SalesPartnerSettings> {
     const row = await this.settingsRepo.findOne({ where: { key: SALES_PARTNER_SETTINGS_KEY } });
@@ -301,13 +313,43 @@ export class SalesPartnerService {
     return session;
   }
 
-  async loginWithPassword(phoneRaw: string, password: string) {
+  async loginWithPassword(phoneRaw: string, password: string, clientIp = 'unknown') {
     const phone = normalizePhone(phoneRaw);
+    const failKey = salesPartnerLoginFailKey(phone, clientIp);
+    const currentFails = await this.readLoginFailCount(failKey);
+    if (isSalesPartnerLoginLocked(currentFails)) {
+      throw new HttpException(
+        { message: 'تلاش بیش از حد؛ چند دقیقه دیگر دوباره تلاش کنید', code: 'LOGIN_LOCKED' },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
     const user = await this.users.findOne({ where: { phone } });
-    if (!user) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    if (!user) {
+      await this.bumpLoginFail(failKey);
+      throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    if (!valid) {
+      await this.bumpLoginFail(failKey);
+      throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
+    }
+    await this.redis.del(failKey);
     return this.issuePartnerSession(phone);
+  }
+
+  private async readLoginFailCount(key: string): Promise<number> {
+    if (!this.redis.isReady) return 0;
+    try {
+      const raw = await this.redis.get(key);
+      const n = Number(raw || 0);
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  private async bumpLoginFail(key: string): Promise<void> {
+    await this.redis.incrWithTtl(key, SALES_PARTNER_LOGIN_WINDOW_SEC);
   }
 
   async me(salesPartnerId: string, sessionId?: string) {
@@ -366,9 +408,31 @@ export class SalesPartnerService {
     };
   }
 
-  async updateIban(salesPartnerId: string, ibanRaw: string) {
+  async updateIban(
+    salesPartnerId: string,
+    ibanRaw: string,
+    currentPassword?: string,
+    sessionId?: string,
+  ) {
     const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
     if (!profile) throw new NotFoundException();
+    const user = await this.users.findOne({ where: { id: profile.userId } });
+    if (!user) throw new NotFoundException();
+
+    if (currentPassword) {
+      const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!valid) throw new BadRequestException('رمز عبور فعلی اشتباه است');
+    } else {
+      const granted = Boolean(
+        sessionId && await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
+      );
+      if (!granted) {
+        throw new BadRequestException(
+          'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
+        );
+      }
+    }
+
     let iban: string;
     try {
       iban = normalizeIban(ibanRaw);
@@ -386,9 +450,25 @@ export class SalesPartnerService {
     profile.ibanLast4 = record.ibanLast4;
     profile.ibanFingerprint = record.ibanFingerprint;
     profile.ibanCipher = record.ibanCipher;
+    profile.ibanChangedAt = new Date();
     await this.profiles.save(profile);
-    await this.audit(profile.userId, 'profile.iban_updated', 'profile', profile.id, { ibanLast4: record.ibanLast4 });
-    return toPublicSalesPartner(profile);
+    await this.audit(profile.userId, 'profile.iban_updated', 'profile', profile.id, {
+      ibanLast4: record.ibanLast4,
+      ibanChangedAt: profile.ibanChangedAt.toISOString(),
+    });
+    const sms = `شبا حساب همکار بازاریاب شما در ترنم تغییر کرد. اگر این کار را نکرده‌اید با پشتیبانی تماس بگیرید.`;
+    if (this.notifications) {
+      try {
+        await this.notifications.sendSms(profile.phone, sms);
+      } catch {
+        /* notice is best-effort; IBAN already saved */
+      }
+    }
+    return {
+      ...toPublicSalesPartner(profile),
+      ibanChangedAt: profile.ibanChangedAt.toISOString(),
+      payoutBlockedUntil: ibanPayoutBlockedUntil(profile.ibanChangedAt, this.ibanCooldownHours())?.toISOString() ?? null,
+    };
   }
 
   async smsProfile(salesPartnerId: string) {
@@ -672,11 +752,29 @@ export class SalesPartnerService {
   }
 
   async listPartners() {
+    const cooldownHours = this.ibanCooldownHours();
+    const now = new Date();
     const rows = await this.profiles.find({ order: { createdAt: 'DESC' }, take: 100 });
-    return rows.map((row) => ({
-      ...toPublicSalesPartner(row),
-      riskFlags: humanRiskFlags(row.riskFlags),
-    }));
+    return rows.map((row) => {
+      const blockedUntil = ibanPayoutBlockedUntil(row.ibanChangedAt, cooldownHours, now);
+      return {
+        ...toPublicSalesPartner(row),
+        riskFlags: humanRiskFlags(row.riskFlags),
+        ibanChangedAt: row.ibanChangedAt ? row.ibanChangedAt.toISOString() : null,
+        payoutBlockedUntil: blockedUntil ? blockedUntil.toISOString() : null,
+      };
+    });
+  }
+
+  async getPartnerIbanCooldown(salesPartnerId: string) {
+    const profile = await this.profiles.findOne({ where: { id: salesPartnerId } });
+    if (!profile) throw new NotFoundException('همکار بازاریاب پیدا نشد');
+    const blockedUntil = ibanPayoutBlockedUntil(profile.ibanChangedAt, this.ibanCooldownHours());
+    return {
+      ibanChangedAt: profile.ibanChangedAt ? profile.ibanChangedAt.toISOString() : null,
+      payoutBlockedUntil: blockedUntil ? blockedUntil.toISOString() : null,
+      ibanCooldownHours: this.ibanCooldownHours(),
+    };
   }
 
   async listAudits(targetType?: string) {

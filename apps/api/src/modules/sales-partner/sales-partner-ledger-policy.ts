@@ -7,6 +7,20 @@ export const LEDGER_ENTRY_TYPES = [
 ] as const;
 export type SalesLedgerEntryType = (typeof LEDGER_ENTRY_TYPES)[number];
 
+/** Earn commission only from CONFIRMED onward — PENDING_REVIEW is unpaid/admin queue. */
+export const COMMISSION_EARN_ORDER_STATUSES = [
+  'CONFIRMED',
+  'PROCESSING',
+  'PACKED',
+  'SHIPPED',
+  'DELIVERED',
+  'COMPLETED',
+] as const;
+
+export function isCommissionEarnOrderStatus(status: string | null | undefined): boolean {
+  return (COMMISSION_EARN_ORDER_STATUSES as readonly string[]).includes(String(status || ''));
+}
+
 export type LedgerRow = {
   amountIrr: number;
   entryType: SalesLedgerEntryType;

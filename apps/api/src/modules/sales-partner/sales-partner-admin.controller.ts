@@ -12,7 +12,7 @@ import { SalesPartnerDraftService } from './sales-partner-draft.service';
 import { PatchSalesPartnerStatusDto, ReviewSalesPartnerDto } from './dto/apply-sales-partner.dto';
 import { ChangeSalesPartnerAttributionDto } from './dto/sales-partner-draft.dto';
 import { PatchSalesPartnerSettingsDto } from './dto/sales-partner-settings.dto';
-import { ConfirmSalesPartnerPayoutDto } from './dto/sales-partner-payout.dto';
+import { ConfirmSalesPartnerPayoutDto, ReverseSalesPartnerPayoutDto } from './dto/sales-partner-payout.dto';
 import {
   CreateSalesCommissionRuleDto,
   PreviewSalesCommissionDto,
@@ -223,9 +223,20 @@ export class SalesPartnerAdminController {
     return this.payouts.confirm(req.user?.sub || req.user?.id || '', body);
   }
 
+  @Post('payouts/:id/reverse')
+  reversePayout(
+    @Param('id') id: string,
+    @Body() body: ReverseSalesPartnerPayoutDto,
+    @Req() req: { user?: { sub?: string; id?: string } },
+  ) {
+    return this.payouts.reverse(req.user?.sub || req.user?.id || '', id, body.reason);
+  }
+
   @Get(':id/balances')
-  balances(@Param('id') id: string) {
-    return this.ledger.balances(id);
+  async balances(@Param('id') id: string) {
+    const balances = await this.ledger.balances(id);
+    const profile = await this.salesPartners.getPartnerIbanCooldown(id);
+    return { ...balances, ...profile };
   }
 
   @Get()
