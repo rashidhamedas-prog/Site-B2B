@@ -440,29 +440,23 @@ export class SalesPartnerService {
     const user = await this.users.findOne({ where: { id: profile.userId } });
     if (!user) throw new NotFoundException();
 
-    // Dual step-up: password and OTP grant are checked independently (OR), never gated on each other.
+    // Dual step-up (XOR): password path or OTP session grant. Lockout bumps on any failed attempt.
     const stepUpPassword = typeof currentPassword === 'string' ? currentPassword : '';
-    const passwordOk = stepUpPassword.length > 0
-      ? await bcrypt.compare(stepUpPassword, user.passwordHash)
-      : false;
-    if (stepUpPassword.length > 0 && !passwordOk) {
-      await this.bumpIbanAuthFailure(profile.phone);
-    }
-    const grantPresent = Boolean(
-      sessionId && await this.otp.hasSessionGrant(user.id, sessionId, 'sales_partner_password'),
-    );
-    if (!passwordOk && !grantPresent) {
-      throw new BadRequestException(
-        'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
+    let authorized = false;
+    if (stepUpPassword.length > 0) {
+      authorized = await bcrypt.compare(stepUpPassword, user.passwordHash);
+    } else if (sessionId) {
+      authorized = Boolean(
+        await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
       );
     }
-    if (!passwordOk && grantPresent && sessionId) {
-      const consumed = await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password');
-      if (!consumed) {
-        throw new BadRequestException(
-          'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
-        );
-      }
+    if (!authorized) {
+      await this.bumpIbanAuthFailure(profile.phone);
+      throw new BadRequestException(
+        stepUpPassword.length > 0
+          ? 'رمز عبور فعلی اشتباه است'
+          : 'برای تغییر شبا، رمز فعلی را وارد کنید یا با پیامک وارد شوید',
+      );
     }
 
     let iban: string;
