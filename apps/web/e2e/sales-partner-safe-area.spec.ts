@@ -11,13 +11,27 @@ function jwtWith(payload: Record<string, unknown>): string {
 }
 
 async function openGuide(page: Page) {
+  // Block every API call — CI points NEXT_PUBLIC_API_URL at production.
+  await page.route('**/*', async (route) => {
+    const url = route.request().url();
+    if (/\/api\/v1\//.test(url) || /poshaktaranom\.com/.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({}),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
   const token = jwtWith({ purpose: 'sales_partner', role: 'SALES_PARTNER' });
+  const base = process.env.E2E_BASE_URL || 'http://127.0.0.1:3000';
   await page.context().addCookies([
     {
       name: 'taranom_sales_partner_token',
       value: token,
-      url: process.env.E2E_BASE_URL || 'http://127.0.0.1:3000',
-      path: '/',
+      url: base,
     },
   ]);
   await page.goto('/sales-partners/guide', { waitUntil: 'domcontentloaded' });
@@ -28,7 +42,6 @@ test.describe('sales partner safe area', () => {
     viewport: { width: 390, height: 844 },
     isMobile: true,
     hasTouch: true,
-    // iPhone-like chrome; safe-area CSS still applies via env() defaults in browsers.
     userAgent:
       'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
   });
@@ -54,10 +67,7 @@ test.describe('sales partner safe area', () => {
     });
     expect(shellPad).toBeGreaterThanOrEqual(64);
 
-    const navPad = await nav.evaluate((el) => {
-      const style = window.getComputedStyle(el);
-      return style.paddingBottom;
-    });
+    const navPad = await nav.evaluate((el) => window.getComputedStyle(el).paddingBottom);
     expect(navPad).toMatch(/px|rem|env/);
   });
 });

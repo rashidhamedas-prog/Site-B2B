@@ -15,8 +15,10 @@ import {
   hashClientIp,
   hashUserAgent,
   mergePriorProductIds,
+  readPriorAttributionProductIds,
   signSalesPartnerAttributionToken,
 } from './sales-partner-link-token';
+import { resolveSalesPartnerAttrSecret } from './sales-partner-attr-secret';
 import {
   assertCommissionRuleShape,
   assertPercent,
@@ -566,7 +568,7 @@ export class SalesPartnerCatalogService {
   async resolveShareLink(
     code: string,
     slug: string,
-    meta?: { ip?: string; userAgent?: string; priorProductIds?: string[] },
+    meta?: { ip?: string; userAgent?: string; priorToken?: string },
   ) {
     const normalized = normalizeSalesPartnerCode(code);
     const safeSlug = String(slug || '').trim();
@@ -588,9 +590,21 @@ export class SalesPartnerCatalogService {
     const card = this.toPartnerCard(product, elig ? [elig] : [], rules, profile.id, new Date(), settings.minMarginIrr, normalized);
     if (!card) throw new NotFoundException('این محصول فعلاً قابل فروش نیست');
 
-    const secret = String(this.config.get('JWT_SECRET') || '');
-    if (!secret) throw new BadRequestException('پیکربندی attribution ناقص است');
-    const productIds = mergePriorProductIds(meta?.priorProductIds, product.id);
+    let secret: string;
+    try {
+      secret = resolveSalesPartnerAttrSecret(
+        this.config.get('SALES_PARTNER_ATTR_SECRET'),
+        this.config.get('JWT_SECRET'),
+      );
+    } catch {
+      throw new BadRequestException('پیکربندی attribution ناقص است');
+    }
+    const priorIds = readPriorAttributionProductIds({
+      token: meta?.priorToken,
+      code: normalized,
+      secret,
+    });
+    const productIds = mergePriorProductIds(priorIds, product.id);
     await this.linkClicks.save(this.linkClicks.create({
       code: normalized,
       productId: product.id,

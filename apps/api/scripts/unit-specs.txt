@@ -110,6 +110,7 @@ src/modules/sales-partner/sales-partner-iban-cooldown.spec.ts
 src/modules/sales-partner/sales-partner-iban-stepup.spec.ts
 src/modules/sales-partner/sales-partner-payout-confirm.spec.ts
 src/modules/sales-partner/sales-partner-payout-reverse.spec.ts
+src/modules/sales-partner/sales-partner-qa-behavior.spec.ts
 src/modules/auth/staff-access.spec.ts
 src/modules/auth/password-policy.spec.ts
 src/modules/category/category-unique.spec.ts

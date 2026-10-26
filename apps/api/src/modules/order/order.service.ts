@@ -66,6 +66,7 @@ import {
   softFailSalesPartnerLinkQuery,
 } from '../sales-partner/sales-partner-checkout-link';
 import { verifySalesPartnerAttributionToken } from '../sales-partner/sales-partner-link-token';
+import { resolveSalesPartnerAttrSecret } from '../sales-partner/sales-partner-attr-secret';
 
 @Injectable()
 export class OrderService {
@@ -1828,7 +1829,15 @@ export class OrderService {
       );
       if (!code || !requested.length) return null;
 
-      const secret = String(this.config.get('JWT_SECRET') || '');
+      let secret: string;
+      try {
+        secret = resolveSalesPartnerAttrSecret(
+          this.config.get('SALES_PARTNER_ATTR_SECRET'),
+          this.config.get('JWT_SECRET'),
+        );
+      } catch {
+        return null;
+      }
       const tokenCheck = verifySalesPartnerAttributionToken({
         token: input.attributionToken,
         code,

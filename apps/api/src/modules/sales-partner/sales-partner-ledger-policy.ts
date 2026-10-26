@@ -189,6 +189,15 @@ export function allocatePayoutIrr(rows: PayoutSource[], now: Date): {
         reversal += Math.abs(amount);
         reversalIds.push(row.id);
       }
+    } else if (
+      row.entryType === 'PAYOUT_REVERSAL'
+      && amount > 0
+      && row.availableAt
+      && row.availableAt.getTime() <= now.getTime()
+    ) {
+      // Restores payable balance after admin reverse without re-opening paid COMMISSION_EARNED rows.
+      earned += amount;
+      earnedIds.push(row.id);
     }
   }
   const net = earned - reversal;

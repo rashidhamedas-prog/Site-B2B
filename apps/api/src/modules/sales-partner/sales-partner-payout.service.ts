@@ -180,18 +180,16 @@ export class SalesPartnerPayoutService {
     const note = String(reason || '').trim();
     if (note.length < 8) throw new BadRequestException('دلیل برگشت حداقل ۸ حرف است');
 
+    const preview = await this.payouts.findOne({ where: { id: payoutId } });
+    if (!preview) throw new NotFoundException('تسویه پیدا نشد');
+    if (preview.status === 'REVERSED') return this.toPublic(preview);
+
     const saved = await this.dataSource.transaction(async (manager) => {
       const payoutRepo = manager.getRepository(SalesPartnerPayoutEntity);
       const entryRepo = manager.getRepository(SalesCommissionLedgerEntryEntity);
-      const payout = await payoutRepo.findOne({
-        where: { id: payoutId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!payout) throw new NotFoundException('تسویه پیدا نشد');
-      if (payout.status === 'REVERSED') return payout;
-
+      // Same lock order as confirm: advisory first, then row lock — avoids deadlock.
       await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
-        `sales-partner-ledger:${payout.salesPartnerId}`,
+        `sales-partner-ledger:${preview.salesPartnerId}`,
       ]);
 
       const again = await payoutRepo.findOne({
@@ -208,6 +206,8 @@ export class SalesPartnerPayoutService {
       const reverseKey = boundedIdempotencyKey('payout-rev', again.id);
       const existingRev = await entryRepo.findOne({ where: { idempotencyKey: reverseKey } });
       if (!existingRev) {
+        // Restore payable balance via PAYOUT_REVERSAL only. Do NOT detach COMMISSION_EARNED
+        // (that would double-count with the reversal on the next allocatePayoutIrr).
         await entryRepo.save(entryRepo.create({
           salesPartnerId: again.salesPartnerId,
           orderId: null,
@@ -221,14 +221,6 @@ export class SalesPartnerPayoutService {
           payoutId: null,
         }));
       }
-
-      await entryRepo
-        .createQueryBuilder()
-        .update(SalesCommissionLedgerEntryEntity)
-        .set({ payoutId: null })
-        .where('"payoutId" = :payoutId', { payoutId: again.id })
-        .andWhere(`"entryType" NOT IN ('PAYOUT', 'PAYOUT_REVERSAL')`)
-        .execute();
 
       again.status = 'REVERSED';
       again.note = [again.note, `REVERSE:${note}`].filter(Boolean).join(' | ').slice(0, 240);

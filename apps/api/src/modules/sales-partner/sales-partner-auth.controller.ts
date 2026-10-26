@@ -11,6 +11,7 @@ import {
   SalesPartnerPasswordLoginDto,
 } from './dto/apply-sales-partner.dto';
 import { ForbiddenException } from '@nestjs/common';
+import { extractClientIp } from '../../common/client-ip';
 
 @ApiTags('sales-partners')
 @Controller({ path: 'sales-partners', version: '1' })
@@ -30,12 +31,10 @@ export class SalesPartnerAuthController {
   @Post('auth/login')
   login(
     @Body() body: SalesPartnerPasswordLoginDto,
-    @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
+    @Req() req: { ip?: string },
   ) {
-    const forwarded = req.headers?.['x-forwarded-for'];
-    const forwardedIp = Array.isArray(forwarded) ? forwarded[0] : String(forwarded || '').split(',')[0];
-    const clientIp = String(forwardedIp || req.ip || 'unknown').trim();
-    return this.salesPartners.loginWithPassword(body.phone, body.password, clientIp);
+    // req.ip only (trustProxy) — never first X-Forwarded-For (client-spoofable).
+    return this.salesPartners.loginWithPassword(body.phone, body.password, extractClientIp(req));
   }
 
   @Get('me')

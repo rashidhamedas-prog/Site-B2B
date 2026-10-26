@@ -69,18 +69,16 @@ export function signSalesPartnerAttributionToken(input: {
   return `${body}.${signBody(body, input.secret)}`;
 }
 
-export function verifySalesPartnerAttributionToken(input: {
-  token: string | null | undefined;
-  code: string;
-  productIds: string[];
-  secret: string;
-  now?: Date;
-}): { ok: true; productIds: string[] } | { ok: false; reason: 'missing' | 'invalid' | 'expired' | 'mismatch' } {
-  const raw = String(input.token || '').trim();
+function parseSignedPayload(
+  token: string | null | undefined,
+  secret: string,
+  now: Date,
+): { ok: true; payload: SalesPartnerAttributionPayload } | { ok: false; reason: 'missing' | 'invalid' | 'expired' } {
+  const raw = String(token || '').trim();
   if (!raw) return { ok: false, reason: 'missing' };
   const [body, sig] = raw.split('.');
   if (!body || !sig) return { ok: false, reason: 'invalid' };
-  const expected = signBody(body, input.secret);
+  const expected = signBody(body, secret);
   try {
     const a = fromB64url(sig);
     const b = fromB64url(expected);
@@ -97,11 +95,39 @@ export function verifySalesPartnerAttributionToken(input: {
   if (payload?.v !== 1 || typeof payload.c !== 'string' || !Array.isArray(payload.p) || typeof payload.e !== 'number') {
     return { ok: false, reason: 'invalid' };
   }
-  const now = input.now ?? new Date();
   if (payload.e < now.getTime()) return { ok: false, reason: 'expired' };
+  return { ok: true, payload };
+}
+
+/** Read product ids from a prior cookie token for the same partner code. */
+export function readPriorAttributionProductIds(input: {
+  token: string | null | undefined;
+  code: string;
+  secret: string;
+  now?: Date;
+}): string[] {
+  const parsed = parseSignedPayload(input.token, input.secret, input.now ?? new Date());
+  if (!parsed.ok) return [];
   const code = String(input.code || '').trim().toLowerCase();
-  if (payload.c !== code) return { ok: false, reason: 'mismatch' };
-  const allowed = new Set(payload.p.map((id) => String(id).toLowerCase()));
+  if (parsed.payload.c !== code) return [];
+  return parsed.payload.p
+    .map((id) => String(id).toLowerCase())
+    .filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+    .slice(0, MAX_PRODUCTS);
+}
+
+export function verifySalesPartnerAttributionToken(input: {
+  token: string | null | undefined;
+  code: string;
+  productIds: string[];
+  secret: string;
+  now?: Date;
+}): { ok: true; productIds: string[] } | { ok: false; reason: 'missing' | 'invalid' | 'expired' | 'mismatch' } {
+  const parsed = parseSignedPayload(input.token, input.secret, input.now ?? new Date());
+  if (!parsed.ok) return parsed;
+  const code = String(input.code || '').trim().toLowerCase();
+  if (parsed.payload.c !== code) return { ok: false, reason: 'mismatch' };
+  const allowed = new Set(parsed.payload.p.map((id) => String(id).toLowerCase()));
   const requested = input.productIds
     .map((id) => String(id).toLowerCase())
     .filter((id) => allowed.has(id));

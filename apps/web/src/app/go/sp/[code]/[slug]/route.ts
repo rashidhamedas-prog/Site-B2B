@@ -20,15 +20,14 @@ export async function GET(
   }
 
   const samePartner = request.cookies.get('taranom_sp')?.value === safeCode;
-  const previous = samePartner ? request.cookies.get('taranom_sp_products')?.value || '' : '';
-  const priorIds = previous.split(',').filter(Boolean).slice(-12);
+  const priorToken = samePartner ? request.cookies.get('taranom_sp_token')?.value || '' : '';
 
   let productId = '';
   let productSlug = safeSlug;
   let attributionToken = '';
   let productIds: string[] = [];
   try {
-    const qs = priorIds.length ? `?prior=${encodeURIComponent(priorIds.join(','))}` : '';
+    const qs = priorToken ? `?priorToken=${encodeURIComponent(priorToken)}` : '';
     const res = await fetch(
       `${API_URL}/sales-partner-links/${safeCode}/${encodeURIComponent(safeSlug)}${qs}`,
       { cache: 'no-store' },
@@ -55,9 +54,7 @@ export async function GET(
   response.headers.set('X-Robots-Tag', 'noindex');
   if (!productId || !attributionToken) return response;
 
-  const ids = productIds.length
-    ? productIds
-    : [...new Set([...priorIds, productId])].slice(-12);
+  const ids = productIds.length ? productIds : [productId];
   const secure = request.nextUrl.protocol === 'https:';
   const cookie = { path: '/', maxAge: 60 * 60 * 24 * 14, sameSite: 'lax' as const, secure };
   response.cookies.set('taranom_sp', safeCode, cookie);

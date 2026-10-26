@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { SalesPartnerService } from './sales-partner.service';
 import { SalesPartnerCatalogService } from './sales-partner-catalog.service';
 import { ApplySalesPartnerDto, VerifySalesPartnerApplicationDto } from './dto/apply-sales-partner.dto';
+import { extractClientIp } from '../../common/client-ip';
 
 @ApiTags('sales-partners')
 @Controller({ path: '', version: '1' })
@@ -16,22 +17,15 @@ export class SalesPartnerPublicController {
   resolveShareLink(
     @Param('code') code: string,
     @Param('slug') slug: string,
-    @Query('prior') prior: string | undefined,
+    @Query('priorToken') priorToken: string | undefined,
     @Req() req: { ip?: string; headers?: Record<string, string | string[] | undefined> },
   ) {
-    const forwarded = req.headers?.['x-forwarded-for'];
-    const forwardedIp = Array.isArray(forwarded) ? forwarded[0] : String(forwarded || '').split(',')[0];
     const uaRaw = req.headers?.['user-agent'];
     const userAgent = Array.isArray(uaRaw) ? uaRaw[0] : String(uaRaw || '');
-    const priorProductIds = String(prior || '')
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean)
-      .slice(0, 12);
     return this.catalog.resolveShareLink(code, slug, {
-      ip: String(forwardedIp || req.ip || 'unknown').trim(),
+      ip: extractClientIp(req),
       userAgent,
-      priorProductIds,
+      priorToken,
     });
   }
 

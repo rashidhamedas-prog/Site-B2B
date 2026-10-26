@@ -1,8 +1,10 @@
 import {
   mergePriorProductIds,
+  readPriorAttributionProductIds,
   signSalesPartnerAttributionToken,
   verifySalesPartnerAttributionToken,
 } from './sales-partner-link-token';
+import { resolveSalesPartnerAttrSecret } from './sales-partner-attr-secret';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -71,5 +73,11 @@ assert(wrongCode.ok === false && wrongCode.reason === 'mismatch', 'code mismatch
 
 const merged = mergePriorProductIds([p1], p2);
 assert(merged.length === 2 && merged.includes(p1) && merged.includes(p2), 'merge prior products');
+
+const prior = readPriorAttributionProductIds({ token, code, secret, now });
+assert(prior.includes(p1) && prior.includes(p2), 'prior from valid token');
+assert(readPriorAttributionProductIds({ token, code: 'deadbeef', secret, now }).length === 0, 'prior wrong code');
+assert(resolveSalesPartnerAttrSecret('dedicated', 'jwt') === 'dedicated', 'attr secret preferred');
+assert(resolveSalesPartnerAttrSecret('', 'jwt') === 'jwt', 'attr secret falls back to jwt');
 
 console.log('sales-partner-link-token.spec.ts: OK');

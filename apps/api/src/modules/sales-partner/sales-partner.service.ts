@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
   UnauthorizedException,
@@ -24,7 +25,9 @@ import { OtpCooldownError, OtpService, RedisService } from '../redis/redis.modul
 import { SmsCooldownException } from '../notification/sms-cooldown-http';
 import {
   isSalesPartnerLoginLocked,
+  isSalesPartnerPhoneLoginLocked,
   salesPartnerLoginFailKey,
+  salesPartnerLoginPhoneFailKey,
   SALES_PARTNER_LOGIN_WINDOW_SEC,
 } from './sales-partner-login-lockout';
 import { resolveIbanCooldownHours, ibanPayoutBlockedUntil } from './sales-partner-iban-cooldown';
@@ -78,6 +81,8 @@ import {
 
 @Injectable()
 export class SalesPartnerService {
+  private readonly logger = new Logger(SalesPartnerService.name);
+
   constructor(
     @InjectRepository(SalesPartnerProfileEntity)
     private readonly profiles: Repository<SalesPartnerProfileEntity>,
@@ -316,8 +321,12 @@ export class SalesPartnerService {
   async loginWithPassword(phoneRaw: string, password: string, clientIp = 'unknown') {
     const phone = normalizePhone(phoneRaw);
     const failKey = salesPartnerLoginFailKey(phone, clientIp);
-    const currentFails = await this.readLoginFailCount(failKey);
-    if (isSalesPartnerLoginLocked(currentFails)) {
+    const phoneKey = salesPartnerLoginPhoneFailKey(phone);
+    const [ipFails, phoneFails] = await Promise.all([
+      this.readLoginFailCount(failKey),
+      this.readLoginFailCount(phoneKey),
+    ]);
+    if (isSalesPartnerLoginLocked(ipFails) || isSalesPartnerPhoneLoginLocked(phoneFails)) {
       throw new HttpException(
         { message: 'تلاش بیش از حد؛ چند دقیقه دیگر دوباره تلاش کنید', code: 'LOGIN_LOCKED' },
         HttpStatus.TOO_MANY_REQUESTS,
@@ -325,31 +334,43 @@ export class SalesPartnerService {
     }
     const user = await this.users.findOne({ where: { phone } });
     if (!user) {
-      await this.bumpLoginFail(failKey);
+      await this.bumpLoginFails(phone, clientIp);
       throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
     }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      await this.bumpLoginFail(failKey);
+      await this.bumpLoginFails(phone, clientIp);
       throw new UnauthorizedException('شماره یا رمز عبور اشتباه است');
     }
-    await this.redis.del(failKey);
+    await Promise.all([this.redis.del(failKey), this.redis.del(phoneKey)]);
     return this.issuePartnerSession(phone);
   }
 
   private async readLoginFailCount(key: string): Promise<number> {
-    if (!this.redis.isReady) return 0;
+    if (!this.redis.isReady) {
+      this.logger.warn(`sales-partner login lockout fail-open: redis not ready (key=${key.split(':')[0]})`);
+      return 0;
+    }
     try {
       const raw = await this.redis.get(key);
       const n = Number(raw || 0);
       return Number.isFinite(n) ? n : 0;
     } catch {
+      this.logger.warn(`sales-partner login lockout fail-open: redis get failed`);
       return 0;
     }
   }
 
-  private async bumpLoginFail(key: string): Promise<void> {
-    await this.redis.incrWithTtl(key, SALES_PARTNER_LOGIN_WINDOW_SEC);
+  private async bumpLoginFails(phone: string, clientIp: string): Promise<void> {
+    await Promise.all([
+      this.redis.incrWithTtl(salesPartnerLoginFailKey(phone, clientIp), SALES_PARTNER_LOGIN_WINDOW_SEC),
+      this.redis.incrWithTtl(salesPartnerLoginPhoneFailKey(phone), SALES_PARTNER_LOGIN_WINDOW_SEC),
+    ]);
+  }
+
+  /** Wrong IBAN step-up password also feeds the phone-wide login lockout. */
+  async bumpIbanAuthFailure(phone: string): Promise<void> {
+    await this.redis.incrWithTtl(salesPartnerLoginPhoneFailKey(normalizePhone(phone)), SALES_PARTNER_LOGIN_WINDOW_SEC);
   }
 
   async me(salesPartnerId: string, sessionId?: string) {
@@ -421,7 +442,10 @@ export class SalesPartnerService {
 
     if (currentPassword) {
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-      if (!valid) throw new BadRequestException('رمز عبور فعلی اشتباه است');
+      if (!valid) {
+        await this.bumpIbanAuthFailure(profile.phone);
+        throw new BadRequestException('رمز عبور فعلی اشتباه است');
+      }
     } else {
       const granted = Boolean(
         sessionId && await this.otp.consumeSessionGrant(user.id, sessionId, 'sales_partner_password'),
@@ -460,8 +484,8 @@ export class SalesPartnerService {
     if (this.notifications) {
       try {
         await this.notifications.sendSms(profile.phone, sms);
-      } catch {
-        /* notice is best-effort; IBAN already saved */
+      } catch (err: unknown) {
+        this.logger.warn(`IBAN change SMS failed for profile ${profile.id}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     return {
