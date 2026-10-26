@@ -1,3 +1,9 @@
+## 2026-10-26 — sales-partner QA B1–B9 merge + deploy ایران
+
+- PR #106 squash-merge به `master` (`13d0b810`). Draft → ready؛ CI/CodeQL سبز.
+- دیپلوی ایران: `/opt/taranom` روی همان SHA؛ api/web/worker پس از merge rebuild شدند؛ `/v1/health` ok.
+- Hetzner دست نخورده.
+
 ## 2026-10-25 — VT update sync + standalone e2e runner (بدون دیپلوی)
 
 - ریشه ۱: await روی hero داخل callbackِ VT در Chromium؛ `router.push` تا ~۴s اعمال نمی‌شد.
