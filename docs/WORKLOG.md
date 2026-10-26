@@ -1,8 +1,24 @@
+<<<<<<< HEAD
+## 2026-10-26 — فیکس ریویو PR #107 پنل پیامک (بدون merge/deploy)
+
+- OTP واقعی ۶ رقمی برای confirm + snapshot مخاطبین + re-check در dispatch.
+- DisabledSmsProvider وقتی کلید نیست؛ secrets env-first؛ خط PROMO/SERVICE جدا.
+- Redis rate limit / promo cap / token bucket؛ اعتبار = credit − صف؛ FSM کامل‌تر.
+- تست‌های fsm/gates/provider؛ unit-specs ۱۲۹ OK. بدون merge/deploy/SMS واقعی.
+
+## 2026-10-26 — پنل پیامک ادمین (feat/sms-panel، بدون merge/deploy)
+
+- Spec + UI-SPEC + ماکاپ‌ها در `docs/specs/sms-panel.md` و `docs/design/sms-panel/`.
+- Adapter (`SmsIr`/`Mock`)، صف DB، تأیید دومرحله‌ای انبوه، نقش‌های SMS، UI `/admin/sms`.
+- هیچ پیامک واقعی، هیچ دیپلوی/SSH؛ فقط PR به master.
+- گزارش: `docs/reports/2026-10-26-sms-panel.md`.
+=======
 ## 2026-10-26 — sales-partner QA B1–B9 merge + deploy ایران
 
 - PR #106 squash-merge به `master` (`13d0b810`). Draft → ready؛ CI/CodeQL سبز.
 - دیپلوی ایران: `/opt/taranom` روی همان SHA؛ api/web/worker پس از merge rebuild شدند؛ `/v1/health` ok.
 - Hetzner دست نخورده.
+>>>>>>> origin/master
 
 ## 2026-10-25 — VT update sync + standalone e2e runner (بدون دیپلوی)
 

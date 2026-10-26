@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, ShoppingCart, FileText, Package,
   CreditCard, BarChart3, Settings, Bell,
   Warehouse,   UserCog, LogOut, X, ChevronDown, CircleUser,
-  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2, Megaphone, Handshake, Headphones,
+  Tag, PenSquare, Layers, Menu, FileStack, PanelsTopLeft, Link2, Megaphone, Handshake, Headphones, MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { clearToken, getRole } from '@/lib/auth';
@@ -81,6 +81,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { href: '/admin/partners', icon: Handshake, label: 'تأمین‌کننده ارسال', module: 'partners' },
       { href: '/admin/sales-partners', icon: Megaphone, label: 'همکار بازاریاب', module: 'salesPartners' },
       { href: '/admin/omnichannel', icon: Link2, label: 'کانال‌های انتشار', module: 'omnichannel' },
+      { href: '/admin/sms', icon: MessageSquare, label: 'پنل پیامک', module: 'sms' },
       { href: '/admin/settings', icon: Settings, label: 'تنظیمات', module: 'settings' },
     ],
   },

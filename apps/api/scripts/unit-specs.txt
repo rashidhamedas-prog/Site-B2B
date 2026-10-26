@@ -4,6 +4,11 @@ src/modules/auth/auth.otp.logic.spec.ts
 src/modules/auth/retail-identity.spec.ts
 src/modules/redis/otp-cooldown.spec.ts
 src/modules/notification/sms-cooldown-http.spec.ts
+src/modules/sms-panel/domain/domain.spec.ts
+src/modules/sms-panel/provider/provider.spec.ts
+src/modules/sms-panel/sms-panel.rbac.spec.ts
+src/modules/sms-panel/sms-panel.fsm.spec.ts
+src/modules/sms-panel/sms-panel.gates.spec.ts
 src/modules/blog/blog-seo.util.spec.ts
 src/modules/blog/blog-seo-analysis.spec.ts
 src/modules/product/product-sale.spec.ts

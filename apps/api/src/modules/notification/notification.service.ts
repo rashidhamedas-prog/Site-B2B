@@ -12,6 +12,10 @@ import {
   type SmsTransportConfig,
   type SmsTransportResult,
 } from './sms-transport';
+import { createSmsProvider } from '../sms-panel/provider/factory';
+import { resolveSmsSecrets } from '../sms-panel/provider/secrets';
+import type { SmsProvider } from '../sms-panel/provider/types';
+import type { ResolvedSmsSecrets } from '../sms-panel/provider/secrets';
 
 // SMS provider: sms.ir (REST API v1, auth via x-api-key header).
 // API key, line number, per-event toggles, message templates and the master
@@ -19,6 +23,7 @@ import {
 // (DB → defaults). With no API key configured the service logs and no-ops.
 // When the origin cannot reach api.sms.ir (common on EU VPS), set
 // SMS_EGRESS_BASE_URL (+ SMS_EGRESS_SECRET) to a Cloudflare Worker proxy.
+// Sends go through SmsProvider adapter (mock forced in NODE_ENV=test).
 @Injectable()
 export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
@@ -27,12 +32,50 @@ export class NotificationService {
 
   static readonly FETCH_TIMEOUT_MS = SMS_FETCH_TIMEOUT_MS;
 
-  private transportCfg(cfg: { egressBaseUrl?: string; egressSecret?: string }): SmsTransportConfig {
+  private transportCfg(secrets: Pick<ResolvedSmsSecrets, 'egressBaseUrl' | 'egressSecret'>): SmsTransportConfig {
     return {
-      egressBaseUrl: cfg.egressBaseUrl || '',
-      egressSecret: cfg.egressSecret || '',
+      egressBaseUrl: secrets.egressBaseUrl || '',
+      egressSecret: secrets.egressSecret || '',
       timeoutMs: NotificationService.FETCH_TIMEOUT_MS,
     };
+  }
+
+  private resolveFromCfg(cfg: Awaited<ReturnType<SettingsService['sms']>>): ResolvedSmsSecrets {
+    return resolveSmsSecrets(process.env, {
+      apiKey: cfg.apiKey,
+      lineNumber: cfg.lineNumber,
+      otpTemplateId: cfg.otpTemplateId,
+      egressBaseUrl: cfg.egressBaseUrl,
+      egressSecret: cfg.egressSecret,
+    });
+  }
+
+  private async buildProvider(
+    preset?: Awaited<ReturnType<SettingsService['sms']>>,
+  ): Promise<{
+    provider: SmsProvider;
+    cfg: Awaited<ReturnType<SettingsService['sms']>>;
+    secrets: ResolvedSmsSecrets;
+  }> {
+    const cfg = preset ?? (await this.settings.sms());
+    const secrets = this.resolveFromCfg(cfg);
+    const provider = createSmsProvider({
+      env: process.env,
+      db: {
+        apiKey: cfg.apiKey,
+        lineNumber: cfg.lineNumber,
+        otpTemplateId: cfg.otpTemplateId,
+        egressBaseUrl: cfg.egressBaseUrl,
+        egressSecret: cfg.egressSecret,
+      },
+      smsir: {
+        apiKey: secrets.apiKey,
+        lineService: secrets.lineService,
+        linePromo: secrets.linePromo,
+        transport: this.transportCfg(secrets),
+      },
+    });
+    return { provider, cfg, secrets };
   }
 
   private logTransportFailure(path: string, result: SmsTransportResult) {
@@ -48,7 +91,8 @@ export class NotificationService {
     preset?: Awaited<ReturnType<SettingsService['sms']>>,
   ): Promise<SmsTransportResult> {
     const cfg = preset ?? (await this.settings.sms());
-    const result = await smsIrRequest('POST', path, apiKey, body, this.transportCfg(cfg));
+    const secrets = this.resolveFromCfg(cfg);
+    const result = await smsIrRequest('POST', path, apiKey, body, this.transportCfg(secrets));
     if (!result.ok) this.logTransportFailure(path, result);
     return result;
   }
@@ -71,8 +115,9 @@ export class NotificationService {
     message: string,
     opts?: { redactBody?: boolean },
   ): Promise<boolean> {
-    const cfg = await this.settings.sms();
-    if (!cfg.enabled || !cfg.apiKey) {
+    const { provider, cfg, secrets } = await this.buildProvider();
+    // Enable check uses resolved env-first key, not DB-only cfg.apiKey.
+    if (!cfg.enabled || !secrets.apiKey) {
       this.logger.log(
         opts?.redactBody
           ? `[SMS off] to=${receptor} msg=[redacted]`
@@ -80,25 +125,29 @@ export class NotificationService {
       );
       return false;
     }
-    return this.post(cfg.apiKey, '/send/bulk', {
-      lineNumber: cfg.lineNumber || undefined,
-      messageText: message,
-      mobiles: [receptor],
+    const r = await provider.sendSingle({
+      to: receptor,
+      body: message,
+      line: secrets.lineService || undefined,
+      idempotencyKey: `notify:single:${receptor}:${Date.now()}`,
     });
+    return r.ok;
   }
 
   // Bulk SMS to many numbers (marketing blast).
   async sendBulk(receptors: string[], message: string): Promise<boolean> {
-    const cfg = await this.settings.sms();
-    if (!cfg.enabled || !cfg.apiKey || receptors.length === 0) {
+    const { provider, cfg, secrets } = await this.buildProvider();
+    if (!cfg.enabled || !secrets.apiKey || receptors.length === 0) {
       this.logger.log(`[SMS off/bulk] count=${receptors.length}`);
       return false;
     }
-    return this.post(cfg.apiKey, '/send/bulk', {
-      lineNumber: cfg.lineNumber || undefined,
-      messageText: message,
-      mobiles: receptors,
+    const r = await provider.sendBulk({
+      to: receptors,
+      body: message,
+      line: secrets.lineService || undefined,
+      idempotencyKey: `notify:bulk:${Date.now()}`,
     });
+    return r.ok;
   }
 
   /** Marketing / blast path: never send more than 100 numbers per sms.ir request. */
@@ -122,17 +171,18 @@ export class NotificationService {
   /** Same send as sendOtp, with timeout/network kept distinct from a hard provider reject. */
   async sendOtpDetailed(receptor: string, token: string): Promise<SmsTransportResult> {
     const cfg = await this.settings.sms();
-    if (!cfg.enabled || !cfg.apiKey) {
+    const secrets = this.resolveFromCfg(cfg);
+    if (!cfg.enabled || !secrets.apiKey) {
       this.logger.log(`[SMS off] OTP to=${receptor}`);
       return { ok: false, errorCode: 'DISABLED', errorMessage: 'disabled', via: 'direct', durationMs: 0 };
     }
-    if (!cfg.otpTemplateId) {
+    if (!secrets.otpTemplateId) {
       const message = await this.template('otpFallback', { code: token });
       return this.postResult(
-        cfg.apiKey,
+        secrets.apiKey,
         '/send/bulk',
         {
-          lineNumber: cfg.lineNumber || undefined,
+          lineNumber: secrets.lineService || undefined,
           messageText: message,
           mobiles: [receptor],
         },
@@ -140,11 +190,11 @@ export class NotificationService {
       );
     }
     return this.postResult(
-      cfg.apiKey,
+      secrets.apiKey,
       '/send/verify',
       {
         mobile: receptor,
-        templateId: cfg.otpTemplateId,
+        templateId: secrets.otpTemplateId,
         parameters: [{ name: 'CODE', value: token }],
       },
       cfg,
@@ -367,13 +417,14 @@ export class NotificationService {
 
   async status() {
     const cfg = await this.settings.sms();
+    const secrets = this.resolveFromCfg(cfg);
     return {
-      enabled: cfg.enabled && !!cfg.apiKey,
+      enabled: cfg.enabled && !!secrets.apiKey,
       provider: 'sms.ir',
-      lineNumber: cfg.lineNumber || null,
-      otpTemplate: cfg.otpTemplateId || null,
-      egressConfigured: Boolean(cfg.egressBaseUrl),
-      egressBaseUrl: cfg.egressBaseUrl || null,
+      lineNumber: secrets.lineService || null,
+      otpTemplate: secrets.otpTemplateId || null,
+      egressConfigured: Boolean(secrets.egressBaseUrl),
+      egressBaseUrl: secrets.egressBaseUrl || null,
       adminPhoneWholesale: cfg.adminPhoneWholesale || null,
       adminPhoneWholesale2: cfg.adminPhoneWholesale2 || null,
       adminPhoneRetail: cfg.adminPhoneRetail || null,
@@ -399,31 +450,38 @@ export class NotificationService {
     egressConfigured: boolean;
   }> {
     const cfg = await this.settings.sms();
+    const secrets = this.resolveFromCfg(cfg);
     if (!cfg.enabled) {
       return {
         ok: false,
-        via: cfg.egressBaseUrl ? 'egress' : 'direct',
+        via: secrets.egressBaseUrl ? 'egress' : 'direct',
         errorCode: 'DISABLED',
         errorMessage: 'SMS master switch is off',
         durationMs: 0,
         enabled: false,
-        hasApiKey: !!cfg.apiKey,
-        egressConfigured: Boolean(cfg.egressBaseUrl),
+        hasApiKey: !!secrets.apiKey,
+        egressConfigured: Boolean(secrets.egressBaseUrl),
       };
     }
-    if (!cfg.apiKey) {
+    if (!secrets.apiKey) {
       return {
         ok: false,
-        via: cfg.egressBaseUrl ? 'egress' : 'direct',
+        via: secrets.egressBaseUrl ? 'egress' : 'direct',
         errorCode: 'DISABLED',
         errorMessage: 'API key missing',
         durationMs: 0,
         enabled: true,
         hasApiKey: false,
-        egressConfigured: Boolean(cfg.egressBaseUrl),
+        egressConfigured: Boolean(secrets.egressBaseUrl),
       };
     }
-    const result = await smsIrRequest('GET', '/credit', cfg.apiKey, undefined, this.transportCfg(cfg));
+    const result = await smsIrRequest(
+      'GET',
+      '/credit',
+      secrets.apiKey,
+      undefined,
+      this.transportCfg(secrets),
+    );
     const data = result.body && typeof result.body === 'object' ? (result.body as any).data : null;
     const credit =
       typeof data === 'number'
@@ -441,7 +499,7 @@ export class NotificationService {
       credit,
       enabled: true,
       hasApiKey: true,
-      egressConfigured: Boolean(cfg.egressBaseUrl),
+      egressConfigured: Boolean(secrets.egressBaseUrl),
     };
   }
 }

@@ -7,6 +7,9 @@ export const STAFF_ROLES = [
   'ACCOUNTANT',
   'WAREHOUSE_MANAGER',
   'CUSTOMER_SERVICE',
+  'SMS_MANAGER',
+  'SMS_OPERATOR',
+  'SMS_MARKETER',
 ] as const;
 
 export type StaffRole = (typeof STAFF_ROLES)[number];
@@ -30,6 +33,7 @@ export const STAFF_MODULES = [
   'partners',
   'salesPartners',
   'account',
+  'sms',
 ] as const;
 
 export type StaffModule = (typeof STAFF_MODULES)[number];
@@ -43,6 +47,9 @@ export const STAFF_ROLE_MODULES: Record<StaffRole, readonly StaffModule[]> = {
   ACCOUNTANT: ['dashboard', 'reports', 'orders', 'invoices', 'payments', 'account'],
   WAREHOUSE_MANAGER: ['dashboard', 'orders', 'catalog', 'inventory', 'account'],
   CUSTOMER_SERVICE: ['dashboard', 'crm', 'orders', 'rma', 'support', 'content', 'account'],
+  SMS_MANAGER: ['dashboard', 'sms', 'account'],
+  SMS_OPERATOR: ['dashboard', 'sms', 'account'],
+  SMS_MARKETER: ['dashboard', 'sms', 'account'],
 };
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
@@ -52,6 +59,9 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   ACCOUNTANT: 'حسابدار',
   WAREHOUSE_MANAGER: 'مدیر انبار',
   CUSTOMER_SERVICE: 'پشتیبانی',
+  SMS_MANAGER: 'مدیر پیامک',
+  SMS_OPERATOR: 'اپراتور پیامک',
+  SMS_MARKETER: 'بازاریاب پیامک',
 };
 
 export function isStaffRole(role: string | null | undefined): role is StaffRole {
@@ -92,6 +102,7 @@ const PATH_MODULE: Array<{ prefix: string; exact?: boolean; module: StaffModule 
   { prefix: '/admin/menus', module: 'content' },
   { prefix: '/admin/analytics', module: 'content' },
   { prefix: '/admin/notifications', module: 'content' },
+  { prefix: '/admin/sms', module: 'sms' },
   { prefix: '/admin', exact: true, module: 'dashboard' },
 ];
 
