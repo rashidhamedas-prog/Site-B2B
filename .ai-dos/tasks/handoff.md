@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-26T14:20:00Z — TASK-20261026-001 admin SMS panel PR ready (no merge/deploy)
+
+- PR #107 https://github.com/rashidhamedas-prog/Site-B2B/pull/107 on `feat/sms-panel`.
+- CI: lint-and-build + omnichannel-migrate + CodeQL Analyze green after ReDoS/loop-bound fixes in `domain/template.ts`.
+- Delivered: adapter+mock, migration, `/v1/admin/sms`, `/admin/sms` UI, unit specs. No merge, no deploy, no real SMS.
+- Next: owner review / merge when ready; confirm promo hours with sms.ir before production.
+
 ## 2026-10-26T13:17:00Z — TASK-20261026-001 admin SMS panel (no merge/deploy)
 
 - Branch `feat/sms-panel` from `origin/master`. Spec: `docs/specs/sms-panel.md`; UI truth: `docs/design/sms-panel/UI-SPEC.md`.
