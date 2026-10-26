@@ -135,10 +135,10 @@ export class SmsIrProvider implements SmsProvider {
     const costRaw = body?.data?.cost ?? body?.cost;
     const cost = typeof costRaw === 'number' ? costRaw : undefined;
 
-    const results = mobiles.map((to, i) => {
+    const results: BulkSendResult['results'] = mobiles.map((to, i) => {
       const mid = ids[i];
       const err = messageIdError(mid);
-      if (err) return { to, messageId: mid === 0 ? 0 : null, error: err };
+      if (err) return { to, messageId: mid == null ? null : String(mid), error: err };
       return { to, messageId: mid != null ? String(mid) : undefined };
     });
     const anyOk = results.some((r) => !r.error);

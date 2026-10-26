@@ -6,15 +6,15 @@ import { createHash } from 'crypto';
 import { tokenFlow } from './sms-panel.token-logic';
 
 assert.ok(SMS_ALL.includes('ADMIN'));
-assert.ok(SMS_MANAGERS.includes('SMS_MANAGER'));
-assert.ok(!SMS_MANAGERS.includes('SMS_OPERATOR'));
-assert.ok(SMS_MARKETERS.includes('SMS_MARKETER'));
-assert.ok(SMS_SEND_SINGLE.includes('SMS_OPERATOR'));
+assert.ok((SMS_MANAGERS as readonly string[]).includes('SMS_MANAGER'));
+assert.ok(!(SMS_MANAGERS as readonly string[]).includes('SMS_OPERATOR'));
+assert.ok((SMS_MARKETERS as readonly string[]).includes('SMS_MARKETER'));
+assert.ok((SMS_SEND_SINGLE as readonly string[]).includes('SMS_OPERATOR'));
 assert.strictEqual(smsRoleLabel('ADMIN'), 'مدیر کل');
 assert.strictEqual(smsRoleLabel('SMS_MANAGER'), 'مدیر پیامک');
 
 // PROMO operator forbidden is enforced in service; roles matrix here
-assert.ok(!SMS_MANAGERS.includes('SMS_OPERATOR'), 'operator not manager');
+assert.ok(!(SMS_MANAGERS as readonly string[]).includes('SMS_OPERATOR'), 'operator not manager');
 
 // two-step token logic
 const { raw, hash, payload, stale } = tokenFlow({

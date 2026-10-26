@@ -29,6 +29,15 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/partners': 'تأمین‌کننده ارسال',
   '/admin/sales-partners': 'همکار بازاریاب',
   '/admin/account': 'حساب من',
+  '/admin/sms': 'پنل پیامک',
+  '/admin/sms/send': 'ارسال تکی پیامک',
+  '/admin/sms/campaigns/new': 'ارسال انبوه پیامک',
+  '/admin/sms/templates': 'قالب‌های پیامک',
+  '/admin/sms/contacts': 'مخاطبان پیامک',
+  '/admin/sms/reports': 'گزارش پیامک',
+  '/admin/sms/optout': 'لغو و لیست سیاه',
+  '/admin/sms/audit': 'فعالیت پیامک',
+  '/admin/sms/settings': 'تنظیمات پنل پیامک',
   '/admin/settings': 'تنظیمات',
 };
 
@@ -46,6 +55,7 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/admin/partners': 'تأمین‌کننده‌ای که کالای خودش را ارسال می‌کند',
   '/admin/sales-partners': 'بازاریاب‌هایی که مشتری را به ترنم معرفی می‌کنند',
   '/admin/account': 'ایمیل و رمز ورود همین کاربر',
+  '/admin/sms': 'اعتبار، ارسال، کمپین و گزارش — واحد: پیامک',
   '/admin/settings': 'کسب‌وکار، پرداخت، پیامک و یکپارچه‌سازی‌ها',
 };
 

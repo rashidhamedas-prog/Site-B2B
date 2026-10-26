@@ -29,7 +29,7 @@ export interface SendResult {
 
 export interface BulkSendResult {
   ok: boolean;
-  results: Array<{ to: string; messageId?: string | null; error?: SendError }>;
+  results: Array<{ to: string; messageId?: string | null | undefined; error?: SendError }>;
   packId?: string;
   cost?: number;
   error?: SendError;
