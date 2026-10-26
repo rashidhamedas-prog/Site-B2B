@@ -1,4 +1,11 @@
 <<<<<<< HEAD
+## 2026-10-26 — PR #107 پنل پیامک: merge + deploy ایران
+
+- Squash-merge به `master` (`4e1929ea`). Conflict فقط WORKLOG با #106 بود.
+- دیپلوی ایران: `/opt/taranom` روی همان SHA؛ api/web/worker rebuild؛ `/v1/health` ok؛ provider=`smsir`.
+- Migrations: `SmsPanel1761475200002` + `SmsPanelHardening1761480000003`. UI `/admin/sms` (۳۰۱→لاگین).
+- Hetzner دست نخورده.
+
 ## 2026-10-26 — فیکس ریویو PR #107 پنل پیامک (بدون merge/deploy)
 
 - OTP واقعی ۶ رقمی برای confirm + snapshot مخاطبین + re-check در dispatch.
