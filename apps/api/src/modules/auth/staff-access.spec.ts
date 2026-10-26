@@ -35,6 +35,11 @@ assert(!canAccessStaffModule('SALES_MANAGER', 'settings'), 'sales no settings');
 assert(canAccessStaffModule('SALES_MANAGER', 'crm'), 'sales crm');
 assert(canAccessStaffModule('WAREHOUSE_MANAGER', 'inventory'), 'warehouse inventory');
 assert(!canAccessStaffModule('CUSTOMER_SERVICE', 'catalog'), 'cs no catalog');
+assert(canAccessStaffModule('ADMIN', 'sms'), 'admin sms');
+assert(canAccessStaffModule('SMS_MANAGER', 'sms'), 'sms manager sms');
+assert(canAccessStaffModule('SMS_OPERATOR', 'sms'), 'sms operator sms');
+assert(canAccessStaffModule('SMS_MARKETER', 'sms'), 'sms marketer sms');
+assert(!canAccessStaffModule('SMS_OPERATOR', 'settings'), 'operator no settings');
 
 assert(roleAfterCustomerLink('ADMIN') === 'ADMIN', 'otp must not demote admin');
 assert(roleAfterCustomerLink('SALES_REP') === 'SALES_REP', 'otp must not demote staff');

@@ -104,6 +104,7 @@ import {
   MarketingSuppressionEntity,
   MarketingTemplateEntity,
 } from '../modules/customer-marketing/entities';
+import { SMS_PANEL_ENTITIES } from '../modules/sms-panel/entities/sms-panel.entities';
 import { assertProductionDbSyncSafe, typeormSynchronizeEnabled } from './db-sync';
 
 export const RUNTIME_TYPEORM_ENTITIES = [
@@ -179,6 +180,7 @@ export const RUNTIME_TYPEORM_ENTITIES = [
     MarketingSendEntity,
     MarketingActivityEntity,
     MarketingCheckoutIntentEntity,
+    ...SMS_PANEL_ENTITIES,
 ];
 
 /**

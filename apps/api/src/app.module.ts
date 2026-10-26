@@ -36,6 +36,7 @@ import { CustomerMarketingModule } from './modules/customer-marketing/customer-m
 import { VendorModule } from './modules/vendor/vendor.module';
 import { SalesPartnerModule } from './modules/sales-partner/sales-partner.module';
 import { WholesaleReferralModule } from './modules/wholesale-referral/wholesale-referral.module';
+import { SmsPanelModule } from './modules/sms-panel/sms-panel.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { WholesaleReferralModule } from './modules/wholesale-referral/wholesale-
     OmnichannelModule,
     CartModule,
     CustomerMarketingModule,
+    SmsPanelModule,
   ],
 })
 export class AppModule {}
