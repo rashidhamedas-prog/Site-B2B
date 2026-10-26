@@ -1,3 +1,10 @@
+## 2026-10-26 — پنل پیامک ادمین (feat/sms-panel، بدون merge/deploy)
+
+- Spec + UI-SPEC + ماکاپ‌ها در `docs/specs/sms-panel.md` و `docs/design/sms-panel/`.
+- Adapter (`SmsIr`/`Mock`)، صف DB، تأیید دومرحله‌ای انبوه، نقش‌های SMS، UI `/admin/sms`.
+- هیچ پیامک واقعی، هیچ دیپلوی/SSH؛ فقط PR به master.
+- گزارش: `docs/reports/2026-10-26-sms-panel.md`.
+
 ## 2026-10-25 — VT update sync + standalone e2e runner (بدون دیپلوی)
 
 - ریشه ۱: await روی hero داخل callbackِ VT در Chromium؛ `router.push` تا ~۴s اعمال نمی‌شد.

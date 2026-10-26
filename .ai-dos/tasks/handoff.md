@@ -2,6 +2,13 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-26T13:17:00Z — TASK-20261026-001 admin SMS panel (no merge/deploy)
+
+- Branch `feat/sms-panel` from `origin/master`. Spec: `docs/specs/sms-panel.md`; UI truth: `docs/design/sms-panel/UI-SPEC.md`.
+- Goals: SmsProvider adapter + Mock, DB queue, 2-step bulk confirm, `/admin/sms` 12 pages, CI green.
+- Hard rules: no real SMS, no merge, no deploy, no production migration, secrets only via env placeholders.
+- Next: implement → push → PR → wait for CI → stop.
+
 ## 2026-10-24T16:10:00Z — TASK-20261024-008 telegram media upload + reject truncated JPEG
 
 - Branch `cursor/telegram-media-upload-e227`. No wrangler deploy, no Iran deploy, no env/secret/DB change.
