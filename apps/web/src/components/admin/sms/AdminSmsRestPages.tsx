@@ -1,18 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { ensureOptOutFooter } from './sms-parts';
-import { PartsCounter, PhonePreview, SmsClassBadge, SmsSection, SmsStatusBadge } from './sms-ui';
+import { PartCounter } from './PartCounter';
+import { insertVariable, isTemplateVar } from './template-vars';
+import { VariableChips } from './VariableChips';
+import { PhonePreview, SmsClassBadge, SmsSection, SmsStatusBadge } from './sms-ui';
 
 export function AdminSmsTemplates() {
   const [rows, setRows] = useState<any[]>([]);
   const [edit, setEdit] = useState<any | null>(null);
+  const [varError, setVarError] = useState('');
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     apiClient.get<any[]>('/admin/sms/templates').then(setRows).catch(() => []);
   }, []);
+  const insert = (key: Parameters<typeof insertVariable>[1]) => {
+    if (!edit) return;
+    const cursor = bodyRef.current?.selectionStart ?? String(edit.body || '').length;
+    const next = insertVariable(String(edit.body || ''), key, cursor);
+    setEdit({ ...edit, body: next.body });
+    setVarError('');
+    requestAnimationFrame(() => {
+      bodyRef.current?.focus();
+      bodyRef.current?.setSelectionRange(next.cursor, next.cursor);
+    });
+  };
   return (
     <SmsSection title="قالب‌ها">
+      {rows.length === 0 && <p className="mb-3 text-sm text-gray-500">اولین قالب را بسازید</p>}
       <div className="tablewrap overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
@@ -44,12 +61,21 @@ export function AdminSmsTemplates() {
       {edit && (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <div>
+            <VariableChips onInsert={insert} />
             <textarea
-              className="min-h-[140px] w-full rounded-lg border p-3 text-sm"
+              ref={bodyRef}
+              className="mt-3 min-h-[140px] w-full rounded-lg border p-3 text-sm"
               value={edit.body}
-              onChange={(e) => setEdit({ ...edit, body: e.target.value })}
+              onChange={(e) => {
+                setEdit({ ...edit, body: e.target.value });
+                const unknown = Array.from(String(e.target.value).matchAll(/\{(\w+)\}/g))
+                  .map((match) => match[1])
+                  .filter((key) => key !== 'code' && !isTemplateVar(key));
+                setVarError(unknown.length ? `متغیر ناشناخته: ${unknown.join('، ')}` : '');
+              }}
             />
-            <PartsCounter body={ensureOptOutFooter(edit.body, edit.messageClass)} />
+            {varError && <p className="mt-1 text-xs text-red-700">{varError}</p>}
+            <PartCounter body={edit.body} messageClass={edit.messageClass} />
             <button
               type="button"
               className="mt-2 min-h-11 rounded-lg bg-primary px-4 text-sm font-bold text-white"

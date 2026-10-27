@@ -31,6 +31,15 @@ import {
   type SmsMessageClass,
 } from './domain/template';
 import {
+  TemplateVarError,
+  assertTemplateBody,
+  normalizeFallbacks,
+  renderForContact,
+  sourceWarnings,
+  worstCaseBody,
+} from './audience/template-vars';
+import { isAudienceSource } from './audience/audience.types';
+import {
   SmsAuditLogEntity,
   SmsBlacklistEntity,
   SmsCampaignEntity,
@@ -240,8 +249,44 @@ export class SmsPanelService {
       campaignId: campaign.id,
       audienceSnapshotHash: campaign.audienceSnapshotHash,
       body: campaign.bodySnapshot,
+      bodyTemplate: campaign.bodySnapshot,
+      varFallbacks: normalizeFallbacks(campaign.varFallbacks),
       scheduledAt: campaign.scheduledAt?.toISOString() || null,
     });
+  }
+
+  private templateVarError(err: unknown): never {
+    if (err instanceof TemplateVarError) {
+      throw new BadRequestException({
+        message: 'متغیر قالب نامعتبر است',
+        code: err.code,
+        detail: err.message,
+      });
+    }
+    throw err;
+  }
+
+  private renderCampaignText(
+    campaign: SmsCampaignEntity,
+    vars: Record<string, string | null | undefined>,
+  ): string {
+    try {
+      return ensureOptOutFooter(
+        renderForContact(campaign.bodySnapshot, vars, normalizeFallbacks(campaign.varFallbacks)),
+        campaign.messageClass as SmsMessageClass,
+      );
+    } catch (err) {
+      this.templateVarError(err);
+    }
+  }
+
+  private worstCampaignParts(campaign: SmsCampaignEntity): number {
+    return countSmsParts(
+      ensureOptOutFooter(
+        worstCaseBody(campaign.bodySnapshot),
+        campaign.messageClass as SmsMessageClass,
+      ),
+    );
   }
 
   private async isTestNumber(phone: string): Promise<boolean> {
@@ -744,13 +789,27 @@ export class SmsPanelService {
   }
 
   async createTemplate(actorId: string, dto: Partial<SmsTemplateEntity>) {
+    if (!isSmsMessageClass(String(dto.messageClass || ''))) {
+      throw new BadRequestException({
+        message: 'کلاس پیام الزامی است',
+        code: 'SMS_INVALID_CLASS',
+      });
+    }
+    let variables: string[] = [];
+    try {
+      variables = assertTemplateBody(String(dto.body || ''), null, {
+        messageClass: String(dto.messageClass),
+      });
+    } catch (err) {
+      this.templateVarError(err);
+    }
     const row = await this.templates.save(
       this.templates.create({
         key: String(dto.key),
         name: String(dto.name),
-        messageClass: String(dto.messageClass || 'TRANSACTIONAL'),
+        messageClass: String(dto.messageClass),
         body: String(dto.body || ''),
-        variables: (dto.variables as string[]) || [],
+        variables,
         providerTemplateId: dto.providerTemplateId || null,
         version: 1,
         isActive: dto.isActive !== false,
@@ -768,14 +827,28 @@ export class SmsPanelService {
 
   async updateTemplate(actorId: string, id: string, dto: Partial<SmsTemplateEntity>) {
     const row = await this.templates.findOneByOrFail({ id });
+    const messageClass = String(dto.messageClass ?? row.messageClass);
+    if (!isSmsMessageClass(messageClass)) {
+      throw new BadRequestException({
+        message: 'کلاس پیام الزامی است',
+        code: 'SMS_INVALID_CLASS',
+      });
+    }
+    const body = String(dto.body ?? row.body);
+    let variables = row.variables;
+    try {
+      variables = assertTemplateBody(body, null, { messageClass });
+    } catch (err) {
+      this.templateVarError(err);
+    }
     const next = this.templates.create({
       ...row,
       id: undefined as any,
       key: row.key,
       name: dto.name ?? row.name,
-      messageClass: dto.messageClass ?? row.messageClass,
-      body: dto.body ?? row.body,
-      variables: (dto.variables as string[]) ?? row.variables,
+      messageClass,
+      body,
+      variables,
       providerTemplateId: dto.providerTemplateId ?? row.providerTemplateId,
       version: row.version + 1,
       isActive: dto.isActive ?? row.isActive,
@@ -800,19 +873,34 @@ export class SmsPanelService {
     return row;
   }
 
-  previewTemplate(id: string, vars: Record<string, string>) {
-    return this.templates.findOneByOrFail({ id }).then((tpl) => ({
-      body: ensureOptOutFooter(
-        fillTemplateStrict(tpl.body, vars, tpl.variables || undefined),
-        tpl.messageClass as SmsMessageClass,
-      ),
-      parts: countSmsParts(
-        ensureOptOutFooter(
-          fillTemplateStrict(tpl.body, vars, tpl.variables || undefined),
-          tpl.messageClass as SmsMessageClass,
-        ),
-      ),
-    }));
+  async previewTemplate(
+    id: string,
+    vars: Record<string, string>,
+    fallbacks: Record<string, string> = {},
+    sources: string[] = [],
+  ) {
+    const tpl = await this.templates.findOneByOrFail({ id });
+    const messageClass = tpl.messageClass as SmsMessageClass;
+    let body = '';
+    try {
+      assertTemplateBody(tpl.body, fallbacks, { messageClass });
+      let raw = tpl.body;
+      if (messageClass === 'OTP' && raw.includes('{code}')) {
+        const code = String(vars.code || fallbacks.code || '').trim();
+        if (!code) throw new TemplateVarError('MISSING_FALLBACK:code');
+        raw = raw.replace(/\{code\}/g, code.slice(0, 25));
+      }
+      const filled = renderForContact(raw, vars, fallbacks);
+      body = messageClass === 'OTP' ? filled : ensureOptOutFooter(filled, messageClass);
+    } catch (err) {
+      this.templateVarError(err);
+    }
+    return {
+      body,
+      parts: countSmsParts(body),
+      warnings: sourceWarnings(tpl.body, sources.filter(isAudienceSource)),
+      worstParts: countSmsParts(ensureOptOutFooter(worstCaseBody(tpl.body), messageClass)),
+    };
   }
 
   // ----- campaigns -----
@@ -825,6 +913,7 @@ export class SmsPanelService {
       listId?: string;
       templateId?: string;
       scheduledAt?: string;
+      varFallbacks?: Record<string, string>;
     },
     actorRole?: string,
   ) {
@@ -844,12 +933,18 @@ export class SmsPanelService {
         code: 'SMS_FORBIDDEN',
       });
     }
+    try {
+      assertTemplateBody(dto.body, dto.varFallbacks, { requireFallbacks: true });
+    } catch (err) {
+      this.templateVarError(err);
+    }
     const body = ensureOptOutFooter(dto.body, dto.messageClass);
     const row = await this.campaigns.save(
       this.campaigns.create({
         name: dto.name,
         messageClass: dto.messageClass,
         bodySnapshot: body,
+        varFallbacks: normalizeFallbacks(dto.varFallbacks),
         listId: dto.listId || null,
         templateId: dto.templateId || null,
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
@@ -919,9 +1014,9 @@ export class SmsPanelService {
       }
       reasons.ok += 1;
       eligibleRows.push({ phone, customerId: m.customerId });
-      if (samples.length < 5) samples.push(campaign.bodySnapshot);
+      if (samples.length < 5) samples.push(this.renderCampaignText(campaign, m.vars || {}));
     }
-    const partEach = countSmsParts(campaign.bodySnapshot);
+    const partEach = this.worstCampaignParts(campaign);
     const estimatedParts = eligibleRows.length * partEach;
     campaign.recipientCount = eligibleRows.length;
     campaign.estimatedParts = estimatedParts;
@@ -958,7 +1053,7 @@ export class SmsPanelService {
       );
     }
     const campaign = preview.campaign;
-    const partEach = countSmsParts(campaign.bodySnapshot);
+    const partEach = this.worstCampaignParts(campaign);
     await this.campaignRecipients.delete({ campaignId: campaign.id });
     for (const row of preview.eligibleRows || []) {
       await this.campaignRecipients.save(
@@ -1194,6 +1289,20 @@ export class SmsPanelService {
       where: { campaignId: campaign.id },
     });
     if (!recipients.length) return;
+    const memberVars = new Map<string, Record<string, string>>();
+    if (campaign.listId) {
+      const members = await this.members.find({
+        where: { listId: campaign.listId },
+        take: 50_000,
+      });
+      for (const member of members) memberVars.set(member.phoneNormalized, member.vars || {});
+    }
+    const rendered = recipients.flatMap((recipient) => {
+      const phone = normalizeIranMobileStrict(recipient.phoneNormalized);
+      if (!phone) return [];
+      const body = this.renderCampaignText(campaign, memberVars.get(phone) || {});
+      return [{ recipient, phone, body, parts: countSmsParts(body) }];
+    });
     const panel = await this.getPanelSettings();
     let when = campaign.scheduledAt || new Date();
     if (
@@ -1202,20 +1311,22 @@ export class SmsPanelService {
     ) {
       when = nextPromoWindowOpen(when, promoWindowFromSettings(panel)) || when;
     }
-    for (const m of recipients) {
-      const phone = normalizeIranMobileStrict(m.phoneNormalized);
-      if (!phone) continue;
-      const key = `camp:${campaign.id}:${phone}`;
+    for (const row of rendered) {
+      if (row.recipient.parts !== row.parts) {
+        row.recipient.parts = row.parts;
+        await this.campaignRecipients.save(row.recipient);
+      }
+      const key = `camp:${campaign.id}:${row.phone}`;
       const exists = await this.messages.findOne({ where: { idempotencyKey: key } });
       if (exists) continue;
       await this.messages.save(
         this.messages.create({
           campaignId: campaign.id,
           messageClass: campaign.messageClass,
-          phoneNormalized: phone,
-          customerId: m.customerId,
-          body: campaign.bodySnapshot,
-          parts: m.parts || countSmsParts(campaign.bodySnapshot),
+          phoneNormalized: row.phone,
+          customerId: row.recipient.customerId,
+          body: row.body,
+          parts: row.parts,
           status: 'QUEUED',
           nextAttemptAt: when,
           idempotencyKey: key,

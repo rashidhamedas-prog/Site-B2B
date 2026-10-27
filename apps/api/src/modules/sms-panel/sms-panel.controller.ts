@@ -135,8 +135,11 @@ export class SmsPanelController {
 
   @Post('templates/:id/preview')
   @SmsRoles(...SMS_ALL)
-  previewTemplate(@Param('id') id: string, @Body() body: { vars?: Record<string, string> }) {
-    return this.sms.previewTemplate(id, body.vars || {});
+  previewTemplate(
+    @Param('id') id: string,
+    @Body() body: { vars?: Record<string, string>; fallbacks?: Record<string, string>; sources?: string[] },
+  ) {
+    return this.sms.previewTemplate(id, body.vars || {}, body.fallbacks || {}, body.sources || []);
   }
 
   @Get('lists')
