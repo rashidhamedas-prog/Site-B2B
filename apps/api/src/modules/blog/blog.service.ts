@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, EntityManager } from 'typeorm';
+import { Repository, ILike, EntityManager, IsNull, Not } from 'typeorm';
 import { OutboxService } from '../omnichannel/services/outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../omnichannel/omnichannel.constants';
 import { randomUUID } from 'crypto';
@@ -25,6 +32,13 @@ import {
 import { sanitizeBlogHtml, buildHowToJsonLd } from './blog-sanitize';
 import { hasBlogPermission, type BlogRole } from './blog-roles';
 import { requirePublicBlogChannel } from './blog-public-channel';
+import {
+  BLOG_CATEGORY_SLUG_LIVE_CONFLICT,
+  BLOG_RESTORE_SLUG_CONFLICT,
+  BLOG_SLUG_LIVE_CONFLICT,
+  blogArticlePath,
+  softDeletedSlugHint,
+} from './blog-slug-live';
 import type {
   CreateBlogPostDto,
   UpdateBlogPostDto,
@@ -78,6 +92,8 @@ const WHOLESALE_SEED = [
 
 @Injectable()
 export class BlogService {
+  private readonly logger = new Logger(BlogService.name);
+
   constructor(
     @InjectRepository(BlogPostEntity) private readonly repo: Repository<BlogPostEntity>,
     @InjectRepository(BlogCategoryEntity) private readonly catRepo: Repository<BlogCategoryEntity>,
@@ -286,12 +302,15 @@ export class BlogService {
     categoryId?: string;
     search?: string;
     authorId?: string;
+    deleted?: 'only' | 'include';
   }) {
     const where: any = {};
     if (opts.channel) where.channel = normalizeChannel(opts.channel);
     if (opts.status) where.status = opts.status;
     if (opts.categoryId) where.categoryId = opts.categoryId;
     if (opts.authorId) where.authorId = opts.authorId;
+    if (opts.deleted === 'only') where.deletedAt = Not(IsNull());
+    const withDeleted = opts.deleted === 'only' || opts.deleted === 'include';
     if (opts.search) {
       return this.repo.find({
         where: [
@@ -299,25 +318,79 @@ export class BlogService {
           { ...where, slug: ILike(`%${opts.search}%`) },
         ],
         order: { createdAt: 'DESC' },
+        withDeleted,
       });
     }
-    return this.repo.find({ where, order: { createdAt: 'DESC' } });
+    return this.repo.find({ where, order: { createdAt: 'DESC' }, withDeleted });
   }
 
-  async findOneAdmin(id: string) {
-    const post = await this.repo.findOne({ where: { id } });
+  async findOneAdmin(id: string, opts?: { withDeleted?: boolean }) {
+    const post = await this.repo.findOne({
+      where: { id },
+      withDeleted: !!opts?.withDeleted,
+    });
     if (!post) throw new NotFoundException('مطلب یافت نشد');
     return post;
+  }
+
+  private async assertLiveSlugAvailable(
+    channel: string,
+    slug: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const live = await this.repo.findOne({ where: { channel, slug } });
+    if (live && live.id !== excludeId) {
+      throw new ConflictException(BLOG_SLUG_LIVE_CONFLICT);
+    }
+  }
+
+  private async deactivateArticleDeletedRedirects(
+    manager: EntityManager,
+    channel: string,
+    slug: string,
+    actorId?: string,
+  ): Promise<number> {
+    const sourcePath = blogArticlePath(slug);
+    const redirects = await manager.getRepository(SeoRedirectEntity).find({
+      where: {
+        channel,
+        sourcePath,
+        reason: 'ARTICLE_DELETED',
+        isActive: true,
+      },
+    });
+    if (!redirects.length) return 0;
+    for (const row of redirects) {
+      row.isActive = false;
+      await manager.getRepository(SeoRedirectEntity).save(row);
+      await manager.getRepository(SeoAuditLogEntity).save(
+        manager.getRepository(SeoAuditLogEntity).create({
+          action: 'blog.redirect.deactivate_article_deleted',
+          channel,
+          entityType: 'seo_redirect',
+          entityId: row.id,
+          actorId: actorId || null,
+          meta: { sourcePath, slug, reason: 'ARTICLE_DELETED' },
+        }),
+      );
+    }
+    return redirects.length;
   }
 
   async create(data: CreateBlogPostDto, actor?: Actor): Promise<BlogPostEntity> {
     const channel = normalizeChannel(data.channel);
     const slug = data.slug ? slugify(data.slug) : slugify(data.title);
-    const exists = await this.repo.findOne({
+    await this.assertLiveSlugAvailable(channel, slug);
+
+    const softDeleted = await this.repo.findOne({
       where: { slug, channel },
       withDeleted: true,
     });
-    if (exists) throw new ConflictException('اسلاگ در این سایت تکراری است');
+    const hint = softDeletedSlugHint({
+      liveExists: false,
+      softDeletedId: softDeleted?.deletedAt ? softDeleted.id : null,
+    });
+    if (hint) this.logger.log(hint);
 
     let status = data.status || 'DRAFT';
     if (status === 'PUBLISHED' && actor && !hasBlogPermission(actor, 'blog:publish')) {
@@ -343,6 +416,7 @@ export class BlogService {
     const post = this.repo.create(enriched);
     const saved = await this.repo.manager.transaction(async (manager) => {
       const row = await manager.getRepository(BlogPostEntity).save(post);
+      await this.deactivateArticleDeletedRedirects(manager, channel, slug, actor?.id);
       await this.enqueueBlogPublished(row, `${row.id}:create`, manager);
       return row;
     });
@@ -377,6 +451,12 @@ export class BlogService {
     if (data.channel) next.channel = normalizeChannel(data.channel);
     if (data.publishAt) next.publishAt = new Date(data.publishAt);
     if (data.content) Object.assign(next, this.enrichStats({ content: data.content }));
+
+    const nextSlug = next.slug || post.slug;
+    const nextChannel = next.channel || post.channel;
+    if (nextSlug !== post.slug || nextChannel !== post.channel) {
+      await this.assertLiveSlugAvailable(nextChannel, nextSlug, post.id);
+    }
 
     // Slug change redirect for published posts
     if (
@@ -490,7 +570,7 @@ export class BlogService {
   }
 
   async remove(id: string, dto: DeleteBlogPostDto = {}, actor?: Actor) {
-    const post = await this.findOneAdmin(id);
+    const post = await this.findOneAdmin(id, { withDeleted: !!dto.hard });
     if (dto.hard) {
       if (actor && !hasBlogPermission(actor, 'blog:delete_hard')) {
         throw new ForbiddenException('حذف دائمی فقط برای SUPER_ADMIN');
@@ -506,6 +586,10 @@ export class BlogService {
       return { deleted: true, hard: true };
     }
 
+    if (post.deletedAt) {
+      throw new BadRequestException('مطلب از قبل در سطل زباله است');
+    }
+
     if (post.status === 'PUBLISHED') {
       const strategy = dto.strategy || 'UNPUBLISH';
       if (strategy === 'REDIRECT_ARTICLE' || strategy === 'REDIRECT_CATEGORY') {
@@ -513,7 +597,7 @@ export class BlogService {
         await this.redirectRepo.save(
           this.redirectRepo.create({
             channel: post.channel,
-            sourcePath: `/blog/${post.slug}`,
+            sourcePath: blogArticlePath(post.slug),
             destinationUrl: dto.redirectTarget,
             statusCode: 301,
             reason: 'ARTICLE_DELETED',
@@ -525,7 +609,7 @@ export class BlogService {
         await this.redirectRepo.save(
           this.redirectRepo.create({
             channel: post.channel,
-            sourcePath: `/blog/${post.slug}`,
+            sourcePath: blogArticlePath(post.slug),
             destinationUrl: 'gone:410',
             statusCode: 410,
             reason: 'ARTICLE_DELETED',
@@ -552,13 +636,21 @@ export class BlogService {
   }
 
   async restore(id: string, actor?: Actor) {
+    const post = await this.repo.findOne({ where: { id }, withDeleted: true });
+    if (!post || !post.deletedAt) throw new NotFoundException('مطلب یافت نشد');
+
+    const live = await this.repo.findOne({ where: { channel: post.channel, slug: post.slug } });
+    if (live) throw new ConflictException(BLOG_RESTORE_SLUG_CONFLICT);
+
     const res = await this.repo.restore(id);
     if (!res.affected) throw new NotFoundException('مطلب یافت نشد');
     await this.audit({
       action: 'blog.post.restore',
+      channel: post.channel,
       entityType: 'blog_post',
       entityId: id,
       actorId: actor?.id,
+      meta: { slug: post.slug },
     });
     return this.findOneAdmin(id);
   }
@@ -710,8 +802,8 @@ export class BlogService {
   async createCategory(dto: CreateCategoryDto, actor?: Actor) {
     const channel = normalizeChannel(dto.channel);
     const slug = dto.slug ? slugify(dto.slug) : slugify(dto.name);
-    const exists = await this.catRepo.findOne({ where: { channel, slug }, withDeleted: true });
-    if (exists) throw new ConflictException('اسلاگ دسته تکراری است');
+    const exists = await this.catRepo.findOne({ where: { channel, slug } });
+    if (exists) throw new ConflictException(BLOG_CATEGORY_SLUG_LIVE_CONFLICT);
     const saved = await this.catRepo.save(
       this.catRepo.create({
         ...dto,
@@ -736,6 +828,14 @@ export class BlogService {
     if (!cat) throw new NotFoundException('دسته یافت نشد');
     if (dto.slug) dto.slug = slugify(dto.slug);
     if (dto.channel) dto.channel = normalizeChannel(dto.channel);
+    const nextSlug = dto.slug || cat.slug;
+    const nextChannel = dto.channel || cat.channel;
+    if (nextSlug !== cat.slug || nextChannel !== cat.channel) {
+      const clash = await this.catRepo.findOne({ where: { channel: nextChannel, slug: nextSlug } });
+      if (clash && clash.id !== cat.id) {
+        throw new ConflictException(BLOG_CATEGORY_SLUG_LIVE_CONFLICT);
+      }
+    }
     Object.assign(cat, dto);
     const saved = await this.catRepo.save(cat);
     await this.audit({

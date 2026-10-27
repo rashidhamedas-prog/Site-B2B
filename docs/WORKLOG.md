@@ -1,4 +1,11 @@
-<<<<<<< HEAD
+## 2026-10-27 — فیکس اسلاگ بلاگ بعد از soft-delete (بدون merge/deploy)
+
+- ایندکس یکتا جزئی UQ_blog_posts_channel_slug_live / UQ_blog_categories_channel_slug_live (WHERE deletedAt IS NULL).
+- create/update فقط بین ردیف‌های زنده چک می‌کند؛ restore در صورت اشغال اسلاگ 409 می‌دهد.
+- سطل زباله ادمین (deleted=only) + بازیابی / حذف دائمی؛ غیرفعال‌سازی ریدایرکت ARTICLE_DELETED هنگام ساخت مجدد همان اسلاگ.
+- تگ‌های بلاگ هنوز ایندکس کامل دارند (خارج از اسکوپ این PR). Migration فقط با دیپلوی بعدی روی ایران.
+- برنچ ix/blog-soft-deleted-slug-reuse — بدون دیپلوی و بدون دست زدن به DB پروداکشن.
+
 ## 2026-10-26 — PR #107 پنل پیامک: merge + deploy ایران
 
 - Squash-merge به `master` (`4e1929ea`). Conflict فقط WORKLOG با #106 بود.

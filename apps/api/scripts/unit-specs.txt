@@ -39,6 +39,8 @@ src/modules/collection/collection-public-channel.spec.ts
 src/modules/discount/discount-channel.spec.ts
 src/modules/inventory/inventory-movement.policy.spec.ts
 src/modules/upload/storage-delete.spec.ts
+src/modules/upload/channel-image.spec.ts
+src/modules/upload/storage-upload-channel.spec.ts
 src/modules/omnichannel/omnichannel-secrets.spec.ts
 src/modules/omnichannel/omnichannel-token-vault.spec.ts
 src/modules/omnichannel/oos-policy.spec.ts
@@ -120,6 +122,9 @@ src/modules/auth/staff-access.spec.ts
 src/modules/auth/password-policy.spec.ts
 src/modules/category/category-unique.spec.ts
 src/database/migrations/20260912-005-category-live-unique.spec.ts
+src/database/migrations/20261027-001-blog-post-live-slug-unique.spec.ts
+src/modules/blog/blog-slug-live.spec.ts
+src/modules/blog/blog-soft-deleted-slug.spec.ts
 src/modules/order/order-payment-lifecycle.spec.ts
 src/modules/order/order-row-lock.spec.ts
 src/modules/order/order-money-guard.spec.ts

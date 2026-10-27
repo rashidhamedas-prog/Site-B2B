@@ -217,9 +217,19 @@ export class BlogController {
     @Query('status') status?: string,
     @Query('categoryId') categoryId?: string,
     @Query('search') search?: string,
-    @Query('authorId') authorId?: string
+    @Query('authorId') authorId?: string,
+    @Query('deleted') deleted?: 'only' | 'include',
   ) {
-    return this.svc.findAllAdmin({ channel, status, categoryId, search, authorId });
+    const deletedFilter =
+      deleted === 'only' || deleted === 'include' ? deleted : undefined;
+    return this.svc.findAllAdmin({
+      channel,
+      status,
+      categoryId,
+      search,
+      authorId,
+      deleted: deletedFilter,
+    });
   }
 
   @Get('admin/posts/:id')
@@ -227,8 +237,13 @@ export class BlogController {
   @Roles('ADMIN')
   @RequireBlogPermissions('blog:read')
   @ApiBearerAuth()
-  findOneAdmin(@Param('id') id: string) {
-    return this.svc.findOneAdmin(id);
+  findOneAdmin(
+    @Param('id') id: string,
+    @Query('withDeleted') withDeleted?: string,
+  ) {
+    return this.svc.findOneAdmin(id, {
+      withDeleted: withDeleted === '1' || withDeleted === 'true',
+    });
   }
 
   @Post('admin/posts')
