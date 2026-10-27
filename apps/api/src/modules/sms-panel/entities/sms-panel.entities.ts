@@ -112,6 +112,12 @@ export class SmsCampaignEntity {
   @Column({ type: 'uuid', nullable: true })
   listId: string | null;
 
+  @Column({ type: 'uuid', nullable: true })
+  segmentId: string | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  audienceSpec: { sources?: string[]; rules?: unknown[] } | null;
+
   @Column({ type: 'jsonb', nullable: true })
   segmentFilter: Record<string, unknown> | null;
 
@@ -389,6 +395,30 @@ export class SmsCreditSnapshotEntity {
   at: Date;
 }
 
+@Entity('sms_segment')
+export class SmsSegmentEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ length: 120 })
+  name: string;
+
+  @Column({ type: 'text', array: true, default: '{}' })
+  sources: string[];
+
+  @Column({ type: 'jsonb', default: () => "'[]'" })
+  rules: Array<{ field: string; op: string; value: unknown }>;
+
+  @Column({ type: 'uuid', nullable: true })
+  createdBy: string | null;
+
+  @CreateDateColumn({ type: 'timestamptz' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  updatedAt: Date;
+}
+
 export const SMS_PANEL_ENTITIES = [
   SmsTemplateEntity,
   SmsContactListEntity,
@@ -402,4 +432,5 @@ export const SMS_PANEL_ENTITIES = [
   SmsInboundEntity,
   SmsAuditLogEntity,
   SmsCreditSnapshotEntity,
+  SmsSegmentEntity,
 ];

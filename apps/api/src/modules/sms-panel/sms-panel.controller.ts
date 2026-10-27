@@ -16,6 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { SmsPanelService } from './sms-panel.service';
+import { SegmentService } from './audience/segment.service';
 import {
   SmsApproveDto,
   SmsConfirmDto,
@@ -43,7 +44,10 @@ const smsBodyPipe = new ValidationPipe({
 @Controller('admin/sms')
 @UseGuards(AuthGuard('jwt'), SmsRolesGuard)
 export class SmsPanelController {
-  constructor(private readonly sms: SmsPanelService) {}
+  constructor(
+    private readonly sms: SmsPanelService,
+    private readonly segments: SegmentService,
+  ) {}
 
   private actor(req: Request) {
     const user = (req as any).user || {};
@@ -165,10 +169,47 @@ export class SmsPanelController {
     return this.sms.listMembers(id, this.actor(req).role);
   }
 
+  @Get('audience/fields')
+  @SmsRoles(...SMS_MARKETERS)
+  audienceFields() {
+    return this.segments.fields();
+  }
+
   @Post('segments/preview')
   @SmsRoles(...SMS_MARKETERS)
-  segmentPreview(@Body() body: { filter?: Record<string, unknown> }) {
-    return { count: 0, filter: body.filter || {}, note: 'سگمنت پویا در نسخه بعدی کامل می‌شود' };
+  segmentPreview(
+    @Req() req: Request,
+    @Body() body: { sources?: string[]; rules?: unknown; text?: string; templateId?: string; messageClass?: string },
+  ) {
+    return this.segments.preview(body, this.actor(req).role);
+  }
+
+  @Get('segments')
+  @SmsRoles(...SMS_MARKETERS)
+  segmentList() {
+    return this.segments.list();
+  }
+
+  @Post('segments')
+  @SmsRoles(...SMS_MARKETERS)
+  segmentCreate(@Req() req: Request, @Body() body: { name?: string; sources?: string[]; rules?: unknown }) {
+    return this.segments.create(this.actor(req).id, body);
+  }
+
+  @Patch('segments/:id')
+  @SmsRoles(...SMS_MARKETERS)
+  segmentUpdate(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() body: { name?: string; sources?: string[]; rules?: unknown },
+  ) {
+    return this.segments.update(this.actor(req).id, id, body);
+  }
+
+  @Delete('segments/:id')
+  @SmsRoles(...SMS_MARKETERS)
+  segmentDelete(@Req() req: Request, @Param('id') id: string) {
+    return this.segments.remove(this.actor(req).id, id);
   }
 
   @Get('campaigns')

@@ -12,6 +12,7 @@ export type AudienceDb = {
 };
 
 const SEARCH_CAP = 200;
+export const SEGMENT_SCAN_CAP = 50_000;
 
 export function likeContains(raw: string): string {
   const escaped = String(raw || '').replace(/[\\%_]/g, (ch) => `\\${ch}`);
@@ -203,11 +204,17 @@ function channelPredicate(channel: 'WHOLESALE' | 'RETAIL'): string {
   return customerChannelSql('c', channel);
 }
 
+function queryCap(limit: number | undefined, wide?: boolean): number {
+  const requested = limit || (wide ? SEGMENT_SCAN_CAP : SEARCH_CAP);
+  return Math.min(requested, wide ? SEGMENT_SCAN_CAP : SEARCH_CAP);
+}
+
 export function buildCustomerQuery(input: {
   channel: 'WHOLESALE' | 'RETAIL';
   q?: string | null;
   phone?: string | null;
   limit?: number;
+  wide?: boolean;
 }): { sql: string; params: unknown[] } {
   const q = input.q?.trim() ? likeContains(input.q.trim()) : null;
   const phone = input.phone ? normalizeIranMobileStrict(input.phone) : null;
@@ -230,13 +237,14 @@ export function buildCustomerQuery(input: {
     ORDER BY c."createdAt" DESC
     LIMIT $3
   `;
-  return { sql, params: [q, phone, Math.min(input.limit || SEARCH_CAP, SEARCH_CAP)] };
+  return { sql, params: [q, phone, queryCap(input.limit, input.wide)] };
 }
 
 export function buildPartnerQuery(table: 'sales_partner_profiles' | 'wholesale_referral_partners', input: {
   q?: string | null;
   phone?: string | null;
   limit?: number;
+  wide?: boolean;
 }): { sql: string; params: unknown[] } {
   const q = input.q?.trim() ? likeContains(input.q.trim()) : null;
   const phone = input.phone ? normalizeIranMobileStrict(input.phone) : null;
@@ -253,7 +261,7 @@ export function buildPartnerQuery(table: 'sales_partner_profiles' | 'wholesale_r
     ORDER BY "createdAt" DESC
     LIMIT $3
   `;
-  return { sql, params: [q, phone, Math.min(input.limit || SEARCH_CAP, SEARCH_CAP)] };
+  return { sql, params: [q, phone, queryCap(input.limit, input.wide)] };
 }
 
 export function assertUserInputNotInSql(sql: string, raw: string) {
@@ -265,7 +273,7 @@ export function assertUserInputNotInSql(sql: string, raw: string) {
 async function customerHits(
   db: AudienceDb,
   channel: 'WHOLESALE' | 'RETAIL',
-  opts: { q?: string | null; phone?: string | null },
+  opts: { q?: string | null; phone?: string | null; limit?: number; wide?: boolean },
 ): Promise<{ hits: AudienceHit[]; invalid: string[] }> {
   const built = buildCustomerQuery({ channel, ...opts });
   if (opts.q) assertUserInputNotInSql(built.sql, opts.q);
@@ -299,7 +307,7 @@ async function customerHits(
 export async function loadSourceHits(
   db: AudienceDb,
   source: AudienceSource,
-  opts: { q?: string | null; phone?: string | null },
+  opts: { q?: string | null; phone?: string | null; limit?: number; wide?: boolean },
 ): Promise<{ hits: AudienceHit[]; invalid: string[] }> {
   if (source === 'WHOLESALE' || source === 'RETAIL') return customerHits(db, source, opts);
   if (source === 'SALES_PARTNER') {
