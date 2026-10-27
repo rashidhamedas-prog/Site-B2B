@@ -8,9 +8,13 @@
  *     -c apps/web/e2e/playwright.product-card.config.ts
  */
 import { test, expect, type Page } from '@playwright/test';
-import { mockApi, watchPageErrors, hydrationErrors } from './support.cjs';
+import { guardProductionHosts, mockApi, watchPageErrors, hydrationErrors } from './support.cjs';
 
 const ORIGIN = (process.env.E2E_BASE_URL || 'http://127.0.0.1:3000').replace('localhost', '127.0.0.1');
+// Retail storefront is selected by host (next.config beforeFiles), same as
+// production .ir. Cookie-only rewrite on 127.0.0.1 301s through /retail and
+// comes back as wholesale. localhost.ir is the repo's local retail host.
+const RETAIL_ORIGIN = process.env.E2E_RETAIL_ORIGIN || 'http://localhost.ir:3000';
 
 const VIEWPORTS = [
   { name: 'desktop', width: 1280, height: 800 },
@@ -22,25 +26,33 @@ const CHANNELS = [
     name: 'wholesale',
     listPath: '/products',
     retailCookie: false,
+    origin: ORIGIN,
   },
   {
     name: 'retail',
-    listPath: '/retail/products',
+    listPath: '/products',
     retailCookie: true,
+    origin: RETAIL_ORIGIN,
   },
 ] as const;
 
-async function openListing(page: Page, listPath: string, retailCookie: boolean) {
-  if (retailCookie) {
-    await page.context().addCookies([
-      {
-        name: 'taranom_channel',
-        value: 'retail',
-        url: ORIGIN,
-      },
-    ]);
-  }
-  await mockApi(page, { passthroughGets: true });
+const NAV_BUDGET_MS = 1_500;
+
+async function openListing(page: Page, listPath: string, retailCookie: boolean, origin: string) {
+  const hostname = new URL(origin).hostname;
+  await page.context().addCookies([
+    {
+      name: 'taranom_channel',
+      value: retailCookie ? 'retail' : 'wholesale',
+      domain: hostname,
+      path: '/',
+      sameSite: 'Lax',
+      secure: false,
+      httpOnly: false,
+    },
+  ]);
+  await mockApi(page);
+  const productionLeaks = await guardProductionHosts(page);
   const errors = watchPageErrors(page);
   const consoleErrors: string[] = [];
   page.on('console', (msg) => {
@@ -78,49 +90,51 @@ async function openListing(page: Page, listPath: string, retailCookie: boolean) 
 
   const res = await page.goto(listPath, { waitUntil: 'domcontentloaded' });
   expect(res?.ok() || (res?.status() ?? 0) < 400 || res?.status() === 304, `listing ${listPath}`).toBeTruthy();
-  // /retail/products 301s to /products; wait for the catalog shell.
   await page.waitForLoadState('load');
 
-  // Prefer the media Link (tn-media) which owns the VT click handler.
-  const card = page.locator('article.tn-card a.tn-media[href^="/products/"]').first();
-  try {
-    await expect(card, 'at least one product card media link').toBeVisible({ timeout: 30_000 });
-  } catch {
-    // Cookie/channel race on the redirect: land on /products with retail cookie.
-    if (retailCookie) {
-      await page.goto('/products', { waitUntil: 'domcontentloaded' });
-    }
-    await expect(card, 'at least one product card media link after retry').toBeVisible({
-      timeout: 30_000,
-    });
-  }
+  // Wholesale puts tn-media on the link. Retail puts the link inside .tn-media.
+  const card = page
+    .locator(
+      'article.tn-card a.tn-media[href^="/products/"], article.tn-card .tn-media a[href^="/products/"]',
+    )
+    .first();
+  await expect(card, 'at least one product card media link').toBeVisible();
   const href = await card.getAttribute('href');
   expect(href, 'card href').toMatch(/^\/products\/[^/?#]+/);
 
-  // Warm SSR/dynamic compile for the destination so the 1.5s click budget
+  // Warm SSR/dynamic compile for the destination so the click budget
   // measures client navigation, not first-hit Next compile.
-  await page.request.get(new URL(href!, ORIGIN).toString());
+  await page.request.get(new URL(href!, origin).toString());
 
-  // Warm the client route (hover on desktop, pointer/touch on mobile).
+  const path = href!.split(/[?#]/)[0]!;
   await card.dispatchEvent('pointerenter');
   await card.dispatchEvent('touchstart');
   await card.hover({ force: true }).catch(() => undefined);
-  await page.waitForTimeout(400);
+  // Prefetch is the signal the card route is warm. Resource timing is already
+  // populated when Next prefetched the in-view link during load.
+  await page
+    .waitForFunction(
+      (productPath) =>
+        performance.getEntriesByType('resource').some((entry) => entry.name.includes(productPath)),
+      path,
+      { timeout: 3_000 },
+    )
+    .catch(() => undefined);
 
   const clickAt = Date.now();
   const urlPattern = new RegExp(`${href!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[?#]|$)`);
   await Promise.all([
-    page.waitForURL(urlPattern, { timeout: 1_500 }),
+    page.waitForURL(urlPattern, { timeout: NAV_BUDGET_MS }),
     card.click({ force: true }),
   ]);
   const urlMs = Date.now() - clickAt;
-  expect(urlMs, `URL changed within 1500ms (took ${urlMs}ms)`).toBeLessThanOrEqual(1_500);
+  expect(urlMs, `URL changed within ${NAV_BUDGET_MS}ms (took ${urlMs}ms)`).toBeLessThanOrEqual(NAV_BUDGET_MS);
   await expect(page).toHaveURL(urlPattern);
 
-  const heading = page.locator('h1').first();
-  await expect(heading, 'product h1 visible').toBeVisible({ timeout: Math.max(100, 1_500 - urlMs) });
+  const heading = page.locator('h1:visible', { hasText: 'مانتو آزمون کتان' }).first();
+  await expect(heading, 'product h1 visible').toBeVisible({ timeout: Math.max(100, NAV_BUDGET_MS - urlMs) });
   const totalMs = Date.now() - clickAt;
-  expect(totalMs, `h1 visible within 1500ms (took ${totalMs}ms)`).toBeLessThanOrEqual(1_500);
+  expect(totalMs, `h1 visible within ${NAV_BUDGET_MS}ms (took ${totalMs}ms)`).toBeLessThanOrEqual(NAV_BUDGET_MS);
 
   const vt = await page.evaluate(() => {
     const w = window as unknown as { __tnVtStarted?: boolean; __tnVtFinishedMs?: number | null };
@@ -137,6 +151,7 @@ async function openListing(page: Page, listPath: string, retailCookie: boolean) 
     /TypeError|ReferenceError|SyntaxError/i.test(t),
   );
   expect(pageExceptions, 'no script exceptions during card navigation').toEqual([]);
+  expect(productionLeaks, 'no browser request reached poshaktaranom.com').toEqual([]);
 }
 
 for (const viewport of VIEWPORTS) {
@@ -145,11 +160,11 @@ for (const viewport of VIEWPORTS) {
       const context = await browser.newContext({
         viewport: { width: viewport.width, height: viewport.height },
         locale: 'fa-IR',
-        baseURL: ORIGIN,
+        baseURL: channel.origin,
       });
       const page = await context.newPage();
       try {
-        await openListing(page, channel.listPath, channel.retailCookie);
+        await openListing(page, channel.listPath, channel.retailCookie, channel.origin);
       } finally {
         await context.close();
       }

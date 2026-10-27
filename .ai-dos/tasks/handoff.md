@@ -2,6 +2,20 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-27T11:12:00Z — TASK-20261027-001 merged; Iran SSH blocked
+
+- PR #108 squash-merged to `master` as `eeefbf88`.
+- Cloud `VPS_SSH_KEY` is Hetzner (`wholesale-admin@server2`); Iran `tnadmin` rejects it. `workflow_dispatch` 403 for this token.
+- Need Iran key in agent secrets (or user runs deploy from Windows). Autodeploy timer on Iran may still pick up `origin/master`.
+- No access to the user's Windows clone from this cloud agent; they must `git pull origin master` locally (or grant Remote/SSH + path).
+
+## 2026-10-27T08:45:00Z — TASK-20261027-001 product-card e2e mock
+
+- Branch `fix/e2e-product-card-deterministic` from `origin/master`. No merge, no deploy, no workflow_dispatch.
+- Cause: product-card spec and CI Next process read the live catalog (`passthroughGets` + `API_INTERNAL_URL=https://poshaktaranom.com/api/v1`). Empty/slow responses leave `article.tn-card` missing.
+- Change: local `e2e/mock-api-server.cjs` + fixtures; CI e2e step only; browser tripwire aborts any other poshaktaranom host; prerender cache for `/products` is dropped so SSR uses the mock. No storefront/product code changes.
+- Next: 20× `playwright test -c e2e/playwright.product-card.config.ts --repeat-each=20 --retries=0`, then PR to master.
+
 ## 2026-10-26T14:20:00Z — TASK-20261026-001 admin SMS panel PR ready (no merge/deploy)
 
 - PR #107 https://github.com/rashidhamedas-prog/Site-B2B/pull/107 on `feat/sms-panel`.
