@@ -65,7 +65,7 @@ export async function assertDecodableImage(
 ): Promise<{ format: string; width: number; height: number }> {
   if (!buffer.length) throw new ProductImageProcessingError(new Error('empty image'));
   rejectTruncatedJpeg(buffer);
-  const sharp = require('sharp') as typeof import('sharp').default;
+  const sharp = ((require('sharp') as any).default ?? require('sharp')) as (...args: any[]) => any;
   let meta: { format?: string; width?: number; height?: number };
   try {
     meta = await sharp(buffer, { failOn: 'warning', limitInputPixels: MAX_INPUT_PIXELS }).metadata();
