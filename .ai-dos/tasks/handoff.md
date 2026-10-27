@@ -2,6 +2,15 @@
 
 Append newest entries at the top. Never erase another agent's record.
 
+## 2026-10-27T15:10:00Z — TASK-20261027-omni-redesign package started (parallel)
+
+- GO حامد ۲۷ اکتبر ۲۰۲۶ برای کل بستهٔ بازطراحی (merge/deploy هر PR فقط با CI سبز + approval).
+- Docs: `docs/design/omnichannel-redesign/` از zip کپی شد.
+- ترتیب: drain-resume → PR-1…11 → PR-13 → PR-15 → PR-14؛ رد PR-0 و PR-12 و TELEGRAM egress.
+- Claims: outbox-worker drain + specs + design folder. WORKLOG prepend فقط.
+- Agents: drain implementer, PR-1 architect, explore health UI, PR queue architect.
+- Next: consolidate drain PR branch, then claim PR-1 Health files.
+
 ## 2026-10-27T11:12:00Z — TASK-20261027-001 merged; Iran SSH blocked
 
 - PR #108 squash-merged to `master` as `eeefbf88`.

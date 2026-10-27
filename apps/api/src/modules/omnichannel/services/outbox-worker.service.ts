@@ -24,17 +24,29 @@ import { isNonRetryableProviderError, safeWorkerError } from '../adapters/telegr
 import { OmnichannelService } from './omnichannel.service';
 import { OmnichannelTokenVaultService } from './omnichannel-token-vault.service';
 import { PHASE4_EVENT_TYPES, shouldDeadLetter } from './outbox-lease';
-
-const SALES_PARTNER_ACK = new Set<string>(SALES_PARTNER_OUTBOX_EVENT_TYPES);
+import {
+  decideDrainTick,
+  resumeDrainIfCleared,
+  shouldKeepDrainPollTimer,
+  type DrainOrigin,
+} from './outbox-worker-drain';
 import { CustomerMarketingService } from '../../customer-marketing/customer-marketing.service';
 import { MarketingSmsSender } from '../../customer-marketing/marketing-sms.sender';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
 import { ChannelDestinationEntity } from '../entities/channel-destination.entity';
 import { ChannelConnectionEntity } from '../entities/channel-connection.entity';
 
+const SALES_PARTNER_ACK = new Set<string>(SALES_PARTNER_OUTBOX_EVENT_TYPES);
+
 export function isOmnichannelWorkerProcess(): boolean {
   return process.env.OMNICHANNEL_WORKER === 'true';
 }
+
+export {
+  decideDrainTick,
+  resumeDrainIfCleared,
+  shouldKeepDrainPollTimer,
+} from './outbox-worker-drain';
 
 /** Default handle budget for non-messenger work. */
 const HANDLE_TIMEOUT_MS = 35_000;
@@ -58,6 +70,8 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private running = false;
   /** When true, do not lease new outbox batches; finish in-flight work then mark drained. */
   private stopping = false;
+  /** `file` soft-drain is cancelable; `shutdown` is not. */
+  private drainOrigin: DrainOrigin = 'none';
 
   constructor(
     private readonly outbox: OutboxService,
@@ -110,12 +124,45 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     await this.waitForIdle(DRAIN_WAIT_MS);
   }
 
-  private beginDrain(reason: string) {
-    if (this.stopping) return;
+  private beginDrain(reason: 'file' | 'shutdown' | 'inflight-done') {
+    const origin: DrainOrigin = reason === 'shutdown' ? 'shutdown' : 'file';
+    if (this.drainOrigin === 'shutdown') return;
+    if (this.stopping && this.drainOrigin === origin) return;
     this.stopping = true;
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
+    this.drainOrigin = origin;
+    // Keep the 2s poll during file soft-drain so cancel (remove drain file) can resume.
+    // Shutdown clears the timer — process is exiting and must not resume.
+    if (!shouldKeepDrainPollTimer(origin)) {
+      if (this.timer) clearInterval(this.timer);
+      this.timer = null;
+    } else {
+      this.ensurePollTimer();
+    }
     this.logger.log(`outbox worker drain start reason=${reason} id=${this.workerId}`);
+  }
+
+  /** Cancelable file drain → resume claiming when the drain flag is gone. */
+  private applyResumeIfCleared(drainFilePresent: boolean): boolean {
+    const decision = resumeDrainIfCleared({
+      stopping: this.stopping,
+      origin: this.drainOrigin,
+      drainFilePresent,
+    });
+    if (!decision.resume) return false;
+    this.stopping = false;
+    this.drainOrigin = 'none';
+    if (decision.clearDrained) this.clearDrainedMarker();
+    this.ensurePollTimer();
+    this.logger.log(`outbox worker drain canceled/resumed id=${this.workerId}`);
+    return true;
+  }
+
+  private ensurePollTimer() {
+    if (!isOmnichannelWorkerProcess()) return;
+    if (this.timer) return;
+    this.timer = setInterval(() => {
+      void this.tick();
+    }, 2000);
   }
 
   private drainRequested() {
@@ -123,6 +170,14 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
       return existsSync(DRAIN_FLAG());
     } catch {
       return false;
+    }
+  }
+
+  private clearDrainedMarker() {
+    try {
+      unlinkSync(DRAINED_FLAG());
+    } catch {
+      /* already absent */
     }
   }
 
@@ -155,9 +210,22 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   }
 
   async tick() {
-    if (this.drainRequested()) this.beginDrain('file');
-    if (this.stopping) {
-      if (!this.running) this.markDrained();
+    const drainFilePresent = this.drainRequested();
+    const decision = decideDrainTick({
+      stopping: this.stopping,
+      origin: this.drainOrigin,
+      drainFilePresent,
+      running: this.running,
+    });
+    if (decision.resume) {
+      this.applyResumeIfCleared(drainFilePresent);
+    } else if (decision.beginFileDrain) {
+      this.beginDrain('file');
+    } else if (decision.nextOrigin === 'file' && this.drainOrigin !== 'file') {
+      this.drainOrigin = 'file';
+    }
+    if (decision.skipClaim || this.stopping) {
+      if (decision.markDrained || (this.stopping && !this.running)) this.markDrained();
       return;
     }
     if (this.running) return;
@@ -205,8 +273,13 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     } finally {
       this.running = false;
       this.beat();
-      if (this.stopping || this.drainRequested()) {
+      if (this.drainRequested()) {
         this.beginDrain(this.stopping ? 'inflight-done' : 'file');
+        this.markDrained();
+      } else if (this.stopping && this.drainOrigin === 'file') {
+        // Deploy aborted (drain flag removed) while this tick finished — resume.
+        this.applyResumeIfCleared(false);
+      } else if (this.stopping && this.drainOrigin === 'shutdown') {
         this.markDrained();
       }
     }
