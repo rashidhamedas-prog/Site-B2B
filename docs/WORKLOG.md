@@ -1,3 +1,10 @@
+## 2026-10-27 — Omnichannel: resume بعد از soft-drain (بسته بازطراحی)
+
+- باگ: حذف `/tmp/omnichannel-worker.drain` حافظهٔ `stopping` را پاک نمی‌کرد؛ ورکر تا restart متوقف می‌ماند.
+- اصلاح: ماشین حالت cancelable برای file-drain؛ تایمر ۲ث برای detect cancel؛ shutdown بدون resume.
+- تست: `outbox-worker.drain.spec.ts`. شاخه `fix/omnichannel-drain-resume`. بدون merge/deploy تا CI.
+- Docs بسته: `docs/design/omnichannel-redesign/`.
+
 ## 2026-10-27 — پنل پیامک مرحله ۱: لایه مخاطب (GO اجرای RUN-ALL)
 
 - منابع WHOLESALE / WHOLESALE_REFERRAL / SALES_PARTNER / RETAIL، dedupe روی phone و phone2، اولویت عمده > معرف > همکار > خرده.

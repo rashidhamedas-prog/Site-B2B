@@ -1,0 +1,97 @@
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>وایرفریم کانال انتشار — ترنم</title>
+<style>
+body{font-family:Tahoma,Vazirmatn,sans-serif;background:#f4f5f7;margin:0;color:#222;font-size:14px}
+header{background:#1f2937;color:#fff;padding:10px 16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:4px}
+.g{background:#16a34a}.r{background:#dc2626}.a{background:#f59e0b}.p{background:#7c3aed}.b{background:#2563eb}.x{background:#9ca3af}
+.banner{padding:8px 16px;font-weight:bold}.ban-r{background:#fee2e2;color:#991b1b}.ban-a{background:#fef3c7;color:#92400e}
+nav{display:flex;gap:4px;padding:8px 16px;background:#fff;border-bottom:1px solid #ddd;flex-wrap:wrap}
+nav a{padding:6px 10px;border-radius:6px;background:#eef;text-decoration:none;color:#223}
+section{background:#fff;margin:16px;padding:16px;border-radius:8px;border:1px solid #ddd}
+h2{margin-top:0;font-size:17px;border-bottom:1px dashed #ccc;padding-bottom:6px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.card{border:1px solid #ccc;border-radius:8px;padding:10px}
+table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:5px;text-align:right;font-size:13px}th{background:#f0f0f0}
+.tag{padding:2px 6px;border-radius:4px;color:#fff;font-size:12px}
+.btn{display:inline-block;padding:4px 10px;border:1px solid #888;border-radius:5px;background:#fafafa;font-size:12px;margin:2px}
+.btn[disabled],.dis{opacity:.4}
+.btn-d{border-color:#dc2626;color:#dc2626}
+.cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.phone{border:2px solid #333;border-radius:14px;padding:8px;min-height:180px;background:#e5ddd5}
+.bubble{background:#fff;border-radius:8px;padding:6px;font-size:12px}.img{height:70px;background:#bbb;border-radius:6px;margin-bottom:4px}
+.modal{border:2px solid #dc2626;border-radius:8px;padding:12px;max-width:520px;background:#fff8f8}
+small{color:#666}.note{background:#eef2ff;padding:6px;border-radius:6px;font-size:12px}
+</style></head><body>
+<header><b>کانال انتشار</b>
+<span><span class="dot g"></span>تلگرام LIVE</span>
+<span><span class="dot g"></span>روبیکا LIVE</span>
+<span><span class="dot g"></span>بله LIVE</span>
+<span style="margin-right:auto">نقش: Owner · ۱۶:۳۰ تهران</span></header>
+<div class="banner ban-a">⟳ انتشار در جریان (۲ ارسال) — deploy قفل است</div>
+<div class="banner ban-r">⛔ ناهمخوانی: kill-switch بله روی worker فعال ولی روی api خاموش — تست موفق، ارسال واقعی DEAD می‌شود</div>
+<nav><a href="#h">۱. سلامت</a><a href="#q">۲. صف زنده</a><a href="#m">۳. پوشش و تکرار</a><a href="#c">۴. انتشار جدید</a><a href="#t">۵. قالب‌ها</a><a href="#md">۶. رسانه</a><a href="#e">۷. حذف/ویرایش</a><a href="#bot">۸. صندوق ربات‌ها</a><a href="#a">۹. ممیزی و deploy</a></nav>
+
+<section id="h"><h2>۱. داشبورد سلامت providerها</h2><div class="cards">
+<div class="card"><b>تلگرام</b> <span class="tag b">LIVE</span> <small>منبع: connection</small><br>kill-switch: api خاموش · worker خاموش ✓<br>مسیر Worker: telegram-egress.poshaktaranom.com<br>ping ۲۴س: ۹۸٫۷٪ · p95: ۸۴۰ms<br>آخرین موفق: ۲۵ اکتبر ۲۰:۲۸<br>آخرین خطا: <span style="color:#dc2626">fetch failed (worker timeout)</span><br>سقف امروز: ۰ از ۱ · سکوت ۲۳–۱۲ (تنظیمات اختصاصی تلگرام)<br>ربات ادمین: post ✓ edit ✓ delete ✓<br><span class="btn">تست canary</span><span class="btn">توقف اضطراری</span></div>
+<div class="card"><b>روبیکا</b> <span class="tag g">LIVE</span><br>سقف/فاصله/سکوت: تنظیمات اختصاصی روبیکا<br>آخرین موفق: ۲۵ اکتبر ۲۰:۲۰<br>DEAD باز: ۹ · HOLD: ۳<br>سقف: — · فاصله ۹۰۰s<br><span class="btn">توقف اضطراری (Owner)</span></div>
+<div class="card"><b>بله</b> <span class="tag g">LIVE</span> <small>canary: 4858359991</small><br>kill-switch: <span style="color:#dc2626">ناهمخوان</span><br>آخرین موفق: ۲۶ اکتبر ۱۹:۳۲<br>سقف امروز: ۳ از ۱۰ · slot بعدی ۱۴:۱۵ فردا (سکوت)<br>heartbeat worker: ۲۰ ثانیه پیش<br><span class="btn">تست canary</span><span class="btn">توقف اضطراری</span></div>
+</div></section>
+
+<section id="q"><h2>۲. صف زنده</h2>
+<span class="btn">در انتظار (۲)</span><span class="btn">در حال ارسال (۲)</span><span class="btn">موفق</span><span class="btn">RETRY</span><span class="btn">HOLD (۳)</span><span class="btn">DEAD (۲۵)</span>
+<table><tr><th>محصول</th><th>کانال</th><th>اکشن</th><th>وضعیت</th><th>تلاش</th><th>علت واقعی</th><th>slot</th><th>messageId</th><th>اقدام</th></tr>
+<tr><td>یلدا #7200</td><td>تلگرام</td><td>CREATE</td><td><span class="tag a">RETRY</span></td><td>3/8</td><td>provider_unavailable: worker timeout 25s</td><td>۱۴:۱۵</td><td>—</td><td><span class="btn">retry</span></td></tr>
+<tr><td>غزل #7154</td><td>تلگرام</td><td>CREATE</td><td><span class="tag p">HOLD</span></td><td>4/8</td><td>uncertain_after_timeout — شاید ارسال شده</td><td>—</td><td>—</td><td><span class="btn">تأیید مجدد (Owner)</span></td></tr>
+<tr><td>#5047</td><td>بله</td><td>CREATE</td><td><span class="tag r">DEAD</span></td><td>8/8</td><td>unsupported_media: JPEG بریده در 5MiB</td><td>—</td><td>—</td><td><span class="btn dis">retry</span><small> اول تصویر را اصلاح کنید</small></td></tr>
+<tr><td>#7157</td><td>روبیکا</td><td>CREATE</td><td><span class="tag a" style="background:#f59e0b">موفق ⚠</span></td><td>1/8</td><td>هشدار: دکمه‌ها در پیام جدا</td><td>—</td><td>88213</td><td><span class="btn">ویرایش</span><span class="btn btn-d">حذف</span></td></tr>
+</table><p class="note">بدون revive گروهی. requeue-by-category فقط در تنظیمات Owner با GO-ref.</p></section>
+
+<section id="m"><h2>۳. ماتریس پوشش محصول × کانال</h2>
+<small>روبیکا ۳۰ · بله ۲۴ · تلگرام ۲۸ · اختلاف بی‌دلیل: ۶ · تکراری: ۹ · خارج از پنل: ۵</small><br>
+<span class="btn">در روبیکا، نه در بله</span><span class="btn">تکراری</span><span class="btn">خارج از پنل</span>
+<table><tr><th>محصول</th><th>تلگرام</th><th>روبیکا</th><th>بله</th><th>اقدام</th></tr>
+<tr><td>#7200</td><td>— <small>در صف</small></td><td>✓ ۲۵ اکتبر · id 88190</td><td>✓ id 4411 <small>لینک ندارد</small></td><td><span class="btn">جزئیات</span></td></tr>
+<tr><td>#7133</td><td>✓ t.me/toliditaranom/512</td><td>✓ id 88177</td><td style="background:#fee2e2">✕ ۳ پست فعال (4380، 4392، 4401)</td><td><span class="btn btn-d">حذف نسخه‌های قدیمی</span></td></tr>
+<tr><td>#5047</td><td>✓</td><td>✓</td><td style="background:#fef3c7">جاافتاده — دلیل: تصویر خراب</td><td><span class="btn">انتشار تکی</span></td></tr>
+<tr><td>#7148</td><td>✓</td><td>✓</td><td style="background:#7f1d1d;color:#fff">⛔ خارج از پنل (۲۶ اکتبر)</td><td><span class="btn">ثبت در audit</span></td></tr>
+</table></section>
+
+<section id="c"><h2>۴. انتشار جدید (تکی / زمان‌بندی)</h2>
+① محصول: <input placeholder="جست‌وجو نام یا کد… (thumbnail)" style="width:240px"> <br>
+② مقصد (بدون پیش‌فرض): ☐ تلگرام ☐ روبیکا ☐ بله ☐ canary بله<br>
+③ کپشن: قالب کانال + ویرایش · قیمت: <span class="btn">پنهان ●</span> <small>⚠ D4 winter_private</small> · ۸۲۰/۱۰۲۴<br>
+④ رسانه: ✓ decode کامل · 4.6MB ← 1.7MB<br>
+⑤ زمان: ◉ slot بعدی (فردا ۱۲:۰۰، سقف ۷/۱۰) ○ زمان‌بندی [__ : __] <small style="color:#dc2626">۲۳:۳۰ در ساعت سکوت است</small><br>
+⑥ <span class="btn">Dry-run</span> → <span class="note">⚠ این محصول در بله ۲۶ اکتبر منتشر شده (id 4411) — <u>ویرایش همان پست؟</u></span><br><br>
+<div class="modal"><b>تأیید انتشار</b><br>محصول #7200 یلدا → تلگرام، روبیکا<br>زمان: فردا ۱۲:۰۰ / ۱۲:۱۵ · سقف باقی‌مانده: ۷<br>دلیل: <input style="width:200px"><br><span class="btn">انتشار</span> <span class="btn">انصراف</span></div></section>
+
+<section id="t"><h2>۵. ویرایشگر قالب + پیش‌نمایش هر کانال</h2>
+<div class="cols"><div><b>متغیرها</b><br><code>{name} {sku} {minOrder} {price?} {pdpUrl} {contactId} {botDeepLink}</code><br><small>minOrder از فیلد محصول · contactId و utm از تنظیمات همین کانال</small><br><textarea rows="7" style="width:100%">✨ {name} — کد {sku}
+حداقل سفارش: {minOrder}
+🔗 {pdpUrl}
+📩 {contactId}</textarea><div class="note">⛔ واژه «ضدآب» مسدود است (تصمیم حامد ۲۰۲۶-۱۰-۲۷)</div></div>
+<div><b>تلگرام</b><div class="phone"><div class="bubble"><div class="img"></div>✨ یلدا — کد 7200<br>حداقل سفارش: ۶ عدد در سری<br>🔗 poshaktaranom.com/p/7200?utm_source=telegram<br>📩 @…</div></div></div>
+<div><b>بله</b><div class="phone"><div class="bubble"><div class="img"></div>✨ یلدا — کد 7200 …<br>🔗 …utm_source=bale</div><div class="bubble" style="margin-top:4px">[ثبت سفارش] <small>(دکمه در پیام جدا)</small></div></div></div></div></section>
+
+<section id="md"><h2>۶. سلامت رسانه</h2><span class="btn">اسکن همه (فقط خواندن)</span>
+<table><tr><th>محصول</th><th>فایل</th><th>مشکل</th><th>اقدام</th></tr><tr><td>#5047</td><td>5,242,880 B</td><td style="color:#dc2626">JPEG بریده (EOI ندارد)</td><td><span class="btn">جایگزینی تصویر</span></td></tr><tr><td>#7078</td><td>3.9MB</td><td>بالای حد ← قابل فشرده‌سازی</td><td><span class="btn">فشرده‌سازی</span></td></tr></table></section>
+
+<section id="e"><h2>۷. حذف دومرحله‌ای با پشتیبان</h2><div class="modal">
+<b>مرحله ۱ از ۲ — حذف از بله (#7133)</b><br>☑ 4380 (۲۶ اکتبر) ☑ 4392 ☐ 4401 (نگه‌داشته)<br>پشتیبان: متن ✓ · messageIdها ✓ · URL رسانه ✓<br><span style="color:#b45309">⚠ بله: پیام‌های بیش از ۴۸ ساعت قابل حذف نیستند</span><br>دلیل: <input value="تکراری"><br><span class="btn">ادامه</span><hr>
+<b>مرحله ۲ — برای تأیید، کد SKU را تایپ کنید:</b> <input style="width:70px"> <span class="btn btn-d">حذف قطعی</span><br><small>نتیجه: 4380 ✓ · 4392 ✓ ← WITHDRAWN (⚠ D11) · ثبت در audit با GO-ref</small></div></section>
+
+<section id="bot"><h2>۸. صندوق ربات‌ها و سفارش‌ها (فاز بعد از تثبیت انتشار)</h2>
+<table><tr><th>ربات</th><th>مشتری</th><th>آخرین پیام</th><th>پاسخ خودکار</th><th>برچسب</th><th>PFI</th><th>اقدام</th></tr>
+<tr><td>@balerelaitbot</td><td>مشتری ۱</td><td>قیمت سری یلدا؟</td><td>✓ ۱۲ ثانیه</td><td><span class="tag r">سفارش اول</span></td><td>PFI-0012</td><td><span class="btn">ارجاع به سوشال مدیا</span> <small>مقصد: owner_chat_id کانال</small></td></tr>
+<tr><td>@TaranomRetailBot <small>(Worker)</small></td><td>مشتری ۲</td><td>/start 7200</td><td style="color:#dc2626">بی‌پاسخ ۲ دقیقه</td><td>—</td><td>—</td><td><span class="btn">پاسخ</span></td></tr>
+<tr><td>@rubikaretaibot</td><td>مشتری ۳</td><td>شکایت ارسال</td><td>✓</td><td><span class="tag r">شکایت</span></td><td>—</td><td><span class="btn">ارجاع</span></td></tr></table></section>
+
+<section id="a"><h2>۹. ممیزی و لاگ deploy</h2>
+<table><tr><th>زمان (تهران)</th><th>actor</th><th>اکشن</th><th>شیء</th><th>منبع</th><th>GO-ref</th></tr>
+<tr><td>۲۶ اکتبر</td><td>agent (ناشناس)</td><td>۵ انتشار + ۱۱ حذف در بله</td><td>بله</td><td style="color:#dc2626">⛔ خارج از پنل</td><td>ندارد</td></tr>
+<tr><td>۲۷ اکتبر ۱۰:۰۵</td><td>Publisher</td><td>ویرایش کپشن</td><td>#7157 روبیکا</td><td>پنل</td><td>—</td></tr></table><br>
+<b>deployها</b> <span class="tag r">قفل: انتشار در جریان</span> <span class="btn dis">تأیید deploy (Owner + GO)</span>
+<table><tr><th>commit</th><th>زمان</th><th>فرد</th><th>GO</th><th>drain</th></tr>
+<tr><td>7ad0f6b9</td><td>۲۶ اکتبر ~۱۹:۰۲</td><td style="color:#dc2626">ناشناس (auto-deploy)</td><td>ندارد</td><td>✕ قطع انتشار 3091</td></tr>
+<tr><td>3a5a2155</td><td>۲۷ اکتبر ۱۴:۴۱</td><td>auto-deploy</td><td>ندارد</td><td>?</td></tr></table></section>
+<p style="text-align:center;color:#888">وایرفریم ایستا — داده‌ها نمونه/توضیحی هستند · نسخه ۱ · ۵ آبان ۱۴۰۵</p>
+</body></html>
