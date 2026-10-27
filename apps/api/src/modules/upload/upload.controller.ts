@@ -22,6 +22,12 @@ function imageFailureMessage(error: ProductImageProcessingError): string {
   if (/EOI|truncated/i.test(cause)) {
     return 'فایل JPEG ناقص است و ذخیره نشد. عکس را دوباره بفرستید.';
   }
+  if (/channel jpeg too large|photo_too_large/i.test(cause)) {
+    return 'عکس پس از فشرده‌سازی هنوز برای کانال‌ها بزرگ است. فایل کوچک‌تری بفرستید.';
+  }
+  if (/undecodable|photo_unreadable|channel jpeg key/i.test(cause)) {
+    return 'این فایل به‌عنوان تصویر خوانده نشد. jpg، png یا webp سالم بفرستید.';
+  }
   return 'این فایل به‌عنوان تصویر خوانده نشد. jpg، png یا webp سالم بفرستید.';
 }
 

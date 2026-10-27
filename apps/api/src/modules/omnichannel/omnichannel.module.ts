@@ -64,7 +64,15 @@ import { StorageService } from '../upload/storage.service';
       },
       inject: [StorageService],
     },
-    BaleAdapter,
+    {
+      provide: BaleAdapter,
+      useFactory: (storage: StorageService) => {
+        const adapter = new BaleAdapter();
+        adapter.images = storage;
+        return adapter;
+      },
+      inject: [StorageService],
+    },
     RubikaAdapter,
     ChannelAdapterRegistry,
     OmnichannelAdminGuard,

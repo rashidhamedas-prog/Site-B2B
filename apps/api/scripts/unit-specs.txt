@@ -39,6 +39,8 @@ src/modules/collection/collection-public-channel.spec.ts
 src/modules/discount/discount-channel.spec.ts
 src/modules/inventory/inventory-movement.policy.spec.ts
 src/modules/upload/storage-delete.spec.ts
+src/modules/upload/channel-image.spec.ts
+src/modules/upload/storage-upload-channel.spec.ts
 src/modules/omnichannel/omnichannel-secrets.spec.ts
 src/modules/omnichannel/omnichannel-token-vault.spec.ts
 src/modules/omnichannel/oos-policy.spec.ts

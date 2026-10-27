@@ -25,7 +25,8 @@ export type SharpFactory = SharpModule extends { default: infer Factory } ? Fact
 let sharpInflight = 0;
 const sharpWaiters: Array<() => void> = [];
 
-async function withSharpSlot<T>(run: () => Promise<T>): Promise<T> {
+/** Shared across product upload + channel JPEG so two pipelines cannot starve the process. */
+export async function withSharpSlot<T>(run: () => Promise<T>): Promise<T> {
   if (sharpInflight >= MAX_SHARP_CONCURRENT) {
     await new Promise<void>((resolve) => sharpWaiters.push(resolve));
   }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import {
   ChannelAdapter,
   ConnectorDisabledError,
@@ -12,9 +13,25 @@ import {
   inlineKeyboard,
   resolveProviderToken,
   telegramSendOptions,
+  type OwnedImageReader,
   type UpdateLike,
 } from './telegram.adapter';
 import { sanitizePhotoUrls } from '../publication-template';
+import { channelDerivativeKey } from '../../upload/storage-delete';
+import { isCompleteJpeg } from '../../upload/channel-image';
+import {
+  BALE_UPLOAD_TIMEOUT_MS,
+  baleMediaUploadMode,
+  buildBaleAlbumForm,
+  buildBalePhotoForm,
+  prepareBaleUpload,
+  type PreparedBalePhoto,
+} from './bale-media';
+import {
+  loadOwnedPhotoBytes,
+  ownedProductMediaKey,
+  TELEGRAM_PHOTO_FETCH_TIMEOUT_MS,
+} from './telegram-media';
 
 /**
  * Official Bale Bot API (https://docs.bale.ai). Same request/response envelope as Telegram
@@ -49,7 +66,13 @@ type BaleChatMember = {
 
 export class BaleAdapter implements ChannelAdapter {
   readonly provider = 'BALE';
+  private readonly logger = new Logger(BaleAdapter.name);
   http: typeof fetch = globalThis.fetch.bind(globalThis);
+  /** Set by the Nest factory. Tests leave this null and stub `photoLoader` when they need bytes. */
+  images: OwnedImageReader | null = null;
+  photoLoader: ((url: string) => Promise<Buffer>) | null = null;
+  /** Human-readable skips from the last `create` (undecodable photos in upload mode). */
+  lastDeliveryWarnings: string[] = [];
 
   private assertEnabled() {
     if (!isOmnichannelProviderEnabled(this.provider)) throw new ConnectorDisabledError(this.provider);
@@ -58,21 +81,23 @@ export class BaleAdapter implements ChannelAdapter {
   private async baleCall<T>(
     token: string,
     method: string,
-    body?: Record<string, unknown>,
+    body?: Record<string, unknown> | FormData,
     timeoutMs = 12_000,
   ): Promise<T> {
+    const form = typeof FormData !== 'undefined' && body instanceof FormData;
     const res = await this.http(`${BALE_API}/bot${token}/${method}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
+      headers: form ? undefined : { 'Content-Type': 'application/json' },
+      body: form ? body : body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(timeoutMs),
     });
     const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string; result?: T };
     if (!res.ok || json.ok === false) {
       const code = classifyTelegramHttpError(res.status, json.description);
-      const err = new Error(code) as Error & { status?: number; description?: string };
+      const err = new Error(code) as Error & { status?: number; description?: string; telegramCode?: string };
       err.status = res.status;
       err.description = redactProviderError(String(json.description || ''));
+      err.telegramCode = code;
       throw err;
     }
     return json.result as T;
@@ -182,6 +207,7 @@ export class BaleAdapter implements ChannelAdapter {
 
   async create(input: Record<string, unknown>): Promise<{ providerMessageId: string }> {
     this.assertEnabled();
+    this.lastDeliveryWarnings = [];
     const token = resolveBaleToken(String(input.secretRef || ''));
     const chatId = String(input.chatId || input.destinationKey || '');
     if (!token) throw new Error('invalid_credential');
@@ -193,7 +219,45 @@ export class BaleAdapter implements ChannelAdapter {
     const ids: string[] = [];
     let keyboardAttached = false;
     let overflow = '';
-    if (photos.length >= 2) {
+    const uploadMode = photos.length > 0 && baleMediaUploadMode() === 'upload';
+
+    if (uploadMode) {
+      const prepared = await this.prepareOwnedPhotosForUpload(photos);
+      if (prepared.length >= 2) {
+        const caption = text.length <= BALE_ALBUM_CAPTION_LIMIT ? text : '';
+        overflow = caption ? '' : text;
+        const result = await this.baleCall<Array<{ message_id: number }>>(
+          token,
+          'sendMediaGroup',
+          buildBaleAlbumForm({ chatId, photos: prepared, caption: caption || undefined }),
+          BALE_UPLOAD_TIMEOUT_MS,
+        );
+        ids.push(...(result || []).map((row) => String(row.message_id)).filter((id) => id && id !== 'undefined'));
+      } else if (prepared.length === 1) {
+        const result = await this.baleCall<{ message_id: number }>(
+          token,
+          'sendPhoto',
+          buildBalePhotoForm({
+            chatId,
+            photo: prepared[0],
+            caption: text || undefined,
+            replyMarkup: keyboard,
+          }),
+          BALE_UPLOAD_TIMEOUT_MS,
+        );
+        keyboardAttached = !!keyboard;
+        ids.push(String(result.message_id));
+      } else if (photos.length) {
+        // Every photo was skipped (undecodable) — text-only fallback.
+        const result = await this.baleCall<{ message_id: number }>(token, 'sendMessage', {
+          chat_id: chatId,
+          text,
+          ...(keyboard ? { reply_markup: keyboard } : {}),
+        });
+        keyboardAttached = !!keyboard;
+        ids.push(String(result.message_id));
+      }
+    } else if (photos.length >= 2) {
       const caption = text.length <= BALE_ALBUM_CAPTION_LIMIT ? text : '';
       overflow = caption ? '' : text;
       const result = await this.baleCall<Array<{ message_id: number }>>(token, 'sendMediaGroup', {
@@ -276,5 +340,48 @@ export class BaleAdapter implements ChannelAdapter {
   private photosFrom(input: Record<string, unknown>): string[] {
     const channel = input.channel === 'WHOLESALE' ? 'WHOLESALE' : 'RETAIL';
     return sanitizePhotoUrls(channel, input.photoUrls);
+  }
+
+  private async prepareOwnedPhotosForUpload(urls: string[]): Promise<PreparedBalePhoto[]> {
+    const out: PreparedBalePhoto[] = [];
+    for (const url of urls) {
+      try {
+        out.push(await this.prepareOneOwnedPhoto(url));
+      } catch (err: unknown) {
+        const reason = err instanceof Error ? err.message : String(err);
+        const warning = `photo_skipped:${url}:${reason}`;
+        this.lastDeliveryWarnings.push(warning);
+        this.logger.warn(warning);
+      }
+    }
+    return out;
+  }
+
+  private async prepareOneOwnedPhoto(url: string): Promise<PreparedBalePhoto> {
+    const reader = this.images?.ready ? this.images : null;
+    const mainKey = ownedProductMediaKey(url);
+    const channelKey = mainKey ? channelDerivativeKey(mainKey) : null;
+    if (channelKey && reader) {
+      try {
+        const channelBytes = await reader.readOwnedImage(channelKey);
+        if (channelBytes?.length && isCompleteJpeg(channelBytes)) {
+          return { bytes: channelBytes, contentType: 'image/jpeg', filename: 'photo.jpg' };
+        }
+      } catch {
+        // Fall back to main object + encode.
+      }
+    }
+    const raw = await this.loadPhoto(url);
+    return prepareBaleUpload(raw);
+  }
+
+  private loadPhoto(url: string): Promise<Buffer> {
+    if (this.photoLoader) return this.photoLoader(url);
+    const reader = this.images?.ready ? this.images : null;
+    return loadOwnedPhotoBytes(url, {
+      readStorage: reader ? (key) => reader.readOwnedImage(key) : undefined,
+      fetchImpl: this.http,
+      timeoutMs: TELEGRAM_PHOTO_FETCH_TIMEOUT_MS,
+    });
   }
 }
