@@ -5,6 +5,11 @@
 - UI: `admin-omnichannel-health.tsx`؛ `emergencyHold=false`؛ بدون enable کانکتور / egress / vault.
 - شاخه `feat/omnichannel-health-readonly`. گزارش: `docs/reports/2026-10-27-omnichannel-health-readonly.md`.
 
+## 2026-10-27 — Omnichannel PR-2: Status UI (کهربایی + retry rules)
+
+- بج «موفق با هشدار»، متن هشدار رسانه، برچسب `unsupported_media`، قفل retry در UI و API.
+- شاخه `feat/omnichannel-status-ui`. بدون کانال واقعی.
+
 ## 2026-10-27 — Omnichannel: resume بعد از soft-drain (بسته بازطراحی)
 
 - باگ: حذف `/tmp/omnichannel-worker.drain` حافظهٔ `stopping` را پاک نمی‌کرد؛ ورکر تا restart متوقف می‌ماند.

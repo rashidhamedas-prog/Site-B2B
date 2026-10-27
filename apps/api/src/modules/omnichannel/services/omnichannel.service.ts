@@ -183,7 +183,7 @@ import {
   providerFromSecretRef,
   setVaultOverlayEntry,
 } from '../omnichannel-token-vault';
-import { redactProviderError } from '../adapters/telegram-errors';
+import { isNonRetryableProviderError, redactProviderError } from '../adapters/telegram-errors';
 import { isMissingRelationError } from '../media-registry';
 
 type Actor = { id: string };
@@ -1900,6 +1900,11 @@ export class OmnichannelService {
     if (!reason) throw new BadRequestException('reason الزامی است');
     const row = await this.deliveries.findOne({ where: { id } });
     if (!row) throw new NotFoundException('تحویل یافت نشد');
+    if (isNonRetryableProviderError(new Error(String(row.lastError || '')))) {
+      throw new BadRequestException(
+        'unsupported_media: تصویر را اصلاح کنید؛ تلاش دوباره با همان فایل بی‌فایده است',
+      );
+    }
     return this.reactivateDelivery(row, who, reason, 'retry');
   }
 
