@@ -126,6 +126,10 @@ jobs:
       - name: Empty-DB omnichannel migrations up/down/up
         run: bash scripts/omnichannel-migrations-disposable-updown.sh
 
+  # Manual deploy only. Requires /opt/taranom/deploy-approval.json on the VPS
+  # for the exact origin/master SHA + goRef. TARANOM_DEPLOY_FORCE does not bypass
+  # that gate. Recommend GitHub Environment "production" required reviewers
+  # (configure in repo Settings → Environments; not applied by this workflow file).
   deploy:
     needs: [lint-and-build, omnichannel-migrate]
     runs-on: ubuntu-latest
@@ -134,7 +138,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Iran VPS (sole production origin)
+      - name: Deploy to Iran VPS (sole production origin; approval file required)
         uses: appleboy/ssh-action@v1.2.0
         with:
           # Sole Iran origin defaults. Override via repo secrets if the host changes.
@@ -147,5 +151,7 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/taranom
+            # FORCE rebuilds when HEAD already matches origin/master; it does NOT
+            # skip deploy-approval.json (asserted inside scripts/auto-deploy.sh).
             export TARANOM_DEPLOY_FORCE=1
             bash scripts/auto-deploy.sh

@@ -1,3 +1,10 @@
+## 2026-10-27 — PR-0 گیت deploy + soft-drain ورکر (بدون merge/deploy)
+
+- گیت `deploy-approval.json` (commit + goRef)؛ FORCE دور نمی‌زند؛ لاگ `logs/deploy.log`.
+- قبل از recreate: soft-drain ورکر تا ۱۲۰ث؛ timeout → abort بدون SIGKILL.
+- `stop_grace_period: 90s` برای worker؛ قاعده agent: بدون GO نوشتاری حامد push/deploy ممنوع.
+- تست: `node --test scripts/deploy-gate.spec.mjs`. شاخه `chore/pr0-deploy-gate-drain`.
+
 ## 2026-10-27 — فیکس اسلاگ بلاگ بعد از soft-delete (بدون merge/deploy)
 
 - ایندکس یکتا جزئی UQ_blog_posts_channel_slug_live / UQ_blog_categories_channel_slug_live (WHERE deletedAt IS NULL).
