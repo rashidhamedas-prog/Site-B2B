@@ -5,6 +5,11 @@
 - تست: `outbox-worker.drain.spec.ts`. شاخه `fix/omnichannel-drain-resume`. بدون merge/deploy تا CI.
 - Docs بسته: `docs/design/omnichannel-redesign/`.
 
+## 2026-10-27 — پنل پیامک مرحله ۲: موتور سگمنت
+
+- قواعد فقط AND؛ پیش‌نمایش با کسر لغو/سیاه/بدون رضایت و برآورد پارت. قیمت واحد تا وقتی تنظیم نشده null است.
+- جدول `sms_segment` و ستون‌های `segmentId` / `audienceSpec` روی کمپین.
+
 ## 2026-10-27 — پنل پیامک مرحله ۱: لایه مخاطب (GO اجرای RUN-ALL)
 
 - منابع WHOLESALE / WHOLESALE_REFERRAL / SALES_PARTNER / RETAIL، dedupe روی phone و phone2، اولویت عمده > معرف > همکار > خرده.

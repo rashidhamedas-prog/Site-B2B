@@ -86,9 +86,23 @@ export class AudienceService {
     return value;
   }
 
+  async distinctCities(): Promise<string[]> {
+    const rows = await this.db().query<{ city: string }>(
+      `SELECT DISTINCT c.city AS "city" FROM customers c
+       WHERE c."deletedAt" IS NULL AND c.city IS NOT NULL AND c.city <> ''
+       ORDER BY c.city
+       LIMIT 500`,
+    );
+    return rows.map((row) => row.city).filter(Boolean);
+  }
+
+  collect(sources: AudienceSource[]) {
+    return this.loadSources(sources, { wide: true, limit: 50_000 });
+  }
+
   private async loadSources(
     sources: AudienceSource[],
-    opts: { q?: string | null; phone?: string | null },
+    opts: { q?: string | null; phone?: string | null; wide?: boolean; limit?: number },
   ) {
     const db = this.db();
     const loaders = {
@@ -123,9 +137,12 @@ export class AudienceService {
     if (!flags && phones.length && !partialSources.includes('WHOLESALE')) {
       partialSources.push('WHOLESALE');
     }
+    const validHits = settled.rows.filter((hit) => normalizeIranMobileStrict(hit.phoneRaw)).length;
+    const duplicateExtras = Math.max(0, validHits - phones.length);
     return {
       contacts: merged.contacts,
       invalid: [...invalid, ...merged.invalid],
+      duplicateExtras,
       partialSources,
     };
   }
