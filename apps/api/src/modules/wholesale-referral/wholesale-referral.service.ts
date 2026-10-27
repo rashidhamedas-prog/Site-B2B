@@ -194,6 +194,9 @@ export class WholesaleReferralService implements WholesaleReferralCapture {
           status: 'PENDING_PHONE',
           userId: null,
           publicCode: null,
+          smsPromoConsent: true,
+          smsPromoConsentSource: 'OWNER_DEFAULT_POLICY',
+          smsPromoConsentAt: new Date(),
         }));
     if (partner.displayName !== input.displayName.trim()) {
       partner.displayName = input.displayName.trim();

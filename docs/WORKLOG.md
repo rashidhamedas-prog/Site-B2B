@@ -1,3 +1,9 @@
+## 2026-10-27 — پنل پیامک مرحله ۱: لایه مخاطب (GO اجرای RUN-ALL)
+
+- منابع WHOLESALE / WHOLESALE_REFERRAL / SALES_PARTNER / RETAIL، dedupe روی phone و phone2، اولویت عمده > معرف > همکار > خرده.
+- رضایت پیش‌فرض همکار با backfill؛ لغو11 پرچم را عوض نمی‌کند. API: `/admin/sms/audience/sources|contacts`.
+- شاخه `feat/sms-audience-contacts`. ارسال واقعی نیست.
+
 ## 2026-10-27 — PR-0 گیت deploy + soft-drain ورکر (بدون merge/deploy)
 
 - گیت `deploy-approval.json` (commit + goRef)؛ FORCE دور نمی‌زند؛ لاگ `logs/deploy.log`.

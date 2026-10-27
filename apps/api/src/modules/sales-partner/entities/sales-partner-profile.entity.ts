@@ -79,6 +79,16 @@ export class SalesPartnerProfileEntity {
   @Column({ type: 'timestamptz', nullable: true })
   closedAt: Date | null;
 
+  /** Owner policy: partners start with promo consent and leave via لغو11 (phone-level). */
+  @Column({ type: 'boolean', default: true })
+  smsPromoConsent: boolean;
+
+  @Column({ type: 'varchar', length: 32, default: 'OWNER_DEFAULT_POLICY' })
+  smsPromoConsentSource: string;
+
+  @Column({ type: 'timestamptz', default: () => 'now()' })
+  smsPromoConsentAt: Date;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

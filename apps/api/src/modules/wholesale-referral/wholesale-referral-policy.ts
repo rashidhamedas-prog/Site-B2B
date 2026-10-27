@@ -6,6 +6,19 @@ export const WHOLESALE_REFERRAL_SETTINGS_KEY = 'wholesaleReferral';
 export const REFERRAL_COOKIE = 'wr_code';
 export const DRAFT_TERMS_VERSION = 'draft-unreviewed';
 
+/**
+ * Account status stored on wholesale_referral_partners.status.
+ * Values are the entity column contract (not introduction CRM stages).
+ */
+export const WHOLESALE_REFERRAL_PARTNER_STATUSES = [
+  'PENDING_PHONE',
+  'PENDING_REVIEW',
+  'APPROVED',
+  'REJECTED',
+  'SUSPENDED',
+] as const;
+export type WholesaleReferralPartnerStatus = (typeof WHOLESALE_REFERRAL_PARTNER_STATUSES)[number];
+
 export const REFERRAL_CRM_ROLES = ['ADMIN', 'SALES_MANAGER', 'SALES_REP', 'CUSTOMER_SERVICE'] as const;
 export const REFERRAL_FINANCE_ROLES = ['ADMIN', 'ACCOUNTANT'] as const;
 export const REFERRAL_OWNERSHIP_OVERRIDE_ROLES = ['ADMIN', 'SALES_MANAGER'] as const;

@@ -13,6 +13,7 @@ import { SmsPanelService } from './sms-panel.service';
 import { SmsPanelJobs } from './sms-panel.jobs';
 import { SmsProviderService } from './provider/sms-provider.service';
 import { SmsRolesGuard } from './sms-roles';
+import { AudienceService } from './audience/audience.service';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { SmsRolesGuard } from './sms-roles';
     ]),
   ],
   controllers: [SmsPanelController],
-  providers: [SmsPanelService, SmsPanelJobs, SmsProviderService, SmsRolesGuard, SmsPanelRateLimit],
+  providers: [SmsPanelService, SmsPanelJobs, SmsProviderService, SmsRolesGuard, SmsPanelRateLimit, AudienceService],
   exports: [SmsPanelService, SmsProviderService],
 })
 export class SmsPanelModule {}
