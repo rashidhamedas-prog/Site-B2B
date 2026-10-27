@@ -29,6 +29,7 @@ import {
   chatTypeLabel,
   deliveryFailureTone,
   deliveryStatus,
+  deliveryWarningLabel,
   destinationReady,
   errorLabel,
   eventLabel,
@@ -41,6 +42,7 @@ import {
   isConnectorDisabledError,
   isDeliveryPhotoWarning,
   isIntentionalError,
+  isNonRetryableDeliveryError,
   isProvider,
   outboxStatus,
   platformRendered,
@@ -2023,16 +2025,24 @@ export function AdminOmnichannel() {
                           const ds = deliveryStatus(row.status);
                           const intentional = isIntentionalError(row.lastError);
                           const photoWarning = row.status === 'SUCCEEDED' && isDeliveryPhotoWarning(row.lastError);
-                          const failTone = (row.status === 'DEAD' || row.status === 'FAILED')
-                            ? deliveryFailureTone(row.lastError)
-                            : ds.tone;
+                          const nonRetryable = isNonRetryableDeliveryError(row.lastError);
+                          const failTone = photoWarning
+                            ? 'warn'
+                            : (row.status === 'DEAD' || row.status === 'FAILED')
+                              ? deliveryFailureTone(row.lastError)
+                              : ds.tone;
+                          const badgeLabel = intentional
+                            ? 'عمدی'
+                            : photoWarning
+                              ? 'موفق با هشدار'
+                              : ds.label;
                           const dest = row.destinationId ? destById.get(row.destinationId) : undefined;
                           return (
                             <li key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-2 py-1.5 text-xs">
                               {dest && <ProviderChip provider={providerOf(dest)} />}
                               <span className="font-medium">{dest?.displayName || 'مقصد حذف‌شده'}</span>
                               <span className="text-gray-500">{actionLabel(row.action)}</span>
-                              <Badge tone={failTone}>{intentional ? 'عمدی' : ds.label}</Badge>
+                              <Badge tone={failTone}>{badgeLabel}</Badge>
                               {row.lastError && (
                                 <span
                                   className={`truncate max-w-[16rem] ${
@@ -2044,13 +2054,17 @@ export function AdminOmnichannel() {
                                   }`}
                                   title={row.lastError}
                                 >
-                                  {photoWarning ? 'هشدار' : errorLabel(row.lastError)}
+                                  {photoWarning ? deliveryWarningLabel(row.lastError) : errorLabel(row.lastError)}
                                 </span>
                               )}
                               {row.nextAttemptAt && (row.status === 'RETRY' || row.status === 'PENDING') && <span className="text-gray-400">تلاش بعدی {relativeTime(row.nextAttemptAt)}</span>}
                               <span className="flex-1" />
                               {(row.status === 'DEAD' || row.status === 'FAILED') && !intentional && (
-                                <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
+                                nonRetryable ? (
+                                  <span className="text-gray-500" title={errorLabel(row.lastError)}>اول تصویر را اصلاح کنید</span>
+                                ) : (
+                                  <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`retry-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/retry`, { reason }); }, 'خطا در تلاش مجدد', 'دوباره به صف رفت')}>تلاش دوباره</button>
+                                )
                               )}
                               {row.status === 'HOLD' && (
                                 <button type="button" className="text-primary underline cursor-pointer" onClick={() => run(`reapprove-${row.id}`, async () => { await apiClient.post(`/omnichannel/deliveries/${row.id}/reapprove`, { reason }); }, 'خطا در تأیید مجدد', 'برای ارسال تأیید شد')}>تأیید مجدد</button>

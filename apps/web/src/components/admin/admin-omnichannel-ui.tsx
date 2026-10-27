@@ -339,6 +339,7 @@ const ERROR_LABELS: Record<string, string> = {
   daily_cap: 'سقف ارسال امروز پر است؛ به روز بعد موکول شد',
   min_gap: 'فاصلهٔ حداقل بین ارسال‌ها رعایت نشده؛ کمی بعد دوباره تلاش می‌شود',
   rate_limit: 'سقف نرخ ارسال پر است؛ یک دقیقه بعد دوباره تلاش می‌شود',
+  unsupported_media: 'تصویر خراب، ناقص یا بیش از حد بزرگ است — اول فایل را اصلاح کنید؛ تلاش دوباره بی‌فایده است',
 };
 
 /** Delivery/outbox errors that are intentional ops outcomes, not broken sends. */
@@ -351,7 +352,11 @@ export function isIntentionalError(error?: string | null) {
   return key.includes('cancelled_by_admin') || key.includes('publication_withdrawn');
 }
 
-export { isDeliveryPhotoWarning } from './admin-omnichannel-delivery-warning';
+export {
+  deliveryWarningLabel,
+  isDeliveryPhotoWarning,
+  isNonRetryableDeliveryError,
+} from './admin-omnichannel-delivery-warning';
 
 /** DEAD only because OMNICHANNEL_CONNECTORS_ENABLED / per-provider kill switch was off. */
 export function isConnectorDisabledError(error?: string | null) {
