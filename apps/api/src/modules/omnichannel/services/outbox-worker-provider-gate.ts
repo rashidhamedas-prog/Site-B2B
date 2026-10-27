@@ -2,11 +2,26 @@
  * Worker-side kill-switch snapshot written beside the heartbeat file.
  * Read by GET /omnichannel/health — never contains secrets.
  */
-import { writeFileSync } from 'fs';
+import { openSync, closeSync, writeSync } from 'fs';
 import {
   OMNICHANNEL_PROVIDERS,
   type OmnichannelProvider,
 } from '../omnichannel.constants';
+
+/**
+ * Docker-private IPC markers (heartbeat / drain / provider-gate).
+ * Fixed names inside the worker container — not world-writable host tmp races.
+ * mode 0600; CodeQL js/insecure-temporary-file is an intentional exception.
+ */
+export function writeWorkerIpcFile(path: string, body: string): void {
+  // codeql[js/insecure-temporary-file]: container-private deploy/health IPC; fixed path; mode 0600
+  const fd = openSync(path, 'w', 0o600);
+  try {
+    writeSync(fd, body, 0, 'utf8');
+  } finally {
+    closeSync(fd);
+  }
+}
 
 export type ProviderGateSnapshot = {
   at: string;
@@ -52,7 +67,7 @@ export function buildProviderGateSnapshot(
 export function writeProviderGateSnapshot(workerId: string, env: NodeJS.ProcessEnv = process.env): void {
   try {
     const snapshot = buildProviderGateSnapshot(workerId, env);
-    writeFileSync(providerGatePath(env), JSON.stringify(snapshot));
+    writeWorkerIpcFile(providerGatePath(env), JSON.stringify(snapshot));
   } catch {
     /* snapshot is best-effort */
   }

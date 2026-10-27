@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync, writeFileSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { hostname } from 'os';
@@ -30,7 +30,11 @@ import {
   shouldKeepDrainPollTimer,
   type DrainOrigin,
 } from './outbox-worker-drain';
-import { heartbeatPath, writeProviderGateSnapshot } from './outbox-worker-provider-gate';
+import {
+  heartbeatPath,
+  writeProviderGateSnapshot,
+  writeWorkerIpcFile,
+} from './outbox-worker-provider-gate';
 import { CustomerMarketingService } from '../../customer-marketing/customer-marketing.service';
 import { MarketingSmsSender } from '../../customer-marketing/marketing-sms.sender';
 import { PublicationDeliveryEntity } from '../entities/publication-delivery.entity';
@@ -184,7 +188,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
 
   private markDrained() {
     try {
-      writeFileSync(DRAINED_FLAG(), String(Date.now()));
+      writeWorkerIpcFile(DRAINED_FLAG(), String(Date.now()));
     } catch {
       /* best-effort marker for deploy script */
     }
@@ -201,7 +205,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
 
   private beat() {
     try {
-      writeFileSync(heartbeatPath(), String(Date.now()));
+      writeWorkerIpcFile(heartbeatPath(), String(Date.now()));
     } catch {
       /* heartbeat is best-effort */
     }
