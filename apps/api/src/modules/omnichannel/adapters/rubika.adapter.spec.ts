@@ -131,7 +131,13 @@ async function main() {
     assert(sendBody.disable_notification === true && !('inline_keypad' in sendBody) && !('parse_mode' in sendBody), 'documented params only');
 
     // create: photo → download → requestSendFile → upload_url multipart → sendFile with plain caption
-    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const sharp = require('sharp');
+    const jpegBytes = await sharp({
+      create: { width: 32, height: 24, channels: 3, background: { r: 200, g: 50, b: 80 } },
+    })
+      .jpeg()
+      .toBuffer();
+    const bytes = new Uint8Array(jpegBytes);
     calls = recorder(
       adapter,
       (method) => {
@@ -161,6 +167,10 @@ async function main() {
     assert(order[1] === 'requestSendFile' && (calls[1].body as Record<string, unknown>).type === 'Image', 'requestSendFile type Image');
     assert(order[2] === 'https://upload.rubika.ir/u/abc' && calls[2].body instanceof FormData && calls[2].init?.method === 'POST', 'multipart POST to upload_url');
     assert((calls[2].body as FormData).has('file'), 'multipart field is `file`');
+    const uploadPart = (calls[2].body as FormData).get('file');
+    assert(uploadPart instanceof Blob && uploadPart.type === 'image/jpeg', 'Rubika upload is JPEG');
+    const uploaded = Buffer.from(await (uploadPart as Blob).arrayBuffer());
+    assert(uploaded[0] === 0xff && uploaded[1] === 0xd8 && uploaded[uploaded.length - 1] === 0xd9, 'complete JPEG uploaded');
     assert(order[3] === 'sendFile', 'sendFile after upload');
     const fileBody = calls[3].body as Record<string, unknown>;
     assert(fileBody.file_id === 'F123' && fileBody.text === 'کت جدید\n\n🔗 خرید: https://www.poshaktaranom.ir/p/a', 'plain caption + link line');

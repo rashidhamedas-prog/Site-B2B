@@ -351,6 +351,8 @@ export function isIntentionalError(error?: string | null) {
   return key.includes('cancelled_by_admin') || key.includes('publication_withdrawn');
 }
 
+export { isDeliveryPhotoWarning } from './admin-omnichannel-delivery-warning';
+
 /** DEAD only because OMNICHANNEL_CONNECTORS_ENABLED / per-provider kill switch was off. */
 export function isConnectorDisabledError(error?: string | null) {
   return /connector is disabled/i.test(String(error || ''));

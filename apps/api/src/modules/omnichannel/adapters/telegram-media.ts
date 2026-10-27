@@ -1,5 +1,9 @@
 import { publicProductPhotoUrl } from '../publication-template';
 import { sanitizeObjectKey } from '../../upload/storage-delete';
+import {
+  prepareChannelJpeg,
+  type PreparedChannelJpeg,
+} from '../../upload/channel-image';
 
 /**
  * `url` (default): sendPhoto / sendMediaGroup keep passing https URLs.
@@ -27,11 +31,7 @@ export const TELEGRAM_PHOTO_CONCURRENCY = 2;
 
 const PHOTO_FETCH_MAX_BYTES = 15 * 1024 * 1024;
 
-export type PreparedTelegramPhoto = {
-  bytes: Buffer;
-  filename: string;
-  contentType: string;
-};
+export type PreparedTelegramPhoto = PreparedChannelJpeg;
 
 export function isAllowlistedPhotoUrl(url: string): boolean {
   return publicProductPhotoUrl('WHOLESALE', url) !== null;
@@ -73,73 +73,17 @@ export async function mapLimit<T, R>(
   return out;
 }
 
-function loadSharp(): ((...args: any[]) => any) | null {
-  try {
-    const mod = require('sharp') as any;
-    return typeof mod === 'function' ? mod : mod.default;
-  } catch {
-    return null;
-  }
-}
-
-function sniffImage(bytes: Buffer): { contentType: string; filename: string } | null {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
-    return { contentType: 'image/jpeg', filename: 'photo.jpg' };
-  }
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
-    return { contentType: 'image/png', filename: 'photo.png' };
-  }
-  if (
-    bytes.length >= 12
-    && bytes.subarray(0, 4).toString('ascii') === 'RIFF'
-    && bytes.subarray(8, 12).toString('ascii') === 'WEBP'
-  ) {
-    return { contentType: 'image/webp', filename: 'photo.webp' };
-  }
-  return null;
-}
-
 /**
  * WebP (and anything else Sharp can read) becomes a JPEG Telegram can accept as a photo.
  * Long edge is capped so an album stays inside Worker and Bot API limits.
- * If Sharp is not installed, the original bytes are uploaded when they already fit.
+ * Encoding loop lives in `prepareChannelJpeg`; Telegram keeps the 9 MB / 2560 defaults.
  */
 export async function prepareTelegramUpload(input: Buffer): Promise<PreparedTelegramPhoto> {
-  if (!input.length) throw new Error('photo_unreadable');
-  const sharp = loadSharp();
-  if (!sharp) {
-    if (input.length > TELEGRAM_PHOTO_MAX_BYTES) throw new Error('photo_too_large');
-    const sniffed = sniffImage(input);
-    if (!sniffed) throw new Error('photo_unreadable');
-    return { bytes: input, ...sniffed };
-  }
-  let quality = TELEGRAM_JPEG_QUALITY;
-  let edge = TELEGRAM_PHOTO_LONG_EDGE;
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    let bytes: Buffer;
-    try {
-      bytes = await sharp(input, { failOn: 'warning', limitInputPixels: 60_000_000 })
-        .rotate()
-        .resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality })
-        .timeout({ seconds: 15 })
-        .toBuffer();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      if (/timeout/i.test(message)) {
-        const timeout = new Error('timeout');
-        timeout.name = 'TimeoutError';
-        throw timeout;
-      }
-      throw new Error('photo_unreadable');
-    }
-    if (bytes.length && bytes.length <= TELEGRAM_PHOTO_MAX_BYTES && sniffImage(bytes)?.contentType === 'image/jpeg') {
-      return { bytes, filename: 'photo.jpg', contentType: 'image/jpeg' };
-    }
-    quality = Math.max(55, quality - 10);
-    edge = Math.max(1280, Math.round(edge * 0.75));
-  }
-  throw new Error('photo_too_large');
+  return prepareChannelJpeg(input, {
+    maxBytes: TELEGRAM_PHOTO_MAX_BYTES,
+    longEdge: TELEGRAM_PHOTO_LONG_EDGE,
+    minQuality: 55,
+  });
 }
 
 export async function loadOwnedPhotoBytes(

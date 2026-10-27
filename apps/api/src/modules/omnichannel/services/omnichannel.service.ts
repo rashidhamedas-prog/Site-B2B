@@ -2172,20 +2172,27 @@ export class OmnichannelService {
   }
 
   /** Late success may finish after HOLD uncertain_after_timeout; never overwrite a different SUCCEEDED. */
-  async markCreateSucceeded(deliveryId: string, providerMessageId?: string | null): Promise<boolean> {
+  async markCreateSucceeded(
+    deliveryId: string,
+    providerMessageId?: string | null,
+    warnings: string[] = [],
+  ): Promise<boolean> {
+    const warningNote = warnings.length
+      ? `warnings:${warnings.join('|')}`.slice(0, 2000)
+      : null;
     const raw = await this.deliveries.query(
       `UPDATE "omnichannel_publication_deliveries"
        SET status = 'SUCCEEDED',
            "sentAt" = COALESCE("sentAt", NOW()),
            "providerMessageId" = COALESCE($2, "providerMessageId"),
-           "lastError" = NULL,
+           "lastError" = $3,
            "deferredReason" = NULL,
            "updatedAt" = NOW()
        WHERE id = $1
          AND "supersededAt" IS NULL
          AND status IN ('PROCESSING', 'HOLD')
        RETURNING id`,
-      [deliveryId, providerMessageId || null],
+      [deliveryId, providerMessageId || null, warningNote],
     );
     return Boolean(insertedId(raw));
   }

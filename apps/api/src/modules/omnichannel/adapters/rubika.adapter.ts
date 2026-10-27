@@ -14,6 +14,7 @@ import {
   type RubikaMetadataPart,
 } from './rich-text';
 import { sanitizePhotoUrls, type TemplateButton } from '../publication-template';
+import { prepareChannelJpeg } from '../../upload/channel-image';
 
 /**
  * Official Rubika Bot API v3 (https://rubika.ir/botapi). Verified against the docs on 2026-09-06:
@@ -318,14 +319,25 @@ export class RubikaAdapter implements ChannelAdapter {
     if (!source.ok) return null;
     const contentType = String(source.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
     if (!/^image\/(jpeg|jpg|png|gif|webp)$/i.test(contentType)) return null;
-    const bytes = new Uint8Array(await source.arrayBuffer());
-    if (!bytes.byteLength || bytes.byteLength > RUBIKA_IMAGE_LIMIT_BYTES) return null;
+    const raw = Buffer.from(await source.arrayBuffer());
+    if (!raw.length || raw.length > RUBIKA_IMAGE_LIMIT_BYTES) return null;
+    const rubikaMaxBytes = Math.min(RUBIKA_IMAGE_LIMIT_BYTES, 5 * 1024 * 1024);
+    let jpeg: Buffer;
+    try {
+      const prepared = await prepareChannelJpeg(raw, {
+        maxBytes: rubikaMaxBytes,
+        longEdge: 1600,
+        minQuality: 55,
+      });
+      jpeg = prepared.bytes;
+    } catch {
+      return null;
+    }
     const ticket = await this.rubikaCall<{ upload_url?: string }>(token, 'requestSendFile', { type: 'Image' });
     const uploadUrl = String(ticket.upload_url || '');
     if (!/^https:\/\//i.test(uploadUrl)) return null;
-    const ext = contentType.split('/')[1].replace('jpeg', 'jpg');
     const form = new FormData();
-    form.append('file', new Blob([bytes], { type: contentType }), `photo.${ext}`);
+    form.append('file', new Blob([new Uint8Array(jpeg)], { type: 'image/jpeg' }), 'photo.jpg');
     const res = await this.http(uploadUrl, { method: 'POST', body: form, signal: AbortSignal.timeout(30_000) });
     const json = (await res.json().catch(() => ({}))) as { status?: string; data?: { file_id?: string }; file_id?: string };
     if (!res.ok) throw new Error(classifyRubikaFailure(res.status, json.status));

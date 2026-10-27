@@ -63,3 +63,5 @@ taranom-deploy*.tgz
 
 __pycache__/
 *.pyc
+
+test-out.txt

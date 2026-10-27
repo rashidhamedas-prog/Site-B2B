@@ -82,7 +82,12 @@ export function nextAvailableAt(attempts: number, now = new Date(), jitterRatio 
   return new Date(now.getTime() + (base + jitter) * 1000);
 }
 
-export function shouldDeadLetter(attempts: number, maxAttempts: number): boolean {
+export function shouldDeadLetter(
+  attempts: number,
+  maxAttempts: number,
+  opts?: { forceDead?: boolean },
+): boolean {
+  if (opts?.forceDead) return true;
   return attempts >= Math.max(1, maxAttempts);
 }
 
